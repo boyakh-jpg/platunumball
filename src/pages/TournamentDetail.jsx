@@ -9,6 +9,7 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
+import { getRepresentativeTeam } from "../lib/profileSetup.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/matches-arena.css";
 
@@ -400,6 +401,8 @@ export default function TournamentDetail({ app }) {
   }
 
   const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
+  const representativeTeamId = app.state.settings?.representativeTeamId ?? app.currentUser.representativeTeamId ?? "";
+  const representativeTeam = getRepresentativeTeam(app.currentUser.id, app.state.teams, representativeTeamId);
   const teamRows = (tournament.teamIds ?? [])
     .map((teamId) => {
       const team = teamById[teamId];
@@ -410,7 +413,14 @@ export default function TournamentDetail({ app }) {
         captainId,
         captainName: userById[captainId]?.name ?? "주장 미지정",
         status: getTournamentTeamStatus(tournament, teamId),
-        canApprove: tournament.status === "draft" && captainId === app.currentUser.id && getTournamentTeamStatus(tournament, teamId) !== "accepted",
+        canApprove: tournament.status === "draft"
+          && captainId === app.currentUser.id
+          && representativeTeam?.id === teamId
+          && getTournamentTeamStatus(tournament, teamId) !== "accepted",
+        needsRepresentativeTeam: tournament.status === "draft"
+          && captainId === app.currentUser.id
+          && representativeTeam?.id !== teamId
+          && getTournamentTeamStatus(tournament, teamId) !== "accepted",
       };
     })
     .filter((row) => row.team);
@@ -562,7 +572,7 @@ export default function TournamentDetail({ app }) {
                     <ShieldCheck size={15} /> 승인
                   </button>
                 ) : (
-                  <b>{row.status === "accepted" ? "승인 완료" : "승인 대기"}</b>
+                  <b>{row.status === "accepted" ? "승인 완료" : row.needsRepresentativeTeam ? "대표팀 설정 필요" : "승인 대기"}</b>
                 )}
               </div>
             </article>

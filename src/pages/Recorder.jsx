@@ -24,6 +24,7 @@ import {
   isMatchPartyTeamParty,
   isMatchReferee,
   isMatchSideTeamParty,
+  isMatchTrustFeedbackOpen,
 } from "../lib/matchUtils.js";
 import { SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -42,8 +43,12 @@ const activeProgressPhases = new Set(["live", "postgame", "dispute"]);
 const GENERIC_ROOM_TITLE_PATTERN = /^(경기|매치|농구|대기방|기록방|방)$/i;
 
 function canAccessActiveMatch(match, user, state) {
-  if (!activeStatuses.has(match.status)) return false;
-  if (!activeProgressPhases.has(getMatchRoomPhase(match).phase)) return false;
+  if (match.status === "confirmed") {
+    if (!isMatchTrustFeedbackOpen(match)) return false;
+  } else {
+    if (!activeStatuses.has(match.status)) return false;
+    if (!activeProgressPhases.has(getMatchRoomPhase(match).phase)) return false;
+  }
   const sourcePost = match?.recruitingPostId
     ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
@@ -198,7 +203,7 @@ export default function Recorder({ app }) {
               <>
                 <ShieldCheck size={34} />
                 <strong>처리할 진행 경기 없음</strong>
-                <p>경기가 확정 완료되면 이 메뉴에서 자동으로 사라집니다.</p>
+                <p>기록 확정 후 24시간 평가 기간이 지나면 이 메뉴에서 자동으로 사라집니다.</p>
               </>
             )}
             <Link to="/app/matches" className="button button-secondary button-md">경기 보기</Link>

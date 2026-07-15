@@ -58,6 +58,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const testAuthPassword = process.env.RANKBALL_TEST_PASSWORD || process.env.VITE_TEST_AUTH_PASSWORD || "test-0000";
 const testAuthEmailDomain = process.env.RANKBALL_TEST_AUTH_EMAIL_DOMAIN || process.env.VITE_TEST_AUTH_EMAIL_DOMAIN || "rankball.test";
 const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || 20000);
+const cleanupTimeoutMs = Number(process.env.RANKBALL_SIM_CLEANUP_TIMEOUT_MS || Math.max(requestTimeoutMs * 6, 120000));
 const ensureRemoteTestActors = process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "1" || process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "true";
 const fullSimulation = process.argv.includes("--full") || process.env.RANKBALL_SIM_FULL === "1" || process.env.RANKBALL_SIM_FULL === "true";
 const remoteSmokeOnly = usesRemoteApi && !fullSimulation;
@@ -340,10 +341,10 @@ async function readResponseTextWithTimeout(response, label = "response") {
   return Promise.race([response.text(), timeout]).finally(() => clearTimeout(timeoutId));
 }
 
-async function withTimeout(promise, label = "operation") {
+async function withTimeout(promise, label = "operation", timeoutMs = requestTimeoutMs) {
   let timeoutId;
   const timeout = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(`${label}_timeout`)), requestTimeoutMs);
+    timeoutId = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
@@ -572,13 +573,17 @@ async function snapshotTemporaryProfileIdentity(profileId = "") {
   if (temporaryProfileIdentitySnapshots.has(profileId)) return temporaryProfileIdentitySnapshots.get(profileId);
   const { data, error } = await supabase
     .from("profiles")
-    .select("id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,onboarding_complete,handle_locked_at,birth_year_locked_at,name_updated_at,updated_at")
+    .select("id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,onboarding_complete,handle_locked_at,birth_year_locked_at,name_updated_at,updated_at,test_login_id")
     .eq("id", profileId)
     .maybeSingle();
   if (error) throw error;
   assertFlow(data?.id === profileId, "temporary profile identity not found", { profileId });
-  temporaryProfileIdentitySnapshots.set(profileId, data);
-  return data;
+  const stableName = /^rankball-\d+$/i.test(String(data.test_login_id || ""))
+    ? String(data.name || "").replace(/(?:\s+SIM)+$/i, "").trim() || data.name
+    : data.name;
+  const snapshot = { ...data, name: stableName };
+  temporaryProfileIdentitySnapshots.set(profileId, snapshot);
+  return snapshot;
 }
 
 async function restoreTemporaryProfileIdentities() {
@@ -1027,6 +1032,45 @@ async function cleanupSimulationNotifications() {
   };
 }
 
+async function cleanupSimulationRecruitingPosts() {
+  if (!supabase) return { skipped: true };
+  const postIds = uniqueIds(scenarioIds.map((scenario) => scenario.postId));
+  if (!postIds.length) return { skipped: true };
+
+  const errors = [];
+  const deleted = {};
+  for (const { table, column, select, filters = [] } of [
+    { table: "room_chat_messages", column: "room_id", select: "id", filters: [["room_type", "recruiting"]] },
+    { table: "room_discord_links", column: "room_id", select: "id", filters: [["room_type", "recruiting"]] },
+    { table: "user_room_feed", column: "entity_id", select: "entity_id", filters: [["entity_type", "recruiting"]] },
+    { table: "room_feed_cards", column: "entity_id", select: "entity_id", filters: [["entity_type", "recruiting"]] },
+    { table: "recruiting_posts", column: "id", select: "id" },
+  ]) {
+    let query = supabase.from(table).delete().in(column, postIds);
+    for (const [filterColumn, filterValue] of filters) query = query.eq(filterColumn, filterValue);
+    const { data, error } = await query.select(select);
+    if (error) errors.push({ table, message: error.message });
+    else deleted[table] = data?.length ?? 0;
+  }
+
+  const { count: remainingPosts, error: verifyError } = await supabase
+    .from("recruiting_posts")
+    .select("id", { count: "exact", head: true })
+    .in("id", postIds);
+  if (verifyError) errors.push({ table: "recruiting_posts", column: "verify", message: verifyError.message });
+  if ((remainingPosts ?? 0) > 0) {
+    errors.push({ table: "recruiting_posts", column: "cleanup", message: `remaining_simulation_recruiting_posts:${remainingPosts}` });
+  }
+
+  return {
+    skipped: false,
+    trackedPosts: postIds.length,
+    deleted,
+    remainingPosts: remainingPosts ?? 0,
+    errors,
+  };
+}
+
 async function loadStateAs(testLoginId) {
   const payload = await callHandler("/api/state/load", loadStateHandler, await getAuthToken(testLoginId));
   assertFlow(payload?.ok && payload?.state, `state load failed for ${testLoginId}`, payload);
@@ -1086,6 +1130,8 @@ async function runHomeAlertNotificationScenario({
         targetUserId: profileId,
         sendAt: new Date(now.getTime() - 60_000).toISOString(),
         skipDiscordSync: true,
+        simulation: true,
+        simulationId: ids.label,
       },
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
@@ -1105,6 +1151,8 @@ async function runHomeAlertNotificationScenario({
         targetUserId: profileId,
         sendAt: new Date(now.getTime() + 60 * 60 * 1000).toISOString(),
         skipDiscordSync: true,
+        simulation: true,
+        simulationId: ids.label,
       },
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
@@ -1389,6 +1437,27 @@ async function loadMatchesAs(testLoginId, options = {}) {
   });
   assertFlow(payload?.ok && payload?.state, `match list load failed for ${testLoginId}`, payload);
   return payload.state;
+}
+
+async function runMatchListProfileIntegrityScenario({ label, login }) {
+  ids = makeScenarioIds(label);
+  const state = await step(`${ids.label}:loadMatches`, () => loadMatchesAs(login));
+  const currentUser = (state.users ?? []).find((user) => user.id === state.currentUserId);
+  assertFlow(Boolean(
+    currentUser?.onboardingComplete
+    && currentUser?.birthYear
+    && currentUser?.handleLockedAt
+    && currentUser?.birthYearLockedAt
+    && currentUser?.ageGroupCheckedSeason
+    && currentUser?.regionSido
+    && currentUser?.regionDistrict
+  ), "match list replaced the current profile with a public card", currentUser);
+  return {
+    label: ids.label,
+    login,
+    profileId: currentUser.id,
+    privateProfilePreserved: true,
+  };
 }
 
 function getKstFutureSchedule(offsetHours = 48) {
@@ -1809,6 +1878,7 @@ async function cleanup() {
       refereeSimulationCleanup,
       ratingRestore,
       notificationCleanup: { skipped: true, reason: "keep_requested" },
+      recruitingCleanup: { skipped: true, reason: "keep_requested" },
       regressionCleanup: { skipped: true, reason: "keep_requested" },
     };
   }
@@ -1825,7 +1895,8 @@ async function cleanup() {
     });
     const text = await readResponseTextWithTimeout(response, "cleanup_sim");
     if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}`, profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
-    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
+    const recruitingCleanup = await cleanupSimulationRecruitingPosts();
+    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, recruitingCleanup, regressionCleanup };
   }
   if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
 
@@ -1875,6 +1946,7 @@ async function cleanup() {
       errors.push({ table: "room_discord_links", message: error.message });
     }
   }
+  const recruitingCleanup = await cleanupSimulationRecruitingPosts();
   return {
     skipped: false,
     errors,
@@ -1884,6 +1956,7 @@ async function cleanup() {
     refereeSimulationCleanup,
     ratingRestore,
     notificationCleanup,
+    recruitingCleanup,
     regressionCleanup,
   };
 }
@@ -6268,6 +6341,10 @@ async function main() {
       label: "profile_identity_lock",
       login: profileLockLogin,
     }));
+    scenarios.push(await runMatchListProfileIntegrityScenario({
+      label: "match_list_profile_integrity",
+      login: homeAlertLogin,
+    }));
     scenarios.push(await runCourtRegistrationScenario({
       label: "court_request_approval",
       requesterLogin: courtRequesterLogin,
@@ -6443,9 +6520,16 @@ async function main() {
     && Number(cleanupResult?.failedCount ?? 0) === 0
     && (cleanupResult?.errors ?? []).length === 0
     && (cleanupResult?.notificationCleanup?.errors ?? []).length === 0
+    && (cleanupResult?.recruitingCleanup?.errors ?? []).length === 0
+    && (cleanupResult?.regressionCleanup?.errors ?? []).length === 0
+    && (cleanupResult?.profileDiscordRestore?.errors ?? []).length === 0
+    && (cleanupResult?.profileIdentityRestore?.errors ?? []).length === 0
+    && (cleanupResult?.ratingRestore?.errors ?? []).length === 0
+    && (cleanupResult?.refereeSimulationCleanup?.errors ?? []).length === 0
     && Number(cleanupResult?.notificationCleanup?.remainingNotifications ?? 0) === 0
     && Number(cleanupResult?.artifactCleanup?.remainingNotifications ?? 0) === 0
     && Number(cleanupResult?.artifactCleanup?.remainingDiscordDeliveries ?? 0) === 0
+    && Number(cleanupResult?.recruitingCleanup?.remainingPosts ?? 0) === 0
     && Number(cleanupResult?.artifactCleanup?.remainingMatches ?? 0) === 0
     && Number(cleanupResult?.artifactCleanup?.remainingTournaments ?? 0) === 0
   );
@@ -6478,7 +6562,7 @@ try {
     error: error.message,
   };
   console.error(JSON.stringify({ ...failure, cleanup: "pending" }, null, 2));
-  const cleanupResult = await withTimeout(cleanup(), "cleanup").catch((cleanupError) => ({ failed: cleanupError.message }));
+  const cleanupResult = await withTimeout(cleanup(), "cleanup", cleanupTimeoutMs).catch((cleanupError) => ({ failed: cleanupError.message }));
   console.error(JSON.stringify({ ...failure, cleanup: cleanupResult }, null, 2));
   process.exit(1);
 }

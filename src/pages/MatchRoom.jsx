@@ -14,7 +14,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, PLAYER_STAT_FIELDS } from "../lib/constants.js";
+import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import {
   formatStatLine,
@@ -32,6 +32,8 @@ import {
   getMatchRecordPlayerIds,
   getMatchRoomPhase,
   getMatchPlayerIds,
+  getReportableMatchTimeMs,
+  getReportableMatchUserIds,
   getMatchReservePlayerIds,
   getSafeMatchSide,
   getMatchSideLeaderId,
@@ -370,7 +372,11 @@ export default function MatchRoom({ app }) {
   const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
   const canDeleteSoloRecord = isSoloRecord && match.createdBy === app.currentUser.id && match.status !== "cancelled";
   const canResumeApproval = match.status === "disputed" && currentUserCanOperateStartedMatch;
-  const canReport = !["cancelled", "void"].includes(match.status) && (Boolean(match.endedAt) || Boolean(match.result) || ["approval", "disputed", "confirmed"].includes(match.status));
+  const reportTime = getReportableMatchTimeMs(match);
+  const canReport = !["cancelled", "void"].includes(match.status)
+    && getReportableMatchUserIds(match).includes(app.currentUser.id)
+    && reportTime >= Date.now() - REPORT_MATCH_WINDOW_MS
+    && reportTime <= Date.now();
   const isContractStage = match.status === "contract";
   const shouldShowResultEntry =
     match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeStart);

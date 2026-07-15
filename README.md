@@ -83,7 +83,7 @@ npm run verify:release
 | `SUPABASE_DB_PASSWORD` | CLI 전용 | `supabase link`, `supabase db push --linked` 원격 DB 비밀번호 |
 | `SUPABASE_PROJECT_ID` | CLI/CI 전용 | Supabase project ref. 현재 production ref: `olzxextphxpniwiiwwda` |
 | `DATABASE_URL` | CLI/서버 전용 | `supabase db push --db-url` 또는 직접 Postgres 접속 |
-| `RANKBALL_SIM_BASE_URL` / `RANKBALL_SIM_SECRET` / `RANKBALL_SIM_TIMEOUT_MS` | 스크립트 | backend simulation |
+| `RANKBALL_SIM_BASE_URL` / `RANKBALL_SIM_SECRET` / `RANKBALL_SIM_TIMEOUT_MS` / `RANKBALL_SIM_CLEANUP_TIMEOUT_MS` | 스크립트 | backend simulation |
 
 ## Discord 방 채팅 bridge
 

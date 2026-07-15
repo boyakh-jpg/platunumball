@@ -5,14 +5,16 @@
 1. 대회 경기의 사용자 노출 제목은 `라운드-경기 · A팀 vs B팀` 형식으로 만든다. 대회명은 대회 카드와 대진표에서 이미 표시하므로 경기 제목에 반복하지 않는다.
 2. 기존 대회 경기 row에 긴 제목이 남아 있어도 프론트는 `tournamentId`, 라운드, 경기 번호, 양 팀 이름으로 동일한 표시 제목을 계산한다.
 3. 백엔드 시뮬레이션의 내부 시나리오 키는 ID와 실행 로그에만 남긴다. 방·경기·대회 제목에는 `tournament_bye_round` 같은 내부 키를 저장하지 않는다.
-4. 시뮬레이션 종료 시 `sim_m_*`, `sim_trn_*` 경기·대회와 연결된 기록·알림·피드만 hard delete하고 영향받은 프로필 경기 요약을 재계산한다.
+4. 시뮬레이션 종료 시 `sim_m_*`, `sim_trn_*` 경기·대회와 이번 실행에서 추적한 모집방, 연결 기록·알림·채팅·Discord 링크·피드를 hard delete하고 영향받은 프로필 경기 요약을 재계산한다.
 5. `sim_q_*` 모집방의 초대 알림과 해당 Discord 배송 row도 시뮬레이션 정리 대상이다. 정리 완료 조건은 `sim_m_*`, `sim_trn_*`, `sim_q_*` 연결 알림이 모두 0건인 상태다.
+6. 관계 row가 없는 `sim_notice_*` 직접 알림과 `payload.simulation=true` 알림도 전용 정리 RPC가 Discord 배송 row보다 먼저 식별하고 함께 제거한다.
 
 ## 2026-07-15 비공개 대회 조회와 내 경기 일치
 
 1. 홈과 경기 메뉴의 초기 경기 목록 응답은 현재 사용자가 만든 대회와 현재 소속팀이 초대된 대회를 함께 반환한다. 새로고침 뒤에도 비공개 대회 카드는 유지돼야 한다.
 2. 대회경기는 일정이 저장됐고 현재 사용자가 출전 또는 후보 명단에 포함된 경우에만 `내 확정 경기`와 경기 메뉴 `내 경기`에 표시한다. 압축 목록 응답에서는 선수 배열 대신 서버의 `participant` 관계를 동일한 참가 근거로 사용한다.
 3. 대회 생성자나 팀장이라는 이유만으로 대회경기를 개인 일정에 넣지 않는다. 생성자는 대회 카드에서 일정을 관리하고, 팀장은 `내가 처리할 일`의 명단 구성 알림에서 출전·후보를 확정한다.
+4. 경기 메뉴 목록이 관련 대회·모집방의 공개 프로필을 병합해도 현재 사용자의 가입 완료, 연령, 잠금, 지역 필드는 본인용 프로필 값으로 마지막에 복원한다. 공개 카드 값이 본인 프로필을 덮어써 가입 화면으로 되돌리면 안 된다.
 
 ## 2026-07-15 대회/리그 초대 알림
 
@@ -23,7 +25,7 @@
 
 | 영역 | 현재 원본/구현 | 전체 시뮬레이션 |
 | --- | --- | --- |
-| Auth/Profile | `auth.users.id = profiles.auth_user_id` 1:1, 해시태그·생년 잠금, 이름 월 1회, Discord ID unique | `profile_identity_lock`, `discord_unique_profile`, schema health |
+| Auth/Profile | `auth.users.id = profiles.auth_user_id` 1:1, 해시태그·생년 잠금, 이름 월 1회, Discord ID unique, 목록 응답의 본인 프로필 보존 | `profile_identity_lock`, `match_list_profile_integrity`, `discord_unique_profile`, schema health |
 | 공개 범위 | 지역 랭킹·소속팀 이력·개인 스탯 공개값만 directory 응답에 포함하고 타인 화면에서 적용 | `profile_privacy` |
 | 팀 | 생성·수정·soft delete, 팀원 초대·수락·거절·취소, 1인 3팀·팀당 10명 | `team_membership_invite_decline`, `team_lifecycle` |
 | 구장 | 등록 요청, 관리자 승인, 승인 구장 생성, 신청자 알림 | `court_request_approval` |
@@ -41,6 +43,7 @@
 
 - `scripts/simulate-backend-flow.mjs --full`은 위 흐름을 서로 다른 테스트 계정으로 실행하고 생성한 방·경기·대회·팀·알림·Discord 큐·관리자 행과 임시 프로필/MMR 변경을 종료 시 복구한다.
 - 실제 Discord Bot DM/OAuth/Gateway 상시 worker, 외부 스케줄러 호출, 실사용 브라우저 세션은 코드/DB 시뮬레이션과 별도 운영 검증 대상이다.
+- 진행 메뉴는 확정 경기의 신뢰 평가가 열린 24시간 동안 기록방을 유지한다. 대회 승인과 경기 신고 버튼은 각각 대표팀, 참가 관계와 최근 7일 서버 조건을 화면에서도 먼저 적용한다.
 
 ## 2026-07-14 경기 메뉴 상태와 모집방 만료
 
@@ -2433,7 +2436,7 @@ flowchart TD
 - local demo mode만 기존 로컬 reducer를 사용한다.
 ## 2026-07-13 경기 확정과 MMR 원자 커밋
 
-1. 최종 `approveMatch`는 `rankball_match_action_with_rating()` RPC를 사용한다.
+1. 최종 `approveMatch`는 `rankball_match_approval_action()`이 `rankball_match_finalize_locked()`를 호출하는 잠긴 DB RPC 경로를 사용한다.
 2. 경기 snapshot, 승인 완료, 개인/팀 MMR, trust/streak, `confirmed_at`은 한 DB transaction에서 커밋한다.
 3. 어느 단계든 실패하면 경기 확정과 레이팅 변경을 모두 롤백한다.
 4. 유지보수 백필은 이미 저장된 경기만 보정하므로 `rankball_commit_match_rating()` 단독 RPC를 계속 사용할 수 있다.

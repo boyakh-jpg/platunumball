@@ -1041,7 +1041,10 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     const recruitingScheduleCount = recruitingState.recruitingPosts?.length ?? 0;
     const mergedState = {
       ...state,
-      users: mergeById(mergeById(state.users, relatedTournamentState.users), recruitingState.users),
+      users: mergeById(
+        mergeById(mergeById(state.users, relatedTournamentState.users), recruitingState.users),
+        [compactUser(currentUser, currentUser.id)],
+      ),
       teams: mergeById(mergeById(state.teams, relatedTournamentState.teams), recruitingState.teams),
       recruitingPosts: recruitingState.recruitingPosts ?? [],
       tournaments: relatedTournamentState.tournaments ?? [],
@@ -1158,7 +1161,10 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const recruitingScheduleCount = recruitingState.recruitingPosts?.length ?? 0;
   const mergedState = {
     ...state,
-    users: mergeById(mergeById(state.users, relatedTournamentState.users), recruitingState.users),
+    users: mergeById(
+      mergeById(mergeById(state.users, relatedTournamentState.users), recruitingState.users),
+      [compactUser(currentUser, currentUser.id)],
+    ),
     teams: mergeById(mergeById(state.teams, relatedTournamentState.teams), recruitingState.teams),
     recruitingPosts: recruitingState.recruitingPosts ?? [],
     tournaments: relatedTournamentState.tournaments ?? [],

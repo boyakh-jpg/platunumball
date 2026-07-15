@@ -33,8 +33,16 @@ export default async function handler(request, response) {
     const checks = [];
     let artifactCleanup = null;
     let artifactCleanupError = null;
+    const simulationNoticeResult = await client.rpc("rankball_cleanup_simulation_notices");
+    const simulationNoticeCleanup = simulationNoticeResult.data;
+    const simulationNoticeCleanupError = simulationNoticeResult.error;
     let cleanupAttempts = 0;
-    const deletedTotals = { matches: 0, tournaments: 0, notifications: 0, discordDeliveries: 0 };
+    const deletedTotals = {
+      matches: 0,
+      tournaments: 0,
+      notifications: Number(simulationNoticeCleanup?.deletedNotifications ?? 0),
+      discordDeliveries: Number(simulationNoticeCleanup?.deletedDiscordDeliveries ?? 0),
+    };
     do {
       cleanupAttempts += 1;
       const result = await client.rpc("rankball_cleanup_simulation_artifacts");
@@ -62,12 +70,15 @@ export default async function handler(request, response) {
       deleted: deletedTotals.matches + deletedTotals.tournaments,
       remaining: Number(artifactCleanup?.remainingMatches ?? 0) + Number(artifactCleanup?.remainingTournaments ?? 0),
     });
-    const remainingNotifications = Number(artifactCleanup?.remainingNotifications ?? 0);
-    const remainingDiscordDeliveries = Number(artifactCleanup?.remainingDiscordDeliveries ?? 0);
+    const remainingNotifications = Number(artifactCleanup?.remainingNotifications ?? 0)
+      + Number(simulationNoticeCleanup?.remainingNotifications ?? 0);
+    const remainingDiscordDeliveries = Number(artifactCleanup?.remainingDiscordDeliveries ?? 0)
+      + Number(simulationNoticeCleanup?.remainingDiscordDeliveries ?? 0);
     checks.push({
       table: "simulation_notifications",
-      ok: !artifactCleanupError && remainingNotifications === 0 && remainingDiscordDeliveries === 0,
+      ok: !artifactCleanupError && !simulationNoticeCleanupError && remainingNotifications === 0 && remainingDiscordDeliveries === 0,
       error: artifactCleanupError?.message
+        ?? simulationNoticeCleanupError?.message
         ?? (remainingNotifications > 0 || remainingDiscordDeliveries > 0 ? "simulation_notifications_remaining" : null),
       deleted: deletedTotals.notifications,
       deletedDiscordDeliveries: deletedTotals.discordDeliveries,
