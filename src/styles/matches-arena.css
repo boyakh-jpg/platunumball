@@ -5136,7 +5136,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
   box-shadow: none;
-  padding: 0 10px;
+  padding: 0 8px;
   font-size: var(--ui-button-font-size);
   font-weight: var(--ui-button-font-weight);
   line-height: 1;
