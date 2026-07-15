@@ -7335,12 +7335,38 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 @media (max-width: 640px) {
+  .arena-dispute-score-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .arena-dispute-score-row > strong {
+    display: none;
+  }
+
+  .arena-score-stepper {
+    width: 100%;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    grid-template-rows: 48px;
+  }
+
+  .arena-score-stepper button,
+  .arena-score-stepper input {
+    min-height: 48px;
+  }
+
   .arena-dispute-stat-grid {
     grid-template-columns: 1fr;
   }
 
+  .arena-dispute-player > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .arena-stat-stepper {
-    grid-template-columns: 32px minmax(36px, 1fr) 32px;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(30px, 0.8fr) minmax(28px, 1fr) minmax(30px, 0.8fr);
     grid-template-rows: 42px;
   }
 
@@ -7711,6 +7737,21 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
   .match-room .stat-referee-panel {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .match-room .score-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .match-room .score-form > span {
+    display: none;
+  }
+
+  .match-room .score-numeric-stepper {
+    width: 100%;
+    grid-template-columns: 48px minmax(0, 1fr) 48px;
   }
 }
 
