@@ -705,6 +705,63 @@
   padding: 18px;
 }
 
+.arena-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  overscroll-behavior: contain;
+  padding: 18px;
+}
+
+.arena-compose-backdrop.arena-room-backdrop,
+.arena-modal-backdrop.arena-room-backdrop {
+  inset: 0;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  background: rgba(0, 0, 0, var(--sheet-backdrop-opacity, 0.82));
+}
+
+.arena-room-backdrop::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  right: -32px;
+  bottom: 0;
+  width: 32px;
+  background: rgba(0, 0, 0, var(--sheet-backdrop-opacity, 0.82));
+  pointer-events: none;
+}
+
+.arena-room-modal {
+  display: grid;
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 36px);
+  gap: 12px;
+  overflow: auto;
+  border: 1px solid var(--ui-room-modal-border);
+  border-radius: var(--ui-room-modal-radius);
+  background: var(--ui-room-modal-bg);
+  box-shadow: var(--ui-room-modal-shadow);
+  padding: 18px;
+}
+
+.arena-room-modal .arena-modal-status-row,
+.arena-room-modal .arena-modal-close-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.arena-room-modal .arena-room-subtitle {
+  color: var(--rb-muted);
+  line-height: 1.5;
+}
+
 .arena-compose-drawer {
   width: min(760px, 100%);
   max-height: min(820px, calc(100vh - 36px));

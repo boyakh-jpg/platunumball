@@ -2415,7 +2415,7 @@ export function RecruitingRoomModal(props) {
 
 function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
   return (
-    <div className="arena-modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="방 로드 실패" onMouseDown={(event) => event.stopPropagation()}>
         <div className="arena-modal-status-row">
           <Badge tone="orange">ROOM LOAD</Badge>
@@ -2679,7 +2679,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     if (wasActive) resetSheetDrag();
   };
   const sheetDragProgress = sheetDragOffset ? Math.min(1, sheetDragOffset / getSheetDismissDistance()) : 0;
-  const sheetBackdropOpacity = 0.62 - (sheetDragProgress * 0.24);
+  const sheetBackdropOpacity = 0.82 - (sheetDragProgress * 0.34);
   const sheetModalOpacity = 1 - (sheetDragProgress * 0.34);
   const submitSourceDispute = (event) => {
     event.preventDefault();
@@ -3561,7 +3561,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
 
         return (
           <div
-            className="arena-compose-backdrop"
+            className="arena-compose-backdrop arena-room-backdrop"
             role="presentation"
             style={{ "--sheet-backdrop-opacity": sheetBackdropOpacity }}
             onClick={closeFromBackdrop}

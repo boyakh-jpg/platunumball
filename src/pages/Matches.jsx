@@ -99,7 +99,7 @@ class RoomModalErrorBoundary extends Component {
 
 function RoomModalErrorView({ error, onClose, onRetry = null }) {
   return (
-    <div className="arena-modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="경기방 오류" onMouseDown={(event) => event.stopPropagation()}>
         <div className="arena-modal-status-row">
           <Badge tone="orange">경기방 오류</Badge>
