@@ -7625,6 +7625,16 @@ html[data-theme="light"] .arena-lobby-arena {
   }
 }
 
+@media (max-width: 340px) {
+  .arena-lobby-modal .arena-dispute-player > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-lobby-modal .arena-stat-stepper {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
+}
+
 .arena-room-chat,
 .arena-owner-panel {
   min-height: 92px;
