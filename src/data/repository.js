@@ -1725,6 +1725,7 @@ function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matc
       rosterReadyAt: {},
       tournamentOrganizerId: tournament.createdBy,
       tournamentSideAssignmentLocked: false,
+      tournamentHostRosterSelected: false,
     },
     memo: tournament.memo || "대회 경기입니다.",
     stakes: "대회 경기 MMR 가중치가 적용됩니다.",
@@ -6419,6 +6420,8 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
     ...getMatchReservePlayerIds(match, sideName),
   ]);
   const nextRosterIds = new Set([...nextActiveIds, ...nextReserveIds]);
+  const tournamentHostPlayerId = tournamentPregame ? match.rules?.tournamentHostPlayerId ?? "" : "";
+  const tournamentHostTeamId = tournamentPregame ? match.rules?.tournamentHostTeamId ?? "" : "";
   const nextPlayerTeams = Object.fromEntries(
     Object.entries(side.playerTeams ?? {}).filter(([playerId]) => nextRosterIds.has(playerId)),
   );
@@ -6450,6 +6453,9 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
       },
       lineupDeadlineState: "pending",
       lineupDeadlineCheckedAt: null,
+      tournamentHostRosterSelected: tournamentHostPlayerId && team.id === tournamentHostTeamId
+        ? nextRosterIds.has(tournamentHostPlayerId)
+        : match.rules?.tournamentHostRosterSelected === true,
     } : match.rules,
   };
   previousRosterIds

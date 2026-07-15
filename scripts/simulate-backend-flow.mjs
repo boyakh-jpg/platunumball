@@ -28,6 +28,7 @@ import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
 import {
   getRecorderHandoffPatch,
   getMatchRoomPhase,
+  getMatchReservePlayerIds,
   getTournamentMatchDisplayTitle,
   isMatchRecordMatch,
   isTournamentMatchInUserSchedule,
@@ -5625,16 +5626,19 @@ async function prepareTournamentMatchRosters({
     const teamId = scheduledMatch?.[sideName]?.teamId ?? "";
     const fixture = fixtures.find((item) => item.team.id === teamId);
     const snapshotIds = scheduledMatch?.rules?.teamRosterSnapshot?.teams?.[teamId]?.eligiblePlayerIds ?? [];
-    let playerId = snapshotIds.includes(fixture?.captainId) ? fixture.captainId : "";
-    let playerLogin = playerId ? fixture?.captainLogin : "";
-    if (!playerId) {
-      for (const candidateId of snapshotIds) {
-        const candidateLogin = await getTestLoginForProfileId(candidateId);
-        if (candidateLogin) {
-          playerId = candidateId;
-          playerLogin = candidateLogin;
-          break;
-        }
+    let playerId = "";
+    let playerLogin = "";
+    for (const candidateId of [
+      ...snapshotIds.filter((candidateId) => candidateId !== fixture?.captainId),
+      ...snapshotIds.filter((candidateId) => candidateId === fixture?.captainId),
+    ]) {
+      const candidateLogin = candidateId === fixture?.captainId
+        ? fixture?.captainLogin
+        : await getTestLoginForProfileId(candidateId);
+      if (candidateLogin) {
+        playerId = candidateId;
+        playerLogin = candidateLogin;
+        break;
       }
     }
     assertFlow(Boolean(fixture?.captainLogin && playerId && playerLogin), "tournament snapshot side fixture missing", {
@@ -5704,7 +5708,9 @@ async function prepareTournamentMatchRosters({
           firstReadyMatch?.rules?.tournamentHostPlayerId === fixture.captainId &&
           firstReadyMatch?.rules?.tournamentHostTeamId === fixture.team.id &&
           firstReadyMatch?.rules?.tournamentHostSide === "teamA" &&
-          firstReadyMatch?.rules?.tournamentSideAssignmentLocked === true,
+          firstReadyMatch?.rules?.tournamentSideAssignmentLocked === true &&
+          firstReadyMatch?.rules?.tournamentHostRosterSelected === (playerId === fixture.captainId) &&
+          (playerId === fixture.captainId || !getMatchReservePlayerIds(firstReadyMatch, "teamA").includes(fixture.captainId)),
         "first tournament roster did not claim A side and host",
         { fixture, firstReadyMatch },
       );
@@ -6240,13 +6246,14 @@ async function runTournamentRepresentativeTeamGuardScenario({
   const firstReadyTeamId = scheduledForfeitMatch.teamB?.teamId;
   const firstReadyFixture = fixtureByTeamId.get(firstReadyTeamId);
   const snapshotPlayerIds = scheduledForfeitMatch.rules?.teamRosterSnapshot?.teams?.[firstReadyTeamId]?.eligiblePlayerIds ?? [];
-  let firstReadyPlayerId = snapshotPlayerIds.includes(firstReadyFixture?.captainId) ? firstReadyFixture.captainId : "";
-  if (!firstReadyPlayerId) {
-    for (const candidateId of snapshotPlayerIds) {
-      if (await getTestLoginForProfileId(candidateId)) {
-        firstReadyPlayerId = candidateId;
-        break;
-      }
+  let firstReadyPlayerId = "";
+  for (const candidateId of [
+    ...snapshotPlayerIds.filter((candidateId) => candidateId !== firstReadyFixture?.captainId),
+    ...snapshotPlayerIds.filter((candidateId) => candidateId === firstReadyFixture?.captainId),
+  ]) {
+    if (await getTestLoginForProfileId(candidateId)) {
+      firstReadyPlayerId = candidateId;
+      break;
     }
   }
   assertFlow(Boolean(firstReadyFixture?.captainLogin && firstReadyPlayerId), "automatic forfeit ready-side fixture missing", {
@@ -6270,7 +6277,10 @@ async function runTournamentRepresentativeTeamGuardScenario({
   const deadlineNow = new Date(`${automaticForfeitSchedule.scheduledDate}T${automaticForfeitSchedule.scheduledTime}:00+09:00`);
   deadlineNow.setMinutes(deadlineNow.getMinutes() + 1);
   assertFlow(
-    oneReadyMatch.teamA?.teamId === firstReadyTeamId && getMatchRoomPhase(oneReadyMatch, deadlineNow).phase === "locked",
+    oneReadyMatch.teamA?.teamId === firstReadyTeamId &&
+      getMatchRoomPhase(oneReadyMatch, deadlineNow).phase === "locked" &&
+      oneReadyMatch.rules?.tournamentHostRosterSelected === (firstReadyPlayerId === firstReadyFixture.captainId) &&
+      (firstReadyPlayerId === firstReadyFixture.captainId || !getMatchReservePlayerIds(oneReadyMatch, "teamA").includes(firstReadyFixture.captainId)),
     "single lineup tournament match must remain locked",
     { firstReadyTeamId, oneReadyMatch, phase: getMatchRoomPhase(oneReadyMatch, deadlineNow) },
   );

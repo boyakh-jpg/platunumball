@@ -336,6 +336,14 @@ export function getMatchSidePlayerIds(match = {}, sideName) {
 export function getMatchReservePlayerIds(match = {}, sideName) {
   const sourceMatch = match ?? {};
   const activeIds = new Set(sourceMatch[sideName]?.players ?? []);
+  const tournamentHostPlayerId = sourceMatch.tournamentId
+    ? sourceMatch.rules?.tournamentHostPlayerId ?? ""
+    : "";
+  const hideUnselectedTournamentHost = Boolean(
+    tournamentHostPlayerId &&
+    sourceMatch.rules?.tournamentHostRosterSelected !== true &&
+    !activeIds.has(tournamentHostPlayerId)
+  );
   const reserveIds = (sourceMatch.parties ?? [])
     .filter((party) => party.side === sideName)
     .flatMap((party) => [
@@ -344,7 +352,11 @@ export function getMatchReservePlayerIds(match = {}, sideName) {
     ]);
 
   return [...new Set([...(sourceMatch.reservePlayers?.[sideName] ?? []), ...reserveIds])]
-    .filter((playerId) => playerId && !activeIds.has(playerId));
+    .filter((playerId) => (
+      playerId &&
+      !activeIds.has(playerId) &&
+      !(hideUnselectedTournamentHost && playerId === tournamentHostPlayerId)
+    ));
 }
 
 export function getMatchPlayerPlacement(match = {}, playerId = "") {
