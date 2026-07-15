@@ -447,6 +447,8 @@ export default function TournamentDetail({ app }) {
     })
     .filter((row) => row.team);
   const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
+  const hasPendingTeamApprovals = (tournament.teamIds ?? [])
+    .some((teamId) => getTournamentTeamStatus(tournament, teamId) !== "accepted");
   const bracketTree = tournament.format === "tournament" ? buildTournamentBracketTree(tournament, matchesById) : [];
   const verticalBracket = tournament.format === "tournament" ? getVerticalBracketLayout(bracketTree) : { baseSlots: 1, rounds: [], finalNode: null };
   const championTeamId = verticalBracket.finalNode ? getNodeWinnerTeamId(verticalBracket.finalNode) : "";
@@ -573,36 +575,38 @@ export default function TournamentDetail({ app }) {
         </div>
       </section>
 
-      <section className="tournament-section">
-        <div className="om-list-head">
-          <div>
-            <span className="om-kicker">INVITED TEAMS</span>
-            <h2>참가팀</h2>
+      {hasPendingTeamApprovals ? (
+        <section className="tournament-section">
+          <div className="om-list-head">
+            <div>
+              <span className="om-kicker">INVITED TEAMS</span>
+              <h2>참가팀</h2>
+            </div>
+            <span>{acceptedCount}팀 승인</span>
           </div>
-          <span>{acceptedCount}팀 승인</span>
-        </div>
-        <div className="tournament-team-list">
-          {teamRows.map((row) => (
-            <article key={row.teamId} className={row.status === "accepted" ? "accepted" : ""}>
-              <TeamEmblem team={row.team} size="md" />
-              <div className="tournament-team-copy">
-                <TeamHoverCard team={row.team}>{row.team.name}</TeamHoverCard>
-                <span>{row.team.region} · {row.team.homeCourt} · 주장 {row.captainName}</span>
-              </div>
-              <div className="tournament-team-state">
-                <TierBadge mmr={row.team.mmr} compact />
-                {row.canApprove ? (
-                  <button type="button" onClick={() => app.actions.approveTournamentTeam(tournament.id, row.teamId)}>
-                    <ShieldCheck size={15} /> 승인
-                  </button>
-                ) : (
-                  <b>{row.status === "accepted" ? "승인 완료" : row.needsRepresentativeTeam ? "대표팀 설정 필요" : "승인 대기"}</b>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+          <div className="tournament-team-list">
+            {teamRows.map((row) => (
+              <article key={row.teamId} className={row.status === "accepted" ? "accepted" : ""}>
+                <TeamEmblem team={row.team} size="md" />
+                <div className="tournament-team-copy">
+                  <TeamHoverCard team={row.team}>{row.team.name}</TeamHoverCard>
+                  <span>{row.team.region} · {row.team.homeCourt} · 주장 {row.captainName}</span>
+                </div>
+                <div className="tournament-team-state">
+                  <TierBadge mmr={row.team.mmr} compact />
+                  {row.canApprove ? (
+                    <button type="button" onClick={() => app.actions.approveTournamentTeam(tournament.id, row.teamId)}>
+                      <ShieldCheck size={15} /> 승인
+                    </button>
+                  ) : (
+                    <b>{row.status === "accepted" ? "승인 완료" : row.needsRepresentativeTeam ? "대표팀 설정 필요" : "승인 대기"}</b>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="tournament-section">
         <div className="om-list-head">
