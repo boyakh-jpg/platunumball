@@ -4535,7 +4535,6 @@ html[data-theme="light"] .om-score-box {
 .om-filter-bar .segmented-control,
 .om-calendar-actions,
 .om-calendar-toolbar,
-.om-tournament-head-actions,
 .om-tournament-actions,
 .om-tournament-teams {
   gap: var(--ui-control-group-gap);

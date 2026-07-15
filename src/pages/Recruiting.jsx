@@ -4724,14 +4724,24 @@ function RecruitingReady({ app }) {
             <span className="arena-kicker">QUEUE FILTER</span>
             <strong>매치방 · {posts.length}개 표시</strong>
           </div>
-          <button type="button" className="arena-collapse-button" onClick={() => setQueueControlsOpen((current) => !current)}>
-            {queueControlsOpen ? "접기" : "펼치기"}
-          </button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="button-icon section-disclosure-button"
+            aria-expanded={queueControlsOpen}
+            aria-controls="recruiting-queue-filters"
+            aria-label={queueControlsOpen ? "필터 접기" : "필터 펼치기"}
+            title={queueControlsOpen ? "필터 접기" : "필터 펼치기"}
+            onClick={() => setQueueControlsOpen((current) => !current)}
+          >
+            {queueControlsOpen ? <ChevronUp size={18} strokeWidth={2.5} /> : <ChevronDown size={18} strokeWidth={2.5} />}
+          </Button>
         </div>
 
         {queueControlsOpen ? (
           <>
-            <section className="arena-filter-bar" aria-label="필터">
+            <section id="recruiting-queue-filters" className="arena-filter-bar" aria-label="필터">
               <label className="arena-filter-select arena-region-sido-filter">
                 <select aria-label="시도" value={regionFilterSido} onChange={selectRegionSido}>
                   {REGION_TREE.map((region) => <option key={region.sido} value={region.sido}>{region.sido}</option>)}
@@ -4775,7 +4785,7 @@ function RecruitingReady({ app }) {
             </section>
           </>
         ) : (
-          <div className="arena-queue-summary">
+          <div id="recruiting-queue-filters" className="arena-queue-summary">
             <span>{`${regionFilterSido} ${selectedRegionDistrict}`}</span>
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>

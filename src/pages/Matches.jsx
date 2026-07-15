@@ -1,6 +1,6 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarDays, CheckCircle2, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, UserRound } from "lucide-react";
+import { CalendarDays, CheckCircle2, ClipboardCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, PlusCircle, ShieldAlert, Swords, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -1240,13 +1240,23 @@ export default function Matches({ app }) {
           <div className="om-tournament-head-actions">
             <span>{activeTournaments.length}개</span>
             {activeTournaments.length ? (
-              <button type="button" onClick={() => setTournamentPanelOpen((current) => !current)}>
-                {tournamentPanelOpen ? "접기" : "펼치기"}
-              </button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="button-icon section-disclosure-button"
+                aria-expanded={tournamentPanelOpen}
+                aria-controls="private-tournament-list"
+                aria-label={tournamentPanelOpen ? "비공개 대회 접기" : "비공개 대회 펼치기"}
+                title={tournamentPanelOpen ? "비공개 대회 접기" : "비공개 대회 펼치기"}
+                onClick={() => setTournamentPanelOpen((current) => !current)}
+              >
+                {tournamentPanelOpen ? <ChevronUp size={18} strokeWidth={2.5} /> : <ChevronDown size={18} strokeWidth={2.5} />}
+              </Button>
             ) : null}
           </div>
         </div>
-        <div className={tournamentPanelOpen ? "om-tournament-grid" : "om-tournament-grid compact"}>
+        <div id="private-tournament-list" className={tournamentPanelOpen ? "om-tournament-grid" : "om-tournament-grid compact"}>
           {activeTournaments.length ? activeTournaments.map((tournament) => {
             const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
             const teamRows = getTournamentTeamRows(tournament, teamById, userById, app.currentUser.id);

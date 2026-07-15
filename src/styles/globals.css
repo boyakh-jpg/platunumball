@@ -14023,6 +14023,36 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   padding: 0;
 }
 
+.button.button-icon.section-disclosure-button {
+  width: var(--ui-icon-button-size);
+  min-width: var(--ui-icon-button-size);
+  height: var(--ui-icon-button-size);
+  min-height: var(--ui-icon-button-size);
+  flex: 0 0 var(--ui-icon-button-size);
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--muted);
+  box-shadow: none;
+  padding: 0;
+}
+
+.button.button-icon.section-disclosure-button:hover,
+.button.button-icon.section-disclosure-button[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--rb-orange) 42%, var(--ui-button-border));
+  background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-button-bg));
+  color: var(--rb-orange);
+  filter: none;
+}
+
+.button.button-icon.section-disclosure-button:active {
+  background: color-mix(in srgb, var(--rb-orange) 20%, var(--ui-button-bg));
+}
+
+.button.button-icon.section-disclosure-button svg {
+  pointer-events: none;
+}
+
 .hover-portal-card:not(.touch-open) .hover-card-close {
   display: none;
 }
