@@ -6,6 +6,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
+import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
@@ -221,7 +222,7 @@ export default function TeamDetail({ app }) {
         </div>
         <div className="team-tier-hero">
           <TierEmblem mmr={team.mmr} size="md" showLabel />
-          <div className="team-emblem hero-emblem">{team.name.slice(0, 1)}</div>
+          <TeamEmblem team={team} size="lg" className="hero-emblem" />
         </div>
       </section>
 

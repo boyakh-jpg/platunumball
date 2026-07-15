@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import HoverPortal from "../common/HoverPortal.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
+import TeamEmblem from "./TeamEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { getTeamHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
@@ -158,7 +159,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
           closeTouch();
         }}>X</button>
         <span className="team-hover-head">
-          <span className="team-emblem" style={{ "--team-color": team.accent }}>{team.name.slice(0, 1)}</span>
+          <TeamEmblem team={team} size="md" />
           <span>
             <strong>{team.name}</strong>
             <span className="hover-hashtag">{getTeamHashtag(team)}</span>

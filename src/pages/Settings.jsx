@@ -6,6 +6,7 @@ import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
@@ -299,8 +300,8 @@ export default function Settings({ app, auth, section = "main" }) {
     if (item.kind === "team") {
       return (
         <div key={`favorite-team-${item.id}`} className="favorite-result-row" onMouseDown={(event) => event.preventDefault()}>
-          <span className="favorite-result-identity">
-            <span className="team-emblem small" style={{ "--team-color": item.accent }}>{item.name.slice(0, 1)}</span>
+          <span className="favorite-result-identity team-identity">
+            <TeamEmblem team={item} size="sm" />
             <span>
               <strong>{item.name}</strong>
               <em>{getTeamHashtag(item)}</em>
@@ -1130,8 +1131,8 @@ export default function Settings({ app, auth, section = "main" }) {
               ) : null}
               {searchedFavoriteTeam ? (
                 <div className="favorite-result-row">
-                  <span className="favorite-result-identity">
-                    <span className="team-emblem small" style={{ "--team-color": searchedFavoriteTeam.accent }}>{searchedFavoriteTeam.name.slice(0, 1)}</span>
+                  <span className="favorite-result-identity team-identity">
+                    <TeamEmblem team={searchedFavoriteTeam} size="sm" />
                     <span>
                       <strong>{searchedFavoriteTeam.name}</strong>
                       <em>{getTeamHashtag(searchedFavoriteTeam)}</em>

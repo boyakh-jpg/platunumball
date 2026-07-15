@@ -1,6 +1,7 @@
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
+import TeamEmblem from "./TeamEmblem.jsx";
 import TeamHoverCard from "./TeamHoverCard.jsx";
 import { isMercenaryTeamRole } from "../../lib/constants.js";
 
@@ -18,9 +19,19 @@ export default function TeamCard({ team, users, teams = [team], compact = false,
         <div className="team-card-title">
           <p className="eyebrow">{team.region} · {team.homeCourt}</p>
           {linked ? (
-            <TeamHoverCard team={team}><h3>{team.name}</h3></TeamHoverCard>
+            <TeamHoverCard team={team}>
+              <span className="team-card-identity">
+                <TeamEmblem team={team} size="md" />
+                <h3>{team.name}</h3>
+              </span>
+            </TeamHoverCard>
           ) : (
-            <TeamHoverCard team={team} as="span"><h3>{team.name}</h3></TeamHoverCard>
+            <TeamHoverCard team={team} as="span">
+              <span className="team-card-identity">
+                <TeamEmblem team={team} size="md" />
+                <h3>{team.name}</h3>
+              </span>
+            </TeamHoverCard>
           )}
         </div>
         <div className="team-card-actions">

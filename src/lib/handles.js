@@ -53,6 +53,13 @@ export function getTeamHashtag(team = {}) {
   return toHashtag(team.hashtag ?? team.handle ?? team.name ?? team.id, team.id ?? "team");
 }
 
+export function getSafeInitial(value, fallback = "R") {
+  const findInitial = (candidate) => Array.from(String(candidate ?? "").normalize("NFKC"))
+    .find((char) => /[\p{L}\p{N}]/u.test(char));
+  const initial = findInitial(value) ?? findInitial(fallback) ?? "R";
+  return Array.from(initial.toLocaleUpperCase())[0] ?? "R";
+}
+
 function getNumericHandle(item = {}) {
   const idDigits = String(item.id ?? "").match(/\d+/g)?.join("");
   if (idDigits) return idDigits.replace(/^0+(?=\d)/, "");
