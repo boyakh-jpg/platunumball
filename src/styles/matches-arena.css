@@ -2140,6 +2140,14 @@ html[data-theme="light"] .tournament-schedule-list input {
   padding: 12px;
 }
 
+.league-layout {
+  grid-template-columns: minmax(320px, 0.75fr) minmax(520px, 1.25fr);
+}
+
+.league-fixture-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .league-fixture-card.completed {
   border-color: color-mix(in srgb, var(--green) 36%, var(--ui-card-border));
   background: color-mix(in srgb, var(--green) 8%, var(--ui-card-bg));
@@ -2280,6 +2288,12 @@ html[data-theme="light"] .tournament-schedule-list input {
 .om-tournament-detail-link {
   width: 100%;
   justify-content: center;
+}
+
+@media (max-width: 1280px) {
+  .league-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 1120px) {
