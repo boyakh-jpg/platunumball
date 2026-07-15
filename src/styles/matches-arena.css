@@ -4354,15 +4354,9 @@ html[data-theme="light"] .om-score-box {
 .om-filter-bar,
 .om-calendar-filter-bar,
 .om-match-panel,
-.om-calendar-panel,
-.om-calendar-summary,
 .om-calendar-box,
-.om-list-head,
-.om-empty-state,
-.om-tournament-panel,
 .om-tournament-card,
 .tournament-hero-badges,
-.tournament-schedule-list,
 .om-match-summary-box,
 .om-match-info-box,
 .om-score-box {
@@ -4814,26 +4808,35 @@ html[data-theme="light"] .om-match-stats span {
   }
 }
 
-/* Keep collection wrappers transparent after all shared surface declarations. */
-.om-match-page > .om-calendar-panel,
-.om-match-page .om-calendar-summary,
-.om-match-page > .om-tournament-panel,
-.tournament-detail-page > .tournament-section > .tournament-schedule-list,
+/* Structural wrappers and section headings never create a second card surface. */
+.om-calendar-panel,
+.om-calendar-summary,
+.om-tournament-panel,
+.tournament-schedule-list,
+.om-list-head,
 .om-calendar-summary > .om-calendar-filter-bar,
-.tournament-detail-page > .tournament-section > .om-list-head,
-.om-match-page > .om-tournament-panel > .om-list-head,
-html[data-theme="light"] .om-match-page > .om-calendar-panel,
-html[data-theme="light"] .om-match-page .om-calendar-summary,
-html[data-theme="light"] .om-match-page > .om-tournament-panel,
-html[data-theme="light"] .tournament-detail-page > .tournament-section > .tournament-schedule-list,
+html[data-theme="light"] .om-calendar-panel,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-tournament-panel,
+html[data-theme="light"] .tournament-schedule-list,
+html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .om-calendar-summary > .om-calendar-filter-bar,
-html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-list-head,
-html[data-theme="light"] .om-match-page > .om-tournament-panel > .om-list-head {
+html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-list-head {
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   padding: 0;
+}
+
+.om-empty-state,
+html[data-theme="light"] .om-empty-state {
+  min-height: 96px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 16px;
 }
 
 .tournament-team-list article {
