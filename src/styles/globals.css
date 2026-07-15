@@ -14159,6 +14159,46 @@ textarea:focus-visible {
   box-shadow: var(--focus-ring);
 }
 
+/* Composite fields have one visual border owner: the outer icon/prefix shell. */
+:is(
+  .prefixed-input,
+  .favorite-search-row,
+  .admin-account-search,
+  .arena-invite-search,
+  .home-search-box
+) > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+:is(
+  .prefixed-input,
+  .favorite-search-row,
+  .admin-account-search,
+  .arena-invite-search,
+  .home-search-box
+) > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus,
+:is(
+  .prefixed-input,
+  .favorite-search-row,
+  .admin-account-search,
+  .arena-invite-search,
+  .home-search-box
+) > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus-visible {
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:is(
+  .prefixed-input,
+  .favorite-search-row,
+  .admin-account-search,
+  .arena-invite-search,
+  .home-search-box
+):focus-within {
+  border-color: color-mix(in srgb, var(--rb-orange-2) 58%, var(--rb-line));
+  box-shadow: var(--focus-ring);
+}
+
 button:disabled,
 .button:disabled,
 .button[aria-disabled="true"] {

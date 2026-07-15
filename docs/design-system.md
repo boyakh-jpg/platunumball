@@ -1069,6 +1069,9 @@ UI 수정 전:
 25-2. Recruiting room side leader/captain crown uses blue styling on both sides. Host-only crown may stay orange.
 26. Create match age restriction segments render the three real age groups as three equal columns. Do not leave an empty fourth segment column.
 27. Create match A/B team controls keep the same one-row control height on desktop. B-side selected team summary is a compact inline chip inside the search row, not a separate full-height row.
+28. One visual control has exactly one border owner. A label, form grid, or layout wrapper must not repeat the input/select/textarea border.
+29. Composite controls with an icon or fixed prefix keep the border, background, radius, and focus ring on the outer shell. Their inner input is transparent, borderless, radius-free, and shadow-free in normal, focus, and focus-visible states.
+30. A wrapper used only for grid, flex, spacing, alignment, or scrolling stays transparent and has no border or shadow. A nested card surface is allowed only for a repeated item, modal, or independently actionable tool.
 
 ## 2026-07-03 profile form controls
 
