@@ -4,6 +4,7 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import CourtHoverCard from "../court/CourtHoverCard.jsx";
 import TeamHoverCard from "../team/TeamHoverCard.jsx";
+import { getTournamentMatchDisplayTitle } from "../../lib/matchUtils.js";
 
 const statusLabel = {
   contract: "대기",
@@ -41,13 +42,14 @@ export default function MatchCard({ match, teams = [], courts = [] }) {
   const teamA = teams.find((team) => team.id === sideA.teamId);
   const teamB = teams.find((team) => team.id === sideB.teamId);
   const court = courts.find((item) => item.name === match.court);
+  const displayTitle = getTournamentMatchDisplayTitle(match, match.title);
 
   return (
     <Card className="match-card" as="article">
       <div className="match-card-header">
         <div>
           <p className="eyebrow">{match.mode} · {match.official ? "공식경기" : "일반경기"}</p>
-          <h3>{match.title}</h3>
+          <h3>{displayTitle}</h3>
         </div>
         <Badge tone={statusTone[match.status] ?? "blue"}>
           {statusLabel[match.status] ?? match.status}

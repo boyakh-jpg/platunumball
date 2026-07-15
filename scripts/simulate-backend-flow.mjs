@@ -27,6 +27,7 @@ import maintenanceHandler from "../server/api/system/maintenance.js";
 import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
 import {
   getRecorderHandoffPatch,
+  getTournamentMatchDisplayTitle,
   isMatchRecordMatch,
   isTournamentMatchInUserSchedule,
   withEffectiveMatchStatRecorders,
@@ -134,6 +135,23 @@ function makeScenarioIds(label) {
   };
   scenarioIds.push(nextIds);
   return nextIds;
+}
+
+function getSimulationDisplayTitle(label = "") {
+  const scenario = String(label).toLowerCase();
+  if (scenario.includes("tournament_representative")) return "테스트 리그";
+  if (scenario.includes("tournament")) return "테스트 토너먼트";
+  if (scenario.includes("recruiting") || scenario.includes("invite")) return "테스트 매칭방";
+  return "테스트 경기";
+}
+
+function assertStoredTournamentMatchTitle(match = {}) {
+  const expectedTitle = getTournamentMatchDisplayTitle(match, match.title);
+  assertFlow(match.title === expectedTitle, "stored tournament match title is not display-safe", {
+    matchId: match.id,
+    title: match.title,
+    expectedTitle,
+  });
 }
 
 function makeDiscordSnowflake(offset = 0) {
@@ -1762,15 +1780,14 @@ async function cleanup() {
   if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
 
   const closedAt = new Date().toISOString();
+  const { data: artifactCleanup, error: artifactCleanupError } = await supabase.rpc("rankball_cleanup_simulation_artifacts");
   const closures = scenarioIds.flatMap((scenario) => [
-    ...uniqueIds([scenario.matchId, ...(scenario.matchIds ?? [])])
-      .filter(Boolean)
-      .map((matchId) => ["matches", "id", matchId]),
     ["recruiting_posts", "id", scenario.postId],
-    ["tournaments", "id", scenario.tournamentId],
   ]);
 
-  const errors = [];
+  const errors = artifactCleanupError
+    ? [{ table: "simulation_artifacts", message: artifactCleanupError.message }]
+    : [];
   for (const [table, column, value] of closures) {
     const { error } = await supabase
       .from(table)
@@ -1782,10 +1799,7 @@ async function cleanup() {
     }
   }
   for (const [table, column, prefix] of [
-    ["matches", "id", "sim_m_"],
-    ["matches", "tournament_id", "sim_trn_"],
     ["recruiting_posts", "id", "sim_q_"],
-    ["tournaments", "id", "sim_trn_"],
   ]) {
     const { error } = await supabase
       .from(table)
@@ -1811,7 +1825,17 @@ async function cleanup() {
       errors.push({ table: "room_discord_links", message: error.message });
     }
   }
-  return { skipped: false, errors, profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
+  return {
+    skipped: false,
+    errors,
+    artifactCleanup,
+    profileDiscordRestore,
+    profileIdentityRestore,
+    refereeSimulationCleanup,
+    ratingRestore,
+    notificationCleanup,
+    regressionCleanup,
+  };
 }
 
 async function runOneOnOneScenario({
@@ -1853,7 +1877,7 @@ async function runOneOnOneScenario({
     ...(!serverGeneratedPostId ? { preferredPostId: ids.postId } : {}),
     draft: {
       ...(!serverGeneratedPostId ? { id: ids.postId } : {}),
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "player",
       mode: "1v1",
@@ -2186,7 +2210,7 @@ async function runMatchReminderCancelScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "player",
       mode: "1v1",
@@ -2366,7 +2390,7 @@ async function runRecruitingInviteAcceptScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "private",
       hostJoinMode: "player",
       mode: "1v1",
@@ -2554,7 +2578,7 @@ async function runMatchAgreeSqlReducerScenario({
   const now = new Date().toISOString();
   let match = {
     id: ids.matchId,
-    title: `Backend simulation ${ids.label}`,
+    title: getSimulationDisplayTitle(ids.label),
     mode: "2v2",
     courtId: "c1",
     court: "Backend Simulation Court",
@@ -2659,7 +2683,7 @@ async function runPublicTeamRegionFeedScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "team",
       mode: "2v2",
@@ -3466,7 +3490,7 @@ async function runRecruitingRoomExpiryScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "private",
       hostJoinMode: "player",
       mode: "1v1",
@@ -3580,7 +3604,7 @@ async function runDisputeResumeThumbsScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "player",
       mode: "1v1",
@@ -3878,7 +3902,7 @@ async function runRecruitingActorScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "player",
       mode: "2v2",
@@ -4056,7 +4080,7 @@ async function runRecorderHandoffScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "player",
       mode: "1v1",
@@ -4303,7 +4327,7 @@ async function runDiscordRoomChatBridgeScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "player",
       mode: "1v1",
@@ -4617,7 +4641,7 @@ async function runSoloRoomTeamBlockedScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "player",
       mode: "1v1",
@@ -4700,7 +4724,7 @@ async function runIneligibleRefereeBlockedScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "player",
       mode: "1v1",
@@ -4803,7 +4827,7 @@ async function runBulkHomeInviteAcceptScenario({
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "private",
       hostJoinMode: "player",
       mode: "5v5",
@@ -5156,7 +5180,7 @@ async function runSoloRecordScenario({
     draft: {
       id: ids.matchId,
       recordType: "solo",
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       courtId: "c1",
       court: "Backend Simulation Court",
       scheduledDate: today,
@@ -5244,7 +5268,7 @@ async function runMatchRecordRosterScenario({
     draft: {
       id: ids.matchId,
       recordType: "match_record",
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       visibility: "private",
       hostJoinMode: "team",
       teamOnly: true,
@@ -5639,7 +5663,7 @@ async function runTournamentFollowupRoundScenario({
     preferredMatchIds: firstRoundMatchIds,
     draft: {
       id: ids.tournamentId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       tournamentFormat: "tournament",
       teamIds: selectedTeamIds,
       mode: "1v1",
@@ -5675,6 +5699,7 @@ async function runTournamentFollowupRoundScenario({
   for (const matchId of firstRoundMatchIds) {
     const match = await step(`${ids.label}:loadFirstRound:${matchId}`, () => loadMatchAs(effectiveCreatorLogin, matchId));
     assertFlow(match?.tournamentId === ids.tournamentId && Number(match?.tournamentRound) === 1, "first round match metadata mismatch", match);
+    assertStoredTournamentMatchTitle(match);
     firstRoundMatches.push(match);
   }
 
@@ -5714,6 +5739,7 @@ async function runTournamentFollowupRoundScenario({
   ids.matchIds = uniqueIds([...ids.matchIds, finalMatch.id]);
 
   const persistedFinal = await step(`${ids.label}:loadFollowupFinal`, () => loadMatchAs(effectiveCreatorLogin, finalMatch.id));
+  assertStoredTournamentMatchTitle(persistedFinal);
   assertFlow(
     persistedFinal?.tournamentId === ids.tournamentId &&
       Number(persistedFinal?.tournamentRound) === 2 &&
@@ -5770,7 +5796,7 @@ async function runTournamentByeRoundScenario({
     preferredMatchIds: [firstRoundMatchId],
     draft: {
       id: ids.tournamentId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       tournamentFormat: "tournament",
       teamIds: selectedTeamIds,
       mode: "1v1",
@@ -5806,6 +5832,7 @@ async function runTournamentByeRoundScenario({
   assertFlow(firstRound.length === 2 && byeEntries.length === 1, "three-team bye bracket mismatch", tournament?.bracket);
 
   const firstRoundMatch = await step(`${ids.label}:loadFirstRound`, () => loadMatchAs(effectiveCreatorLogin, firstRoundMatchId));
+  assertStoredTournamentMatchTitle(firstRoundMatch);
   assertFlow(
     firstRoundMatch?.tournamentId === ids.tournamentId &&
       Number(firstRoundMatch?.tournamentRound) === 1,
@@ -5833,6 +5860,7 @@ async function runTournamentByeRoundScenario({
     Number(match.tournamentFixture) === 1
   ));
   assertFlow(Boolean(finalMatch?.id), "three-team bye final missing", confirmed.result?.state);
+  assertStoredTournamentMatchTitle(finalMatch);
   assertFlow(
     (finalMatch?.teamA?.players ?? []).length === 0 && (finalMatch?.teamB?.players ?? []).length === 0,
     "three-team bye final must wait for roster selection",
@@ -5871,7 +5899,7 @@ async function runTournamentRepresentativeTeamGuardScenario({
       preferredTournamentId: `${ids.tournamentId}_blocked`,
       draft: {
         id: `${ids.tournamentId}_blocked`,
-        title: `Backend simulation ${ids.label} blocked`,
+        title: `${getSimulationDisplayTitle(ids.label)} 차단 검증`,
         tournamentFormat: "league",
         teamIds: [representativeTeamId, nonRepresentativeTeamId, teamBId],
         mode: "1v1",
@@ -5909,7 +5937,7 @@ async function runTournamentRepresentativeTeamGuardScenario({
     preferredMatchIds: matchIds,
     draft: {
       id: ids.tournamentId,
-      title: `Backend simulation ${ids.label}`,
+      title: getSimulationDisplayTitle(ids.label),
       tournamentFormat: "league",
       teamIds: [representativeTeamId, teamBId, teamCId],
       mode: "1v1",

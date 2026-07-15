@@ -31,10 +31,14 @@ export default async function handler(request, response) {
     assertAccess(request);
     const client = getSupabaseAdminClient();
     const checks = [];
-    checks.push(await closePrefix(client, "matches", "id", "sim_m_"));
-    checks.push(await closePrefix(client, "matches", "tournament_id", "sim_trn_"));
+    const { data: artifactCleanup, error: artifactCleanupError } = await client.rpc("rankball_cleanup_simulation_artifacts");
+    checks.push({
+      table: "simulation_artifacts",
+      ok: !artifactCleanupError,
+      error: artifactCleanupError?.message ?? null,
+      deleted: Number(artifactCleanup?.deletedMatches ?? 0) + Number(artifactCleanup?.deletedTournaments ?? 0),
+    });
     checks.push(await closePrefix(client, "recruiting_posts", "id", "sim_q_"));
-    checks.push(await closePrefix(client, "tournaments", "id", "sim_trn_"));
     const { data: feedCleanup, error: feedCleanupError } = await client.rpc("rankball_cleanup_room_feed");
     checks.push({
       table: "user_room_feed",
@@ -48,6 +52,7 @@ export default async function handler(request, response) {
       ok: failed.length === 0,
       failedCount: failed.length,
       closed: checks.reduce((sum, check) => sum + Number(check.closed ?? 0), 0),
+      deleted: checks.reduce((sum, check) => sum + Number(check.deleted ?? 0), 0),
       checks,
     });
   } catch (error) {

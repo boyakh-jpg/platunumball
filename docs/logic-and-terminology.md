@@ -1,5 +1,12 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-15 대회 경기 제목과 시뮬레이션 표기
+
+1. 대회 경기의 사용자 노출 제목은 `라운드-경기 · A팀 vs B팀` 형식으로 만든다. 대회명은 대회 카드와 대진표에서 이미 표시하므로 경기 제목에 반복하지 않는다.
+2. 기존 대회 경기 row에 긴 제목이 남아 있어도 프론트는 `tournamentId`, 라운드, 경기 번호, 양 팀 이름으로 동일한 표시 제목을 계산한다.
+3. 백엔드 시뮬레이션의 내부 시나리오 키는 ID와 실행 로그에만 남긴다. 방·경기·대회 제목에는 `tournament_bye_round` 같은 내부 키를 저장하지 않는다.
+4. 시뮬레이션 종료 시 `sim_m_*`, `sim_trn_*` 경기·대회와 연결된 기록·알림·피드만 hard delete하고 영향받은 프로필 경기 요약을 재계산한다.
+
 ## 2026-07-15 비공개 대회 조회와 내 경기 일치
 
 1. 홈과 경기 메뉴의 초기 경기 목록 응답은 현재 사용자가 만든 대회와 현재 소속팀이 초대된 대회를 함께 반환한다. 새로고침 뒤에도 비공개 대회 카드는 유지돼야 한다.
@@ -2086,10 +2093,10 @@ flowchart TD
 
 ## 2026-06-27 simulation cleanup safety
 
-1. 운영 시뮬레이션 정리는 물리 삭제하지 않는다.
-2. `/api/system/cleanup-sim`과 backend simulation cleanup은 `sim_m_%` 경기와 `sim_q_%` 모집방을 `status = 'closed'`로 soft close한다.
-3. child row, notification, stat row는 감사/재현 근거이므로 cleanup endpoint에서 지우지 않는다.
-4. cleanup prefix 판정은 SQL `LIKE` wildcard가 아니라 literal prefix range로 해야 한다. `_`가 임의 한 글자 wildcard로 해석되어 non-sim row가 닫히면 안 된다.
+1. `/api/system/cleanup-sim`과 backend simulation cleanup은 명시적 테스트 접두사 `sim_m_`, `sim_trn_`만 물리 삭제한다.
+2. 테스트 경기·대회의 child row, notification, stat row, feed cache를 부모보다 먼저 100경기 단위로 삭제하고 참가자의 경기 요약을 재계산한다.
+3. `sim_q_` 모집방은 Discord bridge 재현 근거를 보존하기 위해 `status = 'closed'`로 soft close한다.
+4. cleanup prefix 판정에서 `_`는 반드시 escape하거나 literal prefix range로 비교한다. non-sim row는 갱신·삭제하지 않는다.
 
 ## 2026-06-27 시스템 경기 유지보수
 

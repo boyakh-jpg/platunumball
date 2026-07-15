@@ -8040,3 +8040,40 @@ html[data-theme="light"] .arena-lobby-arena {
     padding: 10px;
   }
 }
+
+/* Room titles keep their hierarchy without letting long generated names dominate the modal. */
+.arena-lobby-modal .arena-lobby-title h2 {
+  max-width: 100%;
+  font-size: 64px;
+  line-height: 0.92;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  text-wrap: balance;
+}
+
+.arena-lobby-modal .arena-lobby-title h2.is-long {
+  font-size: 50px;
+  line-height: 0.96;
+}
+
+.arena-lobby-modal .arena-lobby-title h2.is-very-long {
+  font-size: 38px;
+  line-height: 1;
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal .arena-lobby-title h2 {
+    font-size: 38px;
+    line-height: 0.94;
+  }
+
+  .arena-lobby-modal .arena-lobby-title h2.is-long {
+    font-size: 32px;
+    line-height: 0.98;
+  }
+
+  .arena-lobby-modal .arena-lobby-title h2.is-very-long {
+    font-size: 27px;
+    line-height: 1.04;
+  }
+}

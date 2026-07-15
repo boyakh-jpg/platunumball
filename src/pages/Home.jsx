@@ -12,7 +12,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
+import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
@@ -246,7 +246,7 @@ export default function Home({ app }) {
             id: `agreement-${match.id}`,
             priority: 1,
             label: "동의",
-            title: match.title,
+            title: getTournamentMatchDisplayTitle(match, match.title),
             meta: getHomeMatchMeta(match),
             href: `/app/matches?match=${match.id}`,
             icon: Handshake,
@@ -257,7 +257,7 @@ export default function Home({ app }) {
             id: `checkin-${match.id}`,
             priority: 2,
             label: "경기 시작",
-            title: match.title,
+            title: getTournamentMatchDisplayTitle(match, match.title),
             meta: getHomeMatchMeta(match),
             href: `/app/matches?match=${match.id}`,
             icon: Swords,
@@ -268,7 +268,7 @@ export default function Home({ app }) {
             id: `result-${match.id}`,
             priority: 3,
             label: "결과 입력",
-            title: match.title,
+            title: getTournamentMatchDisplayTitle(match, match.title),
             meta: getHomeMatchMeta(match),
             href: `/app/matches?match=${match.id}`,
             icon: CalendarDays,
@@ -279,7 +279,7 @@ export default function Home({ app }) {
             id: `approval-${match.id}`,
             priority: 4,
             label: match.status === "disputed" ? "이의 확인" : "결과 승인",
-            title: match.title,
+            title: getTournamentMatchDisplayTitle(match, match.title),
             meta: getHomeMatchMeta(match),
             href: `/app/matches?match=${match.id}`,
             icon: ShieldAlert,

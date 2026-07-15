@@ -1695,7 +1695,7 @@ function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matc
 
   return {
     id: matchId || makeId("m"),
-    title: `${tournament.title} ${roundLabel} · ${teamA.name} vs ${teamB.name}`,
+    title: `${roundLabel} · ${teamA.name} vs ${teamB.name}`,
     mode,
     courtId: tournament.courtId ?? getCourtId(tournament),
     court: tournament.court || "미정",

@@ -20,6 +20,7 @@ import {
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
+  getTournamentMatchDisplayTitle,
   getSafeMatchSide as getSafeMatchSideBase,
   isMatchRecordMatch,
   isMatchClosedNotice,
@@ -276,6 +277,7 @@ function normalizeMatchupText(value = "") {
 }
 
 function getRoomCardTitle(room, fallback = "") {
+  if (room.tournamentId) return getTournamentMatchDisplayTitle(room, fallback || room.title);
   const title = cleanRoomTitle(room.title, "")
     .replace(AUTO_ROOM_TITLE_PREFIX_PATTERN, "")
     .replace(/^(정규전|친선전)\s+(1v1|2v2|3v3|5v5)\s*/i, "")

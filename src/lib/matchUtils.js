@@ -965,6 +965,18 @@ export function cleanRoomTitle(title = "", fallback = "경기방") {
   return cleaned || fallback;
 }
 
+export function getTournamentMatchDisplayTitle(match = {}, fallback = "") {
+  if (!match.tournamentId) return String(fallback || match.title || "").trim();
+
+  const round = Math.max(0, Number(match.tournamentRound) || 0);
+  const fixture = Math.max(0, Number(match.tournamentFixture) || 0);
+  const stageLabel = fixture
+    ? (match.tournamentFormat === "tournament" ? `${round || 1}R-${fixture}` : `L-${fixture}`)
+    : "";
+  const matchupLabel = [match.teamA?.name, match.teamB?.name].filter(Boolean).join(" vs ");
+  return [stageLabel, matchupLabel].filter(Boolean).join(" · ") || String(fallback || match.title || "대회 경기").trim();
+}
+
 export function getRoomVisibilityLabel(room = {}, sourceRoom = null) {
   if (room.tournamentId) return "대회방";
   const visibility = room.visibility ?? sourceRoom?.visibility;

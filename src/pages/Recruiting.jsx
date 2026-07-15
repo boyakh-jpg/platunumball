@@ -80,6 +80,7 @@ import {
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
   getMatchSideRecordPlayerIds,
+  getTournamentMatchDisplayTitle,
   getAllowedResultStatFields,
   getStatRecorderSides,
   normalizePlayerStats,
@@ -172,6 +173,13 @@ function getRecruitingFallbackTitle(post = {}) {
 
 function getRecruitingDisplayTitle(post = {}, fallback = "") {
   return getRecruitingCardTitle(post) || fallback || getRecruitingFallbackTitle(post);
+}
+
+function getRoomTitleSizeClass(title = "") {
+  const length = Array.from(String(title)).length;
+  if (length > 52) return "is-very-long";
+  if (length > 32) return "is-long";
+  return "";
 }
 
 function getTodayInputValue() {
@@ -3336,7 +3344,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           )),
         );
         const roomCompetitionLabel = getRoomCompetitionLabel(selectedPost);
-        const roomDisplayTitle = getRecruitingDisplayTitle(selectedPost, `${roomCompetitionLabel} ${selectedPost.mode || ""} 매치 큐`.trim());
+        const roomDisplayTitle = sourceMatch?.tournamentId
+          ? getTournamentMatchDisplayTitle(sourceMatch, selectedPost.title)
+          : getRecruitingDisplayTitle(selectedPost, `${roomCompetitionLabel} ${selectedPost.mode || ""} 매치 큐`.trim());
+        const roomTitleSizeClass = getRoomTitleSizeClass(roomDisplayTitle);
         const roomVisibilityLabel = getRoomVisibilityLabel(sourceMatch ?? selectedPost, selectedPost);
         const roomVisibilityTone = roomVisibilityLabel === "대회방" ? "gold" : roomVisibilityLabel === "비공개방" ? "blue" : "green";
         const sourceTeamSideCount = ["teamA", "teamB"].filter((sideName) => isMatchSideTeamParty(sourceMatch, sideName)).length;
@@ -3600,7 +3611,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 </div>
 
                 <div className="arena-lobby-title">
-                  <h2>{roomDisplayTitle}</h2>
+                  <h2 className={roomTitleSizeClass}>{roomDisplayTitle}</h2>
                   <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
 
