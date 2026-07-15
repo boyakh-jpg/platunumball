@@ -3505,6 +3505,17 @@ async function runCourtRegistrationScenario({
   });
 
   const addressText = `Backend simulation address ${suffix}`;
+  const missingPinRequestId = `${requestId}_missing_pin`;
+  courtRequestSimulationIds.add(missingPinRequestId);
+  await expectRejected(`${ids.label}:rejectCourtWithoutPin`, () => submitCourtRequestAs(requesterLogin, {
+    id: missingPinRequestId,
+    name: `Backend Simulation Missing Pin ${suffix}`,
+    addressText: `${addressText} missing pin`,
+    roadAddress: `${addressText} missing pin`,
+    region: "Backend Simulation",
+    type: "outdoor",
+  }), ["court_pin_required", "court_requests_pending_pin_required"]);
+
   const submitResult = await step(`${ids.label}:submitCourtRequest`, () => submitCourtRequestAs(requesterLogin, {
     id: requestId,
     name: `Backend Simulation Regression Court ${suffix}`,

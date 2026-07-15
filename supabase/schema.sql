@@ -1466,6 +1466,22 @@ create table if not exists public.court_requests (
   updated_at timestamptz not null default now()
 );
 
+do $$
+begin
+  if to_regclass('public.court_requests') is not null
+    and not exists (
+      select 1
+      from pg_constraint
+      where conrelid = 'public.court_requests'::regclass
+        and conname = 'court_requests_pending_pin_required'
+    ) then
+    alter table public.court_requests
+      add constraint court_requests_pending_pin_required
+      check (status <> 'pending' or (lat is not null and lng is not null)) not valid;
+  end if;
+end;
+$$;
+
 create table if not exists public.approved_courts (
   id text primary key,
   source_request_id text,
@@ -1580,6 +1596,10 @@ begin
 
   if safe_name is null or safe_address_text is null then
     raise exception 'missing_court_request_fields' using errcode = '22023';
+  end if;
+
+  if safe_lat is null or safe_lng is null then
+    raise exception 'court_pin_required' using errcode = '22023';
   end if;
 
   if safe_lat is not null and (safe_lat < -90 or safe_lat > 90) then

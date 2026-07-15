@@ -4340,14 +4340,16 @@ export function submitCourtRequest(state, draft = {}) {
   const addressDong = getCourtAddressDong(draft);
   const name = getCourtRequestName(rawName, addressDong);
   const addressText = String(draft.addressText ?? "").trim();
-  if (!rawName || !addressText) {
+  const lat = getOptionalCourtCoordinate(draft.lat, -90, 90);
+  const lng = getOptionalCourtCoordinate(draft.lng, -180, 180);
+  if (!rawName || !addressText || lat === null || lng === null) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "구장 등록 보류",
-          body: "구장명과 주소는 필요합니다.",
+          body: "구장명과 핀 기준 실제 주소·좌표는 필요합니다.",
           tone: "orange",
         },
         ...state.notifications,
@@ -4369,8 +4371,6 @@ export function submitCourtRequest(state, draft = {}) {
       ],
     };
   }
-  const lat = getOptionalCourtCoordinate(draft.lat, -90, 90);
-  const lng = getOptionalCourtCoordinate(draft.lng, -180, 180);
   const hashtag = normalizeCourtHashtag(draft.hashtag) || makeRandomCourtHashtag(state);
 
   const request = {

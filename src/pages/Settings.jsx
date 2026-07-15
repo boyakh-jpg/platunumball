@@ -233,6 +233,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const [courtAddressQuery, setCourtAddressQuery] = useState("");
   const [naverAddressResults, setNaverAddressResults] = useState([]);
   const [courtLookupStatus, setCourtLookupStatus] = useState("");
+  const [courtPinConfirmed, setCourtPinConfirmed] = useState(false);
   const [courtDraft, setCourtDraft] = useState(() => ({
     ...DEFAULT_COURT_REQUEST,
     region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
@@ -780,16 +781,27 @@ export default function Settings({ app, auth, section = "main" }) {
       setCourtLookupStatus("지도 핀은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용할 수 있습니다.");
       return;
     }
-    setCourtLookupStatus("지도 열기 중");
+    setCourtLookupStatus("실제 구장 위치 선택 중");
     try {
       const pin = await openNaverMapPinPicker(courtDraft);
+      const addressDong = getCourtAddressDong(pin);
       updateCourtDraft({
+        name: courtDraft.name.trim() ? courtDraft.name : pin.buildingName,
+        region: getCourtAddressRegion(pin),
+        addressText: pin.addressText,
+        roadAddress: pin.roadAddress,
+        jibunAddress: pin.jibunAddress,
+        addressDong,
+        zonecode: pin.zonecode,
         lat: String(pin.lat),
         lng: String(pin.lng),
       });
-      setCourtLookupStatus("지도 핀 위치를 저장했습니다.");
+      setCourtAddressQuery(pin.addressText);
+      setNaverAddressResults([]);
+      setCourtPinConfirmed(true);
+      setCourtLookupStatus("핀 위치의 실제 주소를 저장했습니다.");
     } catch (error) {
-      setCourtLookupStatus(error.message || "지도 핀 저장 실패");
+      setCourtLookupStatus(error.message || "실제 구장 위치 저장 실패");
     }
   };
   const selectNaverAddress = (result) => {
@@ -808,7 +820,8 @@ export default function Settings({ app, auth, section = "main" }) {
     });
     setCourtAddressQuery(result.addressText);
     setNaverAddressResults([]);
-    setCourtLookupStatus("네이버 주소와 좌표를 저장했습니다. 필요하면 지도 핀으로 위치를 보정하세요.");
+    setCourtPinConfirmed(false);
+    setCourtLookupStatus("근처 주소를 선택했습니다. 지도 핀으로 실제 구장 위치를 확정하세요.");
   };
   const saveTheme = async (nextTheme = themeDraft) => {
     const requestId = themeSaveRequestRef.current + 1;
@@ -874,6 +887,10 @@ export default function Settings({ app, auth, section = "main" }) {
   };
   const submitCourtRequest = async (event) => {
     event.preventDefault();
+    if (!courtPinConfirmed) {
+      setCourtLookupStatus("지도 핀으로 실제 구장 위치를 확정하세요.");
+      return;
+    }
     if (courtDuplicate) {
       setCourtLookupStatus(courtDuplicateMessage);
       return;
@@ -886,6 +903,7 @@ export default function Settings({ app, auth, section = "main" }) {
     }
     setCourtAddressQuery("");
     setNaverAddressResults([]);
+    setCourtPinConfirmed(false);
     setCourtDraft({
       ...DEFAULT_COURT_REQUEST,
       region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
@@ -1503,7 +1521,7 @@ export default function Settings({ app, auth, section = "main" }) {
               <form className="form-stack" onSubmit={submitCourtRequest}>
                 <div className="settings-address-search">
                   <label>
-                    주소 검색
+                    근처 주소 검색
                     <input
                       value={courtAddressQuery}
                       onChange={(event) => {
@@ -1516,13 +1534,13 @@ export default function Settings({ app, auth, section = "main" }) {
                           searchCourtAddress();
                         }
                       }}
-                      placeholder="도로명 주소, 건물명, 구장명 검색"
+                      placeholder="구장 근처 도로명, 건물명 검색"
                     />
                   </label>
                   <div className="settings-address-actions">
-                    <Button type="button" variant="secondary" onClick={searchCourtAddress}>네이버 주소 검색</Button>
+                    <Button type="button" variant="secondary" onClick={searchCourtAddress}>근처 주소 찾기</Button>
                     <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected || !naverMapKeyReady}>
-                      지도 핀 저장
+                      실제 위치 확정
                     </Button>
                   </div>
                   {naverAddressResults.length ? (
@@ -1531,7 +1549,7 @@ export default function Settings({ app, auth, section = "main" }) {
                         <button key={result.id} type="button" onClick={() => selectNaverAddress(result)}>
                           <strong>{result.roadAddress || result.addressText}</strong>
                           <span>{result.jibunAddress || result.addressText}</span>
-                          <em>네이버 주소</em>
+                          <em>지도 이동 기준</em>
                         </button>
                       ))}
                     </div>
@@ -1555,9 +1573,9 @@ export default function Settings({ app, auth, section = "main" }) {
                 {courtAddressSelected ? (
                   <div className="arena-mini-note">
                     <div>
-                      <span>선택 주소</span>
+                      <span>{courtPinConfirmed ? "핀 기준 실제 주소" : "검색 기준 주소"}</span>
                       <strong>{courtDraft.addressText}</strong>
-                      <em>{courtHasMapPin ? "Naver 좌표 저장됨" : naverMapKeyReady ? "지도 핀 선택 가능" : "지도 핀은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용"}</em>
+                      <em>{courtPinConfirmed ? "핀 좌표 역지오코딩 완료" : naverMapKeyReady ? "지도 핀으로 최종 주소를 확정하세요" : "지도 핀은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용"}</em>
                     </div>
                     <MapPin size={18} />
                   </div>
@@ -1623,7 +1641,7 @@ export default function Settings({ app, auth, section = "main" }) {
                     유료구장
                   </label>
                 </div>
-                <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected}>
+                <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected || !courtHasMapPin || !courtPinConfirmed}>
                   <Send size={16} /> 등록요청
                 </Button>
               </form>

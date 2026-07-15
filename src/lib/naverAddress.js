@@ -186,6 +186,83 @@ export async function geocodeNaverAddress(addressText, clientId = getNaverMapCli
   return { lat: Number(first.lat), lng: Number(first.lng) };
 }
 
+function getReverseAddressResult(response = {}, name = "") {
+  return (response.v2?.results ?? response.results ?? []).find((result) => result?.name === name) ?? null;
+}
+
+function getReverseRegionValue(result = {}, area = "") {
+  return String(result?.region?.[area]?.name ?? "").trim();
+}
+
+function formatReverseAddress(result = {}, includeBuilding = false) {
+  if (!result) return "";
+  const region = ["area1", "area2", "area3", "area4"]
+    .map((area) => getReverseRegionValue(result, area))
+    .filter(Boolean);
+  const land = result.land ?? {};
+  const number = [land.number1, land.number2].filter(Boolean).join("-");
+  const mountain = result.name === "addr" && String(land.type) === "2" ? "산" : "";
+  const road = result.name === "roadaddr" ? String(land.name ?? "").trim() : "";
+  const building = includeBuilding && land.addition0?.type === "building" ? String(land.addition0.value ?? "").trim() : "";
+  return [...region, road, [mountain, number].filter(Boolean).join(" "), building].filter(Boolean).join(" ");
+}
+
+export function normalizeNaverReverseAddress(response = {}, lat, lng) {
+  const roadResult = getReverseAddressResult(response, "roadaddr");
+  const jibunResult = getReverseAddressResult(response, "addr");
+  const legalResult = getReverseAddressResult(response, "legalcode");
+  const adminResult = getReverseAddressResult(response, "admcode");
+  const regionResult = roadResult ?? jibunResult ?? legalResult ?? adminResult;
+  const roadAddress = String(response.v2?.address?.roadAddress ?? response.address?.roadAddress ?? formatReverseAddress(roadResult, true)).trim();
+  const jibunAddress = String(response.v2?.address?.jibunAddress ?? response.address?.jibunAddress ?? formatReverseAddress(jibunResult)).trim();
+  const addressText = roadAddress || jibunAddress;
+  if (!addressText) throw new Error("핀 위치의 주소를 찾을 수 없습니다.");
+
+  return {
+    id: `naver-pin:${lng}:${lat}`,
+    addressText,
+    roadAddress,
+    jibunAddress,
+    buildingName: roadResult?.land?.addition0?.type === "building" ? String(roadResult.land.addition0.value ?? "").trim() : "",
+    bname: getReverseRegionValue(jibunResult ?? legalResult ?? regionResult, "area4") || getReverseRegionValue(jibunResult ?? legalResult ?? regionResult, "area3"),
+    hname: getReverseRegionValue(adminResult ?? regionResult, "area4") || getReverseRegionValue(adminResult ?? regionResult, "area3"),
+    sido: getReverseRegionValue(regionResult, "area1"),
+    sigungu: getReverseRegionValue(regionResult, "area2"),
+    zonecode: roadResult?.land?.addition1?.type === "zipcode" ? String(roadResult.land.addition1.value ?? "").trim() : "",
+    lat: Number(lat),
+    lng: Number(lng),
+  };
+}
+
+export async function reverseGeocodeNaverCoordinate(lat, lng, clientId = getNaverMapClientId()) {
+  const numericLat = Number(lat);
+  const numericLng = Number(lng);
+  if (!isValidCoordinate(numericLat, numericLng)) throw new Error("유효한 핀 좌표가 아닙니다.");
+  await loadNaverMapsSdk(clientId);
+  if (typeof window.naver?.maps?.Service?.reverseGeocode !== "function") {
+    throw new Error("Naver Maps Reverse Geocoding을 사용할 수 없습니다.");
+  }
+
+  return new Promise((resolve, reject) => {
+    const service = window.naver.maps.Service;
+    const orders = [service.OrderType?.ADDR ?? "addr", service.OrderType?.ROAD_ADDR ?? "roadaddr"].join(",");
+    service.reverseGeocode({
+      coords: new window.naver.maps.LatLng(numericLat, numericLng),
+      orders,
+    }, (status, response) => {
+      if (status !== service.Status.OK || Number(response?.v2?.status?.code ?? 0) !== 0) {
+        reject(new Error("핀 위치의 주소 변환에 실패했습니다."));
+        return;
+      }
+      try {
+        resolve(normalizeNaverReverseAddress(response, numericLat, numericLng));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
 function isValidCoordinate(lat, lng) {
   return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 }
@@ -210,6 +287,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
 
   return new Promise((resolve, reject) => {
     let settled = false;
+    let resolving = false;
     const overlay = applyInlineStyle(document.createElement("div"), {
       position: "fixed",
       inset: "0",
@@ -235,7 +313,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
       borderBottom: "1px solid var(--line)",
     });
     const title = document.createElement("strong");
-    title.textContent = "지도 핀 저장";
+    title.textContent = "실제 구장 위치 선택";
     const closeButton = document.createElement("button");
     closeButton.type = "button";
     closeButton.textContent = "닫기";
@@ -246,20 +324,33 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     });
     const footer = applyInlineStyle(document.createElement("div"), {
       display: "flex",
-      justifyContent: "flex-end",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flexWrap: "wrap",
       gap: "8px",
       padding: "12px 14px",
       borderTop: "1px solid var(--line)",
+    });
+    const pinStatus = applyInlineStyle(document.createElement("span"), {
+      color: "var(--muted)",
+      fontSize: "12px",
+    });
+    pinStatus.textContent = "핀 좌표의 실제 주소를 확인해 저장합니다.";
+    const footerActions = applyInlineStyle(document.createElement("div"), {
+      display: "flex",
+      gap: "8px",
+      marginLeft: "auto",
     });
     const cancelButton = document.createElement("button");
     cancelButton.type = "button";
     cancelButton.textContent = "취소";
     const submitButton = document.createElement("button");
     submitButton.type = "button";
-    submitButton.textContent = "핀 저장";
+    submitButton.textContent = "이 위치로 주소 확정";
 
     header.append(title, closeButton);
-    footer.append(cancelButton, submitButton);
+    footerActions.append(cancelButton, submitButton);
+    footer.append(pinStatus, footerActions);
     panel.append(header, mapElement, footer);
     overlay.append(panel);
     document.body.appendChild(overlay);
@@ -289,13 +380,29 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     window.naver.maps.Event.addListener(marker, "dragend", () => {
       selectedPosition = marker.getPosition();
     });
-    submitButton.addEventListener("click", () => {
-      if (settled) return;
-      settled = true;
+    submitButton.addEventListener("click", async () => {
+      if (settled || resolving) return;
+      resolving = true;
       const lat = selectedPosition.lat();
       const lng = selectedPosition.lng();
-      cleanup();
-      resolve({ lat, lng });
+      submitButton.disabled = true;
+      submitButton.textContent = "주소 확인 중";
+      pinStatus.textContent = "핀 위치를 주소로 변환하고 있습니다.";
+      pinStatus.style.color = "var(--muted)";
+      try {
+        const address = await reverseGeocodeNaverCoordinate(lat, lng, clientId);
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(address);
+      } catch (error) {
+        if (settled) return;
+        resolving = false;
+        submitButton.disabled = false;
+        submitButton.textContent = "이 위치로 주소 확정";
+        pinStatus.textContent = error.message || "핀 위치의 주소를 확인하지 못했습니다.";
+        pinStatus.style.color = "var(--danger, #d94b3d)";
+      }
     });
     window.setTimeout(() => {
       if (typeof map.refresh === "function") map.refresh();
