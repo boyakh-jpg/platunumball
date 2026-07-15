@@ -14875,8 +14875,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
     grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
     grid-template-areas:
       "search search"
-      "left right"
-      "dashboard right";
+      "left right";
     align-items: start;
     column-gap: var(--page-column-gap);
     row-gap: var(--page-section-gap);
@@ -14895,8 +14894,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
     align-self: start;
   }
 
-  .rank-home > .home-dashboard-grid {
-    grid-area: dashboard;
+  .rank-home .home-left-rail > .home-dashboard-grid {
     display: block;
   }
 
@@ -14926,7 +14924,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
     order: 3;
   }
 
-  .rank-home > .home-dashboard-grid {
+  .rank-home .home-left-rail > .home-dashboard-grid {
     display: block;
     order: 4;
   }

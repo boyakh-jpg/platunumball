@@ -597,6 +597,73 @@ export default function Home({ app }) {
             </aside>
           </div>
         </section>
+
+        <div className="content-grid home-dashboard-grid rank-dashboard-grid">
+          <div className="page-stack home-primary-stack">
+            <Card className="section-card match-focus-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Upcoming</p>
+                  <h2>내 확정 경기</h2>
+                </div>
+                <Badge tone={upcomingItems.length ? "orange" : "neutral"}>{upcomingItems.length}개</Badge>
+              </div>
+              {upcomingItems.length ? (
+                <div className="match-stack">
+                  {upcomingItems.slice(0, 3).map((entry) => {
+                    return <MatchCard key={entry.id} match={entry.item} teams={app.state.teams} courts={registeredCourts} />;
+                  })}
+                  {upcomingItems.length > 3 ? (
+                    <Link to="/app/matches" className="button button-secondary button-sm home-upcoming-more">
+                      전체 보기
+                    </Link>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="empty-state">확정 경기 없음</div>
+              )}
+            </Card>
+
+            <Card className="section-card home-recent-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Recent Matches</p>
+                  <h2>내 최근 전적</h2>
+                </div>
+                <Badge tone="green">{myCompletedMatches.length}경기</Badge>
+              </div>
+              <div className="recent-result-strip">
+                {myCompletedMatches.slice(0, 8).map((match) => {
+                  const result = getUserResult(match, user.id);
+                  return (
+                    <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-result-pill result-${result.toLowerCase()}`}>
+                      {result}
+                    </Link>
+                  );
+                })}
+              </div>
+              <div className="recent-match-list">
+                {latestMyMatches.map((match) => (
+                  <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}>
+                    {(() => {
+                      const line = getUserMatchLine(match, user.id);
+                      return (
+                        <>
+                          <b>{line.result}</b>
+                          <span>
+                            <TeamHoverCard team={teamById[line.side.teamId]} as="span"><strong>{line.side.name}</strong></TeamHoverCard>
+                            <em>vs <TeamHoverCard team={teamById[line.opponent.teamId]} as="span">{line.opponent.name}</TeamHoverCard> · {match.court}</em>
+                          </span>
+                          <i>{line.score}:{line.opponentScore}</i>
+                        </>
+                      );
+                    })()}
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
 
       <aside className="page-stack home-right-rail">
@@ -820,72 +887,6 @@ export default function Home({ app }) {
         </aside>
       </aside>
 
-      <div className="content-grid home-dashboard-grid rank-dashboard-grid">
-        <div className="page-stack home-primary-stack">
-          <Card className="section-card match-focus-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Upcoming</p>
-                <h2>내 확정 경기</h2>
-              </div>
-              <Badge tone={upcomingItems.length ? "orange" : "neutral"}>{upcomingItems.length}개</Badge>
-            </div>
-            {upcomingItems.length ? (
-              <div className="match-stack">
-                {upcomingItems.slice(0, 3).map((entry) => {
-                  return <MatchCard key={entry.id} match={entry.item} teams={app.state.teams} courts={registeredCourts} />;
-                })}
-                {upcomingItems.length > 3 ? (
-                  <Link to="/app/matches" className="button button-secondary button-sm home-upcoming-more">
-                    전체 보기
-                  </Link>
-                ) : null}
-              </div>
-            ) : (
-              <div className="empty-state">확정 경기 없음</div>
-            )}
-          </Card>
-
-          <Card className="section-card home-recent-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Recent Matches</p>
-                <h2>내 최근 전적</h2>
-              </div>
-              <Badge tone="green">{myCompletedMatches.length}경기</Badge>
-            </div>
-            <div className="recent-result-strip">
-              {myCompletedMatches.slice(0, 8).map((match) => {
-                const result = getUserResult(match, user.id);
-                return (
-                  <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-result-pill result-${result.toLowerCase()}`}>
-                    {result}
-                  </Link>
-                );
-              })}
-            </div>
-            <div className="recent-match-list">
-              {latestMyMatches.map((match) => (
-                <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}>
-                  {(() => {
-                    const line = getUserMatchLine(match, user.id);
-                    return (
-                      <>
-                        <b>{line.result}</b>
-                        <span>
-                          <TeamHoverCard team={teamById[line.side.teamId]} as="span"><strong>{line.side.name}</strong></TeamHoverCard>
-                          <em>vs <TeamHoverCard team={teamById[line.opponent.teamId]} as="span">{line.opponent.name}</TeamHoverCard> · {match.court}</em>
-                        </span>
-                        <i>{line.score}:{line.opponentScore}</i>
-                      </>
-                    );
-                  })()}
-                </Link>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
     </div>
   );
 }
