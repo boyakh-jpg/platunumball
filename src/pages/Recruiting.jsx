@@ -1218,7 +1218,7 @@ function ReserveLine({
   const playingSet = new Set(playingIds);
   const slots = candidates.slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
   const openSlots = Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - slots.length);
-  const slotTrackCount = 5;
+  const slotTrackCount = MAX_RESERVE_PLAYERS_PER_SIDE;
   const reserveSlots = slots.map((candidate) => {
     const entry = (lobby.entries ?? []).find((item) => item.id === candidate.entryId);
     return {
