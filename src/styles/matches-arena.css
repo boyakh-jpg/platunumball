@@ -5206,8 +5206,28 @@ html[data-theme="light"] .om-calendar-filter-bar {
 }
 
 @media (max-width: 480px) {
+  .om-calendar-summary {
+    padding: 10px;
+  }
+
   .om-calendar-heading {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .om-calendar-filter-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .om-calendar-filter-row .segmented-control {
+    width: 100%;
+  }
+
+  .om-calendar-filter-row .segmented-control button {
+    min-height: 38px;
+    height: 38px;
+    padding-inline: 6px;
+    font-size: 0.72rem;
   }
 }
 
