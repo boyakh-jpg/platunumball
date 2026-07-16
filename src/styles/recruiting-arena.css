@@ -1541,6 +1541,29 @@
   gap: 5px;
 }
 
+.arena-lobby-team-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+}
+
+.arena-lobby-host-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(240, 82, 64, 0.4);
+  border-radius: 4px;
+  padding: 3px 6px;
+  background: rgba(240, 82, 64, 0.12);
+  color: var(--rb-orange-2);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .arena-lobby-team-head span {
   color: var(--gold);
   font-size: 0.72rem;

@@ -1078,6 +1078,7 @@ UI 수정 전:
 31. Matches schedule filters keep one outer section card surface. Inner filter rows and segmented groups stay transparent unless they are the actual clickable control.
 32. Match list cards must not keep three columns when the available content lane is narrow. At medium widths, move the score/summary panel below the title/action row before team names clip.
 33. Recorder list summaries must size team names from the available summary width. Do not cap names with a fixed character width or clip metadata inside a fixed-height panel.
+34. Tournament room ownership is shown in the assigned side header, independent of player-slot captain badges. This keeps the operational host visible without auto-selecting that captain as a player.
 
 ## 2026-07-03 profile form controls
 

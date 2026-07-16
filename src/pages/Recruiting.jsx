@@ -3158,6 +3158,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const useSideNameHeader = selectedPost.visibility !== "private";
         const teamAMeta = getLobbySideMeta(lobby, "teamA", userById, { useSideName: useSideNameHeader });
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById, { useSideName: useSideNameHeader });
+        const tournamentRoomOwnerName = selectedPost.tournamentId ? userById[roomOwnerId]?.name ?? "" : "";
         const sourceMatchStatus = getSourceMatchStatus(sourceMatch, lobby, app.currentUser.id);
         const sourceMatchAction = getSourceMatchAction(sourceMatch, app.currentUser.id, app.state.teams, userById);
         const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
@@ -3622,7 +3623,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 <div className="arena-lobby-versus-stage">
                   <div className="arena-lobby-team-panel team-a">
                     <div className="arena-lobby-team-head">
-                      <span>{teamAMeta.label}</span>
+                      <div className="arena-lobby-team-kicker">
+                        <span>{teamAMeta.label}</span>
+                        {selectedPost.tournamentId && selectedPost.hostSide === "teamA" ? (
+                          <small className="arena-lobby-host-team"><Crown size={11} strokeWidth={3} />방장{tournamentRoomOwnerName ? ` ${tournamentRoomOwnerName}` : ""}</small>
+                        ) : null}
+                      </div>
                       <strong>{teamAMeta.name}</strong>
                       <em>{teamAMeta.mmr || "-"} MMR</em>
                     </div>
@@ -3663,7 +3669,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
 
                   <div className="arena-lobby-team-panel team-b">
                     <div className="arena-lobby-team-head">
-                      <span>{teamBMeta.label}</span>
+                      <div className="arena-lobby-team-kicker">
+                        <span>{teamBMeta.label}</span>
+                        {selectedPost.tournamentId && selectedPost.hostSide === "teamB" ? (
+                          <small className="arena-lobby-host-team"><Crown size={11} strokeWidth={3} />방장{tournamentRoomOwnerName ? ` ${tournamentRoomOwnerName}` : ""}</small>
+                        ) : null}
+                      </div>
                       <strong>{teamBMeta.name}</strong>
                       <em>{teamBMeta.mmr || "-"} MMR</em>
                     </div>
