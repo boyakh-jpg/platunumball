@@ -3479,7 +3479,7 @@ input[type="color"] {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
-  gap: 0;
+  gap: 8px;
 }
 
 .landing-actions .landing-primary-actions .landing-create-action {
@@ -3495,15 +3495,6 @@ input[type="color"] {
   gap: 6px;
   padding-inline: 10px;
   white-space: nowrap;
-}
-
-.landing-primary-actions .landing-create-action:first-child .button {
-  border-radius: var(--radius) 0 0 var(--radius);
-  box-shadow: inset -1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.landing-primary-actions .landing-create-action:last-child .button {
-  border-radius: 0 var(--radius) var(--radius) 0;
 }
 
 .match-room {
@@ -12846,7 +12837,7 @@ button {
   .landing-primary-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0;
+    gap: 8px;
   }
 }
 
