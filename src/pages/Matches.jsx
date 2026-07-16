@@ -71,6 +71,9 @@ const VIEWS = [
   },
 ];
 const CHILD_VIEW_IDS = ["todo", "scheduled", "closed"];
+const VIEW_IDS = new Set(VIEWS.map((view) => view.id));
+const PANEL_MODES = new Set(["schedule", "team", "tournament"]);
+const RELATION_FILTER_IDS = new Set(["all", "created", "joined", "invited"]);
 const MATCH_MENU_PHASES = new Set(["locked", "checkin", "live", "postgame", "dispute"]);
 const SCHEDULE_BRANCH_FILTERS = [
   { id: "all", label: "전체" },
@@ -79,6 +82,7 @@ const SCHEDULE_BRANCH_FILTERS = [
   { id: "player", label: "개인전" },
   { id: "team", label: "팀전" },
 ];
+const BRANCH_FILTER_IDS = new Set(SCHEDULE_BRANCH_FILTERS.map((option) => option.id));
 const AUTO_ROOM_TITLE_PREFIX_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)\s*·\s*/;
 const GENERIC_ROOM_TITLE_PATTERN = /^(경기|경기방|매치 큐|정규전|친선전|동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|확정 준비\s*\d*|모집 중\s*\d*|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)$/;
 
@@ -173,6 +177,19 @@ function isExpiredInstantScheduleRoom(room) {
 
 function getMonthKey(value = toDateInputValue()) {
   return String(value).slice(0, 7);
+}
+
+function getSearchParamValue(searchParams, key, validIds, fallback) {
+  const value = searchParams.get(key);
+  return validIds.has(value) ? value : fallback;
+}
+
+function isDateParam(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value ?? ""));
+}
+
+function isMonthParam(value) {
+  return /^\d{4}-\d{2}$/.test(String(value ?? ""));
 }
 
 function addMonths(monthKey, amount) {
@@ -890,12 +907,21 @@ export function MatchRoomModal({ app, matchId, onClose, entryPoint = "" }) {
 
 export default function Matches({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [viewId, setViewId] = useState("active");
-  const [panelMode, setPanelMode] = useState("schedule");
-  const [branchFilter, setBranchFilter] = useState("all");
-  const [relationFilter, setRelationFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("");
-  const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
+  const [viewId, setViewId] = useState(() => getSearchParamValue(searchParams, "view", VIEW_IDS, "active"));
+  const [panelMode, setPanelMode] = useState(() => getSearchParamValue(searchParams, "panel", PANEL_MODES, "schedule"));
+  const [branchFilter, setBranchFilter] = useState(() => getSearchParamValue(searchParams, "branch", BRANCH_FILTER_IDS, "all"));
+  const [relationFilter, setRelationFilter] = useState(() => getSearchParamValue(searchParams, "relation", RELATION_FILTER_IDS, "all"));
+  const [dateFilter, setDateFilter] = useState(() => {
+    const queryDate = searchParams.get("date");
+    return isDateParam(queryDate) ? queryDate : "";
+  });
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const queryMonth = searchParams.get("month");
+    const queryDate = searchParams.get("date");
+    if (isMonthParam(queryMonth)) return queryMonth;
+    if (isDateParam(queryDate)) return getMonthKey(queryDate);
+    return getMonthKey();
+  });
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
   const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
@@ -956,6 +982,47 @@ export default function Matches({ app }) {
   const selectedMatchRoomPost = selectedMatchRoom.post;
   const selectedMatchRoomError = selectedMatchRoom.error;
   const selectedMatchDetailLoading = Boolean(activeSelectedMatchId && selectedMatchDetailLoadingId === activeSelectedMatchId);
+  const applyFilterState = (patch, options = {}) => {
+    const nextPanelMode = patch.panelMode ?? panelMode;
+    const nextViewId = patch.viewId ?? viewId;
+    const nextBranchFilter = patch.branchFilter ?? branchFilter;
+    const nextRelationFilter = patch.relationFilter ?? relationFilter;
+    const nextDateFilter = patch.dateFilter ?? dateFilter;
+    const nextCalendarMonth = patch.calendarMonth ?? calendarMonth;
+
+    setPanelMode(nextPanelMode);
+    setViewId(nextViewId);
+    setBranchFilter(nextBranchFilter);
+    setRelationFilter(nextRelationFilter);
+    setDateFilter(nextDateFilter);
+    setCalendarMonth(nextCalendarMonth);
+
+    const next = new URLSearchParams(searchParams);
+    nextPanelMode === "schedule" ? next.delete("panel") : next.set("panel", nextPanelMode);
+    nextViewId === "active" ? next.delete("view") : next.set("view", nextViewId);
+    nextBranchFilter === "all" ? next.delete("branch") : next.set("branch", nextBranchFilter);
+    nextRelationFilter === "all" ? next.delete("relation") : next.set("relation", nextRelationFilter);
+    nextDateFilter ? next.set("date", nextDateFilter) : next.delete("date");
+    nextCalendarMonth === getMonthKey() ? next.delete("month") : next.set("month", nextCalendarMonth);
+    setSearchParams(next, { replace: options.replace === true });
+  };
+  useEffect(() => {
+    const nextPanelMode = getSearchParamValue(searchParams, "panel", PANEL_MODES, "schedule");
+    const nextViewId = getSearchParamValue(searchParams, "view", VIEW_IDS, "active");
+    const nextBranchFilter = getSearchParamValue(searchParams, "branch", BRANCH_FILTER_IDS, "all");
+    const nextRelationFilter = getSearchParamValue(searchParams, "relation", RELATION_FILTER_IDS, "all");
+    const queryDate = searchParams.get("date");
+    const queryMonth = searchParams.get("month");
+    const nextDateFilter = isDateParam(queryDate) ? queryDate : "";
+    const nextCalendarMonth = isMonthParam(queryMonth) ? queryMonth : nextDateFilter ? getMonthKey(nextDateFilter) : getMonthKey();
+
+    setPanelMode((current) => current === nextPanelMode ? current : nextPanelMode);
+    setViewId((current) => current === nextViewId ? current : nextViewId);
+    setBranchFilter((current) => current === nextBranchFilter ? current : nextBranchFilter);
+    setRelationFilter((current) => current === nextRelationFilter ? current : nextRelationFilter);
+    setDateFilter((current) => current === nextDateFilter ? current : nextDateFilter);
+    setCalendarMonth((current) => current === nextCalendarMonth ? current : nextCalendarMonth);
+  }, [searchParams]);
   useBodyScrollLock(Boolean(selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedRecruitingPostDetailLoading));
   const closeSelectedMatch = () => {
     setSelectedMatchId(null);
@@ -1202,9 +1269,11 @@ export default function Matches({ app }) {
               type="button"
               className={active ? "om-view-card active" : "om-view-card"}
               onClick={() => {
-                setPanelMode("schedule");
-                if (relationFilter === "team") setRelationFilter("all");
-                setViewId(view.id);
+                applyFilterState({
+                  panelMode: "schedule",
+                  relationFilter: relationFilter === "team" ? "all" : relationFilter,
+                  viewId: view.id,
+                });
               }}
             >
               <span className="om-view-icon"><Icon size={22} /></span>
@@ -1221,8 +1290,7 @@ export default function Matches({ app }) {
           type="button"
           className={panelMode === "team" ? "om-view-card active" : "om-view-card"}
           onClick={() => {
-            setPanelMode("team");
-            setViewId("active");
+            applyFilterState({ panelMode: "team", viewId: "active" });
             app.actions.loadMatchTeamSchedule?.();
           }}
         >
@@ -1237,7 +1305,7 @@ export default function Matches({ app }) {
         <button
           type="button"
           className={panelMode === "tournament" ? "om-view-card active" : "om-view-card"}
-          onClick={() => setPanelMode("tournament")}
+          onClick={() => applyFilterState({ panelMode: "tournament" })}
         >
           <span className="om-view-icon"><Trophy size={22} /></span>
           <span>
@@ -1264,10 +1332,10 @@ export default function Matches({ app }) {
             {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">관계</span>
               <div className="segmented-control compact-segments" role="group" aria-label="관계 필터">
-                <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => setRelationFilter("all")}>전체</button>
-                <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => setRelationFilter("created")}>내가 만든 방</button>
-                <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => setRelationFilter("joined")}>내 참여방</button>
-                <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => setRelationFilter("invited")}>초대받은 방</button>
+                <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
+                <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "created" })}>내가 만든 방</button>
+                <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
+                <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "invited" })}>초대받은 방</button>
               </div>
             </div> : null}
             <div className="om-calendar-filter-row">
@@ -1278,7 +1346,7 @@ export default function Matches({ app }) {
                     key={option.id}
                     type="button"
                     className={branchFilter === option.id ? "active" : ""}
-                    onClick={() => setBranchFilter(option.id)}
+                    onClick={() => applyFilterState({ branchFilter: option.id })}
                   >
                     {option.label}
                   </button>
@@ -1290,14 +1358,14 @@ export default function Matches({ app }) {
 
         <div className="om-calendar-box">
           <div className="om-calendar-toolbar">
-            <button type="button" aria-label="이전 달" onClick={() => setCalendarMonth((month) => addMonths(month, -1))}>
+            <button type="button" aria-label="이전 달" onClick={() => applyFilterState({ calendarMonth: addMonths(calendarMonth, -1) })}>
               <ChevronLeft size={18} />
             </button>
             <strong>
               {formatMonthLabel(calendarMonth)}
               <span>{scheduleLoading ? "확인 중" : `${calendarMonthCount}경기`}</span>
             </strong>
-            <button type="button" aria-label="다음 달" onClick={() => setCalendarMonth((month) => addMonths(month, 1))}>
+            <button type="button" aria-label="다음 달" onClick={() => applyFilterState({ calendarMonth: addMonths(calendarMonth, 1) })}>
               <ChevronRight size={18} />
             </button>
           </div>
@@ -1314,7 +1382,10 @@ export default function Matches({ app }) {
                   key={day}
                   type="button"
                   className={`${selected ? "active" : ""} ${isToday ? "today" : ""}`}
-                  onClick={() => setDateFilter((current) => current === day ? "" : day)}
+                  onClick={() => applyFilterState({
+                    dateFilter: dateFilter === day ? "" : day,
+                    calendarMonth: getMonthKey(day),
+                  })}
                 >
                   <strong>{Number(day.slice(-2))}</strong>
                   {count ? <span>{count}</span> : null}
