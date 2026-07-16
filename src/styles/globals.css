@@ -15882,3 +15882,174 @@ html[data-theme="light"] .app-main :is(
   cursor: not-allowed;
   opacity: 0.42;
 }
+
+/* 2026-07-16 compact room creation controls. */
+.create-match-info-grid {
+  align-items: start;
+}
+
+.create-match-info-grid.is-standard-room {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.create-match-info-grid.is-standard-room > .create-title-field {
+  grid-column: 1 / 3;
+}
+
+.create-match-info-grid.is-standard-room > .create-format-field {
+  grid-column: 3 / 5;
+}
+
+.create-match-info-grid.is-standard-room > .create-timing-field {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.create-match-info-grid.is-standard-room > .create-date-field {
+  grid-row: 2;
+  grid-column: 2;
+}
+
+.create-match-info-grid.is-standard-room > .create-time-field {
+  grid-row: 2;
+  grid-column: 3;
+}
+
+.create-match-info-grid.is-standard-room > .create-capacity-field {
+  grid-row: 2;
+  grid-column: 4;
+}
+
+.create-match-info-grid.is-standard-room > :is(.create-title-field, .create-format-field, .create-timing-field, .create-date-field, .create-time-field, .create-capacity-field) {
+  align-self: start;
+  min-width: 0;
+}
+
+.create-match-info-grid .create-timing-field .segmented-control {
+  width: 100%;
+}
+
+.create-match-info-grid .create-timing-field .segmented-control > button {
+  flex: 1 1 0;
+}
+
+.create-referee-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.create-referee-row .settings-checkbox {
+  display: flex;
+  min-height: var(--ui-button-height);
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.create-referee-search,
+.create-referee-search .search-picker {
+  min-width: 0;
+}
+
+.create-referee-note {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.create-referee-note > span {
+  min-width: 0;
+}
+
+.create-eligibility-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.create-eligibility-grid > :only-child {
+  grid-column: 1 / -1;
+}
+
+.create-eligibility-control {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.create-eligibility-control > .mmr-range-summary-row {
+  min-width: 0;
+}
+
+.create-eligibility-control > .segmented-control {
+  width: max-content;
+  max-width: 100%;
+}
+
+@media (max-width: 1280px) {
+  .create-eligibility-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .create-eligibility-grid > :only-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 1100px) {
+  .create-match-info-grid.is-standard-room {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .create-match-info-grid.is-standard-room > .create-title-field,
+  .create-match-info-grid.is-standard-room > .create-format-field,
+  .create-match-info-grid.is-standard-room > .create-timing-field,
+  .create-match-info-grid.is-standard-room > .create-date-field,
+  .create-match-info-grid.is-standard-room > .create-time-field,
+  .create-match-info-grid.is-standard-room > .create-capacity-field {
+    grid-row: auto;
+  }
+
+  .create-match-info-grid.is-standard-room > .create-title-field,
+  .create-match-info-grid.is-standard-room > .create-capacity-field,
+  .create-match-info-grid.is-standard-room > .create-date-field {
+    grid-column: 1;
+  }
+
+  .create-match-info-grid.is-standard-room > .create-format-field,
+  .create-match-info-grid.is-standard-room > .create-timing-field,
+  .create-match-info-grid.is-standard-room > .create-time-field {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .create-match-info-grid.is-standard-room,
+  .create-referee-row,
+  .create-eligibility-control {
+    grid-template-columns: 1fr;
+  }
+
+  .create-match-info-grid.is-standard-room > .create-title-field,
+  .create-match-info-grid.is-standard-room > .create-format-field,
+  .create-match-info-grid.is-standard-room > .create-timing-field,
+  .create-match-info-grid.is-standard-room > .create-date-field,
+  .create-match-info-grid.is-standard-room > .create-time-field,
+  .create-match-info-grid.is-standard-room > .create-capacity-field {
+    grid-row: auto;
+    grid-column: 1;
+  }
+
+  .create-referee-row .settings-checkbox {
+    min-height: 28px;
+  }
+
+  .create-eligibility-control > .segmented-control {
+    width: 100%;
+  }
+}

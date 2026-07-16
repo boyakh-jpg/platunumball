@@ -1516,14 +1516,14 @@ export default function CreateMatch({ app }) {
               <h2>경기 정보와 일정</h2>
             </div>
           </div>
-          <div className="form-grid">
-            <label>
+          <div className={`form-grid create-match-info-grid ${!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? "is-standard-room" : ""}`}>
+            <label className="create-title-field">
               제목
               <input value={draft.title} onChange={(event) => update({ title: event.target.value })} />
             </label>
             {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? (
-              <label>
-                세부 분기
+              <label className="create-format-field">
+                경기 형식
                 <select
                   value={draft.hostJoinMode}
                   onChange={(event) => {
@@ -1548,7 +1548,7 @@ export default function CreateMatch({ app }) {
               </label>
             ) : null}
             {isTournamentRoom ? (
-              <label>
+              <label className="create-format-field">
                 대회 방식
                 <select value={draft.tournamentFormat} onChange={(event) => update({ tournamentFormat: event.target.value })}>
                   {tournamentFormatOptions.map((option) => <option key={option.id} value={option.id}>{option.label} · {option.desc}</option>)}
@@ -1556,7 +1556,7 @@ export default function CreateMatch({ app }) {
               </label>
             ) : null}
             {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? (
-              <div className="field-block">
+              <div className="field-block create-timing-field">
                 <span className="field-label">시간 옵션</span>
                 <div className="segmented-control compact-segments">
                   <button type="button" className={draft.timingType === "scheduled" ? "active" : ""} onClick={() => update({ timingType: "scheduled" })}>일정 지정</button>
@@ -1566,8 +1566,8 @@ export default function CreateMatch({ app }) {
               </div>
             ) : null}
             {!isTournamentRoom ? (
-            <label>
-              방식
+            <label className="create-capacity-field">
+              인원 방식
               <select value={draft.mode} onChange={(event) => {
                 const mode = event.target.value;
                 if (isSoloRecord) {
@@ -1619,11 +1619,11 @@ export default function CreateMatch({ app }) {
             ) : null}
             {!isInstantRoom ? (
               <>
-                <label>
+                <label className="create-date-field">
                   날짜
                   <input type="date" min={isSoloRecord || isMatchRecordRoom ? minSoloRecordDate : today} max={scheduleMaxDate} value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
                 </label>
-                <label>
+                <label className="create-time-field">
                   시간
                   <input type="time" value={draft.scheduledTime} onChange={(event) => update({ scheduledTime: event.target.value })} />
                 </label>
@@ -1699,49 +1699,51 @@ export default function CreateMatch({ app }) {
             ) : null}
             {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? (
               <>
-                <label className="settings-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={draft.refereeWanted || Boolean(draft.refereeId)}
-                    onChange={(event) => {
-                      const refereeWanted = event.target.checked;
-                      update({ refereeWanted, refereeId: refereeWanted ? draft.refereeId : "" });
-                      if (!refereeWanted) setRefereeQuery("");
-                    }}
-                  />
-                  <span>심판 있음</span>
-                </label>
-                <label>
-                  심판
-                  <SearchPicker
-                    value={refereeQuery}
-                    onChange={(value) => {
-                      setRefereeQuery(value);
-                      update({ refereeWanted: true, refereeId: "" });
-                    }}
-                    placeholder="심판 이름, #해시태그, 지역 검색"
-                    items={refereeSearchResults}
-                    remoteSearchType="referee"
-                    idleItems={favoriteReferees.length ? favoriteReferees : refereeCandidates.slice(0, 8)}
-                    idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
-                    title="심판 검색 결과"
-                    emptyText="초대 가능한 심판 없음"
-                    showIdleOnFocus
-                    floating
-                    closeOnResultClick
-                    renderItem={renderRefereeSearchItem}
-                  />
-                </label>
-                <div className="stat-integrity-note">
-                  {selectedReferee
-                    ? `초대할 심판: ${selectedReferee.name} · 신뢰도 ${selectedReferee.trustScore}`
-                    : "심판 초대 안 함 · 심판 없으면 개인 기록은 득점 중심"}
+                <div className="create-referee-row">
+                  <label className="settings-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={draft.refereeWanted || Boolean(draft.refereeId)}
+                      onChange={(event) => {
+                        const refereeWanted = event.target.checked;
+                        update({ refereeWanted, refereeId: refereeWanted ? draft.refereeId : "" });
+                        if (!refereeWanted) setRefereeQuery("");
+                      }}
+                    />
+                    <span>심판 있음</span>
+                  </label>
+                  <label className="create-referee-search">
+                    심판 검색
+                    <SearchPicker
+                      value={refereeQuery}
+                      onChange={(value) => {
+                        setRefereeQuery(value);
+                        update({ refereeWanted: true, refereeId: "" });
+                      }}
+                      placeholder="심판 이름, #해시태그, 지역 검색"
+                      items={refereeSearchResults}
+                      remoteSearchType="referee"
+                      idleItems={favoriteReferees.length ? favoriteReferees : refereeCandidates.slice(0, 8)}
+                      idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
+                      title="심판 검색 결과"
+                      emptyText="초대 가능한 심판 없음"
+                      showIdleOnFocus
+                      floating
+                      closeOnResultClick
+                      renderItem={renderRefereeSearchItem}
+                    />
+                  </label>
+                </div>
+                <div className="stat-integrity-note create-referee-note">
+                  <span>
+                    {selectedReferee
+                      ? `초대할 심판: ${selectedReferee.name} · 신뢰도 ${selectedReferee.trustScore}`
+                      : "심판 초대 안 함 · 심판 없으면 개인 기록은 득점 중심"}
+                    {` · 신뢰도 ${REFEREE_TRUST_MIN} 이상만 초대 가능`}
+                  </span>
                   {selectedReferee ? (
                     <Button type="button" variant="secondary" size="sm" onClick={clearReferee}>초대 해제</Button>
                   ) : null}
-                </div>
-                <div className="stat-integrity-note">
-                  심판은 신뢰도 {REFEREE_TRUST_MIN} 이상만 가능. 초대 시 심판만 득점/리바운드/어시스트/스틸/블록을 입력한다.
                 </div>
               </>
             ) : null}
@@ -1876,51 +1878,53 @@ export default function CreateMatch({ app }) {
               <Badge tone={tournamentMmrBlocked ? "orange" : "green"}>{tournamentMmrBlocked ? "차단" : "허용"}</Badge>
             </div>
           ) : null}
-          {!isSoloRecord && draft.ranked ? (
-            <div className={teamTierBlocked ? "mmr-range-mode-control tier-range-note-warning" : "mmr-range-mode-control"}>
-              <div className="mmr-range-summary-row">
-                <div>
-                  <span>정규전 허용구간 선택</span>
-                  <strong>{isTournamentRoom ? `${mmrRangePolicy.label} · 팀별 MMR 기준` : roomTierRange.detail}</strong>
-                  <em>{isTournamentRoom ? "각 팀의 조건 충족 선수 수를 검사" : teamTierWarned ? "경고만 표시" : isTeamRoom ? `${selectedTeamA?.name ?? "A사이드"} 기준` : `${app.currentUser.name} 기준`} · {mmrRangePolicy.detail}</em>
-                </div>
-                <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
-              </div>
-              <div className="segmented-control compact-segments">
-                {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    className={draft.mmrRangeMode === mode ? "active" : ""}
-                    onClick={() => update({ mmrRangeMode: mode })}
-                  >
-                    {policy.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
           {!isSoloRecord ? (
-            <div className={ageRestrictionBlocked ? "mmr-range-mode-control tier-range-note-warning" : "mmr-range-mode-control"}>
-              <div className="mmr-range-summary-row">
-                <div>
-                  <span>연령 제한</span>
-                  <strong>{ageRestrictionOption.label}</strong>
-                  <em>{ageRestrictionOption.desc}</em>
+            <div className="create-eligibility-grid">
+              {draft.ranked ? (
+                <div className={teamTierBlocked ? "mmr-range-mode-control create-eligibility-control tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control"}>
+                  <div className="mmr-range-summary-row">
+                    <div>
+                      <span>정규전 허용구간</span>
+                      <strong>{isTournamentRoom ? `${mmrRangePolicy.label} · 팀별 MMR 기준` : roomTierRange.detail}</strong>
+                      <em>{isTournamentRoom ? "각 팀의 조건 충족 선수 수를 검사" : teamTierWarned ? "경고만 표시" : isTeamRoom ? `${selectedTeamA?.name ?? "A사이드"} 기준` : `${app.currentUser.name} 기준`} · {mmrRangePolicy.detail}</em>
+                    </div>
+                    <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
+                  </div>
+                  <div className="segmented-control compact-segments">
+                    {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={draft.mmrRangeMode === mode ? "active" : ""}
+                        onClick={() => update({ mmrRangeMode: mode })}
+                      >
+                        {policy.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <Badge tone={ageRestrictionBlocked ? "orange" : "green"}>{ageRestrictionBlocked ? "차단" : "허용"}</Badge>
-              </div>
-              <div className="segmented-control compact-segments age-restriction-segments">
-                {AGE_GROUPS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={ageRestrictionOption.allowedGroups.includes(option.id) ? "active" : ""}
-                    onClick={() => update({ ageRestriction: toggleAgeRestriction(draft.ageRestriction, option.id) })}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              ) : null}
+              <div className={ageRestrictionBlocked ? "mmr-range-mode-control create-eligibility-control tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control"}>
+                <div className="mmr-range-summary-row">
+                  <div>
+                    <span>연령 제한</span>
+                    <strong>{ageRestrictionOption.label}</strong>
+                    <em>{ageRestrictionOption.desc}</em>
+                  </div>
+                  <Badge tone={ageRestrictionBlocked ? "orange" : "green"}>{ageRestrictionBlocked ? "차단" : "허용"}</Badge>
+                </div>
+                <div className="segmented-control compact-segments age-restriction-segments">
+                  {AGE_GROUPS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={ageRestrictionOption.allowedGroups.includes(option.id) ? "active" : ""}
+                      onClick={() => update({ ageRestriction: toggleAgeRestriction(draft.ageRestriction, option.id) })}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : null}
@@ -2120,22 +2124,6 @@ export default function CreateMatch({ app }) {
                   ? "상대팀 대표 1명에게 기록 확인 요청을 보낸다. 확인 대표가 B사이드 출전/후보를 고른다."
                   : "상대팀 대표 1명에게 초대장을 보낸다. 수락한 사람이 B사이드 파티장이 되고 방에서 출전/후보를 고른다."}
               </div>
-            </div>
-          ) : null}
-          {!isPublicRoom && isTeamRoom && !isMatchRecordRoom ? (
-            <div className="form-grid two">
-              <label>
-                A사이드 수락 방식
-                <select value={draft.approvalModeA} onChange={(event) => update({ approvalModeA: event.target.value })}>
-                  <option value="leader">파티장만 수락</option>
-                </select>
-              </label>
-              <label>
-                B사이드 수락 방식
-                <select value={draft.approvalModeB} onChange={(event) => update({ approvalModeB: event.target.value })}>
-                  <option value="leader">파티장만 수락</option>
-                </select>
-              </label>
             </div>
           ) : null}
           {isPublicRoom ? (
