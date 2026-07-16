@@ -14,7 +14,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
+import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import {
   formatStatLine,
@@ -716,7 +716,7 @@ export default function MatchRoom({ app }) {
     ["공격권", match.rules?.attackRule ?? "득점 후 공격권 교대"],
     ["파울 룰", match.rules?.foulRule ?? "현장 합의"],
     ["기록 권한", recorderSummary],
-    ["이의제기", `${Math.min(Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES), DISPUTE_WINDOW_MINUTES)}분`],
+    ["이의제기", `${normalizeDisputeWindowMinutes(match.disputeMinutes)}분`],
     ["티어 반영", isSoloRecord ? "개인 기록 · MMR 미반영" : match.ranked === false ? "친선 · 티어 자유" : `정규 · MMR ${Math.round((match.ratingScale ?? match.rules?.ratingScale ?? 1) * 100)}%`],
   ];
 
@@ -903,7 +903,7 @@ export default function MatchRoom({ app }) {
               <div>
                 <span>이의제기 마감</span>
                 <strong>{formatWindowTime(recordWindow.disputeClosesAt)}</strong>
-                <em>경기 종료 후 {match.disputeMinutes ?? 120}분</em>
+                <em>경기 종료 후 {match.disputeMinutes ?? 30}분</em>
               </div>
             </div>
             <form className="score-form" onSubmit={submitResult}>

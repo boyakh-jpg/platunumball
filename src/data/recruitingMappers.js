@@ -1,7 +1,7 @@
 import {
-  DISPUTE_WINDOW_MINUTES,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
+  normalizeDisputeWindowMinutes,
 } from "../lib/constants.js";
 import { isPublicTeamRecruitingRoom } from "../lib/recruiting.js";
 
@@ -122,7 +122,7 @@ export function fromRemoteRecruitingPost(row = {}, {
     refereeId: row.referee_id ?? "",
     refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
     statEntryMinutes: row.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
-    disputeMinutes: row.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
+    disputeMinutes: normalizeDisputeWindowMinutes(row.dispute_minutes),
     roomState: chatMessages ? { ...roomState, chatMessages } : roomState,
     mmrLimitMode: ["off", "warn", "block"].includes(roomState.mmrLimitMode) ? roomState.mmrLimitMode : "block",
     teamOnly: roomState.teamOnly === true || isPublicTeamRecruitingRoom({ visibility: row.visibility, hostJoinMode: row.host_join_mode }),

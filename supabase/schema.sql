@@ -447,7 +447,7 @@ create table if not exists public.recruiting_posts (
   referee_id text,
   referee_trust_min integer not null default 90,
   stat_entry_minutes integer not null default 60,
-  dispute_minutes integer not null default 120,
+  dispute_minutes integer not null default 30,
   room_state jsonb not null default '{}'::jsonb,
   host_join_mode text not null default 'team',
   host_side text not null default 'teamA',
@@ -536,7 +536,7 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists referee_id text';
     execute 'alter table public.recruiting_posts add column if not exists referee_trust_min integer not null default 90';
     execute 'alter table public.recruiting_posts add column if not exists stat_entry_minutes integer not null default 60';
-    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 120';
+    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 30';
     execute 'alter table public.recruiting_posts add column if not exists created_at timestamptz not null default now()';
     execute 'alter table public.recruiting_posts add column if not exists updated_at timestamptz not null default now()';
     execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_visibility_check';
@@ -1197,7 +1197,7 @@ begin
     execute 'alter table public.matches add column if not exists referee_id text';
     execute 'alter table public.matches add column if not exists referee_trust_min integer not null default 90';
     execute 'alter table public.matches add column if not exists stat_entry_minutes integer not null default 60';
-    execute 'alter table public.matches add column if not exists dispute_minutes integer not null default 120';
+    execute 'alter table public.matches add column if not exists dispute_minutes integer not null default 30';
     execute 'alter table public.matches add column if not exists ended_at timestamptz';
     execute 'alter table public.matches add column if not exists confirmed_at timestamptz';
     execute 'alter table public.matches add column if not exists cancelled_at timestamptz';
@@ -1288,7 +1288,7 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists referee_id text';
     execute 'alter table public.recruiting_posts add column if not exists referee_trust_min integer not null default 90';
     execute 'alter table public.recruiting_posts add column if not exists stat_entry_minutes integer not null default 60';
-    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 120';
+    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 30';
   end if;
 end;
 $$;

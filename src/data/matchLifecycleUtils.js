@@ -1,7 +1,7 @@
 import {
-  DISPUTE_WINDOW_MINUTES,
   LIFECYCLE_TITLE_PATTERN,
   POST_MATCH_TITLE_PATTERN,
+  normalizeDisputeWindowMinutes,
 } from "../lib/constants.js";
 import { isInstantRoom } from "../lib/matchUtils.js";
 
@@ -77,7 +77,5 @@ export function repairFuturePregameTitle(match) {
 }
 
 export function normalizeDisputeMinutes(match) {
-  const minutes = Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES);
-  if (!Number.isFinite(minutes) || minutes <= 0) return DISPUTE_WINDOW_MINUTES;
-  return Math.min(minutes, DISPUTE_WINDOW_MINUTES);
+  return normalizeDisputeWindowMinutes(match.disputeMinutes);
 }

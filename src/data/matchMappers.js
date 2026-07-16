@@ -1,5 +1,4 @@
 import {
-  DISPUTE_WINDOW_MINUTES,
   MATCH_SIDE_FALLBACK_NAMES,
   POST_MATCH_STATUSES,
   PLAYER_POSITIONS,
@@ -9,6 +8,7 @@ import {
   SOLO_RECORD_ANONYMOUS_SOURCE,
   SOLO_RECORD_MODE_IDS,
   STAT_ENTRY_WINDOW_MINUTES,
+  normalizeDisputeWindowMinutes,
 } from "../lib/constants.js";
 import { normalizeStatRecorders } from "../lib/matchUtils.js";
 import {
@@ -266,7 +266,7 @@ export function fromRemoteMatch(row, context) {
     refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
     statRecorders,
     statEntryMinutes: row.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
-    disputeMinutes: row.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
+    disputeMinutes: normalizeDisputeWindowMinutes(row.dispute_minutes),
     createdBy: row.created_by ?? "",
     recruitingPostId: row.rules?.recruitingPostId ?? "",
     tournamentId: row.tournament_id,

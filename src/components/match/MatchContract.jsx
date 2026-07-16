@@ -102,7 +102,7 @@ export default function MatchContract({ match, users = [], teams = [], matches =
         </div>
         <div>
           <span>이의제기</span>
-          <strong>{match.disputeMinutes ?? 120}분</strong>
+          <strong>{match.disputeMinutes ?? 30}분</strong>
         </div>
         <div>
           <span>개인 기록</span>

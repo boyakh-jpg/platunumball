@@ -87,6 +87,12 @@ export const REFEREE_ABSENCE_TRUST_PENALTY = 4;
 export const INSTANT_ROOM_EXPIRE_MINUTES = 120;
 export const STAT_ENTRY_WINDOW_MINUTES = 60;
 export const DISPUTE_WINDOW_MINUTES = 30;
+export const DISPUTE_WINDOW_MAX_MINUTES = 60;
+export function normalizeDisputeWindowMinutes(value, fallback = DISPUTE_WINDOW_MINUTES) {
+  const minutes = Number(value ?? fallback);
+  if (!Number.isFinite(minutes) || minutes <= 0) return fallback;
+  return Math.min(minutes, DISPUTE_WINDOW_MAX_MINUTES);
+}
 export const TEST_ACCOUNT_COUNT = 50;
 const TEAM_INVITE_ROLES = ["regular", "mercenary"];
 export function normalizeMmrLimitMode(mode = "block") {

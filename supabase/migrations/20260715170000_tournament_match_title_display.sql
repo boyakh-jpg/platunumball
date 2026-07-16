@@ -67,7 +67,7 @@ begin
     'former_referee_id', null,
     'referee_trust_min', 90,
     'stat_entry_minutes', 60,
-    'dispute_minutes', 120,
+    'dispute_minutes', 30,
     'stat_recorders', '{}'::jsonb,
     'played_player_ids', jsonb_build_object('teamA', '[]'::jsonb, 'teamB', '[]'::jsonb),
     'reserve_players', jsonb_build_object('teamA', '[]'::jsonb, 'teamB', '[]'::jsonb),

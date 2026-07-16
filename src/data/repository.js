@@ -35,6 +35,7 @@ import {
   TEST_PROFILE_BIRTH_YEAR,
   TEST_PROFILE_SETUP_AT,
   getHostTrustRequirement,
+  normalizeDisputeWindowMinutes,
   normalizeMmrLimitMode as normalizeRecruitingMmrLimitMode,
 } from "../lib/constants.js";
 import {
@@ -1158,7 +1159,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
         refereeId: post.referee_id ?? "",
         refereeTrustMin: post.referee_trust_min ?? REFEREE_TRUST_MIN,
         statEntryMinutes: post.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
-        disputeMinutes: post.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
+        disputeMinutes: normalizeDisputeWindowMinutes(post.dispute_minutes),
         roomState,
         mmrLimitMode: normalizeRecruitingMmrLimitMode(roomState.mmrLimitMode),
         teamOnly: roomState.teamOnly === true || isPublicTeamRecruitingRoom({ visibility: post.visibility, hostJoinMode: post.host_join_mode }),
@@ -1323,7 +1324,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       former_referee_id: match.formerRefereeId || null,
       referee_trust_min: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
       stat_entry_minutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
-      dispute_minutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
+      dispute_minutes: normalizeDisputeWindowMinutes(match.disputeMinutes),
       stat_recorders: statRecorders,
       played_player_ids: match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {},
       reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
@@ -1453,7 +1454,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       referee_id: post.refereeId || null,
       referee_trust_min: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
       stat_entry_minutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
-      dispute_minutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
+      dispute_minutes: normalizeDisputeWindowMinutes(post.disputeMinutes),
       room_state: {
         ...normalizeRecruitingRoomState(post.roomState ?? {}),
         ownerId: getRecruitingRoomOwnerId(post),

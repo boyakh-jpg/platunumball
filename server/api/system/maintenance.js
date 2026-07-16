@@ -2,7 +2,7 @@ import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson, toArray
 import { getMatchRatingCommit } from "../_authoritativeState.js";
 import { commitMatchRating } from "../matches/sync-match.js";
 import { loadNormalizedMatchDetailFromClient, runAutomaticStateMaintenance } from "../../../src/data/repository.js";
-import { DISPUTE_WINDOW_MINUTES } from "../../../src/lib/constants.js";
+import { normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
 const FEED_REPAIR_ROW_FACTOR = 8;
@@ -63,10 +63,7 @@ function getApprovalRows(match = {}) {
 function isDueApprovalRow(row = {}, nowMs = Date.now()) {
   const endedAtMs = row.ended_at ? new Date(row.ended_at).getTime() : NaN;
   if (!Number.isFinite(endedAtMs)) return false;
-  const rawDisputeMinutes = Number(row.dispute_minutes ?? DISPUTE_WINDOW_MINUTES);
-  const disputeMinutes = Number.isFinite(rawDisputeMinutes) && rawDisputeMinutes > 0
-    ? Math.min(rawDisputeMinutes, DISPUTE_WINDOW_MINUTES)
-    : DISPUTE_WINDOW_MINUTES;
+  const disputeMinutes = normalizeDisputeWindowMinutes(row.dispute_minutes);
   return nowMs > endedAtMs + disputeMinutes * 60000;
 }
 

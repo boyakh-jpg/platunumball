@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows } from "../_supabaseAdmin.js";
-import { normalizeMmrLimitMode } from "../../../src/lib/constants.js";
+import { normalizeDisputeWindowMinutes, normalizeMmrLimitMode } from "../../../src/lib/constants.js";
 import {
   applyAuthoritativeRecruitingOperation,
   getOperation,
@@ -107,7 +107,7 @@ function toRecruitingPostRow(post = {}) {
     referee_id: nullableText(post.refereeId),
     referee_trust_min: Number(post.refereeTrustMin ?? 90),
     stat_entry_minutes: Number(post.statEntryMinutes ?? 60),
-    dispute_minutes: Number(post.disputeMinutes ?? 120),
+    dispute_minutes: normalizeDisputeWindowMinutes(post.disputeMinutes),
     room_state: { ...roomState, timingType: schedule.timingType },
     host_join_mode: post.hostJoinMode === "player" ? "player" : "team",
     host_side: post.hostSide === "teamB" ? "teamB" : "teamA",

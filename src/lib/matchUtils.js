@@ -1,6 +1,5 @@
 import {
   DAY_MS,
-  DISPUTE_WINDOW_MINUTES,
   INSTANT_ROOM_EXPIRE_MINUTES,
   MODE_SIZES,
   PLAYER_STAT_FIELDS,
@@ -10,6 +9,7 @@ import {
   SOLO_RECORD_ANONYMOUS_POSITION,
   SOLO_RECORD_ANONYMOUS_SOURCE,
   STAT_ENTRY_WINDOW_MINUTES,
+  normalizeDisputeWindowMinutes,
 } from "./constants.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -1062,10 +1062,7 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
   const startAt = getMatchStartDate(match);
   const endAt = getMatchEndDate(match);
   const statEntryMinutes = Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES);
-  const rawDisputeMinutes = Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES);
-  const disputeMinutes = Number.isFinite(rawDisputeMinutes) && rawDisputeMinutes > 0
-    ? Math.min(rawDisputeMinutes, DISPUTE_WINDOW_MINUTES)
-    : DISPUTE_WINDOW_MINUTES;
+  const disputeMinutes = normalizeDisputeWindowMinutes(match.disputeMinutes);
 
   if (!endAt) {
     return {

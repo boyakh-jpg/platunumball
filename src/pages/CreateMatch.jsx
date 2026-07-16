@@ -379,7 +379,7 @@ export default function CreateMatch({ app }) {
     winByTwo: true,
     attackRule: "득점 후 공격권 교대",
     foulRule: "파울 콜 즉시 중단, 공격권 유지",
-    objectionWindow: "24시간",
+    objectionWindow: "30분",
     evidence: [],
     memo: "룰 확정 후 결과 승인.",
     stakes: "다음 경기 우선권.",
@@ -2161,9 +2161,8 @@ export default function CreateMatch({ app }) {
                 <label>
                   이의제기 시간
                   <select value={draft.objectionWindow} onChange={(event) => update({ objectionWindow: event.target.value })}>
+                    <option>30분</option>
                     <option>1시간</option>
-                    <option>6시간</option>
-                    <option>24시간</option>
                   </select>
                 </label>
                 {isTournamentRoom ? (

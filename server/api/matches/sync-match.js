@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
 import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
-import { RECORD_TYPES } from "../../../src/lib/constants.js";
+import { RECORD_TYPES, normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
 import { makeAnonymousMatchPlayer } from "../../../src/lib/matchUtils.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
@@ -659,7 +659,7 @@ function toMatchRow(match = {}, actorProfileId = "") {
     former_referee_id: match.formerRefereeId || null,
     referee_trust_min: Number(match.refereeTrustMin ?? 90),
     stat_entry_minutes: Number(match.statEntryMinutes ?? 60),
-    dispute_minutes: Number(match.disputeMinutes ?? 120),
+    dispute_minutes: normalizeDisputeWindowMinutes(match.disputeMinutes),
     stat_recorders: statRecorders,
     played_player_ids: playedPlayerIds,
     reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
