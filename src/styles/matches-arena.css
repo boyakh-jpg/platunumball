@@ -2055,7 +2055,7 @@ html[data-theme="light"] .tournament-schedule-list input {
   }
 
   .om-view-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .om-filter-bar {
@@ -3937,6 +3937,12 @@ html[data-theme="light"] .om-room-link {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
+}
+
+@media (max-width: 1120px) {
+  .om-view-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .om-view-card {
