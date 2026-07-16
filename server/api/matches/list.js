@@ -1000,7 +1000,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     shouldLoadClosedNotices
       ? timeStep(debugTiming, "closedNoticeMs", () => fetchClosedNoticeMatchFeedPage(context.supabase, context.profileId))
       : Promise.resolve(null),
-    includeTeamSchedule && !cursor && !completedOnly && !recorderOnly
+    activeOnly && !cursor && !completedOnly && !recorderOnly
       ? timeStep(debugTiming, "captainTournamentMatchesMs", () => fetchCaptainTournamentMatchRows(context.supabase, context.profileId, limit))
       : Promise.resolve([]),
     includeTeamSchedule && !cursor && !completedOnly && !recorderOnly
