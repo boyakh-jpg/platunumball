@@ -3056,7 +3056,7 @@ input[type="color"] {
 }
 
 .create-opponent-team-control .search-picker-field input {
-  padding-right: min(42vw, 330px);
+  padding-right: calc(min(43%, 315px) + 14px);
 }
 
 .create-match-page .form-grid.two > .stat-integrity-note {

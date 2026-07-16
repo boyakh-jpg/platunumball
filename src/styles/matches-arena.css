@@ -3950,6 +3950,30 @@ html[data-theme="light"] .om-room-link {
   }
 }
 
+@media (min-width: 1121px) and (max-width: 1400px) {
+  .om-view-grid {
+    gap: 8px;
+  }
+
+  .om-view-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .om-view-card .om-view-icon,
+  .om-view-card em {
+    display: none;
+  }
+
+  .om-view-card strong {
+    overflow: hidden;
+    font-size: 0.9rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .om-view-card {
   min-height: 76px;
   border: 1px solid var(--rb-line);
@@ -4332,6 +4356,10 @@ html[data-theme="light"] .om-match-panel {
     border-right: 0;
     border-left: 0;
     border-radius: 0;
+  }
+
+  .tournament-detail-page > .tournament-hero {
+    margin-block-start: 0;
   }
 }
 
@@ -5049,7 +5077,7 @@ html[data-theme="light"] .om-empty-state {
   padding: 0;
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1220px) {
   .tournament-schedule-list form {
     grid-template-columns: minmax(0, 1fr) minmax(130px, 0.8fr) 105px;
   }
