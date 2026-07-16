@@ -995,7 +995,12 @@ export function getRecruitingLobby(post = {}, state = {}) {
         reserves: unique(entry.reserves ?? []).filter((playerId) => playerId && !players.includes(playerId)),
       };
     })
-    .filter((entry) => entry.fixed || entry.players.length || entry.reserves.length);
+    .filter((entry) => (
+      entry.fixed ||
+      (normalizedPost.tournamentId && entry.kind === "team" && entry.teamId) ||
+      entry.players.length ||
+      entry.reserves.length
+    ));
   const activePlayerIds = new Set(entries.filter((entry) => !entry.reserve).flatMap((entry) => entry.players));
   const reserveSeen = new Set();
   const userById = Object.fromEntries((state.users ?? []).map((user) => [user.id, user]));
