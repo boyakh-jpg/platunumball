@@ -91,9 +91,12 @@ function getMatchWinnerTeamId(match) {
 }
 
 function getLeagueMatchResult(match) {
-  if (!match || (!match.result && match.status !== "confirmed")) return null;
-  const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? match.scoreA);
-  const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? match.scoreB);
+  const hasForfeit = Boolean(match?.forfeitSide || match?.rules?.forfeit?.losingSide);
+  const hasFinalState = ["confirmed", "closed"].includes(match?.status) || Boolean(match?.confirmedAt);
+  if (!match || (!match.result && !hasForfeit && !hasFinalState)) return null;
+  const losingSide = match.forfeitSide || match.rules?.forfeit?.losingSide || "";
+  const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? match.scoreA ?? (losingSide === "teamA" ? 0 : losingSide === "teamB" ? 1 : undefined));
+  const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? match.scoreB ?? (losingSide === "teamB" ? 0 : losingSide === "teamA" ? 1 : undefined));
   const teamAId = match.teamA?.teamId ?? match.teamAId ?? "";
   const teamBId = match.teamB?.teamId ?? match.teamBId ?? "";
   if (!teamAId || !teamBId || !Number.isFinite(scoreA) || !Number.isFinite(scoreB)) return null;

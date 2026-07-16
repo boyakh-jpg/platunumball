@@ -2492,6 +2492,7 @@ flowchart TD
 7. 일정 저장과 불참 처리는 브라우저 snapshot을 원본으로 받지 않는다. service-role 전용 DB RPC, tournament/match advisory lock, row lock을 사용한다.
 8. 대회 상세의 경기 row는 현재 state의 `match.id`를 우선하고, 아직 단건 상세가 병합되지 않았으면 `fixture.matchId`로 공용 방 모달을 열어 서버 상세를 불러온다. 두 ID가 모두 없는 가상 fixture만 비활성 상태로 남긴다.
 9. 리그 fixture의 구장 표시는 경기 snapshot 구장, 경기 `court_id`에 해당하는 허용 구장, 대회 기본 구장 순으로 보정한다. 표시 보정은 일정 저장 원본을 변경하지 않는다.
+10. 리그 순위표는 `match_results`가 아직 병합되지 않아도 `matches.score_a/score_b`, `confirmed_at`, `matches.rules.forfeit`로 확정·몰수 결과를 집계한다.
 
 ## 2026-07-15 알림 보관과 삭제
 

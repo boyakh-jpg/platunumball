@@ -1487,7 +1487,7 @@
 
 .league-table {
   width: 100%;
-  min-width: 430px;
+  min-width: 390px;
   border-collapse: collapse;
   font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
@@ -1511,7 +1511,7 @@
 
 .league-table th:nth-child(2),
 .league-table td:nth-child(2) {
-  min-width: 140px;
+  min-width: 120px;
   text-align: left;
 }
 
@@ -2164,7 +2164,7 @@ html[data-theme="light"] .tournament-schedule-list input {
 
 .league-fixture-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px;
+  grid-template-columns: minmax(0, 1fr) 76px;
   min-width: 0;
   gap: 10px;
   border: 1px solid var(--ui-card-border);
@@ -2174,7 +2174,7 @@ html[data-theme="light"] .tournament-schedule-list input {
 }
 
 .league-layout {
-  grid-template-columns: minmax(320px, 0.75fr) minmax(520px, 1.25fr);
+  grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1.3fr);
 }
 
 .league-fixture-grid {
@@ -2249,7 +2249,7 @@ html[data-theme="light"] .tournament-schedule-list input {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .league-fixture-matchup > strong {
@@ -5042,6 +5042,15 @@ html[data-theme="light"] .om-empty-state {
   .league-fixture-grid,
   .league-fixture-card {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .league-table {
+    min-width: 360px;
+  }
+
+  .league-table th,
+  .league-table td {
+    padding: 0 6px;
   }
 
   .league-fixture-summary {
