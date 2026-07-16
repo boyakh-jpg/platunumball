@@ -16211,7 +16211,7 @@ html[data-theme="light"] .app-main :is(
   grid-template-columns: minmax(0, 1fr);
 }
 
-@media (hover: none), (pointer: coarse) {
+@media (max-width: 1079px) {
   .hover-portal-card.touch-open {
     bottom: calc(var(--bottom-nav-height) + 12px + env(safe-area-inset-bottom, 0px));
     max-height: min(62dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 560px) !important;
