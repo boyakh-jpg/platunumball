@@ -1237,6 +1237,10 @@ export function useAppData(authUser = null, appLocation = null) {
   const matchPagePromiseRef = useRef(null);
   const matchRecruitingSchedulePromiseRef = useRef(null);
   const matchTeamSchedulePromiseRef = useRef(null);
+  const settingsAuthUserIdRef = useRef(authUserId);
+  const settingsSyncQueueRef = useRef(Promise.resolve(null));
+  const themeMutationVersionRef = useRef(0);
+  const themeCommittedValueRef = useRef(state.settings?.theme ?? "dark");
   const blockedSettingsSyncRef = useRef(Promise.resolve(true));
   const blockedSettingsCommittedIdsRef = useRef(getBlockedUserIdsFromState(state));
   const blockedSettingsPendingCountRef = useRef(0);
@@ -1261,6 +1265,12 @@ export function useAppData(authUser = null, appLocation = null) {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+  useEffect(() => {
+    settingsAuthUserIdRef.current = authUserId;
+    settingsSyncQueueRef.current = Promise.resolve(null);
+    themeMutationVersionRef.current += 1;
+    themeCommittedValueRef.current = null;
+  }, [authUserId]);
   const serverProfileBound = profileLocked;
   const effectiveProfileBindings = isSupabaseConfigured ? {} : profileBindings;
   const currentUserId = getBoundAuthProfileId(state, authUserId, effectiveProfileBindings, profileKey);
@@ -1776,17 +1786,26 @@ export function useAppData(authUser = null, appLocation = null) {
       return result?.notifications ?? [];
     });
   }, [runServerAction, setState]);
-  const syncSettingsServer = useCallback((settingsPatch = {}) => {
-    return runServerAction("/api/settings/sync", { settings: settingsPatch }).then((result) => {
-      if (result?.settings) {
+  const syncSettingsServer = useCallback((settingsPatch = {}, options = {}) => {
+    const requestedAuthUserId = authUserId;
+    const requestedCurrentUserId = currentUserId;
+    const shouldApply = typeof options.shouldApply === "function" ? options.shouldApply : () => true;
+    const request = settingsSyncQueueRef.current.catch(() => null).then(async () => {
+      if (settingsAuthUserIdRef.current !== requestedAuthUserId) return { ok: false, stale: true };
+      const result = await runServerAction("/api/settings/sync", { settings: settingsPatch });
+      if (settingsAuthUserIdRef.current !== requestedAuthUserId) return { ...result, ok: false, stale: true };
+      if (result?.settings && settingsAuthUserIdRef.current === requestedAuthUserId && shouldApply()) {
         setState((prev) => {
-          const nextState = updateSettings({ ...prev, currentUserId }, result.settings);
-          cacheCurrentProfileState(authUserId, nextState);
+          if (settingsAuthUserIdRef.current !== requestedAuthUserId) return prev;
+          const nextState = updateSettings({ ...prev, currentUserId: requestedCurrentUserId }, result.settings);
+          cacheCurrentProfileState(requestedAuthUserId, nextState);
           return nextState;
         });
       }
       return result;
     });
+    settingsSyncQueueRef.current = request.catch(() => null);
+    return request;
   }, [authUserId, currentUserId, runServerAction, setState]);
 
   const refreshCurrentProfile = useCallback(async () => {
@@ -2796,17 +2815,27 @@ export function useAppData(authUser = null, appLocation = null) {
           return Promise.resolve(true);
         }
         if (!ensureRemoteReady("밝기 저장")) return Promise.resolve(false);
-        let rollbackState = null;
+        const requestAuthUserId = authUserId;
+        const requestVersion = themeMutationVersionRef.current + 1;
+        themeMutationVersionRef.current = requestVersion;
+        if (!themeCommittedValueRef.current) themeCommittedValueRef.current = stateRef.current.settings?.theme ?? "dark";
+        const isCurrentRequest = () => (
+          settingsAuthUserIdRef.current === requestAuthUserId && themeMutationVersionRef.current === requestVersion
+        );
         setState((prev) => {
-          rollbackState = prev;
           return updateSettings({ ...prev, currentUserId }, { theme: nextTheme });
         });
-        return rollbackIfServerFailed(
-          syncSettingsServer({ theme: nextTheme }),
-          rollbackState,
-          "밝기 저장",
-          { theme: nextTheme },
-        ).then((result) => Boolean(result && result.ok !== false));
+        return syncSettingsServer({ theme: nextTheme }, { shouldApply: isCurrentRequest }).then((result) => {
+          if (result?.stale) return false;
+          if (result && result.ok !== false) {
+            themeCommittedValueRef.current = nextTheme;
+            return true;
+          }
+          if (!isCurrentRequest()) return false;
+          const committedTheme = themeCommittedValueRef.current ?? "dark";
+          setState((prev) => updateSettings({ ...prev, currentUserId }, { theme: committedTheme }));
+          return false;
+        });
       },
       blockUser: (userId) => applyBlockedUserMutation(userId, true),
       unblockUser: (userId) => applyBlockedUserMutation(userId, false),

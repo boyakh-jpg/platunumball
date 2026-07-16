@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
 import { getSafeAppRedirect } from "../lib/profileSetup.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
@@ -135,6 +135,9 @@ export function useAuthSession() {
   const [loading, setLoading] = useState(() => isSupabaseConfigured);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [testLoginPending, setTestLoginPending] = useState(false);
+  const testLoginPendingRef = useRef(false);
+  const testLoginGenerationRef = useRef(0);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -197,6 +200,9 @@ export function useAuthSession() {
 
   const actions = useMemo(() => ({
     signInWithProvider: async (provider, redirectPath = "/app") => {
+      testLoginGenerationRef.current += 1;
+      testLoginPendingRef.current = false;
+      setTestLoginPending(false);
       setError("");
       setMessage("");
       if (isSupabaseConfigured) {
@@ -221,6 +227,9 @@ export function useAuthSession() {
       return nextSession;
     },
     signOut: async () => {
+      testLoginGenerationRef.current += 1;
+      testLoginPendingRef.current = false;
+      setTestLoginPending(false);
       setError("");
       setMessage("");
       writeTestSession(null);
@@ -233,36 +242,53 @@ export function useAuthSession() {
       }
     },
     signInWithTestAccount: async (testLoginId) => {
-      setError("");
-      setMessage("");
-      if (!isDemoLoginAllowed()) {
-        setError("테스트 계정 로그인은 VITE_DEMO_LOGIN=true 또는 로컬/프리뷰에서만 허용됩니다.");
-        return null;
-      }
-      const normalizedLoginId = normalizeTestLoginId(testLoginId);
-      if (isSupabaseConfigured) {
-        setSession(null);
-        writeTestSession(null);
-        setClientActionSession(null);
-        const { data: testAuthData, error: testAuthError } = await supabase.auth.signInWithPassword({
-          email: getTestAuthEmail(normalizedLoginId),
-          password: TEST_AUTH_PASSWORD,
-        }).catch((testAuthError) => ({ data: null, error: testAuthError }));
-        if (testAuthData?.session && !testAuthError) {
-          setClientActionSession(testAuthData.session);
-          setSession(testAuthData.session);
-          return testAuthData.session;
+      if (testLoginPendingRef.current) return null;
+
+      const loginGeneration = testLoginGenerationRef.current + 1;
+      testLoginGenerationRef.current = loginGeneration;
+      testLoginPendingRef.current = true;
+      setTestLoginPending(true);
+
+      try {
+        setError("");
+        setMessage("");
+        if (!isDemoLoginAllowed()) {
+          setError("테스트 계정 로그인은 VITE_DEMO_LOGIN=true 또는 로컬/프리뷰에서만 허용됩니다.");
+          return null;
         }
-        const { error: signOutError } = await supabase.auth.signOut().catch((signOutError) => ({ error: signOutError }));
-        if (signOutError) console.warn("Supabase sign-out before test login failed.", signOutError.message);
-        setError(formatAuthError(testAuthError?.message) || "테스트 Auth 계정이 없습니다. seed auth-only 실행이 필요합니다.");
-        return null;
+        const normalizedLoginId = normalizeTestLoginId(testLoginId);
+        if (isSupabaseConfigured) {
+          setSession(null);
+          writeTestSession(null);
+          setClientActionSession(null);
+          const { data: testAuthData, error: testAuthError } = await supabase.auth.signInWithPassword({
+            email: getTestAuthEmail(normalizedLoginId),
+            password: TEST_AUTH_PASSWORD,
+          }).catch((testAuthError) => ({ data: null, error: testAuthError }));
+          if (loginGeneration !== testLoginGenerationRef.current) return null;
+          if (testAuthData?.session && !testAuthError) {
+            setClientActionSession(testAuthData.session);
+            setSession(testAuthData.session);
+            return testAuthData.session;
+          }
+          const { error: signOutError } = await supabase.auth.signOut().catch((signOutError) => ({ error: signOutError }));
+          if (loginGeneration !== testLoginGenerationRef.current) return null;
+          if (signOutError) console.warn("Supabase sign-out before test login failed.", signOutError.message);
+          setError(formatAuthError(testAuthError?.message) || "테스트 Auth 계정이 없습니다. seed auth-only 실행이 필요합니다.");
+          return null;
+        }
+        const nextSession = makeLocalTestSession(normalizedLoginId);
+        if (loginGeneration !== testLoginGenerationRef.current) return null;
+        writeTestSession(nextSession);
+        setClientActionSession(nextSession);
+        setSession(nextSession);
+        return nextSession;
+      } finally {
+        if (loginGeneration === testLoginGenerationRef.current) {
+          testLoginPendingRef.current = false;
+          setTestLoginPending(false);
+        }
       }
-      const nextSession = makeLocalTestSession(normalizedLoginId);
-      writeTestSession(nextSession);
-      setClientActionSession(nextSession);
-      setSession(nextSession);
-      return nextSession;
     },
   }), []);
 
@@ -270,6 +296,7 @@ export function useAuthSession() {
     configured: isSupabaseConfigured,
     testAccounts: TEST_ACCOUNTS,
     testLoginAllowed: isDemoLoginAllowed(),
+    testLoginPending,
     loading,
     session,
     user: session?.user ?? null,

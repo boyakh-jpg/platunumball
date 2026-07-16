@@ -1731,10 +1731,12 @@ span.referee-hover-card {
 
 .compact-list a,
 .compact-list > div,
-.compact-list > .team-hover-trigger {
+.compact-list > .team-hover-trigger,
+.compact-list > .compact-list-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   gap: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -3423,12 +3425,14 @@ input[type="color"] {
 
 @media (max-width: 520px) {
   .share-card {
-    grid-template-columns: minmax(0, 1fr) 108px;
+    grid-template-columns: minmax(0, 1fr) clamp(76px, 24vw, 96px);
     gap: 10px;
   }
 
   .share-card strong {
     font-size: 1.62rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .share-card-emblem {
@@ -3436,7 +3440,7 @@ input[type="color"] {
   }
 
   .share-card-emblem .tier-emblem {
-    width: 124px;
+    width: clamp(88px, 28vw, 112px);
   }
 }
 
@@ -7459,6 +7463,20 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 18px;
 }
 
+.profile-identity > div:last-child,
+.team-detail-hero > div:first-child,
+.profile-hero h1,
+.team-detail-hero h1 {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.profile-hero h1,
+.team-detail-hero h1 {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .hero-avatar {
   width: 88px;
   height: 88px;
@@ -11290,12 +11308,18 @@ html[data-theme="light"] .rank-home .rank-mode-card {
   }
 
   .team-card .team-card-top {
-    grid-template-columns: minmax(0, 1fr) 112px;
+    grid-template-columns: minmax(0, 1fr) minmax(96px, 104px);
+  }
+
+  .team-card-actions {
+    min-width: 0;
+    gap: 4px;
+    justify-content: flex-end;
   }
 
   .team-card-actions .tier-emblem {
-    flex-basis: 70px;
-    width: 70px;
+    flex-basis: 64px;
+    width: 64px;
   }
 
   .settings-page .contract-grid.single {

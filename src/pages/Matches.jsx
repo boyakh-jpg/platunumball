@@ -217,6 +217,7 @@ function shouldIncludeScheduleWindow(item, todayValue, maxScheduleDate) {
   const itemDate = getMatchDate(item);
   if (itemDate > maxScheduleDate) return false;
   if (!itemDate || itemDate >= todayValue) return true;
+  if ((item?.teamA || item?.teamB) && MATCH_MENU_PHASES.has(getMatchRoomPhase(item).phase)) return true;
   return item?.recentCompleted === true;
 }
 

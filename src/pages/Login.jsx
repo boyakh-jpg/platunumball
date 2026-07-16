@@ -111,15 +111,15 @@ export default function Login({ auth, app }) {
             <div className="auth-test-login">
               <label>
                 둘러볼 계정
-                <select value={selectedTestLoginId} onChange={(event) => setSelectedTestLoginId(event.target.value)}>
+                <select value={selectedTestLoginId} onChange={(event) => setSelectedTestLoginId(event.target.value)} disabled={auth.testLoginPending}>
                   {auth.testAccounts.map((account) => (
                     <option key={account.id} value={account.id}>{account.label}</option>
                   ))}
                 </select>
               </label>
-              <button type="button" className="provider-button provider-test" onClick={signInWithTestAccount}>
+              <button type="button" className="provider-button provider-test" onClick={signInWithTestAccount} disabled={auth.testLoginPending}>
                 <span>T</span>
-                테스트 계정으로 입장
+                {auth.testLoginPending ? "로그인 중..." : "테스트 계정으로 입장"}
               </button>
             </div>
             </>

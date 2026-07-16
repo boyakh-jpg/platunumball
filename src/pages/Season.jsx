@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowRight, CalendarClock, ClipboardCheck, MapPin, ShieldCheck, Swords, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
@@ -13,6 +14,7 @@ import {
   getSeasonProgress,
   getTeamSeasonRows,
 } from "../lib/season.js";
+import { MatchRoomModal } from "./Matches.jsx";
 
 const statusLabels = {
   contract: "경기 전 동의",
@@ -33,6 +35,7 @@ function getTaskMatches(matches = []) {
 }
 
 export default function Season({ app }) {
+  const [selectedMatchId, setSelectedMatchId] = useState("");
   const season = getCurrentSeason(app.state);
   const region = app.currentUser.region;
   const progress = getSeasonProgress(season);
@@ -48,6 +51,7 @@ export default function Season({ app }) {
   const topTeam = teamRows[0];
 
   return (
+    <>
     <div className="page-stack season-page">
       <section className="season-hero">
         <div className="season-hero-copy">
@@ -198,10 +202,10 @@ export default function Season({ app }) {
             </div>
             <div className="compact-list">
               {taskMatches.length ? taskMatches.map((match) => (
-                <Link key={match.id} to={`/app/matches?match=${match.id}`}>
+                <button key={match.id} type="button" className="compact-list-row" onClick={() => setSelectedMatchId(match.id)}>
                   <span>{match.title}</span>
                   <strong>{statusLabels[match.status] ?? match.status}</strong>
-                </Link>
+                </button>
               )) : <div><span>대기 중인 운영 항목이 없습니다.</span><strong>OK</strong></div>}
             </div>
           </Card>
@@ -252,5 +256,7 @@ export default function Season({ app }) {
         </div>
       </Card>
     </div>
+    <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="season" onClose={() => setSelectedMatchId("")} />
+    </>
   );
 }
