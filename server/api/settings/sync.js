@@ -36,6 +36,11 @@ function sanitizeSettingsPatch(value) {
   if (typeof source.representativeTeamId === "string") {
     patch.representativeTeamId = source.representativeTeamId.trim().slice(0, 128);
   }
+  if (Array.isArray(source.blockedUserIds)) {
+    patch.blockedUserIds = [...new Set(source.blockedUserIds
+      .map((userId) => String(userId || "").trim().slice(0, 128))
+      .filter(Boolean))].slice(0, 250);
+  }
 
   const privacy = sanitizeBooleanPatch(source.privacy, ["regionRanking", "teamHistory", "statSummary"]);
   if (privacy) patch.privacy = privacy;
@@ -83,6 +88,9 @@ export default async function handler(request, response) {
     }
 
     const context = await getAuthenticatedContext(request);
+    if (settingsPatch.blockedUserIds) {
+      settingsPatch.blockedUserIds = settingsPatch.blockedUserIds.filter((userId) => userId !== context.profileId);
+    }
     if (settingsPatch.representativeTeamId) {
       const { data: membership, error: membershipError } = await context.supabase
         .from("team_members")
@@ -131,6 +139,29 @@ export default async function handler(request, response) {
       }
       const { error: cancelError } = await cancelQuery;
       if (cancelError) throw cancelError;
+    }
+
+    if (settingsPatch.blockedUserIds?.length) {
+      const { data: queuedRows, error: queuedError } = await context.supabase
+        .from("discord_notification_deliveries")
+        .select("id,payload")
+        .eq("target_user_id", context.profileId)
+        .eq("status", "queued")
+        .is("sent_at", null);
+      if (queuedError) throw queuedError;
+      const blockedSet = new Set(settingsPatch.blockedUserIds);
+      const blockedDeliveryIds = (queuedRows ?? [])
+        .filter((row) => blockedSet.has(String(row.payload?.fromUserId || row.payload?.senderId || row.payload?.inviterId || row.payload?.actorId || row.payload?.createdBy || "")))
+        .map((row) => row.id);
+      if (blockedDeliveryIds.length) {
+        const { error: cancelBlockedError } = await context.supabase
+          .from("discord_notification_deliveries")
+          .update({ status: "cancelled", last_error: "blocked_sender", updated_at: new Date().toISOString() })
+          .in("id", blockedDeliveryIds)
+          .eq("status", "queued")
+          .is("sent_at", null);
+        if (cancelBlockedError) throw cancelBlockedError;
+      }
     }
 
     sendJson(response, 200, { ok: true, settings: nextSettings });

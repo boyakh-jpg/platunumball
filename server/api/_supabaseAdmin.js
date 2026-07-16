@@ -8,6 +8,7 @@ import {
   TOURNAMENT_TEAM_COLUMNS,
 } from "../../src/data/repositoryColumns.js";
 import { fromRemoteTournament } from "../../src/data/tournamentMappers.js";
+import { getNotificationActorId } from "../../src/lib/notifications.js";
 
 const ADMIN_GRADE_LEVELS = {
   owner: 100,
@@ -353,6 +354,61 @@ export async function loadCurrentUserTournamentIndex(client, profileId = "") {
 
 export function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+export async function attachNotificationActors(supabase, notifications = []) {
+  const rows = toArray(notifications);
+  const missingActorRows = rows.filter((notification) => !getNotificationActorId(notification));
+  if (!missingActorRows.length) return rows;
+
+  const invitationIds = uniqueStringIds(missingActorRows.flatMap((notification) => [
+    notification.invitationId,
+    notification.teamInvitationId,
+    notification.payload?.invitationId,
+    notification.payload?.teamInvitationId,
+  ]));
+  const recruitingPostIds = uniqueStringIds(missingActorRows.flatMap((notification) => [
+    notification.recruitingPostId,
+    notification.payload?.recruitingPostId,
+  ]));
+  const tournamentIds = uniqueStringIds(missingActorRows.flatMap((notification) => [
+    notification.tournamentId,
+    notification.payload?.tournamentId,
+  ]));
+
+  const [teamInvitationResult, recruitingResult, tournamentResult] = await Promise.all([
+    invitationIds.length
+      ? supabase.from("team_invitations").select("id,from_user_id").in("id", invitationIds)
+      : Promise.resolve({ data: [], error: null }),
+    recruitingPostIds.length
+      ? supabase.from("recruiting_posts").select("id,room_state").in("id", recruitingPostIds)
+      : Promise.resolve({ data: [], error: null }),
+    tournamentIds.length
+      ? supabase.from("tournaments").select("id,created_by").in("id", tournamentIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (teamInvitationResult.error && !isMissingTable(teamInvitationResult.error, "team_invitations")) throw teamInvitationResult.error;
+  if (recruitingResult.error && !isMissingTable(recruitingResult.error, "recruiting_posts")) throw recruitingResult.error;
+  if (tournamentResult.error && !isMissingTable(tournamentResult.error, "tournaments")) throw tournamentResult.error;
+
+  const teamActorByInvitationId = new Map((teamInvitationResult.data ?? []).map((row) => [row.id, row.from_user_id]));
+  const recruitingRoomById = new Map((recruitingResult.data ?? []).map((row) => [row.id, row.room_state ?? {}]));
+  const tournamentActorById = new Map((tournamentResult.data ?? []).map((row) => [row.id, row.created_by]));
+
+  return rows.map((notification) => {
+    if (getNotificationActorId(notification)) return notification;
+    const invitationId = notification.invitationId || notification.teamInvitationId || notification.payload?.invitationId || notification.payload?.teamInvitationId || "";
+    const recruitingPostId = notification.recruitingPostId || notification.payload?.recruitingPostId || "";
+    const roomState = recruitingRoomById.get(recruitingPostId) ?? {};
+    const roomInvitation = toArray(roomState.invitations).find((invitation) => invitation.id === invitationId);
+    const tournamentId = notification.tournamentId || notification.payload?.tournamentId || "";
+    const fromUserId = teamActorByInvitationId.get(invitationId)
+      || roomInvitation?.fromUserId
+      || roomState.ownerId
+      || tournamentActorById.get(tournamentId)
+      || "";
+    return fromUserId ? { ...notification, fromUserId } : notification;
+  });
 }
 
 function pickNotificationValue(value, fallback, coalesce = "falsy") {

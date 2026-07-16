@@ -20,21 +20,20 @@ function getMatchActorIds(match = {}) {
   ]);
 }
 
-function isTournamentCaptainMatch(match = {}, captainTeamIds = []) {
-  if (!match.tournamentId) return false;
-  const teamIds = new Set(captainTeamIds);
+function isUserTeamMatch(match = {}, userTeamIds = []) {
+  const teamIds = new Set(userTeamIds);
   return teamIds.has(match.teamA?.teamId) || teamIds.has(match.teamB?.teamId);
 }
 
-function canReadMatch(match = {}, profileId = "", isAdmin = false, captainTeamIds = []) {
+function canReadMatch(match = {}, profileId = "", isAdmin = false, userTeamIds = []) {
   if (isAdmin) return true;
   if ((match.visibility ?? "public") !== "private") return true;
-  if (isTournamentCaptainMatch(match, captainTeamIds)) return true;
+  if (isUserTeamMatch(match, userTeamIds)) return true;
   return getMatchActorIds(match).includes(profileId);
 }
 
-function sanitizeMatch(match = {}, profileId = "", isAdmin = false, captainTeamIds = []) {
-  if (isAdmin || isTournamentCaptainMatch(match, captainTeamIds) || getMatchActorIds(match).includes(profileId)) return match;
+function sanitizeMatch(match = {}, profileId = "", isAdmin = false, userTeamIds = []) {
+  if (isAdmin || isUserTeamMatch(match, userTeamIds) || getMatchActorIds(match).includes(profileId)) return match;
   return {
     ...match,
     disputes: [],
@@ -99,15 +98,12 @@ function sanitizeUser(user = {}, profileId = "", isAdmin = false) {
 
 export function filterStateForProfile(state = {}, profileId = "", isAdmin = false) {
   const userTeamIds = getUserTeamIds(state.teams ?? [], profileId);
-  const captainTeamIds = (state.teams ?? [])
-    .filter((team) => (team.members ?? []).some((member) => member.userId === profileId && member.role === "captain"))
-    .map((team) => team.id);
   return {
     ...state,
     users: (state.users ?? []).map((user) => sanitizeUser(user, profileId, isAdmin)),
     matches: (state.matches ?? [])
-      .filter((match) => canReadMatch(match, profileId, isAdmin, captainTeamIds))
-      .map((match) => sanitizeMatch(match, profileId, isAdmin, captainTeamIds)),
+      .filter((match) => canReadMatch(match, profileId, isAdmin, userTeamIds))
+      .map((match) => sanitizeMatch(match, profileId, isAdmin, userTeamIds)),
     recruitingPosts: (state.recruitingPosts ?? []).filter((post) => canReadRecruitingPost(post, profileId, isAdmin)),
     tournaments: (state.tournaments ?? []).filter((tournament) => canReadTournament(tournament, profileId, userTeamIds, isAdmin)),
     reports: isAdmin

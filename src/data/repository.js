@@ -180,6 +180,7 @@ import { clearState, readState, writeState } from "../lib/storage.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNotificationDeliveries } from "../lib/discord.js";
 import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
+import { getBlockedUserIds, isNotificationFromBlockedUser } from "../lib/notifications.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
 import {
   getScheduledStartMs,
@@ -421,6 +422,20 @@ export function normalizeState(state, options = {}) {
   const recruitingPosts = normalizeRecruitingSchedules(
     includeDemo ? mergeDemoDefaultsById(state?.recruitingPosts, demoState.recruitingPosts ?? []) : state?.recruitingPosts ?? [],
   );
+  const currentUserId = state?.currentUserId ?? baseState.currentUserId ?? "";
+  const settings = normalizeSettings(state?.settings ?? (includeDemo ? demoState.settings : DEFAULT_SETTINGS), { includeDemo });
+  const blockedUserIds = getBlockedUserIds(settings);
+  const blockedUserIdSet = new Set(blockedUserIds);
+  const isBlockedIncomingInvitation = (invitation = {}) => (
+    invitation.targetUserId === currentUserId && blockedUserIdSet.has(invitation.fromUserId)
+  );
+  const visibleRecruitingPosts = recruitingPosts.map(normalizeRecruitingPost).map((post) => {
+    const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+    const invitations = roomState.invitations.filter((invitation) => !isBlockedIncomingInvitation(invitation));
+    return invitations.length === roomState.invitations.length
+      ? post
+      : { ...post, roomState: { ...roomState, invitations } };
+  });
 
   return {
     ...baseState,
@@ -430,19 +445,24 @@ export function normalizeState(state, options = {}) {
     teams: (includeDemo ? mergeDemoDefaultsById(state?.teams, demoState.teams) : state?.teams ?? [])
       .filter((team) => team && typeof team === "object" && !deletedTeamIds.has(team.id))
       .map(normalizeTeam),
-    teamInvitations: state?.teamInvitations ?? (includeDemo ? demoState.teamInvitations ?? [] : []),
+    teamInvitations: (state?.teamInvitations ?? (includeDemo ? demoState.teamInvitations ?? [] : []))
+      .filter((invitation) => !isBlockedIncomingInvitation(invitation)),
     affiliations: (includeDemo ? mergeDemoDefaultsById(state?.affiliations, demoState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
     seasons: includeDemo ? mergeDemoDefaultsById(state?.seasons, demoState.seasons ?? []) : state?.seasons ?? [],
     matches: (includeDemo ? mergeDemoDefaultsById(state?.matches, demoState.matches) : state?.matches ?? [])
       .map((match) => normalizeMatch(match, { preserveAuthoritativeLifecycle: preserveAuthoritativeMatches })),
     tournaments: (includeDemo ? mergeDemoDefaultsById(state?.tournaments, demoState.tournaments ?? []) : state?.tournaments ?? []).map(normalizeTournament),
-    notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
+    notifications: notifications
+      .map((notification) => ({ readAt: null, ...notification }))
+      .filter((notification) => !(
+        notification.targetUserId === currentUserId && isNotificationFromBlockedUser(notification, blockedUserIds)
+      )),
     discordNotificationDeliveries: state?.discordNotificationDeliveries ?? (includeDemo ? demoState.discordNotificationDeliveries ?? [] : []),
     discordNotificationSeenKeys: state?.discordNotificationSeenKeys ?? (includeDemo ? demoState.discordNotificationSeenKeys ?? [] : []),
     discordNotificationSeenUsers: state?.discordNotificationSeenUsers ?? (includeDemo ? demoState.discordNotificationSeenUsers ?? [] : []),
-    settings: normalizeSettings(state?.settings ?? (includeDemo ? demoState.settings : DEFAULT_SETTINGS), { includeDemo }),
+    settings,
     reports: state?.reports ?? (includeDemo ? demoState.reports ?? [] : []),
-    recruitingPosts: recruitingPosts.map(normalizeRecruitingPost),
+    recruitingPosts: visibleRecruitingPosts,
   };
 }
 
@@ -523,6 +543,12 @@ export async function loadNormalizedMatchDetailFromClient(client = supabase, aut
   }
 
   const matchFilter = (query) => query.eq("match_id", match.id);
+  const matchTeamIds = uniqueScopeIds([match.team_a_id, match.team_b_id]);
+  const ownTeamMemberships = currentUserId && matchTeamIds.length
+    ? await fetchOptionalFilteredRows("team_members", TEAM_MEMBER_COLUMNS, null, client, (query) => query
+      .eq("user_id", currentUserId)
+      .in("team_id", matchTeamIds))
+    : [];
   const [
     matchPlayers,
     matchResults,
@@ -541,6 +567,7 @@ export async function loadNormalizedMatchDetailFromClient(client = supabase, aut
 
   const canReadMatch = options.isAdmin === true ||
     (match.visibility ?? match.rules?.visibility ?? "public") !== "private" ||
+    ownTeamMemberships.length > 0 ||
     getMatchRowReaderIds(match, matchPlayers, matchResults, playerStats, agreements, approvals, disputes).includes(currentUserId);
   if (!canReadMatch) {
     const users = currentProfile ? [fromRemoteProfile(currentProfile)] : [];
@@ -5574,6 +5601,7 @@ export function createRecruitingPost(state, draft) {
         targetUserId: invitation.targetUserId,
         recruitingPostId: post.id,
         invitationId: invitation.id,
+        fromUserId: invitation.fromUserId,
       })),
       ...initialRefereeInvitations.map((invitation) => ({
         id: makeId("n"),
@@ -5583,6 +5611,7 @@ export function createRecruitingPost(state, draft) {
         targetUserId: invitation.targetUserId,
         recruitingPostId: post.id,
         invitationId: invitation.id,
+        fromUserId: invitation.fromUserId,
       })),
       {
         id: makeId("n"),
@@ -6890,6 +6919,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
         targetUserId: invitation.targetUserId,
         recruitingPostId: postId,
         invitationId: invitation.id,
+        fromUserId: invitation.fromUserId,
       })),
       {
         id: makeId("n"),
@@ -7006,6 +7036,7 @@ export function inviteRecruitingReferee(state, postId, refereeId) {
         targetUserId: refereeId,
         recruitingPostId: postId,
         invitationId: invitation.id,
+        fromUserId: invitation.fromUserId,
       },
       {
         id: makeId("n"),
@@ -8829,6 +8860,7 @@ export function inviteTeamMember(state, teamId, targetUserId, role = "regular") 
         teamId,
         teamInvitationId: invitation.id,
         targetUserId,
+        fromUserId: state.currentUserId,
         createdAt: now,
         updatedAt: now,
       },

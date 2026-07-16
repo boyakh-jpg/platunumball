@@ -1,5 +1,6 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
+import { getBlockedUserIds, getNotificationActorId } from "../../../src/lib/notifications.js";
 
 const MAX_DELIVERIES = 100;
 const ALLOWED_EVENTS = new Set(["match", "approval", "report"]);
@@ -59,6 +60,7 @@ function toDeliveryRow(delivery, profileId, discordUserId) {
     webPath: trimText(delivery.webPath, 500),
     webUrl: trimText(delivery.webUrl, 500),
     actions: normalizeActions(delivery.actions),
+    fromUserId: trimText(getNotificationActorId(delivery), 128),
     status: "queued",
     queuedAt,
     sendAt,
@@ -102,8 +104,10 @@ export default async function handler(request, response) {
       return;
     }
 
+    const blockedUserIdSet = new Set(getBlockedUserIds(profile.app_settings));
     const rows = normalizeDeliveries(body.deliveries)
       .filter((delivery) => isDiscordNotificationEnabled(profile.app_settings, ALLOWED_EVENTS.has(delivery.event) ? delivery.event : "match"))
+      .filter((delivery) => !blockedUserIdSet.has(getNotificationActorId(delivery)))
       .map((delivery) => toDeliveryRow(delivery, context.profileId, discordUserId))
       .filter(Boolean);
 

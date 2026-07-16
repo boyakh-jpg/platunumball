@@ -100,7 +100,28 @@ async function inviteTeamMember(context, body = {}) {
     p_role: isTeamInviteRole(role) ? role : "regular",
   });
   if (error) throw error;
-  return data ?? { ok: true };
+  const result = data ?? { ok: true };
+  const invitationId = result.invitationId || body.invitationId || "";
+  if (invitationId) {
+    const notificationId = `n_${invitationId}`;
+    const { data: notification, error: notificationReadError } = await context.supabase
+      .from("notifications")
+      .select("id,payload")
+      .eq("id", notificationId)
+      .maybeSingle();
+    if (notificationReadError) console.warn("Team invitation notification actor read failed.", notificationReadError.message);
+    if (notification) {
+      const { error: notificationUpdateError } = await context.supabase
+        .from("notifications")
+        .update({
+          payload: { ...(notification.payload ?? {}), fromUserId: context.profileId },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", notificationId);
+      if (notificationUpdateError) console.warn("Team invitation notification actor update failed.", notificationUpdateError.message);
+    }
+  }
+  return result;
 }
 
 async function respondTeamInvitation(context, body = {}) {

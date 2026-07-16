@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson, timeStep } from "../_supabaseAdmin.js";
+import { attachNotificationActors, getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson, timeStep } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
@@ -74,7 +74,7 @@ function getCappedRecruitingLimit(value) {
   return Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Math.floor(number)));
 }
 
-async function loadCurrentUserHomeNotifications(supabase, profileId = "") {
+async function loadCurrentUserHomeNotifications(supabase, profileId = "", blockedUserIds = []) {
   if (!profileId) return [];
   const { data, error } = await supabase
     .from("notifications")
@@ -84,9 +84,8 @@ async function loadCurrentUserHomeNotifications(supabase, profileId = "") {
     .order("created_at", { ascending: false })
     .limit(HOME_NOTIFICATION_QUERY_LIMIT);
   if (error) throw error;
-  return (data ?? [])
-    .map(fromRemoteNotification)
-    .filter((notification) => isNotificationVisibleToUser(notification, profileId))
+  return (await attachNotificationActors(supabase, (data ?? []).map(fromRemoteNotification)))
+    .filter((notification) => isNotificationVisibleToUser(notification, profileId, { blockedUserIds }))
     .slice(0, HOME_NOTIFICATION_LIMIT);
 }
 
@@ -132,7 +131,11 @@ export default async function handler(request, response) {
         includeFeedCounts,
         skipCardReferenceRows: true,
       })),
-      timeStep(debugTiming, "notificationsMs", () => loadCurrentUserHomeNotifications(context.supabase, context.profileId)),
+      timeStep(debugTiming, "notificationsMs", () => loadCurrentUserHomeNotifications(
+        context.supabase,
+        context.profileId,
+        context.profile?.app_settings?.blockedUserIds,
+      )),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;

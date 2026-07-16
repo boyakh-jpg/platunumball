@@ -1179,7 +1179,7 @@ export function useAppData(authUser = null, appLocation = null) {
   }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
-  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
+  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false });
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
@@ -1195,6 +1195,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const matchDetailPromiseRef = useRef(new Map());
   const matchPagePromiseRef = useRef(null);
   const matchRecruitingSchedulePromiseRef = useRef(null);
+  const matchTeamSchedulePromiseRef = useRef(null);
   const recruitingPagePromiseRef = useRef(null);
   const recorderMatchesPromiseRef = useRef(null);
   const profileRecordsPromiseRef = useRef(null);
@@ -1268,6 +1269,7 @@ export function useAppData(authUser = null, appLocation = null) {
       matchDetailPromiseRef.current = new Map();
       matchPagePromiseRef.current = null;
       matchRecruitingSchedulePromiseRef.current = null;
+      matchTeamSchedulePromiseRef.current = null;
       recruitingPagePromiseRef.current = null;
       recorderMatchesPromiseRef.current = null;
       profileRecordsPromiseRef.current = null;
@@ -1277,7 +1279,7 @@ export function useAppData(authUser = null, appLocation = null) {
       homeRouteLoadKeyRef.current = "";
       recruitingPostPromiseRef.current = new Map();
       setRemoteReady(!isSupabaseConfigured);
-      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
+      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false });
       setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       setProfileRecordsLoaded(false);
@@ -1293,6 +1295,7 @@ export function useAppData(authUser = null, appLocation = null) {
     matchDetailPromiseRef.current = new Map();
     matchPagePromiseRef.current = null;
     matchRecruitingSchedulePromiseRef.current = null;
+    matchTeamSchedulePromiseRef.current = null;
     recruitingPagePromiseRef.current = null;
     recorderMatchesPromiseRef.current = null;
     profileRecordsPromiseRef.current = null;
@@ -1335,6 +1338,8 @@ export function useAppData(authUser = null, appLocation = null) {
             recruitingScheduleChecked,
             recruitingScheduleLoading: false,
             recruitingSchedulePostIds: recruitingScheduleChecked ? getStateRecruitingPostIds(maintainedState) : [],
+            teamScheduleChecked: false,
+            teamScheduleLoading: false,
           });
           setRecruitingPagination({
             loading: false,
@@ -1359,7 +1364,7 @@ export function useAppData(authUser = null, appLocation = null) {
       .catch((error) => {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
-        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
+        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false });
         setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
@@ -1852,6 +1857,51 @@ export function useAppData(authUser = null, appLocation = null) {
     matchRecruitingSchedulePromiseRef.current = promise;
     return promise;
   }, [authEmail, authUserId, matchPagination.recruitingScheduleLoading, setState, trackedPostServerAction]);
+
+  const loadMatchTeamSchedule = useCallback(async (options = {}) => {
+    if (!isSupabaseConfigured || !authUserId) return false;
+    const force = options?.force === true;
+    if (matchTeamSchedulePromiseRef.current && !force) return matchTeamSchedulePromiseRef.current;
+    if ((matchPagination.teamScheduleChecked || matchPagination.teamScheduleLoading) && !force) return true;
+    const promise = (async () => {
+      setMatchPagination((prev) => ({ ...prev, teamScheduleLoading: true, error: "" }));
+      try {
+        const result = await trackedPostServerAction(
+          "/api/matches/list",
+          {
+            authUserId,
+            authEmail,
+            limit: REMOTE_CLIENT_MATCH_LIMIT,
+            listOnly: true,
+            activeOnly: true,
+            includeRecentCompleted: false,
+            includeRecruitingSchedule: false,
+            includeTeamSchedule: true,
+            adminContext: false,
+          },
+          { allowWhenDisabled: true },
+        );
+        const remoteState = normalizeServerState(result?.state ?? {});
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        setMatchPagination((prev) => ({
+          ...prev,
+          teamScheduleLoading: false,
+          teamScheduleChecked: true,
+          error: "",
+          cursor: prev.cursor || result?.page?.cursor || getMatchPaginationCursor(remoteState.matches ?? []),
+        }));
+        return (remoteState.matches ?? []).filter((match) => match.__feedRelations?.includes("team")).length;
+      } catch (error) {
+        console.warn("Match team schedule load failed.", error.message);
+        setMatchPagination((prev) => ({ ...prev, teamScheduleLoading: false, teamScheduleChecked: true, error: error.message ?? "match_team_schedule_load_failed" }));
+        return false;
+      }
+    })().finally(() => {
+      if (matchTeamSchedulePromiseRef.current === promise) matchTeamSchedulePromiseRef.current = null;
+    });
+    matchTeamSchedulePromiseRef.current = promise;
+    return promise;
+  }, [authEmail, authUserId, matchPagination.teamScheduleChecked, matchPagination.teamScheduleLoading, setState, trackedPostServerAction]);
 
   const loadMatchDetail = useCallback(async (matchId) => {
     if (!isSupabaseConfigured || !authUserId || !matchId) return false;
@@ -2372,6 +2422,7 @@ export function useAppData(authUser = null, appLocation = null) {
       return ({
         loadMatchDetail,
         loadMatchRecruitingSchedule,
+        loadMatchTeamSchedule,
         refreshCurrentProfile,
         loadDirectory,
         loadAdminContext,
@@ -2614,8 +2665,30 @@ export function useAppData(authUser = null, appLocation = null) {
           { theme: nextTheme },
         ).then((result) => Boolean(result && result.ok !== false));
       },
-      blockUser: (userId) => setState((prev) => blockUser({ ...prev, currentUserId }, userId)),
-      unblockUser: (userId) => setState((prev) => unblockUser({ ...prev, currentUserId }, userId)),
+      blockUser: (userId) => {
+        let rollbackState = null;
+        let blockedUserIds = [];
+        setState((prev) => {
+          rollbackState = prev;
+          const next = blockUser({ ...prev, currentUserId }, userId);
+          blockedUserIds = next.settings?.blockedUserIds ?? [];
+          return next;
+        });
+        if (!isSupabaseConfigured) return Promise.resolve(true);
+        return rollbackIfServerFailed(syncSettingsServer({ blockedUserIds }), rollbackState, "차단 저장", { blockedUserIds });
+      },
+      unblockUser: (userId) => {
+        let rollbackState = null;
+        let blockedUserIds = [];
+        setState((prev) => {
+          rollbackState = prev;
+          const next = unblockUser({ ...prev, currentUserId }, userId);
+          blockedUserIds = next.settings?.blockedUserIds ?? [];
+          return next;
+        });
+        if (!isSupabaseConfigured) return Promise.resolve(true);
+        return rollbackIfServerFailed(syncSettingsServer({ blockedUserIds }), rollbackState, "차단 해제 저장", { blockedUserIds });
+      },
       reportMatch: (matchId, reason, reportedUserIds) => {
         let createdReport = null;
         let syncedNotifications = [];
@@ -3135,7 +3208,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

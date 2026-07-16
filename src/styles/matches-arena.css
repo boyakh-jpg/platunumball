@@ -186,7 +186,7 @@
   display: grid;
   grid-template-columns: minmax(190px, 0.36fr) minmax(0, 0.64fr);
   gap: 10px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .om-calendar-summary,
@@ -5156,6 +5156,16 @@ html[data-theme="light"] .om-calendar-filter-bar {
   color: var(--ui-button-color-active);
 }
 
+@media (min-width: 721px) {
+  .om-calendar-filter-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .om-calendar-summary {
+    padding: 12px;
+  }
+}
+
 @media (max-width: 720px) {
   .om-calendar-filter-row .segmented-control button {
     min-height: 42px;
@@ -5186,11 +5196,19 @@ html[data-theme="light"] .om-calendar-summary {
 .om-score-box > .team-hover-trigger {
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   overflow-wrap: anywhere;
   text-align: center;
-  text-overflow: ellipsis;
-  word-break: keep-all;
+  text-overflow: clip;
+  word-break: normal;
+}
+
+.om-summary-side .team-hover-trigger {
+  display: -webkit-box;
+  line-height: 1.02;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 @media (min-width: 761px) {

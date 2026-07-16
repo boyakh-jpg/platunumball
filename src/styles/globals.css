@@ -3475,6 +3475,12 @@ input[type="color"] {
   gap: 12px;
 }
 
+.landing-primary-actions {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+}
+
 .landing-actions .landing-create-action {
   display: inline-flex;
   width: 168px;
@@ -12765,6 +12771,12 @@ button {
     justify-self: start;
     grid-column: 2;
   }
+
+  .landing-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
 }
 
 html[data-theme="light"] body,
@@ -14059,8 +14071,8 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 
 .hover-portal-card.touch-open .hover-card-close {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 12px;
+  right: 14px;
   z-index: 2;
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
@@ -14070,7 +14082,13 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .hover-portal-card.touch-open .team-hover-head,
 .hover-portal-card.touch-open .court-hover-head,
 .hover-portal-card.touch-open .referee-hover-head {
-  padding-right: calc(var(--ui-icon-button-size) + 8px);
+  padding-right: calc(var(--ui-icon-button-size) + 14px);
+}
+
+.hover-portal-card.touch-open {
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .hover-portal-card.touch-open .hover-card-action {

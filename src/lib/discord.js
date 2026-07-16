@@ -1,4 +1,4 @@
-import { isNotificationDue } from "./notifications.js";
+import { getNotificationActorId, isNotificationDue } from "./notifications.js";
 
 export const DISCORD_NOTIFICATION_EVENTS = [
   { id: "match", label: "초대/경기" },
@@ -258,6 +258,7 @@ export function syncDiscordNotificationDeliveries(state = {}) {
         webPath: getNotificationWebPath(notification),
         webUrl: getNotificationWebUrl(notification),
         actions: getDiscordNotificationActions(notification),
+        fromUserId: getNotificationActorId(notification),
         status: "queued",
         queuedAt: now,
       };

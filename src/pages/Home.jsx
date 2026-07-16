@@ -821,6 +821,9 @@ export default function Home({ app }) {
                 </PlayerHoverCard>
               ))}
             </div>
+            <Link to="/app/rankings">
+              <Button variant="secondary" className="wide-button"><Trophy size={17} /> 전체 랭크보드</Button>
+            </Link>
           </Card>
 
           <Card className="section-card season-mini-card">

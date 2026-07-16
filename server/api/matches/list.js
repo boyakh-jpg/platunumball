@@ -505,6 +505,31 @@ async function fetchCaptainTournamentMatchRows(client, profileId = "", limit = R
   return mergeMatchRowsById(teamARows.data ?? [], teamBRows.data ?? []).slice(0, queryLimit);
 }
 
+async function fetchMemberTeamMatchRows(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+  if (!profileId) return [];
+  const { data: memberRows, error: memberError } = await client
+    .from("team_members")
+    .select("team_id")
+    .eq("user_id", profileId)
+    .limit(20);
+  if (memberError) throw memberError;
+  const teamIds = unique((memberRows ?? []).map((row) => row.team_id));
+  if (!teamIds.length) return [];
+
+  const queryLimit = Math.max(1, Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const getTeamRows = (column) => client
+    .from("matches")
+    .select(MATCH_LIST_COLUMNS)
+    .in(column, teamIds)
+    .not("status", "in", "(confirmed,closed,cancelled,void)")
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .limit(queryLimit);
+  const [teamARows, teamBRows] = await Promise.all([getTeamRows("team_a_id"), getTeamRows("team_b_id")]);
+  if (teamARows.error) throw teamARows.error;
+  if (teamBRows.error) throw teamBRows.error;
+  return mergeMatchRowsById(teamARows.data ?? [], teamBRows.data ?? []).slice(0, queryLimit);
+}
+
 async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, includeJsonActors = false) {
   if (!profileId) return [];
   const candidateLimit = Math.max(
@@ -943,6 +968,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const recorderOnly = body.recorderOnly === true;
   const completedSince = completedOnly ? getCompletedSince(body) : "";
   const activeOnly = body.activeOnly === true || recorderOnly;
+  const includeTeamSchedule = body.includeTeamSchedule === true;
   const shouldLoadRecentCompleted = !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
   const recentCompletedHours = shouldLoadRecentCompleted ? getRecentCompletedHours(body) : RECENT_COMPLETED_MATCH_HOURS;
   const shouldLoadClosedNotices = body.includeClosedNotices !== false && !recorderOnly && !completedOnly && activeOnly && !cursor;
@@ -962,7 +988,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
-  const [baseFeedPage, recentCompletedPage, closedNoticePage, captainTournamentRows, relatedTournamentState] = await Promise.all([
+  const [baseFeedPage, recentCompletedPage, closedNoticePage, captainTournamentRows, memberTeamRows, relatedTournamentState] = await Promise.all([
     recorderOnly
       ? Promise.resolve(null)
       : completedOnly
@@ -974,14 +1000,18 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     shouldLoadClosedNotices
       ? timeStep(debugTiming, "closedNoticeMs", () => fetchClosedNoticeMatchFeedPage(context.supabase, context.profileId))
       : Promise.resolve(null),
-    !cursor && !completedOnly && !recorderOnly
+    includeTeamSchedule && !cursor && !completedOnly && !recorderOnly
       ? timeStep(debugTiming, "captainTournamentMatchesMs", () => fetchCaptainTournamentMatchRows(context.supabase, context.profileId, limit))
+      : Promise.resolve([]),
+    includeTeamSchedule && !cursor && !completedOnly && !recorderOnly
+      ? timeStep(debugTiming, "memberTeamMatchesMs", () => fetchMemberTeamMatchRows(context.supabase, context.profileId, limit))
       : Promise.resolve([]),
     !cursor && !completedOnly && !recorderOnly
       ? timeStep(debugTiming, "relatedTournamentsMs", () => loadCurrentUserTournamentIndex(context.supabase, context.profileId))
       : Promise.resolve({ users: [], teams: [], tournaments: [] }),
   ]);
   const captainTournamentMatchIds = new Set((captainTournamentRows ?? []).map((row) => row.id).filter(Boolean));
+  const memberTeamMatchIds = new Set((memberTeamRows ?? []).map((row) => row.id).filter(Boolean));
   const feedPage = mergeMatchFeedPages(mergeMatchFeedPages(baseFeedPage, recentCompletedPage), closedNoticePage);
   let pageSource = "feed";
   let pageCursor = feedPage?.cursor ?? "";
@@ -1031,6 +1061,10 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   }
   if (captainTournamentRows?.length) {
     matchRows = mergeMatchRowsById(matchRows, captainTournamentRows);
+    pageSource = appendRowFallbackSource(pageSource);
+  }
+  if (memberTeamRows?.length) {
+    matchRows = mergeMatchRowsById(matchRows, memberTeamRows);
     pageSource = appendRowFallbackSource(pageSource);
   }
 
@@ -1125,6 +1159,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const playersByMatch = groupBy(playerRows ?? [], "match_id");
   const readableRows = (matchRows ?? []).filter((row) => (
     captainTournamentMatchIds.has(row.id) ||
+    memberTeamMatchIds.has(row.id) ||
     canReadMatchRow(row, playersByMatch.get(row.id) ?? [], context.profileId ?? "", adminLevel >= 30)
   ));
   const teamIds = unique(readableRows.flatMap((row) => [row.team_a_id, row.team_b_id]));
@@ -1170,8 +1205,12 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const rowMatches = readableRows
     .map((row) => {
       const match = toClientMatch(row, playersByMatch, teamById, courtById, resultsByMatch, statsByMatch);
-      if (!captainTournamentMatchIds.has(row.id)) return match;
-      return { ...match, __feedRelations: unique([...(match.__feedRelations ?? []), "tournament_captain"]) };
+      const relations = [
+        ...(match.__feedRelations ?? []),
+        ...(captainTournamentMatchIds.has(row.id) ? ["tournament_captain"] : []),
+        ...(memberTeamMatchIds.has(row.id) ? ["team"] : []),
+      ];
+      return relations.length ? { ...match, __feedRelations: unique(relations) } : match;
     })
     .filter((match) => filterMatchItems([match]).length > 0);
   const countedMatches = matches.length

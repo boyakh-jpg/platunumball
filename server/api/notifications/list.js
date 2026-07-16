@@ -1,6 +1,6 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { attachNotificationActors, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
-import { NOTIFICATION_COLUMNS } from "../../../src/data/repositoryColumns.js";
+import { NOTIFICATION_COLUMNS, PROFILE_ME_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
 
 const DEFAULT_NOTIFICATION_LIMIT = 80;
@@ -21,7 +21,7 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request);
+    const context = await getAuthenticatedContext(request, { profileSelect: PROFILE_ME_COLUMNS });
     const { data, error } = await context.supabase
       .from("notifications")
       .select(NOTIFICATION_COLUMNS)
@@ -30,9 +30,10 @@ export default async function handler(request, response) {
       .limit(getNotificationLimit(body.limit));
     if (error) throw error;
 
-    const notifications = (data ?? [])
-      .map(fromRemoteNotification)
-      .filter((notification) => isNotificationVisibleToUser(notification, context.profileId));
+    const notifications = (await attachNotificationActors(context.supabase, (data ?? []).map(fromRemoteNotification)))
+      .filter((notification) => isNotificationVisibleToUser(notification, context.profileId, {
+        blockedUserIds: context.profile?.app_settings?.blockedUserIds,
+      }));
 
     sendJson(response, 200, { ok: true, notifications });
   } catch (error) {

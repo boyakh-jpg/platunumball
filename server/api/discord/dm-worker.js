@@ -1,6 +1,9 @@
-import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { attachNotificationActors, getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { runSystemMaintenance } from "../system/maintenance.js";
 import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
+import { getBlockedUserIds, getNotificationActorId } from "../../../src/lib/notifications.js";
+import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
+import { NOTIFICATION_COLUMNS } from "../../../src/data/repositoryColumns.js";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const MAX_BATCH_SIZE = 25;
@@ -298,27 +301,40 @@ export default async function handler(request, response) {
 
     if (claimError) throw claimError;
 
-    const targetUserIds = [...new Set((claimedRows ?? []).map((row) => row.target_user_id).filter(Boolean))];
+    const notificationIds = [...new Set((claimedRows ?? []).map((row) => row.notification_id).filter(Boolean))];
+    const { data: notificationRows, error: notificationError } = notificationIds.length
+      ? await supabase.from("notifications").select(NOTIFICATION_COLUMNS).in("id", notificationIds)
+      : { data: [], error: null };
+    if (notificationError) throw notificationError;
+    const notificationsWithActors = await attachNotificationActors(supabase, (notificationRows ?? []).map(fromRemoteNotification));
+    const actorByNotificationId = new Map(notificationsWithActors.map((notification) => [notification.id, getNotificationActorId(notification)]));
+    const claimedRowsWithActors = (claimedRows ?? []).map((delivery) => {
+      const fromUserId = getNotificationActorId(delivery) || actorByNotificationId.get(delivery.notification_id) || "";
+      return fromUserId ? { ...delivery, payload: { ...(delivery.payload ?? {}), fromUserId } } : delivery;
+    });
+
+    const targetUserIds = [...new Set(claimedRowsWithActors.map((row) => row.target_user_id).filter(Boolean))];
     const { data: profileRows, error: profileError } = targetUserIds.length
       ? await supabase.from("profiles").select("id,app_settings").in("id", targetUserIds)
       : { data: [], error: null };
     if (profileError) throw profileError;
     const settingsByProfileId = new Map((profileRows ?? []).map((profile) => [profile.id, profile.app_settings]));
-    const optedOutRows = (claimedRows ?? []).filter((delivery) => (
-      !isDiscordNotificationEnabled(settingsByProfileId.get(delivery.target_user_id), delivery.event)
+    const optedOutRows = claimedRowsWithActors.filter((delivery) => (
+      !isDiscordNotificationEnabled(settingsByProfileId.get(delivery.target_user_id), delivery.event) ||
+      new Set(getBlockedUserIds(settingsByProfileId.get(delivery.target_user_id))).has(getNotificationActorId(delivery))
     ));
     if (optedOutRows.length) {
       const optedOutAt = new Date().toISOString();
       const { error: optOutError } = await supabase
         .from("discord_notification_deliveries")
-        .update({ status: "cancelled", last_error: "discord_notification_disabled", updated_at: optedOutAt })
+        .update({ status: "cancelled", last_error: "discord_notification_disabled_or_blocked", updated_at: optedOutAt })
         .in("id", optedOutRows.map((delivery) => delivery.id))
         .eq("status", "sending")
         .is("sent_at", null);
       if (optOutError) throw optOutError;
     }
     const optedOutIds = new Set(optedOutRows.map((delivery) => delivery.id));
-    const sendableRows = (claimedRows ?? []).filter((delivery) => !optedOutIds.has(delivery.id));
+    const sendableRows = claimedRowsWithActors.filter((delivery) => !optedOutIds.has(delivery.id));
 
     const sent = [];
     const failed = [];
