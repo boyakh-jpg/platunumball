@@ -10,7 +10,6 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchRoomPhase } from "../lib/matchUtils.js";
-import { getRepresentativeTeam } from "../lib/profileSetup.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/matches-arena.css";
 
@@ -72,8 +71,19 @@ function isTournamentForfeitAvailable(match) {
 
 function getTournamentMatches(tournament, matchesById, matches = []) {
   const fromIds = (tournament.matchIds ?? []).map((matchId) => matchesById[matchId]).filter(Boolean);
-  const source = fromIds.length ? fromIds : matches.filter((match) => match.tournamentId === tournament.id);
+  const tournamentMatches = matches.filter((match) => match.tournamentId === tournament.id);
+  const source = [...new Map([...fromIds, ...tournamentMatches].map((match) => [match.id, match])).values()];
   return [...source].sort((a, b) => (a.tournamentRound ?? 0) - (b.tournamentRound ?? 0) || (a.tournamentFixture ?? 0) - (b.tournamentFixture ?? 0));
+}
+
+function getMatchFinalScore(match) {
+  const losingSide = match?.rules?.forfeit?.losingSide || match?.forfeitSide || "";
+  if (losingSide === "teamA") return { scoreA: 0, scoreB: 1 };
+  if (losingSide === "teamB") return { scoreA: 1, scoreB: 0 };
+
+  const scoreA = Number(match?.result?.scoreA ?? match?.scoreA ?? match?.score_a ?? match?.teamA?.score);
+  const scoreB = Number(match?.result?.scoreB ?? match?.scoreB ?? match?.score_b ?? match?.teamB?.score);
+  return Number.isFinite(scoreA) && Number.isFinite(scoreB) ? { scoreA, scoreB } : null;
 }
 
 function getWinnerName(match) {
@@ -83,24 +93,26 @@ function getWinnerName(match) {
 }
 
 function getMatchWinnerTeamId(match) {
-  if (!match?.result) return "";
-  const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? 0);
-  const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
+  const hasForfeit = Boolean(match?.rules?.forfeit?.losingSide || match?.forfeitSide);
+  const hasFinalState = ["confirmed", "closed"].includes(match?.status) || Boolean(match?.confirmedAt);
+  const hasStoredScore = match?.scoreA != null || match?.scoreB != null || match?.score_a != null || match?.score_b != null;
+  if (!match || (!match.result && !hasForfeit && !hasFinalState && !hasStoredScore)) return "";
+  const score = getMatchFinalScore(match);
+  if (!score) return "";
+  const { scoreA, scoreB } = score;
   if (scoreA === scoreB) return "";
-  return scoreA > scoreB ? match.teamA?.teamId ?? "" : match.teamB?.teamId ?? "";
+  return scoreA > scoreB ? match.teamA?.teamId ?? match.teamAId ?? "" : match.teamB?.teamId ?? match.teamBId ?? "";
 }
 
 function getLeagueMatchResult(match) {
-  const hasForfeit = Boolean(match?.forfeitSide || match?.rules?.forfeit?.losingSide);
+  const hasForfeit = Boolean(match?.rules?.forfeit?.losingSide || match?.forfeitSide);
   const hasFinalState = ["confirmed", "closed"].includes(match?.status) || Boolean(match?.confirmedAt);
   if (!match || (!match.result && !hasForfeit && !hasFinalState)) return null;
-  const losingSide = match.forfeitSide || match.rules?.forfeit?.losingSide || "";
-  const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? match.scoreA ?? (losingSide === "teamA" ? 0 : losingSide === "teamB" ? 1 : undefined));
-  const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? match.scoreB ?? (losingSide === "teamB" ? 0 : losingSide === "teamA" ? 1 : undefined));
+  const score = getMatchFinalScore(match);
   const teamAId = match.teamA?.teamId ?? match.teamAId ?? "";
   const teamBId = match.teamB?.teamId ?? match.teamBId ?? "";
-  if (!teamAId || !teamBId || !Number.isFinite(scoreA) || !Number.isFinite(scoreB)) return null;
-  return { teamAId, teamBId, scoreA, scoreB };
+  if (!teamAId || !teamBId || !score) return null;
+  return { teamAId, teamBId, ...score };
 }
 
 function getLeagueFixtureState(match, matchId = "") {
@@ -427,7 +439,7 @@ export default function TournamentDetail({ app }) {
 
   const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
   const representativeTeamId = app.state.settings?.representativeTeamId ?? app.currentUser.representativeTeamId ?? "";
-  const representativeTeam = getRepresentativeTeam(app.currentUser.id, app.state.teams, representativeTeamId);
+  const representativeTeam = teamById[representativeTeamId] ?? null;
   const teamRows = (tournament.teamIds ?? [])
     .map((teamId) => {
       const team = teamById[teamId];
@@ -490,7 +502,10 @@ export default function TournamentDetail({ app }) {
     const scheduledTime = String(form.get("scheduledTime") ?? "");
     const courtId = String(form.get("courtId") ?? "");
     const court = tournamentCourts.find((item) => item.id === courtId);
-    if (!scheduledDate || !scheduledTime || !court) return;
+    if (!scheduledDate || !scheduledTime || !court) {
+      setScheduleDialog({ mode: "notice", matchId, message: "경기 날짜, 시간, 구장을 모두 선택해야 합니다." });
+      return;
+    }
     setScheduleDialog({ mode: "confirm", matchId, scheduledDate, scheduledTime, courtId, courtName: court.name });
   };
   const formatScheduleError = (message = "") => {
@@ -812,12 +827,14 @@ export default function TournamentDetail({ app }) {
       {scheduleDialog ? (
         <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !savingScheduleId && setScheduleDialog(null)}>
           <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="대회 경기 일정 저장" onMouseDown={(event) => event.stopPropagation()}>
-            <strong>{scheduleDialog.mode === "confirm" ? "경기 일정을 저장할까요?" : scheduleDialog.mode === "success" ? "일정을 저장했습니다." : "일정을 저장하지 못했습니다."}</strong>
+            <strong>{scheduleDialog.mode === "confirm" ? "경기 일정을 저장할까요?" : scheduleDialog.mode === "success" ? "일정을 저장했습니다." : scheduleDialog.mode === "notice" ? "일정 정보를 확인해 주세요." : "일정을 저장하지 못했습니다."}</strong>
             <p>
               {scheduleDialog.mode === "confirm"
                 ? `${dialogMatch?.teamA?.name ?? "A"} vs ${dialogMatch?.teamB?.name ?? "B"} · ${scheduleDialog.scheduledDate} ${scheduleDialog.scheduledTime} · ${scheduleDialog.courtName}`
                 : scheduleDialog.mode === "success"
                   ? "양 팀장에게 출전·후보 명단 구성 알림을 보냈습니다."
+                  : scheduleDialog.mode === "notice"
+                    ? scheduleDialog.message
                   : `서버 저장 실패: ${scheduleDialog.message}`}
             </p>
             <div className="app-confirm-actions">
