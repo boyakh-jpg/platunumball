@@ -13,6 +13,7 @@ import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
+import { MatchRoomModal } from "./Matches.jsx";
 
 function getTeamSide(match, teamId) {
   if (match.teamA?.teamId === teamId) return "teamA";
@@ -56,6 +57,7 @@ export default function TeamDetail({ app }) {
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
   const [memberQuery, setMemberQuery] = useState("");
   const [selectedInviteProfile, setSelectedInviteProfile] = useState(null);
+  const [selectedHistoryMatchId, setSelectedHistoryMatchId] = useState("");
   const [deleteArmed, setDeleteArmed] = useState(false);
   const captain = team?.members.find((member) => member.role === "captain");
   const canManage = captain?.userId === app.currentUser.id;
@@ -290,7 +292,15 @@ export default function TeamDetail({ app }) {
                 return (
                   <article key={match.id} className="history-item">
                     <div>
-                      <Link to={`/app/matches?match=${match.id}`}><strong>{match.title}</strong></Link>
+                      <Link
+                        to={`/app/matches?match=${match.id}`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setSelectedHistoryMatchId(match.id);
+                        }}
+                      >
+                        <strong>{match.title}</strong>
+                      </Link>
                       <span>{match.court} · {match.scheduledAt}</span>
                     </div>
                     <div className="history-score">
@@ -452,6 +462,14 @@ export default function TeamDetail({ app }) {
           {renderMembers("용병 기록", reserveMembers)}
         </aside>
       </div>
+      {selectedHistoryMatchId ? (
+        <MatchRoomModal
+          app={app}
+          matchId={selectedHistoryMatchId}
+          onClose={() => setSelectedHistoryMatchId("")}
+          entryPoint="team-history"
+        />
+      ) : null}
     </div>
   );
 }

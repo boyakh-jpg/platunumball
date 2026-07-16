@@ -314,6 +314,7 @@
 - 실제 `team_a_id/team_b_id`가 있는 팀 경기는 DB 팀명이 우선이고, 없는 개인기록만 `Team A/Team B` 대신 recordSummary 이름을 쓴다.
 - `/app/profile/records`처럼 사용자가 명시적으로 연 기록 화면은 feed card가 있어도 match row를 함께 읽어 `recordSummary`와 상세 기록 필드를 보정한다.
 - `/app/profile`과 `/app/profile/records`의 개인기록 행은 현재 화면 위에서 기존 경기 방모달을 열고, 배경 페이지를 `/app/matches`로 강제 이동하지 않는다.
+- `/app/teams/:teamId`의 팀 히스토리 행도 현재 팀 상세 화면 위에서 기존 경기 방모달을 열고, 닫을 때 `/app/matches`로 강제 이동하지 않는다.
 - 이때 feed card의 `result`/스탯은 row 보정으로 지우지 않고 유지한다.
 - 방모달은 `anonymousPlayers`가 비었거나 늦게 도착해도 `rules.recordSummary.teamAPlayers/teamBPlayers` 순서로 개인기록 선수명을 표시한다.
 - 경기 방모달은 명시적 상세 열람이므로 list card가 이미 있어도 해당 `matchId` 상세 API를 한 번 로드해 세부 필드를 보정한다.
