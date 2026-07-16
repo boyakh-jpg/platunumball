@@ -5818,6 +5818,19 @@ export function interestRecruitingPost(state, postId, application = {}) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const side = ["teamA", "teamB"].includes(application.side) ? application.side : getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
+  const occupiedSideTeamId = applicantKind === "team" ? getLobbyPrimaryTeamId(lobby, side) : null;
+  if (teamOnly && occupiedSideTeamId && occupiedSideTeamId !== team?.id) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "팀 참가 마감",
+        body: `${SIDE_LABEL_TEXT[side]}에는 이미 다른 팀이 확정됐습니다.`,
+        tone: "team",
+        recruitingPostId: postId,
+      }, ...state.notifications],
+    };
+  }
   const reserveRequested = Boolean(application.reserve);
   const sideState = lobby.sides[side];
   const teamSelectionCapacity = applicantKind === "team"

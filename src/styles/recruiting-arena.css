@@ -717,22 +717,15 @@
 
 .arena-compose-backdrop.arena-room-backdrop,
 .arena-modal-backdrop.arena-room-backdrop {
-  inset: 0;
-  width: auto;
-  max-width: none;
+  inset: 0 auto 0 0;
+  width: 100dvw;
+  max-width: 100dvw;
   margin: 0;
   background: rgba(0, 0, 0, var(--sheet-backdrop-opacity, 0.82));
 }
 
 .arena-room-backdrop::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  right: -32px;
-  bottom: 0;
-  width: 32px;
-  background: rgba(0, 0, 0, var(--sheet-backdrop-opacity, 0.82));
-  pointer-events: none;
+  content: none;
 }
 
 .arena-room-modal {

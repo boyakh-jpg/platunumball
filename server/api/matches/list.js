@@ -471,6 +471,28 @@ async function fetchJsonActorMatchIds(client, profileId = "", limit = REMOTE_CLI
   return unique(results.flatMap((result) => (result.data ?? []).map((row) => row.id)));
 }
 
+async function fetchDirectActorMatchRows(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+  if (!profileId) return [];
+  const candidateLimit = Math.max(
+    MATCH_CANDIDATE_MIN_LIMIT,
+    Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit || REMOTE_CLIENT_MATCH_LIMIT) * MATCH_CANDIDATE_LIMIT_FACTOR),
+  );
+  const [jsonActorMatchIds, { data: playerRows, error: playerError }] = await Promise.all([
+    fetchJsonActorMatchIds(client, profileId, limit),
+    client
+      .from("match_players")
+      .select("match_id")
+      .eq("user_id", profileId)
+      .limit(candidateLimit),
+  ]);
+  if (playerError) throw playerError;
+  const matchIds = unique([
+    ...jsonActorMatchIds,
+    ...(playerRows ?? []).map((row) => row.match_id),
+  ]);
+  return fetchMatchRowsByIds(client, matchIds);
+}
+
 async function fetchCaptainTournamentMatchRows(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
   if (!profileId) return [];
   const { data: memberRows, error: memberError } = await client
@@ -988,7 +1010,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
-  const [baseFeedPage, recentCompletedPage, closedNoticePage, captainTournamentRows, memberTeamRows, relatedTournamentState] = await Promise.all([
+  const [baseFeedPage, recentCompletedPage, closedNoticePage, captainTournamentRows, memberTeamRows, directActorRows, relatedTournamentState] = await Promise.all([
     recorderOnly
       ? Promise.resolve(null)
       : completedOnly
@@ -1005,6 +1027,9 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       : Promise.resolve([]),
     includeTeamSchedule && !cursor && !completedOnly && !recorderOnly
       ? timeStep(debugTiming, "memberTeamMatchesMs", () => fetchMemberTeamMatchRows(context.supabase, context.profileId, limit))
+      : Promise.resolve([]),
+    activeOnly && !cursor && !completedOnly && !recorderOnly
+      ? timeStep(debugTiming, "directActorMatchesMs", () => fetchDirectActorMatchRows(context.supabase, context.profileId, limit))
       : Promise.resolve([]),
     !cursor && !completedOnly && !recorderOnly
       ? timeStep(debugTiming, "relatedTournamentsMs", () => loadCurrentUserTournamentIndex(context.supabase, context.profileId))
@@ -1065,6 +1090,10 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   }
   if (memberTeamRows?.length) {
     matchRows = mergeMatchRowsById(matchRows, memberTeamRows);
+    pageSource = appendRowFallbackSource(pageSource);
+  }
+  if (directActorRows?.length) {
+    matchRows = mergeMatchRowsById(matchRows, directActorRows);
     pageSource = appendRowFallbackSource(pageSource);
   }
 

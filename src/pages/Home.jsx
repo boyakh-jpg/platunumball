@@ -55,6 +55,14 @@ function isHomeUpcomingScheduleItem(item = {}, todayValue, maxScheduleDate) {
   return Boolean(itemDate && itemDate >= todayValue && itemDate <= maxScheduleDate);
 }
 
+function isHomeActionableMatchSchedule(match = {}, todayValue = "") {
+  const phase = getMatchRoomPhase(match).phase;
+  if (["postgame", "dispute"].includes(phase)) return true;
+  if (isInstantScheduleItem(match)) return !getPublicRoomTimingStatus(match).expired;
+  const matchDate = getScheduleDate(match);
+  return !matchDate || matchDate >= todayValue;
+}
+
 function isHomeUserMatch(match = {}, userId = "") {
   if (isSeedSampleMatch(match)) return false;
   if (match.tournamentId) return isTournamentMatchInUserSchedule(match, userId);
@@ -282,6 +290,7 @@ export default function Home({ app }) {
       }));
     const matchItems = app.state.matches
       .filter((match) => isHomeUserMatch(match, user.id))
+      .filter((match) => isHomeActionableMatchSchedule(match, todayValue))
       .map((match) => {
         const phase = getMatchRoomPhase(match).phase;
         if (userNeedsMatchAgreement(match, user.id)) {

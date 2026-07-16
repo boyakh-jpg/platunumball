@@ -376,14 +376,14 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
 }
 
 function getEntryMmr(entry) {
-  return isPartyEntry(entry)
+  return isRecruitingTeamEntry(entry)
     ? entry.team?.mmr ?? entry.user?.ratings?.integrated ?? 1200
     : entry.user?.ratings?.integrated ?? 1200;
 }
 
 function getLobbySideMeta(lobby, sideName, userById, { useSideName = false } = {}) {
   const side = lobby.sides[sideName];
-  const teamEntry = side.entries.find((entry) => isPartyEntry(entry) && entry.team);
+  const teamEntry = side.entries.find((entry) => isRecruitingTeamEntry(entry) && entry.team);
   const leadEntry = teamEntry ?? side.entries[0] ?? null;
   const playerMmrs = side.projectedPlayers
     .map((playerId) => userById[playerId]?.ratings?.integrated)
@@ -1115,7 +1115,7 @@ function SideRoster({
   const openSlots = Math.max(0, side.capacity - side.projectedFilled);
   const renderActiveSlot = ({ entry, playerId, user }) => {
     const partyEntry = isPartyEntry(entry);
-    const partyLabel = partyEntry && entry.team ? entry.team.name : "개인 참여";
+    const partyLabel = isRecruitingTeamEntry(entry) && entry.team ? entry.team.name : "개인 참여";
     const isSelfSlot = playerId === currentUserId;
     const canOpenAction = Boolean(onSelfSlotAction) && (isSelfSlot || Boolean(canManageEntry?.(entry)));
     const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, playerId, entry);
@@ -3009,6 +3009,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         });
         const selectedJoinTeam = captainTeams.find((team) => team.id === joinDraft.teamId) ?? captainTeams[0] ?? null;
         const selectedJoinTeamEligibility = getJoinTeamEligibility(selectedJoinTeam);
+        const selectedJoinSideTeamId = getLobbyPrimaryTeamId(lobby, joinDraft.side);
+        const selectedJoinSideAvailable = !teamOnlyRoom || !selectedJoinSideTeamId;
+        const teamRoomHasJoinableSide = !teamOnlyRoom || ["teamA", "teamB"].some((sideName) => !getLobbyPrimaryTeamId(lobby, sideName));
         const joinCapacity = getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
         const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
         const selectedJoinReserveIds = joinDraft.reserve
@@ -3039,6 +3042,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         );
         const teamJoinValid = !soloIndividualRoom && (joinDraft.joinMode !== "team" || (
           Boolean(selectedJoinTeam) &&
+          selectedJoinSideAvailable &&
           selectedJoinTeamEligibility.allowed &&
           selectedJoinPlayerIds.includes(app.currentUser.id) &&
           [...selectedJoinPlayerIds, ...selectedJoinReserveIds].every((playerId) => selectedJoinTeamEligibility.eligiblePlayerIds.includes(playerId)) &&
@@ -3155,7 +3159,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
         const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
         const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
-        const useSideNameHeader = selectedPost.visibility !== "private";
+        const useSideNameHeader = selectedPost.visibility !== "private" && !teamOnlyRoom;
         const teamAMeta = getLobbySideMeta(lobby, "teamA", userById, { useSideName: useSideNameHeader });
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById, { useSideName: useSideNameHeader });
         const tournamentRoomOwnerName = selectedPost.tournamentId ? userById[roomOwnerId]?.name ?? "" : "";
@@ -4168,6 +4172,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     <strong>비공개방</strong>
                     <span>초대 수락으로만 참여할 수 있습니다.</span>
                   </div>
+                ) : teamOnlyRoom && !teamRoomHasJoinableSide ? (
+                  <div className="arena-owner-panel">
+                    <strong>팀 참가 마감</strong>
+                    <span>A/B사이드 팀이 모두 확정됐습니다.</span>
+                  </div>
                 ) : (
                   <form className="arena-join-form" onSubmit={(event) => { event.preventDefault(); void submitJoin(selectedPost); }}>
                     {sidePartyJoinOptions.length ? (
@@ -4295,8 +4304,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                             });
                           }}
                         >
-                          <option value="teamA">A사이드</option>
-                          <option value="teamB">B사이드</option>
+                          <option value="teamA" disabled={teamOnlyRoom && Boolean(getLobbyPrimaryTeamId(lobby, "teamA"))}>A사이드</option>
+                          <option value="teamB" disabled={teamOnlyRoom && Boolean(getLobbyPrimaryTeamId(lobby, "teamB"))}>B사이드</option>
                         </select>
                       </label>
                       <label className="arena-check-row">

@@ -129,7 +129,7 @@ export function getLobbyTeamEntry(lobby, sideName, teamId) {
 }
 
 export function getLobbyEntryTeamId(entry = {}) {
-  if (!isRecruitingPartyEntry(entry)) return null;
+  if (!isRecruitingTeamEntry(entry)) return null;
   return entry.team?.id ?? entry.teamId ?? null;
 }
 
