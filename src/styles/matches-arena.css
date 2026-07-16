@@ -4791,23 +4791,27 @@ html[data-theme="light"] .tournament-hero h1 {
 }
 
 .recorder-card-list .arena-lobby-card .om-match-summary-box {
-  height: 72px;
-  min-height: 0;
+  height: auto;
+  min-height: 80px;
   gap: 4px;
   padding: 8px 12px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .recorder-card-list .arena-lobby-card .om-match-summary-box.count-summary .om-summary-side,
 .recorder-card-list .arena-lobby-card .om-match-summary-box.count-summary .om-summary-side .team-hover-trigger {
   min-width: 0;
-  max-width: 9.5ch;
-  font-size: clamp(20px, 2.2vw, 30px);
+  max-width: 100%;
+  font-size: clamp(16px, 2.2vw, 30px);
   line-height: 0.95;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   word-break: keep-all;
+}
+
+.recorder-card-list .arena-lobby-card .om-summary-line {
+  min-height: 30px;
 }
 
 .recorder-card-list .arena-lobby-card .om-summary-meta,
@@ -4821,7 +4825,7 @@ html[data-theme="light"] .tournament-hero h1 {
 }
 
 .recorder-card-list .arena-lobby-card .om-room-link {
-  min-height: 72px;
+  min-height: 80px;
 }
 
 /* 2026-07-09 matches hero situation board follows the recruiting hero panel. */

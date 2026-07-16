@@ -518,7 +518,7 @@ export function getMatchRoomPost(match, state) {
   const tournamentHostClaimed = Boolean(
     tournamentRoom && (sourceMatch.rules?.tournamentSideAssignmentLocked === true || tournamentReadySide),
   );
-  const projectedTournamentHostSide = tournamentHostClaimed
+  const projectedTournamentHostSide = tournamentRoom
     ? configuredTournamentHostSide || tournamentReadySide || "teamA"
     : "";
   const projectedTournamentHostTeam = projectedTournamentHostSide
@@ -530,7 +530,7 @@ export function getMatchRoomPost(match, state) {
   const hostPlayerId = tournamentRoom
     ? (tournamentHostClaimed
         ? sourceMatch.rules?.tournamentHostPlayerId || projectedTournamentCaptainId
-        : "")
+        : sourceMatch.rules?.tournamentProvisionalHostPlayerId || projectedTournamentCaptainId)
     : getMatchHostPlayerId(sourceMatch, sourcePost);
   const sideCapacity = getRoomCapacity(sourceMatch);
   const soloRecord = isPersonalRecordMatch(sourceMatch);
@@ -566,7 +566,7 @@ export function getMatchRoomPost(match, state) {
   const hostParty = matchParties.find(partyHasHost) ?? matchParties.find((party) => party.side === "teamA") ?? null;
   const hostSide = tournamentRoom ? projectedTournamentHostSide || "teamA" : hostParty?.side ?? "teamA";
   const hostJoinMode = tournamentRoom
-    ? (tournamentHostClaimed && sourceMatch[hostSide]?.teamId ? "team" : "player")
+    ? (sourceMatch[hostSide]?.teamId ? "team" : "player")
     : (hostParty?.teamId || isMatchSideTeamParty(match, hostSide) ? "team" : "player");
   const hostTeamId = hostJoinMode === "team" ? (hostParty?.teamId ?? match[hostSide]?.teamId ?? null) : null;
   const hostPlayers = hostJoinMode === "team"

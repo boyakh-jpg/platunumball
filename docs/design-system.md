@@ -1077,6 +1077,7 @@ UI 수정 전:
 30. A wrapper used only for grid, flex, spacing, alignment, or scrolling stays transparent and has no border or shadow. A nested card surface is allowed only for a repeated item, modal, or independently actionable tool.
 31. Matches schedule filters keep one outer section card surface. Inner filter rows and segmented groups stay transparent unless they are the actual clickable control.
 32. Match list cards must not keep three columns when the available content lane is narrow. At medium widths, move the score/summary panel below the title/action row before team names clip.
+33. Recorder list summaries must size team names from the available summary width. Do not cap names with a fixed character width or clip metadata inside a fixed-height panel.
 
 ## 2026-07-03 profile form controls
 
