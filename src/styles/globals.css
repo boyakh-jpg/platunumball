@@ -16214,7 +16214,7 @@ html[data-theme="light"] .app-main :is(
 @media (max-width: 1079px) {
   .hover-portal-card.touch-open {
     top: auto !important;
-    bottom: calc(var(--bottom-nav-height) + 22px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--bottom-nav-height) + 22px + env(safe-area-inset-bottom, 0px)) !important;
     max-height: min(62dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 560px) !important;
     background: var(--surface);
   }
@@ -16228,6 +16228,11 @@ html[data-theme="light"] .app-main :is(
     left: 12px;
     width: auto;
     max-height: min(52dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 320px);
+    background: var(--surface);
+  }
+
+  html[data-theme="light"] .hover-portal-card.touch-open,
+  html[data-theme="light"] .search-picker-results.is-floating {
     background: var(--surface);
   }
 }
