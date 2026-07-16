@@ -7,6 +7,9 @@ import Button from "../components/common/Button.jsx";
 import { isInstantRoom } from "../lib/matchUtils.js";
 import { isNotificationVisibleToUser } from "../lib/notifications.js";
 import { getPendingRecruitingInvitations } from "../lib/recruiting.js";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
+import { MatchRoomModal } from "./Matches.jsx";
+import { RecruitingRoomModal } from "./Recruiting.jsx";
 
 const toneMap = {
   match: "blue",
@@ -34,13 +37,18 @@ export default function Notifications({ app }) {
   const navigate = useNavigate();
   const [notificationView, setNotificationView] = useState("unread");
   const [deletingNotificationId, setDeletingNotificationId] = useState("");
+  const [selectedMatchId, setSelectedMatchId] = useState("");
+  const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState("");
   const loadNotifications = app.actions.loadNotifications;
   useEffect(() => {
     loadNotifications?.();
   }, [loadNotifications]);
+  const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
+  const selectedRecruitingPost = (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId) ?? null;
+  useBodyScrollLock(Boolean(selectedRecruitingPost));
   const visibleNotifications = useMemo(() => (app.state.notifications ?? [])
-    .filter((notification) => isNotificationVisibleToUser(notification, app.currentUser.id))
-    .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))), [app.currentUser.id, app.state.notifications]);
+    .filter((notification) => isNotificationVisibleToUser(notification, app.currentUser.id, { blockedUserIds }))
+    .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))), [app.currentUser.id, app.state.notifications, blockedUserIds]);
   const unreadNotifications = visibleNotifications.filter((notification) => !notification.readAt);
   const pastNotifications = visibleNotifications.filter((notification) => Boolean(notification.readAt));
   const unreadCount = unreadNotifications.length;
@@ -51,8 +59,22 @@ export default function Notifications({ app }) {
     invitation.status === "pending"
   ));
   const acceptInvitation = async (postId, invitationId) => {
-    await app.actions.acceptRecruitingInvitation(postId, invitationId);
-    navigate(`/app/recruiting?post=${postId}`);
+    const result = await app.actions.acceptRecruitingInvitation(postId, invitationId);
+    if (result && result.ok !== false) {
+      setSelectedMatchId("");
+      setSelectedRecruitingPostId(postId);
+    }
+  };
+  const openMatchRoom = (matchId) => {
+    if (!matchId) return;
+    setSelectedRecruitingPostId("");
+    setSelectedMatchId(matchId);
+  };
+  const openRecruitingRoom = (postId) => {
+    if (!postId) return;
+    setSelectedMatchId("");
+    setSelectedRecruitingPostId(postId);
+    app.actions.loadRecruitingPost?.(postId);
   };
   const acceptTeamInvite = async (invitation) => {
     await app.actions.acceptTeamInvitation(invitation.id);
@@ -98,7 +120,16 @@ export default function Notifications({ app }) {
                 <span className="home-invitation-actions">
                   <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
                   <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
-                  <Link className="button button-secondary button-sm" to={`/app/recruiting?filter=invited&post=${post.id}`}>방 보기</Link>
+                  <Link
+                    className="button button-secondary button-sm"
+                    to={`/app/recruiting?filter=invited&post=${post.id}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      openRecruitingRoom(post.id);
+                    }}
+                  >
+                    방 보기
+                  </Link>
                 </span>
               </div>
             ))}
@@ -178,10 +209,28 @@ export default function Notifications({ app }) {
               <span className="notification-actions">
                 <Badge tone={toneMap[notification.tone] ?? "neutral"}>{notification.tone}</Badge>
                 {notification.matchId ? (
-                  <Link className="button button-secondary button-md" to={`/app/matches?match=${notification.matchId}`}>방 보기</Link>
+                  <Link
+                    className="button button-secondary button-md"
+                    to={`/app/matches?match=${notification.matchId}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      openMatchRoom(notification.matchId);
+                    }}
+                  >
+                    방 보기
+                  </Link>
                 ) : null}
                 {notification.recruitingPostId ? (
-                  <Link className="button button-secondary button-md" to={`/app/recruiting?post=${notification.recruitingPostId}`}>매칭</Link>
+                  <Link
+                    className="button button-secondary button-md"
+                    to={`/app/recruiting?post=${notification.recruitingPostId}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      openRecruitingRoom(notification.recruitingPostId);
+                    }}
+                  >
+                    매칭
+                  </Link>
                 ) : null}
                 {notificationView === "past" ? (
                   <button
@@ -208,6 +257,19 @@ export default function Notifications({ app }) {
           )}
         </div>
       </Card>
+      <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="notifications" onClose={() => setSelectedMatchId("")} />
+      {selectedRecruitingPost ? (
+        <RecruitingRoomModal
+          app={app}
+          post={selectedRecruitingPost}
+          entryPoint="notifications"
+          onClose={() => setSelectedRecruitingPostId("")}
+          onOpenMatch={(matchId) => {
+            setSelectedRecruitingPostId("");
+            openMatchRoom(matchId);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -14,6 +14,7 @@ import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine, getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
+import { MatchRoomModal } from "./Matches.jsx";
 
 function getPlayerSide(match, playerId) {
   if ((match.teamA?.players ?? []).includes(playerId)) return "teamA";
@@ -46,6 +47,7 @@ const historyStatusLabel = {
 
 export default function PlayerDetail({ app }) {
   const { playerId } = useParams();
+  const [selectedMatchId, setSelectedMatchId] = useState("");
   const loadDirectory = app.actions?.loadDirectory;
   useEffect(() => {
     loadDirectory?.();
@@ -225,7 +227,15 @@ export default function PlayerDetail({ app }) {
                   return (
                     <article key={match.id} className={`history-item rank-match-item ${outcome ? `rank-match-${outcome}` : ""}`}>
                       <div>
-                        <Link to={`/app/matches?match=${match.id}`}><strong>{match.title}</strong></Link>
+                        <Link
+                          to={`/app/matches?match=${match.id}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setSelectedMatchId(match.id);
+                          }}
+                        >
+                          <strong>{match.title}</strong>
+                        </Link>
                         <span>{match.court} · {match.scheduledAt}</span>
                       </div>
                       <div className="history-score">
@@ -296,6 +306,7 @@ export default function PlayerDetail({ app }) {
           </aside>
         ) : null}
       </div>
+      <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="player-history" onClose={() => setSelectedMatchId("")} />
     </div>
   );
 }

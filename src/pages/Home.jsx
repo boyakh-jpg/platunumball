@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowUpRight, Bell, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -18,6 +18,9 @@ import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
 import { getNotificationDueAt, getNotificationHref, isHomeActionNotification, isNotificationVisibleToUser } from "../lib/notifications.js";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
+import { MatchRoomModal } from "./Matches.jsx";
+import { RecruitingRoomModal } from "./Recruiting.jsx";
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();
@@ -56,6 +59,12 @@ function isHomeUserMatch(match = {}, userId = "") {
   if (isSeedSampleMatch(match)) return false;
   if (match.tournamentId) return isTournamentMatchInUserSchedule(match, userId);
   return isMatchRelatedToUser(match, userId);
+}
+
+function isActionableTournamentInvite(tournament = {}, blockedUserIds = [], todayValue = "") {
+  if (tournament.status !== "draft" || blockedUserIds.includes(tournament.createdBy)) return false;
+  const endDate = String(tournament.endDate ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+  return !endDate || endDate >= todayValue;
 }
 
 function compareSchedule(a, b) {
@@ -125,9 +134,10 @@ const SEARCH_DETAIL_LIMIT = 20;
 
 export default function Home({ app }) {
   const user = app.currentUser;
-  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [processingInviteId, setProcessingInviteId] = useState("");
+  const [selectedMatchId, setSelectedMatchId] = useState("");
+  const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState("");
   const searchText = query.trim().toLowerCase();
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
@@ -149,6 +159,8 @@ export default function Home({ app }) {
     return matchItems.sort((a, b) => compareSchedule(a.item, b.item));
   }, [app.state.matches, maxScheduleDate, todayValue, user.id]);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
+  const selectedRecruitingPost = (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId) ?? null;
+  useBodyScrollLock(Boolean(selectedRecruitingPost));
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id)
     .filter(({ invitation }) => !blockedUserIds.includes(invitation.fromUserId)), [app.state, blockedUserIds, user.id]);
   const pendingTeamInvitations = useMemo(() => (app.state.teamInvitations ?? []).filter((invitation) => (
@@ -182,9 +194,32 @@ export default function Home({ app }) {
     setProcessingInviteId(key);
     try {
       const result = await app.actions.acceptRecruitingInvitation(postId, invitationId);
-      if (result && result.ok !== false) navigate(`/app/recruiting?post=${postId}`);
+      if (result && result.ok !== false) {
+        setSelectedMatchId("");
+        setSelectedRecruitingPostId(postId);
+      }
     } finally {
       setProcessingInviteId("");
+    }
+  };
+  const openMatchRoom = (matchId) => {
+    if (!matchId) return;
+    setSelectedRecruitingPostId("");
+    setSelectedMatchId(matchId);
+  };
+  const openRecruitingRoom = (postId) => {
+    if (!postId) return;
+    setSelectedMatchId("");
+    setSelectedRecruitingPostId(postId);
+    app.actions.loadRecruitingPost?.(postId);
+  };
+  const openActionRoom = (event, item = {}) => {
+    if (item.matchId) {
+      event.preventDefault();
+      openMatchRoom(item.matchId);
+    } else if (item.recruitingPostId) {
+      event.preventDefault();
+      openRecruitingRoom(item.recruitingPostId);
     }
   };
   const declineHomeRecruitingInvitation = async (postId, invitationId) => {
@@ -199,7 +234,7 @@ export default function Home({ app }) {
   const myCompletedMatches = completedMatches.filter((match) => isHomeUserMatch(match, user.id));
   const actionItems = useMemo(() => {
     const tournamentInviteItems = (app.state.tournaments ?? [])
-      .filter((tournament) => tournament.status === "draft")
+      .filter((tournament) => isActionableTournamentInvite(tournament, blockedUserIds, todayValue))
       .flatMap((tournament) => captainTeamIds
         .filter((teamId) => (tournament.teamIds ?? []).includes(teamId))
         .filter((teamId) => (tournament.teamStatuses?.[teamId] ?? "invited") === "invited")
@@ -218,6 +253,10 @@ export default function Home({ app }) {
       .filter((notification) => isNotificationVisibleToUser(notification, user.id, { blockedUserIds }))
       .filter((notification) => notification.type === "tournament_invite" && isHomeActionNotification(notification))
       .filter((notification) => !loadedTournamentInviteIds.has(notification.tournamentId))
+      .filter((notification) => {
+        const tournament = (app.state.tournaments ?? []).find((item) => item.id === notification.tournamentId);
+        return !tournament || isActionableTournamentInvite(tournament, blockedUserIds, todayValue);
+      })
       .map((notification) => ({
         id: `notification-${notification.id}`,
         priority: 0,
@@ -232,6 +271,8 @@ export default function Home({ app }) {
       .filter((notification) => notification.type === "tournament_match_schedule" && isHomeActionNotification(notification))
       .map((notification) => ({
         id: `notification-${notification.id}`,
+        matchId: notification.matchId,
+        recruitingPostId: notification.recruitingPostId,
         priority: 1,
         label: "명단 구성",
         title: notification.title,
@@ -246,6 +287,7 @@ export default function Home({ app }) {
         if (userNeedsMatchAgreement(match, user.id)) {
           return {
             id: `agreement-${match.id}`,
+            matchId: match.id,
             priority: 1,
             label: "동의",
             title: getTournamentMatchDisplayTitle(match, match.title),
@@ -257,6 +299,7 @@ export default function Home({ app }) {
         if (phase === "checkin" && userOperatesCheckin(match, user.id)) {
           return {
             id: `checkin-${match.id}`,
+            matchId: match.id,
             priority: 2,
             label: "경기 시작",
             title: getTournamentMatchDisplayTitle(match, match.title),
@@ -268,6 +311,7 @@ export default function Home({ app }) {
         if (phase === "postgame" && userNeedsResultInput(match, user.id)) {
           return {
             id: `result-${match.id}`,
+            matchId: match.id,
             priority: 3,
             label: "결과 입력",
             title: getTournamentMatchDisplayTitle(match, match.title),
@@ -279,6 +323,7 @@ export default function Home({ app }) {
         if (phase === "dispute" && (userNeedsMatchApproval(match, user.id) || canUserResolveMatchDispute(match, user.id))) {
           return {
             id: `approval-${match.id}`,
+            matchId: match.id,
             priority: 4,
             label: match.status === "disputed" ? "이의 확인" : "결과 승인",
             title: getTournamentMatchDisplayTitle(match, match.title),
@@ -296,6 +341,7 @@ export default function Home({ app }) {
       .filter(({ lobby, timing }) => lobby.canConfirm && timing.canConfirm)
       .map(({ post }) => ({
         id: `confirm-room-${post.id}`,
+        recruitingPostId: post.id,
         priority: 1,
         label: "경기 확정",
         title: post.title,
@@ -306,6 +352,7 @@ export default function Home({ app }) {
 
     const invitationItems = pendingInvitations.map(({ post, invitation }) => ({
       id: `invite-${post.id}-${invitation.id}`,
+      recruitingPostId: post.id,
       priority: 0,
       actionType: "recruiting-invite",
       postId: post.id,
@@ -335,6 +382,7 @@ export default function Home({ app }) {
       .slice(0, 2)
       .map((post) => ({
         id: `cancelled-room-${post.id}`,
+        recruitingPostId: post.id,
         priority: 5,
         label: "방 취소",
         title: post.title,
@@ -344,7 +392,7 @@ export default function Home({ app }) {
       }));
     return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...tournamentNotificationItems, ...tournamentScheduleItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
-  }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, blockedUserIds, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, user.id]);
+  }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, blockedUserIds, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, todayValue, user.id]);
   const priorityItems = actionItems.slice(0, 5);
   const homeNoticeItems = useMemo(() => (app.state.notifications ?? [])
     .filter((notification) => isNotificationVisibleToUser(notification, user.id, { blockedUserIds }))
@@ -585,7 +633,14 @@ export default function Home({ app }) {
               </div>
             </div>
             <aside className="home-hero-board" aria-label="내 코트 요약">
-              <Link className="home-hero-next" to={nextUpcomingMatch ? `/app/matches?match=${nextUpcomingMatch.id}` : "/app/recruiting"}>
+              <Link
+                className="home-hero-next"
+                to={nextUpcomingMatch ? `/app/matches?match=${nextUpcomingMatch.id}` : "/app/recruiting"}
+                onClick={nextUpcomingMatch ? (event) => {
+                  event.preventDefault();
+                  openMatchRoom(nextUpcomingMatch.id);
+                } : undefined}
+              >
                 <span><CalendarDays size={16} /> {nextUpcomingMatch ? "NEXT MATCH" : "COURT OPEN"}</span>
                 <strong>{nextUpcomingLine ? `${nextUpcomingLine.side.name} vs ${nextUpcomingLine.opponent.name}` : "예정된 경기 없음"}</strong>
                 <em>{nextUpcomingMatch ? `${getRoomScheduleLabel(nextUpcomingMatch)} · ${nextUpcomingMatch.court || "구장 미정"}` : "새 매칭을 찾아 다음 경기를 잡으세요."}</em>
@@ -613,7 +668,7 @@ export default function Home({ app }) {
               {upcomingItems.length ? (
                 <div className="match-stack">
                   {upcomingItems.slice(0, 3).map((entry) => {
-                    return <MatchCard key={entry.id} match={entry.item} teams={app.state.teams} courts={registeredCourts} />;
+                    return <MatchCard key={entry.id} match={entry.item} teams={app.state.teams} courts={registeredCourts} onOpen={openMatchRoom} />;
                   })}
                   {upcomingItems.length > 3 ? (
                     <Link to="/app/matches" className="button button-secondary button-sm home-upcoming-more">
@@ -640,7 +695,15 @@ export default function Home({ app }) {
                     {myCompletedMatches.slice(0, 8).map((match) => {
                       const result = getUserResult(match, user.id);
                       return (
-                        <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-result-pill result-${result.toLowerCase()}`}>
+                        <Link
+                          key={match.id}
+                          to={`/app/matches?match=${match.id}`}
+                          className={`recent-result-pill result-${result.toLowerCase()}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            openMatchRoom(match.id);
+                          }}
+                        >
                           {result}
                         </Link>
                       );
@@ -648,7 +711,15 @@ export default function Home({ app }) {
                   </div>
                   <div className="recent-match-list">
                     {latestMyMatches.map((match) => (
-                      <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}>
+                      <Link
+                        key={match.id}
+                        to={`/app/matches?match=${match.id}`}
+                        className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          openMatchRoom(match.id);
+                        }}
+                      >
                         {(() => {
                           const line = getUserMatchLine(match, user.id);
                           return (
@@ -719,13 +790,13 @@ export default function Home({ app }) {
                         <span className="home-action-buttons">
                           <Button size="sm" type="button" disabled={isProcessing} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "수락 중" : "수락"}</Button>
                           <Button size="sm" type="button" variant="secondary" disabled={isProcessing} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "처리 중" : "거절"}</Button>
-                          <Link className="button button-secondary button-sm" to={item.href}>보기</Link>
+                          <Link className="button button-secondary button-sm" to={item.href} onClick={(event) => openActionRoom(event, item)}>보기</Link>
                         </span>
                       </div>
                     );
                   }
                   return (
-                    <Link key={item.id} to={item.href} className={`home-action-row priority-${item.priority}`}>
+                    <Link key={item.id} to={item.href} className={`home-action-row priority-${item.priority}`} onClick={(event) => openActionRoom(event, item)}>
                       <span className="home-action-icon"><Icon size={18} /></span>
                       <span className="home-action-main">
                         <strong>{item.title}</strong>
@@ -736,7 +807,11 @@ export default function Home({ app }) {
                   );
                 })}
                 {actionItems.length > priorityItems.length ? (
-                  <Link to={actionItems[priorityItems.length]?.href ?? "/app/matches"} className="home-action-row priority-5">
+                  <Link
+                    to={actionItems[priorityItems.length]?.href ?? "/app/matches"}
+                    className="home-action-row priority-5"
+                    onClick={(event) => openActionRoom(event, actionItems[priorityItems.length])}
+                  >
                     <span className="home-action-icon"><ClipboardCheck size={18} /></span>
                     <span className="home-action-main">
                       <strong>더 처리할 항목 있음</strong>
@@ -774,7 +849,12 @@ export default function Home({ app }) {
               {priorityNoticeItems.length ? (
                 <>
                   {priorityNoticeItems.map((notification) => (
-                    <Link key={notification.id} to={getNotificationHref(notification)} className="home-action-row priority-5">
+                    <Link
+                      key={notification.id}
+                      to={getNotificationHref(notification)}
+                      className="home-action-row priority-5"
+                      onClick={(event) => openActionRoom(event, notification)}
+                    >
                       <span className="home-action-icon"><Bell size={18} /></span>
                       <span className="home-action-main">
                         <strong>{notification.title}</strong>
@@ -895,6 +975,20 @@ export default function Home({ app }) {
           </Card>
         </aside>
       </aside>
+
+      <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="home" onClose={() => setSelectedMatchId("")} />
+      {selectedRecruitingPost ? (
+        <RecruitingRoomModal
+          app={app}
+          post={selectedRecruitingPost}
+          entryPoint="home"
+          onClose={() => setSelectedRecruitingPostId("")}
+          onOpenMatch={(matchId) => {
+            setSelectedRecruitingPostId("");
+            openMatchRoom(matchId);
+          }}
+        />
+      ) : null}
 
     </div>
   );

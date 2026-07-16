@@ -35,7 +35,7 @@ function getSafeSide(side = {}, fallbackName = "") {
   };
 }
 
-export default function MatchCard({ match, teams = [], courts = [] }) {
+export default function MatchCard({ match, teams = [], courts = [], onOpen = null }) {
   if (!match) return null;
   const sideA = getSafeSide(match.teamA, "A");
   const sideB = getSafeSide(match.teamB, "B");
@@ -64,7 +64,14 @@ export default function MatchCard({ match, teams = [], courts = [] }) {
         <strong>{sideA.score} : {sideB.score}</strong>
         <TeamHoverCard team={teamB} to={sideB.teamId ? `/app/teams/${sideB.teamId}` : undefined}>{sideB.name}</TeamHoverCard>
       </div>
-      <Link className="button button-secondary button-md" to={`/app/matches?match=${match.id}`}>
+      <Link
+        className="button button-secondary button-md"
+        to={`/app/matches?match=${match.id}`}
+        onClick={onOpen ? (event) => {
+          event.preventDefault();
+          onOpen(match.id);
+        } : undefined}
+      >
         방 보기
       </Link>
     </Card>
