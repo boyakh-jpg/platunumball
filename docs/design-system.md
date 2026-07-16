@@ -1075,6 +1075,8 @@ UI 수정 전:
 28. One visual control has exactly one border owner. A label, form grid, or layout wrapper must not repeat the input/select/textarea border.
 29. Composite controls with an icon or fixed prefix keep the border, background, radius, and focus ring on the outer shell. Their inner input is transparent, borderless, radius-free, and shadow-free in normal, focus, and focus-visible states.
 30. A wrapper used only for grid, flex, spacing, alignment, or scrolling stays transparent and has no border or shadow. A nested card surface is allowed only for a repeated item, modal, or independently actionable tool.
+31. Matches schedule filters keep one outer section card surface. Inner filter rows and segmented groups stay transparent unless they are the actual clickable control.
+32. Match list cards must not keep three columns when the available content lane is narrow. At medium widths, move the score/summary panel below the title/action row before team names clip.
 
 ## 2026-07-03 profile form controls
 

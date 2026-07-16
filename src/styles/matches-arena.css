@@ -4975,13 +4975,11 @@ html[data-theme="light"] .om-match-stats span {
 
 /* Structural wrappers and section headings never create a second card surface. */
 .om-calendar-panel,
-.om-calendar-summary,
 .om-tournament-panel,
 .tournament-schedule-list,
 .om-list-head,
 .om-calendar-summary > .om-calendar-filter-bar,
 html[data-theme="light"] .om-calendar-panel,
-html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-tournament-panel,
 html[data-theme="light"] .tournament-schedule-list,
 html[data-theme="light"] .om-list-head,
@@ -5069,6 +5067,11 @@ html[data-theme="light"] .om-empty-state {
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-self: start;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+  padding: 14px;
 }
 
 .om-calendar-heading {
@@ -5153,5 +5156,68 @@ html[data-theme="light"] .om-calendar-filter-bar {
   .om-calendar-filter-row .segmented-control button {
     min-height: 42px;
     height: 42px;
+  }
+}
+
+html[data-theme="light"] .om-calendar-summary {
+  border-color: rgba(41, 116, 99, 0.16);
+  background: rgba(250, 254, 252, 0.92);
+  box-shadow: none;
+}
+
+/* 2026-07-16 responsive clipping guard for match list cards. */
+.om-card-main,
+.om-match-summary-box,
+.om-score-box,
+.om-match-info-box,
+.arena-lobby-card .om-match-summary-box {
+  min-width: 0;
+}
+
+.om-summary-side,
+.om-summary-side .team-hover-trigger,
+.om-match-summary-box.count-summary .om-summary-side,
+.om-match-summary-box.count-summary .om-summary-side .team-hover-trigger,
+.om-score-box a,
+.om-score-box > .team-hover-trigger {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-align: center;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+}
+
+@media (min-width: 761px) {
+  .om-match-card,
+  .arena-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) 92px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1360px) {
+  .om-match-card,
+  .arena-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 1fr) 92px;
+  }
+
+  .om-card-main {
+    grid-column: 1;
+  }
+
+  .om-match-summary-box,
+  .om-score-box,
+  .om-match-info-box,
+  .arena-lobby-card .om-match-summary-box {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .om-room-link,
+  .arena-lobby-card .om-room-link {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
   }
 }
