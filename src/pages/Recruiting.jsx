@@ -4366,7 +4366,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   </Button>
                 ) : null}
               </div>
-              {soloRecordDeleteTarget ? (
+              {soloRecordDeleteTarget && typeof document !== "undefined" ? createPortal(
                 <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setSoloRecordDeleteTarget(null)}>
                   <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
                     <strong>개인 기록 삭제</strong>
@@ -4376,7 +4376,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       <Button type="button" variant="primary" className="danger-button" onClick={confirmDeleteSourceSoloRecord}>삭제하기</Button>
                     </div>
                   </div>
-                </div>
+                </div>,
+                document.body,
               ) : null}
               <div className="arena-modal-close-row">
                 <Button

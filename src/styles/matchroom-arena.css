@@ -581,7 +581,6 @@ html[data-theme="light"] .gm-player-slot em {
 
 .gm-team-panel,
 .gm-score-core,
-.gm-reserve-panel,
 .gm-reserve-line,
 .gm-next-action-card,
 .gm-room-actions > div {
@@ -593,7 +592,6 @@ html[data-theme="light"] .gm-player-slot em {
 
 html[data-theme="light"] .gm-team-panel,
 html[data-theme="light"] .gm-score-core,
-html[data-theme="light"] .gm-reserve-panel,
 html[data-theme="light"] .gm-reserve-line,
 html[data-theme="light"] .gm-next-action-card,
 html[data-theme="light"] .gm-room-actions > div {

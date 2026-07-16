@@ -4785,15 +4785,22 @@ html[data-theme="light"] .tournament-hero h1 {
 }
 
 .recorder-card-list .arena-lobby-card.om-match-card h3 {
-  max-height: 1em;
+  display: -webkit-box;
+  max-height: 1.96em;
   line-height: 0.98;
   overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .recorder-card-list .arena-lobby-card.om-match-card p {
-  max-height: 18px;
+  max-height: none;
   line-height: 1.2;
-  overflow: hidden;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .recorder-card-list .arena-lobby-card .om-match-summary-box {
@@ -4810,10 +4817,14 @@ html[data-theme="light"] .tournament-hero h1 {
   max-width: 100%;
   font-size: clamp(16px, 2.2vw, 30px);
   line-height: 0.95;
-  white-space: nowrap;
+  display: -webkit-box;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
   word-break: keep-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .recorder-card-list .arena-lobby-card .om-summary-line {
@@ -4825,9 +4836,10 @@ html[data-theme="light"] .tournament-hero h1 {
   min-width: 0;
   font-size: 11px;
   line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
 }
 
 .recorder-card-list .arena-lobby-card .om-room-link {
@@ -5233,7 +5245,7 @@ html[data-theme="light"] .om-calendar-summary {
   }
 }
 
-@media (min-width: 761px) and (max-width: 1360px) {
+@container (min-width: 761px) and (max-width: 1180px) {
   .om-match-card,
   .arena-lobby-card.om-match-card {
     grid-template-columns: minmax(0, 1fr) 92px;
@@ -5319,7 +5331,7 @@ html[data-theme="light"] .om-calendar-summary {
   font: inherit;
 }
 
-@media (min-width: 761px) and (max-width: 1360px) {
+@container (min-width: 761px) and (max-width: 1180px) {
   .om-tournament-card {
     grid-template-columns: minmax(0, 1fr) 92px;
     grid-template-areas:

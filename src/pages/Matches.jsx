@@ -127,8 +127,17 @@ function RoomModalErrorView({ error, onClose, onRetry = null }) {
   );
 }
 
-function RoomModalLoadingView() {
-  return <BasketballLoader overlay label="방 불러오는 중" />;
+function RoomModalLoadingView({ onClose }) {
+  return (
+    <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="경기방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
+        <BasketballLoader label="방 불러오는 중" />
+        <div className="arena-modal-close-row">
+          <Button type="button" variant="secondary" size="lg" onClick={onClose}>방 닫기</Button>
+        </div>
+      </aside>
+    </div>
+  );
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -862,7 +871,13 @@ export function MatchRoomModal({ app, matchId, onClose, entryPoint = "" }) {
   useBodyScrollLock(Boolean(matchId));
 
   useEffect(() => {
-    if (!matchId || app.remoteReady === false || !app.currentUser.id) return;
+    if (!matchId) {
+      requestedMatchDetailsRef.current.clear();
+      setOpenedMatchId("");
+      setSelectedMatchDetailLoadingId(null);
+      return;
+    }
+    if (app.remoteReady === false || !app.currentUser.id) return;
     if (requestedMatchDetailsRef.current.has(matchId)) {
       setOpenedMatchId(matchId);
       return;
@@ -933,6 +948,7 @@ export default function Matches({ app }) {
   const maxScheduleDate = addDays(todayValue, 365);
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
   const effectiveRelationFilter = panelMode === "team" ? "team" : relationFilter;
+  const effectiveBranchFilter = panelMode === "team" ? "team" : branchFilter;
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
@@ -1025,7 +1041,9 @@ export default function Matches({ app }) {
   }, [searchParams]);
   useBodyScrollLock(Boolean(selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedRecruitingPostDetailLoading));
   const closeSelectedMatch = () => {
+    if (activeSelectedMatchId) requestedMatchDetailsRef.current.delete(activeSelectedMatchId);
     setSelectedMatchId(null);
+    setSelectedMatchDetailLoadingId(null);
     if (!queryMatchId) return;
     const next = new URLSearchParams(searchParams);
     next.delete("match");
@@ -1056,7 +1074,14 @@ export default function Matches({ app }) {
     setSelectedRecruitingPostId(postId);
   };
   useEffect(() => {
-    if (!queryMatchId) return;
+    if (!queryMatchId) {
+      setSelectedMatchId((currentId) => {
+        if (currentId) requestedMatchDetailsRef.current.delete(currentId);
+        return null;
+      });
+      setSelectedMatchDetailLoadingId(null);
+      return;
+    }
     setSelectedMatchId(queryMatchId);
     requestMatchDetail(queryMatchId);
   }, [app.actions, app.currentUser.id, app.remoteReady, queryMatchId]);
@@ -1103,11 +1128,11 @@ export default function Matches({ app }) {
         if (matchDate > maxScheduleDate) return false;
         return shouldIncludeScheduleWindow(match, todayValue, maxScheduleDate);
       })
-      .filter((match) => matchesScheduleBranch(match, "match", branchFilter))
+      .filter((match) => matchesScheduleBranch(match, "match", effectiveBranchFilter))
       .filter((match) => matchesScheduleRelation(panelMode === "team"
         ? getMatchTeamScheduleRelation(match, myTeamIds)
         : getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds), effectiveRelationFilter));
-  }, [app.currentUser.id, app.state.matches, branchFilter, captainTeamIds, dateFilter, effectiveRelationFilter, maxScheduleDate, myTeamIds, panelMode, todayValue]);
+  }, [app.currentUser.id, app.state.matches, captainTeamIds, dateFilter, effectiveBranchFilter, effectiveRelationFilter, maxScheduleDate, myTeamIds, panelMode, todayValue]);
 
   const filteredMatches = useMemo(() => {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
@@ -1123,6 +1148,11 @@ export default function Matches({ app }) {
     teamScheduleChecked: false,
     teamScheduleLoading: false,
   };
+  useEffect(() => {
+    if (panelMode !== "team" || !app.remoteReady || !app.currentUser.id) return;
+    if (matchPagination.teamScheduleChecked || matchPagination.teamScheduleLoading) return;
+    app.actions.loadMatchTeamSchedule?.();
+  }, [app.actions, app.currentUser.id, app.remoteReady, matchPagination.teamScheduleChecked, matchPagination.teamScheduleLoading, panelMode]);
   useEffect(() => {
     scheduleLoadRequestedRef.current = "";
   }, [app.currentUser.id]);
@@ -1187,9 +1217,9 @@ export default function Matches({ app }) {
         const postDate = getMatchDate(post);
         return postDate && postDate <= maxScheduleDate && shouldIncludeScheduleWindow(post, todayValue, maxScheduleDate);
       })
-      .filter((post) => matchesScheduleBranch(post, "room", branchFilter))
+      .filter((post) => matchesScheduleBranch(post, "room", effectiveBranchFilter))
       .filter((post) => matchesScheduleRelation(getRecruitingScheduleRelation(post, app.state, app.currentUser.id, myTeamIds), effectiveRelationFilter));
-  }, [app.currentUser.id, app.state, branchFilter, effectiveRelationFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, todayValue]);
+  }, [app.currentUser.id, app.state, effectiveBranchFilter, effectiveRelationFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, todayValue]);
   const dateScopedRecruitingCandidates = useMemo(() => visibleRecruitingCandidates.filter((post) => {
     if (isInstantScheduleRoom(post)) return !dateFilter;
     const postDate = getMatchDate(post);
@@ -1202,7 +1232,7 @@ export default function Matches({ app }) {
       view.id,
       getScheduleItemsForView(filteredMatches, dateScopedRecruitingCandidates, view, app.currentUser.id, hasDateFilter),
     ]),
-  ), [app.currentUser.id, branchFilter, dateScopedRecruitingCandidates, filteredMatches, hasDateFilter]);
+  ), [app.currentUser.id, dateScopedRecruitingCandidates, filteredMatches, hasDateFilter]);
   const visibleScheduleItems = scheduleItemsByView[viewId] ?? [];
   const viewButtonCounts = Object.fromEntries(
     VIEWS.map((view) => [view.id, scheduleItemsByView[view.id]?.length ?? 0]),
@@ -1291,7 +1321,6 @@ export default function Matches({ app }) {
           className={panelMode === "team" ? "om-view-card active" : "om-view-card"}
           onClick={() => {
             applyFilterState({ panelMode: "team", viewId: "active" });
-            app.actions.loadMatchTeamSchedule?.();
           }}
         >
           <span className="om-view-icon"><UsersRound size={22} /></span>
@@ -1338,7 +1367,7 @@ export default function Matches({ app }) {
                 <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "invited" })}>초대받은 방</button>
               </div>
             </div> : null}
-            <div className="om-calendar-filter-row">
+            {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">유형</span>
               <div className="segmented-control compact-segments" role="group" aria-label="유형 필터">
                 {SCHEDULE_BRANCH_FILTERS.map((option) => (
@@ -1352,7 +1381,7 @@ export default function Matches({ app }) {
                   </button>
                 ))}
               </div>
-            </div>
+            </div> : null}
           </section>
         </div>
 

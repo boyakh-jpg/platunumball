@@ -66,7 +66,7 @@ function getMatchTime(match) {
 function isTournamentForfeitAvailable(match) {
   if (!match || ["confirmed", "cancelled", "void", "voided", "closed"].includes(match.status) || match.startedAt || match.endedAt || match.result) return false;
   if (!match.scheduledDate || !match.scheduledTime) return false;
-  const scheduledAt = new Date(`${match.scheduledDate}T${match.scheduledTime}`).getTime();
+  const scheduledAt = new Date(`${match.scheduledDate}T${String(match.scheduledTime).slice(0, 5)}:00+09:00`).getTime();
   return Number.isFinite(scheduledAt) && scheduledAt <= Date.now();
 }
 
@@ -398,7 +398,7 @@ export default function TournamentDetail({ app }) {
   const matchesById = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
 
   useEffect(() => {
-    if (!tournamentId || tournament || app.remoteReady === false || requestedTournamentIdRef.current === tournamentId) return;
+    if (!tournamentId || app.remoteReady === false || requestedTournamentIdRef.current === tournamentId) return;
     setTournamentMissing(false);
     requestedTournamentIdRef.current = tournamentId;
     Promise.resolve(app.actions.loadTournament?.(tournamentId)).then((count) => {
@@ -407,7 +407,7 @@ export default function TournamentDetail({ app }) {
       requestedTournamentIdRef.current = "";
       setTournamentMissing(true);
     });
-  }, [app.actions, app.remoteReady, tournament, tournamentId]);
+  }, [app.actions, app.remoteReady, tournamentId]);
 
   if (!tournament && !tournamentMissing) {
     return <BasketballLoader overlay label="대회 불러오는 중" />;
@@ -687,13 +687,14 @@ export default function TournamentDetail({ app }) {
                   const openMatchId = match?.id ?? fixture.matchId ?? "";
                   const result = getLeagueMatchResult(match);
                   const fixtureState = getLeagueFixtureState(match, openMatchId);
-                  const teamA = teamById[fixture.teamAId] ?? teamById[match?.teamA?.teamId];
-                  const teamB = teamById[fixture.teamBId] ?? teamById[match?.teamB?.teamId];
-                  const teamAName = teamA?.name ?? match?.teamA?.name ?? "TBD";
-                  const teamBName = teamB?.name ?? match?.teamB?.name ?? "TBD";
+                  const teamA = teamById[match?.teamA?.teamId] ?? teamById[fixture.teamAId];
+                  const teamB = teamById[match?.teamB?.teamId] ?? teamById[fixture.teamBId];
+                  const teamAName = match?.teamA?.name ?? teamA?.name ?? "TBD";
+                  const teamBName = match?.teamB?.name ?? teamB?.name ?? "TBD";
                   const matchCourt = tournamentCourts.find((court) => court.id === match?.courtId);
                   const courtName = match?.court ?? match?.courtName ?? matchCourt?.name ?? tournament.court ?? "구장 미정";
-                  const losingTeamName = match?.forfeitSide === "teamA" ? match.teamA?.name : match?.forfeitSide === "teamB" ? match.teamB?.name : "";
+                  const losingSide = match?.forfeitSide || match?.rules?.forfeit?.losingSide || "";
+                  const losingTeamName = losingSide === "teamA" ? teamAName : losingSide === "teamB" ? teamBName : "";
                   return (
                     <form
                       key={fixture.matchId || `${fixture.fixture}-${fixture.teamAId}-${fixture.teamBId}`}

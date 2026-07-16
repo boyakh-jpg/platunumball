@@ -3349,7 +3349,7 @@ async function runProfileIdentityLockScenario({
     .eq("id", profileId);
   if (resetError) throw resetError;
 
-  const temporaryName = `${String(snapshot.name || "Player").slice(0, 12)} SIM`;
+  const temporaryName = `${String(snapshot.name || "Player").slice(0, 10)} ${suffix.slice(-6)}`.slice(0, 20);
   const maliciousTimestamp = "2001-01-01T00:00:00.000Z";
   const firstResult = await step(`${ids.label}:completeOnboarding`, () => upsertProfileAs(login, {
     name: temporaryName,
