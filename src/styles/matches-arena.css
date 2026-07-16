@@ -5205,6 +5205,12 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 }
 
+@media (max-width: 480px) {
+  .om-calendar-heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 html[data-theme="light"] .om-calendar-summary {
   border-color: rgba(41, 116, 99, 0.16);
   background: rgba(250, 254, 252, 0.92);
