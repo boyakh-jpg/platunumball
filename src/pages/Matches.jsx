@@ -1,10 +1,11 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarDays, CheckCircle2, ClipboardCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, PlusCircle, ShieldAlert, Swords, UserRound } from "lucide-react";
+import { CalendarDays, CheckCircle2, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy, UserRound, UsersRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getRegisteredCourts } from "../lib/courts.js";
@@ -886,11 +887,11 @@ export function MatchRoomModal({ app, matchId, onClose, entryPoint = "" }) {
 export default function Matches({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewId, setViewId] = useState("active");
+  const [panelMode, setPanelMode] = useState("schedule");
   const [branchFilter, setBranchFilter] = useState("all");
   const [relationFilter, setRelationFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
-  const [tournamentPanelOpen, setTournamentPanelOpen] = useState(true);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
   const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
@@ -901,6 +902,7 @@ export default function Matches({ app }) {
   const todayValue = toDateInputValue();
   const maxScheduleDate = addDays(todayValue, 365);
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
+  const effectiveRelationFilter = panelMode === "team" ? "team" : relationFilter;
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
@@ -1029,8 +1031,8 @@ export default function Matches({ app }) {
         return shouldIncludeScheduleWindow(match, todayValue, maxScheduleDate);
       })
       .filter((match) => matchesScheduleBranch(match, "match", branchFilter))
-      .filter((match) => matchesScheduleRelation(getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds), relationFilter));
-  }, [app.currentUser.id, app.state.matches, branchFilter, captainTeamIds, dateFilter, maxScheduleDate, myTeamIds, relationFilter, todayValue]);
+      .filter((match) => matchesScheduleRelation(getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds), effectiveRelationFilter));
+  }, [app.currentUser.id, app.state.matches, branchFilter, captainTeamIds, dateFilter, effectiveRelationFilter, maxScheduleDate, myTeamIds, todayValue]);
 
   const filteredMatches = useMemo(() => {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
@@ -1084,11 +1086,11 @@ export default function Matches({ app }) {
         return postDate <= maxScheduleDate && shouldIncludeScheduleWindow(post, todayValue, maxScheduleDate);
       })
       .filter((post) => matchesScheduleBranch(post, "room", branchFilter))
-      .filter((post) => matchesScheduleRelation(getRecruitingScheduleRelation(post, app.state, app.currentUser.id, myTeamIds), relationFilter));
+      .filter((post) => matchesScheduleRelation(getRecruitingScheduleRelation(post, app.state, app.currentUser.id, myTeamIds), effectiveRelationFilter));
     return getScheduleItemsForView(baseFilteredMatches, recruitingRooms, selectedView, app.currentUser.id, true)
       .map(({ item }) => item)
       .filter((item) => getMatchDate(item));
-  }, [app.currentUser.id, app.state, baseFilteredMatches, branchFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, relationFilter, selectedView, todayValue]);
+  }, [app.currentUser.id, app.state, baseFilteredMatches, branchFilter, effectiveRelationFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, selectedView, todayValue]);
 
   const calendarCounts = useMemo(() => {
     return calendarMatches.reduce((map, match) => {
@@ -1111,8 +1113,8 @@ export default function Matches({ app }) {
         return postDate && postDate <= maxScheduleDate && shouldIncludeScheduleWindow(post, todayValue, maxScheduleDate);
       })
       .filter((post) => matchesScheduleBranch(post, "room", branchFilter))
-      .filter((post) => matchesScheduleRelation(getRecruitingScheduleRelation(post, app.state, app.currentUser.id, myTeamIds), relationFilter));
-  }, [app.currentUser.id, app.state, branchFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, relationFilter, todayValue]);
+      .filter((post) => matchesScheduleRelation(getRecruitingScheduleRelation(post, app.state, app.currentUser.id, myTeamIds), effectiveRelationFilter));
+  }, [app.currentUser.id, app.state, branchFilter, effectiveRelationFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, todayValue]);
   const dateScopedRecruitingCandidates = useMemo(() => visibleRecruitingCandidates.filter((post) => {
     if (isInstantScheduleRoom(post)) return !dateFilter;
     const postDate = getMatchDate(post);
@@ -1135,7 +1137,7 @@ export default function Matches({ app }) {
   const scheduledCount = viewButtonCounts.scheduled ?? 0;
   const closedCount = viewButtonCounts.closed ?? 0;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
-  const scheduleLoading = app.remoteReady === false || matchPagination.loading;
+  const scheduleLoading = app.remoteReady === false || matchPagination.loading || (panelMode === "team" && matchPagination.teamScheduleLoading);
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
     ? "내 일정 확인 중"
@@ -1145,6 +1147,17 @@ export default function Matches({ app }) {
   const displayScheduledCount = scheduleLoading ? "..." : scheduledCount;
   const displayClosedCount = scheduleLoading ? "..." : closedCount;
   const getDisplayViewButtonCount = (view) => (scheduleLoading ? "..." : getViewButtonCount(view));
+  const teamScheduleCount = useMemo(() => {
+    if (!matchPagination.teamScheduleChecked) return "";
+    const teamMatches = (app.state.matches ?? [])
+      .filter((match) => getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds) === "team")
+      .filter((match) => {
+        const matchDate = getMatchDate(match);
+        if (!matchDate) return true;
+        return matchDate <= maxScheduleDate && shouldIncludeScheduleWindow(match, todayValue, maxScheduleDate);
+      });
+    return getScheduleItemsForView(teamMatches, [], VIEWS[0], app.currentUser.id, false).length;
+  }, [app.currentUser.id, app.state.matches, captainTeamIds, matchPagination.teamScheduleChecked, maxScheduleDate, myTeamIds, todayValue]);
   return (
     <div className="page-stack om-match-page">
       <section className="om-match-hero">
@@ -1174,13 +1187,17 @@ export default function Matches({ app }) {
       <section className="om-view-grid" aria-label="경기 상태">
         {VIEWS.map((view) => {
           const Icon = view.icon;
-          const active = view.id === viewId;
+          const active = panelMode === "schedule" && view.id === viewId;
           return (
             <button
               key={view.id}
               type="button"
               className={active ? "om-view-card active" : "om-view-card"}
-              onClick={() => setViewId(view.id)}
+              onClick={() => {
+                setPanelMode("schedule");
+                if (relationFilter === "team") setRelationFilter("all");
+                setViewId(view.id);
+              }}
             >
               <span className="om-view-icon"><Icon size={22} /></span>
               <span>
@@ -1192,38 +1209,59 @@ export default function Matches({ app }) {
             </button>
           );
         })}
+        <button
+          type="button"
+          className={panelMode === "team" ? "om-view-card active" : "om-view-card"}
+          onClick={() => {
+            setPanelMode("team");
+            setViewId("active");
+            app.actions.loadMatchTeamSchedule?.();
+          }}
+        >
+          <span className="om-view-icon"><UsersRound size={22} /></span>
+          <span>
+            <small>TEAM</small>
+            <strong>내 팀 경기</strong>
+            <em>소속 팀 진행·예정</em>
+          </span>
+          <b>{matchPagination.teamScheduleLoading ? "..." : teamScheduleCount}</b>
+        </button>
+        <button
+          type="button"
+          className={panelMode === "tournament" ? "om-view-card active" : "om-view-card"}
+          onClick={() => setPanelMode("tournament")}
+        >
+          <span className="om-view-icon"><Trophy size={22} /></span>
+          <span>
+            <small>EVENT</small>
+            <strong>비공개 대회</strong>
+            <em>내 대회·팀 초대 대회</em>
+          </span>
+          <b>{activeTournaments.length}</b>
+        </button>
       </section>
 
+      {panelMode !== "tournament" ? (
       <section className="om-calendar-panel" aria-label="진행 경기 캘린더">
         <div className="om-calendar-summary">
           <div className="om-calendar-heading">
             <span className="om-view-icon"><CalendarDays size={22} /></span>
             <div>
               <span className="om-kicker">SCHEDULE</span>
-              <h2>내 진행 일정</h2>
+              <h2>{panelMode === "team" ? "내 팀 경기 일정" : "내 진행 일정"}</h2>
               <p>{dateFilter ? `${formatDateLabel(dateFilter)} 내 경기만 표시` : "내가 들어간 진행 중이거나 예정된 경기를 날짜별로 본다."}</p>
             </div>
           </div>
           <section className="om-calendar-filter-bar" aria-label="경기 필터">
-            <div className="om-calendar-filter-row">
+            {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">관계</span>
               <div className="segmented-control compact-segments" role="group" aria-label="관계 필터">
                 <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => setRelationFilter("all")}>전체</button>
                 <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => setRelationFilter("created")}>내가 만든 방</button>
                 <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => setRelationFilter("joined")}>내 참여방</button>
-                <button
-                  type="button"
-                  className={relationFilter === "team" ? "active" : ""}
-                  onClick={() => {
-                    setRelationFilter("team");
-                    app.actions.loadMatchTeamSchedule?.();
-                  }}
-                >
-                  {matchPagination.teamScheduleLoading ? "팀 일정 확인 중" : "내 팀 참여방"}
-                </button>
                 <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => setRelationFilter("invited")}>초대받은 방</button>
               </div>
-            </div>
+            </div> : null}
             <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">유형</span>
               <div className="segmented-control compact-segments" role="group" aria-label="유형 필터">
@@ -1280,8 +1318,9 @@ export default function Matches({ app }) {
           </div>
         </div>
       </section>
+      ) : null}
 
-      <section className={activeTournaments.length && !tournamentPanelOpen ? "om-tournament-panel collapsed" : "om-tournament-panel"} aria-label="비공개 대회">
+      {panelMode === "tournament" ? <section className="om-tournament-panel" aria-label="비공개 대회">
         <div className="om-list-head">
           <div>
             <span className="om-kicker">PRIVATE EVENT</span>
@@ -1289,24 +1328,9 @@ export default function Matches({ app }) {
           </div>
           <div className="om-tournament-head-actions">
             <span>{activeTournaments.length}개</span>
-            {activeTournaments.length ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="button-icon section-disclosure-button"
-                aria-expanded={tournamentPanelOpen}
-                aria-controls="private-tournament-list"
-                aria-label={tournamentPanelOpen ? "비공개 대회 접기" : "비공개 대회 펼치기"}
-                title={tournamentPanelOpen ? "비공개 대회 접기" : "비공개 대회 펼치기"}
-                onClick={() => setTournamentPanelOpen((current) => !current)}
-              >
-                {tournamentPanelOpen ? <ChevronUp size={18} strokeWidth={2.5} /> : <ChevronDown size={18} strokeWidth={2.5} />}
-              </Button>
-            ) : null}
           </div>
         </div>
-        <div id="private-tournament-list" className={tournamentPanelOpen ? "om-tournament-grid" : "om-tournament-grid compact"}>
+        <div id="private-tournament-list" className="om-tournament-grid">
           {activeTournaments.length ? activeTournaments.map((tournament) => {
             const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
             const teamRows = getTournamentTeamRows(tournament, teamById, userById, app.currentUser.id);
@@ -1319,8 +1343,19 @@ export default function Matches({ app }) {
                   <span className="om-kicker">{tournamentFormatLabels[tournament.format] ?? tournament.format}</span>
                   <h3>{tournament.title}</h3>
                   <p>
-                    <span><CalendarDays size={15} />{formatTournamentWindow(tournament)} · {tournament.court}</span>
-                    <span><UserRound size={15} />개최자 {organizer?.name ?? "알 수 없음"}{organizer ? ` ${getUserHashtag(organizer)}` : ""}</span>
+                    <span>
+                      <CalendarDays size={15} />
+                      {formatTournamentWindow(tournament)} · <CourtHoverCard court={courtByName[tournament.court]} courtName={tournament.court}>{tournament.court}</CourtHoverCard>
+                    </span>
+                    <span>
+                      <UserRound size={15} />
+                      개최자&nbsp;
+                      {organizer ? (
+                        <PlayerHoverCard as="span" user={organizer} teams={app.state.teams}>
+                          {organizer.name} {getUserHashtag(organizer)}
+                        </PlayerHoverCard>
+                      ) : "알 수 없음"}
+                    </span>
                   </p>
                 </div>
                 <div className="om-tournament-meta">
@@ -1348,7 +1383,7 @@ export default function Matches({ app }) {
             </div>
           )}
         </div>
-      </section>
+      </section> : null}
 
       {!selectedMatchDetailLoading && selectedMatch && selectedMatchRoomError ? (
         <RoomModalErrorView error={selectedMatchRoomError} onClose={closeSelectedMatch} />
@@ -1404,11 +1439,11 @@ export default function Matches({ app }) {
 
       {scheduleLoading ? <BasketballLoader overlay label="서버 데이터 불러오는 중" /> : null}
 
-      <section className="om-match-list" aria-label="경기 목록">
+      {panelMode !== "tournament" ? <section className="om-match-list" aria-label="경기 목록">
         <div className="om-list-head">
           <div>
             <span className="om-kicker">{selectedView.code}</span>
-            <h2>{dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
+            <h2>{panelMode === "team" ? "내 팀 경기" : dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
           </div>
           <span>{scheduleCountLabel}</span>
         </div>
@@ -1509,7 +1544,7 @@ export default function Matches({ app }) {
             <p>다른 상태를 선택하거나 새 경기를 만든다.</p>
           </div>
         )}
-      </section>
+      </section> : null}
     </div>
   );
 }

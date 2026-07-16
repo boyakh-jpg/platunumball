@@ -1893,7 +1893,7 @@ export function useAppData(authUser = null, appLocation = null) {
         return (remoteState.matches ?? []).filter((match) => match.__feedRelations?.includes("team")).length;
       } catch (error) {
         console.warn("Match team schedule load failed.", error.message);
-        setMatchPagination((prev) => ({ ...prev, teamScheduleLoading: false, teamScheduleChecked: true, error: error.message ?? "match_team_schedule_load_failed" }));
+        setMatchPagination((prev) => ({ ...prev, teamScheduleLoading: false, teamScheduleChecked: false, error: error.message ?? "match_team_schedule_load_failed" }));
         return false;
       }
     })().finally(() => {

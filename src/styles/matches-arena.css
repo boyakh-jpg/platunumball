@@ -2055,7 +2055,7 @@ html[data-theme="light"] .tournament-schedule-list input {
   }
 
   .om-view-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .om-filter-bar {
@@ -5241,5 +5241,90 @@ html[data-theme="light"] .om-calendar-summary {
     grid-column: 2;
     grid-row: 1;
     align-self: center;
+  }
+}
+
+/* Private-event cards share the match-list card contract. */
+.om-tournament-card {
+  position: relative;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) 92px;
+  grid-template-areas:
+    "copy meta action"
+    "copy state action";
+  align-items: stretch;
+  gap: 8px 12px;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+  padding: 14px 14px 14px 18px;
+}
+
+.om-tournament-card::before {
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--rb-orange);
+  content: "";
+}
+
+.om-tournament-card h3 {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--rb-text);
+  font-family: var(--sports-display-font);
+  font-size: clamp(22px, 1.9vw, 30px);
+  line-height: 0.98;
+  letter-spacing: 0;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.om-tournament-meta,
+.om-tournament-state {
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.24);
+  padding: 8px 10px;
+}
+
+.om-tournament-detail-link {
+  min-height: 100%;
+  border-radius: var(--ui-button-radius);
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+.om-tournament-card .court-hover-trigger,
+.om-tournament-card .player-hover-trigger {
+  color: inherit;
+  font: inherit;
+}
+
+@media (min-width: 761px) and (max-width: 1360px) {
+  .om-tournament-card {
+    grid-template-columns: minmax(0, 1fr) 92px;
+    grid-template-areas:
+      "copy action"
+      "meta meta"
+      "state state";
+  }
+}
+
+@media (max-width: 760px) {
+  .om-tournament-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "copy"
+      "meta"
+      "state"
+      "action";
+  }
+
+  .om-tournament-detail-link {
+    min-height: 48px;
   }
 }
