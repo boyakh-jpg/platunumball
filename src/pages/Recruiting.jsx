@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
   ChevronDown,
@@ -4406,8 +4406,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
 }
 
 function RecruitingReady({ app }) {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const targetPostId = searchParams.get("post") ?? "";
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -4613,6 +4614,11 @@ function RecruitingReady({ app }) {
     setSelectedPostId(null);
     setSelectedPostDetailLoadingId(null);
     setSelectedPostDetailFailedId(null);
+    if (targetPostId) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("post");
+      setSearchParams(next, { replace: true });
+    }
   };
   useBodyScrollLock(Boolean(selectedPost) || selectedPostPending || selectedPostDetailLoading || composeOpen);
 
@@ -4914,7 +4920,9 @@ function RecruitingReady({ app }) {
           post={selectedPost}
           skipInitialDetailLoad
           onClose={closeSelectedPost}
-          onOpenMatch={(matchId) => navigate(`/app/matches?match=${matchId}`)}
+          onOpenMatch={(matchId) => navigate(`/app/matches?match=${encodeURIComponent(matchId)}`, {
+            state: { matchModalReturnTo: `${location.pathname}${location.search}` },
+          })}
           onJoined={(postId) => {
             setSelectedPostDetailLoadingId(postId);
             setSelectedPostId(postId);

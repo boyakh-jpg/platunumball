@@ -1812,11 +1812,12 @@ export function useAppData(authUser = null, appLocation = null) {
     return promise;
   }, [authEmail, authUserId, setState]);
 
-  const loadMoreMatches = useCallback(async () => {
-    if (!isSupabaseConfigured || !authUserId || matchPagination.loading || matchPagination.exhausted) return false;
+  const loadMoreMatches = useCallback(async (options = {}) => {
+    const force = options?.force === true;
+    if (!isSupabaseConfigured || !authUserId || matchPagination.loading || (!force && matchPagination.exhausted)) return false;
     if (matchPagePromiseRef.current) return matchPagePromiseRef.current;
-    const cursor = matchPagination.cursor || getMatchPaginationCursor(state.matches);
-    if (!cursor && (state.matches?.length ?? 0) > 0) {
+    const cursor = force ? "" : matchPagination.cursor || getMatchPaginationCursor(state.matches);
+    if (!force && !cursor && (state.matches?.length ?? 0) > 0) {
       setMatchPagination((prev) => ({ ...prev, loading: false, exhausted: true, error: "", cursor: "" }));
       return false;
     }

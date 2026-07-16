@@ -1,5 +1,5 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, CheckCircle2, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy, UserRound, UsersRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -413,7 +413,8 @@ function getMatchScheduleRelation(match = {}, userId = "", captainTeamIds = [], 
 }
 
 function getMatchTeamScheduleRelation(match = {}, myTeamIds = []) {
-  return isMatchInUserTeamSchedule(match, myTeamIds) ? "team" : "";
+  const feedRelations = Array.isArray(match.__feedRelations) ? match.__feedRelations : [];
+  return feedRelations.includes("team") || isMatchInUserTeamSchedule(match, myTeamIds) ? "team" : "";
 }
 
 function getRecruitingScheduleRelation(post = {}, state = {}, userId = "", myTeamIds = []) {
@@ -507,7 +508,8 @@ function getTournamentTeamIds(tournament) {
 
 function getTournamentMatches(tournament, matchesById, matches = []) {
   const fromIds = (tournament.matchIds ?? []).map((matchId) => matchesById[matchId]).filter(Boolean);
-  const source = fromIds.length ? fromIds : matches.filter((match) => match.tournamentId === tournament.id);
+  const tournamentMatches = matches.filter((match) => match.tournamentId === tournament.id);
+  const source = [...new Map([...fromIds, ...tournamentMatches].map((match) => [match.id, match])).values()];
   return [...source].sort((a, b) => (a.tournamentRound ?? 0) - (b.tournamentRound ?? 0) || (a.tournamentFixture ?? 0) - (b.tournamentFixture ?? 0));
 }
 
@@ -926,6 +928,8 @@ export function MatchRoomModal({ app, matchId, onClose, entryPoint = "" }) {
 }
 
 export default function Matches({ app }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewId, setViewId] = useState(() => getSearchParamValue(searchParams, "view", VIEW_IDS, "active"));
   const [panelMode, setPanelMode] = useState(() => getSearchParamValue(searchParams, "panel", PANEL_MODES, "schedule"));
@@ -945,6 +949,7 @@ export default function Matches({ app }) {
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
   const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
+  const [selectedMatchDetailFailedId, setSelectedMatchDetailFailedId] = useState(null);
   const [selectedRecruitingPostDetailLoadingId, setSelectedRecruitingPostDetailLoadingId] = useState(null);
   const [selectedRecruitingPostDetailFailedId, setSelectedRecruitingPostDetailFailedId] = useState(null);
   const queryMatchId = searchParams.get("match");
@@ -1007,6 +1012,7 @@ export default function Matches({ app }) {
   const selectedMatchRoomPost = selectedMatchRoom.post;
   const selectedMatchRoomError = selectedMatchRoom.error;
   const selectedMatchDetailLoading = Boolean(activeSelectedMatchId && selectedMatchDetailLoadingId === activeSelectedMatchId);
+  const selectedMatchDetailFailed = Boolean(activeSelectedMatchId && selectedMatchDetailFailedId === activeSelectedMatchId && !selectedMatch);
   const applyFilterState = (patch, options = {}) => {
     const nextPanelMode = patch.panelMode ?? panelMode;
     const nextViewId = patch.viewId ?? viewId;
@@ -1048,12 +1054,21 @@ export default function Matches({ app }) {
     setDateFilter((current) => current === nextDateFilter ? current : nextDateFilter);
     setCalendarMonth((current) => current === nextCalendarMonth ? current : nextCalendarMonth);
   }, [searchParams]);
-  useBodyScrollLock(Boolean(selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedRecruitingPostDetailLoading));
+  useBodyScrollLock(Boolean(selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedMatchDetailFailed || selectedRecruitingPostDetailLoading));
   const closeSelectedMatch = () => {
     if (activeSelectedMatchId) requestedMatchDetailsRef.current.delete(activeSelectedMatchId);
     setSelectedMatchId(null);
     setSelectedMatchDetailLoadingId(null);
+    setSelectedMatchDetailFailedId(null);
     if (!queryMatchId) return;
+    if (typeof location.state?.matchModalReturnTo === "string" && location.state.matchModalReturnTo.startsWith("/app/")) {
+      navigate(location.state.matchModalReturnTo, { replace: true });
+      return;
+    }
+    if (location.state?.matchModalFromList) {
+      navigate(-1);
+      return;
+    }
     const next = new URLSearchParams(searchParams);
     next.delete("match");
     setSearchParams(next, { replace: true });
@@ -1061,6 +1076,7 @@ export default function Matches({ app }) {
   const requestMatchDetail = (matchId) => {
     if (!matchId || app.remoteReady === false || !app.currentUser.id || requestedMatchDetailsRef.current.has(matchId)) return;
     requestedMatchDetailsRef.current.add(matchId);
+    setSelectedMatchDetailFailedId((currentId) => currentId === matchId ? null : currentId);
     setSelectedMatchDetailLoadingId(matchId);
     const request = app.actions.loadMatchDetail?.(matchId);
     if (!request?.then) {
@@ -1069,9 +1085,15 @@ export default function Matches({ app }) {
       return;
     }
     request.then((count) => {
-      if (!count) requestedMatchDetailsRef.current.delete(matchId);
+      if (!count) {
+        requestedMatchDetailsRef.current.delete(matchId);
+        setSelectedMatchDetailFailedId(matchId);
+        app.actions.loadMoreMatches?.({ force: true });
+      }
     }).catch(() => {
       requestedMatchDetailsRef.current.delete(matchId);
+      setSelectedMatchDetailFailedId(matchId);
+      app.actions.loadMoreMatches?.({ force: true });
     }).finally(() => {
       setSelectedMatchDetailLoadingId((currentId) => currentId === matchId ? null : currentId);
     });
@@ -1089,6 +1111,7 @@ export default function Matches({ app }) {
         return null;
       });
       setSelectedMatchDetailLoadingId(null);
+      setSelectedMatchDetailFailedId(null);
       return;
     }
     setSelectedMatchId(queryMatchId);
@@ -1123,7 +1146,7 @@ export default function Matches({ app }) {
     setSelectedMatchId(matchId);
     const next = new URLSearchParams(searchParams);
     next.set("match", matchId);
-    setSearchParams(next);
+    setSearchParams(next, { state: { ...(location.state ?? {}), matchModalFromList: true } });
   };
 
   const baseFilteredMatches = useMemo(() => {
@@ -1488,7 +1511,11 @@ export default function Matches({ app }) {
                   <em>{pendingRows.length ? `${pendingRows.length}팀 승인 대기` : "참가 승인 완료"}</em>
                 </div>
                 <div className="om-tournament-actions">
-                  <Link className="button button-primary button-md om-tournament-detail-link" to={`/app/tournaments/${tournament.id}`}>
+                  <Link
+                    className="button button-primary button-md om-tournament-detail-link"
+                    to={`/app/tournaments/${tournament.id}`}
+                    state={{ from: `${location.pathname}${location.search}` }}
+                  >
                     {tournament.format === "tournament" ? "대진표" : "리그표"}
                   </Link>
                 </div>
@@ -1503,13 +1530,21 @@ export default function Matches({ app }) {
         </div>
       </section> : null}
 
-      {!selectedMatchDetailLoading && selectedMatch && selectedMatchRoomError ? (
+      {selectedMatchDetailFailed ? (
+        <RoomModalErrorView
+          error={new Error("경기를 찾을 수 없거나 열람 권한이 없습니다.")}
+          onClose={closeSelectedMatch}
+          onRetry={() => requestMatchDetail(activeSelectedMatchId)}
+        />
+      ) : null}
+
+      {!selectedMatchDetailLoading && !selectedMatchDetailFailed && selectedMatch && selectedMatchRoomError ? (
         <RoomModalErrorView error={selectedMatchRoomError} onClose={closeSelectedMatch} />
       ) : null}
 
-      {selectedMatchDetailLoading ? (
+      {selectedMatchDetailLoading && !selectedMatchDetailFailed ? (
         <RoomModalLoadingView onClose={closeSelectedMatch} />
-      ) : selectedMatch && selectedMatchRoomPost ? (
+      ) : !selectedMatchDetailFailed && selectedMatch && selectedMatchRoomPost ? (
         <RoomModalErrorBoundary key={selectedMatch.id} onClose={closeSelectedMatch}>
           <RecruitingRoomModal
             app={app}

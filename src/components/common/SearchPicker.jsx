@@ -155,6 +155,7 @@ export default function SearchPicker({
 
   useEffect(() => {
     if (!remoteSearchKey || !canSearch) {
+      remoteRequestIdRef.current += 1;
       setRemoteItems([]);
       setRemoteLoading(false);
       return undefined;

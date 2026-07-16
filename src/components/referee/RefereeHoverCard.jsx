@@ -131,7 +131,8 @@ export default function RefereeHoverCard({ user, matches = [], minTrust = REFERE
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        openPinned();
+        if (pinnedOpen) closePinned();
+        else openPinned();
       }}
       onFocus={showHover}
       onKeyDown={(event) => {
@@ -142,7 +143,8 @@ export default function RefereeHoverCard({ user, matches = [], minTrust = REFERE
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           event.stopPropagation();
-          openPinned();
+          if (pinnedOpen) closePinned();
+          else openPinned();
         }
       }}
       onMouseEnter={showHover}

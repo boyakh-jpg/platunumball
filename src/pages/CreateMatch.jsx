@@ -1330,7 +1330,11 @@ export default function CreateMatch({ app }) {
           rosterReady: { teamA: false, teamB: false },
         },
       });
-      if (typeof tournamentResult === "string" && tournamentResult) navigate("/app/matches");
+      if (typeof tournamentResult === "string" && tournamentResult) {
+        navigate(`/app/tournaments/${encodeURIComponent(tournamentResult)}`, {
+          state: { from: "/app/matches?panel=tournament" },
+        });
+      }
       else {
         setSubmitFeedback(formatCreateSaveError(tournamentResult, "대회 저장에 실패했습니다."));
         setSubmitting(false);

@@ -95,7 +95,8 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        openPinned();
+        if (pinnedOpen) closePinned();
+        else openPinned();
       }}
       onFocus={showHover}
       onKeyDown={(event) => {
@@ -106,7 +107,8 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           event.stopPropagation();
-          openPinned();
+          if (pinnedOpen) closePinned();
+          else openPinned();
         }
       }}
       onMouseEnter={showHover}

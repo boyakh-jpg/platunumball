@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Flag, MapPin, Save, ShieldCheck, Trophy, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -7,6 +7,7 @@ import Button from "../components/common/Button.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchRoomPhase } from "../lib/matchUtils.js";
@@ -67,6 +68,11 @@ function isTournamentForfeitAvailable(match) {
   if (!match.scheduledDate || !match.scheduledTime) return false;
   const scheduledAt = new Date(`${match.scheduledDate}T${String(match.scheduledTime).slice(0, 5)}:00+09:00`).getTime();
   return Number.isFinite(scheduledAt) && scheduledAt <= Date.now();
+}
+
+function isTournamentScheduleEditable(match) {
+  if (!match || match.startedAt || match.endedAt) return false;
+  return !["live", "postgame", "dispute", "record", "cancelled", "void"].includes(getMatchRoomPhase(match).phase);
 }
 
 function getTournamentMatches(tournament, matchesById, matches = []) {
@@ -395,6 +401,7 @@ function renderBracketNode(node, teamById, onOpenMatch) {
 }
 
 export default function TournamentDetail({ app }) {
+  const location = useLocation();
   const { tournamentId } = useParams();
   const tournament = (app.state.tournaments ?? []).find((item) => item.id === tournamentId);
   const requestedTournamentIdRef = useRef("");
@@ -405,6 +412,7 @@ export default function TournamentDetail({ app }) {
   const [savingForfeitId, setSavingForfeitId] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [editingScheduleId, setEditingScheduleId] = useState("");
+  useBodyScrollLock(Boolean(scheduleDialog || forfeitDialog));
   const teamById = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
   const userById = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const matchesById = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
@@ -497,6 +505,10 @@ export default function TournamentDetail({ app }) {
   const saveSchedule = (event, matchId) => {
     event.preventDefault();
     if (!canManageSchedule) return;
+    if (!isTournamentScheduleEditable(matchesById[matchId])) {
+      setScheduleDialog({ mode: "notice", matchId, message: "이미 시작되었거나 종료된 경기의 일정은 변경할 수 없습니다." });
+      return;
+    }
     const form = new FormData(event.currentTarget);
     const scheduledDate = String(form.get("scheduledDate") ?? "");
     const scheduledTime = String(form.get("scheduledTime") ?? "");
@@ -554,10 +566,13 @@ export default function TournamentDetail({ app }) {
   const organizer = userById[tournament.createdBy] ?? null;
   const dialogMatch = scheduleDialog?.matchId ? matchesById[scheduleDialog.matchId] : null;
   const forfeitMatch = forfeitDialog?.matchId ? matchesById[forfeitDialog.matchId] : null;
+  const matchesReturnTo = typeof location.state?.from === "string" && location.state.from.startsWith("/app/matches")
+    ? location.state.from
+    : "/app/matches?panel=tournament";
 
   return (
     <div className="page-stack tournament-detail-page">
-      <Link className="button button-secondary button-md tournament-back-link" to="/app/matches"><ChevronLeft size={17} /> 경기로</Link>
+      <Link className="button button-secondary button-md tournament-back-link" to={matchesReturnTo}><ChevronLeft size={17} /> 경기로</Link>
 
       <section className="tournament-hero">
         <div>
@@ -747,7 +762,7 @@ export default function TournamentDetail({ app }) {
                         ) : (
                           <span className="league-fixture-pending">생성 전</span>
                         )}
-                        {canManageSchedule && match && !result ? (
+                        {canManageSchedule && match && !result && isTournamentScheduleEditable(match) ? (
                           <button
                             type="button"
                             className="league-fixture-schedule-toggle"
@@ -759,7 +774,7 @@ export default function TournamentDetail({ app }) {
                           </button>
                         ) : null}
                       </div>
-                      {canManageSchedule && match && !result && editingScheduleId === match.id ? (
+                      {canManageSchedule && match && !result && isTournamentScheduleEditable(match) && editingScheduleId === match.id ? (
                         <div className="tournament-inline-schedule">
                           <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} aria-label="경기 날짜" />
                           <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} aria-label="경기 시간" />
@@ -796,19 +811,19 @@ export default function TournamentDetail({ app }) {
           </div>
           <div className="tournament-schedule-list">
             {tournamentMatches.map((match) => (
-              <form key={match.id} className={canManageSchedule ? "" : "locked"} onSubmit={(event) => saveSchedule(event, match.id)}>
+              <form key={match.id} className={canManageSchedule && isTournamentScheduleEditable(match) ? "" : "locked"} onSubmit={(event) => saveSchedule(event, match.id)}>
                 <button type="button" className="tournament-match-open" onClick={() => setSelectedMatchId(match.id)}>
                   <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
                   {" vs "}
                   <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
                 </button>
-                <span>{match.status === "confirmed" ? "확정" : match.status === "agreed" ? "예정" : "대기"}</span>
-                <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
-                <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
-                <select name="courtId" defaultValue={match.courtId ?? tournament.courtId ?? tournamentCourts[0]?.id} disabled={!canManageSchedule} aria-label="경기 구장">
+                <span>{getLeagueFixtureState(match, match.id).label}</span>
+                <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule || !isTournamentScheduleEditable(match)} aria-label="경기 날짜" />
+                <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule || !isTournamentScheduleEditable(match)} aria-label="경기 시간" />
+                <select name="courtId" defaultValue={match.courtId ?? tournament.courtId ?? tournamentCourts[0]?.id} disabled={!canManageSchedule || !isTournamentScheduleEditable(match)} aria-label="경기 구장">
                   {tournamentCourts.map((court) => <option key={court.id} value={court.id}>{court.name}</option>)}
                 </select>
-                <button type="submit" disabled={!canManageSchedule || savingScheduleId === match.id}><Save size={14} /> {savingScheduleId === match.id ? "저장 중" : "저장"}</button>
+                <button type="submit" disabled={!canManageSchedule || !isTournamentScheduleEditable(match) || savingScheduleId === match.id}><Save size={14} /> {savingScheduleId === match.id ? "저장 중" : "저장"}</button>
                 {canManageSchedule ? (
                   <button
                     type="button"

@@ -16206,3 +16206,27 @@ html[data-theme="light"] .app-main :is(
   font-weight: 850;
   text-align: center;
 }
+
+.settings-page .content-grid.settings-section-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .hover-portal-card.touch-open {
+    bottom: calc(var(--bottom-nav-height) + 12px + env(safe-area-inset-bottom, 0px));
+    max-height: min(62dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 560px) !important;
+    background: var(--surface);
+  }
+
+  .search-picker-results.is-floating {
+    position: fixed;
+    z-index: 120;
+    top: auto;
+    right: 12px;
+    bottom: calc(var(--bottom-nav-height) + 12px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    width: auto;
+    max-height: min(52dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 320px);
+    background: var(--surface);
+  }
+}

@@ -673,9 +673,7 @@ export default function Settings({ app, auth, section = "main" }) {
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => app.actions.switchUser(user.id)}
     >
-      <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
-        <strong>{user.name}</strong>
-      </PlayerHoverCard>
+      <strong>{user.name}</strong>
       <span>{user.testLoginId} · {user.region} · {matchCountByUser.get(user.id) ?? 0}경기</span>
       <em>{user.position}</em>
     </button>
