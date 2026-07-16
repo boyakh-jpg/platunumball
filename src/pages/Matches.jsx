@@ -387,6 +387,10 @@ function getMatchScheduleRelation(match = {}, userId = "", captainTeamIds = [], 
   return "";
 }
 
+function getMatchTeamScheduleRelation(match = {}, myTeamIds = []) {
+  return isMatchInUserTeamSchedule(match, myTeamIds) ? "team" : "";
+}
+
 function getRecruitingScheduleRelation(post = {}, state = {}, userId = "", myTeamIds = []) {
   if (!userId) return "";
   if (getRecruitingRoomOwnerId(post) === userId) return "created";
@@ -1023,7 +1027,9 @@ export default function Matches({ app }) {
 
   const baseFilteredMatches = useMemo(() => {
     return [...app.state.matches]
-      .filter((match) => Boolean(getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds)))
+      .filter((match) => Boolean(panelMode === "team"
+        ? getMatchTeamScheduleRelation(match, myTeamIds)
+        : getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds)))
       .filter((match) => {
         const matchDate = getMatchDate(match);
         if (!matchDate) return !dateFilter;
@@ -1031,8 +1037,10 @@ export default function Matches({ app }) {
         return shouldIncludeScheduleWindow(match, todayValue, maxScheduleDate);
       })
       .filter((match) => matchesScheduleBranch(match, "match", branchFilter))
-      .filter((match) => matchesScheduleRelation(getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds), effectiveRelationFilter));
-  }, [app.currentUser.id, app.state.matches, branchFilter, captainTeamIds, dateFilter, effectiveRelationFilter, maxScheduleDate, myTeamIds, todayValue]);
+      .filter((match) => matchesScheduleRelation(panelMode === "team"
+        ? getMatchTeamScheduleRelation(match, myTeamIds)
+        : getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds), effectiveRelationFilter));
+  }, [app.currentUser.id, app.state.matches, branchFilter, captainTeamIds, dateFilter, effectiveRelationFilter, maxScheduleDate, myTeamIds, panelMode, todayValue]);
 
   const filteredMatches = useMemo(() => {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
@@ -1150,14 +1158,14 @@ export default function Matches({ app }) {
   const teamScheduleCount = useMemo(() => {
     if (!matchPagination.teamScheduleChecked) return "";
     const teamMatches = (app.state.matches ?? [])
-      .filter((match) => getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds) === "team")
+      .filter((match) => getMatchTeamScheduleRelation(match, myTeamIds) === "team")
       .filter((match) => {
         const matchDate = getMatchDate(match);
         if (!matchDate) return true;
         return matchDate <= maxScheduleDate && shouldIncludeScheduleWindow(match, todayValue, maxScheduleDate);
       });
     return getScheduleItemsForView(teamMatches, [], VIEWS[0], app.currentUser.id, false).length;
-  }, [app.currentUser.id, app.state.matches, captainTeamIds, matchPagination.teamScheduleChecked, maxScheduleDate, myTeamIds, todayValue]);
+  }, [app.currentUser.id, app.state.matches, matchPagination.teamScheduleChecked, maxScheduleDate, myTeamIds, todayValue]);
   return (
     <div className="page-stack om-match-page">
       <section className="om-match-hero">
