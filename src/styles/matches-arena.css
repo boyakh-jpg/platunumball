@@ -5386,3 +5386,12 @@ html[data-theme="light"] .om-calendar-summary {
     min-height: 48px;
   }
 }
+
+/* Badges own their surface; their layout wrapper stays transparent. */
+.page-stack.tournament-detail-page .tournament-hero-badges,
+html[data-theme="light"] .page-stack.tournament-detail-page .tournament-hero-badges {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}

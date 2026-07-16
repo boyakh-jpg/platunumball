@@ -8182,3 +8182,19 @@ html[data-theme="light"] .arena-lobby-arena {
     line-height: 1.04;
   }
 }
+
+/* Keep one filter surface in both themes; the inner filter is only layout. */
+.arena-recruit-page.page-stack > .arena-queue-controls {
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-filter-bar {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}

@@ -3349,14 +3349,11 @@ input[type="color"] {
   grid-template-columns: minmax(0, 1fr) clamp(116px, 28%, 168px);
   align-items: center;
   gap: 16px;
-  border-radius: var(--radius);
-  background:
-    radial-gradient(circle at 80% 0%, rgba(255, 211, 108, 0.28), transparent 12rem),
-    linear-gradient(145deg, rgba(255, 211, 108, 0.2), rgba(70, 224, 182, 0.18)),
-    #101722;
-  border: 1px solid rgba(244, 199, 79, 0.24);
-  padding: 18px;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  padding: var(--card-padding);
+  box-shadow: var(--ui-card-shadow);
 }
 
 .share-card-copy {
@@ -3414,10 +3411,10 @@ input[type="color"] {
   width: max-content;
   align-items: center;
   gap: 7px;
-  border: 1px solid rgba(255, 211, 108, 0.32);
-  border-radius: var(--radius);
-  background: rgba(255, 211, 108, 0.1);
-  color: var(--gold);
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
   cursor: pointer;
   font-weight: 900;
   min-height: var(--ui-button-height);
@@ -4232,9 +4229,9 @@ input[type="color"] {
   grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto;
   align-items: center;
   gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   padding: 11px;
 }
 
@@ -4368,9 +4365,9 @@ input[type="color"] {
   gap: 4px;
   min-height: 72px;
   align-content: center;
-  border: 1px solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  background: var(--ui-card-bg);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--rb-text);
   padding: 12px;
   text-decoration: none;
@@ -6443,9 +6440,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: 32px auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   padding: 10px;
 }
 
@@ -6487,9 +6484,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   padding: 10px;
   color: var(--muted);
   font-weight: 850;
@@ -6510,11 +6507,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 10px;
   align-items: center;
-  border: 1px solid rgba(255, 117, 95, 0.18);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(135deg, rgba(255, 117, 95, 0.075), rgba(255, 211, 108, 0.045)),
-    rgba(8, 11, 16, 0.74);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   padding: 14px;
 }
 
@@ -6811,9 +6806,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .admin-action-panel,
 .admin-appointment-row {
   min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   padding: 10px;
 }
 
@@ -6917,9 +6912,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
   display: grid;
   min-width: 0;
   gap: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--text);
   text-align: left;
 }
@@ -7078,9 +7073,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   padding: 10px;
 }
 
@@ -8695,8 +8690,7 @@ html[data-theme="light"] .landing-backdrop {
 html[data-theme="light"] .broadcast-glass,
 html[data-theme="light"] .season-rule-board,
 html[data-theme="light"] .team-hub-board,
-html[data-theme="light"] .tier-statement,
-html[data-theme="light"] .share-card {
+html[data-theme="light"] .tier-statement {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.64)),
     rgba(255, 255, 255, 0.72);
@@ -8714,8 +8708,6 @@ html[data-theme="light"] .stat-player-button,
 html[data-theme="light"] .approval-voter-list button,
 html[data-theme="light"] .stat-stepper-row,
 html[data-theme="light"] .settings-toggle-grid label,
-html[data-theme="light"] .operations-list a,
-html[data-theme="light"] .season-race-list a,
 html[data-theme="light"] .history-item {
   border-color: rgba(32, 56, 68, 0.14);
   background: rgba(255, 255, 255, 0.58);
@@ -8920,6 +8912,7 @@ html[data-theme="light"] .team-search-popover button.selected {
   .home-search-results,
   .profile-hero,
   .team-detail-hero,
+  .season-hero,
   .recorder-layout,
   .recorder-sides.two,
   .stat-entry-grid,
@@ -12825,7 +12818,7 @@ button {
   }
 
   .home-action-row {
-    grid-template-columns: 36px minmax(0, 1fr);
+    grid-template-columns: 38px minmax(0, 1fr);
   }
 
   .home-action-row b,
@@ -15398,7 +15391,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .broadcast-score span,
   .broadcast-score strong,
   .broadcast-score i,
-  .recent-match-row strong,
   .recent-match-row i,
   .history-teams a,
   .history-score strong,
@@ -15439,7 +15431,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .broadcast-score span,
   .broadcast-score strong,
   .broadcast-score i,
-  .recent-match-row strong,
   .recent-match-row i,
   .history-teams a,
   .history-score strong,
@@ -15516,7 +15507,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 
 :where(
   .rank-home .rank-spotlight-main strong,
-  .recent-match-row strong,
   .history-teams a,
   .recorder-scoreboard strong,
   .recorder-scoreboard em,
@@ -15683,7 +15673,7 @@ html[data-theme="light"] .brand-letter-light {
   .rank-home > .home-search-panel,
   .rank-home > .home-left-rail,
   .rank-home > .home-right-rail,
-  .rank-home > .home-dashboard-grid {
+  .rank-home .home-left-rail > .home-dashboard-grid {
     grid-area: auto;
   }
 
@@ -15704,7 +15694,7 @@ html[data-theme="light"] .brand-letter-light {
     order: 3;
   }
 
-  .rank-home > .home-dashboard-grid {
+  .rank-home .home-left-rail > .home-dashboard-grid {
     display: block;
     order: 4;
   }
@@ -16146,4 +16136,73 @@ html[data-theme="light"] .app-main :is(
   .create-eligibility-control > .segmented-control {
     width: 100%;
   }
+}
+
+/* 2026-07-17 external page surface convergence.
+   Room and match list cards plus room modal internals keep their own modules. */
+.rank-home :is(
+  .home-recent-card,
+  .home-action-card,
+  .home-alert-card,
+  .rank-leaderboard-card,
+  .season-mini-card,
+  .rivalry-card,
+  .home-my-teams-card
+) {
+  padding: var(--card-padding);
+}
+
+.rank-home :is(
+  .home-recent-card,
+  .home-action-card,
+  .home-alert-card,
+  .rank-leaderboard-card,
+  .season-mini-card,
+  .rivalry-card,
+  .home-my-teams-card
+) > .section-title-row {
+  min-width: 0;
+  min-height: var(--ui-button-height);
+  align-items: flex-start;
+}
+
+.rank-home :is(
+  .home-action-row,
+  .rank-list .rank-row,
+  .home-side-stack .compact-list a,
+  .home-side-stack .compact-list > div,
+  .home-side-stack .compact-list > .team-hover-trigger,
+  .home-team-list a,
+  .home-team-list > div,
+  .home-team-list > .team-hover-trigger,
+  .season-mini-card .contract-grid > div
+) {
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  box-shadow: none;
+}
+
+.rank-home .home-action-row:is(.priority-1, .priority-2, .priority-3, .priority-4, .priority-5) {
+  border-color: var(--ui-control-border);
+  background: var(--ui-control-bg);
+  box-shadow: none;
+}
+
+.rank-home .home-my-teams-card :is(
+  .home-team-list a,
+  .home-team-list > div,
+  .home-team-list > .team-hover-trigger
+) {
+  min-height: var(--ui-button-height);
+}
+
+.home-panel-empty {
+  display: grid;
+  min-height: 66px;
+  place-items: center;
+  color: var(--rb-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-align: center;
 }

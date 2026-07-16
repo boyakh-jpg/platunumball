@@ -632,37 +632,41 @@ export default function Home({ app }) {
                   <p className="eyebrow">Recent Matches</p>
                   <h2>내 최근 전적</h2>
                 </div>
-                <Badge tone="green">{myCompletedMatches.length}경기</Badge>
+                <Badge tone={myCompletedMatches.length ? "green" : "neutral"}>{myCompletedMatches.length}경기</Badge>
               </div>
-              <div className="recent-result-strip">
-                {myCompletedMatches.slice(0, 8).map((match) => {
-                  const result = getUserResult(match, user.id);
-                  return (
-                    <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-result-pill result-${result.toLowerCase()}`}>
-                      {result}
-                    </Link>
-                  );
-                })}
-              </div>
-              <div className="recent-match-list">
-                {latestMyMatches.map((match) => (
-                  <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}>
-                    {(() => {
-                      const line = getUserMatchLine(match, user.id);
+              {myCompletedMatches.length ? (
+                <>
+                  <div className="recent-result-strip">
+                    {myCompletedMatches.slice(0, 8).map((match) => {
+                      const result = getUserResult(match, user.id);
                       return (
-                        <>
-                          <b>{line.result}</b>
-                          <span>
-                            <TeamHoverCard team={teamById[line.side.teamId]} as="span"><strong>{line.side.name}</strong></TeamHoverCard>
-                            <em>vs <TeamHoverCard team={teamById[line.opponent.teamId]} as="span">{line.opponent.name}</TeamHoverCard> · {match.court}</em>
-                          </span>
-                          <i>{line.score}:{line.opponentScore}</i>
-                        </>
+                        <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-result-pill result-${result.toLowerCase()}`}>
+                          {result}
+                        </Link>
                       );
-                    })()}
-                  </Link>
-                ))}
-              </div>
+                    })}
+                  </div>
+                  <div className="recent-match-list">
+                    {latestMyMatches.map((match) => (
+                      <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}>
+                        {(() => {
+                          const line = getUserMatchLine(match, user.id);
+                          return (
+                            <>
+                              <b>{line.result}</b>
+                              <span>
+                                <TeamHoverCard team={teamById[line.side.teamId]} as="span"><strong>{line.side.name}</strong></TeamHoverCard>
+                                <em>vs <TeamHoverCard team={teamById[line.opponent.teamId]} as="span">{line.opponent.name}</TeamHoverCard> · {match.court}</em>
+                              </span>
+                              <i>{line.score}:{line.opponentScore}</i>
+                            </>
+                          );
+                        })()}
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              ) : <div className="home-panel-empty">최근 확정 경기 없음</div>}
             </Card>
           </div>
         </div>
@@ -811,7 +815,6 @@ export default function Home({ app }) {
                 <p className="eyebrow">Local Ranking</p>
                 <h2>{user.region} 랭킹</h2>
               </div>
-              <Trophy size={20} />
             </div>
             <div className="rank-list">
               {topRankers.map((row, index) => (
@@ -834,7 +837,6 @@ export default function Home({ app }) {
                 <p className="eyebrow">Season Race</p>
                 <h2>{user.region} 시즌 레이스</h2>
               </div>
-              <Trophy size={20} />
             </div>
             <div className="season-progress">
               <span style={{ width: `${seasonProgress}%` }} />
@@ -859,7 +861,6 @@ export default function Home({ app }) {
                 <p className="eyebrow">Local Rivalry</p>
                 <h2>{user.region} 라이벌</h2>
               </div>
-              <Swords size={20} />
             </div>
             <div className="compact-list rivalry-list">
               {localRivals.length ? localRivals.map((team) => (
