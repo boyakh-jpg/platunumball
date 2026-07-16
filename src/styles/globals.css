@@ -16213,7 +16213,8 @@ html[data-theme="light"] .app-main :is(
 
 @media (max-width: 1079px) {
   .hover-portal-card.touch-open {
-    bottom: calc(var(--bottom-nav-height) + 12px + env(safe-area-inset-bottom, 0px));
+    top: auto !important;
+    bottom: calc(var(--bottom-nav-height) + 22px + env(safe-area-inset-bottom, 0px));
     max-height: min(62dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 560px) !important;
     background: var(--surface);
   }
@@ -16223,7 +16224,7 @@ html[data-theme="light"] .app-main :is(
     z-index: 120;
     top: auto;
     right: 12px;
-    bottom: calc(var(--bottom-nav-height) + 12px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--bottom-nav-height) + 22px + env(safe-area-inset-bottom, 0px));
     left: 12px;
     width: auto;
     max-height: min(52dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 320px);
