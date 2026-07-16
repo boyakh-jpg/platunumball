@@ -3476,19 +3476,34 @@ input[type="color"] {
 }
 
 .landing-primary-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
-  gap: 12px;
+  gap: 0;
 }
 
-.landing-actions .landing-create-action {
+.landing-actions .landing-primary-actions .landing-create-action {
   display: inline-flex;
-  width: 168px;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
 }
 
-.landing-actions .landing-create-action .button {
+.landing-actions .landing-primary-actions .landing-create-action .button {
   width: 100%;
+  min-width: 0;
+  gap: 6px;
+  padding-inline: 10px;
+  white-space: nowrap;
+}
+
+.landing-primary-actions .landing-create-action:first-child .button {
+  border-radius: var(--radius) 0 0 var(--radius);
+  box-shadow: inset -1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.landing-primary-actions .landing-create-action:last-child .button {
+  border-radius: 0 var(--radius) var(--radius) 0;
 }
 
 .match-room {
@@ -12831,7 +12846,21 @@ button {
   .landing-primary-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  .landing-actions .landing-primary-actions .landing-create-action .button {
+    gap: 4px;
+    padding-inline: 6px;
+    font-size: 0.75rem;
+  }
+
+  .landing-primary-actions .button svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
   }
 }
 
