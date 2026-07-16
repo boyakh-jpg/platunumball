@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ClipboardList, Globe2, Lock, Trophy, X } from "lucide-react";
+import { ClipboardList, Globe2, Lock, Star, Trophy, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -578,29 +578,45 @@ export default function CreateMatch({ app }) {
   const opponentTeamResults = useMemo(() => {
     if (!isTeamRoom || isPublicRoom || !selectedTeamA) return [];
     const query = opponentTeamQuery.trim();
+    const recentOpponentScores = new Map();
+    app.state.matches.forEach((match) => {
+      const teamAId = match.teamA?.teamId ?? match.teamAId;
+      const teamBId = match.teamB?.teamId ?? match.teamBId;
+      const opponentId = teamAId === selectedTeamA.id ? teamBId : teamBId === selectedTeamA.id ? teamAId : "";
+      if (!opponentId || opponentId === selectedTeamA.id) return;
+      const dateValue = Date.parse(match.confirmedAt ?? match.endedAt ?? match.startedAt ?? match.scheduledAt ?? match.createdAt ?? "");
+      const score = Number.isFinite(dateValue) ? dateValue : 1;
+      recentOpponentScores.set(opponentId, Math.max(recentOpponentScores.get(opponentId) ?? 0, score));
+    });
     return app.state.teams
       .filter((team) => team.id !== selectedTeamA.id)
       .filter((team) => getAvailableTeamPlayerIds(team, ownerSidePlayerIds).length >= 1)
       .filter((team) => !query || includesQuery(`${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`, query))
+      .filter((team) => getTeamEligibility(team, selectedTeamA.mmr).allowed || query)
       .sort((a, b) => (
         Number(favoriteTeamIds.includes(b.id)) - Number(favoriteTeamIds.includes(a.id)) ||
+        Number(Boolean(recentOpponentScores.get(b.id))) - Number(Boolean(recentOpponentScores.get(a.id))) ||
+        (recentOpponentScores.get(b.id) ?? 0) - (recentOpponentScores.get(a.id) ?? 0) ||
         Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) ||
-        b.mmr - a.mmr
+        Math.abs(Number(a.mmr ?? 1200) - Number(selectedTeamA.mmr ?? 1200)) - Math.abs(Number(b.mmr ?? 1200) - Number(selectedTeamA.mmr ?? 1200)) ||
+        String(a.name ?? "").localeCompare(String(b.name ?? ""))
       ))
       .slice(0, query ? 8 : 5);
-  }, [app.state.teams, currentRegion, favoriteTeamIds, isPublicRoom, isTeamRoom, opponentTeamQuery, ownerSidePlayerIds, selectedTeamA]);
+  }, [app.state.matches, app.state.teams, currentRegion, draft.ageRestriction, draft.mmrRangeMode, favoriteTeamIds, isPublicRoom, isTeamRoom, opponentTeamQuery, ownerSidePlayerIds, selectedTeamA]);
   const favoriteOpponentTeams = useMemo(() => {
     if (!isTeamRoom || isPublicRoom || !selectedTeamA) return [];
     return app.state.teams
       .filter((team) => favoriteTeamIds.includes(team.id))
       .filter((team) => team.id !== selectedTeamA.id)
       .filter((team) => getAvailableTeamPlayerIds(team, ownerSidePlayerIds).length >= 1)
+      .filter((team) => getTeamEligibility(team, selectedTeamA.mmr).allowed)
       .sort((a, b) => (
         Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) ||
-        b.mmr - a.mmr
+        Math.abs(Number(a.mmr ?? 1200) - Number(selectedTeamA.mmr ?? 1200)) - Math.abs(Number(b.mmr ?? 1200) - Number(selectedTeamA.mmr ?? 1200)) ||
+        String(a.name ?? "").localeCompare(String(b.name ?? ""))
       ))
       .slice(0, 10);
-  }, [app.state.teams, currentRegion, favoriteTeamIds, isPublicRoom, isTeamRoom, ownerSidePlayerIds, selectedTeamA]);
+  }, [app.state.teams, currentRegion, draft.ageRestriction, draft.mmrRangeMode, favoriteTeamIds, isPublicRoom, isTeamRoom, ownerSidePlayerIds, selectedTeamA]);
   const refereeCandidates = useMemo(
     () => app.state.users
       .filter((user) => isEligibleReferee(user, REFEREE_TRUST_MIN, app.state.settings?.refereeAppointments))
@@ -1132,6 +1148,11 @@ export default function CreateMatch({ app }) {
     const mmrBlocked = draft.mmrLimitMode === "block" && draft.ranked && selectedTeamA && !isMmrInRecruitingRange(team.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode);
     const eligibility = getTeamEligibility(team, selectedTeamA?.mmr ?? team.mmr);
     const favorite = favoriteTeamIds.includes(team.id);
+    const toggleFavorite = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      app.actions.toggleFavoriteTeam(team.id);
+    };
     return (
       <div
         key={team.id}
@@ -1142,6 +1163,16 @@ export default function CreateMatch({ app }) {
           <strong>{team.name}</strong>
           <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
           <em>{getTeamHashtag(team)} · {mmrBlocked ? "팀 MMR 범위 밖" : eligibility.allowed ? `${favorite ? "즐겨찾기" : "B사이드"} · 가능 ${eligibility.eligibleCount}/${eligibility.capacity}` : eligibility.reason}</em>
+        </button>
+        <button
+          type="button"
+          className={favorite ? "search-picker-favorite-action active" : "search-picker-favorite-action"}
+          aria-label={favorite ? `${team.name} 즐겨찾기 해제` : `${team.name} 즐겨찾기 추가`}
+          aria-pressed={favorite}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={toggleFavorite}
+        >
+          <Star size={16} fill={favorite ? "currentColor" : "none"} />
         </button>
       </div>
     );
@@ -2042,6 +2073,7 @@ export default function CreateMatch({ app }) {
                       remoteSearchType="team"
                       idleItems={favoriteOpponentTeams.length ? favoriteOpponentTeams : opponentTeamResults}
                       idleTitle={favoriteOpponentTeams.length ? "즐겨찾기 팀" : "추천 B사이드"}
+                      resultsClassName="create-opponent-team-results"
                       limit={10}
                       detailLimit={10}
                       showIdleOnFocus

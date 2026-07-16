@@ -510,6 +510,7 @@
 ## 2026-06-29 즐겨찾기 상태 원천
 
 - `favorites` 테이블이 `favoritePlayerIds`, `favoriteTeamIds`, `favoriteCourtIds`, `favoriteRefereeIds`의 원본이다. 얇은 profile/directory 응답의 기본 빈 settings 배열이 이 값들을 덮어쓰면 안 된다.
+- 비공개 팀전 B사이드 추천팀은 즐겨찾기 팀을 우선하고, 즐겨찾기가 없거나 검색 중이면 최근 맞붙은 팀, 같은 지역, A사이드와 MMR 차이가 작은 팀, 현재 연령/MMR/출전 가능 조건을 통과한 팀을 먼저 보여준다.
 
 ## 2026-06-29 홈 feed 초기 로드
 

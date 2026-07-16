@@ -5193,6 +5193,11 @@ input[type="color"] {
   padding: 6px;
 }
 
+.create-opponent-team-results .search-picker-result-row-actionable {
+  grid-template-columns: minmax(0, 1fr) 38px;
+  align-items: stretch;
+}
+
 .search-picker-result-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -5206,6 +5211,47 @@ input[type="color"] {
   font: inherit;
   padding: 4px;
   text-align: left;
+}
+
+.create-opponent-team-results .search-picker-result-main {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  min-height: 74px;
+}
+
+.create-opponent-team-results .search-picker-result-main strong,
+.create-opponent-team-results .search-picker-result-main span,
+.create-opponent-team-results .search-picker-result-main em {
+  grid-column: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.create-opponent-team-results .search-picker-result-main em {
+  grid-row: auto;
+  align-self: auto;
+  white-space: normal;
+}
+
+.search-picker-favorite-action {
+  display: grid;
+  width: 38px;
+  min-width: 38px;
+  min-height: 100%;
+  place-items: center;
+  border: 1px solid rgba(255, 211, 108, 0.2);
+  border-radius: calc(var(--radius) - 4px);
+  background: rgba(255, 211, 108, 0.06);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.search-picker-favorite-action:hover,
+.search-picker-favorite-action.active {
+  border-color: rgba(255, 211, 108, 0.56);
+  background: rgba(255, 211, 108, 0.14);
+  color: var(--gold);
 }
 
 .search-picker-result-row.selected {
