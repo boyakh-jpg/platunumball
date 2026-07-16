@@ -3258,14 +3258,14 @@ html[data-theme="light"] .om-calendar-grid button.active {
 }
 
 /* Shared match/recruiting list readability standard. */
-@media (min-width: 761px) {
+@container (min-width: 1181px) {
   .om-match-card,
   .arena-lobby-card.om-match-card {
     grid-template-columns: minmax(0, 0.82fr) minmax(400px, 1.18fr) 92px;
   }
 }
 
-@media (min-width: 761px) and (max-width: 1180px) {
+@container (min-width: 761px) and (max-width: 1180px) {
   .om-match-card,
   .arena-lobby-card.om-match-card {
     grid-template-columns: minmax(0, 1fr) 92px;
@@ -3333,7 +3333,12 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   background-image: none;
 }
 
-@media (max-width: 760px) {
+@container (max-width: 760px) {
+  .om-match-card,
+  .arena-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .om-match-summary-box,
   .om-score-box,
   .om-match-info-box,
@@ -3343,8 +3348,8 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 
   .om-room-link,
   .arena-lobby-card .om-room-link {
-    grid-column: 2;
-    grid-row: 1;
+    grid-column: 1;
+    grid-row: auto;
     align-self: center;
   }
 }
@@ -4937,7 +4942,7 @@ html[data-theme="light"] .om-match-stats span {
   }
 }
 
-@media (min-width: 761px) and (max-width: 1180px) {
+@container (min-width: 761px) and (max-width: 1180px) {
   .om-match-card,
   .arena-lobby-card.om-match-card {
     grid-template-columns: minmax(0, 1fr) 92px;
@@ -4968,7 +4973,7 @@ html[data-theme="light"] .om-match-stats span {
   }
 }
 
-@media (max-width: 760px) {
+@container (max-width: 760px) {
   .om-match-card,
   .arena-lobby-card.om-match-card {
     grid-template-columns: minmax(0, 1fr);
@@ -5238,7 +5243,7 @@ html[data-theme="light"] .om-calendar-summary {
   -webkit-line-clamp: 2;
 }
 
-@media (min-width: 761px) {
+@container (min-width: 1181px) {
   .om-match-card,
   .arena-lobby-card.om-match-card {
     grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) 92px;
@@ -5341,7 +5346,7 @@ html[data-theme="light"] .om-calendar-summary {
   }
 }
 
-@media (max-width: 760px) {
+@container (max-width: 760px) {
   .om-tournament-card {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:

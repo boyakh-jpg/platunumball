@@ -1147,6 +1147,7 @@ export default function Matches({ app }) {
     recruitingSchedulePostIds: [],
     teamScheduleChecked: false,
     teamScheduleLoading: false,
+    teamScheduleError: "",
   };
   useEffect(() => {
     if (panelMode !== "team" || !app.remoteReady || !app.currentUser.id) return;
@@ -1556,7 +1557,15 @@ export default function Matches({ app }) {
           <span>{scheduleCountLabel}</span>
         </div>
 
-        {displayScheduleItems.length ? (
+        {panelMode === "team" && matchPagination.teamScheduleError ? (
+          <div className="om-empty-state">
+            <strong>내 팀 경기 조회 실패</strong>
+            <p>서버 연결을 확인한 뒤 다시 시도한다.</p>
+            <Button variant="secondary" size="sm" onClick={() => app.actions.loadMatchTeamSchedule?.({ force: true })}>
+              다시 시도
+            </Button>
+          </div>
+        ) : displayScheduleItems.length ? (
           <>
         {displayScheduleItems.map(({ type, item }) => {
           if (type === "room") {

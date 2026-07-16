@@ -217,6 +217,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const themeSaveRequestRef = useRef(0);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
+  const [blockSavePending, setBlockSavePending] = useState(false);
   const [reportMatchId, setReportMatchId] = useState("");
   const [reportReason, setReportReason] = useState("");
   const [reportTargetQuery, setReportTargetQuery] = useState("");
@@ -725,9 +726,24 @@ export default function Settings({ app, auth, section = "main" }) {
     </button>
   );
 
-  const submitBlock = (event) => {
+  const submitBlock = async (event) => {
     event.preventDefault();
-    if (selectedBlockUserId) app.actions.blockUser(selectedBlockUserId);
+    if (!selectedBlockUserId || blockSavePending) return;
+    setBlockSavePending(true);
+    try {
+      await app.actions.blockUser(selectedBlockUserId);
+    } finally {
+      setBlockSavePending(false);
+    }
+  };
+  const releaseBlock = async (userId) => {
+    if (!userId || blockSavePending) return;
+    setBlockSavePending(true);
+    try {
+      await app.actions.unblockUser(userId);
+    } finally {
+      setBlockSavePending(false);
+    }
   };
   const submitReport = (event) => {
     event.preventDefault();
@@ -1499,17 +1515,17 @@ export default function Settings({ app, auth, section = "main" }) {
             <form className="form-stack" onSubmit={submitBlock}>
               <label>
                 차단할 플레이어
-                <select value={selectedBlockUserId} onChange={(event) => setBlockUserId(event.target.value)}>
+                <select value={selectedBlockUserId} disabled={blockSavePending} onChange={(event) => setBlockUserId(event.target.value)}>
                   {blockableUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.region}</option>)}
                 </select>
               </label>
-              <Button type="submit" variant="secondary" disabled={!selectedBlockUserId}>차단</Button>
+              <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
             </form>
             <div className="compact-list">
               {blockedUserIds.length ? blockedUserIds.map((userId) => (
                 <div key={userId}>
                   <span>{userMap[userId]?.name ?? "플레이어"}</span>
-                  <button type="button" onClick={() => app.actions.unblockUser(userId)}>해제</button>
+                  <button type="button" disabled={blockSavePending} onClick={() => releaseBlock(userId)}>해제</button>
                 </div>
               )) : <div><span>차단한 플레이어가 없습니다.</span><strong>0</strong></div>}
             </div>

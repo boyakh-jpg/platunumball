@@ -104,6 +104,7 @@ import {
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { readProfileBindings, readProfileCache, writeProfileBindings, writeProfileCache } from "../lib/storage.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
+import { isNotificationFromBlockedUser } from "../lib/notifications.js";
 import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
 
 const LOCAL_MAINTENANCE_INTERVAL_MS = 60000;
@@ -530,9 +531,47 @@ function getRecruitingStartFilterRequest(page = {}) {
   return { startFilter: "all", timingType: "", scheduledDate: "" };
 }
 
+function getBlockedUserIdsFromState(state = {}) {
+  return Array.isArray(state.settings?.blockedUserIds) ? state.settings.blockedUserIds : [];
+}
+
+function filterBlockedIncomingInvitations(invitations = [], state = {}) {
+  const blockedUserIds = new Set(getBlockedUserIdsFromState(state));
+  const currentUserId = state.currentUserId ?? "";
+  if (!currentUserId || !blockedUserIds.size) return invitations;
+  return invitations.filter((invitation) => !(
+    invitation?.targetUserId === currentUserId && blockedUserIds.has(invitation?.fromUserId)
+  ));
+}
+
+function filterBlockedIncomingRecruitingPosts(posts = [], state = {}) {
+  const blockedUserIds = new Set(getBlockedUserIdsFromState(state));
+  const currentUserId = state.currentUserId ?? "";
+  if (!currentUserId || !blockedUserIds.size) return posts;
+  return posts.map((post) => {
+    const invitations = post?.roomState?.invitations;
+    if (!Array.isArray(invitations)) return post;
+    const visibleInvitations = invitations.filter((invitation) => !(
+      invitation?.targetUserId === currentUserId && blockedUserIds.has(invitation?.fromUserId)
+    ));
+    return visibleInvitations.length === invitations.length
+      ? post
+      : { ...post, roomState: { ...post.roomState, invitations: visibleInvitations } };
+  });
+}
+
+function filterBlockedIncomingNotifications(notifications = [], state = {}) {
+  const blockedUserIds = getBlockedUserIdsFromState(state);
+  const currentUserId = state.currentUserId ?? "";
+  if (!currentUserId || !blockedUserIds.length) return notifications;
+  return notifications.filter((notification) => !(
+    notification?.targetUserId === currentUserId && isNotificationFromBlockedUser(notification, blockedUserIds)
+  ));
+}
+
 function mergeRemoteMatchPage(state, remoteState = {}, options = {}) {
   const nextMatches = remoteState.matches ?? [];
-  const nextPosts = remoteState.recruitingPosts ?? [];
+  const nextPosts = filterBlockedIncomingRecruitingPosts(remoteState.recruitingPosts ?? [], state);
   if (!nextMatches.length && !nextPosts.length) return state;
   const forceMatchIds = options.forceMatchIds instanceof Set ? options.forceMatchIds : new Set();
   const forceRecruitingPostIds = options.forceRecruitingPostIds instanceof Set ? options.forceRecruitingPostIds : new Set();
@@ -547,7 +586,7 @@ function mergeRemoteMatchPage(state, remoteState = {}, options = {}) {
 }
 
 function mergeRemoteRecruitingPage(state, remoteState = {}, options = {}) {
-  const nextPosts = remoteState.recruitingPosts ?? [];
+  const nextPosts = filterBlockedIncomingRecruitingPosts(remoteState.recruitingPosts ?? [], state);
   if (!nextPosts.length) return state;
   const forceRecruitingPostIds = options.forceRecruitingPostIds instanceof Set ? options.forceRecruitingPostIds : new Set();
   return {
@@ -609,11 +648,12 @@ function getRemoteDirectorySettings(settings = null, { includeTheme = false, inc
 function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
   const settingsPatch = getRemoteDirectorySettings(remoteState.settings, options);
   const includeDirectorySettings = options.includeDirectorySettings === true;
+  const visibleTeamInvitations = filterBlockedIncomingInvitations(remoteState.teamInvitations ?? [], state);
   return {
     ...state,
     users: mergeRemoteById(state.users, remoteState.users),
     teams: mergeRemoteById(state.teams, remoteState.teams),
-    teamInvitations: mergeRemoteById(state.teamInvitations, remoteState.teamInvitations),
+    teamInvitations: mergeRemoteById(state.teamInvitations, visibleTeamInvitations),
     affiliations: remoteState.affiliations?.length ? remoteState.affiliations : state.affiliations,
     seasons: remoteState.seasons?.length ? remoteState.seasons : state.seasons,
     reports: includeDirectorySettings && Array.isArray(remoteState.reports) ? mergeRemoteById(state.reports, remoteState.reports) : state.reports,
@@ -626,13 +666,14 @@ function mergeRemoteProfileState(state, remoteState = {}) {
   const includeTheme = remoteState.settingsMeta?.themeExplicit === true || remoteState.settings?.theme === "light" || remoteState.settings?.theme === "dark";
   const nextState = mergeRemoteDirectory(state, remoteState, { includeTheme });
   if (!Array.isArray(remoteState.teamInvitations) || !profileUserId) return nextState;
+  const visibleRemoteInvitations = filterBlockedIncomingInvitations(remoteState.teamInvitations, nextState);
   const unrelatedInvitations = (state.teamInvitations ?? []).filter((invitation) => (
     invitation.fromUserId !== profileUserId &&
     invitation.targetUserId !== profileUserId
   ));
   return {
     ...nextState,
-    teamInvitations: [...remoteState.teamInvitations, ...unrelatedInvitations],
+    teamInvitations: [...visibleRemoteInvitations, ...unrelatedInvitations],
   };
 }
 
@@ -642,7 +683,7 @@ function mergeRemoteHomeState(state, remoteState = {}) {
   return {
     ...mergedState,
     notifications: Array.isArray(remoteState.notifications)
-      ? mergeRemoteById(mergedState.notifications, remoteState.notifications)
+      ? mergeRemoteById(mergedState.notifications, filterBlockedIncomingNotifications(remoteState.notifications, mergedState))
       : mergedState.notifications,
   };
 }
@@ -1179,7 +1220,7 @@ export function useAppData(authUser = null, appLocation = null) {
   }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
-  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false });
+  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
@@ -1196,6 +1237,9 @@ export function useAppData(authUser = null, appLocation = null) {
   const matchPagePromiseRef = useRef(null);
   const matchRecruitingSchedulePromiseRef = useRef(null);
   const matchTeamSchedulePromiseRef = useRef(null);
+  const blockedSettingsSyncRef = useRef(Promise.resolve(true));
+  const blockedSettingsCommittedIdsRef = useRef(getBlockedUserIdsFromState(state));
+  const blockedSettingsPendingCountRef = useRef(0);
   const recruitingPagePromiseRef = useRef(null);
   const recorderMatchesPromiseRef = useRef(null);
   const reportableMatchesPromiseRef = useRef(null);
@@ -1264,6 +1308,14 @@ export function useAppData(authUser = null, appLocation = null) {
   }, [authUserId, remoteReady, state.currentUserId, state.settings, state.users]);
 
   useEffect(() => {
+    if (blockedSettingsPendingCountRef.current > 0) return;
+    blockedSettingsCommittedIdsRef.current = getBlockedUserIdsFromState(state);
+  }, [state.settings?.blockedUserIds]);
+
+  useEffect(() => {
+    blockedSettingsSyncRef.current = Promise.resolve(true);
+    blockedSettingsCommittedIdsRef.current = getBlockedUserIdsFromState(stateRef.current);
+    blockedSettingsPendingCountRef.current = 0;
     if (!isSupabaseConfigured || !authUserId) {
       remoteReadyRef.current = !isSupabaseConfigured;
       profileRefreshPromiseRef.current = null;
@@ -1280,7 +1332,7 @@ export function useAppData(authUser = null, appLocation = null) {
       homeRouteLoadKeyRef.current = "";
       recruitingPostPromiseRef.current = new Map();
       setRemoteReady(!isSupabaseConfigured);
-      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false });
+      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
       setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       setProfileRecordsLoaded(false);
@@ -1341,6 +1393,7 @@ export function useAppData(authUser = null, appLocation = null) {
             recruitingSchedulePostIds: recruitingScheduleChecked ? getStateRecruitingPostIds(maintainedState) : [],
             teamScheduleChecked: false,
             teamScheduleLoading: false,
+            teamScheduleError: "",
           });
           setRecruitingPagination({
             loading: false,
@@ -1365,7 +1418,7 @@ export function useAppData(authUser = null, appLocation = null) {
       .catch((error) => {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
-        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false });
+        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
         setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
@@ -1717,7 +1770,7 @@ export function useAppData(authUser = null, appLocation = null) {
       if (Array.isArray(result?.notifications)) {
         setState((prev) => ({
           ...prev,
-          notifications: result.notifications,
+          notifications: filterBlockedIncomingNotifications(result.notifications, prev),
         }));
       }
       return result?.notifications ?? [];
@@ -1865,7 +1918,7 @@ export function useAppData(authUser = null, appLocation = null) {
     if (matchTeamSchedulePromiseRef.current && !force) return matchTeamSchedulePromiseRef.current;
     if ((matchPagination.teamScheduleChecked || matchPagination.teamScheduleLoading) && !force) return true;
     const promise = (async () => {
-      setMatchPagination((prev) => ({ ...prev, teamScheduleLoading: true, error: "" }));
+      setMatchPagination((prev) => ({ ...prev, teamScheduleLoading: true, teamScheduleError: "" }));
       try {
         const result = await trackedPostServerAction(
           "/api/matches/list",
@@ -1889,12 +1942,18 @@ export function useAppData(authUser = null, appLocation = null) {
           teamScheduleLoading: false,
           teamScheduleChecked: true,
           error: "",
+          teamScheduleError: "",
           cursor: prev.cursor || result?.page?.cursor || getMatchPaginationCursor(remoteState.matches ?? []),
         }));
         return (remoteState.matches ?? []).filter((match) => match.__feedRelations?.includes("team")).length;
       } catch (error) {
         console.warn("Match team schedule load failed.", error.message);
-        setMatchPagination((prev) => ({ ...prev, teamScheduleLoading: false, teamScheduleChecked: false, error: error.message ?? "match_team_schedule_load_failed" }));
+        setMatchPagination((prev) => ({
+          ...prev,
+          teamScheduleLoading: false,
+          teamScheduleChecked: true,
+          teamScheduleError: error.message ?? "match_team_schedule_load_failed",
+        }));
         return false;
       }
     })().finally(() => {
@@ -1959,7 +2018,6 @@ export function useAppData(authUser = null, appLocation = null) {
         return nextMatches.length;
       } catch (error) {
         console.warn("Recorder match load failed.", error.message);
-        setRecorderMatchesLoaded(true);
         return false;
       }
     })().finally(() => {
@@ -2362,6 +2420,37 @@ export function useAppData(authUser = null, appLocation = null) {
           return result;
         });
       };
+      const applyBlockedUserMutation = (userId, shouldBlock) => {
+        if (!userId) return Promise.resolve(false);
+        if (!isSupabaseConfigured) {
+          setState((prev) => (shouldBlock
+            ? blockUser({ ...prev, currentUserId }, userId)
+            : unblockUser({ ...prev, currentUserId }, userId)));
+          return Promise.resolve(true);
+        }
+        const runMutation = async () => {
+          const blockedUserIds = blockedSettingsCommittedIdsRef.current;
+          const nextBlockedUserIds = shouldBlock
+            ? Array.from(new Set([...blockedUserIds, userId]))
+            : blockedUserIds.filter((blockedUserId) => blockedUserId !== userId);
+          const result = await syncSettingsServer({ blockedUserIds: nextBlockedUserIds });
+          if (!result || result.ok === false) return result || false;
+          blockedSettingsCommittedIdsRef.current = nextBlockedUserIds;
+          setState((prev) => (shouldBlock
+            ? blockUser({ ...prev, currentUserId }, userId)
+            : unblockUser({ ...prev, currentUserId }, userId)));
+          return result;
+        };
+        blockedSettingsPendingCountRef.current += 1;
+        const queuedMutation = blockedSettingsSyncRef.current
+          .catch(() => false)
+          .then(runMutation)
+          .finally(() => {
+            blockedSettingsPendingCountRef.current = Math.max(0, blockedSettingsPendingCountRef.current - 1);
+          });
+        blockedSettingsSyncRef.current = queuedMutation;
+        return queuedMutation;
+      };
       const applyRecruitingPostMutation = async (postId, reducer, meta = {}) => {
         const operation = getServerOperation({ ...meta, postId });
         const optimisticBeforeServerCheck = meta.optimisticBeforeServerCheck === true;
@@ -2718,30 +2807,8 @@ export function useAppData(authUser = null, appLocation = null) {
           { theme: nextTheme },
         ).then((result) => Boolean(result && result.ok !== false));
       },
-      blockUser: (userId) => {
-        let rollbackState = null;
-        let blockedUserIds = [];
-        setState((prev) => {
-          rollbackState = prev;
-          const next = blockUser({ ...prev, currentUserId }, userId);
-          blockedUserIds = next.settings?.blockedUserIds ?? [];
-          return next;
-        });
-        if (!isSupabaseConfigured) return Promise.resolve(true);
-        return rollbackIfServerFailed(syncSettingsServer({ blockedUserIds }), rollbackState, "차단 저장", { blockedUserIds });
-      },
-      unblockUser: (userId) => {
-        let rollbackState = null;
-        let blockedUserIds = [];
-        setState((prev) => {
-          rollbackState = prev;
-          const next = unblockUser({ ...prev, currentUserId }, userId);
-          blockedUserIds = next.settings?.blockedUserIds ?? [];
-          return next;
-        });
-        if (!isSupabaseConfigured) return Promise.resolve(true);
-        return rollbackIfServerFailed(syncSettingsServer({ blockedUserIds }), rollbackState, "차단 해제 저장", { blockedUserIds });
-      },
+      blockUser: (userId) => applyBlockedUserMutation(userId, true),
+      unblockUser: (userId) => applyBlockedUserMutation(userId, false),
       reportMatch: (matchId, reason, reportedUserIds) => {
         let createdReport = null;
         let syncedNotifications = [];

@@ -1345,7 +1345,7 @@ span.referee-hover-card {
     left: 12px !important;
     width: auto !important;
     min-width: 0;
-    max-height: min(78vh, 560px);
+    max-height: min(78dvh, 560px) !important;
     border-radius: 14px;
     padding: 14px;
   }
@@ -12839,6 +12839,25 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
+}
+
+.rank-home .home-action-main strong {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.rank-home .match-focus-card.home-unframed-section,
+html[data-theme="light"] .rank-home .match-focus-card.home-unframed-section {
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 @media (max-width: 390px) {

@@ -134,6 +134,8 @@ export default function Recorder({ app }) {
   const queryMatchId = searchParams.get("match") ?? "";
   const [selectedMatchId, setSelectedMatchId] = useState(queryMatchId);
   const [recorderLoading, setRecorderLoading] = useState(false);
+  const [recorderLoadError, setRecorderLoadError] = useState("");
+  const [recorderLoadAttempt, setRecorderLoadAttempt] = useState(0);
   const recorderLoadRef = useRef("");
 
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
@@ -158,10 +160,28 @@ export default function Recorder({ app }) {
     if (recorderLoadRef.current === user.id) return;
     recorderLoadRef.current = user.id;
     setRecorderLoading(true);
-    Promise.resolve(loadRecorderMatches()).finally(() => {
-      setRecorderLoading(false);
-    });
-  }, [app.actions.loadRecorderMatches, app.recorderMatchesLoaded, app.remoteReady, user.id]);
+    setRecorderLoadError("");
+    Promise.resolve(loadRecorderMatches())
+      .then((result) => {
+        if (result === false) {
+          recorderLoadRef.current = "";
+          setRecorderLoadError("진행 경기 목록을 불러오지 못했습니다.");
+        }
+      })
+      .catch(() => {
+        recorderLoadRef.current = "";
+        setRecorderLoadError("진행 경기 목록을 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        setRecorderLoading(false);
+      });
+  }, [app.actions.loadRecorderMatches, app.recorderMatchesLoaded, app.remoteReady, recorderLoadAttempt, user.id]);
+
+  const retryRecorderLoad = () => {
+    recorderLoadRef.current = "";
+    setRecorderLoadError("");
+    setRecorderLoadAttempt((attempt) => attempt + 1);
+  };
 
   const openMatch = (matchId) => {
     if (!matchId) return;
@@ -182,7 +202,7 @@ export default function Recorder({ app }) {
     }, { replace: true });
   };
 
-  const recorderPending = !matches.length && (!app.recorderMatchesLoaded || recorderLoading);
+  const recorderPending = !matches.length && !recorderLoadError && (!app.recorderMatchesLoaded || recorderLoading);
 
   return (
     <>
@@ -199,6 +219,13 @@ export default function Recorder({ app }) {
           <Card className="recorder-empty">
             {recorderPending ? (
               <BasketballLoader overlay label="진행 경기 확인 중" />
+            ) : recorderLoadError ? (
+              <>
+                <ShieldCheck size={34} />
+                <strong>{recorderLoadError}</strong>
+                <p>서버 연결을 확인한 뒤 다시 시도합니다.</p>
+                <button type="button" className="button button-secondary button-md" onClick={retryRecorderLoad}>다시 시도</button>
+              </>
             ) : (
               <>
                 <ShieldCheck size={34} />
