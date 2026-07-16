@@ -377,7 +377,6 @@ function shouldShowMatchForView(match, view, userId, options = {}) {
 
 function shouldShowMatchInList(match, view, userId, hasDateFilter, options = {}) {
   if (!shouldShowMatchForView(match, view, userId, options)) return false;
-  if (view.id === "active" && match.status === "confirmed" && !hasDateFilter) return false;
   return true;
 }
 
@@ -390,7 +389,7 @@ function isTournamentCaptainMatch(match = {}, captainTeamIds = []) {
 }
 
 function getMatchTeamIds(match = {}) {
-  return [match.teamA?.teamId, match.teamB?.teamId, match.teamAId, match.teamBId].filter(Boolean);
+  return [match.teamA?.teamId, match.teamB?.teamId].filter(Boolean);
 }
 
 function isMatchInUserTeamSchedule(match = {}, myTeamIds = []) {
@@ -968,12 +967,16 @@ export default function Matches({ app }) {
       .map((team) => team.id),
     [app.currentUser.id, app.state.teams],
   );
+  const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const activeTournaments = useMemo(() => {
     return [...(app.state.tournaments ?? [])]
+      .filter((tournament) => tournament.visibility === "private")
+      .filter((tournament) => !blockedUserIds.includes(tournament.createdBy))
       .filter((tournament) => !["closed", "cancelled"].includes(tournament.status))
+      .filter((tournament) => tournament.status !== "draft" || !tournament.endDate || tournament.endDate >= todayValue)
       .filter((tournament) => tournament.createdBy === app.currentUser.id || getTournamentTeamIds(tournament).some((teamId) => myTeamIds.includes(teamId)))
       .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
-  }, [app.currentUser.id, app.state.tournaments, myTeamIds]);
+  }, [app.currentUser.id, app.state.tournaments, blockedUserIds, myTeamIds, todayValue]);
   const selectedRecruitingPost = useMemo(
     () => (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId && post.status === "open") ?? null,
     [app.state.recruitingPosts, selectedRecruitingPostId],
@@ -1114,7 +1117,7 @@ export default function Matches({ app }) {
     setSelectedMatchId(matchId);
     const next = new URLSearchParams(searchParams);
     next.set("match", matchId);
-    setSearchParams(next, { replace: true });
+    setSearchParams(next);
   };
 
   const baseFilteredMatches = useMemo(() => {
@@ -1193,10 +1196,10 @@ export default function Matches({ app }) {
       })
       .filter((post) => matchesScheduleBranch(post, "room", branchFilter))
       .filter((post) => matchesScheduleRelation(getRecruitingScheduleRelation(post, app.state, app.currentUser.id, myTeamIds), effectiveRelationFilter));
-    return getScheduleItemsForView(baseFilteredMatches, recruitingRooms, selectedView, app.currentUser.id, true)
+    return getScheduleItemsForView(baseFilteredMatches, panelMode === "team" ? [] : recruitingRooms, selectedView, app.currentUser.id, true)
       .map(({ item }) => item)
       .filter((item) => getMatchDate(item));
-  }, [app.currentUser.id, app.state, baseFilteredMatches, branchFilter, effectiveRelationFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, selectedView, todayValue]);
+  }, [app.currentUser.id, app.state, baseFilteredMatches, branchFilter, effectiveRelationFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, panelMode, selectedView, todayValue]);
 
   const calendarCounts = useMemo(() => {
     return calendarMatches.reduce((map, match) => {
@@ -1231,9 +1234,9 @@ export default function Matches({ app }) {
   const scheduleItemsByView = useMemo(() => Object.fromEntries(
     VIEWS.map((view) => [
       view.id,
-      getScheduleItemsForView(filteredMatches, dateScopedRecruitingCandidates, view, app.currentUser.id, hasDateFilter),
+      getScheduleItemsForView(filteredMatches, panelMode === "team" ? [] : dateScopedRecruitingCandidates, view, app.currentUser.id, hasDateFilter),
     ]),
-  ), [app.currentUser.id, dateScopedRecruitingCandidates, filteredMatches, hasDateFilter]);
+  ), [app.currentUser.id, dateScopedRecruitingCandidates, filteredMatches, hasDateFilter, panelMode]);
   const visibleScheduleItems = scheduleItemsByView[viewId] ?? [];
   const viewButtonCounts = Object.fromEntries(
     VIEWS.map((view) => [view.id, scheduleItemsByView[view.id]?.length ?? 0]),
