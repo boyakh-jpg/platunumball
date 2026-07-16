@@ -11,7 +11,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
-import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
+import { formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { findCourtByHashtag, findTeamByHashtag, findUserByHashtag, getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
@@ -98,9 +98,7 @@ function getMatchReportTime(match = {}) {
   const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
   if (!rawDate) return 0;
   if (match.scheduledDate && rawDate === match.scheduledDate) {
-    const time = match.scheduledTime || "00:00";
-    const value = new Date(`${match.scheduledDate}T${time}`).getTime();
-    return Number.isFinite(value) ? value : 0;
+    return getMatchScheduledDate(match)?.getTime() ?? 0;
   }
   const value = new Date(rawDate).getTime();
   return Number.isFinite(value) ? value : 0;
@@ -227,6 +225,9 @@ export default function Settings({ app, auth, section = "main" }) {
   const [reportCourtReviewId, setReportCourtReviewId] = useState("");
   const [reportMemo, setReportMemo] = useState("");
   const [reportedUserIds, setReportedUserIds] = useState([]);
+  const [reportMatchesLoading, setReportMatchesLoading] = useState(false);
+  const [reportMatchesError, setReportMatchesError] = useState("");
+  const reportMatchesLoadRef = useRef("");
   const [accountQuery, setAccountQuery] = useState("");
   const [favoriteQuery, setFavoriteQuery] = useState("");
   const [favoriteListType, setFavoriteListType] = useState("");
@@ -456,6 +457,22 @@ export default function Settings({ app, auth, section = "main" }) {
       .map(({ match }) => match);
   }, [app.currentUserId, app.state.matches, userMap]);
   const reportTargetType = reportReason ? getReportTargetType(reportReason) : "";
+  const reportNeedsMatchData = [REPORT_TARGET_TYPES.player, REPORT_TARGET_TYPES.match, REPORT_TARGET_TYPES.mixed].includes(reportTargetType);
+  useEffect(() => {
+    if (!reportNeedsMatchData || !app.currentUserId || reportMatchesLoadRef.current === app.currentUserId) return;
+    const loadReportableMatches = app.actions.loadReportableMatches;
+    if (!loadReportableMatches) return;
+    reportMatchesLoadRef.current = app.currentUserId;
+    setReportMatchesLoading(true);
+    setReportMatchesError("");
+    Promise.resolve(loadReportableMatches()).then((ok) => {
+      if (ok !== false) return;
+      reportMatchesLoadRef.current = "";
+      setReportMatchesError("신고 가능한 경기를 불러오지 못했습니다.");
+    }).finally(() => {
+      setReportMatchesLoading(false);
+    });
+  }, [app.actions.loadReportableMatches, app.currentUserId, reportNeedsMatchData]);
   const reportableCourtRequests = useMemo(() => (
     courtRequests.filter((request) => {
       const alreadyReported = app.state.reports?.some((report) => (
@@ -1708,7 +1725,9 @@ export default function Settings({ app, auth, section = "main" }) {
                       items={reportTargetSearchItems}
                       idleItems={reportTargetSearchItems}
                       idleTitle="선택 가능한 대상"
-                      emptyText={getReportTargetEmptyText(reportTargetType)}
+                      emptyText={reportNeedsMatchData && reportMatchesLoading
+                        ? "신고 가능한 경기 확인 중"
+                        : reportMatchesError || getReportTargetEmptyText(reportTargetType)}
                       showIdleOnFocus
                       fieldClassName="admin-account-search"
                       renderItem={renderReportTargetSearchItem}

@@ -250,11 +250,15 @@ export function isInstantRoom(room = {}) {
 }
 
 export function getLocalDateInputValue(now = new Date()) {
-  return [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-");
+  const date = now instanceof Date ? now : new Date(now);
+  if (!Number.isFinite(date.getTime())) return "";
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 export function getPublicRoomMaxDateInput(now = new Date()) {
@@ -848,7 +852,7 @@ function getMatchEndDate(match = {}) {
   return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
 
-function getMatchScheduledDate(match = {}) {
+export function getMatchScheduledDate(match = {}) {
   if (isInstantRoom(match)) return null;
   const raw = match.scheduledDate
     ? `${match.scheduledDate} ${match.scheduledTime || "00:00"}`

@@ -4272,11 +4272,24 @@ export function updateSettings(state, patch) {
 export function blockUser(state, userId) {
   if (!state.users.some((user) => user.id === userId) || userId === state.currentUserId) return state;
   const blockedUserIds = Array.from(new Set([...(state.settings?.blockedUserIds ?? []), userId]));
+  const blockedUserIdSet = new Set(blockedUserIds);
   const blockedUser = state.users.find((user) => user.id === userId);
+  const isBlockedIncomingInvitation = (invitation = {}) => (
+    invitation.targetUserId === state.currentUserId && blockedUserIdSet.has(invitation.fromUserId)
+  );
+  const visibleRecruitingPosts = (state.recruitingPosts ?? []).map((post) => {
+    const roomState = post.roomState ?? {};
+    const invitations = (roomState.invitations ?? []).filter((invitation) => !isBlockedIncomingInvitation(invitation));
+    return invitations.length === (roomState.invitations ?? []).length
+      ? post
+      : { ...post, roomState: { ...roomState, invitations } };
+  });
 
   return {
     ...state,
     settings: normalizeSettings({ ...(state.settings ?? {}), blockedUserIds }),
+    teamInvitations: (state.teamInvitations ?? []).filter((invitation) => !isBlockedIncomingInvitation(invitation)),
+    recruitingPosts: visibleRecruitingPosts,
     notifications: [
       {
         id: makeId("n"),
@@ -4284,7 +4297,9 @@ export function blockUser(state, userId) {
         body: `${blockedUser?.name ?? "선택한 플레이어"}가 홈 검색과 추천 목록에서 숨겨집니다.`,
         tone: "team",
       },
-      ...state.notifications,
+      ...(state.notifications ?? []).filter((notification) => !(
+        notification.targetUserId === state.currentUserId && isNotificationFromBlockedUser(notification, blockedUserIds)
+      )),
     ],
   };
 }

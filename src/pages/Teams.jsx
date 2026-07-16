@@ -39,7 +39,9 @@ export default function Teams({ app }) {
   }, [app.actions]);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
-  const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+  const [draft, setDraft] = useState({ name: "", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+  const [teamCreatePending, setTeamCreatePending] = useState(false);
+  const [teamCreateError, setTeamCreateError] = useState("");
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const [courtQuery, setCourtQuery] = useState(defaultHomeCourt);
@@ -142,13 +144,25 @@ export default function Teams({ app }) {
     </button>
   );
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     if (teamNameInvalid) return;
-    app.actions.createTeam({ ...draft, captainId: app.currentUser.id });
-    setDraft({ name: "New Court Crew", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
-    setCourtQuery(defaultHomeCourt);
-    setCourtRegion(app.currentUser.region ?? "전체");
+    setTeamCreatePending(true);
+    setTeamCreateError("");
+    try {
+      const result = await app.actions.createTeam({ ...draft, captainId: app.currentUser.id });
+      if (!result || result?.ok === false) {
+        setTeamCreateError(result?.message || result?.error || "팀을 만들지 못했습니다.");
+        return;
+      }
+      setDraft({ name: "", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+      setCourtQuery(defaultHomeCourt);
+      setCourtRegion(app.currentUser.region ?? "전체");
+    } catch (error) {
+      setTeamCreateError(error?.message || "팀을 만들지 못했습니다.");
+    } finally {
+      setTeamCreatePending(false);
+    }
   };
 
   return (
@@ -341,7 +355,8 @@ export default function Teams({ app }) {
               팀 컬러
               <input type="color" value={draft.accent} onChange={(event) => update({ accent: event.target.value })} />
             </label>
-            <Button type="submit" disabled={captainLimitReached || teamNameInvalid}><PlusCircle size={18} /> 팀 만들기</Button>
+            {teamCreateError ? <span className="form-warning">{teamCreateError}</span> : null}
+            <Button type="submit" disabled={captainLimitReached || teamNameInvalid || teamCreatePending}><PlusCircle size={18} /> {teamCreatePending ? "저장 중" : "팀 만들기"}</Button>
           </form>
         </Card>
       </div>

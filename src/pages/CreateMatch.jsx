@@ -10,7 +10,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
+import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
@@ -698,11 +698,14 @@ export default function CreateMatch({ app }) {
       selectedTeamB &&
       !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode),
   );
-  const scheduledStartMs = new Date(`${draft.scheduledDate}T${draft.scheduledTime || "00:00"}`).getTime();
-  const publicScheduledLeadAllowed = !isPublicRoom || isInstantRoom || (Number.isFinite(scheduledStartMs) && scheduledStartMs > Date.now() + 4 * 3600000);
+  const scheduledTimingStatus = getPublicRoomTimingStatus({
+    ...draft,
+    visibility: isPublicRoom ? "public" : "private",
+  });
+  const scheduledTimingAllowed = isInstantRoom || scheduledTimingStatus.canCreate;
   const scheduleAllowed = isSoloRecord || isMatchRecordRoom
     ? Boolean(draft.scheduledDate && draft.scheduledDate >= minSoloRecordDate && draft.scheduledDate <= today)
-    : isInstantRoom || (draft.scheduledDate >= today && draft.scheduledDate <= scheduleMaxDate && publicScheduledLeadAllowed);
+    : isInstantRoom || (draft.scheduledDate >= today && draft.scheduledDate <= scheduleMaxDate && scheduledTimingAllowed);
   const tournamentEndAllowed = !isTournamentRoom || (draft.tournamentEndDate >= today && draft.tournamentEndDate <= maxScheduleDate);
   const selectedCourt = useMemo(
     () => registeredCourts.find((court) => court.id === draft.courtId || court.name === draft.court) ?? null,

@@ -152,7 +152,7 @@ export default function Recorder({ app }) {
   }, [queryMatchId]);
 
   useEffect(() => {
-    if (!app.remoteReady || !user.id || matches.length || app.recorderMatchesLoaded) return;
+    if (!app.remoteReady || !user.id || app.recorderMatchesLoaded) return;
     const loadRecorderMatches = app.actions.loadRecorderMatches;
     if (!loadRecorderMatches) return;
     if (recorderLoadRef.current === user.id) return;
@@ -161,7 +161,7 @@ export default function Recorder({ app }) {
     Promise.resolve(loadRecorderMatches()).finally(() => {
       setRecorderLoading(false);
     });
-  }, [app.actions.loadRecorderMatches, app.recorderMatchesLoaded, app.remoteReady, matches.length, user.id]);
+  }, [app.actions.loadRecorderMatches, app.recorderMatchesLoaded, app.remoteReady, user.id]);
 
   const openMatch = (matchId) => {
     if (!matchId) return;

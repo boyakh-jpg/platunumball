@@ -4824,7 +4824,7 @@ html[data-theme="light"] .tournament-hero h1 {
   overflow-wrap: anywhere;
   word-break: keep-all;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
 
 .recorder-card-list .arena-lobby-card .om-summary-line {

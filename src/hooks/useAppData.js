@@ -1050,7 +1050,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, recorderMatchesLoaded: true });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null });
     }
     if (options.endpoint === "recruitingList") {
       const result = await postServerAction(
@@ -1083,7 +1083,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, recorderMatchesLoaded: true });
     }
     if (options.endpoint === "profileRecords") {
       const result = await postServerAction(
@@ -1198,6 +1198,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const matchTeamSchedulePromiseRef = useRef(null);
   const recruitingPagePromiseRef = useRef(null);
   const recorderMatchesPromiseRef = useRef(null);
+  const reportableMatchesPromiseRef = useRef(null);
   const profileRecordsPromiseRef = useRef(null);
   const recruitingRegionPromiseRef = useRef(new Map());
   const latestRecruitingRegionRequestRef = useRef("");
@@ -1968,6 +1969,57 @@ export function useAppData(authUser = null, appLocation = null) {
     return promise;
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
+  const loadReportableMatches = useCallback(async () => {
+    if (!isSupabaseConfigured || !authUserId) return false;
+    if (reportableMatchesPromiseRef.current) return reportableMatchesPromiseRef.current;
+    const completedSince = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const promise = (async () => {
+      try {
+        const [activeResult, completedResult] = await Promise.all([
+          trackedPostServerAction(
+            "/api/matches/list",
+            {
+              authUserId,
+              authEmail,
+              limit: REMOTE_CLIENT_MATCH_LIMIT,
+              listOnly: false,
+              activeOnly: true,
+              includeRecentCompleted: false,
+              includeClosedNotices: false,
+              adminContext: false,
+            },
+            { allowWhenDisabled: true },
+          ),
+          trackedPostServerAction(
+            "/api/matches/list",
+            {
+              authUserId,
+              authEmail,
+              limit: REMOTE_CLIENT_MATCH_LIMIT,
+              listOnly: false,
+              completedOnly: true,
+              completedSince,
+              includeRecruitingSchedule: false,
+              adminContext: false,
+            },
+            { allowWhenDisabled: true },
+          ),
+        ]);
+        const activeState = normalizeServerState(activeResult?.state ?? {});
+        const completedState = normalizeServerState(completedResult?.state ?? {});
+        setState((prev) => mergeRemoteMatchPage(mergeRemoteMatchPage(prev, activeState), completedState));
+        return true;
+      } catch (error) {
+        console.warn("Reportable match load failed.", error.message);
+        return false;
+      }
+    })().finally(() => {
+      if (reportableMatchesPromiseRef.current === promise) reportableMatchesPromiseRef.current = null;
+    });
+    reportableMatchesPromiseRef.current = promise;
+    return promise;
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
+
   const loadProfileRecords = useCallback(async (options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
     const force = options?.force === true;
@@ -2431,6 +2483,7 @@ export function useAppData(authUser = null, appLocation = null) {
         loadRecruitingRegion,
         loadRecruitingPost,
         loadRecorderMatches,
+        loadReportableMatches,
         loadProfileRecords,
         profileRecordsLoaded,
         switchUser: (userId) => {
@@ -2936,20 +2989,37 @@ export function useAppData(authUser = null, appLocation = null) {
           throw error;
         });
       },
-      createTeam: (draft) => {
-        if (!ensureRemoteReady("팀 생성")) return;
+      createTeam: async (draft) => {
+        const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", "팀 생성");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("팀 생성")) return { ok: false, error: "remote_not_ready" };
         let rollbackState = null;
         let createdTeam = null;
         let syncedNotifications = [];
+        let localBlockNotification = null;
         setState((prev) => {
           rollbackState = prev;
           const existingIds = new Set((prev.teams ?? []).map((team) => team.id));
           const next = createTeam({ ...prev, currentUserId }, draft);
           createdTeam = (next.teams ?? []).find((team) => !existingIds.has(team.id)) ?? null;
           syncedNotifications = createdTeam ? getNewTeamNotifications(prev, next) : [];
+          localBlockNotification = createdTeam ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
           return next;
         });
-        if (createdTeam) rollbackIfServerFailed(syncTeamServer(createdTeam, syncedNotifications), rollbackState, "팀 생성", { teamId: createdTeam.id });
+        if (!createdTeam) return {
+          ok: false,
+          error: "local_reducer_blocked",
+          message: localBlockNotification
+            ? `${localBlockNotification.title}: ${localBlockNotification.body}`
+            : "팀 생성 조건을 통과하지 못했습니다.",
+        };
+        const result = await rollbackIfServerFailed(
+          syncTeamServer(createdTeam, syncedNotifications),
+          rollbackState,
+          "팀 생성",
+          { teamId: createdTeam.id },
+        );
+        return result?.ok === false ? result : createdTeam.id;
       },
       deleteTeam: (teamId) => {
         let rollbackState = null;
@@ -3208,7 +3278,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

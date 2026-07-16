@@ -148,13 +148,15 @@ export default function Home({ app }) {
       .map((match) => ({ type: "match", id: `match-${match.id}`, item: match }));
     return matchItems.sort((a, b) => compareSchedule(a.item, b.item));
   }, [app.state.matches, maxScheduleDate, todayValue, user.id]);
-  const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
+  const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
+  const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id)
+    .filter(({ invitation }) => !blockedUserIds.includes(invitation.fromUserId)), [app.state, blockedUserIds, user.id]);
   const pendingTeamInvitations = useMemo(() => (app.state.teamInvitations ?? []).filter((invitation) => (
     invitation.targetUserId === user.id &&
-    invitation.status === "pending"
-  )), [app.state.teamInvitations, user.id]);
+    invitation.status === "pending" &&
+    !blockedUserIds.includes(invitation.fromUserId)
+  )), [app.state.teamInvitations, blockedUserIds, user.id]);
   const myTeamCount = myTeams.length;
-  const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
@@ -213,7 +215,7 @@ export default function Home({ app }) {
         })));
     const loadedTournamentInviteIds = new Set(tournamentInviteItems.map((item) => item.tournamentId).filter(Boolean));
     const tournamentNotificationItems = (app.state.notifications ?? [])
-      .filter((notification) => isNotificationVisibleToUser(notification, user.id))
+      .filter((notification) => isNotificationVisibleToUser(notification, user.id, { blockedUserIds }))
       .filter((notification) => notification.type === "tournament_invite" && isHomeActionNotification(notification))
       .filter((notification) => !loadedTournamentInviteIds.has(notification.tournamentId))
       .map((notification) => ({
@@ -226,7 +228,7 @@ export default function Home({ app }) {
         icon: Trophy,
       }));
     const tournamentScheduleItems = (app.state.notifications ?? [])
-      .filter((notification) => isNotificationVisibleToUser(notification, user.id))
+      .filter((notification) => isNotificationVisibleToUser(notification, user.id, { blockedUserIds }))
       .filter((notification) => notification.type === "tournament_match_schedule" && isHomeActionNotification(notification))
       .map((notification) => ({
         id: `notification-${notification.id}`,
@@ -342,16 +344,16 @@ export default function Home({ app }) {
       }));
     return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...tournamentNotificationItems, ...tournamentScheduleItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
-  }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, user.id]);
+  }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, blockedUserIds, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, user.id]);
   const priorityItems = actionItems.slice(0, 5);
   const homeNoticeItems = useMemo(() => (app.state.notifications ?? [])
-    .filter((notification) => isNotificationVisibleToUser(notification, user.id))
+    .filter((notification) => isNotificationVisibleToUser(notification, user.id, { blockedUserIds }))
     .filter((notification) => !notification.readAt)
     .sort((a, b) => {
       const aTime = getNotificationDueAt(a) || a.createdAt || "";
       const bTime = getNotificationDueAt(b) || b.createdAt || "";
       return String(bTime).localeCompare(String(aTime));
-    }), [app.state.notifications, user.id]);
+    }), [app.state.notifications, blockedUserIds, user.id]);
   const priorityNoticeItems = homeNoticeItems.slice(0, 4);
 
   const searchResults = useMemo(() => {

@@ -10232,6 +10232,16 @@ html[data-theme="light"] .recent-match-row {
   white-space: nowrap;
 }
 
+@media (max-width: 640px) {
+  .my-team-row strong,
+  .my-team-row em {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
 .profile-rating-grid,
 .rank-mode-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -14000,7 +14010,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .quick-picker,
 .public-party-picker-grid,
 .favorite-type-grid,
-.create-mode-grid,
 .theme-choice-card .segmented-control,
 .notification-actions,
 .auth-browser-actions,
