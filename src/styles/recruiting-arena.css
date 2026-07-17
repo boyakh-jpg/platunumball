@@ -8004,7 +8004,9 @@ html[data-theme="light"] .arena-lobby-arena {
 }
 
 .arena-filter-bar .segmented-control,
-.arena-filter-bar .arena-start-date-filter {
+.arena-filter-bar .arena-start-date-filter,
+html[data-theme="light"] .arena-filter-bar .segmented-control,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
   border: 0;
   border-radius: 0;
   background: transparent;
