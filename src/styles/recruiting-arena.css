@@ -7272,9 +7272,13 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
 }
 
 @media (max-width: 720px) {
+  .arena-lobby-modal .arena-lobby-arena {
+    --room-slot-width: min(74px, calc((100dvw - 128px) / 4));
+  }
+
   .arena-lobby-modal .arena-room-slot-row,
   html[data-theme="light"] .arena-lobby-modal .arena-room-slot-row {
-    grid-auto-columns: minmax(74px, 74px);
+    grid-auto-columns: minmax(var(--room-slot-width), var(--room-slot-width));
     grid-auto-flow: column;
     grid-template-columns: none;
     justify-content: start;
@@ -7296,12 +7300,28 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
   html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
     grid-auto-flow: row;
     grid-auto-columns: auto;
-    grid-template-columns: repeat(var(--slot-count, 2), minmax(0, 1fr));
+    grid-template-columns: repeat(var(--slot-count, 2), minmax(0, var(--room-slot-width)));
     inline-size: 100%;
     max-width: 100%;
     margin: 0;
     padding: 0;
     overflow-x: visible;
+  }
+}
+
+@media (max-width: 380px) {
+  .arena-lobby-modal .arena-lobby-arena {
+    --room-slot-width: 74px;
+  }
+
+  .arena-lobby-modal .arena-reserve-panel,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:first-child,
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) {
+    grid-column: 1;
   }
 }
 
