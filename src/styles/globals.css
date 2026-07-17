@@ -10371,7 +10371,6 @@ html[data-theme="light"] .home-team-list > div,
 html[data-theme="light"] .quick-picker button,
 html[data-theme="light"] .favorite-result-row,
 html[data-theme="light"] .favorite-mini-chip,
-html[data-theme="light"] .selector-panel .search-controls,
 html[data-theme="light"] .ranking-filter-card {
   border-color: rgba(41, 116, 99, 0.16);
   background: rgba(255, 255, 255, 0.72);
@@ -10539,7 +10538,6 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
     grid-template-columns: 32px minmax(0, 1fr) auto;
   }
 
-  .profile-rating-grid,
   .rank-mode-grid {
     gap: 8px;
   }
@@ -10814,7 +10812,6 @@ html[data-theme="light"] .profile-records-summary {
     grid-column: 3;
   }
 
-  .profile-rating-grid,
   .rank-mode-grid {
     gap: 8px;
   }
@@ -10873,7 +10870,6 @@ html[data-theme="light"] .profile-records-summary {
 .quick-picker button,
 .favorite-result-row,
 .favorite-mini-chip,
-.selector-panel .search-controls,
 .ranking-filter-card {
   background-color: rgba(255, 255, 255, 0.045);
   background-image: none;
@@ -10935,7 +10931,6 @@ html[data-theme="light"] .home-team-list > div,
 html[data-theme="light"] .quick-picker button,
 html[data-theme="light"] .favorite-result-row,
 html[data-theme="light"] .favorite-mini-chip,
-html[data-theme="light"] .selector-panel .search-controls,
 html[data-theme="light"] .ranking-filter-card {
   background-color: rgba(246, 252, 249, 0.78);
   background-image: none;
