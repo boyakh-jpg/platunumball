@@ -8005,8 +8005,11 @@ html[data-theme="light"] .arena-lobby-arena {
 
 .arena-filter-bar .segmented-control,
 .arena-filter-bar .arena-start-date-filter {
-  padding: var(--ui-control-group-padding);
-  scroll-padding-inline: var(--ui-control-group-padding);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  scroll-padding-inline: 0;
 }
 
 .arena-lobby-card.om-match-card {

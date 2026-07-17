@@ -1598,7 +1598,7 @@ span.referee-hover-card {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-auto-rows: minmax(146px, auto);
-  gap: 12px;
+  gap: var(--page-section-gap);
 }
 
 .profile-rating-primary {
@@ -1657,7 +1657,7 @@ span.referee-hover-card {
 
 @media (max-width: 520px) {
   .profile-rating-grid {
-    gap: 8px;
+    gap: var(--page-section-gap-mobile);
   }
 
   .profile-rating-primary {
@@ -1744,8 +1744,9 @@ span.referee-hover-card {
   padding: 12px;
 }
 
-.notifications-list span {
+.notifications-list > div > span:first-child {
   display: grid;
+  min-width: 0;
   gap: 4px;
 }
 
@@ -1854,7 +1855,9 @@ span.referee-hover-card {
 .notifications-list > .notification-empty-state {
   min-height: 96px;
   justify-content: center;
-  border-style: dashed;
+  border: 0;
+  background: transparent;
+  padding: 0;
   color: var(--muted);
   font-weight: 800;
   text-align: center;
@@ -3436,11 +3439,14 @@ input[type="color"] {
   }
 
   .share-card-emblem {
-    margin-right: -10px;
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
   }
 
   .share-card-emblem .tier-emblem {
-    width: clamp(88px, 28vw, 112px);
+    width: 100%;
+    max-width: 96px;
   }
 }
 
@@ -5589,14 +5595,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   white-space: nowrap;
 }
 
-.home-action-row.priority-1,
-.home-action-row.priority-2,
-.home-action-row.priority-3,
-.home-action-row.priority-4 {
-  border-color: rgba(255, 211, 108, 0.34);
-  background: rgba(255, 211, 108, 0.075);
-}
-
 .home-action-icon {
   display: grid;
   width: 36px;
@@ -6254,11 +6252,11 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .affiliation-challenge-list > div {
   display: grid;
-  gap: 5px;
-  border: 1px solid rgba(116, 169, 255, 0.16);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
-  padding: 12px;
+  gap: var(--ui-control-group-gap);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: var(--ui-control-group-padding);
 }
 
 .affiliation-challenge-list span {
@@ -6422,7 +6420,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .season-metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--page-section-gap);
 }
 
 .season-metric-card {
@@ -6564,6 +6562,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .rivalry-empty {
   grid-template-columns: minmax(0, 1fr);
+  border: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .rivalry-empty p {
@@ -6876,10 +6877,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .admin-review-context {
   display: grid;
   gap: 4px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
-  padding: 10px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: var(--ui-control-group-padding);
 }
 
 .admin-review-context span {
@@ -9470,7 +9471,7 @@ html[data-theme="light"] .team-search-popover button.selected {
 
   .season-metric-grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    gap: var(--page-section-gap-mobile);
   }
 
   .approval-status-strip {
@@ -10037,24 +10038,6 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
   border-color: rgba(163, 185, 208, 0.16);
 }
 
-.home-action-row.priority-1,
-.home-action-row.priority-2,
-.home-action-row.priority-3,
-.home-action-row.priority-4 {
-  border-color: rgba(255, 211, 108, 0.3);
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.home-action-row.priority-1,
-.home-action-row.priority-2 {
-  box-shadow: inset 3px 0 0 rgba(255, 211, 108, 0.72);
-}
-
-.home-action-row.priority-3,
-.home-action-row.priority-4 {
-  box-shadow: inset 3px 0 0 rgba(70, 224, 182, 0.58);
-}
-
 .match-focus-card .home-action-row.priority-1 {
   border-color: transparent;
   box-shadow: none;
@@ -10312,12 +10295,18 @@ html[data-theme="light"] .recent-match-row {
   max-width: 84px;
 }
 
-.selector-panel .search-controls,
 .ranking-filter-card {
   border: 1px solid rgba(163, 185, 208, 0.16);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 12px;
+}
+
+.selector-panel .search-controls {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .selector-panel .quick-picker {
@@ -14081,7 +14070,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .public-party-picker-grid,
 .favorite-type-grid,
 .theme-choice-card .segmented-control,
-.notification-actions,
 .auth-browser-actions,
 .om-calendar-actions,
 .om-calendar-toolbar,
@@ -15360,7 +15348,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
     width: 100%;
   }
 
-  .rank-home .home-search-actions,
   .season-rule-actions,
   .rivalry-challenge-actions {
     grid-template-columns: 1fr;
@@ -15666,7 +15653,7 @@ html[data-theme="light"] .brand-letter-light {
 /* 2026-07-14 shared page rhythm and rail breakpoints. */
 .profile-side-grid,
 .settings-page .page-stack {
-  gap: var(--page-section-gap-mobile);
+  gap: var(--page-section-gap);
 }
 
 .settings-page .section-card {
@@ -15687,7 +15674,9 @@ html[data-theme="light"] .brand-letter-light {
 @media (max-width: 1079px) {
   .app-main > .page-stack,
   .content-grid,
-  .team-overview-grid {
+  .team-overview-grid,
+  .profile-side-grid,
+  .settings-page .page-stack {
     gap: var(--page-section-gap-mobile);
   }
 
