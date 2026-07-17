@@ -4343,6 +4343,21 @@ input[type="color"] {
   font-weight: 850;
 }
 
+:is(
+  .rank-home,
+  .profile-page,
+  .profile-records-page,
+  .teams-page,
+  .settings-page,
+  .admin-page
+) .empty-state {
+  min-height: 56px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
 .match-action-row,
 .settings-toggle-grid {
   display: grid;
