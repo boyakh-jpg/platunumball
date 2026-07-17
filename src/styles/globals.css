@@ -4428,6 +4428,16 @@ input[type="color"] {
   gap: 8px;
 }
 
+.settings-address-search,
+.settings-address-search > label,
+.settings-address-results,
+.settings-address-results button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .settings-address-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4443,6 +4453,7 @@ input[type="color"] {
 .settings-address-results {
   display: grid;
   gap: 8px;
+  overflow-x: hidden;
 }
 
 .settings-address-results button {
@@ -4463,7 +4474,10 @@ input[type="color"] {
 .settings-address-results strong,
 .settings-address-results span {
   min-width: 0;
+  max-width: 100%;
   overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
   line-height: 1.28;
 }
 
