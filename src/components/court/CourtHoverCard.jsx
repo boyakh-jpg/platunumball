@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, MapPin, Navigation, Star } from "lucide-react";
+import { Link } from "react-router-dom";
 import HoverPortal from "../common/HoverPortal.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { COURTS } from "../../lib/constants.js";
@@ -80,6 +81,8 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
   const hideHover = () => setHoverOpen(false);
   const open = pinnedOpen || (!pinnedHoverKey && canUseHoverPreview() && hoverOpen);
   const mapUrl = getCourtMapUrl(resolvedCourt);
+  const hasDetailPage = Boolean(court?.id || COURTS.some((item) => item.id === resolvedCourt.id));
+  const courtPath = hasDetailPage ? `/app/courts/${encodeURIComponent(resolvedCourt.id)}` : "";
   const reviewSummary = resolvedCourt.reviewSummary ?? {};
   const reviewCount = Number(reviewSummary.reviewCount ?? resolvedCourt.reviewCount ?? 0);
   const averageRating = Number(reviewSummary.adjustedRating ?? reviewSummary.averageRating ?? resolvedCourt.adjustedRating ?? resolvedCourt.rating ?? 0);
@@ -164,9 +167,22 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
             ))}
           </span>
         ) : null}
-        <a className="hover-card-action" href={mapUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-          <Navigation size={16} /> 지도로 보기 <ExternalLink size={14} />
-        </a>
+        <span className="court-hover-actions">
+          {courtPath ? (
+            <Link className="hover-card-action" to={courtPath} onClick={(event) => {
+              event.stopPropagation();
+              closePinned();
+            }}>
+              <MapPin size={16} /> 구장 보기
+            </Link>
+          ) : null}
+          <a className="hover-card-action hover-card-action-secondary" href={mapUrl} target="_blank" rel="noreferrer" onClick={(event) => {
+            event.stopPropagation();
+            closePinned();
+          }}>
+            <Navigation size={16} /> 지도 보기 <ExternalLink size={14} />
+          </a>
+        </span>
       </HoverPortal>
     </span>
   );

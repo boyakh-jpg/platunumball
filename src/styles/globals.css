@@ -15027,6 +15027,27 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   color: #fff;
 }
 
+.court-hover-actions {
+  display: none;
+}
+
+.court-hover-card.touch-open .court-hover-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--ui-control-group-gap);
+}
+
+.court-hover-card.touch-open .court-hover-actions .hover-card-action {
+  min-width: 0;
+  padding-inline: 8px;
+  white-space: nowrap;
+}
+
+.court-hover-card.touch-open .court-hover-actions .hover-card-action-secondary {
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+}
+
 .button-primary,
 .rank-home .home-rank-board-head .button,
 .button.om-match-create,
