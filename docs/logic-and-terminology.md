@@ -1178,6 +1178,9 @@ flowchart TD
 24. 리뷰 원점수는 감사와 설명을 위해 보존한다. 공개 평점과 추천 정렬에는 보정 점수를 사용하며 최근 유효 리뷰는 최대 3개만 구장 카드에 노출한다.
 25. 주소 문자열이 달라도 도로명·지번·표시 주소 중 하나가 같거나 핀 좌표가 약 35m 이내이면 같은 장소 후보로 본다. 같은 장소와 같은 표준 구장명이 겹치면 DB trigger가 요청·승인을 차단한다.
 26. 중복 검사는 공용 transaction advisory lock 안에서 `court_requests`, `approved_courts`, legacy `courts`를 교차 비교한다. legacy 기본 구장도 주소 identity를 서버에 보존하며 승인 구장의 legacy mirror는 이름·주소·핀·표준명 변경을 자동 동기화한다.
+27. 승인 구장의 canonical 상세 경로는 `/app/courts/:courtId`다. 홈 검색과 즐겨찾기 검색의 구장 결과는 방 생성 화면이 아니라 이 상세 경로로 이동한다.
+28. 구장 상세 리뷰 목록은 active 리뷰만 구장별 최대 100개 조회하며, 공개 별점은 `rankball_court_rating_rows()`의 평가자 성향 보정 점수를 사용한다.
+29. 구장 상세의 리뷰 작성 후보는 DB가 `match_players` 실제 참가, 종료 상태, 무효/취소 제외, 동일 구장을 다시 검증해 반환한다. 저장은 기존 `rankball_submit_court_review()`만 사용하며 `match_id + reviewer_id` 수정 규칙을 유지한다.
 
 ## 심판 원칙
 

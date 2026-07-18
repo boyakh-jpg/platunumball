@@ -2331,6 +2331,38 @@ export function useAppData(authUser = null, appLocation = null) {
     return promise;
   }, [authEmail, authUserId, directoryStatus.loaded, setState, trackedPostServerAction]);
 
+  const loadCourtDetail = useCallback(async (courtId) => {
+    if (!isSupabaseConfigured || !authUserId || !courtId) return null;
+    try {
+      return await trackedPostServerAction(
+        "/api/courts/detail",
+        { courtId: String(courtId), authUserId, authEmail },
+        { allowWhenDisabled: true },
+      );
+    } catch (error) {
+      console.warn("Court detail load failed.", error.message);
+      return null;
+    }
+  }, [authEmail, authUserId, trackedPostServerAction]);
+
+  const submitCourtDetailReview = useCallback((matchId, draft = {}) => {
+    if (!isSupabaseConfigured || !matchId) return Promise.resolve({ ok: false, error: "remote_not_configured" });
+    return runServerAction("/api/courts/submit-review", {
+      review: {
+        matchId: String(matchId),
+        rating: Number(draft.rating),
+        surfaceRating: draft.surfaceRating ?? null,
+        rimRating: draft.rimRating ?? null,
+        lightingRating: draft.lightingRating ?? null,
+        crowdRating: draft.crowdRating ?? null,
+        locationAccuracy: draft.locationAccuracy ?? null,
+        fitModes: Array.isArray(draft.fitModes) ? draft.fitModes : [],
+        tags: Array.isArray(draft.tags) ? draft.tags : [],
+        memo: String(draft.memo ?? "").trim().slice(0, 240),
+      },
+    });
+  }, [runServerAction]);
+
   useEffect(() => {
     if (!isSupabaseConfigured || !remoteReadyRef.current || !currentUserId) return;
     const deliveries = (state.discordNotificationDeliveries ?? [])
@@ -2585,6 +2617,7 @@ export function useAppData(authUser = null, appLocation = null) {
 
       return ({
         loadMatchDetail,
+        loadCourtDetail,
         loadMatchRecruitingSchedule,
         loadMatchTeamSchedule,
         refreshCurrentProfile,
@@ -2597,6 +2630,7 @@ export function useAppData(authUser = null, appLocation = null) {
         loadRecorderMatches,
         loadReportableMatches,
         loadProfileRecords,
+        submitCourtDetailReview,
         profileRecordsLoaded,
         switchUser: (userId) => {
         if (profileLocked) return false;
@@ -3387,7 +3421,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

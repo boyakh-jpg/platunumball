@@ -10,6 +10,7 @@ import { getSafeAppRedirect, shouldRecheckAgeGroup, shouldSetupProfile } from ".
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const Affiliations = lazy(() => import("./pages/Affiliations.jsx"));
 const CreateMatch = lazy(() => import("./pages/CreateMatch.jsx"));
+const CourtDetail = lazy(() => import("./pages/CourtDetail.jsx"));
 const Home = lazy(() => import("./pages/Home.jsx"));
 const Landing = lazy(() => import("./pages/Landing.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
@@ -130,6 +131,7 @@ export default function App() {
           <Route element={<AppShell app={app} auth={auth} />}>
             <Route path="/app" element={<Home app={app} />} />
             <Route path="/app/create" element={<CreateMatch app={app} />} />
+            <Route path="/app/courts/:courtId" element={<CourtDetail app={app} />} />
             <Route path="/app/matches/:matchId" element={<MatchRoom app={app} />} />
             <Route path="/app/matches" element={<Matches app={app} />} />
             <Route path="/app/recorder" element={<Recorder app={app} />} />
