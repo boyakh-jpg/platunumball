@@ -4490,8 +4490,14 @@ input[type="color"] {
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);
   cursor: pointer;
+  overflow: hidden;
   padding: 10px 12px;
   text-align: left;
+}
+
+.settings-address-results button > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .settings-address-results strong,
@@ -4531,6 +4537,32 @@ input[type="color"] {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 750;
+}
+
+@media (max-width: 560px) {
+  .settings-address-results button {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .settings-address-results strong,
+  .settings-address-results span,
+  .settings-address-results em {
+    grid-column: 1;
+  }
+
+  .settings-address-results strong {
+    grid-row: 1;
+  }
+
+  .settings-address-results span {
+    grid-row: 2;
+  }
+
+  .settings-address-results em {
+    grid-row: 3;
+    justify-self: start;
+  }
 }
 
 .referee-rulebook-panel {
