@@ -16412,9 +16412,16 @@ html[data-theme="light"] .brand-letter-light {
 }
 
 @media (max-width: 720px) {
+  .landing-hero {
+    --landing-mobile-content-gutter: clamp(20px, 6vw, 28px);
+    padding-right: max(var(--landing-mobile-content-gutter), env(safe-area-inset-right));
+    padding-left: max(var(--landing-mobile-content-gutter), env(safe-area-inset-left));
+  }
+
   .landing-brand-lockup {
-    gap: 12px;
-    width: min(90vw, 360px);
+    gap: 10px;
+    width: auto;
+    max-width: 100%;
   }
 
   .landing-brand-lockup .brand-logo-frame {
@@ -16423,8 +16430,15 @@ html[data-theme="light"] .brand-letter-light {
     border-radius: 10px;
   }
 
+  .landing-brand-lockup .brand-letter-wrap {
+    flex: 0 1 min(273px, 50.4vw);
+    width: min(273px, 50.4vw);
+    max-width: min(273px, 50.4vw);
+  }
+
   .landing-brand-lockup .brand-letter-img {
-    width: min(390px, 72vw);
+    width: 100%;
+    max-width: 100%;
   }
 }
 
