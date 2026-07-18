@@ -607,6 +607,8 @@ export default function Home({ app }) {
           idleTitle="즐겨찾기"
           showIdleOnFocus
           floating
+          floatingHeightLimit={380}
+          preferAboveOnMobile
           closeOnResultClick
           renderItem={renderHomeSearchItem}
           limit={SEARCH_PREVIEW_LIMIT}

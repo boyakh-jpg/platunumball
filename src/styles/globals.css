@@ -16028,7 +16028,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 }
 
 .rank-home .home-search-results.home-global-search-results.is-floating {
-  max-height: min(248px, var(--search-picker-max-height, 248px));
+  max-height: min(320px, var(--search-picker-max-height, 320px));
   overscroll-behavior: contain;
 }
 
@@ -16187,7 +16187,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   }
 
   .rank-home .home-search-results.home-global-search-results.is-floating {
-    max-height: min(220px, var(--search-picker-max-height, 220px));
+    max-height: min(380px, var(--search-picker-max-height, 380px));
   }
 
   .rank-home .home-search-create,

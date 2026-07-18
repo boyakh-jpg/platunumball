@@ -95,6 +95,8 @@ export default function SearchPicker({
   mapRemoteItem = (item) => item,
   showIdleOnFocus = false,
   floating = false,
+  floatingHeightLimit = 320,
+  preferAboveOnMobile = false,
   className = "",
   fieldClassName = "",
   resultsClassName = "",
@@ -124,6 +126,7 @@ export default function SearchPicker({
       return "";
     }
   }, [remoteSearchContext]);
+  const normalizedFloatingHeightLimit = Math.max(96, Number(floatingHeightLimit) || 320);
   const dynamicMinSearchLength = getQueryMinSearchLength(query, minSearchLength);
   const forceSearch = Boolean(query && submittedQuery === query);
   const canSearch = forceSearch || getSearchLengthText(query).length >= dynamicMinSearchLength;
@@ -205,9 +208,12 @@ export default function SearchPicker({
       const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
       const spaceAbove = Math.max(0, rect.top - viewportTop - 12);
       const spaceBelow = Math.max(0, viewportBottom - rect.bottom - 12);
-      const nextPlacement = spaceBelow < 220 && spaceAbove > spaceBelow ? "above" : "below";
+      const preferMobileAbove = preferAboveOnMobile
+        && window.matchMedia("(max-width: 759px)").matches
+        && spaceAbove >= 220;
+      const nextPlacement = preferMobileAbove || (spaceBelow < 220 && spaceAbove > spaceBelow) ? "above" : "below";
       const availableSpace = nextPlacement === "above" ? spaceAbove : spaceBelow;
-      const nextMaxHeight = Math.max(96, Math.min(320, Math.floor(availableSpace)));
+      const nextMaxHeight = Math.max(96, Math.min(normalizedFloatingHeightLimit, Math.floor(availableSpace)));
 
       setFloatingPlacement((current) => (current === nextPlacement ? current : nextPlacement));
       setFloatingMaxHeight((current) => (current === nextMaxHeight ? current : nextMaxHeight));
@@ -220,7 +226,7 @@ export default function SearchPicker({
       window.removeEventListener("resize", updatePlacement);
       window.visualViewport?.removeEventListener("resize", updatePlacement);
     };
-  }, [canShow, floating]);
+  }, [canShow, floating, normalizedFloatingHeightLimit, preferAboveOnMobile]);
 
   return (
     <div ref={pickerRef} className={`search-picker${floating ? " is-floating" : ""}${className ? ` ${className}` : ""}`}>
