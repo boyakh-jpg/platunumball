@@ -411,6 +411,45 @@ export async function attachNotificationActors(supabase, notifications = []) {
   });
 }
 
+export async function attachNotificationTargetState(supabase, notifications = []) {
+  const rows = toArray(notifications);
+  const matchIds = uniqueStringIds(rows.map((notification) => notification.matchId));
+  const recruitingPostIds = uniqueStringIds(rows
+    .filter((notification) => !notification.matchId)
+    .map((notification) => notification.recruitingPostId));
+
+  const [matchResult, recruitingResult] = await Promise.all([
+    matchIds.length
+      ? supabase.from("matches").select("id,status").in("id", matchIds)
+      : Promise.resolve({ data: [], error: null }),
+    recruitingPostIds.length
+      ? supabase.from("recruiting_posts").select("id,status,room_state").in("id", recruitingPostIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (matchResult.error && !isMissingTable(matchResult.error, "matches")) throw matchResult.error;
+  if (recruitingResult.error && !isMissingTable(recruitingResult.error, "recruiting_posts")) throw recruitingResult.error;
+
+  const matchStatusById = new Map((matchResult.data ?? []).map((row) => [row.id, row.status]));
+  const recruitingStatusById = new Map((recruitingResult.data ?? []).map((row) => [
+    row.id,
+    row.status ?? row.room_state?.status,
+  ]));
+
+  return rows.map((notification) => {
+    const targetType = notification.matchId ? "match" : notification.recruitingPostId ? "recruiting" : "";
+    if (!targetType) return notification;
+    const targetId = notification.matchId || notification.recruitingPostId;
+    const statusById = targetType === "match" ? matchStatusById : recruitingStatusById;
+    const targetStatus = String(statusById.get(targetId) ?? (statusById.has(targetId) ? "" : "missing"));
+    const targetUnavailable = targetStatus === "missing" || (
+      targetType === "match"
+        ? ["cancelled", "canceled", "void", "voided", "closed"].includes(targetStatus.toLowerCase())
+        : ["cancelled", "canceled", "closed", "expired"].includes(targetStatus.toLowerCase())
+    );
+    return { ...notification, targetStatus, targetUnavailable };
+  });
+}
+
 function pickNotificationValue(value, fallback, coalesce = "falsy") {
   return coalesce === "nullish" ? (value ?? fallback) : (value || fallback);
 }

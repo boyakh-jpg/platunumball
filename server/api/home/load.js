@@ -1,10 +1,10 @@
-import { attachNotificationActors, getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson, timeStep } from "../_supabaseAdmin.js";
+import { attachNotificationActors, attachNotificationTargetState, getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson, timeStep } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
 import { NOTIFICATION_COLUMNS } from "../../../src/data/repositoryColumns.js";
-import { isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
+import { isNotificationDisplayable, isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
 import {
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
@@ -84,8 +84,10 @@ async function loadCurrentUserHomeNotifications(supabase, profileId = "", blocke
     .order("created_at", { ascending: false })
     .limit(HOME_NOTIFICATION_QUERY_LIMIT);
   if (error) throw error;
-  return (await attachNotificationActors(supabase, (data ?? []).map(fromRemoteNotification)))
+  const notificationsWithActors = await attachNotificationActors(supabase, (data ?? []).map(fromRemoteNotification));
+  return (await attachNotificationTargetState(supabase, notificationsWithActors))
     .filter((notification) => isNotificationVisibleToUser(notification, profileId, { blockedUserIds }))
+    .filter((notification) => isNotificationDisplayable(notification))
     .slice(0, HOME_NOTIFICATION_LIMIT);
 }
 

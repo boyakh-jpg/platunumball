@@ -1,21 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Trash2 } from "lucide-react";
+import { Bell, Check, Trash2 } from "lucide-react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import { isInstantRoom } from "../lib/matchUtils.js";
-import { isNotificationVisibleToUser } from "../lib/notifications.js";
+import { isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import { getPendingRecruitingInvitations } from "../lib/recruiting.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
-
-const toneMap = {
-  match: "blue",
-  tier: "gold",
-  team: "green",
-};
 
 function getRecruitingSchedule(post) {
   if (isInstantRoom(post)) return "즉시";
@@ -48,7 +42,11 @@ export default function Notifications({ app }) {
   useBodyScrollLock(Boolean(selectedRecruitingPost));
   const visibleNotifications = useMemo(() => (app.state.notifications ?? [])
     .filter((notification) => isNotificationVisibleToUser(notification, app.currentUser.id, { blockedUserIds }))
-    .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))), [app.currentUser.id, app.state.notifications, blockedUserIds]);
+    .map((notification) => isNotificationTargetUnavailable(notification, app.state)
+      ? { ...notification, targetUnavailable: true }
+      : notification)
+    .filter((notification) => isNotificationDisplayable(notification))
+    .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))), [app.currentUser.id, app.state, app.state.notifications, blockedUserIds]);
   const unreadNotifications = visibleNotifications.filter((notification) => !notification.readAt);
   const pastNotifications = visibleNotifications.filter((notification) => Boolean(notification.readAt));
   const unreadCount = unreadNotifications.length;
@@ -166,7 +164,7 @@ export default function Notifications({ app }) {
           </div>
         </Card>
       ) : null}
-      <Card className="section-card">
+      <Card className="section-card home-alert-card notification-inbox-card">
         <div className="section-title-row">
           <div>
             <p className="eyebrow">Inbox</p>
@@ -196,40 +194,42 @@ export default function Notifications({ app }) {
             <Badge tone={unreadCount ? "orange" : "green"}>{unreadCount ? "확인 필요" : "정리됨"}</Badge>
           </div>
         </div>
-        <div className="compact-list notifications-list" role="tabpanel">
+        <div className="home-action-list notifications-list" role="tabpanel">
           {displayedNotifications.length ? displayedNotifications.map((notification) => (
-            <div key={notification.id} className={notification.readAt ? "notification-read" : "notification-unread"}>
-              <span>
+            <article key={notification.id} className={`home-action-row notification-row ${notification.readAt ? "notification-read" : "notification-unread"} ${notification.targetUnavailable ? "notification-terminal-row" : ""}`}>
+              <span className="home-action-icon"><Bell size={18} aria-hidden="true" /></span>
+              <span className="home-action-main">
                 <strong>{notification.title}</strong>
-                <small>{notification.body}</small>
+                <em>{notification.body}</em>
                 {formatNotificationTime(notification.createdAt) ? (
                   <time dateTime={notification.createdAt}>{formatNotificationTime(notification.createdAt)}</time>
                 ) : null}
               </span>
               <span className="notification-actions">
-                <Badge tone={toneMap[notification.tone] ?? "neutral"}>{notification.tone}</Badge>
-                {notification.matchId ? (
+                {notification.targetUnavailable ? (
+                  <b className="notification-terminal-state">종료됨</b>
+                ) : notification.matchId ? (
                   <Link
-                    className="button button-secondary button-md"
+                    className="notification-row-open"
                     to={`/app/matches?match=${notification.matchId}`}
                     onClick={(event) => {
                       event.preventDefault();
                       openMatchRoom(notification.matchId);
                     }}
                   >
-                    방 보기
+                    보기
                   </Link>
                 ) : null}
-                {notification.recruitingPostId ? (
+                {!notification.targetUnavailable && !notification.matchId && notification.recruitingPostId ? (
                   <Link
-                    className="button button-secondary button-md"
+                    className="notification-row-open"
                     to={`/app/recruiting?post=${notification.recruitingPostId}`}
                     onClick={(event) => {
                       event.preventDefault();
                       openRecruitingRoom(notification.recruitingPostId);
                     }}
                   >
-                    매칭
+                    보기
                   </Link>
                 ) : null}
                 {notificationView === "past" ? (
@@ -244,12 +244,12 @@ export default function Notifications({ app }) {
                     <Trash2 size={16} aria-hidden="true" />
                   </button>
                 ) : (
-                  <button type="button" onClick={() => app.actions.markNotificationRead(notification.id)}>
-                    읽음 처리
+                  <button type="button" className="notification-read-button" title="읽음 처리" aria-label={`${notification.title} 읽음 처리`} onClick={() => app.actions.markNotificationRead(notification.id)}>
+                    <Check size={16} aria-hidden="true" />
                   </button>
                 )}
               </span>
-            </div>
+            </article>
           )) : (
             <div className="notification-empty-state">
               {notificationView === "past" ? "지난 알림이 없습니다." : "읽지 않은 알림이 없습니다."}

@@ -14,11 +14,11 @@ import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
-import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isRecruitingPostForUser } from "../lib/recruiting.js";
+import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
-import { getNotificationDueAt, getNotificationHref, isHomeActionNotification, isNotificationVisibleToUser } from "../lib/notifications.js";
+import { getNotificationDueAt, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
@@ -223,6 +223,7 @@ export default function Home({ app }) {
     app.actions.loadRecruitingPost?.(postId);
   };
   const openActionRoom = (event, item = {}) => {
+    if (isNotificationTargetUnavailable(item, app.state)) return;
     if (item.matchId) {
       event.preventDefault();
       openMatchRoom(item.matchId);
@@ -385,33 +386,22 @@ export default function Home({ app }) {
         icon: UserPlus,
       };
     });
-    const cancelledRoomItems = (app.state.recruitingPosts ?? [])
-      .filter((post) => post.status === "cancelled")
-      .filter((post) => isRecruitingPostForUser(post, user.id, myTeamIds))
-      .sort((a, b) => String(b.cancelledAt ?? b.createdAt ?? "").localeCompare(String(a.cancelledAt ?? a.createdAt ?? "")))
-      .slice(0, 2)
-      .map((post) => ({
-        id: `cancelled-room-${post.id}`,
-        recruitingPostId: post.id,
-        priority: 5,
-        label: "방 취소",
-        title: post.title,
-        meta: getHomeRecruitingMeta(post),
-        href: `/app/recruiting?post=${post.id}`,
-        icon: ShieldAlert,
-      }));
-    return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...tournamentNotificationItems, ...tournamentScheduleItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
+    return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...tournamentNotificationItems, ...tournamentScheduleItems, ...confirmableRoomItems, ...matchItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
   }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, blockedUserIds, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, todayValue, user.id]);
   const priorityItems = actionItems.slice(0, 5);
   const homeNoticeItems = useMemo(() => (app.state.notifications ?? [])
     .filter((notification) => isNotificationVisibleToUser(notification, user.id, { blockedUserIds }))
+    .map((notification) => isNotificationTargetUnavailable(notification, app.state)
+      ? { ...notification, targetUnavailable: true }
+      : notification)
+    .filter((notification) => isNotificationDisplayable(notification))
     .filter((notification) => !notification.readAt)
     .sort((a, b) => {
       const aTime = getNotificationDueAt(a) || a.createdAt || "";
       const bTime = getNotificationDueAt(b) || b.createdAt || "";
       return String(bTime).localeCompare(String(aTime));
-    }), [app.state.notifications, blockedUserIds, user.id]);
+    }), [app.state, app.state.notifications, blockedUserIds, user.id]);
   const priorityNoticeItems = homeNoticeItems.slice(0, 4);
 
   const searchResults = useMemo(() => {
@@ -859,21 +849,32 @@ export default function Home({ app }) {
             <div className="home-action-list">
               {priorityNoticeItems.length ? (
                 <>
-                  {priorityNoticeItems.map((notification) => (
-                    <Link
-                      key={notification.id}
-                      to={getNotificationHref(notification)}
-                      className="home-action-row priority-5"
-                      onClick={(event) => openActionRoom(event, notification)}
-                    >
-                      <span className="home-action-icon"><Bell size={18} /></span>
-                      <span className="home-action-main">
-                        <strong>{notification.title}</strong>
-                        <em>{getNotificationPreviewBody(notification)}</em>
-                      </span>
-                      <b>보기</b>
-                    </Link>
-                  ))}
+                  {priorityNoticeItems.map((notification) => {
+                    const content = (
+                      <>
+                        <span className="home-action-icon"><Bell size={18} /></span>
+                        <span className="home-action-main">
+                          <strong>{notification.title}</strong>
+                          <em>{getNotificationPreviewBody(notification)}</em>
+                        </span>
+                        <b>{notification.targetUnavailable ? "종료됨" : "보기"}</b>
+                      </>
+                    );
+                    return notification.targetUnavailable ? (
+                      <div key={notification.id} className="home-action-row priority-5 notification-terminal-row">
+                        {content}
+                      </div>
+                    ) : (
+                      <Link
+                        key={notification.id}
+                        to={getNotificationHref(notification)}
+                        className="home-action-row priority-5"
+                        onClick={(event) => openActionRoom(event, notification)}
+                      >
+                        {content}
+                      </Link>
+                    );
+                  })}
                   {homeNoticeItems.length > priorityNoticeItems.length ? (
                     <Link to="/app/notifications" className="home-action-row priority-5">
                       <span className="home-action-icon"><Bell size={18} /></span>
