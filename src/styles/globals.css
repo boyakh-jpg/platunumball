@@ -4825,6 +4825,26 @@ input[type="color"] {
   gap: 8px;
 }
 
+.court-detail-inline-error {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--rb-orange) 46%, var(--card-border));
+  border-radius: var(--ui-control-radius);
+  background: color-mix(in srgb, var(--rb-orange) 8%, var(--card-bg));
+  color: var(--rb-text);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.court-detail-inline-error span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .court-review-guide {
   margin-top: 12px;
 }
@@ -4948,6 +4968,11 @@ input[type="color"] {
 }
 
 @media (max-width: 620px) {
+  .court-detail-inline-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .court-detail-hero {
     align-items: stretch;
     flex-direction: column;

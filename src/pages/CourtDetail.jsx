@@ -68,10 +68,15 @@ export default function CourtDetail({ app }) {
         setLoadError(getLoadError(new Error("court_detail_load_failed")));
       }
     } catch (error) {
-      if (localDetail) setDetail(localDetail);
-      else {
+      const nextError = getLoadError(error);
+      if (localDetail) {
+        setDetail(localDetail);
+        if (nextError.retryable) {
+          setLoadError({ ...nextError, message: "최신 리뷰 정보를 불러오지 못했습니다." });
+        }
+      } else {
         setDetail(null);
-        setLoadError(getLoadError(error));
+        setLoadError(nextError);
       }
     } finally {
       setLoading(false);
@@ -144,6 +149,12 @@ export default function CourtDetail({ app }) {
 
   return (
     <div className="page-stack court-detail-page">
+      {loadError?.retryable ? (
+        <div className="court-detail-inline-error" role="status">
+          <span>{loadError.message}</span>
+          <Button type="button" variant="secondary" size="sm" onClick={() => refreshDetail()}>다시 시도</Button>
+        </div>
+      ) : null}
       <Card className="court-detail-hero">
         <div className="court-detail-heading">
           <p className="eyebrow">Court Profile</p>
