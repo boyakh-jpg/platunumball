@@ -2332,17 +2332,16 @@ export function useAppData(authUser = null, appLocation = null) {
   }, [authEmail, authUserId, directoryStatus.loaded, setState, trackedPostServerAction]);
 
   const loadCourtDetail = useCallback(async (courtId) => {
-    if (!isSupabaseConfigured || !authUserId || !courtId) return null;
-    try {
-      return await trackedPostServerAction(
-        "/api/courts/detail",
-        { courtId: String(courtId), authUserId, authEmail },
-        { allowWhenDisabled: true },
-      );
-    } catch (error) {
-      console.warn("Court detail load failed.", error.message);
-      return null;
+    if (!isSupabaseConfigured || !authUserId || !courtId) {
+      const error = new Error("court_detail_unavailable");
+      error.code = "court_detail_unavailable";
+      throw error;
     }
+    return trackedPostServerAction(
+      "/api/courts/detail",
+      { courtId: String(courtId), authUserId, authEmail },
+      { allowWhenDisabled: true },
+    );
   }, [authEmail, authUserId, trackedPostServerAction]);
 
   const submitCourtDetailReview = useCallback((matchId, draft = {}) => {

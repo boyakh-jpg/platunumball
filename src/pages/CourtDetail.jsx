@@ -20,6 +20,14 @@ function getCourtAddress(court = {}) {
   return court.roadAddress || court.addressText || court.jibunAddress || "주소 미등록";
 }
 
+function getLoadError(error) {
+  const code = error?.code || error?.message || "court_detail_load_failed";
+  if (error?.statusCode === 404 || code === "court_not_found") {
+    return { code, message: "등록된 구장을 찾을 수 없습니다.", retryable: false };
+  }
+  return { code, message: "구장 정보를 불러오지 못했습니다.", retryable: true };
+}
+
 function getLocalDetail(settings, courtId) {
   const court = getRegisteredCourts(settings).find((item) => item.id === courtId);
   if (!court) return null;
@@ -37,7 +45,7 @@ export default function CourtDetail({ app }) {
   const localDetail = useMemo(() => getLocalDetail(courtSettings, courtId), [courtId, courtSettings]);
   const [detail, setDetail] = useState(localDetail);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const [loadError, setLoadError] = useState(null);
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [rating, setRating] = useState(0);
   const [memo, setMemo] = useState("");
@@ -46,16 +54,25 @@ export default function CourtDetail({ app }) {
   const loadCourtDetail = app.actions?.loadCourtDetail;
 
   const refreshDetail = useCallback(async ({ silent = false } = {}) => {
-    if (!silent) setLoading(true);
-    setLoadError("");
+    if (!silent) {
+      setLoading(true);
+      setDetail((current) => current?.court?.id === courtId ? current : localDetail);
+    }
+    setLoadError(null);
     try {
       const result = await loadCourtDetail?.(courtId);
       if (result?.court) setDetail(result);
       else if (localDetail) setDetail(localDetail);
-      else setLoadError("구장 정보를 찾을 수 없습니다.");
+      else {
+        setDetail(null);
+        setLoadError(getLoadError(new Error("court_detail_load_failed")));
+      }
     } catch (error) {
       if (localDetail) setDetail(localDetail);
-      else setLoadError(error.message || "구장 정보를 불러오지 못했습니다.");
+      else {
+        setDetail(null);
+        setLoadError(getLoadError(error));
+      }
     } finally {
       setLoading(false);
     }
@@ -76,8 +93,12 @@ export default function CourtDetail({ app }) {
   useEffect(() => {
     setRating(Number(selectedMatch?.existingReview?.rating ?? 0));
     setMemo(selectedMatch?.existingReview?.memo ?? "");
+  }, [selectedMatchId, selectedMatch?.existingReview?.id, selectedMatch?.existingReview?.rating, selectedMatch?.existingReview?.memo]);
+
+  const changeSelectedMatch = (event) => {
+    setSelectedMatchId(event.target.value);
     setSaveMessage("");
-  }, [selectedMatch]);
+  };
 
   const submitReview = async (event) => {
     event.preventDefault();
@@ -105,9 +126,12 @@ export default function CourtDetail({ app }) {
 
   if (!detail?.court) {
     return (
-      <div className="court-detail-state">
-        <strong>{loadError || "구장 정보를 찾을 수 없습니다."}</strong>
-        <Link className="button button-secondary button-sm" to="/app">홈으로</Link>
+      <div className="court-detail-state" role="alert">
+        <strong>{loadError?.message || "구장 정보를 찾을 수 없습니다."}</strong>
+        <div className="court-detail-state-actions">
+          {loadError?.retryable ? <Button type="button" variant="secondary" size="sm" onClick={() => refreshDetail()}>다시 시도</Button> : null}
+          <Link className="button button-secondary button-sm" to="/app">홈으로</Link>
+        </div>
       </div>
     );
   }
@@ -203,7 +227,7 @@ export default function CourtDetail({ app }) {
             <form className="court-review-form" onSubmit={submitReview}>
               <label>
                 <span>이용 경기</span>
-                <select value={selectedMatchId} onChange={(event) => setSelectedMatchId(event.target.value)}>
+                <select value={selectedMatchId} onChange={changeSelectedMatch}>
                   {reviewableMatches.map((match) => (
                     <option key={match.id} value={match.id}>{match.title} · {formatDate(getMatchDate(match))}</option>
                   ))}

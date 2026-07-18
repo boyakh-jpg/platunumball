@@ -4818,6 +4818,13 @@ input[type="color"] {
   min-height: 50dvh;
 }
 
+.court-detail-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
 .court-review-guide {
   margin-top: 12px;
 }
