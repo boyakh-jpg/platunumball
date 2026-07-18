@@ -13961,44 +13961,59 @@ html[data-theme="light"] .eyebrow {
   color: var(--rb-orange);
 }
 
-.home-my-teams-card .home-team-list a,
-.home-my-teams-card .home-team-list > div,
-.home-my-teams-card .home-team-list > .team-hover-trigger {
-  min-height: 44px;
+.rank-home .home-team-list {
+  --home-team-row-height: 56px;
+}
+
+.rank-home .home-team-list > .home-team-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--home-team-row-height);
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  border: 1px solid var(--rb-line);
-  border-radius: var(--radius-sm);
-  background: var(--rb-surface);
-  padding: 7px 9px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: 7px 10px;
 }
 
-.home-my-teams-card .home-team-list em {
-  border-radius: 999px;
-  background: rgba(120, 170, 255, 0.12);
-  color: var(--rb-blue);
-  font-size: 0.64rem;
-  font-weight: 950;
-  padding: 2px 5px;
+.rank-home .home-team-row-copy {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 2px;
 }
 
-.home-my-teams-card .home-team-list b {
+.rank-home .home-team-row-copy strong,
+.rank-home .home-team-row-copy em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-home .home-team-row-copy em {
+  border-radius: 0;
+  background: transparent;
   color: var(--rb-muted);
   font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 0;
+}
+
+.rank-home .home-team-row > b {
+  min-width: 0;
+  color: var(--rb-muted);
+  font-size: 0.72rem;
   font-weight: 900;
-}
-
-html[data-theme="light"] .home-my-teams-card .home-team-list a,
-html[data-theme="light"] .home-my-teams-card .home-team-list > div,
-html[data-theme="light"] .home-my-teams-card .home-team-list > .team-hover-trigger {
-  background: rgba(255, 255, 255, 0.62);
-}
-
-html[data-theme="light"] .home-my-teams-card .home-team-list em {
-  background: rgba(51, 111, 184, 0.1);
-  color: var(--rb-blue);
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* 2026-07-01 desktop home compaction: lift lower panels beside the hero. */
@@ -17039,12 +17054,8 @@ html[data-theme="light"] .app-main :is(
   box-shadow: none;
 }
 
-.rank-home .home-my-teams-card :is(
-  .home-team-list a,
-  .home-team-list > div,
-  .home-team-list > .team-hover-trigger
-) {
-  min-height: var(--ui-button-height);
+.rank-home .home-team-list > .home-team-row {
+  min-height: var(--home-team-row-height);
 }
 
 .home-panel-empty {

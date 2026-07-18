@@ -954,11 +954,15 @@ export default function Home({ app }) {
                 <h2>{user.region} 라이벌</h2>
               </div>
             </div>
-            <div className="compact-list rivalry-list">
+            <div className="home-team-list">
               {localRivals.length ? localRivals.map((team) => (
-                <TeamHoverCard key={team.id} team={team}>
-                  <span>{team.name}</span>
-                  <strong>{team.gap > 0 ? `+${team.gap}` : team.gap} MMR</strong>
+                <TeamHoverCard className="home-team-row" key={team.id} team={team}>
+                  <TeamEmblem team={team} size="xs" />
+                  <span className="home-team-row-copy">
+                    <strong>{team.name}</strong>
+                    <em>MMR 차이 {team.gap > 0 ? `+${team.gap}` : team.gap}</em>
+                  </span>
+                  <b>{team.mmr} MMR</b>
                 </TeamHoverCard>
               )) : <div><span>지역 라이벌 없음</span><strong>대기</strong></div>}
             </div>
@@ -973,11 +977,13 @@ export default function Home({ app }) {
             </div>
             <div className="home-team-list">
               {myTeams.length ? myTeams.slice(0, 5).map((team) => (
-                <TeamHoverCard key={team.id} team={team}>
+                <TeamHoverCard className="home-team-row" key={team.id} team={team}>
                   <TeamEmblem team={team} size="xs" />
-                  <strong>{team.name}</strong>
-                  <em>{getTeamRoleLabel(team.myRole)}</em>
-                  <b>{team.mmr}</b>
+                  <span className="home-team-row-copy">
+                    <strong>{team.name}</strong>
+                    <em>{getTeamRoleLabel(team.myRole)}</em>
+                  </span>
+                  <b>{team.mmr} MMR</b>
                 </TeamHoverCard>
               )) : <div><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
             </div>
