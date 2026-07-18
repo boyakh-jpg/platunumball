@@ -13,7 +13,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
-import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtCanonicalName, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtLocationMatches, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { findCourtByHashtag, findTeamByHashtag, findUserByHashtag, getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
@@ -40,12 +40,15 @@ const REFEREE_EXAM_PASS_SCORE = 24;
 const REFEREE_EXAM_BANK_SIZE = 600;
 const DEFAULT_COURT_REQUEST = {
   name: "",
+  buildingName: "",
+  courtUnit: "",
   region: "",
   type: "야외",
   addressText: "",
   roadAddress: "",
   jibunAddress: "",
   addressDong: "",
+  searchAddressText: "",
   zonecode: "",
   detailAddress: "",
   locationNote: "",
@@ -130,14 +133,6 @@ function getCourtAddressDong(source = {}) {
   if (direct) return direct;
   const addressText = String(source.addressText ?? source.roadAddress ?? source.jibunAddress ?? "").trim();
   return addressText.match(/[가-힣0-9]+동/)?.[0] ?? "";
-}
-
-function getCourtRequestDisplayName(name, addressDong) {
-  const rawName = String(name ?? "").trim();
-  const dong = String(addressDong ?? "").trim();
-  if (!rawName) return "";
-  if (!dong || rawName.startsWith(dong)) return rawName;
-  return `${dong} ${rawName}`;
 }
 
 function getReportParticipantRows(match = {}, userMap = {}) {
@@ -378,15 +373,20 @@ export default function Settings({ app, auth, section = "main" }) {
   ].filter(Boolean).join(" · ") || (generalSettingsDirty ? "변경 있음" : "저장됨");
   const naverMapKeyReady = Boolean(getNaverMapClientId());
   const courtAddressSelected = Boolean(String(courtDraft.addressText ?? "").trim());
-  const courtDisplayName = getCourtRequestDisplayName(courtDraft.name, courtDraft.addressDong);
+  const courtDisplayName = getCourtCanonicalName(courtDraft, app.state);
   const courtHasMapPin = Boolean(String(courtDraft.lat ?? "").trim() && String(courtDraft.lng ?? "").trim());
+  const courtLocationMatches = useMemo(
+    () => getCourtLocationMatches(courtDraft, app.state),
+    [app.state, courtDraft],
+  );
+  const courtRequiresUnit = courtLocationMatches.length > 0;
   const courtDuplicate = useMemo(
     () => findCourtDuplicate({ ...courtDraft, name: courtDisplayName || courtDraft.name }, app.state),
     [app.state, courtDisplayName, courtDraft],
   );
   const courtDuplicateMessage = getCourtDuplicateMessage(courtDuplicate);
   const canOpenCourtRequestForm = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
-  const canSubmitCourtRequest = canOpenCourtRequestForm && !courtDuplicate;
+  const canSubmitCourtRequest = canOpenCourtRequestForm && !courtDuplicate && (!courtRequiresUnit || Boolean(courtDraft.courtUnit.trim()));
   const canOpenRefereeRequestForm = currentTrustScore >= REFEREE_TRUST_MIN;
   const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
@@ -816,8 +816,10 @@ export default function Settings({ app, auth, section = "main" }) {
     try {
       const pin = await openNaverMapPinPicker(courtDraft);
       const addressDong = getCourtAddressDong(pin);
+      const buildingName = String(pin.buildingName || courtDraft.buildingName || courtDraft.name).trim();
       updateCourtDraft({
-        name: courtDraft.name.trim() ? courtDraft.name : pin.buildingName,
+        name: buildingName,
+        buildingName: String(pin.buildingName || courtDraft.buildingName).trim(),
         region: getCourtAddressRegion(pin),
         addressText: pin.addressText,
         roadAddress: pin.roadAddress,
@@ -837,13 +839,16 @@ export default function Settings({ app, auth, section = "main" }) {
   };
   const selectNaverAddress = (result) => {
     const addressDong = getCourtAddressDong(result);
+    const buildingName = String(result.buildingName || courtDraft.buildingName || courtDraft.name).trim();
     updateCourtDraft({
-      name: courtDraft.name.trim() ? courtDraft.name : result.buildingName,
+      name: buildingName,
+      buildingName: String(result.buildingName || courtDraft.buildingName).trim(),
       region: getCourtAddressRegion(result),
       addressText: result.addressText,
       roadAddress: result.roadAddress,
       jibunAddress: result.jibunAddress,
       addressDong,
+      searchAddressText: result.addressText,
       zonecode: result.zonecode,
       detailAddress: "",
       lat: result.lat ? String(result.lat) : "",
@@ -1587,16 +1592,37 @@ export default function Settings({ app, auth, section = "main" }) {
                   ) : null}
                   {courtLookupStatus ? <small>{courtLookupStatus}</small> : null}
                 </div>
-                <label>
-                  구장명
-                  <input value={courtDraft.name} placeholder="예: 나들목 골대" onChange={(event) => updateCourtDraft({ name: event.target.value })} />
-                </label>
+                <div className="form-grid two">
+                  <label>
+                    공식 시설명
+                    <input
+                      value={courtDraft.name}
+                      readOnly={Boolean(courtDraft.buildingName)}
+                      placeholder="핀에서 자동 생성 · 없으면 직접 입력"
+                      onChange={(event) => updateCourtDraft({ name: event.target.value })}
+                    />
+                  </label>
+                  <label>
+                    코트 구분 {courtRequiresUnit ? "(필수)" : "(선택)"}
+                    <input value={courtDraft.courtUnit} placeholder="예: 1코트, B코트, 실내" onChange={(event) => updateCourtDraft({ courtUnit: event.target.value })} />
+                  </label>
+                </div>
                 {courtDisplayName ? (
                   <div className="arena-mini-note">
                     <div>
                       <span>저장 구장명</span>
                       <strong>{courtDisplayName}</strong>
-                      <em>구장 해시태그는 자동 생성됩니다.</em>
+                      <em>공식 시설명과 코트 구분으로 자동 생성 · 해시태그 자동 부여</em>
+                    </div>
+                    <MapPin size={18} />
+                  </div>
+                ) : null}
+                {courtLocationMatches.length ? (
+                  <div className="arena-mini-note arena-mini-note-warning">
+                    <div>
+                      <span>같은 장소 등록 구장 {courtLocationMatches.length}개</span>
+                      <strong>{courtLocationMatches.slice(0, 3).map((item) => item.court?.name).filter(Boolean).join(" · ")}</strong>
+                      <em>물리적으로 다른 코트만 추가할 수 있습니다. 코트 구분을 정확히 입력하세요.</em>
                     </div>
                     <MapPin size={18} />
                   </div>
@@ -1613,7 +1639,7 @@ export default function Settings({ app, auth, section = "main" }) {
                 ) : null}
                 <label>
                   상세주소
-                  <input value={courtDraft.detailAddress} placeholder="예: 체육관 B1, 공원 안쪽 2번 코트" onChange={(event) => updateCourtDraft({ detailAddress: event.target.value })} />
+                  <input value={courtDraft.detailAddress} placeholder="예: 체육관 B1, 남문 출입구" onChange={(event) => updateCourtDraft({ detailAddress: event.target.value })} />
                 </label>
                 {courtDuplicate ? (
                   <div className="arena-mini-note arena-mini-note-warning">

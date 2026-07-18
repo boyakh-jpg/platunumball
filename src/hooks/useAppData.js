@@ -716,10 +716,12 @@ function mergeCourtApprovalResult(state, requestId, result = {}, currentUserId =
 
   const request = (state.settings?.courtRequests ?? []).find((item) => item.id === safeRequestId);
   if (!request) return state;
+  const approvedName = String(result?.approvedName ?? request.name ?? "").trim();
 
   const now = new Date().toISOString();
   const approvedCourt = {
     ...request,
+    name: approvedName,
     id: approvedCourtId,
     sourceRequestId: safeRequestId,
     approvedBy: currentUserId,
@@ -744,7 +746,7 @@ function mergeCourtApprovalResult(state, requestId, result = {}, currentUserId =
       approvedCourts: nextApprovedCourts,
       courtRequests: (state.settings?.courtRequests ?? []).map((item) => (
         item.id === safeRequestId
-          ? { ...item, status: "approved", approvedAt: now, approvedBy: currentUserId, approvedCourtId }
+          ? { ...item, name: approvedName, status: "approved", approvedAt: now, approvedBy: currentUserId, approvedCourtId }
           : item
       )),
     },
@@ -752,7 +754,7 @@ function mergeCourtApprovalResult(state, requestId, result = {}, currentUserId =
       {
         id: makeClientNotificationId("n"),
         title: "구장 승인 완료",
-        body: `${request.name} 등록 구장이 승인되었습니다.`,
+        body: `${approvedName} 등록 구장이 승인되었습니다.`,
         tone: "team",
         createdAt: now,
       },
@@ -2905,15 +2907,15 @@ export function useAppData(authUser = null, appLocation = null) {
         await refreshAdminState();
         return result;
       },
-      approveCourtRequest: async (requestId) => {
+      approveCourtRequest: async (requestId, approval = {}) => {
         if (!isSupabaseConfigured) {
-          setState((prev) => approveCourtRequest({ ...prev, currentUserId }, requestId));
+          setState((prev) => approveCourtRequest({ ...prev, currentUserId }, requestId, approval));
           return true;
         }
         if (!ensureRemoteReady("구장 승인")) return false;
         const serverReady = await ensureServerActionAvailable("/api/court-requests/approve", "구장 승인");
         if (serverReady !== true) return serverReady;
-        const result = await runServerAction("/api/court-requests/approve", { requestId });
+        const result = await runServerAction("/api/court-requests/approve", { requestId, approval });
         if (!result || result.ok === false) return result;
         setState((prev) => mergeCourtApprovalResult(prev, requestId, result, currentUserId));
         return result;

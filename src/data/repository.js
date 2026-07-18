@@ -41,14 +41,17 @@ import {
 import {
   courtIdByName,
   findCourtDuplicate,
+  getCourtCanonicalName,
   getCourtDuplicateMessage,
   getCourtId,
+  getCourtLocationMatches,
   getCourtRequestName,
   getOptionalCourtCoordinate,
   getRegisteredCourts,
   makeRandomCourtHashtag,
   normalizeCourtHashtag,
   normalizeCourtLayout,
+  normalizeCourtNamePart,
   normalizeCourtReviewRating,
   normalizeCourtSurfaceType,
 } from "../lib/courts.js";
@@ -4386,9 +4389,11 @@ export function submitCourtRequest(state, draft = {}) {
     };
   }
 
-  const rawName = String(draft.name ?? "").trim();
+  const rawName = normalizeCourtNamePart(draft.buildingName || draft.name);
   const addressDong = getCourtAddressDong(draft);
-  const name = getCourtRequestName(rawName, addressDong);
+  const courtUnit = normalizeCourtNamePart(draft.courtUnit);
+  const canonicalBaseName = getCourtRequestName(rawName, addressDong, courtUnit);
+  const name = getCourtCanonicalName({ ...draft, name: rawName, courtUnit, canonicalBaseName }, state);
   const addressText = String(draft.addressText ?? "").trim();
   const lat = getOptionalCourtCoordinate(draft.lat, -90, 90);
   const lng = getOptionalCourtCoordinate(draft.lng, -180, 180);
@@ -4406,7 +4411,22 @@ export function submitCourtRequest(state, draft = {}) {
       ],
     };
   }
-  const duplicateCourt = findCourtDuplicate({ ...draft, name, addressText }, state);
+  const sameLocationCourts = getCourtLocationMatches({ ...draft, name, canonicalBaseName, addressText }, state);
+  if (sameLocationCourts.length && !courtUnit) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "코트 구분 필요",
+          body: "같은 장소에 등록된 구장이 있습니다. 물리적으로 다른 코트의 번호나 구분을 입력하세요.",
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  const duplicateCourt = findCourtDuplicate({ ...draft, name, canonicalBaseName, addressText }, state);
   if (duplicateCourt) {
     return {
       ...state,
@@ -4430,6 +4450,10 @@ export function submitCourtRequest(state, draft = {}) {
     requestedByTrustScore: trustScore,
     name,
     baseName: rawName,
+    buildingName: normalizeCourtNamePart(draft.buildingName),
+    facilityName: rawName,
+    courtUnit,
+    canonicalBaseName,
     hashtag,
     region: String(draft.region ?? "").trim() || addressDong || currentUser?.region || "미정",
     type: draft.type === "실내" ? "실내" : "야외",
@@ -4437,6 +4461,7 @@ export function submitCourtRequest(state, draft = {}) {
     roadAddress: String(draft.roadAddress ?? "").trim(),
     jibunAddress: String(draft.jibunAddress ?? "").trim(),
     addressDong,
+    searchAddressText: String(draft.searchAddressText ?? "").trim(),
     zonecode: String(draft.zonecode ?? "").trim(),
     detailAddress: String(draft.detailAddress ?? "").trim(),
     locationNote: String(draft.locationNote ?? "").trim(),
@@ -5246,7 +5271,7 @@ export function commitAdminAppointmentAction(state, draft = {}) {
   };
 }
 
-export function approveCourtRequest(state, requestId) {
+export function approveCourtRequest(state, requestId, approval = {}) {
   if (!hasAdminAccess(state.users.find((user) => user.id === state.currentUserId), state.settings)) {
     return {
       ...state,
@@ -5266,7 +5291,30 @@ export function approveCourtRequest(state, requestId) {
       notifications: [getAdminActionNotification("이미 승인된 구장 요청입니다."), ...state.notifications],
     };
   }
-  const duplicateCourt = findCourtDuplicate(request, state, { excludeRequestId: requestId, includeRequests: false });
+  if (!approval.addressVerified) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("주소와 지도 위치 확인이 필요합니다."), ...state.notifications],
+    };
+  }
+  const approvedName = normalizeCourtNamePart(approval.approvedName || request.name);
+  const approvalCourt = { ...request, name: approvedName, canonicalBaseName: approvedName };
+  const sameLocationCourts = getCourtLocationMatches(
+    approvalCourt,
+    state,
+    { excludeRequestId: requestId, includeRequests: false },
+  );
+  if (sameLocationCourts.length && !approval.multipleCourtsVerified) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("같은 장소의 복수 코트 여부를 확인해야 합니다."), ...state.notifications],
+    };
+  }
+  const duplicateCourt = findCourtDuplicate(
+    approvalCourt,
+    state,
+    { excludeRequestId: requestId, includeRequests: false },
+  );
   if (duplicateCourt) {
     return {
       ...state,
@@ -5276,7 +5324,7 @@ export function approveCourtRequest(state, requestId) {
   const now = new Date().toISOString();
   const approvedCourt = {
     id: makeId("court"),
-    name: request.name,
+    name: approvedName,
     baseName: request.baseName,
     hashtag: request.hashtag,
     region: request.region,
@@ -5318,7 +5366,7 @@ export function approveCourtRequest(state, requestId) {
       approvedCourts: [approvedCourt, ...(state.settings?.approvedCourts ?? [])],
       courtRequests: (state.settings?.courtRequests ?? []).map((item) => (
         item.id === requestId
-          ? { ...item, status: "approved", approvedAt: now, approvedBy: state.currentUserId, approvedCourtId: approvedCourt.id }
+          ? { ...item, name: approvedName, status: "approved", approvedAt: now, approvedBy: state.currentUserId, approvedCourtId: approvedCourt.id }
           : item
       )),
       adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
@@ -5329,7 +5377,7 @@ export function approveCourtRequest(state, requestId) {
         id: makeId("n"),
         targetUserId: request.requestedBy,
         title: "구장 등록 승인",
-        body: `${request.name} 구장 등록요청이 승인되었습니다.`,
+        body: `${approvedName} 구장 등록요청이 승인되었습니다.`,
         tone: "team",
       },
       ...state.notifications,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Clock3, MapPin, ShieldCheck, UserRound } from "lucide-react";
+import { ClipboardList, Clock3, ExternalLink, MapPin, ShieldCheck, UserRound } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -14,7 +14,7 @@ import {
   buildAdminReviewModel,
   hasAdminAccess,
 } from "../lib/admin.js";
-import { getCourtLayoutLabel, getCourtSurfaceLabel } from "../lib/courts.js";
+import { getCourtLayoutLabel, getCourtLocationMatches, getCourtSurfaceLabel } from "../lib/courts.js";
 import { getMatchHashtag } from "../lib/handles.js";
 import "../styles/recruiting-arena.css";
 
@@ -123,6 +123,12 @@ export default function Admin({ app }) {
     appointmentId: "",
     reason: "",
   });
+  const [courtApprovalDraft, setCourtApprovalDraft] = useState({
+    approvedName: "",
+    addressVerified: false,
+    multipleCourtsVerified: false,
+  });
+  const [courtApprovalStatus, setCourtApprovalStatus] = useState("");
   const canAdmin = Number(app.adminContext?.level ?? 0) >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
   const model = useMemo(() => buildAdminReviewModel(app.state), [app.state]);
   const appointments = useMemo(() => buildAdminAppointmentModel(app.state), [app.state]);
@@ -162,6 +168,17 @@ export default function Admin({ app }) {
     ?? selectedRow?.courtRequests?.[0]
     ?? null;
   const selectedCourtRequester = selectedCourtRequest ? userMap[selectedCourtRequest.requestedBy] : null;
+  const courtLocationMatches = useMemo(
+    () => selectedCourtRequest
+      ? getCourtLocationMatches(selectedCourtRequest, app.state, { excludeRequestId: selectedCourtRequest.id })
+      : [],
+    [app.state, selectedCourtRequest],
+  );
+  const approvedLocationMatches = courtLocationMatches.filter((candidate) => candidate.type === "approved");
+  const courtMapQuery = selectedCourtRequest
+    ? [selectedCourtRequest.name, selectedCourtRequest.addressText].filter(Boolean).join(" ")
+    : "";
+  const courtMapHref = courtMapQuery ? `https://map.naver.com/p/search/${encodeURIComponent(courtMapQuery)}` : "";
   const workflow = REVIEW_WORKFLOW_COPY[view] ?? REVIEW_WORKFLOW_COPY.players;
   const sectionCounts = useMemo(() => {
     const courtReports = (app.state.reports ?? []).filter((report) => (
@@ -221,8 +238,24 @@ export default function Admin({ app }) {
     }));
   }, [selectedReport?.id, selectedRow?.id, targetCandidates, visibleActionOptions]);
 
+  useEffect(() => {
+    setCourtApprovalDraft({
+      approvedName: selectedCourtRequest?.name ?? "",
+      addressVerified: false,
+      multipleCourtsVerified: false,
+    });
+    setCourtApprovalStatus("");
+  }, [selectedCourtRequest?.id, selectedCourtRequest?.name]);
+
   const updateActionDraft = (patch) => setActionDraft((current) => ({ ...current, ...patch }));
   const updateAppointmentDraft = (patch) => setAppointmentDraft((current) => ({ ...current, ...patch }));
+  const updateCourtApprovalDraft = (patch) => setCourtApprovalDraft((current) => ({ ...current, ...patch }));
+  const approveSelectedCourt = async () => {
+    if (!selectedCourtRequest) return;
+    setCourtApprovalStatus("승인 중");
+    const result = await app.actions.approveCourtRequest(selectedCourtRequest.id, courtApprovalDraft);
+    setCourtApprovalStatus(result && result.ok !== false ? "승인 완료" : "승인 실패");
+  };
   const commitSelectedAction = () => {
     if (!selectedReport) return;
     app.actions.commitAdminReviewAction({
@@ -501,15 +534,67 @@ export default function Admin({ app }) {
                   </div>
                   <div className="admin-court-facts">
                     <div><span>신청자</span><strong>{selectedCourtRequester?.name ?? "확인 필요"}</strong><em>신뢰도 {selectedCourtRequest.requestedByTrustScore ?? selectedCourtRequester?.trustScore ?? "-"}</em></div>
-                    <div><span>주소</span><strong>{selectedCourtRequest.addressText || "주소 미입력"}</strong><em>{selectedCourtRequest.detailAddress || "상세주소 없음"}</em></div>
+                    <div><span>신청 시설명</span><strong>{selectedCourtRequest.facilityName || selectedCourtRequest.baseName || selectedCourtRequest.name}</strong><em>코트 구분 {selectedCourtRequest.courtUnit || "없음"}</em></div>
+                    <div><span>검색 기준 주소</span><strong>{selectedCourtRequest.searchAddressText || "별도 검색 주소 없음"}</strong><em>핀 이동 전 기준</em></div>
+                    <div><span>핀 기준 실제 주소</span><strong>{selectedCourtRequest.addressText || "주소 미입력"}</strong><em>{selectedCourtRequest.detailAddress || "상세주소 없음"}</em></div>
+                    <div><span>도로명 · 지번</span><strong>{selectedCourtRequest.roadAddress || "도로명 없음"}</strong><em>{selectedCourtRequest.jibunAddress || "지번 없음"}</em></div>
                     <div><span>좌표</span><strong>{selectedCourtRequest.lat != null && selectedCourtRequest.lng != null ? `${Number(selectedCourtRequest.lat).toFixed(5)}, ${Number(selectedCourtRequest.lng).toFixed(5)}` : "좌표 확인 필요"}</strong><em>핀 기준 실제 위치</em></div>
                     <div><span>구장 속성</span><strong>{getCourtSurfaceLabel(selectedCourtRequest)} · {getCourtLayoutLabel(selectedCourtRequest)}</strong><em>{selectedCourtRequest.type ?? "유형 미정"} · {selectedCourtRequest.paid ? "유료" : "무료"}</em></div>
                   </div>
                   {selectedCourtRequest.locationNote ? <p className="admin-court-note">{selectedCourtRequest.locationNote}</p> : null}
                   {selectedCourtRequest.status !== "approved" ? (
-                    <Button type="button" variant="secondary" onClick={() => app.actions.approveCourtRequest(selectedCourtRequest.id)}>
-                      구장 승인
-                    </Button>
+                    <div className="admin-court-verification">
+                      <div className="admin-court-verification-head">
+                        <div>
+                          <strong>실재 여부 확인</strong>
+                          <small>주소와 핀 위치를 확인하고 승인 구장명을 최종 확정합니다.</small>
+                        </div>
+                        {courtMapHref ? (
+                          <a href={courtMapHref} target="_blank" rel="noreferrer" className="admin-court-map-link">
+                            <ExternalLink size={16} /> 네이버 지도
+                          </a>
+                        ) : null}
+                      </div>
+                      <label>
+                        승인 구장명
+                        <input value={courtApprovalDraft.approvedName} onChange={(event) => updateCourtApprovalDraft({ approvedName: event.target.value })} />
+                      </label>
+                      {courtLocationMatches.length ? (
+                        <div className="admin-court-location-matches">
+                          <strong>같은 장소 신청·등록 {courtLocationMatches.length}개</strong>
+                          {courtLocationMatches.map((candidate) => (
+                            <span key={`${candidate.type}-${candidate.court.id}`}>
+                              <b>{candidate.court.name}</b>
+                              <em>{candidate.type === "approved" ? "등록됨" : "승인 대기"} · {candidate.court.courtUnit || "코트 구분 없음"}</em>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      <label className="admin-court-check">
+                        <input type="checkbox" checked={courtApprovalDraft.addressVerified} onChange={(event) => updateCourtApprovalDraft({ addressVerified: event.target.checked })} />
+                        주소·핀·지도에서 실제 구장임을 확인함
+                      </label>
+                      {approvedLocationMatches.length ? (
+                        <label className="admin-court-check">
+                          <input type="checkbox" checked={courtApprovalDraft.multipleCourtsVerified} onChange={(event) => updateCourtApprovalDraft({ multipleCourtsVerified: event.target.checked })} />
+                          같은 장소지만 물리적으로 다른 코트임을 확인함
+                        </label>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={
+                          !courtApprovalDraft.approvedName.trim()
+                          || !courtApprovalDraft.addressVerified
+                          || (approvedLocationMatches.length > 0 && !courtApprovalDraft.multipleCourtsVerified)
+                          || courtApprovalStatus === "승인 중"
+                        }
+                        onClick={approveSelectedCourt}
+                      >
+                        {courtApprovalStatus === "승인 중" ? "승인 중" : "확인 후 구장 승인"}
+                      </Button>
+                      {courtApprovalStatus ? <small>{courtApprovalStatus}</small> : null}
+                    </div>
                   ) : null}
                 </section>
               ) : null}
@@ -619,11 +704,7 @@ export default function Admin({ app }) {
                     </span>
                     <span className="admin-row-actions">
                       <Badge tone={request.status === "reported" ? "orange" : request.status === "approved" ? "green" : "neutral"}>{statusLabel(request.status)}</Badge>
-                      {request.status !== "approved" ? (
-                        <Button type="button" variant="secondary" size="sm" onClick={() => app.actions.approveCourtRequest(request.id)}>
-                          승인
-                        </Button>
-                      ) : null}
+                      {request.status !== "approved" ? <em>구장 신청 탭에서 확인 후 승인</em> : null}
                     </span>
                   </div>
                 )) : null}

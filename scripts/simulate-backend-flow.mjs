@@ -1339,8 +1339,15 @@ async function submitCourtRequestAs(testLoginId, request = {}) {
   return callHandler("/api/court-requests/submit", submitCourtRequestHandler, await getAuthToken(testLoginId), { request });
 }
 
-async function approveCourtRequestAs(testLoginId, requestId = "") {
-  return callHandler("/api/court-requests/approve", approveCourtRequestHandler, await getAuthToken(testLoginId), { requestId });
+async function approveCourtRequestAs(testLoginId, requestId = "", approval = {}) {
+  return callHandler("/api/court-requests/approve", approveCourtRequestHandler, await getAuthToken(testLoginId), {
+    requestId,
+    approval: {
+      approvedName: approval.approvedName ?? "",
+      addressVerified: approval.addressVerified ?? true,
+      multipleCourtsVerified: approval.multipleCourtsVerified ?? false,
+    },
+  });
 }
 
 function teamHasMembers(team = {}, memberIds = []) {

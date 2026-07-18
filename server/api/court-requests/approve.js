@@ -10,6 +10,7 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const requestId = String(body.requestId ?? "").trim();
+    const approval = body.approval && typeof body.approval === "object" ? body.approval : {};
     if (!requestId) {
       sendJson(response, 400, { error: "missing_request_id" });
       return;
@@ -21,6 +22,11 @@ export default async function handler(request, response) {
       actor_profile_id: context.profileId,
       actor_admin_level: adminLevel,
       request_id: requestId,
+      approval_payload: {
+        approvedName: String(approval.approvedName ?? "").trim(),
+        addressVerified: approval.addressVerified === true,
+        multipleCourtsVerified: approval.multipleCourtsVerified === true,
+      },
     });
 
     if (error) throw error;

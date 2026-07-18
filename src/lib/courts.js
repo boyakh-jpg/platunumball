@@ -39,11 +39,34 @@ export function normalizeCourtReviewRating(value, fallback = null) {
   return Math.max(1, Math.min(5, Math.round(number)));
 }
 
-export function getCourtRequestName(rawName = "", addressDong = "") {
-  const name = String(rawName ?? "").trim();
-  const dong = String(addressDong ?? "").trim();
-  if (!dong || name.startsWith(dong)) return name;
-  return `${dong} ${name}`;
+export function normalizeCourtNamePart(value = "") {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/제\s+(\d+)\s*코트/gi, "제$1코트")
+    .replace(/([A-Z0-9]+)\s+코트/gi, "$1코트");
+}
+
+function stripCourtAddressPrefix(name = "", addressDong = "") {
+  const normalizedName = normalizeCourtNamePart(name);
+  const normalizedDong = normalizeCourtNamePart(addressDong);
+  if (!normalizedDong || !normalizedName.startsWith(`${normalizedDong} `)) return normalizedName;
+  return normalizedName.slice(normalizedDong.length).trim();
+}
+
+export function getCourtRequestName(rawName = "", addressDong = "", courtUnit = "") {
+  const facilityName = stripCourtAddressPrefix(rawName, addressDong);
+  const unit = normalizeCourtNamePart(courtUnit);
+  if (!facilityName || !unit) return facilityName;
+  const facilityKey = normalizeCourtIdentityText(facilityName);
+  const unitKey = normalizeCourtIdentityText(unit);
+  return facilityKey.endsWith(unitKey) ? facilityName : `${facilityName} ${unit}`;
+}
+
+function getCourtCanonicalBaseName(court = {}) {
+  const facilityName = court.buildingName || court.facilityName || court.baseName || court.name;
+  return getCourtRequestName(facilityName, court.addressDong, court.courtUnit);
 }
 
 export function normalizeCourtHashtag(value = "") {
@@ -116,7 +139,7 @@ function normalizeCourtIdentityText(value = "") {
 
 function getCourtIdentity(court = {}) {
   return {
-    name: normalizeCourtIdentityText(court.name),
+    name: normalizeCourtIdentityText(court.canonicalBaseName || getCourtCanonicalBaseName(court)),
     address: normalizeCourtIdentityText(court.addressText || court.roadAddress || court.jibunAddress),
     roadAddress: normalizeCourtIdentityText(court.roadAddress),
     jibunAddress: normalizeCourtIdentityText(court.jibunAddress),
@@ -142,29 +165,57 @@ function isSameCourtIdentity(source = {}, target = {}) {
   return false;
 }
 
-export function findCourtDuplicate(draft = {}, stateOrSettings = {}, options = {}) {
-  const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
-  const includeRequests = options.includeRequests !== false;
-  const source = getCourtIdentity(draft);
-  if (!hasCourtLocationIdentity(source)) return null;
-
+function getCourtCandidates(settings = {}, includeRequests = true) {
   const approvedCandidates = [
     ...COURTS.map((court) => ({ type: "approved", court })),
     ...(settings.approvedCourts ?? []).map((court) => ({ type: "approved", court })),
   ];
   const pendingCandidates = includeRequests
     ? (settings.courtRequests ?? [])
-      .filter((request) => (
-        request.id !== options.excludeRequestId &&
-        !["approved", "rejected", "dismissed"].includes(request.status)
-      ))
+      .filter((request) => !["approved", "rejected", "dismissed"].includes(request.status))
       .map((court) => ({ type: "request", court }))
     : [];
+  return [...approvedCandidates, ...pendingCandidates];
+}
 
-  return [...approvedCandidates, ...pendingCandidates].find((candidate) => (
-    (options.excludeRequestId && candidate.court?.sourceRequestId === options.excludeRequestId) ||
-    isSameCourtIdentity(source, getCourtIdentity(candidate.court))
-  )) ?? null;
+export function getCourtLocationMatches(draft = {}, stateOrSettings = {}, options = {}) {
+  const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
+  const source = getCourtIdentity(draft);
+  if (!hasCourtLocationIdentity(source)) return [];
+  return getCourtCandidates(settings, options.includeRequests !== false).filter((candidate) => {
+    if (options.excludeRequestId && candidate.court?.id === options.excludeRequestId) return false;
+    if (options.excludeRequestId && candidate.court?.sourceRequestId === options.excludeRequestId) return false;
+    return isSameCourtIdentity(source, getCourtIdentity(candidate.court));
+  });
+}
+
+export function getCourtCanonicalName(draft = {}, stateOrSettings = {}, options = {}) {
+  const baseName = getCourtCanonicalBaseName(draft);
+  if (!baseName) return "";
+  const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
+  const sourceIdentity = getCourtIdentity({ ...draft, canonicalBaseName: baseName });
+  const baseKey = normalizeCourtIdentityText(baseName);
+  const hasDifferentLocationCollision = getCourtCandidates(settings, options.includeRequests !== false).some((candidate) => {
+    if (options.excludeRequestId && candidate.court?.id === options.excludeRequestId) return false;
+    if (options.excludeRequestId && candidate.court?.sourceRequestId === options.excludeRequestId) return false;
+    const candidateBaseKey = normalizeCourtIdentityText(candidate.court?.canonicalBaseName || getCourtCanonicalBaseName(candidate.court));
+    return candidateBaseKey === baseKey && !isSameCourtIdentity(sourceIdentity, getCourtIdentity(candidate.court));
+  });
+  if (!hasDifferentLocationCollision) return baseName;
+  const locationLabel = normalizeCourtNamePart(draft.addressDong || draft.region || draft.zonecode);
+  return locationLabel ? `${baseName} (${locationLabel})` : baseName;
+}
+
+export function findCourtDuplicate(draft = {}, stateOrSettings = {}, options = {}) {
+  const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
+  const source = getCourtIdentity(draft);
+  if (!hasCourtLocationIdentity(source)) return null;
+  return getCourtCandidates(settings, options.includeRequests !== false).find((candidate) => {
+    if (options.excludeRequestId && candidate.court?.id === options.excludeRequestId) return false;
+    if (options.excludeRequestId && candidate.court?.sourceRequestId === options.excludeRequestId) return false;
+    const target = getCourtIdentity(candidate.court);
+    return source.name && source.name === target.name && isSameCourtIdentity(source, target);
+  }) ?? null;
 }
 
 export function getCourtDuplicateMessage(duplicate) {
