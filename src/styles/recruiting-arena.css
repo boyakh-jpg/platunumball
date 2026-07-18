@@ -8280,4 +8280,24 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
   .arena-lobby-modal .arena-lobby-arena {
     --room-slot-height: 138px;
   }
+
+  .arena-lobby-modal .arena-room-player-slot-wrap,
+  .arena-lobby-modal .arena-room-player-slot {
+    inline-size: var(--room-slot-width);
+    min-inline-size: var(--room-slot-width);
+    max-inline-size: var(--room-slot-width);
+  }
+
+  .arena-lobby-modal .arena-room-slot-row,
+  .arena-lobby-modal .arena-room-reserve-row {
+    grid-auto-rows: var(--room-slot-height);
+    align-items: stretch;
+  }
+
+  .arena-lobby-modal .arena-room-party-group {
+    block-size: var(--room-slot-height);
+    min-block-size: var(--room-slot-height);
+    max-block-size: var(--room-slot-height);
+    align-items: stretch;
+  }
 }
