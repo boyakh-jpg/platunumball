@@ -5342,6 +5342,70 @@ html[data-theme="light"] .om-calendar-summary {
   }
 }
 
+/* Match-like lists use one outer card surface; summaries do not add gray panels. */
+.om-match-summary-box,
+.om-score-box,
+.om-match-info-box,
+.arena-lobby-card .om-match-summary-box,
+html[data-theme="light"] .om-match-summary-box,
+html[data-theme="light"] .om-score-box,
+html[data-theme="light"] .om-match-info-box,
+html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 6px 8px;
+}
+
+.om-match-summary-box.count-summary .om-summary-side,
+.om-match-summary-box.count-summary .om-summary-side .team-hover-trigger,
+.arena-lobby-card .om-match-summary-box.count-summary .om-summary-side,
+.arena-lobby-card .om-match-summary-box.count-summary .om-summary-side .team-hover-trigger {
+  font-size: clamp(2rem, 2.9vw, 2.65rem);
+  line-height: 0.98;
+}
+
+.om-match-summary-box .om-summary-line > strong,
+.om-match-summary-box.count-summary .om-summary-line > strong,
+.arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong {
+  min-width: 2.2ch;
+  font-size: clamp(2rem, 3.1vw, 2.85rem);
+  line-height: 0.92;
+}
+
+.om-score-box > .team-hover-trigger,
+.om-score-box > a {
+  font-family: var(--sports-display-font);
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.om-score-box > strong {
+  font-size: clamp(2.1rem, 3.2vw, 3rem);
+  line-height: 0.92;
+}
+
+.league-fixture-matchup > strong {
+  display: -webkit-box;
+  font-family: var(--sports-display-font);
+  font-size: clamp(1rem, 1.4vw, 1.25rem);
+  line-height: 1;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: keep-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.league-fixture-matchup > b {
+  font-family: var(--sports-display-font);
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
+  line-height: 1;
+}
+
 /* Private-event cards share the match-list card contract. */
 .om-tournament-card {
   position: relative;
@@ -5382,11 +5446,14 @@ html[data-theme="light"] .om-calendar-summary {
 }
 
 .om-tournament-meta,
-.om-tournament-state {
-  border: 1px solid var(--rb-line);
-  border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.24);
-  padding: 8px 10px;
+.om-tournament-state,
+html[data-theme="light"] .om-tournament-meta,
+html[data-theme="light"] .om-tournament-state {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 2px 0;
 }
 
 .om-tournament-detail-link {
