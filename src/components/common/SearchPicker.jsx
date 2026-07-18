@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { postServerAction } from "../../lib/serverActions.js";
 
@@ -107,6 +107,9 @@ export default function SearchPicker({
   const [visibleLimit, setVisibleLimit] = useState(Math.max(1, Number(limit) || 10));
   const [remoteItems, setRemoteItems] = useState([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
+  const [floatingPlacement, setFloatingPlacement] = useState("below");
+  const [floatingMaxHeight, setFloatingMaxHeight] = useState(320);
+  const pickerRef = useRef(null);
   const remoteRequestIdRef = useRef(0);
   const query = value.trim();
   const baseLimit = Math.max(1, Number(limit) || 10);
@@ -191,8 +194,36 @@ export default function SearchPicker({
     setVisibleLimit(baseLimit);
   }, [baseLimit, query]);
 
+  useLayoutEffect(() => {
+    if (!floating || !canShow || !pickerRef.current) return undefined;
+
+    const updatePlacement = () => {
+      const rect = pickerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const viewport = window.visualViewport;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+      const spaceAbove = Math.max(0, rect.top - viewportTop - 12);
+      const spaceBelow = Math.max(0, viewportBottom - rect.bottom - 12);
+      const nextPlacement = spaceBelow < 220 && spaceAbove > spaceBelow ? "above" : "below";
+      const availableSpace = nextPlacement === "above" ? spaceAbove : spaceBelow;
+      const nextMaxHeight = Math.max(96, Math.min(320, Math.floor(availableSpace)));
+
+      setFloatingPlacement((current) => (current === nextPlacement ? current : nextPlacement));
+      setFloatingMaxHeight((current) => (current === nextMaxHeight ? current : nextMaxHeight));
+    };
+
+    updatePlacement();
+    window.addEventListener("resize", updatePlacement);
+    window.visualViewport?.addEventListener("resize", updatePlacement);
+    return () => {
+      window.removeEventListener("resize", updatePlacement);
+      window.visualViewport?.removeEventListener("resize", updatePlacement);
+    };
+  }, [canShow, floating]);
+
   return (
-    <div className={`search-picker${floating ? " is-floating" : ""}${className ? ` ${className}` : ""}`}>
+    <div ref={pickerRef} className={`search-picker${floating ? " is-floating" : ""}${className ? ` ${className}` : ""}`}>
       <div className={`search-picker-field${fieldClassName ? ` ${fieldClassName}` : ""}`}>
         <Search size={18} />
         <input
@@ -226,7 +257,8 @@ export default function SearchPicker({
       </div>
       {canShow ? (
         <div
-          className={`home-search-results unified search-picker-results${floating ? " is-floating" : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}
+          className={`home-search-results unified search-picker-results${floating ? ` is-floating opens-${floatingPlacement}` : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}
+          style={floating ? { "--search-picker-max-height": `${floatingMaxHeight}px` } : undefined}
           onPointerDown={(event) => event.preventDefault()}
           onClickCapture={(event) => {
             if (!closeOnResultClick || event.target?.closest?.(".search-picker-more, .home-search-more, .search-picker-idle-toggle")) return;

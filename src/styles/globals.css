@@ -5133,7 +5133,7 @@ input[type="color"] {
   top: calc(100% + 8px);
   right: 0;
   left: 0;
-  max-height: 320px;
+  max-height: min(320px, var(--search-picker-max-height, 320px));
   overflow: auto;
   grid-template-columns: minmax(0, 1fr);
   border: 1px solid var(--line);
@@ -5141,6 +5141,11 @@ input[type="color"] {
   background: var(--surface);
   box-shadow: var(--shadow);
   padding: 10px;
+}
+
+.search-picker-results.is-floating.opens-above {
+  top: auto;
+  bottom: calc(100% + 8px);
 }
 
 .search-picker-title,
@@ -13047,21 +13052,6 @@ html[data-theme="light"] .app-main {
     flex: 0 0 auto;
   }
 
-  .rank-home .home-search-panel.rank-search-card .home-search-results {
-    position: absolute;
-    z-index: 80;
-    top: calc(100% + 8px);
-    right: 0;
-    left: 0;
-    max-height: 360px;
-    overflow: auto;
-    grid-template-columns: minmax(0, 1fr);
-    border: 1px solid var(--rb-line);
-    border-radius: var(--radius-md);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    padding: 10px;
-  }
 }
 
 @media (max-width: 759px) {
@@ -16249,20 +16239,7 @@ html[data-theme="light"] .app-main :is(
     background: var(--surface);
   }
 
-  .search-picker-results.is-floating {
-    position: fixed;
-    z-index: 120;
-    top: auto;
-    right: 12px;
-    bottom: calc(var(--bottom-nav-height) + 22px + env(safe-area-inset-bottom, 0px));
-    left: 12px;
-    width: auto;
-    max-height: min(52dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 320px);
-    background: var(--surface);
-  }
-
-  html[data-theme="light"] .hover-portal-card.touch-open,
-  html[data-theme="light"] .search-picker-results.is-floating {
+  html[data-theme="light"] .hover-portal-card.touch-open {
     background: var(--surface);
   }
 }

@@ -616,6 +616,7 @@ export default function Home({ app }) {
           idleItems={homeFavoriteSearchItems}
           idleTitle="즐겨찾기"
           showIdleOnFocus
+          floating
           closeOnResultClick
           renderItem={renderHomeSearchItem}
           limit={SEARCH_PREVIEW_LIMIT}
