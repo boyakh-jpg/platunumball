@@ -619,6 +619,7 @@ function filterPendingMatches(remoteState = {}, pendingIds = new Set(), recentMu
 
 const DIRECTORY_SETTING_ARRAY_KEYS = [
   "approvedCourts",
+  "courtMetrics",
   "courtRequests",
   "courtReviews",
   "refereeRequests",
