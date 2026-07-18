@@ -13675,13 +13675,19 @@ textarea,
 }
 
 input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]) {
+  box-sizing: border-box;
+  inline-size: 100%;
   width: 100%;
+  min-inline-size: 0;
   min-width: 0;
+  max-inline-size: 100%;
   max-width: 100%;
+  block-size: var(--ui-button-height);
   height: var(--ui-button-height);
+  min-block-size: var(--ui-button-height);
   display: block;
-  padding-block: 0;
-  line-height: normal;
+  padding-block: 9px;
+  line-height: 20px;
 }
 
 select {
@@ -13690,7 +13696,12 @@ select {
 
 input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"])::-webkit-date-and-time-value,
 input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"])::-webkit-datetime-edit {
+  display: flex;
+  align-items: center;
+  block-size: 100%;
   min-width: 0;
+  padding: 0;
+  line-height: 20px;
   text-align: left;
 }
 
@@ -16049,6 +16060,12 @@ html[data-theme="light"] .app-main :is(
 .create-match-info-grid.is-standard-room > :is(.create-title-field, .create-format-field, .create-timing-field, .create-date-field, .create-time-field, .create-capacity-field) {
   align-self: start;
   min-width: 0;
+}
+
+.create-match-info-grid > :is(.create-date-field, .create-time-field) {
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
 .create-match-info-grid .create-timing-field .segmented-control {

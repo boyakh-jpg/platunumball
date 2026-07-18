@@ -88,6 +88,7 @@
 2. 허용 최소/최대 날짜와 예약 시각 판정도 KST 기준으로 계산해 해외 브라우저 시간대에서도 기본값과 검증 범위가 어긋나지 않게 한다.
 3. `date`, `time`, `datetime-local`, `month` 입력은 모든 화면에서 부모 너비를 넘지 않고 기본 `select`와 함께 공용 one-line control 높이 `--ui-button-height`를 사용한다.
 4. 날짜·시간 입력을 배치하는 label과 grid 자식은 `min-width: 0`, `max-width: 100%`를 유지한다. 모바일에서 native input의 고유 최소 너비 때문에 페이지 가로 스크롤이 생기면 안 된다.
+5. 모바일 WebKit 날짜·시간 입력은 native picker를 유지하면서 값 영역을 control 중앙에 정렬한다. 물리·논리 너비를 모두 부모 `100%`로 제한하고 세로 padding과 line-height를 일반 input과 같은 시각 높이에 맞춘다.
 
 ## 2026-07-07 방만들기/기록하기 분리 UI
 
