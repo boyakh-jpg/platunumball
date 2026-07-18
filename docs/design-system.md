@@ -86,7 +86,7 @@
 
 1. 방/대회 생성 날짜 입력의 기본 오늘은 서비스 운영 기준인 KST 달력 날짜를 사용한다.
 2. 허용 최소/최대 날짜와 예약 시각 판정도 KST 기준으로 계산해 해외 브라우저 시간대에서도 기본값과 검증 범위가 어긋나지 않게 한다.
-3. `date`, `time`, `datetime-local`, `month` 입력은 모든 화면에서 부모 너비를 넘지 않고 공용 one-line control 높이 `--ui-button-height`를 사용한다.
+3. `date`, `time`, `datetime-local`, `month` 입력은 모든 화면에서 부모 너비를 넘지 않고 기본 `select`와 함께 공용 one-line control 높이 `--ui-button-height`를 사용한다.
 4. 날짜·시간 입력을 배치하는 label과 grid 자식은 `min-width: 0`, `max-width: 100%`를 유지한다. 모바일에서 native input의 고유 최소 너비 때문에 페이지 가로 스크롤이 생기면 안 된다.
 
 ## 2026-07-07 방만들기/기록하기 분리 UI

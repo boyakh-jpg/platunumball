@@ -13684,6 +13684,10 @@ input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]) 
   line-height: normal;
 }
 
+select {
+  height: var(--ui-button-height);
+}
+
 input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"])::-webkit-date-and-time-value,
 input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"])::-webkit-datetime-edit {
   min-width: 0;
