@@ -1177,6 +1177,7 @@ flowchart TD
 23. 승인 구장과 기존 기본 구장의 `raw_rating`, `adjusted_rating`, `review_count`, `completed_match_count`, `recommendation_score`, `recent_reviews`는 리뷰와 경기 상태 변경 트리거가 갱신하는 서버 캐시다. 기본 구장을 승인 구장으로 위장하지 않고 `courts`의 동일 지표를 directory `courtMetrics`로 합친다.
 24. 리뷰 원점수는 감사와 설명을 위해 보존한다. 공개 평점과 추천 정렬에는 보정 점수를 사용하며 최근 유효 리뷰는 최대 3개만 구장 카드에 노출한다.
 25. 주소 문자열이 달라도 도로명·지번·표시 주소 중 하나가 같거나 핀 좌표가 약 35m 이내이면 같은 장소 후보로 본다. 같은 장소와 같은 표준 구장명이 겹치면 DB trigger가 요청·승인을 차단한다.
+26. 중복 검사는 공용 transaction advisory lock 안에서 `court_requests`, `approved_courts`, legacy `courts`를 교차 비교한다. legacy 기본 구장도 주소 identity를 서버에 보존하며 승인 구장의 legacy mirror는 이름·주소·핀·표준명 변경을 자동 동기화한다.
 
 ## 심판 원칙
 
