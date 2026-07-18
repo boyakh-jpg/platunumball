@@ -102,9 +102,30 @@ export function fromRemoteApprovedCourt(row = {}) {
     hiddenAt: row.hidden_at ?? payload.hiddenAt,
     hiddenBy: row.hidden_by ?? payload.hiddenBy,
     hiddenReason: row.hidden_reason ?? payload.hiddenReason,
+    rawRating: row.raw_rating ?? payload.rawRating ?? null,
+    adjustedRating: row.adjusted_rating ?? payload.adjustedRating ?? null,
+    reviewCount: Number(row.review_count ?? payload.reviewCount ?? 0),
+    completedMatchCount: Number(row.completed_match_count ?? payload.completedMatchCount ?? 0),
+    recommendationScore: row.recommendation_score ?? payload.recommendationScore ?? null,
+    recentReviews: row.recent_reviews ?? payload.recentReviews ?? [],
+    metricsUpdatedAt: row.metrics_updated_at ?? payload.metricsUpdatedAt ?? null,
     approvedAt: row.approved_at ?? payload.approvedAt,
     createdAt: row.created_at ?? payload.createdAt,
     updatedAt: row.updated_at ?? payload.updatedAt,
+  };
+}
+
+export function fromRemoteCourtMetric(row = {}) {
+  return {
+    id: row.id,
+    name: row.name,
+    rawRating: row.raw_rating ?? null,
+    adjustedRating: row.adjusted_rating ?? null,
+    reviewCount: Number(row.review_count ?? 0),
+    completedMatchCount: Number(row.completed_match_count ?? 0),
+    recommendationScore: row.recommendation_score ?? null,
+    recentReviews: row.recent_reviews ?? [],
+    metricsUpdatedAt: row.metrics_updated_at ?? null,
   };
 }
 

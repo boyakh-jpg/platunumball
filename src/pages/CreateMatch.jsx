@@ -8,7 +8,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
-import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import { getCourtLayoutLabel, getCourtPlayWarning, getCourtRecommendationScore, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
@@ -315,6 +315,7 @@ export default function CreateMatch({ app }) {
   const defaultCapacity = getRecruitingSideCapacity({ mode: defaultMode });
   const defaultTournamentCapacity = getRecruitingSideCapacity({ mode: "5v5" });
   const currentRegion = getCanonicalRegion(app.currentUser.regionDistrict || app.currentUser.region);
+  const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const defaultTeamAPlayerIds = defaultHostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
   const defaultTeamB = defaultHostJoinMode === "team" && defaultTeamA
     ? getOpponentTeam(app.state.teams, defaultTeamA.id, currentRegion, defaultTeamAPlayerIds, 1)
@@ -323,7 +324,11 @@ export default function CreateMatch({ app }) {
   const defaultTeamBPlayerIds = defaultHostJoinMode === "team" ? getDefaultTeamPlayerIds(defaultTeamB, 1, defaultTeamAPlayerIds) : [];
   const defaultMmrLimitMode = getDefaultMmrLimitMode(defaultTeamA, defaultTeamB);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
-  const defaultCourt = registeredCourts.find((court) => isSameRegion(court.region, currentRegion)) ?? registeredCourts[0] ?? { name: "미정", region: currentRegion || app.currentUser.region };
+  const defaultCourt = [...registeredCourts]
+    .filter((court) => isSameRegion(court.region, currentRegion))
+    .sort((a, b) => Number(favoriteCourtIds.includes(b.id)) - Number(favoriteCourtIds.includes(a.id)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a))[0]
+    ?? [...registeredCourts].sort((a, b) => getCourtRecommendationScore(b) - getCourtRecommendationScore(a))[0]
+    ?? { name: "미정", region: currentRegion || app.currentUser.region };
   const [teamQuery, setTeamQuery] = useState("");
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
@@ -334,7 +339,6 @@ export default function CreateMatch({ app }) {
   const [courtRegion, setCourtRegion] = useState(currentRegion || "전체");
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
-  const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
@@ -412,7 +416,7 @@ export default function CreateMatch({ app }) {
     return registeredCourts
       .filter((court) => hashtagSearch || courtRegion === "전체" || isSameRegion(court.region, courtRegion))
       .filter((court) => includesQuery(`${court.name} ${getCourtHashtag(court)} ${court.region} ${court.type} ${court.addressText ?? ""}`, courtQuery))
-      .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || a.name.localeCompare(b.name));
+      .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a) || a.name.localeCompare(b.name));
   }, [courtQuery, courtRegion, currentRegion, favoriteCourtIds, registeredCourts]);
 
   const favoriteTeams = useMemo(() => {
@@ -425,7 +429,7 @@ export default function CreateMatch({ app }) {
   const favoriteCourts = useMemo(() => {
     return [...registeredCourts]
       .filter(isFavoriteCourt)
-      .sort((a, b) => Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || a.name.localeCompare(b.name))
+      .sort((a, b) => Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a) || a.name.localeCompare(b.name))
       .slice(0, 10);
   }, [currentRegion, favoriteCourtIds, registeredCourts]);
 
@@ -1084,6 +1088,9 @@ export default function CreateMatch({ app }) {
   };
   const renderCourtSearchItem = (court) => {
     const favorite = isFavoriteCourt(court);
+    const rating = Number(court.adjustedRating ?? court.rating ?? 0);
+    const reviewCount = Number(court.reviewCount ?? 0);
+    const completedMatchCount = Number(court.completedMatchCount ?? 0);
     return (
       <div
         key={court.id}
@@ -1093,7 +1100,10 @@ export default function CreateMatch({ app }) {
         <button type="button" className="search-picker-result-main" onClick={() => selectCourt(court)}>
           <strong>{court.name}</strong>
           <span>{court.region} / {court.type} / {getCourtSurfaceLabel(court)} / {getCourtLayoutLabel(court)}</span>
-          <em>{getCourtHashtag(court)} · {favorite ? "즐겨찾기" : "구장"}</em>
+          <em className="court-search-result-meta">
+            <span>{getCourtHashtag(court)} · {favorite ? "즐겨찾기" : "구장"}</span>
+            <span><Star size={13} fill={reviewCount ? "currentColor" : "none"} /> {reviewCount ? `보정 ${rating.toFixed(1)} · 리뷰 ${reviewCount}` : "평가 전"} · 경기 {completedMatchCount}</span>
+          </em>
         </button>
       </div>
     );
@@ -1770,9 +1780,8 @@ export default function CreateMatch({ app }) {
                 onChange={setCourtQuery}
                 placeholder="코트, 지역, 실내/야외 검색"
                 items={sortedCourts}
-                remoteSearchType="court"
                 idleItems={favoriteCourts.length ? favoriteCourts : sortedCourts.slice(0, 10)}
-                idleTitle={favoriteCourts.length ? "자주 찾는 코트" : "추천 코트"}
+                idleTitle={favoriteCourts.length ? "즐겨찾는 구장" : "내 지역 추천 구장"}
                 showIdleOnFocus
                 floating
                 closeOnResultClick

@@ -36,7 +36,7 @@ export function toDateTime(date, time, fallback) {
 
 export function getMaxUpdatedAt(rows) {
   const timestamps = rows
-    .map((row) => row.updated_at ?? row.created_at)
+    .map((row) => row.metrics_updated_at ?? row.updated_at ?? row.created_at)
     .filter(Boolean)
     .map((value) => new Date(value).getTime())
     .filter((value) => !Number.isNaN(value));

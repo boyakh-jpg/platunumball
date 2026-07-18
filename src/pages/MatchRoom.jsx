@@ -252,6 +252,8 @@ export default function MatchRoom({ app }) {
   const [reviewControlsOpen, setReviewControlsOpen] = useState(false);
   const [thumbDraftPlayerIds, setThumbDraftPlayerIds] = useState([]);
   const [resultSaveFeedback, setResultSaveFeedback] = useState("");
+  const [courtReviewSaveFeedback, setCourtReviewSaveFeedback] = useState("");
+  const [courtReviewSaving, setCourtReviewSaving] = useState(false);
   const [matchDetailRefreshing, setMatchDetailRefreshing] = useState(false);
   const [soloRecordDeleteOpen, setSoloRecordDeleteOpen] = useState(false);
   const existingCourtReview = useMemo(
@@ -288,6 +290,7 @@ export default function MatchRoom({ app }) {
 
   useEffect(() => {
     setCourtReviewDraft(getCourtReviewDraft(existingCourtReview));
+    setCourtReviewSaveFeedback("");
   }, [existingCourtReview?.id, existingCourtReview?.updatedAt, match?.id]);
 
   useEffect(() => {
@@ -672,12 +675,13 @@ export default function MatchRoom({ app }) {
   const trustFeedback = match.trustFeedback ?? {};
   const thumbsByGiver = trustFeedback.stars ?? {};
   const feedbackParticipantIds = getMatchTrustFeedbackParticipantIds(match).filter((playerId) => userMap[playerId]);
+  const courtReviewParticipantIds = getMatchPlayerIds(match);
   const thumbLimit = getMatchTrustFeedbackLimit(match);
   const trustFeedbackClosesAt = getMatchTrustFeedbackClosesAt(match);
   const canSubmitThumbs = isMatchTrustFeedbackOpen(match) && feedbackParticipantIds.includes(app.currentUser.id);
   const shouldShowThumbReview = match.status === "confirmed" && feedbackParticipantIds.includes(app.currentUser.id);
   const courtReviewMatchFinished = Boolean(match.endedAt || match.result || ["approval", "disputed", "confirmed"].includes(match.status));
-  const canSubmitCourtReview = courtReviewMatchFinished && !["void", "cancelled"].includes(match.status) && feedbackParticipantIds.includes(app.currentUser.id);
+  const canSubmitCourtReview = courtReviewMatchFinished && !["void", "cancelled"].includes(match.status) && courtReviewParticipantIds.includes(app.currentUser.id);
   const courtReviewRatingReady = Number(courtReviewDraft.rating) > 0;
   const thumbTargets = feedbackParticipantIds.filter((playerId) => playerId !== app.currentUser.id);
   const thumbCountByPlayer = Object.values(thumbsByGiver).reduce((acc, targetIds = []) => {
@@ -695,9 +699,18 @@ export default function MatchRoom({ app }) {
     });
   };
   const updateCourtReviewDraft = (patch) => setCourtReviewDraft((current) => ({ ...current, ...patch }));
-  const submitCourtReview = () => {
-    if (!canSubmitCourtReview || !courtReviewRatingReady) return;
-    app.actions.submitCourtReview(match.id, courtReviewDraft);
+  const submitCourtReview = async () => {
+    if (!canSubmitCourtReview || !courtReviewRatingReady || courtReviewSaving) return;
+    setCourtReviewSaving(true);
+    setCourtReviewSaveFeedback("저장 중");
+    try {
+      const savedReview = await app.actions.submitCourtReview(match.id, courtReviewDraft);
+      setCourtReviewSaveFeedback(savedReview ? "저장되었습니다." : "저장 실패");
+    } catch {
+      setCourtReviewSaveFeedback("저장 실패");
+    } finally {
+      setCourtReviewSaving(false);
+    }
   };
   const deleteSoloRecord = () => {
     if (!canDeleteSoloRecord) return;
@@ -1095,9 +1108,10 @@ export default function MatchRoom({ app }) {
                   placeholder="바닥, 림, 조명, 위치 특이사항"
                 />
               </label>
-              <Button type="button" disabled={!canSubmitCourtReview || !courtReviewRatingReady} onClick={submitCourtReview}>
+              <Button type="button" disabled={!canSubmitCourtReview || !courtReviewRatingReady || courtReviewSaving} onClick={submitCourtReview}>
                 <Star size={16} /> {existingCourtReview ? "리뷰 수정" : "리뷰 제출"}
               </Button>
+              {courtReviewSaveFeedback ? <p className="muted">{courtReviewSaveFeedback}</p> : null}
             </Card>
           ) : null}
           <Card className="section-card">

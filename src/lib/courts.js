@@ -138,21 +138,45 @@ function normalizeCourtIdentityText(value = "") {
 }
 
 function getCourtIdentity(court = {}) {
+  const latitude = Number(court.latitude ?? court.lat);
+  const longitude = Number(court.longitude ?? court.lng);
   return {
     name: normalizeCourtIdentityText(court.canonicalBaseName || getCourtCanonicalBaseName(court)),
     address: normalizeCourtIdentityText(court.addressText || court.roadAddress || court.jibunAddress),
     roadAddress: normalizeCourtIdentityText(court.roadAddress),
     jibunAddress: normalizeCourtIdentityText(court.jibunAddress),
     zonecode: normalizeCourtIdentityText(court.zonecode),
+    latitude: Number.isFinite(latitude) ? latitude : null,
+    longitude: Number.isFinite(longitude) ? longitude : null,
   };
 }
 
 function hasCourtLocationIdentity(identity = {}) {
-  return Boolean(identity.address || identity.roadAddress || identity.jibunAddress || identity.zonecode);
+  return Boolean(
+    identity.address ||
+    identity.roadAddress ||
+    identity.jibunAddress ||
+    identity.zonecode ||
+    (identity.latitude !== null && identity.longitude !== null),
+  );
+}
+
+function getCourtDistanceMeters(source = {}, target = {}) {
+  if ([source.latitude, source.longitude, target.latitude, target.longitude].some((value) => value === null)) return null;
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const latitudeDelta = toRadians(target.latitude - source.latitude);
+  const longitudeDelta = toRadians(target.longitude - source.longitude);
+  const sourceLatitude = toRadians(source.latitude);
+  const targetLatitude = toRadians(target.latitude);
+  const haversine = (Math.sin(latitudeDelta / 2) ** 2)
+    + (Math.cos(sourceLatitude) * Math.cos(targetLatitude) * (Math.sin(longitudeDelta / 2) ** 2));
+  return 6371000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
 function isSameCourtIdentity(source = {}, target = {}) {
   if (!hasCourtLocationIdentity(source) || !hasCourtLocationIdentity(target)) return false;
+  const distanceMeters = getCourtDistanceMeters(source, target);
+  if (distanceMeters !== null && distanceMeters <= 35) return true;
   if (source.roadAddress && target.roadAddress && source.roadAddress === target.roadAddress) return true;
   if (source.jibunAddress && target.jibunAddress && source.jibunAddress === target.jibunAddress) return true;
   if (source.address && target.address && source.address === target.address) return true;
@@ -231,11 +255,69 @@ function getRatingAverage(reviews = [], field) {
   return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10;
 }
 
+const COURT_RATING_DEFAULT_MEAN = 3.5;
+const COURT_RATING_DEFAULT_DEVIATION = 1;
+const COURT_RATING_MIN_DEVIATION = 0.65;
+const COURT_RATING_PRIOR_COUNT = 5;
+
+function getMean(values = [], fallback = COURT_RATING_DEFAULT_MEAN) {
+  if (!values.length) return fallback;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function getDeviation(values = [], mean = getMean(values), fallback = COURT_RATING_DEFAULT_DEVIATION) {
+  if (!values.length) return fallback;
+  const variance = values.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function roundCourtRating(value) {
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value * 10) / 10;
+}
+
+function buildCourtReviewCalibration(reviews = []) {
+  const activeReviews = reviews
+    .filter(isActiveModerationItem)
+    .filter((review) => Number(review.rating) >= 1 && Number(review.rating) <= 5);
+  const values = activeReviews.map((review) => Number(review.rating));
+  const globalMean = getMean(values);
+  const globalDeviation = Math.max(getDeviation(values, globalMean), 0.75);
+  const byReviewer = new Map();
+
+  activeReviews.forEach((review) => {
+    const reviewerId = String(review.reviewerId ?? "");
+    if (!byReviewer.has(reviewerId)) byReviewer.set(reviewerId, []);
+    byReviewer.get(reviewerId).push(Number(review.rating));
+  });
+
+  const adjustedById = new Map();
+  activeReviews.forEach((review) => {
+    const reviewerValues = byReviewer.get(String(review.reviewerId ?? "")) ?? [];
+    const reviewerMean = getMean(reviewerValues, globalMean);
+    const reviewerDeviation = getDeviation(reviewerValues, reviewerMean, 0);
+    const sampleCount = reviewerValues.length;
+    const shrunkMean = ((sampleCount * reviewerMean) + (COURT_RATING_PRIOR_COUNT * globalMean))
+      / (sampleCount + COURT_RATING_PRIOR_COUNT);
+    const shrunkDeviation = Math.max(
+      Math.sqrt(
+        ((sampleCount * (reviewerDeviation ** 2)) + (COURT_RATING_PRIOR_COUNT * (globalDeviation ** 2)))
+        / (sampleCount + COURT_RATING_PRIOR_COUNT),
+      ),
+      COURT_RATING_MIN_DEVIATION,
+    );
+    const standardized = globalMean + (((Number(review.rating) - shrunkMean) / shrunkDeviation) * globalDeviation);
+    adjustedById.set(review.id, Math.max(1, Math.min(5, standardized)));
+  });
+
+  return { activeReviews, adjustedById, globalMean };
+}
+
 function isActiveModerationItem(item = {}) {
   return !item.status || item.status === "active";
 }
 
-function getCourtReviewSummary(court = {}, reviews = []) {
+function getCourtReviewSummary(court = {}, reviews = [], calibration = buildCourtReviewCalibration(reviews)) {
   const courtId = String(court.id ?? "");
   const courtName = String(court.name ?? "");
   const relatedReviews = reviews
@@ -245,33 +327,85 @@ function getCourtReviewSummary(court = {}, reviews = []) {
       (courtName && review.courtName === courtName)
     ));
 
+  const adjustedValues = relatedReviews
+    .map((review) => calibration.adjustedById.get(review.id))
+    .filter(Number.isFinite);
+  const adjustedRating = adjustedValues.length
+    ? ((adjustedValues.reduce((sum, value) => sum + value, 0) + (COURT_RATING_PRIOR_COUNT * calibration.globalMean))
+      / (adjustedValues.length + COURT_RATING_PRIOR_COUNT))
+    : calibration.globalMean;
+  const recentReviews = [...relatedReviews]
+    .filter((review) => String(review.memo ?? "").trim())
+    .sort((a, b) => new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() - new Date(a.updatedAt ?? a.createdAt ?? 0).getTime())
+    .slice(0, 3)
+    .map((review) => ({
+      id: review.id,
+      rating: Number(review.rating),
+      adjustedRating: roundCourtRating(calibration.adjustedById.get(review.id)),
+      memo: String(review.memo).trim(),
+      createdAt: review.createdAt,
+    }));
+
   return {
-    averageRating: getRatingAverage(relatedReviews, "rating"),
+    averageRating: roundCourtRating(adjustedRating),
+    adjustedRating: roundCourtRating(adjustedRating),
+    rawAverageRating: getRatingAverage(relatedReviews, "rating"),
     reviewCount: relatedReviews.length,
     surfaceRating: getRatingAverage(relatedReviews, "surfaceRating"),
     rimRating: getRatingAverage(relatedReviews, "rimRating"),
     lightingRating: getRatingAverage(relatedReviews, "lightingRating"),
     crowdRating: getRatingAverage(relatedReviews, "crowdRating"),
     locationAccuracy: getRatingAverage(relatedReviews, "locationAccuracy"),
+    recentReviews,
   };
+}
+
+export function getCourtRecommendationScore(court = {}) {
+  const rating = Number(court.adjustedRating ?? court.reviewSummary?.adjustedRating ?? court.rating ?? COURT_RATING_DEFAULT_MEAN);
+  const completedMatchCount = Math.max(0, Number(court.completedMatchCount ?? 0));
+  if (court.recommendationScore !== null && court.recommendationScore !== undefined && Number.isFinite(Number(court.recommendationScore))) {
+    return Number(court.recommendationScore);
+  }
+  return rating + Math.min(0.8, Math.log1p(completedMatchCount) * 0.2);
 }
 
 export function getRegisteredCourts(stateOrSettings = {}) {
   const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
   const approvedCourts = (settings.approvedCourts ?? []).filter(isActiveModerationItem);
+  const courtMetricsById = new Map((settings.courtMetrics ?? []).map((court) => [court.id, court]));
   const courtReviews = (settings.courtReviews ?? []).filter(isActiveModerationItem);
-  const byId = new Map(COURTS.map((court) => [court.id, court]));
+  const calibration = buildCourtReviewCalibration(courtReviews);
+  const byId = new Map(COURTS.map((court) => {
+    const metrics = courtMetricsById.get(court.id) ?? {};
+    return [court.id, { ...court, ...metrics, name: court.name }];
+  }));
   approvedCourts.forEach((court) => {
     if (!court?.id) return;
-    byId.set(court.id, court);
+    byId.set(court.id, { ...(byId.get(court.id) ?? {}), ...court });
   });
   return [...byId.values()].map((court) => {
-    const reviewSummary = getCourtReviewSummary(court, courtReviews);
+    const calculatedSummary = getCourtReviewSummary(court, courtReviews, calibration);
+    const serverReviewCount = Number(court.reviewCount);
+    const hasServerMetrics = Number.isFinite(serverReviewCount) && court.metricsUpdatedAt;
+    const reviewSummary = hasServerMetrics ? {
+      ...calculatedSummary,
+      averageRating: serverReviewCount > 0 ? Number(court.adjustedRating) : calculatedSummary.averageRating,
+      adjustedRating: Number(court.adjustedRating) || calculatedSummary.adjustedRating,
+      rawAverageRating: Number(court.rawRating) || calculatedSummary.rawAverageRating,
+      reviewCount: serverReviewCount,
+      recentReviews: Array.isArray(court.recentReviews) ? court.recentReviews : calculatedSummary.recentReviews,
+    } : calculatedSummary;
+    const completedMatchCount = Math.max(0, Number(court.completedMatchCount ?? 0));
     return {
       ...court,
       reviewSummary,
       rating: reviewSummary.averageRating,
       reviewCount: reviewSummary.reviewCount,
+      adjustedRating: reviewSummary.adjustedRating,
+      rawRating: reviewSummary.rawAverageRating,
+      recentReviews: reviewSummary.recentReviews,
+      completedMatchCount,
+      recommendationScore: getCourtRecommendationScore({ ...court, ...reviewSummary, completedMatchCount }),
     };
   });
 }

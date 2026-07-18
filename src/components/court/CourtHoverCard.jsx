@@ -82,8 +82,10 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
   const mapUrl = getCourtMapUrl(resolvedCourt);
   const reviewSummary = resolvedCourt.reviewSummary ?? {};
   const reviewCount = Number(reviewSummary.reviewCount ?? resolvedCourt.reviewCount ?? 0);
-  const averageRating = Number(reviewSummary.averageRating ?? resolvedCourt.rating ?? 0);
-  const ratingLabel = reviewCount && averageRating ? averageRating.toFixed(1) : "리뷰 없음";
+  const averageRating = Number(reviewSummary.adjustedRating ?? reviewSummary.averageRating ?? resolvedCourt.adjustedRating ?? resolvedCourt.rating ?? 0);
+  const completedMatchCount = Number(resolvedCourt.completedMatchCount ?? 0);
+  const recentReviews = reviewSummary.recentReviews ?? resolvedCourt.recentReviews ?? [];
+  const ratingLabel = reviewCount && averageRating ? `${averageRating.toFixed(1)} 보정` : "리뷰 없음";
 
   return (
     <span
@@ -118,7 +120,7 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
       <HoverPortal
         anchorRef={anchorRef}
         className={`court-hover-card hover-portal-card ${pinnedOpen ? "touch-open" : ""}`}
-        estimatedHeight={300}
+        estimatedHeight={430}
         open={open}
         portalRef={cardRef}
       >
@@ -148,9 +150,20 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
           <span><b>{getCourtLayoutLabel(resolvedCourt)}</b><em>형태</em></span>
           <span><b>{resolvedCourt.courtKind === "official" ? "정식구장" : "골목/길농"}</b><em>유형</em></span>
           <span><b>{resolvedCourt.paid ? "유료" : "무료/미정"}</b><em>비용</em></span>
-          <span><b>{resolvedCourt.lighting ? "조명 있음" : "확인 필요"}</b><em>야간</em></span>
+          <span><b>{completedMatchCount}경기</b><em>이용 기록</em></span>
           <span><b>{ratingLabel}</b><em><Star size={12} /> 리뷰 {reviewCount}개</em></span>
         </span>
+        {recentReviews.length ? (
+          <span className="court-hover-reviews">
+            <b>최근 리뷰</b>
+            {recentReviews.slice(0, 3).map((review) => (
+              <span key={review.id}>
+                <strong><Star size={12} fill="currentColor" /> 보정 {Number(review.adjustedRating ?? review.rating).toFixed(1)}</strong>
+                <em>{review.memo}</em>
+              </span>
+            ))}
+          </span>
+        ) : null}
         <a className="hover-card-action" href={mapUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
           <Navigation size={16} /> 지도로 보기 <ExternalLink size={14} />
         </a>

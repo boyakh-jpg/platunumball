@@ -3000,12 +3000,21 @@ export function useAppData(authUser = null, appLocation = null) {
       },
       submitCourtReview: (matchId, draft) => {
         let submittedReview = null;
+        let rollbackState = null;
         setState((prev) => {
+          rollbackState = prev;
           const next = submitCourtReview({ ...prev, currentUserId }, matchId, draft);
           submittedReview = (next.settings?.courtReviews ?? []).find((review) => review.matchId === matchId && review.reviewerId === currentUserId) ?? null;
           return next;
         });
-        if (submittedReview) runServerAction("/api/courts/submit-review", { review: submittedReview });
+        if (!submittedReview) return Promise.resolve(null);
+        if (!isSupabaseConfigured) return Promise.resolve(submittedReview);
+        return rollbackIfServerFailed(
+          runServerAction("/api/courts/submit-review", { review: submittedReview }),
+          rollbackState,
+          "구장 리뷰",
+          { matchId, reviewId: submittedReview.id },
+        ).then((result) => (result && result.ok !== false ? submittedReview : null));
       },
       startRefereeExamAttempt: (draft) => {
         if (isSupabaseConfigured) {

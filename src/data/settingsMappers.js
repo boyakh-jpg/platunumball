@@ -30,6 +30,7 @@ export function normalizeSettings(settings = {}, options = {}) {
     representativeTeamId: settings.representativeTeamId ?? fallbackSettings.representativeTeamId ?? "",
     favoriteCourtIds: settings.favoriteCourtIds ?? fallbackSettings.favoriteCourtIds ?? [],
     favoriteRefereeIds: settings.favoriteRefereeIds ?? fallbackSettings.favoriteRefereeIds ?? [],
+    courtMetrics: settings.courtMetrics ?? fallbackSettings.courtMetrics ?? [],
     approvedCourts: settings.approvedCourts ?? fallbackSettings.approvedCourts ?? [],
     courtRequests: settings.courtRequests ?? fallbackSettings.courtRequests ?? [],
     courtReviews: settings.courtReviews ?? fallbackSettings.courtReviews ?? [],

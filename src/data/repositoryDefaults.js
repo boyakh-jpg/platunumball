@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS = {
   representativeTeamId: "",
   favoriteCourtIds: [],
   favoriteRefereeIds: [],
+  courtMetrics: [],
   approvedCourts: [],
   courtRequests: [],
   courtReviews: [],

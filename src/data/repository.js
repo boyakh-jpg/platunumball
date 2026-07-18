@@ -208,6 +208,7 @@ import {
 } from "./tournamentMappers.js";
 import {
   fromRemoteApprovedCourt,
+  fromRemoteCourtMetric,
   fromRemoteCourtRequest,
   fromRemoteCourtReview,
   fromRemoteNotification,
@@ -257,6 +258,7 @@ import {
   APPOINTMENT_COLUMNS,
   APPROVED_COURT_COLUMNS,
   COURT_COLUMNS,
+  COURT_METRIC_COLUMNS,
   COURT_REQUEST_COLUMNS,
   COURT_REVIEW_COLUMNS,
   DISCORD_DELIVERY_COLUMNS,
@@ -666,6 +668,7 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
     teamInvitations,
     reports,
     courtRequests,
+    legacyCourtMetrics,
     approvedCourts,
     courtReviews,
     refereeRequests,
@@ -683,6 +686,7 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
         ? fetchOptionalRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client, currentUserFilter("requested_by"))
       : [],
+    fetchOptionalRows("courts", COURT_METRIC_COLUMNS, "id", client),
     fetchOptionalFilteredRows("approved_courts", APPROVED_COURT_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
     fetchOptionalFilteredRows("court_reviews", COURT_REVIEW_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
     currentUserId
@@ -739,6 +743,7 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
       favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
       favoriteRefereeIds: favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id),
+      courtMetrics: legacyCourtMetrics.map(fromRemoteCourtMetric),
       approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
       courtRequests: courtRequests.map(fromRemoteCourtRequest),
       courtReviews: courtReviews.map(fromRemoteCourtReview),
@@ -764,6 +769,7 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
       getMaxUpdatedAt(profiles),
       getMaxUpdatedAt(teams),
       getMaxUpdatedAt(teamMembers),
+      getMaxUpdatedAt(legacyCourtMetrics),
       getMaxUpdatedAt(approvedCourts),
       getMaxUpdatedAt(courtRequests),
       getMaxUpdatedAt(courtReviews),
@@ -897,6 +903,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const [
     reports,
     courtRequests,
+    legacyCourtMetrics,
     approvedCourts,
     courtReviews,
     refereeRequests,
@@ -916,6 +923,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       : isAdminStateLoad
         ? fetchOptionalRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client, (query) => query.eq("requested_by", currentUserId)),
+    !includeUserScoped ? [] : fetchOptionalRows("courts", COURT_METRIC_COLUMNS, "id", client),
     !includeUserScoped
       ? []
       : isAdminStateLoad
@@ -1206,6 +1214,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
       favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
       favoriteRefereeIds: favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id),
+      courtMetrics: legacyCourtMetrics.map(fromRemoteCourtMetric),
       approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
       courtRequests: courtRequests.map(fromRemoteCourtRequest),
       courtReviews: courtReviews.map(fromRemoteCourtReview),
@@ -1227,6 +1236,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       getMaxUpdatedAt(tournaments),
       getMaxUpdatedAt(teamInvitations),
       getMaxUpdatedAt(courtRequests),
+      getMaxUpdatedAt(legacyCourtMetrics),
       getMaxUpdatedAt(approvedCourts),
       getMaxUpdatedAt(courtReviews),
       getMaxUpdatedAt(reports),
