@@ -503,8 +503,8 @@
 - `match_agreements`, `match_approvals`, `match_disputes`, `match_results`, `player_match_stats` 변경은 match feed를 즉시 갱신해야 한다.
 - 경기/홈 첫 목록은 feed 카드만으로 `todo`, `scheduled`, `record` 분류가 가능해야 하며, 상세 통계/기록 원본은 방 상세나 기록 화면 진입 때만 넓게 불러온다.
 - `/api/system/maintenance` cron은 source room/match row를 삭제하지 않고 `user_room_feed.is_active=false`로만 만료 feed를 숨긴다. 모집방 feed는 orphan, `closed/cancelled`, 120분 지난 즉시방, 시작 시각이 지난 예약방을 숨긴다. 경기 feed는 orphan과 `closed`만 숨기며 `confirmed` 기록방은 기록 화면 진입 때 별도 로드한다.
-- 비활성 `user_room_feed`는 비활성 전환 시각부터 30일 보존한 뒤 maintenance RPC가 삭제한다. 활성 feed와 원본 `recruiting_posts`/`matches`는 삭제하지 않는다.
-- `room_feed_cards`는 갱신 후 30일이 지났고 활성 feed가 없으며 같은 entity의 최근 feed도 30일이 지난 경우에만 stale 카드로 삭제한다.
+- 비활성 `user_room_feed`는 비활성 전환 시각부터 7일 보존한 뒤 maintenance RPC가 삭제한다. 활성 feed와 원본 `recruiting_posts`/`matches`는 삭제하지 않는다.
+- `room_feed_cards`는 갱신 후 7일이 지났고 활성 feed가 없으며 같은 entity의 최근 feed도 7일이 지난 경우에만 stale 카드로 삭제한다.
 - Vercel Hobby 배포 cron은 하루 1회만 허용되므로 `/api/system/maintenance`는 매일 03:00 KST 실행을 기본으로 한다.
 - 경기 메뉴의 상태/날짜 버튼은 이미 받은 feed snapshot만 필터링한다. 추가 모집 일정 재호출은 하지 않으며, 과거 1/3/6개월 기록 API 호출을 경기 메뉴에서 하지 않는다. 기록 확정 후 24시간 이내 평가 가능한 `confirmed` 경기만 얇은 feed card로 함께 읽고, 그 이후 기록은 나/팀 기록 화면에서만 별도 호출한다.
 - 경기방을 모집방 모달 UI로 변환할 때 `matches.reservePlayers`는 `roomState.pinnedReservePlayers`에도 반영한다. 경기방에서 후보로 내린 선수는 자동 fill slot으로 즉시 출전처럼 보이면 안 된다.

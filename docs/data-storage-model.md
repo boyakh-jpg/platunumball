@@ -462,8 +462,8 @@ Remaining:
 | `courts` | `id`, `name`, `address`, `region` | legacy court fallback | 보류 |
 | `rankball_state` | legacy snapshot | production DB에 없음 | 제거 완료 |
 
-- `user_room_feed.is_active=false` row는 비활성 전환 후 30일 보존하고 maintenance RPC가 삭제한다.
-- `room_feed_cards`는 30일 이상 갱신되지 않았고 활성 feed가 없으며 같은 entity의 최근 feed도 30일이 지난 경우에만 삭제한다. 원본 모집방·경기 row는 보존한다.
+- `user_room_feed.is_active=false` row는 비활성 전환 후 7일 보존하고 maintenance RPC가 삭제한다.
+- `room_feed_cards`는 7일 이상 갱신되지 않았고 활성 feed가 없으며 같은 entity의 최근 feed도 7일이 지난 경우에만 삭제한다. 원본 모집방·경기 row는 보존한다.
 
 ## 2026-07-13 atomic match confirmation and rating commit
 

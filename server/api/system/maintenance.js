@@ -6,7 +6,7 @@ import { normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
 const FEED_REPAIR_ROW_FACTOR = 8;
-const ROOM_FEED_RETENTION_DAYS = 30;
+const ROOM_FEED_RETENTION_DAYS = 7;
 const ACTIVE_RECRUITING_APPLICATION_STATUSES = new Set(["waiting", "ready", "confirmed"]);
 
 function assertAccess(request) {
