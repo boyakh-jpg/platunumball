@@ -29,6 +29,7 @@ import {
   getMatchRecordWindow,
   getMatchReferee,
   getMatchRecordPlayerIds,
+  getMatchReviewParticipantIds,
   getMatchResultEntryPermission,
   getMatchRoomPhase,
   getMatchPlayerIds,
@@ -675,7 +676,7 @@ export default function MatchRoom({ app }) {
   const trustFeedback = match.trustFeedback ?? {};
   const thumbsByGiver = trustFeedback.stars ?? {};
   const feedbackParticipantIds = getMatchTrustFeedbackParticipantIds(match).filter((playerId) => userMap[playerId]);
-  const courtReviewParticipantIds = getMatchPlayerIds(match);
+  const courtReviewParticipantIds = getMatchReviewParticipantIds(match);
   const thumbLimit = getMatchTrustFeedbackLimit(match);
   const trustFeedbackClosesAt = getMatchTrustFeedbackClosesAt(match);
   const canSubmitThumbs = isMatchTrustFeedbackOpen(match) && feedbackParticipantIds.includes(app.currentUser.id);

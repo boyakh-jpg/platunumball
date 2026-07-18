@@ -5,6 +5,22 @@ import {
   APPROVED_COURT_COLUMNS,
   PUBLIC_PROFILE_COLUMNS,
 } from "../../../src/data/repositoryColumns.js";
+import { COURTS } from "../../../src/lib/constants.js";
+
+const LEGACY_COURT_DETAIL_COLUMNS = "id,name,region,type,region_key,address_text,road_address,jibun_address,lat,lng,raw_rating,adjusted_rating,review_count,completed_match_count,recommendation_score,recent_reviews,metrics_updated_at,payload,created_at";
+
+function fromLegacyCourt(row = {}, builtInCourt = null) {
+  return fromRemoteApprovedCourt({
+    ...row,
+    id: row.id ?? builtInCourt?.id,
+    name: row.name ?? builtInCourt?.name,
+    status: "active",
+    payload: {
+      ...(builtInCourt ?? {}),
+      ...(row.payload ?? {}),
+    },
+  });
+}
 
 function toReview(row = {}, reviewer = null, includeRawRating = false) {
   return {
@@ -64,19 +80,31 @@ export default async function handler(request, response) {
     }
 
     const context = await getAuthenticatedContext(request);
-    const { data: courtRow, error: courtError } = await context.supabase
+    const { data: approvedCourtRow, error: courtError } = await context.supabase
       .from("approved_courts")
       .select(APPROVED_COURT_COLUMNS)
       .eq("id", courtId)
       .eq("status", "active")
       .maybeSingle();
     if (courtError) throw courtError;
-    if (!courtRow) {
+
+    const builtInCourt = COURTS.find((item) => item.id === courtId) ?? null;
+    const { data: legacyCourtRow, error: legacyCourtError } = approvedCourtRow
+      ? { data: null, error: null }
+      : await context.supabase
+        .from("courts")
+        .select(LEGACY_COURT_DETAIL_COLUMNS)
+        .eq("id", courtId)
+        .maybeSingle();
+    if (legacyCourtError) throw legacyCourtError;
+    if (!approvedCourtRow && !legacyCourtRow && !builtInCourt) {
       sendJson(response, 404, { error: "court_not_found" });
       return;
     }
 
-    const court = fromRemoteApprovedCourt(courtRow);
+    const court = approvedCourtRow
+      ? fromRemoteApprovedCourt(approvedCourtRow)
+      : fromLegacyCourt(legacyCourtRow ?? {}, builtInCourt);
     const { data: reviewRows, error: reviewError } = await context.supabase.rpc(
       "rankball_court_detail_review_rows",
       { p_court_id: court.id, p_court_name: court.name, p_limit: 100 },

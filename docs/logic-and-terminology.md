@@ -1187,6 +1187,9 @@ flowchart TD
 27. 승인 구장의 canonical 상세 경로는 `/app/courts/:courtId`다. 홈 검색과 즐겨찾기 검색의 구장 결과는 방 생성 화면이 아니라 이 상세 경로로 이동한다.
 28. 구장 상세 리뷰 목록은 active 리뷰만 구장별 최대 100개 조회하며, 공개 별점은 `rankball_court_rating_rows()`의 평가자 성향 보정 점수를 사용한다.
 29. 구장 상세의 리뷰 작성 후보는 DB가 `match_players` 실제 참가, 종료 상태, 무효/취소 제외, 동일 구장을 다시 검증해 반환한다. 저장은 기존 `rankball_submit_court_review()`만 사용하며 `match_id + reviewer_id` 수정 규칙을 유지한다.
+30. 기본 구장 `c1`~`c12`도 운영 DB `courts`에 보존한다. 구장 상세 API는 `approved_courts`와 기본 `courts`를 모두 조회하며 로컬 상수만 있는 경우에도 같은 ID로 상세를 복구한다.
+31. 구장 리뷰 참가자 판정은 `played_player_ids`가 있으면 실제 출전 명단만 사용한다. 구형 경기처럼 실제 출전 명단이 비어 있을 때만 `match_players`를 fallback으로 사용하며, 경기방 UI·후보 조회 RPC·저장 RPC가 이 기준을 공유한다.
+32. 리뷰 저장 구장 ID는 경기 snapshot의 ID·이름을 `rankball_resolve_approved_court_id()`로 먼저 정규화한다. 구형 경기의 `court_id`가 비어 있어도 같은 기본·승인 구장 리뷰를 해시 ID로 분리하지 않는다.
 
 ## 심판 원칙
 

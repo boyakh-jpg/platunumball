@@ -342,6 +342,15 @@ export function getMatchPlayerIds(match = {}) {
   return uniquePlayerIds([...getMatchSidePlayerIds(match, "teamA"), ...getMatchSidePlayerIds(match, "teamB")]);
 }
 
+export function getMatchReviewParticipantIds(match = {}) {
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const actualPlayerIds = uniquePlayerIds([
+    ...(playedPlayerIds.teamA ?? []),
+    ...(playedPlayerIds.teamB ?? []),
+  ]);
+  return actualPlayerIds.length ? actualPlayerIds : getMatchPlayerIds(match);
+}
+
 export function getReportableMatchTimeMs(match = {}) {
   const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
   if (!rawDate) return 0;
