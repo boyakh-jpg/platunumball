@@ -7,6 +7,7 @@ import { normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
 const DEFAULT_MATCH_LIMIT = 10;
 const FEED_REPAIR_ROW_FACTOR = 8;
 const ROOM_FEED_RETENTION_DAYS = 7;
+const NOTIFICATION_RETENTION_DAYS = 7;
 const ACTIVE_RECRUITING_APPLICATION_STATUSES = new Set(["waiting", "ready", "confirmed"]);
 
 function assertAccess(request) {
@@ -31,6 +32,11 @@ function getLimit(request) {
 function isMissingCleanupRpc(error) {
   const message = String(error?.message ?? "").toLowerCase();
   return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_cleanup_room_feed");
+}
+
+function isMissingNotificationCleanupRpc(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_cleanup_read_notifications");
 }
 
 function isMissingTournamentLineupDeadlineRpc(error) {
@@ -167,6 +173,21 @@ async function cleanupRoomFeed(client, now) {
     affected: checks.reduce((sum, row) => sum + Number(row?.affected_count ?? 0), 0),
     checks,
   };
+}
+
+async function cleanupReadNotifications(client, now) {
+  const { data, error } = await client.rpc("rankball_cleanup_read_notifications", {
+    p_now: now.toISOString(),
+  });
+  if (error) {
+    if (isMissingNotificationCleanupRpc(error)) {
+      return { ok: false, skipped: true, error: "rankball_cleanup_read_notifications_missing" };
+    }
+    throw error;
+  }
+  return data && typeof data === "object"
+    ? { ...data, retentionDays: NOTIFICATION_RETENTION_DAYS, skipped: false }
+    : { ok: true, skipped: false, retentionDays: NOTIFICATION_RETENTION_DAYS, deletedNotifications: 0, deletedDiscordDeliveries: 0 };
 }
 
 async function expireRecruitingRooms(client) {
@@ -417,13 +438,20 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     results.push(await processMatch(client, matchId, now));
   }
 
+  const feedCleanup = await cleanupRoomFeed(client, now);
+  const notificationCleanup = await cleanupReadNotifications(client, now);
+
   return {
-    ok: (tournamentLineupDeadlines.ok || tournamentLineupDeadlines.skipped) && results.every((result) => result.ok || result.skipped),
+    ok: (tournamentLineupDeadlines.ok || tournamentLineupDeadlines.skipped)
+      && (feedCleanup.ok || feedCleanup.skipped)
+      && (notificationCleanup.ok || notificationCleanup.skipped)
+      && results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
     tournamentLineupDeadlines,
     recruitingExpiration,
-    feedCleanup: await cleanupRoomFeed(client, now),
+    feedCleanup,
+    notificationCleanup,
     feedRepair: includeFeedRepair
       ? await repairStaleRoomFeed(client, limit)
       : { ok: true, skipped: true, reason: "disabled" },

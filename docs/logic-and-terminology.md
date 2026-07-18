@@ -2536,6 +2536,8 @@ flowchart TD
 2. 알림 페이지는 로그인 사용자의 최근 알림을 서버에서 다시 조회해 읽지 않은 알림과 지난 알림을 분리한다.
 3. 지난 알림 삭제는 인증된 server action만 사용하며 `notifications.user_id` 또는 `target_user_id`가 현재 profile id인 row만 삭제한다.
 4. 홈 알림 박스는 계속 읽지 않은 알림만 보여주며, 읽지 않은 알림이 0개여도 헤더의 `지난 알림` 진입점으로 전체 알림 페이지를 열 수 있다.
+5. 읽은 알림은 `read_at`부터 7일 동안 지난 알림으로 보관한 뒤 daily maintenance가 삭제한다. 미읽음 알림은 생성일과 관계없이 자동 삭제하지 않는다.
+6. 읽은 알림을 자동 삭제할 때 연결된 `discord_notification_deliveries`도 먼저 삭제해 orphan 배송 기록을 남기지 않는다.
 
 ## 2026-07-16 대회 경기 방장·라인업 마감
 

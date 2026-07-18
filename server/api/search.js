@@ -62,6 +62,64 @@ function searchFilter(fields = [], query = "") {
     .join(",");
 }
 
+function normalizeFuzzyText(value = "") {
+  return normalizeSearchQuery(value)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}#]+/gu, "");
+}
+
+function isWithinOneEdit(source = "", target = "") {
+  if (source === target) return true;
+  if (!source || !target || Math.abs(source.length - target.length) > 1) return false;
+
+  let sourceIndex = 0;
+  let targetIndex = 0;
+  let edits = 0;
+  while (sourceIndex < source.length && targetIndex < target.length) {
+    if (source[sourceIndex] === target[targetIndex]) {
+      sourceIndex += 1;
+      targetIndex += 1;
+      continue;
+    }
+    edits += 1;
+    if (edits > 1) return false;
+    if (source.length > target.length) sourceIndex += 1;
+    else if (target.length > source.length) targetIndex += 1;
+    else {
+      sourceIndex += 1;
+      targetIndex += 1;
+    }
+  }
+  return edits + Number(sourceIndex < source.length || targetIndex < target.length) <= 1;
+}
+
+export function isCourtFuzzyMatch(row = {}, query = "") {
+  const normalizedQuery = normalizeFuzzyText(stripHash(query));
+  if (normalizedQuery.length < 2) return false;
+  const payload = getPayload(row);
+  const tokens = [
+    row.name,
+    row.hashtag,
+    row.address_text,
+    row.road_address,
+    row.jibun_address,
+    payload.name,
+    payload.region,
+  ]
+    .flatMap((value) => normalizeSearchQuery(value).split(" "))
+    .map(normalizeFuzzyText)
+    .filter(Boolean);
+
+  return tokens.some((token) => {
+    if (token.includes(normalizedQuery)) return true;
+    if (token.length < normalizedQuery.length) return isWithinOneEdit(token, normalizedQuery);
+    for (let index = 0; index <= token.length - normalizedQuery.length; index += 1) {
+      if (isWithinOneEdit(token.slice(index, index + normalizedQuery.length), normalizedQuery)) return true;
+    }
+    return false;
+  });
+}
+
 function activeTerm(row = {}, nowMs = Date.now()) {
   const startsAt = row.starts_at ? new Date(row.starts_at).getTime() : 0;
   const endsAt = row.ends_at ? new Date(row.ends_at).getTime() : 0;
@@ -203,7 +261,19 @@ async function searchCourts(supabase, query, limit) {
     .order("updated_at", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []).map(toCourt);
+  if ((data ?? []).length) return data.map(toCourt);
+
+  const fallbackQuery = normalizeFuzzyText(stripHash(query)).slice(0, 1);
+  if (!fallbackQuery) return [];
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("approved_courts")
+    .select(COURT_COLUMNS)
+    .eq("status", "active")
+    .or(searchFilter(["name", "address_text", "road_address", "jibun_address"], fallbackQuery))
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .limit(Math.min(100, Math.max(25, limit * 5)));
+  if (fallbackError) throw fallbackError;
+  return (fallbackData ?? []).filter((row) => isCourtFuzzyMatch(row, query)).slice(0, limit).map(toCourt);
 }
 
 async function searchReferees(supabase, query, limit) {
