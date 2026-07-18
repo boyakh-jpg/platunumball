@@ -6,6 +6,7 @@ import { normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
 const FEED_REPAIR_ROW_FACTOR = 8;
+const ROOM_FEED_RETENTION_DAYS = 30;
 const ACTIVE_RECRUITING_APPLICATION_STATUSES = new Set(["waiting", "ready", "confirmed"]);
 
 function assertAccess(request) {
@@ -162,6 +163,7 @@ async function cleanupRoomFeed(client, now) {
   return {
     ok: true,
     skipped: false,
+    retentionDays: ROOM_FEED_RETENTION_DAYS,
     affected: checks.reduce((sum, row) => sum + Number(row?.affected_count ?? 0), 0),
     checks,
   };
