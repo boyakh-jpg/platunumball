@@ -612,6 +612,7 @@ export default function Home({ app }) {
           limit={SEARCH_PREVIEW_LIMIT}
           detailLimit={SEARCH_DETAIL_LIMIT}
           fieldClassName="home-search-box"
+          resultsClassName="home-global-search-results"
         />
         <div className="home-search-actions">
           <Link to="/app/create" className="home-search-create">

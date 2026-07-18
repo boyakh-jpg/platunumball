@@ -16027,6 +16027,11 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   min-width: 0;
 }
 
+.rank-home .home-search-results.home-global-search-results.is-floating {
+  max-height: min(248px, var(--search-picker-max-height, 248px));
+  overscroll-behavior: contain;
+}
+
 .rank-home .home-search-panel.rank-search-card .home-search-box input {
   appearance: none;
   -webkit-appearance: none;
@@ -16179,6 +16184,10 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 @media (max-width: 759px) {
   .rank-home .home-search-panel.rank-search-card {
     grid-template-columns: 1fr;
+  }
+
+  .rank-home .home-search-results.home-global-search-results.is-floating {
+    max-height: min(220px, var(--search-picker-max-height, 220px));
   }
 
   .rank-home .home-search-create,
