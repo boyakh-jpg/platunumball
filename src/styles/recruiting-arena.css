@@ -8228,22 +8228,46 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
 }
 
 .arena-lobby-modal .arena-room-player-slot-wrap {
-  min-block-size: var(--room-slot-height);
-}
-
-.arena-lobby-modal .arena-room-player-slot {
-  box-sizing: border-box;
   block-size: var(--room-slot-height);
   min-block-size: var(--room-slot-height);
   max-block-size: var(--room-slot-height);
 }
 
+.arena-lobby-modal .arena-room-player-slot {
+  box-sizing: border-box;
+  height: var(--room-slot-height);
+  block-size: var(--room-slot-height);
+  min-block-size: var(--room-slot-height);
+  max-block-size: var(--room-slot-height);
+}
+
+.arena-lobby-modal .arena-lobby-team-panel,
+.arena-lobby-modal .arena-reserve-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
+  background: transparent;
+  box-shadow: none;
+}
+
+.arena-lobby-modal .arena-room-player-slot,
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot,
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot.ready,
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot:not(.ready):not(.empty),
 html[data-theme="light"] .arena-lobby-modal .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot.empty {
   background: transparent;
+}
+
+.arena-lobby-modal .arena-room-player-slot.ready {
+  box-shadow: 0 0 20px rgba(101, 217, 159, 0.18);
+}
+
+.arena-lobby-modal .arena-room-player-slot:not(.ready):not(.empty) {
+  box-shadow: 0 0 18px rgba(255, 211, 108, 0.14);
+}
+
+.arena-lobby-modal .arena-room-player-slot.empty {
+  box-shadow: none;
 }
 
 @media (max-width: 720px) {
