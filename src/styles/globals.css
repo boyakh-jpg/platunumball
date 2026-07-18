@@ -4490,7 +4490,6 @@ input[type="color"] {
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);
   cursor: pointer;
-  overflow: hidden;
   padding: 10px 12px;
   text-align: left;
 }
@@ -11387,6 +11386,18 @@ html[data-theme="light"] .ranking-filter-card {
 .settings-page .settings-address-results button {
   min-height: 70px;
   padding: 10px 12px;
+}
+
+@media (max-width: 560px) {
+  .settings-page .settings-address-results {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .settings-page .settings-address-results button {
+    overflow: visible;
+  }
 }
 
 .settings-page .report-player-picker button {
