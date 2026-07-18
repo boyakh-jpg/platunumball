@@ -328,7 +328,6 @@ export default function CreateMatch({ app }) {
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
-  const [invitePlayerQuery, setInvitePlayerQuery] = useState("");
   const [soloTeamAUserQuery, setSoloTeamAUserQuery] = useState("");
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(currentRegion || "전체");
@@ -336,7 +335,6 @@ export default function CreateMatch({ app }) {
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
-  const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
   const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
@@ -363,7 +361,6 @@ export default function CreateMatch({ app }) {
     opponentPlayerIds: [],
     opponentReservePlayerIds: [],
     opponentLeaderId: defaultTeamBPlayerIds[0] ?? "",
-    invitePlayerIds: [],
     approvalModeA: "leader",
     approvalModeB: "leader",
     courtReserved: false,
@@ -471,9 +468,6 @@ export default function CreateMatch({ app }) {
   const opponentCaptainId = selectedTeamB?.members?.find((member) => member.role === "captain")?.userId ?? "";
   const opponentInviteTargetIds = !isPublicRoom && isTeamRoom && opponentCaptainId && !ownerSidePlayerIds.includes(opponentCaptainId) ? [opponentCaptainId] : [];
   const opponentLeaderId = opponentInviteTargetIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : opponentInviteTargetIds[0] ?? "";
-  const privatePlayerInviteIds = !isPublicRoom && !isTeamRoom && !isTournamentRoom && !isSoloRecord
-    ? Array.from(new Set(draft.invitePlayerIds ?? [])).filter((playerId) => playerId && playerId !== app.currentUser.id)
-    : [];
   const tournamentTeams = useMemo(
     () => (draft.tournamentTeamIds ?? []).map((teamId) => app.state.teams.find((team) => team.id === teamId)).filter(Boolean),
     [app.state.teams, draft.tournamentTeamIds],
@@ -541,7 +535,6 @@ export default function CreateMatch({ app }) {
           opponentPlayerIds: [],
           opponentReservePlayerIds: [],
           opponentLeaderId,
-          invitePlayerIds: [],
         };
       });
       return;
@@ -570,7 +563,6 @@ export default function CreateMatch({ app }) {
         opponentPlayerIds: [],
         opponentReservePlayerIds: [],
         opponentLeaderId: "",
-        invitePlayerIds: [],
       };
     });
   }, [app.currentUser.id, defaultHostJoinMode, defaultMode, defaultTeamA?.id, defaultTeamB?.id, isMatchRecordRoom, isRecordCreateIntent, isSoloRecord]);
@@ -638,24 +630,6 @@ export default function CreateMatch({ app }) {
       includesQuery(`${user.name} ${getUserHashtag(user)} ${user.position} ${user.region} 신뢰도 ${user.trustScore}`, query)
     ));
   }, [refereeCandidates, refereeQuery]);
-  const privatePlayerInviteCandidates = useMemo(() => {
-    const selected = new Set(privatePlayerInviteIds);
-    const query = invitePlayerQuery.trim();
-    return app.state.users
-      .filter((user) => user.id !== app.currentUser.id && !user.anonymous)
-      .filter((user) => !selected.has(user.id))
-      .filter((user) => !query || includesQuery(`${user.name} ${getUserHashtag(user)} ${user.position} ${user.region} 신뢰도 ${user.trustScore}`, query))
-      .sort((a, b) => (
-        Number(favoritePlayerIds.includes(b.id)) - Number(favoritePlayerIds.includes(a.id)) ||
-        Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) ||
-        Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0) ||
-        String(a.name ?? "").localeCompare(String(b.name ?? ""))
-      ));
-  }, [app.currentUser.id, app.state.users, currentRegion, favoritePlayerIds, invitePlayerQuery, privatePlayerInviteIds]);
-  const selectedInvitePlayers = useMemo(
-    () => privatePlayerInviteIds.map((playerId) => app.state.users.find((user) => user.id === playerId)).filter(Boolean),
-    [app.state.users, privatePlayerInviteIds],
-  );
   const soloRecordUserCandidates = useMemo(
     () => app.state.users
       .filter((user) => user.id !== app.currentUser.id && !user.anonymous)
@@ -1204,34 +1178,6 @@ export default function CreateMatch({ app }) {
       </div>
     );
   };
-  const togglePrivatePlayerInvite = (user) => {
-    const playerId = user.id;
-    update({
-      invitePlayerIds: privatePlayerInviteIds.includes(playerId)
-        ? privatePlayerInviteIds.filter((id) => id !== playerId)
-        : [...privatePlayerInviteIds, playerId],
-    });
-    setInvitePlayerQuery("");
-  };
-  const removePrivatePlayerInvite = (playerId) => {
-    update({ invitePlayerIds: privatePlayerInviteIds.filter((id) => id !== playerId) });
-  };
-  const renderPrivatePlayerInviteSearchItem = (user) => {
-    const favorite = favoritePlayerIds.includes(user.id);
-    return (
-      <div
-        key={user.id}
-        className="search-picker-result-row search-picker-result-row-actionable"
-        onMouseDown={(event) => event.preventDefault()}
-      >
-        <button type="button" className="search-picker-result-main" onClick={() => togglePrivatePlayerInvite(user)}>
-          <strong>{user.name}</strong>
-          <span>{getUserHashtag(user)} · {user.position} · {user.region}</span>
-          <em>{favorite ? "즐겨찾기 · " : ""}개인 초대</em>
-        </button>
-      </div>
-    );
-  };
   const renderSoloRecordUserSearchItem = (sideName) => (user) => (
     <div
       key={user.id}
@@ -1354,7 +1300,7 @@ export default function CreateMatch({ app }) {
       opponentPlayerIds: [],
       opponentReservePlayerIds: [],
       opponentLeaderId: !isPublicRoom && isTeamRoom ? opponentLeaderId : "",
-      invitePlayerIds: !isPublicRoom && !isTeamRoom ? privatePlayerInviteIds : [],
+      invitePlayerIds: [],
       approvalModeA: draft.approvalModeA,
       approvalModeB: draft.approvalModeB,
       refereeWanted: draft.refereeWanted || Boolean(draft.refereeId),
@@ -2100,48 +2046,10 @@ export default function CreateMatch({ app }) {
             </div>
           ) : null}
           {!isSoloRecord && !isTournamentRoom && !isTeamRoom ? (
-            <>
-              <div className="create-public-note">
-                <Globe2 size={17} />
-                <span>{isPublicRoom ? "개인전은 개인 참여만 받습니다. 팀전은 별도 팀전 분기로 만듭니다." : isMatchRecordRoom ? "경기 기록방의 개인전 기록은 아직 막혀 있습니다. 팀전으로 만들어야 합니다." : "비공개 개인전은 선택한 선수에게 생성과 동시에 초대장을 보냅니다. 수락은 서버에서 슬롯/권한을 다시 검사합니다."}</span>
-              </div>
-              {!isPublicRoom ? (
-                <div className="form-grid two">
-                  <label>
-                    개인 초대 대상
-                    <SearchPicker
-                      value={invitePlayerQuery}
-                      onChange={setInvitePlayerQuery}
-                      placeholder="이름, #해시태그 검색"
-                      items={privatePlayerInviteCandidates}
-                      getSearchText={getSoloRecordUserSearchText}
-                      remoteSearchType="player"
-                      remoteLimit={10}
-                      idleItems={privatePlayerInviteCandidates.slice(0, 5)}
-                      idleTitle="추천 선수"
-                      title="초대할 선수"
-                      emptyText="초대할 선수 없음"
-                      showIdleOnFocus
-                      floating
-                      closeOnResultClick
-                      renderItem={renderPrivatePlayerInviteSearchItem}
-                    />
-                  </label>
-                  <div className="stat-integrity-note">
-                    {selectedInvitePlayers.length ? (
-                      <>
-                        <span>선택 {selectedInvitePlayers.length}명</span>
-                        {selectedInvitePlayers.map((user) => (
-                          <button key={user.id} type="button" className="form-chip" onClick={() => removePrivatePlayerInvite(user.id)}>
-                            {user.name} 해제
-                          </button>
-                        ))}
-                      </>
-                    ) : "선택하지 않으면 방 생성 후 빈 슬롯에서 초대합니다."}
-                  </div>
-                </div>
-              ) : null}
-            </>
+            <div className="create-public-note">
+              <Globe2 size={17} />
+              <span>{isPublicRoom ? "개인전은 개인 참여만 받습니다. 팀전은 별도 팀전 분기로 만듭니다." : isMatchRecordRoom ? "경기 기록방의 개인전 기록은 아직 막혀 있습니다. 팀전으로 만들어야 합니다." : "비공개 개인전은 방을 만든 뒤 방모달의 빈 슬롯에서 선수를 초대합니다."}</span>
+            </div>
           ) : null}
           {!isPublicRoom && isTeamRoom ? (
             <div className="form-grid two">

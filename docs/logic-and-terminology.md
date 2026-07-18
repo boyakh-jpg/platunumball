@@ -2368,7 +2368,7 @@ flowchart TD
 - 방만들기 분기는 생성 payload 기준으로 고정한다.
 - `공개 매칭방 + 개인전`: `visibility:"public"`, `hostJoinMode:"player"`로 만들고 매칭 메뉴 공개 큐에 노출한다.
 - `공개 매칭방 + 팀전`: `visibility:"public"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀 파티를 선택한다. `teamOnly:true`로 고정하며 개인 참여를 막는다. `teamOnly:false` 공개 팀전 생성 요청은 서버에서 거부한다.
-- `비공개 경기방 + 개인전`: `visibility:"private"`, `hostJoinMode:"player"`로 만들고 선택한 `invitePlayerIds`만 개인 초대로 보낸다.
+- `비공개 경기방 + 개인전`: `visibility:"private"`, `hostJoinMode:"player"`로 만들고 생성 단계의 `invitePlayerIds`는 비운다. 선수 초대는 생성 후 방모달의 빈 슬롯에서 보낸다.
 - `비공개 경기방 + 팀전`: `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀과 B사이드 대표 1명만 정한다. A/B 라인업은 각 사이드장이 방에서 고른다.
 - `경기 기록방 + 팀전`: `recordType:"match_record"`, `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 2v2 이상만 허용한다. 생성 시에는 A/B 팀과 각 사이드 대표 1명만 저장한다. 출전/후보 명단은 진행 메뉴의 기록방에서 각 사이드장이 자기 팀 명단만 확정한다.
 - `match_record` 생성 reducer/server replay도 private/team/teamOnly/2v2 이상/A팀 소속 방장/B팀 대표 조건을 다시 검사한다.
@@ -2379,9 +2379,15 @@ flowchart TD
 - 초대 수락/거절 요청에 `invitationId`가 없으면 서버가 거부한다.
 - 비공개방은 초대 없이 신규 참여할 수 없지만, 이미 참가 확정된 사용자의 같은 방 파티 합류/정리는 허용한다.
 - 팀 초대는 legacy 추론에 기대지 않고 `joinMode:"team"`을 명시한다.
-- 비공개 개인전 생성 화면에서 선택한 `invitePlayerIds`는 생성 시 `joinMode:"player"`, `teamId:null`, `side:"teamB"` pending 초대로 저장한다. 수락은 기존 초대 수락 서버 검사를 다시 통과해야 한다.
+- 비공개 개인전 생성 화면은 개인 초대 대상을 받지 않는다. 생성 payload의 `invitePlayerIds`는 항상 빈 배열이며, 방모달에서 보낸 개인 초대만 `joinMode:"player"`, `teamId:null` pending 초대로 저장한다.
 - 팀 호스트 A사이드 팀원이 초대를 수락해 `playerIds`가 늘어나는 것은 수락된 초대 범위 안에서만 허용한다. 그 외 핵심 룰 변경은 계속 `recruiting_core_locked`로 막는다.
 - 공개/비공개 모집방의 모든 다중 초대는 대상별 pending 초대이며, 각 수락은 서버에서 슬롯/사이드/파티/나이/MMR/권한 검사를 다시 통과해야 한다.
+
+## 2026-07-18 방 생성 초대 범위
+
+- 방 생성 화면에서 초대 대상을 고르는 흐름은 비공개 팀전의 B사이드 파티장 1명만 허용한다.
+- 공개·비공개 개인전은 생성 화면에 선수 검색, 추천 선수, 선택 chip을 표시하지 않는다.
+- 비공개 개인전의 선수 초대는 방 생성 후 공용 방모달의 빈 슬롯에서 처리한다.
 
 ## 2026-07-06 feed stale 감사
 
