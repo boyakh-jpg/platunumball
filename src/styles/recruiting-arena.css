@@ -8216,3 +8216,32 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
   box-shadow: none;
   padding: 0;
 }
+
+/* Keep active and reserve slots on one geometry while preserving light-mode glow. */
+.arena-lobby-modal .arena-lobby-arena {
+  --room-slot-height: 158px;
+}
+
+.arena-lobby-modal .arena-room-player-slot-wrap {
+  min-block-size: var(--room-slot-height);
+}
+
+.arena-lobby-modal .arena-room-player-slot {
+  box-sizing: border-box;
+  block-size: var(--room-slot-height);
+  min-block-size: var(--room-slot-height);
+  max-block-size: var(--room-slot-height);
+}
+
+html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot,
+html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot.empty {
+  background: transparent;
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal .arena-lobby-arena {
+    --room-slot-height: 138px;
+  }
+}
