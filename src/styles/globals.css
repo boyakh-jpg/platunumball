@@ -2301,6 +2301,8 @@ span.referee-hover-card {
 label {
   display: grid;
   gap: 7px;
+  min-width: 0;
+  max-width: 100%;
   color: var(--muted);
   font-size: 0.86rem;
   font-weight: 800;
@@ -13670,6 +13672,22 @@ textarea,
   color: var(--rb-text);
   box-shadow: none;
   font-size: max(0.9rem, 16px);
+}
+
+input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: var(--ui-button-height);
+  display: block;
+  padding-block: 0;
+  line-height: normal;
+}
+
+input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"])::-webkit-date-and-time-value,
+input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"])::-webkit-datetime-edit {
+  min-width: 0;
+  text-align: left;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="color"])::placeholder,

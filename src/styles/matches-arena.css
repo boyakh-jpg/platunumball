@@ -1567,8 +1567,11 @@
 }
 
 .tournament-schedule-list input {
+  width: 100%;
   min-width: 0;
-  min-height: 36px;
+  max-width: 100%;
+  height: var(--ui-button-height);
+  min-height: var(--ui-button-height);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.07);
@@ -2357,6 +2360,12 @@ html[data-theme="light"] .tournament-schedule-list input {
   padding-top: 10px;
 }
 
+.tournament-inline-schedule > *,
+.tournament-schedule-list form > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .tournament-inline-schedule select {
   grid-column: 1 / -1;
 }
@@ -2366,7 +2375,9 @@ html[data-theme="light"] .tournament-schedule-list input {
 .tournament-schedule-list select {
   width: 100%;
   min-width: 0;
-  min-height: 36px;
+  max-width: 100%;
+  height: var(--ui-button-height);
+  min-height: var(--ui-button-height);
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-control-bg);
@@ -2379,7 +2390,8 @@ html[data-theme="light"] .tournament-schedule-list input {
 .tournament-inline-schedule button,
 .tournament-forfeit-button {
   display: inline-flex;
-  min-height: 36px;
+  height: var(--ui-button-height);
+  min-height: var(--ui-button-height);
   align-items: center;
   justify-content: center;
   gap: 5px;
