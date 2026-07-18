@@ -9,6 +9,7 @@ import courtRequestReport from "../server/api/court-requests/report.js";
 import courtRequestSubmit from "../server/api/court-requests/submit.js";
 import courtAddressSearch from "../server/api/courts/address-search.js";
 import courtSubmitReview from "../server/api/courts/submit-review.js";
+import courtDetail from "../server/api/courts/detail.js";
 import directoryLoad from "../server/api/directory/load.js";
 import discordDmWorker from "../server/api/discord/dm-worker.js";
 import discordInteractions from "../server/api/discord/interactions.js";
@@ -51,6 +52,7 @@ const ROUTES = new Map([
   ["/court-requests/submit", courtRequestSubmit],
   ["/courts/address-search", courtAddressSearch],
   ["/courts/submit-review", courtSubmitReview],
+  ["/courts/detail", courtDetail],
   ["/directory/load", directoryLoad],
   ["/discord/dm-worker", discordDmWorker],
   ["/discord/interactions", discordInteractions],
