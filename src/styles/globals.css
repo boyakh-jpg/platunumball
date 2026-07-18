@@ -6776,6 +6776,72 @@ html[data-theme="light"] .search-picker-result-row.selected {
   max-width: 1240px;
 }
 
+.admin-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-section-tabs > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  min-height: 74px;
+  gap: 10px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+}
+
+.admin-section-tabs > button.active {
+  border-color: rgba(244, 88, 70, 0.56);
+  background: var(--accent-soft);
+}
+
+.admin-section-tab-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: var(--ui-control-radius);
+  background: rgba(244, 88, 70, 0.12);
+  color: var(--accent);
+}
+
+.admin-section-tabs > button > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.admin-section-tabs strong,
+.admin-section-tabs em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-section-tabs strong {
+  font-size: 0.92rem;
+}
+
+.admin-section-tabs em {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.admin-section-tabs b {
+  color: var(--yellow);
+  font-size: 1.18rem;
+}
+
 .admin-summary-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -6919,6 +6985,58 @@ html[data-theme="light"] .search-picker-result-row.selected {
   justify-content: center;
 }
 
+.admin-court-request-detail {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.admin-court-request-detail h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.admin-court-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-court-facts > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: 10px;
+}
+
+.admin-court-facts span,
+.admin-court-facts em,
+.admin-court-note {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.admin-court-facts strong {
+  overflow-wrap: anywhere;
+}
+
+.admin-court-note {
+  margin: 0;
+  border-left: 3px solid var(--yellow);
+  padding: 8px 10px;
+}
+
+.admin-court-request-detail > .button {
+  justify-content: center;
+}
+
 .admin-appointment-list {
   gap: 8px;
 }
@@ -7041,6 +7159,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 @media (max-width: 860px) {
+  .admin-section-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .admin-summary-grid,
   .admin-workbench,
   .admin-grade-strip,
@@ -7050,6 +7172,31 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
   .admin-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-court-facts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-section-tabs {
+    gap: 8px;
+  }
+
+  .admin-section-tabs > button {
+    min-height: 62px;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .admin-section-tabs em {
+    display: none;
+  }
+
+  .admin-section-tab-icon {
+    width: 34px;
+    height: 34px;
   }
 }
 

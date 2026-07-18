@@ -2465,6 +2465,13 @@ flowchart TD
 - 관리자 RPC 성공 후 `scope=admin` 서버 상태를 다시 읽어 화면에 반영한다.
 - 서버 거절 또는 통신 실패 시 화면에 가짜 audit, 징계, 임명 상태를 만들지 않는다.
 - local demo mode만 기존 로컬 reducer를 사용한다.
+
+## 2026-07-18 관리자 구장 신청 진입 규칙
+
+- `/app/admin`과 `/app/admin?section=courts`의 기본 업무는 구장 신청 검토다.
+- 관리자 화면의 구장, 플레이어, 경기, 권한 업무는 쿼리 기반 탭으로 분리하되 기존 server action/RPC 권한 검증을 그대로 사용한다.
+- 구장 신청을 선택하면 신청 상세와 승인 액션을 먼저 보여준다. 연결된 `court`, `court_review`, `court_request` 신고가 있을 때만 신고 조치 폼을 표시한다.
+- 설정의 관리자 메뉴 진입은 구장 신청 탭으로 직접 연결한다.
 ## 2026-07-13 경기 확정과 MMR 원자 커밋
 
 1. 최종 `approveMatch`는 `rankball_match_approval_action()`이 `rankball_match_finalize_locked()`를 호출하는 잠긴 DB RPC 경로를 사용한다.

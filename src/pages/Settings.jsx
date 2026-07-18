@@ -1488,7 +1488,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   <strong>신고 · 기록 · 구장요청</strong>
                 </div>
               </div>
-              <Link className="button button-secondary button-md" to="/app/admin">관리자 메뉴 열기</Link>
+              <Link className="button button-secondary button-md" to="/app/admin?section=courts">구장 신청 관리 열기</Link>
             </Card>
           ) : null}
 

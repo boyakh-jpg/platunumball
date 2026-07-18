@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ClipboardList, Clock3, MapPin, ShieldCheck, UserRound } from "lucide-react";
+import { ClipboardList, Clock3, MapPin, ShieldCheck, UserRound } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -13,13 +14,15 @@ import {
   buildAdminReviewModel,
   hasAdminAccess,
 } from "../lib/admin.js";
+import { getCourtLayoutLabel, getCourtSurfaceLabel } from "../lib/courts.js";
 import { getMatchHashtag } from "../lib/handles.js";
 import "../styles/recruiting-arena.css";
 
-const VIEW_OPTIONS = [
-  { id: "courts", label: "구장 심사", icon: MapPin },
-  { id: "players", label: "플레이어 신고", icon: UserRound },
-  { id: "matches", label: "경기 심사", icon: ClipboardList },
+const ADMIN_SECTION_OPTIONS = [
+  { id: "courts", label: "구장 신청", caption: "등록 신청과 구장 신고", icon: MapPin },
+  { id: "players", label: "플레이어 신고", caption: "신고와 징계", icon: UserRound },
+  { id: "matches", label: "경기 심사", caption: "기록 오류와 이의", icon: ClipboardList },
+  { id: "appointments", label: "권한 관리", caption: "심판과 관리자 임명", icon: ShieldCheck },
 ];
 const ACTION_OPTIONS = Object.entries(ADMIN_REVIEW_ACTIONS).map(([id, meta]) => ({ id, ...meta }));
 const APPOINTMENT_ACTION_OPTIONS = [
@@ -30,17 +33,20 @@ const APPOINTMENT_ACTION_OPTIONS = [
 ];
 const REVIEW_WORKFLOW_COPY = {
   courts: {
-    title: "구장 심사",
-    actionTitle: "구장 최종판단",
-    description: "구장 등록요청, 승인 구장, 구장 리뷰 신고를 분리해서 처리합니다.",
+    title: "구장 신청·신고",
+    queueTitle: "구장 처리 대기열",
+    actionTitle: "구장 신고 처리",
+    description: "신청 정보와 위치를 먼저 확인하고, 신고가 있는 경우에만 신고 조치를 처리합니다.",
   },
   players: {
     title: "플레이어 신고",
+    queueTitle: "플레이어 신고 대기열",
     actionTitle: "플레이어 최종판단",
     description: "선수를 누르면 해당 플레이어에게 쌓인 신고와 제재 이력을 보고 최종판단합니다.",
   },
   matches: {
     title: "경기 심사",
+    queueTitle: "경기 심사 대기열",
     actionTitle: "경기 최종판단",
     description: "경기 신고, 기록 오류, 이의 상태를 경기 단위로 확인합니다.",
   },
@@ -51,11 +57,18 @@ function statusLabel(status) {
   if (status === "dismissed") return "기각";
   if (status === "reported") return "신고됨";
   if (status === "disputed") return "이의제기";
+  if (status === "pending") return "대기";
+  if (status === "approved") return "승인됨";
+  if (status === "rejected") return "반려됨";
   if (status === "open") return "대기";
   if (status === "active") return "활성";
   if (status === "hidden") return "숨김";
   if (status === "disabled") return "비활성";
   return status || "대기";
+}
+
+function isPendingCourtRequest(request = {}) {
+  return ["pending", "reported"].includes(request.status ?? "pending");
 }
 
 function formatDate(value) {
@@ -83,11 +96,15 @@ function DetailList({ title, empty, children }) {
 }
 
 export default function Admin({ app }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     app.actions.loadAdminContext?.();
     app.actions.loadDirectory?.();
   }, [app.actions]);
-  const [view, setView] = useState("courts");
+  const requestedSection = searchParams.get("section");
+  const section = ADMIN_SECTION_OPTIONS.some((option) => option.id === requestedSection) ? requestedSection : "courts";
+  const view = section === "appointments" ? "courts" : section;
+  const [queueMode, setQueueMode] = useState("pending");
   const [selectedIdByView, setSelectedIdByView] = useState({});
   const [selectedReportIdByScope, setSelectedReportIdByScope] = useState({});
   const [actionDraft, setActionDraft] = useState({
@@ -117,7 +134,22 @@ export default function Admin({ app }) {
     () => appointments.rows.filter((row) => row.active && row.source !== "current_profile" && row.source !== "server_context"),
     [appointments.rows],
   );
-  const activeRows = model[view] ?? [];
+  const reviewRows = useMemo(() => {
+    const rows = model[view] ?? [];
+    if (view === "courts") {
+      return rows.filter((row) => row.courtRequestCount > 0 || row.reportCount > 0 || row.courtReviewCount > 0);
+    }
+    if (view === "matches") {
+      return rows.filter((row) => row.reportCount > 0 || row.issueCount > 0);
+    }
+    return rows;
+  }, [model, view]);
+  const pendingRows = useMemo(() => reviewRows.filter((row) => {
+    if (view === "courts") return row.openCount > 0 || row.courtRequests.some(isPendingCourtRequest);
+    if (view === "matches") return row.issueCount > 0;
+    return row.openCount > 0;
+  }), [reviewRows, view]);
+  const activeRows = queueMode === "history" ? reviewRows : pendingRows;
   const selectedId = selectedIdByView[view];
   const selectedRow = activeRows.find((row) => row.id === selectedId) ?? activeRows[0] ?? null;
   const reportOptions = selectedRow?.reports ?? [];
@@ -126,7 +158,30 @@ export default function Admin({ app }) {
   const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const selectedReport = reportOptions.find((report) => report.id === selectedReportId) ?? reportOptions.find((report) => report.status === "open") ?? reportOptions[0] ?? null;
+  const selectedCourtRequest = selectedRow?.courtRequests?.find(isPendingCourtRequest)
+    ?? selectedRow?.courtRequests?.[0]
+    ?? null;
+  const selectedCourtRequester = selectedCourtRequest ? userMap[selectedCourtRequest.requestedBy] : null;
   const workflow = REVIEW_WORKFLOW_COPY[view] ?? REVIEW_WORKFLOW_COPY.players;
+  const sectionCounts = useMemo(() => {
+    const courtReports = (app.state.reports ?? []).filter((report) => (
+      report.status === "open" && ["court", "court_review"].includes(report.type)
+    )).length;
+    return {
+      courts: (app.state.settings?.courtRequests ?? []).filter(isPendingCourtRequest).length + courtReports,
+      players: model.players.filter((row) => row.openCount > 0).length,
+      matches: model.matches.filter((row) => row.issueCount > 0).length,
+      appointments: appointments.summary.pendingAppointmentCount,
+    };
+  }, [app.state.reports, app.state.settings?.courtRequests, appointments.summary.pendingAppointmentCount, model.matches, model.players]);
+  const changeSection = (nextSection) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("section", nextSection);
+    setSearchParams(next);
+  };
+  useEffect(() => {
+    setQueueMode("pending");
+  }, [view]);
   const visibleActionOptions = useMemo(() => {
     const ids = ["validReport", "dismissReport", "maliciousReporter"];
     if (selectedReport?.type === "court") ids.push("hideCourt");
@@ -138,6 +193,7 @@ export default function Admin({ app }) {
   const targetCandidates = useMemo(() => {
     const ids = new Set([
       ...(selectedReport?.reportedUserIds ?? []),
+      selectedReport?.by,
       selectedRow?.player?.id,
       ...(selectedRow?.courtRequests ?? []).map((request) => request.requestedBy),
     ].filter(Boolean));
@@ -146,6 +202,14 @@ export default function Admin({ app }) {
   const selectedTargetUserId = targetCandidates.some((user) => user.id === actionDraft.targetUserId)
     ? actionDraft.targetUserId
     : targetCandidates[0]?.id ?? "";
+  const actionNeedsTarget = ["maliciousReporter", "suspendTarget", "refereeDiscipline"].includes(actionDraft.actionType);
+  const selectedNeedsAction = Boolean(
+    selectedRow && (
+      selectedRow.openCount > 0 ||
+      (view === "courts" && selectedRow.courtRequests.some(isPendingCourtRequest)) ||
+      (view === "matches" && selectedRow.issueCount > 0)
+    )
+  );
 
   useEffect(() => {
     setActionDraft((current) => ({
@@ -206,40 +270,30 @@ export default function Admin({ app }) {
         <Badge tone="team">서버 권한</Badge>
       </header>
 
-      <div className="admin-summary-grid">
-        <Card className="section-card">
-          <span>대기 신고</span>
-          <strong>{model.summary.openReportCount}</strong>
-          <em>처리 필요</em>
-        </Card>
-        <Card className="section-card">
-          <span>전체 신고</span>
-          <strong>{model.summary.reportCount}</strong>
-          <em>누적</em>
-        </Card>
-        <Card className="section-card">
-          <span>문제 경기</span>
-          <strong>{model.summary.matchIssueCount}</strong>
-          <em>신고/이의</em>
-        </Card>
-        <Card className="section-card">
-          <span>구장 요청</span>
-          <strong>{model.summary.courtRequestCount}</strong>
-          <em>등록/허위 검토</em>
-        </Card>
-        <Card className="section-card">
-          <span>임명 대기</span>
-          <strong>{appointments.summary.pendingAppointmentCount}</strong>
-          <em>심판/관리자</em>
-        </Card>
-      </div>
+      <nav className="admin-section-tabs" aria-label="관리자 업무">
+        {ADMIN_SECTION_OPTIONS.map((option) => {
+          const Icon = option.icon;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              className={section === option.id ? "active" : ""}
+              aria-current={section === option.id ? "page" : undefined}
+              onClick={() => changeSection(option.id)}
+            >
+              <span className="admin-section-tab-icon"><Icon size={19} /></span>
+              <span>
+                <strong>{option.label}</strong>
+                <em>{option.caption}</em>
+              </span>
+              <b>{sectionCounts[option.id] ?? 0}</b>
+            </button>
+          );
+        })}
+      </nav>
 
-      <Card className="section-card admin-backend-note">
-        <AlertTriangle size={18} />
-        <span>{ADMIN_BACKEND_TODO}</span>
-      </Card>
-
-      <Card className="section-card admin-appointment-card">
+      {section === "appointments" ? (
+        <Card className="section-card admin-appointment-card">
         <div className="section-title-row">
           <div>
             <p className="eyebrow">Appointments</p>
@@ -357,27 +411,21 @@ export default function Admin({ app }) {
             임명/연장/회수 커밋
           </Button>
         </div>
-      </Card>
-
+          <small>{ADMIN_BACKEND_TODO}</small>
+        </Card>
+      ) : (
       <div className="admin-workbench">
         <Card className="section-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Sorted Queue</p>
-              <h2>검토 큐</h2>
+              <p className="eyebrow">Pending Queue</p>
+              <h2>{workflow.queueTitle}</h2>
             </div>
             <Badge tone="blue">{activeRows.length}건</Badge>
           </div>
-
-          <div className="segmented-control">
-            {VIEW_OPTIONS.map((option) => {
-              const Icon = option.icon;
-              return (
-                <button key={option.id} type="button" className={view === option.id ? "active" : ""} onClick={() => setView(option.id)}>
-                  <Icon size={15} /> {option.label}
-                </button>
-              );
-            })}
+          <div className="segmented-control compact-segments admin-queue-filter">
+            <button type="button" className={queueMode === "pending" ? "active" : ""} onClick={() => setQueueMode("pending")}>처리 대기 {pendingRows.length}</button>
+            <button type="button" className={queueMode === "history" ? "active" : ""} onClick={() => setQueueMode("history")}>전체 이력 {reviewRows.length}</button>
           </div>
 
           <div className="admin-sort-list">
@@ -393,13 +441,14 @@ export default function Admin({ app }) {
                   <em>{row.subtitle}</em>
                 </span>
                 <span className="admin-sort-counts">
-                  <b>{row.issueCount ?? row.openCount}</b>
-                  <small>이슈</small>
+                  <b>{view === "courts" ? row.courtRequests.filter(isPendingCourtRequest).length : row.issueCount ?? row.openCount}</b>
+                  <small>{view === "courts" ? "신청" : "이슈"}</small>
                   <b>{row.reportCount}</b>
                   <small>신고</small>
                 </span>
               </button>
             ))}
+            {!activeRows.length ? <div className="empty-state">{queueMode === "pending" ? "처리할 항목이 없습니다." : "처리 이력이 없습니다."}</div> : null}
           </div>
         </Card>
 
@@ -412,7 +461,7 @@ export default function Admin({ app }) {
                   <h2>{selectedRow.title}</h2>
                   <span>{selectedRow.subtitle}</span>
                 </div>
-                <Badge tone={selectedRow.openCount ? "orange" : "green"}>{selectedRow.openCount ? "처리 필요" : "정리됨"}</Badge>
+                <Badge tone={selectedNeedsAction ? "orange" : "green"}>{selectedNeedsAction ? "처리 필요" : "정리됨"}</Badge>
               </div>
 
               <div className="admin-review-context">
@@ -422,23 +471,50 @@ export default function Admin({ app }) {
 
               <div className="contract-grid">
                 <div>
-                  <span>신고</span>
-                  <strong>{selectedRow.reportCount}</strong>
+                  <span>{view === "courts" ? "신청" : "신고"}</span>
+                  <strong>{view === "courts" ? selectedRow.courtRequestCount : selectedRow.reportCount}</strong>
                 </div>
                 <div>
-                  <span>이슈</span>
-                  <strong>{selectedRow.issueCount ?? selectedRow.openCount}</strong>
+                  <span>{view === "courts" ? "대기" : "이슈"}</span>
+                  <strong>{view === "courts" ? selectedRow.courtRequests.filter(isPendingCourtRequest).length : selectedRow.issueCount ?? selectedRow.openCount}</strong>
+                </div>
+                <div>
+                  <span>신고</span>
+                  <strong>{selectedRow.reportCount}</strong>
                 </div>
                 <div>
                   <span>경기</span>
                   <strong>{selectedRow.matchCount ?? 0}</strong>
                 </div>
-                <div>
-                  <span>구장요청</span>
-                  <strong>{selectedRow.courtRequestCount ?? 0}</strong>
-                </div>
               </div>
 
+              {view === "courts" && selectedCourtRequest ? (
+                <section className="admin-court-request-detail">
+                  <div className="section-title-row">
+                    <div>
+                      <p className="eyebrow">Court Request</p>
+                      <h3>구장 신청 상세</h3>
+                    </div>
+                    <Badge tone={selectedCourtRequest.status === "approved" ? "green" : selectedCourtRequest.status === "reported" ? "orange" : "neutral"}>
+                      {statusLabel(selectedCourtRequest.status)}
+                    </Badge>
+                  </div>
+                  <div className="admin-court-facts">
+                    <div><span>신청자</span><strong>{selectedCourtRequester?.name ?? "확인 필요"}</strong><em>신뢰도 {selectedCourtRequest.requestedByTrustScore ?? selectedCourtRequester?.trustScore ?? "-"}</em></div>
+                    <div><span>주소</span><strong>{selectedCourtRequest.addressText || "주소 미입력"}</strong><em>{selectedCourtRequest.detailAddress || "상세주소 없음"}</em></div>
+                    <div><span>좌표</span><strong>{selectedCourtRequest.lat != null && selectedCourtRequest.lng != null ? `${Number(selectedCourtRequest.lat).toFixed(5)}, ${Number(selectedCourtRequest.lng).toFixed(5)}` : "좌표 확인 필요"}</strong><em>핀 기준 실제 위치</em></div>
+                    <div><span>구장 속성</span><strong>{getCourtSurfaceLabel(selectedCourtRequest)} · {getCourtLayoutLabel(selectedCourtRequest)}</strong><em>{selectedCourtRequest.type ?? "유형 미정"} · {selectedCourtRequest.paid ? "유료" : "무료"}</em></div>
+                  </div>
+                  {selectedCourtRequest.locationNote ? <p className="admin-court-note">{selectedCourtRequest.locationNote}</p> : null}
+                  {selectedCourtRequest.status !== "approved" ? (
+                    <Button type="button" variant="secondary" onClick={() => app.actions.approveCourtRequest(selectedCourtRequest.id)}>
+                      구장 승인
+                    </Button>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {selectedReport ? (
               <div className="admin-action-panel">
                 <div>
                   <strong>{workflow.actionTitle}</strong>
@@ -466,20 +542,20 @@ export default function Admin({ app }) {
                       {visibleActionOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                   </label>
-                  <label>
+                  {actionNeedsTarget ? <label>
                     대상
                     <select value={selectedTargetUserId} disabled={!targetCandidates.length} onChange={(event) => updateActionDraft({ targetUserId: event.target.value })}>
                       {!targetCandidates.length ? <option value="">대상 없음</option> : null}
                       {targetCandidates.map((user) => <option key={user.id} value={user.id}>{user.name} · 신뢰도 {user.trustScore ?? "-"}</option>)}
                     </select>
-                  </label>
+                  </label> : null}
                 </div>
-                <label>
+                {actionNeedsTarget ? <label>
                   제재 기간
                   <select value={actionDraft.durationDays} onChange={(event) => updateActionDraft({ durationDays: Number(event.target.value) })}>
                     {SUSPENSION_TIERS.map((tier) => <option key={tier.id} value={tier.days}>{tier.label}</option>)}
                   </select>
-                </label>
+                </label> : null}
                 <label>
                   처리 사유
                   <textarea value={actionDraft.reason} placeholder="관리자 처리 사유" onChange={(event) => updateActionDraft({ reason: event.target.value })} />
@@ -493,8 +569,9 @@ export default function Admin({ app }) {
                 </Button>
                 <small>실시간 중복 방지는 서버 트랜잭션에서 최종 확인합니다.</small>
               </div>
+              ) : null}
 
-              <DetailList title="쌓인 신고" empty="신고 없음">
+              {selectedRow.reports.length ? <DetailList title={view === "courts" ? "구장 신고" : "쌓인 신고"} empty="신고 없음">
                 {selectedRow.reports.length ? selectedRow.reports.slice(0, 8).map((report) => (
                   <div key={report.id} className="admin-detail-row">
                     <span>
@@ -507,9 +584,9 @@ export default function Admin({ app }) {
                     <Badge tone={report.status === "open" ? "orange" : "neutral"}>{statusLabel(report.status)}</Badge>
                   </div>
                 )) : null}
-              </DetailList>
+              </DetailList> : null}
 
-              <DetailList title="최근 제재" empty="제재 없음">
+              {view === "players" ? <DetailList title="최근 제재" empty="제재 없음">
                 {selectedRow.disciplinaryActions?.length ? selectedRow.disciplinaryActions.slice(0, 8).map((action) => (
                   <div key={action.id} className="admin-detail-row">
                     <span>
@@ -519,9 +596,9 @@ export default function Admin({ app }) {
                     <Badge tone={action.status === "active" ? "orange" : "neutral"}>{action.durationDays ?? "-"}일</Badge>
                   </div>
                 )) : null}
-              </DetailList>
+              </DetailList> : null}
 
-              <DetailList title="관련 경기" empty="관련 경기 없음">
+              {selectedRow.matches.length ? <DetailList title="관련 경기" empty="관련 경기 없음">
                 {selectedRow.matches.length ? selectedRow.matches.slice(0, 8).map((match) => (
                   <div key={match.id} className="admin-detail-row">
                     <span>
@@ -531,9 +608,9 @@ export default function Admin({ app }) {
                     <Badge tone={match.status === "disputed" ? "orange" : "neutral"}>{statusLabel(match.status)}</Badge>
                   </div>
                 )) : null}
-              </DetailList>
+              </DetailList> : null}
 
-              <DetailList title="구장 등록요청" empty="관련 요청 없음">
+              {view === "players" && selectedRow.courtRequests.length ? <DetailList title="구장 등록요청" empty="관련 요청 없음">
                 {selectedRow.courtRequests.length ? selectedRow.courtRequests.slice(0, 8).map((request) => (
                   <div key={request.id} className="admin-detail-row">
                     <span>
@@ -550,9 +627,9 @@ export default function Admin({ app }) {
                     </span>
                   </div>
                 )) : null}
-              </DetailList>
+              </DetailList> : null}
 
-              <DetailList title="구장 리뷰" empty="관련 리뷰 없음">
+              {view === "courts" && selectedRow.courtReviews?.length ? <DetailList title="구장 리뷰" empty="관련 리뷰 없음">
                 {selectedRow.courtReviews?.length ? selectedRow.courtReviews.slice(0, 8).map((review) => (
                   <div key={review.id} className="admin-detail-row">
                     <span>
@@ -562,13 +639,14 @@ export default function Admin({ app }) {
                     <Badge tone={review.status === "hidden" ? "orange" : "neutral"}>{statusLabel(review.status ?? "active")}</Badge>
                   </div>
                 )) : null}
-              </DetailList>
+              </DetailList> : null}
             </>
           ) : (
             <div className="empty-state">검토할 큐가 없습니다.</div>
           )}
         </Card>
       </div>
+      )}
     </div>
   );
 }
