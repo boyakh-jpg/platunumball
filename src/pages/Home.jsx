@@ -8,6 +8,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
+import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
@@ -971,7 +972,7 @@ export default function Home({ app }) {
             <div className="home-team-list">
               {myTeams.length ? myTeams.slice(0, 5).map((team) => (
                 <TeamHoverCard key={team.id} team={team}>
-                  <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
+                  <TeamEmblem team={team} size="xs" />
                   <strong>{team.name}</strong>
                   <em>{getTeamRoleLabel(team.myRole)}</em>
                   <b>{team.mmr}</b>

@@ -13196,22 +13196,15 @@ html[data-theme="light"] .eyebrow {
 .home-my-teams-card .home-team-list a,
 .home-my-teams-card .home-team-list > div,
 .home-my-teams-card .home-team-list > .team-hover-trigger {
-  min-height: 36px;
+  min-height: 44px;
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto auto;
-  gap: 7px;
+  grid-template-columns: 28px minmax(0, 1fr) auto auto;
+  gap: 10px;
   align-items: center;
   border: 1px solid var(--rb-line);
   border-radius: var(--radius-sm);
   background: var(--rb-surface);
   padding: 7px 9px;
-}
-
-.home-my-teams-card .team-mini-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--team-color, var(--rb-orange));
 }
 
 .home-my-teams-card .home-team-list em {
