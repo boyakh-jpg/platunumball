@@ -8236,6 +8236,7 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot,
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot.ready,
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-lobby-modal .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot.empty {
   background: transparent;
 }
