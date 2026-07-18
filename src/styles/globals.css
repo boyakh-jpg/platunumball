@@ -1895,13 +1895,22 @@ span.referee-hover-card {
 .notification-actions .notification-delete-button,
 .notification-actions .notification-read-button {
   display: inline-flex;
-  width: var(--ui-icon-button-size);
-  min-width: var(--ui-icon-button-size);
   height: var(--ui-icon-button-size);
   align-items: center;
   justify-content: center;
   color: var(--muted);
+}
+
+.notification-actions .notification-delete-button {
+  width: var(--ui-icon-button-size);
+  min-width: var(--ui-icon-button-size);
   padding: 0;
+}
+
+.notification-actions .notification-read-button {
+  min-width: max-content;
+  padding: 0 10px;
+  white-space: nowrap;
 }
 
 .notification-actions .notification-delete-button:hover,

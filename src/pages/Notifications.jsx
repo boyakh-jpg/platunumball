@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, Check, Trash2 } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -245,7 +245,7 @@ export default function Notifications({ app }) {
                   </button>
                 ) : (
                   <button type="button" className="notification-read-button" title="읽음 처리" aria-label={`${notification.title} 읽음 처리`} onClick={() => app.actions.markNotificationRead(notification.id)}>
-                    <Check size={16} aria-hidden="true" />
+                    읽음
                   </button>
                 )}
               </span>
