@@ -8258,18 +8258,22 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot.empty {
   background: transparent;
 }
 
-.arena-lobby-modal .arena-room-player-slot.ready {
-  background: transparent;
+.arena-lobby-modal .arena-room-player-slot-wrap > .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .arena-room-player-slot.ready {
+  background: transparent !important;
   box-shadow: 0 0 20px rgba(101, 217, 159, 0.18) !important;
 }
 
-.arena-lobby-modal .arena-room-player-slot:not(.ready):not(.empty) {
-  background: transparent;
+.arena-lobby-modal .arena-room-player-slot-wrap > .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .arena-room-player-slot:not(.ready):not(.empty) {
+  background: transparent !important;
   box-shadow: 0 0 18px rgba(255, 211, 108, 0.14) !important;
 }
 
-.arena-lobby-modal .arena-room-player-slot.empty {
-  box-shadow: none;
+.arena-lobby-modal .arena-room-player-slot-wrap > .arena-room-player-slot.empty,
+html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .arena-room-player-slot.empty {
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 @media (max-width: 720px) {
