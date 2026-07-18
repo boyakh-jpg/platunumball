@@ -20,9 +20,8 @@ import {
   formatStatLine,
   MATCH_DISPUTE_REASON_OPTIONS,
   OTHER_MATCH_DISPUTE_REASON,
+  buildMatchResultSubmission,
   buildMatchDisputeRequest,
-  canOperatorSubmitMissingPostgameResult,
-  getAllowedResultStatFields,
   getAgreementStatus,
   getApprovalStatus,
   getMatchHostPlayerId,
@@ -30,6 +29,7 @@ import {
   getMatchRecordWindow,
   getMatchReferee,
   getMatchRecordPlayerIds,
+  getMatchResultEntryPermission,
   getMatchRoomPhase,
   getMatchPlayerIds,
   getReportableMatchTimeMs,
@@ -38,6 +38,7 @@ import {
   getSafeMatchSide,
   getMatchSideLeaderId,
   getMatchSideRecordPlayerIds,
+  getMergedResultScore,
   getMatchTrustFeedbackClosesAt,
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
@@ -126,8 +127,7 @@ function getRecordPlayerEntries(match = {}, includeReserves = false) {
 }
 
 function getPointAudit(match, score, sideName) {
-  const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  const teamScore = Number(score[scoreKey] ?? 0);
+  const teamScore = getMergedResultScore(match, score.playerStats, sideName, 0);
   const statPoints = getMatchSideRecordPlayerIds(match, sideName).reduce((sum, playerId) => sum + Number(score.playerStats[playerId]?.points ?? 0), 0);
   return {
     teamScore,
@@ -302,7 +302,7 @@ export default function MatchRoom({ app }) {
       playerStats: makeInitialStats(match),
     });
     setResultSaveFeedback("");
-  }, [match?.id, match?.result?.updatedAt, match?.result?.submittedAt, match?.disputeDraftResult?.updatedAt, matchPlayerKey]);
+  }, [match?.id, match?.updatedAt, match?.result?.updatedAt, match?.result?.submittedAt, match?.disputeDraftResult?.updatedAt, matchPlayerKey]);
 
   useEffect(() => {
     if (!match) return;
@@ -323,7 +323,6 @@ export default function MatchRoom({ app }) {
   const teamBAgreement = getAgreementStatus(match, app.state.teams, "teamB");
   const teamAApproval = getApprovalStatus(match, app.state.teams, "teamA");
   const teamBApproval = getApprovalStatus(match, app.state.teams, "teamB");
-  const allPlayerIds = getMatchPlayerIds(match);
   const currentUserSideName = getPlayerSideName(match, app.currentUser.id);
   const recordWindow = getMatchRecordWindow(match);
   const referee = getMatchReferee(match, app.state.users);
@@ -356,17 +355,16 @@ export default function MatchRoom({ app }) {
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
   const currentUserCanFileDispute = currentUserCanOperateStartedMatch || getMatchTrustFeedbackParticipantIds(match).includes(app.currentUser.id);
-  const canEditDisputeDraft = match.status === "disputed" && currentUserCanOperateStartedMatch && recordWindow.disputeOpen;
-  const currentUserCanPostgameScore = currentUserCanOperateStartedMatch && matchPhase === "postgame" && !["confirmed", "disputed"].includes(match.status);
-  const currentUserCanSubmitMissingPostgameResult = canOperatorSubmitMissingPostgameResult(match, currentUserCanOperateStartedMatch);
-  const currentUserEditablePlayerIds = canEditDisputeDraft
-    ? allPlayerIds
-    : hasReferee && currentUserIsEligibleReferee
-      ? allPlayerIds
-      : allPlayerIds.filter((playerId) => getAllowedResultStatFields(match, app.currentUser.id, playerId, currentUserCanPostgameScore).length > 0);
-  const currentUserCanSubmit = canEditDisputeDraft || (hasReferee ? currentUserIsEligibleReferee : currentUserEditablePlayerIds.length > 0);
-  const canSubmitLiveResult = currentUserCanSubmit && match.status === "agreed" && recordWindow.beforeEnd && !recordWindow.beforeStart;
-  const canSubmitResult = canEditDisputeDraft || canSubmitLiveResult || (currentUserCanSubmit && ((["agreed", "approval"].includes(match.status) && recordWindow.statOpen) || currentUserCanSubmitMissingPostgameResult));
+  const resultEntryPermission = getMatchResultEntryPermission(match, app.currentUser.id, {
+    canOperatePostStart: currentUserCanOperateStartedMatch,
+    refereeEligible: currentUserIsEligibleReferee,
+  });
+  const canEditDisputeDraft = resultEntryPermission.canEditDisputeDraft;
+  const currentUserCanSubmitMissingPostgameResult = resultEntryPermission.canSubmitMissingPostgameResult;
+  const currentUserEditablePlayerIds = resultEntryPermission.editablePlayerIds;
+  const currentUserCanSubmit = canEditDisputeDraft || currentUserEditablePlayerIds.length > 0;
+  const canSubmitLiveResult = resultEntryPermission.canSubmitLive;
+  const canSubmitResult = resultEntryPermission.canSubmit;
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
   const isSoloRecord = isPersonalRecordMatch(match);
   const matchApprovalOpen = Boolean(match.result && (match.status === "approval" || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
@@ -387,6 +385,8 @@ export default function MatchRoom({ app }) {
   const shouldShowWaitingPanel = false;
   const scoreA = getDisplayScore(match, "teamA");
   const scoreB = getDisplayScore(match, "teamB");
+  const draftScoreA = getMergedResultScore(match, score.playerStats, "teamA", 0);
+  const draftScoreB = getMergedResultScore(match, score.playerStats, "teamB", 0);
   const teamASide = getSafeMatchSide(match, "teamA");
   const teamBSide = getSafeMatchSide(match, "teamB");
   const teamA = app.state.teams.find((team) => team.id === teamASide.teamId);
@@ -506,14 +506,14 @@ export default function MatchRoom({ app }) {
       },
     }));
   };
-  const updateSideScore = (scoreKey, value) => {
-    setScore((current) => ({ ...current, [scoreKey]: getNonNegativeNumber(value) }));
-  };
   const submitResult = (event) => {
     event.preventDefault();
     if (!canSubmitResult) return;
     setResultSaveFeedback(canEditDisputeDraft ? "수정 중" : "저장 중");
-    const result = app.actions.submitMatchResult(match.id, score);
+    const result = app.actions.submitMatchResult(
+      match.id,
+      buildMatchResultSubmission(match, score, resultEntryPermission.getEditableStatFields),
+    );
     Promise.resolve(result).then((response) => {
       setResultSaveFeedback(response?.ok === false ? "저장 실패" : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
     }).catch(() => setResultSaveFeedback("저장 실패"));
@@ -541,8 +541,8 @@ export default function MatchRoom({ app }) {
   };
   const getSideLabel = (sideName) => (sideName === "teamA" ? "A사이드" : "B사이드");
   const getRecorderName = (sideName) => hasReferee ? "" : userMap[statRecorders[sideName]]?.name ?? "";
-  const canEditPlayerStat = (playerId) => canSubmitResult && (canEditDisputeDraft || getAllowedResultStatFields(match, app.currentUser.id, playerId, currentUserCanPostgameScore).length > 0);
-  const editableStatFields = statEditorPlayerId ? (canEditDisputeDraft ? PLAYER_STAT_FIELDS : getAllowedResultStatFields(match, app.currentUser.id, statEditorPlayerId, currentUserCanPostgameScore)) : [];
+  const canEditPlayerStat = (playerId) => canSubmitResult && resultEntryPermission.getEditableStatFields(playerId).length > 0;
+  const editableStatFields = statEditorPlayerId ? resultEntryPermission.getEditableStatFields(statEditorPlayerId) : [];
   const getPlayerStatState = (playerId, submitted) => {
     const sideName = getPlayerSideName(match, playerId);
     const recorderName = sideName ? getRecorderName(sideName) : "";
@@ -922,24 +922,12 @@ export default function MatchRoom({ app }) {
             <form className="score-form" onSubmit={submitResult}>
               <label>
                 {teamASide.name}
-                <NumericStepper
-                  className="score-numeric-stepper"
-                  label={`${teamASide.name} 점수`}
-                  disabled={!canSubmitResult}
-                  value={score.scoreA}
-                  onChange={(value) => updateSideScore("scoreA", value)}
-                />
+                <output className="match-derived-score" aria-label={`${teamASide.name} 선수 득점 합계`}>{draftScoreA}</output>
               </label>
               <span>:</span>
               <label>
                 {teamBSide.name}
-                <NumericStepper
-                  className="score-numeric-stepper"
-                  label={`${teamBSide.name} 점수`}
-                  disabled={!canSubmitResult}
-                  value={score.scoreB}
-                  onChange={(value) => updateSideScore("scoreB", value)}
-                />
+                <output className="match-derived-score" aria-label={`${teamBSide.name} 선수 득점 합계`}>{draftScoreB}</output>
               </label>
               <div className="match-action-row stat-entry-actions">
                 <Button type="button" variant="secondary" disabled={matchDetailRefreshing} onClick={refreshMatchDetail}>
@@ -947,16 +935,16 @@ export default function MatchRoom({ app }) {
                   새로고침
                 </Button>
                 <Button type="submit" disabled={!canSubmitResult}>
-                  {canEditDisputeDraft ? "이의 수정안 저장" : canSubmitLiveResult ? "실시간 기록 저장" : hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
+                  {canEditDisputeDraft ? "이의 수정안 저장" : canSubmitLiveResult ? "실시간 기록 저장" : hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "내 득점 다시 제출" : "내 득점 제출"}
                 </Button>
               </div>
               {resultSaveFeedback ? <div className="stat-save-feedback">{resultSaveFeedback}</div> : null}
               <div className="stat-integrity-note">
                 {hasReferee
-                  ? "심판이 스코어와 전체 개인 활약을 한 번에 저장합니다. 1시간 안에 입력해야 합니다."
+                  ? "심판이 전체 개인 기록을 저장하며 팀 점수는 선수 PTS 합계로 자동 계산됩니다."
                   : hasSideRecorders
                     ? "후보가 있는 사이드는 후보 기록자가 해당 사이드 개인 활약을 저장합니다. 후보 기록은 심판보다 낮은 MMR 가중치로 반영됩니다."
-                    : "심판이 없으면 각 참가자는 본인 득점만 저장합니다. 전원 제출과 득점 합계가 맞아야 결과 승인이 열립니다."}
+                    : "심판이 없으면 각 참가자는 본인 득점만 저장합니다. 팀 점수는 선수 PTS 합계로 자동 계산됩니다."}
               </div>
               <div className="stat-trust-panel">
                 <div className="stat-trust-head">

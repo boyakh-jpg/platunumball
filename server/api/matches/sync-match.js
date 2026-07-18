@@ -202,6 +202,14 @@ function getParticipantIds(match = {}) {
   ].filter(Boolean));
 }
 
+function getRecordPlayerIds(match = {}) {
+  return new Set([
+    ...(match.teamA?.players ?? []),
+    ...(match.teamB?.players ?? []),
+    ...Object.values(match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {}).flatMap(toArray),
+  ].filter(Boolean));
+}
+
 function getRoomManagerIds(match = {}) {
   return [match.refereeId || match.createdBy || match.ownerId || match.playerId].filter(Boolean);
 }
@@ -1064,12 +1072,17 @@ const REFEREE_LOCKED_MATCH_ACTIONS = new Set([
 
 function canSubmitResult(profileId, existingMatch, nextMatch) {
   const disputeDraftSubmission = existingMatch?.status === "disputed" || nextMatch?.status === "disputed" || nextMatch?.disputeDraftResult;
-  if (disputeDraftSubmission && !isMatchOperator(profileId, existingMatch, nextMatch)) return false;
   const refereeId = nextMatch.refereeId || existingMatch?.referee_id;
+  const hostId = nextMatch.createdBy || existingMatch?.created_by;
+  if (disputeDraftSubmission) return refereeId ? profileId === refereeId : profileId === hostId;
+  const startedAt = nextMatch.startedAt || existingMatch?.started_at;
+  const endedAt = nextMatch.endedAt || existingMatch?.ended_at;
+  if (!startedAt && !endedAt) return false;
   if (refereeId) return profileId === refereeId;
   const recorderIds = getStatRecorderIds(nextMatch);
-  if (recorderIds.length) return recorderIds.includes(profileId) || isMatchOperator(profileId, existingMatch, nextMatch);
-  return isMatchOperator(profileId, existingMatch, nextMatch) || getParticipantIds(nextMatch).has(profileId);
+  const recordPlayer = getRecordPlayerIds(nextMatch).has(profileId);
+  if (endedAt) return recorderIds.includes(profileId) || recordPlayer || profileId === hostId;
+  return recorderIds.includes(profileId) || recordPlayer;
 }
 
 function canDeleteSoloRecord(profileId, existingMatch, nextMatch) {
@@ -1349,7 +1362,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       p_result: operation.result ?? {},
     });
     if (error) {
-      if (isMissingSqlMatchReducer(error)) return null;
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_result_rpc_required");
       throw error;
     }
     return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
@@ -1803,7 +1816,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
 
   const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
-      .select("id, visibility, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, played_player_ids, reserve_players, score_a, score_b, rating_result, team_rating_result, confirmed_at, rules")
+      .select("id, visibility, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, played_player_ids, reserve_players, score_a, score_b, rating_result, team_rating_result, agreed_at, started_at, ended_at, confirmed_at, rules")
       .eq("id", match.id)
       .maybeSingle();
   if (existingError) throw existingError;

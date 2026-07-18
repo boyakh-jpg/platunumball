@@ -67,6 +67,7 @@ import {
   cleanRoomTitle,
   MATCH_DISPUTE_REASON_OPTIONS,
   OTHER_MATCH_DISPUTE_REASON,
+  buildMatchResultSubmission,
   buildMatchDisputeRequest,
   formatStatLine,
   getRoomCompetitionLabel,
@@ -74,17 +75,17 @@ import {
   getRoomVisibilityLabel,
   getMatchPlayerDisputePoints,
   getMatchRecordPlayerIds,
+  getMatchResultEntryPermission,
   getMatchRecordWindow,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
   getMatchSideRecordPlayerIds,
+  getMergedResultScore,
   getTournamentMatchDisplayTitle,
-  getAllowedResultStatFields,
   getStatRecorderSides,
   normalizePlayerStats,
-  canOperatorSubmitMissingPostgameResult,
   getPublicRoomMaxDateInput,
   getPublicRoomTimingStatus,
   getRoomScheduleLabel,
@@ -2282,7 +2283,6 @@ function SourceMatchDisputeEditor({
   onSave,
   onResolve = null,
   onVoid = null,
-  canEditSideScore = null,
   getEditableStatFields = null,
   submitLabel = "",
 }) {
@@ -2290,7 +2290,7 @@ function SourceMatchDisputeEditor({
 
   useEffect(() => {
     setDraft(makeSourceMatchDraft(match));
-  }, [match?.id, match?.result?.updatedAt, match?.disputeDraftResult?.updatedAt]);
+  }, [match?.id, match?.updatedAt, match?.result?.updatedAt, match?.disputeDraftResult?.updatedAt]);
 
   if (!match) return null;
   const hasResult = Boolean(match.result);
@@ -2302,12 +2302,10 @@ function SourceMatchDisputeEditor({
         ? getEditableStatFields(playerId) ?? []
         : []
   );
-  const canEditScore = (sideName) => (
-    canReview || (typeof canEditSideScore === "function" && canEditSideScore(sideName))
-  );
+  const getDerivedScore = (sideName) => getMergedResultScore(match, draft.playerStats, sideName, 0);
+  const getDerivedDraft = () => buildMatchResultSubmission(match, draft, getEditableFieldsForPlayer);
   const canSaveDraft = (
     canReview ||
-    sideNames.some((sideName) => canEditScore(sideName)) ||
     sideNames
       .flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName))
       .some((playerId) => getEditableFieldsForPlayer(playerId).length > 0)
@@ -2325,9 +2323,6 @@ function SourceMatchDisputeEditor({
       },
     }));
   };
-  const updateSideScore = (scoreKey, value) => {
-    setDraft((current) => ({ ...current, [scoreKey]: getNonNegativeNumber(value) }));
-  };
   const getRecordSummaryNames = (sideName) => {
     const names = sideName === "teamA"
       ? match.rules?.recordSummary?.teamAPlayers
@@ -2342,28 +2337,19 @@ function SourceMatchDisputeEditor({
   );
 
   return (
-    <form className="arena-dispute-editor" onSubmit={(event) => { event.preventDefault(); onSave(draft); }}>
+    <form className="arena-dispute-editor" onSubmit={(event) => {
+      event.preventDefault();
+      onSave(getDerivedDraft());
+    }}>
       <div className="arena-dispute-score-row">
         <label>
           {match.teamA?.name ?? "A"}
-          <NumericStepper
-            className="arena-score-stepper"
-            label={`${match.teamA?.name ?? "A"} 점수`}
-            disabled={!canEditScore("teamA")}
-            value={draft.scoreA}
-            onChange={(value) => updateSideScore("scoreA", value)}
-          />
+          <output className="arena-derived-score" aria-label={`${match.teamA?.name ?? "A"} 선수 득점 합계`}>{getDerivedScore("teamA")}</output>
         </label>
         <strong>:</strong>
         <label>
           {match.teamB?.name ?? "B"}
-          <NumericStepper
-            className="arena-score-stepper"
-            label={`${match.teamB?.name ?? "B"} 점수`}
-            disabled={!canEditScore("teamB")}
-            value={draft.scoreB}
-            onChange={(value) => updateSideScore("scoreB", value)}
-          />
+          <output className="arena-derived-score" aria-label={`${match.teamB?.name ?? "B"} 선수 득점 합계`}>{getDerivedScore("teamB")}</output>
         </label>
       </div>
       <div className="arena-dispute-stat-grid">
@@ -2398,7 +2384,7 @@ function SourceMatchDisputeEditor({
       </div>
       <div className="match-action-row">
         <Button type="submit" disabled={!canSaveDraft}>{submitLabel || (hasResult ? "수정안 저장" : "결과 저장")}</Button>
-        {hasResult && onResolve ? <Button type="button" disabled={!canReview} onClick={() => onResolve(draft)}>수정안 확정</Button> : null}
+        {hasResult && onResolve ? <Button type="button" disabled={!canReview} onClick={() => onResolve(getDerivedDraft())}>수정안 확정</Button> : null}
         {hasResult && onVoid ? <Button type="button" variant="secondary" className="danger-button" disabled={!canReview} onClick={onVoid}>무효 처리</Button> : null}
       </div>
       <p className="muted">{hasResult ? "확정 후 불복은 신고로 처리합니다." : "결과 저장 후 양쪽 승인 단계로 넘어갑니다."}</p>
@@ -3240,19 +3226,25 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canRequestRefereeAbsence = Boolean(matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canConfirmRefereeAbsence = Boolean(matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
-        const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
-        const canSubmitSourceMatchLiveResult = Boolean(matchRoom && sourceMatch?.status === "agreed" && sourceMatchPhase?.phase === "live" && currentUserCanOperateStartedSourceMatch && sourceMatchStarted && !sourceMatch?.endedAt);
-        const canSubmitSourceMatchPostgameResult = Boolean(matchRoom && canOperatorSubmitMissingPostgameResult(sourceMatch, currentUserCanOperateStartedSourceMatch));
         const sourceMatchRecorderSides = sourceMatch ? getStatRecorderSides(sourceMatch, app.currentUser.id) : [];
-        const canSubmitSourceMatchRecorderResult = Boolean(matchRoom && sourceMatch?.status === "agreed" && sourceMatchPhase?.phase === "live" && sourceMatchStarted && !sourceMatch?.endedAt && sourceMatchRecorderSides.length);
-        const canEditSourceMatchSideScore = (sideName) => (
-          canSubmitSourceMatchLiveResult ||
-          canSubmitSourceMatchPostgameResult ||
-          (canSubmitSourceMatchRecorderResult && sourceMatchRecorderSides.includes(sideName))
-        );
-        const getEditableSourceMatchStatFields = (playerId) => (
-          sourceMatch ? getAllowedResultStatFields(sourceMatch, app.currentUser.id, playerId, false) : []
-        );
+        const sourceMatchResultEntryPermission = sourceMatch
+          ? getMatchResultEntryPermission(sourceMatch, app.currentUser.id, {
+              canOperatePostStart: currentUserCanOperateStartedSourceMatch,
+              refereeEligible: currentUserIsSourceReferee,
+            })
+          : null;
+        const canReviewSourceMatch = Boolean(matchRoom && sourceMatchResultEntryPermission?.canEditDisputeDraft);
+        const canSubmitSourceMatchLiveResult = Boolean(matchRoom && sourceMatchResultEntryPermission?.canSubmitLive);
+        const canSubmitSourceMatchPostgameResult = Boolean(matchRoom && sourceMatchResultEntryPermission?.canSubmitPostgame);
+        const canSubmitSourceMatchRecorderResult = Boolean(canSubmitSourceMatchLiveResult && sourceMatchRecorderSides.length);
+        const getEditableSourceMatchStatFields = (playerId) => sourceMatchResultEntryPermission?.getEditableStatFields(playerId) ?? [];
+        const sourceMatchResultSubmitLabel = sourceMatchResultEntryPermission?.operatorPostgamePoints
+          ? "누락 득점 저장"
+          : canSubmitSourceMatchRecorderResult
+            ? "후보 기록 제출"
+            : currentUserIsSourceReferee
+              ? "심판 기록 제출"
+              : "내 득점 저장";
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const canDeleteSourceSoloRecord = Boolean(matchRoom && isPersonalRecordMatch(sourceMatch) && sourceMatch.createdBy === app.currentUser.id && sourceMatch.status !== "cancelled");
         const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
@@ -3280,7 +3272,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           sourceMatch?.result &&
           ["postgame", "dispute", "record"].includes(sourceMatchPhase?.phase),
         );
-        const canShowSourceMatchRecordEditor = sourceMatchAction.disputed || canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult;
+        const canShowSourceMatchRecordEditor = canReviewSourceMatch || canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult;
         const sourceMatchRecordBoardFirst = Boolean(
           matchRoom &&
           (
@@ -3301,10 +3293,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 <SourceMatchDisputeEditor
                   match={sourceMatch}
                   userById={userById}
-                  canReview={sourceMatchAction.disputed ? canReviewSourceMatch : (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult)}
-                  canEditSideScore={canEditSourceMatchSideScore}
+                  canReview={sourceMatchAction.disputed ? canReviewSourceMatch : false}
                   getEditableStatFields={getEditableSourceMatchStatFields}
-                  submitLabel={canSubmitSourceMatchRecorderResult ? "후보 기록 제출" : ""}
+                  submitLabel={sourceMatchResultSubmitLabel}
                   onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                   onResolve={sourceMatchAction.disputed ? (draft) => app.actions.resumeMatchApproval(sourceMatch.id, draft) : undefined}
                   onVoid={sourceMatchAction.disputed ? () => app.actions.voidMatch(sourceMatch.id) : undefined}
@@ -4089,7 +4080,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         </div>
                       </form>
                     ) : null}
-                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && sourceMatchAction.disputed ? (
+                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && sourceMatchAction.disputed && canReviewSourceMatch ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}
@@ -4103,10 +4094,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}
-                        canReview={canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult}
-                        canEditSideScore={canEditSourceMatchSideScore}
+                        canReview={false}
                         getEditableStatFields={getEditableSourceMatchStatFields}
-                        submitLabel={canSubmitSourceMatchRecorderResult ? "후보 기록 제출" : ""}
+                        submitLabel={sourceMatchResultSubmitLabel}
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />
                     ) : null}

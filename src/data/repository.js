@@ -61,9 +61,9 @@ import {
   fillMatchDecision,
   getAgreementStatus,
   getApprovalStatus,
-  getAllowedResultStatFields,
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
+  getMatchResultEntryPermission,
   getMatchHostPlayerId as getMatchHostPlayerIdFromMatch,
   getMatchAttendance,
   getMatchRosterSideName,
@@ -3035,19 +3035,19 @@ export function submitMatchResult(state, matchId, result) {
   const match = withEffectiveMatchStatRecorders(storedMatch);
   const syncedStatRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
   const currentUserId = state.currentUserId;
-  const playerIds = getMatchPlayerIds(match);
-  const currentSideName = getPlayerSideName(match, currentUserId);
   const hasReferee = Boolean(match.refereeId);
   const currentUser = state.users.find((user) => user.id === currentUserId);
   const currentUserIsReferee = isMatchReferee(match, currentUserId);
   const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(currentUser, match.refereeTrustMin, state.settings?.refereeAppointments);
   const recorderSides = getStatRecorderSides(match, currentUserId);
-  const roomPhase = getMatchRoomPhase(match).phase;
   const currentUserCanOperatePostStart = currentUserCanOperateStartedMatch(state, match);
-  const currentUserCanDisputeDraft = currentUserCanOperatePostStart && match.status === "disputed";
-  const currentUserCanPostgameScore = currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(match.status);
-  const currentUserCanSubmitMissingPostgameResult = canOperatorSubmitMissingPostgameResult(match, currentUserCanOperatePostStart);
-  const currentUserCanRecord = currentUserIsEligibleReferee || currentUserCanDisputeDraft || currentUserCanPostgameScore || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName)));
+  const resultEntryPermission = getMatchResultEntryPermission(match, currentUserId, {
+    canOperatePostStart: currentUserCanOperatePostStart,
+    refereeEligible: currentUserIsEligibleReferee,
+  });
+  const currentUserCanDisputeDraft = resultEntryPermission.canEditDisputeDraft;
+  const currentUserCanPostgameScore = resultEntryPermission.operatorPostgamePoints;
+  const currentUserCanRecord = currentUserCanDisputeDraft || resultEntryPermission.editablePlayerIds.length > 0;
 
   if (hasReferee && !currentUserIsEligibleReferee) {
     return {
@@ -3114,7 +3114,7 @@ export function submitMatchResult(state, matchId, result) {
   const recordWindow = getMatchRecordWindow(match);
   const matchStartsAt = getMatchStartDate(match);
   const beforeStart = !matchStartsAt || (Number.isFinite(matchStartsAt.getTime()) && Date.now() < matchStartsAt.getTime());
-  const liveRecordAllowed = recordWindow.beforeEnd && !beforeStart && (currentUserIsEligibleReferee || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName))));
+  const liveRecordAllowed = resultEntryPermission.canSubmitLive;
   if (currentUserCanDisputeDraft && !recordWindow.disputeOpen) {
     return {
       ...state,
@@ -3130,7 +3130,7 @@ export function submitMatchResult(state, matchId, result) {
       ],
     };
   }
-  if (!currentUserCanDisputeDraft && ((recordWindow.beforeEnd && !liveRecordAllowed) || (!recordWindow.beforeEnd && !recordWindow.statOpen && !currentUserCanSubmitMissingPostgameResult))) {
+  if (!resultEntryPermission.canSubmit) {
     return {
       ...state,
       notifications: [
@@ -3152,17 +3152,11 @@ export function submitMatchResult(state, matchId, result) {
 
   const now = new Date().toISOString();
   const draftEntry = currentUserCanDisputeDraft;
-  const liveEntry = !draftEntry && !match.endedAt && recordWindow.beforeEnd && liveRecordAllowed;
+  const liveEntry = !draftEntry && liveRecordAllowed;
   const recordPlayerIds = getMatchRecordPlayerIds(match);
   const existingStats = normalizePlayerStats((draftEntry ? match.disputeDraftResult : match.result)?.playerStats ?? match.result?.playerStats ?? {}, recordPlayerIds);
   const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
-  const recorderPlayerIds = recorderSides.flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName));
-  const selfPlayerIds = currentSideName ? [currentUserId] : [];
-  const hostPostgamePlayerIds = currentUserCanPostgameScore ? playerIds : [];
-  const targetPlayerIds = (currentUserIsEligibleReferee || draftEntry)
-    ? recordPlayerIds
-    : [...new Set([...recorderPlayerIds, ...selfPlayerIds, ...hostPostgamePlayerIds])]
-        .filter((playerId) => getAllowedResultStatFields(match, currentUserId, playerId, currentUserCanPostgameScore).length > 0);
+  const targetPlayerIds = resultEntryPermission.editablePlayerIds;
   if (!hasReferee && !targetPlayerIds.length) {
     return {
       ...state,
@@ -3183,7 +3177,7 @@ export function submitMatchResult(state, matchId, result) {
   const nextPlayerStats = { ...existingStats };
   touchedPlayerIds.forEach((playerId) => {
     const allowedFieldIds = new Set(
-      getAllowedResultStatFields(match, currentUserId, playerId, currentUserCanPostgameScore).map((field) => field.id),
+      resultEntryPermission.getEditableStatFields(playerId).map((field) => field.id),
     );
     const currentStats = nextPlayerStats[playerId] ?? {};
     nextPlayerStats[playerId] = {

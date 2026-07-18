@@ -26,7 +26,9 @@ import schemaHealthHandler from "../server/api/system/schema-health.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
 import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
 import {
+  buildMatchResultSubmission,
   getRecorderHandoffPatch,
+  getMatchResultEntryPermission,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
   getTournamentMatchDisplayTitle,
@@ -63,6 +65,7 @@ const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || 20000);
 const cleanupTimeoutMs = Number(process.env.RANKBALL_SIM_CLEANUP_TIMEOUT_MS || Math.max(requestTimeoutMs * 6, 120000));
 const ensureRemoteTestActors = process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "1" || process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "true";
 const fullSimulation = process.argv.includes("--full") || process.env.RANKBALL_SIM_FULL === "1" || process.env.RANKBALL_SIM_FULL === "true";
+const recordPermissionsOnly = process.argv.includes("--record-permissions-only");
 const remoteSmokeOnly = usesRemoteApi && !fullSimulation;
 
 if (!url || !publishableKey || (!usesRemoteApi && !serviceRoleKey)) {
@@ -1498,6 +1501,25 @@ function getKstCurrentDate() {
   }).format(new Date());
 }
 
+function getKstPastSchedule(offsetMinutes = 1) {
+  const date = new Date(Date.now() - Math.max(1, Number(offsetMinutes) || 1) * 60 * 1000);
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date).map((part) => [part.type, part.value]),
+  );
+  return {
+    scheduledDate: `${parts.year}-${parts.month}-${parts.day}`,
+    scheduledTime: `${parts.hour}:${parts.minute}`,
+  };
+}
+
 async function countPendingRowsByPrefixes(table, matchId, prefixes = []) {
   if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
   const kind = table === "discord_notification_deliveries" ? "discord" : "notice";
@@ -1733,6 +1755,20 @@ function makeResult(match) {
   };
 }
 
+function makePointsOnlyResult(match, scoreA = 21, scoreB = 12) {
+  const teamAPlayer = match.teamA?.players?.[0];
+  const teamBPlayer = match.teamB?.players?.[0];
+  assertFlow(Boolean(teamAPlayer && teamBPlayer), "match players missing", match);
+  return {
+    scoreA,
+    scoreB,
+    playerStats: {
+      [teamAPlayer]: { points: 21 },
+      [teamBPlayer]: { points: 12 },
+    },
+  };
+}
+
 function withLateAnonymousPlayer(match = {}, playerId = "", sideName = "teamA", name = "Backend Anonymous") {
   const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [];
@@ -1873,6 +1909,75 @@ function withSubstitution(match = {}, sideName = "teamA", activePlayerId = "", r
   return { valid: true, patch, match: patch.match };
 }
 
+async function cleanupTrackedMatchArtifacts() {
+  const matchIds = uniqueIds(scenarioIds.flatMap((scenario) => [scenario.matchId, ...(scenario.matchIds ?? [])]));
+  if (!supabase || !matchIds.length) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: supabase ? "no_tracked_matches" : "service_role_key_missing",
+      remainingMatches: 0,
+      remainingTournaments: 0,
+      remainingNotifications: 0,
+      remainingDiscordDeliveries: 0,
+    };
+  }
+
+  const { data: playerRows, error: playerError } = await supabase
+    .from("match_players")
+    .select("user_id")
+    .in("match_id", matchIds);
+  if (playerError) throw playerError;
+  const affectedProfileIds = uniqueIds((playerRows ?? []).map((row) => row.user_id));
+
+  const exactMatchTables = [
+    "court_reviews",
+    "match_disputes",
+    "match_approvals",
+    "match_agreements",
+    "player_match_stats",
+    "match_results",
+    "match_players",
+  ];
+  for (const table of exactMatchTables) {
+    const { error } = await supabase.from(table).delete().in("match_id", matchIds);
+    if (error) throw error;
+  }
+  for (const table of ["user_room_feed", "room_feed_cards"]) {
+    const { error } = await supabase
+      .from(table)
+      .delete()
+      .eq("entity_type", "match")
+      .in("entity_id", matchIds);
+    if (error) throw error;
+  }
+  const { error: matchError, count: deletedMatches } = await supabase
+    .from("matches")
+    .delete({ count: "exact" })
+    .in("id", matchIds);
+  if (matchError) throw matchError;
+
+  for (const profileId of affectedProfileIds) {
+    const { error } = await supabase.rpc("rankball_rebuild_profile_match_summary", { p_profile_id: profileId });
+    if (error) throw error;
+  }
+
+  const { count: remainingMatches, error: remainingError } = await supabase
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .in("id", matchIds);
+  if (remainingError) throw remainingError;
+  return {
+    ok: Number(remainingMatches ?? 0) === 0,
+    deletedMatches: Number(deletedMatches ?? 0),
+    refreshedProfiles: affectedProfileIds.length,
+    remainingMatches: Number(remainingMatches ?? 0),
+    remainingTournaments: 0,
+    remainingNotifications: 0,
+    remainingDiscordDeliveries: 0,
+  };
+}
+
 async function cleanup() {
   const profileDiscordRestore = await restoreTemporaryProfileDiscordUsers();
   const profileIdentityRestore = await restoreTemporaryProfileIdentities();
@@ -1908,6 +2013,23 @@ async function cleanup() {
     return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, recruitingCleanup, regressionCleanup };
   }
   if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
+
+  if (recordPermissionsOnly) {
+    const artifactCleanup = await cleanupTrackedMatchArtifacts();
+    const recruitingCleanup = await cleanupSimulationRecruitingPosts();
+    return {
+      skipped: false,
+      errors: artifactCleanup.ok === false ? [{ table: "tracked_matches", message: "tracked match cleanup failed" }] : [],
+      artifactCleanup,
+      profileDiscordRestore,
+      profileIdentityRestore,
+      refereeSimulationCleanup,
+      ratingRestore,
+      notificationCleanup,
+      recruitingCleanup,
+      regressionCleanup,
+    };
+  }
 
   const closedAt = new Date().toISOString();
   const { data: artifactCleanup, error: artifactCleanupError } = await supabase.rpc("rankball_cleanup_simulation_artifacts");
@@ -2251,7 +2373,7 @@ async function runOneOnOneScenario({
   const resultSubmit = await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
-    result: makeResult(match),
+    result: refereeWanted ? makeResult(match) : makePointsOnlyResult(match),
   }));
   match = resultSubmit?.match;
   assertFlow(match?.status === "approval" && match?.result, "match result not persisted", match);
@@ -3829,12 +3951,54 @@ async function runDisputeResumeThumbsScenario({
   match = await getMatchAfterResult(checkInBResult, hostLogin, `${ids.label}:loadAfterCheckInTeamB`);
   assertFlow(match?.attendance?.teamB?.includes(opponentId), "dispute teamB check-in not persisted", match);
 
+  await expectRejected(`${ids.label}:submitMatchResult:beforeStartBlocked`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: makePointsOnlyResult(match, 999, 888),
+  }), ["match_result_phase_locked"]);
+
   const startResult = await step(`${ids.label}:startMatch`, () => syncMatchAs(hostLogin, {
     action: "startMatch",
     matchId: ids.matchId,
   }, { match: withStartedMatch(match, hostId) }));
   match = await getMatchAfterResult(startResult, hostLogin, `${ids.label}:loadAfterStartMatch`);
   assertFlow(Boolean(match?.startedAt), "dispute match start not persisted", match);
+
+  await expectRejected(`${ids.label}:submitMatchResult:liveOtherPlayerAdvancedBlocked`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: {
+      scoreA: 999,
+      scoreB: 888,
+      playerStats: { [opponentId]: { rebounds: 1 } },
+    },
+  }), ["match_stat_player_permission_denied"]);
+
+  const livePlayerPermission = getMatchResultEntryPermission(match, hostId, { canOperatePostStart: true });
+  const livePlayerPayload = buildMatchResultSubmission(match, {
+    playerStats: {
+      [hostId]: { points: 3, rebounds: 9, assists: 9, steals: 9, blocks: 9, fouls: 9 },
+      [opponentId]: { points: 88, rebounds: 8, assists: 8, steals: 8, blocks: 8, fouls: 8 },
+    },
+  }, livePlayerPermission.getEditableStatFields);
+  assertFlow(
+    Object.keys(livePlayerPayload.playerStats).length === 1
+      && Object.keys(livePlayerPayload.playerStats[hostId] ?? {}).join(",") === "points",
+    "live player UI payload leaked disabled stats",
+    livePlayerPayload,
+  );
+
+  const livePointsResult = await step(`${ids.label}:submitMatchResult:liveOwnPoints`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: livePlayerPayload,
+  }));
+  match = livePointsResult?.match;
+  assertFlow(
+    match?.status === "agreed" && !match?.endedAt && getMatchRoomPhase(match).phase === "live" && match?.result?.scoreA === 3 && match?.result?.scoreB === 0,
+    "live own points did not derive team score",
+    match,
+  );
 
   const endResult = await step(`${ids.label}:endMatch`, () => syncMatchAs(hostLogin, {
     action: "endMatch",
@@ -3843,13 +4007,46 @@ async function runDisputeResumeThumbsScenario({
   match = await getMatchAfterResult(endResult, hostLogin, `${ids.label}:loadAfterEndMatch`);
   assertFlow(Boolean(match?.endedAt), "dispute match end not persisted", match);
 
+  await expectRejected(`${ids.label}:submitMatchResult:postgameAdvancedBlocked`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: {
+      scoreA: 999,
+      scoreB: 888,
+      playerStats: { [opponentId]: { points: 12, rebounds: 1 } },
+    },
+  }), ["match_postgame_points_only"]);
+
+  const postgameHostPermission = getMatchResultEntryPermission(match, hostId, { canOperatePostStart: true });
+  const postgameHostPayload = buildMatchResultSubmission(match, {
+    playerStats: {
+      [hostId]: { points: 21, rebounds: 9, assists: 9, steals: 9, blocks: 9, fouls: 9 },
+      [opponentId]: { points: 12, rebounds: 8, assists: 8, steals: 8, blocks: 8, fouls: 8 },
+    },
+  }, postgameHostPermission.getEditableStatFields);
+  assertFlow(
+    Object.keys(postgameHostPayload.playerStats).length === 1
+      && Object.keys(postgameHostPayload.playerStats[opponentId] ?? {}).join(",") === "points",
+    "postgame host UI payload was not limited to missing PTS",
+    postgameHostPayload,
+  );
+
   const resultSubmit = await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
-    result: makeResult(match),
+    result: postgameHostPayload,
   }));
   match = resultSubmit?.match;
   assertFlow(match?.status === "approval" && match?.result, "dispute result not persisted", match);
+  assertFlow(match.result.scoreA === 3 && match.result.scoreB === 12, "postgame team score was not derived from PTS", match.result);
+
+  await expectRejected(`${ids.label}:submitMatchResult:postgameSubmittedPointsLocked`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: {
+      playerStats: { [hostId]: { points: 21 } },
+    },
+  }), ["match_postgame_missing_only"]);
 
   const disputeResult = await step(`${ids.label}:disputeMatch`, () => syncMatchAs(opponentLogin, {
     action: "disputeMatch",
@@ -3926,6 +4123,12 @@ async function runDisputeResumeThumbsScenario({
   match = resumeResult?.match;
   assertFlow(match?.status === "confirmed", "dispute resume did not confirm match", match);
   assertFlow(match?.result?.scoreA === 23 && match?.result?.scoreB === 14, "atomic dispute draft result not committed", match);
+
+  await expectRejected(`${ids.label}:submitMatchResult:confirmedBlocked`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: makePointsOnlyResult(match, 999, 888),
+  }), ["match_result_locked"]);
 
   await step(`${ids.label}:snapshotTrustSubjects`, () => snapshotRatingSubjects([opponentId]));
   const opponentTrustBeforeThumbs = await step(`${ids.label}:loadTrustBeforeThumbs`, () => getCurrentProfileTrustScore(opponentLogin, opponentId));
@@ -4388,6 +4591,42 @@ async function runRecorderHandoffScenario({
   }));
   match = await getMatchAfterResult(startResult, hostLogin, `${ids.label}:loadAfterStartMatch`);
   assertFlow(Boolean(match?.startedAt), "recorder handoff match start not persisted", match);
+
+  await expectRejected(`${ids.label}:submitMatchResult:playerBlockedByRecorder`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: {
+      scoreA: 999,
+      scoreB: 888,
+      playerStats: { [hostId]: { points: 4 } },
+    },
+  }), ["match_result_permission_denied", "match_stat_player_permission_denied"]);
+
+  const sideRecorderPermission = getMatchResultEntryPermission(match, teamAReserveId);
+  const sideRecorderPayload = buildMatchResultSubmission(match, {
+    playerStats: {
+      [hostId]: { points: 4, rebounds: 2, assists: 1, steals: 1, blocks: 0, fouls: 1 },
+      [teamBActiveId]: { points: 88, rebounds: 8, assists: 8, steals: 8, blocks: 8, fouls: 8 },
+    },
+  }, sideRecorderPermission.getEditableStatFields);
+  assertFlow(
+    Object.keys(sideRecorderPayload.playerStats).length === 1
+      && Object.keys(sideRecorderPayload.playerStats[hostId] ?? {}).length === 6,
+    "side recorder UI payload leaked the opponent side",
+    sideRecorderPayload,
+  );
+
+  const recorderResult = await step(`${ids.label}:submitMatchResult:sideRecorder`, () => syncMatchAs(teamAReserveLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: sideRecorderPayload,
+  }));
+  match = recorderResult?.match;
+  assertFlow(
+    match?.status === "agreed" && !match?.endedAt && getMatchRoomPhase(match).phase === "live" && match?.result?.scoreA === 4 && match?.result?.scoreB === 0,
+    "side recorder result did not derive live score",
+    match,
+  );
 
   const handoffDraft = withRecorderHandoff(match, "teamA", teamAReserveId, hostId);
   assertFlow(handoffDraft.valid && handoffDraft.patch?.swapped, "recorder handoff draft not valid", handoffDraft);
@@ -5764,39 +6003,56 @@ async function playTournamentMatchToConfirmed({ label, matchId, operatorLogin })
   const teamALogin = await getTestLoginForProfileId(teamAPlayerId);
   const teamBLogin = await getTestLoginForProfileId(teamBPlayerId);
   const resultOperatorLogin = teamALogin;
-  const operatorId = teamAPlayerId;
   assertFlow(Boolean(teamAPlayerId && teamBPlayerId && teamALogin && teamBLogin), "tournament match player login missing", {
     matchId,
     teamAPlayerId,
     teamBPlayerId,
   });
 
-  const endedMatch = withEndedMatch(withStartedMatch(match, teamAPlayerId));
-  const submittedAt = new Date().toISOString();
-  const result = {
-    ...makeResult(endedMatch),
-    statSubmissions: {
-      [teamAPlayerId]: { by: operatorId, side: "teamA", source: "host_postgame", submittedAt },
-      [teamBPlayerId]: { by: operatorId, side: "teamB", source: "host_postgame", submittedAt },
-    },
-    submittedBy: operatorId,
-    submittedAt,
-    updatedAt: submittedAt,
-  };
-  const resultDraft = {
-    ...endedMatch,
-    status: "approval",
-    teamA: { ...endedMatch.teamA, score: result.scoreA },
-    teamB: { ...endedMatch.teamB, score: result.scoreB },
-    approvals: { teamA: [], teamB: [] },
-    result,
-  };
+  assertFlow(match.createdBy === teamAPlayerId, "tournament A-side captain is not the match host", {
+    matchId,
+    createdBy: match.createdBy,
+    teamAPlayerId,
+  });
+  const playableSchedule = getKstPastSchedule();
+  const { error: scheduleError } = await supabase
+    .from("matches")
+    .update({
+      scheduled_date: playableSchedule.scheduledDate,
+      scheduled_time: playableSchedule.scheduledTime,
+      scheduled_at: `${playableSchedule.scheduledDate} ${playableSchedule.scheduledTime}`,
+    })
+    .eq("id", matchId);
+  if (scheduleError) throw scheduleError;
+  match = await step(`${label}:loadPlayableSchedule`, () => loadMatchAs(resultOperatorLogin, matchId));
+
+  const checkInBResult = await step(`${label}:checkInMatchPlayer:teamB`, () => syncMatchAs(resultOperatorLogin, {
+    action: "checkInMatchPlayer",
+    matchId,
+    sideName: "teamB",
+    playerId: teamBPlayerId,
+  }));
+  match = await getMatchAfterResult(checkInBResult, resultOperatorLogin, `${label}:loadAfterCheckInTeamB`);
+  const startResult = await step(`${label}:startMatch`, () => syncMatchAs(resultOperatorLogin, {
+    action: "startMatch",
+    matchId,
+  }));
+  match = await getMatchAfterResult(startResult, resultOperatorLogin, `${label}:loadAfterStart`);
+  assertFlow(Boolean(match?.startedAt), "tournament match start not persisted", match);
+  const endResult = await step(`${label}:endMatch`, () => syncMatchAs(resultOperatorLogin, {
+    action: "endMatch",
+    matchId,
+  }));
+  match = await getMatchAfterResult(endResult, resultOperatorLogin, `${label}:loadAfterEnd`);
+  assertFlow(Boolean(match?.endedAt), "tournament match end not persisted", match);
+
+  const result = makePointsOnlyResult(match);
 
   const resultSubmit = await step(`${label}:submitMatchResult`, () => syncMatchAs(resultOperatorLogin, {
     action: "submitMatchResult",
     matchId,
     result,
-  }, { match: resultDraft }));
+  }));
   match = resultSubmit?.match;
   assertFlow(match?.status === "approval" && match?.result, "tournament match result not persisted", match);
 
@@ -6427,6 +6683,27 @@ async function main() {
   const expiryRoomInviteeLogin = process.env.RANKBALL_SIM_EXPIRY_INVITEE || "rankball-050";
 
   const scenarios = [];
+  if (recordPermissionsOnly) {
+    scenarios.push(await runDisputeResumeThumbsScenario({
+      label: "record_permission_matrix",
+      hostLogin: disputeHostLogin,
+      opponentLogin: disputeOpponentLogin,
+    }));
+    scenarios.push(await runOneOnOneScenario({
+      label: "record_permission_referee",
+      hostLogin: refereeHostLogin,
+      opponentLogin: refereeOpponentLogin,
+      refereeLogin,
+      refereeWanted: true,
+    }));
+    scenarios.push(await runRecorderHandoffScenario({
+      label: "record_permission_side_recorder",
+      hostLogin: recorderHandoffHostLogin,
+      teamAReserveLogin: recorderHandoffTeamAReserveLogin,
+      teamBActiveLogin: recorderHandoffTeamBActiveLogin,
+      removableReserveLogin: recorderHandoffRemovableReserveLogin,
+    }));
+  } else {
   scenarios.push(await runSoloRecordScenario({
     label: "solo_record",
     hostLogin: soloRecordLogin,
@@ -6638,6 +6915,7 @@ async function main() {
       refereeWanted: true,
     }));
   }
+  }
 
   const cleanupResult = await cleanup();
   const cleanupSucceeded = (cleanupResult?.skipped === true && cleanupResult?.reason === "keep_requested") || (
@@ -6663,7 +6941,7 @@ async function main() {
 
   console.log(JSON.stringify({
     ok: true,
-    mode: fullSimulation ? "full" : usesRemoteApi ? "remote_smoke" : "local_smoke",
+    mode: recordPermissionsOnly ? "record_permissions" : fullSimulation ? "full" : usesRemoteApi ? "remote_smoke" : "local_smoke",
     scenarios,
     schemaHealth: schemaHealth?.skipped ? { status: "skipped", reason: schemaHealth.reason } : "ok",
     verificationWarnings: [

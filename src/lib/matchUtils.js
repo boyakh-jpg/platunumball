@@ -212,8 +212,31 @@ export function getSubmittedStatPatch(playerStats = {}, targetPlayerIds = []) {
 
 export function getMergedResultScore(match, playerStats, sideName, fallbackScore = 0) {
   const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
-  if (!sidePlayerIds.some((playerId) => playerStats[playerId])) return Number(fallbackScore ?? match[sideName]?.score ?? 0);
+  if (!sidePlayerIds.length) return Number(fallbackScore ?? match[sideName]?.score ?? 0);
   return sidePlayerIds.reduce((sum, playerId) => sum + Number(playerStats[playerId]?.points ?? 0), 0);
+}
+
+export function buildMatchResultSubmission(match = {}, draft = {}, getEditableStatFields = () => []) {
+  const sourcePlayerStats = draft.playerStats ?? {};
+  const playerStats = Object.fromEntries(
+    getMatchRecordPlayerIds(match)
+      .map((playerId) => {
+        const allowedFieldIds = new Set(getEditableStatFields(playerId).map((field) => field.id));
+        const statPatch = Object.fromEntries(
+          Object.entries(sourcePlayerStats[playerId] ?? {})
+            .filter(([fieldId]) => allowedFieldIds.has(fieldId))
+            .map(([fieldId, value]) => [fieldId, Math.max(0, Number(value ?? 0))]),
+        );
+        return [playerId, statPatch];
+      })
+      .filter(([, statPatch]) => Object.keys(statPatch).length > 0),
+  );
+
+  return {
+    scoreA: getMergedResultScore(match, sourcePlayerStats, "teamA", 0),
+    scoreB: getMergedResultScore(match, sourcePlayerStats, "teamB", 0),
+    playerStats,
+  };
 }
 
 export function fillMatchDecision(match, decisionKey) {
@@ -846,6 +869,7 @@ function getMatchEndDate(match = {}) {
     const ended = new Date(match.endedAt);
     if (Number.isFinite(ended.getTime())) return ended;
   }
+  if (match.status === "agreed" && match.startedAt && !match.endedAt) return null;
   const fallback = match.result?.submittedAt ?? match.confirmedAt;
   if (!fallback) return null;
   const parsed = new Date(fallback);
@@ -1124,6 +1148,63 @@ export function getAllowedResultStatFields(match = {}, userId, playerId = userId
   const pointsField = PLAYER_STAT_FIELDS.find((field) => field.id === "points");
   if (pointsField) fieldById.points = pointsField;
   return Object.values(fieldById);
+}
+
+export function getMatchResultEntryPermission(match = {}, userId = "", options = {}) {
+  const now = options.now ?? Date.now();
+  const recordWindow = getMatchRecordWindow(match, now);
+  const hasReferee = Boolean(match.refereeId);
+  const currentUserIsReferee = isMatchReferee(match, userId) && options.refereeEligible !== false;
+  const canOperatePostStart = Boolean(options.canOperatePostStart);
+  const canEditDisputeDraft = Boolean(
+    match.status === "disputed" &&
+    recordWindow.disputeOpen &&
+    (hasReferee ? currentUserIsReferee : canOperatePostStart),
+  );
+  const postgameEntry = Boolean(
+    match.endedAt &&
+    ["agreed", "approval"].includes(match.status) &&
+    !match.confirmedAt &&
+    !match.voidedAt &&
+    !match.cancelledAt,
+  );
+  const operatorPostgamePoints = Boolean(!hasReferee && canOperatePostStart && postgameEntry);
+  const playerIds = getMatchRecordPlayerIds(match);
+  const getEditableStatFields = (playerId) => {
+    if (canEditDisputeDraft) return PLAYER_STAT_FIELDS;
+    if (hasReferee) return currentUserIsReferee ? PLAYER_STAT_FIELDS : [];
+    const fields = getAllowedResultStatFields(match, userId, playerId, operatorPostgamePoints);
+    const pointsOnly = fields.length === 1 && fields[0]?.id === "points";
+    if (postgameEntry && pointsOnly && getPlayerStatSubmitted(match, playerId)) return [];
+    return fields;
+  };
+  const editablePlayerIds = playerIds.filter((playerId) => getEditableStatFields(playerId).length > 0);
+  const canRecordByRole = hasReferee ? currentUserIsReferee : editablePlayerIds.length > 0;
+  const canSubmitLive = Boolean(
+    canRecordByRole &&
+    match.status === "agreed" &&
+    match.startedAt &&
+    !match.endedAt &&
+    recordWindow.beforeEnd,
+  );
+  const canSubmitMissingPostgameResult = canOperatorSubmitMissingPostgameResult(match, canOperatePostStart, now);
+  const canSubmitPostgame = Boolean(
+    canRecordByRole &&
+    postgameEntry &&
+    (recordWindow.statOpen || canSubmitMissingPostgameResult),
+  );
+
+  return {
+    canEditDisputeDraft,
+    canSubmit: canEditDisputeDraft || canSubmitLive || canSubmitPostgame,
+    canSubmitLive,
+    canSubmitPostgame,
+    canSubmitMissingPostgameResult,
+    editablePlayerIds,
+    getEditableStatFields,
+    operatorPostgamePoints,
+    postgameEntry,
+  };
 }
 
 export function normalizePlayerStats(playerStats = {}, playerIds = []) {

@@ -758,3 +758,31 @@ html[data-theme="light"] .gm-room-title h1 {
 :where(.gm-score-core strong, .gm-score-core i) {
   transform-origin: center;
 }
+
+.match-room .match-derived-score {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 74px;
+  place-items: center;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--text);
+  font-family: var(--sports-display-font);
+  font-size: 2.5rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 950;
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .match-room .score-form {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  .match-room .match-derived-score {
+    min-height: 60px;
+    font-size: 2rem;
+  }
+}
