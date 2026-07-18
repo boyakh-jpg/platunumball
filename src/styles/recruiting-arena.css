@@ -8129,6 +8129,11 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
   min-height: 0;
 }
 
+html[data-theme="light"] .arena-lobby-modal .arena-room-rule-summary > span {
+  border-color: var(--ui-control-border);
+  background: var(--ui-control-bg);
+}
+
 .arena-lobby-modal .arena-join-form,
 .arena-lobby-modal .arena-host-kick-list,
 .arena-lobby-modal .arena-party-quick-join-list,
