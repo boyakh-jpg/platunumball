@@ -1376,7 +1376,7 @@ export default function CreateMatch({ app }) {
                   <Lock size={19} />
                   <span>
                     <strong>비공개 경기방</strong>
-                    <em>개인전은 선수 초대, 팀전은 B팀 대표 초대로 닫힌 방을 만든다.</em>
+                    <em>개인전은 생성 후 빈 슬롯에서 초대하고, 팀전은 B팀 대표를 정해 닫힌 방을 만든다.</em>
                   </span>
                 </button>
                 <button
