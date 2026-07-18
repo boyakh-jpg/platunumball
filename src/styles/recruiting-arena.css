@@ -8228,6 +8228,9 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
 }
 
 .arena-lobby-modal .arena-room-player-slot-wrap {
+  inline-size: 72px;
+  min-inline-size: 72px;
+  max-inline-size: 72px;
   block-size: var(--room-slot-height);
   min-block-size: var(--room-slot-height);
   max-block-size: var(--room-slot-height);
@@ -8235,6 +8238,9 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
 
 .arena-lobby-modal .arena-room-player-slot {
   box-sizing: border-box;
+  inline-size: 72px;
+  min-inline-size: 72px;
+  max-inline-size: 72px;
   height: var(--room-slot-height);
   block-size: var(--room-slot-height);
   min-block-size: var(--room-slot-height);
