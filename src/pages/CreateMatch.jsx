@@ -341,7 +341,15 @@ export default function CreateMatch({ app }) {
   const defaultTournamentTeamB = getOpponentTeam(app.state.teams, defaultTournamentTeamA?.id, currentRegion, [], defaultTournamentCapacity);
   const defaultTeamBPlayerIds = defaultHostJoinMode === "team" ? getDefaultTeamPlayerIds(defaultTeamB, 1, defaultTeamAPlayerIds) : [];
   const defaultMmrLimitMode = getDefaultMmrLimitMode(defaultTeamA, defaultTeamB);
-  const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const directoryCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const [discoveredCourts, setDiscoveredCourts] = useState([]);
+  const registeredCourts = useMemo(() => {
+    const byId = new Map(directoryCourts.map((court) => [court.id, court]));
+    discoveredCourts.forEach((court) => {
+      if (court?.id && !byId.has(court.id)) byId.set(court.id, court);
+    });
+    return [...byId.values()];
+  }, [directoryCourts, discoveredCourts]);
   const defaultCourt = [...registeredCourts]
     .filter((court) => isSameRegion(court.region, currentRegion))
     .sort((a, b) => Number(favoriteCourtIds.includes(b.id)) - Number(favoriteCourtIds.includes(a.id)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a))[0]
@@ -864,6 +872,9 @@ export default function CreateMatch({ app }) {
   const courtPlayWarning = selectedCourt ? getCourtPlayWarning(selectedCourt, draft.mode) : "";
   const selectCourt = (court) => {
     setSubmitFeedback("");
+    if (court?.id && !registeredCourts.some((item) => item.id === court.id)) {
+      setDiscoveredCourts((current) => [...current.filter((item) => item.id !== court.id), court]);
+    }
     setDraft((current) => ({
       ...current,
       courtId: court.id ?? "",
@@ -873,7 +884,7 @@ export default function CreateMatch({ app }) {
         : {}),
     }));
     setCourtQuery(court.name);
-    setCourtRegion(court.region);
+    if (court.region) setCourtRegion(court.region);
   };
   const removeTournamentCourt = (courtId) => {
     setSubmitFeedback("");
@@ -1810,6 +1821,7 @@ export default function CreateMatch({ app }) {
                 showIdleOnFocus
                 floating
                 closeOnResultClick
+                remoteSearchType="court"
                 getSearchText={getCourtSearchText}
                 renderItem={renderCourtSearchItem}
               />
