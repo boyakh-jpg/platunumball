@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
@@ -54,6 +55,10 @@ export default function PlayerDetail({ app }) {
   }, [loadDirectory]);
   const player = app.state.users.find((user) => user.id === playerId);
 
+  const directoryPending = app.remoteReady === false
+    || app.directoryStatus?.loading
+    || (app.directoryStatus?.loaded === false && !app.directoryStatus?.error);
+  if (!player && directoryPending) return <BasketballLoader overlay label="선수 프로필 불러오는 중" />;
   if (!player) return <Navigate to="/app/rankings" replace />;
 
   const isOwnProfile = player.id === app.currentUser.id;

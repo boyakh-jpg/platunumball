@@ -1,4 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
 import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
 import { getBlockedUserIds, getNotificationActorId } from "../../../src/lib/notifications.js";
 
@@ -25,29 +26,48 @@ function getDiscordUserId(profile = {}) {
   return "";
 }
 
-function normalizeActions(actions) {
-  if (!Array.isArray(actions)) return [];
-  return actions
-    .filter((action) => action && typeof action === "object" && !Array.isArray(action))
-    .slice(0, 5)
-    .map((action) => ({
-      id: trimText(action.id, 40),
-      label: trimText(action.label, 80),
-      style: action.style === "primary" ? "primary" : "secondary",
-      customId: trimText(action.customId, 100),
-    }))
-    .filter((action) => action.customId);
+function getNotificationEvent(notification = {}) {
+  const explicitEvent = notification.discordEvent || notification.eventType || notification.type;
+  if (ALLOWED_EVENTS.has(explicitEvent)) return explicitEvent;
+  if (notification.reportId || notification.tone === "report" || notification.type === "report_action") return "report";
+  if (notification.tone === "orange") return "approval";
+  return "match";
 }
 
-function toDeliveryRow(delivery, profileId, discordUserId) {
-  const id = trimText(delivery.id, 160);
-  const notificationId = trimText(delivery.notificationId, 160);
-  const event = ALLOWED_EVENTS.has(delivery.event) ? delivery.event : "match";
-  const queuedAt = delivery.queuedAt || new Date().toISOString();
-  const sendAt = delivery.sendAt || queuedAt;
-  if (!id || !notificationId) return null;
-  if (delivery.targetUserId && delivery.targetUserId !== profileId) return null;
-  if (delivery.status && delivery.status !== "queued") return null;
+function getNotificationWebPath(notification = {}) {
+  const explicitPath = trimText(notification.webPath, 500);
+  if (explicitPath.startsWith("/app/")) return explicitPath;
+  if (notification.tournamentId) return `/app/tournaments/${encodeURIComponent(notification.tournamentId)}`;
+  if (notification.matchId) return `/app/matches?match=${encodeURIComponent(notification.matchId)}`;
+  if (notification.recruitingPostId) return `/app/recruiting?post=${encodeURIComponent(notification.recruitingPostId)}`;
+  return "/app/notifications";
+}
+
+function getNotificationActions(notification = {}) {
+  if (!notification.recruitingPostId || !notification.invitationId) return [];
+  const prefix = `rankball:invite`;
+  const postId = encodeURIComponent(String(notification.recruitingPostId));
+  const invitationId = encodeURIComponent(String(notification.invitationId));
+  return [
+    { id: "accept", label: "수락", style: "primary", customId: `${prefix}:accept:${postId}:${invitationId}` },
+    { id: "decline", label: "거절", style: "secondary", customId: `${prefix}:decline:${postId}:${invitationId}` },
+  ];
+}
+
+function getNotificationSendAt(notification = {}, queuedAt) {
+  const raw = notification.sendAt ?? notification.dueAt ?? notification.payload?.sendAt ?? notification.payload?.dueAt;
+  const time = raw ? Date.parse(raw) : NaN;
+  return Number.isFinite(time) ? new Date(time).toISOString() : queuedAt;
+}
+
+function toDeliveryRow(notification, profileId, discordUserId, queuedAt) {
+  const notificationId = trimText(notification.id, 160);
+  if (!notificationId || notification.readAt) return null;
+  const id = `discord-${profileId}-${notificationId}`;
+  const event = getNotificationEvent(notification);
+  const sendAt = getNotificationSendAt(notification, queuedAt);
+  const webPath = getNotificationWebPath(notification);
+  const baseUrl = String(process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/+$/, "");
 
   const payload = {
     id,
@@ -55,12 +75,12 @@ function toDeliveryRow(delivery, profileId, discordUserId) {
     targetUserId: profileId,
     discordUserId,
     event,
-    title: trimText(delivery.title, 160),
-    body: trimText(delivery.body, 1200),
-    webPath: trimText(delivery.webPath, 500),
-    webUrl: trimText(delivery.webUrl, 500),
-    actions: normalizeActions(delivery.actions),
-    fromUserId: trimText(getNotificationActorId(delivery), 128),
+    title: trimText(notification.title, 160),
+    body: trimText(notification.body, 1200),
+    webPath,
+    webUrl: baseUrl ? `${baseUrl}${webPath}` : webPath,
+    actions: getNotificationActions(notification),
+    fromUserId: trimText(getNotificationActorId(notification), 128),
     status: "queued",
     queuedAt,
     sendAt,
@@ -105,10 +125,28 @@ export default async function handler(request, response) {
     }
 
     const blockedUserIdSet = new Set(getBlockedUserIds(profile.app_settings));
-    const rows = normalizeDeliveries(body.deliveries)
-      .filter((delivery) => isDiscordNotificationEnabled(profile.app_settings, ALLOWED_EVENTS.has(delivery.event) ? delivery.event : "match"))
-      .filter((delivery) => !blockedUserIdSet.has(getNotificationActorId(delivery)))
-      .map((delivery) => toDeliveryRow(delivery, context.profileId, discordUserId))
+    const requestedNotificationIds = [...new Set(normalizeDeliveries(body.deliveries)
+      .map((delivery) => trimText(delivery.notificationId, 160))
+      .filter(Boolean))];
+    if (!requestedNotificationIds.length) {
+      sendJson(response, 200, { ok: true, count: 0 });
+      return;
+    }
+
+    const { data: notificationRows, error: notificationError } = await context.supabase
+      .from("notifications")
+      .select("id,user_id,target_user_id,title,body,tone,type,match_id,recruiting_post_id,invitation_id,discord_event,read_at,payload,created_at,updated_at")
+      .in("id", requestedNotificationIds)
+      .or(`user_id.eq.${context.profileId},target_user_id.eq.${context.profileId}`);
+    if (notificationError) throw notificationError;
+
+    const queuedAt = new Date().toISOString();
+    const rows = (notificationRows ?? [])
+      .map(fromRemoteNotification)
+      .filter((notification) => notification.targetUserId === context.profileId)
+      .filter((notification) => isDiscordNotificationEnabled(profile.app_settings, getNotificationEvent(notification)))
+      .filter((notification) => !blockedUserIdSet.has(getNotificationActorId(notification)))
+      .map((notification) => toDeliveryRow(notification, context.profileId, discordUserId, queuedAt))
       .filter(Boolean);
 
     if (!rows.length) {

@@ -11,7 +11,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
-import { formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
+import { formatKoreanDateTime, formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtCanonicalName, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtLocationMatches, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { findCourtByHashtag, findTeamByHashtag, findUserByHashtag, getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
@@ -115,17 +115,6 @@ function getLatestRefereeExamAttempt(attempts = [], userId) {
   return [...attempts]
     .filter((attempt) => attempt.userId === userId)
     .sort((a, b) => new Date(b.startedAt ?? 0).getTime() - new Date(a.startedAt ?? 0).getTime())[0] ?? null;
-}
-
-function formatKoreanDateTime(value) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  return date.toLocaleString("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function getCourtAddressDong(source = {}) {
@@ -424,19 +413,35 @@ export default function Settings({ app, auth, section = "main" }) {
       setDiscordLinkError(`이미 ${linkedOwner.name} 프로필에 연결된 Discord입니다.`);
       return;
     }
-    setDiscordLinkError("");
-    app.actions.updateProfile({ discordConnection: discordOAuthResult.connection }, targetUserId);
-    if (targetUserId !== app.currentUserId) app.actions.switchUser(targetUserId);
-    app.actions.updateSettings({
-      notificationChannels: {
-        ...(app.state.settings?.notificationChannels ?? {}),
-        discord: {
-          ...discordChannel,
-          enabled: true,
-        },
-      },
-    });
-    setDiscordSaveStatus("연동됨");
+    let active = true;
+    const persistDiscordConnection = async () => {
+      try {
+        setDiscordLinkError("");
+        const result = await app.actions.updateProfile({ discordConnection: discordOAuthResult.connection }, targetUserId);
+        if (!active) return;
+        if (result?.ok === false) throw new Error(result.error || "discord_profile_save_failed");
+        if (targetUserId !== app.currentUserId) app.actions.switchUser(targetUserId);
+        await app.actions.updateSettings({
+          notificationChannels: {
+            ...(app.state.settings?.notificationChannels ?? {}),
+            discord: {
+              ...discordChannel,
+              enabled: true,
+            },
+          },
+        });
+        if (active) setDiscordSaveStatus("연동됨");
+      } catch (error) {
+        if (!active) return;
+        console.warn("Discord connection save failed.", error);
+        setDiscordLinkError("Discord 연동 정보를 서버에 저장하지 못했습니다.");
+        setDiscordSaveStatus("");
+      }
+    };
+    void persistDiscordConnection();
+    return () => {
+      active = false;
+    };
   }, [app.currentUserId]);
 
   const blockableUsers = useMemo(

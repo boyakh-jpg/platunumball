@@ -1,5 +1,8 @@
+import crypto from "node:crypto";
+
 const DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token";
 const DISCORD_ME_URL = "https://discord.com/api/users/@me";
+const DISCORD_OAUTH_PROOF_TTL_MS = 5 * 60 * 1000;
 
 function getAppUrl(request) {
   const configuredUrl = String(process.env.VITE_PUBLIC_APP_URL ?? "").trim().replace(/\/$/, "");
@@ -15,6 +18,28 @@ function encodeBase64UrlJson(value) {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
+}
+
+function createDiscordOAuthProof(discordUser, state) {
+  const secret = String(process.env.DISCORD_OAUTH_PROOF_SECRET || process.env.DISCORD_CLIENT_SECRET || "").trim();
+  if (!secret) throw new Error("discord_oauth_proof_secret_missing");
+  const appProfileId = String(state || "").split(".")[0].trim();
+  if (!appProfileId) throw new Error("discord_oauth_profile_missing");
+  const issuedAt = Date.now();
+  const payload = Buffer.from(JSON.stringify({
+    version: 1,
+    appProfileId,
+    discordUserId: String(discordUser.id),
+    username: String(discordUser.username || "").slice(0, 80),
+    globalName: String(discordUser.global_name || discordUser.username || "").slice(0, 80),
+    avatar: String(discordUser.avatar || "").slice(0, 160),
+    discriminator: String(discordUser.discriminator || "").slice(0, 8),
+    stateHash: crypto.createHash("sha256").update(String(state || "")).digest("base64url"),
+    issuedAt,
+    expiresAt: issuedAt + DISCORD_OAUTH_PROOF_TTL_MS,
+  }), "utf8").toString("base64url");
+  const signature = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
 }
 
 function getDiscordAvatarUrl(user) {
@@ -101,6 +126,7 @@ export default async function handler(request, response) {
       avatarUrl: getDiscordAvatarUrl(discordUser),
       linkedAt: new Date().toISOString(),
       source: "discord",
+      oauthProof: createDiscordOAuthProof(discordUser, state),
     };
 
     redirectToSettingsDiscord(request, response, {

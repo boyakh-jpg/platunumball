@@ -9,17 +9,6 @@ function assertAccess(request) {
   }
 }
 
-async function closePrefix(client, table, column, prefix) {
-  const { count, error } = await client
-    .from(table)
-    .update({ status: "closed", updated_at: new Date().toISOString() }, { count: "exact" })
-    .gte(column, prefix)
-    .lt(column, `${prefix}\uffff`)
-    .neq("status", "closed");
-  if (error) return { table, ok: false, error: error.message, closed: 0 };
-  return { table, ok: true, error: null, closed: count ?? 0 };
-}
-
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -85,7 +74,33 @@ export default async function handler(request, response) {
       remaining: remainingNotifications,
       remainingDiscordDeliveries,
     });
-    checks.push(await closePrefix(client, "recruiting_posts", "id", "sim_q_"));
+    let recruitingCleanup = null;
+    let recruitingCleanupError = null;
+    let recruitingCleanupAttempts = 0;
+    let deletedRecruitingPosts = 0;
+    let deletedRecruitingNotifications = 0;
+    let deletedRecruitingDiscordDeliveries = 0;
+    do {
+      recruitingCleanupAttempts += 1;
+      const result = await client.rpc("rankball_cleanup_simulation_recruiting_artifacts", { p_limit: 250 });
+      recruitingCleanup = result.data;
+      recruitingCleanupError = result.error;
+      if (recruitingCleanupError) break;
+      deletedRecruitingPosts += Number(recruitingCleanup?.deletedPosts ?? 0);
+      deletedRecruitingNotifications += Number(recruitingCleanup?.deletedNotifications ?? 0);
+      deletedRecruitingDiscordDeliveries += Number(recruitingCleanup?.deletedDiscordDeliveries ?? 0);
+    } while (recruitingCleanupAttempts < 10 && Number(recruitingCleanup?.remainingPosts ?? 0) > 0);
+    const recruitingRowsRemain = Number(recruitingCleanup?.remainingPosts ?? 0) > 0;
+    checks.push({
+      table: "simulation_recruiting_artifacts",
+      ok: !recruitingCleanupError && !recruitingRowsRemain,
+      error: recruitingCleanupError?.message ?? (recruitingRowsRemain ? "simulation_recruiting_artifacts_remaining" : null),
+      attempts: recruitingCleanupAttempts,
+      deleted: deletedRecruitingPosts,
+      deletedNotifications: deletedRecruitingNotifications,
+      deletedDiscordDeliveries: deletedRecruitingDiscordDeliveries,
+      remaining: Number(recruitingCleanup?.remainingPosts ?? 0),
+    });
     const { data: feedCleanup, error: feedCleanupError } = await client.rpc("rankball_cleanup_room_feed");
     checks.push({
       table: "user_room_feed",

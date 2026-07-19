@@ -351,7 +351,13 @@ function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
     }
     const existing = merged.get(item.id);
     if (!forceIds.has(item.id) && !shouldUseIncomingRoomRow(item, existing)) return;
-    merged.set(item.id, preserveExistingWhenEmpty(item, existing, [
+    if (item.tournamentListOnly === true && existing && existing.tournamentListOnly !== true) {
+      const next = { ...existing, ...item, rules: existing.rules };
+      delete next.tournamentListOnly;
+      merged.set(item.id, next);
+      return;
+    }
+    const next = preserveExistingWhenEmpty(item, existing, [
       "agreements",
       "approvals",
       "disputes",
@@ -360,7 +366,9 @@ function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
       "anonymousPlayers",
       "parties",
       "result",
-    ]));
+    ]);
+    if (item.tournamentListOnly !== true) delete next.tournamentListOnly;
+    merged.set(item.id, next);
   });
   return [...merged.values()];
 }
@@ -1262,6 +1270,12 @@ export function useAppData(authUser = null, appLocation = null) {
   const pendingMatchMutationCountsRef = useRef(new Map());
   const recentMatchMutationTimesRef = useRef(new Map());
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
+  const authIdentityRef = useRef(authUserId);
+  const authGenerationRef = useRef(0);
+  if (authIdentityRef.current !== authUserId) {
+    authIdentityRef.current = authUserId;
+    authGenerationRef.current += 1;
+  }
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
 
@@ -1338,12 +1352,19 @@ export function useAppData(authUser = null, appLocation = null) {
       matchTeamSchedulePromiseRef.current = null;
       recruitingPagePromiseRef.current = null;
       recorderMatchesPromiseRef.current = null;
+      reportableMatchesPromiseRef.current = null;
       profileRecordsPromiseRef.current = null;
       recruitingRegionPromiseRef.current = new Map();
       latestRecruitingRegionRequestRef.current = "";
       latestRecruitingLoadMoreRequestRef.current = "";
       homeRouteLoadKeyRef.current = "";
       recruitingPostPromiseRef.current = new Map();
+      pendingRecruitingPostIdsRef.current = new Set();
+      recentRecruitingMutationTimesRef.current = new Map();
+      pendingMatchIdsRef.current = new Set();
+      pendingMatchMutationCountsRef.current = new Map();
+      recentMatchMutationTimesRef.current = new Map();
+      syncedDiscordDeliveryIdsRef.current = new Set();
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
       setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
@@ -1364,6 +1385,7 @@ export function useAppData(authUser = null, appLocation = null) {
     matchTeamSchedulePromiseRef.current = null;
     recruitingPagePromiseRef.current = null;
     recorderMatchesPromiseRef.current = null;
+    reportableMatchesPromiseRef.current = null;
     profileRecordsPromiseRef.current = null;
     recruitingRegionPromiseRef.current = new Map();
     latestRecruitingRegionRequestRef.current = "";
@@ -1373,7 +1395,9 @@ export function useAppData(authUser = null, appLocation = null) {
     pendingRecruitingPostIdsRef.current = new Set();
     recentRecruitingMutationTimesRef.current = new Map();
     pendingMatchIdsRef.current = new Set();
+    pendingMatchMutationCountsRef.current = new Map();
     recentMatchMutationTimesRef.current = new Map();
+    syncedDiscordDeliveryIdsRef.current = new Set();
     setState(getCachedBootstrapState(authUserId, authEmail));
     setDirectoryStatus({ loading: false, loaded: false, error: "" });
     setProfileRecordsLoaded(false);
@@ -1429,6 +1453,7 @@ export function useAppData(authUser = null, appLocation = null) {
         setRemoteReady(true);
       })
       .catch((error) => {
+        if (!mounted) return;
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
         setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
@@ -1496,6 +1521,8 @@ export function useAppData(authUser = null, appLocation = null) {
       });
     return () => {
       mounted = false;
+      if (homeRouteLoadKeyRef.current === homeRouteLoadKey) homeRouteLoadKeyRef.current = "";
+      setMatchPagination((prev) => (prev.loading ? { ...prev, loading: false } : prev));
     };
   }, [authEmail, authUserId, homeRouteLoadKey, remoteReady, setState]);
 
@@ -1506,11 +1533,19 @@ export function useAppData(authUser = null, appLocation = null) {
   }, [authUserId, setState]);
 
   const trackedPostServerAction = useCallback((path, payload = {}, options = {}) => {
+    const requestGeneration = authGenerationRef.current;
     const showBlockingLoader = options.blocking === true;
     const actionOptions = { ...options };
     delete actionOptions.blocking;
     if (showBlockingLoader) setServerActionPendingCount((count) => count + 1);
-    return postServerAction(path, payload, actionOptions).finally(() => {
+    return postServerAction(path, payload, actionOptions).then((result) => {
+      if (requestGeneration !== authGenerationRef.current) {
+        const error = new Error("stale_auth_request");
+        error.code = "stale_auth_request";
+        throw error;
+      }
+      return result;
+    }).finally(() => {
       if (showBlockingLoader) setServerActionPendingCount((count) => Math.max(0, count - 1));
     });
   }, []);
@@ -1623,6 +1658,9 @@ export function useAppData(authUser = null, appLocation = null) {
       return result;
     }).catch((error) => {
       const errorCode = getServerActionErrorText(error);
+      if (errorCode === "stale_auth_request") {
+        return { ok: false, error: errorCode, stale: true, path };
+      }
       console.warn(`Server action skipped: ${path}`, {
         reason: errorCode,
         statusCode: error.statusCode ?? null,
@@ -1649,11 +1687,13 @@ export function useAppData(authUser = null, appLocation = null) {
     if (!post?.id && !operation) return Promise.resolve(false);
     const pendingPostId = post?.id ?? operation?.postId ?? meta.postId ?? "";
     const mutationStartedAt = Date.now();
+    const requestGeneration = authGenerationRef.current;
     if (pendingPostId) {
       pendingRecruitingPostIdsRef.current.add(pendingPostId);
       recentRecruitingMutationTimesRef.current.set(pendingPostId, mutationStartedAt);
     }
     const clearPendingRecruitingPost = () => {
+      if (requestGeneration !== authGenerationRef.current) return;
       if (!pendingPostId) return;
       pendingRecruitingPostIdsRef.current.delete(pendingPostId);
       if (recentRecruitingMutationTimesRef.current.get(pendingPostId) === mutationStartedAt) {
@@ -1694,6 +1734,7 @@ export function useAppData(authUser = null, appLocation = null) {
     if (!match?.id && !operation) return Promise.resolve(false);
     const pendingMatchId = match?.id ?? operation?.matchId ?? meta.matchId ?? "";
     const mutationStartedAt = Date.now();
+    const requestGeneration = authGenerationRef.current;
     if (pendingMatchId) {
       pendingMatchMutationCountsRef.current.set(
         pendingMatchId,
@@ -1703,6 +1744,7 @@ export function useAppData(authUser = null, appLocation = null) {
       recentMatchMutationTimesRef.current.set(pendingMatchId, mutationStartedAt);
     }
     const clearPendingMatch = () => {
+      if (requestGeneration !== authGenerationRef.current) return;
       if (!pendingMatchId) return;
       const pendingCount = pendingMatchMutationCountsRef.current.get(pendingMatchId) ?? 0;
       if (pendingCount > 1) {
@@ -2749,7 +2791,9 @@ export function useAppData(authUser = null, appLocation = null) {
             action: "loadTournament",
             tournamentId,
           },
-        }).then((result) => (result?.tournament?.id === tournamentId ? 1 : 0));
+        }).then((result) => (
+          result?.state?.tournaments?.some((item) => item?.id === tournamentId) ? 1 : 0
+        ));
       },
       approveTournamentTeam: (tournamentId, teamId) => {
         if (isSupabaseConfigured) {
@@ -3295,41 +3339,6 @@ export function useAppData(authUser = null, appLocation = null) {
           stopped = true;
           stop();
           document.removeEventListener("visibilitychange", handleVisibilityChange);
-        };
-      },
-      subscribeRecruitingRoom: (postId) => {
-        const roomId = String(postId ?? "").trim();
-        if (!isSupabaseConfigured || !supabase || !roomId) return () => {};
-        let reloadTimer = null;
-        const scheduleRoomReload = () => {
-          if (reloadTimer) return;
-          reloadTimer = window.setTimeout(() => {
-            reloadTimer = null;
-            void loadRecruitingPost(roomId);
-          }, 350);
-        };
-        const channel = supabase.channel(`room-state:recruiting:${roomId}:${Date.now().toString(36)}`);
-        channel
-          .on("postgres_changes", {
-            event: "*",
-            schema: "public",
-            table: "recruiting_posts",
-            filter: `id=eq.${roomId}`,
-          }, scheduleRoomReload)
-          .on("postgres_changes", {
-            event: "*",
-            schema: "public",
-            table: "recruiting_applications",
-            filter: `post_id=eq.${roomId}`,
-          }, scheduleRoomReload)
-          .subscribe((status) => {
-            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-              console.warn("Recruiting room realtime subscription failed.", { roomId, status });
-            }
-          });
-        return () => {
-          if (reloadTimer) window.clearTimeout(reloadTimer);
-          void supabase.removeChannel(channel);
         };
       },
       setRecruitingApplicantReserve: (postId, playerId, reserve) => {

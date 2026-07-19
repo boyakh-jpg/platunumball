@@ -27,13 +27,11 @@ function normalizeTeam(team = {}, actorProfileId = "") {
     error.statusCode = 400;
     throw error;
   }
-  if (!members.some((member) => member.userId === actorProfileId && member.role === "captain")) {
+  const captains = members.filter((member) => member.role === "captain");
+  if (captains.length !== 1 || captains[0].userId !== actorProfileId) {
     const error = new Error("team_captain_required");
     error.statusCode = 403;
     throw error;
-  }
-  if (!members.some((member) => member.role === "captain")) {
-    members[0] = { ...members[0], role: "captain" };
   }
   if (members.length > MAX_TEAM_MEMBERS) {
     const error = new Error("team_members_limit_exceeded");
@@ -113,10 +111,12 @@ async function inviteTeamMember(context, body = {}) {
   const invitationId = result.invitationId || body.invitationId || "";
   if (invitationId) {
     const notificationId = `n_${invitationId}`;
+    const targetUserId = String(body.targetUserId || "").trim();
     const { data: notification, error: notificationReadError } = await context.supabase
       .from("notifications")
       .select("id,payload")
       .eq("id", notificationId)
+      .eq("target_user_id", targetUserId)
       .maybeSingle();
     if (notificationReadError) console.warn("Team invitation notification actor read failed.", notificationReadError.message);
     if (notification) {
@@ -126,7 +126,8 @@ async function inviteTeamMember(context, body = {}) {
           payload: { ...(notification.payload ?? {}), fromUserId: context.profileId },
           updated_at: new Date().toISOString(),
         })
-        .eq("id", notificationId);
+        .eq("id", notificationId)
+        .eq("target_user_id", targetUserId);
       if (notificationUpdateError) console.warn("Team invitation notification actor update failed.", notificationUpdateError.message);
     }
   }

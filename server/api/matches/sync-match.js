@@ -1324,6 +1324,40 @@ async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = 
   return latestMatch;
 }
 
+async function assertMatchTeamPlacementSide(context, operation = {}, matchId = "") {
+  if (operation.action !== "setMatchRoomPlayerPlacement") return;
+  const playerId = String(operation.playerId ?? "").trim();
+  const requestedSide = ["teamA", "teamB"].includes(operation.placement?.side)
+    ? operation.placement.side
+    : null;
+  if (!matchId || !playerId || !requestedSide) return;
+
+  const [{ data: matchRow, error: matchError }, { data: playerRow, error: playerError }] = await Promise.all([
+    context.supabase
+      .from("matches")
+      .select("id,team_a_id,team_b_id,reserve_players")
+      .eq("id", matchId)
+      .maybeSingle(),
+    context.supabase
+      .from("match_players")
+      .select("side")
+      .eq("match_id", matchId)
+      .eq("user_id", playerId)
+      .maybeSingle(),
+  ]);
+  if (matchError) throw matchError;
+  if (playerError) throw playerError;
+  if (!matchRow) reject(404, "match_not_found");
+
+  const reserveSides = ["teamA", "teamB"].filter((sideName) => (
+    toArray(matchRow.reserve_players?.[sideName]).includes(playerId)
+  ));
+  const currentSide = playerRow?.side ?? (reserveSides.length === 1 ? reserveSides[0] : null);
+  if (!currentSide) return;
+  const currentTeamId = currentSide === "teamA" ? matchRow.team_a_id : matchRow.team_b_id;
+  if (currentTeamId && requestedSide !== currentSide) reject(409, "match_team_side_locked");
+}
+
 async function applySqlMatchAction(context, operation = {}, match = {}) {
   if (operation.action === "updateTournamentMatchSchedule" && operation.matchId) {
     const { data, error } = await context.supabase.rpc("rankball_tournament_match_schedule_action", {
@@ -1398,6 +1432,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
 
   if (["updateMatchRoomRules", "setMatchRoomPlayerPlacement", "removeMatchRoomPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
+    await assertMatchTeamPlacementSide(context, operation, matchId);
     const { data, error } = await context.supabase.rpc("rankball_match_room_action", {
       p_actor_profile_id: context.profileId,
       p_match_id: matchId,

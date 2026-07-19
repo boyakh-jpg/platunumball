@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
 import { getAgeGroupByBirthYear } from "../../../src/lib/profileSetup.js";
@@ -6,6 +7,7 @@ const DEFAULT_RATINGS = { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "
 const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,trust_score,ratings,school,company,club,streak,discord_connection,discord_user_id,test_login_id";
 const DISCORD_ME_URL = "https://discord.com/api/users/@me";
 const DISCORD_USER_ID_PATTERN = /^\d{17,20}$/;
+const DISCORD_OAUTH_PROOF_MAX_AGE_MS = 5 * 60 * 1000;
 
 function makeProfileId(authUserId = "") {
   const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
@@ -62,6 +64,62 @@ function getDiscordOAuthAccessToken(profile = {}) {
   ).trim();
 }
 
+function getDiscordOAuthProof(profile = {}) {
+  return String(
+    profile.discordOAuthProof?.token
+      ?? profile.discordConnection?.oauthProof
+      ?? "",
+  ).trim();
+}
+
+function getVerifiedDiscordProof(token = "", expectedProfileId = "") {
+  const secret = String(process.env.DISCORD_OAUTH_PROOF_SECRET || process.env.DISCORD_CLIENT_SECRET || "").trim();
+  if (!secret || !token || token.length > 4096) return null;
+  const [encodedPayload, encodedSignature, extra] = token.split(".");
+  if (!encodedPayload || !encodedSignature || extra) return null;
+
+  const expectedSignature = crypto.createHmac("sha256", secret).update(encodedPayload).digest();
+  let receivedSignature;
+  try {
+    receivedSignature = Buffer.from(encodedSignature, "base64url");
+  } catch {
+    return null;
+  }
+  if (receivedSignature.length !== expectedSignature.length || !crypto.timingSafeEqual(receivedSignature, expectedSignature)) return null;
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+  const now = Date.now();
+  const issuedAt = Number(payload?.issuedAt);
+  const expiresAt = Number(payload?.expiresAt);
+  if (
+    payload?.version !== 1
+    || !String(payload?.appProfileId || "").trim()
+    || !DISCORD_USER_ID_PATTERN.test(String(payload?.discordUserId || ""))
+    || !Number.isFinite(issuedAt)
+    || !Number.isFinite(expiresAt)
+    || issuedAt > now + 30_000
+    || now > expiresAt
+    || expiresAt - issuedAt > DISCORD_OAUTH_PROOF_MAX_AGE_MS
+  ) return null;
+  if (String(payload.appProfileId) !== String(expectedProfileId || "")) {
+    const error = new Error("discord_oauth_profile_mismatch");
+    error.statusCode = 403;
+    throw error;
+  }
+  return {
+    id: String(payload.discordUserId),
+    username: String(payload.username || ""),
+    global_name: String(payload.globalName || payload.username || ""),
+    avatar: String(payload.avatar || ""),
+    discriminator: String(payload.discriminator || ""),
+  };
+}
+
 async function getVerifiedDiscordUser(accessToken = "") {
   if (!accessToken || accessToken.length > 4096) {
     const error = new Error("discord_oauth_proof_required");
@@ -107,7 +165,9 @@ async function getRequestedDiscordConnection(profile = {}, existing = {}) {
   const existingUserId = String(getDiscordUserId(existing?.discord_connection) || existing?.discord_user_id || "").trim();
   if (userId && existingUserId && userId === existingUserId) return existing.discord_connection;
 
-  const discordUser = await getVerifiedDiscordUser(getDiscordOAuthAccessToken(profile));
+  const proofToken = getDiscordOAuthProof(profile);
+  const discordUser = getVerifiedDiscordProof(proofToken, existing?.id)
+    ?? await getVerifiedDiscordUser(getDiscordOAuthAccessToken(profile));
   const verifiedUserId = String(discordUser.id);
   if (userId && userId !== verifiedUserId) {
     const error = new Error("discord_oauth_identity_mismatch");

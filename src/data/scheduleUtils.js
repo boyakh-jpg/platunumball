@@ -5,34 +5,17 @@ import {
   QUEUE_SCHEDULE_TIMES,
   SCHEDULE_MAX_DAYS,
 } from "../lib/constants.js";
-import { isInstantRoom } from "../lib/matchUtils.js";
+import { addDateDays, getLocalDateInputValue, getMatchScheduledDate, isInstantRoom } from "../lib/matchUtils.js";
 import { normalizeRecruitingPost } from "../lib/recruiting.js";
 
-function addDateDays(dateValue, days) {
-  const date = new Date(`${dateValue}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getLocalDateValue(date = new Date()) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
-}
-
 function getMaxScheduleDateValue(now = new Date(), maxDays = SCHEDULE_MAX_DAYS) {
-  return addDateDays(getLocalDateValue(now), maxDays);
+  return addDateDays(getLocalDateInputValue(now), maxDays);
 }
 
 export function isScheduleDateInAllowedWindow(dateValue, now = new Date(), maxDays = SCHEDULE_MAX_DAYS) {
   const value = getDatePart(dateValue);
   if (!value) return false;
-  const today = getLocalDateValue(now);
+  const today = getLocalDateInputValue(now);
   const maxDate = getMaxScheduleDateValue(now, maxDays);
   return value >= today && value <= maxDate;
 }
@@ -66,7 +49,7 @@ export function getDbScheduleParts(item = {}) {
 }
 
 function getQueueScheduleStartDate(now = new Date()) {
-  return [QUEUE_SCHEDULE_START_DATE, getLocalDateValue(now)].sort().at(-1);
+  return [QUEUE_SCHEDULE_START_DATE, getLocalDateInputValue(now)].sort().at(-1);
 }
 
 function getQueueSlot(slotIndex, startDate = getQueueScheduleStartDate()) {
@@ -80,8 +63,8 @@ function getQueueSlot(slotIndex, startDate = getQueueScheduleStartDate()) {
 }
 
 function isQueueSlotAllowed(slot, now = new Date()) {
-  const date = new Date(`${slot.scheduledDate}T${slot.scheduledTime}`);
-  return Number.isFinite(date.getTime()) && date.getTime() > now.getTime() + PUBLIC_ROOM_MIN_LEAD_HOURS * 3600000;
+  const date = getMatchScheduledDate(slot);
+  return Boolean(date && date.getTime() > now.getTime() + PUBLIC_ROOM_MIN_LEAD_HOURS * 3600000);
 }
 
 function needsQueueSchedule(post = {}, startDate = getQueueScheduleStartDate()) {

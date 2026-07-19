@@ -856,7 +856,124 @@ async function loadSyncedRecruitingState(context, postId = "") {
   };
 }
 
+function getRequestedRecruitingRoster(operation = {}) {
+  const activeIds = toArray(operation.roster?.playerIds).map((id) => String(id ?? "").trim()).filter(Boolean);
+  const reserveIds = toArray(operation.roster?.reservePlayerIds).map((id) => String(id ?? "").trim()).filter(Boolean);
+  return { activeIds, reserveIds, allIds: [...activeIds, ...reserveIds] };
+}
+
+async function loadRecruitingPartyGuardSnapshot(context, operation = {}) {
+  const postId = String(operation.postId ?? "").trim();
+  const entryId = String(operation.entryId ?? "").trim();
+  if (!postId || !entryId) reject(400, "recruiting_party_target_missing");
+
+  const { data: post, error: postError } = await context.supabase
+    .from("recruiting_posts")
+    .select("id,team_id,player_id,host_side,ranked,allowed_age_groups,age_restriction,rules,room_state,side_capacity")
+    .eq("id", postId)
+    .maybeSingle();
+  if (postError) throw postError;
+  if (!post) reject(404, "recruiting_post_not_found");
+
+  let application = null;
+  const targetTeamId = entryId === "host"
+    ? post.team_id
+    : (entryId.startsWith("team:") ? entryId.slice(5).trim() : "");
+  if (entryId !== "host" && targetTeamId) {
+    const { data, error } = await context.supabase
+      .from("recruiting_applications")
+      .select("team_id,side")
+      .eq("post_id", postId)
+      .eq("team_id", targetTeamId)
+      .eq("kind", "team")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    application = data;
+  }
+
+  const partySide = post.room_state?.partySides?.[entryId];
+  const expectedSide = ["teamA", "teamB"].includes(partySide)
+    ? partySide
+    : (entryId === "host" ? post.host_side : application?.side);
+  return { post, targetTeamId, expectedSide };
+}
+
+async function assertRecruitingPartyManagementGuard(context, operation = {}) {
+  if (!["detachRecruitingPartyPlayer", "setRecruitingTeamPartyRoster"].includes(operation.action)) return;
+  const snapshot = await loadRecruitingPartyGuardSnapshot(context, operation);
+
+  if (operation.action === "detachRecruitingPartyPlayer") {
+    const requestedSide = ["teamA", "teamB"].includes(operation.placement?.side)
+      ? operation.placement.side
+      : null;
+    if (requestedSide && snapshot.expectedSide && requestedSide !== snapshot.expectedSide) {
+      reject(409, "recruiting_party_side_locked");
+    }
+    return;
+  }
+
+  if (!snapshot.targetTeamId) reject(404, "recruiting_team_not_found");
+  const { activeIds, reserveIds, allIds } = getRequestedRecruitingRoster(operation);
+  const uniqueIds = new Set(allIds);
+  if (uniqueIds.size !== allIds.length) reject(409, "recruiting_party_roster_duplicate");
+  if (activeIds.length > Number(snapshot.post.side_capacity ?? 5)) reject(409, "recruiting_side_full");
+  if (reserveIds.length > 2) reject(409, "recruiting_reserve_full");
+  if (!allIds.length) return;
+
+  const { data: members, error: memberError } = await context.supabase
+    .from("team_members")
+    .select("user_id")
+    .eq("team_id", snapshot.targetTeamId)
+    .in("user_id", allIds);
+  if (memberError) throw memberError;
+  const memberIds = new Set(toArray(members).map((row) => row.user_id));
+  if (allIds.some((playerId) => !memberIds.has(playerId))) reject(403, "recruiting_team_roster_not_member");
+
+  let targetMmr = 1200;
+  if (snapshot.post.team_id) {
+    const { data: hostTeam, error: teamError } = await context.supabase
+      .from("teams")
+      .select("mmr")
+      .eq("id", snapshot.post.team_id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (teamError) throw teamError;
+    if (!hostTeam) reject(404, "recruiting_host_team_not_found");
+    targetMmr = Number(hostTeam.mmr ?? 1200);
+  } else if (snapshot.post.player_id) {
+    const { data, error } = await context.supabase.rpc("rankball_event_profile_mmr", {
+      p_profile_id: snapshot.post.player_id,
+    });
+    if (error) throw error;
+    targetMmr = Number(data ?? 1200);
+  }
+
+  const roomState = snapshot.post.room_state ?? {};
+  const rules = snapshot.post.rules ?? {};
+  const mmrRangeMode = ["narrow", "normal", "wide"].includes(roomState.mmrRangeMode ?? rules.mmrRangeMode)
+    ? (roomState.mmrRangeMode ?? rules.mmrRangeMode)
+    : "narrow";
+  const mmrLimitMode = normalizeMmrLimitMode(roomState.mmrLimitMode ?? rules.mmrLimitMode);
+  const allowedAgeGroups = normalizeAllowedAgeGroups(snapshot.post);
+  const eligibilityResults = await Promise.all(allIds.map(async (playerId) => {
+    const { data, error } = await context.supabase.rpc("rankball_event_profile_eligible", {
+      p_profile_id: playerId,
+      p_ranked: snapshot.post.ranked !== false,
+      p_mmr_limit_mode: mmrLimitMode,
+      p_target_mmr: targetMmr,
+      p_mmr_range_mode: mmrRangeMode,
+      p_allowed_age_groups: allowedAgeGroups,
+    });
+    if (error) throw error;
+    return data === true;
+  }));
+  if (eligibilityResults.some((eligible) => !eligible)) reject(403, "team_roster_player_ineligible");
+}
+
 async function applyRecruitingManagementAction(context, operation = {}) {
+  await assertRecruitingPartyManagementGuard(context, operation);
   const { data, error } = await context.supabase.rpc("rankball_recruiting_management_action", {
     p_actor_profile_id: context.profileId,
     p_operation: operation,

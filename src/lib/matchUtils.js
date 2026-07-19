@@ -253,13 +253,13 @@ export function isAutoDecisionDue(match, nowMs = Date.now()) {
 }
 
 export function addDateDays(dateValue, days) {
-  const date = new Date(`${dateValue}T00:00:00`);
-  if (!Number.isFinite(date.getTime())) return "";
-  date.setDate(date.getDate() + days);
+  const match = String(dateValue ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + Number(days || 0)));
   return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
   ].join("-");
 }
 
@@ -284,8 +284,40 @@ export function getLocalDateInputValue(now = new Date()) {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+export function formatKoreanDateTime(value, options = {}) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const displayOptions = Object.keys(options).length ? options : {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+  return date.toLocaleString("ko-KR", {
+    ...displayOptions,
+    timeZone: "Asia/Seoul",
+  });
+}
+
 export function getPublicRoomMaxDateInput(now = new Date()) {
   return addDateDays(getLocalDateInputValue(now), PUBLIC_ROOM_SCHEDULE_MAX_DAYS);
+}
+
+export function isDateWithinPastMonths(value, months = 6, now = new Date()) {
+  const dateValue = String(value ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  if (!dateValue) return true;
+  const todayValue = getLocalDateInputValue(now);
+  const [year, month, day] = todayValue.split("-").map(Number);
+  const targetMonthIndex = month - 1 - Math.max(0, Number(months) || 0);
+  const targetYear = year + Math.floor(targetMonthIndex / 12);
+  const normalizedMonthIndex = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(targetYear, normalizedMonthIndex + 1, 0)).getUTCDate();
+  const cutoffValue = [
+    targetYear,
+    String(normalizedMonthIndex + 1).padStart(2, "0"),
+    String(Math.min(day, lastDay)).padStart(2, "0"),
+  ].join("-");
+  return dateValue >= cutoffValue;
 }
 
 function getSideMajority(side = {}) {
@@ -355,8 +387,7 @@ export function getReportableMatchTimeMs(match = {}) {
   const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
   if (!rawDate) return 0;
   if (match.scheduledDate && rawDate === match.scheduledDate) {
-    const value = new Date(`${match.scheduledDate}T${match.scheduledTime || "00:00"}`).getTime();
-    return Number.isFinite(value) ? value : 0;
+    return getMatchScheduledDate(match)?.getTime() ?? 0;
   }
   const value = new Date(rawDate).getTime();
   return Number.isFinite(value) ? value : 0;

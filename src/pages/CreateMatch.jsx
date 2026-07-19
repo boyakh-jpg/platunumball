@@ -1209,8 +1209,9 @@ export default function CreateMatch({ app }) {
       return;
     }
     setSubmitFeedback("");
+    setSubmitting(true);
+    try {
     if (isSoloRecord) {
-      setSubmitting(true);
       const matchId = await app.actions.createMatch({
         ...draft,
         recordType: RECORD_TYPES.personalRecord,
@@ -1228,12 +1229,10 @@ export default function CreateMatch({ app }) {
       if (typeof matchId === "string" && matchId) navigate("/app/profile/records");
       else {
         setSubmitFeedback(formatCreateSaveError(matchId, "개인 기록 저장에 실패했습니다."));
-        setSubmitting(false);
       }
       return;
     }
     if (isMatchRecordRoom) {
-      setSubmitting(true);
       const matchId = await app.actions.createMatch({
         ...draft,
         recordType: RECORD_TYPES.matchRecord,
@@ -1257,12 +1256,10 @@ export default function CreateMatch({ app }) {
       if (typeof matchId === "string" && matchId) navigate(`/app/recorder?match=${encodeURIComponent(matchId)}`);
       else {
         setSubmitFeedback(formatCreateSaveError(matchId, "경기 기록방 생성에 실패했습니다."));
-        setSubmitting(false);
       }
       return;
     }
     if (isTournamentRoom) {
-      setSubmitting(true);
       const tournamentResult = await app.actions.createTournament({
         ...draft,
         teamIds: draft.tournamentTeamIds,
@@ -1293,11 +1290,9 @@ export default function CreateMatch({ app }) {
       }
       else {
         setSubmitFeedback(formatCreateSaveError(tournamentResult, "대회 저장에 실패했습니다."));
-        setSubmitting(false);
       }
       return;
     }
-    setSubmitting(true);
     const postId = await app.actions.createRecruitingPost({
       visibility: draft.visibility,
       title: draft.title,
@@ -1352,9 +1347,13 @@ export default function CreateMatch({ app }) {
     if (typeof postId === "string" && postId) navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
     else {
       setSubmitFeedback(formatCreateSaveError(postId, "경기 저장에 실패했습니다."));
-      setSubmitting(false);
     }
     return;
+    } catch (error) {
+      setSubmitFeedback(formatCreateSaveError(error, "서버 저장 중 오류가 발생했습니다."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

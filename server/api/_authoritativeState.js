@@ -149,6 +149,12 @@ function getAuthoritativeLoadScope(operation = {}) {
   if (!operation || typeof operation !== "object") return {};
   const action = String(operation.action || "");
   if (action === "approveMatch") return { clientState: true };
+  if (action === "loadTournament") {
+    return {
+      scope: "tournaments",
+      tournamentIds: [operation.tournamentId].filter(Boolean),
+    };
+  }
   const isRecruitingAction = action.includes("Recruiting");
   const isTournamentAction = action.includes("Tournament");
   const invite = operation.invite && typeof operation.invite === "object" ? operation.invite : {};

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine, getMatchSideScore as getSideScore, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { formatStatLine, getMatchSideScore as getSideScore, isDateWithinPastMonths, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function compareRecent(a, b) {
@@ -15,11 +15,7 @@ function getRecordDate(match) {
 }
 
 function isRecordInDetailWindow(match) {
-  const recordDate = new Date(getRecordDate(match));
-  if (!Number.isFinite(recordDate.getTime())) return true;
-  const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - 6);
-  return recordDate >= cutoff;
+  return isDateWithinPastMonths(getRecordDate(match), 6);
 }
 
 function getUserSide(match, userId) {

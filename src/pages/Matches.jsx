@@ -11,7 +11,9 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
 import {
+  addDateDays,
   cleanRoomTitle,
+  getLocalDateInputValue,
   getRoomCompetitionLabel,
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
@@ -159,13 +161,6 @@ const tournamentStatusLabels = {
 };
 const getSafeMatchSide = (match = {}, sideName = "teamA") => getSafeMatchSideBase(match, sideName, { teamIdFallback: null });
 
-function toDateInputValue(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function getMatchDate(match) {
   if (match.scheduledDate) return String(match.scheduledDate).slice(0, 10);
   const scheduledText = String(match.scheduledAt ?? "");
@@ -184,7 +179,7 @@ function isExpiredInstantScheduleRoom(room) {
   return isInstantScheduleRoom(room) && getPublicRoomTimingStatus(room).expired;
 }
 
-function getMonthKey(value = toDateInputValue()) {
+function getMonthKey(value = getLocalDateInputValue()) {
   return String(value).slice(0, 7);
 }
 
@@ -205,12 +200,6 @@ function addMonths(monthKey, amount) {
   const [year, month] = monthKey.split("-").map(Number);
   const date = new Date(year, month - 1 + amount, 1);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function addDays(dateValue, amount) {
-  const date = new Date(`${dateValue}T00:00:00`);
-  date.setDate(date.getDate() + amount);
-  return toDateInputValue(date);
 }
 
 function shouldIncludeScheduleWindow(item, todayValue, maxScheduleDate) {
@@ -478,14 +467,15 @@ function matchesScheduleBranch(item = {}, type = "match", branchFilter = "all") 
   return true;
 }
 
-function getRecruitingRoomsForView(posts = [], view) {
+function getRecruitingRoomsForView(posts = [], view, userId = "") {
+  if (view.id === "todo") return posts.filter((post) => hasPendingRecruitingInvitation(post, userId));
   if (!["active", "scheduled"].includes(view.id)) return [];
-  return posts;
+  return view.id === "scheduled" ? posts.filter((post) => !hasPendingRecruitingInvitation(post, userId)) : posts;
 }
 
 function getScheduleItemsForView(matches = [], recruitingPosts = [], view, userId, hasDateFilter, options = {}) {
   return [
-    ...getRecruitingRoomsForView(recruitingPosts, view).map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
+    ...getRecruitingRoomsForView(recruitingPosts, view, userId).map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
     ...matches
       .filter((match) => shouldShowMatchInList(match, view, userId, hasDateFilter, options))
       .map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
@@ -955,8 +945,8 @@ export default function Matches({ app }) {
   const [selectedRecruitingPostDetailFailedId, setSelectedRecruitingPostDetailFailedId] = useState(null);
   const queryMatchId = searchParams.get("match");
   const activeSelectedMatchId = selectedMatchId ?? queryMatchId;
-  const todayValue = toDateInputValue();
-  const maxScheduleDate = addDays(todayValue, 365);
+  const todayValue = getLocalDateInputValue();
+  const maxScheduleDate = addDateDays(todayValue, 365);
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
   const effectiveRelationFilter = panelMode === "team" ? "team" : relationFilter;
   const effectiveBranchFilter = panelMode === "team" ? "team" : branchFilter;
@@ -1063,7 +1053,11 @@ export default function Matches({ app }) {
     setSelectedMatchDetailFailedId(null);
     if (!queryMatchId) return;
     if (typeof location.state?.matchModalReturnTo === "string" && location.state.matchModalReturnTo.startsWith("/app/")) {
-      navigate(location.state.matchModalReturnTo, { replace: true });
+      if (Number(window.history.state?.idx ?? 0) > 0) {
+        navigate(-1);
+      } else {
+        navigate(location.state.matchModalReturnTo, { replace: true });
+      }
       return;
     }
     if (location.state?.matchModalFromList) {
@@ -1216,7 +1210,7 @@ export default function Matches({ app }) {
   const calendarMatches = useMemo(() => {
     const recruitingRooms = [...matchPageRecruitingPosts]
       .filter((post) => post.status === "open")
-      .filter((post) => ["active", "scheduled"].includes(selectedView.id))
+      .filter((post) => getRecruitingRoomsForView([post], selectedView, app.currentUser.id).length > 0)
       .filter((post) => isRecruitingScheduleRelatedToUser(post, app.state, app.currentUser.id, myTeamIds))
       .filter((post) => {
         if (isInstantScheduleRoom(post)) return false;
@@ -1576,7 +1570,11 @@ export default function Matches({ app }) {
           }}
         />
       ) : selectedRecruitingPostDetailLoading ? (
-        <RoomModalLoadingView />
+        <RoomModalLoadingView onClose={() => {
+          setSelectedRecruitingPostId(null);
+          setSelectedRecruitingPostDetailLoadingId(null);
+          setSelectedRecruitingPostDetailFailedId(null);
+        }} />
       ) : selectedRecruitingPost && selectedRecruitingLobby ? (
         <RecruitingRoomModal
           app={app}

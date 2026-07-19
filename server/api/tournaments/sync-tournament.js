@@ -252,6 +252,15 @@ function getTournamentScopedState(state = {}, tournament = null) {
   };
 }
 
+function toTournamentListMatch(match = {}) {
+  const { teamRosterSnapshot: _teamRosterSnapshot, ...rules } = match.rules ?? {};
+  return {
+    ...match,
+    rules,
+    tournamentListOnly: true,
+  };
+}
+
 async function assertCanLoadTournament(context, tournamentId) {
   const { data: tournament, error: tournamentError } = await context.supabase
     .from("tournaments")
@@ -290,13 +299,12 @@ async function loadTournamentOperation(context, operation = {}) {
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId) ?? null;
   if (!tournament) reject(404, "tournament_not_found");
   const scopedState = getTournamentScopedState(state, tournament);
+  const listMatches = scopedState.matches.map(toTournamentListMatch);
   return {
     ok: true,
     tournamentId,
-    tournament,
-    createdMatches: scopedState.matches,
-    createdMatchCount: scopedState.matches.length,
-    state: scopedState,
+    createdMatchCount: listMatches.length,
+    state: { ...scopedState, matches: listMatches },
   };
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { CalendarDays, ExternalLink, MapPin, Star, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
@@ -51,9 +51,12 @@ export default function CourtDetail({ app }) {
   const [memo, setMemo] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const detailRequestRef = useRef(0);
   const loadCourtDetail = app.actions?.loadCourtDetail;
 
   const refreshDetail = useCallback(async ({ silent = false } = {}) => {
+    const requestId = detailRequestRef.current + 1;
+    detailRequestRef.current = requestId;
     if (!silent) {
       setLoading(true);
       setDetail((current) => current?.court?.id === courtId ? current : localDetail);
@@ -61,6 +64,7 @@ export default function CourtDetail({ app }) {
     setLoadError(null);
     try {
       const result = await loadCourtDetail?.(courtId);
+      if (detailRequestRef.current !== requestId) return;
       if (result?.court) setDetail(result);
       else if (localDetail) setDetail(localDetail);
       else {
@@ -68,6 +72,7 @@ export default function CourtDetail({ app }) {
         setLoadError(getLoadError(new Error("court_detail_load_failed")));
       }
     } catch (error) {
+      if (detailRequestRef.current !== requestId) return;
       const nextError = getLoadError(error);
       if (localDetail) {
         setDetail(localDetail);
@@ -79,12 +84,15 @@ export default function CourtDetail({ app }) {
         setLoadError(nextError);
       }
     } finally {
-      setLoading(false);
+      if (detailRequestRef.current === requestId) setLoading(false);
     }
   }, [courtId, loadCourtDetail, localDetail]);
 
   useEffect(() => {
     refreshDetail();
+    return () => {
+      detailRequestRef.current += 1;
+    };
   }, [refreshDetail]);
 
   const reviewableMatches = detail?.reviewableMatches ?? [];

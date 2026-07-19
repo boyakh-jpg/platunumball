@@ -10,7 +10,7 @@ import {
   STAT_ENTRY_WINDOW_MINUTES,
   normalizeDisputeWindowMinutes,
 } from "../lib/constants.js";
-import { normalizeStatRecorders } from "../lib/matchUtils.js";
+import { addDateDays, getLocalDateInputValue, normalizeStatRecorders } from "../lib/matchUtils.js";
 import {
   clearFuturePregameStartState,
   isFutureScheduledMatch,
@@ -176,9 +176,10 @@ export function makeSoloRecordAnonymousSide({ count, entries = [] } = {}) {
 }
 
 export function getSoloRecordDateRange(now = new Date()) {
+  const today = getLocalDateInputValue(now);
   return {
-    max: now.toISOString().slice(0, 10),
-    min: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10),
+    max: today,
+    min: addDateDays(today, -7),
   };
 }
 

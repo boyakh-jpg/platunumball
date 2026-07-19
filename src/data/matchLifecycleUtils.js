@@ -3,15 +3,11 @@ import {
   POST_MATCH_TITLE_PATTERN,
   normalizeDisputeWindowMinutes,
 } from "../lib/constants.js";
-import { isInstantRoom } from "../lib/matchUtils.js";
+import { getMatchScheduledDate, isInstantRoom } from "../lib/matchUtils.js";
 
 export function getScheduledStartMs(match = {}) {
   if (isInstantRoom(match)) return null;
-  const dateText = match.scheduledDate
-    ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
-    : String(match.scheduledAt ?? "").replace(" ", "T");
-  const date = new Date(dateText);
-  return Number.isFinite(date.getTime()) ? date.getTime() : null;
+  return getMatchScheduledDate(match)?.getTime() ?? null;
 }
 
 export function isFutureScheduledMatch(match = {}) {

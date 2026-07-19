@@ -2,6 +2,7 @@ import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_MODES } from "./constants.j
 import {
   calculatePlayerStatBoost,
   evaluateRecordVerification,
+  getMatchScheduledDate,
   getMatchRecordPlayerIds,
   getMatchSidePlayerIds,
   isMatchRecordMatch,
@@ -69,7 +70,7 @@ function getCredibilityFactor(match = {}) {
 function getScheduleFactor(match = {}) {
   if (!match.preRegistered) return 0.7;
   const created = match.createdAt ? new Date(match.createdAt) : null;
-  const scheduled = match.scheduledDate ? new Date(`${match.scheduledDate}T${match.scheduledTime || "00:00"}`) : null;
+  const scheduled = getMatchScheduledDate(match);
   if (!created || !scheduled || Number.isNaN(created.getTime()) || Number.isNaN(scheduled.getTime())) return 1;
   const minutes = (scheduled.getTime() - created.getTime()) / 60000;
   if (minutes >= 60 * 24 * 3) return 1.15;

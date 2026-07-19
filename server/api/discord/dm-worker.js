@@ -275,7 +275,7 @@ export default async function handler(request, response) {
 
     const { data: queuedRows, error: queueError } = await supabase
       .from("discord_notification_deliveries")
-      .select("id, notification_id, target_user_id, discord_user_id, event, status, payload, queued_at, send_at")
+      .select("id, notification_id, target_user_id, discord_user_id, event, status, payload, queued_at, send_at, attempt_count")
       .eq("status", "queued")
       .is("sent_at", null)
       .lte("send_at", now)
@@ -297,7 +297,7 @@ export default async function handler(request, response) {
       .eq("status", "queued")
       .is("sent_at", null)
       .lte("send_at", now)
-      .select("id, notification_id, target_user_id, discord_user_id, event, status, payload, queued_at, send_at");
+      .select("id, notification_id, target_user_id, discord_user_id, event, status, payload, queued_at, send_at, attempt_count");
 
     if (claimError) throw claimError;
 
@@ -362,21 +362,29 @@ export default async function handler(request, response) {
         sent.push(delivery.id);
       } catch (deliveryError) {
         const failedAt = new Date().toISOString();
+        const attemptCount = Number(delivery.attempt_count ?? 0) + 1;
+        const terminalFailure = attemptCount >= 5;
+        const retryDelayMinutes = [1, 5, 15, 60][Math.min(attemptCount - 1, 3)];
+        const retryAt = new Date(Date.now() + retryDelayMinutes * 60 * 1000).toISOString();
         await supabase
           .from("discord_notification_deliveries")
           .update({
-            status: "queued",
+            status: terminalFailure ? "failed" : "queued",
+            attempt_count: attemptCount,
+            send_at: terminalFailure ? delivery.send_at : retryAt,
             failed_at: failedAt,
             last_error: deliveryError.message || "discord_dm_failed",
             payload: mergePayload(delivery, {
-              status: "queued",
+              status: terminalFailure ? "failed" : "queued",
+              attemptCount,
+              retryAt: terminalFailure ? null : retryAt,
               failedAt,
               error: deliveryError.message || "discord_dm_failed",
             }),
             updated_at: failedAt,
           })
           .eq("id", delivery.id);
-        failed.push({ id: delivery.id, error: deliveryError.message || "discord_dm_failed" });
+        failed.push({ id: delivery.id, terminal: terminalFailure, attemptCount, error: deliveryError.message || "discord_dm_failed" });
       }
     }
 

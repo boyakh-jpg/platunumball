@@ -82,6 +82,7 @@ import {
   getReportableMatchUserIds,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
+  getMatchScheduledDate,
   getMissingMatchAttendance,
   applyOperatorAttendance,
   getPlayerSideName,
@@ -791,6 +792,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const includeProfileSettings = includeUserScoped || profileScope;
   const matchPageScope = scope === "matches";
   const recruitingPageScope = scope === "recruiting";
+  const tournamentPageScope = scope === "tournaments";
   const recruitingListOnly = options.recruitingListOnly === true;
   const relatedDirectoryScope = scope === "full" && options.directoryScope === "related";
   const authUserIdText = String(authUserId || "");
@@ -798,9 +800,15 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const recruitingScopeIds = uniqueScopeIds(options.recruitingPostIds ?? options.recruitingPostId ?? options.postId);
   const tournamentScopeIds = uniqueScopeIds(options.tournamentIds ?? options.tournamentId);
   const matchListOnly = options.matchListOnly === true && !matchScopeIds.length;
+  const tournamentMatchFilter = tournamentPageScope && tournamentScopeIds.length
+    ? (query) => applyIdScope(query, "tournament_id", tournamentScopeIds)
+    : null;
   const matchFilter = composeFilters(
     matchScopeIds.length ? (query) => applyIdScope(query, "id", matchScopeIds) : null,
-    !matchScopeIds.length ? (query) => applyUpdatedBefore(query, "updated_at", options.matchUpdatedBefore ?? options.matchCursor) : null,
+    tournamentMatchFilter,
+    !matchScopeIds.length && !tournamentMatchFilter
+      ? (query) => applyUpdatedBefore(query, "updated_at", options.matchUpdatedBefore ?? options.matchCursor)
+      : null,
   );
   const recruitingFilter = composeFilters(
     recruitingScopeIds.length ? (query) => applyIdScope(query, "id", recruitingScopeIds) : null,
@@ -810,7 +818,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     tournamentScopeIds.length ? (query) => applyIdScope(query, "id", tournamentScopeIds) : null,
     !tournamentScopeIds.length ? (query) => applyUpdatedBefore(query, "updated_at", options.tournamentUpdatedBefore ?? options.tournamentCursor) : null,
   );
-  const privateProfileFilter = clientState && authUserIdText
+  const privateProfileFilter = (clientState || tournamentPageScope) && authUserIdText
     ? (query) => query.eq("auth_user_id", authUserIdText)
     : null;
   const matchLimit = matchScopeIds.length ? null : clientState ? getClientLimit(options.matchLimit, REMOTE_CLIENT_MATCH_LIMIT) : null;
@@ -831,14 +839,14 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     privateProfileFilter
       ? fetchOptionalFilteredRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client, privateProfileFilter)
       : fetchOptionalRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client),
-    includeMatches ? fetchFilteredRows("matches", MATCH_COLUMNS, "updated_at", client, matchFilter, matchLimit, !matchLimit) : [],
+    includeMatches || tournamentPageScope ? fetchFilteredRows("matches", MATCH_COLUMNS, "updated_at", client, matchFilter, matchLimit, !matchLimit) : [],
     includeRecruiting ? fetchFilteredRows("recruiting_posts", RECRUITING_POST_COLUMNS, "updated_at", client, recruitingFilter, recruitingLimit, !recruitingLimit) : [],
     includeTournaments ? fetchFilteredRows("tournaments", TOURNAMENT_COLUMNS, "updated_at", client, tournamentFilter, tournamentLimit, !tournamentLimit) : [],
     includeAppMeta ? fetchAllRows("seasons", SEASON_COLUMNS, "id", client) : [],
     includeAppMeta ? fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client) : [],
   ]);
 
-  if (!profileScope && !matchPageScope && !recruitingPageScope && !relatedDirectoryScope) {
+  if (!profileScope && !matchPageScope && !recruitingPageScope && !tournamentPageScope && !relatedDirectoryScope) {
     [publicProfiles, teams, teamMembers, courts] = await Promise.all([
       fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
       fetchAllRows("teams", TEAM_COLUMNS, "id", client),
@@ -960,7 +968,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const loadedMatchIds = matches.map((match) => match.id).filter(Boolean);
   const loadedRecruitingPostIds = recruitingPosts.map((post) => post.id).filter(Boolean);
   const loadedTournamentIds = tournaments.map((tournament) => tournament.id).filter(Boolean);
-  const shouldFilterMatchChildren = Boolean(matchScopeIds.length || clientState || matchLimit);
+  const shouldFilterMatchChildren = Boolean(matchScopeIds.length || tournamentMatchFilter || clientState || matchLimit);
   const shouldFilterRecruitingChildren = Boolean(recruitingScopeIds.length || clientState || recruitingLimit);
   const shouldFilterTournamentChildren = Boolean(tournamentScopeIds.length || clientState || tournamentLimit);
   const matchChildFilter = shouldFilterMatchChildren ? (query) => applyIdScope(query, "match_id", loadedMatchIds) : null;
@@ -1029,6 +1037,34 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       PUBLIC_PROFILE_COLUMNS,
       "id",
       [...scoped.profileIds, ...(recruitingListOnly ? [] : teamMembers.map((member) => member.user_id))],
+      "id",
+      client,
+      true,
+    );
+    publicProfiles.forEach((profile) => {
+      const mergedProfile = { ...profile, ...(privateProfileById.get(profile.id) ?? {}) };
+      const existingIndex = profiles.findIndex((item) => item.id === mergedProfile.id);
+      if (existingIndex >= 0) profiles[existingIndex] = { ...profiles[existingIndex], ...mergedProfile };
+      else profiles.push(mergedProfile);
+    });
+  }
+  if (tournamentPageScope) {
+    const scopedProfileIds = [...privateProfiles.map((profile) => profile.id), ...uniqueScopeIds(options.profileIds)];
+    const tournamentScope = collectTournamentPageScope(tournaments, tournamentTeams, scopedProfileIds);
+    const matchScope = collectMatchPageScope(matches, matchPlayers, matchResults, playerStats, agreements, approvals, disputes, tournamentScope.profileIds);
+    const teamIds = uniqueScopeIds([...tournamentScope.teamIds, ...matchScope.teamIds, ...uniqueScopeIds(options.teamIds)]);
+    const courtIds = uniqueScopeIds([...tournamentScope.courtIds, ...matchScope.courtIds]);
+    const profileIds = uniqueScopeIds([...tournamentScope.profileIds, ...matchScope.profileIds]);
+    [teams, teamMembers, courts] = await Promise.all([
+      fetchRowsByIds("teams", TEAM_COLUMNS, "id", teamIds, "id", client),
+      fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", teamIds, null, client),
+      fetchCourtRows(client, courtIds),
+    ]);
+    publicProfiles = await fetchRowsByIds(
+      "public_profiles",
+      PUBLIC_PROFILE_COLUMNS,
+      "id",
+      [...profileIds, ...teamMembers.map((member) => member.user_id)],
       "id",
       client,
       true,
@@ -2810,6 +2846,7 @@ export function createTournament(state, draft) {
           ? `${tournament.title} 대회가 시작됐습니다. 경기 ${generated.matches.length}개 생성.`
           : `${tournament.title} 대회방을 만들었습니다. 초대팀 ${teamIds.length}개.`,
         tone: "match",
+        tournamentId: tournament.id,
       },
       ...state.notifications,
     ],
@@ -2860,6 +2897,7 @@ export function approveTournamentTeam(state, tournamentId, teamId, options = {})
           ? `${tournament.title} 대회가 시작됐습니다. 경기 ${generated.matches.length}개 생성.`
           : `${tournament.title} 참가 승인 완료. 남은 팀 승인을 기다립니다.`,
         tone: "match",
+        tournamentId: tournament.id,
       },
       ...state.notifications,
     ],
@@ -3348,7 +3386,7 @@ export function forfeitTournamentMatch(state, tournamentId, matchId, losingSide,
     };
   }
 
-  const scheduledAt = new Date(`${match.scheduledDate ?? ""}T${match.scheduledTime || "00:00"}`).getTime();
+  const scheduledAt = getMatchScheduledDate(match)?.getTime();
   const locked = ["confirmed", "cancelled", "void", "voided", "closed"].includes(match.status) || match.startedAt || match.endedAt || match.result;
   if (locked || !Number.isFinite(scheduledAt) || Date.now() < scheduledAt) {
     return {

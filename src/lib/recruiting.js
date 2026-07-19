@@ -1,5 +1,5 @@
 import { DISPUTE_WINDOW_MINUTES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
-import { isEligibleReferee, isInstantRoom } from "./matchUtils.js";
+import { getMatchScheduledDate, isEligibleReferee, isInstantRoom } from "./matchUtils.js";
 import { getAgeGroupForUser } from "./profileSetup.js";
 import { TIERS, getTierDivision } from "./tier.js";
 
@@ -650,10 +650,7 @@ export function isRecruitingRoomOwner(post = {}, userId = "") {
 }
 
 function getRoomScheduleDate(post = {}) {
-  if (isInstantRoom(post)) return null;
-  if (!post.scheduledDate || !post.scheduledTime) return null;
-  const date = new Date(`${post.scheduledDate}T${post.scheduledTime}`);
-  return Number.isFinite(date.getTime()) ? date : null;
+  return getMatchScheduledDate(post);
 }
 
 export function getRoomClosePenalty(post = {}, nowMs = Date.now()) {

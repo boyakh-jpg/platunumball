@@ -1096,7 +1096,7 @@
 .arena-party-role-buttons button.active {
   border-color: rgba(70, 224, 182, 0.55);
   background: rgba(70, 224, 182, 0.18);
-  color: var(--mint);
+  color: var(--green);
 }
 
 .arena-submit-row {
@@ -2440,7 +2440,7 @@ button.arena-room-player-slot {
 }
 
 .arena-host-kick-row i {
-  color: var(--mint);
+  color: var(--green);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;

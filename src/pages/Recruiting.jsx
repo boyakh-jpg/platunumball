@@ -64,6 +64,7 @@ import { findTeamByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handle
 import { assetUrl } from "../lib/assets.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
+  addDateDays,
   cleanRoomTitle,
   MATCH_DISPUTE_REASON_OPTIONS,
   OTHER_MATCH_DISPUTE_REASON,
@@ -74,6 +75,7 @@ import {
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
   getMatchPlayerDisputePoints,
+  getLocalDateInputValue,
   getMatchRecordPlayerIds,
   getMatchResultEntryPermission,
   getMatchRecordWindow,
@@ -183,37 +185,38 @@ function getRoomTitleSizeClass(title = "") {
   return "";
 }
 
-function getTodayInputValue() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getDateInputValue(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function getStartDateFilterOptions() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayValue = getLocalDateInputValue();
   const dateOptions = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() + index);
-    const day = date.getDay();
+    const dateValue = addDateDays(todayValue, index);
+    const [, month, date] = dateValue.split("-").map(Number);
+    const day = new Date(`${dateValue}T00:00:00Z`).getUTCDay();
     return {
-      id: getDateInputValue(date),
+      id: dateValue,
       type: "date",
-      label: `${date.getMonth() + 1}/${date.getDate()}`,
+      label: `${month}/${date}`,
       subLabel: index === 0 ? "오늘" : index === 1 ? "내일" : ["일", "월", "화", "수", "목", "금", "토"][day],
       weekend: day === 0 ? "sun" : day === 6 ? "sat" : "",
     };
   });
   return [{ id: "instant", type: "instant", label: "즉시", subLabel: "바로" }, ...dateOptions];
+}
+
+function RecruitingRoomLoadingView({ onClose }) {
+  return (
+    <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="arena-modal-status-row">
+          <Badge tone="orange">ROOM LOAD</Badge>
+          <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={18} /></button>
+        </div>
+        <BasketballLoader label="방 불러오는 중" />
+        <div className="arena-modal-close-row">
+          <Button type="button" variant="secondary" size="lg" onClick={onClose}>방 닫기</Button>
+        </div>
+      </aside>
+    </div>
+  );
 }
 
 const RECRUITING_FILTER_PAGE_LIMIT = 50;
@@ -2505,13 +2508,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   }, [app.actions, app.currentUser.id, app.remoteReady, modalPostNeedsDetail, roomPostId, skipInitialDetailLoad, sourceMatch, sourceMatchNeedsRoomDetail]);
 
   useEffect(() => {
-    if (!modalPostNeedsDetail || !roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
+    if (!roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
     const intervalId = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       app.actions.loadRecruitingPost?.(roomPostId);
     }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, modalPostNeedsDetail, roomPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, roomPostId]);
 
   useEffect(() => {
     if (!sourceMatch?.id) return;
@@ -2533,11 +2536,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     if (!roomPostId || !app.remoteReady || !app.currentUser.id || !chatAreaVisible || roomChatLocked) return undefined;
     return app.actions.pollRecruitingChat?.(roomPostId);
   }, [app.actions.pollRecruitingChat, app.currentUser.id, app.remoteReady, chatAreaVisible, roomChatLocked, roomPostId]);
-
-  useEffect(() => {
-    if (!roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
-    return app.actions.subscribeRecruitingRoom?.(roomPostId);
-  }, [app.actions.subscribeRecruitingRoom, app.currentUser.id, app.remoteReady, roomPostId]);
 
   useEffect(() => () => {
     window.clearTimeout(roomShareStatusTimerRef.current);
@@ -4439,7 +4437,7 @@ function RecruitingReady({ app }) {
     courtId: defaultDraftCourt?.id ?? "",
     court: defaultDraftCourt?.name ?? "미정",
     timingType: "scheduled",
-    scheduledDate: getTodayInputValue(),
+    scheduledDate: getLocalDateInputValue(),
     scheduledTime: "20:00",
     mode: "5v5",
     ranked: true,
@@ -4461,7 +4459,7 @@ function RecruitingReady({ app }) {
   const hostNeedsTeam = draft.hostJoinMode === "team";
   const draftInstant = draft.timingType === "instant";
   const hasSchedule = Boolean((draftInstant || (draft.scheduledDate && draft.scheduledTime)) && draft.court);
-  const minScheduleDate = getTodayInputValue();
+  const minScheduleDate = getLocalDateInputValue();
   const maxScheduleDate = getMaxInputValue();
   const draftTimingStatus = getPublicRoomTimingStatus(draft);
   const scheduleAllowed = draftInstant || (draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate && draftTimingStatus.canCreate);
@@ -4471,7 +4469,7 @@ function RecruitingReady({ app }) {
   const selectedRegionDistrict = regionDistrictOptions.includes(regionFilterDistrict) ? regionFilterDistrict : regionDistrictOptions[0] ?? defaultRegionSelection.district;
   const regionFilter = selectedRegionDistrict;
   const selectedRegionKey = stripRegionSuffix(selectedRegionDistrict);
-  const startDateKey = getTodayInputValue();
+  const startDateKey = getLocalDateInputValue();
   const startDateOptions = useMemo(() => getStartDateFilterOptions(), [startDateKey]);
   const startFilterLabel = startDateOptions.find((option) => option.id === startFilter)?.label ?? "전체 시작일";
   const filterRequestKey = `${regionFilterSido}:${selectedRegionKey}:${startFilter}`;
@@ -4641,6 +4639,7 @@ function RecruitingReady({ app }) {
       return;
     }
     if (!app.remoteReady || !app.currentUser.id) return;
+    if (selectedPostDetailFailed) return;
     const explicitDetailReload = selectedPostDetailLoadingId === selectedPostId;
     if (!explicitDetailReload && selectedPost && selectedPost.listCardOnly !== true) {
       setSelectedPostDetailFailedId((currentId) => currentId === selectedPostId ? null : currentId);
@@ -4651,7 +4650,7 @@ function RecruitingReady({ app }) {
     if (!explicitDetailReload && selectedPostRefreshRef.current === refreshKey && selectedPost?.listCardOnly !== true) return;
     selectedPostRefreshRef.current = refreshKey;
     requestSelectedPostDetail(selectedPostId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, selectedPost?.listCardOnly, selectedPostDetailLoadingId, selectedPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, selectedPost?.listCardOnly, selectedPostDetailFailed, selectedPostDetailLoadingId, selectedPostId]);
 
   useEffect(() => {
     if (!selectedPostId || !app.remoteReady || !app.currentUser.id) return undefined;
@@ -4662,7 +4661,7 @@ function RecruitingReady({ app }) {
       app.actions.loadRecruitingPost?.(selectedPostId);
     }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedPostDetailFailed, selectedPostId]);
 
   useEffect(() => {
     if (!targetPostId) return;
@@ -4926,7 +4925,7 @@ function RecruitingReady({ app }) {
           }}
         />
       ) : selectedPostPending || selectedPostDetailLoading ? (
-        <BasketballLoader overlay label="방 불러오는 중" />
+        <RecruitingRoomLoadingView onClose={closeSelectedPost} />
       ) : null}
 
       {composeOpen ? (

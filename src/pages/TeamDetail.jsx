@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
@@ -12,7 +13,7 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
-import { getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
+import { getMatchSideScore as getSideScore, isDateWithinPastMonths } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function getTeamSide(match, teamId) {
@@ -27,11 +28,7 @@ function getHistoryDate(match) {
 
 function isHistoryInDetailWindow(match) {
   if (match.status !== "confirmed") return true;
-  const recordDate = new Date(getHistoryDate(match));
-  if (!Number.isFinite(recordDate.getTime())) return true;
-  const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - 6);
-  return recordDate >= cutoff;
+  return isDateWithinPastMonths(getHistoryDate(match), 6);
 }
 
 const historyStatusLabel = {
@@ -82,7 +79,10 @@ export default function TeamDetail({ app }) {
     };
   }, [app.actions, app.remoteReady, teamId]);
 
-  if (!team && !app.remoteReady) return null;
+  const directoryPending = app.remoteReady === false
+    || app.directoryStatus?.loading
+    || (app.directoryStatus?.loaded === false && !app.directoryStatus?.error);
+  if (!team && directoryPending) return <BasketballLoader overlay label="팀 불러오는 중" />;
   if (!team) return <Navigate to="/app/teams" replace />;
 
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));

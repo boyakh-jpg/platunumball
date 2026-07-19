@@ -10,23 +10,9 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { getMatchRoomPhase } from "../lib/matchUtils.js";
+import { addDateDays, getLocalDateInputValue, getMatchRoomPhase } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/matches-arena.css";
-
-function toDateInputValue(date = new Date()) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
-}
-
-function addDays(dateValue, amount) {
-  const date = new Date(`${dateValue}T00:00:00`);
-  date.setDate(date.getDate() + amount);
-  return toDateInputValue(date);
-}
 
 const formatLabels = {
   league: "리그",
@@ -424,10 +410,9 @@ export default function TournamentDetail({ app }) {
     Promise.resolve(app.actions.loadTournament?.(tournamentId)).then((count) => {
       if (!count) setTournamentMissing(true);
     }).catch(() => {
-      requestedTournamentIdRef.current = "";
       setTournamentMissing(true);
     });
-  }, [app.actions, app.remoteReady, tournamentId]);
+  }, [app.actions, app.remoteReady, tournamentId, tournamentMissing]);
 
   if (!tournament && !tournamentMissing) {
     return <BasketballLoader overlay label="대회 불러오는 중" />;
@@ -440,6 +425,10 @@ export default function TournamentDetail({ app }) {
         <section className="tournament-empty">
           <strong>대회 없음</strong>
           <p>삭제됐거나 아직 동기화되지 않은 대회다.</p>
+          <Button type="button" variant="secondary" onClick={() => {
+            requestedTournamentIdRef.current = "";
+            setTournamentMissing(false);
+          }}>다시 시도</Button>
         </section>
       </div>
     );
@@ -477,8 +466,8 @@ export default function TournamentDetail({ app }) {
   const championTeamId = verticalBracket.finalNode ? getNodeWinnerTeamId(verticalBracket.finalNode) : "";
   const championTeam = championTeamId ? teamById[championTeamId] : null;
   const canManageSchedule = tournament.createdBy === app.currentUser.id;
-  const todayValue = toDateInputValue();
-  const maxScheduleDate = addDays(todayValue, 365);
+  const todayValue = getLocalDateInputValue();
+  const maxScheduleDate = addDateDays(todayValue, 365);
   const leagueFixtures = tournament.bracket?.fixtures ?? tournamentMatches.map((match) => ({
     matchId: match.id,
     round: match.tournamentRound,

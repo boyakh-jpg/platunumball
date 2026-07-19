@@ -3,7 +3,7 @@
 }
 
 html {
-  min-width: 320px;
+  min-width: 0;
   background: var(--bg);
   --bottom-nav-height: 58px;
 }
@@ -2326,7 +2326,7 @@ span.referee-hover-card {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--input);
+  background: var(--input-bg);
   overflow: hidden;
 }
 
@@ -4593,7 +4593,7 @@ input[type="color"] {
   align-self: start;
   border: 1px solid rgba(70, 229, 197, 0.35);
   border-radius: 999px;
-  color: var(--accent);
+  color: var(--green);
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 900;
@@ -6544,7 +6544,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .recruiting-mini-list:empty::before {
-  content: "??吏??紐⑥쭛湲???놁뒿?덈떎.";
+  content: "아직 모집 글이 없습니다.";
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 800;
@@ -7335,7 +7335,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .admin-section-tabs > button.active {
   border-color: rgba(244, 88, 70, 0.56);
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--rb-orange) 12%, var(--card-bg));
 }
 
 .admin-section-tab-icon {
@@ -7345,7 +7345,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   place-items: center;
   border-radius: var(--ui-control-radius);
   background: rgba(244, 88, 70, 0.12);
-  color: var(--accent);
+  color: var(--rb-orange);
 }
 
 .admin-section-tabs > button > span:nth-child(2) {
@@ -7372,7 +7372,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .admin-section-tabs b {
-  color: var(--yellow);
+  color: var(--rb-gold);
   font-size: 1.18rem;
 }
 
@@ -7417,7 +7417,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .admin-backend-note svg {
-  color: var(--yellow);
+  color: var(--rb-gold);
   flex: 0 0 auto;
 }
 
@@ -7563,7 +7563,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .admin-court-note {
   margin: 0;
-  border-left: 3px solid var(--yellow);
+  border-left: 3px solid var(--rb-gold);
   padding: 8px 10px;
 }
 
@@ -7738,7 +7738,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .admin-sort-counts b {
-  color: var(--yellow);
+  color: var(--rb-gold);
   font-size: 1rem;
   line-height: 1;
 }
@@ -8062,7 +8062,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .dispute-score-request em {
-  color: var(--soft);
+  color: var(--muted);
   font-style: normal;
   font-size: 0.72rem;
 }
@@ -10553,7 +10553,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 }
 
 .home-rank-board-head {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 18px;
   background: var(--surface);
@@ -10662,7 +10662,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
   border: 1px solid rgba(70, 224, 182, 0.34);
   border-radius: 999px;
   background: rgba(70, 224, 182, 0.12);
-  color: var(--mint);
+  color: var(--green);
   font-size: 0.72rem;
   font-weight: 950;
   letter-spacing: 0.04em;
@@ -10771,7 +10771,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 }
 
 .rank-home .rank-mode-pill span {
-  color: var(--mint);
+  color: var(--green);
 }
 
 .rank-home .rank-mode-pill strong {
@@ -15232,7 +15232,7 @@ button:disabled,
 @media (max-width: 1020px) {
   .app-main {
     --app-main-pad-top: var(--page-gutter);
-    --app-main-pad-x: var(--page-gutter);
+    --app-main-pad-x: 16px;
   }
 }
 
@@ -15894,6 +15894,7 @@ html[data-theme="light"] .create-match-page > .page-header {
 html[data-theme="light"] .create-match-page > .page-header h1 {
   color: var(--rb-text);
   text-shadow: none;
+  word-break: keep-all;
 }
 
 .create-match-page > .page-header p:not(.eyebrow),

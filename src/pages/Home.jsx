@@ -13,7 +13,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
+import { addDateDays, canUserResolveMatchDispute, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
@@ -22,19 +22,6 @@ import { getNotificationDueAt, getNotificationHref, isHomeActionNotification, is
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
-
-function toDateInputValue(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function addDays(dateValue, amount) {
-  const date = new Date(`${dateValue}T00:00:00`);
-  date.setDate(date.getDate() + amount);
-  return toDateInputValue(date);
-}
 
 function getScheduleDate(item = {}) {
   if (item.scheduledDate) return String(item.scheduledDate).slice(0, 10);
@@ -157,8 +144,8 @@ export default function Home({ app }) {
     .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr), [app.state.teams, user.id]);
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
-  const todayValue = toDateInputValue();
-  const maxScheduleDate = addDays(todayValue, 365);
+  const todayValue = getLocalDateInputValue();
+  const maxScheduleDate = addDateDays(todayValue, 365);
   const upcomingItems = useMemo(() => {
     const matchItems = [...app.state.matches]
       .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase))

@@ -1066,6 +1066,7 @@ flowchart TD
 
 1. 이의신청 창은 경기 종료 후 최대 30분.
    - 방 생성 기본값도 30분이며 DB 허용 최대값은 60분이다.
+   - 리그·토너먼트 자동 생성 경기도 항상 기본값 30분으로 저장하며, 대회 경기 생성 DB 함수가 이를 강제한다.
 2. 짧고 단순해야 한다.
 3. 복잡한 모순 이의는 고객센터/관리자 처리로 넘긴다.
 4. 이의제기는 경기 참가자, 후보, 기록자, 방장, 심판이 할 수 있다.
@@ -2313,7 +2314,7 @@ flowchart TD
 - Profile region edits use the canonical `REGION_TREE` selects and save `region`, `regionSido`, and `regionDistrict` together. Region must not be edited as free text.
 - `REGION_TREE` uses `전남광주통합특별시` as the canonical Gwangju/Jeonnam sido. Existing `광주광역시`, `전라남도`, `전남광주특별시`, `광주특별시`, and `광주전남특별통합시` values infer to that canonical sido before saving.
 - Recruiting public join waits for the server action result. On success the frontend keeps the joined room selected, refreshes that room detail explicitly, and pins the URL to `?post=`. Direct `?post=` entry selects the pending room id while detail loads. Badge/feed counts still must not trigger unrelated list reloads.
-- Recruiting room modal open is an explicit detail view and may reload that single `postId` even when a list card already exists. Open modals subscribe to recruiting post/application row changes and reload only that room detail; they must not refresh the whole recruiting list.
+- Recruiting room modal open is an explicit detail view and may reload that single `postId` even when a list card already exists. Open modals poll only that room detail every 15 seconds while the tab is visible; they do not use Supabase Realtime or refresh the whole recruiting list.
 - Recruiting invite search keeps selected players across query/result clicks, sends selected players in one invite action, and refreshes the same room detail after invite success.
 - Recruiting invite search must apply the same `mmrLimitMode="block"` gate as the server before selection, including remote search results.
 - In Supabase mode, recruiting referee invite search must use `/api/search` referee results backed by active `referee_appointments`; local profile/settings caches are not authoritative for inviting other referees.
@@ -2657,3 +2658,45 @@ flowchart TD
 9. 심판 없는 경기의 후보 기록자는 명시된 기록자를 우선하고, 없으면 해당 사이드 첫 후보를 사용한다. 프론트와 DB가 같은 순서로 판정한다.
 10. 심판의 전체 기록 권한은 현재 배정뿐 아니라 활성 `referee_appointments`, 임기, 최소 신뢰도를 DB에서 다시 확인한다.
 11. 다른 기록자의 저장 결과를 다시 불러오면 `matches.updated_at`을 기준으로 열린 기록 draft와 PTS 합산 점수를 갱신한다.
+
+## 2026-07-19 승인·연동·파생 캐시 강제
+
+1. 일반 `approval` 확정은 현재 슬롯과 `playedPlayerIds`를 합친 실제 출전자 기준으로 양 사이드 과반 승인을 모두 요구한다. 방장·심판·`resumeMatchApproval`도 과반을 우회하지 못한다.
+2. `resumeMatchApproval`은 `disputed` 단계 전용이다. 심판이 있으면 현재 심판, 없으면 방장만 이의 수정안을 확정한다.
+3. 교체되어 현재 슬롯에서 내려간 선수도 `playedPlayerIds`로 승인권과 MMR 반영 대상을 유지한다. 팀 역할은 대회 명단 스냅샷, 현재 팀원, 수락된 팀 초대 순으로 확인하며 근거 없는 `regular` 추정은 하지 않는다.
+4. `endMatch`는 DB에 `started_at`이 이미 저장된 경기만 허용한다. 종료 요청이 시작 시각을 임의 생성하면 안 된다.
+5. 종료 후 심판이 없는 후보 기록자도 방장·일반 출전자와 같이 아직 제출되지 않은 실제 출전자의 `PTS`만 보완한다. 기존 득점과 고급 기록은 수정하지 못한다.
+6. `/api/profile/upsert`의 `age_group`은 잠긴 `birth_year`에서 서버가 계산한다. 클라이언트가 보낸 연령군으로 덮어쓰지 않는다.
+7. Discord 최초 연결은 callback이 Discord `/users/@me`로 확인한 사용자 ID와 앱 프로필 ID를 5분 유효 HMAC proof로 전달한다. access token과 proof는 프로필에 저장하지 않으며 현재 인증 프로필·ID·서명·만료가 모두 맞아야 연결한다.
+8. Discord 대회 버튼은 `/app/tournaments/:tournamentId`를 연다. 버튼 ID는 조회 경로일 뿐 참가·승인 권한을 부여하지 않는다.
+9. 아직 확정되지 않은 경기의 생성·수정은 구장 완료 경기 수를 바꾸지 않으므로 구장 평점 캐시를 재계산하지 않는다. 확정 경기의 구장·상태가 집계 대상에 들어오거나 빠질 때만 갱신한다.
+10. 시뮬레이션 일괄 정리는 피드·프로필 요약·구장 지표 row trigger를 transaction 범위에서 잠시 억제하고, 정리 완료 후 영향 대상만 한 번 재계산한다. 일반 서비스 transaction에는 이 억제를 적용하지 않는다.
+11. Discord 연동 화면은 프로필 서버 저장이 성공한 뒤에만 연동 완료와 Discord 알림 활성화를 표시한다. proof 검증이나 저장이 실패하면 낙관적 연결 상태를 복원한다.
+12. 날짜와 시간이 분리 저장된 경기·모집방은 몰수 가능 시각, 취소 패널티, 큐 일정, 신뢰도 가중치, 신고 가능 기간까지 모두 `Asia/Seoul(+09:00)`로 해석한다. 프론트와 서버 신고 검증이 같은 시각 기준을 사용한다.
+13. 대회 경기 A/B 사이드 교체 JSON 함수는 내부 JSON 순회 연산과 같은 `STABLE` 변동성을 선언한다. 플래너가 이를 상수 함수로 오인해 결과를 재사용하지 않게 한다.
+14. 대회 상세 조회는 해당 대회, 연결 경기, 참가팀, 관련 사용자와 구장만 읽는다. 조회 응답은 `state`를 단일 원본으로 사용하며 같은 대회·경기를 생성 결과 필드에 중복하지 않는다. 대진표 경기에는 반복되는 `teamRosterSnapshot`을 싣지 않고, 방을 열 때 경기 상세 API가 전체 명단을 불러온다. 대회 생성·승인 reducer의 전체 검증 상태와 상세 조회용 축약 상태를 분리한다.
+15. 과거 시드·진단 경기에서 대체 문자 `?`로 손상된 구장명은 임의 추정하지 않고 `미정`으로 정리한다. 공·공격권·파울 규칙은 현재 표준 기본값으로 복구하고 손상된 메모는 비운다.
+16. 대회 생성·승인·시작 알림 payload는 `tournamentId`를 항상 보존한다. 시뮬레이션 정리는 `sim_` 대회 알림과 명시적인 `Backend simulation` 고아 알림을 제거하고, 참조 알림 없이 남은 `sim_` Discord delivery도 함께 제거한다.
+17. 시뮬레이션 모집방은 `closed` 보관 대상이 아니다. cleanup은 중단된 과거 실행의 `sim_q_` 방도 250개씩 채팅·Discord 링크·피드·신청·알림과 함께 삭제하며, 남은 개수가 0이 될 때까지 제한 횟수 안에서 반복한다.
+18. `rankball_upsert_room_feed`와 `rankball_upsert_room_feed_card`는 파생 캐시 내부 쓰기 함수다. 브라우저의 `anon`·`authenticated` 호출을 허용하지 않고 `service_role`과 DB trigger만 실행한다.
+19. 경기 확정 잠금 순서는 `대회 -> 경기 -> 프로필 ID 정렬 -> 팀 ID 정렬`이다. MMR 계산은 잠금 뒤의 프로필 값과 한 번 동결한 팀 MMR snapshot을 사용해 동시 경기 확정과 팀 순회 순서에 따라 결과가 달라지지 않게 한다.
+20. 방이 취소·무효·종료·만료되면 Discord 대기열은 알림 ID 연결뿐 아니라 payload의 `matchId`·`recruitingPostId`·`postId`로도 제거한다. 웹 알림과 Discord delivery ID가 달라도 stale 리마인더를 남기지 않는다.
+21. 대회 자동 경기의 `preferredMatchIds`는 같은 대회·라운드·fixture에 이미 연결된 경기만 재사용한다. 다른 경기 ID, 중복 ID, bye를 제외한 fixture 순서와 맞지 않는 ID는 거부한다.
+22. 팀전 경기의 팀 소속 선수는 확정된 A/B 사이드를 넘나들 수 없다. 모집방의 팀 파티 분리도 해당 파티가 승인된 사이드 안에서만 허용한다.
+23. 팀전 출전·후보 명단은 중복과 정원 초과를 거부하며, 모든 선수가 해당 팀의 현재 팀원이고 방의 연령·MMR 조건을 만족해야 한다. 서버 사전 검증과 DB reducer가 같은 규칙을 강제한다.
+24. 새 팀의 최초 명단은 생성자 본인 1명과 `captain` 역할만 허용한다. 다른 사용자는 팀 초대 수락 흐름을 거치기 전 명단에 넣을 수 없다.
+25. 이미 승인된 구장 신청은 신고 상태로 되돌릴 수 없다. 재신고 요청은 신뢰도 차감이나 상태 변경 없이 같은 transaction에서 거부한다.
+26. 심판 시험 시작은 사용자별 transaction lock 뒤 최근 `available_after`를 확인해 병렬 요청으로 7일 쿨다운을 우회하지 못하게 한다.
+27. 경기·선수 신고는 신고자·종류·대상 조합별 transaction lock을 사용한다. 동시에 같은 활성 신고가 들어오면 하나만 생성하고 나머지는 기존 신고를 반환한다.
+28. `match_disputes` 단건 경기 조회는 `match_id` 인덱스를 사용한다. 경기 상세 재조회가 분쟁 테이블 전체를 순차 스캔하지 않는다.
+29. 모집방 상태 갱신은 열린 방 상세만 15초 간격으로 polling한다. `recruiting_posts`와 `recruiting_applications`를 Supabase Realtime publication에 두지 않는다.
+30. 시뮬레이션 정리는 원본 경기·모집방이 먼저 삭제됐더라도 `sim_` ID, 시뮬레이션 대회·모집방 참조, 명시적인 `Backend simulation` 제목으로 남은 피드와 카드 orphan을 제거한다.
+31. `public_profiles`는 공개 프로필 열람용 projection이다. `anon`과 `authenticated`는 `SELECT`만 가능하고 뷰를 통한 삽입·수정·삭제는 허용하지 않는다.
+32. 구장 승인, 관리자 임명 연장, 관리자 레벨 판정, 파생 피드 재계산을 포함한 서버 소유 RPC와 정규화 테이블 쓰기는 `service_role`만 수행한다. 클라이언트가 actor ID나 관리자 레벨을 직접 넣어 호출할 수 없다.
+33. 대회 경기 목록의 축약 객체는 이미 불러온 상세 경기의 규칙·명단을 덮어쓰지 않는다. 상세 객체가 도착하면 축약 표식을 제거해 이후 목록 갱신에서도 상세 상태를 보존한다.
+34. 팀에는 `captain`이 정확히 1명만 존재한다. 팀 저장과 초대 수락은 `팀 -> 사용자 ID 정렬` 순서의 transaction lock을 공유하며, 사용자당 최대 3팀과 팀당 최대 10명 제한을 병렬 요청에서도 강제한다.
+35. Discord DM 배송은 클라이언트 payload를 저장하지 않는다. 서버에 실제로 존재하고 현재 사용자에게 귀속된 알림만 서버가 다시 조립하며, 알림당 배송 row는 1개다. 실패는 1·5·15·60분 간격으로 재시도하고 5회 실패하면 `failed`로 종료한다.
+36. 알림 삭제는 연결된 Discord 배송을 같은 transaction의 delete trigger로 함께 제거한다. 읽은 알림 7일 보존과 수동 삭제 모두 고아 배송을 만들지 않는다.
+37. 경기의 `cancelled/canceled/void/voided/closed`, 모집방의 `cancelled/canceled/closed/expired` 상태는 사용자 room feed를 즉시 비활성화한다. 파생 피드 재계산도 이 상태를 다시 활성화하거나 카드 보존 시각을 연장하지 못한다. 비활성 feed와 카드의 물리 삭제는 기존 7일 보존 정책을 따른다.
+38. 로그인 계정이 바뀌면 이전 계정에서 시작한 비동기 응답은 현재 상태에 병합하지 않는다. 상세·목록·신고 가능 경기·Discord 동기화 promise와 pending 집합도 계정 단위로 초기화한다.
+39. 경기방과 설정 화면의 시각 표시는 브라우저 시간대와 무관하게 `Asia/Seoul`을 사용한다.

@@ -17,6 +17,7 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import {
+  formatKoreanDateTime,
   formatStatLine,
   MATCH_DISPUTE_REASON_OPTIONS,
   OTHER_MATCH_DISPUTE_REASON,
@@ -139,7 +140,7 @@ function getPointAudit(match, score, sideName) {
 
 function formatWindowTime(value) {
   if (!value) return "일정 없음";
-  return value.toLocaleString("ko-KR", {
+  return formatKoreanDateTime(value, {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -238,6 +239,7 @@ export default function MatchRoom({ app }) {
     [app.state.matches, matchId],
   );
   const requestedMatchIdRef = useRef("");
+  const matchDetailRequestSequenceRef = useRef(0);
   const [matchDetailMissing, setMatchDetailMissing] = useState(false);
   const [score, setScore] = useState({
     scoreA: match?.result?.scoreA ?? match?.teamA?.score ?? 21,
@@ -265,20 +267,32 @@ export default function MatchRoom({ app }) {
   useBodyScrollLock(Boolean(statEditorPlayerId || soloRecordDeleteOpen));
 
   useEffect(() => {
+    matchDetailRequestSequenceRef.current += 1;
+    requestedMatchIdRef.current = "";
+    setMatchDetailMissing(false);
+  }, [app.currentUser.id, matchId]);
+
+  useEffect(() => {
     if (!matchId || app.remoteReady === false || requestedMatchIdRef.current === matchId) return;
     setMatchDetailMissing(false);
+    requestedMatchIdRef.current = matchId;
+    const requestSequence = matchDetailRequestSequenceRef.current;
     const request = app.actions.loadMatchDetail?.(matchId);
     if (!request?.then) {
-      if (!match && !request) setMatchDetailMissing(true);
+      if (!match && !request) {
+        requestedMatchIdRef.current = "";
+        setMatchDetailMissing(true);
+      }
       return;
     }
-    requestedMatchIdRef.current = matchId;
     request.then((count) => {
+      if (matchDetailRequestSequenceRef.current !== requestSequence || requestedMatchIdRef.current !== matchId) return;
       if (!count) {
         requestedMatchIdRef.current = "";
         if (!match) setMatchDetailMissing(true);
       }
     }).catch(() => {
+      if (matchDetailRequestSequenceRef.current !== requestSequence || requestedMatchIdRef.current !== matchId) return;
       requestedMatchIdRef.current = "";
       if (!match) setMatchDetailMissing(true);
     });
