@@ -423,7 +423,7 @@ export default function Home({ app }) {
         href: `/app/teams/${team.id}`,
         score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(favoriteTeamIds.includes(team.id)) * 20000 + Number(team.region === user.region) * 10000 + team.mmr,
         haystack: `${team.name} ${hashtag} ${team.region} ${team.homeCourt}`,
-        teamColor: team.accent,
+        team,
         hashtag,
       };
     });
@@ -482,7 +482,7 @@ export default function Home({ app }) {
           meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
           href: `/app/teams/${team.id}`,
           haystack: `${team.name} ${hashtag} ${team.region} ${team.homeCourt}`,
-          teamColor: team.accent,
+          team,
           hashtag,
         };
       });
@@ -533,7 +533,7 @@ export default function Home({ app }) {
   const renderHomeSearchItem = (item) => (
     <Link key={item.id} to={item.href}>
       {item.avatar ? <span className={getDiscordAvatarClassName(item.user, "avatar small")} style={getDiscordAvatarStyle(item.user)}>{item.label.slice(0, 1)}</span> : null}
-      {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
+      {item.team ? <TeamEmblem team={item.team} size="xs" /> : null}
       {item.court ? <span className="court-mini-dot" /> : null}
       <span className="rank-result-main">
         <strong>{item.label}</strong>
@@ -552,7 +552,7 @@ export default function Home({ app }) {
         kind: "TEAM",
         meta: `${item.region ?? "지역 미정"} · ${item.homeCourt ?? "홈코트 미정"} · ${item.mmr ?? 1200}`,
         href: `/app/teams/${item.id}`,
-        teamColor: item.accent,
+        team: item,
         hashtag,
         searchText: item.searchText,
       };

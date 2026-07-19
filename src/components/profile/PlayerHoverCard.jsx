@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import HoverPortal from "../common/HoverPortal.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
+import TeamEmblem from "../team/TeamEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle, getDiscordDisplayName, getDiscordProfileUrl } from "../../lib/discord.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
@@ -212,7 +213,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
           <b>대표팀</b>
           {activeTeam ? (
             <span>
-              <i style={{ "--team-color": activeTeam.accent }} />
+              <TeamEmblem team={activeTeam} size="xs" />
               <strong>{activeTeam.name}</strong>
               <em>{getTeamHashtag(activeTeam)} · {roleLabel(activeTeam.myRole)}</em>
               <span className="hover-team-tier">

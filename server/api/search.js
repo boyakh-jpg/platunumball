@@ -165,6 +165,8 @@ function toTeam(row = {}, memberRows = []) {
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     accent: row.accent,
+    emblemKey: row.emblem_key ?? null,
+    emblemUpdatedAt: row.emblem_updated_at ?? null,
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? row.created_at ?? null,
     members: memberRows.map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),

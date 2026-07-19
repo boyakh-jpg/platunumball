@@ -630,6 +630,14 @@ Current state:
 
 Required env:
 - `VITE_ASSET_BASE_URL=https://your-r2-public-domain`
+- `CLOUDFLARE_ACCOUNT_ID=...`
+- `CLOUDFLARE_R2_API_TOKEN=...` (`rankball` bucket object write/delete only)
+- `CLOUDFLARE_R2_BUCKET=rankball`
+
+Team emblem writes:
+- Browser converts the source to square WebP, at most `512x512` and `300KB`.
+- `POST /api/teams/emblem` verifies the authenticated captain and writes `team-emblems/{teamId}/{contentHash}.webp`.
+- `teams.emblem_key` is the source of truth. `VITE_ASSET_BASE_URL` resolves the public URL.
 
 Important:
 - R2 public URL must contain files under matching paths:

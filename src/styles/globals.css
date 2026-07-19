@@ -992,13 +992,6 @@ span.referee-hover-card {
   padding: 8px;
 }
 
-.player-hover-team i {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--team-color, var(--green));
-}
-
 .team-hover-tier {
   grid-template-columns: 88px minmax(0, 1fr);
   align-items: center;
@@ -1985,6 +1978,19 @@ span.referee-hover-card {
   line-height: 1;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.team-emblem.has-image {
+  background: color-mix(in srgb, var(--surface-2) 94%, var(--team-color, var(--rb-orange)) 6%);
+}
+
+.team-emblem img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 3px;
+  border-radius: inherit;
+  object-fit: contain;
 }
 
 .team-emblem-xs {
@@ -5973,14 +5979,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-weight: 850;
 }
 
-.team-mini-dot {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--team-color, var(--green));
-}
-
 .court-mini-dot {
   display: grid;
   width: 24px;
@@ -8140,6 +8138,41 @@ html[data-theme="light"] .search-picker-result-row.selected {
   opacity: 0.4;
 }
 
+.team-emblem-editor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+}
+
+.team-emblem-editor > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.team-emblem-editor small,
+.team-emblem-editor em {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.team-emblem-editor em {
+  color: var(--rb-gold);
+}
+
+.team-emblem-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .team-danger-zone {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -9974,6 +10007,18 @@ html[data-theme="light"] .team-search-popover button.selected {
   .stat-referee-panel,
   .tier-range-note {
     grid-template-columns: 1fr;
+  }
+
+  .team-emblem-editor {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .team-emblem-editor-actions {
+    grid-column: 1 / -1;
+  }
+
+  .team-emblem-editor-actions .button {
+    flex: 1 1 0;
   }
 
   .stat-editor-backdrop {
@@ -11974,7 +12019,7 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 .player-hover-team > span {
-  grid-template-columns: 20px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   gap: 4px 8px;
 }
 

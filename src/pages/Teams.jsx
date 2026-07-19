@@ -7,6 +7,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
+import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, getTeamRoleLabel } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
@@ -203,7 +204,7 @@ export default function Teams({ app }) {
               return (
                 <TeamHoverCard key={team.id} team={team} as="span" className="my-team-row" to={`/app/teams/${team.id}${isCaptain ? "#team-control" : ""}`}>
                   <span className="team-rank-chip">#{team.rank}</span>
-                  <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
+                  <TeamEmblem team={team} size="xs" />
                   <strong>{team.name}</strong>
                   <em>{getTeamRoleLabel(team.myRole)} · {team.mmr} MMR · {winRate}%</em>
                   <span className="my-team-tier">

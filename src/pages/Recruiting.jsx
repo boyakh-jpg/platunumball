@@ -30,6 +30,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
+import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { ensureTeamPartyLeader } from "../data/teamMappers.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
@@ -1918,7 +1919,7 @@ function InvitePanel({
         <div className="arena-invite-team-picker">
           <div className="arena-invite-team-head">
             <>
-              <span className="team-dot" style={{ "--team-color": rosterTeam.accent }} />
+              <TeamEmblem team={rosterTeam} size="xs" />
               <span>
                 <strong>{rosterTeam.name}</strong>
                 <em>{getTeamHashtag(rosterTeam)} · {rosterTeam.mmr} MMR</em>

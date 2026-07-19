@@ -38,6 +38,7 @@ import systemFeedAudit from "../server/api/system/feed-audit.js";
 import systemMaintenance from "../server/api/system/maintenance.js";
 import systemSchemaHealth from "../server/api/system/schema-health.js";
 import teamList from "../server/api/teams/list.js";
+import teamEmblem from "../server/api/teams/emblem.js";
 import teamSyncTeam from "../server/api/teams/sync-team.js";
 import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.js";
 
@@ -82,6 +83,7 @@ const ROUTES = new Map([
   ["/system/maintenance", systemMaintenance],
   ["/system/schema-health", systemSchemaHealth],
   ["/teams/detail", teamList],
+  ["/teams/emblem", teamEmblem],
   ["/teams/list", teamList],
   ["/teams/sync-team", teamSyncTeam],
   ["/tournaments/sync-tournament", tournamentSyncTournament],

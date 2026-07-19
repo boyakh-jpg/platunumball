@@ -1232,7 +1232,7 @@ export default function Settings({ app, auth, section = "main" }) {
                 {favoriteListType === "team" ? favoriteTeams.map((team) => (
                   <div key={team.id} className="favorite-mini-row">
                     <TeamHoverCard as="span" team={team} className="favorite-mini-chip">
-                      <span className="team-dot" style={{ "--team-color": team.accent }} />
+                      <TeamEmblem team={team} size="xs" />
                       <span>{getTeamHashtag(team)}</span>
                     </TeamHoverCard>
                     <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.toggleFavoriteTeam(team.id)}>해제</Button>

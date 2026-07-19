@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Star, Trash2 } from "lucide-react";
+import { ImageUp, Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -14,6 +14,7 @@ import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore, isDateWithinPastMonths } from "../lib/matchUtils.js";
+import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function getTeamSide(match, teamId) {
@@ -56,6 +57,9 @@ export default function TeamDetail({ app }) {
   const [selectedInviteProfile, setSelectedInviteProfile] = useState(null);
   const [selectedHistoryMatchId, setSelectedHistoryMatchId] = useState("");
   const [deleteArmed, setDeleteArmed] = useState(false);
+  const [emblemPending, setEmblemPending] = useState(false);
+  const [emblemFeedback, setEmblemFeedback] = useState("");
+  const emblemInputRef = useRef(null);
   const captain = team?.members.find((member) => member.role === "captain");
   const canManage = captain?.userId === app.currentUser.id;
 
@@ -198,6 +202,46 @@ export default function TeamDetail({ app }) {
       return;
     }
     app.actions.deleteTeam(team.id);
+  };
+  const uploadEmblem = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || emblemPending) return;
+    setEmblemPending(true);
+    setEmblemFeedback("");
+    try {
+      const result = await app.actions.uploadTeamEmblem(team.id, file);
+      if (!result || result.ok === false) {
+        setEmblemFeedback(getTeamEmblemErrorMessage(result?.error));
+        return;
+      }
+      const sourceKb = Math.max(1, Math.round(Number(result.sourceByteSize ?? file.size) / 1024));
+      const savedKb = Math.max(1, Math.round(Number(result.byteSize ?? 0) / 1024));
+      setEmblemFeedback(result.storageCleanupPending
+        ? `${sourceKb}KB 이미지를 ${savedKb}KB WebP로 저장했습니다. 이전 파일 정리는 재시도가 필요합니다.`
+        : `${sourceKb}KB 이미지를 ${savedKb}KB WebP로 저장했습니다.`);
+    } catch (error) {
+      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+    } finally {
+      setEmblemPending(false);
+    }
+  };
+  const removeEmblem = async () => {
+    if (!team.emblemKey || emblemPending) return;
+    setEmblemPending(true);
+    setEmblemFeedback("");
+    try {
+      const result = await app.actions.removeTeamEmblem(team.id);
+      setEmblemFeedback(result?.ok === false
+        ? getTeamEmblemErrorMessage(result.error)
+        : result.storageCleanupPending
+          ? "기본 엠블럼으로 변경했습니다. 기존 파일 정리는 재시도가 필요합니다."
+          : "기본 엠블럼으로 변경했습니다.");
+    } catch (error) {
+      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+    } finally {
+      setEmblemPending(false);
+    }
   };
 
   return (
@@ -370,6 +414,32 @@ export default function TeamDetail({ app }) {
             </div>
             {canManage ? (
               <>
+                <div className="team-emblem-editor">
+                  <TeamEmblem team={team} size="lg" />
+                  <span>
+                    <strong>팀 엠블럼</strong>
+                    <small>JPG, PNG, WebP, AVIF · 자동 WebP 변환</small>
+                    {emblemFeedback ? <em>{emblemFeedback}</em> : null}
+                  </span>
+                  <div className="team-emblem-editor-actions">
+                    <input
+                      ref={emblemInputRef}
+                      hidden
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
+                      disabled={emblemPending}
+                      onChange={uploadEmblem}
+                    />
+                    <Button type="button" size="sm" disabled={emblemPending} onClick={() => emblemInputRef.current?.click()}>
+                      <ImageUp size={16} />
+                      {emblemPending ? "처리 중" : team.emblemKey ? "변경" : "업로드"}
+                    </Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={emblemPending || !team.emblemKey} onClick={removeEmblem}>
+                      <Trash2 size={16} />
+                      삭제
+                    </Button>
+                  </div>
+                </div>
                 <form className="member-add-form" onSubmit={inviteMember}>
                   <label>
                     초대할 선수

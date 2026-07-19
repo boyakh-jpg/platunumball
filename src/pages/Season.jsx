@@ -6,6 +6,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
+import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import {
   getCurrentSeason,
   getLocalRivalries,
@@ -145,7 +146,7 @@ export default function Season({ app }) {
               {teamRows.slice(0, 8).map((team, index) => (
                 <Link key={team.id} to={`/app/teams/${team.id}`}>
                   <strong>{index + 1}</strong>
-                  <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
+                  <TeamEmblem team={team} size="xs" />
                   <div>
                     <b>{team.name}</b>
                     <em>{team.seasonWins}승 {team.seasonLosses}패 · {team.seasonDelta >= 0 ? "+" : ""}{team.seasonDelta} · {team.mmr} MMR</em>

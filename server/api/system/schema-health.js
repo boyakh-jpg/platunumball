@@ -21,6 +21,8 @@ const REQUIRED_COLUMNS = {
     "name",
     "home_court",
     "region",
+    "emblem_key",
+    "emblem_updated_at",
     "deleted_at",
   ],
   team_members: [
@@ -297,6 +299,10 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_profile_representative_team_id",
     args: { p_profile_id: "" },
+  },
+  {
+    name: "rankball_update_team_emblem",
+    args: { p_actor_profile_id: "", p_team_id: "", p_emblem_key: null, p_expected_emblem_key: null },
   },
   {
     name: "rankball_tournament_team_roster_snapshot",

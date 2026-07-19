@@ -107,6 +107,7 @@ import { readProfileBindings, readProfileCache, writeProfileBindings, writeProfi
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
 import { isNotificationFromBlockedUser } from "../lib/notifications.js";
 import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
+import { prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
 
 const LOCAL_MAINTENANCE_INTERVAL_MS = 60000;
 const ROOM_CHAT_MESSAGE_SELECT = "id,room_type,room_id,user_id,body,created_at,message_seq";
@@ -3223,6 +3224,45 @@ export function useAppData(authUser = null, appLocation = null) {
           { teamId: createdTeam.id },
         );
         return result?.ok === false ? result : createdTeam.id;
+      },
+      uploadTeamEmblem: async (teamId, file) => {
+        const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 저장");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("팀 엠블럼 저장")) return { ok: false, error: "remote_not_ready" };
+        const prepared = await prepareTeamEmblemUpload(file);
+        const result = await runServerAction("/api/teams/emblem", {
+          action: "upload",
+          teamId,
+          imageBase64: prepared.imageBase64,
+        });
+        if (result?.ok !== false && result?.teamId === teamId) {
+          setState((prev) => ({
+            ...prev,
+            teams: (prev.teams ?? []).map((team) => team.id === teamId ? {
+              ...team,
+              emblemKey: result.emblemKey ?? null,
+              emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
+            } : team),
+          }));
+        }
+        return { ...result, sourceByteSize: prepared.sourceByteSize, byteSize: result?.byteSize ?? prepared.byteSize };
+      },
+      removeTeamEmblem: async (teamId) => {
+        const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 삭제");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("팀 엠블럼 삭제")) return { ok: false, error: "remote_not_ready" };
+        const result = await runServerAction("/api/teams/emblem", { action: "remove", teamId });
+        if (result?.ok !== false && result?.teamId === teamId) {
+          setState((prev) => ({
+            ...prev,
+            teams: (prev.teams ?? []).map((team) => team.id === teamId ? {
+              ...team,
+              emblemKey: null,
+              emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
+            } : team),
+          }));
+        }
+        return result;
       },
       deleteTeam: (teamId) => {
         let rollbackState = null;

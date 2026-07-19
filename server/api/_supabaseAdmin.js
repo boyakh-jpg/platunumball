@@ -265,6 +265,8 @@ export function toClientTeamWithMembers(team = {}, memberRows = []) {
     wins: team.wins ?? 0,
     losses: team.losses ?? 0,
     accent: team.accent,
+    emblemKey: team.emblem_key ?? null,
+    emblemUpdatedAt: team.emblem_updated_at ?? null,
     createdAt: team.created_at ?? null,
     updatedAt: team.updated_at ?? team.created_at ?? null,
     members: [...memberRows]
