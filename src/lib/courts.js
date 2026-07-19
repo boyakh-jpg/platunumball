@@ -71,7 +71,8 @@ function getCourtCanonicalBaseName(court = {}) {
 
 export function normalizeCourtHashtag(value = "") {
   const raw = String(value ?? "").trim().replace(/^#+/, "");
-  return raw ? `#${raw}` : "";
+  if (!raw) return "";
+  return /^\d{1,4}$/.test(raw) ? `#${raw.padStart(5, "0")}` : `#${raw}`;
 }
 
 export function makeRandomCourtHashtag(state = {}) {
@@ -85,7 +86,7 @@ export function makeRandomCourtHashtag(state = {}) {
     const candidate = `#${Math.floor(10000 + Math.random() * 90000)}`;
     if (!used.has(candidate.toLowerCase())) return candidate;
   }
-  return `#${Date.now().toString(36).slice(-5)}`;
+  return `#${10000 + (Date.now() % 90000)}`;
 }
 
 export function getOptionalCourtCoordinate(value, min, max) {

@@ -69,9 +69,25 @@ function getNumericHandle(item = {}) {
   return String(fallbackNumber || 0);
 }
 
+function getCourtFallbackHandle(court = {}) {
+  const source = String(court.id ?? court.name ?? "court");
+  let hash = 2166136261;
+  for (const char of source) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  }
+  return String(10000 + ((hash >>> 0) % 90000));
+}
+
+function normalizeCourtHashtagWidth(value, fallback = "court") {
+  const hashtag = toHashtag(value, fallback);
+  const body = stripHandle(hashtag);
+  if (/^\d{1,4}$/.test(body)) return `#${body.padStart(5, "0")}`;
+  return hashtag;
+}
+
 export function getCourtHashtag(court = {}) {
-  if (court.hashtag) return toHashtag(court.hashtag, court.id ?? "court");
-  return `#${getNumericHandle(court)}`;
+  if (court.hashtag) return normalizeCourtHashtagWidth(court.hashtag, court.id ?? "court");
+  return `#${getCourtFallbackHandle(court)}`;
 }
 
 export function getMatchHashtag(match = {}) {
