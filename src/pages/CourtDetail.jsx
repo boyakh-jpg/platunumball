@@ -4,6 +4,7 @@ import { CalendarDays, ExternalLink, MapPin, Star, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { getCourtLayoutLabel, getCourtMapUrl, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import { getCourtHashtag } from "../lib/handles.js";
 
 function formatDate(value) {
   if (!value) return "날짜 미정";
@@ -174,7 +175,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           <h1>{court.name}</h1>
           <p><MapPin size={16} /> {getCourtAddress(court)}</p>
           <div className="court-detail-tags">
-            <span>{court.hashtag || "#구장"}</span>
+            <span>{getCourtHashtag(court)}</span>
             <span>{court.region || "지역 미정"}</span>
             <span>{court.type || court.courtKind || "농구장"}</span>
             <span>{getCourtSurfaceLabel(court)}</span>
