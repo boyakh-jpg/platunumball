@@ -359,7 +359,86 @@ function isMissingTournamentOperationRpc(error = {}) {
   return error?.code === "PGRST202" || message.includes("rankball_tournament_operation_action");
 }
 
+function getInitialTournamentFixtures(format, teamCount) {
+  if (teamCount < 2) return [];
+  if (format === "league") {
+    return Array.from({ length: (teamCount * (teamCount - 1)) / 2 }, (_, index) => index + 1);
+  }
+
+  let bracketSize = 2;
+  while (bracketSize < teamCount) bracketSize *= 2;
+  const matchCount = bracketSize / 2;
+  const byeCount = bracketSize - teamCount;
+  const byeFixtures = new Set();
+  let leftIndex = 0;
+  let rightIndex = matchCount - 1;
+  while (byeFixtures.size < byeCount && leftIndex <= rightIndex) {
+    byeFixtures.add(leftIndex + 1);
+    if (byeFixtures.size < byeCount && rightIndex !== leftIndex) byeFixtures.add(rightIndex + 1);
+    leftIndex += 1;
+    rightIndex -= 1;
+  }
+  return Array.from({ length: matchCount }, (_, index) => index + 1).filter((fixture) => !byeFixtures.has(fixture));
+}
+
+async function assertPreferredMatchIdsAssignable(context, operation = {}) {
+  if (operation.action !== "approveTournamentTeam") return;
+
+  const preferredMatchIds = toArray(operation.preferredMatchIds ?? operation.draft?.preferredMatchIds)
+    .map((matchId) => String(matchId ?? "").trim());
+  if (!preferredMatchIds.some(Boolean)) return;
+
+  const tournamentId = String(operation.preferredTournamentId ?? operation.tournamentId ?? operation.draft?.id ?? "").trim();
+  const teamId = String(operation.teamId ?? "").trim();
+  if (!tournamentId) reject(400, "missing_tournament_id");
+
+  const { data: tournament, error: tournamentError } = await context.supabase
+    .from("tournaments")
+    .select("id, format")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  if (tournamentError) throw tournamentError;
+  if (!tournament) reject(404, "tournament_not_found");
+
+  const { data: teamRows, error: teamError } = await context.supabase
+    .from("tournament_teams")
+    .select("team_id, status, seed_order")
+    .eq("tournament_id", tournamentId)
+    .order("seed_order", { ascending: true });
+  if (teamError) throw teamError;
+
+  const activeTeams = toArray(teamRows).filter((row) => row.team_id === teamId || row.status !== "declined");
+  const allAccepted = activeTeams.length >= 2
+    && activeTeams.every((row) => row.team_id === teamId || row.status === "accepted");
+  if (!allAccepted) return;
+
+  const fixtures = getInitialTournamentFixtures(tournament.format, activeTeams.length);
+  const effectiveMatchIds = preferredMatchIds.slice(0, fixtures.length);
+  const nonEmptyIds = effectiveMatchIds.filter(Boolean);
+  if (new Set(nonEmptyIds).size !== nonEmptyIds.length) {
+    reject(409, "tournament_preferred_match_id_conflict");
+  }
+  if (!nonEmptyIds.length) return;
+
+  const { data: existingMatches, error: matchError } = await context.supabase
+    .from("matches")
+    .select("id, tournament_id, tournament_round, tournament_fixture")
+    .in("id", nonEmptyIds);
+  if (matchError) throw matchError;
+
+  const fixtureByMatchId = new Map(
+    effectiveMatchIds.map((matchId, index) => [matchId, fixtures[index]]).filter(([matchId]) => Boolean(matchId)),
+  );
+  const conflict = toArray(existingMatches).some((match) => (
+    match.tournament_id !== tournamentId
+    || Number(match.tournament_round) !== 1
+    || Number(match.tournament_fixture) !== Number(fixtureByMatchId.get(match.id))
+  ));
+  if (conflict) reject(409, "tournament_preferred_match_id_conflict");
+}
+
 async function applySqlTournamentOperation(context, operation = {}) {
+  await assertPreferredMatchIdsAssignable(context, operation);
   const { data, error } = await context.supabase.rpc("rankball_tournament_operation_action", {
     p_actor_profile_id: context.profileId,
     p_operation: operation,
