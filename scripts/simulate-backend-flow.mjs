@@ -693,7 +693,7 @@ async function cleanupRefereeSimulationRows() {
     };
     const { error } = await supabase
       .from("referee_exam_attempts")
-      .update({ available_after: now, payload, updated_at: now })
+      .update({ status: "simulation_closed", available_after: now, payload, updated_at: now })
       .eq("id", attemptId);
     if (error) errors.push({ table: "referee_exam_attempts", id: attemptId, message: error.message });
   }

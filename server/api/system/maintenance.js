@@ -148,12 +148,33 @@ async function cleanupReadNotifications(client, now) {
     : { ok: true, skipped: false, retentionDays: NOTIFICATION_RETENTION_DAYS, deletedNotifications: 0, deletedDiscordDeliveries: 0 };
 }
 
+async function quarantineSimulationArtifacts(client, now) {
+  const { data, error } = await client.rpc("rankball_quarantine_simulation_artifacts", {
+    p_now: now.toISOString(),
+  });
+  if (error) throw error;
+  return data && typeof data === "object"
+    ? { ...data, skipped: false }
+    : { ok: true, skipped: false };
+}
+
 async function expireRecruitingRooms(client) {
   const { data, error } = await client.rpc("rankball_expire_recruiting_rooms");
   if (error) throw error;
-  return data && typeof data === "object"
+  const expiration = data && typeof data === "object"
     ? data
     : { ok: true, expiredCount: 0, rooms: [] };
+  const { data: unconfirmedData, error: unconfirmedError } = await client.rpc("rankball_expire_unconfirmed_recruiting_rooms");
+  if (unconfirmedError) throw unconfirmedError;
+  const unconfirmed = unconfirmedData && typeof unconfirmedData === "object"
+    ? unconfirmedData
+    : { ok: true, expiredCount: 0, rooms: [] };
+  return {
+    ...expiration,
+    ok: expiration.ok === true && unconfirmed.ok === true,
+    expiredCount: Number(expiration.expiredCount ?? 0) + Number(unconfirmed.expiredCount ?? 0),
+    unconfirmed,
+  };
 }
 
 async function processTournamentLineupDeadlines(client, limit, now) {
@@ -387,6 +408,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   const now = options.now instanceof Date ? options.now : new Date();
   const includeRecruitingCapacityCleanup = options.includeRecruitingCapacityCleanup === true;
   const includeFeedRepair = options.includeFeedRepair === true || process.env.RANKBALL_MAINTENANCE_FEED_REPAIR === "true";
+  const simulationQuarantine = await quarantineSimulationArtifacts(client, now);
   const tournamentLineupDeadlines = await processTournamentLineupDeadlines(client, limit, now);
   const recruitingExpiration = await expireRecruitingRooms(client);
   const candidateIds = await getCandidateMatchIds(client, limit, now.getTime());
@@ -400,12 +422,14 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   const notificationCleanup = await cleanupReadNotifications(client, now);
 
   return {
-    ok: tournamentLineupDeadlines.ok === true
+    ok: simulationQuarantine.ok === true
+      && tournamentLineupDeadlines.ok === true
       && feedCleanup.ok === true
       && notificationCleanup.ok === true
       && results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
+    simulationQuarantine,
     tournamentLineupDeadlines,
     recruitingExpiration,
     feedCleanup,

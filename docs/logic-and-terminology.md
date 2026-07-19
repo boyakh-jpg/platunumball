@@ -2726,3 +2726,16 @@ flowchart TD
 3. 리그 종료 순위는 승수, 득실차, 득점, 팀명, 팀 ID 순이다. 우승팀, 완료 시각, 최종 순위 snapshot을 저장하고 개최자와 승인 팀 주장에게 앱 알림을 한 번만 만든다.
 4. `rankball_tournament_lineup_deadline_batch_action`, `rankball_cleanup_room_feed`, `rankball_cleanup_read_notifications`는 필수 maintenance RPC다. 누락을 `skipped` 성공으로 처리하지 않고 maintenance endpoint와 Discord worker가 HTTP `503`으로 운영 장애를 드러낸다.
 5. 원격 backend simulation의 요청 제한은 기본 `60초`, local in-process는 `20초`다. 테스트가 실제 reducer 거절과 원격 네트워크 지연을 구분해야 한다.
+
+## 2026-07-19 운영 데이터 정규 형태
+
+1. 운영 DB의 원본 행은 현재 server action과 authoritative RPC가 생성하는 컬럼, 상태, 참조 규칙을 표준으로 한다. 화면용 mock 객체를 원본 테이블에 직접 저장하지 않는다.
+2. 프로필, 팀, 모집방, 경기, 기록, 대회는 유효한 원본 ID와 이력을 유지한다. 실제 근거 없이 이름, 점수, MMR, 신뢰도, 출전 기록을 추정하거나 다시 만들지 않는다.
+3. `user_room_feed`와 `room_feed_cards`는 원본이 아닌 파생 캐시다. 원본 없는 행과 명시적인 시뮬레이션 행은 비활성화한 뒤 7일 보존 정책으로 정리한다.
+4. 중단된 backend simulation의 팀, 초대, 모집방, 구장 신청, 심판 시험·신청·임명, 관리자 임명·징계, 알림은 ID prefix와 JSON 표식을 함께 확인해 격리한다. 사용자 데이터와 참조가 있는 구장은 자동 격리하지 않는다.
+5. maintenance는 `rankball_quarantine_simulation_artifacts`를 먼저 실행한다. 시뮬레이션 종료 처리가 누락돼도 다음 정기 실행에서 운영 목록과 권한 계산에서 제외한다.
+6. `rankball_operational_data_health`는 프로필/Auth, 팀 명단, 승인 구장 좌표, 모집방 만료·피드, 경기·대회 참조, 시뮬레이션 잔존을 검사한다. `npm run audit:production-data`가 critical 항목이 남으면 실패한다.
+7. 기본 구장 `c1..c12`는 검증된 실제 시설명, 도로명·지번 주소, 우편번호, 좌표와 실제 구장 신청 흐름과 같은 5자리 숫자 해시태그를 가진 system-owned 승인 구장이다. 핀 정밀도는 농구 골대 좌표가 아닌 `facility_address`다.
+8. 구장 이름 snapshot은 `court_id`가 가리키는 현재 표준 이름으로 맞춘다. 같은 시설의 복수 코트는 사용자 승인 흐름의 `courtUnit`으로 구분하고 ID를 합치지 않는다.
+9. 개인 기록의 익명 상대 득점과 대회 몰수 `1:0`은 선수 PTS 합계 예외다. 일반 경기 점수만 실제 출전자 PTS 합계를 단일 원본으로 사용한다.
+10. 예약 시작 시각이 지났는데 연결 경기가 없는 열린 모집방은 정원이 찼더라도 `scheduled_unconfirmed`로 취소한다. 참가자에게 취소 알림을 만들고 기존 초대·Discord delivery·방 링크·피드는 종료한다.
