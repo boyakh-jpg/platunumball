@@ -6,6 +6,8 @@ import { loadNaverMapsSdk } from "../../lib/naverAddress.js";
 import Button from "../common/Button.jsx";
 
 const DISTRICT_OVERVIEW_ZOOM = 13;
+const WIDE_DISTRICT_OVERVIEW_ZOOM = 14;
+const WIDE_MAP_MIN_WIDTH = 720;
 const DEFAULT_OVERVIEW_ZOOM = 12;
 
 function getCourtCoordinate(court = {}) {
@@ -51,18 +53,19 @@ function clusterCourts(courts = [], zoom = 12) {
   }));
 }
 
-function getInitialViewport(courts = [], selectedCourt, currentRegion = "") {
+function getInitialViewport(courts = [], selectedCourt, currentRegion = "", mapWidth = 0) {
   const selectedCoordinate = getCourtCoordinate(selectedCourt);
   const regionalCourts = courts.filter((court) => court.region === currentRegion);
   const focusCourts = regionalCourts.length ? regionalCourts : selectedCoordinate ? [selectedCourt] : courts;
   const coordinates = focusCourts.map(getCourtCoordinate).filter(Boolean);
   const fallback = selectedCoordinate ?? getCourtCoordinate(courts[0]) ?? { lat: 37.5665, lng: 126.978 };
+  const districtZoom = mapWidth >= WIDE_MAP_MIN_WIDTH ? WIDE_DISTRICT_OVERVIEW_ZOOM : DISTRICT_OVERVIEW_ZOOM;
 
   if (!coordinates.length) return { ...fallback, zoom: DEFAULT_OVERVIEW_ZOOM };
   return {
     lat: coordinates.reduce((sum, coordinate) => sum + coordinate.lat, 0) / coordinates.length,
     lng: coordinates.reduce((sum, coordinate) => sum + coordinate.lng, 0) / coordinates.length,
-    zoom: regionalCourts.length || selectedCoordinate ? DISTRICT_OVERVIEW_ZOOM : DEFAULT_OVERVIEW_ZOOM,
+    zoom: regionalCourts.length || selectedCoordinate ? districtZoom : DEFAULT_OVERVIEW_ZOOM,
   };
 }
 
@@ -140,7 +143,7 @@ export default function CourtMapPicker({
     loadNaverMapsSdk()
       .then(() => {
         if (cancelled || !mapElementRef.current) return;
-        const viewport = getInitialViewport(mappedCourts, selectedCourt, currentRegion);
+        const viewport = getInitialViewport(mappedCourts, selectedCourt, currentRegion, mapElementRef.current.clientWidth);
         const map = new window.naver.maps.Map(mapElementRef.current, {
           center: new window.naver.maps.LatLng(viewport.lat, viewport.lng),
           zoom: viewport.zoom,
