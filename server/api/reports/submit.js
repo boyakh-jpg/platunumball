@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
+import { getMatchScheduledDate } from "../../../src/lib/matchUtils.js";
 
 const REPORT_MATCH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const REPORT_MATCH_QUERY_PAGE_SIZE = 200;
@@ -19,11 +20,11 @@ function includesProfile(value, profileId) {
 function getReportableMatchTimeMs(match = {}) {
   if (match.ended_at) return new Date(match.ended_at).getTime();
   if (match.confirmed_at) return new Date(match.confirmed_at).getTime();
-  if (match.scheduled_date) {
-    const scheduledTime = match.scheduled_time ? String(match.scheduled_time).slice(0, 5) : "00:00";
-    return new Date(`${match.scheduled_date}T${scheduledTime}`).getTime();
-  }
-  if (match.scheduled_at) return new Date(match.scheduled_at).getTime();
+  if (match.scheduled_date || match.scheduled_at) return getMatchScheduledDate({
+    scheduledDate: match.scheduled_date,
+    scheduledTime: match.scheduled_time ? String(match.scheduled_time).slice(0, 5) : "00:00",
+    scheduledAt: match.scheduled_at,
+  })?.getTime() ?? 0;
   if (match.created_at) return new Date(match.created_at).getTime();
   return 0;
 }
@@ -298,6 +299,22 @@ async function buildReportRow(context, report = {}) {
   };
 }
 
+async function getActiveReport(context, reportRow) {
+  const { data, error } = await context.supabase
+    .from("reports")
+    .select("id, status")
+    .eq("type", reportRow.type)
+    .eq("target_id", reportRow.target_id)
+    .eq("user_id", context.profileId)
+    .neq("status", "resolved")
+    .neq("status", "dismissed")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -311,17 +328,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const reportRow = await buildReportRow(context, report);
 
-    const { data: existingReport, error: existingError } = await context.supabase
-      .from("reports")
-      .select("id, status")
-      .eq("type", reportRow.type)
-      .eq("target_id", reportRow.target_id)
-      .eq("user_id", context.profileId)
-      .neq("status", "resolved")
-      .neq("status", "dismissed")
-      .limit(1)
-      .maybeSingle();
-    if (existingError) throw existingError;
+    const existingReport = await getActiveReport(context, reportRow);
     if (existingReport) {
       sendJson(response, 200, {
         ok: true,
@@ -333,7 +340,24 @@ export default async function handler(request, response) {
     }
 
     const { error: reportError } = await context.supabase.from("reports").insert(reportRow);
-    if (reportError) throw reportError;
+    if (reportError) {
+      if (
+        ["match", "player"].includes(reportRow.type)
+        && String(reportError.message || "").includes("active_report_duplicate")
+      ) {
+        const concurrentReport = await getActiveReport(context, reportRow);
+        if (concurrentReport) {
+          sendJson(response, 200, {
+            ok: true,
+            duplicate: true,
+            reportId: concurrentReport.id,
+            status: concurrentReport.status,
+          });
+          return;
+        }
+      }
+      throw reportError;
+    }
 
     const notificationRows = toNotificationRows(body.notifications, context.profileId, reportRow.payload);
     if (notificationRows.length) {

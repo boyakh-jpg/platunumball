@@ -17,13 +17,35 @@ export default async function handler(request, response) {
     }
 
     const context = await getAuthenticatedContext(request);
+    const { data: courtRequest, error: courtRequestError } = await context.supabase
+      .from("court_requests")
+      .select("id,status")
+      .eq("id", requestId)
+      .maybeSingle();
+    if (courtRequestError) throw courtRequestError;
+    if (!courtRequest) {
+      const error = new Error("court_request_not_found");
+      error.statusCode = 404;
+      throw error;
+    }
+    if (courtRequest.status === "approved") {
+      const error = new Error("approved_court_request_cannot_be_reported");
+      error.statusCode = 409;
+      throw error;
+    }
+
     const { data, error } = await context.supabase.rpc("rankball_report_court_request", {
       actor_profile_id: context.profileId,
       request_id: requestId,
       reason,
     });
 
-    if (error) throw error;
+    if (error) {
+      if (String(error.message || "").includes("approved_court_request_cannot_be_reported")) {
+        error.statusCode = 409;
+      }
+      throw error;
+    }
 
     sendJson(response, 200, data ?? { ok: true });
   } catch (error) {

@@ -135,7 +135,12 @@ async function syncExamAttempt(context, action, attempt = {}) {
     const { error } = await context.supabase
       .from("referee_exam_attempts")
       .upsert(row, { onConflict: "id" });
-    if (error) throw error;
+    if (error) {
+      if (String(error.message || "").includes("referee_exam_cooldown_active")) {
+        error.statusCode = 400;
+      }
+      throw error;
+    }
     return { ok: true, attemptId, attempt: toClientAttempt(payload) };
   }
 

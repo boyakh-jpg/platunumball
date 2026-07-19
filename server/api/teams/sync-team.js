@@ -59,6 +59,15 @@ async function syncTeam(context, rawTeam, notifications = []) {
   if (existingMembersError) throw existingMembersError;
   const existingMemberIds = new Set(toArray(existingMembers).map((member) => member.user_id));
   const isExistingTeam = existingMemberIds.size > 0;
+  if (!isExistingTeam && (
+    team.members.length !== 1
+    || team.members[0].userId !== context.profileId
+    || team.members[0].role !== "captain"
+  )) {
+    const error = new Error("team_initial_member_must_be_actor_captain");
+    error.statusCode = 403;
+    throw error;
+  }
   if (isExistingTeam && team.members.some((member) => !existingMemberIds.has(member.userId))) {
     const error = new Error("team_member_invite_required");
     error.statusCode = 400;
