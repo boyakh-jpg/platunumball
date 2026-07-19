@@ -17113,6 +17113,352 @@ html[data-theme="light"] .app-main :is(
   opacity: 0.42;
 }
 
+/* Create Match court identity and map discovery. */
+.court-search-result-address {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.create-selected-court-profile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  border-block: 1px solid var(--ui-control-border, var(--line));
+  padding-block: 12px;
+}
+
+.create-selected-court-main {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.create-selected-court-icon,
+.court-map-picker-selection-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--rb-orange) 14%, transparent);
+  color: var(--rb-orange);
+}
+
+.create-selected-court-main > div,
+.court-map-picker-selection > div:not(.court-map-picker-selection-icon) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.create-selected-court-main strong,
+.court-map-picker-selection strong {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.create-selected-court-main span,
+.court-map-picker-selection span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.create-selected-court-main em,
+.court-map-picker-selection em {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.create-selected-court-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.court-map-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2700;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(5px);
+  padding: 18px;
+}
+
+.court-map-picker-dialog {
+  display: grid;
+  width: min(920px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+  gap: 12px;
+  border: 1px solid var(--card-border, var(--line));
+  border-radius: var(--card-radius, var(--radius));
+  background: var(--card-bg-strong, var(--surface));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  padding: 16px;
+  color: var(--text);
+}
+
+.court-map-picker-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.court-map-picker-header > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.court-map-picker-header span {
+  color: var(--rb-orange);
+  font-size: 0.7rem;
+  font-weight: 950;
+}
+
+.court-map-picker-header h2,
+.court-map-picker-header p {
+  margin: 0;
+}
+
+.court-map-picker-header h2 {
+  font-size: 1.3rem;
+  line-height: 1.15;
+}
+
+.court-map-picker-header p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.court-map-picker-close {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+}
+
+.court-map-picker-canvas-wrap {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.court-map-picker-canvas {
+  width: 100%;
+  height: min(56dvh, 520px);
+  min-height: 380px;
+}
+
+.court-map-picker-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 7px;
+  background: var(--surface-2);
+  color: var(--muted);
+  padding: 20px;
+  text-align: center;
+}
+
+.court-map-picker-state strong {
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.court-map-picker-state span,
+.court-map-picker-hint,
+.court-map-picker-footer {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.court-map-marker {
+  display: inline-flex;
+  max-width: 150px;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  border-radius: 18px;
+  background: #151918;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.34);
+  color: #fff;
+  cursor: pointer;
+  font: 900 12px/1.15 system-ui, sans-serif;
+  padding: 7px 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.court-map-marker.is-cluster {
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  border-radius: 50%;
+  background: var(--rb-orange);
+  padding: 0;
+}
+
+.court-map-marker.is-active {
+  border-color: var(--gold);
+  background: var(--rb-orange);
+}
+
+.court-map-marker:focus-visible {
+  outline: 3px solid rgba(255, 211, 108, 0.56);
+  outline-offset: 2px;
+}
+
+.court-map-picker-selection {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border-block: 1px solid var(--ui-control-border, var(--line));
+  padding-block: 10px;
+}
+
+.court-map-picker-cluster-list {
+  display: grid;
+  gap: 8px;
+}
+
+.court-map-picker-cluster-list > strong {
+  font-size: 0.8rem;
+}
+
+.court-map-picker-cluster-list > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 8px;
+}
+
+.court-map-picker-cluster-list button {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: 8px;
+  background: var(--ui-control-bg, var(--surface-2));
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.court-map-picker-cluster-list button span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.court-map-picker-hint,
+.court-map-picker-footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.court-map-picker-footer {
+  justify-content: space-between;
+}
+
+html[data-theme="light"] .court-map-picker-dialog {
+  border-color: rgba(41, 116, 99, 0.2);
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(35, 87, 75, 0.24);
+}
+
+html[data-theme="light"] .court-map-picker-state {
+  background: #f5faf8;
+}
+
+@media (max-width: 640px) {
+  .create-selected-court-profile,
+  .court-map-picker-selection {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .create-selected-court-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .create-selected-court-actions > :only-child,
+  .court-map-picker-selection > .button {
+    width: 100%;
+  }
+
+  .court-map-picker-backdrop {
+    place-items: end center;
+    padding: 10px;
+  }
+
+  .court-map-picker-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    padding: 12px;
+  }
+
+  .court-map-picker-header p {
+    max-width: 30rem;
+  }
+
+  .court-map-picker-canvas {
+    height: min(52dvh, 440px);
+    min-height: 300px;
+  }
+
+  .court-map-picker-selection {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .court-map-picker-selection > .button {
+    grid-column: 1 / -1;
+  }
+}
+
 /* 2026-07-16 compact room creation controls. */
 .create-match-info-grid {
   align-items: start;

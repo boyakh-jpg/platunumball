@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ClipboardList, Globe2, Lock, Star, Trophy, X } from "lucide-react";
+import { ClipboardList, Globe2, Lock, Map as MapIcon, MapPin, Star, Trophy, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
+import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
@@ -42,6 +43,22 @@ const tournamentScheduleOptions = [
 ];
 const SOLO_RECORD_MODES = ["1v1", "2v2", "3v3", "4v4", "5v5"].map((id) => ({ id, label: id }));
 const MATCH_MODE_IDS = new Set(MATCH_MODES.map((mode) => mode.id));
+
+function getCourtAddress(court = {}) {
+  return court.roadAddress || court.addressText || court.jibunAddress || "주소 미등록";
+}
+
+function getCourtSearchText(court = {}) {
+  return [
+    court.name,
+    getCourtHashtag(court),
+    court.region,
+    court.type,
+    getCourtAddress(court),
+    getCourtSurfaceLabel(court),
+    getCourtLayoutLabel(court),
+  ].filter(Boolean).join(" ");
+}
 
 const makeEmptySoloStats = () => Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, 0]));
 
@@ -332,6 +349,7 @@ export default function CreateMatch({ app }) {
   const [teamQuery, setTeamQuery] = useState("");
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
+  const [courtMapOpen, setCourtMapOpen] = useState(false);
   const [refereeQuery, setRefereeQuery] = useState("");
   const [soloTeamAUserQuery, setSoloTeamAUserQuery] = useState("");
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
@@ -415,7 +433,7 @@ export default function CreateMatch({ app }) {
     const hashtagSearch = isHashtagQuery(courtQuery);
     return registeredCourts
       .filter((court) => hashtagSearch || courtRegion === "전체" || isSameRegion(court.region, courtRegion))
-      .filter((court) => includesQuery(`${court.name} ${getCourtHashtag(court)} ${court.region} ${court.type} ${court.addressText ?? ""}`, courtQuery))
+      .filter((court) => includesQuery(getCourtSearchText(court), courtQuery))
       .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a) || a.name.localeCompare(b.name));
   }, [courtQuery, courtRegion, currentRegion, favoriteCourtIds, registeredCourts]);
 
@@ -1099,6 +1117,7 @@ export default function CreateMatch({ app }) {
       >
         <button type="button" className="search-picker-result-main" onClick={() => selectCourt(court)}>
           <strong>{court.name}</strong>
+          <span className="court-search-result-address">{getCourtAddress(court)}</span>
           <span>{court.region} / {court.type} / {getCourtSurfaceLabel(court)} / {getCourtLayoutLabel(court)}</span>
           <em className="court-search-result-meta">
             <span>{getCourtHashtag(court)} · {favorite ? "즐겨찾기" : "구장"}</span>
@@ -1784,9 +1803,34 @@ export default function CreateMatch({ app }) {
                 showIdleOnFocus
                 floating
                 closeOnResultClick
+                getSearchText={getCourtSearchText}
                 renderItem={renderCourtSearchItem}
               />
             </label>
+          </div>
+          <div className="create-selected-court-profile" aria-live="polite">
+            <div className="create-selected-court-main">
+              <span className="create-selected-court-icon"><MapPin size={20} /></span>
+              <div>
+                <strong>{selectedCourt?.name ?? "구장을 선택하세요"}</strong>
+                <span>{selectedCourt ? getCourtAddress(selectedCourt) : "코트명·주소 검색 또는 지도에서 등록 구장을 확인할 수 있습니다."}</span>
+                {selectedCourt ? (
+                  <em>
+                    {selectedCourt.region || "지역 미정"} · {getCourtSurfaceLabel(selectedCourt)} · {getCourtLayoutLabel(selectedCourt)} · {Number(selectedCourt.reviewCount) > 0 ? `보정 ${Number(selectedCourt.adjustedRating ?? selectedCourt.rating ?? 0).toFixed(1)} (${selectedCourt.reviewCount})` : "평가 전"}
+                  </em>
+                ) : null}
+              </div>
+            </div>
+            <div className="create-selected-court-actions">
+              <Button type="button" variant="secondary" size="sm" onClick={() => setCourtMapOpen(true)}>
+                <MapIcon size={16} /> 지도에서 찾기
+              </Button>
+              {selectedCourt?.id ? (
+                <Button type="button" variant="secondary" size="sm" onClick={() => navigate(`/app/courts/${encodeURIComponent(selectedCourt.id)}`)}>
+                  구장 정보
+                </Button>
+              ) : null}
+            </div>
           </div>
           <div className="court-reservation-row">
             <label>
@@ -1830,6 +1874,18 @@ export default function CreateMatch({ app }) {
             <Badge tone={!selectedCourt || courtPlayWarning ? "orange" : "green"}>{!selectedCourt ? "필수" : courtPlayWarning ? "경고" : "가능"}</Badge>
           </div>
         </Card>
+
+        <CourtMapPicker
+          open={courtMapOpen}
+          courts={registeredCourts}
+          selectedCourt={selectedCourt}
+          currentRegion={currentRegion}
+          onClose={() => setCourtMapOpen(false)}
+          onSelect={(court) => {
+            selectCourt(court);
+            setCourtMapOpen(false);
+          }}
+        />
 
         <Card className="section-card full-span selector-panel">
           <div className="section-title-row">

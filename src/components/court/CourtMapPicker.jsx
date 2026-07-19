@@ -1,0 +1,305 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { MapPin, Star, X } from "lucide-react";
+import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
+import { loadNaverMapsSdk } from "../../lib/naverAddress.js";
+import Button from "../common/Button.jsx";
+
+function getCourtCoordinate(court = {}) {
+  const lat = Number(court.lat ?? court.latitude);
+  const lng = Number(court.lng ?? court.longitude);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}
+
+function getCourtAddress(court = {}) {
+  return court.roadAddress || court.addressText || court.jibunAddress || "주소 미등록";
+}
+
+function getClusterCellSize(zoom = 12) {
+  if (zoom <= 9) return 0.35;
+  if (zoom <= 10) return 0.18;
+  if (zoom <= 11) return 0.09;
+  if (zoom <= 12) return 0.045;
+  if (zoom <= 13) return 0.022;
+  if (zoom <= 14) return 0.011;
+  if (zoom <= 15) return 0.005;
+  if (zoom <= 16) return 0.002;
+  if (zoom <= 17) return 0.0007;
+  return 0.00008;
+}
+
+function clusterCourts(courts = [], zoom = 12) {
+  const cellSize = getClusterCellSize(zoom);
+  const groups = new Map();
+
+  courts.forEach((court) => {
+    const coordinate = getCourtCoordinate(court);
+    if (!coordinate) return;
+    const key = `${Math.floor(coordinate.lat / cellSize)}:${Math.floor(coordinate.lng / cellSize)}`;
+    const group = groups.get(key) ?? [];
+    group.push({ court, coordinate });
+    groups.set(key, group);
+  });
+
+  return [...groups.values()].map((items) => ({
+    items,
+    lat: items.reduce((sum, item) => sum + item.coordinate.lat, 0) / items.length,
+    lng: items.reduce((sum, item) => sum + item.coordinate.lng, 0) / items.length,
+  }));
+}
+
+function getInitialViewport(courts = [], selectedCourt, currentRegion = "") {
+  const selectedCoordinate = getCourtCoordinate(selectedCourt);
+  const regionalCourts = courts.filter((court) => court.region === currentRegion);
+  const focusCourts = regionalCourts.length ? regionalCourts : selectedCoordinate ? [selectedCourt] : courts;
+  const coordinates = focusCourts.map(getCourtCoordinate).filter(Boolean);
+  const fallback = selectedCoordinate ?? getCourtCoordinate(courts[0]) ?? { lat: 37.5665, lng: 126.978 };
+
+  if (!coordinates.length) return { ...fallback, zoom: 11 };
+  return {
+    lat: coordinates.reduce((sum, coordinate) => sum + coordinate.lat, 0) / coordinates.length,
+    lng: coordinates.reduce((sum, coordinate) => sum + coordinate.lng, 0) / coordinates.length,
+    zoom: coordinates.length > 1 ? 12 : 14,
+  };
+}
+
+function makeMarkerElement(group, activeCourtId) {
+  const element = document.createElement("button");
+  const isCluster = group.items.length > 1;
+  const court = group.items[0]?.court;
+  element.type = "button";
+  element.className = [
+    "court-map-marker",
+    isCluster ? "is-cluster" : "is-court",
+    !isCluster && court?.id === activeCourtId ? "is-active" : "",
+  ].filter(Boolean).join(" ");
+  element.textContent = isCluster ? String(group.items.length) : court?.name ?? "구장";
+  element.setAttribute("aria-label", isCluster ? `등록 구장 ${group.items.length}개 확대` : `${court?.name ?? "구장"} 확인`);
+  return element;
+}
+
+export default function CourtMapPicker({
+  open,
+  courts = [],
+  selectedCourt = null,
+  currentRegion = "",
+  onSelect,
+  onClose,
+}) {
+  const mapElementRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
+  const markerListenersRef = useRef([]);
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState("");
+  const [mapVersion, setMapVersion] = useState(0);
+  const [candidateId, setCandidateId] = useState(getCourtCoordinate(selectedCourt) ? selectedCourt?.id ?? "" : "");
+  const [clusterCourtIds, setClusterCourtIds] = useState([]);
+  useBodyScrollLock(open);
+
+  const mappedCourts = useMemo(
+    () => courts.filter((court) => court?.id && getCourtCoordinate(court)),
+    [courts],
+  );
+  const missingCoordinateCount = Math.max(0, courts.length - mappedCourts.length);
+  const candidate = courts.find((court) => court.id === candidateId) ?? null;
+  const clusteredCourtRows = clusterCourtIds
+    .map((courtId) => courts.find((court) => court.id === courtId))
+    .filter(Boolean);
+
+  useEffect(() => {
+    if (!open) return;
+    setCandidateId(getCourtCoordinate(selectedCourt) ? selectedCourt?.id ?? "" : "");
+    setClusterCourtIds([]);
+  }, [open, selectedCourt?.id]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") onClose?.();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [onClose, open]);
+
+  useEffect(() => {
+    if (!open || !mapElementRef.current) return undefined;
+    if (!mappedCourts.length) {
+      setStatus("empty");
+      setError("");
+      return undefined;
+    }
+
+    let cancelled = false;
+    setStatus("loading");
+    setError("");
+
+    loadNaverMapsSdk()
+      .then(() => {
+        if (cancelled || !mapElementRef.current) return;
+        const viewport = getInitialViewport(mappedCourts, selectedCourt, currentRegion);
+        const map = new window.naver.maps.Map(mapElementRef.current, {
+          center: new window.naver.maps.LatLng(viewport.lat, viewport.lng),
+          zoom: viewport.zoom,
+          minZoom: 8,
+          maxZoom: 19,
+          zoomControl: true,
+          mapDataControl: false,
+          scaleControl: false,
+        });
+        mapRef.current = map;
+        setStatus("ready");
+        setMapVersion((value) => value + 1);
+      })
+      .catch((loadError) => {
+        if (cancelled) return;
+        setStatus("error");
+        setError(loadError instanceof Error ? loadError.message : "지도를 불러오지 못했습니다.");
+      });
+
+    return () => {
+      cancelled = true;
+      mapRef.current = null;
+    };
+  }, [currentRegion, mappedCourts, open, selectedCourt]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!open || status !== "ready" || !map || !window.naver?.maps) return undefined;
+    const maps = window.naver.maps;
+
+    const clearMarkers = () => {
+      markerListenersRef.current.forEach((listener) => maps.Event.removeListener(listener));
+      markersRef.current.forEach((marker) => marker.setMap(null));
+      markerListenersRef.current = [];
+      markersRef.current = [];
+    };
+
+    const drawMarkers = () => {
+      clearMarkers();
+      const groups = clusterCourts(mappedCourts, map.getZoom());
+      groups.forEach((group) => {
+        const position = new maps.LatLng(group.lat, group.lng);
+        const isCluster = group.items.length > 1;
+        const marker = new maps.Marker({
+          position,
+          map,
+          clickable: true,
+          zIndex: isCluster ? 120 : group.items[0]?.court?.id === candidateId ? 140 : 100,
+          icon: {
+            content: makeMarkerElement(group, candidateId),
+            anchor: new maps.Point(0, 0),
+          },
+        });
+        const listener = maps.Event.addListener(marker, "click", () => {
+          if (isCluster) {
+            const nextZoom = Math.min(19, Number(map.getZoom()) + 2);
+            setCandidateId("");
+            if (nextZoom > Number(map.getZoom())) {
+              setClusterCourtIds([]);
+              map.setCenter(position);
+              map.setZoom(nextZoom, true);
+            } else {
+              setClusterCourtIds(group.items.map((item) => item.court.id));
+            }
+            return;
+          }
+          setClusterCourtIds([]);
+          setCandidateId(group.items[0].court.id);
+          map.panTo(position);
+        });
+        markersRef.current.push(marker);
+        markerListenersRef.current.push(listener);
+      });
+    };
+
+    drawMarkers();
+    const idleListener = maps.Event.addListener(map, "idle", drawMarkers);
+
+    return () => {
+      maps.Event.removeListener(idleListener);
+      clearMarkers();
+    };
+  }, [candidateId, mapVersion, mappedCourts, open, status]);
+
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="court-map-picker-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="court-map-picker-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="등록 구장 지도"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="court-map-picker-header">
+          <div>
+            <span>COURT MAP</span>
+            <h2>지도에서 구장 찾기</h2>
+            <p>숫자는 등록 구장 묶음입니다. 눌러 확대하고 구장명을 눌러 주소를 확인하세요.</p>
+          </div>
+          <Button type="button" variant="secondary" size="sm" className="court-map-picker-close" aria-label="지도 닫기" onClick={onClose}>
+            <X size={18} />
+          </Button>
+        </header>
+
+        <div className="court-map-picker-canvas-wrap">
+          <div ref={mapElementRef} className="court-map-picker-canvas" aria-label="등록 구장 지도" />
+          {status !== "ready" ? (
+            <div className="court-map-picker-state" role="status">
+              <MapPin size={24} />
+              <strong>{status === "loading" ? "등록 구장 지도 불러오는 중" : status === "empty" ? "좌표가 저장된 구장 없음" : "지도를 불러오지 못함"}</strong>
+              <span>{status === "error" ? error : status === "empty" ? "주소 검색으로 구장을 선택하세요." : "잠시만 기다려주세요."}</span>
+            </div>
+          ) : null}
+        </div>
+
+        {clusteredCourtRows.length > 1 ? (
+          <div className="court-map-picker-cluster-list" aria-label="같은 위치 구장">
+            <strong>이 위치의 구장 {clusteredCourtRows.length}개</strong>
+            <div>
+              {clusteredCourtRows.map((court) => (
+                <button
+                  key={court.id}
+                  type="button"
+                  onClick={() => {
+                    setCandidateId(court.id);
+                    setClusterCourtIds([]);
+                  }}
+                >
+                  <b>{court.name}</b>
+                  <span>{getCourtAddress(court)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : candidate ? (
+          <div className="court-map-picker-selection">
+            <div className="court-map-picker-selection-icon"><MapPin size={19} /></div>
+            <div>
+              <strong>{candidate.name}</strong>
+              <span>{getCourtAddress(candidate)}</span>
+              <em>
+                {candidate.region || "지역 미정"}
+                {Number(candidate.reviewCount) > 0 ? <><Star size={13} fill="currentColor" /> 보정 {Number(candidate.adjustedRating ?? candidate.rating ?? 0).toFixed(1)}</> : " · 평가 전"}
+              </em>
+            </div>
+            <Button type="button" size="sm" onClick={() => onSelect?.(candidate)}>이 구장 선택</Button>
+          </div>
+        ) : (
+          <div className="court-map-picker-hint">
+            <MapPin size={17} />
+            <span>지도에서 구장명 마커를 누르면 주소와 평점을 확인할 수 있습니다.</span>
+          </div>
+        )}
+
+        <footer className="court-map-picker-footer">
+          <span>지도 표시 {mappedCourts.length}개</span>
+          {missingCoordinateCount ? <span>좌표 없는 구장 {missingCoordinateCount}개는 검색으로 선택</span> : null}
+        </footer>
+      </section>
+    </div>,
+    document.body,
+  );
+}

@@ -80,7 +80,7 @@ export function getNaverMapClientId() {
   );
 }
 
-async function loadNaverMapsSdk(clientId = getNaverMapClientId()) {
+export async function loadNaverMapsSdk(clientId = getNaverMapClientId()) {
   if (!clientId) throw new Error("VITE_NAVER_MAP_CLIENT_ID가 없습니다.");
   if (typeof window === "undefined") throw new Error("브라우저에서만 사용할 수 있습니다.");
   if (hasNaverGeocoder()) return;
