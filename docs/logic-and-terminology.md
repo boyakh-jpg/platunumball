@@ -201,7 +201,7 @@
 - 경기기록방은 `확인 대기 -> 이의중 -> 검증 완료 -> 공식 기록` 흐름을 따른다.
 - 개인 내 기록은 저장 즉시 완료 기록이며 검증 흐름을 타지 않는다.
 - `createMatch`가 `recordType:"match_record"`를 받으면 이미 종료된 기록 입력방으로 만들고, 경기 일정이 아니라 진행/기록 입력 흐름에서 처리한다.
-- 경기기록방 생성 UI 1차 구현은 팀전만 허용한다. 개인 경기기록방은 개인 초대/검증 UX가 정리될 때까지 생성 단계에서 막는다.
+- 경기기록방은 `1v1` 개인전과 `2v2` 이상 팀전을 허용한다. `1v1`은 생성자와 선택한 상대 계정을 A/B 고정 로스터로 저장하고, `2v2` 이상은 양 팀 대표가 방 안에서 출전/후보 명단을 확정한다.
 
 ## 2026-07-07 팀전 로스터 확정 기준
 
@@ -222,7 +222,7 @@
 
 - 초대 수락이나 기록 확인 자체는 MMR 보상이 아니다.
 - 기록 검증 판정은 중앙 helper `evaluateRecordVerification(match)` 결과를 기준으로 한다.
-- MMR 반영은 정규전, 실제 출전, 기록 확정, 검증 통과 후에만 가능하다.
+- 일반 사전 경기의 MMR 반영은 정규전, 실제 출전, 기록 확정, 검증 통과 후에만 가능하다.
 - 개인 경기기록의 개인 MMR은 확인 완료된 앱 회원 출전자만 가능하다.
 - 팀 경기기록의 팀 MMR은 양팀 대표 확인, 양팀 팀 연결, 출전자 확정, 부분팀/용병/무기명 없음, 이의 없음 또는 처리 완료일 때만 가능하다.
 - 무기명/비회원/미확인 회원은 기록에는 남길 수 있지만 MMR에는 반영하지 않는다.
@@ -231,6 +231,8 @@
 - `approveMatch` 최종 확정은 기록방일 때 `evaluateRecordVerification(match)` 결과로 개인 MMR과 팀 MMR 적용을 각각 제한한다.
 - 경기기록방 MMR 검증은 양측 기록 확인과 팀전 출전 명단 확정(`side.playerTeams[playerId] === side.teamId`)을 중앙 helper에서 함께 확인한다.
 - 검증에서 제외된 선수는 기록에는 남아도 rating 계산 대상에서 제외한다.
+- 신규 사후 경기기록방은 생성 시 `ranked=false`, `official=false`, `preRegistered=false`, `mmrLimitMode=off`를 서버가 강제한다. 기존 ranked 레거시 기록의 검증 호환성은 유지하지만 일반 기록하기 화면으로 새 MMR 반영 기록을 만들 수 없다.
+- 사후 기록방은 연령/MMR 참가 제한, 구장 예약, 사전등록, 약속/벌칙을 받지 않는다. 구장, 경기일, 실제 경기 룰, 이의제기 시간, 경기 메모만 기록 근거로 남긴다.
 
 ## 2026-07-05 인증 컨텍스트 캐시
 
@@ -2411,8 +2413,9 @@ flowchart TD
 - `공개 매칭방 + 팀전`: `visibility:"public"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀 파티를 선택한다. `teamOnly:true`로 고정하며 개인 참여를 막는다. `teamOnly:false` 공개 팀전 생성 요청은 서버에서 거부한다.
 - `비공개 경기방 + 개인전`: `visibility:"private"`, `hostJoinMode:"player"`로 만들고 생성 단계의 `invitePlayerIds`는 비운다. 선수 초대는 생성 후 방모달의 빈 슬롯에서 보낸다.
 - `비공개 경기방 + 팀전`: `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀과 B사이드 대표 1명만 정한다. A/B 라인업은 각 사이드장이 방에서 고른다.
-- `경기 기록방 + 팀전`: `recordType:"match_record"`, `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 2v2 이상만 허용한다. 생성 시에는 A/B 팀과 각 사이드 대표 1명만 저장한다. 출전/후보 명단은 진행 메뉴의 기록방에서 각 사이드장이 자기 팀 명단만 확정한다.
-- `match_record` 생성 reducer/server replay도 private/team/teamOnly/2v2 이상/A팀 소속 방장/B팀 대표 조건을 다시 검사한다.
+- `경기 기록방 + 1v1`: `recordType:"match_record"`, `visibility:"private"`, `hostJoinMode:"player"`, `teamOnly:false`로 만들고 생성자와 선택한 상대 계정을 각 사이드 로스터에 1명씩 저장한다.
+- `경기 기록방 + 2v2 이상 팀전`: `recordType:"match_record"`, `visibility:"private"`, `hostJoinMode:"team"`으로 만든다. 생성 시에는 A/B 팀과 각 사이드 대표 1명만 저장한다. 출전/후보 명단은 진행 메뉴의 기록방에서 각 사이드장이 자기 팀 명단만 확정한다.
+- `match_record` 생성 reducer/server replay는 1v1 개인전의 상대 계정과 2v2 이상 팀전의 A팀 소속 방장/B팀 대표 조건을 각각 다시 검사한다. 모든 신규 사후 기록방은 MMR·공식경기·사전등록·연령 제한·구장 예약을 비활성화한다.
 - `경기 기록방`은 생성 직후 `endedAt`이 있어도 결과 확정 전에는 방모달을 읽기전용으로 잠그지 않는다. 명단 확정과 기록 입력이 끝난 뒤 확정 기록으로 넘어간다.
 - `개인 기록`: `recordType:"solo"`이고 모집/초대/MMR 반영 없이 기록만 저장한다.
 - `비공개 대회방`: `visibility:"tournament"`이고 팀 초대/대진 생성 흐름으로 처리한다.

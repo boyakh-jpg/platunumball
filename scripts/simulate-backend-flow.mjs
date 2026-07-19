@@ -5957,6 +5957,98 @@ async function runMatchRecordRosterScenario({
   };
 }
 
+async function runOneOnOneMatchRecordScenario({
+  label,
+  hostLogin,
+  opponentLogin,
+}) {
+  ids = makeScenarioIds(label);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const opponentId = await step(`${ids.label}:resolveProfile:opponent`, () => getProfileIdForLogin(opponentLogin));
+  const today = new Date().toISOString().slice(0, 10);
+
+  const createResult = await step(`${ids.label}:createMatchRecord1v1`, () => syncMatchAs(hostLogin, {
+    action: "createMatch",
+    preferredMatchId: ids.matchId,
+    draft: {
+      id: ids.matchId,
+      recordType: "match_record",
+      title: getSimulationDisplayTitle(ids.label),
+      visibility: "private",
+      hostJoinMode: "player",
+      teamOnly: false,
+      mode: "1v1",
+      playerIds: [hostId],
+      opponentPlayerIds: [opponentId],
+      opponentLeaderId: opponentId,
+      courtId: "c1",
+      court: "Backend Simulation Court",
+      scheduledDate: today,
+      scheduledTime: "20:30",
+      ranked: true,
+      official: true,
+      preRegistered: true,
+      mmrLimitMode: "block",
+      ageRestriction: "open",
+      courtReserved: true,
+      courtFee: "50000",
+      stakes: "malicious pregame payload",
+      objectionWindow: "1시간",
+    },
+  }));
+  const match = await getMatchAfterResult(createResult, hostLogin, `${ids.label}:loadAfterCreateMatchRecord1v1`);
+
+  assertFlow(match?.rules?.recordType === "match_record", "1v1 match record type missing", match);
+  assertFlow(match?.mode === "1v1", "1v1 match record mode mismatch", match);
+  assertFlow((match?.teamA?.players ?? []).length === 1 && match.teamA.players[0] === hostId, "1v1 match record host roster mismatch", match);
+  assertFlow((match?.teamB?.players ?? []).length === 1 && match.teamB.players[0] === opponentId, "1v1 match record opponent roster mismatch", match);
+  assertFlow(!match?.teamA?.teamId && !match?.teamB?.teamId, "1v1 match record should not bind teams", match);
+  assertFlow(match?.ranked === false && match?.official === false && match?.preRegistered === false, "1v1 match record pregame flags not disabled", match);
+  assertFlow(match?.mmrLimitMode === "off" && Number(match?.ratingScale ?? 0) === 0, "1v1 match record MMR policy not disabled", match);
+  assertFlow(match?.rules?.ageRestriction === "any" && match?.rules?.courtReserved === false, "1v1 match record eligibility or reservation not disabled", match?.rules);
+  assertFlow(!match?.stakes, "1v1 match record pregame stakes should be empty", match);
+  assertFlow(Number(match?.disputeMinutes) === 60 && match?.objectionWindow === "1시간", "1v1 match record dispute window mismatch", match);
+
+  const hostRecorderState = await loadMatchesAs(hostLogin, {
+    recorderOnly: true,
+    activeOnly: true,
+    includeRecentCompleted: false,
+    includeClosedNotices: false,
+  });
+  const opponentRecorderState = await loadMatchesAs(opponentLogin, {
+    recorderOnly: true,
+    activeOnly: true,
+    includeRecentCompleted: false,
+    includeClosedNotices: false,
+  });
+  assertFlow((hostRecorderState.matches ?? []).some((item) => item.id === ids.matchId), "1v1 match record missing from host recorder list", hostRecorderState.matches);
+  assertFlow((opponentRecorderState.matches ?? []).some((item) => item.id === ids.matchId), "1v1 match record missing from opponent recorder list", opponentRecorderState.matches);
+
+  if (supabase) {
+    const { data: notificationRows, error: notificationError } = await supabase
+      .from("notifications")
+      .select("target_user_id,payload")
+      .eq("match_id", ids.matchId);
+    if (notificationError) throw notificationError;
+    assertFlow(
+      (notificationRows ?? []).some((row) => row.target_user_id === opponentId && row.payload?.fromUserId === hostId),
+      "1v1 match record confirmation notification missing",
+      notificationRows,
+    );
+  }
+
+  return {
+    label: ids.label,
+    matchId: ids.matchId,
+    hostId,
+    opponentId,
+    ranked: match.ranked,
+    ratingScale: match.ratingScale,
+    hostRecorderVisible: true,
+    opponentRecorderVisible: true,
+  };
+}
+
 function getTeamCaptainId(team = {}) {
   return (team.members ?? []).find((member) => member.role === "captain")?.userId
     || team.members?.[0]?.userId
@@ -7099,6 +7191,11 @@ async function main() {
     scenarios.push(await runMatchRecordRosterScenario({
       label: "match_record_roster_operation",
     }));
+    scenarios.push(await runOneOnOneMatchRecordScenario({
+      label: "match_record_1v1_postgame",
+      hostLogin: basicHostLogin,
+      opponentLogin: basicOpponentLogin,
+    }));
   } else if (tournamentByeOnly) {
     scenarios.push(await runTournamentByeRoundScenario({
       label: "tournament_bye_round",
@@ -7207,6 +7304,11 @@ async function main() {
   if (!remoteSmokeOnly) {
     scenarios.push(await runMatchRecordRosterScenario({
       label: "match_record_roster_operation",
+    }));
+    scenarios.push(await runOneOnOneMatchRecordScenario({
+      label: "match_record_1v1_postgame",
+      hostLogin: basicHostLogin,
+      opponentLogin: basicOpponentLogin,
     }));
   }
   if (fullSimulation) {

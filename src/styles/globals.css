@@ -3152,13 +3152,14 @@ input[type="color"] {
 .create-opponent-team-selected {
   position: absolute;
   z-index: 2;
-  top: 50%;
-  right: 7px;
+  top: 0;
+  right: 0;
   width: min(315px, 43%);
-  min-height: 30px;
-  padding: 5px 8px;
+  height: var(--ui-button-height);
+  min-height: var(--ui-button-height);
+  padding: 0 10px;
   pointer-events: none;
-  transform: translateY(-50%);
+  transform: none;
 }
 
 .create-opponent-team-selected strong {
@@ -3177,6 +3178,7 @@ input[type="color"] {
   .create-opponent-team-selected {
     position: static;
     width: 100%;
+    height: var(--ui-button-height);
     margin-top: 6px;
     pointer-events: auto;
     transform: none;
