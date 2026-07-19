@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { CalendarDays, ExternalLink, MapPin, Star, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import { getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import { getCourtLayoutLabel, getCourtMapUrl, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 
 function formatDate(value) {
   if (!value) return "날짜 미정";
@@ -153,7 +153,7 @@ export default function CourtDetail({ app }) {
   const reviews = detail.reviews ?? [];
   const adjustedRating = Number(court.adjustedRating ?? court.rating ?? 0);
   const reviewCount = Number(court.reviewCount ?? reviews.length ?? 0);
-  const mapUrl = `https://map.naver.com/p/search/${encodeURIComponent(`${court.name} ${getCourtAddress(court)}`)}`;
+  const mapUrl = getCourtMapUrl(court);
 
   return (
     <div className="page-stack court-detail-page">

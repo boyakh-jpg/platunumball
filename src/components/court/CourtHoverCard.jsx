@@ -4,17 +4,12 @@ import { Link } from "react-router-dom";
 import HoverPortal from "../common/HoverPortal.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { COURTS } from "../../lib/constants.js";
-import { getCourtLayoutLabel, getCourtSurfaceLabel } from "../../lib/courts.js";
+import { getCourtLayoutLabel, getCourtMapUrl, getCourtSurfaceLabel } from "../../lib/courts.js";
 import { getCourtHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 
 function canUseHoverPreview() {
   return typeof window === "undefined" || !window.matchMedia("(hover: none), (pointer: coarse)").matches;
-}
-
-function getCourtMapUrl(court = {}) {
-  const query = [court.addressText, court.name].filter(Boolean).join(" ");
-  return `https://map.naver.com/p/search/${encodeURIComponent(query || court.name || "농구장")}`;
 }
 
 function resolveCourt(court, courtName = "") {

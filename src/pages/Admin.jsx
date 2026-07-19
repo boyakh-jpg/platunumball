@@ -14,7 +14,7 @@ import {
   buildAdminReviewModel,
   hasAdminAccess,
 } from "../lib/admin.js";
-import { getCourtLayoutLabel, getCourtLocationMatches, getCourtSurfaceLabel } from "../lib/courts.js";
+import { getCourtLayoutLabel, getCourtLocationMatches, getCourtMapUrl, getCourtSurfaceLabel } from "../lib/courts.js";
 import { getMatchHashtag } from "../lib/handles.js";
 import "../styles/recruiting-arena.css";
 
@@ -175,10 +175,7 @@ export default function Admin({ app }) {
     [app.state, selectedCourtRequest],
   );
   const approvedLocationMatches = courtLocationMatches.filter((candidate) => candidate.type === "approved");
-  const courtMapQuery = selectedCourtRequest
-    ? [selectedCourtRequest.name, selectedCourtRequest.addressText].filter(Boolean).join(" ")
-    : "";
-  const courtMapHref = courtMapQuery ? `https://map.naver.com/p/search/${encodeURIComponent(courtMapQuery)}` : "";
+  const courtMapHref = selectedCourtRequest ? getCourtMapUrl(selectedCourtRequest) : "";
   const workflow = REVIEW_WORKFLOW_COPY[view] ?? REVIEW_WORKFLOW_COPY.players;
   const sectionCounts = useMemo(() => {
     const courtReports = (app.state.reports ?? []).filter((report) => (
