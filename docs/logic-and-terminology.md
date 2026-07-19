@@ -1686,7 +1686,7 @@ flowchart TD
 10. 토너먼트 생성·팀 승인·대진 1차 생성·후속 라운드 생성은 authoritative DB RPC가 원본이다. `rankball_persist_tournament_snapshot_locked()`와 tournament action RPC는 대회별 advisory/row lock 안에서 처리한다.
 11. `npm run simulate:backend -- --full`의 `tournament_followup_round`는 4팀 토너먼트 생성, 팀장 승인, 1라운드 2경기 확정, 2라운드 1경기 생성, DB `match_ids` 반영을 검증한다.
 12. 리그 현재 순위는 저장 상태를 새로 만들지 않고 DB 경기 결과 projection으로 계산한다. 완료 경기의 승수, 득실차, 득점, 팀명 순으로 정렬하며 경기 원본 점수와 대회 상태를 수정하지 않는다.
-13. 리그 자동 종료와 우승 확정은 별도 authoritative DB 규칙이 생기기 전까지 화면에서 추정해 저장하지 않는다.
+13. 리그는 `match_ids`의 모든 경기가 동점 없이 `confirmed`가 되면 마지막 경기 transaction 안에서 자동 종료한다. DB는 승수, 득실차, 득점, 팀명, 팀 ID 순으로 우승팀을 정하고 `championTeamId`, `completedAt`, 최종 `standings`를 저장한다. 화면 추정값은 저장하지 않는다.
 
 ## 2026-06-25 referee request server action
 
@@ -2701,6 +2701,7 @@ flowchart TD
 28. `match_disputes` 단건 경기 조회는 `match_id` 인덱스를 사용한다. 경기 상세 재조회가 분쟁 테이블 전체를 순차 스캔하지 않는다.
 29. 모집방 상태 갱신은 열린 방 상세만 15초 간격으로 polling한다. `recruiting_posts`와 `recruiting_applications`를 Supabase Realtime publication에 두지 않는다.
 30. 시뮬레이션 정리는 원본 경기·모집방이 먼저 삭제됐더라도 `sim_` ID, 시뮬레이션 대회·모집방 참조, 명시적인 `Backend simulation` 제목으로 남은 피드와 카드 orphan을 제거한다.
+
 31. `public_profiles`는 공개 프로필 열람용 projection이다. `anon`과 `authenticated`는 `SELECT`만 가능하고 뷰를 통한 삽입·수정·삭제는 허용하지 않는다.
 32. 구장 승인, 관리자 임명 연장, 관리자 레벨 판정, 파생 피드 재계산을 포함한 서버 소유 RPC와 정규화 테이블 쓰기는 `service_role`만 수행한다. 클라이언트가 actor ID나 관리자 레벨을 직접 넣어 호출할 수 없다.
 33. 대회 경기 목록의 축약 객체는 이미 불러온 상세 경기의 규칙·명단을 덮어쓰지 않는다. 상세 객체가 도착하면 축약 표식을 제거해 이후 목록 갱신에서도 상세 상태를 보존한다.
@@ -2711,3 +2712,11 @@ flowchart TD
 38. 로그인 계정이 바뀌면 이전 계정에서 시작한 비동기 응답은 현재 상태에 병합하지 않는다. 상세·목록·신고 가능 경기·Discord 동기화 promise와 pending 집합도 계정 단위로 초기화한다.
 39. 경기방과 설정 화면의 시각 표시는 브라우저 시간대와 무관하게 `Asia/Seoul`을 사용한다.
 40. 구장 신청과 승인 구장의 지도 링크는 저장된 핀 `lat/lng`를 단일 위치 원본으로 사용한다. 유효 좌표가 없는 구형 구장만 저장 주소, 마지막으로 구장명 검색으로 대체한다.
+
+## 2026-07-19 보류 운영 로직 마감
+
+1. 일정, 출전·후보 명단, 방 규칙, 방관리자가 바뀌는 SQL reducer는 커밋 뒤 최신 경기 snapshot으로 미발송 경기 리마인더와 관리자 안내를 취소·재생성한다.
+2. 리그 마지막 fixture 확정 trigger는 대회 advisory lock과 tournament row lock 안에서 전체 `match_ids`를 다시 검사한다. 누락 경기, 미확정 경기, 동점 경기가 하나라도 있으면 종료하지 않는다.
+3. 리그 종료 순위는 승수, 득실차, 득점, 팀명, 팀 ID 순이다. 우승팀, 완료 시각, 최종 순위 snapshot을 저장하고 개최자와 승인 팀 주장에게 앱 알림을 한 번만 만든다.
+4. `rankball_tournament_lineup_deadline_batch_action`, `rankball_cleanup_room_feed`, `rankball_cleanup_read_notifications`는 필수 maintenance RPC다. 누락을 `skipped` 성공으로 처리하지 않고 maintenance endpoint와 Discord worker가 HTTP `503`으로 운영 장애를 드러낸다.
+5. 원격 backend simulation의 요청 제한은 기본 `60초`, local in-process는 `20초`다. 테스트가 실제 reducer 거절과 원격 네트워크 지연을 구분해야 한다.

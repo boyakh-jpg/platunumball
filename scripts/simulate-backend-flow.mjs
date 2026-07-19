@@ -62,13 +62,14 @@ const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const testAuthPassword = process.env.RANKBALL_TEST_PASSWORD || process.env.VITE_TEST_AUTH_PASSWORD || "test-0000";
 const testAuthEmailDomain = process.env.RANKBALL_TEST_AUTH_EMAIL_DOMAIN || process.env.VITE_TEST_AUTH_EMAIL_DOMAIN || "rankball.test";
-const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || 20000);
+const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || (usesRemoteApi ? 60000 : 20000));
 const cleanupTimeoutMs = Number(process.env.RANKBALL_SIM_CLEANUP_TIMEOUT_MS || Math.max(requestTimeoutMs * 6, 120000));
 const ensureRemoteTestActors = process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "1" || process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "true";
 const fullSimulation = process.argv.includes("--full") || process.env.RANKBALL_SIM_FULL === "1" || process.env.RANKBALL_SIM_FULL === "true";
 const recordPermissionsOnly = process.argv.includes("--record-permissions-only");
 const mmrOnly = process.argv.includes("--mmr-only");
 const tournamentByeOnly = process.argv.includes("--tournament-bye-only");
+const tournamentLeagueOnly = process.argv.includes("--tournament-league-only");
 const tailOnly = process.argv.includes("--tail-only");
 const remoteSmokeOnly = usesRemoteApi && !fullSimulation;
 
@@ -6187,6 +6188,18 @@ async function prepareTournamentMatchRosters({
     { phase: getMatchRoomPhase(rosterReadyMatch, afterDeadline), rosterReadyMatch },
   );
   if (verifyNotifications) {
+    const reminderCheck = await step(`${label}:assertScheduledReminders`, () => assertPendingMatchNotices(
+      rosterReadyMatch.id,
+      MATCH_SCHEDULED_NOTICE_PREFIXES,
+      { minNotifications: MATCH_SCHEDULED_NOTICE_PREFIXES.length },
+    ));
+    for (const prefix of MATCH_SCHEDULED_NOTICE_PREFIXES) {
+      assertFlow(
+        Number(reminderCheck?.notifications?.counts?.[prefix] ?? 0) > 0,
+        "tournament schedule reminder was not regenerated after roster update",
+        { matchId: rosterReadyMatch.id, prefix, reminderCheck },
+      );
+    }
     for (const { sideName, playerId, playerLogin } of sideFixtures) {
       const playerMatches = await step(`${label}:loadRosterPlayerMatches:${sideName}`, () => loadMatchesAs(playerLogin));
       const listedMatch = (playerMatches.matches ?? []).find((match) => match.id === rosterReadyMatch.id);
@@ -6879,6 +6892,89 @@ async function runTournamentRepresentativeTeamGuardScenario({
     );
   }
 
+  const leagueConfirmationResults = [];
+  for (const [index, leagueMatch] of matches.slice(1).entries()) {
+    await prepareTournamentMatchRosters({
+      label: `${ids.label}:prepareLeagueFixture${index + 2}`,
+      creatorLogin,
+      tournamentId: ids.tournamentId,
+      matchId: leagueMatch.id,
+      fixtures: tournamentFixtures,
+      scheduledDate: startDate,
+      scheduledTime: index === 0 ? "21:15" : "21:45",
+      verifyNotifications: index === 0,
+    });
+    leagueConfirmationResults.push(await playTournamentMatchToConfirmed({
+      label: `${ids.label}:confirmLeagueFixture${index + 2}`,
+      matchId: leagueMatch.id,
+      operatorLogin: creatorLogin,
+    }));
+  }
+
+  const confirmedLeagueMatches = [];
+  for (const leagueMatch of matches) {
+    confirmedLeagueMatches.push(await step(`${ids.label}:loadConfirmedLeagueMatch:${leagueMatch.id}`, () => loadMatchAs(creatorLogin, leagueMatch.id)));
+  }
+  assertFlow(
+    confirmedLeagueMatches.every((leagueMatch) => leagueMatch?.status === "confirmed"),
+    "league fixtures were not all confirmed",
+    confirmedLeagueMatches,
+  );
+
+  const expectedStandings = new Map(tournamentFixtures.map((fixture) => [fixture.team.id, {
+    teamId: fixture.team.id,
+    teamName: fixture.team.name,
+    wins: 0,
+    pointsFor: 0,
+    pointsAgainst: 0,
+  }]));
+  for (const leagueMatch of confirmedLeagueMatches) {
+    const teamAId = leagueMatch.teamA?.teamId ?? "";
+    const teamBId = leagueMatch.teamB?.teamId ?? "";
+    const scoreA = Number(leagueMatch.result?.scoreA ?? leagueMatch.teamA?.score ?? 0);
+    const scoreB = Number(leagueMatch.result?.scoreB ?? leagueMatch.teamB?.score ?? 0);
+    const teamAStanding = expectedStandings.get(teamAId);
+    const teamBStanding = expectedStandings.get(teamBId);
+    assertFlow(Boolean(teamAStanding && teamBStanding && scoreA !== scoreB), "league fixture result is invalid", leagueMatch);
+    teamAStanding.pointsFor += scoreA;
+    teamAStanding.pointsAgainst += scoreB;
+    teamBStanding.pointsFor += scoreB;
+    teamBStanding.pointsAgainst += scoreA;
+    if (scoreA > scoreB) teamAStanding.wins += 1;
+    else teamBStanding.wins += 1;
+  }
+  const expectedLeagueChampion = [...expectedStandings.values()].sort((left, right) => (
+    right.wins - left.wins ||
+    (right.pointsFor - right.pointsAgainst) - (left.pointsFor - left.pointsAgainst) ||
+    right.pointsFor - left.pointsFor ||
+    left.teamName.localeCompare(right.teamName, "ko") ||
+    left.teamId.localeCompare(right.teamId)
+  ))[0];
+  const closedLeague = await step(`${ids.label}:loadClosedLeague`, () => loadTournamentRow(ids.tournamentId));
+  assertFlow(
+    closedLeague?.status === "closed" &&
+      closedLeague?.bracket?.championTeamId === expectedLeagueChampion?.teamId &&
+      Boolean(closedLeague?.bracket?.completedAt) &&
+      closedLeague?.bracket?.standings?.length === tournamentFixtures.length,
+    "league did not close with authoritative standings",
+    { closedLeague, expectedLeagueChampion },
+  );
+
+  const expectedCompletionRecipients = new Set(tournamentFixtures.map((fixture) => fixture.captainId));
+  const { data: completionNotifications, error: completionNotificationError } = await supabase
+    .from("notifications")
+    .select("id,target_user_id,type,payload")
+    .eq("type", "tournament_completed")
+    .contains("payload", { tournamentId: ids.tournamentId });
+  if (completionNotificationError) throw completionNotificationError;
+  assertFlow(
+    [...expectedCompletionRecipients].every((profileId) => (
+      (completionNotifications ?? []).some((notification) => notification.target_user_id === profileId)
+    )),
+    "league completion notification missing",
+    { expectedCompletionRecipients: [...expectedCompletionRecipients], completionNotifications },
+  );
+
   return {
     label: ids.label,
     tournamentId: ids.tournamentId,
@@ -6891,6 +6987,11 @@ async function runTournamentRepresentativeTeamGuardScenario({
     forfeitScore: `${forfeitedMatch.result.scoreA}:${forfeitedMatch.result.scoreB}`,
     forfeitMmrCommitted: Boolean(forfeitedMatch.ratingResult || forfeitedMatch.teamRatingResult),
     automaticForfeitIdempotent: retryResult?.idempotent === true,
+    leagueClosed: closedLeague.status === "closed",
+    leagueChampionTeamId: closedLeague.bracket.championTeamId,
+    leagueConfirmedMatchCount: confirmedLeagueMatches.length,
+    leagueCompletionNotificationCount: completionNotifications?.length ?? 0,
+    leagueConfirmationResults: leagueConfirmationResults.length,
     preferredMatchIdGuard: true,
     inviteNotificationCheck,
     inviteDiscordDeliveryCheck,
@@ -6966,6 +7067,10 @@ async function main() {
     scenarios.push(await runTournamentByeRoundScenario({
       label: "tournament_bye_round",
       creatorLogin: tournamentCreatorLogin,
+    }));
+  } else if (tournamentLeagueOnly) {
+    scenarios.push(await runTournamentRepresentativeTeamGuardScenario({
+      label: "tournament_representative_team_guard",
     }));
   } else if (mmrOnly) {
     scenarios.push(await runOneOnOneScenario({

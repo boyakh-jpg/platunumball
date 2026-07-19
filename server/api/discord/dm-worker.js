@@ -272,6 +272,7 @@ export default async function handler(request, response) {
       limit: body.maintenanceLimit,
       includeRecruitingCapacityCleanup: false,
     });
+    const responseStatus = maintenance.ok ? 200 : 503;
 
     const { data: queuedRows, error: queueError } = await supabase
       .from("discord_notification_deliveries")
@@ -285,7 +286,7 @@ export default async function handler(request, response) {
 
     if (queueError) throw queueError;
     if (!queuedRows?.length) {
-      sendJson(response, 200, { ok: true, processed: 0, sent: 0, failed: 0, maintenance });
+      sendJson(response, responseStatus, { ok: maintenance.ok, processed: 0, sent: 0, failed: 0, maintenance });
       return;
     }
 
@@ -388,8 +389,8 @@ export default async function handler(request, response) {
       }
     }
 
-    sendJson(response, 200, {
-      ok: true,
+    sendJson(response, responseStatus, {
+      ok: maintenance.ok,
       processed: sent.length + failed.length + optedOutRows.length,
       sent: sent.length,
       failed: failed.length,

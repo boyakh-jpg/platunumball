@@ -5,8 +5,9 @@ function getPosition(anchor, width, cardHeight) {
   const rect = anchor.getBoundingClientRect();
   const margin = 12;
   const gap = 10;
-  const safeWidth = Math.min(width, window.innerWidth - margin * 2);
-  const maxLeft = Math.max(margin, window.innerWidth - safeWidth - margin);
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+  const safeWidth = Math.min(width, Math.max(0, viewportWidth - margin * 2));
+  const maxLeft = Math.max(margin, viewportWidth - safeWidth - margin);
   const left = Math.min(Math.max(margin, rect.left), maxLeft);
   const safeHeight = Math.min(cardHeight, window.innerHeight - margin * 2);
   const belowSpace = window.innerHeight - rect.bottom - gap - margin;
@@ -86,7 +87,7 @@ export default function HoverPortal({
   const measuringStyle = {
     top: 0,
     left: 0,
-    width: Math.min(width, Math.max(0, window.innerWidth - 24)),
+    width: Math.min(width, Math.max(0, (document.documentElement.clientWidth || window.innerWidth) - 24)),
     maxHeight: "calc(100vh - 24px)",
     visibility: "hidden",
     pointerEvents: "none",

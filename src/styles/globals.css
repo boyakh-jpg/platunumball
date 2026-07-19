@@ -1378,11 +1378,10 @@ span.referee-hover-card {
   span.court-hover-card.touch-open,
   span.referee-hover-card.touch-open {
     top: auto !important;
-    right: 12px;
     bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     left: 12px !important;
-    width: auto !important;
     min-width: 0;
+    max-width: calc(100% - 24px);
     max-height: min(78dvh, 560px) !important;
     border-radius: 14px;
     padding: 14px;
@@ -4016,6 +4015,15 @@ input[type="color"] {
 .app-main > * {
   width: min(100%, var(--page-content-max));
   margin-inline: auto;
+}
+
+@media (max-width: 760px) {
+  .rank-home .home-alert-card .home-action-main em {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
 }
 
 .sidebar {

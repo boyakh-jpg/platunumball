@@ -2043,7 +2043,9 @@ export default async function handler(request, response) {
         );
         let discordDeliveryCount = Number(sqlResult.discordDeliveryCount ?? 0);
         let discordDeliveryError = sqlResult.discordDeliveryError ?? null;
-        if (["submitMatchResult", "approveMatch", "resumeMatchApproval", "forfeitTournamentMatch"].includes(operation.action) && syncedMatch?.id) {
+        const shouldRefreshMatchDeliveries = MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS.has(operation.action) ||
+          ["submitMatchResult", "approveMatch", "resumeMatchApproval", "forfeitTournamentMatch"].includes(operation.action);
+        if (shouldRefreshMatchDeliveries && syncedMatch?.id) {
           try {
             discordDeliveryCount = await withTimeout(
               queueMatchDiscordDeliveries(context.supabase, syncedMatch, operation.action),

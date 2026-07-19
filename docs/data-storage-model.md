@@ -35,7 +35,7 @@
   - 방 row의 `room_state.ownerId`, `room_state.invitations` 관련 유저, `referee_id`
 - `recruiting_posts` raw table read는 anon/public 전체 공개가 아니다. authenticated 현재 프로필이 `player_id`, `player_ids`, `room_state.ownerId`, `room_state.invitations`, `referee_id` 중 하나와 관련될 때만 허용한다.
 
-## Production Migration TODO
+## Production migration baseline (historical)
 
 - Discord 연동은 로그인 수단이 아니라 프로필 부가 연동으로 둔다.
 - 프로필에는 `discordConnection`을 저장한다. normalized Supabase에서는 `profiles.discord_connection` JSONB와 unique용 `profiles.discord_user_id`에 보존한다.
@@ -144,7 +144,7 @@
 - 브라우저는 `admin_audit_log`, `admin_disciplinary_actions`, `admin_appointments`, `referee_appointments`를 직접 insert/update/delete 하지 않는다.
 - 해당 admin 테이블들은 browser role의 write/truncate/trigger/reference grant를 모두 제거하고, authenticated admin select만 RLS로 허용한다.
 - Supabase 설정 환경에서 관리자 UI는 local state를 먼저 갱신하고 같은 draft를 server action에 전달한다. 배포 전에는 server action 성공 결과 기준으로 재조회/동기화해야 한다.
-- Supabase 설정 환경의 프론트 bootstrap에서는 `localStorage/mockData` 앱 데이터 fallback을 제거했다. 남은 작업은 방/경기 reducer 자체를 authoritative RPC로 이전하는 것이다.
+- Supabase 설정 환경의 프론트 bootstrap에서는 `localStorage/mockData` 앱 데이터 fallback을 제거했다. 방/경기 reducer의 authoritative RPC 이전은 2026-07-13 operation boundary에서 완료됐다.
 
 ## 2026-06-24 Discord DM worker
 
@@ -186,7 +186,7 @@
 - `recruiting_posts` 저장/로드 매핑에 `title`, `visibility`, `rules`, `official`, `preRegistered`, 구장예약, 연령 제한, `sourceTeamId/sourceEntryId`를 보존한다.
 - operation을 지원하지 않는 legacy 경로는 기존 snapshot 검증/upsert fallback만 허용한다.
 - 모집방 확정은 recruiting server action이 `recruiting_posts`와 생성된 `matches`를 같은 요청 안에서 저장한다.
-- 이 단계는 전체 state 저장 브리지 제거 이후의 전용 server action sync다. 아직 DB row-level RPC transaction 엔진은 아니므로 동시성 잠금과 MMR 커밋은 남아 있다.
+- 이 당시 단계는 전체 state 저장 브리지 제거 이후의 전용 server action sync였다. 이후 모집 reducer, transaction lock, 확정 저장은 authoritative DB RPC로 이전됐다.
 
 ## 2026-06-25 match server sync
 
@@ -195,7 +195,7 @@
 - 서버는 Supabase bearer를 검증하고 현재 `profileId`가 경기 참가자, 심판, 기존 생성자 중 하나인지 확인한다.
 - 서버는 `matches`, `match_players`, `match_results`, `player_match_stats`, `match_agreements`, `match_approvals`, `match_disputes`, 관련 `notifications`를 갱신한다.
 - operation을 지원하지 않는 legacy 경로는 기존 snapshot 검증/upsert fallback만 허용한다.
-- 이 단계는 전체 state 저장 브리지 제거 이후의 전용 server action sync다. 아직 DB row-level RPC transaction 엔진은 아니므로 동시성 잠금과 MMR 커밋은 남아 있다.
+- 이 당시 단계는 전체 state 저장 브리지 제거 이후의 전용 server action sync였다. 이후 경기 reducer, transaction lock, MMR commit은 authoritative DB RPC로 이전됐다.
 
 ## 2026-06-26 match rating commit RPC
 
@@ -205,7 +205,7 @@
 - MMR 커밋 후 서버 응답은 영향받은 `profiles`/`teams`를 DB에서 다시 읽어 `state.users`/`state.teams`로 내려주며, 프론트는 reducer 추정값이 아니라 DB 권위값을 즉시 병합한다.
 - 따봉/심판 미출석처럼 MMR 확정과 분리된 신뢰도 변경은 `rankball_apply_profile_trust_deltas()`가 `profiles.trust_score`만 0~100으로 커밋한다.
 - `npm run simulate:backend -- --full` includes `ranked_mmr_commit_1v1`, which verifies `ratingCommitted=true`, returned DB profile state, and cleanup restoration of test profile rating snapshots.
-- 경기 생성/기록 제출/출석/이의/룰 수정은 아직 기존 server action 저장 경로를 쓴다.
+- 이 당시에는 경기 생성/기록 제출/출석/이의/룰 수정이 기존 server action 저장 경로를 썼다. 현재 production mutation은 operation-only locked DB RPC가 원본이다.
 
 ## 2026-06-25 report submit server action
 
@@ -430,12 +430,12 @@ Remaining:
 - `src/lib/recruiting.js`의 `clampIndex`는 참조 0개라 제거했다.
 - `src/pages/Recruiting.jsx`의 `getEntryTitle`, `getReadyTitle`은 참조 0개라 제거했다.
 
-### 보류
+### 호환 유지
 
-- `src/pages/CreateMatch.jsx`의 `PublicPartyPicker`는 참조 0개 후보지만 JSX UI 블록이라 생성 플로우 UI 패스에서 별도 확인 후 제거한다.
 - `src/lib/mockData.js`, `src/lib/demoFlowState.js`는 비-Supabase dev/seed 경로라 즉시 삭제하지 않는다. production source of truth는 아니다.
 - legacy `courts` 테이블 fallback은 `approved_courts` 이전 데이터 보정용이라 즉시 삭제하지 않는다.
 - legacy `rankball_state`는 production DB에서 제거 완료됐다. 과거 schema guard만 재실행 호환용으로 남는다.
+- `PublicPartyPicker`는 생성 플로우 확인 후 제거 완료됐다.
 
 ### DB table/column 참조표
 
@@ -498,6 +498,15 @@ Remaining:
 - Discord invitation button decisions call the same recruiting management DB RPC as web decisions, including team and party invitations.
 - Production Discord still requires real Bot token, bridge secret, per-room channel/thread links, and a continuously running bridge worker.
 - Court hard delete/restore remains deferred until the moderation retention policy is fixed.
+
+## 2026-07-19 deferred-work audit
+
+- Recruiting, match, tournament, MMR, profile identity, admin write, RLS, referee exam, reminder cleanup, and notification retention migrations are complete and covered by schema health or backend simulation.
+- League completion is authoritative: the final confirmed fixture closes the league under tournament lock and stores the champion, completion time, and standings snapshot.
+- Tournament schedule, roster, and room-manager mutations rebuild pending app/Discord reminders from the committed match snapshot.
+- Missing required maintenance RPCs are operational failures. `/api/system/maintenance` and the Discord worker return HTTP `503` instead of reporting a skipped cleanup as success.
+- Remote full simulation uses a `60s` request timeout by default; local in-process simulation keeps `20s`. This prevents transient remote latency from being misreported as a reducer failure.
+- Remaining external operation work is Discord room channel/thread linking and a continuously supervised bridge worker. Court hard delete/restore stays intentionally deferred until retention policy is fixed.
 
 ## 2026-07-13 Discord bridge worker hardening
 

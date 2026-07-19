@@ -323,6 +323,10 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_tournament_id: "", p_match_id: "", p_schedule: {} },
   },
   {
+    name: "rankball_league_finalize_locked",
+    args: { p_tournament_id: "" },
+  },
+  {
     name: "rankball_tournament_invitation_health",
     args: {},
   },

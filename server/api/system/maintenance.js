@@ -400,9 +400,9 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   const notificationCleanup = await cleanupReadNotifications(client, now);
 
   return {
-    ok: (tournamentLineupDeadlines.ok || tournamentLineupDeadlines.skipped)
-      && (feedCleanup.ok || feedCleanup.skipped)
-      && (notificationCleanup.ok || notificationCleanup.skipped)
+    ok: tournamentLineupDeadlines.ok === true
+      && feedCleanup.ok === true
+      && notificationCleanup.ok === true
       && results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
@@ -436,11 +436,12 @@ export default async function handler(request, response) {
       error.statusCode = 400;
       throw error;
     }
-    sendJson(response, 200, await runSystemMaintenance(client, {
+    const result = await runSystemMaintenance(client, {
       limit: normalizeLimit(body.limit ?? getLimit(request)),
       includeRecruitingCapacityCleanup: body.includeRecruitingCapacityCleanup !== false,
       includeFeedRepair: getMaintenanceFeedRepairOption(request, body),
-    }));
+    });
+    sendJson(response, result.ok ? 200 : 503, result);
   } catch (error) {
     console.error("System maintenance failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "maintenance_failed" });
