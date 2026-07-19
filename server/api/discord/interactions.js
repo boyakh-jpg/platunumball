@@ -3,6 +3,7 @@ import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
 import { loadAuthoritativeState } from "../_authoritativeState.js";
 
 const INVITE_PREFIX = "rankball:invite";
+const TOURNAMENT_PREFIX = "rankball:tournament";
 const INTERACTION_PING = 1;
 const INTERACTION_COMPONENT = 3;
 const RESPONSE_PONG = 1;
@@ -102,6 +103,27 @@ function parseInviteAction(customId = "") {
   };
 }
 
+function parseTournamentAction(customId = "") {
+  const rawCustomId = String(customId || "").trim();
+  if (!rawCustomId || rawCustomId.length > COMPONENT_CUSTOM_ID_MAX) reject(400, "invalid_discord_action");
+  const parts = rawCustomId.split(":");
+  if (parts.length !== 3 || `${parts[0]}:${parts[1]}` !== TOURNAMENT_PREFIX) {
+    reject(400, "unsupported_discord_action");
+  }
+  return safeDecodeId(parts[2], "tournament_id");
+}
+
+function getTournamentUrl(request, tournamentId) {
+  const path = `/app/tournaments/${encodeURIComponent(tournamentId)}`;
+  const configuredUrl = String(process.env.VITE_PUBLIC_APP_URL || "").trim().replace(/\/+$/, "");
+  if (configuredUrl) return `${configuredUrl}${path}`;
+
+  const host = String(getHeader(request, "x-forwarded-host") || getHeader(request, "host") || "").trim();
+  if (!host) return path;
+  const protocol = String(getHeader(request, "x-forwarded-proto") || "https").split(",")[0].trim();
+  return `${protocol}://${host}${path}`;
+}
+
 function getInteractionDiscordUserId(interaction = {}) {
   return String(interaction.member?.user?.id || interaction.user?.id || "").trim();
 }
@@ -199,6 +221,12 @@ export default async function handler(request, response) {
 
     if (interaction.type !== INTERACTION_COMPONENT) {
       sendInteractionMessage(response, "지원하지 않는 Discord 액션입니다.");
+      return;
+    }
+
+    const customId = String(interaction.data?.custom_id || "").trim();
+    if (customId.startsWith(`${TOURNAMENT_PREFIX}:`)) {
+      sendInteractionMessage(response, getTournamentUrl(request, parseTournamentAction(customId)));
       return;
     }
 

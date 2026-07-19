@@ -1,8 +1,11 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
+import { getAgeGroupByBirthYear } from "../../../src/lib/profileSetup.js";
 
 const DEFAULT_RATINGS = { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
-const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,trust_score,ratings,school,company,club,streak,discord_connection,test_login_id";
+const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,trust_score,ratings,school,company,club,streak,discord_connection,discord_user_id,test_login_id";
+const DISCORD_ME_URL = "https://discord.com/api/users/@me";
+const DISCORD_USER_ID_PATTERN = /^\d{17,20}$/;
 
 function makeProfileId(authUserId = "") {
   const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
@@ -37,22 +40,89 @@ function getDiscordUserId(connection) {
   return connection && typeof connection === "object" ? connection.userId ?? connection.id ?? null : null;
 }
 
-function getRequestedDiscordConnection(profile = {}, existing = {}) {
+function getDiscordAvatarUrl(user = {}) {
+  if (!user.id) return "";
+  if (!user.avatar) {
+    const fallbackIndex = Number(user.discriminator ?? 0) % 5;
+    return `https://cdn.discordapp.com/embed/avatars/${Number.isFinite(fallbackIndex) ? fallbackIndex : 0}.png`;
+  }
+  const extension = String(user.avatar).startsWith("a_") ? "gif" : "png";
+  return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${extension}?size=128`;
+}
+
+function getDiscordOAuthAccessToken(profile = {}) {
+  const proof = profile.discordOAuthProof && typeof profile.discordOAuthProof === "object"
+    ? profile.discordOAuthProof
+    : {};
+  return String(
+    proof.accessToken
+      ?? profile.discordConnection?.oauthAccessToken
+      ?? profile.discordConnection?.accessToken
+      ?? "",
+  ).trim();
+}
+
+async function getVerifiedDiscordUser(accessToken = "") {
+  if (!accessToken || accessToken.length > 4096) {
+    const error = new Error("discord_oauth_proof_required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let discordResponse;
+  try {
+    discordResponse = await fetch(DISCORD_ME_URL, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch {
+    const error = new Error("discord_oauth_verification_failed");
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (!discordResponse.ok) {
+    const error = new Error("discord_oauth_proof_invalid");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const discordUser = await discordResponse.json();
+  if (!DISCORD_USER_ID_PATTERN.test(String(discordUser?.id || ""))) {
+    const error = new Error("discord_oauth_identity_invalid");
+    error.statusCode = 400;
+    throw error;
+  }
+  return discordUser;
+}
+
+async function getRequestedDiscordConnection(profile = {}, existing = {}) {
   if (!Object.prototype.hasOwnProperty.call(profile, "discordConnection")) {
     return existing?.discord_connection ?? null;
   }
   if (!profile.discordConnection) return null;
   if (typeof profile.discordConnection !== "object") return existing?.discord_connection ?? null;
   const userId = String(getDiscordUserId(profile.discordConnection) || "").trim();
-  if (!userId || profile.discordConnection.status !== "linked") return existing?.discord_connection ?? null;
+  if (profile.discordConnection.status !== "linked") return existing?.discord_connection ?? null;
+
+  const existingUserId = String(getDiscordUserId(existing?.discord_connection) || existing?.discord_user_id || "").trim();
+  if (userId && existingUserId && userId === existingUserId) return existing.discord_connection;
+
+  const discordUser = await getVerifiedDiscordUser(getDiscordOAuthAccessToken(profile));
+  const verifiedUserId = String(discordUser.id);
+  if (userId && userId !== verifiedUserId) {
+    const error = new Error("discord_oauth_identity_mismatch");
+    error.statusCode = 400;
+    throw error;
+  }
+
   return {
     provider: "discord",
     status: "linked",
-    userId,
-    username: String(profile.discordConnection.username || "").trim().slice(0, 80),
-    globalName: String(profile.discordConnection.globalName || profile.discordConnection.username || "").trim().slice(0, 80),
-    avatarUrl: String(profile.discordConnection.avatarUrl || "").trim().slice(0, 500),
-    linkedAt: profile.discordConnection.linkedAt || new Date().toISOString(),
+    userId: verifiedUserId,
+    username: String(discordUser.username || "").trim().slice(0, 80),
+    globalName: String(discordUser.global_name || discordUser.username || "").trim().slice(0, 80),
+    avatarUrl: getDiscordAvatarUrl(discordUser),
+    linkedAt: new Date().toISOString(),
     source: "discord",
   };
 }
@@ -102,7 +172,7 @@ async function assertDiscordUserAvailable(context, discordUserId = "", profileId
   }
 }
 
-function buildProfileRow({ existing, profile, authUser, authUserId }) {
+async function buildProfileRow({ existing, profile, authUser, authUserId }) {
   const now = new Date().toISOString();
   const existingLockedHandle = existing?.handle_locked_at || existing?.hashtag_locked_at;
   const existingHashtag = normalizeHashtag(existing?.hashtag ?? existing?.handle);
@@ -111,9 +181,10 @@ function buildProfileRow({ existing, profile, authUser, authUserId }) {
   const requestedBirthYear = normalizeBirthYear(profile.birthYear);
   const hasLockedBirthYear = Boolean(existing?.birth_year_locked_at && existing?.birth_year);
   const nextBirthYear = hasLockedBirthYear ? existing.birth_year : requestedBirthYear;
+  const nextAgeGroup = getAgeGroupByBirthYear(nextBirthYear);
   const requestedName = String(profile.name ?? existing?.name ?? authUser.email?.split("@")[0] ?? "신규 선수").trim().slice(0, 20);
   const nextName = existing && requestedName !== existing.name && !canChangeName(existing) ? existing.name : requestedName;
-  const discordConnection = getRequestedDiscordConnection(profile, existing);
+  const discordConnection = await getRequestedDiscordConnection(profile, existing);
   const requestedRegion = getRequestedRegion(profile, existing);
 
   if (profile.onboardingComplete && !nextHashtag) {
@@ -134,7 +205,7 @@ function buildProfileRow({ existing, profile, authUser, authUserId }) {
     handle: nextHashtag,
     hashtag: nextHashtag || null,
     birth_year: nextBirthYear,
-    age_group: profile.ageGroup ?? existing?.age_group ?? "open",
+    age_group: nextAgeGroup ?? existing?.age_group ?? "open",
     age_group_checked_season: profile.ageGroupCheckedSeason ?? existing?.age_group_checked_season ?? null,
     region_sido: requestedRegion.regionSido,
     region_district: requestedRegion.regionDistrict,
@@ -178,7 +249,7 @@ export default async function handler(request, response) {
 
     if (selectError) throw selectError;
 
-    const row = buildProfileRow({
+    const row = await buildProfileRow({
       existing,
       profile,
       authUser: context.authUser,
