@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cloneRatingPolicy, DEFAULT_RATING_POLICY } from "../lib/ratingPolicy.js";
 import {
   acceptTeamInvitation,
   addMatchLatePlayer,
@@ -2664,6 +2665,22 @@ export function useAppData(authUser = null, appLocation = null) {
         refreshCurrentProfile,
         loadDirectory,
         loadAdminContext,
+        loadRatingPolicy: async () => {
+          if (!isSupabaseConfigured) {
+            return { ok: true, policy: cloneRatingPolicy(DEFAULT_RATING_POLICY), defaults: cloneRatingPolicy(DEFAULT_RATING_POLICY), version: 1, history: [] };
+          }
+          if (!ensureRemoteReady("MMR·신뢰도 정책")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/rating-policy", "MMR·신뢰도 정책");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/rating-policy", { action: "load" });
+        },
+        updateRatingPolicy: async (draft) => {
+          if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
+          if (!ensureRemoteReady("MMR·신뢰도 정책 저장")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/rating-policy", "MMR·신뢰도 정책 저장");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/rating-policy", { action: "update", ...draft });
+        },
         loadMoreMatches,
         loadMoreRecruiting,
         loadRecruitingRegion,

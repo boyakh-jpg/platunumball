@@ -186,9 +186,25 @@ const REQUIRED_COLUMNS = {
     "discord_thread_id",
     "enabled",
   ],
+  rating_policy: [
+    "id",
+    "version",
+    "policy",
+    "reason",
+    "updated_by",
+    "updated_at",
+  ],
 };
 
 const REQUIRED_RPCS = [
+  {
+    name: "rankball_get_rating_policy",
+    args: { p_actor_profile_id: "", p_actor_admin_level: 0 },
+  },
+  {
+    name: "rankball_update_rating_policy",
+    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_expected_version: 0, p_policy: {}, p_reason: "" },
+  },
   {
     name: "rankball_confirm_recruiting_match_action",
     args: {
@@ -390,6 +406,10 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_match_end_action",
     args: { p_actor_profile_id: "", p_match_id: "", p_started_at: "", p_ended_at: "" },
+  },
+  {
+    name: "rankball_match_auto_finalize_action",
+    args: { p_match_id: "", p_now: new Date(0).toISOString() },
   },
   {
     name: "rankball_match_dispute_action",

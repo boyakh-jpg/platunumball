@@ -1,7 +1,4 @@
 import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
-import { getMatchRatingCommit } from "../_authoritativeState.js";
-import { commitMatchRating } from "../matches/sync-match.js";
-import { loadNormalizedMatchDetailFromClient, runAutomaticStateMaintenance } from "../../../src/data/repository.js";
 import { normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
@@ -57,16 +54,6 @@ function getHostPlayerCount(row = {}, capacity = 5) {
   return row.player_id ? 1 : 0;
 }
 
-function getApprovalRows(match = {}) {
-  return ["teamA", "teamB"].flatMap((side) => (
-    (match.approvals?.[side] ?? []).filter(Boolean).map((userId) => ({
-      match_id: match.id,
-      user_id: userId,
-      side,
-    }))
-  ));
-}
-
 function isDueApprovalRow(row = {}, nowMs = Date.now()) {
   const endedAtMs = row.ended_at ? new Date(row.ended_at).getTime() : NaN;
   if (!Number.isFinite(endedAtMs)) return false;
@@ -103,55 +90,26 @@ async function getCandidateMatchIds(client, limit, nowMs) {
   return dueIds.filter((id) => resultIds.has(id)).slice(0, limit);
 }
 
-async function upsertApprovals(client, match) {
-  const rows = getApprovalRows(match);
-  if (!rows.length) return 0;
-  const { error } = await client
-    .from("match_approvals")
-    .upsert(rows, { onConflict: "match_id,user_id" });
-  if (error) throw error;
-  return rows.length;
-}
-
 async function processMatch(client, matchId, now) {
-  const normalized = await loadNormalizedMatchDetailFromClient(client, "", "", {
-    matchId,
-    isAdmin: true,
+  const { data, error } = await client.rpc("rankball_match_auto_finalize_action", {
+    p_match_id: matchId,
+    p_now: now.toISOString(),
   });
-  const beforeState = {
-    ...(normalized?.state ?? {}),
-    currentUserId: "system:maintenance",
-  };
-  const beforeMatch = (beforeState.matches ?? []).find((match) => match.id === matchId);
-  if (!beforeMatch?.result || beforeMatch.status !== "approval" || beforeMatch.disputeDraftResult) {
-    return { matchId, ok: false, skipped: true, reason: "not_auto_confirmable" };
+  if (error) {
+    const message = String(error.message ?? "");
+    if (/match_auto_finalization_(locked|not_due)|match_not_found/.test(message)) {
+      return { matchId, ok: false, skipped: true, reason: message };
+    }
+    throw error;
   }
-
-  // Recruiting expiration is DB-authoritative; this reducer is only used for match auto-confirmation.
-  const afterState = runAutomaticStateMaintenance({ ...beforeState, recruitingPosts: [] }, now);
-  const afterMatch = (afterState.matches ?? []).find((match) => match.id === matchId);
-  if (afterMatch?.status !== "confirmed" || !afterMatch.ratingResult) {
-    return { matchId, ok: false, skipped: true, reason: "maintenance_noop" };
-  }
-
-  const ratingCommit = getMatchRatingCommit(beforeState, afterState, afterMatch, "autoConfirmMatch");
-  if (!ratingCommit) {
-    return { matchId, ok: false, skipped: true, reason: "missing_rating_commit" };
-  }
-
-  const ratingResult = await commitMatchRating(
-    { supabase: client, profileId: "system:maintenance" },
-    ratingCommit,
-  );
-  const approvalCount = await upsertApprovals(client, afterMatch);
 
   return {
     matchId,
     ok: true,
     skipped: false,
-    ratingCommitted: Boolean(ratingResult?.ok),
-    ratingAlreadyCommitted: Boolean(ratingResult?.alreadyCommitted),
-    approvalCount,
+    ratingCommitted: Boolean(data?.ok),
+    ratingAlreadyCommitted: Boolean(data?.alreadyConfirmed),
+    ratingAtomic: Boolean(data?.ratingAtomic),
   };
 }
 

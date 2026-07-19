@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Clock3, ExternalLink, MapPin, ShieldCheck, UserRound } from "lucide-react";
+import { ClipboardList, Clock3, ExternalLink, MapPin, RotateCcw, Save, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -16,6 +16,14 @@ import {
 } from "../lib/admin.js";
 import { getCourtLayoutLabel, getCourtLocationMatches, getCourtMapUrl, getCourtSurfaceLabel } from "../lib/courts.js";
 import { getMatchHashtag } from "../lib/handles.js";
+import {
+  cloneRatingPolicy,
+  DEFAULT_RATING_POLICY,
+  getRatingPolicyValue,
+  normalizeRatingPolicy,
+  RATING_POLICY_GROUPS,
+  setRatingPolicyValue,
+} from "../lib/ratingPolicy.js";
 import "../styles/recruiting-arena.css";
 
 const ADMIN_SECTION_OPTIONS = [
@@ -23,6 +31,7 @@ const ADMIN_SECTION_OPTIONS = [
   { id: "players", label: "플레이어 신고", caption: "신고와 징계", icon: UserRound },
   { id: "matches", label: "경기 심사", caption: "기록 오류와 이의", icon: ClipboardList },
   { id: "appointments", label: "권한 관리", caption: "심판과 관리자 임명", icon: ShieldCheck },
+  { id: "ratingPolicy", label: "MMR·신뢰도", caption: "이벤트 반영 정책", icon: SlidersHorizontal, ownerOnly: true },
 ];
 const ACTION_OPTIONS = Object.entries(ADMIN_REVIEW_ACTIONS).map(([id, meta]) => ({ id, ...meta }));
 const APPOINTMENT_ACTION_OPTIONS = [
@@ -95,15 +104,195 @@ function DetailList({ title, empty, children }) {
   );
 }
 
+function RatingPolicyPanel({ app }) {
+  const [draft, setDraft] = useState(() => cloneRatingPolicy(DEFAULT_RATING_POLICY));
+  const [savedPolicy, setSavedPolicy] = useState(() => cloneRatingPolicy(DEFAULT_RATING_POLICY));
+  const [defaultPolicy, setDefaultPolicy] = useState(() => cloneRatingPolicy(DEFAULT_RATING_POLICY));
+  const [version, setVersion] = useState(1);
+  const [reason, setReason] = useState("");
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [status, setStatus] = useState("");
+
+  const applyResult = (result = {}) => {
+    const policy = normalizeRatingPolicy(result.policy ?? DEFAULT_RATING_POLICY);
+    const defaults = normalizeRatingPolicy(result.defaults ?? DEFAULT_RATING_POLICY);
+    setDraft(policy);
+    setSavedPolicy(policy);
+    setDefaultPolicy(defaults);
+    setVersion(Number(result.version ?? 1));
+    setHistory(result.history ?? []);
+  };
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    app.actions.loadRatingPolicy?.()
+      .then((result) => {
+        if (!active) return;
+        if (!result || result.ok === false) {
+          setStatus("정책을 불러오지 못했습니다.");
+          return;
+        }
+        applyResult(result);
+      })
+      .catch(() => {
+        if (active) setStatus("정책을 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [app.actions]);
+
+  const changed = JSON.stringify(draft) !== JSON.stringify(savedPolicy);
+  const updateField = (field, rawValue) => {
+    const value = Math.max(field.min, Math.min(field.max, Number(rawValue)));
+    setDraft((current) => setRatingPolicyValue(current, field.path, Number.isFinite(value) ? value : field.min));
+    setStatus("");
+  };
+  const requestSave = () => {
+    if (reason.trim().length < 4) {
+      setStatus("변경 사유를 4자 이상 입력하세요.");
+      return;
+    }
+    setConfirming(true);
+  };
+  const savePolicy = async () => {
+    setConfirming(false);
+    setSaving(true);
+    setStatus("저장 중");
+    try {
+      const result = await app.actions.updateRatingPolicy?.({
+        expectedVersion: version,
+        policy: normalizeRatingPolicy(draft),
+        reason: reason.trim(),
+      });
+      if (!result || result.ok === false) {
+        setStatus(result?.error?.includes?.("stale") ? "다른 관리자가 먼저 저장했습니다. 새로 불러오세요." : "정책 저장에 실패했습니다.");
+        return;
+      }
+      applyResult(result);
+      setReason("");
+      setStatus("저장 완료");
+    } catch {
+      setStatus("정책 저장에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Card className="section-card admin-rating-policy">
+      <div className="section-title-row">
+        <div>
+          <p className="eyebrow">Rating Policy</p>
+          <h2>MMR·신뢰도 이벤트 정책</h2>
+          <span>현재 버전 {version} · 변경은 저장 이후 확정되는 경기와 새 이벤트부터 적용됩니다.</span>
+        </div>
+        <Badge tone="orange">최고관리자</Badge>
+      </div>
+
+      {loading ? <div className="empty-state">정책 불러오는 중</div> : (
+        <>
+          <div className="admin-rating-groups">
+            {RATING_POLICY_GROUPS.map((group) => (
+              <section key={group.id} className="admin-rating-group">
+                <div>
+                  <h3>{group.label}</h3>
+                  <p>{group.description}</p>
+                </div>
+                <div className="admin-rating-field-grid">
+                  {group.fields.map((field) => {
+                    const id = `rating-${field.path.join("-")}`;
+                    return (
+                      <label key={id} htmlFor={id}>
+                        <span>{field.label}</span>
+                        <span className="admin-rating-input">
+                          <input
+                            id={id}
+                            type="number"
+                            min={field.min}
+                            max={field.max}
+                            step={field.step}
+                            value={getRatingPolicyValue(draft, field.path)}
+                            onChange={(event) => updateField(field, event.target.value)}
+                          />
+                          <em>{field.unit}</em>
+                        </span>
+                        <small>{field.min}~{field.max}{field.unit}</small>
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <div className="admin-rating-save">
+            <label>
+              변경 사유
+              <input value={reason} maxLength={160} placeholder="예: 시즌 초 1v1 변동폭 완화" onChange={(event) => setReason(event.target.value)} />
+            </label>
+            <div>
+              <Button type="button" variant="secondary" disabled={saving} onClick={() => {
+                setDraft(cloneRatingPolicy(defaultPolicy));
+                setStatus("기본값을 초안에 적용했습니다.");
+              }}>
+                <RotateCcw size={16} /> 기본값
+              </Button>
+              <Button type="button" disabled={!changed || saving} onClick={requestSave}>
+                <Save size={16} /> 저장
+              </Button>
+            </div>
+            {status ? <strong className="admin-rating-status" aria-live="polite">{status}</strong> : null}
+          </div>
+
+          <div className="admin-rating-history">
+            <strong>최근 변경</strong>
+            {history.length ? history.map((entry) => (
+              <div key={entry.id}>
+                <span><b>v{entry.version}</b>{entry.reason || "사유 없음"}</span>
+                <small>{entry.createdBy || "-"} · {formatDate(entry.createdAt)}</small>
+              </div>
+            )) : <span className="admin-empty-line">변경 이력 없음</span>}
+          </div>
+        </>
+      )}
+      </Card>
+      {confirming ? (
+        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setConfirming(false)}>
+          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="MMR·신뢰도 정책 저장" onMouseDown={(event) => event.stopPropagation()}>
+            <strong>정책 버전 {version + 1}로 저장할까요?</strong>
+            <p>저장 이후 확정되는 경기와 새 신뢰도 이벤트부터 적용됩니다. 이전 결과는 재계산하지 않습니다.</p>
+            <div className="app-confirm-actions">
+              <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>취소</Button>
+              <Button type="button" onClick={savePolicy}>저장</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export default function Admin({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     app.actions.loadAdminContext?.();
     app.actions.loadDirectory?.();
   }, [app.actions]);
+  const adminLevel = Number(app.adminContext?.level ?? 0);
+  const canOwner = adminLevel >= 100;
+  const sectionOptions = ADMIN_SECTION_OPTIONS.filter((option) => !option.ownerOnly || canOwner);
   const requestedSection = searchParams.get("section");
-  const section = ADMIN_SECTION_OPTIONS.some((option) => option.id === requestedSection) ? requestedSection : "courts";
-  const view = section === "appointments" ? "courts" : section;
+  const section = sectionOptions.some((option) => option.id === requestedSection) ? requestedSection : "courts";
+  const view = ["appointments", "ratingPolicy"].includes(section) ? "courts" : section;
   const [queueMode, setQueueMode] = useState("pending");
   const [selectedIdByView, setSelectedIdByView] = useState({});
   const [selectedReportIdByScope, setSelectedReportIdByScope] = useState({});
@@ -129,7 +318,7 @@ export default function Admin({ app }) {
     multipleCourtsVerified: false,
   });
   const [courtApprovalStatus, setCourtApprovalStatus] = useState("");
-  const canAdmin = Number(app.adminContext?.level ?? 0) >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
+  const canAdmin = adminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
   const model = useMemo(() => buildAdminReviewModel(app.state), [app.state]);
   const appointments = useMemo(() => buildAdminAppointmentModel(app.state), [app.state]);
   const appointmentUsers = useMemo(
@@ -186,6 +375,7 @@ export default function Admin({ app }) {
       players: model.players.filter((row) => row.openCount > 0).length,
       matches: model.matches.filter((row) => row.issueCount > 0).length,
       appointments: appointments.summary.pendingAppointmentCount,
+      ratingPolicy: "",
     };
   }, [app.state.reports, app.state.settings?.courtRequests, appointments.summary.pendingAppointmentCount, model.matches, model.players]);
   const changeSection = (nextSection) => {
@@ -301,7 +491,7 @@ export default function Admin({ app }) {
       </header>
 
       <nav className="admin-section-tabs" aria-label="관리자 업무">
-        {ADMIN_SECTION_OPTIONS.map((option) => {
+        {sectionOptions.map((option) => {
           const Icon = option.icon;
           return (
             <button
@@ -316,13 +506,15 @@ export default function Admin({ app }) {
                 <strong>{option.label}</strong>
                 <em>{option.caption}</em>
               </span>
-              <b>{sectionCounts[option.id] ?? 0}</b>
+              {sectionCounts[option.id] === "" ? null : <b>{sectionCounts[option.id] ?? 0}</b>}
             </button>
           );
         })}
       </nav>
 
-      {section === "appointments" ? (
+      {section === "ratingPolicy" ? (
+        <RatingPolicyPanel app={app} />
+      ) : section === "appointments" ? (
         <Card className="section-card admin-appointment-card">
         <div className="section-title-row">
           <div>

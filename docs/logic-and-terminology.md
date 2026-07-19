@@ -752,7 +752,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 3. 구장 등록은 지도 핀 확정이 필수다. 핀 좌표를 Naver Reverse Geocoding으로 변환한 `addressText`, `roadAddress`, `jibunAddress`, 지역, 동, 위도, 경도를 최종 저장한다.
 4. 허위 구장 등록요청은 `court_request` 신고로 접수한다.
 5. 같은 유저가 같은 구장 등록요청을 중복 신고할 수 없다.
-6. 허위 구장 신고가 접수되면 요청자 신뢰도는 8점 감소한다.
+6. 허위 구장 신고가 접수되면 요청자 신뢰도는 활성 운영 정책의 `falseCourtReportPenalty`만큼 감소한다.
 7. 구장 등록요청 폼과 Naver 주소검색 버튼은 신뢰도 기준을 통과한 사용자에게만 렌더링한다.
 8. 프론트 숨김은 API 사용량 완화용 UX일 뿐 보안이 아니다. 배포 백엔드는 읽기 전용 `GET /api/courts/address-search?q=...` endpoint에 인증, 신뢰도 검사, rate limit, 도메인 제한을 적용해야 한다.
 9. 주소검색은 기존 브라우저 Naver Maps geocoder를 우선 사용한다. `/api/courts/address-search`는 브라우저 geocoder 실패 시 보조 fallback이다.
@@ -1091,10 +1091,13 @@ flowchart TD
 5. 심판/기록자/방장도 따봉 대상이 될 수 있다.
 6. 강퇴 남발, 잠수, 미출석, 확인 미응답은 신뢰도 하락.
 7. 후보 기록자 수행, 좋은 평가, 안정적 방 운영은 신뢰도 상승.
-8. 기록 확정 보상/파울/연승은 `rankball_commit_match_rating()`에서 커밋한다.
-9. 따봉과 심판 미출석처럼 경기 확정 전후에 따로 생기는 신뢰도 변경은 `rankball_apply_profile_trust_deltas()`로 `profiles.trust_score`만 0~100 범위에서 커밋한다.
-10. 심판 미출석이 양측 확인으로 확정되면 `formerRefereeId` 대상 심판 신뢰도는 `REFEREE_ABSENCE_TRUST_PENALTY`만큼 감소한다.
+8. 기록 확정 보상/파울/연승은 `rankball_match_finalize_locked()`의 authoritative DB 계산에서 커밋한다.
+9. 따봉과 심판 미출석처럼 경기 확정 전후에 따로 생기는 신뢰도 변경은 각 전용 DB RPC에서 `profiles.trust_score`를 0~100 범위로 커밋한다.
+10. 심판 미출석이 양측 확인으로 확정되면 `formerRefereeId` 대상 심판 신뢰도는 활성 운영 정책의 `refereeAbsencePenalty`만큼 감소한다.
 11. 방장/심판 강퇴는 실행 전 확인 팝업에서 신뢰도 하락 가능성을 경고해야 한다.
+12. 운영 신뢰도 증감값은 `rating_policy`의 활성 버전을 원본으로 쓴다. 최고관리자만 전용 server action/RPC로 변경하며 경기 확정, 파울, 후보 기록자, 심판, 따봉, 심판 불참, 방 닫기, 반복 강퇴, 허위 구장 등록에 적용한다.
+13. 정책 변경은 이미 확정된 경기와 이미 발생한 이벤트를 재계산하지 않는다. 저장 이후 새로 커밋되는 이벤트부터 적용한다.
+14. 따봉 지급과 취소는 하나의 `thumbsDelta`를 대칭으로 사용한다. 지급값과 취소값을 따로 설정해 반복 토글로 신뢰도를 생성할 수 없게 한다.
 
 ## 신고 원칙
 
@@ -1128,6 +1131,10 @@ flowchart TD
 9. 사후 인원 수정이 많으면 정규전 반영률을 낮추거나 무효 처리할 수 있어야 한다.
 10. 친선전(`ranked=false`) 확정은 개인 MMR, 모드 MMR, 연승, 팀 MMR, 팀 승패를 변경하지 않는다. 기록자/심판 신뢰도 보상은 별도 규칙대로 적용할 수 있다.
 11. `rankball_match_finalize_locked()`은 친선전 확정 시 ratings/streak/팀 전적 계산을 건너뛰고, `rankball_commit_match_rating()`도 친선전 레이팅 payload를 거부한다. backend simulation은 승인 전후 ratings와 streak 불변을 검증한다.
+12. 개인 승패, 개인 스탯, 형식별 모드/통합, 개인 최대 변동폭, 팀 승패/최대 변동폭의 운영 반영률은 활성 `rating_policy`를 사용한다.
+13. 기대승률, 경기 품질, 증거, 용병, 기록 출처 보정은 무결성 공식으로 고정한다. 최고관리자 정책 탭은 이 공식을 직접 바꾸지 않는다.
+14. 정책 저장은 버전 비교와 advisory lock을 사용한다. 경기 확정은 같은 정책 lock을 잡아 한 경기 계산 중 정책 버전이 섞이지 않게 한다.
+15. 이의제기 시간이 지난 자동 확정은 JS rating payload를 커밋하지 않는다. maintenance가 `rankball_match_auto_finalize_action()`을 호출해 승인 roster를 잠근 뒤 수동 확정과 같은 DB 계산 함수를 사용한다.
 
 ## 연령군 원칙
 
@@ -1593,7 +1600,7 @@ flowchart TD
 2. 지도 핀 확정 시 좌표를 역지오코딩하고 반환된 실제 주소와 좌표로 검색 결과를 교체한다. 역지오코딩 실패 시 제출하지 않는다.
 3. 승인된 구장 또는 대기/신고 상태 구장요청과 같은 도로명/지번/주소 identity가 있으면 새 요청을 막는다.
 4. 관리자 승인 시에도 같은 중복 기준을 다시 검사한다.
-5. 허위 구장 신고가 접수되면 요청자 신뢰도를 `FALSE_COURT_REPORT_TRUST_PENALTY`만큼 차감하고, 차감 후 `COURT_REQUEST_TRUST_MIN` 미만이면 추가 구장 등록요청을 막는다.
+5. 허위 구장 신고가 접수되면 요청자 신뢰도를 활성 운영 정책의 `falseCourtReportPenalty`만큼 차감하고, 차감 후 `COURT_REQUEST_TRUST_MIN` 미만이면 추가 구장 등록요청을 막는다.
 6. 현재 enforcement는 mock/localStorage 기준이다. 배포 백엔드에서는 server action, DB unique constraint, RLS/admin 권한으로 같은 검사를 다시 해야 한다.
 
 ## 2026-06-24 normalized persistence tables
@@ -1639,6 +1646,9 @@ flowchart TD
 11. 플레이어 신고 최종판단은 선택한 report row 하나를 기준으로 처리한다. 플레이어 큐는 해당 플레이어의 신고, 경기, 제재 이력을 같이 보여준다.
 12. 구장 심사와 경기 심사는 같은 관리자 화면 안에서 보되, 처리 대상 report type과 액션 후보를 분리한다.
 13. Discord DM 발송은 `discord_notification_deliveries` 큐를 서버 worker가 처리한다. Discord 초대 버튼 interaction은 `/api/discord/interactions`가 처리한다.
+14. MMR·신뢰도 정책 조회/변경은 최고관리자 level 100 전용 `POST /api/admin/rating-policy`와 `rankball_get_rating_policy()` / `rankball_update_rating_policy()`만 사용한다.
+15. 정책 변경은 전체 정책 JSON, 이전 버전, 변경 사유를 한 transaction에서 검증하고 `admin_audit_log.type=rating_policy_update`로 이전값과 이후값을 남긴다.
+16. `rating_policy`는 브라우저 직접 read/write 대상이 아니며 API와 DB RPC가 각각 최고관리자 권한을 검사한다.
 
 ## 2026-06-25 report submit server action
 
@@ -1834,7 +1844,7 @@ flowchart TD
 
 1. `approveMatch`가 양쪽 승인 완료로 `confirmed`가 되면 서버 reducer가 변경된 `profiles`와 `teams` 경쟁 수치만 추출한다.
 2. MMR, streak, trust reward, team wins/losses는 `rankball_commit_match_rating()` RPC에서만 최종 커밋한다.
-3. 따봉/심판 미출석처럼 경기 확정 커밋과 분리된 신뢰도 변경은 `rankball_apply_profile_trust_deltas()`에서만 커밋한다.
+3. 따봉/심판 미출석처럼 경기 확정 커밋과 분리된 신뢰도 변경은 각 전용 authoritative DB RPC에서만 커밋한다.
 4. RPC는 `matches` row를 `for update`로 잠그고 `rating_result is not null`이면 재커밋하지 않는다.
 5. `ratingResult/teamRatingResult/confirmedAt`이 포함된 경기 확정 상태는 RPC가 match row에 저장한다.
 6. 경기 생성/기록 제출/출석/이의/룰 수정은 아직 별도 row upsert 경로이며, full DB RPC migration은 남아 있다.

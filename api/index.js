@@ -1,6 +1,7 @@
 import adminAppointmentAction from "../server/api/admin/appointment-action.js";
 import adminContext from "../server/api/admin/context.js";
 import adminDisciplinaryAction from "../server/api/admin/disciplinary-action.js";
+import adminRatingPolicy from "../server/api/admin/rating-policy.js";
 import adminReviewAction from "../server/api/admin/review-action.js";
 import discordCallback from "../server/api/auth/discord/callback.js";
 import discordStart from "../server/api/auth/discord/start.js";
@@ -44,6 +45,7 @@ const ROUTES = new Map([
   ["/admin/appointment-action", adminAppointmentAction],
   ["/admin/context", adminContext],
   ["/admin/disciplinary-action", adminDisciplinaryAction],
+  ["/admin/rating-policy", adminRatingPolicy],
   ["/admin/review-action", adminReviewAction],
   ["/auth/discord/callback", discordCallback],
   ["/auth/discord/start", discordStart],
