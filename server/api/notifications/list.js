@@ -22,10 +22,12 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request, { profileSelect: PROFILE_ME_COLUMNS });
+    const now = new Date().toISOString();
     const { data, error } = await context.supabase
       .from("notifications")
       .select(NOTIFICATION_COLUMNS)
       .or(`user_id.eq.${context.profileId},target_user_id.eq.${context.profileId}`)
+      .lte("due_at", now)
       .order("created_at", { ascending: false })
       .limit(getNotificationLimit(body.limit));
     if (error) throw error;

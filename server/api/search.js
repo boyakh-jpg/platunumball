@@ -15,7 +15,7 @@ const TYPE_ALIASES = {
   court: ["court"],
   referee: ["referee"],
 };
-const REFEREE_GRADES = new Set(["associate", "official", "senior", "master", "regional", "national", "admin"]);
+const REFEREE_GRADES = new Set(["candidate", "silver", "gold", "platinum", "official"]);
 
 function normalizeSearchQuery(value = "") {
   return String(value ?? "")
@@ -129,7 +129,7 @@ function activeTerm(row = {}, nowMs = Date.now()) {
 function isActiveRefereeAppointment(row = {}) {
   const status = row.status || "active";
   const role = row.role || "referee";
-  return role === "referee" && ["active", "approved"].includes(status) && REFEREE_GRADES.has(row.grade) && activeTerm(row);
+  return role === "referee" && status === "active" && REFEREE_GRADES.has(row.grade) && activeTerm(row);
 }
 
 function getPayload(row = {}) {

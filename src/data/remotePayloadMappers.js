@@ -39,6 +39,7 @@ export function fromRemoteNotification(row = {}) {
     invitationId: row.invitation_id ?? payload.invitationId,
     discordEvent: row.discord_event ?? payload.discordEvent,
     readAt: row.read_at ?? payload.readAt ?? null,
+    dueAt: row.due_at ?? payload.dueAt ?? payload.sendAt ?? null,
     createdAt: row.created_at ?? payload.createdAt,
     updatedAt: row.updated_at ?? payload.updatedAt,
   };

@@ -76,11 +76,13 @@ function getCappedRecruitingLimit(value) {
 
 async function loadCurrentUserHomeNotifications(supabase, profileId = "", blockedUserIds = []) {
   if (!profileId) return [];
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("notifications")
     .select(NOTIFICATION_COLUMNS)
     .or(`user_id.eq.${profileId},target_user_id.eq.${profileId}`)
     .is("read_at", null)
+    .lte("due_at", now)
     .order("created_at", { ascending: false })
     .limit(HOME_NOTIFICATION_QUERY_LIMIT);
   if (error) throw error;

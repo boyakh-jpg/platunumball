@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
 import homeLoadHandler from "../server/api/home/load.js";
+import notificationListHandler from "../server/api/notifications/list.js";
 import loadStateHandler from "../server/api/state/load.js";
 import syncRecruitingPostHandler from "../server/api/recruiting/sync-post.js";
 import recruitingListHandler from "../server/api/recruiting/list.js";
@@ -71,14 +72,15 @@ const matchRecordOnly = process.argv.includes("--match-record-only");
 const mmrOnly = process.argv.includes("--mmr-only");
 const tournamentByeOnly = process.argv.includes("--tournament-bye-only");
 const tournamentLeagueOnly = process.argv.includes("--tournament-league-only");
+const operationalGuardsOnly = process.argv.includes("--operational-guards-only");
 const tailOnly = process.argv.includes("--tail-only");
 const remoteSmokeOnly = usesRemoteApi && !fullSimulation;
 
-if (!url || !publishableKey || (!usesRemoteApi && !serviceRoleKey)) {
+if (!url || !publishableKey || !serviceRoleKey) {
   const missing = [
     url ? "" : "SUPABASE_URL/VITE_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL",
     publishableKey ? "" : "VITE_SUPABASE_PUBLISHABLE_KEY/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/VITE_SUPABASE_ANON_KEY",
-    usesRemoteApi || serviceRoleKey ? "" : "SUPABASE_SERVICE_ROLE_KEY",
+    serviceRoleKey ? "" : "SUPABASE_SERVICE_ROLE_KEY",
   ].filter(Boolean);
   console.error(`Missing required env: ${missing.join(", ")}`);
   process.exit(1);
@@ -1157,6 +1159,10 @@ async function loadHomeAs(testLoginId) {
   return payload.state;
 }
 
+async function loadNotificationsAs(testLoginId, options = {}) {
+  return callHandler("/api/notifications/list", notificationListHandler, await getAuthToken(testLoginId), options);
+}
+
 async function runHomeAlertNotificationScenario({
   label,
   login,
@@ -1190,8 +1196,8 @@ async function runHomeAlertNotificationScenario({
         simulation: true,
         simulationId: ids.label,
       },
-      created_at: now.toISOString(),
-      updated_at: now.toISOString(),
+      created_at: new Date(now.getTime() + 2_000).toISOString(),
+      updated_at: new Date(now.getTime() + 2_000).toISOString(),
     },
     {
       id: futureId,
@@ -1211,8 +1217,8 @@ async function runHomeAlertNotificationScenario({
         simulation: true,
         simulationId: ids.label,
       },
-      created_at: now.toISOString(),
-      updated_at: now.toISOString(),
+      created_at: new Date(now.getTime() + 3_000).toISOString(),
+      updated_at: new Date(now.getTime() + 3_000).toISOString(),
     },
   ];
   const { error } = await step(`${ids.label}:insertNotifications`, () => supabase
@@ -1225,12 +1231,20 @@ async function runHomeAlertNotificationScenario({
   assertFlow(notifications.some((notification) => notification.id === dueId), "home due alert missing", notifications);
   assertFlow(!notifications.some((notification) => notification.id === futureId), "home future alert should be hidden", notifications);
 
+  const notificationList = await step(`${ids.label}:notificationList`, () => loadNotificationsAs(login, { limit: 1 }));
+  assertFlow(
+    notificationList?.notifications?.length === 1 && notificationList.notifications[0]?.id === dueId,
+    "future notification consumed the notification list limit",
+    notificationList,
+  );
+
   return {
     label: ids.label,
     login,
     profileId,
     dueIncluded: true,
     futureHidden: true,
+    futureExcludedBeforeLimit: true,
   };
 }
 
@@ -3291,6 +3305,50 @@ async function runTeamLifecycleScenario({
   }));
   assertFlow(cancelResult?.ok && cancelResult?.status === "cancelled", "team invitation cancel failed", cancelResult);
 
+  const recruitingResult = await step(`${ids.label}:createActiveTeamRecruitingPost`, () => syncRecruitingAs(captainLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: getSimulationDisplayTitle(`${ids.label}_active_reference`),
+      visibility: "public",
+      hostJoinMode: "team",
+      mode: "2v2",
+      sideCapacity: 2,
+      timingType: "instant",
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: true,
+      refereeWanted: false,
+      region: "서울특별시 성동구",
+      courtId: "c1",
+      court: "Backend Simulation Court",
+      teamId,
+      playerIds: [captainId, acceptedMemberId],
+      position: "PG",
+      memo: "Backend simulation active team reference guard.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  assertFlow(recruitingResult?.post?.id === ids.postId, "active team recruiting reference creation failed", recruitingResult);
+  const activeReferenceDelete = await expectRejected(
+    `${ids.label}:deleteTeamWithActiveReference`,
+    () => syncTeamAs(captainLogin, { deletedTeamId: teamId }),
+    ["team_has_active_references"],
+  );
+  assertFlow(activeReferenceDelete.rejected, "team deletion ignored an active recruiting reference", activeReferenceDelete);
+  const closeRecruitingResult = await step(`${ids.label}:closeActiveTeamRecruitingPost`, () => syncRecruitingAs(captainLogin, {
+    action: "closeRecruitingPost",
+    postId: ids.postId,
+  }));
+  assertFlow(closeRecruitingResult?.ok, "active team recruiting reference close failed", closeRecruitingResult);
+
   const deleteResult = await step(`${ids.label}:deleteTeam`, () => syncTeamAs(captainLogin, { deletedTeamId: teamId }));
   assertFlow(deleteResult?.ok && deleteResult?.deleted === true, "team soft delete failed", deleteResult);
   const { data: deletedTeam, error: deletedTeamError } = await supabase
@@ -3310,6 +3368,7 @@ async function runTeamLifecycleScenario({
     updated: true,
     invitationCancelled: true,
     initialMemberGuard: true,
+    activeReferenceGuard: true,
     deleted: true,
   };
 }
@@ -4164,6 +4223,16 @@ async function runDisputeResumeThumbsScenario({
       playerStats: { [hostId]: { points: 21 } },
     },
   }), ["match_postgame_missing_only"]);
+
+  await expectRejected(`${ids.label}:disputeMatch:pointsOutOfRange`, () => syncMatchAs(opponentLogin, {
+    action: "disputeMatch",
+    matchId: ids.matchId,
+    reason: {
+      reason: "Backend simulation invalid dispute points",
+      playerId: opponentId,
+      requestedPoints: 1000,
+    },
+  }), ["match_stat_value_out_of_range"]);
 
   const disputeResult = await step(`${ids.label}:disputeMatch`, () => syncMatchAs(opponentLogin, {
     action: "disputeMatch",
@@ -7240,6 +7309,21 @@ async function main() {
     scenarios.push(await runTournamentRepresentativeTeamGuardScenario({
       label: "tournament_representative_team_guard",
     }));
+  } else if (operationalGuardsOnly) {
+    scenarios.push(await runHomeAlertNotificationScenario({
+      label: "home_alert_notifications",
+      login: homeAlertLogin,
+    }));
+    scenarios.push(await runTeamLifecycleScenario({
+      label: "team_lifecycle_reference_guard",
+      captainLogin: teamLifecycleCaptainLogin,
+      acceptedMemberLogin: teamLifecycleAcceptedLogin,
+      cancelledInviteLogin: teamLifecycleCancelledLogin,
+    }));
+    scenarios.push(await runMatchListProfileIntegrityScenario({
+      label: "match_list_profile_integrity",
+      login: homeAlertLogin,
+    }));
   } else if (mmrOnly) {
     scenarios.push(await runOneOnOneScenario({
       label: "ranked_mmr_commit_1v1",
@@ -7574,7 +7658,7 @@ async function main() {
 
   console.log(JSON.stringify({
     ok: true,
-    mode: tournamentByeOnly ? "tournament_bye" : mmrOnly ? "mmr" : tailOnly ? "tail" : recordPermissionsOnly ? "record_permissions" : fullSimulation ? "full" : usesRemoteApi ? "remote_smoke" : "local_smoke",
+    mode: tournamentByeOnly ? "tournament_bye" : tournamentLeagueOnly ? "tournament_league" : operationalGuardsOnly ? "operational_guards" : mmrOnly ? "mmr" : tailOnly ? "tail" : recordPermissionsOnly ? "record_permissions" : fullSimulation ? "full" : usesRemoteApi ? "remote_smoke" : "local_smoke",
     scenarios,
     schemaHealth: schemaHealth?.skipped ? { status: "skipped", reason: schemaHealth.reason } : "ok",
     verificationWarnings: [

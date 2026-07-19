@@ -3608,7 +3608,7 @@ function buildDisputeDraftResult(match = {}, disputeRequest = {}, currentUserId 
   const playerStats = normalizePlayerStats(baseResult.playerStats ?? {}, recordPlayerIds);
   playerStats[requestedPlayerId] = {
     ...(playerStats[requestedPlayerId] ?? {}),
-    points: Math.max(0, Math.round(requestedPoints)),
+    points: Math.min(999, Math.max(0, Math.round(requestedPoints))),
   };
   return {
     ...baseResult,

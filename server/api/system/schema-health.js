@@ -165,6 +165,7 @@ const REQUIRED_COLUMNS = {
     "target_user_id",
     "match_id",
     "recruiting_post_id",
+    "due_at",
     "payload",
   ],
   room_chat_messages: [
@@ -404,6 +405,10 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_match_list",
     args: { p_profile_id: "", p_limit: 1, p_cursor: "", p_active_only: true },
+  },
+  {
+    name: "rankball_recorder_match_list",
+    args: { p_profile_id: "", p_limit: 1, p_cursor: "", p_admin: false },
   },
   {
     name: "rankball_cleanup_room_feed",

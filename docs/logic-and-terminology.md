@@ -2753,3 +2753,15 @@ flowchart TD
 5. 승인 구장 행이 비활성 상태이면 같은 ID의 구형 `courts` 또는 내장 상수로 되살리지 않는다. 비활성 승인 행은 해당 구장 ID의 tombstone이다.
 6. Discord DM worker는 알림·피드·리마인더 유지보수가 실패하면 큐를 claim하거나 전송하지 않고 `503`으로 종료한다.
 7. `resumeMatchApproval`은 이의 수정안을 실제 기록에 반영한 뒤 경기를 `approval`로 되돌린다. 이의 해결 시각보다 앞선 승인 행은 화면과 과반 계산에서 제외하며, 실제 출전자 양 사이드의 새 과반이 모여야 확정과 MMR commit을 수행한다.
+
+## 2026-07-20 운영 조회와 활성 참조 보호
+
+1. 웹 알림의 예약 시각은 `notifications.due_at`이 원본이다. 홈과 알림 목록은 `due_at <= now()`를 DB 조회 제한 전에 적용하며, 전체 읽음도 아직 도래하지 않은 알림을 변경하지 않는다.
+2. 일반 경기 feed는 `rules.recordType='match'`인 경기만 페이지 제한 전에 포함한다. `match_record`와 `personal_record`는 일반 경기 페이지 수를 소비하지 않는다.
+3. 진행 메뉴 전용 조회는 `agreed`, `approval`, `disputed` 상태와 현재 사용자 관계를 DB에서 먼저 판정한 뒤 페이지를 자른다. 관계에는 방장, 현재·이전 심판, 출전·후보·교체 선수, 기록자, 결과 제출자가 포함된다.
+4. 심판 자격 ID는 `candidate`, `silver`, `gold`, `platinum`, `official`만 사용한다. 현재 배정 심판의 기록, 이의 접수, 이의 수정안 확정은 활성 임명, 임기, 등급, 최소 신뢰도를 모두 다시 확인한다.
+5. 선수 기록과 이의 득점의 단일 필드 상한은 `999`다. 이의 득점이 상한을 넘으면 저장 전에 거부한다.
+6. 활성 경기, 공개 모집, 대회 초대·참가가 참조하는 팀은 삭제할 수 없다. 활성 참조를 먼저 종료한 뒤 주장만 팀을 삭제할 수 있고, 남은 대기 팀 초대는 만료 처리한다.
+7. 리그·토너먼트 후속 계산은 경기 row의 형식 snapshot이 아니라 `tournaments.format`을 원본으로 사용한다. 기존 불일치 snapshot은 현재 대회 형식으로 정규화한다.
+8. 원격 backend simulation은 정밀 cleanup을 위해 `SUPABASE_SERVICE_ROLE_KEY`를 필수로 사용한다. seed cleanup은 DB row와 함께 `provider=test`, profile ID, 로그인 ID가 모두 일치하는 Auth 사용자만 삭제한다.
+9. `sendAt/dueAt`이 없는 즉시 알림은 `due_at=-infinity`로 저장한다. DB와 API 시계 차이 때문에 방금 생성된 초대가 예약 알림으로 오인되지 않는다.

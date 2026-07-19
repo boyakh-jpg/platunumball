@@ -178,7 +178,7 @@ export function buildMatchDisputeRequest({ match = {}, playerId = "", playerName
   return {
     reason: `점수판 ${scoreA}:${scoreB} / ${pointText} / 사유: ${reasonText}`,
     playerId,
-    requestedPoints: playerId && Number.isFinite(nextPoints) ? Math.max(0, nextPoints) : null,
+    requestedPoints: playerId && Number.isFinite(nextPoints) ? Math.min(999, Math.max(0, nextPoints)) : null,
   };
 }
 

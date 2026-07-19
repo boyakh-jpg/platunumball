@@ -677,6 +677,27 @@ async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_
   };
 }
 
+async function fetchRecorderMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "", isAdmin = false) {
+  if (!profileId) return { rows: [], cursor: "", exhausted: true };
+  const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const { data, error } = await client.rpc("rankball_recorder_match_list", {
+    p_profile_id: profileId,
+    p_limit: cappedLimit,
+    p_cursor: cursor,
+    p_admin: isAdmin,
+  });
+  if (error) {
+    if (error.code !== "PGRST202" && error.code !== "42883") throw error;
+    return fetchCurrentUserMatchPage(client, profileId, cappedLimit, cursor, true, true);
+  }
+  const ids = unique(Array.isArray(data?.ids) ? data.ids : []);
+  return {
+    rows: await fetchMatchRowsByIds(client, ids),
+    cursor: String(data?.cursor ?? ""),
+    exhausted: data?.exhausted !== false,
+  };
+}
+
 async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, completedSince = "") {
   if (!profileId) return { ids: [], exhausted: true, source: "completed_fallback" };
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
@@ -1080,8 +1101,8 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   }
 
   if (recorderOnly) {
-    const recorderPage = await timeStep(debugTiming, "recorderFallbackMs", () => (
-      fetchCurrentUserMatchPage(context.supabase, context.profileId, limit, "", true, true)
+    const recorderPage = await timeStep(debugTiming, "recorderMatchesMs", () => (
+      fetchRecorderMatchPage(context.supabase, context.profileId, limit, cursor, adminLevel >= 30)
     ));
     const recorderRows = recorderPage?.rows ?? [];
     matchRows = mergeMatchRowsById(matchRows, recorderRows);

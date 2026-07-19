@@ -1,13 +1,29 @@
 import { createClient } from "@supabase/supabase-js";
+import { existsSync, readFileSync } from "node:fs";
 import { initialState } from "../src/lib/mockData.js";
 import { runAutomaticStateMaintenance } from "../src/data/repository.js";
 
-const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+function loadEnvFile(path) {
+  if (!existsSync(path)) return;
+  for (const rawLine of readFileSync(path, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#") || !line.includes("=")) continue;
+    const [key, ...valueParts] = line.split("=");
+    if (!key || process.env[key]) continue;
+    process.env[key] = valueParts.join("=").replace(/^["']|["']$/g, "");
+  }
+}
+
+loadEnvFile(".env.local");
+loadEnvFile(".env.production");
+
+const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const confirmCleanup = process.env.RANKBALL_CONFIRM_CLEANUP === "rankball";
+const testAuthEmailDomain = process.env.RANKBALL_TEST_AUTH_EMAIL_DOMAIN || "rankball.test";
 
 if (!url || !serviceRoleKey) {
-  console.error("SUPABASE_URL/VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
+  console.error("SUPABASE_URL/VITE_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
   process.exit(1);
 }
 
@@ -48,6 +64,14 @@ const seedIds = {
   discordDeliveries: ids(seedState.discordNotificationDeliveries),
 };
 
+const seedAuthAccounts = seedState.users
+  .map((user) => ({
+    profileId: String(user.id || "").trim(),
+    testLoginId: String(user.testLoginId || "").trim().toLowerCase(),
+  }))
+  .filter((account) => account.profileId && account.testLoginId)
+  .map((account) => ({ ...account, email: `${account.testLoginId}@${testAuthEmailDomain}`.toLowerCase() }));
+
 async function removeByIds(table, column, values) {
   if (!values.length) return { table, count: 0, skipped: !confirmCleanup };
   if (!confirmCleanup) return { table, count: values.length, skipped: true };
@@ -62,6 +86,35 @@ async function removeMatchChildren(table) {
 
 async function removeRecruitingChildren(table) {
   return removeByIds(table, "post_id", seedIds.recruitingPosts);
+}
+
+async function listAuthUsers() {
+  const users = [];
+  const perPage = 1000;
+  for (let page = 1; page <= 50; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    users.push(...(data?.users ?? []));
+    if ((data?.users ?? []).length < perPage) break;
+  }
+  return users;
+}
+
+async function removeSeedAuthUsers() {
+  const expectedByEmail = new Map(seedAuthAccounts.map((account) => [account.email, account]));
+  const targets = (await listAuthUsers()).filter((authUser) => {
+    const account = expectedByEmail.get(String(authUser.email || "").toLowerCase());
+    if (!account) return false;
+    return authUser.app_metadata?.provider === "test"
+      && authUser.user_metadata?.profileId === account.profileId
+      && String(authUser.user_metadata?.testLoginId || "").toLowerCase() === account.testLoginId;
+  });
+  if (!confirmCleanup) return { table: "auth.users", count: targets.length, skipped: true };
+  for (const authUser of targets) {
+    const { error } = await supabase.auth.admin.deleteUser(authUser.id);
+    if (error) throw error;
+  }
+  return { table: "auth.users", count: targets.length, skipped: false };
 }
 
 async function run() {
@@ -98,6 +151,7 @@ async function run() {
   results.push(await removeByIds("team_members", "team_id", seedIds.teams));
   results.push(await removeByIds("teams", "id", seedIds.teams));
   results.push(await removeByIds("profiles", "id", seedIds.users));
+  results.push(await removeSeedAuthUsers());
 
   console.log(JSON.stringify({
     ok: true,

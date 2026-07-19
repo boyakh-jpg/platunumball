@@ -23,6 +23,8 @@ export default async function handler(request, response) {
         return;
       }
       query = query.eq("id", notificationId);
+    } else {
+      query = query.lte("due_at", readAt);
     }
 
     const { error } = await query;

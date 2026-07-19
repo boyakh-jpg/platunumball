@@ -10,6 +10,8 @@ import {
 import { fromRemoteTournament } from "../../src/data/tournamentMappers.js";
 import { getNotificationActorId } from "../../src/lib/notifications.js";
 
+const IMMEDIATE_NOTIFICATION_DUE_AT = "1970-01-01T00:00:00.000Z";
+
 const ADMIN_GRADE_LEVELS = {
   owner: 100,
   senior: 80,
@@ -471,6 +473,12 @@ export function toNotificationRows(notifications = [], profileId = "", options =
   return toArray(notifications).map((notification) => {
     const explicitTargetUserId = pickNotificationValue(notification.targetUserId, null, coalesce);
     const targetUserId = pickNotificationValue(notification.targetUserId, profileId, coalesce);
+    const createdAt = pickNotificationValue(notification.createdAt, new Date().toISOString(), coalesce);
+    const dueAt = pickNotificationValue(
+      pickNotificationValue(notification.sendAt, notification.dueAt, coalesce),
+      IMMEDIATE_NOTIFICATION_DUE_AT,
+      coalesce,
+    );
     if (filterToProfile && targetUserId !== profileId) return null;
     return {
       id: notification.id,
@@ -489,8 +497,9 @@ export function toNotificationRows(notifications = [], profileId = "", options =
         coalesce,
       ),
       read_at: pickNotificationValue(notification.readAt, null, coalesce),
+      due_at: dueAt,
       payload: notification,
-      created_at: pickNotificationValue(notification.createdAt, new Date().toISOString(), coalesce),
+      created_at: createdAt,
       updated_at: getUpdatedAt(notification),
     };
   }).filter((row) => row?.id);

@@ -965,17 +965,18 @@ async function isActiveReferee(supabase, userId, minTrust = 90) {
 
   const { data, error } = await supabase
     .from("referee_appointments")
-    .select("id, role, status, starts_at, ends_at")
+    .select("id, role, grade, status, starts_at, ends_at")
     .eq("user_id", userId)
     .eq("role", "referee")
     .eq("status", "active");
   if (error) throw error;
 
   const now = Date.now();
+  const refereeGrades = new Set(["candidate", "silver", "gold", "platinum", "official"]);
   return toArray(data).some((row) => {
     const startsAt = row.starts_at ? Date.parse(row.starts_at) : 0;
     const endsAt = row.ends_at ? Date.parse(row.ends_at) : 0;
-    return (!startsAt || startsAt <= now) && (!endsAt || endsAt > now);
+    return refereeGrades.has(row.grade) && (!startsAt || startsAt <= now) && (!endsAt || endsAt > now);
   });
 }
 
@@ -1110,12 +1111,14 @@ function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch
   return existingParticipants.has(profileId) || nextParticipants.has(profileId);
 }
 
-async function validateRefereeEligibility(supabase, existingMatch, nextMatch, action) {
-  const refereeId = nextMatch.refereeId || existingMatch?.referee_id;
+async function validateRefereeEligibility(supabase, existingMatch, nextMatch, action, actorProfileId = "") {
+  const refereeId = String(nextMatch.refereeId ?? existingMatch?.referee_id ?? "").trim();
   if (!refereeId) return;
 
-  const refereeChanged = refereeId !== existingMatch?.referee_id;
-  if (!refereeChanged && !REFEREE_ELIGIBILITY_ACTIONS.has(action)) return;
+  const existingRefereeId = String(existingMatch?.referee_id ?? "").trim();
+  const refereeChanged = refereeId !== existingRefereeId;
+  const actorIsAssignedReferee = refereeId === String(actorProfileId || "").trim();
+  if (!refereeChanged && !actorIsAssignedReferee && !REFEREE_ELIGIBILITY_ACTIONS.has(action)) return;
 
   const minTrust = Number(nextMatch.refereeTrustMin ?? existingMatch?.referee_trust_min ?? 90);
   if (!(await isActiveReferee(supabase, refereeId, minTrust))) reject(403, "referee_not_eligible");
@@ -1883,7 +1886,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   validateLockedMatchCore(existingMatch, existingPlayers, match, action);
   validateParticipantResultUnchanged(action, existingResult, existingStats, match);
   validateResultOnlyOnSubmission(action, existingResult, existingStats, match);
-  await validateRefereeEligibility(context.supabase, existingMatch, match, action);
+  await validateRefereeEligibility(context.supabase, existingMatch, match, action, context.profileId);
   await validateMatchRosterEligibility(context.supabase, match);
 
   const matchRow = toMatchRow(match, context.profileId);
