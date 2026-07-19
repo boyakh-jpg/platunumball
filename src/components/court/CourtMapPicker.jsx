@@ -5,6 +5,9 @@ import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { loadNaverMapsSdk } from "../../lib/naverAddress.js";
 import Button from "../common/Button.jsx";
 
+const DISTRICT_OVERVIEW_ZOOM = 13;
+const DEFAULT_OVERVIEW_ZOOM = 12;
+
 function getCourtCoordinate(court = {}) {
   const lat = Number(court.lat ?? court.latitude);
   const lng = Number(court.lng ?? court.longitude);
@@ -55,11 +58,11 @@ function getInitialViewport(courts = [], selectedCourt, currentRegion = "") {
   const coordinates = focusCourts.map(getCourtCoordinate).filter(Boolean);
   const fallback = selectedCoordinate ?? getCourtCoordinate(courts[0]) ?? { lat: 37.5665, lng: 126.978 };
 
-  if (!coordinates.length) return { ...fallback, zoom: 11 };
+  if (!coordinates.length) return { ...fallback, zoom: DEFAULT_OVERVIEW_ZOOM };
   return {
     lat: coordinates.reduce((sum, coordinate) => sum + coordinate.lat, 0) / coordinates.length,
     lng: coordinates.reduce((sum, coordinate) => sum + coordinate.lng, 0) / coordinates.length,
-    zoom: coordinates.length > 1 ? 12 : 14,
+    zoom: regionalCourts.length || selectedCoordinate ? DISTRICT_OVERVIEW_ZOOM : DEFAULT_OVERVIEW_ZOOM,
   };
 }
 
