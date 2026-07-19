@@ -132,6 +132,12 @@ function getCardInvalidReasons(feedRow = {}, cardRow = {}, sourceRow = {}) {
   if (cardId && cardId !== feedRow.entity_id) reasons.push("entity_id_mismatch");
   const cardStatus = String(card.status ?? "").trim();
   if (cardStatus && sourceRow?.status && cardStatus !== sourceRow.status) reasons.push("status_mismatch");
+  if (feedRow.entity_type === "match") {
+    const cardRecordType = String(card.recordType ?? card.rules?.recordType ?? "").trim();
+    const sourceRecordType = String(sourceRow?.rules?.recordType ?? "match").trim();
+    if (!cardRecordType) reasons.push("missing_record_type");
+    else if (sourceRow?.id && cardRecordType !== sourceRecordType) reasons.push("record_type_mismatch");
+  }
   if (feedRow.entity_type === "recruiting") {
     const roomState = card.roomState && typeof card.roomState === "object" ? card.roomState : {};
     const hasHost = Boolean(card.playerId || card.ownerId || card.hostId || card.host?.id || roomState.ownerId);

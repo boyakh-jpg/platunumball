@@ -67,6 +67,7 @@ const cleanupTimeoutMs = Number(process.env.RANKBALL_SIM_CLEANUP_TIMEOUT_MS || M
 const ensureRemoteTestActors = process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "1" || process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "true";
 const fullSimulation = process.argv.includes("--full") || process.env.RANKBALL_SIM_FULL === "1" || process.env.RANKBALL_SIM_FULL === "true";
 const recordPermissionsOnly = process.argv.includes("--record-permissions-only");
+const matchRecordOnly = process.argv.includes("--match-record-only");
 const mmrOnly = process.argv.includes("--mmr-only");
 const tournamentByeOnly = process.argv.includes("--tournament-bye-only");
 const tournamentLeagueOnly = process.argv.includes("--tournament-league-only");
@@ -5873,6 +5874,37 @@ async function runMatchRecordRosterScenario({
   }));
   let match = await getMatchAfterResult(createResult, teamAFixture.captainLogin, `${ids.label}:loadAfterCreateMatchRecord`);
   assertFlow(match?.rules?.recordType === "match_record", "match record type missing", match);
+  if (supabase) {
+    const { data: feedCard, error: feedCardError } = await supabase
+      .from("room_feed_cards")
+      .select("card_json")
+      .eq("entity_type", "match")
+      .eq("entity_id", ids.matchId)
+      .maybeSingle();
+    if (feedCardError) throw feedCardError;
+    assertFlow(feedCard?.card_json?.recordType === "match_record", "match record feed card type missing", feedCard);
+  }
+  const standardMatchState = await loadMatchesAs(teamAFixture.captainLogin, {
+    activeOnly: false,
+    includeRecentCompleted: false,
+    includeClosedNotices: false,
+  });
+  assertFlow(
+    !(standardMatchState.matches ?? []).some((item) => item.id === ids.matchId),
+    "match record leaked into the standard match list",
+    standardMatchState.matches,
+  );
+  const recorderMatchState = await loadMatchesAs(teamAFixture.captainLogin, {
+    recorderOnly: true,
+    activeOnly: true,
+    includeRecentCompleted: false,
+    includeClosedNotices: false,
+  });
+  assertFlow(
+    (recorderMatchState.matches ?? []).some((item) => item.id === ids.matchId),
+    "match record missing from the recorder list",
+    recorderMatchState.matches,
+  );
   assertFlow((match.teamA?.players ?? []).length === 1 && match.teamA.players[0] === teamAFixture.captainId, "match record teamA initial leader mismatch", match);
   assertFlow((match.teamB?.players ?? []).length === 1 && match.teamB.players[0] === teamBFixture.captainId, "match record teamB initial leader mismatch", match);
 
@@ -7063,7 +7095,11 @@ async function main() {
   const expiryRoomInviteeLogin = process.env.RANKBALL_SIM_EXPIRY_INVITEE || "rankball-050";
 
   const scenarios = [];
-  if (tournamentByeOnly) {
+  if (matchRecordOnly) {
+    scenarios.push(await runMatchRecordRosterScenario({
+      label: "match_record_roster_operation",
+    }));
+  } else if (tournamentByeOnly) {
     scenarios.push(await runTournamentByeRoundScenario({
       label: "tournament_bye_round",
       creatorLogin: tournamentCreatorLogin,

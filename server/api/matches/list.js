@@ -127,6 +127,8 @@ function normalizeFeedCard(row = {}) {
   const nextCard = id ? { ...card, id } : null;
   if (!nextCard?.teamA || typeof nextCard.teamA !== "object") return null;
   if (!nextCard?.teamB || typeof nextCard.teamB !== "object") return null;
+  const recordType = String(nextCard.recordType ?? nextCard.rules?.recordType ?? "").trim();
+  if (!recordType) return null;
   const hasTeamACount = Number.isFinite(Number(nextCard.teamA.count));
   const hasTeamBCount = Number.isFinite(Number(nextCard.teamB.count));
   if (!Array.isArray(nextCard.teamA.players) && !hasTeamACount) return null;
@@ -240,17 +242,20 @@ function isSoloRecordMatch(match = {}) {
 }
 
 function filterActiveMatchCards(matches = [], activeOnly = false, options = {}) {
-  const visibleMatches = (matches ?? []).filter((match) => !isSeedSampleMatch(match));
+  const includeRecordRooms = options.includeRecordRooms === true;
+  const visibleMatches = (matches ?? []).filter((match) => (
+    !isSeedSampleMatch(match)
+    && (includeRecordRooms || (!isSoloRecordMatch(match) && !isMatchRecordMatch(match)))
+  ));
   if (!activeOnly) return visibleMatches;
   const includeRecentCompleted = options.includeRecentCompleted === true;
-  const includeRecordRooms = options.includeRecordRooms === true;
   return visibleMatches.filter((match) => (
     match?.status !== "closed" && (
       (includeRecentCompleted && match?.recentCompleted) ||
-      ((includeRecordRooms || (!isSoloRecordMatch(match) && !isMatchRecordMatch(match))) && (
+      (
         isMatchClosedNotice(match) ||
         (!ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase) && !match?.recentCompleted)
-      ))
+      )
     )
   ));
 }
