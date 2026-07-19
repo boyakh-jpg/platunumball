@@ -39,8 +39,9 @@ function getLocalDetail(settings, courtId) {
   return { ok: true, court, reviews, reviewableMatches: [] };
 }
 
-export default function CourtDetail({ app }) {
-  const { courtId = "" } = useParams();
+export default function CourtDetail({ app, courtId: courtIdProp = "", embedded = false, onClose }) {
+  const { courtId: routeCourtId = "" } = useParams();
+  const courtId = courtIdProp || routeCourtId;
   const courtSettings = app.state.settings;
   const localDetail = useMemo(() => getLocalDetail(courtSettings, courtId), [courtId, courtSettings]);
   const [detail, setDetail] = useState(localDetail);
@@ -143,7 +144,11 @@ export default function CourtDetail({ app }) {
         <strong>{loadError?.message || "구장 정보를 찾을 수 없습니다."}</strong>
         <div className="court-detail-state-actions">
           {loadError?.retryable ? <Button type="button" variant="secondary" size="sm" onClick={() => refreshDetail()}>다시 시도</Button> : null}
-          <Link className="button button-secondary button-sm" to="/app">홈으로</Link>
+          {embedded ? (
+            <Button type="button" variant="secondary" size="sm" onClick={onClose}>닫기</Button>
+          ) : (
+            <Link className="button button-secondary button-sm" to="/app">홈으로</Link>
+          )}
         </div>
       </div>
     );
@@ -156,7 +161,7 @@ export default function CourtDetail({ app }) {
   const mapUrl = getCourtMapUrl(court);
 
   return (
-    <div className="page-stack court-detail-page">
+    <div className={`page-stack court-detail-page${embedded ? " is-embedded" : ""}`}>
       {loadError?.retryable ? (
         <div className="court-detail-inline-error" role="status">
           <span>{loadError.message}</span>

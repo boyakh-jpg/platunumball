@@ -5,8 +5,10 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
+import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
@@ -438,7 +440,7 @@ export default function Home({ app }) {
         href: `/app/courts/${encodeURIComponent(court.id)}`,
         score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(favoriteCourtIds.includes(court.id)) * 20000 + Number(court.region === user.region) * 10000,
         haystack: `${court.name} ${hashtag} ${court.region} ${court.type}`,
-        court: true,
+        court,
         hashtag,
       };
     });
@@ -498,7 +500,7 @@ export default function Home({ app }) {
           meta: `${court.region} · ${court.type}`,
           href: `/app/courts/${encodeURIComponent(court.id)}`,
           haystack: `${court.name} ${hashtag} ${court.region} ${court.type}`,
-          court: true,
+          court,
           hashtag,
         };
       });
@@ -530,8 +532,9 @@ export default function Home({ app }) {
   const rankSpotlightTier = getTier(user.ratings.integrated);
   const rankSpotlightDivision = getTierDivisionNumber(user.ratings.integrated);
   const rankSpotlightLabel = rankSpotlightDivision ? `${rankSpotlightTier.name} ${rankSpotlightDivision}` : rankSpotlightTier.name;
-  const renderHomeSearchItem = (item) => (
-    <Link key={item.id} to={item.href}>
+  const renderHomeSearchItem = (item) => {
+    const content = (
+      <>
       {item.avatar ? <span className={getDiscordAvatarClassName(item.user, "avatar small")} style={getDiscordAvatarStyle(item.user)}>{item.label.slice(0, 1)}</span> : null}
       {item.team ? <TeamEmblem team={item.team} size="xs" /> : null}
       {item.court ? <span className="court-mini-dot" /> : null}
@@ -540,8 +543,22 @@ export default function Home({ app }) {
         <em>{item.meta}</em>
       </span>
       <small>{item.kind} · {item.hashtag}</small>
-    </Link>
-  );
+      </>
+    );
+    if (item.kind === "COURT") {
+      return <CourtHoverCard key={item.id} court={item.court} className="home-search-entity-trigger">{content}</CourtHoverCard>;
+    }
+    if (item.kind === "TEAM") {
+      return <TeamHoverCard key={item.id} team={item.team} className="home-search-entity-trigger">{content}</TeamHoverCard>;
+    }
+    if (item.kind === "REFEREE") {
+      return <RefereeHoverCard key={item.id} user={item.user} matches={app.state.matches} className="home-search-entity-trigger">{content}</RefereeHoverCard>;
+    }
+    if (item.user) {
+      return <PlayerHoverCard key={item.id} user={item.user} teams={app.state.teams} className="home-search-entity-trigger">{content}</PlayerHoverCard>;
+    }
+    return <Link key={item.id} to={item.href}>{content}</Link>;
+  };
   const mapRemoteHomeSearchItem = (item) => {
     if (item.kind === "team") {
       const hashtag = getTeamHashtag(item);
@@ -566,7 +583,7 @@ export default function Home({ app }) {
         kind: "COURT",
         meta: `${item.region ?? "지역 미정"} · ${item.type ?? "구장"}`,
         href: `/app/courts/${encodeURIComponent(item.id)}`,
-        court: true,
+        court: item,
         hashtag,
         searchText: item.searchText,
       };
@@ -602,7 +619,6 @@ export default function Home({ app }) {
           floating
           floatingHeightLimit={380}
           preferAboveOnMobile
-          closeOnResultClick
           renderItem={renderHomeSearchItem}
           limit={SEARCH_PREVIEW_LIMIT}
           detailLimit={SEARCH_DETAIL_LIMIT}

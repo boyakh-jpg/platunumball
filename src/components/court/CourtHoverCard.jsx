@@ -84,6 +84,7 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
   const completedMatchCount = Number(resolvedCourt.completedMatchCount ?? 0);
   const recentReviews = reviewSummary.recentReviews ?? resolvedCourt.recentReviews ?? [];
   const ratingLabel = reviewCount && averageRating ? `${averageRating.toFixed(1)} 보정` : "리뷰 없음";
+  const address = resolvedCourt.roadAddress || resolvedCourt.addressText || resolvedCourt.jibunAddress;
 
   return (
     <span
@@ -137,7 +138,7 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
         </span>
         <span className="court-hover-address">
           <b>주소</b>
-          <span>{[resolvedCourt.addressText, resolvedCourt.detailAddress].filter(Boolean).join(" ") || "주소 등록 필요"}</span>
+          <span>{[address, resolvedCourt.detailAddress].filter(Boolean).join(" ") || "주소 등록 필요"}</span>
         </span>
         <span className="court-hover-note">
           <b>찾아가는 메모</b>
@@ -168,7 +169,7 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
               event.stopPropagation();
               closePinned();
             }}>
-              <MapPin size={16} /> 구장 보기
+              <MapPin size={16} /> 구장 정보 보기
             </Link>
           ) : null}
           <a className="hover-card-action hover-card-action-secondary" href={mapUrl} target="_blank" rel="noreferrer" onClick={(event) => {

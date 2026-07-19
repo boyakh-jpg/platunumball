@@ -5,11 +5,12 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
+import CourtDetailModal from "../components/court/CourtDetailModal.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
-import { getCourtLayoutLabel, getCourtPlayWarning, getCourtRecommendationScore, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import { getCourtLayoutLabel, getCourtPlayWarning, getCourtRecommendationScore, getCourtSurfaceLabel, getRegisteredCourts, isCourtFuzzySearchMatch } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
@@ -350,6 +351,7 @@ export default function CreateMatch({ app }) {
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
   const [courtMapOpen, setCourtMapOpen] = useState(false);
+  const [courtDetailCourtId, setCourtDetailCourtId] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
   const [soloTeamAUserQuery, setSoloTeamAUserQuery] = useState("");
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
@@ -430,10 +432,15 @@ export default function CreateMatch({ app }) {
   }, [app.state.teams, currentRegion, favoriteTeamIds, teamQuery, teamRegion]);
 
   const sortedCourts = useMemo(() => {
-    const hashtagSearch = isHashtagQuery(courtQuery);
-    return registeredCourts
-      .filter((court) => hashtagSearch || courtRegion === "전체" || isSameRegion(court.region, courtRegion))
-      .filter((court) => includesQuery(getCourtSearchText(court), courtQuery))
+    const query = courtQuery.trim();
+    const hasQuery = Boolean(query);
+    const regionCandidates = registeredCourts
+      .filter((court) => hasQuery || courtRegion === "전체" || isSameRegion(court.region, courtRegion));
+    const exactMatches = regionCandidates.filter((court) => includesQuery(getCourtSearchText(court), query));
+    const matches = exactMatches.length
+      ? exactMatches
+      : regionCandidates.filter((court) => isCourtFuzzySearchMatch(court, query));
+    return matches
       .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a) || a.name.localeCompare(b.name));
   }, [courtQuery, courtRegion, currentRegion, favoriteCourtIds, registeredCourts]);
 
@@ -1826,7 +1833,7 @@ export default function CreateMatch({ app }) {
                 <MapIcon size={16} /> 지도에서 찾기
               </Button>
               {selectedCourt?.id ? (
-                <Button type="button" variant="secondary" size="sm" onClick={() => navigate(`/app/courts/${encodeURIComponent(selectedCourt.id)}`)}>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setCourtDetailCourtId(selectedCourt.id)}>
                   구장 정보
                 </Button>
               ) : null}
@@ -1885,6 +1892,12 @@ export default function CreateMatch({ app }) {
             selectCourt(court);
             setCourtMapOpen(false);
           }}
+        />
+        <CourtDetailModal
+          app={app}
+          courtId={courtDetailCourtId}
+          open={Boolean(courtDetailCourtId)}
+          onClose={() => setCourtDetailCourtId("")}
         />
 
         <Card className="section-card full-span selector-panel">

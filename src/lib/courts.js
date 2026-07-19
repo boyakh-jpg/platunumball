@@ -131,6 +131,63 @@ export function getCourtLayoutLabel(court = {}) {
   return COURT_LAYOUT_OPTIONS.find((option) => option.id === courtLayout)?.label ?? "확인 필요";
 }
 
+function normalizeCourtSearchValue(value = "") {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/^#+/, "")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function isWithinOneCourtSearchEdit(source = "", target = "") {
+  if (source === target) return true;
+  if (!source || !target || Math.abs(source.length - target.length) > 1) return false;
+
+  let sourceIndex = 0;
+  let targetIndex = 0;
+  let edits = 0;
+  while (sourceIndex < source.length && targetIndex < target.length) {
+    if (source[sourceIndex] === target[targetIndex]) {
+      sourceIndex += 1;
+      targetIndex += 1;
+      continue;
+    }
+    edits += 1;
+    if (edits > 1) return false;
+    if (source.length > target.length) sourceIndex += 1;
+    else if (target.length > source.length) targetIndex += 1;
+    else {
+      sourceIndex += 1;
+      targetIndex += 1;
+    }
+  }
+  return edits + Number(sourceIndex < source.length || targetIndex < target.length) <= 1;
+}
+
+export function isCourtFuzzySearchMatch(court = {}, query = "") {
+  const normalizedQuery = normalizeCourtSearchValue(query);
+  if (normalizedQuery.length < 2) return false;
+  const candidates = [
+    court.name,
+    court.hashtag,
+    court.addressText,
+    court.roadAddress,
+    court.jibunAddress,
+    court.region,
+    court.type,
+  ].map(normalizeCourtSearchValue).filter(Boolean);
+
+  return candidates.some((candidate) => {
+    if (candidate.includes(normalizedQuery)) return true;
+    if (candidate.length < normalizedQuery.length) return isWithinOneCourtSearchEdit(candidate, normalizedQuery);
+    for (let index = 0; index <= candidate.length - normalizedQuery.length; index += 1) {
+      if (isWithinOneCourtSearchEdit(candidate.slice(index, index + normalizedQuery.length), normalizedQuery)) return true;
+    }
+    return false;
+  });
+}
+
 function isSmallCourt(court = {}) {
   const layout = normalizeCourtLayout(getFallbackLayout(court));
   return layout === "half" || layout === "single_hoop";

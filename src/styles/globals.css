@@ -17734,3 +17734,112 @@ html[data-theme="light"] .court-map-picker-state {
     background: var(--surface);
   }
 }
+
+/* 2026-07-19 court search previews and non-destructive court detail modal. */
+.rank-home .home-global-search-results > .home-search-entity-trigger {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  cursor: pointer;
+  padding: 10px;
+  text-align: left;
+}
+
+.rank-home .home-global-search-results > .home-search-entity-trigger:hover,
+.rank-home .home-global-search-results > .home-search-entity-trigger:focus-visible {
+  border-color: color-mix(in srgb, var(--rb-orange) 46%, var(--ui-control-border));
+  outline: 0;
+}
+
+.rank-home .home-global-search-results > .home-search-entity-trigger > small {
+  align-self: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-blue) 12%, transparent);
+  color: var(--rb-blue);
+  font-size: 0.68rem;
+  font-weight: 950;
+  padding: 4px 7px;
+}
+
+.court-detail-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: grid;
+  width: 100%;
+  height: 100dvh;
+  place-items: center;
+  padding: clamp(10px, 2vw, 24px);
+  background: rgba(0, 0, 0, 0.82);
+  overscroll-behavior: contain;
+}
+
+.court-detail-modal-shell {
+  position: relative;
+  width: min(1180px, 100%);
+  height: min(92dvh, 940px);
+  max-height: calc(100dvh - 20px);
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--surface);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
+}
+
+.court-detail-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+}
+
+.court-detail-modal-scroll {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 56px 18px 24px;
+  scrollbar-gutter: stable;
+}
+
+.court-detail-page.is-embedded {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+@media (max-width: 620px) {
+  .rank-home .home-global-search-results > .home-search-entity-trigger {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .rank-home .home-global-search-results > .home-search-entity-trigger > small {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .court-detail-modal-backdrop {
+    padding: 8px;
+  }
+
+  .court-detail-modal-shell {
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 14px;
+  }
+
+  .court-detail-modal-scroll {
+    padding: 52px 10px 16px;
+    scrollbar-gutter: auto;
+  }
+}
