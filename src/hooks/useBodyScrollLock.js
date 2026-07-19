@@ -3,6 +3,7 @@ import { useEffect } from "react";
 let lockCount = 0;
 let previousOverflow = "";
 let previousPaddingRight = "";
+let hadLockClass = false;
 
 export default function useBodyScrollLock(locked) {
   useEffect(() => {
@@ -14,8 +15,11 @@ export default function useBodyScrollLock(locked) {
       previousOverflow = body.style.overflow;
       previousPaddingRight = body.style.paddingRight;
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      const stableScrollbarGutter = window.getComputedStyle(document.documentElement).scrollbarGutter.includes("stable");
+      hadLockClass = body.classList.contains("rankball-scroll-locked");
+      body.classList.add("rankball-scroll-locked");
       body.style.overflow = "hidden";
-      if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+      if (scrollbarWidth > 0 && !stableScrollbarGutter) body.style.paddingRight = `${scrollbarWidth}px`;
     }
 
     lockCount += 1;
@@ -25,6 +29,7 @@ export default function useBodyScrollLock(locked) {
       if (lockCount === 0) {
         body.style.overflow = previousOverflow;
         body.style.paddingRight = previousPaddingRight;
+        if (!hadLockClass) body.classList.remove("rankball-scroll-locked");
       }
     };
   }, [locked]);

@@ -4238,8 +4238,27 @@ async function runDisputeResumeThumbsScenario({
     resultDraft: finalDisputeDraft,
   }));
   match = resumeResult?.match;
-  assertFlow(match?.status === "confirmed", "dispute resume did not confirm match", match);
-  assertFlow(match?.result?.scoreA === 23 && match?.result?.scoreB === 14, "atomic dispute draft result not committed", match);
+  assertFlow(match?.status === "approval", "dispute resume did not reopen approval", match);
+  assertFlow(match?.result?.scoreA === 23 && match?.result?.scoreB === 14, "dispute draft result not committed", match);
+  assertFlow((match?.approvals?.teamA ?? []).length === 0 && (match?.approvals?.teamB ?? []).length === 0, "stale approvals survived dispute resolution", match);
+
+  const reapproveAResult = await step(`${ids.label}:approveMatch:disputeTeamA`, () => syncMatchAs(hostLogin, {
+    action: "approveMatch",
+    matchId: ids.matchId,
+    sideName: "teamA",
+    playerId: teamAPlayer,
+  }));
+  match = await getMatchAfterResult(reapproveAResult, hostLogin, `${ids.label}:loadAfterDisputeTeamAApproval`);
+  assertFlow(match?.status === "approval", "single-side dispute approval finalized early", match);
+
+  const reapproveBResult = await step(`${ids.label}:approveMatch:disputeTeamB`, () => syncMatchAs(opponentLogin, {
+    action: "approveMatch",
+    matchId: ids.matchId,
+    sideName: "teamB",
+    playerId: teamBPlayer,
+  }));
+  match = await getMatchAfterResult(reapproveBResult, opponentLogin, `${ids.label}:loadAfterDisputeTeamBApproval`);
+  assertFlow(match?.status === "confirmed", "fresh dispute approvals did not confirm match", match);
 
   await expectRejected(`${ids.label}:submitMatchResult:confirmedBlocked`, () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",
@@ -4624,7 +4643,15 @@ async function runRecorderHandoffScenario({
   assertFlow((match.teamB?.players ?? []).includes(teamBActiveId), "teamB active roster mismatch", match);
   assertFlow((match.reservePlayers?.teamA ?? []).includes(teamAReserveId), "teamA reserve not persisted", match);
   assertFlow((match.reservePlayers?.teamB ?? []).includes(removableReserveId), "removable teamB reserve not persisted", match);
+  assertFlow(!(match.teamA?.players ?? []).includes(teamAReserveId), "teamA reserve leaked into active roster", match);
+  assertFlow(!(match.teamB?.players ?? []).includes(removableReserveId), "teamB reserve leaked into active roster", match);
   assertFlow(match.statRecorders?.teamA === teamAReserveId, "teamA reserve recorder not assigned", match);
+
+  await expectRejected(`${ids.label}:updateMatchRoomRules:nonOperatorBlocked`, () => syncMatchAs(teamBActiveLogin, {
+    action: "updateMatchRoomRules",
+    matchId: ids.matchId,
+    patch: { targetScore: 7 },
+  }), ["match_room_operator_required"]);
 
   const rulesResult = await step(`${ids.label}:updateMatchRoomRules`, () => syncMatchAs(hostLogin, {
     action: "updateMatchRoomRules",
@@ -4708,6 +4735,14 @@ async function runRecorderHandoffScenario({
   }));
   match = await getMatchAfterResult(startResult, hostLogin, `${ids.label}:loadAfterStartMatch`);
   assertFlow(Boolean(match?.startedAt), "recorder handoff match start not persisted", match);
+
+  await expectRejected(`${ids.label}:submitMatchResult:reserveOwnRowBlocked`, () => syncMatchAs(teamAReserveLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: {
+      playerStats: { [teamAReserveId]: { points: 1 } },
+    },
+  }), ["stat_player_not_in_match"]);
 
   await expectRejected(`${ids.label}:submitMatchResult:playerBlockedByRecorder`, () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",

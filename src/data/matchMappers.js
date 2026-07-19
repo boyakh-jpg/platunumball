@@ -189,15 +189,21 @@ function toDateTime(date, time, fallback) {
   return fallback ?? "일정 미정";
 }
 
+export function getRemoteMatchActivePlayerIds(row = {}, sideName, playerRows = []) {
+  const reservePlayers = row.reserve_players ?? row.rules?.reservePlayers ?? {};
+  const reserveIds = new Set(normalizeMatchIdList(reservePlayers?.[sideName]));
+  return uniquePlayerIds(
+    [...(playerRows ?? [])]
+      .filter((player) => player.side === sideName && !reserveIds.has(player.user_id))
+      .sort((a, b) => (a.slot_order ?? 0) - (b.slot_order ?? 0))
+      .map((player) => player.user_id),
+  );
+}
+
 export function fromRemoteMatch(row, context) {
-  const teamAPlayers = [...(context.playersByMatch.get(row.id) ?? [])]
-    .filter((player) => player.side === "teamA")
-    .sort((a, b) => (a.slot_order ?? 0) - (b.slot_order ?? 0))
-    .map((player) => player.user_id);
-  const teamBPlayers = [...(context.playersByMatch.get(row.id) ?? [])]
-    .filter((player) => player.side === "teamB")
-    .sort((a, b) => (a.slot_order ?? 0) - (b.slot_order ?? 0))
-    .map((player) => player.user_id);
+  const matchPlayers = context.playersByMatch.get(row.id) ?? [];
+  const teamAPlayers = getRemoteMatchActivePlayerIds(row, "teamA", matchPlayers);
+  const teamBPlayers = getRemoteMatchActivePlayerIds(row, "teamB", matchPlayers);
   const resultRow = context.resultsByMatch[row.id];
   const statRows = context.statsByMatch.get(row.id) ?? [];
   const playerStats = Object.fromEntries(
@@ -223,9 +229,14 @@ export function fromRemoteMatch(row, context) {
     teamA: (context.agreementsByMatch.get(row.id) ?? []).filter((item) => item.side === "teamA").map((item) => item.user_id),
     teamB: (context.agreementsByMatch.get(row.id) ?? []).filter((item) => item.side === "teamB").map((item) => item.user_id),
   };
+  const reapprovalStartedAt = row.dispute_resolved_at ? Date.parse(row.dispute_resolved_at) : Number.NaN;
+  const currentApprovalRows = (context.approvalsByMatch.get(row.id) ?? []).filter((item) => (
+    !Number.isFinite(reapprovalStartedAt)
+      || (Number.isFinite(Date.parse(item.approved_at)) && Date.parse(item.approved_at) >= reapprovalStartedAt)
+  ));
   const approvals = {
-    teamA: (context.approvalsByMatch.get(row.id) ?? []).filter((item) => item.side === "teamA").map((item) => item.user_id),
-    teamB: (context.approvalsByMatch.get(row.id) ?? []).filter((item) => item.side === "teamB").map((item) => item.user_id),
+    teamA: currentApprovalRows.filter((item) => item.side === "teamA").map((item) => item.user_id),
+    teamB: currentApprovalRows.filter((item) => item.side === "teamB").map((item) => item.user_id),
   };
   const teamA = context.teamById[row.team_a_id];
   const teamB = context.teamById[row.team_b_id];

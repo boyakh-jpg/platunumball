@@ -84,9 +84,12 @@ export default async function handler(request, response) {
       .from("approved_courts")
       .select(APPROVED_COURT_COLUMNS)
       .eq("id", courtId)
-      .eq("status", "active")
       .maybeSingle();
     if (courtError) throw courtError;
+    if (approvedCourtRow && approvedCourtRow.status != null && approvedCourtRow.status !== "active") {
+      sendJson(response, 404, { error: "court_not_found" });
+      return;
+    }
 
     const builtInCourt = COURTS.find((item) => item.id === courtId) ?? null;
     const { data: legacyCourtRow, error: legacyCourtError } = approvedCourtRow

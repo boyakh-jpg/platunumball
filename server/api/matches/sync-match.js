@@ -2023,6 +2023,13 @@ export default async function handler(request, response) {
     if (!SQL_REDUCER_MATCH_ACTIONS.has(operation.action) && operation.action !== "createMatch") {
       reject(400, "unsupported_match_operation");
     }
+    const { error: disciplineError } = await context.supabase.rpc("rankball_assert_match_actor_active", {
+      p_actor_profile_id: context.profileId,
+    });
+    if (disciplineError) {
+      if (isMissingSqlMatchReducer(disciplineError)) reject(503, "match_actor_guard_required");
+      throw disciplineError;
+    }
     let match = null;
     let notifications = [];
     let action = operation.action;

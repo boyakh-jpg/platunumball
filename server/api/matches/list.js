@@ -20,6 +20,7 @@ import {
 } from "../../../src/data/repository.js";
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
+import { getRemoteMatchActivePlayerIds } from "../../../src/data/matchMappers.js";
 import {
   COURT_COLUMNS,
   MATCH_LIST_COLUMNS,
@@ -870,10 +871,7 @@ function toClientMatchSide(row = {}, sideName = "teamA", playersByMatch = new Ma
   return {
     teamId,
     name: teamById[teamId]?.name ?? (recordName || MATCH_SIDE_FALLBACK_NAMES[sideName] || MATCH_SIDE_FALLBACK_NAMES.teamA),
-    players: [...(playersByMatch.get(row.id) ?? [])]
-      .filter((player) => player.side === sideName)
-      .sort((a, b) => (a.slot_order ?? 0) - (b.slot_order ?? 0))
-      .map((player) => player.user_id),
+    players: getRemoteMatchActivePlayerIds(row, sideName, playersByMatch.get(row.id) ?? []),
     score: score ?? 0,
   };
 }

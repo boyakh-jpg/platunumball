@@ -169,8 +169,9 @@ export default function SearchPicker({
 
     const requestId = remoteRequestIdRef.current + 1;
     remoteRequestIdRef.current = requestId;
+    setRemoteItems([]);
+    setRemoteLoading(true);
     const timer = window.setTimeout(async () => {
-      setRemoteLoading(true);
       try {
         const result = await postServerAction("/api/search", {
           query,
@@ -213,7 +214,7 @@ export default function SearchPicker({
         && spaceAbove >= 220;
       const nextPlacement = preferMobileAbove || (spaceBelow < 220 && spaceAbove > spaceBelow) ? "above" : "below";
       const availableSpace = nextPlacement === "above" ? spaceAbove : spaceBelow;
-      const nextMaxHeight = Math.max(96, Math.min(normalizedFloatingHeightLimit, Math.floor(availableSpace)));
+      const nextMaxHeight = Math.max(0, Math.min(normalizedFloatingHeightLimit, Math.floor(availableSpace)));
 
       setFloatingPlacement((current) => (current === nextPlacement ? current : nextPlacement));
       setFloatingMaxHeight((current) => (current === nextMaxHeight ? current : nextMaxHeight));
@@ -222,9 +223,11 @@ export default function SearchPicker({
     updatePlacement();
     window.addEventListener("resize", updatePlacement);
     window.visualViewport?.addEventListener("resize", updatePlacement);
+    window.visualViewport?.addEventListener("scroll", updatePlacement);
     return () => {
       window.removeEventListener("resize", updatePlacement);
       window.visualViewport?.removeEventListener("resize", updatePlacement);
+      window.visualViewport?.removeEventListener("scroll", updatePlacement);
     };
   }, [canShow, floating, normalizedFloatingHeightLimit, preferAboveOnMobile]);
 

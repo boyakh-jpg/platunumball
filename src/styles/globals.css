@@ -176,6 +176,11 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
   white-space: nowrap;
 }
 
+body.rankball-scroll-locked .app-main {
+  position: relative;
+  z-index: 40;
+}
+
 .basketball-loader-overlay .basketball-loader-text {
   color: color-mix(in srgb, var(--rb-orange-pressed) 58%, #241108);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
@@ -608,7 +613,7 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
 
 @media (min-width: 1180px) {
   .profile-side-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   }
 
   .profile-side-grid .favorite-management-card,
@@ -1835,6 +1840,13 @@ span.referee-hover-card {
   white-space: nowrap;
 }
 
+.notification-row-open {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+}
+
 .notification-terminal-state,
 .notification-terminal-row > b {
   background: color-mix(in srgb, var(--rb-muted) 14%, transparent);
@@ -1927,6 +1939,10 @@ span.referee-hover-card {
 }
 
 @media (max-width: 760px) {
+  .notification-row-open {
+    min-height: 42px;
+  }
+
   .home-alert-heading-actions {
     flex-wrap: wrap;
   }
@@ -5664,6 +5680,10 @@ input[type="color"] {
   background: var(--surface);
   box-shadow: var(--shadow);
   padding: 10px;
+}
+
+.rank-home > .home-search-panel:focus-within {
+  z-index: 100;
 }
 
 .search-picker-results.is-floating.opens-above {
