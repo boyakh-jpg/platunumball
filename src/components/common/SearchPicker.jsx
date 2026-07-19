@@ -54,7 +54,7 @@ function getSearchScore(text = "", query = "") {
 function getItemKey(item = {}) {
   const entity = item.player ?? item.team ?? item.court ?? item.referee ?? item;
   const category = item.type ?? item.kind ?? entity.type ?? entity.kind;
-  const identity = item.id ?? entity.id ?? item.hashtag ?? entity.hashtag ?? item.handle ?? entity.handle;
+  const identity = item.entityId ?? entity.entityId ?? item.id ?? entity.id ?? item.hashtag ?? entity.hashtag ?? item.handle ?? entity.handle;
   if (identity) return `id:${identity}`;
   return [
     category,

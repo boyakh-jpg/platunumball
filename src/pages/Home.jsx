@@ -400,6 +400,7 @@ export default function Home({ app }) {
         const hashtag = getUserHashtag(item);
         return {
           id: `player-${item.id}`,
+          entityId: item.id,
           label: item.name,
           kind: "PLAYER",
           meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
@@ -415,6 +416,7 @@ export default function Home({ app }) {
       const hashtag = getTeamHashtag(team);
       return {
         id: `team-${team.id}`,
+        entityId: team.id,
         label: team.name,
         kind: "TEAM",
         meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
@@ -429,6 +431,7 @@ export default function Home({ app }) {
       const hashtag = getCourtHashtag(court);
       return {
         id: `court-${court.id}`,
+        entityId: court.id,
         label: court.name,
         kind: "COURT",
         meta: `${court.region} · ${court.type}`,
@@ -544,6 +547,7 @@ export default function Home({ app }) {
       const hashtag = getTeamHashtag(item);
       return {
         id: `remote-team-${item.id}`,
+        entityId: item.id,
         label: item.name,
         kind: "TEAM",
         meta: `${item.region ?? "지역 미정"} · ${item.homeCourt ?? "홈코트 미정"} · ${item.mmr ?? 1200}`,
@@ -557,6 +561,7 @@ export default function Home({ app }) {
       const hashtag = getCourtHashtag(item);
       return {
         id: `remote-court-${item.id}`,
+        entityId: item.id,
         label: item.name,
         kind: "COURT",
         meta: `${item.region ?? "지역 미정"} · ${item.type ?? "구장"}`,
@@ -569,6 +574,7 @@ export default function Home({ app }) {
     const hashtag = getUserHashtag(item);
     return {
       id: `remote-${item.kind}-${item.id}`,
+      entityId: item.id,
       label: item.name,
       kind: item.kind === "referee" ? "REFEREE" : "PLAYER",
       meta: `${item.region ?? "지역 미정"} · ${item.position ?? "포지션"} · ${item.ratings?.integrated ?? item.trustScore ?? "-"}`,
