@@ -16795,11 +16795,15 @@ html[data-theme="light"] .brand-letter-light {
 
 @media (max-width: 390px) {
   .profile-rating-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .profile-rating-primary {
-    grid-column: auto;
+    grid-column: 1 / -1;
+  }
+
+  .profile-rating-mode .tier-quote {
+    display: none;
   }
 }
 
@@ -17259,6 +17263,23 @@ html[data-theme="light"] .app-main :is(
   min-width: 0;
   min-height: var(--ui-button-height);
   align-items: flex-start;
+}
+
+.rank-home :is(
+  .home-recent-card,
+  .home-action-card,
+  .home-alert-card,
+  .rank-leaderboard-card,
+  .season-mini-card,
+  .rivalry-card,
+  .home-my-teams-card
+) > .section-title-row h2 {
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.rank-home .home-top-rail > .home-alert-card {
+  order: 2;
 }
 
 .rank-home :is(
