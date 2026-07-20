@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { CalendarDays, ExternalLink, MapPin, Star, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import { getCourtLayoutLabel, getCourtMapUrl, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag } from "../lib/handles.js";
 
@@ -220,9 +221,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               {reviews.map((review) => (
                 <article className="court-review-row" key={review.id}>
                   <div className="court-review-author">
-                    <span className="avatar small" style={{ "--avatar": review.reviewer?.avatarColor || "#f05a46" }}>
-                      {(review.reviewer?.name || "참").slice(0, 1)}
-                    </span>
+                    <ProfileEmblem user={review.reviewer} className="small" initial={(review.reviewer?.name || "참").slice(0, 1)} />
                     <div>
                       <strong>{review.reviewer?.name || "경기 참가자"}</strong>
                       <span>{formatDate(review.updatedAt || review.createdAt)}</span>

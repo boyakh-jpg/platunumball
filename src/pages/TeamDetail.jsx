@@ -5,16 +5,19 @@ import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore, isDateWithinPastMonths } from "../lib/matchUtils.js";
 import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
+import { formatEmblemDate, getEmblemUploadWarning, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function getTeamSide(match, teamId) {
@@ -59,9 +62,25 @@ export default function TeamDetail({ app }) {
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [emblemPending, setEmblemPending] = useState(false);
   const [emblemFeedback, setEmblemFeedback] = useState("");
+  const [emblemFile, setEmblemFile] = useState(null);
+  const [emblemConfirmAction, setEmblemConfirmAction] = useState("");
+  const [emblemStyleDraft, setEmblemStyleDraft] = useState(() => ({
+    emblemColor: team?.emblemColor ?? team?.accent ?? "#f05a46",
+    emblemBorderEnabled: team?.emblemBorderEnabled !== false,
+    emblemBorderColor: team?.emblemBorderColor ?? team?.accent ?? "#f05a46",
+  }));
   const emblemInputRef = useRef(null);
   const captain = team?.members.find((member) => member.role === "captain");
   const canManage = captain?.userId === app.currentUser.id;
+
+  useEffect(() => {
+    if (!team) return;
+    setEmblemStyleDraft({
+      emblemColor: team.emblemColor ?? team.accent ?? "#f05a46",
+      emblemBorderEnabled: team.emblemBorderEnabled !== false,
+      emblemBorderColor: team.emblemBorderColor ?? team.accent ?? "#f05a46",
+    });
+  }, [team?.accent, team?.emblemBorderColor, team?.emblemBorderEnabled, team?.emblemColor, team?.id]);
 
   useEffect(() => {
     if (!team || !canManage || app.directoryStatus?.loaded || app.directoryStatus?.loading) return;
@@ -149,7 +168,7 @@ export default function TeamDetail({ app }) {
           if (!user) return null;
           return (
             <PlayerHoverCard className="member-row" key={`${team.id}-${member.userId}-${member.role}`} user={user} teams={app.state.teams}>
-              <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+              <ProfileEmblem user={user} className="small" />
               <div className="member-main">
                 <strong>{user.name}</strong>
                 <span>{user.position} · {user.region}</span>
@@ -206,20 +225,26 @@ export default function TeamDetail({ app }) {
   const uploadEmblem = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
+    if (!file || emblemPending || isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt)) return;
+    setEmblemFile(file);
+    setEmblemFeedback("");
+  };
+  const confirmEmblemUpload = async (crop) => {
+    const file = emblemFile;
     if (!file || emblemPending) return;
     setEmblemPending(true);
     setEmblemFeedback("");
     try {
-      const result = await app.actions.uploadTeamEmblem(team.id, file);
+      const result = await app.actions.uploadTeamEmblem(team.id, file, crop);
       if (!result || result.ok === false) {
-        setEmblemFeedback(getTeamEmblemErrorMessage(result?.error));
+        const nextAt = result?.details?.nextAllowedAt;
+        setEmblemFeedback(nextAt ? `${getTeamEmblemErrorMessage(result?.error)} ${formatEmblemDate(nextAt)}` : getTeamEmblemErrorMessage(result?.error));
         return;
       }
-      const sourceKb = Math.max(1, Math.round(Number(result.sourceByteSize ?? file.size) / 1024));
-      const savedKb = Math.max(1, Math.round(Number(result.byteSize ?? 0) / 1024));
       setEmblemFeedback(result.storageCleanupPending
-        ? `${sourceKb}KB 이미지를 ${savedKb}KB WebP로 저장했습니다. 이전 파일 정리는 재시도가 필요합니다.`
-        : `${sourceKb}KB 이미지를 ${savedKb}KB WebP로 저장했습니다.`);
+        ? "엠블럼을 저장했습니다. 이전 파일 정리는 재시도가 필요합니다."
+        : "엠블럼을 저장했습니다.");
+      setEmblemFile(null);
     } catch (error) {
       setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
@@ -241,8 +266,24 @@ export default function TeamDetail({ app }) {
       setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
       setEmblemPending(false);
+      setEmblemConfirmAction("");
     }
   };
+  const saveEmblemStyle = async () => {
+    if (emblemPending) return;
+    setEmblemPending(true);
+    setEmblemFeedback("");
+    try {
+      const result = await app.actions.updateTeamEmblemStyle(team.id, emblemStyleDraft);
+      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "엠블럼 색상을 저장했습니다.");
+    } finally {
+      setEmblemPending(false);
+      setEmblemConfirmAction("");
+    }
+  };
+
+  const nextEmblemUploadAt = getNextEmblemUploadAt(team.emblemUploadCount, team.emblemUploadedAt);
+  const emblemUploadLocked = isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
 
   return (
     <div className="page-stack team-detail-page rank-team-page">
@@ -418,7 +459,7 @@ export default function TeamDetail({ app }) {
                   <TeamEmblem team={team} size="lg" />
                   <span>
                     <strong>팀 엠블럼</strong>
-                    <small>JPG, PNG, WebP, AVIF · 자동 WebP 변환</small>
+                    <small>{emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 이미지 교체 가능` : "이미지 위치와 확대·축소를 직접 조정할 수 있습니다."}</small>
                     {emblemFeedback ? <em>{emblemFeedback}</em> : null}
                   </span>
                   <div className="team-emblem-editor-actions">
@@ -427,18 +468,33 @@ export default function TeamDetail({ app }) {
                       hidden
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/avif"
-                      disabled={emblemPending}
+                      disabled={emblemPending || emblemUploadLocked}
                       onChange={uploadEmblem}
                     />
-                    <Button type="button" size="sm" disabled={emblemPending} onClick={() => emblemInputRef.current?.click()}>
+                    <Button type="button" size="sm" disabled={emblemPending || emblemUploadLocked} onClick={() => emblemInputRef.current?.click()}>
                       <ImageUp size={16} />
                       {emblemPending ? "처리 중" : team.emblemKey ? "변경" : "업로드"}
                     </Button>
-                    <Button type="button" size="sm" variant="secondary" disabled={emblemPending || !team.emblemKey} onClick={removeEmblem}>
+                    <Button type="button" size="sm" variant="secondary" disabled={emblemPending || !team.emblemKey} onClick={() => setEmblemConfirmAction("remove")}>
                       <Trash2 size={16} />
                       삭제
                     </Button>
                   </div>
+                </div>
+                <div className="emblem-style-controls">
+                  <label>
+                    엠블럼 색
+                    <input type="color" value={emblemStyleDraft.emblemColor} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemColor: event.target.value }))} />
+                  </label>
+                  <label className="emblem-border-toggle">
+                    <input type="checkbox" checked={emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderEnabled: event.target.checked }))} />
+                    테두리 사용
+                  </label>
+                  <label>
+                    테두리 색
+                    <input type="color" value={emblemStyleDraft.emblemBorderColor} disabled={!emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderColor: event.target.value }))} />
+                  </label>
+                  <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={() => setEmblemConfirmAction("style")}>색상 저장</Button>
                 </div>
                 <form className="member-add-form" onSubmit={inviteMember}>
                   <label>
@@ -500,7 +556,7 @@ export default function TeamDetail({ app }) {
                     return (
                       <div key={`${team.id}-${member.userId}-control`} className="member-control-row">
                         <PlayerHoverCard user={user} teams={app.state.teams}>
-                          <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                          <ProfileEmblem user={user} className="small" />
                           <strong>{user.name}</strong>
                         </PlayerHoverCard>
                         <select value={normalizeTeamRole(member.role)} disabled={isCaptainMember} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
@@ -539,6 +595,25 @@ export default function TeamDetail({ app }) {
           onClose={() => setSelectedHistoryMatchId("")}
           entryPoint="team-history"
         />
+      ) : null}
+      <EmblemCropEditor
+        file={emblemFile}
+        pending={emblemPending}
+        warning={getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}
+        onCancel={() => setEmblemFile(null)}
+        onConfirm={confirmEmblemUpload}
+      />
+      {emblemConfirmAction ? (
+        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !emblemPending && setEmblemConfirmAction("")}>
+          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="팀 엠블럼 변경 확인" onMouseDown={(event) => event.stopPropagation()}>
+            <strong>{emblemConfirmAction === "remove" ? "기본 글자 엠블럼으로 바꿀까요?" : "엠블럼 색상을 저장할까요?"}</strong>
+            <p>{emblemConfirmAction === "remove" ? "업로드 이미지는 삭제됩니다. 다음 새 이미지 업로드는 현재 업로드 횟수 규칙을 따릅니다." : "색상과 테두리 변경은 이미지 업로드 횟수에 포함되지 않습니다."}</p>
+            <div className="app-confirm-actions">
+              <Button type="button" variant="secondary" disabled={emblemPending} onClick={() => setEmblemConfirmAction("")}>취소</Button>
+              <Button type="button" disabled={emblemPending} onClick={emblemConfirmAction === "remove" ? removeEmblem : saveEmblemStyle}>{emblemPending ? "저장 중" : "변경"}</Button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

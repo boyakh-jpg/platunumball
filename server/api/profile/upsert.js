@@ -4,7 +4,7 @@ import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
 import { getAgeGroupByBirthYear } from "../../../src/lib/profileSetup.js";
 
 const DEFAULT_RATINGS = { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
-const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,trust_score,ratings,school,company,club,streak,discord_connection,discord_user_id,test_login_id";
+const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,avatar_source,avatar_updated_at,trust_score,ratings,school,company,club,streak,discord_connection,discord_user_id,discord_avatar_url,test_login_id";
 const DISCORD_ME_URL = "https://discord.com/api/users/@me";
 const DISCORD_USER_ID_PATTERN = /^\d{17,20}$/;
 const DISCORD_OAUTH_PROOF_MAX_AGE_MS = 5 * 60 * 1000;
@@ -277,6 +277,8 @@ async function buildProfileRow({ existing, profile, authUser, authUserId }) {
     region: requestedRegion.region,
     position: profile.position ?? existing?.position ?? "PG",
     avatar_color: profile.avatarColor ?? existing?.avatar_color ?? "#58d2c0",
+    avatar_source: !discordConnection && existing?.avatar_source === "discord" ? "initial" : existing?.avatar_source ?? "initial",
+    avatar_updated_at: !discordConnection && existing?.avatar_source === "discord" ? now : existing?.avatar_updated_at ?? null,
     trust_score: getLockedTrustScore(existing),
     ratings: getLockedRatings(existing),
     school: profile.school ?? existing?.school ?? "",
@@ -285,6 +287,7 @@ async function buildProfileRow({ existing, profile, authUser, authUserId }) {
     streak: getLockedStreak(existing),
     discord_connection: discordConnection,
     discord_user_id: getDiscordUserId(discordConnection),
+    discord_avatar_url: discordConnection?.avatarUrl || null,
     updated_at: now,
   };
 

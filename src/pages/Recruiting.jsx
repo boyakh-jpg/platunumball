@@ -27,6 +27,7 @@ import Button from "../components/common/Button.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
@@ -832,7 +833,7 @@ function TeamMemberPicker({
                 !eligible ? "ineligible" : "",
               ].filter(Boolean).join(" ")}
             >
-              <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+              <ProfileEmblem user={user} className="small" />
               <span>
                 <strong>{user?.name ?? "알 수 없음"}</strong>
                 <em>{!eligible ? `${getPlayerPosition(user)} · 조건 불일치` : required ? `${getPlayerPosition(user)} · 필수` : getPlayerPosition(user)}</em>
@@ -1358,7 +1359,7 @@ function RoomKickPanel({
           return (
             <div key={`${entry.id}-${playerId}`} className="arena-host-kick-row">
               <PlayerHoverCard user={user} teams={teams} as="span">
-                <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                <ProfileEmblem user={user} className="small" />
                 <span>
                   <strong>{user.name}</strong>
                   <em>{SIDE_LABELS[entry.side]} · {reserve ? "후보" : "출전"} · {entry.team?.name ?? "개인"}</em>
@@ -1463,7 +1464,7 @@ function MatchSubstitutionPanel({
           return (
             <div key={`${sideName}:${reservePlayerId}`} className="arena-record-roster-row selected">
               <PlayerHoverCard user={reserveUser} teams={teams} as="span">
-                <span className="avatar small" style={{ "--avatar": reserveUser?.avatarColor }}>{reserveUser?.name?.slice(0, 1) ?? "P"}</span>
+                <ProfileEmblem user={reserveUser} className="small" initial="P" />
                 <span>
                   <strong>{reserveUser?.name ?? "후보"}</strong>
                   <em>{SIDE_LABELS[sideName]} 후보</em>
@@ -1536,7 +1537,7 @@ function MatchRecorderHandoffPanel({
         {rows.map(({ sideName, candidateIds, selectedId, currentUser, selectedUser, willSwap }) => (
           <div key={sideName} className="arena-record-roster-row selected">
             <PlayerHoverCard user={currentUser} teams={teams} as="span">
-              <span className="avatar small" style={{ "--avatar": currentUser?.avatarColor }}>{currentUser?.name?.slice(0, 1) ?? "R"}</span>
+              <ProfileEmblem user={currentUser} className="small" initial="R" />
               <span>
                 <strong>{SIDE_LABELS[sideName]} 기록자</strong>
                 <em>{selectedUser?.name ?? "선수"}에게 넘김{willSwap ? " · 교체 포함" : ""}</em>
@@ -1644,7 +1645,7 @@ function MatchRecordRosterPanel({
           return (
             <div key={playerId} className={["arena-record-roster-row", rosterIds.has(playerId) ? "selected" : "", !eligible ? "ineligible" : ""].filter(Boolean).join(" ")}>
               <PlayerHoverCard user={user} teams={teams} as="span">
-                <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                <ProfileEmblem user={user} className="small" />
                 <span>
                   <strong>{user.name}</strong>
                   <em>{user.position ?? "포지션 자유"} · {eligible ? stateLabel : "조건 불일치"}{isLeader ? " · 사이드장" : ""}</em>
@@ -1729,7 +1730,7 @@ function RoomChat({
           return (
             <div key={message.id || `${message.userId}-${message.createdAt}`} className="arena-chat-message">
               <PlayerHoverCard user={user} teams={teams} as="span">
-                <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+                <ProfileEmblem user={user} className="small" />
               </PlayerHoverCard>
               <span>
                 <strong>{user?.name ?? "알 수 없음"} <em>{formatWhen(message.createdAt)}</em></strong>
@@ -1940,7 +1941,7 @@ function InvitePanel({
                 <button key={playerId} type="button" className={selected ? "selected" : ""} disabled={disabled} aria-pressed={selected} onClick={() => {
                   if (!disabled) onTogglePlayer(playerId);
                 }}>
-                  <span className="avatar small" style={{ "--avatar": player?.avatarColor }}>{player?.name?.slice(0, 1) ?? "?"}</span>
+                  <ProfileEmblem user={player} className="small" />
                   <span>
                     <strong>{player?.name ?? "선수"}</strong>
                     <em>{disabled ? `이미 대기/${actionLabel}` : getUserHashtag(player)}</em>
@@ -2072,7 +2073,7 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
         return (
           <div key={invitation.id} className={mine ? "mine" : ""}>
             <PlayerHoverCard as="span" user={target} teams={teams}>
-              <span className="avatar small" style={{ "--avatar": target?.avatarColor }}>{target?.name?.slice(0, 1) ?? "?"}</span>
+              <ProfileEmblem user={target} className="small" />
               <span>
                 <b>{target?.name ?? "선수"}</b>
                 <em>{inviteLabel} · {getUserHashtag(target)}</em>
@@ -3882,7 +3883,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <strong>심판</strong>
                   {referee ? (
                     <RefereeHoverCard user={referee} matches={app.state.matches} minTrust={selectedPost.refereeTrustMin} className="arena-room-referee-card">
-                      <span className="avatar small" style={{ "--avatar": referee.avatarColor }}>{referee.name.slice(0, 1)}</span>
+                      <ProfileEmblem user={referee} className="small" />
                       <span>{referee.name}</span>
                     </RefereeHoverCard>
                   ) : (

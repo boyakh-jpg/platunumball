@@ -5,12 +5,13 @@ import HoverPortal from "../common/HoverPortal.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import TeamEmblem from "../team/TeamEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
-import { getDiscordAvatarClassName, getDiscordAvatarStyle, getDiscordDisplayName, getDiscordProfileUrl } from "../../lib/discord.js";
+import { getDiscordDisplayName, getDiscordProfileUrl } from "../../lib/discord.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 import { getAgeGroupForUser, getAgeGroupLabel, getRepresentativeTeam, getUserProfileTeams } from "../../lib/profileSetup.js";
 import { getTierDivision } from "../../lib/tier.js";
 import { getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../../lib/constants.js";
+import ProfileEmblem from "./ProfileEmblem.jsx";
 
 const rolePriority = {
   captain: 0,
@@ -185,7 +186,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
           closeTouch();
         }}>X</button>
         <span className="player-hover-head">
-          <span className={anonymousUser ? "avatar anonymous" : getDiscordAvatarClassName(user)} style={anonymousUser ? { "--avatar": user.avatarColor } : getDiscordAvatarStyle(user)}>{anonymousUser ? "?" : user.name.slice(0, 1)}</span>
+          <ProfileEmblem user={user} anonymous={anonymousUser} />
           <span>
             <strong>{user.name}</strong>
             <span className="hover-hashtag">{getUserHashtag(user)}</span>

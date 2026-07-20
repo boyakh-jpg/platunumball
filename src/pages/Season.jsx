@@ -5,6 +5,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import {
@@ -120,7 +121,7 @@ export default function Season({ app }) {
               {playerRows.slice(0, 8).map((user, index) => (
                 <PlayerHoverCard key={user.id} user={user} teams={app.state.teams} className={user.id === app.currentUser.id ? "mine" : ""}>
                   <strong>{index + 1}</strong>
-                  <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                  <ProfileEmblem user={user} className="small" />
                   <div>
                     <b>{user.name}</b>
                     <em>

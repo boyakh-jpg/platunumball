@@ -46,6 +46,12 @@ function toReview(row = {}, reviewer = null, includeRawRating = false) {
       name: reviewer.name,
       hashtag: reviewer.hashtag,
       avatarColor: reviewer.avatarColor,
+      avatarKey: reviewer.avatarKey ?? null,
+      avatarSource: reviewer.avatarSource ?? "initial",
+      avatarUpdatedAt: reviewer.avatarUpdatedAt ?? null,
+      avatarBorderEnabled: reviewer.avatarBorderEnabled === true,
+      avatarBorderColor: reviewer.avatarBorderColor ?? reviewer.avatarColor,
+      discordAvatarUrl: reviewer.discordAvatarUrl ?? null,
     } : null,
   };
 }

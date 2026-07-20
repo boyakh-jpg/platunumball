@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
+import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import TeamHoverCard from "../team/TeamHoverCard.jsx";
 
@@ -16,9 +17,7 @@ export default function RankingTable({ rows, type = "players", mode = "integrate
             <span className={`rank rank-${rank}`}>{rank}</span>
             {type === "players" ? (
               <PlayerHoverCard user={row} teams={teams} className="ranking-name">
-                <div className="avatar small" style={{ "--avatar": row.avatarColor }}>
-                  {row.name.slice(0, 1)}
-                </div>
+                <ProfileEmblem user={row} className="small" />
                 <div>
                   <strong>{row.name}</strong>
                   <span>{row.region} · {row.position}</span>

@@ -8,6 +8,13 @@ const REQUIRED_COLUMNS = {
     "hashtag",
     "onboarding_complete",
     "discord_user_id",
+    "avatar_key",
+    "avatar_source",
+    "avatar_uploaded_at",
+    "avatar_upload_count",
+    "avatar_border_enabled",
+    "avatar_border_color",
+    "discord_avatar_url",
   ],
   public_profiles: [
     "id",
@@ -15,6 +22,11 @@ const REQUIRED_COLUMNS = {
     "hashtag",
     "trust_score",
     "updated_at",
+    "avatar_key",
+    "avatar_source",
+    "avatar_border_enabled",
+    "avatar_border_color",
+    "discord_avatar_url",
   ],
   teams: [
     "id",
@@ -23,6 +35,11 @@ const REQUIRED_COLUMNS = {
     "region",
     "emblem_key",
     "emblem_updated_at",
+    "emblem_uploaded_at",
+    "emblem_upload_count",
+    "emblem_color",
+    "emblem_border_enabled",
+    "emblem_border_color",
     "deleted_at",
   ],
   team_members: [
@@ -304,6 +321,14 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_update_team_emblem",
     args: { p_actor_profile_id: "", p_team_id: "", p_emblem_key: null, p_expected_emblem_key: null },
+  },
+  {
+    name: "rankball_update_team_emblem_style",
+    args: { p_actor_profile_id: "", p_team_id: "", p_emblem_color: "#f05a46", p_border_enabled: true, p_border_color: "#f05a46" },
+  },
+  {
+    name: "rankball_update_profile_emblem",
+    args: { p_actor_profile_id: "", p_action: "style", p_avatar_key: null, p_avatar_source: "initial", p_avatar_color: "#58d2c0", p_border_enabled: false, p_border_color: "#58d2c0", p_expected_avatar_key: null },
   },
   {
     name: "rankball_tournament_team_roster_snapshot",

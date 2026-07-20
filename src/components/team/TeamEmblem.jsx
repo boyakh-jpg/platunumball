@@ -8,6 +8,9 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
   const [imageFailed, setImageFailed] = useState(false);
   const resolvedName = name ?? team?.name ?? "";
   const resolvedAccent = accent ?? team?.accent ?? "var(--rb-orange)";
+  const resolvedBackground = team?.emblemColor ?? resolvedAccent;
+  const resolvedBorder = team?.emblemBorderColor ?? resolvedAccent;
+  const borderEnabled = team?.emblemBorderEnabled !== false;
   const resolvedSize = EMBLEM_SIZES.has(size) ? size : "md";
   const keyedUrl = team?.emblemKey ? assetUrl(`/${String(team.emblemKey).replace(/^\/+/, "")}`) : "";
   const resolvedImageUrl = keyedUrl && !keyedUrl.startsWith("/") ? keyedUrl : team?.emblemUrl ?? keyedUrl;
@@ -17,8 +20,8 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
   return (
     <span
       aria-hidden="true"
-      className={`team-emblem team-emblem-${resolvedSize} ${resolvedImageUrl && !imageFailed ? "has-image" : ""} ${className}`.trim()}
-      style={{ "--team-color": resolvedAccent }}
+      className={`team-emblem team-emblem-${resolvedSize} ${resolvedImageUrl && !imageFailed ? "has-image" : ""} ${borderEnabled ? "" : "no-emblem-border"} ${className}`.trim()}
+      style={{ "--team-color": resolvedAccent, "--team-emblem-bg": resolvedBackground, "--team-emblem-border": resolvedBorder }}
     >
       {resolvedImageUrl && !imageFailed ? (
         <img src={resolvedImageUrl} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} />

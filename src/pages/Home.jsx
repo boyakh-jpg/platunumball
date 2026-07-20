@@ -8,6 +8,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
@@ -19,7 +20,6 @@ import { addDateDays, canUserResolveMatchDispute, getAllowedStatFields, getLocal
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
-import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
 import { getNotificationDueAt, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -535,7 +535,7 @@ export default function Home({ app }) {
   const renderHomeSearchItem = (item) => {
     const content = (
       <>
-      {item.avatar ? <span className={getDiscordAvatarClassName(item.user, "avatar small")} style={getDiscordAvatarStyle(item.user)}>{item.label.slice(0, 1)}</span> : null}
+      {item.avatar ? <ProfileEmblem user={item.user} className="small" initial={item.label.slice(0, 1)} /> : null}
       {item.team ? <TeamEmblem team={item.team} size="xs" /> : null}
       {item.court ? <span className="court-mini-dot" /> : null}
       <span className="rank-result-main">
@@ -924,7 +924,7 @@ export default function Home({ app }) {
               {topRankers.map((row, index) => (
                 <PlayerHoverCard className="rank-row" key={row.id} user={row} teams={app.state.teams}>
                   <b>{index + 1}</b>
-                  <span className={getDiscordAvatarClassName(row, "avatar small")} style={getDiscordAvatarStyle(row)}>{row.name.slice(0, 1)}</span>
+                  <ProfileEmblem user={row} className="small" />
                   <strong>{row.name}</strong>
                   <em>{Math.round(row.seasonScore)}점</em>
                 </PlayerHoverCard>

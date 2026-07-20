@@ -5,11 +5,12 @@ import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
-import { getDiscordAvatarClassName, getDiscordAvatarStyle, getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
+import { getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine, getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
@@ -105,7 +106,7 @@ export default function PlayerDetail({ app }) {
           if (!user) return null;
           return (
             <PlayerHoverCard key={id} user={user} teams={app.state.teams}>
-              <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+              <ProfileEmblem user={user} className="small" />
               <strong>{user.name}</strong>
               <em>{count}경기</em>
             </PlayerHoverCard>
@@ -119,7 +120,7 @@ export default function PlayerDetail({ app }) {
     <div className="page-stack profile-detail-page rank-profile-page">
       <section className="profile-hero rank-profile-hero">
         <div className="profile-identity rank-profile-identity">
-          <div className={getDiscordAvatarClassName(player, "avatar hero-avatar")} style={getDiscordAvatarStyle(player)}>{player.name.slice(0, 1)}</div>
+          <ProfileEmblem user={player} className="hero-avatar" />
           <div>
             <p className="eyebrow">Player Profile</p>
             <h1>{player.name}</h1>

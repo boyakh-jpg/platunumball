@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
-const MAX_REQUEST_BYTES = 512 * 1024;
-const MAX_UPLOAD_BYTES = 300 * 1024;
-const MAX_IMAGE_DIMENSION = 512;
+const MAX_REQUEST_BYTES = 320 * 1024;
+const MAX_UPLOAD_BYTES = 160 * 1024;
+const MAX_IMAGE_DIMENSION = 384;
 const TEAM_ID_PATTERN = /^[A-Za-z0-9_-]{2,128}$/;
+const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 function reject(statusCode, message) {
   const error = new Error(message);
@@ -112,7 +113,7 @@ async function loadTeamForActor(context, teamId) {
   const [{ data: team, error: teamError }, { data: captain, error: captainError }] = await Promise.all([
     context.supabase
       .from("teams")
-      .select("id,emblem_key,emblem_updated_at,deleted_at")
+      .select("id,emblem_key,emblem_updated_at,emblem_uploaded_at,emblem_upload_count,emblem_color,emblem_border_enabled,emblem_border_color,deleted_at")
       .eq("id", teamId)
       .is("deleted_at", null)
       .maybeSingle(),
@@ -141,7 +142,23 @@ async function commitEmblem(context, teamId, emblemKey, expectedEmblemKey) {
   if (!error) return data ?? { ok: true, teamId, emblemKey };
 
   const mapped = new Error(error.message || "team_emblem_update_failed");
-  mapped.statusCode = error.code === "42501" ? 403 : error.code === "40001" ? 409 : 400;
+  mapped.statusCode = error.message === "team_emblem_cooldown" ? 429 : error.code === "42501" ? 403 : error.code === "40001" ? 409 : 400;
+  mapped.nextAllowedAt = error.details || null;
+  throw mapped;
+}
+
+async function commitEmblemStyle(context, teamId, payload) {
+  const { data, error } = await context.supabase.rpc("rankball_update_team_emblem_style", {
+    p_actor_profile_id: context.profileId,
+    p_team_id: teamId,
+    p_emblem_color: payload.emblemColor,
+    p_border_enabled: payload.emblemBorderEnabled,
+    p_border_color: payload.emblemBorderColor,
+  });
+  if (!error) return data ?? { ok: true, teamId };
+
+  const mapped = new Error(error.message || "team_emblem_style_update_failed");
+  mapped.statusCode = error.code === "42501" ? 403 : error.code === "P0002" ? 404 : 400;
   throw mapped;
 }
 
@@ -161,10 +178,24 @@ export default async function handler(request, response) {
     const action = String(body.action || "upload").trim();
     const teamId = String(body.teamId || "").trim();
     if (!TEAM_ID_PATTERN.test(teamId)) reject(400, "invalid_team_id");
-    if (!new Set(["upload", "remove"]).has(action)) reject(400, "invalid_team_emblem_action");
+    if (!new Set(["upload", "remove", "style"]).has(action)) reject(400, "invalid_team_emblem_action");
 
     const team = await loadTeamForActor(context, teamId);
     const previousEmblemKey = team.emblem_key || null;
+
+    if (action === "style") {
+      const emblemColor = String(body.emblemColor || "").trim();
+      const emblemBorderColor = String(body.emblemBorderColor || "").trim();
+      if (!COLOR_PATTERN.test(emblemColor) || !COLOR_PATTERN.test(emblemBorderColor)) reject(400, "invalid_emblem_color");
+      const result = await commitEmblemStyle(context, teamId, {
+        emblemColor,
+        emblemBorderEnabled: body.emblemBorderEnabled === true,
+        emblemBorderColor,
+      });
+      sendJson(response, 200, result);
+      return;
+    }
+
     const config = getR2Config();
 
     if (action === "remove") {
@@ -206,6 +237,9 @@ export default async function handler(request, response) {
     sendJson(response, 200, { ...result, byteSize: bytes.length, storageCleanupPending });
   } catch (error) {
     console.error("Team emblem action failed.", error.message);
-    sendJson(response, error.statusCode || 500, { error: error.message || "team_emblem_action_failed" });
+    sendJson(response, error.statusCode || 500, {
+      error: error.message || "team_emblem_action_failed",
+      ...(error.nextAllowedAt ? { details: { nextAllowedAt: error.nextAllowedAt } } : {}),
+    });
   }
 }

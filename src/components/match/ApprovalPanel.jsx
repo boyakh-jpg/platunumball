@@ -1,5 +1,6 @@
 import Card from "../common/Card.jsx";
 import Badge from "../common/Badge.jsx";
+import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import { getApprovalStatus, getPlayerStatSubmitted, getResultPointAudit, getStatSubmissionStatus } from "../../lib/matchUtils.js";
 
 export default function ApprovalPanel({ match, teams, users, currentUserId, onApprove }) {
@@ -32,7 +33,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
             ].filter(Boolean).join(" ");
             return (
               <button key={playerId} type="button" disabled={disabled} className={buttonClass} onClick={() => onApprove(sideName, playerId)}>
-                <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
+                <ProfileEmblem user={user} className="small" initial="P" />
                 <strong>{user?.name ?? "플레이어"}</strong>
                 <em>
                   {approved

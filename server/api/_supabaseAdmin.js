@@ -269,6 +269,11 @@ export function toClientTeamWithMembers(team = {}, memberRows = []) {
     accent: team.accent,
     emblemKey: team.emblem_key ?? null,
     emblemUpdatedAt: team.emblem_updated_at ?? null,
+    emblemUploadedAt: team.emblem_uploaded_at ?? null,
+    emblemUploadCount: Number(team.emblem_upload_count ?? 0),
+    emblemColor: team.emblem_color ?? team.accent ?? null,
+    emblemBorderEnabled: team.emblem_border_enabled !== false,
+    emblemBorderColor: team.emblem_border_color ?? team.accent ?? null,
     createdAt: team.created_at ?? null,
     updatedAt: team.updated_at ?? team.created_at ?? null,
     members: [...memberRows]

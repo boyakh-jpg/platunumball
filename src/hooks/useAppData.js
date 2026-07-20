@@ -3222,11 +3222,70 @@ export function useAppData(authUser = null, appLocation = null) {
         );
         return result?.ok === false ? result : createdTeam.id;
       },
-      uploadTeamEmblem: async (teamId, file) => {
+      uploadProfileEmblem: async (file, crop = {}) => {
+        const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "개인 엠블럼 저장");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("개인 엠블럼 저장")) return { ok: false, error: "remote_not_ready" };
+        const prepared = await prepareTeamEmblemUpload(file, crop);
+        const result = await runServerAction("/api/profile/emblem", { action: "upload", imageBase64: prepared.imageBase64 });
+        if (result?.ok !== false && result?.profileId) {
+          setState((prev) => ({
+            ...prev,
+            users: (prev.users ?? []).map((user) => user.id === result.profileId ? {
+              ...user,
+              avatarKey: result.avatarKey ?? null,
+              avatarSource: result.avatarSource ?? "upload",
+              avatarUpdatedAt: result.avatarUpdatedAt ?? new Date().toISOString(),
+              avatarUploadedAt: result.avatarUploadedAt ?? null,
+              avatarUploadCount: Number(result.avatarUploadCount ?? user.avatarUploadCount ?? 0),
+              avatarBorderEnabled: result.avatarBorderEnabled ?? user.avatarBorderEnabled ?? false,
+              avatarBorderColor: result.avatarBorderColor ?? user.avatarBorderColor ?? user.avatarColor,
+            } : user),
+          }));
+        }
+        return result;
+      },
+      setProfileEmblemSource: async (avatarSource) => {
+        const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "개인 엠블럼 변경");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("개인 엠블럼 변경")) return { ok: false, error: "remote_not_ready" };
+        const result = await runServerAction("/api/profile/emblem", { action: "source", avatarSource });
+        if (result?.ok !== false && result?.profileId) {
+          setState((prev) => ({
+            ...prev,
+            users: (prev.users ?? []).map((user) => user.id === result.profileId ? {
+              ...user,
+              avatarKey: result.avatarKey ?? null,
+              avatarSource: result.avatarSource ?? avatarSource,
+              avatarUpdatedAt: result.avatarUpdatedAt ?? new Date().toISOString(),
+            } : user),
+          }));
+        }
+        return result;
+      },
+      updateProfileEmblemStyle: async (style) => {
+        const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "개인 엠블럼 색상 저장");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("개인 엠블럼 색상 저장")) return { ok: false, error: "remote_not_ready" };
+        const result = await runServerAction("/api/profile/emblem", { action: "style", ...style });
+        if (result?.ok !== false && result?.profileId) {
+          setState((prev) => ({
+            ...prev,
+            users: (prev.users ?? []).map((user) => user.id === result.profileId ? {
+              ...user,
+              avatarColor: result.avatarColor ?? user.avatarColor,
+              avatarBorderEnabled: result.avatarBorderEnabled ?? user.avatarBorderEnabled ?? false,
+              avatarBorderColor: result.avatarBorderColor ?? user.avatarBorderColor ?? user.avatarColor,
+            } : user),
+          }));
+        }
+        return result;
+      },
+      uploadTeamEmblem: async (teamId, file, crop = {}) => {
         const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 저장");
         if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("팀 엠블럼 저장")) return { ok: false, error: "remote_not_ready" };
-        const prepared = await prepareTeamEmblemUpload(file);
+        const prepared = await prepareTeamEmblemUpload(file, crop);
         const result = await runServerAction("/api/teams/emblem", {
           action: "upload",
           teamId,
@@ -3239,10 +3298,30 @@ export function useAppData(authUser = null, appLocation = null) {
               ...team,
               emblemKey: result.emblemKey ?? null,
               emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
+              emblemUploadedAt: result.emblemUploadedAt ?? team.emblemUploadedAt ?? null,
+              emblemUploadCount: Number(result.emblemUploadCount ?? team.emblemUploadCount ?? 0),
             } : team),
           }));
         }
         return { ...result, sourceByteSize: prepared.sourceByteSize, byteSize: result?.byteSize ?? prepared.byteSize };
+      },
+      updateTeamEmblemStyle: async (teamId, style) => {
+        const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 색상 저장");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("팀 엠블럼 색상 저장")) return { ok: false, error: "remote_not_ready" };
+        const result = await runServerAction("/api/teams/emblem", { action: "style", teamId, ...style });
+        if (result?.ok !== false && result?.teamId === teamId) {
+          setState((prev) => ({
+            ...prev,
+            teams: (prev.teams ?? []).map((team) => team.id === teamId ? {
+              ...team,
+              emblemColor: result.emblemColor ?? team.emblemColor ?? team.accent,
+              emblemBorderEnabled: result.emblemBorderEnabled ?? team.emblemBorderEnabled ?? true,
+              emblemBorderColor: result.emblemBorderColor ?? team.emblemBorderColor ?? team.accent,
+            } : team),
+          }));
+        }
+        return result;
       },
       removeTeamEmblem: async (teamId) => {
         const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 삭제");
@@ -3256,6 +3335,8 @@ export function useAppData(authUser = null, appLocation = null) {
               ...team,
               emblemKey: null,
               emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
+              emblemUploadedAt: result.emblemUploadedAt ?? team.emblemUploadedAt ?? null,
+              emblemUploadCount: Number(result.emblemUploadCount ?? team.emblemUploadCount ?? 0),
             } : team),
           }));
         }

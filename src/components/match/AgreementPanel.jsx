@@ -1,5 +1,6 @@
 import Card from "../common/Card.jsx";
 import Badge from "../common/Badge.jsx";
+import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import { getAgreementStatus } from "../../lib/matchUtils.js";
 
 export default function AgreementPanel({ match, teams, users, currentUserId, onAgree }) {
@@ -39,7 +40,7 @@ export default function AgreementPanel({ match, teams, users, currentUserId, onA
                 className={buttonClass}
                 onClick={() => onAgree(sideName, playerId)}
               >
-                <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
+                <ProfileEmblem user={user} className="small" initial="P" />
                 <strong>{user?.name ?? "플레이어"}</strong>
                 <em>{agreed ? "동의" : canCurrentUserAgree ? (captain ? "팀장 동의" : "내 동의") : status.captainRequired ? "팀장 대기" : "대리 불가"}</em>
               </button>

@@ -502,6 +502,7 @@ body.rankball-scroll-locked .app-main {
 }
 
 .avatar {
+  position: relative;
   display: grid;
   flex: 0 0 auto;
   width: 42px;
@@ -537,6 +538,20 @@ body.rankball-scroll-locked .app-main {
   background-size: cover;
   color: transparent;
   overflow: hidden;
+}
+
+.avatar.has-emblem-border {
+  box-shadow: 0 0 0 2px var(--avatar-border, var(--avatar, var(--green)));
+}
+
+.profile-emblem-image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
 }
 
 .discord-link-badge {
@@ -1981,9 +1996,9 @@ span.referee-hover-card {
   flex: 0 0 var(--team-emblem-size);
   place-items: center;
   overflow: hidden;
-  border: 2px solid color-mix(in srgb, var(--team-color, var(--rb-orange)) 72%, var(--line));
+  border: 2px solid color-mix(in srgb, var(--team-emblem-border, var(--team-color, var(--rb-orange))) 78%, var(--line));
   border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-3) 90%, var(--team-color, var(--rb-orange)) 10%);
+  background: color-mix(in srgb, var(--surface-3) 82%, var(--team-emblem-bg, var(--team-color, var(--rb-orange))) 18%);
   box-shadow:
     inset 0 0 0 2px color-mix(in srgb, var(--surface) 82%, transparent),
     0 4px 14px color-mix(in srgb, var(--team-color, var(--rb-orange)) 18%, transparent);
@@ -1996,8 +2011,13 @@ span.referee-hover-card {
   text-transform: uppercase;
 }
 
+.team-emblem.no-emblem-border {
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .team-emblem.has-image {
-  background: color-mix(in srgb, var(--surface-2) 94%, var(--team-color, var(--rb-orange)) 6%);
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--team-emblem-bg, var(--team-color, var(--rb-orange))) 10%);
 }
 
 .team-emblem img {
@@ -8193,6 +8213,166 @@ html[data-theme="light"] .search-picker-result-row.selected {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.emblem-source-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.emblem-source-grid button {
+  display: grid;
+  min-width: 0;
+  min-height: 64px;
+  gap: 3px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, var(--radius));
+  background: var(--ui-control-bg, var(--surface-2));
+  color: var(--text);
+  padding: 10px;
+  text-align: left;
+}
+
+.emblem-source-grid button.active {
+  border-color: var(--rb-green);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-green) 50%, transparent);
+}
+
+.emblem-source-grid button:disabled:not(.active) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.emblem-source-grid button span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.emblem-style-controls {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.emblem-style-controls label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.emblem-style-controls input[type="color"] {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, var(--surface-2));
+  padding: 4px;
+}
+
+.emblem-style-controls .emblem-border-toggle {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, var(--surface-2));
+  padding: 8px 10px;
+  color: var(--text);
+}
+
+.profile-emblem-card {
+  gap: 14px;
+}
+
+.profile-emblem-card .hero-avatar {
+  width: 62px;
+  height: 62px;
+}
+
+.emblem-crop-dialog {
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+}
+
+.emblem-crop-dialog header {
+  display: grid;
+  gap: 5px;
+}
+
+.emblem-crop-preview {
+  display: grid;
+  width: min(320px, 100%);
+  aspect-ratio: 1;
+  place-items: center;
+  justify-self: center;
+  overflow: hidden;
+  border: 1px solid var(--card-border, var(--line));
+  border-radius: 50%;
+  background:
+    linear-gradient(45deg, color-mix(in srgb, var(--surface-3) 85%, transparent) 25%, transparent 25%) 0 0 / 18px 18px,
+    linear-gradient(-45deg, color-mix(in srgb, var(--surface-3) 85%, transparent) 25%, transparent 25%) 0 9px / 18px 18px,
+    linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--surface-3) 85%, transparent) 75%) 9px -9px / 18px 18px,
+    linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--surface-3) 85%, transparent) 75%) -9px 0 / 18px 18px,
+    var(--surface-2);
+}
+
+.emblem-crop-preview canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.emblem-crop-preview span {
+  color: var(--danger);
+  font-weight: 850;
+}
+
+.emblem-crop-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.emblem-crop-controls label {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.emblem-crop-controls input[type="range"] {
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .emblem-source-grid,
+  .emblem-style-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .emblem-style-controls .button {
+    width: 100%;
+  }
+
+  .emblem-crop-backdrop {
+    place-items: end center;
+    padding: 10px;
+  }
+
+  .emblem-crop-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+  }
 }
 
 .team-danger-zone {

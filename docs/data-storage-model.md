@@ -1,5 +1,23 @@
 # RankBall 데이터 저장 모델
 
+## 2026-07-20 개인·팀 엠블럼 확장
+
+| 원본 | 필드 | 역할 |
+| --- | --- | --- |
+| `profiles` | `avatar_key`, `avatar_source`, `avatar_updated_at` | 개인 엠블럼 R2 key와 현재 표시 원본 |
+| `profiles` | `avatar_uploaded_at`, `avatar_upload_count` | 처음 2회 이후 30일 업로드 제한의 서버 원본 |
+| `profiles` | `avatar_color`, `avatar_border_enabled`, `avatar_border_color` | 개인 기본 글자 배경과 테두리 스타일 |
+| `profiles` | `discord_avatar_url` | 공개 엠블럼 표시에 필요한 Discord 이미지 URL만 분리 저장 |
+| `teams` | `emblem_uploaded_at`, `emblem_upload_count` | 팀 이미지 업로드 제한 원본 |
+| `teams` | `emblem_color`, `emblem_border_enabled`, `emblem_border_color` | 팀 기본색과 테두리 스타일 |
+| R2 | `profile-emblems/{profileId}/{sha256-24}.webp` | 개인 직접 업로드 결과 |
+| R2 | `team-emblems/{teamId}/{sha256-24}.webp` | 팀 직접 업로드 결과 |
+
+- `rankball_update_profile_emblem()`은 본인 프로필 row를 잠그고 원본 전환, 스타일 저장, 업로드 횟수·30일 제한을 처리한다.
+- `rankball_update_team_emblem()`은 팀 row와 팀장 권한을 검사하고 이미지 업로드 횟수·30일 제한을 처리한다.
+- `rankball_update_team_emblem_style()`은 팀장 권한으로 색상·테두리만 바꾸며 이미지 업로드 횟수를 변경하지 않는다.
+- `public_profiles`에는 공개 표시에 필요한 엠블럼 필드만 노출한다. Discord 사용자 ID와 전체 연결 payload는 계속 제외한다.
+
 ## 2026-06-30 profile match summary
 
 - `profile_match_summaries`는 확정 경기 기준 선수 누적 통계 캐시다.

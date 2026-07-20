@@ -9,6 +9,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import MmrChange from "../components/rating/MmrChange.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
@@ -107,10 +108,6 @@ function getRecordPlayerDisplayName(match = {}, sideName = "teamA", playerId = "
 
 function isAnonymousDisplayUser(user = null) {
   return Boolean(user?.anonymous || user?.participationLabel === "개인참여");
-}
-
-function getAvatarClassName(user = null, size = "") {
-  return ["avatar", size, isAnonymousDisplayUser(user) ? "anonymous" : ""].filter(Boolean).join(" ");
 }
 
 function getAvatarInitial(user = null, fallback = "P") {
@@ -455,7 +452,7 @@ export default function MatchRoom({ app }) {
                   <Crown size={12} strokeWidth={3} />
                 </span>
               ) : null}
-              <span className={getAvatarClassName(user)} style={{ "--avatar": user?.avatarColor }}>{getAvatarInitial(user)}</span>
+              <ProfileEmblem user={user} anonymous={isAnonymousDisplayUser(user)} initial={getAvatarInitial(user)} />
               <strong>{user?.name ?? "플레이어"}</strong>
               <small>{getPlayerMetaLabel(user)}</small>
               <em>{slotLabel}</em>
@@ -489,7 +486,7 @@ export default function MatchRoom({ app }) {
                     <Crown size={12} strokeWidth={3} />
                   </span>
                 ) : null}
-                <span className={getAvatarClassName(user)} style={{ "--avatar": user?.avatarColor }}>{getAvatarInitial(user)}</span>
+                <ProfileEmblem user={user} anonymous={isAnonymousDisplayUser(user)} initial={getAvatarInitial(user)} />
                 <strong>{user?.name ?? "플레이어"}</strong>
                 <small>{getPlayerMetaLabel(user)}</small>
                 <em>{recorder ? "REC" : "SUB"}</em>
@@ -991,7 +988,7 @@ export default function MatchRoom({ app }) {
                       return (
                         <button key={playerId} type="button" className={`${canEdit ? "stat-player-button editable" : "stat-player-button locked"} ${submitted ? "submitted" : ""}`} disabled={!canEdit} onClick={() => setStatEditorPlayerId(playerId)}>
                           <PlayerHoverCard as="span" user={displayUser} teams={app.state.teams}>
-                            <span className={getAvatarClassName(displayUser, "small")} style={{ "--avatar": displayUser?.avatarColor }}>{getAvatarInitial(displayUser)}</span>
+                            <ProfileEmblem user={displayUser} anonymous={isAnonymousDisplayUser(displayUser)} className="small" initial={getAvatarInitial(displayUser)} />
                             <span>
                               <strong>{displayName}</strong>
                               <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${getPlayerMetaLabel(displayUser)} · ${getPlayerStatState(playerId, submitted)}`}</em>
@@ -1063,7 +1060,7 @@ export default function MatchRoom({ app }) {
                       onClick={() => toggleThumbDraft(playerId)}
                     >
                       <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
-                        <span className={getAvatarClassName(user, "small")} style={{ "--avatar": user?.avatarColor }}>{getAvatarInitial(user)}</span>
+                        <ProfileEmblem user={user} anonymous={isAnonymousDisplayUser(user)} className="small" initial={getAvatarInitial(user)} />
                         <span>
                           <strong>{user?.name ?? "플레이어"}</strong>
                           <em>{getTrustFeedbackRole(match, playerId)} · {thumbCountByPlayer[playerId] ?? 0}개 받음</em>

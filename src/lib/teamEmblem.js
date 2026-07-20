@@ -1,6 +1,6 @@
 export const TEAM_EMBLEM_SOURCE_MAX_BYTES = 12 * 1024 * 1024;
-export const TEAM_EMBLEM_UPLOAD_MAX_BYTES = 300 * 1024;
-export const TEAM_EMBLEM_MAX_DIMENSION = 512;
+export const TEAM_EMBLEM_UPLOAD_MAX_BYTES = 160 * 1024;
+export const TEAM_EMBLEM_MAX_DIMENSION = 384;
 
 const ACCEPTED_TEAM_EMBLEM_TYPES = new Set([
   "image/avif",
@@ -61,25 +61,42 @@ function blobToBase64(blob) {
   });
 }
 
-function drawContainedSquare(source, sourceWidth, sourceHeight, dimension) {
-  const canvas = document.createElement("canvas");
+function normalizeCrop(crop = {}) {
+  const zoom = Number(crop.zoom);
+  const x = Number(crop.x);
+  const y = Number(crop.y);
+  return {
+    zoom: Math.min(3, Math.max(0.5, Number.isFinite(zoom) ? zoom : 1)),
+    x: Math.min(100, Math.max(0, Number.isFinite(x) ? x : 50)),
+    y: Math.min(100, Math.max(0, Number.isFinite(y) ? y : 50)),
+  };
+}
+
+export function drawEmblemCrop(canvas, source, sourceWidth, sourceHeight, crop = {}, dimension = TEAM_EMBLEM_MAX_DIMENSION) {
   canvas.width = dimension;
   canvas.height = dimension;
   const context = canvas.getContext("2d", { alpha: true });
   if (!context) throw createImageLoadError("team_emblem_canvas_unavailable");
 
   context.clearRect(0, 0, dimension, dimension);
-  const available = dimension * 0.92;
-  const scale = Math.min(available / sourceWidth, available / sourceHeight);
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
+  const normalized = normalizeCrop(crop);
+  const coverScale = dimension / Math.min(sourceWidth, sourceHeight);
+  const scale = coverScale * normalized.zoom;
+  const width = Math.max(1, sourceWidth * scale);
+  const height = Math.max(1, sourceHeight * scale);
+  const x = width >= dimension
+    ? -(width - dimension) * (normalized.x / 100)
+    : (dimension - width) * (normalized.x / 100);
+  const y = height >= dimension
+    ? -(height - dimension) * (normalized.y / 100)
+    : (dimension - height) * (normalized.y / 100);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
-  context.drawImage(source, Math.round((dimension - width) / 2), Math.round((dimension - height) / 2), width, height);
+  context.drawImage(source, x, y, width, height);
   return canvas;
 }
 
-export async function prepareTeamEmblemUpload(file) {
+export async function prepareTeamEmblemUpload(file, crop = {}) {
   if (!(file instanceof Blob)) throw createImageLoadError("team_emblem_file_required");
   if (!ACCEPTED_TEAM_EMBLEM_TYPES.has(String(file.type || "").toLowerCase())) {
     throw createImageLoadError("team_emblem_type_not_supported");
@@ -101,15 +118,16 @@ export async function prepareTeamEmblemUpload(file) {
     const initialDimension = Math.min(TEAM_EMBLEM_MAX_DIMENSION, Math.max(decoded.width, decoded.height));
     const dimensions = [...new Set([
       initialDimension,
-      Math.min(initialDimension, 448),
-      Math.min(initialDimension, 384),
+      Math.min(initialDimension, 352),
       Math.min(initialDimension, 320),
       Math.min(initialDimension, 256),
+      Math.min(initialDimension, 224),
     ].map((value) => Math.max(1, Math.round(value))))];
-    const qualities = [0.86, 0.76, 0.66, 0.56];
+    const qualities = [0.82, 0.72, 0.62, 0.52];
 
     for (const dimension of dimensions) {
-      const canvas = drawContainedSquare(decoded.source, decoded.width, decoded.height, dimension);
+      const canvas = document.createElement("canvas");
+      drawEmblemCrop(canvas, decoded.source, decoded.width, decoded.height, crop, dimension);
       for (const quality of qualities) {
         const blob = await canvasToWebp(canvas, quality);
         if (!blob) throw createImageLoadError("team_emblem_webp_unavailable");
@@ -134,23 +152,32 @@ export async function prepareTeamEmblemUpload(file) {
 export function getTeamEmblemErrorMessage(code = "") {
   const messages = {
     team_emblem_file_required: "이미지 파일을 선택해야 합니다.",
+    profile_emblem_file_required: "이미지 파일을 선택해야 합니다.",
     team_emblem_type_not_supported: "JPG, PNG, WebP, AVIF 이미지만 사용할 수 있습니다.",
     team_emblem_source_too_large: "원본 이미지는 12MB 이하여야 합니다.",
     team_emblem_decode_failed: "이미지를 읽을 수 없습니다.",
     team_emblem_invalid_dimensions: "이미지 크기를 확인할 수 없습니다.",
+    profile_emblem_invalid_dimensions: "이미지 크기를 확인할 수 없습니다.",
     team_emblem_invalid_payload: "변환된 이미지 데이터가 올바르지 않습니다.",
+    profile_emblem_invalid_payload: "변환된 이미지 데이터가 올바르지 않습니다.",
     team_emblem_request_too_large: "업로드 요청이 너무 큽니다.",
-    team_emblem_too_large: "변환된 이미지는 300KB 이하여야 합니다.",
+    team_emblem_too_large: "이미지를 더 작게 최적화해야 합니다.",
+    profile_emblem_too_large: "이미지를 더 작게 최적화해야 합니다.",
     team_emblem_webp_required: "WebP 이미지로 변환한 뒤 업로드해야 합니다.",
+    profile_emblem_webp_required: "WebP 이미지로 변환한 뒤 업로드해야 합니다.",
     team_emblem_canvas_unavailable: "이 브라우저에서는 이미지 변환을 사용할 수 없습니다.",
     team_emblem_webp_unavailable: "이 브라우저에서는 WebP 변환을 사용할 수 없습니다.",
     team_emblem_read_failed: "변환된 이미지를 읽지 못했습니다.",
-    team_emblem_too_large_after_resize: "이미지를 300KB 이하로 줄이지 못했습니다.",
+    team_emblem_too_large_after_resize: "이미지를 충분히 최적화하지 못했습니다.",
     team_emblem_permission_denied: "팀 주장만 엠블럼을 변경할 수 있습니다.",
     team_emblem_conflict: "다른 변경이 먼저 저장됐습니다. 다시 시도하세요.",
+    team_emblem_cooldown: "교체 제한 기간입니다. 표시된 날짜 이후 다시 시도하세요.",
+    profile_emblem_cooldown: "교체 제한 기간입니다. 표시된 날짜 이후 다시 시도하세요.",
+    discord_avatar_unavailable: "Discord 연동 이미지가 없습니다.",
+    invalid_emblem_color: "엠블럼 색상을 확인하세요.",
     cloudflare_r2_not_configured: "Cloudflare 저장소가 설정되지 않았습니다.",
     cloudflare_r2_upload_failed: "Cloudflare 업로드에 실패했습니다.",
     cloudflare_r2_delete_failed: "기존 엠블럼 정리에 실패했습니다.",
   };
-  return messages[String(code || "")] ?? "팀 엠블럼을 저장하지 못했습니다.";
+  return messages[String(code || "")] ?? "엠블럼을 저장하지 못했습니다.";
 }
