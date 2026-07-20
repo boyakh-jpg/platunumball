@@ -44,6 +44,7 @@ const MATCH_SCHEDULED_NOTICE_PREFIXES = [
   "match-reminder-1h",
   "match-manager-checkin-10m",
   "match-manager-start-now",
+  "match-manager-start-5m",
 ];
 const MATCH_POSTGAME_NOTICE_PREFIXES = [
   "match-ended-score",
@@ -249,6 +250,7 @@ function toDiscordDeliveryRows(match = {}, profiles = [], notification = {}) {
         status: "queued",
         queuedAt: now,
         sendAt,
+        ...(notification.expiresAt ? { expiresAt: notification.expiresAt } : {}),
       },
       queued_at: now,
       send_at: sendAt,
@@ -291,6 +293,7 @@ function toMatchNotificationRows(match = {}, profileIds = [], notification = {})
         skipDiscordSync: true,
         sendAt,
         queuedAt: now,
+        ...(notification.expiresAt ? { expiresAt: notification.expiresAt } : {}),
       },
       created_at: now,
       updated_at: now,
@@ -440,19 +443,35 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
         sendAt: new Date(checkinAtMs).toISOString(),
       });
     }
-    addRows(managerIds, managerProfiles, {
-      idPrefix: "match-manager-start-now",
-      title: "경기 시작 안내",
-      intro: "경기 시작시간입니다. 준비가 끝났다면 경기 시작 처리를 진행해주세요.",
-      sendAt: scheduledAt.toISOString(),
+    const startReminderAtMs = scheduledAt.getTime() - 5 * 60 * 1000;
+    if (startReminderAtMs > nowMs) {
+      addRows(managerIds, managerProfiles, {
+        idPrefix: "match-manager-start-5m",
+        title: "경기 시작 5분 전",
+        intro: "경기 시작 5분 전입니다. 준비가 끝났다면 시작 처리를 준비해주세요.",
+        sendAt: new Date(startReminderAtMs).toISOString(),
+        expiresAt: scheduledAt.toISOString(),
+      });
+    }
+  }
+
+  if (action === "cancelMatch") {
+    addRows(participantIds, profiles, {
+      idPrefix: "match-cancelled",
+      title: "경기 취소",
+      intro: "경기방이 취소됐습니다.",
+      type: "match_cancelled",
+      actionRequired: false,
     });
   }
 
-  if (action === "startMatch") {
+  if (action === "voidMatch") {
     addRows(participantIds, profiles, {
-      idPrefix: "match-started",
-      title: "경기 시작",
-      intro: "경기가 시작됐습니다.",
+      idPrefix: "match-voided",
+      title: "경기 무효",
+      intro: "경기가 무효 처리됐습니다.",
+      type: "match_voided",
+      actionRequired: false,
     });
   }
 
@@ -1922,7 +1941,10 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const agreementRows = toAgreementRows(match);
   const approvalRows = toApprovalRows(match);
   const disputeRows = toDisputeRows(match);
-  const notificationRows = toNotificationRows(notifications, context.profileId, { coalesce: "nullish", getUpdatedAt: getTimestamp });
+  const snapshotNotifications = ["cancelMatch", "voidMatch"].includes(action)
+    ? notifications.filter((notification) => notification.matchId !== match.id)
+    : notifications;
+  const notificationRows = toNotificationRows(snapshotNotifications, context.profileId, { coalesce: "nullish", getUpdatedAt: getTimestamp });
 
   let persistRpcName = shouldCommitRating ? "rankball_match_action_with_rating" : "rankball_match_action";
   let persistArgs = {

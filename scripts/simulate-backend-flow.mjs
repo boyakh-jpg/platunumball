@@ -127,6 +127,7 @@ const MATCH_SCHEDULED_NOTICE_PREFIXES = [
   "match-reminder-1h",
   "match-manager-checkin-10m",
   "match-manager-start-now",
+  "match-manager-start-5m",
 ];
 const MATCH_POSTGAME_NOTICE_PREFIXES = [
   "match-ended-score",

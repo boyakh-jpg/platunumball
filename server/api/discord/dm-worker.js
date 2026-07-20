@@ -245,6 +245,16 @@ function mergePayload(delivery, patch) {
   };
 }
 
+export function isDiscordDeliveryExpired(delivery = {}, nowMs = Date.now()) {
+  const expiresAtMs = new Date(delivery.payload?.expiresAt ?? "").getTime();
+  if (Number.isFinite(expiresAtMs)) return expiresAtMs <= nowMs;
+
+  const legacyStartNotice = String(delivery.id ?? "").startsWith("discord-match-manager-start-now-");
+  if (!legacyStartNotice) return false;
+  const sendAtMs = new Date(delivery.send_at ?? delivery.payload?.sendAt ?? "").getTime();
+  return Number.isFinite(sendAtMs) && sendAtMs <= nowMs;
+}
+
 export default async function handler(request, response) {
   if (!["GET", "POST"].includes(request.method)) {
     response.setHeader("Allow", "GET, POST");
@@ -317,13 +327,39 @@ export default async function handler(request, response) {
       return fromUserId ? { ...delivery, payload: { ...(delivery.payload ?? {}), fromUserId } } : delivery;
     });
 
-    const targetUserIds = [...new Set(claimedRowsWithActors.map((row) => row.target_user_id).filter(Boolean))];
+    const workerNowMs = new Date(now).getTime();
+    const expiredRows = claimedRowsWithActors.filter((delivery) => isDiscordDeliveryExpired(delivery, workerNowMs));
+    if (expiredRows.length) {
+      const expiredAt = new Date().toISOString();
+      for (const delivery of expiredRows) {
+        const { error: expiredError } = await supabase
+          .from("discord_notification_deliveries")
+          .update({
+            status: "cancelled",
+            last_error: "discord_notification_expired",
+            payload: mergePayload(delivery, {
+              status: "cancelled",
+              reason: "discord_notification_expired",
+              cancelledAt: expiredAt,
+            }),
+            updated_at: expiredAt,
+          })
+          .eq("id", delivery.id)
+          .eq("status", "sending")
+          .is("sent_at", null);
+        if (expiredError) throw expiredError;
+      }
+    }
+    const expiredIds = new Set(expiredRows.map((delivery) => delivery.id));
+    const activeClaimedRows = claimedRowsWithActors.filter((delivery) => !expiredIds.has(delivery.id));
+
+    const targetUserIds = [...new Set(activeClaimedRows.map((row) => row.target_user_id).filter(Boolean))];
     const { data: profileRows, error: profileError } = targetUserIds.length
       ? await supabase.from("profiles").select("id,app_settings").in("id", targetUserIds)
       : { data: [], error: null };
     if (profileError) throw profileError;
     const settingsByProfileId = new Map((profileRows ?? []).map((profile) => [profile.id, profile.app_settings]));
-    const optedOutRows = claimedRowsWithActors.filter((delivery) => (
+    const optedOutRows = activeClaimedRows.filter((delivery) => (
       !isDiscordNotificationEnabled(settingsByProfileId.get(delivery.target_user_id), delivery.event) ||
       new Set(getBlockedUserIds(settingsByProfileId.get(delivery.target_user_id))).has(getNotificationActorId(delivery))
     ));
@@ -338,7 +374,7 @@ export default async function handler(request, response) {
       if (optOutError) throw optOutError;
     }
     const optedOutIds = new Set(optedOutRows.map((delivery) => delivery.id));
-    const sendableRows = claimedRowsWithActors.filter((delivery) => !optedOutIds.has(delivery.id));
+    const sendableRows = activeClaimedRows.filter((delivery) => !optedOutIds.has(delivery.id));
 
     const sent = [];
     const failed = [];
@@ -394,10 +430,11 @@ export default async function handler(request, response) {
 
     sendJson(response, 200, {
       ok: true,
-      processed: sent.length + failed.length + optedOutRows.length,
+      processed: sent.length + failed.length + optedOutRows.length + expiredRows.length,
       sent: sent.length,
       failed: failed.length,
-      cancelled: optedOutRows.length,
+      cancelled: optedOutRows.length + expiredRows.length,
+      expired: expiredRows.length,
       maintenance,
       sentIds: sent,
       failedRows: failed,
