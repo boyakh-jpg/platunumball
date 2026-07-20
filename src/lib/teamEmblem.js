@@ -1,6 +1,6 @@
 export const TEAM_EMBLEM_SOURCE_MAX_BYTES = 12 * 1024 * 1024;
-export const TEAM_EMBLEM_UPLOAD_MAX_BYTES = 160 * 1024;
-export const TEAM_EMBLEM_MAX_DIMENSION = 384;
+export const TEAM_EMBLEM_UPLOAD_MAX_BYTES = 96 * 1024;
+export const TEAM_EMBLEM_MAX_DIMENSION = 320;
 
 const ACCEPTED_TEAM_EMBLEM_TYPES = new Set([
   "image/avif",
@@ -171,6 +171,9 @@ export function getTeamEmblemErrorMessage(code = "") {
     team_emblem_too_large_after_resize: "이미지를 충분히 최적화하지 못했습니다.",
     team_emblem_permission_denied: "팀 주장만 엠블럼을 변경할 수 있습니다.",
     team_emblem_conflict: "다른 변경이 먼저 저장됐습니다. 다시 시도하세요.",
+    team_emblem_upload_unavailable: "먼저 사용할 사진을 저장하세요.",
+    profile_emblem_upload_unavailable: "먼저 사용할 사진을 저장하세요.",
+    profile_emblem_image_disabled: "개인 사진 엠블럼은 사용하지 않습니다.",
     team_emblem_cooldown: "교체 제한 기간입니다. 표시된 날짜 이후 다시 시도하세요.",
     profile_emblem_cooldown: "교체 제한 기간입니다. 표시된 날짜 이후 다시 시도하세요.",
     discord_avatar_unavailable: "Discord 연동 이미지가 없습니다.",

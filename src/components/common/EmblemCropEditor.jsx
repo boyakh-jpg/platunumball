@@ -5,7 +5,7 @@ import Button from "./Button.jsx";
 
 const DEFAULT_CROP = { zoom: 1, x: 50, y: 50 };
 
-export default function EmblemCropEditor({ file, pending = false, warning = "", onCancel, onConfirm }) {
+export default function EmblemCropEditor({ file, pending = false, warning = "", error = "", onCancel, onConfirm }) {
   const canvasRef = useRef(null);
   const [image, setImage] = useState(null);
   const [crop, setCrop] = useState(DEFAULT_CROP);
@@ -57,10 +57,11 @@ export default function EmblemCropEditor({ file, pending = false, warning = "", 
           </label>
         </div>
         {warning ? <p className="form-warning">{warning}</p> : null}
+        {error ? <p className="emblem-crop-feedback" role="alert">{error}</p> : null}
         <div className="app-confirm-actions">
           <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>취소</Button>
           <Button type="button" disabled={pending || !image || loadFailed} onClick={() => onConfirm?.(crop)}>
-            {pending ? "저장 중" : "경고 확인 후 저장"}
+            {pending ? "저장 중" : "저장"}
           </Button>
         </div>
       </section>

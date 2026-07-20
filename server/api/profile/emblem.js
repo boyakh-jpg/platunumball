@@ -139,7 +139,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const body = await readJsonBody(request);
     const action = String(body.action || "upload").trim();
-    if (!new Set(["upload", "source", "style"]).has(action)) reject(400, "invalid_profile_emblem_action");
+    if (action !== "style") reject(410, "profile_emblem_image_disabled");
     if (!PROFILE_ID_PATTERN.test(context.profileId)) reject(400, "invalid_profile_id");
 
     const profile = await loadProfile(context);
@@ -161,17 +161,9 @@ export default async function handler(request, response) {
 
     if (action === "source") {
       const avatarSource = String(body.avatarSource || "initial").trim();
-      if (!new Set(["initial", "discord"]).has(avatarSource)) reject(400, "invalid_profile_emblem_source");
-      const result = await commitProfile(context, profile, { action, avatarSource, avatarKey: null });
-      let storageCleanupPending = false;
-      if (previousAvatarKey) {
-        try {
-          await deleteObject(getR2Config(), previousAvatarKey);
-        } catch {
-          storageCleanupPending = true;
-        }
-      }
-      sendJson(response, 200, { ...result, storageCleanupPending });
+      if (!new Set(["initial", "discord", "upload"]).has(avatarSource)) reject(400, "invalid_profile_emblem_source");
+      const result = await commitProfile(context, profile, { action, avatarSource, avatarKey: previousAvatarKey });
+      sendJson(response, 200, result);
       return;
     }
 

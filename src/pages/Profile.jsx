@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
@@ -10,6 +11,7 @@ import { PLAYER_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchSideScore as getSideScore, isDateWithinPastMonths, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { canChangeProfileName, getNextNameChangeDate, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 const POSITION_OPTIONS = PLAYER_POSITIONS.filter((position) => ["PG", "SG", "SF", "PF", "C"].includes(position));
@@ -130,10 +132,25 @@ export default function Profile({ app }) {
   const [profileError, setProfileError] = useState("");
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
   const [recordsLoading, setRecordsLoading] = useState(false);
+  const [emblemPending, setEmblemPending] = useState(false);
+  const [emblemFeedback, setEmblemFeedback] = useState("");
+  const [emblemStyleDraft, setEmblemStyleDraft] = useState(() => ({
+    avatarColor: user.avatarColor ?? "#58d2c0",
+    avatarBorderEnabled: user.avatarBorderEnabled === true,
+    avatarBorderColor: user.avatarBorderColor ?? user.avatarColor ?? "#58d2c0",
+  }));
   const recordsLoadKeyRef = useRef("");
   const selectedRegion = REGION_TREE.find((item) => item.sido === draft.regionSido) ?? REGION_TREE[0];
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+
+  useEffect(() => {
+    setEmblemStyleDraft({
+      avatarColor: user.avatarColor ?? "#58d2c0",
+      avatarBorderEnabled: user.avatarBorderEnabled === true,
+      avatarBorderColor: user.avatarBorderColor ?? user.avatarColor ?? "#58d2c0",
+    });
+  }, [user.avatarBorderColor, user.avatarBorderEnabled, user.avatarColor, user.id]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -155,6 +172,19 @@ export default function Profile({ app }) {
       });
     } catch (error) {
       setProfileError(error.message || "프로필 저장에 실패했습니다.");
+    }
+  };
+  const saveEmblemStyle = async () => {
+    if (emblemPending) return;
+    setEmblemPending(true);
+    setEmblemFeedback("");
+    try {
+      const result = await app.actions.updateProfileEmblemStyle(emblemStyleDraft);
+      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "개인 엠블럼 색상을 저장했습니다.");
+    } catch (error) {
+      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+    } finally {
+      setEmblemPending(false);
     }
   };
   const myRecords = [...app.state.matches]
@@ -195,6 +225,43 @@ export default function Profile({ app }) {
       </header>
       <div className="content-grid profile-overview-grid">
         <div className="page-stack profile-main-stack">
+          <Card className="section-card profile-emblem-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">My Emblem</p>
+                <h2>개인 엠블럼</h2>
+              </div>
+              <ProfileEmblem user={{ ...user, ...emblemStyleDraft }} className="hero-avatar" />
+            </div>
+            <div className="emblem-source-grid two-options">
+              <button type="button" className="active" aria-pressed="true" disabled={emblemPending}>
+                <strong>기본값</strong>
+              </button>
+              <button type="button" disabled>
+                <strong>아이콘</strong>
+                <span>준비 중</span>
+              </button>
+            </div>
+            <div className="emblem-style-controls">
+              <label>
+                기본 색
+                <input type="color" value={emblemStyleDraft.avatarColor} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, avatarColor: event.target.value }))} />
+              </label>
+              <label className="emblem-border-toggle">
+                <input type="checkbox" checked={emblemStyleDraft.avatarBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, avatarBorderEnabled: event.target.checked }))} />
+                테두리 사용
+              </label>
+              <label>
+                테두리 색
+                <input type="color" value={emblemStyleDraft.avatarBorderColor} disabled={!emblemStyleDraft.avatarBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, avatarBorderColor: event.target.value }))} />
+              </label>
+              <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
+            </div>
+            <p className="emblem-policy-note">개인 사진은 사용하지 않습니다. 아이콘 파일을 받으면 이 영역에 선택·업적 해금 기능을 연결합니다.</p>
+            <div className="settings-save-row">
+              <small>{emblemFeedback || "기본값 색상과 테두리를 바꿀 수 있습니다."}</small>
+            </div>
+          </Card>
           <Card className="section-card">
             <div className="section-title-row">
               <div>

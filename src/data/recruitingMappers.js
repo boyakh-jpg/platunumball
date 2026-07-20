@@ -54,6 +54,7 @@ export function toClientRecruitingTeam(row = {}, memberRows = []) {
     losses: row.losses ?? 0,
     accent: row.accent,
     emblemKey: row.emblem_key ?? null,
+    emblemSource: row.emblem_source ?? (row.emblem_key ? "upload" : "initial"),
     emblemUpdatedAt: row.emblem_updated_at ?? null,
     emblemUploadedAt: row.emblem_uploaded_at ?? null,
     emblemUploadCount: Number(row.emblem_upload_count ?? 0),

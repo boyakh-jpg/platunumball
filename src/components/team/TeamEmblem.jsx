@@ -12,8 +12,11 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
   const resolvedBorder = team?.emblemBorderColor ?? resolvedAccent;
   const borderEnabled = team?.emblemBorderEnabled !== false;
   const resolvedSize = EMBLEM_SIZES.has(size) ? size : "md";
-  const keyedUrl = team?.emblemKey ? assetUrl(`/${String(team.emblemKey).replace(/^\/+/, "")}`) : "";
-  const resolvedImageUrl = keyedUrl && !keyedUrl.startsWith("/") ? keyedUrl : team?.emblemUrl ?? keyedUrl;
+  const emblemSource = team?.emblemSource ?? (team?.emblemKey ? "upload" : "initial");
+  const keyedUrl = emblemSource === "upload" && team?.emblemKey ? assetUrl(`/${String(team.emblemKey).replace(/^\/+/, "")}`) : "";
+  const resolvedImageUrl = emblemSource === "upload"
+    ? (keyedUrl && !keyedUrl.startsWith("/") ? keyedUrl : team?.emblemUrl ?? keyedUrl)
+    : "";
 
   useEffect(() => setImageFailed(false), [resolvedImageUrl, team?.emblemUpdatedAt]);
 

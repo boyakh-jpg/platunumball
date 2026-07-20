@@ -8182,7 +8182,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .team-emblem-editor {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid var(--line);
@@ -8221,6 +8221,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 8px;
 }
 
+.emblem-source-grid.two-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .emblem-source-grid button {
   display: grid;
   min-width: 0;
@@ -8230,6 +8234,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   border-radius: var(--ui-control-radius, var(--radius));
   background: var(--ui-control-bg, var(--surface-2));
   color: var(--text);
+  cursor: pointer;
   padding: 10px;
   text-align: left;
 }
@@ -8242,6 +8247,19 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .emblem-source-grid button:disabled:not(.active) {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.emblem-policy-note,
+.emblem-crop-feedback {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.emblem-crop-feedback {
+  color: var(--danger);
 }
 
 .emblem-source-grid button span {
@@ -8356,6 +8374,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 @media (max-width: 720px) {
   .emblem-source-grid,
+  .emblem-source-grid.two-options,
   .emblem-style-controls {
     grid-template-columns: 1fr;
   }

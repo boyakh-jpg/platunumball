@@ -1,16 +1,6 @@
 import { useEffect, useState } from "react";
-import { assetUrl } from "../../lib/assets.js";
 
-function getDiscordAvatarUrl(user = {}) {
-  return user?.discordAvatarUrl || user?.discordConnection?.avatarUrl || "";
-}
-
-export function getProfileEmblemUrl(user = {}) {
-  const source = user?.avatarSource || (getDiscordAvatarUrl(user) ? "discord" : "initial");
-  if (source === "upload" && user?.avatarKey) {
-    return assetUrl(`/${String(user.avatarKey).replace(/^\/+/, "")}`);
-  }
-  if (source === "discord") return getDiscordAvatarUrl(user);
+export function getProfileEmblemUrl() {
   return "";
 }
 

@@ -268,6 +268,7 @@ export function toClientTeamWithMembers(team = {}, memberRows = []) {
     losses: team.losses ?? 0,
     accent: team.accent,
     emblemKey: team.emblem_key ?? null,
+    emblemSource: team.emblem_source ?? (team.emblem_key ? "upload" : "initial"),
     emblemUpdatedAt: team.emblem_updated_at ?? null,
     emblemUploadedAt: team.emblem_uploaded_at ?? null,
     emblemUploadCount: Number(team.emblem_upload_count ?? 0),

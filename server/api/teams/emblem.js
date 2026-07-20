@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
-const MAX_REQUEST_BYTES = 320 * 1024;
-const MAX_UPLOAD_BYTES = 160 * 1024;
-const MAX_IMAGE_DIMENSION = 384;
+const MAX_REQUEST_BYTES = 224 * 1024;
+const MAX_UPLOAD_BYTES = 96 * 1024;
+const MAX_IMAGE_DIMENSION = 320;
 const TEAM_ID_PATTERN = /^[A-Za-z0-9_-]{2,128}$/;
 const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
@@ -113,7 +113,7 @@ async function loadTeamForActor(context, teamId) {
   const [{ data: team, error: teamError }, { data: captain, error: captainError }] = await Promise.all([
     context.supabase
       .from("teams")
-      .select("id,emblem_key,emblem_updated_at,emblem_uploaded_at,emblem_upload_count,emblem_color,emblem_border_enabled,emblem_border_color,deleted_at")
+      .select("id,emblem_key,emblem_source,emblem_updated_at,emblem_uploaded_at,emblem_upload_count,emblem_color,emblem_border_enabled,emblem_border_color,deleted_at")
       .eq("id", teamId)
       .is("deleted_at", null)
       .maybeSingle(),
@@ -162,6 +162,19 @@ async function commitEmblemStyle(context, teamId, payload) {
   throw mapped;
 }
 
+async function commitEmblemSource(context, teamId, emblemSource) {
+  const { data, error } = await context.supabase.rpc("rankball_update_team_emblem_source", {
+    p_actor_profile_id: context.profileId,
+    p_team_id: teamId,
+    p_emblem_source: emblemSource,
+  });
+  if (!error) return data ?? { ok: true, teamId, emblemSource };
+
+  const mapped = new Error(error.message || "team_emblem_source_update_failed");
+  mapped.statusCode = error.code === "42501" ? 403 : error.code === "P0002" ? 404 : 400;
+  throw mapped;
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -178,7 +191,7 @@ export default async function handler(request, response) {
     const action = String(body.action || "upload").trim();
     const teamId = String(body.teamId || "").trim();
     if (!TEAM_ID_PATTERN.test(teamId)) reject(400, "invalid_team_id");
-    if (!new Set(["upload", "remove", "style"]).has(action)) reject(400, "invalid_team_emblem_action");
+    if (!new Set(["upload", "remove", "source", "style"]).has(action)) reject(400, "invalid_team_emblem_action");
 
     const team = await loadTeamForActor(context, teamId);
     const previousEmblemKey = team.emblem_key || null;
@@ -192,6 +205,14 @@ export default async function handler(request, response) {
         emblemBorderEnabled: body.emblemBorderEnabled === true,
         emblemBorderColor,
       });
+      sendJson(response, 200, result);
+      return;
+    }
+
+    if (action === "source") {
+      const emblemSource = String(body.emblemSource || "initial").trim();
+      if (!new Set(["initial", "upload"]).has(emblemSource)) reject(400, "invalid_team_emblem_source");
+      const result = await commitEmblemSource(context, teamId, emblemSource);
       sendJson(response, 200, result);
       return;
     }

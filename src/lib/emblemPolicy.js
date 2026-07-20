@@ -28,7 +28,7 @@ export function formatEmblemDate(value) {
 export function getEmblemUploadWarning(uploadCount = 0, uploadedAt = null) {
   const count = Number(uploadCount) || 0;
   const nextAt = getNextEmblemUploadAt(count, uploadedAt);
-  if (nextAt && nextAt.getTime() > Date.now()) return `${formatEmblemDate(nextAt)}부터 새 이미지를 업로드할 수 있습니다.`;
-  if (count < EMBLEM_FREE_UPLOADS) return `이번 저장은 대기 없는 업로드 ${count + 1}/${EMBLEM_FREE_UPLOADS}회입니다. ${EMBLEM_FREE_UPLOADS}회 이후에는 새 이미지 교체 사이에 ${EMBLEM_COOLDOWN_DAYS}일이 필요합니다.`;
-  return `저장하면 다음 새 이미지 교체는 ${EMBLEM_COOLDOWN_DAYS}일 뒤 가능합니다.`;
+  const policy = "사진을 업로드한 뒤 한 번까지는 바로 변경할 수 있으며, 그 이후에는 마지막 업로드일로부터 30일 뒤에 변경할 수 있습니다.";
+  if (nextAt && nextAt.getTime() > Date.now()) return `${policy} 다음 변경 가능일은 ${formatEmblemDate(nextAt)}입니다.`;
+  return policy;
 }

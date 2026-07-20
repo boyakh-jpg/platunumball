@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Database, ImageUp, MapPin, MessageCircle, Moon, Send, ShieldCheck, Star, Sun, Unlink2, UserRound } from "lucide-react";
+import { BookOpen, Database, MapPin, MessageCircle, Moon, Send, ShieldCheck, Star, Sun, Unlink2, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
-import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
@@ -32,8 +31,6 @@ import {
   isDiscordLinked,
 } from "../lib/discord.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { formatEmblemDate, getEmblemUploadWarning, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
-import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
 import "../styles/recruiting-arena.css";
 
 const REPORT_MATCH_WINDOW_DAYS = 7;
@@ -249,16 +246,6 @@ export default function Settings({ app, auth, section = "main" }) {
     .filter((delivery) => delivery.targetUserId === app.currentUserId && delivery.status === "queued");
   const [discordLinkError, setDiscordLinkError] = useState("");
   const [discordSaveStatus, setDiscordSaveStatus] = useState("");
-  const [profileEmblemFile, setProfileEmblemFile] = useState(null);
-  const [profileEmblemPending, setProfileEmblemPending] = useState(false);
-  const [profileEmblemFeedback, setProfileEmblemFeedback] = useState("");
-  const [profileEmblemConfirmAction, setProfileEmblemConfirmAction] = useState("");
-  const profileEmblemInputRef = useRef(null);
-  const [profileEmblemStyleDraft, setProfileEmblemStyleDraft] = useState(() => ({
-    avatarColor: app.currentUser?.avatarColor ?? "#58d2c0",
-    avatarBorderEnabled: app.currentUser?.avatarBorderEnabled === true,
-    avatarBorderColor: app.currentUser?.avatarBorderColor ?? app.currentUser?.avatarColor ?? "#58d2c0",
-  }));
   const [discordDraft, setDiscordDraft] = useState(() => ({
     enabled: Boolean(discordLinked && discordChannel.enabled),
     events: { ...discordChannel.events },
@@ -270,17 +257,6 @@ export default function Settings({ app, auth, section = "main" }) {
     enabled: discordChannel.enabled,
     events: discordChannel.events,
   });
-  useEffect(() => {
-    setProfileEmblemStyleDraft({
-      avatarColor: app.currentUser?.avatarColor ?? "#58d2c0",
-      avatarBorderEnabled: app.currentUser?.avatarBorderEnabled === true,
-      avatarBorderColor: app.currentUser?.avatarBorderColor ?? app.currentUser?.avatarColor ?? "#58d2c0",
-    });
-  }, [app.currentUser?.avatarBorderColor, app.currentUser?.avatarBorderEnabled, app.currentUser?.avatarColor, app.currentUser?.id]);
-  const profileEmblemSource = app.currentUser?.avatarSource ?? (app.currentUser?.discordConnection?.avatarUrl ? "discord" : "initial");
-  const profileEmblemNextUploadAt = getNextEmblemUploadAt(app.currentUser?.avatarUploadCount, app.currentUser?.avatarUploadedAt);
-  const profileEmblemUploadLocked = isEmblemUploadLocked(app.currentUser?.avatarUploadCount, app.currentUser?.avatarUploadedAt);
-  const discordAvatarAvailable = Boolean(discordLinked && (app.currentUser?.discordAvatarUrl || app.currentUser?.discordConnection?.avatarUrl));
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
@@ -912,60 +888,6 @@ export default function Settings({ app, auth, section = "main" }) {
     }
     void saveTheme(nextTheme);
   };
-  const selectProfileEmblemFile = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || profileEmblemPending || isEmblemUploadLocked(app.currentUser?.avatarUploadCount, app.currentUser?.avatarUploadedAt)) return;
-    setProfileEmblemFeedback("");
-    setProfileEmblemFile(file);
-  };
-  const confirmProfileEmblemUpload = async (crop) => {
-    if (!profileEmblemFile || profileEmblemPending) return;
-    setProfileEmblemPending(true);
-    setProfileEmblemFeedback("");
-    try {
-      const result = await app.actions.uploadProfileEmblem(profileEmblemFile, crop);
-      if (!result || result.ok === false) {
-        const nextAt = result?.details?.nextAllowedAt;
-        setProfileEmblemFeedback(nextAt ? `${getTeamEmblemErrorMessage(result.error)} ${formatEmblemDate(nextAt)}` : getTeamEmblemErrorMessage(result?.error));
-        return;
-      }
-      setProfileEmblemFeedback(result.storageCleanupPending ? "개인 엠블럼을 저장했습니다. 이전 파일 정리는 재시도가 필요합니다." : "개인 엠블럼을 저장했습니다.");
-      setProfileEmblemFile(null);
-    } catch (error) {
-      setProfileEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
-    } finally {
-      setProfileEmblemPending(false);
-    }
-  };
-  const saveProfileEmblemSource = async (avatarSource) => {
-    if (profileEmblemPending) return;
-    setProfileEmblemPending(true);
-    setProfileEmblemFeedback("");
-    try {
-      const result = await app.actions.setProfileEmblemSource(avatarSource);
-      setProfileEmblemFeedback(result?.ok === false
-        ? getTeamEmblemErrorMessage(result.error)
-        : result.storageCleanupPending
-          ? "엠블럼 표시 방식을 바꿨습니다. 이전 파일 정리는 재시도가 필요합니다."
-          : "엠블럼 표시 방식을 바꿨습니다.");
-    } finally {
-      setProfileEmblemPending(false);
-      setProfileEmblemConfirmAction("");
-    }
-  };
-  const saveProfileEmblemStyle = async () => {
-    if (profileEmblemPending) return;
-    setProfileEmblemPending(true);
-    setProfileEmblemFeedback("");
-    try {
-      const result = await app.actions.updateProfileEmblemStyle(profileEmblemStyleDraft);
-      setProfileEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "개인 엠블럼 색상을 저장했습니다.");
-    } finally {
-      setProfileEmblemPending(false);
-      setProfileEmblemConfirmAction("");
-    }
-  };
   const savePrivacy = async () => {
     setPrivacySaveStatus("저장 중");
     try {
@@ -1198,52 +1120,6 @@ export default function Settings({ app, auth, section = "main" }) {
             </div>
             <div className="settings-save-row">
               <small>{themeSaveStatus || (themeDirty ? "변경 있음" : "저장됨")}</small>
-            </div>
-          </Card>
-
-          <Card className="section-card profile-emblem-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">My Emblem</p>
-                <h2>개인 엠블럼</h2>
-              </div>
-              <ProfileEmblem user={{ ...app.currentUser, ...profileEmblemStyleDraft }} className="hero-avatar" />
-            </div>
-            <div className="emblem-source-grid">
-              <button type="button" className={profileEmblemSource === "initial" ? "active" : ""} disabled={profileEmblemPending || profileEmblemSource === "initial"} onClick={() => setProfileEmblemConfirmAction("source:initial")}>
-                <strong>첫 글자</strong>
-                <span>{app.currentUser?.name?.slice(0, 1) ?? "?"}</span>
-              </button>
-              <button type="button" className={profileEmblemSource === "discord" ? "active" : ""} disabled={profileEmblemPending || !discordAvatarAvailable || profileEmblemSource === "discord"} onClick={() => setProfileEmblemConfirmAction("source:discord")}>
-                <strong>Discord</strong>
-                <span>{discordAvatarAvailable ? "연동 이미지" : "연동 필요"}</span>
-              </button>
-              <button type="button" className={profileEmblemSource === "upload" ? "active" : ""} disabled={profileEmblemPending || profileEmblemUploadLocked} onClick={() => profileEmblemInputRef.current?.click()}>
-                <strong>직접 업로드</strong>
-                <span>{profileEmblemUploadLocked ? formatEmblemDate(profileEmblemNextUploadAt) : "크롭 후 저장"}</span>
-              </button>
-            </div>
-            <input ref={profileEmblemInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={profileEmblemPending || profileEmblemUploadLocked} onChange={selectProfileEmblemFile} />
-            <div className="emblem-style-controls">
-              <label>
-                기본 색
-                <input type="color" value={profileEmblemStyleDraft.avatarColor} onChange={(event) => setProfileEmblemStyleDraft((current) => ({ ...current, avatarColor: event.target.value }))} />
-              </label>
-              <label className="emblem-border-toggle">
-                <input type="checkbox" checked={profileEmblemStyleDraft.avatarBorderEnabled} onChange={(event) => setProfileEmblemStyleDraft((current) => ({ ...current, avatarBorderEnabled: event.target.checked }))} />
-                테두리 사용
-              </label>
-              <label>
-                테두리 색
-                <input type="color" value={profileEmblemStyleDraft.avatarBorderColor} disabled={!profileEmblemStyleDraft.avatarBorderEnabled} onChange={(event) => setProfileEmblemStyleDraft((current) => ({ ...current, avatarBorderColor: event.target.value }))} />
-              </label>
-              <Button type="button" size="sm" variant="secondary" disabled={profileEmblemPending} onClick={() => setProfileEmblemConfirmAction("style")}>색상 저장</Button>
-            </div>
-            <div className="settings-save-row">
-              <small>{profileEmblemFeedback || (profileEmblemUploadLocked ? `${formatEmblemDate(profileEmblemNextUploadAt)}부터 새 이미지 교체 가능` : "이미지는 위치와 확대·축소를 조정한 뒤 저장합니다.")}</small>
-              <Button type="button" size="sm" disabled={profileEmblemPending || profileEmblemUploadLocked} onClick={() => profileEmblemInputRef.current?.click()}>
-                <ImageUp size={16} /> 이미지 선택
-              </Button>
             </div>
           </Card>
 
@@ -2132,33 +2008,6 @@ export default function Settings({ app, auth, section = "main" }) {
               </div>
             )}
       </Card>
-      <EmblemCropEditor
-        file={profileEmblemFile}
-        pending={profileEmblemPending}
-        warning={getEmblemUploadWarning(app.currentUser?.avatarUploadCount, app.currentUser?.avatarUploadedAt)}
-        onCancel={() => setProfileEmblemFile(null)}
-        onConfirm={confirmProfileEmblemUpload}
-      />
-      {profileEmblemConfirmAction ? (
-        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !profileEmblemPending && setProfileEmblemConfirmAction("")}>
-          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 엠블럼 변경 확인" onMouseDown={(event) => event.stopPropagation()}>
-            <strong>{profileEmblemConfirmAction === "style" ? "개인 엠블럼 색상을 저장할까요?" : `${profileEmblemConfirmAction === "source:discord" ? "Discord 이미지" : "첫 글자"}로 바꿀까요?`}</strong>
-            <p>{profileEmblemConfirmAction === "style" ? "색상과 테두리 변경은 이미지 업로드 횟수에 포함되지 않습니다." : "현재 업로드 이미지는 저장소에서 삭제됩니다. 새 파일 업로드는 기존 업로드 횟수 규칙을 따릅니다."}</p>
-            <div className="app-confirm-actions">
-              <Button type="button" variant="secondary" disabled={profileEmblemPending} onClick={() => setProfileEmblemConfirmAction("")}>취소</Button>
-              <Button
-                type="button"
-                disabled={profileEmblemPending}
-                onClick={profileEmblemConfirmAction === "style"
-                  ? saveProfileEmblemStyle
-                  : () => saveProfileEmblemSource(profileEmblemConfirmAction.split(":")[1])}
-              >
-                {profileEmblemPending ? "저장 중" : "변경"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
