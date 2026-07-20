@@ -225,8 +225,11 @@ function RecruitingRoomLoadingView({ onClose }) {
 }
 
 const RECRUITING_FILTER_PAGE_LIMIT = 50;
-export const RECRUITING_ROOM_REFRESH_INTERVAL_MS = 15000;
 const RECRUITING_FILTER_DEBOUNCE_MS = 250;
+
+function isSyntheticMatchRoomId(roomId) {
+  return String(roomId ?? "").startsWith("match-room-");
+}
 
 function getMaxInputValue() {
   return getPublicRoomMaxDateInput();
@@ -2431,6 +2434,7 @@ function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
 
 function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, entryPoint = "", onInvitationAccepted = null, onJoined = null, skipInitialDetailLoad = false }) {
   const selectedPost = post;
+  const loadDirectory = app.actions.loadDirectory;
   const shouldLoadTeamDirectory = selectedPost.visibility === "public" && isTeamOnlyRoom(selectedPost);
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -2443,9 +2447,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
 
   useEffect(() => {
     if (!shouldLoadTeamDirectory) return;
-    if (app.directoryStatus?.loaded || app.directoryStatus?.loading) return;
-    app.actions.loadDirectory?.();
-  }, [app.actions, app.directoryStatus?.loaded, app.directoryStatus?.loading, shouldLoadTeamDirectory]);
+    loadDirectory?.({ kind: "teams", limit: 50, offset: 0, includeTeamMemberProfiles: true });
+  }, [loadDirectory, shouldLoadTeamDirectory]);
 
   const userById = useMemo(
     () => Object.fromEntries([...app.state.users, ...Object.values(sourceMatch?.anonymousPlayers ?? {})].map((user) => [user.id, user])),
@@ -2461,6 +2464,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [chatCooldownUntilByPost, setChatCooldownUntilByPost] = useState({});
   const [chatSendingPostId, setChatSendingPostId] = useState("");
   const [chatAreaVisible, setChatAreaVisible] = useState(false);
+  const [roomDetailReadyKey, setRoomDetailReadyKey] = useState("");
   const [inviteDraft, setInviteDraft] = useState(null);
   const [inviteError, setInviteError] = useState("");
   const [slotActionDraft, setSlotActionDraft] = useState(null);
@@ -2481,18 +2485,27 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [sheetDragSettling, setSheetDragSettling] = useState(false);
   const roomPostId = selectedPost?.id ?? "";
+  const roomPostIsSynthetic = isSyntheticMatchRoomId(roomPostId);
+  const roomDetailRequestKey = `${roomPostId}:${app.currentUser.id}`;
   const modalPostNeedsDetail = Boolean(selectedPost?.listCardOnly && !sourceMatch);
   const sourceMatchNeedsRoomDetail = Boolean(
     sourceMatch?.recruitingPostId &&
     roomPostId === sourceMatch.recruitingPostId &&
     !app.state.recruitingPosts?.some((item) => item.id === roomPostId && !item.listCardOnly),
   );
+  const roomChatLobby = useMemo(() => getRecruitingLobby(selectedPost, app.state), [app.state, selectedPost]);
+  const canPollRoomChat = isCurrentUserRoomParticipant(selectedPost, roomChatLobby, app.currentUser.id);
   const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId), [roomPostId]);
   const sourceMatchPhaseForChat = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
+  const sourceMatchStatusForChat = String(sourceMatch?.status ?? "").trim().toLowerCase();
   const roomChatLocked = sourceMatch
-    ? ["dispute", "record", "cancelled", "void"].includes(sourceMatchPhaseForChat?.phase)
-    : Boolean(selectedPost?.status === "closed" || selectedPost?.confirmedAt);
+    ? (
+      ["dispute", "record", "cancelled", "void"].includes(sourceMatchPhaseForChat?.phase) ||
+      ["closed", "cancelled", "canceled", "void", "voided"].includes(sourceMatchStatusForChat)
+    )
+    : Boolean(selectedPost?.confirmedAt || getRecruitingPostTerminalState(selectedPost));
   const modalPostDetailLoadRef = useRef("");
+  const pollRecruitingChatRef = useRef(app.actions.pollRecruitingChat);
   const chatSendLogRef = useRef({});
   const roomShareStatusTimerRef = useRef(0);
   const lobbyModalRef = useRef(null);
@@ -2502,27 +2515,33 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   useEffect(() => {
     if (!roomPostId) {
       modalPostDetailLoadRef.current = "";
+      setRoomDetailReadyKey("");
+      return;
+    }
+    if (roomPostIsSynthetic) {
+      modalPostDetailLoadRef.current = roomDetailRequestKey;
+      setRoomDetailReadyKey((current) => current === roomDetailRequestKey ? current : roomDetailRequestKey);
       return;
     }
     if (!app.remoteReady || !app.currentUser.id) return;
-    const refreshKey = `${roomPostId}:${app.currentUser.id}`;
+    const refreshKey = roomDetailRequestKey;
     if (!sourceMatchNeedsRoomDetail && (sourceMatch || (skipInitialDetailLoad && !modalPostNeedsDetail))) {
       modalPostDetailLoadRef.current = refreshKey;
+      setRoomDetailReadyKey((current) => current === refreshKey ? current : refreshKey);
       return;
     }
     if (modalPostDetailLoadRef.current === refreshKey) return;
     modalPostDetailLoadRef.current = refreshKey;
-    app.actions.loadRecruitingPost?.(roomPostId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, modalPostNeedsDetail, roomPostId, skipInitialDetailLoad, sourceMatch, sourceMatchNeedsRoomDetail]);
+    Promise.resolve(app.actions.loadRecruitingPost?.(roomPostId)).then((count) => {
+      if (count && modalPostDetailLoadRef.current === refreshKey) {
+        setRoomDetailReadyKey((current) => current === refreshKey ? current : refreshKey);
+      }
+    }).catch(() => undefined);
+  }, [app.actions.loadRecruitingPost, app.currentUser.id, app.remoteReady, modalPostNeedsDetail, roomDetailRequestKey, roomPostId, roomPostIsSynthetic, skipInitialDetailLoad, sourceMatch, sourceMatchNeedsRoomDetail]);
 
   useEffect(() => {
-    if (!roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
-    const intervalId = window.setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      app.actions.loadRecruitingPost?.(roomPostId);
-    }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(intervalId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, roomPostId]);
+    pollRecruitingChatRef.current = app.actions.pollRecruitingChat;
+  }, [app.actions.pollRecruitingChat]);
 
   useEffect(() => {
     if (!sourceMatch?.id) return;
@@ -2541,9 +2560,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   }, [app.currentUser.id, sourceMatch?.id, sourceMatch?.result?.updatedAt]);
 
   useEffect(() => {
-    if (!roomPostId || !app.remoteReady || !app.currentUser.id || !chatAreaVisible || roomChatLocked) return undefined;
-    return app.actions.pollRecruitingChat?.(roomPostId);
-  }, [app.actions.pollRecruitingChat, app.currentUser.id, app.remoteReady, chatAreaVisible, roomChatLocked, roomPostId]);
+    if (
+      !roomPostId ||
+      roomPostIsSynthetic ||
+      roomDetailReadyKey !== roomDetailRequestKey ||
+      !app.remoteReady ||
+      !app.currentUser.id ||
+      !canPollRoomChat ||
+      !chatAreaVisible ||
+      roomChatLocked
+    ) return undefined;
+    return pollRecruitingChatRef.current?.(roomPostId);
+  }, [app.currentUser.id, app.remoteReady, canPollRoomChat, chatAreaVisible, roomChatLocked, roomDetailReadyKey, roomDetailRequestKey, roomPostId, roomPostIsSynthetic]);
 
   useEffect(() => () => {
     window.clearTimeout(roomShareStatusTimerRef.current);
@@ -2834,7 +2862,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   };
   const openInviteSlot = (roomPost, sideName, reserve = false, slotKey = '', event = null) => {
     setSlotActionDraft(null);
-    app.actions.loadDirectory?.();
+    loadDirectory?.({ kind: "players", limit: 50, offset: 0 });
     setInviteError("");
     setInviteDraft({ postId: roomPost.id, sideName, reserve, slotKey, query: '', selectedPlayerIds: [], anchor: getCommandAnchor(event) });
   };
@@ -2867,7 +2895,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       const result = await app.actions.acceptRecruitingInvitation(roomPost.id, invitation.id);
       if (!result || result.ok === false) setPendingRosterOpen(null);
       else {
-        app.actions.loadRecruitingPost?.(roomPost.id);
         onInvitationAccepted?.(roomPost.id, invitation);
       }
     } catch {
@@ -2923,7 +2950,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     try {
       const result = await app.actions.inviteRecruitingPlayers(roomPost.id, invite);
       if (result && result.ok !== false) {
-        app.actions.loadRecruitingPost?.(roomPost.id);
         setInviteDraft(null);
         return result;
       }
@@ -3801,10 +3827,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   currentUserId={app.currentUser.id}
                   alreadyApplied={alreadyApplied}
                   onAccept={(invitation) => acceptRoomInvitation(selectedPost, invitation)}
-                  onDecline={async (invitationId) => {
-                    const result = await app.actions.declineRecruitingInvitation(selectedPost.id, invitationId);
-                    if (result && result.ok !== false) app.actions.loadRecruitingPost?.(selectedPost.id);
-                  }}
+                  onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
                 />
               ) : null}
 
@@ -3904,10 +3927,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     canInvite={canInviteRefereeFromRoom}
                     canJoin={canJoinReferee && !mine && !matchRoom}
                     disabledRefereeIds={[...disabledRefereeIds]}
-                    onInviteReferee={async (refereeId) => {
-                      const result = await app.actions.inviteRecruitingReferee(selectedPost.id, refereeId);
-                      if (result && result.ok !== false) app.actions.loadRecruitingPost?.(selectedPost.id);
-                    }}
+                    onInviteReferee={(refereeId) => app.actions.inviteRecruitingReferee(selectedPost.id, refereeId)}
                     onJoin={() => app.actions.interestRecruitingPost(selectedPost.id, { joinMode: "referee" })}
                   />
                 ) : null}
@@ -4599,6 +4619,11 @@ function RecruitingReady({ app }) {
   const selectedPostDetailLoading = Boolean(selectedPostId && !selectedPostDetailFailed && (selectedPostDetailLoadingId === selectedPostId || selectedPostNeedsDetail));
   const requestSelectedPostDetail = (postId) => {
     if (!postId) return;
+    if (isSyntheticMatchRoomId(postId)) {
+      setSelectedPostDetailLoadingId(null);
+      setSelectedPostDetailFailedId(postId);
+      return;
+    }
     setSelectedPostDetailFailedId((currentId) => currentId === postId ? null : currentId);
     setSelectedPostDetailLoadingId(postId);
     Promise.resolve(app.actions.loadRecruitingPost?.(postId)).then((count) => {
@@ -4668,17 +4693,6 @@ function RecruitingReady({ app }) {
     selectedPostRefreshRef.current = refreshKey;
     requestSelectedPostDetail(selectedPostId);
   }, [app.actions, app.currentUser.id, app.remoteReady, selectedPost?.listCardOnly, selectedPostDetailFailed, selectedPostDetailLoadingId, selectedPostId]);
-
-  useEffect(() => {
-    if (!selectedPostId || !app.remoteReady || !app.currentUser.id) return undefined;
-    if (selectedPostDetailFailed) return undefined;
-    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedPostId && post.listCardOnly !== true)) return undefined;
-    const intervalId = window.setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      app.actions.loadRecruitingPost?.(selectedPostId);
-    }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(intervalId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedPostDetailFailed, selectedPostId]);
 
   useEffect(() => {
     if (!targetPostId) return;
@@ -4925,12 +4939,7 @@ function RecruitingReady({ app }) {
             state: { matchModalReturnTo: `${location.pathname}${location.search}` },
           })}
           onJoined={(postId) => {
-            setSelectedPostDetailLoadingId(postId);
             setSelectedPostId(postId);
-            selectedPostRefreshRef.current = "";
-            Promise.resolve(app.actions.loadRecruitingPost?.(postId)).finally(() => {
-              setSelectedPostDetailLoadingId((currentId) => currentId === postId ? null : currentId);
-            });
             if (targetPostId !== postId) {
               navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`, { replace: true });
             }

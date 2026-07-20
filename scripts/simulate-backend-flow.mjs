@@ -55,6 +55,57 @@ function loadEnvFile(path) {
 loadEnvFile(".env.local");
 loadEnvFile(".env.production");
 
+const PRODUCTION_SUPABASE_PROJECT_REF = "olzxextphxpniwiiwwda";
+const PRODUCTION_API_HOSTS = new Set(["platunumball.vercel.app"]);
+const MAX_SIMULATION_REPEAT_COUNT = 1;
+const MAX_SIMULATION_RETRY_COUNT = 1;
+
+function readCliValue(name) {
+  const exact = `--${name}`;
+  const prefix = `${exact}=`;
+  const matches = process.argv.slice(2).filter((arg) => arg === exact || arg.startsWith(prefix));
+  if (matches.length > 1) throw new Error(`duplicate --${name} option`);
+  if (matches.length === 0) return undefined;
+  if (matches[0] === exact) throw new Error(`--${name} requires a value`);
+  const value = matches[0].slice(prefix.length).trim();
+  if (!value) throw new Error(`--${name} requires a value`);
+  return value;
+}
+
+function normalizeProjectRef(value, label) {
+  const projectRef = String(value || "").trim().toLowerCase();
+  if (!projectRef) return "";
+  if (!/^[a-z0-9]+$/.test(projectRef)) throw new Error(`${label} is invalid`);
+  return projectRef;
+}
+
+function parseTargetUrl(value, label) {
+  if (!value) return { hostname: "", isLocal: false, projectRef: "" };
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${label} is invalid`);
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) throw new Error(`${label} protocol is invalid`);
+  const hostname = parsed.hostname.toLowerCase();
+  const projectRefMatch = hostname.match(/^([a-z0-9]+)\.supabase\.co$/);
+  return {
+    hostname,
+    isLocal: hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]" || hostname.endsWith(".localhost"),
+    projectRef: projectRefMatch?.[1] || "",
+  };
+}
+
+function parseBoundedInteger(cliName, envName, fallback, maximum) {
+  const rawValue = readCliValue(cliName) ?? process.env[envName];
+  if (rawValue === undefined || rawValue === "") return fallback;
+  const value = Number(rawValue);
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${cliName} must be a non-negative integer`);
+  if (value > maximum) throw new Error(`${cliName} exceeds hard limit ${maximum}`);
+  return value;
+}
+
 const baseUrlArg = process.argv.find((arg) => arg.startsWith("--base-url="));
 const remoteBaseUrl = (baseUrlArg ? baseUrlArg.slice("--base-url=".length) : process.env.RANKBALL_SIM_BASE_URL || "").replace(/\/+$/, "");
 const usesRemoteApi = Boolean(remoteBaseUrl);
@@ -78,6 +129,104 @@ const operationalGuardsOnly = process.argv.includes("--operational-guards-only")
 const teamEmblemOnly = process.argv.includes("--team-emblem-only");
 const tailOnly = process.argv.includes("--tail-only");
 const remoteSmokeOnly = usesRemoteApi && !fullSimulation;
+const safetyCheckOnly = process.argv.includes("--safety-check-only");
+
+function getSimulationMode() {
+  return tournamentByeOnly ? "tournament_bye"
+    : tournamentLeagueOnly ? "tournament_league"
+      : operationalGuardsOnly ? "operational_guards"
+        : teamEmblemOnly ? "team_emblem"
+          : mmrOnly ? "mmr"
+            : tailOnly ? "tail"
+              : recordPermissionsOnly ? "record_permissions"
+                : fullSimulation ? "full"
+                  : usesRemoteApi ? "remote_smoke"
+                    : "local_smoke";
+}
+
+function resolveSimulationSafety() {
+  const directTarget = parseTargetUrl(url, "Supabase URL");
+  const apiTarget = parseTargetUrl(remoteBaseUrl, "remote API base URL");
+  const declaredProjectRef = normalizeProjectRef(process.env.SUPABASE_PROJECT_ID, "SUPABASE_PROJECT_ID");
+  const declaredRemoteProjectRef = normalizeProjectRef(
+    readCliValue("remote-project-ref") ?? process.env.RANKBALL_SIM_REMOTE_PROJECT_REF,
+    "remote project ref",
+  );
+  const urlProjectRef = directTarget.projectRef;
+  if (urlProjectRef && declaredProjectRef && urlProjectRef !== declaredProjectRef) {
+    throw new Error("SUPABASE_PROJECT_ID does not match the Supabase URL project ref");
+  }
+
+  const directProjectRef = urlProjectRef || declaredProjectRef;
+  const productionApi = PRODUCTION_API_HOSTS.has(apiTarget.hostname);
+  if (usesRemoteApi && !apiTarget.isLocal && !productionApi && !declaredRemoteProjectRef) {
+    throw new Error("remote API project ref is required for an unrecognized API host");
+  }
+  const apiProjectRef = usesRemoteApi
+    ? declaredRemoteProjectRef || (productionApi ? PRODUCTION_SUPABASE_PROJECT_REF : "")
+    : directProjectRef;
+  if (usesRemoteApi && directProjectRef && apiProjectRef && directProjectRef !== apiProjectRef) {
+    throw new Error("remote API project ref does not match the direct Supabase project ref");
+  }
+
+  const productionTarget = directProjectRef === PRODUCTION_SUPABASE_PROJECT_REF
+    || apiProjectRef === PRODUCTION_SUPABASE_PROJECT_REF
+    || productionApi;
+  const localTarget = directTarget.isLocal && (!usesRemoteApi || apiTarget.isLocal);
+  const testTarget = !productionTarget
+    && !localTarget
+    && Boolean(directProjectRef)
+    && (!usesRemoteApi || apiProjectRef === directProjectRef);
+  const environment = productionTarget ? "production" : localTarget ? "local" : testTarget ? "test" : "unknown";
+  const productionProjectRef = apiProjectRef === PRODUCTION_SUPABASE_PROJECT_REF
+    ? apiProjectRef
+    : directProjectRef === PRODUCTION_SUPABASE_PROJECT_REF
+      ? directProjectRef
+      : PRODUCTION_SUPABASE_PROJECT_REF;
+  const repeatCount = parseBoundedInteger("repeat", "RANKBALL_SIM_REPEAT", 1, MAX_SIMULATION_REPEAT_COUNT);
+  const maxRetries = parseBoundedInteger("max-retries", "RANKBALL_SIM_MAX_RETRIES", 1, MAX_SIMULATION_RETRY_COUNT);
+  if (repeatCount !== 1) throw new Error("repeat must be exactly 1");
+  const confirmedProductionRef = normalizeProjectRef(readCliValue("confirm-production"), "production confirmation ref");
+
+  return {
+    environment,
+    directProjectRef,
+    apiHost: usesRemoteApi ? apiTarget.hostname : "in-process",
+    apiProjectRef,
+    productionProjectRef,
+    repeatCount,
+    maxRetries,
+    confirmedProductionRef,
+  };
+}
+
+let simulationSafety;
+try {
+  simulationSafety = resolveSimulationSafety();
+  console.error(`[rankball-sim-target] ${JSON.stringify({
+    environment: simulationSafety.environment,
+    directSupabaseRef: simulationSafety.directProjectRef || "unknown",
+    apiHost: simulationSafety.apiHost,
+    apiProjectRef: simulationSafety.apiProjectRef || "unknown",
+    mode: getSimulationMode(),
+    repeatCount: simulationSafety.repeatCount,
+    cleanupRetryLimit: simulationSafety.maxRetries,
+  })}`);
+  if (simulationSafety.environment === "unknown") {
+    throw new Error("simulation target is unknown; configure a Supabase project ref and remote project ref");
+  }
+  if (
+    simulationSafety.environment === "production"
+    && simulationSafety.confirmedProductionRef !== simulationSafety.productionProjectRef
+  ) {
+    throw new Error(`production simulation requires --confirm-production=${simulationSafety.productionProjectRef}`);
+  }
+} catch (error) {
+  console.error(JSON.stringify({ ok: false, stage: "target_guard", error: error.message }, null, 2));
+  process.exit(1);
+}
+
+if (safetyCheckOnly) process.exit(0);
 
 if (!url || !publishableKey || !serviceRoleKey) {
   const missing = [
@@ -7994,7 +8143,7 @@ async function main() {
   }
   }
 
-  const cleanupResult = await cleanup();
+  const cleanupResult = await cleanupWithAttemptLimit();
   const cleanupSucceeded = (cleanupResult?.skipped === true && cleanupResult?.reason === "keep_requested") || (
     cleanupResult?.skipped !== true
     && cleanupResult?.ok !== false
@@ -8019,7 +8168,7 @@ async function main() {
 
   console.log(JSON.stringify({
     ok: true,
-    mode: tournamentByeOnly ? "tournament_bye" : tournamentLeagueOnly ? "tournament_league" : operationalGuardsOnly ? "operational_guards" : teamEmblemOnly ? "team_emblem" : mmrOnly ? "mmr" : tailOnly ? "tail" : recordPermissionsOnly ? "record_permissions" : fullSimulation ? "full" : usesRemoteApi ? "remote_smoke" : "local_smoke",
+    mode: getSimulationMode(),
     scenarios,
     schemaHealth: schemaHealth?.skipped ? { status: "skipped", reason: schemaHealth.reason } : "ok",
     verificationWarnings: [
@@ -8033,8 +8182,21 @@ async function main() {
   }, null, 2));
 }
 
+let cleanupAttemptCount = 0;
+
+async function cleanupWithAttemptLimit() {
+  const maxAttempts = simulationSafety.maxRetries + 1;
+  if (cleanupAttemptCount >= maxAttempts) {
+    throw new Error(`cleanup retry limit exceeded (${simulationSafety.maxRetries})`);
+  }
+  cleanupAttemptCount += 1;
+  return cleanup();
+}
+
 try {
-  await main();
+  for (let runIndex = 0; runIndex < simulationSafety.repeatCount; runIndex += 1) {
+    await main();
+  }
 } catch (error) {
   const failure = {
     ok: false,
@@ -8044,7 +8206,7 @@ try {
     error: error.message,
   };
   console.error(JSON.stringify({ ...failure, cleanup: "pending" }, null, 2));
-  const cleanupResult = await withTimeout(cleanup(), "cleanup", cleanupTimeoutMs).catch((cleanupError) => ({ failed: cleanupError.message }));
+  const cleanupResult = await withTimeout(cleanupWithAttemptLimit(), "cleanup", cleanupTimeoutMs).catch((cleanupError) => ({ failed: cleanupError.message }));
   console.error(JSON.stringify({ ...failure, cleanup: cleanupResult }, null, 2));
   process.exit(1);
 }

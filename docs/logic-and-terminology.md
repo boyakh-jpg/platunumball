@@ -2149,8 +2149,8 @@ flowchart TD
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
 39-1. `/app/matches` 모집 일정 로드는 경기 목록 페이지네이션 `loading`과 별도 `recruitingScheduleLoading` 상태로 관리한다. 경기 목록 로딩 중이어도 모집 일정 확인이 불필요하게 막히면 안 된다.
 39-2. `/app` 홈 첫 로드는 `/api/home/load`가 홈 Action Queue용 현재 사용자 모집 feed를 소량 포함하지만, 경기 메뉴 전체 일정 확인 완료로 표시하지 않는다. 홈 화면은 진입 직후 `/api/matches/list includeRecruitingSchedule=true`를 자동 호출하지 않고, `/app/matches` 진입 시 `recruitingScheduleChecked=false`이면 경기 메뉴가 전체 일정 feed를 1회 읽는다. 프론트 공용 action으로 `scope:"mine"` 모집 목록을 직접 여는 경로는 두지 않는다.
-39-3. 모집방 모달은 열릴 때 단건 상세를 즉시 한 번 읽고, 열린 상태에서는 visible 탭에서만 15초 간격으로 단건 refresh한다. 초대/수락/거절/참여 같은 현재 사용자 action은 서버 응답 merge와 관계 refresh hook으로 즉시 반영하고, 4초 polling에 의존하지 않는다.
-39-4. 모집방 초대/수락/거절/참여/취소 성공 후에는 현재 프로필, 내 모집 feed, 경기 메뉴 모집 일정 feed, 해당 `postId` 단건 상세를 같은 refresh hook에서 갱신한다. 열린 모달과 홈/경기/매칭 숫자가 서로 다른 늦은 호출로 덮이면 안 된다.
+39-3. 모집방 모달은 열릴 때 단건 상세를 한 번 읽고, 성공 뒤에는 전체 상세 payload를 주기적으로 다시 읽지 않는다. 채팅만 `messageSeq` 이후 증분 row를 polling하며 `match-room-*`, 확정·취소·만료·종료 방과 비참가자는 polling하지 않는다. Realtime은 관련 table publication을 비활성화한 현재 DB 원칙을 유지한다.
+39-4. 모집방 초대/수락/거절/참여/취소 성공 후에는 `/api/recruiting/sync-post`가 반환한 최신 post를 권위 상태로 병합한다. 같은 mutation 직후 해당 `postId` 상세를 다시 요청해 동일 채팅과 roster를 중복 조회하지 않는다.
 39-4-1. 홈 Action Queue의 초대 수락은 pending 초대가 있으면 optimistic mutation 후 즉시 해당 방으로 이동한다. 서버 `/api/recruiting/sync-post` replay가 최종 권위이며 실패 시 기존 rollback 경고/복구 경로를 쓴다.
 39-5. 방 생성/모집 작성 화면은 프로필 지역이 `서울특별시 마포구`처럼 저장되어도 앱 지역 키 `마포`로 정규화해 기본 구장, 지역 필터, 같은 지역 팀 추천을 고른다.
 40. 모집방 선수/심판 초대는 기존 방 참가자만 보낼 수 있다. 단, 초대 수락/거절은 아직 참가자가 아니어도 자기 pending invitation이 있으면 가능하다.
@@ -2262,7 +2262,7 @@ flowchart TD
 ## 2026-06-29 초대 수락 서버 반영 원칙
 1. 팀 초대 `invite/accept/decline/cancel`은 RPC 성공 뒤 현재 사용자 `/api/profile/me` 범위 state를 같이 반환하고, 프론트는 그 state를 즉시 병합한다. 화면은 optimistic state가 아니라 서버 최신 팀/초대 상태로 정렬되어야 한다.
 2. `/api/profile/me` 실패 후 직접 Supabase profile fallback을 쓰더라도 현재 사용자 관련 `team_invitations`, 소속 팀, 초대 대상 팀은 함께 읽는다. 초대장이 loader 이후 따로 붙는 상태를 기본 흐름으로 만들지 않는다.
-3. 모집방 초대 수락은 `recruiting_applications`와 `recruiting_posts.room_state.invitations`가 서버에 반영된 뒤 상세 조회 결과가 권위 상태다. 열린 모집방/경기 메뉴 방 모달은 해당 `postId` 상세만 주기적으로 재조회해 상대 화면의 stale 참가자 표시를 줄인다.
+3. 모집방 초대 수락은 `recruiting_applications`와 `recruiting_posts.room_state.invitations`가 서버에 반영된 뒤 sync 응답의 최신 post가 권위 상태다. 열린 모집방/경기 메뉴 방 모달은 전체 상세를 주기적으로 재조회하지 않고, 다시 열기 또는 사용자의 명시적 재시도에서만 단건 상세를 읽는다.
 4. 팀 사이드 경기초대 검색은 오래된 로컬 `team.members`만 믿지 않고 서버 `team_members` 기준 검색 결과도 허용한다. 알림 화면은 현재 프로필뿐 아니라 `roomScope="invited"` 모집방도 같이 보강 로드해 초대 수락 카드가 늦게 붙거나 빠지지 않게 한다.
 
 ## 2026-06-29 홈/경기 feed 보강 호출
@@ -2290,7 +2290,7 @@ flowchart TD
 - 2026-06-30: Profile upsert treats birth year as locked only when both birth_year_locked_at and birth_year exist. A row with a lock timestamp but no birth_year may accept the setup birth year and lock it again.
 - 2026-06-30: Current-profile remote state may merge explicit theme values for both light and dark. Missing theme metadata must not cause a saved dark/light choice to bounce back.
 - 2026-06-30: Matches first-page load does not request recent completed matches. Active schedule counts must start from the same active match/recruiting feed that the visible list uses; completed records belong to explicit record/review flows.
-- 2026-06-30: Recruiting mutations keep the target post in the pending-refresh guard until relation refresh and single-post reload finish. Stale feed cards from list/schedule refresh must not overwrite the authoritative mutation result during that window.
+- 2026-06-30: Recruiting mutations keep the target post in the pending-refresh guard until the authoritative sync response merge finishes. Stale feed cards from list/schedule refresh must not overwrite that result, and a successful mutation must not trigger a duplicate single-post reload.
 - 2026-06-30: Recruiting feed count fallback is opt-in only. Public first list loads do not need relation counts and must not run broad fallback count queries that can change list state after the first response.
 - 2026-06-30: Recruiting feed cards are safe for list counts only when they include a host identity (`playerId`, `ownerId`, or `roomState.ownerId`). Cards missing host identity must fall back to the row path so list A/B counts match the room modal.
 - 2026-06-30: Recruiting lobby helpers must always return `sides.teamA` and `sides.teamB` with empty arrays/counts when the source post or feed card is malformed. UI must not crash on a null lobby side.
@@ -2830,3 +2830,14 @@ flowchart TD
 7. 리그·토너먼트 후속 계산은 경기 row의 형식 snapshot이 아니라 `tournaments.format`을 원본으로 사용한다. 기존 불일치 snapshot은 현재 대회 형식으로 정규화한다.
 8. 원격 backend simulation은 정밀 cleanup을 위해 `SUPABASE_SERVICE_ROLE_KEY`를 필수로 사용한다. seed cleanup은 DB row와 함께 `provider=test`, profile ID, 로그인 ID가 모두 일치하는 Auth 사용자만 삭제한다.
 9. `sendAt/dueAt`이 없는 즉시 알림은 `due_at=-infinity`로 저장한다. DB와 API 시계 차이 때문에 방금 생성된 초대가 예약 알림으로 오인되지 않는다.
+
+## 2026-07-21 PostgREST egress 보호
+
+1. `scripts/simulate-backend-flow.mjs`는 직접 Supabase project ref와 원격 API host/ref를 네트워크 호출 전에 표시한다. production ref 또는 production host가 포함되면 정확한 `--confirm-production=<project-ref>` CLI flag 없이는 Auth/API client를 사용하지 않는다.
+2. backend simulation의 전체 flow는 process당 정확히 1회만 실행한다. mutation 요청은 자동 재시도하지 않고 cleanup만 최대 1회 재시도한다. test 전용 project는 직접 ref와 원격 API ref가 일치할 때 production 확인 없이 사용할 수 있다.
+3. 모집방 상세는 최초 성공 뒤 자동 반복 조회하지 않는다. 초기 상세의 최신 채팅 `messageSeq`를 보존하고 이후 채팅은 그 sequence보다 큰 row만 증분 polling한다. `match-room-*` synthetic ID와 확정·취소·만료·종료 방은 모집방 상세·채팅 API 대상이 아니다.
+4. `recruiting_posts`, `recruiting_applications`, `room_chat_messages` Realtime publication은 현재 비활성 원칙을 유지한다. Realtime을 다시 켜려면 채널 수, RLS, reconnect backfill, 중복 방지 기준을 별도 검증한다.
+5. `/app/admin` 초기 bootstrap은 profile-only다. 관리자 화면은 현재 section과 대기/이력 mode를 가진 bounded endpoint만 호출하며 `/api/state/load scope=admin`과 광역 `/api/directory/load`를 함께 호출하지 않는다.
+6. directory는 화면별 `players`, `teams`, `self`, `admin section` 범위와 DB filter/pagination을 사용한다. 팀·통합 page는 최대 50개, 선수 page는 최대 100개이며 팀 목록은 주장·현재 사용자 외 전체 팀원 프로필을 기본 수화하지 않는다. 경기 생성처럼 roster가 필요한 화면만 `includeTeamMemberProfiles`를 명시한다. 같은 query key는 30초 동안 재사용하고 핵심 조회 실패를 빈 배열 성공으로 병합하지 않으며 최신 검색·탭 요청만 page 상태를 갱신한다.
+7. 기본 경기 목록은 `rankball_match_list()` feed card를 우선한다. 누락 보강은 `rankball_related_active_match_list()`가 DB에서 현재 사용자 관계와 활성 상태를 먼저 판정한 뒤 최대 80개 ID만 반환한다.
+8. 경기 row는 feed card에 없는 선택 ID만 읽는다. `match_players`, `match_results`, `player_match_stats`, 팀, 구장, 프로필은 최종 선택된 경기 ID에서만 수화하며 최대 500개 경기 선조회 경로를 두지 않는다.

@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import SearchPicker from "../components/common/SearchPicker.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import {
   ADMIN_BACKEND_TODO,
@@ -114,6 +115,7 @@ function DetailList({ title, empty, children }) {
 }
 
 function RatingPolicyPanel({ app }) {
+  const loadRatingPolicy = app.actions.loadRatingPolicy;
   const [draft, setDraft] = useState(() => cloneRatingPolicy(DEFAULT_RATING_POLICY));
   const [savedPolicy, setSavedPolicy] = useState(() => cloneRatingPolicy(DEFAULT_RATING_POLICY));
   const [defaultPolicy, setDefaultPolicy] = useState(() => cloneRatingPolicy(DEFAULT_RATING_POLICY));
@@ -138,7 +140,7 @@ function RatingPolicyPanel({ app }) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    app.actions.loadRatingPolicy?.()
+    loadRatingPolicy?.()
       .then((result) => {
         if (!active) return;
         if (!result || result.ok === false) {
@@ -156,7 +158,7 @@ function RatingPolicyPanel({ app }) {
     return () => {
       active = false;
     };
-  }, [app.actions]);
+  }, [loadRatingPolicy]);
 
   const changed = JSON.stringify(draft) !== JSON.stringify(savedPolicy);
   const updateField = (field, rawValue) => {
@@ -292,17 +294,24 @@ function RatingPolicyPanel({ app }) {
 
 export default function Admin({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  useEffect(() => {
-    app.actions.loadAdminContext?.();
-    app.actions.loadDirectory?.();
-  }, [app.actions]);
   const adminLevel = Number(app.adminContext?.level ?? 0);
   const canOwner = adminLevel >= 100;
   const sectionOptions = ADMIN_SECTION_OPTIONS.filter((option) => !option.ownerOnly || canOwner);
   const requestedSection = searchParams.get("section");
   const section = sectionOptions.some((option) => option.id === requestedSection) ? requestedSection : "courts";
   const view = ["appointments", "ratingPolicy"].includes(section) ? "courts" : section;
-  const [queueMode, setQueueMode] = useState("pending");
+  const [queueModeState, setQueueModeState] = useState({ section: "courts", value: "pending" });
+  const queueMode = queueModeState.section === section ? queueModeState.value : "pending";
+  const setQueueMode = (value) => setQueueModeState({ section, value });
+  const [queueFilterByView, setQueueFilterByView] = useState({});
+  const [appliedQueueFilterByView, setAppliedQueueFilterByView] = useState({});
+  const queueFilter = queueFilterByView[section] ?? "";
+  const appliedQueueFilter = appliedQueueFilterByView[section] ?? "";
+  const loadAdminSection = app.actions.loadAdminSection;
+  useEffect(() => {
+    if (section === "ratingPolicy") return;
+    loadAdminSection?.({ section, queueMode, filter: appliedQueueFilter, limit: 30, offset: 0 });
+  }, [appliedQueueFilter, loadAdminSection, queueMode, section]);
   const [selectedIdByView, setSelectedIdByView] = useState({});
   const [selectedReportIdByScope, setSelectedReportIdByScope] = useState({});
   const [actionDraft, setActionDraft] = useState({
@@ -321,6 +330,8 @@ export default function Admin({ app }) {
     appointmentId: "",
     reason: "",
   });
+  const [appointmentUserQuery, setAppointmentUserQuery] = useState("");
+  const [appointmentUserSnapshot, setAppointmentUserSnapshot] = useState(null);
   const [courtApprovalDraft, setCourtApprovalDraft] = useState({
     approvedName: "",
     addressVerified: false,
@@ -330,11 +341,16 @@ export default function Admin({ app }) {
   const [reviewActionStatus, setReviewActionStatus] = useState("");
   const [reviewActionPending, setReviewActionPending] = useState(false);
   const canAdmin = adminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
-  const model = useMemo(() => buildAdminReviewModel(app.state), [app.state]);
-  const appointments = useMemo(() => buildAdminAppointmentModel(app.state), [app.state]);
+  const adminViewState = app.adminState ?? app.state;
+  const model = useMemo(() => buildAdminReviewModel(adminViewState), [adminViewState]);
+  const appointments = useMemo(() => buildAdminAppointmentModel(adminViewState), [adminViewState]);
   const appointmentUsers = useMemo(
-    () => [...app.state.users].sort((a, b) => a.name.localeCompare(b.name)),
-    [app.state.users],
+    () => {
+      const usersById = new Map((adminViewState.users ?? []).map((user) => [user.id, user]));
+      if (appointmentUserSnapshot?.id) usersById.set(appointmentUserSnapshot.id, appointmentUserSnapshot);
+      return [...usersById.values()].sort((a, b) => a.name.localeCompare(b.name));
+    },
+    [adminViewState.users, appointmentUserSnapshot],
   );
   const activeAppointmentOptions = useMemo(
     () => appointments.rows.filter((row) => row.active && row.source !== "current_profile" && row.source !== "server_context"),
@@ -361,8 +377,8 @@ export default function Admin({ app }) {
   const reportOptions = selectedRow?.reports ?? [];
   const selectedReportScope = `${view}:${selectedRow?.id ?? ""}`;
   const selectedReportId = selectedReportIdByScope[selectedReportScope] ?? "";
-  const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
-  const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
+  const userMap = useMemo(() => Object.fromEntries((adminViewState.users ?? []).map((user) => [user.id, user])), [adminViewState.users]);
+  const matchMap = useMemo(() => Object.fromEntries((adminViewState.matches ?? []).map((match) => [match.id, match])), [adminViewState.matches]);
   const selectedReport = reportOptions.find((report) => report.id === selectedReportId) ?? reportOptions.find((report) => report.status === "open") ?? reportOptions[0] ?? null;
   const selectedCourtRequest = selectedRow?.courtRequests?.find(isPendingCourtRequest)
     ?? selectedRow?.courtRequests?.[0]
@@ -370,34 +386,48 @@ export default function Admin({ app }) {
   const selectedCourtRequester = selectedCourtRequest ? userMap[selectedCourtRequest.requestedBy] : null;
   const courtLocationMatches = useMemo(
     () => selectedCourtRequest
-      ? getCourtLocationMatches(selectedCourtRequest, app.state, { excludeRequestId: selectedCourtRequest.id })
+      ? getCourtLocationMatches(selectedCourtRequest, adminViewState, { excludeRequestId: selectedCourtRequest.id })
       : [],
-    [app.state, selectedCourtRequest],
+    [adminViewState, selectedCourtRequest],
   );
   const approvedLocationMatches = courtLocationMatches.filter((candidate) => candidate.type === "approved");
   const courtMapHref = selectedCourtRequest ? getCourtMapUrl(selectedCourtRequest) : "";
   const workflow = REVIEW_WORKFLOW_COPY[view] ?? REVIEW_WORKFLOW_COPY.players;
   const sectionCounts = useMemo(() => {
-    const courtReports = (app.state.reports ?? []).filter((report) => (
+    const courtReports = (adminViewState.reports ?? []).filter((report) => (
       report.status === "open" && ["court", "court_review"].includes(report.type)
     )).length;
-    return {
-      courts: (app.state.settings?.courtRequests ?? []).filter(isPendingCourtRequest).length + courtReports,
+    const localCounts = {
+      courts: (adminViewState.settings?.courtRequests ?? []).filter(isPendingCourtRequest).length + courtReports,
       players: model.players.filter((row) => row.openCount > 0).length,
       matches: model.matches.filter((row) => row.issueCount > 0).length,
       teams: model.teams.filter((row) => row.openCount > 0).length,
       appointments: appointments.summary.pendingAppointmentCount,
       ratingPolicy: "",
     };
-  }, [app.state.reports, app.state.settings?.courtRequests, appointments.summary.pendingAppointmentCount, model.matches, model.players, model.teams]);
+    return Object.fromEntries(Object.entries(localCounts).map(([key, value]) => [
+      key,
+      key === "ratingPolicy" ? "" : app.adminStatus?.counts?.[key] ?? (key === section ? value : ""),
+    ]));
+  }, [adminViewState.reports, adminViewState.settings?.courtRequests, app.adminStatus?.counts, appointments.summary.pendingAppointmentCount, model.matches, model.players, model.teams, section]);
+  const activeAdminPage = app.adminStatus?.section === section && app.adminStatus?.queueMode === queueMode
+    ? app.adminStatus.page
+    : null;
   const changeSection = (nextSection) => {
     const next = new URLSearchParams(searchParams);
     next.set("section", nextSection);
     setSearchParams(next);
   };
-  useEffect(() => {
-    setQueueMode("pending");
-  }, [view]);
+  const applyQueueFilter = () => {
+    setAppliedQueueFilterByView((current) => ({ ...current, [section]: queueFilter.trim() }));
+  };
+  const updateQueueFilter = (value) => {
+    setQueueFilterByView((current) => ({ ...current, [section]: value }));
+  };
+  const clearQueueFilter = () => {
+    setQueueFilterByView((current) => ({ ...current, [section]: "" }));
+    setAppliedQueueFilterByView((current) => ({ ...current, [section]: "" }));
+  };
   const visibleActionOptions = useMemo(() => {
     if (selectedReport?.type === "team_emblem") {
       return ACTION_OPTIONS.filter((option) => ["resetTeamEmblem", "dismissReport", "maliciousReporter"].includes(option.id));
@@ -452,6 +482,12 @@ export default function Admin({ app }) {
 
   const updateActionDraft = (patch) => setActionDraft((current) => ({ ...current, ...patch }));
   const updateAppointmentDraft = (patch) => setAppointmentDraft((current) => ({ ...current, ...patch }));
+  const selectAppointmentUser = (user) => {
+    if (!user?.id) return;
+    setAppointmentUserSnapshot(user);
+    setAppointmentUserQuery(user.name ?? user.handle ?? user.hashtag ?? user.id);
+    updateAppointmentDraft({ userId: user.id });
+  };
   const updateCourtApprovalDraft = (patch) => setCourtApprovalDraft((current) => ({ ...current, ...patch }));
   const approveSelectedCourt = async () => {
     if (!selectedCourtRequest) return;
@@ -492,10 +528,26 @@ export default function Admin({ app }) {
       : "";
     app.actions.commitAdminAppointmentAction({
       ...appointmentDraft,
-      userId: appointmentDraft.userId || appointmentUsers[0]?.id || "",
+      userId: appointmentDraft.userId,
       appointmentId,
     });
   };
+
+  if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
+    return (
+      <div className="page-stack admin-page">
+        <Card className="section-card admin-denied-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Admin</p>
+              <h1>관리자 권한 확인 중</h1>
+            </div>
+            <ShieldCheck size={22} />
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (!canAdmin) {
     return (
@@ -587,8 +639,32 @@ export default function Admin({ app }) {
             ))}
           </div>
         ) : null}
+        <div className="segmented-control compact-segments admin-queue-filter">
+          <button type="button" className={queueMode === "pending" ? "active" : ""} onClick={() => setQueueMode("pending")}>활성·대기</button>
+          <button type="button" className={queueMode === "history" ? "active" : ""} onClick={() => setQueueMode("history")}>전체 이력</button>
+        </div>
+        <div className="arena-field-grid">
+          <label>
+            목록 필터
+            <input
+              value={queueFilter}
+              placeholder="등급, 역할, 상태"
+              onChange={(event) => updateQueueFilter(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  applyQueueFilter();
+                }
+              }}
+            />
+          </label>
+          <div className="admin-row-actions">
+            <Button type="button" variant="secondary" onClick={applyQueueFilter}>적용</Button>
+            {appliedQueueFilter ? <Button type="button" variant="secondary" onClick={clearQueueFilter}>초기화</Button> : null}
+          </div>
+        </div>
         <div className="admin-appointment-list">
-          {appointments.rows.slice(0, 8).map((row) => (
+          {appointments.rows.map((row) => (
             <div key={row.id} className="admin-appointment-row">
               <span>
                 <strong>{row.userName}</strong>
@@ -602,6 +678,11 @@ export default function Admin({ app }) {
           ))}
           {!appointments.rows.length ? <span className="admin-empty-line">임명 기록 없음</span> : null}
         </div>
+        {activeAdminPage?.hasMore ? (
+          <Button type="button" variant="secondary" disabled={app.adminStatus?.loading} onClick={() => app.actions.loadMoreAdminSection?.()}>
+            {app.adminStatus?.loading ? "불러오는 중" : `더 보기 (${appointments.rows.length}/${activeAdminPage.total})`}
+          </Button>
+        ) : null}
         <div className="admin-action-panel admin-appointment-action-panel">
           <div>
             <strong>임명/연장/회수 액션</strong>
@@ -625,9 +706,31 @@ export default function Admin({ app }) {
             ) : (
               <label>
                 플레이어
-                <select value={appointmentDraft.userId || appointmentUsers[0]?.id || ""} onChange={(event) => updateAppointmentDraft({ userId: event.target.value })}>
-                  {appointmentUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · 신뢰도 {user.trustScore ?? "-"}</option>)}
-                </select>
+                <SearchPicker
+                  value={appointmentUserQuery}
+                  onChange={setAppointmentUserQuery}
+                  placeholder="이름, #해시태그 검색"
+                  items={appointmentUsers}
+                  remoteSearchType="player"
+                  title="플레이어 검색 결과"
+                  emptyText="플레이어 없음"
+                  floating
+                  closeOnResultClick
+                  renderItem={(user) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      className="search-picker-result-row search-picker-result-row-actionable"
+                      onClick={() => selectAppointmentUser(user)}
+                    >
+                      <span className="search-picker-result-main">
+                        <strong>{user.name}</strong>
+                        <em>{user.hashtag || user.handle || user.id} · 신뢰도 {user.trustScore ?? "-"}</em>
+                      </span>
+                    </button>
+                  )}
+                />
+                {appointmentDraft.userId ? <small>선택: {appointmentUserSnapshot?.name ?? userMap[appointmentDraft.userId]?.name ?? appointmentDraft.userId}</small> : null}
               </label>
             )}
           </div>
@@ -662,7 +765,9 @@ export default function Admin({ app }) {
           <Button
             type="button"
             variant="secondary"
-            disabled={["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType) && !activeAppointmentOptions.length}
+            disabled={["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType)
+              ? !activeAppointmentOptions.length
+              : !appointmentDraft.userId}
             onClick={commitAppointmentAction}
           >
             임명/연장/회수 커밋
@@ -679,6 +784,26 @@ export default function Admin({ app }) {
               <h2>{workflow.queueTitle}</h2>
             </div>
             <Badge tone="blue">{activeRows.length}건</Badge>
+          </div>
+          <div className="arena-field-grid">
+            <label>
+              큐 필터
+              <input
+                value={queueFilter}
+                placeholder="이름, 구장, 경기, 사유"
+                onChange={(event) => updateQueueFilter(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    applyQueueFilter();
+                  }
+                }}
+              />
+            </label>
+            <div className="admin-row-actions">
+              <Button type="button" variant="secondary" onClick={applyQueueFilter}>적용</Button>
+              {appliedQueueFilter ? <Button type="button" variant="secondary" onClick={clearQueueFilter}>초기화</Button> : null}
+            </div>
           </div>
           <div className="segmented-control compact-segments admin-queue-filter">
             <button type="button" className={queueMode === "pending" ? "active" : ""} onClick={() => setQueueMode("pending")}>처리 대기 {pendingRows.length}</button>
@@ -707,6 +832,11 @@ export default function Admin({ app }) {
             ))}
             {!activeRows.length ? <div className="empty-state">{queueMode === "pending" ? "처리할 항목이 없습니다." : "처리 이력이 없습니다."}</div> : null}
           </div>
+          {activeAdminPage?.hasMore ? (
+            <Button type="button" variant="secondary" disabled={app.adminStatus?.loading} onClick={() => app.actions.loadMoreAdminSection?.()}>
+              {app.adminStatus?.loading ? "불러오는 중" : `더 보기 (${activeRows.length}/${activeAdminPage.total})`}
+            </Button>
+          ) : null}
         </Card>
 
         <Card className="section-card admin-detail-panel">

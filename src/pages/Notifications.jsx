@@ -76,7 +76,7 @@ export default function Notifications({ app }) {
   };
   const acceptTeamInvite = async (invitation) => {
     await app.actions.acceptTeamInvitation(invitation.id);
-    await app.actions.loadDirectory?.(true);
+    await app.actions.loadDirectory?.({ kind: "self", force: true });
     navigate(`/app/teams/${invitation.teamId}`);
   };
   const deletePastNotification = async (notificationId) => {

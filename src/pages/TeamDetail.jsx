@@ -55,6 +55,8 @@ function getManagedRoleOptions(member, captainId) {
 
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
+  const loadDirectory = app.actions.loadDirectory;
+  const loadTeamEmblemStatus = app.actions.loadTeamEmblemStatus;
   const team = app.state.teams.find((item) => item.id === teamId);
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
   const [memberQuery, setMemberQuery] = useState("");
@@ -95,25 +97,20 @@ export default function TeamDetail({ app }) {
   }, [team?.accent, team?.emblemAbbreviation, team?.emblemBorderColor, team?.emblemBorderEnabled, team?.emblemColor, team?.emblemFont, team?.emblemTextMode, team?.id]);
 
   useEffect(() => {
-    if (!team || !canManage || app.directoryStatus?.loaded || app.directoryStatus?.loading) return;
-    app.actions.loadDirectory?.();
-  }, [app.actions, app.directoryStatus?.loaded, app.directoryStatus?.loading, canManage, team]);
-
-  useEffect(() => {
     if (!team?.id || !canManage || app.remoteReady === false || emblemStatusRequestRef.current === team.id) return;
     let cancelled = false;
     emblemStatusRequestRef.current = team.id;
     setEmblemCanRestore(false);
-    Promise.resolve(app.actions.loadTeamEmblemStatus?.(team.id)).then((result) => {
+    Promise.resolve(loadTeamEmblemStatus?.(team.id)).then((result) => {
       if (!cancelled && result?.ok !== false && result?.teamId === team.id) setEmblemCanRestore(result.emblemCanRestore === true);
     });
     return () => { cancelled = true; };
-  }, [app.actions, app.remoteReady, canManage, team?.id]);
+  }, [app.remoteReady, canManage, loadTeamEmblemStatus, team?.id]);
 
   useEffect(() => {
     if (app.remoteReady === false || !teamId) return undefined;
-    const refreshTeam = () => app.actions.loadDirectory?.(true);
-    refreshTeam();
+    const refreshTeam = () => loadDirectory?.({ force: true });
+    if (team?.membersPartial === true) refreshTeam();
     window.addEventListener("focus", refreshTeam);
     const handleVisibilityChange = () => {
       if (!document.hidden) refreshTeam();
@@ -123,7 +120,7 @@ export default function TeamDetail({ app }) {
       window.removeEventListener("focus", refreshTeam);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [app.actions, app.remoteReady, teamId]);
+  }, [app.remoteReady, loadDirectory, team?.membersPartial, teamId]);
 
   const directoryPending = app.remoteReady === false
     || app.directoryStatus?.loading

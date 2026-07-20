@@ -661,6 +661,7 @@ function compactRecruitingRoomState(roomState = {}, profileId = "", options = {}
       ? roomState.chatMessages
         .map((message) => ({
           id: message.id,
+          messageSeq: Number(message.messageSeq ?? 0),
           userId: message.userId,
           body: String(message.body ?? "").slice(0, 500),
           createdAt: message.createdAt,

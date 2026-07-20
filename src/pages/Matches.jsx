@@ -41,7 +41,7 @@ import {
 } from "../lib/matchUtils.js";
 import { ROOM_KINDS } from "../lib/constants.js";
 import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
-import { RECRUITING_ROOM_REFRESH_INTERVAL_MS, RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
+import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
 import "../styles/match-list-card.css";
@@ -1111,12 +1111,8 @@ export default function Matches({ app }) {
     }).finally(() => {
       setSelectedRecruitingPostDetailLoadingId((currentId) => currentId === selectedRecruitingPostId ? null : currentId);
     });
-    const intervalId = window.setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
-    }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(intervalId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedRecruitingPostDetailLoadingId, selectedRecruitingPostId]);
+    return undefined;
+  }, [app.actions.loadRecruitingPost, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedRecruitingPostDetailLoadingId, selectedRecruitingPostId]);
 
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;

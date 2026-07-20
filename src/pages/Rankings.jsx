@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Badge from "../components/common/Badge.jsx";
+import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import RankingTable from "../components/ranking/RankingTable.jsx";
 import RankingTabs from "../components/ranking/RankingTabs.jsx";
@@ -17,10 +18,13 @@ const tabs = [
 
 export default function Rankings({ app }) {
   const [tab, setTab] = useState("local");
-  useEffect(() => {
-    app.actions.loadDirectory?.();
-  }, [app.actions]);
   const myRegion = app.currentUser.region;
+  const loadDirectory = app.actions.loadDirectory;
+  const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "local" ? "all" : "players";
+  const directoryRegion = tab === "local" ? myRegion : "";
+  useEffect(() => {
+    loadDirectory?.({ kind: directoryKind, region: directoryRegion, limit: 50, offset: 0 });
+  }, [directoryKind, directoryRegion, loadDirectory]);
   const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   const visiblePlayers = app.rankings.players.filter((user) => !hiddenUserIds.has(user.id));
   const visibleModePlayers = tab === "teams" || tab === "affiliations" || tab === "integrated" || tab === "local"
@@ -96,6 +100,11 @@ export default function Rankings({ app }) {
         <Card className="section-card">
           <RankingTable rows={rows} type={type} mode={tab} teams={app.state.teams} />
         </Card>
+      ) : null}
+      {app.directoryStatus?.page?.kind === directoryKind && app.directoryStatus?.page?.region === directoryRegion && app.directoryStatus?.page?.hasMore ? (
+        <Button type="button" variant="secondary" disabled={app.directoryStatus.loading} onClick={() => app.actions.loadMoreDirectory?.()}>
+          {app.directoryStatus.loading ? "불러오는 중" : "랭킹 더 보기"}
+        </Button>
       ) : null}
     </div>
   );

@@ -407,6 +407,20 @@ export function buildAdminReviewModel(state = {}) {
   });
 
   reports.forEach((report) => {
+    if (report.type === "player") {
+      const targetPlayerIds = [...new Set([report.targetId, ...(report.reportedUserIds ?? [])].filter(Boolean))];
+      targetPlayerIds.forEach((playerId) => {
+        const player = userMap[playerId];
+        const playerRow = pushGrouped(playerMap, playerId, {
+          title: player?.name ?? "알 수 없음",
+          subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
+          player,
+        });
+        addReport(playerRow, report);
+      });
+      return;
+    }
+
     if (report.type === "team_emblem") {
       const team = teamById[report.targetId];
       const teamRow = pushGrouped(teamReviewMap, report.targetId, {

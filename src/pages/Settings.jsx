@@ -184,10 +184,12 @@ function getReportTargetEmptyText(targetType) {
 }
 
 export default function Settings({ app, auth, section = "main" }) {
+  const loadDirectory = app.actions.loadDirectory;
+  const loadAdminContext = app.actions.loadAdminContext;
   useEffect(() => {
-    app.actions.loadDirectory?.();
-    app.actions.loadAdminContext?.();
-  }, [app.actions]);
+    loadDirectory?.({ kind: "self", limit: 30, offset: 0 });
+    loadAdminContext?.();
+  }, [loadAdminContext, loadDirectory]);
   const requestedSettingsSection = Object.prototype.hasOwnProperty.call(SETTINGS_SECTIONS, section) ? section : "main";
   const settingsSection = EMBEDDED_SETTINGS_SECTIONS.has(requestedSettingsSection) ? "main" : requestedSettingsSection;
   const sectionMeta = SETTINGS_SECTIONS[settingsSection];

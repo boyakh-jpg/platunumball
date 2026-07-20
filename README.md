@@ -51,10 +51,14 @@ Invoke-RestMethod -Method Post -Uri "https://platunumball.vercel.app/api/system/
 배포 전 검증은 한 명령으로 실행합니다.
 
 ```powershell
-npm run verify:release
+npm run verify:release -- --confirm-production=olzxextphxpniwiiwwda
 ```
 
-`verify:release`는 production build 후 원격 Supabase/Auth 기반 전체 backend simulation과 schema health를 실행합니다. `SUPABASE_SERVICE_ROLE_KEY`, 테스트 Auth 환경변수, `CRON_SECRET`이 필요합니다. 종료 코드가 0이 아니면 배포하지 않습니다.
+`verify:release`는 production build 후 원격 Supabase/Auth 기반 전체 backend simulation과 schema health를 실행합니다. production ref와 정확히 같은 `--confirm-production=<project-ref>` CLI flag가 없으면 API/Auth 호출 전에 중단합니다. `SUPABASE_SERVICE_ROLE_KEY`, 테스트 Auth 환경변수, `CRON_SECRET`이 필요합니다. 종료 코드가 0이 아니면 배포하지 않습니다.
+
+simulation은 실행 전에 environment, 직접 Supabase project ref, 원격 API host/ref를 stderr에 표시합니다. process당 전체 flow 반복 상한은 1회이고 자동 재시도는 cleanup 실패 시 최대 1회입니다. 별도 process를 다시 실행하는 외부 runner도 호출 횟수를 1회로 제한해야 합니다. `--safety-check-only`는 target guard만 검증하고 DB/API를 호출하지 않습니다.
+
+테스트 전용 Supabase는 test URL, publishable key, service-role key를 함께 설정합니다. 원격 test API를 쓰면 실제 배포 대상과 같은 ref를 `--remote-project-ref=<test-ref>`로 추가합니다. 직접 ref와 원격 ref가 다르면 실행하지 않습니다.
 
 원격 DB에는 `supabase db reset --linked`, `DROP TABLE`, `TRUNCATE`, 대량 `DELETE`를 쓰지 않습니다.
 
@@ -84,6 +88,8 @@ npm run verify:release
 | `SUPABASE_PROJECT_ID` | CLI/CI 전용 | Supabase project ref. 현재 production ref: `olzxextphxpniwiiwwda` |
 | `DATABASE_URL` | CLI/서버 전용 | `supabase db push --db-url` 또는 직접 Postgres 접속 |
 | `RANKBALL_SIM_BASE_URL` / `RANKBALL_SIM_SECRET` / `RANKBALL_SIM_TIMEOUT_MS` / `RANKBALL_SIM_CLEANUP_TIMEOUT_MS` | 스크립트 | backend simulation |
+| `RANKBALL_SIM_REMOTE_PROJECT_REF` | 스크립트 | 원격 test API가 사용하는 Supabase project ref. `--remote-project-ref`가 우선 |
+| `RANKBALL_SIM_REPEAT` / `RANKBALL_SIM_MAX_RETRIES` | 스크립트 | 전체 flow 반복 상한 `1`, cleanup 재시도 상한 `1` |
 
 ## Discord 방 채팅 bridge
 

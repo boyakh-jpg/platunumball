@@ -310,7 +310,7 @@ export default function CreateMatch({ app }) {
   useEffect(() => {
     if (requestedTournamentDirectoryRef.current) return;
     requestedTournamentDirectoryRef.current = true;
-    loadDirectory?.(true);
+    loadDirectory?.({ kind: "teams", limit: 50, offset: 0, includeTeamMemberProfiles: true });
   }, [loadDirectory]);
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id && member.role === "captain")),

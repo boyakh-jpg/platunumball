@@ -35,9 +35,7 @@ function isHashtagQuery(query = "") {
 }
 
 export default function Teams({ app }) {
-  useEffect(() => {
-    app.actions.loadDirectory?.();
-  }, [app.actions]);
+  const loadDirectory = app.actions.loadDirectory;
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
   const [draft, setDraft] = useState({ name: "", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
@@ -47,6 +45,14 @@ export default function Teams({ app }) {
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const [courtQuery, setCourtQuery] = useState(defaultHomeCourt);
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
+  const directoryFilter = query.trim();
+  const directoryRegion = isHashtagQuery(query) || region === "전체" ? "" : region;
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      loadDirectory?.({ kind: "teams", filter: directoryFilter, region: directoryRegion, limit: 50, offset: 0 });
+    }, directoryFilter ? 250 : 0);
+    return () => window.clearTimeout(timer);
+  }, [directoryFilter, directoryRegion, loadDirectory]);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const representativeTeamId = app.state.settings?.representativeTeamId ?? "";
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
@@ -302,6 +308,14 @@ export default function Teams({ app }) {
               rank={team.rank}
             />
           ))}
+          {app.directoryStatus?.page?.kind === "teams"
+            && app.directoryStatus?.page?.filter === directoryFilter
+            && app.directoryStatus?.page?.region === directoryRegion
+            && app.directoryStatus?.page?.hasMore ? (
+              <Button type="button" variant="secondary" disabled={app.directoryStatus.loading} onClick={() => app.actions.loadMoreDirectory?.()}>
+                {app.directoryStatus.loading ? "불러오는 중" : "팀 더 보기"}
+              </Button>
+            ) : null}
         </section>
         <Card className="section-card team-create-panel">
           <div className="section-title-row">

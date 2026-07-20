@@ -115,6 +115,9 @@ const ROOM_CHAT_MESSAGE_SELECT = "id,room_type,room_id,user_id,body,created_at,m
 const ROOM_CHAT_INITIAL_LIMIT = 30;
 const ROOM_CHAT_POLL_LIMIT = 20;
 const ROOM_CHAT_POLL_INTERVAL_MS = 3000;
+const DIRECTORY_CACHE_TTL_MS = 30 * 1000;
+const DIRECTORY_PAGE_LIMIT = 100;
+const ADMIN_PAGE_LIMIT = 30;
 
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
@@ -640,8 +643,14 @@ const DIRECTORY_SETTING_ARRAY_KEYS = [
   "adminAuditLog",
   "adminDisciplinaryActions",
 ];
+const DIRECTORY_FAVORITE_SETTING_KEYS = [
+  "favoritePlayerIds",
+  "favoriteTeamIds",
+  "favoriteCourtIds",
+  "favoriteRefereeIds",
+];
 
-function getRemoteDirectorySettings(settings = null, { includeTheme = false, includeDirectorySettings = false } = {}) {
+function getRemoteDirectorySettings(settings = null, { includeTheme = false, includeDirectorySettings = false, includeFavoriteSettings = false } = {}) {
   if (!settings) return null;
   const settingsPatch = {};
   if (includeTheme && (settings.theme === "light" || settings.theme === "dark")) settingsPatch.theme = settings.theme;
@@ -654,19 +663,27 @@ function getRemoteDirectorySettings(settings = null, { includeTheme = false, inc
       if (Array.isArray(settings[key])) settingsPatch[key] = settings[key];
     });
   }
+  if (includeFavoriteSettings) {
+    DIRECTORY_FAVORITE_SETTING_KEYS.forEach((key) => {
+      if (Array.isArray(settings[key])) settingsPatch[key] = settings[key];
+    });
+  }
   return Object.keys(settingsPatch).length ? settingsPatch : null;
 }
 
 function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
   const settingsPatch = getRemoteDirectorySettings(remoteState.settings, options);
   const includeDirectorySettings = options.includeDirectorySettings === true;
+  const append = options.append === true;
   const visibleTeamInvitations = filterBlockedIncomingInvitations(remoteState.teamInvitations ?? [], state);
   return {
     ...state,
     users: mergeRemoteById(state.users, remoteState.users),
     teams: mergeRemoteById(state.teams, remoteState.teams),
     teamInvitations: mergeRemoteById(state.teamInvitations, visibleTeamInvitations),
-    affiliations: remoteState.affiliations?.length ? remoteState.affiliations : state.affiliations,
+    affiliations: remoteState.affiliations?.length
+      ? (append ? mergeRemoteById(state.affiliations, remoteState.affiliations) : remoteState.affiliations)
+      : state.affiliations,
     seasons: remoteState.seasons?.length ? remoteState.seasons : state.seasons,
     reports: includeDirectorySettings && Array.isArray(remoteState.reports) ? mergeRemoteById(state.reports, remoteState.reports) : state.reports,
     settings: settingsPatch ? { ...state.settings, ...settingsPatch } : state.settings,
@@ -710,14 +727,50 @@ function mergeRemoteTournamentState(state, remoteState = {}) {
   };
 }
 
-function mergeRemoteAdminState(state, remoteState = {}) {
-  const nextState = mergeRemoteDirectory(state, remoteState, { includeTheme: true, includeDirectorySettings: true });
+const ADMIN_SECTION_REPORT_TYPES = {
+  courts: new Set(["court", "court_review", "court_request"]),
+  players: new Set(["player"]),
+  matches: new Set(["match"]),
+  teams: new Set(["team_emblem"]),
+  appointments: new Set(),
+};
+
+const ADMIN_SECTION_SETTING_KEYS = {
+  courts: ["approvedCourts", "courtRequests", "courtReviews"],
+  players: ["adminDisciplinaryActions"],
+  matches: [],
+  teams: [],
+  appointments: ["adminAppointments", "refereeAppointments", "refereeRequests"],
+};
+
+function mergeRemoteAdminState(state, remoteState = {}, options = {}) {
+  if (!state) return remoteState;
+  const section = ADMIN_SECTION_SETTING_KEYS[options.section] ? options.section : "courts";
+  const append = options.append === true;
+  const reportTypes = ADMIN_SECTION_REPORT_TYPES[section];
+  const incomingReports = (remoteState.reports ?? []).filter((report) => reportTypes.has(report.type));
+  const unrelatedReports = (state.reports ?? []).filter((report) => !reportTypes.has(report.type));
+  const currentReports = append
+    ? (state.reports ?? []).filter((report) => reportTypes.has(report.type))
+    : [];
+  const settings = { ...(state.settings ?? {}) };
+  (ADMIN_SECTION_SETTING_KEYS[section] ?? []).forEach((key) => {
+    const incoming = remoteState.settings?.[key] ?? [];
+    settings[key] = append ? mergeRemoteById(settings[key] ?? [], incoming) : incoming;
+  });
+
   return {
-    ...nextState,
-    matches: Array.isArray(remoteState.matches) ? mergeRemoteById(state.matches, remoteState.matches) : state.matches,
-    recruitingPosts: Array.isArray(remoteState.recruitingPosts) ? mergeRemoteById(state.recruitingPosts, remoteState.recruitingPosts) : state.recruitingPosts,
-    tournaments: Array.isArray(remoteState.tournaments) ? mergeRemoteById(state.tournaments, remoteState.tournaments) : state.tournaments,
-    reports: Array.isArray(remoteState.reports) ? mergeRemoteById(state.reports, remoteState.reports) : nextState.reports,
+    ...state,
+    currentUserId: remoteState.currentUserId ?? state.currentUserId,
+    users: mergeRemoteById(state.users, remoteState.users),
+    teams: section === "teams" || section === "matches"
+      ? (append ? mergeTeamsById(state.teams, remoteState.teams) : remoteState.teams ?? [])
+      : state.teams,
+    matches: section === "matches"
+      ? (append ? mergeMatchesById(state.matches, remoteState.matches) : remoteState.matches ?? [])
+      : state.matches,
+    settings,
+    reports: mergeRemoteById([...unrelatedReports, ...currentReports], incomingReports),
   };
 }
 
@@ -933,10 +986,10 @@ function getInitialStateLoadOptions(location = null) {
     return { endpoint: "teamDetail", teamId: decodeURIComponent(teamDetailMatch[1]), matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app/teams") {
-    return { endpoint: "teamsList", matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+    return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app/admin") {
-    return { endpoint: "adminState", matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+    return { profileOnly: true, includeMatchSummary: false, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app/matches") {
     if (searchParams?.get("match")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
@@ -1019,7 +1072,7 @@ function getThinProfilePayload(authUserId, authEmail, options = {}) {
     includeTeams: includeFavorites,
     includeExtraProfiles: includeFavorites,
     includeTeamMemberProfiles: false,
-    includeMatchSummary: !includeFavorites,
+    includeMatchSummary: options.includeMatchSummary !== false && !includeFavorites,
   };
 }
 
@@ -1200,14 +1253,6 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         directoryLoaded: false,
       });
     }
-    if (options.endpoint === "adminState") {
-      const result = await postServerAction(
-        "/api/state/load",
-        { authUserId, authEmail, scope: "admin" },
-        { allowWhenDisabled: true },
-      );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { directoryLoaded: true });
-    }
     if (options.endpoint) {
       return attachRemoteMeta(await loadProfileState(authUserId, authEmail, { thin: true }), getEndpointFallbackMeta(options));
     }
@@ -1243,7 +1288,9 @@ export function useAppData(authUser = null, appLocation = null) {
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
   const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
-  const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
+  const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "", page: null, cacheKey: "" });
+  const [adminState, setAdminState] = useState(null);
+  const [adminStatus, setAdminStatus] = useState({ loading: false, loaded: false, error: "", section: "", queueMode: "pending", page: null, counts: {} });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
   const [recorderMatchesLoaded, setRecorderMatchesLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
@@ -1252,7 +1299,16 @@ export function useAppData(authUser = null, appLocation = null) {
   const stateRef = useRef(state);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
-  const directoryPromiseRef = useRef(null);
+  const directoryStatusRef = useRef(directoryStatus);
+  const directoryPromiseRef = useRef(new Map());
+  const directoryCacheRef = useRef(new Map());
+  const latestDirectoryRequestRef = useRef("");
+  const adminStatusRef = useRef(adminStatus);
+  const adminPromiseRef = useRef(new Map());
+  const adminCacheRef = useRef(new Map());
+  const latestAdminRequestRef = useRef("");
+  const adminContextPromiseRef = useRef(null);
+  const adminContextLoadedAuthRef = useRef("");
   const profileRefreshPromiseRef = useRef(null);
   const matchDetailPromiseRef = useRef(new Map());
   const matchPagePromiseRef = useRef(null);
@@ -1292,6 +1348,12 @@ export function useAppData(authUser = null, appLocation = null) {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+  useEffect(() => {
+    directoryStatusRef.current = directoryStatus;
+  }, [directoryStatus]);
+  useEffect(() => {
+    adminStatusRef.current = adminStatus;
+  }, [adminStatus]);
   useEffect(() => {
     settingsAuthUserIdRef.current = authUserId;
     settingsSyncQueueRef.current = Promise.resolve(null);
@@ -1355,6 +1417,14 @@ export function useAppData(authUser = null, appLocation = null) {
     blockedSettingsPendingCountRef.current = 0;
     if (!isSupabaseConfigured || !authUserId) {
       remoteReadyRef.current = !isSupabaseConfigured;
+      directoryPromiseRef.current = new Map();
+      directoryCacheRef.current = new Map();
+      latestDirectoryRequestRef.current = "";
+      adminPromiseRef.current = new Map();
+      adminCacheRef.current = new Map();
+      latestAdminRequestRef.current = "";
+      adminContextPromiseRef.current = null;
+      adminContextLoadedAuthRef.current = "";
       profileRefreshPromiseRef.current = null;
       matchDetailPromiseRef.current = new Map();
       matchPagePromiseRef.current = null;
@@ -1378,7 +1448,9 @@ export function useAppData(authUser = null, appLocation = null) {
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
       setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
-      setDirectoryStatus({ loading: false, loaded: true, error: "" });
+      setDirectoryStatus({ loading: false, loaded: true, error: "", page: null, cacheKey: "" });
+      setAdminState(null);
+      setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: "pending", page: null, counts: {} });
       setProfileRecordsLoaded(false);
       setRecorderMatchesLoaded(false);
       return undefined;
@@ -1387,7 +1459,14 @@ export function useAppData(authUser = null, appLocation = null) {
     let mounted = true;
     remoteReadyRef.current = false;
     setRemoteReady(false);
-    directoryPromiseRef.current = null;
+    directoryPromiseRef.current = new Map();
+    directoryCacheRef.current = new Map();
+    latestDirectoryRequestRef.current = "";
+    adminPromiseRef.current = new Map();
+    adminCacheRef.current = new Map();
+    latestAdminRequestRef.current = "";
+    adminContextPromiseRef.current = null;
+    adminContextLoadedAuthRef.current = "";
     profileRefreshPromiseRef.current = null;
     matchDetailPromiseRef.current = new Map();
     matchPagePromiseRef.current = null;
@@ -1409,13 +1488,19 @@ export function useAppData(authUser = null, appLocation = null) {
     recentMatchMutationTimesRef.current = new Map();
     syncedDiscordDeliveryIdsRef.current = new Set();
     setState(getCachedBootstrapState(authUserId, authEmail));
-    setDirectoryStatus({ loading: false, loaded: false, error: "" });
+    setDirectoryStatus({ loading: false, loaded: false, error: "", page: null, cacheKey: "" });
+    setAdminState(null);
+    setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: "pending", page: null, counts: {} });
     setProfileRecordsLoaded(false);
     setRecorderMatchesLoaded(false);
     const initialLoadOptions = getInitialStateLoadOptions(appLocation);
     homeRouteLoadKeyRef.current = initialLoadOptions.endpoint === "homeLoad" ? "homeLoad" : getHomeRouteLoadKey(appLocation);
     const initialLoad = initialLoadOptions.profileOnly
-      ? loadProfileState(authUserId, authEmail, { thin: true, includeFavorites: initialLoadOptions.includeFavorites === true })
+      ? loadProfileState(authUserId, authEmail, {
+        thin: true,
+        includeFavorites: initialLoadOptions.includeFavorites === true,
+        includeMatchSummary: initialLoadOptions.includeMatchSummary !== false,
+      })
       : loadBackendState(authUserId, authEmail, initialLoadOptions);
     initialLoad
       .then((remoteState) => {
@@ -1454,7 +1539,7 @@ export function useAppData(authUser = null, appLocation = null) {
             feedCounts: remoteMeta.recruitingPage?.feedCounts ?? null,
           });
           if (remoteMeta.directoryLoaded) {
-            setDirectoryStatus({ loading: false, loaded: true, error: "" });
+            setDirectoryStatus({ loading: false, loaded: true, error: "", page: remoteMeta.directoryPage ?? null, cacheKey: "initial" });
           }
           setProfileRecordsLoaded(remoteMeta.profileRecordsLoaded === true);
           setRecorderMatchesLoaded(remoteMeta.recorderMatchesLoaded === true);
@@ -1560,46 +1645,130 @@ export function useAppData(authUser = null, appLocation = null) {
     });
   }, []);
 
-  const loadAdminContext = useCallback(async () => {
+  const loadAdminContext = useCallback(async (force = false) => {
     if (!isSupabaseConfigured || !authUserId) {
       adminContextRef.current = EMPTY_ADMIN_CONTEXT;
       setAdminContext(EMPTY_ADMIN_CONTEXT);
       setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
       return EMPTY_ADMIN_CONTEXT;
     }
-    try {
+    if (!force && adminContextLoadedAuthRef.current === authUserId) return adminContextRef.current;
+    if (adminContextPromiseRef.current) return adminContextPromiseRef.current;
+    const promise = (async () => {
+      try {
       const result = await trackedPostServerAction("/api/admin/context", {}, { allowWhenDisabled: true });
       const context = normalizeAdminContext(result);
       adminContextRef.current = context;
+      adminContextLoadedAuthRef.current = authUserId;
       setAdminContext(context);
       setState((prev) => withServerAdminContext(prev, context));
       return context;
-    } catch (error) {
-      console.warn("Admin context failed.", error.message);
-      adminContextRef.current = EMPTY_ADMIN_CONTEXT;
-      setAdminContext(EMPTY_ADMIN_CONTEXT);
-      setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
-      return EMPTY_ADMIN_CONTEXT;
-    }
+      } catch (error) {
+        console.warn("Admin context failed.", error.message);
+        adminContextRef.current = EMPTY_ADMIN_CONTEXT;
+        setAdminContext(EMPTY_ADMIN_CONTEXT);
+        setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
+        return EMPTY_ADMIN_CONTEXT;
+      }
+    })().finally(() => {
+      if (adminContextPromiseRef.current === promise) adminContextPromiseRef.current = null;
+    });
+    adminContextPromiseRef.current = promise;
+    return promise;
   }, [authUserId, setState, trackedPostServerAction]);
 
-  const refreshAdminState = useCallback(async () => {
-    if (!isSupabaseConfigured || !authUserId) return false;
-    try {
-      const result = await trackedPostServerAction(
-        "/api/state/load",
-        { authUserId, authEmail, scope: "admin" },
-        { allowWhenDisabled: true },
-      );
-      if (!result?.state) return false;
-      const remoteState = normalizeServerState(result.state);
-      setState((prev) => withServerAdminContext(mergeRemoteAdminState(prev, remoteState ?? {}), adminContextRef.current));
+  const loadAdminSection = useCallback(async (options = {}) => {
+    const section = ["courts", "players", "matches", "teams", "appointments"].includes(options.section) ? options.section : "courts";
+    const queueMode = options.queueMode === "history" ? "history" : "pending";
+    const limit = Math.max(1, Math.min(60, Number(options.limit) || ADMIN_PAGE_LIMIT));
+    const offset = Math.max(0, Number(options.offset) || 0);
+    const filter = String(options.filter ?? options.query ?? "").trim();
+    const force = options.force === true;
+    const cacheKey = `${authUserId || ""}:${section}:${queueMode}:${limit}:${offset}:${filter}`;
+    latestAdminRequestRef.current = cacheKey;
+    if (!isSupabaseConfigured || !authUserId) {
+      setAdminStatus((prev) => ({ ...prev, loading: false, loaded: true, error: "", section, queueMode }));
       return true;
-    } catch (error) {
-      console.warn("Admin state refresh failed.", error.message);
-      return false;
     }
+
+    const cached = adminCacheRef.current.get(cacheKey);
+    if (!force && cached?.expiresAt > Date.now()) {
+      const result = cached.result;
+      const remoteState = normalizeServerState(result?.state ?? {});
+      const context = normalizeAdminContext(result?.adminContext ?? {});
+      adminContextRef.current = context;
+      adminContextLoadedAuthRef.current = authUserId;
+      setAdminContext(context);
+      setAdminState((prev) => withServerAdminContext(mergeRemoteAdminState(prev, remoteState, { section, append: offset > 0 }), context));
+      setState((prev) => withServerAdminContext(prev, context));
+      setAdminStatus((prev) => ({
+        loading: false,
+        loaded: true,
+        error: "",
+        section,
+        queueMode,
+        page: result?.page ?? null,
+        counts: { ...prev.counts, ...(result?.page?.counts ?? {}) },
+      }));
+      return true;
+    }
+    if (adminPromiseRef.current.has(cacheKey)) return adminPromiseRef.current.get(cacheKey);
+    if (force) adminCacheRef.current.delete(cacheKey);
+    setAdminStatus((prev) => ({ ...prev, loading: true, error: "", section, queueMode }));
+    const promise = trackedPostServerAction(
+      "/api/directory/load",
+      { authUserId, authEmail, scope: "admin", section, queueMode, limit, offset, filter },
+      { allowWhenDisabled: true },
+    ).then((result) => {
+      if (!result?.state) {
+        if (latestAdminRequestRef.current === cacheKey) {
+          setAdminStatus((prev) => ({ ...prev, loading: false, loaded: true, error: "admin_section_state_missing", section, queueMode }));
+        }
+        return false;
+      }
+      adminCacheRef.current.set(cacheKey, { expiresAt: Date.now() + DIRECTORY_CACHE_TTL_MS, result });
+      if (latestAdminRequestRef.current !== cacheKey) return true;
+      const remoteState = normalizeServerState(result.state);
+      const context = normalizeAdminContext(result.adminContext ?? {});
+      adminContextRef.current = context;
+      adminContextLoadedAuthRef.current = authUserId;
+      setAdminContext(context);
+      setAdminState((prev) => withServerAdminContext(mergeRemoteAdminState(prev, remoteState, { section, append: offset > 0 }), context));
+      setState((prev) => withServerAdminContext(prev, context));
+      setAdminStatus((prev) => ({
+        loading: false,
+        loaded: true,
+        error: "",
+        section,
+        queueMode,
+        page: result.page ?? null,
+        counts: { ...prev.counts, ...(result.page?.counts ?? {}) },
+      }));
+      return true;
+    }).catch((error) => {
+      if (latestAdminRequestRef.current !== cacheKey) return false;
+      console.warn("Admin section load failed.", error.message);
+      setAdminStatus((prev) => ({ ...prev, loading: false, loaded: true, error: error.message ?? "admin_section_load_failed", section, queueMode }));
+      return false;
+    }).finally(() => {
+      adminPromiseRef.current.delete(cacheKey);
+    });
+    adminPromiseRef.current.set(cacheKey, promise);
+    return promise;
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
+
+  const refreshAdminState = useCallback(async () => {
+    const current = adminStatusRef.current;
+    adminCacheRef.current = new Map();
+    return loadAdminSection({
+      section: current.section || "courts",
+      queueMode: current.queueMode || "pending",
+      limit: current.page?.limit ?? ADMIN_PAGE_LIMIT,
+      offset: 0,
+      filter: current.page?.filter ?? "",
+      force: true,
+    });
+  }, [loadAdminSection]);
 
   useEffect(() => {
     if (!profileLocked || !authUserId || !currentUserId || isSupabaseConfigured) return;
@@ -2338,7 +2507,8 @@ export function useAppData(authUser = null, appLocation = null) {
 
   const loadRecruitingPost = useCallback(async (postId) => {
     if (!isSupabaseConfigured || !authUserId || !postId) return false;
-    const safePostId = String(postId);
+    const safePostId = String(postId).trim();
+    if (!safePostId || safePostId.startsWith("match-room-")) return false;
     const currentPromise = recruitingPostPromiseRef.current.get(safePostId);
     if (currentPromise) return currentPromise;
     const promise = (async () => {
@@ -2374,34 +2544,66 @@ export function useAppData(authUser = null, appLocation = null) {
     return promise;
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
-  const loadDirectory = useCallback(async (force = false) => {
+  const loadDirectory = useCallback(async (forceOrOptions = false) => {
     if (!isSupabaseConfigured || !authUserId) return false;
-    if (directoryStatus.loaded && !force) return true;
-    if (directoryPromiseRef.current) return directoryPromiseRef.current;
-
+    const options = forceOrOptions && typeof forceOrOptions === "object" ? forceOrOptions : {};
+    const force = forceOrOptions === true || options.force === true;
     const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
-    const useTeamDirectory = pathname === "/app/teams" || pathname.startsWith("/app/teams/");
-    const endpoint = useTeamDirectory ? "/api/teams/list" : "/api/directory/load";
-    setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "" }));
+    const teamDetailMatch = pathname.match(/^\/app\/teams\/([^/]+)$/);
+    const endpoint = teamDetailMatch ? "/api/teams/detail" : "/api/directory/load";
+    const playerDetailMatch = pathname.match(/^\/app\/players\/([^/]+)$/);
+    const kind = options.kind ?? (playerDetailMatch ? "players" : pathname === "/app/teams" ? "teams" : "self");
+    const limit = Math.max(1, Math.min(100, Number(options.limit) || DIRECTORY_PAGE_LIMIT));
+    const offset = Math.max(0, Number(options.offset) || 0);
+    const filter = String(options.filter ?? options.query ?? "").trim();
+    const region = String(options.region ?? "").trim();
+    const profileId = String(options.profileId ?? (playerDetailMatch ? decodeURIComponent(playerDetailMatch[1]) : "")).trim();
+    const teamId = teamDetailMatch ? decodeURIComponent(teamDetailMatch[1]) : "";
+    const includeTeamMemberProfiles = options.includeTeamMemberProfiles === true;
+    const cacheKey = [endpoint, kind, limit, offset, filter, region, profileId, teamId, includeTeamMemberProfiles].join(":");
+    latestDirectoryRequestRef.current = cacheKey;
+    const cached = directoryCacheRef.current.get(cacheKey);
+    if (!force && cached?.expiresAt > Date.now()) {
+      const remoteState = cached.result?.state ?? {};
+      setState((prev) => mergeRemoteDirectory(prev, remoteState, {
+        includeDirectorySettings: kind === "self" || kind === "all",
+        includeFavoriteSettings: kind !== "affiliations",
+        append: offset > 0,
+      }));
+      setDirectoryStatus({ loading: false, loaded: true, error: "", page: cached.result?.page ?? null, cacheKey });
+      return true;
+    }
+    if (directoryPromiseRef.current.has(cacheKey)) return directoryPromiseRef.current.get(cacheKey);
+    if (force) directoryCacheRef.current.delete(cacheKey);
+    setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "", cacheKey }));
     const promise = trackedPostServerAction(
       endpoint,
-      { authUserId, authEmail },
+      teamDetailMatch
+        ? { authUserId, authEmail, teamId }
+        : { authUserId, authEmail, scope: "directory", kind, limit, offset, filter, region, profileId, includeTeamMemberProfiles },
       { allowWhenDisabled: true },
     ).then((result) => {
       const remoteState = result?.state ?? {};
-      setState((prev) => mergeRemoteDirectory(prev, remoteState, { includeDirectorySettings: true }));
-      setDirectoryStatus({ loading: false, loaded: true, error: "" });
+      setState((prev) => mergeRemoteDirectory(prev, remoteState, {
+        includeDirectorySettings: kind === "self" || kind === "all",
+        includeFavoriteSettings: kind !== "affiliations",
+        append: offset > 0,
+      }));
+      directoryCacheRef.current.set(cacheKey, { expiresAt: Date.now() + DIRECTORY_CACHE_TTL_MS, result });
+      if (latestDirectoryRequestRef.current !== cacheKey) return true;
+      setDirectoryStatus({ loading: false, loaded: true, error: "", page: result?.page ?? null, cacheKey });
       return true;
     }).catch((error) => {
+      if (latestDirectoryRequestRef.current !== cacheKey) return false;
       console.warn("Directory load failed.", error.message);
-      setDirectoryStatus({ loading: false, loaded: false, error: error.message ?? "directory_load_failed" });
+      setDirectoryStatus({ loading: false, loaded: false, error: error.message ?? "directory_load_failed", page: null, cacheKey });
       return false;
     }).finally(() => {
-      directoryPromiseRef.current = null;
+      directoryPromiseRef.current.delete(cacheKey);
     });
-    directoryPromiseRef.current = promise;
+    directoryPromiseRef.current.set(cacheKey, promise);
     return promise;
-  }, [authEmail, authUserId, directoryStatus.loaded, setState, trackedPostServerAction]);
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadCourtDetail = useCallback(async (courtId) => {
     if (!isSupabaseConfigured || !authUserId || !courtId) {
@@ -2693,7 +2895,34 @@ export function useAppData(authUser = null, appLocation = null) {
         loadMatchTeamSchedule,
         refreshCurrentProfile,
         loadDirectory,
+        loadMoreDirectory: () => {
+          const current = directoryStatusRef.current;
+          const nextOffset = current.page?.nextOffset;
+          if (current.loading || nextOffset === null || nextOffset === undefined) return Promise.resolve(false);
+          return loadDirectory({
+            kind: current.page?.kind ?? "all",
+            limit: current.page?.limit ?? DIRECTORY_PAGE_LIMIT,
+            offset: nextOffset,
+            filter: current.page?.filter ?? "",
+            region: current.page?.region ?? "",
+            profileId: current.page?.profileId ?? "",
+            includeTeamMemberProfiles: current.page?.includeTeamMemberProfiles === true,
+          });
+        },
         loadAdminContext,
+        loadAdminSection,
+        loadMoreAdminSection: () => {
+          const current = adminStatusRef.current;
+          const nextOffset = current.page?.nextOffset;
+          if (current.loading || nextOffset === null || nextOffset === undefined) return Promise.resolve(false);
+          return loadAdminSection({
+            section: current.section || "courts",
+            queueMode: current.queueMode || "pending",
+            limit: current.page?.limit ?? ADMIN_PAGE_LIMIT,
+            offset: nextOffset,
+            filter: current.page?.filter ?? "",
+          });
+        },
         loadRatingPolicy: async () => {
           if (!isSupabaseConfigured) {
             return { ok: true, policy: cloneRatingPolicy(DEFAULT_RATING_POLICY), defaults: cloneRatingPolicy(DEFAULT_RATING_POLICY), version: 1, history: [] };
@@ -3066,6 +3295,8 @@ export function useAppData(authUser = null, appLocation = null) {
         const result = await runServerAction("/api/court-requests/approve", { requestId, approval });
         if (!result || result.ok === false) return result;
         setState((prev) => mergeCourtApprovalResult(prev, requestId, result, currentUserId));
+        setAdminState((prev) => (prev ? mergeCourtApprovalResult(prev, requestId, result, currentUserId) : prev));
+        await refreshAdminState();
         return result;
       },
       markNotificationRead: (notificationId) => {
@@ -3534,7 +3765,7 @@ export function useAppData(authUser = null, appLocation = null) {
       sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body), { action: "sendRecruitingChat", body, optimisticBeforeServerCheck: true }),
       pollRecruitingChat: (postId) => {
         const roomId = String(postId ?? "").trim();
-        if (!isSupabaseConfigured || !supabase || !roomId || typeof window === "undefined" || typeof document === "undefined") return () => {};
+        if (!isSupabaseConfigured || !supabase || !roomId || roomId.startsWith("match-room-") || typeof window === "undefined" || typeof document === "undefined") return () => {};
         let stopped = false;
         let intervalId = null;
         let fetching = false;
@@ -3677,7 +3908,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
@@ -3694,6 +3925,8 @@ export function useAppData(authUser = null, appLocation = null) {
     serverBusy: serverActionPendingCount > 0,
     recorderMatchesLoaded,
     adminContext,
+    adminState,
+    adminStatus,
     matchPagination,
     recruitingPagination,
     directoryStatus,

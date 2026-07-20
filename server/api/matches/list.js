@@ -41,8 +41,9 @@ import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { getMatchRoomPhase, isMatchClosedNotice, isMatchInPlayMenu, isMatchInScheduleMenu, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
 
 let userRoomFeedAvailable = true;
+let relatedActiveMatchListAvailable = true;
 const MATCH_LIST_MAX_LIMIT = REMOTE_CLIENT_ACTIVE_MATCH_LIMIT;
-const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "closed"]);
+const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "closed", "cancelled", "canceled", "void", "voided"]);
 const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record"]);
 const RECENT_COMPLETED_MATCH_HOURS = 24;
 const RECENT_COMPLETED_MATCH_MAX_HOURS = 24 * 31 * REMOTE_CLIENT_RECORD_MONTHS;
@@ -51,9 +52,8 @@ const CLOSED_NOTICE_MATCH_LIMIT = 20;
 const MATCH_FEED_ROW_MAX_LIMIT = 320;
 const MATCH_FEED_ROW_FACTOR = 4;
 const RECENT_COMPLETED_FEED_ROW_MAX_LIMIT = 80;
-const MATCH_CANDIDATE_MIN_LIMIT = 80;
-const MATCH_CANDIDATE_MAX_LIMIT = 500;
-const MATCH_CANDIDATE_LIMIT_FACTOR = 10;
+const MATCH_RELATED_FALLBACK_MAX_LIMIT = 80;
+const MATCH_TERMINAL_STATUS_FILTER = "(confirmed,closed,cancelled,canceled,void,voided)";
 
 function getFeedOffsetCursor(value = "") {
   const text = String(value ?? "");
@@ -453,10 +453,7 @@ async function fetchMatchRowsByIds(client, matchIds = []) {
 
 async function fetchJsonActorMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
   if (!profileId) return [];
-  const candidateLimit = Math.max(
-    MATCH_CANDIDATE_MIN_LIMIT,
-    Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit || REMOTE_CLIENT_MATCH_LIMIT) * MATCH_CANDIDATE_LIMIT_FACTOR),
-  );
+  const candidateLimit = Math.max(1, Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const filters = [
     ["stat_recorders", { teamA: profileId }],
     ["stat_recorders", { teamB: profileId }],
@@ -469,102 +466,137 @@ async function fetchJsonActorMatchIds(client, profileId = "", limit = REMOTE_CLI
     client
       .from("matches")
       .select("id")
-      .not("status", "in", "(confirmed,closed)")
+      .not("status", "in", MATCH_TERMINAL_STATUS_FILTER)
       .contains(column, value)
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
       .limit(candidateLimit)
   )));
   const error = results.find((result) => result.error)?.error;
   if (error) throw error;
-  return unique(results.flatMap((result) => (result.data ?? []).map((row) => row.id)));
+  return unique(results.flatMap((result) => (result.data ?? []).map((row) => row.id))).slice(0, candidateLimit);
 }
 
-async function fetchDirectActorMatchRows(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+async function fetchDirectActorMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
   if (!profileId) return [];
-  const candidateLimit = Math.max(
-    MATCH_CANDIDATE_MIN_LIMIT,
-    Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit || REMOTE_CLIENT_MATCH_LIMIT) * MATCH_CANDIDATE_LIMIT_FACTOR),
-  );
-  const [jsonActorMatchIds, { data: playerRows, error: playerError }] = await Promise.all([
+  const candidateLimit = Math.max(1, Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const [jsonActorMatchIds, playerResult, ownerResult] = await Promise.all([
     fetchJsonActorMatchIds(client, profileId, limit),
     client
       .from("match_players")
       .select("match_id")
       .eq("user_id", profileId)
       .limit(candidateLimit),
+    client
+      .from("matches")
+      .select("id")
+      .not("status", "in", MATCH_TERMINAL_STATUS_FILTER)
+      .or(`created_by.eq.${profileId},referee_id.eq.${profileId},former_referee_id.eq.${profileId}`)
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .limit(candidateLimit),
   ]);
-  if (playerError) throw playerError;
-  const matchIds = unique([
+  if (playerResult.error) throw playerResult.error;
+  if (ownerResult.error) throw ownerResult.error;
+  const playerMatchIds = unique((playerResult.data ?? []).map((row) => row.match_id));
+  const activePlayerResult = playerMatchIds.length
+    ? await client
+        .from("matches")
+        .select("id")
+        .in("id", playerMatchIds)
+        .not("status", "in", MATCH_TERMINAL_STATUS_FILTER)
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(candidateLimit)
+    : { data: [], error: null };
+  if (activePlayerResult.error) throw activePlayerResult.error;
+  return unique([
     ...jsonActorMatchIds,
-    ...(playerRows ?? []).map((row) => row.match_id),
-  ]);
-  return fetchMatchRowsByIds(client, matchIds);
+    ...(activePlayerResult.data ?? []).map((row) => row.id),
+    ...(ownerResult.data ?? []).map((row) => row.id),
+  ]).slice(0, candidateLimit);
 }
 
-async function fetchCaptainTournamentMatchRows(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+async function fetchTeamRelatedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, options = {}) {
   if (!profileId) return [];
-  const { data: memberRows, error: memberError } = await client
+  let memberQuery = client
     .from("team_members")
-    .select("team_id")
+    .select("team_id,role")
     .eq("user_id", profileId)
-    .eq("role", "captain")
     .limit(20);
+  if (options.captainOnly === true) memberQuery = memberQuery.eq("role", "captain");
+  const { data: memberRows, error: memberError } = await memberQuery;
   if (memberError) throw memberError;
   const teamIds = unique((memberRows ?? []).map((row) => row.team_id));
   if (!teamIds.length) return [];
 
-  const queryLimit = Math.max(1, Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
-  const [teamARows, teamBRows] = await Promise.all([
-    client
+  const queryLimit = Math.max(1, Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const getTeamIds = (column) => {
+    let query = client
       .from("matches")
-      .select(MATCH_LIST_COLUMNS)
-      .not("tournament_id", "is", null)
-      .in("team_a_id", teamIds)
+      .select("id")
+      .in(column, teamIds)
+      .not("status", "in", MATCH_TERMINAL_STATUS_FILTER);
+    if (options.tournamentOnly === true) query = query.not("tournament_id", "is", null);
+    return query
       .order("updated_at", { ascending: false, nullsFirst: false })
-      .limit(queryLimit),
-    client
-      .from("matches")
-      .select(MATCH_LIST_COLUMNS)
-      .not("tournament_id", "is", null)
-      .in("team_b_id", teamIds)
-      .order("updated_at", { ascending: false, nullsFirst: false })
-      .limit(queryLimit),
-  ]);
+      .limit(queryLimit);
+  };
+  const [teamARows, teamBRows] = await Promise.all([getTeamIds("team_a_id"), getTeamIds("team_b_id")]);
   if (teamARows.error) throw teamARows.error;
   if (teamBRows.error) throw teamBRows.error;
-  return mergeMatchRowsById(teamARows.data ?? [], teamBRows.data ?? []).slice(0, queryLimit);
+  return unique([
+    ...(teamARows.data ?? []).map((row) => row.id),
+    ...(teamBRows.data ?? []).map((row) => row.id),
+  ]).slice(0, queryLimit);
 }
 
-async function fetchMemberTeamMatchRows(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
-  if (!profileId) return [];
-  const { data: memberRows, error: memberError } = await client
-    .from("team_members")
-    .select("team_id")
-    .eq("user_id", profileId)
-    .limit(20);
-  if (memberError) throw memberError;
-  const teamIds = unique((memberRows ?? []).map((row) => row.team_id));
-  if (!teamIds.length) return [];
+async function fetchRelatedActiveMatchFallback(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, includeTeamSchedule = false) {
+  const [directIds, captainTournamentIds, memberTeamIds] = await Promise.all([
+    fetchDirectActorMatchIds(client, profileId, limit),
+    fetchTeamRelatedMatchIds(client, profileId, limit, { captainOnly: true, tournamentOnly: true }),
+    includeTeamSchedule
+      ? fetchTeamRelatedMatchIds(client, profileId, limit)
+      : Promise.resolve([]),
+  ]);
+  const captainSet = new Set(captainTournamentIds);
+  const memberSet = new Set(memberTeamIds);
+  return {
+    rows: unique([...directIds, ...captainTournamentIds, ...memberTeamIds])
+      .slice(0, Math.max(1, Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT)))
+      .map((id) => ({
+        id,
+        directActor: directIds.includes(id),
+        captainTournament: captainSet.has(id),
+        memberTeam: memberSet.has(id),
+      })),
+    source: "bounded_fallback",
+  };
+}
 
-  const queryLimit = Math.max(1, Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
-  const getTeamRows = (column) => client
-    .from("matches")
-    .select(MATCH_LIST_COLUMNS)
-    .in(column, teamIds)
-    .not("status", "in", "(confirmed,closed,cancelled,void)")
-    .order("updated_at", { ascending: false, nullsFirst: false })
-    .limit(queryLimit);
-  const [teamARows, teamBRows] = await Promise.all([getTeamRows("team_a_id"), getTeamRows("team_b_id")]);
-  if (teamARows.error) throw teamARows.error;
-  if (teamBRows.error) throw teamBRows.error;
-  return mergeMatchRowsById(teamARows.data ?? [], teamBRows.data ?? []).slice(0, queryLimit);
+async function fetchRelatedActiveMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, includeTeamSchedule = false) {
+  if (!profileId) return { rows: [], source: "none" };
+  const cappedLimit = Math.max(1, Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  if (relatedActiveMatchListAvailable) {
+    const { data, error } = await client.rpc("rankball_related_active_match_list", {
+      p_profile_id: profileId,
+      p_limit: cappedLimit,
+      p_include_team_schedule: includeTeamSchedule,
+    });
+    if (!error) {
+      return {
+        rows: Array.isArray(data?.rows) ? data.rows : [],
+        source: "rpc",
+      };
+    }
+    if (error.code !== "PGRST202" && error.code !== "42883") throw error;
+    relatedActiveMatchListAvailable = false;
+    console.warn("Related active match RPC unavailable; using bounded fallback.", error.message);
+  }
+  return fetchRelatedActiveMatchFallback(client, profileId, cappedLimit, includeTeamSchedule);
 }
 
 async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, includeJsonActors = false) {
   if (!profileId) return [];
-  const candidateLimit = Math.max(
-    MATCH_CANDIDATE_MIN_LIMIT,
-    Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit || REMOTE_CLIENT_MATCH_LIMIT) * MATCH_CANDIDATE_LIMIT_FACTOR),
-  );
+  const candidateLimit = Math.max(1, Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const [
     { data: playerRows, error: playerError },
     { data: relatedRows, error: relatedError },
@@ -587,13 +619,13 @@ async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit =
   const jsonActorIds = includeJsonActors
     ? await fetchJsonActorMatchIds(client, profileId, limit)
     : [];
-  const captainTournamentRows = await fetchCaptainTournamentMatchRows(client, profileId, limit);
+  const captainTournamentIds = await fetchTeamRelatedMatchIds(client, profileId, limit, { captainOnly: true, tournamentOnly: true });
   return unique([
     ...(playerRows ?? []).map((row) => row.match_id),
     ...(relatedRows ?? []).map((row) => row.id),
     ...jsonActorIds,
-    ...captainTournamentRows.map((row) => row.id),
-  ]);
+    ...captainTournamentIds,
+  ]).slice(0, candidateLimit);
 }
 
 async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "", activeOnly = false, includeJsonActors = false) {
@@ -601,49 +633,15 @@ async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const offset = getMineOffsetCursor(cursor);
   if (includeJsonActors && activeOnly && isSafePostgrestLiteral(profileId)) {
-    const candidateLimit = Math.max(
-      MATCH_CANDIDATE_MIN_LIMIT,
-      Math.min(MATCH_CANDIDATE_MAX_LIMIT, cappedLimit * MATCH_CANDIDATE_LIMIT_FACTOR),
+    const relatedPage = await fetchRelatedActiveMatchPage(
+      client,
+      profileId,
+      Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, offset + cappedLimit),
+      false,
     );
-    const containsJson = (value) => JSON.stringify(value);
-    const actorFilter = [
-      `created_by.eq.${profileId}`,
-      `referee_id.eq.${profileId}`,
-      `former_referee_id.eq.${profileId}`,
-      `stat_recorders.cs.${containsJson({ teamA: profileId })}`,
-      `stat_recorders.cs.${containsJson({ teamB: profileId })}`,
-      `played_player_ids.cs.${containsJson({ teamA: [profileId] })}`,
-      `played_player_ids.cs.${containsJson({ teamB: [profileId] })}`,
-      `reserve_players.cs.${containsJson({ teamA: [profileId] })}`,
-      `reserve_players.cs.${containsJson({ teamB: [profileId] })}`,
-    ].join(",");
-    const [
-      { data: playerRows, error: playerError },
-      { data: actorRows, error: actorError },
-      captainTournamentRows,
-    ] = await Promise.all([
-      client
-        .from("match_players")
-        .select("match_id")
-        .eq("user_id", profileId)
-        .limit(candidateLimit),
-      client
-        .from("matches")
-        .select(MATCH_LIST_COLUMNS)
-        .in("status", ["agreed", "approval", "disputed"])
-        .or(actorFilter)
-        .order("updated_at", { ascending: false, nullsFirst: false })
-        .order("id", { ascending: false })
-        .limit(candidateLimit),
-      fetchCaptainTournamentMatchRows(client, profileId, cappedLimit),
-    ]);
-    if (playerError) throw playerError;
-    if (actorError) throw actorError;
-    const actorMatchRows = mergeMatchRowsById(actorRows ?? [], captainTournamentRows);
-    const actorIds = new Set(actorMatchRows.map((row) => row.id));
-    const playerMatchIds = unique((playerRows ?? []).map((row) => row.match_id)).filter((id) => !actorIds.has(id));
-    const playerMatchRows = playerMatchIds.length ? await fetchMatchRowsByIds(client, playerMatchIds) : [];
-    const filteredRows = mergeMatchRowsById(actorMatchRows, playerMatchRows)
+    const relatedIds = unique((relatedPage.rows ?? []).map((row) => row?.id));
+    const relatedRows = await fetchMatchRowsByIds(client, relatedIds);
+    const filteredRows = relatedRows
       .filter((row) => ["agreed", "approval", "disputed"].includes(String(row.status ?? "")));
     const sortedRows = [...filteredRows].sort((a, b) => (
       String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? ""))
@@ -702,7 +700,7 @@ async function fetchRecorderMatchPage(client, profileId = "", limit = REMOTE_CLI
 async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, completedSince = "") {
   if (!profileId) return { ids: [], exhausted: true, source: "completed_fallback" };
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
-  const rowLimit = Math.min(600, cappedLimit * 3);
+  const rowLimit = Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Math.max(cappedLimit, cappedLimit * 2));
   const { data: playerRows, error: playerError } = await client
     .from("match_players")
     .select("match_id")
@@ -732,7 +730,7 @@ async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "",
 async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, completedSince = "", allowLegacyFallback = false) {
   if (!profileId) return { ids: [], cards: [], exhausted: true, source: "completed_feed" };
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
-  const rowLimit = Math.min(600, cappedLimit * 3);
+  const rowLimit = cappedLimit;
   if (!userRoomFeedAvailable) {
     if (!allowLegacyFallback) return { ids: [], cards: [], exhausted: true, source: "completed_feed_unavailable" };
     return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit, completedSince);
@@ -1055,7 +1053,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
-  const [baseFeedPage, recentCompletedPage, closedNoticePage, captainTournamentRows, memberTeamRows, directActorRows, relatedTournamentState] = await Promise.all([
+  const [baseFeedPage, recentCompletedPage, closedNoticePage, relatedActivePage, relatedTournamentState] = await Promise.all([
     recorderOnly
       ? Promise.resolve(null)
       : completedOnly
@@ -1067,22 +1065,20 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     shouldLoadClosedNotices
       ? timeStep(debugTiming, "closedNoticeMs", () => fetchClosedNoticeMatchFeedPage(context.supabase, context.profileId))
       : Promise.resolve(null),
-    activeOnly && !cursor && !completedOnly && !recorderOnly
-      ? timeStep(debugTiming, "captainTournamentMatchesMs", () => fetchCaptainTournamentMatchRows(context.supabase, context.profileId, limit))
-      : Promise.resolve([]),
-    includeTeamSchedule && !cursor && !completedOnly && !recorderOnly
-      ? timeStep(debugTiming, "memberTeamMatchesMs", () => fetchMemberTeamMatchRows(context.supabase, context.profileId, limit))
-      : Promise.resolve([]),
-    activeOnly && !cursor && !completedOnly && !recorderOnly
-      ? timeStep(debugTiming, "directActorMatchesMs", () => fetchDirectActorMatchRows(context.supabase, context.profileId, limit))
-      : Promise.resolve([]),
+    !cursor && !completedOnly && !recorderOnly && (activeOnly || includeTeamSchedule)
+      ? timeStep(debugTiming, "relatedActiveMatchIdsMs", () => (
+          fetchRelatedActiveMatchPage(context.supabase, context.profileId, limit, includeTeamSchedule)
+        ))
+      : Promise.resolve({ rows: [], source: "none" }),
     !cursor && !completedOnly && !recorderOnly
       ? timeStep(debugTiming, "relatedTournamentsMs", () => loadCurrentUserTournamentIndex(context.supabase, context.profileId))
       : Promise.resolve({ users: [], teams: [], tournaments: [] }),
   ]);
-  const captainTournamentMatchIds = new Set((captainTournamentRows ?? []).map((row) => row.id).filter(Boolean));
-  const memberTeamMatchIds = new Set((memberTeamRows ?? []).map((row) => row.id).filter(Boolean));
+  const relatedActiveRows = relatedActivePage?.rows ?? [];
+  const captainTournamentMatchIds = new Set(relatedActiveRows.filter((row) => row?.captainTournament).map((row) => row.id));
+  const memberTeamMatchIds = new Set(relatedActiveRows.filter((row) => row?.memberTeam).map((row) => row.id));
   const feedPage = mergeMatchFeedPages(mergeMatchFeedPages(baseFeedPage, recentCompletedPage), closedNoticePage);
+  const feedCardIds = new Set((feedPage?.cards ?? []).map((card) => card?.id).filter(Boolean));
   let pageSource = "feed";
   let pageCursor = feedPage?.cursor ?? "";
   let pageExhausted = feedPage?.exhausted ?? true;
@@ -1091,7 +1087,6 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   if (feedPage) {
     pageSource = feedPage.source ?? "feed";
     const feedCards = feedPage.cards ?? [];
-    const cardIds = new Set(feedCards.map((card) => card?.id).filter(Boolean));
     if (feedPage.cards?.length) {
       matches = sortByFeedOrder(
         filterMatchItems(feedCards),
@@ -1100,7 +1095,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     }
     const rowFallbackIds = completedOnly
       ? feedPage.ids ?? []
-      : (feedPage.ids ?? []).filter((id) => !cardIds.has(id));
+      : (feedPage.ids ?? []).filter((id) => !feedCardIds.has(id));
     if (rowFallbackIds.length) {
       pageSource = appendRowFallbackSource(pageSource);
       matchRows = await timeStep(debugTiming, "matchRowsMs", () => (
@@ -1129,16 +1124,15 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     pageCursor = recorderPage?.cursor ?? "";
     pageExhausted = recorderPage?.exhausted ?? true;
   }
-  if (captainTournamentRows?.length) {
-    matchRows = mergeMatchRowsById(matchRows, captainTournamentRows);
-    pageSource = appendRowFallbackSource(pageSource);
-  }
-  if (memberTeamRows?.length) {
-    matchRows = mergeMatchRowsById(matchRows, memberTeamRows);
-    pageSource = appendRowFallbackSource(pageSource);
-  }
-  if (directActorRows?.length) {
-    matchRows = mergeMatchRowsById(matchRows, directActorRows);
+  const loadedMatchIds = new Set(matchRows.map((row) => row?.id).filter(Boolean));
+  const relatedRowIds = unique(relatedActiveRows.map((row) => row?.id)).filter((id) => (
+    !loadedMatchIds.has(id) && !feedCardIds.has(id)
+  ));
+  if (relatedRowIds.length) {
+    const relatedMatchRows = await timeStep(debugTiming, "relatedActiveMatchRowsMs", () => (
+      fetchMatchRowsByIds(context.supabase, relatedRowIds)
+    ));
+    matchRows = mergeMatchRowsById(matchRows, relatedMatchRows);
     pageSource = appendRowFallbackSource(pageSource);
   }
 
@@ -1217,28 +1211,39 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     };
   }
 
-  const matchIds = (matchRows ?? []).map((row) => row.id).filter(Boolean);
+  const hydrateCandidateLimit = Math.max(
+    1,
+    Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT),
+  );
+  matchRows = (matchRows ?? []).slice(0, hydrateCandidateLimit);
+  const matchIds = matchRows.map((row) => row.id).filter(Boolean);
   const playerRowsPromise = matchIds.length
     ? timeStep(debugTiming, "matchPlayersMs", () => context.supabase.from("match_players").select(MATCH_PLAYER_COLUMNS).in("match_id", matchIds))
-    : Promise.resolve({ data: [], error: null });
-  const resultRowsPromise = matchIds.length
-    ? timeStep(debugTiming, "matchResultsMs", () => context.supabase.from("match_results").select(MATCH_RESULT_COLUMNS).in("match_id", matchIds))
-    : Promise.resolve({ data: [], error: null });
-  const statRowsPromise = matchIds.length
-    ? timeStep(debugTiming, "matchStatsMs", () => context.supabase.from("player_match_stats").select(PLAYER_STAT_COLUMNS).in("match_id", matchIds))
     : Promise.resolve({ data: [], error: null });
   const { data: playerRows, error: playerError } = await playerRowsPromise;
   if (playerError) throw playerError;
 
   const playersByMatch = groupBy(playerRows ?? [], "match_id");
-  const readableRows = (matchRows ?? []).filter((row) => (
+  const readableRows = matchRows.filter((row) => (
     captainTournamentMatchIds.has(row.id) ||
     memberTeamMatchIds.has(row.id) ||
     canReadMatchRow(row, playersByMatch.get(row.id) ?? [], context.profileId ?? "", adminLevel >= 30)
   ));
-  const teamIds = unique(readableRows.flatMap((row) => [row.team_a_id, row.team_b_id]));
-  const courtIds = unique(readableRows.map((row) => (row.court_name ? "" : row.court_id)));
-  const profileIds = unique(readableRows.flatMap((row) => getMatchRowActorIds(row, playersByMatch.get(row.id) ?? [])));
+  const hydrationRows = readableRows.filter((row) => {
+    if (recorderOnly && row.status === "agreed") return true;
+    const preview = toClientMatch(row, playersByMatch, {}, {}, {}, new Map());
+    return filterMatchItems([preview]).length > 0;
+  });
+  const hydrationMatchIds = hydrationRows.map((row) => row.id).filter(Boolean);
+  const resultRowsPromise = hydrationMatchIds.length
+    ? timeStep(debugTiming, "matchResultsMs", () => context.supabase.from("match_results").select(MATCH_RESULT_COLUMNS).in("match_id", hydrationMatchIds))
+    : Promise.resolve({ data: [], error: null });
+  const statRowsPromise = hydrationMatchIds.length
+    ? timeStep(debugTiming, "matchStatsMs", () => context.supabase.from("player_match_stats").select(PLAYER_STAT_COLUMNS).in("match_id", hydrationMatchIds))
+    : Promise.resolve({ data: [], error: null });
+  const teamIds = unique(hydrationRows.flatMap((row) => [row.team_a_id, row.team_b_id]));
+  const courtIds = unique(hydrationRows.map((row) => (row.court_name ? "" : row.court_id)));
+  const profileIds = unique(hydrationRows.flatMap((row) => getMatchRowActorIds(row, playersByMatch.get(row.id) ?? [])));
   const profileIdsForLookup = profileIds.filter((profileId) => profileId !== currentUser.id);
 
   const [
@@ -1276,7 +1281,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const teams = (teamRows ?? []).map(toClientTeam);
   const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
   const courtById = firstBy(courtRows ?? [], "id");
-  const rowMatches = readableRows
+  const rowMatches = hydrationRows
     .map((row) => {
       const match = toClientMatch(row, playersByMatch, teamById, courtById, resultsByMatch, statsByMatch);
       const relations = [
