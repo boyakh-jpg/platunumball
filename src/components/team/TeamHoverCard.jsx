@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import HoverPortal from "../common/HoverPortal.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import TeamEmblem from "./TeamEmblem.jsx";
@@ -17,7 +17,8 @@ function canUseHoverPreview() {
   return typeof window === "undefined" || !window.matchMedia("(hover: none), (pointer: coarse)").matches;
 }
 
-export default function TeamHoverCard({ team, children, className = "", as = "link", to }) {
+export default function TeamHoverCard({ team, children, className = "", as = "link", to, directNavigation = false }) {
+  const navigate = useNavigate();
   const [hoverOpen, setHoverOpen] = useState(false);
   const [touchOpen, setTouchOpen] = useState(false);
   const [pinnedHoverKey, setPinnedHoverKey] = useState(getPinnedHoverPreviewKey);
@@ -75,7 +76,9 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
   }
 
   const teamPath = to ?? `/app/teams/${team.id}`;
-  const props = as === "span" ? {} : { role: "button", tabIndex: 0 };
+  const props = directNavigation
+    ? { role: "link", tabIndex: 0 }
+    : as === "span" ? {} : { role: "button", tabIndex: 0 };
   const played = Number(team.wins ?? 0) + Number(team.losses ?? 0);
   const winRate = played ? Math.round((Number(team.wins ?? 0) / played) * 100) : 0;
   const showHover = () => {
@@ -98,6 +101,17 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
     }, 420);
   };
   const handleTriggerClick = (event) => {
+    if (directNavigation) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (longPressOpenedRef.current) {
+        longPressOpenedRef.current = false;
+        return;
+      }
+      closeTouch();
+      navigate(teamPath);
+      return;
+    }
     if (as === "span" && !isTouchPreviewEvent(event)) return;
     event.preventDefault();
     event.stopPropagation();
@@ -131,7 +145,12 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           event.stopPropagation();
-          openPinned();
+          if (directNavigation) {
+            closeTouch();
+            navigate(teamPath);
+          } else {
+            openPinned();
+          }
         }
       }}
       onMouseEnter={showHover}

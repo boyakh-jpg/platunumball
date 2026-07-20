@@ -202,7 +202,7 @@ export default function Teams({ app }) {
               const isRepresentative = representativeTeam?.id === team.id;
               const isExplicitRepresentative = representativeTeamId === team.id;
               return (
-                <TeamHoverCard key={team.id} team={team} as="span" className="my-team-row" to={`/app/teams/${team.id}${isCaptain ? "#team-control" : ""}`}>
+                <TeamHoverCard key={team.id} team={team} as="span" className="my-team-row" directNavigation to={`/app/teams/${team.id}${isCaptain ? "#team-control" : ""}`}>
                   <span className="team-rank-chip">#{team.rank}</span>
                   <TeamEmblem team={team} size="xs" />
                   <strong>{team.name}</strong>

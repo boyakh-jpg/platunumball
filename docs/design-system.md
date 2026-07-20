@@ -1156,6 +1156,7 @@ UI 수정 전:
 4. Recruiting room join submit locks the button with `참여 중` while the server action is pending. Success or direct `?post=` entry must leave the room detail selected, or show only the shared basketball loader until detail arrives.
 5. 즉시 모집방 일정 문구는 Home, Matches, Recruiting 목록, 방 모달에서 `즉시 · HH:mm 종료` 형식으로 종료 시각을 같이 보여준다.
 6. 팀 메뉴의 내 팀 관리 행은 대표팀 상태/설정 버튼을 같은 행 오른쪽에 둔다. 현재 대표팀은 orange primary 버튼으로 표시하고, 다른 팀은 secondary `대표 설정` 버튼을 쓴다.
+7. 팀 메뉴의 내 팀 관리 행은 클릭하면 해당 팀 상세로 이동한다. 팀장은 `#team-control` 관리 구역으로 이동하며, 대표팀 상태/설정 버튼은 행 이동을 실행하지 않고 기존 설정 동작만 수행한다.
 
 ## 2026-07-06 recruiting ready removal UI
 
