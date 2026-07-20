@@ -545,19 +545,15 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 5. 경기 종류
 6. 심판
 
-상태 색:
+목록 카드 배지 색은 `MatchListCard`에서 아래 3색으로 정규화한다. 호출 화면이 다른 tone을 넘겨도 목록 카드에는 별도 색을 추가하지 않는다.
 
-| 상태 | 색 |
+| 의미 | 색 |
 | --- | --- |
-| waiting | blue |
-| locked | blue |
-| checkin | orange |
-| live | blue/orange |
-| postgame | orange |
-| dispute | orange/danger |
-| record | gold |
-| cancelled | neutral |
-| void | neutral |
+| 단계·정보 (`waiting`, `locked`, `live`, `record`, 경기 방식) | blue |
+| 처리 필요 (`checkin`, `postgame`, `dispute`, 희망 상대) | orange |
+| 종료·보조 정보 (`cancelled`, `void`, 공개 여부, 참가 방식, 경기 종류, 심판) | neutral |
+
+`green`, `gold`, `violet`, `danger` tone은 공통 목록 카드 안에서 각각 `blue` 또는 `orange`로 변환한다. 일정·매칭·플레이 목록은 모두 이 규칙을 공유한다.
 
 금지:
 

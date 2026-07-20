@@ -1,4 +1,12 @@
-const BADGE_TONES = new Set(["orange", "green", "blue", "gold", "violet", "danger", "neutral"]);
+const MATCH_LIST_TONE_MAP = Object.freeze({
+  orange: "orange",
+  gold: "orange",
+  danger: "orange",
+  blue: "blue",
+  green: "blue",
+  violet: "blue",
+  neutral: "neutral",
+});
 
 function normalizeBadge(value, kind) {
   if (!value) return null;
@@ -12,27 +20,20 @@ function normalizeBadge(value, kind) {
   };
 }
 
-function getBadgeTone(kind, label, tone = "") {
-  if (BADGE_TONES.has(tone)) return tone;
-  const text = typeof label === "string" ? label : "";
+function normalizeMatchListTone(tone, fallback) {
+  return MATCH_LIST_TONE_MAP[tone] ?? fallback;
+}
 
+function getBadgeTone(kind, tone = "") {
+  if (kind === "status") return normalizeMatchListTone(tone, "orange");
   if (kind === "mode") return "blue";
-  if (kind === "visibility") {
-    if (text.includes("대회")) return "gold";
-    if (text.includes("비공개")) return "violet";
-    return "green";
-  }
-  if (kind === "roomType") return text.includes("팀") ? "orange" : "green";
-  if (kind === "competition") return text.includes("정규") ? "gold" : "green";
-  if (kind === "referee") return text.includes("없음") ? "neutral" : "violet";
-  if (kind === "target") return "gold";
-  if (kind === "national") return "green";
-  return "blue";
+  if (kind === "target") return "orange";
+  return "neutral";
 }
 
 export function MatchListBadge({ children, kind = "extra", tone = "" }) {
   if (!children) return null;
-  const resolvedTone = getBadgeTone(kind, children, tone);
+  const resolvedTone = getBadgeTone(kind, tone);
   return (
     <span className="match-list-badge" data-kind={kind} data-tone={resolvedTone}>
       {children}
@@ -80,7 +81,7 @@ export default function MatchListCard({
     normalizeBadge(referee, "referee"),
     ...extraBadges.map((badge) => normalizeBadge(badge, badge?.kind ?? "extra")),
   ].filter((badge) => badge?.label);
-  const statusTone = getBadgeTone("status", status?.label ?? status, status?.tone ?? "orange");
+  const statusTone = getBadgeTone("status", status?.tone ?? "orange");
   const cardClassName = ["om-match-card", "match-list-card", className].filter(Boolean).join(" ");
 
   return (

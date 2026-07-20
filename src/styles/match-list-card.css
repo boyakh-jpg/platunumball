@@ -25,24 +25,8 @@
   content: "";
 }
 
-.match-list-card.om-match-card[data-status-tone="green"]::before {
-  background: var(--rb-green);
-}
-
 .match-list-card.om-match-card[data-status-tone="blue"]::before {
   background: var(--rb-blue);
-}
-
-.match-list-card.om-match-card[data-status-tone="gold"]::before {
-  background: var(--rb-gold);
-}
-
-.match-list-card.om-match-card[data-status-tone="violet"]::before {
-  background: var(--violet);
-}
-
-.match-list-card.om-match-card[data-status-tone="danger"]::before {
-  background: var(--rb-danger);
 }
 
 .match-list-card.om-match-card[data-status-tone="neutral"]::before {
@@ -101,22 +85,6 @@
 
 .match-list-badge[data-tone="orange"] {
   --match-list-badge-color: var(--rb-orange-2);
-}
-
-.match-list-badge[data-tone="green"] {
-  --match-list-badge-color: var(--rb-green);
-}
-
-.match-list-badge[data-tone="gold"] {
-  --match-list-badge-color: var(--rb-gold);
-}
-
-.match-list-badge[data-tone="violet"] {
-  --match-list-badge-color: var(--violet);
-}
-
-.match-list-badge[data-tone="danger"] {
-  --match-list-badge-color: var(--rb-danger);
 }
 
 .match-list-badge[data-tone="neutral"] {
