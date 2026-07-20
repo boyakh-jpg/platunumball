@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { isMatchRoomChatLocked } from "../src/lib/matchUtils.js";
+import { isSyntheticMatchRoomId } from "../src/lib/recruiting.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -15,8 +17,12 @@ test("recruiting detail is initial-only and synthetic rooms never reach its API"
   assert.doesNotMatch(matchesSource, /RECRUITING_ROOM_REFRESH_INTERVAL_MS/);
   assert.doesNotMatch(recruitingSource, /setInterval/);
   assert.doesNotMatch(matchesSource, /setInterval/);
-  assert.match(recruitingSource, /startsWith\("match-room-"\)/);
-  assert.ok((hookSource.match(/startsWith\("match-room-"\)/g) ?? []).length >= 2);
+  assert.ok(isSyntheticMatchRoomId("match-room-smoke"));
+  assert.equal(isSyntheticMatchRoomId("recruiting-post"), false);
+  assert.ok((recruitingSource.match(/isSyntheticMatchRoomId/g) ?? []).length >= 2);
+  assert.ok((hookSource.match(/isSyntheticMatchRoomId/g) ?? []).length >= 3);
+  assert.ok(isMatchRoomChatLocked({ status: "confirmed" }));
+  assert.equal(isMatchRoomChatLocked({ status: "agreed", startedAt: "2026-07-21T00:00:00Z" }), false);
   assert.match(recruitingSource, /roomDetailReadyKey !== roomDetailRequestKey/);
 });
 
@@ -28,7 +34,7 @@ test("admin bootstraps profile-only and loads one bounded section", async () => 
   assert.doesNotMatch(adminSource, /loadAdminContext/);
   assert.doesNotMatch(adminSource, /loadDirectory/);
   assert.doesNotMatch(adminSource, /\[app\.actions\]/);
-  assert.match(adminSource, /loadAdminSection\?\.\(\{ section, queueMode, filter: appliedQueueFilter, limit: 30, offset: 0 \}\)/);
+  assert.match(adminSource, /limit: ADMIN_DEFAULT_PAGE_LIMIT/);
   assert.match(hookSource, /pathname === "\/app\/admin"[\s\S]{0,160}profileOnly: true/);
 });
 
@@ -41,7 +47,8 @@ test("match rows and child tables stay behind bounded related IDs", async () => 
   assert.doesNotMatch(listSource, /\.limit\((?:500|600)\)|Math\.min\((?:500|600)/);
   assert.match(listSource, /rankball_related_active_match_list/);
   assert.match(listSource, /MATCH_RELATED_FALLBACK_MAX_LIMIT = 80/);
-  assert.match(listSource, /confirmed,closed,cancelled,canceled,void,voided/);
+  assert.match(listSource, /ACTIVE_MATCH_EXCLUDED_STATUS_VALUES/);
+  assert.match(listSource, /ACTIVE_MATCH_EXCLUDED_STATUS_VALUES\.join/);
 
   const playerHydrateAt = listSource.indexOf("const playerRowsPromise = matchIds.length");
   const readableFilterAt = listSource.indexOf("const readableRows = matchRows.filter");

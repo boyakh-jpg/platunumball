@@ -2848,3 +2848,4 @@ flowchart TD
 6. directory는 화면별 `players`, `teams`, `self`, `admin section` 범위와 DB filter/pagination을 사용한다. 팀·통합 page는 최대 50개, 선수 page는 최대 100개이며 팀 목록은 주장·현재 사용자 외 전체 팀원 프로필을 기본 수화하지 않는다. 경기 생성처럼 roster가 필요한 화면만 `includeTeamMemberProfiles`를 명시한다. 같은 query key는 30초 동안 재사용하고 핵심 조회 실패를 빈 배열 성공으로 병합하지 않으며 최신 검색·탭 요청만 page 상태를 갱신한다.
 7. 기본 경기 목록은 `rankball_match_list()` feed card를 우선한다. 누락 보강은 `rankball_related_active_match_list()`가 DB에서 현재 사용자 관계와 활성 상태를 먼저 판정한 뒤 최대 80개 ID만 반환한다.
 8. 경기 row는 feed card에 없는 선택 ID만 읽는다. `match_players`, `match_results`, `player_match_stats`, 팀, 구장, 프로필은 최종 선택된 경기 ID에서만 수화하며 최대 500개 경기 선조회 경로를 두지 않는다.
+9. directory/admin 조회 상한·cache·허용 section/queue는 `src/lib/queryPolicy.js`를 단일 원본으로 사용한다. synthetic 경기방 ID 판정은 `src/lib/recruiting.js`, 경기방 채팅 잠금 판정은 `src/lib/matchUtils.js`에서만 정의한다. 화면과 API에 같은 숫자·prefix·상태 배열을 다시 하드코딩하지 않는다.

@@ -13,6 +13,7 @@ import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, getTeamRoleLabel }
 import { getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
 import { getRepresentativeTeam } from "../lib/profileSetup.js";
+import { DIRECTORY_TEAM_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getTierDivision } from "../lib/tier.js";
 
 const allRegions = ["전체", ...REGIONS];
@@ -49,7 +50,7 @@ export default function Teams({ app }) {
   const directoryRegion = isHashtagQuery(query) || region === "전체" ? "" : region;
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      loadDirectory?.({ kind: "teams", filter: directoryFilter, region: directoryRegion, limit: 50, offset: 0 });
+      loadDirectory?.({ kind: "teams", filter: directoryFilter, region: directoryRegion, limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0 });
     }, directoryFilter ? 250 : 0);
     return () => window.clearTimeout(timer);
   }, [directoryFilter, directoryRegion, loadDirectory]);

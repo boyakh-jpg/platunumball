@@ -58,6 +58,7 @@ import {
   hasPendingRecruitingInvitation,
   isRecruitingPartyEntry,
   isRecruitingTeamEntry,
+  isSyntheticMatchRoomId,
   isTeamOnlyRecruitingRoom as isTeamOnlyRoom,
   isTeamRecruitingRoom,
   isSoloIndividualRecruitingRoom,
@@ -99,9 +100,11 @@ import {
   isInstantRoom,
   isMatchReferee,
   isMatchRecordMatch,
+  isMatchRoomChatLocked,
   isMatchSideTeamParty,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
+import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
 import "../styles/match-list-card.css";
@@ -226,10 +229,6 @@ function RecruitingRoomLoadingView({ onClose }) {
 
 const RECRUITING_FILTER_PAGE_LIMIT = 50;
 const RECRUITING_FILTER_DEBOUNCE_MS = 250;
-
-function isSyntheticMatchRoomId(roomId) {
-  return String(roomId ?? "").startsWith("match-room-");
-}
 
 function getMaxInputValue() {
   return getPublicRoomMaxDateInput();
@@ -2447,7 +2446,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
 
   useEffect(() => {
     if (!shouldLoadTeamDirectory) return;
-    loadDirectory?.({ kind: "teams", limit: 50, offset: 0, includeTeamMemberProfiles: true });
+    loadDirectory?.({ kind: "teams", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true });
   }, [loadDirectory, shouldLoadTeamDirectory]);
 
   const userById = useMemo(
@@ -2496,13 +2495,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const roomChatLobby = useMemo(() => getRecruitingLobby(selectedPost, app.state), [app.state, selectedPost]);
   const canPollRoomChat = isCurrentUserRoomParticipant(selectedPost, roomChatLobby, app.currentUser.id);
   const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId), [roomPostId]);
-  const sourceMatchPhaseForChat = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
-  const sourceMatchStatusForChat = String(sourceMatch?.status ?? "").trim().toLowerCase();
   const roomChatLocked = sourceMatch
-    ? (
-      ["dispute", "record", "cancelled", "void"].includes(sourceMatchPhaseForChat?.phase) ||
-      ["closed", "cancelled", "canceled", "void", "voided"].includes(sourceMatchStatusForChat)
-    )
+    ? isMatchRoomChatLocked(sourceMatch)
     : Boolean(selectedPost?.confirmedAt || getRecruitingPostTerminalState(selectedPost));
   const modalPostDetailLoadRef = useRef("");
   const pollRecruitingChatRef = useRef(app.actions.pollRecruitingChat);
@@ -2862,7 +2856,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   };
   const openInviteSlot = (roomPost, sideName, reserve = false, slotKey = '', event = null) => {
     setSlotActionDraft(null);
-    loadDirectory?.({ kind: "players", limit: 50, offset: 0 });
+    loadDirectory?.({ kind: "players", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
     setInviteError("");
     setInviteDraft({ postId: roomPost.id, sideName, reserve, slotKey, query: '', selectedPlayerIds: [], anchor: getCommandAnchor(event) });
   };

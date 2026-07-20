@@ -4,6 +4,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import RankingTable from "../components/ranking/RankingTable.jsx";
 import RankingTabs from "../components/ranking/RankingTabs.jsx";
+import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 const tabs = [
@@ -23,7 +24,7 @@ export default function Rankings({ app }) {
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "local" ? "all" : "players";
   const directoryRegion = tab === "local" ? myRegion : "";
   useEffect(() => {
-    loadDirectory?.({ kind: directoryKind, region: directoryRegion, limit: 50, offset: 0 });
+    loadDirectory?.({ kind: directoryKind, region: directoryRegion, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
   }, [directoryKind, directoryRegion, loadDirectory]);
   const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   const visiblePlayers = app.rankings.players.filter((user) => !hiddenUserIds.has(user.id));

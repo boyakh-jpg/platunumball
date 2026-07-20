@@ -18,6 +18,7 @@ import {
 } from "../lib/admin.js";
 import { getCourtLayoutLabel, getCourtLocationMatches, getCourtMapUrl, getCourtSurfaceLabel } from "../lib/courts.js";
 import { getMatchHashtag } from "../lib/handles.js";
+import { ADMIN_DEFAULT_PAGE_LIMIT, DEFAULT_ADMIN_QUEUE_MODE, DEFAULT_ADMIN_SECTION } from "../lib/queryPolicy.js";
 import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
 import {
   cloneRatingPolicy,
@@ -298,10 +299,10 @@ export default function Admin({ app }) {
   const canOwner = adminLevel >= 100;
   const sectionOptions = ADMIN_SECTION_OPTIONS.filter((option) => !option.ownerOnly || canOwner);
   const requestedSection = searchParams.get("section");
-  const section = sectionOptions.some((option) => option.id === requestedSection) ? requestedSection : "courts";
+  const section = sectionOptions.some((option) => option.id === requestedSection) ? requestedSection : DEFAULT_ADMIN_SECTION;
   const view = ["appointments", "ratingPolicy"].includes(section) ? "courts" : section;
-  const [queueModeState, setQueueModeState] = useState({ section: "courts", value: "pending" });
-  const queueMode = queueModeState.section === section ? queueModeState.value : "pending";
+  const [queueModeState, setQueueModeState] = useState({ section: DEFAULT_ADMIN_SECTION, value: DEFAULT_ADMIN_QUEUE_MODE });
+  const queueMode = queueModeState.section === section ? queueModeState.value : DEFAULT_ADMIN_QUEUE_MODE;
   const setQueueMode = (value) => setQueueModeState({ section, value });
   const [queueFilterByView, setQueueFilterByView] = useState({});
   const [appliedQueueFilterByView, setAppliedQueueFilterByView] = useState({});
@@ -310,7 +311,7 @@ export default function Admin({ app }) {
   const loadAdminSection = app.actions.loadAdminSection;
   useEffect(() => {
     if (section === "ratingPolicy") return;
-    loadAdminSection?.({ section, queueMode, filter: appliedQueueFilter, limit: 30, offset: 0 });
+    loadAdminSection?.({ section, queueMode, filter: appliedQueueFilter, limit: ADMIN_DEFAULT_PAGE_LIMIT, offset: 0 });
   }, [appliedQueueFilter, loadAdminSection, queueMode, section]);
   const [selectedIdByView, setSelectedIdByView] = useState({});
   const [selectedReportIdByScope, setSelectedReportIdByScope] = useState({});

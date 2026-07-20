@@ -3,6 +3,12 @@ import { getMatchScheduledDate, isEligibleReferee, isInstantRoom } from "./match
 import { getAgeGroupForUser } from "./profileSetup.js";
 import { TIERS, getTierDivision } from "./tier.js";
 
+export const SYNTHETIC_MATCH_ROOM_PREFIX = "match-room-";
+
+export function isSyntheticMatchRoomId(roomId = "") {
+  return String(roomId ?? "").startsWith(SYNTHETIC_MATCH_ROOM_PREFIX);
+}
+
 const RECRUITING_TYPES = {
   need_player: {
     label: "매치 큐",

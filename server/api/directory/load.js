@@ -38,15 +38,16 @@ import {
 } from "../../../src/data/repositoryColumns.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import { fromRemoteTeam, fromRemoteTeamInvitation } from "../../../src/data/teamMappers.js";
+import {
+  DIRECTORY_ID_BATCH_SIZE,
+  getDirectoryPageRequest,
+  normalizeAdminQueueMode,
+  normalizeAdminSection,
+  normalizeDirectoryFilter,
+  normalizeDirectoryKind,
+} from "../../../src/lib/queryPolicy.js";
 
 const PROFILE_PRIVACY_KEYS = ["regionRanking", "teamHistory", "statSummary"];
-const DIRECTORY_PAGE_LIMIT = 100;
-const DIRECTORY_PAGE_LIMIT_MAX = 100;
-const ID_BATCH_SIZE = 150;
-const ADMIN_PAGE_LIMIT = 30;
-const ADMIN_PAGE_LIMIT_MAX = 60;
-const DIRECTORY_TEAM_PAGE_LIMIT_MAX = 50;
-const ADMIN_SECTIONS = new Set(["courts", "players", "matches", "teams", "appointments"]);
 const ADMIN_REPORT_TYPES = {
   courts: ["court", "court_review", "court_request"],
   players: ["player"],
@@ -54,26 +55,12 @@ const ADMIN_REPORT_TYPES = {
   teams: ["team_emblem"],
 };
 
-function clampInteger(value, fallback, min, max) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(max, Math.max(min, Math.floor(parsed)));
-}
-
-export function getPageRequest(body = {}, { admin = false } = {}) {
-  return {
-    limit: clampInteger(body.limit, admin ? ADMIN_PAGE_LIMIT : DIRECTORY_PAGE_LIMIT, 1, admin ? ADMIN_PAGE_LIMIT_MAX : DIRECTORY_PAGE_LIMIT_MAX),
-    offset: clampInteger(body.offset, 0, 0, 10000),
-  };
+export function getPageRequest(body = {}, { admin = false, kind = "" } = {}) {
+  return getDirectoryPageRequest(body, { admin, kind });
 }
 
 export function normalizeFilter(value = "") {
-  return String(value ?? "")
-    .trim()
-    .slice(0, 80)
-    .replace(/[,:%()*"'\\.]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeDirectoryFilter(value);
 }
 
 function uniqueRows(rows = []) {
@@ -109,8 +96,8 @@ async function readRowsByIds(supabase, table, columns, column, ids, { optional =
   const scopedIds = uniqueValues(ids);
   if (!scopedIds.length) return [];
   const rows = [];
-  for (let index = 0; index < scopedIds.length; index += ID_BATCH_SIZE) {
-    const batch = scopedIds.slice(index, index + ID_BATCH_SIZE);
+  for (let index = 0; index < scopedIds.length; index += DIRECTORY_ID_BATCH_SIZE) {
+    const batch = scopedIds.slice(index, index + DIRECTORY_ID_BATCH_SIZE);
     const { data, error } = await supabase.from(table).select(columns).in(column, batch);
     if (error) {
       if (!optional) throw error;
@@ -129,12 +116,11 @@ function getCurrentUser(context) {
 }
 
 export function getAdminSection(value = "") {
-  const section = String(value ?? "").trim();
-  return ADMIN_SECTIONS.has(section) ? section : "courts";
+  return normalizeAdminSection(value);
 }
 
 export function getQueueMode(value = "") {
-  return value === "history" ? "history" : "pending";
+  return normalizeAdminQueueMode(value);
 }
 
 function collectReportProfileIds(reports = []) {
@@ -423,11 +409,8 @@ async function loadDirectoryPage(context, body = {}) {
   const filter = normalizeFilter(body.filter ?? body.query ?? body.q);
   const region = normalizeFilter(body.region);
   const profileId = String(body.profileId ?? "").trim();
-  const kind = ["self", "players", "teams", "affiliations"].includes(body.kind) ? body.kind : "all";
-  const requestedPage = getPageRequest(body);
-  const pageRequest = ["all", "teams"].includes(kind)
-    ? { ...requestedPage, limit: Math.min(DIRECTORY_TEAM_PAGE_LIMIT_MAX, requestedPage.limit) }
-    : requestedPage;
+  const kind = normalizeDirectoryKind(body.kind, "all");
+  const pageRequest = getPageRequest(body, { kind });
   const includeSelfDetails = kind === "self";
   const includeTeamMemberProfiles = body.includeTeamMemberProfiles === true;
   const currentUser = getCurrentUser(context);

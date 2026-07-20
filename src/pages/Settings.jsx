@@ -18,6 +18,7 @@ import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCou
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
+import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import {
   DISCORD_NOTIFICATION_EVENTS,
   consumeDiscordOAuthResult,
@@ -187,7 +188,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const loadDirectory = app.actions.loadDirectory;
   const loadAdminContext = app.actions.loadAdminContext;
   useEffect(() => {
-    loadDirectory?.({ kind: "self", limit: 30, offset: 0 });
+    loadDirectory?.({ kind: "self", limit: DIRECTORY_SELF_PAGE_LIMIT, offset: 0 });
     loadAdminContext?.();
   }, [loadAdminContext, loadDirectory]);
   const requestedSettingsSection = Object.prototype.hasOwnProperty.call(SETTINGS_SECTIONS, section) ? section : "main";

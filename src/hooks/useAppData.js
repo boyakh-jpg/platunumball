@@ -107,6 +107,17 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { readProfileBindings, readProfileCache, writeProfileBindings, writeProfileCache } from "../lib/storage.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
 import { isNotificationFromBlockedUser } from "../lib/notifications.js";
+import {
+  ADMIN_DEFAULT_PAGE_LIMIT,
+  DEFAULT_ADMIN_QUEUE_MODE,
+  DEFAULT_ADMIN_SECTION,
+  DIRECTORY_CACHE_TTL_MS,
+  DIRECTORY_DEFAULT_PAGE_LIMIT,
+  getDirectoryPageRequest,
+  normalizeAdminQueueMode,
+  normalizeAdminSection,
+} from "../lib/queryPolicy.js";
+import { isSyntheticMatchRoomId } from "../lib/recruiting.js";
 import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
 import { prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
 
@@ -115,9 +126,6 @@ const ROOM_CHAT_MESSAGE_SELECT = "id,room_type,room_id,user_id,body,created_at,m
 const ROOM_CHAT_INITIAL_LIMIT = 30;
 const ROOM_CHAT_POLL_LIMIT = 20;
 const ROOM_CHAT_POLL_INTERVAL_MS = 3000;
-const DIRECTORY_CACHE_TTL_MS = 30 * 1000;
-const DIRECTORY_PAGE_LIMIT = 100;
-const ADMIN_PAGE_LIMIT = 30;
 
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
@@ -1290,7 +1298,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "", page: null, cacheKey: "" });
   const [adminState, setAdminState] = useState(null);
-  const [adminStatus, setAdminStatus] = useState({ loading: false, loaded: false, error: "", section: "", queueMode: "pending", page: null, counts: {} });
+  const [adminStatus, setAdminStatus] = useState({ loading: false, loaded: false, error: "", section: "", queueMode: DEFAULT_ADMIN_QUEUE_MODE, page: null, counts: {} });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
   const [recorderMatchesLoaded, setRecorderMatchesLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
@@ -1450,7 +1458,7 @@ export function useAppData(authUser = null, appLocation = null) {
       setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "", page: null, cacheKey: "" });
       setAdminState(null);
-      setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: "pending", page: null, counts: {} });
+      setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: DEFAULT_ADMIN_QUEUE_MODE, page: null, counts: {} });
       setProfileRecordsLoaded(false);
       setRecorderMatchesLoaded(false);
       return undefined;
@@ -1490,7 +1498,7 @@ export function useAppData(authUser = null, appLocation = null) {
     setState(getCachedBootstrapState(authUserId, authEmail));
     setDirectoryStatus({ loading: false, loaded: false, error: "", page: null, cacheKey: "" });
     setAdminState(null);
-    setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: "pending", page: null, counts: {} });
+    setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: DEFAULT_ADMIN_QUEUE_MODE, page: null, counts: {} });
     setProfileRecordsLoaded(false);
     setRecorderMatchesLoaded(false);
     const initialLoadOptions = getInitialStateLoadOptions(appLocation);
@@ -1678,10 +1686,9 @@ export function useAppData(authUser = null, appLocation = null) {
   }, [authUserId, setState, trackedPostServerAction]);
 
   const loadAdminSection = useCallback(async (options = {}) => {
-    const section = ["courts", "players", "matches", "teams", "appointments"].includes(options.section) ? options.section : "courts";
-    const queueMode = options.queueMode === "history" ? "history" : "pending";
-    const limit = Math.max(1, Math.min(60, Number(options.limit) || ADMIN_PAGE_LIMIT));
-    const offset = Math.max(0, Number(options.offset) || 0);
+    const section = normalizeAdminSection(options.section);
+    const queueMode = normalizeAdminQueueMode(options.queueMode);
+    const { limit, offset } = getDirectoryPageRequest(options, { admin: true });
     const filter = String(options.filter ?? options.query ?? "").trim();
     const force = options.force === true;
     const cacheKey = `${authUserId || ""}:${section}:${queueMode}:${limit}:${offset}:${filter}`;
@@ -1761,9 +1768,9 @@ export function useAppData(authUser = null, appLocation = null) {
     const current = adminStatusRef.current;
     adminCacheRef.current = new Map();
     return loadAdminSection({
-      section: current.section || "courts",
-      queueMode: current.queueMode || "pending",
-      limit: current.page?.limit ?? ADMIN_PAGE_LIMIT,
+      section: current.section || DEFAULT_ADMIN_SECTION,
+      queueMode: current.queueMode || DEFAULT_ADMIN_QUEUE_MODE,
+      limit: current.page?.limit ?? ADMIN_DEFAULT_PAGE_LIMIT,
       offset: 0,
       filter: current.page?.filter ?? "",
       force: true,
@@ -2508,7 +2515,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const loadRecruitingPost = useCallback(async (postId) => {
     if (!isSupabaseConfigured || !authUserId || !postId) return false;
     const safePostId = String(postId).trim();
-    if (!safePostId || safePostId.startsWith("match-room-")) return false;
+    if (!safePostId || isSyntheticMatchRoomId(safePostId)) return false;
     const currentPromise = recruitingPostPromiseRef.current.get(safePostId);
     if (currentPromise) return currentPromise;
     const promise = (async () => {
@@ -2553,8 +2560,7 @@ export function useAppData(authUser = null, appLocation = null) {
     const endpoint = teamDetailMatch ? "/api/teams/detail" : "/api/directory/load";
     const playerDetailMatch = pathname.match(/^\/app\/players\/([^/]+)$/);
     const kind = options.kind ?? (playerDetailMatch ? "players" : pathname === "/app/teams" ? "teams" : "self");
-    const limit = Math.max(1, Math.min(100, Number(options.limit) || DIRECTORY_PAGE_LIMIT));
-    const offset = Math.max(0, Number(options.offset) || 0);
+    const { limit, offset } = getDirectoryPageRequest(options, { kind });
     const filter = String(options.filter ?? options.query ?? "").trim();
     const region = String(options.region ?? "").trim();
     const profileId = String(options.profileId ?? (playerDetailMatch ? decodeURIComponent(playerDetailMatch[1]) : "")).trim();
@@ -2901,7 +2907,7 @@ export function useAppData(authUser = null, appLocation = null) {
           if (current.loading || nextOffset === null || nextOffset === undefined) return Promise.resolve(false);
           return loadDirectory({
             kind: current.page?.kind ?? "all",
-            limit: current.page?.limit ?? DIRECTORY_PAGE_LIMIT,
+            limit: current.page?.limit ?? DIRECTORY_DEFAULT_PAGE_LIMIT,
             offset: nextOffset,
             filter: current.page?.filter ?? "",
             region: current.page?.region ?? "",
@@ -2916,9 +2922,9 @@ export function useAppData(authUser = null, appLocation = null) {
           const nextOffset = current.page?.nextOffset;
           if (current.loading || nextOffset === null || nextOffset === undefined) return Promise.resolve(false);
           return loadAdminSection({
-            section: current.section || "courts",
-            queueMode: current.queueMode || "pending",
-            limit: current.page?.limit ?? ADMIN_PAGE_LIMIT,
+            section: current.section || DEFAULT_ADMIN_SECTION,
+            queueMode: current.queueMode || DEFAULT_ADMIN_QUEUE_MODE,
+            limit: current.page?.limit ?? ADMIN_DEFAULT_PAGE_LIMIT,
             offset: nextOffset,
             filter: current.page?.filter ?? "",
           });
@@ -3765,7 +3771,7 @@ export function useAppData(authUser = null, appLocation = null) {
       sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body), { action: "sendRecruitingChat", body, optimisticBeforeServerCheck: true }),
       pollRecruitingChat: (postId) => {
         const roomId = String(postId ?? "").trim();
-        if (!isSupabaseConfigured || !supabase || !roomId || roomId.startsWith("match-room-") || typeof window === "undefined" || typeof document === "undefined") return () => {};
+        if (!isSupabaseConfigured || !supabase || !roomId || isSyntheticMatchRoomId(roomId) || typeof window === "undefined" || typeof document === "undefined") return () => {};
         let stopped = false;
         let intervalId = null;
         let fetching = false;

@@ -43,7 +43,8 @@ import { getMatchRoomPhase, isMatchClosedNotice, isMatchInPlayMenu, isMatchInSch
 let userRoomFeedAvailable = true;
 let relatedActiveMatchListAvailable = true;
 const MATCH_LIST_MAX_LIMIT = REMOTE_CLIENT_ACTIVE_MATCH_LIMIT;
-const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "closed", "cancelled", "canceled", "void", "voided"]);
+const ACTIVE_MATCH_EXCLUDED_STATUS_VALUES = Object.freeze(["confirmed", "closed", "cancelled", "canceled", "void", "voided"]);
+const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(ACTIVE_MATCH_EXCLUDED_STATUS_VALUES);
 const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record"]);
 const RECENT_COMPLETED_MATCH_HOURS = 24;
 const RECENT_COMPLETED_MATCH_MAX_HOURS = 24 * 31 * REMOTE_CLIENT_RECORD_MONTHS;
@@ -53,7 +54,7 @@ const MATCH_FEED_ROW_MAX_LIMIT = 320;
 const MATCH_FEED_ROW_FACTOR = 4;
 const RECENT_COMPLETED_FEED_ROW_MAX_LIMIT = 80;
 const MATCH_RELATED_FALLBACK_MAX_LIMIT = 80;
-const MATCH_TERMINAL_STATUS_FILTER = "(confirmed,closed,cancelled,canceled,void,voided)";
+const MATCH_TERMINAL_STATUS_FILTER = `(${ACTIVE_MATCH_EXCLUDED_STATUS_VALUES.join(",")})`;
 
 function getFeedOffsetCursor(value = "") {
   const text = String(value ?? "");

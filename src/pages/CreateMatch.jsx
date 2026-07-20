@@ -14,6 +14,7 @@ import { getCourtLayoutLabel, getCourtPlayWarning, getCourtRecommendationScore, 
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
+import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
 const today = getLocalDateInputValue();
@@ -310,7 +311,7 @@ export default function CreateMatch({ app }) {
   useEffect(() => {
     if (requestedTournamentDirectoryRef.current) return;
     requestedTournamentDirectoryRef.current = true;
-    loadDirectory?.({ kind: "teams", limit: 50, offset: 0, includeTeamMemberProfiles: true });
+    loadDirectory?.({ kind: "teams", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true });
   }, [loadDirectory]);
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id && member.role === "captain")),

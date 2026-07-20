@@ -1122,6 +1122,15 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
   return ROOM_PHASE_META.waiting;
 }
 
+const MATCH_ROOM_CHAT_LOCKED_PHASES = new Set(["dispute", "record", "cancelled", "void"]);
+const MATCH_ROOM_CHAT_LOCKED_STATUSES = new Set(["closed", "cancelled", "canceled", "void", "voided"]);
+
+export function isMatchRoomChatLocked(match = {}, now = new Date()) {
+  const phase = getMatchRoomPhase(match, now).phase;
+  const status = String(match.status ?? "").trim().toLowerCase();
+  return MATCH_ROOM_CHAT_LOCKED_PHASES.has(phase) || MATCH_ROOM_CHAT_LOCKED_STATUSES.has(status);
+}
+
 export function isMatchInScheduleMenu(match = {}, now = new Date()) {
   return ["locked", "checkin"].includes(getMatchRoomPhase(match, now).phase);
 }

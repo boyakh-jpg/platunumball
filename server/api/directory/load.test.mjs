@@ -9,12 +9,22 @@ import {
   normalizeFilter,
 } from "./load.js";
 import { buildAdminReviewModel } from "../../../src/lib/admin.js";
+import {
+  ADMIN_DEFAULT_PAGE_LIMIT,
+  DIRECTORY_CACHE_TTL_MS,
+  DIRECTORY_PICKER_PAGE_LIMIT,
+  DIRECTORY_TEAM_PAGE_LIMIT,
+} from "../../../src/lib/queryPolicy.js";
 
 test("directory/admin page limits stay bounded", () => {
   assert.deepEqual(getPageRequest({}), { limit: 100, offset: 0 });
   assert.deepEqual(getPageRequest({ limit: 999, offset: -4 }), { limit: 100, offset: 0 });
-  assert.deepEqual(getPageRequest({}, { admin: true }), { limit: 30, offset: 0 });
+  assert.deepEqual(getPageRequest({}, { admin: true }), { limit: ADMIN_DEFAULT_PAGE_LIMIT, offset: 0 });
   assert.deepEqual(getPageRequest({ limit: 999, offset: 12.8 }, { admin: true }), { limit: 60, offset: 12 });
+  assert.deepEqual(getPageRequest({ limit: 999 }, { kind: "teams" }), { limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0 });
+  assert.deepEqual(getPageRequest({ limit: 999 }, { kind: "all" }), { limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0 });
+  assert.equal(DIRECTORY_PICKER_PAGE_LIMIT, 50);
+  assert.equal(DIRECTORY_CACHE_TTL_MS, 30_000);
 });
 
 test("admin scope and queue values are allowlisted", () => {
@@ -55,8 +65,8 @@ test("directory loader does not call the legacy broad repository loader", async 
   const source = await readFile(new URL("./load.js", import.meta.url), "utf8");
   assert.doesNotMatch(source, /loadNormalizedDirectoryStateFromClient/);
   assert.match(source, /\.range\(offset, offset \+ limit\)/);
-  assert.match(source, /ID_BATCH_SIZE/);
-  assert.match(source, /\["self", "players", "teams", "affiliations"\]/);
+  assert.match(source, /DIRECTORY_ID_BATCH_SIZE/);
+  assert.match(source, /normalizeDirectoryKind/);
   assert.match(source, /scope === "admin"/);
   assert.match(source, /includeSelfDetails = kind === "self"/);
   assert.match(source, /includeTeamMemberProfiles \|\| row\.role === "captain"/);
@@ -71,9 +81,8 @@ test("admin route bootstraps profile only and owns a separate state cache", asyn
   assert.match(hookSource, /const \[adminState, setAdminState\] = useState\(null\)/);
   assert.match(hookSource, /latestDirectoryRequestRef\.current !== cacheKey/);
   assert.match(hookSource, /latestAdminRequestRef\.current !== cacheKey/);
-  assert.match(hookSource, /safePostId\.startsWith\("match-room-"\)/);
-  assert.match(hookSource, /roomId\.startsWith\("match-room-"\)/);
+  assert.ok((hookSource.match(/isSyntheticMatchRoomId/g) ?? []).length >= 3);
   assert.doesNotMatch(adminSource, /\[app\.actions\]/);
-  assert.match(adminSource, /loadAdminSection\?\.\(\{ section, queueMode, filter: appliedQueueFilter/);
-  assert.match(settingsSource, /loadDirectory\?\.\(\{ kind: "self", limit: 30, offset: 0 \}\)/);
+  assert.match(adminSource, /limit: ADMIN_DEFAULT_PAGE_LIMIT/);
+  assert.match(settingsSource, /limit: DIRECTORY_SELF_PAGE_LIMIT/);
 });
