@@ -26,6 +26,7 @@ import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
+import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
@@ -103,6 +104,7 @@ import {
 } from "../lib/matchUtils.js";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
+import "../styles/match-list-card.css";
 
 const CHAT_MESSAGE_MAX_LENGTH = 60;
 const CHAT_SEND_COOLDOWN_MS = 3000;
@@ -886,14 +888,13 @@ function QueueRoomBoard({ post, lobby }) {
   const ruleSummary = getRecruitingRuleSummary(post);
 
   return (
-    <div className="om-match-summary-box count-summary">
-      <div className="om-summary-line">
-        <span className="om-summary-side">A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
-        <strong>{filled}/{capacity}</strong>
-        <span className="om-summary-side">B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
-      </div>
-      {ruleSummary ? <span className="om-summary-detail">{ruleSummary}</span> : null}
-    </div>
+    <MatchListSummary
+      left={`A ${lobby.sides.teamA.projectedFilled}/${lobby.sides.teamA.capacity}`}
+      center={`${filled}/${capacity}`}
+      right={`B ${lobby.sides.teamB.projectedFilled}/${lobby.sides.teamB.capacity}`}
+      detail={ruleSummary}
+      variant="count"
+    />
   );
 }
 
@@ -4844,26 +4845,25 @@ function RecruitingReady({ app }) {
           const roomTitle = getRecruitingCardTitle(post);
 
           return (
-            <article
+            <MatchListCard
               id={`recruiting-room-${post.id}`}
               key={post.id}
-              className={`om-match-card om-status-contract arena-lobby-card ${myRoom ? "arena-my-room" : ""} ${invited ? "arena-invited-room" : ""} ${targetPostId === post.id ? "arena-target-room" : ""}`}
-              onClick={() => openSelectedPost(post.id)}
-            >
-              <div className="om-card-main">
-                <div className="om-card-kicker">
-                  <span className={`om-status-pill ${roomStatus.tone}`}>{roomStatus.label}</span>
-                  {roomTag ? <span className="om-card-official om-card-relation">{roomTag}</span> : null}
-                  <span className="om-card-mode">{post.mode}</span>
-                  <span className="om-card-official">{getRoomVisibilityLabel(post)}</span>
-                  <span className="om-card-official">{getRecruitingRoomTypeLabel(post, lobby)}</span>
-                  <span className="om-card-official">{getRoomCompetitionLabel(post)}</span>
-                  {refereeLabel !== "심판 없음" ? <span className="om-card-official om-card-referee">{refereeLabel}</span> : null}
-                  {targetTeam ? <span className="om-card-official">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : post.targetTeamName ? <span className="om-card-official">희망 상대 {post.targetTeamName}</span> : null}
-                  {isNationalRecruitingPost(post, app.state) ? <span className="om-card-official">전국 노출</span> : null}
-                </div>
-                {roomTitle ? <h3>{roomTitle}</h3> : null}
-                <p>
+              className={`${myRoom ? "arena-my-room" : ""} ${invited ? "arena-invited-room" : ""} ${targetPostId === post.id ? "arena-target-room" : ""}`}
+              status={roomStatus}
+              mode={post.mode}
+              visibility={getRoomVisibilityLabel(post)}
+              roomType={getRecruitingRoomTypeLabel(post, lobby)}
+              competition={getRoomCompetitionLabel(post)}
+              referee={refereeLabel}
+              extraBadges={[
+                roomTag ? { kind: "relation", label: roomTag } : null,
+                targetTeam ? { kind: "target", label: <>희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></> } : null,
+                !targetTeam && post.targetTeamName ? { kind: "target", label: `희망 상대 ${post.targetTeamName}` } : null,
+                isNationalRecruitingPost(post, app.state) ? { kind: "national", label: "전국 노출" } : null,
+              ].filter(Boolean)}
+              title={roomTitle}
+              meta={(
+                <>
                   <CalendarDays size={15} />
                   {getRecruitingSchedule(post)} · <CourtHoverCard court={courtByName[post.court]} courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
                   {hostTeam ? (
@@ -4873,17 +4873,13 @@ function RecruitingReady({ app }) {
                   ) : (
                     <PlayerHoverCard user={host} teams={app.state.teams} as="span">{hostName}</PlayerHoverCard>
                   )}
-                </p>
-                <QueueRoomBoard post={post} lobby={lobby} roomStatus={roomStatus} />
-              </div>
-
-              <button type="button" className="button button-secondary button-md om-room-link" onClick={(event) => {
-                event.stopPropagation();
-                openSelectedPost(post.id);
-              }}>
-                {roomStatus.actionLabel}
-              </button>
-            </article>
+                </>
+              )}
+              summary={<QueueRoomBoard post={post} lobby={lobby} />}
+              actionLabel={roomStatus.actionLabel}
+              onOpen={() => openSelectedPost(post.id)}
+              onAction={() => openSelectedPost(post.id)}
+            />
           );
         }) : queueListLoading ? (
           <div className="arena-empty-state">

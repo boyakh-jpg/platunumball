@@ -4,6 +4,7 @@ import { CalendarDays, ShieldCheck } from "lucide-react";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
+import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getRegisteredCourts } from "../lib/courts.js";
 import {
@@ -30,6 +31,7 @@ import { SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
+import "../styles/match-list-card.css";
 
 const statusMeta = {
   approval: { label: "승인", tone: "orange" },
@@ -251,44 +253,34 @@ export default function Recorder({ app }) {
               const summaryValue = hasScore ? `${scoreA} : ${scoreB}` : "vs";
 
               return (
-                <article key={match.id} className={`om-match-card om-status-${match.status} arena-lobby-card`} onClick={() => openMatch(match.id)}>
-                  <div className="om-card-main">
-                    <div className="om-card-kicker">
-                      <span className={`om-status-pill ${status.tone}`}>{status.label}</span>
-                      <span className="om-card-mode">{match.mode}</span>
-                      <span className="om-card-official">{getRoomVisibilityLabel(match, sourcePost)}</span>
-                      <span className="om-card-official">{getRoomTypeLabel(match)}</span>
-                      <span className="om-card-official">{getRoomCompetitionLabel(match)}</span>
-                      <span className="om-card-official">{getRoomRefereeLabel(match)}</span>
-                    </div>
-                    {title ? <h3>{title}</h3> : null}
-                    <p>
+                <MatchListCard
+                  key={match.id}
+                  status={status}
+                  mode={match.mode}
+                  visibility={getRoomVisibilityLabel(match, sourcePost)}
+                  roomType={getRoomTypeLabel(match)}
+                  competition={getRoomCompetitionLabel(match)}
+                  referee={getRoomRefereeLabel(match)}
+                  title={title}
+                  meta={(
+                    <>
                       <CalendarDays size={15} />
                       {getRoomScheduleLabel(match)} · <CourtHoverCard court={courtByName[match.court]} courtName={match.court}>{match.court}</CourtHoverCard>
-                    </p>
-                  </div>
-
-                  <div className="om-match-summary-box count-summary">
-                    <div className="om-summary-line">
-                      <span className="om-summary-side">
-                        <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
-                      </span>
-                      <strong>{summaryValue}</strong>
-                      <span className="om-summary-side">
-                        <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
-                      </span>
-                    </div>
-                    <span className="om-summary-meta">{meta}</span>
-                    <span className="om-summary-detail">{getRoleText(match, user, recorderSides)} · {getDeadlineLabel(match)}</span>
-                  </div>
-
-                  <button type="button" className="button button-secondary button-md om-room-link" onClick={(event) => {
-                    event.stopPropagation();
-                    openMatch(match.id);
-                  }}>
-                    {getActionLabel(match)}
-                  </button>
-                </article>
+                    </>
+                  )}
+                  summary={(
+                    <MatchListSummary
+                      left={<TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>}
+                      center={summaryValue}
+                      right={<TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>}
+                      meta={meta}
+                      detail={`${getRoleText(match, user, recorderSides)} · ${getDeadlineLabel(match)}`}
+                    />
+                  )}
+                  actionLabel={getActionLabel(match)}
+                  onOpen={() => openMatch(match.id)}
+                  onAction={() => openMatch(match.id)}
+                />
               );
             })}
           </section>
