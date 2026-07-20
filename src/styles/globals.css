@@ -18903,3 +18903,148 @@ html[data-theme="light"] .court-map-picker-state {
     padding-inline: 6px;
   }
 }
+
+/* 2026-07-21 compact team actions and separated team controls. */
+.team-detail-heading-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rank-team-hero .team-detail-heading-row .favorite-toggle-button {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.my-team-row {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+
+.my-team-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.my-team-row .my-team-copy > strong,
+.my-team-row .my-team-copy > em {
+  min-width: 0;
+  grid-column: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-team-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.my-team-row .my-team-tier {
+  width: max-content;
+  max-width: 100%;
+  grid-column: auto;
+}
+
+.member-add-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.member-add-form > label:first-child,
+.member-add-form > .form-chip,
+.member-add-form > .form-warning {
+  grid-column: 1 / -1;
+}
+
+.member-add-form > .button {
+  width: auto;
+  min-width: max-content;
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.player-representative-team-link {
+  display: inline-grid;
+  width: fit-content;
+  max-width: 100%;
+  min-height: var(--ui-button-height);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  padding: 6px 10px;
+}
+
+.player-representative-team-link > span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.player-representative-team-link small {
+  color: var(--rb-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.player-representative-team-link strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .emblem-source-grid.two-options,
+  .emblem-style-controls,
+  .team-emblem-text-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rank-team-page .member-control-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .rank-team-page .member-control-row > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .rank-team-page .member-control-row > select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 720px) {
+  .rank-team-page .member-control-row {
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 0.5fr) auto;
+  }
+
+  .rank-team-page .member-control-row > :first-child {
+    grid-column: auto;
+  }
+
+  .rank-team-page .team-danger-zone {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .my-team-row {
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+
+  .my-team-actions {
+    width: 100%;
+    grid-column: 1 / -1;
+  }
+}

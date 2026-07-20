@@ -330,7 +330,18 @@ export default function TeamDetail({ app }) {
     <div className="page-stack team-detail-page rank-team-page">
       <section className="team-detail-hero rank-profile-hero rank-team-hero" style={{ "--team-color": team.accent }}>
         <div>
-          <p className="eyebrow">Team Profile</p>
+          <div className="team-detail-heading-row">
+            <p className="eyebrow">Team Profile</p>
+            <Button
+              type="button"
+              variant={isFavoriteTeam ? "primary" : "secondary"}
+              className={isFavoriteTeam ? "favorite-toggle-button active" : "favorite-toggle-button"}
+              onClick={() => app.actions.toggleFavoriteTeam(team.id)}
+            >
+              <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
+              {isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
+            </Button>
+          </div>
           <h1>{team.name}</h1>
           <p>{team.region} · {team.homeCourt}</p>
           <div className="badge-row">
@@ -338,15 +349,6 @@ export default function TeamDetail({ app }) {
             <TierBadge mmr={team.mmr} />
             <Badge tone="gold">팀장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
           </div>
-          <Button
-            type="button"
-            variant={isFavoriteTeam ? "primary" : "secondary"}
-            className={isFavoriteTeam ? "favorite-toggle-button active" : "favorite-toggle-button"}
-            onClick={() => app.actions.toggleFavoriteTeam(team.id)}
-          >
-            <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
-            {isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
-          </Button>
         </div>
         <div className="team-tier-hero">
           <TierEmblem mmr={team.mmr} size="md" showLabel />
@@ -512,92 +514,6 @@ export default function TeamDetail({ app }) {
             </div>
             {canManage ? (
               <>
-                <div className="team-emblem-editor">
-                  <TeamEmblem team={{ ...team, ...emblemStyleDraft }} size="lg" />
-                  <span>
-                    <strong>팀 엠블럼</strong>
-                    <small>{emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 사진을 변경할 수 있습니다.` : "사진은 위치와 확대·축소를 조정한 뒤 저장합니다."}</small>
-                    {emblemFeedback ? <em>{emblemFeedback}</em> : null}
-                  </span>
-                </div>
-                <div className="emblem-source-grid two-options">
-                  <button type="button" className={emblemSource === "initial" ? "active" : ""} aria-pressed={emblemSource === "initial"} disabled={emblemPending} onClick={() => selectEmblemSource("initial")}>
-                    <strong>기본값</strong>
-                  </button>
-                  <button type="button" className={emblemSource === "upload" ? "active" : ""} aria-pressed={emblemSource === "upload"} disabled={emblemPending || (!team.emblemKey && emblemUploadLocked)} onClick={() => selectEmblemSource("upload")}>
-                    <strong>사진 사용</strong>
-                    {!team.emblemKey ? <span>사진 선택 필요</span> : null}
-                  </button>
-                </div>
-                <input
-                  ref={emblemInputRef}
-                  hidden
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/avif"
-                  disabled={emblemPending || emblemUploadLocked}
-                  onChange={uploadEmblem}
-                />
-                {emblemSource === "initial" ? (
-                  <div className="team-emblem-design-controls">
-                    <div className="team-emblem-text-controls">
-                      <label>
-                        글자 기준
-                        <select value={emblemStyleDraft.emblemTextMode} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemTextMode: event.target.value }))}>
-                          <option value="initial">기본값</option>
-                          <option value="name">팀 이름</option>
-                          <option value="abbreviation">약칭</option>
-                        </select>
-                      </label>
-                      <label>
-                        약칭
-                        <input
-                          type="text"
-                          maxLength={8}
-                          value={emblemStyleDraft.emblemAbbreviation}
-                          disabled={emblemStyleDraft.emblemTextMode !== "abbreviation"}
-                          placeholder="예: RB"
-                          onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemAbbreviation: event.target.value }))}
-                        />
-                      </label>
-                    </div>
-                    <div className="team-emblem-font-grid" role="group" aria-label="엠블럼 글꼴">
-                      {TEAM_EMBLEM_FONT_OPTIONS.map(([value, label]) => (
-                        <button
-                          key={value}
-                          type="button"
-                          className={`team-emblem-font-${value} ${emblemStyleDraft.emblemFont === value ? "active" : ""}`}
-                          aria-pressed={emblemStyleDraft.emblemFont === value}
-                          onClick={() => setEmblemStyleDraft((current) => ({ ...current, emblemFont: value }))}
-                        >
-                          <span>Aa가</span>
-                          <small>{label}</small>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="emblem-style-controls">
-                      <label>
-                        엠블럼 색
-                        <input type="color" value={emblemStyleDraft.emblemColor} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemColor: event.target.value }))} />
-                      </label>
-                      <label className="emblem-border-toggle">
-                        <input type="checkbox" checked={emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderEnabled: event.target.checked }))} />
-                        테두리 사용
-                      </label>
-                      <label>
-                        테두리 색
-                        <input type="color" value={emblemStyleDraft.emblemBorderColor} disabled={!emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderColor: event.target.value }))} />
-                      </label>
-                      <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
-                    </div>
-                  </div>
-                ) : null}
-                <p className="emblem-policy-note">{moderationLocked ? `운영 조치로 ${formatEmblemDate(moderationBlockedAt)}부터 사진을 업로드할 수 있습니다.` : getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}</p>
-                <div className="settings-save-row team-emblem-editor-actions">
-                  <small>{emblemFeedback || (emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 사진을 변경할 수 있습니다.` : "저장된 사진은 기본값으로 바꿔도 삭제되지 않습니다.")}</small>
-                  <Button type="button" size="sm" disabled={emblemPending || emblemUploadLocked} onClick={() => emblemInputRef.current?.click()}>
-                    <ImageUp size={16} /> {team.emblemKey ? "사진 변경" : "사진 선택"}
-                  </Button>
-                </div>
                 <form className="member-add-form" onSubmit={inviteMember}>
                   <label>
                     초대할 선수
@@ -688,6 +604,102 @@ export default function TeamDetail({ app }) {
             {renderMembers("팀원", regularMembers)}
           </div>
           {renderMembers("용병 기록", reserveMembers)}
+          {canManage ? (
+            <Card className="section-card team-emblem-management-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Team Emblem</p>
+                  <h2>팀 엠블럼 관리</h2>
+                </div>
+              </div>
+              <div className="team-emblem-editor">
+                <TeamEmblem team={{ ...team, ...emblemStyleDraft }} size="lg" />
+                <span>
+                  <strong>팀 엠블럼</strong>
+                  <small>{emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 사진을 변경할 수 있습니다.` : "사진은 위치와 확대·축소를 조정한 뒤 저장합니다."}</small>
+                  {emblemFeedback ? <em>{emblemFeedback}</em> : null}
+                </span>
+              </div>
+              <div className="emblem-source-grid two-options">
+                <button type="button" className={emblemSource === "initial" ? "active" : ""} aria-pressed={emblemSource === "initial"} disabled={emblemPending} onClick={() => selectEmblemSource("initial")}>
+                  <strong>기본값</strong>
+                </button>
+                <button type="button" className={emblemSource === "upload" ? "active" : ""} aria-pressed={emblemSource === "upload"} disabled={emblemPending || (!team.emblemKey && emblemUploadLocked)} onClick={() => selectEmblemSource("upload")}>
+                  <strong>사진 사용</strong>
+                  {!team.emblemKey ? <span>사진 선택 필요</span> : null}
+                </button>
+              </div>
+              <input
+                ref={emblemInputRef}
+                hidden
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                disabled={emblemPending || emblemUploadLocked}
+                onChange={uploadEmblem}
+              />
+              {emblemSource === "initial" ? (
+                <div className="team-emblem-design-controls">
+                  <div className="team-emblem-text-controls">
+                    <label>
+                      글자 기준
+                      <select value={emblemStyleDraft.emblemTextMode} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemTextMode: event.target.value }))}>
+                        <option value="initial">기본값</option>
+                        <option value="name">팀 이름</option>
+                        <option value="abbreviation">약칭</option>
+                      </select>
+                    </label>
+                    <label>
+                      약칭
+                      <input
+                        type="text"
+                        maxLength={8}
+                        value={emblemStyleDraft.emblemAbbreviation}
+                        disabled={emblemStyleDraft.emblemTextMode !== "abbreviation"}
+                        placeholder="예: RB"
+                        onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemAbbreviation: event.target.value }))}
+                      />
+                    </label>
+                  </div>
+                  <div className="team-emblem-font-grid" role="group" aria-label="엠블럼 글꼴">
+                    {TEAM_EMBLEM_FONT_OPTIONS.map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`team-emblem-font-${value} ${emblemStyleDraft.emblemFont === value ? "active" : ""}`}
+                        aria-pressed={emblemStyleDraft.emblemFont === value}
+                        onClick={() => setEmblemStyleDraft((current) => ({ ...current, emblemFont: value }))}
+                      >
+                        <span>Aa가</span>
+                        <small>{label}</small>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="emblem-style-controls">
+                    <label>
+                      엠블럼 색
+                      <input type="color" value={emblemStyleDraft.emblemColor} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemColor: event.target.value }))} />
+                    </label>
+                    <label className="emblem-border-toggle">
+                      <input type="checkbox" checked={emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderEnabled: event.target.checked }))} />
+                      테두리 사용
+                    </label>
+                    <label>
+                      테두리 색
+                      <input type="color" value={emblemStyleDraft.emblemBorderColor} disabled={!emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderColor: event.target.value }))} />
+                    </label>
+                    <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
+                  </div>
+                </div>
+              ) : null}
+              <p className="emblem-policy-note">{moderationLocked ? `운영 조치로 ${formatEmblemDate(moderationBlockedAt)}부터 사진을 업로드할 수 있습니다.` : getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}</p>
+              <div className="settings-save-row team-emblem-editor-actions">
+                <small>{emblemFeedback || (emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 사진을 변경할 수 있습니다.` : "저장된 사진은 기본값으로 바꿔도 삭제되지 않습니다.")}</small>
+                <Button type="button" size="sm" disabled={emblemPending || emblemUploadLocked} onClick={() => emblemInputRef.current?.click()}>
+                  <ImageUp size={16} /> {team.emblemKey ? "사진 변경" : "사진 선택"}
+                </Button>
+              </div>
+            </Card>
+          ) : null}
         </aside>
       </div>
       {selectedHistoryMatchId ? (

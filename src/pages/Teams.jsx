@@ -205,26 +205,30 @@ export default function Teams({ app }) {
                 <TeamHoverCard key={team.id} team={team} as="span" className="my-team-row" directNavigation to={`/app/teams/${team.id}${isCaptain ? "#team-control" : ""}`}>
                   <span className="team-rank-chip">#{team.rank}</span>
                   <TeamEmblem team={team} size="xs" />
-                  <strong>{team.name}</strong>
-                  <em>{getTeamRoleLabel(team.myRole)} · {team.mmr} MMR · {winRate}%</em>
-                  <span className="my-team-tier">
-                    <img src={getTierEmblemSrc(team.mmr)} alt={`${getTierDivision(team.mmr)} emblem`} loading="lazy" />
-                    <span>{getTierDivision(team.mmr)}</span>
+                  <span className="my-team-copy">
+                    <strong>{team.name}</strong>
+                    <em>{getTeamRoleLabel(team.myRole)} · {team.mmr} MMR · {winRate}%</em>
                   </span>
-                  <Button
-                    className="my-team-representative-button"
-                    disabled={isExplicitRepresentative}
-                    size="sm"
-                    variant={isRepresentative ? "primary" : "secondary"}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      if (!isExplicitRepresentative) app.actions.updateSettings({ representativeTeamId: team.id });
-                    }}
-                  >
-                    {isRepresentative ? "대표팀" : "대표 설정"}
-                  </Button>
-                  <b>{isCaptain ? "관리" : "상세"}</b>
+                  <span className="my-team-actions">
+                    <span className="my-team-tier">
+                      <img src={getTierEmblemSrc(team.mmr)} alt={`${getTierDivision(team.mmr)} emblem`} loading="lazy" />
+                      <span>{getTierDivision(team.mmr)}</span>
+                    </span>
+                    <Button
+                      className="my-team-representative-button"
+                      disabled={isExplicitRepresentative}
+                      size="sm"
+                      variant={isRepresentative ? "primary" : "secondary"}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (!isExplicitRepresentative) app.actions.updateSettings({ representativeTeamId: team.id });
+                      }}
+                    >
+                      {isRepresentative ? "대표팀" : "대표 설정"}
+                    </Button>
+                    <b>{isCaptain ? "관리" : "상세"}</b>
+                  </span>
                 </TeamHoverCard>
               );
             }) : myTeamCountPending ? (

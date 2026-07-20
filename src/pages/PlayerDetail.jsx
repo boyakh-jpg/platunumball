@@ -10,10 +10,12 @@ import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx"
 import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
+import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import { getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine, getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
+import { getRepresentativeTeam } from "../lib/profileSetup.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -68,6 +70,7 @@ export default function PlayerDetail({ app }) {
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const teamMap = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
   const playerTeams = app.state.teams.filter((team) => team.members.some((member) => member.userId === player.id));
+  const representativeTeam = getRepresentativeTeam(player.id, playerTeams, player.representativeTeamId);
   const history = app.state.matches.filter((match) => getPlayerSide(match, player.id));
   const teammateCounts = new Map();
   const opponentCounts = new Map();
@@ -135,6 +138,15 @@ export default function PlayerDetail({ app }) {
                 </a>
               ) : null}
             </div>
+            {representativeTeam ? (
+              <Link className="player-representative-team-link" to={`/app/teams/${representativeTeam.id}`}>
+                <TeamEmblem team={representativeTeam} size="xs" />
+                <span>
+                  <small>대표팀</small>
+                  <strong>{representativeTeam.name}</strong>
+                </span>
+              </Link>
+            ) : null}
           </div>
         </div>
         <div className="tier-statement rank-tier-statement">
