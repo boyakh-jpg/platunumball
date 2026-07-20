@@ -14,6 +14,7 @@ import {
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 
 const PLAYER_STAT_FIELDS = ["points", "rebounds", "assists", "steals", "blocks", "fouls"];
+const ACHIEVEMENT_POSITIONS = new Set(["PG", "SG", "SF", "PF", "C"]);
 const configuredDiscordQueueTimeoutMs = Number(process.env.DISCORD_QUEUE_TIMEOUT_MS || 2500);
 const DISCORD_QUEUE_TIMEOUT_MS = Number.isFinite(configuredDiscordQueueTimeoutMs) && configuredDiscordQueueTimeoutMs > 0
   ? configuredDiscordQueueTimeoutMs
@@ -172,6 +173,11 @@ function getMatchDiscordPayload(match = {}, title, intro) {
 }
 
 function getSidePlayerRows(match = {}) {
+  const slotPositions = match.rules?.slotPositions ?? match.slotPositions ?? {};
+  const getPosition = (userId) => {
+    const position = String(slotPositions?.[userId] ?? "").trim().toUpperCase();
+    return ACHIEVEMENT_POSITIONS.has(position) ? position : null;
+  };
   return [
     ...(match.teamA?.players ?? []).map((userId, index) => ({
       match_id: match.id,
@@ -179,6 +185,7 @@ function getSidePlayerRows(match = {}) {
       user_id: userId,
       side: "teamA",
       slot_order: index,
+      position: getPosition(userId),
     })),
     ...(match.teamB?.players ?? []).map((userId, index) => ({
       match_id: match.id,
@@ -186,6 +193,7 @@ function getSidePlayerRows(match = {}) {
       user_id: userId,
       side: "teamB",
       slot_order: index,
+      position: getPosition(userId),
     })),
   ].filter((row) => row.user_id);
 }

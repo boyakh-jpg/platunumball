@@ -4,28 +4,114 @@ const icon = (id, name) => Object.freeze({
   src: `/assets/profile-icons/${id}.png`,
 });
 
-const group = (id, name, unlockDescription, unlocked, icons) => Object.freeze({
+const requirement = (metric, target, label) => Object.freeze({ metric, target, label });
+const achievement = (condition, requirements = []) => Object.freeze({ condition, requirements: Object.freeze(requirements) });
+
+const PROFILE_ICON_ACHIEVEMENTS = {
+  "01-first-bucket": achievement("기본 지급"),
+  "02-court-rookie": achievement("기본 지급"),
+  "03-laced-up": achievement("기본 지급"),
+  "04-ready-whistle": achievement("기본 지급"),
+  "05-playbook": achievement("기본 지급"),
+  "06-team-jersey": achievement("팀 1개 가입", [requirement("teamCount", 1, "가입 팀")]),
+  "07-game-clock": achievement("확정 경기 3회", [requirement("matchCount", 3, "확정 경기")]),
+  "08-water-break": achievement("확정 경기 5회", [requirement("matchCount", 5, "확정 경기")]),
+  "09-home-court": achievement("확정 경기 10회", [requirement("matchCount", 10, "확정 경기")]),
+  "10-net-swish": achievement("누적 50득점", [requirement("points", 50, "누적 득점")]),
+  "11-first-medal": achievement("3승", [requirement("winCount", 3, "승리")]),
+  "12-captain-star": achievement("팀 주장 되기", [requirement("captainCount", 1, "주장 팀")]),
+  "13-court-vision": achievement("누적 20어시스트", [requirement("assists", 20, "누적 어시스트")]),
+  "14-crossover": achievement("누적 100득점", [requirement("points", 100, "누적 득점")]),
+  "15-perfect-pass": achievement("누적 50어시스트", [requirement("assists", 50, "누적 어시스트")]),
+  "16-three-point": achievement("누적 200득점", [requirement("points", 200, "누적 득점")]),
+  "17-clutch-clock": achievement("2점 차 이내 승리 3회", [requirement("closeWinCount", 3, "접전 승리")]),
+  "18-lock-down": achievement("누적 스틸+블록 25개", [requirement("stealsBlocks", 25, "스틸+블록")]),
+  "19-rebound-crown": achievement("누적 50리바운드", [requirement("rebounds", 50, "누적 리바운드")]),
+  "20-fair-play": achievement("확정 경기 10회 및 신뢰도 90", [
+    requirement("matchCount", 10, "확정 경기"),
+    requirement("trustScore", 90, "신뢰도"),
+  ]),
+  "21-pg-floor-general": achievement("PG 출전 1회", [requirement("pgAppearances", 1, "PG 출전")]),
+  "22-sg-sharpshooter": achievement("SG 출전 1회", [requirement("sgAppearances", 1, "SG 출전")]),
+  "23-sf-two-way-wing": achievement("SF 출전 1회", [requirement("sfAppearances", 1, "SF 출전")]),
+  "24-pf-enforcer": achievement("PF 출전 1회", [requirement("pfAppearances", 1, "PF 출전")]),
+  "25-c-rim-anchor": achievement("C 출전 1회", [requirement("cAppearances", 1, "C 출전")]),
+  "51-first-win": achievement("첫 승", [requirement("winCount", 1, "승리")]),
+  "52-win-streak": achievement("3연승 달성", [requirement("streak", 3, "최고 연승")]),
+  "53-buzzer-beater": achievement("2점 차 이내 승리 1회", [requirement("closeWinCount", 1, "접전 승리")]),
+  "54-double-double": achievement("더블더블 1회", [requirement("doubleDoubleCount", 1, "더블더블")]),
+  "55-triple-double": achievement("트리플더블 1회", [requirement("tripleDoubleCount", 1, "트리플더블")]),
+  "56-ironman": achievement("확정 경기 50회", [requirement("matchCount", 50, "확정 경기")]),
+  "57-mvp": achievement("20득점 및 리바운드+어시스트 10 이상 경기 3회", [requirement("mvpPerformanceCount", 3, "고효율 경기")]),
+  "58-team-huddle": achievement("팀 소속으로 확정 경기 10회", [requirement("teamMatchCount", 10, "팀 경기")]),
+  "59-mentor-torch": achievement("누적 100어시스트", [requirement("assists", 100, "누적 어시스트")]),
+  "60-referee-shield": achievement("심판 수행 5회", [requirement("refereeCount", 5, "심판 경기")]),
+  "61-record-keeper": achievement("기록원 수행 5회", [requirement("recorderCount", 5, "기록 경기")]),
+  "62-court-scout": achievement("구장 후기·승인 제보 합계 3회", [requirement("courtContributionCount", 3, "구장 기여")]),
+  "63-team-founder": achievement("팀 주장 되기", [requirement("captainCount", 1, "주장 팀")]),
+  "64-trusted-player": achievement("확정 경기 20회 및 신뢰도 95", [
+    requirement("matchCount", 20, "확정 경기"),
+    requirement("trustScore", 95, "신뢰도"),
+  ]),
+  "65-community-star": achievement("확정 경기 30회 및 신뢰도 98", [
+    requirement("matchCount", 30, "확정 경기"),
+    requirement("trustScore", 98, "신뢰도"),
+  ]),
+  "66-iron-ball": achievement("확정 경기 1회", [requirement("matchCount", 1, "확정 경기")]),
+  "67-bronze-blaze": achievement("통합 MMR 800 도달", [requirement("integratedMmr", 800, "통합 MMR")]),
+  "68-silver-wing": achievement("통합 MMR 1000 도달", [requirement("integratedMmr", 1000, "통합 MMR")]),
+  "69-gold-crown": achievement("통합 MMR 1200 도달", [requirement("integratedMmr", 1200, "통합 MMR")]),
+  "70-platinum-comet": achievement("통합 MMR 1400 도달", [requirement("integratedMmr", 1400, "통합 MMR")]),
+  "71-diamond-prism": achievement("통합 MMR 1600 도달", [requirement("integratedMmr", 1600, "통합 MMR")]),
+  "72-master-phoenix": achievement("통합 MMR 1800 도달", [requirement("integratedMmr", 1800, "통합 MMR")]),
+  "73-legend-dragon": achievement("통합 MMR 2000 도달", [requirement("integratedMmr", 2000, "통합 MMR")]),
+  "74-cosmic-hoop": achievement("통합 MMR 2200 도달", [requirement("integratedMmr", 2200, "통합 MMR")]),
+  "75-aurora-core": achievement("통합 MMR 2400 도달", [requirement("integratedMmr", 2400, "통합 MMR")]),
+  "76-alley-cat": achievement("확정 경기 25회", [requirement("matchCount", 25, "확정 경기")]),
+  "77-court-owl": achievement("밤 9시 이후 경기 10회", [requirement("nightMatchCount", 10, "야간 경기")]),
+  "78-lucky-rabbit": achievement("5연승 달성", [requirement("streak", 5, "최고 연승")]),
+  "79-bulldog-center": achievement("누적 리바운드+블록 150개", [requirement("interiorStops", 150, "리바운드+블록")]),
+  "80-crown-goat": achievement("확정 경기 100회·60승·MMR 2000·신뢰도 95", [
+    requirement("matchCount", 100, "확정 경기"),
+    requirement("winCount", 60, "승리"),
+    requirement("integratedMmr", 2000, "통합 MMR"),
+    requirement("trustScore", 95, "신뢰도"),
+  ]),
+};
+
+const POSITION_PLAY_ICON_IDS = [
+  ["PG", "pgAppearances", ["26-pg-no-look-pass", "27-pg-crossover", "28-pg-fast-break", "29-pg-behind-back", "30-pg-court-vision"]],
+  ["SG", "sgAppearances", ["31-sg-catch-shoot", "32-sg-step-back", "33-sg-corner-three", "34-sg-pull-up", "35-sg-free-throw"]],
+  ["SF", "sfAppearances", ["36-sf-slashing-drive", "37-sf-chase-block", "38-sf-wing-three", "39-sf-fast-break-finish", "40-sf-defensive-stance"]],
+  ["PF", "pfAppearances", ["41-pf-screen-set", "42-pf-box-out", "43-pf-offensive-rebound", "44-pf-putback", "45-pf-turnaround"]],
+  ["C", "cAppearances", ["46-c-rim-protection", "47-c-power-rebound", "48-c-hook-shot", "49-c-two-hand-dunk", "50-c-outlet-pass"]],
+];
+
+for (const [position, metric, iconIds] of POSITION_PLAY_ICON_IDS) {
+  [5, 10, 20, 35, 50].forEach((target, index) => {
+    PROFILE_ICON_ACHIEVEMENTS[iconIds[index]] = achievement(`${position} 출전 ${target}회`, [requirement(metric, target, `${position} 출전`)]);
+  });
+}
+
+const group = (id, name, icons) => Object.freeze({
   id,
   name,
-  unlockDescription,
-  unlocked,
   icons: Object.freeze(icons.map(([iconId, iconName]) => Object.freeze({
     ...icon(iconId, iconName),
     groupId: id,
-    description: unlocked ? "기본 제공" : unlockDescription,
-    unlocked,
+    achievement: PROFILE_ICON_ACHIEVEMENTS[iconId],
   }))),
 });
 
 export const PROFILE_ICON_GROUPS = Object.freeze([
-  group("default", "기본 지급", "모든 사용자 선택 가능", true, [
+  group("default", "기본 지급", [
     ["01-first-bucket", "첫 득점"],
     ["02-court-rookie", "코트 루키"],
     ["03-laced-up", "경기 준비"],
     ["04-ready-whistle", "준비된 휘슬"],
     ["05-playbook", "작전판"],
   ]),
-  group("beginner", "초급 업적", "업적 조건 확정 후 해금", false, [
+  group("beginner", "초급 업적", [
     ["06-team-jersey", "팀 저지"],
     ["07-game-clock", "경기 시계"],
     ["08-water-break", "물 한 모금"],
@@ -42,14 +128,14 @@ export const PROFILE_ICON_GROUPS = Object.freeze([
     ["19-rebound-crown", "리바운드 왕관"],
     ["20-fair-play", "페어플레이"],
   ]),
-  group("position", "포지션 기본", "포지션 조건 확정 후 해금", false, [
+  group("position", "포지션 기본", [
     ["21-pg-floor-general", "PG 플로어 제너럴"],
     ["22-sg-sharpshooter", "SG 샤프슈터"],
     ["23-sf-two-way-wing", "SF 투웨이 윙"],
     ["24-pf-enforcer", "PF 인포서"],
     ["25-c-rim-anchor", "C 림 앵커"],
   ]),
-  group("position-play", "포지션 플레이", "포지션별 플레이 업적 달성 시 해금 예정", false, [
+  group("position-play", "포지션 플레이", [
     ["26-pg-no-look-pass", "PG 노룩 패스"],
     ["27-pg-crossover", "PG 크로스오버"],
     ["28-pg-fast-break", "PG 속공"],
@@ -76,7 +162,7 @@ export const PROFILE_ICON_GROUPS = Object.freeze([
     ["49-c-two-hand-dunk", "C 투핸드 덩크"],
     ["50-c-outlet-pass", "C 아웃렛 패스"],
   ]),
-  group("achievement", "경기·커뮤니티", "경기·운영·커뮤니티 업적 달성 시 해금 예정", false, [
+  group("achievement", "경기·커뮤니티", [
     ["51-first-win", "첫 승"],
     ["52-win-streak", "연승"],
     ["53-buzzer-beater", "버저비터"],
@@ -93,7 +179,7 @@ export const PROFILE_ICON_GROUPS = Object.freeze([
     ["64-trusted-player", "신뢰받는 선수"],
     ["65-community-star", "커뮤니티 스타"],
   ]),
-  group("rank", "등급", "등급 도달 시 해금 예정", false, [
+  group("rank", "등급", [
     ["66-iron-ball", "아이언 볼"],
     ["67-bronze-blaze", "브론즈 블레이즈"],
     ["68-silver-wing", "실버 윙"],
@@ -105,7 +191,7 @@ export const PROFILE_ICON_GROUPS = Object.freeze([
     ["74-cosmic-hoop", "코스믹 후프"],
     ["75-aurora-core", "오로라 코어"],
   ]),
-  group("special", "특별", "이벤트·장기 활동 조건 확정 후 해금", false, [
+  group("special", "특별", [
     ["76-alley-cat", "앨리 캣"],
     ["77-court-owl", "코트 아울"],
     ["78-lucky-rabbit", "럭키 래빗"],
@@ -123,6 +209,21 @@ export function getProfileIcon(iconId = "") {
   return PROFILE_ICON_BY_ID.get(String(iconId || "").trim()) ?? null;
 }
 
-export function isSelectableProfileIcon(iconId = "") {
-  return getProfileIcon(iconId)?.unlocked === true;
+export function getProfileIconAchievementState(iconId = "", metrics = {}, unlockedIconKeys = []) {
+  const item = getProfileIcon(iconId);
+  if (!item) return null;
+  const requirements = item.achievement?.requirements ?? [];
+  const persisted = new Set(unlockedIconKeys).has(item.id);
+  const ratios = requirements.map(({ metric, target }) => Math.min(1, Math.max(0, Number(metrics?.[metric] ?? 0) / target)));
+  const achieved = requirements.length === 0 || ratios.every((ratio) => ratio >= 1);
+  return {
+    ...item,
+    unlocked: persisted || achieved,
+    achieved,
+    progress: requirements.length ? Math.min(...ratios) : 1,
+  };
+}
+
+export function isSelectableProfileIcon(iconId = "", unlockedIconKeys = []) {
+  return getProfileIconAchievementState(iconId, {}, unlockedIconKeys)?.unlocked === true;
 }

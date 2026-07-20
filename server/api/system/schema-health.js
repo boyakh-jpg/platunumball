@@ -105,6 +105,13 @@ const REQUIRED_COLUMNS = {
     "user_id",
     "side",
     "slot_order",
+    "position",
+  ],
+  profile_icon_unlocks: [
+    "profile_id",
+    "icon_key",
+    "unlocked_at",
+    "progress_snapshot",
   ],
   user_room_feed: [
     "profile_id",
@@ -347,6 +354,14 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_select_profile_icon",
     args: { p_actor_profile_id: "", p_icon_key: "01-first-bucket" },
+  },
+  {
+    name: "rankball_profile_icon_metrics",
+    args: { p_profile_id: "" },
+  },
+  {
+    name: "rankball_save_profile_icon_settings",
+    args: { p_actor_profile_id: "", p_avatar_source: "initial", p_avatar_icon_key: "01-first-bucket", p_avatar_color: "#58d2c0", p_border_enabled: false, p_border_color: "#58d2c0" },
   },
   {
     name: "rankball_moderate_team_emblem",

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { isSelectableProfileIcon } from "../../../src/lib/profileIcons.js";
+import { getProfileIcon } from "../../../src/lib/profileIcons.js";
+import { refreshProfileIconAchievements } from "../_profileIconAchievements.js";
 
 const MAX_REQUEST_BYTES = 320 * 1024;
 const MAX_UPLOAD_BYTES = 160 * 1024;
@@ -138,6 +139,22 @@ async function commitProfileIcon(context, avatarIconKey) {
   throw mapped;
 }
 
+async function commitProfileIconSettings(context, payload) {
+  const { data, error } = await context.supabase.rpc("rankball_save_profile_icon_settings", {
+    p_actor_profile_id: context.profileId,
+    p_avatar_source: payload.avatarSource,
+    p_avatar_icon_key: payload.avatarIconKey,
+    p_avatar_color: payload.avatarColor,
+    p_border_enabled: payload.avatarBorderEnabled,
+    p_border_color: payload.avatarBorderColor,
+  });
+  if (!error) return data ?? { ok: true, profileId: context.profileId };
+
+  const mapped = new Error(error.message || "profile_icon_settings_failed");
+  mapped.statusCode = error.code === "P0002" ? 404 : 400;
+  throw mapped;
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -152,15 +169,39 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const body = await readJsonBody(request);
     const action = String(body.action || "upload").trim();
-    if (!new Set(["source", "style", "icon"]).has(action)) reject(410, "profile_emblem_image_disabled");
+    if (!new Set(["source", "style", "icon", "settings"]).has(action)) reject(410, "profile_emblem_image_disabled");
     if (!PROFILE_ID_PATTERN.test(context.profileId)) reject(400, "invalid_profile_id");
 
     const profile = await loadProfile(context);
     const previousAvatarKey = profile.avatar_key || null;
 
+    if (action === "settings") {
+      const avatarSource = String(body.avatarSource || "initial").trim();
+      const avatarIconKey = String(body.avatarIconKey || "").trim();
+      const avatarColor = String(body.avatarColor || "").trim();
+      const avatarBorderColor = String(body.avatarBorderColor || "").trim();
+      if (!new Set(["initial", "discord", "icon"]).has(avatarSource)) reject(400, "invalid_profile_emblem_source");
+      if (!COLOR_PATTERN.test(avatarColor) || !COLOR_PATTERN.test(avatarBorderColor)) reject(400, "invalid_emblem_color");
+
+      const achievements = await refreshProfileIconAchievements(context.supabase, context.profileId);
+      if (avatarSource === "icon" && (!getProfileIcon(avatarIconKey) || !achievements.unlockedIconKeys.includes(avatarIconKey))) {
+        reject(400, "profile_icon_unavailable");
+      }
+      const result = await commitProfileIconSettings(context, {
+        avatarSource,
+        avatarIconKey,
+        avatarColor,
+        avatarBorderEnabled: body.avatarBorderEnabled === true,
+        avatarBorderColor,
+      });
+      sendJson(response, 200, { ...result, unlockedIconKeys: achievements.unlockedIconKeys });
+      return;
+    }
+
     if (action === "icon") {
       const avatarIconKey = String(body.avatarIconKey || "").trim();
-      if (!isSelectableProfileIcon(avatarIconKey)) reject(400, "profile_icon_unavailable");
+      const achievements = await refreshProfileIconAchievements(context.supabase, context.profileId);
+      if (!getProfileIcon(avatarIconKey) || !achievements.unlockedIconKeys.includes(avatarIconKey)) reject(400, "profile_icon_unavailable");
       sendJson(response, 200, await commitProfileIcon(context, avatarIconKey));
       return;
     }

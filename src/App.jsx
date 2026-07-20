@@ -19,6 +19,7 @@ const MatchRoom = lazy(() => import("./pages/MatchRoom.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail.jsx"));
 const Profile = lazy(() => import("./pages/Profile.jsx"));
+const ProfileAchievements = lazy(() => import("./pages/ProfileAchievements.jsx"));
 const ProfileRecords = lazy(() => import("./pages/ProfileRecords.jsx"));
 const Rankings = lazy(() => import("./pages/Rankings.jsx"));
 const Recorder = lazy(() => import("./pages/Recorder.jsx"));
@@ -144,6 +145,7 @@ export default function App() {
             <Route path="/app/tournaments/:tournamentId" element={<TournamentDetail app={app} />} />
             <Route path="/app/players/:playerId" element={<PlayerDetail app={app} />} />
             <Route path="/app/profile" element={<Profile app={app} />} />
+            <Route path="/app/profile/achievements" element={<ProfileAchievements app={app} />} />
             <Route path="/app/profile/records" element={<ProfileRecords app={app} />} />
             <Route path="/app/affiliations" element={<Affiliations app={app} />} />
             <Route path="/app/notifications" element={<Notifications app={app} />} />

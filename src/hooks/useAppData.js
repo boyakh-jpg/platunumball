@@ -3255,6 +3255,33 @@ export function useAppData(authUser = null, appLocation = null) {
         );
         return result?.ok === false ? result : createdTeam.id;
       },
+      loadProfileIconAchievements: async () => {
+        const serverReady = await ensureServerActionAvailable("/api/profile/achievements", "프로필 아이콘 업적 불러오기");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("프로필 아이콘 업적 불러오기")) return { ok: false, error: "remote_not_ready" };
+        return runServerAction("/api/profile/achievements", {});
+      },
+      saveProfileIconSettings: async (settings) => {
+        const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 설정 저장");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("프로필 아이콘 설정 저장")) return { ok: false, error: "remote_not_ready" };
+        const result = await runServerAction("/api/profile/emblem", { action: "settings", ...settings });
+        if (result?.ok !== false && result?.profileId) {
+          setState((prev) => ({
+            ...prev,
+            users: (prev.users ?? []).map((user) => user.id === result.profileId ? {
+              ...user,
+              avatarSource: result.avatarSource ?? settings.avatarSource ?? user.avatarSource,
+              avatarIconKey: result.avatarIconKey ?? user.avatarIconKey,
+              avatarColor: result.avatarColor ?? settings.avatarColor ?? user.avatarColor,
+              avatarBorderEnabled: result.avatarBorderEnabled ?? settings.avatarBorderEnabled ?? user.avatarBorderEnabled ?? false,
+              avatarBorderColor: result.avatarBorderColor ?? settings.avatarBorderColor ?? user.avatarBorderColor ?? user.avatarColor,
+              avatarUpdatedAt: result.avatarUpdatedAt ?? new Date().toISOString(),
+            } : user),
+          }));
+        }
+        return result;
+      },
       updateProfileEmblemStyle: async (style) => {
         const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 설정 저장");
         if (serverReady !== true) return serverReady;

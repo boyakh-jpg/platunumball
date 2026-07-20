@@ -19,6 +19,43 @@ export function normalizeTeamEmblemFont(value = "sport") {
   return TEAM_EMBLEM_FONTS.has(value) ? value : "sport";
 }
 
+function splitEvenly(value, lineCount) {
+  const characters = Array.from(value);
+  const lines = [];
+  let cursor = 0;
+  for (let index = 0; index < lineCount; index += 1) {
+    const remaining = characters.length - cursor;
+    const remainingLines = lineCount - index;
+    const take = Math.ceil(remaining / remainingLines);
+    lines.push(characters.slice(cursor, cursor + take).join("").trim());
+    cursor += take;
+  }
+  return lines.filter(Boolean);
+}
+
+function getBalancedWordLines(words, lineCount) {
+  let bestLines = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+  const visit = (start, lines) => {
+    if (lines.length === lineCount - 1) {
+      const candidate = [...lines, words.slice(start).join(" ")];
+      const lengths = candidate.map((line) => Array.from(line).length);
+      const score = Math.max(...lengths) * 4 + Math.max(...lengths) - Math.min(...lengths);
+      if (score < bestScore) {
+        bestScore = score;
+        bestLines = candidate;
+      }
+      return;
+    }
+    const remainingLines = lineCount - lines.length - 1;
+    for (let end = start + 1; end <= words.length - remainingLines; end += 1) {
+      visit(end, [...lines, words.slice(start, end).join(" ")]);
+    }
+  };
+  visit(0, []);
+  return bestLines;
+}
+
 export function getTeamEmblemTextLines(team = {}, fallbackName = "") {
   const mode = new Set(["name", "abbreviation"]).has(team.emblemTextMode) ? team.emblemTextMode : "initial";
   const teamName = String(team.name ?? fallbackName ?? "").trim();
@@ -27,30 +64,15 @@ export function getTeamEmblemTextLines(team = {}, fallbackName = "") {
   if (mode === "initial") return [Array.from(text)[0] ?? "?"];
   if (mode === "abbreviation") return [sliceCharacters(text, 8)];
 
-  const words = text.split(" ");
-  if (words.length === 1) {
-    const characters = Array.from(sliceCharacters(text, 18));
-    if (characters.length <= 4) return [characters.join("")];
-    const midpoint = Math.ceil(characters.length / 2);
-    return [characters.slice(0, midpoint).join(""), characters.slice(midpoint).join("")];
+  const safeText = sliceCharacters(text, 15);
+  const characterCount = Array.from(safeText).length;
+  const lineCount = characterCount <= 3 ? 1 : characterCount <= 7 ? 2 : 3;
+  const words = safeText.split(" ").filter(Boolean);
+  if (words.length >= lineCount) {
+    const balanced = getBalancedWordLines(words, lineCount);
+    if (balanced && Math.max(...balanced.map((line) => Array.from(line).length)) <= 5) return balanced;
   }
-
-  let bestIndex = 1;
-  let bestScore = Number.POSITIVE_INFINITY;
-  for (let index = 1; index < words.length; index += 1) {
-    const first = words.slice(0, index).join(" ");
-    const second = words.slice(index).join(" ");
-    const score = Math.max(Array.from(first).length, Array.from(second).length) * 2
-      + Math.abs(Array.from(first).length - Array.from(second).length);
-    if (score < bestScore) {
-      bestScore = score;
-      bestIndex = index;
-    }
-  }
-  return [
-    sliceCharacters(words.slice(0, bestIndex).join(" "), 12),
-    sliceCharacters(words.slice(bestIndex).join(" "), 12),
-  ];
+  return splitEvenly(safeText.replace(/\s+/g, ""), lineCount);
 }
 
 const ACCEPTED_TEAM_EMBLEM_TYPES = new Set([

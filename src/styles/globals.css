@@ -2060,11 +2060,20 @@ span.referee-hover-card {
 }
 
 .team-emblem-text.two-lines {
-  font-size: 0.7em;
+  width: 88%;
+  font-size: 0.52em;
+  line-height: 0.84;
 }
 
 .team-emblem-text.two-lines.dense {
-  font-size: 0.48em;
+  font-size: 0.44em;
+}
+
+.team-emblem-text.three-lines {
+  width: 90%;
+  font-size: 0.38em;
+  line-height: 0.82;
+  letter-spacing: -0.04em;
 }
 
 .team-emblem-font-sport {
@@ -8352,8 +8361,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .emblem-source-grid button.active {
-  border-color: var(--rb-green);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-green) 50%, transparent);
+  border-color: var(--ui-button-bg-active);
+  background: color-mix(in srgb, var(--ui-button-bg-active) 12%, var(--ui-control-bg));
+  box-shadow: none;
 }
 
 .emblem-source-grid button:disabled:not(.active) {
@@ -8473,8 +8483,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .team-emblem-font-grid button.active {
-  border-color: var(--rb-green);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-green) 50%, transparent);
+  border-color: var(--ui-button-bg-active);
+  background: color-mix(in srgb, var(--ui-button-bg-active) 12%, var(--ui-control-bg));
+  box-shadow: none;
 }
 
 .team-emblem-font-grid button span {
@@ -8495,6 +8506,21 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .profile-emblem-card .hero-avatar {
   width: 62px;
   height: 62px;
+}
+
+.profile-icon-card-actions,
+.profile-icon-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profile-icon-card-feedback {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
 }
 
 .profile-icon-source-grid {
@@ -8580,7 +8606,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   display: grid;
   height: 70px;
   min-height: 70px;
-  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
   border: 1px solid var(--ui-button-border);
@@ -8606,19 +8632,35 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .profile-icon-catalog img {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: contain;
 }
 
-.profile-icon-catalog span {
+.profile-icon-catalog-image {
+  position: relative;
   display: grid;
-  min-width: 0;
-  gap: 2px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
 }
 
-.profile-icon-catalog strong {
+.profile-icon-catalog-image i {
+  position: absolute;
+  inset: auto 0 1px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--muted);
+  font-size: 0.56rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.profile-icon-catalog > button > strong {
   display: -webkit-box;
   overflow: hidden;
   font-size: var(--ui-button-font-size);
@@ -8628,13 +8670,218 @@ html[data-theme="light"] .search-picker-result-row.selected {
   -webkit-line-clamp: 2;
 }
 
-.profile-icon-catalog small {
-  overflow: hidden;
+.profile-icon-dialog-backdrop {
+  padding: 18px;
+}
+
+.app-confirm-dialog.profile-icon-dialog {
+  width: min(880px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+}
+
+.profile-icon-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-icon-dialog-header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.profile-icon-dialog-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 750;
-  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.profile-icon-dialog-preview .hero-avatar {
+  width: 62px;
+  height: 62px;
+}
+
+.profile-icon-color-controls {
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+}
+
+.profile-icon-dialog-feedback {
+  margin: 0;
+}
+
+.profile-achievements-page {
+  min-width: 0;
+}
+
+.profile-achievement-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.profile-achievement-summary > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   white-space: nowrap;
+}
+
+.profile-achievement-summary strong {
+  color: var(--rb-orange);
+  font-family: var(--sports-display-font);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  line-height: 0.9;
+}
+
+.profile-achievement-summary span,
+.profile-achievement-summary p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.profile-achievement-summary p {
+  margin: 0;
+  text-align: right;
+}
+
+.profile-achievement-group {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+  padding: var(--card-padding);
+}
+
+.profile-achievement-group > .section-title-row > small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.profile-achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+}
+
+.profile-achievement-card {
+  display: grid;
+  min-width: 0;
+  min-height: 112px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: 10px;
+}
+
+.profile-achievement-card.unlocked {
+  border-color: color-mix(in srgb, var(--rb-orange) 48%, var(--ui-control-border));
+  background: color-mix(in srgb, var(--rb-orange) 8%, var(--ui-control-bg));
+}
+
+.profile-achievement-card.locked {
+  color: var(--muted);
+}
+
+.profile-achievement-icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface-3) 88%, var(--rb-orange) 12%);
+}
+
+.profile-achievement-icon img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+}
+
+.profile-achievement-card.locked .profile-achievement-icon img {
+  filter: grayscale(0.82);
+  opacity: 0.62;
+}
+
+.profile-achievement-body {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.profile-achievement-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profile-achievement-title strong {
+  overflow-wrap: anywhere;
+}
+
+.profile-achievement-title span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-orange) 16%, var(--surface-3));
+  color: var(--rb-orange);
+  padding: 2px 6px;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.profile-achievement-card.locked .profile-achievement-title span {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+
+.profile-achievement-body p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.profile-achievement-progress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+
+.profile-achievement-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--rb-blue);
+}
+
+.profile-achievement-metrics {
+  display: flex;
+  gap: 4px 8px;
+  flex-wrap: wrap;
+}
+
+.profile-achievement-metrics small,
+.profile-achievement-default {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 800;
 }
 
 .emblem-crop-dialog {
@@ -8730,6 +8977,25 @@ html[data-theme="light"] .search-picker-result-row.selected {
     height: 40px;
   }
 
+  .profile-icon-catalog-image {
+    width: 40px;
+    height: 40px;
+  }
+
+  .profile-icon-dialog-backdrop {
+    place-items: end center;
+    padding: 10px;
+  }
+
+  .app-confirm-dialog.profile-icon-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+  }
+
+  .profile-achievement-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .team-emblem-font-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -8758,6 +9024,15 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
   .profile-icon-catalog {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-achievement-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-achievement-summary p {
+    text-align: left;
   }
 }
 

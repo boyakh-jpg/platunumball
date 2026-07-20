@@ -8767,6 +8767,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
       region: promotedPost.region,
       mmrRangeMode,
       ratingScale,
+      slotPositions: promotedRoomState.slotPositions ?? {},
     },
     memo: promotedPost.memo,
     stakes: "매치 큐에서 확정된 경기입니다.",

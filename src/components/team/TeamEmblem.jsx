@@ -20,6 +20,7 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
   const textLines = getTeamEmblemTextLines(team, resolvedName);
   const textDensity = Math.max(...textLines.map((line) => Array.from(line).length), 1);
   const textClass = textDensity > 8 ? "dense" : textDensity > 5 ? "compact" : "regular";
+  const lineClass = textLines.length >= 3 ? "three-lines" : textLines.length === 2 ? "two-lines" : "one-line";
   const emblemFont = normalizeTeamEmblemFont(team?.emblemFont);
 
   useEffect(() => setImageFailed(false), [resolvedImageUrl, team?.emblemUpdatedAt]);
@@ -33,7 +34,7 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
       {resolvedImageUrl && !imageFailed ? (
         <img src={resolvedImageUrl} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} />
       ) : (
-        <span className={`team-emblem-text team-emblem-font-${emblemFont} ${textClass} ${textLines.length > 1 ? "two-lines" : "one-line"}`}>
+        <span className={`team-emblem-text team-emblem-font-${emblemFont} ${textClass} ${lineClass}`}>
           {textLines.map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}
         </span>
       )}

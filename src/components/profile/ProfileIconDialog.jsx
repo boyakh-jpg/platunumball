@@ -1,0 +1,213 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { assetUrl } from "../../lib/assets.js";
+import {
+  DEFAULT_PROFILE_ICON_ID,
+  PROFILE_ICON_CATALOG,
+  PROFILE_ICON_GROUPS,
+} from "../../lib/profileIcons.js";
+import { getTeamEmblemErrorMessage } from "../../lib/teamEmblem.js";
+import Button from "../common/Button.jsx";
+import ProfileEmblem from "./ProfileEmblem.jsx";
+
+const DEFAULT_UNLOCKED_KEYS = PROFILE_ICON_CATALOG
+  .filter((icon) => (icon.achievement?.requirements ?? []).length === 0)
+  .map((icon) => icon.id);
+
+function getInitialDraft(user) {
+  return {
+    avatarSource: new Set(["discord", "icon"]).has(user.avatarSource) ? user.avatarSource : "initial",
+    avatarIconKey: user.avatarIconKey || DEFAULT_PROFILE_ICON_ID,
+    avatarColor: user.avatarColor || "#58d2c0",
+    avatarBorderEnabled: user.avatarBorderEnabled === true,
+    avatarBorderColor: user.avatarBorderColor || user.avatarColor || "#58d2c0",
+  };
+}
+
+export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
+  const [draft, setDraft] = useState(() => getInitialDraft(user));
+  const [selectedGroupId, setSelectedGroupId] = useState(() => (
+    PROFILE_ICON_GROUPS.find((group) => group.icons.some((icon) => icon.id === user.avatarIconKey))?.id
+      ?? PROFILE_ICON_GROUPS[0].id
+  ));
+  const [unlockedIconKeys, setUnlockedIconKeys] = useState(() => [...new Set([...DEFAULT_UNLOCKED_KEYS, user.avatarIconKey].filter(Boolean))]);
+  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const hasDiscordAvatar = Boolean(user.discordAvatarUrl || user.discordConnection?.avatarUrl);
+  const unlockedSet = useMemo(() => new Set(unlockedIconKeys), [unlockedIconKeys]);
+  const selectedGroup = PROFILE_ICON_GROUPS.find((group) => group.id === selectedGroupId) ?? PROFILE_ICON_GROUPS[0];
+
+  useEffect(() => {
+    let active = true;
+    Promise.resolve(actions.loadProfileIconAchievements?.())
+      .then((result) => {
+        if (!active) return;
+        if (result?.ok === false) {
+          setFeedback(getTeamEmblemErrorMessage(result.error));
+          return;
+        }
+        if (Array.isArray(result?.unlockedIconKeys)) {
+          setUnlockedIconKeys(result.unlockedIconKeys);
+        }
+      })
+      .catch((error) => {
+        if (active) setFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [actions.loadProfileIconAchievements]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event) => {
+      if (event.key === "Escape" && !pending) onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose, pending]);
+
+  const selectSource = (avatarSource) => {
+    if (avatarSource === "discord" && !hasDiscordAvatar) {
+      setFeedback("먼저 설정에서 Discord 계정을 연결하세요.");
+      return;
+    }
+    const fallbackIcon = unlockedIconKeys[0] || DEFAULT_PROFILE_ICON_ID;
+    setDraft((current) => ({
+      ...current,
+      avatarSource,
+      avatarIconKey: avatarSource === "icon" && !unlockedSet.has(current.avatarIconKey) ? fallbackIcon : current.avatarIconKey,
+    }));
+    setFeedback("");
+  };
+
+  const selectIcon = (avatarIconKey) => {
+    if (!unlockedSet.has(avatarIconKey)) return;
+    setDraft((current) => ({ ...current, avatarSource: "icon", avatarIconKey }));
+    setFeedback("");
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (pending) return;
+    if (draft.avatarSource === "icon" && !unlockedSet.has(draft.avatarIconKey)) {
+      setFeedback("아직 해금되지 않은 아이콘입니다.");
+      return;
+    }
+
+    setPending(true);
+    setFeedback("");
+    try {
+      const result = await actions.saveProfileIconSettings(draft);
+      if (result?.ok === false) {
+        setFeedback(getTeamEmblemErrorMessage(result.error));
+        return;
+      }
+      onSaved?.(result);
+      onClose();
+    } catch (error) {
+      setFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="app-confirm-backdrop profile-icon-dialog-backdrop" role="presentation" onMouseDown={() => !pending && onClose()}>
+      <form className="app-confirm-dialog profile-icon-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-icon-dialog-title" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
+        <header className="profile-icon-dialog-header">
+          <div>
+            <p className="eyebrow">My Icon</p>
+            <strong id="profile-icon-dialog-title">프로필 아이콘 선택</strong>
+          </div>
+          <Button type="button" size="sm" variant="secondary" aria-label="닫기" disabled={pending} onClick={onClose}>닫기</Button>
+        </header>
+
+        <div className="profile-icon-dialog-preview">
+          <ProfileEmblem user={{ ...user, ...draft }} className="hero-avatar" />
+          <span>{draft.avatarSource === "initial" ? "기본값" : draft.avatarSource === "discord" ? "Discord" : "아이콘"}</span>
+        </div>
+
+        <div className="emblem-source-grid profile-icon-source-grid">
+          <button type="button" className={draft.avatarSource === "initial" ? "active" : ""} aria-pressed={draft.avatarSource === "initial"} disabled={pending} onClick={() => selectSource("initial")}>
+            <strong>기본값</strong>
+          </button>
+          <button type="button" className={draft.avatarSource === "discord" ? "active" : ""} aria-pressed={draft.avatarSource === "discord"} disabled={pending || !hasDiscordAvatar} onClick={() => selectSource("discord")}>
+            <strong>Discord</strong>
+          </button>
+          <button type="button" className={draft.avatarSource === "icon" ? "active" : ""} aria-pressed={draft.avatarSource === "icon"} disabled={pending || loading || !unlockedIconKeys.length} onClick={() => selectSource("icon")}>
+            <strong>아이콘</strong>
+          </button>
+        </div>
+
+        {draft.avatarSource === "icon" ? (
+          <div className="profile-icon-picker">
+            <div className="profile-icon-group-tabs" role="tablist" aria-label="프로필 아이콘 분류">
+              {PROFILE_ICON_GROUPS.map((group) => (
+                <button key={group.id} type="button" role="tab" className={selectedGroup.id === group.id ? "active" : ""} aria-selected={selectedGroup.id === group.id} onClick={() => setSelectedGroupId(group.id)}>
+                  {group.name} <small>{group.icons.length}</small>
+                </button>
+              ))}
+            </div>
+            <div className="profile-icon-catalog" role="list" aria-label={`${selectedGroup.name} 프로필 아이콘`}>
+              {selectedGroup.icons.map((icon) => {
+                const unlocked = unlockedSet.has(icon.id);
+                const selected = draft.avatarIconKey === icon.id;
+                return (
+                  <button
+                    key={icon.id}
+                    type="button"
+                    role="listitem"
+                    className={`${selected ? "active" : ""} ${unlocked ? "" : "locked"}`.trim()}
+                    disabled={pending || !unlocked}
+                    aria-pressed={selected}
+                    aria-label={`${icon.name}${unlocked ? "" : " 잠김"}`}
+                    onClick={() => selectIcon(icon.id)}
+                  >
+                    <span className="profile-icon-catalog-image">
+                      <img src={assetUrl(icon.src)} alt="" loading="lazy" decoding="async" />
+                      {!unlocked ? <i aria-hidden="true">잠금</i> : null}
+                    </span>
+                    <strong>{icon.name}</strong>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {draft.avatarSource !== "discord" ? (
+          <div className="emblem-style-controls profile-icon-color-controls">
+            <label>
+              배경색
+              <input type="color" value={draft.avatarColor} onChange={(event) => setDraft((current) => ({ ...current, avatarColor: event.target.value }))} />
+            </label>
+            <label className="emblem-border-toggle">
+              <input type="checkbox" checked={draft.avatarBorderEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarBorderEnabled: event.target.checked }))} />
+              테두리 사용
+            </label>
+            <label>
+              테두리색
+              <input type="color" value={draft.avatarBorderColor} disabled={!draft.avatarBorderEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarBorderColor: event.target.value }))} />
+            </label>
+          </div>
+        ) : null}
+
+        {feedback ? <p className="form-warning profile-icon-dialog-feedback">{feedback}</p> : null}
+        <footer className="profile-icon-dialog-actions">
+          <Link className="button button-secondary button-sm" to="/app/profile/achievements" onClick={onClose}>업적 보기</Link>
+          <Button type="submit" size="sm" disabled={pending || loading}>{pending ? "저장 중" : "저장"}</Button>
+        </footer>
+      </form>
+    </div>
+  );
+}
