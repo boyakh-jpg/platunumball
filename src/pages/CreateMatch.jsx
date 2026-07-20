@@ -2323,7 +2323,7 @@ export default function CreateMatch({ app }) {
                   <label><input type="checkbox" checked={draft.preRegistered} onChange={(event) => update({ preRegistered: event.target.checked })} /> 사전등록</label>
                 </div>
               ) : null}
-              <div className="form-grid two">
+              <div className={`form-grid two create-rules-grid${isTournamentRoom ? " has-schedule-note" : ""}`}>
                 <label>
                   공격권 룰
                   <input value={draft.attackRule} onChange={(event) => update({ attackRule: event.target.value })} />

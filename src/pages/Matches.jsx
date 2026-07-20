@@ -1387,7 +1387,7 @@ export default function Matches({ app }) {
           <section className="om-calendar-filter-bar" aria-label="경기 필터">
             {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">관계</span>
-              <div className="segmented-control compact-segments" role="group" aria-label="관계 필터">
+              <div className="segmented-control compact-segments om-relation-filter-grid" role="group" aria-label="관계 필터">
                 <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "all" })}>전체</button>
                 <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "created" })}>내가 만든 방</button>
                 <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => applyFilterState({ relationFilter: "joined" })}>내 참여방</button>
@@ -1396,7 +1396,7 @@ export default function Matches({ app }) {
             </div> : null}
             {panelMode !== "team" ? <div className="om-calendar-filter-row">
               <span className="om-calendar-filter-label">유형</span>
-              <div className="segmented-control compact-segments" role="group" aria-label="유형 필터">
+              <div className="segmented-control compact-segments om-branch-filter-grid" role="group" aria-label="유형 필터">
                 {SCHEDULE_BRANCH_FILTERS.map((option) => (
                   <button
                     key={option.id}

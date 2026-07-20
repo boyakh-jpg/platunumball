@@ -205,11 +205,13 @@ export default function Profile({ app }) {
                 <p className="eyebrow">My Icon</p>
                 <h2>프로필 아이콘</h2>
               </div>
-              <ProfileEmblem user={user} className="hero-avatar" />
-            </div>
-            <div className="profile-icon-card-actions">
-              <Button type="button" size="sm" onClick={() => setIconDialogOpen(true)}>아이콘 변경</Button>
-              <Link className="button button-secondary button-sm" to="/app/profile/achievements">업적 보기</Link>
+              <div className="profile-icon-card-tools">
+                <ProfileEmblem user={user} className="hero-avatar" />
+                <div className="profile-icon-card-actions">
+                  <Button type="button" size="sm" onClick={() => setIconDialogOpen(true)}>아이콘 변경</Button>
+                  <Link className="button button-secondary button-sm" to="/app/profile/achievements">업적 보기</Link>
+                </div>
+              </div>
             </div>
             {emblemFeedback ? <small className="profile-icon-card-feedback">{emblemFeedback}</small> : null}
           </Card>

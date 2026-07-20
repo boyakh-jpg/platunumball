@@ -5228,6 +5228,46 @@ html[data-theme="light"] .om-calendar-filter-bar {
   color: var(--ui-button-color-active);
 }
 
+.om-calendar-filter-row .om-relation-filter-grid,
+.om-calendar-filter-row .om-branch-filter-grid {
+  display: grid;
+  width: 100%;
+}
+
+.om-calendar-filter-row .om-relation-filter-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.om-calendar-filter-row .om-branch-filter-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.om-calendar-filter-row .om-branch-filter-grid > button {
+  grid-column: span 2;
+}
+
+.om-calendar-filter-row .om-branch-filter-grid > button:nth-last-child(-n + 2) {
+  grid-column: span 3;
+}
+
+.om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
+  width: 100%;
+}
+
+@media (max-width: 1120px) {
+  .om-view-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .om-view-grid > .om-view-card {
+    grid-column: span 2;
+  }
+
+  .om-view-grid > .om-view-card:nth-last-child(-n + 2) {
+    grid-column: span 3;
+  }
+}
+
 @media (min-width: 721px) {
   .om-calendar-filter-row {
     grid-template-columns: 34px minmax(0, 1fr);
@@ -5268,6 +5308,21 @@ html[data-theme="light"] .om-calendar-filter-bar {
     height: 38px;
     padding-inline: 6px;
     font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .om-calendar-filter-row .om-branch-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .om-calendar-filter-row .om-branch-filter-grid > button,
+  .om-calendar-filter-row .om-branch-filter-grid > button:nth-last-child(-n + 2) {
+    grid-column: auto;
+  }
+
+  .om-calendar-filter-row .om-branch-filter-grid > button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 

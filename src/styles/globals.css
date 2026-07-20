@@ -18706,3 +18706,213 @@ html[data-theme="light"] .court-map-picker-state {
     scrollbar-gutter: auto;
   }
 }
+
+/* 2026-07-20 efficient nested control and information layouts.
+   Room modals, repeated list cards, and page heroes keep their own structure. */
+.team-overview-grid {
+  align-items: start;
+}
+
+.teams-page .rank-rule-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.teams-page .rank-rule-list > div {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+}
+
+.profile-achievement-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.profile-achievement-metrics > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.season-page .operations-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+:where(.rank-team-page, .rank-profile-page) .rank-stat-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settings-nav-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.discord-link-card .settings-toggle-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-privacy-card .settings-toggle-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-privacy-card .settings-toggle-grid > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.profile-form-grid > .button {
+  grid-column: 1 / -1;
+}
+
+.profile-emblem-card > .section-title-row {
+  align-items: center;
+}
+
+.profile-icon-card-tools {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.profile-icon-card-tools .profile-icon-card-actions {
+  flex-wrap: nowrap;
+}
+
+@media (min-width: 600px) {
+  .settings-privacy-card .settings-toggle-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settings-privacy-card .settings-toggle-grid > :last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .create-match-page .create-rules-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .create-match-page .create-rules-grid.has-schedule-note {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 600px) and (max-width: 899px) {
+  .create-match-page .create-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .create-match-page .create-mode-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 900px) {
+  .create-match-page .create-mode-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .profile-icon-group-tabs {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .profile-icon-group-tabs > button {
+    width: 100%;
+    min-width: 0;
+    grid-column: span 6;
+    justify-content: center;
+  }
+
+  .profile-icon-group-tabs > button:nth-child(-n + 3) {
+    grid-column: span 4;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 719px) {
+  .profile-icon-group-tabs {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .profile-icon-group-tabs > button {
+    width: 100%;
+    min-width: 0;
+    grid-column: span 3;
+    justify-content: center;
+  }
+
+  .profile-icon-group-tabs > button:nth-last-child(-n + 3) {
+    grid-column: span 4;
+  }
+}
+
+@media (max-width: 520px) {
+  :where(.rank-team-page, .rank-profile-page) .rank-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-emblem-card > .section-title-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-icon-card-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .ranking-filter-card .segmented-control {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .ranking-filter-card .segmented-control button {
+    width: 100%;
+    min-width: 0;
+    grid-column: span 3;
+  }
+
+  .ranking-filter-card .segmented-control button:nth-last-child(-n + 3) {
+    grid-column: span 4;
+  }
+}
+
+@media (max-width: 359px) {
+  .settings-nav-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-nav-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .season-page .operations-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ranking-filter-card .segmented-control {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .ranking-filter-card .segmented-control button,
+  .ranking-filter-card .segmented-control button:nth-last-child(-n + 3) {
+    grid-column: span 3;
+  }
+
+  .ranking-filter-card .segmented-control button:nth-child(-n + 3) {
+    grid-column: span 2;
+  }
+
+  .create-match-page .toggle-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .create-match-page .toggle-pair > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .profile-icon-group-tabs > button {
+    padding-inline: 6px;
+  }
+}
