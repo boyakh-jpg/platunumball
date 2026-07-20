@@ -257,7 +257,7 @@
   filter: none;
 }
 
-@container (min-width: 761px) and (max-width: 1180px) {
+@container (min-width: 761px) and (max-width: 959px) {
   .match-list-card.om-match-card {
     grid-template-columns: minmax(0, 1fr) minmax(92px, 116px);
     grid-template-areas:
