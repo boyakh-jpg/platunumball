@@ -47,6 +47,7 @@ import {
   getRecruitingLobby,
   getRecruitingRatingScale,
   getRecruitingRoomOwnerId,
+  getRecruitingPostTerminalState,
   getRecruitingSideCapacity,
   getRecruitingTargetMmr,
   getRecruitingTierRange,
@@ -700,6 +701,8 @@ function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
 }
 
 function getRecruitingRoomStatus(lobby, { post = null, myEntry = null, mine = false } = {}) {
+  const terminalStatus = post ? getRecruitingPostTerminalState(post) : null;
+  if (terminalStatus) return terminalStatus;
   const timingStatus = post ? getPublicRoomTimingStatus(post) : null;
   if (lobby.canConfirm) {
     if (timingStatus && !timingStatus.canConfirm) {
@@ -714,6 +717,8 @@ function getRecruitingRoomStatus(lobby, { post = null, myEntry = null, mine = fa
 }
 
 export function getRecruitingRoomListStatus(lobby, { post = null } = {}) {
+  const terminalStatus = post ? getRecruitingPostTerminalState(post) : null;
+  if (terminalStatus) return { ...terminalStatus, actionLabel: "방 보기" };
   const timingStatus = post ? getPublicRoomTimingStatus(post) : null;
   if (timingStatus?.expired) {
     return { label: "종료됨", tone: "neutral", detail: timingStatus.detail, actionLabel: "방 보기" };
@@ -3155,6 +3160,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
+        const recruitingRoomTerminalStatus = sourceMatch ? null : getRecruitingPostTerminalState(selectedPost);
         const sourceMatchIsRecordRoom = Boolean(sourceMatch && isMatchRecordMatch(sourceMatch));
         const sourceMatchIsTournamentPregame = Boolean(
           sourceMatch?.tournamentId &&
@@ -3168,11 +3174,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           !sourceMatch?.voidedAt
         );
         const sourceMatchRecordEditable = Boolean(sourceMatchIsRecordRoom && !sourceMatch?.result && !sourceMatch?.confirmedAt);
-        const sourceRoomReadOnly = Boolean(matchRoom && (
-          sourceMatch?.status === "disputed" ||
-          ["cancelled", "void"].includes(sourceMatchPhase?.phase) ||
-          (sourceMatchPhase?.phase === "record" && !sourceMatchRecordEditable)
-        ));
+        const sourceRoomReadOnly = Boolean(
+          recruitingRoomTerminalStatus ||
+          (matchRoom && (
+            sourceMatch?.status === "disputed" ||
+            ["cancelled", "void"].includes(sourceMatchPhase?.phase) ||
+            (sourceMatchPhase?.phase === "record" && !sourceMatchRecordEditable)
+          )),
+        );
         const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
         const activeSelfSlotDraft = sourceRoomReadOnly ? null : activeSelfSlotDraftRaw;
         const canUseChat = canChat && !sourceRoomReadOnly && !roomChatLocked;
@@ -4141,6 +4150,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       </Button>
                     ) : null}
                   </div>
+                ) : recruitingRoomTerminalStatus ? (
+                  <div className="arena-owner-panel">
+                    <strong>{recruitingRoomTerminalStatus.label}</strong>
+                    <span>{recruitingRoomTerminalStatus.detail}</span>
+                  </div>
                 ) : mine ? (
                   <div className="arena-owner-panel">
                     <strong>방장 권한</strong>
@@ -4337,7 +4351,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   </form>
                 )}
 
-                {!matchRoom && !recruitingRoomConfirmed && mine ? (
+                {!sourceRoomReadOnly && !matchRoom && !recruitingRoomConfirmed && mine ? (
                   <Button
                     type="button"
                     variant="primary"
@@ -4348,7 +4362,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     {confirmingMatchId === selectedPost.id ? "확정 중" : "경기 확정"}
                   </Button>
                 ) : null}
-                {!matchRoom && alreadyApplied ? (
+                {!sourceRoomReadOnly && !matchRoom && alreadyApplied ? (
                   <Button
                     type="button"
                     variant="secondary"
@@ -4358,7 +4372,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     <XCircle size={18} /> 참여 취소
                   </Button>
                 ) : null}
-                {!matchRoom && mine ? (
+                {!sourceRoomReadOnly && !matchRoom && mine ? (
                   <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.closeRecruitingPost(selectedPost.id)}>
                     경기 취소
                   </Button>

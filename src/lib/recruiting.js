@@ -84,7 +84,30 @@ export function removeAcceptedRecruitingInvitations(invitations = [], acceptedIn
 }
 
 export function isMutableRecruitingRoom(post) {
-  return Boolean(post && post.status !== "closed");
+  return Boolean(post && !getRecruitingPostTerminalState(post));
+}
+
+export function getRecruitingPostTerminalState(post = {}) {
+  if (!post || post.confirmedAt) return null;
+  const status = String(post.status ?? post.roomState?.status ?? "").trim().toLowerCase();
+  const cancellationReason = String(post.roomState?.cancellationReason ?? "").trim();
+
+  if (status === "closed") {
+    return { label: "취소됨", tone: "neutral", detail: "방장이 취소한 방입니다." };
+  }
+  if (["cancelled", "canceled"].includes(status)) {
+    if (cancellationReason === "instant_expired") {
+      return { label: "자동 취소됨", tone: "neutral", detail: "즉시방 운영 시간이 지나 자동 취소됐습니다." };
+    }
+    if (cancellationReason === "scheduled_underfilled") {
+      return { label: "자동 취소됨", tone: "neutral", detail: "시작 시각까지 정원이 차지 않아 자동 취소됐습니다." };
+    }
+    return { label: "취소됨", tone: "neutral", detail: "취소된 방입니다." };
+  }
+  if (status === "expired") {
+    return { label: "만료됨", tone: "neutral", detail: "운영 시간이 끝난 방입니다." };
+  }
+  return null;
 }
 
 export function getRecruitingSlotEditStatus(post) {
