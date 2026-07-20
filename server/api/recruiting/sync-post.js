@@ -249,11 +249,10 @@ function isInstantRecruitingPost(post = {}) {
   return post.timingType === "instant" || post.roomState?.timingType === "instant" || post.scheduledAt === "즉시";
 }
 
-function toRoomOpenedDiscordRows(post = {}, profiles = []) {
-  const now = new Date().toISOString();
+function getRoomOpenedPayload(post = {}) {
   const capacity = getModeCapacity(post.mode) * 2;
   const playerCount = getRecruitingPlayerCount(post);
-  const payload = {
+  return {
     title: "방 개설",
     body: [
       "즉시 매칭방이 열렸습니다.",
@@ -266,6 +265,32 @@ function toRoomOpenedDiscordRows(post = {}, profiles = []) {
     webUrl: getRecruitingWebUrl(post.id),
     actions: [],
   };
+}
+
+function toRoomOpenedNotificationRows(post = {}, participantIds = []) {
+  const now = new Date().toISOString();
+  const payload = getRoomOpenedPayload(post);
+  return toNotificationRows(participantIds.map((profileId) => ({
+    id: `discord-room-opened-${post.id}-${profileId}`,
+    targetUserId: profileId,
+    title: payload.title,
+    body: payload.body,
+    tone: "match",
+    type: "match",
+    discordEvent: "match",
+    recruitingPostId: post.id,
+    webPath: payload.webPath,
+    webUrl: payload.webUrl,
+    skipDiscordSync: true,
+    sendAt: now,
+    createdAt: now,
+    updatedAt: now,
+  })), "", { coalesce: "nullish" });
+}
+
+function toRoomOpenedDiscordRows(post = {}, profiles = []) {
+  const now = new Date().toISOString();
+  const payload = getRoomOpenedPayload(post);
 
   return profiles.map((profile) => {
     const id = `discord-room-opened-${post.id}-${profile.id}`;
@@ -298,7 +323,15 @@ function toRoomOpenedDiscordRows(post = {}, profiles = []) {
 
 async function queueInstantRoomOpenedDiscordDeliveries(supabase, post = {}, action = "sync") {
   if (action !== "createRecruitingPost" || !isInstantRecruitingPost(post)) return 0;
-  const profiles = await getDiscordProfiles(supabase, Array.from(participantIdsFromPost(post)));
+  const participantIds = Array.from(participantIdsFromPost(post));
+  const notificationRows = toRoomOpenedNotificationRows(post, participantIds);
+  if (notificationRows.length) {
+    const { error } = await supabase
+      .from("notifications")
+      .upsert(notificationRows, { onConflict: "id", ignoreDuplicates: true });
+    if (error) throw error;
+  }
+  const profiles = await getDiscordProfiles(supabase, participantIds);
   const rows = toRoomOpenedDiscordRows(post, profiles);
   return upsertDiscordDeliveryRows(supabase, rows);
 }

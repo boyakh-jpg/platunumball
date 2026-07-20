@@ -1,5 +1,11 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-20 즉시방 홈·Discord 알림
+
+1. 즉시 모집방 생성 시 Discord 연결 여부와 무관하게 모든 참가자의 앱 내부 알림을 원본으로 생성한다.
+2. Discord delivery는 같은 알림 ID와 실제 모집방 URL을 사용하며, 원본 알림에는 `skipDiscordSync=true`를 넣어 클라이언트 중복 큐 생성을 막는다.
+3. 방 권한, 공개 범위, MMR, 경기 상태 규칙은 변경하지 않는다.
+
 ## 2026-07-20 Discord OAuth 프로필 저장
 
 1. Discord OAuth 콜백 결과는 Supabase 원격 프로필 로딩이 끝난 뒤에만 소비한다. 로딩 전에는 URL의 1회성 결과와 세션 state를 유지한다.
