@@ -41,6 +41,9 @@ const REQUIRED_COLUMNS = {
     "emblem_color",
     "emblem_border_enabled",
     "emblem_border_color",
+    "emblem_text_mode",
+    "emblem_abbreviation",
+    "emblem_font",
     "deleted_at",
   ],
   team_members: [

@@ -20,6 +20,9 @@ export function fromRemoteTeam(row, memberRows) {
     emblemColor: row.emblem_color ?? row.accent ?? null,
     emblemBorderEnabled: row.emblem_border_enabled !== false,
     emblemBorderColor: row.emblem_border_color ?? row.accent ?? null,
+    emblemTextMode: new Set(["name", "abbreviation"]).has(row.emblem_text_mode) ? row.emblem_text_mode : "initial",
+    emblemAbbreviation: row.emblem_abbreviation ?? "",
+    emblemFont: row.emblem_font ?? "sport",
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? row.created_at ?? null,
     members: [...(memberRows ?? [])]

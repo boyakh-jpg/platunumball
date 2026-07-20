@@ -1,22 +1,23 @@
 # RankBall 데이터 저장 모델
 
-## 2026-07-20 개인·팀 엠블럼 확장
+## 2026-07-20 프로필 아이콘·팀 엠블럼 확장
 
 | 원본 | 필드 | 역할 |
 | --- | --- | --- |
-| `profiles` | `avatar_key`, `avatar_source`, `avatar_updated_at` | 기존 개인 이미지 key 보존용. 현재 표시 원본은 `initial`로 고정 |
-| `profiles` | `avatar_color`, `avatar_border_enabled`, `avatar_border_color` | 개인 기본 글자 배경과 테두리 스타일 |
-| `profiles` | `discord_avatar_url` | Discord 연결 정보용. 개인 엠블럼에는 표시하지 않음 |
+| `profiles` | `avatar_key`, `avatar_source`, `avatar_updated_at` | 프로필 아이콘 원본. 현재 UI는 `initial`/`discord`를 사용하고 기존 key는 보존 |
+| `profiles` | `avatar_color`, `avatar_border_enabled`, `avatar_border_color` | 프로필 기본 글자 배경과 테두리 스타일 |
+| `profiles` | `discord_avatar_url` | `avatar_source='discord'`일 때 표시하는 연결 프로필 사진 |
 | `teams` | `emblem_key`, `emblem_source` | 팀 사진 object key와 `initial`/`upload` 표시 선택 |
 | `teams` | `emblem_uploaded_at`, `emblem_upload_count` | 처음 2회 이후 30일 팀 사진 업로드 제한 원본 |
 | `teams` | `emblem_color`, `emblem_border_enabled`, `emblem_border_color` | 팀 기본색과 테두리 스타일 |
+| `teams` | `emblem_text_mode`, `emblem_abbreviation`, `emblem_font` | 팀 기본값의 첫 글자/팀명/약칭 기준과 1~8자 약칭, 글꼴 프리셋 |
 | R2 | `team-emblems/{teamId}/{sha256-24}.webp` | 팀 직접 업로드 결과 |
 
-- `/api/profile/emblem`은 개인 사진 업로드와 사진 원본 전환을 거부하고 기본값 스타일 저장만 허용한다.
+- `/api/profile/emblem`은 프로필 기본값 스타일과 `initial`/`discord` 원본 전환만 허용한다. 직접 사진 업로드는 거부한다.
 - `rankball_update_team_emblem()`은 팀 row와 팀장 권한을 검사하고 이미지 업로드 횟수·30일 제한을 처리한다.
 - `rankball_update_team_emblem_source()`는 팀장 권한으로 표시 원본만 바꾸며 저장된 object key를 보존한다.
-- `rankball_update_team_emblem_style()`은 팀장 권한으로 색상·테두리만 바꾸며 이미지 업로드 횟수를 변경하지 않는다.
-- `public_profiles`에는 공개 표시에 필요한 엠블럼 필드만 노출한다. Discord 사용자 ID와 전체 연결 payload는 계속 제외한다.
+- `rankball_update_team_emblem_design()`은 팀장 권한으로 색상·테두리·팀명/약칭·글꼴을 함께 바꾸며 이미지 업로드 횟수를 변경하지 않는다.
+- `public_profiles`에는 공개 표시에 필요한 프로필 아이콘 필드와 Discord 이미지 URL만 노출한다. Discord 사용자 ID와 전체 연결 payload는 계속 제외한다.
 
 ## 2026-06-30 profile match summary
 

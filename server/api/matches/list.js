@@ -38,7 +38,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../../../src/lib/constants.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
-import { getMatchRoomPhase, isMatchClosedNotice, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
+import { getMatchRoomPhase, isMatchClosedNotice, isMatchInPlayMenu, isMatchInScheduleMenu, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
 
 let userRoomFeedAvailable = true;
 const MATCH_LIST_MAX_LIMIT = REMOTE_CLIENT_ACTIVE_MATCH_LIMIT;
@@ -249,6 +249,7 @@ function filterActiveMatchCards(matches = [], activeOnly = false, options = {}) 
     && (includeRecordRooms || (!isSoloRecordMatch(match) && !isMatchRecordMatch(match)))
   ));
   if (!activeOnly) return visibleMatches;
+  if (options.scheduleOnly === true) return visibleMatches.filter((match) => isMatchInScheduleMenu(match));
   const includeRecentCompleted = options.includeRecentCompleted === true;
   return visibleMatches.filter((match) => (
     match?.status !== "closed" && (
@@ -888,6 +889,9 @@ function toClientTeam(row = {}) {
     emblemColor: row.emblem_color ?? row.accent ?? null,
     emblemBorderEnabled: row.emblem_border_enabled !== false,
     emblemBorderColor: row.emblem_border_color ?? row.accent ?? null,
+    emblemTextMode: new Set(["name", "abbreviation"]).has(row.emblem_text_mode) ? row.emblem_text_mode : "initial",
+    emblemAbbreviation: row.emblem_abbreviation ?? "",
+    emblemFont: row.emblem_font ?? "sport",
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? row.created_at ?? null,
     membersPartial: true,
@@ -1026,19 +1030,21 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const shouldLoadRecruitingSchedule = !cursor && body.includeRecruitingSchedule === true;
   const completedOnly = body.completedOnly === true;
   const recorderOnly = body.recorderOnly === true;
+  const scheduleOnly = body.scheduleOnly === true && !recorderOnly && !completedOnly;
   const completedSince = completedOnly ? getCompletedSince(body) : "";
   const activeOnly = body.activeOnly === true || recorderOnly;
   const includeTeamSchedule = body.includeTeamSchedule === true;
-  const shouldLoadRecentCompleted = !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
+  const shouldLoadRecentCompleted = !scheduleOnly && !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
   const recentCompletedHours = shouldLoadRecentCompleted ? getRecentCompletedHours(body) : RECENT_COMPLETED_MATCH_HOURS;
-  const shouldLoadClosedNotices = body.includeClosedNotices !== false && !recorderOnly && !completedOnly && activeOnly && !cursor;
+  const shouldLoadClosedNotices = !scheduleOnly && body.includeClosedNotices !== false && !recorderOnly && !completedOnly && activeOnly && !cursor;
   const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
     let filtered = filterActiveMatchCards(items, activeOnly, {
       includeRecentCompleted: shouldLoadRecentCompleted,
       includeRecordRooms: recorderOnly,
+      scheduleOnly,
     });
-    if (recorderOnly) filtered = filtered.filter((match) => isRecorderMatch(match, context.profileId, adminLevel >= 30));
+    if (recorderOnly) filtered = filtered.filter((match) => isMatchInPlayMenu(match) && isRecorderMatch(match, context.profileId, adminLevel >= 30));
     if (completedOnly) filtered = filtered.filter((match) => (
       match.status === "confirmed" &&
       (getMatchPlayerIds(match).includes(context.profileId) || match.__feedRelations?.includes("participant"))

@@ -275,6 +275,9 @@ export function toClientTeamWithMembers(team = {}, memberRows = []) {
     emblemColor: team.emblem_color ?? team.accent ?? null,
     emblemBorderEnabled: team.emblem_border_enabled !== false,
     emblemBorderColor: team.emblem_border_color ?? team.accent ?? null,
+    emblemTextMode: new Set(["name", "abbreviation"]).has(team.emblem_text_mode) ? team.emblem_text_mode : "initial",
+    emblemAbbreviation: team.emblem_abbreviation ?? "",
+    emblemFont: team.emblem_font ?? "sport",
     createdAt: team.created_at ?? null,
     updatedAt: team.updated_at ?? team.created_at ?? null,
     members: [...memberRows]

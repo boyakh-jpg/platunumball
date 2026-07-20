@@ -6,6 +6,8 @@ const MAX_UPLOAD_BYTES = 96 * 1024;
 const MAX_IMAGE_DIMENSION = 320;
 const TEAM_ID_PATTERN = /^[A-Za-z0-9_-]{2,128}$/;
 const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const TEAM_EMBLEM_TEXT_MODES = new Set(["initial", "name", "abbreviation"]);
+const TEAM_EMBLEM_FONTS = new Set(["sport", "gothic", "serif", "mono"]);
 
 function reject(statusCode, message) {
   const error = new Error(message);
@@ -113,7 +115,7 @@ async function loadTeamForActor(context, teamId) {
   const [{ data: team, error: teamError }, { data: captain, error: captainError }] = await Promise.all([
     context.supabase
       .from("teams")
-      .select("id,emblem_key,emblem_source,emblem_updated_at,emblem_uploaded_at,emblem_upload_count,emblem_color,emblem_border_enabled,emblem_border_color,deleted_at")
+      .select("id,emblem_key,emblem_source,emblem_updated_at,emblem_uploaded_at,emblem_upload_count,emblem_color,emblem_border_enabled,emblem_border_color,emblem_text_mode,emblem_abbreviation,emblem_font,deleted_at")
       .eq("id", teamId)
       .is("deleted_at", null)
       .maybeSingle(),
@@ -148,12 +150,15 @@ async function commitEmblem(context, teamId, emblemKey, expectedEmblemKey) {
 }
 
 async function commitEmblemStyle(context, teamId, payload) {
-  const { data, error } = await context.supabase.rpc("rankball_update_team_emblem_style", {
+  const { data, error } = await context.supabase.rpc("rankball_update_team_emblem_design", {
     p_actor_profile_id: context.profileId,
     p_team_id: teamId,
     p_emblem_color: payload.emblemColor,
     p_border_enabled: payload.emblemBorderEnabled,
     p_border_color: payload.emblemBorderColor,
+    p_text_mode: payload.emblemTextMode,
+    p_abbreviation: payload.emblemAbbreviation || null,
+    p_font: payload.emblemFont,
   });
   if (!error) return data ?? { ok: true, teamId };
 
@@ -199,11 +204,22 @@ export default async function handler(request, response) {
     if (action === "style") {
       const emblemColor = String(body.emblemColor || "").trim();
       const emblemBorderColor = String(body.emblemBorderColor || "").trim();
+      const emblemTextMode = String(body.emblemTextMode ?? team.emblem_text_mode ?? "initial").trim().toLowerCase();
+      const emblemAbbreviation = String(body.emblemAbbreviation ?? team.emblem_abbreviation ?? "").trim().replace(/\s+/g, " ");
+      const emblemFont = String(body.emblemFont ?? team.emblem_font ?? "sport").trim().toLowerCase();
       if (!COLOR_PATTERN.test(emblemColor) || !COLOR_PATTERN.test(emblemBorderColor)) reject(400, "invalid_emblem_color");
+      if (!TEAM_EMBLEM_TEXT_MODES.has(emblemTextMode)) reject(400, "invalid_team_emblem_text_mode");
+      if (Array.from(emblemAbbreviation).length > 8 || (emblemTextMode === "abbreviation" && !emblemAbbreviation)) {
+        reject(400, "invalid_team_emblem_abbreviation");
+      }
+      if (!TEAM_EMBLEM_FONTS.has(emblemFont)) reject(400, "invalid_team_emblem_font");
       const result = await commitEmblemStyle(context, teamId, {
         emblemColor,
         emblemBorderEnabled: body.emblemBorderEnabled === true,
         emblemBorderColor,
+        emblemTextMode,
+        emblemAbbreviation,
+        emblemFont,
       });
       sendJson(response, 200, result);
       return;

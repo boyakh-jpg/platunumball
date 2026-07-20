@@ -1,6 +1,6 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { CalendarDays, CheckCircle2, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy, UserRound, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy, UserRound, UsersRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -28,6 +28,8 @@ import {
   isMatchRecordMatch,
   isMatchClosedNotice,
   isMatchPartyTeamParty,
+  isMatchInPlayMenu,
+  isMatchInScheduleMenu,
   isMatchRelatedToUser,
   isMatchSideTeamParty,
   isPersonalRecordMatch,
@@ -60,23 +62,15 @@ const VIEWS = [
   {
     id: "scheduled",
     code: "SOON",
-    title: "예정·진행",
-    desc: "처리할 일 없는 일정",
+    title: "예정",
+    desc: "시작 전 일정",
     icon: Swords,
   },
-  {
-    id: "closed",
-    code: "CLOSED",
-    title: "닫힘",
-    desc: "취소·무효·만료",
-    icon: CheckCircle2,
-  },
 ];
-const CHILD_VIEW_IDS = ["todo", "scheduled", "closed"];
+const CHILD_VIEW_IDS = ["todo", "scheduled"];
 const VIEW_IDS = new Set(VIEWS.map((view) => view.id));
 const PANEL_MODES = new Set(["schedule", "team", "tournament"]);
 const RELATION_FILTER_IDS = new Set(["all", "created", "joined", "invited"]);
-const MATCH_MENU_PHASES = new Set(["locked", "checkin", "live", "postgame", "dispute"]);
 const SCHEDULE_BRANCH_FILTERS = [
   { id: "all", label: "전체" },
   { id: "public", label: "공개 모집" },
@@ -206,8 +200,7 @@ function shouldIncludeScheduleWindow(item, todayValue, maxScheduleDate) {
   const itemDate = getMatchDate(item);
   if (itemDate > maxScheduleDate) return false;
   if (!itemDate || itemDate >= todayValue) return true;
-  if ((item?.teamA || item?.teamB) && MATCH_MENU_PHASES.has(getMatchRoomPhase(item).phase)) return true;
-  return item?.recentCompleted === true;
+  return Boolean((item?.teamA || item?.teamB) && isMatchInScheduleMenu(item));
 }
 
 function getCalendarDays(monthKey) {
@@ -352,14 +345,10 @@ function getMatchActionLabel(match) {
 
 function shouldShowMatchForView(match, view, userId, options = {}) {
   if (isPersonalRecordMatch(match) || isMatchRecordMatch(match)) return false;
-  const closedNotice = isMatchClosedNotice(match);
-  const phase = getMatchRoomPhase(match).phase;
   if (view.id === "active") {
     return CHILD_VIEW_IDS.some((viewId) => shouldShowMatchForView(match, { id: viewId }, userId, options));
   }
-  if (view.id === "closed") return closedNotice;
-  if (closedNotice) return false;
-  if (!MATCH_MENU_PHASES.has(phase)) return false;
+  if (isMatchClosedNotice(match) || !isMatchInScheduleMenu(match)) return false;
   if (view.id === "todo") return userNeedsMatchAction(match, userId);
   if (view.id === "scheduled") return !userNeedsMatchAction(match, userId);
   return false;
@@ -1004,6 +993,10 @@ export default function Matches({ app }) {
   const selectedMatchRoomError = selectedMatchRoom.error;
   const selectedMatchDetailLoading = Boolean(activeSelectedMatchId && selectedMatchDetailLoadingId === activeSelectedMatchId);
   const selectedMatchDetailFailed = Boolean(activeSelectedMatchId && selectedMatchDetailFailedId === activeSelectedMatchId && !selectedMatch);
+  useEffect(() => {
+    if (!activeSelectedMatchId || !selectedMatch || !isMatchInPlayMenu(selectedMatch)) return;
+    navigate(`/app/recorder?match=${encodeURIComponent(activeSelectedMatchId)}`, { replace: true });
+  }, [activeSelectedMatchId, navigate, selectedMatch]);
   const applyFilterState = (patch, options = {}) => {
     const nextPanelMode = patch.panelMode ?? panelMode;
     const nextViewId = patch.viewId ?? viewId;
@@ -1268,7 +1261,6 @@ export default function Matches({ app }) {
   const activeCount = viewButtonCounts.active ?? 0;
   const todoCount = viewButtonCounts.todo ?? 0;
   const scheduledCount = viewButtonCounts.scheduled ?? 0;
-  const closedCount = viewButtonCounts.closed ?? 0;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
   const scheduleLoading = app.remoteReady === false || matchPagination.loading || (panelMode === "team" && matchPagination.teamScheduleLoading);
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
@@ -1278,7 +1270,6 @@ export default function Matches({ app }) {
   const displayActiveCount = scheduleLoading ? "..." : activeCount;
   const displayTodoCount = scheduleLoading ? "..." : todoCount;
   const displayScheduledCount = scheduleLoading ? "..." : scheduledCount;
-  const displayClosedCount = scheduleLoading ? "..." : closedCount;
   const getDisplayViewButtonCount = (view) => (scheduleLoading ? "..." : getViewButtonCount(view));
   const teamScheduleCount = useMemo(() => {
     if (!matchPagination.teamScheduleChecked) return "";
@@ -1296,15 +1287,14 @@ export default function Matches({ app }) {
       <section className="om-match-hero">
         <div className="om-match-copy">
           <span className="om-kicker">MATCH QUEUE</span>
-          <h1>내 경기</h1>
-          <p>내가 들어간 진행, 예정, 지난 경기를 날짜별로 본다.</p>
+          <h1>일정</h1>
+          <p>내가 들어간 경기 시작 전 일정만 날짜별로 봅니다.</p>
         </div>
         <div className="om-match-panel">
           <div className="om-match-stats">
             <span><strong>{displayActiveCount}</strong>MY</span>
             <span><strong>{displayTodoCount}</strong>ACTION</span>
             <span><strong>{displayScheduledCount}</strong>SOON</span>
-            <span><strong>{displayClosedCount}</strong>CLOSED</span>
           </div>
           <div className="om-match-actions">
             <Link to="/app/create">
@@ -1375,14 +1365,14 @@ export default function Matches({ app }) {
       </section>
 
       {panelMode !== "tournament" ? (
-      <section className="om-calendar-panel" aria-label="진행 경기 캘린더">
+      <section className="om-calendar-panel" aria-label="경기 일정 캘린더">
         <div className="om-calendar-summary">
           <div className="om-calendar-heading">
             <span className="om-view-icon"><CalendarDays size={22} /></span>
             <div>
               <span className="om-kicker">SCHEDULE</span>
-              <h2>{panelMode === "team" ? "내 팀 경기 일정" : "내 진행 일정"}</h2>
-              <p>{dateFilter ? `${formatDateLabel(dateFilter)} 내 경기만 표시` : "내가 들어간 진행 중이거나 예정된 경기를 날짜별로 본다."}</p>
+              <h2>{panelMode === "team" ? "내 팀 일정" : "내 경기 일정"}</h2>
+              <p>{dateFilter ? `${formatDateLabel(dateFilter)} 내 경기만 표시` : "내가 들어간 시작 전 경기만 날짜별로 봅니다."}</p>
             </div>
           </div>
           <section className="om-calendar-filter-bar" aria-label="경기 필터">

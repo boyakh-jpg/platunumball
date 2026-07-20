@@ -2029,6 +2029,59 @@ span.referee-hover-card {
   object-fit: contain;
 }
 
+.team-emblem-text {
+  display: grid;
+  width: 86%;
+  place-items: center;
+  gap: 0;
+  line-height: 0.86;
+  text-align: center;
+  text-transform: none;
+}
+
+.team-emblem-text > span {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.team-emblem-text.compact {
+  font-size: 0.72em;
+  letter-spacing: -0.04em;
+}
+
+.team-emblem-text.dense {
+  font-size: 0.54em;
+  letter-spacing: -0.07em;
+}
+
+.team-emblem-text.two-lines {
+  font-size: 0.7em;
+}
+
+.team-emblem-text.two-lines.dense {
+  font-size: 0.48em;
+}
+
+.team-emblem-font-sport {
+  font-family: var(--sports-display-font);
+}
+
+.team-emblem-font-gothic {
+  font-family: Arial, "Apple SD Gothic Neo", sans-serif;
+  font-weight: 900;
+}
+
+.team-emblem-font-serif {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 800;
+}
+
+.team-emblem-font-mono {
+  font-family: "Courier New", Courier, monospace;
+  font-weight: 900;
+}
+
 .team-emblem-xs {
   --team-emblem-size: 28px;
   font-size: 0.7rem;
@@ -8305,6 +8358,77 @@ html[data-theme="light"] .search-picker-result-row.selected {
   color: var(--text);
 }
 
+.team-emblem-design-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.team-emblem-text-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.team-emblem-text-controls label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.team-emblem-text-controls select,
+.team-emblem-text-controls input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, var(--surface-2));
+  color: var(--text);
+  padding: 7px 10px;
+}
+
+.team-emblem-text-controls input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.team-emblem-font-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.team-emblem-font-grid button {
+  display: grid;
+  min-height: 50px;
+  place-items: center;
+  gap: 1px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, var(--surface-2));
+  color: var(--text);
+  cursor: pointer;
+  padding: 5px 8px;
+}
+
+.team-emblem-font-grid button.active {
+  border-color: var(--rb-green);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-green) 50%, transparent);
+}
+
+.team-emblem-font-grid button span {
+  font-size: 0.92rem;
+}
+
+.team-emblem-font-grid button small {
+  color: var(--muted);
+  font-family: Arial, "Apple SD Gothic Neo", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
 .profile-emblem-card {
   gap: 14px;
 }
@@ -8312,6 +8436,17 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .profile-emblem-card .hero-avatar {
   width: 62px;
   height: 62px;
+}
+
+.profile-icon-source-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-icon-source-grid button {
+  min-height: 42px;
+  place-items: center;
+  padding: 6px 10px;
+  text-align: center;
 }
 
 .emblem-crop-dialog {
@@ -8375,12 +8510,21 @@ html[data-theme="light"] .search-picker-result-row.selected {
 @media (max-width: 720px) {
   .emblem-source-grid,
   .emblem-source-grid.two-options,
-  .emblem-style-controls {
+  .emblem-style-controls,
+  .team-emblem-text-controls {
     grid-template-columns: 1fr;
   }
 
   .emblem-style-controls .button {
     width: 100%;
+  }
+
+  .profile-icon-source-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .team-emblem-font-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .emblem-crop-backdrop {

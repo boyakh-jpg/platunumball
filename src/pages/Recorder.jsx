@@ -21,10 +21,10 @@ import {
   getSafeMatchSide,
   getStatRecorderSides,
   isEligibleReferee,
+  isMatchInPlayMenu,
   isMatchPartyTeamParty,
   isMatchReferee,
   isMatchSideTeamParty,
-  isMatchTrustFeedbackOpen,
 } from "../lib/matchUtils.js";
 import { SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -32,23 +32,15 @@ import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
 
 const statusMeta = {
-  agreed: { label: "진행", tone: "blue" },
   approval: { label: "승인", tone: "orange" },
   disputed: { label: "이의", tone: "orange" },
-  confirmed: { label: "확정", tone: "gold" },
 };
 
 const activeStatuses = new Set(["agreed", "approval", "disputed"]);
-const activeProgressPhases = new Set(["live", "postgame", "dispute"]);
 const GENERIC_ROOM_TITLE_PATTERN = /^(경기|매치|농구|대기방|기록방|방)$/i;
 
 function canAccessActiveMatch(match, user, state) {
-  if (match.status === "confirmed") {
-    if (!isMatchTrustFeedbackOpen(match)) return false;
-  } else {
-    if (!activeStatuses.has(match.status)) return false;
-    if (!activeProgressPhases.has(getMatchRoomPhase(match).phase)) return false;
-  }
+  if (!activeStatuses.has(match.status) || !isMatchInPlayMenu(match)) return false;
   const sourcePost = match?.recruitingPostId
     ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
@@ -209,16 +201,16 @@ export default function Recorder({ app }) {
       <div className="page-stack recorder-page">
         <header className="page-header recorder-header">
           <div>
-            <span className="eyebrow">ACTIVE MATCHES</span>
-            <h1>진행 경기</h1>
-            <p>기록 입력, 이의제기, 결과 승인이 필요한 경기만 카드로 표시합니다.</p>
+            <span className="eyebrow">PLAY</span>
+            <h1>플레이</h1>
+            <p>경기 시작부터 기록 확정 전까지 필요한 작업을 표시합니다.</p>
           </div>
         </header>
 
         {!matches.length ? (
           <Card className="recorder-empty">
             {recorderPending ? (
-              <BasketballLoader overlay label="진행 경기 확인 중" />
+              <BasketballLoader overlay label="플레이 확인 중" />
             ) : recorderLoadError ? (
               <>
                 <ShieldCheck size={34} />
@@ -229,25 +221,25 @@ export default function Recorder({ app }) {
             ) : (
               <>
                 <ShieldCheck size={34} />
-                <strong>처리할 진행 경기 없음</strong>
-                <p>기록 확정 후 24시간 평가 기간이 지나면 이 메뉴에서 자동으로 사라집니다.</p>
+                <strong>플레이 중인 경기 없음</strong>
+                <p>이의신청이 끝나 기록이 확정되면 나/팀 기록으로 이동합니다.</p>
               </>
             )}
-            <Link to="/app/matches" className="button button-secondary button-md">경기 보기</Link>
+            <Link to="/app/matches" className="button button-secondary button-md">일정 보기</Link>
           </Card>
         ) : (
-          <section className="om-match-list recorder-card-list" aria-label="진행 경기 목록">
+          <section className="om-match-list recorder-card-list" aria-label="플레이 목록">
             <div className="om-list-head">
               <div>
                 <span className="om-kicker">ACTIVE</span>
-                <h2>내 진행 경기</h2>
+                <h2>내 플레이</h2>
               </div>
               <span>{matches.length}개</span>
             </div>
 
             {matches.map((match) => {
               const phase = getMatchRoomPhase(match);
-              const status = statusMeta[match.status] ?? { label: phase.label ?? match.status, tone: "blue" };
+              const status = statusMeta[match.status] ?? { label: phase.listLabel ?? phase.label ?? match.status, tone: phase.tone ?? "blue" };
               const recorderSides = getStatRecorderSides(match, user.id);
               const sourcePost = match.recruitingPostId ? app.state.recruitingPosts.find((post) => post.id === match.recruitingPostId) : null;
               const title = getRecorderCardTitle(match);

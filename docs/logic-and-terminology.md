@@ -1,15 +1,17 @@
 # RankBall 로직/용어/디자인 기준
 
-## 2026-07-20 개인·팀 엠블럼 편집과 교체 제한
+## 2026-07-20 프로필 아이콘·팀 엠블럼 편집과 교체 제한
 
-1. 개인 엠블럼은 사용자 사진과 Discord 사진을 표시 원본으로 사용하지 않는다. 현재는 이름 첫 글자 기반 기본값과 색상·테두리만 제공한다. 검수된 아이콘 자산을 받은 뒤 별도 카탈로그와 업적 해금 방식으로 확장한다.
-2. Discord 계정 연결과 알림 기능은 개인 엠블럼 표시 정책과 분리한다. 기존 개인 업로드 object key는 삭제하지 않지만 화면에는 표시하지 않는다.
+1. 개인용은 `프로필 아이콘`, 팀용은 `팀 엠블럼`이라고 부른다.
+2. 프로필 아이콘 표시 원본은 이름 첫 글자 기반 `initial` 또는 연결된 Discord 사진 `discord`다. 직접 사진 업로드는 제공하지 않고 기존 개인 업로드 object key는 삭제하지 않는다. 검수된 아이콘 자산을 받은 뒤 별도 카탈로그와 업적 해금 방식으로 확장한다.
 3. 팀 엠블럼 표시 원본은 `initial`, `upload` 중 하나다. 기본값으로 전환해도 저장된 사진 key를 삭제하지 않으며, 다시 `upload`를 선택하면 같은 사진을 사용한다.
+3-1. 팀 기본값 글자 기준은 기존 첫 글자 `initial`, 전체 `팀 이름`, 팀장이 입력한 1~8자 `약칭` 중 하나다. 기존 팀은 `initial`을 유지한다. 팀 이름은 공백을 우선해 최대 두 줄로 균형 배치하고, 공백 없는 긴 이름만 문자 경계에서 두 줄로 나눈다.
+3-2. 팀 기본값 글꼴은 `sport`, `gothic`, `serif`, `mono` 프리셋 중 하나다. 글자 기준·약칭·글꼴 변경은 팀장만 가능하고 이미지 업로드 횟수에 포함하지 않는다.
 4. 팀 직접 업로드는 저장 전 정사각 미리보기에서 확대·축소와 가로·세로 위치를 사용자가 정한다. 서버는 최종 WebP의 형식, 크기, 최대 변 길이를 다시 검사한다.
 5. 팀은 새 이미지 업로드를 처음 2회까지 대기 없이 허용한다. 세 번째 새 이미지부터는 직전 성공 업로드 뒤 30일이 지나야 한다. 제한은 DB transaction lock 안에서 검사하며 클라이언트 시각만 믿지 않는다.
-6. 기본색·테두리 변경과 팀의 `initial`/`upload` 표시 전환은 이미지 업로드 횟수에 포함하지 않는다.
-7. 팀 엠블럼 이미지·원본·색상 변경은 팀장만 가능하다. 개인 기본값 색상은 본인 프로필에서만 변경할 수 있다.
-8. 개인·팀 목록, 상세, hover, 검색, 홈, 시즌, 경기 화면은 공용 엠블럼 컴포넌트를 사용한다. 팀 사진이 없거나 로드에 실패하면 선택한 기본색과 이름 첫 글자로 대체한다.
+6. 기본색·테두리 변경, 프로필 아이콘의 `initial`/`discord` 전환, 팀의 `initial`/`upload` 전환은 이미지 업로드 횟수에 포함하지 않는다.
+7. 팀 엠블럼 이미지·원본·색상·글자 디자인 변경은 팀장만 가능하다. 프로필 아이콘 원본·기본값 색상은 본인 프로필에서만 변경할 수 있다.
+8. 개인·팀 목록, 상세, hover, 검색, 홈, 시즌, 경기 화면은 공용 아이콘/엠블럼 컴포넌트를 사용한다. 선택 이미지가 없거나 로드에 실패하면 개인은 이름 첫 글자, 팀은 저장된 팀명/약칭 디자인으로 대체한다.
 
 ## 2026-07-20 5분 Discord worker 알림 시각
 
@@ -46,13 +48,13 @@
 
 ## 2026-07-16 라우트 전용 조회·차단 즉시 반영·KST 일정
 
-1. 일반 경기 목록 조회는 `recorderMatchesLoaded`를 완료 처리하지 않는다. 이 플래그는 `recorderOnly` 응답만 소유하며 진행 메뉴는 기존 일반 경기 유무와 관계없이 기록 전용 조회를 한 번 수행한다.
+1. 일반 일정 목록 조회는 `recorderMatchesLoaded`를 완료 처리하지 않는다. 이 플래그는 `recorderOnly` 응답만 소유하며 플레이 메뉴는 기존 일반 일정 유무와 관계없이 기록 전용 조회를 한 번 수행한다.
 2. 설정의 경기·선수 신고 사유를 선택하면 최근 7일 확정 경기와 현재 처리 중 경기 관계를 서버에서 추가 조회한다. 설정 직접 진입도 다른 메뉴 방문 이력에 의존하지 않는다.
 3. 경기·선수 신고 대상 조회 실패는 검색 영역에 표시하고 기존 프로필·설정 저장 흐름을 막지 않는다.
 4. 공개방 4시간 생성 마감, 비공개방 미래 시각 검증, 경기 신고 시각은 브라우저 시간대가 아니라 KST로 계산한다.
 5. 사용자를 차단하는 즉시 현재 메모리의 해당 발신자 팀·모집 초대와 초대 알림을 숨긴다. 서버 재조회나 새로고침을 기다리지 않는다.
 6. 팀 생성은 서버 저장 성공 뒤에만 폼을 초기화한다. reducer 또는 서버가 거절하면 입력값과 선택 구장을 유지하고 실패 사유를 표시한다.
-7. 경기 compact feed 카드는 `recordType`을 필수 분류값으로 보존한다. 값이 없는 레거시 카드는 일반 경기로 추정하지 않고 원본 경기 row를 조회한다. `match_record`와 `personal_record`는 경기 메뉴의 상태·기간 필터와 무관하게 제외하며, 진행 메뉴의 기록 전용 조회 전후에도 경기 메뉴 포함 여부가 바뀌면 안 된다.
+7. 경기 compact feed 카드는 `recordType`을 필수 분류값으로 보존한다. 값이 없는 레거시 카드는 일반 경기로 추정하지 않고 원본 경기 row를 조회한다. `match_record`와 `personal_record`는 일정 메뉴의 상태·기간 필터와 무관하게 제외하며, 플레이 메뉴의 기록 전용 조회 전후에도 일정 메뉴 포함 여부가 바뀌면 안 된다.
 
 ## 2026-07-15 대회 경기 제목과 시뮬레이션 표기
 
@@ -97,21 +99,30 @@
 
 - `scripts/simulate-backend-flow.mjs --full`은 위 흐름을 서로 다른 테스트 계정으로 실행하고 생성한 방·경기·대회·팀·알림·Discord 큐·관리자 행과 임시 프로필/MMR 변경을 종료 시 복구한다.
 - 실제 Discord Bot DM/OAuth/Gateway 상시 worker, 외부 스케줄러 호출, 실사용 브라우저 세션은 코드/DB 시뮬레이션과 별도 운영 검증 대상이다.
-- 진행 메뉴는 확정 경기의 신뢰 평가가 열린 24시간 동안 기록방을 유지한다. 대회 승인과 경기 신고 버튼은 각각 대표팀, 참가 관계와 최근 7일 서버 조건을 화면에서도 먼저 적용한다.
+- 플레이 메뉴는 경기 시작부터 이의신청 종료 전까지만 경기방을 유지한다. 기록 확정 후 신뢰 평가는 나/팀 기록에서 처리한다. 대회 승인과 경기 신고 버튼은 각각 대표팀, 참가 관계와 최근 7일 서버 조건을 화면에서도 먼저 적용한다.
 
-## 2026-07-14 경기 메뉴 상태와 모집방 만료
+## 2026-07-20 일정·플레이·기록 분리
 
-1. 경기 메뉴 상태는 `내 일정(MY)`, `처리 필요(ACTION)`, `예정·진행(SOON)`, `닫힘(CLOSED)` 네 가지다.
-2. `내 일정`은 나와 관계된 같은 후보 목록을 `처리 필요 + 예정·진행 + 닫힘`으로 나눈 합집합이다. 세 하위 상태는 서로 중복되지 않는다.
-3. `처리 필요`는 현재 사용자의 승인·확인·기록 등 액션이 남은 일정이다. `예정·진행`은 액션 없이 예정 또는 진행 중인 일정이다. `닫힘`은 취소·무효·시작 시각 이후 장기 미완료 상태다.
+1. `/app/matches`의 화면 메뉴명은 `일정`, `/app/recorder`의 화면 메뉴명은 `플레이`다.
+2. 일정 메뉴는 공개/비공개 모집방과 `locked`, `checkin` 단계의 시작 전 경기만 표시한다.
+3. 경기 시작으로 `startedAt`이 생기면 해당 경기는 일정 메뉴에서 즉시 빠지고 플레이 메뉴로 이동한다.
+4. 플레이 메뉴는 `live`, `postgame`, `dispute` 단계만 표시한다. 방장, 현재·이전 심판, 출전·후보·교체 선수, 기록자, 결과 제출자 관계를 인정한다.
+5. 이의신청 시간이 끝나 phase가 `record`가 되거나 status가 `confirmed`가 되면 플레이 메뉴에서 즉시 빠지고 나/팀 기록에서만 조회한다.
+6. 취소·무효·만료 경기는 일정 메뉴 상태 카드로 유지하지 않는다. 알림과 직접 URL에서는 종료 상태를 확인할 수 있어야 한다.
+
+## 2026-07-14 일정 메뉴 상태와 모집방 만료
+
+1. 일정 메뉴 상태는 `내 일정(MY)`, `처리 필요(ACTION)`, `예정(SOON)` 세 가지다.
+2. `내 일정`은 나와 관계된 같은 시작 전 후보 목록을 `처리 필요 + 예정`으로 나눈 합집합이다. 두 하위 상태는 서로 중복되지 않는다.
+3. `처리 필요`는 현재 사용자의 시작 전 승인·동의·명단 구성 액션이 남은 일정이다. `예정`은 처리할 액션이 없는 시작 전 일정이다.
 4. 얇은 feed 카드도 `__feedRelations`의 방장·참가자·심판·대회 팀장 관계를 일정 관계로 인정한다.
-5. `match_record`와 `personal_record`는 경기 메뉴에 표시하지 않는다. 경기기록방은 진행 메뉴, 확정 기록은 나/팀 기록에서 처리한다.
+5. `match_record`와 `personal_record`는 일정 메뉴에 표시하지 않는다. 경기기록방은 플레이 메뉴, 확정 기록은 나/팀 기록에서 처리한다.
 6. 원격 모집방 만료는 클라이언트 reducer가 아니라 `rankball_expire_recruiting_rooms()` DB RPC가 원본이다.
 7. 즉시방은 생성 후 120분, 예약방은 시작 시각까지 양쪽 출전 정원이 차지 않았을 때 자동 취소한다. 예약방 정원이 찼으면 만료시키지 않는다.
 8. 자동 취소는 방별 transaction lock 안에서 방 상태, 대기 초대, feed, Discord 방 연결, 관계자 알림을 함께 정리하며 재실행해도 중복 알림을 만들지 않는다.
 9. `YYYY-MM-DD HH:mm` 일정은 브라우저와 서버 실행 지역에 관계없이 `Asia/Seoul(+09:00)`로 해석한다. 공개방 확정 가능 시간과 리마인더 시각은 같은 KST 기준을 쓴다.
 10. backend simulation cleanup은 `sim_trn_` 대회뿐 아니라 해당 대회의 동적 후속 경기와 feed까지 닫아 운영 일정에 테스트 카드가 남지 않게 한다.
-11. source `status=closed` 경기는 팀장 토너먼트 보강 조회나 stale feed에 남아도 경기 메뉴 active 목록에 다시 합치지 않는다.
+11. source `status=closed` 경기는 팀장 토너먼트 보강 조회나 stale feed에 남아도 일정 메뉴 active 목록에 다시 합치지 않는다.
 
 ## 2026-07-14 팀 경기 참가 자격·대회 일정
 
@@ -1202,7 +1213,7 @@ flowchart TD
 10. 원본 이미지는 브라우저에서 최대 `320x320`, `96KB` 이하 정사각 WebP로 최적화한 뒤 서버로 보낸다. 서버는 인증, 팀장 권한, WebP 시그니처, 픽셀 크기와 바이트 크기를 다시 검사한다. 이 수치는 사용자 성공 메시지에는 노출하지 않는다.
 11. DB는 공개 URL이 아니라 불변 Cloudflare R2 object key만 저장한다. 표시 URL은 공용 asset base에서 계산한다.
 12. 새 사진 저장은 팀 row transaction lock과 기존 key 비교를 사용한다. DB 반영 성공 뒤 교체된 이전 R2 object를 삭제한다. 기본값과 저장 사진 사이의 표시 전환은 object를 삭제하지 않는다.
-13. 팀 목록, 팀 상세, 팀 hover, 홈, 검색, 시즌, 대회, 모집 화면은 모두 공용 `TeamEmblem`을 사용하고 이미지가 없거나 로드에 실패하면 팀명 이니셜로 대체한다.
+13. 팀 목록, 팀 상세, 팀 hover, 홈, 검색, 시즌, 대회, 모집 화면은 모두 공용 `TeamEmblem`을 사용하고 이미지가 없거나 로드에 실패하면 저장된 팀명/약칭 디자인으로 대체한다.
 
 ## 구장 원칙
 
@@ -2104,7 +2115,7 @@ flowchart TD
 32-1. `/api/matches/list` must keep usable partial `room_feed_cards.card_json` cards. If only some feed cards are missing or invalid, it may row-read only those missing match ids and merge them back in feed order; it must not discard all valid cards and re-read the whole page.
 33. Match `status='closed'` is a cleanup soft-close state, not a normal record-confirmed match state. `/api/matches/list` and `rankball_match_list()` exclude it from default current-user feed pages.
 34. Match room phase `record` is a completed-record phase and `/app/matches` does not show it in the closed view. Closed view is only for non-solo cancelled, void, or lapsed scheduled matches.
-35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user active matches in one request with `activeOnly=true` plus a small cancelled/void closed-notice feed card query, excluding record rows (`confirmed`) and cleanup rows (`closed`). Past-history expansion must be a separate deliberate read from profile/team records, not the match menu load.
+35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user start-before matches in one request with `activeOnly=true`, `scheduleOnly=true`, excluding started, cancelled/void, record (`confirmed`) and cleanup (`closed`) rows. Past-history expansion must be a separate deliberate read from profile/team records, not the schedule menu load.
 36. `/api/matches/list` defaults to match feed only. It includes recruiting schedule rooms only when `includeRecruitingSchedule=true`; previously loaded recruiting state from `/app/recruiting` must not change `/app/matches` list results.
 37. `/app/matches`는 SPA 이동으로 들어왔고 `recruitingScheduleChecked`가 false이면 현재 사용자 모집방 일정을 다시 로드한다. 경기 목록이 비어 있어도 match-page merge는 모집방 일정 row를 보존해야 한다.
 37-1. `/app/matches` 화면은 전역 `recruitingPosts` 전체가 아니라 match schedule 응답 또는 현재 사용자 recruiting mutation이 기록한 `recruitingSchedulePostIds`만 일정 후보로 사용한다. 공개 매칭 목록 로드가 경기 메뉴 숫자에 섞이면 안 된다.
@@ -2241,7 +2252,7 @@ flowchart TD
 - `/api/home/load`가 현재 프로필, 내 모집 일정, 경기 메뉴 모집 일정을 이미 반환하면 홈 화면은 같은 데이터를 즉시 다시 호출하지 않는다. 홈 기본 응답은 모집 feed count를 포함하지 않는다.
 - 홈 보강 호출은 프로필/디렉터리, 모집 feed count, 경기 모집 일정 중 사용자가 실제 진입한 화면에 필요한 빠진 항목만 개별 호출한다.
 - 프로필 보강, 내 모집방 보강, 경기 메뉴 모집 일정 보강은 같은 요청이 진행 중이면 기존 promise를 재사용한다. 초대 수락 직후 보강 재조회는 완료될 때까지 기다려 알림/홈/경기 숫자가 늦게 다시 덮이지 않게 한다.
-- 경기 메뉴의 `MY/ACTION/SOON/CLOSED` 숫자는 현재 화면 필터와 같은 후보 배열에서 계산한다. 상단 숫자, 상태 버튼 숫자, 실제 목록 숫자가 서로 다른 기준을 쓰면 안 된다.
+- 일정 메뉴의 `MY/ACTION/SOON` 숫자는 현재 화면 필터와 같은 시작 전 후보 배열에서 계산한다. 상단 숫자, 상태 버튼 숫자, 실제 목록 숫자가 서로 다른 기준을 쓰면 안 된다.
 - 모집방 초대 수락은 수락자 상태만 바꾸지 않고 방장에게도 `targetUserId`가 있는 알림을 남긴다.
 - feed trigger health는 `approved_courts`와 legacy `courts` 변경 모두 검사한다.
 
@@ -2504,13 +2515,14 @@ flowchart TD
 - 현 DB/서버 저장 경로는 사이드장을 첫 출전자로 보고 검증한다.
 - 사이드장을 비출전 대표로 분리하려면 별도 `sideLeaderId` 원본을 먼저 설계해야 한다.
 - 그 전까지 UI는 사이드장을 후보/해제 상태로 내리지 않는다.
-## 2026-07-07 경기/진행 메뉴 범위
+## 2026-07-07 일정/플레이 메뉴 범위
 
 - `방만들기` 진입은 사전 매칭방을 만든다. 화면 문구는 `매칭 만들기`로 쓴다.
 - `기록하기` 진입은 이미 끝난 경기를 기록하는 흐름이다. 화면 문구는 `경기 기록하기`로 쓴다.
-- 경기 메뉴는 경기 시작 이후부터 이의신청 종료 전까지의 내 경기만 보여준다.
-- 경기 메뉴는 `locked`, `checkin` 같은 경기 시작 전 방과 공개 모집/비공개 초대 모집방을 직접 목록에 붙이지 않는다.
-- 진행 메뉴는 기록/점수 처리 화면이다. 같은 방 모달을 열 수 있고, `match_record`는 여기서 기록 확인 흐름으로 다룬다.
+- 일정 메뉴는 `locked`, `checkin` 단계의 시작 전 경기와 공개 모집/비공개 초대 모집방만 보여준다.
+- 플레이 메뉴는 경기 시작 이후부터 이의신청 종료 전까지의 내 경기만 보여준다.
+- 플레이 메뉴는 기록/점수 처리 화면이다. 같은 방 모달을 열 수 있고, `match_record`는 여기서 기록 확인 흐름으로 다룬다.
+- 이의신청이 끝나 `record` 또는 `confirmed`가 된 경기는 플레이 메뉴에서 빼고 나/팀 기록으로 보낸다.
 
 ## 2026-07-13 모집 개인 초대 DB 전이
 
@@ -2790,7 +2802,7 @@ flowchart TD
 
 1. 웹 알림의 예약 시각은 `notifications.due_at`이 원본이다. 홈과 알림 목록은 `due_at <= now()`를 DB 조회 제한 전에 적용하며, 전체 읽음도 아직 도래하지 않은 알림을 변경하지 않는다.
 2. 일반 경기 feed는 `rules.recordType='match'`인 경기만 페이지 제한 전에 포함한다. `match_record`와 `personal_record`는 일반 경기 페이지 수를 소비하지 않는다.
-3. 진행 메뉴 전용 조회는 `agreed`, `approval`, `disputed` 상태와 현재 사용자 관계를 DB에서 먼저 판정한 뒤 페이지를 자른다. 관계에는 방장, 현재·이전 심판, 출전·후보·교체 선수, 기록자, 결과 제출자가 포함된다.
+3. 플레이 메뉴 전용 조회는 `agreed`, `approval`, `disputed` 상태, `live`/`postgame`/`dispute` phase와 현재 사용자 관계를 DB에서 먼저 판정한 뒤 페이지를 자른다. 관계에는 방장, 현재·이전 심판, 출전·후보·교체 선수, 기록자, 결과 제출자가 포함된다. 이의신청 시간이 끝난 `record` phase와 `confirmed` 상태는 제외한다.
 4. 심판 자격 ID는 `candidate`, `silver`, `gold`, `platinum`, `official`만 사용한다. 현재 배정 심판의 기록, 이의 접수, 이의 수정안 확정은 활성 임명, 임기, 등급, 최소 신뢰도를 모두 다시 확인한다.
 5. 선수 기록과 이의 득점의 단일 필드 상한은 `999`다. 이의 득점이 상한을 넘으면 저장 전에 거부한다.
 6. 활성 경기, 공개 모집, 대회 초대·참가가 참조하는 팀은 삭제할 수 없다. 활성 참조를 먼저 종료한 뒤 주장만 팀을 삭제할 수 있고, 남은 대기 팀 초대는 만료 처리한다.

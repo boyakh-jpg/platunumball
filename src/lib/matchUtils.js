@@ -1122,6 +1122,14 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
   return ROOM_PHASE_META.waiting;
 }
 
+export function isMatchInScheduleMenu(match = {}, now = new Date()) {
+  return ["locked", "checkin"].includes(getMatchRoomPhase(match, now).phase);
+}
+
+export function isMatchInPlayMenu(match = {}, now = new Date()) {
+  return ["live", "postgame", "dispute"].includes(getMatchRoomPhase(match, now).phase);
+}
+
 function addMinutes(date, minutes) {
   return new Date(date.getTime() + Number(minutes ?? 0) * 60000);
 }

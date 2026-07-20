@@ -3,9 +3,9 @@ import { NavLink } from "react-router-dom";
 
 const items = [
   { to: "/app", label: "홈", icon: House },
-  { to: "/app/matches", label: "경기", icon: CalendarDays },
+  { to: "/app/matches", label: "일정", icon: CalendarDays },
   { to: "/app/recruiting", label: "매칭", icon: Handshake },
-  { to: "/app/recorder", label: "진행", icon: ClipboardList },
+  { to: "/app/recorder", label: "플레이", icon: ClipboardList },
   { to: "/app/teams", label: "팀", icon: UsersRound },
   { to: "/app/profile", label: "나", icon: UserRound },
   { to: "/app/settings", label: "설정", icon: Settings },

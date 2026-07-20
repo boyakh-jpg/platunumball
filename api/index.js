@@ -24,6 +24,7 @@ import matchSyncMatch from "../server/api/matches/sync-match.js";
 import notificationDelete from "../server/api/notifications/delete.js";
 import notificationList from "../server/api/notifications/list.js";
 import notificationRead from "../server/api/notifications/read.js";
+import profileEmblem from "../server/api/profile/emblem.js";
 import profileMe from "../server/api/profile/me.js";
 import profileUpsert from "../server/api/profile/upsert.js";
 import refereeSync from "../server/api/referee/sync.js";
@@ -69,6 +70,7 @@ const ROUTES = new Map([
   ["/notifications/delete", notificationDelete],
   ["/notifications/list", notificationList],
   ["/notifications/read", notificationRead],
+  ["/profile/emblem", profileEmblem],
   ["/profile/me", profileMe],
   ["/profile/upsert", profileUpsert],
   ["/referee/sync", refereeSync],

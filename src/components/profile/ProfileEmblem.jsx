@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
-export function getProfileEmblemUrl() {
-  return "";
+export function getProfileEmblemUrl(user = {}) {
+  if (user.avatarSource !== "discord") return "";
+  return user.discordAvatarUrl || user.discordConnection?.avatarUrl || "";
 }
 
 export default function ProfileEmblem({ user, className = "", initial, anonymous = false }) {

@@ -140,6 +140,8 @@ export default function Profile({ app }) {
     avatarBorderColor: user.avatarBorderColor ?? user.avatarColor ?? "#58d2c0",
   }));
   const recordsLoadKeyRef = useRef("");
+  const avatarSource = user.avatarSource === "discord" ? "discord" : "initial";
+  const hasDiscordAvatar = Boolean(user.discordAvatarUrl || user.discordConnection?.avatarUrl);
   const selectedRegion = REGION_TREE.find((item) => item.sido === draft.regionSido) ?? REGION_TREE[0];
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -180,7 +182,24 @@ export default function Profile({ app }) {
     setEmblemFeedback("");
     try {
       const result = await app.actions.updateProfileEmblemStyle(emblemStyleDraft);
-      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "개인 엠블럼 색상을 저장했습니다.");
+      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "프로필 아이콘 설정을 저장했습니다.");
+    } catch (error) {
+      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+    } finally {
+      setEmblemPending(false);
+    }
+  };
+  const selectAvatarSource = async (nextSource) => {
+    if (emblemPending || nextSource === avatarSource) return;
+    if (nextSource === "discord" && !hasDiscordAvatar) {
+      setEmblemFeedback("먼저 설정에서 Discord 계정을 연결하세요.");
+      return;
+    }
+    setEmblemPending(true);
+    setEmblemFeedback("");
+    try {
+      const result = await app.actions.setProfileEmblemSource(nextSource);
+      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "프로필 아이콘을 변경했습니다.");
     } catch (error) {
       setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
@@ -228,21 +247,23 @@ export default function Profile({ app }) {
           <Card className="section-card profile-emblem-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">My Emblem</p>
-                <h2>개인 엠블럼</h2>
+                <p className="eyebrow">My Icon</p>
+                <h2>프로필 아이콘</h2>
               </div>
-              <ProfileEmblem user={{ ...user, ...emblemStyleDraft }} className="hero-avatar" />
+              <ProfileEmblem user={{ ...user, ...emblemStyleDraft, avatarSource }} className="hero-avatar" />
             </div>
-            <div className="emblem-source-grid two-options">
-              <button type="button" className="active" aria-pressed="true" disabled={emblemPending}>
+            <div className="emblem-source-grid profile-icon-source-grid">
+              <button type="button" className={avatarSource === "initial" ? "active" : ""} aria-pressed={avatarSource === "initial"} disabled={emblemPending} onClick={() => selectAvatarSource("initial")}>
                 <strong>기본값</strong>
               </button>
-              <button type="button" disabled>
+              <button type="button" className={avatarSource === "discord" ? "active" : ""} aria-pressed={avatarSource === "discord"} disabled={emblemPending || !hasDiscordAvatar} onClick={() => selectAvatarSource("discord")}>
+                <strong>Discord</strong>
+              </button>
+              <button type="button" disabled title="아이콘 등록 후 제공">
                 <strong>아이콘</strong>
-                <span>준비 중</span>
               </button>
             </div>
-            <div className="emblem-style-controls">
+            {avatarSource === "initial" ? <div className="emblem-style-controls">
               <label>
                 기본 색
                 <input type="color" value={emblemStyleDraft.avatarColor} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, avatarColor: event.target.value }))} />
@@ -256,10 +277,10 @@ export default function Profile({ app }) {
                 <input type="color" value={emblemStyleDraft.avatarBorderColor} disabled={!emblemStyleDraft.avatarBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, avatarBorderColor: event.target.value }))} />
               </label>
               <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
-            </div>
-            <p className="emblem-policy-note">개인 사진은 사용하지 않습니다. 아이콘 파일을 받으면 이 영역에 선택·업적 해금 기능을 연결합니다.</p>
+            </div> : null}
+            <p className="emblem-policy-note">직접 사진 업로드는 사용하지 않습니다. 검수된 아이콘은 파일 등록 후 선택·업적 해금 기능으로 제공합니다.</p>
             <div className="settings-save-row">
-              <small>{emblemFeedback || "기본값 색상과 테두리를 바꿀 수 있습니다."}</small>
+              <small>{emblemFeedback || (avatarSource === "initial" ? "기본값 색상과 테두리를 바꿀 수 있습니다." : "연결된 Discord 프로필 사진을 사용합니다.")}</small>
             </div>
           </Card>
           <Card className="section-card">

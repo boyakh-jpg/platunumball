@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { assetUrl } from "../../lib/assets.js";
-import { getSafeInitial } from "../../lib/handles.js";
+import { getTeamEmblemTextLines, normalizeTeamEmblemFont } from "../../lib/teamEmblem.js";
 
 const EMBLEM_SIZES = new Set(["xs", "sm", "md", "lg"]);
 
@@ -17,6 +17,10 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
   const resolvedImageUrl = emblemSource === "upload"
     ? (keyedUrl && !keyedUrl.startsWith("/") ? keyedUrl : team?.emblemUrl ?? keyedUrl)
     : "";
+  const textLines = getTeamEmblemTextLines(team, resolvedName);
+  const textDensity = Math.max(...textLines.map((line) => Array.from(line).length), 1);
+  const textClass = textDensity > 8 ? "dense" : textDensity > 5 ? "compact" : "regular";
+  const emblemFont = normalizeTeamEmblemFont(team?.emblemFont);
 
   useEffect(() => setImageFailed(false), [resolvedImageUrl, team?.emblemUpdatedAt]);
 
@@ -28,7 +32,11 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
     >
       {resolvedImageUrl && !imageFailed ? (
         <img src={resolvedImageUrl} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} />
-      ) : getSafeInitial(resolvedName)}
+      ) : (
+        <span className={`team-emblem-text team-emblem-font-${emblemFont} ${textClass} ${textLines.length > 1 ? "two-lines" : "one-line"}`}>
+          {textLines.map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}
+        </span>
+      )}
     </span>
   );
 }

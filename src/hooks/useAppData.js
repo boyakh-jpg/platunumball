@@ -1097,7 +1097,9 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           limit: loadOptions.matchLimit,
           listOnly: true,
           activeOnly: true,
+          scheduleOnly: true,
           includeRecentCompleted: false,
+          includeClosedNotices: false,
           includeRecruitingSchedule: true,
           adminContext: false,
           preferFreshRows: true,
@@ -1900,7 +1902,9 @@ export function useAppData(authUser = null, appLocation = null) {
             ...(cursor ? { cursor } : {}),
             listOnly: true,
             activeOnly: true,
+            scheduleOnly: true,
             includeRecentCompleted: false,
+            includeClosedNotices: false,
             includeRecruitingSchedule: false,
             adminContext: false,
           },
@@ -1950,7 +1954,9 @@ export function useAppData(authUser = null, appLocation = null) {
             limit: REMOTE_CLIENT_MATCH_LIMIT,
             listOnly: true,
             activeOnly: true,
+            scheduleOnly: true,
             includeRecentCompleted: false,
+            includeClosedNotices: false,
             includeRecruitingSchedule: true,
             adminContext: false,
           },
@@ -1995,7 +2001,9 @@ export function useAppData(authUser = null, appLocation = null) {
             limit: REMOTE_CLIENT_MATCH_LIMIT,
             listOnly: true,
             activeOnly: true,
+            scheduleOnly: true,
             includeRecentCompleted: false,
+            includeClosedNotices: false,
             includeRecruitingSchedule: false,
             includeTeamSchedule: true,
             adminContext: false,
@@ -3223,9 +3231,9 @@ export function useAppData(authUser = null, appLocation = null) {
         return result?.ok === false ? result : createdTeam.id;
       },
       updateProfileEmblemStyle: async (style) => {
-        const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "개인 엠블럼 색상 저장");
+        const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 설정 저장");
         if (serverReady !== true) return serverReady;
-        if (!ensureRemoteReady("개인 엠블럼 색상 저장")) return { ok: false, error: "remote_not_ready" };
+        if (!ensureRemoteReady("프로필 아이콘 설정 저장")) return { ok: false, error: "remote_not_ready" };
         const result = await runServerAction("/api/profile/emblem", { action: "style", ...style });
         if (result?.ok !== false && result?.profileId) {
           setState((prev) => ({
@@ -3235,6 +3243,23 @@ export function useAppData(authUser = null, appLocation = null) {
               avatarColor: result.avatarColor ?? user.avatarColor,
               avatarBorderEnabled: result.avatarBorderEnabled ?? user.avatarBorderEnabled ?? false,
               avatarBorderColor: result.avatarBorderColor ?? user.avatarBorderColor ?? user.avatarColor,
+            } : user),
+          }));
+        }
+        return result;
+      },
+      setProfileEmblemSource: async (avatarSource) => {
+        const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 변경");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("프로필 아이콘 변경")) return { ok: false, error: "remote_not_ready" };
+        const result = await runServerAction("/api/profile/emblem", { action: "source", avatarSource });
+        if (result?.ok !== false && result?.profileId) {
+          setState((prev) => ({
+            ...prev,
+            users: (prev.users ?? []).map((user) => user.id === result.profileId ? {
+              ...user,
+              avatarSource: result.avatarSource ?? avatarSource,
+              avatarUpdatedAt: result.avatarUpdatedAt ?? new Date().toISOString(),
             } : user),
           }));
         }
@@ -3284,9 +3309,9 @@ export function useAppData(authUser = null, appLocation = null) {
         return result;
       },
       updateTeamEmblemStyle: async (teamId, style) => {
-        const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 색상 저장");
+        const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 디자인 저장");
         if (serverReady !== true) return serverReady;
-        if (!ensureRemoteReady("팀 엠블럼 색상 저장")) return { ok: false, error: "remote_not_ready" };
+        if (!ensureRemoteReady("팀 엠블럼 디자인 저장")) return { ok: false, error: "remote_not_ready" };
         const result = await runServerAction("/api/teams/emblem", { action: "style", teamId, ...style });
         if (result?.ok !== false && result?.teamId === teamId) {
           setState((prev) => ({
@@ -3296,6 +3321,10 @@ export function useAppData(authUser = null, appLocation = null) {
               emblemColor: result.emblemColor ?? team.emblemColor ?? team.accent,
               emblemBorderEnabled: result.emblemBorderEnabled ?? team.emblemBorderEnabled ?? true,
               emblemBorderColor: result.emblemBorderColor ?? team.emblemBorderColor ?? team.accent,
+              emblemTextMode: result.emblemTextMode ?? team.emblemTextMode ?? "initial",
+              emblemAbbreviation: result.emblemAbbreviation ?? team.emblemAbbreviation ?? "",
+              emblemFont: result.emblemFont ?? team.emblemFont ?? "sport",
+              emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
             } : team),
           }));
         }

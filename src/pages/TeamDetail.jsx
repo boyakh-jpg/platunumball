@@ -16,7 +16,7 @@ import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore, isDateWithinPastMonths } from "../lib/matchUtils.js";
-import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
+import { getTeamEmblemErrorMessage, TEAM_EMBLEM_FONT_OPTIONS } from "../lib/teamEmblem.js";
 import { formatEmblemDate, getEmblemUploadWarning, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
@@ -67,6 +67,9 @@ export default function TeamDetail({ app }) {
     emblemColor: team?.emblemColor ?? team?.accent ?? "#f05a46",
     emblemBorderEnabled: team?.emblemBorderEnabled !== false,
     emblemBorderColor: team?.emblemBorderColor ?? team?.accent ?? "#f05a46",
+    emblemTextMode: new Set(["name", "abbreviation"]).has(team?.emblemTextMode) ? team.emblemTextMode : "initial",
+    emblemAbbreviation: team?.emblemAbbreviation ?? "",
+    emblemFont: team?.emblemFont ?? "sport",
   }));
   const emblemInputRef = useRef(null);
   const captain = team?.members.find((member) => member.role === "captain");
@@ -78,8 +81,11 @@ export default function TeamDetail({ app }) {
       emblemColor: team.emblemColor ?? team.accent ?? "#f05a46",
       emblemBorderEnabled: team.emblemBorderEnabled !== false,
       emblemBorderColor: team.emblemBorderColor ?? team.accent ?? "#f05a46",
+      emblemTextMode: new Set(["name", "abbreviation"]).has(team.emblemTextMode) ? team.emblemTextMode : "initial",
+      emblemAbbreviation: team.emblemAbbreviation ?? "",
+      emblemFont: team.emblemFont ?? "sport",
     });
-  }, [team?.accent, team?.emblemBorderColor, team?.emblemBorderEnabled, team?.emblemColor, team?.id]);
+  }, [team?.accent, team?.emblemAbbreviation, team?.emblemBorderColor, team?.emblemBorderEnabled, team?.emblemColor, team?.emblemFont, team?.emblemTextMode, team?.id]);
 
   useEffect(() => {
     if (!team || !canManage || app.directoryStatus?.loaded || app.directoryStatus?.loading) return;
@@ -270,11 +276,15 @@ export default function TeamDetail({ app }) {
   };
   const saveEmblemStyle = async () => {
     if (emblemPending) return;
+    if (emblemStyleDraft.emblemTextMode === "abbreviation" && !emblemStyleDraft.emblemAbbreviation.trim()) {
+      setEmblemFeedback("약칭은 1~8자로 입력하세요.");
+      return;
+    }
     setEmblemPending(true);
     setEmblemFeedback("");
     try {
       const result = await app.actions.updateTeamEmblemStyle(team.id, emblemStyleDraft);
-      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "엠블럼 색상을 저장했습니다.");
+      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "엠블럼 디자인을 저장했습니다.");
     } catch (error) {
       setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
@@ -457,7 +467,7 @@ export default function TeamDetail({ app }) {
             {canManage ? (
               <>
                 <div className="team-emblem-editor">
-                  <TeamEmblem team={team} size="lg" />
+                  <TeamEmblem team={{ ...team, ...emblemStyleDraft }} size="lg" />
                   <span>
                     <strong>팀 엠블럼</strong>
                     <small>{emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 사진을 변경할 수 있습니다.` : "사진은 위치와 확대·축소를 조정한 뒤 저장합니다."}</small>
@@ -482,20 +492,57 @@ export default function TeamDetail({ app }) {
                   onChange={uploadEmblem}
                 />
                 {emblemSource === "initial" ? (
-                  <div className="emblem-style-controls">
-                    <label>
-                      엠블럼 색
-                      <input type="color" value={emblemStyleDraft.emblemColor} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemColor: event.target.value }))} />
-                    </label>
-                    <label className="emblem-border-toggle">
-                      <input type="checkbox" checked={emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderEnabled: event.target.checked }))} />
-                      테두리 사용
-                    </label>
-                    <label>
-                      테두리 색
-                      <input type="color" value={emblemStyleDraft.emblemBorderColor} disabled={!emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderColor: event.target.value }))} />
-                    </label>
-                    <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
+                  <div className="team-emblem-design-controls">
+                    <div className="team-emblem-text-controls">
+                      <label>
+                        글자 기준
+                        <select value={emblemStyleDraft.emblemTextMode} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemTextMode: event.target.value }))}>
+                          <option value="initial">기본값</option>
+                          <option value="name">팀 이름</option>
+                          <option value="abbreviation">약칭</option>
+                        </select>
+                      </label>
+                      <label>
+                        약칭
+                        <input
+                          type="text"
+                          maxLength={8}
+                          value={emblemStyleDraft.emblemAbbreviation}
+                          disabled={emblemStyleDraft.emblemTextMode !== "abbreviation"}
+                          placeholder="예: RB"
+                          onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemAbbreviation: event.target.value }))}
+                        />
+                      </label>
+                    </div>
+                    <div className="team-emblem-font-grid" role="group" aria-label="엠블럼 글꼴">
+                      {TEAM_EMBLEM_FONT_OPTIONS.map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className={`team-emblem-font-${value} ${emblemStyleDraft.emblemFont === value ? "active" : ""}`}
+                          aria-pressed={emblemStyleDraft.emblemFont === value}
+                          onClick={() => setEmblemStyleDraft((current) => ({ ...current, emblemFont: value }))}
+                        >
+                          <span>Aa가</span>
+                          <small>{label}</small>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="emblem-style-controls">
+                      <label>
+                        엠블럼 색
+                        <input type="color" value={emblemStyleDraft.emblemColor} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemColor: event.target.value }))} />
+                      </label>
+                      <label className="emblem-border-toggle">
+                        <input type="checkbox" checked={emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderEnabled: event.target.checked }))} />
+                        테두리 사용
+                      </label>
+                      <label>
+                        테두리 색
+                        <input type="color" value={emblemStyleDraft.emblemBorderColor} disabled={!emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderColor: event.target.value }))} />
+                      </label>
+                      <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
+                    </div>
                   </div>
                 ) : null}
                 <p className="emblem-policy-note">{getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}</p>

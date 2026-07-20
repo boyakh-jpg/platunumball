@@ -1,6 +1,57 @@
 export const TEAM_EMBLEM_SOURCE_MAX_BYTES = 12 * 1024 * 1024;
 export const TEAM_EMBLEM_UPLOAD_MAX_BYTES = 96 * 1024;
 export const TEAM_EMBLEM_MAX_DIMENSION = 320;
+export const TEAM_EMBLEM_FONT_OPTIONS = [
+  ["sport", "스포츠"],
+  ["gothic", "고딕"],
+  ["serif", "명조"],
+  ["mono", "모노"],
+];
+
+const TEAM_EMBLEM_FONTS = new Set(TEAM_EMBLEM_FONT_OPTIONS.map(([value]) => value));
+
+function sliceCharacters(value, limit) {
+  const characters = Array.from(String(value ?? ""));
+  return characters.length > limit ? `${characters.slice(0, Math.max(1, limit - 1)).join("")}…` : characters.join("");
+}
+
+export function normalizeTeamEmblemFont(value = "sport") {
+  return TEAM_EMBLEM_FONTS.has(value) ? value : "sport";
+}
+
+export function getTeamEmblemTextLines(team = {}, fallbackName = "") {
+  const mode = new Set(["name", "abbreviation"]).has(team.emblemTextMode) ? team.emblemTextMode : "initial";
+  const teamName = String(team.name ?? fallbackName ?? "").trim();
+  const rawText = mode === "abbreviation" ? team.emblemAbbreviation : teamName;
+  const text = String(rawText ?? "").trim().replace(/\s+/g, " ") || "?";
+  if (mode === "initial") return [Array.from(text)[0] ?? "?"];
+  if (mode === "abbreviation") return [sliceCharacters(text, 8)];
+
+  const words = text.split(" ");
+  if (words.length === 1) {
+    const characters = Array.from(sliceCharacters(text, 18));
+    if (characters.length <= 4) return [characters.join("")];
+    const midpoint = Math.ceil(characters.length / 2);
+    return [characters.slice(0, midpoint).join(""), characters.slice(midpoint).join("")];
+  }
+
+  let bestIndex = 1;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (let index = 1; index < words.length; index += 1) {
+    const first = words.slice(0, index).join(" ");
+    const second = words.slice(index).join(" ");
+    const score = Math.max(Array.from(first).length, Array.from(second).length) * 2
+      + Math.abs(Array.from(first).length - Array.from(second).length);
+    if (score < bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  }
+  return [
+    sliceCharacters(words.slice(0, bestIndex).join(" "), 12),
+    sliceCharacters(words.slice(bestIndex).join(" "), 12),
+  ];
+}
 
 const ACCEPTED_TEAM_EMBLEM_TYPES = new Set([
   "image/avif",
@@ -178,6 +229,9 @@ export function getTeamEmblemErrorMessage(code = "") {
     profile_emblem_cooldown: "교체 제한 기간입니다. 표시된 날짜 이후 다시 시도하세요.",
     discord_avatar_unavailable: "Discord 연동 이미지가 없습니다.",
     invalid_emblem_color: "엠블럼 색상을 확인하세요.",
+    invalid_team_emblem_text_mode: "팀명 또는 약칭을 선택하세요.",
+    invalid_team_emblem_abbreviation: "약칭은 1~8자로 입력하세요.",
+    invalid_team_emblem_font: "글꼴을 다시 선택하세요.",
     cloudflare_r2_not_configured: "Cloudflare 저장소가 설정되지 않았습니다.",
     cloudflare_r2_upload_failed: "Cloudflare 업로드에 실패했습니다.",
     cloudflare_r2_delete_failed: "기존 엠블럼 정리에 실패했습니다.",

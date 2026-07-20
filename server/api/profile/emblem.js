@@ -139,7 +139,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const body = await readJsonBody(request);
     const action = String(body.action || "upload").trim();
-    if (action !== "style") reject(410, "profile_emblem_image_disabled");
+    if (!new Set(["source", "style"]).has(action)) reject(410, "profile_emblem_image_disabled");
     if (!PROFILE_ID_PATTERN.test(context.profileId)) reject(400, "invalid_profile_id");
 
     const profile = await loadProfile(context);
