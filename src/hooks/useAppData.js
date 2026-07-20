@@ -3170,7 +3170,8 @@ export function useAppData(authUser = null, appLocation = null) {
           nextProfile = next.users.find((user) => user.id === safeTargetUserId) ?? null;
           return next;
         });
-        if (!serverProfileBound || !nextProfile) return Promise.resolve({ ok: true });
+        if (!serverProfileBound) return Promise.resolve({ ok: true });
+        if (!nextProfile) return Promise.resolve({ ok: false, error: "profile_not_ready" });
         return persistProfileServer(nextProfile).then(async (result) => {
           if (result?.state) {
             const remoteState = normalizeServerState(result.state);

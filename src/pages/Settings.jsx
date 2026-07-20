@@ -400,6 +400,7 @@ export default function Settings({ app, auth, section = "main" }) {
     setDiscordLinkError("");
   }, [discordSnapshot]);
   useEffect(() => {
+    if (isSupabaseConfigured && !app.remoteReady) return;
     const discordOAuthResult = consumeDiscordOAuthResult(app.currentUserId);
     if (!discordOAuthResult) return;
     if (discordOAuthResult.status !== "linked") {
@@ -442,7 +443,7 @@ export default function Settings({ app, auth, section = "main" }) {
     return () => {
       active = false;
     };
-  }, [app.currentUserId]);
+  }, [app.currentUserId, app.remoteReady]);
 
   const blockableUsers = useMemo(
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
