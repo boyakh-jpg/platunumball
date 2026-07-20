@@ -321,7 +321,7 @@ export default function Profile({ app }) {
                       onClick={() => selectProfileIcon(icon.id)}
                     >
                       <img src={assetUrl(icon.src)} alt="" loading="lazy" decoding="async" />
-                      <span><strong>{icon.name}</strong><small>{icon.unlocked ? icon.description : `잠김 · ${icon.description}`}</small></span>
+                      <span><strong>{icon.name}</strong><small>{icon.unlocked ? icon.description : "잠김"}</small></span>
                     </button>
                   ))}
                 </div>

@@ -8502,10 +8502,24 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .profile-icon-source-grid button {
-  min-height: 42px;
+  min-height: var(--ui-button-height);
   place-items: center;
   padding: 6px 10px;
   text-align: center;
+}
+
+.profile-icon-source-grid button.active,
+.profile-icon-group-tabs button.active,
+.profile-icon-catalog > button.active {
+  border-color: var(--ui-button-bg-active);
+  background: color-mix(in srgb, var(--ui-button-bg-active) 12%, var(--ui-control-bg));
+  box-shadow: none;
+}
+
+.profile-emblem-card .emblem-style-controls input[type="color"],
+.profile-emblem-card .emblem-style-controls .emblem-border-toggle,
+.profile-emblem-card .emblem-style-controls .button {
+  min-height: var(--ui-button-height);
 }
 
 .profile-icon-picker {
@@ -8521,17 +8535,17 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .profile-icon-group-tabs button {
   display: inline-flex;
-  min-height: 32px;
+  min-height: var(--ui-button-height-sm);
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--ui-control-border, var(--line));
-  border-radius: 999px;
-  background: var(--ui-control-bg, var(--surface-2));
-  color: var(--muted);
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
   cursor: pointer;
   padding: 5px 10px;
-  font-size: 0.76rem;
-  font-weight: 850;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
 }
 
 .profile-icon-group-tabs button small {
@@ -8539,9 +8553,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .profile-icon-group-tabs button.active {
-  border-color: var(--rb-green);
   color: var(--text);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-green) 50%, transparent);
 }
 
 .profile-icon-group-head {
@@ -8566,12 +8578,14 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .profile-icon-catalog > button {
   display: grid;
+  height: 70px;
+  min-height: 70px;
   grid-template-columns: 48px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
-  border: 1px solid var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-control-bg, var(--surface-2));
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
   color: var(--text);
   cursor: pointer;
   padding: 8px;
@@ -8588,8 +8602,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .profile-icon-catalog > button.active {
-  border-color: var(--rb-green);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-green) 50%, transparent);
+  color: var(--text);
 }
 
 .profile-icon-catalog img {
@@ -8605,10 +8618,23 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 2px;
 }
 
+.profile-icon-catalog strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .profile-icon-catalog small {
+  overflow: hidden;
   color: var(--muted);
   font-size: 0.7rem;
   font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .emblem-crop-dialog {
@@ -8685,6 +8711,11 @@ html[data-theme="light"] .search-picker-result-row.selected {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .profile-icon-group-tabs button,
+  .profile-emblem-card .emblem-style-controls .button {
+    min-height: var(--ui-button-height);
+  }
+
   .profile-icon-catalog {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -8711,6 +8742,22 @@ html[data-theme="light"] .search-picker-result-row.selected {
   .emblem-crop-dialog {
     width: 100%;
     max-height: calc(100dvh - 20px);
+  }
+}
+
+@media (max-width: 359px) {
+  .profile-icon-group-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .profile-icon-group-head small {
+    text-align: left;
+  }
+
+  .profile-icon-catalog {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
