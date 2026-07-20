@@ -3162,14 +3162,10 @@ export function useAppData(authUser = null, appLocation = null) {
       updateProfile: (patch, targetUserId = currentUserId) => {
         const safeTargetUserId = serverProfileBound ? currentUserId : targetUserId;
         const safePatch = profileLocked ? { ...patch, authUserId } : patch;
-        let rollbackState = null;
-        let nextProfile = null;
-        setState((prev) => {
-          rollbackState = prev;
-          const next = updateProfile({ ...prev, currentUserId }, safePatch, safeTargetUserId);
-          nextProfile = next.users.find((user) => user.id === safeTargetUserId) ?? null;
-          return next;
-        });
+        const rollbackState = stateRef.current;
+        const optimisticState = updateProfile({ ...rollbackState, currentUserId }, safePatch, safeTargetUserId);
+        const nextProfile = optimisticState.users.find((user) => user.id === safeTargetUserId) ?? null;
+        setState((prev) => updateProfile({ ...prev, currentUserId }, safePatch, safeTargetUserId));
         if (!serverProfileBound) return Promise.resolve({ ok: true });
         if (!nextProfile) return Promise.resolve({ ok: false, error: "profile_not_ready" });
         return persistProfileServer(nextProfile).then(async (result) => {
