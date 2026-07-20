@@ -162,7 +162,7 @@
 - 경기 종료, 점수 제출, 이의신청, 승인 처리, 이의 처리 재개가 일어나면 미발송 시작 전 리마인더, 방관리자 안내, 경기 종료 점수 입력 안내, 종료 30분 뒤 이의신청 안내 row는 삭제한다.
 - 경기 취소 또는 무효 처리 시 해당 경기의 미발송 Discord delivery row를 삭제한다.
 - 경기 리마인더 stale 삭제는 현재 snapshot에 참가자/방관리자 대상자가 없어도 먼저 실행한다. 대상자 없음은 새 row 생성을 막는 조건이지 기존 예약 row 삭제를 막는 조건이 아니다.
-- Recruiting server action은 즉시방 생성 시 방 개설 delivery row를 만들고, 방장이 취소하면 참가자별 `방 취소` 웹 알림과 Discord delivery row를 만든다.
+- Recruiting server action은 방 생성 자체로 알림을 만들지 않는다. 수동·자동 취소는 참가자별 `방 취소` 웹 알림을 원본으로 만들고, Discord 연동·수신 설정이 켜진 참가자에게 delivery row도 만든다.
 
 ## 2026-06-24 RLS hardening
 

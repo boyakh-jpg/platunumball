@@ -2238,6 +2238,11 @@ async function runOneOnOneScenario({
   let post = createResult?.post;
   assertFlow(post?.id === ids.postId, "created post not returned", createResult);
   assertFlow(post.ownerId === hostId || post.playerId === hostId, "created post owner mismatch", { hostId, post });
+  assertFlow(
+    Number(createResult?.discordDeliveryCount ?? 0) === 0 && createResult?.discordDeliveryDeferred !== true,
+    "room creation must not queue Discord opening delivery",
+    createResult,
+  );
 
   if (refereeWanted) {
     const refereeInviteResult = await step(`${ids.label}:inviteRecruitingReferee`, () => syncRecruitingAs(hostLogin, {

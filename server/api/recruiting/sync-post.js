@@ -235,38 +235,6 @@ function getCanonicalHostJoinMode(post = {}) {
   return hostJoinMode === "player" || !teamId ? "player" : "team";
 }
 
-function getRecruitingPlayerCount(post = {}) {
-  return [
-    ...(toArray(post.playerIds)),
-    ...(toArray(post.applicants).flatMap((application) => [
-      application.playerId,
-      ...(toArray(application.playerIds)),
-    ])),
-  ].filter(Boolean).length;
-}
-
-function isInstantRecruitingPost(post = {}) {
-  return post.timingType === "instant" || post.roomState?.timingType === "instant" || post.scheduledAt === "즉시";
-}
-
-function getRoomOpenedPayload(post = {}) {
-  const capacity = getModeCapacity(post.mode) * 2;
-  const playerCount = getRecruitingPlayerCount(post);
-  return {
-    title: "방 개설",
-    body: [
-      "즉시 매칭방이 열렸습니다.",
-      post.title || "매칭방",
-      `구장: ${post.court || "구장 미정"}`,
-      `인원: ${playerCount}/${capacity}`,
-      `방식: ${post.mode || "5v5"}`,
-    ].join("\n"),
-    webPath: getRecruitingWebPath(post.id),
-    webUrl: getRecruitingWebUrl(post.id),
-    actions: [],
-  };
-}
-
 function getRoomCancelledPayload(post = {}) {
   return {
     title: "방 취소",
@@ -279,75 +247,6 @@ function getRoomCancelledPayload(post = {}) {
     webUrl: getRecruitingWebUrl(post.id),
     actions: [],
   };
-}
-
-function toRoomOpenedNotificationRows(post = {}, participantIds = []) {
-  const now = new Date().toISOString();
-  const payload = getRoomOpenedPayload(post);
-  return toNotificationRows(participantIds.map((profileId) => ({
-    id: `discord-room-opened-${post.id}-${profileId}`,
-    targetUserId: profileId,
-    title: payload.title,
-    body: payload.body,
-    tone: "match",
-    type: "match",
-    discordEvent: "match",
-    recruitingPostId: post.id,
-    webPath: payload.webPath,
-    webUrl: payload.webUrl,
-    skipDiscordSync: true,
-    sendAt: now,
-    createdAt: now,
-    updatedAt: now,
-  })), "", { coalesce: "nullish" });
-}
-
-function toRoomOpenedDiscordRows(post = {}, profiles = []) {
-  const now = new Date().toISOString();
-  const payload = getRoomOpenedPayload(post);
-
-  return profiles.map((profile) => {
-    const id = `discord-room-opened-${post.id}-${profile.id}`;
-    return {
-      id,
-      notification_id: id,
-      target_user_id: profile.id,
-      discord_user_id: profile.discord_user_id,
-      event: "match",
-      status: "queued",
-      payload: {
-        ...payload,
-        id,
-        recruitingPostId: post.id,
-        targetUserId: profile.id,
-        status: "queued",
-        queuedAt: now,
-        sendAt: now,
-      },
-      queued_at: now,
-      send_at: now,
-      sent_at: null,
-      failed_at: null,
-      last_error: null,
-      created_at: now,
-      updated_at: now,
-    };
-  });
-}
-
-async function queueInstantRoomOpenedDiscordDeliveries(supabase, post = {}, action = "sync") {
-  if (action !== "createRecruitingPost" || !isInstantRecruitingPost(post)) return 0;
-  const participantIds = Array.from(participantIdsFromPost(post));
-  const notificationRows = toRoomOpenedNotificationRows(post, participantIds);
-  if (notificationRows.length) {
-    const { error } = await supabase
-      .from("notifications")
-      .upsert(notificationRows, { onConflict: "id", ignoreDuplicates: true });
-    if (error) throw error;
-  }
-  const profiles = await getDiscordProfiles(supabase, participantIds);
-  const rows = toRoomOpenedDiscordRows(post, profiles);
-  return upsertDiscordDeliveryRows(supabase, rows);
 }
 
 function toRoomCancelledNotificationRows(post = {}, participantIds = []) {
@@ -1579,22 +1478,9 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
   let discordDeliveryDeferred = false;
-  if (Array.isArray(afterResponseTasks) && action === "createRecruitingPost" && isInstantRecruitingPost(post)) {
-    discordDeliveryDeferred = true;
-    afterResponseTasks.push(async () => {
-      try {
-        await queueInstantRoomOpenedDiscordDeliveries(context.supabase, post, action);
-      } catch (deliveryError) {
-        console.error("Recruiting deferred Discord delivery queue failed.", deliveryError);
-      }
-    });
-  } else {
+  if (action === "closeRecruitingPost") {
     try {
-      discordDeliveryCount = await timeStep(timing, "discordQueue", () => (
-        action === "closeRecruitingPost"
-          ? queueRecruitingRoomCancelledDeliveries(context.supabase, post, action)
-          : queueInstantRoomOpenedDiscordDeliveries(context.supabase, post, action)
-      ));
+      discordDeliveryCount = await timeStep(timing, "discordQueue", () => queueRecruitingRoomCancelledDeliveries(context.supabase, post, action));
     } catch (deliveryError) {
       discordDeliveryError = deliveryError.message || "discord_recruiting_delivery_failed";
       console.error("Recruiting Discord delivery queue failed.", deliveryError);
@@ -1653,16 +1539,10 @@ export default async function handler(request, response) {
         let synced = await timing.track("loadSyncedAfterSql", () => loadSyncedRecruitingState(context, sqlResult.postId ?? operation.postId));
         let discordDeliveryCount = 0;
         let discordDeliveryError = null;
-        if (["createRecruitingPost", "closeRecruitingPost"].includes(operation.action) && synced.post) {
+        if (operation.action === "closeRecruitingPost" && synced.post) {
           try {
-            discordDeliveryCount = await timing.track("discordQueue", () => (
-              operation.action === "closeRecruitingPost"
-                ? queueRecruitingRoomCancelledDeliveries(context.supabase, synced.post, operation.action)
-                : queueInstantRoomOpenedDiscordDeliveries(context.supabase, synced.post, operation.action)
-            ));
-            if (operation.action === "closeRecruitingPost") {
-              synced = await timing.track("reloadAfterCancelNotice", () => loadSyncedRecruitingState(context, synced.post.id));
-            }
+            discordDeliveryCount = await timing.track("discordQueue", () => queueRecruitingRoomCancelledDeliveries(context.supabase, synced.post, operation.action));
+            synced = await timing.track("reloadAfterCancelNotice", () => loadSyncedRecruitingState(context, synced.post.id));
           } catch (deliveryError) {
             discordDeliveryError = deliveryError.message || "discord_recruiting_delivery_failed";
             console.error("Recruiting Discord delivery queue failed.", deliveryError);

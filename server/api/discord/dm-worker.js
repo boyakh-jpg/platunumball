@@ -175,11 +175,19 @@ function getDiscordComponents(actions = []) {
   return buttons.length ? [{ type: 1, components: buttons }] : [];
 }
 
+function getDiscordWebUrl(payload = {}) {
+  const rawUrl = String(payload.webUrl || payload.webPath || "").trim();
+  if (!rawUrl || /^https?:\/\//i.test(rawUrl)) return rawUrl;
+  const publicAppUrl = String(process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+  if (!publicAppUrl) return rawUrl;
+  return `${publicAppUrl}${rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`}`;
+}
+
 function getDiscordMessage(delivery = {}) {
   const payload = delivery.payload ?? {};
   const title = trimDiscordText(payload.title || delivery.event || "RankBall", 120);
   const body = trimDiscordText(payload.body || "", 1200);
-  const webUrl = trimDiscordText(payload.webUrl || payload.webPath || "", 500);
+  const webUrl = trimDiscordText(getDiscordWebUrl(payload), 500);
   const content = [`**${title}**`, body, webUrl].filter(Boolean).join("\n").slice(0, 1900);
   return {
     content,
