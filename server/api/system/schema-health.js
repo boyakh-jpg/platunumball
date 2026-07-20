@@ -202,6 +202,19 @@ const REQUIRED_COLUMNS = {
     "due_at",
     "payload",
   ],
+  discord_notification_deliveries: [
+    "id",
+    "notification_id",
+    "target_user_id",
+    "discord_user_id",
+    "event",
+    "status",
+    "payload",
+    "queued_at",
+    "send_at",
+    "sent_at",
+    "attempt_count",
+  ],
   room_chat_messages: [
     "id",
     "room_type",
@@ -401,6 +414,10 @@ const REQUIRED_RPCS = [
   },
   {
     name: "rankball_tournament_invitation_health",
+    args: {},
+  },
+  {
+    name: "rankball_tournament_start_delivery_health",
     args: {},
   },
   {
@@ -716,6 +733,27 @@ async function checkTournamentInvitations(client) {
   };
 }
 
+async function checkTournamentStartDeliveries(client) {
+  const { data, error } = await client.rpc("rankball_tournament_start_delivery_health");
+  if (error) {
+    return {
+      ok: false,
+      error: error.message || "tournament_start_delivery_health_failed",
+      failed: [],
+      checks: [],
+    };
+  }
+
+  const checks = Array.isArray(data) ? data : [];
+  const failed = checks.filter((check) => !check.ok);
+  return {
+    ok: failed.length === 0,
+    error: null,
+    failed,
+    checks,
+  };
+}
+
 async function ensureSimulationTestActors(client) {
   const { data: profiles, error: profileError } = await client
     .from("profiles")
@@ -884,6 +922,7 @@ export default async function handler(request, response) {
     const rpcGrantCheck = await checkRpcGrants(client);
     const profileIdentityCheck = await checkProfileIdentity(client);
     const tournamentInvitationCheck = await checkTournamentInvitations(client);
+    const tournamentStartDeliveryCheck = await checkTournamentStartDeliveries(client);
     const failed = checks.filter((check) => !check.ok);
     const failedRpcs = rpcChecks.filter((check) => !check.ok);
     const simulationSeed = body?.ensureTestActors === true
@@ -895,7 +934,7 @@ export default async function handler(request, response) {
       ? await ensureCourtAdminAppointments(client)
       : null;
     sendJson(response, 200, {
-      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && rpcGrantCheck.ok && profileIdentityCheck.ok && tournamentInvitationCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
+      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && rpcGrantCheck.ok && profileIdentityCheck.ok && tournamentInvitationCheck.ok && tournamentStartDeliveryCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
       failedCount: failed.length,
       failedRpcCount: failedRpcs.length,
       failedFeedTriggerCount: feedTriggerCheck.missing.length,
@@ -903,6 +942,7 @@ export default async function handler(request, response) {
       failedRpcGrantCount: rpcGrantCheck.failed.length,
       failedProfileIdentityCount: profileIdentityCheck.failed.length,
       failedTournamentInvitationCount: tournamentInvitationCheck.failed.length,
+      failedTournamentStartDeliveryCount: tournamentStartDeliveryCheck.failed.length,
       checks,
       rpcChecks,
       feedTriggerCheck,
@@ -910,6 +950,7 @@ export default async function handler(request, response) {
       rpcGrantCheck,
       profileIdentityCheck,
       tournamentInvitationCheck,
+      tournamentStartDeliveryCheck,
       simulationSeed,
       courtAdminSeed,
     });

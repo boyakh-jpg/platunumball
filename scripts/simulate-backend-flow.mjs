@@ -1376,6 +1376,68 @@ async function assertTournamentInviteDiscordDelivery({
   };
 }
 
+async function assertTournamentStartNotificationDelivery({
+  tournamentId,
+  targetUserId,
+  targetLogin,
+}) {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const { data: notifications, error } = await supabase
+    .from("notifications")
+    .select("id,target_user_id,title,type,discord_event,read_at,payload")
+    .eq("type", "tournament")
+    .eq("target_user_id", targetUserId)
+    .contains("payload", { tournamentId });
+  if (error) throw error;
+  const notification = (notifications ?? []).find((row) => (
+    row.title === "대회 시작" && row.payload?.tournamentStartDeliveryAtomic === true
+  ));
+  assertFlow(
+    notification &&
+      !notification.read_at &&
+      notification.discord_event === "match" &&
+      notification.payload?.skipDiscordSync === true &&
+      notification.payload?.webPath === `/app/tournaments/${tournamentId}`,
+    "atomic tournament start app notification missing",
+    { tournamentId, targetUserId, notifications },
+  );
+  simulationNotificationIds.add(notification.id);
+
+  if (targetLogin) {
+    const homeState = await loadHomeAs(targetLogin);
+    assertFlow(
+      (homeState.notifications ?? []).some((row) => row.id === notification.id),
+      "tournament start app notification missing from home",
+      { tournamentId, targetUserId, homeNotifications: homeState.notifications },
+    );
+  }
+
+  const { data: deliveries, error: deliveryError } = await supabase
+    .from("discord_notification_deliveries")
+    .select("id,notification_id,target_user_id,event,status,sent_at,payload")
+    .eq("notification_id", notification.id)
+    .eq("target_user_id", targetUserId);
+  if (deliveryError) throw deliveryError;
+  const delivery = (deliveries ?? [])[0];
+  assertFlow(
+    delivery &&
+      delivery.event === "match" &&
+      !["cancelled", "failed"].includes(delivery.status) &&
+      delivery.payload?.tournamentId === tournamentId &&
+      delivery.payload?.webPath === `/app/tournaments/${tournamentId}`,
+    "atomic tournament start Discord delivery missing",
+    { tournamentId, targetUserId, notification, deliveries },
+  );
+  simulationDiscordDeliveryIds.add(delivery.id);
+
+  return {
+    skipped: false,
+    notificationId: notification.id,
+    deliveryId: delivery.id,
+    status: delivery.status,
+  };
+}
+
 async function assertTournamentInviteNotificationsResolved({
   tournamentId,
   expectedInvites = [],
@@ -7081,6 +7143,15 @@ async function runTournamentRepresentativeTeamGuardScenario({
       enabled: true,
       events: { approval: true },
     }));
+    await step(`${ids.label}:setTeamCCaptainDiscord`, () => setTemporaryProfileDiscordUser(
+      teamCCaptainId,
+      makeDiscordSnowflake(821),
+      "rankball-sim-tournament-start",
+    ));
+    await step(`${ids.label}:enableTeamCCaptainMatchDiscord`, () => setTemporaryDiscordNotificationSettings(teamCCaptainId, {
+      enabled: true,
+      events: { match: true },
+    }));
   }
 
   const matchIds = [1, 2, 3].map((fixture) => `${ids.matchId}_l1_${fixture}`);
@@ -7187,6 +7258,11 @@ async function runTournamentRepresentativeTeamGuardScenario({
     "tournament matches must use the 30-minute dispute window",
     finalApproval?.createdMatches,
   );
+  const tournamentStartDeliveryCheck = await step(`${ids.label}:assertTournamentStartDelivery`, () => assertTournamentStartNotificationDelivery({
+    tournamentId: ids.tournamentId,
+    targetUserId: teamCCaptainId,
+    targetLogin: teamCCaptainLogin,
+  }));
   const inviteResolutionCheck = await step(`${ids.label}:assertCaptainInvitesResolved`, () => assertTournamentInviteNotificationsResolved({
     tournamentId: ids.tournamentId,
     expectedInvites,
@@ -7466,6 +7542,7 @@ async function runTournamentRepresentativeTeamGuardScenario({
     inviteNotificationCheck,
     inviteDiscordDeliveryCheck,
     inviteResolutionCheck,
+    tournamentStartDeliveryCheck,
   };
 }
 
