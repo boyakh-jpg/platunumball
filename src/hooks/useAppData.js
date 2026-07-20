@@ -955,6 +955,9 @@ function getInitialStateLoadOptions(location = null) {
   if (pathname === "/app/profile/records") {
     return { endpoint: "profileRecords", matchLimit: REMOTE_CLIENT_RECORD_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
+  if (pathname === "/app/settings/favorites") {
+    return { profileOnly: true, includeFavorites: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+  }
   if (pathname === "/app" || pathname === "/login") {
     return { endpoint: "homeLoad", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0 };
   }
@@ -1006,22 +1009,24 @@ function cacheCurrentProfileState(authUserId, state = {}) {
   });
 }
 
-function getThinProfilePayload(authUserId, authEmail) {
+function getThinProfilePayload(authUserId, authEmail, options = {}) {
+  const includeFavorites = options.includeFavorites === true;
   return {
     authUserId,
     authEmail,
-    includeFavorites: false,
+    includeFavorites,
     includeTeamInvitations: false,
-    includeTeams: false,
-    includeExtraProfiles: false,
-    includeMatchSummary: true,
+    includeTeams: includeFavorites,
+    includeExtraProfiles: includeFavorites,
+    includeTeamMemberProfiles: false,
+    includeMatchSummary: !includeFavorites,
   };
 }
 
 async function loadProfileState(authUserId, authEmail, options = {}) {
   try {
     const payload = options.thin === true
-      ? getThinProfilePayload(authUserId, authEmail)
+      ? getThinProfilePayload(authUserId, authEmail, options)
       : { authUserId, authEmail };
     const result = await postServerAction(
       "/api/profile/me",
@@ -1410,7 +1415,7 @@ export function useAppData(authUser = null, appLocation = null) {
     const initialLoadOptions = getInitialStateLoadOptions(appLocation);
     homeRouteLoadKeyRef.current = initialLoadOptions.endpoint === "homeLoad" ? "homeLoad" : getHomeRouteLoadKey(appLocation);
     const initialLoad = initialLoadOptions.profileOnly
-      ? loadProfileState(authUserId, authEmail, { thin: true })
+      ? loadProfileState(authUserId, authEmail, { thin: true, includeFavorites: initialLoadOptions.includeFavorites === true })
       : loadBackendState(authUserId, authEmail, initialLoadOptions);
     initialLoad
       .then((remoteState) => {
@@ -1818,9 +1823,23 @@ export function useAppData(authUser = null, appLocation = null) {
     return runServerAction("/api/referee/sync", { action, ...payload });
   }, [runServerAction]);
   const syncFavoriteServer = useCallback((targetType, targetId, active) => {
-    if (!targetType || !targetId) return;
-    runServerAction("/api/favorites/sync", { targetType, targetId, active });
+    if (!targetType || !targetId) return Promise.resolve({ ok: false, error: "invalid_favorite_target" });
+    return runServerAction("/api/favorites/sync", { targetType, targetId, active });
   }, [runServerAction]);
+  const applyFavoriteToggle = useCallback((targetType, targetId, settingsKey, toggleAction) => {
+    const safeTargetId = String(targetId ?? "").trim();
+    if (!safeTargetId) return Promise.resolve({ ok: false, error: "invalid_favorite_target" });
+    const active = !(stateRef.current.settings?.[settingsKey] ?? []).includes(safeTargetId);
+    setState((prev) => toggleAction(prev, safeTargetId));
+    return syncFavoriteServer(targetType, safeTargetId, active).then((result) => {
+      if (result?.ok !== false) return result;
+      setState((prev) => {
+        const stillOptimistic = (prev.settings?.[settingsKey] ?? []).includes(safeTargetId) === active;
+        return stillOptimistic ? toggleAction(prev, safeTargetId) : prev;
+      });
+      return result;
+    });
+  }, [setState, syncFavoriteServer]);
   const markNotificationReadServer = useCallback((payload = {}) => {
     runServerAction("/api/notifications/read", payload);
   }, [runServerAction]);
@@ -3071,42 +3090,10 @@ export function useAppData(authUser = null, appLocation = null) {
         setState((prev) => deleteNotification(prev, safeNotificationId));
         return true;
       },
-      toggleFavoritePlayer: (userId) => {
-        let active = false;
-        setState((prev) => {
-          const next = toggleFavoritePlayer(prev, userId);
-          active = (next.settings?.favoritePlayerIds ?? []).includes(userId);
-          return next;
-        });
-        syncFavoriteServer("player", userId, active);
-      },
-      toggleFavoriteTeam: (teamId) => {
-        let active = false;
-        setState((prev) => {
-          const next = toggleFavoriteTeam(prev, teamId);
-          active = (next.settings?.favoriteTeamIds ?? []).includes(teamId);
-          return next;
-        });
-        syncFavoriteServer("team", teamId, active);
-      },
-      toggleFavoriteCourt: (courtId) => {
-        let active = false;
-        setState((prev) => {
-          const next = toggleFavoriteCourt(prev, courtId);
-          active = (next.settings?.favoriteCourtIds ?? []).includes(courtId);
-          return next;
-        });
-        syncFavoriteServer("court", courtId, active);
-      },
-      toggleFavoriteReferee: (userId) => {
-        let active = false;
-        setState((prev) => {
-          const next = toggleFavoriteReferee(prev, userId);
-          active = (next.settings?.favoriteRefereeIds ?? []).includes(userId);
-          return next;
-        });
-        syncFavoriteServer("referee", userId, active);
-      },
+      toggleFavoritePlayer: (userId) => applyFavoriteToggle("player", userId, "favoritePlayerIds", toggleFavoritePlayer),
+      toggleFavoriteTeam: (teamId) => applyFavoriteToggle("team", teamId, "favoriteTeamIds", toggleFavoriteTeam),
+      toggleFavoriteCourt: (courtId) => applyFavoriteToggle("court", courtId, "favoriteCourtIds", toggleFavoriteCourt),
+      toggleFavoriteReferee: (userId) => applyFavoriteToggle("referee", userId, "favoriteRefereeIds", toggleFavoriteReferee),
       submitCourtRequest: (draft) => {
         if (!ensureRemoteReady("구장 등록요청")) return Promise.resolve(null);
         let createdRequest = null;
@@ -3335,6 +3322,21 @@ export function useAppData(authUser = null, appLocation = null) {
         }
         return result;
       },
+      loadTeamEmblemStatus: async (teamId) => {
+        const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 상태 확인", { quiet: true });
+        if (serverReady !== true || !ensureRemoteReady("팀 엠블럼 상태 확인")) return serverReady;
+        const result = await runServerAction("/api/teams/emblem", { action: "status", teamId });
+        if (result?.ok !== false && result?.teamId === teamId) {
+          setState((prev) => ({
+            ...prev,
+            teams: (prev.teams ?? []).map((team) => team.id === teamId ? {
+              ...team,
+              emblemCanRestore: result.emblemCanRestore === true,
+            } : team),
+          }));
+        }
+        return result;
+      },
       uploadTeamEmblem: async (teamId, file, crop = {}) => {
         const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 저장");
         if (serverReady !== true) return serverReady;
@@ -3357,10 +3359,34 @@ export function useAppData(authUser = null, appLocation = null) {
               emblemUploadCount: Number(result.emblemUploadCount ?? team.emblemUploadCount ?? 0),
               emblemViolationCount: Number(result.emblemViolationCount ?? team.emblemViolationCount ?? 0),
               emblemUploadBlockedUntil: result.emblemUploadBlockedUntil ?? team.emblemUploadBlockedUntil ?? null,
+              emblemCanRestore: result.emblemCanRestore === true,
             } : team),
           }));
         }
         return { ...result, sourceByteSize: prepared.sourceByteSize, byteSize: result?.byteSize ?? prepared.byteSize };
+      },
+      restoreTeamEmblem: async (teamId) => {
+        const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "이전 팀 엠블럼 복원");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("이전 팀 엠블럼 복원")) return { ok: false, error: "remote_not_ready" };
+        const result = await runServerAction("/api/teams/emblem", { action: "restore", teamId });
+        if (result?.ok !== false && result?.teamId === teamId) {
+          setState((prev) => ({
+            ...prev,
+            teams: (prev.teams ?? []).map((team) => team.id === teamId ? {
+              ...team,
+              emblemKey: result.emblemKey ?? null,
+              emblemSource: result.emblemSource ?? "upload",
+              emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
+              emblemUploadedAt: result.emblemUploadedAt ?? team.emblemUploadedAt ?? null,
+              emblemUploadCount: Number(result.emblemUploadCount ?? team.emblemUploadCount ?? 0),
+              emblemViolationCount: Number(result.emblemViolationCount ?? team.emblemViolationCount ?? 0),
+              emblemUploadBlockedUntil: result.emblemUploadBlockedUntil ?? team.emblemUploadBlockedUntil ?? null,
+              emblemCanRestore: result.emblemCanRestore === true,
+            } : team),
+          }));
+        }
+        return result;
       },
       setTeamEmblemSource: async (teamId, emblemSource) => {
         const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 변경");
@@ -3377,6 +3403,7 @@ export function useAppData(authUser = null, appLocation = null) {
               emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
               emblemViolationCount: Number(result.emblemViolationCount ?? team.emblemViolationCount ?? 0),
               emblemUploadBlockedUntil: result.emblemUploadBlockedUntil ?? team.emblemUploadBlockedUntil ?? null,
+              emblemCanRestore: false,
             } : team),
           }));
         }
@@ -3650,7 +3677,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

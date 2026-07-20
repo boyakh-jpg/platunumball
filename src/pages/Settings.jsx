@@ -15,7 +15,7 @@ import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib
 import { formatKoreanDateTime, formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtCanonicalName, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtLocationMatches, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
-import { findCourtByHashtag, findTeamByHashtag, findUserByHashtag, getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
+import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
 import {
@@ -268,10 +268,6 @@ export default function Settings({ app, auth, section = "main" }) {
   const favoriteReferees = favoriteRefereeIds
     .map((userId) => app.state.users.find((item) => item.id === userId))
     .filter((user) => user && isEligibleReferee(user, REFEREE_TRUST_MIN, app.state.settings?.refereeAppointments));
-  const searchedFavoriteUser = favoriteQuery.trim() ? findUserByHashtag(app.state.users, favoriteQuery) : null;
-  const searchedFavoriteReferee = searchedFavoriteUser && isEligibleReferee(searchedFavoriteUser, REFEREE_TRUST_MIN, app.state.settings?.refereeAppointments) ? searchedFavoriteUser : null;
-  const searchedFavoriteTeam = favoriteQuery.trim() ? findTeamByHashtag(app.state.teams, favoriteQuery) : null;
-  const searchedFavoriteCourt = favoriteQuery.trim() ? findCourtByHashtag(registeredCourts, favoriteQuery) : null;
   const favoriteListConfig = {
     player: { label: "프로필", count: favoritePlayerIds.length },
     team: { label: "팀", count: favoriteTeamIds.length },
@@ -1134,13 +1130,13 @@ export default function Settings({ app, auth, section = "main" }) {
             <SearchPicker
               value={favoriteQuery}
               onChange={setFavoriteQuery}
-              placeholder="#minjun, #noeulkings, #12345"
+              placeholder="이름 또는 해시태그 검색"
               items={[]}
               remoteSearchType="all"
               idleItems={favoriteSearchIdleItems}
               idleTitle="저장한 즐겨찾기"
               title="즐겨찾기 검색 결과"
-              emptyText="해시태그 결과 없음"
+              emptyText="검색 결과 없음"
               showIdleOnFocus
               floating
               closeOnResultClick
@@ -1160,65 +1156,6 @@ export default function Settings({ app, auth, section = "main" }) {
                   <strong>{config.count}/10</strong>
                 </button>
               ))}
-            </div>
-            <div className="favorite-result-stack">
-              {searchedFavoriteUser ? (
-                <div className="favorite-result-row">
-                  <span className="favorite-result-identity">
-                    <ProfileEmblem user={searchedFavoriteUser} className="small" />
-                    <span>
-                      <strong>{searchedFavoriteUser.name}</strong>
-                      <em>{getUserHashtag(searchedFavoriteUser)}</em>
-                    </span>
-                  </span>
-                  <Button type="button" size="sm" variant={favoritePlayerIds.includes(searchedFavoriteUser.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoritePlayer(searchedFavoriteUser.id); setFavoriteQuery(""); }}>
-                    {favoritePlayerIds.includes(searchedFavoriteUser.id) ? "해제" : "저장"}
-                  </Button>
-                </div>
-              ) : null}
-              {searchedFavoriteReferee ? (
-                <div className="favorite-result-row">
-                  <span className="favorite-result-identity">
-                    <ProfileEmblem user={searchedFavoriteReferee} className="small" />
-                    <span>
-                      <strong>{searchedFavoriteReferee.name}</strong>
-                      <em>{getUserHashtag(searchedFavoriteReferee)} · 신뢰도 {searchedFavoriteReferee.trustScore}</em>
-                    </span>
-                  </span>
-                  <Button type="button" size="sm" variant={favoriteRefereeIds.includes(searchedFavoriteReferee.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteReferee(searchedFavoriteReferee.id); setFavoriteQuery(""); }}>
-                    {favoriteRefereeIds.includes(searchedFavoriteReferee.id) ? "해제" : "저장"}
-                  </Button>
-                </div>
-              ) : null}
-              {searchedFavoriteTeam ? (
-                <div className="favorite-result-row">
-                  <span className="favorite-result-identity team-identity">
-                    <TeamEmblem team={searchedFavoriteTeam} size="sm" />
-                    <span>
-                      <strong>{searchedFavoriteTeam.name}</strong>
-                      <em>{getTeamHashtag(searchedFavoriteTeam)}</em>
-                    </span>
-                  </span>
-                  <Button type="button" size="sm" variant={favoriteTeamIds.includes(searchedFavoriteTeam.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteTeam(searchedFavoriteTeam.id); setFavoriteQuery(""); }}>
-                    {favoriteTeamIds.includes(searchedFavoriteTeam.id) ? "해제" : "저장"}
-                  </Button>
-                </div>
-              ) : null}
-              {searchedFavoriteCourt ? (
-                <div className="favorite-result-row">
-                  <span className="favorite-result-identity">
-                    <span className="team-dot" />
-                    <span>
-                      <strong>{searchedFavoriteCourt.name}</strong>
-                      <em>{getCourtHashtag(searchedFavoriteCourt)}</em>
-                    </span>
-                  </span>
-                  <Button type="button" size="sm" variant={favoriteCourtIds.includes(searchedFavoriteCourt.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteCourt(searchedFavoriteCourt.id); setFavoriteQuery(""); }}>
-                    {favoriteCourtIds.includes(searchedFavoriteCourt.id) ? "해제" : "저장"}
-                  </Button>
-                </div>
-              ) : null}
-              {favoriteQuery.trim() && !searchedFavoriteUser && !searchedFavoriteReferee && !searchedFavoriteTeam && !searchedFavoriteCourt ? <div className="empty-state">해시태그 결과 없음</div> : null}
             </div>
             {favoriteListType ? (
               <div className="favorite-chip-list">

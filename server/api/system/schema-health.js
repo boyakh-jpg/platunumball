@@ -36,6 +36,7 @@ const REQUIRED_COLUMNS = {
     "home_court",
     "region",
     "emblem_key",
+    "emblem_previous_key",
     "emblem_source",
     "emblem_updated_at",
     "emblem_uploaded_at",
@@ -359,6 +360,10 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_update_team_emblem_source",
     args: { p_actor_profile_id: "", p_team_id: "", p_emblem_source: "initial" },
+  },
+  {
+    name: "rankball_restore_team_emblem",
+    args: { p_actor_profile_id: "", p_team_id: "", p_expected_emblem_key: null, p_expected_previous_emblem_key: null },
   },
   {
     name: "rankball_update_profile_emblem",

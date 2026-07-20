@@ -5,6 +5,10 @@ import Button from "./Button.jsx";
 
 const DEFAULT_CROP = { zoom: 1, x: 50, y: 50 };
 
+function getRangeProgress(value, min, max) {
+  return `${Math.max(0, Math.min(100, ((Number(value) - min) / (max - min)) * 100))}%`;
+}
+
 export default function EmblemCropEditor({ file, pending = false, warning = "", error = "", onCancel, onConfirm }) {
   const canvasRef = useRef(null);
   const [image, setImage] = useState(null);
@@ -45,15 +49,15 @@ export default function EmblemCropEditor({ file, pending = false, warning = "", 
         <div className="emblem-crop-controls">
           <label>
             확대·축소
-            <input type="range" min="0.5" max="3" step="0.05" value={crop.zoom} onChange={(event) => setCrop((current) => ({ ...current, zoom: Number(event.target.value) }))} />
+            <input type="range" min="0.5" max="3" step="0.05" value={crop.zoom} style={{ "--emblem-range-progress": getRangeProgress(crop.zoom, 0.5, 3) }} onChange={(event) => setCrop((current) => ({ ...current, zoom: Number(event.target.value) }))} />
           </label>
           <label>
             가로 위치
-            <input type="range" min="0" max="100" step="1" value={crop.x} onChange={(event) => setCrop((current) => ({ ...current, x: Number(event.target.value) }))} />
+            <input type="range" min="0" max="100" step="1" value={crop.x} style={{ "--emblem-range-progress": getRangeProgress(crop.x, 0, 100) }} onChange={(event) => setCrop((current) => ({ ...current, x: Number(event.target.value) }))} />
           </label>
           <label>
             세로 위치
-            <input type="range" min="0" max="100" step="1" value={crop.y} onChange={(event) => setCrop((current) => ({ ...current, y: Number(event.target.value) }))} />
+            <input type="range" min="0" max="100" step="1" value={crop.y} style={{ "--emblem-range-progress": getRangeProgress(crop.y, 0, 100) }} onChange={(event) => setCrop((current) => ({ ...current, y: Number(event.target.value) }))} />
           </label>
         </div>
         {warning ? <p className="form-warning">{warning}</p> : null}

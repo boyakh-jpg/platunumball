@@ -3563,12 +3563,38 @@ async function runTeamEmblemModerationScenario({
     activeUploadResult?.ok &&
       activeUploadResult?.emblemKey &&
       activeUploadResult?.emblemKey !== firstUploadResult.emblemKey &&
+      activeUploadResult?.emblemCanRestore === true &&
       activeUploadResult?.storageCleanupPending === false,
     "replacement team emblem upload failed",
     activeUploadResult,
   );
-  teamEmblemSimulationKeys.delete(firstUploadResult.emblemKey);
   teamEmblemSimulationKeys.add(activeUploadResult.emblemKey);
+
+  const restoreFirstResult = await step(`${ids.label}:restoreFirstEmblem`, () => updateTeamEmblemAs(captainLogin, {
+    action: "restore",
+    teamId,
+  }));
+  assertFlow(
+    restoreFirstResult?.ok &&
+      restoreFirstResult?.emblemKey === firstUploadResult.emblemKey &&
+      restoreFirstResult?.emblemCanRestore === true &&
+      restoreFirstResult?.emblemUploadCount === activeUploadResult.emblemUploadCount,
+    "team emblem previous photo restore failed",
+    restoreFirstResult,
+  );
+
+  const restoreActiveResult = await step(`${ids.label}:restoreActiveEmblem`, () => updateTeamEmblemAs(captainLogin, {
+    action: "restore",
+    teamId,
+  }));
+  assertFlow(
+    restoreActiveResult?.ok &&
+      restoreActiveResult?.emblemKey === activeUploadResult.emblemKey &&
+      restoreActiveResult?.emblemCanRestore === true &&
+      restoreActiveResult?.emblemUploadCount === activeUploadResult.emblemUploadCount,
+    "team emblem restore swap failed",
+    restoreActiveResult,
+  );
 
   const staleModeration = await expectRejected(`${ids.label}:rejectStaleModeration`, () => commitAdminReviewAs(adminLogin, {
     reportId: staleReportId,
@@ -3654,6 +3680,12 @@ async function runTeamEmblemModerationScenario({
   }), ["team_emblem_moderation_blocked"]);
   assertFlow(blockedUpload.rejected, "moderated team uploaded an emblem during the block", blockedUpload);
 
+  const blockedRestore = await expectRejected(`${ids.label}:rejectBlockedRestore`, () => updateTeamEmblemAs(captainLogin, {
+    action: "restore",
+    teamId,
+  }), ["team_emblem_moderation_blocked"]);
+  assertFlow(blockedRestore.rejected, "moderated team restored an emblem during the block", blockedRestore);
+
   const deleteResult = await step(`${ids.label}:deleteTeam`, () => syncTeamAs(captainLogin, { deletedTeamId: teamId }));
   assertFlow(deleteResult?.ok && deleteResult?.deleted === true, "team emblem simulation team delete failed", deleteResult);
 
@@ -3664,6 +3696,7 @@ async function runTeamEmblemModerationScenario({
     reportId,
     actorLogins: [captainLogin, reporterLogin, adminLogin],
     uploadVerified: true,
+    restoreVerified: true,
     reportSnapshotVerified: true,
     unauthorizedModerationBlocked: true,
     staleReportGuardVerified: true,
@@ -3672,6 +3705,7 @@ async function runTeamEmblemModerationScenario({
     blockDays: 30,
     notificationCount: notificationRows?.length ?? 0,
     blockedUploadVerified: true,
+    blockedRestoreVerified: true,
     storageCleanupVerified: true,
     deleted: true,
   };

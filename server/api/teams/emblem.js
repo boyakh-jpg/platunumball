@@ -115,7 +115,7 @@ async function loadTeamForActor(context, teamId) {
   const [{ data: team, error: teamError }, { data: captain, error: captainError }] = await Promise.all([
     context.supabase
       .from("teams")
-      .select("id,emblem_key,emblem_source,emblem_updated_at,emblem_uploaded_at,emblem_upload_count,emblem_color,emblem_border_enabled,emblem_border_color,emblem_text_mode,emblem_abbreviation,emblem_font,emblem_violation_count,emblem_upload_blocked_until,emblem_moderated_at,emblem_moderation_reason,deleted_at")
+      .select("id,emblem_key,emblem_previous_key,emblem_source,emblem_updated_at,emblem_uploaded_at,emblem_upload_count,emblem_color,emblem_border_enabled,emblem_border_color,emblem_text_mode,emblem_abbreviation,emblem_font,emblem_violation_count,emblem_upload_blocked_until,emblem_moderated_at,emblem_moderation_reason,deleted_at")
       .eq("id", teamId)
       .is("deleted_at", null)
       .maybeSingle(),
@@ -181,6 +181,31 @@ async function commitEmblemSource(context, teamId, emblemSource) {
   throw mapped;
 }
 
+async function restoreEmblem(context, teamId, expectedEmblemKey, expectedPreviousEmblemKey) {
+  const { data, error } = await context.supabase.rpc("rankball_restore_team_emblem", {
+    p_actor_profile_id: context.profileId,
+    p_team_id: teamId,
+    p_expected_emblem_key: expectedEmblemKey || null,
+    p_expected_previous_emblem_key: expectedPreviousEmblemKey || null,
+  });
+  if (!error) return data ?? { ok: true, teamId };
+
+  const mapped = new Error(error.message || "team_emblem_restore_failed");
+  mapped.statusCode = error.message === "team_emblem_moderation_blocked" ? 429 : error.code === "42501" ? 403 : error.code === "40001" ? 409 : error.code === "P0002" ? 404 : 400;
+  mapped.nextAllowedAt = error.details || null;
+  throw mapped;
+}
+
+function getPublicEmblemResult(result = {}) {
+  const {
+    previousEmblemKey: _previousEmblemKey,
+    removedEmblemKey: _removedEmblemKey,
+    discardedEmblemKey: _discardedEmblemKey,
+    ...publicResult
+  } = result;
+  return publicResult;
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -197,10 +222,11 @@ export default async function handler(request, response) {
     const action = String(body.action || "upload").trim();
     const teamId = String(body.teamId || "").trim();
     if (!TEAM_ID_PATTERN.test(teamId)) reject(400, "invalid_team_id");
-    if (!new Set(["upload", "remove", "source", "style"]).has(action)) reject(400, "invalid_team_emblem_action");
+    if (!new Set(["upload", "remove", "restore", "source", "status", "style"]).has(action)) reject(400, "invalid_team_emblem_action");
 
     const team = await loadTeamForActor(context, teamId);
     const previousEmblemKey = team.emblem_key || null;
+    const retainedEmblemKey = team.emblem_previous_key || null;
     if (action === "upload" && team.emblem_upload_blocked_until && new Date(team.emblem_upload_blocked_until).getTime() > Date.now()) {
       const blocked = new Error("team_emblem_moderation_blocked");
       blocked.statusCode = 429;
@@ -240,19 +266,34 @@ export default async function handler(request, response) {
       return;
     }
 
+    if (action === "status") {
+      sendJson(response, 200, { ok: true, teamId, emblemCanRestore: Boolean(retainedEmblemKey) });
+      return;
+    }
+
+    if (action === "restore") {
+      const result = await restoreEmblem(context, teamId, previousEmblemKey, retainedEmblemKey);
+      sendJson(response, 200, getPublicEmblemResult(result));
+      return;
+    }
+
     const config = getR2Config();
 
     if (action === "remove") {
       const result = await commitEmblem(context, teamId, null, previousEmblemKey);
       let storageCleanupPending = false;
-      if (previousEmblemKey) {
+      const cleanupKeys = [...new Set([
+        result?.removedEmblemKey ?? previousEmblemKey,
+        result?.discardedEmblemKey ?? retainedEmblemKey,
+      ].filter(Boolean))];
+      for (const cleanupKey of cleanupKeys) {
         try {
-          await deleteObject(config, previousEmblemKey);
+          await deleteObject(config, cleanupKey);
         } catch {
           storageCleanupPending = true;
         }
       }
-      sendJson(response, 200, { ...result, storageCleanupPending });
+      sendJson(response, 200, { ...getPublicEmblemResult(result), storageCleanupPending });
       return;
     }
 
@@ -266,19 +307,19 @@ export default async function handler(request, response) {
     try {
       result = await commitEmblem(context, teamId, emblemKey, previousEmblemKey);
     } catch (error) {
-      if (emblemKey !== previousEmblemKey) await deleteObject(config, emblemKey).catch(() => null);
+      if (emblemKey !== previousEmblemKey && emblemKey !== retainedEmblemKey) await deleteObject(config, emblemKey).catch(() => null);
       throw error;
     }
 
     let storageCleanupPending = false;
-    if (previousEmblemKey && previousEmblemKey !== emblemKey) {
+    if (result?.discardedEmblemKey && result.discardedEmblemKey !== emblemKey) {
       try {
-        await deleteObject(config, previousEmblemKey);
+        await deleteObject(config, result.discardedEmblemKey);
       } catch {
         storageCleanupPending = true;
       }
     }
-    sendJson(response, 200, { ...result, byteSize: bytes.length, storageCleanupPending });
+    sendJson(response, 200, { ...getPublicEmblemResult(result), byteSize: bytes.length, storageCleanupPending });
   } catch (error) {
     console.error("Team emblem action failed.", error.message);
     sendJson(response, error.statusCode || 500, {

@@ -1,4 +1,4 @@
-export const TEAM_EMBLEM_SOURCE_MAX_BYTES = 12 * 1024 * 1024;
+export const TEAM_EMBLEM_SOURCE_MAX_BYTES = 32 * 1024 * 1024;
 export const TEAM_EMBLEM_UPLOAD_MAX_BYTES = 96 * 1024;
 export const TEAM_EMBLEM_MAX_DIMENSION = 320;
 export const TEAM_EMBLEM_FONT_OPTIONS = [
@@ -77,10 +77,14 @@ export function getTeamEmblemTextLines(team = {}, fallbackName = "") {
 
 const ACCEPTED_TEAM_EMBLEM_TYPES = new Set([
   "image/avif",
+  "image/heic",
+  "image/heif",
   "image/jpeg",
   "image/png",
   "image/webp",
 ]);
+
+const ACCEPTED_TEAM_EMBLEM_EXTENSIONS = new Set(["avif", "heic", "heif", "jpeg", "jpg", "png", "webp"]);
 
 function createImageLoadError(code) {
   const error = new Error(code);
@@ -90,13 +94,17 @@ function createImageLoadError(code) {
 
 async function decodeImage(file) {
   if (typeof createImageBitmap === "function") {
-    const bitmap = await createImageBitmap(file);
-    return {
-      source: bitmap,
-      width: bitmap.width,
-      height: bitmap.height,
-      dispose: () => bitmap.close?.(),
-    };
+    try {
+      const bitmap = await createImageBitmap(file);
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        dispose: () => bitmap.close?.(),
+      };
+    } catch {
+      // 일부 브라우저는 HEIC/HEIF를 <img>로는 읽지만 createImageBitmap으로는 읽지 못한다.
+    }
   }
 
   const objectUrl = URL.createObjectURL(file);
@@ -158,11 +166,11 @@ export function drawEmblemCrop(canvas, source, sourceWidth, sourceHeight, crop =
   const width = Math.max(1, sourceWidth * scale);
   const height = Math.max(1, sourceHeight * scale);
   const x = width >= dimension
-    ? -(width - dimension) * (normalized.x / 100)
-    : (dimension - width) * (normalized.x / 100);
+    ? -(width - dimension) * ((100 - normalized.x) / 100)
+    : (dimension - width) * ((100 - normalized.x) / 100);
   const y = height >= dimension
-    ? -(height - dimension) * (normalized.y / 100)
-    : (dimension - height) * (normalized.y / 100);
+    ? -(height - dimension) * ((100 - normalized.y) / 100)
+    : (dimension - height) * ((100 - normalized.y) / 100);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   context.drawImage(source, x, y, width, height);
@@ -171,7 +179,9 @@ export function drawEmblemCrop(canvas, source, sourceWidth, sourceHeight, crop =
 
 export async function prepareTeamEmblemUpload(file, crop = {}) {
   if (!(file instanceof Blob)) throw createImageLoadError("team_emblem_file_required");
-  if (!ACCEPTED_TEAM_EMBLEM_TYPES.has(String(file.type || "").toLowerCase())) {
+  const fileType = String(file.type || "").toLowerCase();
+  const extension = String(file.name || "").split(".").pop()?.toLowerCase() ?? "";
+  if (!ACCEPTED_TEAM_EMBLEM_TYPES.has(fileType) && !ACCEPTED_TEAM_EMBLEM_EXTENSIONS.has(extension)) {
     throw createImageLoadError("team_emblem_type_not_supported");
   }
   if (!file.size || file.size > TEAM_EMBLEM_SOURCE_MAX_BYTES) {
@@ -191,12 +201,14 @@ export async function prepareTeamEmblemUpload(file, crop = {}) {
     const initialDimension = Math.min(TEAM_EMBLEM_MAX_DIMENSION, Math.max(decoded.width, decoded.height));
     const dimensions = [...new Set([
       initialDimension,
-      Math.min(initialDimension, 352),
-      Math.min(initialDimension, 320),
+      Math.min(initialDimension, 288),
       Math.min(initialDimension, 256),
       Math.min(initialDimension, 224),
+      Math.min(initialDimension, 192),
+      Math.min(initialDimension, 160),
+      Math.min(initialDimension, 144),
     ].map((value) => Math.max(1, Math.round(value))))];
-    const qualities = [0.82, 0.72, 0.62, 0.52];
+    const qualities = [0.84, 0.76, 0.68, 0.6, 0.52, 0.44, 0.36, 0.3];
 
     for (const dimension of dimensions) {
       const canvas = document.createElement("canvas");
@@ -226,8 +238,8 @@ export function getTeamEmblemErrorMessage(code = "") {
   const messages = {
     team_emblem_file_required: "이미지 파일을 선택해야 합니다.",
     profile_emblem_file_required: "이미지 파일을 선택해야 합니다.",
-    team_emblem_type_not_supported: "JPG, PNG, WebP, AVIF 이미지만 사용할 수 있습니다.",
-    team_emblem_source_too_large: "원본 이미지는 12MB 이하여야 합니다.",
+    team_emblem_type_not_supported: "JPG, PNG, WebP, AVIF, HEIC 이미지만 사용할 수 있습니다.",
+    team_emblem_source_too_large: "원본 이미지는 32MB 이하여야 합니다.",
     team_emblem_decode_failed: "이미지를 읽을 수 없습니다.",
     team_emblem_invalid_dimensions: "이미지 크기를 확인할 수 없습니다.",
     profile_emblem_invalid_dimensions: "이미지 크기를 확인할 수 없습니다.",
@@ -245,6 +257,8 @@ export function getTeamEmblemErrorMessage(code = "") {
     team_emblem_permission_denied: "팀 주장만 엠블럼을 변경할 수 있습니다.",
     team_emblem_conflict: "다른 변경이 먼저 저장됐습니다. 다시 시도하세요.",
     team_emblem_upload_unavailable: "먼저 사용할 사진을 저장하세요.",
+    team_emblem_restore_unavailable: "되돌릴 이전 사진이 없습니다.",
+    team_emblem_restore_failed: "이전 사진으로 되돌리지 못했습니다.",
     profile_emblem_upload_unavailable: "먼저 사용할 사진을 저장하세요.",
     profile_emblem_image_disabled: "개인 사진 엠블럼은 사용하지 않습니다.",
     team_emblem_cooldown: "교체 제한 기간입니다. 표시된 날짜 이후 다시 시도하세요.",

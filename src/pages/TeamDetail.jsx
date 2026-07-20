@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Flag, ImageUp, Star, Trash2 } from "lucide-react";
+import { Flag, ImageUp, RotateCcw, Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -62,6 +62,7 @@ export default function TeamDetail({ app }) {
   const [selectedHistoryMatchId, setSelectedHistoryMatchId] = useState("");
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [emblemPending, setEmblemPending] = useState(false);
+  const [emblemCanRestore, setEmblemCanRestore] = useState(false);
   const [emblemFeedback, setEmblemFeedback] = useState("");
   const [emblemFile, setEmblemFile] = useState(null);
   const [emblemStyleDraft, setEmblemStyleDraft] = useState(() => ({
@@ -77,6 +78,7 @@ export default function TeamDetail({ app }) {
   const [emblemReportPending, setEmblemReportPending] = useState(false);
   const [emblemReportFeedback, setEmblemReportFeedback] = useState("");
   const emblemInputRef = useRef(null);
+  const emblemStatusRequestRef = useRef("");
   const captain = team?.members.find((member) => member.role === "captain");
   const canManage = captain?.userId === app.currentUser.id;
 
@@ -96,6 +98,17 @@ export default function TeamDetail({ app }) {
     if (!team || !canManage || app.directoryStatus?.loaded || app.directoryStatus?.loading) return;
     app.actions.loadDirectory?.();
   }, [app.actions, app.directoryStatus?.loaded, app.directoryStatus?.loading, canManage, team]);
+
+  useEffect(() => {
+    if (!team?.id || !canManage || app.remoteReady === false || emblemStatusRequestRef.current === team.id) return;
+    let cancelled = false;
+    emblemStatusRequestRef.current = team.id;
+    setEmblemCanRestore(false);
+    Promise.resolve(app.actions.loadTeamEmblemStatus?.(team.id)).then((result) => {
+      if (!cancelled && result?.ok !== false && result?.teamId === team.id) setEmblemCanRestore(result.emblemCanRestore === true);
+    });
+    return () => { cancelled = true; };
+  }, [app.actions, app.remoteReady, canManage, team?.id]);
 
   useEffect(() => {
     if (app.remoteReady === false || !teamId) return undefined;
@@ -252,9 +265,27 @@ export default function TeamDetail({ app }) {
         return;
       }
       setEmblemFeedback(result.storageCleanupPending
-        ? "엠블럼을 저장했습니다. 이전 파일 정리는 재시도가 필요합니다."
+        ? "엠블럼을 저장했습니다. 가장 오래된 파일 정리는 재시도가 필요합니다."
         : "엠블럼을 저장했습니다.");
+      setEmblemCanRestore(result.emblemCanRestore === true);
       setEmblemFile(null);
+    } catch (error) {
+      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+    } finally {
+      setEmblemPending(false);
+    }
+  };
+  const restorePreviousEmblem = async () => {
+    if (emblemPending || !emblemCanRestore) return;
+    setEmblemPending(true);
+    setEmblemFeedback("");
+    try {
+      const result = await app.actions.restoreTeamEmblem(team.id);
+      const nextAt = result?.details?.nextAllowedAt;
+      if (result?.ok !== false) setEmblemCanRestore(result.emblemCanRestore === true);
+      setEmblemFeedback(result?.ok === false
+        ? `${getTeamEmblemErrorMessage(result.error)}${nextAt ? ` ${formatEmblemDate(nextAt)}` : ""}`
+        : "직전 사진으로 되돌렸습니다.");
     } catch (error) {
       setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
@@ -633,7 +664,7 @@ export default function TeamDetail({ app }) {
                 ref={emblemInputRef}
                 hidden
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/avif"
+                accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
                 disabled={emblemPending || emblemUploadLocked}
                 onChange={uploadEmblem}
               />
@@ -694,6 +725,11 @@ export default function TeamDetail({ app }) {
               <p className="emblem-policy-note">{moderationLocked ? `운영 조치로 ${formatEmblemDate(moderationBlockedAt)}부터 사진을 업로드할 수 있습니다.` : getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}</p>
               <div className="settings-save-row team-emblem-editor-actions">
                 <small>{emblemFeedback || (emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 사진을 변경할 수 있습니다.` : "저장된 사진은 기본값으로 바꿔도 삭제되지 않습니다.")}</small>
+                {emblemCanRestore ? (
+                  <Button type="button" size="sm" variant="secondary" disabled={emblemPending || moderationLocked} onClick={restorePreviousEmblem}>
+                    <RotateCcw size={16} /> 이전 사진
+                  </Button>
+                ) : null}
                 <Button type="button" size="sm" disabled={emblemPending || emblemUploadLocked} onClick={() => emblemInputRef.current?.click()}>
                   <ImageUp size={16} /> {team.emblemKey ? "사진 변경" : "사진 선택"}
                 </Button>

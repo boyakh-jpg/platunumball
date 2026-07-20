@@ -100,13 +100,14 @@ export function getOptionalCourtCoordinate(value, min, max) {
 export function getCourtMapUrl(court = {}) {
   const latitude = getOptionalCourtCoordinate(court.lat ?? court.latitude, -90, 90);
   const longitude = getOptionalCourtCoordinate(court.lng ?? court.longitude, -180, 180);
+  const address = court.roadAddress || court.addressText || court.jibunAddress;
+  const query = [court.name, address].filter(Boolean).join(" ") || "농구장";
+  const searchUrl = `https://map.naver.com/p/search/${encodeURIComponent(query)}`;
   if (latitude !== null && longitude !== null) {
-    return `https://map.naver.com/p?c=${longitude},${latitude},17,0,0,0,dh`;
+    return `${searchUrl}?c=${longitude},${latitude},17,0,0,0,dh`;
   }
 
-  const address = court.roadAddress || court.addressText || court.jibunAddress;
-  const query = address || court.name || "농구장";
-  return `https://map.naver.com/p/search/${encodeURIComponent(query)}`;
+  return searchUrl;
 }
 
 function getFallbackSurfaceType(court = {}) {

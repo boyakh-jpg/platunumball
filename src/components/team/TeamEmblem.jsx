@@ -19,7 +19,10 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
     : "";
   const textLines = getTeamEmblemTextLines(team, resolvedName);
   const textDensity = Math.max(...textLines.map((line) => Array.from(line).length), 1);
-  const textScale = Math.max(0.24, Math.min(1.9, 2 / textDensity));
+  const textMode = new Set(["name", "abbreviation"]).has(team?.emblemTextMode) ? team.emblemTextMode : "initial";
+  const textScale = textMode === "initial"
+    ? 1
+    : Math.max(textMode === "name" ? 0.28 : 0.24, Math.min(textMode === "name" ? 1.35 : 1.9, (textMode === "name" ? 2.2 : 2) / textDensity));
   const textClass = textDensity > 8 ? "dense" : textDensity > 5 ? "compact" : "regular";
   const lineClass = textLines.length >= 3 ? "three-lines" : textLines.length === 2 ? "two-lines" : "one-line";
   const emblemFont = normalizeTeamEmblemFont(team?.emblemFont);
