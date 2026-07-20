@@ -12,6 +12,12 @@ const GROUP_EYEBROWS = {
   achievement: "Game & Community",
   rank: "Rank",
   special: "Special",
+  career: "Career",
+  records: "Records",
+  leaders: "Game Leaders",
+  modes: "Game Modes",
+  community: "Operations & Community",
+  tournaments: "Tournaments",
 };
 
 function AchievementCard({ icon, metrics, unlockedIconKeys }) {

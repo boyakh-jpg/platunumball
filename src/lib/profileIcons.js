@@ -93,6 +93,127 @@ for (const [position, metric, iconIds] of POSITION_PLAY_ICON_IDS) {
   });
 }
 
+const PROFILE_ICON_SERIES_TIERS = Object.freeze([
+  Object.freeze({ id: "bronze", name: "브론즈" }),
+  Object.freeze({ id: "silver", name: "실버" }),
+  Object.freeze({ id: "gold", name: "골드" }),
+  Object.freeze({ id: "platinum", name: "플래티넘" }),
+  Object.freeze({ id: "legend", name: "레전드" }),
+]);
+
+const trackedSeries = (slug, name, metric, targets, requirementLabel, unit = "회", condition = null) => Object.freeze({
+  slug,
+  name,
+  metric,
+  targets: Object.freeze(targets),
+  requirementLabel,
+  condition: condition ?? ((target) => `${requirementLabel} ${target}${unit}`),
+});
+
+const PROFILE_ICON_SERIES_GROUPS = Object.freeze([
+  Object.freeze({
+    id: "career",
+    name: "경기 경력",
+    series: Object.freeze([
+      trackedSeries("court-journey", "코트 여정", "matchCount", [25, 50, 100, 250, 500], "확정 경기"),
+      trackedSeries("victory-road", "승리의 길", "winCount", [10, 25, 50, 100, 250], "승리"),
+      trackedSeries("streak-forge", "연승 행진", "streak", [7, 10, 12, 15, 20], "최고 연승", "연승", (target) => `${target}연승 달성`),
+      trackedSeries("clutch-wins", "클러치 승리", "closeWinCount", [5, 10, 20, 35, 50], "접전 승리"),
+      trackedSeries("ranked-grind", "랭크 전사", "rankedMatchCount", [10, 25, 50, 100, 250], "랭크 경기"),
+      trackedSeries("official-stage", "공인 무대", "officialMatchCount", [5, 10, 25, 50, 100], "공인 경기"),
+      trackedSeries("open-court", "오픈 코트", "publicMatchCount", [10, 25, 50, 100, 250], "공개 경기"),
+      trackedSeries("closed-court", "클로즈드 코트", "privateMatchCount", [5, 10, 25, 50, 100], "비공개 경기"),
+      trackedSeries("team-campaign", "팀전 원정", "teamMatchCount", [25, 50, 100, 250, 500], "팀 경기"),
+      trackedSeries("team-victories", "팀전 승리", "teamMatchWinCount", [5, 10, 25, 50, 100], "팀 경기 승리"),
+      trackedSeries("private-team-series", "비공개 팀전", "privateTeamMatchCount", [3, 10, 25, 50, 100], "비공개 팀전"),
+      trackedSeries("matchmaking-success", "매칭 성사", "matchmakingSuccessCount", [1, 5, 10, 25, 50], "매칭 성사"),
+    ]),
+  }),
+  Object.freeze({
+    id: "records",
+    name: "누적 기록",
+    series: Object.freeze([
+      trackedSeries("scoring-total", "득점 누적", "points", [250, 500, 1000, 2500, 5000], "누적 득점", "점"),
+      trackedSeries("rebound-total", "리바운드 누적", "rebounds", [100, 250, 500, 1000, 2500], "누적 리바운드", "개"),
+      trackedSeries("assist-total", "어시스트 누적", "assists", [250, 500, 1000, 2000, 5000], "누적 어시스트", "개"),
+      trackedSeries("steal-total", "스틸 누적", "steals", [25, 50, 100, 250, 500], "누적 스틸", "개"),
+      trackedSeries("block-total", "블록 누적", "blocks", [25, 50, 100, 250, 500], "누적 블록", "개"),
+      trackedSeries("double-double-run", "더블더블", "doubleDoubleCount", [3, 5, 10, 25, 50], "더블더블"),
+      trackedSeries("triple-double-run", "트리플더블", "tripleDoubleCount", [2, 3, 5, 10, 25], "트리플더블"),
+      trackedSeries("all-around-games", "고효율 경기", "mvpPerformanceCount", [5, 10, 20, 35, 50], "고효율 경기"),
+    ]),
+  }),
+  Object.freeze({
+    id: "leaders",
+    name: "경기 기록왕",
+    series: Object.freeze([
+      trackedSeries("scoring-leader", "경기 득점왕", "scoringLeaderGameCount", [1, 3, 10, 25, 50], "득점왕 경기", "회", (target) => `경기 득점 1위 ${target}회 · 경기당 10점 이상`),
+      trackedSeries("rebound-leader", "경기 리바운드왕", "reboundLeaderGameCount", [1, 3, 10, 25, 50], "리바운드왕 경기", "회", (target) => `경기 리바운드 1위 ${target}회 · 경기당 5개 이상`),
+      trackedSeries("assist-leader", "경기 어시스트왕", "assistLeaderGameCount", [1, 3, 10, 25, 50], "어시스트왕 경기", "회", (target) => `경기 어시스트 1위 ${target}회 · 경기당 5개 이상`),
+      trackedSeries("steal-leader", "경기 스틸왕", "stealLeaderGameCount", [1, 3, 10, 25, 50], "스틸왕 경기", "회", (target) => `경기 스틸 1위 ${target}회 · 경기당 2개 이상`),
+      trackedSeries("block-leader", "경기 블록왕", "blockLeaderGameCount", [1, 3, 10, 25, 50], "블록왕 경기", "회", (target) => `경기 블록 1위 ${target}회 · 경기당 2개 이상`),
+    ]),
+  }),
+  Object.freeze({
+    id: "modes",
+    name: "경기 인원",
+    series: Object.freeze([
+      trackedSeries("one-on-one", "1v1 스페셜리스트", "mode1v1Count", [1, 10, 25, 50, 100], "1v1 확정 경기"),
+      trackedSeries("two-on-two", "2v2 스페셜리스트", "mode2v2Count", [1, 10, 25, 50, 100], "2v2 확정 경기"),
+      trackedSeries("three-on-three", "3v3 스페셜리스트", "mode3v3Count", [1, 10, 25, 50, 100], "3v3 확정 경기"),
+      trackedSeries("four-on-four", "4v4 스페셜리스트", "mode4v4Count", [1, 10, 25, 50, 100], "4v4 확정 경기"),
+      trackedSeries("five-on-five", "5v5 스페셜리스트", "mode5v5Count", [1, 10, 25, 50, 100], "5v5 확정 경기"),
+    ]),
+  }),
+  Object.freeze({
+    id: "community",
+    name: "운영·커뮤니티",
+    series: Object.freeze([
+      trackedSeries("referee-service", "심판 경력", "refereeCount", [10, 25, 50, 75, 100], "심판 수행"),
+      trackedSeries("recorder-service", "기록원 경력", "recorderCount", [10, 25, 50, 75, 100], "기록원 수행"),
+      trackedSeries("recruiting-invites", "매칭 초대 성공", "recruitingInviteAcceptedCount", [1, 5, 10, 25, 50], "수락된 매칭 초대"),
+      trackedSeries("team-invites", "팀 초대 성공", "teamInviteAcceptedCount", [1, 3, 5, 10, 25], "수락된 팀 초대"),
+      trackedSeries("approved-courts", "구장 등록", "approvedCourtCount", [1, 3, 5, 10, 25], "승인 구장 등록"),
+      trackedSeries("court-reviews", "구장 리뷰", "courtReviewCount", [1, 3, 10, 25, 50], "활성 구장 리뷰"),
+      trackedSeries("reserve-duty", "후보 경력", "reserveCount", [1, 5, 10, 25, 50], "후보 등록 경기"),
+      trackedSeries("reserve-promotion", "후보 승격", "promotedReserveCount", [1, 3, 5, 10, 25], "후보 출전 승격"),
+    ]),
+  }),
+  Object.freeze({
+    id: "tournaments",
+    name: "대회",
+    series: Object.freeze([
+      trackedSeries("tournament-games", "대회 경기", "tournamentMatchCount", [1, 3, 10, 25, 50], "대회 확정 경기"),
+      trackedSeries("tournament-entry", "대회 참가", "tournamentParticipationCount", [1, 3, 5, 10, 20], "참가 대회"),
+      trackedSeries("tournament-wins", "대회 승리", "tournamentWinCount", [1, 3, 10, 25, 50], "대회 경기 승리"),
+      trackedSeries("tournament-finals", "대회 결승", "tournamentFinalCount", [1, 3, 5, 10, 20], "대회 결승 진출"),
+      trackedSeries("tournament-titles", "대회 우승", "tournamentTitleCount", [1, 2, 3, 5, 10], "대회 우승"),
+      trackedSeries("tournament-host", "대회 개최", "tournamentHostCount", [1, 3, 5, 10, 20], "개최 대회"),
+    ]),
+  }),
+]);
+
+const EXPANDED_PROFILE_ICON_ENTRIES = [];
+let nextExpandedIconNumber = 81;
+
+for (const seriesGroup of PROFILE_ICON_SERIES_GROUPS) {
+  const entries = [];
+  for (const seriesDefinition of seriesGroup.series) {
+    PROFILE_ICON_SERIES_TIERS.forEach((tier, tierIndex) => {
+      const iconId = `${String(nextExpandedIconNumber).padStart(3, "0")}-${seriesDefinition.slug}-${tier.id}`;
+      const target = seriesDefinition.targets[tierIndex];
+      PROFILE_ICON_ACHIEVEMENTS[iconId] = achievement(seriesDefinition.condition(target), [
+        requirement(seriesDefinition.metric, target, seriesDefinition.requirementLabel),
+      ]);
+      entries.push([iconId, `${seriesDefinition.name} · ${tier.name}`]);
+      nextExpandedIconNumber += 1;
+    });
+  }
+  EXPANDED_PROFILE_ICON_ENTRIES.push(Object.freeze({ id: seriesGroup.id, name: seriesGroup.name, entries: Object.freeze(entries) }));
+}
+
+if (nextExpandedIconNumber !== 301) throw new Error("profile_icon_catalog_size_mismatch");
+
 const group = (id, name, icons) => Object.freeze({
   id,
   name,
@@ -102,6 +223,10 @@ const group = (id, name, icons) => Object.freeze({
     achievement: PROFILE_ICON_ACHIEVEMENTS[iconId],
   }))),
 });
+
+const EXPANDED_PROFILE_ICON_GROUPS = Object.freeze(
+  EXPANDED_PROFILE_ICON_ENTRIES.map((item) => group(item.id, item.name, item.entries)),
+);
 
 export const PROFILE_ICON_GROUPS = Object.freeze([
   group("default", "기본 지급", [
@@ -198,6 +323,7 @@ export const PROFILE_ICON_GROUPS = Object.freeze([
     ["79-bulldog-center", "불독 센터"],
     ["80-crown-goat", "크라운 GOAT"],
   ]),
+  ...EXPANDED_PROFILE_ICON_GROUPS,
 ]);
 
 export const PROFILE_ICON_CATALOG = Object.freeze(PROFILE_ICON_GROUPS.flatMap((item) => item.icons));

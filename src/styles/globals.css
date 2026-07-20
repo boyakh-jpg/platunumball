@@ -18971,6 +18971,26 @@ html[data-theme="light"] .court-map-picker-state {
   }
 }
 
+@media (max-width: 719px) {
+  .profile-icon-group-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-block-end: 3px;
+    scrollbar-width: thin;
+  }
+
+  .profile-icon-group-tabs > button,
+  .profile-icon-group-tabs > button:nth-child(-n + 3),
+  .profile-icon-group-tabs > button:nth-last-child(-n + 3) {
+    width: auto;
+    min-width: max-content;
+    flex: 0 0 auto;
+    grid-column: auto;
+  }
+}
+
 /* 2026-07-21 compact team actions and separated team controls. */
 .team-detail-heading-row {
   display: flex;
