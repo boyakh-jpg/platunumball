@@ -4,19 +4,24 @@
 
 | 원본 | 필드 | 역할 |
 | --- | --- | --- |
-| `profiles` | `avatar_key`, `avatar_source`, `avatar_updated_at` | 프로필 아이콘 원본. 현재 UI는 `initial`/`discord`를 사용하고 기존 key는 보존 |
+| `profiles` | `avatar_key`, `avatar_source`, `avatar_icon_key`, `avatar_updated_at` | 프로필 아이콘 원본. UI는 `initial`/`discord`/`icon`을 사용하고 기존 업로드 key는 보존 |
 | `profiles` | `avatar_color`, `avatar_border_enabled`, `avatar_border_color` | 프로필 기본 글자 배경과 테두리 스타일 |
 | `profiles` | `discord_avatar_url` | `avatar_source='discord'`일 때 표시하는 연결 프로필 사진 |
 | `teams` | `emblem_key`, `emblem_source` | 팀 사진 object key와 `initial`/`upload` 표시 선택 |
 | `teams` | `emblem_uploaded_at`, `emblem_upload_count` | 처음 2회 이후 30일 팀 사진 업로드 제한 원본 |
 | `teams` | `emblem_color`, `emblem_border_enabled`, `emblem_border_color` | 팀 기본색과 테두리 스타일 |
 | `teams` | `emblem_text_mode`, `emblem_abbreviation`, `emblem_font` | 팀 기본값의 첫 글자/팀명/약칭 기준과 1~8자 약칭, 글꼴 프리셋 |
+| `teams` | `emblem_violation_count`, `emblem_upload_blocked_until`, `emblem_moderated_at`, `emblem_moderation_reason` | 인정 위반 누적, 업로드 제한 종료, 최근 운영 조치 원본 |
+| `reports` | `type='team_emblem'`, `payload.emblemKey` | 팀 엠블럼 신고와 접수 당시 object key snapshot |
 | R2 | `team-emblems/{teamId}/{sha256-24}.webp` | 팀 직접 업로드 결과 |
+| Vercel public asset | `/assets/profile-icons/01-first-bucket.png` | 첫 검수 프로필 아이콘 |
 
-- `/api/profile/emblem`은 프로필 기본값 스타일과 `initial`/`discord` 원본 전환만 허용한다. 직접 사진 업로드는 거부한다.
+- `/api/profile/emblem`은 프로필 기본값 스타일, `initial`/`discord` 원본 전환, 검수된 `icon` 선택만 허용한다. 직접 사진 업로드는 거부한다.
+- `rankball_select_profile_icon()`은 서버 allowlist를 통과한 icon key만 저장한다.
 - `rankball_update_team_emblem()`은 팀 row와 팀장 권한을 검사하고 이미지 업로드 횟수·30일 제한을 처리한다.
 - `rankball_update_team_emblem_source()`는 팀장 권한으로 표시 원본만 바꾸며 저장된 object key를 보존한다.
 - `rankball_update_team_emblem_design()`은 팀장 권한으로 색상·테두리·팀명/약칭·글꼴을 함께 바꾸며 이미지 업로드 횟수를 변경하지 않는다.
+- `rankball_moderate_team_emblem_guarded()`는 report와 team row를 lock하고 신고 snapshot key를 확인한 뒤 `rankball_moderate_team_emblem()`의 기본값 전환, 누적 제한, audit, 알림을 같은 transaction으로 처리한다. R2 삭제는 DB 커밋 뒤 server action이 수행한다.
 - `public_profiles`에는 공개 표시에 필요한 프로필 아이콘 필드와 Discord 이미지 URL만 노출한다. Discord 사용자 ID와 전체 연결 payload는 계속 제외한다.
 
 ## 2026-06-30 profile match summary

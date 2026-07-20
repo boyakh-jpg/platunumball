@@ -45,6 +45,7 @@ import {
   reportCourtRequest,
   reportCourtReview,
   reportMatch,
+  reportTeamEmblem,
   resetState,
   requestMatchRefereeAbsence,
   resumeMatchApproval,
@@ -1774,8 +1775,8 @@ export function useAppData(authUser = null, appLocation = null) {
     });
   }, [runServerAction, setState]);
   const submitReportServer = useCallback((report, notifications = []) => {
-    if (!report?.id) return;
-    runServerAction("/api/reports/submit", { report, notifications });
+    if (!report?.id) return Promise.resolve({ ok: false, error: "missing_report_id" });
+    return runServerAction("/api/reports/submit", { report, notifications });
   }, [runServerAction]);
   const syncTeamServer = useCallback((team, notifications = []) => {
     if (!team?.id) return Promise.resolve(false);
@@ -2985,6 +2986,30 @@ export function useAppData(authUser = null, appLocation = null) {
         });
         if (createdReport) submitReportServer(createdReport, syncedNotifications);
       },
+      reportTeamEmblem: async (teamId, reason) => {
+        const serverReady = await ensureServerActionAvailable("/api/reports/submit", "팀 엠블럼 신고");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("팀 엠블럼 신고")) return { ok: false, error: "remote_not_ready" };
+        let createdReport = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const existingIds = new Set((prev.reports ?? []).map((report) => report.id));
+          const next = reportTeamEmblem({ ...prev, currentUserId }, teamId, reason);
+          createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+          syncedNotifications = createdReport ? getNewReportNotifications(prev, next, createdReport) : [];
+          return next;
+        });
+        if (!createdReport) return { ok: false, error: "team_emblem_report_unavailable" };
+        const result = await submitReportServer(createdReport, syncedNotifications);
+        if (result?.ok === false) {
+          setState((prev) => ({
+            ...prev,
+            reports: (prev.reports ?? []).filter((report) => report.id !== createdReport.id),
+            notifications: (prev.notifications ?? []).filter((notification) => !syncedNotifications.some((item) => item.id === notification.id)),
+          }));
+        }
+        return result;
+      },
       commitAdminReviewAction: async (draft) => {
         if (!isSupabaseConfigured) {
           setState((prev) => commitAdminReviewAction({ ...prev, currentUserId }, draft));
@@ -3265,6 +3290,24 @@ export function useAppData(authUser = null, appLocation = null) {
         }
         return result;
       },
+      selectProfileIcon: async (avatarIconKey) => {
+        const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 변경");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("프로필 아이콘 변경")) return { ok: false, error: "remote_not_ready" };
+        const result = await runServerAction("/api/profile/emblem", { action: "icon", avatarIconKey });
+        if (result?.ok !== false && result?.profileId) {
+          setState((prev) => ({
+            ...prev,
+            users: (prev.users ?? []).map((user) => user.id === result.profileId ? {
+              ...user,
+              avatarSource: result.avatarSource ?? "icon",
+              avatarIconKey: result.avatarIconKey ?? avatarIconKey,
+              avatarUpdatedAt: result.avatarUpdatedAt ?? new Date().toISOString(),
+            } : user),
+          }));
+        }
+        return result;
+      },
       uploadTeamEmblem: async (teamId, file, crop = {}) => {
         const serverReady = await ensureServerActionAvailable("/api/teams/emblem", "팀 엠블럼 저장");
         if (serverReady !== true) return serverReady;
@@ -3285,6 +3328,8 @@ export function useAppData(authUser = null, appLocation = null) {
               emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
               emblemUploadedAt: result.emblemUploadedAt ?? team.emblemUploadedAt ?? null,
               emblemUploadCount: Number(result.emblemUploadCount ?? team.emblemUploadCount ?? 0),
+              emblemViolationCount: Number(result.emblemViolationCount ?? team.emblemViolationCount ?? 0),
+              emblemUploadBlockedUntil: result.emblemUploadBlockedUntil ?? team.emblemUploadBlockedUntil ?? null,
             } : team),
           }));
         }
@@ -3303,6 +3348,8 @@ export function useAppData(authUser = null, appLocation = null) {
               emblemKey: result.emblemKey ?? team.emblemKey ?? null,
               emblemSource: result.emblemSource ?? emblemSource,
               emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
+              emblemViolationCount: Number(result.emblemViolationCount ?? team.emblemViolationCount ?? 0),
+              emblemUploadBlockedUntil: result.emblemUploadBlockedUntil ?? team.emblemUploadBlockedUntil ?? null,
             } : team),
           }));
         }
@@ -3347,6 +3394,8 @@ export function useAppData(authUser = null, appLocation = null) {
               emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
               emblemUploadedAt: result.emblemUploadedAt ?? team.emblemUploadedAt ?? null,
               emblemUploadCount: Number(result.emblemUploadCount ?? team.emblemUploadCount ?? 0),
+              emblemViolationCount: Number(result.emblemViolationCount ?? team.emblemViolationCount ?? 0),
+              emblemUploadBlockedUntil: result.emblemUploadBlockedUntil ?? team.emblemUploadBlockedUntil ?? null,
             } : team),
           }));
         }

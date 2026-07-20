@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { ImageUp, Star, Trash2 } from "lucide-react";
+import { Flag, ImageUp, Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -46,6 +46,7 @@ const historyStatusLabel = {
 };
 const managedTeamRoleOptions = ["regular", "mercenary"].map((role) => [role, getTeamRoleLabel(role)]);
 const inviteRoleOptions = managedTeamRoleOptions;
+const TEAM_EMBLEM_REPORT_REASONS = ["부적절한 이미지", "혐오·폭력 표현", "사칭 또는 저작권 침해", "기타 운영 확인 필요"];
 
 function getManagedRoleOptions(member, captainId) {
   if (member.userId === captainId) return [["captain", getTeamRoleLabel("captain")]];
@@ -71,6 +72,10 @@ export default function TeamDetail({ app }) {
     emblemAbbreviation: team?.emblemAbbreviation ?? "",
     emblemFont: team?.emblemFont ?? "sport",
   }));
+  const [emblemReportOpen, setEmblemReportOpen] = useState(false);
+  const [emblemReportReason, setEmblemReportReason] = useState(TEAM_EMBLEM_REPORT_REASONS[0]);
+  const [emblemReportPending, setEmblemReportPending] = useState(false);
+  const [emblemReportFeedback, setEmblemReportFeedback] = useState("");
   const emblemInputRef = useRef(null);
   const captain = team?.members.find((member) => member.role === "captain");
   const canManage = captain?.userId === app.currentUser.id;
@@ -292,9 +297,34 @@ export default function TeamDetail({ app }) {
     }
   };
 
-  const nextEmblemUploadAt = getNextEmblemUploadAt(team.emblemUploadCount, team.emblemUploadedAt);
-  const emblemUploadLocked = isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
+  const submitEmblemReport = async (event) => {
+    event.preventDefault();
+    if (emblemReportPending) return;
+    setEmblemReportPending(true);
+    setEmblemReportFeedback("");
+    try {
+      const result = await app.actions.reportTeamEmblem(team.id, emblemReportReason);
+      if (!result || result.ok === false) {
+        setEmblemReportFeedback(getTeamEmblemErrorMessage(result?.error));
+        return;
+      }
+      setEmblemReportFeedback("신고를 접수했습니다. 관리자 확인 후 결과를 알려드립니다.");
+      setEmblemReportOpen(false);
+    } catch (error) {
+      setEmblemReportFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+    } finally {
+      setEmblemReportPending(false);
+    }
+  };
+
+  const cooldownNextAt = getNextEmblemUploadAt(team.emblemUploadCount, team.emblemUploadedAt);
+  const moderationBlockedAt = team.emblemUploadBlockedUntil ? new Date(team.emblemUploadBlockedUntil) : null;
+  const moderationLocked = Boolean(moderationBlockedAt && Number.isFinite(moderationBlockedAt.getTime()) && moderationBlockedAt.getTime() > Date.now());
+  const nextEmblemUploadAt = moderationLocked && (!cooldownNextAt || moderationBlockedAt > cooldownNextAt) ? moderationBlockedAt : cooldownNextAt;
+  const emblemUploadLocked = moderationLocked || isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
+  const hasOpenEmblemReport = (app.state.reports ?? []).some((report) => report.type === "team_emblem" && report.targetId === team.id && report.by === app.currentUser.id && report.status === "open");
+  const canReportEmblem = !canManage && emblemSource === "upload" && Boolean(team.emblemKey);
 
   return (
     <div className="page-stack team-detail-page rank-team-page">
@@ -321,6 +351,22 @@ export default function TeamDetail({ app }) {
         <div className="team-tier-hero">
           <TierEmblem mmr={team.mmr} size="md" showLabel />
           <TeamEmblem team={team} size="lg" className="hero-emblem" />
+          {canReportEmblem ? (
+            <div className="team-emblem-report-control">
+              <Button type="button" size="sm" variant="secondary" disabled={hasOpenEmblemReport || emblemReportPending} onClick={() => setEmblemReportOpen((open) => !open)}>
+                <Flag size={14} /> {hasOpenEmblemReport ? "신고 접수됨" : "엠블럼 신고"}
+              </Button>
+              {emblemReportOpen && !hasOpenEmblemReport ? (
+                <form onSubmit={submitEmblemReport}>
+                  <select value={emblemReportReason} disabled={emblemReportPending} onChange={(event) => setEmblemReportReason(event.target.value)}>
+                    {TEAM_EMBLEM_REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                  </select>
+                  <Button type="submit" size="sm" disabled={emblemReportPending}>{emblemReportPending ? "접수 중" : "신고 접수"}</Button>
+                </form>
+              ) : null}
+              {emblemReportFeedback ? <small role="status">{emblemReportFeedback}</small> : null}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -545,7 +591,7 @@ export default function TeamDetail({ app }) {
                     </div>
                   </div>
                 ) : null}
-                <p className="emblem-policy-note">{getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}</p>
+                <p className="emblem-policy-note">{moderationLocked ? `운영 조치로 ${formatEmblemDate(moderationBlockedAt)}부터 사진을 업로드할 수 있습니다.` : getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}</p>
                 <div className="settings-save-row team-emblem-editor-actions">
                   <small>{emblemFeedback || (emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 사진을 변경할 수 있습니다.` : "저장된 사진은 기본값으로 바꿔도 삭제되지 않습니다.")}</small>
                   <Button type="button" size="sm" disabled={emblemPending || emblemUploadLocked} onClick={() => emblemInputRef.current?.click()}>

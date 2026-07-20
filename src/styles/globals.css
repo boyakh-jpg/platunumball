@@ -4361,6 +4361,37 @@ input[type="color"] {
   font-size: 1.7rem;
 }
 
+.team-emblem-report-control {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.team-emblem-report-control form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  width: min(340px, 100%);
+}
+
+.team-emblem-report-control select {
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, var(--surface-2));
+  color: var(--text);
+  padding: 6px 8px;
+}
+
+.team-emblem-report-control small {
+  max-width: 340px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: center;
+}
+
 .team-create-panel {
   position: sticky;
   top: 20px;
@@ -7494,6 +7525,30 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-size: 1.18rem;
 }
 
+.admin-team-emblem-detail {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 12px;
+}
+
+.admin-team-emblem-detail > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.admin-team-emblem-detail span,
+.admin-team-emblem-detail small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
 .admin-summary-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -8447,6 +8502,50 @@ html[data-theme="light"] .search-picker-result-row.selected {
   place-items: center;
   padding: 6px 10px;
   text-align: center;
+}
+
+.profile-icon-catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.profile-icon-catalog > button {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, var(--surface-2));
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px;
+  text-align: left;
+}
+
+.profile-icon-catalog > button.active {
+  border-color: var(--rb-green);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-green) 50%, transparent);
+}
+
+.profile-icon-catalog img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.profile-icon-catalog span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.profile-icon-catalog small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
 }
 
 .emblem-crop-dialog {

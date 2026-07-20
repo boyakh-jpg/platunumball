@@ -24,6 +24,8 @@ import approveCourtRequestHandler from "../server/api/court-requests/approve.js"
 import reportCourtRequestHandler from "../server/api/court-requests/report.js";
 import adminAppointmentActionHandler from "../server/api/admin/appointment-action.js";
 import adminDisciplinaryActionHandler from "../server/api/admin/disciplinary-action.js";
+import adminReviewActionHandler from "../server/api/admin/review-action.js";
+import teamEmblemHandler, { deleteObject as deleteTeamEmblemObject, getR2Config as getTeamEmblemR2Config } from "../server/api/teams/emblem.js";
 import schemaHealthHandler from "../server/api/system/schema-health.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
 import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
@@ -73,6 +75,7 @@ const mmrOnly = process.argv.includes("--mmr-only");
 const tournamentByeOnly = process.argv.includes("--tournament-bye-only");
 const tournamentLeagueOnly = process.argv.includes("--tournament-league-only");
 const operationalGuardsOnly = process.argv.includes("--operational-guards-only");
+const teamEmblemOnly = process.argv.includes("--team-emblem-only");
 const tailOnly = process.argv.includes("--tail-only");
 const remoteSmokeOnly = usesRemoteApi && !fullSimulation;
 
@@ -117,17 +120,21 @@ const adminAuditSimulationIds = new Set();
 const temporaryProfileDiscordSnapshots = new Map();
 const temporaryProfileIdentitySnapshots = new Map();
 const reportSimulationIds = new Set();
+const teamEmblemSimulationKeys = new Set();
 const refereeSimulationAttemptIds = new Set();
 const refereeSimulationRequestIds = new Set();
 const profileRatingSnapshots = new Map();
 const teamRatingSnapshots = new Map();
-const MATCH_SCHEDULED_NOTICE_PREFIXES = [
+const CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES = [
   "match-reminder-24h",
   "match-reminder-2h",
   "match-reminder-1h",
   "match-manager-checkin-10m",
-  "match-manager-start-now",
   "match-manager-start-5m",
+];
+const MATCH_SCHEDULED_NOTICE_PREFIXES = [
+  ...CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES,
+  "match-manager-start-now",
 ];
 const MATCH_POSTGAME_NOTICE_PREFIXES = [
   "match-ended-score",
@@ -974,6 +981,29 @@ async function cleanupRegressionSimulationRows() {
   };
 }
 
+async function cleanupTeamEmblemSimulationObjects() {
+  const objectKeys = [...teamEmblemSimulationKeys];
+  if (!objectKeys.length) return { skipped: true };
+  const errors = [];
+  let config = null;
+  try {
+    config = getTeamEmblemR2Config();
+  } catch (error) {
+    errors.push({ objectKey: "config", message: error.message });
+  }
+  if (config) {
+    for (const objectKey of objectKeys) {
+      try {
+        await deleteTeamEmblemObject(config, objectKey);
+      } catch (error) {
+        errors.push({ objectKey, message: error.message });
+      }
+    }
+  }
+  teamEmblemSimulationKeys.clear();
+  return { skipped: false, objectCount: objectKeys.length, errors };
+}
+
 async function cleanupSimulationNotifications() {
   if (!supabase) return { skipped: true };
   const idsToDelete = [...simulationNotificationIds];
@@ -1403,6 +1433,14 @@ async function loadTeamsAs(testLoginId) {
 
 async function syncTeamAs(testLoginId, body = {}) {
   return callHandler("/api/teams/sync-team", syncTeamHandler, await getAuthToken(testLoginId), body);
+}
+
+async function updateTeamEmblemAs(testLoginId, body = {}) {
+  return callHandler("/api/teams/emblem", teamEmblemHandler, await getAuthToken(testLoginId), body);
+}
+
+async function commitAdminReviewAs(testLoginId, body = {}) {
+  return callHandler("/api/admin/review-action", adminReviewActionHandler, await getAuthToken(testLoginId), body);
 }
 
 async function submitCourtRequestAs(testLoginId, request = {}) {
@@ -2065,11 +2103,13 @@ async function cleanup() {
       profileIdentityRestore,
       refereeSimulationCleanup,
       ratingRestore,
+      teamEmblemObjectCleanup: { skipped: true, reason: "keep_requested" },
       notificationCleanup: { skipped: true, reason: "keep_requested" },
       recruitingCleanup: { skipped: true, reason: "keep_requested" },
       regressionCleanup: { skipped: true, reason: "keep_requested" },
     };
   }
+  const teamEmblemObjectCleanup = await cleanupTeamEmblemSimulationObjects();
   const notificationCleanup = await cleanupSimulationNotifications();
   const regressionCleanup = await cleanupRegressionSimulationRows();
   if (usesRemoteApi && schemaHealthSecret) {
@@ -2082,11 +2122,11 @@ async function cleanup() {
       body: "{}",
     }, cleanupTimeoutMs);
     const text = await readResponseTextWithTimeout(response, "cleanup_sim", cleanupTimeoutMs);
-    if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}`, profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
+    if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}`, profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, teamEmblemObjectCleanup, notificationCleanup, regressionCleanup };
     const recruitingCleanup = await cleanupSimulationRecruitingPosts();
-    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, recruitingCleanup, regressionCleanup };
+    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, teamEmblemObjectCleanup, notificationCleanup, recruitingCleanup, regressionCleanup };
   }
-  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, profileIdentityRestore, refereeSimulationCleanup, ratingRestore, teamEmblemObjectCleanup, notificationCleanup, regressionCleanup };
 
   if (recordPermissionsOnly) {
     const artifactCleanup = await cleanupTrackedMatchArtifacts();
@@ -2099,6 +2139,7 @@ async function cleanup() {
       profileIdentityRestore,
       refereeSimulationCleanup,
       ratingRestore,
+      teamEmblemObjectCleanup,
       notificationCleanup,
       recruitingCleanup,
       regressionCleanup,
@@ -2160,6 +2201,7 @@ async function cleanup() {
     profileIdentityRestore,
     refereeSimulationCleanup,
     ratingRestore,
+    teamEmblemObjectCleanup,
     notificationCleanup,
     recruitingCleanup,
     regressionCleanup,
@@ -2333,7 +2375,7 @@ async function runOneOnOneScenario({
   if (scheduledOffsetHours > 0) {
     reminderChecks.afterConfirm = await step(`${ids.label}:remindersAfterConfirm`, () => assertPendingMatchNotices(
       ids.matchId,
-      MATCH_SCHEDULED_NOTICE_PREFIXES,
+      CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES,
       { minNotifications: 1 },
     ));
   }
@@ -2596,7 +2638,7 @@ async function runMatchReminderCancelScenario({
   const reminderChecks = {
     afterConfirm: await step(`${ids.label}:remindersAfterConfirm`, () => assertPendingMatchNotices(
       ids.matchId,
-      MATCH_SCHEDULED_NOTICE_PREFIXES,
+      CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES,
       { minNotifications: 1 },
     )),
   };
@@ -3375,6 +3417,200 @@ async function runTeamLifecycleScenario({
     invitationCancelled: true,
     initialMemberGuard: true,
     activeReferenceGuard: true,
+    deleted: true,
+  };
+}
+
+async function runTeamEmblemModerationScenario({
+  label,
+  captainLogin,
+  reporterLogin,
+  adminLogin,
+}) {
+  ids = makeScenarioIds(label);
+  const captainId = await step(`${ids.label}:resolveProfile:captain`, () => getProfileIdForLogin(captainLogin));
+  const reporterId = await step(`${ids.label}:resolveProfile:reporter`, () => getProfileIdForLogin(reporterLogin));
+  assertFlow(captainId !== reporterId, "team emblem reporter must differ from captain", { captainId, reporterId });
+
+  const teamId = `team_qa_emblem_${suffix}`;
+  const staleReportId = `sim_report_${ids.label}_stale_${suffix}`;
+  const reportId = `sim_report_${ids.label}_active_${suffix}`;
+  teamSimulationIds.add(teamId);
+  reportSimulationIds.add(staleReportId);
+  reportSimulationIds.add(reportId);
+
+  const createResult = await step(`${ids.label}:createTeam`, () => syncTeamAs(captainLogin, {
+    team: {
+      id: teamId,
+      name: `RB-QA-${suffix.slice(-6)}`,
+      region: "서울특별시 마포구",
+      homeCourt: "Backend Simulation Court",
+      accent: "#58d2c0",
+      members: [{ userId: captainId, role: "captain" }],
+    },
+  }));
+  assertFlow(createResult?.ok && createResult?.teamId === teamId, "team emblem simulation team create failed", createResult);
+
+  const firstImageBase64 = readFileSync("public/assets/tier-emblems/tier-rookie-v5.webp").toString("base64");
+  const activeImageBase64 = readFileSync("public/assets/tier-emblems/tier-bronze-v5.webp").toString("base64");
+  const firstUploadResult = await step(`${ids.label}:uploadFirstEmblem`, () => updateTeamEmblemAs(captainLogin, {
+    action: "upload",
+    teamId,
+    imageBase64: firstImageBase64,
+  }));
+  assertFlow(firstUploadResult?.ok && firstUploadResult?.emblemKey && firstUploadResult?.emblemSource === "upload", "first team emblem upload failed", firstUploadResult);
+  teamEmblemSimulationKeys.add(firstUploadResult.emblemKey);
+
+  const staleReportResult = await step(`${ids.label}:submitStaleReport`, () => submitReportAs(reporterLogin, {
+    id: staleReportId,
+    type: "team_emblem",
+    targetId: teamId,
+    reason: "simulation stale team emblem report",
+  }));
+  assertFlow(staleReportResult?.ok && staleReportResult?.reportId === staleReportId, "stale team emblem report failed", staleReportResult);
+
+  const { data: storedReport, error: storedReportError } = await supabase
+    .from("reports")
+    .select("id,type,target_id,user_id,reported_user_ids,status,payload")
+    .eq("id", staleReportId)
+    .maybeSingle();
+  if (storedReportError) throw storedReportError;
+  assertFlow(
+    storedReport?.type === "team_emblem" &&
+      storedReport?.target_id === teamId &&
+      storedReport?.user_id === reporterId &&
+      storedReport?.reported_user_ids?.includes(captainId) &&
+      storedReport?.payload?.emblemKey === firstUploadResult.emblemKey,
+    "team emblem report snapshot mismatch",
+    storedReport,
+  );
+
+  const unauthorizedModeration = await expectRejected(`${ids.label}:rejectUnauthorizedModeration`, () => commitAdminReviewAs(reporterLogin, {
+    reportId: staleReportId,
+    actionType: "resetTeamEmblem",
+    reason: "simulation unauthorized moderation",
+  }), ["team_emblem_moderation_permission_required"]);
+  assertFlow(unauthorizedModeration.rejected, "non-admin moderated a team emblem", unauthorizedModeration);
+
+  const activeUploadResult = await step(`${ids.label}:uploadReplacementEmblem`, () => updateTeamEmblemAs(captainLogin, {
+    action: "upload",
+    teamId,
+    imageBase64: activeImageBase64,
+  }));
+  assertFlow(
+    activeUploadResult?.ok &&
+      activeUploadResult?.emblemKey &&
+      activeUploadResult?.emblemKey !== firstUploadResult.emblemKey &&
+      activeUploadResult?.storageCleanupPending === false,
+    "replacement team emblem upload failed",
+    activeUploadResult,
+  );
+  teamEmblemSimulationKeys.delete(firstUploadResult.emblemKey);
+  teamEmblemSimulationKeys.add(activeUploadResult.emblemKey);
+
+  const staleModeration = await expectRejected(`${ids.label}:rejectStaleModeration`, () => commitAdminReviewAs(adminLogin, {
+    reportId: staleReportId,
+    actionType: "resetTeamEmblem",
+    reason: "simulation stale moderation",
+  }), ["team_emblem_report_stale"]);
+  assertFlow(staleModeration.rejected, "changed team emblem was moderated from a stale report", staleModeration);
+
+  const staleDismissResult = await step(`${ids.label}:dismissStaleReport`, () => commitAdminReviewAs(adminLogin, {
+    reportId: staleReportId,
+    actionType: "dismissReport",
+    reason: "simulation emblem changed after report",
+  }));
+  assertFlow(staleDismissResult?.ok && staleDismissResult?.status === "dismissed", "stale team emblem report dismissal failed", staleDismissResult);
+  if (staleDismissResult.auditId) adminAuditSimulationIds.add(staleDismissResult.auditId);
+  const { data: staleNotificationRows, error: staleNotificationError } = await supabase
+    .from("notifications")
+    .select("id")
+    .contains("payload", { reportId: staleReportId });
+  if (staleNotificationError) throw staleNotificationError;
+  (staleNotificationRows ?? []).forEach((notification) => simulationNotificationIds.add(notification.id));
+
+  const reportResult = await step(`${ids.label}:submitActiveReport`, () => submitReportAs(reporterLogin, {
+    id: reportId,
+    type: "team_emblem",
+    targetId: teamId,
+    reason: "simulation team emblem moderation",
+  }));
+  assertFlow(reportResult?.ok && reportResult?.reportId === reportId, "active team emblem report failed", reportResult);
+
+  const moderationResult = await step(`${ids.label}:moderateEmblem`, () => commitAdminReviewAs(adminLogin, {
+    reportId,
+    actionType: "resetTeamEmblem",
+    reason: "simulation confirmed violation",
+    feedback: "simulation moderation completed",
+  }));
+  assertFlow(
+    moderationResult?.ok &&
+      moderationResult?.teamId === teamId &&
+      moderationResult?.emblemSource === "initial" &&
+      moderationResult?.emblemKey == null &&
+      moderationResult?.emblemViolationCount === 1 &&
+      moderationResult?.blockDays === 30 &&
+      moderationResult?.storageCleanupPending === false,
+    "team emblem moderation result mismatch",
+    moderationResult,
+  );
+  teamEmblemSimulationKeys.delete(activeUploadResult.emblemKey);
+  if (moderationResult.auditId) adminAuditSimulationIds.add(moderationResult.auditId);
+
+  const { data: notificationRows, error: notificationError } = await supabase
+    .from("notifications")
+    .select("id,target_user_id,type,payload")
+    .contains("payload", { reportId });
+  if (notificationError) throw notificationError;
+  (notificationRows ?? []).forEach((notification) => simulationNotificationIds.add(notification.id));
+  assertFlow(
+    (notificationRows ?? []).some((notification) => notification.target_user_id === reporterId) &&
+      (notificationRows ?? []).some((notification) => notification.target_user_id === captainId && notification.type === "team_emblem_moderation"),
+    "team emblem moderation notifications missing",
+    notificationRows,
+  );
+
+  const { data: moderatedTeam, error: moderatedTeamError } = await supabase
+    .from("teams")
+    .select("id,emblem_key,emblem_source,emblem_violation_count,emblem_upload_blocked_until")
+    .eq("id", teamId)
+    .maybeSingle();
+  if (moderatedTeamError) throw moderatedTeamError;
+  assertFlow(
+    moderatedTeam?.emblem_key == null &&
+      moderatedTeam?.emblem_source === "initial" &&
+      moderatedTeam?.emblem_violation_count === 1 &&
+      new Date(moderatedTeam?.emblem_upload_blocked_until).getTime() > Date.now(),
+    "team emblem moderation state mismatch",
+    moderatedTeam,
+  );
+
+  const blockedUpload = await expectRejected(`${ids.label}:rejectBlockedUpload`, () => updateTeamEmblemAs(captainLogin, {
+    action: "upload",
+    teamId,
+    imageBase64: activeImageBase64,
+  }), ["team_emblem_moderation_blocked"]);
+  assertFlow(blockedUpload.rejected, "moderated team uploaded an emblem during the block", blockedUpload);
+
+  const deleteResult = await step(`${ids.label}:deleteTeam`, () => syncTeamAs(captainLogin, { deletedTeamId: teamId }));
+  assertFlow(deleteResult?.ok && deleteResult?.deleted === true, "team emblem simulation team delete failed", deleteResult);
+
+  return {
+    label: ids.label,
+    teamId,
+    staleReportId,
+    reportId,
+    actorLogins: [captainLogin, reporterLogin, adminLogin],
+    uploadVerified: true,
+    reportSnapshotVerified: true,
+    unauthorizedModerationBlocked: true,
+    staleReportGuardVerified: true,
+    defaultResetVerified: true,
+    violationCount: 1,
+    blockDays: 30,
+    notificationCount: notificationRows?.length ?? 0,
+    blockedUploadVerified: true,
+    storageCleanupVerified: true,
     deleted: true,
   };
 }
@@ -6424,10 +6660,10 @@ async function prepareTournamentMatchRosters({
   if (verifyNotifications) {
     const reminderCheck = await step(`${label}:assertScheduledReminders`, () => assertPendingMatchNotices(
       rosterReadyMatch.id,
-      MATCH_SCHEDULED_NOTICE_PREFIXES,
-      { minNotifications: MATCH_SCHEDULED_NOTICE_PREFIXES.length },
+      CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES,
+      { minNotifications: CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES.length },
     ));
-    for (const prefix of MATCH_SCHEDULED_NOTICE_PREFIXES) {
+    for (const prefix of CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES) {
       assertFlow(
         Number(reminderCheck?.notifications?.counts?.[prefix] ?? 0) > 0,
         "tournament schedule reminder was not regenerated after roster update",
@@ -7330,6 +7566,13 @@ async function main() {
       label: "match_list_profile_integrity",
       login: homeAlertLogin,
     }));
+  } else if (teamEmblemOnly) {
+    scenarios.push(await runTeamEmblemModerationScenario({
+      label: "team_emblem_moderation",
+      captainLogin: teamLifecycleCaptainLogin,
+      reporterLogin: teamLifecycleCancelledLogin,
+      adminLogin: adminControlLogin,
+    }));
   } else if (mmrOnly) {
     scenarios.push(await runOneOnOneScenario({
       label: "ranked_mmr_commit_1v1",
@@ -7652,6 +7895,7 @@ async function main() {
     && (cleanupResult?.profileDiscordRestore?.errors ?? []).length === 0
     && (cleanupResult?.profileIdentityRestore?.errors ?? []).length === 0
     && (cleanupResult?.ratingRestore?.errors ?? []).length === 0
+    && (cleanupResult?.teamEmblemObjectCleanup?.errors ?? []).length === 0
     && (cleanupResult?.refereeSimulationCleanup?.errors ?? []).length === 0
     && Number(cleanupResult?.notificationCleanup?.remainingNotifications ?? 0) === 0
     && Number(cleanupResult?.artifactCleanup?.remainingNotifications ?? 0) === 0
@@ -7664,7 +7908,7 @@ async function main() {
 
   console.log(JSON.stringify({
     ok: true,
-    mode: tournamentByeOnly ? "tournament_bye" : tournamentLeagueOnly ? "tournament_league" : operationalGuardsOnly ? "operational_guards" : mmrOnly ? "mmr" : tailOnly ? "tail" : recordPermissionsOnly ? "record_permissions" : fullSimulation ? "full" : usesRemoteApi ? "remote_smoke" : "local_smoke",
+    mode: tournamentByeOnly ? "tournament_bye" : tournamentLeagueOnly ? "tournament_league" : operationalGuardsOnly ? "operational_guards" : teamEmblemOnly ? "team_emblem" : mmrOnly ? "mmr" : tailOnly ? "tail" : recordPermissionsOnly ? "record_permissions" : fullSimulation ? "full" : usesRemoteApi ? "remote_smoke" : "local_smoke",
     scenarios,
     schemaHealth: schemaHealth?.skipped ? { status: "skipped", reason: schemaHealth.reason } : "ok",
     verificationWarnings: [

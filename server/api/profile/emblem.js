@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { isSelectableProfileIcon } from "../../../src/lib/profileIcons.js";
 
 const MAX_REQUEST_BYTES = 320 * 1024;
 const MAX_UPLOAD_BYTES = 160 * 1024;
@@ -98,7 +99,7 @@ function validateImage(bytes) {
 async function loadProfile(context) {
   const { data, error } = await context.supabase
     .from("profiles")
-    .select("id,avatar_key,avatar_source,avatar_color,avatar_updated_at,avatar_uploaded_at,avatar_upload_count,avatar_border_enabled,avatar_border_color,discord_connection,discord_avatar_url")
+    .select("id,avatar_key,avatar_source,avatar_icon_key,avatar_color,avatar_updated_at,avatar_uploaded_at,avatar_upload_count,avatar_border_enabled,avatar_border_color,discord_connection,discord_avatar_url")
     .eq("id", context.profileId)
     .maybeSingle();
   if (error) throw error;
@@ -125,6 +126,18 @@ async function commitProfile(context, profile, payload) {
   throw mapped;
 }
 
+async function commitProfileIcon(context, avatarIconKey) {
+  const { data, error } = await context.supabase.rpc("rankball_select_profile_icon", {
+    p_actor_profile_id: context.profileId,
+    p_icon_key: avatarIconKey,
+  });
+  if (!error) return data ?? { ok: true, profileId: context.profileId, avatarIconKey, avatarSource: "icon" };
+
+  const mapped = new Error(error.message || "profile_icon_update_failed");
+  mapped.statusCode = error.code === "P0002" ? 404 : 400;
+  throw mapped;
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -139,11 +152,18 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const body = await readJsonBody(request);
     const action = String(body.action || "upload").trim();
-    if (!new Set(["source", "style"]).has(action)) reject(410, "profile_emblem_image_disabled");
+    if (!new Set(["source", "style", "icon"]).has(action)) reject(410, "profile_emblem_image_disabled");
     if (!PROFILE_ID_PATTERN.test(context.profileId)) reject(400, "invalid_profile_id");
 
     const profile = await loadProfile(context);
     const previousAvatarKey = profile.avatar_key || null;
+
+    if (action === "icon") {
+      const avatarIconKey = String(body.avatarIconKey || "").trim();
+      if (!isSelectableProfileIcon(avatarIconKey)) reject(400, "profile_icon_unavailable");
+      sendJson(response, 200, await commitProfileIcon(context, avatarIconKey));
+      return;
+    }
 
     if (action === "style") {
       const avatarColor = String(body.avatarColor || "").trim();
@@ -161,7 +181,7 @@ export default async function handler(request, response) {
 
     if (action === "source") {
       const avatarSource = String(body.avatarSource || "initial").trim();
-      if (!new Set(["initial", "discord", "upload"]).has(avatarSource)) reject(400, "invalid_profile_emblem_source");
+      if (!new Set(["initial", "discord"]).has(avatarSource)) reject(400, "invalid_profile_emblem_source");
       const result = await commitProfile(context, profile, { action, avatarSource, avatarKey: previousAvatarKey });
       sendJson(response, 200, result);
       return;

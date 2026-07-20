@@ -48,6 +48,7 @@ function toReview(row = {}, reviewer = null, includeRawRating = false) {
       avatarColor: reviewer.avatarColor,
       avatarKey: reviewer.avatarKey ?? null,
       avatarSource: reviewer.avatarSource ?? "initial",
+      avatarIconKey: reviewer.avatarIconKey ?? null,
       avatarUpdatedAt: reviewer.avatarUpdatedAt ?? null,
       avatarBorderEnabled: reviewer.avatarBorderEnabled === true,
       avatarBorderColor: reviewer.avatarBorderColor ?? reviewer.avatarColor,

@@ -23,6 +23,10 @@ export function fromRemoteTeam(row, memberRows) {
     emblemTextMode: new Set(["name", "abbreviation"]).has(row.emblem_text_mode) ? row.emblem_text_mode : "initial",
     emblemAbbreviation: row.emblem_abbreviation ?? "",
     emblemFont: row.emblem_font ?? "sport",
+    emblemViolationCount: Number(row.emblem_violation_count ?? 0),
+    emblemUploadBlockedUntil: row.emblem_upload_blocked_until ?? null,
+    emblemModeratedAt: row.emblem_moderated_at ?? null,
+    emblemModerationReason: row.emblem_moderation_reason ?? "",
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? row.created_at ?? null,
     members: [...(memberRows ?? [])]

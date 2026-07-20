@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Clock3, ExternalLink, MapPin, RotateCcw, Save, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
+import { ClipboardList, Clock3, ExternalLink, MapPin, RotateCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import {
   ADMIN_BACKEND_TODO,
   APPOINTMENT_TERM_OPTIONS,
@@ -16,6 +17,7 @@ import {
 } from "../lib/admin.js";
 import { getCourtLayoutLabel, getCourtLocationMatches, getCourtMapUrl, getCourtSurfaceLabel } from "../lib/courts.js";
 import { getMatchHashtag } from "../lib/handles.js";
+import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
 import {
   cloneRatingPolicy,
   DEFAULT_RATING_POLICY,
@@ -30,6 +32,7 @@ const ADMIN_SECTION_OPTIONS = [
   { id: "courts", label: "구장 신청", caption: "등록 신청과 구장 신고", icon: MapPin },
   { id: "players", label: "플레이어 신고", caption: "신고와 징계", icon: UserRound },
   { id: "matches", label: "경기 심사", caption: "기록 오류와 이의", icon: ClipboardList },
+  { id: "teams", label: "팀 엠블럼", caption: "이미지 신고와 제한", icon: ShieldAlert },
   { id: "appointments", label: "권한 관리", caption: "심판과 관리자 임명", icon: ShieldCheck },
   { id: "ratingPolicy", label: "MMR·신뢰도", caption: "이벤트 반영 정책", icon: SlidersHorizontal, ownerOnly: true },
 ];
@@ -58,6 +61,12 @@ const REVIEW_WORKFLOW_COPY = {
     queueTitle: "경기 심사 대기열",
     actionTitle: "경기 최종판단",
     description: "경기 신고, 기록 오류, 이의 상태를 경기 단위로 확인합니다.",
+  },
+  teams: {
+    title: "팀 엠블럼 신고",
+    queueTitle: "엠블럼 신고 대기열",
+    actionTitle: "엠블럼 최종판단",
+    description: "현재 이미지를 확인하고 신고 인정 시 즉시 기본값으로 전환합니다. 누적 위반 횟수에 따라 업로드가 제한됩니다.",
   },
 };
 
@@ -318,6 +327,8 @@ export default function Admin({ app }) {
     multipleCourtsVerified: false,
   });
   const [courtApprovalStatus, setCourtApprovalStatus] = useState("");
+  const [reviewActionStatus, setReviewActionStatus] = useState("");
+  const [reviewActionPending, setReviewActionPending] = useState(false);
   const canAdmin = adminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
   const model = useMemo(() => buildAdminReviewModel(app.state), [app.state]);
   const appointments = useMemo(() => buildAdminAppointmentModel(app.state), [app.state]);
@@ -374,10 +385,11 @@ export default function Admin({ app }) {
       courts: (app.state.settings?.courtRequests ?? []).filter(isPendingCourtRequest).length + courtReports,
       players: model.players.filter((row) => row.openCount > 0).length,
       matches: model.matches.filter((row) => row.issueCount > 0).length,
+      teams: model.teams.filter((row) => row.openCount > 0).length,
       appointments: appointments.summary.pendingAppointmentCount,
       ratingPolicy: "",
     };
-  }, [app.state.reports, app.state.settings?.courtRequests, appointments.summary.pendingAppointmentCount, model.matches, model.players]);
+  }, [app.state.reports, app.state.settings?.courtRequests, appointments.summary.pendingAppointmentCount, model.matches, model.players, model.teams]);
   const changeSection = (nextSection) => {
     const next = new URLSearchParams(searchParams);
     next.set("section", nextSection);
@@ -387,6 +399,9 @@ export default function Admin({ app }) {
     setQueueMode("pending");
   }, [view]);
   const visibleActionOptions = useMemo(() => {
+    if (selectedReport?.type === "team_emblem") {
+      return ACTION_OPTIONS.filter((option) => ["resetTeamEmblem", "dismissReport", "maliciousReporter"].includes(option.id));
+    }
     const ids = ["validReport", "dismissReport", "maliciousReporter"];
     if (selectedReport?.type === "court") ids.push("hideCourt");
     if (selectedReport?.type === "court_review") ids.push("hideCourtReview", "suspendTarget");
@@ -416,6 +431,7 @@ export default function Admin({ app }) {
   );
 
   useEffect(() => {
+    setReviewActionStatus("");
     setActionDraft((current) => ({
       ...current,
       actionType: visibleActionOptions.some((option) => option.id === current.actionType) ? current.actionType : visibleActionOptions[0]?.id ?? "validReport",
@@ -443,13 +459,32 @@ export default function Admin({ app }) {
     const result = await app.actions.approveCourtRequest(selectedCourtRequest.id, courtApprovalDraft);
     setCourtApprovalStatus(result && result.ok !== false ? "승인 완료" : "승인 실패");
   };
-  const commitSelectedAction = () => {
-    if (!selectedReport) return;
-    app.actions.commitAdminReviewAction({
-      ...actionDraft,
-      targetUserId: selectedTargetUserId,
-      reportId: selectedReport.id,
-    });
+  const commitSelectedAction = async () => {
+    if (!selectedReport || reviewActionPending) return;
+    setReviewActionPending(true);
+    setReviewActionStatus("처리 중");
+    try {
+      const result = await app.actions.commitAdminReviewAction({
+        ...actionDraft,
+        targetUserId: selectedTargetUserId,
+        reportId: selectedReport.id,
+      });
+      if (!result || result.ok === false) {
+        setReviewActionStatus(selectedReport.type === "team_emblem"
+          ? getTeamEmblemErrorMessage(result?.error || "admin_review_action_failed")
+          : "관리자 처리를 완료하지 못했습니다.");
+      } else if (result.storageCleanupPending) {
+        setReviewActionStatus("기본값 전환은 완료됐습니다. 저장 파일 정리는 재확인이 필요합니다.");
+      } else {
+        setReviewActionStatus("처리 완료");
+      }
+    } catch (error) {
+      setReviewActionStatus(selectedReport.type === "team_emblem"
+        ? getTeamEmblemErrorMessage(error?.code || error?.message)
+        : "관리자 처리를 완료하지 못했습니다.");
+    } finally {
+      setReviewActionPending(false);
+    }
   };
   const commitAppointmentAction = () => {
     const appointmentId = ["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType)
@@ -705,10 +740,21 @@ export default function Admin({ app }) {
                   <strong>{selectedRow.reportCount}</strong>
                 </div>
                 <div>
-                  <span>경기</span>
-                  <strong>{selectedRow.matchCount ?? 0}</strong>
+                  <span>{view === "teams" ? "위반" : "경기"}</span>
+                  <strong>{view === "teams" ? selectedRow.team?.emblemViolationCount ?? 0 : selectedRow.matchCount ?? 0}</strong>
                 </div>
               </div>
+
+              {view === "teams" && selectedRow.team ? (
+                <section className="admin-team-emblem-detail">
+                  <TeamEmblem team={selectedRow.team} size="lg" />
+                  <div>
+                    <strong>현재 팀 엠블럼</strong>
+                    <span>{selectedRow.team.emblemSource === "upload" && selectedRow.team.emblemKey ? "사진 사용 중" : "기본값 사용 중"}</span>
+                    <small>누적 위반 {selectedRow.team.emblemViolationCount ?? 0}회 · 제한 종료 {formatDate(selectedRow.team.emblemUploadBlockedUntil)}</small>
+                  </div>
+                </section>
+              ) : null}
 
               {view === "courts" && selectedCourtRequest ? (
                 <section className="admin-court-request-detail">
@@ -838,9 +884,11 @@ export default function Admin({ app }) {
                   신고자 피드백
                   <textarea value={actionDraft.feedback} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
                 </label>
-                <Button type="button" variant="secondary" disabled={!selectedReport || selectedReport.status !== "open"} onClick={commitSelectedAction}>
-                  액션 커밋
+                <Button type="button" variant="secondary" disabled={reviewActionPending || !selectedReport || selectedReport.status !== "open" || (actionDraft.actionType === "resetTeamEmblem" && adminLevel < 50)} onClick={commitSelectedAction}>
+                  {reviewActionPending ? "처리 중" : "액션 커밋"}
                 </Button>
+                {actionDraft.actionType === "resetTeamEmblem" && adminLevel < 50 ? <small>경기관리자 이상만 엠블럼을 강제 전환할 수 있습니다.</small> : null}
+                {reviewActionStatus ? <small role="status">{reviewActionStatus}</small> : null}
                 <small>실시간 중복 방지는 서버 트랜잭션에서 최종 확인합니다.</small>
               </div>
               ) : null}

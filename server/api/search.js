@@ -149,6 +149,7 @@ function toProfile(row = {}, kind = "profile", extra = {}) {
     avatarColor: row.avatar_color,
     avatarKey: row.avatar_key ?? null,
     avatarSource: row.avatar_source ?? "initial",
+    avatarIconKey: row.avatar_icon_key ?? null,
     avatarUpdatedAt: row.avatar_updated_at ?? null,
     avatarBorderEnabled: row.avatar_border_enabled === true,
     avatarBorderColor: row.avatar_border_color ?? row.avatar_color,

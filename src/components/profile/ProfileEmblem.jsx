@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { getProfileIcon } from "../../lib/profileIcons.js";
 
 export function getProfileEmblemUrl(user = {}) {
-  if (user.avatarSource !== "discord") return "";
-  return user.discordAvatarUrl || user.discordConnection?.avatarUrl || "";
+  if (user.avatarSource === "discord") return user.discordAvatarUrl || user.discordConnection?.avatarUrl || "";
+  if (user.avatarSource === "icon") return getProfileIcon(user.avatarIconKey)?.src ?? "";
+  return "";
 }
 
 export default function ProfileEmblem({ user, className = "", initial, anonymous = false }) {
@@ -13,7 +15,7 @@ export default function ProfileEmblem({ user, className = "", initial, anonymous
   const avatarColor = user?.avatarColor || "#58d2c0";
   const borderColor = user?.avatarBorderColor || avatarColor;
 
-  useEffect(() => setImageFailed(false), [imageUrl, user?.avatarUpdatedAt]);
+  useEffect(() => setImageFailed(false), [imageUrl, user?.avatarIconKey, user?.avatarUpdatedAt]);
 
   return (
     <span

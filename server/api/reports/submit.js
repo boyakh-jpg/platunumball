@@ -4,7 +4,7 @@ import { getMatchScheduledDate } from "../../../src/lib/matchUtils.js";
 
 const REPORT_MATCH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const REPORT_MATCH_QUERY_PAGE_SIZE = 200;
-const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review"]);
+const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review", "team_emblem"]);
 
 function uniqueStrings(values) {
   return Array.from(new Set(toArray(values).map((value) => String(value).trim()).filter(Boolean)));
@@ -248,6 +248,56 @@ async function assertCanSubmitCourtReviewReport(context, targetId) {
   return [review.reviewer_id].filter(Boolean);
 }
 
+async function assertCanSubmitTeamEmblemReport(context, targetId) {
+  const [{ data: team, error: teamError }, { data: captain, error: captainError }] = await Promise.all([
+    context.supabase
+      .from("teams")
+      .select("id,name,emblem_key,emblem_source,emblem_updated_at,deleted_at")
+      .eq("id", targetId)
+      .is("deleted_at", null)
+      .maybeSingle(),
+    context.supabase
+      .from("team_members")
+      .select("user_id")
+      .eq("team_id", targetId)
+      .eq("role", "captain")
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (teamError) throw teamError;
+  if (captainError) throw captainError;
+  if (!team?.id) {
+    const error = new Error("team_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (!captain?.user_id) {
+    const error = new Error("team_captain_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (captain.user_id === context.profileId) {
+    const error = new Error("cannot_report_own_team_emblem");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (team.emblem_source !== "upload" || !team.emblem_key) {
+    const error = new Error("team_emblem_not_reportable");
+    error.statusCode = 400;
+    throw error;
+  }
+  return {
+    reportedUserIds: [captain.user_id],
+    verifiedPayload: {
+      teamName: team.name,
+      captainId: captain.user_id,
+      emblemKey: team.emblem_key,
+      emblemSource: team.emblem_source,
+      emblemUpdatedAt: team.emblem_updated_at,
+    },
+  };
+}
+
 async function buildReportRow(context, report = {}) {
   const type = String(report.type || "").trim();
   const targetId = String(report.targetId || report.target_id || "").trim();
@@ -264,10 +314,16 @@ async function buildReportRow(context, report = {}) {
 
   const rawReportedUserIds = uniqueStrings(report.reportedUserIds || report.reported_user_ids);
   let reportedUserIds = [];
+  let verifiedPayload = {};
   if (type === "match") reportedUserIds = await assertCanSubmitMatchReport(context, targetId, rawReportedUserIds);
   if (type === "player") reportedUserIds = await assertCanSubmitPlayerReport(context, targetId);
   if (type === "court") reportedUserIds = await assertCanSubmitCourtReport(context, targetId);
   if (type === "court_review") reportedUserIds = await assertCanSubmitCourtReviewReport(context, targetId);
+  if (type === "team_emblem") {
+    const verified = await assertCanSubmitTeamEmblemReport(context, targetId);
+    reportedUserIds = verified.reportedUserIds;
+    verifiedPayload = verified.verifiedPayload;
+  }
   const now = new Date().toISOString();
   const createdAt = now;
   const id = String(report.id || `r_${randomUUID()}`).trim();
@@ -285,6 +341,7 @@ async function buildReportRow(context, report = {}) {
     resolution: null,
     payload: {
       ...report,
+      ...verifiedPayload,
       id,
       type,
       targetId,
@@ -342,7 +399,7 @@ export default async function handler(request, response) {
     const { error: reportError } = await context.supabase.from("reports").insert(reportRow);
     if (reportError) {
       if (
-        ["match", "player"].includes(reportRow.type)
+        ["match", "player", "team_emblem"].includes(reportRow.type)
         && String(reportError.message || "").includes("active_report_duplicate")
       ) {
         const concurrentReport = await getActiveReport(context, reportRow);

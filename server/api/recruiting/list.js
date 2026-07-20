@@ -538,6 +538,7 @@ function compactUser(user = {}, profileId = "") {
     avatarColor: user.avatarColor,
     avatarKey: user.avatarKey ?? null,
     avatarSource: user.avatarSource ?? "initial",
+    avatarIconKey: user.avatarIconKey ?? null,
     avatarUpdatedAt: user.avatarUpdatedAt ?? null,
     avatarBorderEnabled: user.avatarBorderEnabled === true,
     avatarBorderColor: user.avatarBorderColor ?? user.avatarColor,

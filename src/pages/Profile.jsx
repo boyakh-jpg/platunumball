@@ -10,6 +10,7 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import { PLAYER_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchSideScore as getSideScore, isDateWithinPastMonths, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { PROFILE_ICON_CATALOG } from "../lib/profileIcons.js";
 import { canChangeProfileName, getNextNameChangeDate, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -140,7 +141,7 @@ export default function Profile({ app }) {
     avatarBorderColor: user.avatarBorderColor ?? user.avatarColor ?? "#58d2c0",
   }));
   const recordsLoadKeyRef = useRef("");
-  const avatarSource = user.avatarSource === "discord" ? "discord" : "initial";
+  const avatarSource = new Set(["discord", "icon"]).has(user.avatarSource) ? user.avatarSource : "initial";
   const hasDiscordAvatar = Boolean(user.discordAvatarUrl || user.discordConnection?.avatarUrl);
   const selectedRegion = REGION_TREE.find((item) => item.sido === draft.regionSido) ?? REGION_TREE[0];
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
@@ -206,6 +207,19 @@ export default function Profile({ app }) {
       setEmblemPending(false);
     }
   };
+  const selectProfileIcon = async (avatarIconKey) => {
+    if (emblemPending) return;
+    setEmblemPending(true);
+    setEmblemFeedback("");
+    try {
+      const result = await app.actions.selectProfileIcon(avatarIconKey);
+      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "프로필 아이콘을 변경했습니다.");
+    } catch (error) {
+      setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+    } finally {
+      setEmblemPending(false);
+    }
+  };
   const myRecords = [...app.state.matches]
     .filter((match) => match.status === "confirmed" && getUserSide(match, user.id) && isRecordInDetailWindow(match))
     .sort(compareRecent)
@@ -259,10 +273,34 @@ export default function Profile({ app }) {
               <button type="button" className={avatarSource === "discord" ? "active" : ""} aria-pressed={avatarSource === "discord"} disabled={emblemPending || !hasDiscordAvatar} onClick={() => selectAvatarSource("discord")}>
                 <strong>Discord</strong>
               </button>
-              <button type="button" disabled title="아이콘 등록 후 제공">
+              <button
+                type="button"
+                className={avatarSource === "icon" ? "active" : ""}
+                aria-pressed={avatarSource === "icon"}
+                disabled={emblemPending || !PROFILE_ICON_CATALOG.some((icon) => icon.unlocked)}
+                onClick={() => selectProfileIcon(user.avatarIconKey || PROFILE_ICON_CATALOG.find((icon) => icon.unlocked)?.id)}
+              >
                 <strong>아이콘</strong>
               </button>
             </div>
+            {avatarSource === "icon" ? (
+              <div className="profile-icon-catalog" role="list" aria-label="해금된 프로필 아이콘">
+                {PROFILE_ICON_CATALOG.map((icon) => (
+                  <button
+                    key={icon.id}
+                    type="button"
+                    role="listitem"
+                    className={user.avatarIconKey === icon.id ? "active" : ""}
+                    disabled={emblemPending || !icon.unlocked}
+                    aria-pressed={user.avatarIconKey === icon.id}
+                    onClick={() => selectProfileIcon(icon.id)}
+                  >
+                    <img src={icon.src} alt="" />
+                    <span><strong>{icon.name}</strong><small>{icon.description}</small></span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {avatarSource === "initial" ? <div className="emblem-style-controls">
               <label>
                 기본 색
@@ -278,9 +316,9 @@ export default function Profile({ app }) {
               </label>
               <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
             </div> : null}
-            <p className="emblem-policy-note">직접 사진 업로드는 사용하지 않습니다. 검수된 아이콘은 파일 등록 후 선택·업적 해금 기능으로 제공합니다.</p>
+            <p className="emblem-policy-note">직접 사진 업로드는 사용하지 않습니다. 검수된 아이콘만 제공하며 이후 업적으로 추가 해금됩니다.</p>
             <div className="settings-save-row">
-              <small>{emblemFeedback || (avatarSource === "initial" ? "기본값 색상과 테두리를 바꿀 수 있습니다." : "연결된 Discord 프로필 사진을 사용합니다.")}</small>
+              <small>{emblemFeedback || (avatarSource === "initial" ? "기본값 색상과 테두리를 바꿀 수 있습니다." : avatarSource === "discord" ? "연결된 Discord 프로필 사진을 사용합니다." : "해금된 아이콘을 사용합니다.")}</small>
             </div>
           </Card>
           <Card className="section-card">

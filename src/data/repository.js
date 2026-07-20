@@ -5037,6 +5037,64 @@ export function reportCourtReview(state, reviewId, reason = "구장 리뷰 문�
   };
 }
 
+export function reportTeamEmblem(state, teamId, reason = "부적절한 이미지") {
+  const disciplineBlock = getDisciplineBlockedState(state, "팀 엠블럼 신고");
+  if (disciplineBlock) return disciplineBlock;
+  const team = (state.teams ?? []).find((item) => item.id === teamId);
+  const captainId = team?.members?.find((member) => member.role === "captain")?.userId;
+  if (!team || !captainId || captainId === state.currentUserId || team.emblemSource !== "upload" || !team.emblemKey) {
+    return state;
+  }
+  const duplicate = (state.reports ?? []).some((report) => (
+    report.type === "team_emblem" &&
+    report.targetId === teamId &&
+    report.by === state.currentUserId &&
+    report.status !== "dismissed" &&
+    report.status !== "resolved"
+  ));
+  if (duplicate) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "엠블럼 신고 중복",
+        body: "이미 같은 팀 엠블럼을 신고했습니다.",
+        tone: "orange",
+        type: "report",
+      }, ...state.notifications],
+    };
+  }
+
+  const now = new Date().toISOString();
+  const report = {
+    id: makeId("r"),
+    type: "team_emblem",
+    targetId: teamId,
+    by: state.currentUserId,
+    reportedUserIds: [captainId],
+    reason: String(reason || "부적절한 이미지").trim().slice(0, 500) || "부적절한 이미지",
+    teamName: team.name,
+    captainId,
+    emblemKey: team.emblemKey,
+    emblemSource: team.emblemSource,
+    emblemUpdatedAt: team.emblemUpdatedAt,
+    status: "open",
+    createdAt: now,
+  };
+  return {
+    ...state,
+    reports: [report, ...(state.reports ?? [])],
+    notifications: [{
+      id: makeId("n"),
+      title: "팀 엠블럼 신고 접수",
+      body: `${team.name} 엠블럼 신고를 접수했습니다. 관리자 확인 후 결과를 알려드립니다.`,
+      tone: "orange",
+      type: "report",
+      createdAt: now,
+    }, ...state.notifications],
+  };
+}
+
 function getAdminActionNotification(body, tone = "orange") {
   return {
     id: makeId("n"),
@@ -5117,8 +5175,28 @@ export function commitAdminReviewAction(state, draft = {}) {
       notifications: [getAdminActionNotification("구장 리뷰 신고만 리뷰 숨김 처리할 수 있습니다."), ...state.notifications],
     };
   }
+  if (actionType === "resetTeamEmblem" && report.type !== "team_emblem") {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("팀 엠블럼 신고만 기본값으로 전환할 수 있습니다."), ...state.notifications],
+    };
+  }
+  if (actionType === "resetTeamEmblem" && getAdminAuthorityLevel(state) < 50) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("경기관리자 이상만 팀 엠블럼을 강제 전환할 수 있습니다."), ...state.notifications],
+    };
+  }
 
   const now = new Date().toISOString();
+  const moderatedTeam = actionType === "resetTeamEmblem"
+    ? (state.teams ?? []).find((team) => team.id === report.targetId)
+    : null;
+  const emblemViolationCount = Number(moderatedTeam?.emblemViolationCount ?? 0) + (moderatedTeam ? 1 : 0);
+  const emblemBlockDays = emblemViolationCount <= 1 ? 30 : emblemViolationCount === 2 ? 90 : 365;
+  const emblemUploadBlockedUntil = moderatedTeam
+    ? new Date(new Date(now).getTime() + emblemBlockDays * DAY_MS).toISOString()
+    : null;
   const disciplinaryAction = makeDisciplinaryAction({ state, report, actionType, targetUserId, durationDays, reason, now });
   const nextStatus = actionType === "dismissReport" || actionType === "maliciousReporter" ? "dismissed" : "resolved";
   const nextReports = (state.reports ?? []).map((item) => (
@@ -5134,6 +5212,7 @@ export function commitAdminReviewAction(state, draft = {}) {
           reason,
           targetUserId,
           durationDays,
+          ...(moderatedTeam ? { teamId: moderatedTeam.id, violationCount: emblemViolationCount, blockedUntil: emblemUploadBlockedUntil } : {}),
         },
       }
       : item
@@ -5166,6 +5245,18 @@ export function commitAdminReviewAction(state, draft = {}) {
         : review
     ))
     : (state.settings?.courtReviews ?? []);
+  const nextTeams = moderatedTeam
+    ? (state.teams ?? []).map((team) => team.id === moderatedTeam.id ? {
+      ...team,
+      emblemKey: null,
+      emblemSource: "initial",
+      emblemUpdatedAt: now,
+      emblemViolationCount,
+      emblemUploadBlockedUntil,
+      emblemModeratedAt: now,
+      emblemModerationReason: reason,
+    } : team)
+    : (state.teams ?? []);
   const reporterNotification = report.by
     ? {
       id: makeId("n"),
@@ -5184,9 +5275,20 @@ export function commitAdminReviewAction(state, draft = {}) {
       tone: "orange",
     }
     : null;
+  const teamModerationNotification = moderatedTeam
+    ? {
+      id: makeId("n"),
+      targetUserId: moderatedTeam.members?.find((member) => member.role === "captain")?.userId,
+      title: "팀 엠블럼 운영 조치",
+      body: `신고가 인정되어 기본값으로 전환했습니다. ${emblemBlockDays}일 동안 사진을 업로드할 수 없습니다.`,
+      tone: "orange",
+      type: "team_emblem_moderation",
+    }
+    : null;
 
   return {
     ...state,
+    teams: nextTeams,
     reports: nextReports,
     settings: normalizeSettings({
       ...(state.settings ?? {}),
@@ -5199,7 +5301,7 @@ export function commitAdminReviewAction(state, draft = {}) {
     }),
     notifications: [
       getAdminActionNotification("관리자 처리 결과가 커밋되었습니다.", "team"),
-      ...[reporterNotification, targetNotification].filter(Boolean),
+      ...[reporterNotification, targetNotification, teamModerationNotification].filter((notification) => notification?.targetUserId),
       ...state.notifications,
     ],
   };

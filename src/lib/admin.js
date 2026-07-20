@@ -42,6 +42,7 @@ export const ADMIN_REVIEW_ACTIONS = {
   refereeDiscipline: { label: "심판 조치", feedback: "심판 권한 또는 등급 검토 조치가 등록되었습니다." },
   hideCourt: { label: "구장 숨김", feedback: "신고된 구장이 숨김 처리되었습니다." },
   hideCourtReview: { label: "구장 리뷰 숨김", feedback: "신고된 구장 리뷰가 숨김 처리되었습니다." },
+  resetTeamEmblem: { label: "엠블럼 기본값 전환", feedback: "신고된 팀 엠블럼을 기본값으로 전환했습니다." },
 };
 
 const APPOINTMENT_ROLE_META = {
@@ -158,6 +159,7 @@ function pushGrouped(map, key, base, patch = {}) {
       courtRequests: [],
       courtReviews: [],
       disciplinaryActions: [],
+      team: null,
       reportCount: 0,
       openCount: 0,
       latestAt: 0,
@@ -336,6 +338,7 @@ export function buildAdminAppointmentModel(state = {}) {
 
 export function buildAdminReviewModel(state = {}) {
   const users = state.users ?? [];
+  const teams = state.teams ?? [];
   const matches = state.matches ?? [];
   const reports = state.reports ?? [];
   const courtRequests = state.settings?.courtRequests ?? [];
@@ -344,9 +347,11 @@ export function buildAdminReviewModel(state = {}) {
   const disciplinaryActions = state.settings?.adminDisciplinaryActions ?? [];
   const userMap = makeUserMap(users);
   const matchMap = makeMatchMap(matches);
+  const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
   const courtMap = new Map();
   const playerMap = new Map();
   const matchReviewMap = new Map();
+  const teamReviewMap = new Map();
 
   matches.forEach((match) => {
     const courtName = match.court || "미정 구장";
@@ -402,6 +407,17 @@ export function buildAdminReviewModel(state = {}) {
   });
 
   reports.forEach((report) => {
+    if (report.type === "team_emblem") {
+      const team = teamById[report.targetId];
+      const teamRow = pushGrouped(teamReviewMap, report.targetId, {
+        title: team?.name ?? report.teamName ?? "알 수 없는 팀",
+        subtitle: `${team?.region ?? "지역 미정"} · 엠블럼 위반 ${team?.emblemViolationCount ?? 0}회`,
+        team,
+      });
+      addReport(teamRow, report);
+      return;
+    }
+
     if (report.type === "match") {
       const match = matchMap[report.targetId];
       const matchRow = pushGrouped(matchReviewMap, report.targetId, {
@@ -524,6 +540,13 @@ export function buildAdminReviewModel(state = {}) {
     courtReviewCount: row.courtReviews.length,
     issueCount: row.openCount + (isRecordIssueMatch(row.match) ? 1 : 0),
   })).sort(sortReviewRows);
+  const teamRows = [...teamReviewMap.values()].map((row) => ({
+    ...row,
+    matchCount: 0,
+    courtRequestCount: 0,
+    courtReviewCount: 0,
+    issueCount: row.openCount,
+  })).sort(sortReviewRows);
 
   return {
     summary: {
@@ -534,9 +557,11 @@ export function buildAdminReviewModel(state = {}) {
       matchIssueCount: matchRows.filter((row) => row.reportCount > 0 || isRecordIssueMatch(row.match)).length,
       courtRequestCount: courtRequests.length,
       disciplinaryActionCount: disciplinaryActions.length,
+      teamEmblemIssueCount: teamRows.filter((row) => row.openCount > 0).length,
     },
     courts: courtRows,
     players: playerRows,
     matches: matchRows,
+    teams: teamRows,
   };
 }

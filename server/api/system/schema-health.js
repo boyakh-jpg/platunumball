@@ -10,6 +10,7 @@ const REQUIRED_COLUMNS = {
     "discord_user_id",
     "avatar_key",
     "avatar_source",
+    "avatar_icon_key",
     "avatar_uploaded_at",
     "avatar_upload_count",
     "avatar_border_enabled",
@@ -24,6 +25,7 @@ const REQUIRED_COLUMNS = {
     "updated_at",
     "avatar_key",
     "avatar_source",
+    "avatar_icon_key",
     "avatar_border_enabled",
     "avatar_border_color",
     "discord_avatar_url",
@@ -44,6 +46,10 @@ const REQUIRED_COLUMNS = {
     "emblem_text_mode",
     "emblem_abbreviation",
     "emblem_font",
+    "emblem_violation_count",
+    "emblem_upload_blocked_until",
+    "emblem_moderated_at",
+    "emblem_moderation_reason",
     "deleted_at",
   ],
   team_members: [
@@ -337,6 +343,18 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_update_profile_emblem",
     args: { p_actor_profile_id: "", p_action: "style", p_avatar_key: null, p_avatar_source: "initial", p_avatar_color: "#58d2c0", p_border_enabled: false, p_border_color: "#58d2c0", p_expected_avatar_key: null },
+  },
+  {
+    name: "rankball_select_profile_icon",
+    args: { p_actor_profile_id: "", p_icon_key: "01-first-bucket" },
+  },
+  {
+    name: "rankball_moderate_team_emblem",
+    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_report_id: "", p_reason: "", p_feedback: "" },
+  },
+  {
+    name: "rankball_moderate_team_emblem_guarded",
+    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_report_id: "", p_reason: "", p_feedback: "" },
   },
   {
     name: "rankball_tournament_team_roster_snapshot",
