@@ -14,10 +14,10 @@
 | `teams` | `emblem_violation_count`, `emblem_upload_blocked_until`, `emblem_moderated_at`, `emblem_moderation_reason` | 인정 위반 누적, 업로드 제한 종료, 최근 운영 조치 원본 |
 | `reports` | `type='team_emblem'`, `payload.emblemKey` | 팀 엠블럼 신고와 접수 당시 object key snapshot |
 | R2 | `team-emblems/{teamId}/{sha256-24}.webp` | 팀 직접 업로드 결과 |
-| Vercel public asset | `/assets/profile-icons/01-first-bucket.png` | 첫 검수 프로필 아이콘 |
+| Vercel/R2 public asset | `/assets/profile-icons/{icon-key}.png` | 80개 검수 프로필 아이콘. DB에는 확장자 없는 key만 저장 |
 
 - `/api/profile/emblem`은 프로필 기본값 스타일, `initial`/`discord` 원본 전환, 검수된 `icon` 선택만 허용한다. 직접 사진 업로드는 거부한다.
-- `rankball_select_profile_icon()`은 서버 allowlist를 통과한 icon key만 저장한다.
+- `rankball_select_profile_icon()`은 서버 allowlist를 통과한 기본 지급 icon key만 저장한다. 잠긴 아이콘은 해금 판정이 연결되기 전까지 서버와 DB 함수가 모두 거부한다.
 - `rankball_update_team_emblem()`은 팀 row와 팀장 권한을 검사하고 이미지 업로드 횟수·30일 제한을 처리한다.
 - `rankball_update_team_emblem_source()`는 팀장 권한으로 표시 원본만 바꾸며 저장된 object key를 보존한다.
 - `rankball_update_team_emblem_design()`은 팀장 권한으로 색상·테두리·팀명/약칭·글꼴을 함께 바꾸며 이미지 업로드 횟수를 변경하지 않는다.

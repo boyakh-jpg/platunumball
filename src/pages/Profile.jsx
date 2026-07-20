@@ -8,9 +8,10 @@ import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx"
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import { PLAYER_POSITIONS } from "../lib/constants.js";
+import { assetUrl } from "../lib/assets.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchSideScore as getSideScore, isDateWithinPastMonths, isPersonalRecordMatch } from "../lib/matchUtils.js";
-import { PROFILE_ICON_CATALOG } from "../lib/profileIcons.js";
+import { DEFAULT_PROFILE_ICON_ID, isSelectableProfileIcon, PROFILE_ICON_CATALOG, PROFILE_ICON_GROUPS } from "../lib/profileIcons.js";
 import { canChangeProfileName, getNextNameChangeDate, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -135,6 +136,9 @@ export default function Profile({ app }) {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [emblemPending, setEmblemPending] = useState(false);
   const [emblemFeedback, setEmblemFeedback] = useState("");
+  const [selectedIconGroupId, setSelectedIconGroupId] = useState(() => (
+    PROFILE_ICON_GROUPS.find((group) => group.icons.some((icon) => icon.id === user.avatarIconKey))?.id ?? PROFILE_ICON_GROUPS[0].id
+  ));
   const [emblemStyleDraft, setEmblemStyleDraft] = useState(() => ({
     avatarColor: user.avatarColor ?? "#58d2c0",
     avatarBorderEnabled: user.avatarBorderEnabled === true,
@@ -143,6 +147,8 @@ export default function Profile({ app }) {
   const recordsLoadKeyRef = useRef("");
   const avatarSource = new Set(["discord", "icon"]).has(user.avatarSource) ? user.avatarSource : "initial";
   const hasDiscordAvatar = Boolean(user.discordAvatarUrl || user.discordConnection?.avatarUrl);
+  const selectedIconGroup = PROFILE_ICON_GROUPS.find((group) => group.id === selectedIconGroupId) ?? PROFILE_ICON_GROUPS[0];
+  const selectedSelectableIconId = isSelectableProfileIcon(user.avatarIconKey) ? user.avatarIconKey : DEFAULT_PROFILE_ICON_ID;
   const selectedRegion = REGION_TREE.find((item) => item.sido === draft.regionSido) ?? REGION_TREE[0];
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -278,27 +284,47 @@ export default function Profile({ app }) {
                 className={avatarSource === "icon" ? "active" : ""}
                 aria-pressed={avatarSource === "icon"}
                 disabled={emblemPending || !PROFILE_ICON_CATALOG.some((icon) => icon.unlocked)}
-                onClick={() => selectProfileIcon(user.avatarIconKey || PROFILE_ICON_CATALOG.find((icon) => icon.unlocked)?.id)}
+                onClick={() => selectProfileIcon(selectedSelectableIconId)}
               >
                 <strong>아이콘</strong>
               </button>
             </div>
             {avatarSource === "icon" ? (
-              <div className="profile-icon-catalog" role="list" aria-label="해금된 프로필 아이콘">
-                {PROFILE_ICON_CATALOG.map((icon) => (
-                  <button
-                    key={icon.id}
-                    type="button"
-                    role="listitem"
-                    className={user.avatarIconKey === icon.id ? "active" : ""}
-                    disabled={emblemPending || !icon.unlocked}
-                    aria-pressed={user.avatarIconKey === icon.id}
-                    onClick={() => selectProfileIcon(icon.id)}
-                  >
-                    <img src={icon.src} alt="" />
-                    <span><strong>{icon.name}</strong><small>{icon.description}</small></span>
-                  </button>
-                ))}
+              <div className="profile-icon-picker">
+                <div className="profile-icon-group-tabs" role="tablist" aria-label="프로필 아이콘 분류">
+                  {PROFILE_ICON_GROUPS.map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      role="tab"
+                      className={selectedIconGroup.id === group.id ? "active" : ""}
+                      aria-selected={selectedIconGroup.id === group.id}
+                      onClick={() => setSelectedIconGroupId(group.id)}
+                    >
+                      {group.name} <small>{group.icons.length}</small>
+                    </button>
+                  ))}
+                </div>
+                <div className="profile-icon-group-head">
+                  <strong>{selectedIconGroup.name}</strong>
+                  <small>{selectedIconGroup.unlocked ? "선택 가능" : selectedIconGroup.unlockDescription}</small>
+                </div>
+                <div className="profile-icon-catalog" role="list" aria-label={`${selectedIconGroup.name} 프로필 아이콘`}>
+                  {selectedIconGroup.icons.map((icon) => (
+                    <button
+                      key={icon.id}
+                      type="button"
+                      role="listitem"
+                      className={`${user.avatarIconKey === icon.id ? "active" : ""} ${icon.unlocked ? "" : "locked"}`.trim()}
+                      disabled={emblemPending || !icon.unlocked}
+                      aria-pressed={user.avatarIconKey === icon.id}
+                      onClick={() => selectProfileIcon(icon.id)}
+                    >
+                      <img src={assetUrl(icon.src)} alt="" loading="lazy" decoding="async" />
+                      <span><strong>{icon.name}</strong><small>{icon.unlocked ? icon.description : `잠김 · ${icon.description}`}</small></span>
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : null}
             {avatarSource === "initial" ? <div className="emblem-style-controls">

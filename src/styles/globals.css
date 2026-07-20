@@ -554,6 +554,10 @@ body.rankball-scroll-locked .app-main {
   object-fit: cover;
 }
 
+.profile-emblem-image.icon {
+  object-fit: contain;
+}
+
 .discord-link-badge {
   display: inline-flex;
   width: fit-content;
@@ -8504,9 +8508,59 @@ html[data-theme="light"] .search-picker-result-row.selected {
   text-align: center;
 }
 
+.profile-icon-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-icon-group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-icon-group-tabs button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: 999px;
+  background: var(--ui-control-bg, var(--surface-2));
+  color: var(--muted);
+  cursor: pointer;
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.profile-icon-group-tabs button small {
+  font-size: 0.66rem;
+}
+
+.profile-icon-group-tabs button.active {
+  border-color: var(--rb-green);
+  color: var(--text);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rb-green) 50%, transparent);
+}
+
+.profile-icon-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.profile-icon-group-head small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: right;
+}
+
 .profile-icon-catalog {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
   gap: 8px;
 }
 
@@ -8522,6 +8576,15 @@ html[data-theme="light"] .search-picker-result-row.selected {
   cursor: pointer;
   padding: 8px;
   text-align: left;
+}
+
+.profile-icon-catalog > button.locked {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.profile-icon-catalog > button.locked img {
+  filter: grayscale(0.72);
 }
 
 .profile-icon-catalog > button.active {
@@ -8620,6 +8683,20 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
   .profile-icon-source-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .profile-icon-catalog {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-icon-catalog > button {
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 7px;
+  }
+
+  .profile-icon-catalog img {
+    width: 40px;
+    height: 40px;
   }
 
   .team-emblem-font-grid {

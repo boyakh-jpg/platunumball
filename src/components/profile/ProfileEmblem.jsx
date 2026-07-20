@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
+import { assetUrl } from "../../lib/assets.js";
 import { getProfileIcon } from "../../lib/profileIcons.js";
 
 export function getProfileEmblemUrl(user = {}) {
   if (user.avatarSource === "discord") return user.discordAvatarUrl || user.discordConnection?.avatarUrl || "";
-  if (user.avatarSource === "icon") return getProfileIcon(user.avatarIconKey)?.src ?? "";
+  if (user.avatarSource === "icon") {
+    const icon = getProfileIcon(user.avatarIconKey);
+    return icon ? assetUrl(icon.src) : "";
+  }
   return "";
 }
 
 export default function ProfileEmblem({ user, className = "", initial, anonymous = false }) {
   const [imageFailed, setImageFailed] = useState(false);
   const imageUrl = anonymous ? "" : getProfileEmblemUrl(user);
+  const imageSource = user?.avatarSource === "icon" ? "icon" : "photo";
   const label = anonymous ? "?" : initial ?? user?.name?.slice(0, 1) ?? "?";
   const borderEnabled = !anonymous && user?.avatarBorderEnabled === true;
   const avatarColor = user?.avatarColor || "#58d2c0";
@@ -27,7 +32,7 @@ export default function ProfileEmblem({ user, className = "", initial, anonymous
       }}
     >
       {label}
-      {imageUrl && !imageFailed ? <img className="profile-emblem-image" src={imageUrl} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : null}
+      {imageUrl && !imageFailed ? <img className={`profile-emblem-image ${imageSource}`} src={imageUrl} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : null}
     </span>
   );
 }
