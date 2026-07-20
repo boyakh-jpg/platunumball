@@ -19,6 +19,7 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
     : "";
   const textLines = getTeamEmblemTextLines(team, resolvedName);
   const textDensity = Math.max(...textLines.map((line) => Array.from(line).length), 1);
+  const textScale = Math.max(0.24, Math.min(1.9, 2 / textDensity));
   const textClass = textDensity > 8 ? "dense" : textDensity > 5 ? "compact" : "regular";
   const lineClass = textLines.length >= 3 ? "three-lines" : textLines.length === 2 ? "two-lines" : "one-line";
   const emblemFont = normalizeTeamEmblemFont(team?.emblemFont);
@@ -29,7 +30,12 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
     <span
       aria-hidden="true"
       className={`team-emblem team-emblem-${resolvedSize} ${resolvedImageUrl && !imageFailed ? "has-image" : ""} ${borderEnabled ? "" : "no-emblem-border"} ${className}`.trim()}
-      style={{ "--team-color": resolvedAccent, "--team-emblem-bg": resolvedBackground, "--team-emblem-border": resolvedBorder }}
+      style={{
+        "--team-color": resolvedAccent,
+        "--team-emblem-bg": resolvedBackground,
+        "--team-emblem-border": resolvedBorder,
+        "--team-emblem-text-scale": `${textScale.toFixed(3)}em`,
+      }}
     >
       {resolvedImageUrl && !imageFailed ? (
         <img src={resolvedImageUrl} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} />

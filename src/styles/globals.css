@@ -541,7 +541,9 @@ body.rankball-scroll-locked .app-main {
 }
 
 .avatar.has-emblem-border {
-  box-shadow: 0 0 0 2px var(--avatar-border, var(--avatar, var(--green)));
+  box-shadow:
+    0 0 0 2px var(--avatar-border, var(--avatar, var(--green))),
+    0 0 14px color-mix(in srgb, var(--avatar-border, var(--avatar, var(--green))) 38%, transparent);
 }
 
 .profile-emblem-image {
@@ -2005,7 +2007,7 @@ span.referee-hover-card {
   background: color-mix(in srgb, var(--surface-3) 82%, var(--team-emblem-bg, var(--team-color, var(--rb-orange))) 18%);
   box-shadow:
     inset 0 0 0 2px color-mix(in srgb, var(--surface) 82%, transparent),
-    0 4px 14px color-mix(in srgb, var(--team-color, var(--rb-orange)) 18%, transparent);
+    0 4px 16px color-mix(in srgb, var(--team-emblem-border, var(--team-color, var(--rb-orange))) 34%, transparent);
   color: color-mix(in srgb, var(--text) 86%, var(--team-color, var(--rb-orange)) 14%);
   font-family: var(--sports-display-font);
   font-size: 0.98rem;
@@ -2038,6 +2040,7 @@ span.referee-hover-card {
   width: 86%;
   place-items: center;
   gap: 0;
+  font-size: var(--team-emblem-text-scale, 1em);
   line-height: 0.86;
   text-align: center;
   text-transform: none;
@@ -2050,28 +2053,20 @@ span.referee-hover-card {
 }
 
 .team-emblem-text.compact {
-  font-size: 0.72em;
   letter-spacing: -0.04em;
 }
 
 .team-emblem-text.dense {
-  font-size: 0.54em;
   letter-spacing: -0.07em;
 }
 
 .team-emblem-text.two-lines {
   width: 88%;
-  font-size: 0.52em;
   line-height: 0.84;
-}
-
-.team-emblem-text.two-lines.dense {
-  font-size: 0.44em;
 }
 
 .team-emblem-text.three-lines {
   width: 90%;
-  font-size: 0.38em;
   line-height: 0.82;
   letter-spacing: -0.04em;
 }
@@ -14779,14 +14774,6 @@ button {
   -webkit-line-clamp: 2;
 }
 
-.rank-home .match-focus-card.home-unframed-section,
-html[data-theme="light"] .rank-home .match-focus-card.home-unframed-section {
-  min-height: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-}
 
 @media (max-width: 390px) {
   .landing-actions .landing-primary-actions .landing-create-action .button {

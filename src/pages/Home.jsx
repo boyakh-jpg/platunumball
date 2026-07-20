@@ -670,7 +670,7 @@ export default function Home({ app }) {
 
         <div className="content-grid home-dashboard-grid rank-dashboard-grid">
           <div className="page-stack home-primary-stack">
-            <section className="match-focus-card home-unframed-section">
+            <Card className="match-focus-card home-upcoming-card">
               <div className="section-title-row">
                 <div>
                   <p className="eyebrow">Upcoming</p>
@@ -692,7 +692,7 @@ export default function Home({ app }) {
               ) : (
                 <div className="empty-state">확정 경기 없음</div>
               )}
-            </section>
+            </Card>
 
             <Card className="section-card home-recent-card">
               <div className="section-title-row">
