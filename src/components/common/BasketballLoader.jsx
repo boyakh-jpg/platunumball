@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { assetUrl } from "../../lib/assets.js";
 
 const ballSources = [
+  assetUrl("/assets/bounding_ball2.webp"),
   assetUrl("/assets/bounding_ball2.gif"),
 ];
 

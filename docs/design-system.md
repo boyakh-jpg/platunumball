@@ -290,12 +290,12 @@
 # 2026-06-28 remote load basketball loader
 
 1. Remote DB hydration may show a centered basketball bounce loader immediately while remote data is not ready.
-2. The loader uses the R2-hosted `bounding_ball2.gif` asset, which must stay browser-decodable and under 100KB.
+2. The loader primarily uses the R2-hosted `bounding_ball2.webp` animated asset, with `bounding_ball2.gif` as a fallback. The primary asset must keep full-alpha clean edges, stay browser-decodable, and remain under 100KB.
 3. The CSS basketball fallback is not used.
 4. The loader blocks clicks, modal interaction, touch scroll, and wheel scroll while remote data is not ready.
-5. The remote GIF loader renders without a card background, border, shadow, or blur frame.
+5. The remote animated loader renders without a card background, border, shadow, or blur frame.
 6. The blocking overlay uses a light veil so stale page content is visibly unavailable until remote data is ready.
-7. The GIF must render above the blocking veil and reset its failed state each time remote loading starts.
+7. The animated asset must render above the blocking veil and reset its failed state each time remote loading starts.
 8. While `html.rankball-remote-loading` is active, the global overlay is the only visible loading indicator; page-level inline loaders stay hidden.
 9. Blocking/page overlay loaders render at `document.body` level so they are centered against the full viewport, not a card, section, or page div.
 10. During remote DB hydration, the app shell does not render route page content behind the overlay; cached counts/lists must not be visible before the authoritative first response.
