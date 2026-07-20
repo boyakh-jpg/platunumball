@@ -3322,7 +3322,9 @@ export function useAppData(authUser = null, appLocation = null) {
               emblemBorderEnabled: result.emblemBorderEnabled ?? team.emblemBorderEnabled ?? true,
               emblemBorderColor: result.emblemBorderColor ?? team.emblemBorderColor ?? team.accent,
               emblemTextMode: result.emblemTextMode ?? team.emblemTextMode ?? "initial",
-              emblemAbbreviation: result.emblemAbbreviation ?? team.emblemAbbreviation ?? "",
+              emblemAbbreviation: Object.prototype.hasOwnProperty.call(result, "emblemAbbreviation")
+                ? (result.emblemAbbreviation ?? "")
+                : (team.emblemAbbreviation ?? ""),
               emblemFont: result.emblemFont ?? team.emblemFont ?? "sport",
               emblemUpdatedAt: result.emblemUpdatedAt ?? new Date().toISOString(),
             } : team),
