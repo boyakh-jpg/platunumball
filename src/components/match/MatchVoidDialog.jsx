@@ -1,0 +1,61 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import Button from "../common/Button.jsx";
+
+export const MATCH_VOID_REASON_MIN_LENGTH = 10;
+export const MATCH_VOID_REASON_MAX_LENGTH = 500;
+
+export default function MatchVoidDialog({ open, pending = false, onClose, onConfirm }) {
+  const [reason, setReason] = useState("");
+  const [acknowledged, setAcknowledged] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setReason("");
+    setAcknowledged(false);
+  }, [open]);
+
+  if (!open || typeof document === "undefined") return null;
+  const safeReason = reason.trim();
+  const canSubmit = safeReason.length >= MATCH_VOID_REASON_MIN_LENGTH && acknowledged && !pending;
+
+  return createPortal(
+    <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !pending && onClose?.()}>
+      <form
+        className="app-confirm-dialog match-void-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="match-void-dialog-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (canSubmit) onConfirm?.(safeReason);
+        }}
+      >
+        <strong id="match-void-dialog-title">경기 무효 처리</strong>
+        <p>경기 기록과 MMR 반영이 중단되며, 방장 신뢰도가 차감됩니다. 참가자는 관리자에게 복구 심사를 요청할 수 있습니다.</p>
+        <label className="memo-label">
+          무효 사유
+          <textarea
+            autoFocus
+            value={reason}
+            minLength={MATCH_VOID_REASON_MIN_LENGTH}
+            maxLength={MATCH_VOID_REASON_MAX_LENGTH}
+            placeholder="참가자가 이해할 수 있도록 10자 이상 작성"
+            onChange={(event) => setReason(event.target.value)}
+          />
+          <small>{safeReason.length}/{MATCH_VOID_REASON_MAX_LENGTH}</small>
+        </label>
+        <label className="match-void-acknowledgement">
+          <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
+          <span>경기 전체를 무효 처리하는 강한 조치임을 확인했습니다.</span>
+        </label>
+        <div className="app-confirm-actions">
+          <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>취소</Button>
+          <Button type="submit" className="danger-button" disabled={!canSubmit}>{pending ? "처리 중" : "경기 무효 처리"}</Button>
+        </div>
+      </form>
+    </div>,
+    document.body,
+  );
+}

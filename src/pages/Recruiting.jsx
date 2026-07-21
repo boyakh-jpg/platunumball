@@ -28,6 +28,7 @@ import EmptyState from "../components/common/EmptyState.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
+import MatchVoidDialog from "../components/match/MatchVoidDialog.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
@@ -2298,11 +2299,14 @@ function SourceMatchDisputeEditor({
   canReview,
   onSave,
   onResolve = null,
+  onReject = null,
   onVoid = null,
   getEditableStatFields = null,
   submitLabel = "",
 }) {
   const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [voidPending, setVoidPending] = useState(false);
 
   useEffect(() => {
     setDraft(makeSourceMatchDraft(match));
@@ -2401,9 +2405,24 @@ function SourceMatchDisputeEditor({
       <div className="match-action-row">
         <Button type="submit" disabled={!canSaveDraft}>{submitLabel || (hasResult ? "수정안 저장" : "결과 저장")}</Button>
         {hasResult && onResolve ? <Button type="button" disabled={!canReview} onClick={() => onResolve(getDerivedDraft())}>수정안 확정</Button> : null}
-        {hasResult && onVoid ? <Button type="button" variant="secondary" className="danger-button" disabled={!canReview} onClick={onVoid}>무효 처리</Button> : null}
+        {hasResult && onReject ? <Button type="button" variant="secondary" disabled={!canReview} onClick={onReject}>이의신청 반려</Button> : null}
+        {hasResult && onVoid ? <Button type="button" variant="secondary" className="danger-button" disabled={!canReview} onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button> : null}
       </div>
       <p className="muted">{hasResult ? "확정 후 불복은 신고로 처리합니다." : "결과 저장 후 양쪽 승인 단계로 넘어갑니다."}</p>
+      <MatchVoidDialog
+        open={voidDialogOpen}
+        pending={voidPending}
+        onClose={() => setVoidDialogOpen(false)}
+        onConfirm={async (reason) => {
+          setVoidPending(true);
+          try {
+            const result = await onVoid?.(reason);
+            if (result?.ok !== false) setVoidDialogOpen(false);
+          } finally {
+            setVoidPending(false);
+          }
+        }}
+      />
     </form>
   );
 }
@@ -3366,7 +3385,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   submitLabel={sourceMatchResultSubmitLabel}
                   onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                   onResolve={sourceMatchAction.disputed ? (draft) => app.actions.resumeMatchApproval(sourceMatch.id, draft) : undefined}
-                  onVoid={sourceMatchAction.disputed ? () => app.actions.voidMatch(sourceMatch.id) : undefined}
+                  onReject={sourceMatchAction.disputed ? () => app.actions.rejectMatchDispute(sourceMatch.id) : undefined}
+                  onVoid={sourceMatchAction.disputed ? (reason) => app.actions.voidMatch(sourceMatch.id, reason) : undefined}
                 />
               ) : null}
             </div>
@@ -4158,7 +4178,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         canReview={canReviewSourceMatch}
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                         onResolve={(draft) => app.actions.resumeMatchApproval(sourceMatch.id, draft)}
-                        onVoid={() => app.actions.voidMatch(sourceMatch.id)}
+                        onReject={() => app.actions.rejectMatchDispute(sourceMatch.id)}
+                        onVoid={(reason) => app.actions.voidMatch(sourceMatch.id, reason)}
                       />
                     ) : null}
                     {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (

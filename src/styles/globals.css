@@ -9587,6 +9587,39 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 8px;
 }
 
+.match-void-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.match-void-dialog textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.match-void-acknowledgement {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.match-void-acknowledgement input {
+  margin-top: 3px;
+}
+
+.match-void-summary {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.match-void-summary p {
+  margin: 0;
+}
+
 .arena-dispute-editor {
   display: grid;
   gap: 12px;

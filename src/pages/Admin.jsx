@@ -327,6 +327,7 @@ export default function Admin({ app }) {
   const [selectedReportIdByScope, setSelectedReportIdByScope] = useState({});
   const [actionDraft, setActionDraft] = useState({
     actionType: "validReport",
+    penaltyType: "",
     durationDays: 3,
     targetUserId: "",
     replacementName: "",
@@ -394,6 +395,7 @@ export default function Admin({ app }) {
   const userMap = useMemo(() => Object.fromEntries((adminViewState.users ?? []).map((user) => [user.id, user])), [adminViewState.users]);
   const matchMap = useMemo(() => Object.fromEntries((adminViewState.matches ?? []).map((match) => [match.id, match])), [adminViewState.matches]);
   const selectedReport = reportOptions.find((report) => report.id === selectedReportId) ?? reportOptions.find((report) => report.status === "open") ?? reportOptions[0] ?? null;
+  const selectedReportIsVoidRestore = selectedReport?.matchReviewType === "void_restore";
   const selectedCourtRequest = selectedRow?.courtRequests?.find(isPendingCourtRequest)
     ?? selectedRow?.courtRequests?.[0]
     ?? null;
@@ -444,6 +446,9 @@ export default function Admin({ app }) {
     setAppliedQueueFilterByView((current) => ({ ...current, [section]: "" }));
   };
   const visibleActionOptions = useMemo(() => {
+    if (selectedReportIsVoidRestore) {
+      return ACTION_OPTIONS.filter((option) => ["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(option.id));
+    }
     if (selectedReport?.type === "team_emblem") {
       return ACTION_OPTIONS.filter((option) => ["resetTeamEmblem", "dismissReport", "maliciousReporter"].includes(option.id));
     }
@@ -459,7 +464,7 @@ export default function Admin({ app }) {
     if (selectedReport?.type === "match" || selectedReport?.type === "player") ids.push("suspendTarget", "refereeDiscipline");
     if (selectedReport?.type === "court_request") ids.push("suspendTarget");
     return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
-  }, [selectedReport?.type]);
+  }, [selectedReport?.type, selectedReportIsVoidRestore]);
   const targetCandidates = useMemo(() => {
     const ids = new Set([
       ...(selectedReport?.reportedUserIds ?? []),
@@ -472,7 +477,8 @@ export default function Admin({ app }) {
   const selectedTargetUserId = targetCandidates.some((user) => user.id === actionDraft.targetUserId)
     ? actionDraft.targetUserId
     : targetCandidates[0]?.id ?? "";
-  const actionNeedsTarget = ["maliciousReporter", "suspendTarget", "refereeDiscipline"].includes(actionDraft.actionType);
+  const actionNeedsTarget = ["maliciousReporter", "suspendTarget", "refereeDiscipline"].includes(actionDraft.actionType)
+    || (selectedReportIsVoidRestore && Boolean(actionDraft.penaltyType));
   const actionNeedsReplacementName = ["renameTeam", "renameAffiliation"].includes(actionDraft.actionType);
   const actionNeedsMergeTarget = actionDraft.actionType === "mergeAffiliation";
   const nameModerationAction = actionNeedsReplacementName || actionNeedsMergeTarget;
@@ -491,6 +497,7 @@ export default function Admin({ app }) {
     setActionDraft((current) => ({
       ...current,
       actionType: visibleActionOptions.some((option) => option.id === current.actionType) ? current.actionType : visibleActionOptions[0]?.id ?? "validReport",
+      penaltyType: "",
       targetUserId: targetCandidates[0]?.id ?? "",
       replacementName: selectedRow?.team?.name ?? selectedRow?.affiliation?.name ?? "",
       mergeTargetId: "",
@@ -1037,6 +1044,16 @@ export default function Admin({ app }) {
                       {visibleActionOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                   </label>
+                  {selectedReportIsVoidRestore ? (
+                    <label>
+                      별도 제재
+                      <select value={actionDraft.penaltyType} onChange={(event) => updateActionDraft({ penaltyType: event.target.value })}>
+                        <option value="">제재 없음</option>
+                        <option value="public_room_suspension">공개방 참가 제한</option>
+                        <option value="suspension">전체 활동 제한</option>
+                      </select>
+                    </label>
+                  ) : null}
                   {actionNeedsReplacementName ? (
                     <label>
                       변경할 이름
@@ -1097,9 +1114,11 @@ export default function Admin({ app }) {
                   신고자 피드백
                   <textarea value={actionDraft.feedback} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
                 </label>
-                <Button type="button" variant="secondary" disabled={reviewActionPending || !selectedReport || selectedReport.status !== "open" || ((actionDraft.actionType === "resetTeamEmblem" || nameModerationAction) && adminLevel < 50) || nameModerationInvalid} onClick={commitSelectedAction}>
+                <Button type="button" variant="secondary" disabled={reviewActionPending || !selectedReport || selectedReport.status !== "open" || ((actionDraft.actionType === "resetTeamEmblem" || nameModerationAction || selectedReportIsVoidRestore) && adminLevel < 50) || nameModerationInvalid} onClick={commitSelectedAction}>
                   {reviewActionPending ? "처리 중" : "액션 커밋"}
                 </Button>
+                {selectedReportIsVoidRestore ? <small>복구는 무효 처리 전 원본 기록을 사용합니다. 50%는 기존 경기 MMR 배율의 절반을 반영합니다.</small> : null}
+                {selectedReportIsVoidRestore && adminLevel < 50 ? <small>경기관리자 이상만 무효 경기 심사를 처리할 수 있습니다.</small> : null}
                 {actionDraft.actionType === "resetTeamEmblem" && adminLevel < 50 ? <small>경기관리자 이상만 엠블럼을 강제 전환할 수 있습니다.</small> : null}
                 {nameModerationAction && adminLevel < 50 ? <small>경기관리자 이상만 이름을 수정하거나 소속을 통합할 수 있습니다.</small> : null}
                 {reviewActionStatus ? <small role="status">{reviewActionStatus}</small> : null}

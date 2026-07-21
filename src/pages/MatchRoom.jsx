@@ -5,6 +5,7 @@ import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
+import MatchVoidDialog from "../components/match/MatchVoidDialog.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -16,7 +17,7 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeDisputeWindowMinutes } from "../lib/constants.js";
-import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
+import { DEFAULT_REPORT_REASON, REPORT_REASONS, VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
 import {
   formatKoreanDateTime,
   formatStatLine,
@@ -24,6 +25,7 @@ import {
   OTHER_MATCH_DISPUTE_REASON,
   buildMatchResultSubmission,
   buildMatchDisputeRequest,
+  canRequestVoidMatchRestore,
   getAgreementStatus,
   getApprovalStatus,
   getMatchHostPlayerId,
@@ -37,6 +39,7 @@ import {
   getMatchPlayerIds,
   getReportableMatchTimeMs,
   getReportableMatchUserIds,
+  getVoidMatchRestoreTargetUserId,
   getMatchReservePlayerIds,
   getSafeMatchSide,
   getMatchSideLeaderId,
@@ -65,7 +68,7 @@ const statusMeta = {
   approval: { label: "결과 승인 대기", tone: "orange" },
   disputed: { label: "이의제기 보류", tone: "orange" },
   confirmed: { label: "확정 완료", tone: "green" },
-  void: { label: "무효 처리", tone: "neutral" },
+  void: { label: "경기 무효", tone: "neutral" },
   cancelled: { label: "취소됨", tone: "neutral" },
 };
 
@@ -256,12 +259,16 @@ export default function MatchRoom({ app }) {
   const [courtReviewSaving, setCourtReviewSaving] = useState(false);
   const [matchDetailRefreshing, setMatchDetailRefreshing] = useState(false);
   const [soloRecordDeleteOpen, setSoloRecordDeleteOpen] = useState(false);
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [voidActionPending, setVoidActionPending] = useState(false);
+  const [voidRestoreDetail, setVoidRestoreDetail] = useState("");
+  const [voidRestoreStatus, setVoidRestoreStatus] = useState("");
   const existingCourtReview = useMemo(
     () => (match ? (app.state.settings?.courtReviews ?? []).find((review) => review.matchId === match.id && review.reviewerId === app.currentUser.id) ?? null : null),
     [app.currentUser.id, app.state.settings?.courtReviews, match?.id],
   );
   const [courtReviewDraft, setCourtReviewDraft] = useState(() => getCourtReviewDraft(existingCourtReview));
-  useBodyScrollLock(Boolean(statEditorPlayerId || soloRecordDeleteOpen));
+  useBodyScrollLock(Boolean(statEditorPlayerId || soloRecordDeleteOpen || voidDialogOpen));
 
   useEffect(() => {
     matchDetailRequestSequenceRef.current += 1;
@@ -383,6 +390,7 @@ export default function MatchRoom({ app }) {
   const canDispute = matchApprovalOpen && recordWindow.disputeOpen && currentUserCanFileDispute;
   const canRequestOwnPointDispute = canDispute && getMatchRecordPlayerIds(match).includes(app.currentUser.id);
   const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
+  const canRequestVoidRestore = canRequestVoidMatchRestore(match, app.currentUser.id);
   const canDeleteSoloRecord = isSoloRecord && match.createdBy === app.currentUser.id && match.status !== "cancelled";
   const canResumeApproval = match.status === "disputed" && currentUserCanOperateStartedMatch;
   const reportTime = getReportableMatchTimeMs(match);
@@ -540,6 +548,34 @@ export default function MatchRoom({ app }) {
       reason: disputeReason,
       customReason: disputeCustomReason,
     }));
+  };
+  const submitVoidMatch = async (reason) => {
+    if (!canVoid || voidActionPending) return;
+    setVoidActionPending(true);
+    try {
+      const result = await app.actions.voidMatch(match.id, reason);
+      if (result?.ok === false) return;
+      setVoidDialogOpen(false);
+    } finally {
+      setVoidActionPending(false);
+    }
+  };
+  const submitVoidRestoreRequest = async () => {
+    const detail = voidRestoreDetail.trim();
+    if (!canRequestVoidRestore || detail.length < 10) return;
+    setVoidRestoreStatus("접수 중");
+    const targetUserId = getVoidMatchRestoreTargetUserId(match);
+    const result = await app.actions.reportMatch(
+      match.id,
+      `${VOID_MATCH_RESTORE_REPORT_REASON}: ${detail}`,
+      [targetUserId],
+    );
+    if (result && result.ok !== false) {
+      setVoidRestoreStatus(result.duplicate ? "이미 접수된 요청이 있습니다." : "복구 심사 요청이 접수됐습니다.");
+      if (!result.duplicate) setVoidRestoreDetail("");
+    } else {
+      setVoidRestoreStatus("복구 심사 요청을 접수하지 못했습니다.");
+    }
   };
   const refreshMatchDetail = () => {
     if (matchDetailRefreshing) return;
@@ -1151,6 +1187,27 @@ export default function MatchRoom({ app }) {
               <Badge tone={canDispute || canCancel || canVoid ? "orange" : "neutral"}>{recordWindow.disputeExpired ? "이의 마감" : canDispute || canCancel || canVoid ? "처리 가능" : "닫힘"}</Badge>
             </div>
             {match.disputes?.[0] ? <p className="muted">최근 이의제기: {match.disputes[0].reason}</p> : null}
+            {match.status === "void" ? (
+              <div className="match-void-summary">
+                <strong>경기 무효 사유</strong>
+                <p>{match.voidReason || "사유를 불러오지 못했습니다."}</p>
+                {canRequestVoidRestore ? (
+                  <label className="memo-label">
+                    관리자 복구 심사 요청
+                    <textarea
+                      value={voidRestoreDetail}
+                      maxLength={500 - VOID_MATCH_RESTORE_REPORT_REASON.length - 2}
+                      placeholder="복구가 필요한 이유와 확인할 내용을 10자 이상 작성"
+                      onChange={(event) => setVoidRestoreDetail(event.target.value)}
+                    />
+                    <Button type="button" variant="secondary" disabled={voidRestoreDetail.trim().length < 10 || voidRestoreStatus === "접수 중"} onClick={submitVoidRestoreRequest}>
+                      무효 경기 복구 요청
+                    </Button>
+                    {voidRestoreStatus ? <small role="status">{voidRestoreStatus}</small> : null}
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
             <p className="muted">이의제기 마감: {formatWindowTime(recordWindow.disputeClosesAt)}</p>
             <Button type="button" variant="secondary" onClick={() => setReviewControlsOpen((current) => !current)}>
               {reviewControlsOpen ? "보조 메뉴 닫기" : "취소/이의/신고 열기"}
@@ -1189,7 +1246,7 @@ export default function MatchRoom({ app }) {
                 <label className="memo-label">
                   신고 사유
                   <select disabled={!canReport} value={reportReason} onChange={(event) => setReportReason(event.target.value)}>
-                    {REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                    {REPORT_REASONS.filter((reason) => reason !== VOID_MATCH_RESTORE_REPORT_REASON).map((reason) => <option key={reason} value={reason}>{reason}</option>)}
                   </select>
                 </label>
                 <div className="match-action-row">
@@ -1198,7 +1255,8 @@ export default function MatchRoom({ app }) {
                   <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(match.id)}>
                     {match.disputeDraftResult ? "수정안 확정" : "결과 확정"}
                   </Button>
-                  <Button type="button" variant="secondary" disabled={!canVoid} onClick={() => app.actions.voidMatch(match.id)}>무효 처리</Button>
+                  <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.rejectMatchDispute(match.id)}>이의신청 반려</Button>
+                  <Button type="button" variant="secondary" className="danger-button" disabled={!canVoid} onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button>
                   <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, reportReason)}>신고 접수</Button>
                 </div>
               </>
@@ -1264,6 +1322,12 @@ export default function MatchRoom({ app }) {
           </div>
         </div>
       ) : null}
+      <MatchVoidDialog
+        open={voidDialogOpen}
+        pending={voidActionPending}
+        onClose={() => setVoidDialogOpen(false)}
+        onConfirm={submitVoidMatch}
+      />
     </div>
   );
 }

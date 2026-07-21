@@ -1,3 +1,5 @@
+export const VOID_MATCH_RESTORE_REPORT_REASON = "무효 경기 복구 요청";
+
 export const REPORT_REASONS = [
   "나이 속임",
   "티어/MMR 조작 의심",
@@ -7,6 +9,7 @@ export const REPORT_REASONS = [
   "폭언/위협",
   "기록 조작",
   "허위 경기 결과",
+  VOID_MATCH_RESTORE_REPORT_REASON,
   "허위 구장 등록",
   "구장 위치 오류",
   "구장 상태 위험",
@@ -34,6 +37,7 @@ const REPORT_REASON_TARGET_TYPES = {
   "폭언/위협": REPORT_TARGET_TYPES.player,
   "기록 조작": REPORT_TARGET_TYPES.match,
   "허위 경기 결과": REPORT_TARGET_TYPES.match,
+  [VOID_MATCH_RESTORE_REPORT_REASON]: REPORT_TARGET_TYPES.match,
   "허위 구장 등록": REPORT_TARGET_TYPES.courtRequest,
   "구장 위치 오류": REPORT_TARGET_TYPES.court,
   "구장 상태 위험": REPORT_TARGET_TYPES.court,

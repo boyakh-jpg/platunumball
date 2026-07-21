@@ -223,6 +223,10 @@ export function fromRemoteMatch(row, context) {
     id: dispute.id,
     by: dispute.user_id,
     reason: dispute.reason,
+    status: dispute.status ?? "open",
+    resolvedAt: dispute.resolved_at ?? null,
+    resolvedBy: dispute.resolved_by ?? "",
+    resolution: dispute.resolution ?? "",
     createdAt: dispute.created_at,
   }));
   const agreements = {
@@ -306,6 +310,10 @@ export function fromRemoteMatch(row, context) {
     disputeDraftResult: row.dispute_draft_result ?? null,
     disputeDraftUpdatedAt: row.dispute_draft_updated_at ?? null,
     disputeResolvedAt: row.dispute_resolved_at ?? null,
+    voidReason: row.void_reason ?? "",
+    voidedBy: row.voided_by ?? "",
+    voidSnapshot: row.void_snapshot ?? {},
+    voidReview: row.void_review ?? {},
     mmrExcludedPlayerIds,
     anonymousPlayers: row.anonymous_players ?? {},
     result: resultRow

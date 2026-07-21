@@ -10,6 +10,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
   RECORD_TYPES,
   REFEREE_TRUST_MIN,
+  REPORT_MATCH_WINDOW_MS,
   ROOM_KINDS,
   SOLO_RECORD_ANONYMOUS_POSITION,
   SOLO_RECORD_ANONYMOUS_SOURCE,
@@ -409,7 +410,8 @@ export function getMatchReviewParticipantIds(match = {}) {
 }
 
 export function getReportableMatchTimeMs(match = {}) {
-  const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
+  const rawDate = (match.status === "void" ? match.voidedAt : null)
+    ?? match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
   if (!rawDate) return 0;
   if (match.scheduledDate && rawDate === match.scheduledDate) {
     return getMatchScheduledDate(match)?.getTime() ?? 0;
@@ -469,6 +471,20 @@ export function getReportableMatchUserIds(match = {}) {
     ...getMatchReservePlayerIds(match, "teamA"),
     ...getMatchReservePlayerIds(match, "teamB"),
   ]);
+}
+
+export function getVoidMatchRestoreTargetUserId(match = {}) {
+  return String(match.voidedBy ?? match.createdBy ?? "").trim();
+}
+
+export function canRequestVoidMatchRestore(match = {}, userId = "", nowMs = Date.now()) {
+  if (match?.status !== "void" || !userId) return false;
+  const targetUserId = getVoidMatchRestoreTargetUserId(match);
+  if (!targetUserId || targetUserId === userId) return false;
+  const reportTime = getReportableMatchTimeMs(match);
+  return getReportableMatchUserIds(match).includes(userId)
+    && reportTime >= nowMs - REPORT_MATCH_WINDOW_MS
+    && reportTime <= nowMs;
 }
 
 export function isMatchSideTeamParty(match = {}, sideName = "") {

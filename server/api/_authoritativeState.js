@@ -29,6 +29,7 @@ import {
   removeMatchRoomPlayer,
   removeRecruitingPartyPlayer,
   requestMatchRefereeAbsence,
+  rejectMatchDispute,
   resumeMatchApproval,
   sendRecruitingChat,
   approveTournamentTeam,
@@ -71,7 +72,7 @@ function getCreatedItem(beforeItems = [], afterItems = []) {
 }
 
 export function getMatchRatingCommit(beforeState = {}, afterState = {}, match = null, action = "") {
-  if (!["approveMatch", "autoConfirmMatch", "resumeMatchApproval"].includes(action) || match?.status !== "confirmed" || !match?.ratingResult) return null;
+  if (!["approveMatch", "autoConfirmMatch", "resumeMatchApproval", "rejectMatchDispute"].includes(action) || match?.status !== "confirmed" || !match?.ratingResult) return null;
   const beforeUsersById = new Map((beforeState.users ?? []).map((user) => [user.id, user]));
   const beforeTeamsById = new Map((beforeState.teams ?? []).map((team) => [team.id, team]));
   const ratingChangeByPlayerId = new Map((match.ratingResult ?? []).map((change) => [change.playerId, change]));
@@ -395,10 +396,13 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       next = deleteSoloRecord(state, operation.matchId);
       break;
     case "voidMatch":
-      next = voidMatch(state, operation.matchId);
+      next = voidMatch(state, operation.matchId, operation.reason);
       break;
     case "resumeMatchApproval":
       next = resumeMatchApproval(state, operation.matchId, operation.resultDraft ?? null);
+      break;
+    case "rejectMatchDispute":
+      next = rejectMatchDispute(state, operation.matchId);
       break;
     case "startMatch":
       next = startMatch(state, operation.matchId);

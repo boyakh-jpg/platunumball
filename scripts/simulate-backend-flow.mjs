@@ -4729,6 +4729,7 @@ async function runDisputeResumeThumbsScenario({
     const voidResult = await step(`${ids.label}:voidMatch`, () => syncMatchAs(hostLogin, {
       action: "voidMatch",
       matchId: ids.matchId,
+      reason: "원격 흐름 검증을 위한 경기 무효 처리 사유입니다.",
     }));
     assertFlow(voidResult?.sqlReducer === true, "match void SQL reducer not used", voidResult);
     match = await getMatchAfterResult(voidResult, hostLogin, `${ids.label}:loadAfterVoid`);

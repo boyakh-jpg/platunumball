@@ -701,6 +701,34 @@ const JOIN_RECRUITING_ACTIONS = new Set([
   "joinRecruitingSideParty",
 ]);
 
+const PUBLIC_ROOM_PARTICIPATION_ACTIONS = new Set([
+  "interestRecruitingPost",
+  "joinRecruitingSideParty",
+  "acceptRecruitingInvitation",
+]);
+
+async function assertPublicRoomParticipationAllowed(context, operation = {}) {
+  if (!PUBLIC_ROOM_PARTICIPATION_ACTIONS.has(operation.action)) return;
+  const postId = String(operation.postId ?? "").trim();
+  if (!postId) return;
+  const [{ data: post, error: postError }, { data: discipline, error: disciplineError }] = await Promise.all([
+    context.supabase.from("recruiting_posts").select("visibility").eq("id", postId).maybeSingle(),
+    context.supabase
+      .from("admin_disciplinary_actions")
+      .select("id,ends_at")
+      .eq("user_id", context.profileId)
+      .eq("type", "public_room_suspension")
+      .eq("status", "active")
+      .lte("starts_at", new Date().toISOString())
+      .or(`ends_at.is.null,ends_at.gt.${new Date().toISOString()}`)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (postError) throw postError;
+  if (disciplineError) throw disciplineError;
+  if ((post?.visibility ?? "public") === "public" && discipline?.id) reject(403, "public_room_participation_suspended");
+}
+
 const MEMBERSHIP_ADD_RECRUITING_ACTIONS = new Set([
   "createRecruitingPost",
   "interestRecruitingPost",
@@ -1488,6 +1516,7 @@ export default async function handler(request, response) {
     if (!SQL_REDUCER_RECRUITING_ACTIONS.has(operation.action) && !["sendRecruitingChat", "confirmRecruitingMatch"].includes(operation.action)) {
       reject(400, "unsupported_recruiting_operation");
     }
+    await timing.track("publicRoomDiscipline", () => assertPublicRoomParticipationAllowed(context, operation));
     let post = null;
     let notifications = [];
     let action = operation.action;

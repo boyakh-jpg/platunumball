@@ -10,6 +10,7 @@ import {
   isRefereeGrade,
 } from "../src/lib/constants.js";
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
+import { rejectMatchDispute, voidMatch as applyMatchVoid } from "../src/data/repository.js";
 import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
 import {
   AFFILIATION_CHANGE_COOLDOWN_DAYS,
@@ -54,11 +55,15 @@ import {
   isTerminalRecruitingStatus,
 } from "../src/lib/notifications.js";
 import {
+  canRequestVoidMatchRestore,
   compareMatchRecency,
+  getVoidMatchRestoreTargetUserId,
   getMatchSideResult,
   getPlayerMatchResult,
   isMatchWithinRecordDetailWindow,
 } from "../src/lib/matchUtils.js";
+import { DEFAULT_RATING_POLICY } from "../src/lib/ratingPolicy.js";
+import { VOID_MATCH_RESTORE_REPORT_REASON } from "../src/lib/reportReasons.js";
 import {
   getCourtAccessLabel,
   getCourtHoopCount,
@@ -705,6 +710,82 @@ test("R2 image payload and WebP validation share one implementation", () => {
     () => decodeBase64Image("not-base64", { maxBytes: 1024, errorPrefix: "test_image" }),
     /test_image_invalid_payload/,
   );
+});
+
+test("match dispute rejection, void reasons, restoration and scoped penalties stay separate", async () => {
+  const now = new Date().toISOString();
+  const voidedMatch = {
+    id: "match-void",
+    status: "void",
+    createdBy: "host",
+    voidedBy: "referee",
+    voidedAt: now,
+    teamA: { players: ["host", "player-a"] },
+    teamB: { players: ["player-b"] },
+  };
+  assert.equal(getVoidMatchRestoreTargetUserId(voidedMatch), "referee");
+  assert.equal(canRequestVoidMatchRestore(voidedMatch, "player-a"), true);
+  assert.equal(canRequestVoidMatchRestore(voidedMatch, "referee"), false);
+  assert.equal(DEFAULT_RATING_POLICY.trust.matchVoidHostPenalty, 2);
+  assert.equal(VOID_MATCH_RESTORE_REPORT_REASON, "무효 경기 복구 요청");
+
+  const ratings = { integrated: 1200, modes: { "1v1": 1200 } };
+  const disputedMatch = {
+    id: "match-disputed",
+    title: "검증 경기",
+    status: "disputed",
+    createdBy: "host",
+    refereeId: null,
+    mode: "1v1",
+    ranked: false,
+    rules: { ratingScale: 1 },
+    teamA: { players: ["host"] },
+    teamB: { players: ["guest"] },
+    result: {
+      scoreA: 10,
+      scoreB: 8,
+      playerStats: {
+        host: { points: 10, rebounds: 0, assists: 0, steals: 0, blocks: 0, fouls: 0 },
+        guest: { points: 8, rebounds: 0, assists: 0, steals: 0, blocks: 0, fouls: 0 },
+      },
+    },
+    disputes: [{ id: "dispute-open", by: "guest", status: "open", reason: "점수 확인" }],
+  };
+  const state = {
+    currentUserId: "host",
+    users: [{ id: "host", trustScore: 80, ratings }, { id: "guest", trustScore: 80, ratings }],
+    matches: [disputedMatch],
+    notifications: [],
+    teams: [],
+    affiliations: [],
+    settings: { ratingPolicy: { trust: { matchVoidHostPenalty: 2 } } },
+  };
+  assert.equal(applyMatchVoid(state, disputedMatch.id, "짧음"), state);
+  const voidedState = applyMatchVoid(state, disputedMatch.id, "경기 진행 합의가 깨져 전체 경기를 무효 처리합니다.");
+  assert.equal(voidedState.matches[0].status, "void");
+  assert.equal(voidedState.matches[0].voidSnapshot.result.scoreA, 10);
+  assert.equal(voidedState.users[0].trustScore, 78);
+  const rejectedState = rejectMatchDispute(state, disputedMatch.id);
+  assert.equal(rejectedState.matches[0].status, "confirmed");
+  assert.equal(rejectedState.matches[0].result.scoreA, 10);
+
+  const [matchRoom, recruiting, matchSync, reportSubmit, adminReview, migration] = await Promise.all([
+    readSource("src/pages/MatchRoom.jsx"),
+    readSource("src/pages/Recruiting.jsx"),
+    readSource("server/api/matches/sync-match.js"),
+    readSource("server/api/reports/submit.js"),
+    readSource("server/api/admin/review-action.js"),
+    readSource("supabase/migrations/20260721210000_match_void_review_and_dispute_rejection.sql"),
+  ]);
+  assert.match(matchRoom, /이의신청 반려/);
+  assert.match(recruiting, /경기 무효 처리/);
+  assert.match(matchSync, /rankball_match_reject_dispute_action/);
+  assert.match(matchSync, /p_reason: operation\.reason/);
+  assert.match(reportSubmit, /matchReviewType:\s*"void_restore"/);
+  assert.match(adminReview, /rankball_review_void_match_report/);
+  assert.match(migration, /char_length\(safe_reason\) < 10/);
+  assert.match(migration, /'restoreMatchHalf'/);
+  assert.match(migration, /public_room_suspension/);
 });
 
 test("core consumers do not restore duplicated policy literals", async () => {

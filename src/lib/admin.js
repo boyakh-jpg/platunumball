@@ -36,6 +36,9 @@ export const SUSPENSION_TIERS = [
 ];
 
 export const ADMIN_REVIEW_ACTIONS = {
+  keepMatchVoid: { label: "경기 무효 유지", feedback: "검토 결과 경기 무효 처리를 유지했습니다." },
+  restoreMatchHalf: { label: "경기 복구 · MMR 50%", feedback: "경기를 복구하고 MMR을 50% 반영했습니다." },
+  restoreMatchFull: { label: "경기 복구 · MMR 100%", feedback: "경기를 복구하고 MMR을 정상 반영했습니다." },
   validReport: { label: "신고 인정", feedback: "신고가 인정되어 조치되었습니다." },
   dismissReport: { label: "신고 기각", feedback: "확인 결과 신고가 기각되었습니다." },
   maliciousReporter: { label: "악성신고자 제재", feedback: "악성 신고로 판단되어 신고자에게 제재가 적용되었습니다." },
@@ -199,6 +202,18 @@ export function getActiveUserDiscipline(settings = {}, userId = "", nowMs = Date
     .filter((action) => (
       action.userId === userId &&
       action.type === "suspension" &&
+      action.status !== "revoked" &&
+      isAppointmentActive(action, nowMs)
+    ))
+    .sort((a, b) => getTime(b.endsAt) - getTime(a.endsAt) || Number(b.durationDays ?? 0) - Number(a.durationDays ?? 0))[0] ?? null;
+}
+
+export function getActivePublicRoomDiscipline(settings = {}, userId = "", nowMs = Date.now()) {
+  if (!userId) return null;
+  return [...(settings.adminDisciplinaryActions ?? [])]
+    .filter((action) => (
+      action.userId === userId &&
+      action.type === "public_room_suspension" &&
       action.status !== "revoked" &&
       isAppointmentActive(action, nowMs)
     ))

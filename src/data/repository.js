@@ -67,6 +67,7 @@ import {
 } from "../lib/courts.js";
 import {
   canOperatorSubmitMissingPostgameResult,
+  canRequestVoidMatchRestore,
   clearMatchPlayerDecision,
   fillMatchDecision,
   getAgreementStatus,
@@ -90,6 +91,7 @@ import {
   getRecorderHandoffPatch,
   getReportableMatchTimeMs,
   getReportableMatchUserIds,
+  getVoidMatchRestoreTargetUserId,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
   getMatchScheduledDate,
@@ -117,6 +119,7 @@ import {
   updateMatchPartiesForPlayer,
   withEffectiveMatchStatRecorders,
 } from "../lib/matchUtils.js";
+import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
 import {
   applyMatchRating,
   averageTeamMmr,
@@ -184,6 +187,7 @@ import {
   REFEREE_GRADE_META,
   canManageAppointmentRole,
   getActiveUserDiscipline,
+  getActivePublicRoomDiscipline,
   getAdminAuthorityLevel,
   getAppointmentTermDays,
   getReportTargetUserId,
@@ -429,6 +433,22 @@ function normalizeSettings(settings = {}, options = {}) {
   const demoState = includeDemo ? getDemoInitialState() : EMPTY_STATE;
   const fallbackSettings = includeDemo ? demoState.settings ?? {} : {};
   return normalizeSettingsCore(settings, { fallbackSettings });
+}
+
+function getPublicRoomDisciplineBlockedState(state, post, actionLabel = "공개방 참가") {
+  if ((post?.visibility ?? "public") !== "public") return null;
+  const discipline = getActivePublicRoomDiscipline(state.settings, state.currentUserId);
+  if (!discipline) return null;
+  const until = discipline.endsAt ? new Date(discipline.endsAt).toLocaleString("ko-KR") : "제한 해제 전";
+  return {
+    ...state,
+    notifications: [{
+      id: makeId("n"),
+      title: "공개방 참가 제한 중",
+      body: `${actionLabel}은 ${until}까지 제한됩니다. 사유: ${discipline.reason || "관리자 제재"}`,
+      tone: "orange",
+    }, ...state.notifications],
+  };
 }
 
 export function normalizeState(state, options = {}) {
@@ -1410,6 +1430,10 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       confirmed_at: match.confirmedAt,
       cancelled_at: match.cancelledAt,
       voided_at: match.voidedAt,
+      void_reason: match.voidReason ?? null,
+      voided_by: match.voidedBy ?? null,
+      void_snapshot: match.voidSnapshot ?? {},
+      void_review: match.voidReview ?? {},
       rating_result: match.ratingResult ?? null,
       team_rating_result: match.teamRatingResult ?? null,
       updated_at: new Date().toISOString(),
@@ -3662,6 +3686,7 @@ export function disputeMatch(state, matchId, disputeInput = "") {
     id: makeUuid(),
     by: state.currentUserId,
     reason: disputeRequest.reason || "스코어 또는 개인 기록 확인이 필요합니다.",
+    status: "open",
     createdAt: now,
   };
   const disputeDraftResult = buildDisputeDraftResult(match, disputeRequest, state.currentUserId, now);
@@ -4079,23 +4104,71 @@ export function cancelMatch(state, matchId) {
   };
 }
 
-export function voidMatch(state, matchId) {
+export function voidMatch(state, matchId, reason = "") {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || match.status !== "disputed") return state;
   if (!currentUserCanOperateStartedMatch(state, match)) return state;
+  const safeReason = String(reason).trim();
+  if (safeReason.length < 10 || safeReason.length > 500) return state;
+  const now = new Date().toISOString();
+  const hostPenalty = Math.max(0, Math.min(10, Number(state.settings?.ratingPolicy?.trust?.matchVoidHostPenalty ?? 2)));
+  const hostPlayerId = getMatchHostPlayerId(state, match);
 
   return {
     ...state,
+    users: hostPlayerId ? adjustUserTrust(state.users, hostPlayerId, -hostPenalty) : state.users,
     matches: state.matches.map((item) =>
       item.id === matchId
-        ? { ...item, status: "void", ranked: false, voidedAt: new Date().toISOString() }
+        ? {
+            ...item,
+            status: "void",
+            ranked: false,
+            voidedAt: now,
+            voidedBy: state.currentUserId,
+            voidReason: safeReason,
+            voidSnapshot: {
+              ranked: item.ranked !== false,
+              ratingScale: Number(item.rules?.ratingScale ?? 1),
+              result: item.result ? JSON.parse(JSON.stringify(item.result)) : null,
+            },
+            disputes: (item.disputes ?? []).map((dispute, index) => index === 0 && dispute.status === "open"
+              ? { ...dispute, status: "accepted", resolution: "match_voided", resolvedAt: now, resolvedBy: state.currentUserId }
+              : dispute),
+          }
         : item,
     ),
     notifications: [
-      { id: makeId("n"), title: "결과 무효", body: `${match.title} 결과가 랭킹 반영에서 제외됐습니다.`, tone: "match", matchId },
+      { id: makeId("n"), title: "경기 무효 처리", body: `${match.title} 경기가 무효 처리됐습니다. 사유: ${safeReason}`, tone: "match", matchId },
       ...state.notifications,
     ],
   };
+}
+
+export function rejectMatchDispute(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match?.result || match.status !== "disputed") return state;
+  if (!currentUserCanOperateStartedMatch(state, match)) return state;
+  const now = new Date().toISOString();
+  const resolvedMatch = {
+    ...match,
+    disputeDraftResult: undefined,
+    disputeDraftUpdatedAt: undefined,
+    disputeResolvedAt: now,
+    disputes: (match.disputes ?? []).map((dispute, index) => index === 0 && dispute.status === "open"
+      ? { ...dispute, status: "rejected", resolution: "original_result_confirmed", resolvedAt: now, resolvedBy: state.currentUserId }
+      : dispute),
+  };
+  return finalizeMatch({
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? resolvedMatch : item),
+    notifications: [{
+      id: makeId("n"),
+      title: "이의신청 반려",
+      body: `${match.title} 이의신청이 반려되어 기존 결과로 확정됐습니다.`,
+      tone: "match",
+      matchId,
+    }, ...state.notifications],
+  }, resolvedMatch);
 }
 
 export function resumeMatchApproval(state, matchId, resultDraft = null) {
@@ -4125,6 +4198,7 @@ export function resumeMatchApproval(state, matchId, resultDraft = null) {
     };
   }
 
+  const resolvedAt = new Date().toISOString();
   const resolvedMatch = {
     ...match,
     result,
@@ -4133,7 +4207,10 @@ export function resumeMatchApproval(state, matchId, resultDraft = null) {
     approvals: { teamA: [], teamB: [] },
     disputeDraftResult: undefined,
     disputeDraftUpdatedAt: undefined,
-    disputeResolvedAt: new Date().toISOString(),
+    disputeResolvedAt: resolvedAt,
+    disputes: (match.disputes ?? []).map((dispute, index) => index === 0 && dispute.status === "open"
+      ? { ...dispute, status: "accepted", resolution: "draft_accepted", resolvedAt, resolvedBy: state.currentUserId }
+      : dispute),
   };
   return finalizeMatch(
     {
@@ -4779,6 +4856,9 @@ export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
   if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match) return state;
+  const safeReason = String(reason).trim();
+  const isVoidRestoreRequest = safeReason.startsWith(VOID_MATCH_RESTORE_REPORT_REASON);
+  if (isVoidRestoreRequest && !canRequestVoidMatchRestore(match, state.currentUserId)) return state;
   const now = Date.now();
   const reportTime = getReportableMatchTimeMs(match);
   const matchPlayerIds = new Set(getReportableMatchUserIds(match));
@@ -4812,16 +4892,26 @@ export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
       ],
     };
   }
-  const safeReportedUserIds = Array.from(new Set((reportedUserIds ?? []).filter((userId) => matchPlayerIds.has(userId))));
+  const voidTargetUserId = isVoidRestoreRequest ? getVoidMatchRestoreTargetUserId(match) : "";
+  const safeReportedUserIds = isVoidRestoreRequest
+    ? [voidTargetUserId].filter(Boolean)
+    : Array.from(new Set((reportedUserIds ?? []).filter((userId) => matchPlayerIds.has(userId))));
   const report = {
     id: makeId("r"),
     type: "match",
     targetId: matchId,
     by: state.currentUserId,
     reportedUserIds: safeReportedUserIds,
-    reason: reason.trim() || "기타 운영 확인 필요",
+    reason: safeReason || "기타 운영 확인 필요",
     status: "open",
     createdAt: new Date().toISOString(),
+    ...(isVoidRestoreRequest ? {
+      matchReviewType: "void_restore",
+      voidReason: match.voidReason ?? "",
+      voidedBy: voidTargetUserId,
+      matchHostId: match.createdBy ?? "",
+      voidedAt: match.voidedAt ?? null,
+    } : {}),
   };
 
   return {
@@ -5131,6 +5221,95 @@ function makeDisciplinaryAction({ state, report, actionType, targetUserId, durat
   };
 }
 
+function commitVoidMatchReviewAction(state, report, draft = {}) {
+  const actionType = ["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(draft.actionType)
+    ? draft.actionType
+    : "keepMatchVoid";
+  const match = (state.matches ?? []).find((item) => item.id === report.targetId);
+  if (!match || match.status !== "void") return state;
+  const now = new Date().toISOString();
+  const reason = String(draft.reason ?? "").trim() || ADMIN_REVIEW_ACTIONS[actionType].label;
+  const feedback = String(draft.feedback ?? "").trim() || ADMIN_REVIEW_ACTIONS[actionType].feedback;
+  const durationDays = getSuspensionTier(draft.durationDays).days;
+  const penaltyType = ["public_room_suspension", "suspension"].includes(draft.penaltyType) ? draft.penaltyType : "";
+  const targetUserId = String(draft.targetUserId ?? report.reportedUserIds?.[0] ?? "").trim();
+  if (penaltyType && !targetUserId) return state;
+  const actionLabel = actionType === "restoreMatchHalf"
+    ? "경기 복구 · MMR 50% 반영"
+    : actionType === "restoreMatchFull"
+      ? "경기 복구 · MMR 100% 반영"
+      : "경기 무효 유지";
+  const disciplinaryAction = penaltyType ? {
+    id: makeId("ad"),
+    userId: targetUserId,
+    type: penaltyType,
+    actionType: penaltyType === "public_room_suspension" ? "publicRoomSuspend" : "suspendTarget",
+    sourceReportId: report.id,
+    reason,
+    startsAt: now,
+    endsAt: new Date(new Date(now).getTime() + durationDays * DAY_MS).toISOString(),
+    durationDays,
+    createdAt: now,
+    createdBy: state.currentUserId,
+    status: "active",
+  } : null;
+  const resolution = { actionType, actionLabel, feedback, reason, targetUserId: targetUserId || null, penaltyType: penaltyType || null, durationDays };
+  const nextReport = { ...report, status: "resolved", resolvedAt: now, resolvedBy: state.currentUserId, resolution };
+  const auditLog = {
+    id: makeId("aa"), type: "void_match_review", status: "committed", reportId: report.id,
+    actionType, reason, feedback, targetUserId, penaltyType, durationDays, createdAt: now, createdBy: state.currentUserId,
+  };
+  const reviewState = {
+    ...state,
+    reports: (state.reports ?? []).map((item) => item.id === report.id ? nextReport : item),
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
+      adminDisciplinaryActions: disciplinaryAction
+        ? [disciplinaryAction, ...(state.settings?.adminDisciplinaryActions ?? [])]
+        : (state.settings?.adminDisciplinaryActions ?? []),
+    }),
+    notifications: [
+      {
+        id: makeId("n"), targetUserId: report.by, title: "신고 처리 결과",
+        body: `처리: ${actionLabel}. 답변: ${feedback}`, tone: "team", type: "report", matchId: match.id,
+      },
+      ...(disciplinaryAction ? [{
+        id: makeId("n"), targetUserId, title: "운영 제재 안내",
+        body: `${penaltyType === "public_room_suspension" ? "공개방 참가" : "서비스 활동"}이 ${durationDays}일간 제한됩니다. 사유: ${reason}`,
+        tone: "orange", type: "disciplinary",
+      }] : []),
+      ...state.notifications,
+    ],
+  };
+  if (actionType === "keepMatchVoid") {
+    return {
+      ...reviewState,
+      matches: reviewState.matches.map((item) => item.id === match.id ? { ...item, voidReview: resolution } : item),
+    };
+  }
+
+  const ratingFactor = actionType === "restoreMatchHalf" ? 0.5 : 1;
+  const snapshotResult = match.voidSnapshot?.result ?? match.result;
+  if (!snapshotResult) return state;
+  const restoredMatch = {
+    ...match,
+    status: "disputed",
+    ranked: match.voidSnapshot?.ranked !== false,
+    result: snapshotResult,
+    disputeDraftResult: snapshotResult,
+    rules: {
+      ...(match.rules ?? {}),
+      ratingScale: Number(match.voidSnapshot?.ratingScale ?? match.rules?.ratingScale ?? 1) * ratingFactor,
+    },
+    voidReview: resolution,
+  };
+  return finalizeMatch({
+    ...reviewState,
+    matches: reviewState.matches.map((item) => item.id === match.id ? restoredMatch : item),
+  }, restoredMatch);
+}
+
 export function commitAdminReviewAction(state, draft = {}) {
   if (!hasAdminAccess(state.users.find((user) => user.id === state.currentUserId), state.settings)) {
     return {
@@ -5179,6 +5358,10 @@ export function commitAdminReviewAction(state, draft = {}) {
       ...state,
       notifications: [getAdminActionNotification("구장 리뷰 신고만 리뷰 숨김 처리할 수 있습니다."), ...state.notifications],
     };
+  }
+
+  if (report.matchReviewType === "void_restore") {
+    return commitVoidMatchReviewAction(state, report, draft);
   }
   if (actionType === "resetTeamEmblem" && report.type !== "team_emblem") {
     return {
@@ -5943,6 +6126,8 @@ export function interestRecruitingPost(state, postId, application = {}) {
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
+  const publicRoomDisciplineBlock = getPublicRoomDisciplineBlockedState(state, post);
+  if (publicRoomDisciplineBlock) return publicRoomDisciplineBlock;
   if (isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
   const user = state.users.find((item) => item.id === state.currentUserId);
   const teamOnly = isTeamOnlyRecruitingRoom(post);
@@ -7399,6 +7584,8 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
+  const publicRoomDisciplineBlock = getPublicRoomDisciplineBlockedState(state, post);
+  if (publicRoomDisciplineBlock) return publicRoomDisciplineBlock;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const invitation = roomState.invitations.find((item) => (
     item.id === invitationId &&
@@ -7917,6 +8104,8 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !teamId) return state;
+  const publicRoomDisciplineBlock = getPublicRoomDisciplineBlockedState(state, post);
+  if (publicRoomDisciplineBlock) return publicRoomDisciplineBlock;
   if (isSoloIndividualRecruitingRoom(post)) return state;
 
   const team = state.teams.find((item) => item.id === teamId && item.members.some((member) => member.userId === state.currentUserId));

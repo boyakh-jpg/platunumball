@@ -46,6 +46,7 @@ import {
   reportCourtReview,
   reportMatch,
   reportTeamEmblem,
+  rejectMatchDispute,
   resetState,
   requestMatchRefereeAbsence,
   resumeMatchApproval,
@@ -199,6 +200,7 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "deleteSoloRecord",
   "voidMatch",
   "resumeMatchApproval",
+  "rejectMatchDispute",
   "startMatch",
   "endMatch",
   "addMatchLatePlayer",
@@ -244,6 +246,7 @@ const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "handoffMatchRecorder",
   "requestMatchRefereeAbsence",
   "resumeMatchApproval",
+  "rejectMatchDispute",
   "removeMatchLatePlayer",
   "startMatch",
   "submitMatchThumbs",
@@ -3183,7 +3186,8 @@ export function useAppData(authUser = null, appLocation = null) {
       disputeMatch: (matchId, reason) => applyMatchMutation(matchId, (prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason), { action: "disputeMatch", reason }),
       cancelMatch: (matchId) => applyMatchMutation(matchId, (prev) => cancelMatch({ ...prev, currentUserId }, matchId), { action: "cancelMatch" }),
       deleteSoloRecord: (matchId) => applyMatchMutation(matchId, (prev) => deleteSoloRecord({ ...prev, currentUserId }, matchId), { action: "deleteSoloRecord" }),
-      voidMatch: (matchId) => applyMatchMutation(matchId, (prev) => voidMatch({ ...prev, currentUserId }, matchId), { action: "voidMatch" }),
+      voidMatch: (matchId, reason) => applyMatchMutation(matchId, (prev) => voidMatch({ ...prev, currentUserId }, matchId, reason), { action: "voidMatch", reason }),
+      rejectMatchDispute: (matchId) => applyMatchMutation(matchId, (prev) => rejectMatchDispute({ ...prev, currentUserId }, matchId), { action: "rejectMatchDispute" }),
       resumeMatchApproval: (matchId, resultDraft = null) => applyMatchMutation(matchId, (prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId, resultDraft), { action: "resumeMatchApproval", resultDraft }),
       startMatch: (matchId) => applyMatchMutation(matchId, (prev) => startMatch({ ...prev, currentUserId }, matchId), { action: "startMatch" }),
       endMatch: (matchId) => applyMatchMutation(matchId, (prev) => endMatch({ ...prev, currentUserId }, matchId), { action: "endMatch" }),
@@ -3246,17 +3250,24 @@ export function useAppData(authUser = null, appLocation = null) {
       },
       blockUser: (userId) => applyBlockedUserMutation(userId, true),
       unblockUser: (userId) => applyBlockedUserMutation(userId, false),
-      reportMatch: (matchId, reason, reportedUserIds) => {
-        let createdReport = null;
-        let syncedNotifications = [];
-        setState((prev) => {
-          const existingIds = new Set((prev.reports ?? []).map((report) => report.id));
-          const next = reportMatch({ ...prev, currentUserId }, matchId, reason, reportedUserIds);
-          createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
-          syncedNotifications = createdReport ? getNewReportNotifications(prev, next, createdReport) : [];
-          return next;
-        });
-        if (createdReport) submitReportServer(createdReport, syncedNotifications);
+      reportMatch: async (matchId, reason, reportedUserIds) => {
+        const previousState = stateRef.current;
+        const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
+        const nextState = reportMatch({ ...previousState, currentUserId }, matchId, reason, reportedUserIds);
+        const createdReport = (nextState.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+        if (!createdReport) return { ok: false, error: "match_report_unavailable" };
+        const syncedNotifications = getNewReportNotifications(previousState, nextState, createdReport);
+        setState(nextState);
+        if (!isSupabaseConfigured) return { ok: true, reportId: createdReport.id };
+        const result = await submitReportServer(createdReport, syncedNotifications);
+        if (!result || result.ok === false) {
+          setState((current) => ({
+            ...current,
+            reports: (current.reports ?? []).filter((report) => report.id !== createdReport.id),
+            notifications: (current.notifications ?? []).filter((notification) => !syncedNotifications.some((item) => item.id === notification.id)),
+          }));
+        }
+        return result;
       },
       reportCourtRequest: (requestId, reason) => {
         setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason));

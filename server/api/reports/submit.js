@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { getMatchScheduledDate } from "../../../src/lib/matchUtils.js";
 import { REPORT_MATCH_WINDOW_MS } from "../../../src/lib/constants.js";
+import { VOID_MATCH_RESTORE_REPORT_REASON } from "../../../src/lib/reportReasons.js";
 
 const REPORT_MATCH_QUERY_PAGE_SIZE = 200;
 const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review", "team_emblem", "team_name", "affiliation_name"]);
@@ -58,10 +59,10 @@ function toNotificationRows(notifications = [], profileId = "", report = {}) {
   }).filter((row) => row?.id);
 }
 
-async function assertCanSubmitMatchReport(context, targetId, reportedUserIds) {
+async function assertCanSubmitMatchReport(context, targetId, reportedUserIds, reason = "") {
   const { data: match, error: matchError } = await context.supabase
     .from("matches")
-    .select("id, created_by, referee_id, former_referee_id, stat_recorders, scheduled_at, scheduled_date, scheduled_time, confirmed_at, ended_at, created_at, reserve_players, played_player_ids, attendance")
+    .select("id, status, created_by, referee_id, former_referee_id, stat_recorders, scheduled_at, scheduled_date, scheduled_time, confirmed_at, ended_at, created_at, reserve_players, played_player_ids, attendance, voided_at, void_reason, voided_by")
     .eq("id", targetId)
     .maybeSingle();
   if (matchError) throw matchError;
@@ -92,7 +93,19 @@ async function assertCanSubmitMatchReport(context, targetId, reportedUserIds) {
     error.statusCode = 403;
     throw error;
   }
-  if (!isReportWindowOpen(match)) {
+  const isVoidRestoreRequest = String(reason).startsWith(VOID_MATCH_RESTORE_REPORT_REASON);
+  if (isVoidRestoreRequest) {
+    const restoreDetail = String(reason).slice(VOID_MATCH_RESTORE_REPORT_REASON.length).replace(/^\s*:\s*/, "").trim();
+    if (restoreDetail.length < 10) {
+      const error = new Error("void_restore_reason_length_invalid");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+  const reportWindowOpen = isVoidRestoreRequest && match.voided_at
+    ? Date.parse(match.voided_at) >= Date.now() - REPORT_MATCH_WINDOW_MS && Date.parse(match.voided_at) <= Date.now()
+    : isReportWindowOpen(match);
+  if (!reportWindowOpen) {
     const error = new Error("report_window_closed");
     error.statusCode = 400;
     throw error;
@@ -102,7 +115,33 @@ async function assertCanSubmitMatchReport(context, targetId, reportedUserIds) {
   for (const value of [match.stat_recorders, match.reserve_players, match.played_player_ids, match.attendance]) {
     uniqueStrings(flattenProfileValues(value)).forEach((profileId) => allowedReportedIds.add(profileId));
   }
-  return reportedUserIds.filter((profileId) => allowedReportedIds.has(profileId));
+  if (isVoidRestoreRequest) {
+    const voidedBy = String(match.voided_by || match.created_by || "").trim();
+    if (match.status !== "void") {
+      const error = new Error("void_match_required");
+      error.statusCode = 400;
+      throw error;
+    }
+    if (!voidedBy || voidedBy === context.profileId) {
+      const error = new Error("void_restore_report_permission_denied");
+      error.statusCode = 403;
+      throw error;
+    }
+    return {
+      reportedUserIds: [voidedBy],
+      verifiedPayload: {
+        matchReviewType: "void_restore",
+        voidReason: match.void_reason || "",
+        voidedBy,
+        matchHostId: match.created_by || "",
+        voidedAt: match.voided_at || null,
+      },
+    };
+  }
+  return {
+    reportedUserIds: reportedUserIds.filter((profileId) => allowedReportedIds.has(profileId)),
+    verifiedPayload: {},
+  };
 }
 
 function flattenProfileValues(value) {
@@ -366,9 +405,14 @@ async function buildReportRow(context, report = {}) {
   }
 
   const rawReportedUserIds = uniqueStrings(report.reportedUserIds || report.reported_user_ids);
+  const reason = String(report.reason || "기타 운영 확인 필요").trim().slice(0, 500) || "기타 운영 확인 필요";
   let reportedUserIds = [];
   let verifiedPayload = {};
-  if (type === "match") reportedUserIds = await assertCanSubmitMatchReport(context, targetId, rawReportedUserIds);
+  if (type === "match") {
+    const verified = await assertCanSubmitMatchReport(context, targetId, rawReportedUserIds, reason);
+    reportedUserIds = verified.reportedUserIds;
+    verifiedPayload = verified.verifiedPayload;
+  }
   if (type === "player") reportedUserIds = await assertCanSubmitPlayerReport(context, targetId);
   if (type === "court") reportedUserIds = await assertCanSubmitCourtReport(context, targetId);
   if (type === "court_review") reportedUserIds = await assertCanSubmitCourtReviewReport(context, targetId);
@@ -390,7 +434,6 @@ async function buildReportRow(context, report = {}) {
   const now = new Date().toISOString();
   const createdAt = now;
   const id = String(report.id || `r_${randomUUID()}`).trim();
-  const reason = String(report.reason || "기타 운영 확인 필요").trim().slice(0, 500) || "기타 운영 확인 필요";
   return {
     id,
     type,

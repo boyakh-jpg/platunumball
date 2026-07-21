@@ -19,6 +19,26 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const adminLevel = await getAdminLevel(context);
     const actionType = String(body.actionType ?? "validReport");
+    if (["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(actionType)) {
+      const { data, error } = await context.supabase.rpc("rankball_review_void_match_report", {
+        p_actor_profile_id: context.profileId,
+        p_actor_admin_level: adminLevel,
+        p_report_id: reportId,
+        p_action_type: actionType,
+        p_penalty_type: String(body.penaltyType ?? ""),
+        p_target_user_id: String(body.targetUserId ?? ""),
+        p_duration_days: Number(body.durationDays ?? 3),
+        p_reason: String(body.reason ?? ""),
+        p_feedback: String(body.feedback ?? ""),
+      });
+      if (error) {
+        const mapped = new Error(error.message || "void_match_review_failed");
+        mapped.statusCode = error.code === "42501" ? 403 : error.code === "P0002" ? 404 : error.code === "23505" ? 409 : 400;
+        throw mapped;
+      }
+      sendJson(response, 200, data ?? { ok: true });
+      return;
+    }
     if (actionType === "resetTeamEmblem") {
       const { data, error } = await context.supabase.rpc("rankball_moderate_team_emblem_guarded", {
         p_actor_profile_id: context.profileId,
