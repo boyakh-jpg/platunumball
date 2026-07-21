@@ -19431,3 +19431,73 @@ html[data-theme="light"] .court-map-picker-state {
     grid-column: 1 / -1;
   }
 }
+
+/* Court pin picker */
+.naver-pin-picker-dialog,
+.naver-pin-picker-dialog button {
+  font-family: inherit;
+}
+
+.naver-pin-picker-title {
+  color: var(--text);
+  font-size: 0.98rem;
+  font-weight: 950;
+  letter-spacing: -0.01em;
+}
+
+.naver-pin-picker-close {
+  flex: 0 0 var(--ui-icon-button-size);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 1.28rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.naver-pin-picker-close:hover {
+  border-color: color-mix(in srgb, var(--rb-orange) 42%, var(--ui-button-border));
+  background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-button-bg));
+  color: var(--rb-orange);
+}
+
+.naver-pin-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.naver-pin-picker-actions .button-primary {
+  min-width: 172px;
+}
+
+.settings-court-empty {
+  justify-content: flex-start !important;
+  font-family: inherit;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+}
+
+@media (max-width: 520px) {
+  .naver-pin-picker-footer {
+    align-items: stretch !important;
+  }
+
+  .naver-pin-picker-status {
+    width: 100%;
+  }
+
+  .naver-pin-picker-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.6fr);
+    margin-left: 0;
+  }
+
+  .naver-pin-picker-actions .button,
+  .naver-pin-picker-actions .button-primary {
+    width: 100%;
+    min-width: 0;
+  }
+}

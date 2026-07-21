@@ -1765,7 +1765,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   </div>
                 );
               })}
-              {!courtRequests.length ? <div><span>요청한 구장이 없습니다.</span><strong>{registeredCourts.length}개 등록</strong></div> : null}
+              {!courtRequests.length ? <div className="settings-court-empty"><span>요청한 구장이 없습니다.</span></div> : null}
             </div>
           </Card>
 

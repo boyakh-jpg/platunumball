@@ -312,6 +312,10 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
       overflow: "hidden",
       boxShadow: "0 20px 60px rgba(0, 0, 0, 0.35)",
     });
+    panel.className = "naver-pin-picker-dialog";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-labelledby", "naver-pin-picker-title");
     const header = applyInlineStyle(document.createElement("div"), {
       display: "flex",
       alignItems: "center",
@@ -319,11 +323,17 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
       padding: "12px 14px",
       borderBottom: "1px solid var(--line)",
     });
+    header.className = "naver-pin-picker-header";
     const title = document.createElement("strong");
+    title.id = "naver-pin-picker-title";
+    title.className = "naver-pin-picker-title";
     title.textContent = "실제 구장 위치 선택";
     const closeButton = document.createElement("button");
     closeButton.type = "button";
-    closeButton.textContent = "닫기";
+    closeButton.className = "button button-secondary button-sm button-icon naver-pin-picker-close";
+    closeButton.setAttribute("aria-label", "닫기");
+    closeButton.title = "닫기";
+    closeButton.textContent = "×";
     const mapElement = applyInlineStyle(document.createElement("div"), {
       width: "100%",
       height: "420px",
@@ -338,21 +348,22 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
       padding: "12px 14px",
       borderTop: "1px solid var(--line)",
     });
+    footer.className = "naver-pin-picker-footer";
     const pinStatus = applyInlineStyle(document.createElement("span"), {
       color: "var(--muted)",
       fontSize: "12px",
     });
+    pinStatus.className = "naver-pin-picker-status";
     pinStatus.textContent = "핀 좌표의 실제 주소를 확인해 저장합니다.";
-    const footerActions = applyInlineStyle(document.createElement("div"), {
-      display: "flex",
-      gap: "8px",
-      marginLeft: "auto",
-    });
+    const footerActions = document.createElement("div");
+    footerActions.className = "naver-pin-picker-actions";
     const cancelButton = document.createElement("button");
     cancelButton.type = "button";
+    cancelButton.className = "button button-secondary button-md";
     cancelButton.textContent = "취소";
     const submitButton = document.createElement("button");
     submitButton.type = "button";
+    submitButton.className = "button button-primary button-md";
     submitButton.textContent = "이 위치로 주소 확정";
 
     header.append(title, closeButton);
