@@ -89,6 +89,7 @@ import { getRecruitingListCardLobby } from "../src/lib/recruiting.js";
 import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
 import { getPlayerSeasonActivity } from "../src/lib/season.js";
 import { fromRemoteProfile } from "../src/data/profileMappers.js";
+import { IMAGE_CONTEXT_MENU_ALLOW_ATTRIBUTE, getProtectedImageTarget } from "../src/hooks/useImageInteractionGuard.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -316,6 +317,27 @@ test("profile icon background choice and image preview stay persistent and separ
   assert.match(migration, /add column if not exists avatar_background_enabled boolean not null default true/);
   assert.match(migration, /'avatarBackgroundEnabled', current_profile\.avatar_background_enabled/);
   assert.match(styles, /cursor: zoom-in/);
+});
+
+test("image native menus and drag stay blocked by one shared guard", async () => {
+  const protectedImage = { getAttribute: () => null };
+  const allowedImage = {
+    getAttribute: (name) => (name === IMAGE_CONTEXT_MENU_ALLOW_ATTRIBUTE ? "true" : null),
+  };
+
+  assert.equal(getProtectedImageTarget({ closest: () => protectedImage }), protectedImage);
+  assert.equal(getProtectedImageTarget({ closest: () => allowedImage }), null);
+  assert.equal(getProtectedImageTarget({ closest: () => null }), null);
+
+  const [app, guard, styles] = await Promise.all([
+    readSource("src/App.jsx"),
+    readSource("src/hooks/useImageInteractionGuard.js"),
+    readSource("src/styles/globals.css"),
+  ]);
+  assert.match(app, /useImageInteractionGuard\(\)/);
+  assert.match(guard, /addEventListener\("contextmenu", preventImageNativeAction, true\)/);
+  assert.match(guard, /addEventListener\("dragstart", preventImageNativeAction, true\)/);
+  assert.match(styles, /data-allow-image-context-menu="true"/);
 });
 
 test("team emblem border controls stay common to initial and uploaded sources", async () => {

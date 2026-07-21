@@ -5,6 +5,7 @@ import BasketballLoader from "./components/common/BasketballLoader.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import { useAuthSession } from "./hooks/useAuthSession.js";
 import { useAppData } from "./hooks/useAppData.js";
+import useImageInteractionGuard from "./hooks/useImageInteractionGuard.js";
 import { getSafeAppRedirect, shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
 
 const Admin = lazy(() => import("./pages/Admin.jsx"));
@@ -86,6 +87,7 @@ export default function App() {
   const auth = useAuthSession();
   const location = useLocation();
   const app = useAppData(auth.user ?? null, location);
+  useImageInteractionGuard();
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
   const profileGateReady = Boolean(!auth.user || app.remoteReady);
   const ageRecheckRequired = Boolean(

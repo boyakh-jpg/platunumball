@@ -47,6 +47,13 @@ svg {
   display: block;
 }
 
+img:not([data-allow-image-context-menu="true"]) {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 h1,
 h2,
 h3,
