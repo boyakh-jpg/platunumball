@@ -5,7 +5,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
-import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
+import CourtHoverCard, { CourtIdentityIcon } from "../components/court/CourtHoverCard.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
@@ -533,7 +533,7 @@ export default function Home({ app }) {
       <>
       {item.avatar ? <ProfileEmblem user={item.user} className="small" initial={item.label.slice(0, 1)} /> : null}
       {item.team ? <TeamEmblem team={item.team} size="xs" /> : null}
-      {item.court ? <span className="court-mini-dot" /> : null}
+      {item.court ? <CourtIdentityIcon compact /> : null}
       <span className="rank-result-main">
         <strong>{item.label}</strong>
         <em>{item.meta}</em>

@@ -1,12 +1,23 @@
 import { DEFAULT_RATING, DISPUTE_WINDOW_MINUTES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
+import { normalizeCourtOptionalBoolean } from "./courts.js";
 import { getMatchScheduledDate, isEligibleReferee, isInstantRoom } from "./matchUtils.js";
 import { getAgeGroupForUser } from "./profileSetup.js";
 import { TIERS, getTierDivision } from "./tier.js";
 
 export const SYNTHETIC_MATCH_ROOM_PREFIX = "match-room-";
+const FREE_RECRUITING_COURT_FEE_VALUES = new Set(["0", "0원", "무료", "free", "없음"]);
 
 export function isSyntheticMatchRoomId(roomId = "") {
   return String(roomId ?? "").startsWith(SYNTHETIC_MATCH_ROOM_PREFIX);
+}
+
+export function isPaidRecruitingCourt(post = {}, court = null) {
+  const postPaid = normalizeCourtOptionalBoolean(post.courtPaid ?? post.court_paid);
+  const courtPaid = normalizeCourtOptionalBoolean(court?.paid);
+  if (postPaid === true || courtPaid === true) return true;
+
+  const courtFee = String(post.courtFee ?? post.court_fee ?? "").trim().toLowerCase();
+  return Boolean(courtFee && !FREE_RECRUITING_COURT_FEE_VALUES.has(courtFee));
 }
 
 const RECRUITING_TYPES = {

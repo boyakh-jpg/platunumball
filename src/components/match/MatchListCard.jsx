@@ -26,6 +26,7 @@ function normalizeMatchListTone(tone, fallback) {
 
 function getBadgeTone(kind, tone = "") {
   if (kind === "status") return normalizeMatchListTone(tone, "orange");
+  if (tone) return normalizeMatchListTone(tone, "neutral");
   if (kind === "mode") return "blue";
   if (kind === "target") return "orange";
   return "neutral";

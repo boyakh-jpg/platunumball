@@ -65,6 +65,7 @@ import {
   isSoloIndividualRecruitingRoom,
   isRecruitingPostForUser,
   isNationalRecruitingPost,
+  isPaidRecruitingCourt,
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { assetUrl } from "../lib/assets.js";
@@ -2457,9 +2458,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   );
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const courtById = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.id, court])), [registeredCourts]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
+  const getRoomCourt = (roomPost) => courtById[roomPost?.courtId] ?? courtByName[roomPost?.court] ?? null;
+  const requiresPaidCourtNotice = (roomPost) => isPaidRecruitingCourt(roomPost, getRoomCourt(roomPost));
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
   const [joiningPartyKey, setJoiningPartyKey] = useState("");
+  const [paidCourtJoinPrompt, setPaidCourtJoinPrompt] = useState(null);
   const [chatDraftByPost, setChatDraftByPost] = useState({});
   const [chatErrorByPost, setChatErrorByPost] = useState({});
   const [chatCooldownUntilByPost, setChatCooldownUntilByPost] = useState({});
@@ -2608,6 +2613,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     setInviteDraft(null);
     setSlotActionDraft(null);
     setSoloRecordDeleteTarget(null);
+    setPaidCourtJoinPrompt(null);
     onClose?.();
   };
   const closeFromBackdrop = () => closeModal();
@@ -2743,9 +2749,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       [roomPost.id]: { ...getJoinDraft(roomPost), ...patch },
     }));
   };
-  const submitJoin = async (roomPost) => {
+  const submitJoin = async (roomPost, { paidCourtConfirmed = false } = {}) => {
     if (!roomPost?.id || joiningPostId === roomPost.id) return false;
     const joinDraft = getJoinDraft(roomPost);
+    if (joinDraft.joinMode !== "referee" && !paidCourtConfirmed && requiresPaidCourtNotice(roomPost)) {
+      setPaidCourtJoinPrompt({ action: "join", roomPost });
+      return false;
+    }
     const lobby = getRecruitingLobby(roomPost, app.state);
     const shouldReserve = joinDraft.joinMode !== "referee" &&
       !isTeamOnlyRoom(roomPost) &&
@@ -2762,9 +2772,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       setJoiningPostId((current) => (current === roomPost.id ? "" : current));
     }
   };
-  const joinSideParty = async (roomPost, option) => {
+  const joinSideParty = async (roomPost, option, { paidCourtConfirmed = false } = {}) => {
     const partyKey = `${roomPost.id}:${getPartyOptionKey(option)}`;
     if (joiningPartyKey) return false;
+    if (!paidCourtConfirmed && requiresPaidCourtNotice(roomPost)) {
+      setPaidCourtJoinPrompt({ action: "party", roomPost, option });
+      return false;
+    }
     setJoiningPartyKey(partyKey);
     try {
       const result = await app.actions.joinRecruitingSideParty(roomPost.id, option.team.id, option.sideName, option.entry?.id);
@@ -2882,8 +2896,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       !invitation.reserve
     );
   };
-  const acceptRoomInvitation = async (roomPost, invitation = {}) => {
+  const acceptRoomInvitation = async (roomPost, invitation = {}, { paidCourtConfirmed = false } = {}) => {
     if (!invitation.id) return;
+    if (invitation.role !== "referee" && !paidCourtConfirmed && requiresPaidCourtNotice(roomPost)) {
+      setPaidCourtJoinPrompt({ action: "invitation", roomPost, invitation });
+      return;
+    }
     if (shouldOpenRosterAfterAccept(roomPost, invitation)) {
       setPendingRosterOpen({
         postId: roomPost.id,
@@ -2900,6 +2918,20 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     } catch {
       setPendingRosterOpen(null);
     }
+  };
+  const confirmPaidCourtJoin = () => {
+    const prompt = paidCourtJoinPrompt;
+    setPaidCourtJoinPrompt(null);
+    if (!prompt) return;
+    if (prompt.action === "party") {
+      void joinSideParty(prompt.roomPost, prompt.option, { paidCourtConfirmed: true });
+      return;
+    }
+    if (prompt.action === "invitation") {
+      void acceptRoomInvitation(prompt.roomPost, prompt.invitation, { paidCourtConfirmed: true });
+      return;
+    }
+    void submitJoin(prompt.roomPost, { paidCourtConfirmed: true });
   };
   const getRoomEditDraftByPost = (roomPost) => roomEditDraftByPost[roomPost.id] ?? null;
   const openRoomEdit = (roomPost) => {
@@ -3455,7 +3487,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               canMoveHere={canMoveHere}
               partyJoinOptions={targetPartyOptions}
               onMoveHere={() => moveActiveUserToSlot(sideName, reserve)}
-              onJoinParty={(teamId, entryId) => app.actions.joinRecruitingSideParty(selectedPost.id, teamId, sideName, entryId)}
+              onJoinParty={(teamId, entryId) => { void joinSideParty(selectedPost, {
+                team: teamById[teamId] ?? { id: teamId },
+                sideName,
+                entry: entryId ? { id: entryId } : null,
+              }); }}
               onClose={() => setInviteDraft(null)}
             >
               <InvitePanel
@@ -3563,7 +3599,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               onPositionChange={targetIsCurrentUser ? (position) => app.actions.setRecruitingSlotPosition(selectedPost.id, targetPlayerId, position) : null}
               onLeaveParty={leaveCurrentParty}
               onJoinParty={(teamId, entryId) => {
-                app.actions.joinRecruitingSideParty(selectedPost.id, teamId, activeSelfSlotDraft.sideName, entryId);
+                void joinSideParty(selectedPost, {
+                  team: teamById[teamId] ?? { id: teamId },
+                  sideName: activeSelfSlotDraft.sideName,
+                  entry: entryId ? { id: entryId } : null,
+                });
                 setSlotActionDraft(null);
               }}
               onClose={() => setSlotActionDraft(null)}
@@ -3627,6 +3667,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     <Badge tone="neutral">{roomMatchTypeLabel}</Badge>
                     <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomCompetitionLabel}</Badge>
                     <Badge tone={referee ? "blue" : "neutral"}>{getRoomRefereeLabel(selectedPost)}</Badge>
+                    {requiresPaidCourtNotice(selectedPost) ? <Badge tone="orange">유료 구장</Badge> : null}
                   </div>
                   <div className="arena-room-share-actions" aria-label="방 공유">
                     <Button type="button" size="sm" variant="secondary" onClick={copyRoomShareUrl}>
@@ -4400,6 +4441,19 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   </Button>
                 ) : null}
               </div>
+              {paidCourtJoinPrompt && typeof document !== "undefined" ? createPortal(
+                <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setPaidCourtJoinPrompt(null)}>
+                  <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="유료 구장 참여 확인" onMouseDown={(event) => event.stopPropagation()}>
+                    <strong>유료 구장입니다.</strong>
+                    <p>참가비나 대관료를 미리 확인하고 참여하세요.</p>
+                    <div className="app-confirm-actions">
+                      <Button type="button" variant="secondary" onClick={() => setPaidCourtJoinPrompt(null)}>취소</Button>
+                      <Button type="button" variant="primary" onClick={confirmPaidCourtJoin}>계속 참여</Button>
+                    </div>
+                  </div>
+                </div>,
+                document.body,
+              ) : null}
               {soloRecordDeleteTarget && typeof document !== "undefined" ? createPortal(
                 <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setSoloRecordDeleteTarget(null)}>
                   <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
@@ -4440,6 +4494,7 @@ function RecruitingReady({ app }) {
     [app.currentUser.id, app.state.teams],
   );
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const courtById = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.id, court])), [registeredCourts]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
@@ -4857,6 +4912,7 @@ function RecruitingReady({ app }) {
           const refereeLabel = getRoomRefereeLabel(post);
           const roomStatus = getRecruitingRoomListStatus(lobby, { post });
           const roomTitle = getRecruitingCardTitle(post);
+          const postCourt = courtById[post.courtId] ?? courtByName[post.court] ?? null;
 
           return (
             <MatchListCard
@@ -4874,12 +4930,13 @@ function RecruitingReady({ app }) {
                 targetTeam ? { kind: "target", label: <>희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></> } : null,
                 !targetTeam && post.targetTeamName ? { kind: "target", label: `희망 상대 ${post.targetTeamName}` } : null,
                 isNationalRecruitingPost(post, app.state) ? { kind: "national", label: "전국 노출" } : null,
+                isPaidRecruitingCourt(post, postCourt) ? { kind: "cost", tone: "orange", label: "유료 구장" } : null,
               ].filter(Boolean)}
               title={roomTitle}
               meta={(
                 <>
                   <CalendarDays size={15} />
-                  {getRecruitingSchedule(post)} · <CourtHoverCard court={courtByName[post.court]} courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
+                  {getRecruitingSchedule(post)} · <CourtHoverCard court={postCourt} courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
                   {hostTeam ? (
                     <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard>
                   ) : post.teamId && hostTeamName ? (

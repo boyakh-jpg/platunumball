@@ -41,7 +41,7 @@ import {
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
 import { MATCH_SIDES, ROOM_KINDS } from "../lib/constants.js";
-import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
+import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isPaidRecruitingCourt, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
@@ -933,6 +933,7 @@ export default function Matches({ app }) {
   const requestedMatchDetailsRef = useRef(new Set());
   const scheduleLoadRequestedRef = useRef("");
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const courtById = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.id, court])), [registeredCourts]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
     () => app.state.teams
@@ -1617,6 +1618,7 @@ export default function Matches({ app }) {
             const filled = lobby.sides.teamA.filled + lobby.sides.teamB.filled;
             const capacity = getRecruitingSideCapacity(post) * 2;
             const roomTitle = getRoomCardTitle(post);
+            const postCourt = courtById[post.courtId] ?? courtByName[post.court] ?? null;
             return (
               <MatchListCard
                 key={`room-${post.id}`}
@@ -1626,11 +1628,12 @@ export default function Matches({ app }) {
                 roomType={getRoomTypeLabel(post, lobby)}
                 competition={getRoomCompetitionLabel(post)}
                 referee={getRoomRefereeLabel(post)}
+                extraBadges={isPaidRecruitingCourt(post, postCourt) ? [{ kind: "cost", tone: "orange", label: "유료 구장" }] : []}
                 title={roomTitle}
                 meta={(
                   <>
                     <CalendarDays size={15} />
-                    {formatMatchTime(post)} · <CourtHoverCard court={courtByName[post.court]} courtName={post.court}>{post.court}</CourtHoverCard>
+                    {formatMatchTime(post)} · <CourtHoverCard court={postCourt} courtName={post.court}>{post.court}</CourtHoverCard>
                   </>
                 )}
                 summary={(

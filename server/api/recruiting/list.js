@@ -50,6 +50,7 @@ let userRoomFeedScopeAvailable = true;
 let userRoomFeedTimingColumnsAvailable = true;
 
 const RECRUITING_COUNT_POST_COLUMNS = "id,type,visibility,mode,room_state,host_join_mode,host_side,side_capacity,player_ids,player_id,team_id,status";
+const RECRUITING_APPROVED_COURT_COLUMNS = `${COURT_COLUMNS},paid:payload->paid`;
 const RECRUITING_FEED_MAX_LIMIT = 200;
 const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
 const RECRUITING_FEED_ROW_MAX_LIMIT = 320;
@@ -680,6 +681,9 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
     regionKey: post.regionKey,
     courtId: post.courtId,
     court: post.court,
+    courtPaid: post.courtPaid ?? null,
+    courtReserved: post.courtReserved,
+    courtFee: post.courtFee,
     ownerId: post.ownerId,
     hostName: post.hostName,
     hostTeamName: post.hostTeamName,
@@ -1352,8 +1356,13 @@ function collectRecruitingCardScope(cards = [], profileId = "") {
 
 function attachRecruitingCardReferences(card = {}, courtById = {}) {
   if (!card?.id) return card;
-  const courtName = card.court ?? courtById[card.courtId]?.name;
-  return courtName ? { ...card, court: courtName } : card;
+  const court = courtById[card.courtId];
+  const courtName = card.court ?? court?.name;
+  return {
+    ...card,
+    ...(courtName ? { court: courtName } : {}),
+    courtPaid: court?.paid ?? card.courtPaid ?? null,
+  };
 }
 
 async function appendMissingTeamMemberProfiles(client, profileRows = [], teamMemberRows = [], currentUserId = "") {
@@ -1540,7 +1549,9 @@ export async function loadCompactRecruitingList(context, {
       profileIdsForLookup.length
         ? context.supabase.from("profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
         : Promise.resolve({ data: [], error: null }),
-      fetchCourtRowsByIds(context.supabase, scope.courtIds, COURT_COLUMNS),
+      fetchCourtRowsByIds(context.supabase, scope.courtIds, COURT_COLUMNS, {
+        approvedColumns: RECRUITING_APPROVED_COURT_COLUMNS,
+      }),
     ]);
     if (teamError) throw teamError;
     if (teamMemberError) throw teamMemberError;
@@ -1643,7 +1654,9 @@ export async function loadCompactRecruitingList(context, {
     profileIdsForLookup.length
       ? context.supabase.from("profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
       : Promise.resolve({ data: [], error: null }),
-    fetchCourtRowsByIds(context.supabase, scope.courtIds, COURT_COLUMNS),
+    fetchCourtRowsByIds(context.supabase, scope.courtIds, COURT_COLUMNS, {
+      approvedColumns: RECRUITING_APPROVED_COURT_COLUMNS,
+    }),
   ]);
   if (teamError) throw teamError;
   if (teamMemberError) throw teamMemberError;

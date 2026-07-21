@@ -112,6 +112,7 @@ export function fromRemoteRecruitingPost(row = {}, {
     regionKey: normalizeRegionKey(row.region),
     courtId: row.court_id ?? null,
     court: row.court_name ?? courtById[row.court_id]?.name ?? "미정",
+    courtPaid: courtById[row.court_id]?.paid ?? null,
     mode: row.mode,
     scheduledDate: row.scheduled_date,
     scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",

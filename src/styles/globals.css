@@ -1104,6 +1104,14 @@ span.referee-hover-card {
   filter: drop-shadow(0 2px 4px rgba(75, 30, 0, 0.38));
 }
 
+.court-hover-icon-compact {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--rb-orange) 20%, transparent);
+}
+
 .court-hover-address,
 .court-hover-note {
   display: grid;
@@ -6382,18 +6390,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 850;
-}
-
-.court-mini-dot {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
-  border-radius: 7px;
-  background:
-    linear-gradient(90deg, transparent 46%, rgba(255, 255, 255, 0.62) 47% 53%, transparent 54%),
-    linear-gradient(0deg, transparent 46%, rgba(255, 255, 255, 0.42) 47% 53%, transparent 54%),
-    rgba(70, 224, 182, 0.28);
 }
 
 .rank-home {

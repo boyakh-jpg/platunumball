@@ -87,7 +87,7 @@ import {
   validateWebpImage,
 } from "../server/api/_r2ImageStorage.js";
 import { readJsonBody } from "../server/api/_supabaseAdmin.js";
-import { getRecruitingListCardLobby } from "../src/lib/recruiting.js";
+import { getRecruitingListCardLobby, isPaidRecruitingCourt } from "../src/lib/recruiting.js";
 import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
 import { getPlayerSeasonActivity } from "../src/lib/season.js";
 import { fromRemoteProfile } from "../src/data/profileMappers.js";
@@ -183,6 +183,15 @@ test("recruiting schedule cards keep fresh list counts over cached detail rows",
   assert.equal(lobby.sides.teamB.filled, 5);
   assert.equal(lobby.sides.teamA.capacity, 5);
   assert.equal(lobby.sides.teamB.capacity, 5);
+});
+
+test("paid recruiting courts require explicit fee evidence", () => {
+  assert.equal(isPaidRecruitingCourt({ courtPaid: true }), true);
+  assert.equal(isPaidRecruitingCourt({}, { paid: true }), true);
+  assert.equal(isPaidRecruitingCourt({ courtFee: "12,000원" }, { paid: false }), true);
+  assert.equal(isPaidRecruitingCourt({ courtFee: "무료" }), false);
+  assert.equal(isPaidRecruitingCourt({ courtPaid: false }), false);
+  assert.equal(isPaidRecruitingCourt({}, { paid: null }), false);
 });
 
 test("region selectors preserve the current government code order", () => {
@@ -538,6 +547,28 @@ test("court request attributes preserve unknown values instead of inventing fact
   assert.equal(getCourtHoopCount({ courtLayout: "full" }), 2);
   assert.equal(normalizeCourtSourceUrl("javascript:alert(1)"), "");
   assert.equal(normalizeCourtSourceUrl("https://example.com/reserve"), "https://example.com/reserve");
+});
+
+test("court identity and paid-room UI stay shared across list surfaces", async () => {
+  const [homeSource, hoverSource, recruitingSource, matchesSource, matchListSource, recruitingListSource] = await Promise.all([
+    readSource("src/pages/Home.jsx"),
+    readSource("src/components/court/CourtHoverCard.jsx"),
+    readSource("src/pages/Recruiting.jsx"),
+    readSource("src/pages/Matches.jsx"),
+    readSource("src/components/match/MatchListCard.jsx"),
+    readSource("server/api/recruiting/list.js"),
+  ]);
+
+  assert.match(homeSource, /<CourtIdentityIcon compact \/>/);
+  assert.match(hoverSource, /export function CourtIdentityIcon/);
+  assert.match(hoverSource, /<CourtIdentityIcon \/>/);
+  assert.doesNotMatch(homeSource, /court-mini-dot/);
+  assert.match(recruitingSource, /유료 구장입니다\./);
+  assert.match(recruitingSource, /isPaidRecruitingCourt\(post, postCourt\)/);
+  assert.match(matchesSource, /isPaidRecruitingCourt\(post, postCourt\)/);
+  assert.match(matchListSource, /if \(tone\) return normalizeMatchListTone/);
+  assert.match(recruitingListSource, /paid:payload->paid/);
+  assert.match(recruitingListSource, /courtFee: post\.courtFee/);
 });
 
 test("court place search keeps parent facilities at the pinned address", () => {

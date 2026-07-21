@@ -8,6 +8,15 @@ import { getCourtKindLabel, getCourtLayoutLabel, getCourtMapUrl, getCourtPaidLab
 import { getCourtHashtag } from "../../lib/handles.js";
 import { canUseHoverPreview, clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 
+export function CourtIdentityIcon({ compact = false, className = "" }) {
+  const classes = ["court-hover-icon", compact ? "court-hover-icon-compact" : "", className].filter(Boolean).join(" ");
+  return (
+    <span className={classes} aria-hidden="true">
+      <MapPinned size={compact ? 18 : 27} strokeWidth={2.2} />
+    </span>
+  );
+}
+
 function resolveCourt(court, courtName = "") {
   if (court?.id || court?.name) return court;
   return COURTS.find((item) => item.name === courtName) ?? {
@@ -125,7 +134,7 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
           closePinned();
         }}>X</button>
         <span className="court-hover-head">
-          <span className="court-hover-icon"><MapPinned size={27} strokeWidth={2.2} /></span>
+          <CourtIdentityIcon />
           <span>
             <strong>{resolvedCourt.name}</strong>
             <span className="hover-hashtag">{getCourtHashtag(resolvedCourt)}</span>

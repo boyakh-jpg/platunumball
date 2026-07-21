@@ -548,12 +548,13 @@ export function toNotificationRows(notifications = [], profileId = "", options =
   }).filter((row) => row?.id);
 }
 
-export async function fetchCourtRowsByIds(supabase, courtIds = [], columns = "*") {
+export async function fetchCourtRowsByIds(supabase, courtIds = [], columns = "*", options = {}) {
   const ids = uniqueStringIds(courtIds);
   if (!ids.length) return { data: [], error: null };
-  const approvedColumns = columns === "*" || String(columns).split(",").some((column) => column.trim() === "status")
-    ? columns
-    : `${columns},status`;
+  const approvedBaseColumns = options.approvedColumns ?? columns;
+  const approvedColumns = approvedBaseColumns === "*" || String(approvedBaseColumns).split(",").some((column) => column.trim() === "status")
+    ? approvedBaseColumns
+    : `${approvedBaseColumns},status`;
   const [legacyResult, approvedResult] = await Promise.all([
     supabase.from("courts").select(columns).in("id", ids),
     supabase.from("approved_courts").select(approvedColumns).in("id", ids),
