@@ -620,8 +620,10 @@ export default function Settings({ app, auth, section = "main" }) {
   const selectedReportCourtReview = reportableCourtReviews.find((review) => review.id === reportCourtReviewId)
     ?? (reportRemoteTarget?.kind === "court_review" && reportRemoteTarget.review?.id === reportCourtReviewId ? reportRemoteTarget.review : null);
   const reportParticipantRows = useMemo(
-    () => (selectedReportMatch && reportTargetType !== REPORT_TARGET_TYPES.courtRequest ? getReportParticipantRows(selectedReportMatch, userMap) : []),
-    [reportTargetType, selectedReportMatch, userMap],
+    () => (selectedReportMatch && reportTargetType !== REPORT_TARGET_TYPES.courtRequest
+      ? getReportParticipantRows(selectedReportMatch, userMap).filter((row) => reportTargetType !== REPORT_TARGET_TYPES.player || row.userId !== app.currentUserId)
+      : []),
+    [app.currentUserId, reportTargetType, selectedReportMatch, userMap],
   );
   const reportParticipantIds = useMemo(
     () => reportParticipantRows.map((row) => row.userId),
@@ -658,6 +660,7 @@ export default function Settings({ app, auth, section = "main" }) {
       recentReportMatches.forEach((match) => {
         const matchHashtag = getMatchHashtag(match);
         getReportParticipantRows(match, userMap).forEach((row) => {
+          if (row.userId === app.currentUserId) return;
           const userHashtag = getUserHashtag(row.user);
           const matchTitle = getMatchReportTitle(match);
           items.push({
@@ -722,7 +725,7 @@ export default function Settings({ app, auth, section = "main" }) {
     }
 
     return items.filter((item) => (keyword ? item.haystack.includes(keyword) : true));
-  }, [matchMap, recentReportMatches, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, userMap]);
+  }, [app.currentUserId, matchMap, recentReportMatches, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, userMap]);
   const reportRemoteSearchTypes = reportTargetType === REPORT_TARGET_TYPES.courtReview
     ? ["court_review"]
     : reportTargetType === REPORT_TARGET_TYPES.court || reportTargetType === REPORT_TARGET_TYPES.courtRequest

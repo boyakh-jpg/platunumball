@@ -136,6 +136,7 @@ test("report review actions keep sanctions behind verified targets and level 50"
   assert.match(submitSource, /\.eq\("id", requestedMatchId\)/);
   assert.match(submitSource, /report\.sourceMatchId \?\? report\.payload\?\.sourceMatchId/);
   assert.match(settingsSource, /app\.actions\.reportPlayer\(targetUserId, selectedReportMatchId/);
+  assert.match(settingsSource, /if \(row\.userId === app\.currentUserId\) return/);
   assert.match(settingsSource, /remoteSearchType=\{reportRemoteSearchTypes\}/);
   assert.match(searchSource, /court_review: \["court_review"\]/);
   assert.match(searchSource, /searchCourtReviews\(context\.supabase, context\.profileId/);
