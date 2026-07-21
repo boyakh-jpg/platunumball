@@ -115,6 +115,18 @@ test("core match policy has one canonical default", () => {
   assert.equal(isRefereeGrade("admin"), false);
 });
 
+test("team roster summons are atomic and resolve actionable invitations", async () => {
+  const migrationSource = await readSource("supabase/migrations/20260721170000_team_roster_summon_atomic.sql");
+  assert.match(migrationSource, /directTeamRosterSummon/);
+  assert.match(migrationSource, /#variable_conflict use_variable/);
+  assert.match(migrationSource, /setRecruitingTeamPartyRoster/);
+  assert.match(migrationSource, /recruiting_party_leader_required/);
+  assert.match(migrationSource, /actionRequired', false/);
+  assert.match(migrationSource, /read_at = coalesce\(notification\.read_at, now_at\)/);
+  assert.match(migrationSource, /rankball_refresh_recruiting_feed_for_post\(safe_post_id\)/);
+  assert.doesNotMatch(migrationSource, /delete from public\.notifications/i);
+});
+
 test("region selectors preserve the current government code order", () => {
   assert.deepEqual(REGION_TREE.map((item) => item.sido), [
     "서울특별시",
