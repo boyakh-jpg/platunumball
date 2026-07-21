@@ -7289,7 +7289,8 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 9px;
 }
 
-.season-race-list a {
+.season-race-list > a,
+.season-race-list > .player-hover-trigger {
   display: grid;
   grid-template-columns: 32px auto minmax(0, 1fr) auto;
   align-items: center;
@@ -7300,12 +7301,14 @@ html[data-theme="light"] .search-picker-result-row.selected {
   padding: 10px;
 }
 
-.season-race-list a.mine {
+.season-race-list > a.mine,
+.season-race-list > .player-hover-trigger.mine {
   border-color: rgba(70, 224, 182, 0.42);
   background: rgba(70, 224, 182, 0.075);
 }
 
-.season-race-list a > strong {
+.season-race-list > a > strong,
+.season-race-list > .player-hover-trigger > strong {
   color: var(--gold);
   font-size: 0.95rem;
 }
@@ -7326,6 +7329,19 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .team-race-list a {
   grid-template-columns: 32px auto minmax(0, 1fr) auto;
+}
+
+.season-play-report > a {
+  display: block;
+  margin-top: 12px;
+}
+
+.season-play-report .wide-button {
+  width: 100%;
+}
+
+.season-candidate-list > .empty-state {
+  min-height: 86px;
 }
 
 .operations-list {
@@ -11604,14 +11620,17 @@ html[data-theme="light"] .team-search-popover button.selected {
     font-size: 0.76rem;
   }
 
-  .season-race-list a,
+  .season-race-list > a,
+  .season-race-list > .player-hover-trigger,
   .team-race-list a {
     grid-template-columns: 26px auto minmax(0, 1fr);
     align-items: start;
   }
 
-  .season-race-list a > .tier-badge,
-  .season-race-list a > .badge {
+  .season-race-list > a > .tier-badge,
+  .season-race-list > a > .badge,
+  .season-race-list > .player-hover-trigger > .tier-badge,
+  .season-race-list > .player-hover-trigger > .badge {
     grid-column: 3;
     width: max-content;
     max-width: 100%;

@@ -8,8 +8,8 @@ import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 const tabs = [
-  { id: "local", label: "내 주변" },
   { id: "integrated", label: "통합" },
+  { id: "region", label: "지역" },
   { id: "1v1", label: "1v1" },
   { id: "3v3", label: "3v3" },
   { id: "5v5", label: "5v5" },
@@ -17,29 +17,38 @@ const tabs = [
   { id: "affiliations", label: "소속" },
 ];
 
+const rankingTitles = {
+  integrated: "전국 통합 MMR",
+  "1v1": "전국 1v1 MMR",
+  "3v3": "전국 3v3 MMR",
+  "5v5": "전국 5v5 MMR",
+  teams: "전국 팀 MMR",
+  affiliations: "전국 소속 랭킹",
+};
+
 export default function Rankings({ app }) {
-  const [tab, setTab] = useState("local");
+  const [tab, setTab] = useState("integrated");
   const myRegion = app.currentUser.region;
   const loadDirectory = app.actions.loadDirectory;
-  const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "local" ? "all" : "players";
-  const directoryRegion = tab === "local" ? myRegion : "";
+  const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";
+  const directoryRegion = tab === "region" ? myRegion : "";
   useEffect(() => {
     loadDirectory?.({ kind: directoryKind, region: directoryRegion, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
   }, [directoryKind, directoryRegion, loadDirectory]);
   const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   const visiblePlayers = app.rankings.players.filter((user) => !hiddenUserIds.has(user.id));
-  const visibleModePlayers = tab === "teams" || tab === "affiliations" || tab === "integrated" || tab === "local"
+  const visibleModePlayers = tab === "teams" || tab === "affiliations" || tab === "integrated" || tab === "region"
     ? visiblePlayers
     : app.rankings.mode(tab).filter((user) => !hiddenUserIds.has(user.id));
-  const localPlayers = visiblePlayers.filter((user) => (
+  const regionalPlayers = visiblePlayers.filter((user) => (
     user.region === myRegion && (
       user.id === app.currentUser.id ||
       user.privacy?.regionRanking === true ||
       (!isSupabaseConfigured && user.privacy?.regionRanking !== false)
     )
   ));
-  const localTeams = app.rankings.teams.filter((team) => team.region === myRegion);
-  const localAffiliations = app.rankings.affiliations.filter((affiliation) => affiliation.name === myRegion || affiliation.type !== "region").slice(0, 6);
+  const regionalTeams = app.rankings.teams.filter((team) => team.region === myRegion);
+  const regionalAffiliations = app.rankings.affiliations.filter((affiliation) => affiliation.name === myRegion || affiliation.type !== "region").slice(0, 6);
   const type = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : "players";
   const rows =
     tab === "teams"
@@ -48,8 +57,8 @@ export default function Rankings({ app }) {
         ? app.rankings.affiliations
         : tab === "integrated"
           ? visiblePlayers
-          : tab === "local"
-            ? localPlayers
+          : tab === "region"
+            ? regionalPlayers
             : visibleModePlayers;
 
   return (
@@ -57,23 +66,23 @@ export default function Rankings({ app }) {
       <header className="page-header">
         <div>
           <p className="eyebrow">Rankings</p>
-          <h1>지역과 주변 소속부터 보는 랭킹</h1>
+          <h1>전국과 지역을 나눠 보는 랭크보드</h1>
         </div>
-        <Badge tone="green">{myRegion} 우선</Badge>
+        <Badge tone={tab === "region" ? "blue" : "gold"}>{tab === "region" ? myRegion : "전국 기준"}</Badge>
       </header>
       <Card className="section-card ranking-filter-card">
         <RankingTabs value={tab} options={tabs} onChange={setTab} />
       </Card>
-      {tab === "local" ? (
+      {tab === "region" ? (
         <div className="content-grid">
           <Card className="section-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Local Players</p>
-                <h2>{myRegion} 개인 랭킹</h2>
+                <h2>{myRegion} 개인 MMR</h2>
               </div>
             </div>
-            <RankingTable rows={localPlayers} type="players" mode="integrated" teams={app.state.teams} />
+            <RankingTable rows={regionalPlayers} type="players" mode="integrated" teams={app.state.teams} />
           </Card>
           <div className="page-stack">
             <Card className="section-card">
@@ -83,7 +92,7 @@ export default function Rankings({ app }) {
                   <h2>{myRegion} 팀</h2>
                 </div>
               </div>
-              <RankingTable rows={localTeams} type="teams" teams={app.state.teams} />
+              <RankingTable rows={regionalTeams} type="teams" teams={app.state.teams} />
             </Card>
             <Card className="section-card">
               <div className="section-title-row">
@@ -92,13 +101,20 @@ export default function Rankings({ app }) {
                   <h2>주변 소속</h2>
                 </div>
               </div>
-              <RankingTable rows={localAffiliations} type="affiliations" teams={app.state.teams} />
+              <RankingTable rows={regionalAffiliations} type="affiliations" teams={app.state.teams} />
             </Card>
           </div>
         </div>
       ) : null}
-      {tab !== "local" ? (
+      {tab !== "region" ? (
         <Card className="section-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">National Ranking</p>
+              <h2>{rankingTitles[tab]}</h2>
+            </div>
+            <Badge tone="gold">전국</Badge>
+          </div>
           <RankingTable rows={rows} type={type} mode={tab} teams={app.state.teams} />
         </Card>
       ) : null}

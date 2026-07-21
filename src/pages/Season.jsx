@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowRight, CalendarClock, ClipboardCheck, MapPin, ShieldCheck, Swords, Trophy } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Activity, ArrowRight, CalendarClock, ClipboardCheck, MapPin, Swords, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -11,68 +11,91 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import {
   getCurrentSeason,
   getLocalRivalries,
-  getOperationsSummary,
+  getPlayerSeasonActivity,
   getPlayerSeasonRows,
   getSeasonProgress,
   getTeamSeasonRows,
 } from "../lib/season.js";
-import { MatchRoomModal } from "./Matches.jsx";
-
-const statusLabels = {
-  contract: "경기 전 동의",
-  agreed: "결과 입력 가능",
-  approval: "결과 승인",
-  disputed: "이의 확인",
-  confirmed: "확정",
-};
+import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 
 function formatDate(value) {
   return value ? value.replaceAll("-", ".") : "일정 미정";
 }
 
-function getTaskMatches(matches = []) {
-  return matches
-    .filter((match) => ["contract", "approval", "disputed"].includes(match.status))
-    .slice(0, 5);
-}
-
 export default function Season({ app }) {
-  const [selectedMatchId, setSelectedMatchId] = useState("");
+  const directoryLoadKeyRef = useRef("");
+  const recordLoadKeyRef = useRef("");
   const season = getCurrentSeason(app.state);
   const region = app.currentUser.region;
   const progress = getSeasonProgress(season);
-  const playerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, region);
-  const teamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, region);
-  const nationalPlayers = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체").slice(0, 5);
+  const nationalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체");
+  const nationalTeamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, "전체");
+  const regionalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, region)
+    .filter((user) => user.id === app.currentUser.id || user.privacy?.regionRanking !== false);
+  const nationalRankByPlayerId = new Map(nationalPlayerRows.map((user, index) => [user.id, index + 1]));
+  const nationalCandidates = regionalPlayerRows.slice(0, 5);
   const rivalries = getLocalRivalries(app.state.teams, app.state.matches, region, 4);
-  const operations = getOperationsSummary(app.state.matches, app.state.reports ?? []);
-  const taskMatches = getTaskMatches(app.state.matches);
-  const myRankIndex = playerRows.findIndex((user) => user.id === app.currentUser.id);
-  const myRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
-  const topPlayer = playerRows[0];
-  const topTeam = teamRows[0];
+  const activity = getPlayerSeasonActivity(app.state.matches, app.currentUser.id, season);
+  const myNationalRankIndex = nationalPlayerRows.findIndex((user) => user.id === app.currentUser.id);
+  const myRegionalRankIndex = regionalPlayerRows.findIndex((user) => user.id === app.currentUser.id);
+  const myNationalRank = myNationalRankIndex >= 0 ? myNationalRankIndex + 1 : null;
+  const myRegionalRank = myRegionalRankIndex >= 0 ? myRegionalRankIndex + 1 : null;
+  const mySeasonRow = myNationalRankIndex >= 0 ? nationalPlayerRows[myNationalRankIndex] : null;
+  const loadDirectory = app.actions.loadDirectory;
+  const loadProfileRecords = app.actions.loadProfileRecords;
+  const profileRecordsLoaded = app.actions.profileRecordsLoaded;
+
+  useEffect(() => {
+    if (!app.remoteReady || !loadDirectory || !app.currentUser.id) return;
+    if (directoryLoadKeyRef.current === app.currentUser.id) return;
+    directoryLoadKeyRef.current = app.currentUser.id;
+    const request = loadDirectory({ kind: "all", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
+    if (!request?.then) {
+      if (!request) directoryLoadKeyRef.current = "";
+      return;
+    }
+    request.catch(() => {
+      directoryLoadKeyRef.current = "";
+    });
+  }, [app.currentUser.id, app.remoteReady, loadDirectory]);
+
+  useEffect(() => {
+    if (!app.remoteReady || !loadProfileRecords || profileRecordsLoaded || !app.currentUser.id) return;
+    if (recordLoadKeyRef.current === app.currentUser.id) return;
+    recordLoadKeyRef.current = app.currentUser.id;
+    const request = loadProfileRecords();
+    if (!request?.then) {
+      if (!request) recordLoadKeyRef.current = "";
+      return;
+    }
+    request.then((result) => {
+      if (result === false) recordLoadKeyRef.current = "";
+    }).catch(() => {
+      recordLoadKeyRef.current = "";
+    });
+  }, [app.currentUser.id, app.remoteReady, loadProfileRecords, profileRecordsLoaded]);
 
   return (
-    <>
     <div className="page-stack season-page">
       <section className="season-hero">
         <div className="season-hero-copy">
-          <Badge tone="green">Active Season</Badge>
+          <Badge tone="gold">시즌 진행 중</Badge>
           <h1>{season.name}</h1>
+          <p>{season.subtitle}</p>
           <div className="season-progress">
             <span style={{ width: `${progress}%` }} />
           </div>
           <div className="season-meta-row">
             <span><CalendarClock size={16} /> {formatDate(season.startsAt)} - {formatDate(season.endsAt)}</span>
-            <span><MapPin size={16} /> {region} 디비전</span>
-            <span><Trophy size={16} /> {myRank ? `내 지역 ${myRank}위` : "지역 기록 준비 중"}</span>
+            <span><Trophy size={16} /> 전국 통합 시즌</span>
+            <span><MapPin size={16} /> 지역 랭킹 {region}</span>
           </div>
         </div>
         <div className="season-rule-board">
-          <strong>지역 현황</strong>
-          <span><Trophy size={16} /> 개인 1위 {topPlayer?.name ?? "-"}</span>
-          <span><ShieldCheck size={16} /> 팀 1위 {topTeam?.name ?? "-"}</span>
-          <span><ClipboardCheck size={16} /> 처리 대기 {operations.contract + operations.approval + operations.disputed}</span>
+          <strong>{app.currentUser.name} 시즌 요약</strong>
+          <span><Trophy size={16} /> 전국 {myNationalRank ? `${myNationalRank}위` : "순위 준비 중"}</span>
+          <span><MapPin size={16} /> {region} {myRegionalRank ? `${myRegionalRank}위` : "순위 준비 중"}</span>
+          <span><Activity size={16} /> 주 플레이 {activity.primaryMode}</span>
           <div className="season-rule-actions">
             <Link to="/app/create">
               <Button><Swords size={18} /> 매칭 만들기</Button>
@@ -86,24 +109,24 @@ export default function Season({ app }) {
 
       <section className="season-metric-grid">
         <Card className="season-metric-card">
-          <span>지역 플레이어</span>
-          <strong>{playerRows.length}</strong>
-          <em>{region} 기준</em>
+          <span>이번 시즌 경기</span>
+          <strong>{mySeasonRow?.seasonPlayed ?? 0}</strong>
+          <em>확정 기록 기준</em>
         </Card>
         <Card className="season-metric-card">
-          <span>지역 팀</span>
-          <strong>{teamRows.length}</strong>
-          <em>승격권 {season.promotionLine ?? 4}팀</em>
+          <span>이번 시즌 승패</span>
+          <strong>{mySeasonRow?.seasonWins ?? 0}승 {mySeasonRow?.seasonLosses ?? 0}패</strong>
+          <em>무승부 제외</em>
         </Card>
         <Card className="season-metric-card">
-          <span>승인 대기</span>
-          <strong>{operations.approval}</strong>
-          <em>결과 확정 필요</em>
+          <span>시즌 MMR 변화</span>
+          <strong>{(mySeasonRow?.seasonDelta ?? 0) >= 0 ? "+" : ""}{mySeasonRow?.seasonDelta ?? 0}</strong>
+          <em>확정 경기 누적</em>
         </Card>
         <Card className="season-metric-card">
-          <span>보류/신고</span>
-          <strong>{operations.disputed + operations.reports}</strong>
-          <em>운영 확인 필요</em>
+          <span>주 플레이</span>
+          <strong>{activity.primaryMode}</strong>
+          <em>{activity.ranked} 정규 · {activity.friendly} 친선</em>
         </Card>
       </section>
 
@@ -113,12 +136,12 @@ export default function Season({ app }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Promotion Race</p>
-                <h2>{region} 개인 승격권</h2>
+                <h2>전국 개인 승격권</h2>
               </div>
               <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
             </div>
             <div className="season-race-list">
-              {playerRows.slice(0, 8).map((user, index) => (
+              {nationalPlayerRows.slice(0, 8).map((user, index) => (
                 <PlayerHoverCard key={user.id} user={user} teams={app.state.teams} className={user.id === app.currentUser.id ? "mine" : ""}>
                   <strong>{index + 1}</strong>
                   <ProfileEmblem user={user} className="small" />
@@ -140,11 +163,11 @@ export default function Season({ app }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Squad Race</p>
-                <h2>{region} 팀 승격권</h2>
+                <h2>전국 팀 승격권</h2>
               </div>
             </div>
             <div className="season-race-list team-race-list">
-              {teamRows.slice(0, 8).map((team, index) => (
+              {nationalTeamRows.slice(0, 8).map((team, index) => (
                 <Link key={team.id} to={`/app/teams/${team.id}`}>
                   <strong>{index + 1}</strong>
                   <TeamEmblem team={team} size="xs" />
@@ -166,50 +189,43 @@ export default function Season({ app }) {
                 <p className="eyebrow">National Signal</p>
                 <h2>전국구 후보</h2>
               </div>
-              <Trophy size={20} />
+              <Badge tone="blue">{region}</Badge>
             </div>
-            <div className="compact-list">
-              {nationalPlayers.map((user, index) => (
-                <PlayerHoverCard key={user.id} user={user} teams={app.state.teams}>
-                  <span>{index + 1}. {user.name}</span>
-                  <strong>{user.ratings.integrated}</strong>
+            <div className="season-race-list season-candidate-list">
+              {nationalCandidates.length ? nationalCandidates.map((user, index) => (
+                <PlayerHoverCard key={user.id} user={user} teams={app.state.teams} className={user.id === app.currentUser.id ? "mine" : ""}>
+                  <strong>{nationalRankByPlayerId.get(user.id) ?? "-"}</strong>
+                  <ProfileEmblem user={user} className="small" />
+                  <div>
+                    <b>{user.name}</b>
+                    <em>지역 {index + 1}위 · 전국 {nationalRankByPlayerId.get(user.id) ?? "-"}위</em>
+                  </div>
+                  <TierBadge mmr={user.ratings.integrated} compact />
                 </PlayerHoverCard>
+              )) : <div className="empty-state">지역 시즌 기록이 없습니다.</div>}
+            </div>
+          </Card>
+
+          <Card className="section-card season-play-report">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Play Report</p>
+                <h2>이번 시즌 플레이</h2>
+              </div>
+              <Badge tone="gold">{activity.primaryMode}</Badge>
+            </div>
+            <div className="rank-stat-grid season-play-grid">
+              {Object.entries(activity.modes).map(([mode, count]) => (
+                <span key={mode}><strong>{count}</strong>{mode}</span>
               ))}
+              <span><strong>{mySeasonRow?.seasonStats.points ?? 0}</strong>득점</span>
+              <span><strong>{mySeasonRow?.seasonStats.rebounds ?? 0}</strong>리바운드</span>
+              <span><strong>{mySeasonRow?.seasonStats.assists ?? 0}</strong>어시스트</span>
+              <span><strong>{activity.official}</strong>공식전</span>
             </div>
-          </Card>
-
-          <Card className="section-card season-ops-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">League Ops</p>
-                <h2>운영 체크</h2>
-              </div>
-              <ShieldCheck size={20} />
-            </div>
-            <div className="operations-list">
-              <Link to="/app/matches"><ClipboardCheck size={17} /> 경기 전 동의 <strong>{operations.contract}</strong></Link>
-              <Link to="/app/matches"><ClipboardCheck size={17} /> 결과 승인 <strong>{operations.approval}</strong></Link>
-              <Link to="/app/matches"><ShieldCheck size={17} /> 이의제기 <strong>{operations.disputed}</strong></Link>
-              <Link to="/app/settings"><ShieldCheck size={17} /> 신고 <strong>{operations.reports}</strong></Link>
-            </div>
-          </Card>
-
-          <Card className="section-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Next Actions</p>
-                <h2>처리할 경기</h2>
-              </div>
-              <Badge tone={taskMatches.length ? "orange" : "neutral"}>{taskMatches.length}건</Badge>
-            </div>
-            <div className="compact-list">
-              {taskMatches.length ? taskMatches.map((match) => (
-                <button key={match.id} type="button" className="compact-list-row" onClick={() => setSelectedMatchId(match.id)}>
-                  <span>{match.title}</span>
-                  <strong>{statusLabels[match.status] ?? match.status}</strong>
-                </button>
-              )) : <div><span>대기 중인 운영 항목이 없습니다.</span><strong>OK</strong></div>}
-            </div>
+            <Link to="/app/profile/records">
+              <Button variant="secondary" className="wide-button">전체 기록 보기</Button>
+            </Link>
           </Card>
         </aside>
       </div>
@@ -258,7 +274,5 @@ export default function Season({ app }) {
         </div>
       </Card>
     </div>
-    <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="season" onClose={() => setSelectedMatchId("")} />
-    </>
   );
 }

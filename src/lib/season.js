@@ -1,9 +1,10 @@
 import { getMatchSideScore as getSideScore } from "./matchUtils.js";
+import { SOLO_RECORD_MODE_IDS } from "./constants.js";
 
 const fallbackSeason = {
   id: "season-zero",
   name: "Season Zero",
-  subtitle: "지역 래더를 검증하는 프리시즌",
+  subtitle: "전국 래더를 검증하는 프리시즌",
   startsAt: "2026-05-31",
   endsAt: "2026-08-31",
   regions: ["마포", "성수", "잠실", "강남"],
@@ -64,6 +65,28 @@ export function getSeasonProgress(season = fallbackSeason, now = new Date()) {
 
 function getSeasonMatches(matches = [], season = fallbackSeason) {
   return matches.filter((match) => isInSeason(match, season));
+}
+
+export function getPlayerSeasonActivity(matches = [], userId = "", season = fallbackSeason) {
+  const confirmedMatches = getSeasonMatches(matches, season)
+    .filter(isConfirmed)
+    .filter((match) => getPlayerSide(match, userId));
+  const modes = Object.fromEntries([...SOLO_RECORD_MODE_IDS].map((mode) => [
+    mode,
+    confirmedMatches.filter((match) => match.mode === mode).length,
+  ]));
+  const primaryMode = Object.entries(modes)
+    .sort((a, b) => b[1] - a[1] || Number.parseInt(b[0], 10) - Number.parseInt(a[0], 10))
+    .find(([, count]) => count > 0)?.[0] ?? "기록 없음";
+
+  return {
+    total: confirmedMatches.length,
+    modes,
+    primaryMode,
+    ranked: confirmedMatches.filter((match) => match.ranked !== false).length,
+    friendly: confirmedMatches.filter((match) => match.ranked === false).length,
+    official: confirmedMatches.filter((match) => match.official === true).length,
+  };
 }
 
 export function getPlayerSeasonRows(users = [], matches = [], season = fallbackSeason, region = "전체") {
@@ -147,13 +170,4 @@ export function getLocalRivalries(teams = [], matches = [], region = "전체", l
   }
 
   return pairs.sort((a, b) => b.heat - a.heat).slice(0, limit);
-}
-
-export function getOperationsSummary(matches = [], reports = []) {
-  return {
-    contract: matches.filter((match) => match.status === "contract").length,
-    approval: matches.filter((match) => match.status === "approval").length,
-    disputed: matches.filter((match) => match.status === "disputed").length,
-    reports: reports.filter((report) => report.status !== "resolved").length,
-  };
 }

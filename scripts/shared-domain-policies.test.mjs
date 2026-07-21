@@ -87,6 +87,7 @@ import {
 import { readJsonBody } from "../server/api/_supabaseAdmin.js";
 import { getRecruitingListCardLobby } from "../src/lib/recruiting.js";
 import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
+import { getPlayerSeasonActivity } from "../src/lib/season.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -329,6 +330,47 @@ test("team ranking starts from the full bounded directory", async () => {
   const teams = await readSource("src/pages/Teams.jsx");
   assert.match(teams, /const \[region, setRegion\] = useState\("전체"\);/);
   assert.doesNotMatch(teams, /팀 탐색/);
+});
+
+test("season hub is player-centered while regional MMR stays separate", async () => {
+  const season = { startsAt: "2026-07-01", endsAt: "2026-07-31" };
+  const confirmed = (id, mode, ranked, official = false, scheduledDate = "2026-07-20") => ({
+    id,
+    mode,
+    ranked,
+    official,
+    scheduledDate,
+    status: "confirmed",
+    result: { scoreA: 21, scoreB: 18 },
+    teamA: { players: ["player-49"] },
+    teamB: { players: ["opponent"] },
+  });
+  const activity = getPlayerSeasonActivity([
+    confirmed("m1", "3v3", true, true),
+    confirmed("m2", "5v5", false),
+    confirmed("m3", "3v3", true),
+    confirmed("old", "1v1", true, false, "2026-06-20"),
+    { ...confirmed("pending", "2v2", true), status: "approval" },
+  ], "player-49", season);
+  assert.deepEqual(activity.modes, { "1v1": 0, "2v2": 0, "3v3": 2, "4v4": 0, "5v5": 1 });
+  assert.equal(activity.total, 3);
+  assert.equal(activity.primaryMode, "3v3");
+  assert.equal(activity.ranked, 2);
+  assert.equal(activity.friendly, 1);
+  assert.equal(activity.official, 1);
+
+  const [seasonPage, rankingsPage, styles] = await Promise.all([
+    readSource("src/pages/Season.jsx"),
+    readSource("src/pages/Rankings.jsx"),
+    readSource("src/styles/globals.css"),
+  ]);
+  assert.match(seasonPage, /getPlayerSeasonRows\(app\.state\.users, app\.state\.matches, season, "전체"\)/);
+  assert.match(seasonPage, /전국 개인 승격권/);
+  assert.match(seasonPage, /이번 시즌 플레이/);
+  assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
+  assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
+  assert.match(rankingsPage, /useState\("integrated"\)/);
+  assert.match(styles, /\.season-race-list > \.player-hover-trigger/);
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {
