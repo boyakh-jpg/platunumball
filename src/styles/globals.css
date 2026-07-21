@@ -4890,6 +4890,128 @@ input[type="color"] {
   font-weight: 750;
 }
 
+.settings-place-lookup {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  padding: 10px;
+}
+
+.settings-place-lookup-head,
+.settings-place-name-actions,
+.settings-nearby-courts-head,
+.settings-nearby-court-list > div,
+.settings-nearby-confirm {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-place-lookup-head > div,
+.settings-nearby-courts-head > div,
+.settings-nearby-court-list > div > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.settings-place-lookup-head strong {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.settings-place-lookup-head span,
+.settings-place-lookup > small,
+.settings-place-name-actions small,
+.settings-nearby-courts > small,
+.settings-nearby-court-list small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.settings-place-lookup-head > em {
+  flex: 0 0 auto;
+  color: var(--green);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.settings-place-results button.is-selected {
+  border-color: color-mix(in srgb, var(--green) 58%, var(--line));
+  background: color-mix(in srgb, var(--green) 11%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.settings-place-name-actions {
+  align-items: flex-start;
+}
+
+.settings-place-name-actions .button {
+  flex: 0 0 auto;
+}
+
+.settings-nearby-courts {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.settings-nearby-courts-head svg {
+  flex: 0 0 auto;
+  color: var(--orange);
+}
+
+.settings-nearby-court-list {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-nearby-court-list > div {
+  align-items: flex-start;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  padding-top: 7px;
+}
+
+.settings-nearby-court-list b {
+  color: var(--text);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.settings-nearby-court-list em {
+  flex: 0 0 auto;
+  color: var(--orange);
+  white-space: nowrap;
+}
+
+.settings-nearby-confirm {
+  justify-content: flex-start;
+  border: 1px solid color-mix(in srgb, var(--orange) 34%, var(--line));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--orange) 7%, var(--surface));
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 850;
+  padding: 9px 10px;
+}
+
+.settings-nearby-confirm input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--orange);
+}
+
 @media (max-width: 560px) {
   .settings-address-results button {
     grid-template-columns: minmax(0, 1fr);
@@ -4913,6 +5035,19 @@ input[type="color"] {
   .settings-address-results em {
     grid-row: 3;
     justify-self: start;
+  }
+
+  .settings-place-lookup-head,
+  .settings-place-name-actions,
+  .settings-nearby-court-list > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-place-lookup-head > em,
+  .settings-place-name-actions .button,
+  .settings-nearby-court-list em {
+    align-self: flex-start;
   }
 }
 

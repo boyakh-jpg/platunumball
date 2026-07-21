@@ -428,6 +428,40 @@ export function getCourtLocationMatches(draft = {}, stateOrSettings = {}, option
   });
 }
 
+export function getNearbyCourtCandidates(draft = {}, stateOrSettings = {}, options = {}) {
+  const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
+  const source = getCourtIdentity(draft);
+  if (source.latitude === null || source.longitude === null) return [];
+  const requestedMaxDistance = Number(options.maxDistanceMeters ?? 500);
+  const requestedLimit = Number(options.limit ?? 5);
+  const maxDistanceMeters = Number.isFinite(requestedMaxDistance) ? Math.max(0, requestedMaxDistance) : 500;
+  const limit = Number.isFinite(requestedLimit) ? Math.max(0, Math.floor(requestedLimit)) : 5;
+  const seen = new Set();
+
+  return getCourtCandidates(settings, options.includeRequests !== false)
+    .map((candidate) => {
+      if (options.excludeRequestId && candidate.court?.id === options.excludeRequestId) return null;
+      if (options.excludeRequestId && candidate.court?.sourceRequestId === options.excludeRequestId) return null;
+      const target = getCourtIdentity(candidate.court);
+      const distanceMeters = getCourtDistanceMeters(source, target);
+      const sameLocation = isSameCourtIdentity(source, target);
+      if (!sameLocation && (distanceMeters === null || distanceMeters > maxDistanceMeters)) return null;
+      const identityKey = candidate.court?.id
+        ? `${candidate.type}:${candidate.court.id}`
+        : `${candidate.type}:${target.name}:${target.address}:${target.latitude}:${target.longitude}`;
+      if (seen.has(identityKey)) return null;
+      seen.add(identityKey);
+      return { ...candidate, distanceMeters, sameLocation };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (
+      Number(b.sameLocation) - Number(a.sameLocation)
+      || (a.distanceMeters ?? Number.MAX_SAFE_INTEGER) - (b.distanceMeters ?? Number.MAX_SAFE_INTEGER)
+      || String(a.court?.name ?? "").localeCompare(String(b.court?.name ?? ""))
+    ))
+    .slice(0, limit);
+}
+
 export function getCourtCanonicalName(draft = {}, stateOrSettings = {}, options = {}) {
   const baseName = getCourtCanonicalBaseName(draft);
   if (!baseName) return "";

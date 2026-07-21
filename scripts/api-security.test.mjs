@@ -217,16 +217,23 @@ test("public app redirects reject untrusted Host values and external paths", () 
   }
 });
 
-test("authenticated address search uses POST JSON instead of URL query", async () => {
-  const [clientSource, serverSource] = await Promise.all([
+test("authenticated court lookups use POST JSON instead of URL query", async () => {
+  const [clientSource, addressServerSource, placeServerSource] = await Promise.all([
     readSource("src/lib/naverAddress.js"),
     readSource("server/api/courts/address-search.js"),
+    readSource("server/api/courts/place-search.js"),
   ]);
   assert.match(clientSource, /fetch\("\/api\/courts\/address-search", \{[\s\S]{0,180}method: "POST"/);
   assert.match(clientSource, /body: JSON\.stringify\(\{ q: searchQuery \}\)/);
   assert.doesNotMatch(clientSource, /address-search\?q=/);
-  assert.match(serverSource, /request\.method !== "POST"/);
-  assert.doesNotMatch(serverSource, /request\.headers\.host|searchParams\.get\("q"\)/);
+  assert.match(clientSource, /fetch\("\/api\/courts\/place-search", \{[\s\S]{0,180}method: "POST"/);
+  assert.doesNotMatch(clientSource, /place-search\?/);
+  [addressServerSource, placeServerSource].forEach((serverSource) => {
+    assert.match(serverSource, /request\.method !== "POST"/);
+    assert.doesNotMatch(serverSource, /request\.headers\.host|searchParams\.get\("q"\)/);
+  });
+  assert.match(placeServerSource, /process\.env\.NAVER_SEARCH_CLIENT_ID/);
+  assert.match(placeServerSource, /process\.env\.NAVER_SEARCH_CLIENT_SECRET/);
 });
 
 test("future public database objects are deny-by-default", async () => {

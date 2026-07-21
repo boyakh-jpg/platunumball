@@ -10,6 +10,7 @@ import courtRequestApprove from "../server/api/court-requests/approve.js";
 import courtRequestReport from "../server/api/court-requests/report.js";
 import courtRequestSubmit from "../server/api/court-requests/submit.js";
 import courtAddressSearch from "../server/api/courts/address-search.js";
+import courtPlaceSearch from "../server/api/courts/place-search.js";
 import courtSubmitReview from "../server/api/courts/submit-review.js";
 import courtDetail from "../server/api/courts/detail.js";
 import directoryLoad from "../server/api/directory/load.js";
@@ -65,6 +66,7 @@ export const API_ROUTES = new Map([
   ["/court-requests/report", route(courtRequestReport, ["POST"], "user")],
   ["/court-requests/submit", route(courtRequestSubmit, ["POST"], "user")],
   ["/courts/address-search", route(courtAddressSearch, ["POST"], "user")],
+  ["/courts/place-search", route(courtPlaceSearch, ["POST"], "user")],
   ["/courts/submit-review", route(courtSubmitReview, ["POST"], "user")],
   ["/courts/detail", route(courtDetail, ["POST"], "user")],
   ["/directory/load", route(directoryLoad, ["POST"], "user")],

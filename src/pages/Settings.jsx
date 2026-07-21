@@ -28,13 +28,14 @@ import {
   getCourtKindLabel,
   getCourtLayoutLabel,
   getCourtLocationMatches,
+  getNearbyCourtCandidates,
   getCourtPaidLabel,
   getCourtSurfaceLabel,
   getRegisteredCourts,
   normalizeCourtSourceUrl,
 } from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
+import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses, searchNaverPlaceCandidates } from "../lib/naverAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import {
@@ -83,6 +84,17 @@ const DEFAULT_COURT_REQUEST = {
   paid: null,
   sourceUrl: "",
 };
+const COURT_NEARBY_REVIEW_FIELDS = new Set([
+  "name",
+  "buildingName",
+  "courtUnit",
+  "addressText",
+  "roadAddress",
+  "jibunAddress",
+  "zonecode",
+  "lat",
+  "lng",
+]);
 const COURT_COST_OPTIONS = [
   { id: "unknown", label: "확인 필요", value: null },
   { id: "free", label: "무료", value: false },
@@ -216,6 +228,13 @@ function getReportTargetEmptyText(targetType) {
   return "신고 가능한 대상 없음";
 }
 
+function formatCourtDistance(distanceMeters) {
+  const distance = Number(distanceMeters);
+  if (!Number.isFinite(distance)) return "거리 미확인";
+  if (distance < 1000) return `${Math.max(0, Math.round(distance))}m`;
+  return `${(distance / 1000).toFixed(1)}km`;
+}
+
 export default function Settings({ app, auth, section = "main" }) {
   const loadDirectory = app.actions.loadDirectory;
   const loadAdminContext = app.actions.loadAdminContext;
@@ -256,6 +275,13 @@ export default function Settings({ app, auth, section = "main" }) {
   const [naverAddressResults, setNaverAddressResults] = useState([]);
   const [courtLookupStatus, setCourtLookupStatus] = useState("");
   const [courtPinConfirmed, setCourtPinConfirmed] = useState(false);
+  const [courtPlaceCandidates, setCourtPlaceCandidates] = useState([]);
+  const [courtPlaceLookupStatus, setCourtPlaceLookupStatus] = useState("");
+  const [courtPlaceSearchPending, setCourtPlaceSearchPending] = useState(false);
+  const [selectedCourtPlaceId, setSelectedCourtPlaceId] = useState("");
+  const [courtServerNearbyCandidates, setCourtServerNearbyCandidates] = useState([]);
+  const [courtNearbyConfirmed, setCourtNearbyConfirmed] = useState(false);
+  const courtPlaceSearchRef = useRef(0);
   const [courtDraft, setCourtDraft] = useState(() => ({
     ...DEFAULT_COURT_REQUEST,
     region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
@@ -400,7 +426,30 @@ export default function Settings({ app, auth, section = "main" }) {
     () => getCourtLocationMatches(courtDraft, app.state),
     [app.state, courtDraft],
   );
+  const courtLocalNearbyCandidates = useMemo(
+    () => getNearbyCourtCandidates(courtDraft, app.state, { maxDistanceMeters: 500, limit: 5 }),
+    [app.state, courtDraft],
+  );
+  const courtNearbyCandidates = useMemo(() => {
+    const seen = new Set();
+    return [...courtServerNearbyCandidates, ...courtLocalNearbyCandidates]
+      .filter((candidate) => {
+        const key = `${candidate.type}:${candidate.court?.id ?? candidate.court?.name ?? ""}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => (
+        Number(b.sameLocation) - Number(a.sameLocation)
+        || (a.distanceMeters ?? Number.MAX_SAFE_INTEGER) - (b.distanceMeters ?? Number.MAX_SAFE_INTEGER)
+      ))
+      .slice(0, 5);
+  }, [courtLocalNearbyCandidates, courtServerNearbyCandidates]);
+  const courtNearbyCandidateSignature = courtNearbyCandidates
+    .map((candidate) => `${candidate.type}:${candidate.court?.id ?? candidate.court?.name ?? ""}:${Math.round(candidate.distanceMeters ?? -1)}:${candidate.sameLocation ? 1 : 0}`)
+    .join("|");
   const courtRequiresUnit = courtLocationMatches.length > 0;
+  const courtNearbyReviewRequired = courtPinConfirmed && courtNearbyCandidates.length > 0;
   const courtDuplicate = useMemo(
     () => findCourtDuplicate({ ...courtDraft, name: courtDisplayName || courtDraft.name }, app.state),
     [app.state, courtDisplayName, courtDraft],
@@ -413,11 +462,15 @@ export default function Settings({ app, auth, section = "main" }) {
   const canSubmitCourtRequest = canOpenCourtRequestForm
     && !courtDuplicate
     && !courtSourceUrlInvalid
+    && (!courtNearbyReviewRequired || courtNearbyConfirmed)
     && (!courtRequiresUnit || Boolean(courtDraft.courtUnit.trim()));
   const canOpenRefereeRequestForm = currentTrustScore >= REFEREE_TRUST_MIN;
   const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
 
+  useEffect(() => {
+    setCourtNearbyConfirmed(false);
+  }, [courtNearbyCandidateSignature]);
   useEffect(() => {
     const previousTheme = lastThemeRef.current;
     lastThemeRef.current = theme;
@@ -835,7 +888,52 @@ export default function Settings({ app, auth, section = "main" }) {
       setReportMemo("");
     }
   };
-  const updateCourtDraft = (patch) => setCourtDraft((current) => ({ ...current, ...patch }));
+  const updateCourtDraft = (patch) => {
+    if (Object.keys(patch).some((key) => COURT_NEARBY_REVIEW_FIELDS.has(key))) setCourtNearbyConfirmed(false);
+    setCourtDraft((current) => ({ ...current, ...patch }));
+  };
+  const resetCourtPlaceLookup = () => {
+    courtPlaceSearchRef.current += 1;
+    setCourtPlaceCandidates([]);
+    setCourtPlaceLookupStatus("");
+    setCourtPlaceSearchPending(false);
+    setSelectedCourtPlaceId("");
+    setCourtServerNearbyCandidates([]);
+  };
+  const loadCourtPlaceCandidates = async (pin) => {
+    const requestId = courtPlaceSearchRef.current + 1;
+    courtPlaceSearchRef.current = requestId;
+    setCourtPlaceCandidates([]);
+    setSelectedCourtPlaceId("");
+    setCourtPlaceSearchPending(true);
+    setCourtPlaceLookupStatus("핀 주소에 등록된 장소 찾는 중");
+    try {
+      const result = await searchNaverPlaceCandidates(pin);
+      if (courtPlaceSearchRef.current !== requestId) return;
+      setCourtPlaceCandidates(result.results);
+      setCourtServerNearbyCandidates(result.nearbyCourts);
+      setCourtPlaceLookupStatus(result.placeSearchMessage || (result.results.length
+        ? `${result.results.length}개 장소 후보를 찾았습니다. 맞는 장소를 선택하세요.`
+        : "등록된 장소를 찾지 못했습니다. 시설/장소명을 직접 입력하세요."));
+    } catch (error) {
+      if (courtPlaceSearchRef.current !== requestId) return;
+      setCourtPlaceCandidates([]);
+      setCourtServerNearbyCandidates([]);
+      setCourtPlaceLookupStatus(error.message || "장소 자동검색 실패 · 직접 입력 가능");
+    } finally {
+      if (courtPlaceSearchRef.current === requestId) setCourtPlaceSearchPending(false);
+    }
+  };
+  const selectCourtPlace = (place) => {
+    setSelectedCourtPlaceId(place.id);
+    updateCourtDraft({ name: place.name, buildingName: place.name });
+    setCourtPlaceLookupStatus("선택한 시설/장소명을 구장명 기준으로 사용합니다.");
+  };
+  const enableManualCourtPlaceName = () => {
+    setSelectedCourtPlaceId("");
+    updateCourtDraft({ name: courtDraft.name, buildingName: "" });
+    setCourtPlaceLookupStatus("시설/장소명을 직접 수정할 수 있습니다.");
+  };
   const getCourtAddressRegion = (addressResult) => {
     const text = `${addressResult?.sigungu ?? ""} ${addressResult?.addressText ?? ""}`;
     return REGIONS.find((region) => text.includes(region)) ?? addressResult?.sigungu ?? app.currentUser?.region ?? "";
@@ -880,11 +978,13 @@ export default function Settings({ app, auth, section = "main" }) {
       setNaverAddressResults([]);
       setCourtPinConfirmed(true);
       setCourtLookupStatus("핀 위치의 실제 주소를 저장했습니다.");
+      await loadCourtPlaceCandidates(pin);
     } catch (error) {
       setCourtLookupStatus(error.message || "실제 구장 위치 저장 실패");
     }
   };
   const selectNaverAddress = (result) => {
+    resetCourtPlaceLookup();
     const addressDong = getCourtAddressDong(result);
     const buildingName = String(result.buildingName || courtDraft.buildingName || courtDraft.name).trim();
     updateCourtDraft({
@@ -984,6 +1084,10 @@ export default function Settings({ app, auth, section = "main" }) {
       setCourtLookupStatus(courtDuplicateMessage);
       return;
     }
+    if (courtNearbyReviewRequired && !courtNearbyConfirmed) {
+      setCourtLookupStatus("근처 등록·검토 중 구장을 확인하고 중복 확인에 체크하세요.");
+      return;
+    }
     if (courtSourceUrlInvalid) {
       setCourtLookupStatus("공식 안내 링크는 https:// 주소로 입력하세요.");
       return;
@@ -997,6 +1101,8 @@ export default function Settings({ app, auth, section = "main" }) {
     setCourtAddressQuery("");
     setNaverAddressResults([]);
     setCourtPinConfirmed(false);
+    resetCourtPlaceLookup();
+    setCourtNearbyConfirmed(false);
     setCourtDraft({
       ...DEFAULT_COURT_REQUEST,
       region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
@@ -1546,8 +1652,8 @@ export default function Settings({ app, auth, section = "main" }) {
             <div className={canSubmitCourtRequest ? "tier-range-note" : "tier-range-note tier-range-note-warning"}>
               <div>
                 <span>등록 권한</span>
-                <strong>{currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : courtSourceUrlInvalid ? "링크 확인 필요" : "등록 가능"}</strong>
-                <em>{courtDuplicateMessage || (courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감`)}</em>
+                <strong>{currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요" : courtSourceUrlInvalid ? "링크 확인 필요" : "등록 가능"}</strong>
+                <em>{courtDuplicateMessage || (courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크하세요." : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감`)}</em>
               </div>
               <MapPin size={22} />
             </div>
@@ -1590,13 +1696,42 @@ export default function Settings({ app, auth, section = "main" }) {
                   ) : null}
                   {courtLookupStatus ? <small>{courtLookupStatus}</small> : null}
                 </div>
+                {courtPinConfirmed ? (
+                  <div className="settings-place-lookup">
+                    <div className="settings-place-lookup-head">
+                      <div>
+                        <strong>핀 주소의 장소 후보</strong>
+                        <span>공원·체육관·학교 등 네이버에 등록된 시설만 표시</span>
+                      </div>
+                      {courtPlaceSearchPending ? <em>검색 중</em> : null}
+                    </div>
+                    {courtPlaceCandidates.length ? (
+                      <div className="settings-address-results settings-place-results">
+                        {courtPlaceCandidates.map((place) => (
+                          <button
+                            key={place.id}
+                            type="button"
+                            className={selectedCourtPlaceId === place.id ? "is-selected" : ""}
+                            aria-pressed={selectedCourtPlaceId === place.id}
+                            onClick={() => selectCourtPlace(place)}
+                          >
+                            <strong>{place.name}</strong>
+                            <span>{place.roadAddress || place.address || place.category}</span>
+                            <em>{place.sameAddress ? "동일 주소" : formatCourtDistance(place.distanceMeters)}</em>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {courtPlaceLookupStatus ? <small>{courtPlaceLookupStatus}</small> : null}
+                  </div>
+                ) : null}
                 <div className="form-grid two">
                   <label>
-                    공식 시설명
+                    시설/장소명
                     <input
                       value={courtDraft.name}
                       readOnly={Boolean(courtDraft.buildingName)}
-                      placeholder="핀에서 자동 생성 · 없으면 직접 입력"
+                      placeholder="장소 후보 선택 · 없으면 직접 입력"
                       onChange={(event) => updateCourtDraft({ name: event.target.value })}
                     />
                   </label>
@@ -1605,24 +1740,45 @@ export default function Settings({ app, auth, section = "main" }) {
                     <input value={courtDraft.courtUnit} placeholder="예: 1코트, B코트, 실내" onChange={(event) => updateCourtDraft({ courtUnit: event.target.value })} />
                   </label>
                 </div>
+                <div className="settings-place-name-actions">
+                  <small>{courtDraft.buildingName ? "선택한 장소명이 적용됨" : "맞는 후보가 없으면 직접 입력"}</small>
+                  {courtDraft.buildingName ? <Button type="button" size="sm" variant="secondary" onClick={enableManualCourtPlaceName}>직접 수정</Button> : null}
+                </div>
                 {courtDisplayName ? (
                   <div className="arena-mini-note">
                     <div>
                       <span>저장 구장명</span>
                       <strong>{courtDisplayName}</strong>
-                      <em>공식 시설명과 코트 구분으로 자동 생성 · 해시태그 자동 부여</em>
+                      <em>시설/장소명과 코트 구분으로 자동 생성 · 해시태그 자동 부여</em>
                     </div>
                     <MapPin size={18} />
                   </div>
                 ) : null}
-                {courtLocationMatches.length ? (
-                  <div className="arena-mini-note arena-mini-note-warning">
-                    <div>
-                      <span>같은 장소 등록 구장 {courtLocationMatches.length}개</span>
-                      <strong>{courtLocationMatches.slice(0, 3).map((item) => item.court?.name).filter(Boolean).join(" · ")}</strong>
-                      <em>물리적으로 다른 코트만 추가할 수 있습니다. 코트 구분을 정확히 입력하세요.</em>
+                {courtPinConfirmed && courtNearbyCandidates.length ? (
+                  <div className="arena-mini-note arena-mini-note-warning settings-nearby-courts">
+                    <div className="settings-nearby-courts-head">
+                      <div>
+                        <span>근처 등록·검토 중 구장</span>
+                        <strong>{courtNearbyCandidates.length}개 확인</strong>
+                      </div>
+                      <MapPin size={18} />
                     </div>
-                    <MapPin size={18} />
+                    <div className="settings-nearby-court-list">
+                      {courtNearbyCandidates.map((item) => (
+                        <div key={`${item.type}:${item.court?.id ?? item.court?.name}`}>
+                          <span>
+                            <b>{item.court?.name ?? "구장"}</b>
+                            <small>{item.court?.addressText || item.court?.roadAddress || item.court?.jibunAddress || "주소 미확인"}</small>
+                          </span>
+                          <em>{item.type === "approved" ? "등록됨" : "검토 중"} · {item.sameLocation ? "같은 장소" : formatCourtDistance(item.distanceMeters)}</em>
+                        </div>
+                      ))}
+                    </div>
+                    {courtRequiresUnit ? <small>같은 장소 후보가 있습니다. 실제로 다른 코트라면 코트 구분을 필수로 입력하세요.</small> : null}
+                    <label className="settings-nearby-confirm">
+                      <input type="checkbox" checked={courtNearbyConfirmed} onChange={(event) => setCourtNearbyConfirmed(event.target.checked)} />
+                      <span>위 구장과 중복이 아닌지 확인했습니다.</span>
+                    </label>
                   </div>
                 ) : null}
                 {courtAddressSelected ? (
