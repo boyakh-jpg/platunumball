@@ -2977,3 +2977,14 @@ flowchart TD
 1. 선수 상세의 소속 팀은 `getUserProfileTeams()` 결과를 원본으로 사용하고 `getRepresentativeTeam()` 결과를 첫 항목으로 배치한다. 페이지 컴포넌트에서 별도 팀원 판정을 복제하지 않는다.
 2. `/api/directory/load`의 단일 `profileId` 조회는 대상 프로필이 존재하고 `teamHistory` 공개가 허용된 경우에만 그 사용자의 `team_members`를 ID 범위로 읽는다. 이때 전체 `app_settings` 대신 공개 표시에 필요한 `representativeTeamId`만 응답에 붙인다. 비공개이거나 private profile row가 없으면 대상 팀과 대표팀 id를 응답에 포함하지 않는다.
 3. 단일 선수 조회 때문에 `team_members` 또는 `teams` 전체를 조회하지 않는다. 확인된 대상 소속 팀 ID에 대해서만 팀과 팀원 row를 확장한다.
+
+## 2026-07-21 전국 공공 농구장 일괄 등록
+
+1. 전국 공공 원장은 사용자 `court_requests`를 수천 건 생성해 승인하는 방식으로 넣지 않는다. 전용 service-role RPC가 `approved_courts`와 레거시 `courts`를 같은 트랜잭션에서 갱신하며 신청자, 알림, 신뢰도, 업적, 관리자 처리 이력을 만들지 않는다.
+2. 공공 원장의 원본 행은 `court_source_records`, 연락처·운영시간·신청방법·운영기관·공식 URL은 `court_facility_info`, 반영 배치와 정규화 원문은 `court_import_batches`·`court_import_rows`에 분리한다. 원본 출처 URL과 시설 공식 URL을 섞지 않는다.
+3. 일괄 등록 대상은 `active` 원본, 대한민국 범위의 유효 좌표, 확정된 시설명, 식별 가능한 출처를 모두 가져야 한다. `농구장`, `농구 코트`, `이름 없는 농구장` 같은 일반명은 네이버 장소 후보 또는 수동 검수를 거쳐야 한다.
+4. 주소·시도·시군구·읍면동은 원장 문자열을 그대로 확정하지 않는다. 좌표를 Naver Reverse Geocoding으로 조회한 결과를 사용하며 역지오코딩 실패 행은 등록하지 않는다.
+5. 같은 주소 또는 35m 이내 구장은 승인 구장, 대기·신고 구장요청, 레거시 구장을 모두 비교한다. 같은 구장은 차단하고 실제 복수 코트는 `courtUnit`과 `multipleCourtsVerified=true`가 확인된 경우만 허용한다.
+6. `surfaceType`, `courtLayout`, `courtKind`, `accessType`, `lighting`, `paid`는 앱의 공용 enum과 삼상 boolean 규칙으로 정규화한다. 원본 값을 확실히 매핑할 수 없으면 추정하지 않고 `unknown` 또는 `null`로 저장하며 원문을 별도 보존한다.
+7. 미리보기 호출은 DB를 쓰지 않는다. 실제 반영 함수는 최대 50행 단위, 전역 구장 identity advisory lock, 결정적 `importKey`, 출처 소유권 검사를 사용한다. 반영 전 모든 묶음을 미리보기하고 실패 묶음이 있으면 실제 반영을 시작하지 않는다.
+8. 일괄 반영 RPC와 출처·배치 테이블 쓰기는 `service_role`에만 허용한다. 일반 인증 사용자는 active 구장에 연결된 `court_facility_info`만 읽을 수 있고 출처 원문과 배치 원문은 직접 조회하지 않는다.
