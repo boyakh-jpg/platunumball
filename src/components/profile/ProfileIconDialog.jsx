@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { assetUrl } from "../../lib/assets.js";
 import {
@@ -19,9 +20,33 @@ function getInitialDraft(user) {
     avatarSource: new Set(["discord", "icon"]).has(user.avatarSource) ? user.avatarSource : "initial",
     avatarIconKey: user.avatarIconKey || DEFAULT_PROFILE_ICON_ID,
     avatarColor: user.avatarColor || "#58d2c0",
+    avatarBackgroundEnabled: user.avatarBackgroundEnabled !== false,
     avatarBorderEnabled: user.avatarBorderEnabled === true,
     avatarBorderColor: user.avatarBorderColor || user.avatarColor || "#58d2c0",
   };
+}
+
+function ProfileIconPreviewDialog({ icon, user, draft, onClose }) {
+  return createPortal(
+    <div className="app-confirm-backdrop profile-icon-preview-backdrop" role="presentation" onMouseDown={onClose}>
+      <section className="app-confirm-dialog profile-icon-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-icon-preview-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="profile-icon-preview-header">
+          <div>
+            <p className="eyebrow">Icon Preview</p>
+            <strong id="profile-icon-preview-title">{icon.name}</strong>
+          </div>
+          <Button type="button" size="sm" variant="secondary" aria-label="확대보기 닫기" onClick={onClose}>닫기</Button>
+        </header>
+        <div className="profile-icon-preview-stage">
+          <ProfileEmblem
+            user={{ ...user, ...draft, avatarSource: "icon", avatarIconKey: icon.id }}
+            className="profile-icon-large-preview"
+          />
+        </div>
+      </section>
+    </div>,
+    document.body,
+  );
 }
 
 export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
@@ -34,6 +59,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [previewIcon, setPreviewIcon] = useState(null);
   const hasDiscordAvatar = Boolean(user.discordAvatarUrl || user.discordConnection?.avatarUrl);
   const unlockedSet = useMemo(() => new Set(unlockedIconKeys), [unlockedIconKeys]);
   const selectedGroup = PROFILE_ICON_GROUPS.find((group) => group.id === selectedGroupId) ?? PROFILE_ICON_GROUPS[0];
@@ -67,14 +93,19 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKeyDown = (event) => {
-      if (event.key === "Escape" && !pending) onClose();
+      if (event.key !== "Escape") return;
+      if (previewIcon) {
+        setPreviewIcon(null);
+        return;
+      }
+      if (!pending) onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [onClose, pending]);
+  }, [onClose, pending, previewIcon]);
 
   const selectSource = (avatarSource) => {
     if (avatarSource === "discord" && !hasDiscordAvatar) {
@@ -122,8 +153,9 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
   };
 
   return (
-    <div className="app-confirm-backdrop profile-icon-dialog-backdrop" role="presentation" onMouseDown={() => !pending && onClose()}>
-      <form className="app-confirm-dialog profile-icon-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-icon-dialog-title" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
+    <>
+      <div className="app-confirm-backdrop profile-icon-dialog-backdrop" role="presentation" onMouseDown={() => !pending && onClose()}>
+        <form className="app-confirm-dialog profile-icon-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-icon-dialog-title" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
         <header className="profile-icon-dialog-header">
           <div>
             <p className="eyebrow">My Icon</p>
@@ -163,22 +195,28 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
                 const unlocked = unlockedSet.has(icon.id);
                 const selected = draft.avatarIconKey === icon.id;
                 return (
-                  <button
+                  <div
                     key={icon.id}
-                    type="button"
                     role="listitem"
-                    className={`${selected ? "active" : ""} ${unlocked ? "" : "locked"}`.trim()}
-                    disabled={pending || !unlocked}
-                    aria-pressed={selected}
-                    aria-label={`${icon.name}${unlocked ? "" : " 잠김"}`}
-                    onClick={() => selectIcon(icon.id)}
+                    className={`profile-icon-catalog-item ${selected ? "active" : ""} ${unlocked ? "" : "locked"}`.trim()}
                   >
-                    <span className="profile-icon-catalog-image">
-                      <img src={assetUrl(icon.src)} alt="" loading="lazy" decoding="async" />
-                      {!unlocked ? <i aria-hidden="true">잠금</i> : null}
-                    </span>
-                    <strong>{icon.name}</strong>
-                  </button>
+                    <button type="button" className="profile-icon-preview-trigger" aria-label={`${icon.name} 크게 보기`} disabled={pending} onClick={() => setPreviewIcon(icon)}>
+                      <span className="profile-icon-catalog-image">
+                        <img src={assetUrl(icon.src)} alt="" loading="lazy" decoding="async" />
+                        {!unlocked ? <i aria-hidden="true">잠금</i> : null}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="profile-icon-select-trigger"
+                      disabled={pending || !unlocked}
+                      aria-pressed={selected}
+                      aria-label={`${icon.name}${unlocked ? " 선택" : " 잠김"}`}
+                      onClick={() => selectIcon(icon.id)}
+                    >
+                      <strong>{icon.name}</strong>
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -187,9 +225,13 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
 
         {draft.avatarSource !== "discord" ? (
           <div className="emblem-style-controls profile-icon-color-controls">
+            <label className="emblem-border-toggle">
+              <input type="checkbox" checked={draft.avatarBackgroundEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarBackgroundEnabled: event.target.checked }))} />
+              배경색 사용
+            </label>
             <label>
               배경색
-              <input type="color" value={draft.avatarColor} onChange={(event) => setDraft((current) => ({ ...current, avatarColor: event.target.value }))} />
+              <input type="color" value={draft.avatarColor} disabled={!draft.avatarBackgroundEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarColor: event.target.value }))} />
             </label>
             <label className="emblem-border-toggle">
               <input type="checkbox" checked={draft.avatarBorderEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarBorderEnabled: event.target.checked }))} />
@@ -207,7 +249,9 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
           <Link className="button button-secondary button-sm" to="/app/profile/achievements" onClick={onClose}>업적 보기</Link>
           <Button type="submit" size="sm" disabled={pending || loading}>{pending ? "저장 중" : "저장"}</Button>
         </footer>
-      </form>
-    </div>
+        </form>
+      </div>
+      {previewIcon ? <ProfileIconPreviewDialog icon={previewIcon} user={user} draft={draft} onClose={() => setPreviewIcon(null)} /> : null}
+    </>
   );
 }

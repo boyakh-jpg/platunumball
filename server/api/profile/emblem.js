@@ -26,7 +26,7 @@ function reject(statusCode, message, details = {}) {
 async function loadProfile(context) {
   const { data, error } = await context.supabase
     .from("profiles")
-    .select("id,avatar_key,avatar_source,avatar_icon_key,avatar_color,avatar_updated_at,avatar_uploaded_at,avatar_upload_count,avatar_border_enabled,avatar_border_color,discord_connection,discord_avatar_url")
+    .select("id,avatar_key,avatar_source,avatar_icon_key,avatar_color,avatar_updated_at,avatar_uploaded_at,avatar_upload_count,avatar_background_enabled,avatar_border_enabled,avatar_border_color,discord_connection,discord_avatar_url")
     .eq("id", context.profileId)
     .maybeSingle();
   if (error) throw error;
@@ -71,6 +71,7 @@ async function commitProfileIconSettings(context, payload) {
     p_avatar_source: payload.avatarSource,
     p_avatar_icon_key: payload.avatarIconKey,
     p_avatar_color: payload.avatarColor,
+    p_background_enabled: payload.avatarBackgroundEnabled,
     p_border_enabled: payload.avatarBorderEnabled,
     p_border_color: payload.avatarBorderColor,
   });
@@ -117,6 +118,7 @@ export default async function handler(request, response) {
         avatarSource,
         avatarIconKey,
         avatarColor,
+        avatarBackgroundEnabled: body.avatarBackgroundEnabled !== false,
         avatarBorderEnabled: body.avatarBorderEnabled === true,
         avatarBorderColor,
       });

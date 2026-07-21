@@ -17,6 +17,7 @@ export default function ProfileEmblem({ user, className = "", initial, anonymous
   const imageUrl = anonymous ? "" : getProfileEmblemUrl(user);
   const imageSource = user?.avatarSource === "icon" ? "icon" : "photo";
   const label = anonymous ? "?" : initial ?? user?.name?.slice(0, 1) ?? "?";
+  const backgroundEnabled = anonymous || user?.avatarSource === "discord" || user?.avatarBackgroundEnabled !== false;
   const borderEnabled = !anonymous && user?.avatarBorderEnabled === true;
   const avatarColor = user?.avatarColor || "#58d2c0";
   const borderColor = user?.avatarBorderColor || avatarColor;
@@ -26,9 +27,9 @@ export default function ProfileEmblem({ user, className = "", initial, anonymous
   return (
     <span
       aria-hidden="true"
-      className={`avatar ${imageUrl && !imageFailed ? "image-avatar" : ""} ${borderEnabled ? "has-emblem-border" : ""} ${anonymous ? "anonymous" : ""} ${className}`.trim()}
+      className={`avatar ${imageUrl && !imageFailed ? "image-avatar" : ""} ${backgroundEnabled ? "" : "no-avatar-background"} ${borderEnabled ? "has-emblem-border" : ""} ${anonymous ? "anonymous" : ""} ${className}`.trim()}
       style={{
-        "--avatar": avatarColor,
+        "--avatar": backgroundEnabled ? avatarColor : "transparent",
         "--avatar-border": borderColor,
       }}
     >

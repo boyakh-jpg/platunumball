@@ -3605,6 +3605,7 @@ export function useAppData(authUser = null, appLocation = null) {
               avatarSource: result.avatarSource ?? settings.avatarSource ?? user.avatarSource,
               avatarIconKey: result.avatarIconKey ?? user.avatarIconKey,
               avatarColor: result.avatarColor ?? settings.avatarColor ?? user.avatarColor,
+              avatarBackgroundEnabled: result.avatarBackgroundEnabled ?? settings.avatarBackgroundEnabled ?? user.avatarBackgroundEnabled ?? true,
               avatarBorderEnabled: result.avatarBorderEnabled ?? settings.avatarBorderEnabled ?? user.avatarBorderEnabled ?? false,
               avatarBorderColor: result.avatarBorderColor ?? settings.avatarBorderColor ?? user.avatarBorderColor ?? user.avatarColor,
               avatarUpdatedAt: result.avatarUpdatedAt ?? new Date().toISOString(),

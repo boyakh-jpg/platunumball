@@ -154,6 +154,7 @@ function toProfile(row = {}, kind = "profile", extra = {}) {
     avatarSource: row.avatar_source ?? "initial",
     avatarIconKey: row.avatar_icon_key ?? null,
     avatarUpdatedAt: row.avatar_updated_at ?? null,
+    avatarBackgroundEnabled: row.avatar_background_enabled !== false,
     avatarBorderEnabled: row.avatar_border_enabled === true,
     avatarBorderColor: row.avatar_border_color ?? row.avatar_color,
     discordAvatarUrl: row.discord_avatar_url ?? null,

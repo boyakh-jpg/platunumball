@@ -13,6 +13,7 @@ const REQUIRED_COLUMNS = {
     "avatar_icon_key",
     "avatar_uploaded_at",
     "avatar_upload_count",
+    "avatar_background_enabled",
     "avatar_border_enabled",
     "avatar_border_color",
     "discord_avatar_url",
@@ -26,6 +27,7 @@ const REQUIRED_COLUMNS = {
     "avatar_key",
     "avatar_source",
     "avatar_icon_key",
+    "avatar_background_enabled",
     "avatar_border_enabled",
     "avatar_border_color",
     "discord_avatar_url",
@@ -379,7 +381,7 @@ const REQUIRED_RPCS = [
   },
   {
     name: "rankball_save_profile_icon_settings",
-    args: { p_actor_profile_id: "", p_avatar_source: "initial", p_avatar_icon_key: "01-first-bucket", p_avatar_color: "#58d2c0", p_border_enabled: false, p_border_color: "#58d2c0" },
+    args: { p_actor_profile_id: "", p_avatar_source: "initial", p_avatar_icon_key: "01-first-bucket", p_avatar_color: "#58d2c0", p_background_enabled: true, p_border_enabled: false, p_border_color: "#58d2c0" },
   },
   {
     name: "rankball_moderate_team_emblem",

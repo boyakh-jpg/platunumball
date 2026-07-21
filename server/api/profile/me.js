@@ -19,7 +19,7 @@ import {
 import { REMOTE_CLIENT_RECORD_MONTHS } from "../../../src/lib/constants.js";
 
 export { PROFILE_ME_COLUMNS };
-const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,avatar_key,avatar_source,avatar_icon_key,avatar_updated_at,avatar_border_enabled,avatar_border_color,discord_avatar_url,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
+const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,avatar_key,avatar_source,avatar_icon_key,avatar_updated_at,avatar_background_enabled,avatar_border_enabled,avatar_border_color,discord_avatar_url,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
 const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
 const PROFILE_RECENT_RECORD_LIMIT = 6;
 

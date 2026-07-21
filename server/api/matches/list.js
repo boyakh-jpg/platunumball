@@ -844,6 +844,7 @@ function compactUser(user = {}, profileId = "") {
     avatarSource: user.avatarSource ?? "initial",
     avatarIconKey: user.avatarIconKey ?? null,
     avatarUpdatedAt: user.avatarUpdatedAt ?? null,
+    avatarBackgroundEnabled: user.avatarBackgroundEnabled !== false,
     avatarBorderEnabled: user.avatarBorderEnabled === true,
     avatarBorderColor: user.avatarBorderColor ?? user.avatarColor,
     discordAvatarUrl: user.discordAvatarUrl ?? null,

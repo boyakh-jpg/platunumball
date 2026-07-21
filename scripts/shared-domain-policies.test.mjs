@@ -88,6 +88,7 @@ import { readJsonBody } from "../server/api/_supabaseAdmin.js";
 import { getRecruitingListCardLobby } from "../src/lib/recruiting.js";
 import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
 import { getPlayerSeasonActivity } from "../src/lib/season.js";
+import { fromRemoteProfile } from "../src/data/profileMappers.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -291,6 +292,30 @@ test("emblem validators share frontend and server allowlists", () => {
     getEmblemUploadWarning(3, "2026-07-21T00:00:00.000Z"),
     "(처음 한번) 사진을 업로드한 뒤 한 번까지는 바로 변경할 수 있으며, 그 이후에는 마지막 업로드일로부터 30일 뒤에 변경할 수 있습니다.",
   );
+});
+
+test("profile icon background choice and image preview stay persistent and separate", async () => {
+  assert.equal(fromRemoteProfile({ id: "profile-1", name: "선수", avatar_background_enabled: false }).avatarBackgroundEnabled, false);
+  assert.equal(fromRemoteProfile({ id: "profile-2", name: "선수" }).avatarBackgroundEnabled, true);
+
+  const [dialog, emblem, api, columns, migration, styles] = await Promise.all([
+    readSource("src/components/profile/ProfileIconDialog.jsx"),
+    readSource("src/components/profile/ProfileEmblem.jsx"),
+    readSource("server/api/profile/emblem.js"),
+    readSource("src/data/repositoryColumns.js"),
+    readSource("supabase/migrations/20260721190000_profile_icon_background_toggle.sql"),
+    readSource("src/styles/globals.css"),
+  ]);
+  assert.match(dialog, /avatarBackgroundEnabled/);
+  assert.match(dialog, /profile-icon-preview-dialog/);
+  assert.match(dialog, /setPreviewIcon\(icon\)/);
+  assert.match(dialog, /배경색 사용/);
+  assert.match(emblem, /no-avatar-background/);
+  assert.match(api, /p_background_enabled/);
+  assert.match(columns, /avatar_background_enabled/);
+  assert.match(migration, /add column if not exists avatar_background_enabled boolean not null default true/);
+  assert.match(migration, /'avatarBackgroundEnabled', current_profile\.avatar_background_enabled/);
+  assert.match(styles, /cursor: zoom-in/);
 });
 
 test("team emblem border controls stay common to initial and uploaded sources", async () => {

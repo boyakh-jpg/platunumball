@@ -50,6 +50,7 @@ function toReview(row = {}, reviewer = null, includeRawRating = false) {
       avatarSource: reviewer.avatarSource ?? "initial",
       avatarIconKey: reviewer.avatarIconKey ?? null,
       avatarUpdatedAt: reviewer.avatarUpdatedAt ?? null,
+      avatarBackgroundEnabled: reviewer.avatarBackgroundEnabled !== false,
       avatarBorderEnabled: reviewer.avatarBorderEnabled === true,
       avatarBorderColor: reviewer.avatarBorderColor ?? reviewer.avatarColor,
       discordAvatarUrl: reviewer.discordAvatarUrl ?? null,
