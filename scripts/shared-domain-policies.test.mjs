@@ -131,6 +131,18 @@ test("emblem validators share frontend and server allowlists", () => {
   assert.equal(isTeamEmblemFont("script"), false);
 });
 
+test("team emblem border controls stay common to initial and uploaded sources", async () => {
+  const teamDetail = await readSource("src/pages/TeamDetail.jsx");
+  const initialControlsStart = teamDetail.indexOf('{emblemSource === "initial" ? (');
+  const initialControlsEnd = teamDetail.indexOf(") : null}", initialControlsStart);
+  const borderControlsStart = teamDetail.indexOf("team-emblem-style-controls", initialControlsStart);
+  assert.ok(initialControlsStart >= 0);
+  assert.ok(initialControlsEnd > initialControlsStart);
+  assert.ok(borderControlsStart > initialControlsEnd);
+  assert.match(teamDetail.slice(borderControlsStart), /테두리 사용/);
+  assert.match(teamDetail.slice(borderControlsStart), /테두리 색/);
+});
+
 test("notification status and delivery prefix policies stay aligned", () => {
   assert.ok(isTerminalMatchStatus("VOIDED"));
   assert.ok(isTerminalRecruitingStatus("expired"));

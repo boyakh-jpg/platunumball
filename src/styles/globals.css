@@ -8422,6 +8422,14 @@ html[data-theme="light"] .search-picker-result-row.selected {
   color: var(--text);
 }
 
+.team-emblem-style-controls {
+  grid-template-columns: repeat(2, minmax(120px, 1fr)) auto;
+}
+
+.team-emblem-style-controls.has-emblem-color {
+  grid-template-columns: repeat(3, minmax(120px, 1fr)) auto;
+}
+
 .team-emblem-design-controls {
   display: grid;
   gap: 10px;
@@ -19095,6 +19103,14 @@ html[data-theme="light"] .court-map-picker-state {
   .emblem-style-controls,
   .team-emblem-text-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-emblem-style-controls.has-emblem-color {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-emblem-style-controls.is-upload .button {
+    grid-column: 1 / -1;
   }
 
   .rank-team-page .member-control-row {

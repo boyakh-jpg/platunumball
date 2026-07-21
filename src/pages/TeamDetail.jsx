@@ -702,23 +702,25 @@ export default function TeamDetail({ app }) {
                       </button>
                     ))}
                   </div>
-                  <div className="emblem-style-controls">
-                    <label>
-                      엠블럼 색
-                      <input type="color" value={emblemStyleDraft.emblemColor} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemColor: event.target.value }))} />
-                    </label>
-                    <label className="emblem-border-toggle">
-                      <input type="checkbox" checked={emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderEnabled: event.target.checked }))} />
-                      테두리 사용
-                    </label>
-                    <label>
-                      테두리 색
-                      <input type="color" value={emblemStyleDraft.emblemBorderColor} disabled={!emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderColor: event.target.value }))} />
-                    </label>
-                    <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
-                  </div>
                 </div>
               ) : null}
+              <div className={`emblem-style-controls team-emblem-style-controls ${emblemSource === "initial" ? "has-emblem-color" : "is-upload"}`}>
+                {emblemSource === "initial" ? (
+                  <label>
+                    엠블럼 색
+                    <input type="color" value={emblemStyleDraft.emblemColor} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemColor: event.target.value }))} />
+                  </label>
+                ) : null}
+                <label className="emblem-border-toggle">
+                  <input type="checkbox" checked={emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderEnabled: event.target.checked }))} />
+                  테두리 사용
+                </label>
+                <label>
+                  테두리 색
+                  <input type="color" value={emblemStyleDraft.emblemBorderColor} disabled={!emblemStyleDraft.emblemBorderEnabled} onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemBorderColor: event.target.value }))} />
+                </label>
+                <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
+              </div>
               <p className="emblem-policy-note">{moderationLocked ? `운영 조치로 ${formatEmblemDate(moderationBlockedAt)}부터 사진을 업로드할 수 있습니다.` : getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}</p>
               <div className="settings-save-row team-emblem-editor-actions">
                 <small>{emblemFeedback || (emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 사진을 변경할 수 있습니다.` : "저장된 사진은 기본값으로 바꿔도 삭제되지 않습니다.")}</small>
