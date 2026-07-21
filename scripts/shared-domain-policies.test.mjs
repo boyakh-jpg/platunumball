@@ -50,7 +50,12 @@ import {
   getPlayerMatchResult,
   isMatchWithinRecordDetailWindow,
 } from "../src/lib/matchUtils.js";
-import { getCourtMapUrl } from "../src/lib/courts.js";
+import {
+  getCourtMapUrl,
+  getCourtPickerResults,
+  getCourtSearchText,
+  mergeCourtSearchCourts,
+} from "../src/lib/courts.js";
 import {
   UNSAFE_INPUT_ERROR_CODE,
   assertSafeInputPayload,
@@ -299,6 +304,39 @@ test("court map URLs pin stored coordinates and search by address only", () => {
     getCourtMapUrl({ name: "연북중학교 농구장", addressText: "서울특별시 마포구 연남로 80" }),
     `https://map.naver.com/p/search/${encodeURIComponent("서울특별시 마포구 연남로 80")}`,
   );
+});
+
+test("team and room court pickers share one single-selection search policy", async () => {
+  const courts = [
+    { id: "court-mapo", name: "망원한강공원 농구장", hashtag: "#10001", region: "마포", addressText: "서울특별시 마포구 마포나루길 467", type: "야외" },
+    { id: "court-yeonbuk", name: "연북중학교 체육관 1F", hashtag: "#34264", region: "서대문", roadAddress: "서울특별시 서대문구 연희로 80", type: "실내" },
+  ];
+
+  assert.match(getCourtSearchText(courts[1]), /연희로 80/);
+  assert.deepEqual(
+    getCourtPickerResults(courts, { query: "연희로 80", region: "마포", currentRegion: "마포" }).map((court) => court.id),
+    ["court-yeonbuk"],
+  );
+  assert.deepEqual(
+    getCourtPickerResults(courts, { query: "연북중학고", region: "마포", currentRegion: "마포" }).map((court) => court.id),
+    ["court-yeonbuk"],
+  );
+  assert.deepEqual(
+    getCourtPickerResults(courts, { query: "", region: "마포", currentRegion: "마포" }).map((court) => court.id),
+    ["court-mapo"],
+  );
+  assert.equal(mergeCourtSearchCourts(courts, [courts[1], { id: "court-remote", name: "원격 구장" }]).length, 3);
+
+  const [teams, createMatch] = await Promise.all([
+    readSource("src/pages/Teams.jsx"),
+    readSource("src/pages/CreateMatch.jsx"),
+  ]);
+  [teams, createMatch].forEach((source) => {
+    assert.match(source, /getCourtPickerResults/);
+    assert.match(source, /getSearchText=\{getCourtSearchText\}/);
+    assert.match(source, /mergeCourtSearchCourts/);
+  });
+  assert.match(teams, /setCourtQuery\(""\)/);
 });
 
 test("R2 image payload and WebP validation share one implementation", () => {

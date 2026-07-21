@@ -10,7 +10,7 @@ import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS, getCanonicalRegion, getHostTrustRequirement, getModeSize, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
-import { getCourtAddress, getCourtLayoutLabel, getCourtPlayWarning, getCourtRecommendationScore, getCourtSurfaceLabel, getRegisteredCourts, isCourtFuzzySearchMatch } from "../lib/courts.js";
+import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtPlayWarning, getCourtRecommendationScore, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
@@ -45,18 +45,6 @@ const tournamentScheduleOptions = [
 ];
 const SOLO_RECORD_MODES = Array.from(SOLO_RECORD_MODE_IDS, (id) => ({ id, label: id }));
 const MATCH_MODE_IDS = new Set(MATCH_MODES.map((mode) => mode.id));
-
-function getCourtSearchText(court = {}) {
-  return [
-    court.name,
-    getCourtHashtag(court),
-    court.region,
-    court.type,
-    getCourtAddress(court),
-    getCourtSurfaceLabel(court),
-    getCourtLayoutLabel(court),
-  ].filter(Boolean).join(" ");
-}
 
 const makeEmptySoloStats = () => Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, 0]));
 
@@ -334,13 +322,10 @@ export default function CreateMatch({ app }) {
   const defaultMmrLimitMode = getDefaultMmrLimitMode(defaultTeamA, defaultTeamB);
   const directoryCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const [discoveredCourts, setDiscoveredCourts] = useState([]);
-  const registeredCourts = useMemo(() => {
-    const byId = new Map(directoryCourts.map((court) => [court.id, court]));
-    discoveredCourts.forEach((court) => {
-      if (court?.id && !byId.has(court.id)) byId.set(court.id, court);
-    });
-    return [...byId.values()];
-  }, [directoryCourts, discoveredCourts]);
+  const registeredCourts = useMemo(
+    () => mergeCourtSearchCourts(directoryCourts, discoveredCourts),
+    [directoryCourts, discoveredCourts],
+  );
   const defaultCourt = [...registeredCourts]
     .filter((court) => isSameRegion(court.region, currentRegion))
     .sort((a, b) => Number(favoriteCourtIds.includes(b.id)) - Number(favoriteCourtIds.includes(a.id)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a))[0]
@@ -432,18 +417,12 @@ export default function CreateMatch({ app }) {
       .sort((a, b) => Number(isFavoriteTeam(b)) - Number(isFavoriteTeam(a)) || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || b.mmr - a.mmr);
   }, [app.state.teams, currentRegion, favoriteTeamIds, teamQuery, teamRegion]);
 
-  const sortedCourts = useMemo(() => {
-    const query = courtQuery.trim();
-    const hasQuery = Boolean(query);
-    const regionCandidates = registeredCourts
-      .filter((court) => hasQuery || courtRegion === "전체" || isSameRegion(court.region, courtRegion));
-    const exactMatches = regionCandidates.filter((court) => includesQuery(getCourtSearchText(court), query));
-    const matches = exactMatches.length
-      ? exactMatches
-      : regionCandidates.filter((court) => isCourtFuzzySearchMatch(court, query));
-    return matches
-      .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a) || a.name.localeCompare(b.name));
-  }, [courtQuery, courtRegion, currentRegion, favoriteCourtIds, registeredCourts]);
+  const sortedCourts = useMemo(() => getCourtPickerResults(registeredCourts, {
+    query: courtQuery,
+    region: courtRegion,
+    currentRegion,
+    favoriteCourtIds,
+  }), [courtQuery, courtRegion, currentRegion, favoriteCourtIds, registeredCourts]);
 
   const favoriteTeams = useMemo(() => {
     return [...app.state.teams]

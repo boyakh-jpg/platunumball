@@ -2887,3 +2887,10 @@ flowchart TD
 6. 인증 응답은 `Cache-Control: no-store`, `Pragma: no-cache`, `Referrer-Policy: no-referrer`, `Vary: Authorization`을 사용한다. 인증 cache key는 raw token 대신 SHA-256 digest를 사용한다.
 7. 공개 앱 redirect origin은 설정된 앱 URL 또는 현재 Vercel system host allowlist만 사용한다. 임의 `Host`/`X-Forwarded-Host`, 외부 URL, protocol-relative path는 redirect·Discord 링크 기준으로 사용하지 않는다.
 8. `public` schema의 새 테이블·함수·sequence는 `postgres`와 실행 역할이 변경할 수 있는 경우의 `supabase_admin` default privilege에서 `anon`, `authenticated`, `service_role` 자동 권한을 제거한다. 필요한 읽기·쓰기·함수 실행은 migration에서 객체별로 명시하며 기존 객체의 grant와 RLS는 별도 감사한다. Supabase 플랫폼 소유 `supabase_admin` 기본값을 프로젝트 역할이 바꿀 수 없는 환경에서는 실제 생성 객체를 release audit로 계속 검사한다.
+
+## 2026-07-21 팀 홈 코트 선택
+
+1. 새 팀의 홈 코트는 active 승인 구장 중 하나만 선택한다. 검색창에 입력한 문자열 자체는 선택값이 아니며 결과를 눌렀을 때만 `homeCourt`를 바꾼다.
+2. 새 팀 만들기와 방 만들기는 같은 구장 검색 텍스트, 정확 검색, 한 글자 오타 보조 검색, 즐겨찾기·지역·추천 점수 정렬을 사용한다.
+3. 검색어가 있으면 지역 필터를 해제하고 이름·해시태그·지역·주소·바닥·형태 전체에서 찾는다. 검색어가 없을 때만 선택 지역 추천을 적용한다.
+4. 원격 검색으로 찾은 active 구장은 선택 즉시 현재 후보 목록에 ID 기준으로 한 번만 병합한다. 팀 홈 코트는 복수 선택으로 확장하지 않는다.

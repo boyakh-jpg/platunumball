@@ -10,7 +10,7 @@ import TeamCard from "../components/team/TeamCard.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, getTeamRoleLabel } from "../lib/constants.js";
-import { getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
 import { getRepresentativeTeam } from "../lib/profileSetup.js";
 import { DIRECTORY_TEAM_PAGE_LIMIT } from "../lib/queryPolicy.js";
@@ -37,14 +37,19 @@ function isHashtagQuery(query = "") {
 
 export default function Teams({ app }) {
   const loadDirectory = app.actions.loadDirectory;
-  const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const directoryCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const [discoveredCourts, setDiscoveredCourts] = useState([]);
+  const registeredCourts = useMemo(
+    () => mergeCourtSearchCourts(directoryCourts, discoveredCourts),
+    [directoryCourts, discoveredCourts],
+  );
   const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
   const [draft, setDraft] = useState({ name: "", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
   const [teamCreatePending, setTeamCreatePending] = useState(false);
   const [teamCreateError, setTeamCreateError] = useState("");
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState("전체");
-  const [courtQuery, setCourtQuery] = useState(defaultHomeCourt);
+  const [courtQuery, setCourtQuery] = useState("");
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
   const directoryFilter = query.trim();
   const directoryRegion = isHashtagQuery(query) || region === "전체" ? "" : region;
@@ -98,13 +103,12 @@ export default function Teams({ app }) {
       .filter(isFavoriteTeam)
       .slice(0, 10);
   }, [favoriteTeamIds, rankingTeams]);
-  const visibleCourts = useMemo(() => {
-    const keyword = courtQuery.trim().toLowerCase();
-    return registeredCourts
-      .filter((court) => courtRegion === "전체" || court.region === courtRegion)
-      .filter((court) => `${court.name} ${getCourtHashtag(court)} ${court.region} ${court.type} ${court.addressText ?? ""}`.toLowerCase().includes(keyword))
-      .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name));
-  }, [app.currentUser.region, courtQuery, courtRegion, favoriteCourtIds, registeredCourts]);
+  const visibleCourts = useMemo(() => getCourtPickerResults(registeredCourts, {
+    query: courtQuery,
+    region: courtRegion,
+    currentRegion: app.currentUser.region,
+    favoriteCourtIds,
+  }), [app.currentUser.region, courtQuery, courtRegion, favoriteCourtIds, registeredCourts]);
   const favoriteCourts = useMemo(() => {
     return registeredCourts
       .filter(isFavoriteCourt)
@@ -134,8 +138,11 @@ export default function Teams({ app }) {
     </button>
   );
   const selectCourt = (court) => {
+    if (court?.id && !registeredCourts.some((item) => item.id === court.id)) {
+      setDiscoveredCourts((current) => [...current.filter((item) => item.id !== court.id), court]);
+    }
     update({ homeCourt: court.name });
-    setCourtQuery(court.name);
+    setCourtQuery("");
     setCourtRegion(court.region);
   };
   const renderCourtSearchItem = (court) => (
@@ -147,6 +154,7 @@ export default function Teams({ app }) {
       onClick={() => selectCourt(court)}
     >
       <strong>{court.name}</strong>
+      <span className="court-search-result-address">{getCourtAddress(court)}</span>
       <span>{court.region} · {court.type} · {getCourtSurfaceLabel(court)} · {getCourtLayoutLabel(court)}</span>
       <em>{getCourtHashtag(court)} · {isFavoriteCourt(court) ? "즐겨찾기" : "구장"}</em>
     </button>
@@ -164,7 +172,7 @@ export default function Teams({ app }) {
         return;
       }
       setDraft({ name: "", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
-      setCourtQuery(defaultHomeCourt);
+      setCourtQuery("");
       setCourtRegion(app.currentUser.region ?? "전체");
     } catch (error) {
       setTeamCreateError(error?.message || "팀을 만들지 못했습니다.");
@@ -352,9 +360,10 @@ export default function Teams({ app }) {
               <SearchPicker
                 value={courtQuery}
                 onChange={setCourtQuery}
-                placeholder="구장 이름, 지역, 해시태그"
+                placeholder="구장 이름, 주소, 지역, 해시태그"
                 items={visibleCourts}
                 remoteSearchType="court"
+                getSearchText={getCourtSearchText}
                 idleItems={favoriteCourts.length ? favoriteCourts : visibleCourts.slice(0, 10)}
                 idleTitle={favoriteCourts.length ? "즐겨찾기 구장" : "추천 구장"}
                 showIdleOnFocus

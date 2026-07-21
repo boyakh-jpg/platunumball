@@ -1,4 +1,5 @@
-import { COURTS } from "./constants.js";
+import { COURTS, isSameRegion } from "./constants.js";
+import { getCourtHashtag } from "./handles.js";
 
 export function courtIdByName(courtName) {
   return COURTS.find((court) => court.name === courtName)?.id ?? null;
@@ -134,6 +135,51 @@ export function getCourtSurfaceLabel(court = {}) {
 export function getCourtLayoutLabel(court = {}) {
   const courtLayout = normalizeCourtLayout(getFallbackLayout(court));
   return COURT_LAYOUT_OPTIONS.find((option) => option.id === courtLayout)?.label ?? "확인 필요";
+}
+
+export function getCourtSearchText(court = {}) {
+  return [
+    court.name,
+    getCourtHashtag(court),
+    court.region,
+    court.type,
+    getCourtAddress(court),
+    court.roadAddress,
+    court.jibunAddress,
+    getCourtSurfaceLabel(court),
+    getCourtLayoutLabel(court),
+  ].filter(Boolean).join(" ");
+}
+
+export function mergeCourtSearchCourts(directoryCourts = [], discoveredCourts = []) {
+  const byId = new Map(directoryCourts.filter((court) => court?.id).map((court) => [court.id, court]));
+  discoveredCourts.forEach((court) => {
+    if (court?.id && !byId.has(court.id)) byId.set(court.id, court);
+  });
+  return [...byId.values()];
+}
+
+export function getCourtPickerResults(courts = [], options = {}) {
+  const query = String(options.query ?? "").trim();
+  const region = String(options.region ?? "").trim();
+  const currentRegion = String(options.currentRegion ?? "").trim();
+  const favoriteCourtIds = new Set(options.favoriteCourtIds ?? []);
+  const normalizedQuery = query.toLowerCase();
+  const hasQuery = Boolean(normalizedQuery);
+  const regionCandidates = courts.filter((court) => (
+    hasQuery || !region || region === "전체" || isSameRegion(court.region, region)
+  ));
+  const exactMatches = regionCandidates.filter((court) => getCourtSearchText(court).toLowerCase().includes(normalizedQuery));
+  const matches = exactMatches.length || !hasQuery
+    ? exactMatches
+    : regionCandidates.filter((court) => isCourtFuzzySearchMatch(court, query));
+
+  return [...matches].sort((a, b) => (
+    Number(favoriteCourtIds.has(b.id)) - Number(favoriteCourtIds.has(a.id))
+    || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion))
+    || getCourtRecommendationScore(b) - getCourtRecommendationScore(a)
+    || String(a.name ?? "").localeCompare(String(b.name ?? ""))
+  ));
 }
 
 function normalizeCourtSearchValue(value = "") {
