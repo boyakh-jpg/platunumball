@@ -179,20 +179,22 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
         <span className="player-hover-head">
           <ProfileEmblem user={user} anonymous={anonymousUser} />
           <span>
-            <strong>{user.name}</strong>
-            <span className="hover-hashtag">{getUserHashtag(user)}</span>
+            <span className="player-hover-identity">
+              <strong>{user.name}</strong>
+              <span className="hover-hashtag">{getUserHashtag(user)}</span>
+              <span className="hover-age-group">{getAgeGroupLabel(getAgeGroupForUser(user))}</span>
+            </span>
             {discordProfileUrl ? (
               <a className="discord-link-badge" href={discordProfileUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
                 <MessageCircle size={13} /> {discordDisplayName}
               </a>
             ) : null}
-            <span className="hover-age-group">{getAgeGroupLabel(getAgeGroupForUser(user))}</span>
             <em>{anonymousUser ? `${user.participationLabel ?? "개인참여"} · ${user.position ?? "free"}` : `${user.region} · ${user.position}`} · 신뢰도 {user.trustScore ?? "-"}</em>
           </span>
         </span>
         <span className="player-hover-tier-grid">
           {modes.map(([mode, mmr]) => (
-            <span className="player-hover-tier-row" key={mode}>
+            <span className={`player-hover-tier-row${mode === "통합" ? " is-integrated" : ""}`} key={mode}>
               <TierEmblem mmr={Number(mmr)} size="sm" />
               <span>
                 <b>{mode}</b>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, MapPin, Navigation, Star } from "lucide-react";
+import { ExternalLink, MapPin, MapPinned, Navigation, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import HoverPortal from "../common/HoverPortal.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
@@ -125,7 +125,7 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
           closePinned();
         }}>X</button>
         <span className="court-hover-head">
-          <span className="court-hover-icon"><MapPin size={22} /></span>
+          <span className="court-hover-icon"><MapPinned size={27} strokeWidth={2.2} /></span>
           <span>
             <strong>{resolvedCourt.name}</strong>
             <span className="hover-hashtag">{getCourtHashtag(resolvedCourt)}</span>

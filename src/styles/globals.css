@@ -929,6 +929,21 @@ span.referee-hover-card {
   color: var(--text);
 }
 
+.player-hover-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-hover-identity > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .hover-hashtag {
   display: inline-flex;
   max-width: 100%;
@@ -983,6 +998,10 @@ span.referee-hover-card {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);
   padding: 8px;
+}
+
+.player-hover-tier-grid > .player-hover-tier-row.is-integrated {
+  grid-column: 1 / -1;
 }
 
 .player-hover-tier-grid > span > span {
@@ -1052,14 +1071,26 @@ span.referee-hover-card {
 }
 
 .court-hover-icon {
+  position: relative;
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   place-items: center;
-  border: 1px solid rgba(70, 224, 182, 0.28);
-  border-radius: 12px;
-  background: rgba(70, 224, 182, 0.12);
-  color: var(--green);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--rb-orange) 58%, var(--card-border));
+  border-radius: 14px;
+  background:
+    linear-gradient(90deg, transparent 49%, rgba(255, 255, 255, 0.2) 49% 51%, transparent 51%),
+    radial-gradient(circle at 50% 50%, transparent 0 21%, rgba(255, 255, 255, 0.2) 22% 24%, transparent 25%),
+    linear-gradient(145deg, color-mix(in srgb, var(--rb-orange) 88%, #fff 12%), color-mix(in srgb, var(--gold) 68%, var(--rb-orange)));
+  color: #fff;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--rb-orange) 24%, transparent);
+}
+
+.court-hover-icon svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 2px 4px rgba(75, 30, 0, 0.38));
 }
 
 .court-hover-address,
@@ -1433,7 +1464,7 @@ span.referee-hover-card {
   }
 
   span.player-hover-card.touch-open .player-hover-tier-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   span.court-hover-card.touch-open .court-hover-stats {
@@ -12974,9 +13005,18 @@ html[data-theme="light"] .ranking-filter-card {
   padding: 8px 10px;
 }
 
+.player-hover-tier-grid > .player-hover-tier-row.is-integrated {
+  grid-template-columns: 78px minmax(0, 1fr);
+  min-height: 86px;
+}
+
 .player-hover-card .tier-emblem-sm {
   width: 62px;
   max-width: 100%;
+}
+
+.player-hover-card .player-hover-tier-row.is-integrated .tier-emblem-sm {
+  width: 72px;
 }
 
 .hover-tier-label {
