@@ -1511,3 +1511,9 @@ UI 수정 전:
 2. 일반 한글·영문·숫자·문장부호·이모지와 `<3` 같은 일반 표현은 허용한다. 보안 검사를 이유로 모든 `<`, `>`, 따옴표를 일괄 금지하지 않는다.
 3. 화면별 `maxLength`, 숫자 범위, select allowlist는 유지한다. 공용 payload 검사는 그 아래의 최종 안전망이다.
 4. 오류 문구는 기존 form helper 영역에 표시하고 별도 경고 modal을 만들지 않는다. 차단으로 카드 높이·버튼 배치·모바일 가로폭이 바뀌지 않아야 한다.
+
+## 2026-07-21 OAuth URL 보안 피드백
+
+1. Discord 연동 복귀 URL에는 `pending` 또는 오류 상태만 표시한다. Discord 사용자 정보, 서명 증명값, token, 사용자 프로필 ID를 query에 렌더링하지 않는다.
+2. 연동 시작·완료 실패는 기존 Discord 설정 helper 영역에 짧은 오류 문구로 표시한다. 별도 modal, 새 카드, responsive 높이 변화는 만들지 않는다.
+3. OAuth callback query는 처리 직후 `history.replaceState`로 제거한다. 데스크톱·모바일, dark·light의 기존 설정 화면 배치는 유지한다.

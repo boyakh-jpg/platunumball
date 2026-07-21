@@ -1,14 +1,9 @@
-import crypto from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { verifyDiscordOAuthProof } from "../auth/_discordOAuthProof.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
 import { getAgeGroupByBirthYear } from "../../../src/lib/profileSetup.js";
 import { DEFAULT_PLAYER_RATINGS } from "../../../src/lib/constants.js";
-import {
-  DISCORD_CURRENT_USER_URL,
-  DISCORD_OAUTH_PROOF_TTL_MS,
-  getDiscordCdnAvatarUrl,
-  isDiscordSnowflake,
-} from "../../../src/lib/discordProtocol.js";
+import { getDiscordCdnAvatarUrl } from "../../../src/lib/discordProtocol.js";
 
 const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,avatar_source,avatar_updated_at,trust_score,ratings,school,company,club,streak,discord_connection,discord_user_id,discord_avatar_url,test_login_id";
 
@@ -45,105 +40,12 @@ function getDiscordUserId(connection) {
   return connection && typeof connection === "object" ? connection.userId ?? connection.id ?? null : null;
 }
 
-function getDiscordOAuthAccessToken(profile = {}) {
-  const proof = profile.discordOAuthProof && typeof profile.discordOAuthProof === "object"
-    ? profile.discordOAuthProof
-    : {};
-  return String(
-    proof.accessToken
-      ?? profile.discordConnection?.oauthAccessToken
-      ?? profile.discordConnection?.accessToken
-      ?? "",
-  ).trim();
-}
-
 function getDiscordOAuthProof(profile = {}) {
   return String(
     profile.discordOAuthProof?.token
       ?? profile.discordConnection?.oauthProof
       ?? "",
   ).trim();
-}
-
-function getVerifiedDiscordProof(token = "", expectedProfileId = "") {
-  const secret = String(process.env.DISCORD_OAUTH_PROOF_SECRET || process.env.DISCORD_CLIENT_SECRET || "").trim();
-  if (!secret || !token || token.length > 4096) return null;
-  const [encodedPayload, encodedSignature, extra] = token.split(".");
-  if (!encodedPayload || !encodedSignature || extra) return null;
-
-  const expectedSignature = crypto.createHmac("sha256", secret).update(encodedPayload).digest();
-  let receivedSignature;
-  try {
-    receivedSignature = Buffer.from(encodedSignature, "base64url");
-  } catch {
-    return null;
-  }
-  if (receivedSignature.length !== expectedSignature.length || !crypto.timingSafeEqual(receivedSignature, expectedSignature)) return null;
-
-  let payload;
-  try {
-    payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
-  } catch {
-    return null;
-  }
-  const now = Date.now();
-  const issuedAt = Number(payload?.issuedAt);
-  const expiresAt = Number(payload?.expiresAt);
-  if (
-    payload?.version !== 1
-    || !String(payload?.appProfileId || "").trim()
-    || !isDiscordSnowflake(payload?.discordUserId)
-    || !Number.isFinite(issuedAt)
-    || !Number.isFinite(expiresAt)
-    || issuedAt > now + 30_000
-    || now > expiresAt
-    || expiresAt - issuedAt > DISCORD_OAUTH_PROOF_TTL_MS
-  ) return null;
-  if (String(payload.appProfileId) !== String(expectedProfileId || "")) {
-    const error = new Error("discord_oauth_profile_mismatch");
-    error.statusCode = 403;
-    throw error;
-  }
-  return {
-    id: String(payload.discordUserId),
-    username: String(payload.username || ""),
-    global_name: String(payload.globalName || payload.username || ""),
-    avatar: String(payload.avatar || ""),
-    discriminator: String(payload.discriminator || ""),
-  };
-}
-
-async function getVerifiedDiscordUser(accessToken = "") {
-  if (!accessToken || accessToken.length > 4096) {
-    const error = new Error("discord_oauth_proof_required");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  let discordResponse;
-  try {
-    discordResponse = await fetch(DISCORD_CURRENT_USER_URL, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-  } catch {
-    const error = new Error("discord_oauth_verification_failed");
-    error.statusCode = 502;
-    throw error;
-  }
-
-  if (!discordResponse.ok) {
-    const error = new Error("discord_oauth_proof_invalid");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const discordUser = await discordResponse.json();
-  if (!isDiscordSnowflake(discordUser?.id)) {
-    const error = new Error("discord_oauth_identity_invalid");
-    error.statusCode = 400;
-    throw error;
-  }
-  return discordUser;
 }
 
 async function getRequestedDiscordConnection(profile = {}, existing = {}) {
@@ -154,13 +56,22 @@ async function getRequestedDiscordConnection(profile = {}, existing = {}) {
   if (typeof profile.discordConnection !== "object") return existing?.discord_connection ?? null;
   const userId = String(getDiscordUserId(profile.discordConnection) || "").trim();
   if (profile.discordConnection.status !== "linked") return existing?.discord_connection ?? null;
+  if (!existing?.id) {
+    const error = new Error("discord_oauth_profile_required");
+    error.statusCode = 403;
+    throw error;
+  }
 
   const existingUserId = String(getDiscordUserId(existing?.discord_connection) || existing?.discord_user_id || "").trim();
   if (userId && existingUserId && userId === existingUserId) return existing.discord_connection;
 
   const proofToken = getDiscordOAuthProof(profile);
-  const discordUser = getVerifiedDiscordProof(proofToken, existing?.id)
-    ?? await getVerifiedDiscordUser(getDiscordOAuthAccessToken(profile));
+  const discordUser = verifyDiscordOAuthProof(proofToken, { expectedProfileId: existing?.id });
+  if (!discordUser) {
+    const error = new Error("discord_oauth_proof_required");
+    error.statusCode = 400;
+    throw error;
+  }
   const verifiedUserId = String(discordUser.id);
   if (userId && userId !== verifiedUserId) {
     const error = new Error("discord_oauth_identity_mismatch");

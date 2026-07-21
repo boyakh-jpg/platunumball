@@ -1,6 +1,7 @@
 import { getNotificationActorId, getNotificationTargetPath, isNotificationDue } from "./notifications.js";
-import { DISCORD_OAUTH_STATE_TTL_MS, getDiscordInviteCustomId } from "./discordProtocol.js";
+import { DISCORD_OAUTH_STATE_TTL_MS, getDiscordInviteCustomId, isDiscordOAuthState } from "./discordProtocol.js";
 import { getSafeImageUrl } from "./inputSecurity.js";
+import { postServerAction } from "./serverActions.js";
 
 export const DISCORD_NOTIFICATION_EVENTS = [
   { id: "match", label: "초대/경기" },
@@ -10,6 +11,7 @@ export const DISCORD_NOTIFICATION_EVENTS = [
 
 const DISCORD_EVENT_IDS = new Set(DISCORD_NOTIFICATION_EVENTS.map((event) => event.id));
 const DISCORD_OAUTH_STATE_STORAGE_KEY = "rankball_discord_oauth_state";
+let discordOAuthResultPromise = null;
 
 export function getDiscordChannel(settings = {}) {
   const discord = settings.notificationChannels?.discord ?? {};
@@ -76,80 +78,83 @@ export function getDiscordAvatarStyle(user = {}) {
     : { "--avatar": user?.avatarColor };
 }
 
-function getRandomToken() {
-  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
-    const values = new Uint32Array(4);
-    window.crypto.getRandomValues(values);
-    return Array.from(values, (value) => value.toString(36)).join("");
+function getSafeDiscordAuthorizeUrl(value = "", expectedState = "") {
+  try {
+    const url = new URL(String(value));
+    if (url.protocol !== "https:" || url.hostname !== "discord.com" || url.pathname !== "/oauth2/authorize") return "";
+    return url.searchParams.get("state") === expectedState ? url.toString() : "";
+  } catch {
+    return "";
   }
-  return Math.random().toString(36).slice(2);
 }
 
-function createDiscordOAuthState(userId = "") {
-  const state = `${userId}.${Date.now().toString(36)}.${getRandomToken()}`;
-  if (typeof window !== "undefined") {
-    window.sessionStorage.setItem(
-      DISCORD_OAUTH_STATE_STORAGE_KEY,
-      JSON.stringify({ state, userId, createdAt: Date.now() }),
-    );
-  }
-  return state;
+export async function startDiscordOAuth(userId = "") {
+  if (typeof window === "undefined") return "";
+  const result = await postServerAction("/api/auth/discord/start", {}, { allowWhenDisabled: true });
+  const state = String(result?.state || "");
+  const authorizeUrl = getSafeDiscordAuthorizeUrl(result?.authorizeUrl, state);
+  if (!isDiscordOAuthState(state) || !authorizeUrl) throw new Error("discord_oauth_start_invalid");
+  window.sessionStorage.setItem(
+    DISCORD_OAUTH_STATE_STORAGE_KEY,
+    JSON.stringify({ state, userId: result?.profileId || userId, createdAt: Date.now() }),
+  );
+  discordOAuthResultPromise = null;
+  window.location.assign(authorizeUrl);
+  return authorizeUrl;
 }
 
-export function getDiscordOAuthStartUrl(userId = "") {
-  const state = createDiscordOAuthState(userId);
-  return `/api/auth/discord/start?state=${encodeURIComponent(state)}`;
+function clearDiscordOAuthResultUrl(url) {
+  url.searchParams.delete("discord");
+  url.searchParams.delete("discordState");
+  url.searchParams.delete("discordConnection");
+  url.searchParams.delete("discordError");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
-function decodeBase64UrlJson(value) {
-  const normalized = String(value ?? "").replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-  return JSON.parse(window.atob(padded));
-}
-
-function getAppUserIdFromOAuthState(state = "") {
-  return String(state).split(".")[0] || "";
+export function acknowledgeDiscordOAuthResult() {
+  discordOAuthResultPromise = null;
 }
 
 export function consumeDiscordOAuthResult(userId = "") {
   if (typeof window === "undefined") return null;
+  if (discordOAuthResultPromise) return discordOAuthResultPromise;
   const url = new URL(window.location.href);
   const status = url.searchParams.get("discord");
   const error = url.searchParams.get("discordError");
   if (!status && !error) return null;
 
-  const state = url.searchParams.get("discordState") ?? "";
-  const encodedConnection = url.searchParams.get("discordConnection");
   let stored = null;
   try {
     stored = JSON.parse(window.sessionStorage.getItem(DISCORD_OAUTH_STATE_STORAGE_KEY) ?? "null");
   } catch {
     stored = null;
   }
-  window.sessionStorage.removeItem(DISCORD_OAUTH_STATE_STORAGE_KEY);
-
-  url.searchParams.delete("discord");
-  url.searchParams.delete("discordState");
-  url.searchParams.delete("discordConnection");
-  url.searchParams.delete("discordError");
-  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-
   const stateExpired = !stored?.createdAt || Date.now() - stored.createdAt > DISCORD_OAUTH_STATE_TTL_MS;
-  if (!stored || stored.state !== state || stateExpired) {
-    return { status: "error", error: "state_mismatch" };
-  }
-  if (error) return { status: "error", error };
-
-  if (!encodedConnection) return { status: "error", error: "missing_connection" };
-  try {
-    return {
-      status: "linked",
-      appUserId: stored.userId || getAppUserIdFromOAuthState(state) || userId,
-      connection: decodeBase64UrlJson(encodedConnection),
-    };
-  } catch {
-    return { status: "error", error: "invalid_connection" };
-  }
+  discordOAuthResultPromise = (async () => {
+    try {
+      if (error) return { status: "error", error };
+      if (status !== "pending" || !stored || stateExpired || !isDiscordOAuthState(stored.state)) {
+        return { status: "error", error: "state_mismatch" };
+      }
+      const result = await postServerAction(
+        "/api/auth/discord/complete",
+        { state: stored.state },
+        { allowWhenDisabled: true },
+      );
+      if (!result?.connection) return { status: "error", error: "missing_connection" };
+      return {
+        status: "linked",
+        appUserId: result.profileId || stored.userId || userId,
+        connection: result.connection,
+      };
+    } catch (completionError) {
+      return { status: "error", error: completionError?.code || completionError?.message || "discord_oauth_failed" };
+    } finally {
+      window.sessionStorage.removeItem(DISCORD_OAUTH_STATE_STORAGE_KEY);
+      clearDiscordOAuthResultUrl(url);
+    }
+  })();
+  return discordOAuthResultPromise;
 }
 
 function getNotificationDiscordEvent(notification = {}) {

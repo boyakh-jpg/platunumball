@@ -1,4 +1,4 @@
-import { getBearerToken, getSupabaseAdminClient, isMissingTable, readJsonBody, sendJson, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
+import { bearerTokenMatches, getSupabaseAdminClient, isMissingTable, readJsonBody, sendJson, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
 
 const FEED_COLUMNS = "profile_id,entity_type,entity_id,relation,feed_scope,region_key,status,timing_type,scheduled_date,card_json,sort_at,is_active";
 const CARD_COLUMNS = "entity_type,entity_id,card_json,updated_at";
@@ -15,7 +15,7 @@ function reject(statusCode, message) {
 
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";
-  if (!secret || getBearerToken(request) !== secret) reject(401, "invalid_feed_audit_secret");
+  if (!bearerTokenMatches(request, secret)) reject(401, "invalid_feed_audit_secret");
 }
 
 function toArray(value) {

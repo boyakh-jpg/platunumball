@@ -170,6 +170,7 @@ export function useAuthSession() {
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setClientActionSession(nextSession);
       setSession(nextSession ?? null);
+      if (hasCallback && nextSession) cleanOAuthCallbackUrl();
       if (!resolvingInitialSession) setLoading(false);
     });
 
@@ -181,7 +182,7 @@ export function useAuthSession() {
       if (sessionError) setError(formatAuthError(sessionError.message));
       setClientActionSession(sessionData.session);
       setSession(sessionData.session ?? null);
-      if (hasCallback && !authCode) cleanOAuthCallbackUrl();
+      if (hasCallback && (sessionData.session || !authCode)) cleanOAuthCallbackUrl();
       setLoading(false);
     }).catch((sessionError) => {
       if (!mounted) return;

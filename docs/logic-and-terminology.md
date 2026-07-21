@@ -52,8 +52,10 @@
 
 ## 2026-07-20 Discord OAuth 프로필 저장
 
-1. Discord OAuth 콜백 결과는 Supabase 원격 프로필 로딩이 끝난 뒤에만 소비한다. 로딩 전에는 URL의 1회성 결과와 세션 state를 유지한다.
-2. 운영 프로필을 찾지 못한 프로필 저장은 성공으로 처리하지 않는다. 서버 저장 payload는 비동기 `setState` updater 실행 순서에 의존하지 않고 현재 state snapshot에서 먼저 계산한다. Discord 연결은 서버 프로필 저장 성공 후에만 `연동됨`으로 확정한다.
+1. Discord OAuth 시작은 인증된 `POST /api/auth/discord/start`만 허용한다. 서버가 무작위 state를 만들고 현재 프로필과 서명해 `HttpOnly`, `SameSite=Lax` 쿠키에 저장한다. 사용자 ID나 Supabase token을 OAuth 시작 URL query로 받지 않는다.
+2. Discord callback은 state query와 서명 쿠키를 함께 검증한다. Discord identity 증명값은 URL에 넣지 않고 callback 전용 `HttpOnly` 쿠키로 `/api/auth/discord/complete`에만 전달한다. 앱 복귀 URL에는 `discord=pending` 또는 오류 코드만 둔다.
+3. 콜백 결과는 Supabase 원격 프로필 로딩이 끝난 뒤 인증된 completion 요청으로 소비한다. completion은 현재 Supabase 프로필, OAuth state, 서명된 Discord identity가 모두 일치할 때만 연결 payload를 반환하며 쿠키는 한 번 사용한 뒤 만료한다.
+4. 운영 프로필을 찾지 못한 프로필 저장은 성공으로 처리하지 않는다. 서버 저장 payload는 비동기 `setState` updater 실행 순서에 의존하지 않고 현재 state snapshot에서 먼저 계산한다. Discord 연결은 서버 프로필 저장 성공 후에만 `연동됨`으로 확정한다.
 
 ## 2026-07-17 프론트 실사용 조회 보정
 
@@ -821,7 +823,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 5. 같은 유저가 같은 구장 등록요청을 중복 신고할 수 없다.
 6. 허위 구장 신고가 접수되면 요청자 신뢰도는 활성 운영 정책의 `falseCourtReportPenalty`만큼 감소한다.
 7. 구장 등록요청 폼과 Naver 주소검색 버튼은 신뢰도 기준을 통과한 사용자에게만 렌더링한다.
-8. 프론트 숨김은 API 사용량 완화용 UX일 뿐 보안이 아니다. 배포 백엔드는 읽기 전용 `GET /api/courts/address-search?q=...` endpoint에 인증, 신뢰도 검사, rate limit, 도메인 제한을 적용해야 한다.
+8. 프론트 숨김은 API 사용량 완화용 UX일 뿐 보안이 아니다. 배포 백엔드는 `POST /api/courts/address-search` JSON body endpoint에 인증, 신뢰도 검사, rate limit, 도메인 제한을 적용한다. 검색어와 Supabase token을 URL query에 넣지 않는다.
 9. 주소검색은 기존 브라우저 Naver Maps geocoder를 우선 사용한다. `/api/courts/address-search`는 브라우저 geocoder 실패 시 보조 fallback이다.
 10. 서버 주소검색 fallback은 `VITE_NAVER_MAP_CLIENT_ID` 또는 `NAVER_MAP_CLIENT_ID`와 서버 전용 `NAVER_MAP_CLIENT_SECRET`이 필요하다.
 11. 서버 주소검색 fallback의 프로필/권한 오류는 브라우저 Naver Maps geocoder 오류를 덮어쓰지 않는다.
@@ -2874,3 +2876,14 @@ flowchart TD
 4. 방 채팅은 60자·한 줄·plain text만 허용한다. optimistic state, 웹 server action, Discord 유입 모두 같은 실행형 markup 검사를 통과해야 하며 Discord 발송은 mention parsing을 비활성화한다.
 5. DB나 외부 응답에서 온 image URL은 상대 경로 또는 HTTPS만 렌더링한다. `javascript:`, HTML data document와 비 HTTP(S) scheme은 빈 값으로 바꿔 기본 엠블럼으로 fallback한다.
 6. 운영 문서는 CSP로 script origin을 self와 Naver Maps로 제한하고 `object-src 'none'`, `frame-ancestors 'none'`, HTTPS upgrade를 적용한다. CSP는 입력 검증·안전한 출력의 대체물이 아니라 추가 방어선이다.
+
+## 2026-07-21 API URL·토큰·권한 경계
+
+1. Bearer token, API key, password, cookie, signature, client secret, service-role key는 URL query로 받지 않는다. 해당 이름의 query가 들어오면 라우트 처리 전에 `credentials_not_allowed_in_url`로 거부한다. OAuth 표준 `code`와 무작위 `state`만 callback query 예외다.
+2. 사용자·관리자·내부 worker API의 자격증명은 정확히 하나의 `Authorization: Bearer <token>` 헤더로만 받는다. 공백, 제어문자, 쉼표 결합, 과도한 길이, 짧은 token은 인증 전에 거부하며 내부 secret은 고정 길이 digest를 timing-safe 방식으로 비교한다.
+3. 모든 `/api` 라우트는 중앙 등록표에 허용 method와 `user`, `admin`, `internal`, `signedWebhook`, `oauthCallback` 중 하나를 명시한다. 등록되지 않은 라우트는 404, 허용되지 않은 method는 405, 보호 라우트의 token 누락·형식 오류는 401이다.
+4. 중앙 등록표는 인증 존재만 선검사한다. 실제 사용자 확인, 프로필 매핑, 소유권, 참가 관계, 팀장·관리자 등급은 각 서버 handler가 매 요청 다시 검증한다. 프론트 숨김, URL ID, body의 사용자 ID는 권한 근거가 아니다.
+5. `SUPABASE_SERVICE_ROLE_KEY`와 Cloudflare·Discord·Naver secret은 서버 환경에서만 읽는다. service role은 브라우저에 전달하지 않으며 DB RLS를 우회하므로 서버 handler의 사용자·권한 검증 뒤에만 사용한다.
+6. 인증 응답은 `Cache-Control: no-store`, `Pragma: no-cache`, `Referrer-Policy: no-referrer`, `Vary: Authorization`을 사용한다. 인증 cache key는 raw token 대신 SHA-256 digest를 사용한다.
+7. 공개 앱 redirect origin은 설정된 앱 URL 또는 현재 Vercel system host allowlist만 사용한다. 임의 `Host`/`X-Forwarded-Host`, 외부 URL, protocol-relative path는 redirect·Discord 링크 기준으로 사용하지 않는다.
+8. `public` schema의 새 테이블·함수·sequence는 `postgres`와 실행 역할이 변경할 수 있는 경우의 `supabase_admin` default privilege에서 `anon`, `authenticated`, `service_role` 자동 권한을 제거한다. 필요한 읽기·쓰기·함수 실행은 migration에서 객체별로 명시하며 기존 객체의 grant와 RLS는 별도 감사한다. Supabase 플랫폼 소유 `supabase_admin` 기본값을 프로젝트 역할이 바꿀 수 없는 환경에서는 실제 생성 객체를 release audit로 계속 검사한다.

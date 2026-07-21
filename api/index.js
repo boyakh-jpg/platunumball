@@ -4,6 +4,7 @@ import adminDisciplinaryAction from "../server/api/admin/disciplinary-action.js"
 import adminRatingPolicy from "../server/api/admin/rating-policy.js";
 import adminReviewAction from "../server/api/admin/review-action.js";
 import discordCallback from "../server/api/auth/discord/callback.js";
+import discordComplete from "../server/api/auth/discord/complete.js";
 import discordStart from "../server/api/auth/discord/start.js";
 import courtRequestApprove from "../server/api/court-requests/approve.js";
 import courtRequestReport from "../server/api/court-requests/report.js";
@@ -44,60 +45,65 @@ import teamEmblem from "../server/api/teams/emblem.js";
 import teamSyncTeam from "../server/api/teams/sync-team.js";
 import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.js";
 import { assertSafeInputPayload, UNSAFE_INPUT_ERROR_CODE } from "../src/lib/inputSecurity.js";
+import { enforceApiRouteSecurity, findSensitiveQueryKey, setApiSecurityHeaders } from "../server/api/_requestSecurity.js";
 
-const ROUTES = new Map([
-  ["/admin/appointment-action", adminAppointmentAction],
-  ["/admin/context", adminContext],
-  ["/admin/disciplinary-action", adminDisciplinaryAction],
-  ["/admin/rating-policy", adminRatingPolicy],
-  ["/admin/review-action", adminReviewAction],
-  ["/auth/discord/callback", discordCallback],
-  ["/auth/discord/start", discordStart],
-  ["/court-requests/approve", courtRequestApprove],
-  ["/court-requests/report", courtRequestReport],
-  ["/court-requests/submit", courtRequestSubmit],
-  ["/courts/address-search", courtAddressSearch],
-  ["/courts/submit-review", courtSubmitReview],
-  ["/courts/detail", courtDetail],
-  ["/directory/load", directoryLoad],
-  ["/discord/dm-worker", discordDmWorker],
-  ["/discord/interactions", discordInteractions],
-  ["/discord/room-chat", discordRoomChat],
-  ["/discord/sync-deliveries", discordSyncDeliveries],
-  ["/favorites/sync", favoriteSync],
-  ["/home/load", homeLoad],
-  ["/matches/detail", matchDetail],
-  ["/matches/list", matchList],
-  ["/matches/sync-match", matchSyncMatch],
-  ["/notifications/delete", notificationDelete],
-  ["/notifications/list", notificationList],
-  ["/notifications/read", notificationRead],
-  ["/profile/emblem", profileEmblem],
-  ["/profile/achievements", profileAchievements],
-  ["/profile/me", profileMe],
-  ["/profile/upsert", profileUpsert],
-  ["/referee/sync", refereeSync],
-  ["/recruiting/list", recruitingList],
-  ["/recruiting/sync-post", recruitingSyncPost],
-  ["/reports/submit", reportSubmit],
-  ["/settings/sync", settingsSync],
-  ["/search", search],
-  ["/state/load", stateLoad],
-  ["/system/cleanup-sim", systemCleanupSim],
-  ["/system/feed-audit", systemFeedAudit],
-  ["/system/maintenance", systemMaintenance],
-  ["/system/schema-health", systemSchemaHealth],
-  ["/teams/detail", teamList],
-  ["/teams/emblem", teamEmblem],
-  ["/teams/list", teamList],
-  ["/teams/sync-team", teamSyncTeam],
-  ["/tournaments/sync-tournament", tournamentSyncTournament],
+function route(handler, methods, auth) {
+  return Object.freeze({ handler, methods: Object.freeze(methods), auth });
+}
+
+export const API_ROUTES = new Map([
+  ["/admin/appointment-action", route(adminAppointmentAction, ["POST"], "admin")],
+  ["/admin/context", route(adminContext, ["POST"], "admin")],
+  ["/admin/disciplinary-action", route(adminDisciplinaryAction, ["POST"], "admin")],
+  ["/admin/rating-policy", route(adminRatingPolicy, ["POST"], "admin")],
+  ["/admin/review-action", route(adminReviewAction, ["POST"], "admin")],
+  ["/auth/discord/callback", route(discordCallback, ["GET"], "oauthCallback")],
+  ["/auth/discord/complete", route(discordComplete, ["POST"], "user")],
+  ["/auth/discord/start", route(discordStart, ["POST"], "user")],
+  ["/court-requests/approve", route(courtRequestApprove, ["POST"], "admin")],
+  ["/court-requests/report", route(courtRequestReport, ["POST"], "user")],
+  ["/court-requests/submit", route(courtRequestSubmit, ["POST"], "user")],
+  ["/courts/address-search", route(courtAddressSearch, ["POST"], "user")],
+  ["/courts/submit-review", route(courtSubmitReview, ["POST"], "user")],
+  ["/courts/detail", route(courtDetail, ["POST"], "user")],
+  ["/directory/load", route(directoryLoad, ["POST"], "user")],
+  ["/discord/dm-worker", route(discordDmWorker, ["GET", "POST"], "internal")],
+  ["/discord/interactions", route(discordInteractions, ["POST"], "signedWebhook")],
+  ["/discord/room-chat", route(discordRoomChat, ["POST"], "internal")],
+  ["/discord/sync-deliveries", route(discordSyncDeliveries, ["POST"], "user")],
+  ["/favorites/sync", route(favoriteSync, ["POST"], "user")],
+  ["/home/load", route(homeLoad, ["POST"], "user")],
+  ["/matches/detail", route(matchDetail, ["POST"], "user")],
+  ["/matches/list", route(matchList, ["POST"], "user")],
+  ["/matches/sync-match", route(matchSyncMatch, ["POST"], "user")],
+  ["/notifications/delete", route(notificationDelete, ["POST"], "user")],
+  ["/notifications/list", route(notificationList, ["POST"], "user")],
+  ["/notifications/read", route(notificationRead, ["POST"], "user")],
+  ["/profile/emblem", route(profileEmblem, ["POST"], "user")],
+  ["/profile/achievements", route(profileAchievements, ["POST"], "user")],
+  ["/profile/me", route(profileMe, ["POST"], "user")],
+  ["/profile/upsert", route(profileUpsert, ["POST"], "user")],
+  ["/referee/sync", route(refereeSync, ["POST"], "user")],
+  ["/recruiting/list", route(recruitingList, ["POST"], "user")],
+  ["/recruiting/sync-post", route(recruitingSyncPost, ["POST"], "user")],
+  ["/reports/submit", route(reportSubmit, ["POST"], "user")],
+  ["/settings/sync", route(settingsSync, ["POST"], "user")],
+  ["/search", route(search, ["POST"], "user")],
+  ["/state/load", route(stateLoad, ["POST"], "user")],
+  ["/system/cleanup-sim", route(systemCleanupSim, ["POST"], "internal")],
+  ["/system/feed-audit", route(systemFeedAudit, ["GET", "POST"], "internal")],
+  ["/system/maintenance", route(systemMaintenance, ["GET", "POST"], "internal")],
+  ["/system/schema-health", route(systemSchemaHealth, ["GET", "POST"], "internal")],
+  ["/teams/detail", route(teamList, ["POST"], "user")],
+  ["/teams/emblem", route(teamEmblem, ["POST"], "user")],
+  ["/teams/list", route(teamList, ["POST"], "user")],
+  ["/teams/sync-team", route(teamSyncTeam, ["POST"], "user")],
+  ["/tournaments/sync-tournament", route(tournamentSyncTournament, ["POST"], "user")],
 ]);
 
 function getRequestUrl(request) {
-  const protocol = request.headers["x-forwarded-proto"] || "https";
-  const host = request.headers["x-forwarded-host"] || request.headers.host || "localhost";
-  return new URL(request.url || "/", `${protocol}://${host}`);
+  const rawUrl = String(request.url || "/");
+  return new URL(rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`, "https://rankball.invalid");
 }
 
 function getQueryObject(request, url) {
@@ -124,7 +130,9 @@ function getRoutePath(request) {
 
 export default async function handler(request, response) {
   const routePath = getRoutePath(request);
-  const routeHandler = ROUTES.get(routePath);
+  const route = API_ROUTES.get(routePath);
+
+  setApiSecurityHeaders(response);
 
   try {
     assertSafeInputPayload(request.query ?? {}, {
@@ -140,11 +148,18 @@ export default async function handler(request, response) {
     return;
   }
 
-  if (!routeHandler) {
-    response.status(404).json({ error: "api_route_not_found", path: routePath });
+  if (findSensitiveQueryKey(request.query ?? {})) {
+    response.status(400).json({ error: "credentials_not_allowed_in_url" });
     return;
   }
 
+  if (!route) {
+    response.status(404).json({ error: "api_route_not_found" });
+    return;
+  }
+
+  if (!enforceApiRouteSecurity(request, response, route)) return;
+
   request.rankballRoutePath = routePath;
-  return routeHandler(request, response);
+  return route.handler(request, response);
 }

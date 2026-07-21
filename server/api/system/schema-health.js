@@ -1,4 +1,4 @@
-import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
 const REQUIRED_COLUMNS = {
   profiles: [
@@ -587,7 +587,7 @@ function canEnsureSimulationTestActors() {
 
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";
-  if (!secret || getBearerToken(request) !== secret) {
+  if (!bearerTokenMatches(request, secret)) {
     const error = new Error("invalid_schema_health_secret");
     error.statusCode = 401;
     throw error;

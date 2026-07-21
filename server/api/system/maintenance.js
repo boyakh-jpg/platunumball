@@ -1,4 +1,4 @@
-import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
+import { bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { MINUTE_MS, normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
 import { RECRUITING_APPLICATION_STATUSES } from "../../../src/lib/recruiting.js";
 
@@ -9,7 +9,7 @@ const NOTIFICATION_RETENTION_DAYS = 7;
 
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";
-  if (!secret || getBearerToken(request) !== secret) {
+  if (!bearerTokenMatches(request, secret)) {
     const error = new Error("invalid_maintenance_secret");
     error.statusCode = 401;
     throw error;

@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { fromRemoteProfile } from "../../src/data/profileMappers.js";
 import {
@@ -11,6 +12,7 @@ import { fromRemoteTournament } from "../../src/data/tournamentMappers.js";
 import { getNotificationActorId, isTerminalMatchStatus, isTerminalRecruitingStatus } from "../../src/lib/notifications.js";
 import { DEFAULT_RATING } from "../../src/lib/constants.js";
 import { assertSafeInputPayload } from "../../src/lib/inputSecurity.js";
+import { getStrictBearerToken, setApiSecurityHeaders } from "./_requestSecurity.js";
 
 export { getDatePart, getTimePart, toDbTime } from "../../src/data/scheduleUtils.js";
 
@@ -33,8 +35,8 @@ const AUTH_CONTEXT_CACHE_TTL_MS = 30 * 1000;
 const RELATED_TOURNAMENT_LIMIT = 40;
 
 export function sendJson(response, statusCode, payload) {
-  response.setHeader?.("Cache-Control", "no-store");
-  response.setHeader?.("X-Content-Type-Options", "nosniff");
+  setApiSecurityHeaders(response);
+  if (statusCode === 401) response.setHeader?.("WWW-Authenticate", "Bearer");
   response.status(statusCode).json(payload);
 }
 
@@ -98,9 +100,16 @@ export async function readJsonBody(request) {
 }
 
 export function getBearerToken(request) {
-  const header = request.headers.authorization || request.headers.Authorization || "";
-  const match = String(header).match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? "";
+  return getStrictBearerToken(request);
+}
+
+export function bearerTokenMatches(request, expectedToken = "") {
+  const token = getStrictBearerToken(request);
+  const expected = String(expectedToken || "");
+  if (!token || !expected) return false;
+  const tokenDigest = createHash("sha256").update(token).digest();
+  const expectedDigest = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(tokenDigest, expectedDigest);
 }
 
 function getJwtExpiresAt(token = "") {
@@ -115,8 +124,12 @@ function getJwtExpiresAt(token = "") {
   }
 }
 
+function getTokenCacheKey(token = "") {
+  return token ? createHash("sha256").update(token).digest("base64url") : "";
+}
+
 function getAuthContextCacheKey(token = "", profileSelect = "", allowMissingProfile = false) {
-  return `${allowMissingProfile ? "allow-missing" : "require-profile"}\n${profileSelect}\n${token}`;
+  return `${allowMissingProfile ? "allow-missing" : "require-profile"}\n${profileSelect}\n${getTokenCacheKey(token)}`;
 }
 
 function canCacheProfileContext(profileSelect = "") {
@@ -128,9 +141,10 @@ function canCacheProfileContext(profileSelect = "") {
 }
 
 function readAuthUserCache(token = "") {
-  const cached = authUserCache.get(token);
+  const key = getTokenCacheKey(token);
+  const cached = authUserCache.get(key);
   if (!cached || cached.expiresAt <= Date.now()) {
-    authUserCache.delete(token);
+    authUserCache.delete(key);
     return null;
   }
   return cached.user;
@@ -141,7 +155,7 @@ function writeAuthUserCache(token = "", user = null) {
   const jwtExpiresAt = getJwtExpiresAt(token);
   const expiresAt = Math.min(Date.now() + AUTH_CONTEXT_CACHE_TTL_MS, jwtExpiresAt || Date.now() + AUTH_CONTEXT_CACHE_TTL_MS);
   if (expiresAt <= Date.now()) return;
-  authUserCache.set(token, { expiresAt, user });
+  authUserCache.set(getTokenCacheKey(token), { expiresAt, user });
   if (authUserCache.size > 100) {
     const now = Date.now();
     for (const [cacheKey, value] of authUserCache) {

@@ -134,10 +134,13 @@ async function searchNaverAddressesOnServer(searchQuery) {
   const accessToken = data?.session?.access_token;
   if (!accessToken) return null;
 
-  const response = await fetch(`/api/courts/address-search?q=${encodeURIComponent(searchQuery)}`, {
+  const response = await fetch("/api/courts/address-search", {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({ q: searchQuery }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {

@@ -1,4 +1,4 @@
-import { attachNotificationActors, getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { attachNotificationActors, bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { runSystemMaintenance } from "../system/maintenance.js";
 import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
 import { getBlockedUserIds, getNotificationActorId } from "../../../src/lib/notifications.js";
@@ -21,7 +21,7 @@ function getWorkerSecret() {
 
 async function assertWorkerAccess(request) {
   const workerSecret = getWorkerSecret();
-  if (!workerSecret || getBearerToken(request) !== workerSecret) {
+  if (!bearerTokenMatches(request, workerSecret)) {
     const error = new Error("invalid_cron_secret");
     error.statusCode = 401;
     throw error;

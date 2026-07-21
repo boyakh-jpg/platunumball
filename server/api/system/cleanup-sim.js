@@ -1,8 +1,8 @@
-import { getBearerToken, getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
+import { bearerTokenMatches, getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
 
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";
-  if (!secret || getBearerToken(request) !== secret) {
+  if (!bearerTokenMatches(request, secret)) {
     const error = new Error("invalid_cleanup_secret");
     error.statusCode = 401;
     throw error;

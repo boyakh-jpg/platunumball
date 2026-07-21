@@ -26,9 +26,8 @@ function getNaverClientSecret() {
   );
 }
 
-function getQuery(request, body = {}) {
-  const url = new URL(request.url, `https://${request.headers.host || "localhost"}`);
-  return String(url.searchParams.get("q") || body.q || body.query || "").trim();
+function getQuery(body = {}) {
+  return String(body.q || body.query || "").trim();
 }
 
 function assertRateLimit(profileId) {
@@ -121,15 +120,15 @@ async function searchNaver(query) {
 }
 
 export default async function handler(request, response) {
-  if (!["GET", "POST"].includes(request.method)) {
-    response.setHeader("Allow", "GET, POST");
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "POST");
     sendJson(response, 405, { error: "method_not_allowed" });
     return;
   }
 
   try {
-    const body = request.method === "POST" ? await readJsonBody(request) : {};
-    const query = getQuery(request, body);
+    const body = await readJsonBody(request);
+    const query = getQuery(body);
     if (!query) {
       sendJson(response, 400, { error: "missing_query" });
       return;

@@ -8,6 +8,7 @@ export const DISCORD_INVITE_ACTION_PREFIX = "rankball:invite";
 export const DISCORD_TOURNAMENT_ACTION_PREFIX = "rankball:tournament";
 export const DISCORD_OAUTH_PROOF_TTL_MS = 5 * MINUTE_MS;
 export const DISCORD_OAUTH_STATE_TTL_MS = 10 * MINUTE_MS;
+export const DISCORD_OAUTH_STATE_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
 export const DISCORD_SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 export const DISCORD_NOTIFICATION_ID_MAX_LENGTH = 160;
 export const DISCORD_NOTIFICATION_TITLE_MAX_LENGTH = 160;
@@ -17,6 +18,10 @@ export const DISCORD_PROFILE_ID_MAX_LENGTH = 128;
 
 export function isDiscordSnowflake(value = "") {
   return DISCORD_SNOWFLAKE_PATTERN.test(String(value || "").trim());
+}
+
+export function isDiscordOAuthState(value = "") {
+  return DISCORD_OAUTH_STATE_PATTERN.test(String(value || ""));
 }
 
 export function getDiscordCdnAvatarUrl(user = {}, size = 128) {

@@ -1,4 +1,4 @@
-import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { ROOM_CHAT_MESSAGE_COLUMNS } from "../../../src/lib/roomChat.js";
 import {
   fromRoomChatMessageRow,
@@ -20,7 +20,7 @@ function getBridgeSecret() {
 
 function assertBridgeAccess(request) {
   const secret = getBridgeSecret();
-  if (!secret || getBearerToken(request) !== secret) reject(401, "invalid_discord_chat_bridge_secret");
+  if (!bearerTokenMatches(request, secret)) reject(401, "invalid_discord_chat_bridge_secret");
 }
 
 function readSnowflake(value = "", label = "discord_id", required = true) {

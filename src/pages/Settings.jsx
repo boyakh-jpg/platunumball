@@ -21,15 +21,16 @@ import { hasAdminAccess } from "../lib/admin.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import {
   DISCORD_NOTIFICATION_EVENTS,
+  acknowledgeDiscordOAuthResult,
   consumeDiscordOAuthResult,
   findDiscordConnectionOwner,
   getDiscordAvatarClassName,
   getDiscordAvatarStyle,
   getDiscordChannel,
   getDiscordDisplayName,
-  getDiscordOAuthStartUrl,
   getDiscordProfileUrl,
   isDiscordLinked,
+  startDiscordOAuth,
 } from "../lib/discord.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
@@ -401,22 +402,25 @@ export default function Settings({ app, auth, section = "main" }) {
   }, [discordSnapshot]);
   useEffect(() => {
     if (isSupabaseConfigured && !app.remoteReady) return;
-    const discordOAuthResult = consumeDiscordOAuthResult(app.currentUserId);
-    if (!discordOAuthResult) return;
-    if (discordOAuthResult.status !== "linked") {
-      console.warn("Discord link failed.", discordOAuthResult.error);
-      setDiscordLinkError("Discord 연동에 실패했습니다.");
-      return;
-    }
-    const targetUserId = discordOAuthResult.appUserId || app.currentUserId;
-    const linkedOwner = findDiscordConnectionOwner(app.state.users, discordOAuthResult.connection, targetUserId);
-    if (linkedOwner) {
-      setDiscordLinkError(`이미 ${linkedOwner.name} 프로필에 연결된 Discord입니다.`);
-      return;
-    }
+    const discordOAuthResultPromise = consumeDiscordOAuthResult(app.currentUserId);
+    if (!discordOAuthResultPromise) return;
     let active = true;
     const persistDiscordConnection = async () => {
+      const discordOAuthResult = await discordOAuthResultPromise;
+      if (!active) return;
+      acknowledgeDiscordOAuthResult();
       try {
+        if (discordOAuthResult.status !== "linked") {
+          console.warn("Discord link failed.", discordOAuthResult.error);
+          setDiscordLinkError("Discord 연동에 실패했습니다.");
+          return;
+        }
+        const targetUserId = discordOAuthResult.appUserId || app.currentUserId;
+        const linkedOwner = findDiscordConnectionOwner(app.state.users, discordOAuthResult.connection, targetUserId);
+        if (linkedOwner) {
+          setDiscordLinkError(`이미 ${linkedOwner.name} 프로필에 연결된 Discord입니다.`);
+          return;
+        }
         setDiscordLinkError("");
         const result = await app.actions.updateProfile({ discordConnection: discordOAuthResult.connection }, targetUserId);
         if (!active) return;
@@ -896,8 +900,14 @@ export default function Settings({ app, auth, section = "main" }) {
       setPrivacySaveStatus("저장 실패");
     }
   };
-  const connectDiscord = () => {
-    window.location.assign(getDiscordOAuthStartUrl(app.currentUserId));
+  const connectDiscord = async () => {
+    setDiscordLinkError("");
+    try {
+      await startDiscordOAuth(app.currentUserId);
+    } catch (error) {
+      console.warn("Discord OAuth start failed.", error);
+      setDiscordLinkError("Discord 연동을 시작하지 못했습니다.");
+    }
   };
   const saveDiscordSettings = async () => {
     setDiscordSaveStatus("저장 중");
