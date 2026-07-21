@@ -76,12 +76,14 @@ import {
   getCourtMapUrl,
   getNearbyCourtCandidates,
   getCourtPaidLabel,
+  getCourtPublicAccessLabel,
   getCourtPickerResults,
   getCourtReservationValue,
   getCourtSearchText,
   mergeCourtSearchCourts,
   normalizeCourtFacilityName,
   normalizeCourtOptionalBoolean,
+  normalizeCourtPublicAccess,
   normalizeCourtSourceUrl,
   normalizeCourtType,
 } from "../src/lib/courts.js";
@@ -666,6 +668,10 @@ test("court request attributes preserve unknown values instead of inventing fact
   assert.equal(normalizeCourtOptionalBoolean(false), false);
   assert.equal(getCourtKindLabel({ courtKind: "unknown" }), "확인 필요");
   assert.equal(getCourtAccessLabel({ accessType: "unknown" }), "확인 필요");
+  assert.equal(normalizeCourtPublicAccess("공개"), "public");
+  assert.equal(normalizeCourtPublicAccess("비공개"), "private");
+  assert.equal(normalizeCourtPublicAccess("추정"), "unknown");
+  assert.equal(getCourtPublicAccessLabel({ publicAccess: "unknown" }), "알 수 없음");
   assert.equal(getCourtPaidLabel({ paid: null }), "비용 확인 필요");
   assert.equal(getCourtReservationValue({ accessType: "reservation" }), true);
   assert.equal(getCourtReservationValue({ accessType: "restricted" }), null);

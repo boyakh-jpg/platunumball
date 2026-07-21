@@ -79,6 +79,7 @@ export function fromRemoteCourtRequest(row = {}) {
     zonecode: row.zonecode ?? payload.zonecode,
     lat: row.lat ?? payload.lat,
     lng: row.lng ?? payload.lng,
+    publicAccess: row.public_access ?? payload.publicAccess ?? "unknown",
     createdAt: row.created_at ?? payload.createdAt,
     updatedAt: row.updated_at ?? payload.updatedAt,
   };
@@ -99,6 +100,7 @@ export function fromRemoteApprovedCourt(row = {}) {
     zonecode: row.zonecode ?? payload.zonecode,
     lat: row.lat ?? payload.lat,
     lng: row.lng ?? payload.lng,
+    publicAccess: row.public_access ?? payload.publicAccess ?? "unknown",
     status: row.status ?? payload.status ?? "active",
     hiddenAt: row.hidden_at ?? payload.hiddenAt,
     hiddenBy: row.hidden_by ?? payload.hiddenBy,

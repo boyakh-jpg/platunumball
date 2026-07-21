@@ -61,6 +61,7 @@ import {
   normalizeCourtFacilityName,
   normalizeCourtNamePart,
   normalizeCourtOptionalBoolean,
+  normalizeCourtPublicAccess,
   normalizeCourtReviewRating,
   normalizeCourtSourceUrl,
   normalizeCourtSurfaceType,
@@ -4627,6 +4628,7 @@ export function submitCourtRequest(state, draft = {}) {
   const hashtag = normalizeCourtHashtag(draft.hashtag) || makeRandomCourtHashtag(state);
   const type = normalizeCourtType(draft.type);
   const accessType = normalizeCourtAccessType(draft.accessType, draft.reservation);
+  const publicAccess = normalizeCourtPublicAccess(draft.publicAccess);
 
   const request = {
     id: makeId("cr"),
@@ -4656,6 +4658,7 @@ export function submitCourtRequest(state, draft = {}) {
     surfaceType: normalizeCourtSurfaceType(draft.surfaceType),
     courtLayout: normalizeCourtLayout(draft.courtLayout),
     accessType,
+    publicAccess,
     reservation: getCourtReservationValue({ accessType }),
     lighting: type === "야외" ? normalizeCourtOptionalBoolean(draft.lighting) : null,
     paid: normalizeCourtOptionalBoolean(draft.paid),
@@ -5895,6 +5898,7 @@ export function approveCourtRequest(state, requestId, approval = {}) {
     courtLayout: normalizeCourtLayout(request.courtLayout),
     hoopCount: getCourtHoopCount(request),
     accessType: normalizeCourtAccessType(request.accessType, request.reservation),
+    publicAccess: normalizeCourtPublicAccess(request.publicAccess),
     reservation: getCourtReservationValue(request),
     lighting: normalizeCourtOptionalBoolean(request.lighting),
     paid: normalizeCourtOptionalBoolean(request.paid),

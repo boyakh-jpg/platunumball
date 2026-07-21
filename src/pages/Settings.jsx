@@ -18,6 +18,7 @@ import {
   COURT_ACCESS_OPTIONS,
   COURT_KIND_OPTIONS,
   COURT_LAYOUT_OPTIONS,
+  COURT_PUBLIC_ACCESS_OPTIONS,
   COURT_SOURCE_URL_MAX_LENGTH,
   COURT_SURFACE_OPTIONS,
   COURT_TYPE_OPTIONS,
@@ -30,6 +31,7 @@ import {
   getCourtLocationMatches,
   getNearbyCourtCandidates,
   getCourtPaidLabel,
+  getCourtPublicAccessLabel,
   getCourtSurfaceLabel,
   getRegisteredCourts,
   normalizeCourtFacilityName,
@@ -81,6 +83,7 @@ const DEFAULT_COURT_REQUEST = {
   surfaceType: "unknown",
   courtLayout: "unknown",
   accessType: "unknown",
+  publicAccess: "unknown",
   lighting: null,
   paid: null,
   sourceUrl: "",
@@ -1828,7 +1831,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   <div>
                     <span>구장 속성</span>
                     <strong>{getCourtSurfaceLabel(courtDraft)} · {getCourtLayoutLabel(courtDraft)}</strong>
-                    <em>{courtDraft.type} · {getCourtKindLabel(courtDraft)} · {getCourtAccessLabel(courtDraft)} · {getCourtPaidLabel(courtDraft)}</em>
+                    <em>{courtDraft.type} · {getCourtKindLabel(courtDraft)} · {getCourtAccessLabel(courtDraft)} · 공개 여부 {getCourtPublicAccessLabel(courtDraft)} · {getCourtPaidLabel(courtDraft)}</em>
                   </div>
                   <MapPin size={18} />
                 </div>
@@ -1840,17 +1843,24 @@ export default function Settings({ app, auth, section = "main" }) {
                     </select>
                   </label>
                   <label>
-                    비용
-                    <select
-                      value={courtDraft.paid === true ? "paid" : courtDraft.paid === false ? "free" : "unknown"}
-                      onChange={(event) => updateCourtDraft({
-                        paid: COURT_COST_OPTIONS.find((option) => option.id === event.target.value)?.value ?? null,
-                      })}
-                    >
-                      {COURT_COST_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    공개 여부
+                    <select value={courtDraft.publicAccess} onChange={(event) => updateCourtDraft({ publicAccess: event.target.value })}>
+                      {COURT_PUBLIC_ACCESS_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                   </label>
                 </div>
+                <label>
+                  비용
+                  <select
+                    value={courtDraft.paid === true ? "paid" : courtDraft.paid === false ? "free" : "unknown"}
+                    onChange={(event) => updateCourtDraft({
+                      paid: COURT_COST_OPTIONS.find((option) => option.id === event.target.value)?.value ?? null,
+                    })}
+                  >
+                    {COURT_COST_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+                <small>실제 이용 권한을 아는 경우에만 공개 또는 비공개를 선택해 주세요. 지도만으로는 추정하지 않습니다.</small>
                 {courtDraft.type === "야외" ? (
                   <label>
                     야간 조명
@@ -1900,7 +1910,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   && !alreadyReported;
                 return (
                   <div key={request.id}>
-                    <span>{request.name} · {request.addressText} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
+                    <span>{request.name} · {request.addressText} · 공개 여부 {getCourtPublicAccessLabel(request)} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
                     <strong>{getAdminStatusLabel(request.status)}</strong>
                     <button type="button" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
                       {alreadyReported ? "신고됨" : "신고 선택"}

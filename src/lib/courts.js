@@ -49,6 +49,12 @@ export const COURT_ACCESS_OPTIONS = [
   { id: "restricted", label: "출입 제한" },
 ];
 
+export const COURT_PUBLIC_ACCESS_OPTIONS = [
+  { id: "unknown", label: "알 수 없음" },
+  { id: "public", label: "공개" },
+  { id: "private", label: "비공개" },
+];
+
 export const COURT_SOURCE_URL_MAX_LENGTH = 500;
 
 export function normalizeCourtType(value = "") {
@@ -72,6 +78,13 @@ export function normalizeCourtAccessType(value = "", reservation = null) {
   return "unknown";
 }
 
+export function normalizeCourtPublicAccess(value = "") {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (["public", "공개"].includes(normalized)) return "public";
+  if (["private", "비공개"].includes(normalized)) return "private";
+  return "unknown";
+}
+
 export function normalizeCourtOptionalBoolean(value) {
   if (value === true || value === "true") return true;
   if (value === false || value === "false") return false;
@@ -91,6 +104,11 @@ export function getCourtKindLabel(court = {}) {
 export function getCourtAccessLabel(court = {}) {
   const accessType = normalizeCourtAccessType(court.accessType, court.reservation);
   return COURT_ACCESS_OPTIONS.find((option) => option.id === accessType)?.label ?? "확인 필요";
+}
+
+export function getCourtPublicAccessLabel(court = {}) {
+  const publicAccess = normalizeCourtPublicAccess(court.publicAccess);
+  return COURT_PUBLIC_ACCESS_OPTIONS.find((option) => option.id === publicAccess)?.label ?? "알 수 없음";
 }
 
 export function getCourtPaidLabel(court = {}) {

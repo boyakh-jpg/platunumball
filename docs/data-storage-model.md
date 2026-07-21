@@ -101,6 +101,7 @@
 - Naver Maps JavaScript Client ID는 frontend public env로만 둔다: `VITE_NAVER_MAP_CLIENT_ID`.
 - Naver Client Secret은 browser bundle에 넣지 않는다.
 - `court_requests` server action은 제출 직전에 신뢰도, 정지 상태, 승인/대기 중복, 핀 역지오코딩 주소와 좌표 존재를 다시 검사한다. 새 `pending` 요청은 `lat/lng`가 없으면 DB constraint에서 거부한다.
+- `court_requests.public_access`와 `approved_courts.public_access`는 이용 방식과 분리된 `public`, `private`, `unknown` enum이다. 같은 값은 JSONB `payload.publicAccess`에도 동기화한다.
 - 승인된 구장은 정규화한 `road_address`, `jibun_address`, `address_text`, `zonecode` 기준 unique constraint 또는 unique index로 중복을 막는다.
 - 허위 구장 신고 접수는 report 생성, 요청의 `reported` 전환, 판정 전 무차감 알림을 하나의 transaction으로 커밋한다. 관리자 인정 transaction에서만 요청별 1회 신뢰도 차감과 `rejected` 전환을 적용한다.
 

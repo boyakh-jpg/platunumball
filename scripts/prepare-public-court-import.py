@@ -83,6 +83,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reverse-geocode", action="store_true", help="네이버 좌표 역지오코딩 실행")
     parser.add_argument("--env-file", help="네이버 키가 있는 dotenv 파일")
     parser.add_argument("--cache", help="역지오코딩 재개용 JSON 캐시")
+    parser.add_argument("--name-reviews", help="지도 육안 검토 결과 JSON")
     parser.add_argument("--cache-only", action="store_true", help="네이버 API 호출 없이 기존 캐시만 사용")
     parser.add_argument("--geocode-limit", type=int, default=0, help="이번 실행의 최대 신규 API 호출 수, 0은 무제한")
     parser.add_argument("--delay-ms", type=int, default=100, help="네이버 요청 사이 대기 시간")
@@ -336,6 +337,22 @@ def load_name_corrections(workbook: Any) -> dict[str, dict[str, str]]:
     return corrections
 
 
+def load_name_reviews(path: Path | None) -> dict[str, dict[str, Any]]:
+    if path is None:
+        return {}
+    if not path.exists():
+        raise FileNotFoundError(path)
+    parsed = json.loads(path.read_text(encoding="utf-8"))
+    entries = parsed.get("reviews") if isinstance(parsed, dict) and "reviews" in parsed else parsed
+    if not isinstance(entries, dict):
+        raise ValueError("invalid_name_reviews")
+    return {
+        clean_text(court_id): review
+        for court_id, review in entries.items()
+        if clean_text(court_id) and isinstance(review, dict)
+    }
+
+
 def load_sfms_records(workbook: Any) -> dict[str, dict[str, Any]]:
     worksheet = find_sheet(workbook, "체육시설API_원본", 8)
     if worksheet is None:
@@ -402,12 +419,21 @@ def map_layout(value: Any) -> str:
 
 def map_access(value: Any) -> str:
     normalized = clean_text(value).lower()
-    if any(token in normalized for token in ("공개", "자유", "walk_in", "open")):
-        return "walk_in"
-    if any(token in normalized for token in ("조건부", "예약", "reservation")):
-        return "reservation"
     if any(token in normalized for token in ("제한", "비공개", "restricted")):
         return "restricted"
+    if any(token in normalized for token in ("조건부", "예약", "reservation")):
+        return "reservation"
+    if any(token in normalized for token in ("공개", "자유", "walk_in", "open")):
+        return "walk_in"
+    return "unknown"
+
+
+def map_public_access(*values: Any) -> str:
+    normalized = " ".join(clean_text(value).lower() for value in values if clean_text(value))
+    if any(token in normalized for token in ("비공개", "미개방", "private", "외부인 금지")):
+        return "private"
+    if any(token in normalized for token in ("공개", "공공개방", "상시개방", "public")):
+        return "public"
     return "unknown"
 
 
@@ -662,6 +688,7 @@ def issue_disposition(issues: list[str]) -> str:
         for issue in (
             "generic_or_unresolved_name",
             "name_correction_unverified",
+            "name_review_invalid",
             "source_name_operational_note",
             "source_coordinate_collision",
         )
@@ -682,6 +709,7 @@ def main() -> int:
     output_path = Path(args.output).resolve()
     report_path = Path(args.report).resolve()
     cache_path = Path(args.cache).resolve() if args.cache else output_path.with_name("naver-reverse-geocode-cache.json")
+    name_reviews_path = Path(args.name_reviews).resolve() if args.name_reviews else None
     if not source_path.exists():
         raise FileNotFoundError(source_path)
 
@@ -699,6 +727,7 @@ def main() -> int:
 
     payload_map = load_payload_map(workbook)
     corrections = load_name_corrections(workbook)
+    name_reviews = load_name_reviews(name_reviews_path)
     sfms_records = load_sfms_records(workbook)
     hashtags = make_hashtags(source_rows)
 
@@ -749,12 +778,34 @@ def main() -> int:
             name_normalization_steps = list(dict.fromkeys([*name_normalization_steps, "accepted_correction", *correction_normalization_steps]))
             name_source = "manual"
 
+        name_review = name_reviews.get(court_id)
+        reviewed_name = clean_text((name_review or {}).get("name"))
+        review_status = clean_text((name_review or {}).get("status")).lower()
+        review_source = clean_text((name_review or {}).get("source")).lower()
+        review_is_accepted = bool(
+            name_review
+            and review_status in ACCEPTED_NAME_STATUSES
+            and reviewed_name
+            and "농구장" in reviewed_name
+            and GENERIC_NAME_RE.match(reviewed_name) is None
+        )
+        if review_is_accepted:
+            name, review_normalization_steps = normalize_source_court_name(reviewed_name)
+            review_step = "osm_spatial_inference" if review_source == "openstreetmap_spatial_inference" else "visual_map_review"
+            name_normalization_steps = list(dict.fromkeys([*name_normalization_steps, review_step, *review_normalization_steps]))
+            name_source = "manual"
+
         if original_name:
             name_standardization_stats["sourceNameRows"] += 1
         if name != original_name:
             name_standardization_stats["normalizedRows"] += 1
         if correction_is_accepted:
             name_standardization_stats["acceptedCorrectionRows"] += 1
+        if review_is_accepted:
+            if review_source == "openstreetmap_spatial_inference":
+                name_standardization_stats["osmSpatialReviewRows"] += 1
+            else:
+                name_standardization_stats["visualReviewRows"] += 1
         name_step_counts.update(name_normalization_steps)
 
         lat = parse_float(source_row.get("위도"))
@@ -772,6 +823,15 @@ def main() -> int:
         surface_raw = clean_text(source_row.get("바닥"))
         layout_raw = clean_text(source_row.get("코트규격"))
         access_type = map_access(source_row.get("접근구분"))
+        public_access_evidence = {
+            key: clean_text(source_row.get(key))
+            for key in ("공개여부", "개방여부", "공공개방여부", "접근구분")
+            if clean_text(source_row.get(key))
+        }
+        public_access = map_public_access(*public_access_evidence.values())
+        reviewed_public_access = clean_text((name_review or {}).get("publicAccess")).lower()
+        if review_is_accepted and reviewed_public_access in {"public", "private"}:
+            public_access = reviewed_public_access
         homepage_raw = clean_text(source_row.get("홈페이지"))
         official_url = normalize_https_url(homepage_raw)
         contact_phone = clean_text(source_row.get("전화")) or None
@@ -834,12 +894,15 @@ def main() -> int:
         if not valid_coordinate:
             issues.append("invalid_korea_coordinate")
         name_requires_correction = parse_bool(source_row.get("이름보정대상")) is True or GENERIC_NAME_RE.match(name) is not None
-        if name_requires_correction and not correction_is_accepted:
+        name_is_resolved = correction_is_accepted or review_is_accepted or not name_requires_correction
+        if not name_is_resolved:
             issues.append("generic_or_unresolved_name")
             name_standardization_stats["unresolvedRows"] += 1
         else:
             name_standardization_stats["resolvedRows"] += 1
-        if correction and not correction_is_accepted:
+        if name_review and not review_is_accepted:
+            issues.append("name_review_invalid")
+        if correction and not correction_is_accepted and not review_is_accepted:
             issues.append("name_correction_unverified")
         if correction_uses_external_place_search:
             issues.append("external_name_correction_ignored")
@@ -887,11 +950,12 @@ def main() -> int:
             "courtLayoutRaw": layout_raw or None,
             "hoopCount": parse_positive_int(source_row.get("골대수")),
             "accessType": access_type,
+            "publicAccess": public_access,
             "reservationRequired": reservation_required,
             "paid": parse_bool(source_row.get("유료")),
             "lighting": parse_bool(source_row.get("조명")),
             "operationalStatus": operational_status,
-            "verificationStatus": "source_verified" if geocode_verified and not name_requires_correction else "pending",
+            "verificationStatus": "source_verified" if geocode_verified and name_is_resolved else "pending",
             "nameSource": name_source,
             "addressSource": address_source,
             "sourceConfidence": parse_float(source_row.get("신뢰도")),
@@ -910,6 +974,7 @@ def main() -> int:
                 "surfaceType": map_surface(surface_raw, indoor_outdoor),
                 "courtLayout": map_layout(layout_raw),
                 "accessType": access_type,
+                "publicAccess": public_access,
                 "reservation": reservation_required,
                 "paid": parse_bool(source_row.get("유료")),
                 "lighting": parse_bool(source_row.get("조명")),
@@ -917,6 +982,8 @@ def main() -> int:
                 "registrationOrigin": "public_import",
                 "sourceOriginalName": original_name,
                 "nameNormalizationSteps": name_normalization_steps,
+                "publicAccessEvidence": public_access_evidence or None,
+                "nameReview": name_review if review_is_accepted else None,
             },
         }
         facility_info = {
@@ -947,6 +1014,7 @@ def main() -> int:
                 "sourceOriginalName": original_name,
                 "standardizedName": name,
                 "nameNormalizationSteps": name_normalization_steps,
+                "nameReview": name_review,
                 "reverseGeocodeError": reverse_error,
                 "unresolvedProviders": unresolved_providers,
             },
@@ -967,6 +1035,7 @@ def main() -> int:
         "officialUrlHttps": sum(bool(row["facilityInfo"]["officialUrl"]) for row in normalized_rows),
         "openingHours": sum(bool(row["facilityInfo"]["openingHoursText"]) for row in normalized_rows),
         "applicationMethod": sum(bool(row["facilityInfo"]["applicationMethod"]) for row in normalized_rows),
+        "publicAccessKnown": sum(row["court"]["publicAccess"] != "unknown" for row in normalized_rows),
         "zonecode": sum(bool(row["court"]["zonecode"]) for row in normalized_rows),
         "facilityAreaSqm": sum(row["facilityInfo"]["facilityAreaSqm"] is not None for row in normalized_rows),
     }
@@ -999,6 +1068,7 @@ def main() -> int:
             "archiveFileName": source_path.name,
             "workbookFileName": workbook_name,
             "sheetName": primary_sheet.title,
+            "nameReviewFileName": name_reviews_path.name if name_reviews_path else None,
             "sha256": source_sha256,
             "generatedAt": generated_at,
         },

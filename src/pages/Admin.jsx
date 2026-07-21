@@ -31,6 +31,7 @@ import {
   getCourtLocationMatches,
   getCourtMapUrl,
   getCourtPaidLabel,
+  getCourtPublicAccessLabel,
   getCourtSurfaceLabel,
   normalizeCourtSourceUrl,
 } from "../lib/courts.js";
@@ -988,7 +989,7 @@ export default function Admin({ app }) {
                     <div><span>도로명 · 지번</span><strong>{selectedCourtRequest.roadAddress || "도로명 없음"}</strong><em>{selectedCourtRequest.jibunAddress || "지번 없음"}</em></div>
                     <div><span>좌표</span><strong>{selectedCourtRequest.lat != null && selectedCourtRequest.lng != null ? `${Number(selectedCourtRequest.lat).toFixed(5)}, ${Number(selectedCourtRequest.lng).toFixed(5)}` : "좌표 확인 필요"}</strong><em>핀 기준 실제 위치</em></div>
                     <div><span>구장 속성</span><strong>{getCourtSurfaceLabel(selectedCourtRequest)} · {getCourtLayoutLabel(selectedCourtRequest)}</strong><em>{selectedCourtRequest.type || "확인 필요"} · {getCourtKindLabel(selectedCourtRequest)}</em></div>
-                    <div><span>이용 정보</span><strong>{getCourtAccessLabel(selectedCourtRequest)} · {getCourtPaidLabel(selectedCourtRequest)}</strong><em>{selectedCourtRequest.type === "야외" ? getCourtLightingLabel(selectedCourtRequest) : selectedCourtRequest.type === "실내" ? "실내/조명 입력 대상 아님" : "조명 입력 대상 미확정"}</em></div>
+                    <div><span>이용 정보</span><strong>{getCourtAccessLabel(selectedCourtRequest)} · 공개 여부 {getCourtPublicAccessLabel(selectedCourtRequest)} · {getCourtPaidLabel(selectedCourtRequest)}</strong><em>{selectedCourtRequest.type === "야외" ? getCourtLightingLabel(selectedCourtRequest) : selectedCourtRequest.type === "실내" ? "실내/조명 입력 대상 아님" : "조명 입력 대상 미확정"}</em></div>
                     {courtSourceHref ? (
                       <div>
                         <span>공식 안내/예약 링크</span>

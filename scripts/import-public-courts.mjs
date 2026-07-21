@@ -111,6 +111,7 @@ export function validateNormalizedImport(document) {
     if (!/^#[0-9]{5}$/.test(hashtag)) pushRowError(rowErrors, row, "invalid_hashtag");
     if (!cleanText(court.name) || !cleanText(court.addressText)) pushRowError(rowErrors, row, "required_court_field_missing");
     if (!Number.isFinite(Number(court.lat)) || !Number.isFinite(Number(court.lng))) pushRowError(rowErrors, row, "coordinate_missing");
+    if (!["public", "private", "unknown"].includes(cleanText(court.publicAccess))) pushRowError(rowErrors, row, "invalid_public_access");
     if (court.addressSource !== "naver_reverse_geocode" || court.geocodeVerified !== true) pushRowError(rowErrors, row, "reverse_geocode_required");
     if (!["source_verified", "verified"].includes(court.verificationStatus) || !cleanText(court.verifiedAt)) pushRowError(rowErrors, row, "verification_required");
     if (!Array.isArray(row.sources) || row.sources.length === 0) pushRowError(rowErrors, row, "source_record_required");

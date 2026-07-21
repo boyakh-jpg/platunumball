@@ -3,9 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { validateNormalizedImport } from "./import-public-courts.mjs";
+import { approveCourtRequest, submitCourtRequest } from "../src/data/repository.js";
 
 const migrationPath = new URL("../supabase/migrations/20260721230000_public_court_import_pipeline.sql", import.meta.url);
 const nameNormalizationMigrationPath = new URL("../supabase/migrations/20260721233100_court_facility_name_normalization.sql", import.meta.url);
+const publicAccessMigrationPath = new URL("../supabase/migrations/20260721234000_court_public_access.sql", import.meta.url);
 const prepareScriptPath = new URL("./prepare-public-court-import.py", import.meta.url);
 
 function readyRow(overrides = {}) {
@@ -28,6 +30,7 @@ function readyRow(overrides = {}) {
       sigungu: "마포구",
       courtUnit: overrides.courtUnit ?? null,
       multipleCourtsVerified: overrides.multipleCourtsVerified ?? false,
+      publicAccess: overrides.publicAccess ?? "unknown",
       addressSource: "naver_reverse_geocode",
       geocodeVerified: true,
       verificationStatus: "source_verified",
@@ -97,6 +100,12 @@ test("local validator permits explicitly verified court units at one facility", 
   assert.equal(result.readyRows.length, 2);
 });
 
+test("local validator rejects invalid public access values", () => {
+  const result = validateNormalizedImport(documentWith([readyRow({ publicAccess: "guessed" })]));
+  assert.ok(result.rowErrors.some((error) => error.code === "invalid_public_access"));
+  assert.equal(result.readyRows.length, 0);
+});
+
 test("migration keeps public import separate from user request side effects", async () => {
   const sql = await readFile(migrationPath, "utf8");
   assert.match(sql, /create table if not exists public\.court_facility_info/i);
@@ -116,12 +125,73 @@ test("normalizer maps app fields and uses the official reverse-geocode endpoint"
   const source = await readFile(prepareScriptPath, "utf8");
   assert.match(source, /map_access/);
   assert.match(source, /"accessType": access_type/);
+  assert.match(source, /"publicAccess": public_access/);
+  assert.match(source, /def map_public_access/);
+  assert.match(source, /reviewed_public_access in \{"public", "private"\}/);
+  assert.match(source, /--name-reviews/);
+  assert.match(source, /visual_map_review/);
   assert.match(source, /"reservationRequired": reservation_required/);
   assert.match(source, /"lighting": parse_bool/);
   assert.match(source, /https:\/\/maps\.apigw\.ntruss\.com\/map-reversegeocode\/v2\/gc/);
   assert.match(source, /"addressSource": address_source/);
   assert.match(source, /external_name_correction_ignored/);
   assert.doesNotMatch(source, /name_source = "naver_place"/);
+});
+
+test("court request and approved court rows keep public access as a separate enum", async () => {
+  const sql = await readFile(publicAccessMigrationPath, "utf8");
+  assert.match(sql, /alter table public\.court_requests[\s\S]*add column if not exists public_access text/i);
+  assert.match(sql, /alter table public\.approved_courts[\s\S]*add column if not exists public_access text/i);
+  assert.match(sql, /public_access in \('public', 'private', 'unknown'\)/i);
+  assert.match(sql, /jsonb_build_object\('publicAccess', safe_public_access\)/i);
+  assert.match(sql, /new\.public_access is distinct from old\.public_access/i);
+  assert.match(sql, /rankball_sync_court_public_access\(\)[\s\S]*security definer/i);
+  assert.doesNotMatch(sql, /drop table|truncate table|delete from/i);
+});
+
+test("court request public access survives approval", () => {
+  const baseState = {
+    currentUserId: "requester",
+    users: [
+      { id: "requester", name: "신청자", trustScore: 80 },
+      { id: "admin", name: "관리자", trustScore: 100 },
+    ],
+    teams: [],
+    affiliations: [],
+    matches: [],
+    reports: [],
+    notifications: [],
+    settings: {
+      approvedCourts: [],
+      courtRequests: [],
+      courtReviews: [],
+      adminAppointments: [{
+        id: "admin-appointment",
+        userId: "admin",
+        role: "admin",
+        grade: "owner",
+        status: "active",
+      }],
+      adminDisciplinaryActions: [],
+    },
+  };
+  const submitted = submitCourtRequest(baseState, {
+    name: "한빛공원",
+    addressText: "서울특별시 마포구 한빛로 1",
+    lat: 37.55,
+    lng: 126.92,
+    publicAccess: "비공개",
+  });
+  const request = submitted.settings.courtRequests[0];
+
+  assert.equal(request.publicAccess, "private");
+
+  const approved = approveCourtRequest(
+    { ...submitted, currentUserId: "admin" },
+    request.id,
+    { addressVerified: true, multipleCourtsVerified: true },
+  );
+  assert.equal(approved.settings.approvedCourts[0].publicAccess, "private");
 });
 
 test("database court names use the same conservative normalization scope", async () => {
