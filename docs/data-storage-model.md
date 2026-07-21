@@ -445,6 +445,9 @@ Remaining:
 
 ## 2026-06-28 public data and court fallback
 
+- 농구장 원천 데이터는 공공데이터포털 `전국체육시설표준데이터`, `전국공공시설개방정보표준데이터`, OpenStreetMap contributors 데이터를 기반으로 가공한다.
+- OpenStreetMap 기반 데이터는 ODbL 출처·라이선스 고지를 유지한다. 공개 화면의 공용 푸터와 `/data-sources`가 해당 고지를 제공한다.
+- 시설 운영 여부, 이용시간, 요금, 예약 조건, 출입 가능 여부는 원천 데이터와 현장 사이에 시차가 있을 수 있으므로 확정 운영 정보로 취급하지 않는다. 오류·폐쇄·이용 제한은 기존 구장 신고 경로로 접수한다.
 - `public_profiles`는 공개 프로필 표시용 컬럼만 제공한다. `school`, `company`, `club`, `test_login_id`, `discord_connection`, `discord_user_id`, `auth_user_id`는 공개 view에 넣지 않는다.
 - `user_room_feed` 직접 RLS read는 `feed_scope='profile'`인 현재 프로필 row만 허용한다. `feed_scope='public'` 지역 공개 feed는 서버 API/service-role 경로에서만 읽는다. `profile_id='*'`는 legacy 저장키/fallback일 뿐 공개 feed 의미 기준이 아니다.
 - 구장 표시 fallback은 `court_id` 기준 legacy `courts` -> active `approved_courts` -> 기존 `court_name` 순서다. 목록/상세 API는 `courts`와 `approved_courts`를 병합하되 hidden/disabled approved court는 공개 fallback에서 제외한다.

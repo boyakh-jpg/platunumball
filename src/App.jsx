@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import BasketballLoader from "./components/common/BasketballLoader.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
+import PublicShell from "./components/layout/PublicShell.jsx";
 import { useAuthSession } from "./hooks/useAuthSession.js";
 import { useAppData } from "./hooks/useAppData.js";
 import useImageInteractionGuard from "./hooks/useImageInteractionGuard.js";
@@ -12,6 +13,7 @@ const Admin = lazy(() => import("./pages/Admin.jsx"));
 const Affiliations = lazy(() => import("./pages/Affiliations.jsx"));
 const CreateMatch = lazy(() => import("./pages/CreateMatch.jsx"));
 const CourtDetail = lazy(() => import("./pages/CourtDetail.jsx"));
+const DataSources = lazy(() => import("./pages/DataSources.jsx"));
 const Home = lazy(() => import("./pages/Home.jsx"));
 const Landing = lazy(() => import("./pages/Landing.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
@@ -128,8 +130,11 @@ export default function App() {
     <AppErrorBoundary resetKey={location.pathname}>
       <Suspense fallback={<BasketballLoader overlay label="페이지 불러오는 중" />}>
         <Routes>
-        <Route path="/" element={<Landing state={app.state} />} />
-        <Route path="/login" element={<Login auth={auth} app={app} />} />
+        <Route element={<PublicShell />}>
+          <Route path="/" element={<Landing state={app.state} />} />
+          <Route path="/login" element={<Login auth={auth} app={app} />} />
+          <Route path="/data-sources" element={<DataSources />} />
+        </Route>
         <Route element={<RequireAuth auth={auth} />}>
           <Route element={<AppShell app={app} auth={auth} />}>
             <Route path="/app" element={<Home app={app} />} />

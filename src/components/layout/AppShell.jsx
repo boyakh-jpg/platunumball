@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import BasketballLoader from "../common/BasketballLoader.jsx";
 import BottomNav from "./BottomNav.jsx";
+import DataAttribution from "./DataAttribution.jsx";
 import Sidebar from "./Sidebar.jsx";
 
 export default function AppShell({ app, auth }) {
@@ -20,6 +21,7 @@ export default function AppShell({ app, auth }) {
       <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} />
       <main className="app-main" aria-busy={remoteLoading || serverLoading}>
         {remoteLoading ? null : <Outlet />}
+        {remoteLoading ? null : <DataAttribution />}
       </main>
       <BottomNav />
       {remoteLoading ? <BasketballLoader overlay randomLabel /> : null}
