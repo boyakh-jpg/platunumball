@@ -88,7 +88,7 @@ export default function AffiliationEditor({ user, affiliations = [], actions }) 
           <SearchPicker
             value={query}
             onChange={updateQuery}
-            placeholder="예: 서울대학교, 마포고, 랭크볼"
+            placeholder="예: 서울대학교, 마포고등학교, 서울특별시청처럼 공식 이름을 사용하세요"
             items={organizationItems}
             remoteSearchType="affiliation"
             minSearchLength={2}
@@ -107,7 +107,7 @@ export default function AffiliationEditor({ user, affiliations = [], actions }) 
           />
         </label>
         <p className="affiliation-policy-note">
-          소속 인증은 하지 않습니다. 같은 소속은 검색 결과에서 선택하세요. 소속 변경은 30일에 한 번 가능하며, 혐오·차별·정치적 혐오 표현은 신고할 수 있습니다. 정당명 자체는 제한하지 않으며 운영자가 이름을 수정하거나 같은 소속을 통합할 수 있습니다.
+          소속 인증은 하지 않습니다. 소속 변경은 30일에 한 번 가능하며, 혐오·차별·정치적 혐오 표현은 신고할 수 있습니다. 운영자가 이름을 수정하거나 같은 소속을 통합할 수 있습니다.
         </p>
         {!changeAllowed && nextChangeDate ? <small className="form-warning">다음 변경 가능일: {formatAffiliationChangeDate(nextChangeDate)}</small> : null}
         {feedback ? <small role="status" className={feedback.includes("못") || feedback.includes("이상") ? "form-warning" : "muted"}>{feedback}</small> : null}
