@@ -32,10 +32,6 @@ export function formatEmblemDate(value) {
   }).format(date);
 }
 
-export function getEmblemUploadWarning(uploadCount = 0, uploadedAt = null) {
-  const count = Number(uploadCount) || 0;
-  const nextAt = getNextEmblemUploadAt(count, uploadedAt);
-  const policy = "사진을 업로드한 뒤 한 번까지는 바로 변경할 수 있으며, 그 이후에는 마지막 업로드일로부터 30일 뒤에 변경할 수 있습니다.";
-  if (nextAt && nextAt.getTime() > Date.now()) return `${policy} 다음 변경 가능일은 ${formatEmblemDate(nextAt)}입니다.`;
-  return policy;
+export function getEmblemUploadWarning() {
+  return "(처음 한번) 사진을 업로드한 뒤 한 번까지는 바로 변경할 수 있으며, 그 이후에는 마지막 업로드일로부터 30일 뒤에 변경할 수 있습니다.";
 }

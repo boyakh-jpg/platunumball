@@ -721,9 +721,9 @@ export default function TeamDetail({ app }) {
                 </label>
                 <Button type="button" size="sm" variant="secondary" disabled={emblemPending} onClick={saveEmblemStyle}>저장</Button>
               </div>
-              <p className="emblem-policy-note">{moderationLocked ? `운영 조치로 ${formatEmblemDate(moderationBlockedAt)}부터 사진을 업로드할 수 있습니다.` : getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}</p>
+              <p className="emblem-policy-note">{moderationLocked ? "운영 조치로 사진 업로드가 제한되었습니다." : getEmblemUploadWarning()}</p>
               <div className="settings-save-row team-emblem-editor-actions">
-                <small>{emblemFeedback || (emblemUploadLocked ? `${formatEmblemDate(nextEmblemUploadAt)}부터 사진을 변경할 수 있습니다.` : "저장된 사진은 기본값으로 바꿔도 삭제되지 않습니다.")}</small>
+                <small>{emblemFeedback || "저장된 사진은 기본값으로 바꿔도 삭제되지 않습니다."}</small>
                 {emblemCanRestore ? (
                   <Button type="button" size="sm" variant="secondary" disabled={emblemPending || moderationLocked} onClick={restorePreviousEmblem}>
                     <RotateCcw size={16} /> 이전 사진
@@ -748,7 +748,7 @@ export default function TeamDetail({ app }) {
       <EmblemCropEditor
         file={emblemFile}
         pending={emblemPending}
-        warning={getEmblemUploadWarning(team.emblemUploadCount, team.emblemUploadedAt)}
+        warning={getEmblemUploadWarning()}
         error={emblemFeedback}
         onCancel={() => setEmblemFile(null)}
         onConfirm={confirmEmblemUpload}

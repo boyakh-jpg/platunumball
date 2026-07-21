@@ -24,7 +24,7 @@ import {
   getDiscordInviteCustomId,
   isDiscordSnowflake,
 } from "../src/lib/discordProtocol.js";
-import { isEmblemHexColor } from "../src/lib/emblemPolicy.js";
+import { getEmblemUploadWarning, isEmblemHexColor } from "../src/lib/emblemPolicy.js";
 import {
   isTeamEmblemFont,
   isTeamEmblemTextMode,
@@ -129,6 +129,10 @@ test("emblem validators share frontend and server allowlists", () => {
   assert.equal(normalizeTeamEmblemTextMode("invalid"), "initial");
   assert.ok(isTeamEmblemFont("sport"));
   assert.equal(isTeamEmblemFont("script"), false);
+  assert.equal(
+    getEmblemUploadWarning(3, "2026-07-21T00:00:00.000Z"),
+    "(처음 한번) 사진을 업로드한 뒤 한 번까지는 바로 변경할 수 있으며, 그 이후에는 마지막 업로드일로부터 30일 뒤에 변경할 수 있습니다.",
+  );
 });
 
 test("team emblem border controls stay common to initial and uploaded sources", async () => {
