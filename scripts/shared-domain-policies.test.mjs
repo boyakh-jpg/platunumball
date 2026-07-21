@@ -344,7 +344,8 @@ test("profile icon picker lists owned icons only and locked achievements conceal
   assert.match(dialog, /group\.icons\.filter\(\(icon\) => unlockedSet\.has\(icon\.id\)\)/);
   assert.match(dialog, /unlockedGroups\.map\(\(group\) =>/);
   assert.match(achievements, /state\?\.unlocked \? "unlocked" : "locked"/);
-  assert.match(styles, /\.profile-achievement-card\.locked \.profile-achievement-icon img\s*{[^}]*filter: brightness\(0\) saturate\(0\)/s);
+  assert.match(styles, /\.profile-achievement-icon\s*{[^}]*border-radius: 50%;[^}]*overflow: hidden;/s);
+  assert.match(styles, /\.profile-achievement-card\.locked \.profile-achievement-icon img\s*{[^}]*filter: brightness\(0\) saturate\(0\) blur\(1\.2px\)/s);
 });
 
 test("image native menus and drag stay blocked by one shared guard", async () => {
