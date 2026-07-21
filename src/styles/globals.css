@@ -18794,6 +18794,18 @@ html[data-theme="light"] .court-map-picker-state {
   min-height: var(--home-team-row-height);
 }
 
+.rank-home .home-team-list > .home-team-empty {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.rank-home .home-team-empty > span,
+.rank-home .home-team-empty > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .home-panel-empty {
   display: grid;
   min-height: 66px;

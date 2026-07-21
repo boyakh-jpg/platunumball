@@ -972,7 +972,7 @@ export default function Home({ app }) {
                   </span>
                   <b>{team.mmr} MMR</b>
                 </TeamHoverCard>
-              )) : <div><span>지역 라이벌 없음</span><strong>대기</strong></div>}
+              )) : <div className="home-team-empty"><span>지역 라이벌 없음</span><strong>대기</strong></div>}
             </div>
           </Card>
           <Card className="section-card home-my-teams-card">
@@ -993,7 +993,7 @@ export default function Home({ app }) {
                   </span>
                   <b>{team.mmr} MMR</b>
                 </TeamHoverCard>
-              )) : <div><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
+              )) : <div className="home-team-empty"><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
             </div>
             <Link to="/app/teams">
               <Button variant="secondary" className="wide-button">팀 전체 보기</Button>
