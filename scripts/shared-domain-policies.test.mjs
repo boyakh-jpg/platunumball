@@ -26,8 +26,14 @@ import {
 } from "../src/lib/discordProtocol.js";
 import { getEmblemUploadWarning, isEmblemHexColor } from "../src/lib/emblemPolicy.js";
 import {
+  TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS,
+  getTeamEmblemAbbreviationCharacterCount,
+  getTeamEmblemTextLines,
+  isTeamEmblemAbbreviation,
+  isTeamEmblemAbbreviationDraftWithinLimits,
   isTeamEmblemFont,
   isTeamEmblemTextMode,
+  normalizeTeamEmblemAbbreviation,
   normalizeTeamEmblemTextMode,
 } from "../src/lib/teamEmblem.js";
 import {
@@ -129,6 +135,16 @@ test("emblem validators share frontend and server allowlists", () => {
   assert.equal(normalizeTeamEmblemTextMode("invalid"), "initial");
   assert.ok(isTeamEmblemFont("sport"));
   assert.equal(isTeamEmblemFont("script"), false);
+  assert.equal(TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS, 4);
+  assert.equal(normalizeTeamEmblemAbbreviation("  RB  \r\n BC  "), "RB\nBC");
+  assert.equal(getTeamEmblemAbbreviationCharacterCount("R B\nC D"), 4);
+  assert.ok(isTeamEmblemAbbreviation("RB\nBC"));
+  assert.equal(isTeamEmblemAbbreviation(" \n "), false);
+  assert.equal(isTeamEmblemAbbreviation("ABCDE"), false);
+  assert.equal(isTeamEmblemAbbreviation("A\nB\nC"), false);
+  assert.ok(isTeamEmblemAbbreviationDraftWithinLimits("A B\nCD"));
+  assert.equal(isTeamEmblemAbbreviationDraftWithinLimits("A\nB\nC"), false);
+  assert.deepEqual(getTeamEmblemTextLines({ emblemTextMode: "abbreviation", emblemAbbreviation: "RB\nBC" }), ["RB", "BC"]);
   assert.equal(
     getEmblemUploadWarning(3, "2026-07-21T00:00:00.000Z"),
     "(처음 한번) 사진을 업로드한 뒤 한 번까지는 바로 변경할 수 있으며, 그 이후에는 마지막 업로드일로부터 30일 뒤에 변경할 수 있습니다.",

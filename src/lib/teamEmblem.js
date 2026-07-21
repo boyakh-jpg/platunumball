@@ -9,6 +9,8 @@ export const TEAM_EMBLEM_FONT_OPTIONS = [
 ];
 export const TEAM_EMBLEM_TEXT_MODES = Object.freeze(["initial", "name", "abbreviation"]);
 export const TEAM_EMBLEM_FONT_IDS = Object.freeze(TEAM_EMBLEM_FONT_OPTIONS.map(([value]) => value));
+export const TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS = 4;
+export const TEAM_EMBLEM_ABBREVIATION_MAX_LINES = 2;
 
 const TEAM_EMBLEM_TEXT_MODE_SET = new Set(TEAM_EMBLEM_TEXT_MODES);
 const TEAM_EMBLEM_FONT_SET = new Set(TEAM_EMBLEM_FONT_IDS);
@@ -32,6 +34,34 @@ export function isTeamEmblemTextMode(value = "") {
 
 export function normalizeTeamEmblemTextMode(value = "initial") {
   return isTeamEmblemTextMode(value) ? value : "initial";
+}
+
+export function normalizeTeamEmblemAbbreviation(value = "") {
+  return String(value ?? "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim().replace(/[^\S\n]+/g, " "))
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function getTeamEmblemAbbreviationCharacterCount(value = "") {
+  return Array.from(normalizeTeamEmblemAbbreviation(value).replace(/\s/gu, "")).length;
+}
+
+export function isTeamEmblemAbbreviationDraftWithinLimits(value = "") {
+  const normalizedNewlines = String(value ?? "").replace(/\r\n?/g, "\n");
+  return normalizedNewlines.split("\n").length <= TEAM_EMBLEM_ABBREVIATION_MAX_LINES
+    && Array.from(normalizedNewlines.replace(/\s/gu, "")).length <= TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS;
+}
+
+export function isTeamEmblemAbbreviation(value = "") {
+  const normalized = normalizeTeamEmblemAbbreviation(value);
+  const characterCount = getTeamEmblemAbbreviationCharacterCount(normalized);
+  return Boolean(normalized)
+    && normalized.split("\n").length <= TEAM_EMBLEM_ABBREVIATION_MAX_LINES
+    && characterCount >= 1
+    && characterCount <= TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS;
 }
 
 function splitEvenly(value, lineCount) {
@@ -75,9 +105,15 @@ export function getTeamEmblemTextLines(team = {}, fallbackName = "") {
   const mode = normalizeTeamEmblemTextMode(team.emblemTextMode);
   const teamName = String(team.name ?? fallbackName ?? "").trim();
   const rawText = mode === "abbreviation" ? team.emblemAbbreviation : teamName;
-  const text = String(rawText ?? "").trim().replace(/\s+/g, " ") || "?";
+  const text = mode === "abbreviation"
+    ? normalizeTeamEmblemAbbreviation(rawText) || "?"
+    : String(rawText ?? "").trim().replace(/\s+/g, " ") || "?";
   if (mode === "initial") return [Array.from(text)[0] ?? "?"];
-  if (mode === "abbreviation") return [sliceCharacters(text, 8)];
+  if (mode === "abbreviation") {
+    return text
+      .split("\n")
+      .slice(0, TEAM_EMBLEM_ABBREVIATION_MAX_LINES);
+  }
 
   const safeText = sliceCharacters(text, 15);
   const characterCount = Array.from(safeText).length;
@@ -287,7 +323,7 @@ export function getTeamEmblemErrorMessage(code = "") {
     discord_avatar_unavailable: "Discord 연동 이미지가 없습니다.",
     invalid_emblem_color: "엠블럼 색상을 확인하세요.",
     invalid_team_emblem_text_mode: "팀명 또는 약칭을 선택하세요.",
-    invalid_team_emblem_abbreviation: "약칭은 1~8자로 입력하세요.",
+    invalid_team_emblem_abbreviation: "약칭은 공백을 제외한 1~4자로 입력하세요.",
     invalid_team_emblem_font: "글꼴을 다시 선택하세요.",
     cloudflare_r2_not_configured: "Cloudflare 저장소가 설정되지 않았습니다.",
     cloudflare_r2_upload_failed: "Cloudflare 업로드에 실패했습니다.",

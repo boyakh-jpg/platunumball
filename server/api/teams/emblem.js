@@ -4,8 +4,10 @@ import { isEmblemHexColor } from "../../../src/lib/emblemPolicy.js";
 import {
   TEAM_EMBLEM_MAX_DIMENSION,
   TEAM_EMBLEM_UPLOAD_MAX_BYTES,
+  isTeamEmblemAbbreviation,
   isTeamEmblemFont,
   isTeamEmblemTextMode,
+  normalizeTeamEmblemAbbreviation,
 } from "../../../src/lib/teamEmblem.js";
 import {
   decodeBase64Image,
@@ -157,11 +159,12 @@ export default async function handler(request, response) {
       const emblemColor = String(body.emblemColor || "").trim();
       const emblemBorderColor = String(body.emblemBorderColor || "").trim();
       const emblemTextMode = String(body.emblemTextMode ?? team.emblem_text_mode ?? "initial").trim().toLowerCase();
-      const emblemAbbreviation = String(body.emblemAbbreviation ?? team.emblem_abbreviation ?? "").trim().replace(/\s+/g, " ");
+      const emblemAbbreviation = normalizeTeamEmblemAbbreviation(body.emblemAbbreviation ?? team.emblem_abbreviation ?? "");
       const emblemFont = String(body.emblemFont ?? team.emblem_font ?? "sport").trim().toLowerCase();
+      const emblemAbbreviationIsValid = isTeamEmblemAbbreviation(emblemAbbreviation);
       if (!isEmblemHexColor(emblemColor) || !isEmblemHexColor(emblemBorderColor)) reject(400, "invalid_emblem_color");
       if (!isTeamEmblemTextMode(emblemTextMode)) reject(400, "invalid_team_emblem_text_mode");
-      if (Array.from(emblemAbbreviation).length > 8 || (emblemTextMode === "abbreviation" && !emblemAbbreviation)) {
+      if ((emblemAbbreviation || emblemTextMode === "abbreviation") && !emblemAbbreviationIsValid) {
         reject(400, "invalid_team_emblem_abbreviation");
       }
       if (!isTeamEmblemFont(emblemFont)) reject(400, "invalid_team_emblem_font");

@@ -10,7 +10,7 @@
 | `teams` | `emblem_key`, `emblem_source` | 팀 사진 object key와 `initial`/`upload` 표시 선택 |
 | `teams` | `emblem_uploaded_at`, `emblem_upload_count` | 처음 2회 이후 30일 팀 사진 업로드 제한 원본 |
 | `teams` | `emblem_color`, `emblem_border_enabled`, `emblem_border_color` | 팀 기본색과 테두리 스타일 |
-| `teams` | `emblem_text_mode`, `emblem_abbreviation`, `emblem_font` | 팀 기본값의 첫 글자/팀명/약칭 기준과 1~8자 약칭, 글꼴 프리셋 |
+| `teams` | `emblem_text_mode`, `emblem_abbreviation`, `emblem_font` | 팀 기본값의 첫 글자/팀명/약칭 기준과 공백 제외 1~4자·최대 2줄 약칭, 글꼴 프리셋 |
 | `teams` | `emblem_violation_count`, `emblem_upload_blocked_until`, `emblem_moderated_at`, `emblem_moderation_reason` | 인정 위반 누적, 업로드 제한 종료, 최근 운영 조치 원본 |
 | `reports` | `type='team_emblem'`, `payload.emblemKey` | 팀 엠블럼 신고와 접수 당시 object key snapshot |
 | R2 | `team-emblems/{teamId}/{sha256-24}.webp` | 팀 직접 업로드 결과 |

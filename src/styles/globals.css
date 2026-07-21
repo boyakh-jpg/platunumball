@@ -8427,7 +8427,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .team-emblem-style-controls.has-emblem-color {
-  grid-template-columns: repeat(3, minmax(120px, 1fr)) auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
 }
 
 .team-emblem-design-controls {
@@ -8451,7 +8451,8 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .team-emblem-text-controls select,
-.team-emblem-text-controls input {
+.team-emblem-text-controls input,
+.team-emblem-text-controls textarea {
   width: 100%;
   min-height: 38px;
   border: 1px solid var(--ui-control-border, var(--line));
@@ -8461,7 +8462,19 @@ html[data-theme="light"] .search-picker-result-row.selected {
   padding: 7px 10px;
 }
 
-.team-emblem-text-controls input:disabled {
+.team-emblem-text-controls textarea {
+  min-height: 64px;
+  resize: none;
+}
+
+.team-emblem-text-controls small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.team-emblem-text-controls input:disabled,
+.team-emblem-text-controls textarea:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }

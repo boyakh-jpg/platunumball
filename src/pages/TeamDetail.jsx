@@ -16,7 +16,15 @@ import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore, isDateWithinPastMonths } from "../lib/matchUtils.js";
-import { getTeamEmblemErrorMessage, TEAM_EMBLEM_FONT_OPTIONS } from "../lib/teamEmblem.js";
+import {
+  TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS,
+  TEAM_EMBLEM_FONT_OPTIONS,
+  getTeamEmblemAbbreviationCharacterCount,
+  getTeamEmblemErrorMessage,
+  isTeamEmblemAbbreviation,
+  isTeamEmblemAbbreviationDraftWithinLimits,
+  normalizeTeamEmblemAbbreviation,
+} from "../lib/teamEmblem.js";
 import { formatEmblemDate, getEmblemUploadWarning, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
@@ -81,6 +89,7 @@ export default function TeamDetail({ app }) {
   const [emblemReportFeedback, setEmblemReportFeedback] = useState("");
   const emblemInputRef = useRef(null);
   const emblemStatusRequestRef = useRef("");
+  const emblemAbbreviationCharacterCount = getTeamEmblemAbbreviationCharacterCount(emblemStyleDraft.emblemAbbreviation);
   const captain = team?.members.find((member) => member.role === "captain");
   const canManage = captain?.userId === app.currentUser.id;
 
@@ -309,14 +318,20 @@ export default function TeamDetail({ app }) {
   };
   const saveEmblemStyle = async () => {
     if (emblemPending) return;
-    if (emblemStyleDraft.emblemTextMode === "abbreviation" && !emblemStyleDraft.emblemAbbreviation.trim()) {
-      setEmblemFeedback("약칭은 1~8자로 입력하세요.");
+    const emblemAbbreviation = normalizeTeamEmblemAbbreviation(emblemStyleDraft.emblemAbbreviation);
+    if (emblemAbbreviation && !isTeamEmblemAbbreviation(emblemAbbreviation)) {
+      setEmblemFeedback("약칭은 공백을 제외한 1~4자로 입력하세요.");
+      return;
+    }
+    if (emblemStyleDraft.emblemTextMode === "abbreviation" && !isTeamEmblemAbbreviation(emblemAbbreviation)) {
+      setEmblemFeedback("공백만 있는 약칭은 저장할 수 없습니다. 1~4자로 입력하세요.");
       return;
     }
     setEmblemPending(true);
     setEmblemFeedback("");
     try {
-      const result = await app.actions.updateTeamEmblemStyle(team.id, emblemStyleDraft);
+      const result = await app.actions.updateTeamEmblemStyle(team.id, { ...emblemStyleDraft, emblemAbbreviation });
+      if (result?.ok !== false) setEmblemStyleDraft((current) => ({ ...current, emblemAbbreviation }));
       setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "엠블럼 디자인을 저장했습니다.");
     } catch (error) {
       setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
@@ -678,14 +693,17 @@ export default function TeamDetail({ app }) {
                     </label>
                     <label>
                       약칭
-                      <input
-                        type="text"
-                        maxLength={8}
+                      <textarea
+                        rows={2}
                         value={emblemStyleDraft.emblemAbbreviation}
                         disabled={emblemStyleDraft.emblemTextMode !== "abbreviation"}
-                        placeholder="예: RB"
-                        onChange={(event) => setEmblemStyleDraft((current) => ({ ...current, emblemAbbreviation: event.target.value }))}
+                        placeholder={"예: RB\nBC"}
+                        onChange={(event) => {
+                          if (!isTeamEmblemAbbreviationDraftWithinLimits(event.target.value)) return;
+                          setEmblemStyleDraft((current) => ({ ...current, emblemAbbreviation: event.target.value }));
+                        }}
                       />
+                      <small>공백 제외 {emblemAbbreviationCharacterCount}/{TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS}자 · Enter로 줄바꿈</small>
                     </label>
                   </div>
                   <div className="team-emblem-font-grid" role="group" aria-label="엠블럼 글꼴">
