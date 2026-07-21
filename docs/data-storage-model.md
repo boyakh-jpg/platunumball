@@ -106,6 +106,10 @@
 - 승인된 구장은 정규화한 `road_address`, `jibun_address`, `address_text`, `zonecode` 기준 unique constraint 또는 unique index로 중복을 막는다.
 - 허위 구장 신고 접수는 report 생성, 요청의 `reported` 전환, 판정 전 무차감 알림을 하나의 transaction으로 커밋한다. 관리자 인정 transaction에서만 요청별 1회 신뢰도 차감과 `rejected` 전환을 적용한다.
 
+- 공공 구장 대량 등록 RPC만 함수 범위 `statement_timeout=60s`를 사용한다. 일반 앱 쿼리와 역할·DB 전역 timeout은 바꾸지 않는다.
+- 신규 `public_import` 구장은 연결된 모집글·경기가 없으므로 `approved_courts` INSERT의 빈 feed dependency refresh만 생략한다. 이후 UPDATE·DELETE 갱신은 그대로 실행한다.
+- 서비스 역할 전용 `rankball_import_public_courts_fast()`는 내부 RPC 전수 검증이 끝난 같은 transaction에서만 identity·legacy sync 트리거의 중복 재검사를 생략한다. 일반 구장신청·승인과 기본 import RPC는 기존 트리거를 그대로 탄다.
+
 ## 2026-06-24 normalized persistence tables
 
 - `matches`에 출석, 심판 미출석, 이의 draft, 후보/사후 기록 필드를 저장할 수 있는 컬럼을 추가했다.

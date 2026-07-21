@@ -9,6 +9,10 @@ const migrationPath = new URL("../supabase/migrations/20260721230000_public_cour
 const nameNormalizationMigrationPath = new URL("../supabase/migrations/20260721233100_court_facility_name_normalization.sql", import.meta.url);
 const publicAccessMigrationPath = new URL("../supabase/migrations/20260721234000_court_public_access.sql", import.meta.url);
 const importRowCountFixMigrationPath = new URL("../supabase/migrations/20260722005203_public_court_import_row_count_fix.sql", import.meta.url);
+const importStatementTimeoutMigrationPath = new URL("../supabase/migrations/20260722021500_public_court_import_statement_timeout.sql", import.meta.url);
+const importFeedFastPathMigrationPath = new URL("../supabase/migrations/20260722022500_public_court_import_feed_trigger_fast_path.sql", import.meta.url);
+const importFeedRecordFixMigrationPath = new URL("../supabase/migrations/20260722023000_public_court_import_feed_trigger_record_fix.sql", import.meta.url);
+const importValidatedTriggerFastPathMigrationPath = new URL("../supabase/migrations/20260722024000_public_court_import_validated_trigger_fast_path.sql", import.meta.url);
 const prepareScriptPath = new URL("./prepare-public-court-import.py", import.meta.url);
 
 function readyRow(overrides = {}) {
@@ -130,6 +134,41 @@ test("public import follow-up removes the row count variable collision", async (
   assert.match(sql, /rankball_import_public_courts_row_count_signature_changed/i);
   assert.match(sql, /rankball_import_public_courts_row_count_rewrite_incomplete/i);
   assert.doesNotMatch(sql, /drop table|truncate table|delete from/i);
+});
+
+test("public import RPC has a service-only bulk import timeout", async () => {
+  const sql = await readFile(importStatementTimeoutMigrationPath, "utf8");
+  assert.match(sql, /alter function public\.rankball_import_public_courts\(text, text, text, jsonb, boolean\)/i);
+  assert.match(sql, /set statement_timeout = '60s'/i);
+  assert.doesNotMatch(sql, /alter role|alter database|drop table|truncate table|delete from/i);
+});
+
+test("new public imports skip only the empty court feed refresh", async () => {
+  const [sql, recordFixSql] = await Promise.all([
+    readFile(importFeedFastPathMigrationPath, "utf8"),
+    readFile(importFeedRecordFixMigrationPath, "utf8"),
+  ]);
+  assert.match(sql, /tg_op = 'INSERT'/i);
+  assert.match(sql, /tg_table_name = 'approved_courts'/i);
+  assert.match(sql, /registration_origin[\s\S]*public_import/i);
+  assert.match(sql, /publicImportKey/i);
+  assert.match(sql, /if tg_op = 'UPDATE'[\s\S]*rankball_refresh_court_feed_dependency/i);
+  assert.doesNotMatch(sql, /drop trigger|disable trigger|drop table|truncate table|delete from/i);
+  assert.match(recordFixSql, /to_jsonb\(new\)->>'registration_origin'/i);
+  assert.match(recordFixSql, /to_jsonb\(new\)->'payload'->>'publicImportKey'/i);
+  assert.doesNotMatch(recordFixSql, /drop trigger|disable trigger|drop table|truncate table|delete from/i);
+});
+
+test("service-only import wrapper skips only duplicate trigger rechecks", async () => {
+  const sql = await readFile(importValidatedTriggerFastPathMigrationPath, "utf8");
+  assert.match(sql, /create or replace function public\.rankball_import_public_courts_fast/i);
+  assert.match(sql, /set_config\('rankball\.public_import_validated', 'on', true\)/i);
+  assert.match(sql, /return public\.rankball_import_public_courts/i);
+  assert.match(sql, /approved_courts_identity_guard[\s\S]*current_setting\('rankball\.public_import_validated', true\)/i);
+  assert.match(sql, /courts_identity_guard[\s\S]*current_setting\('rankball\.public_import_validated', true\)/i);
+  assert.match(sql, /grant execute on function public\.rankball_import_public_courts_fast[\s\S]*to service_role/i);
+  assert.match(sql, /revoke all on function public\.rankball_import_public_courts_fast[\s\S]*from authenticated/i);
+  assert.doesNotMatch(sql, /disable trigger|drop table|truncate table|delete from/i);
 });
 
 test("normalizer maps app fields and uses the official reverse-geocode endpoint", async () => {
