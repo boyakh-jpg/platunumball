@@ -335,6 +335,18 @@ test("profile icon background choice and image preview stay persistent and separ
   assert.match(styles, /cursor: zoom-in/);
 });
 
+test("profile icon picker lists owned icons only and locked achievements conceal artwork", async () => {
+  const [dialog, achievements, styles] = await Promise.all([
+    readSource("src/components/profile/ProfileIconDialog.jsx"),
+    readSource("src/pages/ProfileAchievements.jsx"),
+    readSource("src/styles/globals.css"),
+  ]);
+  assert.match(dialog, /group\.icons\.filter\(\(icon\) => unlockedSet\.has\(icon\.id\)\)/);
+  assert.match(dialog, /unlockedGroups\.map\(\(group\) =>/);
+  assert.match(achievements, /state\?\.unlocked \? "unlocked" : "locked"/);
+  assert.match(styles, /\.profile-achievement-card\.locked \.profile-achievement-icon img\s*{[^}]*filter: brightness\(0\) saturate\(0\)/s);
+});
+
 test("image native menus and drag stay blocked by one shared guard", async () => {
   const protectedImage = { getAttribute: () => null };
   const allowedImage = {

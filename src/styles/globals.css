@@ -9393,14 +9393,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   padding: 8px;
 }
 
-.profile-icon-catalog-item.locked {
-  opacity: 0.62;
-}
-
-.profile-icon-catalog-item.locked img {
-  filter: grayscale(0.72);
-}
-
 .profile-icon-catalog-item.active {
   color: var(--text);
 }
@@ -9446,19 +9438,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   height: 44px;
   place-items: center;
   border-radius: 50%;
-}
-
-.profile-icon-catalog-image i {
-  position: absolute;
-  inset: auto 0 1px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  color: var(--muted);
-  font-size: 0.56rem;
-  font-style: normal;
-  font-weight: 900;
-  line-height: 1.5;
-  text-align: center;
 }
 
 .profile-icon-select-trigger > strong {
@@ -9655,8 +9634,12 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .profile-achievement-card.locked .profile-achievement-icon img {
-  filter: grayscale(0.82);
-  opacity: 0.62;
+  filter: brightness(0) saturate(0);
+  opacity: 0.78;
+}
+
+.profile-achievement-card.locked .profile-achievement-icon {
+  background: color-mix(in srgb, #aeb4bd 72%, var(--surface-3));
 }
 
 .profile-achievement-body {

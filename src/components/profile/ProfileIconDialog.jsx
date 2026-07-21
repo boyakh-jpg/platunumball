@@ -62,7 +62,10 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
   const [previewIcon, setPreviewIcon] = useState(null);
   const hasDiscordAvatar = Boolean(user.discordAvatarUrl || user.discordConnection?.avatarUrl);
   const unlockedSet = useMemo(() => new Set(unlockedIconKeys), [unlockedIconKeys]);
-  const selectedGroup = PROFILE_ICON_GROUPS.find((group) => group.id === selectedGroupId) ?? PROFILE_ICON_GROUPS[0];
+  const unlockedGroups = useMemo(() => PROFILE_ICON_GROUPS
+    .map((group) => ({ ...group, icons: group.icons.filter((icon) => unlockedSet.has(icon.id)) }))
+    .filter((group) => group.icons.length > 0), [unlockedSet]);
+  const selectedGroup = unlockedGroups.find((group) => group.id === selectedGroupId) ?? unlockedGroups[0] ?? null;
 
   useEffect(() => {
     let active = true;
@@ -74,7 +77,11 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
           return;
         }
         if (Array.isArray(result?.unlockedIconKeys)) {
-          setUnlockedIconKeys(result.unlockedIconKeys);
+          setUnlockedIconKeys([...new Set([
+            ...DEFAULT_UNLOCKED_KEYS,
+            ...result.unlockedIconKeys,
+            user.avatarIconKey,
+          ].filter(Boolean))]);
         }
       })
       .catch((error) => {
@@ -112,7 +119,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
       setFeedback("먼저 설정에서 Discord 계정을 연결하세요.");
       return;
     }
-    const fallbackIcon = unlockedIconKeys[0] || DEFAULT_PROFILE_ICON_ID;
+    const fallbackIcon = unlockedGroups[0]?.icons[0]?.id || DEFAULT_PROFILE_ICON_ID;
     setDraft((current) => ({
       ...current,
       avatarSource,
@@ -176,7 +183,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
           <button type="button" className={draft.avatarSource === "discord" ? "active" : ""} aria-pressed={draft.avatarSource === "discord"} disabled={pending || !hasDiscordAvatar} onClick={() => selectSource("discord")}>
             <strong>Discord</strong>
           </button>
-          <button type="button" className={draft.avatarSource === "icon" ? "active" : ""} aria-pressed={draft.avatarSource === "icon"} disabled={pending || loading || !unlockedIconKeys.length} onClick={() => selectSource("icon")}>
+          <button type="button" className={draft.avatarSource === "icon" ? "active" : ""} aria-pressed={draft.avatarSource === "icon"} disabled={pending || loading || !unlockedGroups.length} onClick={() => selectSource("icon")}>
             <strong>아이콘</strong>
           </button>
         </div>
@@ -184,34 +191,32 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
         {draft.avatarSource === "icon" ? (
           <div className="profile-icon-picker">
             <div className="profile-icon-group-tabs" role="tablist" aria-label="프로필 아이콘 분류">
-              {PROFILE_ICON_GROUPS.map((group) => (
-                <button key={group.id} type="button" role="tab" className={selectedGroup.id === group.id ? "active" : ""} aria-selected={selectedGroup.id === group.id} onClick={() => setSelectedGroupId(group.id)}>
+              {unlockedGroups.map((group) => (
+                <button key={group.id} type="button" role="tab" className={selectedGroup?.id === group.id ? "active" : ""} aria-selected={selectedGroup?.id === group.id} onClick={() => setSelectedGroupId(group.id)}>
                   {group.name} <small>{group.icons.length}</small>
                 </button>
               ))}
             </div>
-            <div className="profile-icon-catalog" role="list" aria-label={`${selectedGroup.name} 프로필 아이콘`}>
-              {selectedGroup.icons.map((icon) => {
-                const unlocked = unlockedSet.has(icon.id);
+            <div className="profile-icon-catalog" role="list" aria-label={`${selectedGroup?.name ?? "보유"} 프로필 아이콘`}>
+              {selectedGroup?.icons.map((icon) => {
                 const selected = draft.avatarIconKey === icon.id;
                 return (
                   <div
                     key={icon.id}
                     role="listitem"
-                    className={`profile-icon-catalog-item ${selected ? "active" : ""} ${unlocked ? "" : "locked"}`.trim()}
+                    className={`profile-icon-catalog-item ${selected ? "active" : ""}`.trim()}
                   >
                     <button type="button" className="profile-icon-preview-trigger" aria-label={`${icon.name} 크게 보기`} disabled={pending} onClick={() => setPreviewIcon(icon)}>
                       <span className="profile-icon-catalog-image">
                         <img src={assetUrl(icon.src)} alt="" loading="lazy" decoding="async" />
-                        {!unlocked ? <i aria-hidden="true">잠금</i> : null}
                       </span>
                     </button>
                     <button
                       type="button"
                       className="profile-icon-select-trigger"
-                      disabled={pending || !unlocked}
+                      disabled={pending}
                       aria-pressed={selected}
-                      aria-label={`${icon.name}${unlocked ? " 선택" : " 잠김"}`}
+                      aria-label={`${icon.name} 선택`}
                       onClick={() => selectIcon(icon.id)}
                     >
                       <strong>{icon.name}</strong>
