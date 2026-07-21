@@ -104,14 +104,13 @@ export function getOptionalCourtCoordinate(value, min, max) {
 export function getCourtMapUrl(court = {}) {
   const latitude = getOptionalCourtCoordinate(court.lat ?? court.latitude, -90, 90);
   const longitude = getOptionalCourtCoordinate(court.lng ?? court.longitude, -180, 180);
-  const address = court.roadAddress || court.addressText || court.jibunAddress;
-  const query = [court.name, address].filter(Boolean).join(" ") || "농구장";
-  const searchUrl = `https://map.naver.com/p/search/${encodeURIComponent(query)}`;
+  const address = String(court.roadAddress || court.addressText || court.jibunAddress || "").trim();
+  const query = address || String(court.name || "").trim() || "농구장";
   if (latitude !== null && longitude !== null) {
-    return `${searchUrl}?c=${longitude},${latitude},17,0,0,0,dh`;
+    return `https://map.naver.com/?lng=${longitude}&lat=${latitude}&title=${encodeURIComponent(query)}`;
   }
 
-  return searchUrl;
+  return `https://map.naver.com/p/search/${encodeURIComponent(query)}`;
 }
 
 function getFallbackSurfaceType(court = {}) {

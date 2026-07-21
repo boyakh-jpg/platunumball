@@ -50,6 +50,7 @@ import {
   getPlayerMatchResult,
   isMatchWithinRecordDetailWindow,
 } from "../src/lib/matchUtils.js";
+import { getCourtMapUrl } from "../src/lib/courts.js";
 import {
   decodeBase64Image,
   readWebpDimensions,
@@ -187,6 +188,25 @@ test("profile record result and recency helpers preserve match semantics", () =>
   assert.equal(getPlayerMatchResult(match, "player-b"), "L");
   assert.equal(getPlayerMatchResult(match, "unknown"), "D");
   assert.ok(isMatchWithinRecordDetailWindow(match, 6, new Date("2026-07-21T00:00:00.000Z")));
+});
+
+test("court map URLs pin stored coordinates and search by address only", () => {
+  const pinnedUrl = new URL(getCourtMapUrl({
+    name: "연북중학교 농구장",
+    roadAddress: "서울특별시 마포구 연남로 80",
+    lat: 37.56321,
+    lng: 126.92234,
+  }));
+  assert.equal(pinnedUrl.origin, "https://map.naver.com");
+  assert.equal(pinnedUrl.pathname, "/");
+  assert.equal(pinnedUrl.searchParams.get("lat"), "37.56321");
+  assert.equal(pinnedUrl.searchParams.get("lng"), "126.92234");
+  assert.equal(pinnedUrl.searchParams.get("title"), "서울특별시 마포구 연남로 80");
+  assert.equal(pinnedUrl.searchParams.get("title").includes("연북중학교"), false);
+  assert.equal(
+    getCourtMapUrl({ name: "연북중학교 농구장", addressText: "서울특별시 마포구 연남로 80" }),
+    `https://map.naver.com/p/search/${encodeURIComponent("서울특별시 마포구 연남로 80")}`,
+  );
 });
 
 test("R2 image payload and WebP validation share one implementation", () => {
