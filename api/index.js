@@ -1,5 +1,6 @@
 import adminAppointmentAction from "../server/api/admin/appointment-action.js";
 import adminContext from "../server/api/admin/context.js";
+import adminCourts from "../server/api/admin/courts.js";
 import adminDisciplinaryAction from "../server/api/admin/disciplinary-action.js";
 import adminRatingPolicy from "../server/api/admin/rating-policy.js";
 import adminReviewAction from "../server/api/admin/review-action.js";
@@ -57,6 +58,7 @@ function route(handler, methods, auth) {
 export const API_ROUTES = new Map([
   ["/admin/appointment-action", route(adminAppointmentAction, ["POST"], "admin")],
   ["/admin/context", route(adminContext, ["POST"], "admin")],
+  ["/admin/courts", route(adminCourts, ["POST"], "admin")],
   ["/admin/disciplinary-action", route(adminDisciplinaryAction, ["POST"], "admin")],
   ["/admin/rating-policy", route(adminRatingPolicy, ["POST"], "admin")],
   ["/admin/review-action", route(adminReviewAction, ["POST"], "admin")],
