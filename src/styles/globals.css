@@ -18983,6 +18983,98 @@ html[data-theme="light"] .court-map-picker-state {
   grid-column: 1 / -1;
 }
 
+.affiliation-editor-form {
+  gap: var(--page-section-gap-mobile);
+}
+
+.affiliation-editor-form > label,
+.affiliation-editor-form .search-picker {
+  min-width: 0;
+}
+
+.affiliation-policy-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--control-font-size);
+  line-height: 1.55;
+}
+
+.affiliation-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-control-group-gap);
+}
+
+.affiliation-search-result > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.affiliation-search-result strong,
+.affiliation-search-result small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.affiliation-search-result small {
+  color: var(--muted);
+}
+
+.affiliation-search-result > b {
+  color: var(--gold);
+  font-size: var(--control-font-size);
+}
+
+.affiliation-report-control,
+.team-name-report-control,
+.name-report-form {
+  display: grid;
+  min-width: 0;
+  gap: var(--ui-control-group-gap);
+}
+
+.affiliation-report-control {
+  margin-top: var(--ui-control-group-gap);
+}
+
+.team-name-report-control {
+  justify-items: start;
+  margin-top: 10px;
+  max-width: min(100%, 420px);
+}
+
+.name-report-form {
+  width: min(100%, 420px);
+}
+
+.name-report-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-control-group-gap);
+}
+
+.name-report-form select,
+.name-report-actions > .button {
+  min-width: 0;
+  width: 100%;
+}
+
+.admin-name-moderation-detail {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: 12px;
+}
+
+.admin-name-moderation-detail span,
+.admin-name-moderation-detail small {
+  color: var(--muted);
+}
+
 .profile-emblem-card > .section-title-row {
   align-items: center;
 }
@@ -19034,6 +19126,15 @@ html[data-theme="light"] .court-map-picker-state {
 }
 
 @media (max-width: 520px) {
+  .affiliation-editor-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .affiliation-editor-actions > .button:only-child {
+    grid-column: 1 / -1;
+  }
+
   .profile-icon-group-tabs {
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));

@@ -204,6 +204,7 @@ export const AFFILIATION_TYPES = {
   region: "지역",
   school: "학교",
   company: "회사",
+  organization: "소속",
 };
 
 export const EVIDENCE_OPTIONS = [

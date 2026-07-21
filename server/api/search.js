@@ -1,5 +1,6 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "./_supabaseAdmin.js";
 import {
+  AFFILIATION_COLUMNS,
   PROFILE_CARD_COLUMNS as PROFILE_COLUMNS,
   SEARCH_COURT_COLUMNS as COURT_COLUMNS,
   TEAM_COLUMNS,
@@ -15,6 +16,8 @@ const TYPE_ALIASES = {
   team: ["team"],
   court: ["court"],
   referee: ["referee"],
+  affiliation: ["affiliation"],
+  organization: ["affiliation"],
 };
 
 function normalizeSearchQuery(value = "") {
@@ -316,6 +319,29 @@ async function searchReferees(supabase, query, limit) {
     .map((row) => toProfile(row, "referee"));
 }
 
+async function searchAffiliations(supabase, query, limit) {
+  const { data, error } = await supabase
+    .from("affiliations")
+    .select(AFFILIATION_COLUMNS)
+    .eq("type", "organization")
+    .eq("status", "active")
+    .or(searchFilter(["name"], query))
+    .order("member_count", { ascending: false })
+    .order("name", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    kind: "affiliation",
+    id: row.id,
+    type: row.type,
+    name: row.name,
+    label: row.name,
+    memberCount: Number(row.member_count ?? 0),
+    status: row.status ?? "active",
+    searchText: `${row.name} ${row.member_count ?? 0}명`,
+  }));
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -343,6 +369,7 @@ export default async function handler(request, response) {
       team: () => searchTeams(context.supabase, query, limit),
       court: () => searchCourts(context.supabase, query, limit),
       referee: () => searchReferees(context.supabase, query, limit),
+      affiliation: () => searchAffiliations(context.supabase, query, limit),
     };
     const chunks = await Promise.all(types.map((type) => loaders[type]?.() ?? []));
     const seen = new Set();

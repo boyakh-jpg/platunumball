@@ -113,8 +113,6 @@ export default function Signup({ app, auth }) {
         region: `${draft.sido} ${district}`,
         regionSido: draft.sido,
         regionDistrict: district,
-        school: "",
-        company: "",
         onboardingComplete: true,
         profileVersion: 1,
         ...(name !== user.name ? { nameUpdatedAt: now } : {}),
@@ -188,7 +186,7 @@ export default function Signup({ app, auth }) {
             </label>
             {formError ? <p className="form-warning">{formError}</p> : null}
             <div className="create-submit-row signup-submit-row">
-              <span className="create-submit-warning">학교/회사는 가입 단계에서 받지 않음. 지역과 연령부만 매칭 기준으로 사용.</span>
+              <span className="create-submit-warning">소속은 가입 후 나 메뉴에서 선택할 수 있습니다. 가입 단계에서는 지역과 연령부만 설정합니다.</span>
               <Button type="submit"><CheckCircle2 size={18} /> 저장</Button>
             </div>
           </form>

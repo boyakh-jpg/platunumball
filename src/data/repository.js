@@ -255,6 +255,7 @@ import {
   getUserIdentityHashtag,
   normalizeRatings,
 } from "./profileMappers.js";
+import { fromRemoteAffiliation } from "./affiliationMappers.js";
 import {
   ADMIN_AUDIT_COLUMNS,
   ADMIN_DISCIPLINARY_COLUMNS,
@@ -732,14 +733,7 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
     teamInvitations: teamInvitations.map(fromRemoteTeamInvitation),
     affiliations: affiliations
       .filter((affiliation) => affiliation.type !== "club")
-      .map((affiliation) => ({
-        id: affiliation.id,
-        type: affiliation.type,
-        name: affiliation.name,
-        score: affiliation.score ?? 0,
-        wins: affiliation.wins ?? 0,
-        losses: affiliation.losses ?? 0,
-      })),
+      .map(fromRemoteAffiliation),
     reports: reports.map(fromRemoteReport),
     settings: {
       ...DEFAULT_SETTINGS,
@@ -1147,14 +1141,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     matches: remoteMatches,
     affiliations: affiliations
       .filter((affiliation) => affiliation.type !== "club")
-      .map((affiliation) => ({
-        id: affiliation.id,
-        type: affiliation.type,
-        name: affiliation.name,
-        score: affiliation.score ?? 0,
-        wins: affiliation.wins ?? 0,
-        losses: affiliation.losses ?? 0,
-      })),
+      .map(fromRemoteAffiliation),
     seasons: seasons.map((season) => ({
       id: season.id,
       name: season.name,
@@ -2076,11 +2063,12 @@ function updateAffiliationScores(state) {
       if (affiliation.type === "region") return user.region === affiliation.name;
       if (affiliation.type === "school") return user.school === affiliation.name;
       if (affiliation.type === "company") return user.company === affiliation.name;
+      if (affiliation.type === "organization") return user.affiliationId === affiliation.id;
       return false;
     });
     if (!members.length) return affiliation;
     const average = members.reduce((sum, user) => sum + user.ratings.integrated, 0) / members.length;
-    return { ...affiliation, score: Math.round(average + affiliation.wins * 2 - affiliation.losses) };
+    return { ...affiliation, memberCount: members.length, score: Math.round(average + affiliation.wins * 2 - affiliation.losses) };
   });
 }
 
@@ -5191,6 +5179,20 @@ export function commitAdminReviewAction(state, draft = {}) {
       notifications: [getAdminActionNotification("경기관리자 이상만 팀 엠블럼을 강제 전환할 수 있습니다."), ...state.notifications],
     };
   }
+  const nameAction = ["renameTeam", "renameAffiliation", "mergeAffiliation"].includes(actionType);
+  if (nameAction && getAdminAuthorityLevel(state) < 50) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("경기관리자 이상만 이름을 수정하거나 소속을 통합할 수 있습니다."), ...state.notifications],
+    };
+  }
+  if (actionType === "renameTeam" && report.type !== "team_name") return state;
+  if (["renameAffiliation", "mergeAffiliation"].includes(actionType) && report.type !== "affiliation_name") return state;
+  const replacementName = String(draft.replacementName ?? "").trim().replace(/\s+/g, " ");
+  const mergeTargetId = String(draft.mergeTargetId ?? "").trim();
+  if (actionType === "renameTeam" && (!replacementName || replacementName.length > MAX_TEAM_NAME_LENGTH)) return state;
+  if (actionType === "renameAffiliation" && (replacementName.length < 2 || replacementName.length > 40)) return state;
+  if (actionType === "mergeAffiliation" && (!mergeTargetId || mergeTargetId === report.targetId)) return state;
 
   const now = new Date().toISOString();
   const moderatedTeam = actionType === "resetTeamEmblem"
@@ -5260,7 +5262,25 @@ export function commitAdminReviewAction(state, draft = {}) {
       emblemModeratedAt: now,
       emblemModerationReason: reason,
     } : team)
-    : (state.teams ?? []);
+    : actionType === "renameTeam"
+      ? (state.teams ?? []).map((team) => team.id === report.targetId ? { ...team, name: replacementName, updatedAt: now } : team)
+      : (state.teams ?? []);
+  const mergedAffiliation = actionType === "mergeAffiliation"
+    ? (state.affiliations ?? []).find((affiliation) => affiliation.id === mergeTargetId && (affiliation.status ?? "active") === "active")
+    : null;
+  if (actionType === "mergeAffiliation" && !mergedAffiliation) return state;
+  const nextAffiliations = (state.affiliations ?? []).map((affiliation) => {
+    if (actionType === "renameAffiliation" && affiliation.id === report.targetId) return { ...affiliation, name: replacementName, updatedAt: now };
+    if (actionType === "mergeAffiliation" && affiliation.id === report.targetId) return { ...affiliation, status: "merged", mergedIntoId: mergeTargetId, memberCount: 0, updatedAt: now };
+    return affiliation;
+  });
+  const nextUsers = actionType === "mergeAffiliation" && mergedAffiliation
+    ? (state.users ?? []).map((user) => user.affiliationId === report.targetId ? {
+      ...user,
+      affiliationId: mergedAffiliation.id,
+      affiliationName: mergedAffiliation.name,
+    } : user)
+    : (state.users ?? []);
   const reporterNotification = report.by
     ? {
       id: makeId("n"),
@@ -5292,7 +5312,9 @@ export function commitAdminReviewAction(state, draft = {}) {
 
   return {
     ...state,
+    users: nextUsers,
     teams: nextTeams,
+    affiliations: nextAffiliations,
     reports: nextReports,
     settings: normalizeSettings({
       ...(state.settings ?? {}),

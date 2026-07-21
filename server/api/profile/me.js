@@ -5,9 +5,11 @@ import {
 } from "../../../src/data/repository.js";
 import { createProfileShell, fromRemoteProfile, fromTeamMemberProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeamInvitation } from "../../../src/data/teamMappers.js";
+import { fromRemoteAffiliation } from "../../../src/data/affiliationMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import {
   APPROVED_COURT_COLUMNS,
+  AFFILIATION_COLUMNS,
   FAVORITE_COLUMNS,
   PROFILE_ME_COLUMNS,
   TEAM_COLUMNS,
@@ -213,19 +215,29 @@ export async function loadCurrentProfileState(context, options = {}) {
       ? context.supabase.from("team_members").select("team_id,user_id,role").eq("user_id", profileId)
       : Promise.resolve({ data: [], error: null })
     : Promise.resolve({ data: [], error: null });
-  const [matchSummary, teamInvitations, ownMembershipsResult, favoriteRows] = await Promise.all([
+  const affiliationPromise = profile?.affiliation_id
+    ? context.supabase
+      .from("affiliations")
+      .select(AFFILIATION_COLUMNS)
+      .eq("id", profile.affiliation_id)
+      .maybeSingle()
+    : Promise.resolve({ data: null, error: null });
+  const [matchSummary, teamInvitations, ownMembershipsResult, favoriteRows, affiliationResult] = await Promise.all([
     includeMatchSummary ? time("matchSummaryMs", () => loadCurrentUserMatchSummary(context.supabase, profileId)) : Promise.resolve(null),
     includeTeamInvitations ? time("teamInvitationsMs", () => loadCurrentUserTeamInvitations(context.supabase, profileId)) : Promise.resolve([]),
     time("ownMembershipsMs", () => ownMembershipsPromise),
     includeFavorites ? time("favoritesMs", () => loadCurrentUserFavorites(context.supabase, profileId)) : Promise.resolve([]),
+    time("affiliationMs", () => affiliationPromise),
   ]);
   if (ownMembershipsResult.error) throw ownMembershipsResult.error;
+  if (affiliationResult.error && !["42P01", "42703", "PGRST205"].includes(affiliationResult.error.code)) throw affiliationResult.error;
+  const currentAffiliation = affiliationResult.data ? fromRemoteAffiliation(affiliationResult.data) : null;
   const favoritePlayerIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id) : (remoteAppSettings.favoritePlayerIds ?? []);
   const favoriteTeamIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id) : (remoteAppSettings.favoriteTeamIds ?? []);
   const favoriteCourtIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id) : (remoteAppSettings.favoriteCourtIds ?? []);
   const favoriteRefereeIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id) : (remoteAppSettings.favoriteRefereeIds ?? []);
   const user = profile
-    ? { ...fromRemoteProfile(profile), matchSummary }
+    ? { ...fromRemoteProfile({ ...profile, affiliation: affiliationResult.data }), matchSummary }
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
   const currentUserTeamsPromise = includeTeams
     ? time("teamsMs", () => loadCurrentUserTeams(
@@ -286,6 +298,7 @@ export async function loadCurrentProfileState(context, options = {}) {
     users: [...userById.values()],
     teams: currentUserTeams.teams,
     teamInvitations,
+    affiliations: currentAffiliation ? [currentAffiliation] : [],
     settings,
     settingsMeta: {
       themeExplicit: Boolean(remoteAppSettings.theme),

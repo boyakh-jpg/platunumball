@@ -132,6 +132,7 @@ import {
 } from "../lib/roomChat.js";
 import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
 import { prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
+import { getAffiliationNormalizedKey, normalizeAffiliationName } from "../lib/affiliations.js";
 
 const LOCAL_MAINTENANCE_INTERVAL_MS = MINUTE_MS;
 
@@ -741,7 +742,7 @@ const ADMIN_SECTION_REPORT_TYPES = {
   courts: new Set(["court", "court_review", "court_request"]),
   players: new Set(["player"]),
   matches: new Set(["match"]),
-  teams: new Set(["team_emblem"]),
+  teams: new Set(["team_emblem", "team_name", "affiliation_name"]),
   appointments: new Set(),
 };
 
@@ -779,6 +780,9 @@ function mergeRemoteAdminState(state, remoteState = {}, options = {}) {
     matches: section === "matches"
       ? (append ? mergeMatchesById(state.matches, remoteState.matches) : remoteState.matches ?? [])
       : state.matches,
+    affiliations: section === "teams"
+      ? (append ? mergeRemoteById(state.affiliations, remoteState.affiliations) : remoteState.affiliations ?? [])
+      : state.affiliations,
     settings,
     reports: mergeRemoteById([...unrelatedReports, ...currentReports], incomingReports),
   };
@@ -2756,6 +2760,35 @@ export function useAppData(authUser = null, appLocation = null) {
           return result;
         });
       };
+      const submitNameReport = async (type, targetId, reason, targetName = "") => {
+        if (!targetId) return { ok: false, error: "missing_report_target" };
+        const report = {
+          id: makeClientNotificationId("r"),
+          type,
+          targetId,
+          by: currentUserId,
+          reportedUserIds: [],
+          reason: String(reason || "부적절한 이름").trim().slice(0, 500),
+          targetName,
+          status: "open",
+          createdAt: new Date().toISOString(),
+        };
+        if (!isSupabaseConfigured) {
+          setState((prev) => ({ ...prev, reports: [report, ...(prev.reports ?? [])] }));
+          return { ok: true, reportId: report.id };
+        }
+        const serverReady = await ensureServerActionAvailable("/api/reports/submit", "이름 신고");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("이름 신고")) return { ok: false, error: "remote_not_ready" };
+        const result = await submitReportServer(report, []);
+        if (result?.ok !== false && !result?.duplicate) {
+          setState((prev) => ({
+            ...prev,
+            reports: (prev.reports ?? []).some((item) => item.id === report.id) ? prev.reports : [report, ...(prev.reports ?? [])],
+          }));
+        }
+        return result;
+      };
       const applyBlockedUserMutation = (userId, shouldBlock) => {
         if (!userId) return Promise.resolve(false);
         if (!isSupabaseConfigured) {
@@ -3266,6 +3299,8 @@ export function useAppData(authUser = null, appLocation = null) {
         }
         return result;
       },
+      reportTeamName: (teamId, reason, teamName = "") => submitNameReport("team_name", teamId, reason, teamName),
+      reportAffiliationName: (affiliationId, reason, affiliationName = "") => submitNameReport("affiliation_name", affiliationId, reason, affiliationName),
       commitAdminReviewAction: async (draft) => {
         if (!isSupabaseConfigured) {
           setState((prev) => commitAdminReviewAction({ ...prev, currentUserId }, draft));
@@ -3405,6 +3440,65 @@ export function useAppData(authUser = null, appLocation = null) {
           return next;
         });
         return Promise.resolve(syncedAttempt?.result ?? result ?? null);
+      },
+      setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
+        const safeName = normalizeAffiliationName(name);
+        if (!isSupabaseConfigured) {
+          const now = new Date().toISOString();
+          setState((prev) => {
+            const currentProfile = (prev.users ?? []).find((user) => user.id === currentUserId);
+            const existing = (prev.affiliations ?? []).find((item) => item.id === affiliationId)
+              ?? (prev.affiliations ?? []).find((item) => item.type === "organization" && getAffiliationNormalizedKey(item.name) === getAffiliationNormalizedKey(safeName));
+            const selected = safeName || existing
+              ? existing ?? {
+                id: `aff_local_${Date.now().toString(36)}`,
+                type: "organization",
+                name: safeName,
+                memberCount: 0,
+                score: 0,
+                wins: 0,
+                losses: 0,
+                status: "active",
+              }
+              : null;
+            if ((currentProfile?.affiliationId ?? null) === (selected?.id ?? null)) return prev;
+            const hasSelected = selected && (prev.affiliations ?? []).some((item) => item.id === selected.id);
+            const nextAffiliations = (prev.affiliations ?? []).map((item) => {
+              if (item.id === currentProfile?.affiliationId) return { ...item, memberCount: Math.max(0, Number(item.memberCount ?? 0) - 1) };
+              if (item.id === selected?.id) return { ...item, memberCount: Number(item.memberCount ?? 0) + 1 };
+              return item;
+            });
+            if (selected && !hasSelected) nextAffiliations.push({ ...selected, memberCount: 1 });
+            const selectedMemberCount = selected
+              ? Number(nextAffiliations.find((item) => item.id === selected.id)?.memberCount ?? 0)
+              : 0;
+            return {
+              ...prev,
+              affiliations: nextAffiliations,
+              users: (prev.users ?? []).map((user) => user.id === currentUserId ? {
+                ...user,
+                affiliationId: selected?.id ?? null,
+                affiliationName: selected?.name ?? "",
+                affiliationMemberCount: selectedMemberCount,
+                affiliationUpdatedAt: now,
+              } : user),
+            };
+          });
+          return { ok: true };
+        }
+        const serverReady = await ensureServerActionAvailable("/api/profile/affiliation", "소속 저장");
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady("소속 저장")) return { ok: false, error: "remote_not_ready" };
+        const result = await runServerAction("/api/profile/affiliation", { affiliationId, name: safeName });
+        if (result?.state) {
+          const remoteState = normalizeServerState(result.state);
+          setState((prev) => {
+            const nextState = mergeRemoteProfileState(prev, remoteState ?? {});
+            cacheCurrentProfileState(authUserId, nextState);
+            return nextState;
+          });
+        }
+        return result;
       },
       submitRefereeRequest: (draft) => {
         let createdRequest = null;

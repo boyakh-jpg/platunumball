@@ -8,6 +8,7 @@ import {
   uniqueValues,
 } from "../_supabaseAdmin.js";
 import { fromRemoteMatch } from "../../../src/data/matchMappers.js";
+import { fromRemoteAffiliation } from "../../../src/data/affiliationMappers.js";
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import {
   fromRemoteApprovedCourt,
@@ -52,7 +53,7 @@ const ADMIN_REPORT_TYPES = {
   courts: ["court", "court_review", "court_request"],
   players: ["player"],
   matches: ["match"],
-  teams: ["team_emblem"],
+  teams: ["team_emblem", "team_name", "affiliation_name"],
 };
 
 export function getPageRequest(body = {}, { admin = false, kind = "" } = {}) {
@@ -294,9 +295,14 @@ async function loadAdminSection(context, body = {}) {
 
   const teamTargetIds = uniqueValues([
     ...reportRowsByType("team_emblem").map((row) => row.target_id),
+    ...reportRowsByType("team_name").map((row) => row.target_id),
     ...matchRows.flatMap((row) => [row.team_a_id, row.team_b_id]),
   ]);
-  const teamRows = await readRowsByIds(context.supabase, "teams", TEAM_COLUMNS, "id", teamTargetIds);
+  const affiliationTargetIds = reportRowsByType("affiliation_name").map((row) => row.target_id);
+  const [teamRows, affiliationRows] = await Promise.all([
+    readRowsByIds(context.supabase, "teams", TEAM_COLUMNS, "id", teamTargetIds),
+    readRowsByIds(context.supabase, "affiliations", AFFILIATION_COLUMNS, "id", affiliationTargetIds),
+  ]);
 
   const appointmentRows = [...adminAppointmentPage.rows, ...refereeAppointmentPage.rows];
   const profileIds = uniqueValues([
@@ -308,6 +314,7 @@ async function loadAdminSection(context, body = {}) {
     ...appointmentRows.flatMap((row) => [row.user_id, row.appointed_by]),
     ...refereeRequestPage.rows.flatMap((row) => [row.requested_by, row.payload?.userId]),
     ...matchPlayerRows.map((row) => row.user_id),
+    ...affiliationRows.map((row) => row.created_by),
   ]);
   const publicProfileRows = await readRowsByIds(context.supabase, "public_profiles", PUBLIC_PROFILE_COLUMNS, "id", profileIds);
   const currentUser = getCurrentUser(context);
@@ -332,6 +339,7 @@ async function loadAdminSection(context, body = {}) {
     currentUserId: currentUser.id,
     users: [...userById.values()],
     teams: teamRows.filter((row) => !row.deleted_at).map((row) => ({ ...fromRemoteTeam(row, []), membersPartial: true })),
+    affiliations: affiliationRows.map(fromRemoteAffiliation),
     matches: toAdminMatchState(matchRows, matchPlayerRows, teamRows),
     reports: reportRows.map(fromRemoteReport),
     settings,
@@ -368,6 +376,7 @@ async function loadAdminSection(context, body = {}) {
       ...courtRequestRows,
       ...matchRows,
       ...teamRows,
+      ...affiliationRows,
       ...appointmentRows,
       ...disciplinaryPage.rows,
     ]),
@@ -420,6 +429,7 @@ async function loadDirectoryPage(context, body = {}) {
     let query = context.supabase
       .from("affiliations")
       .select(AFFILIATION_COLUMNS, { count: "exact" })
+      .eq("status", "active")
       .order("score", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true });
     query = applyDirectoryTextFilter(query, ["name", "type"], filter);
@@ -428,14 +438,7 @@ async function loadDirectoryPage(context, body = {}) {
       state: normalizeState({
         currentUserId: currentUser.id,
         users: [currentUser],
-        affiliations: affiliationPage.rows.map((row) => ({
-          id: row.id,
-          type: row.type,
-          name: row.name,
-          score: row.score ?? 0,
-          wins: row.wins ?? 0,
-          losses: row.losses ?? 0,
-        })),
+        affiliations: affiliationPage.rows.map(fromRemoteAffiliation),
       }, { includeDemo: false }),
       page: {
         scope: "directory",
@@ -554,7 +557,7 @@ async function loadDirectoryPage(context, body = {}) {
     includeSelfDetails && currentProfileId ? readRows(context.supabase.from("referee_appointments").select(APPOINTMENT_COLUMNS).eq("user_id", currentProfileId).order("created_at", { ascending: false }).limit(pageRequest.limit)) : [],
     includeSelfDetails && currentProfileId ? readRows(context.supabase.from("admin_disciplinary_actions").select(ADMIN_DISCIPLINARY_COLUMNS).eq("user_id", currentProfileId).order("created_at", { ascending: false }).limit(pageRequest.limit)) : [],
     kind === "all" && !profileId
-      ? readRows(context.supabase.from("affiliations").select(AFFILIATION_COLUMNS).order("score", { ascending: false }).limit(pageRequest.limit))
+      ? readRows(context.supabase.from("affiliations").select(AFFILIATION_COLUMNS).eq("status", "active").order("score", { ascending: false }).limit(pageRequest.limit))
       : [],
   ]);
 
@@ -565,14 +568,7 @@ async function loadDirectoryPage(context, body = {}) {
     users: [...userById.values()],
     teams: teamRows.map((row) => fromRemoteTeam(row, membersByTeam.get(row.id) ?? [])),
     teamInvitations: invitationRows.map(fromRemoteTeamInvitation),
-    affiliations: affiliations.map((row) => ({
-      id: row.id,
-      type: row.type,
-      name: row.name,
-      score: row.score ?? 0,
-      wins: row.wins ?? 0,
-      losses: row.losses ?? 0,
-    })),
+    affiliations: affiliations.map(fromRemoteAffiliation),
     reports: selfReports.map(fromRemoteReport),
     settings: {
       ...DEFAULT_SETTINGS,

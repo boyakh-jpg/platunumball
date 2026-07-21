@@ -44,6 +44,25 @@ export default async function handler(request, response) {
       sendJson(response, 200, { ...(data ?? { ok: true }), storageCleanupPending });
       return;
     }
+    if (["renameTeam", "renameAffiliation", "mergeAffiliation"].includes(actionType)) {
+      const { data, error } = await context.supabase.rpc("rankball_moderate_reported_name", {
+        p_actor_profile_id: context.profileId,
+        p_actor_admin_level: adminLevel,
+        p_report_id: reportId,
+        p_action_type: actionType,
+        p_replacement_name: String(body.replacementName ?? ""),
+        p_merge_target_id: String(body.mergeTargetId ?? ""),
+        p_reason: String(body.reason ?? ""),
+        p_feedback: String(body.feedback ?? ""),
+      });
+      if (error) {
+        const mapped = new Error(error.message || "name_moderation_failed");
+        mapped.statusCode = error.code === "42501" ? 403 : error.code === "P0002" ? 404 : error.code === "23505" ? 409 : 400;
+        throw mapped;
+      }
+      sendJson(response, 200, data ?? { ok: true });
+      return;
+    }
     const { data, error } = await context.supabase.rpc("rankball_commit_admin_review_action", {
       p_actor_profile_id: context.profileId,
       p_actor_admin_level: adminLevel,

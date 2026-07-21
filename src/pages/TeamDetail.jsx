@@ -6,6 +6,7 @@ import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
+import NameReportForm from "../components/common/NameReportForm.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
@@ -87,6 +88,7 @@ export default function TeamDetail({ app }) {
   const [emblemReportReason, setEmblemReportReason] = useState(TEAM_EMBLEM_REPORT_REASONS[0]);
   const [emblemReportPending, setEmblemReportPending] = useState(false);
   const [emblemReportFeedback, setEmblemReportFeedback] = useState("");
+  const [teamNameReportOpen, setTeamNameReportOpen] = useState(false);
   const emblemInputRef = useRef(null);
   const emblemStatusRequestRef = useRef("");
   const emblemAbbreviationCharacterCount = getTeamEmblemAbbreviationCharacterCount(emblemStyleDraft.emblemAbbreviation);
@@ -368,6 +370,7 @@ export default function TeamDetail({ app }) {
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
   const hasOpenEmblemReport = (app.state.reports ?? []).some((report) => report.type === "team_emblem" && report.targetId === team.id && report.by === app.currentUser.id && report.status === "open");
   const canReportEmblem = !canManage && emblemSource === "upload" && Boolean(team.emblemKey);
+  const hasOpenTeamNameReport = (app.state.reports ?? []).some((report) => report.type === "team_name" && report.targetId === team.id && report.by === app.currentUser.id && report.status === "open");
 
   return (
     <div className="page-stack team-detail-page rank-team-page">
@@ -391,6 +394,18 @@ export default function TeamDetail({ app }) {
             <Badge tone="green">{team.mmr} 팀 MMR</Badge>
             <TierBadge mmr={team.mmr} />
             <Badge tone="gold">팀장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
+          </div>
+          <div className="team-name-report-control">
+            <Button type="button" size="sm" variant="secondary" disabled={hasOpenTeamNameReport} onClick={() => setTeamNameReportOpen((open) => !open)}>
+              <Flag size={14} /> {hasOpenTeamNameReport ? "팀명 신고 접수됨" : "팀명 신고"}
+            </Button>
+            {teamNameReportOpen && !hasOpenTeamNameReport ? (
+              <NameReportForm
+                label="팀명"
+                onCancel={() => setTeamNameReportOpen(false)}
+                onSubmit={(reason) => app.actions.reportTeamName(team.id, reason, team.name)}
+              />
+            ) : null}
           </div>
         </div>
         <div className="team-tier-hero">

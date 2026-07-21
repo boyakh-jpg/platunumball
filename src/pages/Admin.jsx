@@ -34,7 +34,7 @@ const ADMIN_SECTION_OPTIONS = [
   { id: "courts", label: "구장 신청", caption: "등록 신청과 구장 신고", icon: MapPin },
   { id: "players", label: "플레이어 신고", caption: "신고와 징계", icon: UserRound },
   { id: "matches", label: "경기 심사", caption: "기록 오류와 이의", icon: ClipboardList },
-  { id: "teams", label: "팀 엠블럼", caption: "이미지 신고와 제한", icon: ShieldAlert },
+  { id: "teams", label: "팀·소속", caption: "이름과 엠블럼 신고", icon: ShieldAlert },
   { id: "appointments", label: "권한 관리", caption: "심판과 관리자 임명", icon: ShieldCheck },
   { id: "ratingPolicy", label: "MMR·신뢰도", caption: "이벤트 반영 정책", icon: SlidersHorizontal, ownerOnly: true },
 ];
@@ -65,10 +65,10 @@ const REVIEW_WORKFLOW_COPY = {
     description: "경기 신고, 기록 오류, 이의 상태를 경기 단위로 확인합니다.",
   },
   teams: {
-    title: "팀 엠블럼 신고",
-    queueTitle: "엠블럼 신고 대기열",
-    actionTitle: "엠블럼 최종판단",
-    description: "현재 이미지를 확인하고 신고 인정 시 즉시 기본값으로 전환합니다. 누적 위반 횟수에 따라 업로드가 제한됩니다.",
+    title: "팀·소속 신고",
+    queueTitle: "팀·소속 처리 대기열",
+    actionTitle: "이름·엠블럼 최종판단",
+    description: "팀 엠블럼과 팀명·소속명을 확인합니다. 이름 수정과 소속 통합은 경기관리자 이상만 처리합니다.",
   },
 };
 
@@ -319,9 +319,12 @@ export default function Admin({ app }) {
     actionType: "validReport",
     durationDays: 3,
     targetUserId: "",
+    replacementName: "",
+    mergeTargetId: "",
     reason: "",
     feedback: "",
   });
+  const [mergeAffiliationQuery, setMergeAffiliationQuery] = useState("");
   const [appointmentDraft, setAppointmentDraft] = useState({
     actionType: "appointReferee",
     userId: "",
@@ -433,6 +436,12 @@ export default function Admin({ app }) {
     if (selectedReport?.type === "team_emblem") {
       return ACTION_OPTIONS.filter((option) => ["resetTeamEmblem", "dismissReport", "maliciousReporter"].includes(option.id));
     }
+    if (selectedReport?.type === "team_name") {
+      return ACTION_OPTIONS.filter((option) => ["renameTeam", "dismissReport", "maliciousReporter"].includes(option.id));
+    }
+    if (selectedReport?.type === "affiliation_name") {
+      return ACTION_OPTIONS.filter((option) => ["renameAffiliation", "mergeAffiliation", "dismissReport", "maliciousReporter"].includes(option.id));
+    }
     const ids = ["validReport", "dismissReport", "maliciousReporter"];
     if (selectedReport?.type === "court") ids.push("hideCourt");
     if (selectedReport?.type === "court_review") ids.push("hideCourtReview", "suspendTarget");
@@ -453,6 +462,11 @@ export default function Admin({ app }) {
     ? actionDraft.targetUserId
     : targetCandidates[0]?.id ?? "";
   const actionNeedsTarget = ["maliciousReporter", "suspendTarget", "refereeDiscipline"].includes(actionDraft.actionType);
+  const actionNeedsReplacementName = ["renameTeam", "renameAffiliation"].includes(actionDraft.actionType);
+  const actionNeedsMergeTarget = actionDraft.actionType === "mergeAffiliation";
+  const nameModerationAction = actionNeedsReplacementName || actionNeedsMergeTarget;
+  const nameModerationInvalid = (actionNeedsReplacementName && !actionDraft.replacementName.trim())
+    || (actionNeedsMergeTarget && !actionDraft.mergeTargetId);
   const selectedNeedsAction = Boolean(
     selectedRow && (
       selectedRow.openCount > 0 ||
@@ -467,10 +481,13 @@ export default function Admin({ app }) {
       ...current,
       actionType: visibleActionOptions.some((option) => option.id === current.actionType) ? current.actionType : visibleActionOptions[0]?.id ?? "validReport",
       targetUserId: targetCandidates[0]?.id ?? "",
+      replacementName: selectedRow?.team?.name ?? selectedRow?.affiliation?.name ?? "",
+      mergeTargetId: "",
       reason: "",
       feedback: "",
     }));
-  }, [selectedReport?.id, selectedRow?.id, targetCandidates, visibleActionOptions]);
+    setMergeAffiliationQuery("");
+  }, [selectedReport?.id, selectedRow?.affiliation?.name, selectedRow?.id, selectedRow?.team?.name, targetCandidates, visibleActionOptions]);
 
   useEffect(() => {
     setCourtApprovalDraft({
@@ -871,12 +888,12 @@ export default function Admin({ app }) {
                   <strong>{selectedRow.reportCount}</strong>
                 </div>
                 <div>
-                  <span>{view === "teams" ? "위반" : "경기"}</span>
-                  <strong>{view === "teams" ? selectedRow.team?.emblemViolationCount ?? 0 : selectedRow.matchCount ?? 0}</strong>
+                  <span>{view === "teams" ? "대상" : "경기"}</span>
+                  <strong>{view === "teams" ? selectedRow.entityKind === "affiliation" ? "소속" : "팀" : selectedRow.matchCount ?? 0}</strong>
                 </div>
               </div>
 
-              {view === "teams" && selectedRow.team ? (
+              {view === "teams" && selectedRow.team && selectedReport?.type === "team_emblem" ? (
                 <section className="admin-team-emblem-detail">
                   <TeamEmblem team={selectedRow.team} size="lg" />
                   <div>
@@ -884,6 +901,14 @@ export default function Admin({ app }) {
                     <span>{selectedRow.team.emblemSource === "upload" && selectedRow.team.emblemKey ? "사진 사용 중" : "기본값 사용 중"}</span>
                     <small>누적 위반 {selectedRow.team.emblemViolationCount ?? 0}회 · 제한 종료 {formatDate(selectedRow.team.emblemUploadBlockedUntil)}</small>
                   </div>
+                </section>
+              ) : null}
+
+              {view === "teams" && ["team_name", "affiliation_name"].includes(selectedReport?.type) ? (
+                <section className="admin-name-moderation-detail">
+                  <span>{selectedReport.type === "team_name" ? "현재 팀명" : "현재 소속명"}</span>
+                  <strong>{selectedRow.team?.name ?? selectedRow.affiliation?.name ?? selectedRow.title}</strong>
+                  <small>{selectedReport.type === "affiliation_name" ? `${selectedRow.affiliation?.memberCount ?? 0}명 소속` : selectedRow.team?.region ?? "지역 미정"}</small>
                 </section>
               ) : null}
 
@@ -993,6 +1018,16 @@ export default function Admin({ app }) {
                       {visibleActionOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                   </label>
+                  {actionNeedsReplacementName ? (
+                    <label>
+                      변경할 이름
+                      <input
+                        value={actionDraft.replacementName}
+                        maxLength={actionDraft.actionType === "renameTeam" ? 14 : 40}
+                        onChange={(event) => updateActionDraft({ replacementName: event.target.value })}
+                      />
+                    </label>
+                  ) : null}
                   {actionNeedsTarget ? <label>
                     대상
                     <select value={selectedTargetUserId} disabled={!targetCandidates.length} onChange={(event) => updateActionDraft({ targetUserId: event.target.value })}>
@@ -1001,6 +1036,34 @@ export default function Admin({ app }) {
                     </select>
                   </label> : null}
                 </div>
+                {actionNeedsMergeTarget ? (
+                  <label>
+                    통합할 소속
+                    <SearchPicker
+                      value={mergeAffiliationQuery}
+                      onChange={(value) => { setMergeAffiliationQuery(value); updateActionDraft({ mergeTargetId: "" }); }}
+                      placeholder="남길 소속 검색"
+                      items={(adminViewState.affiliations ?? []).filter((item) => item.id !== selectedReport?.targetId && (item.status ?? "active") === "active")}
+                      remoteSearchType="affiliation"
+                      minSearchLength={2}
+                      limit={8}
+                      floating
+                      closeOnResultClick
+                      renderItem={(item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="search-picker-result-row"
+                          disabled={item.id === selectedReport?.targetId}
+                          onClick={() => { setMergeAffiliationQuery(item.name); updateActionDraft({ mergeTargetId: item.id }); }}
+                        >
+                          <span><strong>{item.name}</strong><small>{item.memberCount ?? 0}명</small></span>
+                          <b>선택</b>
+                        </button>
+                      )}
+                    />
+                  </label>
+                ) : null}
                 {actionNeedsTarget ? <label>
                   제재 기간
                   <select value={actionDraft.durationDays} onChange={(event) => updateActionDraft({ durationDays: Number(event.target.value) })}>
@@ -1015,10 +1078,11 @@ export default function Admin({ app }) {
                   신고자 피드백
                   <textarea value={actionDraft.feedback} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
                 </label>
-                <Button type="button" variant="secondary" disabled={reviewActionPending || !selectedReport || selectedReport.status !== "open" || (actionDraft.actionType === "resetTeamEmblem" && adminLevel < 50)} onClick={commitSelectedAction}>
+                <Button type="button" variant="secondary" disabled={reviewActionPending || !selectedReport || selectedReport.status !== "open" || ((actionDraft.actionType === "resetTeamEmblem" || nameModerationAction) && adminLevel < 50) || nameModerationInvalid} onClick={commitSelectedAction}>
                   {reviewActionPending ? "처리 중" : "액션 커밋"}
                 </Button>
                 {actionDraft.actionType === "resetTeamEmblem" && adminLevel < 50 ? <small>경기관리자 이상만 엠블럼을 강제 전환할 수 있습니다.</small> : null}
+                {nameModerationAction && adminLevel < 50 ? <small>경기관리자 이상만 이름을 수정하거나 소속을 통합할 수 있습니다.</small> : null}
                 {reviewActionStatus ? <small role="status">{reviewActionStatus}</small> : null}
                 <small>실시간 중복 방지는 서버 트랜잭션에서 최종 확인합니다.</small>
               </div>

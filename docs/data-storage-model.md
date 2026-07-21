@@ -544,3 +544,14 @@ Remaining:
 - Feed card JSON normalization functions are `STABLE`, matching their called expression volatility.
 - The court region-key function no longer declares a shadowed loop variable.
 - Production `rankball_state` absence was rechecked; no destructive cleanup was executed.
+
+## 2026-07-21 organization affiliation model
+
+- `affiliations.type='organization'` is the editable school/company replacement. Legacy `region`, `school`, and `company` rows remain readable for compatibility.
+- Active organization rows store `normalized_name`, `member_count`, `created_by`, `status`, `merged_into_id`, `created_at`, and `updated_at`. A partial unique index prevents duplicate active normalized names.
+- `profiles.affiliation_id` references the selected affiliation. `profiles.affiliation_updated_at` is private cooldown state; `public_profiles` exposes only `affiliation_id`.
+- The migration backfills `profiles.school` first, then `profiles.company`, without clearing either legacy column. Backfilled users keep `affiliation_updated_at = null` so their first explicit change is allowed.
+- `rankball_set_profile_affiliation(text,text,text)` is the only production mutation path. It locks the profile, resolves or creates the normalized affiliation, and enforces the 30-day interval.
+- Profile insert/delete/affiliation changes refresh cached `member_count`. Search orders active organizations by `member_count desc, name asc` and never treats the count as verification.
+- Name reports use `team_name` or `affiliation_name`. `rankball_moderate_reported_name(text,integer,text,text,text,text,text,text)` allows level 50+ administrators to rename or merge under one transaction and writes report resolution, notification, and audit rows.
+- Both affiliation RPCs are revoked from `public`, `anon`, and `authenticated`; only `service_role` can execute them after server-side auth and authority checks.

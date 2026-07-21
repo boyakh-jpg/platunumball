@@ -10,6 +10,15 @@ import {
   isRefereeGrade,
 } from "../src/lib/constants.js";
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
+import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
+import {
+  AFFILIATION_CHANGE_COOLDOWN_DAYS,
+  AFFILIATION_TYPE,
+  canChangeAffiliation,
+  getAffiliationNormalizedKey,
+  getNextAffiliationChangeDate,
+  normalizeAffiliationName,
+} from "../src/lib/affiliations.js";
 import {
   ROOM_CHAT_CLIENT_CACHE_LIMIT,
   ROOM_CHAT_HISTORY_LIMIT,
@@ -104,6 +113,43 @@ test("core match policy has one canonical default", () => {
   assert.equal(getModeSize("unknown", 3), 3);
   assert.ok(isRefereeGrade("official"));
   assert.equal(isRefereeGrade("admin"), false);
+});
+
+test("region selectors preserve the current government code order", () => {
+  assert.deepEqual(REGION_TREE.map((item) => item.sido), [
+    "서울특별시",
+    "전남광주통합특별시",
+    "부산광역시",
+    "대구광역시",
+    "인천광역시",
+    "대전광역시",
+    "울산광역시",
+    "세종특별자치시",
+    "경기도",
+    "충청북도",
+    "충청남도",
+    "경상북도",
+    "경상남도",
+    "제주특별자치도",
+    "강원특별자치도",
+    "전북특별자치도",
+  ]);
+  assert.deepEqual(REGION_TREE[0].districts.slice(0, 5), ["종로구", "중구", "용산구", "성동구", "광진구"]);
+  assert.deepEqual(REGION_TREE[4].districts, ["제물포구", "영종구", "미추홀구", "연수구", "남동구", "부평구", "계양구", "서해구", "검단구", "강화군", "옹진군"]);
+  assert.deepEqual(inferRegionSelection("광주광역시 광산구"), { sido: "전남광주통합특별시", district: "광산구" });
+});
+
+test("optional affiliation names and 30-day changes use one shared policy", () => {
+  assert.equal(AFFILIATION_TYPE, "organization");
+  assert.equal(AFFILIATION_CHANGE_COOLDOWN_DAYS, 30);
+  assert.equal(normalizeAffiliationName("  서울\u0000   대학교  "), "서울 대학교");
+  assert.equal(normalizeAffiliationName("ＡＢＣ"), "ABC");
+  assert.equal(getAffiliationNormalizedKey("서울 대"), getAffiliationNormalizedKey("서울대"));
+  assert.notEqual(getAffiliationNormalizedKey("서울대"), getAffiliationNormalizedKey("서울대학교"));
+  const user = { affiliationUpdatedAt: "2026-07-01T00:00:00.000Z" };
+  assert.equal(getNextAffiliationChangeDate(user).toISOString(), "2026-07-31T00:00:00.000Z");
+  assert.equal(canChangeAffiliation(user, new Date("2026-07-30T23:59:59.999Z")), false);
+  assert.equal(canChangeAffiliation(user, new Date("2026-07-31T00:00:00.000Z")), true);
 });
 
 test("schedule policy normalizes client and database field names", () => {

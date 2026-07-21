@@ -27,6 +27,7 @@ import notificationList from "../server/api/notifications/list.js";
 import notificationRead from "../server/api/notifications/read.js";
 import profileEmblem from "../server/api/profile/emblem.js";
 import profileAchievements from "../server/api/profile/achievements.js";
+import profileAffiliation from "../server/api/profile/affiliation.js";
 import profileMe from "../server/api/profile/me.js";
 import profileUpsert from "../server/api/profile/upsert.js";
 import refereeSync from "../server/api/referee/sync.js";
@@ -81,6 +82,7 @@ export const API_ROUTES = new Map([
   ["/notifications/read", route(notificationRead, ["POST"], "user")],
   ["/profile/emblem", route(profileEmblem, ["POST"], "user")],
   ["/profile/achievements", route(profileAchievements, ["POST"], "user")],
+  ["/profile/affiliation", route(profileAffiliation, ["POST"], "user")],
   ["/profile/me", route(profileMe, ["POST"], "user")],
   ["/profile/upsert", route(profileUpsert, ["POST"], "user")],
   ["/referee/sync", route(refereeSync, ["POST"], "user")],

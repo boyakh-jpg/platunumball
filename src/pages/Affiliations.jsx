@@ -1,17 +1,29 @@
+import { useEffect, useRef, useState } from "react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
+import Button from "../components/common/Button.jsx";
+import NameReportForm from "../components/common/NameReportForm.jsx";
 import { AFFILIATION_TYPES } from "../lib/constants.js";
+import { AFFILIATION_TYPE, getAffiliationMemberCount } from "../lib/affiliations.js";
 
 export default function Affiliations({ app }) {
-  const visibleAffiliations = app.rankings.affiliations.filter((affiliation) => affiliation.type !== "club");
-  const userAffiliationNames = new Set([
-    app.currentUser.region,
-    app.currentUser.school,
-    app.currentUser.company,
-  ].filter(Boolean));
+  const [reportTargetId, setReportTargetId] = useState("");
+  const loadRef = useRef(false);
+  const visibleAffiliations = app.rankings.affiliations.filter((affiliation) => (
+    ["region", AFFILIATION_TYPE].includes(affiliation.type)
+    && (affiliation.status ?? "active") === "active"
+  ));
+  const userAffiliationIds = new Set([app.currentUser.affiliationId].filter(Boolean));
+  const userAffiliationNames = new Set([app.currentUser.region].filter(Boolean));
   const myAffiliations = visibleAffiliations
     .map((affiliation, index) => ({ ...affiliation, rank: index + 1 }))
-    .filter((affiliation) => userAffiliationNames.has(affiliation.name));
+    .filter((affiliation) => userAffiliationIds.has(affiliation.id) || userAffiliationNames.has(affiliation.name));
+
+  useEffect(() => {
+    if (!app.remoteReady || loadRef.current) return;
+    loadRef.current = true;
+    app.actions.loadDirectory?.({ kind: "affiliations", limit: 100, offset: 0 });
+  }, [app.actions, app.remoteReady]);
   const challengeRows = myAffiliations.map((affiliation) => {
     const sameType = visibleAffiliations
       .map((item, index) => ({ ...item, rank: index + 1 }))
@@ -100,8 +112,22 @@ export default function Affiliations({ app }) {
             <div className="stat-strip">
               <span><strong>{affiliation.wins}</strong>승</span>
               <span><strong>{affiliation.losses}</strong>패</span>
-              <span><strong>{Math.round((affiliation.wins / Math.max(1, affiliation.wins + affiliation.losses)) * 100)}%</strong>승률</span>
+              <span><strong>{affiliation.type === AFFILIATION_TYPE ? getAffiliationMemberCount(affiliation) : Math.round((affiliation.wins / Math.max(1, affiliation.wins + affiliation.losses)) * 100)}</strong>{affiliation.type === AFFILIATION_TYPE ? "명" : "% 승률"}</span>
             </div>
+            {affiliation.type === AFFILIATION_TYPE ? (
+              <div className="affiliation-report-control">
+                <Button type="button" size="sm" variant="secondary" onClick={() => setReportTargetId((current) => current === affiliation.id ? "" : affiliation.id)}>
+                  소속명 신고
+                </Button>
+                {reportTargetId === affiliation.id ? (
+                  <NameReportForm
+                    label="소속명"
+                    onCancel={() => setReportTargetId("")}
+                    onSubmit={(reason) => app.actions.reportAffiliationName(affiliation.id, reason, affiliation.name)}
+                  />
+                ) : null}
+              </div>
+            ) : null}
           </Card>
         ))}
       </section>

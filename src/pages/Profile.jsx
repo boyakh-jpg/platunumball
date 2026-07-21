@@ -5,6 +5,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProfileIconDialog from "../components/profile/ProfileIconDialog.jsx";
+import AffiliationEditor from "../components/profile/AffiliationEditor.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
@@ -101,8 +102,6 @@ export default function Profile({ app }) {
     position: POSITION_OPTIONS.includes(user.position) ? user.position : "PG",
     regionSido: inferredRegion.sido,
     regionDistrict: inferredRegion.district,
-    school: user.school ?? "",
-    company: user.company ?? "",
   });
   const [profileError, setProfileError] = useState("");
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
@@ -129,8 +128,6 @@ export default function Profile({ app }) {
         region: `${draft.regionSido} ${district}`,
         regionSido: draft.regionSido,
         regionDistrict: district,
-        school: draft.school,
-        company: draft.company,
       });
     } catch (error) {
       setProfileError(error.message || "프로필 저장에 실패했습니다.");
@@ -220,18 +217,11 @@ export default function Profile({ app }) {
                   {districtOptions.map((district) => <option key={district} value={district}>{district}</option>)}
                 </select>
               </label>
-              <label>
-                학교
-                <input value={draft.school} onChange={(event) => update({ school: event.target.value })} />
-              </label>
-              <label>
-                회사
-                <input value={draft.company} onChange={(event) => update({ company: event.target.value })} />
-              </label>
               {profileError ? <p className="form-warning">{profileError}</p> : null}
               <Button type="submit">저장</Button>
             </form>
           </Card>
+          <AffiliationEditor user={user} affiliations={app.state.affiliations} actions={app.actions} />
           <section className="profile-rating-grid">
             <RatingCard className="profile-rating-primary" title="통합" mmr={user.ratings.integrated} subtitle="메인 티어" />
             {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
@@ -258,12 +248,8 @@ export default function Profile({ app }) {
                 <strong>{averageFouls.toFixed(1)}</strong>
               </div>
               <div>
-                <span>학교</span>
-                <strong>{user.school}</strong>
-              </div>
-              <div>
-                <span>회사</span>
-                <strong>{user.company}</strong>
+                <span>소속</span>
+                <strong>{user.affiliationName || "없음"}</strong>
               </div>
             </div>
           </Card>

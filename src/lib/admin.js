@@ -44,6 +44,9 @@ export const ADMIN_REVIEW_ACTIONS = {
   hideCourt: { label: "구장 숨김", feedback: "신고된 구장이 숨김 처리되었습니다." },
   hideCourtReview: { label: "구장 리뷰 숨김", feedback: "신고된 구장 리뷰가 숨김 처리되었습니다." },
   resetTeamEmblem: { label: "엠블럼 기본값 전환", feedback: "신고된 팀 엠블럼을 기본값으로 전환했습니다." },
+  renameTeam: { label: "팀명 수정", feedback: "신고된 팀명을 운영 정책에 따라 수정했습니다." },
+  renameAffiliation: { label: "소속명 수정", feedback: "신고된 소속명을 운영 정책에 따라 수정했습니다." },
+  mergeAffiliation: { label: "소속 통합", feedback: "중복 소속을 선택한 소속으로 통합했습니다." },
 };
 
 const APPOINTMENT_ROLE_META = {
@@ -340,6 +343,7 @@ export function buildAdminAppointmentModel(state = {}) {
 export function buildAdminReviewModel(state = {}) {
   const users = state.users ?? [];
   const teams = state.teams ?? [];
+  const affiliations = state.affiliations ?? [];
   const matches = state.matches ?? [];
   const reports = state.reports ?? [];
   const courtRequests = state.settings?.courtRequests ?? [];
@@ -349,6 +353,7 @@ export function buildAdminReviewModel(state = {}) {
   const userMap = makeUserMap(users);
   const matchMap = makeMatchMap(matches);
   const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
+  const affiliationById = Object.fromEntries(affiliations.map((affiliation) => [affiliation.id, affiliation]));
   const courtMap = new Map();
   const playerMap = new Map();
   const matchReviewMap = new Map();
@@ -422,14 +427,29 @@ export function buildAdminReviewModel(state = {}) {
       return;
     }
 
-    if (report.type === "team_emblem") {
+    if (report.type === "team_emblem" || report.type === "team_name") {
       const team = teamById[report.targetId];
-      const teamRow = pushGrouped(teamReviewMap, report.targetId, {
+      const teamRow = pushGrouped(teamReviewMap, `team:${report.targetId}`, {
         title: team?.name ?? report.teamName ?? "알 수 없는 팀",
-        subtitle: `${team?.region ?? "지역 미정"} · 엠블럼 위반 ${team?.emblemViolationCount ?? 0}회`,
+        subtitle: report.type === "team_emblem"
+          ? `${team?.region ?? "지역 미정"} · 엠블럼 위반 ${team?.emblemViolationCount ?? 0}회`
+          : `${team?.region ?? "지역 미정"} · 팀 이름 신고`,
         team,
+        entityKind: "team",
       });
       addReport(teamRow, report);
+      return;
+    }
+
+    if (report.type === "affiliation_name") {
+      const affiliation = affiliationById[report.targetId];
+      const affiliationRow = pushGrouped(teamReviewMap, `affiliation:${report.targetId}`, {
+        title: affiliation?.name ?? report.affiliationName ?? "알 수 없는 소속",
+        subtitle: `소속 이름 신고 · ${affiliation?.memberCount ?? report.affiliationMemberCount ?? 0}명`,
+        affiliation,
+        entityKind: "affiliation",
+      });
+      addReport(affiliationRow, report);
       return;
     }
 
@@ -573,6 +593,7 @@ export function buildAdminReviewModel(state = {}) {
       courtRequestCount: courtRequests.length,
       disciplinaryActionCount: disciplinaryActions.length,
       teamEmblemIssueCount: teamRows.filter((row) => row.openCount > 0).length,
+      nameIssueCount: teamRows.filter((row) => row.openCount > 0 && row.reports.some((report) => ["team_name", "affiliation_name"].includes(report.type))).length,
     },
     courts: courtRows,
     players: playerRows,
