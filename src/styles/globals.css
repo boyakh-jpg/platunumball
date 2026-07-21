@@ -9723,6 +9723,14 @@ html[data-theme="light"] .search-picker-result-row.selected {
   place-items: center;
   border-radius: 50%;
   overflow: hidden;
+  -webkit-clip-path: circle(50% at 50% 50%);
+  clip-path: circle(50% at 50% 50%);
+  -webkit-mask-image: radial-gradient(circle closest-side at center, #000 98%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side at center, #000 98%, transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  contain: paint;
+  isolation: isolate;
   background: color-mix(in srgb, var(--surface-3) 88%, var(--rb-orange) 12%);
 }
 

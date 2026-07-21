@@ -15,7 +15,7 @@
 | `reports` | `type='team_emblem'`, `payload.emblemKey` | 팀 엠블럼 신고와 접수 당시 object key snapshot |
 | R2 | `team-emblems/{teamId}/{sha256-24}.webp` | 팀 직접 업로드 결과 |
 | `match_player_competitive_snapshots` | `match_id`, `profile_id`, `side`, `age_group`, `mode_mmr`, `mmr_eligible` | 확정 직전 실제 출전자의 연령군·모드 MMR. 교차 연령·언더독 업적 판정 원본 |
-| Vercel/R2 public asset | `/assets/profile-icons/{icon-key}.png` | 340개 검수 프로필 아이콘. DB에는 확장자 없는 key만 저장 |
+| Vercel/R2 public asset | `/assets/profile-icons/{icon-key}.png` | 활성 335개 검수 프로필 아이콘. `221~225`는 폐기된 4v4 번호 보존용 예약 key이며 DB 선택 allowlist에서 제외. DB에는 확장자 없는 key만 저장 |
 
 - `/api/profile/emblem`은 프로필 기본값 스타일, `initial`/`discord` 원본 전환, 검수된 `icon` 선택만 허용한다. 직접 사진 업로드는 거부한다.
 - `rankball_select_profile_icon()`은 서버 allowlist와 `profile_icon_unlocks`를 모두 통과한 icon key만 저장한다. 기본 지급 5개는 가입 시 해금 row를 만들고, 나머지는 업적 달성 뒤 해금 row가 있어야 한다.

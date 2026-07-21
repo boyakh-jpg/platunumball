@@ -64,6 +64,7 @@ import {
 } from "../src/lib/matchUtils.js";
 import { DEFAULT_RATING_POLICY } from "../src/lib/ratingPolicy.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../src/lib/reportReasons.js";
+import { PROFILE_ICON_CATALOG } from "../src/lib/profileIcons.js";
 import {
   getCourtAccessLabel,
   getCourtHoopCount,
@@ -337,16 +338,24 @@ test("profile icon background choice and image preview stay persistent and separ
 });
 
 test("profile icon picker lists owned icons only and locked achievements conceal artwork", async () => {
-  const [dialog, achievements, styles] = await Promise.all([
+  const [dialog, achievements, achievementApi, styles] = await Promise.all([
     readSource("src/components/profile/ProfileIconDialog.jsx"),
     readSource("src/pages/ProfileAchievements.jsx"),
+    readSource("server/api/_profileIconAchievements.js"),
     readSource("src/styles/globals.css"),
   ]);
   assert.match(dialog, /group\.icons\.filter\(\(icon\) => unlockedSet\.has\(icon\.id\)\)/);
   assert.match(dialog, /unlockedGroups\.map\(\(group\) =>/);
   assert.match(achievements, /state\?\.unlocked \? "unlocked" : "locked"/);
   assert.match(styles, /\.profile-achievement-icon\s*{[^}]*border-radius: 50%;[^}]*overflow: hidden;/s);
+  assert.match(styles, /\.profile-achievement-icon\s*{[^}]*clip-path: circle\(50% at 50% 50%\)/s);
+  assert.match(styles, /\.profile-achievement-icon\s*{[^}]*-webkit-mask-image: radial-gradient\(circle closest-side at center, #000 98%, transparent 100%\)/s);
+  assert.match(styles, /\.profile-achievement-icon\s*{[^}]*contain: paint/s);
   assert.match(styles, /\.profile-achievement-card\.locked \.profile-achievement-icon img\s*{[^}]*filter: brightness\(0\) saturate\(0\) blur\(1\.2px\)/s);
+  assert.equal(PROFILE_ICON_CATALOG.length, 335);
+  assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.includes("four-on-four")), false);
+  assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.startsWith("226-five-on-five-")), true);
+  assert.match(achievementApi, /activeUnlockedRows = \(unlockedRows \?\? \[\]\)\.filter\(\(row\) => PROFILE_ICON_ID_SET\.has\(row\.icon_key\)\)/);
 });
 
 test("image native menus and drag stay blocked by one shared guard", async () => {

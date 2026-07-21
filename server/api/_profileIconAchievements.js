@@ -1,5 +1,7 @@
 import { getProfileIconAchievementState, PROFILE_ICON_CATALOG } from "../../src/lib/profileIcons.js";
 
+const PROFILE_ICON_ID_SET = new Set(PROFILE_ICON_CATALOG.map((icon) => icon.id));
+
 function getProgressSnapshot(icon, metrics) {
   return Object.fromEntries((icon.achievement?.requirements ?? []).map(({ metric }) => [metric, Number(metrics?.[metric] ?? 0)]));
 }
@@ -34,11 +36,13 @@ export async function refreshProfileIconAchievements(supabase, profileId) {
     .order("unlocked_at", { ascending: true });
   if (unlockedError) throw unlockedError;
 
+  const activeUnlockedRows = (unlockedRows ?? []).filter((row) => PROFILE_ICON_ID_SET.has(row.icon_key));
+
   return {
     metrics: metrics ?? {},
-    unlockedIconKeys: (unlockedRows ?? []).map((row) => row.icon_key),
-    unlockedAtByKey: Object.fromEntries((unlockedRows ?? []).map((row) => [row.icon_key, row.unlocked_at])),
-    unlockedCount: unlockedRows?.length ?? 0,
+    unlockedIconKeys: activeUnlockedRows.map((row) => row.icon_key),
+    unlockedAtByKey: Object.fromEntries(activeUnlockedRows.map((row) => [row.icon_key, row.unlocked_at])),
+    unlockedCount: activeUnlockedRows.length,
     totalIconCount: PROFILE_ICON_CATALOG.length,
   };
 }

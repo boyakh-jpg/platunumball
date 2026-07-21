@@ -1,4 +1,4 @@
-const PROFILE_ICON_ASSET_VERSION = "20260721-5";
+const PROFILE_ICON_ASSET_VERSION = "20260721-7";
 
 const icon = (id, name) => Object.freeze({
   id,
@@ -112,6 +112,12 @@ const trackedSeries = (slug, name, metric, targets, requirementLabel, unit = "�
   condition: condition ?? ((target) => `${requirementLabel} ${target}${unit}`),
 });
 
+const retiredSeries = (slug) => Object.freeze({
+  slug,
+  retired: true,
+  targets: Object.freeze([0, 0, 0, 0, 0]),
+});
+
 const PROFILE_ICON_SERIES_GROUPS = Object.freeze([
   Object.freeze({
     id: "career",
@@ -163,7 +169,7 @@ const PROFILE_ICON_SERIES_GROUPS = Object.freeze([
       trackedSeries("one-on-one", "1v1 스페셜리스트", "mode1v1Count", [5, 25, 75, 150, 300], "1v1 확정 경기"),
       trackedSeries("two-on-two", "2v2 스페셜리스트", "mode2v2Count", [5, 25, 75, 150, 300], "2v2 확정 경기"),
       trackedSeries("three-on-three", "3v3 스페셜리스트", "mode3v3Count", [5, 25, 75, 150, 300], "3v3 확정 경기"),
-      trackedSeries("four-on-four", "4v4 스페셜리스트", "mode4v4Count", [5, 25, 75, 150, 300], "4v4 확정 경기"),
+      retiredSeries("four-on-four"),
       trackedSeries("five-on-five", "5v5 스페셜리스트", "mode5v5Count", [5, 25, 75, 150, 300], "5v5 확정 경기"),
     ]),
   }),
@@ -218,10 +224,12 @@ for (const seriesGroup of PROFILE_ICON_SERIES_GROUPS) {
     PROFILE_ICON_SERIES_TIERS.forEach((tier, tierIndex) => {
       const iconId = `${String(nextExpandedIconNumber).padStart(3, "0")}-${seriesDefinition.slug}-${tier.id}`;
       const target = seriesDefinition.targets[tierIndex];
-      PROFILE_ICON_ACHIEVEMENTS[iconId] = achievement(seriesDefinition.condition(target), [
-        requirement(seriesDefinition.metric, target, seriesDefinition.requirementLabel),
-      ]);
-      entries.push([iconId, `${seriesDefinition.name} · ${tier.name}`]);
+      if (!seriesDefinition.retired) {
+        PROFILE_ICON_ACHIEVEMENTS[iconId] = achievement(seriesDefinition.condition(target), [
+          requirement(seriesDefinition.metric, target, seriesDefinition.requirementLabel),
+        ]);
+        entries.push([iconId, `${seriesDefinition.name} · ${tier.name}`]);
+      }
       nextExpandedIconNumber += 1;
     });
   }
