@@ -1,4 +1,5 @@
 import { getMatchPlayerIds } from "./matchUtils.js";
+import { DAY_MS } from "./constants.js";
 
 export const ADMIN_BACKEND_TODO = "관리자 권한은 서버 env 또는 DB admin_appointments 기준입니다.";
 
@@ -319,7 +320,7 @@ export function buildAdminAppointmentModel(state = {}) {
       getTime(a.endsAt) - getTime(b.endsAt) ||
       a.userName.localeCompare(b.userName);
   });
-  const expiringSoonMs = nowMs + 14 * 24 * 60 * 60 * 1000;
+  const expiringSoonMs = nowMs + 14 * DAY_MS;
   return {
     rows,
     grades: Object.entries(ADMIN_GRADE_META).map(([id, meta]) => ({ id, ...meta })),

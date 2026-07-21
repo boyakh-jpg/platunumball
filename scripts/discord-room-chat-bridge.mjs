@@ -1,8 +1,10 @@
+import { isDiscordSnowflake } from "../src/lib/discordProtocol.js";
+import { getConfiguredPublicAppUrl } from "../server/api/_publicAppUrl.js";
+
 const DISCORD_GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 const GUILD_MESSAGES_INTENT = 1 << 9;
 const MESSAGE_CONTENT_INTENT = 1 << 15;
 const DEFAULT_INTENTS = GUILD_MESSAGES_INTENT | MESSAGE_CONTENT_INTENT;
-const SNOWFLAKE_RE = /^\d{17,20}$/;
 
 const token = readRequiredEnv("DISCORD_BOT_TOKEN");
 const bridgeSecret = process.env.DISCORD_CHAT_BRIDGE_SECRET || process.env.CRON_SECRET || "";
@@ -72,13 +74,13 @@ function readListEnv(name) {
   return String(process.env[name] || "")
     .split(",")
     .map((item) => item.trim())
-    .filter((item) => SNOWFLAKE_RE.test(item));
+    .filter((item) => isDiscordSnowflake(item));
 }
 
 function getBridgeUrl() {
   const explicit = String(process.env.DISCORD_CHAT_BRIDGE_URL || "").trim();
   if (explicit) return explicit;
-  const base = String(process.env.VITE_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/+$/, "");
+  const base = getConfiguredPublicAppUrl();
   if (!base) {
     console.error("DISCORD_CHAT_BRIDGE_URL or VITE_PUBLIC_APP_URL is required.");
     process.exit(1);
@@ -249,8 +251,8 @@ async function handleGatewayMessage(raw) {
 }
 
 function shouldSkipMessage(message = {}) {
-  if (!message.id || !SNOWFLAKE_RE.test(String(message.id))) return "invalid_message_id";
-  if (!message.channel_id || !SNOWFLAKE_RE.test(String(message.channel_id))) return "invalid_channel_id";
+  if (!isDiscordSnowflake(message.id)) return "invalid_message_id";
+  if (!isDiscordSnowflake(message.channel_id)) return "invalid_channel_id";
   if (message.author?.bot || message.webhook_id) return "bot_or_webhook_message";
   if (channelFilter.size && !channelFilter.has(String(message.channel_id))) return "channel_not_allowed";
   if (!String(message.content || "").trim()) return "empty_content";

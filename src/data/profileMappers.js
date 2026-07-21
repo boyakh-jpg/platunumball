@@ -1,4 +1,5 @@
 import {
+  DEFAULT_PLAYER_RATINGS,
   TEST_PROFILE_AGE_GROUP,
   TEST_PROFILE_AGE_GROUP_SEASON,
   TEST_PROFILE_BIRTH_YEAR,
@@ -8,7 +9,7 @@ import { getUserHashtag, toHashtag } from "../lib/handles.js";
 import { nullableText } from "./rowUtils.js";
 
 function makeDefaultRatings() {
-  return { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
+  return { integrated: DEFAULT_PLAYER_RATINGS.integrated, modes: { ...DEFAULT_PLAYER_RATINGS.modes } };
 }
 
 export function normalizeRatings(ratings = {}) {

@@ -3,7 +3,7 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import RefereeHoverCard from "../referee/RefereeHoverCard.jsx";
-import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS } from "../../lib/constants.js";
+import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_SIDES } from "../../lib/constants.js";
 import { getMatchReferee, normalizeStatRecorders } from "../../lib/matchUtils.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
@@ -35,7 +35,7 @@ export default function MatchContract({ match, users = [], teams = [], matches =
   const statRecorders = normalizeStatRecorders(match.statRecorders ?? rules.statRecorders);
   const recorderLabel = referee
     ? ""
-    : ["teamA", "teamB"]
+    : MATCH_SIDES
         .filter((sideName) => statRecorders[sideName])
         .map((sideName) => `${sideName === "teamA" ? "A사이드" : "B사이드"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
         .join(" · ");

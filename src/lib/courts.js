@@ -8,6 +8,10 @@ export function getCourtId(court = {}) {
   return court.courtId ?? court.court_id ?? court.approvedCourtId ?? court.registeredCourtId ?? courtIdByName(court.court ?? court.courtName);
 }
 
+export function getCourtAddress(court = {}) {
+  return court.roadAddress || court.addressText || court.jibunAddress || "주소 미등록";
+}
+
 export const COURT_SURFACE_OPTIONS = [
   { id: "asphalt", label: "아스팔트" },
   { id: "urethane", label: "우레탄" },

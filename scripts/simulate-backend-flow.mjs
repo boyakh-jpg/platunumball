@@ -29,6 +29,13 @@ import teamEmblemHandler, { deleteObject as deleteTeamEmblemObject, getR2Config 
 import schemaHealthHandler from "../server/api/system/schema-health.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
 import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
+import { DAY_MS, HOUR_MS, MINUTE_MS } from "../src/lib/constants.js";
+import {
+  CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES,
+  MATCH_CANCEL_NOTICE_PREFIXES,
+  MATCH_POSTGAME_NOTICE_PREFIXES,
+  MATCH_SCHEDULED_NOTICE_PREFIXES,
+} from "../src/lib/notifications.js";
 import {
   buildMatchResultSubmission,
   getRecorderHandoffPatch,
@@ -116,7 +123,7 @@ const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const testAuthPassword = process.env.RANKBALL_TEST_PASSWORD || process.env.VITE_TEST_AUTH_PASSWORD || "test-0000";
 const testAuthEmailDomain = process.env.RANKBALL_TEST_AUTH_EMAIL_DOMAIN || process.env.VITE_TEST_AUTH_EMAIL_DOMAIN || "rankball.test";
-const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || (usesRemoteApi ? 60000 : 20000));
+const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || (usesRemoteApi ? MINUTE_MS : 20_000));
 const cleanupTimeoutMs = Number(process.env.RANKBALL_SIM_CLEANUP_TIMEOUT_MS || Math.max(requestTimeoutMs * 6, 120000));
 const ensureRemoteTestActors = process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "1" || process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "true";
 const fullSimulation = process.argv.includes("--full") || process.env.RANKBALL_SIM_FULL === "1" || process.env.RANKBALL_SIM_FULL === "true";
@@ -274,27 +281,6 @@ const refereeSimulationAttemptIds = new Set();
 const refereeSimulationRequestIds = new Set();
 const profileRatingSnapshots = new Map();
 const teamRatingSnapshots = new Map();
-const CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES = [
-  "match-reminder-24h",
-  "match-reminder-2h",
-  "match-reminder-1h",
-  "match-manager-checkin-10m",
-  "match-manager-start-5m",
-];
-const MATCH_SCHEDULED_NOTICE_PREFIXES = [
-  ...CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES,
-  "match-manager-start-now",
-];
-const MATCH_POSTGAME_NOTICE_PREFIXES = [
-  "match-ended-score",
-  "match-dispute-check",
-];
-const MATCH_CANCEL_NOTICE_PREFIXES = [
-  ...MATCH_SCHEDULED_NOTICE_PREFIXES,
-  "match-started",
-  ...MATCH_POSTGAME_NOTICE_PREFIXES,
-];
-
 function makeScenarioIds(label) {
   const safeLabel = String(label || "scenario").replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase();
   const nextIds = {
@@ -915,7 +901,7 @@ async function ensureSimulationRefereeEligibility(profileId = "", label = "refer
 
   const appointmentId = `sim_referee_appt_${label}_${suffix}`;
   const now = new Date(nowMs).toISOString();
-  const endsAt = new Date(nowMs + 3 * 24 * 60 * 60 * 1000).toISOString();
+  const endsAt = new Date(nowMs + 3 * DAY_MS).toISOString();
   const { error: upsertError } = await supabase
     .from("referee_appointments")
     .upsert({
@@ -1392,7 +1378,7 @@ async function runHomeAlertNotificationScenario({
       payload: {
         id: futureId,
         targetUserId: profileId,
-        sendAt: new Date(now.getTime() + 60 * 60 * 1000).toISOString(),
+        sendAt: new Date(now.getTime() + HOUR_MS).toISOString(),
         skipDiscordSync: true,
         simulation: true,
         simulationId: ids.label,
@@ -1796,7 +1782,7 @@ async function runMatchListProfileIntegrityScenario({ label, login }) {
 }
 
 function getKstFutureSchedule(offsetHours = 48) {
-  const date = new Date(Date.now() + Math.max(1, Number(offsetHours) || 48) * 60 * 60 * 1000);
+  const date = new Date(Date.now() + Math.max(1, Number(offsetHours) || 48) * HOUR_MS);
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Seoul",
@@ -1825,7 +1811,7 @@ function getKstCurrentDate() {
 }
 
 function getKstPastSchedule(offsetMinutes = 1) {
-  const date = new Date(Date.now() - Math.max(1, Number(offsetMinutes) || 1) * 60 * 1000);
+  const date = new Date(Date.now() - Math.max(1, Number(offsetMinutes) || 1) * MINUTE_MS);
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Seoul",
@@ -4455,7 +4441,7 @@ async function runRecruitingRoomExpiryScenario({
     inviteeId,
   });
 
-  const staleCreatedAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const staleCreatedAt = new Date(Date.now() - 3 * HOUR_MS).toISOString();
   const { error: staleCreatedAtError } = await step(`${ids.label}:backdateTestRoom`, () => supabase
     .from("recruiting_posts")
     .update({ created_at: staleCreatedAt })
@@ -5592,7 +5578,7 @@ async function runDiscordNotificationOptInScenario({
     title: "Backend simulation Discord opt-in",
     body: "Discord opt-in guard",
     queuedAt: new Date().toISOString(),
-    sendAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    sendAt: new Date(Date.now() + HOUR_MS).toISOString(),
   };
   const disabledSync = await step(`${ids.label}:syncDisabledDelivery`, () => syncDiscordDeliveriesAs(login, [delivery]));
   assertFlow(disabledSync?.ok && disabledSync?.count === 0, "disabled Discord delivery was accepted", disabledSync);

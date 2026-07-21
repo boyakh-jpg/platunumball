@@ -9,8 +9,8 @@ import CourtDetailModal from "../components/court/CourtDetailModal.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
-import { getCourtLayoutLabel, getCourtPlayWarning, getCourtRecommendationScore, getCourtSurfaceLabel, getRegisteredCourts, isCourtFuzzySearchMatch } from "../lib/courts.js";
+import { DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS, getCanonicalRegion, getHostTrustRequirement, getModeSize, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
+import { getCourtAddress, getCourtLayoutLabel, getCourtPlayWarning, getCourtRecommendationScore, getCourtSurfaceLabel, getRegisteredCourts, isCourtFuzzySearchMatch } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
@@ -20,8 +20,8 @@ import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, 
 const today = getLocalDateInputValue();
 const minSoloRecordDate = addDateDays(today, -7);
 const nextWeek = addDateDays(today, 7);
-const maxScheduleDate = addDateDays(today, 365);
-const maxPrivateScheduleDate = addDateDays(today, 30);
+const maxScheduleDate = addDateDays(today, SCHEDULE_MAX_DAYS);
+const maxPrivateScheduleDate = addDateDays(today, ROOM_SCHEDULE_MAX_DAYS);
 const maxPublicScheduleDate = getPublicRoomMaxDateInput();
 const allRegions = ["전체", ...REGIONS];
 const mmrLimitOptions = [
@@ -43,12 +43,8 @@ const tournamentScheduleOptions = [
   { id: "daily", label: "매일 배정" },
   { id: "manual", label: "직접 조율" },
 ];
-const SOLO_RECORD_MODES = ["1v1", "2v2", "3v3", "4v4", "5v5"].map((id) => ({ id, label: id }));
+const SOLO_RECORD_MODES = Array.from(SOLO_RECORD_MODE_IDS, (id) => ({ id, label: id }));
 const MATCH_MODE_IDS = new Set(MATCH_MODES.map((mode) => mode.id));
-
-function getCourtAddress(court = {}) {
-  return court.roadAddress || court.addressText || court.jibunAddress || "주소 미등록";
-}
 
 function getCourtSearchText(court = {}) {
   return [
@@ -71,12 +67,6 @@ function getSoloRecordUserLine(user = {}) {
 
 function getSoloRecordUserSearchText(user = {}) {
   return [user.name, getUserHashtag(user), user.position, user.region, `신뢰도 ${user.trustScore ?? ""}`].filter(Boolean).join(" ");
-}
-
-function getSoloRecordModeSize(mode = "1v1") {
-  const match = String(mode).match(/^(\d)/);
-  const value = match ? Number(match[1]) : 1;
-  return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 1));
 }
 
 function getSoloRecordRosterLines(value = "") {
@@ -107,7 +97,7 @@ function getSoloRecordSelectedIdentitySet(teamAText = "", teamBText = "") {
 }
 
 function getSoloRecordRosterError(mode = "1v1", teamAText = "", teamBText = "") {
-  const sideSize = getSoloRecordModeSize(mode);
+  const sideSize = getModeSize(mode, 1);
   const teamALines = getSoloRecordRosterLines(teamAText);
   const teamBLines = getSoloRecordRosterLines(teamBText);
   const teamALimit = Math.max(0, sideSize - 1);
@@ -259,7 +249,7 @@ function getOpponentTeam(teams, teamId, region, excludedIds = [], capacity = 1) 
 }
 
 function getMmrSpread(teams) {
-  const mmrs = teams.map((team) => Number(team.mmr ?? 1200));
+  const mmrs = teams.map((team) => Number(team.mmr ?? DEFAULT_RATING));
   return mmrs.length ? Math.max(...mmrs) - Math.min(...mmrs) : 0;
 }
 
@@ -429,7 +419,7 @@ export default function CreateMatch({ app }) {
     tournamentSchedulePolicy: "weekly",
     tournamentScheduleNote: "초대팀 확정 후 경기별 일정을 배정합니다.",
     tournamentMmrPolicy: "gap_adjusted",
-    tournamentMaxMmrGap: 250,
+    tournamentMaxMmrGap: DEFAULT_TOURNAMENT_MMR_GAP,
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState("");
@@ -646,7 +636,7 @@ export default function CreateMatch({ app }) {
         Number(Boolean(recentOpponentScores.get(b.id))) - Number(Boolean(recentOpponentScores.get(a.id))) ||
         (recentOpponentScores.get(b.id) ?? 0) - (recentOpponentScores.get(a.id) ?? 0) ||
         Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) ||
-        Math.abs(Number(a.mmr ?? 1200) - Number(selectedTeamA.mmr ?? 1200)) - Math.abs(Number(b.mmr ?? 1200) - Number(selectedTeamA.mmr ?? 1200)) ||
+        Math.abs(Number(a.mmr ?? DEFAULT_RATING) - Number(selectedTeamA.mmr ?? DEFAULT_RATING)) - Math.abs(Number(b.mmr ?? DEFAULT_RATING) - Number(selectedTeamA.mmr ?? DEFAULT_RATING)) ||
         String(a.name ?? "").localeCompare(String(b.name ?? ""))
       ))
       .slice(0, query ? 8 : 5);
@@ -660,7 +650,7 @@ export default function CreateMatch({ app }) {
       .filter((team) => getTeamEligibility(team, selectedTeamA.mmr).allowed)
       .sort((a, b) => (
         Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) ||
-        Math.abs(Number(a.mmr ?? 1200) - Number(selectedTeamA.mmr ?? 1200)) - Math.abs(Number(b.mmr ?? 1200) - Number(selectedTeamA.mmr ?? 1200)) ||
+        Math.abs(Number(a.mmr ?? DEFAULT_RATING) - Number(selectedTeamA.mmr ?? DEFAULT_RATING)) - Math.abs(Number(b.mmr ?? DEFAULT_RATING) - Number(selectedTeamA.mmr ?? DEFAULT_RATING)) ||
         String(a.name ?? "").localeCompare(String(b.name ?? ""))
       ))
       .slice(0, 10);
@@ -707,8 +697,8 @@ export default function CreateMatch({ app }) {
         String(a.name ?? "").localeCompare(String(b.name ?? ""))
       ));
   }, [app.currentUser.id, app.state.settings?.blockedUserIds, app.state.users, currentRegion]);
-  const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked, draft.mmrRangeMode);
-  const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? 1200, draft.ranked, draft.mmrRangeMode);
+  const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? DEFAULT_RATING, draft.ranked, draft.mmrRangeMode);
+  const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? DEFAULT_RATING, draft.ranked, draft.mmrRangeMode);
   const roomTierRange = isTeamRoom ? teamTierRange : personalTierRange;
   const mmrRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
   const currentUserAgeGroup = getAgeGroupForUser(app.currentUser);
@@ -795,7 +785,7 @@ export default function CreateMatch({ app }) {
     isTournamentRoom &&
       draft.ranked &&
       draft.mmrLimitMode === "block" &&
-      tournamentMmrSpread > Number(draft.tournamentMaxMmrGap ?? 250),
+      tournamentMmrSpread > Number(draft.tournamentMaxMmrGap ?? DEFAULT_TOURNAMENT_MMR_GAP),
   );
   const tournamentInvalid = !draft.title.trim() || tournamentDirectoryPending || Boolean(tournamentDirectoryError) || !representativeTournamentTeamSelected || tournamentTeams.length < 2 || tournamentMmrBlocked || ineligibleTournamentTeams.length > 0;
   const publicTeamInvalidReason = !myTeams.some((team) => team.id === draft.teamAId)
@@ -963,7 +953,7 @@ export default function CreateMatch({ app }) {
     const fieldId = sideName === "teamA" ? "soloTeamAPlayersText" : "soloTeamBPlayersText";
     const line = getSoloRecordUserLine(user);
     if (!line) return;
-    const sideSize = getSoloRecordModeSize(draft.mode);
+    const sideSize = getModeSize(draft.mode, 1);
     const targetLimit = sideName === "teamA" ? Math.max(0, sideSize - 1) : sideSize;
     const targetLines = getSoloRecordRosterLines(draft[fieldId]);
     const identity = getSoloRecordRosterIdentity(line);

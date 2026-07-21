@@ -27,7 +27,7 @@ import {
   isMatchReferee,
   isMatchSideTeamParty,
 } from "../lib/matchUtils.js";
-import { SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
+import { MATCH_SIDES, SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -50,7 +50,7 @@ function canAccessActiveMatch(match, user, state) {
   const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin, state.settings?.refereeAppointments);
   const isRecorder = !match.refereeId && getStatRecorderSides(match, user.id).length > 0;
   const isPlayer = getMatchPlayerIds(match).includes(user.id);
-  const isReserve = ["teamA", "teamB"].some((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
+  const isReserve = MATCH_SIDES.some((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
   return isHost || isReferee || isRecorder || isPlayer || isReserve;
 }
 
@@ -59,7 +59,7 @@ function getRoleText(match, user, recorderSides) {
   if (recorderSides.length) return `${recorderSides.map((sideName) => sideLabels[sideName]).join(", ")} 기록자`;
   const playerSide = getPlayerSideName(match, user.id);
   if (playerSide) return `${sideLabels[playerSide]} 선수`;
-  const reserveSide = ["teamA", "teamB"].find((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
+  const reserveSide = MATCH_SIDES.find((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
   if (reserveSide) return `${sideLabels[reserveSide]} 후보`;
   return "경기 관계자";
 }
@@ -84,7 +84,7 @@ function getRecorderCardTitle(match) {
 }
 
 function getRoomTypeLabel(match = {}) {
-  const matchTeamCount = ["teamA", "teamB"].filter((sideName) => Boolean(match?.[sideName]?.teamId) || isMatchSideTeamParty(match, sideName)).length;
+  const matchTeamCount = MATCH_SIDES.filter((sideName) => Boolean(match?.[sideName]?.teamId) || isMatchSideTeamParty(match, sideName)).length;
   const matchPartyCount = (match.parties ?? []).filter((party) => isMatchPartyTeamParty(party)).length;
   if (matchTeamCount >= 2) return "팀전";
   if (matchTeamCount > 0 || matchPartyCount > 0) return "팀 파티 포함";

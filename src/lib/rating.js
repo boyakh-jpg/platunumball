@@ -1,4 +1,4 @@
-import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_MODES } from "./constants.js";
+import { CREDIBILITY_LEVELS, DEFAULT_RATING, EVIDENCE_OPTIONS, MATCH_MODES, MINUTE_MS } from "./constants.js";
 import {
   calculatePlayerStatBoost,
   evaluateRecordVerification,
@@ -36,11 +36,11 @@ const modeCapMap = MATCH_MODES.reduce((map, mode) => {
 
 export { getTier, getTierDisplay, getTierDivision, getTierLabel };
 
-function expectedScore(teamMmr = 1200, opponentMmr = 1200) {
+function expectedScore(teamMmr = DEFAULT_RATING, opponentMmr = DEFAULT_RATING) {
   return 1 / (1 + 10 ** ((opponentMmr - teamMmr) / 400));
 }
 
-function getKFactor(playerRating = 1200) {
+function getKFactor(playerRating = DEFAULT_RATING) {
   if (playerRating < 1000) return 34;
   if (playerRating < 1400) return 30;
   if (playerRating < 1700) return 26;
@@ -72,7 +72,7 @@ function getScheduleFactor(match = {}) {
   const created = match.createdAt ? new Date(match.createdAt) : null;
   const scheduled = getMatchScheduledDate(match);
   if (!created || !scheduled || Number.isNaN(created.getTime()) || Number.isNaN(scheduled.getTime())) return 1;
-  const minutes = (scheduled.getTime() - created.getTime()) / 60000;
+  const minutes = (scheduled.getTime() - created.getTime()) / MINUTE_MS;
   if (minutes >= 60 * 24 * 3) return 1.15;
   if (minutes >= 60 * 24) return 1.1;
   if (minutes >= 30) return 1;
@@ -123,9 +123,9 @@ function getQualityFactor(match = {}, trustScore = 80, history = []) {
 }
 
 function calculateModeDelta({
-  playerRating = 1200,
-  teamMmr = 1200,
-  opponentMmr = 1200,
+  playerRating = DEFAULT_RATING,
+  teamMmr = DEFAULT_RATING,
+  opponentMmr = DEFAULT_RATING,
   actual = 0.5,
   mode = "5v5",
   match = {},
@@ -149,8 +149,8 @@ function calculateIntegratedDelta(params) {
 }
 
 export function calculateTeamDelta({
-  teamMmr = 1200,
-  opponentTeamMmr = 1200,
+  teamMmr = DEFAULT_RATING,
+  opponentTeamMmr = DEFAULT_RATING,
   actual = 0.5,
   match = {},
   regularRatio = 1,
@@ -173,8 +173,8 @@ export function teamRegularRatio(team, playerIds, users = []) {
 }
 
 export function averageTeamMmr(groups = []) {
-  if (!groups.length) return 1200;
-  return groups.reduce((sum, group) => sum + Number(group.team?.mmr ?? 1200), 0) / groups.length;
+  if (!groups.length) return DEFAULT_RATING;
+  return groups.reduce((sum, group) => sum + Number(group.team?.mmr ?? DEFAULT_RATING), 0) / groups.length;
 }
 
 export function getMatchSideTeamGroups(state, match, sideName) {
@@ -222,7 +222,7 @@ export function getFinalizationRatingContext(match, teams = []) {
   };
 }
 
-export function getAveragePlayerMmr(state = {}, playerIds = [], fallback = 1200) {
+export function getAveragePlayerMmr(state = {}, playerIds = [], fallback = DEFAULT_RATING) {
   const values = uniquePlayerIds(playerIds)
     .map((playerId) => Number(state.users?.find((user) => user.id === playerId)?.ratings?.integrated))
     .filter((value) => Number.isFinite(value));
@@ -231,13 +231,13 @@ export function getAveragePlayerMmr(state = {}, playerIds = [], fallback = 1200)
 }
 
 function average(values) {
-  if (!values.length) return 1200;
+  if (!values.length) return DEFAULT_RATING;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function sideAverage(match, sideName, ratings, mode) {
   return average(
-    getRatedSidePlayerIds(match, sideName).map((playerId) => ratings[playerId]?.modes?.[mode] ?? ratings[playerId]?.integrated ?? 1200),
+    getRatedSidePlayerIds(match, sideName).map((playerId) => ratings[playerId]?.modes?.[mode] ?? ratings[playerId]?.integrated ?? DEFAULT_RATING),
   );
 }
 
@@ -264,8 +264,8 @@ export function applyMatchRating(match, players, ratings, history = [], teams = 
     ["teamB", actualB, teamBMmr, teamAMmr],
   ]) {
     for (const playerId of getRatedSidePlayerIds(match, sideName)) {
-      const current = ratings[playerId] ?? { integrated: 1200, modes: {} };
-      const modeRating = current.modes?.[mode] ?? current.integrated ?? 1200;
+      const current = ratings[playerId] ?? { integrated: DEFAULT_RATING, modes: {} };
+      const modeRating = current.modes?.[mode] ?? current.integrated ?? DEFAULT_RATING;
       const trustScore = playerById[playerId]?.trustScore ?? 80;
       const playerTeamId = match[sideName].playerTeams?.[playerId] ?? match[sideName].teamId;
       const playerTeam = teamById[playerTeamId];
@@ -287,7 +287,7 @@ export function applyMatchRating(match, players, ratings, history = [], teams = 
 
       nextRatings[playerId] = {
         ...current,
-        integrated: Math.max(0, Math.round((current.integrated ?? 1200) + integratedDelta)),
+        integrated: Math.max(0, Math.round((current.integrated ?? DEFAULT_RATING) + integratedDelta)),
         modes: {
           ...current.modes,
           [mode]: Math.max(0, Math.round(modeRating + adjustedModeDelta)),

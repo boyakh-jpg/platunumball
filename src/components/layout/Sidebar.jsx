@@ -5,6 +5,7 @@ import TierBadge from "../rating/TierBadge.jsx";
 import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../../lib/assets.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../../lib/discord.js";
 import { getUserHashtag } from "../../lib/handles.js";
+import { DEFAULT_RATING } from "../../lib/constants.js";
 
 const navItems = [
   { to: "/app", label: "홈", icon: House },
@@ -21,7 +22,7 @@ export default function Sidebar({ user, teams = [], auth }) {
   const safeUser = user ?? {};
   const displayName = safeUser.name || auth?.user?.user_metadata?.providerName || auth?.user?.email || "RankBall";
   const displayHashtag = getUserHashtag(safeUser);
-  const integratedRating = safeUser.ratings?.integrated ?? 1200;
+  const integratedRating = safeUser.ratings?.integrated ?? DEFAULT_RATING;
   return (
     <aside className="sidebar">
       <NavLink to="/" className="brand" aria-label="boxtier">

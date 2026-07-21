@@ -1,21 +1,28 @@
 import {
   DAY_MS,
+  HOUR_MS,
   INSTANT_ROOM_EXPIRE_MINUTES,
+  MINUTE_MS,
+  MATCH_SIDES,
   MODE_SIZES,
   PLAYER_STAT_FIELDS,
+  PUBLIC_ROOM_SCHEDULE_MAX_DAYS,
+  REMOTE_CLIENT_RECORD_MONTHS,
   RECORD_TYPES,
   REFEREE_TRUST_MIN,
   ROOM_KINDS,
   SOLO_RECORD_ANONYMOUS_POSITION,
   SOLO_RECORD_ANONYMOUS_SOURCE,
   STAT_ENTRY_WINDOW_MINUTES,
+  isRefereeGrade,
   normalizeDisputeWindowMinutes,
 } from "./constants.js";
+import { isTerminalMatchStatus } from "./notifications.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
 const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean))];
-export const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
+export { PUBLIC_ROOM_SCHEDULE_MAX_DAYS };
 const PUBLIC_ROOM_CONFIRM_OPEN_HOURS = 24;
 const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
 const MATCH_CLOSED_NOTICE_GRACE_MINUTES = INSTANT_ROOM_EXPIRE_MINUTES;
@@ -33,6 +40,19 @@ export function getMatchSideScore(match = {}, sideName = "") {
   const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
   if (!resultKey) return 0;
   return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
+}
+
+export function getMatchSideResult(match = {}, sideName = "") {
+  if (!MATCH_SIDES.includes(sideName)) return "D";
+  const otherSideName = sideName === "teamA" ? "teamB" : "teamA";
+  const sideScore = getMatchSideScore(match, sideName);
+  const otherScore = getMatchSideScore(match, otherSideName);
+  if (sideScore === otherScore) return "D";
+  return sideScore > otherScore ? "W" : "L";
+}
+
+export function compareMatchRecency(a = {}, b = {}) {
+  return String(b.scheduledAt ?? b.createdAt ?? "").localeCompare(String(a.scheduledAt ?? a.createdAt ?? ""));
 }
 
 export function getSafeMatchSide(match = {}, sideName = "teamA", options = {}) {
@@ -320,6 +340,11 @@ export function isDateWithinPastMonths(value, months = 6, now = new Date()) {
   return dateValue >= cutoffValue;
 }
 
+export function isMatchWithinRecordDetailWindow(match = {}, months = REMOTE_CLIENT_RECORD_MONTHS, now = new Date()) {
+  const source = match.scheduledDate ?? match.scheduledAt ?? match.confirmedAt ?? match.createdAt ?? "";
+  return isDateWithinPastMonths(source, months, now);
+}
+
 function getSideMajority(side = {}) {
   const total = side.players?.length ?? 0;
   return Math.floor(total / 2) + 1;
@@ -427,7 +452,7 @@ export function getMatchReservePlayerIds(match = {}, sideName) {
 }
 
 export function getMatchPlayerPlacement(match = {}, playerId = "") {
-  for (const sideName of ["teamA", "teamB"]) {
+  for (const sideName of MATCH_SIDES) {
     if ((match[sideName]?.players ?? []).includes(playerId)) return { side: sideName, reserve: false };
     if (getMatchReservePlayerIds(match, sideName).includes(playerId)) return { side: sideName, reserve: true };
   }
@@ -617,7 +642,7 @@ function getMatchAttendanceTargetIds(match = {}, sideName) {
 
 export function getMissingMatchAttendance(match = {}) {
   const attendance = getMatchAttendance(match);
-  return ["teamA", "teamB"].flatMap((sideName) => (
+  return MATCH_SIDES.flatMap((sideName) => (
     getMatchAttendanceTargetIds(match, sideName)
       .filter((playerId) => !attendance[sideName].includes(playerId))
       .map((playerId) => ({ sideName, playerId }))
@@ -661,6 +686,10 @@ export function getPlayerSideName(match = {}, playerId) {
   if (getMatchSidePlayerIds(match, "teamA").includes(playerId)) return "teamA";
   if (getMatchSidePlayerIds(match, "teamB").includes(playerId)) return "teamB";
   return null;
+}
+
+export function getPlayerMatchResult(match = {}, playerId = "") {
+  return getMatchSideResult(match, getPlayerSideName(match, playerId));
 }
 
 export function getMatchRosterSideName(match = {}, playerId) {
@@ -802,7 +831,6 @@ export function getMatchReferee(match = {}, users = []) {
   return users.find((user) => user.id === match.refereeId) ?? null;
 }
 
-const REFEREE_GRADE_IDS = new Set(["candidate", "silver", "gold", "platinum", "official"]);
 const INACTIVE_REFEREE_STATUSES = new Set(["pending", "rejected", "revoked", "expired", "suspended", "blocked"]);
 const TEST_REFEREE_LOGIN_IDS = new Set(["rankball-001", "rankball-011"]);
 
@@ -829,7 +857,7 @@ function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Da
     user.refereeLicenseVerified === true ||
     profile.licenseVerified === true ||
     profile.examPassed === true ||
-    REFEREE_GRADE_IDS.has(profileGrade)
+    isRefereeGrade(profileGrade)
   );
   if (profileQualified && isActiveRefereeStatus(profileStatus) && isActiveRefereeTerm(profile, nowMs)) return true;
 
@@ -840,7 +868,7 @@ function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Da
     return (
       appointmentUserId === user.id &&
       role === "referee" &&
-      REFEREE_GRADE_IDS.has(grade) &&
+      isRefereeGrade(grade) &&
       isActiveRefereeStatus(appointment.status) &&
       isActiveRefereeTerm(appointment, nowMs)
     );
@@ -887,7 +915,7 @@ export function getEffectiveStatRecorders(match = {}) {
 export function getStatRecorderSides(match = {}, userId) {
   if (!userId) return [];
   const recorders = getEffectiveStatRecorders(match);
-  return ["teamA", "teamB"].filter((sideName) => recorders[sideName] === userId);
+  return MATCH_SIDES.filter((sideName) => recorders[sideName] === userId);
 }
 
 export function isMatchStatRecorder(match = {}, userId, sideName = null) {
@@ -938,14 +966,14 @@ export function isMatchClosedNotice(match = {}, now = new Date()) {
   if (!scheduledAt) return false;
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
   if (!Number.isFinite(nowMs)) return false;
-  return nowMs >= scheduledAt.getTime() + MATCH_CLOSED_NOTICE_GRACE_MINUTES * 60000;
+  return nowMs >= scheduledAt.getTime() + MATCH_CLOSED_NOTICE_GRACE_MINUTES * MINUTE_MS;
 }
 
 function getInstantRoomExpiresAt(room = {}) {
   if (!isInstantRoom(room)) return null;
   const createdAt = new Date(room.createdAt ?? room.created_at ?? "");
   if (!Number.isFinite(createdAt.getTime())) return null;
-  return new Date(createdAt.getTime() + INSTANT_ROOM_EXPIRE_MINUTES * 60000);
+  return new Date(createdAt.getTime() + INSTANT_ROOM_EXPIRE_MINUTES * MINUTE_MS);
 }
 
 function formatLocalClock(date) {
@@ -967,7 +995,7 @@ export function getPublicRoomTimingStatus(room = {}, now = new Date()) {
   const timingType = getRoomTimingType(room);
   if (timingType === "instant") {
     const createdAt = new Date(room.createdAt ?? nowDate);
-    const expiresAt = getInstantRoomExpiresAt(room) ?? new Date(createdAt.getTime() + INSTANT_ROOM_EXPIRE_MINUTES * 60000);
+    const expiresAt = getInstantRoomExpiresAt(room) ?? new Date(createdAt.getTime() + INSTANT_ROOM_EXPIRE_MINUTES * MINUTE_MS);
     return {
       timingType,
       label: "즉시",
@@ -1008,9 +1036,9 @@ export function getPublicRoomTimingStatus(room = {}, now = new Date()) {
   const maxDate = getPublicRoomMaxDateInput(nowDate);
   const dateValue = String(room.scheduledDate ?? "").slice(0, 10);
   const dateAllowed = dateValue >= today && dateValue <= maxDate;
-  const createLeadAllowed = scheduledMs > nowMs + PUBLIC_ROOM_CONFIRM_CLOSE_HOURS * 3600000;
-  const confirmOpenMs = scheduledMs - PUBLIC_ROOM_CONFIRM_OPEN_HOURS * 3600000;
-  const confirmCloseMs = scheduledMs - PUBLIC_ROOM_CONFIRM_CLOSE_HOURS * 3600000;
+  const createLeadAllowed = scheduledMs > nowMs + PUBLIC_ROOM_CONFIRM_CLOSE_HOURS * HOUR_MS;
+  const confirmOpenMs = scheduledMs - PUBLIC_ROOM_CONFIRM_OPEN_HOURS * HOUR_MS;
+  const confirmCloseMs = scheduledMs - PUBLIC_ROOM_CONFIRM_CLOSE_HOURS * HOUR_MS;
   const beforeConfirmOpen = nowMs < confirmOpenMs;
   const afterConfirmClose = nowMs > confirmCloseMs;
 
@@ -1080,7 +1108,7 @@ export function getRoomRefereeLabel(room = {}) {
 }
 
 export function isTournamentMatchSideRosterReady(match = {}, sideName = "") {
-  if (!match.tournamentId || !["teamA", "teamB"].includes(sideName)) return false;
+  if (!match.tournamentId || !MATCH_SIDES.includes(sideName)) return false;
   if (match.rules?.rosterReady?.[sideName] !== true) return false;
   const readyAt = match.rules?.rosterReadyAt?.[sideName];
   const scheduledAt = getMatchScheduledDate(match);
@@ -1123,12 +1151,11 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
 }
 
 const MATCH_ROOM_CHAT_LOCKED_PHASES = new Set(["dispute", "record", "cancelled", "void"]);
-const MATCH_ROOM_CHAT_LOCKED_STATUSES = new Set(["closed", "cancelled", "canceled", "void", "voided"]);
 
 export function isMatchRoomChatLocked(match = {}, now = new Date()) {
   const phase = getMatchRoomPhase(match, now).phase;
   const status = String(match.status ?? "").trim().toLowerCase();
-  return MATCH_ROOM_CHAT_LOCKED_PHASES.has(phase) || MATCH_ROOM_CHAT_LOCKED_STATUSES.has(status);
+  return MATCH_ROOM_CHAT_LOCKED_PHASES.has(phase) || isTerminalMatchStatus(status);
 }
 
 export function isMatchInScheduleMenu(match = {}, now = new Date()) {
@@ -1140,7 +1167,7 @@ export function isMatchInPlayMenu(match = {}, now = new Date()) {
 }
 
 function addMinutes(date, minutes) {
-  return new Date(date.getTime() + Number(minutes ?? 0) * 60000);
+  return new Date(date.getTime() + Number(minutes ?? 0) * MINUTE_MS);
 }
 
 export function getMatchRecordWindow(match = {}, now = Date.now()) {

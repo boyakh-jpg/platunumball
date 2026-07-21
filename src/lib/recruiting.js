@@ -1,4 +1,4 @@
-import { DISPUTE_WINDOW_MINUTES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
+import { DEFAULT_RATING, DISPUTE_WINDOW_MINUTES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
 import { getMatchScheduledDate, isEligibleReferee, isInstantRoom } from "./matchUtils.js";
 import { getAgeGroupForUser } from "./profileSetup.js";
 import { TIERS, getTierDivision } from "./tier.js";
@@ -56,8 +56,13 @@ export const MMR_RANGE_POLICIES = {
 };
 
 const RESERVE_ROLES = new Set();
-const VALID_SIDES = new Set(["teamA", "teamB"]);
-const VALID_APPLICATION_STATUS = new Set(["waiting", "ready", "confirmed"]);
+const VALID_SIDES = new Set(MATCH_SIDES);
+export const RECRUITING_APPLICATION_STATUSES = Object.freeze(["waiting", "ready", "confirmed"]);
+const VALID_APPLICATION_STATUS = new Set(RECRUITING_APPLICATION_STATUSES);
+
+export function normalizeRecruitingApplicationStatus(value = "") {
+  return VALID_APPLICATION_STATUS.has(value) ? value : "waiting";
+}
 
 function unique(items = []) {
   return Array.from(new Set(items.filter(Boolean)));
@@ -150,7 +155,7 @@ export function getLobbyPrimaryTeamId(lobby, sideName) {
 }
 
 export function getLobbyTeamEntry(lobby, sideName, teamId) {
-  if (!teamId || !["teamA", "teamB"].includes(sideName)) return null;
+  if (!teamId || !MATCH_SIDES.includes(sideName)) return null;
   return lobby.sides?.[sideName]?.entries?.find((entry) => (
     entry.kind === "team" &&
     (entry.team?.id ?? entry.teamId) === teamId
@@ -409,7 +414,7 @@ export function getTeamEventEligibility(team = null, users = [], options = {}) {
     const user = userById.get(playerId);
     if (!user) return false;
     if (allowedAgeGroups && !allowedAgeGroups.has(getAgeGroupForUser(user))) return false;
-    const playerMmr = Number(user.ratings?.integrated ?? user.mmr ?? 1200);
+    const playerMmr = Number(user.ratings?.integrated ?? user.mmr ?? DEFAULT_RATING);
     return !enforceMmr || isMmrInRecruitingRange(playerMmr, targetMmr, true, rangeMode);
   });
   const missingCount = Math.max(0, capacity - eligiblePlayerIds.length);
@@ -508,7 +513,7 @@ function normalizeRecruitingApplicant(entry) {
   const joinMode = getRecruitingJoinMode(entry);
   const kind = joinMode === "team" ? "team" : "player";
   const side = VALID_SIDES.has(entry.side) ? entry.side : "teamB";
-  const status = VALID_APPLICATION_STATUS.has(entry.status) ? entry.status : "waiting";
+  const status = normalizeRecruitingApplicationStatus(entry.status);
 
   if (kind === "team" && entry.teamId) {
     return {
@@ -793,15 +798,15 @@ export function normalizeRecruitingPost(post = {}) {
 
 export function getRecruitingTargetMmr(post = {}, state = {}) {
   if (post.teamId) {
-    return state.teams?.find((team) => team.id === post.teamId)?.mmr ?? 1200;
+    return state.teams?.find((team) => team.id === post.teamId)?.mmr ?? DEFAULT_RATING;
   }
   if (post.playerId) {
-    return state.users?.find((user) => user.id === post.playerId)?.ratings?.integrated ?? 1200;
+    return state.users?.find((user) => user.id === post.playerId)?.ratings?.integrated ?? DEFAULT_RATING;
   }
-  return 1200;
+  return DEFAULT_RATING;
 }
 
-export function getRecruitingTierRange(targetMmr = 1200, ranked = true, rangeMode = "narrow") {
+export function getRecruitingTierRange(targetMmr = DEFAULT_RATING, ranked = true, rangeMode = "narrow") {
   if (!ranked) {
     return {
       label: "티어 자유",
@@ -826,12 +831,12 @@ export function getRecruitingTierRange(targetMmr = 1200, ranked = true, rangeMod
   };
 }
 
-export function isMmrInRecruitingRange(candidateMmr = 1200, targetMmr = 1200, ranked = true, rangeMode = "narrow") {
+export function isMmrInRecruitingRange(candidateMmr = DEFAULT_RATING, targetMmr = DEFAULT_RATING, ranked = true, rangeMode = "narrow") {
   const range = getRecruitingTierRange(targetMmr, ranked, rangeMode);
   return !ranked || (candidateMmr >= range.min && candidateMmr <= range.max);
 }
 
-export function getRecruitingFit(post = {}, candidateMmr = 1200, state = {}) {
+export function getRecruitingFit(post = {}, candidateMmr = DEFAULT_RATING, state = {}) {
   const targetMmr = getRecruitingTargetMmr(post, state);
   const range = getRecruitingTierRange(targetMmr, post.ranked !== false, post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
 
@@ -1031,7 +1036,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
   const reserveSeen = new Set();
   const userById = Object.fromEntries((state.users ?? []).map((user) => [user.id, user]));
 
-  const sides = ["teamA", "teamB"].reduce((acc, side) => {
+  const sides = MATCH_SIDES.reduce((acc, side) => {
     const pinnedReserveIds = new Set(normalizedPost.roomState?.pinnedReservePlayers?.[side] ?? []);
     const sideEntries = entries.filter((entry) => entry.side === side && !entry.reserve);
     const reserveEntries = entries.filter((entry) => entry.side === side && entry.reserve);
@@ -1144,14 +1149,14 @@ export function getRecruitingBestSide(post = {}, state = {}) {
   return lobby.sides.teamA.projectedFilled <= lobby.sides.teamB.projectedFilled ? "teamA" : "teamB";
 }
 
-export function getMercenaryTeamWeight(memberMmr = 1200, teamMmr = 1200, role = "regular") {
+export function getMercenaryTeamWeight(memberMmr = DEFAULT_RATING, teamMmr = DEFAULT_RATING, role = "regular") {
   if (!isMercenaryTeamRole(role)) return 1;
   if (memberMmr <= teamMmr - 140) return 0.65;
   if (memberMmr >= teamMmr + 140) return 0.22;
   return 0.4;
 }
 
-export function getMercenaryPlayerFactor(memberMmr = 1200, teamMmr = 1200, role = "regular") {
+export function getMercenaryPlayerFactor(memberMmr = DEFAULT_RATING, teamMmr = DEFAULT_RATING, role = "regular") {
   if (!isMercenaryTeamRole(role)) return 1;
   if (memberMmr >= teamMmr + 140) return 0.62;
   if (memberMmr <= teamMmr - 140) return 0.96;

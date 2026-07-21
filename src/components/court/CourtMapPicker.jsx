@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { MapPin, Star, X } from "lucide-react";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { loadNaverMapsSdk } from "../../lib/naverAddress.js";
+import { getCourtAddress } from "../../lib/courts.js";
 import Button from "../common/Button.jsx";
 
 const DISTRICT_OVERVIEW_ZOOM = 13;
@@ -14,10 +15,6 @@ function getCourtCoordinate(court = {}) {
   const lat = Number(court.lat ?? court.latitude);
   const lng = Number(court.lng ?? court.longitude);
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
-}
-
-function getCourtAddress(court = {}) {
-  return court.roadAddress || court.addressText || court.jibunAddress || "주소 미등록";
 }
 
 function getClusterCellSize(zoom = 12) {

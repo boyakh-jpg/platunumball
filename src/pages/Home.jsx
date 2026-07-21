@@ -13,10 +13,10 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
+import { DEFAULT_RATING, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { addDateDays, canUserResolveMatchDispute, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
+import { addDateDays, canUserResolveMatchDispute, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideResult, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
@@ -73,11 +73,7 @@ function compareSchedule(a, b) {
 
 function getUserResult(match, userId) {
   const sideName = getMatchUserParticipantSideName(match, userId) ?? "teamA";
-  const otherSide = sideName === "teamA" ? "teamB" : "teamA";
-  const sideScore = getSideScore(match, sideName);
-  const otherScore = getSideScore(match, otherSide);
-  if (sideScore === otherScore) return "D";
-  return sideScore > otherScore ? "W" : "L";
+  return getMatchSideResult(match, sideName);
 }
 
 function userNeedsResultInput(match, userId) {
@@ -567,7 +563,7 @@ export default function Home({ app }) {
         entityId: item.id,
         label: item.name,
         kind: "TEAM",
-        meta: `${item.region ?? "지역 미정"} · ${item.homeCourt ?? "홈코트 미정"} · ${item.mmr ?? 1200}`,
+        meta: `${item.region ?? "지역 미정"} · ${item.homeCourt ?? "홈코트 미정"} · ${item.mmr ?? DEFAULT_RATING}`,
         href: `/app/teams/${item.id}`,
         team: item,
         hashtag,

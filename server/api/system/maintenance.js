@@ -1,11 +1,11 @@
 import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
-import { normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
+import { MINUTE_MS, normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
+import { RECRUITING_APPLICATION_STATUSES } from "../../../src/lib/recruiting.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
 const FEED_REPAIR_ROW_FACTOR = 8;
 const ROOM_FEED_RETENTION_DAYS = 7;
 const NOTIFICATION_RETENTION_DAYS = 7;
-const ACTIVE_RECRUITING_APPLICATION_STATUSES = new Set(["waiting", "ready", "confirmed"]);
 
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";
@@ -58,7 +58,7 @@ function isDueApprovalRow(row = {}, nowMs = Date.now()) {
   const endedAtMs = row.ended_at ? new Date(row.ended_at).getTime() : NaN;
   if (!Number.isFinite(endedAtMs)) return false;
   const disputeMinutes = normalizeDisputeWindowMinutes(row.dispute_minutes);
-  return nowMs > endedAtMs + disputeMinutes * 60000;
+  return nowMs > endedAtMs + disputeMinutes * MINUTE_MS;
 }
 
 async function getCandidateMatchIds(client, limit, nowMs) {
@@ -345,7 +345,7 @@ async function normalizeRecruitingSideCapacity(client, limit, now) {
     .select("post_id,kind,team_id,player_id,side,status,reserve,player_ids,created_at,updated_at")
     .in("post_id", postIds)
     .eq("reserve", false)
-    .in("status", [...ACTIVE_RECRUITING_APPLICATION_STATUSES]);
+    .in("status", RECRUITING_APPLICATION_STATUSES);
   if (applicationError) throw applicationError;
 
   const applicationsByPost = new Map();

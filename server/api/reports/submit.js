@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { getMatchScheduledDate } from "../../../src/lib/matchUtils.js";
+import { REPORT_MATCH_WINDOW_MS } from "../../../src/lib/constants.js";
 
-const REPORT_MATCH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const REPORT_MATCH_QUERY_PAGE_SIZE = 200;
 const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review", "team_emblem"]);
 

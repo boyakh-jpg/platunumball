@@ -7,7 +7,7 @@ import TeamEmblem from "../team/TeamEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { getDiscordDisplayName, getDiscordProfileUrl } from "../../lib/discord.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
-import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
+import { canUseHoverPreview, clearPinnedHoverPreview, getPinnedHoverPreviewKey, isTouchPreviewEvent, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 import { getAgeGroupForUser, getAgeGroupLabel, getRepresentativeTeam, getUserProfileTeams } from "../../lib/profileSetup.js";
 import { getTierDivision } from "../../lib/tier.js";
 import { getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../../lib/constants.js";
@@ -28,15 +28,6 @@ function roleLabel(role) {
   if (role === "captain") return getTeamRoleLabel(role);
   if (isMercenaryTeamRole(role)) return "용병";
   return "정규멤버";
-}
-
-function isTouchPreviewEvent(event) {
-  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
-  return typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches;
-}
-
-function canUseHoverPreview() {
-  return typeof window === "undefined" || !window.matchMedia("(hover: none), (pointer: coarse)").matches;
 }
 
 export default function PlayerHoverCard({ user, teams = [], children, className = "", as = "link", to }) {

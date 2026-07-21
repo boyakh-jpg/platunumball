@@ -2,12 +2,15 @@ import crypto from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
 import { getAgeGroupByBirthYear } from "../../../src/lib/profileSetup.js";
+import { DEFAULT_PLAYER_RATINGS } from "../../../src/lib/constants.js";
+import {
+  DISCORD_CURRENT_USER_URL,
+  DISCORD_OAUTH_PROOF_TTL_MS,
+  getDiscordCdnAvatarUrl,
+  isDiscordSnowflake,
+} from "../../../src/lib/discordProtocol.js";
 
-const DEFAULT_RATINGS = { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
 const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,avatar_source,avatar_updated_at,trust_score,ratings,school,company,club,streak,discord_connection,discord_user_id,discord_avatar_url,test_login_id";
-const DISCORD_ME_URL = "https://discord.com/api/users/@me";
-const DISCORD_USER_ID_PATTERN = /^\d{17,20}$/;
-const DISCORD_OAUTH_PROOF_MAX_AGE_MS = 5 * 60 * 1000;
 
 function makeProfileId(authUserId = "") {
   const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
@@ -40,16 +43,6 @@ function canChangeName(existing = {}) {
 
 function getDiscordUserId(connection) {
   return connection && typeof connection === "object" ? connection.userId ?? connection.id ?? null : null;
-}
-
-function getDiscordAvatarUrl(user = {}) {
-  if (!user.id) return "";
-  if (!user.avatar) {
-    const fallbackIndex = Number(user.discriminator ?? 0) % 5;
-    return `https://cdn.discordapp.com/embed/avatars/${Number.isFinite(fallbackIndex) ? fallbackIndex : 0}.png`;
-  }
-  const extension = String(user.avatar).startsWith("a_") ? "gif" : "png";
-  return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${extension}?size=128`;
 }
 
 function getDiscordOAuthAccessToken(profile = {}) {
@@ -99,12 +92,12 @@ function getVerifiedDiscordProof(token = "", expectedProfileId = "") {
   if (
     payload?.version !== 1
     || !String(payload?.appProfileId || "").trim()
-    || !DISCORD_USER_ID_PATTERN.test(String(payload?.discordUserId || ""))
+    || !isDiscordSnowflake(payload?.discordUserId)
     || !Number.isFinite(issuedAt)
     || !Number.isFinite(expiresAt)
     || issuedAt > now + 30_000
     || now > expiresAt
-    || expiresAt - issuedAt > DISCORD_OAUTH_PROOF_MAX_AGE_MS
+    || expiresAt - issuedAt > DISCORD_OAUTH_PROOF_TTL_MS
   ) return null;
   if (String(payload.appProfileId) !== String(expectedProfileId || "")) {
     const error = new Error("discord_oauth_profile_mismatch");
@@ -129,7 +122,7 @@ async function getVerifiedDiscordUser(accessToken = "") {
 
   let discordResponse;
   try {
-    discordResponse = await fetch(DISCORD_ME_URL, {
+    discordResponse = await fetch(DISCORD_CURRENT_USER_URL, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
   } catch {
@@ -145,7 +138,7 @@ async function getVerifiedDiscordUser(accessToken = "") {
   }
 
   const discordUser = await discordResponse.json();
-  if (!DISCORD_USER_ID_PATTERN.test(String(discordUser?.id || ""))) {
+  if (!isDiscordSnowflake(discordUser?.id)) {
     const error = new Error("discord_oauth_identity_invalid");
     error.statusCode = 400;
     throw error;
@@ -181,14 +174,14 @@ async function getRequestedDiscordConnection(profile = {}, existing = {}) {
     userId: verifiedUserId,
     username: String(discordUser.username || "").trim().slice(0, 80),
     globalName: String(discordUser.global_name || discordUser.username || "").trim().slice(0, 80),
-    avatarUrl: getDiscordAvatarUrl(discordUser),
+    avatarUrl: getDiscordCdnAvatarUrl(discordUser),
     linkedAt: new Date().toISOString(),
     source: "discord",
   };
 }
 
 function getLockedRatings(existing = {}) {
-  return existing?.ratings ?? DEFAULT_RATINGS;
+  return existing?.ratings ?? DEFAULT_PLAYER_RATINGS;
 }
 
 function getLockedTrustScore(existing = {}) {

@@ -1,16 +1,11 @@
 import crypto from "node:crypto";
-
-const DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token";
-const DISCORD_ME_URL = "https://discord.com/api/users/@me";
-const DISCORD_OAUTH_PROOF_TTL_MS = 5 * 60 * 1000;
-
-function getAppUrl(request) {
-  const configuredUrl = String(process.env.VITE_PUBLIC_APP_URL ?? "").trim().replace(/\/$/, "");
-  if (configuredUrl) return configuredUrl;
-  const host = request.headers["x-forwarded-host"] || request.headers.host;
-  const protocol = request.headers["x-forwarded-proto"] || "https";
-  return `${protocol}://${host}`;
-}
+import {
+  DISCORD_CURRENT_USER_URL,
+  DISCORD_OAUTH_PROOF_TTL_MS,
+  DISCORD_TOKEN_URL,
+  getDiscordCdnAvatarUrl,
+} from "../../../../src/lib/discordProtocol.js";
+import { getPublicAppUrl } from "../../_publicAppUrl.js";
 
 function encodeBase64UrlJson(value) {
   return Buffer.from(JSON.stringify(value), "utf8")
@@ -42,18 +37,8 @@ function createDiscordOAuthProof(discordUser, state) {
   return `${payload}.${signature}`;
 }
 
-function getDiscordAvatarUrl(user) {
-  if (!user?.id) return "";
-  if (!user.avatar) {
-    const fallbackIndex = Number(user.discriminator ?? 0) % 5;
-    return `https://cdn.discordapp.com/embed/avatars/${Number.isFinite(fallbackIndex) ? fallbackIndex : 0}.png`;
-  }
-  const extension = String(user.avatar).startsWith("a_") ? "gif" : "png";
-  return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${extension}?size=128`;
-}
-
 function redirectToSettingsDiscord(request, response, params) {
-  const url = new URL("/app/settings/discord", getAppUrl(request));
+  const url = new URL("/app/settings/discord", getPublicAppUrl(request));
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, value);
   });
@@ -85,7 +70,7 @@ async function exchangeCodeForToken(code) {
 }
 
 async function fetchDiscordUser(accessToken) {
-  const userResponse = await fetch(DISCORD_ME_URL, {
+  const userResponse = await fetch(DISCORD_CURRENT_USER_URL, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
@@ -123,7 +108,7 @@ export default async function handler(request, response) {
       userId: discordUser.id,
       username: discordUser.username,
       globalName: discordUser.global_name || discordUser.username,
-      avatarUrl: getDiscordAvatarUrl(discordUser),
+      avatarUrl: getDiscordCdnAvatarUrl(discordUser),
       linkedAt: new Date().toISOString(),
       source: "discord",
       oauthProof: createDiscordOAuthProof(discordUser, state),

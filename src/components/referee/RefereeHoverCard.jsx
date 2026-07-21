@@ -3,15 +3,11 @@ import { Link } from "react-router-dom";
 import { BadgeCheck, ClipboardCheck, ShieldCheck, Star, Trophy } from "lucide-react";
 import HoverPortal from "../common/HoverPortal.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
-import { REFEREE_TRUST_MIN } from "../../lib/constants.js";
+import { DAY_MS, REFEREE_TRUST_MIN } from "../../lib/constants.js";
 import { getUserHashtag } from "../../lib/handles.js";
-import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
+import { canUseHoverPreview, clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 
 const COMPLETED_STATUSES = new Set(["approval", "disputed", "confirmed"]);
-
-function canUseHoverPreview() {
-  return typeof window === "undefined" || !window.matchMedia("(hover: none), (pointer: coarse)").matches;
-}
 
 function getMatchTime(match = {}) {
   const raw = match.endedAt ?? match.confirmedAt ?? match.scheduledAt ?? match.createdAt;
@@ -23,7 +19,7 @@ function formatRecentMatch(value) {
   if (!value) return "기록 없음";
   const ms = Date.now() - value;
   if (!Number.isFinite(ms) || ms < 0) return "예정 경기";
-  const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+  const days = Math.floor(ms / DAY_MS);
   if (days < 1) return "오늘";
   if (days < 30) return `${days}일 전`;
   return `${Math.floor(days / 30)}개월 전`;

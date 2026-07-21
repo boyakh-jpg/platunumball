@@ -14,7 +14,7 @@ import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore, isDateWithinPastMonths } from "../lib/matchUtils.js";
 import { getTeamEmblemErrorMessage, TEAM_EMBLEM_FONT_OPTIONS } from "../lib/teamEmblem.js";
 import { formatEmblemDate, getEmblemUploadWarning, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
@@ -44,7 +44,7 @@ const historyStatusLabel = {
   void: "무효",
   cancelled: "취소",
 };
-const managedTeamRoleOptions = ["regular", "mercenary"].map((role) => [role, getTeamRoleLabel(role)]);
+const managedTeamRoleOptions = TEAM_INVITE_ROLES.map((role) => [role, getTeamRoleLabel(role)]);
 const inviteRoleOptions = managedTeamRoleOptions;
 const TEAM_EMBLEM_REPORT_REASONS = ["부적절한 이미지", "혐오·폭력 표현", "사칭 또는 저작권 침해", "기타 운영 확인 필요"];
 

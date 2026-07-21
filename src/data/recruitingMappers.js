@@ -1,9 +1,16 @@
 import {
+  DEFAULT_RATING,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
   normalizeDisputeWindowMinutes,
 } from "../lib/constants.js";
 import { isPublicTeamRecruitingRoom } from "../lib/recruiting.js";
+import {
+  ROOM_CHAT_CLIENT_CACHE_LIMIT,
+  ROOM_CHAT_OPTIMISTIC_MATCH_WINDOW_MS,
+  fromRoomChatMessageRow,
+} from "../lib/roomChat.js";
+import { normalizeTeamEmblemTextMode } from "../lib/teamEmblem.js";
 
 function defaultToDateTime(date, time, fallback) {
   if (date && time) return `${date} ${String(time).slice(0, 5)}`;
@@ -18,26 +25,20 @@ function defaultNormalizeRegionKey(value = "") {
 function mergeRecruitingRoomChatMessages(legacyMessages = [], remoteMessages = []) {
   const merged = [];
   [...(legacyMessages ?? []), ...(remoteMessages ?? [])].forEach((message) => {
-    const next = {
-      id: String(message?.id ?? ""),
-      messageSeq: Number(message?.messageSeq ?? message?.message_seq ?? 0),
-      userId: message?.userId ?? message?.user_id ?? "",
-      body: String(message?.body ?? "").slice(0, 60),
-      createdAt: message?.createdAt ?? message?.created_at ?? "",
-    };
+    const next = fromRoomChatMessageRow(message);
     if (!next.userId || !next.body.trim()) return;
     const nextTime = Date.parse(next.createdAt || 0);
     const duplicate = merged.some((item) => {
       if (next.id && item.id === next.id) return true;
       if (item.userId !== next.userId || item.body !== next.body) return false;
       const itemTime = Date.parse(item.createdAt || 0);
-      return Number.isFinite(nextTime) && Number.isFinite(itemTime) && Math.abs(nextTime - itemTime) <= 30000;
+      return Number.isFinite(nextTime) && Number.isFinite(itemTime) && Math.abs(nextTime - itemTime) <= ROOM_CHAT_OPTIMISTIC_MATCH_WINDOW_MS;
     });
     if (!duplicate) merged.push(next);
   });
   return merged
     .sort((a, b) => (Number(a.messageSeq ?? 0) - Number(b.messageSeq ?? 0)) || String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))
-    .slice(-50);
+    .slice(-ROOM_CHAT_CLIENT_CACHE_LIMIT);
 }
 
 export function toClientRecruitingTeam(row = {}, memberRows = []) {
@@ -49,7 +50,7 @@ export function toClientRecruitingTeam(row = {}, memberRows = []) {
     name: row.name,
     homeCourt: row.home_court,
     region: row.region,
-    mmr: row.mmr ?? 1200,
+    mmr: row.mmr ?? DEFAULT_RATING,
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     accent: row.accent,
@@ -61,7 +62,7 @@ export function toClientRecruitingTeam(row = {}, memberRows = []) {
     emblemColor: row.emblem_color ?? row.accent ?? null,
     emblemBorderEnabled: row.emblem_border_enabled !== false,
     emblemBorderColor: row.emblem_border_color ?? row.accent ?? null,
-    emblemTextMode: new Set(["name", "abbreviation"]).has(row.emblem_text_mode) ? row.emblem_text_mode : "initial",
+    emblemTextMode: normalizeTeamEmblemTextMode(row.emblem_text_mode),
     emblemAbbreviation: row.emblem_abbreviation ?? "",
     emblemFont: row.emblem_font ?? "sport",
     createdAt: row.created_at ?? null,

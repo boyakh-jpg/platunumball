@@ -5,17 +5,9 @@ import TierEmblem from "../rating/TierEmblem.jsx";
 import TeamEmblem from "./TeamEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { getTeamHashtag } from "../../lib/handles.js";
-import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
+import { canUseHoverPreview, clearPinnedHoverPreview, getPinnedHoverPreviewKey, isTouchPreviewEvent, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 import { getTierDivision } from "../../lib/tier.js";
-
-function isTouchPreviewEvent(event) {
-  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
-  return typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches;
-}
-
-function canUseHoverPreview() {
-  return typeof window === "undefined" || !window.matchMedia("(hover: none), (pointer: coarse)").matches;
-}
+import { DEFAULT_RATING } from "../../lib/constants.js";
 
 export default function TeamHoverCard({ team, children, className = "", as = "link", to, directNavigation = false }) {
   const navigate = useNavigate();
@@ -190,7 +182,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
           <span>
             <b>팀 티어</b>
             <span className="hover-tier-label">{getTierDivision(team.mmr)}</span>
-            <em>{Math.round(team.mmr ?? 1200)} MMR</em>
+            <em>{Math.round(team.mmr ?? DEFAULT_RATING)} MMR</em>
           </span>
         </span>
         <span className="team-hover-stats">

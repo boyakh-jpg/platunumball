@@ -5,6 +5,7 @@ import {
   TEAM_COLUMNS,
   TEAM_MEMBER_COLUMNS,
 } from "../../src/data/repositoryColumns.js";
+import { DEFAULT_RATING, isRefereeGrade } from "../../src/lib/constants.js";
 
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
 const TYPE_ALIASES = {
@@ -15,7 +16,6 @@ const TYPE_ALIASES = {
   court: ["court"],
   referee: ["referee"],
 };
-const REFEREE_GRADES = new Set(["candidate", "silver", "gold", "platinum", "official"]);
 
 function normalizeSearchQuery(value = "") {
   return String(value ?? "")
@@ -129,7 +129,7 @@ function activeTerm(row = {}, nowMs = Date.now()) {
 function isActiveRefereeAppointment(row = {}) {
   const status = row.status || "active";
   const role = row.role || "referee";
-  return role === "referee" && status === "active" && REFEREE_GRADES.has(row.grade) && activeTerm(row);
+  return role === "referee" && status === "active" && isRefereeGrade(row.grade) && activeTerm(row);
 }
 
 function getPayload(row = {}) {
@@ -168,7 +168,7 @@ function toTeam(row = {}, memberRows = []) {
     name: row.name,
     homeCourt: row.home_court,
     region: row.region,
-    mmr: row.mmr ?? 1200,
+    mmr: row.mmr ?? DEFAULT_RATING,
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     accent: row.accent,

@@ -10,6 +10,13 @@ export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
   return map;
 }, {});
 
+export function getModeSize(mode = "5v5", fallback = 5) {
+  const configuredSize = Number(MODE_SIZES[mode]);
+  if (Number.isFinite(configuredSize)) return configuredSize;
+  const parsedSize = Number(String(mode).match(/^(\d+)/)?.[1] ?? fallback);
+  return Math.max(1, Math.min(5, Number.isFinite(parsedSize) ? parsedSize : fallback));
+}
+
 export const MATCH_SIDE_FALLBACK_NAMES = Object.freeze({
   teamA: "Team A",
   teamB: "Team B",
@@ -71,6 +78,11 @@ export const MAX_TEAM_MEMBERSHIPS = 3;
 export const MAX_TEAM_MEMBERS = 10;
 export const MAX_TEAM_NAME_LENGTH = 14;
 export const REFEREE_TRUST_MIN = 90;
+export const REFEREE_GRADE_IDS = Object.freeze(["candidate", "silver", "gold", "platinum", "official"]);
+const REFEREE_GRADE_ID_SET = new Set(REFEREE_GRADE_IDS);
+export function isRefereeGrade(value = "") {
+  return REFEREE_GRADE_ID_SET.has(value);
+}
 export const HOST_TRUST_MIN = {
   rankedPrivate: 70,
   rankedPublic: 75,
@@ -94,22 +106,29 @@ export function normalizeDisputeWindowMinutes(value, fallback = DISPUTE_WINDOW_M
   return Math.min(minutes, DISPUTE_WINDOW_MAX_MINUTES);
 }
 export const TEST_ACCOUNT_COUNT = 50;
-const TEAM_INVITE_ROLES = ["regular", "mercenary"];
+export const TEAM_INVITE_ROLES = Object.freeze(["regular", "mercenary"]);
+export const MMR_LIMIT_MODES = Object.freeze(["off", "warn", "block"]);
+const MMR_LIMIT_MODE_SET = new Set(MMR_LIMIT_MODES);
 export function normalizeMmrLimitMode(mode = "block") {
-  return ["off", "warn", "block"].includes(mode) ? mode : "block";
+  return MMR_LIMIT_MODE_SET.has(mode) ? mode : "block";
 }
 export const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
 export const QUEUE_SCHEDULE_TIMES = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
 export const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
 export const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 export const MAX_RECRUITING_RESERVES_PER_SIDE = 2;
-export const DAY_MS = 24 * 60 * 60 * 1000;
+export const MINUTE_MS = 60 * 1000;
+export const HOUR_MS = 60 * MINUTE_MS;
+export const DAY_MS = 24 * HOUR_MS;
 export const SCHEDULE_MAX_DAYS = 365;
 export const ROOM_SCHEDULE_MAX_DAYS = 30;
 export const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
 export const PUBLIC_ROOM_MIN_LEAD_HOURS = 4;
-export const REFEREE_EXAM_COOLDOWN_MS = 7 * DAY_MS;
-export const REPORT_MATCH_WINDOW_MS = 7 * DAY_MS;
+export const DEFAULT_TOURNAMENT_MMR_GAP = 250;
+export const REFEREE_EXAM_COOLDOWN_DAYS = 7;
+export const REPORT_MATCH_WINDOW_DAYS = 7;
+export const REFEREE_EXAM_COOLDOWN_MS = REFEREE_EXAM_COOLDOWN_DAYS * DAY_MS;
+export const REPORT_MATCH_WINDOW_MS = REPORT_MATCH_WINDOW_DAYS * DAY_MS;
 export const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 export const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 export const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
@@ -134,7 +153,8 @@ export const SOLO_RECORD_MODE_IDS = new Set(["1v1", "2v2", "3v3", "4v4", "5v5"])
 export const SOLO_RECORD_ANONYMOUS_POSITION = "free";
 export const SOLO_RECORD_ANONYMOUS_SOURCE = "개인참여";
 
-export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
+export const BASKETBALL_POSITIONS = Object.freeze(["PG", "SG", "SF", "PF", "C"]);
+export const PLAYER_POSITIONS = Object.freeze(["상관없음", ...BASKETBALL_POSITIONS]);
 
 const TEAM_ROLES = {
   captain: "팀장",
@@ -190,6 +210,13 @@ export const EVIDENCE_OPTIONS = [
   { id: "court_reservation", label: "구장 예약내역", factor: 0.2 },
 ];
 
+export const MATCH_SIDES = Object.freeze(["teamA", "teamB"]);
+export const DEFAULT_RATING = 1200;
+export const DEFAULT_PLAYER_RATINGS = Object.freeze({
+  integrated: DEFAULT_RATING,
+  modes: Object.freeze(Object.fromEntries(MATCH_MODES.map((mode) => [mode.id, DEFAULT_RATING]))),
+});
+
 export const CREDIBILITY_LEVELS = {
   self_record: { label: "친선 기록", factor: 0.18 },
   street_majority: { label: "길농 과반 승인", factor: 0.7 },
@@ -207,6 +234,7 @@ export const PLAYER_STAT_FIELDS = [
   { id: "blocks", label: "블록", shortLabel: "BLK", weight: 0.08 },
   { id: "fouls", label: "파울", shortLabel: "F", weight: 0 },
 ];
+export const PLAYER_STAT_FIELD_IDS = Object.freeze(PLAYER_STAT_FIELDS.map((field) => field.id));
 
 export const COURTS = [
   {

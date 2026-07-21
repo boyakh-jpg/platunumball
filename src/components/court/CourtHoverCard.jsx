@@ -6,11 +6,7 @@ import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { COURTS } from "../../lib/constants.js";
 import { getCourtLayoutLabel, getCourtMapUrl, getCourtSurfaceLabel } from "../../lib/courts.js";
 import { getCourtHashtag } from "../../lib/handles.js";
-import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
-
-function canUseHoverPreview() {
-  return typeof window === "undefined" || !window.matchMedia("(hover: none), (pointer: coarse)").matches;
-}
+import { canUseHoverPreview, clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 
 function resolveCourt(court, courtName = "") {
   if (court?.id || court?.name) return court;

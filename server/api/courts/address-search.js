@@ -1,9 +1,9 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { COURT_REQUEST_TRUST_MIN } from "../../../src/lib/constants.js";
+import { COURT_REQUEST_TRUST_MIN, MINUTE_MS } from "../../../src/lib/constants.js";
 
 const NAVER_GEOCODE_URL = "https://maps.apigw.ntruss.com/map-geocode/v2/geocode";
 const MAX_RESULTS = 10;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_WINDOW_MS = MINUTE_MS;
 const RATE_LIMIT_MAX = 12;
 const rateLimitBuckets = new Map();
 

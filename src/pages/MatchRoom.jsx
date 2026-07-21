@@ -15,7 +15,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeDisputeWindowMinutes } from "../lib/constants.js";
+import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import {
   formatKoreanDateTime,
@@ -120,7 +120,7 @@ function getPlayerMetaLabel(user = null) {
 }
 
 function getRecordPlayerEntries(match = {}, includeReserves = false) {
-  return ["teamA", "teamB"].flatMap((sideName) => (
+  return MATCH_SIDES.flatMap((sideName) => (
     getMatchSideRecordPlayerIds(match, sideName, includeReserves).map((playerId, index) => ({ sideName, playerId, index }))
   ));
 }
@@ -152,7 +152,7 @@ function getTrustFeedbackRole(match, playerId) {
   const recorders = getEffectiveStatRecorders(match);
   if (Object.values(recorders).includes(playerId)) roles.push("기록자");
   if (getMatchPlayerIds(match).includes(playerId)) roles.push("선수");
-  if (["teamA", "teamB"].some((sideName) => getMatchReservePlayerIds(match, sideName).includes(playerId))) roles.push("후보");
+  if (MATCH_SIDES.some((sideName) => getMatchReservePlayerIds(match, sideName).includes(playerId))) roles.push("후보");
   return roles.length ? roles.join(" · ") : "관계자";
 }
 
@@ -344,7 +344,7 @@ export default function MatchRoom({ app }) {
   const statRecorders = hasReferee ? {} : getEffectiveStatRecorders(match);
   const recorderSummary = referee
     ? `심판 ${referee.name}`
-    : ["teamA", "teamB"]
+    : MATCH_SIDES
         .filter((sideName) => statRecorders[sideName])
         .map((sideName) => `${sideName === "teamA" ? "A사이드" : "B사이드"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
         .join(" · ") || "참가자 본인 득점";
@@ -976,7 +976,7 @@ export default function MatchRoom({ app }) {
                 </div>
               </div>
               <div className="stat-entry-grid compact-stat-entry">
-                {["teamA", "teamB"].map((sideName) => (
+                {MATCH_SIDES.map((sideName) => (
                   <div key={sideName} className="stat-entry-side">
                     <h3>{(sideName === "teamA" ? teamASide : teamBSide).name} 개인 기록</h3>
                     {getMatchSideRecordPlayerIds(match, sideName).map((playerId, index) => {

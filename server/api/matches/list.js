@@ -32,6 +32,9 @@ import {
   TEAM_COLUMNS,
 } from "../../../src/data/repositoryColumns.js";
 import {
+  DEFAULT_RATING,
+  HOUR_MS,
+  MATCH_SIDES,
   MATCH_SIDE_FALLBACK_NAMES,
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
@@ -39,11 +42,12 @@ import {
 } from "../../../src/lib/constants.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { getMatchRoomPhase, isMatchClosedNotice, isMatchInPlayMenu, isMatchInScheduleMenu, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
+import { TERMINAL_MATCH_STATUS_VALUES } from "../../../src/lib/notifications.js";
 
 let userRoomFeedAvailable = true;
 let relatedActiveMatchListAvailable = true;
 const MATCH_LIST_MAX_LIMIT = REMOTE_CLIENT_ACTIVE_MATCH_LIMIT;
-const ACTIVE_MATCH_EXCLUDED_STATUS_VALUES = Object.freeze(["confirmed", "closed", "cancelled", "canceled", "void", "voided"]);
+const ACTIVE_MATCH_EXCLUDED_STATUS_VALUES = Object.freeze(["confirmed", ...TERMINAL_MATCH_STATUS_VALUES]);
 const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(ACTIVE_MATCH_EXCLUDED_STATUS_VALUES);
 const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record"]);
 const RECENT_COMPLETED_MATCH_HOURS = 24;
@@ -223,7 +227,7 @@ async function attachMatchPlayerCountsToCards(client, matches = [], debugTiming 
     const matchId = row?.match_id;
     const side = row?.side;
     const userId = row?.user_id;
-    if (!matchId || !["teamA", "teamB"].includes(side) || !userId) return;
+    if (!matchId || !MATCH_SIDES.includes(side) || !userId) return;
     if (!countsByMatch.has(matchId)) {
       countsByMatch.set(matchId, { teamA: new Set(), teamB: new Set() });
     }
@@ -354,7 +358,7 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
 async function fetchRecentCompletedMatchFeedPage(client, profileId = "", hours = RECENT_COMPLETED_MATCH_HOURS, limit = RECENT_COMPLETED_MATCH_LIMIT) {
   if (!profileId || !userRoomFeedAvailable) return null;
   const cappedLimit = Math.max(1, Math.min(RECENT_COMPLETED_MATCH_LIMIT, Number(limit) || RECENT_COMPLETED_MATCH_LIMIT));
-  const since = new Date(Date.now() - Math.max(1, Number(hours) || RECENT_COMPLETED_MATCH_HOURS) * 60 * 60 * 1000).toISOString();
+  const since = new Date(Date.now() - Math.max(1, Number(hours) || RECENT_COMPLETED_MATCH_HOURS) * HOUR_MS).toISOString();
   const rowLimit = Math.min(RECENT_COMPLETED_FEED_ROW_MAX_LIMIT, cappedLimit * MATCH_FEED_ROW_FACTOR);
   const { data, error } = await client
     .from("user_room_feed")
@@ -877,7 +881,7 @@ function toClientTeam(row = {}) {
     name: row.name,
     homeCourt: row.home_court,
     region: row.region,
-    mmr: row.mmr ?? 1200,
+    mmr: row.mmr ?? DEFAULT_RATING,
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     accent: row.accent,

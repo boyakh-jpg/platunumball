@@ -4,10 +4,16 @@ import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.
 import { getBlockedUserIds, getNotificationActorId } from "../../../src/lib/notifications.js";
 import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
 import { NOTIFICATION_COLUMNS } from "../../../src/data/repositoryColumns.js";
+import { getPublicAppWebUrl } from "../_publicAppUrl.js";
+import {
+  DISCORD_API_BASE_URL,
+  DISCORD_NOTIFICATION_BODY_MAX_LENGTH,
+  DISCORD_NOTIFICATION_URL_MAX_LENGTH,
+  isDiscordSnowflake,
+} from "../../../src/lib/discordProtocol.js";
+import { MINUTE_MS } from "../../../src/lib/constants.js";
 
-const DISCORD_API_BASE = "https://discord.com/api/v10";
 const MAX_BATCH_SIZE = 25;
-const DISCORD_SNOWFLAKE_RE = /^\d{17,20}$/;
 
 function getWorkerSecret() {
   return process.env.CRON_SECRET || "";
@@ -41,7 +47,7 @@ async function discordFetch(path, options = {}) {
   }
   const authorization = /^Bot\s+/i.test(token) ? token : `Bot ${token}`;
 
-  const response = await fetch(`${DISCORD_API_BASE}${path}`, {
+  const response = await fetch(`${DISCORD_API_BASE_URL}${path}`, {
     ...options,
     headers: {
       Authorization: authorization,
@@ -137,7 +143,7 @@ function isExactDiscordUsernameMatch(user = {}, targetUsername = "") {
 async function resolveDiscordUserIdByUsername(username) {
   const targetUsername = normalizeDiscordUsername(username);
   if (!targetUsername) throw httpError("missing_discord_username");
-  if (DISCORD_SNOWFLAKE_RE.test(targetUsername)) return targetUsername;
+  if (isDiscordSnowflake(targetUsername)) return targetUsername;
 
   const guildIds = await getBotGuildIds();
   if (!guildIds.length) throw httpError("discord_bot_has_no_guilds", 404);
@@ -178,16 +184,14 @@ function getDiscordComponents(actions = []) {
 function getDiscordWebUrl(payload = {}) {
   const rawUrl = String(payload.webUrl || payload.webPath || "").trim();
   if (!rawUrl || /^https?:\/\//i.test(rawUrl)) return rawUrl;
-  const publicAppUrl = String(process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
-  if (!publicAppUrl) return rawUrl;
-  return `${publicAppUrl}${rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`}`;
+  return getPublicAppWebUrl(rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`);
 }
 
 function getDiscordMessage(delivery = {}) {
   const payload = delivery.payload ?? {};
   const title = trimDiscordText(payload.title || delivery.event || "RankBall", 120);
-  const body = trimDiscordText(payload.body || "", 1200);
-  const webUrl = trimDiscordText(getDiscordWebUrl(payload), 500);
+  const body = trimDiscordText(payload.body || "", DISCORD_NOTIFICATION_BODY_MAX_LENGTH);
+  const webUrl = trimDiscordText(getDiscordWebUrl(payload), DISCORD_NOTIFICATION_URL_MAX_LENGTH);
   const content = [`**${title}**`, body, webUrl].filter(Boolean).join("\n").slice(0, 1900);
   return {
     content,
@@ -231,8 +235,8 @@ async function sendTestDiscordDm(body = {}) {
     event: "test",
     payload: {
       title: trimDiscordText(body.title || "RankBall 테스트 DM", 120),
-      body: trimDiscordText(body.message || body.body || "RankBall Discord 알림 테스트입니다.", 1200),
-      webUrl: trimDiscordText(body.webUrl || process.env.VITE_PUBLIC_APP_URL || "", 500),
+      body: trimDiscordText(body.message || body.body || "RankBall Discord 알림 테스트입니다.", DISCORD_NOTIFICATION_BODY_MAX_LENGTH),
+      webUrl: trimDiscordText(body.webUrl || process.env.VITE_PUBLIC_APP_URL || "", DISCORD_NOTIFICATION_URL_MAX_LENGTH),
       sentAt: now,
     },
   });
@@ -413,7 +417,7 @@ export default async function handler(request, response) {
         const attemptCount = Number(delivery.attempt_count ?? 0) + 1;
         const terminalFailure = attemptCount >= 5;
         const retryDelayMinutes = [1, 5, 15, 60][Math.min(attemptCount - 1, 3)];
-        const retryAt = new Date(Date.now() + retryDelayMinutes * 60 * 1000).toISOString();
+        const retryAt = new Date(Date.now() + retryDelayMinutes * MINUTE_MS).toISOString();
         await supabase
           .from("discord_notification_deliveries")
           .update({

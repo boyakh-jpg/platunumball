@@ -1,9 +1,12 @@
 import crypto from "node:crypto";
 import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
 import { loadAuthoritativeState } from "../_authoritativeState.js";
+import {
+  DISCORD_INVITE_ACTION_PREFIX as INVITE_PREFIX,
+  DISCORD_TOURNAMENT_ACTION_PREFIX as TOURNAMENT_PREFIX,
+} from "../../../src/lib/discordProtocol.js";
+import { getPublicAppWebUrl } from "../_publicAppUrl.js";
 
-const INVITE_PREFIX = "rankball:invite";
-const TOURNAMENT_PREFIX = "rankball:tournament";
 const INTERACTION_PING = 1;
 const INTERACTION_COMPONENT = 3;
 const RESPONSE_PONG = 1;
@@ -115,13 +118,7 @@ function parseTournamentAction(customId = "") {
 
 function getTournamentUrl(request, tournamentId) {
   const path = `/app/tournaments/${encodeURIComponent(tournamentId)}`;
-  const configuredUrl = String(process.env.VITE_PUBLIC_APP_URL || "").trim().replace(/\/+$/, "");
-  if (configuredUrl) return `${configuredUrl}${path}`;
-
-  const host = String(getHeader(request, "x-forwarded-host") || getHeader(request, "host") || "").trim();
-  if (!host) return path;
-  const protocol = String(getHeader(request, "x-forwarded-proto") || "https").split(",")[0].trim();
-  return `${protocol}://${host}${path}`;
+  return getPublicAppWebUrl(path, request);
 }
 
 function getInteractionDiscordUserId(interaction = {}) {

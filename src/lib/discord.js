@@ -1,4 +1,5 @@
-import { getNotificationActorId, isNotificationDue } from "./notifications.js";
+import { getNotificationActorId, getNotificationTargetPath, isNotificationDue } from "./notifications.js";
+import { DISCORD_OAUTH_STATE_TTL_MS, getDiscordInviteCustomId } from "./discordProtocol.js";
 
 export const DISCORD_NOTIFICATION_EVENTS = [
   { id: "match", label: "초대/경기" },
@@ -7,7 +8,6 @@ export const DISCORD_NOTIFICATION_EVENTS = [
 ];
 
 const DISCORD_EVENT_IDS = new Set(DISCORD_NOTIFICATION_EVENTS.map((event) => event.id));
-const DISCORD_INVITE_ACTION_PREFIX = "rankball:invite";
 const DISCORD_OAUTH_STATE_STORAGE_KEY = "rankball_discord_oauth_state";
 
 export function getDiscordChannel(settings = {}) {
@@ -133,7 +133,7 @@ export function consumeDiscordOAuthResult(userId = "") {
   url.searchParams.delete("discordError");
   window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
 
-  const stateExpired = !stored?.createdAt || Date.now() - stored.createdAt > 10 * 60 * 1000;
+  const stateExpired = !stored?.createdAt || Date.now() - stored.createdAt > DISCORD_OAUTH_STATE_TTL_MS;
   if (!stored || stored.state !== state || stateExpired) {
     return { status: "error", error: "state_mismatch" };
   }
@@ -167,10 +167,7 @@ function getAppBaseUrl() {
 }
 
 function getNotificationWebPath(notification = {}) {
-  if (notification.webPath) return notification.webPath;
-  if (notification.matchId) return `/app/matches?match=${encodeURIComponent(notification.matchId)}`;
-  if (notification.recruitingPostId) return `/app/recruiting?post=${encodeURIComponent(notification.recruitingPostId)}`;
-  return "/app/notifications";
+  return getNotificationTargetPath(notification);
 }
 
 function getNotificationWebUrl(notification = {}) {
@@ -180,12 +177,7 @@ function getNotificationWebUrl(notification = {}) {
 }
 
 function getDiscordActionId(action, recruitingPostId, invitationId) {
-  return [
-    DISCORD_INVITE_ACTION_PREFIX,
-    action,
-    encodeURIComponent(String(recruitingPostId ?? "")),
-    encodeURIComponent(String(invitationId ?? "")),
-  ].join(":");
+  return getDiscordInviteCustomId(action, recruitingPostId, invitationId);
 }
 
 function getDiscordNotificationActions(notification = {}) {

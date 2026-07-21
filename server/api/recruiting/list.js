@@ -37,6 +37,12 @@ import {
   TEAM_MEMBER_COLUMNS,
 } from "../../../src/data/repositoryColumns.js";
 import { getRecruitingLobby, isPublicTeamRecruitingRoom } from "../../../src/lib/recruiting.js";
+import {
+  ROOM_CHAT_HISTORY_LIMIT,
+  ROOM_CHAT_MESSAGE_COLUMNS,
+  clampRoomChatHistoryLimit,
+  fromRoomChatMessageRow,
+} from "../../../src/lib/roomChat.js";
 
 let currentUserRecruitingRpcAvailable = true;
 let userRoomFeedAvailable = true;
@@ -44,7 +50,6 @@ let userRoomFeedScopeAvailable = true;
 let userRoomFeedTimingColumnsAvailable = true;
 
 const RECRUITING_COUNT_POST_COLUMNS = "id,type,visibility,mode,room_state,host_join_mode,host_side,side_capacity,player_ids,player_id,team_id,status";
-const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at,message_seq";
 const RECRUITING_FEED_MAX_LIMIT = 200;
 const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
 const RECRUITING_FEED_ROW_MAX_LIMIT = 320;
@@ -124,20 +129,10 @@ function getRecruitingRegionScope(body = {}) {
   return "local";
 }
 
-function fromRoomChatMessageRow(row = {}) {
-  return {
-    id: String(row.id ?? ""),
-    messageSeq: Number(row.message_seq ?? 0),
-    userId: row.user_id ?? "",
-    body: String(row.body ?? "").slice(0, 60),
-    createdAt: row.created_at ?? "",
-  };
-}
-
-async function fetchRoomChatMessagesByPostIds(client, postIds = [], limitPerRoom = 30) {
+async function fetchRoomChatMessagesByPostIds(client, postIds = [], limitPerRoom = ROOM_CHAT_HISTORY_LIMIT) {
   const ids = uniqueIds(postIds);
   if (!ids.length) return new Map();
-  const cappedLimit = Math.max(1, Math.min(30, Number(limitPerRoom) || 30));
+  const cappedLimit = clampRoomChatHistoryLimit(limitPerRoom);
   const { data, error } = await client
     .from("room_chat_messages")
     .select(ROOM_CHAT_MESSAGE_COLUMNS)

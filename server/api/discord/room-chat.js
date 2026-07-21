@@ -1,12 +1,11 @@
 import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { ROOM_CHAT_MESSAGE_COLUMNS } from "../../../src/lib/roomChat.js";
 import {
   fromRoomChatMessageRow,
   getRoomDiscordLinkByTarget,
   isDiscordSnowflake,
   sanitizeRoomChatBody,
 } from "./_roomChatBridge.js";
-
-const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at,message_seq";
 
 function reject(statusCode, message) {
   const error = new Error(message);

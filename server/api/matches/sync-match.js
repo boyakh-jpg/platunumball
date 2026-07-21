@@ -1,7 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
-import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
-import { RECORD_TYPES, normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
+import { getDbScheduleParts } from "../../../src/data/scheduleUtils.js";
+import { getAuthenticatedContext, nullableText, readJsonBody, sendJson, toArray, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
+import {
+  BASKETBALL_POSITIONS,
+  DAY_MS,
+  DEFAULT_TOURNAMENT_MMR_GAP,
+  HOUR_MS,
+  MINUTE_MS,
+  MATCH_SIDES,
+  PLAYER_STAT_FIELD_IDS as PLAYER_STAT_FIELDS,
+  RECORD_TYPES,
+  getModeSize,
+  isRefereeGrade,
+  normalizeDisputeWindowMinutes,
+} from "../../../src/lib/constants.js";
 import { makeAnonymousMatchPlayer } from "../../../src/lib/matchUtils.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
@@ -12,9 +25,14 @@ import {
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
+import { getPublicAppWebUrl } from "../_publicAppUrl.js";
+import {
+  MATCH_CANCEL_NOTICE_PREFIXES,
+  MATCH_POSTGAME_NOTICE_PREFIXES,
+  MATCH_SCHEDULED_NOTICE_PREFIXES,
+} from "../../../src/lib/notifications.js";
 
-const PLAYER_STAT_FIELDS = ["points", "rebounds", "assists", "steals", "blocks", "fouls"];
-const ACHIEVEMENT_POSITIONS = new Set(["PG", "SG", "SF", "PF", "C"]);
+const ACHIEVEMENT_POSITIONS = new Set(BASKETBALL_POSITIONS);
 const configuredDiscordQueueTimeoutMs = Number(process.env.DISCORD_QUEUE_TIMEOUT_MS || 2500);
 const DISCORD_QUEUE_TIMEOUT_MS = Number.isFinite(configuredDiscordQueueTimeoutMs) && configuredDiscordQueueTimeoutMs > 0
   ? configuredDiscordQueueTimeoutMs
@@ -22,39 +40,22 @@ const DISCORD_QUEUE_TIMEOUT_MS = Number.isFinite(configuredDiscordQueueTimeoutMs
 const MATCH_REMINDER_OFFSETS = [
   {
     suffix: "24h",
-    offsetMs: 24 * 60 * 60 * 1000,
+    offsetMs: DAY_MS,
     title: "내일 경기",
     intro: "내일 경기입니다. 일정과 구장을 확인해주세요.",
   },
   {
     suffix: "2h",
-    offsetMs: 2 * 60 * 60 * 1000,
+    offsetMs: 2 * HOUR_MS,
     title: "경기 2시간 전",
     intro: "경기 2시간 전입니다. 이동 준비를 시작해주세요.",
   },
   {
     suffix: "1h",
-    offsetMs: 60 * 60 * 1000,
+    offsetMs: HOUR_MS,
     title: "경기 1시간 전",
     intro: "경기 시작 전에 출석체크해요. 모여주세요.",
   },
-];
-const MATCH_SCHEDULED_NOTICE_PREFIXES = [
-  "match-reminder-24h",
-  "match-reminder-2h",
-  "match-reminder-1h",
-  "match-manager-checkin-10m",
-  "match-manager-start-now",
-  "match-manager-start-5m",
-];
-const MATCH_POSTGAME_NOTICE_PREFIXES = [
-  "match-ended-score",
-  "match-dispute-check",
-];
-const MATCH_CANCEL_NOTICE_PREFIXES = [
-  ...MATCH_SCHEDULED_NOTICE_PREFIXES,
-  "match-started",
-  ...MATCH_POSTGAME_NOTICE_PREFIXES,
 ];
 const MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS = new Set([
   "createMatch",
@@ -75,18 +76,6 @@ const MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS = new Set([
 function toFiniteNumber(value, fallback = 0) {
   const number = Number(value ?? fallback);
   return Number.isFinite(number) ? number : fallback;
-}
-
-function getDbScheduleParts(match = {}) {
-  const timingType = (match.timingType ?? match.rules?.timingType) === "instant" ? "instant" : "scheduled";
-  const scheduledDate = timingType === "instant" ? null : match.scheduledDate || getDatePart(match.scheduledAt) || null;
-  const scheduledTime = timingType === "instant" ? null : toDbTime(match.scheduledTime || getTimePart(match.scheduledAt));
-  return {
-    timingType,
-    scheduledDate,
-    scheduledTime,
-    scheduledAt: timingType === "instant" ? null : [scheduledDate, scheduledTime].filter(Boolean).join(" ") || null,
-  };
 }
 
 function reject(statusCode, message) {
@@ -111,18 +100,13 @@ function uniqueItemsById(items = []) {
   return [...new Map((items ?? []).filter((item) => item?.id).map((item) => [item.id, item])).values()];
 }
 
-function getPublicAppUrl() {
-  return String(process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
-}
-
 function getMatchWebPath(matchId = "") {
   return `/app/matches?match=${encodeURIComponent(String(matchId))}`;
 }
 
 function getMatchWebUrl(matchId = "") {
-  const baseUrl = getPublicAppUrl();
   const path = getMatchWebPath(matchId);
-  return baseUrl ? `${baseUrl}${path}` : path;
+  return getPublicAppWebUrl(path);
 }
 
 function parseMatchScheduleDate(value) {
@@ -146,7 +130,7 @@ function formatKstDateTime(date) {
 }
 
 function getMatchCapacity(match = {}) {
-  return getModeCapacity(match.mode) * 2;
+  return getModeSize(match.mode) * 2;
 }
 
 function getMatchSummaryLines(match = {}) {
@@ -442,7 +426,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
       });
     });
 
-    const checkinAtMs = scheduledAt.getTime() - 10 * 60 * 1000;
+    const checkinAtMs = scheduledAt.getTime() - 10 * MINUTE_MS;
     if (checkinAtMs > nowMs) {
       addRows(managerIds, managerProfiles, {
         idPrefix: "match-manager-checkin-10m",
@@ -451,7 +435,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
         sendAt: new Date(checkinAtMs).toISOString(),
       });
     }
-    const startReminderAtMs = scheduledAt.getTime() - 5 * 60 * 1000;
+    const startReminderAtMs = scheduledAt.getTime() - 5 * MINUTE_MS;
     if (startReminderAtMs > nowMs) {
       addRows(managerIds, managerProfiles, {
         idPrefix: "match-manager-start-5m",
@@ -494,18 +478,12 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
       idPrefix: "match-dispute-check",
       title: "이의신청 확인",
       intro: "경기 종료 30분이 지났습니다. 점수가 입력됐다면 결과를 확인하고, 문제가 있으면 이의신청해주세요.",
-      sendAt: new Date(endedAt.getTime() + 30 * 60 * 1000).toISOString(),
+      sendAt: new Date(endedAt.getTime() + 30 * MINUTE_MS).toISOString(),
     });
   }
 
   await upsertMatchNotificationRows(supabase, notificationRows);
   return upsertDiscordDeliveryRows(supabase, rows);
-}
-
-function getModeCapacity(mode = "5v5") {
-  const match = String(mode).match(/^(\d+)/);
-  const value = match ? Number(match[1]) : 5;
-  return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 5));
 }
 
 function getMatchPlayerIds(match = {}) {
@@ -593,7 +571,7 @@ function getAnonymousPlayerIds(match = {}) {
 }
 
 function validateMatchShape(match = {}) {
-  const capacity = getModeCapacity(match.mode);
+  const capacity = getModeSize(match.mode);
   if ((match.teamA?.players ?? []).filter(Boolean).length > capacity) reject(400, "team_a_exceeds_mode_capacity");
   if ((match.teamB?.players ?? []).filter(Boolean).length > capacity) reject(400, "team_b_exceeds_mode_capacity");
 
@@ -627,7 +605,7 @@ async function validateMatchRosterEligibility(supabase, match = {}) {
   await assertProfilesExist(supabase, realProfileIds(rosterIds), "match_player_not_found");
 
   const rostersByTeam = new Map();
-  ["teamA", "teamB"].forEach((sideName) => {
+  MATCH_SIDES.forEach((sideName) => {
     const teamId = match[sideName]?.teamId;
     if (!teamId) return;
     addTeamRoster(rostersByTeam, teamId, realProfileIds(getSideScopedIds(match, sideName)));
@@ -765,7 +743,7 @@ function toTournamentRow(tournament = {}) {
     schedule_policy: tournament.schedulePolicy ?? tournament.schedule_policy ?? "weekly",
     schedule_note: tournament.scheduleNote ?? tournament.schedule_note ?? "",
     mmr_limit_mode: tournament.mmrLimitMode ?? tournament.mmr_limit_mode ?? "warn",
-    max_mmr_gap: Number(tournament.maxMmrGap ?? tournament.max_mmr_gap ?? 250),
+    max_mmr_gap: Number(tournament.maxMmrGap ?? tournament.max_mmr_gap ?? DEFAULT_TOURNAMENT_MMR_GAP),
     mmr_policy: tournament.mmrPolicy ?? tournament.mmr_policy ?? "gap_adjusted",
     rules: tournament.rules ?? {},
     memo: tournament.memo ?? "",
@@ -929,7 +907,7 @@ function canSyncMatchRecordTeamRoster(profileId, existingMatch, existingPlayers,
     return false;
   }
 
-  const changedSides = ["teamA", "teamB"].filter((sideName) => !sameRosterIds(
+  const changedSides = MATCH_SIDES.filter((sideName) => !sameRosterIds(
     getExistingSideRosterIds(existingMatch, existingPlayers, sideName),
     getNextSideRosterIds(nextMatch, sideName),
   ));
@@ -999,11 +977,10 @@ async function isActiveReferee(supabase, userId, minTrust = 90) {
   if (error) throw error;
 
   const now = Date.now();
-  const refereeGrades = new Set(["candidate", "silver", "gold", "platinum", "official"]);
   return toArray(data).some((row) => {
     const startsAt = row.starts_at ? Date.parse(row.starts_at) : 0;
     const endsAt = row.ends_at ? Date.parse(row.ends_at) : 0;
-    return refereeGrades.has(row.grade) && (!startsAt || startsAt <= now) && (!endsAt || endsAt > now);
+    return isRefereeGrade(row.grade) && (!startsAt || startsAt <= now) && (!endsAt || endsAt > now);
   });
 }
 
@@ -1357,7 +1334,7 @@ async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = 
 async function assertMatchTeamPlacementSide(context, operation = {}, matchId = "") {
   if (operation.action !== "setMatchRoomPlayerPlacement") return;
   const playerId = String(operation.playerId ?? "").trim();
-  const requestedSide = ["teamA", "teamB"].includes(operation.placement?.side)
+  const requestedSide = MATCH_SIDES.includes(operation.placement?.side)
     ? operation.placement.side
     : null;
   if (!matchId || !playerId || !requestedSide) return;
@@ -1379,7 +1356,7 @@ async function assertMatchTeamPlacementSide(context, operation = {}, matchId = "
   if (playerError) throw playerError;
   if (!matchRow) reject(404, "match_not_found");
 
-  const reserveSides = ["teamA", "teamB"].filter((sideName) => (
+  const reserveSides = MATCH_SIDES.filter((sideName) => (
     toArray(matchRow.reserve_players?.[sideName]).includes(playerId)
   ));
   const currentSide = playerRow?.side ?? (reserveSides.length === 1 ? reserveSides[0] : null);

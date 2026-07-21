@@ -96,6 +96,9 @@ import {
   voidMatch,
 } from "../data/repository.js";
 import {
+  DEFAULT_RATING,
+  MINUTE_MS,
+  REPORT_MATCH_WINDOW_MS,
   REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
   REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
@@ -118,14 +121,19 @@ import {
   normalizeAdminSection,
 } from "../lib/queryPolicy.js";
 import { isSyntheticMatchRoomId } from "../lib/recruiting.js";
+import {
+  ROOM_CHAT_CLIENT_CACHE_LIMIT,
+  ROOM_CHAT_HISTORY_LIMIT,
+  ROOM_CHAT_MESSAGE_COLUMNS,
+  ROOM_CHAT_OPTIMISTIC_MATCH_WINDOW_MS,
+  ROOM_CHAT_POLL_BATCH_LIMIT,
+  ROOM_CHAT_POLL_INTERVAL_MS,
+  fromRoomChatMessageRow,
+} from "../lib/roomChat.js";
 import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
 import { prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
 
-const LOCAL_MAINTENANCE_INTERVAL_MS = 60000;
-const ROOM_CHAT_MESSAGE_SELECT = "id,room_type,room_id,user_id,body,created_at,message_seq";
-const ROOM_CHAT_INITIAL_LIMIT = 30;
-const ROOM_CHAT_POLL_LIMIT = 20;
-const ROOM_CHAT_POLL_INTERVAL_MS = 3000;
+const LOCAL_MAINTENANCE_INTERVAL_MS = MINUTE_MS;
 
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
@@ -427,13 +435,7 @@ function mergeRecruitingPostsById(current = [], incoming = [], forceIds = new Se
 }
 
 function normalizeRecruitingChatMessage(message = {}) {
-  return {
-    id: String(message.id ?? ""),
-    messageSeq: Number(message.messageSeq ?? message.message_seq ?? 0),
-    userId: message.userId ?? message.user_id ?? "",
-    body: String(message.body ?? "").slice(0, 60),
-    createdAt: message.createdAt ?? message.created_at ?? new Date().toISOString(),
-  };
+  return fromRoomChatMessageRow(message, { fallbackCreatedAt: new Date().toISOString() });
 }
 
 function isLikelyOptimisticChatMessage(message = {}) {
@@ -447,7 +449,7 @@ function mergeRecruitingChatMessages(currentMessages = [], incomingMessage = {})
   const exactIndex = next.findIndex((item) => message.id && item.id === message.id);
   if (exactIndex >= 0) {
     next[exactIndex] = message;
-    return sortRecruitingChatMessages(next).slice(-50);
+    return sortRecruitingChatMessages(next).slice(-ROOM_CHAT_CLIENT_CACHE_LIMIT);
   }
   const messageTime = Date.parse(message.createdAt || 0);
   for (let index = next.length - 1; index >= 0; index -= 1) {
@@ -455,12 +457,12 @@ function mergeRecruitingChatMessages(currentMessages = [], incomingMessage = {})
     if (!isLikelyOptimisticChatMessage(item)) continue;
     if (item.userId !== message.userId || item.body !== message.body) continue;
     const itemTime = Date.parse(item.createdAt || 0);
-    if (Number.isFinite(messageTime) && Number.isFinite(itemTime) && Math.abs(messageTime - itemTime) <= 30000) {
+    if (Number.isFinite(messageTime) && Number.isFinite(itemTime) && Math.abs(messageTime - itemTime) <= ROOM_CHAT_OPTIMISTIC_MATCH_WINDOW_MS) {
       next[index] = message;
-      return sortRecruitingChatMessages(next).slice(-50);
+      return sortRecruitingChatMessages(next).slice(-ROOM_CHAT_CLIENT_CACHE_LIMIT);
     }
   }
-  return sortRecruitingChatMessages([...next, message]).slice(-50);
+  return sortRecruitingChatMessages([...next, message]).slice(-ROOM_CHAT_CLIENT_CACHE_LIMIT);
 }
 
 function sortRecruitingChatMessages(messages = []) {
@@ -2301,7 +2303,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const loadReportableMatches = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId) return false;
     if (reportableMatchesPromiseRef.current) return reportableMatchesPromiseRef.current;
-    const completedSince = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const completedSince = new Date(Date.now() - REPORT_MATCH_WINDOW_MS).toISOString();
     const promise = (async () => {
       try {
         const [activeResult, completedResult] = await Promise.all([
@@ -2659,8 +2661,8 @@ export function useAppData(authUser = null, appLocation = null) {
 
   const rankings = useMemo(
     () => ({
-      players: sortByRating(state.users, (user) => user.ratings?.integrated ?? 1200),
-      mode: (mode) => sortByRating(state.users, (user) => user.ratings?.modes?.[mode] ?? user.ratings?.integrated ?? 1200),
+      players: sortByRating(state.users, (user) => user.ratings?.integrated ?? DEFAULT_RATING),
+      mode: (mode) => sortByRating(state.users, (user) => user.ratings?.modes?.[mode] ?? user.ratings?.integrated ?? DEFAULT_RATING),
       teams: sortByRating(state.teams, (team) => team.mmr),
       affiliations: sortByRating(state.affiliations.filter((affiliation) => affiliation.type !== "club"), (affiliation) => affiliation.score),
     }),
@@ -3782,13 +3784,13 @@ export function useAppData(authUser = null, appLocation = null) {
             const lastSeq = getRecruitingChatLastSeq(stateRef.current, roomId);
             let query = supabase
               .from("room_chat_messages")
-              .select(ROOM_CHAT_MESSAGE_SELECT)
+              .select(ROOM_CHAT_MESSAGE_COLUMNS)
               .eq("room_type", "recruiting")
               .eq("room_id", roomId);
             if (lastSeq > 0) {
-              query = query.gt("message_seq", lastSeq).order("message_seq", { ascending: true }).limit(ROOM_CHAT_POLL_LIMIT);
+              query = query.gt("message_seq", lastSeq).order("message_seq", { ascending: true }).limit(ROOM_CHAT_POLL_BATCH_LIMIT);
             } else {
-              query = query.order("message_seq", { ascending: false }).limit(ROOM_CHAT_INITIAL_LIMIT);
+              query = query.order("message_seq", { ascending: false }).limit(ROOM_CHAT_HISTORY_LIMIT);
             }
             const { data, error } = await query;
             if (error) throw error;

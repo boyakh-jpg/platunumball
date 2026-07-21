@@ -1,4 +1,4 @@
-import { MAX_RECRUITING_RESERVES_PER_SIDE, normalizeTeamRole } from "../lib/constants.js";
+import { DEFAULT_RATING, MAX_RECRUITING_RESERVES_PER_SIDE, normalizeTeamRole } from "../lib/constants.js";
 import { getSelectableTeamPlayerIds } from "../lib/recruiting.js";
 import { uniquePlayerIds } from "./rowUtils.js";
 
@@ -8,7 +8,7 @@ export function fromRemoteTeam(row, memberRows) {
     name: row.name,
     homeCourt: row.home_court,
     region: row.region,
-    mmr: row.mmr ?? 1200,
+    mmr: row.mmr ?? DEFAULT_RATING,
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     accent: row.accent,
@@ -54,6 +54,10 @@ export function getTeamPlayers(team, size) {
 
 export function getTeamMemberIds(team = {}) {
   return (team.members ?? []).map((member) => member.userId).filter(Boolean);
+}
+
+export function getTeamCaptainMemberId(team = {}) {
+  return (team.members ?? []).find((member) => member.role === "captain")?.userId ?? null;
 }
 
 export function ensureTeamPartyLeader(team = {}, playerIds = [], leaderId = "", capacity = Infinity) {

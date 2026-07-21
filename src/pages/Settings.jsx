@@ -13,7 +13,7 @@ import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
 import { formatKoreanDateTime, formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
-import { COURT_REQUEST_TRUST_MIN, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
+import { COURT_REQUEST_TRUST_MIN, REFEREE_EXAM_COOLDOWN_DAYS, REFEREE_TRUST_MIN, REGIONS, REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
 import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtCanonicalName, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtLocationMatches, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
@@ -32,14 +32,14 @@ import {
   isDiscordLinked,
 } from "../lib/discord.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import {
+  REFEREE_EXAM_BANK_SIZE,
+  REFEREE_EXAM_PASS_SCORE,
+  REFEREE_EXAM_SIZE,
+  REFEREE_EXAM_VERSION,
+} from "../lib/refereeExamBank.js";
 import "../styles/recruiting-arena.css";
 
-const REPORT_MATCH_WINDOW_DAYS = 7;
-const REFEREE_EXAM_COOLDOWN_DAYS = 7;
-const REFEREE_EXAM_VERSION = "rankball-referee-2026-06";
-const REFEREE_EXAM_SIZE = 30;
-const REFEREE_EXAM_PASS_SCORE = 24;
-const REFEREE_EXAM_BANK_SIZE = 600;
 const DEFAULT_COURT_REQUEST = {
   name: "",
   buildingName: "",
@@ -452,7 +452,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const selectedBlockUserId = blockableUsers.some((user) => user.id === blockUserId) ? blockUserId : blockableUsers[0]?.id ?? "";
   const recentReportMatches = useMemo(() => {
     const now = Date.now();
-    const cutoff = now - REPORT_MATCH_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    const cutoff = now - REPORT_MATCH_WINDOW_MS;
     return [...app.state.matches]
       .map((match) => ({ match, reportTime: getMatchReportTime(match) }))
       .filter(({ match, reportTime }) => (

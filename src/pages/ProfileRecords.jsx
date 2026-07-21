@@ -3,46 +3,22 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine, getMatchSideScore as getSideScore, isDateWithinPastMonths, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { compareMatchRecency, formatStatLine, getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerSideName, isMatchWithinRecordDetailWindow, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
-
-function compareRecent(a, b) {
-  return String(b.scheduledAt ?? b.createdAt ?? "").localeCompare(String(a.scheduledAt ?? a.createdAt ?? ""));
-}
 
 function getRecordDate(match) {
   return String(match.scheduledDate ?? match.scheduledAt ?? match.confirmedAt ?? match.createdAt ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "날짜 미정";
 }
 
-function isRecordInDetailWindow(match) {
-  return isDateWithinPastMonths(getRecordDate(match), 6);
-}
-
-function getUserSide(match, userId) {
-  if (match.teamA?.players?.includes(userId)) return "teamA";
-  if (match.teamB?.players?.includes(userId)) return "teamB";
-  return null;
-}
-
-function getUserResult(match, userId) {
-  const sideName = getUserSide(match, userId);
-  if (!sideName) return "D";
-  const otherSide = sideName === "teamA" ? "teamB" : "teamA";
-  const sideScore = getSideScore(match, sideName);
-  const otherScore = getSideScore(match, otherSide);
-  if (sideScore === otherScore) return "D";
-  return sideScore > otherScore ? "W" : "L";
-}
-
 function getRecordLine(match, userId) {
-  const sideName = getUserSide(match, userId) ?? "teamA";
+  const sideName = getPlayerSideName(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
   return {
     side: match[sideName],
     opponent: match[otherSide],
     score: getSideScore(match, sideName),
     opponentScore: getSideScore(match, otherSide),
-    result: getUserResult(match, userId),
+    result: getPlayerMatchResult(match, userId),
   };
 }
 
@@ -65,10 +41,10 @@ export default function ProfileRecords({ app }) {
   const loadKeyRef = useRef("");
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
   const records = [...app.state.matches]
-    .filter((match) => match.status === "confirmed" && getUserSide(match, user.id))
-    .sort(compareRecent);
-  const recentRecords = records.filter(isRecordInDetailWindow);
-  const archivedRecords = records.filter((match) => !isRecordInDetailWindow(match));
+    .filter((match) => match.status === "confirmed" && getPlayerSideName(match, user.id))
+    .sort(compareMatchRecency);
+  const recentRecords = records.filter(isMatchWithinRecordDetailWindow);
+  const archivedRecords = records.filter((match) => !isMatchWithinRecordDetailWindow(match));
   useEffect(() => {
     const shouldLoadRecords = !app.actions.profileRecordsLoaded || records.length === 0;
     if (!app.remoteReady || !app.actions.loadProfileRecords || !shouldLoadRecords) return;
@@ -86,8 +62,8 @@ export default function ProfileRecords({ app }) {
     });
   }, [app.actions, app.remoteReady, records.length, user.id]);
   const totals = getTotals(recentRecords, user.id);
-  const wins = recentRecords.filter((match) => getUserResult(match, user.id) === "W").length;
-  const losses = recentRecords.filter((match) => getUserResult(match, user.id) === "L").length;
+  const wins = recentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "W").length;
+  const losses = recentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "L").length;
   const draws = recentRecords.length - wins - losses;
   const averageFouls = recentRecords.length ? Number(totals.fouls ?? 0) / recentRecords.length : 0;
   const dateRows = [...recentRecords.reduce((map, match) => {

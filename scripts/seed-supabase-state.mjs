@@ -1,6 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { initialState } from "../src/lib/mockData.js";
 import { runAutomaticStateMaintenance, saveNormalizedRemoteState } from "../src/data/repository.js";
+import {
+  TEST_PROFILE_AGE_GROUP,
+  TEST_PROFILE_AGE_GROUP_SEASON,
+  TEST_PROFILE_BIRTH_YEAR,
+  TEST_PROFILE_SETUP_AT,
+} from "../src/lib/constants.js";
 
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -22,11 +28,6 @@ const DEFAULT_TEST_PASSWORD = process.env.RANKBALL_TEST_PASSWORD || "test-0000";
 const TEST_AUTH_EMAIL_DOMAIN = process.env.RANKBALL_TEST_AUTH_EMAIL_DOMAIN || "rankball.test";
 const SEED_REAL_TEST_AUTH = readBooleanEnv("RANKBALL_SEED_REAL_TEST_AUTH", true);
 const SEED_AUTH_ONLY = readBooleanEnv("RANKBALL_SEED_AUTH_ONLY", false);
-const TEST_PROFILE_SETUP_AT = "2026-06-17T09:00:00.000Z";
-const TEST_PROFILE_BIRTH_YEAR = 2000;
-const TEST_PROFILE_AGE_GROUP = "open";
-const TEST_PROFILE_AGE_GROUP_SEASON = "2026-h1";
-
 function readBooleanEnv(name, fallback = false) {
   const value = String(process.env[name] ?? "").trim().toLowerCase();
   if (!value) return fallback;

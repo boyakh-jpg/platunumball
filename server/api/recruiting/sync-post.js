@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows } from "../_supabaseAdmin.js";
-import { normalizeDisputeWindowMinutes, normalizeMmrLimitMode } from "../../../src/lib/constants.js";
+import { getDbScheduleParts, toDbTime } from "../../../src/data/scheduleUtils.js";
+import { getAuthenticatedContext, nullableText, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
+import { DEFAULT_RATING, MATCH_SIDES, getModeSize, normalizeDisputeWindowMinutes, normalizeMmrLimitMode } from "../../../src/lib/constants.js";
+import {
+  ROOM_CHAT_MESSAGE_COLUMNS,
+  ROOM_CHAT_MESSAGE_MAX_LENGTH,
+  fromRoomChatMessageRow,
+  normalizeRoomChatBody,
+} from "../../../src/lib/roomChat.js";
 import {
   applyAuthoritativeRecruitingOperation,
   getOperation,
@@ -9,20 +16,8 @@ import {
 import { syncRoomChatMessageToDiscord } from "../discord/_roomChatBridge.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } from "../matches/sync-match.js";
-
-function getDbScheduleParts(post = {}) {
-  const timingType = (post.timingType ?? post.roomState?.timingType ?? post.room_state?.timingType) === "instant" ? "instant" : "scheduled";
-  const scheduledDate = timingType === "instant" ? null : post.scheduledDate || post.scheduled_date || getDatePart(post.scheduledAt ?? post.scheduled_at) || null;
-  const scheduledTime = timingType === "instant" ? null : toDbTime(post.scheduledTime ?? post.scheduled_time ?? getTimePart(post.scheduledAt ?? post.scheduled_at));
-  return {
-    timingType,
-    scheduledDate,
-    scheduledTime,
-    scheduledAt: timingType === "instant" ? null : [scheduledDate, scheduledTime].filter(Boolean).join(" ") || null,
-  };
-}
-
-const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at,message_seq";
+import { getPublicAppWebUrl } from "../_publicAppUrl.js";
+import { normalizeRecruitingApplicationStatus } from "../../../src/lib/recruiting.js";
 
 function isTrue(value) {
   return value === true || value === "true";
@@ -133,7 +128,7 @@ function toRecruitingApplicationRows(post = {}) {
       team_id: teamId,
       kind: application.kind === "team" || teamId ? "team" : "player",
       side: application.side === "teamA" ? "teamA" : "teamB",
-      status: ["waiting", "ready", "confirmed"].includes(application.status) ? application.status : "waiting",
+      status: normalizeRecruitingApplicationStatus(application.status),
       reserve: Boolean(application.reserve),
       position: roomState.slotPositions?.[application.playerId] ?? application.position ?? null,
       player_ids: toArray(application.playerIds),
@@ -202,28 +197,17 @@ function rosterIdsFromPost(post = {}) {
   ].filter(Boolean));
 }
 
-function getPublicAppUrl() {
-  return String(process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
-}
-
 function getRecruitingWebPath(postId = "") {
   return `/app/recruiting?post=${encodeURIComponent(String(postId))}`;
 }
 
 function getRecruitingWebUrl(postId = "") {
-  const baseUrl = getPublicAppUrl();
   const path = getRecruitingWebPath(postId);
-  return baseUrl ? `${baseUrl}${path}` : path;
-}
-
-function getModeCapacity(mode = "5v5") {
-  const match = String(mode).match(/^(\d+)/);
-  const value = match ? Number(match[1]) : 5;
-  return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 5));
+  return getPublicAppWebUrl(path);
 }
 
 function getCanonicalSideCapacity(post = {}) {
-  const modeCapacity = getModeCapacity(post.mode);
+  const modeCapacity = getModeSize(post.mode);
   const rawCapacity = Number(post.sideCapacity ?? post.side_capacity ?? modeCapacity);
   const safeCapacity = Number.isFinite(rawCapacity) ? rawCapacity : modeCapacity;
   return Math.max(1, Math.min(5, modeCapacity, safeCapacity));
@@ -846,25 +830,9 @@ function sendTimedJson(response, statusCode, payload, timing, includeTiming = fa
     : payload);
 }
 
-function sanitizeChatBody(value = "") {
-  return String(value ?? "")
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
-    .trim();
-}
-
 function isMissingRoomChatMessages(error = {}) {
   const message = String(error?.message ?? "");
   return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("room_chat_messages");
-}
-
-function fromRoomChatMessageRow(row = {}) {
-  return {
-    id: String(row.id ?? ""),
-    messageSeq: Number(row.message_seq ?? 0),
-    userId: row.user_id ?? "",
-    body: String(row.body ?? "").slice(0, 60),
-    createdAt: row.created_at ?? new Date().toISOString(),
-  };
 }
 
 async function timeStep(timing, name, callback) {
@@ -918,7 +886,7 @@ async function loadRecruitingPartyGuardSnapshot(context, operation = {}) {
   }
 
   const partySide = post.room_state?.partySides?.[entryId];
-  const expectedSide = ["teamA", "teamB"].includes(partySide)
+  const expectedSide = MATCH_SIDES.includes(partySide)
     ? partySide
     : (entryId === "host" ? post.host_side : application?.side);
   return { post, targetTeamId, expectedSide };
@@ -929,7 +897,7 @@ async function assertRecruitingPartyManagementGuard(context, operation = {}) {
   const snapshot = await loadRecruitingPartyGuardSnapshot(context, operation);
 
   if (operation.action === "detachRecruitingPartyPlayer") {
-    const requestedSide = ["teamA", "teamB"].includes(operation.placement?.side)
+    const requestedSide = MATCH_SIDES.includes(operation.placement?.side)
       ? operation.placement.side
       : null;
     if (requestedSide && snapshot.expectedSide && requestedSide !== snapshot.expectedSide) {
@@ -955,7 +923,7 @@ async function assertRecruitingPartyManagementGuard(context, operation = {}) {
   const memberIds = new Set(toArray(members).map((row) => row.user_id));
   if (allIds.some((playerId) => !memberIds.has(playerId))) reject(403, "recruiting_team_roster_not_member");
 
-  let targetMmr = 1200;
+  let targetMmr = DEFAULT_RATING;
   if (snapshot.post.team_id) {
     const { data: hostTeam, error: teamError } = await context.supabase
       .from("teams")
@@ -965,13 +933,13 @@ async function assertRecruitingPartyManagementGuard(context, operation = {}) {
       .maybeSingle();
     if (teamError) throw teamError;
     if (!hostTeam) reject(404, "recruiting_host_team_not_found");
-    targetMmr = Number(hostTeam.mmr ?? 1200);
+    targetMmr = Number(hostTeam.mmr ?? DEFAULT_RATING);
   } else if (snapshot.post.player_id) {
     const { data, error } = await context.supabase.rpc("rankball_event_profile_mmr", {
       p_profile_id: snapshot.post.player_id,
     });
     if (error) throw error;
-    targetMmr = Number(data ?? 1200);
+    targetMmr = Number(data ?? DEFAULT_RATING);
   }
 
   const roomState = snapshot.post.room_state ?? {};
@@ -1226,11 +1194,11 @@ async function loadRecruitingChatPermissionSnapshot(context, postId = "") {
 
 async function persistRecruitingRoomChatMessage(context, operation = {}) {
   const postId = String(operation.postId ?? "").trim();
-  const text = sanitizeChatBody(operation.body);
+  const text = normalizeRoomChatBody(operation.body);
   if (!postId) reject(400, "missing_recruiting_post");
   if (!text) reject(400, "empty_chat_message");
   if (text.includes("\n") || text.includes("\r")) reject(400, "single_line_chat_required");
-  if (text.length > 60) reject(400, "chat_message_too_long");
+  if (text.length > ROOM_CHAT_MESSAGE_MAX_LENGTH) reject(400, "chat_message_too_long");
   const existingPostSnapshot = await loadRecruitingChatPermissionSnapshot(context, postId);
   if (!canSyncRecruitingAction(context.profileId, existingPostSnapshot, existingPostSnapshot, "sendRecruitingChat", { action: "sendRecruitingChat", body: text, postId })) {
     reject(403, "recruiting_sync_permission_denied");
@@ -1265,7 +1233,7 @@ async function persistRecruitingRoomChatMessage(context, operation = {}) {
   return {
     ok: true,
     postId,
-    message: fromRoomChatMessageRow(data),
+    message: fromRoomChatMessageRow(data, { fallbackCreatedAt: new Date().toISOString() }),
     discordChatSync,
   };
 }

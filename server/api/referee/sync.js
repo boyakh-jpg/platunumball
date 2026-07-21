@@ -1,5 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson, toNotificationRows } from "../_supabaseAdmin.js";
-import { REFEREE_TRUST_MIN } from "../../../src/lib/constants.js";
+import { REFEREE_EXAM_COOLDOWN_MS, REFEREE_TRUST_MIN } from "../../../src/lib/constants.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
   REFEREE_EXAM_PASS_SCORE,
@@ -8,8 +8,6 @@ import {
   createRefereeExamSet,
   gradeRefereeExamByQuestionIds,
 } from "../../../src/lib/refereeExamBank.js";
-
-const REFEREE_EXAM_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 function toPayloadRow(item = {}) {
   return {

@@ -51,6 +51,7 @@ import {
   updateTournamentMatchSchedule,
   voidMatch,
 } from "../../src/data/repository.js";
+import { DEFAULT_RATING } from "../../src/lib/constants.js";
 
 function reject(statusCode, message, details = {}) {
   const error = new Error(message);
@@ -92,14 +93,14 @@ export function getMatchRatingCommit(beforeState = {}, afterState = {}, match = 
     .filter((team) => {
       const before = beforeTeamsById.get(team.id);
       return before && (
-        Number(before.mmr ?? 1200) !== Number(team.mmr ?? 1200) ||
+        Number(before.mmr ?? DEFAULT_RATING) !== Number(team.mmr ?? DEFAULT_RATING) ||
         Number(before.wins ?? 0) !== Number(team.wins ?? 0) ||
         Number(before.losses ?? 0) !== Number(team.losses ?? 0)
       );
     })
     .map((team) => ({
       id: team.id,
-      mmrDelta: Number(team.mmr ?? 1200) - Number(beforeTeamsById.get(team.id)?.mmr ?? 1200),
+      mmrDelta: Number(team.mmr ?? DEFAULT_RATING) - Number(beforeTeamsById.get(team.id)?.mmr ?? DEFAULT_RATING),
       winDelta: Number(team.wins ?? 0) - Number(beforeTeamsById.get(team.id)?.wins ?? 0),
       lossDelta: Number(team.losses ?? 0) - Number(beforeTeamsById.get(team.id)?.losses ?? 0),
     }));

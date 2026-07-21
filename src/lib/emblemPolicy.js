@@ -1,6 +1,13 @@
+import { DAY_MS } from "./constants.js";
+
 export const EMBLEM_FREE_UPLOADS = 2;
 export const EMBLEM_COOLDOWN_DAYS = 30;
-export const EMBLEM_COOLDOWN_MS = EMBLEM_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+export const EMBLEM_COOLDOWN_MS = EMBLEM_COOLDOWN_DAYS * DAY_MS;
+export const EMBLEM_HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+
+export function isEmblemHexColor(value = "") {
+  return EMBLEM_HEX_COLOR_PATTERN.test(String(value || "").trim());
+}
 
 export function getNextEmblemUploadAt(uploadCount = 0, uploadedAt = null) {
   if (Number(uploadCount) < EMBLEM_FREE_UPLOADS || !uploadedAt) return null;

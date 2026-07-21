@@ -8,7 +8,10 @@ import {
   TOURNAMENT_TEAM_COLUMNS,
 } from "../../src/data/repositoryColumns.js";
 import { fromRemoteTournament } from "../../src/data/tournamentMappers.js";
-import { getNotificationActorId } from "../../src/lib/notifications.js";
+import { getNotificationActorId, isTerminalMatchStatus, isTerminalRecruitingStatus } from "../../src/lib/notifications.js";
+import { DEFAULT_RATING } from "../../src/lib/constants.js";
+
+export { getDatePart, getTimePart, toDbTime } from "../../src/data/scheduleUtils.js";
 
 const IMMEDIATE_NOTIFICATION_DUE_AT = "1970-01-01T00:00:00.000Z";
 
@@ -240,18 +243,6 @@ export function toDateTime(date, time, fallback) {
   return fallback ?? "\uBBF8\uC815";
 }
 
-export function toDbTime(value) {
-  return value ? String(value).slice(0, 5) : null;
-}
-
-export function getDatePart(value) {
-  return String(value ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
-}
-
-export function getTimePart(value) {
-  return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
-}
-
 export function nullableText(value) {
   const text = String(value ?? "").trim();
   return text || null;
@@ -263,7 +254,7 @@ export function toClientTeamWithMembers(team = {}, memberRows = []) {
     name: team.name,
     homeCourt: team.home_court,
     region: team.region,
-    mmr: team.mmr ?? 1200,
+    mmr: team.mmr ?? DEFAULT_RATING,
     wins: team.wins ?? 0,
     losses: team.losses ?? 0,
     accent: team.accent,
@@ -456,8 +447,8 @@ export async function attachNotificationTargetState(supabase, notifications = []
     const targetStatus = String(statusById.get(targetId) ?? (statusById.has(targetId) ? "" : "missing"));
     const targetUnavailable = targetStatus === "missing" || (
       targetType === "match"
-        ? ["cancelled", "canceled", "void", "voided", "closed"].includes(targetStatus.toLowerCase())
-        : ["cancelled", "canceled", "closed", "expired"].includes(targetStatus.toLowerCase())
+        ? isTerminalMatchStatus(targetStatus)
+        : isTerminalRecruitingStatus(targetStatus)
     );
     return { ...notification, targetStatus, targetUnavailable };
   });

@@ -1,4 +1,5 @@
 import {
+  HOUR_MS,
   PUBLIC_ROOM_MIN_LEAD_HOURS,
   PUBLIC_ROOM_SCHEDULE_MAX_DAYS,
   QUEUE_SCHEDULE_START_DATE,
@@ -32,14 +33,25 @@ export function getScheduleText(date, time) {
   return [date, time].filter(Boolean).join(" ") || "일정 미정";
 }
 
-function toDbTime(value) {
+export function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
 
 export function getDbScheduleParts(item = {}) {
-  const timingType = (item.timingType ?? item.roomState?.timingType ?? item.rules?.timingType) === "instant" ? "instant" : "scheduled";
-  const scheduledDate = timingType === "instant" ? null : item.scheduledDate || getDatePart(item.scheduledAt) || null;
-  const scheduledTime = timingType === "instant" ? null : toDbTime(item.scheduledTime || getTimePart(item.scheduledAt));
+  const timingType = (
+    item.timingType
+    ?? item.timing_type
+    ?? item.roomState?.timingType
+    ?? item.room_state?.timingType
+    ?? item.rules?.timingType
+  ) === "instant" ? "instant" : "scheduled";
+  const scheduledAtValue = item.scheduledAt ?? item.scheduled_at;
+  const scheduledDate = timingType === "instant"
+    ? null
+    : item.scheduledDate || item.scheduled_date || getDatePart(scheduledAtValue) || null;
+  const scheduledTime = timingType === "instant"
+    ? null
+    : toDbTime(item.scheduledTime ?? item.scheduled_time ?? getTimePart(scheduledAtValue));
   return {
     timingType,
     scheduledDate,
@@ -64,7 +76,7 @@ function getQueueSlot(slotIndex, startDate = getQueueScheduleStartDate()) {
 
 function isQueueSlotAllowed(slot, now = new Date()) {
   const date = getMatchScheduledDate(slot);
-  return Boolean(date && date.getTime() > now.getTime() + PUBLIC_ROOM_MIN_LEAD_HOURS * 3600000);
+  return Boolean(date && date.getTime() > now.getTime() + PUBLIC_ROOM_MIN_LEAD_HOURS * HOUR_MS);
 }
 
 function needsQueueSchedule(post = {}, startDate = getQueueScheduleStartDate()) {

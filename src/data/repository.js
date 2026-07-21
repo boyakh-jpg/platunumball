@@ -1,6 +1,8 @@
 import {
   COURT_REQUEST_TRUST_MIN,
   DAY_MS,
+  DEFAULT_RATING,
+  DEFAULT_TOURNAMENT_MMR_GAP,
   DISPUTE_WINDOW_MINUTES,
   FALSE_COURT_REPORT_TRUST_PENALTY,
   FAVORITE_LIMIT,
@@ -8,6 +10,7 @@ import {
   MAX_TEAM_MEMBERS,
   MAX_TEAM_MEMBERSHIPS,
   MAX_TEAM_NAME_LENGTH,
+  MATCH_SIDES,
   MODE_SIZES,
   PLAYER_POSITIONS,
   PUBLIC_ROOM_SCHEDULE_MAX_DAYS,
@@ -1342,7 +1345,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     name: team.name,
     region: team.region,
     home_court: team.homeCourt,
-    mmr: team.mmr ?? 1200,
+    mmr: team.mmr ?? DEFAULT_RATING,
     wins: team.wins ?? 0,
     losses: team.losses ?? 0,
     accent: team.accent,
@@ -1558,7 +1561,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     schedule_policy: tournament.schedulePolicy ?? "weekly",
     schedule_note: tournament.scheduleNote,
     mmr_limit_mode: tournament.mmrLimitMode ?? "warn",
-    max_mmr_gap: Number(tournament.maxMmrGap ?? 250),
+    max_mmr_gap: Number(tournament.maxMmrGap ?? DEFAULT_TOURNAMENT_MMR_GAP),
     mmr_policy: tournament.mmrPolicy ?? "gap_adjusted",
     rules: tournament.rules ?? {},
     memo: tournament.memo,
@@ -2354,7 +2357,7 @@ function repairRecruitingSameTeamPersonalParties(state) {
     const lobby = getRecruitingLobby({ ...normalizedPost, applicants }, state);
     const roomState = normalizeRecruitingRoomState(normalizedPost.roomState ?? {});
     const capacity = getRecruitingSideCapacity(normalizedPost);
-    const partyTargetsBySide = ["teamA", "teamB"].reduce((acc, sideName) => {
+    const partyTargetsBySide = MATCH_SIDES.reduce((acc, sideName) => {
       acc[sideName] = (lobby.sides?.[sideName]?.entries ?? [])
         .filter((entry) => isRecruitingPartyEntry(entry) && entry.team?.id)
         .map((entry) => ({
@@ -2759,9 +2762,9 @@ export function createTournament(state, draft) {
   const teamIds = [...new Set(draft.teamIds ?? draft.tournamentTeamIds ?? [])]
     .filter((teamId) => state.teams.some((team) => team.id === teamId));
   const invitedTeams = teamIds.map((teamId) => state.teams.find((team) => team.id === teamId)).filter(Boolean);
-  const mmrs = invitedTeams.map((team) => Number(team.mmr ?? 1200));
+  const mmrs = invitedTeams.map((team) => Number(team.mmr ?? DEFAULT_RATING));
   const mmrSpread = mmrs.length ? Math.max(...mmrs) - Math.min(...mmrs) : 0;
-  const maxMmrGap = Number(draft.tournamentMaxMmrGap ?? draft.maxMmrGap ?? 250);
+  const maxMmrGap = Number(draft.tournamentMaxMmrGap ?? draft.maxMmrGap ?? DEFAULT_TOURNAMENT_MMR_GAP);
   const mmrLimitMode = draft.mmrLimitMode ?? "warn";
   const sideCapacity = getRecruitingSideCapacity(draft);
   const tournamentRules = {
@@ -3032,7 +3035,7 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
     },
   };
   const now = new Date().toISOString();
-  const captainNotifications = ["teamA", "teamB"].map((sideName) => {
+  const captainNotifications = MATCH_SIDES.map((sideName) => {
     const teamId = match[sideName]?.teamId;
     const captainId = getTeamCaptainId(state.teams, teamId);
     if (!teamId || !captainId) return null;
@@ -3368,7 +3371,7 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
   const storedMatch = state.matches.find((item) => item.id === matchId);
   const match = withEffectiveMatchStatRecorders(storedMatch);
   if (!match || match.refereeId || !["agreed", "approval"].includes(match.status)) return state;
-  if (!["teamA", "teamB"].includes(sideName)) return state;
+  if (!MATCH_SIDES.includes(sideName)) return state;
 
   const currentRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
   const currentRecorderId = currentRecorders[sideName];
@@ -3441,7 +3444,7 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
 export function forfeitTournamentMatch(state, tournamentId, matchId, losingSide, reason = "팀 불참") {
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
   const match = (state.matches ?? []).find((item) => item.id === matchId && item.tournamentId === tournamentId);
-  if (!tournament || !match || !["teamA", "teamB"].includes(losingSide)) return state;
+  if (!tournament || !match || !MATCH_SIDES.includes(losingSide)) return state;
 
   if (tournament.createdBy !== state.currentUserId) {
     return {
@@ -3519,7 +3522,7 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
   const match = withEffectiveMatchStatRecorders(storedMatch);
   if (!match || match.status !== "agreed" || match.endedAt) return state;
   if (getMatchRoomPhase(match).phase !== "live") return state;
-  if (!["teamA", "teamB"].includes(sideName)) return state;
+  if (!MATCH_SIDES.includes(sideName)) return state;
   if (!currentUserCanSubstituteMatchSide(state, match, sideName)) return state;
 
   const activeIds = match[sideName]?.players ?? [];
@@ -3970,7 +3973,7 @@ export function deleteSoloRecord(state, matchId) {
 export function addMatchLatePlayer(state, matchId, draft = {}) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!canEditPostgameRoster(state, match)) return state;
-  const sideName = ["teamA", "teamB"].includes(draft.sideName) ? draft.sideName : "teamA";
+  const sideName = MATCH_SIDES.includes(draft.sideName) ? draft.sideName : "teamA";
   const registeredUserId = state.users.some((user) => user.id === draft.userId) ? draft.userId : "";
   const anonymousName = String(draft.name ?? "").trim();
   if (!registeredUserId && !anonymousName) return state;
@@ -6072,7 +6075,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
 
   const sideCapacity = getRecruitingSideCapacity(post);
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  const side = ["teamA", "teamB"].includes(application.side) ? application.side : getRecruitingBestSide(post, state);
+  const side = MATCH_SIDES.includes(application.side) ? application.side : getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
   const occupiedSideTeamId = applicantKind === "team" ? getLobbyPrimaryTeamId(lobby, side) : null;
   if (teamOnly && occupiedSideTeamId && occupiedSideTeamId !== team?.id) {
@@ -6142,8 +6145,8 @@ export function interestRecruitingPost(state, postId, application = {}) {
     ? [...selectedPlayerIds, ...selectedReservePlayerIds].filter((playerId) => playerId && playerId !== state.currentUserId)
     : [];
   const candidateMmr = applicantKind === "team"
-    ? getAveragePlayerMmr(state, selectedPlayerIds, team?.mmr ?? user?.ratings?.integrated ?? 1200)
-    : user?.ratings?.integrated ?? 1200;
+    ? getAveragePlayerMmr(state, selectedPlayerIds, team?.mmr ?? user?.ratings?.integrated ?? DEFAULT_RATING)
+    : user?.ratings?.integrated ?? DEFAULT_RATING;
   const fit = getRecruitingFit(post, candidateMmr, state);
   const mmrLimitMode = normalizeRecruitingMmrLimitMode(post.mmrLimitMode ?? roomState.mmrLimitMode);
   if (mmrLimitMode === "block" && !fit.allowed) {
@@ -6663,7 +6666,7 @@ function currentUserCanEditMatchRecordSideRoster(state, match, sideName) {
     !match?.startedAt &&
     !match?.endedAt
   );
-  if ((!isMatchRecordMatch(match) && !tournamentPregame) || !["teamA", "teamB"].includes(sideName)) return false;
+  if ((!isMatchRecordMatch(match) && !tournamentPregame) || !MATCH_SIDES.includes(sideName)) return false;
   if (match.result || match.confirmedAt || match.cancelledAt || match.voidedAt) return false;
   const leaderId = tournamentPregame
     ? getTeamCaptainId(state.teams, match[sideName]?.teamId)
@@ -6815,7 +6818,7 @@ function autoPromoteMatchReservesForCheckin(match = {}, excludedPlayerIds = []) 
   const sideCapacity = getRecruitingSideCapacity(match);
   let nextMatch = match;
 
-  for (const sideName of ["teamA", "teamB"]) {
+  for (const sideName of MATCH_SIDES) {
     let activeIds = uniquePlayerIds(nextMatch[sideName]?.players ?? []);
     while (activeIds.length < sideCapacity) {
       const attendance = getMatchAttendance(nextMatch);
@@ -6856,7 +6859,7 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
   if (!canEditMatchPreparation(state, match) || !playerId) return state;
   const currentPlacement = getMatchPlayerPlacement(match, playerId);
   if (!currentPlacement) return state;
-  const targetSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : currentPlacement.side;
+  const targetSide = MATCH_SIDES.includes(placement.side) ? placement.side : currentPlacement.side;
   const targetReserve = Boolean(placement.reserve);
   const hostPlayerId = getMatchHostPlayerId(state, match);
   if (hostPlayerId && playerId === hostPlayerId && targetSide !== currentPlacement.side) return state;
@@ -7063,7 +7066,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
     };
   }
 
-  const side = ["teamA", "teamB"].includes(invite.side) ? invite.side : "teamB";
+  const side = MATCH_SIDES.includes(invite.side) ? invite.side : "teamB";
   const reserve = Boolean(invite.reserve);
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
@@ -7143,9 +7146,9 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   if (mmrLimitMode === "block") {
     const outOfRangeUser = targetUserIds
       .map((playerId) => state.users.find((user) => user.id === playerId))
-      .find((targetUser) => targetUser && !getRecruitingFit(post, targetUser.ratings?.integrated ?? 1200, state).allowed);
+      .find((targetUser) => targetUser && !getRecruitingFit(post, targetUser.ratings?.integrated ?? DEFAULT_RATING, state).allowed);
     if (outOfRangeUser) {
-      const fit = getRecruitingFit(post, outOfRangeUser.ratings?.integrated ?? 1200, state);
+      const fit = getRecruitingFit(post, outOfRangeUser.ratings?.integrated ?? DEFAULT_RATING, state);
       return {
         ...state,
         notifications: [
@@ -7432,8 +7435,8 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     ? state.teams.find((team) => team.id === invitationTeamId && team.members.some((member) => member.userId === state.currentUserId))
     : null;
   const candidateMmr = invitedTeam
-    ? invitedTeam.mmr ?? user?.ratings?.integrated ?? 1200
-    : user?.ratings?.integrated ?? 1200;
+    ? invitedTeam.mmr ?? user?.ratings?.integrated ?? DEFAULT_RATING
+    : user?.ratings?.integrated ?? DEFAULT_RATING;
   const fit = getRecruitingFit(post, candidateMmr, state);
   const mmrLimitMode = normalizeRecruitingMmrLimitMode(post.mmrLimitMode ?? roomState.mmrLimitMode);
   const expireInvitation = (body) => ({
@@ -7467,7 +7470,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   }
 
   const lobby = getRecruitingLobby(post, state);
-  const side = ["teamA", "teamB"].includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
+  const side = MATCH_SIDES.includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
   let reserve = Boolean(invitation.reserve);
   const invitedTeamCapacity = getRecruitingSideCapacity(post);
   const invitedTeamKey = invitedTeam ? `team:${invitedTeam.id}` : "";
@@ -7689,7 +7692,7 @@ export function declineRecruitingInvitation(state, postId, invitationId) {
 function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playerId, sourceTeamId, sourceEntryId = null, placement = {}, updatedAt) {
   if (!sourceTeamId || !playerId) return null;
   if (isSoloIndividualRecruitingRoom(post)) return null;
-  const side = ["teamA", "teamB"].includes(placement.side) ? placement.side : null;
+  const side = MATCH_SIDES.includes(placement.side) ? placement.side : null;
   if (!side) return null;
   if (hasRecruitingTeamMemberOnOtherSide(post, state, sourceTeamId, side, sourceEntryId ?? "")) return null;
   const reserve = Boolean(placement.reserve);
@@ -7795,7 +7798,7 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
     : target.playerId === state.currentUserId || (target.playerIds ?? []).includes(state.currentUserId);
   if (!requesterControlsTarget) return state;
 
-  const explicitRequestedSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : null;
+  const explicitRequestedSide = MATCH_SIDES.includes(placement.side) ? placement.side : null;
   if (hostTarget && explicitRequestedSide && explicitRequestedSide !== hostSide) return state;
   const requestedSide = explicitRequestedSide ?? target.side;
   const side = hostTarget ? hostSide : requestedSide;
@@ -7889,8 +7892,8 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   ));
   const lobby = getRecruitingLobby(post, state);
   const teamMemberIds = new Set((team.members ?? []).map((member) => member.userId));
-  const requestedSide = ["teamA", "teamB"].includes(sideName) ? sideName : "";
-  const joinableSide = requestedSide || ["teamA", "teamB"].find((candidateSide) => (
+  const requestedSide = MATCH_SIDES.includes(sideName) ? sideName : "";
+  const joinableSide = requestedSide || MATCH_SIDES.find((candidateSide) => (
     (lobby.sides[candidateSide]?.entries ?? []).some((entry) => (
       entry.team?.id === teamId ||
       (entry.kind === "player" && teamMemberIds.has(entry.playerId))
@@ -8265,7 +8268,7 @@ export function setRecruitingPartyPlayerPlacement(state, postId, entryId, player
   const partyLeaderId = roomState.partyLeaders?.[entryId] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
   if (partyLeaderId !== state.currentUserId && playerId !== state.currentUserId) return state;
 
-  const side = ["teamA", "teamB"].includes(placement.side) ? placement.side : entry.side;
+  const side = MATCH_SIDES.includes(placement.side) ? placement.side : entry.side;
   const reserve = Boolean(placement.reserve);
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
   const targetApplicant = entry.fixed
@@ -8305,7 +8308,7 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
   const wasActive = !entry.reserve && currentPlayerIds.includes(playerId);
   const wasReserve = Boolean(entry.reserve) || currentReserveIds.includes(playerId);
   if (!wasActive && !wasReserve) return state;
-  const targetSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : entry.side;
+  const targetSide = MATCH_SIDES.includes(placement.side) ? placement.side : entry.side;
   const targetReserve = placement.reserve === undefined ? (!wasActive && wasReserve) : Boolean(placement.reserve);
   if (isRecruitingTeamSideLocked(post) && targetSide !== entry.side) return state;
 
@@ -8488,7 +8491,7 @@ export function setRecruitingStatRecorder(state, postId, sideName, playerId = ""
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId) || post.refereeId) return state;
-  if (!["teamA", "teamB"].includes(sideName)) return state;
+  if (!MATCH_SIDES.includes(sideName)) return state;
 
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const currentRecorders = normalizeStatRecorders(roomState.statRecorders);
@@ -8560,7 +8563,7 @@ export function kickRecruitingApplicant(state, postId, playerId) {
 }
 
 function promoteRecruitingReservesForConfirmation(post, state, lobby) {
-  const fillSlots = ["teamA", "teamB"].flatMap((sideName) => (
+  const fillSlots = MATCH_SIDES.flatMap((sideName) => (
     [...(lobby.sides[sideName]?.fillSlots ?? []), ...(lobby.sides[sideName]?.reserveCandidates ?? [])]
       .filter((candidate, index, candidates) => (
         candidate.status === "ready" &&
@@ -9005,7 +9008,7 @@ export function createTeam(state, teamDraft) {
     name: teamName,
     homeCourt: teamDraft.homeCourt,
     region: teamDraft.region,
-    mmr: 1200,
+    mmr: DEFAULT_RATING,
     wins: 0,
     losses: 0,
     accent: teamDraft.accent || "#58d2c0",

@@ -1,4 +1,4 @@
-const DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize";
+import { DISCORD_AUTHORIZE_URL } from "../../../../src/lib/discordProtocol.js";
 
 function sendError(response, statusCode, message) {
   response.status(statusCode).json({ error: message });

@@ -34,9 +34,9 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { ensureTeamPartyLeader } from "../data/teamMappers.js";
+import { ensureTeamPartyLeader, getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORDABLE_RESERVE_SOURCES, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
+import { DEFAULT_RATING, MATCH_MODES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, MINUTE_MS, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORDABLE_RESERVE_SOURCES, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import {
@@ -105,15 +105,17 @@ import {
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import {
+  ROOM_CHAT_MESSAGE_MAX_LENGTH as CHAT_MESSAGE_MAX_LENGTH,
+  ROOM_CHAT_RATE_LIMIT as CHAT_RATE_LIMIT,
+  ROOM_CHAT_RATE_WINDOW_MS as CHAT_RATE_WINDOW_MS,
+  ROOM_CHAT_REPEAT_BLOCK_MS as CHAT_REPEAT_BLOCK_MS,
+  ROOM_CHAT_SEND_COOLDOWN_MS as CHAT_SEND_COOLDOWN_MS,
+} from "../lib/roomChat.js";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
 import "../styles/match-list-card.css";
 
-const CHAT_MESSAGE_MAX_LENGTH = 60;
-const CHAT_SEND_COOLDOWN_MS = 3000;
-const CHAT_REPEAT_BLOCK_MS = 30000;
-const CHAT_RATE_WINDOW_MS = 60000;
-const CHAT_RATE_LIMIT = 6;
 const AUTO_RECRUITING_TITLE_PATTERN = /^(모집방|모집 중\s*\d*|정규전|친선전|대기방|매치 큐)$/;
 const ROOM_SLOT_POSITION_AVATARS = {
   PG: assetUrl("/assets/position-avatars/PG.webp"),
@@ -127,7 +129,7 @@ function formatWhen(value) {
   if (!value) return "방금";
   const ms = Date.now() - new Date(value).getTime();
   if (!Number.isFinite(ms) || ms < 0) return "방금";
-  const minutes = Math.floor(ms / 60000);
+  const minutes = Math.floor(ms / MINUTE_MS);
   if (minutes < 1) return "방금";
   if (minutes < 60) return `${minutes}분 전`;
   const hours = Math.floor(minutes / 60);
@@ -339,7 +341,7 @@ function getDefaultJoinRoster(post, lobby, team, currentUser, sideName, reserve 
   };
 }
 
-function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = 1200) {
+function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = DEFAULT_RATING) {
   const values = playerIds
     .map((playerId) => Number(userById[playerId]?.ratings?.integrated))
     .filter((value) => Number.isFinite(value));
@@ -388,8 +390,8 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
 
 function getEntryMmr(entry) {
   return isRecruitingTeamEntry(entry)
-    ? entry.team?.mmr ?? entry.user?.ratings?.integrated ?? 1200
-    : entry.user?.ratings?.integrated ?? 1200;
+    ? entry.team?.mmr ?? entry.user?.ratings?.integrated ?? DEFAULT_RATING
+    : entry.user?.ratings?.integrated ?? DEFAULT_RATING;
 }
 
 function getLobbySideMeta(lobby, sideName, userById, { useSideName = false } = {}) {
@@ -441,7 +443,7 @@ function getPartyOptionKey(option) {
   return `${option.sideName}-${option.team.id}-${option.entry?.id ?? "entry"}`;
 }
 
-function RoomSlotAvatar({ user, mmr = 1200, position = null }) {
+function RoomSlotAvatar({ user, mmr = DEFAULT_RATING, position = null }) {
   const [failed, setFailed] = useState(false);
   const normalizedPosition = String(position ?? user?.position ?? "").trim().toUpperCase();
   const avatarSrc = getRoomSlotPositionAvatarSrc(normalizedPosition);
@@ -477,10 +479,6 @@ function RoomSlotAvatar({ user, mmr = 1200, position = null }) {
       />
     </span>
   );
-}
-
-function getTeamCaptainId(team) {
-  return team?.members?.find((member) => member.role === "captain")?.userId ?? "";
 }
 
 const ROOM_SLOT_BADGES = {
@@ -521,7 +519,7 @@ function uniqueIds(ids = []) {
 
 function getMissingStartAttendanceIds(match = {}, operatorId = "") {
   const attendance = match.attendance ?? {};
-  return ["teamA", "teamB"].flatMap((sideName) => (
+  return MATCH_SIDES.flatMap((sideName) => (
     uniqueIds([...getMatchSidePlayerIds(match, sideName), ...getMatchReservePlayerIds(match, sideName)])
       .filter((playerId) => playerId !== operatorId)
       .filter((playerId) => !(attendance[sideName] ?? []).includes(playerId))
@@ -530,7 +528,7 @@ function getMissingStartAttendanceIds(match = {}, operatorId = "") {
 
 function getLobbyRecorderIds(lobby) {
   const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
-  return ["teamA", "teamB"].reduce((acc, sideName) => {
+  return MATCH_SIDES.reduce((acc, sideName) => {
     const candidate = (lobby.sides[sideName].reserveCandidates ?? []).find((item) => (
       RECORDABLE_RESERVE_SOURCES.has(item.source) &&
       item.status === "ready" &&
@@ -572,7 +570,7 @@ function getSameSidePartyOptions(lobby, myEntry, myTeams = [], targetSide = myEn
 }
 
 function getJoinableSidePartyOptions(lobby, myTeams = [], currentUserId = "", targetSide = "") {
-  const sides = ["teamA", "teamB"].filter((sideName) => !targetSide || sideName === targetSide);
+  const sides = MATCH_SIDES.filter((sideName) => !targetSide || sideName === targetSide);
   return sides.flatMap((sideName) => {
     const sideEntries = lobby.sides[sideName]?.entries ?? [];
     return myTeams.flatMap((team) => {
@@ -637,7 +635,7 @@ function PlayerRoomSlot({
   status = "waiting",
   title = "",
   detail = "",
-  mmr = 1200,
+  mmr = DEFAULT_RATING,
   position = null,
   badge = null,
   empty = false,
@@ -842,7 +840,7 @@ function TeamMemberPicker({
                 <strong>{user?.name ?? "알 수 없음"}</strong>
                 <em>{!eligible ? `${getPlayerPosition(user)} · 조건 불일치` : required ? `${getPlayerPosition(user)} · 필수` : getPlayerPosition(user)}</em>
               </span>
-              <TierBadge mmr={user?.ratings?.integrated ?? 1200} compact />
+              <TierBadge mmr={user?.ratings?.integrated ?? DEFAULT_RATING} compact />
               <div className="arena-party-role-buttons">
                 <button type="button" className={selected ? "active" : ""} disabled={!eligible || activeLocked} onClick={() => setMemberRole(playerId, "active")}>출전</button>
                 {canSelectReserves ? (
@@ -930,7 +928,7 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
               <Crown size={12} strokeWidth={3} />
             </span>
           ) : null}
-          <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? 1200} position={displayPosition} />
+          <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? DEFAULT_RATING} position={displayPosition} />
           <strong>{user.name}</strong>
           <small>{displayPosition}</small>
           <b>{candidate.sourceLabel}</b>
@@ -943,7 +941,7 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
             <Crown size={12} strokeWidth={3} />
           </span>
         ) : null}
-        <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? 1200} position={displayPosition} />
+        <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? DEFAULT_RATING} position={displayPosition} />
         <strong>{user.name}</strong>
         <small>{displayPosition}</small>
         <b>{candidate.sourceLabel}</b>
@@ -1259,7 +1257,7 @@ function ReserveLine({
         status={candidate.status}
         title={readyText}
         detail={candidate.sourceLabel}
-        mmr={user.ratings?.integrated ?? 1200}
+        mmr={user.ratings?.integrated ?? DEFAULT_RATING}
         position={displayPosition}
         badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: false, sideLeaderId })}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, true, candidate.playerId, candidate.entryId, event) : null}
@@ -1441,7 +1439,7 @@ function MatchSubstitutionPanel({
 }) {
   const [draftByReserveId, setDraftByReserveId] = useState({});
   if (!match) return null;
-  const rows = ["teamA", "teamB"].flatMap((sideName) => {
+  const rows = MATCH_SIDES.flatMap((sideName) => {
     if (!canSubstituteSide(sideName)) return [];
     const activePlayerIds = match[sideName]?.players ?? [];
     const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
@@ -2109,7 +2107,7 @@ function getSourceMatchUserSideName(match, userId) {
 function getSourceMatchDecisionSideName(match, userId, teams = []) {
   const playerSideName = getSourceMatchUserSideName(match, userId);
   if (playerSideName) return playerSideName;
-  const sideName = ["teamA", "teamB"].find((name) => {
+  const sideName = MATCH_SIDES.find((name) => {
     const teamId = match?.[name]?.teamId;
     if (!teamId) return false;
     const team = teams.find((item) => item.id === teamId);
@@ -2270,7 +2268,7 @@ function SourceMatchRecordSummary({ match, userById }) {
         <span>{match.teamB?.name ?? "B"}</span>
       </div>
       <div className="arena-source-record-grid">
-        {["teamA", "teamB"].map(renderSide)}
+        {MATCH_SIDES.map(renderSide)}
       </div>
     </div>
   );
@@ -2278,7 +2276,7 @@ function SourceMatchRecordSummary({ match, userById }) {
 
 function makeSourceMatchDraft(match) {
   const result = match?.disputeDraftResult ?? match?.result ?? {};
-  const playerIds = ["teamA", "teamB"].flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName));
+  const playerIds = MATCH_SIDES.flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName));
   return {
     scoreA: Number(result.scoreA ?? match?.teamA?.score ?? 0),
     scoreB: Number(result.scoreB ?? match?.teamB?.score ?? 0),
@@ -2307,7 +2305,7 @@ function SourceMatchDisputeEditor({
 
   if (!match) return null;
   const hasResult = Boolean(match.result);
-  const sideNames = ["teamA", "teamB"];
+  const sideNames = MATCH_SIDES;
   const getEditableFieldsForPlayer = (playerId) => (
     canReview
       ? PLAYER_STAT_FIELDS
@@ -2366,7 +2364,7 @@ function SourceMatchDisputeEditor({
         </label>
       </div>
       <div className="arena-dispute-stat-grid">
-        {["teamA", "teamB"].map((sideName) => (
+        {MATCH_SIDES.map((sideName) => (
           <div className="arena-dispute-side" key={sideName}>
             <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
             {getMatchSideRecordPlayerIds(match, sideName).map((playerId, index) => {
@@ -3023,7 +3021,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const selectedJoinTeamEligibility = getJoinTeamEligibility(selectedJoinTeam);
         const selectedJoinSideTeamId = getLobbyPrimaryTeamId(lobby, joinDraft.side);
         const selectedJoinSideAvailable = !teamOnlyRoom || !selectedJoinSideTeamId;
-        const teamRoomHasJoinableSide = !teamOnlyRoom || ["teamA", "teamB"].some((sideName) => !getLobbyPrimaryTeamId(lobby, sideName));
+        const teamRoomHasJoinableSide = !teamOnlyRoom || MATCH_SIDES.some((sideName) => !getLobbyPrimaryTeamId(lobby, sideName));
         const joinCapacity = getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
         const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
         const selectedJoinReserveIds = joinDraft.reserve
@@ -3151,7 +3149,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           if (mmrLimitMode !== "block") return true;
           const targetPlayer = player ?? userById[playerId];
           if (!targetPlayer) return true;
-          return getRecruitingFit(selectedPost, targetPlayer.ratings?.integrated ?? 1200, app.state).allowed;
+          return getRecruitingFit(selectedPost, targetPlayer.ratings?.integrated ?? DEFAULT_RATING, app.state).allowed;
         };
         const disabledRefereeIds = new Set([
           ...disabledInvitePlayerIds,
@@ -3240,7 +3238,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         );
         const showMatchRecordRosterPanel = Boolean(
           canEditMatchRecordRoster &&
-          ["teamA", "teamB"].some((sideName) => sourceMatchSideLeaderIds[sideName] === app.currentUser.id),
+          MATCH_SIDES.some((sideName) => sourceMatchSideLeaderIds[sideName] === app.currentUser.id),
         );
         const sourceMatchOpponentLeaderId = sourceMatch
           ? sourceMatchSideLeaderIds[sourceMatchOpponentSideName] ?? ""
@@ -3376,7 +3374,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomTitleSizeClass = getRoomTitleSizeClass(roomDisplayTitle);
         const roomVisibilityLabel = getRoomVisibilityLabel(sourceMatch ?? selectedPost, selectedPost);
         const roomVisibilityTone = roomVisibilityLabel === "대회방" ? "gold" : roomVisibilityLabel === "비공개방" ? "blue" : "green";
-        const sourceTeamSideCount = ["teamA", "teamB"].filter((sideName) => isMatchSideTeamParty(sourceMatch, sideName)).length;
+        const sourceTeamSideCount = MATCH_SIDES.filter((sideName) => isMatchSideTeamParty(sourceMatch, sideName)).length;
         const lobbyTeamEntryCount = (lobby.entries ?? []).filter((entry) => isPartyEntry(entry)).length;
         const teamMatchSideLocked = sourceTeamSideCount >= 2 || (selectedPost.hostJoinMode === "team" && lobbyTeamEntryCount > 0);
         const roomMatchTypeLabel = teamOnlyRoom || sourceTeamSideCount >= 2 || (selectedPost.visibility === "private" && lobbyTeamEntryCount >= 2)
@@ -3827,7 +3825,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
 
               {!sourceRoomReadOnly && showMatchRecordRosterPanel ? (
                 <div className="arena-record-roster-panels">
-                  {["teamA", "teamB"].map((sideName) => (
+                  {MATCH_SIDES.map((sideName) => (
                     <MatchRecordRosterPanel
                       key={sideName}
                       match={sourceMatch}

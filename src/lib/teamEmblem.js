@@ -7,8 +7,11 @@ export const TEAM_EMBLEM_FONT_OPTIONS = [
   ["serif", "명조"],
   ["mono", "모노"],
 ];
+export const TEAM_EMBLEM_TEXT_MODES = Object.freeze(["initial", "name", "abbreviation"]);
+export const TEAM_EMBLEM_FONT_IDS = Object.freeze(TEAM_EMBLEM_FONT_OPTIONS.map(([value]) => value));
 
-const TEAM_EMBLEM_FONTS = new Set(TEAM_EMBLEM_FONT_OPTIONS.map(([value]) => value));
+const TEAM_EMBLEM_TEXT_MODE_SET = new Set(TEAM_EMBLEM_TEXT_MODES);
+const TEAM_EMBLEM_FONT_SET = new Set(TEAM_EMBLEM_FONT_IDS);
 
 function sliceCharacters(value, limit) {
   const characters = Array.from(String(value ?? ""));
@@ -16,7 +19,19 @@ function sliceCharacters(value, limit) {
 }
 
 export function normalizeTeamEmblemFont(value = "sport") {
-  return TEAM_EMBLEM_FONTS.has(value) ? value : "sport";
+  return TEAM_EMBLEM_FONT_SET.has(value) ? value : "sport";
+}
+
+export function isTeamEmblemFont(value = "") {
+  return TEAM_EMBLEM_FONT_SET.has(value);
+}
+
+export function isTeamEmblemTextMode(value = "") {
+  return TEAM_EMBLEM_TEXT_MODE_SET.has(value);
+}
+
+export function normalizeTeamEmblemTextMode(value = "initial") {
+  return isTeamEmblemTextMode(value) ? value : "initial";
 }
 
 function splitEvenly(value, lineCount) {
@@ -57,7 +72,7 @@ function getBalancedWordLines(words, lineCount) {
 }
 
 export function getTeamEmblemTextLines(team = {}, fallbackName = "") {
-  const mode = new Set(["name", "abbreviation"]).has(team.emblemTextMode) ? team.emblemTextMode : "initial";
+  const mode = normalizeTeamEmblemTextMode(team.emblemTextMode);
   const teamName = String(team.name ?? fallbackName ?? "").trim();
   const rawText = mode === "abbreviation" ? team.emblemAbbreviation : teamName;
   const text = String(rawText ?? "").trim().replace(/\s+/g, " ") || "?";

@@ -2849,3 +2849,13 @@ flowchart TD
 7. 기본 경기 목록은 `rankball_match_list()` feed card를 우선한다. 누락 보강은 `rankball_related_active_match_list()`가 DB에서 현재 사용자 관계와 활성 상태를 먼저 판정한 뒤 최대 80개 ID만 반환한다.
 8. 경기 row는 feed card에 없는 선택 ID만 읽는다. `match_players`, `match_results`, `player_match_stats`, 팀, 구장, 프로필은 최종 선택된 경기 ID에서만 수화하며 최대 500개 경기 선조회 경로를 두지 않는다.
 9. directory/admin 조회 상한·cache·허용 section/queue는 `src/lib/queryPolicy.js`를 단일 원본으로 사용한다. synthetic 경기방 ID 판정은 `src/lib/recruiting.js`, 경기방 채팅 잠금 판정은 `src/lib/matchUtils.js`에서만 정의한다. 화면과 API에 같은 숫자·prefix·상태 배열을 다시 하드코딩하지 않는다.
+
+## 2026-07-21 공용 업무 정책 소유권
+
+1. 경기 사이드, 기본 MMR, 농구 포지션, 심판 등급, 모드 인원, 시간 단위, 신고·심판 시험 기간, 대회 MMR 간격은 `src/lib/constants.js`를 단일 원본으로 사용한다.
+2. 경기 결과·최근 기록 정렬·기록 상세 기간·경기방 채팅 잠금은 `src/lib/matchUtils.js`에서 계산한다. 화면은 자체 결과 판정이나 6개월 기준을 다시 만들지 않는다.
+3. 모집방 일정의 camelCase·snake_case 변환은 `src/data/scheduleUtils.js`, 모집방 채팅 길이·속도·polling·cache·DB row 변환은 `src/lib/roomChat.js`를 사용한다.
+4. Discord API URL, snowflake 검증, OAuth TTL, action custom ID, avatar URL, delivery 길이 제한은 `src/lib/discordProtocol.js`를 사용한다. 앱 공개 URL 조립은 서버의 `server/api/_publicAppUrl.js`를 사용한다.
+5. 프로필·팀 엠블럼의 R2 설정, Base64 검증, WebP 크기 검증, 업로드·삭제는 `server/api/_r2ImageStorage.js`를 사용한다. 색상과 팀 글자·폰트 allowlist는 각각 `src/lib/emblemPolicy.js`, `src/lib/teamEmblem.js`를 사용한다.
+6. 경기 알림 취소 prefix와 종료 상태 판정은 `src/lib/notifications.js`, 모집 신청 상태는 `src/lib/recruiting.js`, 팀 주장 조회는 `src/data/teamMappers.js`, 구장 표시 주소는 `src/lib/courts.js`를 단일 원본으로 사용한다.
+7. 단일 화면 문구, 디자인 token으로 관리되는 CSS 수치, 테스트 fixture 데이터, 이미 적용된 migration snapshot은 공용 업무 정책으로 오인해 추상화하지 않는다.

@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import { PLAYER_POSITIONS } from "../lib/constants.js";
+import { BASKETBALL_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag, makeRandomDigitSuffix, makeSuggestedHashtagBody, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
 import {
   AGE_GROUPS,
@@ -21,7 +21,7 @@ import {
   shouldSetupProfile,
 } from "../lib/profileSetup.js";
 
-const POSITION_OPTIONS = PLAYER_POSITIONS.filter((position) => ["PG", "SG", "SF", "PF", "C"].includes(position));
+const POSITION_OPTIONS = BASKETBALL_POSITIONS;
 
 function formatDate(date) {
   if (!date) return "";

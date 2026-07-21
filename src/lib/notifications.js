@@ -1,3 +1,24 @@
+export const CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES = Object.freeze([
+  "match-reminder-24h",
+  "match-reminder-2h",
+  "match-reminder-1h",
+  "match-manager-checkin-10m",
+  "match-manager-start-5m",
+]);
+export const MATCH_SCHEDULED_NOTICE_PREFIXES = Object.freeze([
+  ...CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES,
+  "match-manager-start-now",
+]);
+export const MATCH_POSTGAME_NOTICE_PREFIXES = Object.freeze([
+  "match-ended-score",
+  "match-dispute-check",
+]);
+export const MATCH_CANCEL_NOTICE_PREFIXES = Object.freeze([
+  ...MATCH_SCHEDULED_NOTICE_PREFIXES,
+  "match-started",
+  ...MATCH_POSTGAME_NOTICE_PREFIXES,
+]);
+
 export function getNotificationDueAt(notification = {}) {
   return notification.sendAt ?? notification.dueAt ?? notification.payload?.sendAt ?? notification.payload?.dueAt ?? "";
 }
@@ -44,11 +65,21 @@ export function isNotificationVisibleToUser(notification = {}, userId = "", opti
   return options.includeFuture === true || isNotificationDue(notification, options.nowMs);
 }
 
-const TERMINAL_MATCH_STATUSES = new Set(["cancelled", "canceled", "void", "voided", "closed"]);
-const TERMINAL_RECRUITING_STATUSES = new Set(["cancelled", "canceled", "closed", "expired"]);
+export const TERMINAL_MATCH_STATUS_VALUES = Object.freeze(["cancelled", "canceled", "void", "voided", "closed"]);
+export const TERMINAL_RECRUITING_STATUS_VALUES = Object.freeze(["cancelled", "canceled", "closed", "expired"]);
+const TERMINAL_MATCH_STATUSES = new Set(TERMINAL_MATCH_STATUS_VALUES);
+const TERMINAL_RECRUITING_STATUSES = new Set(TERMINAL_RECRUITING_STATUS_VALUES);
 
 function normalizeStatus(value) {
   return String(value ?? "").trim().toLowerCase();
+}
+
+export function isTerminalMatchStatus(value = "") {
+  return TERMINAL_MATCH_STATUSES.has(normalizeStatus(value));
+}
+
+export function isTerminalRecruitingStatus(value = "") {
+  return TERMINAL_RECRUITING_STATUSES.has(normalizeStatus(value));
 }
 
 export function getNotificationTargetStatus(notification = {}, options = {}) {
@@ -73,8 +104,8 @@ export function isNotificationTargetUnavailable(notification = {}, options = {})
   const targetStatus = getNotificationTargetStatus(notification, options);
   if (!targetStatus) return false;
   return notification.matchId
-    ? TERMINAL_MATCH_STATUSES.has(targetStatus)
-    : TERMINAL_RECRUITING_STATUSES.has(targetStatus);
+    ? isTerminalMatchStatus(targetStatus)
+    : isTerminalRecruitingStatus(targetStatus);
 }
 
 export function isTerminalRoomNotice(notification = {}) {
@@ -87,13 +118,17 @@ export function isNotificationDisplayable(notification = {}, options = {}) {
   return !isNotificationTargetUnavailable(notification, options) || isTerminalRoomNotice(notification);
 }
 
-export function getNotificationHref(notification = {}) {
-  if (isNotificationTargetUnavailable(notification)) return "/app/notifications";
+export function getNotificationTargetPath(notification = {}) {
   if (notification.webPath) return notification.webPath;
   if (notification.tournamentId) return `/app/tournaments/${encodeURIComponent(notification.tournamentId)}`;
   if (notification.matchId) return `/app/matches?match=${encodeURIComponent(notification.matchId)}`;
   if (notification.recruitingPostId) return `/app/recruiting?post=${encodeURIComponent(notification.recruitingPostId)}`;
   return "/app/notifications";
+}
+
+export function getNotificationHref(notification = {}) {
+  if (isNotificationTargetUnavailable(notification)) return "/app/notifications";
+  return getNotificationTargetPath(notification);
 }
 
 export function isHomeActionNotification(notification = {}) {

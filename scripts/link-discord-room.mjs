@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { isDiscordSnowflake } from "../src/lib/discordProtocol.js";
 
-const SNOWFLAKE_RE = /^\d{17,20}$/;
 const args = parseArgs(process.argv.slice(2));
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -47,7 +47,7 @@ function readRequiredArg(name) {
 function readSnowflakeArg(name, required = true) {
   const value = String(args[name] || "").trim();
   if (!value && !required) return "";
-  if (!SNOWFLAKE_RE.test(value)) {
+  if (!isDiscordSnowflake(value)) {
     console.error(`--${name} must be a Discord snowflake.`);
     process.exit(1);
   }

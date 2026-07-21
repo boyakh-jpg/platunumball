@@ -39,8 +39,9 @@ import {
   isTournamentMatchInUserSchedule,
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
-import { ROOM_KINDS } from "../lib/constants.js";
+import { MATCH_SIDES, ROOM_KINDS } from "../lib/constants.js";
 import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
+import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -314,7 +315,7 @@ function getRoomCardTitle(room, fallback = "") {
 }
 
 function getRoomTypeLabel(room = {}, lobby = null) {
-  const matchTeamCount = ["teamA", "teamB"].filter((sideName) => Boolean(room?.[sideName]?.teamId) || isMatchSideTeamParty(room, sideName)).length;
+  const matchTeamCount = MATCH_SIDES.filter((sideName) => Boolean(room?.[sideName]?.teamId) || isMatchSideTeamParty(room, sideName)).length;
   const matchPartyCount = (room.parties ?? []).filter((party) => isMatchPartyTeamParty(party)).length;
   const lobbyTeamCount = lobby?.entries?.filter((entry) => isRecruitingTeamEntry(entry)).length ?? 0;
   if (matchTeamCount >= 2 || lobbyTeamCount >= 2) return "팀전";
@@ -463,10 +464,6 @@ function getScheduleItemsForView(matches = [], recruitingPosts = [], view, userI
   ].sort((a, b) => compareSchedule(a.item, b.item));
 }
 
-function getTeamCaptainId(team) {
-  return team?.members?.find((member) => member.role === "captain")?.userId ?? null;
-}
-
 function getTournamentTeamStatus(tournament, teamId) {
   return tournament.teamStatuses?.[teamId] ?? "invited";
 }
@@ -535,9 +532,9 @@ export function getMatchRoomPost(match, state) {
   const sourcePostLobby = sourcePost ? getRecruitingLobby(sourcePost, sourceState) : null;
   const tournamentRoom = Boolean(sourceMatch.tournamentId && !sourcePost);
   const tournamentReadySide = tournamentRoom
-    ? ["teamA", "teamB"].find((sideName) => sourceMatch.rules?.rosterReady?.[sideName] === true) ?? ""
+    ? MATCH_SIDES.find((sideName) => sourceMatch.rules?.rosterReady?.[sideName] === true) ?? ""
     : "";
-  const configuredTournamentHostSide = ["teamA", "teamB"].includes(sourceMatch.rules?.tournamentHostSide)
+  const configuredTournamentHostSide = MATCH_SIDES.includes(sourceMatch.rules?.tournamentHostSide)
     ? sourceMatch.rules.tournamentHostSide
     : "";
   const tournamentHostClaimed = Boolean(
@@ -559,7 +556,7 @@ export function getMatchRoomPost(match, state) {
     : getMatchHostPlayerId(sourceMatch, sourcePost);
   const sideCapacity = getRoomCapacity(sourceMatch);
   const hasExplicitSideTeam = (sideName) => Boolean(sourceMatch[sideName]?.teamId);
-  const explicitTeamRoom = ["teamA", "teamB"].some(hasExplicitSideTeam);
+  const explicitTeamRoom = MATCH_SIDES.some(hasExplicitSideTeam);
   const soloRecord = isPersonalRecordMatch(sourceMatch);
   const soloPlayedPlayerIds = sourceMatch.playedPlayerIds ?? sourceMatch.rules?.playedPlayerIds ?? {};
   const sourceTeamAPlayers = uniquePlayerIds(soloRecord ? soloPlayedPlayerIds.teamA ?? [] : sourceMatch.teamA?.players ?? []);
@@ -580,7 +577,7 @@ export function getMatchRoomPost(match, state) {
     .map((party, index) => ({
       ...party,
       index,
-      side: ["teamA", "teamB"].includes(party.side) ? party.side : "teamB",
+      side: MATCH_SIDES.includes(party.side) ? party.side : "teamB",
       players: uniquePlayerIds(party.players ?? []),
       reserves: uniquePlayerIds(party.reserves ?? []),
     }))

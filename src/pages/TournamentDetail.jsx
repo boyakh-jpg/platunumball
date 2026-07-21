@@ -8,6 +8,7 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
+import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getMatchRoomPhase } from "../lib/matchUtils.js";
@@ -32,10 +33,6 @@ const mmrPolicyLabels = {
   standard: "일반 MMR",
   event_only: "대회 점수만",
 };
-
-function getTeamCaptainId(team) {
-  return team?.members?.find((member) => member.role === "captain")?.userId ?? null;
-}
 
 function getTournamentTeamStatus(tournament, teamId) {
   return tournament.teamStatuses?.[teamId] ?? "invited";

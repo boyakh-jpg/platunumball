@@ -1,5 +1,9 @@
-const DISCORD_API_BASE = "https://discord.com/api/v10";
-const DISCORD_SNOWFLAKE_RE = /^\d{17,20}$/;
+import { DISCORD_API_BASE_URL, isDiscordSnowflake } from "../../../src/lib/discordProtocol.js";
+import {
+  fromRoomChatMessageRow as mapRoomChatMessageRow,
+  sanitizeRoomChatBody,
+} from "../../../src/lib/roomChat.js";
+
 const DISCORD_CHAT_TIMEOUT_MS = Math.max(500, Math.min(10000, Number(process.env.DISCORD_CHAT_SYNC_TIMEOUT_MS || 2500)));
 
 function isMissingTable(error = {}, table = "") {
@@ -23,25 +27,10 @@ function getDiscordChatDryRun(path = "") {
   };
 }
 
-export function isDiscordSnowflake(value = "") {
-  return DISCORD_SNOWFLAKE_RE.test(String(value || "").trim());
-}
-
-export function sanitizeRoomChatBody(value = "") {
-  return String(value ?? "")
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
-    .trim()
-    .slice(0, 60);
-}
+export { isDiscordSnowflake, sanitizeRoomChatBody };
 
 export function fromRoomChatMessageRow(row = {}) {
-  return {
-    id: String(row.id ?? ""),
-    messageSeq: Number(row.message_seq ?? 0),
-    userId: row.user_id ?? "",
-    body: String(row.body ?? "").slice(0, 60),
-    createdAt: row.created_at ?? new Date().toISOString(),
-  };
+  return mapRoomChatMessageRow(row, { fallbackCreatedAt: new Date().toISOString() });
 }
 
 async function discordFetch(path, options = {}) {
@@ -54,7 +43,7 @@ async function discordFetch(path, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DISCORD_CHAT_TIMEOUT_MS);
   try {
-    const response = await fetch(`${DISCORD_API_BASE}${path}`, {
+    const response = await fetch(`${DISCORD_API_BASE_URL}${path}`, {
       ...options,
       signal: controller.signal,
       headers: {

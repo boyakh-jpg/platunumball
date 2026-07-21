@@ -1,7 +1,16 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getPublicAppWebUrl } from "../_publicAppUrl.js";
 import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
 import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
-import { getBlockedUserIds, getNotificationActorId } from "../../../src/lib/notifications.js";
+import { getBlockedUserIds, getNotificationActorId, getNotificationTargetPath } from "../../../src/lib/notifications.js";
+import {
+  DISCORD_NOTIFICATION_BODY_MAX_LENGTH,
+  DISCORD_NOTIFICATION_ID_MAX_LENGTH,
+  DISCORD_NOTIFICATION_TITLE_MAX_LENGTH,
+  DISCORD_NOTIFICATION_URL_MAX_LENGTH,
+  DISCORD_PROFILE_ID_MAX_LENGTH,
+  getDiscordInviteCustomId,
+} from "../../../src/lib/discordProtocol.js";
 
 const MAX_DELIVERIES = 100;
 const ALLOWED_EVENTS = new Set(["match", "approval", "report"]);
@@ -35,22 +44,18 @@ function getNotificationEvent(notification = {}) {
 }
 
 function getNotificationWebPath(notification = {}) {
-  const explicitPath = trimText(notification.webPath, 500);
-  if (explicitPath.startsWith("/app/")) return explicitPath;
-  if (notification.tournamentId) return `/app/tournaments/${encodeURIComponent(notification.tournamentId)}`;
-  if (notification.matchId) return `/app/matches?match=${encodeURIComponent(notification.matchId)}`;
-  if (notification.recruitingPostId) return `/app/recruiting?post=${encodeURIComponent(notification.recruitingPostId)}`;
-  return "/app/notifications";
+  const explicitPath = trimText(notification.webPath, DISCORD_NOTIFICATION_URL_MAX_LENGTH);
+  return getNotificationTargetPath({
+    ...notification,
+    webPath: explicitPath.startsWith("/app/") ? explicitPath : "",
+  });
 }
 
 function getNotificationActions(notification = {}) {
   if (!notification.recruitingPostId || !notification.invitationId) return [];
-  const prefix = `rankball:invite`;
-  const postId = encodeURIComponent(String(notification.recruitingPostId));
-  const invitationId = encodeURIComponent(String(notification.invitationId));
   return [
-    { id: "accept", label: "수락", style: "primary", customId: `${prefix}:accept:${postId}:${invitationId}` },
-    { id: "decline", label: "거절", style: "secondary", customId: `${prefix}:decline:${postId}:${invitationId}` },
+    { id: "accept", label: "수락", style: "primary", customId: getDiscordInviteCustomId("accept", notification.recruitingPostId, notification.invitationId) },
+    { id: "decline", label: "거절", style: "secondary", customId: getDiscordInviteCustomId("decline", notification.recruitingPostId, notification.invitationId) },
   ];
 }
 
@@ -61,13 +66,12 @@ function getNotificationSendAt(notification = {}, queuedAt) {
 }
 
 function toDeliveryRow(notification, profileId, discordUserId, queuedAt) {
-  const notificationId = trimText(notification.id, 160);
+  const notificationId = trimText(notification.id, DISCORD_NOTIFICATION_ID_MAX_LENGTH);
   if (!notificationId || notification.readAt) return null;
   const id = `discord-${profileId}-${notificationId}`;
   const event = getNotificationEvent(notification);
   const sendAt = getNotificationSendAt(notification, queuedAt);
   const webPath = getNotificationWebPath(notification);
-  const baseUrl = String(process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/+$/, "");
 
   const payload = {
     id,
@@ -75,12 +79,12 @@ function toDeliveryRow(notification, profileId, discordUserId, queuedAt) {
     targetUserId: profileId,
     discordUserId,
     event,
-    title: trimText(notification.title, 160),
-    body: trimText(notification.body, 1200),
+    title: trimText(notification.title, DISCORD_NOTIFICATION_TITLE_MAX_LENGTH),
+    body: trimText(notification.body, DISCORD_NOTIFICATION_BODY_MAX_LENGTH),
     webPath,
-    webUrl: baseUrl ? `${baseUrl}${webPath}` : webPath,
+    webUrl: getPublicAppWebUrl(webPath),
     actions: getNotificationActions(notification),
-    fromUserId: trimText(getNotificationActorId(notification), 128),
+    fromUserId: trimText(getNotificationActorId(notification), DISCORD_PROFILE_ID_MAX_LENGTH),
     status: "queued",
     queuedAt,
     sendAt,
@@ -126,7 +130,7 @@ export default async function handler(request, response) {
 
     const blockedUserIdSet = new Set(getBlockedUserIds(profile.app_settings));
     const requestedNotificationIds = [...new Set(normalizeDeliveries(body.deliveries)
-      .map((delivery) => trimText(delivery.notificationId, 160))
+      .map((delivery) => trimText(delivery.notificationId, DISCORD_NOTIFICATION_ID_MAX_LENGTH))
       .filter(Boolean))];
     if (!requestedNotificationIds.length) {
       sendJson(response, 200, { ok: true, count: 0 });

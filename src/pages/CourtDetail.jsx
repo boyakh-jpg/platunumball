@@ -4,7 +4,7 @@ import { CalendarDays, ExternalLink, MapPin, Star, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
-import { getCourtLayoutLabel, getCourtMapUrl, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import { getCourtAddress, getCourtLayoutLabel, getCourtMapUrl, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag } from "../lib/handles.js";
 
 function formatDate(value) {
@@ -16,10 +16,6 @@ function formatDate(value) {
 
 function getMatchDate(match = {}) {
   return match.scheduledAt || (match.scheduledDate ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}` : "") || match.endedAt;
-}
-
-function getCourtAddress(court = {}) {
-  return court.roadAddress || court.addressText || court.jibunAddress || "주소 미등록";
 }
 
 function getLoadError(error) {

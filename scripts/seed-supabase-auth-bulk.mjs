@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { BASKETBALL_POSITIONS } from "../src/lib/constants.js";
 
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -53,7 +54,7 @@ function buildAccounts() {
       name: `무결성테스트 ${suffix}`,
       hashtag,
       trustScore,
-      position: ["PG", "SG", "SF", "PF", "C"][index % 5],
+      position: BASKETBALL_POSITIONS[index % BASKETBALL_POSITIONS.length],
       avatarColor: ["#ef4444", "#f97316", "#14b8a6", "#3b82f6", "#8b5cf6"][index % 5],
     };
   });

@@ -5,11 +5,12 @@ import {
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
 import { persistMatchSnapshot } from "../matches/sync-match.js";
+import { DEFAULT_TOURNAMENT_MMR_GAP, MMR_LIMIT_MODES as MMR_LIMIT_MODE_IDS } from "../../../src/lib/constants.js";
 
 const FORMATS = new Set(["league", "tournament"]);
 const VISIBILITIES = new Set(["private", "public"]);
 const STATUSES = new Set(["draft", "scheduled", "active", "closed", "cancelled"]);
-const MMR_LIMIT_MODES = new Set(["off", "warn", "block"]);
+const MMR_LIMIT_MODES = new Set(MMR_LIMIT_MODE_IDS);
 const MMR_POLICIES = new Set(["gap_adjusted", "standard", "event_only"]);
 const TEAM_STATUSES = new Set(["invited", "accepted", "declined"]);
 const TOURNAMENT_OPERATION_ACTIONS = new Set(["createTournament", "approveTournamentTeam", "loadTournament"]);
@@ -74,7 +75,7 @@ function getTournamentCoreSnapshot(tournament = {}, teamRows = []) {
     schedulePolicy: tournament.schedulePolicy ?? tournament.schedule_policy ?? "weekly",
     scheduleNote: tournament.scheduleNote ?? tournament.schedule_note ?? "",
     mmrLimitMode: tournament.mmrLimitMode ?? tournament.mmr_limit_mode ?? "warn",
-    maxMmrGap: Number(tournament.maxMmrGap ?? tournament.max_mmr_gap ?? 250),
+    maxMmrGap: Number(tournament.maxMmrGap ?? tournament.max_mmr_gap ?? DEFAULT_TOURNAMENT_MMR_GAP),
     mmrPolicy: tournament.mmrPolicy ?? tournament.mmr_policy ?? "gap_adjusted",
     rules: tournament.rules ?? {},
     memo: tournament.memo ?? "",
@@ -123,7 +124,7 @@ function normalizeTournament(tournament = {}, actorProfileId = "") {
     schedulePolicy: tournament.schedulePolicy || tournament.schedule_policy || "weekly",
     scheduleNote: tournament.scheduleNote || tournament.schedule_note || "",
     mmrLimitMode: pickAllowed(tournament.mmrLimitMode || tournament.mmr_limit_mode, MMR_LIMIT_MODES, "warn"),
-    maxMmrGap: Number(tournament.maxMmrGap ?? tournament.max_mmr_gap ?? 250),
+    maxMmrGap: Number(tournament.maxMmrGap ?? tournament.max_mmr_gap ?? DEFAULT_TOURNAMENT_MMR_GAP),
     mmrPolicy: pickAllowed(tournament.mmrPolicy || tournament.mmr_policy, MMR_POLICIES, "gap_adjusted"),
     rules: tournament.rules && typeof tournament.rules === "object" ? tournament.rules : {},
     memo: tournament.memo || "",
