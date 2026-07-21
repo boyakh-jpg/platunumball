@@ -85,6 +85,8 @@ import {
   validateWebpImage,
 } from "../server/api/_r2ImageStorage.js";
 import { readJsonBody } from "../server/api/_supabaseAdmin.js";
+import { getRecruitingListCardLobby } from "../src/lib/recruiting.js";
+import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -133,6 +135,49 @@ test("team roster summons are atomic and resolve actionable invitations", async 
   assert.match(migrationSource, /read_at = coalesce\(notification\.read_at, now_at\)/);
   assert.match(migrationSource, /rankball_refresh_recruiting_feed_for_post\(safe_post_id\)/);
   assert.doesNotMatch(migrationSource, /delete from public\.notifications/i);
+});
+
+test("recruiting schedule cards keep fresh list counts over cached detail rows", () => {
+  const existing = {
+    id: "room-full-team-match",
+    mode: "5v5",
+    sideCapacity: 5,
+    playerId: "host-player",
+    playerIds: ["host-player"],
+    applicants: [{
+      kind: "team",
+      teamId: "guest-team",
+      playerId: "guest-captain",
+      playerIds: ["guest-captain", "guest-player"],
+      side: "teamB",
+      status: "ready",
+    }],
+    __feedRelations: ["participant"],
+    updatedAt: "2026-07-21T06:40:00.000Z",
+  };
+  const listCounts = {
+    teamA: { filled: 5, projectedFilled: 5, confirmationProjectedFilled: 5, capacity: 5 },
+    teamB: { filled: 5, projectedFilled: 5, confirmationProjectedFilled: 5, capacity: 5 },
+  };
+  const incoming = {
+    id: existing.id,
+    listCardOnly: true,
+    listCounts,
+    __feedRelations: ["team"],
+    updatedAt: "2026-07-21T06:30:00.000Z",
+  };
+
+  const [merged] = mergeRecruitingPostsById([existing], [incoming]);
+  const lobby = getRecruitingListCardLobby(merged, {});
+
+  assert.equal(merged.listCardOnly, undefined);
+  assert.deepEqual(merged.playerIds, existing.playerIds);
+  assert.deepEqual(merged.applicants, existing.applicants);
+  assert.deepEqual(merged.__feedRelations, ["participant", "team"]);
+  assert.equal(lobby.sides.teamA.filled, 5);
+  assert.equal(lobby.sides.teamB.filled, 5);
+  assert.equal(lobby.sides.teamA.capacity, 5);
+  assert.equal(lobby.sides.teamB.capacity, 5);
 });
 
 test("region selectors preserve the current government code order", () => {

@@ -244,6 +244,7 @@
 - 모집 목록 카드의 A/B 인원 숫자는 가능하면 `recruiting_posts`/`recruiting_applications` 얇은 row 기준 `listCounts`로 다시 계산한다.
 - 모집 상세, 경기 메뉴 모집 일정, 내 모집 관계 목록, 서버 action 결과는 pending mutation 보호를 통과하면 같은 id의 기존 클라이언트 모집 row를 교체한다.
 - 목록 보정은 숫자만 갱신하고 상세 로스터/프로필은 방 상세 로드에서 가져온다.
+- 상세 모집 row가 클라이언트에 남아 있어도 새 목록 응답의 `listCounts`와 관계값은 합쳐야 하며, 목록 카드의 A/B 숫자는 상세 row의 축약 로스터보다 `listCounts`를 우선한다.
 
 ## 2026-07-07 진행 메뉴 선택 경기 상세 기준
 

@@ -412,11 +412,21 @@ function preserveOptimisticMatchAttendance(incoming = {}, existing = null) {
   };
 }
 
-function mergeRecruitingPostsById(current = [], incoming = [], forceIds = new Set()) {
+export function mergeRecruitingPostsById(current = [], incoming = [], forceIds = new Set()) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
     if (!item?.id) return;
     const existing = merged.get(item.id);
+    if (item.listCardOnly === true && existing && existing.listCardOnly !== true) {
+      merged.set(item.id, {
+        ...existing,
+        ...(item.listCounts ? { listCounts: item.listCounts } : {}),
+        ...(Array.isArray(item.__feedRelations)
+          ? { __feedRelations: Array.from(new Set([...(existing.__feedRelations ?? []), ...item.__feedRelations])) }
+          : {}),
+      });
+      return;
+    }
     if (!forceIds.has(item.id) && !shouldUseIncomingRecruitingPostRow(item, existing)) return;
     const preserveKeys = Object.prototype.hasOwnProperty.call(item, "applicants") && item.listCardOnly !== true ? [] : ["applicants"];
     const next = preserveExistingWhenEmpty(item, existing, preserveKeys);

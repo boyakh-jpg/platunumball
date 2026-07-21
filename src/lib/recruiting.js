@@ -1135,7 +1135,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
 }
 
 export function getRecruitingListCardLobby(post = {}, state = {}) {
-  if (post?.listCardOnly !== true || !post?.listCounts) return getRecruitingLobby(post, state);
+  if (!post?.listCounts) return getRecruitingLobby(post, state);
   return getRecruitingLobby({
     ...post,
     listCardOnly: true,
