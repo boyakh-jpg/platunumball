@@ -255,8 +255,9 @@ test("authenticated court lookups use POST JSON instead of URL query", async () 
     assert.match(serverSource, /request\.method !== "POST"/);
     assert.doesNotMatch(serverSource, /request\.headers\.host|searchParams\.get\("q"\)/);
   });
-  assert.match(placeServerSource, /process\.env\.NAVER_SEARCH_CLIENT_ID/);
-  assert.match(placeServerSource, /process\.env\.NAVER_SEARCH_CLIENT_SECRET/);
+  assert.match(placeServerSource, /from\("approved_courts"\)/);
+  assert.match(placeServerSource, /from\("court_requests"\)/);
+  assert.doesNotMatch(placeServerSource, /openapi\.naver\.com\/v1\/search\/local|NAVER_SEARCH_CLIENT_ID|NAVER_SEARCH_CLIENT_SECRET/);
 });
 
 test("future public database objects are deny-by-default", async () => {

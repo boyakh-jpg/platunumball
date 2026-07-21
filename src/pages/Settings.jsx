@@ -32,10 +32,11 @@ import {
   getCourtPaidLabel,
   getCourtSurfaceLabel,
   getRegisteredCourts,
+  normalizeCourtFacilityName,
   normalizeCourtSourceUrl,
 } from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses, searchNaverPlaceCandidates } from "../lib/naverAddress.js";
+import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses, searchNearbyCourtCandidates } from "../lib/naverAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import {
@@ -278,13 +279,9 @@ export default function Settings({ app, auth, section = "main" }) {
   const [naverAddressResults, setNaverAddressResults] = useState([]);
   const [courtLookupStatus, setCourtLookupStatus] = useState("");
   const [courtPinConfirmed, setCourtPinConfirmed] = useState(false);
-  const [courtPlaceCandidates, setCourtPlaceCandidates] = useState([]);
-  const [courtPlaceLookupStatus, setCourtPlaceLookupStatus] = useState("");
-  const [courtPlaceSearchPending, setCourtPlaceSearchPending] = useState(false);
-  const [selectedCourtPlaceId, setSelectedCourtPlaceId] = useState("");
   const [courtServerNearbyCandidates, setCourtServerNearbyCandidates] = useState([]);
   const [courtNearbyConfirmed, setCourtNearbyConfirmed] = useState(false);
-  const courtPlaceSearchRef = useRef(0);
+  const courtNearbySearchRef = useRef(0);
   const [courtDraft, setCourtDraft] = useState(() => ({
     ...DEFAULT_COURT_REQUEST,
     region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
@@ -935,47 +932,23 @@ export default function Settings({ app, auth, section = "main" }) {
     if (Object.keys(patch).some((key) => COURT_NEARBY_REVIEW_FIELDS.has(key))) setCourtNearbyConfirmed(false);
     setCourtDraft((current) => ({ ...current, ...patch }));
   };
-  const resetCourtPlaceLookup = () => {
-    courtPlaceSearchRef.current += 1;
-    setCourtPlaceCandidates([]);
-    setCourtPlaceLookupStatus("");
-    setCourtPlaceSearchPending(false);
-    setSelectedCourtPlaceId("");
+  const resetCourtNearbyLookup = () => {
+    courtNearbySearchRef.current += 1;
     setCourtServerNearbyCandidates([]);
   };
-  const loadCourtPlaceCandidates = async (pin) => {
-    const requestId = courtPlaceSearchRef.current + 1;
-    courtPlaceSearchRef.current = requestId;
-    setCourtPlaceCandidates([]);
-    setSelectedCourtPlaceId("");
-    setCourtPlaceSearchPending(true);
-    setCourtPlaceLookupStatus("핀 주소에 등록된 장소 찾는 중");
+  const loadCourtNearbyCandidates = async (pin) => {
+    const requestId = courtNearbySearchRef.current + 1;
+    courtNearbySearchRef.current = requestId;
+    setCourtServerNearbyCandidates([]);
     try {
-      const result = await searchNaverPlaceCandidates(pin);
-      if (courtPlaceSearchRef.current !== requestId) return;
-      setCourtPlaceCandidates(result.results);
-      setCourtServerNearbyCandidates(result.nearbyCourts);
-      setCourtPlaceLookupStatus(result.placeSearchMessage || (result.results.length
-        ? `${result.results.length}개 장소 후보를 찾았습니다. 맞는 장소를 선택하세요.`
-        : "등록된 장소를 찾지 못했습니다. 시설/장소명을 직접 입력하세요."));
+      const nearbyCourts = await searchNearbyCourtCandidates(pin);
+      if (courtNearbySearchRef.current !== requestId) return;
+      setCourtServerNearbyCandidates(nearbyCourts);
     } catch (error) {
-      if (courtPlaceSearchRef.current !== requestId) return;
-      setCourtPlaceCandidates([]);
+      if (courtNearbySearchRef.current !== requestId) return;
       setCourtServerNearbyCandidates([]);
-      setCourtPlaceLookupStatus(error.message || "장소 자동검색 실패 · 직접 입력 가능");
-    } finally {
-      if (courtPlaceSearchRef.current === requestId) setCourtPlaceSearchPending(false);
+      setCourtLookupStatus(error.message || "근처 등록 구장 조회 실패");
     }
-  };
-  const selectCourtPlace = (place) => {
-    setSelectedCourtPlaceId(place.id);
-    updateCourtDraft({ name: place.name, buildingName: place.name });
-    setCourtPlaceLookupStatus("선택한 시설/장소명을 구장명 기준으로 사용합니다.");
-  };
-  const enableManualCourtPlaceName = () => {
-    setSelectedCourtPlaceId("");
-    updateCourtDraft({ name: courtDraft.name, buildingName: "" });
-    setCourtPlaceLookupStatus("시설/장소명을 직접 수정할 수 있습니다.");
   };
   const getCourtAddressRegion = (addressResult) => {
     const text = `${addressResult?.sigungu ?? ""} ${addressResult?.addressText ?? ""}`;
@@ -1004,10 +977,8 @@ export default function Settings({ app, auth, section = "main" }) {
     try {
       const pin = await openNaverMapPinPicker(courtDraft);
       const addressDong = getCourtAddressDong(pin);
-      const buildingName = String(pin.buildingName || courtDraft.buildingName || courtDraft.name).trim();
       updateCourtDraft({
-        name: buildingName,
-        buildingName: String(pin.buildingName || courtDraft.buildingName).trim(),
+        buildingName: "",
         region: getCourtAddressRegion(pin),
         addressText: pin.addressText,
         roadAddress: pin.roadAddress,
@@ -1021,18 +992,16 @@ export default function Settings({ app, auth, section = "main" }) {
       setNaverAddressResults([]);
       setCourtPinConfirmed(true);
       setCourtLookupStatus("핀 위치의 실제 주소를 저장했습니다.");
-      await loadCourtPlaceCandidates(pin);
+      await loadCourtNearbyCandidates(pin);
     } catch (error) {
       setCourtLookupStatus(error.message || "실제 구장 위치 저장 실패");
     }
   };
   const selectNaverAddress = (result) => {
-    resetCourtPlaceLookup();
+    resetCourtNearbyLookup();
     const addressDong = getCourtAddressDong(result);
-    const buildingName = String(result.buildingName || courtDraft.buildingName || courtDraft.name).trim();
     updateCourtDraft({
-      name: buildingName,
-      buildingName: String(result.buildingName || courtDraft.buildingName).trim(),
+      buildingName: "",
       region: getCourtAddressRegion(result),
       addressText: result.addressText,
       roadAddress: result.roadAddress,
@@ -1144,7 +1113,7 @@ export default function Settings({ app, auth, section = "main" }) {
     setCourtAddressQuery("");
     setNaverAddressResults([]);
     setCourtPinConfirmed(false);
-    resetCourtPlaceLookup();
+    resetCourtNearbyLookup();
     setCourtNearbyConfirmed(false);
     setCourtDraft({
       ...DEFAULT_COURT_REQUEST,
@@ -1740,43 +1709,14 @@ export default function Settings({ app, auth, section = "main" }) {
                   ) : null}
                   {courtLookupStatus ? <small>{courtLookupStatus}</small> : null}
                 </div>
-                {courtPinConfirmed ? (
-                  <div className="settings-place-lookup">
-                    <div className="settings-place-lookup-head">
-                      <div>
-                        <strong>핀 주소의 장소 후보</strong>
-                        <span>공원·체육관·학교 등 네이버에 등록된 시설만 표시</span>
-                      </div>
-                      {courtPlaceSearchPending ? <em>검색 중</em> : null}
-                    </div>
-                    {courtPlaceCandidates.length ? (
-                      <div className="settings-address-results settings-place-results">
-                        {courtPlaceCandidates.map((place) => (
-                          <button
-                            key={place.id}
-                            type="button"
-                            className={selectedCourtPlaceId === place.id ? "is-selected" : ""}
-                            aria-pressed={selectedCourtPlaceId === place.id}
-                            onClick={() => selectCourtPlace(place)}
-                          >
-                            <strong>{place.name}</strong>
-                            <span>{place.roadAddress || place.address || place.category}</span>
-                            <em>{place.sameAddress ? "동일 주소" : formatCourtDistance(place.distanceMeters)}</em>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                    {courtPlaceLookupStatus ? <small>{courtPlaceLookupStatus}</small> : null}
-                  </div>
-                ) : null}
                 <div className="form-grid two">
                   <label>
                     시설/장소명
                     <input
                       value={courtDraft.name}
-                      readOnly={Boolean(courtDraft.buildingName)}
-                      placeholder="장소 후보 선택 · 없으면 직접 입력"
-                      onChange={(event) => updateCourtDraft({ name: event.target.value })}
+                      placeholder="예: 보라매공원 농구장"
+                      onChange={(event) => updateCourtDraft({ name: event.target.value, buildingName: "" })}
+                      onBlur={(event) => updateCourtDraft({ name: normalizeCourtFacilityName(event.target.value), buildingName: "" })}
                     />
                   </label>
                   <label>
@@ -1785,8 +1725,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   </label>
                 </div>
                 <div className="settings-place-name-actions">
-                  <small>{courtDraft.buildingName ? "선택한 장소명이 적용됨" : "맞는 후보가 없으면 직접 입력"}</small>
-                  {courtDraft.buildingName ? <Button type="button" size="sm" variant="secondary" onClick={enableManualCourtPlaceName}>직접 수정</Button> : null}
+                  <small>공백·괄호·붙여 쓴 농구장·코트 번호 표기를 저장 전에 자동 정리합니다.</small>
                 </div>
                 {courtDisplayName ? (
                   <div className="arena-mini-note">

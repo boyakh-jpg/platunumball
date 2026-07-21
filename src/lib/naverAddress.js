@@ -127,15 +127,13 @@ function getNaverAddressErrorMessage(errorCode = "") {
   return errorCode || "주소 검색 실패";
 }
 
-function getNaverPlaceErrorMessage(errorCode = "") {
+function getNearbyCourtErrorMessage(errorCode = "") {
   if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") return "로그인 세션을 다시 확인해주세요.";
-  if (errorCode === "profile_not_found") return "서버 프로필 저장 후 장소 자동검색을 사용할 수 있습니다.";
+  if (errorCode === "profile_not_found") return "서버 프로필 저장 후 근처 구장을 확인할 수 있습니다.";
   if (errorCode === "court_request_trust_required") return "구장 등록요청 권한이 부족합니다.";
-  if (errorCode === "missing_place_context") return "핀 주소와 좌표를 먼저 확정하세요.";
-  if (errorCode === "place_search_rate_limited") return "장소 자동검색 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
-  if (errorCode === "place_search_not_configured") return "장소 자동검색이 아직 설정되지 않았습니다. 시설/장소명을 직접 입력하세요.";
-  if (String(errorCode).startsWith("naver_place_search_failed")) return "네이버 장소검색에 실패했습니다. 시설/장소명을 직접 입력하세요.";
-  return errorCode || "장소 자동검색 실패";
+  if (errorCode === "missing_nearby_context") return "핀 주소와 좌표를 먼저 확정하세요.";
+  if (errorCode === "nearby_search_rate_limited") return "근처 구장 조회 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+  return errorCode || "근처 등록 구장 조회 실패";
 }
 
 async function searchNaverAddressesOnServer(searchQuery) {
@@ -193,12 +191,11 @@ export async function searchNaverAddresses(query, clientId = getNaverMapClientId
   }
 }
 
-export async function searchNaverPlaceCandidates(pin = {}) {
-  const emptyResult = { results: [], nearbyCourts: [], placeSearchMessage: "" };
-  if (!isSupabaseConfigured) return emptyResult;
+export async function searchNearbyCourtCandidates(pin = {}) {
+  if (!isSupabaseConfigured) return [];
   const { data } = await supabase.auth.getSession();
   const accessToken = data?.session?.access_token;
-  if (!accessToken) return emptyResult;
+  if (!accessToken) return [];
 
   const response = await fetch("/api/courts/place-search", {
     method: "POST",
@@ -207,7 +204,6 @@ export async function searchNaverPlaceCandidates(pin = {}) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      buildingName: pin.buildingName,
       addressText: pin.addressText,
       roadAddress: pin.roadAddress,
       jibunAddress: pin.jibunAddress,
@@ -217,15 +213,11 @@ export async function searchNaverPlaceCandidates(pin = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(getNaverPlaceErrorMessage(payload.error));
+    const error = new Error(getNearbyCourtErrorMessage(payload.error));
     error.code = payload.error;
     throw error;
   }
-  return {
-    results: Array.isArray(payload.results) ? payload.results : [],
-    nearbyCourts: Array.isArray(payload.nearbyCourts) ? payload.nearbyCourts : [],
-    placeSearchMessage: payload.placeSearchError ? getNaverPlaceErrorMessage(payload.placeSearchError) : "",
-  };
+  return Array.isArray(payload.nearbyCourts) ? payload.nearbyCourts : [];
 }
 
 export async function geocodeNaverAddress(addressText, clientId = getNaverMapClientId()) {

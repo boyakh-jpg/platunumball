@@ -1,42 +1,18 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { COURT_REQUEST_TRUST_MIN, MINUTE_MS } from "../../../src/lib/constants.js";
 
-const NAVER_LOCAL_SEARCH_URL = "https://openapi.naver.com/v1/search/local.json";
-const MAX_QUERY_COUNT = 2;
-const MAX_RESULTS_PER_QUERY = 5;
-const MAX_CANDIDATES = 3;
 const MAX_CANDIDATE_DISTANCE_METERS = 500;
 const MAX_NEARBY_COURTS = 5;
 const MAX_NEARBY_QUERY_ROWS = 20;
 const RATE_LIMIT_WINDOW_MS = MINUTE_MS;
 const RATE_LIMIT_MAX = 8;
 const rateLimitBuckets = new Map();
-const PARENT_PLACE_PATTERN = /(공원|체육|운동장|농구장|스포츠|학교|대학교|대학|아파트|복지관|문화회관|청소년|주민센터|행정복지센터|수련관|광장|유원지|휴양림|공공시설|여행,명소)/;
-
-function getNaverSearchClientId() {
-  return String(process.env.NAVER_SEARCH_CLIENT_ID || "").trim();
-}
-
-function getNaverSearchClientSecret() {
-  return String(process.env.NAVER_SEARCH_CLIENT_SECRET || "").trim();
-}
-
 function normalizeText(value = "") {
   return String(value ?? "").normalize("NFKC").trim().replace(/\s+/g, " ");
 }
 
 function normalizeIdentity(value = "") {
   return normalizeText(value).toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-}
-
-function decodeNaverText(value = "") {
-  return normalizeText(value)
-    .replace(/<[^>]*>/g, "")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, "\"")
-    .replace(/&#(?:39|x27);/gi, "'");
 }
 
 function getCoordinate(value, limit) {
@@ -63,11 +39,10 @@ function getDistanceMeters(source = {}, target = {}) {
   return 6371000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
-function getPlaceInput(body = {}) {
+function getNearbyInput(body = {}) {
   const lat = getCoordinate(body.lat, 90);
   const lng = getCoordinate(body.lng, 180);
   const input = {
-    buildingName: normalizeText(body.buildingName).slice(0, 120),
     addressText: normalizeText(body.addressText).slice(0, 200),
     roadAddress: normalizeText(body.roadAddress).slice(0, 200),
     jibunAddress: normalizeText(body.jibunAddress).slice(0, 200),
@@ -75,85 +50,11 @@ function getPlaceInput(body = {}) {
     lng,
   };
   if (lat === null || lng === null || !(input.addressText || input.roadAddress || input.jibunAddress)) {
-    const error = new Error("missing_place_context");
+    const error = new Error("missing_nearby_context");
     error.statusCode = 400;
     throw error;
   }
   return input;
-}
-
-function getPlaceQueries(input = {}) {
-  const seen = new Set();
-  return [input.buildingName, input.roadAddress, input.jibunAddress, input.addressText]
-    .map(normalizeText)
-    .filter((query) => {
-      const key = normalizeIdentity(query);
-      if (key.length < 2 || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, MAX_QUERY_COUNT);
-}
-
-function isSameAddress(place = {}, input = {}) {
-  const placeAddresses = [place.roadAddress, place.address].map(normalizeIdentity).filter(Boolean);
-  const pinAddresses = [input.roadAddress, input.jibunAddress, input.addressText].map(normalizeIdentity).filter(Boolean);
-  return placeAddresses.some((address) => pinAddresses.includes(address));
-}
-
-export function selectNaverPlaceCandidates(items = [], input = {}) {
-  const buildingNameKey = normalizeIdentity(input.buildingName);
-  const seen = new Set();
-  return items
-    .map((item, index) => {
-      const name = decodeNaverText(item.title).slice(0, 120);
-      const category = decodeNaverText(item.category).slice(0, 160);
-      const address = decodeNaverText(item.address).slice(0, 200);
-      const roadAddress = decodeNaverText(item.roadAddress).slice(0, 200);
-      const lat = getCoordinate(item.mapy, 90);
-      const lng = getCoordinate(item.mapx, 180);
-      const place = { name, category, address, roadAddress, lat, lng };
-      const distanceMeters = getDistanceMeters(input, place);
-      const sameAddress = isSameAddress(place, input);
-      const exactBuilding = Boolean(buildingNameKey && normalizeIdentity(name) === buildingNameKey);
-      const parentPlace = exactBuilding || PARENT_PLACE_PATTERN.test(`${name} ${category}`);
-      return {
-        ...place,
-        sourceIndex: index,
-        queryRank: Number(item.queryRank ?? 0),
-        distanceMeters: distanceMeters === null ? null : Math.round(distanceMeters),
-        sameAddress,
-        exactBuilding,
-        parentPlace,
-      };
-    })
-    .filter((place) => {
-      if (!place.name || !place.parentPlace) return false;
-      if (!(place.sameAddress || place.exactBuilding || (place.distanceMeters !== null && place.distanceMeters <= MAX_CANDIDATE_DISTANCE_METERS))) return false;
-      const key = `${normalizeIdentity(place.name)}:${normalizeIdentity(place.roadAddress || place.address)}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((a, b) => (
-      Number(b.exactBuilding) - Number(a.exactBuilding)
-      || Number(b.sameAddress) - Number(a.sameAddress)
-      || (a.distanceMeters ?? Number.MAX_SAFE_INTEGER) - (b.distanceMeters ?? Number.MAX_SAFE_INTEGER)
-      || a.queryRank - b.queryRank
-      || a.sourceIndex - b.sourceIndex
-    ))
-    .slice(0, MAX_CANDIDATES)
-    .map((place, index) => ({
-      id: `naver-place:${index}:${normalizeIdentity(place.name).slice(0, 40)}`,
-      name: place.name,
-      category: place.category,
-      address: place.address,
-      roadAddress: place.roadAddress,
-      lat: place.lat,
-      lng: place.lng,
-      distanceMeters: place.distanceMeters,
-      sameAddress: place.sameAddress,
-    }));
 }
 
 function isSameCourtAddress(court = {}, input = {}) {
@@ -203,7 +104,7 @@ function assertRateLimit(profileId) {
   const nextBucket = now - bucket.startedAt > RATE_LIMIT_WINDOW_MS ? { startedAt: now, count: 1 } : { ...bucket, count: bucket.count + 1 };
   rateLimitBuckets.set(profileId, nextBucket);
   if (nextBucket.count > RATE_LIMIT_MAX) {
-    const error = new Error("place_search_rate_limited");
+    const error = new Error("nearby_search_rate_limited");
     error.statusCode = 429;
     throw error;
   }
@@ -256,37 +157,6 @@ async function getNearbyCourts(context, input) {
   ], input);
 }
 
-async function searchNaverLocal(query, queryRank) {
-  const clientId = getNaverSearchClientId();
-  const clientSecret = getNaverSearchClientSecret();
-  if (!clientId || !clientSecret) {
-    const error = new Error("place_search_not_configured");
-    error.statusCode = 503;
-    throw error;
-  }
-
-  const url = new URL(NAVER_LOCAL_SEARCH_URL);
-  url.searchParams.set("query", query);
-  url.searchParams.set("display", String(MAX_RESULTS_PER_QUERY));
-  url.searchParams.set("start", "1");
-  url.searchParams.set("sort", "random");
-  const naverResponse = await fetch(url, {
-    headers: {
-      "X-Naver-Client-Id": clientId,
-      "X-Naver-Client-Secret": clientSecret,
-      Accept: "application/json",
-    },
-  });
-  const payload = await naverResponse.json().catch(() => ({}));
-  if (!naverResponse.ok) {
-    const errorCode = normalizeText(payload.errorCode || payload.errorMessage || naverResponse.status);
-    const error = new Error(`naver_place_search_failed:${errorCode}`);
-    error.statusCode = 502;
-    throw error;
-  }
-  return (Array.isArray(payload.items) ? payload.items : []).map((item) => ({ ...item, queryRank }));
-}
-
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -295,30 +165,17 @@ export default async function handler(request, response) {
   }
 
   try {
-    const input = getPlaceInput(await readJsonBody(request));
+    const input = getNearbyInput(await readJsonBody(request));
     const context = await getAuthenticatedContext(request);
     await assertCourtRequestAccess(context);
     assertRateLimit(context.profileId);
-    const queries = getPlaceQueries(input);
-    const [nearbyCourts, placeSearchOutcome] = await Promise.all([
-      getNearbyCourts(context, input),
-      Promise.all(queries.map((query, queryRank) => searchNaverLocal(query, queryRank)))
-        .then((resultGroups) => ({ results: selectNaverPlaceCandidates(resultGroups.flat(), input), error: "" }))
-        .catch((error) => {
-          if (error.message === "place_search_not_configured" || String(error.message).startsWith("naver_place_search_failed")) {
-            return { results: [], error: error.message };
-          }
-          throw error;
-        }),
-    ]);
+    const nearbyCourts = await getNearbyCourts(context, input);
     sendJson(response, 200, {
       ok: true,
-      results: placeSearchOutcome.results,
       nearbyCourts,
-      placeSearchError: placeSearchOutcome.error || undefined,
     });
   } catch (error) {
-    console.error("Naver place search failed.", error);
-    sendJson(response, error.statusCode || 500, { error: error.message || "place_search_failed" });
+    console.error("Nearby court search failed.", error);
+    sendJson(response, error.statusCode || 500, { error: error.message || "nearby_court_search_failed" });
   }
 }

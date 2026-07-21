@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html
 import io
 import json
 import os
 import re
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -43,7 +45,17 @@ REQUIRED_HEADERS = {
     "이름보정대상",
 }
 ACCEPTED_NAME_STATUSES = {"확정", "완료", "승인", "approved", "verified", "complete", "completed"}
-GENERIC_NAME_RE = re.compile(r"^(?:농구장|농구\s*코트|이름\s*없는\s*농구장)(?:\s*\([^)]*\))?$", re.IGNORECASE)
+GENERIC_NAME_RE = re.compile(
+    r"^(?:"
+    r"(?:이름\s*없는\s*)?농구장(?:\s*(?:제?\s*\d+|[A-Z]))?"
+    r"|농구\s*(?:코트|골대)"
+    r"|(?:실내|실외|야외|길거리|반코트)\s*농구장(?:\s*\d+)?"
+    r"|(?:체육관|대운동장|운동장)"
+    r"|[A-Z]\s*구장\s*농구장"
+    r")(?:\s*\([^)]*\))?$",
+    re.IGNORECASE,
+)
+SOURCE_NAME_REVIEW_RE = re.compile(r"(?:폐쇄|폐업|휴장|운영\s*중단|조성\s*공사|이전\s*예정|사용\s*불가)")
 PHONE_RE = re.compile(r"^[0-9+()\-.,\s/]+$")
 
 PROVIDER_MAP = {
@@ -71,6 +83,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reverse-geocode", action="store_true", help="네이버 좌표 역지오코딩 실행")
     parser.add_argument("--env-file", help="네이버 키가 있는 dotenv 파일")
     parser.add_argument("--cache", help="역지오코딩 재개용 JSON 캐시")
+    parser.add_argument("--cache-only", action="store_true", help="네이버 API 호출 없이 기존 캐시만 사용")
     parser.add_argument("--geocode-limit", type=int, default=0, help="이번 실행의 최대 신규 API 호출 수, 0은 무제한")
     parser.add_argument("--delay-ms", type=int, default=100, help="네이버 요청 사이 대기 시간")
     return parser.parse_args()
@@ -80,6 +93,58 @@ def clean_text(value: Any) -> str:
     if value is None:
         return ""
     return re.sub(r"\s+", " ", str(value).strip())
+
+
+def normalize_source_court_name(value: Any) -> tuple[str, list[str]]:
+    original = clean_text(value)
+    raw = "" if value is None else str(value)
+    steps: list[str] = []
+
+    decoded = html.unescape(raw)
+    if decoded != raw:
+        steps.append("html_entity_decoded")
+    normalized = unicodedata.normalize("NFKC", decoded)
+    if normalized != decoded:
+        steps.append("unicode_nfkc")
+    without_tags = re.sub(r"<[^>]*>", "", normalized)
+    if without_tags != normalized:
+        steps.append("html_tag_removed")
+    without_hidden = re.sub(r"[\u200b-\u200d\u2060\ufeff]", "", without_tags)
+    if without_hidden != without_tags:
+        steps.append("hidden_character_removed")
+    name = clean_text(without_hidden)
+
+    def apply_rule(pattern: str, replacement: Any, step: str, flags: int = 0) -> None:
+        nonlocal name
+        updated = re.sub(pattern, replacement, name, flags=flags)
+        if updated != name:
+            name = updated
+            steps.append(step)
+
+    apply_rule(r"^\[\s*\d+\s*\]\s*", "", "source_index_removed")
+    apply_rule(
+        r"^농구장\s*\(\s*([^()]+?)\s*\)$",
+        lambda match: f"{match.group(1)} 농구장",
+        "location_first",
+        re.IGNORECASE,
+    )
+    apply_rule(
+        r"\s*\(\s*((?:실내|실외|야외)\s*)?농구장\s*\)\s*$",
+        lambda match: f" {(match.group(1) or '')}농구장",
+        "court_parentheses",
+        re.IGNORECASE,
+    )
+    apply_rule(r"농구\s*코트", "농구장", "court_term", re.IGNORECASE)
+    apply_rule(r"(?<=[0-9A-Za-z가-힣])농구장", " 농구장", "court_spacing")
+    apply_rule(r"농구장\s*(\d+)\s*면", lambda match: f"농구장 {match.group(1)}면", "court_count_spacing")
+    apply_rule(r"농구장\s*(\d+)(?!\s*면)", lambda match: f"농구장 {match.group(1)}", "court_number_spacing")
+    apply_rule(r"농구장\s*([A-Z])$", lambda match: f"농구장 {match.group(1).upper()}", "court_letter_spacing", re.IGNORECASE)
+    apply_rule(r"제\s+(\d+)\s*농구장", lambda match: f"제{match.group(1)} 농구장", "court_unit_spacing")
+    apply_rule(r"농구장\s*및\s*", "농구장 및 ", "conjunction_spacing")
+    name = clean_text(name)
+    if name != original and not steps:
+        steps.append("whitespace_normalized")
+    return name, list(dict.fromkeys(steps))
 
 
 def json_value(value: Any) -> Any:
@@ -592,7 +657,15 @@ def issue_disposition(issues: list[str]) -> str:
         return "excluded"
     if "invalid_korea_coordinate" in issues or "source_record_required" in issues:
         return "invalid"
-    if any(issue in issues for issue in ("generic_or_unresolved_name", "name_correction_unverified", "source_coordinate_collision")):
+    if any(
+        issue in issues
+        for issue in (
+            "generic_or_unresolved_name",
+            "name_correction_unverified",
+            "source_name_operational_note",
+            "source_coordinate_collision",
+        )
+    ):
         return "review_required"
     if "reverse_geocode_failed" in issues:
         return "geocode_failed"
@@ -603,6 +676,8 @@ def issue_disposition(issues: list[str]) -> str:
 
 def main() -> int:
     args = parse_args()
+    if args.cache_only and not args.reverse_geocode:
+        raise ValueError("cache_only_requires_reverse_geocode")
     source_path = Path(args.source).resolve()
     output_path = Path(args.output).resolve()
     report_path = Path(args.report).resolve()
@@ -643,12 +718,14 @@ def main() -> int:
     cache = load_cache(cache_path) if args.reverse_geocode else {"schemaVersion": 1, "entries": {}}
     cache_entries = cache["entries"]
     client_id = client_secret = ""
-    if args.reverse_geocode:
+    if args.reverse_geocode and not args.cache_only:
         client_id, client_secret = get_naver_credentials()
         if not client_id or not client_secret:
             raise ValueError("naver_reverse_geocode_credentials_missing")
 
     geocode_stats = Counter()
+    name_standardization_stats = Counter()
+    name_step_counts = Counter()
     normalized_rows: list[dict[str, Any]] = []
     new_geocode_calls = 0
     generated_at = datetime.now(timezone.utc).isoformat()
@@ -656,14 +733,29 @@ def main() -> int:
     for worksheet_row_number, source_row in enumerate(source_rows, start=2):
         court_id = clean_text(source_row.get("id"))
         original_name = clean_text(source_row.get("구장명"))
-        name = original_name
+        name, name_normalization_steps = normalize_source_court_name(original_name)
         name_source = "source"
         correction = corrections.get(court_id)
         correction_status = clean_text((correction or {}).get("status")).lower()
-        correction_is_accepted = bool(correction and correction_status in ACCEPTED_NAME_STATUSES)
+        correction_source = clean_text((correction or {}).get("source"))
+        correction_uses_external_place_search = "네이버" in correction_source or "naver" in correction_source.lower()
+        correction_is_accepted = bool(
+            correction
+            and correction_status in ACCEPTED_NAME_STATUSES
+            and not correction_uses_external_place_search
+        )
         if correction_is_accepted:
-            name = clean_text(correction["name"])
-            name_source = "naver_place" if "네이버" in clean_text(correction.get("source")) else "manual"
+            name, correction_normalization_steps = normalize_source_court_name(correction["name"])
+            name_normalization_steps = list(dict.fromkeys([*name_normalization_steps, "accepted_correction", *correction_normalization_steps]))
+            name_source = "manual"
+
+        if original_name:
+            name_standardization_stats["sourceNameRows"] += 1
+        if name != original_name:
+            name_standardization_stats["normalizedRows"] += 1
+        if correction_is_accepted:
+            name_standardization_stats["acceptedCorrectionRows"] += 1
+        name_step_counts.update(name_normalization_steps)
 
         lat = parse_float(source_row.get("위도"))
         lng = parse_float(source_row.get("경도"))
@@ -694,6 +786,8 @@ def main() -> int:
                 reverse_address = cached["address"]
                 reverse_verified_at = clean_text(cached.get("fetchedAt")) or None
                 geocode_stats["cached"] += 1
+            elif args.cache_only:
+                geocode_stats["deferred_by_cache_only"] += 1
             elif args.geocode_limit and new_geocode_calls >= args.geocode_limit:
                 geocode_stats["deferred_by_limit"] += 1
             else:
@@ -742,8 +836,15 @@ def main() -> int:
         name_requires_correction = parse_bool(source_row.get("이름보정대상")) is True or GENERIC_NAME_RE.match(name) is not None
         if name_requires_correction and not correction_is_accepted:
             issues.append("generic_or_unresolved_name")
+            name_standardization_stats["unresolvedRows"] += 1
+        else:
+            name_standardization_stats["resolvedRows"] += 1
         if correction and not correction_is_accepted:
             issues.append("name_correction_unverified")
+        if correction_uses_external_place_search:
+            issues.append("external_name_correction_ignored")
+        if SOURCE_NAME_REVIEW_RE.search(original_name):
+            issues.append("source_name_operational_note")
         if court_id in collision_ids:
             issues.append("source_coordinate_collision")
         if not sources:
@@ -814,6 +915,8 @@ def main() -> int:
                 "lighting": parse_bool(source_row.get("조명")),
                 "sourceUrl": official_url,
                 "registrationOrigin": "public_import",
+                "sourceOriginalName": original_name,
+                "nameNormalizationSteps": name_normalization_steps,
             },
         }
         facility_info = {
@@ -841,6 +944,9 @@ def main() -> int:
                 "rowNumber": worksheet_row_number,
                 "row": source_row,
                 "rankBallLoadPayload": rankball_payload,
+                "sourceOriginalName": original_name,
+                "standardizedName": name,
+                "nameNormalizationSteps": name_normalization_steps,
                 "reverseGeocodeError": reverse_error,
                 "unresolvedProviders": unresolved_providers,
             },
@@ -872,10 +978,15 @@ def main() -> int:
         "issueCounts": dict(sorted(issue_counts.items())),
         "sourceRecordCounts": dict(sorted(source_counts.items())),
         "fieldCoverage": field_coverage,
+        "nameStandardization": {
+            **dict(sorted(name_standardization_stats.items())),
+            "stepCounts": dict(sorted(name_step_counts.items())),
+        },
         "exactCoordinateCollisionGroups": sum(len(ids) > 1 for ids in coordinate_groups.values()),
         "exactCoordinateCollisionRows": len(collision_ids),
         "geocode": {
             "requested": args.reverse_geocode,
+            "cacheOnly": args.cache_only,
             "newCallLimit": args.geocode_limit,
             **dict(sorted(geocode_stats.items())),
         },

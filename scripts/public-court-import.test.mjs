@@ -5,6 +5,7 @@ import test from "node:test";
 import { validateNormalizedImport } from "./import-public-courts.mjs";
 
 const migrationPath = new URL("../supabase/migrations/20260721230000_public_court_import_pipeline.sql", import.meta.url);
+const nameNormalizationMigrationPath = new URL("../supabase/migrations/20260721233100_court_facility_name_normalization.sql", import.meta.url);
 const prepareScriptPath = new URL("./prepare-public-court-import.py", import.meta.url);
 
 function readyRow(overrides = {}) {
@@ -119,4 +120,15 @@ test("normalizer maps app fields and uses the official reverse-geocode endpoint"
   assert.match(source, /"lighting": parse_bool/);
   assert.match(source, /https:\/\/maps\.apigw\.ntruss\.com\/map-reversegeocode\/v2\/gc/);
   assert.match(source, /"addressSource": address_source/);
+  assert.match(source, /external_name_correction_ignored/);
+  assert.doesNotMatch(source, /name_source = "naver_place"/);
+});
+
+test("database court names use the same conservative normalization scope", async () => {
+  const sql = await readFile(nameNormalizationMigrationPath, "utf8");
+  assert.match(sql, /normalize\(coalesce\(raw_name, ''\), NFKC\)/);
+  assert.match(sql, /농구\[\[:space:\]\]\*코트/);
+  assert.match(sql, /\(\[0-9A-Za-z가-힣\]\)농구장/);
+  assert.match(sql, /농구장\[\[:space:\]\]\*\(\[0-9\]\+\)/);
+  assert.doesNotMatch(sql, /drop table|truncate table|delete from/i);
 });

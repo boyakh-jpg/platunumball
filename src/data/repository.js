@@ -58,6 +58,7 @@ import {
   normalizeCourtHashtag,
   normalizeCourtKind,
   normalizeCourtLayout,
+  normalizeCourtFacilityName,
   normalizeCourtNamePart,
   normalizeCourtOptionalBoolean,
   normalizeCourtReviewRating,
@@ -4571,7 +4572,7 @@ export function submitCourtRequest(state, draft = {}) {
     };
   }
 
-  const rawName = normalizeCourtNamePart(draft.buildingName || draft.name);
+  const rawName = normalizeCourtFacilityName(draft.name || draft.facilityName || draft.buildingName);
   const addressDong = getCourtAddressDong(draft);
   const courtUnit = normalizeCourtNamePart(draft.courtUnit);
   const canonicalBaseName = getCourtRequestName(rawName, addressDong, courtUnit);
@@ -4634,7 +4635,7 @@ export function submitCourtRequest(state, draft = {}) {
     requestedByTrustScore: trustScore,
     name,
     baseName: rawName,
-    buildingName: normalizeCourtNamePart(draft.buildingName),
+    buildingName: normalizeCourtFacilityName(draft.buildingName),
     facilityName: rawName,
     courtUnit,
     canonicalBaseName,

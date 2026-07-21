@@ -148,8 +148,23 @@ export function normalizeCourtNamePart(value = "") {
     .replace(/([A-Z0-9]+)\s+코트/gi, "$1코트");
 }
 
+export function normalizeCourtFacilityName(value = "") {
+  const normalized = normalizeCourtNamePart(value)
+    .replace(/^\[\s*\d+\s*\]\s*/, "")
+    .replace(/^농구장\s*\(\s*([^()]+?)\s*\)$/i, "$1 농구장")
+    .replace(/\s*\(\s*((?:실내|실외|야외)\s*)?농구장\s*\)\s*$/i, " $1농구장")
+    .replace(/농구\s*코트/gi, "농구장")
+    .replace(/([0-9A-Za-z가-힣])농구장/g, "$1 농구장")
+    .replace(/농구장\s*(\d+)\s*면/g, "농구장 $1면")
+    .replace(/농구장\s*(\d+)(?!\s*면)/g, "농구장 $1")
+    .replace(/농구장\s*([A-Z])$/i, (_, unit) => `농구장 ${unit.toUpperCase()}`)
+    .replace(/제\s+(\d+)\s*농구장/gi, "제$1 농구장")
+    .replace(/농구장\s*및\s*/g, "농구장 및 ");
+  return normalizeCourtNamePart(normalized);
+}
+
 function stripCourtAddressPrefix(name = "", addressDong = "") {
-  const normalizedName = normalizeCourtNamePart(name);
+  const normalizedName = normalizeCourtFacilityName(name);
   const normalizedDong = normalizeCourtNamePart(addressDong);
   if (!normalizedDong || !normalizedName.startsWith(`${normalizedDong} `)) return normalizedName;
   return normalizedName.slice(normalizedDong.length).trim();

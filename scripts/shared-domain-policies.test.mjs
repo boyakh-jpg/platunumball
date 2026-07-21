@@ -75,11 +75,12 @@ import {
   getCourtReservationValue,
   getCourtSearchText,
   mergeCourtSearchCourts,
+  normalizeCourtFacilityName,
   normalizeCourtOptionalBoolean,
   normalizeCourtSourceUrl,
   normalizeCourtType,
 } from "../src/lib/courts.js";
-import { selectNaverPlaceCandidates, selectNearbyCourtCandidates } from "../server/api/courts/place-search.js";
+import { selectNearbyCourtCandidates } from "../server/api/courts/place-search.js";
 import {
   UNSAFE_INPUT_ERROR_CODE,
   assertSafeInputPayload,
@@ -589,43 +590,12 @@ test("court identity and paid-room UI stay shared across list surfaces", async (
   assert.match(recruitingListSource, /courtFee: post\.courtFee/);
 });
 
-test("court place search keeps parent facilities at the pinned address", () => {
-  const candidates = selectNaverPlaceCandidates([
-    {
-      title: "<b>망원한강공원</b>",
-      category: "여행,명소>도시근린공원",
-      address: "서울특별시 마포구 망원동 205-4",
-      roadAddress: "서울특별시 마포구 마포나루길 467",
-      mapx: "1269000000",
-      mapy: "375000000",
-    },
-    {
-      title: "망원편의점",
-      category: "생활,편의>편의점",
-      address: "서울특별시 마포구 망원동 205-4",
-      roadAddress: "서울특별시 마포구 마포나루길 467",
-      mapx: "1269000100",
-      mapy: "375000100",
-    },
-    {
-      title: "먼공원",
-      category: "여행,명소>공원",
-      address: "서울특별시 마포구 다른동 1",
-      roadAddress: "서울특별시 마포구 다른로 1",
-      mapx: "1269100000",
-      mapy: "375100000",
-    },
-  ], {
-    addressText: "서울특별시 마포구 마포나루길 467",
-    roadAddress: "서울특별시 마포구 마포나루길 467",
-    jibunAddress: "서울특별시 마포구 망원동 205-4",
-    lat: 37.5,
-    lng: 126.9,
-  });
-
-  assert.deepEqual(candidates.map((candidate) => candidate.name), ["망원한강공원"]);
-  assert.equal(candidates[0].sameAddress, true);
-  assert.equal(candidates[0].distanceMeters, 0);
+test("court facility names use source-independent conservative normalization", () => {
+  assert.equal(normalizeCourtFacilityName("농구장(구일역)"), "구일역 농구장");
+  assert.equal(normalizeCourtFacilityName("마루공원농구장"), "마루공원 농구장");
+  assert.equal(normalizeCourtFacilityName("관음근린공원(농구장)"), "관음근린공원 농구장");
+  assert.equal(normalizeCourtFacilityName("[15]도림천 농구장 제방위"), "도림천 농구장 제방위");
+  assert.equal(normalizeCourtFacilityName("안양천농구장5"), "안양천 농구장 5");
 });
 
 test("nearby court review lists approved and pending courts by distance", () => {

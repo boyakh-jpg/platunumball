@@ -77,7 +77,6 @@ simulation은 실행 전에 environment, 직접 Supabase project ref, 원격 API
 | `VITE_ASSET_BASE_URL` / `VITE_PUBLIC_ASSET_BASE_URL` | 브라우저 | 원격 asset base URL |
 | `VITE_NAVER_MAP_CLIENT_ID` / `VITE_NAVER_MAP_NCP_KEY_ID` | 브라우저/서버 fallback | Naver map/geocode client id |
 | `NAVER_MAP_CLIENT_SECRET` / `NAVER_MAP_NCP_KEY` / `NAVER_MAP_NCP_CLIENT_SECRET` | 서버 전용 | Naver geocode fallback secret |
-| `NAVER_SEARCH_CLIENT_ID` / `NAVER_SEARCH_CLIENT_SECRET` | 서버 전용 | Naver 지역 검색 기반 핀 주소 장소 후보 |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` / `DISCORD_REDIRECT_URI` | 서버 전용 | Discord OAuth |
 | `DISCORD_BOT_TOKEN` / `DISCORD_GUILD_ID` / `DISCORD_GUILD_IDS` | 서버 전용 | Discord DM worker |
 | `DISCORD_PUBLIC_KEY` | 서버 전용 | Discord interaction signature 검증 |
