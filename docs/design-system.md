@@ -7,7 +7,7 @@
 3. 설명과 상태 문구는 `합니다`, `됩니다`, `있습니다`, `없습니다`, `해 주세요` 문체를 사용한다. `해라`, `한다`, `된다`, 축약된 실패 문구처럼 사용자를 다그치거나 개발 메모처럼 보이는 표현은 사용하지 않는다.
 4. 오류 문구는 사용자가 이해할 결과와 다음 행동만 안내한다. 원본 오류 코드, 환경변수명, Supabase, RPC, DB, schema, access token 같은 구현 세부정보를 화면에 노출하지 않는다.
 5. 버튼은 `저장`, `다시 시도`, `참여`처럼 짧은 행동명으로 유지한다. 본문 설명은 조건과 결과를 정중한 문장으로 보완한다.
-6. 룰북과 심판 시험 원문은 별도 문서 작업 범위로 관리하며 이 문체 일괄 수정에서 제외한다.
+6. 룰북의 서비스명도 `BOXTIER`로 표시하고 설명은 정중한 비명령형 문체를 사용한다. 심판 시험의 내부 version key는 기존 식별자를 유지한다.
 7. 관리자 화면을 포함한 사용자 화면에는 내부 status나 action ID를 그대로 표시하지 않는다. 알 수 없는 값은 승인된 공용 문구인 `상태 확인 중` 또는 `운영 조치`로 대체한다.
 
 ## 2026-07-21 관리자 신고 workbench
@@ -369,9 +369,15 @@
 
 # 2026-06-28 referee rulebook images
 
-1. Rulebook illustrations use R2 `assets/named/{dark|light}/webp/{scene}.webp` assets.
-2. The app theme chooses the dark or light image path.
-3. Existing `assets/referee-rulebook/{scene}.svg` files remain as load-failure fallback only.
+1. Rulebook source illustrations use R2 `assets/named/{dark|light}/png/{scene}.png`; the app serves the derived `assets/named/{dark|light}/webp/{scene}.webp` assets.
+2. The app theme chooses the dark or light path. All 19 scenes are exactly `1672×941`. Every pair keeps the same subject, pose, framing, prop placement, thin rounded border thickness, corner radius, figure scale, and outer margin; only background, outline glow, and theme palette change.
+3. All 19 scenes use one clean faceless colored 3D toy style. Existing PNG material and gloss do not need pixel-level preservation, but the complete set must share the same rendering quality, anatomy, lighting language, prop design, and apparent subject size. Do not mix old and new compositions, flat vectors, photorealistic people, text, logos, or unrelated rendering styles.
+4. The illustration must explain its section at thumbnail size. Do not reuse one composition for unrelated sections: clock shows timing, technical shows non-contact behavior, authority shows neutral control, dispute shows record review, and safety shows a court hazard.
+5. Basketballs use a recognizable standard seam layout without an air valve. Hands, limbs, rim, and backboard geometry must be checked before upload.
+6. Keep every subject inside a 16:9 safe area with enough outer margin. The card uses `object-fit: contain`; no important body part or prop may look cropped by the frame.
+7. Existing `assets/referee-rulebook/{scene}.svg` files remain as load-failure fallback only.
+8. Profile icons `221~225` reuse the same referee character language as full-body transparent cutouts. They remain fully inside the circular safe area, stay readable at small size, and gain clearer referee equipment and premium sports accessories by tier without duplicate props or cropped limbs.
+9. Light theme rulebook hero copy uses the normal light-theme text and muted colors without the image-hero white text shadow, so the pale panel keeps readable contrast.
 
 # 2026-06-28 recruiting start date filter
 

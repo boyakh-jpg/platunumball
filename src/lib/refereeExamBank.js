@@ -1,4 +1,4 @@
-export const REFEREE_EXAM_VERSION = "rankball-referee-2026-06";
+export const REFEREE_EXAM_VERSION = "rankball-referee-2026-07";
 export const REFEREE_EXAM_SIZE = 30;
 export const REFEREE_EXAM_PASS_SCORE = 24;
 
@@ -40,10 +40,10 @@ const BASE_QUESTIONS = [
   },
   {
     category: "time",
-    stem: " closely guarded 상황에서 볼을 가진 선수가 패스, 슛, 드리블을 해야 하는 제한 시간은?",
+    stem: "1m 안에서 밀착 수비를 받으며 볼을 들고 있는 선수가 패스, 슛, 드리블을 해야 하는 제한 시간은?",
     choices: ["5초", "3초", "8초", "14초"],
     answerIndex: 0,
-    explanation: "밀착 수비 상황에서는 5초 제한을 본다.",
+    explanation: "볼을 든 선수가 1m 안에서 적극적인 수비를 받으면 5초 제한이 적용된다.",
   },
   {
     category: "violation",
@@ -75,17 +75,17 @@ const BASE_QUESTIONS = [
   },
   {
     category: "violation",
-    stem: "볼이 림 위 원통 안에 있을 때 공격 선수가 볼을 터치했다. 판정은?",
+    stem: "볼이 림에 닿아 있는 동안 공격 선수가 림을 잡아 볼이 들어가게 했다. 판정은?",
     choices: ["바스켓 인터피어런스", "정상 득점", "헬드볼", "수비 파울"],
     answerIndex: 0,
-    explanation: "림 위 원통 안의 볼을 터치하면 바스켓 인터피어런스가 될 수 있다.",
+    explanation: "볼이 림에 닿아 있을 때 림을 잡아 볼의 움직임에 영향을 주면 바스켓 인터피어런스다.",
   },
   {
     category: "violation",
-    stem: "수비 선수가 하강 중인 슛 볼을 림 위 높이에서 터치했다. 판정은?",
+    stem: "수비 선수가 볼 전체가 림보다 높고 하강 중인 득점 가능한 슛을 터치했다. 판정은?",
     choices: ["골텐딩", "블록 성공", "헬드볼", "아웃오브바운드"],
     answerIndex: 0,
-    explanation: "하강 중이고 득점 가능성이 있는 슛 볼을 수비가 터치하면 골텐딩이다.",
+    explanation: "볼 전체가 림보다 높고 하강 중이며 들어갈 가능성이 있는 슛을 수비가 터치하면 골텐딩이다.",
   },
   {
     category: "boundary",
@@ -159,10 +159,10 @@ const BASE_QUESTIONS = [
   },
   {
     category: "free_throw",
-    stem: "자유투 라인 밖 선수가 볼이 림에 닿기 전에 제한구역에 들어갔다. 판정 기준은?",
+    stem: "리바운드 위치 선수가 자유투 볼이 슈터의 손을 떠나기 전에 제한구역에 들어갔다. 판정 기준은?",
     choices: ["자유투 바이얼레이션", "정상 플레이", "개인 파울", "킥볼"],
     answerIndex: 0,
-    explanation: "정해진 선수는 볼이 림에 닿기 전 제한구역에 들어가면 안 된다.",
+    explanation: "리바운드 위치 선수는 자유투 볼이 슈터의 손을 떠난 뒤 제한구역에 들어갈 수 있다.",
   },
   {
     category: "free_throw",
@@ -183,7 +183,7 @@ const BASE_QUESTIONS = [
     stem: "수비자가 스로인 라인을 넘어 볼을 방해했다. 판정은?",
     choices: ["경고 또는 테크니컬 검토", "정상 수비", "백코트", "더블 드리블"],
     answerIndex: 0,
-    explanation: "스로인 방해는 경고 후 반복 시 테크니컬 대상이 될 수 있다.",
+    explanation: "스로인 경계선을 넘어 방해하면 경고하고, 같은 팀이 반복하면 테크니컬 파울을 적용할 수 있다.",
   },
   {
     category: "possession",
@@ -243,14 +243,14 @@ const BASE_QUESTIONS = [
   },
   {
     category: "rankball",
-    stem: "RankBall 정규전에서 경기 시작 전 출석체크가 필요한 이유는?",
+    stem: "BOXTIER 정규전에서 경기 시작 전 출석체크가 필요한 이유는?",
     choices: ["실제 참가자와 MMR 반영 대상을 확정하기 위해", "채팅 수를 늘리기 위해", "코트 즐겨찾기를 위해", "팀명을 바꾸기 위해"],
     answerIndex: 0,
     explanation: "출석체크는 실제 참가자 확정과 부도 패널티 판단 기준이다.",
   },
   {
     category: "rankball",
-    stem: "RankBall에서 심판이 있는 경기의 개인 활약 입력 권한 원칙은?",
+    stem: "BOXTIER에서 심판이 있는 경기의 개인 활약 입력 권한 원칙은?",
     choices: ["심판 우선", "방장 우선", "아무 선수나 가능", "상대팀 주장만 가능"],
     answerIndex: 0,
     explanation: "심판이 배정된 경기는 심판 기록이 우선이다.",
@@ -279,9 +279,9 @@ const BASE_QUESTIONS = [
   {
     category: "rankball",
     stem: "정규전에서 경기 후 임의로 참가자를 추가하면 MMR 반영은 어떻게 보는 게 안전한가?",
-    choices: ["추가 참가자는 낮은 가중치 또는 MMR 제외로 분리한다", "처음부터 뛴 선수와 동일하게 반영한다", "상대팀만 반영한다", "무조건 경기 무효다"],
+    choices: ["추가 참가자는 기록만 남기고 MMR에서는 제외한다", "처음부터 뛴 선수와 동일하게 반영한다", "상대팀만 반영한다", "무조건 경기 무효다"],
     answerIndex: 0,
-    explanation: "사후 추가 인원은 공정성 문제 때문에 반영을 제한해야 한다.",
+    explanation: "경기 후 추가한 선수는 기록 대상에는 넣을 수 있지만 MMR에서는 제외한다.",
   },
   {
     category: "rankball",
@@ -418,7 +418,7 @@ const BASE_QUESTIONS = [
   },
   {
     category: "rankball",
-    stem: "RankBall에서 이의신청이 너무 복잡해지는 것을 막는 기본 방향은?",
+    stem: "BOXTIER에서 이의신청이 너무 복잡해지는 것을 막는 기본 방향은?",
     choices: ["짧은 시간 안에 단일 이의 중심으로 처리한다", "무제한 수정하게 한다", "모든 채팅을 삭제한다", "기록자를 없앤다"],
     answerIndex: 0,
     explanation: "현장 경기에서는 빠르고 단순한 분쟁 처리가 필요하다.",

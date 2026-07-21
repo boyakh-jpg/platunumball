@@ -10,6 +10,18 @@ import {
   REFEREE_STAT_GUIDELINES,
 } from "../lib/refereeRulebook.js";
 
+const RULEBOOK_ASSET_VERSION = "20260722-1";
+const RULEBOOK_SOURCES = [
+  {
+    label: "FIBA 경기규칙 2024",
+    href: "https://assets.fiba.basketball/image/upload/documents-corporate-fiba-official-rules-2024-v10a.pdf",
+  },
+  {
+    label: "FIBA 통계 매뉴얼 2024",
+    href: "https://assets.fiba.basketball/image/upload/documents-corporate-fiba-statisticians-manual-2024.pdf",
+  },
+];
+
 const SCENE_COPY = {
   standard: "콜 기준",
   pregame: "경기 전",
@@ -43,7 +55,7 @@ function RulebookIllustration({ scene, theme = "dark" }) {
   return (
     <figure className="rulebook-asset">
       <img
-        src={assetUrl(`/assets/named/${imageTheme}/webp/${scene}.webp`)}
+        src={`${assetUrl(`/assets/named/${imageTheme}/webp/${scene}.webp`)}?v=${RULEBOOK_ASSET_VERSION}`}
         alt={`${title} 일러스트`}
         loading="lazy"
         onError={(event) => {
@@ -72,11 +84,11 @@ export default function RefereeRulebook({ theme = "dark" }) {
 
       <section className="referee-rulebook-hero">
         <div>
-          <Badge tone="blue">문제 원문 비공개</Badge>
-          <h2>시험 문제 대신 판정 기준을 공부한다</h2>
+          <Badge tone="blue">판정 기준 공개</Badge>
+          <h2>외우기보다, 왜 그렇게 부는지 이해할 수 있습니다</h2>
           <p>
-            RankBall 심판은 공식 심판을 대체하는 역할이 아니라, 동네 경기에서 양쪽이 납득할 수 있게
-            점수, 파울, 개인활약, 이의신청을 정리하는 운영자다.
+            BOXTIER 심판은 동네 경기에서 양쪽이 같은 기준으로 뛸 수 있게 돕습니다. 점수와 파울부터
+            개인활약, 이의신청까지 헷갈리는 장면을 편하게 확인할 수 있습니다.
           </p>
         </div>
         <RulebookIllustration scene="standard" theme={theme} />
@@ -138,8 +150,8 @@ export default function RefereeRulebook({ theme = "dark" }) {
           <ShieldCheck size={22} />
         </div>
         <p>
-          개인활약은 심판이 봤거나 기록자가 확실히 확인한 장면만 기록한다. 애매하면 많이 주는 것보다
-          적게 주는 편이 낫다.
+          개인활약은 심판이나 기록자가 확실히 확인한 장면만 기록됩니다. 숫자를 예쁘게 만드는 것보다
+          양쪽 기록이 같은 것이 먼저입니다.
         </p>
         <div className="referee-stat-guide-grid">
           {REFEREE_STAT_GUIDELINES.map((stat) => (
@@ -170,10 +182,19 @@ export default function RefereeRulebook({ theme = "dark" }) {
 
       <Card className="referee-rulebook-footer">
         <BookOpen size={20} />
-        <p>
-          이 자료는 RankBall 커뮤니티 운영용이다. 공식 대회, 학교 대회, 협회 경기에서는 해당 대회 규정과
-          심판 지침을 우선한다.
-        </p>
+        <div>
+          <p>
+            현재 적용 중인 FIBA 2024 규칙과 통계 매뉴얼을 기준으로 확인했습니다. 공식 대회·학교·협회 경기는
+            해당 대회 규정과 심판 지침이 우선입니다.
+          </p>
+          <div className="referee-rulebook-sources">
+            {RULEBOOK_SOURCES.map((source) => (
+              <a key={source.href} href={source.href} target="_blank" rel="noreferrer">
+                {source.label}
+              </a>
+            ))}
+          </div>
+        </div>
       </Card>
     </div>
   );

@@ -7,10 +7,25 @@ function getProgressSnapshot(icon, metrics) {
 }
 
 export async function refreshProfileIconAchievements(supabase, profileId) {
-  const { data: metrics, error: metricsError } = await supabase.rpc("rankball_profile_icon_verified_metrics", {
-    p_profile_id: profileId,
-  });
+  const [verifiedMetricsResult, refereeExamResult] = await Promise.all([
+    supabase.rpc("rankball_profile_icon_verified_metrics", {
+      p_profile_id: profileId,
+    }),
+    supabase
+      .from("referee_exam_attempts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profileId)
+      .in("status", ["passed", "failed"])
+      .not("finished_at", "is", null),
+  ]);
+  const { data: verifiedMetrics, error: metricsError } = verifiedMetricsResult;
   if (metricsError) throw metricsError;
+  if (refereeExamResult.error) throw refereeExamResult.error;
+
+  const metrics = {
+    ...(verifiedMetrics ?? {}),
+    refereeExamCompletedCount: Number(refereeExamResult.count ?? 0),
+  };
 
   const achievedIcons = PROFILE_ICON_CATALOG.filter((icon) => (
     getProfileIconAchievementState(icon.id, metrics)?.achieved === true

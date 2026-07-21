@@ -1,4 +1,4 @@
-const PROFILE_ICON_ASSET_VERSION = "20260721-7";
+const PROFILE_ICON_ASSET_VERSION = "20260722-1";
 
 const icon = (id, name) => Object.freeze({
   id,
@@ -238,6 +238,19 @@ for (const seriesGroup of PROFILE_ICON_SERIES_GROUPS) {
 
 if (nextExpandedIconNumber !== 341) throw new Error("profile_icon_catalog_size_mismatch");
 
+const REFEREE_EXAM_ICON_ENTRIES = Object.freeze([
+  ["221-referee-exam-rookie", "룰북 루키", 1],
+  ["222-referee-exam-signal", "시그널 연습생", 3],
+  ["223-referee-exam-call", "판정 도전자", 5],
+  ["224-referee-exam-review", "리뷰 전문가", 10],
+  ["225-referee-exam-master", "코트 룰 마스터", 20],
+].map(([iconId, iconName, target]) => {
+  PROFILE_ICON_ACHIEVEMENTS[iconId] = achievement(`심판 시험 채점 완료 ${target}회`, [
+    requirement("refereeExamCompletedCount", target, "채점 완료 시험"),
+  ]);
+  return Object.freeze([iconId, iconName]);
+}));
+
 const group = (id, name, icons) => Object.freeze({
   id,
   name,
@@ -248,9 +261,10 @@ const group = (id, name, icons) => Object.freeze({
   }))),
 });
 
-const EXPANDED_PROFILE_ICON_GROUPS = Object.freeze(
-  EXPANDED_PROFILE_ICON_ENTRIES.map((item) => group(item.id, item.name, item.entries)),
-);
+const EXPANDED_PROFILE_ICON_GROUPS = Object.freeze([
+  ...EXPANDED_PROFILE_ICON_ENTRIES.map((item) => group(item.id, item.name, item.entries)),
+  group("referee-exam", "심판 시험", REFEREE_EXAM_ICON_ENTRIES),
+]);
 
 export const PROFILE_ICON_GROUPS = Object.freeze([
   group("default", "기본 지급", [

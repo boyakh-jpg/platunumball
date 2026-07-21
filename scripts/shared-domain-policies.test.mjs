@@ -105,6 +105,13 @@ import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
 import { getPlayerSeasonActivity } from "../src/lib/season.js";
 import { fromRemoteProfile } from "../src/data/profileMappers.js";
 import { IMAGE_CONTEXT_MENU_ALLOW_ATTRIBUTE, getProtectedImageTarget } from "../src/hooks/useImageInteractionGuard.js";
+import { REFEREE_EXAM_VERSION } from "../src/lib/refereeExamBank.js";
+import {
+  REFEREE_RULEBOOK_CHECKLIST,
+  REFEREE_RULEBOOK_NOTICE,
+  REFEREE_RULEBOOK_SECTIONS,
+  REFEREE_STAT_GUIDELINES,
+} from "../src/lib/refereeRulebook.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -452,9 +459,18 @@ test("profile icon picker lists owned icons only and locked achievements conceal
   assert.match(styles, /\.profile-achievement-icon\s*{[^}]*-webkit-mask-image: radial-gradient\(circle closest-side at center, #000 98%, transparent 100%\)/s);
   assert.match(styles, /\.profile-achievement-icon\s*{[^}]*contain: paint/s);
   assert.match(styles, /\.profile-achievement-card\.locked \.profile-achievement-icon img\s*{[^}]*filter: brightness\(0\) saturate\(0\) blur\(1\.2px\)/s);
-  assert.equal(PROFILE_ICON_CATALOG.length, 335);
+  assert.equal(PROFILE_ICON_CATALOG.length, 340);
   assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.includes("four-on-four")), false);
   assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.startsWith("226-five-on-five-")), true);
+  assert.equal(PROFILE_ICON_CATALOG.filter((icon) => /^22[1-5]-referee-exam-/.test(icon.id)).length, 5);
+  assert.deepEqual(
+    PROFILE_ICON_CATALOG
+      .filter((icon) => /^22[1-5]-referee-exam-/.test(icon.id))
+      .map((icon) => icon.achievement.requirements[0].target),
+    [1, 3, 5, 10, 20],
+  );
+  assert.match(achievementApi, /referee_exam_attempts/);
+  assert.match(achievementApi, /refereeExamCompletedCount/);
   assert.match(achievementApi, /activeUnlockedRows = \(unlockedRows \?\? \[\]\)\.filter\(\(row\) => PROFILE_ICON_ID_SET\.has\(row\.icon_key\)\)/);
 });
 
@@ -902,4 +918,24 @@ test("core consumers do not restore duplicated policy literals", async () => {
   assert.doesNotMatch(`${profileEmblem}\n${teamEmblem}`, /function readWebpDimensions/);
   assert.doesNotMatch(discordBridge, /https:\/\/discord\.com\/api\/v10/);
   assert.doesNotMatch(discordBridge, /\^\\d\{17,20\}\$/);
+});
+
+test("referee rulebook matches current FIBA and BOXTIER operating rules", async () => {
+  const rulebookText = JSON.stringify({
+    sections: REFEREE_RULEBOOK_SECTIONS,
+    stats: REFEREE_STAT_GUIDELINES,
+    checklist: REFEREE_RULEBOOK_CHECKLIST,
+    notice: REFEREE_RULEBOOK_NOTICE,
+  });
+  const page = await readSource("src/pages/RefereeRulebook.jsx");
+
+  assert.equal(REFEREE_EXAM_VERSION, "rankball-referee-2026-07");
+  assert.doesNotMatch(rulebookText, /림 위 원통|4번 드리블|낮은 가중치/);
+  assert.match(rulebookText, /1m 안에서 밀착 수비/);
+  assert.match(rulebookText, /비접촉 테크니컬/);
+  assert.match(rulebookText, /30분 또는 60분/);
+  assert.match(rulebookText, /손에서 떠나기 전이어도 블록/);
+  assert.match(page, /FIBA 경기규칙 2024/);
+  assert.match(page, /FIBA 통계 매뉴얼 2024/);
+  assert.match(page, /RULEBOOK_ASSET_VERSION/);
 });

@@ -5719,6 +5719,11 @@ input[type="color"] {
   line-height: 1.55;
 }
 
+html[data-theme="light"] .referee-rulebook-page .referee-rulebook-hero h2 {
+  color: var(--text);
+  text-shadow: none;
+}
+
 .rulebook-asset {
   display: grid;
   gap: 6px;
@@ -5879,6 +5884,26 @@ input[type="color"] {
 .referee-rulebook-footer svg {
   flex: 0 0 auto;
   color: var(--green);
+}
+
+.referee-rulebook-footer > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.referee-rulebook-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.referee-rulebook-sources a {
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .referee-exam-panel {
@@ -18793,6 +18818,11 @@ html[data-theme="light"] .app-main :is(
 ) p:not(.eyebrow) {
   color: var(--hero-copy-color);
   text-shadow: var(--hero-copy-shadow);
+}
+
+html[data-theme="light"] .app-main .referee-rulebook-page .referee-rulebook-hero p:not(.eyebrow) {
+  color: var(--muted);
+  text-shadow: none;
 }
 
 /* Home hero keeps the next-match board below the rank copy on the left. */
