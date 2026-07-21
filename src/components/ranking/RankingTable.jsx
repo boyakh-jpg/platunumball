@@ -4,6 +4,7 @@ import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import TeamHoverCard from "../team/TeamHoverCard.jsx";
+import { AFFILIATION_TYPES } from "../../lib/constants.js";
 
 export default function RankingTable({ rows, type = "players", mode = "integrated", teams = [] }) {
   return (
@@ -35,7 +36,7 @@ export default function RankingTable({ rows, type = "players", mode = "integrate
               <Link className="ranking-name" to="/app/affiliations">
                 <div>
                   <strong>{row.name}</strong>
-                  <span>{row.homeCourt ?? row.type}</span>
+                  <span>{row.homeCourt ?? AFFILIATION_TYPES[row.type] ?? "소속"}</span>
                 </div>
               </Link>
               )

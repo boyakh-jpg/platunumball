@@ -200,6 +200,13 @@ export function normalizeTestLoginId(value = "") {
   return match ? `rankball-${padTestAccountNumber(match[1])}` : text;
 }
 
+export function getTestAccountDisplayLabel(value = "") {
+  const text = String(value ?? "").trim();
+  const match = text.match(/rankball-(\d{1,3})(?:@rankball\.test|\s+test)?$/i);
+  if (!match) return text;
+  return `${Number(match[1])}번 계정`;
+}
+
 export const AFFILIATION_TYPES = {
   region: "지역",
   school: "학교",
@@ -251,7 +258,7 @@ export const COURTS = [
     zonecode: "04005",
     lat: 37.5523461,
     lng: 126.8998896,
-    locationNote: "망원한강공원 농구시설. 핀은 시설 주소 기준이다.",
+    locationNote: "망원한강공원 농구시설입니다. 핀은 시설 주소를 기준으로 표시됩니다.",
     courtKind: "street_hoop",
     hoopCount: 2,
     lighting: null,
@@ -273,7 +280,7 @@ export const COURTS = [
     zonecode: "04767",
     lat: 37.5490719,
     lng: 127.0415013,
-    locationNote: "서울숲복합문화체육센터 실내 체육관. 대관 가능 여부를 확인한다.",
+    locationNote: "서울숲복합문화체육센터 실내 체육관입니다. 대관 가능 여부를 확인해 주세요.",
     courtKind: "official",
     hoopCount: 2,
     lighting: true,
@@ -295,7 +302,7 @@ export const COURTS = [
     zonecode: "05500",
     lat: 37.5148022,
     lng: 127.0736261,
-    locationNote: "잠실실내체육관 보조농구장. 대관 일정과 출입구를 확인한다.",
+    locationNote: "잠실실내체육관 보조농구장입니다. 대관 일정과 출입구를 확인해 주세요.",
     courtKind: "official",
     hoopCount: 2,
     lighting: true,
@@ -317,7 +324,7 @@ export const COURTS = [
     zonecode: "03954",
     lat: 37.5567653,
     lng: 126.8969649,
-    locationNote: "마포구민체육센터 실내 체육관. 대관 일정을 확인한다.",
+    locationNote: "마포구민체육센터 실내 체육관입니다. 대관 일정을 확인해 주세요.",
     courtKind: "official",
     hoopCount: 2,
     lighting: true,
@@ -339,7 +346,7 @@ export const COURTS = [
     zonecode: "05097",
     lat: 37.5293646,
     lng: 127.0739782,
-    locationNote: "뚝섬한강공원 농구시설. 핀은 시설 주소 기준이다.",
+    locationNote: "뚝섬한강공원 농구시설입니다. 핀은 시설 주소를 기준으로 표시됩니다.",
     courtKind: "street_hoop",
     hoopCount: 2,
     lighting: null,
@@ -361,7 +368,7 @@ export const COURTS = [
     zonecode: "06311",
     lat: 37.4771366,
     lng: 127.0519105,
-    locationNote: "강남구민체육관 실내 체육관. 대관 일정을 확인한다.",
+    locationNote: "강남구민체육관 실내 체육관입니다. 대관 일정을 확인해 주세요.",
     courtKind: "official",
     hoopCount: 2,
     lighting: true,
@@ -383,7 +390,7 @@ export const COURTS = [
     zonecode: "06500",
     lat: 37.5077215,
     lng: 126.9927291,
-    locationNote: "반포한강공원 농구시설. 핀은 시설 주소 기준이다.",
+    locationNote: "반포한강공원 농구시설입니다. 핀은 시설 주소를 기준으로 표시됩니다.",
     courtKind: "street_hoop",
     hoopCount: 2,
     lighting: null,
@@ -405,7 +412,7 @@ export const COURTS = [
     zonecode: "06904",
     lat: 37.5100566,
     lng: 126.963469,
-    locationNote: "흑석체육센터 실내 체육관. 대관 일정을 확인한다.",
+    locationNote: "흑석체육센터 실내 체육관입니다. 대관 일정을 확인해 주세요.",
     courtKind: "official",
     hoopCount: 2,
     lighting: true,
@@ -427,7 +434,7 @@ export const COURTS = [
     zonecode: "04136",
     lat: 37.5499061,
     lng: 126.9455338,
-    locationNote: "마포아트센터 종합체육관. 대관 일정을 확인한다.",
+    locationNote: "마포아트센터 종합체육관입니다. 대관 일정을 확인해 주세요.",
     courtKind: "official",
     hoopCount: 2,
     lighting: true,
@@ -449,7 +456,7 @@ export const COURTS = [
     zonecode: "04769",
     lat: 37.5458701,
     lng: 127.0440144,
-    locationNote: "성동구민종합체육센터 실내 체육관. 대관 일정을 확인한다.",
+    locationNote: "성동구민종합체육센터 실내 체육관입니다. 대관 일정을 확인해 주세요.",
     courtKind: "official",
     hoopCount: 2,
     lighting: true,
@@ -471,7 +478,7 @@ export const COURTS = [
     zonecode: "03657",
     lat: 37.5806749,
     lng: 126.9314526,
-    locationNote: "서대문문화체육회관 대체육관. 대관 일정을 확인한다.",
+    locationNote: "서대문문화체육회관 대체육관입니다. 대관 일정을 확인해 주세요.",
     courtKind: "official",
     hoopCount: 2,
     lighting: true,
@@ -493,7 +500,7 @@ export const COURTS = [
     zonecode: "07398",
     lat: 37.5005379,
     lng: 126.9062946,
-    locationNote: "영등포제1스포츠센터 실내 체육관. 대관 일정을 확인한다.",
+    locationNote: "영등포제1스포츠센터 실내 체육관입니다. 대관 일정을 확인해 주세요.",
     courtKind: "official",
     hoopCount: 2,
     lighting: true,

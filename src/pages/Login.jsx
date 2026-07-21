@@ -4,6 +4,8 @@ import { useState } from "react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../lib/assets.js";
+import { BRAND_NAME } from "../lib/brand.js";
+import { getTestAccountDisplayLabel } from "../lib/constants.js";
 import { getAppRedirectFromLocation } from "../lib/profileSetup.js";
 
 const providers = [
@@ -31,7 +33,7 @@ export default function Login({ auth, app }) {
   const enterApp = () => navigate(from, { replace: true });
   const signIn = async (providerId) => {
     if (providerId === "google" && embeddedOAuthBrowser) {
-      setCopyMessage("카톡 안에서는 Google 로그인이 막힙니다. 링크를 복사해서 Chrome/Safari에서 열어주세요.");
+      setCopyMessage("카카오톡 내 브라우저에서는 Google 로그인을 사용할 수 없습니다. 링크를 복사해 Chrome 또는 Safari에서 열어 주세요.");
       return;
     }
     const nextSession = await auth.signInWithProvider(providerId, from);
@@ -43,18 +45,18 @@ export default function Login({ auth, app }) {
   };
   const copyBrowserOpenUrl = async () => {
     if (!browserOpenUrl || !navigator.clipboard) {
-      setCopyMessage("주소창의 URL을 복사해서 Chrome/Safari에서 열어주세요.");
+      setCopyMessage("주소창의 URL을 복사해 Chrome 또는 Safari에서 열어 주세요.");
       return;
     }
     await navigator.clipboard.writeText(browserOpenUrl);
-    setCopyMessage("링크 복사됨. Chrome/Safari 주소창에 붙여넣어 주세요.");
+    setCopyMessage("링크를 복사했습니다. Chrome 또는 Safari 주소창에 붙여 넣어 주세요.");
   };
 
   return (
     <main className="auth-shell">
       <section className="auth-card">
         <div className="auth-card-head">
-          <Link to="/" className="brand auth-brand" aria-label="boxtier">
+          <Link to="/" className="brand auth-brand" aria-label={BRAND_NAME}>
             <span className="brand-logo-frame" aria-hidden="true">
               <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
             </span>
@@ -63,7 +65,7 @@ export default function Login({ auth, app }) {
               <img className="brand-letter-img brand-letter-light" src={BOXTIER_LETTER_LIGHT_URL} alt="" />
             </span>
           </Link>
-          <Badge tone={auth.session ? "green" : "blue"}>{auth.session ? "로그인됨" : auth.configured ? "Supabase Auth" : "Demo login"}</Badge>
+          <Badge tone={auth.session ? "green" : "blue"}>{auth.session ? "로그인됨" : auth.configured ? "로그인 가능" : "체험 모드"}</Badge>
         </div>
 
         <div className="auth-form">
@@ -75,7 +77,7 @@ export default function Login({ auth, app }) {
           {auth.session ? (
             <div className="auth-session-line">
               <ShieldCheck size={18} />
-              <span>{auth.user.user_metadata?.providerName ?? auth.user.email} 로그인됨</span>
+              <span>{getTestAccountDisplayLabel(auth.user.user_metadata?.providerName ?? auth.user.email)} 로그인됨</span>
               <button type="button" onClick={auth.signOut}><LogOut size={16} /> 로그아웃</button>
             </div>
           ) : null}
@@ -84,8 +86,8 @@ export default function Login({ auth, app }) {
           {auth.message ? <p className="auth-message">{auth.message}</p> : null}
           {embeddedOAuthBrowser ? (
             <div className="auth-browser-warning">
-              <strong>카톡 브라우저에서는 Google 로그인이 막힙니다.</strong>
-              <span>오른쪽 위 메뉴에서 다른 브라우저로 열거나, 아래 링크를 복사해서 Chrome/Safari에서 열어주세요.</span>
+              <strong>카카오톡 내 브라우저에서는 Google 로그인을 사용할 수 없습니다.</strong>
+              <span>오른쪽 위 메뉴에서 다른 브라우저로 열거나, 아래 링크를 복사해 Chrome 또는 Safari에서 열어 주세요.</span>
               <div className="auth-browser-actions">
                 <button type="button" onClick={copyBrowserOpenUrl}><Copy size={15} /> 링크 복사</button>
                 {browserOpenUrl ? (
@@ -100,7 +102,7 @@ export default function Login({ auth, app }) {
             {activeProviders.map((provider) => (
               <button key={provider.id} type="button" className={`provider-button provider-${provider.id}`} onClick={() => signIn(provider.id)}>
                 <span>{provider.mark}</span>
-                {auth.configured ? `${provider.label} OAuth` : `${provider.label} demo`}
+                {auth.configured ? `${provider.label}로 로그인` : `${provider.label} 체험 로그인`}
               </button>
             ))}
           </div>

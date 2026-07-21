@@ -168,14 +168,14 @@ export default function Teams({ app }) {
     try {
       const result = await app.actions.createTeam({ ...draft, captainId: app.currentUser.id });
       if (!result || result?.ok === false) {
-        setTeamCreateError(result?.message || result?.error || "팀을 만들지 못했습니다.");
+        setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
       setDraft({ name: "", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
       setCourtQuery("");
       setCourtRegion(app.currentUser.region ?? "전체");
     } catch (error) {
-      setTeamCreateError(error?.message || "팀을 만들지 못했습니다.");
+      setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       setTeamCreatePending(false);
     }
@@ -251,7 +251,7 @@ export default function Teams({ app }) {
             ) : teamDirectoryError ? (
               <div className="empty-state">팀 정보를 불러오지 못했습니다.</div>
             ) : (
-              <div className="empty-state">소속 팀이 없습니다. 오른쪽에서 팀을 만들거나 모집에 지원하세요.</div>
+              <div className="empty-state">소속 팀이 없습니다. 새 팀을 만들거나 팀 모집에 지원해 주세요.</div>
             )}
           </div>
         </Card>

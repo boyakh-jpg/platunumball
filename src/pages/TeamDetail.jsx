@@ -322,11 +322,11 @@ export default function TeamDetail({ app }) {
     if (emblemPending) return;
     const emblemAbbreviation = normalizeTeamEmblemAbbreviation(emblemStyleDraft.emblemAbbreviation);
     if (emblemAbbreviation && !isTeamEmblemAbbreviation(emblemAbbreviation)) {
-      setEmblemFeedback("약칭은 공백을 제외한 1~4자로 입력하세요.");
+      setEmblemFeedback("약칭은 공백을 제외한 1~4자로 입력해 주세요.");
       return;
     }
     if (emblemStyleDraft.emblemTextMode === "abbreviation" && !isTeamEmblemAbbreviation(emblemAbbreviation)) {
-      setEmblemFeedback("공백만 있는 약칭은 저장할 수 없습니다. 1~4자로 입력하세요.");
+      setEmblemFeedback("공백만 있는 약칭은 저장할 수 없습니다. 1~4자로 입력해 주세요.");
       return;
     }
     setEmblemPending(true);
@@ -506,7 +506,7 @@ export default function TeamDetail({ app }) {
                       <span>{match.court} · {match.scheduledAt}</span>
                     </div>
                     <div className="history-score">
-                      <Badge tone={match.status === "confirmed" ? "green" : match.status === "contract" ? "blue" : "orange"}>{historyStatusLabel[match.status] ?? match.status}</Badge>
+                      <Badge tone={match.status === "confirmed" ? "green" : match.status === "contract" ? "blue" : "orange"}>{historyStatusLabel[match.status] ?? "상태 확인 중"}</Badge>
                       <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
                     </div>
                     <div className="roster compact-roster">

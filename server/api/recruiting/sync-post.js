@@ -224,7 +224,7 @@ function getRoomCancelledPayload(post = {}) {
   return {
     title: "방 취소",
     body: [
-      `${post.title || "매칭방"} 방이 취소됐습니다.`,
+      `${post.title || "매칭방"} 방이 취소되었습니다.`,
       `구장: ${post.court || "구장 미정"}`,
       `방식: ${post.mode || "5v5"}`,
     ].join("\n"),

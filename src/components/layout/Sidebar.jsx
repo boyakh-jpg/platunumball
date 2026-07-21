@@ -4,8 +4,9 @@ import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../../lib/assets.js";
+import { BRAND_NAME } from "../../lib/brand.js";
 import { getUserHashtag } from "../../lib/handles.js";
-import { DEFAULT_RATING } from "../../lib/constants.js";
+import { DEFAULT_RATING, getTestAccountDisplayLabel } from "../../lib/constants.js";
 
 const navItems = [
   { to: "/app", label: "홈", icon: House },
@@ -20,12 +21,13 @@ const navItems = [
 
 export default function Sidebar({ user, teams = [], auth }) {
   const safeUser = user ?? {};
-  const displayName = safeUser.name || auth?.user?.user_metadata?.providerName || auth?.user?.email || "RankBall";
+  const authDisplayName = auth?.user?.user_metadata?.providerName || auth?.user?.email || "";
+  const displayName = safeUser.name || getTestAccountDisplayLabel(authDisplayName) || BRAND_NAME;
   const displayHashtag = getUserHashtag(safeUser);
   const integratedRating = safeUser.ratings?.integrated ?? DEFAULT_RATING;
   return (
     <aside className="sidebar">
-      <NavLink to="/" className="brand" aria-label="boxtier">
+      <NavLink to="/" className="brand" aria-label={BRAND_NAME}>
         <span className="brand-logo-frame" aria-hidden="true">
           <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
         </span>

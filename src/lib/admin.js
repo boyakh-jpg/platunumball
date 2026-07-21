@@ -1,7 +1,30 @@
 import { getMatchPlayerIds } from "./matchUtils.js";
 import { DAY_MS } from "./constants.js";
 
-export const ADMIN_BACKEND_TODO = "관리자 권한은 서버 env 또는 DB admin_appointments 기준입니다.";
+export const ADMIN_PERMISSION_NOTICE = "관리자 권한이 있는 계정만 이 메뉴를 사용할 수 있습니다.";
+
+const ADMIN_STATUS_LABELS = Object.freeze({
+  resolved: "처리됨",
+  dismissed: "기각됨",
+  reported: "신고 검토 중",
+  disputed: "이의신청 중",
+  pending: "대기 중",
+  approved: "승인됨",
+  rejected: "반려됨",
+  open: "검토 대기",
+  active: "적용 중",
+  hidden: "숨김 처리",
+  disabled: "비활성",
+  cancelled: "취소됨",
+  closed: "종료됨",
+  completed: "완료됨",
+  void: "경기 무효",
+  voided: "경기 무효",
+});
+
+export function getAdminStatusLabel(status = "") {
+  return ADMIN_STATUS_LABELS[String(status ?? "").trim()] ?? "상태 확인 중";
+}
 
 export const ADMIN_GRADE_META = {
   owner: { label: "최고관리자", level: 100, defaultTermDays: 3650, scope: "전체 권한 · 1명" },
@@ -79,7 +102,7 @@ const HIGH_IMPACT_REVIEW_ACTIONS = new Set([
 ]);
 
 export function getAdminReportTypeLabel(type = "") {
-  return ADMIN_REPORT_TYPE_META[type]?.label ?? (type || "신고");
+  return ADMIN_REPORT_TYPE_META[type]?.label ?? "기타 신고";
 }
 
 export function isHighImpactAdminReviewAction(actionType = "") {
@@ -112,7 +135,7 @@ export function getAdminReviewMetrics(view = "players", row = {}) {
       { label: "미처리 신고", value: row.openCount ?? 0 },
       { label: "누적 신고", value: row.reportCount ?? 0 },
       { label: "참여 인원", value: row.match ? getMatchPlayerIds(row.match).length : 0 },
-      { label: "경기 상태", value: row.match?.status ?? "-" },
+      { label: "경기 상태", value: getAdminStatusLabel(row.match?.status) },
     ];
   }
   if (view === "teams") {

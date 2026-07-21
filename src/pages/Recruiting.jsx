@@ -70,6 +70,7 @@ import {
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { assetUrl } from "../lib/assets.js";
+import { BRAND_NAME } from "../lib/brand.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
   addDateDays,
@@ -761,7 +762,7 @@ function TeamMemberPicker({
   if (!team) {
     return (
       <div className="arena-party-picker empty">
-        <span>선택할 팀이 없다.</span>
+        <span>선택할 수 있는 팀이 없습니다.</span>
       </div>
     );
   }
@@ -1014,7 +1015,7 @@ function SlotCommandPanel({ sideName, reserve = false, floating = false, anchor 
       <header>
         <div>
           <strong>{SIDE_LABELS[sideName]} {reserve ? "후보 슬롯" : "빈 슬롯"}</strong>
-          <span>이 자리로 이동하거나 초대한다.</span>
+          <span>이 자리로 이동하거나 선수를 초대할 수 있습니다.</span>
         </div>
         <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={16} /></button>
       </header>
@@ -1353,7 +1354,7 @@ function RoomKickPanel({
     <div className="arena-host-kick-panel">
       <header>
         <strong>강퇴</strong>
-        <span>방장은 팀 배치 대신 퇴장만 처리한다.</span>
+        <span>방장은 팀 배치 대신 퇴장만 처리할 수 있습니다.</span>
       </header>
       <div className="arena-host-kick-list">
         {rows.map(({ entry, partyEntry, playerId, reserve, user }) => {
@@ -1886,7 +1887,7 @@ function InvitePanel({
       <header>
         <div>
           <strong>{SIDE_LABELS[sideName]} {reserve ? "후보" : "빈 슬롯"} {actionLabel}</strong>
-          <span>{teamSummonMode ? "사이드장이 자기 팀원을 출전/후보 명단에 바로 등록한다." : (reserve ? "수락하면 해당 사이드의 후보 선수로 들어온다." : "선착순 수락이다. 방이 차면 수락 실패.")}</span>
+          <span>{teamSummonMode ? "사이드장이 팀원을 출전 또는 후보 명단에 바로 등록할 수 있습니다." : (reserve ? "수락하면 해당 사이드의 후보 선수로 합류합니다." : "선착순으로 수락되며, 정원이 차면 참여할 수 없습니다.")}</span>
         </div>
         <button type="button" className="arena-icon-button" aria-label={`${actionNoun} 닫기`} onClick={onClose}><X size={18} /></button>
       </header>
@@ -2148,7 +2149,7 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   if (effectiveStatus === "disputed") {
     return {
       label: "이의신청방",
-      detail: "30분 안에 이의 사유를 확인하고 수정안 확정 또는 무효 처리하세요.",
+      detail: "30분 안에 이의 사유를 확인하고 수정안 확정, 이의신청 반려 또는 경기 무효 처리를 선택해 주세요.",
       disputed: true,
     };
   }
@@ -2437,7 +2438,7 @@ export function RecruitingRoomModal(props) {
 function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
   return (
     <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="방 로드 실패" onMouseDown={(event) => event.stopPropagation()}>
+      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="방 불러오기 실패" onMouseDown={(event) => event.stopPropagation()}>
         <div className="arena-modal-status-row">
           <Badge tone="orange">ROOM LOAD</Badge>
           <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={18} /></button>
@@ -2607,19 +2608,19 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const copyRoomShareUrl = useCallback(async () => {
     try {
       const copied = await copyTextToClipboard(roomShareUrl);
-      showRoomShareStatus(copied ? "URL 복사됨" : "복사 실패");
+      showRoomShareStatus(copied ? "URL을 복사했습니다." : "URL을 복사하지 못했습니다.");
     } catch {
-      showRoomShareStatus("복사 실패");
+      showRoomShareStatus("URL을 복사하지 못했습니다.");
     }
   }, [roomShareUrl, showRoomShareStatus]);
 
   const shareRoom = useCallback(async () => {
-    const title = getRecruitingDisplayTitle(selectedPost, "RankBall 매치방");
+    const title = getRecruitingDisplayTitle(selectedPost, `${BRAND_NAME} 매치방`);
     const text = [title, selectedPost?.court, selectedPost ? getRecruitingSchedule(selectedPost) : ""].filter(Boolean).join(" · ");
     if (navigator.share) {
       try {
         await navigator.share({ title, text, url: roomShareUrl });
-        showRoomShareStatus("공유창 열림");
+        showRoomShareStatus("공유 화면을 열었습니다.");
         return;
       } catch (error) {
         if (error?.name === "AbortError") return;
@@ -2832,11 +2833,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     const body = getChatDraft(roomPost).trim();
     if (!body) return;
     if (body.includes("\n") || body.includes("\r")) {
-      setChatError(postId, "한 줄로 입력해주세요.");
+      setChatError(postId, "한 줄로 입력해 주세요.");
       return;
     }
     if (body.length > CHAT_MESSAGE_MAX_LENGTH) {
-      setChatError(postId, "60자 이내로 입력해주세요.");
+      setChatError(postId, "60자 이내로 입력해 주세요.");
       return;
     }
     if (getUnsafeUserTextReason(body, { maxLength: CHAT_MESSAGE_MAX_LENGTH })) {
@@ -2845,16 +2846,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     }
     const now = Date.now();
     if (chatSendingPostId === postId || Number(chatCooldownUntilByPost[postId] ?? 0) > now) {
-      setChatError(postId, "잠시 후 다시 입력해주세요.");
+      setChatError(postId, "잠시 후 다시 입력해 주세요.");
       return;
     }
     const recentLog = (chatSendLogRef.current[postId] ?? []).filter((item) => now - item.at < CHAT_RATE_WINDOW_MS);
     if (recentLog.some((item) => item.body === body && now - item.at < CHAT_REPEAT_BLOCK_MS)) {
-      setChatError(postId, "잠시 후 다시 입력해주세요.");
+      setChatError(postId, "잠시 후 다시 입력해 주세요.");
       return;
     }
     if (recentLog.length >= CHAT_RATE_LIMIT) {
-      setChatError(postId, "잠시 후 다시 입력해주세요.");
+      setChatError(postId, "잠시 후 다시 입력해 주세요.");
       return;
     }
     setChatSendingPostId(postId);
@@ -2867,7 +2868,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       setChatCooldownUntilByPost((current) => ({ ...current, [postId]: cooldownUntil }));
       clearChatCooldown(postId, cooldownUntil);
     } catch (error) {
-      setChatError(postId, "잠시 후 다시 입력해주세요.");
+      setChatError(postId, "잠시 후 다시 입력해 주세요.");
     } finally {
       setChatSendingPostId((current) => (current === postId ? "" : current));
     }
@@ -3005,8 +3006,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         return result;
       }
       const message = result?.statusCode === 401 || result?.error === "missing_bearer_token"
-        ? "로그인이 만료됐습니다. 다시 로그인 후 초대하세요."
-        : result?.message || result?.error || "초대를 저장하지 못했습니다.";
+        ? "로그인이 만료되었습니다. 다시 로그인한 뒤 초대해 주세요."
+        : "초대를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
       setInviteError(message);
       return result;
     } catch {
@@ -4096,9 +4097,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     <small>저장하면 방장을 제외한 참가자가 다시 수락해야 합니다.</small>
                   </div>
                 ) : null}
-                <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>
-                <span>후보가 경기 밖에서 참여 확정하면 해당 사이드 개인 활약 기록자로 배정된다.</span>
-                <span>확정 후 불참하면 신뢰점수 패널티 대상이다.</span>
+                <span>팀 MMR은 실제 참가한 팀원의 비율을 기준으로 반영됩니다.</span>
+                <span>후보가 경기 밖에서 참여를 확정하면 해당 사이드의 개인 활약 기록자로 배정됩니다.</span>
+                <span>참여 확정 후 불참하면 신뢰점수 차감 대상이 됩니다.</span>
               </div>
 
               <RoomChat
@@ -4466,7 +4467,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setPaidCourtJoinPrompt(null)}>
                   <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="유료 구장 참여 확인" onMouseDown={(event) => event.stopPropagation()}>
                     <strong>유료 구장입니다.</strong>
-                    <p>참가비나 대관료를 미리 확인하고 참여하세요.</p>
+                    <p>참가비나 대관료를 미리 확인하고 참여해 주세요.</p>
                     <div className="app-confirm-actions">
                       <Button type="button" variant="secondary" onClick={() => setPaidCourtJoinPrompt(null)}>취소</Button>
                       <Button type="button" variant="primary" onClick={confirmPaidCourtJoin}>계속 참여</Button>
@@ -4818,7 +4819,7 @@ function RecruitingReady({ app }) {
         <div className="arena-hero-copy">
           <span className="arena-kicker">MATCH QUEUE</span>
           <h1>대기 매칭</h1>
-          <p>공개 모집방만 탐색하고, 개인전과 팀전은 방 생성 단계에서 나눈다.</p>
+          <p>공개 모집방을 확인할 수 있으며, 개인전과 팀전은 방을 만들 때 선택합니다.</p>
         </div>
         <div className="arena-hero-panel">
           <div className="arena-hero-stats">
@@ -4977,12 +4978,12 @@ function RecruitingReady({ app }) {
           <EmptyState
             tone="loading"
             title="매치방 불러오는 중"
-            description="선택한 지역과 날짜의 공개방을 확인 중이다."
+            description="선택한 지역과 날짜의 공개방을 확인하고 있습니다."
           />
         ) : (
           <EmptyState
             title="조건에 맞는 매치방 없음"
-            description="필터를 바꾸거나 새 매치방을 열어라."
+            description="필터를 변경하거나 새 매치방을 만들어 보세요."
           />
         )}
       </section>
@@ -4992,7 +4993,7 @@ function RecruitingReady({ app }) {
           <button type="button" className="button button-secondary button-md" disabled={app.recruitingPagination?.loading} onClick={() => app.actions.loadMoreRecruiting?.()}>
             {app.recruitingPagination?.loading ? "불러오는 중" : "더 보기"}
           </button>
-          {app.recruitingPagination?.loadMoreError ? <span>더 보기 실패</span> : null}
+          {app.recruitingPagination?.loadMoreError ? <span>모집방을 더 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</span> : null}
         </div>
       ) : null}
 
@@ -5093,7 +5094,7 @@ function RecruitingReady({ app }) {
                   <button type="button" className={draft.timingType === "scheduled" ? "active" : ""} onClick={() => update({ timingType: "scheduled" })}>일정 지정</button>
                   <button type="button" className={draft.timingType === "instant" ? "active" : ""} onClick={() => update({ timingType: "instant" })}>즉시</button>
                 </div>
-                <small>{draftInstant ? "지금 바로 모아서 정원 충족 시 바로 확정한다." : "공개 예약방은 5일 이내, 경기 4시간 이후만 가능하다."}</small>
+                <small>{draftInstant ? "지금 모집을 시작하며, 정원이 차면 바로 확정됩니다." : "공개 예약방은 5일 이내이면서 시작까지 4시간 이상 남은 일정만 만들 수 있습니다."}</small>
               </div>
 
               <div className="arena-field-grid">

@@ -272,7 +272,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
               </fieldset>
               <label>
                 <span>한줄 리뷰</span>
-                <textarea value={memo} onChange={(event) => setMemo(event.target.value)} maxLength={240} rows={4} placeholder="바닥, 림, 조명, 혼잡도를 알려주세요." />
+                <textarea value={memo} onChange={(event) => setMemo(event.target.value)} maxLength={240} rows={4} placeholder="바닥, 림, 조명, 혼잡도 정보를 적어 주세요." />
                 <small>{memo.length}/240</small>
               </label>
               <Button type="submit" disabled={rating < 1 || saving}>{saving ? "저장 중" : selectedMatch?.existingReview ? "리뷰 수정" : "리뷰 등록"}</Button>

@@ -439,7 +439,7 @@ export function getTeamEventEligibility(team = null, users = [], options = {}) {
       : options.requireCaptainEligible && !captainEligible
         ? "팀장이 연령·MMR 조건을 충족하지 않습니다."
       : missingProfileIds.length && eligiblePlayerIds.length < capacity
-        ? "팀원 정보를 불러온 뒤 다시 확인하세요."
+        ? "팀원 정보를 불러온 뒤 다시 확인해 주세요."
         : missingCount
           ? `조건을 충족한 선수가 ${missingCount}명 부족합니다.`
           : "참가 가능";

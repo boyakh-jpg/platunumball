@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import { BRAND_NAME } from "../src/lib/brand.js";
+import { getAdminStatusLabel } from "../src/lib/admin.js";
 import {
   BASKETBALL_POSITIONS,
   DEFAULT_PLAYER_RATINGS,
   DEFAULT_RATING,
   MATCH_SIDES,
+  getTestAccountDisplayLabel,
   getModeSize,
   isRefereeGrade,
 } from "../src/lib/constants.js";
@@ -69,6 +72,7 @@ import {
   getCourtAccessLabel,
   getCourtHoopCount,
   getCourtKindLabel,
+  getCourtLocationNote,
   getCourtMapUrl,
   getNearbyCourtCandidates,
   getCourtPaidLabel,
@@ -103,6 +107,16 @@ import { IMAGE_CONTEXT_MENU_ALLOW_ATTRIBUTE, getProtectedImageTarget } from "../
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
 
+const PUBLIC_COPY_SOURCE_PATHS = Object.freeze([
+  "index.html",
+  "src/lib/brand.js",
+  "src/components/layout/Sidebar.jsx",
+  "src/pages/Recruiting.jsx",
+  "server/api/discord/interactions.js",
+  "server/api/discord/dm-worker.js",
+  "server/api/discord/_roomChatBridge.js",
+]);
+
 async function readSourceTree(relativeDirectory) {
   const sources = [];
   const walk = async (directoryUrl) => {
@@ -135,6 +149,90 @@ test("core match policy has one canonical default", () => {
   assert.equal(getModeSize("unknown", 3), 3);
   assert.ok(isRefereeGrade("official"));
   assert.equal(isRefereeGrade("admin"), false);
+});
+
+test("public product copy uses the BOXTIER brand and production tone", async () => {
+  assert.equal(BRAND_NAME, "BOXTIER");
+  assert.equal(getTestAccountDisplayLabel("rankball-006"), "6번 계정");
+  assert.equal(getTestAccountDisplayLabel("rankball-050 test"), "50번 계정");
+  assert.equal(getAdminStatusLabel("approved"), "승인됨");
+  assert.equal(getAdminStatusLabel("unknown_internal"), "상태 확인 중");
+  assert.equal(
+    getCourtLocationNote("테스트 체육관입니다. 대관 일정을 확인한다."),
+    "테스트 체육관입니다. 대관 일정을 확인해 주세요.",
+  );
+
+  const sources = await Promise.all(PUBLIC_COPY_SOURCE_PATHS.map(readSource));
+  const publicCopySource = sources.join("\n");
+  const documentSource = sources[0];
+
+  assert.match(documentSource, /<title>BOXTIER<\/title>/);
+  assert.match(documentSource, /content="BOXTIER - [^"]+"/);
+  assert.doesNotMatch(publicCopySource, /RankBall|PlatinumBall|Platinum Ball|플래티넘볼|랭크볼/);
+
+  const refinedUiSource = await Promise.all([
+    "src/hooks/useAuthSession.js",
+    "src/hooks/useAppData.js",
+    "src/lib/handles.js",
+    "src/lib/admin.js",
+    "src/lib/mockData.js",
+    "src/lib/naverAddress.js",
+    "src/lib/teamEmblem.js",
+    "src/App.jsx",
+    "src/components/layout/Sidebar.jsx",
+    "src/components/match/MatchCard.jsx",
+    "src/components/ranking/RankingTable.jsx",
+    "src/pages/Admin.jsx",
+    "src/pages/Recruiting.jsx",
+    "src/pages/Matches.jsx",
+    "src/pages/MatchRoom.jsx",
+    "src/pages/CreateMatch.jsx",
+    "src/pages/Login.jsx",
+    "src/pages/PlayerDetail.jsx",
+    "src/pages/Recorder.jsx",
+    "src/pages/Settings.jsx",
+    "src/pages/Signup.jsx",
+    "src/pages/TeamDetail.jsx",
+    "src/pages/Teams.jsx",
+    "src/pages/TournamentDetail.jsx",
+    "src/lib/constants.js",
+    "server/api/matches/sync-match.js",
+    "server/api/recruiting/sync-post.js",
+  ].map(readSource)).then((items) => items.join("\n"));
+
+  [
+    "필터를 바꾸거나 새 매치방을 열어라.",
+    "선택할 팀이 없다.",
+    "서버 연결을 확인한 뒤 다시 시도한다.",
+    "기록 조건이 맞았다. 내 승인만 처리하면 된다.",
+    "핀은 시설 주소 기준이다.",
+    "대관 일정을 확인한다.",
+    "원문:",
+    "테스트 계정 로그인은 VITE_DEMO_LOGIN",
+    "seed auth-only",
+    "Supabase Google Provider",
+    "Cloudflare 업로드",
+    "이유: ${errorCode}",
+    "공개 모집방만 탐색하고, 개인전과 팀전은 방 생성 단계에서 나눈다.",
+    "Admin Seed",
+    "Google OAuth 또는 데모 계정",
+    "Demo queue room opened.",
+    "Demo room opened.",
+    "입력해주세요",
+    "열어주세요",
+    "확인해주세요",
+    "서버에 NAVER_MAP_CLIENT_SECRET이 없습니다.",
+    "네이버 주소검색 API 호출이 실패했습니다.",
+    "VITE_NAVER_MAP_CLIENT_ID가 없습니다.",
+    "서버 트랜잭션",
+    "저장 실패",
+    "로드 실패",
+    "복사 실패",
+    "삭제됐거나 아직 동기화되지 않은 대회다.",
+    "초대팀 주장이 모두 승인하면 자동으로 경기와 대진이 열린다.",
+  ].forEach((legacyCopy) => assert.equal(refinedUiSource.includes(legacyCopy), false, legacyCopy));
+  assert.doesNotMatch(refinedUiSource, /fallback\s*=\s*"rankball"|\|\|\s*"rankball"/);
+  assert.doesNotMatch(refinedUiSource, /\?\?\s*(?:match|tournament|report|request|review)\.(?:status|actionType|mmrPolicy|format)/);
 });
 
 test("team roster summons are atomic and resolve actionable invitations", async () => {

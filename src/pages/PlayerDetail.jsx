@@ -290,7 +290,7 @@ export default function PlayerDetail({ app }) {
                       </div>
                       <div className="history-score">
                         <Badge tone={outcome === null ? "blue" : outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>
-                          {outcome === null ? historyStatusLabel[match.status] ?? match.status : outcome === "win" ? "승" : outcome === "loss" ? "패" : "무"}
+                          {outcome === null ? historyStatusLabel[match.status] ?? "상태 확인 중" : outcome === "win" ? "승" : outcome === "loss" ? "패" : "무"}
                         </Badge>
                         <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
                       </div>

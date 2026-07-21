@@ -130,7 +130,7 @@ export default function Profile({ app }) {
         regionDistrict: district,
       });
     } catch (error) {
-      setProfileError(error.message || "프로필 저장에 실패했습니다.");
+      setProfileError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     }
   };
   const myRecords = [...app.state.matches]

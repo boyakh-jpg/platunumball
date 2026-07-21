@@ -8,7 +8,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import UserOperationsPanel from "../components/admin/UserOperationsPanel.jsx";
 import {
-  ADMIN_BACKEND_TODO,
+  ADMIN_PERMISSION_NOTICE,
   APPOINTMENT_TERM_OPTIONS,
   ADMIN_REVIEW_ACTIONS,
   REFEREE_GRADE_META,
@@ -18,9 +18,11 @@ import {
   getAdminActionTargetUserIds,
   getAdminReportTypeLabel,
   getAdminReviewMetrics,
+  getAdminStatusLabel,
   hasAdminAccess,
   isHighImpactAdminReviewAction,
 } from "../lib/admin.js";
+import { ADMIN_USER_OPERATION_ACTIONS } from "../lib/adminUserOperations.js";
 import {
   getCourtAccessLabel,
   getCourtKindLabel,
@@ -94,21 +96,6 @@ const REVIEW_QUEUE_FILTER_PLACEHOLDERS = {
   teams: "신고 사유",
 };
 
-function statusLabel(status) {
-  if (status === "resolved") return "처리됨";
-  if (status === "dismissed") return "기각";
-  if (status === "reported") return "신고 검토 중";
-  if (status === "disputed") return "이의제기";
-  if (status === "pending") return "대기";
-  if (status === "approved") return "승인됨";
-  if (status === "rejected") return "반려됨";
-  if (status === "open") return "대기";
-  if (status === "active") return "활성";
-  if (status === "hidden") return "숨김";
-  if (status === "disabled") return "비활성";
-  return status || "대기";
-}
-
 function isPendingCourtRequest(request = {}) {
   return ["pending", "reported"].includes(request.status ?? "pending");
 }
@@ -125,7 +112,7 @@ function appointmentStatusLabel(status) {
   if (status === "pending") return "대기";
   if (status === "revoked") return "회수";
   if (status === "expired") return "만료";
-  return status || "대기";
+  return "상태 확인 중";
 }
 
 function DetailList({ title, empty, children }) {
@@ -191,7 +178,7 @@ function RatingPolicyPanel({ app }) {
   };
   const requestSave = () => {
     if (reason.trim().length < 4) {
-      setStatus("변경 사유를 4자 이상 입력하세요.");
+      setStatus("변경 사유를 4자 이상 입력해 주세요.");
       return;
     }
     setConfirming(true);
@@ -207,14 +194,14 @@ function RatingPolicyPanel({ app }) {
         reason: reason.trim(),
       });
       if (!result || result.ok === false) {
-        setStatus(result?.error?.includes?.("stale") ? "다른 관리자가 먼저 저장했습니다. 새로 불러오세요." : "정책 저장에 실패했습니다.");
+        setStatus(result?.error?.includes?.("stale") ? "다른 관리자가 먼저 저장했습니다. 최신 내용을 다시 불러와 주세요." : "정책을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
       applyResult(result);
       setReason("");
-      setStatus("저장 완료");
+      setStatus("저장되었습니다.");
     } catch {
-      setStatus("정책 저장에 실패했습니다.");
+      setStatus("정책을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setSaving(false);
     }
@@ -576,12 +563,12 @@ export default function Admin({ app }) {
     if (!selectedCourtRequest) return;
     setCourtApprovalStatus("승인 중");
     const result = await app.actions.approveCourtRequest(selectedCourtRequest.id, courtApprovalDraft);
-    setCourtApprovalStatus(result && result.ok !== false ? "승인 완료" : "승인 실패");
+    setCourtApprovalStatus(result && result.ok !== false ? "승인되었습니다." : "승인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
   };
   const commitSelectedAction = async () => {
     if (!selectedReport || reviewActionPending) return;
     if (reviewActionInvalid) {
-      setReviewActionStatus("처리 사유와 신고자 안내를 각각 4자 이상 입력하고 대상을 확인하세요.");
+      setReviewActionStatus("처리 사유와 신고자 안내를 각각 4자 이상 입력하고 대상을 확인해 주세요.");
       return;
     }
     setReviewActionPending(true);
@@ -597,9 +584,9 @@ export default function Admin({ app }) {
           ? getTeamEmblemErrorMessage(result?.error || "admin_review_action_failed")
           : "관리자 처리를 완료하지 못했습니다.");
       } else if (result.storageCleanupPending) {
-        setReviewActionStatus("기본값 전환은 완료됐습니다. 저장 파일 정리는 재확인이 필요합니다.");
+        setReviewActionStatus("엠블럼은 기본값으로 전환되었습니다. 이전 사진 정리는 잠시 후 다시 확인해 주세요.");
       } else {
-        setReviewActionStatus("처리 완료");
+        setReviewActionStatus("처리가 완료되었습니다.");
       }
     } catch (error) {
       setReviewActionStatus(selectedReport.type === "team_emblem"
@@ -649,7 +636,7 @@ export default function Admin({ app }) {
             <ShieldCheck size={22} />
           </div>
           <p>관리자 메뉴는 권한자에게만 표시됩니다.</p>
-          <small>{ADMIN_BACKEND_TODO}</small>
+          <small>{ADMIN_PERMISSION_NOTICE}</small>
         </Card>
       </div>
     );
@@ -775,12 +762,12 @@ export default function Admin({ app }) {
         ) : null}
         <div className="admin-action-panel admin-appointment-action-panel">
           <div>
-            <strong>임명/연장/회수 액션</strong>
-            <small>처리는 server action/RPC로 커밋됩니다. 화면 state는 커밋 후 서버 재조회 기준으로 맞춰야 합니다.</small>
+            <strong>임명·연장·회수 처리</strong>
+            <small>처리 결과는 서버에 저장되며, 저장이 완료되면 최신 정보로 화면이 갱신됩니다.</small>
           </div>
           <div className="arena-field-grid">
             <label>
-              액션
+              처리 유형
               <select value={appointmentDraft.actionType} onChange={(event) => updateAppointmentDraft({ actionType: event.target.value })}>
                 {APPOINTMENT_ACTION_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
@@ -860,10 +847,10 @@ export default function Admin({ app }) {
               : !appointmentDraft.userId}
             onClick={commitAppointmentAction}
           >
-            임명/연장/회수 커밋
+            임명/연장/회수 적용
           </Button>
         </div>
-          <small>{ADMIN_BACKEND_TODO}</small>
+          <small>{ADMIN_PERMISSION_NOTICE}</small>
         </Card>
       ) : (
       <div className="admin-workbench">
@@ -901,10 +888,10 @@ export default function Admin({ app }) {
           </div>
 
           <div className="admin-sort-list">
-            {app.adminStatus?.loading && app.adminStatus?.section === section ? <div className="admin-queue-state" role="status">관리자 큐를 불러오는 중입니다.</div> : null}
+            {app.adminStatus?.loading && app.adminStatus?.section === section ? <div className="admin-queue-state" role="status">검토 목록을 불러오는 중입니다.</div> : null}
             {app.adminStatus?.error && app.adminStatus?.section === section ? (
               <div className="admin-queue-state error" role="alert">
-                <span>관리자 큐를 불러오지 못했습니다.</span>
+                <span>검토 목록을 불러오지 못했습니다.</span>
                 <Button type="button" variant="secondary" onClick={() => loadAdminSection?.({ section, queueMode, filter: appliedQueueFilter, limit: ADMIN_DEFAULT_PAGE_LIMIT, offset: 0, force: true })}>다시 시도</Button>
               </div>
             ) : null}
@@ -990,7 +977,7 @@ export default function Admin({ app }) {
                       <h3>구장 신청 상세</h3>
                     </div>
                     <Badge tone={selectedCourtRequest.status === "approved" ? "green" : selectedCourtRequest.status === "reported" ? "orange" : "neutral"}>
-                      {statusLabel(selectedCourtRequest.status)}
+                      {getAdminStatusLabel(selectedCourtRequest.status)}
                     </Badge>
                   </div>
                   <div className="admin-court-facts">
@@ -1065,7 +1052,7 @@ export default function Admin({ app }) {
                       {courtApprovalStatus ? <small>{courtApprovalStatus}</small> : null}
                     </div>
                   ) : selectedCourtRequest.status === "reported" ? (
-                    <p className="admin-court-note">신고 검토 중인 요청입니다. 신고를 처리한 뒤 승인 여부를 결정하세요.</p>
+                    <p className="admin-court-note">신고 검토 중인 요청입니다. 신고를 처리한 뒤 승인 여부를 결정해 주세요.</p>
                   ) : selectedCourtRequest.status === "rejected" ? (
                     <p className="admin-court-note">신고가 인정되어 반려된 요청입니다. 승인할 수 없습니다.</p>
                   ) : null}
@@ -1094,13 +1081,13 @@ export default function Admin({ app }) {
                       {!reportOptions.length ? <option value="">신고 없음</option> : null}
                       {reportOptions.map((report) => (
                         <option key={report.id} value={report.id}>
-                          {statusLabel(report.status)} · {getAdminReportTypeLabel(report.type)} · {report.reason}
+                          {getAdminStatusLabel(report.status)} · {getAdminReportTypeLabel(report.type)} · {report.reason}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label>
-                    액션
+                    처리 유형
                     <select value={actionDraft.actionType} disabled={!visibleActionOptions.length || selectedReport.status !== "open"} onChange={(event) => changeReviewActionType(event.target.value)}>
                       {visibleActionOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
@@ -1183,10 +1170,10 @@ export default function Admin({ app }) {
                   신고자 피드백
                   <textarea value={actionDraft.feedback} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
                 </label>
-                {!visibleActionOptions.length ? <small>현재 권한으로 처리할 수 있는 액션이 없습니다.</small> : null}
+                {!visibleActionOptions.length ? <small>현재 권한으로 실행할 수 있는 처리가 없습니다.</small> : null}
                 {reviewActionConfirming ? (
                   <div className="admin-review-confirm" role="alert">
-                    <span><strong>{ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label}</strong><small>대상과 기간, 처리 사유를 다시 확인하세요. 실행 후 감사 로그가 남습니다.</small></span>
+                    <span><strong>{ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label}</strong><small>대상과 기간, 처리 사유를 다시 확인해 주세요. 실행 후 처리 기록이 남습니다.</small></span>
                     <Button type="button" variant="secondary" disabled={reviewActionPending} onClick={() => setReviewActionConfirming(false)}>취소</Button>
                     <Button type="button" variant="secondary" disabled={reviewActionPending || reviewActionInvalid} onClick={commitSelectedAction}>{reviewActionPending ? "처리 중" : "확정 실행"}</Button>
                   </div>
@@ -1205,12 +1192,12 @@ export default function Admin({ app }) {
                 {actionDraft.actionType === "resetTeamEmblem" && adminLevel < 50 ? <small>경기관리자 이상만 엠블럼을 강제 전환할 수 있습니다.</small> : null}
                 {nameModerationAction && adminLevel < 50 ? <small>경기관리자 이상만 이름을 수정하거나 소속을 통합할 수 있습니다.</small> : null}
                 {reviewActionStatus ? <small role="status">{reviewActionStatus}</small> : null}
-                <small>실시간 중복 방지는 서버 트랜잭션에서 최종 확인합니다.</small>
+                <small>같은 신고의 중복 처리는 저장 시 한 번 더 확인됩니다.</small>
               </div>
               ) : view === "matches" && selectedRow.issueCount > 0 ? (
                 <div className="admin-review-context">
                   <strong>연결된 신고 없음</strong>
-                  <span>이 경기에는 이의 또는 승인 대기 상태만 있습니다. 경기방의 이의 처리 흐름에서 먼저 판정하세요.</span>
+                  <span>이 경기에는 이의 또는 승인 대기 상태만 있습니다. 경기방에서 먼저 이의 처리 결과를 확정해 주세요.</span>
                 </div>
               ) : null}
 
@@ -1223,9 +1210,9 @@ export default function Admin({ app }) {
                         {report.type === "match" && matchMap[report.targetId] ? `${getMatchHashtag(matchMap[report.targetId])} · ` : ""}
                         신고자 {userMap[report.by]?.name ?? report.by ?? "-"} · {getAdminReportTypeLabel(report.type)} · {formatDate(report.createdAt)}
                       </em>
-                      {report.resolution ? <small>처리 {ADMIN_REVIEW_ACTIONS[report.resolution.actionType]?.label ?? report.resolution.actionType ?? "완료"} · {userMap[report.resolvedBy]?.name ?? report.resolvedBy ?? "관리자"} · {report.resolution.reason || "사유 없음"} · {report.resolution.feedback || "답변 없음"}</small> : null}
+                      {report.resolution ? <small>처리 {ADMIN_REVIEW_ACTIONS[report.resolution.actionType]?.label ?? "완료"} · {userMap[report.resolvedBy]?.name ?? report.resolvedBy ?? "관리자"} · {report.resolution.reason || "사유 없음"} · {report.resolution.feedback || "답변 없음"}</small> : null}
                     </span>
-                    <Badge tone={report.status === "open" ? "orange" : "neutral"}>{statusLabel(report.status)}</Badge>
+                    <Badge tone={report.status === "open" ? "orange" : "neutral"}>{getAdminStatusLabel(report.status)}</Badge>
                   </div>
                 )) : null}
               </DetailList> : null}
@@ -1234,7 +1221,7 @@ export default function Admin({ app }) {
                 {selectedRow.disciplinaryActions?.length ? selectedRow.disciplinaryActions.slice(0, 8).map((action) => (
                   <div key={action.id} className="admin-detail-row">
                     <span>
-                      <strong>{statusLabel(action.status)} · {action.actionType ?? action.type}</strong>
+                      <strong>{getAdminStatusLabel(action.status)} · {ADMIN_USER_OPERATION_ACTIONS[action.actionType ?? action.type]?.label ?? (action.actionType === "suspension" ? "전체 활동 제한" : "운영 조치")}</strong>
                       <em>{action.reason || "사유 없음"} · {formatDate(action.startsAt)} ~ {formatDate(action.endsAt)}</em>
                     </span>
                     <Badge tone={action.status === "active" ? "orange" : "neutral"}>{action.durationDays ?? "-"}일</Badge>
@@ -1249,7 +1236,7 @@ export default function Admin({ app }) {
                       <strong>{getMatchHashtag(match)} · {match.title ?? `${match.teamA?.name ?? "A"} vs ${match.teamB?.name ?? "B"}`}</strong>
                       <em>{match.court ?? "미정 구장"} · {match.scheduledDate ?? ""} {match.scheduledTime ?? ""}</em>
                     </span>
-                    <Badge tone={match.status === "disputed" ? "orange" : "neutral"}>{statusLabel(match.status)}</Badge>
+                    <Badge tone={match.status === "disputed" ? "orange" : "neutral"}>{getAdminStatusLabel(match.status)}</Badge>
                   </div>
                 )) : null}
               </DetailList> : null}
@@ -1262,7 +1249,7 @@ export default function Admin({ app }) {
                       <em>{request.addressText} · {request.hashtag ?? "해시태그 자동"}</em>
                     </span>
                     <span className="admin-row-actions">
-                      <Badge tone={request.status === "reported" ? "orange" : request.status === "approved" ? "green" : "neutral"}>{statusLabel(request.status)}</Badge>
+                      <Badge tone={request.status === "reported" ? "orange" : request.status === "approved" ? "green" : "neutral"}>{getAdminStatusLabel(request.status)}</Badge>
                       {request.status !== "approved" ? <em>구장 신청 탭에서 확인 후 승인</em> : null}
                     </span>
                   </div>
@@ -1276,7 +1263,7 @@ export default function Admin({ app }) {
                       <strong>{review.courtName ?? "구장 리뷰"}</strong>
                       <em>{review.rating ?? "-"}점 · {review.memo || "메모 없음"}</em>
                     </span>
-                    <Badge tone={review.status === "hidden" ? "orange" : "neutral"}>{statusLabel(review.status ?? "active")}</Badge>
+                    <Badge tone={review.status === "hidden" ? "orange" : "neutral"}>{getAdminStatusLabel(review.status ?? "active")}</Badge>
                   </div>
                 )) : null}
               </DetailList> : null}

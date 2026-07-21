@@ -111,7 +111,7 @@ function RoomModalErrorView({ error, onClose, onRetry = null }) {
           <Badge tone="orange">경기방 오류</Badge>
         </div>
         <h2 className="arena-room-title">경기방을 열 수 없습니다</h2>
-        <p className="arena-room-subtitle">{String(error?.message ?? "방 데이터를 확인해야 합니다.")}</p>
+        <p className="arena-room-subtitle">경기방 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
         <div className="arena-modal-close-row">
           {onRetry ? (
             <Button type="button" size="lg" onClick={onRetry}>
@@ -1292,7 +1292,7 @@ export default function Matches({ app }) {
         <div className="om-match-copy">
           <span className="om-kicker">MATCH QUEUE</span>
           <h1>일정</h1>
-          <p>내가 들어간 경기 시작 전 일정만 날짜별로 봅니다.</p>
+          <p>내가 참가한 시작 전 경기만 날짜별로 표시합니다.</p>
         </div>
         <div className="om-match-panel">
           <div className="om-match-stats">
@@ -1376,7 +1376,7 @@ export default function Matches({ app }) {
             <div>
               <span className="om-kicker">SCHEDULE</span>
               <h2>{panelMode === "team" ? "내 팀 일정" : "내 경기 일정"}</h2>
-              <p>{dateFilter ? `${formatDateLabel(dateFilter)} 내 경기만 표시` : "내가 들어간 시작 전 경기만 날짜별로 봅니다."}</p>
+              <p>{dateFilter ? `${formatDateLabel(dateFilter)} 내 경기만 표시` : "내가 참가한 시작 전 경기만 날짜별로 표시합니다."}</p>
             </div>
           </div>
           <section className="om-calendar-filter-bar" aria-label="경기 필터">
@@ -1470,7 +1470,7 @@ export default function Matches({ app }) {
             return (
               <article key={tournament.id} className="om-tournament-card">
                 <div className="om-tournament-copy">
-                  <span className="om-kicker">{tournamentFormatLabels[tournament.format] ?? tournament.format}</span>
+                  <span className="om-kicker">{tournamentFormatLabels[tournament.format] ?? "대회"}</span>
                   <h3>{tournament.title}</h3>
                   <p>
                     <span>
@@ -1491,12 +1491,12 @@ export default function Matches({ app }) {
                 <div className="om-tournament-meta">
                   <span>{tournament.mode}</span>
                   <span>{tournament.ranked === false ? "친선" : "정규"}</span>
-                  <span>{tournamentMmrLabels[tournament.mmrPolicy] ?? tournament.mmrPolicy}</span>
+                  <span>{tournamentMmrLabels[tournament.mmrPolicy] ?? "MMR 조건 확인"}</span>
                   <strong>{acceptedCount}/{teamRows.length} 승인</strong>
                   <strong>{tournamentMatches.length}경기</strong>
                 </div>
                 <div className="om-tournament-state">
-                  <span>{tournamentStatusLabels[tournament.status] ?? tournament.status}</span>
+                  <span>{tournamentStatusLabels[tournament.status] ?? "상태 확인 중"}</span>
                   <em>{pendingRows.length ? `${pendingRows.length}팀 승인 대기` : "참가 승인 완료"}</em>
                 </div>
                 <div className="om-tournament-actions">
@@ -1513,7 +1513,7 @@ export default function Matches({ app }) {
           }) : (
             <EmptyState
               title="관련 대회 없음"
-              description="내가 만든 대회나 내 팀이 초대된 대회가 여기에 표시된다."
+              description="내가 만든 대회와 내 팀이 초대된 대회가 여기에 표시됩니다."
             />
           )}
         </div>
@@ -1598,7 +1598,7 @@ export default function Matches({ app }) {
           <EmptyState
             tone="error"
             title="내 팀 경기 조회 실패"
-            description="서버 연결을 확인한 뒤 다시 시도한다."
+            description="경기 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
             action={(
               <Button variant="secondary" size="sm" onClick={() => app.actions.loadMatchTeamSchedule?.({ force: true })}>
                 다시 시도
@@ -1691,12 +1691,12 @@ export default function Matches({ app }) {
             />
           );
         })}
-        {matchPagination.error ? <div className="om-load-more"><span>경기 목록 로드 실패</span></div> : null}
+        {matchPagination.error ? <div className="om-load-more"><span>경기 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</span></div> : null}
           </>
         ) : scheduleLoading ? null : (
           <EmptyState
             title="해당 일정 없음"
-            description="다른 상태를 선택하거나 새 경기를 만든다."
+            description="다른 상태를 선택하거나 새 경기를 만들어 보세요."
           />
         )}
       </section> : null}

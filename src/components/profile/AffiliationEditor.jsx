@@ -19,8 +19,8 @@ function getSaveErrorMessage(error = "") {
     const nextDate = code.slice(code.indexOf(":") + 1);
     return `소속은 ${formatAffiliationChangeDate(nextDate)}부터 다시 변경할 수 있습니다.`;
   }
-  if (code === "invalid_affiliation_name") return "소속명은 2~40자로 입력하세요.";
-  if (code === "affiliation_not_found") return "선택한 소속을 찾을 수 없습니다. 다시 검색하세요.";
+  if (code === "invalid_affiliation_name") return "소속명은 2~40자로 입력해 주세요.";
+  if (code === "affiliation_not_found") return "선택한 소속을 찾을 수 없습니다. 다시 검색해 주세요.";
   return "소속을 저장하지 못했습니다.";
 }
 
@@ -60,7 +60,7 @@ export default function AffiliationEditor({ user, affiliations = [], actions }) 
     if (pending || !changeAllowed) return;
     const name = normalizeAffiliationName(query);
     if (name && name.length < 2) {
-      setFeedback("소속명은 2자 이상 입력하세요.");
+      setFeedback("소속명은 2자 이상 입력해 주세요.");
       return;
     }
     setPending(true);
@@ -88,7 +88,7 @@ export default function AffiliationEditor({ user, affiliations = [], actions }) 
           <SearchPicker
             value={query}
             onChange={updateQuery}
-            placeholder="예: 서울대학교, 마포고등학교, 서울특별시청처럼 공식 이름을 사용하세요"
+            placeholder="예: 서울대학교, 마포고등학교, 서울특별시청처럼 공식 이름을 입력해 주세요"
             items={organizationItems}
             remoteSearchType="affiliation"
             minSearchLength={2}

@@ -241,7 +241,7 @@ export default function Recorder({ app }) {
 
             {matches.map((match) => {
               const phase = getMatchRoomPhase(match);
-              const status = statusMeta[match.status] ?? { label: phase.listLabel ?? phase.label ?? match.status, tone: phase.tone ?? "blue" };
+              const status = statusMeta[match.status] ?? { label: phase.listLabel ?? phase.label ?? "상태 확인 중", tone: phase.tone ?? "blue" };
               const recorderSides = getStatRecorderSides(match, user.id);
               const sourcePost = match.recruitingPostId ? app.state.recruitingPosts.find((post) => post.id === match.recruitingPostId) : null;
               const title = getRecorderCardTitle(match);

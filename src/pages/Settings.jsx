@@ -13,7 +13,7 @@ import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
 import { formatKoreanDateTime, formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
-import { COURT_REQUEST_TRUST_MIN, REFEREE_EXAM_COOLDOWN_DAYS, REFEREE_TRUST_MIN, REGIONS, REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
+import { COURT_REQUEST_TRUST_MIN, REFEREE_EXAM_COOLDOWN_DAYS, REFEREE_TRUST_MIN, REGIONS, REPORT_MATCH_WINDOW_MS, getTestAccountDisplayLabel } from "../lib/constants.js";
 import {
   COURT_ACCESS_OPTIONS,
   COURT_KIND_OPTIONS,
@@ -37,7 +37,7 @@ import {
 } from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses, searchNearbyCourtCandidates } from "../lib/naverAddress.js";
-import { hasAdminAccess } from "../lib/admin.js";
+import { getAdminStatusLabel, hasAdminAccess } from "../lib/admin.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import {
   DISCORD_NOTIFICATION_EVENTS,
@@ -136,12 +136,12 @@ function getPrivacyDraft(privacy = {}) {
 }
 
 function getAuthSessionLabel(authUser = null) {
-  if (!authUser) return "Guest";
+  if (!authUser) return "비로그인";
   const providerName = authUser.user_metadata?.providerName;
-  if (providerName) return providerName;
+  if (providerName) return getTestAccountDisplayLabel(providerName);
   const provider = String(authUser.app_metadata?.provider ?? "").trim().toLowerCase();
   if (provider) return AUTH_PROVIDER_LABELS[provider] ?? provider;
-  return authUser.email ?? "Supabase";
+  return getTestAccountDisplayLabel(authUser.email ?? "이메일 계정");
 }
 
 function getMatchReportTime(match = {}) {
@@ -569,7 +569,7 @@ export default function Settings({ app, auth, section = "main" }) {
     Promise.resolve(loadReportableMatches()).then((ok) => {
       if (ok !== false) return;
       reportMatchesLoadRef.current = "";
-      setReportMatchesError("신고 가능한 경기를 불러오지 못했습니다.");
+      setReportMatchesError("신고 가능한 경기를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }).finally(() => {
       setReportMatchesLoading(false);
     });
@@ -812,7 +812,7 @@ export default function Settings({ app, auth, section = "main" }) {
       onClick={() => app.actions.switchUser(user.id)}
     >
       <strong>{user.name}</strong>
-      <span>{user.testLoginId} · {user.region} · {matchCountByUser.get(user.id) ?? 0}경기</span>
+      <span>{getTestAccountDisplayLabel(user.testLoginId)} · {user.region} · {matchCountByUser.get(user.id) ?? 0}경기</span>
       <em>{user.position}</em>
     </button>
   );
@@ -911,7 +911,7 @@ export default function Settings({ app, auth, section = "main" }) {
         }
       }
       if (!result || result.ok === false) {
-        setReportSubmitStatus("신고 저장 실패. 입력 내용을 확인하고 다시 시도하세요.");
+        setReportSubmitStatus("신고를 접수하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
       setReportSubmitStatus(result.duplicate ? "이미 접수된 신고입니다." : "신고가 접수됐습니다.");
@@ -925,7 +925,7 @@ export default function Settings({ app, auth, section = "main" }) {
       setReportTargetQuery("");
       setReportMemo("");
     } catch {
-      setReportSubmitStatus("신고 저장 실패. 입력 내용을 유지했습니다.");
+      setReportSubmitStatus("신고를 접수하지 못했습니다. 입력 내용은 유지됩니다.");
     } finally {
       setReportSubmitPending(false);
     }
@@ -949,7 +949,7 @@ export default function Settings({ app, auth, section = "main" }) {
     } catch (error) {
       if (courtNearbySearchRef.current !== requestId) return;
       setCourtServerNearbyCandidates([]);
-      setCourtLookupStatus(error.message || "근처 등록 구장 조회 실패");
+      setCourtLookupStatus("근처 등록 구장을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   };
   const getCourtAddressRegion = (addressResult) => {
@@ -965,14 +965,14 @@ export default function Settings({ app, auth, section = "main" }) {
     try {
       const results = await searchNaverAddresses(courtAddressQuery);
       setNaverAddressResults(results);
-      setCourtLookupStatus(results.length ? `${results.length}개 주소를 찾았습니다. 사용할 주소를 선택하세요.` : "주소 검색 결과가 없습니다.");
+      setCourtLookupStatus(results.length ? `${results.length}개 주소를 찾았습니다. 사용할 주소를 선택해 주세요.` : "주소 검색 결과가 없습니다.");
     } catch (error) {
-      setCourtLookupStatus(error.message || "주소 검색 실패");
+      setCourtLookupStatus("주소를 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   };
   const pickCourtMapPin = async () => {
     if (!naverMapKeyReady) {
-      setCourtLookupStatus("지도 핀은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용할 수 있습니다.");
+      setCourtLookupStatus("지도 기능을 준비 중입니다. 잠시 후 다시 이용해 주세요.");
       return;
     }
     setCourtLookupStatus("실제 구장 위치 선택 중");
@@ -996,7 +996,7 @@ export default function Settings({ app, auth, section = "main" }) {
       setCourtLookupStatus("핀 위치의 실제 주소를 저장했습니다.");
       await loadCourtNearbyCandidates(pin);
     } catch (error) {
-      setCourtLookupStatus(error.message || "실제 구장 위치 저장 실패");
+      setCourtLookupStatus("구장 위치를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   };
   const selectNaverAddress = (result) => {
@@ -1018,7 +1018,7 @@ export default function Settings({ app, auth, section = "main" }) {
     setCourtAddressQuery(result.addressText);
     setNaverAddressResults([]);
     setCourtPinConfirmed(false);
-    setCourtLookupStatus("근처 주소를 선택했습니다. 지도 핀으로 실제 구장 위치를 확정하세요.");
+    setCourtLookupStatus("근처 주소를 선택했습니다. 지도 핀으로 실제 구장 위치를 확정해 주세요.");
   };
   const saveTheme = async (nextTheme = themeDraft) => {
     const requestId = themeSaveRequestRef.current + 1;
@@ -1026,10 +1026,10 @@ export default function Settings({ app, auth, section = "main" }) {
     setThemeSaveStatus("저장 중");
     try {
       const saved = await app.actions.saveTheme?.(nextTheme);
-      if (themeSaveRequestRef.current === requestId) setThemeSaveStatus(saved ? "저장됨" : "저장 실패");
+      if (themeSaveRequestRef.current === requestId) setThemeSaveStatus(saved ? "저장되었습니다." : "테마를 저장하지 못했습니다.");
       return saved;
     } catch {
-      if (themeSaveRequestRef.current === requestId) setThemeSaveStatus("저장 실패");
+      if (themeSaveRequestRef.current === requestId) setThemeSaveStatus("테마를 저장하지 못했습니다.");
       return false;
     }
   };
@@ -1046,9 +1046,9 @@ export default function Settings({ app, auth, section = "main" }) {
     setPrivacySaveStatus("저장 중");
     try {
       const saved = await app.actions.updatePrivacySettings(privacyDraft);
-      setPrivacySaveStatus(saved && saved.ok !== false ? "저장됨" : "저장 실패");
+      setPrivacySaveStatus(saved && saved.ok !== false ? "저장되었습니다." : "공개 범위를 저장하지 못했습니다.");
     } catch {
-      setPrivacySaveStatus("저장 실패");
+      setPrivacySaveStatus("공개 범위를 저장하지 못했습니다.");
     }
   };
   const connectDiscord = async () => {
@@ -1078,9 +1078,9 @@ export default function Settings({ app, auth, section = "main" }) {
           },
         },
       });
-      setDiscordSaveStatus(saved && saved.ok !== false ? "저장됨" : "저장 실패");
+      setDiscordSaveStatus(saved && saved.ok !== false ? "저장되었습니다." : "Discord 알림 설정을 저장하지 못했습니다.");
     } catch {
-      setDiscordSaveStatus("저장 실패");
+      setDiscordSaveStatus("Discord 알림 설정을 저장하지 못했습니다.");
     }
   };
   const saveGeneralSettings = async () => {
@@ -1091,7 +1091,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const submitCourtRequest = async (event) => {
     event.preventDefault();
     if (!courtPinConfirmed) {
-      setCourtLookupStatus("지도 핀으로 실제 구장 위치를 확정하세요.");
+      setCourtLookupStatus("지도 핀으로 실제 구장 위치를 확정해 주세요.");
       return;
     }
     if (courtDuplicate) {
@@ -1099,17 +1099,17 @@ export default function Settings({ app, auth, section = "main" }) {
       return;
     }
     if (courtNearbyReviewRequired && !courtNearbyConfirmed) {
-      setCourtLookupStatus("근처 등록·검토 중 구장을 확인하고 중복 확인에 체크하세요.");
+      setCourtLookupStatus("근처 등록·검토 중 구장을 확인하고 중복 확인에 체크해 주세요.");
       return;
     }
     if (courtSourceUrlInvalid) {
-      setCourtLookupStatus("공식 안내 링크는 https:// 주소로 입력하세요.");
+      setCourtLookupStatus("공식 안내 링크는 https:// 주소로 입력해 주세요.");
       return;
     }
     if (!canSubmitCourtRequest) return;
     const requestId = await app.actions.submitCourtRequest(courtDraft);
     if (!requestId) {
-      setCourtLookupStatus("구장 등록요청 저장 실패");
+      setCourtLookupStatus("구장 등록 요청을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
       return;
     }
     setCourtAddressQuery("");
@@ -1234,14 +1234,14 @@ export default function Settings({ app, auth, section = "main" }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">데이터 모드</p>
-                <h2>{isSupabaseConfigured ? "Supabase" : "localStorage demo"}</h2>
+                <h2>{isSupabaseConfigured ? "온라인 저장" : "체험 모드"}</h2>
               </div>
-              <Badge tone={isSupabaseConfigured ? "green" : "orange"}>{isSupabaseConfigured ? "연결됨" : "Demo"}</Badge>
+              <Badge tone={isSupabaseConfigured ? "green" : "orange"}>{isSupabaseConfigured ? "연결됨" : "체험 중"}</Badge>
             </div>
             <div className="contract-grid single">
               <div>
-                <span>저장소</span>
-                <strong>{isSupabaseConfigured ? "Cloud" : "Local"}</strong>
+                <span>저장 위치</span>
+                <strong>{isSupabaseConfigured ? "온라인" : "이 기기"}</strong>
               </div>
               <div>
                 <span>세션</span>
@@ -1471,8 +1471,8 @@ export default function Settings({ app, auth, section = "main" }) {
           <Card className="section-card admin-seed-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">Admin Seed</p>
-                <h2>테스트 리그 DB</h2>
+                <p className="eyebrow">테스트 데이터</p>
+                <h2>테스트 리그 현황</h2>
               </div>
               <Database size={22} />
             </div>
@@ -1520,7 +1520,7 @@ export default function Settings({ app, auth, section = "main" }) {
                 <SearchPicker
                   value={accountQuery}
                   onChange={setAccountQuery}
-                  placeholder="이름, 지역, 포지션, rankball-001 검색"
+                  placeholder="이름, 지역, 포지션, 사용자 ID 검색"
                   items={visibleTestAccounts}
                   idleItems={visibleTestAccounts}
                   idleTitle="테스트 계정"
@@ -1532,7 +1532,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   전체 계정 선택
                   <select value={app.currentUserId} onChange={(event) => app.actions.switchUser(event.target.value)}>
                     {app.state.users.map((user) => (
-                      <option key={user.id} value={user.id}>{user.testLoginId ? `${user.testLoginId} · ` : ""}{user.name} · {user.region} · {user.position}</option>
+                      <option key={user.id} value={user.id}>{user.testLoginId ? `${getTestAccountDisplayLabel(user.testLoginId)} · ` : ""}{user.name} · {user.region} · {user.position}</option>
                     ))}
                   </select>
                 </label>
@@ -1668,7 +1668,7 @@ export default function Settings({ app, auth, section = "main" }) {
               <div>
                 <span>등록 권한</span>
                 <strong>{currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 구장 확인 필요" : courtSourceUrlInvalid ? "링크 확인 필요" : "등록 가능"}</strong>
-                <em>{courtDuplicateMessage || (courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크하세요." : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감`)}</em>
+                <em>{courtDuplicateMessage || (courtNearbyReviewRequired && !courtNearbyConfirmed ? "근처 등록·검토 중 구장을 확인하고 체크해 주세요." : courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감`)}</em>
               </div>
               <MapPin size={22} />
             </div>
@@ -1759,7 +1759,7 @@ export default function Settings({ app, auth, section = "main" }) {
                         </div>
                       ))}
                     </div>
-                    {courtRequiresUnit ? <small>같은 장소 후보가 있습니다. 실제로 다른 코트라면 코트 구분을 필수로 입력하세요.</small> : null}
+                    {courtRequiresUnit ? <small>같은 장소 후보가 있습니다. 실제로 다른 코트라면 코트 구분을 입력해 주세요.</small> : null}
                     <label className="settings-nearby-confirm">
                       <input type="checkbox" checked={courtNearbyConfirmed} onChange={(event) => setCourtNearbyConfirmed(event.target.checked)} />
                       <span>위 구장과 중복이 아닌지 확인했습니다.</span>
@@ -1771,7 +1771,7 @@ export default function Settings({ app, auth, section = "main" }) {
                     <div>
                       <span>{courtPinConfirmed ? "핀 기준 실제 주소" : "검색 기준 주소"}</span>
                       <strong>{courtDraft.addressText}</strong>
-                      <em>{courtPinConfirmed ? "핀 좌표 역지오코딩 완료" : naverMapKeyReady ? "지도 핀으로 최종 주소를 확정하세요" : "지도 핀은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용"}</em>
+                      <em>{courtPinConfirmed ? "지도 위치와 주소를 확인했습니다." : naverMapKeyReady ? "지도 핀으로 최종 주소를 확정해 주세요." : "지도 기능을 준비 중입니다."}</em>
                     </div>
                     <MapPin size={18} />
                   </div>
@@ -1875,7 +1875,7 @@ export default function Settings({ app, auth, section = "main" }) {
                     aria-invalid={courtSourceUrlInvalid || undefined}
                     onChange={(event) => updateCourtDraft({ sourceUrl: event.target.value })}
                   />
-                  <small>{courtSourceUrlInvalid ? "https:// 주소만 입력할 수 있습니다." : "공식 시설 안내나 예약 페이지가 있을 때만 입력하세요."}</small>
+                  <small>{courtSourceUrlInvalid ? "https:// 주소만 입력할 수 있습니다." : "공식 시설 안내나 예약 페이지가 있을 때만 입력해 주세요."}</small>
                 </label>
                 <label>
                   찾아가는 메모
@@ -1901,7 +1901,7 @@ export default function Settings({ app, auth, section = "main" }) {
                 return (
                   <div key={request.id}>
                     <span>{request.name} · {request.addressText} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
-                    <strong>{request.status === "pending" ? "대기" : request.status === "reported" ? "신고 검토 중" : request.status}</strong>
+                    <strong>{getAdminStatusLabel(request.status)}</strong>
                     <button type="button" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
                       {alreadyReported ? "신고됨" : "신고 선택"}
                     </button>
@@ -1973,7 +1973,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   </small>
                 </div>
               ) : (
-                <div className="empty-state">신고 사유를 먼저 선택하세요.</div>
+                <div className="empty-state">신고 사유를 먼저 선택해 주세요.</div>
               )}
               {selectedReportCourt ? (
                 <div className="arena-mini-note">
@@ -2038,7 +2038,7 @@ export default function Settings({ app, auth, section = "main" }) {
               ) : null}
               <label>
                 상세 메모
-                <textarea value={reportMemo} placeholder="상황을 짧게 적어주세요." onChange={(event) => setReportMemo(event.target.value)} />
+                <textarea value={reportMemo} placeholder="상황을 짧게 적어 주세요." onChange={(event) => setReportMemo(event.target.value)} />
               </label>
               <Button type="submit" variant="secondary" disabled={!canSubmitReport || reportSubmitPending}>{reportSubmitPending ? "저장 중" : "신고 접수"}</Button>
               {reportSubmitStatus ? <small role="status">{reportSubmitStatus}</small> : null}
@@ -2059,7 +2059,7 @@ export default function Settings({ app, auth, section = "main" }) {
                             ? `${getMatchHashtag(matchMap[report.targetId])} ${matchMap[report.targetId].title ?? "경기"}`
                             : "경기"
                   } · {report.reason}</span>
-                  <strong>{report.status}</strong>
+                  <strong>{getAdminStatusLabel(report.status)}</strong>
                 </div>
               ))}
             </div>
@@ -2162,7 +2162,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   </label>
                   <label>
                     메모
-                    <textarea value={refereeDraft.memo} placeholder="자격증, 활동지역, 가능한 시간 등을 적어주세요." onChange={(event) => updateRefereeDraft({ memo: event.target.value })} />
+                    <textarea value={refereeDraft.memo} placeholder="자격증, 활동 지역, 가능한 시간 등을 적어 주세요." onChange={(event) => updateRefereeDraft({ memo: event.target.value })} />
                   </label>
                   <Button type="submit" variant="secondary" disabled={refereeExamRequired && !refereeExamPassed}>
                     <Send size={16} /> 심판 등록요청
@@ -2176,7 +2176,7 @@ export default function Settings({ app, auth, section = "main" }) {
                         {request.qualification === "official_license" ? "정식 라이선스" : "커뮤니티 시험"} · 신뢰도 {request.trustScore}
                         {request.examTotal ? ` · 시험 ${request.examScore}/${request.examTotal}` : ""}
                       </span>
-                      <strong>{request.status === "pending" ? "대기" : request.status}</strong>
+                      <strong>{getAdminStatusLabel(request.status)}</strong>
                     </div>
                   ))}
                   {!refereeRequests.length ? <div><span>요청한 심판 등록이 없습니다.</span><strong>신뢰도 {app.currentUser?.trustScore ?? 0}</strong></div> : null}

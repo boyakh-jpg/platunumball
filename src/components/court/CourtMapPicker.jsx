@@ -157,7 +157,7 @@ export default function CourtMapPicker({
       .catch((loadError) => {
         if (cancelled) return;
         setStatus("error");
-        setError(loadError instanceof Error ? loadError.message : "지도를 불러오지 못했습니다.");
+        setError("지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       });
 
     return () => {
@@ -240,7 +240,7 @@ export default function CourtMapPicker({
           <div>
             <span>COURT MAP</span>
             <h2>지도에서 구장 찾기</h2>
-            <p>숫자는 등록 구장 묶음입니다. 눌러 확대하고 구장명을 눌러 주소를 확인하세요.</p>
+            <p>숫자는 등록 구장 묶음입니다. 숫자를 눌러 확대한 뒤 구장명을 선택해 주소를 확인해 주세요.</p>
           </div>
           <Button type="button" variant="secondary" size="sm" className="court-map-picker-close" aria-label="지도 닫기" onClick={onClose}>
             <X size={18} />
@@ -253,7 +253,7 @@ export default function CourtMapPicker({
             <div className="court-map-picker-state" role="status">
               <MapPin size={24} />
               <strong>{status === "loading" ? "등록 구장 지도 불러오는 중" : status === "empty" ? "좌표가 저장된 구장 없음" : "지도를 불러오지 못함"}</strong>
-              <span>{status === "error" ? error : status === "empty" ? "주소 검색으로 구장을 선택하세요." : "잠시만 기다려주세요."}</span>
+              <span>{status === "error" ? error : status === "empty" ? "주소를 검색해 구장을 선택해 주세요." : "잠시만 기다려 주세요."}</span>
             </div>
           ) : null}
         </div>

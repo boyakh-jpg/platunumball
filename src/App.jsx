@@ -7,6 +7,7 @@ import PublicShell from "./components/layout/PublicShell.jsx";
 import { useAuthSession } from "./hooks/useAuthSession.js";
 import { useAppData } from "./hooks/useAppData.js";
 import useImageInteractionGuard from "./hooks/useImageInteractionGuard.js";
+import { BRAND_NAME } from "./lib/brand.js";
 import { getSafeAppRedirect, shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
 
 const Admin = lazy(() => import("./pages/Admin.jsx"));
@@ -73,9 +74,9 @@ class AppErrorBoundary extends Component {
     return (
       <main className="auth-shell">
         <section className="auth-card">
-          <p className="eyebrow">boxtier</p>
+          <p className="eyebrow">{BRAND_NAME}</p>
           <h1>화면을 불러오지 못했습니다</h1>
-          <p>{String(this.state.error?.message ?? "render_failed")}</p>
+          <p>일시적인 오류가 발생했습니다. 새로고침한 뒤 다시 시도해 주세요.</p>
           <button type="button" className="button button-primary button-md" onClick={() => window.location.reload()}>
             새로고침
           </button>

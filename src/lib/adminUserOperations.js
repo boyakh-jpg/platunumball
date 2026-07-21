@@ -44,11 +44,11 @@ export function validateAdminUserOperationDraft(draft = {}) {
   const actionType = String(draft.actionType ?? "").trim();
   const reason = String(draft.reason ?? "").trim();
   const message = String(draft.message ?? "").trim();
-  if (!targetUserId) return "대상 사용자를 선택하세요.";
-  if (!ACTION_IDS.has(actionType)) return "허용된 운영 조치를 선택하세요.";
-  if (reason.length < 4 || reason.length > 300) return "관리 사유를 4~300자로 입력하세요.";
-  if (message.length < 4 || message.length > 500) return "사용자 안내를 4~500자로 입력하세요.";
-  if (actionType !== "warning" && !SUSPENSION_DAYS.has(Number(draft.durationDays))) return "허용된 제재 기간을 선택하세요.";
+  if (!targetUserId) return "대상 사용자를 선택해 주세요.";
+  if (!ACTION_IDS.has(actionType)) return "허용된 운영 조치를 선택해 주세요.";
+  if (reason.length < 4 || reason.length > 300) return "관리 사유를 4~300자로 입력해 주세요.";
+  if (message.length < 4 || message.length > 500) return "사용자 안내를 4~500자로 입력해 주세요.";
+  if (actionType !== "warning" && !SUSPENSION_DAYS.has(Number(draft.durationDays))) return "허용된 제재 기간을 선택해 주세요.";
   return "";
 }
 

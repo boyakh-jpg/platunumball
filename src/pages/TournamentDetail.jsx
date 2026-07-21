@@ -421,7 +421,7 @@ export default function TournamentDetail({ app }) {
         <Link className="button button-secondary button-md tournament-back-link" to="/app/matches"><ChevronLeft size={17} /> 경기로</Link>
         <section className="tournament-empty">
           <strong>대회 없음</strong>
-          <p>삭제됐거나 아직 동기화되지 않은 대회다.</p>
+          <p>삭제되었거나 아직 불러오지 못한 대회입니다.</p>
           <Button type="button" variant="secondary" onClick={() => {
             requestedTournamentIdRef.current = "";
             setTournamentMissing(false);
@@ -511,7 +511,7 @@ export default function TournamentDetail({ app }) {
     if (message.includes("invalid_tournament_match_schedule")) return "오늘부터 365일 안의 날짜와 시간을 입력해야 합니다.";
     if (message.includes("tournament_owner_required")) return "대회 생성자만 경기 일정을 저장할 수 있습니다.";
     if (message.includes("tournament_court_not_allowed") || message.includes("tournament_court_not_active")) return "대회 사용 구장으로 등록된 승인 구장만 선택할 수 있습니다.";
-    return message || "schedule_save_failed";
+    return "일정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   };
   const confirmSchedule = async () => {
     if (scheduleDialog?.mode !== "confirm" || savingScheduleId) return;
@@ -533,7 +533,7 @@ export default function TournamentDetail({ app }) {
     if (message.includes("tournament_match_schedule_required")) return "경기 일정을 먼저 확정해야 합니다.";
     if (message.includes("tournament_match_forfeit_before_start")) return "경기 시작 시각 이후에만 불참을 확정할 수 있습니다.";
     if (message.includes("tournament_match_forfeit_locked")) return "이미 시작·결과·취소 처리가 된 경기입니다.";
-    return message || "tournament_forfeit_failed";
+    return "불참 처리를 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   };
   const confirmForfeit = async () => {
     if (forfeitDialog?.mode !== "confirm" || savingForfeitId) return;
@@ -570,8 +570,8 @@ export default function TournamentDetail({ app }) {
           </p>
         </div>
         <div className="tournament-hero-badges" aria-label="대회 상태">
-          <Badge tone="gold">{formatLabels[tournament.format] ?? tournament.format}</Badge>
-          <Badge tone={tournament.status === "active" ? "green" : "orange"}>{statusLabels[tournament.status] ?? tournament.status}</Badge>
+          <Badge tone="gold">{formatLabels[tournament.format] ?? "대회"}</Badge>
+          <Badge tone={tournament.status === "active" ? "green" : "orange"}>{statusLabels[tournament.status] ?? "상태 확인 중"}</Badge>
           <Badge tone="blue">{tournament.mode}</Badge>
         </div>
       </section>
@@ -589,7 +589,7 @@ export default function TournamentDetail({ app }) {
         </div>
         <div>
           <span>MMR</span>
-          <strong>{mmrPolicyLabels[tournament.mmrPolicy] ?? tournament.mmrPolicy}</strong>
+          <strong>{mmrPolicyLabels[tournament.mmrPolicy] ?? "MMR 조건 확인"}</strong>
           <em>{tournament.format === "tournament" ? "토너먼트 보너스 1.18" : "리그 보너스 1.12"}</em>
         </div>
       </section>
@@ -639,7 +639,7 @@ export default function TournamentDetail({ app }) {
         {tournament.status === "draft" ? (
           <div className="tournament-empty">
             <strong>대진 생성 전</strong>
-            <p>초대팀 주장이 모두 승인하면 자동으로 경기와 대진이 열린다.</p>
+            <p>초대팀 주장이 모두 승인하면 경기와 대진이 자동으로 생성됩니다.</p>
           </div>
         ) : tournament.format === "tournament" ? (
           <div className="tournament-bracket tournament-vertical-bracket" style={{ "--bracket-slots": verticalBracket.baseSlots }}>
@@ -836,7 +836,7 @@ export default function TournamentDetail({ app }) {
                   ? "양 팀장에게 출전·후보 명단 구성 알림을 보냈습니다."
                   : scheduleDialog.mode === "notice"
                     ? scheduleDialog.message
-                  : `서버 저장 실패: ${scheduleDialog.message}`}
+                  : scheduleDialog.message}
             </p>
             <div className="app-confirm-actions">
               {scheduleDialog.mode === "confirm" ? (
@@ -856,7 +856,7 @@ export default function TournamentDetail({ app }) {
           <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="대회 경기 몰수 처리" onMouseDown={(event) => event.stopPropagation()}>
             <strong>
               {forfeitDialog.mode === "choose"
-                ? "불참 팀을 선택하세요."
+                ? "불참 팀을 선택해 주세요."
                 : forfeitDialog.mode === "confirm"
                   ? "1:0 몰수패로 확정할까요?"
                   : forfeitDialog.mode === "success"
@@ -870,7 +870,7 @@ export default function TournamentDetail({ app }) {
                   ? `${forfeitDialog.losingSide === "teamA" ? forfeitMatch?.teamA?.name ?? "A팀" : forfeitMatch?.teamB?.name ?? "B팀"} 불참 · 상대 팀 1:0 몰수승 · MMR 미반영`
                   : forfeitDialog.mode === "success"
                     ? "리그 승패 또는 다음 토너먼트 라운드에 반영했습니다."
-                    : `서버 저장 실패: ${forfeitDialog.message}`}
+                    : forfeitDialog.message}
             </p>
             <div className="app-confirm-actions tournament-forfeit-actions">
               {forfeitDialog.mode === "choose" ? (

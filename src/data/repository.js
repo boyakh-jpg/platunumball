@@ -1758,7 +1758,7 @@ function makeMatchRecordRepresentativeNotifications(match = {}, state = {}, now 
       title: "경기 기록 확인 요청",
       body: individualRecord
         ? `${match.title} 1v1 경기 기록 확인이 필요합니다.`
-        : `${match.title} ${teamLabel} ${sideLabel} 대표 확인이 필요합니다. 출전 명단은 방에서 확정하세요.`,
+        : `${match.title} ${teamLabel} ${sideLabel} 대표 확인이 필요합니다. 출전 명단은 방에서 확정해 주세요.`,
       tone: "match",
       targetUserId: userId,
       fromUserId: state.currentUserId,
@@ -3063,7 +3063,7 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
     return {
       id: makeId("n"),
       title: "대회 경기 일정 확정",
-      body: `${updatedMatch.scheduledAt} 경기의 출전·후보 명단을 구성하세요.`,
+      body: `${updatedMatch.scheduledAt} 경기의 출전 선수와 후보 선수를 구성해 주세요.`,
       tone: "match",
       type: "tournament_match_schedule",
       discordEvent: "match",
@@ -3087,7 +3087,7 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
       {
         id: makeId("n"),
         title: "대회 일정 수정",
-        body: `${match.title} 일정이 ${updatedMatch.scheduledAt}(으)로 바뀌었습니다.`,
+        body: `${match.title} 경기 일정이 변경되었습니다. 새 일정: ${updatedMatch.scheduledAt}`,
         tone: "match",
         matchId,
       },
@@ -3568,7 +3568,7 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
       {
         id: makeId("n"),
         title: "선수 교체",
-        body: `${match.title} ${SIDE_LABEL_TEXT[sideName]} ${reserveUser?.name ?? "후보"} 출전, ${activeUser?.name ?? "선수"} 후보 전환.`,
+        body: `${match.title} ${SIDE_LABEL_TEXT[sideName]}에서 ${reserveUser?.name ?? "후보 선수"} 선수가 출전 명단으로, ${activeUser?.name ?? "출전 선수"} 선수가 후보 명단으로 이동했습니다.`,
         tone: "match",
         matchId,
       },
@@ -4602,7 +4602,7 @@ export function submitCourtRequest(state, draft = {}) {
         {
           id: makeId("n"),
           title: "코트 구분 필요",
-          body: "같은 장소에 등록된 구장이 있습니다. 물리적으로 다른 코트의 번호나 구분을 입력하세요.",
+          body: "같은 장소에 등록된 구장이 있습니다. 물리적으로 다른 코트라면 번호나 구분을 입력해 주세요.",
           tone: "orange",
         },
         ...state.notifications,
@@ -5331,7 +5331,7 @@ function commitVoidMatchReviewAction(state, report, draft = {}) {
     notifications: [
       {
         id: makeId("n"), targetUserId: report.by, title: "신고 처리 결과",
-        body: `처리: ${actionLabel}. 답변: ${feedback}`, tone: "team", type: "report", matchId: match.id,
+        body: `신고 처리 결과는 ${actionLabel}입니다. ${feedback}`, tone: "team", type: "report", matchId: match.id,
       },
       ...(disciplinaryAction ? [{
         id: makeId("n"), targetUserId, title: "운영 제재 안내",
@@ -5598,7 +5598,7 @@ export function commitAdminReviewAction(state, draft = {}) {
       id: makeId("n"),
       targetUserId: disciplinaryAction.userId,
       title: "운영 제재 안내",
-      body: `${reason} · ${durationDays}일`,
+      body: `운영 조치가 적용되었습니다. 기간: ${durationDays}일. 사유: ${reason}`,
       tone: "orange",
     }
     : null;
@@ -5607,7 +5607,7 @@ export function commitAdminReviewAction(state, draft = {}) {
       id: makeId("n"),
       targetUserId: moderatedTeam.members?.find((member) => member.role === "captain")?.userId,
       title: "팀 엠블럼 운영 조치",
-      body: `신고가 인정되어 기본값으로 전환했습니다. ${emblemBlockDays}일 동안 사진을 업로드할 수 없습니다.`,
+      body: `신고가 인정되어 엠블럼이 기본값으로 전환되었습니다. ${emblemBlockDays}일 동안 사진을 업로드할 수 없습니다.`,
       tone: "orange",
       type: "team_emblem_moderation",
     }
@@ -5722,12 +5722,12 @@ export function commitAdminAppointmentAction(state, draft = {}) {
         adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
       }),
       notifications: [
-        getAdminActionNotification(actionType === "extendAppointment" ? "임명 연장이 커밋되었습니다." : "임명 회수가 커밋되었습니다.", "team"),
+        getAdminActionNotification(actionType === "extendAppointment" ? "임명 기간을 연장했습니다." : "임명을 회수했습니다.", "team"),
         {
           id: makeId("n"),
           targetUserId: appointment.userId,
           title: actionType === "extendAppointment" ? "임명 연장" : "임명 회수",
-          body: actionType === "extendAppointment" ? `${reason} · ${termDays}일` : reason,
+          body: actionType === "extendAppointment" ? `임명 기간이 ${termDays}일 연장되었습니다. 사유: ${reason}` : `임명이 회수되었습니다. 사유: ${reason}`,
           tone: actionType === "extendAppointment" ? "team" : "orange",
         },
         ...state.notifications,
@@ -6048,7 +6048,7 @@ export function createRecruitingPost(state, draft) {
       notifications: [{
         id: makeId("n"),
         title: "상대 팀 초대 제한",
-        body: `${opponentTeam?.name ?? "상대 팀"}: ${opponentEligibility?.reason ?? "참가 조건을 확인하세요."}`,
+        body: `${opponentTeam?.name ?? "상대 팀"}: ${opponentEligibility?.reason ?? "참가 조건을 확인해 주세요."}`,
         tone: "team",
       }, ...state.notifications],
     };
@@ -6596,7 +6596,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
       ...teamSummonTargets.map((playerId) => ({
         id: makeId("n"),
         title: "팀원 소집",
-        body: `${post.title} ${SIDE_LABEL_TEXT[side]} 팀원으로 등록됐습니다. 방에서 출전/후보를 확인하세요.`,
+        body: `${post.title} ${SIDE_LABEL_TEXT[side]} 팀원으로 등록되었습니다. 방에서 출전 선수와 후보 선수를 확인해 주세요.`,
         tone: "match",
         targetUserId: playerId,
         recruitingPostId: postId,
@@ -6815,7 +6815,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
         {
           id: makeId("n"),
           title: "정원 변경 불가",
-          body: "현재 출전 인원이 새 정원보다 많습니다. 먼저 후보로 빼고 다시 변경하세요.",
+          body: "현재 출전 인원이 새 정원보다 많습니다. 먼저 후보 명단으로 이동한 뒤 다시 변경해 주세요.",
           tone: "orange",
           recruitingPostId: postId,
         },
@@ -6896,7 +6896,7 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
         {
           id: makeId("n"),
           title: "정원 변경 불가",
-          body: "현재 출전 인원이 새 정원보다 많습니다. 먼저 미출석 인원을 후보로 내리거나 강퇴하세요.",
+          body: "현재 출전 인원이 새 정원보다 많습니다. 먼저 미출석 인원을 후보 명단으로 이동하거나 방에서 내보내 주세요.",
           tone: "orange",
           matchId,
         },
@@ -9345,7 +9345,7 @@ export function createTeam(state, teamDraft) {
         {
           id: makeId("n"),
           title: "팀 생성 제한",
-          body: `팀 한도 ${MAX_TEAM_MEMBERSHIPS}/${MAX_TEAM_MEMBERSHIPS}`,
+          body: `가입할 수 있는 팀은 최대 ${MAX_TEAM_MEMBERSHIPS}개입니다.`,
           tone: "team",
         },
         ...state.notifications,
@@ -9530,7 +9530,7 @@ export function acceptTeamInvitation(state, invitationId) {
       ...state,
       teamInvitations: (state.teamInvitations ?? []).map((item) => item.id === invitationId ? { ...item, status: "expired", updatedAt: now } : item),
       notifications: [
-        { id: makeId("n"), title: "팀 가입 제한", body: `팀 한도 ${MAX_TEAM_MEMBERSHIPS}/${MAX_TEAM_MEMBERSHIPS}`, tone: "team" },
+        { id: makeId("n"), title: "팀 가입 제한", body: `가입할 수 있는 팀은 최대 ${MAX_TEAM_MEMBERSHIPS}개입니다.`, tone: "team" },
         ...state.notifications,
       ],
     };

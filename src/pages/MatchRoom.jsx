@@ -337,7 +337,7 @@ export default function MatchRoom({ app }) {
 
   const userMap = Object.fromEntries([...app.state.users, ...Object.values(match.anonymousPlayers ?? {})].map((user) => [user.id, user]));
   const statEditorPlayer = statEditorPlayerId ? userMap[statEditorPlayerId] : null;
-  const status = statusMeta[match.status] ?? { label: match.status, tone: "blue" };
+  const status = statusMeta[match.status] ?? { label: "상태 확인 중", tone: "blue" };
   const teamAAgreement = getAgreementStatus(match, app.state.teams, "teamA");
   const teamBAgreement = getAgreementStatus(match, app.state.teams, "teamB");
   const teamAApproval = getApprovalStatus(match, app.state.teams, "teamA");
@@ -535,8 +535,8 @@ export default function MatchRoom({ app }) {
       buildMatchResultSubmission(match, score, resultEntryPermission.getEditableStatFields),
     );
     Promise.resolve(result).then((response) => {
-      setResultSaveFeedback(response?.ok === false ? "저장 실패" : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
-    }).catch(() => setResultSaveFeedback("저장 실패"));
+      setResultSaveFeedback(response?.ok === false ? "경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
+    }).catch(() => setResultSaveFeedback("경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
   };
   const submitDispute = () => {
     if (!canRequestOwnPointDispute) return;
@@ -583,8 +583,8 @@ export default function MatchRoom({ app }) {
     if (!loadMatchDetail) return;
     setMatchDetailRefreshing(true);
     Promise.resolve(loadMatchDetail(match.id)).then((count) => {
-      setResultSaveFeedback(count ? "새로고침되었습니다." : "최신 경기 정보를 불러오지 못했습니다.");
-    }).catch(() => setResultSaveFeedback("새로고침 실패"))
+      setResultSaveFeedback(count ? "최신 경기 정보를 불러왔습니다." : "최신 경기 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    }).catch(() => setResultSaveFeedback("최신 경기 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."))
       .finally(() => setMatchDetailRefreshing(false));
   };
   const getSideLabel = (sideName) => (sideName === "teamA" ? "A사이드" : "B사이드");
@@ -622,21 +622,21 @@ export default function MatchRoom({ app }) {
       if (currentUserSideName && !currentUserAgreementDone) {
         return {
           label: "동의하고 경기 준비",
-          detail: "내 동의만 처리하면 된다.",
+          detail: "내 동의만 완료하면 됩니다.",
           button: "동의",
           type: "agree",
         };
       }
       return {
         label: "대기",
-        detail: "남은 참가자가 동의하면 예정 경기로 넘어간다.",
+        detail: "남은 참가자가 모두 동의하면 예정 경기로 전환됩니다.",
       };
     }
     if (match.status === "agreed") {
       if (recordWindow.beforeEnd) {
         return {
           label: "경기 예정",
-          detail: "경기 종료 후 결과 입력이 열린다.",
+          detail: "경기가 종료되면 결과를 입력할 수 있습니다.",
         };
       }
       if (canSubmitResult) {
@@ -664,31 +664,31 @@ export default function MatchRoom({ app }) {
       if (currentUserSideName && !currentUserApprovalDone) {
         return {
           label: "결과 승인",
-          detail: "기록 조건이 맞았다. 내 승인만 처리하면 된다.",
+          detail: "기록 조건을 충족했습니다. 내 승인만 완료하면 됩니다.",
           button: "승인",
           type: "approve",
         };
       }
       return {
         label: "승인 대기",
-        detail: "다른 참가자 승인만 남았다.",
+        detail: "다른 참가자의 승인만 남았습니다.",
       };
     }
     if (match.status === "disputed") {
       return {
         label: "이의 확인",
-        detail: "보류 사유 확인 후 승인 재개 또는 무효 처리.",
+        detail: "보류 사유를 확인한 뒤 수정안 확정, 이의신청 반려 또는 경기 무효 처리를 선택해 주세요.",
       };
     }
     if (match.status === "confirmed") {
       return {
         label: "확정 완료",
-        detail: "MMR과 전적 반영이 끝났다.",
+        detail: "MMR과 전적 반영이 완료되었습니다.",
       };
     }
     return {
       label: status.label,
-      detail: "필요한 보조 처리는 접힌 메뉴에서 처리.",
+      detail: "필요한 추가 작업은 접힌 메뉴에서 처리할 수 있습니다.",
     };
   })();
   const pointAuditA = getPointAudit(match, score, "teamA");
@@ -753,9 +753,9 @@ export default function MatchRoom({ app }) {
     setCourtReviewSaveFeedback("저장 중");
     try {
       const savedReview = await app.actions.submitCourtReview(match.id, courtReviewDraft);
-      setCourtReviewSaveFeedback(savedReview ? "저장되었습니다." : "저장 실패");
+      setCourtReviewSaveFeedback(savedReview ? "저장되었습니다." : "구장 후기를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } catch {
-      setCourtReviewSaveFeedback("저장 실패");
+      setCourtReviewSaveFeedback("구장 후기를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setCourtReviewSaving(false);
     }
@@ -929,7 +929,7 @@ export default function MatchRoom({ app }) {
                   </div>
                   <Badge tone={status.tone}>{status.label}</Badge>
                 </div>
-                <div className="empty-state">결과 입력은 경기 종료 후 열린다.</div>
+                <div className="empty-state">경기가 종료되면 결과를 입력할 수 있습니다.</div>
               </Card>
             ) : null}
             {shouldShowResultEntry ? (
@@ -998,7 +998,7 @@ export default function MatchRoom({ app }) {
                 <div className="stat-trust-head">
                   <div>
                     <strong>개인 기록 신뢰도</strong>
-                    <span>후보/본인 제출, 득점 합계, 양팀 승인, 증거 첨부를 같이 봅니다.</span>
+                    <span>후보 선수와 본인의 제출 상태, 득점 합계, 양 팀 승인, 증거 첨부를 함께 확인합니다.</span>
                   </div>
                   <Badge tone={statTrustPercent >= 75 ? "green" : statTrustPercent >= 50 ? "orange" : "neutral"}>{statTrustPercent}%</Badge>
                 </div>
@@ -1081,7 +1081,7 @@ export default function MatchRoom({ app }) {
                 </div>
                 <Badge tone={canSubmitThumbs ? "gold" : "neutral"}>{thumbDraftPlayerIds.length}/{thumbLimit}</Badge>
               </div>
-              <p className="muted">기록확정 후 24시간 안에 제출한다. 선수/방장/기록자/심판 따봉이 같은 신뢰 평가로 반영된다.</p>
+              <p className="muted">기록 확정 후 24시간 안에 제출할 수 있습니다. 선수·방장·기록자·심판의 따봉은 같은 신뢰 평가로 반영됩니다.</p>
               <div className="trust-star-grid">
                 {thumbTargets.map((playerId) => {
                   const user = userMap[playerId];
@@ -1110,7 +1110,7 @@ export default function MatchRoom({ app }) {
               <Button type="button" disabled={!canSubmitThumbs} onClick={() => app.actions.submitMatchThumbs(match.id, thumbDraftPlayerIds)}>
                 <ThumbsUp size={16} /> 따봉 제출하기
               </Button>
-              {!canSubmitThumbs ? <p className="muted">제출 가능 시간이 지났거나 아직 기록확정 전이다. 마감: {formatWindowTime(trustFeedbackClosesAt)}</p> : null}
+              {!canSubmitThumbs ? <p className="muted">제출 가능 시간이 지났거나 아직 기록 확정 전입니다. 마감: {formatWindowTime(trustFeedbackClosesAt)}</p> : null}
             </Card>
           ) : null}
           {canSubmitCourtReview || existingCourtReview ? (
@@ -1122,7 +1122,7 @@ export default function MatchRoom({ app }) {
                 </div>
                 <Badge tone={existingCourtReview ? "gold" : canSubmitCourtReview ? "green" : "neutral"}>{existingCourtReview ? "제출됨" : canSubmitCourtReview ? "작성 가능" : "잠김"}</Badge>
               </div>
-              <p className="muted">{match.court}에서 경기한 참가자만 남길 수 있다. 별점은 구장 카드 평균에 반영된다.</p>
+              <p className="muted">{match.court}에서 경기한 참가자만 남길 수 있습니다. 별점은 구장 카드 평균에 반영됩니다.</p>
               <CourtReviewRating label="종합 별점" value={courtReviewDraft.rating} disabled={!canSubmitCourtReview} onChange={(rating) => updateCourtReviewDraft({ rating })} />
               <div className="court-review-detail-grid">
                 {COURT_REVIEW_FIELDS.map((field) => (

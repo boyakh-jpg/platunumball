@@ -56,7 +56,7 @@ export default function Signup({ app, auth }) {
   const ageGroupLabel = getAgeGroupLabel(ageGroup);
   const ageGroupSeason = getAgeGroupSeasonForDate();
   const ageGroupSeasonLabel = getAgeGroupSeasonLabel();
-  const email = auth?.user?.email ?? auth?.user?.user_metadata?.email ?? "Google OAuth 또는 데모 계정";
+  const email = auth?.user?.email ?? auth?.user?.user_metadata?.email ?? "연결된 로그인 계정";
   const handleLocked = Boolean(user.handleLockedAt || user.hashtagLockedAt);
   const birthYearLocked = Boolean(user.birthYearLockedAt && user.birthYear);
   const nameChangeAllowed = canChangeProfileName(user);
@@ -92,12 +92,12 @@ export default function Signup({ app, auth }) {
       return;
     }
     if (!handleLocked && !handleBody) {
-      setFormError("해시태그를 직접 입력하세요.");
+      setFormError("해시태그를 직접 입력해 주세요.");
       return;
     }
     const birthYear = birthYearLocked ? Number(user.birthYear) : Number(draft.birthYear);
     if (!birthYear || !getAgeGroupByBirthYear(birthYear)) {
-      setFormError("출생연도를 정확히 입력하세요.");
+      setFormError("출생연도를 정확히 입력해 주세요.");
       return;
     }
     const district = districtOptions.includes(draft.district) ? draft.district : districtOptions[0];
@@ -119,7 +119,7 @@ export default function Signup({ app, auth }) {
       });
       setRedirectAfterSave(true);
     } catch (error) {
-      setFormError(error.message || "프로필 저장에 실패했습니다.");
+      setFormError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     }
   };
 
@@ -228,7 +228,7 @@ export default function Signup({ app, auth }) {
             </div>
           </Card>
           <Card className="section-card">
-            <p className="muted">Google OAuth에서는 앱이 바로 쓸 수 있는 출생연도를 안정적으로 받지 않는다. 연령부는 출생연도 기준으로 자동 계산하고, {ageGroupSeasonLabel} 단위로 다시 확인한다. 나이 속임은 신고 사유로 처리한다.</p>
+            <p className="muted">Google 로그인에서는 출생연도를 자동으로 확인할 수 없습니다. 연령부는 입력한 출생연도를 기준으로 계산하며, {ageGroupSeasonLabel}마다 다시 확인합니다. 허위 출생연도 입력은 신고 사유로 처리됩니다.</p>
           </Card>
         </aside>
       </div>

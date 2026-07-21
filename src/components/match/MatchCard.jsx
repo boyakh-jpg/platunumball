@@ -52,7 +52,7 @@ export default function MatchCard({ match, teams = [], courts = [], onOpen = nul
           <h3>{displayTitle}</h3>
         </div>
         <Badge tone={statusTone[match.status] ?? "blue"}>
-          {statusLabel[match.status] ?? match.status}
+          {statusLabel[match.status] ?? "상태 확인 중"}
         </Badge>
       </div>
       <div className="match-meta">

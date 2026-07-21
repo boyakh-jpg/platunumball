@@ -140,7 +140,7 @@ export default function UserOperationsPanel({ app }) {
     }
     if (draft.actionType !== "warning" && !confirming) {
       setConfirming(true);
-      setActionStatus("제재 범위와 기간을 다시 확인하세요.");
+      setActionStatus("제재 범위와 기간을 다시 확인해 주세요.");
       return;
     }
 
@@ -319,7 +319,7 @@ export default function UserOperationsPanel({ app }) {
                 {actionStatus ? <small className="admin-user-action-status">{actionStatus}</small> : null}
               </section>
             </>
-          ) : <div className="empty-state">검토할 사용자를 선택하세요.</div>}
+          ) : <div className="empty-state">검토할 사용자를 선택해 주세요.</div>}
         </Card>
       </div>
     </div>

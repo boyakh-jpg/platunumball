@@ -7,9 +7,9 @@ export function stripHandle(value, fallback = "") {
   return raw.replace(/[^\p{L}\p{N}_-]+/gu, "");
 }
 
-export function toHashtag(value, fallback = "rankball") {
+export function toHashtag(value, fallback = "boxtier") {
   const slug = stripHandle(value, fallback);
-  return `#${slug || stripHandle(fallback) || "rankball"}`;
+  return `#${slug || stripHandle(fallback) || "boxtier"}`;
 }
 
 const HANGUL_BASE = 0xac00;
@@ -41,7 +41,7 @@ export function makeSuggestedHashtagBody(name = "", suffix = makeRandomDigitSuff
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  const base = romanized.replace(/[^a-z0-9]+/g, "").slice(0, 8) || "rankball";
+  const base = romanized.replace(/[^a-z0-9]+/g, "").slice(0, 8) || "boxtier";
   return `${base}${suffix}`;
 }
 
@@ -53,11 +53,11 @@ export function getTeamHashtag(team = {}) {
   return toHashtag(team.hashtag ?? team.handle ?? team.name ?? team.id, team.id ?? "team");
 }
 
-export function getSafeInitial(value, fallback = "R") {
+export function getSafeInitial(value, fallback = "B") {
   const findInitial = (candidate) => Array.from(String(candidate ?? "").normalize("NFKC"))
     .find((char) => /[\p{L}\p{N}]/u.test(char));
-  const initial = findInitial(value) ?? findInitial(fallback) ?? "R";
-  return Array.from(initial.toLocaleUpperCase())[0] ?? "R";
+  const initial = findInitial(value) ?? findInitial(fallback) ?? "B";
+  return Array.from(initial.toLocaleUpperCase())[0] ?? "B";
 }
 
 function getNumericHandle(item = {}) {

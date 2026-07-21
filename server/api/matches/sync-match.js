@@ -42,19 +42,19 @@ const MATCH_REMINDER_OFFSETS = [
     suffix: "24h",
     offsetMs: DAY_MS,
     title: "내일 경기",
-    intro: "내일 경기입니다. 일정과 구장을 확인해주세요.",
+    intro: "내일 경기입니다. 일정과 구장을 확인해 주세요.",
   },
   {
     suffix: "2h",
     offsetMs: 2 * HOUR_MS,
     title: "경기 2시간 전",
-    intro: "경기 2시간 전입니다. 이동 준비를 시작해주세요.",
+    intro: "경기 2시간 전입니다. 이동 준비를 시작해 주세요.",
   },
   {
     suffix: "1h",
     offsetMs: HOUR_MS,
     title: "경기 1시간 전",
-    intro: "경기 시작 전에 출석체크해요. 모여주세요.",
+    intro: "경기 시작 전입니다. 경기방에서 출석 상태를 확인해 주세요.",
   },
 ];
 const MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS = new Set([
@@ -431,7 +431,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
       addRows(managerIds, managerProfiles, {
         idPrefix: "match-manager-checkin-10m",
         title: "출석 확인 안내",
-        intro: "경기 10분 전입니다. 참여자 도착 여부를 확인하고, 필요하면 명단을 정리해주세요.",
+        intro: "경기 10분 전입니다. 참여자 도착 여부를 확인하고, 필요하면 명단을 정리해 주세요.",
         sendAt: new Date(checkinAtMs).toISOString(),
       });
     }
@@ -440,7 +440,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
       addRows(managerIds, managerProfiles, {
         idPrefix: "match-manager-start-5m",
         title: "경기 시작 5분 전",
-        intro: "경기 시작 5분 전입니다. 준비가 끝났다면 시작 처리를 준비해주세요.",
+        intro: "경기 시작 5분 전입니다. 준비가 끝났다면 시작 처리를 준비해 주세요.",
         sendAt: new Date(startReminderAtMs).toISOString(),
         expiresAt: scheduledAt.toISOString(),
       });
@@ -451,7 +451,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     addRows(participantIds, profiles, {
       idPrefix: "match-cancelled",
       title: "경기 취소",
-      intro: "경기방이 취소됐습니다.",
+      intro: "경기방이 취소되었습니다. 경기 상세에서 취소 사유를 확인해 주세요.",
       type: "match_cancelled",
       actionRequired: false,
     });
@@ -461,7 +461,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     addRows(participantIds, profiles, {
       idPrefix: "match-voided",
       title: "경기 무효",
-      intro: "경기가 무효 처리됐습니다.",
+      intro: "경기가 무효 처리되었습니다. 경기 상세에서 무효 사유를 확인해 주세요.",
       type: "match_voided",
       actionRequired: false,
     });
@@ -472,12 +472,12 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     addRows(participantIds, profiles, {
       idPrefix: "match-ended-score",
       title: "경기 종료",
-      intro: "경기가 종료됐습니다. 점수를 입력해주세요.",
+      intro: "경기가 종료되었습니다. 경기 점수를 입력해 주세요.",
     });
     addRows(participantIds, profiles, {
       idPrefix: "match-dispute-check",
       title: "이의신청 확인",
-      intro: "경기 종료 30분이 지났습니다. 점수가 입력됐다면 결과를 확인하고, 문제가 있으면 이의신청해주세요.",
+      intro: "경기 종료 후 30분이 지났습니다. 입력된 결과를 확인하고, 문제가 있으면 이의신청을 해 주세요.",
       sendAt: new Date(endedAt.getTime() + 30 * MINUTE_MS).toISOString(),
     });
   }

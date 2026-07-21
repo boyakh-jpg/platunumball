@@ -1840,7 +1840,7 @@ export function useAppData(authUser = null, appLocation = null) {
   }, [setState]);
   const ensureRemoteReady = useCallback((label = "저장") => {
     if (!isSupabaseConfigured || remoteReadyRef.current) return true;
-    pushLocalWarning("서버 데이터 로드 중", `${label}은 서버 데이터 로드가 끝난 뒤 다시 시도하세요. 새로고침 후 사라지는 로컬 임시 데이터를 만들지 않기 위해 차단했습니다.`);
+    pushLocalWarning("정보를 불러오는 중", "정보를 모두 불러온 뒤 다시 시도해 주세요.");
     return false;
   }, [pushLocalWarning]);
   const ensureServerActionAvailable = useCallback(async (path, label = "저장", options = {}) => {
@@ -1853,7 +1853,7 @@ export function useAppData(authUser = null, appLocation = null) {
       path,
     });
     if (options.quiet !== true) {
-      pushLocalWarning("서버 저장 실패", `${label}이 서버에 저장되지 않았습니다. 이유: ${errorCode}`, {
+      pushLocalWarning("요청을 완료하지 못했습니다", `${label} 요청을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.`, {
         payload: { path, error: errorCode },
       });
     }
@@ -1873,7 +1873,7 @@ export function useAppData(authUser = null, appLocation = null) {
         statusCode: error.statusCode ?? null,
         details: error.details ?? null,
       });
-      pushLocalWarning("서버 저장 실패", `서버에 저장되지 않았습니다. 이유: ${errorCode}`, {
+      pushLocalWarning("저장하지 못했습니다", "변경 내용을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", {
         payload: { path, error: errorCode, statusCode: error.statusCode ?? null, details: error.details ?? null },
       });
       return { ok: false, error: errorCode, statusCode: error.statusCode ?? null, path, details: error.details ?? null };
@@ -2745,14 +2745,13 @@ export function useAppData(authUser = null, appLocation = null) {
       };
       const rollbackServerMutation = (snapshot, label, payload = {}) => {
         if (!snapshot) return;
-        const reason = payload.error ? ` 이유: ${payload.error}` : "";
         setState({
           ...snapshot,
           notifications: [
             {
               id: makeClientNotificationId("n"),
-              title: "서버 저장 실패",
-              body: `${label}이 서버에 저장되지 않아 화면 변경을 되돌렸습니다.${reason}`,
+              title: "저장하지 못했습니다",
+              body: "변경 내용을 저장하지 못해 화면을 이전 상태로 되돌렸습니다. 잠시 후 다시 시도해 주세요.",
               tone: "orange",
               createdAt: new Date().toISOString(),
               payload,

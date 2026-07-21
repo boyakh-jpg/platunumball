@@ -116,7 +116,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
 
   const selectSource = (avatarSource) => {
     if (avatarSource === "discord" && !hasDiscordAvatar) {
-      setFeedback("먼저 설정에서 Discord 계정을 연결하세요.");
+      setFeedback("먼저 설정에서 Discord 계정을 연결해 주세요.");
       return;
     }
     const fallbackIcon = unlockedGroups[0]?.icons[0]?.id || DEFAULT_PROFILE_ICON_ID;

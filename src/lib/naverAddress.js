@@ -21,7 +21,7 @@ function loadExternalScript(id, src) {
   if (existing?.dataset.loading === "true") {
     return new Promise((resolve, reject) => {
       existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", () => reject(new Error("지도 스크립트 로드 실패")), { once: true });
+      existing.addEventListener("error", () => reject(new Error("지도 기능을 불러오지 못했습니다.")), { once: true });
     });
   }
 
@@ -37,7 +37,7 @@ function loadExternalScript(id, src) {
       script.dataset.loading = "false";
       resolve();
     }, { once: true });
-    script.addEventListener("error", () => reject(new Error("지도 스크립트 로드 실패")), { once: true });
+    script.addEventListener("error", () => reject(new Error("지도 기능을 불러오지 못했습니다.")), { once: true });
     document.head.appendChild(script);
   });
 }
@@ -81,7 +81,7 @@ export function getNaverMapClientId() {
 }
 
 export async function loadNaverMapsSdk(clientId = getNaverMapClientId()) {
-  if (!clientId) throw new Error("VITE_NAVER_MAP_CLIENT_ID가 없습니다.");
+  if (!clientId) throw new Error("현재 지도 기능을 사용할 수 없습니다.");
   if (typeof window === "undefined") throw new Error("브라우저에서만 사용할 수 있습니다.");
   if (hasNaverGeocoder()) return;
   const src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}&submodules=geocoder&callback=${NAVER_MAP_READY_CALLBACK}`;
@@ -117,23 +117,22 @@ function normalizeNaverAddress(address = {}, index = 0) {
 }
 
 function getNaverAddressErrorMessage(errorCode = "") {
-  if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") return "로그인 세션을 다시 확인해주세요.";
-  if (errorCode === "profile_not_found") return "서버 프로필 저장 전이라 서버 주소검색을 사용할 수 없습니다.";
-  if (errorCode === "court_request_trust_required") return "구장 등록요청 권한이 부족합니다.";
-  if (errorCode === "address_search_rate_limited") return "주소검색 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
-  if (errorCode === "naver_client_id_missing") return "서버에 NAVER_MAP_CLIENT_ID 또는 VITE_NAVER_MAP_CLIENT_ID가 없습니다.";
-  if (errorCode === "naver_client_secret_missing") return "서버에 NAVER_MAP_CLIENT_SECRET이 없습니다.";
-  if (String(errorCode).startsWith("naver_geocode_failed")) return "네이버 주소검색 API 호출이 실패했습니다. Naver Maps Geocoding 권한과 키를 확인해주세요.";
-  return errorCode || "주소 검색 실패";
+  if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+  if (errorCode === "profile_not_found") return "프로필을 저장한 뒤 주소를 검색할 수 있습니다.";
+  if (errorCode === "court_request_trust_required") return "현재 계정은 구장 등록을 요청할 수 없습니다.";
+  if (errorCode === "address_search_rate_limited") return "주소 검색 요청이 많습니다. 잠시 후 다시 시도해 주세요.";
+  if (errorCode === "naver_client_id_missing" || errorCode === "naver_client_secret_missing") return "현재 주소 검색을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+  if (String(errorCode).startsWith("naver_geocode_failed")) return "주소를 검색하지 못했습니다. 검색어를 확인한 뒤 다시 시도해 주세요.";
+  return "주소를 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
 function getNearbyCourtErrorMessage(errorCode = "") {
-  if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") return "로그인 세션을 다시 확인해주세요.";
-  if (errorCode === "profile_not_found") return "서버 프로필 저장 후 근처 구장을 확인할 수 있습니다.";
-  if (errorCode === "court_request_trust_required") return "구장 등록요청 권한이 부족합니다.";
-  if (errorCode === "missing_nearby_context") return "핀 주소와 좌표를 먼저 확정하세요.";
-  if (errorCode === "nearby_search_rate_limited") return "근처 구장 조회 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
-  return errorCode || "근처 등록 구장 조회 실패";
+  if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+  if (errorCode === "profile_not_found") return "프로필을 저장한 뒤 근처 구장을 확인할 수 있습니다.";
+  if (errorCode === "court_request_trust_required") return "현재 계정은 구장 등록을 요청할 수 없습니다.";
+  if (errorCode === "missing_nearby_context") return "핀 주소와 좌표를 먼저 확정해 주세요.";
+  if (errorCode === "nearby_search_rate_limited") return "근처 구장 조회 요청이 많습니다. 잠시 후 다시 시도해 주세요.";
+  return "근처 등록 구장을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
 async function searchNaverAddressesOnServer(searchQuery) {
@@ -162,14 +161,14 @@ async function searchNaverAddressesOnServer(searchQuery) {
 
 export async function searchNaverAddresses(query, clientId = getNaverMapClientId()) {
   const searchQuery = String(query ?? "").trim();
-  if (!searchQuery) throw new Error("주소 검색어를 입력하세요.");
+  if (!searchQuery) throw new Error("주소 검색어를 입력해 주세요.");
 
   try {
     await loadNaverMapsSdk(clientId);
     return await new Promise((resolve, reject) => {
       window.naver.maps.Service.geocode({ query: searchQuery }, (status, response) => {
         if (status !== window.naver.maps.Service.Status.OK) {
-          reject(new Error("네이버 주소검색 API 호출이 실패했습니다. Naver Maps Geocoding 권한과 도메인 설정을 확인해주세요."));
+          reject(new Error("주소를 검색하지 못했습니다. 검색어를 확인한 뒤 다시 시도해 주세요."));
           return;
         }
         const results = (response.v2?.addresses ?? [])
@@ -285,7 +284,7 @@ export async function reverseGeocodeNaverCoordinate(lat, lng, clientId = getNave
   if (!isValidCoordinate(numericLat, numericLng)) throw new Error("유효한 핀 좌표가 아닙니다.");
   await loadNaverMapsSdk(clientId);
   if (typeof window.naver?.maps?.Service?.reverseGeocode !== "function") {
-    throw new Error("Naver Maps Reverse Geocoding을 사용할 수 없습니다.");
+    throw new Error("현재 핀 위치의 주소를 확인할 수 없습니다.");
   }
 
   return new Promise((resolve, reject) => {
@@ -326,7 +325,7 @@ function applyInlineStyle(element, style) {
 }
 
 export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapClientId()) {
-  if (!clientId) throw new Error("VITE_NAVER_MAP_CLIENT_ID가 없습니다.");
+  if (!clientId) throw new Error("현재 지도 기능을 사용할 수 없습니다.");
   await loadNaverMapsSdk(clientId);
   const initial = await getInitialMapPosition(court, clientId);
 
@@ -456,7 +455,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
         resolving = false;
         submitButton.disabled = false;
         submitButton.textContent = "이 위치로 주소 확정";
-        pinStatus.textContent = error.message || "핀 위치의 주소를 확인하지 못했습니다.";
+        pinStatus.textContent = "핀 위치의 주소를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.";
         pinStatus.style.color = "var(--danger, #d94b3d)";
       }
     });

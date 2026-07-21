@@ -100,6 +100,19 @@ export function getCourtPaidLabel(court = {}) {
   return "비용 확인 필요";
 }
 
+const LEGACY_COURT_NOTE_REPLACEMENTS = Object.freeze([
+  [". 핀은 시설 주소 기준이다.", ". 핀은 시설 주소를 기준으로 표시됩니다."],
+  [". 대관 가능 여부를 확인한다.", ". 대관 가능 여부를 확인해 주세요."],
+  [". 대관 일정과 출입구를 확인한다.", ". 대관 일정과 출입구를 확인해 주세요."],
+  [". 대관 일정을 확인한다.", ". 대관 일정을 확인해 주세요."],
+]);
+
+export function getCourtLocationNote(value = "") {
+  const note = String(value ?? "").trim();
+  const replacement = LEGACY_COURT_NOTE_REPLACEMENTS.find(([suffix]) => note.endsWith(suffix));
+  return replacement ? `${note.slice(0, -replacement[0].length)}${replacement[1]}` : note;
+}
+
 export function getCourtLightingLabel(court = {}) {
   const lighting = normalizeCourtOptionalBoolean(court.lighting);
   if (lighting === true) return "야간 조명 있음";
@@ -356,7 +369,7 @@ function isSmallCourt(court = {}) {
 
 export function getCourtPlayWarning(court = {}, mode = "") {
   if (String(mode) !== "5v5" || !isSmallCourt(court)) return "";
-  return "반코트/골대 1개 구장은 5v5 진행이 좁을 수 있습니다. 생성은 가능하지만 현장 합의를 먼저 확인하세요.";
+  return "반코트 또는 골대 1개 구장은 5v5 경기를 진행하기에 좁을 수 있습니다. 방을 만들기 전에 참가자와 먼저 합의해 주세요.";
 }
 
 function normalizeCourtIdentityText(value = "") {
@@ -662,6 +675,7 @@ export function getRegisteredCourts(stateOrSettings = {}) {
     const completedMatchCount = Math.max(0, Number(court.completedMatchCount ?? 0));
     return {
       ...court,
+      locationNote: getCourtLocationNote(court.locationNote),
       reviewSummary,
       rating: reviewSummary.averageRating,
       reviewCount: reviewSummary.reviewCount,

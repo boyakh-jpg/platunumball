@@ -6,6 +6,7 @@ import {
   DISCORD_TOURNAMENT_ACTION_PREFIX as TOURNAMENT_PREFIX,
 } from "../../../src/lib/discordProtocol.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
+import { BRAND_NAME } from "../../../src/lib/brand.js";
 
 const INTERACTION_PING = 1;
 const INTERACTION_COMPONENT = 3;
@@ -67,7 +68,7 @@ function sendInteractionMessage(response, content) {
   sendJson(response, 200, {
     type: RESPONSE_MESSAGE,
     data: {
-      content: String(content || "RankBall에서 다시 확인하세요.").slice(0, 1900),
+      content: String(content || `${BRAND_NAME}에서 다시 확인해 주세요.`).slice(0, 1900),
       flags: EPHEMERAL,
     },
   });
@@ -156,13 +157,13 @@ function getInviteDecisionState(state = {}, operation = {}, profileId = "") {
 
 function getInviteResultMessage(operation = {}) {
   return operation.action === "acceptRecruitingInvitation"
-    ? "초대를 수락했습니다. RankBall에서 방 상태를 확인하세요."
+    ? `초대를 수락했습니다. ${BRAND_NAME}에서 방 상태를 확인해 주세요.`
     : "초대를 거절했습니다.";
 }
 
 function getStaleInviteMessage(decision = {}) {
-  if (decision.reason === "closed_post") return "이미 닫힌 방입니다. RankBall에서 최신 상태를 확인하세요.";
-  return "이미 처리됐거나 만료된 초대입니다. RankBall에서 최신 상태를 확인하세요.";
+  if (decision.reason === "closed_post") return `이미 닫힌 방입니다. ${BRAND_NAME}에서 최신 상태를 확인해 주세요.`;
+  return `이미 처리됐거나 만료된 초대입니다. ${BRAND_NAME}에서 최신 상태를 확인해 주세요.`;
 }
 
 async function handleInviteAction(interaction) {
@@ -241,9 +242,9 @@ export default async function handler(request, response) {
       return;
     }
     if (statusCode === 409 && error.details?.message) {
-      sendInteractionMessage(response, `${error.details.message} RankBall에서 다시 확인하세요.`);
+      sendInteractionMessage(response, `요청 상태가 변경되었습니다. ${BRAND_NAME}에서 최신 상태를 확인해 주세요.`);
       return;
     }
-    sendInteractionMessage(response, "처리하지 못했습니다. RankBall에서 다시 확인하세요.");
+    sendInteractionMessage(response, `처리하지 못했습니다. ${BRAND_NAME}에서 다시 확인해 주세요.`);
   }
 }

@@ -1,4 +1,5 @@
 import { DISCORD_API_BASE_URL, isDiscordSnowflake } from "../../../src/lib/discordProtocol.js";
+import { BRAND_NAME } from "../../../src/lib/brand.js";
 import {
   fromRoomChatMessageRow as mapRoomChatMessageRow,
   sanitizeRoomChatBody,
@@ -127,14 +128,14 @@ export async function getRoomDiscordLinkByTarget(supabase, { channelId = "", thr
 
 async function getProfileLabel(supabase, profileId = "") {
   const safeProfileId = String(profileId || "").trim();
-  if (!safeProfileId) return "RankBall";
+  if (!safeProfileId) return BRAND_NAME;
   const { data, error } = await supabase
     .from("profiles")
     .select("id,name,handle")
     .eq("id", safeProfileId)
     .maybeSingle();
   if (error) throw error;
-  return String(data?.name || data?.handle || "RankBall").trim().slice(0, 32) || "RankBall";
+  return String(data?.name || data?.handle || BRAND_NAME).trim().slice(0, 32) || BRAND_NAME;
 }
 
 export async function syncRoomChatMessageToDiscord(supabase, { roomType = "recruiting", roomId = "", userId = "", body = "" } = {}) {
@@ -151,7 +152,7 @@ export async function syncRoomChatMessageToDiscord(supabase, { roomType = "recru
   const result = await discordFetch(`/channels/${encodeURIComponent(targetId)}/messages`, {
     method: "POST",
     body: JSON.stringify({
-      content: `[RankBall] ${author}: ${text}`.slice(0, 1900),
+      content: `[${BRAND_NAME}] ${author}: ${text}`.slice(0, 1900),
       allowed_mentions: { parse: [] },
     }),
   });

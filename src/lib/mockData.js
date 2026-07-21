@@ -747,7 +747,7 @@ const baseState = {
       playerIds: ["u4", "u5", "u10", "u1"],
       position: "PG",
       playerId: "u4",
-      memo: "볼 운반 가능한 가드면 포지션 크게 안 봅니다.",
+      memo: "볼 운반이 가능한 가드는 포지션 제한이 없습니다.",
       status: "open",
       applicants: [makeDemoApplicant({ kind: "player", playerId: "u2", side: "teamB", status: "ready", position: "SG", createdAt: "2026-06-15T08:05:00.000Z" })],
       roomState: makeDefaultRoomState([{ id: "chat-q3-1", userId: "u4", body: "Ready when the opposite side fills.", createdAt: "2026-06-15T08:00:00.000Z" }]),
@@ -776,7 +776,7 @@ const baseState = {
       playerIds: ["u1", "u2", "u4", "u5"],
       position: "상관없음",
       playerId: "u1",
-      memo: "비슷한 티어 팀이면 바로 경기방 만들고 양팀 동의로 진행해요.",
+      memo: "비슷한 티어의 팀과 경기방을 만들고 양 팀 동의 후 진행합니다.",
       status: "open",
       applicants: [makeDemoApplicant({ kind: "team", teamId: "t3", playerId: "u2", side: "teamB", status: "waiting", playerIds: ["u2", "u5", "u8"], createdAt: "2026-06-15T10:10:00.000Z" })],
       roomState: makeDefaultRoomState([{ id: "chat-q4-1", userId: "u2", body: "We can bring three now and keep reserves open.", createdAt: "2026-06-15T10:12:00.000Z" }]),
@@ -825,7 +825,7 @@ function makeDemoUser(index) {
   const position = cycle(PLAYER_POSITIONS.slice(1), index - 1);
   const mmr = 980 + ((index * 43) % 640);
   const name = `${cycle(demoSurnames, index)}${cycle(demoGivenNames, index * 3)}`;
-  const hashtag = `#rankball${padNumber(index)}`;
+  const hashtag = `#boxtier${padNumber(index)}`;
   return {
     id: `u${index}`,
     name,
@@ -1239,7 +1239,7 @@ function makeRecruitingPost(index, teams, users) {
     position: type === "need_team" ? "상관없음" : cycle(PLAYER_POSITIONS, index),
     playerId: type === "find_team" ? player.id : hostPlayerIds[0] ?? team.members[0].userId,
     memo: type === "need_player"
-      ? "포지션 맞으면 바로 경기방 초대합니다. 과반 동의 후 진행해요."
+      ? "포지션이 맞으면 경기방으로 초대합니다. 과반 동의 후 진행합니다."
       : type === "find_team"
         ? "혼자 참여 가능합니다. 빠르게 뛸 팀 찾습니다."
         : "비슷한 MMR 팀이면 바로 매치 잡습니다.",
@@ -1249,7 +1249,7 @@ function makeRecruitingPost(index, teams, users) {
       {
         id: `chat-qd${padNumber(index + 1, 3)}-1`,
         userId: type === "find_team" ? player.id : team.members[0].userId,
-        body: "Demo queue room opened.",
+        body: "모집방을 열었습니다. 참여 전에 경기 조건을 확인해 주세요.",
         createdAt,
       },
     ]),
@@ -1487,7 +1487,7 @@ function makeRecruitingRoomPost(index, teams, users) {
       {
         id: `chat-qr${padNumber(index + 1)}-1`,
         userId: owner.id,
-        body: "Demo room opened.",
+        body: "경기방을 열었습니다. 참여 전에 경기 조건을 확인해 주세요.",
         createdAt,
       },
     ],
@@ -1561,7 +1561,9 @@ function uniqueById(items) {
 }
 
 function normalizeDemoUserHashtag(user = {}) {
-  const hashtag = toHashtag(user.hashtag ?? user.handle ?? user.id, user.id);
+  const source = user.hashtag ?? user.handle ?? user.id;
+  const legacyBrandHandle = String(source ?? "").match(/^[@#]?rankball(\d+)$/i);
+  const hashtag = toHashtag(legacyBrandHandle ? `boxtier${legacyBrandHandle[1]}` : source, user.id);
   return {
     ...user,
     handle: hashtag,

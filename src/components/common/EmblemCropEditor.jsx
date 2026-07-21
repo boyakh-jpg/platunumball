@@ -41,7 +41,7 @@ export default function EmblemCropEditor({ file, pending = false, warning = "", 
       <section className="app-confirm-dialog emblem-crop-dialog" role="dialog" aria-modal="true" aria-label="엠블럼 이미지 편집" onMouseDown={(event) => event.stopPropagation()}>
         <header>
           <strong>엠블럼 영역 선택</strong>
-          <p>미리보기를 보면서 위치와 크기를 조정하세요.</p>
+          <p>미리보기를 보면서 위치와 크기를 조정해 주세요.</p>
         </header>
         <div className="emblem-crop-preview">
           {loadFailed ? <span>이미지를 읽지 못했습니다.</span> : <canvas ref={canvasRef} aria-label="엠블럼 크롭 미리보기" />}

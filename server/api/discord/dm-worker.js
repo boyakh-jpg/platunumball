@@ -12,6 +12,7 @@ import {
   isDiscordSnowflake,
 } from "../../../src/lib/discordProtocol.js";
 import { MINUTE_MS } from "../../../src/lib/constants.js";
+import { BRAND_NAME } from "../../../src/lib/brand.js";
 
 const MAX_BATCH_SIZE = 25;
 
@@ -189,7 +190,7 @@ function getDiscordWebUrl(payload = {}) {
 
 function getDiscordMessage(delivery = {}) {
   const payload = delivery.payload ?? {};
-  const title = trimDiscordText(payload.title || delivery.event || "RankBall", 120);
+  const title = trimDiscordText(payload.title || BRAND_NAME, 120);
   const body = trimDiscordText(payload.body || "", DISCORD_NOTIFICATION_BODY_MAX_LENGTH);
   const webUrl = trimDiscordText(getDiscordWebUrl(payload), DISCORD_NOTIFICATION_URL_MAX_LENGTH);
   const content = [`**${title}**`, body, webUrl].filter(Boolean).join("\n").slice(0, 1900);
@@ -234,8 +235,8 @@ async function sendTestDiscordDm(body = {}) {
     discord_user_id: resolvedUserId,
     event: "test",
     payload: {
-      title: trimDiscordText(body.title || "RankBall 테스트 DM", 120),
-      body: trimDiscordText(body.message || body.body || "RankBall Discord 알림 테스트입니다.", DISCORD_NOTIFICATION_BODY_MAX_LENGTH),
+      title: trimDiscordText(body.title || `${BRAND_NAME} 테스트 DM`, 120),
+      body: trimDiscordText(body.message || body.body || `${BRAND_NAME} Discord 알림 테스트입니다.`, DISCORD_NOTIFICATION_BODY_MAX_LENGTH),
       webUrl: trimDiscordText(body.webUrl || process.env.VITE_PUBLIC_APP_URL || "", DISCORD_NOTIFICATION_URL_MAX_LENGTH),
       sentAt: now,
     },

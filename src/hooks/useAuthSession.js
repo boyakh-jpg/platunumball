@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
+import { getTestAccountDisplayLabel, normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
 import { getSafeAppRedirect } from "../lib/profileSetup.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { setClientActionSession } from "../lib/serverActions.js";
@@ -12,7 +12,7 @@ const TEST_AUTH_PASSWORD = import.meta.env.VITE_TEST_AUTH_PASSWORD || "test-0000
 
 const TEST_ACCOUNTS = Array.from({ length: TEST_ACCOUNT_COUNT }, (_item, index) => {
   const loginId = normalizeTestLoginId(index + 1);
-  return { id: loginId, label: loginId };
+  return { id: loginId, label: getTestAccountDisplayLabel(loginId) };
 });
 
 function readTestSession() {
@@ -104,9 +104,9 @@ function getOAuthCallbackError() {
 function formatAuthError(message) {
   if (!message) return "";
   if (message.startsWith("Unable to exchange external code")) {
-    return "Google OAuth 설정 오류입니다. Google Cloud Console의 Authorized redirect URI와 Supabase Google Provider의 Client ID/Secret을 확인하세요.";
+    return "소셜 로그인을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   }
-  return message;
+  return "로그인 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
 function hasOAuthCallbackParams() {
@@ -254,7 +254,7 @@ export function useAuthSession() {
         setError("");
         setMessage("");
         if (!isDemoLoginAllowed()) {
-          setError("테스트 계정 로그인은 VITE_DEMO_LOGIN=true 또는 로컬/프리뷰에서만 허용됩니다.");
+          setError("현재 환경에서는 테스트 계정 로그인을 사용할 수 없습니다.");
           return null;
         }
         const normalizedLoginId = normalizeTestLoginId(testLoginId);
@@ -275,7 +275,7 @@ export function useAuthSession() {
           const { error: signOutError } = await supabase.auth.signOut().catch((signOutError) => ({ error: signOutError }));
           if (loginGeneration !== testLoginGenerationRef.current) return null;
           if (signOutError) console.warn("Supabase sign-out before test login failed.", signOutError.message);
-          setError(formatAuthError(testAuthError?.message) || "테스트 Auth 계정이 없습니다. seed auth-only 실행이 필요합니다.");
+          setError(formatAuthError(testAuthError?.message) || "선택한 테스트 계정으로 로그인하지 못했습니다.");
           return null;
         }
         const nextSession = makeLocalTestSession(normalizedLoginId);

@@ -142,15 +142,6 @@ function getActionErrorCode(result) {
   return String(result.error || result.message || "server_action_failed");
 }
 
-function formatActionDebugDetails(details = null) {
-  if (!details || typeof details !== "object") return "";
-  const detailText = Object.entries(details)
-    .filter(([, value]) => value !== "" && value !== null && value !== undefined)
-    .map(([key, value]) => `${key}=${value}`)
-    .join(", ");
-  return detailText ? `[${detailText}]` : "";
-}
-
 function getDefaultCreateTitle(mode = "5v5") {
   return `오늘의 ${mode} 공식전`;
 }
@@ -166,39 +157,36 @@ function getMatchModeOrDefault(mode = "", fallback = "5v5") {
 function formatCreateSaveError(result, fallback) {
   const errorCode = getActionErrorCode(result);
   if (!errorCode) return fallback;
-  const detail = typeof result?.message === "string" ? result.message : "";
-  const debugDetail = formatActionDebugDetails(result?.details);
   const lowerCode = errorCode.toLowerCase();
   let reason = "";
   if (errorCode === "local_reducer_blocked") {
-    if (debugDetail && detail) return `${detail} ${debugDetail} 원문: ${errorCode}`;
-    reason = detail || "화면 입력값이 생성 조건을 통과하지 못했습니다.";
+    reason = "입력한 내용을 확인한 뒤 다시 시도해 주세요.";
   } else if (lowerCode.includes("rankball_recruiting_action") || lowerCode.includes("rankball_match_action") || lowerCode.includes("could not find the function")) {
-    reason = "Supabase DB에 최신 SQL 함수가 아직 적용되지 않았습니다. `supabase/schema.sql`의 action RPC를 먼저 배포해야 합니다.";
+    reason = "최신 기능이 아직 반영되지 않았습니다. 잠시 후 다시 시도해 주세요.";
   } else if (errorCode === "recruiting_sync_permission_denied" || errorCode === "match_sync_permission_denied") {
     reason = "현재 계정에 이 방/경기를 저장할 권한이 없습니다.";
   } else if (errorCode === "recruiting_team_roster_not_member" || errorCode === "match_team_roster_not_member" || errorCode === "team_roster_not_member") {
-    reason = "선택한 팀 명단에 방장 또는 참가 선수가 없습니다. 팀 멤버를 먼저 등록해야 합니다.";
+    reason = "선택한 팀 명단에 방장 또는 참가 선수가 없습니다. 팀원을 먼저 등록해 주세요.";
   } else if (errorCode === "recruiting_player_not_found" || errorCode === "match_player_not_found") {
-    reason = "선택한 참가 선수 프로필을 DB에서 찾지 못했습니다.";
+    reason = "선택한 참가 선수의 프로필을 찾지 못했습니다.";
   } else if (errorCode === "referee_not_eligible") {
     reason = "선택한 심판이 활성 심판 조건을 통과하지 못했습니다.";
   } else if (errorCode === "team_roster_not_member") {
-    reason = "선택한 출전/후보 선수가 해당 팀 roster에 없습니다.";
+    reason = "선택한 출전 선수 또는 후보 선수가 해당 팀 명단에 없습니다.";
   } else if (errorCode === "profile_not_found" || errorCode === "missing_actor_profile_id") {
-    reason = "로그인 계정과 연결된 프로필을 서버에서 찾지 못했습니다.";
+    reason = "로그인 계정과 연결된 프로필을 찾지 못했습니다.";
   } else if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") {
-    reason = "로그인 토큰이 없거나 만료되었습니다. 다시 로그인해야 합니다.";
+    reason = "로그인이 만료되었습니다. 다시 로그인해 주세요.";
   } else if (errorCode === "server_action_missing_access_token") {
-    reason = "브라우저에 Google 로그인 access token이 없어 서버 저장을 보낼 수 없습니다. 다시 로그인해야 합니다.";
+    reason = "로그인 정보를 확인할 수 없습니다. 다시 로그인해 주세요.";
   } else if (errorCode === "server_actions_disabled") {
-    reason = "서버 저장 액션이 비활성화되어 있습니다. 배포 환경의 `VITE_ENABLE_SERVER_ACTIONS` 값을 확인해야 합니다.";
+    reason = "현재 저장 기능을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   } else if (errorCode === "age_group_not_allowed") {
     reason = "선택한 연령 제한과 참가자 연령대가 맞지 않습니다.";
   } else if (errorCode === "invalid_schedule_window") {
     reason = "일정이 생성 가능한 기간 밖입니다.";
   } else if (errorCode === "recruiting_core_locked" || errorCode === "match_roster_locked" || errorCode === "match_referee_locked") {
-    reason = "서버가 핵심 방/경기 정보를 잠금 상태로 판단했습니다.";
+    reason = "이미 확정된 방 또는 경기 정보는 변경할 수 없습니다.";
   } else if (errorCode === "team_eligible_roster_insufficient") {
     reason = "연령·MMR 조건을 충족한 팀원이 경기 인원보다 적습니다.";
   } else if (errorCode === "team_roster_player_ineligible") {
@@ -206,17 +194,17 @@ function formatCreateSaveError(result, fallback) {
   } else if (errorCode === "team_captain_required" || errorCode === "tournament_team_captain_required") {
     reason = "팀장만 팀전 초대·참가를 확정할 수 있습니다.";
   } else if (["tournament_representative_team_required", "tournament_creator_representative_team_required", "tournament_team_representative_required"].includes(errorCode)) {
-    reason = "대회에는 대표팀으로만 참가할 수 있습니다. 팀 메뉴에서 대표팀을 확인하세요.";
+    reason = "대회에는 대표팀으로만 참가할 수 있습니다. 팀 메뉴에서 대표팀을 확인해 주세요.";
   } else if (errorCode === "tournament_representative_roster_insufficient") {
     reason = "대표팀 기준으로 고정된 참가 가능 선수가 경기 인원보다 적습니다.";
   } else if (errorCode === "tournament_team_snapshot_missing") {
     reason = "대회 생성 시점의 대표팀 명단을 찾지 못했습니다.";
   } else if (errorCode === "supabase_admin_not_configured") {
-    reason = "서버 Supabase service role 환경변수가 설정되지 않았습니다.";
+    reason = "현재 저장 기능을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   } else {
-    reason = "서버가 저장 요청을 거부했습니다.";
+    reason = fallback || "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   }
-  return `${reason} 원문: ${errorCode}`;
+  return reason;
 }
 
 function isHashtagQuery(query = "") {
@@ -815,7 +803,7 @@ export default function CreateMatch({ app }) {
     : tournamentDirectoryPending
       ? "팀원 정보를 불러오는 중입니다."
     : tournamentDirectoryError
-      ? "팀원 정보를 불러오지 못했습니다. 다시 시도하세요."
+      ? "팀원 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
     : !representativeTournamentTeam
       ? "대회에 참가할 대표팀의 팀장이어야 합니다."
     : !representativeTournamentTeamSelected
@@ -1276,7 +1264,7 @@ export default function CreateMatch({ app }) {
     event.preventDefault();
     if (submitting) return;
     if (submitDisabled) {
-      setSubmitFeedback(submitDisabledReason || "경기 생성 조건을 확인하세요.");
+      setSubmitFeedback(submitDisabledReason || "경기 생성 조건을 확인해 주세요.");
       return;
     }
     setSubmitFeedback("");
@@ -1299,7 +1287,7 @@ export default function CreateMatch({ app }) {
       });
       if (typeof matchId === "string" && matchId) navigate("/app/profile/records");
       else {
-        setSubmitFeedback(formatCreateSaveError(matchId, "개인 기록 저장에 실패했습니다."));
+        setSubmitFeedback(formatCreateSaveError(matchId, "개인 기록을 저장하지 못했습니다."));
       }
       return;
     }
@@ -1335,7 +1323,7 @@ export default function CreateMatch({ app }) {
       });
       if (typeof matchId === "string" && matchId) navigate(`/app/recorder?match=${encodeURIComponent(matchId)}`);
       else {
-        setSubmitFeedback(formatCreateSaveError(matchId, "경기 기록방 생성에 실패했습니다."));
+        setSubmitFeedback(formatCreateSaveError(matchId, "경기 기록방을 만들지 못했습니다."));
       }
       return;
     }
@@ -1369,7 +1357,7 @@ export default function CreateMatch({ app }) {
         });
       }
       else {
-        setSubmitFeedback(formatCreateSaveError(tournamentResult, "대회 저장에 실패했습니다."));
+        setSubmitFeedback(formatCreateSaveError(tournamentResult, "대회를 저장하지 못했습니다."));
       }
       return;
     }
@@ -1426,11 +1414,11 @@ export default function CreateMatch({ app }) {
     });
     if (typeof postId === "string" && postId) navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
     else {
-      setSubmitFeedback(formatCreateSaveError(postId, "경기 저장에 실패했습니다."));
+      setSubmitFeedback(formatCreateSaveError(postId, "경기를 저장하지 못했습니다."));
     }
     return;
     } catch (error) {
-      setSubmitFeedback(formatCreateSaveError(error, "서버 저장 중 오류가 발생했습니다."));
+      setSubmitFeedback(formatCreateSaveError(error, "경기를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setSubmitting(false);
     }
@@ -1465,7 +1453,7 @@ export default function CreateMatch({ app }) {
                   <Lock size={19} />
                   <span>
                     <strong>비공개 경기방</strong>
-                    <em>개인전은 생성 후 빈 슬롯에서 초대하고, 팀전은 B팀 대표를 정해 닫힌 방을 만든다.</em>
+                    <em>개인전은 방을 만든 뒤 빈 슬롯에서 초대할 수 있습니다. 팀전은 B팀 대표를 지정해 비공개방으로 만듭니다.</em>
                   </span>
                 </button>
                 <button
@@ -1496,7 +1484,7 @@ export default function CreateMatch({ app }) {
                   <Globe2 size={19} />
                   <span>
                     <strong>공개 매칭방</strong>
-                    <em>매칭 목록에 노출하고, 개인전은 개인 참여·팀전은 팀 대표 참여로 채운다.</em>
+                    <em>매칭 목록에 공개되며, 개인전은 개인 참여로, 팀전은 팀 대표 참여로 인원을 모집합니다.</em>
                   </span>
                 </button>
                 <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => {
@@ -1506,7 +1494,7 @@ export default function CreateMatch({ app }) {
                   <Trophy size={19} />
                   <span>
                     <strong>비공개 대회방</strong>
-                    <em>초대팀, 리그/토너먼트, 일정, MMR 룰을 한 번에 정한다.</em>
+                    <em>초대팀, 진행 방식, 일정, MMR 규칙을 한 번에 설정합니다.</em>
                   </span>
                 </button>
               </>
@@ -1558,7 +1546,7 @@ export default function CreateMatch({ app }) {
                   <ClipboardList size={19} />
                   <span>
                     <strong>경기 기록</strong>
-                    <em>이미 끝난 1v1 또는 팀전을 기록 확인방으로 만든다. 매칭 목록에는 보이지 않는다.</em>
+                    <em>이미 끝난 1v1 또는 팀전을 기록 확인방으로 만듭니다. 매칭 목록에는 표시되지 않습니다.</em>
                   </span>
                 </button>
                 <button
@@ -1587,7 +1575,7 @@ export default function CreateMatch({ app }) {
                   <ClipboardList size={19} />
                   <span>
                     <strong>내 기록</strong>
-                    <em>1v1~5v5 경기에서 내 기록만 저장한다. MMR은 반영하지 않는다.</em>
+                    <em>1v1~5v5 경기에서 내 기록만 저장합니다. MMR에는 반영되지 않습니다.</em>
                   </span>
                 </button>
               </>
@@ -1648,7 +1636,7 @@ export default function CreateMatch({ app }) {
                   <button type="button" className={draft.timingType === "scheduled" ? "active" : ""} onClick={() => update({ timingType: "scheduled" })}>일정 지정</button>
                   <button type="button" className={draft.timingType === "instant" ? "active" : ""} onClick={() => update({ timingType: "instant" })}>즉시</button>
                 </div>
-                <small>{isInstantRoom ? "날짜/시간 없이 바로 경기준비방으로 만든다." : isPublicRoom ? "공개 예약방은 5일 이내, 경기 4시간 이후만 가능하다." : "비공개 예약방은 1개월 이내로 만들 수 있다."}</small>
+                <small>{isInstantRoom ? "날짜와 시간 없이 바로 경기 준비방을 만듭니다." : isPublicRoom ? "공개 예약방은 5일 이내이면서 시작까지 4시간 이상 남은 일정만 만들 수 있습니다." : "비공개 예약방은 1개월 이내 일정으로 만들 수 있습니다."}</small>
               </div>
             ) : null}
             {!isTournamentRoom ? (
@@ -1903,7 +1891,7 @@ export default function CreateMatch({ app }) {
             <div className="create-selected-court-main">
               <span className="create-selected-court-icon"><MapPin size={20} /></span>
               <div>
-                <strong>{selectedCourt?.name ?? "구장을 선택하세요"}</strong>
+                <strong>{selectedCourt?.name ?? "구장을 선택해 주세요"}</strong>
                 <span>{selectedCourt ? getCourtAddress(selectedCourt) : "코트명·주소 검색 또는 지도에서 등록 구장을 확인할 수 있습니다."}</span>
                 {selectedCourt ? (
                   <em>
@@ -1962,7 +1950,7 @@ export default function CreateMatch({ app }) {
             <div>
               <span>구장 속성</span>
               <strong>{selectedCourt ? `${getCourtSurfaceLabel(courtSummary)} / ${getCourtLayoutLabel(courtSummary)}` : "구장 선택 필요"}</strong>
-              <em>{selectedCourt ? (courtPlayWarning || "선택한 방식과 구장 형태가 충돌하지 않습니다.") : "등록된 구장을 검색 결과에서 선택하세요."}</em>
+              <em>{selectedCourt ? (courtPlayWarning || "선택한 방식과 구장 형태가 충돌하지 않습니다.") : "등록된 구장을 검색 결과에서 선택해 주세요."}</em>
             </div>
             <Badge tone={!selectedCourt || courtPlayWarning ? "orange" : "green"}>{!selectedCourt ? "필수" : courtPlayWarning ? "경고" : "가능"}</Badge>
           </div>
@@ -2154,7 +2142,7 @@ export default function CreateMatch({ app }) {
               </div>
               <div className="create-public-note">
                 <Trophy size={17} />
-                <span>비공개 대회는 조건을 충족한 팀만 초대할 수 있다. 팀장 승인 후 경기와 출전 명단 구성 작업이 생성된다.</span>
+                <span>비공개 대회에는 조건을 충족한 팀만 초대할 수 있습니다. 팀장이 승인하면 경기와 출전 명단 구성 작업이 생성됩니다.</span>
               </div>
             </>
           ) : isIndividualMatchRecord ? (
@@ -2186,7 +2174,7 @@ export default function CreateMatch({ app }) {
                 </div>
               </div>
               <div className="stat-integrity-note create-match-record-opponent-note">
-                상대 선수에게 1v1 기록 확인 요청을 보낸다. 양측 확인 전에는 공식 기록으로 확정되지 않는다.
+                상대 선수에게 1v1 기록 확인 요청을 보냅니다. 양측이 확인하기 전에는 공식 기록으로 확정되지 않습니다.
               </div>
             </div>
           ) : isTeamRoom ? (
@@ -2263,15 +2251,15 @@ export default function CreateMatch({ app }) {
               </label>
               <div className="stat-integrity-note">
                 {isMatchRecordRoom
-                  ? "상대팀 대표 1명에게 기록 확인 요청을 보낸다. 확인 대표가 B사이드 출전/후보를 고른다."
-                  : "상대팀 대표 1명에게 초대장을 보낸다. 수락한 사람이 B사이드 파티장이 되고 방에서 출전/후보를 고른다."}
+                  ? "상대팀 대표 1명에게 기록 확인 요청을 보냅니다. 확인 대표가 B사이드 출전 선수와 후보 선수를 선택합니다."
+                  : "상대팀 대표 1명에게 초대장을 보냅니다. 수락한 사용자가 B사이드 파티장이 되어 출전 선수와 후보 선수를 선택합니다."}
               </div>
             </div>
           ) : null}
           {isPublicRoom ? (
             <div className="create-public-note">
               <Globe2 size={17} />
-              <span>공개방은 매칭 목록에 노출된다. 상대 사이드는 방 안의 빈 슬롯을 공개 모집한다.</span>
+              <span>공개방은 매칭 목록에 표시됩니다. 상대 사이드는 방 안의 빈 슬롯을 공개 모집합니다.</span>
             </div>
           ) : null}
         </Card>
