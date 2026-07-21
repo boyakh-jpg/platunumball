@@ -45,6 +45,7 @@ import {
   reportCourtRequest,
   reportCourtReview,
   reportMatch,
+  reportPlayer,
   reportTeamEmblem,
   rejectMatchDispute,
   resetState,
@@ -769,9 +770,9 @@ const ADMIN_SECTION_SETTING_KEYS = {
 };
 
 function mergeRemoteAdminState(state, remoteState = {}, options = {}) {
-  if (!state) return remoteState;
+  if (!state || options.append !== true) return remoteState;
   const section = ADMIN_SECTION_SETTING_KEYS[options.section] ? options.section : "courts";
-  const append = options.append === true;
+  const append = true;
   const reportTypes = ADMIN_SECTION_REPORT_TYPES[section];
   const incomingReports = (remoteState.reports ?? []).filter((report) => reportTypes.has(report.type));
   const unrelatedReports = (state.reports ?? []).filter((report) => !reportTypes.has(report.type));
@@ -791,7 +792,7 @@ function mergeRemoteAdminState(state, remoteState = {}, options = {}) {
     teams: section === "teams" || section === "matches"
       ? (append ? mergeTeamsById(state.teams, remoteState.teams) : remoteState.teams ?? [])
       : state.teams,
-    matches: section === "matches"
+    matches: section === "matches" || section === "players"
       ? (append ? mergeMatchesById(state.matches, remoteState.matches) : remoteState.matches ?? [])
       : state.matches,
     affiliations: section === "teams"
@@ -3274,7 +3275,7 @@ export function useAppData(authUser = null, appLocation = null) {
         setState(nextState);
         if (!isSupabaseConfigured) return { ok: true, reportId: createdReport.id };
         const result = await submitReportServer(createdReport, syncedNotifications);
-        if (!result || result.ok === false) {
+        if (!result || result.ok === false || result.duplicate === true) {
           setState((current) => ({
             ...current,
             reports: (current.reports ?? []).filter((report) => report.id !== createdReport.id),
@@ -3283,33 +3284,74 @@ export function useAppData(authUser = null, appLocation = null) {
         }
         return result;
       },
-      reportCourtRequest: (requestId, reason) => {
+      reportPlayer: async (playerId, matchId, reason) => {
+        const previousState = stateRef.current;
+        const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
+        const nextState = reportPlayer({ ...previousState, currentUserId }, playerId, matchId, reason);
+        const createdReport = (nextState.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+        if (!createdReport) return { ok: false, error: "player_report_unavailable" };
+        const syncedNotifications = getNewReportNotifications(previousState, nextState, createdReport);
+        setState(nextState);
+        if (!isSupabaseConfigured) return { ok: true, reportId: createdReport.id };
+        const result = await submitReportServer(createdReport, syncedNotifications);
+        if (!result || result.ok === false || result.duplicate === true) {
+          setState((current) => ({
+            ...current,
+            reports: (current.reports ?? []).filter((report) => report.id !== createdReport.id),
+            notifications: (current.notifications ?? []).filter((notification) => !syncedNotifications.some((item) => item.id === notification.id)),
+          }));
+        }
+        return result;
+      },
+      reportCourtRequest: async (requestId, reason) => {
+        if (!isSupabaseConfigured) {
+          setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason));
+          return { ok: true };
+        }
+        const result = await runServerAction("/api/court-requests/report", { requestId, reason });
+        if (!result || result.ok === false || result.duplicate === true) return result;
         setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason));
-        runServerAction("/api/court-requests/report", { requestId, reason });
+        return result;
       },
-      reportCourt: (courtId, reason) => {
+      reportCourt: async (courtId, reason) => {
+        const previousState = stateRef.current;
         let createdReport = null;
         let syncedNotifications = [];
-        setState((prev) => {
-          const existingIds = new Set((prev.reports ?? []).map((report) => report.id));
-          const next = reportCourt({ ...prev, currentUserId }, courtId, reason);
-          createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
-          syncedNotifications = createdReport ? getNewReportNotifications(prev, next, createdReport) : [];
-          return next;
-        });
-        if (createdReport) submitReportServer(createdReport, syncedNotifications);
+        const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
+        const next = reportCourt({ ...previousState, currentUserId }, courtId, reason);
+        createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+        syncedNotifications = createdReport ? getNewReportNotifications(previousState, next, createdReport) : [];
+        if (!createdReport) return { ok: false, error: "court_report_unavailable" };
+        setState(next);
+        if (!isSupabaseConfigured) return { ok: true, reportId: createdReport.id };
+        const result = await submitReportServer(createdReport, syncedNotifications);
+        if (!result || result.ok === false || result.duplicate === true) {
+          setState((current) => ({
+            ...current,
+            reports: (current.reports ?? []).filter((report) => report.id !== createdReport.id),
+            notifications: (current.notifications ?? []).filter((notification) => !syncedNotifications.some((item) => item.id === notification.id)),
+          }));
+        }
+        return result;
       },
-      reportCourtReview: (reviewId, reason) => {
-        let createdReport = null;
-        let syncedNotifications = [];
-        setState((prev) => {
-          const existingIds = new Set((prev.reports ?? []).map((report) => report.id));
-          const next = reportCourtReview({ ...prev, currentUserId }, reviewId, reason);
-          createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
-          syncedNotifications = createdReport ? getNewReportNotifications(prev, next, createdReport) : [];
-          return next;
-        });
-        if (createdReport) submitReportServer(createdReport, syncedNotifications);
+      reportCourtReview: async (reviewId, reason) => {
+        const previousState = stateRef.current;
+        const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
+        const next = reportCourtReview({ ...previousState, currentUserId }, reviewId, reason);
+        const createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+        const syncedNotifications = createdReport ? getNewReportNotifications(previousState, next, createdReport) : [];
+        if (!createdReport) return { ok: false, error: "court_review_report_unavailable" };
+        setState(next);
+        if (!isSupabaseConfigured) return { ok: true, reportId: createdReport.id };
+        const result = await submitReportServer(createdReport, syncedNotifications);
+        if (!result || result.ok === false || result.duplicate === true) {
+          setState((current) => ({
+            ...current,
+            reports: (current.reports ?? []).filter((report) => report.id !== createdReport.id),
+            notifications: (current.notifications ?? []).filter((notification) => !syncedNotifications.some((item) => item.id === notification.id)),
+          }));
+        }
+        return result;
       },
       reportTeamEmblem: async (teamId, reason) => {
         const serverReady = await ensureServerActionAvailable("/api/reports/submit", "팀 엠블럼 신고");
@@ -3326,7 +3368,7 @@ export function useAppData(authUser = null, appLocation = null) {
         });
         if (!createdReport) return { ok: false, error: "team_emblem_report_unavailable" };
         const result = await submitReportServer(createdReport, syncedNotifications);
-        if (result?.ok === false) {
+        if (!result || result.ok === false || result.duplicate === true) {
           setState((prev) => ({
             ...prev,
             reports: (prev.reports ?? []).filter((report) => report.id !== createdReport.id),

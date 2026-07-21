@@ -15,7 +15,11 @@ import {
   SUSPENSION_TIERS,
   buildAdminAppointmentModel,
   buildAdminReviewModel,
+  getAdminActionTargetUserIds,
+  getAdminReportTypeLabel,
+  getAdminReviewMetrics,
   hasAdminAccess,
+  isHighImpactAdminReviewAction,
 } from "../lib/admin.js";
 import {
   getCourtAccessLabel,
@@ -82,6 +86,12 @@ const REVIEW_WORKFLOW_COPY = {
     actionTitle: "이름·엠블럼 최종판단",
     description: "팀 엠블럼과 팀명·소속명을 확인합니다. 이름 수정과 소속 통합은 경기관리자 이상만 처리합니다.",
   },
+};
+const REVIEW_QUEUE_FILTER_PLACEHOLDERS = {
+  courts: "구장 신청명·주소 또는 신고 사유",
+  players: "신고 사유 또는 제재 상태",
+  matches: "경기명·구장 또는 신고 사유",
+  teams: "신고 사유",
 };
 
 function statusLabel(status) {
@@ -359,6 +369,7 @@ export default function Admin({ app }) {
   const [courtApprovalStatus, setCourtApprovalStatus] = useState("");
   const [reviewActionStatus, setReviewActionStatus] = useState("");
   const [reviewActionPending, setReviewActionPending] = useState(false);
+  const [reviewActionConfirming, setReviewActionConfirming] = useState(false);
   const canAdmin = adminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
   const adminViewState = app.adminState ?? app.state;
   const model = useMemo(() => buildAdminReviewModel(adminViewState), [adminViewState]);
@@ -399,6 +410,7 @@ export default function Admin({ app }) {
   const userMap = useMemo(() => Object.fromEntries((adminViewState.users ?? []).map((user) => [user.id, user])), [adminViewState.users]);
   const matchMap = useMemo(() => Object.fromEntries((adminViewState.matches ?? []).map((match) => [match.id, match])), [adminViewState.matches]);
   const selectedReport = reportOptions.find((report) => report.id === selectedReportId) ?? reportOptions.find((report) => report.status === "open") ?? reportOptions[0] ?? null;
+  const selectedMatch = selectedRow?.match ?? matchMap[selectedReport?.sourceMatchId] ?? null;
   const selectedReportIsVoidRestore = selectedReport?.matchReviewType === "void_restore";
   const selectedCourtRequest = selectedRow?.courtRequests?.find(isPendingCourtRequest)
     ?? selectedRow?.courtRequests?.[0]
@@ -452,43 +464,58 @@ export default function Admin({ app }) {
   };
   const visibleActionOptions = useMemo(() => {
     if (selectedReportIsVoidRestore) {
-      return ACTION_OPTIONS.filter((option) => ["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(option.id));
+      return adminLevel >= 50 ? ACTION_OPTIONS.filter((option) => ["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(option.id)) : [];
     }
     if (selectedReport?.type === "team_emblem") {
-      return ACTION_OPTIONS.filter((option) => ["resetTeamEmblem", "dismissReport", "maliciousReporter"].includes(option.id));
+      const ids = adminLevel >= 50 ? ["resetTeamEmblem", "dismissReport", "maliciousReporter"] : ["dismissReport"];
+      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
     }
     if (selectedReport?.type === "team_name") {
-      return ACTION_OPTIONS.filter((option) => ["renameTeam", "dismissReport", "maliciousReporter"].includes(option.id));
+      const ids = adminLevel >= 50 ? ["renameTeam", "dismissReport", "maliciousReporter"] : ["dismissReport"];
+      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
     }
     if (selectedReport?.type === "affiliation_name") {
-      return ACTION_OPTIONS.filter((option) => ["renameAffiliation", "mergeAffiliation", "dismissReport", "maliciousReporter"].includes(option.id));
+      const ids = adminLevel >= 50 ? ["renameAffiliation", "mergeAffiliation", "dismissReport", "maliciousReporter"] : ["dismissReport"];
+      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
     }
-    const ids = ["validReport", "dismissReport", "maliciousReporter"];
-    if (selectedReport?.type === "court") ids.push("hideCourt");
-    if (selectedReport?.type === "court_review") ids.push("hideCourtReview", "suspendTarget");
-    if (selectedReport?.type === "match" || selectedReport?.type === "player") ids.push("suspendTarget", "refereeDiscipline");
-    if (selectedReport?.type === "court_request") ids.push("suspendTarget");
+    const ids = ["validReport", "dismissReport"];
+    if (adminLevel >= 50) {
+      ids.push("maliciousReporter");
+      if (selectedReport?.type === "court") ids.push("hideCourt");
+      if (selectedReport?.type === "court_review") ids.push("hideCourtReview");
+      if (getAdminActionTargetUserIds(selectedReport, "suspendTarget", selectedMatch).length) ids.push("suspendTarget");
+      if (getAdminActionTargetUserIds(selectedReport, "refereeDiscipline", selectedMatch).length) ids.push("refereeDiscipline");
+    }
     return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
-  }, [selectedReport?.type, selectedReportIsVoidRestore]);
+  }, [adminLevel, selectedMatch, selectedReport, selectedReportIsVoidRestore]);
+  const actionTargetUserIds = useMemo(
+    () => getAdminActionTargetUserIds(
+      selectedReport,
+      selectedReportIsVoidRestore && actionDraft.penaltyType ? "suspendTarget" : actionDraft.actionType,
+      selectedMatch,
+    ),
+    [actionDraft.actionType, actionDraft.penaltyType, selectedMatch, selectedReport, selectedReportIsVoidRestore],
+  );
   const targetCandidates = useMemo(() => {
-    const ids = new Set([
-      ...(selectedReport?.reportedUserIds ?? []),
-      selectedReport?.by,
-      selectedRow?.player?.id,
-      ...(selectedRow?.courtRequests ?? []).map((request) => request.requestedBy),
-    ].filter(Boolean));
-    return [...ids].map((userId) => userMap[userId]).filter(Boolean);
-  }, [selectedReport, selectedRow, userMap]);
+    return actionTargetUserIds.map((userId) => userMap[userId]).filter(Boolean);
+  }, [actionTargetUserIds, userMap]);
   const selectedTargetUserId = targetCandidates.some((user) => user.id === actionDraft.targetUserId)
     ? actionDraft.targetUserId
     : targetCandidates[0]?.id ?? "";
   const actionNeedsTarget = ["maliciousReporter", "suspendTarget", "refereeDiscipline"].includes(actionDraft.actionType)
     || (selectedReportIsVoidRestore && Boolean(actionDraft.penaltyType));
+  const actionTargetIsReporter = actionDraft.actionType === "maliciousReporter";
   const actionNeedsReplacementName = ["renameTeam", "renameAffiliation"].includes(actionDraft.actionType);
   const actionNeedsMergeTarget = actionDraft.actionType === "mergeAffiliation";
   const nameModerationAction = actionNeedsReplacementName || actionNeedsMergeTarget;
   const nameModerationInvalid = (actionNeedsReplacementName && !actionDraft.replacementName.trim())
     || (actionNeedsMergeTarget && !actionDraft.mergeTargetId);
+  const reviewActionInvalid = actionDraft.reason.trim().length < 4
+    || actionDraft.feedback.trim().length < 4
+    || (actionNeedsTarget && !selectedTargetUserId)
+    || nameModerationInvalid;
+  const reviewActionHighImpact = isHighImpactAdminReviewAction(actionDraft.actionType);
+  const reviewMetrics = selectedRow ? getAdminReviewMetrics(view, selectedRow) : [];
   const selectedNeedsAction = Boolean(
     selectedRow && (
       selectedRow.openCount > 0 ||
@@ -499,18 +526,24 @@ export default function Admin({ app }) {
 
   useEffect(() => {
     setReviewActionStatus("");
-    setActionDraft((current) => ({
-      ...current,
-      actionType: visibleActionOptions.some((option) => option.id === current.actionType) ? current.actionType : visibleActionOptions[0]?.id ?? "validReport",
-      penaltyType: "",
-      targetUserId: targetCandidates[0]?.id ?? "",
-      replacementName: selectedRow?.team?.name ?? selectedRow?.affiliation?.name ?? "",
-      mergeTargetId: "",
-      reason: "",
-      feedback: "",
-    }));
+    setReviewActionConfirming(false);
+    setActionDraft((current) => {
+      const nextActionType = visibleActionOptions.some((option) => option.id === current.actionType)
+        ? current.actionType
+        : visibleActionOptions[0]?.id ?? "validReport";
+      return {
+        ...current,
+        actionType: nextActionType,
+        penaltyType: "",
+        targetUserId: "",
+        replacementName: selectedRow?.team?.name ?? selectedRow?.affiliation?.name ?? "",
+        mergeTargetId: "",
+        reason: "",
+        feedback: ADMIN_REVIEW_ACTIONS[nextActionType]?.feedback ?? "",
+      };
+    });
     setMergeAffiliationQuery("");
-  }, [selectedReport?.id, selectedRow?.affiliation?.name, selectedRow?.id, selectedRow?.team?.name, targetCandidates, visibleActionOptions]);
+  }, [selectedReport?.id, selectedRow?.affiliation?.name, selectedRow?.id, selectedRow?.team?.name, visibleActionOptions]);
 
   useEffect(() => {
     setCourtApprovalDraft({
@@ -522,6 +555,15 @@ export default function Admin({ app }) {
   }, [selectedCourtRequest?.id, selectedCourtRequest?.name]);
 
   const updateActionDraft = (patch) => setActionDraft((current) => ({ ...current, ...patch }));
+  const changeReviewActionType = (actionType) => {
+    setReviewActionConfirming(false);
+    setReviewActionStatus("");
+    updateActionDraft({
+      actionType,
+      targetUserId: "",
+      feedback: ADMIN_REVIEW_ACTIONS[actionType]?.feedback ?? "",
+    });
+  };
   const updateAppointmentDraft = (patch) => setAppointmentDraft((current) => ({ ...current, ...patch }));
   const selectAppointmentUser = (user) => {
     if (!user?.id) return;
@@ -538,6 +580,10 @@ export default function Admin({ app }) {
   };
   const commitSelectedAction = async () => {
     if (!selectedReport || reviewActionPending) return;
+    if (reviewActionInvalid) {
+      setReviewActionStatus("처리 사유와 신고자 안내를 각각 4자 이상 입력하고 대상을 확인하세요.");
+      return;
+    }
     setReviewActionPending(true);
     setReviewActionStatus("처리 중");
     try {
@@ -561,6 +607,7 @@ export default function Admin({ app }) {
         : "관리자 처리를 완료하지 못했습니다.");
     } finally {
       setReviewActionPending(false);
+      setReviewActionConfirming(false);
     }
   };
   const commitAppointmentAction = () => {
@@ -833,7 +880,7 @@ export default function Admin({ app }) {
               큐 필터
               <input
                 value={queueFilter}
-                placeholder="이름, 구장, 경기, 사유"
+                placeholder={REVIEW_QUEUE_FILTER_PLACEHOLDERS[view] ?? "신고 사유"}
                 onChange={(event) => updateQueueFilter(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -854,7 +901,14 @@ export default function Admin({ app }) {
           </div>
 
           <div className="admin-sort-list">
-            {activeRows.map((row) => (
+            {app.adminStatus?.loading && app.adminStatus?.section === section ? <div className="admin-queue-state" role="status">관리자 큐를 불러오는 중입니다.</div> : null}
+            {app.adminStatus?.error && app.adminStatus?.section === section ? (
+              <div className="admin-queue-state error" role="alert">
+                <span>관리자 큐를 불러오지 못했습니다.</span>
+                <Button type="button" variant="secondary" onClick={() => loadAdminSection?.({ section, queueMode, filter: appliedQueueFilter, limit: ADMIN_DEFAULT_PAGE_LIMIT, offset: 0, force: true })}>다시 시도</Button>
+              </div>
+            ) : null}
+            {!app.adminStatus?.loading && !app.adminStatus?.error ? activeRows.map((row) => (
               <button
                 key={row.id}
                 type="button"
@@ -864,6 +918,7 @@ export default function Admin({ app }) {
                 <span>
                   <strong>{row.title}</strong>
                   <em>{row.subtitle}</em>
+                  {row.latestReport ? <small className="admin-sort-latest">{getAdminReportTypeLabel(row.latestReport.type)} · {row.latestReport.reason} · {formatDate(row.latestReport.createdAt)}</small> : null}
                 </span>
                 <span className="admin-sort-counts">
                   <b>{view === "courts" ? row.courtRequests.filter(isPendingCourtRequest).length : row.issueCount ?? row.openCount}</b>
@@ -872,8 +927,8 @@ export default function Admin({ app }) {
                   <small>신고</small>
                 </span>
               </button>
-            ))}
-            {!activeRows.length ? <div className="empty-state">{queueMode === "pending" ? "처리할 항목이 없습니다." : "처리 이력이 없습니다."}</div> : null}
+            )) : null}
+            {!app.adminStatus?.loading && !app.adminStatus?.error && !activeRows.length ? <div className="empty-state">{queueMode === "pending" ? "처리할 항목이 없습니다." : "처리 이력이 없습니다."}</div> : null}
           </div>
           {activeAdminPage?.hasMore ? (
             <Button type="button" variant="secondary" disabled={app.adminStatus?.loading} onClick={() => app.actions.loadMoreAdminSection?.()}>
@@ -900,22 +955,12 @@ export default function Admin({ app }) {
               </div>
 
               <div className="contract-grid">
-                <div>
-                  <span>{view === "courts" ? "신청" : "신고"}</span>
-                  <strong>{view === "courts" ? selectedRow.courtRequestCount : selectedRow.reportCount}</strong>
-                </div>
-                <div>
-                  <span>{view === "courts" ? "대기" : "이슈"}</span>
-                  <strong>{view === "courts" ? selectedRow.courtRequests.filter(isPendingCourtRequest).length : selectedRow.issueCount ?? selectedRow.openCount}</strong>
-                </div>
-                <div>
-                  <span>신고</span>
-                  <strong>{selectedRow.reportCount}</strong>
-                </div>
-                <div>
-                  <span>{view === "teams" ? "대상" : "경기"}</span>
-                  <strong>{view === "teams" ? selectedRow.entityKind === "affiliation" ? "소속" : "팀" : selectedRow.matchCount ?? 0}</strong>
-                </div>
+                {reviewMetrics.map((metric) => (
+                  <div key={metric.label}>
+                    <span>{metric.label}</span>
+                    <strong>{metric.value}</strong>
+                  </div>
+                ))}
               </div>
 
               {view === "teams" && selectedRow.team && selectedReport?.type === "team_emblem" ? (
@@ -1027,7 +1072,12 @@ export default function Admin({ app }) {
               <div className="admin-action-panel">
                 <div>
                   <strong>{workflow.actionTitle}</strong>
-                  <small>선택된 신고 기준으로 신고자 피드백과 제재 로그를 커밋합니다.</small>
+                  <small>선택한 신고 한 건만 처리합니다. 직접 제재와 숨김은 경기관리자 이상만 확정할 수 있습니다.</small>
+                </div>
+                <div className="admin-selected-report">
+                  <span><Badge tone={selectedReport.status === "open" ? "orange" : "neutral"}>{getAdminReportTypeLabel(selectedReport.type)}</Badge><strong>{selectedReport.reason}</strong></span>
+                  <small>신고자 {userMap[selectedReport.by]?.name ?? selectedReport.by ?? "-"} · {formatDate(selectedReport.createdAt)}</small>
+                  {selectedReport.sourceMatchId && matchMap[selectedReport.sourceMatchId] ? <small>근거 경기 {getMatchHashtag(matchMap[selectedReport.sourceMatchId])} · {matchMap[selectedReport.sourceMatchId].title}</small> : null}
                 </div>
                 <div className="arena-field-grid">
                   <label>
@@ -1040,14 +1090,14 @@ export default function Admin({ app }) {
                       {!reportOptions.length ? <option value="">신고 없음</option> : null}
                       {reportOptions.map((report) => (
                         <option key={report.id} value={report.id}>
-                          {statusLabel(report.status)} · {report.reason} · {report.type}
+                          {statusLabel(report.status)} · {getAdminReportTypeLabel(report.type)} · {report.reason}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label>
                     액션
-                    <select value={actionDraft.actionType} onChange={(event) => updateActionDraft({ actionType: event.target.value })}>
+                    <select value={actionDraft.actionType} disabled={!visibleActionOptions.length || selectedReport.status !== "open"} onChange={(event) => changeReviewActionType(event.target.value)}>
                       {visibleActionOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                   </label>
@@ -1071,13 +1121,21 @@ export default function Admin({ app }) {
                       />
                     </label>
                   ) : null}
-                  {actionNeedsTarget ? <label>
-                    대상
-                    <select value={selectedTargetUserId} disabled={!targetCandidates.length} onChange={(event) => updateActionDraft({ targetUserId: event.target.value })}>
-                      {!targetCandidates.length ? <option value="">대상 없음</option> : null}
-                      {targetCandidates.map((user) => <option key={user.id} value={user.id}>{user.name} · 신뢰도 {user.trustScore ?? "-"}</option>)}
-                    </select>
-                  </label> : null}
+                  {actionNeedsTarget ? actionTargetIsReporter ? (
+                    <div className="admin-fixed-target">
+                      <span>제재 대상</span>
+                      <strong>신고자 · {targetCandidates[0]?.name ?? "확인 불가"}</strong>
+                      <small>악성신고자 제재는 선택한 신고의 신고자에게만 적용됩니다.</small>
+                    </div>
+                  ) : (
+                    <label>
+                      대상
+                      <select value={selectedTargetUserId} disabled={!targetCandidates.length} onChange={(event) => updateActionDraft({ targetUserId: event.target.value })}>
+                        {!targetCandidates.length ? <option value="">검증된 대상 없음</option> : null}
+                        {targetCandidates.map((user) => <option key={user.id} value={user.id}>{user.name} · 신뢰도 {user.trustScore ?? "-"}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
                 </div>
                 {actionNeedsMergeTarget ? (
                   <label>
@@ -1121,9 +1179,23 @@ export default function Admin({ app }) {
                   신고자 피드백
                   <textarea value={actionDraft.feedback} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
                 </label>
-                <Button type="button" variant="secondary" disabled={reviewActionPending || !selectedReport || selectedReport.status !== "open" || ((actionDraft.actionType === "resetTeamEmblem" || nameModerationAction || selectedReportIsVoidRestore) && adminLevel < 50) || nameModerationInvalid} onClick={commitSelectedAction}>
-                  {reviewActionPending ? "처리 중" : "액션 커밋"}
-                </Button>
+                {!visibleActionOptions.length ? <small>현재 권한으로 처리할 수 있는 액션이 없습니다.</small> : null}
+                {reviewActionConfirming ? (
+                  <div className="admin-review-confirm" role="alert">
+                    <span><strong>{ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label}</strong><small>대상과 기간, 처리 사유를 다시 확인하세요. 실행 후 감사 로그가 남습니다.</small></span>
+                    <Button type="button" variant="secondary" disabled={reviewActionPending} onClick={() => setReviewActionConfirming(false)}>취소</Button>
+                    <Button type="button" variant="secondary" disabled={reviewActionPending || reviewActionInvalid} onClick={commitSelectedAction}>{reviewActionPending ? "처리 중" : "확정 실행"}</Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={reviewActionPending || !selectedReport || selectedReport.status !== "open" || !visibleActionOptions.length || reviewActionInvalid}
+                    onClick={() => reviewActionHighImpact ? setReviewActionConfirming(true) : commitSelectedAction()}
+                  >
+                    {reviewActionPending ? "처리 중" : reviewActionHighImpact ? "처리 확인" : "처리 실행"}
+                  </Button>
+                )}
                 {selectedReportIsVoidRestore ? <small>복구는 무효 처리 전 원본 기록을 사용합니다. 50%는 기존 경기 MMR 배율의 절반을 반영합니다.</small> : null}
                 {selectedReportIsVoidRestore && adminLevel < 50 ? <small>경기관리자 이상만 무효 경기 심사를 처리할 수 있습니다.</small> : null}
                 {actionDraft.actionType === "resetTeamEmblem" && adminLevel < 50 ? <small>경기관리자 이상만 엠블럼을 강제 전환할 수 있습니다.</small> : null}
@@ -1131,6 +1203,11 @@ export default function Admin({ app }) {
                 {reviewActionStatus ? <small role="status">{reviewActionStatus}</small> : null}
                 <small>실시간 중복 방지는 서버 트랜잭션에서 최종 확인합니다.</small>
               </div>
+              ) : view === "matches" && selectedRow.issueCount > 0 ? (
+                <div className="admin-review-context">
+                  <strong>연결된 신고 없음</strong>
+                  <span>이 경기에는 이의 또는 승인 대기 상태만 있습니다. 경기방의 이의 처리 흐름에서 먼저 판정하세요.</span>
+                </div>
               ) : null}
 
               {selectedRow.reports.length ? <DetailList title={view === "courts" ? "구장 신고" : "쌓인 신고"} empty="신고 없음">
@@ -1140,8 +1217,9 @@ export default function Admin({ app }) {
                       <strong>{report.reason}</strong>
                       <em>
                         {report.type === "match" && matchMap[report.targetId] ? `${getMatchHashtag(matchMap[report.targetId])} · ` : ""}
-                        신고자 {userMap[report.by]?.name ?? report.by ?? "-"} · {report.type} · {formatDate(report.createdAt)}
+                        신고자 {userMap[report.by]?.name ?? report.by ?? "-"} · {getAdminReportTypeLabel(report.type)} · {formatDate(report.createdAt)}
                       </em>
+                      {report.resolution ? <small>처리 {ADMIN_REVIEW_ACTIONS[report.resolution.actionType]?.label ?? report.resolution.actionType ?? "완료"} · {userMap[report.resolvedBy]?.name ?? report.resolvedBy ?? "관리자"} · {report.resolution.reason || "사유 없음"} · {report.resolution.feedback || "답변 없음"}</small> : null}
                     </span>
                     <Badge tone={report.status === "open" ? "orange" : "neutral"}>{statusLabel(report.status)}</Badge>
                   </div>

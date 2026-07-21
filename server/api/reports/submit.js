@@ -4,7 +4,6 @@ import { getMatchScheduledDate } from "../../../src/lib/matchUtils.js";
 import { REPORT_MATCH_WINDOW_MS } from "../../../src/lib/constants.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../../../src/lib/reportReasons.js";
 
-const REPORT_MATCH_QUERY_PAGE_SIZE = 200;
 const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review", "team_emblem", "team_name", "affiliation_name"]);
 
 function uniqueStrings(values) {
@@ -161,55 +160,30 @@ function getMatchPlayerIds(match = {}, playerRows = []) {
   ]));
 }
 
-async function hasRecentSharedPlayerMatch(context, targetId) {
+async function hasRecentSharedPlayerMatch(context, targetId, sourceMatchId) {
+  const requestedMatchId = String(sourceMatchId ?? "").trim();
+  if (!requestedMatchId) return false;
   const nowMs = Date.now();
-  const cutoffIso = new Date(nowMs - REPORT_MATCH_WINDOW_MS).toISOString();
-  const cutoffDate = cutoffIso.slice(0, 10);
-  const recentMatchFilter = [
-    `ended_at.gte.${cutoffIso}`,
-    `confirmed_at.gte.${cutoffIso}`,
-    `scheduled_at.gte.${cutoffIso}`,
-    `scheduled_date.gte.${cutoffDate}`,
-    `created_at.gte.${cutoffIso}`,
-  ].join(",");
+  const { data: match, error: matchError } = await context.supabase
+    .from("matches")
+    .select("id, scheduled_at, scheduled_date, scheduled_time, confirmed_at, ended_at, created_at, reserve_players, played_player_ids, rules")
+    .eq("id", requestedMatchId)
+    .maybeSingle();
+  if (matchError) throw matchError;
+  if (!match || !isReportWindowOpen(match, nowMs)) return false;
 
-  for (let offset = 0; ; offset += REPORT_MATCH_QUERY_PAGE_SIZE) {
-    const { data: matches, error: matchError } = await context.supabase
-      .from("matches")
-      .select("id, scheduled_at, scheduled_date, scheduled_time, confirmed_at, ended_at, created_at, reserve_players, played_player_ids, rules")
-      .or(recentMatchFilter)
-      .order("id", { ascending: true })
-      .range(offset, offset + REPORT_MATCH_QUERY_PAGE_SIZE - 1);
-    if (matchError) throw matchError;
+  const { data: players, error: playerError } = await context.supabase
+    .from("match_players")
+    .select("match_id, user_id")
+    .eq("match_id", requestedMatchId)
+    .in("user_id", [context.profileId, targetId]);
+  if (playerError) throw playerError;
 
-    const matchRows = matches ?? [];
-    const reportableMatches = matchRows.filter((match) => isReportWindowOpen(match, nowMs));
-    const matchIds = reportableMatches.map((match) => match.id).filter(Boolean);
-    if (matchIds.length) {
-      const { data: players, error: playerError } = await context.supabase
-        .from("match_players")
-        .select("match_id, user_id")
-        .in("match_id", matchIds)
-        .in("user_id", [context.profileId, targetId]);
-      if (playerError) throw playerError;
-
-      const playerRowsByMatch = new Map();
-      for (const player of players ?? []) {
-        const rows = playerRowsByMatch.get(player.match_id) ?? [];
-        rows.push(player);
-        playerRowsByMatch.set(player.match_id, rows);
-      }
-      for (const match of reportableMatches) {
-        const playerIds = getMatchPlayerIds(match, playerRowsByMatch.get(match.id));
-        if (playerIds.has(context.profileId) && playerIds.has(targetId)) return true;
-      }
-    }
-
-    if (matchRows.length < REPORT_MATCH_QUERY_PAGE_SIZE) return false;
-  }
+  const playerIds = getMatchPlayerIds(match, players ?? []);
+  return playerIds.has(context.profileId) && playerIds.has(targetId) ? match.id : false;
 }
 
-async function assertCanSubmitPlayerReport(context, targetId) {
+async function assertCanSubmitPlayerReport(context, targetId, sourceMatchId) {
   if (targetId === context.profileId) {
     const error = new Error("cannot_report_self");
     error.statusCode = 400;
@@ -226,12 +200,16 @@ async function assertCanSubmitPlayerReport(context, targetId) {
     error.statusCode = 404;
     throw error;
   }
-  if (!await hasRecentSharedPlayerMatch(context, targetId)) {
+  const verifiedSourceMatchId = await hasRecentSharedPlayerMatch(context, targetId, sourceMatchId);
+  if (!verifiedSourceMatchId) {
     const error = new Error("report_permission_denied");
     error.statusCode = 403;
     throw error;
   }
-  return [targetId];
+  return {
+    reportedUserIds: [targetId],
+    verifiedPayload: { sourceMatchId: verifiedSourceMatchId },
+  };
 }
 
 async function assertCanSubmitCourtReport(context, targetId) {
@@ -413,7 +391,11 @@ async function buildReportRow(context, report = {}) {
     reportedUserIds = verified.reportedUserIds;
     verifiedPayload = verified.verifiedPayload;
   }
-  if (type === "player") reportedUserIds = await assertCanSubmitPlayerReport(context, targetId);
+  if (type === "player") {
+    const verified = await assertCanSubmitPlayerReport(context, targetId, report.sourceMatchId ?? report.payload?.sourceMatchId);
+    reportedUserIds = verified.reportedUserIds;
+    verifiedPayload = verified.verifiedPayload;
+  }
   if (type === "court") reportedUserIds = await assertCanSubmitCourtReport(context, targetId);
   if (type === "court_review") reportedUserIds = await assertCanSubmitCourtReviewReport(context, targetId);
   if (type === "team_emblem") {

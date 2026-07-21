@@ -86,6 +86,9 @@ test("directory loader does not call the legacy broad repository loader", async 
   assert.match(source, /normalizeDirectoryKind/);
   assert.match(source, /scope === "admin"/);
   assert.match(source, /includeSelfDetails = kind === "self"/);
+  assert.match(source, /reportRowsByType\("player"\).*sourceMatchId/s);
+  assert.match(source, /approved_courts"\)\.select\(APPROVED_COURT_COLUMNS\)\.eq\("status", "active"\)/);
+  assert.match(source, /court_reviews"\)\.select\(COURT_REVIEW_COLUMNS\)\.eq\("status", "active"\)/);
   assert.match(source, /includeTeamMemberProfiles \|\| row\.role === "captain"/);
   assert.doesNotMatch(source, /readOptional\(/);
 });
@@ -96,6 +99,7 @@ test("admin route bootstraps profile only and owns a separate state cache", asyn
   const settingsSource = await readFile(new URL("../../../src/pages/Settings.jsx", import.meta.url), "utf8");
   assert.match(hookSource, /pathname === "\/app\/admin"[\s\S]{0,160}profileOnly: true/);
   assert.match(hookSource, /const \[adminState, setAdminState\] = useState\(null\)/);
+  assert.match(hookSource, /if \(!state \|\| options\.append !== true\) return remoteState/);
   assert.match(hookSource, /latestDirectoryRequestRef\.current !== cacheKey/);
   assert.match(hookSource, /latestAdminRequestRef\.current !== cacheKey/);
   assert.ok((hookSource.match(/isSyntheticMatchRoomId/g) ?? []).length >= 3);

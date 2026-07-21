@@ -52,6 +52,85 @@ export const ADMIN_REVIEW_ACTIONS = {
   mergeAffiliation: { label: "소속 통합", feedback: "중복 소속을 선택한 소속으로 통합했습니다." },
 };
 
+export const ADMIN_REPORT_TYPE_META = {
+  player: { label: "플레이어", section: "players" },
+  match: { label: "경기", section: "matches" },
+  court: { label: "승인 구장", section: "courts" },
+  court_request: { label: "구장 신청", section: "courts" },
+  court_review: { label: "구장 리뷰", section: "courts" },
+  team_emblem: { label: "팀 엠블럼", section: "teams" },
+  team_name: { label: "팀명", section: "teams" },
+  affiliation_name: { label: "소속명", section: "teams" },
+};
+
+const HIGH_IMPACT_REVIEW_ACTIONS = new Set([
+  "maliciousReporter",
+  "suspendTarget",
+  "refereeDiscipline",
+  "hideCourt",
+  "hideCourtReview",
+  "resetTeamEmblem",
+  "renameTeam",
+  "renameAffiliation",
+  "mergeAffiliation",
+  "keepMatchVoid",
+  "restoreMatchHalf",
+  "restoreMatchFull",
+]);
+
+export function getAdminReportTypeLabel(type = "") {
+  return ADMIN_REPORT_TYPE_META[type]?.label ?? (type || "신고");
+}
+
+export function isHighImpactAdminReviewAction(actionType = "") {
+  return HIGH_IMPACT_REVIEW_ACTIONS.has(actionType);
+}
+
+export function getAdminActionTargetUserIds(report = {}, actionType = "", match = {}) {
+  const safeReport = report ?? {};
+  if (actionType === "maliciousReporter") return [safeReport.by].filter(Boolean);
+  const reportedUserIds = [...new Set(safeReport.reportedUserIds ?? [])].filter(Boolean);
+  if (actionType === "suspendTarget") return reportedUserIds;
+  if (actionType === "refereeDiscipline") {
+    const refereeIds = [match?.refereeId, match?.formerRefereeId].filter(Boolean);
+    return refereeIds.filter((refereeId) => reportedUserIds.includes(refereeId));
+  }
+  return [];
+}
+
+export function getAdminReviewMetrics(view = "players", row = {}) {
+  if (view === "courts") {
+    return [
+      { label: "신청 대기", value: (row.courtRequests ?? []).filter((request) => ["pending", "reported"].includes(request.status ?? "pending")).length },
+      { label: "미처리 신고", value: row.openCount ?? 0 },
+      { label: "누적 신고", value: row.reportCount ?? 0 },
+      { label: "관련 리뷰", value: row.courtReviewCount ?? 0 },
+    ];
+  }
+  if (view === "matches") {
+    return [
+      { label: "미처리 신고", value: row.openCount ?? 0 },
+      { label: "누적 신고", value: row.reportCount ?? 0 },
+      { label: "참여 인원", value: row.match ? getMatchPlayerIds(row.match).length : 0 },
+      { label: "경기 상태", value: row.match?.status ?? "-" },
+    ];
+  }
+  if (view === "teams") {
+    return [
+      { label: "미처리 신고", value: row.openCount ?? 0 },
+      { label: "누적 신고", value: row.reportCount ?? 0 },
+      { label: "대상", value: row.entityKind === "affiliation" ? "소속" : "팀" },
+      { label: "엠블럼 위반", value: row.team?.emblemViolationCount ?? 0 },
+    ];
+  }
+  return [
+    { label: "미처리 신고", value: row.openCount ?? 0 },
+    { label: "누적 신고", value: row.reportCount ?? 0 },
+    { label: "관련 경기", value: row.matchCount ?? 0 },
+    { label: "최근 제재", value: row.disciplinaryActionCount ?? 0 },
+  ];
+}
+
 const APPOINTMENT_ROLE_META = {
   admin: { label: "관리자", defaultTermDays: 90 },
   referee: { label: "심판", defaultTermDays: 90 },
@@ -184,6 +263,19 @@ function addReport(row, report) {
   row.reportCount = row.reports.length;
   row.openCount = getOpenCount(row.reports);
   row.latestAt = Math.max(row.latestAt, getTime(report.createdAt));
+}
+
+function finalizeReviewRow(row = {}) {
+  const reports = [...(row.reports ?? [])].sort((a, b) => (
+    Number(b.status === "open") - Number(a.status === "open") ||
+    getTime(b.createdAt) - getTime(a.createdAt) ||
+    String(a.id ?? "").localeCompare(String(b.id ?? ""))
+  ));
+  return {
+    ...row,
+    reports,
+    latestReport: reports[0] ?? null,
+  };
 }
 
 function getDatePlusDays(days) {
@@ -376,7 +468,7 @@ export function buildAdminReviewModel(state = {}) {
 
   matches.forEach((match) => {
     const courtName = match.court || "미정 구장";
-    const courtRow = pushGrouped(courtMap, courtName, {
+    const courtRow = pushGrouped(courtMap, `court-name:${courtName}`, {
       title: courtName,
       subtitle: `${match.region ?? "지역 미정"} · 경기 ${matches.filter((item) => item.court === courtName).length}건`,
     });
@@ -402,7 +494,7 @@ export function buildAdminReviewModel(state = {}) {
 
   courtRequests.forEach((request) => {
     const courtName = request.name || "미정 구장요청";
-    const row = pushGrouped(courtMap, courtName, {
+    const row = pushGrouped(courtMap, `court-request:${request.id}`, {
       title: courtName,
       subtitle: `${request.region ?? "지역 미정"} · 등록요청`,
     });
@@ -477,8 +569,9 @@ export function buildAdminReviewModel(state = {}) {
       });
       addReport(matchRow, report);
 
-      const courtRow = pushGrouped(courtMap, match?.court || "미정 구장", {
-        title: match?.court || "미정 구장",
+      const matchCourtName = match?.court || "미정 구장";
+      const courtRow = pushGrouped(courtMap, `court-name:${matchCourtName}`, {
+        title: matchCourtName,
         subtitle: `${match?.region ?? "지역 미정"} · 경기 신고`,
       });
       addReport(courtRow, report);
@@ -498,7 +591,7 @@ export function buildAdminReviewModel(state = {}) {
 
     if (report.type === "court_request") {
       const request = courtRequests.find((item) => item.id === report.targetId);
-      const courtRow = pushGrouped(courtMap, request?.name || "구장 등록요청", {
+      const courtRow = pushGrouped(courtMap, `court-request:${report.targetId}`, {
         title: request?.name || "구장 등록요청",
         subtitle: `${request?.region ?? "지역 미정"} · 구장 등록 신고`,
       });
@@ -518,7 +611,7 @@ export function buildAdminReviewModel(state = {}) {
 
     if (report.type === "court") {
       const court = approvedCourts.find((item) => item.id === report.targetId);
-      const courtRow = pushGrouped(courtMap, court?.name || "구장", {
+      const courtRow = pushGrouped(courtMap, `court:${report.targetId}`, {
         title: court?.name || "구장",
         subtitle: `${court?.addressText ?? "주소 미정"} · 승인 구장 신고`,
       });
@@ -540,7 +633,7 @@ export function buildAdminReviewModel(state = {}) {
       const review = courtReviews.find((item) => item.id === report.targetId);
       const match = review?.matchId ? matchMap[review.matchId] : null;
       const courtName = review?.courtName || match?.court || "구장 리뷰";
-      const courtRow = pushGrouped(courtMap, courtName, {
+      const courtRow = pushGrouped(courtMap, `court-review:${report.targetId}`, {
         title: courtName,
         subtitle: `${review?.rating ?? "-"}점 · 구장 리뷰 신고`,
       });
@@ -568,14 +661,14 @@ export function buildAdminReviewModel(state = {}) {
     }
   });
 
-  const courtRows = [...courtMap.values()].map((row) => ({
+  const courtRows = [...courtMap.values()].map((row) => finalizeReviewRow({
     ...row,
     matchCount: row.matches.length,
     courtRequestCount: row.courtRequests.length,
     courtReviewCount: row.courtReviews.length,
     issueCount: row.openCount + row.matches.filter(isRecordIssueMatch).length,
   })).sort(sortReviewRows);
-  const playerRows = [...playerMap.values()].map((row) => ({
+  const playerRows = [...playerMap.values()].map((row) => finalizeReviewRow({
     ...row,
     matchCount: row.matches.length,
     courtRequestCount: row.courtRequests.length,
@@ -583,14 +676,14 @@ export function buildAdminReviewModel(state = {}) {
     disciplinaryActionCount: row.disciplinaryActions.length,
     issueCount: row.openCount + row.matches.filter(isRecordIssueMatch).length,
   })).filter((row) => row.reportCount > 0 || row.courtRequestCount > 0 || row.courtReviewCount > 0 || row.disciplinaryActionCount > 0).sort(sortReviewRows);
-  const matchRows = [...matchReviewMap.values()].map((row) => ({
+  const matchRows = [...matchReviewMap.values()].map((row) => finalizeReviewRow({
     ...row,
     matchCount: row.matches.length,
     courtRequestCount: row.courtRequests.length,
     courtReviewCount: row.courtReviews.length,
     issueCount: row.openCount + (isRecordIssueMatch(row.match) ? 1 : 0),
   })).sort(sortReviewRows);
-  const teamRows = [...teamReviewMap.values()].map((row) => ({
+  const teamRows = [...teamReviewMap.values()].map((row) => finalizeReviewRow({
     ...row,
     matchCount: 0,
     courtRequestCount: 0,

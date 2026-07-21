@@ -263,8 +263,11 @@ export default function Settings({ app, auth, section = "main" }) {
   const [reportCourtRequestId, setReportCourtRequestId] = useState("");
   const [reportCourtId, setReportCourtId] = useState("");
   const [reportCourtReviewId, setReportCourtReviewId] = useState("");
+  const [reportRemoteTarget, setReportRemoteTarget] = useState(null);
   const [reportMemo, setReportMemo] = useState("");
   const [reportedUserIds, setReportedUserIds] = useState([]);
+  const [reportSubmitPending, setReportSubmitPending] = useState(false);
+  const [reportSubmitStatus, setReportSubmitStatus] = useState("");
   const [reportMatchesLoading, setReportMatchesLoading] = useState(false);
   const [reportMatchesError, setReportMatchesError] = useState("");
   const reportMatchesLoadRef = useRef("");
@@ -612,8 +615,10 @@ export default function Settings({ app, auth, section = "main" }) {
   const selectedReportMatchId = recentReportMatches.some((match) => match.id === reportMatchId) ? reportMatchId : "";
   const selectedReportMatch = recentReportMatches.find((match) => match.id === selectedReportMatchId) ?? null;
   const selectedReportCourtRequest = reportableCourtRequests.find((request) => request.id === reportCourtRequestId) ?? null;
-  const selectedReportCourt = reportableCourts.find((court) => court.id === reportCourtId) ?? null;
-  const selectedReportCourtReview = reportableCourtReviews.find((review) => review.id === reportCourtReviewId) ?? null;
+  const selectedReportCourt = reportableCourts.find((court) => court.id === reportCourtId)
+    ?? (reportRemoteTarget?.kind === "court" && reportRemoteTarget.court?.id === reportCourtId ? reportRemoteTarget.court : null);
+  const selectedReportCourtReview = reportableCourtReviews.find((review) => review.id === reportCourtReviewId)
+    ?? (reportRemoteTarget?.kind === "court_review" && reportRemoteTarget.review?.id === reportCourtReviewId ? reportRemoteTarget.review : null);
   const reportParticipantRows = useMemo(
     () => (selectedReportMatch && reportTargetType !== REPORT_TARGET_TYPES.courtRequest ? getReportParticipantRows(selectedReportMatch, userMap) : []),
     [reportTargetType, selectedReportMatch, userMap],
@@ -718,6 +723,37 @@ export default function Settings({ app, auth, section = "main" }) {
 
     return items.filter((item) => (keyword ? item.haystack.includes(keyword) : true));
   }, [matchMap, recentReportMatches, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, userMap]);
+  const reportRemoteSearchTypes = reportTargetType === REPORT_TARGET_TYPES.courtReview
+    ? ["court_review"]
+    : reportTargetType === REPORT_TARGET_TYPES.court || reportTargetType === REPORT_TARGET_TYPES.courtRequest
+      ? ["court"]
+      : reportTargetType === REPORT_TARGET_TYPES.mixed
+        ? ["court", "court_review"]
+        : [];
+  const mapRemoteReportTarget = (item) => {
+    if (item?.kind === "court") {
+      const hashtag = item.hashtag ? getCourtHashtag(item) : "";
+      return {
+        id: `court:${item.id}`,
+        kind: "court",
+        court: item,
+        title: item.name,
+        subtitle: `${item.addressText || "주소 미정"} · 등록 구장`,
+        meta: hashtag || "승인 구장",
+      };
+    }
+    if (item?.kind === "court_review") {
+      return {
+        id: `court-review:${item.id}`,
+        kind: "court_review",
+        review: item,
+        title: item.courtName || "구장 리뷰",
+        subtitle: `${item.rating ?? "-"}점 · ${userMap[item.reviewerId]?.name ?? "작성자"} · ${matchMap[item.matchId]?.title ?? "경기"}`,
+        meta: matchMap[item.matchId] ? getMatchHashtag(matchMap[item.matchId]) : "구장 리뷰",
+      };
+    }
+    return null;
+  };
   const canSubmitReport = Boolean(reportReason) && (
     reportTargetType === REPORT_TARGET_TYPES.courtRequest
       ? Boolean(selectedReportCourtRequest || selectedReportCourt)
@@ -781,6 +817,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const selectReportTarget = (item) => {
     setReportTargetQuery(`${item.title} ${item.meta ?? ""}`.trim());
     if (item.kind === "court_request") {
+      setReportRemoteTarget(null);
       setReportCourtRequestId(item.request.id);
       setReportCourtId("");
       setReportCourtReviewId("");
@@ -789,6 +826,7 @@ export default function Settings({ app, auth, section = "main" }) {
       return;
     }
     if (item.kind === "court") {
+      setReportRemoteTarget(item);
       setReportCourtId(item.court.id);
       setReportCourtRequestId("");
       setReportCourtReviewId("");
@@ -797,6 +835,7 @@ export default function Settings({ app, auth, section = "main" }) {
       return;
     }
     if (item.kind === "court_review") {
+      setReportRemoteTarget(item);
       setReportCourtReviewId(item.review.id);
       setReportCourtId("");
       setReportCourtRequestId("");
@@ -805,6 +844,7 @@ export default function Settings({ app, auth, section = "main" }) {
       return;
     }
     setReportCourtRequestId("");
+    setReportRemoteTarget(null);
     setReportCourtId("");
     setReportCourtReviewId("");
     setReportMatchId(item.match.id);
@@ -843,49 +883,49 @@ export default function Settings({ app, auth, section = "main" }) {
       setBlockSavePending(false);
     }
   };
-  const submitReport = (event) => {
+  const submitReport = async (event) => {
     event.preventDefault();
-    if (!canSubmitReport) return;
+    if (!canSubmitReport || reportSubmitPending) return;
     const memo = reportMemo.trim();
-    if (selectedReportCourtRequest) {
-      app.actions.reportCourtRequest(selectedReportCourtRequest.id, [reportReason, memo].filter(Boolean).join(" · "));
-      setReportCourtRequestId("");
-      setReportCourtId("");
-      setReportCourtReviewId("");
-      setReportTargetQuery("");
-      setReportMemo("");
-      return;
-    }
-    if (selectedReportCourt) {
-      app.actions.reportCourt(selectedReportCourt.id, [reportReason, memo].filter(Boolean).join(" · "));
-      setReportCourtRequestId("");
-      setReportCourtId("");
-      setReportCourtReviewId("");
-      setReportTargetQuery("");
-      setReportMemo("");
-      return;
-    }
-    if (selectedReportCourtReview) {
-      app.actions.reportCourtReview(selectedReportCourtReview.id, [reportReason, memo].filter(Boolean).join(" · "));
-      setReportCourtRequestId("");
-      setReportCourtId("");
-      setReportCourtReviewId("");
-      setReportTargetQuery("");
-      setReportMemo("");
-      return;
-    }
-    const targetNames = selectedReportedUserIds.map((userId) => userMap[userId]?.name).filter(Boolean);
-    const targetLine = targetNames.length ? `대상: ${targetNames.join(", ")}` : "대상: 경기 기록";
-    const matchLine = selectedReportMatch ? getMatchHashtag(selectedReportMatch) : "";
-    if (selectedReportMatchId) {
-      app.actions.reportMatch(selectedReportMatchId, [reportReason, matchLine, targetLine, memo].filter(Boolean).join(" · "), selectedReportedUserIds);
+    setReportSubmitPending(true);
+    setReportSubmitStatus("신고 저장 중");
+    try {
+      let result = null;
+      if (selectedReportCourtRequest) {
+        result = await app.actions.reportCourtRequest(selectedReportCourtRequest.id, [reportReason, memo].filter(Boolean).join(" · "));
+      } else if (selectedReportCourt) {
+        result = await app.actions.reportCourt(selectedReportCourt.id, [reportReason, memo].filter(Boolean).join(" · "));
+      } else if (selectedReportCourtReview) {
+        result = await app.actions.reportCourtReview(selectedReportCourtReview.id, [reportReason, memo].filter(Boolean).join(" · "));
+      } else if (selectedReportMatchId) {
+        const matchLine = selectedReportMatch ? getMatchHashtag(selectedReportMatch) : "";
+        if (reportTargetType === REPORT_TARGET_TYPES.player) {
+          const targetUserId = selectedReportedUserIds[0] ?? "";
+          result = await app.actions.reportPlayer(targetUserId, selectedReportMatchId, [reportReason, matchLine, memo].filter(Boolean).join(" · "));
+        } else {
+          const targetNames = selectedReportedUserIds.map((userId) => userMap[userId]?.name).filter(Boolean);
+          const targetLine = targetNames.length ? `대상: ${targetNames.join(", ")}` : "대상: 경기 기록";
+          result = await app.actions.reportMatch(selectedReportMatchId, [reportReason, matchLine, targetLine, memo].filter(Boolean).join(" · "), selectedReportedUserIds);
+        }
+      }
+      if (!result || result.ok === false) {
+        setReportSubmitStatus("신고 저장 실패. 입력 내용을 확인하고 다시 시도하세요.");
+        return;
+      }
+      setReportSubmitStatus(result.duplicate ? "이미 접수된 신고입니다." : "신고가 접수됐습니다.");
+      setReportReason("");
       setReportMatchId("");
       setReportedUserIds([]);
       setReportCourtRequestId("");
       setReportCourtId("");
       setReportCourtReviewId("");
+      setReportRemoteTarget(null);
       setReportTargetQuery("");
       setReportMemo("");
+    } catch {
+      setReportSubmitStatus("신고 저장 실패. 입력 내용을 유지했습니다.");
+    } finally {
+      setReportSubmitPending(false);
     }
   };
   const updateCourtDraft = (patch) => {
@@ -1115,6 +1155,7 @@ export default function Settings({ app, auth, section = "main" }) {
     setReportCourtRequestId(request.id);
     setReportCourtId("");
     setReportCourtReviewId("");
+    setReportRemoteTarget(null);
     setReportMatchId("");
     setReportedUserIds([]);
   };
@@ -1190,8 +1231,8 @@ export default function Settings({ app, auth, section = "main" }) {
   const toggleReportedUser = (userId) => {
     setReportedUserIds((current) => (
       current.includes(userId)
-        ? current.filter((id) => id !== userId)
-        : [...current, userId]
+        ? []
+        : [userId]
     ));
   };
 
@@ -1929,7 +1970,7 @@ export default function Settings({ app, auth, section = "main" }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">신고</p>
-                <h2>경기 기록 신고</h2>
+                <h2>신고 접수</h2>
               </div>
               <Badge tone={app.state.reports?.length ? "orange" : "neutral"}>{app.state.reports?.length ?? 0}건</Badge>
             </div>
@@ -1945,6 +1986,7 @@ export default function Settings({ app, auth, section = "main" }) {
                     setReportCourtRequestId("");
                     setReportCourtId("");
                     setReportCourtReviewId("");
+                    setReportRemoteTarget(null);
                     setReportedUserIds([]);
                   }}
                 >
@@ -1962,6 +2004,9 @@ export default function Settings({ app, auth, section = "main" }) {
                       placeholder={getReportTargetPlaceholder(reportTargetType)}
                       items={reportTargetSearchItems}
                       idleItems={reportTargetSearchItems}
+                      remoteSearchType={reportRemoteSearchTypes}
+                      remoteLimit={12}
+                      mapRemoteItem={mapRemoteReportTarget}
                       idleTitle="선택 가능한 대상"
                       emptyText={reportNeedsMatchData && reportMatchesLoading
                         ? "신고 가능한 경기 확인 중"
@@ -2042,14 +2087,15 @@ export default function Settings({ app, auth, section = "main" }) {
                       );
                     })}
                   </div>
-                  <small>{reportTargetType === REPORT_TARGET_TYPES.player ? "선수 사유는 신고 대상을 1명 이상 선택해야 합니다." : "선택하지 않으면 경기 기록 전체 신고로 접수됩니다."}</small>
+                  <small>{reportTargetType === REPORT_TARGET_TYPES.player ? "플레이어 신고는 한 번에 한 명만 선택합니다." : "선택하지 않으면 경기 기록 전체 신고로 접수됩니다."}</small>
                 </div>
               ) : null}
               <label>
                 상세 메모
                 <textarea value={reportMemo} placeholder="상황을 짧게 적어주세요." onChange={(event) => setReportMemo(event.target.value)} />
               </label>
-              <Button type="submit" variant="secondary" disabled={!canSubmitReport}>신고 접수</Button>
+              <Button type="submit" variant="secondary" disabled={!canSubmitReport || reportSubmitPending}>{reportSubmitPending ? "저장 중" : "신고 접수"}</Button>
+              {reportSubmitStatus ? <small role="status">{reportSubmitStatus}</small> : null}
             </form>
             <div className="compact-list">
               {app.state.reports?.slice(0, 4).map((report) => (
@@ -2059,8 +2105,10 @@ export default function Settings({ app, auth, section = "main" }) {
                       ? courtRequests.find((request) => request.id === report.targetId)?.name ?? "구장 등록요청"
                       : report.type === "court"
                         ? approvedCourts.find((court) => court.id === report.targetId)?.name ?? "구장"
-                        : report.type === "court_review"
+                      : report.type === "court_review"
                           ? courtReviews.find((review) => review.id === report.targetId)?.courtName ?? "구장 리뷰"
+                          : report.type === "player"
+                            ? userMap[report.targetId]?.name ?? "플레이어"
                           : matchMap[report.targetId]
                             ? `${getMatchHashtag(matchMap[report.targetId])} ${matchMap[report.targetId].title ?? "경기"}`
                             : "경기"

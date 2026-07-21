@@ -4930,6 +4930,55 @@ export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
   };
 }
 
+export function reportPlayer(state, playerId, matchId, reason = "") {
+  const disciplineBlock = getDisciplineBlockedState(state, "플레이어 신고");
+  if (disciplineBlock) return disciplineBlock;
+  const match = state.matches.find((item) => item.id === matchId);
+  const player = state.users.find((item) => item.id === playerId);
+  if (!match || !player || !playerId || playerId === state.currentUserId) return state;
+
+  const now = Date.now();
+  const reportTime = getReportableMatchTimeMs(match);
+  const matchPlayerIds = new Set(getReportableMatchUserIds(match));
+  if (!matchPlayerIds.has(state.currentUserId) || !matchPlayerIds.has(playerId)) return state;
+  if (reportTime < now - REPORT_MATCH_WINDOW_MS || reportTime > now) return state;
+
+  const duplicate = (state.reports ?? []).some((report) => (
+    report.type === "player" &&
+    report.targetId === playerId &&
+    report.by === state.currentUserId &&
+    !["resolved", "dismissed"].includes(report.status)
+  ));
+  if (duplicate) return state;
+
+  const report = {
+    id: makeId("r"),
+    type: "player",
+    targetId: playerId,
+    by: state.currentUserId,
+    reportedUserIds: [playerId],
+    sourceMatchId: matchId,
+    reason: String(reason).trim() || "기타 운영 확인 필요",
+    status: "open",
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    reports: [report, ...(state.reports ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "신고 접수",
+        body: `${player.name} 플레이어 신고가 접수됐습니다. 운영 검토 목록에 남겼습니다.`,
+        tone: "match",
+        matchId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function reportCourtRequest(state, requestId, reason = "허위 구장 등록") {
   const disciplineBlock = getDisciplineBlockedState(state, "구장 신고");
   if (disciplineBlock) return disciplineBlock;

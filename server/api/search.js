@@ -1,6 +1,7 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "./_supabaseAdmin.js";
 import {
   AFFILIATION_COLUMNS,
+  COURT_REVIEW_COLUMNS,
   PROFILE_CARD_COLUMNS as PROFILE_COLUMNS,
   SEARCH_COURT_COLUMNS as COURT_COLUMNS,
   TEAM_COLUMNS,
@@ -15,6 +16,7 @@ const TYPE_ALIASES = {
   profile: ["profile"],
   team: ["team"],
   court: ["court"],
+  court_review: ["court_review"],
   referee: ["referee"],
   affiliation: ["affiliation"],
   organization: ["affiliation"],
@@ -219,6 +221,25 @@ function toCourt(row = {}) {
   };
 }
 
+function toCourtReview(row = {}) {
+  const payload = getPayload(row);
+  return {
+    ...payload,
+    kind: "court_review",
+    id: row.id,
+    courtId: row.court_id,
+    courtName: row.court_name,
+    matchId: row.match_id,
+    reviewerId: row.reviewer_id,
+    rating: row.rating,
+    tags: row.tags ?? [],
+    memo: row.memo ?? "",
+    status: row.status ?? "active",
+    createdAt: row.created_at ?? null,
+    searchText: [row.court_name, row.memo, ...(row.tags ?? [])].filter(Boolean).join(" "),
+  };
+}
+
 function getContextTeamId(context = {}) {
   const value = String(context?.teamId ?? "").trim();
   return value.length <= 80 ? value : "";
@@ -298,6 +319,20 @@ async function searchCourts(supabase, query, limit) {
   return (fallbackData ?? []).filter((row) => isCourtFuzzyMatch(row, query)).slice(0, limit).map(toCourt);
 }
 
+async function searchCourtReviews(supabase, profileId, query, limit) {
+  let request = supabase
+    .from("court_reviews")
+    .select(COURT_REVIEW_COLUMNS)
+    .eq("status", "active")
+    .or(searchFilter(["court_name", "memo"], query))
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (profileId) request = request.neq("reviewer_id", profileId);
+  const { data, error } = await request;
+  if (error) throw error;
+  return (data ?? []).map(toCourtReview);
+}
+
 async function searchReferees(supabase, query, limit) {
   const { data, error } = await supabase
     .from("public_profiles")
@@ -369,6 +404,7 @@ export default async function handler(request, response) {
       profile: () => searchProfiles(context.supabase, query, limit, searchContext),
       team: () => searchTeams(context.supabase, query, limit),
       court: () => searchCourts(context.supabase, query, limit),
+      court_review: () => searchCourtReviews(context.supabase, context.profileId, query, limit),
       referee: () => searchReferees(context.supabase, query, limit),
       affiliation: () => searchAffiliations(context.supabase, query, limit),
     };

@@ -120,6 +120,28 @@ test("credentials are rejected from every URL query", async () => {
   assert.deepEqual(unknownRoute.payload, { error: "credentials_not_allowed_in_url" });
 });
 
+test("report review actions keep sanctions behind verified targets and level 50", async () => {
+  const [reviewSource, submitSource, settingsSource, hookSource, searchSource] = await Promise.all([
+    readSource("server/api/admin/review-action.js"),
+    readSource("server/api/reports/submit.js"),
+    readSource("src/pages/Settings.jsx"),
+    readSource("src/hooks/useAppData.js"),
+    readSource("server/api/search.js"),
+  ]);
+  assert.match(reviewSource, /HIGH_IMPACT_ACTIONS\.has\(actionType\) && adminLevel < 50/);
+  assert.match(reviewSource, /verifiedTargetIds\.includes\(targetUserId\)/);
+  assert.match(reviewSource, /referee_target_mismatch/);
+  assert.match(reviewSource, /reason\.length < 4 \|\| feedback\.length < 4/);
+  assert.match(submitSource, /verifiedPayload: \{ sourceMatchId: verifiedSourceMatchId \}/);
+  assert.match(submitSource, /\.eq\("id", requestedMatchId\)/);
+  assert.match(submitSource, /report\.sourceMatchId \?\? report\.payload\?\.sourceMatchId/);
+  assert.match(settingsSource, /app\.actions\.reportPlayer\(targetUserId, selectedReportMatchId/);
+  assert.match(settingsSource, /remoteSearchType=\{reportRemoteSearchTypes\}/);
+  assert.match(searchSource, /court_review: \["court_review"\]/);
+  assert.match(searchSource, /searchCourtReviews\(context\.supabase, context\.profileId/);
+  assert.match(hookSource, /result\.ok === false \|\| result\.duplicate === true/);
+});
+
 test("protected API routes require one strict Authorization bearer", async () => {
   assert.deepEqual(parseBearerAuthorization({ headers: {} }), { token: "", error: "missing_bearer_token" });
   assert.equal(getStrictBearerToken({ headers: { authorization: "Bearer abc" } }), "");

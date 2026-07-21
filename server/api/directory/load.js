@@ -288,7 +288,10 @@ async function loadAdminSection(context, body = {}) {
   courtRequestRows = uniqueRows([courtRequestRows, pendingLocationRequestRows]);
   const approvedCourtRows = uniqueRows([targetApprovedCourtRows, locationCandidateRows]);
 
-  const targetMatchIds = reportRowsByType("match").map((row) => row.target_id);
+  const targetMatchIds = uniqueValues([
+    ...reportRowsByType("match").map((row) => row.target_id),
+    ...reportRowsByType("player").map((row) => row.payload?.sourceMatchId),
+  ]);
   const targetMatchRows = await readRowsByIds(context.supabase, "matches", MATCH_LIST_COLUMNS, "id", targetMatchIds);
   const matchRows = uniqueRows([issueMatchPage.rows, targetMatchRows]);
   const matchPlayerRows = await readRowsByIds(context.supabase, "match_players", MATCH_PLAYER_COLUMNS, "match_id", matchRows.map((row) => row.id));
@@ -575,11 +578,13 @@ async function loadDirectoryPage(context, body = {}) {
   const userById = new Map(publicUsers.map((user) => [user.id, user]));
   userById.set(currentUser.id, { ...userById.get(currentUser.id), ...currentUser });
 
-  const [selfReports, courtRequests, favoriteCourts, courtReviews, refereeRequests, refereeExamAttempts, adminAppointments, refereeAppointments, disciplinaryActions, affiliations] = await Promise.all([
+  const [selfReports, courtRequests, favoriteCourts, reportableCourts, ownCourtReviews, reportableCourtReviews, refereeRequests, refereeExamAttempts, adminAppointments, refereeAppointments, disciplinaryActions, affiliations] = await Promise.all([
     includeSelfDetails && currentProfileId ? readRows(context.supabase.from("reports").select(REPORT_COLUMNS).eq("user_id", currentProfileId).order("created_at", { ascending: false }).limit(pageRequest.limit)) : [],
     includeSelfDetails && currentProfileId ? readRows(context.supabase.from("court_requests").select(COURT_REQUEST_COLUMNS).eq("requested_by", currentProfileId).order("created_at", { ascending: false }).limit(pageRequest.limit)) : [],
     includeSelfDetails ? readRowsByIds(context.supabase, "approved_courts", APPROVED_COURT_COLUMNS, "id", favoriteCourtIds) : [],
+    includeSelfDetails ? readRows(context.supabase.from("approved_courts").select(APPROVED_COURT_COLUMNS).eq("status", "active").order("updated_at", { ascending: false }).limit(pageRequest.limit)) : [],
     includeSelfDetails && currentProfileId ? readRows(context.supabase.from("court_reviews").select(COURT_REVIEW_COLUMNS).eq("reviewer_id", currentProfileId).order("created_at", { ascending: false }).limit(pageRequest.limit)) : [],
+    includeSelfDetails && currentProfileId ? readRows(context.supabase.from("court_reviews").select(COURT_REVIEW_COLUMNS).eq("status", "active").neq("reviewer_id", currentProfileId).order("created_at", { ascending: false }).limit(pageRequest.limit)) : [],
     includeSelfDetails && currentProfileId ? readRows(context.supabase.from("referee_requests").select(REFEREE_REQUEST_COLUMNS).eq("requested_by", currentProfileId).order("created_at", { ascending: false }).limit(pageRequest.limit)) : [],
     includeSelfDetails && currentProfileId ? readRows(context.supabase.from("referee_exam_attempts").select(REFEREE_EXAM_ATTEMPT_COLUMNS).eq("user_id", currentProfileId).order("created_at", { ascending: false }).limit(pageRequest.limit)) : [],
     includeSelfDetails && currentProfileId ? readRows(context.supabase.from("admin_appointments").select(APPOINTMENT_COLUMNS).eq("user_id", currentProfileId).order("created_at", { ascending: false }).limit(pageRequest.limit)) : [],
@@ -606,9 +611,9 @@ async function loadDirectoryPage(context, body = {}) {
       favoriteTeamIds: favoriteByType("team"),
       favoriteCourtIds: favoriteByType("court"),
       favoriteRefereeIds: favoriteByType("referee"),
-      approvedCourts: favoriteCourts.map(fromRemoteApprovedCourt),
+      approvedCourts: uniqueRows([favoriteCourts, reportableCourts]).map(fromRemoteApprovedCourt),
       courtRequests: courtRequests.map(fromRemoteCourtRequest),
-      courtReviews: courtReviews.map(fromRemoteCourtReview),
+      courtReviews: uniqueRows([ownCourtReviews, reportableCourtReviews]).map(fromRemoteCourtReview),
       refereeRequests: refereeRequests.map(fromRemotePayloadRow),
       refereeExamAttempts: refereeExamAttempts.map(fromRemotePayloadRow),
       adminAppointments: adminAppointments.map(fromRemotePayloadRow),
@@ -640,7 +645,8 @@ async function loadDirectoryPage(context, body = {}) {
       ...teamMemberRows,
       ...selfReports,
       ...courtRequests,
-      ...courtReviews,
+      ...ownCourtReviews,
+      ...reportableCourtReviews,
     ]),
   };
 }
