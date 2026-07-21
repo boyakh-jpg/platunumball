@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Clock3, ExternalLink, MapPin, RotateCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
+import { Activity, ClipboardList, Clock3, ExternalLink, MapPin, RotateCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
+import UserOperationsPanel from "../components/admin/UserOperationsPanel.jsx";
 import {
   ADMIN_BACKEND_TODO,
   APPOINTMENT_TERM_OPTIONS,
@@ -43,6 +44,7 @@ import "../styles/recruiting-arena.css";
 const ADMIN_SECTION_OPTIONS = [
   { id: "courts", label: "구장 신청", caption: "등록 신청과 구장 신고", icon: MapPin },
   { id: "players", label: "플레이어 신고", caption: "신고와 징계", icon: UserRound },
+  { id: "userOps", label: "사용자 운영", caption: "통계·경고·제재", icon: Activity, minLevel: 50 },
   { id: "matches", label: "경기 심사", caption: "기록 오류와 이의", icon: ClipboardList },
   { id: "teams", label: "팀·소속", caption: "이름과 엠블럼 신고", icon: ShieldAlert },
   { id: "appointments", label: "권한 관리", caption: "심판과 관리자 임명", icon: ShieldCheck },
@@ -307,10 +309,12 @@ export default function Admin({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const adminLevel = Number(app.adminContext?.level ?? 0);
   const canOwner = adminLevel >= 100;
-  const sectionOptions = ADMIN_SECTION_OPTIONS.filter((option) => !option.ownerOnly || canOwner);
+  const sectionOptions = ADMIN_SECTION_OPTIONS.filter((option) => (
+    (!option.ownerOnly || canOwner) && (!option.minLevel || adminLevel >= option.minLevel)
+  ));
   const requestedSection = searchParams.get("section");
   const section = sectionOptions.some((option) => option.id === requestedSection) ? requestedSection : DEFAULT_ADMIN_SECTION;
-  const view = ["appointments", "ratingPolicy"].includes(section) ? "courts" : section;
+  const view = ["appointments", "ratingPolicy", "userOps"].includes(section) ? "courts" : section;
   const [queueModeState, setQueueModeState] = useState({ section: DEFAULT_ADMIN_SECTION, value: DEFAULT_ADMIN_QUEUE_MODE });
   const queueMode = queueModeState.section === section ? queueModeState.value : DEFAULT_ADMIN_QUEUE_MODE;
   const setQueueMode = (value) => setQueueModeState({ section, value });
@@ -320,7 +324,7 @@ export default function Admin({ app }) {
   const appliedQueueFilter = appliedQueueFilterByView[section] ?? "";
   const loadAdminSection = app.actions.loadAdminSection;
   useEffect(() => {
-    if (section === "ratingPolicy") return;
+    if (["ratingPolicy", "userOps"].includes(section)) return;
     loadAdminSection?.({ section, queueMode, filter: appliedQueueFilter, limit: ADMIN_DEFAULT_PAGE_LIMIT, offset: 0 });
   }, [appliedQueueFilter, loadAdminSection, queueMode, section]);
   const [selectedIdByView, setSelectedIdByView] = useState({});
@@ -417,6 +421,7 @@ export default function Admin({ app }) {
     const localCounts = {
       courts: (adminViewState.settings?.courtRequests ?? []).filter(isPendingCourtRequest).length + courtReports,
       players: model.players.filter((row) => row.openCount > 0).length,
+      userOps: "",
       matches: model.matches.filter((row) => row.issueCount > 0).length,
       teams: model.teams.filter((row) => row.openCount > 0).length,
       appointments: appointments.summary.pendingAppointmentCount,
@@ -424,7 +429,7 @@ export default function Admin({ app }) {
     };
     return Object.fromEntries(Object.entries(localCounts).map(([key, value]) => [
       key,
-      key === "ratingPolicy" ? "" : app.adminStatus?.counts?.[key] ?? (key === section ? value : ""),
+      ["ratingPolicy", "userOps"].includes(key) ? "" : app.adminStatus?.counts?.[key] ?? (key === section ? value : ""),
     ]));
   }, [adminViewState.reports, adminViewState.settings?.courtRequests, app.adminStatus?.counts, appointments.summary.pendingAppointmentCount, model.matches, model.players, model.teams, section]);
   const activeAdminPage = app.adminStatus?.section === section && app.adminStatus?.queueMode === queueMode
@@ -637,6 +642,8 @@ export default function Admin({ app }) {
 
       {section === "ratingPolicy" ? (
         <RatingPolicyPanel app={app} />
+      ) : section === "userOps" ? (
+        <UserOperationsPanel app={app} />
       ) : section === "appointments" ? (
         <Card className="section-card admin-appointment-card">
         <div className="section-title-row">

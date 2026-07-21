@@ -251,6 +251,14 @@ const REQUIRED_COLUMNS = {
 
 const REQUIRED_RPCS = [
   {
+    name: "rankball_admin_user_operations",
+    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_limit: 1, p_offset: 0, p_search: "", p_risk_only: true },
+  },
+  {
+    name: "rankball_commit_admin_manual_user_action",
+    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_target_user_id: "", p_action_type: "warning", p_duration_days: 3, p_reason: "", p_message: "" },
+  },
+  {
     name: "rankball_get_rating_policy",
     args: { p_actor_profile_id: "", p_actor_admin_level: 0 },
   },

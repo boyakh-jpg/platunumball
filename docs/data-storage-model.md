@@ -170,6 +170,14 @@
 - Supabase 설정 환경에서 관리자 UI는 local state를 먼저 갱신하고 같은 draft를 server action에 전달한다. 배포 전에는 server action 성공 결과 기준으로 재조회/동기화해야 한다.
 - Supabase 설정 환경의 프론트 bootstrap에서는 `localStorage/mockData` 앱 데이터 fallback을 제거했다. 방/경기 reducer의 authoritative RPC 이전은 2026-07-13 operation boundary에서 완료됐다.
 
+## 2026-07-21 admin user operations
+
+- `POST /api/admin/user-operations`의 `load`는 `rankball_admin_user_operations()` RPC 한 번으로 최근 30일 사용자 활동, 신고, 제재, 검토 신호를 집계하고 검색·위험 신호 필터·30건 페이지네이션을 적용한다.
+- 집계 원본은 `profiles`, `profile_match_summaries`, `match_players`, `matches`, `recruiting_posts`, `room_chat_messages`, `reports`, `admin_disciplinary_actions`, `admin_audit_log`다. 원본 전체 row는 브라우저로 내려보내지 않는다.
+- `commit`은 `rankball_commit_admin_manual_user_action()`에서 관리자 level 50, 대상 프로필, 자기 조치 금지, 동급 이상 관리자 보호, 허용 액션·기간·문자 길이를 다시 검사한다.
+- 수동 경고는 `admin_audit_log.type='manual_user_warning'`과 `notifications.type='admin_warning'`을 같은 transaction에 저장한다. 공개방/전체 제재는 여기에 `admin_disciplinary_actions`를 함께 저장한다.
+- 두 RPC는 `service_role`만 execute할 수 있고 `anon`, `authenticated`, `public` 실행 권한은 제거한다.
+
 ## 2026-06-24 Discord DM worker
 
 - `POST /api/discord/dm-worker` 또는 `GET /api/discord/dm-worker`는 `discord_notification_deliveries.status=queued`, `sent_at is null`, `send_at <= now()` row를 `sending`으로 claim한 뒤 Discord Bot DM을 발송한다.

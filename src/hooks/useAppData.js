@@ -2978,6 +2978,20 @@ export function useAppData(authUser = null, appLocation = null) {
             filter: current.page?.filter ?? "",
           });
         },
+        loadAdminUserOperations: async (options = {}) => {
+          if (!isSupabaseConfigured) return { ok: true, summary: {}, rows: [], page: { total: 0, hasMore: false, nextOffset: null } };
+          if (!ensureRemoteReady("사용자 운영 통계")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/user-operations", "사용자 운영 통계");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/user-operations", { operation: "load", ...options });
+        },
+        commitAdminUserOperation: async (draft = {}) => {
+          if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
+          if (!ensureRemoteReady("사용자 운영 조치")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/user-operations", "사용자 운영 조치");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/user-operations", { operation: "commit", ...draft });
+        },
         loadRatingPolicy: async () => {
           if (!isSupabaseConfigured) {
             return { ok: true, policy: cloneRatingPolicy(DEFAULT_RATING_POLICY), defaults: cloneRatingPolicy(DEFAULT_RATING_POLICY), version: 1, history: [] };
