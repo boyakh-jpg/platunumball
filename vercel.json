@@ -80,6 +80,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/data-sources",
+      "destination": "/index.html"
+    },
+    {
       "source": "/app",
       "destination": "/index.html"
     },
