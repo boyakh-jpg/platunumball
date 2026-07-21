@@ -29,7 +29,14 @@ export default async function handler(request, response) {
       },
     });
 
-    if (error) throw error;
+    if (error) {
+      if (["court_request_not_pending", "court_request_report_pending"].some((code) => (
+        String(error.message || "").includes(code)
+      ))) {
+        error.statusCode = 409;
+      }
+      throw error;
+    }
 
     sendJson(response, 200, data ?? { ok: true });
   } catch (error) {

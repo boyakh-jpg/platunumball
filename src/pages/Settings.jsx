@@ -582,7 +582,9 @@ export default function Settings({ app, auth, section = "main" }) {
         report.by === app.currentUserId &&
         report.status !== "dismissed"
       ));
-      return request.requestedBy !== app.currentUserId && request.status !== "approved" && !alreadyReported;
+      return request.requestedBy !== app.currentUserId
+        && ["pending", "reported"].includes(request.status ?? "pending")
+        && !alreadyReported;
     })
   ), [app.currentUserId, app.state.reports, courtRequests]);
   const reportableCourts = useMemo(() => (
@@ -1893,11 +1895,13 @@ export default function Settings({ app, auth, section = "main" }) {
                   report.by === app.currentUserId &&
                   report.status !== "dismissed"
                 ));
-                const canReportRequest = request.requestedBy !== app.currentUserId && request.status !== "approved" && !alreadyReported;
+                const canReportRequest = request.requestedBy !== app.currentUserId
+                  && ["pending", "reported"].includes(request.status ?? "pending")
+                  && !alreadyReported;
                 return (
                   <div key={request.id}>
                     <span>{request.name} · {request.addressText} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
-                    <strong>{request.status === "pending" ? "대기" : request.status === "reported" ? "신고됨" : request.status}</strong>
+                    <strong>{request.status === "pending" ? "대기" : request.status === "reported" ? "신고 검토 중" : request.status}</strong>
                     <button type="button" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
                       {alreadyReported ? "신고됨" : "신고 선택"}
                     </button>

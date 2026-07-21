@@ -19,7 +19,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const { data: courtRequest, error: courtRequestError } = await context.supabase
       .from("court_requests")
-      .select("id,status")
+      .select("id,status,requested_by")
       .eq("id", requestId)
       .maybeSingle();
     if (courtRequestError) throw courtRequestError;
@@ -28,8 +28,13 @@ export default async function handler(request, response) {
       error.statusCode = 404;
       throw error;
     }
-    if (courtRequest.status === "approved") {
-      const error = new Error("approved_court_request_cannot_be_reported");
+    if (courtRequest.requested_by === context.profileId) {
+      const error = new Error("cannot_report_own_court_request");
+      error.statusCode = 403;
+      throw error;
+    }
+    if (!["pending", "reported"].includes(courtRequest.status)) {
+      const error = new Error("court_request_not_reportable");
       error.statusCode = 409;
       throw error;
     }
@@ -41,7 +46,12 @@ export default async function handler(request, response) {
     });
 
     if (error) {
-      if (String(error.message || "").includes("approved_court_request_cannot_be_reported")) {
+      if (String(error.message || "").includes("cannot_report_own_court_request")) {
+        error.statusCode = 403;
+      }
+      if (["approved_court_request_cannot_be_reported", "court_request_not_reportable"].some((code) => (
+        String(error.message || "").includes(code)
+      ))) {
         error.statusCode = 409;
       }
       throw error;

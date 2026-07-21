@@ -102,7 +102,7 @@
 - Naver Client Secret은 browser bundle에 넣지 않는다.
 - `court_requests` server action은 제출 직전에 신뢰도, 정지 상태, 승인/대기 중복, 핀 역지오코딩 주소와 좌표 존재를 다시 검사한다. 새 `pending` 요청은 `lat/lng`가 없으면 DB constraint에서 거부한다.
 - 승인된 구장은 정규화한 `road_address`, `jibun_address`, `address_text`, `zonecode` 기준 unique constraint 또는 unique index로 중복을 막는다.
-- 허위 구장 신고 처리는 report 생성, 요청 상태 변경, 신뢰도 차감, 등록 제한 알림을 하나의 transaction으로 커밋한다.
+- 허위 구장 신고 접수는 report 생성, 요청의 `reported` 전환, 판정 전 무차감 알림을 하나의 transaction으로 커밋한다. 관리자 인정 transaction에서만 요청별 1회 신뢰도 차감과 `rejected` 전환을 적용한다.
 
 ## 2026-06-24 normalized persistence tables
 
@@ -129,7 +129,7 @@
 - 최초 최고관리자는 `RANKBALL_OWNER_AUTH_USER_IDS` 또는 `RANKBALL_OWNER_PROFILE_IDS` env로 지정하거나 DB에 active `admin_appointments`를 넣어야 한다.
 - Supabase 설정 환경이면 구장 등록요청 제출/신고/승인은 local state 갱신과 함께 서버 transaction API도 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
 - `POST /api/court-requests/approve`는 `rankball_approve_court_request()` RPC로 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
-- `POST /api/court-requests/report`는 `rankball_report_court_request()` RPC로 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
+- `POST /api/court-requests/report`는 `rankball_report_court_request()` RPC로 신고 생성, 요청의 `reported` 전환, 판정 전 무차감 알림을 한 transaction으로 처리한다. 신뢰도 차감은 관리자 신고 인정 시 reports 상태 전환 trigger가 처리한다.
 - `POST /api/court-requests/submit`은 `rankball_submit_court_request()` RPC로 구장 등록요청 제출 직전 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
 - 일반 관리자 신고 처리, 임명/징계 처리, Discord DM worker API, Discord 초대 버튼 interaction은 분리된 server action이다.
 

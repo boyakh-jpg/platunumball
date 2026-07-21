@@ -97,7 +97,7 @@ const REVIEW_QUEUE_FILTER_PLACEHOLDERS = {
 function statusLabel(status) {
   if (status === "resolved") return "처리됨";
   if (status === "dismissed") return "기각";
-  if (status === "reported") return "신고됨";
+  if (status === "reported") return "신고 검토 중";
   if (status === "disputed") return "이의제기";
   if (status === "pending") return "대기";
   if (status === "approved") return "승인됨";
@@ -1011,7 +1011,7 @@ export default function Admin({ app }) {
                     ) : null}
                   </div>
                   {selectedCourtRequest.locationNote ? <p className="admin-court-note">{selectedCourtRequest.locationNote}</p> : null}
-                  {selectedCourtRequest.status !== "approved" ? (
+                  {selectedCourtRequest.status === "pending" ? (
                     <div className="admin-court-verification">
                       <div className="admin-court-verification-head">
                         <div>
@@ -1064,6 +1064,10 @@ export default function Admin({ app }) {
                       </Button>
                       {courtApprovalStatus ? <small>{courtApprovalStatus}</small> : null}
                     </div>
+                  ) : selectedCourtRequest.status === "reported" ? (
+                    <p className="admin-court-note">신고 검토 중인 요청입니다. 신고를 처리한 뒤 승인 여부를 결정하세요.</p>
+                  ) : selectedCourtRequest.status === "rejected" ? (
+                    <p className="admin-court-note">신고가 인정되어 반려된 요청입니다. 승인할 수 없습니다.</p>
                   ) : null}
                 </section>
               ) : null}

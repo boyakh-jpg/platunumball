@@ -10,7 +10,7 @@
 6. `maliciousReporter` 대상은 선택한 신고의 신고자로 고정한다. `suspendTarget`은 서버가 검증해 저장한 `reportedUserIds`만, `refereeDiscipline`은 해당 경기의 현재·이전 심판 중 신고 대상에 포함된 사용자만 허용한다.
 7. 모든 관리자 판정은 처리 사유와 신고자 안내를 각각 4자 이상 요구한다. 직접 제재·숨김·강제변경은 최종 확인 단계를 한 번 더 거친다.
 8. 처리 이력에는 신고 유형, 신고자, 접수 시각, 처리 액션, 처리자, 처리 사유, 신고자 안내를 남긴다. 같은 이름의 구장도 구장·신청·리뷰 ID별로 별도 큐 항목을 유지한다.
-9. 허위 구장 등록요청은 기존 정책대로 접수 즉시 신뢰도를 차감하므로 일반 UI 회귀검증에서 임의 운영 데이터를 대상으로 실행하지 않는다. 전용 테스트 요청과 원복 transaction이 준비된 경우에만 검증한다.
+9. 허위 구장 등록요청 신고 접수는 요청을 검토 대기로 전환할 뿐 신뢰도를 바꾸지 않는다. 관리자가 신고를 인정할 때만 활성 정책값을 요청자에게 요청별 1회 차감한다. 운영 데이터 검증은 전용 테스트 요청과 원복 transaction이 준비된 경우에만 실행한다.
 10. 플레이어 신고의 `sourceMatchId`는 사용자가 선택한 그 경기 ID를 서버에서 직접 조회해 공동 참여와 7일 범위를 검증한다. 다른 최근 공동경기로 대체하지 않는다. 중복 응답은 기존 신고를 뜻하므로 새 로컬 신고·알림·신뢰도 변화를 다시 만들지 않는다.
 11. 승인 구장과 타인 구장 리뷰는 최신 일부를 기본 후보로 보여주되, 원격 이름·메모 검색으로 전체 활성 대상에서 찾을 수 있어야 한다. 자기 리뷰와 비활성 대상은 서버 검색에서 제외한다.
 
@@ -853,7 +853,8 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 3. 구장 등록은 지도 핀 확정이 필수다. 핀 좌표를 Naver Reverse Geocoding으로 변환한 `addressText`, `roadAddress`, `jibunAddress`, 지역, 동, 위도, 경도를 최종 저장한다.
 4. 허위 구장 등록요청은 `court_request` 신고로 접수한다.
 5. 같은 유저가 같은 구장 등록요청을 중복 신고할 수 없다.
-6. 허위 구장 신고가 접수되면 요청자 신뢰도는 활성 운영 정책의 `falseCourtReportPenalty`만큼 감소한다.
+6. 허위 구장 신고가 접수되면 요청은 `reported` 검토 대기가 되며 신뢰도는 바뀌지 않는다. 관리자가 신고를 인정하면 요청은 `rejected`가 되고 요청자 신뢰도는 활성 운영 정책의 `falseCourtReportPenalty`만큼 요청별 1회 감소한다.
+6-1. 신고를 기각하면 같은 요청의 다른 미처리 신고가 없는 경우 요청을 `pending`으로 복원한다. `reported`와 `rejected` 요청은 승인할 수 없다.
 7. 구장 등록요청 폼과 Naver 주소검색 버튼은 신뢰도 기준을 통과한 사용자에게만 렌더링한다.
 8. 프론트 숨김은 API 사용량 완화용 UX일 뿐 보안이 아니다. 배포 백엔드는 `POST /api/courts/address-search` JSON body endpoint에 인증, 신뢰도 검사, rate limit, 도메인 제한을 적용한다. 검색어와 Supabase token을 URL query에 넣지 않는다.
 9. 주소검색은 기존 브라우저 Naver Maps geocoder를 우선 사용한다. `/api/courts/address-search`는 브라우저 geocoder 실패 시 보조 fallback이다.
@@ -1719,7 +1720,7 @@ flowchart TD
 2. 지도 핀 확정 시 좌표를 역지오코딩하고 반환된 실제 주소와 좌표로 검색 결과를 교체한다. 역지오코딩 실패 시 제출하지 않는다.
 3. 승인된 구장 또는 대기/신고 상태 구장요청과 같은 도로명/지번/주소 identity가 있으면 새 요청을 막는다.
 4. 관리자 승인 시에도 같은 중복 기준을 다시 검사한다.
-5. 허위 구장 신고가 접수되면 요청자 신뢰도를 활성 운영 정책의 `falseCourtReportPenalty`만큼 차감하고, 차감 후 `COURT_REQUEST_TRUST_MIN` 미만이면 추가 구장 등록요청을 막는다.
+5. 허위 구장 신고 접수만으로 신뢰도를 차감하지 않는다. 관리자가 신고를 인정할 때 요청자 신뢰도를 활성 운영 정책의 `falseCourtReportPenalty`만큼 요청별 1회 차감하고, 차감 후 `COURT_REQUEST_TRUST_MIN` 미만이면 추가 구장 등록요청을 막는다.
 6. 현재 enforcement는 mock/localStorage 기준이다. 배포 백엔드에서는 server action, DB unique constraint, RLS/admin 권한으로 같은 검사를 다시 해야 한다.
 
 ## 2026-06-24 normalized persistence tables
@@ -1744,7 +1745,7 @@ flowchart TD
 8. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
 9. 프론트는 구장 승인 성공 전 로컬 승인 구장을 만들지 않고, 서버가 반환한 `approvedCourtId`만 승인 구장 ID로 쓴다.
 10. `POST /api/system/schema-health`의 `ensureCourtAdmins`는 `CRON_SECRET` 인증이 있을 때만 `boyakh` owner와 `rankball-001` regionManager appointment를 idempotent upsert한다.
-11. 허위 구장 신고는 `rankball_report_court_request()`에서 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
+11. `rankball_report_court_request()`는 신고 생성, 요청의 `reported` 전환, 판정 전 무차감 알림만 한 transaction으로 처리한다. 관리자 판정 transaction의 신고 상태 전환 trigger는 인정 시 요청을 `rejected`로 바꾸고 정책 신뢰도 차감을 요청별 1회 적용하며, 기각 시 남은 미처리 신고가 없으면 `pending`으로 복원한다.
 12. 구장 등록요청 제출은 `rankball_submit_court_request()`에서 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
 13. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송, Discord 초대 버튼 interaction은 별도 server action으로 분리한다.
 14. Discord DM 발송 큐는 `POST /api/discord/sync-deliveries`가 현재 프로필의 `discord_user_id` 기준으로만 저장한다.
@@ -2012,7 +2013,7 @@ flowchart TD
 1. 구장 신고는 새 `target_type/reporter_id` 컬럼을 만들지 않고 기존 `reports.type/target_id/user_id` 구조를 쓴다.
 2. `reports.type = 'court'`는 `approved_courts.id`를 대상으로 한다.
 3. `reports.type = 'court_review'`는 `court_reviews.id`를 대상으로 한다.
-4. 구장 등록요청 신고는 기존 `court_request` 전용 server action을 유지한다. 허위 등록 신고는 요청자 신뢰도 차감 로직과 연결되어 있기 때문이다.
+4. 구장 등록요청 신고는 기존 `court_request` 전용 server action을 유지한다. 접수는 검토 대기만 만들고, 요청자 신뢰도 차감은 관리자 인정 상태 전환과 원자적으로 연결한다.
 5. Settings 신고 검색은 사유를 먼저 고른 뒤 경기, 선수, 구장요청, 승인 구장, 구장 리뷰 중 해당 타입만 보여준다.
 6. 관리자 큐는 `court`, `court_review`, `court_request`, `match`, `player` 신고를 같은 `reports` 목록으로 정렬한다.
 7. 관리자 `hideCourt` action은 `approved_courts.status = 'hidden'`으로 soft hide한다.

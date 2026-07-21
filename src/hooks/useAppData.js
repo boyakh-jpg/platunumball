@@ -3310,7 +3310,12 @@ export function useAppData(authUser = null, appLocation = null) {
         }
         const result = await runServerAction("/api/court-requests/report", { requestId, reason });
         if (!result || result.ok === false || result.duplicate === true) return result;
-        setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason));
+        setState((prev) => reportCourtRequest(
+          { ...prev, currentUserId },
+          requestId,
+          reason,
+          { reportId: result.reportId },
+        ));
         return result;
       },
       reportCourt: async (courtId, reason) => {

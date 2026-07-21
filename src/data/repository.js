@@ -4980,11 +4980,22 @@ export function reportPlayer(state, playerId, matchId, reason = "") {
   };
 }
 
-export function reportCourtRequest(state, requestId, reason = "허위 구장 등록") {
+export function reportCourtRequest(state, requestId, reason = "허위 구장 등록", options = {}) {
   const disciplineBlock = getDisciplineBlockedState(state, "구장 신고");
   if (disciplineBlock) return disciplineBlock;
   const request = (state.settings?.courtRequests ?? []).find((item) => item.id === requestId);
   if (!request) return state;
+  if (!["pending", "reported"].includes(request.status ?? "pending")) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "구장 신고 불가",
+        body: "검토 대기 중인 구장 등록요청만 신고할 수 있습니다.",
+        tone: "orange",
+      }, ...state.notifications],
+    };
+  }
   if (request.requestedBy === state.currentUserId) {
     return {
       ...state,
@@ -5020,12 +5031,14 @@ export function reportCourtRequest(state, requestId, reason = "허위 구장 등
     };
   }
 
-  const requester = state.users.find((user) => user.id === request.requestedBy);
-  const requesterNextTrustScore = clampTrustScore((requester?.trustScore ?? 80) - FALSE_COURT_REPORT_TRUST_PENALTY);
-  const requesterRestricted = requesterNextTrustScore < COURT_REQUEST_TRUST_MIN;
+  const hasOpenReport = (state.reports ?? []).some((report) => (
+    report.type === "court_request" &&
+    report.targetId === requestId &&
+    report.status === "open"
+  ));
 
   const report = {
-    id: makeId("r"),
+    id: String(options.reportId ?? "").trim() || makeId("r"),
     type: "court_request",
     targetId: requestId,
     by: state.currentUserId,
@@ -5039,36 +5052,32 @@ export function reportCourtRequest(state, requestId, reason = "허위 구장 등
       ? {
         ...item,
         status: "reported",
-        reportedAt: report.createdAt,
-        reportedBy: state.currentUserId,
-        trustPenalty: FALSE_COURT_REPORT_TRUST_PENALTY,
-        requesterTrustAfterReport: requesterNextTrustScore,
+        reportReviewPending: true,
+        latestReportId: report.id,
+        latestReportedAt: report.createdAt,
       }
       : item
   ));
 
   return {
     ...state,
-    users: adjustUserTrust(state.users, request.requestedBy, -FALSE_COURT_REPORT_TRUST_PENALTY),
     settings: normalizeSettings({
       ...(state.settings ?? {}),
       courtRequests: nextRequests,
     }),
     reports: [report, ...(state.reports ?? [])],
     notifications: [
-      {
+      ...(!hasOpenReport ? [{
         id: makeId("n"),
         targetUserId: request.requestedBy,
-        title: requesterRestricted ? "구장 등록 제한" : "구장 등록요청 신고됨",
-        body: requesterRestricted
-          ? `허위 구장 신고로 신뢰도 ${requesterNextTrustScore}점이 되어 구장 등록요청이 제한됩니다.`
-          : `허위 구장 신고로 신뢰도 ${FALSE_COURT_REPORT_TRUST_PENALTY}점이 차감되었습니다. 현재 ${requesterNextTrustScore}점입니다.`,
+        title: "구장 등록요청 검토 중",
+        body: `${request.name} 등록요청에 신고가 접수되어 운영자가 확인 중입니다. 판정 전에는 신뢰도에 영향이 없습니다.`,
         tone: "orange",
-      },
+      }] : []),
       {
         id: makeId("n"),
-        title: "구장 허위 신고 접수",
-        body: `${request.name} 등록요청을 허위 구장으로 신고했습니다. 요청자 신뢰도 ${FALSE_COURT_REPORT_TRUST_PENALTY}점이 차감됩니다.`,
+        title: "구장 등록요청 신고 접수",
+        body: `${request.name} 등록요청 신고가 접수되었습니다. 운영자 인정 전에는 요청자 신뢰도가 차감되지 않습니다.`,
         tone: "orange",
       },
       ...state.notifications,
@@ -5497,6 +5506,51 @@ export function commitAdminReviewAction(state, draft = {}) {
         : review
     ))
     : (state.settings?.courtReviews ?? []);
+  const reviewedCourtRequest = report.type === "court_request"
+    ? (state.settings?.courtRequests ?? []).find((request) => request.id === report.targetId)
+    : null;
+  const configuredCourtRequestPenalty = Number(
+    state.settings?.ratingPolicy?.trust?.falseCourtReportPenalty ?? FALSE_COURT_REPORT_TRUST_PENALTY,
+  );
+  const courtRequestPenalty = Number.isFinite(configuredCourtRequestPenalty)
+    ? Math.max(0, Math.min(20, Math.round(configuredCourtRequestPenalty)))
+    : FALSE_COURT_REPORT_TRUST_PENALTY;
+  const courtRequestPenaltyApplied = Boolean(
+    reviewedCourtRequest?.trustPenaltyApplied || reviewedCourtRequest?.status === "rejected",
+  );
+  const shouldApplyCourtRequestPenalty = Boolean(
+    reviewedCourtRequest && nextStatus === "resolved" && !courtRequestPenaltyApplied,
+  );
+  const hasAcceptedCourtRequestReport = reviewedCourtRequest && nextReports.some((item) => (
+    item.type === "court_request" && item.targetId === report.targetId && item.status === "resolved"
+  ));
+  const hasOpenCourtRequestReport = reviewedCourtRequest && nextReports.some((item) => (
+    item.type === "court_request" && item.targetId === report.targetId && item.status === "open"
+  ));
+  const nextCourtRequests = reviewedCourtRequest
+    ? (state.settings?.courtRequests ?? []).map((request) => {
+      if (request.id !== reviewedCourtRequest.id) return request;
+      if (hasAcceptedCourtRequestReport || courtRequestPenaltyApplied) {
+        return {
+          ...request,
+          status: "rejected",
+          reportReviewPending: false,
+          trustPenaltyApplied: true,
+          trustPenalty: request.trustPenalty ?? courtRequestPenalty,
+          trustPenaltyAppliedAt: request.trustPenaltyAppliedAt ?? now,
+          trustPenaltyReportId: request.trustPenaltyReportId ?? report.id,
+          trustPenaltyActionType: request.trustPenaltyActionType ?? actionType,
+        };
+      }
+      return {
+        ...request,
+        status: hasOpenCourtRequestReport ? "reported" : "pending",
+        reportReviewPending: Boolean(hasOpenCourtRequestReport),
+        lastDismissedReportId: report.id,
+        lastReviewedAt: now,
+      };
+    })
+    : (state.settings?.courtRequests ?? []);
   const nextTeams = moderatedTeam
     ? (state.teams ?? []).map((team) => team.id === moderatedTeam.id ? {
       ...team,
@@ -5520,13 +5574,16 @@ export function commitAdminReviewAction(state, draft = {}) {
     if (actionType === "mergeAffiliation" && affiliation.id === report.targetId) return { ...affiliation, status: "merged", mergedIntoId: mergeTargetId, memberCount: 0, updatedAt: now };
     return affiliation;
   });
-  const nextUsers = actionType === "mergeAffiliation" && mergedAffiliation
+  const affiliationAdjustedUsers = actionType === "mergeAffiliation" && mergedAffiliation
     ? (state.users ?? []).map((user) => user.affiliationId === report.targetId ? {
       ...user,
       affiliationId: mergedAffiliation.id,
       affiliationName: mergedAffiliation.name,
     } : user)
     : (state.users ?? []);
+  const nextUsers = shouldApplyCourtRequestPenalty
+    ? adjustUserTrust(affiliationAdjustedUsers, reviewedCourtRequest.requestedBy, -courtRequestPenalty)
+    : affiliationAdjustedUsers;
   const reporterNotification = report.by
     ? {
       id: makeId("n"),
@@ -5555,6 +5612,17 @@ export function commitAdminReviewAction(state, draft = {}) {
       type: "team_emblem_moderation",
     }
     : null;
+  const courtRequestDecisionNotification = shouldApplyCourtRequestPenalty
+    ? {
+      id: makeId("n"),
+      targetUserId: reviewedCourtRequest.requestedBy,
+      title: "구장 등록요청 신고 인정",
+      body: courtRequestPenalty > 0
+        ? `${reviewedCourtRequest.name} 등록요청 신고가 인정되어 신뢰도 ${courtRequestPenalty}점이 차감되었습니다.`
+        : `${reviewedCourtRequest.name} 등록요청 신고가 인정되었습니다. 현재 정책상 신뢰도 차감은 없습니다.`,
+      tone: "orange",
+    }
+    : null;
 
   return {
     ...state,
@@ -5566,6 +5634,7 @@ export function commitAdminReviewAction(state, draft = {}) {
       ...(state.settings ?? {}),
       approvedCourts: nextApprovedCourts,
       courtReviews: nextCourtReviews,
+      courtRequests: nextCourtRequests,
       adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
       adminDisciplinaryActions: disciplinaryAction
         ? [disciplinaryAction, ...(state.settings?.adminDisciplinaryActions ?? [])]
@@ -5573,7 +5642,7 @@ export function commitAdminReviewAction(state, draft = {}) {
     }),
     notifications: [
       getAdminActionNotification("관리자 처리 결과가 커밋되었습니다.", "team"),
-      ...[reporterNotification, targetNotification, teamModerationNotification].filter((notification) => notification?.targetUserId),
+      ...[reporterNotification, targetNotification, teamModerationNotification, courtRequestDecisionNotification].filter((notification) => notification?.targetUserId),
       ...state.notifications,
     ],
   };
@@ -5765,10 +5834,13 @@ export function approveCourtRequest(state, requestId, approval = {}) {
       notifications: [getAdminActionNotification("승인할 구장 요청을 찾을 수 없습니다."), ...state.notifications],
     };
   }
-  if (request.status === "approved") {
+  const hasOpenReport = (state.reports ?? []).some((report) => (
+    report.type === "court_request" && report.targetId === requestId && report.status === "open"
+  ));
+  if (request.status !== "pending" || hasOpenReport) {
     return {
       ...state,
-      notifications: [getAdminActionNotification("이미 승인된 구장 요청입니다."), ...state.notifications],
+      notifications: [getAdminActionNotification("신고 검토 중이거나 종결된 구장 요청은 승인할 수 없습니다."), ...state.notifications],
     };
   }
   if (!approval.addressVerified) {
