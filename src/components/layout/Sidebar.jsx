@@ -1,9 +1,9 @@
 import { CalendarDays, ClipboardList, Handshake, House, LogOut, Settings, Trophy, UserRound, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
+import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../../lib/assets.js";
-import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../../lib/discord.js";
 import { getUserHashtag } from "../../lib/handles.js";
 import { DEFAULT_RATING } from "../../lib/constants.js";
 
@@ -46,9 +46,7 @@ export default function Sidebar({ user, teams = [], auth }) {
         })}
       </nav>
       <PlayerHoverCard as="span" user={safeUser} teams={teams} className="sidebar-profile">
-        <div className={getDiscordAvatarClassName(safeUser)} style={getDiscordAvatarStyle(safeUser)}>
-          {displayName.slice(0, 1)}
-        </div>
+        <ProfileEmblem user={safeUser} />
         <div className="sidebar-profile-copy">
           <strong>{displayName}</strong>
           <small>{displayHashtag}</small>

@@ -342,6 +342,13 @@ test("image native menus and drag stay blocked by one shared guard", async () =>
   assert.match(styles, /data-allow-image-context-menu="true"/);
 });
 
+test("sidebar account card uses the shared profile emblem", async () => {
+  const sidebar = await readSource("src/components/layout/Sidebar.jsx");
+  assert.match(sidebar, /import ProfileEmblem from "\.\.\/profile\/ProfileEmblem\.jsx"/);
+  assert.match(sidebar, /<ProfileEmblem user=\{safeUser\} \/>/);
+  assert.doesNotMatch(sidebar, /getDiscordAvatarClassName|getDiscordAvatarStyle/);
+});
+
 test("team emblem border controls stay common to initial and uploaded sources", async () => {
   const teamDetail = await readSource("src/pages/TeamDetail.jsx");
   const initialControlsStart = teamDetail.indexOf('{emblemSource === "initial" ? (');
