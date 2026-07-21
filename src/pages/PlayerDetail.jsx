@@ -13,9 +13,9 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import { getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
+import { getTeamRoleLabel, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine, getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
-import { getRepresentativeTeam } from "../lib/profileSetup.js";
+import { getRepresentativeTeam, getUserProfileTeams } from "../lib/profileSetup.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -69,8 +69,11 @@ export default function PlayerDetail({ app }) {
   const canViewStatSummary = isOwnProfile || player.privacy?.statSummary === true || (!isSupabaseConfigured && player.privacy?.statSummary !== false);
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const teamMap = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
-  const playerTeams = app.state.teams.filter((team) => team.members.some((member) => member.userId === player.id));
-  const representativeTeam = getRepresentativeTeam(player.id, playerTeams, player.representativeTeamId);
+  const playerTeams = getUserProfileTeams(player.id, app.state.teams);
+  const representativeTeam = getRepresentativeTeam(player.id, app.state.teams, player.representativeTeamId);
+  const orderedPlayerTeams = [...playerTeams].sort((teamA, teamB) => (
+    Number(teamB.id === representativeTeam?.id) - Number(teamA.id === representativeTeam?.id)
+  ));
   const history = app.state.matches.filter((match) => getPlayerSide(match, player.id));
   const teammateCounts = new Map();
   const opponentCounts = new Map();
@@ -138,15 +141,6 @@ export default function PlayerDetail({ app }) {
                 </a>
               ) : null}
             </div>
-            {representativeTeam ? (
-              <Link className="player-representative-team-link" to={`/app/teams/${representativeTeam.id}`}>
-                <TeamEmblem team={representativeTeam} size="xs" />
-                <span>
-                  <small>대표팀</small>
-                  <strong>{representativeTeam.name}</strong>
-                </span>
-              </Link>
-            ) : null}
           </div>
         </div>
         <div className="tier-statement rank-tier-statement">
@@ -168,7 +162,45 @@ export default function PlayerDetail({ app }) {
         </nav>
       ) : null}
 
-      {canViewStatSummary ? (
+      <div className={`rank-profile-body-grid${canViewTeamHistory ? " has-team-rail" : ""}${canViewStatSummary ? " has-summary" : ""}`}>
+        {canViewTeamHistory ? (
+          <aside className="page-stack player-profile-left-rail">
+            <Card className="section-card player-profile-teams-card" id="teams">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Teams</p>
+                  <h2>소속 팀</h2>
+                </div>
+                <Badge tone="blue">{orderedPlayerTeams.length}팀</Badge>
+              </div>
+              {orderedPlayerTeams.length ? (
+                <div className="player-profile-team-list">
+                  {orderedPlayerTeams.map((team) => {
+                    const isRepresentative = team.id === representativeTeam?.id;
+                    return (
+                      <Link
+                        className={`player-profile-team-row${isRepresentative ? " is-representative" : ""}`}
+                        key={team.id}
+                        to={`/app/teams/${team.id}`}
+                      >
+                        <TeamEmblem team={team} size="sm" />
+                        <span>
+                          <small>{isRepresentative ? "대표팀" : "소속팀"}</small>
+                          <strong>{team.name}</strong>
+                          <em>{getTeamRoleLabel(team.myRole)} · {Math.round(Number(team.mmr) || 0)} MMR</em>
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="player-profile-team-empty">소속 팀 없음</p>
+              )}
+            </Card>
+          </aside>
+        ) : null}
+
+        {canViewStatSummary ? (
         <section id="summary" className="rank-profile-summary">
           <Card className="section-card rank-record-card">
             <div className="section-title-row">
@@ -214,9 +246,9 @@ export default function PlayerDetail({ app }) {
             </div>
           </Card>
         </section>
-      ) : null}
+        ) : null}
 
-      <div className={canViewStatSummary || canViewTeamHistory ? "content-grid wide-left" : "page-stack"}>
+        <div className={`${canViewStatSummary || canViewTeamHistory ? "content-grid wide-left" : "page-stack"} player-profile-detail-content`}>
         <div className="page-stack">
           <section className="mode-grid">
             <RatingCard title="통합" mmr={player.ratings.integrated} subtitle="메인 티어" />
@@ -298,24 +330,6 @@ export default function PlayerDetail({ app }) {
               </Card>
             ) : null}
             {canViewTeamHistory ? (
-              <Card className="section-card" id="teams">
-                <div className="section-title-row">
-                  <div>
-                    <p className="eyebrow">Teams</p>
-                    <h2>소속 팀</h2>
-                  </div>
-                </div>
-                <div className="compact-list">
-                  {playerTeams.map((team) => (
-                    <Link key={team.id} to={`/app/teams/${team.id}`}>
-                      <span>{team.name}</span>
-                      <strong>{team.mmr}</strong>
-                    </Link>
-                  ))}
-                </div>
-              </Card>
-            ) : null}
-            {canViewTeamHistory ? (
               <div id="links" className="page-stack">
                 {renderRelationship("같이 뛴 사람", teammateCounts)}
                 {renderRelationship("상대한 사람", opponentCounts)}
@@ -323,6 +337,7 @@ export default function PlayerDetail({ app }) {
             ) : null}
           </aside>
         ) : null}
+        </div>
       </div>
       <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="player-history" onClose={() => setSelectedMatchId("")} />
     </div>

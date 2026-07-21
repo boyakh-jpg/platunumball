@@ -405,8 +405,18 @@ export function mapDirectoryProfilePrivacy(users = [], profileRows = [], current
       : user.id === currentProfileId
         ? toPublicProfilePrivacy({ privacy: currentPrivacy })
         : Object.fromEntries(PROFILE_PRIVACY_KEYS.map((key) => [key, false]));
-    return { ...publicUser, privacy };
+    const representativeTeamId = privacy.teamHistory && typeof profile?.app_settings?.representativeTeamId === "string"
+      ? profile.app_settings.representativeTeamId.trim()
+      : "";
+    return { ...publicUser, privacy, ...(representativeTeamId ? { representativeTeamId } : {}) };
   });
+}
+
+export function canLoadProfileTeamHistory(profileId = "", currentProfileId = "", profileRows = []) {
+  if (!profileId) return false;
+  if (profileId === currentProfileId) return true;
+  const profile = profileRows.find((row) => row?.id === profileId);
+  return Boolean(profile && toPublicProfilePrivacy(profile.app_settings).teamHistory);
 }
 
 function applyDirectoryTextFilter(query, columns, filter) {
@@ -456,7 +466,7 @@ async function loadDirectoryPage(context, body = {}) {
     };
   }
 
-  const [favoriteRows, invitationRows, ownMembershipRows] = await Promise.all([
+  const [favoriteRows, invitationRows, ownMembershipRows, targetProfileSettingRows] = await Promise.all([
     currentProfileId
       ? readRows(context.supabase.from("favorites").select(FAVORITE_COLUMNS).eq("user_id", currentProfileId))
       : [],
@@ -471,6 +481,11 @@ async function loadDirectoryPage(context, body = {}) {
       : [],
     currentProfileId
       ? readRows(context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).eq("user_id", currentProfileId))
+      : [],
+    profileId
+      ? profileId === currentProfileId && context.profile
+        ? [{ id: currentProfileId, app_settings: context.profile.app_settings ?? {} }]
+        : readRowsByIds(context.supabase, "profiles", "id,app_settings", "id", [profileId])
       : [],
   ]);
 
@@ -487,6 +502,16 @@ async function loadDirectoryPage(context, body = {}) {
       query = applyDirectoryTextFilter(query, ["name", "hashtag", "handle", "region", "position"], filter);
     }
     profilePage = await readPage(query, profileId ? { limit: 1, offset: 0 } : pageRequest, "public_profiles");
+  }
+
+  let profileMembershipRows = [];
+  if (
+    profilePage.rows.some((row) => row.id === profileId)
+    && canLoadProfileTeamHistory(profileId, currentProfileId, targetProfileSettingRows)
+  ) {
+    profileMembershipRows = profileId === currentProfileId
+      ? ownMembershipRows
+      : await readRows(context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).eq("user_id", profileId));
   }
 
   let teamPage = { rows: [], total: 0, hasMore: false };
@@ -513,6 +538,7 @@ async function loadDirectoryPage(context, body = {}) {
     ...favoriteTeamIds,
     ...invitationTeamIds,
     ...ownMembershipRows.map((row) => row.team_id),
+    ...profileMembershipRows.map((row) => row.team_id),
   ]);
   const extraTeamIds = scopedTeamIds.filter((id) => !teamPage.rows.some((row) => row.id === id));
   const [extraTeamRows, teamMemberRows] = await Promise.all([
@@ -532,10 +558,13 @@ async function loadDirectoryPage(context, body = {}) {
     currentProfileId,
   ]);
   const extraProfileIds = scopedProfileIds.filter((id) => !profilePage.rows.some((row) => row.id === id));
-  const [extraPublicProfileRows, privacyRows] = await Promise.all([
+  const knownPrivacyProfileIds = new Set(targetProfileSettingRows.map((row) => row.id));
+  const remainingPrivacyProfileIds = scopedProfileIds.filter((id) => !knownPrivacyProfileIds.has(id));
+  const [extraPublicProfileRows, extraPrivacyRows] = await Promise.all([
     readRowsByIds(context.supabase, "public_profiles", PUBLIC_PROFILE_COLUMNS, "id", extraProfileIds),
-    readRowsByIds(context.supabase, "profiles", "id,app_settings", "id", scopedProfileIds),
+    readRowsByIds(context.supabase, "profiles", "id,app_settings", "id", remainingPrivacyProfileIds),
   ]);
+  const privacyRows = uniqueRows([targetProfileSettingRows, extraPrivacyRows]);
   const publicProfileRows = uniqueRows([profilePage.rows, extraPublicProfileRows]);
   const publicUsers = mapDirectoryProfilePrivacy(
     publicProfileRows.map(fromRemoteProfile),

@@ -19621,38 +19621,124 @@ html[data-theme="light"] .court-map-picker-state {
   grid-row: 2;
 }
 
-.player-representative-team-link {
-  display: inline-grid;
-  width: fit-content;
-  max-width: 100%;
-  min-height: var(--ui-button-height);
+.rank-profile-body-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-areas: "detail";
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--page-column-gap);
+  align-items: start;
+}
+
+.rank-profile-body-grid.has-summary {
+  grid-template-areas:
+    "summary"
+    "detail";
+}
+
+.rank-profile-body-grid.has-team-rail {
+  grid-template-areas:
+    "team"
+    "detail";
+}
+
+.rank-profile-body-grid.has-team-rail.has-summary {
+  grid-template-areas:
+    "team"
+    "summary"
+    "detail";
+}
+
+.rank-profile-body-grid > .rank-profile-summary {
+  grid-area: summary;
+}
+
+.player-profile-left-rail {
+  min-width: 0;
+  grid-area: team;
+}
+
+.player-profile-detail-content {
+  min-width: 0;
+  grid-area: detail;
+}
+
+.player-profile-team-list {
+  display: grid;
+  gap: 8px;
+}
+
+.player-profile-team-row {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 62px;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
-  color: var(--rb-text);
-  padding: 6px 10px;
+  padding: 9px 10px;
 }
 
-.player-representative-team-link > span {
+.player-profile-team-row.is-representative {
+  border-color: color-mix(in srgb, var(--rb-gold) 46%, var(--ui-control-border));
+  background: color-mix(in srgb, var(--rb-gold) 9%, var(--ui-control-bg));
+}
+
+.player-profile-team-row > span {
   display: grid;
   min-width: 0;
-  gap: 1px;
+  gap: 2px;
 }
 
-.player-representative-team-link small {
-  color: var(--rb-muted);
+.player-profile-team-row small {
+  color: var(--rb-orange-2);
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: 950;
 }
 
-.player-representative-team-link strong {
+.player-profile-team-row:not(.is-representative) small {
+  color: var(--rb-muted);
+}
+
+.player-profile-team-row strong,
+.player-profile-team-row em {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.player-profile-team-row strong {
+  color: var(--rb-text);
+  font-size: 0.9rem;
+}
+
+.player-profile-team-row em,
+.player-profile-team-empty {
+  color: var(--rb-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.player-profile-team-empty {
+  padding: 8px 0 2px;
+}
+
+@container (min-width: 900px) {
+  .rank-profile-body-grid.has-team-rail {
+    grid-template-areas: "team detail";
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  }
+
+  .rank-profile-body-grid.has-team-rail.has-summary {
+    grid-template-areas:
+      "team summary"
+      "team detail";
+  }
 }
 
 @media (max-width: 720px) {

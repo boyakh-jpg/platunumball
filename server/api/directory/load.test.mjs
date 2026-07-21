@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  canLoadProfileTeamHistory,
   getAdminSection,
   getPageRequest,
   getQueueMode,
@@ -41,11 +42,27 @@ test("PostgREST filter control characters are removed", () => {
 
 test("directory privacy defaults closed for users without scoped private rows", () => {
   const users = [{ id: "visible", name: "Visible" }, { id: "closed", name: "Closed" }];
-  const result = mapDirectoryProfilePrivacy(users, [{ id: "visible", app_settings: { privacy: { regionRanking: true } } }]);
+  const result = mapDirectoryProfilePrivacy(users, [{
+    id: "visible",
+    app_settings: { privacy: { regionRanking: true }, representativeTeamId: "team-visible" },
+  }]);
   assert.equal(result[0].privacy.regionRanking, true);
   assert.equal(result[0].privacy.teamHistory, true);
+  assert.equal(result[0].representativeTeamId, "team-visible");
   assert.equal(result[1].privacy.regionRanking, false);
   assert.equal(result[1].privacy.teamHistory, false);
+  assert.equal(result[1].representativeTeamId, undefined);
+});
+
+test("player team history scope follows the target profile privacy", () => {
+  assert.equal(canLoadProfileTeamHistory("player-1", "viewer-1", []), false);
+  assert.equal(canLoadProfileTeamHistory("player-1", "player-1", []), true);
+  assert.equal(canLoadProfileTeamHistory("player-1", "viewer-1", [
+    { id: "player-1", app_settings: {} },
+  ]), true);
+  assert.equal(canLoadProfileTeamHistory("player-1", "viewer-1", [
+    { id: "player-1", app_settings: { privacy: { teamHistory: false } } },
+  ]), false);
 });
 
 test("player reports remain visible in the scoped admin model", () => {
