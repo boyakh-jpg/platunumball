@@ -380,6 +380,10 @@ const REQUIRED_RPCS = [
     args: { p_profile_id: "" },
   },
   {
+    name: "rankball_profile_icon_verified_metrics",
+    args: { p_profile_id: "" },
+  },
+  {
     name: "rankball_save_profile_icon_settings",
     args: { p_actor_profile_id: "", p_avatar_source: "initial", p_avatar_icon_key: "01-first-bucket", p_avatar_color: "#58d2c0", p_background_enabled: true, p_border_enabled: false, p_border_color: "#58d2c0" },
   },

@@ -5,7 +5,7 @@ function getProgressSnapshot(icon, metrics) {
 }
 
 export async function refreshProfileIconAchievements(supabase, profileId) {
-  const { data: metrics, error: metricsError } = await supabase.rpc("rankball_profile_icon_metrics", {
+  const { data: metrics, error: metricsError } = await supabase.rpc("rankball_profile_icon_verified_metrics", {
     p_profile_id: profileId,
   });
   if (metricsError) throw metricsError;
