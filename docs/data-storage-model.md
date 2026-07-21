@@ -14,10 +14,12 @@
 | `teams` | `emblem_violation_count`, `emblem_upload_blocked_until`, `emblem_moderated_at`, `emblem_moderation_reason` | 인정 위반 누적, 업로드 제한 종료, 최근 운영 조치 원본 |
 | `reports` | `type='team_emblem'`, `payload.emblemKey` | 팀 엠블럼 신고와 접수 당시 object key snapshot |
 | R2 | `team-emblems/{teamId}/{sha256-24}.webp` | 팀 직접 업로드 결과 |
-| Vercel/R2 public asset | `/assets/profile-icons/{icon-key}.png` | 300개 검수 프로필 아이콘. DB에는 확장자 없는 key만 저장 |
+| `match_player_competitive_snapshots` | `match_id`, `profile_id`, `side`, `age_group`, `mode_mmr`, `mmr_eligible` | 확정 직전 실제 출전자의 연령군·모드 MMR. 교차 연령·언더독 업적 판정 원본 |
+| Vercel/R2 public asset | `/assets/profile-icons/{icon-key}.png` | 340개 검수 프로필 아이콘. DB에는 확장자 없는 key만 저장 |
 
 - `/api/profile/emblem`은 프로필 기본값 스타일, `initial`/`discord` 원본 전환, 검수된 `icon` 선택만 허용한다. 직접 사진 업로드는 거부한다.
 - `rankball_select_profile_icon()`은 서버 allowlist와 `profile_icon_unlocks`를 모두 통과한 icon key만 저장한다. 기본 지급 5개는 가입 시 해금 row를 만들고, 나머지는 업적 달성 뒤 해금 row가 있어야 한다.
+- `rankball_match_finalize_locked()`은 MMR 계산 전 실제 출전자 snapshot을 저장한다. 기존 확정 경기는 경기 날짜 기준 연령군만 소급하며 과거 MMR 언더독 기록은 추정하지 않는다.
 - `rankball_update_team_emblem()`은 팀 row와 팀장 권한을 검사하고 이미지 업로드 횟수·30일 제한을 처리한다.
 - `rankball_update_team_emblem_source()`는 팀장 권한으로 표시 원본만 바꾸며 저장된 object key를 보존한다.
 - `rankball_update_team_emblem_design()`은 팀장 권한으로 색상·테두리·팀명/약칭·글꼴을 함께 바꾸며 이미지 업로드 횟수를 변경하지 않는다.

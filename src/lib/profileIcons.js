@@ -1,4 +1,4 @@
-const PROFILE_ICON_ASSET_VERSION = "20260721-2";
+const PROFILE_ICON_ASSET_VERSION = "20260721-3";
 
 const icon = (id, name) => Object.freeze({
   id,
@@ -193,6 +193,20 @@ const PROFILE_ICON_SERIES_GROUPS = Object.freeze([
       trackedSeries("tournament-host", "대회 개최", "tournamentHostCount", [1, 3, 10, 25, 50], "개최 대회"),
     ]),
   }),
+  Object.freeze({
+    id: "cross-generation",
+    name: "세대·언더독",
+    series: Object.freeze([
+      trackedSeries("junior-vs-rising", "주니어 × 라이징", "juniorVsRisingCount", [1, 10, 30, 75, 150], "주니어로 라이징 상대"),
+      trackedSeries("junior-vs-open", "주니어 × 오픈", "juniorVsOpenCount", [1, 10, 30, 75, 150], "주니어로 오픈 상대"),
+      trackedSeries("rising-vs-junior", "라이징 × 주니어", "risingVsJuniorCount", [1, 10, 30, 75, 150], "라이징으로 주니어 상대"),
+      trackedSeries("rising-vs-open", "라이징 × 오픈", "risingVsOpenCount", [1, 10, 30, 75, 150], "라이징으로 오픈 상대"),
+      trackedSeries("open-vs-junior", "오픈 × 주니어", "openVsJuniorCount", [1, 10, 30, 75, 150], "오픈으로 주니어 상대"),
+      trackedSeries("open-vs-rising", "오픈 × 라이징", "openVsRisingCount", [1, 10, 30, 75, 150], "오픈으로 라이징 상대"),
+      trackedSeries("age-underdog-wins", "연령 언더독", "ageUnderdogWinCount", [1, 5, 15, 30, 75], "상위 연령 상대 승리"),
+      trackedSeries("mmr-underdog-wins", "MMR 언더독", "mmrUnderdogWinCount", [1, 5, 15, 30, 75], "MMR 200+ 열세 승리"),
+    ]),
+  }),
 ]);
 
 const EXPANDED_PROFILE_ICON_ENTRIES = [];
@@ -214,7 +228,7 @@ for (const seriesGroup of PROFILE_ICON_SERIES_GROUPS) {
   EXPANDED_PROFILE_ICON_ENTRIES.push(Object.freeze({ id: seriesGroup.id, name: seriesGroup.name, entries: Object.freeze(entries) }));
 }
 
-if (nextExpandedIconNumber !== 301) throw new Error("profile_icon_catalog_size_mismatch");
+if (nextExpandedIconNumber !== 341) throw new Error("profile_icon_catalog_size_mismatch");
 
 const group = (id, name, icons) => Object.freeze({
   id,

@@ -116,6 +116,16 @@ const REQUIRED_COLUMNS = {
     "unlocked_at",
     "progress_snapshot",
   ],
+  match_player_competitive_snapshots: [
+    "match_id",
+    "profile_id",
+    "side",
+    "age_group",
+    "mode_mmr",
+    "mmr_eligible",
+    "snapshot_source",
+    "snapshotted_at",
+  ],
   user_room_feed: [
     "profile_id",
     "entity_type",
