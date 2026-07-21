@@ -803,7 +803,11 @@ export function getMatchHostPlayerId(match = {}, sourcePost = null) {
 
 export function canUserResolveMatchDispute(match = {}, userId = "", sourcePost = null) {
   if (!userId || match.status !== "disputed") return false;
-  return match.refereeId ? match.refereeId === userId : getMatchHostPlayerId(match, sourcePost) === userId;
+  return getMatchHostPlayerId(match, sourcePost) === userId;
+}
+
+export function getOpenMatchDisputes(match = {}) {
+  return (match.disputes ?? []).filter((dispute) => dispute?.status === "open");
 }
 
 export function getMatchTrustFeedbackParticipantIds(match = {}) {
@@ -1144,6 +1148,7 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
   if (match.status === "cancelled") return ROOM_PHASE_META.cancelled;
   if (match.status === "void") return ROOM_PHASE_META.void;
   if (match.status === "confirmed") return ROOM_PHASE_META.record;
+  if (match.status === "disputed" && getOpenMatchDisputes(match).length) return ROOM_PHASE_META.dispute;
   if ((match.status === "approval" || match.status === "disputed") && getMatchRecordWindow(match, now).disputeExpired) {
     return ROOM_PHASE_META.record;
   }

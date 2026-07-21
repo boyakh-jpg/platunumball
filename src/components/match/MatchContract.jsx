@@ -3,8 +3,9 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import RefereeHoverCard from "../referee/RefereeHoverCard.jsx";
-import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_SIDES } from "../../lib/constants.js";
+import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_SIDES, normalizeDisputeWindowMinutes } from "../../lib/constants.js";
 import { getMatchReferee, normalizeStatRecorders } from "../../lib/matchUtils.js";
+import { getMatchPeriodLabel, getMeetingPointSummary, normalizeMatchRules } from "../../lib/matchRules.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
 const mmrLimitLabels = {
@@ -24,7 +25,7 @@ function getSafeSide(side = {}, fallbackName = "") {
 
 export default function MatchContract({ match, users = [], teams = [], matches = [] }) {
   if (!match) return null;
-  const rules = match.rules ?? {};
+  const rules = normalizeMatchRules(match.rules, { mode: match.mode });
   const sideA = getSafeSide(match.teamA, "A");
   const sideB = getSafeSide(match.teamB, "B");
   const activeEvidenceIds = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
@@ -81,12 +82,20 @@ export default function MatchContract({ match, users = [], teams = [], matches =
           <strong>{match.mode}</strong>
         </div>
         <div>
-          <span>목표 점수</span>
-          <strong>{rules.targetScore ?? 21}점</strong>
+          <span>경기 구성</span>
+          <strong>{getMatchPeriodLabel(rules, match.mode)}</strong>
         </div>
         <div>
-          <span>제한 시간</span>
-          <strong>{rules.timeLimit ?? 12}분</strong>
+          <span>종료 기준</span>
+          <strong>{rules.endCondition === "target_or_time" ? `${rules.targetScore}점 또는 시간 종료` : "시간 종료"}</strong>
+        </div>
+        <div>
+          <span>경기 시계</span>
+          <strong>{rules.clockMode === "stopped" ? "스톱타임" : "러닝타임"}</strong>
+        </div>
+        <div>
+          <span>만남 장소</span>
+          <strong>{getMeetingPointSummary(rules, match.timingType, match.mode)}</strong>
         </div>
         <div>
           <span>정규전 반영</span>
@@ -102,7 +111,7 @@ export default function MatchContract({ match, users = [], teams = [], matches =
         </div>
         <div>
           <span>이의제기</span>
-          <strong>{match.disputeMinutes ?? 30}분</strong>
+          <strong>{normalizeDisputeWindowMinutes(match.disputeMinutes)}분</strong>
         </div>
         <div>
           <span>개인 기록</span>

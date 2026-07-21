@@ -223,6 +223,7 @@ export function fromRemoteMatch(row, context) {
     id: dispute.id,
     by: dispute.user_id,
     reason: dispute.reason,
+    request: dispute.request_payload ?? {},
     status: dispute.status ?? "open",
     resolvedAt: dispute.resolved_at ?? null,
     resolvedBy: dispute.resolved_by ?? "",

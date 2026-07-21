@@ -98,12 +98,14 @@ export const FALSE_COURT_REPORT_TRUST_PENALTY = 8;
 export const REFEREE_ABSENCE_TRUST_PENALTY = 4;
 export const INSTANT_ROOM_EXPIRE_MINUTES = 120;
 export const STAT_ENTRY_WINDOW_MINUTES = 60;
-export const DISPUTE_WINDOW_MINUTES = 30;
-export const DISPUTE_WINDOW_MAX_MINUTES = 60;
+export const DISPUTE_WINDOW_OPTIONS = Object.freeze([10, 15, 20]);
+export const DISPUTE_WINDOW_MINUTES = 15;
+export const DISPUTE_WINDOW_MAX_MINUTES = 20;
 export function normalizeDisputeWindowMinutes(value, fallback = DISPUTE_WINDOW_MINUTES) {
   const minutes = Number(value ?? fallback);
-  if (!Number.isFinite(minutes) || minutes <= 0) return fallback;
-  return Math.min(minutes, DISPUTE_WINDOW_MAX_MINUTES);
+  if (DISPUTE_WINDOW_OPTIONS.includes(minutes)) return minutes;
+  const fallbackMinutes = Number(fallback);
+  return DISPUTE_WINDOW_OPTIONS.includes(fallbackMinutes) ? fallbackMinutes : DISPUTE_WINDOW_MINUTES;
 }
 export const TEST_ACCOUNT_COUNT = 50;
 export const TEAM_INVITE_ROLES = Object.freeze(["regular", "mercenary"]);

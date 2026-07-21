@@ -121,6 +121,7 @@ import {
   updateMatchPartiesForPlayer,
   withEffectiveMatchStatRecorders,
 } from "../lib/matchUtils.js";
+import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
 import {
   applyMatchRating,
@@ -1813,6 +1814,7 @@ function getRecruitingReserveLimitNotification(postId, sideName) {
 function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matchId = "") {
   const mode = tournament.mode || "5v5";
   const size = MODE_SIZES[mode] ?? 5;
+  const disputeMinutes = normalizeDisputeWindowMinutes(tournament.rules?.disputeMinutes ?? tournament.disputeMinutes);
   const roundLabel = tournament.format === "tournament" ? `${pairing.round}R-${pairing.fixture}` : `L-${pairing.fixture}`;
   const teamAPlayers = [];
   const teamBPlayers = [];
@@ -1834,7 +1836,7 @@ function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matc
     refereeId: "",
     refereeTrustMin: REFEREE_TRUST_MIN,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
-    disputeMinutes: DISPUTE_WINDOW_MINUTES,
+    disputeMinutes,
     tournamentId: tournament.id,
     tournamentFormat: tournament.format,
     tournamentRound: pairing.round,
@@ -1854,7 +1856,7 @@ function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matc
     memo: tournament.memo || "대회 경기입니다.",
     stakes: "대회 경기 MMR 가중치가 적용됩니다.",
     mmrLimitMode: tournament.mmrLimitMode ?? "warn",
-    objectionWindow: "30분",
+    objectionWindow: `${disputeMinutes}분`,
     evidence: [],
     teamA: { name: teamA.name, teamId: teamA.id, players: teamAPlayers, score: 0 },
     teamB: { name: teamB.name, teamId: teamB.id, players: teamBPlayers, score: 0 },
@@ -2245,6 +2247,7 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
     if ((current.status === "approval" || current.status === "disputed") && current.result) {
       const recordWindow = getMatchRecordWindow(current, nowMs);
       if (!recordWindow.disputeExpired) continue;
+      if (current.status === "disputed" && (current.disputes ?? []).some((dispute) => dispute.status === "open")) continue;
       const result = current.disputeDraftResult ?? current.result;
       const nextMatch = {
         ...current,
@@ -2253,7 +2256,6 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
         teamB: { ...current.teamB, score: result.scoreB },
         disputeDraftResult: undefined,
         disputeDraftUpdatedAt: undefined,
-        disputeMinutes: DISPUTE_WINDOW_MINUTES,
         approvals: fillMatchDecision(current, "approvals"),
         autoConfirmedAt: current.autoConfirmedAt ?? nowIso,
       };
@@ -2696,11 +2698,7 @@ export function createMatch(state, draft) {
   const ranked = isMatchRecord ? false : effectiveDraft.ranked !== false;
   const ratingScale = ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 0;
   const disputeMinutes = normalizeDisputeWindowMinutes(
-    effectiveDraft.objectionWindow === "1시간"
-      ? 60
-      : effectiveDraft.objectionWindow === "30분"
-        ? 30
-        : effectiveDraft.disputeMinutes,
+    Number.parseInt(effectiveDraft.objectionWindow, 10) || effectiveDraft.disputeMinutes,
   );
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === effectiveDraft.court || court.id === getCourtId(effectiveDraft)) ?? null;
   const creator = state.users.find((user) => user.id === state.currentUserId);
@@ -2725,12 +2723,7 @@ export function createMatch(state, draft) {
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes,
     rules: {
-      targetScore: Number(effectiveDraft.targetScore ?? 21),
-      timeLimit: Number(effectiveDraft.timeLimit ?? 12),
-      winByTwo: Boolean(effectiveDraft.winByTwo),
-      ball: effectiveDraft.ball || "7호 공",
-      attackRule: effectiveDraft.attackRule || "공격권은 득점 후 교대",
-      foulRule: effectiveDraft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
+      ...getMatchRulesPayload({ ...(effectiveDraft.rules ?? {}), ...effectiveDraft }, { mode: effectiveDraft.mode }),
       mmrRangeMode,
       ratingScale,
       ageRestriction: isMatchRecord ? "any" : effectiveDraft.ageRestriction,
@@ -2745,7 +2738,7 @@ export function createMatch(state, draft) {
     mmrLimitMode: isMatchRecord ? "off" : effectiveDraft.mmrLimitMode ?? "block",
     mmrRangeMode,
     ratingScale,
-    objectionWindow: disputeMinutes === 60 ? "1시간" : "30분",
+    objectionWindow: `${disputeMinutes}분`,
     evidence,
     teamA: { name: individualMatchRecord ? creator?.name ?? "A사이드" : teamA.name, teamId: individualMatchRecord ? "" : teamA.id, players: teamAPlayers, score: 0 },
     teamB: { name: individualMatchRecord ? opponent?.name ?? "B사이드" : teamB.name, teamId: individualMatchRecord ? "" : teamB.id, players: teamBPlayers, score: 0 },
@@ -2790,13 +2783,9 @@ export function createTournament(state, draft) {
   const mmrLimitMode = draft.mmrLimitMode ?? "warn";
   const sideCapacity = getRecruitingSideCapacity(draft);
   const tournamentRules = {
-    targetScore: Number(draft.targetScore ?? 21),
-    timeLimit: Number(draft.timeLimit ?? 12),
-    winByTwo: Boolean(draft.winByTwo),
-    ball: draft.ball || "7호 공",
-    attackRule: draft.attackRule || "공격권은 득점 후 교대",
-    foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
     ...(draft.rules ?? {}),
+    ...getMatchRulesPayload({ ...(draft.rules ?? {}), ...draft }, { mode: draft.mode }),
+    disputeMinutes: normalizeDisputeWindowMinutes(Number.parseInt(draft.objectionWindow, 10) || draft.disputeMinutes),
     sideCapacity,
     mmrLimitMode,
     mmrRangeMode: draft.mmrRangeMode ?? draft.rules?.mmrRangeMode ?? "narrow",
@@ -3623,24 +3612,24 @@ export function approveMatch(state, matchId, sideName, playerId) {
   return stateWithApproval;
 }
 
-function buildDisputeDraftResult(match = {}, disputeRequest = {}, currentUserId = "", now = new Date().toISOString()) {
-  const baseResult = clone(match.result);
+function applyDisputeRequestToResult(match = {}, baseResult = null, disputeRequest = {}) {
+  const nextResult = clone(baseResult ?? match.disputeDraftResult ?? match.result);
   const requestedPlayerId = String(disputeRequest.playerId ?? "");
   const requestedPoints = Number(disputeRequest.requestedPoints);
-  if (!baseResult || !requestedPlayerId || requestedPlayerId !== currentUserId || !Number.isFinite(requestedPoints)) return baseResult;
+  if (!nextResult || !requestedPlayerId || !Number.isFinite(requestedPoints)) return nextResult;
   const recordPlayerIds = getMatchRecordPlayerIds(match);
-  if (!recordPlayerIds.includes(requestedPlayerId)) return baseResult;
-  const playerStats = normalizePlayerStats(baseResult.playerStats ?? {}, recordPlayerIds);
+  if (!recordPlayerIds.includes(requestedPlayerId)) return nextResult;
+  const playerStats = normalizePlayerStats(nextResult.playerStats ?? {}, recordPlayerIds);
   playerStats[requestedPlayerId] = {
     ...(playerStats[requestedPlayerId] ?? {}),
     points: Math.min(999, Math.max(0, Math.round(requestedPoints))),
   };
   return {
-    ...baseResult,
-    scoreA: getMergedResultScore(match, playerStats, "teamA", baseResult.scoreA),
-    scoreB: getMergedResultScore(match, playerStats, "teamB", baseResult.scoreB),
+    ...nextResult,
+    scoreA: getMergedResultScore(match, playerStats, "teamA", nextResult.scoreA),
+    scoreB: getMergedResultScore(match, playerStats, "teamB", nextResult.scoreB),
     playerStats,
-    updatedAt: now,
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -3648,7 +3637,7 @@ export function disputeMatch(state, matchId, disputeInput = "") {
   const disciplineBlock = getDisciplineBlockedState(state, "이의제기");
   if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
-  const canOpenDispute = match?.status === "approval" || Boolean(match?.status === "agreed" && match?.endedAt && match?.result);
+  const canOpenDispute = ["approval", "disputed"].includes(match?.status) || Boolean(match?.status === "agreed" && match?.endedAt && match?.result);
   if (!match?.result || !canOpenDispute) return state;
   const disputeRequest = normalizeDisputeRequest(disputeInput);
   if (!currentUserCanFileMatchDispute(state, match)) {
@@ -3658,7 +3647,7 @@ export function disputeMatch(state, matchId, disputeInput = "") {
         {
           id: makeId("n"),
           title: "이의신청 권한 없음",
-          body: "경기 참가자, 후보, 기록자, 방장, 심판만 이의신청할 수 있습니다.",
+          body: "실제 경기에 참여한 선수만 이의제기할 수 있습니다.",
           tone: "orange",
           matchId,
         },
@@ -3674,7 +3663,7 @@ export function disputeMatch(state, matchId, disputeInput = "") {
         {
           id: makeId("n"),
           title: "이의제기 마감",
-          body: "경기 종료 후 30분이 지나 이의제기를 접수할 수 없습니다.",
+          body: `경기 종료 후 ${normalizeDisputeWindowMinutes(match.disputeMinutes)}분이 지나 이의제기를 접수할 수 없습니다.`,
           tone: "match",
           matchId,
         },
@@ -3683,15 +3672,29 @@ export function disputeMatch(state, matchId, disputeInput = "") {
     };
   }
 
+  if ((match.disputes ?? []).some((dispute) => dispute.status === "open" && dispute.by === state.currentUserId)) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "이의제기 처리 대기",
+        body: "이미 접수한 이의제기가 처리 대기 중입니다.",
+        tone: "match",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
+
   const now = new Date().toISOString();
   const dispute = {
     id: makeUuid(),
     by: state.currentUserId,
     reason: disputeRequest.reason || "스코어 또는 개인 기록 확인이 필요합니다.",
+    request: disputeRequest,
     status: "open",
     createdAt: now,
   };
-  const disputeDraftResult = buildDisputeDraftResult(match, disputeRequest, state.currentUserId, now);
+  const disputeDraftResult = clone(match.disputeDraftResult ?? match.result);
 
   return {
     ...state,
@@ -3710,7 +3713,7 @@ export function disputeMatch(state, matchId, disputeInput = "") {
       {
         id: makeId("n"),
         title: "이의제기 접수",
-        body: `${match.title} 결과가 보류됐습니다. ${match.refereeId ? "심판" : "방장"}이 수정안을 확정하거나 무효 처리합니다.`,
+        body: `${match.title} 결과가 보류됐습니다. 방장이 이의제기 큐에서 건별로 가결 또는 부결합니다.`,
         tone: "match",
         matchId,
       },
@@ -3742,6 +3745,12 @@ function currentUserCanOperateStartedMatch(state, match) {
   return currentUserIsMatchHost(state, match);
 }
 
+function currentUserCanResolveMatchDispute(state, match) {
+  if (!match) return false;
+  const hostPlayerId = getMatchHostPlayerId(state, match);
+  return Boolean(hostPlayerId && hostPlayerId === state.currentUserId);
+}
+
 function currentUserCanOperateMatchPreparation(state, match) {
   if (!match) return false;
   if (match.refereeId && getMatchRoomPhase(match).phase === "checkin") {
@@ -3770,8 +3779,7 @@ function currentUserCanConfirmRefereeAbsence(state, match) {
 
 function currentUserCanFileMatchDispute(state, match) {
   if (!match) return false;
-  if (currentUserCanOperateStartedMatch(state, match)) return true;
-  return getMatchTrustFeedbackParticipantIds(match).includes(state.currentUserId);
+  return getMatchRecordPlayerIds(match).includes(state.currentUserId);
 }
 
 export function checkInMatchPlayer(state, matchId, sideName, playerId) {
@@ -4109,7 +4117,7 @@ export function cancelMatch(state, matchId) {
 export function voidMatch(state, matchId, reason = "") {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || match.status !== "disputed") return state;
-  if (!currentUserCanOperateStartedMatch(state, match)) return state;
+  if (!currentUserCanResolveMatchDispute(state, match)) return state;
   const safeReason = String(reason).trim();
   if (safeReason.length < 10 || safeReason.length > 500) return state;
   const now = new Date().toISOString();
@@ -4133,7 +4141,7 @@ export function voidMatch(state, matchId, reason = "") {
               ratingScale: Number(item.rules?.ratingScale ?? 1),
               result: item.result ? JSON.parse(JSON.stringify(item.result)) : null,
             },
-            disputes: (item.disputes ?? []).map((dispute, index) => index === 0 && dispute.status === "open"
+            disputes: (item.disputes ?? []).map((dispute) => dispute.status === "open"
               ? { ...dispute, status: "accepted", resolution: "match_voided", resolvedAt: now, resolvedBy: state.currentUserId }
               : dispute),
           }
@@ -4146,37 +4154,78 @@ export function voidMatch(state, matchId, reason = "") {
   };
 }
 
-export function rejectMatchDispute(state, matchId) {
+export function resolveMatchDispute(state, matchId, disputeId, decision) {
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match?.result || match.status !== "disputed") return state;
-  if (!currentUserCanOperateStartedMatch(state, match)) return state;
-  const now = new Date().toISOString();
-  const resolvedMatch = {
-    ...match,
-    disputeDraftResult: undefined,
-    disputeDraftUpdatedAt: undefined,
-    disputeResolvedAt: now,
-    disputes: (match.disputes ?? []).map((dispute, index) => index === 0 && dispute.status === "open"
-      ? { ...dispute, status: "rejected", resolution: "original_result_confirmed", resolvedAt: now, resolvedBy: state.currentUserId }
-      : dispute),
-  };
-  return finalizeMatch({
+  const safeDecision = decision === "accepted" ? "accepted" : decision === "rejected" ? "rejected" : "";
+  const targetDispute = (match?.disputes ?? []).find((dispute) => dispute.id === disputeId && dispute.status === "open");
+  if (!match?.result || match.status !== "disputed" || !targetDispute || !safeDecision) return state;
+  if (!currentUserCanResolveMatchDispute(state, match)) return state;
+
+  const resolvedAt = new Date().toISOString();
+  const nextDraft = safeDecision === "accepted"
+    ? applyDisputeRequestToResult(match, match.disputeDraftResult ?? match.result, targetDispute.request ?? {})
+    : clone(match.disputeDraftResult ?? match.result);
+  const disputes = (match.disputes ?? []).map((dispute) => dispute.id === targetDispute.id
+    ? {
+        ...dispute,
+        status: safeDecision,
+        resolution: safeDecision === "accepted" ? "request_applied" : "request_rejected",
+        resolvedAt,
+        resolvedBy: state.currentUserId,
+      }
+    : dispute);
+  const openCount = disputes.filter((dispute) => dispute.status === "open").length;
+  const nextMatch = openCount
+    ? {
+        ...match,
+        disputes,
+        disputeDraftResult: nextDraft,
+        disputeDraftUpdatedAt: resolvedAt,
+      }
+    : {
+        ...match,
+        status: "approval",
+        result: nextDraft,
+        teamA: { ...match.teamA, score: nextDraft.scoreA },
+        teamB: { ...match.teamB, score: nextDraft.scoreB },
+        approvals: { teamA: [], teamB: [] },
+        disputes,
+        disputeDraftResult: undefined,
+        disputeDraftUpdatedAt: undefined,
+        disputeResolvedAt: resolvedAt,
+      };
+  const decisionLabel = safeDecision === "accepted" ? "가결" : "부결";
+
+  return {
     ...state,
-    matches: state.matches.map((item) => item.id === matchId ? resolvedMatch : item),
+    matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
     notifications: [{
       id: makeId("n"),
-      title: "이의신청 반려",
-      body: `${match.title} 이의신청이 반려되어 기존 결과로 확정됐습니다.`,
+      title: `이의제기 ${decisionLabel}`,
+      body: openCount
+        ? `${match.title} 이의제기 1건을 ${decisionLabel}했습니다. 남은 요청 ${openCount}건을 처리해 주세요.`
+        : `${match.title} 이의제기 처리가 끝났습니다. 변경된 결과를 다시 승인해 주세요.`,
       tone: "match",
       matchId,
+      targetUserId: targetDispute.by,
     }, ...state.notifications],
-  }, resolvedMatch);
+  };
+}
+
+export function rejectMatchDispute(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  const openDispute = (match?.disputes ?? [])
+    .filter((dispute) => dispute.status === "open")
+    .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))[0];
+  if (!openDispute) return state;
+  return resolveMatchDispute(state, matchId, openDispute.id, "rejected");
 }
 
 export function resumeMatchApproval(state, matchId, resultDraft = null) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || match.status !== "disputed") return state;
-  if (!currentUserCanOperateStartedMatch(state, match)) return state;
+  if (!currentUserCanResolveMatchDispute(state, match)) return state;
+  if ((match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
   const result = resultDraft ?? match.disputeDraftResult ?? match.result;
   if (!result) return state;
   const resolvedMatchForCheck = { ...match, result };
@@ -4214,13 +4263,10 @@ export function resumeMatchApproval(state, matchId, resultDraft = null) {
       ? { ...dispute, status: "accepted", resolution: "draft_accepted", resolvedAt, resolvedBy: state.currentUserId }
       : dispute),
   };
-  return finalizeMatch(
-    {
-      ...state,
-      matches: state.matches.map((item) => (item.id === matchId ? resolvedMatch : item)),
-    },
-    resolvedMatch,
-  );
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? { ...resolvedMatch, status: "approval" } : item)),
+  };
 }
 
 export function toggleMatchStar(state, matchId, targetUserId) {
@@ -5194,10 +5240,11 @@ export function reportCourtReview(state, reviewId, reason = "구장 리뷰 문�
   };
 }
 
-export function reportTeamEmblem(state, teamId, reason = "부적절한 이미지") {
+export function reportTeamEmblem(state, teamId, reason = "부적절한 이미지", teamSnapshot = null) {
   const disciplineBlock = getDisciplineBlockedState(state, "팀 엠블럼 신고");
   if (disciplineBlock) return disciplineBlock;
-  const team = (state.teams ?? []).find((item) => item.id === teamId);
+  const team = (state.teams ?? []).find((item) => item.id === teamId)
+    ?? (teamSnapshot?.id === teamId ? teamSnapshot : null);
   const captainId = team?.members?.find((member) => member.role === "captain")?.userId;
   if (!team || !captainId || captainId === state.currentUserId || team.emblemSource !== "upload" || !team.emblemKey) {
     return state;
@@ -6170,7 +6217,7 @@ export function createRecruitingPost(state, draft) {
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
-    disputeMinutes: DISPUTE_WINDOW_MINUTES,
+    disputeMinutes: normalizeDisputeWindowMinutes(Number.parseInt(draft.objectionWindow, 10) || draft.disputeMinutes),
     ownerId: state.currentUserId,
     hostJoinMode,
     teamOnly,
@@ -6198,7 +6245,10 @@ export function createRecruitingPost(state, draft) {
     playerIds: hostPlayerIds,
     position: hostJoinMode === "player" ? draft.position || "포지션 자유" : "포지션 자유",
     playerId: hostPlayerId,
-    rules: draft.rules ?? {},
+    rules: {
+      ...(draft.rules ?? {}),
+      ...getMatchRulesPayload(draft.rules ?? draft, { mode: draft.mode }),
+    },
     official: Boolean(draft.official),
     preRegistered: draft.preRegistered !== false,
     stakes: draft.stakes ?? "",
@@ -6829,14 +6879,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
   }
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const nextMmrRangeMode = normalizeRecruitingMmrRangeMode(patch.mmrRangeMode ?? post.mmrRangeMode ?? roomState.mmrRangeMode);
-  const nextRules = {
-    targetScore: Math.max(7, Math.min(31, Number(patch.targetScore ?? post.rules?.targetScore ?? 21))),
-    timeLimit: Math.max(5, Math.min(60, Number(patch.timeLimit ?? post.rules?.timeLimit ?? 12))),
-    winByTwo: Boolean(patch.winByTwo ?? post.rules?.winByTwo ?? true),
-    ball: patch.ball ?? post.rules?.ball ?? "7호 공",
-    attackRule: String(patch.attackRule ?? post.rules?.attackRule ?? "득점 후 공격권 교대").slice(0, 120),
-    foulRule: String(patch.foulRule ?? post.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지").slice(0, 120),
-  };
+  const nextRules = getMatchRulesPayload({ ...(post.rules ?? {}), ...patch }, { mode: post.mode });
   const updatedAt = new Date().toISOString();
   const nextCourtName = patch.court === undefined ? post.court : String(patch.court || post.court || "미정").slice(0, 80);
   const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === patch.courtId) ?? null;
@@ -6911,13 +6954,8 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
   const convertToPlayerMatch = patch.matchJoinMode === "player";
   const nextRules = {
     ...(match.rules ?? {}),
+    ...getMatchRulesPayload({ ...(match.rules ?? {}), ...patch }, { mode: match.mode }),
     sideCapacity,
-    targetScore: Math.max(7, Math.min(31, Number(patch.targetScore ?? match.rules?.targetScore ?? 21))),
-    timeLimit: Math.max(5, Math.min(60, Number(patch.timeLimit ?? match.rules?.timeLimit ?? 12))),
-    winByTwo: Boolean(patch.winByTwo ?? match.rules?.winByTwo ?? true),
-    ball: patch.ball ?? match.rules?.ball ?? "7호 공",
-    attackRule: String(patch.attackRule ?? match.rules?.attackRule ?? "득점 후 공격권 교대").slice(0, 120),
-    foulRule: String(patch.foulRule ?? match.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지").slice(0, 120),
   };
   delete nextRules.startedAt;
   const nextCourtName = patch.court === undefined ? match.court : String(patch.court || match.court || "미정").slice(0, 80);
@@ -9089,14 +9127,8 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(promotedPost.mmrRangeMode ?? promotedPost.roomState?.mmrRangeMode);
   const ranked = promotedPost.ranked !== false;
   const ratingScale = getRecruitingRatingScale({ ranked, mmrRangeMode });
-  const defaultRules = {
-    targetScore: 21,
-    timeLimit: 12,
-    winByTwo: true,
-    ball: "7호 공",
-    attackRule: "득점 후 공격권 교대",
-    foulRule: "파울 콜 즉시 중단, 공격권 유지",
-  };
+  const defaultRules = getDefaultMatchRules(promotedPost.mode);
+  const disputeMinutes = normalizeDisputeWindowMinutes(promotedPost.disputeMinutes);
   const match = {
     id: options.matchId || makeId("m"),
     title: promotedPost.title,
@@ -9115,7 +9147,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
     refereeTrustMin: REFEREE_TRUST_MIN,
     statRecorders,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
-    disputeMinutes: DISPUTE_WINDOW_MINUTES,
+    disputeMinutes,
     rules: {
       ...defaultRules,
       ...(promotedPost.rules ?? {}),
@@ -9131,7 +9163,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
     ranked,
     mmrRangeMode,
     ratingScale,
-    objectionWindow: "2시간",
+    objectionWindow: `${disputeMinutes}분`,
     evidence: [],
     teamA: {
       name: getLobbySideName(lobby, "teamA"),

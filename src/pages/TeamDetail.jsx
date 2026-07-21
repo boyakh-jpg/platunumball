@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Flag, ImageUp, RotateCcw, Star, Trash2 } from "lucide-react";
+import { ImageUp, RotateCcw, Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
-import NameReportForm from "../components/common/NameReportForm.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
@@ -55,7 +54,6 @@ const historyStatusLabel = {
 };
 const managedTeamRoleOptions = TEAM_INVITE_ROLES.map((role) => [role, getTeamRoleLabel(role)]);
 const inviteRoleOptions = managedTeamRoleOptions;
-const TEAM_EMBLEM_REPORT_REASONS = ["부적절한 이미지", "혐오·폭력 표현", "사칭 또는 저작권 침해", "기타 운영 확인 필요"];
 
 function getManagedRoleOptions(member, captainId) {
   if (member.userId === captainId) return [["captain", getTeamRoleLabel("captain")]];
@@ -84,11 +82,6 @@ export default function TeamDetail({ app }) {
     emblemAbbreviation: team?.emblemAbbreviation ?? "",
     emblemFont: team?.emblemFont ?? "sport",
   }));
-  const [emblemReportOpen, setEmblemReportOpen] = useState(false);
-  const [emblemReportReason, setEmblemReportReason] = useState(TEAM_EMBLEM_REPORT_REASONS[0]);
-  const [emblemReportPending, setEmblemReportPending] = useState(false);
-  const [emblemReportFeedback, setEmblemReportFeedback] = useState("");
-  const [teamNameReportOpen, setTeamNameReportOpen] = useState(false);
   const emblemInputRef = useRef(null);
   const emblemStatusRequestRef = useRef("");
   const emblemAbbreviationCharacterCount = getTeamEmblemAbbreviationCharacterCount(emblemStyleDraft.emblemAbbreviation);
@@ -342,35 +335,12 @@ export default function TeamDetail({ app }) {
     }
   };
 
-  const submitEmblemReport = async (event) => {
-    event.preventDefault();
-    if (emblemReportPending) return;
-    setEmblemReportPending(true);
-    setEmblemReportFeedback("");
-    try {
-      const result = await app.actions.reportTeamEmblem(team.id, emblemReportReason);
-      if (!result || result.ok === false) {
-        setEmblemReportFeedback(getTeamEmblemErrorMessage(result?.error));
-        return;
-      }
-      setEmblemReportFeedback("신고를 접수했습니다. 관리자 확인 후 결과를 알려드립니다.");
-      setEmblemReportOpen(false);
-    } catch (error) {
-      setEmblemReportFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
-    } finally {
-      setEmblemReportPending(false);
-    }
-  };
-
   const cooldownNextAt = getNextEmblemUploadAt(team.emblemUploadCount, team.emblemUploadedAt);
   const moderationBlockedAt = team.emblemUploadBlockedUntil ? new Date(team.emblemUploadBlockedUntil) : null;
   const moderationLocked = Boolean(moderationBlockedAt && Number.isFinite(moderationBlockedAt.getTime()) && moderationBlockedAt.getTime() > Date.now());
   const nextEmblemUploadAt = moderationLocked && (!cooldownNextAt || moderationBlockedAt > cooldownNextAt) ? moderationBlockedAt : cooldownNextAt;
   const emblemUploadLocked = moderationLocked || isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
-  const hasOpenEmblemReport = (app.state.reports ?? []).some((report) => report.type === "team_emblem" && report.targetId === team.id && report.by === app.currentUser.id && report.status === "open");
-  const canReportEmblem = !canManage && emblemSource === "upload" && Boolean(team.emblemKey);
-  const hasOpenTeamNameReport = (app.state.reports ?? []).some((report) => report.type === "team_name" && report.targetId === team.id && report.by === app.currentUser.id && report.status === "open");
 
   return (
     <div className="page-stack team-detail-page rank-team-page">
@@ -395,38 +365,10 @@ export default function TeamDetail({ app }) {
             <TierBadge mmr={team.mmr} />
             <Badge tone="gold">팀장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
           </div>
-          <div className="team-name-report-control">
-            <Button type="button" size="sm" variant="secondary" disabled={hasOpenTeamNameReport} onClick={() => setTeamNameReportOpen((open) => !open)}>
-              <Flag size={14} /> {hasOpenTeamNameReport ? "팀명 신고 접수됨" : "팀명 신고"}
-            </Button>
-            {teamNameReportOpen && !hasOpenTeamNameReport ? (
-              <NameReportForm
-                label="팀명"
-                onCancel={() => setTeamNameReportOpen(false)}
-                onSubmit={(reason) => app.actions.reportTeamName(team.id, reason, team.name)}
-              />
-            ) : null}
-          </div>
         </div>
         <div className="team-tier-hero">
           <TierEmblem mmr={team.mmr} size="md" showLabel />
           <TeamEmblem team={team} size="lg" className="hero-emblem" />
-          {canReportEmblem ? (
-            <div className="team-emblem-report-control">
-              <Button type="button" size="sm" variant="secondary" disabled={hasOpenEmblemReport || emblemReportPending} onClick={() => setEmblemReportOpen((open) => !open)}>
-                <Flag size={14} /> {hasOpenEmblemReport ? "신고 접수됨" : "엠블럼 신고"}
-              </Button>
-              {emblemReportOpen && !hasOpenEmblemReport ? (
-                <form onSubmit={submitEmblemReport}>
-                  <select value={emblemReportReason} disabled={emblemReportPending} onChange={(event) => setEmblemReportReason(event.target.value)}>
-                    {TEAM_EMBLEM_REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
-                  </select>
-                  <Button type="submit" size="sm" disabled={emblemReportPending}>{emblemReportPending ? "접수 중" : "신고 접수"}</Button>
-                </form>
-              ) : null}
-              {emblemReportFeedback ? <small role="status">{emblemReportFeedback}</small> : null}
-            </div>
-          ) : null}
         </div>
       </section>
 

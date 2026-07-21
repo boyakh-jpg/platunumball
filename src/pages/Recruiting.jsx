@@ -28,7 +28,10 @@ import EmptyState from "../components/common/EmptyState.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
+import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
 import MatchVoidDialog from "../components/match/MatchVoidDialog.jsx";
+import MeetingPointFields from "../components/match/MeetingPointFields.jsx";
+import RuleSelector from "../components/match/RuleSelector.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
@@ -79,11 +82,13 @@ import {
   OTHER_MATCH_DISPUTE_REASON,
   buildMatchResultSubmission,
   buildMatchDisputeRequest,
+  canUserResolveMatchDispute,
   formatStatLine,
   getRoomCompetitionLabel,
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
   getMatchPlayerDisputePoints,
+  getOpenMatchDisputes,
   getLocalDateInputValue,
   getMatchRecordPlayerIds,
   getMatchResultEntryPermission,
@@ -108,6 +113,7 @@ import {
   isMatchSideTeamParty,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
+import { getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getUnsafeUserTextReason, UNSAFE_INPUT_MESSAGE } from "../lib/inputSecurity.js";
 import {
@@ -355,17 +361,13 @@ function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = DEFAULT_R
 }
 
 function getRoomEditDraft(post) {
+  const rules = normalizeMatchRules(post.rules, { mode: post.mode });
   return {
     court: post.court ?? "",
     sideCapacity: getRecruitingSideCapacity(post),
     matchJoinMode: post.hostJoinMode === "team" ? "team" : "player",
     mmrRangeMode: post.mmrRangeMode ?? post.roomState?.mmrRangeMode ?? "narrow",
-    targetScore: post.rules?.targetScore ?? 21,
-    timeLimit: post.rules?.timeLimit ?? 12,
-    winByTwo: post.rules?.winByTwo ?? true,
-    ball: post.rules?.ball ?? "7호 공",
-    attackRule: post.rules?.attackRule ?? "득점 후 공격권 교대",
-    foulRule: post.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지",
+    ...rules,
     stakes: post.stakes ?? "",
     memo: post.memo ?? "",
   };
@@ -868,15 +870,7 @@ function TeamMemberPicker({
 }
 
 function getRecruitingRuleSummary(post = {}) {
-  const rulesSource = post.rules ?? {};
-  const targetScore = Number(rulesSource.targetScore ?? 21);
-  const timeLimit = Number(rulesSource.timeLimit ?? 12);
-  return [
-    targetScore ? `${targetScore}점` : "",
-    timeLimit ? `${timeLimit}분` : "",
-    (rulesSource.winByTwo ?? true) ? "2점차" : "",
-    rulesSource.ball ?? "7호 공",
-  ].filter(Boolean).join(" · ");
+  return getMatchRuleSummary(post.rules, post.mode);
 }
 
 function getRecruitingRoomTypeLabel(room = {}, lobby = null) {
@@ -2147,9 +2141,10 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
       : { label: "결과 승인", detail: "기록과 득점 합계가 맞으면 승인합니다.", action: "approve", button: "승인" };
   }
   if (effectiveStatus === "disputed") {
+    const openCount = getOpenMatchDisputes(match).length;
     return {
       label: "이의신청방",
-      detail: "30분 안에 이의 사유를 확인하고 수정안 확정, 이의신청 반려 또는 경기 무효 처리를 선택해 주세요.",
+      detail: openCount ? `방장이 이의제기 ${openCount}건을 건별로 가결 또는 부결합니다.` : "이의제기 처리가 끝나 결과 재승인을 기다립니다.",
       disputed: true,
     };
   }
@@ -2299,15 +2294,10 @@ function SourceMatchDisputeEditor({
   userById,
   canReview,
   onSave,
-  onResolve = null,
-  onReject = null,
-  onVoid = null,
   getEditableStatFields = null,
   submitLabel = "",
 }) {
   const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
-  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
-  const [voidPending, setVoidPending] = useState(false);
 
   useEffect(() => {
     setDraft(makeSourceMatchDraft(match));
@@ -2405,11 +2395,23 @@ function SourceMatchDisputeEditor({
       </div>
       <div className="match-action-row">
         <Button type="submit" disabled={!canSaveDraft}>{submitLabel || (hasResult ? "수정안 저장" : "결과 저장")}</Button>
-        {hasResult && onResolve ? <Button type="button" disabled={!canReview} onClick={() => onResolve(getDerivedDraft())}>수정안 확정</Button> : null}
-        {hasResult && onReject ? <Button type="button" variant="secondary" disabled={!canReview} onClick={onReject}>이의신청 반려</Button> : null}
-        {hasResult && onVoid ? <Button type="button" variant="secondary" className="danger-button" disabled={!canReview} onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button> : null}
       </div>
       <p className="muted">{hasResult ? "확정 후 불복은 신고로 처리합니다." : "결과 저장 후 양쪽 승인 단계로 넘어갑니다."}</p>
+    </form>
+  );
+}
+
+function SourceMatchDisputeControls({ match, userById, canResolve, onResolve, onVoid }) {
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [voidPending, setVoidPending] = useState(false);
+  if (!match || match.status !== "disputed") return null;
+
+  return (
+    <div className="arena-dispute-controls">
+      <MatchDisputeQueue match={match} userById={userById} canResolve={canResolve} onResolve={onResolve} />
+      {canResolve ? (
+        <Button type="button" variant="secondary" className="danger-button" onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button>
+      ) : null}
       <MatchVoidDialog
         open={voidDialogOpen}
         pending={voidPending}
@@ -2424,7 +2426,7 @@ function SourceMatchDisputeEditor({
           }
         }}
       />
-    </form>
+    </div>
   );
 }
 
@@ -2973,6 +2975,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const saveRoomEdit = (roomPost) => {
     const roomEditDraft = getRoomEditDraftByPost(roomPost);
     if (!roomEditDraft) return;
+    if (String(roomEditDraft.meetingPoint ?? "").trim().length < 2) return;
     if (sourceMatch) app.actions.updateMatchRoomRules(sourceMatch.id, roomEditDraft);
     else app.actions.updateRecruitingRoomRules(roomPost.id, roomEditDraft);
     closeRoomEdit(roomPost);
@@ -3149,8 +3152,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           ? registeredCourts.find((court) => court.name === roomEditDraft.court) ?? registeredCourts.find((court) => court.name === selectedPost.court) ?? null
           : null;
         const roomEditCourtWarning = roomEditDraft && roomEditCourt ? getCourtPlayWarning(roomEditCourt, `${roomEditDraft.sideCapacity}v${roomEditDraft.sideCapacity}`) : "";
+        const selectedMatchRules = normalizeMatchRules(selectedPost.rules, { mode: selectedPost.mode });
         const maxSideFilled = Math.max(lobby.sides.teamA.filled, lobby.sides.teamB.filled);
         const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
+        const roomEditMeetingValid = !roomEditDraft || String(roomEditDraft.meetingPoint ?? "").trim().length >= 2;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const partyJoinOptions = soloIndividualRoom ? [] : getSameSidePartyOptions(lobby, myEntry, myTeams);
         const sidePartyJoinOptions = soloIndividualRoom ? [] : getJoinableSidePartyOptions(lobby, myTeams, app.currentUser.id);
@@ -3269,6 +3274,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin, app.state.settings?.refereeAppointments));
         const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const currentUserCanStartSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
+        const canResolveSourceMatchDispute = Boolean(
+          sourceMatch &&
+          canUserResolveMatchDispute(sourceMatch, app.currentUser.id, selectedPost) &&
+          mine
+        );
         const sourceMatchHostSideName = sourceMatch && getMatchSidePlayerIds(sourceMatch, "teamB").includes(sourceMatch.createdBy) ? "teamB" : "teamA";
         const sourceMatchOpponentSideName = sourceMatchHostSideName === "teamA" ? "teamB" : "teamA";
         const sourceMatchSideLeaderIds = {
@@ -3321,7 +3331,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               refereeEligible: currentUserIsSourceReferee,
             })
           : null;
-        const canReviewSourceMatch = Boolean(matchRoom && sourceMatchResultEntryPermission?.canEditDisputeDraft);
+        const canReviewSourceMatch = Boolean(matchRoom && sourceMatch?.status !== "disputed" && sourceMatchResultEntryPermission?.canEditDisputeDraft);
         const canSubmitSourceMatchLiveResult = Boolean(matchRoom && sourceMatchResultEntryPermission?.canSubmitLive);
         const canSubmitSourceMatchPostgameResult = Boolean(matchRoom && sourceMatchResultEntryPermission?.canSubmitPostgame);
         const canSubmitSourceMatchRecorderResult = Boolean(canSubmitSourceMatchLiveResult && sourceMatchRecorderSides.length);
@@ -3336,6 +3346,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const canDeleteSourceSoloRecord = Boolean(matchRoom && isPersonalRecordMatch(sourceMatch) && sourceMatch.createdBy === app.currentUser.id && sourceMatch.status !== "cancelled");
         const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
+        const sourceOpenDisputes = sourceMatch ? getOpenMatchDisputes(sourceMatch) : [];
+        const sourceHasOwnOpenDispute = sourceOpenDisputes.some((dispute) => dispute.by === app.currentUser.id);
         const canSubstituteSourceMatchSide = (sideName) => Boolean(
           matchRoom &&
           sourceMatch?.status === "agreed" &&
@@ -3347,11 +3359,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const sourceMatchApprovalOpen = Boolean(
           sourceMatch?.result &&
           sourceMatchRecordWindow?.disputeOpen &&
-          (sourceMatch.status === "approval" || (sourceMatch.status === "agreed" && sourceMatch.endedAt)),
+          (["approval", "disputed"].includes(sourceMatch.status) || (sourceMatch.status === "agreed" && sourceMatch.endedAt)),
         );
         const canRequestSourceMatchPointDispute = Boolean(
           matchRoom &&
           sourceMatchApprovalOpen &&
+          !sourceHasOwnOpenDispute &&
           getMatchRecordPlayerIds(sourceMatch).includes(app.currentUser.id),
         );
         const sourceCurrentDisputePoints = sourceMatch ? getMatchPlayerDisputePoints(sourceMatch, app.currentUser.id) : 0;
@@ -3377,17 +3390,23 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               {showSourceMatchRecordSummary ? (
                 <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
               ) : null}
+              {sourceMatchAction.disputed ? (
+                <SourceMatchDisputeControls
+                  match={sourceMatch}
+                  userById={userById}
+                  canResolve={canResolveSourceMatchDispute}
+                  onResolve={(disputeId, decision) => app.actions.resolveMatchDispute(sourceMatch.id, disputeId, decision)}
+                  onVoid={(reason) => app.actions.voidMatch(sourceMatch.id, reason)}
+                />
+              ) : null}
               {canShowSourceMatchRecordEditor ? (
                 <SourceMatchDisputeEditor
                   match={sourceMatch}
                   userById={userById}
-                  canReview={sourceMatchAction.disputed ? canReviewSourceMatch : false}
+                  canReview={false}
                   getEditableStatFields={getEditableSourceMatchStatFields}
                   submitLabel={sourceMatchResultSubmitLabel}
                   onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
-                  onResolve={sourceMatchAction.disputed ? (draft) => app.actions.resumeMatchApproval(sourceMatch.id, draft) : undefined}
-                  onReject={sourceMatchAction.disputed ? () => app.actions.rejectMatchDispute(sourceMatch.id) : undefined}
-                  onVoid={sourceMatchAction.disputed ? (reason) => app.actions.voidMatch(sourceMatch.id, reason) : undefined}
                 />
               ) : null}
             </div>
@@ -3853,7 +3872,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <div><Clock3 size={17} /><span>{getRecruitingSchedule(selectedPost)}</span></div>
                   <div><UsersRound size={17} /><span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span></div>
                   <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : `MMR ${Math.round(selectedRatingScale * 100)}%`}</span></div>
-                  <div><Swords size={17} /><span>{selectedPost.rules?.targetScore ?? 21}점 · {selectedPost.rules?.timeLimit ?? 12}분</span></div>
+                  <div><Swords size={17} /><span>{getMatchRuleSummary(selectedMatchRules, selectedPost.mode)}</span></div>
                 </div>
               </div>
               {renderSlotCommand()}
@@ -3957,8 +3976,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 </div>
                 <div className="arena-room-rule-summary">
                   <span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span>
-                  <span>{selectedPost.rules?.targetScore ?? 21}점 · {selectedPost.rules?.timeLimit ?? 12}분</span>
-                  <span>{(selectedPost.rules?.winByTwo ?? true) ? "2점차" : "선착순"} · {selectedPost.rules?.ball ?? "7호 공"}</span>
+                  <span>{getMatchRuleSummary(selectedMatchRules, selectedPost.mode)}</span>
+                  <span>{getMeetingPointSummary(selectedMatchRules, selectedPost.timingType, selectedPost.mode)}</span>
                   {selectedPost.ranked !== false ? <span>{selectedRange.label}</span> : <span>친선 · 티어 자유</span>}
                 </div>
                 <div className="arena-room-rule-summary detail">
@@ -4024,14 +4043,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                           ))}
                         </select>
                       </label>
-                      <label>
-                        목표 점수
-                        <input type="number" min="7" max="31" value={roomEditDraft.targetScore} onChange={(event) => updateRoomEditDraft(selectedPost, { targetScore: event.target.value })} />
-                      </label>
-                      <label>
-                        제한 시간
-                        <input type="number" min="5" max="60" value={roomEditDraft.timeLimit} onChange={(event) => updateRoomEditDraft(selectedPost, { timeLimit: event.target.value })} />
-                      </label>
                       {matchRoom && sourceMatchPhase?.phase === "checkin" ? (
                         <label>
                           매치 방식
@@ -4042,28 +4053,24 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         </label>
                       ) : null}
                     </div>
-                    <div className="arena-field-grid three">
+                    <RuleSelector
+                      draft={{ ...roomEditDraft, mode: selectedPost.mode }}
+                      onChange={(patch) => updateRoomEditDraft(selectedPost, patch)}
+                    />
+                    <MeetingPointFields
+                      draft={roomEditDraft}
+                      onChange={(patch) => updateRoomEditDraft(selectedPost, patch)}
+                      required
+                      timingType={selectedPost.timingType}
+                    />
+                    {selectedPost.ranked !== false ? (
                       <label>
-                        사용 공
-                        <select value={roomEditDraft.ball} onChange={(event) => updateRoomEditDraft(selectedPost, { ball: event.target.value })}>
-                          <option>7호 공</option>
-                          <option>6호 공</option>
-                          <option>코트 공</option>
+                        정규전 허용구간
+                        <select value={roomEditDraft.mmrRangeMode} onChange={(event) => updateRoomEditDraft(selectedPost, { mmrRangeMode: event.target.value })}>
+                          {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => <option key={mode} value={mode}>{policy.label}</option>)}
                         </select>
                       </label>
-                      <label className="switch-line">
-                        <input type="checkbox" checked={roomEditDraft.winByTwo} onChange={(event) => updateRoomEditDraft(selectedPost, { winByTwo: event.target.checked })} />
-                        2점 차 승리
-                      </label>
-                      {selectedPost.ranked !== false ? (
-                        <label>
-                          정규전 허용구간
-                          <select value={roomEditDraft.mmrRangeMode} onChange={(event) => updateRoomEditDraft(selectedPost, { mmrRangeMode: event.target.value })}>
-                            {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => <option key={mode} value={mode}>{policy.label}</option>)}
-                          </select>
-                        </label>
-                      ) : null}
-                    </div>
+                    ) : null}
                     {roomEditRange ? <small>{roomEditRange.detail}</small> : null}
                     {roomEditCourt ? (
                       <small className={roomEditCourtWarning ? "room-edit-warning" : ""}>
@@ -4090,9 +4097,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       <textarea value={roomEditDraft.memo} onChange={(event) => updateRoomEditDraft(selectedPost, { memo: event.target.value })} />
                     </label>
                     {!roomEditCapacityValid ? <span className="form-warning">현재 출전 인원이 {maxSideFilled}명이라 정원을 그보다 낮출 수 없습니다.</span> : null}
+                    {!roomEditMeetingValid ? <span className="form-warning">실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요.</span> : null}
                     <div className="arena-room-edit-actions">
                       <Button type="button" size="sm" variant="secondary" onClick={() => closeRoomEdit(selectedPost)}>취소</Button>
-                      <Button type="button" size="sm" disabled={!roomEditCapacityValid} onClick={() => saveRoomEdit(selectedPost)}>수정 저장</Button>
+                      <Button type="button" size="sm" disabled={!roomEditCapacityValid || !roomEditMeetingValid} onClick={() => saveRoomEdit(selectedPost)}>수정 저장</Button>
                     </div>
                     <small>저장하면 방장을 제외한 참가자가 다시 수락해야 합니다.</small>
                   </div>
@@ -4123,13 +4131,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <div className="arena-owner-panel">
                     <strong>{sourceMatchAction.label}</strong>
                     <span>{sourceMatchAction.detail}</span>
-                    {sourceMatchAction.disputed && sourceMatch?.disputes?.[0]?.reason ? (
-                      <span>최근 이의: {sourceMatch.disputes[0].reason}</span>
-                    ) : null}
                     {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
                     ) : null}
-                    {!sourceMatchAction.disputed && sourceMatchApprovalOpen ? (
+                    {sourceMatchApprovalOpen ? (
                       <form className="arena-dispute-editor" onSubmit={submitSourceDispute}>
                         <div className="arena-dispute-score-row">
                           <label>
@@ -4168,18 +4173,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                           </label>
                         ) : null}
                         <div className="match-action-row">
-                          <Button type="submit" variant="secondary" disabled={!canRequestSourceMatchPointDispute}>이의제기</Button>
+                          <Button type="submit" variant="secondary" disabled={!canRequestSourceMatchPointDispute}>{sourceHasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
                         </div>
                       </form>
                     ) : null}
-                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && sourceMatchAction.disputed && canReviewSourceMatch ? (
-                      <SourceMatchDisputeEditor
+                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && sourceMatchAction.disputed ? (
+                      <SourceMatchDisputeControls
                         match={sourceMatch}
                         userById={userById}
-                        canReview={canReviewSourceMatch}
-                        onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
-                        onResolve={(draft) => app.actions.resumeMatchApproval(sourceMatch.id, draft)}
-                        onReject={() => app.actions.rejectMatchDispute(sourceMatch.id)}
+                        canResolve={canResolveSourceMatchDispute}
+                        onResolve={(disputeId, decision) => app.actions.resolveMatchDispute(sourceMatch.id, disputeId, decision)}
                         onVoid={(reason) => app.actions.voidMatch(sourceMatch.id, reason)}
                       />
                     ) : null}

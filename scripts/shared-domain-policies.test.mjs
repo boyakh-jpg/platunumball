@@ -878,7 +878,7 @@ test("match dispute rejection, void reasons, restoration and scoped penalties st
   assert.equal(voidedState.matches[0].voidSnapshot.result.scoreA, 10);
   assert.equal(voidedState.users[0].trustScore, 78);
   const rejectedState = rejectMatchDispute(state, disputedMatch.id);
-  assert.equal(rejectedState.matches[0].status, "confirmed");
+  assert.equal(rejectedState.matches[0].status, "approval");
   assert.equal(rejectedState.matches[0].result.scoreA, 10);
 
   const [matchRoom, recruiting, matchSync, reportSubmit, adminReview, migration] = await Promise.all([
@@ -889,7 +889,7 @@ test("match dispute rejection, void reasons, restoration and scoped penalties st
     readSource("server/api/admin/review-action.js"),
     readSource("supabase/migrations/20260721210000_match_void_review_and_dispute_rejection.sql"),
   ]);
-  assert.match(matchRoom, /이의신청 반려/);
+  assert.match(matchRoom, /MatchDisputeQueue/);
   assert.match(recruiting, /경기 무효 처리/);
   assert.match(matchSync, /rankball_match_reject_dispute_action/);
   assert.match(matchSync, /p_reason: operation\.reason/);

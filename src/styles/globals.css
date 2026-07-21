@@ -2170,6 +2170,119 @@ span.referee-hover-card {
   }
 }
 
+/* Match rule, meeting point, and dispute queue modules */
+.match-rule-selector,
+.meeting-point-fields,
+.match-dispute-queue,
+.arena-dispute-controls {
+  min-width: 0;
+}
+
+.match-rule-selector,
+.meeting-point-fields,
+.match-dispute-queue,
+.match-dispute-queue-list,
+.arena-dispute-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.match-rule-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+}
+
+.match-rule-summary,
+.meeting-point-fields > small {
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.meeting-point-fields {
+  grid-template-columns: minmax(0, 2fr) minmax(150px, 1fr);
+}
+
+.meeting-point-fields > small {
+  grid-column: 1 / -1;
+}
+
+.match-dispute-queue {
+  border: 1px solid color-mix(in srgb, var(--rb-orange) 30%, var(--ui-control-border));
+  border-radius: var(--ui-control-radius);
+  background: color-mix(in srgb, var(--rb-orange) 7%, var(--ui-control-bg));
+  padding: 12px;
+}
+
+.match-dispute-queue-head,
+.match-dispute-queue-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.match-dispute-queue-head > div,
+.match-dispute-queue-item > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.match-dispute-queue-head span,
+.match-dispute-queue-item span,
+.match-dispute-queue-item p,
+.match-dispute-queue-item small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.match-dispute-queue-head em {
+  flex: 0 0 auto;
+  color: var(--rb-orange);
+  font-style: normal;
+  font-weight: 950;
+}
+
+.match-dispute-queue-item {
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: 10px;
+}
+
+.match-dispute-queue-item p {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.match-dispute-queue-actions {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, minmax(64px, 1fr));
+  gap: 6px;
+}
+
+.report-team-note .team-emblem {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  .meeting-point-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .match-dispute-queue-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .match-dispute-queue-actions {
+    width: 100%;
+  }
+}
+
 .team-emblem {
   --team-emblem-size: 44px;
   display: inline-grid;

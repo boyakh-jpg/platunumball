@@ -48,6 +48,7 @@ import {
   reportPlayer,
   reportTeamEmblem,
   rejectMatchDispute,
+  resolveMatchDispute,
   resetState,
   requestMatchRefereeAbsence,
   resumeMatchApproval,
@@ -202,6 +203,7 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "voidMatch",
   "resumeMatchApproval",
   "rejectMatchDispute",
+  "resolveMatchDispute",
   "startMatch",
   "endMatch",
   "addMatchLatePlayer",
@@ -248,6 +250,7 @@ const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "requestMatchRefereeAbsence",
   "resumeMatchApproval",
   "rejectMatchDispute",
+  "resolveMatchDispute",
   "removeMatchLatePlayer",
   "startMatch",
   "submitMatchThumbs",
@@ -3202,6 +3205,7 @@ export function useAppData(authUser = null, appLocation = null) {
       deleteSoloRecord: (matchId) => applyMatchMutation(matchId, (prev) => deleteSoloRecord({ ...prev, currentUserId }, matchId), { action: "deleteSoloRecord" }),
       voidMatch: (matchId, reason) => applyMatchMutation(matchId, (prev) => voidMatch({ ...prev, currentUserId }, matchId, reason), { action: "voidMatch", reason }),
       rejectMatchDispute: (matchId) => applyMatchMutation(matchId, (prev) => rejectMatchDispute({ ...prev, currentUserId }, matchId), { action: "rejectMatchDispute" }),
+      resolveMatchDispute: (matchId, disputeId, decision) => applyMatchMutation(matchId, (prev) => resolveMatchDispute({ ...prev, currentUserId }, matchId, disputeId, decision), { action: "resolveMatchDispute", disputeId, decision }),
       resumeMatchApproval: (matchId, resultDraft = null) => applyMatchMutation(matchId, (prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId, resultDraft), { action: "resumeMatchApproval", resultDraft }),
       startMatch: (matchId) => applyMatchMutation(matchId, (prev) => startMatch({ ...prev, currentUserId }, matchId), { action: "startMatch" }),
       endMatch: (matchId) => applyMatchMutation(matchId, (prev) => endMatch({ ...prev, currentUserId }, matchId), { action: "endMatch" }),
@@ -3357,7 +3361,7 @@ export function useAppData(authUser = null, appLocation = null) {
         }
         return result;
       },
-      reportTeamEmblem: async (teamId, reason) => {
+      reportTeamEmblem: async (teamId, reason, teamSnapshot = null) => {
         const serverReady = await ensureServerActionAvailable("/api/reports/submit", "팀 엠블럼 신고");
         if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("팀 엠블럼 신고")) return { ok: false, error: "remote_not_ready" };
@@ -3365,7 +3369,7 @@ export function useAppData(authUser = null, appLocation = null) {
         let syncedNotifications = [];
         setState((prev) => {
           const existingIds = new Set((prev.reports ?? []).map((report) => report.id));
-          const next = reportTeamEmblem({ ...prev, currentUserId }, teamId, reason);
+          const next = reportTeamEmblem({ ...prev, currentUserId }, teamId, reason, teamSnapshot);
           createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
           syncedNotifications = createdReport ? getNewReportNotifications(prev, next, createdReport) : [];
           return next;

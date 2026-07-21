@@ -11,7 +11,7 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
-import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
+import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportReasonValue, getReportTargetType } from "../lib/reportReasons.js";
 import { formatKoreanDateTime, formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, REFEREE_EXAM_COOLDOWN_DAYS, REFEREE_TRUST_MIN, REGIONS, REPORT_MATCH_WINDOW_MS, getTestAccountDisplayLabel } from "../lib/constants.js";
 import {
@@ -212,6 +212,7 @@ function getReportTargetLabel(targetType) {
   if (targetType === REPORT_TARGET_TYPES.courtRequest) return "구장/요청 검색";
   if (targetType === REPORT_TARGET_TYPES.court) return "구장 검색";
   if (targetType === REPORT_TARGET_TYPES.courtReview) return "구장 리뷰 검색";
+  if (targetType === REPORT_TARGET_TYPES.teamName || targetType === REPORT_TARGET_TYPES.teamEmblem) return "팀 검색";
   return "신고 대상 검색";
 }
 
@@ -221,6 +222,7 @@ function getReportTargetPlaceholder(targetType) {
   if (targetType === REPORT_TARGET_TYPES.courtRequest) return "구장명, 주소, #구장 검색";
   if (targetType === REPORT_TARGET_TYPES.court) return "구장명, 주소, #구장 검색";
   if (targetType === REPORT_TARGET_TYPES.courtReview) return "구장명, 리뷰, 경기, #구장 검색";
+  if (targetType === REPORT_TARGET_TYPES.teamName || targetType === REPORT_TARGET_TYPES.teamEmblem) return "팀명, 홈코트, 지역 검색";
   return "선수, 경기, 구장, 해시태그 검색";
 }
 
@@ -229,6 +231,7 @@ function getReportTargetEmptyText(targetType) {
   if (targetType === REPORT_TARGET_TYPES.court) return "신고 가능한 구장 없음";
   if (targetType === REPORT_TARGET_TYPES.courtReview) return "신고 가능한 구장 리뷰 없음";
   if (targetType === REPORT_TARGET_TYPES.player) return "신고 가능한 선수 없음";
+  if (targetType === REPORT_TARGET_TYPES.teamName || targetType === REPORT_TARGET_TYPES.teamEmblem) return "신고 가능한 팀 없음";
   return "신고 가능한 대상 없음";
 }
 
@@ -267,6 +270,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const [reportCourtRequestId, setReportCourtRequestId] = useState("");
   const [reportCourtId, setReportCourtId] = useState("");
   const [reportCourtReviewId, setReportCourtReviewId] = useState("");
+  const [reportTeamId, setReportTeamId] = useState("");
   const [reportRemoteTarget, setReportRemoteTarget] = useState(null);
   const [reportMemo, setReportMemo] = useState("");
   const [reportedUserIds, setReportedUserIds] = useState([]);
@@ -614,6 +618,11 @@ export default function Settings({ app, auth, section = "main" }) {
       return review.id && (!review.status || review.status === "active") && review.reviewerId !== app.currentUserId && !alreadyReported;
     })
   ), [app.currentUserId, app.state.reports, courtReviews]);
+  const reportableTeams = useMemo(() => (
+    (app.state.teams ?? []).filter((team) => (
+      team.id && !team.members?.some((member) => member.role === "captain" && member.userId === app.currentUserId)
+    ))
+  ), [app.currentUserId, app.state.teams]);
   const selectedReportMatchId = recentReportMatches.some((match) => match.id === reportMatchId) ? reportMatchId : "";
   const selectedReportMatch = recentReportMatches.find((match) => match.id === selectedReportMatchId) ?? null;
   const selectedReportCourtRequest = reportableCourtRequests.find((request) => request.id === reportCourtRequestId) ?? null;
@@ -621,6 +630,9 @@ export default function Settings({ app, auth, section = "main" }) {
     ?? (reportRemoteTarget?.kind === "court" && reportRemoteTarget.court?.id === reportCourtId ? reportRemoteTarget.court : null);
   const selectedReportCourtReview = reportableCourtReviews.find((review) => review.id === reportCourtReviewId)
     ?? (reportRemoteTarget?.kind === "court_review" && reportRemoteTarget.review?.id === reportCourtReviewId ? reportRemoteTarget.review : null);
+  const selectedReportTeam = reportableTeams.find((team) => team.id === reportTeamId)
+    ?? (reportRemoteTarget?.kind === "team" && reportRemoteTarget.team?.id === reportTeamId ? reportRemoteTarget.team : null);
+  const selectedTeamHasUploadedEmblem = selectedReportTeam?.emblemSource === "upload" && Boolean(selectedReportTeam?.emblemKey);
   const reportParticipantRows = useMemo(
     () => (selectedReportMatch && reportTargetType !== REPORT_TARGET_TYPES.courtRequest
       ? getReportParticipantRows(selectedReportMatch, userMap).filter((row) => reportTargetType !== REPORT_TARGET_TYPES.player || row.userId !== app.currentUserId)
@@ -640,6 +652,7 @@ export default function Settings({ app, auth, section = "main" }) {
     const includeCourtRequests = reportTargetType === REPORT_TARGET_TYPES.courtRequest || reportTargetType === REPORT_TARGET_TYPES.mixed;
     const includeCourts = reportTargetType === REPORT_TARGET_TYPES.court || reportTargetType === REPORT_TARGET_TYPES.courtRequest || reportTargetType === REPORT_TARGET_TYPES.mixed;
     const includeCourtReviews = reportTargetType === REPORT_TARGET_TYPES.courtReview || reportTargetType === REPORT_TARGET_TYPES.mixed;
+    const includeTeams = reportTargetType === REPORT_TARGET_TYPES.teamName || reportTargetType === REPORT_TARGET_TYPES.teamEmblem;
     const items = [];
 
     if (includeMatches) {
@@ -726,16 +739,43 @@ export default function Settings({ app, auth, section = "main" }) {
       });
     }
 
+    if (includeTeams) {
+      reportableTeams.forEach((team) => {
+        items.push({
+          id: `team:${team.id}`,
+          kind: "team",
+          team,
+          title: team.name,
+          subtitle: `${team.region || "지역 미정"} · ${team.homeCourt || "홈코트 미정"}`,
+          meta: getTeamHashtag(team),
+          haystack: `${team.name} ${team.region ?? ""} ${team.homeCourt ?? ""} ${getTeamHashtag(team)}`.toLowerCase(),
+        });
+      });
+    }
+
     return items.filter((item) => (keyword ? item.haystack.includes(keyword) : true));
-  }, [app.currentUserId, matchMap, recentReportMatches, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, userMap]);
+  }, [app.currentUserId, matchMap, recentReportMatches, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, reportableTeams, userMap]);
   const reportRemoteSearchTypes = reportTargetType === REPORT_TARGET_TYPES.courtReview
     ? ["court_review"]
+    : reportTargetType === REPORT_TARGET_TYPES.teamName || reportTargetType === REPORT_TARGET_TYPES.teamEmblem
+      ? ["team"]
     : reportTargetType === REPORT_TARGET_TYPES.court || reportTargetType === REPORT_TARGET_TYPES.courtRequest
       ? ["court"]
       : reportTargetType === REPORT_TARGET_TYPES.mixed
         ? ["court", "court_review"]
         : [];
   const mapRemoteReportTarget = (item) => {
+    if (item?.kind === "team") {
+      if (item.members?.some((member) => member.role === "captain" && member.userId === app.currentUserId)) return null;
+      return {
+        id: `team:${item.id}`,
+        kind: "team",
+        team: item,
+        title: item.name,
+        subtitle: `${item.region || "지역 미정"} · ${item.homeCourt || "홈코트 미정"}`,
+        meta: getTeamHashtag(item),
+      };
+    }
     if (item?.kind === "court") {
       const hashtag = item.hashtag ? getCourtHashtag(item) : "";
       return {
@@ -766,6 +806,10 @@ export default function Settings({ app, auth, section = "main" }) {
         ? Boolean(selectedReportCourt)
         : reportTargetType === REPORT_TARGET_TYPES.courtReview
           ? Boolean(selectedReportCourtReview)
+          : reportTargetType === REPORT_TARGET_TYPES.teamName
+            ? Boolean(selectedReportTeam)
+            : reportTargetType === REPORT_TARGET_TYPES.teamEmblem
+              ? Boolean(selectedReportTeam && selectedTeamHasUploadedEmblem)
       : reportTargetType === REPORT_TARGET_TYPES.player
         ? Boolean(selectedReportMatch && selectedReportedUserIds.length)
         : Boolean(selectedReportMatch || selectedReportCourtRequest || selectedReportCourt || selectedReportCourtReview)
@@ -827,6 +871,7 @@ export default function Settings({ app, auth, section = "main" }) {
       setReportCourtId("");
       setReportCourtReviewId("");
       setReportMatchId("");
+      setReportTeamId("");
       setReportedUserIds([]);
       return;
     }
@@ -836,6 +881,7 @@ export default function Settings({ app, auth, section = "main" }) {
       setReportCourtRequestId("");
       setReportCourtReviewId("");
       setReportMatchId("");
+      setReportTeamId("");
       setReportedUserIds([]);
       return;
     }
@@ -845,6 +891,17 @@ export default function Settings({ app, auth, section = "main" }) {
       setReportCourtId("");
       setReportCourtRequestId("");
       setReportMatchId("");
+      setReportTeamId("");
+      setReportedUserIds([]);
+      return;
+    }
+    if (item.kind === "team") {
+      setReportRemoteTarget(item);
+      setReportTeamId(item.team.id);
+      setReportCourtRequestId("");
+      setReportCourtId("");
+      setReportCourtReviewId("");
+      setReportMatchId("");
       setReportedUserIds([]);
       return;
     }
@@ -852,6 +909,7 @@ export default function Settings({ app, auth, section = "main" }) {
     setReportRemoteTarget(null);
     setReportCourtId("");
     setReportCourtReviewId("");
+    setReportTeamId("");
     setReportMatchId(item.match.id);
     setReportedUserIds(item.kind === "player" ? [item.row.userId] : []);
   };
@@ -896,7 +954,12 @@ export default function Settings({ app, auth, section = "main" }) {
     setReportSubmitStatus("신고 저장 중");
     try {
       let result = null;
-      if (selectedReportCourtRequest) {
+      const reportReasonValue = getReportReasonValue(reportReason);
+      if (selectedReportTeam && reportTargetType === REPORT_TARGET_TYPES.teamName) {
+        result = await app.actions.reportTeamName(selectedReportTeam.id, [reportReasonValue, memo].filter(Boolean).join(" · "), selectedReportTeam.name);
+      } else if (selectedReportTeam && reportTargetType === REPORT_TARGET_TYPES.teamEmblem) {
+        result = await app.actions.reportTeamEmblem(selectedReportTeam.id, [reportReasonValue, memo].filter(Boolean).join(" · "), selectedReportTeam);
+      } else if (selectedReportCourtRequest) {
         result = await app.actions.reportCourtRequest(selectedReportCourtRequest.id, [reportReason, memo].filter(Boolean).join(" · "));
       } else if (selectedReportCourt) {
         result = await app.actions.reportCourt(selectedReportCourt.id, [reportReason, memo].filter(Boolean).join(" · "));
@@ -924,6 +987,7 @@ export default function Settings({ app, auth, section = "main" }) {
       setReportCourtRequestId("");
       setReportCourtId("");
       setReportCourtReviewId("");
+      setReportTeamId("");
       setReportRemoteTarget(null);
       setReportTargetQuery("");
       setReportMemo("");
@@ -1132,6 +1196,7 @@ export default function Settings({ app, auth, section = "main" }) {
     setReportCourtRequestId(request.id);
     setReportCourtId("");
     setReportCourtReviewId("");
+    setReportTeamId("");
     setReportRemoteTarget(null);
     setReportMatchId("");
     setReportedUserIds([]);
@@ -1942,6 +2007,7 @@ export default function Settings({ app, auth, section = "main" }) {
                     setReportCourtRequestId("");
                     setReportCourtId("");
                     setReportCourtReviewId("");
+                    setReportTeamId("");
                     setReportRemoteTarget(null);
                     setReportedUserIds([]);
                   }}
@@ -1979,6 +2045,10 @@ export default function Settings({ app, auth, section = "main" }) {
                         ? "승인된 구장 중 위치나 상태 확인이 필요한 대상만 선택합니다."
                         : reportTargetType === REPORT_TARGET_TYPES.courtReview
                           ? "내가 작성하지 않은 구장 리뷰만 신고할 수 있습니다."
+                          : reportTargetType === REPORT_TARGET_TYPES.teamName
+                            ? "내가 팀장인 팀은 신고할 수 없습니다."
+                            : reportTargetType === REPORT_TARGET_TYPES.teamEmblem
+                              ? "사용자가 올린 사진 엠블럼만 신고할 수 있습니다."
                           : "최근 7일 내 내가 출전했거나 후보로 등록된 경기 안에서만 검색됩니다."}
                   </small>
                 </div>
@@ -2025,6 +2095,17 @@ export default function Settings({ app, auth, section = "main" }) {
                   <MapPin size={18} />
                 </div>
               ) : null}
+              {selectedReportTeam ? (
+                <div className="arena-mini-note report-team-note">
+                  <div>
+                    <span>선택 팀</span>
+                    <strong>{selectedReportTeam.name}</strong>
+                    <em>{selectedReportTeam.region || "지역 미정"} · {selectedReportTeam.homeCourt || "홈코트 미정"}</em>
+                    {reportTargetType === REPORT_TARGET_TYPES.teamEmblem && !selectedTeamHasUploadedEmblem ? <small>사진 엠블럼을 사용 중인 팀만 신고할 수 있습니다.</small> : null}
+                  </div>
+                  <TeamEmblem team={selectedReportTeam} size="sm" />
+                </div>
+              ) : null}
               {selectedReportMatch && reportTargetType !== REPORT_TARGET_TYPES.match ? (
                 <div className="report-player-picker">
                   <span>신고 대상</span>
@@ -2063,6 +2144,8 @@ export default function Settings({ app, auth, section = "main" }) {
                         ? approvedCourts.find((court) => court.id === report.targetId)?.name ?? "구장"
                       : report.type === "court_review"
                           ? courtReviews.find((review) => review.id === report.targetId)?.courtName ?? "구장 리뷰"
+                          : report.type === "team_name" || report.type === "team_emblem"
+                            ? app.state.teams.find((team) => team.id === report.targetId)?.name ?? report.teamName ?? "팀"
                           : report.type === "player"
                             ? userMap[report.targetId]?.name ?? "플레이어"
                           : matchMap[report.targetId]

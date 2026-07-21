@@ -16,7 +16,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { DEFAULT_RATING, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { addDateDays, canUserResolveMatchDispute, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideResult, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
+import { addDateDays, canUserResolveMatchDispute, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideResult, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getOpenMatchDisputes, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
@@ -317,13 +317,14 @@ export default function Home({ app }) {
           };
         }
         if (phase === "dispute" && (userNeedsMatchApproval(match, user.id) || canUserResolveMatchDispute(match, user.id))) {
+          const openDisputeCount = getOpenMatchDisputes(match).length;
           return {
             id: `approval-${match.id}`,
             matchId: match.id,
             priority: 4,
-            label: match.status === "disputed" ? "이의 확인" : "결과 승인",
+            label: match.status === "disputed" ? `이의 ${openDisputeCount}건` : "결과 승인",
             title: getTournamentMatchDisplayTitle(match, match.title),
-            meta: getHomeMatchMeta(match),
+            meta: match.status === "disputed" ? `${getHomeMatchMeta(match)} · 처리 대기 ${openDisputeCount}건` : getHomeMatchMeta(match),
             href: `/app/matches?match=${match.id}`,
             icon: ShieldAlert,
           };

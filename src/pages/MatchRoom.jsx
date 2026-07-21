@@ -5,6 +5,7 @@ import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
+import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
 import MatchVoidDialog from "../components/match/MatchVoidDialog.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -17,7 +18,7 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeDisputeWindowMinutes } from "../lib/constants.js";
-import { DEFAULT_REPORT_REASON, REPORT_REASONS, VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
+import { DEFAULT_REPORT_REASON, REPORT_REASONS, REPORT_TARGET_TYPES, VOID_MATCH_RESTORE_REPORT_REASON, getReportTargetType } from "../lib/reportReasons.js";
 import {
   formatKoreanDateTime,
   formatStatLine,
@@ -25,11 +26,13 @@ import {
   OTHER_MATCH_DISPUTE_REASON,
   buildMatchResultSubmission,
   buildMatchDisputeRequest,
+  canUserResolveMatchDispute,
   canRequestVoidMatchRestore,
   getAgreementStatus,
   getApprovalStatus,
   getMatchHostPlayerId,
   getMatchPlayerDisputePoints,
+  getOpenMatchDisputes,
   getMatchRecordWindow,
   getMatchReferee,
   getMatchRecordPlayerIds,
@@ -60,6 +63,7 @@ import {
   isMatchTrustFeedbackOpen,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
+import { getMatchPeriodLabel, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
 import "../styles/matchroom-arena.css";
 
 const statusMeta = {
@@ -168,14 +172,15 @@ const COURT_REVIEW_FIELDS = [
 ];
 
 function getCourtReviewDraft(review = {}) {
+  const source = review ?? {};
   return {
-    rating: review.rating ?? 0,
-    surfaceRating: review.surfaceRating ?? "",
-    rimRating: review.rimRating ?? "",
-    lightingRating: review.lightingRating ?? "",
-    crowdRating: review.crowdRating ?? "",
-    locationAccuracy: review.locationAccuracy ?? "",
-    memo: review.memo ?? "",
+    rating: source.rating ?? 0,
+    surfaceRating: source.surfaceRating ?? "",
+    rimRating: source.rimRating ?? "",
+    lightingRating: source.lightingRating ?? "",
+    crowdRating: source.crowdRating ?? "",
+    locationAccuracy: source.locationAccuracy ?? "",
+    memo: source.memo ?? "",
   };
 }
 
@@ -373,7 +378,8 @@ export default function MatchRoom({ app }) {
   const matchPhase = getMatchRoomPhase(match).phase;
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
-  const currentUserCanFileDispute = currentUserCanOperateStartedMatch || getMatchTrustFeedbackParticipantIds(match).includes(app.currentUser.id);
+  const currentUserCanResolveDispute = canUserResolveMatchDispute(match, app.currentUser.id, sourceRecruitingPost) && isMatchHost;
+  const currentUserCanFileDispute = getMatchRecordPlayerIds(match).includes(app.currentUser.id);
   const resultEntryPermission = getMatchResultEntryPermission(match, app.currentUser.id, {
     canOperatePostStart: currentUserCanOperateStartedMatch,
     refereeEligible: currentUserIsEligibleReferee,
@@ -386,13 +392,14 @@ export default function MatchRoom({ app }) {
   const canSubmitResult = resultEntryPermission.canSubmit;
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
   const isSoloRecord = isPersonalRecordMatch(match);
-  const matchApprovalOpen = Boolean(match.result && (match.status === "approval" || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
+  const openDisputes = getOpenMatchDisputes(match);
+  const hasOwnOpenDispute = openDisputes.some((dispute) => dispute.by === app.currentUser.id);
+  const matchApprovalOpen = Boolean(match.result && (["approval", "disputed"].includes(match.status) || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
   const canDispute = matchApprovalOpen && recordWindow.disputeOpen && currentUserCanFileDispute;
-  const canRequestOwnPointDispute = canDispute && getMatchRecordPlayerIds(match).includes(app.currentUser.id);
-  const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
+  const canRequestOwnPointDispute = canDispute && !hasOwnOpenDispute && getMatchRecordPlayerIds(match).includes(app.currentUser.id);
+  const canVoid = match.status === "disputed" && currentUserCanResolveDispute;
   const canRequestVoidRestore = canRequestVoidMatchRestore(match, app.currentUser.id);
   const canDeleteSoloRecord = isSoloRecord && match.createdBy === app.currentUser.id && match.status !== "cancelled";
-  const canResumeApproval = match.status === "disputed" && currentUserCanOperateStartedMatch;
   const reportTime = getReportableMatchTimeMs(match);
   const canReport = !["cancelled", "void"].includes(match.status)
     && getReportableMatchUserIds(match).includes(app.currentUser.id)
@@ -677,7 +684,7 @@ export default function MatchRoom({ app }) {
     if (match.status === "disputed") {
       return {
         label: "이의 확인",
-        detail: "보류 사유를 확인한 뒤 수정안 확정, 이의신청 반려 또는 경기 무효 처리를 선택해 주세요.",
+        detail: openDisputes.length ? `방장이 이의제기 ${openDisputes.length}건을 건별로 가결 또는 부결합니다.` : "이의제기 처리가 끝나 결과 재승인을 기다립니다.",
       };
     }
     if (match.status === "confirmed") {
@@ -769,11 +776,16 @@ export default function MatchRoom({ app }) {
     setSoloRecordDeleteOpen(false);
     app.actions.deleteSoloRecord?.(match.id);
   };
+  const normalizedRules = normalizeMatchRules(match.rules, { mode: match.mode });
   const ruleItems = [
-    ["목표 점수", `${match.rules?.targetScore ?? 21}점`],
-    ["제한 시간", `${match.rules?.timeLimit ?? 12}분`],
-    ["승리 조건", match.rules?.winByTwo ? "2점차" : "선착순"],
+    ["경기 구성", getMatchPeriodLabel(normalizedRules, match.mode)],
+    ["경기 시계", normalizedRules.clockMode === "stopped" ? "스톱타임" : "러닝타임"],
+    ["종료 기준", normalizedRules.endCondition === "target_or_time" ? `${normalizedRules.targetScore}점 또는 시간 종료` : "시간 종료"],
+    ["휴식", normalizedRules.periodCount > 1 ? `쿼터 ${normalizedRules.periodBreakMinutes}분 · 하프 ${normalizedRules.halftimeMinutes}분` : "별도 휴식 없음"],
+    ["연장", `${normalizedRules.overtimeMinutes}분`],
+    ["승리 조건", normalizedRules.winByTwo ? "2점 차 승리" : "동점 시 연장"],
     ["사용 공", match.rules?.ball ?? "7호 공"],
+    ["만남 장소", getMeetingPointSummary(normalizedRules, match.timingType, match.mode)],
     ["공격권", match.rules?.attackRule ?? "득점 후 공격권 교대"],
     ["파울 룰", match.rules?.foulRule ?? "현장 합의"],
     ["기록 권한", recorderSummary],
@@ -1186,7 +1198,12 @@ export default function MatchRoom({ app }) {
               </div>
               <Badge tone={canDispute || canCancel || canVoid ? "orange" : "neutral"}>{recordWindow.disputeExpired ? "이의 마감" : canDispute || canCancel || canVoid ? "처리 가능" : "닫힘"}</Badge>
             </div>
-            {match.disputes?.[0] ? <p className="muted">최근 이의제기: {match.disputes[0].reason}</p> : null}
+            <MatchDisputeQueue
+              match={match}
+              userById={userMap}
+              canResolve={currentUserCanResolveDispute}
+              onResolve={(disputeId, decision) => app.actions.resolveMatchDispute(match.id, disputeId, decision)}
+            />
             {match.status === "void" ? (
               <div className="match-void-summary">
                 <strong>경기 무효 사유</strong>
@@ -1246,16 +1263,15 @@ export default function MatchRoom({ app }) {
                 <label className="memo-label">
                   신고 사유
                   <select disabled={!canReport} value={reportReason} onChange={(event) => setReportReason(event.target.value)}>
-                    {REPORT_REASONS.filter((reason) => reason !== VOID_MATCH_RESTORE_REPORT_REASON).map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                    {REPORT_REASONS.filter((reason) => (
+                      reason !== VOID_MATCH_RESTORE_REPORT_REASON
+                      && [REPORT_TARGET_TYPES.player, REPORT_TARGET_TYPES.match, REPORT_TARGET_TYPES.mixed].includes(getReportTargetType(reason))
+                    )).map((reason) => <option key={reason} value={reason}>{reason}</option>)}
                   </select>
                 </label>
                 <div className="match-action-row">
-                  <Button type="button" variant="secondary" disabled={!canRequestOwnPointDispute} onClick={submitDispute}>이의제기</Button>
+                  <Button type="button" variant="secondary" disabled={!canRequestOwnPointDispute} onClick={submitDispute}>{hasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
                   <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
-                  <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(match.id)}>
-                    {match.disputeDraftResult ? "수정안 확정" : "결과 확정"}
-                  </Button>
-                  <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.rejectMatchDispute(match.id)}>이의신청 반려</Button>
                   <Button type="button" variant="secondary" className="danger-button" disabled={!canVoid} onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button>
                   <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, reportReason)}>신고 접수</Button>
                 </div>

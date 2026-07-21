@@ -30,6 +30,7 @@ import {
   removeRecruitingPartyPlayer,
   requestMatchRefereeAbsence,
   rejectMatchDispute,
+  resolveMatchDispute,
   resumeMatchApproval,
   sendRecruitingChat,
   approveTournamentTeam,
@@ -403,6 +404,9 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       break;
     case "rejectMatchDispute":
       next = rejectMatchDispute(state, operation.matchId);
+      break;
+    case "resolveMatchDispute":
+      next = resolveMatchDispute(state, operation.matchId, operation.disputeId, operation.decision);
       break;
     case "startMatch":
       next = startMatch(state, operation.matchId);

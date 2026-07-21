@@ -193,6 +193,8 @@ const REQUIRED_COLUMNS = {
     "match_id",
     "user_id",
     "reason",
+    "request_payload",
+    "status",
   ],
   favorites: [
     "user_id",
@@ -541,6 +543,10 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_match_dispute_action",
     args: { p_actor_profile_id: "", p_match_id: "", p_dispute_request: {} },
+  },
+  {
+    name: "rankball_match_resolve_dispute_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_dispute_id: "", p_decision: "rejected" },
   },
   {
     name: "rankball_match_terminal_action",

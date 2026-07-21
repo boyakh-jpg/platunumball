@@ -7,12 +7,14 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtDetailModal from "../components/court/CourtDetailModal.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
+import MeetingPointFields from "../components/match/MeetingPointFields.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS, getCanonicalRegion, getHostTrustRequirement, getModeSize, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
+import { DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, DISPUTE_WINDOW_MINUTES, DISPUTE_WINDOW_OPTIONS, MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS, getCanonicalRegion, getHostTrustRequirement, getModeSize, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtPlayWarning, getCourtRecommendationScore, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isEligibleReferee } from "../lib/matchUtils.js";
+import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
 import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange } from "../lib/recruiting.js";
@@ -347,6 +349,7 @@ export default function CreateMatch({ app }) {
     ageRestriction: defaultAgeRestriction,
     title: getDefaultCreateTitle(defaultMode),
     mode: defaultMode,
+    ...getDefaultMatchRules(defaultMode),
     courtId: defaultCourt.id ?? "",
     court: defaultCourt.name,
     tournamentCourtIds: defaultCourt.id ? [defaultCourt.id] : [],
@@ -368,13 +371,7 @@ export default function CreateMatch({ app }) {
     ranked: true,
     official: true,
     preRegistered: true,
-    targetScore: 21,
-    timeLimit: 12,
-    ball: "7호 공",
-    winByTwo: true,
-    attackRule: "득점 후 공격권 교대",
-    foulRule: "파울 콜 즉시 중단, 공격권 유지",
-    objectionWindow: "30분",
+    objectionWindow: `${DISPUTE_WINDOW_MINUTES}분`,
     evidence: [],
     memo: "룰 확정 후 결과 승인.",
     stakes: "다음 경기 우선권.",
@@ -837,7 +834,8 @@ export default function CreateMatch({ app }) {
     soloStatsInvalid
   );
   const matchRecordInvalid = isMatchRecordRoom && (matchRecordIndividualInvalid || matchRecordTeamInvalid);
-  const submitDisabled = courtRequiredBlocked || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isMatchRecordRoom
+  const meetingPointInvalid = !isSoloRecord && draft.meetingPoint.trim().length < 2;
+  const submitDisabled = courtRequiredBlocked || meetingPointInvalid || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isMatchRecordRoom
     ? matchRecordInvalid
     : isTournamentRoom
     ? tournamentInvalid
@@ -846,6 +844,8 @@ export default function CreateMatch({ app }) {
       : teamTierBlocked || privateTeamInvalid));
   const submitDisabledReason = courtRequiredBlocked
     ? "등록된 구장을 선택해야 생성할 수 있습니다."
+    : meetingPointInvalid
+      ? "실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요."
     : isSoloRecord && soloRecordInvalid
     ? soloRosterError || "제목, 날짜, 점수를 확인해야 합니다. 개인 기록 날짜는 오늘부터 과거 7일까지만 가능합니다."
     : isMatchRecordRoom && matchRecordInvalid
@@ -1335,12 +1335,8 @@ export default function CreateMatch({ app }) {
         court: selectedCourt.name,
         region: selectedCourt.region,
         rules: {
-          targetScore: Number(draft.targetScore),
-          timeLimit: Number(draft.timeLimit),
-          ball: draft.ball,
-          winByTwo: Boolean(draft.winByTwo),
-          attackRule: draft.attackRule,
-          foulRule: draft.foulRule,
+          ...getMatchRulesPayload(draft, { mode: draft.mode }),
+          disputeMinutes: Number.parseInt(draft.objectionWindow, 10),
           sideCapacity,
           mmrLimitMode: draft.mmrLimitMode,
           mmrRangeMode: draft.mmrRangeMode,
@@ -1393,13 +1389,10 @@ export default function CreateMatch({ app }) {
       mmrLimitMode: draft.mmrLimitMode,
       ageRestriction: draft.ageRestriction,
       allowedAgeGroups: ageRestrictionOption.allowedGroups,
+      objectionWindow: draft.objectionWindow,
+      disputeMinutes: Number.parseInt(draft.objectionWindow, 10),
       rules: {
-        targetScore: draft.targetScore,
-        timeLimit: draft.timeLimit,
-        ball: draft.ball,
-        winByTwo: draft.winByTwo,
-        attackRule: draft.attackRule,
-        foulRule: draft.foulRule,
+        ...getMatchRulesPayload(draft, { mode: draft.mode }),
         ageRestriction: draft.ageRestriction,
         allowedAgeGroups: ageRestrictionOption.allowedGroups,
       },
@@ -1489,7 +1482,8 @@ export default function CreateMatch({ app }) {
                 </button>
                 <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => {
                   setTeamRegion("전체");
-                  update({ recordType: RECORD_TYPES.match, visibility: "tournament", mode: getMatchModeOrDefault(draft.mode, defaultMode), timingType: "scheduled", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean) });
+                  const mode = getMatchModeOrDefault(draft.mode, defaultMode);
+                  update({ recordType: RECORD_TYPES.match, visibility: "tournament", mode, ...getDefaultMatchRules(mode), timingType: "scheduled", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean) });
                 }}>
                   <Trophy size={19} />
                   <span>
@@ -1662,6 +1656,7 @@ export default function CreateMatch({ app }) {
                   }
                   update({
                     mode,
+                    ...getDefaultMatchRules(mode),
                     hostJoinMode: individualRecord ? "player" : "team",
                     teamOnly: !individualRecord,
                     title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
@@ -1681,6 +1676,7 @@ export default function CreateMatch({ app }) {
                 const opponentLeaderId = !isPublicRoom && nextIsTeamRoom ? getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? "" : "";
                 update({
                   mode,
+                  ...getDefaultMatchRules(mode),
                   hostJoinMode,
                   teamOnly: nextIsTeamRoom,
                   title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
@@ -1921,6 +1917,14 @@ export default function CreateMatch({ app }) {
                 <input value={draft.courtFee} placeholder="예약 금액/메모" onChange={(event) => update({ courtFee: event.target.value })} />
               ) : null}
             </div>
+          ) : null}
+          {!isSoloRecord ? (
+            <MeetingPointFields
+              draft={draft}
+              onChange={update}
+              required
+              timingType={draft.timingType}
+            />
           ) : null}
           {isTournamentRoom ? (
             <div className="tournament-court-pool" aria-label="대회 사용 구장">
@@ -2293,8 +2297,7 @@ export default function CreateMatch({ app }) {
                 <label>
                   이의제기 시간
                   <select value={draft.objectionWindow} onChange={(event) => update({ objectionWindow: event.target.value })}>
-                    <option>30분</option>
-                    <option>1시간</option>
+                    {DISPUTE_WINDOW_OPTIONS.map((minutes) => <option key={minutes} value={`${minutes}분`}>{minutes}분</option>)}
                   </select>
                 </label>
                 {isTournamentRoom ? (

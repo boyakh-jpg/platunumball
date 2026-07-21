@@ -23,6 +23,7 @@ import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import { getRemoteMatchActivePlayerIds } from "../../../src/data/matchMappers.js";
 import {
   COURT_COLUMNS,
+  MATCH_DISPUTE_COLUMNS,
   MATCH_LIST_COLUMNS,
   MATCH_PLAYER_COLUMNS,
   MATCH_RESULT_COLUMNS,
@@ -39,6 +40,7 @@ import {
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
+  normalizeDisputeWindowMinutes,
 } from "../../../src/lib/constants.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { getMatchRoomPhase, isMatchClosedNotice, isMatchInPlayMenu, isMatchInScheduleMenu, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
@@ -241,6 +243,39 @@ async function attachMatchPlayerCountsToCards(client, matches = [], debugTiming 
       teamB: { ...(match.teamB ?? {}), count: counts.teamB.size },
     };
   });
+}
+
+async function attachOpenDisputeQueues(client, matches = [], debugTiming = null) {
+  const disputedMatchIds = unique((matches ?? [])
+    .filter((match) => match?.status === "disputed")
+    .map((match) => match.id));
+  if (!disputedMatchIds.length) return matches;
+  const { data, error } = await timeStep(debugTiming, "openDisputesMs", () => (
+    client
+      .from("match_disputes")
+      .select(MATCH_DISPUTE_COLUMNS)
+      .in("match_id", disputedMatchIds)
+      .eq("status", "open")
+      .order("created_at", { ascending: true })
+  ));
+  if (error) throw error;
+  const disputesByMatch = groupBy(data ?? [], "match_id");
+  return (matches ?? []).map((match) => match?.status === "disputed"
+    ? {
+        ...match,
+        disputes: (disputesByMatch.get(match.id) ?? []).map((dispute) => ({
+          id: dispute.id,
+          by: dispute.user_id,
+          reason: dispute.reason,
+          request: dispute.request_payload ?? {},
+          status: dispute.status ?? "open",
+          resolvedAt: dispute.resolved_at ?? null,
+          resolvedBy: dispute.resolved_by ?? "",
+          resolution: dispute.resolution ?? "",
+          createdAt: dispute.created_at,
+        })),
+      }
+    : match);
 }
 
 function isSoloRecordMatch(match = {}) {
@@ -1001,7 +1036,7 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
     },
     statRecorders,
     statEntryMinutes: row.stat_entry_minutes ?? 60,
-    disputeMinutes: row.dispute_minutes ?? 30,
+    disputeMinutes: normalizeDisputeWindowMinutes(row.dispute_minutes),
     createdAt: row.created_at,
     agreedAt: row.agreed_at,
     startedAt: row.started_at,
@@ -1152,7 +1187,8 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
 
   if (matches.length && !matchRows.length) {
     const countedMatches = await attachMatchPlayerCountsToCards(context.supabase, matches, debugTiming);
-    const cardScope = collectMissingMatchCardReferences(countedMatches);
+    const queuedMatches = await attachOpenDisputeQueues(context.supabase, countedMatches, debugTiming);
+    const cardScope = collectMissingMatchCardReferences(queuedMatches);
     const [
       { data: teamRows, error: teamError },
       { data: courtRows, error: courtError },
@@ -1167,7 +1203,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     const teams = (teamRows ?? []).map(toClientTeam);
     const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
     const courtById = firstBy(courtRows ?? [], "id");
-    const referencedMatches = countedMatches.map((match) => attachMatchCardReferences(match, teamById, courtById));
+    const referencedMatches = queuedMatches.map((match) => attachMatchCardReferences(match, teamById, courtById));
     const state = normalizeState({
       currentUserId: currentUser.id,
       users: [compactUser(currentUser, currentUser.id)],
@@ -1304,6 +1340,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   matches = feedPage?.ids?.length
     ? sortByFeedOrder(mergeMatchCardsWithRows(countedMatches, rowMatches), feedPage.ids)
     : rowMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
+  matches = await attachOpenDisputeQueues(context.supabase, matches, debugTiming);
   const state = normalizeState({
     currentUserId: currentUser.id,
     users,
