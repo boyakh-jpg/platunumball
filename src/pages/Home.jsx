@@ -666,7 +666,7 @@ export default function Home({ app }) {
 
         <div className="content-grid home-dashboard-grid rank-dashboard-grid">
           <div className="page-stack home-primary-stack">
-            <Card className="match-focus-card home-upcoming-card">
+            <Card className={`match-focus-card home-upcoming-card${upcomingItems.length ? "" : " is-empty"}`}>
               <div className="section-title-row">
                 <div>
                   <p className="eyebrow">Upcoming</p>

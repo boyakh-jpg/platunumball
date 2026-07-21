@@ -251,6 +251,15 @@ test("primary match pages share one empty state component", async () => {
   assert.doesNotMatch(`${recruiting}\n${matches}\n${recorder}`, /arena-empty-state|om-empty-state|recorder-empty/);
 });
 
+test("empty home upcoming card does not keep the desktop match minimum height", async () => {
+  const [home, styles] = await Promise.all([
+    readSource("src/pages/Home.jsx"),
+    readSource("src/styles/globals.css"),
+  ]);
+  assert.match(home, /home-upcoming-card\$\{upcomingItems\.length \? "" : " is-empty"\}/);
+  assert.match(styles, /\.rank-home \.home-upcoming-card\.is-empty\s*\{\s*min-height:\s*auto;/);
+});
+
 test("team ranking starts from the full bounded directory", async () => {
   const teams = await readSource("src/pages/Teams.jsx");
   assert.match(teams, /const \[region, setRegion\] = useState\("전체"\);/);

@@ -18804,6 +18804,12 @@ html[data-theme="light"] .court-map-picker-state {
   text-align: center;
 }
 
+@media (min-width: 1080px) {
+  .rank-home .home-upcoming-card.is-empty {
+    min-height: auto;
+  }
+}
+
 .settings-page .content-grid.settings-section-grid {
   grid-template-columns: minmax(0, 1fr);
 }
