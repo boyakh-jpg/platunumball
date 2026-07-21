@@ -8,6 +8,7 @@ import { approveCourtRequest, submitCourtRequest } from "../src/data/repository.
 const migrationPath = new URL("../supabase/migrations/20260721230000_public_court_import_pipeline.sql", import.meta.url);
 const nameNormalizationMigrationPath = new URL("../supabase/migrations/20260721233100_court_facility_name_normalization.sql", import.meta.url);
 const publicAccessMigrationPath = new URL("../supabase/migrations/20260721234000_court_public_access.sql", import.meta.url);
+const importRowCountFixMigrationPath = new URL("../supabase/migrations/20260722005203_public_court_import_row_count_fix.sql", import.meta.url);
 const prepareScriptPath = new URL("./prepare-public-court-import.py", import.meta.url);
 
 function readyRow(overrides = {}) {
@@ -119,6 +120,16 @@ test("migration keeps public import separate from user request side effects", as
   assert.doesNotMatch(sql, /insert into public\.notifications/i);
   assert.doesNotMatch(sql, /insert into public\.admin_audit/i);
   assert.ok(sql.indexOf("if not p_apply then") < sql.indexOf("insert into public.court_import_batches"));
+});
+
+test("public import follow-up removes the row count variable collision", async () => {
+  const sql = await readFile(importRowCountFixMigrationPath, "utf8");
+  assert.match(sql, /input_row_count integer/i);
+  assert.match(sql, /'''requestedRows'', input_row_count/i);
+  assert.match(sql, /'''readyCount'', input_row_count/i);
+  assert.match(sql, /rankball_import_public_courts_row_count_signature_changed/i);
+  assert.match(sql, /rankball_import_public_courts_row_count_rewrite_incomplete/i);
+  assert.doesNotMatch(sql, /drop table|truncate table|delete from/i);
 });
 
 test("normalizer maps app fields and uses the official reverse-geocode endpoint", async () => {
