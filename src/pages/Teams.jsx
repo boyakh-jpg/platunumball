@@ -43,7 +43,7 @@ export default function Teams({ app }) {
   const [teamCreatePending, setTeamCreatePending] = useState(false);
   const [teamCreateError, setTeamCreateError] = useState("");
   const [query, setQuery] = useState("");
-  const [region, setRegion] = useState(app.currentUser.region ?? "전체");
+  const [region, setRegion] = useState("전체");
   const [courtQuery, setCourtQuery] = useState(defaultHomeCourt);
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
   const directoryFilter = query.trim();
@@ -180,7 +180,7 @@ export default function Teams({ app }) {
         <div>
           <p className="eyebrow">Squad House</p>
           <h1>팀 허브</h1>
-          <p>내 팀 관리, 팀 탐색, 전체 팀 랭킹을 한 화면에서 확인합니다.</p>
+          <p>내 팀 관리, 팀 검색, 전체 팀 랭킹을 한 화면에서 확인합니다.</p>
         </div>
         <div className="team-hub-board">
           <span><Crown size={18} /> 전체 1위 팀</span>
@@ -260,7 +260,7 @@ export default function Teams({ app }) {
             <div><strong>2</strong><span>동률이면 확정 경기 승률</span></div>
             <div><strong>3</strong><span>그래도 같으면 확정 경기수</span></div>
           </div>
-          <p className="team-ranking-note">즐겨찾기와 지역 필터는 탐색용입니다. 순위 번호는 전체 랭킹 기준으로 고정됩니다.</p>
+          <p className="team-ranking-note">즐겨찾기와 지역 필터는 검색 조건입니다. 순위 번호는 전체 랭킹 기준으로 고정됩니다.</p>
         </Card>
       </section>
 

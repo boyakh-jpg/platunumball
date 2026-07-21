@@ -2859,3 +2859,9 @@ flowchart TD
 5. 프로필·팀 엠블럼의 R2 설정, Base64 검증, WebP 크기 검증, 업로드·삭제는 `server/api/_r2ImageStorage.js`를 사용한다. 색상과 팀 글자·폰트 allowlist는 각각 `src/lib/emblemPolicy.js`, `src/lib/teamEmblem.js`를 사용한다.
 6. 경기 알림 취소 prefix와 종료 상태 판정은 `src/lib/notifications.js`, 모집 신청 상태는 `src/lib/recruiting.js`, 팀 주장 조회는 `src/data/teamMappers.js`, 구장 표시 주소는 `src/lib/courts.js`를 단일 원본으로 사용한다.
 7. 단일 화면 문구, 디자인 token으로 관리되는 CSS 수치, 테스트 fixture 데이터, 이미 적용된 migration snapshot은 공용 업무 정책으로 오인해 추상화하지 않는다.
+
+## 2026-07-21 팀 랭킹 기본 범위
+
+1. `/app/teams`의 팀 검색·랭킹은 `전체` 지역으로 시작하며 bounded 팀 directory 안에서 전체 순위를 보여준다.
+2. 지역 선택은 랭킹 검색 조건일 뿐 `근처 팀` 추천 기능으로 취급하지 않는다.
+3. `근처 팀`은 가입·도전·초대처럼 명확한 후속 행동이 생길 때 별도 section으로 추가한다. 현재 팀 랭킹 목록에 암묵적으로 섞지 않는다.

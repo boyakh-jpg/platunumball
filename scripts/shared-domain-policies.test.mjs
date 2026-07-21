@@ -176,6 +176,12 @@ test("primary match pages share one empty state component", async () => {
   assert.doesNotMatch(`${recruiting}\n${matches}\n${recorder}`, /arena-empty-state|om-empty-state|recorder-empty/);
 });
 
+test("team ranking starts from the full bounded directory", async () => {
+  const teams = await readSource("src/pages/Teams.jsx");
+  assert.match(teams, /const \[region, setRegion\] = useState\("전체"\);/);
+  assert.doesNotMatch(teams, /팀 탐색/);
+});
+
 test("notification status and delivery prefix policies stay aligned", () => {
   assert.ok(isTerminalMatchStatus("VOIDED"));
   assert.ok(isTerminalRecruitingStatus("expired"));
