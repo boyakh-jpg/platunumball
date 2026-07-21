@@ -8331,6 +8331,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 8px;
 }
 
+.team-emblem-management-card {
+  container: team-emblem-card / inline-size;
+}
+
 .emblem-source-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -8428,6 +8432,29 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .team-emblem-style-controls.has-emblem-color {
   grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.team-emblem-style-controls > *,
+.team-emblem-style-controls input[type="color"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@container team-emblem-card (max-width: 520px) {
+  .team-emblem-style-controls,
+  .team-emblem-style-controls.has-emblem-color {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-emblem-style-controls .button {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .team-emblem-style-controls.is-upload .button {
+    grid-column: 1 / -1;
+  }
 }
 
 .team-emblem-design-controls {
