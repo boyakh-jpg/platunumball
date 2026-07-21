@@ -24,6 +24,7 @@ import {
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
+import EmptyState from "../components/common/EmptyState.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
@@ -4888,19 +4889,16 @@ function RecruitingReady({ app }) {
             />
           );
         }) : queueListLoading ? (
-          <div className="arena-empty-state">
-            <div>
-              <strong>매치방 불러오는 중</strong>
-              <p>선택한 지역과 날짜의 공개방을 확인 중이다.</p>
-            </div>
-          </div>
+          <EmptyState
+            tone="loading"
+            title="매치방 불러오는 중"
+            description="선택한 지역과 날짜의 공개방을 확인 중이다."
+          />
         ) : (
-          <div className="arena-empty-state">
-            <div>
-              <strong>조건에 맞는 매치방 없음</strong>
-              <p>필터를 바꾸거나 새 매치방을 열어라.</p>
-            </div>
-          </div>
+          <EmptyState
+            title="조건에 맞는 매치방 없음"
+            description="필터를 바꾸거나 새 매치방을 열어라."
+          />
         )}
       </section>
 

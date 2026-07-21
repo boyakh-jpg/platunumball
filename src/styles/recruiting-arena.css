@@ -675,25 +675,6 @@
   min-height: 36px;
 }
 
-.arena-empty-state {
-  display: grid;
-  min-height: 140px;
-  place-items: center;
-  border: 1px dashed rgba(255, 255, 255, 0.16);
-  border-radius: var(--radius);
-  background: rgba(8, 11, 16, 0.48);
-  color: var(--muted);
-  text-align: center;
-  padding: var(--card-padding);
-}
-
-.arena-empty-state strong {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--text);
-  font-size: 1.1rem;
-}
-
 .arena-compose-backdrop {
   position: fixed;
   inset: 0;
@@ -3227,8 +3208,7 @@ html[data-theme="light"] .arena-mode-card,
 html[data-theme="light"] .arena-filter-bar,
 html[data-theme="light"] .arena-queue-controls,
 html[data-theme="light"] .arena-recruit-card,
-html[data-theme="light"] .arena-hero-panel,
-html[data-theme="light"] .arena-empty-state {
+html[data-theme="light"] .arena-hero-panel {
   background: rgba(255, 255, 255, 0.78);
 }
 
@@ -3555,8 +3535,7 @@ html[data-theme="light"] .arena-compose-drawer {
 .arena-mode-card,
 .arena-recruit-card,
 .arena-card-details,
-.arena-card-action,
-.arena-empty-state {
+.arena-card-action {
   border-color: rgba(163, 185, 208, 0.16);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
@@ -3601,7 +3580,6 @@ html[data-theme="light"] .arena-mode-card,
 html[data-theme="light"] .arena-recruit-card,
 html[data-theme="light"] .arena-card-details,
 html[data-theme="light"] .arena-card-action,
-html[data-theme="light"] .arena-empty-state,
 html[data-theme="light"] .arena-recruit-card.arena-my-room,
 html[data-theme="light"] .arena-recruit-card.arena-invited-room,
 html[data-theme="light"] .arena-recruit-card.arena-target-room {

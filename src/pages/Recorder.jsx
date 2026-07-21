@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarDays, ShieldCheck } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
-import Card from "../components/common/Card.jsx";
+import EmptyState from "../components/common/EmptyState.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
@@ -209,26 +209,26 @@ export default function Recorder({ app }) {
           </div>
         </header>
 
-        {!matches.length ? (
-          <Card className="recorder-empty">
-            {recorderPending ? (
-              <BasketballLoader overlay label="플레이 확인 중" />
-            ) : recorderLoadError ? (
+        {!matches.length ? recorderPending ? (
+          <BasketballLoader overlay label="플레이 확인 중" />
+        ) : recorderLoadError ? (
+          <EmptyState
+            tone="error"
+            title={recorderLoadError}
+            description="서버 연결을 확인한 뒤 다시 시도합니다."
+            action={(
               <>
-                <ShieldCheck size={34} />
-                <strong>{recorderLoadError}</strong>
-                <p>서버 연결을 확인한 뒤 다시 시도합니다.</p>
                 <button type="button" className="button button-secondary button-md" onClick={retryRecorderLoad}>다시 시도</button>
-              </>
-            ) : (
-              <>
-                <ShieldCheck size={34} />
-                <strong>플레이 중인 경기 없음</strong>
-                <p>이의신청이 끝나 기록이 확정되면 나/팀 기록으로 이동합니다.</p>
+                <Link to="/app/matches" className="button button-secondary button-md">일정 보기</Link>
               </>
             )}
-            <Link to="/app/matches" className="button button-secondary button-md">일정 보기</Link>
-          </Card>
+          />
+        ) : (
+          <EmptyState
+            title="플레이 중인 경기 없음"
+            description="이의신청이 끝나 기록이 확정되면 나/팀 기록으로 이동합니다."
+            action={<Link to="/app/matches" className="button button-secondary button-md">일정 보기</Link>}
+          />
         ) : (
           <section className="om-match-list recorder-card-list" aria-label="플레이 목록">
             <div className="om-list-head">

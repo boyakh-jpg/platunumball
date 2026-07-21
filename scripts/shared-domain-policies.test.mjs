@@ -164,6 +164,18 @@ test("team emblem border controls stay common to initial and uploaded sources", 
   assert.match(teamDetail.slice(borderControlsStart), /테두리 색/);
 });
 
+test("primary match pages share one empty state component", async () => {
+  const [emptyState, recruiting, matches, recorder] = await Promise.all([
+    readSource("src/components/common/EmptyState.jsx"),
+    readSource("src/pages/Recruiting.jsx"),
+    readSource("src/pages/Matches.jsx"),
+    readSource("src/pages/Recorder.jsx"),
+  ]);
+  assert.match(emptyState, /export default function EmptyState/);
+  [recruiting, matches, recorder].forEach((source) => assert.match(source, /import EmptyState/));
+  assert.doesNotMatch(`${recruiting}\n${matches}\n${recorder}`, /arena-empty-state|om-empty-state|recorder-empty/);
+});
+
 test("notification status and delivery prefix policies stay aligned", () => {
   assert.ok(isTerminalMatchStatus("VOIDED"));
   assert.ok(isTerminalRecruitingStatus("expired"));

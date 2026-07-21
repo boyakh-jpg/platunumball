@@ -4,6 +4,7 @@ import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, Sh
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
+import EmptyState from "../components/common/EmptyState.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -1509,10 +1510,10 @@ export default function Matches({ app }) {
               </article>
             );
           }) : (
-            <div className="om-empty-state om-tournament-empty">
-              <strong>관련 대회 없음</strong>
-              <span>내가 만든 대회나 내 팀이 초대된 대회가 여기에 표시된다.</span>
-            </div>
+            <EmptyState
+              title="관련 대회 없음"
+              description="내가 만든 대회나 내 팀이 초대된 대회가 여기에 표시된다."
+            />
           )}
         </div>
       </section> : null}
@@ -1593,13 +1594,16 @@ export default function Matches({ app }) {
         </div>
 
         {panelMode === "team" && matchPagination.teamScheduleError ? (
-          <div className="om-empty-state">
-            <strong>내 팀 경기 조회 실패</strong>
-            <p>서버 연결을 확인한 뒤 다시 시도한다.</p>
-            <Button variant="secondary" size="sm" onClick={() => app.actions.loadMatchTeamSchedule?.({ force: true })}>
-              다시 시도
-            </Button>
-          </div>
+          <EmptyState
+            tone="error"
+            title="내 팀 경기 조회 실패"
+            description="서버 연결을 확인한 뒤 다시 시도한다."
+            action={(
+              <Button variant="secondary" size="sm" onClick={() => app.actions.loadMatchTeamSchedule?.({ force: true })}>
+                다시 시도
+              </Button>
+            )}
+          />
         ) : displayScheduleItems.length ? (
           <>
         {displayScheduleItems.map(({ type, item }) => {
@@ -1687,10 +1691,10 @@ export default function Matches({ app }) {
         {matchPagination.error ? <div className="om-load-more"><span>경기 목록 로드 실패</span></div> : null}
           </>
         ) : scheduleLoading ? null : (
-          <div className="om-empty-state">
-            <strong>해당 일정 없음</strong>
-            <p>다른 상태를 선택하거나 새 경기를 만든다.</p>
-          </div>
+          <EmptyState
+            title="해당 일정 없음"
+            description="다른 상태를 선택하거나 새 경기를 만든다."
+          />
         )}
       </section> : null}
     </div>

@@ -1978,25 +1978,6 @@
   margin-top: 12px;
 }
 
-.om-empty-state {
-  display: grid;
-  min-height: 140px;
-  place-items: center;
-  border: 1px dashed rgba(255, 255, 255, 0.16);
-  border-radius: var(--radius);
-  background: rgba(8, 11, 16, 0.48);
-  color: var(--muted);
-  text-align: center;
-  padding: var(--card-padding);
-}
-
-.om-empty-state strong {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--text);
-  font-size: 1.1rem;
-}
-
 .om-load-more {
   display: flex;
   align-items: center;
@@ -2030,7 +2011,6 @@ html[data-theme="light"] .om-tournament-modal-section,
 html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .om-match-card,
-html[data-theme="light"] .om-empty-state,
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
 html[data-theme="light"] .tournament-cup-bracket,
@@ -5057,16 +5037,6 @@ html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-lis
   background: transparent;
   box-shadow: none;
   padding: 0;
-}
-
-.om-empty-state,
-html[data-theme="light"] .om-empty-state {
-  min-height: 96px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 16px;
 }
 
 .tournament-team-list article {
