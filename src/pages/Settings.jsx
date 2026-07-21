@@ -14,7 +14,25 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
 import { formatKoreanDateTime, formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, REFEREE_EXAM_COOLDOWN_DAYS, REFEREE_TRUST_MIN, REGIONS, REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
-import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtCanonicalName, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtLocationMatches, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import {
+  COURT_ACCESS_OPTIONS,
+  COURT_KIND_OPTIONS,
+  COURT_LAYOUT_OPTIONS,
+  COURT_SOURCE_URL_MAX_LENGTH,
+  COURT_SURFACE_OPTIONS,
+  COURT_TYPE_OPTIONS,
+  findCourtDuplicate,
+  getCourtAccessLabel,
+  getCourtCanonicalName,
+  getCourtDuplicateMessage,
+  getCourtKindLabel,
+  getCourtLayoutLabel,
+  getCourtLocationMatches,
+  getCourtPaidLabel,
+  getCourtSurfaceLabel,
+  getRegisteredCourts,
+  normalizeCourtSourceUrl,
+} from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
@@ -46,7 +64,7 @@ const DEFAULT_COURT_REQUEST = {
   buildingName: "",
   courtUnit: "",
   region: "",
-  type: "야외",
+  type: "확인 필요",
   addressText: "",
   roadAddress: "",
   jibunAddress: "",
@@ -57,11 +75,24 @@ const DEFAULT_COURT_REQUEST = {
   locationNote: "",
   lat: "",
   lng: "",
-  courtKind: "street_hoop",
-  surfaceType: "asphalt",
-  courtLayout: "half",
-  paid: false,
+  courtKind: "unknown",
+  surfaceType: "unknown",
+  courtLayout: "unknown",
+  accessType: "unknown",
+  lighting: null,
+  paid: null,
+  sourceUrl: "",
 };
+const COURT_COST_OPTIONS = [
+  { id: "unknown", label: "확인 필요", value: null },
+  { id: "free", label: "무료", value: false },
+  { id: "paid", label: "유료", value: true },
+];
+const COURT_LIGHTING_OPTIONS = [
+  { id: "unknown", label: "확인 필요", value: null },
+  { id: "yes", label: "있음", value: true },
+  { id: "no", label: "없음", value: false },
+];
 const DEFAULT_REFEREE_REQUEST = {
   qualification: "community_exam",
   experience: "",
@@ -375,8 +406,14 @@ export default function Settings({ app, auth, section = "main" }) {
     [app.state, courtDisplayName, courtDraft],
   );
   const courtDuplicateMessage = getCourtDuplicateMessage(courtDuplicate);
+  const courtSourceUrlInput = String(courtDraft.sourceUrl ?? "").trim();
+  const courtSourceUrl = normalizeCourtSourceUrl(courtSourceUrlInput);
+  const courtSourceUrlInvalid = Boolean(courtSourceUrlInput && !courtSourceUrl);
   const canOpenCourtRequestForm = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
-  const canSubmitCourtRequest = canOpenCourtRequestForm && !courtDuplicate && (!courtRequiresUnit || Boolean(courtDraft.courtUnit.trim()));
+  const canSubmitCourtRequest = canOpenCourtRequestForm
+    && !courtDuplicate
+    && !courtSourceUrlInvalid
+    && (!courtRequiresUnit || Boolean(courtDraft.courtUnit.trim()));
   const canOpenRefereeRequestForm = currentTrustScore >= REFEREE_TRUST_MIN;
   const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
@@ -947,6 +984,10 @@ export default function Settings({ app, auth, section = "main" }) {
       setCourtLookupStatus(courtDuplicateMessage);
       return;
     }
+    if (courtSourceUrlInvalid) {
+      setCourtLookupStatus("공식 안내 링크는 https:// 주소로 입력하세요.");
+      return;
+    }
     if (!canSubmitCourtRequest) return;
     const requestId = await app.actions.submitCourtRequest(courtDraft);
     if (!requestId) {
@@ -1505,8 +1546,8 @@ export default function Settings({ app, auth, section = "main" }) {
             <div className={canSubmitCourtRequest ? "tier-range-note" : "tier-range-note tier-range-note-warning"}>
               <div>
                 <span>등록 권한</span>
-                <strong>{currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : "등록 가능"}</strong>
-                <em>{courtDuplicateMessage || `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감`}</em>
+                <strong>{currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : courtSourceUrlInvalid ? "링크 확인 필요" : "등록 가능"}</strong>
+                <em>{courtDuplicateMessage || (courtSourceUrlInvalid ? "공식 안내 링크는 https:// 주소만 사용할 수 있습니다." : `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 등록은 운영 정책에 따라 신뢰도 차감`)}</em>
               </div>
               <MapPin size={22} />
             </div>
@@ -1608,13 +1649,26 @@ export default function Settings({ app, auth, section = "main" }) {
                     <MapPin size={18} />
                   </div>
                 ) : null}
-                <label>
-                  유형
-                  <select value={courtDraft.type} onChange={(event) => updateCourtDraft({ type: event.target.value })}>
-                    <option value="야외">야외</option>
-                    <option value="실내">실내</option>
-                  </select>
-                </label>
+                <div className="form-grid two">
+                  <label>
+                    유형
+                    <select
+                      value={courtDraft.type}
+                      onChange={(event) => updateCourtDraft({
+                        type: event.target.value,
+                        ...(event.target.value === "야외" ? {} : { lighting: null }),
+                      })}
+                    >
+                      {COURT_TYPE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    구장 분류
+                    <select value={courtDraft.courtKind} onChange={(event) => updateCourtDraft({ courtKind: event.target.value })}>
+                      {COURT_KIND_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  </label>
+                </div>
                 <div className="form-grid two">
                   <label>
                     바닥
@@ -1633,28 +1687,59 @@ export default function Settings({ app, auth, section = "main" }) {
                   <div>
                     <span>구장 속성</span>
                     <strong>{getCourtSurfaceLabel(courtDraft)} · {getCourtLayoutLabel(courtDraft)}</strong>
-                    <em>반코트/골대 1개도 등록 가능하지만 경기방에서 5v5 경고를 표시합니다.</em>
+                    <em>{courtDraft.type} · {getCourtKindLabel(courtDraft)} · {getCourtAccessLabel(courtDraft)} · {getCourtPaidLabel(courtDraft)}</em>
                   </div>
                   <MapPin size={18} />
                 </div>
+                <div className="form-grid two">
+                  <label>
+                    이용 방식
+                    <select value={courtDraft.accessType} onChange={(event) => updateCourtDraft({ accessType: event.target.value })}>
+                      {COURT_ACCESS_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    비용
+                    <select
+                      value={courtDraft.paid === true ? "paid" : courtDraft.paid === false ? "free" : "unknown"}
+                      onChange={(event) => updateCourtDraft({
+                        paid: COURT_COST_OPTIONS.find((option) => option.id === event.target.value)?.value ?? null,
+                      })}
+                    >
+                      {COURT_COST_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  </label>
+                </div>
+                {courtDraft.type === "야외" ? (
+                  <label>
+                    야간 조명
+                    <select
+                      value={courtDraft.lighting === true ? "yes" : courtDraft.lighting === false ? "no" : "unknown"}
+                      onChange={(event) => updateCourtDraft({
+                        lighting: COURT_LIGHTING_OPTIONS.find((option) => option.id === event.target.value)?.value ?? null,
+                      })}
+                    >
+                      {COURT_LIGHTING_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  </label>
+                ) : null}
+                <label>
+                  공식 안내/예약 링크 (선택)
+                  <input
+                    type="url"
+                    inputMode="url"
+                    maxLength={COURT_SOURCE_URL_MAX_LENGTH}
+                    value={courtDraft.sourceUrl}
+                    placeholder="https://..."
+                    aria-invalid={courtSourceUrlInvalid || undefined}
+                    onChange={(event) => updateCourtDraft({ sourceUrl: event.target.value })}
+                  />
+                  <small>{courtSourceUrlInvalid ? "https:// 주소만 입력할 수 있습니다." : "공식 시설 안내나 예약 페이지가 있을 때만 입력하세요."}</small>
+                </label>
                 <label>
                   찾아가는 메모
                   <textarea value={courtDraft.locationNote} placeholder="예: 나들목 지나 오른쪽 두 번째 골대" onChange={(event) => updateCourtDraft({ locationNote: event.target.value })} />
                 </label>
-                <div className="settings-toggle-grid">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={courtDraft.courtKind === "official"}
-                      onChange={(event) => updateCourtDraft({ courtKind: event.target.checked ? "official" : "street_hoop" })}
-                    />
-                    정식구장
-                  </label>
-                  <label>
-                    <input type="checkbox" checked={courtDraft.paid} onChange={(event) => updateCourtDraft({ paid: event.target.checked })} />
-                    유료구장
-                  </label>
-                </div>
                 <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected || !courtHasMapPin || !courtPinConfirmed}>
                   <Send size={16} /> 등록요청
                 </Button>

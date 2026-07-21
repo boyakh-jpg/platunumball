@@ -16,7 +16,17 @@ import {
   buildAdminReviewModel,
   hasAdminAccess,
 } from "../lib/admin.js";
-import { getCourtLayoutLabel, getCourtLocationMatches, getCourtMapUrl, getCourtSurfaceLabel } from "../lib/courts.js";
+import {
+  getCourtAccessLabel,
+  getCourtKindLabel,
+  getCourtLayoutLabel,
+  getCourtLightingLabel,
+  getCourtLocationMatches,
+  getCourtMapUrl,
+  getCourtPaidLabel,
+  getCourtSurfaceLabel,
+  normalizeCourtSourceUrl,
+} from "../lib/courts.js";
 import { getMatchHashtag } from "../lib/handles.js";
 import { ADMIN_DEFAULT_PAGE_LIMIT, DEFAULT_ADMIN_QUEUE_MODE, DEFAULT_ADMIN_SECTION } from "../lib/queryPolicy.js";
 import { getTeamEmblemErrorMessage } from "../lib/teamEmblem.js";
@@ -396,6 +406,7 @@ export default function Admin({ app }) {
   );
   const approvedLocationMatches = courtLocationMatches.filter((candidate) => candidate.type === "approved");
   const courtMapHref = selectedCourtRequest ? getCourtMapUrl(selectedCourtRequest) : "";
+  const courtSourceHref = selectedCourtRequest ? normalizeCourtSourceUrl(selectedCourtRequest.sourceUrl) : "";
   const workflow = REVIEW_WORKFLOW_COPY[view] ?? REVIEW_WORKFLOW_COPY.players;
   const sectionCounts = useMemo(() => {
     const courtReports = (adminViewState.reports ?? []).filter((report) => (
@@ -930,7 +941,15 @@ export default function Admin({ app }) {
                     <div><span>핀 기준 실제 주소</span><strong>{selectedCourtRequest.addressText || "주소 미입력"}</strong><em>{selectedCourtRequest.detailAddress || "상세주소 없음"}</em></div>
                     <div><span>도로명 · 지번</span><strong>{selectedCourtRequest.roadAddress || "도로명 없음"}</strong><em>{selectedCourtRequest.jibunAddress || "지번 없음"}</em></div>
                     <div><span>좌표</span><strong>{selectedCourtRequest.lat != null && selectedCourtRequest.lng != null ? `${Number(selectedCourtRequest.lat).toFixed(5)}, ${Number(selectedCourtRequest.lng).toFixed(5)}` : "좌표 확인 필요"}</strong><em>핀 기준 실제 위치</em></div>
-                    <div><span>구장 속성</span><strong>{getCourtSurfaceLabel(selectedCourtRequest)} · {getCourtLayoutLabel(selectedCourtRequest)}</strong><em>{selectedCourtRequest.type ?? "유형 미정"} · {selectedCourtRequest.paid ? "유료" : "무료"}</em></div>
+                    <div><span>구장 속성</span><strong>{getCourtSurfaceLabel(selectedCourtRequest)} · {getCourtLayoutLabel(selectedCourtRequest)}</strong><em>{selectedCourtRequest.type || "확인 필요"} · {getCourtKindLabel(selectedCourtRequest)}</em></div>
+                    <div><span>이용 정보</span><strong>{getCourtAccessLabel(selectedCourtRequest)} · {getCourtPaidLabel(selectedCourtRequest)}</strong><em>{selectedCourtRequest.type === "야외" ? getCourtLightingLabel(selectedCourtRequest) : selectedCourtRequest.type === "실내" ? "실내/조명 입력 대상 아님" : "조명 입력 대상 미확정"}</em></div>
+                    {courtSourceHref ? (
+                      <div>
+                        <span>공식 안내/예약 링크</span>
+                        <a href={courtSourceHref} target="_blank" rel="noreferrer" className="admin-court-map-link"><ExternalLink size={15} /> 링크 열기</a>
+                        <em>{courtSourceHref}</em>
+                      </div>
+                    ) : null}
                   </div>
                   {selectedCourtRequest.locationNote ? <p className="admin-court-note">{selectedCourtRequest.locationNote}</p> : null}
                   {selectedCourtRequest.status !== "approved" ? (

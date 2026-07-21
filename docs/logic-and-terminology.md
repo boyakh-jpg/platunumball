@@ -837,6 +837,11 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 10. 서버 주소검색 fallback은 `VITE_NAVER_MAP_CLIENT_ID` 또는 `NAVER_MAP_CLIENT_ID`와 서버 전용 `NAVER_MAP_CLIENT_SECRET`이 필요하다.
 11. 서버 주소검색 fallback의 프로필/권한 오류는 브라우저 Naver Maps geocoder 오류를 덮어쓰지 않는다.
 12. 핀 역지오코딩이 실패하면 검색 주소로 대신 제출하지 않고 등록을 막는다.
+13. 구장 유형, 구장 분류, 바닥, 코트 형태, 비용은 사용자가 선택하지 않았다는 이유로 야외·길거리 골대·아스팔트·반코트·무료로 추정하지 않는다. 확인하지 못한 값은 명시적인 `unknown` 또는 `null`로 저장한다.
+14. 이용 방식은 `walk_in`, `reservation`, `restricted`, `unknown` 중 하나다. 기존 호환용 `reservation`은 `walk_in=false`, `reservation=true`, 나머지는 `null`로 파생한다.
+15. 야간 조명은 야외 구장만 `true`, `false`, `null`로 저장한다. 실내 또는 유형 미확인 구장은 조명 없음으로 추정하지 않고 `null`을 유지한다.
+16. 공식 안내·예약 링크는 선택값이며 유효한 `https://` URL만 저장한다. 일반 사용자 신청에서 운영시간·전화번호·관리기관을 필수로 요구하지 않는다.
+17. 관리자 승인 구장은 신청 payload의 이용 방식, 예약 여부, 조명, 비용, 공식 링크를 그대로 승계한다. 코트 형태가 미확인일 때 골대 수를 2개로 추정하지 않는다.
 
 ## 방 속성
 

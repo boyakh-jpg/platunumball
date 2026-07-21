@@ -121,6 +121,7 @@ import {
   normalizeAdminSection,
 } from "../lib/queryPolicy.js";
 import { isSyntheticMatchRoomId } from "../lib/recruiting.js";
+import { getCourtHoopCount, normalizeCourtOptionalBoolean } from "../lib/courts.js";
 import {
   ROOM_CHAT_CLIENT_CACHE_LIMIT,
   ROOM_CHAT_HISTORY_LIMIT,
@@ -806,8 +807,8 @@ function mergeCourtApprovalResult(state, requestId, result = {}, currentUserId =
     approvedBy: currentUserId,
     approvedAt: now,
     status: "active",
-    hoopCount: ["half", "single_hoop"].includes(request.courtLayout) ? 1 : 2,
-    lighting: request.lighting ?? false,
+    hoopCount: getCourtHoopCount(request),
+    lighting: normalizeCourtOptionalBoolean(request.lighting),
     favorite: false,
   };
   const nextApprovedCourts = [

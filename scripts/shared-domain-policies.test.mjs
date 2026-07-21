@@ -60,10 +60,18 @@ import {
   isMatchWithinRecordDetailWindow,
 } from "../src/lib/matchUtils.js";
 import {
+  getCourtAccessLabel,
+  getCourtHoopCount,
+  getCourtKindLabel,
   getCourtMapUrl,
+  getCourtPaidLabel,
   getCourtPickerResults,
+  getCourtReservationValue,
   getCourtSearchText,
   mergeCourtSearchCourts,
+  normalizeCourtOptionalBoolean,
+  normalizeCourtSourceUrl,
+  normalizeCourtType,
 } from "../src/lib/courts.js";
 import {
   UNSAFE_INPUT_ERROR_CODE,
@@ -371,6 +379,22 @@ test("court map URLs pin stored coordinates and search by address only", () => {
     getCourtMapUrl({ name: "연북중학교 농구장", addressText: "서울특별시 마포구 연남로 80" }),
     `https://map.naver.com/p/search/${encodeURIComponent("서울특별시 마포구 연남로 80")}`,
   );
+});
+
+test("court request attributes preserve unknown values instead of inventing facts", () => {
+  assert.equal(normalizeCourtType(""), "확인 필요");
+  assert.equal(normalizeCourtType("indoor"), "실내");
+  assert.equal(normalizeCourtOptionalBoolean(undefined), null);
+  assert.equal(normalizeCourtOptionalBoolean(false), false);
+  assert.equal(getCourtKindLabel({ courtKind: "unknown" }), "확인 필요");
+  assert.equal(getCourtAccessLabel({ accessType: "unknown" }), "확인 필요");
+  assert.equal(getCourtPaidLabel({ paid: null }), "비용 확인 필요");
+  assert.equal(getCourtReservationValue({ accessType: "reservation" }), true);
+  assert.equal(getCourtReservationValue({ accessType: "restricted" }), null);
+  assert.equal(getCourtHoopCount({ courtLayout: "unknown" }), null);
+  assert.equal(getCourtHoopCount({ courtLayout: "full" }), 2);
+  assert.equal(normalizeCourtSourceUrl("javascript:alert(1)"), "");
+  assert.equal(normalizeCourtSourceUrl("https://example.com/reserve"), "https://example.com/reserve");
 });
 
 test("team and room court pickers share one single-selection search policy", async () => {

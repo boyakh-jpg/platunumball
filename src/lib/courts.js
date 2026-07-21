@@ -1,5 +1,6 @@
 import { COURTS, isSameRegion } from "./constants.js";
 import { getCourtHashtag } from "./handles.js";
+import { getSafeHttpUrl } from "./inputSecurity.js";
 
 export function courtIdByName(courtName) {
   return COURTS.find((court) => court.name === courtName)?.id ?? null;
@@ -28,6 +29,100 @@ export const COURT_LAYOUT_OPTIONS = [
   { id: "single_hoop", label: "골대 1개" },
   { id: "unknown", label: "확인 필요" },
 ];
+
+export const COURT_TYPE_OPTIONS = [
+  { id: "확인 필요", label: "확인 필요" },
+  { id: "야외", label: "야외" },
+  { id: "실내", label: "실내" },
+];
+
+export const COURT_KIND_OPTIONS = [
+  { id: "unknown", label: "확인 필요" },
+  { id: "official", label: "정식구장" },
+  { id: "street_hoop", label: "골목/길농" },
+];
+
+export const COURT_ACCESS_OPTIONS = [
+  { id: "unknown", label: "확인 필요" },
+  { id: "walk_in", label: "자유 이용" },
+  { id: "reservation", label: "예약 필요" },
+  { id: "restricted", label: "출입 제한" },
+];
+
+export const COURT_SOURCE_URL_MAX_LENGTH = 500;
+
+export function normalizeCourtType(value = "") {
+  const normalized = String(value ?? "").trim();
+  if (["야외", "outdoor"].includes(normalized)) return "야외";
+  if (["실내", "indoor"].includes(normalized)) return "실내";
+  return "확인 필요";
+}
+
+export function normalizeCourtKind(value = "") {
+  const normalized = String(value ?? "").trim();
+  return COURT_KIND_OPTIONS.some((option) => option.id === normalized) ? normalized : "unknown";
+}
+
+export function normalizeCourtAccessType(value = "", reservation = null) {
+  const normalized = String(value ?? "").trim();
+  if (normalized === "open") return "walk_in";
+  if (COURT_ACCESS_OPTIONS.some((option) => option.id === normalized)) return normalized;
+  if (reservation === true) return "reservation";
+  if (reservation === false) return "walk_in";
+  return "unknown";
+}
+
+export function normalizeCourtOptionalBoolean(value) {
+  if (value === true || value === "true") return true;
+  if (value === false || value === "false") return false;
+  return null;
+}
+
+export function normalizeCourtSourceUrl(value = "") {
+  const normalized = String(value ?? "").trim();
+  if (!normalized || normalized.length > COURT_SOURCE_URL_MAX_LENGTH) return "";
+  return getSafeHttpUrl(normalized);
+}
+
+export function getCourtKindLabel(court = {}) {
+  return COURT_KIND_OPTIONS.find((option) => option.id === normalizeCourtKind(court.courtKind))?.label ?? "확인 필요";
+}
+
+export function getCourtAccessLabel(court = {}) {
+  const accessType = normalizeCourtAccessType(court.accessType, court.reservation);
+  return COURT_ACCESS_OPTIONS.find((option) => option.id === accessType)?.label ?? "확인 필요";
+}
+
+export function getCourtPaidLabel(court = {}) {
+  const paid = normalizeCourtOptionalBoolean(court.paid);
+  if (paid === true) return "유료";
+  if (paid === false) return "무료";
+  return "비용 확인 필요";
+}
+
+export function getCourtLightingLabel(court = {}) {
+  const lighting = normalizeCourtOptionalBoolean(court.lighting);
+  if (lighting === true) return "야간 조명 있음";
+  if (lighting === false) return "야간 조명 없음";
+  return "조명 확인 필요";
+}
+
+export function getCourtReservationValue(court = {}) {
+  const accessType = normalizeCourtAccessType(court.accessType, court.reservation);
+  if (accessType === "reservation") return true;
+  if (accessType === "walk_in") return false;
+  return null;
+}
+
+export function getCourtHoopCount(court = {}) {
+  const explicitValue = court.hoopCount;
+  const explicitCount = Number(explicitValue);
+  if (explicitValue !== null && explicitValue !== undefined && explicitValue !== "" && Number.isInteger(explicitCount) && explicitCount >= 0) return explicitCount;
+  const courtLayout = normalizeCourtLayout(court.courtLayout);
+  if (["half", "single_hoop"].includes(courtLayout)) return 1;
+  if (courtLayout === "full") return 2;
+  return null;
+}
 
 export function normalizeCourtSurfaceType(value = "") {
   return COURT_SURFACE_OPTIONS.some((option) => option.id === value) ? value : "unknown";

@@ -46,17 +46,24 @@ import {
   findCourtDuplicate,
   getCourtCanonicalName,
   getCourtDuplicateMessage,
+  getCourtHoopCount,
   getCourtId,
   getCourtLocationMatches,
+  getCourtReservationValue,
   getCourtRequestName,
   getOptionalCourtCoordinate,
   getRegisteredCourts,
   makeRandomCourtHashtag,
+  normalizeCourtAccessType,
   normalizeCourtHashtag,
+  normalizeCourtKind,
   normalizeCourtLayout,
   normalizeCourtNamePart,
+  normalizeCourtOptionalBoolean,
   normalizeCourtReviewRating,
+  normalizeCourtSourceUrl,
   normalizeCourtSurfaceType,
+  normalizeCourtType,
 } from "../lib/courts.js";
 import {
   canOperatorSubmitMissingPostgameResult,
@@ -4540,6 +4547,8 @@ export function submitCourtRequest(state, draft = {}) {
     };
   }
   const hashtag = normalizeCourtHashtag(draft.hashtag) || makeRandomCourtHashtag(state);
+  const type = normalizeCourtType(draft.type);
+  const accessType = normalizeCourtAccessType(draft.accessType, draft.reservation);
 
   const request = {
     id: makeId("cr"),
@@ -4554,7 +4563,7 @@ export function submitCourtRequest(state, draft = {}) {
     canonicalBaseName,
     hashtag,
     region: String(draft.region ?? "").trim() || addressDong || currentUser?.region || "미정",
-    type: draft.type === "실내" ? "실내" : "야외",
+    type,
     addressText,
     roadAddress: String(draft.roadAddress ?? "").trim(),
     jibunAddress: String(draft.jibunAddress ?? "").trim(),
@@ -4565,10 +4574,14 @@ export function submitCourtRequest(state, draft = {}) {
     locationNote: String(draft.locationNote ?? "").trim(),
     lat,
     lng,
-    courtKind: draft.courtKind === "official" ? "official" : "street_hoop",
+    courtKind: normalizeCourtKind(draft.courtKind),
     surfaceType: normalizeCourtSurfaceType(draft.surfaceType),
     courtLayout: normalizeCourtLayout(draft.courtLayout),
-    paid: Boolean(draft.paid),
+    accessType,
+    reservation: getCourtReservationValue({ accessType }),
+    lighting: type === "야외" ? normalizeCourtOptionalBoolean(draft.lighting) : null,
+    paid: normalizeCourtOptionalBoolean(draft.paid),
+    sourceUrl: normalizeCourtSourceUrl(draft.sourceUrl),
     createdAt: new Date().toISOString(),
   };
 
@@ -5562,7 +5575,7 @@ export function approveCourtRequest(state, requestId, approval = {}) {
     baseName: request.baseName,
     hashtag: request.hashtag,
     region: request.region,
-    type: request.type,
+    type: normalizeCourtType(request.type),
     addressText: request.addressText,
     roadAddress: request.roadAddress,
     jibunAddress: request.jibunAddress,
@@ -5572,12 +5585,15 @@ export function approveCourtRequest(state, requestId, approval = {}) {
     locationNote: request.locationNote,
     lat: request.lat,
     lng: request.lng,
-    courtKind: request.courtKind,
+    courtKind: normalizeCourtKind(request.courtKind),
     surfaceType: normalizeCourtSurfaceType(request.surfaceType),
     courtLayout: normalizeCourtLayout(request.courtLayout),
-    hoopCount: ["half", "single_hoop"].includes(normalizeCourtLayout(request.courtLayout)) ? 1 : 2,
-    lighting: false,
-    paid: Boolean(request.paid),
+    hoopCount: getCourtHoopCount(request),
+    accessType: normalizeCourtAccessType(request.accessType, request.reservation),
+    reservation: getCourtReservationValue(request),
+    lighting: normalizeCourtOptionalBoolean(request.lighting),
+    paid: normalizeCourtOptionalBoolean(request.paid),
+    sourceUrl: normalizeCourtSourceUrl(request.sourceUrl),
     favorite: false,
     approvedAt: now,
     approvedBy: state.currentUserId,

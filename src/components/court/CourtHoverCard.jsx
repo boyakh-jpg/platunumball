@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import HoverPortal from "../common/HoverPortal.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { COURTS } from "../../lib/constants.js";
-import { getCourtLayoutLabel, getCourtMapUrl, getCourtSurfaceLabel } from "../../lib/courts.js";
+import { getCourtKindLabel, getCourtLayoutLabel, getCourtMapUrl, getCourtPaidLabel, getCourtSurfaceLabel } from "../../lib/courts.js";
 import { getCourtHashtag } from "../../lib/handles.js";
 import { canUseHoverPreview, clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 
@@ -143,8 +143,8 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
         <span className="court-hover-stats">
           <span><b>{getCourtSurfaceLabel(resolvedCourt)}</b><em>바닥</em></span>
           <span><b>{getCourtLayoutLabel(resolvedCourt)}</b><em>형태</em></span>
-          <span><b>{resolvedCourt.courtKind === "official" ? "정식구장" : "골목/길농"}</b><em>유형</em></span>
-          <span><b>{resolvedCourt.paid ? "유료" : "무료/미정"}</b><em>비용</em></span>
+          <span><b>{getCourtKindLabel(resolvedCourt)}</b><em>유형</em></span>
+          <span><b>{getCourtPaidLabel(resolvedCourt)}</b><em>비용</em></span>
           <span><b>{completedMatchCount}경기</b><em>이용 기록</em></span>
           <span><b>{ratingLabel}</b><em><Star size={12} /> 리뷰 {reviewCount}개</em></span>
         </span>
