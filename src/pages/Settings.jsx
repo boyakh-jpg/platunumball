@@ -68,6 +68,8 @@ const DEFAULT_COURT_REQUEST = {
   buildingName: "",
   courtUnit: "",
   region: "",
+  sido: "",
+  sigungu: "",
   type: "확인 필요",
   addressText: "",
   roadAddress: "",
@@ -1049,6 +1051,8 @@ export default function Settings({ app, auth, section = "main" }) {
       updateCourtDraft({
         buildingName: "",
         region: getCourtAddressRegion(pin),
+        sido: pin.sido ?? "",
+        sigungu: pin.sigungu ?? "",
         addressText: pin.addressText,
         roadAddress: pin.roadAddress,
         jibunAddress: pin.jibunAddress,
@@ -1072,6 +1076,8 @@ export default function Settings({ app, auth, section = "main" }) {
     updateCourtDraft({
       buildingName: "",
       region: getCourtAddressRegion(result),
+      sido: result.sido ?? "",
+      sigungu: result.sigungu ?? "",
       addressText: result.addressText,
       roadAddress: result.roadAddress,
       jibunAddress: result.jibunAddress,
@@ -1784,7 +1790,7 @@ export default function Settings({ app, auth, section = "main" }) {
                     시설/장소명
                     <input
                       value={courtDraft.name}
-                      placeholder="예: 보라매공원 농구장"
+                      placeholder="예: 보라매공원"
                       onChange={(event) => updateCourtDraft({ name: event.target.value, buildingName: "" })}
                       onBlur={(event) => updateCourtDraft({ name: normalizeCourtFacilityName(event.target.value), buildingName: "" })}
                     />
@@ -1795,14 +1801,14 @@ export default function Settings({ app, auth, section = "main" }) {
                   </label>
                 </div>
                 <div className="settings-place-name-actions">
-                  <small>공백·괄호·붙여 쓴 농구장·코트 번호 표기를 저장 전에 자동 정리합니다.</small>
+                  <small>핀 주소의 시군구와 시설명을 합쳐 `시군구 + 시설명 + 농구장`으로 저장합니다.</small>
                 </div>
                 {courtDisplayName ? (
                   <div className="arena-mini-note">
                     <div>
                       <span>저장 구장명</span>
                       <strong>{courtDisplayName}</strong>
-                      <em>시설/장소명과 코트 구분으로 자동 생성 · 해시태그 자동 부여</em>
+                      <em>시군구·시설/장소명·코트 구분으로 자동 생성 · 해시태그 자동 부여</em>
                     </div>
                     <MapPin size={18} />
                   </div>

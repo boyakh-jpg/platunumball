@@ -46,11 +46,12 @@ import {
   findCourtDuplicate,
   getCourtCanonicalName,
   getCourtDuplicateMessage,
+  getCourtFacilityBaseName,
   getCourtHoopCount,
   getCourtId,
   getCourtLocationMatches,
   getCourtReservationValue,
-  getCourtRequestName,
+  getCourtStandardName,
   getOptionalCourtCoordinate,
   getRegisteredCourts,
   makeRandomCourtHashtag,
@@ -64,6 +65,7 @@ import {
   normalizeCourtPublicAccess,
   normalizeCourtReviewRating,
   normalizeCourtSourceUrl,
+  normalizeCourtSigungu,
   normalizeCourtSurfaceType,
   normalizeCourtType,
 } from "../lib/courts.js";
@@ -4622,12 +4624,14 @@ export function submitCourtRequest(state, draft = {}) {
   const rawName = normalizeCourtFacilityName(draft.name || draft.facilityName || draft.buildingName);
   const addressDong = getCourtAddressDong(draft);
   const courtUnit = normalizeCourtNamePart(draft.courtUnit);
-  const canonicalBaseName = getCourtRequestName(rawName, addressDong, courtUnit);
-  const name = getCourtCanonicalName({ ...draft, name: rawName, courtUnit, canonicalBaseName }, state);
   const addressText = String(draft.addressText ?? "").trim();
+  const sigungu = normalizeCourtSigungu(draft.sigungu, addressText, draft.sido, draft.region);
+  const facilityName = getCourtFacilityBaseName(rawName, sigungu, courtUnit);
+  const name = getCourtCanonicalName({ ...draft, name: facilityName, facilityName, sigungu, courtUnit }, state);
+  const canonicalBaseName = name;
   const lat = getOptionalCourtCoordinate(draft.lat, -90, 90);
   const lng = getOptionalCourtCoordinate(draft.lng, -180, 180);
-  if (!rawName || !addressText || lat === null || lng === null) {
+  if (!facilityName || !sigungu || !addressText || lat === null || lng === null) {
     return {
       ...state,
       notifications: [
@@ -4682,13 +4686,15 @@ export function submitCourtRequest(state, draft = {}) {
     requestedBy: state.currentUserId,
     requestedByTrustScore: trustScore,
     name,
-    baseName: rawName,
+    baseName: facilityName,
     buildingName: normalizeCourtFacilityName(draft.buildingName),
-    facilityName: rawName,
+    facilityName,
     courtUnit,
     canonicalBaseName,
     hashtag,
     region: String(draft.region ?? "").trim() || addressDong || currentUser?.region || "미정",
+    sido: String(draft.sido ?? "").trim(),
+    sigungu,
     type,
     addressText,
     roadAddress: String(draft.roadAddress ?? "").trim(),
@@ -5899,8 +5905,25 @@ export function approveCourtRequest(state, requestId, approval = {}) {
       notifications: [getAdminActionNotification("주소와 지도 위치 확인이 필요합니다."), ...state.notifications],
     };
   }
-  const approvedName = normalizeCourtNamePart(approval.approvedName || request.name);
-  const approvalCourt = { ...request, name: approvedName, canonicalBaseName: approvedName };
+  const approvedSigungu = normalizeCourtSigungu(
+    request.sigungu,
+    request.addressText || request.roadAddress || request.jibunAddress,
+    request.sido,
+    request.region,
+  );
+  const approvedFacilityName = getCourtFacilityBaseName(
+    approval.approvedName || request.facilityName || request.baseName || request.name,
+    approvedSigungu,
+    request.courtUnit,
+  );
+  const approvedName = getCourtStandardName({ ...request, name: approvedFacilityName, facilityName: approvedFacilityName });
+  const approvalCourt = { ...request, name: approvedName, facilityName: approvedFacilityName, canonicalBaseName: approvedName };
+  if (!approvedName) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("시군구와 시설명을 확인해야 합니다."), ...state.notifications],
+    };
+  }
   const sameLocationCourts = getCourtLocationMatches(
     approvalCourt,
     state,
@@ -5927,7 +5950,11 @@ export function approveCourtRequest(state, requestId, approval = {}) {
   const approvedCourt = {
     id: makeId("court"),
     name: approvedName,
-    baseName: request.baseName,
+    baseName: approvedFacilityName,
+    facilityName: approvedFacilityName,
+    courtUnit: request.courtUnit,
+    sido: request.sido,
+    sigungu: approvedSigungu,
     hashtag: request.hashtag,
     region: request.region,
     type: normalizeCourtType(request.type),

@@ -2988,6 +2988,40 @@ export function useAppData(authUser = null, appLocation = null) {
           if (serverReady !== true) return serverReady;
           return runServerAction("/api/admin/user-operations", { operation: "load", ...options });
         },
+        loadAdminCourtDatabase: async (options = {}) => {
+          if (!isSupabaseConfigured) return { ok: true, rows: [], page: { page: 1, pageSize: 100, total: 0, pageCount: 1 } };
+          if (!ensureRemoteReady("구장 DB")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/courts", "구장 DB");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/courts", { operation: "list", ...options });
+        },
+        loadAdminCourtNameHistory: async (options = {}) => {
+          if (!isSupabaseConfigured) return { ok: true, rows: [], page: { page: 1, pageSize: 100, total: 0, pageCount: 1 } };
+          if (!ensureRemoteReady("구장 수정 이력")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/courts", "구장 수정 이력");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/courts", { operation: "history", ...options });
+        },
+        renameAdminCourt: async (draft = {}) => {
+          if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
+          if (!ensureRemoteReady("구장 이름 변경")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/courts", "구장 이름 변경");
+          if (serverReady !== true) return serverReady;
+          const result = await runServerAction("/api/admin/courts", { operation: "rename", ...draft });
+          if (!result || result.ok === false || !result.court?.id) return result;
+          const mergeRenamedCourt = (prev) => ({
+            ...prev,
+            settings: {
+              ...(prev.settings ?? {}),
+              approvedCourts: (prev.settings?.approvedCourts ?? []).map((court) => (
+                court.id === result.court.id ? { ...court, ...result.court } : court
+              )),
+            },
+          });
+          setState(mergeRenamedCourt);
+          setAdminState((prev) => (prev ? mergeRenamedCourt(prev) : prev));
+          return result;
+        },
         commitAdminUserOperation: async (draft = {}) => {
           if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
           if (!ensureRemoteReady("사용자 운영 조치")) return { ok: false, error: "remote_not_ready" };

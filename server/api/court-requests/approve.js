@@ -38,7 +38,22 @@ export default async function handler(request, response) {
       throw error;
     }
 
-    sendJson(response, 200, data ?? { ok: true });
+    const approvedCourtId = String(data?.approvedCourtId ?? "").trim();
+    if (!approvedCourtId) {
+      sendJson(response, 200, data ?? { ok: true });
+      return;
+    }
+    const { data: approvedCourt, error: approvedCourtError } = await context.supabase
+      .from("approved_courts")
+      .select("id,name,facility_name,court_unit,sido,sigungu")
+      .eq("id", approvedCourtId)
+      .maybeSingle();
+    if (approvedCourtError) throw approvedCourtError;
+    sendJson(response, 200, {
+      ...(data ?? { ok: true }),
+      approvedName: approvedCourt?.name ?? data?.approvedName,
+      approvedCourt,
+    });
   } catch (error) {
     console.error("Court request approval failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "court_request_approval_failed" });

@@ -201,6 +201,83 @@ function stripCourtAddressPrefix(name = "", addressDong = "") {
   return normalizedName.slice(normalizedDong.length).trim();
 }
 
+function normalizeCourtRegionText(value = "") {
+  return normalizeCourtNamePart(value).replace(/^세종특별자치시$/, "세종시");
+}
+
+function isCourtCityToken(value = "") {
+  return /(?:시|군)$/.test(value);
+}
+
+function isCourtDistrictToken(value = "") {
+  return /구$/.test(value);
+}
+
+export function normalizeCourtSigungu(value = "", addressText = "", sido = "", region = "") {
+  const safeSido = normalizeCourtRegionText(sido);
+  const addressTokens = normalizeCourtNamePart(addressText).split(" ").filter(Boolean);
+  let direct = normalizeCourtRegionText(value);
+  if (direct === "세종시" || safeSido === "세종시" || addressTokens[0] === "세종특별자치시") return "세종시";
+
+  if (safeSido && direct.startsWith(`${safeSido} `)) direct = direct.slice(safeSido.length).trim();
+  const directParts = direct.split(" ").filter(Boolean);
+  if (directParts.length > 1 && /(?:특별자치시|특별시|광역시|도)$/.test(directParts[0])) {
+    direct = directParts.slice(1).join(" ");
+  }
+
+  if (direct) {
+    const directTokens = direct.split(" ").filter(Boolean);
+    const addressCityIndex = addressTokens.findIndex((token) => token === directTokens[0]);
+    if (
+      directTokens.length === 1
+      && isCourtCityToken(directTokens[0])
+      && addressCityIndex >= 0
+      && isCourtDistrictToken(addressTokens[addressCityIndex + 1])
+    ) {
+      return `${directTokens[0]} ${addressTokens[addressCityIndex + 1]}`;
+    }
+    return direct;
+  }
+
+  const localityTokens = addressTokens[0] === safeSido || /(?:특별자치시|특별시|광역시|도)$/.test(addressTokens[0] ?? "")
+    ? addressTokens.slice(1)
+    : addressTokens;
+  if (isCourtCityToken(localityTokens[0]) && isCourtDistrictToken(localityTokens[1])) {
+    return `${localityTokens[0]} ${localityTokens[1]}`;
+  }
+  if (/(?:시|군|구)$/.test(localityTokens[0] ?? "")) return localityTokens[0];
+
+  const safeRegion = normalizeCourtRegionText(region);
+  return /(?:시|군|구)$/.test(safeRegion) ? safeRegion : "";
+}
+
+export function getCourtFacilityBaseName(rawName = "", sigungu = "", courtUnit = "") {
+  let facilityName = normalizeCourtFacilityName(rawName);
+  const safeSigungu = normalizeCourtSigungu(sigungu);
+  const safeCourtUnit = normalizeCourtNamePart(courtUnit);
+  if (safeSigungu && facilityName.startsWith(`${safeSigungu} `)) {
+    facilityName = facilityName.slice(safeSigungu.length).trim();
+  }
+  if (safeCourtUnit && normalizeCourtIdentityText(facilityName).endsWith(normalizeCourtIdentityText(safeCourtUnit))) {
+    facilityName = facilityName.slice(0, Math.max(0, facilityName.length - safeCourtUnit.length)).trim();
+  }
+  facilityName = facilityName
+    .replace(/\s*(?:(?:실내|실외|야외)\s*)?농구장\s*$/i, "")
+    .replace(/\s*농구\s*코트\s*$/i, "")
+    .replace(/[\s·,()\-]+$/g, "");
+  return normalizeCourtNamePart(facilityName);
+}
+
+export function getCourtStandardName(court = {}) {
+  const addressText = court.addressText || court.roadAddress || court.jibunAddress;
+  const sigungu = normalizeCourtSigungu(court.sigungu, addressText, court.sido, court.region);
+  const courtUnit = normalizeCourtNamePart(court.courtUnit ?? court.court_unit);
+  const rawFacilityName = court.buildingName || court.facilityName || court.facility_name || court.baseName || court.name;
+  const facilityName = getCourtFacilityBaseName(rawFacilityName, sigungu, courtUnit);
+  if (!sigungu || !facilityName) return "";
+  return normalizeCourtNamePart(`${sigungu} ${facilityName} 농구장${courtUnit ? ` ${courtUnit}` : ""}`);
+}
+
 export function getCourtRequestName(rawName = "", addressDong = "", courtUnit = "") {
   const facilityName = stripCourtAddressPrefix(rawName, addressDong);
   const unit = normalizeCourtNamePart(courtUnit);
@@ -211,6 +288,8 @@ export function getCourtRequestName(rawName = "", addressDong = "", courtUnit = 
 }
 
 function getCourtCanonicalBaseName(court = {}) {
+  const standardName = getCourtStandardName(court);
+  if (standardName) return standardName;
   const facilityName = court.buildingName || court.facilityName || court.baseName || court.name;
   return getCourtRequestName(facilityName, court.addressDong, court.courtUnit);
 }
@@ -451,10 +530,7 @@ function isSameCourtIdentity(source = {}, target = {}) {
 }
 
 function getCourtCandidates(settings = {}, includeRequests = true) {
-  const approvedCandidates = [
-    ...COURTS.map((court) => ({ type: "approved", court })),
-    ...(settings.approvedCourts ?? []).map((court) => ({ type: "approved", court })),
-  ];
+  const approvedCandidates = (settings.approvedCourts ?? []).map((court) => ({ type: "approved", court }));
   const pendingCandidates = includeRequests
     ? (settings.courtRequests ?? [])
       .filter((request) => !["approved", "rejected", "dismissed"].includes(request.status))
@@ -509,20 +585,9 @@ export function getNearbyCourtCandidates(draft = {}, stateOrSettings = {}, optio
 }
 
 export function getCourtCanonicalName(draft = {}, stateOrSettings = {}, options = {}) {
-  const baseName = getCourtCanonicalBaseName(draft);
-  if (!baseName) return "";
-  const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
-  const sourceIdentity = getCourtIdentity({ ...draft, canonicalBaseName: baseName });
-  const baseKey = normalizeCourtIdentityText(baseName);
-  const hasDifferentLocationCollision = getCourtCandidates(settings, options.includeRequests !== false).some((candidate) => {
-    if (options.excludeRequestId && candidate.court?.id === options.excludeRequestId) return false;
-    if (options.excludeRequestId && candidate.court?.sourceRequestId === options.excludeRequestId) return false;
-    const candidateBaseKey = normalizeCourtIdentityText(candidate.court?.canonicalBaseName || getCourtCanonicalBaseName(candidate.court));
-    return candidateBaseKey === baseKey && !isSameCourtIdentity(sourceIdentity, getCourtIdentity(candidate.court));
-  });
-  if (!hasDifferentLocationCollision) return baseName;
-  const locationLabel = normalizeCourtNamePart(draft.addressDong || draft.region || draft.zonecode);
-  return locationLabel ? `${baseName} (${locationLabel})` : baseName;
+  void stateOrSettings;
+  void options;
+  return getCourtStandardName(draft);
 }
 
 export function findCourtDuplicate(draft = {}, stateOrSettings = {}, options = {}) {
@@ -670,10 +735,7 @@ export function getRegisteredCourts(stateOrSettings = {}) {
   const courtMetricsById = new Map((settings.courtMetrics ?? []).map((court) => [court.id, court]));
   const courtReviews = (settings.courtReviews ?? []).filter(isActiveModerationItem);
   const calibration = buildCourtReviewCalibration(courtReviews);
-  const byId = new Map(COURTS.map((court) => {
-    const metrics = courtMetricsById.get(court.id) ?? {};
-    return [court.id, { ...court, ...metrics, name: court.name }];
-  }));
+  const byId = new Map();
   approvedCourts.forEach((court) => {
     if (!court?.id) return;
     byId.set(court.id, { ...(byId.get(court.id) ?? {}), ...court });
