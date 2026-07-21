@@ -6,6 +6,7 @@ import {
   isDiscordSnowflake,
   sanitizeRoomChatBody,
 } from "./_roomChatBridge.js";
+import { assertSafeUserText } from "../../../src/lib/inputSecurity.js";
 
 function reject(statusCode, message) {
   const error = new Error(message);
@@ -56,6 +57,7 @@ async function persistDiscordChatMessage(supabase, link = {}, profile = {}, body
   const text = sanitizeRoomChatBody(body.body ?? body.content ?? body.message);
   if (!text) reject(400, "empty_chat_message");
   if (text.includes("\n") || text.includes("\r")) reject(400, "single_line_chat_required");
+  assertSafeUserText(text, { path: "$body.message" });
 
   const messageId = readSnowflake(body.messageId ?? body.discordMessageId ?? body.id, "discord_message_id");
   const incomingChannelId = readSnowflake(body.channelId ?? body.discordChannelId, "discord_channel_id");

@@ -1,4 +1,5 @@
 import { isServerActionsEnabled, isSupabaseConfigured, supabase } from "./supabase.js";
+import { assertSafeInputPayload } from "./inputSecurity.js";
 
 let cachedActionSession = { accessToken: "", expiresAtMs: 0 };
 
@@ -91,6 +92,12 @@ async function readServerActionError(response) {
 }
 
 export async function postServerAction(path, payload = {}, options = {}) {
+  try {
+    assertSafeInputPayload(payload, { path: "$payload" });
+  } catch (error) {
+    if (error?.details?.message) error.message = error.details.message;
+    throw error;
+  }
   if (!isSupabaseConfigured) return false;
   if (!options.allowWhenDisabled && !isServerActionsEnabled) {
     throw createServerActionError("server_actions_disabled", { path });

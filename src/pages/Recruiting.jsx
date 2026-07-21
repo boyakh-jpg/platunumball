@@ -106,6 +106,7 @@ import {
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import { getUnsafeUserTextReason, UNSAFE_INPUT_MESSAGE } from "../lib/inputSecurity.js";
 import {
   ROOM_CHAT_MESSAGE_MAX_LENGTH as CHAT_MESSAGE_MAX_LENGTH,
   ROOM_CHAT_RATE_LIMIT as CHAT_RATE_LIMIT,
@@ -1749,6 +1750,8 @@ function RoomChat({
           <input
             value={value}
             disabled={inputDisabled}
+            maxLength={CHAT_MESSAGE_MAX_LENGTH}
+            aria-invalid={Boolean(error)}
             onChange={(event) => onChange(event.target.value)}
             placeholder={locked ? "경기 종료됨" : canChat ? "방 전체에 보낼 메시지" : "참여 후 채팅 가능"}
           />
@@ -2801,6 +2804,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     }
     if (body.length > CHAT_MESSAGE_MAX_LENGTH) {
       setChatError(postId, "60자 이내로 입력해주세요.");
+      return;
+    }
+    if (getUnsafeUserTextReason(body, { maxLength: CHAT_MESSAGE_MAX_LENGTH })) {
+      setChatError(postId, UNSAFE_INPUT_MESSAGE);
       return;
     }
     const now = Date.now();

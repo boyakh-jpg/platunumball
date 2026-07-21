@@ -43,6 +43,7 @@ import teamList from "../server/api/teams/list.js";
 import teamEmblem from "../server/api/teams/emblem.js";
 import teamSyncTeam from "../server/api/teams/sync-team.js";
 import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.js";
+import { assertSafeInputPayload, UNSAFE_INPUT_ERROR_CODE } from "../src/lib/inputSecurity.js";
 
 const ROUTES = new Map([
   ["/admin/appointment-action", adminAppointmentAction],
@@ -124,6 +125,20 @@ function getRoutePath(request) {
 export default async function handler(request, response) {
   const routePath = getRoutePath(request);
   const routeHandler = ROUTES.get(routePath);
+
+  try {
+    assertSafeInputPayload(request.query ?? {}, {
+      path: "$query",
+      maxDepth: 6,
+      maxNodes: 200,
+      maxStringLength: 8_000,
+    });
+  } catch (error) {
+    response.setHeader?.("Cache-Control", "no-store");
+    response.setHeader?.("X-Content-Type-Options", "nosniff");
+    response.status(error.statusCode || 400).json({ error: error.code || UNSAFE_INPUT_ERROR_CODE });
+    return;
+  }
 
   if (!routeHandler) {
     response.status(404).json({ error: "api_route_not_found", path: routePath });

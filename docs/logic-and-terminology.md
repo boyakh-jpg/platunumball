@@ -2865,3 +2865,12 @@ flowchart TD
 1. `/app/teams`의 팀 검색·랭킹은 `전체` 지역으로 시작하며 bounded 팀 directory 안에서 전체 순위를 보여준다.
 2. 지역 선택은 랭킹 검색 조건일 뿐 `근처 팀` 추천 기능으로 취급하지 않는다.
 3. `근처 팀`은 가입·도전·초대처럼 명확한 후속 행동이 생길 때 별도 section으로 추가한다. 현재 팀 랭킹 목록에 암묵적으로 섞지 않는다.
+
+## 2026-07-21 사용자 입력과 XSS 방어
+
+1. 사용자 입력은 HTML이 아니라 plain text다. React text node 자동 escaping을 유지하며 `dangerouslySetInnerHTML`, `innerHTML`, `document.write`, `eval`, 문자열 `Function`을 사용하지 않는다.
+2. 모든 server action JSON payload와 API query는 `src/lib/inputSecurity.js`에서 재귀 검사한다. HTML tag·HTML comment·event handler·`srcdoc`·script/data document protocol·실행형 CSS·제어문자·prototype key는 저장 전에 거부한다.
+3. 클라이언트 사전 검사는 피드백용이고 서버 `readJsonBody` 검사가 권한 경계다. JSON body는 1MB, 문자열은 300,000자, payload 깊이·node 수도 상한을 둔다. 화면별 더 작은 길이 제한은 그대로 우선한다.
+4. 방 채팅은 60자·한 줄·plain text만 허용한다. optimistic state, 웹 server action, Discord 유입 모두 같은 실행형 markup 검사를 통과해야 하며 Discord 발송은 mention parsing을 비활성화한다.
+5. DB나 외부 응답에서 온 image URL은 상대 경로 또는 HTTPS만 렌더링한다. `javascript:`, HTML data document와 비 HTTP(S) scheme은 빈 값으로 바꿔 기본 엠블럼으로 fallback한다.
+6. 운영 문서는 CSP로 script origin을 self와 Naver Maps로 제한하고 `object-src 'none'`, `frame-ancestors 'none'`, HTTPS upgrade를 적용한다. CSP는 입력 검증·안전한 출력의 대체물이 아니라 추가 방어선이다.

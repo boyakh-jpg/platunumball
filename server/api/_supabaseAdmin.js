@@ -10,10 +10,12 @@ import {
 import { fromRemoteTournament } from "../../src/data/tournamentMappers.js";
 import { getNotificationActorId, isTerminalMatchStatus, isTerminalRecruitingStatus } from "../../src/lib/notifications.js";
 import { DEFAULT_RATING } from "../../src/lib/constants.js";
+import { assertSafeInputPayload } from "../../src/lib/inputSecurity.js";
 
 export { getDatePart, getTimePart, toDbTime } from "../../src/data/scheduleUtils.js";
 
 const IMMEDIATE_NOTIFICATION_DUE_AT = "1970-01-01T00:00:00.000Z";
+const MAX_API_JSON_BODY_BYTES = 1_000_000;
 
 const ADMIN_GRADE_LEVELS = {
   owner: 100,
@@ -31,6 +33,8 @@ const AUTH_CONTEXT_CACHE_TTL_MS = 30 * 1000;
 const RELATED_TOURNAMENT_LIMIT = 40;
 
 export function sendJson(response, statusCode, payload) {
+  response.setHeader?.("Cache-Control", "no-store");
+  response.setHeader?.("X-Content-Type-Options", "nosniff");
   response.status(statusCode).json(payload);
 }
 
@@ -55,17 +59,42 @@ export function getSupabaseAdminClient() {
   return adminClient;
 }
 
+function createBodyError(code, statusCode) {
+  const error = new Error(code);
+  error.code = code;
+  error.statusCode = statusCode;
+  return error;
+}
+
+function parseJsonBody(raw = "") {
+  if (Buffer.byteLength(raw, "utf8") > MAX_API_JSON_BODY_BYTES) throw createBodyError("request_body_too_large", 413);
+  try {
+    return JSON.parse(raw || "{}");
+  } catch {
+    throw createBodyError("invalid_json_body", 400);
+  }
+}
+
+function validateJsonBody(body) {
+  assertSafeInputPayload(body, { path: "$body" });
+  return body;
+}
+
 export async function readJsonBody(request) {
-  if (Buffer.isBuffer(request.body)) return JSON.parse(request.body.toString("utf8") || "{}");
-  if (request.body && typeof request.body === "object") return request.body;
-  if (typeof request.body === "string") return JSON.parse(request.body || "{}");
+  if (Buffer.isBuffer(request.body)) return validateJsonBody(parseJsonBody(request.body.toString("utf8")));
+  if (request.body && typeof request.body === "object") return validateJsonBody(request.body);
+  if (typeof request.body === "string") return validateJsonBody(parseJsonBody(request.body));
 
   const chunks = [];
+  let bodyBytes = 0;
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    bodyBytes += buffer.length;
+    if (bodyBytes > MAX_API_JSON_BODY_BYTES) throw createBodyError("request_body_too_large", 413);
+    chunks.push(buffer);
   }
   const raw = Buffer.concat(chunks).toString("utf8").trim();
-  return raw ? JSON.parse(raw) : {};
+  return validateJsonBody(parseJsonBody(raw));
 }
 
 export function getBearerToken(request) {

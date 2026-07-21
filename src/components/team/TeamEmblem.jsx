@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { assetUrl } from "../../lib/assets.js";
+import { getSafeImageUrl } from "../../lib/inputSecurity.js";
 import { getTeamEmblemTextLines, normalizeTeamEmblemFont } from "../../lib/teamEmblem.js";
 
 const EMBLEM_SIZES = new Set(["xs", "sm", "md", "lg"]);
@@ -14,9 +15,10 @@ export default function TeamEmblem({ team, name, accent, size = "md", className 
   const resolvedSize = EMBLEM_SIZES.has(size) ? size : "md";
   const emblemSource = team?.emblemSource ?? (team?.emblemKey ? "upload" : "initial");
   const keyedUrl = emblemSource === "upload" && team?.emblemKey ? assetUrl(`/${String(team.emblemKey).replace(/^\/+/, "")}`) : "";
-  const resolvedImageUrl = emblemSource === "upload"
+  const imageUrlCandidate = emblemSource === "upload"
     ? (keyedUrl && !keyedUrl.startsWith("/") ? keyedUrl : team?.emblemUrl ?? keyedUrl)
     : "";
+  const resolvedImageUrl = getSafeImageUrl(imageUrlCandidate) || getSafeImageUrl(keyedUrl);
   const textLines = getTeamEmblemTextLines(team, resolvedName);
   const textDensity = Math.max(...textLines.map((line) => Array.from(line).length), 1);
   const textMode = new Set(["name", "abbreviation"]).has(team?.emblemTextMode) ? team.emblemTextMode : "initial";

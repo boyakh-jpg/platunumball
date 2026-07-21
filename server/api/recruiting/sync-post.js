@@ -18,6 +18,7 @@ import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../
 import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } from "../matches/sync-match.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
 import { normalizeRecruitingApplicationStatus } from "../../../src/lib/recruiting.js";
+import { assertSafeUserText } from "../../../src/lib/inputSecurity.js";
 
 function isTrue(value) {
   return value === true || value === "true";
@@ -1199,6 +1200,7 @@ async function persistRecruitingRoomChatMessage(context, operation = {}) {
   if (!text) reject(400, "empty_chat_message");
   if (text.includes("\n") || text.includes("\r")) reject(400, "single_line_chat_required");
   if (text.length > ROOM_CHAT_MESSAGE_MAX_LENGTH) reject(400, "chat_message_too_long");
+  assertSafeUserText(text, { maxLength: ROOM_CHAT_MESSAGE_MAX_LENGTH, path: "$body.operation.body" });
   const existingPostSnapshot = await loadRecruitingChatPermissionSnapshot(context, postId);
   if (!canSyncRecruitingAction(context.profileId, existingPostSnapshot, existingPostSnapshot, "sendRecruitingChat", { action: "sendRecruitingChat", body: text, postId })) {
     reject(403, "recruiting_sync_permission_denied");

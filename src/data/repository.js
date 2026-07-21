@@ -336,6 +336,7 @@ import {
   normalizeRecruitingSchedules,
 } from "./scheduleUtils.js";
 import { adjustUserTrust, clampTrustScore, getFoulTrustPenalty } from "./trustUtils.js";
+import { getUnsafeUserTextReason } from "../lib/inputSecurity.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 export { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "./profileMappers.js";
 export { fromRemoteTeamInvitation } from "./teamMappers.js";
@@ -7025,7 +7026,7 @@ export function sendRecruitingChat(state, postId, body = "") {
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   const text = String(body).trim();
-  if (text.includes("\n") || text.includes("\r") || text.length > 60) return state;
+  if (text.includes("\n") || text.includes("\r") || getUnsafeUserTextReason(text, { maxLength: 60 })) return state;
   if (!post || !text || !isRecruitingRoomMember(post, state.currentUserId, state)) return state;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const message = {

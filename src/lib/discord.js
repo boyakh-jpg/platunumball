@@ -1,5 +1,6 @@
 import { getNotificationActorId, getNotificationTargetPath, isNotificationDue } from "./notifications.js";
 import { DISCORD_OAUTH_STATE_TTL_MS, getDiscordInviteCustomId } from "./discordProtocol.js";
+import { getSafeImageUrl } from "./inputSecurity.js";
 
 export const DISCORD_NOTIFICATION_EVENTS = [
   { id: "match", label: "초대/경기" },
@@ -55,7 +56,7 @@ export function getDiscordDisplayName(user = {}) {
 
 function getDiscordAvatarUrl(user = {}) {
   const connection = getDiscordConnection(user);
-  return isDiscordLinked(user) ? connection?.avatarUrl || "" : "";
+  return isDiscordLinked(user) ? getSafeImageUrl(connection?.avatarUrl || "") : "";
 }
 
 export function getDiscordProfileUrl(user = {}) {

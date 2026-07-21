@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import {
   BASKETBALL_POSITIONS,
@@ -52,13 +52,37 @@ import {
 } from "../src/lib/matchUtils.js";
 import { getCourtMapUrl } from "../src/lib/courts.js";
 import {
+  UNSAFE_INPUT_ERROR_CODE,
+  assertSafeInputPayload,
+  getSafeImageUrl,
+  getUnsafeUserTextReason,
+} from "../src/lib/inputSecurity.js";
+import {
   decodeBase64Image,
   readWebpDimensions,
   validateWebpImage,
 } from "../server/api/_r2ImageStorage.js";
+import { readJsonBody } from "../server/api/_supabaseAdmin.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
+
+async function readSourceTree(relativeDirectory) {
+  const sources = [];
+  const walk = async (directoryUrl) => {
+    const entries = await readdir(directoryUrl, { withFileTypes: true });
+    await Promise.all(entries.map(async (entry) => {
+      const entryUrl = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directoryUrl);
+      if (entry.isDirectory()) {
+        await walk(entryUrl);
+      } else if (/\.(?:js|jsx|mjs)$/i.test(entry.name)) {
+        sources.push(await readFile(entryUrl, "utf8"));
+      }
+    }));
+  };
+  await walk(new URL(`${relativeDirectory.replace(/\/?$/, "/")}`, root));
+  return sources.join("\n");
+}
 
 test("core match policy has one canonical default", () => {
   assert.deepEqual(MATCH_SIDES, ["teamA", "teamB"]);
@@ -180,6 +204,56 @@ test("team ranking starts from the full bounded directory", async () => {
   const teams = await readSource("src/pages/Teams.jsx");
   assert.match(teams, /const \[region, setRegion\] = useState\("전체"\);/);
   assert.doesNotMatch(teams, /팀 탐색/);
+});
+
+test("user input rejects executable markup without blocking ordinary chat", async () => {
+  assert.equal(getUnsafeUserTextReason("오늘 3점 5개! <3 🏀"), "");
+  assert.equal(getUnsafeUserTextReason("A팀 21 : 18 B팀"), "");
+  [
+    "<script>alert(1)</script>",
+    "<img src=x onerror=alert(1)>",
+    "javascript:alert(1)",
+    "data:text/html,<svg onload=alert(1)>",
+    "&lt;iframe srcdoc=alert(1)&gt;",
+    "background:url(javascript:alert(1))",
+  ].forEach((value) => assert.ok(getUnsafeUserTextReason(value)));
+  assert.throws(
+    () => assertSafeInputPayload({ operation: { body: "<svg onload=alert(1)>" } }),
+    (error) => error.code === UNSAFE_INPUT_ERROR_CODE && error.statusCode === 400,
+  );
+  assert.equal(getSafeImageUrl("javascript:alert(1)"), "");
+  assert.equal(getSafeImageUrl("data:text/html,alert(1)"), "");
+  assert.equal(getSafeImageUrl("/assets/profile-icons/01-first-bucket.png"), "/assets/profile-icons/01-first-bucket.png");
+  assert.equal(getSafeImageUrl("https://cdn.discordapp.com/avatar.png"), "https://cdn.discordapp.com/avatar.png");
+  assert.deepEqual(
+    await readJsonBody({ body: { operation: { body: "오늘 3점 5개! <3 🏀" } } }),
+    { operation: { body: "오늘 3점 5개! <3 🏀" } },
+  );
+  await assert.rejects(
+    readJsonBody({ body: { operation: { body: "<svg onload=alert(1)>" } } }),
+    (error) => error.code === UNSAFE_INPUT_ERROR_CODE && error.statusCode === 400,
+  );
+});
+
+test("server and browser keep untrusted text out of executable sinks", async () => {
+  const [apiIndex, supabaseAdmin, serverActions, recruiting, vercelConfig, sourceTree] = await Promise.all([
+    readSource("api/index.js"),
+    readSource("server/api/_supabaseAdmin.js"),
+    readSource("src/lib/serverActions.js"),
+    readSource("src/pages/Recruiting.jsx"),
+    readSource("vercel.json"),
+    readSourceTree("src"),
+  ]);
+  assert.match(apiIndex, /assertSafeInputPayload\(request\.query/);
+  assert.match(supabaseAdmin, /validateJsonBody/);
+  assert.match(serverActions, /assertSafeInputPayload\(payload/);
+  assert.match(recruiting, /UNSAFE_INPUT_MESSAGE/);
+  assert.doesNotMatch(sourceTree, /dangerouslySetInnerHTML|\.innerHTML\s*=|\.outerHTML\s*=|insertAdjacentHTML|document\.write\s*\(|\beval\s*\(|new Function\s*\(/);
+  const securityHeaders = JSON.parse(vercelConfig).headers[0].headers;
+  const csp = securityHeaders.find((header) => header.key === "Content-Security-Policy")?.value ?? "";
+  assert.match(csp, /object-src 'none'/);
+  assert.match(csp, /frame-ancestors 'none'/);
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-(?:inline|eval)'/);
 });
 
 test("notification status and delivery prefix policies stay aligned", () => {

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { assetUrl } from "../../lib/assets.js";
 import { getProfileIcon } from "../../lib/profileIcons.js";
+import { getSafeImageUrl } from "../../lib/inputSecurity.js";
 
 export function getProfileEmblemUrl(user = {}) {
-  if (user.avatarSource === "discord") return user.discordAvatarUrl || user.discordConnection?.avatarUrl || "";
+  if (user.avatarSource === "discord") return getSafeImageUrl(user.discordAvatarUrl || user.discordConnection?.avatarUrl || "");
   if (user.avatarSource === "icon") {
     const icon = getProfileIcon(user.avatarIconKey);
-    return icon ? assetUrl(icon.src) : "";
+    return icon ? getSafeImageUrl(assetUrl(icon.src)) : "";
   }
   return "";
 }
