@@ -865,7 +865,8 @@ export default function CourtDatabasePanel({ app }) {
     const result = await app.actions.normalizeAdminCourtAddressNames?.();
     if (!result || result.ok === false) {
       setSaving(false);
-      setStatus(getSaveErrorMessage(result?.error));
+      const errorCode = String(result?.error ?? "unknown_error");
+      setStatus(`${getSaveErrorMessage(errorCode)} (${errorCode})`);
       return;
     }
     await loadRows(true);
