@@ -8,7 +8,7 @@ const readSource = (relativePath) => readFile(new URL(`../${relativePath}`, impo
 test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사용한다", async () => {
   const server = await readSource("server/api/admin/courts.js");
   assert.match(server, /const PAGE_SIZE = 100;/);
-  assert.match(server, /const NORMALIZATION_BATCH_SIZE = 20;/);
+  assert.match(server, /const NORMALIZATION_BATCH_SIZE = 10;/);
   assert.match(server, /from\("rankball_admin_court_database"\)/);
   assert.match(server, /from\("rankball_admin_court_change_history"\)/);
   assert.match(server, /applyCourtFilters\(query, body\.filters\)/);

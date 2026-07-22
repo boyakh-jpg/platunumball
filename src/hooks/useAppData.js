@@ -3235,7 +3235,7 @@ export function useAppData(authUser = null, appLocation = null) {
             if (!result || result.ok === false) return result;
             updatedCount += Number(result.updatedCount ?? 0);
             batchCount += 1;
-            if (batchCount >= 100 && Number(result.remainingCount ?? 0) > 0) return { ok: false, error: "court_address_normalization_incomplete" };
+            if (batchCount >= 500 && Number(result.remainingCount ?? 0) > 0) return { ok: false, error: "court_address_normalization_incomplete" };
           } while (Number(result.remainingCount ?? 0) > 0);
           return { ...result, updatedCount };
         },
