@@ -85,11 +85,11 @@
     },
     {
       "source": "/privacy",
-      "destination": "/index.html"
+      "destination": "/privacy.html"
     },
     {
       "source": "/terms",
-      "destination": "/index.html"
+      "destination": "/terms.html"
     },
     {
       "source": "/app",

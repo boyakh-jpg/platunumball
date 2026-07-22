@@ -9,7 +9,10 @@ import "./styles/globals.css";
 
 installRemoteAssetVariables();
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+const rootElement = document.getElementById("root");
+rootElement.replaceChildren();
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <BrowserRouter>
       <ScrollToTop />
