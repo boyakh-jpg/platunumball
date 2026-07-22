@@ -56,6 +56,23 @@ test("production target passes a non-network safety check with exact confirmatio
   assert.doesNotMatch(result.stderr, /https:\/\//);
 });
 
+test("BOXTIER production API host requires the production confirmation", () => {
+  const blocked = runSafetyCheck(
+    ["--base-url=https://boxtier.kr"],
+    childEnvironment(PRODUCTION_REF),
+  );
+  assert.equal(blocked.status, 1);
+  assert.match(blocked.stderr, new RegExp(`--confirm-production=${PRODUCTION_REF}`));
+  assert.doesNotMatch(blocked.stderr, /remote API project ref is required/);
+
+  const confirmed = runSafetyCheck(
+    ["--base-url=https://boxtier.kr", `--confirm-production=${PRODUCTION_REF}`],
+    childEnvironment(PRODUCTION_REF),
+  );
+  assert.equal(confirmed.status, 0, confirmed.stderr);
+  assert.match(confirmed.stderr, /"apiHost":"boxtier\.kr"/);
+});
+
 test("production target rejects a confirmation for another project", () => {
   const result = runSafetyCheck(
     ["--confirm-production=anotherprojectref"],
@@ -74,17 +91,17 @@ test("dedicated test project does not require production confirmation", () => {
 
 test("remote test API requires and accepts a matching project ref", () => {
   const result = runSafetyCheck(
-    ["--base-url=https://rankball-test.example.com", `--remote-project-ref=${TEST_REF}`],
+    ["--base-url=https://boxtier-test.example.com", `--remote-project-ref=${TEST_REF}`],
     childEnvironment(TEST_REF),
   );
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stderr, /"environment":"test"/);
-  assert.match(result.stderr, /"apiHost":"rankball-test\.example\.com"/);
+  assert.match(result.stderr, /"apiHost":"boxtier-test\.example\.com"/);
 });
 
 test("unrecognized remote API host is blocked without a declared project ref", () => {
   const result = runSafetyCheck(
-    ["--base-url=https://rankball-test.example.com"],
+    ["--base-url=https://boxtier-test.example.com"],
     childEnvironment(TEST_REF),
   );
   assert.equal(result.status, 1);
@@ -93,7 +110,7 @@ test("unrecognized remote API host is blocked without a declared project ref", (
 
 test("remote and direct project ref mismatch is blocked", () => {
   const result = runSafetyCheck(
-    ["--base-url=https://rankball-test.example.com", "--remote-project-ref=anotherprojectref"],
+    ["--base-url=https://boxtier-test.example.com", "--remote-project-ref=anotherprojectref"],
     childEnvironment(TEST_REF),
   );
   assert.equal(result.status, 1);

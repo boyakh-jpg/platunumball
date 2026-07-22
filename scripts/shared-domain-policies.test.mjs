@@ -643,6 +643,7 @@ test("server and browser keep untrusted text out of executable sinks", async () 
   const csp = securityHeaders.find((header) => header.key === "Content-Security-Policy")?.value ?? "";
   assert.match(csp, /object-src 'none'/);
   assert.match(csp, /frame-ancestors 'none'/);
+  assert.match(csp, /script-src[^;]*https:\/\/nrbe\.pstatic\.net/);
   assert.doesNotMatch(csp, /script-src[^;]*'unsafe-(?:inline|eval)'/);
 });
 

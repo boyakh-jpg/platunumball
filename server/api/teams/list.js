@@ -52,7 +52,7 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request);
     const debugTiming = body.debugTiming === true ? {} : null;
     const teamId = String(body.teamId ?? body.id ?? "").trim();
-    const requestUrl = new URL(request.url || "/", "https://rankball.local");
+    const requestUrl = new URL(request.url || "/", "https://boxtier.local");
     const queryPath = Array.isArray(request.query?.path) ? request.query.path[0] : request.query?.path;
     const routePath = request.rankballRoutePath ?? queryPath ?? requestUrl.pathname;
     const isDetailRequest = String(routePath).replace(/^\/?api\/?/, "").replace(/^\/+|\/+$/g, "") === "teams/detail";

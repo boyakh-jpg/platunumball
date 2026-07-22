@@ -86,8 +86,8 @@ export function getSafeAppRedirect(value, fallback = "/app") {
   if (!rawValue || rawValue.startsWith("//")) return safeFallback;
 
   try {
-    const url = new URL(rawValue, "https://rankball.local");
-    if (url.origin !== "https://rankball.local") return safeFallback;
+    const url = new URL(rawValue, "https://boxtier.local");
+    if (url.origin !== "https://boxtier.local") return safeFallback;
     const redirectPath = `${url.pathname}${url.search}${url.hash}`;
     if (!redirectPath.startsWith("/app")) return safeFallback;
     if (redirectPath === "/app/signup" || redirectPath.startsWith("/app/signup?") || redirectPath.startsWith("/app/signup#")) {

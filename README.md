@@ -45,7 +45,7 @@ supabase db push --db-url "$env:DATABASE_URL"
 Production 적용 뒤 schema health를 확인합니다.
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "https://platunumball.vercel.app/api/system/schema-health" -Headers @{ Authorization = "Bearer $env:CRON_SECRET" }
+Invoke-RestMethod -Method Post -Uri "https://boxtier.kr/api/system/schema-health" -Headers @{ Authorization = "Bearer $env:CRON_SECRET" }
 ```
 
 배포 전 검증은 한 명령으로 실행합니다.

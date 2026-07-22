@@ -26,7 +26,7 @@ export function writeState(state) {
     window.localStorage.setItem(STORAGE_KEY, serialized);
   } catch (error) {
     window.localStorage.removeItem(STORAGE_KEY);
-    console.warn("RankBall local state cache skipped.", error);
+    console.warn("BOXTIER local state cache skipped.", error);
   }
 }
 
@@ -67,7 +67,7 @@ function writeProfileCacheMap(cache) {
     window.localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(cache));
   } catch (error) {
     window.localStorage.removeItem(PROFILE_CACHE_KEY);
-    console.warn("RankBall profile cache skipped.", error);
+    console.warn("BOXTIER profile cache skipped.", error);
   }
 }
 

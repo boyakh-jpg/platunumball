@@ -2,7 +2,7 @@ import { isSupabaseConfigured, supabase } from "./supabase.js";
 
 const NAVER_MAP_SCRIPT_ID = "naver-map-sdk-script";
 const NAVER_PANORAMA_SCRIPT_ID = "naver-map-panorama-script";
-const NAVER_MAP_READY_CALLBACK = "__rankballNaverMapsReady";
+const NAVER_MAP_READY_CALLBACK = "__boxtierNaverMapsReady";
 let naverMapReadyPromise = null;
 
 function hasNaverGeocoder() {

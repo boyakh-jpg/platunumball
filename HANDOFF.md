@@ -554,7 +554,7 @@ Current feed-related migrations that production must have:
 After applying, verify:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "https://platunumball.vercel.app/api/system/schema-health" -Headers @{ Authorization = "Bearer $env:CRON_SECRET" }
+Invoke-RestMethod -Method Post -Uri "https://boxtier.kr/api/system/schema-health" -Headers @{ Authorization = "Bearer $env:CRON_SECRET" }
 ```
 
 Expected feed trigger state:
@@ -571,7 +571,7 @@ Production command:
 
 ```powershell
 $env:RANKBALL_SIM_TIMEOUT_MS='45000'
-C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\scripts\simulate-backend-flow.mjs --base-url=https://platunumball.vercel.app
+C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\scripts\simulate-backend-flow.mjs --base-url=https://boxtier.kr
 ```
 
 Last known pass:
@@ -855,7 +855,7 @@ Production backend simulation:
 
 ```powershell
 $env:RANKBALL_SIM_TIMEOUT_MS='45000'
-C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\scripts\simulate-backend-flow.mjs --base-url=https://platunumball.vercel.app
+C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\scripts\simulate-backend-flow.mjs --base-url=https://boxtier.kr
 ```
 
 Search wide Supabase payload patterns:

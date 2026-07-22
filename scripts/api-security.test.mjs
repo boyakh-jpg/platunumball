@@ -223,14 +223,14 @@ test("public app redirects reject untrusted Host values and external paths", () 
   delete process.env.VITE_PUBLIC_APP_URL;
   delete process.env.NEXT_PUBLIC_APP_URL;
   delete process.env.PUBLIC_APP_URL;
-  process.env.VERCEL_URL = "rankball-preview.vercel.app";
+  process.env.VERCEL_URL = "boxtier-preview.vercel.app";
   try {
     assert.equal(getPublicAppUrl({ headers: { host: "evil.example" } }), "");
-    assert.equal(getPublicAppUrl({ headers: { host: "rankball-preview.vercel.app" } }), "https://rankball-preview.vercel.app");
-    assert.equal(getPublicAppWebUrl("//evil.example", { headers: { host: "rankball-preview.vercel.app" } }), "");
+    assert.equal(getPublicAppUrl({ headers: { host: "boxtier-preview.vercel.app" } }), "https://boxtier-preview.vercel.app");
+    assert.equal(getPublicAppWebUrl("//evil.example", { headers: { host: "boxtier-preview.vercel.app" } }), "");
     assert.equal(
-      getPublicAppWebUrl("/app/matches", { headers: { host: "rankball-preview.vercel.app" } }),
-      "https://rankball-preview.vercel.app/app/matches",
+      getPublicAppWebUrl("/app/matches", { headers: { host: "boxtier-preview.vercel.app" } }),
+      "https://boxtier-preview.vercel.app/app/matches",
     );
   } finally {
     Object.entries(previousValues).forEach(([key, value]) => {

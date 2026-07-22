@@ -63,7 +63,7 @@ loadEnvFile(".env.local");
 loadEnvFile(".env.production");
 
 const PRODUCTION_SUPABASE_PROJECT_REF = "olzxextphxpniwiiwwda";
-const PRODUCTION_API_HOSTS = new Set(["platunumball.vercel.app"]);
+const PRODUCTION_API_HOSTS = new Set(["boxtier.kr", "www.boxtier.kr"]);
 const MAX_SIMULATION_REPEAT_COUNT = 1;
 const MAX_SIMULATION_RETRY_COUNT = 1;
 
