@@ -144,6 +144,11 @@ test("주소 시설명과 동일 주소 코트 번호를 결정적으로 정리�
     { courtId: "b", patch: { facilityName: "현대자동차그룹 의왕연구소", courtUnit: "2코트" } },
     { courtId: "a", patch: { facilityName: "현대자동차그룹 의왕연구소", courtUnit: "1코트" } },
   ]);
+  const mixedAddressPlan = buildCourtAddressNameUpdates([
+    { id: "c", facility_name: "중앙공원", road_address: "서울시 중앙로 1", jibun_address: "서울시 중앙동 10", lat: 37, lng: 127 },
+    { id: "d", facility_name: "중앙공원", address_text: "서울시 중앙동 10", road_address: "서울시 중앙로 1 별관", lat: 38, lng: 128 },
+  ]);
+  assert.equal(mixedAddressPlan.duplicateCourtCount, 2);
 });
 
 test("관리자 구장 수정 RPC는 관계형 원본과 시설 정보 및 감사 로그를 함께 유지한다", async () => {

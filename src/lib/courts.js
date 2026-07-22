@@ -332,17 +332,21 @@ export function buildCourtAddressNameUpdates(rows = []) {
     return {
       row,
       addressKey: getCourtAddressKey(address),
+      addressKeys: [...new Set([row.address_text, row.road_address, row.jibun_address].map(getCourtAddressKey).filter(Boolean))],
       facilityName: getCourtAddressFacilityName(row.road_address || row.address_text || ""),
     };
   });
   const addressGroups = new Map();
   prepared.forEach((item) => {
-    if (!item.addressKey) return;
-    const group = addressGroups.get(item.addressKey) ?? [];
-    group.push(item);
-    addressGroups.set(item.addressKey, group);
+    item.addressKeys.forEach((key) => {
+      const group = addressGroups.get(key) ?? [];
+      group.push(item);
+      addressGroups.set(key, group);
+    });
   });
-  const duplicateGroups = [...addressGroups.values()].filter((group) => group.length > 1);
+  const duplicateGroups = [...new Map([...addressGroups.values()]
+    .filter((group) => group.length > 1)
+    .map((group) => [group.map((item) => String(item.row.id)).sort().join("|"), group])).values()];
   const duplicateSeedIds = new Set(duplicateGroups.flatMap((group) => group.map((item) => String(item.row.id))));
   const parents = prepared.map((_, index) => index);
   const find = (index) => parents[index] === index ? index : (parents[index] = find(parents[index]));
@@ -355,7 +359,7 @@ export function buildCourtAddressNameUpdates(rows = []) {
     for (let right = left + 1; right < prepared.length; right += 1) {
       const leftItem = prepared[left];
       const rightItem = prepared[right];
-      const sameAddress = leftItem.addressKey && leftItem.addressKey === rightItem.addressKey;
+      const sameAddress = leftItem.addressKeys.some((key) => rightItem.addressKeys.includes(key));
       const lat1 = Number(leftItem.row.lat);
       const lng1 = Number(leftItem.row.lng);
       const lat2 = Number(rightItem.row.lat);
