@@ -537,4 +537,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   const pickupMigration = fs.readFileSync(path.join(root, "supabase/migrations/20260723100000_pickup_individual_participation_guard.sql"), "utf8");
   assert.match(pickupMigration, /pickup_party_not_allowed/);
   assert.doesNotMatch(pickupMigration, /delete\s+from/i);
+  const pickupCopyMigration = fs.readFileSync(path.join(root, "supabase/migrations/20260723102500_pickup_invitation_copy_repair.sql"), "utf8");
+  assert.match(pickupCopyMigration, /개인 참가 초대장이 도착했습니다/);
+  assert.doesNotMatch(pickupCopyMigration, /delete\s+from/i);
 });
