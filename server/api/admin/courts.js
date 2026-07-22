@@ -433,7 +433,7 @@ export default async function handler(request, response) {
           p_patch: patch,
           p_reason: "중복 주소 코트 번호 일괄 정리",
         });
-        if (error) throw error;
+        if (error) throw new Error(`${error.message}|court:${update.courtId}|unit:${String(patch.courtUnit ?? "")}`);
       };
       try {
         for (const update of updates) await saveUpdate(update);
