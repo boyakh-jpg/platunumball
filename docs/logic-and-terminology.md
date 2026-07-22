@@ -3026,11 +3026,13 @@ flowchart TD
 ## 2026-07-22 구장 표준명·관리자 DB
 
 1. 사용자 신청, 관리자 승인, 공공 원장, 관리자 이름 변경은 모두 DB `BEFORE` trigger의 `시군구 + 시설명 + 농구장 + 코트 구분(선택)` 표준명을 최종 원본으로 사용한다. 클라이언트 미리보기는 같은 규칙을 복제해 입력 전에 결과만 보여준다.
-2. 구장 이름 강제 변경은 level 50 이상만 가능하다. 시설명과 4~160자 사유를 받고 승인 구장, legacy mirror, 경기, 모집방, 대회, 리뷰의 이름 snapshot을 같은 transaction에서 갱신한다.
-3. 이름 변경은 변경 전·후, 시군구, 시설명, 처리자 ID·표시명, 유형, 사유, 시각을 `court_name_change_log`에 보존한다. 초기 일괄 표준화는 처리자 `시스템`, 이후 관리자 변경은 실제 프로필을 기록한다.
+2. 구장 DB 수정은 level 50 이상만 가능하다. 서버가 허용한 관계형 칼럼과 시설 정보 칼럼만 4~160자 사유와 함께 한 transaction에서 갱신한다. 시설명·코트 구분·지역 변경으로 표준명이 바뀌면 승인 구장, legacy mirror, 경기, 모집방, 대회, 리뷰의 이름 snapshot도 함께 갱신한다.
+3. 모든 실제 필드 변경은 변경 전·후, 구장 ID, 처리자 ID·표시명, 사유, 시각을 `admin_audit_log`에 보존한다. 표준명 변경은 `court_name_change_log`에도 보존하며 초기 일괄 표준화는 처리자 `시스템`, 이후 관리자 변경은 실제 프로필을 기록한다.
 4. 관리자 `구장 DB` 목록과 수정 이력은 level 50 이상 전용 server action으로 조회한다. 칼럼별 필터와 정렬은 전체 DB query에 먼저 적용하고 그 결과만 한 페이지 100행으로 반환한다. 브라우저에 전체 구장 배열을 내려받아 현재 페이지에서 필터하지 않는다.
 5. 승인 목록에서 제거한 demo/simulation 구장은 관리자 DB와 공개 구장 후보에 다시 합치지 않는다. 과거 참조가 있는 legacy shell은 이름 fallback·기록 무결성에만 사용한다.
 6. `name_modification_count`는 초기 시스템 표준화를 제외하고 관리자가 실제 이름 변경을 저장할 때마다 1 증가한다. 관리자 구장 검색은 기본적으로 0회만 조회하며 필터를 전체로 바꿔도 수정횟수 오름차순으로 정렬한다.
+7. 관리자 구장 DB는 별도 원본 테이블을 복제하지 않는다. `approved_courts`와 `court_facility_info`를 service-role 전용 view로 결합해 조회하고, 연락처·URL·운영 정보는 `court_facility_info`에 저장한다.
+8. 확인할 수 없는 구장은 hard delete하지 않는다. 재확인 대상은 `verification_status=review_required`, `operational_status=pending`, `status=hidden`으로 임시 숨김 처리한다. 폐쇄·허위·중복이 확인된 구장은 `status=disabled`, 정상 확인된 구장은 `status=active`로 복구하며 모든 상태 변경에 사유와 처리자 로그를 남긴다.
 
 ## 2026-07-22 완료 기록 보존과 조회
 

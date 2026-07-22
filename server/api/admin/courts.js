@@ -2,9 +2,9 @@ import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "
 
 const PAGE_SIZE = 100;
 const MAX_PAGE = 10_000;
-const MAX_FILTER_LENGTH = 120;
-const COURT_COLUMNS = "name,facility_name,court_unit,indoor_outdoor,venue_type,court_kind,surface_type,court_layout,hoop_count,access_type,reservation_required,paid,lighting,public_access,operational_status,verification_status,sigungu,name_modification_count,registration_origin,status,updated_at,id,hashtag,address_text,lat,lng";
-const HISTORY_COLUMNS = "id,court_id,sigungu,previous_name,new_name,facility_name,reason,changed_by,changed_by_name,change_source,created_at";
+const MAX_FILTER_LENGTH = 240;
+const COURT_COLUMNS = "name,facility_name,court_unit,indoor_outdoor,venue_type,court_kind,surface_type,court_layout,hoop_count,access_type,reservation_required,paid,lighting,public_access,operational_status,verification_status,sido,sigungu,emd,name_modification_count,registration_origin,status,updated_at,id,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope";
+const HISTORY_COLUMNS = "id,court_id,sigungu,changed_by,changed_by_name,change_source,changed_fields,changes,changes_text,reason,created_at";
 
 const COURT_SORT_COLUMNS = {
   name: "name",
@@ -23,7 +23,9 @@ const COURT_SORT_COLUMNS = {
   publicAccess: "public_access",
   operationalStatus: "operational_status",
   verificationStatus: "verification_status",
+  sido: "sido",
   sigungu: "sigungu",
+  emd: "emd",
   modificationCount: "name_modification_count",
   registrationOrigin: "registration_origin",
   status: "status",
@@ -31,18 +33,32 @@ const COURT_SORT_COLUMNS = {
   id: "id",
   hashtag: "hashtag",
   address: "address_text",
+  roadAddress: "road_address",
+  jibunAddress: "jibun_address",
+  zonecode: "zonecode",
   lat: "lat",
   lng: "lng",
+  operatorName: "operator_name",
+  contactPhone: "contact_phone",
+  officialUrl: "official_url",
+  reservationUrl: "reservation_url",
+  openingHoursText: "opening_hours_text",
+  applicationMethod: "application_method",
+  accessNote: "access_note",
+  detailAddress: "detail_address",
+  locationNote: "location_note",
+  facilityAreaSqm: "facility_area_sqm",
+  facilityAreaScope: "facility_area_scope",
 };
 
 const HISTORY_SORT_COLUMNS = {
   createdAt: "created_at",
   courtId: "court_id",
   sigungu: "sigungu",
-  previousName: "previous_name",
-  newName: "new_name",
   changedByName: "changed_by_name",
   changeSource: "change_source",
+  changedFields: "changed_fields",
+  changesText: "changes_text",
   reason: "reason",
 };
 
@@ -112,7 +128,9 @@ function applyCourtFilters(query, rawFilters) {
   next = applyExactFilter(next, "public_access", filters.publicAccess);
   next = applyExactFilter(next, "operational_status", filters.operationalStatus);
   next = applyExactFilter(next, "verification_status", filters.verificationStatus);
+  next = applyTextFilter(next, "sido", filters.sido);
   next = applyTextFilter(next, "sigungu", filters.sigungu);
+  next = applyTextFilter(next, "emd", filters.emd);
   if (filters.modificationCount === "zero") next = next.eq("name_modification_count", 0);
   if (filters.modificationCount === "positive") next = next.gt("name_modification_count", 0);
   next = applyExactFilter(next, "registration_origin", filters.registrationOrigin);
@@ -121,8 +139,22 @@ function applyCourtFilters(query, rawFilters) {
   next = applyTextFilter(next, "id", filters.id);
   next = applyTextFilter(next, "hashtag", filters.hashtag);
   next = applyTextFilter(next, "address_text", filters.address);
+  next = applyTextFilter(next, "road_address", filters.roadAddress);
+  next = applyTextFilter(next, "jibun_address", filters.jibunAddress);
+  next = applyTextFilter(next, "zonecode", filters.zonecode);
   next = applyNumberFilter(next, "lat", filters.lat);
-  return applyNumberFilter(next, "lng", filters.lng);
+  next = applyNumberFilter(next, "lng", filters.lng);
+  next = applyTextFilter(next, "operator_name", filters.operatorName);
+  next = applyTextFilter(next, "contact_phone", filters.contactPhone);
+  next = applyTextFilter(next, "official_url", filters.officialUrl);
+  next = applyTextFilter(next, "reservation_url", filters.reservationUrl);
+  next = applyTextFilter(next, "opening_hours_text", filters.openingHoursText);
+  next = applyTextFilter(next, "application_method", filters.applicationMethod);
+  next = applyTextFilter(next, "access_note", filters.accessNote);
+  next = applyTextFilter(next, "detail_address", filters.detailAddress);
+  next = applyTextFilter(next, "location_note", filters.locationNote);
+  next = applyNumberFilter(next, "facility_area_sqm", filters.facilityAreaSqm);
+  return applyExactFilter(next, "facility_area_scope", filters.facilityAreaScope);
 }
 
 function applyHistoryFilters(query, rawFilters) {
@@ -131,10 +163,10 @@ function applyHistoryFilters(query, rawFilters) {
   next = applyDayFilter(next, "created_at", filters.createdAt);
   next = applyTextFilter(next, "court_id", filters.courtId);
   next = applyTextFilter(next, "sigungu", filters.sigungu);
-  next = applyTextFilter(next, "previous_name", filters.previousName);
-  next = applyTextFilter(next, "new_name", filters.newName);
   next = applyTextFilter(next, "changed_by_name", filters.changedByName);
   next = applyExactFilter(next, "change_source", filters.changeSource);
+  next = applyTextFilter(next, "changed_fields", filters.changedFields);
+  next = applyTextFilter(next, "changes_text", filters.changesText);
   return applyTextFilter(next, "reason", filters.reason);
 }
 
@@ -143,7 +175,7 @@ async function loadCourtRows(context, body) {
   const offset = (page - 1) * PAGE_SIZE;
   const sortColumn = COURT_SORT_COLUMNS[body.sortKey] ?? "name_modification_count";
   const ascending = body.sortDirection !== "desc";
-  let query = context.supabase.from("approved_courts").select(COURT_COLUMNS, { count: "exact" });
+  let query = context.supabase.from("rankball_admin_court_database").select(COURT_COLUMNS, { count: "exact" });
   query = applyCourtFilters(query, body.filters);
   const { data, error, count } = await query
     .order(sortColumn, { ascending, nullsFirst: false })
@@ -163,7 +195,7 @@ async function loadHistoryRows(context, body) {
   const offset = (page - 1) * PAGE_SIZE;
   const sortColumn = HISTORY_SORT_COLUMNS[body.sortKey] ?? "created_at";
   const ascending = body.sortDirection === "asc";
-  let query = context.supabase.from("court_name_change_log").select(HISTORY_COLUMNS, { count: "exact" });
+  let query = context.supabase.from("rankball_admin_court_change_history").select(HISTORY_COLUMNS, { count: "exact" });
   query = applyHistoryFilters(query, body.filters);
   const { data, error, count } = await query
     .order(sortColumn, { ascending, nullsFirst: false })
@@ -182,7 +214,8 @@ function getErrorStatus(error) {
   const message = String(error?.message ?? "");
   if (/admin_permission_required/i.test(message)) return 403;
   if (/court_not_found/i.test(message)) return 404;
-  if (/required|invalid|unchanged/i.test(message)) return 400;
+  if (/required|invalid|unchanged|patch/i.test(message)) return 400;
+  if (["23514", "22P02", "22003"].includes(error?.code)) return 400;
   if (error?.code === "23505") return 409;
   return error?.statusCode || 500;
 }
@@ -210,6 +243,23 @@ export default async function handler(request, response) {
     }
     if (operation === "history") {
       sendJson(response, 200, await loadHistoryRows(context, body));
+      return;
+    }
+    if (operation === "update") {
+      const patch = body.patch && typeof body.patch === "object" && !Array.isArray(body.patch) ? body.patch : null;
+      if (!patch || JSON.stringify(patch).length > 32_768) {
+        sendJson(response, 400, { error: "court_patch_invalid" });
+        return;
+      }
+      const { data, error } = await context.supabase.rpc("rankball_admin_update_court", {
+        p_actor_profile_id: context.profileId,
+        p_actor_admin_level: adminLevel,
+        p_court_id: safeText(body.courtId),
+        p_patch: patch,
+        p_reason: String(body.reason ?? "").trim().slice(0, 160),
+      });
+      if (error) throw error;
+      sendJson(response, 200, data ?? { ok: true });
       return;
     }
     if (operation !== "rename") {

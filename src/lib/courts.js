@@ -322,13 +322,15 @@ export function getOptionalCourtCoordinate(value, min, max) {
   return number;
 }
 
-export function getCourtMapUrl(court = {}) {
+export function getCourtMapUrl(court = {}, options = {}) {
   const latitude = getOptionalCourtCoordinate(court.lat ?? court.latitude, -90, 90);
   const longitude = getOptionalCourtCoordinate(court.lng ?? court.longitude, -180, 180);
-  const address = String(court.roadAddress || court.addressText || court.jibunAddress || "").trim();
+  const address = String(court.roadAddress || court.road_address || court.addressText || court.address_text || court.jibunAddress || court.jibun_address || "").trim();
   const query = address || String(court.name || "").trim() || "농구장";
   if (latitude !== null && longitude !== null) {
-    return `https://map.naver.com/?lng=${longitude}&lat=${latitude}&title=${encodeURIComponent(query)}`;
+    const zoom = Number(options.zoom);
+    const zoomQuery = Number.isFinite(zoom) ? `&zoom=${Math.min(21, Math.max(6, Math.round(zoom)))}` : "";
+    return `https://map.naver.com/?lng=${longitude}&lat=${latitude}&title=${encodeURIComponent(query)}${zoomQuery}`;
   }
 
   return `https://map.naver.com/p/search/${encodeURIComponent(query)}`;

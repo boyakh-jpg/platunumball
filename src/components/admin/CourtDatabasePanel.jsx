@@ -1,93 +1,87 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, RotateCcw, Save } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { ArrowDown, ArrowUp, ArrowUpDown, Database, ExternalLink, Pencil, RotateCcw, Save, X } from "lucide-react";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
-import { getCourtFacilityBaseName, getCourtMapUrl, getCourtStandardName } from "../../lib/courts.js";
+import { getCourtFacilityBaseName, getCourtStandardName } from "../../lib/courts.js";
+
+const ACTION_COLUMN_WIDTH = 168;
+const MAP_WINDOW_NAME = "rankball-court-map";
 
 const DEFAULT_COURT_FILTERS = {
-  name: "",
-  facilityName: "",
-  courtUnit: "",
-  indoorOutdoor: "",
-  venueType: "",
-  courtKind: "",
-  surfaceType: "",
-  courtLayout: "",
-  hoopCount: "",
-  accessType: "",
-  reservationRequired: "",
-  paid: "",
-  lighting: "",
-  publicAccess: "",
-  operationalStatus: "",
-  verificationStatus: "",
-  sigungu: "",
-  modificationCount: "zero",
-  registrationOrigin: "",
-  status: "",
-  updatedAt: "",
-  id: "",
-  hashtag: "",
-  address: "",
-  lat: "",
-  lng: "",
+  name: "", facilityName: "", courtUnit: "", indoorOutdoor: "", venueType: "", courtKind: "",
+  surfaceType: "", courtLayout: "", hoopCount: "", accessType: "", reservationRequired: "",
+  paid: "", lighting: "", publicAccess: "", operatorName: "", contactPhone: "", officialUrl: "",
+  reservationUrl: "", openingHoursText: "", applicationMethod: "", operationalStatus: "",
+  verificationStatus: "", status: "", sido: "", sigungu: "", emd: "", detailAddress: "",
+  locationNote: "", accessNote: "", facilityAreaSqm: "", facilityAreaScope: "",
+  modificationCount: "zero", registrationOrigin: "", updatedAt: "", id: "", hashtag: "",
+  address: "", roadAddress: "", jibunAddress: "", zonecode: "", lat: "", lng: "",
 };
 
 const EMPTY_HISTORY_FILTERS = {
-  createdAt: "",
-  courtId: "",
-  sigungu: "",
-  previousName: "",
-  newName: "",
-  changedByName: "",
-  changeSource: "",
-  reason: "",
+  createdAt: "", courtId: "", sigungu: "", changedByName: "", changedFields: "",
+  changesText: "", changeSource: "", reason: "",
 };
 
 const COURT_COLUMNS = [
-  { key: "name", label: "구장명", width: "240px" },
-  { key: "facilityName", label: "시설명", width: "210px" },
-  { key: "courtUnit", label: "코트", width: "90px" },
-  { key: "indoorOutdoor", label: "실내외", width: "90px", type: "indoorOutdoor" },
-  { key: "venueType", label: "시설유형", width: "110px", type: "venueType" },
-  { key: "courtKind", label: "구장분류", width: "110px", type: "courtKind" },
-  { key: "surfaceType", label: "바닥", width: "110px", type: "surfaceType" },
-  { key: "courtLayout", label: "코트형태", width: "110px", type: "courtLayout" },
-  { key: "hoopCount", label: "골대", width: "80px", type: "number" },
-  { key: "accessType", label: "이용방식", width: "105px", type: "accessType" },
-  { key: "reservationRequired", label: "예약", width: "90px", type: "booleanNullable" },
-  { key: "paid", label: "유료", width: "80px", type: "booleanNullable" },
-  { key: "lighting", label: "조명", width: "80px", type: "booleanNullable" },
-  { key: "publicAccess", label: "공개", width: "90px", type: "publicAccess" },
-  { key: "operationalStatus", label: "운영상태", width: "105px", type: "operationalStatus" },
-  { key: "verificationStatus", label: "검증상태", width: "115px", type: "verificationStatus" },
-  { key: "sigungu", label: "시군구", width: "130px" },
-  { key: "modificationCount", label: "수정횟수", width: "90px", type: "modificationCount" },
-  { key: "registrationOrigin", label: "출처", width: "105px", type: "origin" },
-  { key: "status", label: "상태", width: "90px", type: "status" },
-  { key: "updatedAt", label: "수정일", width: "125px", type: "date" },
-  { key: "id", label: "ID", width: "170px" },
-  { key: "hashtag", label: "해시태그", width: "100px" },
-  { key: "address", label: "주소", width: "280px" },
-  { key: "lat", label: "위도", width: "120px", type: "number" },
-  { key: "lng", label: "경도", width: "120px", type: "number" },
+  { key: "name", rowKey: "name", label: "표준 구장명", width: "250px", readOnly: true },
+  { key: "facilityName", rowKey: "facility_name", patchKey: "facilityName", label: "시설명", width: "210px", editor: "text", required: true },
+  { key: "courtUnit", rowKey: "court_unit", patchKey: "courtUnit", label: "코트", width: "100px", editor: "text" },
+  { key: "indoorOutdoor", rowKey: "indoor_outdoor", patchKey: "indoorOutdoor", label: "실내외", width: "100px", editor: "select", type: "indoorOutdoor" },
+  { key: "venueType", rowKey: "venue_type", patchKey: "venueType", label: "시설유형", width: "115px", editor: "select", type: "venueType" },
+  { key: "courtKind", rowKey: "court_kind", patchKey: "courtKind", label: "구장분류", width: "110px", editor: "select", type: "courtKind" },
+  { key: "surfaceType", rowKey: "surface_type", patchKey: "surfaceType", label: "바닥", width: "115px", editor: "select", type: "surfaceType" },
+  { key: "courtLayout", rowKey: "court_layout", patchKey: "courtLayout", label: "코트형태", width: "115px", editor: "select", type: "courtLayout" },
+  { key: "hoopCount", rowKey: "hoop_count", patchKey: "hoopCount", label: "골대", width: "80px", editor: "number", min: 1, max: 100 },
+  { key: "accessType", rowKey: "access_type", patchKey: "accessType", label: "이용방식", width: "110px", editor: "select", type: "accessType" },
+  { key: "reservationRequired", rowKey: "reservation_required", patchKey: "reservationRequired", label: "예약", width: "90px", editor: "select", type: "booleanNullable" },
+  { key: "paid", rowKey: "paid", patchKey: "paid", label: "유료", width: "82px", editor: "select", type: "booleanNullable" },
+  { key: "lighting", rowKey: "lighting", patchKey: "lighting", label: "조명", width: "82px", editor: "select", type: "booleanNullable" },
+  { key: "publicAccess", rowKey: "public_access", patchKey: "publicAccess", label: "공개", width: "95px", editor: "select", type: "publicAccess", nullable: false },
+  { key: "operatorName", rowKey: "operator_name", patchKey: "operatorName", label: "관리기관", width: "170px", editor: "text" },
+  { key: "contactPhone", rowKey: "contact_phone", patchKey: "contactPhone", label: "연락처", width: "150px", editor: "tel" },
+  { key: "officialUrl", rowKey: "official_url", patchKey: "officialUrl", label: "공식 URL", width: "240px", editor: "url" },
+  { key: "reservationUrl", rowKey: "reservation_url", patchKey: "reservationUrl", label: "예약 URL", width: "240px", editor: "url" },
+  { key: "openingHoursText", rowKey: "opening_hours_text", patchKey: "openingHoursText", label: "운영시간", width: "210px", editor: "text" },
+  { key: "applicationMethod", rowKey: "application_method", patchKey: "applicationMethod", label: "신청방법", width: "210px", editor: "text" },
+  { key: "operationalStatus", rowKey: "operational_status", patchKey: "operationalStatus", label: "운영상태", width: "110px", editor: "select", type: "operationalStatus", nullable: false },
+  { key: "verificationStatus", rowKey: "verification_status", patchKey: "verificationStatus", label: "검증상태", width: "120px", editor: "select", type: "verificationStatus", nullable: false },
+  { key: "status", rowKey: "status", patchKey: "status", label: "노출상태", width: "105px", editor: "select", type: "status", nullable: false },
+  { key: "sido", rowKey: "sido", patchKey: "sido", label: "시도", width: "125px", editor: "text" },
+  { key: "sigungu", rowKey: "sigungu", patchKey: "sigungu", label: "시군구", width: "135px", editor: "text" },
+  { key: "emd", rowKey: "emd", patchKey: "emd", label: "읍면동", width: "120px", editor: "text" },
+  { key: "detailAddress", rowKey: "detail_address", patchKey: "detailAddress", label: "상세주소", width: "210px", editor: "text" },
+  { key: "locationNote", rowKey: "location_note", patchKey: "locationNote", label: "위치메모", width: "240px", editor: "text" },
+  { key: "accessNote", rowKey: "access_note", patchKey: "accessNote", label: "접근메모", width: "240px", editor: "text" },
+  { key: "facilityAreaSqm", rowKey: "facility_area_sqm", patchKey: "facilityAreaSqm", label: "면적(㎡)", width: "105px", editor: "number", min: 0.01 },
+  { key: "facilityAreaScope", rowKey: "facility_area_scope", patchKey: "facilityAreaScope", label: "면적범위", width: "110px", editor: "select", type: "facilityAreaScope" },
+  { key: "modificationCount", rowKey: "name_modification_count", label: "이름수정", width: "95px", type: "modificationCount", readOnly: true },
+  { key: "registrationOrigin", rowKey: "registration_origin", label: "등록출처", width: "110px", type: "origin", readOnly: true },
+  { key: "updatedAt", rowKey: "updated_at", label: "수정일", width: "135px", type: "date", readOnly: true },
+  { key: "id", rowKey: "id", label: "ID", width: "190px", readOnly: true },
+  { key: "hashtag", rowKey: "hashtag", patchKey: "hashtag", label: "해시태그", width: "110px", editor: "text" },
+  { key: "address", rowKey: "address_text", patchKey: "addressText", label: "대표주소", width: "290px", editor: "text", required: true },
+  { key: "roadAddress", rowKey: "road_address", patchKey: "roadAddress", label: "도로명주소", width: "290px", editor: "text" },
+  { key: "jibunAddress", rowKey: "jibun_address", patchKey: "jibunAddress", label: "지번주소", width: "290px", editor: "text" },
+  { key: "zonecode", rowKey: "zonecode", patchKey: "zonecode", label: "우편번호", width: "95px", editor: "text" },
+  { key: "lat", rowKey: "lat", patchKey: "lat", label: "위도", width: "130px", editor: "number", min: -90, max: 90, step: "any", coordinate: true },
+  { key: "lng", rowKey: "lng", patchKey: "lng", label: "경도", width: "130px", editor: "number", min: -180, max: 180, step: "any", coordinate: true },
 ];
 
 const HISTORY_COLUMNS = [
-  { key: "createdAt", label: "시각", width: "150px", type: "date" },
-  { key: "courtId", label: "구장 ID", width: "170px" },
-  { key: "sigungu", label: "시군구", width: "130px" },
-  { key: "previousName", label: "변경 전", width: "250px" },
-  { key: "newName", label: "변경 후", width: "250px" },
-  { key: "changedByName", label: "처리자", width: "120px" },
-  { key: "changeSource", label: "유형", width: "90px", type: "source" },
-  { key: "reason", label: "사유", width: "230px" },
+  { key: "createdAt", rowKey: "created_at", label: "시각", width: "155px", type: "date" },
+  { key: "courtId", rowKey: "court_id", label: "구장 ID", width: "190px" },
+  { key: "sigungu", rowKey: "sigungu", label: "시군구", width: "135px" },
+  { key: "changedByName", rowKey: "changed_by_name", label: "처리자", width: "130px" },
+  { key: "changedFields", rowKey: "changed_fields", label: "수정 필드", width: "240px" },
+  { key: "changesText", rowKey: "changes", label: "변경 내용", width: "720px" },
+  { key: "changeSource", rowKey: "change_source", label: "유형", width: "95px", type: "source" },
+  { key: "reason", rowKey: "reason", label: "사유", width: "260px" },
 ];
 
 const SELECT_OPTIONS = {
-  indoorOutdoor: [
-    ["", "전체"], ["__null__", "미입력"], ["outdoor", "야외"], ["indoor", "실내"], ["mixed", "혼합"], ["unknown", "알 수 없음"],
-  ],
+  indoorOutdoor: [["", "전체"], ["__null__", "미입력"], ["outdoor", "야외"], ["indoor", "실내"], ["mixed", "혼합"], ["unknown", "알 수 없음"]],
   venueType: [["", "전체"], ["__null__", "미입력"], ["park", "공원"], ["sports_facility", "체육시설"], ["public_facility", "공공시설"], ["school", "학교"], ["apartment", "아파트"], ["unknown", "알 수 없음"]],
   courtKind: [["", "전체"], ["__null__", "미입력"], ["official", "정규"], ["street_hoop", "길거리"], ["unknown", "알 수 없음"]],
   surfaceType: [["", "전체"], ["__null__", "미입력"], ["asphalt", "아스팔트"], ["urethane", "우레탄"], ["dirt", "흙"], ["indoor_wood", "실내목재"], ["indoor_synthetic", "실내합성"], ["unknown", "알 수 없음"]],
@@ -97,63 +91,18 @@ const SELECT_OPTIONS = {
   publicAccess: [["", "전체"], ["__null__", "미입력"], ["public", "공개"], ["private", "비공개"], ["unknown", "알 수 없음"]],
   operationalStatus: [["", "전체"], ["__null__", "미입력"], ["active", "운영"], ["pending", "확인 중"], ["closed", "폐쇄"], ["unknown", "알 수 없음"]],
   verificationStatus: [["", "전체"], ["__null__", "미입력"], ["pending", "미검증"], ["source_verified", "출처검증"], ["verified", "검증완료"], ["review_required", "검토필요"]],
+  status: [["", "전체"], ["active", "활성"], ["hidden", "임시 숨김"], ["disabled", "비활성"]],
+  facilityAreaScope: [["", "전체"], ["__null__", "미입력"], ["court", "코트"], ["facility", "시설전체"], ["unknown", "알 수 없음"]],
   modificationCount: [["zero", "0회"], ["positive", "1회 이상"], ["", "전체"]],
   origin: [["", "전체"], ["public_import", "공공데이터"], ["user_request", "사용자 신청"], ["system", "시스템"]],
-  status: [["", "전체"], ["active", "활성"], ["hidden", "숨김"]],
   source: [["", "전체"], ["admin", "관리자"], ["system", "시스템"]],
 };
 
-const LABELS = {
-  outdoor: "야외",
-  indoor: "실내",
-  mixed: "혼합",
-  unknown: "알 수 없음",
-  park: "공원",
-  sports_facility: "체육시설",
-  public_facility: "공공시설",
-  school: "학교",
-  apartment: "아파트",
-  official: "정규",
-  street_hoop: "길거리",
-  asphalt: "아스팔트",
-  urethane: "우레탄",
-  dirt: "흙",
-  indoor_wood: "실내목재",
-  indoor_synthetic: "실내합성",
-  full: "풀코트",
-  half: "하프코트",
-  single_hoop: "단일골대",
-  walk_in: "자유이용",
-  reservation: "예약",
-  restricted: "제한",
-  public: "공개",
-  private: "비공개",
-  pending: "확인 중",
-  closed: "폐쇄",
-  source_verified: "출처검증",
-  verified: "검증완료",
-  review_required: "검토필요",
-  public_import: "공공데이터",
-  user_request: "사용자 신청",
-  system: "시스템",
-  active: "활성",
-  hidden: "숨김",
-  admin: "관리자",
-};
-
-const OPERATIONAL_LABELS = { active: "운영", pending: "확인 중", closed: "폐쇄", unknown: "알 수 없음" };
-const VERIFICATION_LABELS = { pending: "미검증", source_verified: "출처검증", verified: "검증완료", review_required: "검토필요" };
-
-function formatBoolean(value, trueLabel, falseLabel) {
-  if (value === true) return trueLabel;
-  if (value === false) return falseLabel;
-  return "미입력";
-}
-
-function formatCoordinate(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number.toFixed(6) : "-";
-}
+const LABELS = Object.fromEntries(
+  Object.values(SELECT_OPTIONS).flat().filter(([id]) => id && id !== "__null__"),
+);
+const FIELD_LABELS = Object.fromEntries(COURT_COLUMNS.filter((column) => column.patchKey || column.key === "name").map((column) => [column.patchKey || column.key, column.label]));
+const EDITABLE_COLUMNS = COURT_COLUMNS.filter((column) => column.patchKey);
 
 function formatDateTime(value) {
   if (!value) return "-";
@@ -162,6 +111,89 @@ function formatDateTime(value) {
   return new Intl.DateTimeFormat("ko-KR", {
     year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
   }).format(date);
+}
+
+function formatValue(column, value) {
+  if (column.type === "date") return formatDateTime(value);
+  if (column.type === "booleanNullable") return value === true ? "예" : value === false ? "아니오" : "미입력";
+  if (column.type === "modificationCount") return `${Number(value ?? 0).toLocaleString()}회`;
+  if (column.coordinate) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(6) : "-";
+  }
+  if (value === null || value === undefined || value === "") return "-";
+  const typedLabel = SELECT_OPTIONS[column.type]?.find(([id]) => id === String(value))?.[1];
+  return typedLabel ?? LABELS[value] ?? String(value);
+}
+
+function normalizeEditValue(column, value) {
+  if (column.editor === "number") {
+    if (value === "" || value === null || value === undefined) return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : value;
+  }
+  if (column.editor === "select") return value ?? null;
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
+function buildRowDraft(row) {
+  return Object.fromEntries(EDITABLE_COLUMNS.map((column) => {
+    let value = row[column.rowKey] ?? null;
+    if (column.patchKey === "facilityName" && !value) {
+      value = getCourtFacilityBaseName(row.name, row.sigungu, row.court_unit);
+    }
+    return [column.patchKey, value];
+  }));
+}
+
+function buildPatch(editing) {
+  if (!editing) return {};
+  return Object.fromEntries(EDITABLE_COLUMNS.flatMap((column) => {
+    const before = normalizeEditValue(column, editing.original[column.patchKey]);
+    const after = normalizeEditValue(column, editing.values[column.patchKey]);
+    return Object.is(before, after) ? [] : [[column.patchKey, after]];
+  }));
+}
+
+function validatePatch(values, patch) {
+  if (!Object.keys(patch).length) return "수정된 셀이 없습니다.";
+  if (!String(values.facilityName ?? "").trim()) return "시설명은 비울 수 없습니다.";
+  if (!String(values.addressText ?? "").trim()) return "대표주소는 비울 수 없습니다.";
+  const lat = normalizeEditValue(COURT_COLUMNS.find((column) => column.patchKey === "lat"), values.lat);
+  const lng = normalizeEditValue(COURT_COLUMNS.find((column) => column.patchKey === "lng"), values.lng);
+  if ((lat === null) !== (lng === null)) return "위도와 경도는 함께 입력하거나 함께 비워야 합니다.";
+  if (lat !== null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) return "위도 범위를 확인해 주세요.";
+  if (lng !== null && (!Number.isFinite(lng) || lng < -180 || lng > 180)) return "경도 범위를 확인해 주세요.";
+  const hoopCount = normalizeEditValue(COURT_COLUMNS.find((column) => column.patchKey === "hoopCount"), values.hoopCount);
+  if (hoopCount !== null && (!Number.isInteger(hoopCount) || hoopCount < 1 || hoopCount > 100)) return "골대 수는 1~100 정수로 입력해 주세요.";
+  const facilityArea = normalizeEditValue(COURT_COLUMNS.find((column) => column.patchKey === "facilityAreaSqm"), values.facilityAreaSqm);
+  if (facilityArea !== null && (!Number.isFinite(facilityArea) || facilityArea <= 0)) return "면적은 0보다 커야 합니다.";
+  for (const key of ["officialUrl", "reservationUrl"]) {
+    const url = String(values[key] ?? "").trim();
+    if (url && !url.startsWith("https://")) return `${FIELD_LABELS[key]}은 https:// 주소만 사용할 수 있습니다.`;
+  }
+  return "";
+}
+
+function getMapPopupUrl(row) {
+  const params = new URLSearchParams({
+    name: String(row.name ?? "농구장"),
+    address: String(row.address_text ?? row.road_address ?? row.jibun_address ?? ""),
+  });
+  if (row.lat !== null && row.lat !== undefined && row.lat !== "") params.set("lat", String(row.lat));
+  if (row.lng !== null && row.lng !== undefined && row.lng !== "") params.set("lng", String(row.lng));
+  return `/app/admin/court-map?${params.toString()}`;
+}
+
+function getSaveErrorMessage(errorCode = "") {
+  const code = String(errorCode);
+  if (code.includes("url_invalid")) return "URL은 https:// 주소만 저장할 수 있습니다.";
+  if (code.includes("coordinates_invalid")) return "위도·경도 값을 확인해 주세요.";
+  if (code.includes("duplicate") || code === "23505") return "같은 구장으로 판정되는 데이터가 이미 있습니다.";
+  if (code.includes("permission")) return "구장 DB 수정 권한이 없습니다.";
+  if (code.includes("unchanged")) return "실제로 변경된 값이 없습니다.";
+  return "구장 정보를 저장하지 못했습니다.";
 }
 
 function SortIcon({ active, direction }) {
@@ -194,6 +226,47 @@ function FilterControl({ column, value, onChange, onEnter }) {
   );
 }
 
+function CellEditor({ column, value, disabled, onChange, onEscape }) {
+  const onKeyDown = (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    onEscape();
+  };
+  if (column.editor === "select") {
+    const options = (SELECT_OPTIONS[column.type] ?? [])
+      .filter(([id]) => id !== "" && (column.nullable !== false || id !== "__null__"));
+    const selected = value === null || value === undefined ? "__null__" : String(value);
+    return (
+      <select
+        aria-label={`${column.label} 수정`}
+        value={selected}
+        disabled={disabled}
+        onKeyDown={onKeyDown}
+        onChange={(event) => {
+          const next = event.target.value;
+          onChange(next === "__null__" ? null : column.type === "booleanNullable" ? next === "true" : next);
+        }}
+      >
+        {options.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </select>
+    );
+  }
+  return (
+    <input
+      aria-label={`${column.label} 수정`}
+      type={column.editor === "number" ? "number" : column.editor === "url" ? "url" : column.editor === "tel" ? "tel" : "text"}
+      value={value ?? ""}
+      min={column.min}
+      max={column.max}
+      step={column.step ?? (column.editor === "number" ? 1 : undefined)}
+      disabled={disabled}
+      onKeyDown={onKeyDown}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
 function Pagination({ page, onChange, loading }) {
   const current = Number(page?.page ?? 1);
   const pageCount = Number(page?.pageCount ?? 1);
@@ -208,7 +281,23 @@ function Pagination({ page, onChange, loading }) {
   );
 }
 
+function ChangeSummary({ changes }) {
+  const entries = changes && typeof changes === "object" && !Array.isArray(changes) ? Object.entries(changes) : [];
+  if (!entries.length) return <span>-</span>;
+  return (
+    <div className="court-db-history-changes">
+      {entries.map(([key, change]) => (
+        <span key={key}>
+          <b>{FIELD_LABELS[key] ?? key}</b>{" "}
+          {formatValue(COURT_COLUMNS.find((column) => (column.patchKey || column.key) === key) ?? {}, change?.before)} → {formatValue(COURT_COLUMNS.find((column) => (column.patchKey || column.key) === key) ?? {}, change?.after)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function CourtDatabasePanel({ app }) {
+  const [open, setOpen] = useState(true);
   const [tab, setTab] = useState("courts");
   const [courtRows, setCourtRows] = useState([]);
   const [historyRows, setHistoryRows] = useState([]);
@@ -226,6 +315,21 @@ export default function CourtDatabasePanel({ app }) {
   const activeColumns = tab === "courts" ? COURT_COLUMNS : HISTORY_COLUMNS;
   const activeQuery = tab === "courts" ? courtQuery : historyQuery;
   const activeDraft = tab === "courts" ? courtFilterDraft : historyFilterDraft;
+  const activePage = tab === "courts" ? courtPage : historyPage;
+  const tableWidth = activeColumns.reduce((total, column) => total + Number.parseInt(column.width, 10), 0) + (tab === "courts" ? ACTION_COLUMN_WIDTH : 0);
+  const editRow = useMemo(() => courtRows.find((row) => row.id === editing?.courtId) ?? null, [courtRows, editing?.courtId]);
+  const editPatch = useMemo(() => buildPatch(editing), [editing]);
+  const editDirty = Object.keys(editPatch).length > 0;
+  const editedName = editRow && editing ? getCourtStandardName({
+    ...editRow,
+    facilityName: editing.values.facilityName,
+    courtUnit: editing.values.courtUnit,
+    sido: editing.values.sido,
+    sigungu: editing.values.sigungu,
+    addressText: editing.values.addressText,
+  }) : "";
+  const nameDirty = Boolean(editRow && editedName && editedName !== editRow.name);
+  const editValidation = editing ? validatePatch(editing.values, editPatch) : "";
 
   const loadRows = async (preserveStatus = false) => {
     const requestId = requestRef.current + 1;
@@ -243,56 +347,62 @@ export default function CourtDatabasePanel({ app }) {
     }
     if (tab === "courts") {
       setCourtRows(result.rows ?? []);
-      setCourtPage(result.page ?? courtPage);
+      setCourtPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
     } else {
       setHistoryRows(result.rows ?? []);
-      setHistoryPage(result.page ?? historyPage);
+      setHistoryPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
     }
   };
 
   useEffect(() => {
+    if (!open) return;
     void loadRows();
     // Query objects only change on explicit filter, sort, or page actions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, courtQuery, historyQuery]);
+  }, [open, tab, courtQuery, historyQuery]);
 
-  const editRow = useMemo(
-    () => courtRows.find((row) => row.id === editing?.courtId) ?? null,
-    [courtRows, editing?.courtId],
-  );
-  const editedName = editRow && editing
-    ? getCourtStandardName({
-      ...editRow,
-      facilityName: editing.facilityName,
-      courtUnit: editRow.court_unit,
-      addressText: editRow.address_text,
-    })
-    : "";
-  const editDirty = Boolean(editRow && editedName && editedName !== editRow.name);
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [open]);
 
+  const canDiscard = () => !editDirty || window.confirm("저장하지 않은 수정값을 버릴까요?");
+  const closeModal = () => {
+    if (!canDiscard()) return;
+    setEditing(null);
+    setOpen(false);
+  };
+  const changeTab = (nextTab) => {
+    if (nextTab === tab || !canDiscard()) return;
+    setEditing(null);
+    setStatus("");
+    setTab(nextTab);
+  };
   const changeFilter = (key, value) => {
     if (tab === "courts") setCourtFilterDraft((current) => ({ ...current, [key]: value }));
     else setHistoryFilterDraft((current) => ({ ...current, [key]: value }));
   };
-
   const applyFilters = () => {
+    if (!canDiscard()) return;
     setEditing(null);
     if (tab === "courts") setCourtQuery((current) => ({ ...current, page: 1, filters: { ...courtFilterDraft } }));
     else setHistoryQuery((current) => ({ ...current, page: 1, filters: { ...historyFilterDraft } }));
   };
-
   const resetFilters = () => {
+    if (!canDiscard()) return;
     setEditing(null);
     if (tab === "courts") {
-      setCourtFilterDraft(DEFAULT_COURT_FILTERS);
-      setCourtQuery((current) => ({ ...current, page: 1, sortKey: "modificationCount", sortDirection: "asc", filters: DEFAULT_COURT_FILTERS }));
+      setCourtFilterDraft({ ...DEFAULT_COURT_FILTERS });
+      setCourtQuery((current) => ({ ...current, page: 1, sortKey: "modificationCount", sortDirection: "asc", filters: { ...DEFAULT_COURT_FILTERS } }));
     } else {
-      setHistoryFilterDraft(EMPTY_HISTORY_FILTERS);
-      setHistoryQuery((current) => ({ ...current, page: 1, filters: EMPTY_HISTORY_FILTERS }));
+      setHistoryFilterDraft({ ...EMPTY_HISTORY_FILTERS });
+      setHistoryQuery((current) => ({ ...current, page: 1, sortKey: "createdAt", sortDirection: "desc", filters: { ...EMPTY_HISTORY_FILTERS } }));
     }
   };
-
   const changeSort = (key) => {
+    if (!canDiscard()) return;
     setEditing(null);
     const update = (current) => ({
       ...current,
@@ -303,189 +413,228 @@ export default function CourtDatabasePanel({ app }) {
     if (tab === "courts") setCourtQuery(update);
     else setHistoryQuery(update);
   };
-
   const changePage = (page) => {
+    if (!canDiscard()) return;
     setEditing(null);
     if (tab === "courts") setCourtQuery((current) => ({ ...current, page }));
     else setHistoryQuery((current) => ({ ...current, page }));
   };
-
-  const beginRename = (row) => {
+  const beginEdit = (row) => {
+    if (editing?.courtId !== row.id && !canDiscard()) return;
+    const values = buildRowDraft(row);
+    setEditing({ courtId: row.id, original: { ...values }, values, reason: "", saving: false });
     setStatus("");
-    setEditing({
-      courtId: row.id,
-      facilityName: row.facility_name || getCourtFacilityBaseName(row.name, row.sigungu, row.court_unit),
-      reason: "",
-      saving: false,
+  };
+  const updateEditValue = (patchKey, value) => setEditing((current) => current ? ({
+    ...current,
+    values: { ...current.values, [patchKey]: value },
+  }) : current);
+  const restoreCell = (patchKey) => setEditing((current) => current ? ({
+    ...current,
+    values: { ...current.values, [patchKey]: current.original[patchKey] },
+  }) : current);
+  const applyQuickStatus = (kind) => {
+    setEditing((current) => {
+      if (!current) return current;
+      if (kind === "review") return { ...current, values: { ...current.values, verificationStatus: "review_required", operationalStatus: "pending", status: "hidden" } };
+      if (kind === "disabled") return { ...current, values: { ...current.values, status: "disabled" } };
+      return { ...current, values: { ...current.values, status: "active" } };
     });
   };
-
-  const saveRename = async () => {
-    if (!editing || !editDirty || editing.reason.trim().length < 4) return;
+  const saveUpdate = async () => {
+    if (!editing || editing.saving) return;
+    if (editValidation) {
+      setStatus(editValidation);
+      return;
+    }
+    if (editing.reason.trim().length < 4) {
+      setStatus("변경 사유를 4자 이상 입력해 주세요.");
+      return;
+    }
     setEditing((current) => ({ ...current, saving: true }));
     const result = await app.actions.renameAdminCourt?.({
+      operation: "update",
       courtId: editing.courtId,
-      facilityName: editing.facilityName,
+      patch: editPatch,
       reason: editing.reason.trim(),
     });
     if (!result || result.ok === false) {
-      setEditing((current) => ({ ...current, saving: false }));
-      setStatus("이름을 저장하지 못했습니다.");
+      setEditing((current) => current ? ({ ...current, saving: false }) : current);
+      setStatus(getSaveErrorMessage(result?.error));
       return;
     }
     setEditing(null);
     await loadRows(true);
-    setStatus("이름을 저장했습니다.");
+    setStatus(`${result.changedFields?.length ?? Object.keys(editPatch).length}개 필드를 저장했습니다.`);
   };
 
-  return (
-    <Card className="section-card court-db-card">
-      <div className="section-title-row">
-        <div>
-          <p className="eyebrow">Court Database</p>
-          <h2>구장 DB</h2>
-        </div>
-        <strong className="court-db-count">{Number((tab === "courts" ? courtPage : historyPage).total ?? 0).toLocaleString()}개</strong>
-      </div>
+  const modal = open ? (
+    <div className="court-db-modal-backdrop" role="presentation">
+      <section className="court-db-modal" role="dialog" aria-modal="true" aria-labelledby="court-db-modal-title">
+        <header className="court-db-modal-header">
+          <div>
+            <p className="eyebrow">Court Database</p>
+            <h2 id="court-db-modal-title">구장 DB</h2>
+            <small>전체 DB 필터·정렬 · 페이지당 100행 · 수정은 관리자 감사 로그에 기록</small>
+          </div>
+          <div>
+            <strong className="court-db-count">{Number(activePage.total ?? 0).toLocaleString()}개</strong>
+            <Button type="button" size="sm" variant="secondary" onClick={closeModal}><X size={15} /> 창 닫기</Button>
+          </div>
+        </header>
 
-      <div className="segmented-control compact-segments court-db-tabs">
-        <button type="button" className={tab === "courts" ? "active" : ""} onClick={() => { setTab("courts"); setEditing(null); }}>구장 검색</button>
-        <button type="button" className={tab === "history" ? "active" : ""} onClick={() => { setTab("history"); setEditing(null); }}>수정 이력</button>
-      </div>
+        <div className="court-db-modal-body">
+          <div className="segmented-control compact-segments court-db-tabs">
+            <button type="button" className={tab === "courts" ? "active" : ""} onClick={() => changeTab("courts")}>구장 검색</button>
+            <button type="button" className={tab === "history" ? "active" : ""} onClick={() => changeTab("history")}>수정 이력</button>
+          </div>
 
-      <div className="court-db-toolbar">
-        <small>전체 DB에서 필터·정렬한 뒤 100행만 불러옵니다.</small>
-        <div>
-          <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={resetFilters}><RotateCcw size={14} /> 초기화</Button>
-          <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={applyFilters}>{loading ? "조회 중" : "필터 적용"}</Button>
-        </div>
-      </div>
+          <div className="court-db-toolbar">
+            <small>가로 스크롤은 표 하단에 고정됩니다. 수정 버튼을 누르면 허용된 셀이 입력칸으로 바뀝니다.</small>
+            <div>
+              <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={resetFilters}><RotateCcw size={14} /> 초기화</Button>
+              <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={applyFilters}>{loading ? "조회 중" : "필터 적용"}</Button>
+            </div>
+          </div>
 
-      {status ? <p className="court-db-status">{status}</p> : null}
+          {editing ? (
+            <div className="court-db-edit-toolbar">
+              <div>
+                <strong>{editRow?.name}</strong>
+                <span>ESC: 현재 셀만 원래 값으로 복구</span>
+              </div>
+              <label>
+                변경 사유
+                <input
+                  value={editing.reason}
+                  placeholder="4자 이상"
+                  maxLength={160}
+                  disabled={editing.saving}
+                  onChange={(event) => setEditing((current) => ({ ...current, reason: event.target.value }))}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void saveUpdate();
+                    }
+                  }}
+                />
+              </label>
+              <div className="court-db-quick-status">
+                <button type="button" disabled={editing.saving} onClick={() => applyQuickStatus("review")}>확인불가 숨김</button>
+                <button type="button" disabled={editing.saving} onClick={() => applyQuickStatus("disabled")}>비활성화</button>
+                <button type="button" disabled={editing.saving} onClick={() => applyQuickStatus("active")}>활성 복구</button>
+              </div>
+              <small>{editValidation || (nameDirty ? `표준명 변경: ${editedName}` : "붉은 셀은 저장 전 값입니다.")}</small>
+            </div>
+          ) : null}
 
-      <div className="court-db-table-wrap">
-        <table className={`court-db-table ${tab === "history" ? "court-db-table-history" : ""}`}>
-          <colgroup>
-            {activeColumns.map((column) => <col key={column.key} style={{ width: column.width }} />)}
-            {tab === "courts" ? <col style={{ width: "145px" }} /> : null}
-          </colgroup>
-          <thead>
-            <tr>
-              {activeColumns.map((column) => (
-                <th key={column.key}>
-                  <button type="button" className="court-db-sort" onClick={() => changeSort(column.key)}>
-                    {column.label}<SortIcon active={activeQuery.sortKey === column.key} direction={activeQuery.sortDirection} />
-                  </button>
-                </th>
-              ))}
-              {tab === "courts" ? <th>작업</th> : null}
-            </tr>
-            <tr className="court-db-filter-row">
-              {activeColumns.map((column) => (
-                <th key={column.key}>
-                  <FilterControl
-                    column={column}
-                    value={activeDraft[column.key] ?? ""}
-                    onChange={(value) => changeFilter(column.key, value)}
-                    onEnter={applyFilters}
-                  />
-                </th>
-              ))}
-              {tab === "courts" ? <th><span>—</span></th> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {tab === "courts" ? courtRows.map((row) => {
-              const rowEditing = editing?.courtId === row.id;
-              const rowDirty = rowEditing && editDirty;
-              return (
-                <Fragment key={row.id}>
-                  <tr>
-                    <td className={rowDirty ? "court-db-cell-dirty" : ""} title={rowEditing ? editedName : row.name}>{rowEditing ? editedName : row.name}</td>
-                    <td className={rowDirty ? "court-db-cell-dirty court-db-edit-cell" : ""} title={row.facility_name ?? ""}>
-                      {rowEditing ? (
-                        <input
-                          value={editing.facilityName}
-                          aria-label={`${row.name} 시설명 수정`}
-                          onChange={(event) => setEditing((current) => ({ ...current, facilityName: event.target.value }))}
-                        />
-                      ) : row.facility_name || "-"}
-                    </td>
-                    <td title={row.court_unit ?? ""}>{row.court_unit || "-"}</td>
-                    <td>{LABELS[row.indoor_outdoor] ?? row.indoor_outdoor ?? "-"}</td>
-                    <td>{LABELS[row.venue_type] ?? row.venue_type ?? "-"}</td>
-                    <td>{LABELS[row.court_kind] ?? row.court_kind ?? "-"}</td>
-                    <td>{LABELS[row.surface_type] ?? row.surface_type ?? "-"}</td>
-                    <td>{LABELS[row.court_layout] ?? row.court_layout ?? "-"}</td>
-                    <td>{row.hoop_count ?? "-"}</td>
-                    <td>{LABELS[row.access_type] ?? row.access_type ?? "-"}</td>
-                    <td>{formatBoolean(row.reservation_required, "필요", "불필요")}</td>
-                    <td>{formatBoolean(row.paid, "유료", "무료")}</td>
-                    <td>{formatBoolean(row.lighting, "있음", "없음")}</td>
-                    <td>{LABELS[row.public_access] ?? row.public_access ?? "-"}</td>
-                    <td>{OPERATIONAL_LABELS[row.operational_status] ?? row.operational_status ?? "-"}</td>
-                    <td>{VERIFICATION_LABELS[row.verification_status] ?? row.verification_status ?? "-"}</td>
-                    <td title={row.sigungu ?? ""}>{row.sigungu || "-"}</td>
-                    <td>{Number(row.name_modification_count ?? 0).toLocaleString()}회</td>
-                    <td>{LABELS[row.registration_origin] ?? row.registration_origin ?? "-"}</td>
-                    <td>{LABELS[row.status] ?? row.status ?? "-"}</td>
-                    <td title={row.updated_at ?? ""}>{formatDateTime(row.updated_at)}</td>
-                    <td title={row.id}>{row.id}</td>
-                    <td title={row.hashtag ?? ""}>{row.hashtag || "-"}</td>
-                    <td title={row.address_text ?? ""}>{row.address_text || "-"}</td>
-                    <td title={row.lat ?? ""}>{formatCoordinate(row.lat)}</td>
-                    <td title={row.lng ?? ""}>{formatCoordinate(row.lng)}</td>
-                    <td className="court-db-actions">
-                      <a href={getCourtMapUrl(row)} target="_blank" rel="noreferrer"><ExternalLink size={13} /> 지도</a>
-                      <button type="button" onClick={() => (rowEditing ? setEditing(null) : beginRename(row))}>{rowEditing ? "취소" : "이름 변경"}</button>
-                    </td>
-                  </tr>
-                  {rowEditing ? (
-                    <tr className="court-db-edit-row">
-                      <td colSpan={COURT_COLUMNS.length + 1}>
-                        <label>
-                          변경 사유
-                          <input
-                            value={editing.reason}
-                            placeholder="4자 이상"
-                            onChange={(event) => setEditing((current) => ({ ...current, reason: event.target.value }))}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                event.preventDefault();
-                                void saveRename();
-                              }
-                            }}
-                          />
-                        </label>
-                        <Button type="button" size="sm" disabled={!rowDirty || editing.reason.trim().length < 4 || editing.saving} onClick={saveRename}>
-                          <Save size={14} /> {editing.saving ? "저장 중" : "저장"}
-                        </Button>
-                        <small>붉은 셀은 아직 저장되지 않은 값입니다.</small>
+          {status ? <p className="court-db-status">{status}</p> : null}
+
+          <div className="court-db-table-wrap">
+            <table className={`court-db-table ${tab === "history" ? "court-db-table-history" : ""}`} style={{ width: `${tableWidth}px` }}>
+              <colgroup>
+                {tab === "courts" ? <col style={{ width: `${ACTION_COLUMN_WIDTH}px` }} /> : null}
+                {activeColumns.map((column) => <col key={column.key} style={{ width: column.width }} />)}
+              </colgroup>
+              <thead>
+                <tr>
+                  {tab === "courts" ? <th className="court-db-sticky-actions">작업</th> : null}
+                  {activeColumns.map((column) => (
+                    <th key={column.key}>
+                      <button type="button" className="court-db-sort" onClick={() => changeSort(column.key)}>
+                        {column.label}<SortIcon active={activeQuery.sortKey === column.key} direction={activeQuery.sortDirection} />
+                      </button>
+                    </th>
+                  ))}
+                </tr>
+                <tr className="court-db-filter-row">
+                  {tab === "courts" ? <th className="court-db-sticky-actions"><span>좌측 고정</span></th> : null}
+                  {activeColumns.map((column) => (
+                    <th key={column.key}>
+                      <FilterControl
+                        column={column}
+                        value={activeDraft[column.key] ?? ""}
+                        onChange={(value) => changeFilter(column.key, value)}
+                        onEnter={applyFilters}
+                      />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tab === "courts" ? courtRows.map((row) => {
+                  const rowEditing = editing?.courtId === row.id;
+                  return (
+                    <tr key={row.id} className={rowEditing ? "court-db-row-editing" : ""}>
+                      <td className="court-db-actions court-db-sticky-actions">
+                        <a href={getMapPopupUrl(row)} target={MAP_WINDOW_NAME}><ExternalLink size={13} /> 네이버지도</a>
+                        {rowEditing ? (
+                          <>
+                            <button type="button" disabled={Boolean(editValidation) || editing.reason.trim().length < 4 || editing.saving} onClick={saveUpdate}><Save size={13} /> {editing.saving ? "저장 중" : "저장"}</button>
+                            <button type="button" disabled={editing.saving} onClick={() => setEditing(null)}><X size={13} /> 취소</button>
+                          </>
+                        ) : (
+                          <button type="button" disabled={Boolean(editing)} onClick={() => beginEdit(row)}><Pencil size={13} /> 수정</button>
+                        )}
                       </td>
+                      {COURT_COLUMNS.map((column) => {
+                        const columnDirty = rowEditing && (column.key === "name"
+                          ? nameDirty
+                          : column.patchKey && Object.prototype.hasOwnProperty.call(editPatch, column.patchKey));
+                        const displayValue = rowEditing && column.key === "name" ? editedName : row[column.rowKey];
+                        return (
+                          <td key={column.key} className={columnDirty ? "court-db-cell-dirty" : ""} title={formatValue(column, displayValue)}>
+                            {rowEditing && column.patchKey ? (
+                              <CellEditor
+                                column={column}
+                                value={editing.values[column.patchKey]}
+                                disabled={editing.saving}
+                                onChange={(value) => updateEditValue(column.patchKey, value)}
+                                onEscape={() => restoreCell(column.patchKey)}
+                              />
+                            ) : formatValue(column, displayValue)}
+                          </td>
+                        );
+                      })}
                     </tr>
-                  ) : null}
-                </Fragment>
-              );
-            }) : historyRows.map((row) => (
-              <tr key={row.id}>
-                <td title={row.created_at ?? ""}>{formatDateTime(row.created_at)}</td>
-                <td title={row.court_id ?? ""}>{row.court_id}</td>
-                <td title={row.sigungu ?? ""}>{row.sigungu || "-"}</td>
-                <td title={row.previous_name ?? ""}>{row.previous_name || "-"}</td>
-                <td title={row.new_name ?? ""}>{row.new_name || "-"}</td>
-                <td title={row.changed_by_name ?? row.changed_by ?? ""}>{row.changed_by_name || row.changed_by || "-"}</td>
-                <td>{LABELS[row.change_source] ?? row.change_source ?? "-"}</td>
-                <td title={row.reason ?? ""}>{row.reason || "-"}</td>
-              </tr>
-            ))}
-            {!loading && !(tab === "courts" ? courtRows : historyRows).length ? (
-              <tr><td colSpan={activeColumns.length + (tab === "courts" ? 1 : 0)} className="court-db-empty">조건에 맞는 데이터가 없습니다.</td></tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                  );
+                }) : historyRows.map((row) => (
+                  <tr key={row.id}>
+                    {HISTORY_COLUMNS.map((column) => (
+                      <td key={column.key} className={column.key === "changesText" ? "court-db-history-cell" : ""} title={column.key === "changesText" ? undefined : formatValue(column, row[column.rowKey])}>
+                        {column.key === "changesText" ? <ChangeSummary changes={row.changes} /> : column.key === "changedFields"
+                          ? Object.keys(row.changes ?? {}).map((key) => FIELD_LABELS[key] ?? key).join(", ") || "-"
+                          : formatValue(column, row[column.rowKey])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {!loading && !(tab === "courts" ? courtRows : historyRows).length ? (
+                  <tr><td colSpan={activeColumns.length + (tab === "courts" ? 1 : 0)} className="court-db-empty">조건에 맞는 데이터가 없습니다.</td></tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
 
-      <Pagination page={tab === "courts" ? courtPage : historyPage} onChange={changePage} loading={loading} />
-    </Card>
+          <Pagination page={activePage} onChange={changePage} loading={loading} />
+        </div>
+      </section>
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <Card className="section-card court-db-launcher">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Court Database</p>
+            <h2>구장 DB</h2>
+            <small>대형 편집 창에서 전체 구장과 수정 이력을 관리합니다.</small>
+          </div>
+          <Button type="button" onClick={() => setOpen(true)}><Database size={16} /> 구장 DB 열기</Button>
+        </div>
+      </Card>
+      {modal ? createPortal(modal, document.body) : null}
+    </>
   );
 }

@@ -11,6 +11,7 @@ import { BRAND_NAME } from "./lib/brand.js";
 import { getSafeAppRedirect, shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
 
 const Admin = lazy(() => import("./pages/Admin.jsx"));
+const AdminCourtMapPopup = lazy(() => import("./pages/AdminCourtMapPopup.jsx"));
 const Affiliations = lazy(() => import("./pages/Affiliations.jsx"));
 const CreateMatch = lazy(() => import("./pages/CreateMatch.jsx"));
 const CourtDetail = lazy(() => import("./pages/CourtDetail.jsx"));
@@ -137,6 +138,7 @@ export default function App() {
           <Route path="/data-sources" element={<DataSources />} />
         </Route>
         <Route element={<RequireAuth auth={auth} />}>
+          <Route path="/app/admin/court-map" element={<AdminCourtMapPopup />} />
           <Route element={<AppShell app={app} auth={auth} />}>
             <Route path="/app" element={<Home app={app} />} />
             <Route path="/app/create" element={<CreateMatch app={app} />} />

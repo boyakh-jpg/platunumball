@@ -1,11 +1,16 @@
 import { isSupabaseConfigured, supabase } from "./supabase.js";
 
 const NAVER_MAP_SCRIPT_ID = "naver-map-sdk-script";
+const NAVER_PANORAMA_SCRIPT_ID = "naver-map-panorama-script";
 const NAVER_MAP_READY_CALLBACK = "__rankballNaverMapsReady";
 let naverMapReadyPromise = null;
 
 function hasNaverGeocoder() {
   return typeof window !== "undefined" && Boolean(window.naver?.maps?.Service?.geocode);
+}
+
+function hasNaverPanorama() {
+  return typeof window !== "undefined" && typeof window.naver?.maps?.Panorama === "function";
 }
 
 function loadExternalScript(id, src) {
@@ -84,9 +89,20 @@ export async function loadNaverMapsSdk(clientId = getNaverMapClientId()) {
   if (!clientId) throw new Error("현재 지도 기능을 사용할 수 없습니다.");
   if (typeof window === "undefined") throw new Error("브라우저에서만 사용할 수 있습니다.");
   if (hasNaverGeocoder()) return;
-  const src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}&submodules=geocoder&callback=${NAVER_MAP_READY_CALLBACK}`;
+  const src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}&submodules=geocoder,panorama&callback=${NAVER_MAP_READY_CALLBACK}`;
   const readyPromise = waitForNaverGeocoder();
   await Promise.all([loadExternalScript(NAVER_MAP_SCRIPT_ID, src), readyPromise]);
+}
+
+export async function loadNaverPanoramaSdk(clientId = getNaverMapClientId()) {
+  await loadNaverMapsSdk(clientId);
+  if (hasNaverPanorama()) return;
+  await loadExternalScript(NAVER_PANORAMA_SCRIPT_ID, "https://oapi.map.naver.com/openapi/v3/maps-panorama.js");
+  const startedAt = Date.now();
+  while (!hasNaverPanorama()) {
+    if (Date.now() - startedAt >= 8000) throw new Error("거리뷰 모듈을 불러오지 못했습니다.");
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+  }
 }
 
 function getAddressElement(address = {}, type = "") {
