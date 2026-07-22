@@ -1,6 +1,19 @@
-import { COURTS, isSameRegion } from "./constants.js";
+import { COURTS, getCanonicalRegion, isSameRegion } from "./constants.js";
 import { getCourtHashtag } from "./handles.js";
 import { getSafeHttpUrl } from "./inputSecurity.js";
+
+const COURT_REGION_ADDRESS_LABELS = Object.freeze({
+  마포: "마포구",
+  성수: "성수동",
+  광진: "광진구",
+  잠실: "잠실동",
+  강남: "강남구",
+  서초: "서초구",
+  동작: "동작구",
+  성동: "성동구",
+  서대문: "서대문구",
+  영등포: "영등포구",
+});
 
 export function courtIdByName(courtName) {
   return COURTS.find((court) => court.name === courtName)?.id ?? null;
@@ -380,6 +393,26 @@ export function getCourtSearchText(court = {}) {
   ].filter(Boolean).join(" ");
 }
 
+export function isCourtInRegion(court = {}, region = "") {
+  const targetRegion = String(region ?? "").trim();
+  if (!targetRegion || targetRegion === "전체") return true;
+  if ([
+    court.region,
+    court.sigungu,
+    court.regionKey,
+    court.sido,
+    court.emd,
+  ].some((value) => isSameRegion(value, targetRegion))) return true;
+
+  const canonicalRegion = getCanonicalRegion(targetRegion);
+  const addressRegion = COURT_REGION_ADDRESS_LABELS[canonicalRegion]
+    ?? targetRegion.split(/\s+/).filter(Boolean).reverse().find((value) => /[시군구]$/u.test(value))
+    ?? canonicalRegion;
+  const normalizedAddressRegion = String(addressRegion).replace(/\s+/g, "").toLowerCase();
+  return [court.addressText, court.roadAddress, court.jibunAddress]
+    .some((value) => String(value ?? "").replace(/\s+/g, "").toLowerCase().includes(normalizedAddressRegion));
+}
+
 export function mergeCourtSearchCourts(directoryCourts = [], discoveredCourts = []) {
   const byId = new Map(directoryCourts.filter((court) => court?.id).map((court) => [court.id, court]));
   discoveredCourts.forEach((court) => {
@@ -396,7 +429,7 @@ export function getCourtPickerResults(courts = [], options = {}) {
   const normalizedQuery = query.toLowerCase();
   const hasQuery = Boolean(normalizedQuery);
   const regionCandidates = courts.filter((court) => (
-    hasQuery || !region || region === "전체" || isSameRegion(court.region, region)
+    hasQuery || isCourtInRegion(court, region)
   ));
   const exactMatches = regionCandidates.filter((court) => getCourtSearchText(court).toLowerCase().includes(normalizedQuery));
   const matches = exactMatches.length || !hasQuery
@@ -405,7 +438,7 @@ export function getCourtPickerResults(courts = [], options = {}) {
 
   return [...matches].sort((a, b) => (
     Number(favoriteCourtIds.has(b.id)) - Number(favoriteCourtIds.has(a.id))
-    || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion))
+    || Number(isCourtInRegion(b, currentRegion)) - Number(isCourtInRegion(a, currentRegion))
     || getCourtRecommendationScore(b) - getCourtRecommendationScore(a)
     || String(a.name ?? "").localeCompare(String(b.name ?? ""))
   ));

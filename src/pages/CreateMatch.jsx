@@ -21,7 +21,7 @@ import {
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, DISPUTE_WINDOW_MINUTES, DISPUTE_WINDOW_OPTIONS, MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS, getCanonicalRegion, getHostTrustRequirement, getModeSize, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
-import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtPlayWarning, getCourtRecommendationScore, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
+import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtPlayWarning, getCourtRecommendationScore, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, isCourtInRegion, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isEligibleReferee } from "../lib/matchUtils.js";
 import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
@@ -44,7 +44,6 @@ const nextWeek = addDateDays(today, 7);
 const maxScheduleDate = addDateDays(today, SCHEDULE_MAX_DAYS);
 const maxPrivateScheduleDate = addDateDays(today, ROOM_SCHEDULE_MAX_DAYS);
 const maxPublicScheduleDate = getPublicRoomMaxDateInput();
-const allRegions = ["전체", ...REGIONS];
 const mmrLimitOptions = [
   { id: "off", label: "제한 없음" },
   { id: "warn", label: "경고만" },
@@ -313,7 +312,7 @@ export default function CreateMatch({ app }) {
   const isRecordCreateIntent = useMemo(() => new URLSearchParams(location.search).get("intent") === "record", [location.search]);
   const loadDirectory = app.actions.loadDirectory;
   const requestedTournamentDirectoryRef = useRef(false);
-  const loadedCourtMapRegionRef = useRef("");
+  const loadedCourtMapRegionsRef = useRef(new Set());
   const courtMapRequestIdRef = useRef(0);
   useEffect(() => {
     if (requestedTournamentDirectoryRef.current) return;
@@ -357,7 +356,7 @@ export default function CreateMatch({ app }) {
     [directoryCourts, discoveredCourts],
   );
   const defaultCourt = [...registeredCourts]
-    .filter((court) => isSameRegion(court.region, currentRegion))
+    .filter((court) => isCourtInRegion(court, currentRegion))
     .sort((a, b) => Number(favoriteCourtIds.includes(b.id)) - Number(favoriteCourtIds.includes(a.id)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a))[0]
     ?? [...registeredCourts].sort((a, b) => getCourtRecommendationScore(b) - getCourtRecommendationScore(a))[0]
     ?? { name: "미정", region: currentRegion || app.currentUser.region };
@@ -373,6 +372,8 @@ export default function CreateMatch({ app }) {
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(currentRegion || "전체");
   const [courtRegion, setCourtRegion] = useState(currentRegion || "전체");
+  const selectableRegions = useMemo(() => ["전체", ...new Set([currentRegion, ...REGIONS].filter(Boolean))], [currentRegion]);
+  const courtMapRegion = courtRegion === "전체" ? currentRegion : courtRegion;
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
@@ -436,14 +437,14 @@ export default function CreateMatch({ app }) {
   const [wizardStep, setWizardStep] = useState(1);
 
   useEffect(() => {
-    if (wizardStep !== 4 || !currentRegion || app.remoteReady === false) return undefined;
-    if (loadedCourtMapRegionRef.current === currentRegion) return undefined;
+    if (wizardStep !== 4 || !courtMapRegion || app.remoteReady === false) return undefined;
+    if (loadedCourtMapRegionsRef.current.has(courtMapRegion)) return undefined;
 
     const requestId = courtMapRequestIdRef.current + 1;
     courtMapRequestIdRef.current = requestId;
     setCourtMapDirectoryStatus({ loading: true, error: "" });
     postServerAction("/api/search", {
-      query: currentRegion,
+      query: courtMapRegion,
       type: "court",
       limit: COURT_MAP_SEARCH_LIMIT,
       context: { purpose: COURT_MAP_SEARCH_PURPOSE },
@@ -452,7 +453,7 @@ export default function CreateMatch({ app }) {
       if (courtMapRequestIdRef.current !== requestId) return;
       const courts = (Array.isArray(result?.items) ? result.items : []).filter((court) => court?.kind === "court" && court?.id);
       setDiscoveredCourts((current) => mergeCourtSearchCourts(current, courts));
-      loadedCourtMapRegionRef.current = currentRegion;
+      loadedCourtMapRegionsRef.current.add(courtMapRegion);
       setCourtMapDirectoryStatus({ loading: false, error: "" });
     }).catch(() => {
       if (courtMapRequestIdRef.current !== requestId) return;
@@ -462,7 +463,7 @@ export default function CreateMatch({ app }) {
     return () => {
       if (courtMapRequestIdRef.current === requestId) courtMapRequestIdRef.current += 1;
     };
-  }, [app.remoteReady, currentRegion, wizardStep]);
+  }, [app.remoteReady, courtMapRegion, wizardStep]);
 
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
@@ -489,7 +490,7 @@ export default function CreateMatch({ app }) {
   const favoriteCourts = useMemo(() => {
     return [...registeredCourts]
       .filter(isFavoriteCourt)
-      .sort((a, b) => Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a) || a.name.localeCompare(b.name))
+      .sort((a, b) => Number(isCourtInRegion(b, currentRegion)) - Number(isCourtInRegion(a, currentRegion)) || getCourtRecommendationScore(b) - getCourtRecommendationScore(a) || a.name.localeCompare(b.name))
       .slice(0, 10);
   }, [currentRegion, favoriteCourtIds, registeredCourts]);
 
@@ -2044,7 +2045,7 @@ export default function CreateMatch({ app }) {
             <label>
               지역
               <select value={courtRegion} onChange={(event) => setCourtRegion(event.target.value)}>
-                {allRegions.map((region) => <option key={region}>{region}</option>)}
+                {selectableRegions.map((region) => <option key={region}>{region}</option>)}
               </select>
             </label>
             <label>
@@ -2154,7 +2155,7 @@ export default function CreateMatch({ app }) {
           open={courtMapOpen}
           courts={registeredCourts}
           selectedCourt={selectedCourt}
-          currentRegion={currentRegion}
+          currentRegion={courtMapRegion}
           loading={courtMapDirectoryStatus.loading}
           loadError={courtMapDirectoryStatus.error}
           onClose={() => setCourtMapOpen(false)}
@@ -2290,7 +2291,7 @@ export default function CreateMatch({ app }) {
                 <label>
                   지역
                   <select value={teamRegion} onChange={(event) => setTeamRegion(event.target.value)}>
-                    {allRegions.map((region) => <option key={region}>{region}</option>)}
+                    {selectableRegions.map((region) => <option key={region}>{region}</option>)}
                   </select>
                 </label>
                 <label>

@@ -2,9 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapPin, Star, X } from "lucide-react";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
-import { isSameRegion } from "../../lib/constants.js";
 import { loadNaverMapsSdk } from "../../lib/naverAddress.js";
-import { getCourtAddress, getCourtCoordinate } from "../../lib/courts.js";
+import { getCourtAddress, getCourtCoordinate, isCourtInRegion } from "../../lib/courts.js";
 import Button from "../common/Button.jsx";
 
 const DISTRICT_OVERVIEW_ZOOM = 13;
@@ -47,7 +46,7 @@ function clusterCourts(courts = [], zoom = 12) {
 
 function getInitialViewport(courts = [], selectedCourt, currentRegion = "", mapWidth = 0) {
   const selectedCoordinate = getCourtCoordinate(selectedCourt);
-  const regionalCourts = courts.filter((court) => isSameRegion(court.region, currentRegion));
+  const regionalCourts = courts.filter((court) => isCourtInRegion(court, currentRegion));
   const focusCourts = regionalCourts.length ? regionalCourts : selectedCoordinate ? [selectedCourt] : courts;
   const coordinates = focusCourts.map(getCourtCoordinate).filter(Boolean);
   const fallback = selectedCoordinate ?? getCourtCoordinate(courts[0]) ?? { lat: 37.5665, lng: 126.978 };
@@ -102,8 +101,9 @@ export default function CourtMapPicker({
     [courts],
   );
   const mappedCourts = useMemo(() => {
-    if (getCourtCoordinate(selectedCourt) || !currentRegion) return coordinateCourts;
-    return coordinateCourts.filter((court) => isSameRegion(court.region, currentRegion));
+    const regionalCourts = coordinateCourts.filter((court) => isCourtInRegion(court, currentRegion));
+    if (!getCourtCoordinate(selectedCourt) || regionalCourts.some((court) => court.id === selectedCourt?.id)) return regionalCourts;
+    return [...regionalCourts, selectedCourt];
   }, [coordinateCourts, currentRegion, selectedCourt]);
   const missingCoordinateCount = Math.max(0, courts.length - coordinateCourts.length);
   const candidate = courts.find((court) => court.id === candidateId) ?? null;
@@ -299,7 +299,7 @@ export default function CourtMapPicker({
         )}
 
         <footer className="court-map-picker-footer">
-          <span>지도 표시 {mappedCourts.length}개</span>
+          <span>{currentRegion ? `${currentRegion} · ` : ""}지도 표시 {mappedCourts.length}개</span>
           {missingCoordinateCount ? <span>좌표 없는 구장 {missingCoordinateCount}개는 검색으로 선택</span> : null}
         </footer>
       </section>

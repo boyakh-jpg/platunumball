@@ -10,6 +10,7 @@ import {
   normalizeFilter,
 } from "./load.js";
 import { buildAdminReviewModel } from "../../../src/lib/admin.js";
+import { isCourtInRegion } from "../../../src/lib/courts.js";
 import {
   ADMIN_DEFAULT_PAGE_LIMIT,
   COURT_MAP_SEARCH_LIMIT,
@@ -108,9 +109,17 @@ test("court map loads bounded active coordinate rows for the current district", 
   assert.match(createSource, /wizardStep !== 4/);
   assert.match(createSource, /context: \{ purpose: COURT_MAP_SEARCH_PURPOSE \}/);
   assert.match(createSource, /limit: COURT_MAP_SEARCH_LIMIT/);
-  assert.match(pickerSource, /isSameRegion\(court\.region, currentRegion\)/);
-  assert.match(pickerSource, /return coordinateCourts\.filter\(\(court\) => isSameRegion\(court\.region, currentRegion\)\)/);
+  assert.match(createSource, /query: courtMapRegion/);
+  assert.match(createSource, /loadedCourtMapRegionsRef\.current\.has\(courtMapRegion\)/);
+  assert.match(pickerSource, /isCourtInRegion\(court, currentRegion\)/);
   assert.match(pickerSource, /setStatus\(loading \? "loading" : loadError \? "error" : "empty"\)/);
+});
+
+test("court region matching falls back to address fields when labels are incomplete", () => {
+  assert.equal(isCourtInRegion({ region: "서울특별시", addressText: "서울특별시 마포구 월드컵로 1" }, "마포"), true);
+  assert.equal(isCourtInRegion({ region: "강서구", roadAddress: "서울특별시 강서구 화곡로 1" }, "마포"), false);
+  assert.equal(isCourtInRegion({ region: "서울특별시", roadAddress: "서울특별시 서초구 강남대로 1" }, "강남"), false);
+  assert.equal(isCourtInRegion({ sigungu: "해운대구", addressText: "부산광역시 해운대구 좌동" }, "부산광역시 해운대구"), true);
 });
 
 test("admin route bootstraps profile only and owns a separate state cache", async () => {
