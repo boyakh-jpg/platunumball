@@ -2160,9 +2160,9 @@ button.arena-room-player-slot {
 .arena-room-rule-panel,
 .arena-reserve-panel,
 .arena-join-panel {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
 }
 
 .arena-room-rule-controls {
@@ -2203,15 +2203,45 @@ button.arena-room-player-slot {
 }
 
 .arena-room-rule-summary span {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--ui-control-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.055);
+  background: var(--ui-control-bg);
   padding: 5px 8px;
 }
 
 .arena-room-rule-summary.detail span {
-  border-radius: 7px;
+  border-radius: var(--ui-control-radius);
   white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.arena-room-rule-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+  min-width: 0;
+  gap: 8px 12px;
+  margin: 0;
+  border-top: 1px solid var(--ui-card-border);
+  padding-top: 8px;
+}
+
+.arena-room-rule-detail-grid > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.arena-room-rule-detail-grid dt {
+  color: var(--rb-orange);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.arena-room-rule-detail-grid dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-weight: 850;
   overflow-wrap: anywhere;
 }
 
@@ -2221,14 +2251,14 @@ button.arena-room-player-slot {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  border: 1px solid rgba(70, 224, 182, 0.14);
-  border-radius: 7px;
-  background: rgba(70, 224, 182, 0.06);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   padding: 8px 9px;
 }
 
 .arena-room-referee-line > strong {
-  color: var(--gold);
+  color: var(--rb-orange);
   font-size: 0.78rem;
 }
 

@@ -10,31 +10,24 @@ import { getMatchClockPresetOptions } from "../../lib/matchCreationPolicies.js";
 
 export default function RuleSelector({ draft, onChange }) {
   const rules = normalizeMatchRules(draft, { mode: draft.mode });
-  const lastPeriodStopMinutes = rules.clockMode === "running"
-    ? Math.max(0, Math.min(rules.periodMinutes, Number(draft.lastPeriodStopMinutes) || 0))
-    : 0;
+  const lastPeriodStopMinutes = rules.lastPeriodStopMinutes;
   const clockPresetOptions = getMatchClockPresetOptions(draft.mode);
   const updateRules = (patch) => {
     const next = { ...rules, lastPeriodStopMinutes, ...patch };
-    onChange({
-      ...getMatchRulesPayload(next, { mode: draft.mode }),
-      lastPeriodStopMinutes: next.clockMode === "running"
-        ? Math.max(0, Math.min(Number(next.periodMinutes) || 0, Number(next.lastPeriodStopMinutes) || 0))
-        : 0,
-    });
+    onChange(getMatchRulesPayload(next, { mode: draft.mode }));
   };
   const periodUnitLabel = rules.periodCount === 4 ? "쿼터당 시간 (분)" : rules.periodCount === 2 ? "하프당 시간 (분)" : "경기 시간 (분)";
 
   return (
     <div className="match-rule-selector">
-      <div className="match-clock-preset-row">
+      {clockPresetOptions.length > 1 ? <div className="match-clock-preset-row">
         <span>경기시간 프리셋</span>
         <div className="segmented-control compact-segments">
           {clockPresetOptions.map((option) => (
             <button key={option.id} type="button" onClick={() => updateRules(option.patch)}>{option.label}</button>
           ))}
         </div>
-      </div>
+      </div> : null}
       <div className="form-grid match-rule-grid">
       <label>
         종료 기준
@@ -103,7 +96,6 @@ export default function RuleSelector({ draft, onChange }) {
       </div>
       <small className="match-rule-summary">
         {getMatchRuleSummary(rules, draft.mode)}
-        {lastPeriodStopMinutes > 0 ? ` · 마지막 ${lastPeriodStopMinutes}분 스톱` : ""}
       </small>
     </div>
   );

@@ -115,7 +115,8 @@ import {
   isMatchSideTeamParty,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
-import { getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
+import { getMatchRuleDetailRows, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
+import { getMatchCreationSummary } from "../lib/matchCreationPolicies.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getUnsafeUserTextReason, UNSAFE_INPUT_MESSAGE } from "../lib/inputSecurity.js";
 import {
@@ -3314,6 +3315,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           : null;
         const roomEditCourtWarning = roomEditDraft && roomEditCourt ? getCourtPlayWarning(roomEditCourt, `${roomEditDraft.sideCapacity}v${roomEditDraft.sideCapacity}`) : "";
         const selectedMatchRules = normalizeMatchRules(selectedPost.rules, { mode: selectedPost.mode });
+        const selectedMatchRuleRows = getMatchRuleDetailRows(selectedMatchRules, selectedPost.mode);
+        const selectedCreationSummary = getMatchCreationSummary(selectedPost);
+        const selectedRoomPolicyRows = selectedCreationSummary.rows.filter((row) => (
+          row.label === "경기 성격" || row.label === "명단" || row.label === "운영 정책" || row.label === "출전 정책"
+        ));
         const maxSideFilled = Math.max(lobby.sides.teamA.filled, lobby.sides.teamB.filled);
         const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
         const roomEditMeetingValid = !roomEditDraft || String(roomEditDraft.meetingPoint ?? "").trim().length >= 2;
@@ -4150,14 +4156,21 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   ) : null}
                 </div>
                 <div className="arena-room-rule-summary">
-                  <span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span>
-                  <span>{getMatchRuleSummary(selectedMatchRules, selectedPost.mode)}</span>
+                  {selectedRoomPolicyRows.map((row) => <span key={row.label}>{row.value}</span>)}
                   <span>{getMeetingPointSummary(selectedMatchRules, selectedPost.timingType, selectedPost.mode)}</span>
                   {selectedPost.ranked !== false ? <span>{selectedRange.label}</span> : <span>친선 · 티어 자유</span>}
                 </div>
+                <dl className="arena-room-rule-detail-grid">
+                  {selectedMatchRuleRows.map((row) => (
+                    <div key={row.label}>
+                      <dt>{row.label}</dt>
+                      <dd>{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
                 <div className="arena-room-rule-summary detail">
-                  <span>공격권: {selectedPost.rules?.attackRule ?? "득점 후 공격권 교대"}</span>
-                  <span>파울: {selectedPost.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지"}</span>
+                  <span>공격권: {selectedMatchRules.attackRule}</span>
+                  <span>파울: {selectedMatchRules.foulRule}</span>
                 </div>
                 <div className="arena-room-referee-line">
                   <strong>심판</strong>

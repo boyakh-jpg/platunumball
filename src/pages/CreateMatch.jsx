@@ -1086,7 +1086,7 @@ export default function CreateMatch({ app }) {
   }, [draft.refereeId, refereeCandidates]);
 
   useEffect(() => {
-    if (!app.state.teams.length) return;
+    if (!app.state.teams.length || (!isTeamRoom && !isTournamentRoom)) return;
     setDraft((current) => {
       const teamAExists = app.state.teams.some((team) => team.id === current.teamAId);
       const teamBExists = app.state.teams.some((team) => team.id === current.teamBId);
@@ -1120,7 +1120,22 @@ export default function CreateMatch({ app }) {
       if (current.teamAId === nextTeamAId && current.teamBId === nextTeamBId && current.mmrLimitMode === nextMmrLimitMode && tournamentTeamIds.length === (current.tournamentTeamIds ?? []).length) return current;
       return { ...current, teamAId: nextTeamAId, teamBId: nextTeamBId, mmrLimitMode: nextMmrLimitMode, tournamentTeamIds };
     });
-  }, [app.currentUser.id, app.state.teams, currentRegion, defaultTournamentTeamB?.id, myTeams, representativeTournamentTeam?.id]);
+  }, [app.currentUser.id, app.state.teams, currentRegion, defaultTournamentTeamB?.id, isTeamRoom, isTournamentRoom, myTeams, representativeTournamentTeam?.id]);
+
+  useEffect(() => {
+    if (!isPickupMatch) return;
+    setDraft((current) => ({
+      ...current,
+      ...getMatchIntentChangePatch(current, "pickup"),
+      teamAId: undefined,
+      teamBId: undefined,
+      playerIds: [],
+      reservePlayerIds: [],
+      opponentPlayerIds: [],
+      opponentReservePlayerIds: [],
+      opponentLeaderId: "",
+    }));
+  }, [isPickupMatch]);
 
   useEffect(() => {
     if (canCreateTeamRoom) return;

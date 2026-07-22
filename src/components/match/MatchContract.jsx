@@ -5,7 +5,7 @@ import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import RefereeHoverCard from "../referee/RefereeHoverCard.jsx";
 import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_SIDES, normalizeDisputeWindowMinutes } from "../../lib/constants.js";
 import { getMatchReferee, normalizeStatRecorders } from "../../lib/matchUtils.js";
-import { getMatchPeriodLabel, getMeetingPointSummary, normalizeMatchRules } from "../../lib/matchRules.js";
+import { getMatchBreakLabel, getMatchClockLabel, getMatchEndLabel, getMatchPeriodLabel, getMeetingPointSummary, normalizeMatchRules } from "../../lib/matchRules.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
 const mmrLimitLabels = {
@@ -87,11 +87,15 @@ export default function MatchContract({ match, users = [], teams = [], matches =
         </div>
         <div>
           <span>종료 기준</span>
-          <strong>{rules.endCondition === "target_or_time" ? `${rules.targetScore}점 또는 시간 종료` : "시간 종료"}</strong>
+          <strong>{getMatchEndLabel(rules, match.mode)}</strong>
         </div>
         <div>
           <span>경기 시계</span>
-          <strong>{rules.clockMode === "stopped" ? "스톱타임" : "러닝타임"}</strong>
+          <strong>{getMatchClockLabel(rules, match.mode)}</strong>
+        </div>
+        <div>
+          <span>휴식·연장</span>
+          <strong>{getMatchBreakLabel(rules, match.mode)} · 연장 {rules.overtimeMinutes}분</strong>
         </div>
         <div>
           <span>만남 장소</span>

@@ -22,6 +22,8 @@ import {
 } from "../src/lib/matchCreationPolicies.js";
 import { validatePickupRecruitingShape, validatePickupRecruitingUpdate } from "../server/api/recruiting/sync-post.js";
 import { getRecordCreationWindowStatus } from "../src/lib/matchUtils.js";
+import { getMatchRuleDetailRows, getMatchRulesPayload } from "../src/lib/matchRules.js";
+import { createRecruitingPost } from "../src/data/repository.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -108,6 +110,83 @@ test("pickup validation normalizes stale team and ranked draft values", () => {
   assert.equal(validation.policy.ranked, false);
   assert.equal(validation.policy.official, false);
   assert.equal(validation.errors.length, 0);
+});
+
+test("pickup creation ignores stale team state in the real reducer", () => {
+  const pickupPatch = getMatchIntentPresetPatch("pickup", "3v3");
+  const state = {
+    currentUserId: "pickup-host",
+    users: [{
+      id: "pickup-host",
+      name: "픽업 방장",
+      region: "서울특별시",
+      trustScore: 100,
+      ratings: { integrated: 1200 },
+    }],
+    teams: [],
+    settings: {},
+    recruitingPosts: [],
+    notifications: [],
+  };
+  const next = createRecruitingPost(state, {
+    mode: "3v3",
+    sideCapacity: 3,
+    visibility: "private",
+    timingType: "instant",
+    hostJoinMode: "team",
+    teamOnly: true,
+    teamId: "stale-team",
+    ranked: true,
+    official: true,
+    ...pickupPatch,
+    rules: { ...pickupPatch },
+  });
+  const post = next.recruitingPosts[0];
+
+  assert.ok(post);
+  assert.equal(post.hostJoinMode, "player");
+  assert.equal(post.teamOnly, false);
+  assert.equal(post.teamId, null);
+  assert.equal(post.ranked, false);
+  assert.equal(post.official, false);
+  assert.equal(post.rules.matchIntent, "pickup");
+  assert.equal(next.notifications.some((item) => /팀/.test(item.title) && /필요|제한/.test(item.title)), false);
+});
+
+test("stored room rules drive pickup policy and the full modal rule summary", () => {
+  const storedPost = {
+    mode: "5v5",
+    ranked: false,
+    hostJoinMode: "player",
+    teamOnly: false,
+    rules: {
+      ...getMatchIntentPresetPatch("pickup", "5v5"),
+      periodCount: 4,
+      periodMinutes: 8,
+      periodBreakMinutes: 2,
+      halftimeMinutes: 7,
+      overtimeMinutes: 4,
+      clockMode: "running",
+      lastPeriodStopMinutes: 2,
+      endCondition: "time",
+      ball: "6호 공",
+    },
+  };
+  const policy = getMatchCreationPolicyPayload(storedPost);
+  const summary = getMatchCreationSummary(storedPost);
+  const ruleRows = getMatchRuleDetailRows(storedPost.rules, storedPost.mode);
+
+  assert.equal(policy.matchIntent, "pickup");
+  assert.equal(policy.hostJoinMode, "player");
+  assert.equal(policy.teamOnly, false);
+  assert.equal(policy.lastPeriodStopMinutes, 2);
+  assert.match(summary.rows.find((row) => row.label === "명단")?.value ?? "", /개인 참가/);
+  assert.doesNotMatch(summary.rows.map((row) => row.value).join(" "), /사이드당 참가/);
+  assert.match(summary.rows.find((row) => row.label === "경기 규칙")?.value ?? "", /마지막 2분 스톱/);
+  assert.equal(ruleRows.find((row) => row.label === "휴식")?.value, "쿼터 사이 2분 · 하프타임 7분");
+  assert.equal(ruleRows.find((row) => row.label === "연장")?.value, "4분");
+  assert.equal(ruleRows.find((row) => row.label === "사용 공")?.value, "6호 공");
+  assert.equal(getMatchRulesPayload(storedPost.rules, { mode: storedPost.mode }).lastPeriodStopMinutes, 2);
 });
 
 test("creation UI exposes only friendly, competitive, and pickup intents", () => {
@@ -323,4 +402,12 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(schemaSource, /coalesce\(draft->'rules', '\{\}'::jsonb\)/);
   const cssSource = fs.readFileSync(path.join(root, "src/styles/globals.css"), "utf8");
   assert.doesNotMatch(cssSource, /\.match-creation-wizard-nav ol\s*\{[^}]*min-width:\s*720px/);
+  assert.match(cssSource, /\.create-match-page input\[type="checkbox"\][\s\S]*accent-color:\s*var\(--rb-orange\)/);
+  assert.match(cssSource, /@media \(max-width: 420px\)[\s\S]*\.match-creation-wizard-actions/);
+  const recruitingSource = fs.readFileSync(path.join(root, "src/pages/Recruiting.jsx"), "utf8");
+  assert.match(recruitingSource, /getMatchRuleDetailRows/);
+  assert.match(recruitingSource, /selectedRoomPolicyRows/);
+  const compactSource = fs.readFileSync(path.join(root, "server/api/recruiting/list.js"), "utf8");
+  assert.match(compactSource, /lastPeriodStopMinutes: rules\.lastPeriodStopMinutes/);
+  assert.match(compactSource, /matchIntent: rules\.matchIntent/);
 });

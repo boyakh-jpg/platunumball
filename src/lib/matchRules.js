@@ -37,6 +37,7 @@ export function getDefaultMatchRules(mode = "3v3") {
     halftimeMinutes: fiveOnFive ? 10 : 5,
     overtimeMinutes: fiveOnFive ? 5 : 3,
     clockMode: fiveOnFive ? "stopped" : "running",
+    lastPeriodStopMinutes: 0,
     timeLimit: fiveOnFive ? 40 : 12,
     ball: "7호 공",
     winByTwo: !fiveOnFive,
@@ -55,6 +56,9 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
   const periodMinutes = clampInteger(source.periodMinutes ?? legacyPeriodMinutes, defaults.periodMinutes, 1, 60);
   const endCondition = END_CONDITIONS.has(source.endCondition) ? source.endCondition : defaults.endCondition;
   const clockMode = CLOCK_MODES.has(source.clockMode) ? source.clockMode : defaults.clockMode;
+  const lastPeriodStopMinutes = clockMode === "running"
+    ? clampInteger(source.lastPeriodStopMinutes, defaults.lastPeriodStopMinutes, 0, periodMinutes)
+    : 0;
   const meetingPoint = String(source.meetingPoint ?? "").trim().slice(0, 120);
 
   return {
@@ -67,6 +71,7 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
     halftimeMinutes: clampInteger(source.halftimeMinutes, defaults.halftimeMinutes, 0, 30),
     overtimeMinutes: clampInteger(source.overtimeMinutes, defaults.overtimeMinutes, 1, 20),
     clockMode,
+    lastPeriodStopMinutes,
     timeLimit: periodCount * periodMinutes,
     ball: String(source.ball || defaults.ball).slice(0, 40),
     winByTwo: endCondition === "target_or_time" && Boolean(source.winByTwo ?? defaults.winByTwo),
@@ -88,6 +93,7 @@ export function getMatchRulesPayload(source = {}, options = {}) {
     halftimeMinutes: rules.halftimeMinutes,
     overtimeMinutes: rules.overtimeMinutes,
     clockMode: rules.clockMode,
+    lastPeriodStopMinutes: rules.lastPeriodStopMinutes,
     timeLimit: rules.timeLimit,
     ball: rules.ball,
     winByTwo: rules.winByTwo,
@@ -105,12 +111,47 @@ export function getMatchPeriodLabel(rules = {}, mode = "3v3") {
   return `단일 ${normalized.periodMinutes}분`;
 }
 
+export function getMatchClockLabel(rules = {}, mode = "3v3") {
+  const normalized = normalizeMatchRules(rules, { mode });
+  if (normalized.clockMode === "stopped") return "스톱타임";
+  return normalized.lastPeriodStopMinutes > 0
+    ? `러닝타임 · 마지막 ${normalized.lastPeriodStopMinutes}분 스톱`
+    : "러닝타임";
+}
+
+export function getMatchEndLabel(rules = {}, mode = "3v3") {
+  const normalized = normalizeMatchRules(rules, { mode });
+  if (normalized.endCondition === "time") return "시간 종료";
+  return `${normalized.targetScore}점 또는 시간${normalized.winByTwo ? " · 2점 차 승리" : ""}`;
+}
+
+export function getMatchBreakLabel(rules = {}, mode = "3v3") {
+  const normalized = normalizeMatchRules(rules, { mode });
+  if (normalized.periodCount === 4) {
+    return `쿼터 사이 ${normalized.periodBreakMinutes}분 · 하프타임 ${normalized.halftimeMinutes}분`;
+  }
+  if (normalized.periodCount === 2) return `하프타임 ${normalized.halftimeMinutes}분`;
+  return "별도 휴식 없음";
+}
+
+export function getMatchRuleDetailRows(rules = {}, mode = "3v3") {
+  const normalized = normalizeMatchRules(rules, { mode });
+  return [
+    { label: "경기 구성", value: getMatchPeriodLabel(normalized, mode) },
+    { label: "경기 시계", value: getMatchClockLabel(normalized, mode) },
+    { label: "종료 기준", value: getMatchEndLabel(normalized, mode) },
+    ...(normalized.periodCount > 1 ? [{ label: "휴식", value: getMatchBreakLabel(normalized, mode) }] : []),
+    { label: "연장", value: `${normalized.overtimeMinutes}분` },
+    { label: "사용 공", value: normalized.ball },
+  ];
+}
+
 export function getMatchRuleSummary(rules = {}, mode = "3v3") {
   const normalized = normalizeMatchRules(rules, { mode });
   return [
     getMatchPeriodLabel(normalized, mode),
-    normalized.clockMode === "stopped" ? "스톱타임" : "러닝타임",
-    normalized.endCondition === "target_or_time" ? `${normalized.targetScore}점 목표` : "시간 종료",
+    getMatchClockLabel(normalized, mode),
+    getMatchEndLabel(normalized, mode),
     normalized.ball,
   ].join(" · ");
 }

@@ -128,6 +128,7 @@ import {
   withEffectiveMatchStatRecorders,
 } from "../lib/matchUtils.js";
 import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
+import { getMatchCreationPolicyPayload } from "../lib/matchCreationPolicies.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
 import {
   applyMatchRating,
@@ -6003,11 +6004,13 @@ export function createRecruitingPost(state, draft) {
   if (!isSupportedMatchMode(requestedMode) || MODE_SIZES[requestedMode] !== requestedSideCapacity) return state;
   const disciplineBlock = getDisciplineBlockedState(state, "매칭방 생성");
   if (disciplineBlock) return disciplineBlock;
-  const hostJoinMode = draft.hostJoinMode === "player" ? "player" : "team";
+  const creationPolicy = getMatchCreationPolicyPayload({ ...(draft.rules ?? {}), ...draft });
+  const pickup = creationPolicy.matchIntent === "pickup";
+  const hostJoinMode = pickup ? "player" : draft.hostJoinMode === "player" ? "player" : "team";
   const visibility = draft.visibility === "private" ? "private" : "public";
   const teamOnly = hostJoinMode === "team";
   const postType = teamOnly ? "need_team" : hostJoinMode === "team" ? "need_player" : "find_team";
-  const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility });
+  const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, ranked: creationPolicy.ranked, official: creationPolicy.official, visibility });
   if (hostTrustBlock) return { ...state, notifications: [hostTrustBlock, ...state.notifications] };
   const userTeamIds = new Set(
     state.teams
@@ -6033,7 +6036,7 @@ export function createRecruitingPost(state, draft) {
   const sideCapacity = getRecruitingSideCapacity(draft);
   const benchCapacity = getRecruitingBenchCapacity(draft);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
-  const mmrLimitMode = normalizeRecruitingMmrLimitMode(draft.mmrLimitMode);
+  const mmrLimitMode = pickup ? "off" : normalizeRecruitingMmrLimitMode(draft.mmrLimitMode);
   const allowedAgeGroups = draft.allowedAgeGroups ?? draft.rules?.allowedAgeGroups ?? [];
   const hostTeam = hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
   const hostPlayerIds = hostJoinMode === "team" ? [state.currentUserId].filter((playerId) => getTeamMemberIds(hostTeam).includes(playerId)) : [];
@@ -6053,7 +6056,7 @@ export function createRecruitingPost(state, draft) {
     : rawOpponentPlayerIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : rawOpponentPlayerIds[0] ?? "";
   const hostEligibility = hostTeam ? getTeamEventEligibility(hostTeam, state.users, {
     capacity: sideCapacity,
-    ranked: draft.ranked,
+    ranked: creationPolicy.ranked,
     mmrLimitMode,
     mmrRangeMode,
     targetMmr: hostTeam.mmr,
@@ -6062,7 +6065,7 @@ export function createRecruitingPost(state, draft) {
   }) : null;
   const opponentEligibility = opponentTeam ? getTeamEventEligibility(opponentTeam, state.users, {
     capacity: sideCapacity,
-    ranked: draft.ranked,
+    ranked: creationPolicy.ranked,
     mmrLimitMode,
     mmrRangeMode,
     targetMmr: hostTeam?.mmr ?? opponentTeam.mmr,
@@ -6146,7 +6149,7 @@ export function createRecruitingPost(state, draft) {
   if (visibility === "public" && !timingStatus.canCreate) {
     return { ...state, notifications: [getInvalidPublicScheduleNotification(timingStatus.detail), ...state.notifications] };
   }
-  const ratingScale = draft.ranked === false ? 1 : getRecruitingRatingScale({ ranked: draft.ranked !== false, mmrRangeMode });
+  const ratingScale = creationPolicy.ranked === false ? 1 : getRecruitingRatingScale({ ranked: creationPolicy.ranked, mmrRangeMode });
   const createdAt = new Date().toISOString();
   const partyReserves = {};
   if (hostReservePlayerIds.length) partyReserves.host = hostReservePlayerIds;
@@ -6205,7 +6208,7 @@ export function createRecruitingPost(state, draft) {
   const post = {
     id: draft.id || makeId("q"),
     type: postType,
-    title: draft.title?.trim() || `${draft.ranked === false ? "친선전" : "정규전"} ${draft.mode || "5v5"} 매치 큐`,
+    title: draft.title?.trim() || `${creationPolicy.ranked === false ? "친선전" : "정규전"} ${draft.mode || "5v5"} 매치 큐`,
     region: roomRegion,
     courtId: selectedCourt?.id ?? getCourtId(draft),
     court: draft.court || "미정",
@@ -6214,7 +6217,7 @@ export function createRecruitingPost(state, draft) {
     scheduledTime,
     scheduledAt,
     timingType,
-    ranked: draft.ranked !== false,
+    ranked: creationPolicy.ranked,
     mmrRangeMode,
     mmrLimitMode,
     ageRestriction: draft.ageRestriction ?? draft.rules?.ageRestriction ?? "any",
@@ -6258,10 +6261,11 @@ export function createRecruitingPost(state, draft) {
     playerId: hostPlayerId,
     rules: {
       ...(draft.rules ?? {}),
-      ...getMatchRulesPayload(draft.rules ?? draft, { mode: draft.mode }),
+      ...getMatchRulesPayload({ ...(draft.rules ?? {}), ...draft }, { mode: draft.mode }),
+      ...(pickup ? creationPolicy : {}),
       benchCapacity,
     },
-    official: Boolean(draft.official),
+    official: creationPolicy.official,
     preRegistered: draft.preRegistered !== false,
     stakes: draft.stakes ?? "",
     courtReserved: Boolean(draft.courtReserved),

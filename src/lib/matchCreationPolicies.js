@@ -136,6 +136,11 @@ function normalizeMoney(value) {
   return clampInteger(value, 0, 0, 100_000_000);
 }
 
+export function getMatchCreationPolicySource(source = {}) {
+  const rules = source?.rules && typeof source.rules === "object" ? source.rules : {};
+  return { ...rules, ...source, rules };
+}
+
 export function getModeClockPreset(mode = "5v5", presetId = "community") {
   const defaults = getDefaultMatchRules(mode);
   if (mode !== "5v5") {
@@ -258,27 +263,28 @@ export function getDefaultMatchCreationPolicy(mode = "5v5") {
 }
 
 export function getMatchCreationPolicyPayload(source = {}) {
-  const mode = String(source.mode || "5v5");
+  const policySource = getMatchCreationPolicySource(source);
+  const mode = String(policySource.mode || "5v5");
   const onCourtCount = getModeSize(mode, 5);
-  const benchCapacity = clampInteger(source.benchCapacity, DEFAULT_BENCH_CAPACITY, 0, MAX_BENCH_CAPACITY);
-  const matchIntent = MATCH_INTENT_IDS.has(source.matchIntent) ? source.matchIntent : "standard_competitive";
+  const benchCapacity = clampInteger(policySource.benchCapacity, DEFAULT_BENCH_CAPACITY, 0, MAX_BENCH_CAPACITY);
+  const matchIntent = MATCH_INTENT_IDS.has(policySource.matchIntent) ? policySource.matchIntent : "standard_competitive";
   const pickup = matchIntent === "pickup";
   const playingTimePolicy = pickup
     ? "equal_rotation"
-    : PLAYING_TIME_POLICY_IDS.has(source.playingTimePolicy)
-      ? source.playingTimePolicy
+    : PLAYING_TIME_POLICY_IDS.has(policySource.playingTimePolicy)
+      ? policySource.playingTimePolicy
       : "appearance_guaranteed";
-  const paymentPolicy = PAYMENT_POLICY_IDS.has(source.paymentPolicy) ? source.paymentPolicy : "equal_all_confirmed";
-  const venuePaymentType = VENUE_PAYMENT_TYPE_IDS.has(source.venuePaymentType) ? source.venuePaymentType : "free_public";
-  const venueSecured = VENUE_SECURED_IDS.has(source.venueSecured) ? source.venueSecured : "confirmed";
+  const paymentPolicy = PAYMENT_POLICY_IDS.has(policySource.paymentPolicy) ? policySource.paymentPolicy : "equal_all_confirmed";
+  const venuePaymentType = VENUE_PAYMENT_TYPE_IDS.has(policySource.venuePaymentType) ? policySource.venuePaymentType : "free_public";
+  const venueSecured = VENUE_SECURED_IDS.has(policySource.venueSecured) ? policySource.venueSecured : "confirmed";
   const freeVenue = venuePaymentType === "free_public" || venuePaymentType === "first_come_public";
-  const venueFee = freeVenue ? 0 : normalizeMoney(source.venueFee ?? source.courtFee);
-  const refereeFee = normalizeMoney(source.refereeFee);
-  const recordingFee = normalizeMoney(source.recordingFee);
-  const equipmentFee = normalizeMoney(source.equipmentFee);
-  const otherFee = normalizeMoney(source.otherFee);
+  const venueFee = freeVenue ? 0 : normalizeMoney(policySource.venueFee ?? policySource.courtFee);
+  const refereeFee = normalizeMoney(policySource.refereeFee);
+  const recordingFee = normalizeMoney(policySource.recordingFee);
+  const equipmentFee = normalizeMoney(policySource.equipmentFee);
+  const otherFee = normalizeMoney(policySource.otherFee);
   const totalCost = venueFee + refereeFee + recordingFee + equipmentFee + otherFee;
-  const costRoundUnit = [100, 500].includes(Number(source.costRoundUnit)) ? Number(source.costRoundUnit) : 100;
+  const costRoundUnit = [100, 500].includes(Number(policySource.costRoundUnit)) ? Number(policySource.costRoundUnit) : 100;
   const confirmedCapacity = (onCourtCount + benchCapacity) * 2;
   const estimatedFeePerPlayer = paymentPolicy === "equal_all_confirmed" && totalCost > 0
     ? Math.ceil(totalCost / confirmedCapacity / costRoundUnit) * costRoundUnit
@@ -293,19 +299,19 @@ export function getMatchCreationPolicyPayload(source = {}) {
     starterCount: onCourtCount,
     benchCapacity,
     teamCapacity: onCourtCount + benchCapacity,
-    waitlistCapacity: clampInteger(source.waitlistCapacity, 3, 0, 10),
+    waitlistCapacity: clampInteger(policySource.waitlistCapacity, 3, 0, 10),
     playingTimePolicy,
-    lineupSelectionPolicy: pickup ? "no_fixed_starter" : source.hostJoinMode === "team" ? "team_captain_assigns" : "automatic",
-    hostJoinMode: pickup ? "player" : source.hostJoinMode === "team" ? "team" : "player",
-    teamOnly: pickup ? false : source.hostJoinMode === "team" || source.teamOnly === true,
-    ranked: pickup ? false : source.ranked !== false,
-    official: pickup ? false : Boolean(source.official),
-    mmrLimitMode: pickup ? "off" : source.mmrLimitMode,
+    lineupSelectionPolicy: pickup ? "no_fixed_starter" : policySource.hostJoinMode === "team" ? "team_captain_assigns" : "automatic",
+    hostJoinMode: pickup ? "player" : policySource.hostJoinMode === "team" ? "team" : "player",
+    teamOnly: pickup ? false : policySource.hostJoinMode === "team" || policySource.teamOnly === true,
+    ranked: pickup ? false : policySource.ranked !== false,
+    official: pickup ? false : Boolean(policySource.official),
+    mmrLimitMode: pickup ? "off" : policySource.mmrLimitMode,
     paymentPolicy,
-    benchPaymentAcknowledged: Boolean(source.benchPaymentAcknowledged),
+    benchPaymentAcknowledged: Boolean(policySource.benchPaymentAcknowledged),
     requiresBenchPaymentAcknowledgement,
-    lastPeriodStopMinutes: source.clockMode === "running"
-      ? clampInteger(source.lastPeriodStopMinutes, 0, 0, clampInteger(source.periodMinutes, 60, 1, 60))
+    lastPeriodStopMinutes: policySource.clockMode === "running"
+      ? clampInteger(policySource.lastPeriodStopMinutes, 0, 0, clampInteger(policySource.periodMinutes, 60, 1, 60))
       : 0,
     venuePaymentType,
     venueSecured,
@@ -317,17 +323,17 @@ export function getMatchCreationPolicyPayload(source = {}) {
     totalCost,
     costRoundUnit,
     estimatedFeePerPlayer,
-    freeCancellationHours: clampInteger(source.freeCancellationHours, 24, 0, 168),
-    refundPolicy: ["full_before_deadline", "no_refund", "custom"].includes(source.refundPolicy)
-      ? source.refundPolicy
+    freeCancellationHours: clampInteger(policySource.freeCancellationHours, 24, 0, 168),
+    refundPolicy: ["full_before_deadline", "no_refund", "custom"].includes(policySource.refundPolicy)
+      ? policySource.refundPolicy
       : "full_before_deadline",
-    ballProvider: ["host", "venue", "participant", "unknown"].includes(source.ballProvider)
-      ? source.ballProvider
+    ballProvider: ["host", "venue", "participant", "unknown"].includes(policySource.ballProvider)
+      ? policySource.ballProvider
       : "host",
-    vestsProvided: Boolean(source.vestsProvided),
-    scoreboardAvailable: Boolean(source.scoreboardAvailable),
-    shotClockAvailable: Boolean(source.shotClockAvailable),
-    statRecorderAvailable: Boolean(source.statRecorderAvailable),
+    vestsProvided: Boolean(policySource.vestsProvided),
+    scoreboardAvailable: Boolean(policySource.scoreboardAvailable),
+    shotClockAvailable: Boolean(policySource.shotClockAvailable),
+    statRecorderAvailable: Boolean(policySource.statRecorderAvailable),
   };
 }
 
@@ -372,7 +378,8 @@ export function getPersonalRecordDraftPayload(source = {}) {
 }
 
 export function getMatchCreationValidation(source = {}) {
-  const policy = getMatchCreationPolicyPayload(source);
+  const policySource = getMatchCreationPolicySource(source);
+  const policy = getMatchCreationPolicyPayload(policySource);
   const errors = [];
   const warnings = [];
   const paidVenue = policy.venuePaymentType === "paid_reserved" || policy.venuePaymentType === "paid_not_reserved";
@@ -392,7 +399,7 @@ export function getMatchCreationValidation(source = {}) {
   if (policy.venueSecured === "first_come") {
     warnings.push("현장 상황에 따라 경기가 취소되거나 다른 장소로 이동할 수 있습니다.");
   }
-  if (policy.venueSecured === "unconfirmed" && source.ranked !== false) {
+  if (policy.venueSecured === "unconfirmed" && policySource.ranked !== false) {
     warnings.push("경쟁전 구장이 아직 확보되지 않았습니다.");
   }
   return { policy, errors, warnings };
@@ -403,13 +410,14 @@ function formatCurrency(value) {
 }
 
 export function getMatchCreationSummary(source = {}) {
-  const policy = getMatchCreationPolicyPayload(source);
+  const policySource = getMatchCreationPolicySource(source);
+  const policy = getMatchCreationPolicyPayload(policySource);
   const intent = MATCH_INTENT_OPTIONS.find((option) => option.id === policy.matchIntent) ?? MATCH_INTENT_OPTIONS[1];
   const playingTime = PLAYING_TIME_POLICY_OPTIONS.find((option) => option.id === policy.playingTimePolicy)?.label ?? "출전 보장 없음";
   const payment = PAYMENT_POLICY_OPTIONS.find((option) => option.id === policy.paymentPolicy)?.label ?? "확정 인원 전원 균등";
   const pickup = policy.matchIntent === "pickup";
   const rosterText = pickup
-    ? `사이드당 참가 ${policy.teamCapacity}명 · 코트 ${policy.onCourtCount}명${policy.benchCapacity > 0 ? `, 순환 대기 ${policy.benchCapacity}명` : ""}`
+    ? `개인 참가 · 코트 ${policy.onCourtCount}명씩${policy.benchCapacity > 0 ? ` · 순환 대기 최대 ${policy.benchCapacity}명씩` : ""}`
     : policy.benchCapacity > 0
     ? `사이드당 선발 ${policy.onCourtCount}명과 후보 ${policy.benchCapacity}명`
     : `사이드당 출전 ${policy.onCourtCount}명`;
@@ -420,12 +428,12 @@ export function getMatchCreationSummary(source = {}) {
     policy,
     rows: [
       { label: "경기 성격", value: intent.label },
-      { label: "명단", value: `${source.mode || "5v5"} · ${rosterText}` },
+      { label: "명단", value: `${policySource.mode || "5v5"} · ${rosterText}` },
       ...(pickup ? [{ label: "운영 정책", value: "고정 선발·후보 없음 · 방장 수동 순환" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
-      { label: "경기 규칙", value: `${getMatchRuleSummary(source, source.mode)}${policy.lastPeriodStopMinutes > 0 ? ` · 마지막 ${policy.lastPeriodStopMinutes}분 스톱` : ""}` },
+      { label: "경기 규칙", value: getMatchRuleSummary(policySource, policySource.mode) },
       { label: "비용", value: `${costText} · ${payment}` },
-      { label: "구장", value: source.court || "구장 미정" },
-      { label: "일정", value: source.timingType === "instant" ? "즉시" : [source.scheduledDate, source.scheduledTime].filter(Boolean).join(" ") || "일정 미정" },
+      { label: "구장", value: policySource.court || "구장 미정" },
+      { label: "일정", value: policySource.timingType === "instant" ? "즉시" : [policySource.scheduledDate, policySource.scheduledTime].filter(Boolean).join(" ") || "일정 미정" },
     ],
     sentence: pickup
       ? "개인 참가자를 받아 현장에서 팀을 나눕니다. 방장이 교대 순서를 수동으로 운영하며 MMR은 반영되지 않습니다."
