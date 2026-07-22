@@ -530,6 +530,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(recruitingSource, /playerOnly=\{individualOnlyRoom\}/);
   assert.match(recruitingSource, /placeholder=\{playerOnly \? "선수 검색" : "선수 또는 팀 검색"\}/);
   assert.match(recruitingSource, /const currentUserInParty = Boolean\(!individualOnlyRoom/);
+  assert.match(recruitingSource, /individualOnlyRoom\s*\? "내 슬롯을 누르면 A\/B 출전과 후보 위치를 변경할 수 있습니다\."/);
   const compactSource = fs.readFileSync(path.join(root, "server/api/recruiting/list.js"), "utf8");
   assert.match(compactSource, /lastPeriodStopMinutes: rules\.lastPeriodStopMinutes/);
   assert.match(compactSource, /matchIntent: rules\.matchIntent/);

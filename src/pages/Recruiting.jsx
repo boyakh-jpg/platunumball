@@ -4460,7 +4460,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 ) : alreadyApplied ? (
                   <div className="arena-owner-panel">
                     <strong>참여 중</strong>
-                    <span>내 슬롯을 누르면 위치 변경, 후보 이동, 파티 조작을 할 수 있습니다.</span>
+                    <span>
+                      {individualOnlyRoom
+                        ? "내 슬롯을 누르면 A/B 출전과 후보 위치를 변경할 수 있습니다."
+                        : "내 슬롯을 누르면 위치 변경, 후보 이동, 파티 조작을 할 수 있습니다."}
+                    </span>
                   </div>
                 ) : selectedPost.visibility === "private" ? (
                   <div className="arena-owner-panel">
