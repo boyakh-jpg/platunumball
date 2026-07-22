@@ -19708,6 +19708,10 @@ html[data-theme="light"] .landing-copy .landing-purpose > p {
   color: #274c58;
 }
 
+html[data-theme="light"] .landing-copy .landing-purpose > .landing-purpose-brand {
+  color: var(--orange);
+}
+
 @media (max-width: 720px) {
   .landing-hero {
     --landing-mobile-content-gutter: clamp(20px, 6vw, 28px);
