@@ -19627,7 +19627,7 @@ html[data-theme="light"] .brand-letter-light {
 }
 
 .landing-brand-lockup {
-  --landing-brand-logo-size: 86px;
+  --landing-brand-logo-size: 80px;
   --landing-brand-letter-width: 270px;
   --landing-brand-gap: 12px;
   display: flex;
@@ -19666,12 +19666,7 @@ html[data-theme="light"] .brand-letter-light {
   display: grid;
   max-width: 560px;
   gap: 8px;
-}
-
-.landing-purpose .eyebrow {
-  color: var(--orange);
-  font-size: 0.72rem;
-  line-height: 1.2;
+  margin-top: clamp(6px, 0.8vw, 12px);
 }
 
 .landing-purpose h2 {
@@ -19687,6 +19682,14 @@ html[data-theme="light"] .brand-letter-light {
   color: #d7e0ec;
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+.landing-copy .landing-purpose > .landing-purpose-brand {
+  color: var(--orange);
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
 }
 
 .landing-copy .landing-purpose .landing-oauth-purpose {
@@ -19713,7 +19716,7 @@ html[data-theme="light"] .landing-copy .landing-purpose > p {
   }
 
   .landing-brand-lockup {
-    --landing-brand-logo-size: 64px;
+    --landing-brand-logo-size: 60px;
     --landing-brand-letter-width: 201px;
     --landing-brand-gap: 10px;
   }
@@ -19734,7 +19737,7 @@ html[data-theme="light"] .landing-copy .landing-purpose > p {
 
 @media (max-width: 360px) {
   .landing-brand-lockup {
-    --landing-brand-logo-size: 62px;
+    --landing-brand-logo-size: 58px;
     --landing-brand-letter-width: 194.65px;
     --landing-brand-gap: 8px;
   }

@@ -35,8 +35,10 @@ test("OAuth homepage identifies BOXTIER, explains its purpose, and links the pri
     read("index.html"),
   ]);
 
-  assert.match(landing, /BOXTIER는 농구 경기 모집, 참가자 관리, 경기 기록, MMR 랭킹과 팀 운영/);
-  assert.match(landing, /Google 로그인 정보는 회원 식별과 로그인에만 사용/);
+  assert.match(landing, /landing-purpose-brand">\{BRAND_NAME\}/);
+  assert.doesNotMatch(landing, /BASKETBALL MATCH &amp; RECORD PLATFORM/);
+  assert.match(landing, /농구 경기 모집, 참가자 관리, 경기 기록, MMR 랭킹과 팀 운영/);
+  assert.match(landing, /Google 로그인에서 제공되는 이메일, 이름과 프로필 이미지는 회원 식별과 로그인에만 사용/);
   assert.match(landing, /<Link to="\/privacy">개인정보처리방침<\/Link>/);
   assert.match(index, /content="BOXTIER - 농구 경기를 기록하고 팀과 티어를 관리하는 농구 플랫폼"/);
   assert.match(index, /<title>BOXTIER<\/title>/);
