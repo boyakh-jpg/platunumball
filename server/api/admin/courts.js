@@ -423,8 +423,16 @@ export default async function handler(request, response) {
       const plan = buildCourtAddressNameUpdates(await loadAllCourtAddressRows(context));
       const duplicateUpdates = plan.updates.filter((update) => update.patch.courtUnit);
       const pendingIds = new Set(duplicateUpdates.map((update) => update.courtId));
-      const group = plan.unitGroups.find((items) => items.some((item) => pendingIds.has(item.courtId))) ?? [];
-      const updates = group.filter((update) => pendingIds.has(update.courtId));
+      const groups = [];
+      let selectedCount = 0;
+      for (const items of plan.unitGroups) {
+        const pendingCount = items.filter((item) => pendingIds.has(item.courtId)).length;
+        if (!pendingCount || (groups.length && selectedCount + pendingCount > NORMALIZATION_BATCH_SIZE)) continue;
+        groups.push(items);
+        selectedCount += pendingCount;
+        if (selectedCount >= NORMALIZATION_BATCH_SIZE) break;
+      }
+      const updates = groups.flatMap((items) => items.filter((update) => pendingIds.has(update.courtId)));
       const saveUpdate = async (update, patch = update.patch) => {
         const { error } = await context.supabase.rpc("rankball_admin_update_court_with_auto_unit", {
           p_actor_profile_id: context.profileId,
@@ -436,12 +444,15 @@ export default async function handler(request, response) {
         if (String(error?.message ?? "").includes("court_patch_unchanged")) return;
         if (error) throw new Error(`${error.message}|court:${update.courtId}|unit:${String(patch.courtUnit ?? "")}`);
       };
-      try {
-        for (const update of updates) await saveUpdate(update);
-      } catch (error) {
-        if (!String(error?.message ?? "").includes("court_duplicate")) throw error;
-        for (const update of group) await saveUpdate(update, { courtUnit: `임시${update.courtId.replace(/[^a-zA-Z0-9가-힣]/g, "").slice(-16)}코트` });
-        for (const update of group) await saveUpdate(update);
+      for (const group of groups) {
+        const pendingGroup = group.filter((update) => pendingIds.has(update.courtId));
+        try {
+          for (const update of pendingGroup) await saveUpdate(update);
+        } catch (error) {
+          if (!String(error?.message ?? "").includes("court_duplicate")) throw error;
+          for (const update of group) await saveUpdate(update, { courtUnit: `임시${update.courtId.replace(/[^a-zA-Z0-9가-힣]/g, "").slice(-16)}코트` });
+          for (const update of group) await saveUpdate(update);
+        }
       }
       sendJson(response, 200, {
         ok: true,
