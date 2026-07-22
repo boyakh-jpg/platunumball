@@ -20,10 +20,19 @@ import {
   getRecordEntryMode,
   getScopedMatchCreationPolicyPayload,
 } from "../src/lib/matchCreationPolicies.js";
-import { validatePickupRecruitingShape, validatePickupRecruitingUpdate } from "../server/api/recruiting/sync-post.js";
+import {
+  normalizePickupRecruitingOperation,
+  validatePickupRecruitingShape,
+  validatePickupRecruitingUpdate,
+} from "../server/api/recruiting/sync-post.js";
 import { getRecordCreationWindowStatus } from "../src/lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMatchRulesPayload } from "../src/lib/matchRules.js";
-import { createRecruitingPost } from "../src/data/repository.js";
+import {
+  acceptRecruitingInvitation,
+  createRecruitingPost,
+  inviteRecruitingPlayers,
+} from "../src/data/repository.js";
+import { getRecruitingLobby, isIndividualOnlyRecruitingRoom } from "../src/lib/recruiting.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -151,6 +160,117 @@ test("pickup creation ignores stale team state in the real reducer", () => {
   assert.equal(post.official, false);
   assert.equal(post.rules.matchIntent, "pickup");
   assert.equal(next.notifications.some((item) => /팀/.test(item.title) && /필요|제한/.test(item.title)), false);
+});
+
+test("pickup invitations and joins stay individual even when a team id is submitted", () => {
+  const post = {
+    id: "pickup-room",
+    title: "3v3 픽업",
+    status: "open",
+    mode: "3v3",
+    sideCapacity: 3,
+    benchCapacity: 3,
+    visibility: "public",
+    playerId: "host",
+    hostSide: "teamA",
+    hostJoinMode: "player",
+    ranked: false,
+    official: false,
+    rules: { ...getMatchIntentPresetPatch("pickup", "3v3") },
+    roomState: { ownerId: "host", invitations: [] },
+    applicants: [],
+  };
+  const baseState = {
+    currentUserId: "host",
+    users: [
+      { id: "host", name: "방장", trustScore: 100, ratings: { integrated: 1200 } },
+      { id: "invitee", name: "초대 선수", trustScore: 100, ratings: { integrated: 1200 } },
+    ],
+    teams: [{ id: "team-a", name: "등록팀", mmr: 1200, members: [{ userId: "host" }, { userId: "invitee" }] }],
+    recruitingPosts: [post],
+    notifications: [],
+    settings: {},
+  };
+  const invitedState = inviteRecruitingPlayers(baseState, post.id, {
+    side: "teamA",
+    playerIds: ["invitee"],
+    joinMode: "team",
+    teamId: "team-a",
+  });
+  const invitation = invitedState.recruitingPosts[0].roomState.invitations[0];
+  assert.equal(invitation.joinMode, "player");
+  assert.equal(invitation.teamId, null);
+
+  const acceptedState = acceptRecruitingInvitation(
+    { ...invitedState, currentUserId: "invitee" },
+    post.id,
+    invitation.id,
+  );
+  const applicant = acceptedState.recruitingPosts[0].applicants[0];
+  assert.equal(applicant.kind, "player");
+  assert.equal(applicant.teamId, null);
+  assert.equal(applicant.side, "teamA");
+});
+
+test("pickup lobby expands a legacy team party into independent player slots", () => {
+  const post = {
+    id: "legacy-pickup",
+    mode: "3v3",
+    sideCapacity: 3,
+    benchCapacity: 3,
+    playerId: "host",
+    hostSide: "teamA",
+    hostJoinMode: "player",
+    hostReady: true,
+    rules: { ...getMatchIntentPresetPatch("pickup", "3v3") },
+    roomState: {
+      partyLeaders: { "team:team-a": "p1" },
+      partySides: { "team:team-a": "teamA" },
+      partyReserves: { "team:team-a": ["p3"] },
+    },
+    applicants: [{
+      kind: "team",
+      joinMode: "team",
+      playerId: "p1",
+      playerIds: ["p1", "p2"],
+      teamId: "team-a",
+      side: "teamA",
+      status: "ready",
+      reserve: false,
+    }],
+  };
+  const state = {
+    users: ["host", "p1", "p2", "p3"].map((id) => ({ id, name: id, ratings: { integrated: 1200 } })),
+    teams: [{ id: "team-a", name: "등록팀", mmr: 1200, members: ["p1", "p2", "p3"].map((userId) => ({ userId })) }],
+  };
+  const lobby = getRecruitingLobby(post, state);
+  assert.equal(isIndividualOnlyRecruitingRoom(post), true);
+  assert.deepEqual(lobby.sides.teamA.projectedPlayers.sort(), ["host", "p1", "p2"].sort());
+  assert.deepEqual(lobby.sides.teamA.reserveCandidates.map((item) => item.playerId), ["p3"]);
+  assert.equal(lobby.entries.some((entry) => entry.kind === "team" || entry.teamId), false);
+});
+
+test("pickup API normalizes team payloads and blocks party mutations", () => {
+  const post = { rules: { matchIntent: "pickup" } };
+  const invite = normalizePickupRecruitingOperation(post, {
+    action: "inviteRecruitingPlayers",
+    invite: { playerIds: ["p1", "p2"], joinMode: "team", teamId: "team-a", side: "teamA" },
+  });
+  assert.equal(invite.invite.joinMode, "player");
+  assert.equal(invite.invite.teamId, "");
+
+  const join = normalizePickupRecruitingOperation(post, {
+    action: "interestRecruitingPost",
+    joinMode: "team",
+    application: { joinMode: "team", teamId: "team-a", side: "teamB" },
+  });
+  assert.equal(join.joinMode, "player");
+  assert.equal(join.application.joinMode, "player");
+  assert.equal(join.application.teamId, "");
+  assert.throws(
+    () => normalizePickupRecruitingOperation(post, { action: "setRecruitingTeamPartyRoster" }),
+    /pickup_party_not_allowed/,
+  );
 });
 
 test("stored room rules drive pickup policy and the full modal rule summary", () => {
@@ -407,7 +527,13 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   const recruitingSource = fs.readFileSync(path.join(root, "src/pages/Recruiting.jsx"), "utf8");
   assert.match(recruitingSource, /getMatchRuleDetailRows/);
   assert.match(recruitingSource, /selectedRoomPolicyRows/);
+  assert.match(recruitingSource, /playerOnly=\{individualOnlyRoom\}/);
+  assert.match(recruitingSource, /placeholder=\{playerOnly \? "선수 검색" : "선수 또는 팀 검색"\}/);
+  assert.match(recruitingSource, /const currentUserInParty = Boolean\(!individualOnlyRoom/);
   const compactSource = fs.readFileSync(path.join(root, "server/api/recruiting/list.js"), "utf8");
   assert.match(compactSource, /lastPeriodStopMinutes: rules\.lastPeriodStopMinutes/);
   assert.match(compactSource, /matchIntent: rules\.matchIntent/);
+  const pickupMigration = fs.readFileSync(path.join(root, "supabase/migrations/20260723100000_pickup_individual_participation_guard.sql"), "utf8");
+  assert.match(pickupMigration, /pickup_party_not_allowed/);
+  assert.doesNotMatch(pickupMigration, /delete\s+from/i);
 });

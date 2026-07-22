@@ -572,6 +572,15 @@ function isSoloIndividualRoom(post = {}) {
   return getSideCapacity(post) === 1 && (getCanonicalHostJoinMode(post) === "player" || !teamId);
 }
 
+function isPickupRoom(post = {}) {
+  const rules = post.rules && typeof post.rules === "object" ? post.rules : {};
+  return (post.matchIntent ?? post.match_intent ?? rules.matchIntent) === "pickup";
+}
+
+function isIndividualOnlyRoom(post = {}) {
+  return isPickupRoom(post) || isSoloIndividualRoom(post);
+}
+
 function getEntryActivePlayerIds(entry = {}, capacity = 5, fallbackPlayerId = "") {
   const playerIds = toArray(entry.playerIds ?? entry.player_ids);
   if (playerIds.length) return playerIds;
@@ -670,21 +679,71 @@ export function validatePickupRecruitingUpdate(existingPost = {}, patch = {}) {
   });
 }
 
+const PICKUP_PARTY_ACTIONS = new Set([
+  "joinRecruitingSideParty",
+  "setRecruitingPartyPlayerPlacement",
+  "setRecruitingPartyPlayerReserve",
+  "setRecruitingTeamPartyRoster",
+  "detachRecruitingPartyPlayer",
+  "removeRecruitingPartyPlayer",
+]);
+
+const PICKUP_POLICY_OPERATION_ACTIONS = new Set([
+  "acceptRecruitingInvitation",
+  "interestRecruitingPost",
+  "inviteRecruitingPlayers",
+  "updateRecruitingRoomRules",
+  ...PICKUP_PARTY_ACTIONS,
+]);
+
+export function normalizePickupRecruitingOperation(existingPost = {}, operation = {}) {
+  if (!isPickupRoom(existingPost)) return operation;
+
+  if (PICKUP_PARTY_ACTIONS.has(operation.action)) reject(409, "pickup_party_not_allowed");
+
+  if (operation.action === "inviteRecruitingPlayers") {
+    return {
+      ...operation,
+      invite: {
+        ...(operation.invite && typeof operation.invite === "object" ? operation.invite : {}),
+        joinMode: "player",
+        teamId: "",
+      },
+    };
+  }
+
+  if (operation.action === "interestRecruitingPost") {
+    return {
+      ...operation,
+      joinMode: "player",
+      application: {
+        ...(operation.application && typeof operation.application === "object" ? operation.application : {}),
+        joinMode: "player",
+        teamId: "",
+      },
+    };
+  }
+
+  return operation;
+}
+
 async function validatePickupRecruitingOperation(context, operation = {}) {
   if (operation.action === "createRecruitingPost") {
     validatePickupRecruitingShape(operation.draft ?? {});
-    return;
+    return operation;
   }
-  if (operation.action !== "updateRecruitingRoomRules") return;
+  if (!PICKUP_POLICY_OPERATION_ACTIONS.has(operation.action)) return operation;
   const postId = String(operation.postId ?? "").trim();
-  if (!postId) return;
+  if (!postId) return operation;
   const { data, error } = await context.supabase
     .from("recruiting_posts")
     .select("id,ranked,official,host_join_mode,team_id,room_state,rules")
     .eq("id", postId)
     .maybeSingle();
   if (error) throw error;
-  if (data) validatePickupRecruitingUpdate(data, operation.patch ?? {});
+  if (!data) return operation;
+  if (operation.action === "updateRecruitingRoomRules") validatePickupRecruitingUpdate(data, operation.patch ?? {});
+  return normalizePickupRecruitingOperation(data, operation);
 }
 
 export function validateRecruitingPostShape(post = {}) {
@@ -712,7 +771,7 @@ export function validateRecruitingPostShape(post = {}) {
   const benchIds = getRecruitingBenchIdsBySide(post);
   if (benchIds.teamA.size > benchCapacity || benchIds.teamB.size > benchCapacity) reject(409, "recruiting_reserve_full");
 
-  if (!isSoloIndividualRoom(post)) return;
+  if (!isIndividualOnlyRoom(post)) return;
   if (post.teamId || post.targetTeamId || toArray(post.playerIds).length > 1) reject(400, "solo_room_team_party_not_allowed");
   if (Object.values(roomState.partyReserves ?? {}).flatMap(toArray).length) reject(400, "solo_room_team_party_not_allowed");
 
@@ -1624,9 +1683,9 @@ export default async function handler(request, response) {
     const body = await timing.track("body", () => readJsonBody(request));
     debugTiming = debugTiming || isTrue(body.debugTiming);
     const context = await timing.track("auth", () => getAuthenticatedContext(request));
-    const operation = withRecruitingCreatePostId(getOperation(body, body.action ? String(body.action) : "sync"));
+    let operation = withRecruitingCreatePostId(getOperation(body, body.action ? String(body.action) : "sync"));
     if (!operation) reject(400, "recruiting_operation_required");
-    await timing.track("pickupPolicy", () => validatePickupRecruitingOperation(context, operation));
+    operation = await timing.track("pickupPolicy", () => validatePickupRecruitingOperation(context, operation));
     if (!SQL_REDUCER_RECRUITING_ACTIONS.has(operation.action) && !["sendRecruitingChat", "confirmRecruitingMatch"].includes(operation.action)) {
       reject(400, "unsupported_recruiting_operation");
     }

@@ -181,8 +181,8 @@ import {
   isRecruitingRoomParticipant,
   isRecruitingTeamSideLocked,
   isRecruitingEntryMember,
+  isIndividualOnlyRecruitingRoom,
   isTeamOnlyRecruitingRoom,
-  isSoloIndividualRecruitingRoom,
   isMutableRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
   normalizeRecruitingApplicants,
@@ -6453,7 +6453,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
       ],
     };
   }
-  if (isSoloIndividualRecruitingRoom(post) && requestedJoinMode === "team") {
+  if (isIndividualOnlyRecruitingRoom(post) && requestedJoinMode === "team") {
     return {
       ...state,
       notifications: [
@@ -7643,6 +7643,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   const reserve = Boolean(invite.reserve);
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
+  const playerOnlyRoom = isIndividualOnlyRecruitingRoom(post);
   const teamOnly = isTeamOnlyRecruitingRoom({ ...post, roomState });
   const sideTeamId = getLobbyPrimaryTeamId(lobby, side);
   const requestedTargetIds = Array.from(new Set(invite.playerIds ?? [invite.playerId])).filter(Boolean);
@@ -7751,7 +7752,9 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   }
 
   const now = new Date().toISOString();
-  const inviteJoinMode = invite.joinMode === "player" ? "player" : (invite.joinMode === "team" || invite.teamId ? "team" : "");
+  const inviteJoinMode = playerOnlyRoom
+    ? "player"
+    : invite.joinMode === "player" ? "player" : (invite.joinMode === "team" || invite.teamId ? "team" : "");
   const newInvitations = targetUserIds.map((targetUserId) => ({
     id: makeId("inv"),
     role: "player",
@@ -8006,7 +8009,9 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   }
 
   const user = state.users.find((item) => item.id === state.currentUserId);
-  const invitationTeamId = inferRecruitingInvitationTeamId(post, state, invitation);
+  const invitationTeamId = isIndividualOnlyRecruitingRoom(post)
+    ? ""
+    : inferRecruitingInvitationTeamId(post, state, invitation);
   const invitedTeam = invitationTeamId
     ? state.teams.find((team) => team.id === invitationTeamId && team.members.some((member) => member.userId === state.currentUserId))
     : null;
@@ -8088,7 +8093,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
         }]
       : []
   );
-  if (invitedTeam && !isSoloIndividualRecruitingRoom(post)) {
+  if (invitedTeam && !isIndividualOnlyRecruitingRoom(post)) {
     const capacity = invitedTeamCapacity;
     const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
     const teamKey = invitedTeamKey;
@@ -8268,7 +8273,7 @@ export function declineRecruitingInvitation(state, postId, invitationId) {
 
 function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playerId, sourceTeamId, sourceEntryId = null, placement = {}, updatedAt) {
   if (!sourceTeamId || !playerId) return null;
-  if (isSoloIndividualRecruitingRoom(post)) return null;
+  if (isIndividualOnlyRecruitingRoom(post)) return null;
   const side = MATCH_SIDES.includes(placement.side) ? placement.side : null;
   if (!side) return null;
   if (hasRecruitingTeamMemberOnOtherSide(post, state, sourceTeamId, side, sourceEntryId ?? "")) return null;
@@ -8457,7 +8462,7 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   if (!isMutableRecruitingRoom(post) || !teamId) return state;
   const publicRoomDisciplineBlock = getPublicRoomDisciplineBlockedState(state, post);
   if (publicRoomDisciplineBlock) return publicRoomDisciplineBlock;
-  if (isSoloIndividualRecruitingRoom(post)) return state;
+  if (isIndividualOnlyRecruitingRoom(post)) return state;
 
   const team = state.teams.find((item) => item.id === teamId && item.members.some((member) => member.userId === state.currentUserId));
   if (!team) return state;
@@ -8656,7 +8661,7 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !entryId) return state;
-  if (isSoloIndividualRecruitingRoom(post)) return state;
+  if (isIndividualOnlyRecruitingRoom(post)) return state;
 
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);

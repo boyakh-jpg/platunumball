@@ -387,6 +387,14 @@ export function isSoloIndividualRecruitingRoom(post = {}) {
   return getRecruitingSideCapacity(post) <= 1 && (post.hostJoinMode === "player" || !post.teamId);
 }
 
+export function isPickupRecruitingRoom(post = {}) {
+  return (post.matchIntent ?? post.rules?.matchIntent) === "pickup";
+}
+
+export function isIndividualOnlyRecruitingRoom(post = {}) {
+  return isPickupRecruitingRoom(post) || isSoloIndividualRecruitingRoom(post);
+}
+
 export function isPublicTeamRecruitingRoom(post = {}) {
   return post.visibility === "public" && post.hostJoinMode === "team";
 }
@@ -918,8 +926,8 @@ function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {}) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const capacity = getRecruitingSideCapacity(post);
   const benchCapacity = getRecruitingBenchCapacity(post);
-  const soloIndividualRoom = isSoloIndividualRecruitingRoom(post);
-  const normalizedEntry = soloIndividualRoom && normalized.kind === "team"
+  const individualOnlyRoom = isIndividualOnlyRecruitingRoom(post);
+  const normalizedEntry = individualOnlyRoom && normalized.kind === "team"
     ? {
         ...normalized,
         kind: "player",
@@ -931,7 +939,7 @@ function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {}) {
         playerIds: [],
       }
     : normalized;
-  if (soloIndividualRoom && !normalizedEntry.playerId) return null;
+  if (individualOnlyRoom && !normalizedEntry.playerId) return null;
   const user = normalizedEntry.playerId ? state.users?.find((item) => item.id === normalizedEntry.playerId) ?? null : null;
   const displayTeamId = normalizedEntry.kind === "team" ? normalizedEntry.teamId : normalizedEntry.sourceTeamId;
   const team = displayTeamId ? state.teams?.find((item) => item.id === displayTeamId) ?? null : null;
@@ -956,6 +964,33 @@ function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {}) {
     players,
     reserves,
   };
+}
+
+function expandIndividualOnlyApplicant(applicant = {}, post = {}) {
+  if (!isIndividualOnlyRecruitingRoom(post) || applicant.kind !== "team") return [applicant];
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const entryKey = getRecruitingApplicantKey(applicant);
+  const sourcePlayers = unique([applicant.playerId, ...(applicant.playerIds ?? [])]).filter(Boolean);
+  const activeIds = applicant.reserve ? [] : sourcePlayers;
+  const reserveIds = unique([
+    ...(applicant.reserve ? sourcePlayers : []),
+    ...(roomState.partyReserves?.[entryKey] ?? []),
+  ]).filter((playerId) => playerId && !activeIds.includes(playerId));
+  const toPlayerApplicant = (playerId, reserve) => ({
+    ...applicant,
+    kind: "player",
+    joinMode: "player",
+    playerId,
+    teamId: null,
+    playerIds: [],
+    reserve,
+    sourceTeamId: null,
+    sourceEntryId: null,
+  });
+  return [
+    ...activeIds.map((playerId) => toPlayerApplicant(playerId, false)),
+    ...reserveIds.map((playerId) => toPlayerApplicant(playerId, true)),
+  ];
 }
 
 function getEmptyLobbySide(post = {}) {
@@ -1031,6 +1066,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
   }
   const host = getRecruitingHostEntry(normalizedPost, state);
   const applicants = normalizeRecruitingApplicants(normalizedPost.applicants ?? [])
+    .flatMap((applicant) => expandIndividualOnlyApplicant(applicant, normalizedPost))
     .map((applicant) => getRecruitingApplicantEntry(applicant, state, normalizedPost))
     .filter(Boolean);
   const rawEntries = [host, ...applicants].filter(Boolean);
