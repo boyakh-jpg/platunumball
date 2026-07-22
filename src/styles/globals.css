@@ -19793,22 +19793,14 @@ html[data-theme="light"] .referee-rulebook-hero {
   filter: none;
 }
 
-.create-match-page > .page-header,
-html[data-theme="light"] .create-match-page > .page-header {
-  background: var(--ui-card-bg);
+.create-match-hero.is-match {
+  --page-hero-bg: var(--bg-action);
+  --page-hero-bg-position: var(--hero-bg-position-action);
 }
 
-.create-match-page > .page-header h1,
-html[data-theme="light"] .create-match-page > .page-header h1 {
-  color: var(--rb-text);
-  text-shadow: none;
-  word-break: keep-all;
-}
-
-.create-match-page > .page-header p:not(.eyebrow),
-html[data-theme="light"] .create-match-page > .page-header p:not(.eyebrow) {
-  color: var(--rb-muted);
-  text-shadow: none;
+.create-match-hero.is-record {
+  --page-hero-bg: var(--bg-recorder);
+  --page-hero-bg-position: var(--hero-bg-position-hoop);
 }
 
 .rank-home .rank-summary-grid::before,
@@ -21332,9 +21324,21 @@ html[data-theme="light"] .court-map-picker-state {
   border-top: 1px solid var(--line);
 }
 
+.match-intent-axis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.match-intent-axis {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
 .match-intent-preset-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -21374,8 +21378,16 @@ html[data-theme="light"] .court-map-picker-state {
   gap: 6px;
 }
 
-.match-bench-capacity-control button {
-  flex: 1 1 0;
+.match-bench-capacity-control {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+}
+
+.match-bench-capacity-control button,
+.match-roster-policy-fields .field-label {
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .match-clock-preset-row {
@@ -21536,6 +21548,29 @@ html[data-theme="light"] .court-map-picker-state {
 
 .match-creation-wizard-actions .button {
   min-width: 112px;
+  min-height: var(--ui-button-height);
+}
+
+.match-creation-wizard-actions.is-single-step {
+  justify-content: flex-start;
+}
+
+.match-creation-wizard-actions.is-single-step > span {
+  display: none;
+}
+
+.create-record-court-field {
+  display: grid;
+  gap: 8px;
+}
+
+.create-record-court-selection {
+  min-width: 0;
+}
+
+.create-record-court-selection > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .create-match-page input[type="checkbox"] {
@@ -21611,6 +21646,10 @@ html[data-theme="light"] .court-map-picker-state {
 }
 
 @media (max-width: 900px) {
+  .match-intent-axis-grid {
+    grid-template-columns: 1fr;
+  }
+
   .match-cost-components-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -21668,10 +21707,13 @@ html[data-theme="light"] .court-map-picker-state {
     width: 100%;
   }
 
-  .match-intent-preset-grid,
   .match-roster-policy-fields,
   .match-creation-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .match-intent-preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .match-cost-components-grid,
@@ -21706,9 +21748,22 @@ html[data-theme="light"] .court-map-picker-state {
     width: 100%;
     min-width: 0;
   }
+
+  .match-creation-wizard-actions.is-single-step {
+    display: flex;
+  }
+
+  .match-creation-wizard-actions.is-single-step .button {
+    width: auto;
+    min-width: 112px;
+  }
 }
 
 @media (max-width: 420px) {
+  .match-intent-preset-grid {
+    grid-template-columns: 1fr;
+  }
+
   .match-creation-wizard-nav {
     padding: 6px;
   }
@@ -21744,6 +21799,10 @@ html[data-theme="light"] .court-map-picker-state {
 
   .match-creation-wizard-actions > :first-child {
     grid-column: 1 / -1;
+  }
+
+  .match-creation-wizard-actions.is-edge-step:not(.is-single-step) > :first-child {
+    grid-column: 1;
   }
 
   .match-creation-wizard-actions > :last-child {

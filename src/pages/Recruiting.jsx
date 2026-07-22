@@ -3326,7 +3326,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const selectedMatchRuleRows = getMatchRuleDetailRows(selectedMatchRules, selectedPost.mode);
         const selectedCreationSummary = getMatchCreationSummary(selectedPost);
         const selectedRoomPolicyRows = selectedCreationSummary.rows.filter((row) => (
-          row.label === "경기 성격" || row.label === "명단" || row.label === "운영 정책" || row.label === "출전 정책"
+          row.label === "경기 목적" || row.label === "팀 구성" || row.label === "명단" || row.label === "운영 정책" || row.label === "출전 정책"
         ));
         const maxSideFilled = Math.max(lobby.sides.teamA.filled, lobby.sides.teamB.filled);
         const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
@@ -4057,7 +4057,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <div><Clock3 size={17} /><span>{getRecruitingSchedule(selectedPost)}</span></div>
                   <div><UsersRound size={17} /><span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span></div>
                   <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : `MMR ${Math.round(selectedRatingScale * 100)}%`}</span></div>
-                  <div><Swords size={17} /><span>{getMatchRuleSummary(selectedMatchRules, selectedPost.mode)}</span></div>
+                  {!sourceMatchIsRecordRoom ? <div><Swords size={17} /><span>{getMatchRuleSummary(selectedMatchRules, selectedPost.mode)}</span></div> : null}
                 </div>
               </div>
               {renderSlotCommand()}
@@ -4162,7 +4162,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               {entryPoint === "recorder" ? null : renderMatchRecorderHandoffPanel()}
               {entryPoint === "recorder" ? null : renderMatchSubstitutionPanel()}
 
-              <div className="arena-room-rule-panel">
+              {!sourceMatchIsRecordRoom ? <div className="arena-room-rule-panel">
                 <div className="arena-room-rule-head">
                   <strong>규칙</strong>
                   {canEditSourceRoomRules ? (
@@ -4312,7 +4312,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 <span>팀 MMR은 실제 참가한 팀원의 비율을 기준으로 반영됩니다.</span>
                 <span>후보가 경기 밖에서 참여를 확정하면 해당 사이드의 개인 활약 기록자로 배정됩니다.</span>
                 <span>참여 확정 후 불참하면 신뢰점수 차감 대상이 됩니다.</span>
-              </div>
+              </div> : null}
 
               <RoomChat
                 messages={chatMessages}

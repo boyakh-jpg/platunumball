@@ -5,17 +5,34 @@ export const MATCH_INTENT_OPTIONS = Object.freeze([
   {
     id: "friendly",
     label: "친선전",
-    description: "MMR을 반영하지 않고 후보 출전을 보장합니다.",
+    description: "MMR을 반영하지 않습니다.",
   },
   {
     id: "standard_competitive",
     label: "경쟁전",
-    description: "MMR을 반영하며 출전 정책은 따로 정합니다.",
+    description: "MMR을 반영합니다.",
   },
   {
     id: "pickup",
     label: "픽업",
     description: "개인으로 참가하고 현장에서 팀과 교대 순서를 정합니다.",
+  },
+]);
+
+export const MATCH_PURPOSE_OPTIONS = Object.freeze(
+  MATCH_INTENT_OPTIONS.filter((option) => option.id !== "pickup"),
+);
+
+export const MATCH_FORMATION_OPTIONS = Object.freeze([
+  {
+    id: "prearranged",
+    label: "경기 전 구성",
+    description: "경기 전에 A/B사이드와 출전·후보를 정합니다.",
+  },
+  {
+    id: "pickup",
+    label: "현장 픽업",
+    description: "개인으로 참가해 현장에서 팀과 교대 순서를 정합니다.",
   },
 ]);
 
@@ -205,9 +222,7 @@ export function getMatchIntentChangePatch(source = {}, intent = "standard_compet
     : "appearance_guaranteed";
   const playingTimePolicy = pickup
     ? "equal_rotation"
-    : matchIntent === "friendly" && sourcePlayingTimePolicy === "none"
-      ? "appearance_guaranteed"
-      : sourcePlayingTimePolicy;
+    : sourcePlayingTimePolicy;
   const benchCapacity = clampInteger(source.benchCapacity, DEFAULT_BENCH_CAPACITY, 0, MAX_BENCH_CAPACITY);
   const paymentPolicy = PAYMENT_POLICY_IDS.has(source.paymentPolicy) ? source.paymentPolicy : "equal_all_confirmed";
   const requiresAcknowledgement = benchCapacity > 0
@@ -427,7 +442,8 @@ export function getMatchCreationSummary(source = {}) {
   return {
     policy,
     rows: [
-      { label: "경기 성격", value: intent.label },
+      { label: "경기 목적", value: pickup ? "친선전" : intent.label },
+      { label: "팀 구성", value: pickup ? "현장 픽업" : "경기 전 구성" },
       { label: "명단", value: `${policySource.mode || "5v5"} · ${rosterText}` },
       ...(pickup ? [{ label: "운영 정책", value: "고정 선발·후보 없음 · 방장 수동 순환" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
       { label: "경기 규칙", value: getMatchRuleSummary(policySource, policySource.mode) },

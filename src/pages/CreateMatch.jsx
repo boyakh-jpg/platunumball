@@ -315,6 +315,13 @@ function getCreateStepSearch(search = "", step = 1) {
   return nextSearch ? `?${nextSearch}` : "";
 }
 
+const DEFAULT_MATCH_MEMO = "룰 확정 후 결과 승인.";
+const DEFAULT_MATCH_RECORD_MEMO = "경기 참가자와 결과를 확인합니다.";
+
+function getMatchRecordMemo(value = "") {
+  return !String(value).trim() || value === DEFAULT_MATCH_MEMO ? DEFAULT_MATCH_RECORD_MEMO : value;
+}
+
 export default function CreateMatch({ app }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -431,7 +438,7 @@ export default function CreateMatch({ app }) {
     preRegistered: true,
     objectionWindow: `${DISPUTE_WINDOW_MINUTES}분`,
     evidence: [],
-    memo: "룰 확정 후 결과 승인.",
+    memo: DEFAULT_MATCH_MEMO,
     stakes: "다음 경기 우선권.",
     soloOpponentName: "",
     soloTeamAName: "우리팀",
@@ -681,6 +688,7 @@ export default function CreateMatch({ app }) {
           courtReserved: false,
           courtFee: "",
           stakes: "",
+          memo: getMatchRecordMemo(current.memo),
           title: isDefaultCreateTitle(current.title) || isDefaultTournamentTitle(current.title) ? "경기 기록" : current.title,
           scheduledDate: today,
           scheduledTime: getSeoulTimeInputValue(),
@@ -1569,7 +1577,7 @@ export default function CreateMatch({ app }) {
 
   return (
     <form className="page-stack create-match-page" onSubmit={submit}>
-      <header className="page-header">
+      <header className={`page-header create-match-hero ${isRecordCreateIntent ? "is-record" : "is-match"}`}>
         <div>
           <p className="eyebrow">{isRecordCreateIntent ? "RecordMatch" : "CreateMatch"}</p>
           <h1>{isRecordCreateIntent ? "기록하기" : "경기/대회 만들기"}</h1>
@@ -1703,6 +1711,7 @@ export default function CreateMatch({ app }) {
                       courtReserved: false,
                       courtFee: "",
                       stakes: "",
+                      memo: getMatchRecordMemo(draft.memo),
                       title: isMatchRecordRoom ? draft.title : "경기 기록",
                       scheduledDate: today,
                       scheduledTime: getSeoulTimeInputValue(),
@@ -1762,11 +1771,8 @@ export default function CreateMatch({ app }) {
           </div>
           {isStandardCreateWizard ? (
             <div className="match-intent-preset-section">
-              <span className="field-label">경기 성격</span>
               <MatchIntentPresetSelector
                 value={draft.matchIntent}
-                benchCapacity={matchCreationPolicy.benchCapacity}
-                playingTimePolicy={matchCreationPolicy.playingTimePolicy}
                 onSelect={(matchIntent) => update({
                   ...getMatchIntentChangePatch(draft, matchIntent),
                   title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(draft.mode, matchIntent) : draft.title,
@@ -2567,7 +2573,7 @@ export default function CreateMatch({ app }) {
           </Card>
         ) : null}
 
-        {wizardStep === 3 || wizardStep === 5 ? (
+        {wizardStep === 3 || wizardStep === 5 || (isMatchRecordRoom && wizardStep === 1) ? (
         <Card className="section-card full-span">
           <div className="section-title-row">
             <div>
@@ -2639,20 +2645,29 @@ export default function CreateMatch({ app }) {
             <textarea value={draft.memo} onChange={(event) => update({ memo: event.target.value })} />
           </label>
           {isSoloRecord || isMatchRecordRoom ? (
-            <label>
-              구장 (선택)
-              <select
-                value={selectedCourt?.id ?? ""}
-                onChange={(event) => {
-                  const court = registeredCourts.find((item) => item.id === event.target.value);
-                  if (court) selectCourt(court);
-                  else update({ courtId: "", court: "" });
-                }}
-              >
-                <option value="">구장 미정</option>
-                {registeredCourts.map((court) => <option key={court.id} value={court.id}>{court.name}</option>)}
-              </select>
-            </label>
+            <div className="field-block create-record-court-field">
+              <span className="field-label">경기 구장</span>
+              <SearchPicker
+                value={courtQuery}
+                onChange={setCourtQuery}
+                placeholder="코트명·주소 검색"
+                items={sortedCourts}
+                idleItems={favoriteCourts.length ? favoriteCourts : sortedCourts.slice(0, 10)}
+                idleTitle={favoriteCourts.length ? "즐겨찾는 구장" : "내 지역 추천 구장"}
+                title="구장 검색 결과"
+                emptyText="등록 구장 없음"
+                showIdleOnFocus
+                floating
+                closeOnResultClick
+                remoteSearchType="court"
+                getSearchText={getCourtSearchText}
+                renderItem={renderCourtSearchItem}
+              />
+              <div className="stat-integrity-note create-record-court-selection">
+                <span>{selectedCourt ? `${selectedCourt.name} · ${getCourtAddress(selectedCourt)}` : "선택하지 않으면 구장 미정으로 저장합니다."}</span>
+                {selectedCourt ? <Button type="button" variant="secondary" size="sm" onClick={clearSelectedCourt}>선택 취소</Button> : null}
+              </div>
+            </div>
           ) : null}
         </Card>
         ) : null}

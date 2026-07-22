@@ -4,7 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  MATCH_FORMATION_OPTIONS,
   MATCH_INTENT_OPTIONS,
+  MATCH_PURPOSE_OPTIONS,
   RECORD_COMPOSITION_OPTIONS,
   RECORD_ENTRY_MODE_OPTIONS,
   getMatchCreationPolicyPayload,
@@ -309,8 +311,11 @@ test("stored room rules drive pickup policy and the full modal rule summary", ()
   assert.equal(getMatchRulesPayload(storedPost.rules, { mode: storedPost.mode }).lastPeriodStopMinutes, 2);
 });
 
-test("creation UI exposes only friendly, competitive, and pickup intents", () => {
+test("creation policy separates match purpose from team formation", () => {
   assert.deepEqual(MATCH_INTENT_OPTIONS.map((option) => option.id), ["friendly", "standard_competitive", "pickup"]);
+  assert.deepEqual(MATCH_PURPOSE_OPTIONS.map((option) => option.id), ["friendly", "standard_competitive"]);
+  assert.deepEqual(MATCH_FORMATION_OPTIONS.map((option) => option.id), ["prearranged", "pickup"]);
+  assert.equal(MATCH_PURPOSE_OPTIONS.some((option) => /출전/.test(option.description)), false);
 });
 
 test("record intent selects record steps before the draft conversion effect", () => {
@@ -356,7 +361,7 @@ test("intent and mode changes preserve unrelated user input", () => {
   assert.equal(friendly.benchCapacity, 3);
   assert.equal(friendly.venueFee, 50000);
   assert.equal(friendly.meetingPoint, "체육관 1층 출입구");
-  assert.equal(friendly.playingTimePolicy, "appearance_guaranteed");
+  assert.equal(friendly.playingTimePolicy, "none");
   assert.equal(friendly.ranked, false);
   assert.equal(friendly.official, false);
 

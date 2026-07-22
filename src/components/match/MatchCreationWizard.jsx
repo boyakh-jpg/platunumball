@@ -1,8 +1,9 @@
 import { Check, ChevronLeft, ChevronRight, X } from "lucide-react";
 import Button from "../common/Button.jsx";
-import { BENCH_CAPACITY_OPTIONS, DEFAULT_BENCH_CAPACITY } from "../../lib/constants.js";
+import { BENCH_CAPACITY_OPTIONS } from "../../lib/constants.js";
 import {
-  MATCH_INTENT_OPTIONS,
+  MATCH_FORMATION_OPTIONS,
+  MATCH_PURPOSE_OPTIONS,
   PAYMENT_POLICY_OPTIONS,
   PLAYING_TIME_POLICY_OPTIONS,
   VENUE_PAYMENT_TYPE_OPTIONS,
@@ -25,10 +26,7 @@ export function getMatchCreationSteps(summaryType = "match") {
     ];
   }
   if (summaryType === "match_record") {
-    return [
-      { id: 1, label: "기록방" },
-      { id: 5, label: "확인·생성" },
-    ];
+    return [{ id: 1, label: "경기 기록" }];
   }
   if (summaryType === "tournament") {
     return MATCH_CREATION_STEPS.map((step) => step.id === 1
@@ -41,6 +39,7 @@ export function getMatchCreationSteps(summaryType = "match") {
 }
 
 export function MatchCreationWizardNav({ currentStep, steps = MATCH_CREATION_STEPS, onStepChange }) {
+  if (steps.length < 2) return null;
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   return (
     <nav className="match-creation-wizard-nav" aria-label="경기 만들기 단계">
@@ -62,18 +61,20 @@ export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   const previousStep = steps[currentIndex - 1];
   const nextStep = steps[currentIndex + 1];
+  const singleStep = steps.length < 2;
+  const edgeStep = !previousStep || !nextStep;
   return (
-    <div className="match-creation-wizard-actions">
-      <Button type="button" variant="secondary" size="sm" onClick={onCancel}>
+    <div className={`match-creation-wizard-actions${singleStep ? " is-single-step" : ""}${edgeStep ? " is-edge-step" : ""}`}>
+      <Button type="button" variant="secondary" onClick={onCancel}>
         <X size={16} /> 취소하기
       </Button>
       {previousStep ? (
-        <Button type="button" variant="secondary" size="sm" onClick={() => onStepChange(previousStep.id)}>
+        <Button type="button" variant="secondary" onClick={() => onStepChange(previousStep.id)}>
           <ChevronLeft size={17} /> 이전
         </Button>
       ) : <span />}
       {nextStep ? (
-        <Button type="button" size="sm" onClick={() => onStepChange(nextStep.id)}>
+        <Button type="button" onClick={() => onStepChange(nextStep.id)}>
           다음 <ChevronRight size={17} />
         </Button>
       ) : <span />}
@@ -81,29 +82,55 @@ export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION
   );
 }
 
-export function MatchIntentPresetSelector({ value, benchCapacity = DEFAULT_BENCH_CAPACITY, playingTimePolicy = "appearance_guaranteed", onSelect }) {
-  const activePlayingTimeLabel = benchCapacity > 0
-    ? PLAYING_TIME_POLICY_OPTIONS.find((item) => item.id === playingTimePolicy)?.label ?? "출전 정책 직접 설정"
-    : "후보 없음";
+export function MatchIntentPresetSelector({ value, onSelect }) {
+  const pickup = value === "pickup";
+  const purposeValue = pickup ? "friendly" : value;
   return (
-    <div className="match-intent-preset-grid" role="radiogroup" aria-label="경기 성격">
-      {MATCH_INTENT_OPTIONS.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          role="radio"
-          aria-checked={value === option.id}
-          className={value === option.id ? "active" : ""}
-          onClick={() => onSelect(option.id)}
-        >
-          <strong>{option.label}</strong>
-          <span>{option.id === "pickup"
-            ? option.description
-            : option.id === value
-              ? `${option.id === "friendly" ? "MMR 미반영" : "MMR 반영"} · ${activePlayingTimeLabel}`
-              : option.description}</span>
-        </button>
-      ))}
+    <div className="match-intent-axis-grid">
+      <div className="match-intent-axis">
+        <span className="field-label">경기 목적</span>
+        <div className="match-intent-preset-grid" role="radiogroup" aria-label="경기 목적">
+          {MATCH_PURPOSE_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={purposeValue === option.id}
+              className={purposeValue === option.id ? "active" : ""}
+              onClick={() => {
+                if (purposeValue !== option.id) onSelect(option.id);
+              }}
+            >
+              <strong>{option.label}</strong>
+              <span>{option.description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="match-intent-axis">
+        <span className="field-label">팀 구성</span>
+        <div className="match-intent-preset-grid" role="radiogroup" aria-label="팀 구성 방식">
+          {MATCH_FORMATION_OPTIONS.map((option) => {
+            const active = pickup ? option.id === "pickup" : option.id === "prearranged";
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                className={active ? "active" : ""}
+                onClick={() => {
+                  if (option.id === "pickup" && !pickup) onSelect("pickup");
+                  if (option.id === "prearranged" && pickup) onSelect("friendly");
+                }}
+              >
+                <strong>{option.label}</strong>
+                <span>{option.description}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -280,9 +307,9 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
     { label: "종료 일시", value: [draft.scheduledDate, draft.scheduledTime].filter(Boolean).join(" ") || "일시 미정" },
   ];
   const hiddenLabels = summaryType === "match_record"
-    ? new Set(["경기 성격", "비용"])
+    ? new Set(["경기 목적", "팀 구성", "비용"])
     : summaryType === "tournament"
-      ? new Set(["경기 성격", "비용", "일정"])
+      ? new Set(["경기 목적", "팀 구성", "비용", "일정"])
       : new Set();
   const scopedRows = summary.rows.filter((row) => !hiddenLabels.has(row.label));
   const matchRecordRows = [
