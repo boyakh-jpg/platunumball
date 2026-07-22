@@ -7,6 +7,7 @@ import {
   BASKETBALL_POSITIONS,
   DEFAULT_PLAYER_RATINGS,
   DEFAULT_RATING,
+  MATCH_MODES,
   MATCH_SIDES,
   getTestAccountDisplayLabel,
   getModeSize,
@@ -67,7 +68,7 @@ import {
   getPlayerMatchResult,
   isMatchWithinRecordDetailWindow,
 } from "../src/lib/matchUtils.js";
-import { DEFAULT_RATING_POLICY } from "../src/lib/ratingPolicy.js";
+import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../src/lib/ratingPolicy.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../src/lib/reportReasons.js";
 import { PROFILE_ICON_CATALOG } from "../src/lib/profileIcons.js";
 import {
@@ -160,6 +161,16 @@ test("core match policy has one canonical default", () => {
   assert.equal(getModeSize("unknown", 3), 3);
   assert.ok(isRefereeGrade("official"));
   assert.equal(isRefereeGrade("admin"), false);
+});
+
+test("room modes and administrator MMR policy use the same mode keys", () => {
+  const modeIds = MATCH_MODES.map((mode) => mode.id);
+  assert.deepEqual(RATING_POLICY_MODE_IDS, modeIds);
+  assert.deepEqual(Object.keys(DEFAULT_RATING_POLICY.playerMmr.modeScalePercent), modeIds);
+  assert.deepEqual(Object.keys(DEFAULT_RATING_POLICY.playerMmr.integratedScalePercent), modeIds);
+  for (const mode of MATCH_MODES) {
+    assert.equal(getModeSize(mode.id), mode.size);
+  }
 });
 
 test("public product copy uses the BOXTIER brand and production tone", async () => {

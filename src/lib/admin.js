@@ -41,7 +41,7 @@ const ADMIN_GRADE_ALIASES = {
 
 export const REFEREE_GRADE_META = {
   official: { label: "공인심판", level: 100, requirement: "공인 자격증 인증" },
-  platinum: { label: "플래티넘 심판", level: 80, requirement: "경기 수행 우수 · 신고 낮음 · 따봉 높음" },
+  platinum: { label: "플래티넘 심판", level: 80, requirement: "경기 수행 우수 · 신고 낮음 · 추천 높음" },
   gold: { label: "골드 심판", level: 60, requirement: "안정적 경기 수행" },
   silver: { label: "실버 심판", level: 40, requirement: "기본 자격 유지" },
   candidate: { label: "자격심판", level: 20, requirement: "커뮤니티 시험/심사 통과" },

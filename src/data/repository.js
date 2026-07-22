@@ -1,12 +1,12 @@
 import {
   COURT_REQUEST_TRUST_MIN,
   DAY_MS,
+  DEFAULT_BENCH_CAPACITY,
   DEFAULT_RATING,
   DEFAULT_TOURNAMENT_MMR_GAP,
   DISPUTE_WINDOW_MINUTES,
   FALSE_COURT_REPORT_TRUST_PENALTY,
   FAVORITE_LIMIT,
-  MAX_RECRUITING_RESERVES_PER_SIDE,
   MAX_TEAM_MEMBERS,
   MAX_TEAM_MEMBERSHIPS,
   MAX_TEAM_NAME_LENGTH,
@@ -38,6 +38,8 @@ import {
   TEST_PROFILE_BIRTH_YEAR,
   TEST_PROFILE_SETUP_AT,
   getHostTrustRequirement,
+  isSupportedMatchMode,
+  isSupportedSoloRecordMode,
   normalizeDisputeWindowMinutes,
   normalizeMmrLimitMode as normalizeRecruitingMmrLimitMode,
 } from "../lib/constants.js";
@@ -142,6 +144,7 @@ import {
   getExplicitInvitationTeamPlayerIds,
   getRecruitingApplicantKey,
   getRecruitingApplicantKind,
+  getRecruitingBenchCapacity,
   getRecruitingBestSide,
   getRecruitingEntryLeaderId,
   getRecruitingEntryPlayerIds,
@@ -1237,6 +1240,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
         hostSide: post.host_side,
         hostReady: post.host_ready,
         sideCapacity: post.side_capacity,
+        benchCapacity: getRecruitingBenchCapacity(post),
         playerIds: post.player_ids ?? [],
         position: post.position,
         playerId: post.player_id,
@@ -1541,6 +1545,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       host_side: post.hostSide ?? "teamA",
       host_ready: Boolean(post.hostReady),
       side_capacity: getRecruitingSideCapacity(post),
+      bench_capacity: getRecruitingBenchCapacity(post),
       player_ids: post.playerIds ?? [],
       position: post.position,
       memo: post.memo,
@@ -1803,11 +1808,11 @@ function getTrustedRefereeId(state, refereeId, playerIds = []) {
   return isEligibleReferee(user, REFEREE_TRUST_MIN, state.settings?.refereeAppointments) ? refereeId : "";
 }
 
-function getRecruitingReserveLimitNotification(postId, sideName) {
+function getRecruitingReserveLimitNotification(postId, sideName, benchCapacity = DEFAULT_BENCH_CAPACITY) {
   return {
     id: makeId("n"),
     title: "후보 슬롯 초과",
-    body: `${SIDE_LABEL_TEXT[sideName] ?? "해당 사이드"} 후보는 최대 ${MAX_RECRUITING_RESERVES_PER_SIDE}명까지 가능합니다.`,
+    body: `${SIDE_LABEL_TEXT[sideName] ?? "해당 사이드"} 후보는 최대 ${benchCapacity}명까지 가능합니다.`,
     tone: "orange",
     recruitingPostId: postId,
   };
@@ -4290,8 +4295,8 @@ export function toggleMatchStar(state, matchId, targetUserId) {
       notifications: [
         {
           id: makeId("n"),
-          title: "따봉 한도 도달",
-          body: `한 경기에서 최대 ${maxStars}명에게 따봉을 줄 수 있습니다.`,
+          title: "추천 한도 도달",
+          body: `한 경기에서 최대 ${maxStars}명에게 추천을 보낼 수 있습니다.`,
           tone: "match",
           matchId,
         },
@@ -4334,8 +4339,8 @@ export function submitMatchThumbs(state, matchId, targetUserIds = []) {
       notifications: [
         {
           id: makeId("n"),
-          title: "따봉 제출 마감",
-          body: "따봉은 기록확정 후 24시간 안에만 제출할 수 있습니다.",
+          title: "추천 마감",
+          body: "추천은 기록 확정 후 24시간 안에만 보낼 수 있습니다.",
           tone: "orange",
           matchId,
         },
@@ -4384,8 +4389,8 @@ export function submitMatchThumbs(state, matchId, targetUserIds = []) {
     notifications: [
       {
         id: makeId("n"),
-        title: "따봉 제출 완료",
-        body: `${nextMyThumbs.length}명에게 따봉을 제출했습니다.`,
+        title: "추천 저장 완료",
+        body: `${nextMyThumbs.length}명에게 추천을 보냈습니다.`,
         tone: "match",
         matchId,
       },
@@ -6019,6 +6024,9 @@ export function approveCourtRequest(state, requestId, approval = {}) {
 }
 
 export function createRecruitingPost(state, draft) {
+  const requestedMode = draft.mode || "5v5";
+  const requestedSideCapacity = getRecruitingSideCapacity(draft);
+  if (!isSupportedMatchMode(requestedMode) || MODE_SIZES[requestedMode] !== requestedSideCapacity) return state;
   const disciplineBlock = getDisciplineBlockedState(state, "매칭방 생성");
   if (disciplineBlock) return disciplineBlock;
   const hostJoinMode = draft.hostJoinMode === "player" ? "player" : "team";
@@ -6048,7 +6056,8 @@ export function createRecruitingPost(state, draft) {
     };
   }
 
-  const sideCapacity = Math.max(1, Number(draft.sideCapacity ?? MODE_SIZES[draft.mode] ?? 5));
+  const sideCapacity = getRecruitingSideCapacity(draft);
+  const benchCapacity = getRecruitingBenchCapacity(draft);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
   const mmrLimitMode = normalizeRecruitingMmrLimitMode(draft.mmrLimitMode);
   const allowedAgeGroups = draft.allowedAgeGroups ?? draft.rules?.allowedAgeGroups ?? [];
@@ -6090,7 +6099,7 @@ export function createRecruitingPost(state, draft) {
     ? (privateTeamInviteOnly ? [] : ensureTeamPartyLeader(opponentTeam, rawOpponentPlayerIds, opponentLeaderId, sideCapacity))
     : [];
   const opponentReservePlayerIds = opponentTeam && !privateTeamInviteOnly
-    ? getSelectedReservePlayerIds(opponentTeam, orderedOpponentPlayerIds, draft.opponentReservePlayerIds).filter((playerId) => !hostSidePlayerIds.has(playerId))
+    ? getSelectedReservePlayerIds(opponentTeam, orderedOpponentPlayerIds, draft.opponentReservePlayerIds, benchCapacity).filter((playerId) => !hostSidePlayerIds.has(playerId))
     : [];
   const hostPlayerId = state.currentUserId;
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
@@ -6269,12 +6278,14 @@ export function createRecruitingPost(state, draft) {
       invitations: [...initialInvitations, ...initialRefereeInvitations],
     },
     sideCapacity,
+    benchCapacity,
     playerIds: hostPlayerIds,
     position: hostJoinMode === "player" ? draft.position || "포지션 자유" : "포지션 자유",
     playerId: hostPlayerId,
     rules: {
       ...(draft.rules ?? {}),
       ...getMatchRulesPayload(draft.rules ?? draft, { mode: draft.mode }),
+      benchCapacity,
     },
     official: Boolean(draft.official),
     preRegistered: draft.preRegistered !== false,
@@ -6501,6 +6512,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
   }
 
   const sideCapacity = getRecruitingSideCapacity(post);
+  const benchCapacity = getRecruitingBenchCapacity(post);
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const side = MATCH_SIDES.includes(application.side) ? application.side : getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
@@ -6523,10 +6535,10 @@ export function interestRecruitingPost(state, postId, application = {}) {
     ? teamOnly
       ? sideCapacity
       : reserveRequested
-        ? Math.max(0, MAX_RECRUITING_RESERVES_PER_SIDE - (sideState?.reserveCandidates?.length ?? 0))
+        ? Math.max(0, benchCapacity - (sideState?.reserveCandidates?.length ?? 0))
         : Math.max(0, (sideState?.capacity ?? sideCapacity) - (sideState?.filled ?? 0))
     : sideCapacity;
-  const reserveSelectionCapacity = Math.max(0, MAX_RECRUITING_RESERVES_PER_SIDE - (sideState?.reserveCandidates?.length ?? 0));
+  const reserveSelectionCapacity = Math.max(0, benchCapacity - (sideState?.reserveCandidates?.length ?? 0));
   const teamEligibility = team ? getTeamEventEligibility(team, state.users, {
     capacity: sideCapacity,
     ranked: post.ranked,
@@ -6739,6 +6751,7 @@ function applyTeamOnlyRosterSummon(state, post, roomState, lobby, side, reserve,
   }
 
   const capacity = getRecruitingSideCapacity(post);
+  const benchCapacity = getRecruitingBenchCapacity(post);
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
   const targetApplicant = entry.fixed
     ? null
@@ -6751,7 +6764,7 @@ function applyTeamOnlyRosterSummon(state, post, roomState, lobby, side, reserve,
   const nextActiveAddIds = reserve ? [] : targetIds.slice(0, openActiveCount);
   const nextReserveAddIds = [
     ...(reserve ? targetIds : targetIds.slice(openActiveCount)),
-  ].slice(0, Math.max(0, MAX_RECRUITING_RESERVES_PER_SIDE - currentReserveIds.length));
+  ].slice(0, Math.max(0, benchCapacity - currentReserveIds.length));
   const nextActiveIds = uniquePlayerIds([...currentActiveIds, ...nextActiveAddIds]).slice(0, capacity);
   const nextReserveIds = uniquePlayerIds([...currentReserveIds, ...nextReserveAddIds]).filter((playerId) => !nextActiveIds.includes(playerId));
   if (nextActiveIds.length === currentActiveIds.length && nextReserveIds.length === currentReserveIds.length) {
@@ -6888,6 +6901,9 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
 
   const currentCapacity = getRecruitingSideCapacity(post);
   const sideCapacity = Math.max(1, Math.min(5, Number(patch.sideCapacity ?? currentCapacity)));
+  const nextMode = `${sideCapacity}v${sideCapacity}`;
+  if (!isSupportedMatchMode(nextMode)) return state;
+  const benchCapacity = getRecruitingBenchCapacity({ ...post, benchCapacity: patch.benchCapacity });
   const currentLobby = getRecruitingLobby(post, state);
   if (currentLobby.sides.teamA.projectedFilled > sideCapacity || currentLobby.sides.teamB.projectedFilled > sideCapacity) {
     return {
@@ -6905,6 +6921,12 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     };
   }
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  if (currentLobby.sides.teamA.reserveCandidates.length > benchCapacity || currentLobby.sides.teamB.reserveCandidates.length > benchCapacity) {
+    return {
+      ...state,
+      notifications: [getRecruitingReserveLimitNotification(postId, "teamA", benchCapacity), ...state.notifications],
+    };
+  }
   const nextMmrRangeMode = normalizeRecruitingMmrRangeMode(patch.mmrRangeMode ?? post.mmrRangeMode ?? roomState.mmrRangeMode);
   const nextRules = getMatchRulesPayload({ ...(post.rules ?? {}), ...patch }, { mode: post.mode });
   const updatedAt = new Date().toISOString();
@@ -6913,8 +6935,9 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
   const nextCourtId = patch.court === undefined ? getCourtId(post) : (nextCourt?.id ?? courtIdByName(nextCourtName));
   const nextPost = cleanRecruitingRoomStatRecorders({
     ...post,
-    mode: `${sideCapacity}v${sideCapacity}`,
+    mode: nextMode,
     sideCapacity,
+    benchCapacity,
     region: nextCourt?.region ?? post.region,
     courtId: nextCourtId,
     court: nextCourtName,
@@ -6923,6 +6946,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     rules: {
       ...(post.rules ?? {}),
       ...nextRules,
+      benchCapacity,
       mmrRangeMode: nextMmrRangeMode,
       ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
     },
@@ -6961,6 +6985,10 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   if (!currentUserCanOperateMatchPreparation(state, match)) return state;
   const sideCapacity = Math.max(1, Math.min(5, Number(patch.sideCapacity ?? getRecruitingSideCapacity(match))));
+  const nextMode = `${sideCapacity}v${sideCapacity}`;
+  const isSoloRecord = match.rules?.recordType === RECORD_TYPES.personalRecord;
+  if (isSoloRecord ? !isSupportedSoloRecordMode(nextMode) : !isSupportedMatchMode(nextMode)) return state;
+  const benchCapacity = getRecruitingBenchCapacity({ ...match, benchCapacity: patch.benchCapacity });
   const teamAActiveCount = uniquePlayerIds(match.teamA?.players ?? []).length;
   const teamBActiveCount = uniquePlayerIds(match.teamB?.players ?? []).length;
   if (teamAActiveCount > sideCapacity || teamBActiveCount > sideCapacity) {
@@ -6978,11 +7006,13 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
       ],
     };
   }
+  if (getMatchReservePlayerIds(match, "teamA").length > benchCapacity || getMatchReservePlayerIds(match, "teamB").length > benchCapacity) return state;
   const convertToPlayerMatch = patch.matchJoinMode === "player";
   const nextRules = {
     ...(match.rules ?? {}),
     ...getMatchRulesPayload({ ...(match.rules ?? {}), ...patch }, { mode: match.mode }),
     sideCapacity,
+    benchCapacity,
   };
   delete nextRules.startedAt;
   const nextCourtName = patch.court === undefined ? match.court : String(patch.court || match.court || "미정").slice(0, 80);
@@ -6991,10 +7021,11 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
   if (nextCourt?.region) nextRules.region = nextCourt.region;
   const nextMatch = {
     ...match,
-    mode: `${sideCapacity}v${sideCapacity}`,
+    mode: nextMode,
     status: "agreed",
     rules: nextRules,
     sideCapacity,
+    benchCapacity,
     courtId: nextCourtId,
     court: nextCourtName,
     memo: patch.memo === undefined ? match.memo : String(patch.memo ?? "").slice(0, 500),
@@ -7118,6 +7149,7 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
   if (!team) return state;
 
   const sideCapacity = getRecruitingSideCapacity(match);
+  const benchCapacity = getRecruitingBenchCapacity(match);
   const eligibility = getTeamEventEligibility(team, state.users, {
     capacity: sideCapacity,
     ranked: match.ranked,
@@ -7140,7 +7172,7 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
   const nextActiveIds = normalizeRosterIds(roster.playerIds).slice(0, sideCapacity);
   const nextReserveIds = normalizeRosterIds(roster.reservePlayerIds)
     .filter((playerId) => !nextActiveIds.includes(playerId))
-    .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
+    .slice(0, benchCapacity);
   const leaderId = tournamentPregame
     ? getTeamCaptainId(state.teams, team.id)
     : getMatchSideLeaderId(match, state.teams, sideName);
@@ -7581,12 +7613,13 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   }
 
   if (reserve) {
+    const benchCapacity = getRecruitingBenchCapacity(post);
     const reserveCount = lobby.sides[side]?.reserveCandidates?.length ?? 0;
     const pendingReserveCount = getPendingReserveInvitationCount(roomState, side);
-    if (reserveCount + pendingReserveCount + targetUserIds.length > MAX_RECRUITING_RESERVES_PER_SIDE) {
+    if (reserveCount + pendingReserveCount + targetUserIds.length > benchCapacity) {
       return {
         ...state,
-        notifications: [getRecruitingReserveLimitNotification(postId, side), ...state.notifications],
+        notifications: [getRecruitingReserveLimitNotification(postId, side, benchCapacity), ...state.notifications],
       };
     }
   }
@@ -7888,6 +7921,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
 
   const lobby = getRecruitingLobby(post, state);
   const side = MATCH_SIDES.includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
+  const benchCapacity = getRecruitingBenchCapacity(post);
   let reserve = Boolean(invitation.reserve);
   const invitedTeamCapacity = getRecruitingSideCapacity(post);
   const invitedTeamKey = invitedTeam ? `team:${invitedTeam.id}` : "";
@@ -7902,10 +7936,10 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
       existingInvitedTeamApplicant.playerId,
     ).includes(state.currentUserId)
     : false;
-  const reserveFull = (lobby.sides[side]?.reserveCandidates?.length ?? 0) >= MAX_RECRUITING_RESERVES_PER_SIDE;
+  const reserveFull = (lobby.sides[side]?.reserveCandidates?.length ?? 0) >= benchCapacity;
   const activeFull = lobby.sides[side].filled >= lobby.sides[side].capacity && !alreadyInInvitedTeamSlot;
   if (reserve && reserveFull) {
-    return expireInvitation(`${SIDE_LABEL_TEXT[side]} 후보가 이미 ${MAX_RECRUITING_RESERVES_PER_SIDE}명입니다.`);
+    return expireInvitation(`${SIDE_LABEL_TEXT[side]} 후보가 이미 ${benchCapacity}명입니다.`);
   }
   if (!reserve && activeFull) {
     if (reserveFull) return expireInvitation("출전 슬롯과 후보 슬롯이 모두 찼습니다.");
@@ -8013,7 +8047,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
         }
       : { ...post, applicants: nextApplicants, roomState: nextRoomState };
     if (reserve && isRecruitingReserveLimitExceeded(nextPost, state, side)) {
-      return expireInvitation(`${SIDE_LABEL_TEXT[side]} 후보가 이미 ${MAX_RECRUITING_RESERVES_PER_SIDE}명입니다.`);
+      return expireInvitation(`${SIDE_LABEL_TEXT[side]} 후보가 이미 ${benchCapacity}명입니다.`);
     }
     if (!reserve) {
       const nextLobby = getRecruitingLobby(nextPost, state);
@@ -8510,6 +8544,7 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
   }
 
   const capacity = getRecruitingSideCapacity(post);
+  const benchCapacity = getRecruitingBenchCapacity(post);
   const teamPlayerIds = new Set(getSelectableTeamPlayerIds(entry.team));
   const occupiedPlayerIds = new Set(
     (lobby.entries ?? [])
@@ -8528,7 +8563,7 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
   const nextPlayerSet = new Set(nextPlayerIds);
   const nextReservePlayerIds = uniquePlayerIds(roster.reservePlayerIds ?? [])
     .filter((playerId) => teamPlayerIds.has(playerId) && !occupiedPlayerIds.has(playerId) && !nextPlayerSet.has(playerId))
-    .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
+    .slice(0, benchCapacity);
   const nextPartyReserves = { ...roomState.partyReserves, [entry.id]: nextReservePlayerIds };
   if (!nextReservePlayerIds.length) delete nextPartyReserves[entry.id];
   const nextRoomState = updateManyPinnedReservePlayers(
@@ -8570,7 +8605,7 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
   if (isRecruitingReserveLimitExceeded(nextPost, state, entry.side)) {
     return {
       ...state,
-      notifications: [getRecruitingReserveLimitNotification(postId, entry.side), ...state.notifications],
+      notifications: [getRecruitingReserveLimitNotification(postId, entry.side, benchCapacity), ...state.notifications],
     };
   }
 
@@ -8596,6 +8631,7 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
   if (partyLeaderId !== state.currentUserId && playerId !== state.currentUserId) return state;
 
   const capacity = getRecruitingSideCapacity(post);
+  const benchCapacity = getRecruitingBenchCapacity(post);
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
   const targetApplicant = entry.fixed
     ? null
@@ -8606,7 +8642,7 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
   const currentReserveIds = uniquePlayerIds(roomState.partyReserves?.[entry.id] ?? []);
   if (!reserve && currentPlayerIds.includes(playerId)) return state;
   if (reserve && currentReserveIds.includes(playerId) && !currentPlayerIds.includes(playerId)) return state;
-  const swapInPlayerId = reserve && currentReserveIds.length >= MAX_RECRUITING_RESERVES_PER_SIDE
+  const swapInPlayerId = reserve && currentReserveIds.length >= benchCapacity
     ? currentReserveIds.find((id) => id !== playerId)
     : "";
   const swapOutPlayerId = !reserve && currentPlayerIds.length >= capacity
@@ -8626,7 +8662,7 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
     : reserve
       ? uniquePlayerIds([...baseReserveIds, playerId])
       : uniquePlayerIds([...baseReserveIds, swapOutPlayerId].filter(Boolean));
-  if (nextReserveIds.length > MAX_RECRUITING_RESERVES_PER_SIDE) return state;
+  if (nextReserveIds.length > benchCapacity) return state;
   const nextPartyReserves = { ...roomState.partyReserves, [entry.id]: nextReserveIds };
   if (!nextReserveIds.length) delete nextPartyReserves[entry.id];
   const nextRoomState = updatePinnedReservePlayers(
@@ -9136,6 +9172,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
   const timingType = promotedPost.timingType === "instant" || promotedPost.roomState?.timingType === "instant" ? "instant" : "scheduled";
   const scheduledAt = timingType === "instant" ? "즉시" : (promotedPost.scheduledDate && promotedPost.scheduledTime ? `${promotedPost.scheduledDate} ${promotedPost.scheduledTime}` : "일정 미정");
   const now = new Date().toISOString();
+  const benchCapacity = getRecruitingBenchCapacity(promotedPost);
   const teamAPlayers = lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity);
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
   const teamAPlayerTeams = getLobbySidePlayerTeamIds(lobby, "teamA");
@@ -9143,10 +9180,10 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
   const playerIds = [...teamAPlayers, ...teamBPlayers];
   const teamAReservePlayers = uniquePlayerIds(lobby.sides.teamA.reserveCandidates.map((candidate) => candidate.playerId))
     .filter((playerId) => !teamAPlayers.includes(playerId))
-    .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
+    .slice(0, benchCapacity);
   const teamBReservePlayers = uniquePlayerIds(lobby.sides.teamB.reserveCandidates.map((candidate) => candidate.playerId))
     .filter((playerId) => !teamBPlayers.includes(playerId))
-    .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
+    .slice(0, benchCapacity);
   const confirmedReserveIds = new Set([...teamAReservePlayers, ...teamBReservePlayers]);
   const refereeId = getTrustedRefereeId(state, promotedPost.refereeId, playerIds);
   const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(promotedPost, state);
@@ -9183,6 +9220,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
       region: promotedPost.region,
       mmrRangeMode,
       ratingScale,
+      benchCapacity,
       slotPositions: promotedRoomState.slotPositions ?? {},
     },
     memo: promotedPost.memo,

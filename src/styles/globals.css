@@ -20062,6 +20062,264 @@ html[data-theme="light"] .court-map-picker-state {
   flex: 1 1 0;
 }
 
+.match-creation-wizard-nav {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  background: var(--surface-2);
+  padding: 8px;
+  scrollbar-width: thin;
+}
+
+.match-creation-wizard-nav ol {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(112px, 1fr);
+  gap: 6px;
+  min-width: 720px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.match-creation-wizard-nav button {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--ui-control-radius);
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+}
+
+.match-creation-wizard-nav button > span {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-weight: 900;
+}
+
+.match-creation-wizard-nav li.active button {
+  border-color: color-mix(in srgb, var(--rb-orange) 56%, var(--line));
+  background: color-mix(in srgb, var(--rb-orange) 10%, var(--surface-2));
+  color: var(--text);
+}
+
+.match-creation-wizard-nav li.active button > span,
+.match-creation-wizard-nav li.complete button > span {
+  border-color: var(--rb-orange);
+  color: var(--rb-orange);
+}
+
+.match-intent-preset-section,
+.match-roster-policy-fields,
+.match-cost-policy-fields,
+.match-operations-policy-fields {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.match-intent-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.match-intent-preset-grid > button {
+  display: grid;
+  min-width: 0;
+  min-height: 74px;
+  align-content: center;
+  gap: 5px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--text);
+  text-align: left;
+}
+
+.match-intent-preset-grid > button span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.match-intent-preset-grid > button.active {
+  border-color: var(--rb-orange);
+  background: color-mix(in srgb, var(--rb-orange) 10%, var(--ui-control-bg));
+}
+
+.match-roster-policy-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.match-roster-policy-fields .field-block {
+  display: grid;
+  gap: 6px;
+}
+
+.match-bench-capacity-control button {
+  flex: 1 1 0;
+}
+
+.match-clock-preset-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.match-clock-preset-row > span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.match-clock-preset-row .segmented-control {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.match-cost-components-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.match-cost-components-grid label {
+  min-width: 0;
+}
+
+.match-cost-summary {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--ui-control-radius);
+  background: var(--surface-3);
+  padding: 10px 12px;
+}
+
+.match-cost-summary span,
+.match-cost-summary em {
+  color: var(--muted);
+}
+
+.match-cost-summary strong {
+  color: var(--gold);
+}
+
+.match-cost-summary em {
+  margin-left: auto;
+}
+
+.match-bench-payment-acknowledgement {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--rb-orange) 48%, var(--line));
+  border-radius: var(--ui-control-radius);
+  background: color-mix(in srgb, var(--rb-orange) 8%, var(--surface-2));
+  padding: 10px 12px;
+}
+
+.match-equipment-toggle-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.match-wizard-referee-row {
+  margin-top: 4px;
+}
+
+.match-creation-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.match-creation-summary-grid > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--ui-control-radius);
+  background: var(--surface-3);
+  padding: 11px 12px;
+}
+
+.match-creation-summary-grid span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.match-creation-summary-grid strong {
+  overflow-wrap: anywhere;
+}
+
+.match-creation-final-summary,
+.match-creation-validation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.match-creation-final-summary > p {
+  margin: 4px 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.match-creation-validation-list,
+.match-creation-ready {
+  border: 1px solid var(--line);
+  border-radius: var(--ui-control-radius);
+  padding: 10px 12px;
+}
+
+.match-creation-validation-list.is-error {
+  border-color: color-mix(in srgb, var(--rb-orange) 56%, var(--line));
+  background: color-mix(in srgb, var(--rb-orange) 8%, var(--surface-2));
+}
+
+.match-creation-validation-list.is-warning {
+  border-color: color-mix(in srgb, var(--gold) 52%, var(--line));
+  background: color-mix(in srgb, var(--gold) 7%, var(--surface-2));
+}
+
+.match-creation-ready {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.match-creation-ready svg {
+  color: var(--rb-orange);
+}
+
+.match-creation-wizard-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.match-creation-wizard-actions .button {
+  min-width: 112px;
+}
+
 .create-referee-row {
   display: grid;
   grid-column: 1 / -1;
@@ -20130,6 +20388,12 @@ html[data-theme="light"] .court-map-picker-state {
   }
 }
 
+@media (max-width: 900px) {
+  .match-cost-components-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1100px) {
   .create-match-info-grid.is-standard-room {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -20180,6 +20444,34 @@ html[data-theme="light"] .court-map-picker-state {
 
   .create-eligibility-control > .segmented-control {
     width: 100%;
+  }
+
+  .match-intent-preset-grid,
+  .match-roster-policy-fields,
+  .match-creation-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-cost-components-grid,
+  .match-equipment-toggle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .match-clock-preset-row {
+    grid-template-columns: 1fr;
+  }
+
+  .match-clock-preset-row .segmented-control {
+    width: 100%;
+  }
+
+  .match-cost-summary {
+    flex-wrap: wrap;
+  }
+
+  .match-cost-summary em {
+    width: 100%;
+    margin-left: 0;
   }
 }
 

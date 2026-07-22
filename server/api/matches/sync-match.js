@@ -12,7 +12,11 @@ import {
   PLAYER_STAT_FIELD_IDS as PLAYER_STAT_FIELDS,
   RECORD_TYPES,
   getModeSize,
+  isSupportedMatchMode,
+  isSupportedSoloRecordMode,
+  isValidBenchCapacity,
   isRefereeGrade,
+  normalizeBenchCapacity,
   normalizeDisputeWindowMinutes,
 } from "../../../src/lib/constants.js";
 import { makeAnonymousMatchPlayer } from "../../../src/lib/matchUtils.js";
@@ -82,6 +86,16 @@ function reject(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   throw error;
+}
+
+export function getMatchBenchPolicyError(error = {}) {
+  const errorText = [error.message, error.details, error.hint].filter(Boolean).join(" ");
+  if (errorText.includes("invalid_bench_capacity")) return { statusCode: 400, message: "invalid_bench_capacity" };
+  if (errorText.includes("match_reserve_full")) return { statusCode: 409, message: "match_reserve_full" };
+  if (errorText.includes("match_reserve_exceeds_bench_capacity")) {
+    return { statusCode: 409, message: "match_reserve_exceeds_bench_capacity" };
+  }
+  return null;
 }
 
 function withTimeout(promise, timeoutMs, message) {
@@ -497,6 +511,10 @@ function getMatchReserveIds(match = {}) {
   return Object.values(match.reservePlayers ?? match.rules?.reservePlayers ?? {}).flatMap(toArray);
 }
 
+function getMatchBenchCapacity(match = {}) {
+  return normalizeBenchCapacity(match.benchCapacity ?? match.rules?.benchCapacity);
+}
+
 function getMatchPlayedIds(match = {}) {
   return Object.values(match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {}).flatMap(toArray);
 }
@@ -570,10 +588,20 @@ function getAnonymousPlayerIds(match = {}) {
   return new Set(Object.keys(match.anonymousPlayers ?? {}).filter(Boolean));
 }
 
-function validateMatchShape(match = {}) {
+export function validateMatchShape(match = {}) {
+  const mode = match.mode ?? "5v5";
+  const supported = isSoloRecordMatch(match)
+    ? isSupportedSoloRecordMode(mode)
+    : isSupportedMatchMode(mode);
+  if (!supported) reject(400, "unsupported_match_mode");
   const capacity = getModeSize(match.mode);
+  const explicitBenchCapacity = match.benchCapacity ?? match.rules?.benchCapacity;
+  if (explicitBenchCapacity !== undefined && !isValidBenchCapacity(explicitBenchCapacity)) reject(400, "invalid_bench_capacity");
+  const benchCapacity = getMatchBenchCapacity(match);
   if ((match.teamA?.players ?? []).filter(Boolean).length > capacity) reject(400, "team_a_exceeds_mode_capacity");
   if ((match.teamB?.players ?? []).filter(Boolean).length > capacity) reject(400, "team_b_exceeds_mode_capacity");
+  if (toArray((match.reservePlayers ?? match.rules?.reservePlayers ?? {}).teamA).length > benchCapacity) reject(400, "team_a_exceeds_bench_capacity");
+  if (toArray((match.reservePlayers ?? match.rules?.reservePlayers ?? {}).teamB).length > benchCapacity) reject(400, "team_b_exceeds_bench_capacity");
 
   const allPlayerIds = [...getMatchPlayerIds(match), ...getMatchReserveIds(match)];
   const duplicate = allPlayerIds.find((playerId, index) => allPlayerIds.indexOf(playerId) !== index);
@@ -657,6 +685,7 @@ function toMatchRow(match = {}, actorProfileId = "") {
   const recruitingPostId = nullableText(match.recruitingPostId ?? match.rules?.recruitingPostId);
   const courtId = match.courtId ?? match.court_id ?? match.approvedCourtId ?? match.registeredCourtId ?? null;
   const schedule = getDbScheduleParts(match);
+  const benchCapacity = getMatchBenchCapacity(match);
   return {
     id: match.id,
     title: match.title ?? "경기",
@@ -702,6 +731,7 @@ function toMatchRow(match = {}, actorProfileId = "") {
       ...(match.rules ?? {}),
       timingType: schedule.timingType,
       visibility: match.visibility ?? match.rules?.visibility ?? "private",
+      benchCapacity,
       statRecorders,
       playedPlayerIds,
       mmrExcludedPlayerIds,
@@ -2189,10 +2219,13 @@ export default async function handler(request, response) {
     });
   } catch (error) {
     console.error("Match sync failed.", error);
+    const benchPolicyError = getMatchBenchPolicyError(error);
     const permissionDenied = error.code === "42501";
-    const statusCode = error.statusCode || (permissionDenied ? 403 : error.code === "40001" || error.message === "match_stale_snapshot" ? 409 : 500);
+    const statusCode = benchPolicyError?.statusCode
+      ?? error.statusCode
+      ?? (permissionDenied ? 403 : error.code === "40001" || error.message === "match_stale_snapshot" ? 409 : 500);
     sendJson(response, statusCode, {
-      error: permissionDenied ? "match_sync_permission_denied" : error.message || "match_sync_failed",
+      error: benchPolicyError?.message ?? (permissionDenied ? "match_sync_permission_denied" : error.message || "match_sync_failed"),
       ...(permissionDenied ? { reason: error.message || "match_sync_permission_denied" } : {}),
     });
   }

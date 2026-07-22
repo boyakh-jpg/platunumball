@@ -8,6 +8,16 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtDetailModal from "../components/court/CourtDetailModal.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MeetingPointFields from "../components/match/MeetingPointFields.jsx";
+import {
+  MatchCostPolicyFields,
+  MatchCreationFinalSummary,
+  MatchCreationWizardActions,
+  MatchCreationWizardNav,
+  MatchIntentPresetSelector,
+  MatchOperationsPolicyFields,
+  MatchRosterPolicyFields,
+  getMatchCreationSteps,
+} from "../components/match/MatchCreationWizard.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, DISPUTE_WINDOW_MINUTES, DISPUTE_WINDOW_OPTIONS, MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS, getCanonicalRegion, getHostTrustRequirement, getModeSize, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
@@ -15,6 +25,14 @@ import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtPl
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isEligibleReferee } from "../lib/matchUtils.js";
 import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
+import {
+  getDefaultMatchCreationPolicy,
+  getMatchCreationPolicyPayload,
+  getMatchCreationValidation,
+  getMatchIntentPresetPatch,
+  getPersonalRecordDraftPayload,
+  getScopedMatchCreationPolicyPayload,
+} from "../lib/matchCreationPolicies.js";
 import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange } from "../lib/recruiting.js";
@@ -144,12 +162,12 @@ function getActionErrorCode(result) {
   return String(result.error || result.message || "server_action_failed");
 }
 
-function getDefaultCreateTitle(mode = "5v5") {
-  return `오늘의 ${mode} 공식전`;
+function getDefaultCreateTitle(mode = "5v5", matchIntent = "standard_competitive") {
+  return matchIntent === "pickup" ? `오늘의 ${mode} 픽업` : `오늘의 ${mode} 공식전`;
 }
 
 function isDefaultCreateTitle(title = "") {
-  return /^오늘의\s+(1v1|2v2|3v3|4v4|5v5)\s+공식전$/i.test(String(title).trim());
+  return /^오늘의\s+(1v1|2v2|3v3|4v4|5v5)\s+(공식전|픽업)$/i.test(String(title).trim());
 }
 
 function getMatchModeOrDefault(mode = "", fallback = "5v5") {
@@ -349,7 +367,7 @@ export default function CreateMatch({ app }) {
     ageRestriction: defaultAgeRestriction,
     title: getDefaultCreateTitle(defaultMode),
     mode: defaultMode,
-    ...getDefaultMatchRules(defaultMode),
+    ...getDefaultMatchCreationPolicy(defaultMode),
     courtId: defaultCourt.id ?? "",
     court: defaultCourt.name,
     tournamentCourtIds: defaultCourt.id ? [defaultCourt.id] : [],
@@ -393,6 +411,7 @@ export default function CreateMatch({ app }) {
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState("");
+  const [wizardStep, setWizardStep] = useState(1);
 
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
@@ -438,7 +457,13 @@ export default function CreateMatch({ app }) {
   );
   const isPublicRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "public";
   const isTournamentRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "tournament";
-  const isTeamRoom = !isSoloRecord && !isTournamentRoom && draft.hostJoinMode === "team";
+  const isPickupMatch = !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom && draft.matchIntent === "pickup";
+  const isTeamRoom = !isSoloRecord && !isTournamentRoom && !isPickupMatch && draft.hostJoinMode === "team";
+  const isStandardCreateWizard = !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom;
+  const creationWizardType = isSoloRecord ? "personal_record" : isMatchRecordRoom ? "match_record" : isTournamentRoom ? "tournament" : "match";
+  const creationWizardSteps = useMemo(() => getMatchCreationSteps(creationWizardType), [creationWizardType]);
+  const matchCreationValidation = useMemo(() => getMatchCreationValidation(draft), [draft]);
+  const matchCreationPolicy = matchCreationValidation.policy;
   const effectiveTeamOnly = Boolean(isTeamRoom);
   const currentRoomKind = getRoomKindFromDraft(draft);
   const sideCapacity = getRecruitingSideCapacity(draft);
@@ -835,7 +860,8 @@ export default function CreateMatch({ app }) {
   );
   const matchRecordInvalid = isMatchRecordRoom && (matchRecordIndividualInvalid || matchRecordTeamInvalid);
   const meetingPointInvalid = !isSoloRecord && draft.meetingPoint.trim().length < 2;
-  const submitDisabled = courtRequiredBlocked || meetingPointInvalid || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isMatchRecordRoom
+  const matchCreationPolicyInvalid = isStandardCreateWizard && matchCreationValidation.errors.length > 0;
+  const submitDisabled = courtRequiredBlocked || meetingPointInvalid || matchCreationPolicyInvalid || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isMatchRecordRoom
     ? matchRecordInvalid
     : isTournamentRoom
     ? tournamentInvalid
@@ -846,6 +872,8 @@ export default function CreateMatch({ app }) {
     ? "등록된 구장을 선택해야 생성할 수 있습니다."
     : meetingPointInvalid
       ? "실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요."
+    : matchCreationPolicyInvalid
+      ? matchCreationValidation.errors[0]
     : isSoloRecord && soloRecordInvalid
     ? soloRosterError || "제목, 날짜, 점수를 확인해야 합니다. 개인 기록 날짜는 오늘부터 과거 7일까지만 가능합니다."
     : isMatchRecordRoom && matchRecordInvalid
@@ -1271,8 +1299,9 @@ export default function CreateMatch({ app }) {
     setSubmitting(true);
     try {
     if (isSoloRecord) {
+      const personalRecordDraft = getPersonalRecordDraftPayload(draft);
       const matchId = await app.actions.createMatch({
-        ...draft,
+        ...personalRecordDraft,
         recordType: RECORD_TYPES.personalRecord,
         visibility: "private",
         ranked: false,
@@ -1293,8 +1322,10 @@ export default function CreateMatch({ app }) {
     }
     if (isMatchRecordRoom) {
       const individualRecord = draft.mode === "1v1";
+      const creationPolicyPayload = getScopedMatchCreationPolicyPayload(draft, "match_record");
       const matchId = await app.actions.createMatch({
         ...draft,
+        ...creationPolicyPayload,
         recordType: RECORD_TYPES.matchRecord,
         visibility: "private",
         timingType: "scheduled",
@@ -1316,6 +1347,13 @@ export default function CreateMatch({ app }) {
         opponentPlayerIds: [opponentLeaderId].filter(Boolean),
         opponentReservePlayerIds: [],
         opponentLeaderId,
+        sideCapacity: creationPolicyPayload.onCourtCount,
+        benchCapacity: creationPolicyPayload.benchCapacity,
+        rules: {
+          ...getMatchRulesPayload(draft, { mode: draft.mode }),
+          ...creationPolicyPayload,
+          sideCapacity: creationPolicyPayload.onCourtCount,
+        },
         courtId: selectedCourt.id,
         court: selectedCourt.name,
         scheduledDate: draft.scheduledDate,
@@ -1328,16 +1366,21 @@ export default function CreateMatch({ app }) {
       return;
     }
     if (isTournamentRoom) {
+      const creationPolicyPayload = getScopedMatchCreationPolicyPayload(draft, "tournament");
       const tournamentResult = await app.actions.createTournament({
         ...draft,
+        ...creationPolicyPayload,
+        sideCapacity: creationPolicyPayload.onCourtCount,
+        benchCapacity: creationPolicyPayload.benchCapacity,
         teamIds: draft.tournamentTeamIds,
         courtId: selectedCourt.id,
         court: selectedCourt.name,
         region: selectedCourt.region,
         rules: {
           ...getMatchRulesPayload(draft, { mode: draft.mode }),
+          ...creationPolicyPayload,
           disputeMinutes: Number.parseInt(draft.objectionWindow, 10),
-          sideCapacity,
+          sideCapacity: creationPolicyPayload.onCourtCount,
           mmrLimitMode: draft.mmrLimitMode,
           mmrRangeMode: draft.mmrRangeMode,
           ageRestriction: draft.ageRestriction,
@@ -1357,11 +1400,13 @@ export default function CreateMatch({ app }) {
       }
       return;
     }
+    const creationPolicyPayload = getMatchCreationPolicyPayload(draft);
     const postId = await app.actions.createRecruitingPost({
+      ...creationPolicyPayload,
       visibility: draft.visibility,
       title: draft.title,
-      hostJoinMode: draft.hostJoinMode,
-      teamOnly: effectiveTeamOnly,
+      hostJoinMode: creationPolicyPayload.hostJoinMode,
+      teamOnly: creationPolicyPayload.teamOnly && effectiveTeamOnly,
       teamId: isTeamRoom ? draft.teamAId : "",
       playerIds: isTeamRoom ? getRepresentativePlayerIds(app.currentUser.id) : [],
       reservePlayerIds: [],
@@ -1382,25 +1427,29 @@ export default function CreateMatch({ app }) {
       scheduledDate: isInstantRoom ? "" : draft.scheduledDate,
       scheduledTime: isInstantRoom ? "" : draft.scheduledTime,
       mode: draft.mode,
-      ranked: draft.ranked,
-      official: draft.official,
+      sideCapacity: creationPolicyPayload.onCourtCount,
+      benchCapacity: creationPolicyPayload.benchCapacity,
+      ranked: creationPolicyPayload.ranked,
+      official: creationPolicyPayload.official,
       preRegistered: draft.preRegistered,
       mmrRangeMode: draft.mmrRangeMode,
-      mmrLimitMode: draft.mmrLimitMode,
+      mmrLimitMode: creationPolicyPayload.mmrLimitMode,
       ageRestriction: draft.ageRestriction,
       allowedAgeGroups: ageRestrictionOption.allowedGroups,
       objectionWindow: draft.objectionWindow,
       disputeMinutes: Number.parseInt(draft.objectionWindow, 10),
       rules: {
         ...getMatchRulesPayload(draft, { mode: draft.mode }),
+        ...creationPolicyPayload,
+        sideCapacity: creationPolicyPayload.onCourtCount,
         ageRestriction: draft.ageRestriction,
         allowedAgeGroups: ageRestrictionOption.allowedGroups,
       },
       stakes: draft.stakes,
-      courtReserved: draft.courtReserved,
-      courtFee: draft.courtFee,
+      courtReserved: creationPolicyPayload.venuePaymentType === "paid_reserved",
+      courtFee: creationPolicyPayload.venueFee ? String(creationPolicyPayload.venueFee) : "",
       memo: [
-        draft.courtReserved ? `구장 예약: ${draft.courtFee ? `${draft.courtFee}원` : "예약 있음"}` : "",
+        creationPolicyPayload.venuePaymentType === "paid_reserved" ? `구장 예약: ${creationPolicyPayload.venueFee ? `${creationPolicyPayload.venueFee}원` : "예약 있음"}` : "",
         draft.memo,
         isPublicRoom ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
       ].filter(Boolean).join("\n"),
@@ -1426,7 +1475,10 @@ export default function CreateMatch({ app }) {
         </div>
       </header>
 
+      <MatchCreationWizardNav currentStep={wizardStep} steps={creationWizardSteps} onStepChange={setWizardStep} />
+
       <div className="content-grid wide-left">
+        {wizardStep === 1 ? (
         <Card className="section-card full-span">
           <div className="section-title-row">
             <div>
@@ -1441,7 +1493,17 @@ export default function CreateMatch({ app }) {
                 <button
                   type="button"
                   className={draft.recordType === RECORD_TYPES.match && draft.visibility === "private" ? "active" : ""}
-                  onClick={() => update({ recordType: RECORD_TYPES.match, visibility: "private", mode: getMatchModeOrDefault(draft.mode, defaultMode), ranked: true, official: true, preRegistered: true })}
+                  onClick={() => {
+                    const mode = getMatchModeOrDefault(draft.mode, defaultMode);
+                    setWizardStep(1);
+                    update({
+                      recordType: RECORD_TYPES.match,
+                      visibility: "private",
+                      mode,
+                      ...getMatchIntentPresetPatch(draft.matchIntent, mode),
+                      title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode, draft.matchIntent) : draft.title,
+                    });
+                  }}
                 >
                   <Lock size={19} />
                   <span>
@@ -1455,17 +1517,17 @@ export default function CreateMatch({ app }) {
                   onClick={() => {
                     const team = defaultTeamA ?? selectedTeamA;
                     const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
-                    const hostJoinMode = nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
+                    const hostJoinMode = draft.matchIntent === "pickup" || nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
                     const playerIds = hostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
+                    setWizardStep(1);
                     update({
                       recordType: RECORD_TYPES.match,
                       visibility: "public",
                       mode: nextMode,
-                      ranked: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.ranked,
-                      official: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.official,
-                      preRegistered: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.preRegistered,
+                      ...getMatchIntentPresetPatch(draft.matchIntent, nextMode),
                       hostJoinMode,
                       teamOnly: hostJoinMode === "team",
+                      title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(nextMode, draft.matchIntent) : draft.title,
                       teamAId: team?.id ?? draft.teamAId,
                       playerIds,
                       reservePlayerIds: [],
@@ -1575,8 +1637,30 @@ export default function CreateMatch({ app }) {
               </>
             )}
           </div>
+          {isStandardCreateWizard ? (
+            <div className="match-intent-preset-section">
+              <span className="field-label">경기 성격</span>
+              <MatchIntentPresetSelector
+                value={draft.matchIntent}
+                benchCapacity={matchCreationPolicy.benchCapacity}
+                onSelect={(matchIntent) => update({
+                  ...getMatchIntentPresetPatch(matchIntent, draft.mode),
+                  title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(draft.mode, matchIntent) : draft.title,
+                  ...(matchIntent === "pickup" ? {
+                    playerIds: [],
+                    reservePlayerIds: [],
+                    opponentPlayerIds: [],
+                    opponentReservePlayerIds: [],
+                    opponentLeaderId: "",
+                  } : {}),
+                })}
+              />
+            </div>
+          ) : null}
         </Card>
+        ) : null}
 
+        {wizardStep === 2 ? (
         <Card className="section-card full-span">
           <div className="section-title-row">
             <div>
@@ -1595,7 +1679,7 @@ export default function CreateMatch({ app }) {
                 <select
                   value={draft.hostJoinMode}
                   onChange={(event) => {
-                    const hostJoinMode = event.target.value === "team" && !canCreateTeamRoom ? "player" : event.target.value;
+                    const hostJoinMode = isPickupMatch || (event.target.value === "team" && !canCreateTeamRoom) ? "player" : event.target.value;
                     const playerIds = hostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
                     const opponentLeaderId = hostJoinMode === "team" && !isPublicRoom ? getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? "" : "";
                     update({
@@ -1609,10 +1693,12 @@ export default function CreateMatch({ app }) {
                     });
                   }}
                 >
-                  <option value="team" disabled={!canCreateTeamRoom}>팀전</option>
+                  <option value="team" disabled={!canCreateTeamRoom || isPickupMatch}>팀전</option>
                   <option value="player">개인전</option>
                 </select>
-                {!canCreateTeamRoom ? <span className="form-warning">팀이 있어야 팀전을 만들 수 있습니다.</span> : null}
+                {isPickupMatch
+                  ? <span className="form-warning">픽업·자유경기는 개인 참가자를 모집해 현장에서 팀을 나눕니다.</span>
+                  : !canCreateTeamRoom ? <span className="form-warning">팀이 있어야 팀전을 만들 수 있습니다.</span> : null}
               </label>
             ) : null}
             {isTournamentRoom ? (
@@ -1633,11 +1719,18 @@ export default function CreateMatch({ app }) {
                 <small>{isInstantRoom ? "날짜와 시간 없이 바로 경기 준비방을 만듭니다." : isPublicRoom ? "공개 예약방은 5일 이내이면서 시작까지 4시간 이상 남은 일정만 만들 수 있습니다." : "비공개 예약방은 1개월 이내 일정으로 만들 수 있습니다."}</small>
               </div>
             ) : null}
-            {!isTournamentRoom ? (
             <label className="create-capacity-field">
               인원 방식
               <select value={draft.mode} onChange={(event) => {
                 const mode = event.target.value;
+                if (isTournamentRoom) {
+                  update({
+                    mode,
+                    ...getDefaultMatchRules(mode),
+                    title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
+                  });
+                  return;
+                }
                 if (isSoloRecord) {
                   update({ mode });
                   return;
@@ -1670,16 +1763,16 @@ export default function CreateMatch({ app }) {
                   });
                   return;
                 }
-                const hostJoinMode = mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
+                const hostJoinMode = draft.matchIntent === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
                 const nextIsTeamRoom = !isTournamentRoom && hostJoinMode === "team";
                 const playerIds = nextIsTeamRoom ? getRepresentativePlayerIds(app.currentUser.id) : [];
                 const opponentLeaderId = !isPublicRoom && nextIsTeamRoom ? getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? "" : "";
                 update({
                   mode,
-                  ...getDefaultMatchRules(mode),
+                  ...getMatchIntentPresetPatch(draft.matchIntent, mode),
                   hostJoinMode,
                   teamOnly: nextIsTeamRoom,
-                  title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
+                  title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode, draft.matchIntent) : draft.title,
                   ...(nextIsTeamRoom ? {
                     playerIds,
                     reservePlayerIds: [],
@@ -1702,7 +1795,6 @@ export default function CreateMatch({ app }) {
                 ))}
               </select>
             </label>
-            ) : null}
             {!isInstantRoom ? (
               <>
                 <label className="create-date-field">
@@ -1783,7 +1875,7 @@ export default function CreateMatch({ app }) {
                 </label>
               </>
             ) : null}
-            {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? (
+            {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom && !isStandardCreateWizard ? (
               <>
                 <div className="create-referee-row">
                   <label className="settings-checkbox">
@@ -1848,8 +1940,11 @@ export default function CreateMatch({ app }) {
               </>
             ) : null}
           </div>
+          {!isSoloRecord ? <MatchRosterPolicyFields draft={draft} onChange={update} /> : null}
         </Card>
+        ) : null}
 
+        {wizardStep === 4 ? (
         <Card className="section-card full-span selector-panel">
           <div className="section-title-row">
             <div>
@@ -1907,7 +2002,9 @@ export default function CreateMatch({ app }) {
               ) : null}
             </div>
           </div>
-          {!isSoloRecord && !isMatchRecordRoom ? (
+          {isStandardCreateWizard ? (
+            <MatchCostPolicyFields draft={draft} onChange={update} />
+          ) : !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom ? (
             <div className="court-reservation-row">
               <label>
                 <input type="checkbox" checked={draft.courtReserved} onChange={(event) => update({ courtReserved: event.target.checked })} />
@@ -1959,6 +2056,7 @@ export default function CreateMatch({ app }) {
             <Badge tone={!selectedCourt || courtPlayWarning ? "orange" : "green"}>{!selectedCourt ? "필수" : courtPlayWarning ? "경고" : "가능"}</Badge>
           </div>
         </Card>
+        ) : null}
 
         <CourtMapPicker
           open={courtMapOpen}
@@ -1978,6 +2076,7 @@ export default function CreateMatch({ app }) {
           onClose={() => setCourtDetailCourtId("")}
         />
 
+        {wizardStep === (isMatchRecordRoom ? 5 : 2) ? (
         <Card className="section-card full-span selector-panel">
           <div className="section-title-row">
             <div>
@@ -2198,7 +2297,7 @@ export default function CreateMatch({ app }) {
               {isPublicRoom ? (
                 <div className="create-public-note">
                   <Globe2 size={17} />
-                  <span>공개 팀전은 팀 대표가 방을 만들고, 출전/후보 명단은 방 안에서 확정합니다.</span>
+                  <span>{matchCreationPolicy.benchCapacity > 0 ? "공개 팀전은 팀 대표가 방을 만들고, 출전/후보 명단은 방 안에서 확정합니다." : "공개 팀전은 팀 대표가 방을 만들고, 출전 명단은 방 안에서 확정합니다."}</span>
                 </div>
               ) : null}
               {!isPublicRoom ? (
@@ -2255,8 +2354,12 @@ export default function CreateMatch({ app }) {
               </label>
               <div className="stat-integrity-note">
                 {isMatchRecordRoom
-                  ? "상대팀 대표 1명에게 기록 확인 요청을 보냅니다. 확인 대표가 B사이드 출전 선수와 후보 선수를 선택합니다."
-                  : "상대팀 대표 1명에게 초대장을 보냅니다. 수락한 사용자가 B사이드 파티장이 되어 출전 선수와 후보 선수를 선택합니다."}
+                  ? matchCreationPolicy.benchCapacity > 0
+                    ? "상대팀 대표 1명에게 기록 확인 요청을 보냅니다. 확인 대표가 B사이드 출전 선수와 후보 선수를 선택합니다."
+                    : "상대팀 대표 1명에게 기록 확인 요청을 보냅니다. 확인 대표가 B사이드 출전 선수를 선택합니다."
+                  : matchCreationPolicy.benchCapacity > 0
+                    ? "상대팀 대표 1명에게 초대장을 보냅니다. 수락한 사용자가 B사이드 파티장이 되어 출전 선수와 후보 선수를 선택합니다."
+                    : "상대팀 대표 1명에게 초대장을 보냅니다. 수락한 사용자가 B사이드 출전 선수를 선택합니다."}
               </div>
             </div>
           ) : null}
@@ -2267,9 +2370,10 @@ export default function CreateMatch({ app }) {
             </div>
           ) : null}
         </Card>
+        ) : null}
 
-        {!isSoloRecord ? (
-          <Card className="section-card">
+        {!isSoloRecord && wizardStep === 3 ? (
+          <Card className="section-card full-span">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">규칙</p>
@@ -2311,13 +2415,67 @@ export default function CreateMatch({ app }) {
           </Card>
         ) : null}
 
-        <Card className="section-card">
+        {wizardStep === 5 ? (
+        <Card className="section-card full-span">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">{isSoloRecord || isMatchRecordRoom ? "Record Note" : "계약 조건"}</p>
               <h2>{isSoloRecord || isMatchRecordRoom ? "기록 메모" : "약속과 메모"}</h2>
             </div>
           </div>
+          {isStandardCreateWizard || isTournamentRoom ? (
+            <MatchOperationsPolicyFields draft={draft} onChange={update} />
+          ) : null}
+          {isStandardCreateWizard ? (
+            <>
+              <div className="create-referee-row match-wizard-referee-row">
+                <label className="settings-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={draft.refereeWanted || Boolean(draft.refereeId)}
+                    onChange={(event) => {
+                      const refereeWanted = event.target.checked;
+                      update({ refereeWanted, refereeId: refereeWanted ? draft.refereeId : "" });
+                      if (!refereeWanted) setRefereeQuery("");
+                    }}
+                  />
+                  <span>심판 있음</span>
+                </label>
+                <label className="create-referee-search">
+                  심판 검색
+                  <SearchPicker
+                    value={refereeQuery}
+                    onChange={(value) => {
+                      setRefereeQuery(value);
+                      update({ refereeWanted: true, refereeId: "" });
+                    }}
+                    placeholder="심판 이름, #해시태그, 지역 검색"
+                    items={refereeSearchResults}
+                    remoteSearchType="referee"
+                    idleItems={favoriteReferees.length ? favoriteReferees : refereeCandidates.slice(0, 8)}
+                    idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
+                    title="심판 검색 결과"
+                    emptyText="초대 가능한 심판 없음"
+                    showIdleOnFocus
+                    floating
+                    closeOnResultClick
+                    renderItem={renderRefereeSearchItem}
+                  />
+                </label>
+              </div>
+              <div className="stat-integrity-note create-referee-note">
+                <span>
+                  {selectedReferee
+                    ? `초대할 심판: ${selectedReferee.name} · 신뢰도 ${selectedReferee.trustScore}`
+                    : "심판 초대 안 함 · 심판 없으면 개인 기록은 득점 중심"}
+                  {` · 신뢰도 ${REFEREE_TRUST_MIN} 이상만 초대 가능`}
+                </span>
+                {selectedReferee ? (
+                  <Button type="button" variant="secondary" size="sm" onClick={clearReferee}>초대 해제</Button>
+                ) : null}
+              </div>
+            </>
+          ) : null}
           {!isSoloRecord && !isMatchRecordRoom ? (
             <label className="memo-label">
               약속/벌칙 메모
@@ -2329,11 +2487,45 @@ export default function CreateMatch({ app }) {
             <textarea value={draft.memo} onChange={(event) => update({ memo: event.target.value })} />
           </label>
         </Card>
+        ) : null}
+
+        {wizardStep === 6 ? (
+          <Card className="section-card full-span match-creation-review-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Final check</p>
+                <h2>최종 확인</h2>
+              </div>
+            </div>
+            <MatchCreationFinalSummary
+              draft={{
+                ...draft,
+                summaryConfirmationTarget: isMatchRecordRoom
+                  ? (isIndividualMatchRecord ? selectedMatchRecordOpponent?.name : selectedTeamB?.name) || ""
+                  : "",
+                court: isTournamentRoom
+                  ? selectedTournamentCourts.map((court) => court.name).join(", ") || selectedCourt?.name || draft.court
+                  : selectedCourt?.name ?? draft.court,
+              }}
+              summaryType={creationWizardType}
+              errors={Array.from(new Set([
+                ...(isStandardCreateWizard ? matchCreationValidation.errors : []),
+                ...(submitDisabledReason ? [submitDisabledReason] : []),
+              ]))}
+              warnings={isStandardCreateWizard ? matchCreationValidation.warnings : []}
+            />
+          </Card>
+        ) : null}
       </div>
+      {wizardStep < 6 ? (
+        <MatchCreationWizardActions currentStep={wizardStep} steps={creationWizardSteps} onStepChange={setWizardStep} />
+      ) : null}
+      {wizardStep === 6 ? (
       <div className="create-submit-row">
         {submitFeedback || submitDisabledReason ? <span className="create-submit-warning">{submitFeedback || submitDisabledReason}</span> : null}
         <Button type="submit" disabled={submitDisabled || submitting}>{isSoloRecord ? "기록 저장" : isMatchRecordRoom ? "기록방 만들기" : isTournamentRoom ? "대회 생성" : "경기 생성"}</Button>
       </div>
+      ) : null}
     </form>
   );
 }

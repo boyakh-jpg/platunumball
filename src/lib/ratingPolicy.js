@@ -1,10 +1,14 @@
+import { MATCH_MODES } from "./constants.js";
+
+export const RATING_POLICY_MODE_IDS = Object.freeze(MATCH_MODES.map((mode) => mode.id));
+
 export const DEFAULT_RATING_POLICY = Object.freeze({
   playerMmr: {
     resultScalePercent: 100,
     statScalePercent: 100,
     deltaCapPercent: 100,
-    modeScalePercent: { "1v1": 100, "2v2": 100, "3v3": 100, "5v5": 100 },
-    integratedScalePercent: { "1v1": 100, "2v2": 100, "3v3": 100, "5v5": 100 },
+    modeScalePercent: Object.fromEntries(RATING_POLICY_MODE_IDS.map((mode) => [mode, 100])),
+    integratedScalePercent: Object.fromEntries(RATING_POLICY_MODE_IDS.map((mode) => [mode, 100])),
   },
   teamMmr: {
     resultScalePercent: 100,
@@ -50,10 +54,10 @@ export const RATING_POLICY_GROUPS = Object.freeze([
     label: "경기 형식별 MMR",
     description: "모드 MMR과 통합 MMR에 각 경기 형식이 반영되는 비율입니다.",
     fields: [
-      ...["1v1", "2v2", "3v3", "5v5"].map((mode) => ({
+      ...RATING_POLICY_MODE_IDS.map((mode) => ({
         path: ["playerMmr", "modeScalePercent", mode], label: `${mode} 모드`, unit: "%", min: 50, max: 150, step: 5,
       })),
-      ...["1v1", "2v2", "3v3", "5v5"].map((mode) => ({
+      ...RATING_POLICY_MODE_IDS.map((mode) => ({
         path: ["playerMmr", "integratedScalePercent", mode], label: `${mode} 통합`, unit: "%", min: 50, max: 150, step: 5,
       })),
     ],

@@ -5,7 +5,7 @@ import {
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
 import { persistMatchSnapshot } from "../matches/sync-match.js";
-import { DEFAULT_TOURNAMENT_MMR_GAP, MMR_LIMIT_MODES as MMR_LIMIT_MODE_IDS } from "../../../src/lib/constants.js";
+import { DEFAULT_TOURNAMENT_MMR_GAP, MMR_LIMIT_MODES as MMR_LIMIT_MODE_IDS, isSupportedMatchMode } from "../../../src/lib/constants.js";
 
 const FORMATS = new Set(["league", "tournament"]);
 const VISIBILITIES = new Set(["private", "public"]);
@@ -19,6 +19,12 @@ function reject(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   throw error;
+}
+
+export function getSupportedTournamentMode(mode = "5v5") {
+  const value = String(mode ?? "").trim() || "5v5";
+  if (!isSupportedMatchMode(value)) reject(400, "unsupported_match_mode");
+  return value;
 }
 
 function withTournamentCreateId(operation = null) {
@@ -116,7 +122,7 @@ function normalizeTournament(tournament = {}, actorProfileId = "") {
     region: tournament.region || null,
     courtId: tournament.courtId || tournament.court_id || tournament.approvedCourtId || tournament.registeredCourtId || null,
     court: tournament.court || tournament.courtName || tournament.court_name || null,
-    mode: tournament.mode || "5v5",
+    mode: getSupportedTournamentMode(tournament.mode),
     ranked: tournament.ranked !== false,
     official: Boolean(tournament.official),
     startDate: toDbDate(tournament.startDate || tournament.start_date),
@@ -447,6 +453,9 @@ async function assertPreferredMatchIdsAssignable(context, operation = {}) {
 }
 
 async function applySqlTournamentOperation(context, operation = {}) {
+  if (operation.action === "createTournament") {
+    getSupportedTournamentMode(operation.draft?.mode);
+  }
   await assertPreferredMatchIdsAssignable(context, operation);
   const { data, error } = await context.supabase.rpc("rankball_tournament_operation_action", {
     p_actor_profile_id: context.profileId,

@@ -9,6 +9,7 @@ import {
   SOLO_RECORD_MODE_IDS,
   STAT_ENTRY_WINDOW_MINUTES,
   normalizeDisputeWindowMinutes,
+  normalizeBenchCapacity,
 } from "../lib/constants.js";
 import { addDateDays, getLocalDateInputValue, normalizeStatRecorders } from "../lib/matchUtils.js";
 import {
@@ -271,7 +272,7 @@ export function fromRemoteMatch(row, context) {
     status: row.status ?? "contract",
     official: Boolean(row.official),
     preRegistered: Boolean(row.pre_registered),
-    rules: { ...(row.rules ?? {}), playedPlayerIds, mmrExcludedPlayerIds, statRecorders },
+    rules: { ...(row.rules ?? {}), benchCapacity: normalizeBenchCapacity(row.benchCapacity ?? row.rules?.benchCapacity), playedPlayerIds, mmrExcludedPlayerIds, statRecorders },
     memo: row.memo,
     stakes: row.stakes,
     ranked: row.ranked !== false,

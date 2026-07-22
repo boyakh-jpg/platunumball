@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getDbScheduleParts, toDbTime } from "../../../src/data/scheduleUtils.js";
 import { getAuthenticatedContext, nullableText, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
-import { DEFAULT_RATING, MATCH_SIDES, getModeSize, normalizeDisputeWindowMinutes, normalizeMmrLimitMode } from "../../../src/lib/constants.js";
+import { DEFAULT_RATING, MATCH_SIDES, getModeSize, isSupportedMatchMode, isValidBenchCapacity, normalizeDisputeWindowMinutes, normalizeMmrLimitMode } from "../../../src/lib/constants.js";
 import {
   ROOM_CHAT_MESSAGE_COLUMNS,
   ROOM_CHAT_MESSAGE_MAX_LENGTH,
@@ -17,7 +17,7 @@ import { syncRoomChatMessageToDiscord } from "../discord/_roomChatBridge.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } from "../matches/sync-match.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
-import { normalizeRecruitingApplicationStatus } from "../../../src/lib/recruiting.js";
+import { getRecruitingBenchCapacity, normalizeRecruitingApplicationStatus } from "../../../src/lib/recruiting.js";
 import { assertSafeUserText } from "../../../src/lib/inputSecurity.js";
 
 function isTrue(value) {
@@ -28,6 +28,13 @@ function reject(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   throw error;
+}
+
+export function getRecruitingBenchPolicyError(error = {}) {
+  const errorText = [error.message, error.details, error.hint].filter(Boolean).join(" ");
+  if (errorText.includes("invalid_bench_capacity")) return { statusCode: 400, message: "invalid_bench_capacity" };
+  if (errorText.includes("recruiting_reserve_full")) return { statusCode: 409, message: "recruiting_reserve_full" };
+  return null;
 }
 
 function getTimestamp(item = {}) {
@@ -63,6 +70,7 @@ function getRecruitingCoreSnapshot(post = {}) {
     ageRestriction: post.ageRestriction ?? post.age_restriction ?? "any",
     allowedAgeGroups: toArray(post.allowedAgeGroups ?? post.allowed_age_groups).map(String).sort(),
     sideCapacity: getCanonicalSideCapacity(post),
+    benchCapacity: getCanonicalBenchCapacity(post),
     hostJoinMode: getCanonicalHostJoinMode(post),
     hostSide: (post.hostSide ?? post.host_side) === "teamB" ? "teamB" : "teamA",
     playerIds: toArray(post.playerIds ?? post.player_ids),
@@ -72,6 +80,7 @@ function getRecruitingCoreSnapshot(post = {}) {
 
 function toRecruitingPostRow(post = {}) {
   const roomState = normalizeRoomState(post.roomState, post);
+  const benchCapacity = getCanonicalBenchCapacity(post);
   const courtId = post.courtId ?? post.court_id ?? post.approvedCourtId ?? post.registeredCourtId ?? null;
   const schedule = getDbScheduleParts({ ...post, roomState });
   return {
@@ -94,7 +103,7 @@ function toRecruitingPostRow(post = {}) {
     rating_scale: Number(post.ratingScale ?? 1),
     age_restriction: post.ageRestriction ?? null,
     allowed_age_groups: toArray(post.allowedAgeGroups),
-    rules: post.rules ?? {},
+    rules: { ...(post.rules ?? {}), benchCapacity },
     stakes: post.stakes ?? "",
     court_reserved: Boolean(post.courtReserved),
     court_fee: nullableText(post.courtFee),
@@ -108,7 +117,8 @@ function toRecruitingPostRow(post = {}) {
     host_join_mode: post.hostJoinMode === "player" ? "player" : "team",
     host_side: post.hostSide === "teamB" ? "teamB" : "teamA",
     host_ready: Boolean(post.hostReady),
-    side_capacity: Math.max(1, Math.min(5, Number(post.sideCapacity ?? 5))),
+    side_capacity: getCanonicalSideCapacity(post),
+    bench_capacity: benchCapacity,
     player_ids: toArray(post.playerIds),
     position: roomState.slotPositions?.[post.playerId] ?? post.position ?? null,
     memo: post.memo ?? "",
@@ -212,6 +222,45 @@ function getCanonicalSideCapacity(post = {}) {
   const rawCapacity = Number(post.sideCapacity ?? post.side_capacity ?? modeCapacity);
   const safeCapacity = Number.isFinite(rawCapacity) ? rawCapacity : modeCapacity;
   return Math.max(1, Math.min(5, modeCapacity, safeCapacity));
+}
+
+function getCanonicalBenchCapacity(post = {}) {
+  return getRecruitingBenchCapacity(post);
+}
+
+function getExplicitBenchCapacity(post = {}) {
+  if (post.benchCapacity !== undefined) return post.benchCapacity;
+  if (post.bench_capacity !== undefined) return post.bench_capacity;
+  if (post.rules && Object.prototype.hasOwnProperty.call(post.rules, "benchCapacity")) return post.rules.benchCapacity;
+  return undefined;
+}
+
+function getRecruitingBenchIdsBySide(post = {}) {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  const result = { teamA: new Set(), teamB: new Set() };
+  const add = (side, ids = []) => {
+    if (!MATCH_SIDES.includes(side)) return;
+    toArray(ids).filter(Boolean).forEach((playerId) => result[side].add(playerId));
+  };
+  const hostSide = (post.hostSide ?? post.host_side) === "teamB" ? "teamB" : "teamA";
+  add(hostSide, roomState.partyReserves?.host);
+  toArray(post.applicants).forEach((application) => {
+    const side = application.side === "teamA" ? "teamA" : "teamB";
+    const teamId = nullableText(application.teamId ?? application.team_id);
+    const applicationKey = teamId ? `team:${teamId}` : `player:${application.playerId ?? application.player_id ?? ""}`;
+    if (application.reserve) {
+      const playerIds = toArray(application.playerIds ?? application.player_ids);
+      add(side, playerIds.length ? playerIds : [application.playerId ?? application.player_id]);
+    }
+    add(side, roomState.partyReserves?.[applicationKey]);
+  });
+  MATCH_SIDES.forEach((side) => add(side, roomState.pinnedReservePlayers?.[side]));
+  toArray(roomState.invitations).forEach((invitation) => {
+    if (invitation.role !== "referee" && invitation.status === "pending" && invitation.reserve) {
+      add(invitation.side === "teamA" ? "teamA" : "teamB", [invitation.targetUserId]);
+    }
+  });
+  return result;
 }
 
 function getCanonicalHostJoinMode(post = {}) {
@@ -582,8 +631,70 @@ function getRecruitingSideCounts(post = {}) {
   return counts;
 }
 
-function validateRecruitingPostShape(post = {}) {
+export function validatePickupRecruitingShape(post = {}) {
+  const rules = post.rules && typeof post.rules === "object" ? post.rules : {};
+  const matchIntent = post.matchIntent ?? post.match_intent ?? rules.matchIntent;
+  if (matchIntent !== "pickup") return;
+
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  const teamOnly = isTrue(post.teamOnly ?? post.team_only ?? roomState.teamOnly);
+  const requestedHostJoinMode = post.hostJoinMode ?? post.host_join_mode;
+  if ((requestedHostJoinMode !== undefined && requestedHostJoinMode !== "player") || getCanonicalHostJoinMode(post) !== "player" || teamOnly) {
+    reject(400, "pickup_requires_player_room");
+  }
+  if (post.ranked !== false || isTrue(post.official)) reject(400, "pickup_must_be_unranked");
+  if ((post.playingTimePolicy ?? rules.playingTimePolicy) !== "equal_rotation") reject(400, "pickup_requires_equal_rotation");
+  if ((post.lineupSelectionPolicy ?? rules.lineupSelectionPolicy) !== "no_fixed_starter") reject(400, "pickup_requires_no_fixed_starter");
+}
+
+export function validatePickupRecruitingUpdate(existingPost = {}, patch = {}) {
+  const currentRules = existingPost.rules && typeof existingPost.rules === "object" ? existingPost.rules : {};
+  const patchRules = patch.rules && typeof patch.rules === "object" ? patch.rules : {};
+  const currentIntent = existingPost.matchIntent ?? existingPost.match_intent ?? currentRules.matchIntent;
+  const requestedIntent = patch.matchIntent ?? patch.match_intent ?? patchRules.matchIntent;
+  if (currentIntent !== "pickup" && requestedIntent !== "pickup") return;
+  if (currentIntent !== "pickup") reject(400, "pickup_intent_cannot_be_added_by_room_update");
+  if (requestedIntent !== undefined && requestedIntent !== "pickup") reject(400, "pickup_intent_cannot_be_removed_by_room_update");
+
+  validatePickupRecruitingShape({
+    ...existingPost,
+    ...patch,
+    matchIntent: "pickup",
+    rules: {
+      ...currentRules,
+      ...patchRules,
+      ...(patch.playingTimePolicy === undefined ? {} : { playingTimePolicy: patch.playingTimePolicy }),
+      ...(patch.lineupSelectionPolicy === undefined ? {} : { lineupSelectionPolicy: patch.lineupSelectionPolicy }),
+      matchIntent: "pickup",
+    },
+  });
+}
+
+async function validatePickupRecruitingOperation(context, operation = {}) {
+  if (operation.action === "createRecruitingPost") {
+    validatePickupRecruitingShape(operation.draft ?? {});
+    return;
+  }
+  if (operation.action !== "updateRecruitingRoomRules") return;
+  const postId = String(operation.postId ?? "").trim();
+  if (!postId) return;
+  const { data, error } = await context.supabase
+    .from("recruiting_posts")
+    .select("id,ranked,official,host_join_mode,team_id,room_state,rules")
+    .eq("id", postId)
+    .maybeSingle();
+  if (error) throw error;
+  if (data) validatePickupRecruitingUpdate(data, operation.patch ?? {});
+}
+
+export function validateRecruitingPostShape(post = {}) {
+  validatePickupRecruitingShape(post);
+  const mode = post.mode ?? "5v5";
+  if (!isSupportedMatchMode(mode)) reject(400, "unsupported_match_mode");
   const capacity = getSideCapacity(post);
+  const explicitBenchCapacity = getExplicitBenchCapacity(post);
+  if (explicitBenchCapacity !== undefined && !isValidBenchCapacity(explicitBenchCapacity)) reject(400, "invalid_bench_capacity");
+  const benchCapacity = getCanonicalBenchCapacity(post);
   const applications = toArray(post.applicants);
   const hostJoinMode = getCanonicalHostJoinMode(post);
   const roomState = normalizeRoomState(post.roomState, post);
@@ -598,6 +709,8 @@ function validateRecruitingPostShape(post = {}) {
   if (sideCounts.crossSideDuplicate) reject(400, "recruiting_player_on_both_sides");
   if (sideCounts.crossSideTeamParty) reject(400, "recruiting_team_party_on_both_sides");
   if (sideCounts.teamA > capacity || sideCounts.teamB > capacity) reject(400, "recruiting_side_exceeds_capacity");
+  const benchIds = getRecruitingBenchIdsBySide(post);
+  if (benchIds.teamA.size > benchCapacity || benchIds.teamB.size > benchCapacity) reject(409, "recruiting_reserve_full");
 
   if (!isSoloIndividualRoom(post)) return;
   if (post.teamId || post.targetTeamId || toArray(post.playerIds).length > 1) reject(400, "solo_room_team_party_not_allowed");
@@ -890,7 +1003,7 @@ async function loadRecruitingPartyGuardSnapshot(context, operation = {}) {
 
   const { data: post, error: postError } = await context.supabase
     .from("recruiting_posts")
-    .select("id,team_id,player_id,host_side,ranked,allowed_age_groups,age_restriction,rules,room_state,side_capacity")
+    .select("id,team_id,player_id,host_side,ranked,allowed_age_groups,age_restriction,rules,room_state,side_capacity,bench_capacity")
     .eq("id", postId)
     .maybeSingle();
   if (postError) throw postError;
@@ -940,7 +1053,7 @@ async function assertRecruitingPartyManagementGuard(context, operation = {}) {
   const uniqueIds = new Set(allIds);
   if (uniqueIds.size !== allIds.length) reject(409, "recruiting_party_roster_duplicate");
   if (activeIds.length > Number(snapshot.post.side_capacity ?? 5)) reject(409, "recruiting_side_full");
-  if (reserveIds.length > 2) reject(409, "recruiting_reserve_full");
+  if (reserveIds.length > getCanonicalBenchCapacity(snapshot.post)) reject(409, "recruiting_reserve_full");
   if (!allIds.length) return;
 
   const { data: members, error: memberError } = await context.supabase
@@ -1403,7 +1516,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   const isCreateAction = action === "createRecruitingPost";
   const { data: existingPost, error: existingError } = await timeStep(timing, "persistExistingPost", () => context.supabase
       .from("recruiting_posts")
-      .select(isCreateAction ? "id" : "id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, referee_trust_min, room_state, age_restriction, allowed_age_groups, updated_at")
+      .select(isCreateAction ? "id" : "id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, bench_capacity, host_join_mode, host_side, player_ids, referee_id, referee_trust_min, room_state, rules, age_restriction, allowed_age_groups, updated_at")
       .eq("id", post.id)
       .maybeSingle());
 
@@ -1513,6 +1626,7 @@ export default async function handler(request, response) {
     const context = await timing.track("auth", () => getAuthenticatedContext(request));
     const operation = withRecruitingCreatePostId(getOperation(body, body.action ? String(body.action) : "sync"));
     if (!operation) reject(400, "recruiting_operation_required");
+    await timing.track("pickupPolicy", () => validatePickupRecruitingOperation(context, operation));
     if (!SQL_REDUCER_RECRUITING_ACTIONS.has(operation.action) && !["sendRecruitingChat", "confirmRecruitingMatch"].includes(operation.action)) {
       reject(400, "unsupported_recruiting_operation");
     }
@@ -1628,12 +1742,15 @@ export default async function handler(request, response) {
     });
   } catch (error) {
     console.error("Recruiting post sync failed.", error);
-    sendTimedJson(response, error.statusCode || 500, {
-      error: error.message || "recruiting_post_sync_failed",
+    const benchPolicyError = getRecruitingBenchPolicyError(error);
+    const statusCode = benchPolicyError?.statusCode ?? error.statusCode ?? 500;
+    const errorMessage = benchPolicyError?.message ?? error.message ?? "recruiting_post_sync_failed";
+    sendTimedJson(response, statusCode, {
+      error: errorMessage,
       details: {
         ...(error.details && typeof error.details === "object" ? error.details : {}),
-        reason: error.message || "recruiting_post_sync_failed",
-        statusCode: error.statusCode || 500,
+        reason: errorMessage,
+        statusCode,
       },
     }, timing, debugTiming);
   }

@@ -1,4 +1,4 @@
-import { CREDIBILITY_LEVELS, DEFAULT_RATING, EVIDENCE_OPTIONS, MATCH_MODES, MINUTE_MS } from "./constants.js";
+import { CREDIBILITY_LEVELS, DEFAULT_RATING, EVIDENCE_OPTIONS, MATCH_MODES, MINUTE_MS, isSupportedMatchMode } from "./constants.js";
 import {
   calculatePlayerStatBoost,
   evaluateRecordVerification,
@@ -15,12 +15,7 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
 const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean))];
 
-const modeWeightMap = {
-  "1v1": 0.78,
-  "2v2": 0.9,
-  "3v3": 1,
-  "5v5": 1.12,
-};
+const matchModeMap = Object.fromEntries(MATCH_MODES.map((mode) => [mode.id, mode]));
 
 const integratedWeightMap = MATCH_MODES.reduce((map, mode) => {
   map[mode.id] = mode.integratedWeight;
@@ -49,7 +44,7 @@ function getKFactor(playerRating = DEFAULT_RATING) {
 }
 
 function getModeWeight(mode = "5v5") {
-  return modeWeightMap[mode] ?? 1;
+  return matchModeMap[mode]?.ratingWeight ?? matchModeMap["5v5"].ratingWeight;
 }
 
 export function getCredibilityLevel(match = {}) {
@@ -141,7 +136,7 @@ function calculateModeDelta({
 
 function calculateIntegratedDelta(params) {
   const modeDelta = params.modeDelta ?? calculateModeDelta(params);
-  const modeWeight = integratedWeightMap[params.mode ?? "5v5"] ?? 0.75;
+  const modeWeight = integratedWeightMap[params.mode ?? "5v5"] ?? integratedWeightMap["5v5"];
   const cap = params.match?.official
     ? modeCapMap[params.mode]?.officialIntegrated ?? modeCapMap[params.mode]?.integrated ?? 45
     : modeCapMap[params.mode]?.integrated ?? 45;
@@ -247,7 +242,7 @@ function getRatedSidePlayerIds(match, sideName) {
 }
 
 export function applyMatchRating(match, players, ratings, history = [], teams = []) {
-  const mode = match.mode ?? "5v5";
+  const mode = isSupportedMatchMode(match.mode) ? match.mode : "5v5";
   const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? 0);
   const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
   const actualA = scoreA === scoreB ? 0.5 : scoreA > scoreB ? 1 : 0;

@@ -728,7 +728,7 @@ export default function Admin({ app }) {
               <div key={row.userId}>
                 <strong>{row.userName}</strong>
                 <span>{row.gradeLabel} · 점수 {row.score}</span>
-                <em>심판 {row.matchCount}경기 · 따봉 {row.thumbsUp} · 신고 {row.reportCount}</em>
+                <em>심판 {row.matchCount}경기 · 추천 {row.thumbsUp} · 신고 {row.reportCount}</em>
               </div>
             ))}
           </div>

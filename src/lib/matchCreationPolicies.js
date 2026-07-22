@@ -1,0 +1,342 @@
+import { DEFAULT_BENCH_CAPACITY, MAX_BENCH_CAPACITY, getModeSize } from "./constants.js";
+import { getDefaultMatchRules, getMatchRuleSummary } from "./matchRules.js";
+
+export const MATCH_INTENT_OPTIONS = Object.freeze([
+  {
+    id: "friendly",
+    label: "친선·균등출전",
+    description: "승패보다 함께 뛰는 경험을 우선합니다.",
+  },
+  {
+    id: "pickup",
+    label: "픽업·자유경기",
+    description: "개인으로 참가하고 현장에서 팀과 교대 순서를 정합니다.",
+  },
+  {
+    id: "standard_competitive",
+    label: "일반 경쟁",
+    description: "후보도 최소 한 번 출전하고 MMR을 정상 반영합니다.",
+  },
+  {
+    id: "full_competitive",
+    label: "완전 경쟁",
+    description: "선발 중심으로 운영하며 후보 출전을 보장하지 않습니다.",
+  },
+]);
+
+export const PLAYING_TIME_POLICY_OPTIONS = Object.freeze([
+  { id: "appearance_guaranteed", label: "최소 1회 출전" },
+  { id: "equal_rotation", label: "균등 순환" },
+  { id: "none", label: "출전 보장 없음" },
+]);
+
+export const PAYMENT_POLICY_OPTIONS = Object.freeze([
+  { id: "equal_all_confirmed", label: "확정 인원 전원 균등" },
+  { id: "team_fixed_share", label: "팀별 균등" },
+  { id: "host_pays", label: "방장 부담" },
+  { id: "free", label: "참가비 없음" },
+]);
+
+export const VENUE_PAYMENT_TYPE_OPTIONS = Object.freeze([
+  { id: "free_public", label: "무료 공공구장" },
+  { id: "first_come_public", label: "무료·현장 선점" },
+  { id: "paid_reserved", label: "유료·예약 완료" },
+  { id: "paid_not_reserved", label: "유료·예약 전" },
+  { id: "private", label: "사설·별도 협의" },
+]);
+
+export const VENUE_SECURED_OPTIONS = Object.freeze([
+  { id: "confirmed", label: "확보 완료" },
+  { id: "first_come", label: "현장 선점" },
+  { id: "unconfirmed", label: "미확정" },
+]);
+
+const MATCH_INTENT_IDS = new Set(MATCH_INTENT_OPTIONS.map((option) => option.id));
+const PLAYING_TIME_POLICY_IDS = new Set(PLAYING_TIME_POLICY_OPTIONS.map((option) => option.id));
+const PAYMENT_POLICY_IDS = new Set(PAYMENT_POLICY_OPTIONS.map((option) => option.id));
+const VENUE_PAYMENT_TYPE_IDS = new Set(VENUE_PAYMENT_TYPE_OPTIONS.map((option) => option.id));
+const VENUE_SECURED_IDS = new Set(VENUE_SECURED_OPTIONS.map((option) => option.id));
+const PERSONAL_RECORD_EXCLUDED_FIELDS = new Set([
+  "matchIntent",
+  "benchCapacity",
+  "waitlistCapacity",
+  "playingTimePolicy",
+  "paymentPolicy",
+  "benchPaymentAcknowledged",
+  "lastPeriodStopMinutes",
+  "venuePaymentType",
+  "venueSecured",
+  "venueFee",
+  "refereeFee",
+  "recordingFee",
+  "equipmentFee",
+  "otherFee",
+  "costRoundUnit",
+  "freeCancellationHours",
+  "refundPolicy",
+  "ballProvider",
+  "vestsProvided",
+  "scoreboardAvailable",
+  "shotClockAvailable",
+  "statRecorderAvailable",
+  "courtReserved",
+  "courtFee",
+  "refereeWanted",
+  "refereeId",
+]);
+
+function clampInteger(value, fallback, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(number)));
+}
+
+function normalizeMoney(value) {
+  return clampInteger(value, 0, 0, 100_000_000);
+}
+
+export function getModeClockPreset(mode = "5v5", presetId = "community") {
+  const defaults = getDefaultMatchRules(mode);
+  if (mode !== "5v5") {
+    return {
+      ...defaults,
+      lastPeriodStopMinutes: 0,
+    };
+  }
+  if (presetId === "official") {
+    return {
+      ...defaults,
+      lastPeriodStopMinutes: 0,
+    };
+  }
+  return {
+    ...defaults,
+    endCondition: "time",
+    periodCount: 4,
+    periodMinutes: 8,
+    clockMode: "running",
+    timeLimit: 32,
+    winByTwo: false,
+    lastPeriodStopMinutes: 2,
+  };
+}
+
+export function getMatchClockPresetOptions(mode = "5v5") {
+  if (mode !== "5v5") {
+    return [{ id: "small_default", label: `${mode} 기본`, patch: getModeClockPreset(mode) }];
+  }
+  return [
+    { id: "community", label: "동호회 8분×4", patch: getModeClockPreset(mode, "community") },
+    { id: "official", label: "공식형 10분×4", patch: getModeClockPreset(mode, "official") },
+  ];
+}
+
+export function getMatchIntentPresetPatch(intent = "standard_competitive", mode = "5v5") {
+  const matchIntent = MATCH_INTENT_IDS.has(intent) ? intent : "standard_competitive";
+  const pickup = matchIntent === "pickup";
+  const competitive = matchIntent === "standard_competitive" || matchIntent === "full_competitive";
+  return {
+    matchIntent,
+    benchCapacity: DEFAULT_BENCH_CAPACITY,
+    waitlistCapacity: 3,
+    playingTimePolicy: pickup ? "equal_rotation" : matchIntent === "full_competitive" ? "none" : "appearance_guaranteed",
+    lineupSelectionPolicy: pickup ? "no_fixed_starter" : undefined,
+    paymentPolicy: "equal_all_confirmed",
+    benchPaymentAcknowledged: matchIntent !== "full_competitive",
+    ranked: competitive,
+    official: competitive,
+    preRegistered: true,
+    ...(pickup ? { hostJoinMode: "player", teamOnly: false, mmrLimitMode: "off" } : {}),
+    ...getModeClockPreset(mode, "community"),
+  };
+}
+
+export function getDefaultMatchCreationPolicy(mode = "5v5") {
+  return {
+    ...getMatchIntentPresetPatch("standard_competitive", mode),
+    venuePaymentType: "free_public",
+    venueSecured: "confirmed",
+    venueFee: 0,
+    refereeFee: 0,
+    recordingFee: 0,
+    equipmentFee: 0,
+    otherFee: 0,
+    costRoundUnit: 100,
+    freeCancellationHours: 24,
+    refundPolicy: "full_before_deadline",
+    ballProvider: "host",
+    vestsProvided: false,
+    scoreboardAvailable: false,
+    shotClockAvailable: false,
+    statRecorderAvailable: false,
+  };
+}
+
+export function getMatchCreationPolicyPayload(source = {}) {
+  const mode = String(source.mode || "5v5");
+  const onCourtCount = getModeSize(mode, 5);
+  const benchCapacity = clampInteger(source.benchCapacity, DEFAULT_BENCH_CAPACITY, 0, MAX_BENCH_CAPACITY);
+  const matchIntent = MATCH_INTENT_IDS.has(source.matchIntent) ? source.matchIntent : "standard_competitive";
+  const pickup = matchIntent === "pickup";
+  const playingTimePolicy = pickup
+    ? "equal_rotation"
+    : PLAYING_TIME_POLICY_IDS.has(source.playingTimePolicy)
+      ? source.playingTimePolicy
+      : matchIntent === "full_competitive" ? "none" : "appearance_guaranteed";
+  const paymentPolicy = PAYMENT_POLICY_IDS.has(source.paymentPolicy) ? source.paymentPolicy : "equal_all_confirmed";
+  const venuePaymentType = VENUE_PAYMENT_TYPE_IDS.has(source.venuePaymentType) ? source.venuePaymentType : "free_public";
+  const venueSecured = VENUE_SECURED_IDS.has(source.venueSecured) ? source.venueSecured : "confirmed";
+  const venueFee = normalizeMoney(source.venueFee ?? source.courtFee);
+  const refereeFee = normalizeMoney(source.refereeFee);
+  const recordingFee = normalizeMoney(source.recordingFee);
+  const equipmentFee = normalizeMoney(source.equipmentFee);
+  const otherFee = normalizeMoney(source.otherFee);
+  const totalCost = venueFee + refereeFee + recordingFee + equipmentFee + otherFee;
+  const costRoundUnit = [100, 500].includes(Number(source.costRoundUnit)) ? Number(source.costRoundUnit) : 100;
+  const confirmedCapacity = (onCourtCount + benchCapacity) * 2;
+  const estimatedFeePerPlayer = paymentPolicy === "equal_all_confirmed" && totalCost > 0
+    ? Math.ceil(totalCost / confirmedCapacity / costRoundUnit) * costRoundUnit
+    : 0;
+  const requiresBenchPaymentAcknowledgement = benchCapacity > 0
+    && paymentPolicy === "equal_all_confirmed"
+    && playingTimePolicy === "none";
+
+  return {
+    matchIntent,
+    onCourtCount,
+    starterCount: onCourtCount,
+    benchCapacity,
+    teamCapacity: onCourtCount + benchCapacity,
+    waitlistCapacity: clampInteger(source.waitlistCapacity, 3, 0, 10),
+    playingTimePolicy,
+    lineupSelectionPolicy: pickup ? "no_fixed_starter" : source.hostJoinMode === "team" ? "team_captain_assigns" : "automatic",
+    hostJoinMode: pickup ? "player" : source.hostJoinMode === "team" ? "team" : "player",
+    teamOnly: pickup ? false : source.hostJoinMode === "team" || source.teamOnly === true,
+    ranked: pickup ? false : source.ranked !== false,
+    official: pickup ? false : Boolean(source.official),
+    mmrLimitMode: pickup ? "off" : source.mmrLimitMode,
+    paymentPolicy,
+    benchPaymentAcknowledged: Boolean(source.benchPaymentAcknowledged),
+    requiresBenchPaymentAcknowledgement,
+    lastPeriodStopMinutes: source.clockMode === "running"
+      ? clampInteger(source.lastPeriodStopMinutes, 0, 0, clampInteger(source.periodMinutes, 60, 1, 60))
+      : 0,
+    venuePaymentType,
+    venueSecured,
+    venueFee,
+    refereeFee,
+    recordingFee,
+    equipmentFee,
+    otherFee,
+    totalCost,
+    costRoundUnit,
+    estimatedFeePerPlayer,
+    freeCancellationHours: clampInteger(source.freeCancellationHours, 24, 0, 168),
+    refundPolicy: ["full_before_deadline", "no_refund", "custom"].includes(source.refundPolicy)
+      ? source.refundPolicy
+      : "full_before_deadline",
+    ballProvider: ["host", "venue", "participant", "unknown"].includes(source.ballProvider)
+      ? source.ballProvider
+      : "host",
+    vestsProvided: Boolean(source.vestsProvided),
+    scoreboardAvailable: Boolean(source.scoreboardAvailable),
+    shotClockAvailable: Boolean(source.shotClockAvailable),
+    statRecorderAvailable: Boolean(source.statRecorderAvailable),
+  };
+}
+
+export function getScopedMatchCreationPolicyPayload(source = {}, scope = "match") {
+  if (scope === "personal_record") return {};
+  const policy = getMatchCreationPolicyPayload(source);
+  if (scope === "match") return policy;
+  const rosterPolicy = {
+    onCourtCount: policy.onCourtCount,
+    starterCount: policy.starterCount,
+    benchCapacity: policy.benchCapacity,
+    teamCapacity: policy.teamCapacity,
+    waitlistCapacity: policy.waitlistCapacity,
+    playingTimePolicy: policy.playingTimePolicy,
+    lineupSelectionPolicy: policy.lineupSelectionPolicy,
+    lastPeriodStopMinutes: policy.lastPeriodStopMinutes,
+  };
+  if (scope === "match_record") return rosterPolicy;
+  if (scope === "tournament") {
+    return {
+      ...rosterPolicy,
+      ballProvider: policy.ballProvider,
+      vestsProvided: policy.vestsProvided,
+      scoreboardAvailable: policy.scoreboardAvailable,
+      shotClockAvailable: policy.shotClockAvailable,
+      statRecorderAvailable: policy.statRecorderAvailable,
+    };
+  }
+  return rosterPolicy;
+}
+
+export function getPersonalRecordDraftPayload(source = {}) {
+  return Object.fromEntries(Object.entries(source).filter(([key]) => !PERSONAL_RECORD_EXCLUDED_FIELDS.has(key)));
+}
+
+export function getMatchCreationValidation(source = {}) {
+  const policy = getMatchCreationPolicyPayload(source);
+  const errors = [];
+  const warnings = [];
+  const paidVenue = policy.venuePaymentType === "paid_reserved" || policy.venuePaymentType === "paid_not_reserved";
+  if (paidVenue && policy.totalCost <= 0) errors.push("유료구장은 비용을 1원 이상 입력해야 합니다.");
+  if (policy.requiresBenchPaymentAcknowledgement && !policy.benchPaymentAcknowledged) {
+    errors.push("후보의 동일 결제와 출전 미보장 조건을 확인해야 합니다.");
+  }
+  if (policy.matchIntent === "pickup") {
+    if (source.hostJoinMode !== "player" || source.teamOnly === true) {
+      errors.push("픽업·자유경기는 개인 참가 방식으로만 만들 수 있습니다.");
+    }
+    if (source.ranked !== false || source.official !== false) {
+      errors.push("픽업·자유경기는 MMR을 반영하지 않습니다.");
+    }
+    warnings.push("자동 로테이션은 지원하지 않습니다. 방장이 현장에서 팀과 교대 순서를 수동으로 정합니다.");
+  }
+  if (policy.venueSecured === "first_come") {
+    warnings.push("현장 상황에 따라 경기가 취소되거나 다른 장소로 이동할 수 있습니다.");
+  }
+  if (policy.venueSecured === "unconfirmed" && source.ranked !== false) {
+    warnings.push("정규전 구장이 아직 확보되지 않았습니다.");
+  }
+  return { policy, errors, warnings };
+}
+
+function formatCurrency(value) {
+  return `${Number(value || 0).toLocaleString("ko-KR")}원`;
+}
+
+export function getMatchCreationSummary(source = {}) {
+  const policy = getMatchCreationPolicyPayload(source);
+  const intent = MATCH_INTENT_OPTIONS.find((option) => option.id === policy.matchIntent) ?? MATCH_INTENT_OPTIONS[1];
+  const playingTime = PLAYING_TIME_POLICY_OPTIONS.find((option) => option.id === policy.playingTimePolicy)?.label ?? "출전 보장 없음";
+  const payment = PAYMENT_POLICY_OPTIONS.find((option) => option.id === policy.paymentPolicy)?.label ?? "확정 인원 전원 균등";
+  const pickup = policy.matchIntent === "pickup";
+  const rosterText = pickup
+    ? `사이드당 참가 ${policy.teamCapacity}명 · 코트 ${policy.onCourtCount}명${policy.benchCapacity > 0 ? `, 순환 대기 ${policy.benchCapacity}명` : ""}`
+    : policy.benchCapacity > 0
+    ? `사이드당 선발 ${policy.onCourtCount}명과 후보 ${policy.benchCapacity}명`
+    : `사이드당 출전 ${policy.onCourtCount}명`;
+  const costText = policy.totalCost > 0
+    ? `총 ${formatCurrency(policy.totalCost)}${policy.estimatedFeePerPlayer > 0 ? ` · 1인 예상 ${formatCurrency(policy.estimatedFeePerPlayer)}` : ""}`
+    : "참가비 없음";
+  return {
+    policy,
+    rows: [
+      { label: "경기 성격", value: intent.label },
+      { label: "명단", value: `${source.mode || "5v5"} · ${rosterText}` },
+      ...(pickup ? [{ label: "운영 정책", value: "고정 선발·후보 없음 · 방장 수동 순환" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
+      { label: "경기 규칙", value: `${getMatchRuleSummary(source, source.mode)}${policy.lastPeriodStopMinutes > 0 ? ` · 마지막 ${policy.lastPeriodStopMinutes}분 스톱` : ""}` },
+      { label: "비용", value: `${costText} · ${payment}` },
+      { label: "구장", value: source.court || "구장 미정" },
+      { label: "일정", value: source.timingType === "instant" ? "즉시" : [source.scheduledDate, source.scheduledTime].filter(Boolean).join(" ") || "일정 미정" },
+    ],
+    sentence: pickup
+      ? "개인 참가자를 받아 현장에서 팀을 나눕니다. 방장이 교대 순서를 수동으로 운영하며 MMR은 반영되지 않습니다."
+      : policy.benchCapacity > 0
+      ? `${rosterText}입니다. 후보의 출전 정책은 '${playingTime}', 비용 정책은 '${payment}'입니다.`
+      : `${rosterText}이며 비용 정책은 '${payment}'입니다.`,
+  };
+}

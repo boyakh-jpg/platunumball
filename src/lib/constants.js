@@ -1,9 +1,15 @@
 export const MATCH_MODES = [
-  { id: "1v1", label: "1v1", size: 1, integratedWeight: 0.25, modeCap: 25, integratedCap: 8 },
-  { id: "2v2", label: "2v2", size: 2, integratedWeight: 0.45, modeCap: 28, integratedCap: 14 },
-  { id: "3v3", label: "3v3", size: 3, integratedWeight: 0.85, modeCap: 32, integratedCap: 25 },
-  { id: "5v5", label: "5v5", size: 5, integratedWeight: 1.35, modeCap: 40, integratedCap: 45, officialModeCap: 50, officialIntegratedCap: 55 },
+  { id: "1v1", label: "1v1", size: 1, ratingWeight: 0.78, integratedWeight: 0.25, modeCap: 25, integratedCap: 8 },
+  { id: "2v2", label: "2v2", size: 2, ratingWeight: 0.9, integratedWeight: 0.45, modeCap: 28, integratedCap: 14 },
+  { id: "3v3", label: "3v3", size: 3, ratingWeight: 1, integratedWeight: 0.85, modeCap: 32, integratedCap: 25 },
+  { id: "5v5", label: "5v5", size: 5, ratingWeight: 1.12, integratedWeight: 1.35, modeCap: 40, integratedCap: 45, officialModeCap: 50, officialIntegratedCap: 55 },
 ];
+
+export const MATCH_MODE_IDS = Object.freeze(MATCH_MODES.map((mode) => mode.id));
+
+export function isSupportedMatchMode(mode = "") {
+  return MATCH_MODE_IDS.includes(mode);
+}
 
 export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
   map[mode.id] = mode.size;
@@ -118,7 +124,21 @@ export const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
 export const QUEUE_SCHEDULE_TIMES = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
 export const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
 export const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
-export const MAX_RECRUITING_RESERVES_PER_SIDE = 2;
+export const MIN_BENCH_CAPACITY = 0;
+export const MAX_BENCH_CAPACITY = 3;
+export const DEFAULT_BENCH_CAPACITY = 2;
+export const BENCH_CAPACITY_OPTIONS = Object.freeze([0, 1, 2, 3]);
+export const MAX_RECRUITING_RESERVES_PER_SIDE = MAX_BENCH_CAPACITY;
+export function isValidBenchCapacity(value) {
+  if (typeof value === "string" && !/^[0-3]$/.test(value)) return false;
+  if (typeof value !== "string" && typeof value !== "number") return false;
+  const capacity = Number(value);
+  return Number.isInteger(capacity) && capacity >= MIN_BENCH_CAPACITY && capacity <= MAX_BENCH_CAPACITY;
+}
+export function normalizeBenchCapacity(value, fallback = DEFAULT_BENCH_CAPACITY) {
+  if (isValidBenchCapacity(value)) return Number(value);
+  return isValidBenchCapacity(fallback) ? Number(fallback) : DEFAULT_BENCH_CAPACITY;
+}
 export const MINUTE_MS = 60 * 1000;
 export const HOUR_MS = 60 * MINUTE_MS;
 export const DAY_MS = 24 * HOUR_MS;
@@ -154,6 +174,9 @@ export const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
 export const REMOTE_CLIENT_MAX_LIMIT = 500;
 export const FAVORITE_LIMIT = 10;
 export const SOLO_RECORD_MODE_IDS = new Set(["1v1", "2v2", "3v3", "4v4", "5v5"]);
+export function isSupportedSoloRecordMode(mode = "") {
+  return SOLO_RECORD_MODE_IDS.has(mode);
+}
 export const SOLO_RECORD_ANONYMOUS_POSITION = "free";
 export const SOLO_RECORD_ANONYMOUS_SOURCE = "개인참여";
 

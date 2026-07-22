@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { CalendarDays, ChevronDown, ChevronUp, Crown, MapPin, RotateCcw, ShieldCheck, Star, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, Crown, MapPin, RotateCcw, ShieldCheck, Star, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
 import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
+import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
 import MatchVoidDialog from "../components/match/MatchVoidDialog.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -17,7 +18,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeDisputeWindowMinutes } from "../lib/constants.js";
+import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeBenchCapacity, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS, REPORT_TARGET_TYPES, VOID_MATCH_RESTORE_REPORT_REASON, getReportTargetType } from "../lib/reportReasons.js";
 import {
   formatKoreanDateTime,
@@ -48,9 +49,6 @@ import {
   getMatchSideLeaderId,
   getMatchSideRecordPlayerIds,
   getMergedResultScore,
-  getMatchTrustFeedbackClosesAt,
-  getMatchTrustFeedbackLimit,
-  getMatchTrustFeedbackParticipantIds,
   getEffectiveStatRecorders,
   getPlayerSideName,
   getPlayerStatSubmitted,
@@ -60,7 +58,6 @@ import {
   isEligibleReferee,
   isMatchReferee,
   isMatchStatRecorder,
-  isMatchTrustFeedbackOpen,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import { getMatchPeriodLabel, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
@@ -150,17 +147,6 @@ function formatWindowTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function getTrustFeedbackRole(match, playerId) {
-  const roles = [];
-  if (match.createdBy === playerId || match.hostPlayerId === playerId || match.createdPlayerId === playerId || match.teamA?.players?.[0] === playerId) roles.push("방장");
-  if (match.refereeId === playerId) roles.push("심판");
-  const recorders = getEffectiveStatRecorders(match);
-  if (Object.values(recorders).includes(playerId)) roles.push("기록자");
-  if (getMatchPlayerIds(match).includes(playerId)) roles.push("선수");
-  if (MATCH_SIDES.some((sideName) => getMatchReservePlayerIds(match, sideName).includes(playerId))) roles.push("후보");
-  return roles.length ? roles.join(" · ") : "관계자";
 }
 
 const COURT_REVIEW_FIELDS = [
@@ -258,7 +244,6 @@ export default function MatchRoom({ app }) {
   const [reportReason, setReportReason] = useState(DEFAULT_REPORT_REASON);
   const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
   const [reviewControlsOpen, setReviewControlsOpen] = useState(false);
-  const [thumbDraftPlayerIds, setThumbDraftPlayerIds] = useState([]);
   const [resultSaveFeedback, setResultSaveFeedback] = useState("");
   const [courtReviewSaveFeedback, setCourtReviewSaveFeedback] = useState("");
   const [courtReviewSaving, setCourtReviewSaving] = useState(false);
@@ -306,11 +291,6 @@ export default function MatchRoom({ app }) {
       if (!match) setMatchDetailMissing(true);
     });
   }, [app.actions, app.remoteReady, match, matchId]);
-
-  useEffect(() => {
-    const participantIds = match ? getMatchTrustFeedbackParticipantIds(match) : [];
-    setThumbDraftPlayerIds((match?.trustFeedback?.stars?.[app.currentUser.id] ?? []).filter((playerId) => participantIds.includes(playerId)));
-  }, [app.currentUser.id, match?.id, match?.trustFeedback]);
 
   useEffect(() => {
     setCourtReviewDraft(getCourtReviewDraft(existingCourtReview));
@@ -373,6 +353,7 @@ export default function MatchRoom({ app }) {
   const sourceRecruitingPost = match.recruitingPostId
     ? app.state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
+  const benchCapacity = normalizeBenchCapacity(match.benchCapacity ?? match.rules?.benchCapacity ?? sourceRecruitingPost?.benchCapacity);
   const matchHostPlayerId = getMatchHostPlayerId(match, sourceRecruitingPost);
   const isMatchHost = matchHostPlayerId === app.currentUser.id;
   const matchPhase = getMatchRoomPhase(match).phase;
@@ -438,7 +419,7 @@ export default function MatchRoom({ app }) {
       : hasReferee && !currentUserIsReferee
         ? "심판만 입력"
         : !currentUserCanSubmit
-          ? "참가자/후보 기록자만 입력"
+          ? benchCapacity > 0 ? "참가자/후보 기록자만 입력" : "참가자만 입력"
         : "입력 가능";
   const renderHeroRoster = (sideName) => {
     const team = getSafeMatchSide(match, sideName);
@@ -478,13 +459,14 @@ export default function MatchRoom({ app }) {
     );
   };
   const renderHeroReserves = (sideName) => {
-    const reservePlayerIds = getMatchReservePlayerIds(match, sideName).slice(0, 2);
-    const openSlots = Math.max(0, 2 - reservePlayerIds.length);
+    if (benchCapacity <= 0) return null;
+    const reservePlayerIds = getMatchReservePlayerIds(match, sideName).slice(0, benchCapacity);
+    const openSlots = Math.max(0, benchCapacity - reservePlayerIds.length);
     const sideLeaderId = getMatchSideLeaderId(match, app.state.teams, sideName);
 
     return (
       <div className="gm-reserve-line">
-        <strong>{sideName === "teamA" ? "A사이드" : "B사이드"} 후보 {reservePlayerIds.length}/2</strong>
+        <strong>{sideName === "teamA" ? "A사이드" : "B사이드"} 후보 {reservePlayerIds.length}/{benchCapacity}</strong>
         <div className="gm-roster-row gm-reserve-row">
           {reservePlayerIds.map((playerId) => {
             const user = userMap[playerId];
@@ -727,32 +709,10 @@ export default function MatchRoom({ app }) {
     },
   ];
   const statTrustPercent = Math.round((statTrustSteps.filter((step) => step.complete).length / statTrustSteps.length) * 100);
-  const trustFeedback = match.trustFeedback ?? {};
-  const thumbsByGiver = trustFeedback.stars ?? {};
-  const feedbackParticipantIds = getMatchTrustFeedbackParticipantIds(match).filter((playerId) => userMap[playerId]);
   const courtReviewParticipantIds = getMatchReviewParticipantIds(match);
-  const thumbLimit = getMatchTrustFeedbackLimit(match);
-  const trustFeedbackClosesAt = getMatchTrustFeedbackClosesAt(match);
-  const canSubmitThumbs = isMatchTrustFeedbackOpen(match) && feedbackParticipantIds.includes(app.currentUser.id);
-  const shouldShowThumbReview = match.status === "confirmed" && feedbackParticipantIds.includes(app.currentUser.id);
   const courtReviewMatchFinished = Boolean(match.endedAt || match.result || ["approval", "disputed", "confirmed"].includes(match.status));
   const canSubmitCourtReview = courtReviewMatchFinished && !["void", "cancelled"].includes(match.status) && courtReviewParticipantIds.includes(app.currentUser.id);
   const courtReviewRatingReady = Number(courtReviewDraft.rating) > 0;
-  const thumbTargets = feedbackParticipantIds.filter((playerId) => playerId !== app.currentUser.id);
-  const thumbCountByPlayer = Object.values(thumbsByGiver).reduce((acc, targetIds = []) => {
-    targetIds.forEach((targetId) => {
-      acc[targetId] = (acc[targetId] ?? 0) + 1;
-    });
-    return acc;
-  }, {});
-  const toggleThumbDraft = (targetUserId) => {
-    setThumbDraftPlayerIds((current) => {
-      const selected = current.includes(targetUserId);
-      if (selected) return current.filter((playerId) => playerId !== targetUserId);
-      if (current.length >= thumbLimit) return current;
-      return [...current, targetUserId];
-    });
-  };
   const updateCourtReviewDraft = (patch) => setCourtReviewDraft((current) => ({ ...current, ...patch }));
   const submitCourtReview = async () => {
     if (!canSubmitCourtReview || !courtReviewRatingReady || courtReviewSaving) return;
@@ -838,10 +798,10 @@ export default function MatchRoom({ app }) {
           </div>
         </div>
 
-        <div className="gm-reserve-panel">
+        {benchCapacity > 0 ? <div className="gm-reserve-panel">
           {renderHeroReserves("teamA")}
           {renderHeroReserves("teamB")}
-        </div>
+        </div> : null}
 
         <div className="gm-room-actions">
           <div><CalendarDays size={17} /><span>{match.scheduledDate ?? "일정"} {match.scheduledTime ?? ""}</span></div>
@@ -1084,47 +1044,13 @@ export default function MatchRoom({ app }) {
               <div className="empty-state">승인 대기</div>
             )}
           </Card>
-          {shouldShowThumbReview ? (
-            <Card className="section-card trust-star-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Trust review</p>
-                  <h2>따봉 평가</h2>
-                </div>
-                <Badge tone={canSubmitThumbs ? "gold" : "neutral"}>{thumbDraftPlayerIds.length}/{thumbLimit}</Badge>
-              </div>
-              <p className="muted">기록 확정 후 24시간 안에 제출할 수 있습니다. 선수·방장·기록자·심판의 따봉은 같은 신뢰 평가로 반영됩니다.</p>
-              <div className="trust-star-grid">
-                {thumbTargets.map((playerId) => {
-                  const user = userMap[playerId];
-                  const selected = thumbDraftPlayerIds.includes(playerId);
-                  const limitReached = !selected && thumbDraftPlayerIds.length >= thumbLimit;
-                  return (
-                    <button
-                      key={playerId}
-                      type="button"
-                      className={selected ? "trust-star-button selected" : "trust-star-button"}
-                      disabled={!canSubmitThumbs || limitReached}
-                      onClick={() => toggleThumbDraft(playerId)}
-                    >
-                      <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
-                        <ProfileEmblem user={user} anonymous={isAnonymousDisplayUser(user)} className="small" initial={getAvatarInitial(user)} />
-                        <span>
-                          <strong>{user?.name ?? "플레이어"}</strong>
-                          <em>{getTrustFeedbackRole(match, playerId)} · {thumbCountByPlayer[playerId] ?? 0}개 받음</em>
-                        </span>
-                      </PlayerHoverCard>
-                      <ThumbsUp size={16} fill={selected ? "currentColor" : "none"} />
-                    </button>
-                  );
-                })}
-              </div>
-              <Button type="button" disabled={!canSubmitThumbs} onClick={() => app.actions.submitMatchThumbs(match.id, thumbDraftPlayerIds)}>
-                <ThumbsUp size={16} /> 따봉 제출하기
-              </Button>
-              {!canSubmitThumbs ? <p className="muted">제출 가능 시간이 지났거나 아직 기록 확정 전입니다. 마감: {formatWindowTime(trustFeedbackClosesAt)}</p> : null}
-            </Card>
-          ) : null}
+          <MatchRecommendationPanel
+            match={match}
+            currentUserId={app.currentUser.id}
+            users={app.state.users}
+            teams={app.state.teams}
+            onSubmit={app.actions.submitMatchThumbs}
+          />
           {canSubmitCourtReview || existingCourtReview ? (
             <Card className="section-card court-review-card">
               <div className="section-title-row">

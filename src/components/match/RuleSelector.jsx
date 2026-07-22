@@ -6,14 +6,35 @@ import {
   getMatchRulesPayload,
   normalizeMatchRules,
 } from "../../lib/matchRules.js";
+import { getMatchClockPresetOptions } from "../../lib/matchCreationPolicies.js";
 
 export default function RuleSelector({ draft, onChange }) {
   const rules = normalizeMatchRules(draft, { mode: draft.mode });
-  const updateRules = (patch) => onChange(getMatchRulesPayload({ ...rules, ...patch }, { mode: draft.mode }));
+  const lastPeriodStopMinutes = rules.clockMode === "running"
+    ? Math.max(0, Math.min(rules.periodMinutes, Number(draft.lastPeriodStopMinutes) || 0))
+    : 0;
+  const clockPresetOptions = getMatchClockPresetOptions(draft.mode);
+  const updateRules = (patch) => {
+    const next = { ...rules, lastPeriodStopMinutes, ...patch };
+    onChange({
+      ...getMatchRulesPayload(next, { mode: draft.mode }),
+      lastPeriodStopMinutes: next.clockMode === "running"
+        ? Math.max(0, Math.min(Number(next.periodMinutes) || 0, Number(next.lastPeriodStopMinutes) || 0))
+        : 0,
+    });
+  };
   const periodUnitLabel = rules.periodCount === 4 ? "쿼터당 시간 (분)" : rules.periodCount === 2 ? "하프당 시간 (분)" : "경기 시간 (분)";
 
   return (
     <div className="match-rule-selector">
+      <div className="match-clock-preset-row">
+        <span>경기시간 프리셋</span>
+        <div className="segmented-control compact-segments">
+          {clockPresetOptions.map((option) => (
+            <button key={option.id} type="button" onClick={() => updateRules(option.patch)}>{option.label}</button>
+          ))}
+        </div>
+      </div>
       <div className="form-grid match-rule-grid">
       <label>
         종료 기준
@@ -43,6 +64,12 @@ export default function RuleSelector({ draft, onChange }) {
           {MATCH_CLOCK_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
       </label>
+      {rules.clockMode === "running" ? (
+        <label>
+          마지막 구간 스톱 (분)
+          <input type="number" min="0" max={rules.periodMinutes} value={lastPeriodStopMinutes} onChange={(event) => updateRules({ lastPeriodStopMinutes: event.target.value })} />
+        </label>
+      ) : null}
       {rules.periodCount === 4 ? (
         <label>
           쿼터 사이 휴식 (분)
@@ -74,7 +101,10 @@ export default function RuleSelector({ draft, onChange }) {
       </label>
       ) : null}
       </div>
-      <small className="match-rule-summary">{getMatchRuleSummary(rules, draft.mode)}</small>
+      <small className="match-rule-summary">
+        {getMatchRuleSummary(rules, draft.mode)}
+        {lastPeriodStopMinutes > 0 ? ` · 마지막 ${lastPeriodStopMinutes}분 스톱` : ""}
+      </small>
     </div>
   );
 }

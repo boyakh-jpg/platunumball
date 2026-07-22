@@ -418,6 +418,18 @@ create index if not exists tournaments_created_at_idx on public.tournaments (cre
 create index if not exists tournaments_court_id_idx on public.tournaments (court_id) where court_id is not null;
 create index if not exists tournament_teams_team_id_idx on public.tournament_teams (team_id);
 
+create or replace function public.rankball_normalize_dispute_minutes(p_value integer default null)
+returns integer
+language sql
+immutable
+parallel safe
+as $$
+  select case when p_value in (10, 15, 20) then p_value else 15 end;
+$$;
+
+grant execute on function public.rankball_normalize_dispute_minutes(integer)
+to anon, authenticated, service_role;
+
 create table if not exists public.recruiting_posts (
   id text primary key,
   type text not null default 'need_player',
@@ -447,12 +459,13 @@ create table if not exists public.recruiting_posts (
   referee_id text,
   referee_trust_min integer not null default 90,
   stat_entry_minutes integer not null default 60,
-  dispute_minutes integer not null default 30,
+  dispute_minutes integer not null default 15,
   room_state jsonb not null default '{}'::jsonb,
   host_join_mode text not null default 'team',
   host_side text not null default 'teamA',
   host_ready boolean not null default false,
   side_capacity integer not null default 5,
+  bench_capacity smallint not null default 2,
   player_ids jsonb not null default '[]'::jsonb,
   position text,
   memo text,
@@ -463,7 +476,8 @@ create table if not exists public.recruiting_posts (
   constraint recruiting_posts_visibility_check check (visibility in ('public', 'private')),
   constraint recruiting_posts_host_join_mode_check check (host_join_mode in ('player', 'team')),
   constraint recruiting_posts_host_side_check check (host_side in ('teamA', 'teamB')),
-  constraint recruiting_posts_side_capacity_check check (side_capacity between 1 and 5)
+  constraint recruiting_posts_side_capacity_check check (side_capacity between 1 and 5),
+  constraint recruiting_posts_bench_capacity_check check (bench_capacity between 0 and 3)
 );
 
 create table if not exists public.recruiting_applications (
@@ -529,6 +543,7 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists host_side text not null default ''teamA''';
     execute 'alter table public.recruiting_posts add column if not exists host_ready boolean not null default false';
     execute 'alter table public.recruiting_posts add column if not exists side_capacity integer not null default 5';
+    execute 'alter table public.recruiting_posts add column if not exists bench_capacity smallint not null default 2';
     execute 'alter table public.recruiting_posts add column if not exists position text';
     execute 'alter table public.recruiting_posts add column if not exists memo text';
     execute 'alter table public.recruiting_posts add column if not exists status text not null default ''open''';
@@ -536,11 +551,13 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists referee_id text';
     execute 'alter table public.recruiting_posts add column if not exists referee_trust_min integer not null default 90';
     execute 'alter table public.recruiting_posts add column if not exists stat_entry_minutes integer not null default 60';
-    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 30';
+    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 15';
     execute 'alter table public.recruiting_posts add column if not exists created_at timestamptz not null default now()';
     execute 'alter table public.recruiting_posts add column if not exists updated_at timestamptz not null default now()';
     execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_visibility_check';
     execute 'alter table public.recruiting_posts add constraint recruiting_posts_visibility_check check (visibility in (''public'', ''private''))';
+    execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_bench_capacity_check';
+    execute 'alter table public.recruiting_posts add constraint recruiting_posts_bench_capacity_check check (bench_capacity between 0 and 3)';
   end if;
 
   if to_regclass('public.recruiting_applications') is not null then
@@ -1053,6 +1070,192 @@ begin
 end;
 $$;
 
+update public.recruiting_posts
+set bench_capacity = case
+  when coalesce(rules->>'benchCapacity', '') ~ '^[0-3]$' then (rules->>'benchCapacity')::smallint
+  else 2
+end
+where bench_capacity is distinct from case
+  when coalesce(rules->>'benchCapacity', '') ~ '^[0-3]$' then (rules->>'benchCapacity')::smallint
+  else 2
+end;
+
+update public.recruiting_posts
+set rules = jsonb_set(coalesce(rules, '{}'::jsonb), '{benchCapacity}', to_jsonb(bench_capacity), true)
+where rules->>'benchCapacity' is distinct from bench_capacity::text;
+
+create or replace function public.rankball_normalize_recruiting_bench_capacity()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  raw_capacity text;
+  safe_capacity integer;
+begin
+  if tg_op = 'INSERT' then
+    raw_capacity := coalesce(new.rules->>'benchCapacity', new.bench_capacity::text, '2');
+  elsif new.bench_capacity is distinct from old.bench_capacity then
+    raw_capacity := new.bench_capacity::text;
+  elsif (new.rules->>'benchCapacity') is distinct from (old.rules->>'benchCapacity') then
+    raw_capacity := new.rules->>'benchCapacity';
+  else
+    raw_capacity := old.bench_capacity::text;
+  end if;
+
+  if coalesce(raw_capacity, '') !~ '^[0-3]$' then
+    raise exception 'invalid_bench_capacity' using errcode = '23514';
+  end if;
+  safe_capacity := raw_capacity::integer;
+  new.bench_capacity := safe_capacity;
+  new.rules := jsonb_set(coalesce(new.rules, '{}'::jsonb), '{benchCapacity}', to_jsonb(safe_capacity), true);
+  return new;
+end;
+$$;
+
+drop trigger if exists normalize_recruiting_bench_capacity on public.recruiting_posts;
+create trigger normalize_recruiting_bench_capacity
+before insert or update of bench_capacity, rules on public.recruiting_posts
+for each row execute function public.rankball_normalize_recruiting_bench_capacity();
+
+create or replace function public.rankball_recruiting_side_bench_count(
+  p_post_id text,
+  p_side text
+)
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with post_row as (
+    select * from public.recruiting_posts where id = p_post_id
+  ), application_rows as (
+    select * from public.recruiting_applications where post_id = p_post_id
+  ), bench_ids as (
+    select reserve_id as player_id
+    from post_row post
+    cross join lateral jsonb_array_elements_text(
+      case
+        when post.host_side = p_side and jsonb_typeof(post.room_state #> '{partyReserves,host}') = 'array'
+          then post.room_state #> '{partyReserves,host}'
+        else '[]'::jsonb
+      end
+    ) reserve(reserve_id)
+
+    union
+
+    select reserve_id
+    from post_row post
+    join application_rows application on application.side = p_side
+    cross join lateral jsonb_array_elements_text(
+      case
+        when jsonb_typeof(post.room_state #> array[
+          'partyReserves',
+          case when application.kind = 'team' and application.team_id is not null
+            then 'team:' || application.team_id
+            else 'player:' || application.player_id
+          end
+        ]) = 'array'
+          then post.room_state #> array[
+            'partyReserves',
+            case when application.kind = 'team' and application.team_id is not null
+              then 'team:' || application.team_id
+              else 'player:' || application.player_id
+            end
+          ]
+        else '[]'::jsonb
+      end
+    ) reserve(reserve_id)
+
+    union
+
+    select reserve_id
+    from application_rows application
+    cross join lateral jsonb_array_elements_text(
+      case
+        when application.side <> p_side or application.reserve = false then '[]'::jsonb
+        when jsonb_typeof(application.player_ids) = 'array' and jsonb_array_length(application.player_ids) > 0
+          then application.player_ids
+        else jsonb_build_array(application.player_id)
+      end
+    ) reserve(reserve_id)
+
+    union
+
+    select reserve_id
+    from post_row post
+    cross join lateral jsonb_array_elements_text(
+      case when jsonb_typeof(post.room_state #> array['pinnedReservePlayers', p_side]) = 'array'
+        then post.room_state #> array['pinnedReservePlayers', p_side]
+        else '[]'::jsonb
+      end
+    ) reserve(reserve_id)
+
+    union
+
+    select invitation->>'targetUserId'
+    from post_row post
+    cross join lateral jsonb_array_elements(
+      case when jsonb_typeof(post.room_state->'invitations') = 'array'
+        then post.room_state->'invitations'
+        else '[]'::jsonb
+      end
+    ) invitation
+    where invitation->>'role' <> 'referee'
+      and coalesce(invitation->>'status', 'pending') = 'pending'
+      and lower(coalesce(invitation->>'reserve', 'false')) in ('true', 't', '1', 'yes', 'on')
+      and coalesce(invitation->>'side', 'teamB') = p_side
+  )
+  select count(distinct player_id)::integer
+  from bench_ids
+  where nullif(btrim(player_id), '') is not null
+$$;
+
+create or replace function public.rankball_validate_recruiting_bench_capacity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_post_id text;
+  safe_capacity integer;
+begin
+  if tg_table_name = 'recruiting_posts' then
+    safe_post_id := case when tg_op = 'DELETE' then old.id else new.id end;
+  else
+    safe_post_id := case when tg_op = 'DELETE' then old.post_id else new.post_id end;
+  end if;
+  select bench_capacity into safe_capacity
+  from public.recruiting_posts
+  where id = safe_post_id;
+  if safe_capacity is null then return null; end if;
+
+  if public.rankball_recruiting_side_bench_count(safe_post_id, 'teamA') > safe_capacity
+     or public.rankball_recruiting_side_bench_count(safe_post_id, 'teamB') > safe_capacity then
+    raise exception 'recruiting_reserve_full' using errcode = '23514';
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists validate_recruiting_post_bench_capacity on public.recruiting_posts;
+create constraint trigger validate_recruiting_post_bench_capacity
+after insert or update of bench_capacity, rules, room_state, host_side on public.recruiting_posts
+deferrable initially deferred
+for each row execute function public.rankball_validate_recruiting_bench_capacity();
+
+drop trigger if exists validate_recruiting_application_bench_capacity on public.recruiting_applications;
+create constraint trigger validate_recruiting_application_bench_capacity
+after insert or update or delete on public.recruiting_applications
+deferrable initially deferred
+for each row execute function public.rankball_validate_recruiting_bench_capacity();
+
+revoke all on function public.rankball_normalize_recruiting_bench_capacity() from public, anon, authenticated, service_role;
+revoke all on function public.rankball_recruiting_side_bench_count(text, text) from public, anon, authenticated, service_role;
+revoke all on function public.rankball_validate_recruiting_bench_capacity() from public, anon, authenticated, service_role;
+
 do $$
 begin
   if to_regclass('public.teams') is not null and to_regclass('public.profiles') is not null then
@@ -1197,7 +1400,7 @@ begin
     execute 'alter table public.matches add column if not exists referee_id text';
     execute 'alter table public.matches add column if not exists referee_trust_min integer not null default 90';
     execute 'alter table public.matches add column if not exists stat_entry_minutes integer not null default 60';
-    execute 'alter table public.matches add column if not exists dispute_minutes integer not null default 30';
+    execute 'alter table public.matches add column if not exists dispute_minutes integer not null default 15';
     execute 'alter table public.matches add column if not exists ended_at timestamptz';
     execute 'alter table public.matches add column if not exists confirmed_at timestamptz';
     execute 'alter table public.matches add column if not exists cancelled_at timestamptz';
@@ -1225,6 +1428,47 @@ begin
   end if;
 end;
 $$;
+
+update public.matches
+set rules = jsonb_set(coalesce(rules, '{}'::jsonb), '{benchCapacity}', '2'::jsonb, true)
+where coalesce(rules->>'benchCapacity', '') !~ '^[0-3]$';
+
+create or replace function public.rankball_normalize_match_bench_capacity()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  raw_capacity text;
+  safe_capacity integer;
+  team_a_count integer;
+  team_b_count integer;
+begin
+  raw_capacity := coalesce(
+    new.rules->>'benchCapacity',
+    case when tg_op = 'UPDATE' then old.rules->>'benchCapacity' end,
+    '2'
+  );
+  if coalesce(raw_capacity, '') !~ '^[0-3]$' then
+    raise exception 'invalid_bench_capacity' using errcode = '23514';
+  end if;
+  safe_capacity := raw_capacity::integer;
+  team_a_count := jsonb_array_length(case when jsonb_typeof(new.reserve_players->'teamA') = 'array' then new.reserve_players->'teamA' else '[]'::jsonb end);
+  team_b_count := jsonb_array_length(case when jsonb_typeof(new.reserve_players->'teamB') = 'array' then new.reserve_players->'teamB' else '[]'::jsonb end);
+  if team_a_count > safe_capacity or team_b_count > safe_capacity then
+    raise exception 'match_reserve_exceeds_bench_capacity' using errcode = '23514';
+  end if;
+  new.rules := jsonb_set(coalesce(new.rules, '{}'::jsonb), '{benchCapacity}', to_jsonb(safe_capacity), true);
+  return new;
+end;
+$$;
+
+drop trigger if exists normalize_match_bench_capacity on public.matches;
+create trigger normalize_match_bench_capacity
+before insert or update of rules, reserve_players on public.matches
+for each row execute function public.rankball_normalize_match_bench_capacity();
+
+revoke all on function public.rankball_normalize_match_bench_capacity() from public, anon, authenticated, service_role;
 
 do $$
 begin
@@ -1288,7 +1532,7 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists referee_id text';
     execute 'alter table public.recruiting_posts add column if not exists referee_trust_min integer not null default 90';
     execute 'alter table public.recruiting_posts add column if not exists stat_entry_minutes integer not null default 60';
-    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 30';
+    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 15';
   end if;
 end;
 $$;
@@ -3261,7 +3505,12 @@ begin
     court_fee, spots, target_team_id, referee_id, referee_trust_min, stat_entry_minutes,
     dispute_minutes, room_state, host_join_mode, host_side, host_ready, side_capacity,
     player_ids, position, memo, status, confirmed_at, created_at, updated_at
-  from jsonb_populate_record(null::public.recruiting_posts, p_post_row)
+  from jsonb_populate_record(
+    null::public.recruiting_posts,
+    p_post_row || jsonb_build_object(
+      'dispute_minutes', public.rankball_normalize_dispute_minutes(nullif(p_post_row->>'dispute_minutes', '')::integer)
+    )
+  )
   on conflict (id) do update set
     type = excluded.type,
     title = excluded.title,
@@ -3961,7 +4210,7 @@ begin
     end
   );
 
-  if safe_reserve and greatest(selected_reserve_count, selected_pinned_reserve_count) >= 2 then
+  if safe_reserve and greatest(selected_reserve_count, selected_pinned_reserve_count) >= current_post.bench_capacity then
     return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'reserve_limit_requires_replay', 'postId', safe_post_id);
   end if;
 
@@ -4364,7 +4613,7 @@ begin
       else '[]'::jsonb
     end;
 
-    if greatest(reserve_count, jsonb_array_length(side_pinned_ids)) >= 2 and not (side_pinned_ids ? safe_player_id) then
+    if greatest(reserve_count, jsonb_array_length(side_pinned_ids)) >= current_post.bench_capacity and not (side_pinned_ids ? safe_player_id) then
       return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'reserve_limit_requires_replay', 'postId', safe_post_id);
     end if;
 
@@ -5144,6 +5393,7 @@ begin
     'hostSide', post_row.host_side,
     'hostReady', coalesce(post_row.host_ready, false),
     'sideCapacity', post_row.side_capacity,
+    'benchCapacity', post_row.bench_capacity,
     'playerIds', coalesce(post_row.player_ids, '[]'::jsonb),
     'position', post_row.position,
     'playerId', post_row.player_id,
@@ -5319,6 +5569,10 @@ begin
     'listCardOnly', true,
     'title', match_row.title,
     'mode', match_row.mode,
+    'benchCapacity', case
+      when coalesce(match_row.rules->>'benchCapacity', '') ~ '^[0-3]$' then (match_row.rules->>'benchCapacity')::integer
+      else 2
+    end,
     'courtId', match_row.court_id,
     'visibility', coalesce(match_row.visibility, match_row.rules->>'visibility', 'public'),
     'scheduledDate', match_row.scheduled_date,
@@ -6296,6 +6550,332 @@ grant execute on function public.rankball_feed_trigger_health() to service_role;
 
 select pg_notify('pgrst', 'reload schema');
 
+-- Authoritative bench-capacity and supported-mode guards.
+-- Keep synchronized with 20260722225600_bench_capacity_authoritative_guards.sql
+-- and 20260722225700_bench_capacity_three.sql.
+create or replace function pg_temp.rankball_patch_function_definition(
+  target_function regprocedure,
+  old_fragment text,
+  new_fragment text,
+  shape_error text
+)
+returns void
+language plpgsql
+as $helper$
+declare
+  function_definition text;
+begin
+  select pg_get_functiondef(target_function) into function_definition;
+  if function_definition is null then
+    raise exception '%', shape_error;
+  end if;
+  if position(old_fragment in function_definition) > 0 then
+    execute replace(function_definition, old_fragment, new_fragment);
+  elsif position(new_fragment in function_definition) = 0 then
+    raise exception '%', shape_error;
+  end if;
+end;
+$helper$;
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_match_room_action_unguarded(text,text,text,jsonb)'::regprocedure,
+  $old$  side_capacity integer;
+  active_a jsonb;$old$,
+  $new$  side_capacity integer;
+  bench_capacity integer;
+  active_a jsonb;$new$,
+  'match_room_bench_declaration_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_match_room_action_unguarded(text,text,text,jsonb)'::regprocedure,
+  $old$  side_capacity := greatest(1, least(5, coalesce((current_match.rules->>'sideCapacity')::integer, substring(current_match.mode from '^[0-9]+')::integer, 5)));$old$,
+  $new$  side_capacity := greatest(1, least(5, coalesce((current_match.rules->>'sideCapacity')::integer, substring(current_match.mode from '^[0-9]+')::integer, 5)));
+  bench_capacity := case
+    when coalesce(current_match.rules->>'benchCapacity', '') ~ '^[0-3]$' then (current_match.rules->>'benchCapacity')::integer
+    else 2
+  end;$new$,
+  'match_room_bench_initialization_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_match_room_action_unguarded(text,text,text,jsonb)'::regprocedure,
+  $old$    side_capacity := greatest(1, least(5, coalesce((patch->>'sideCapacity')::integer, side_capacity)));
+    if jsonb_array_length(active_a) > side_capacity or jsonb_array_length(active_b) > side_capacity then$old$,
+  $new$    side_capacity := greatest(1, least(5, coalesce((patch->>'sideCapacity')::integer, side_capacity)));
+    if side_capacity not in (1, 2, 3, 5)
+       and not (side_capacity = 4 and coalesce(current_match.rules->>'recordType', '') = 'solo') then
+      raise exception 'unsupported_match_mode' using errcode = '23514';
+    end if;
+    if patch ? 'benchCapacity' and coalesce(patch->>'benchCapacity', '') !~ '^[0-3]$' then
+      raise exception 'invalid_bench_capacity' using errcode = '23514';
+    end if;
+    bench_capacity := coalesce((patch->>'benchCapacity')::integer, bench_capacity);
+    if jsonb_array_length(active_a) > side_capacity or jsonb_array_length(active_b) > side_capacity then$new$,
+  'match_room_mode_and_bench_guard_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_match_room_action_unguarded(text,text,text,jsonb)'::regprocedure,
+  $old$          'sideCapacity', side_capacity,
+          'targetScore',$old$,
+  $new$          'sideCapacity', side_capacity,
+          'benchCapacity', bench_capacity,
+          'targetScore',$new$,
+  'match_room_rules_bench_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_match_room_action_unguarded(text,text,text,jsonb)'::regprocedure,
+  '      limit 2',
+  '      limit bench_capacity',
+  'match_room_roster_bench_limit_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_match_room_action_unguarded(text,text,text,jsonb)'::regprocedure,
+  $old$        if jsonb_array_length(coalesce(reserves->target_side, '[]'::jsonb)) >= 2 then raise exception 'match_reserve_full' using errcode = '23514'; end if;$old$,
+  $new$        if jsonb_array_length(coalesce(reserves->target_side, '[]'::jsonb)) >= bench_capacity then raise exception 'match_reserve_full' using errcode = '23514'; end if;$new$,
+  'match_room_placement_bench_limit_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  $old$  side_capacity integer;
+  active_count integer;$old$,
+  $new$  side_capacity integer;
+  bench_capacity integer;
+  active_count integer;$new$,
+  'recruiting_management_bench_declaration_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  $old$    side_capacity := greatest(1, least(5, coalesce((draft->>'sideCapacity')::integer, substring(coalesce(draft->>'mode', '5v5') from '^[0-9]+')::integer, 5)));$old$,
+  $new$    side_capacity := greatest(1, least(5, coalesce((draft->>'sideCapacity')::integer, substring(coalesce(draft->>'mode', '5v5') from '^[0-9]+')::integer, 5)));
+    if side_capacity not in (1, 2, 3, 5)
+       or coalesce(nullif(btrim(draft->>'mode'), ''), side_capacity::text || 'v' || side_capacity::text) <> side_capacity::text || 'v' || side_capacity::text then
+      raise exception 'unsupported_match_mode' using errcode = '23514';
+    end if;
+    if coalesce(nullif(btrim(draft->>'benchCapacity'), ''), nullif(btrim(draft #>> '{rules,benchCapacity}'), ''), '2') !~ '^[0-3]$' then
+      raise exception 'invalid_bench_capacity' using errcode = '23514';
+    end if;
+    bench_capacity := coalesce(nullif(btrim(draft->>'benchCapacity'), ''), nullif(btrim(draft #>> '{rules,benchCapacity}'), ''), '2')::integer;$new$,
+  'recruiting_management_create_policy_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  $old$      coalesce(draft->'rules', '{}'::jsonb) || jsonb_build_object('mmrRangeMode', mmr_range_mode, 'ratingScale', rating_scale),$old$,
+  $new$      coalesce(draft->'rules', '{}'::jsonb) || jsonb_build_object(
+        'sideCapacity', side_capacity,
+        'benchCapacity', bench_capacity,
+        'mmrRangeMode', mmr_range_mode,
+        'ratingScale', rating_scale
+      ),$new$,
+  'recruiting_management_create_rules_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  $old$  side_capacity := current_post.side_capacity;
+
+  if safe_action = 'interestRecruitingPost' then$old$,
+  $new$  side_capacity := current_post.side_capacity;
+  bench_capacity := current_post.bench_capacity;
+
+  if safe_action = 'interestRecruitingPost' then$new$,
+  'recruiting_management_existing_bench_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  ' > 2 then',
+  ' > bench_capacity then',
+  'recruiting_management_bench_overflow_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  'limit 2',
+  'limit bench_capacity',
+  'recruiting_management_bench_query_limit_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  'reserve_count >= 2',
+  'reserve_count >= bench_capacity',
+  'recruiting_management_bench_count_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  'side_reserve_count(current_post, safe_side) >= 2',
+  'side_reserve_count(current_post, safe_side) >= bench_capacity',
+  'recruiting_management_side_bench_count_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  'jsonb_array_length(next_reserve_ids) >= 2',
+  'jsonb_array_length(next_reserve_ids) >= bench_capacity',
+  'recruiting_management_party_bench_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  $old$    side_capacity := greatest(1, least(5, coalesce((payload->>'sideCapacity')::integer, current_post.side_capacity)));
+    if public.rankball_recruiting_side_active_count(current_post, 'teamA') > side_capacity$old$,
+  $new$    side_capacity := greatest(1, least(5, coalesce((payload->>'sideCapacity')::integer, current_post.side_capacity)));
+    if side_capacity not in (1, 2, 3, 5) then
+      raise exception 'unsupported_match_mode' using errcode = '23514';
+    end if;
+    if payload ? 'benchCapacity' and coalesce(payload->>'benchCapacity', '') !~ '^[0-3]$' then
+      raise exception 'invalid_bench_capacity' using errcode = '23514';
+    end if;
+    bench_capacity := coalesce((payload->>'benchCapacity')::integer, current_post.bench_capacity);
+    if public.rankball_recruiting_side_active_count(current_post, 'teamA') > side_capacity$new$,
+  'recruiting_management_update_policy_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  $old$    set mode = management.side_capacity::text || 'v' || management.side_capacity::text,
+        side_capacity = management.side_capacity,$old$,
+  $new$    set mode = management.side_capacity::text || 'v' || management.side_capacity::text,
+        side_capacity = management.side_capacity,
+        bench_capacity = management.bench_capacity,$new$,
+  'recruiting_management_update_bench_column_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_unguarded(text,jsonb)'::regprocedure,
+  $old$        rules = coalesce(rules, '{}'::jsonb) || jsonb_build_object(
+          'targetScore',$old$,
+  $new$        rules = coalesce(rules, '{}'::jsonb) || jsonb_build_object(
+          'sideCapacity', management.side_capacity,
+          'benchCapacity', management.bench_capacity,
+          'targetScore',$new$,
+  'recruiting_management_update_rules_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action(text,jsonb)'::regprocedure,
+  '    elsif jsonb_array_length(next_reserves) < 2 then',
+  '    elsif jsonb_array_length(next_reserves) < current_post.bench_capacity then',
+  'recruiting_management_summon_bench_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_management_action_pre_summon(text,jsonb)'::regprocedure,
+  '  if jsonb_array_length(selected_reserve) > 2 then',
+  '  if jsonb_array_length(selected_reserve) > current_post.bench_capacity then',
+  'recruiting_management_pre_summon_bench_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_recruiting_side_party_join_action(text,text,text,text,text)'::regprocedure,
+  '    if side_reserve_count >= 2 then',
+  '    if side_reserve_count >= post_row.bench_capacity then',
+  'recruiting_side_party_bench_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_tournament_match_roster_action_legacy(text,text,jsonb)'::regprocedure,
+  $old$  capacity integer;
+  captain_id text;$old$,
+  $new$  capacity integer;
+  bench_capacity integer;
+  captain_id text;$new$,
+  'tournament_roster_bench_declaration_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_tournament_match_roster_action_legacy(text,text,jsonb)'::regprocedure,
+  $old$  )));
+  team_snapshot := tournament_row.rules #> array['teamRosterSnapshot', 'teams', side_team_id];$old$,
+  $new$  )));
+  bench_capacity := case
+    when coalesce(current_match.rules->>'benchCapacity', '') ~ '^[0-3]$' then (current_match.rules->>'benchCapacity')::integer
+    else 2
+  end;
+  team_snapshot := tournament_row.rules #> array['teamRosterSnapshot', 'teams', side_team_id];$new$,
+  'tournament_roster_bench_initialization_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_tournament_match_roster_action_legacy(text,text,jsonb)'::regprocedure,
+  $old$  if jsonb_array_length(requested_reserve) > 2 then raise exception 'match_reserve_full' using errcode = '23514'; end if;$old$,
+  $new$  if jsonb_array_length(requested_reserve) > bench_capacity then raise exception 'match_reserve_full' using errcode = '23514'; end if;$new$,
+  'tournament_roster_bench_limit_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_tournament_operation_action(text,jsonb)'::regprocedure,
+  $old$    capacity := greatest(1, least(5, coalesce(substring(coalesce(nullif(btrim(draft->>'mode'), ''), '5v5') from '^(\d+)')::integer, 5)));
+    rules_json :=$old$,
+  $new$    capacity := greatest(1, least(5, coalesce(substring(coalesce(nullif(btrim(draft->>'mode'), ''), '5v5') from '^(\d+)')::integer, 5)));
+    if capacity not in (1, 2, 3, 5)
+       or coalesce(nullif(btrim(draft->>'mode'), ''), '5v5') <> capacity::text || 'v' || capacity::text then
+      raise exception 'unsupported_match_mode' using errcode = '23514';
+    end if;
+    rules_json :=$new$,
+  'tournament_create_mode_guard_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_tournament_operation_action(text,jsonb)'::regprocedure,
+  $old$    roster_snapshot := jsonb_build_object('version', 1, 'capturedAt', now_at, 'teams', '{}'::jsonb);$old$,
+  $new$    if coalesce(nullif(btrim(draft->>'benchCapacity'), ''), nullif(btrim(draft #>> '{rules,benchCapacity}'), ''), '2') !~ '^[0-3]$' then
+      raise exception 'invalid_bench_capacity' using errcode = '23514';
+    end if;
+    rules_json := rules_json || jsonb_build_object(
+      'sideCapacity', capacity,
+      'benchCapacity', coalesce(nullif(btrim(draft->>'benchCapacity'), ''), nullif(btrim(draft #>> '{rules,benchCapacity}'), ''), '2')::integer
+    );
+    roster_snapshot := jsonb_build_object('version', 1, 'capturedAt', now_at, 'teams', '{}'::jsonb);$new$,
+  'tournament_create_bench_policy_shape_changed'
+);
+
+select pg_temp.rankball_patch_function_definition(
+  'public.rankball_create_tournament_match_locked_unguarded(text,text,text,integer,integer,text)'::regprocedure,
+  $old$  end if;
+  if nullif(btrim(p_team_a_id), '') is null or nullif(btrim(p_team_b_id), '') is null or p_team_a_id = p_team_b_id then$old$,
+  $new$  end if;
+  if coalesce(tournament_row.mode, '') not in ('1v1', '2v2', '3v3', '5v5') then
+    raise exception 'unsupported_match_mode' using errcode = '23514';
+  end if;
+  if nullif(btrim(p_team_a_id), '') is null or nullif(btrim(p_team_b_id), '') is null or p_team_a_id = p_team_b_id then$new$,
+  'tournament_child_mode_guard_shape_changed'
+);
+
+alter table public.recruiting_posts
+  drop constraint if exists recruiting_posts_supported_mode_check;
+alter table public.recruiting_posts
+  add constraint recruiting_posts_supported_mode_check
+  check (coalesce(mode, '') in ('1v1', '2v2', '3v3', '5v5')) not valid;
+alter table public.recruiting_posts validate constraint recruiting_posts_supported_mode_check;
+
+alter table public.tournaments
+  drop constraint if exists tournaments_supported_mode_check;
+alter table public.tournaments
+  add constraint tournaments_supported_mode_check
+  check (coalesce(mode, '') in ('1v1', '2v2', '3v3', '5v5')) not valid;
+alter table public.tournaments validate constraint tournaments_supported_mode_check;
+
+alter table public.matches
+  drop constraint if exists matches_supported_mode_check;
+alter table public.matches
+  add constraint matches_supported_mode_check
+  check (
+    coalesce(mode, '') in ('1v1', '2v2', '3v3', '5v5')
+    or (mode = '4v4' and coalesce(rules->>'recordType', '') = 'solo')
+  ) not valid;
+alter table public.matches validate constraint matches_supported_mode_check;
+
+notify pgrst, 'reload schema';
+
 create or replace function public.rankball_confirm_recruiting_match_action(
   p_actor_profile_id text,
   p_post_action text,
@@ -6490,6 +7070,119 @@ revoke all on function public.rankball_rpc_grant_health() from public;
 revoke all on function public.rankball_rpc_grant_health() from anon;
 revoke all on function public.rankball_rpc_grant_health() from authenticated;
 grant execute on function public.rankball_rpc_grant_health() to service_role;
+
+update public.matches
+set dispute_minutes = public.rankball_normalize_dispute_minutes(dispute_minutes),
+    objection_window = public.rankball_normalize_dispute_minutes(dispute_minutes)::text || '분'
+where dispute_minutes not in (10, 15, 20)
+   or dispute_minutes is null
+   or objection_window is distinct from public.rankball_normalize_dispute_minutes(dispute_minutes)::text || '분';
+
+update public.recruiting_posts
+set dispute_minutes = public.rankball_normalize_dispute_minutes(dispute_minutes)
+where dispute_minutes not in (10, 15, 20) or dispute_minutes is null;
+
+alter table public.matches alter column dispute_minutes set default 15;
+alter table public.recruiting_posts alter column dispute_minutes set default 15;
+
+alter table public.matches drop constraint if exists matches_dispute_minutes_range;
+alter table public.matches add constraint matches_dispute_minutes_range
+  check (dispute_minutes in (10, 15, 20));
+
+alter table public.recruiting_posts drop constraint if exists recruiting_posts_dispute_minutes_range;
+alter table public.recruiting_posts add constraint recruiting_posts_dispute_minutes_range
+  check (dispute_minutes in (10, 15, 20));
+
+create or replace function public.rankball_normalize_dispute_window_row()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.dispute_minutes := public.rankball_normalize_dispute_minutes(new.dispute_minutes);
+  if tg_table_name = 'matches' then
+    new.objection_window := new.dispute_minutes::text || '분';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists rankball_matches_normalize_dispute_window on public.matches;
+create trigger rankball_matches_normalize_dispute_window
+before insert or update of dispute_minutes, objection_window on public.matches
+for each row execute function public.rankball_normalize_dispute_window_row();
+
+drop trigger if exists rankball_recruiting_normalize_dispute_window on public.recruiting_posts;
+create trigger rankball_recruiting_normalize_dispute_window
+before insert or update of dispute_minutes on public.recruiting_posts
+for each row execute function public.rankball_normalize_dispute_window_row();
+
+create or replace function public.rankball_dispute_window_health()
+returns table(check_name text, ok boolean, detail text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  match_default text;
+  recruiting_default text;
+  invalid_match_count bigint;
+  invalid_recruiting_count bigint;
+begin
+  select pg_get_expr(default_value.adbin, default_value.adrelid)
+  into match_default
+  from pg_attribute attribute
+  join pg_attrdef default_value
+    on default_value.adrelid = attribute.attrelid and default_value.adnum = attribute.attnum
+  where attribute.attrelid = 'public.matches'::regclass and attribute.attname = 'dispute_minutes';
+
+  select pg_get_expr(default_value.adbin, default_value.adrelid)
+  into recruiting_default
+  from pg_attribute attribute
+  join pg_attrdef default_value
+    on default_value.adrelid = attribute.attrelid and default_value.adnum = attribute.attnum
+  where attribute.attrelid = 'public.recruiting_posts'::regclass and attribute.attname = 'dispute_minutes';
+
+  select count(*) into invalid_match_count
+  from public.matches where dispute_minutes not in (10, 15, 20) or dispute_minutes is null;
+  select count(*) into invalid_recruiting_count
+  from public.recruiting_posts where dispute_minutes not in (10, 15, 20) or dispute_minutes is null;
+
+  return query values
+    ('normalizer_values',
+      public.rankball_normalize_dispute_minutes(10) = 10
+      and public.rankball_normalize_dispute_minutes(15) = 15
+      and public.rankball_normalize_dispute_minutes(20) = 20
+      and public.rankball_normalize_dispute_minutes(null) = 15
+      and public.rankball_normalize_dispute_minutes(30) = 15,
+      'allowed=10,15,20; fallback=15'),
+    ('matches_default', match_default = '15', coalesce(match_default, 'missing')),
+    ('recruiting_default', recruiting_default = '15', coalesce(recruiting_default, 'missing')),
+    ('matches_values', invalid_match_count = 0, invalid_match_count::text),
+    ('recruiting_values', invalid_recruiting_count = 0, invalid_recruiting_count::text),
+    ('matches_constraint', exists (
+      select 1 from pg_constraint where conrelid = 'public.matches'::regclass
+        and conname = 'matches_dispute_minutes_range' and convalidated
+        and pg_get_constraintdef(oid) like '%10%15%20%'
+    ), 'matches_dispute_minutes_range'),
+    ('recruiting_constraint', exists (
+      select 1 from pg_constraint where conrelid = 'public.recruiting_posts'::regclass
+        and conname = 'recruiting_posts_dispute_minutes_range' and convalidated
+        and pg_get_constraintdef(oid) like '%10%15%20%'
+    ), 'recruiting_posts_dispute_minutes_range'),
+    ('matches_trigger', exists (
+      select 1 from pg_trigger where tgrelid = 'public.matches'::regclass
+        and tgname = 'rankball_matches_normalize_dispute_window' and tgenabled <> 'D'
+    ), 'rankball_matches_normalize_dispute_window'),
+    ('recruiting_trigger', exists (
+      select 1 from pg_trigger where tgrelid = 'public.recruiting_posts'::regclass
+        and tgname = 'rankball_recruiting_normalize_dispute_window' and tgenabled <> 'D'
+    ), 'rankball_recruiting_normalize_dispute_window');
+end;
+$$;
+
+revoke all on function public.rankball_dispute_window_health() from public, anon, authenticated;
+grant execute on function public.rankball_dispute_window_health() to service_role;
 
 select pg_notify('pgrst', 'reload schema');
 
@@ -6897,6 +7590,51 @@ revoke all on function public.rankball_rpc_grant_health() from anon;
 revoke all on function public.rankball_rpc_grant_health() from authenticated;
 grant execute on function public.rankball_rpc_grant_health() to service_role;
 
+do $$
+declare
+  function_definition text;
+  old_fragment text;
+  new_fragment text;
+begin
+  if to_regprocedure('public.rankball_slim_room_feed_card(text,jsonb)') is null then
+    return;
+  end if;
+
+  select pg_get_functiondef('public.rankball_slim_room_feed_card(text,jsonb)'::regprocedure)
+  into function_definition;
+
+  old_fragment := $old$      'sideCapacity', side_capacity,$old$;
+  new_fragment := $new$      'sideCapacity', side_capacity,
+      'benchCapacity', case
+        when coalesce(card->>'benchCapacity', '') ~ '^[0-3]$' then (card->>'benchCapacity')::integer
+        else 2
+      end,$new$;
+  if position(new_fragment in function_definition) = 0 then
+    if position(old_fragment in function_definition) = 0 then raise exception 'slim_room_feed_side_capacity_shape_changed'; end if;
+    function_definition := replace(function_definition, old_fragment, new_fragment);
+  end if;
+
+  old_fragment := $old$      'listCardOnly', true,
+      'title', card->>'title',
+      'mode', card->>'mode',
+      'courtId', card->>'courtId',$old$;
+  new_fragment := $new$      'listCardOnly', true,
+      'title', card->>'title',
+      'mode', card->>'mode',
+      'benchCapacity', case
+        when coalesce(card->>'benchCapacity', '') ~ '^[0-3]$' then (card->>'benchCapacity')::integer
+        else 2
+      end,
+      'courtId', card->>'courtId',$new$;
+  if position(new_fragment in function_definition) = 0 then
+    if position(old_fragment in function_definition) = 0 then raise exception 'slim_match_feed_mode_shape_changed'; end if;
+    function_definition := replace(function_definition, old_fragment, new_fragment);
+  end if;
+
+  execute function_definition;
+end;
+$$;
+
 select pg_notify('pgrst', 'reload schema');
 
 create or replace function public.rankball_match_action_with_rating(
@@ -7035,7 +7773,7 @@ begin
     return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_not_disputable', 'matchId', safe_match_id);
   end if;
   if current_match.ended_at is null
-    or current_match.ended_at + make_interval(mins => greatest(1, coalesce(current_match.dispute_minutes, 30))) < now()
+    or current_match.ended_at + make_interval(mins => public.rankball_normalize_dispute_minutes(current_match.dispute_minutes)) < now()
   then
     raise exception 'match_dispute_window_closed' using errcode = '42501';
   end if;
@@ -7449,7 +8187,13 @@ begin
     team_b_id, score_a, score_b, rules, memo, stakes, objection_window, evidence,
     created_by, created_at, agreed_at, started_at, ended_at, confirmed_at, cancelled_at,
     voided_at, rating_result, team_rating_result, updated_at
-  from jsonb_populate_record(null::public.matches, p_match_row)
+  from jsonb_populate_record(
+    null::public.matches,
+    p_match_row || jsonb_build_object(
+      'dispute_minutes', public.rankball_normalize_dispute_minutes(nullif(p_match_row->>'dispute_minutes', '')::integer),
+      'objection_window', public.rankball_normalize_dispute_minutes(nullif(p_match_row->>'dispute_minutes', '')::integer)::text || '분'
+    )
+  )
   on conflict (id) do update set
     title = excluded.title,
     mode = excluded.mode,
@@ -12285,9 +13029,9 @@ begin
     from jsonb_array_elements(current_invitations) invitation
     where coalesce(invitation->>'status', 'pending') = 'pending'
       and invitation->>'side' = safe_side
-      and coalesce((invitation->>'reserve')::boolean, false) = true;
+      and lower(coalesce(invitation->>'reserve', 'false')) in ('true', 't', '1', 'yes', 'on');
 
-    if reserve_count + pending_reserve_count + invitation_count > 2 then
+    if reserve_count + pending_reserve_count + invitation_count > current_post.bench_capacity then
       return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'reserve_limit_requires_replay', 'postId', safe_post_id);
     end if;
   end if;
@@ -12538,7 +13282,7 @@ begin
   end if;
 
   safe_side := case when invitation->>'side' in ('teamA', 'teamB') then invitation->>'side' else 'teamB' end;
-  safe_reserve := coalesce((invitation->>'reserve')::boolean, false);
+  safe_reserve := lower(coalesce(invitation->>'reserve', 'false')) in ('true', 't', '1', 'yes', 'on');
 
   active_count := case
     when current_post.host_side = safe_side and current_post.host_join_mode = 'player' and current_post.player_id is not null then 1
@@ -12571,7 +13315,7 @@ begin
   if not safe_reserve and active_count >= greatest(1, least(5, coalesce(current_post.side_capacity, 5))) then
     safe_reserve := true;
   end if;
-  if safe_reserve and greatest(reserve_count, pinned_reserve_count) >= 2 then
+  if safe_reserve and greatest(reserve_count, pinned_reserve_count) >= current_post.bench_capacity then
     return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'reserve_limit_requires_replay', 'postId', safe_post_id);
   end if;
 

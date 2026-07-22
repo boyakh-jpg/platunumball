@@ -26,6 +26,7 @@ import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import {
   REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
+  normalizeBenchCapacity,
 } from "../../../src/lib/constants.js";
 import {
   COURT_COLUMNS,
@@ -49,7 +50,7 @@ let userRoomFeedAvailable = true;
 let userRoomFeedScopeAvailable = true;
 let userRoomFeedTimingColumnsAvailable = true;
 
-const RECRUITING_COUNT_POST_COLUMNS = "id,type,visibility,mode,room_state,host_join_mode,host_side,side_capacity,player_ids,player_id,team_id,status";
+const RECRUITING_COUNT_POST_COLUMNS = "id,type,visibility,mode,rules,room_state,host_join_mode,host_side,side_capacity,bench_capacity,player_ids,player_id,team_id,status";
 const RECRUITING_APPROVED_COURT_COLUMNS = `${COURT_COLUMNS},paid`;
 const RECRUITING_FEED_MAX_LIMIT = 200;
 const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
@@ -356,6 +357,7 @@ function toRecruitingCountPost(row = {}, applicationsByPost = new Map()) {
     hostSide: row.host_side,
     teamOnly: roomState.teamOnly === true || isPublicTeamRecruitingRoom({ visibility: row.visibility, hostJoinMode: row.host_join_mode }),
     sideCapacity: row.side_capacity,
+    benchCapacity: normalizeBenchCapacity(row.bench_capacity ?? row.rules?.benchCapacity),
     playerIds: row.player_ids ?? [],
     playerId: row.player_id,
     teamId: row.team_id,
@@ -734,6 +736,7 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
     hostSide: post.hostSide,
     hostReady: post.hostReady,
     sideCapacity: post.sideCapacity,
+    benchCapacity: normalizeBenchCapacity(post.benchCapacity ?? post.rules?.benchCapacity),
     listCounts: post.listCounts,
     __feedRelations: post.__feedRelations,
     __invitationsPartial: options.includeRoomInvitations !== true,

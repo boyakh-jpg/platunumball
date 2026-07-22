@@ -29,6 +29,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
 import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
+import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
 import MatchVoidDialog from "../components/match/MatchVoidDialog.jsx";
 import MeetingPointFields from "../components/match/MeetingPointFields.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
@@ -48,6 +49,7 @@ import {
   MMR_RANGE_POLICIES,
   RECRUITING_JOIN_MODES,
   getRecruitingBestSide,
+  getRecruitingBenchCapacity,
   getRecruitingEntryLeaderId,
   getRecruitingFit,
   getRecruitingListCardLobby,
@@ -331,16 +333,17 @@ function getDefaultTeamReserveIds(team, activeIds = [], capacity = MAX_RESERVE_P
 
 function getJoinActiveCapacity(post, lobby, sideName, reserve = false) {
   const side = lobby?.sides?.[sideName];
-  if (!side) return getRecruitingSideCapacity(post);
-  if (reserve) return Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - (side.reserveCandidates?.length ?? 0));
+  if (!side) return reserve ? getRecruitingBenchCapacity(post) : getRecruitingSideCapacity(post);
+  if (reserve) return Math.max(0, getRecruitingBenchCapacity(post) - (side.reserveCandidates?.length ?? 0));
   if (isTeamOnlyRoom(post)) return getRecruitingSideCapacity(post);
   return Math.max(0, side.capacity - side.filled);
 }
 
-function getJoinReserveCapacity(lobby, sideName) {
+function getJoinReserveCapacity(post, lobby, sideName) {
   const side = lobby?.sides?.[sideName];
-  if (!side) return MAX_RESERVE_PLAYERS_PER_SIDE;
-  return Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - (side.reserveCandidates?.length ?? 0));
+  const benchCapacity = getRecruitingBenchCapacity(post);
+  if (!side) return benchCapacity;
+  return Math.max(0, benchCapacity - (side.reserveCandidates?.length ?? 0));
 }
 
 function getDefaultJoinRoster(post, lobby, team, currentUser, sideName, reserve = false) {
@@ -348,7 +351,7 @@ function getDefaultJoinRoster(post, lobby, team, currentUser, sideName, reserve 
   const playerIds = getDefaultTeamPlayerIds(team, capacity, currentUser.id);
   return {
     playerIds,
-    reservePlayerIds: reserve ? [] : getDefaultTeamReserveIds(team, playerIds, getJoinReserveCapacity(lobby, sideName)),
+    reservePlayerIds: reserve ? [] : getDefaultTeamReserveIds(team, playerIds, getJoinReserveCapacity(post, lobby, sideName)),
   };
 }
 
@@ -380,7 +383,7 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
   const teamOnly = isTeamOnlyRoom(post) && !soloIndividualRoom;
   const side = getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
-  const reserve = !teamOnly && getJoinActiveCapacity(post, lobby, side, false) <= 0 && getJoinReserveCapacity(lobby, side) > 0;
+  const reserve = !teamOnly && getJoinActiveCapacity(post, lobby, side, false) <= 0 && getJoinReserveCapacity(post, lobby, side) > 0;
   const roster = teamOnly
     ? getDefaultJoinRoster(post, lobby, team, currentUser, side, reserve)
     : { playerIds: [], reservePlayerIds: [] };
@@ -546,10 +549,10 @@ function getLobbyRecorderIds(lobby) {
   }, { teamA: "", teamB: "" });
 }
 
-function canMovePlayerTo(lobby, playerId, sideName, reserve = false) {
+function canMovePlayerTo(post, lobby, playerId, sideName, reserve = false) {
   const side = lobby.sides[sideName];
   if (!side) return false;
-  if (reserve) return side.reserves.includes(playerId) || side.reserveCandidates.length < MAX_RESERVE_PLAYERS_PER_SIDE;
+  if (reserve) return side.reserves.includes(playerId) || side.reserveCandidates.length < getRecruitingBenchCapacity(post);
   return side.projectedPlayers.includes(playerId) || side.projectedFilled < side.capacity;
 }
 
@@ -1223,13 +1226,15 @@ function ReserveLine({
   inviteLabel = "초대",
   canManageEntry = null,
   recorderId = "",
+  capacity = MAX_RESERVE_PLAYERS_PER_SIDE,
   onInviteSlot,
   onSelfSlotAction,
 }) {
+  if (capacity <= 0) return null;
   const playingSet = new Set(playingIds);
-  const slots = candidates.slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
-  const openSlots = Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - slots.length);
-  const slotTrackCount = MAX_RESERVE_PLAYERS_PER_SIDE;
+  const slots = candidates.slice(0, capacity);
+  const openSlots = Math.max(0, capacity - slots.length);
+  const slotTrackCount = capacity;
   const reserveSlots = slots.map((candidate) => {
     const entry = (lobby.entries ?? []).find((item) => item.id === candidate.entryId);
     return {
@@ -1265,7 +1270,7 @@ function ReserveLine({
   };
   return (
     <div className="arena-reserve-line">
-      <strong>{SIDE_LABELS[sideName]} 후보 {candidates.length}/{MAX_RESERVE_PLAYERS_PER_SIDE}</strong>
+      <strong>{SIDE_LABELS[sideName]} 후보 {Math.min(candidates.length, capacity)}/{capacity}</strong>
       <div className="arena-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
         {reserveSlotGroups.map((group) => (
           group.type === "party" ? (
@@ -2159,7 +2164,7 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
     return { label: "경기시작", detail: "기록판이 열려 있습니다. 경기 종료 전까지 개인활약을 입력합니다." };
   }
   if (phase.phase === "postgame") {
-    return { label: "경기종료", detail: "파울, 점수, 따봉을 빠르게 정리하고 기록완료를 기다립니다." };
+    return { label: "경기 종료", detail: "파울과 점수를 정리하고 기록 확정을 기다립니다." };
   }
   if (phase.phase === "dispute") return { label: "결과 확인", detail: "이의신청 시간 안에 기록을 확인합니다." };
   if (phase.phase === "record") return { label: "기록방", detail: "확정된 점수, 개인활약, 파울을 열람합니다." };
@@ -2783,7 +2788,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       !isTeamOnlyRoom(roomPost) &&
       !joinDraft.reserve &&
       getJoinActiveCapacity(roomPost, lobby, joinDraft.side, false) <= 0 &&
-      getJoinReserveCapacity(lobby, joinDraft.side) > 0;
+      getJoinReserveCapacity(roomPost, lobby, joinDraft.side) > 0;
     const application = shouldReserve ? { ...joinDraft, reserve: true } : joinDraft;
     setJoiningPostId(roomPost.id);
     try {
@@ -3087,9 +3092,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const teamRoomHasJoinableSide = !teamOnlyRoom || MATCH_SIDES.some((sideName) => !getLobbyPrimaryTeamId(lobby, sideName));
         const joinCapacity = getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
         const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
+        const benchCapacity = getRecruitingBenchCapacity(sourceMatch ?? selectedPost);
         const selectedJoinReserveIds = joinDraft.reserve
           ? []
-          : getPartyReserveIds(selectedJoinTeam, joinDraft.reservePlayerIds, selectedJoinPlayerIds);
+          : getPartyReserveIds(selectedJoinTeam, joinDraft.reservePlayerIds, selectedJoinPlayerIds, benchCapacity);
         const candidateMmr = joinDraft.joinMode === "team" && !soloIndividualRoom
           ? getPlayerMmrAverage(selectedJoinPlayerIds, userById, selectedJoinTeam?.mmr ?? app.currentUser.ratings.integrated)
           : app.currentUser.ratings.integrated;
@@ -3479,7 +3485,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           const samePlacement = myEntry.side === sideName && currentUserReserve === reserve;
           if (samePlacement) return false;
           if (teamMatchSideLocked && sideName !== myEntry.side) return false;
-          if (!canMovePlayerTo(lobby, app.currentUser.id, sideName, reserve)) return false;
+          if (!canMovePlayerTo(selectedPost, lobby, app.currentUser.id, sideName, reserve)) return false;
           if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) return true;
           if (currentUserInParty && myEntry.side === sideName) return true;
           if (currentUserInParty) return true;
@@ -3623,7 +3629,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             ? getPartyPlayerIds(targetEntry.team, targetEntry.players ?? [], teamRosterCapacity, app.currentUser.id)
             : [];
           const teamRosterReserveIds = canManageTeamRoster
-            ? getPartyReserveIds(targetEntry.team, roomState.partyReserves?.[targetEntry.id] ?? [], teamRosterActiveIds)
+            ? getPartyReserveIds(targetEntry.team, roomState.partyReserves?.[targetEntry.id] ?? [], teamRosterActiveIds, benchCapacity)
             : [];
           return (
             <SelfSlotCommandPanel
@@ -3656,7 +3662,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   selectedIds={teamRosterActiveIds}
                   reserveIds={teamRosterReserveIds}
                   capacity={teamRosterCapacity}
-                  reserveCapacity={MAX_RESERVE_PLAYERS_PER_SIDE}
+                  reserveCapacity={benchCapacity}
                   requiredPlayerId={app.currentUser.id}
                   requiredActive
                   deferCommit
@@ -3819,7 +3825,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   </div>
                 </div>
 
-                <div className="arena-reserve-panel">
+                {benchCapacity > 0 ? <div className="arena-reserve-panel">
                   <ReserveLine
                     sideName="teamA"
                     candidates={lobby.sides.teamA.reserveCandidates}
@@ -3837,6 +3843,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                     canManage={mine}
                     recorderId={recorderIds.teamA}
+                    capacity={benchCapacity}
                     lobby={lobby}
                     onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
                     onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
@@ -3860,13 +3867,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                     canManage={mine}
                     recorderId={recorderIds.teamB}
+                    capacity={benchCapacity}
                     lobby={lobby}
                     onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
                     onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
                     onMoveCandidate={moveCandidate}
                     onRemoveCandidate={removeCandidate}
                   />
-                </div>
+                </div> : null}
 
                 <div className="arena-lobby-actions">
                   <div><Clock3 size={17} /><span>{getRecruitingSchedule(selectedPost)}</span></div>
@@ -4030,7 +4038,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       <label>
                         팀당 정원
                         <select value={roomEditDraft.sideCapacity} onChange={(event) => updateRoomEditDraft(selectedPost, { sideCapacity: Number(event.target.value) })}>
-                          {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} vs {value}</option>)}
+                          {MATCH_MODES.map(({ id, size }) => <option key={id} value={size}>{size} vs {size}</option>)}
                         </select>
                       </label>
                       <label>
@@ -4354,7 +4362,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                           selectedIds={selectedJoinPlayerIds}
                           reserveIds={selectedJoinReserveIds}
                           capacity={joinCapacity}
-                          reserveCapacity={MAX_RESERVE_PLAYERS_PER_SIDE}
+                          reserveCapacity={benchCapacity}
                           onRosterChange={({ selectedIds: playerIds, reserveIds: reservePlayerIds }) => updateJoinDraft(selectedPost, { playerIds, reservePlayerIds })}
                           requiredPlayerId={app.currentUser.id}
                           eligiblePlayerIds={selectedJoinTeamEligibility.eligiblePlayerIds}
@@ -4466,6 +4474,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   </Button>
                 ) : null}
               </div>
+              {matchRoom && sourceMatch ? (
+                <MatchRecommendationPanel
+                  match={sourceMatch}
+                  currentUserId={app.currentUser.id}
+                  users={app.state.users}
+                  teams={app.state.teams}
+                  onSubmit={app.actions.submitMatchThumbs}
+                  className="arena-match-recommendation"
+                />
+              ) : null}
               {paidCourtJoinPrompt && typeof document !== "undefined" ? createPortal(
                 <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setPaidCourtJoinPrompt(null)}>
                   <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="유료 구장 참여 확인" onMouseDown={(event) => event.stopPropagation()}>

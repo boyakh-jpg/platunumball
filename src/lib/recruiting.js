@@ -1,4 +1,4 @@
-import { DEFAULT_RATING, DISPUTE_WINDOW_MINUTES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
+import { DEFAULT_RATING, DISPUTE_WINDOW_MINUTES, MATCH_SIDES, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole, normalizeBenchCapacity } from "./constants.js";
 import { normalizeCourtOptionalBoolean } from "./courts.js";
 import { getMatchScheduledDate, isEligibleReferee, isInstantRoom } from "./matchUtils.js";
 import { getAgeGroupForUser } from "./profileSetup.js";
@@ -240,7 +240,7 @@ export function updateManyPinnedReservePlayers(roomState = {}, sideName, playerI
 export function isRecruitingReserveLimitExceeded(post, state, sideName) {
   if (!VALID_SIDES.has(sideName)) return true;
   const lobby = getRecruitingLobby(post, state);
-  return (lobby.sides[sideName]?.reserveCandidates?.length ?? 0) > MAX_RECRUITING_RESERVES_PER_SIDE;
+  return (lobby.sides[sideName]?.reserveCandidates?.length ?? 0) > getRecruitingBenchCapacity(post);
 }
 
 export function getRecruitingRoomParticipantIds(post, state) {
@@ -372,6 +372,10 @@ export function getRecruitingSideCapacity(post = {}) {
   const rawCapacity = Number(post.sideCapacity ?? modeCapacity);
   const safeCapacity = Number.isFinite(rawCapacity) ? rawCapacity : modeCapacity;
   return Math.max(1, Math.min(5, modeCapacity, safeCapacity));
+}
+
+export function getRecruitingBenchCapacity(post = {}) {
+  return normalizeBenchCapacity(post.benchCapacity ?? post.bench_capacity ?? post.rules?.benchCapacity);
 }
 
 function getRecruitingJoinMode(entry = {}) {
@@ -784,6 +788,7 @@ export function normalizeRecruitingPost(post = {}) {
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
   const acceptedApplicants = applicants.map((applicant) => ({ ...applicant, status: "ready" }));
   const refereeWanted = Boolean(post.refereeWanted ?? roomState.refereeWanted ?? post.refereeId);
+  const benchCapacity = getRecruitingBenchCapacity(post);
   return {
     ...post,
     type,
@@ -793,6 +798,7 @@ export function normalizeRecruitingPost(post = {}) {
     hostSide: VALID_SIDES.has(post.hostSide) ? post.hostSide : "teamA",
     hostReady: true,
     sideCapacity: getRecruitingSideCapacity(post),
+    benchCapacity,
     ownerId,
     refereeWanted,
     refereeId: post.refereeId ?? "",
@@ -800,6 +806,7 @@ export function normalizeRecruitingPost(post = {}) {
     statEntryMinutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
     timingType,
+    rules: { ...(post.rules ?? {}), benchCapacity },
     roomState: { ...roomState, ownerId, mmrRangeMode, timingType, refereeWanted },
     playerId: hostPlayerId,
     playerIds,
@@ -872,6 +879,7 @@ function getRecruitingHostEntry(post = {}, state = {}) {
   const user = state.users?.find((item) => item.id === post.playerId) ?? null;
   const team = post.teamId ? state.teams?.find((item) => item.id === post.teamId) ?? null : null;
   const capacity = getRecruitingSideCapacity(post);
+  const benchCapacity = getRecruitingBenchCapacity(post);
   const exactTournamentRoster = Boolean(post.tournamentId);
   const joinMode = post.hostJoinMode === "team" && (team || post.teamId || post.playerIds?.length) ? "team" : "player";
   const players = joinMode === "team"
@@ -881,7 +889,9 @@ function getRecruitingHostEntry(post = {}, state = {}) {
     ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves.host ?? []) : unique(roomState.partyReserves.host ?? []))
     : [];
   const reserves = joinMode === "team"
-    ? unique([...(exactTournamentRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves]).filter((playerId) => !players.includes(playerId))
+    ? unique([...(exactTournamentRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves])
+        .filter((playerId) => !players.includes(playerId))
+        .slice(0, benchCapacity)
     : [];
 
   return {
@@ -907,6 +917,7 @@ function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {}) {
   if (!normalized) return null;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const capacity = getRecruitingSideCapacity(post);
+  const benchCapacity = getRecruitingBenchCapacity(post);
   const soloIndividualRoom = isSoloIndividualRecruitingRoom(post);
   const normalizedEntry = soloIndividualRoom && normalized.kind === "team"
     ? {
@@ -932,7 +943,9 @@ function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {}) {
     ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []) : unique(roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []))
     : [];
   const reserves = normalizedEntry.kind === "team"
-    ? unique([...(exactTournamentRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves]).filter((playerId) => !players.includes(playerId))
+    ? unique([...(exactTournamentRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves])
+        .filter((playerId) => !players.includes(playerId))
+        .slice(0, benchCapacity)
     : [];
 
   return {

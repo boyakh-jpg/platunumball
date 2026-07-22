@@ -2,6 +2,7 @@ import {
   DEFAULT_RATING,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
+  normalizeBenchCapacity,
   normalizeDisputeWindowMinutes,
 } from "../lib/constants.js";
 import { isPublicTeamRecruitingRoom } from "../lib/recruiting.js";
@@ -143,6 +144,7 @@ export function fromRemoteRecruitingPost(row = {}, {
     hostSide: row.host_side,
     hostReady: row.host_ready,
     sideCapacity: row.side_capacity,
+    benchCapacity: normalizeBenchCapacity(row.bench_capacity ?? row.rules?.benchCapacity),
     playerIds: row.player_ids ?? [],
     position: row.position,
     playerId: row.player_id,

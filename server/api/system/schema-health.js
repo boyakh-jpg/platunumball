@@ -69,6 +69,8 @@ const REQUIRED_COLUMNS = {
     "host_join_mode",
     "host_ready",
     "side_capacity",
+    "bench_capacity",
+    "dispute_minutes",
     "status",
   ],
   recruiting_applications: [
@@ -94,6 +96,7 @@ const REQUIRED_COLUMNS = {
     "score_a",
     "score_b",
     "rules",
+    "dispute_minutes",
     "created_by",
     "agreed_at",
     "started_at",
@@ -587,6 +590,10 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_match_id: "", p_dispute_request: {} },
   },
   {
+    name: "rankball_dispute_window_health",
+    args: {},
+  },
+  {
     name: "rankball_match_resolve_dispute_action",
     args: { p_actor_profile_id: "", p_match_id: "", p_dispute_id: "", p_decision: "rejected" },
   },
@@ -688,6 +695,18 @@ async function checkRpc(client, name, args) {
     ok: !missing,
     error: missing ? message : null,
     probeError: !missing ? message || null : null,
+  };
+}
+
+async function checkDisputeWindowPolicy(client) {
+  const { data, error } = await client.rpc("rankball_dispute_window_health");
+  const checks = Array.isArray(data) ? data : [];
+  const failed = checks.filter((check) => check?.ok !== true);
+  return {
+    ok: !error && checks.length > 0 && failed.length === 0,
+    error: error?.message ?? (checks.length === 0 ? "dispute_window_health_empty" : null),
+    failed,
+    checks,
   };
 }
 
@@ -997,6 +1016,7 @@ export default async function handler(request, response) {
     const feedTriggerCheck = await checkFeedTriggers(client);
     const rlsPolicyCheck = await checkRlsPolicies(client);
     const rpcGrantCheck = await checkRpcGrants(client);
+    const disputeWindowCheck = await checkDisputeWindowPolicy(client);
     const profileIdentityCheck = await checkProfileIdentity(client);
     const tournamentInvitationCheck = await checkTournamentInvitations(client);
     const tournamentStartDeliveryCheck = await checkTournamentStartDeliveries(client);
@@ -1011,12 +1031,13 @@ export default async function handler(request, response) {
       ? await ensureCourtAdminAppointments(client)
       : null;
     sendJson(response, 200, {
-      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && rpcGrantCheck.ok && profileIdentityCheck.ok && tournamentInvitationCheck.ok && tournamentStartDeliveryCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
+      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && rpcGrantCheck.ok && disputeWindowCheck.ok && profileIdentityCheck.ok && tournamentInvitationCheck.ok && tournamentStartDeliveryCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
       failedCount: failed.length,
       failedRpcCount: failedRpcs.length,
       failedFeedTriggerCount: feedTriggerCheck.missing.length,
       failedRlsPolicyCount: rlsPolicyCheck.failed.length,
       failedRpcGrantCount: rpcGrantCheck.failed.length,
+      failedDisputeWindowCount: disputeWindowCheck.failed.length,
       failedProfileIdentityCount: profileIdentityCheck.failed.length,
       failedTournamentInvitationCount: tournamentInvitationCheck.failed.length,
       failedTournamentStartDeliveryCount: tournamentStartDeliveryCheck.failed.length,
@@ -1025,6 +1046,7 @@ export default async function handler(request, response) {
       feedTriggerCheck,
       rlsPolicyCheck,
       rpcGrantCheck,
+      disputeWindowCheck,
       profileIdentityCheck,
       tournamentInvitationCheck,
       tournamentStartDeliveryCheck,
