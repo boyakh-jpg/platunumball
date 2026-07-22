@@ -86,6 +86,10 @@ test("pickup preset reuses player rooms without claiming automatic rotation", ()
   }
 });
 
+test("creation UI exposes only friendly, competitive, and pickup intents", () => {
+  assert.deepEqual(MATCH_INTENT_OPTIONS.map((option) => option.id), ["friendly", "standard_competitive", "pickup"]);
+});
+
 test("pickup server guard rejects team rooms, ranked matches, and false rotation claims", () => {
   const patch = getMatchIntentPresetPatch("pickup", "5v5");
   const draft = { mode: "5v5", ...patch, rules: { ...patch } };
@@ -120,8 +124,9 @@ test("pickup room updates cannot bypass player, unranked, or manual rotation inv
 test("zero bench capacity removes bench policy and copy from the final summary", () => {
   const draft = {
     mode: "5v5",
-    ...getMatchIntentPresetPatch("full_competitive", "5v5"),
+    ...getMatchIntentPresetPatch("standard_competitive", "5v5"),
     benchCapacity: 0,
+    playingTimePolicy: "none",
     paymentPolicy: "equal_all_confirmed",
     benchPaymentAcknowledged: false,
     court: "테스트 코트",
@@ -137,8 +142,9 @@ test("zero bench capacity removes bench policy and copy from the final summary",
 test("equal payment without playing guarantee requires explicit acknowledgement only when bench exists", () => {
   const draft = {
     mode: "3v3",
-    ...getMatchIntentPresetPatch("full_competitive", "3v3"),
+    ...getMatchIntentPresetPatch("standard_competitive", "3v3"),
     benchCapacity: 2,
+    playingTimePolicy: "none",
     paymentPolicy: "equal_all_confirmed",
     benchPaymentAcknowledged: false,
   };
@@ -190,7 +196,9 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(source, /benchCapacity: creationPolicyPayload\.benchCapacity/);
   assert.match(source, /rules:\s*\{[\s\S]*\.\.\.creationPolicyPayload/);
   assert.match(source, /MatchCreationWizardNav/);
-  assert.match(source, /wizardStep === 6/);
+  assert.match(source, /wizardStep === finalWizardStep/);
+  const wizardSource = fs.readFileSync(path.join(root, "src/components/match/MatchCreationWizard.jsx"), "utf8");
+  assert.doesNotMatch(wizardSource, /\{ id: 6, label: "확인" \}/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "match_record"\)/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "tournament"\)/);
   assert.match(source, /getDefaultCreateTitle\(draft\.mode, matchIntent\)/);

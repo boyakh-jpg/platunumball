@@ -164,11 +164,13 @@ function getActionErrorCode(result) {
 }
 
 function getDefaultCreateTitle(mode = "5v5", matchIntent = "standard_competitive") {
-  return matchIntent === "pickup" ? `오늘의 ${mode} 픽업` : `오늘의 ${mode} 공식전`;
+  if (matchIntent === "pickup") return `오늘의 ${mode} 픽업`;
+  if (matchIntent === "friendly") return `오늘의 ${mode} 친선전`;
+  return `오늘의 ${mode} 경쟁전`;
 }
 
 function isDefaultCreateTitle(title = "") {
-  return /^오늘의\s+(1v1|2v2|3v3|4v4|5v5)\s+(공식전|픽업)$/i.test(String(title).trim());
+  return /^오늘의\s+(1v1|2v2|3v3|4v4|5v5)\s+(공식전|친선전|경쟁전|픽업)$/i.test(String(title).trim());
 }
 
 function getMatchModeOrDefault(mode = "", fallback = "5v5") {
@@ -291,7 +293,9 @@ function getDefaultMmrLimitMode(teamA, teamB, ranked = true, rangeMode = "narrow
 
 function getCreateStepFromSearch(search = "", steps = []) {
   const firstStep = steps[0]?.id ?? 1;
+  const lastStep = steps.at(-1)?.id ?? firstStep;
   const step = Number(new URLSearchParams(search).get("step"));
+  if (step === 6) return lastStep;
   return steps.some((item) => item.id === step) ? step : firstStep;
 }
 
@@ -509,6 +513,7 @@ export default function CreateMatch({ app }) {
   const isStandardCreateWizard = !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom;
   const creationWizardType = isSoloRecord ? "personal_record" : isMatchRecordRoom ? "match_record" : isTournamentRoom ? "tournament" : "match";
   const creationWizardSteps = useMemo(() => getMatchCreationSteps(creationWizardType), [creationWizardType]);
+  const finalWizardStep = creationWizardSteps.at(-1)?.id ?? 1;
   const wizardStepIds = useMemo(() => new Set(creationWizardSteps.map((step) => step.id)), [creationWizardSteps]);
   const goToWizardStep = useCallback((nextStep, { replace = false } = {}) => {
     const step = Number(nextStep);
@@ -1779,7 +1784,7 @@ export default function CreateMatch({ app }) {
                   <option value="player">개인전</option>
                 </select>
                 {isPickupMatch
-                  ? <span className="form-warning">픽업·자유경기는 개인 참가자를 모집해 현장에서 팀을 나눕니다.</span>
+                  ? <span className="form-warning">픽업은 개인 참가자를 모집해 현장에서 팀을 나눕니다.</span>
                   : !canCreateTeamRoom ? <span className="form-warning">팀이 있어야 팀전을 만들 수 있습니다.</span> : null}
               </label>
             ) : null}
@@ -2211,7 +2216,7 @@ export default function CreateMatch({ app }) {
                 <div className={teamTierBlocked ? "mmr-range-mode-control create-eligibility-control tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control"}>
                   <div className="mmr-range-summary-row">
                     <div>
-                      <span>정규전 허용구간</span>
+                      <span>경쟁전 허용구간</span>
                       <strong>{isTournamentRoom ? `${mmrRangePolicy.label} · 팀별 MMR 기준` : roomTierRange.detail}</strong>
                       <em>{isTournamentRoom ? "각 팀의 조건 충족 선수 수를 검사" : teamTierWarned ? "경고만 표시" : isTeamRoom ? `${selectedTeamA?.name ?? "A사이드"} 기준` : `${app.currentUser.name} 기준`} · {mmrRangePolicy.detail}</em>
                     </div>
@@ -2571,7 +2576,7 @@ export default function CreateMatch({ app }) {
         </Card>
         ) : null}
 
-        {wizardStep === 6 ? (
+        {wizardStep === finalWizardStep ? (
           <Card className="section-card full-span match-creation-review-card">
             <div className="section-title-row">
               <div>
@@ -2599,10 +2604,10 @@ export default function CreateMatch({ app }) {
           </Card>
         ) : null}
       </div>
-      {wizardStep < 6 ? (
+      {wizardStep !== finalWizardStep ? (
         <MatchCreationWizardActions currentStep={wizardStep} steps={creationWizardSteps} onStepChange={goToWizardStep} />
       ) : null}
-      {wizardStep === 6 ? (
+      {wizardStep === finalWizardStep ? (
       <div className="create-submit-row">
         {submitFeedback || submitDisabledReason ? <span className="create-submit-warning">{submitFeedback || submitDisabledReason}</span> : null}
         <Button type="submit" disabled={submitDisabled || submitting}>{isSoloRecord ? "기록 저장" : isMatchRecordRoom ? "기록방 만들기" : isTournamentRoom ? "대회 생성" : "경기 생성"}</Button>

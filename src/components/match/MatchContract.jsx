@@ -98,7 +98,7 @@ export default function MatchContract({ match, users = [], teams = [], matches =
           <strong>{getMeetingPointSummary(rules, match.timingType, match.mode)}</strong>
         </div>
         <div>
-          <span>정규전 반영</span>
+          <span>MMR 반영</span>
           <strong>{match.ranked === false ? "OFF" : "ON"}</strong>
         </div>
         <div>

@@ -4,23 +4,18 @@ import { getDefaultMatchRules, getMatchRuleSummary } from "./matchRules.js";
 export const MATCH_INTENT_OPTIONS = Object.freeze([
   {
     id: "friendly",
-    label: "친선·균등출전",
-    description: "승패보다 함께 뛰는 경험을 우선합니다.",
-  },
-  {
-    id: "pickup",
-    label: "픽업·자유경기",
-    description: "개인으로 참가하고 현장에서 팀과 교대 순서를 정합니다.",
+    label: "친선전",
+    description: "MMR을 반영하지 않고 후보 출전을 보장합니다.",
   },
   {
     id: "standard_competitive",
-    label: "일반 경쟁",
-    description: "후보도 최소 한 번 출전하고 MMR을 정상 반영합니다.",
+    label: "경쟁전",
+    description: "MMR을 반영하며 출전 정책은 따로 정합니다.",
   },
   {
-    id: "full_competitive",
-    label: "완전 경쟁",
-    description: "선발 중심으로 운영하며 후보 출전을 보장하지 않습니다.",
+    id: "pickup",
+    label: "픽업",
+    description: "개인으로 참가하고 현장에서 팀과 교대 순서를 정합니다.",
   },
 ]);
 
@@ -126,23 +121,23 @@ export function getMatchClockPresetOptions(mode = "5v5") {
     return [{ id: "small_default", label: `${mode} 기본`, patch: getModeClockPreset(mode) }];
   }
   return [
-    { id: "community", label: "동호회 8분×4", patch: getModeClockPreset(mode, "community") },
-    { id: "official", label: "공식형 10분×4", patch: getModeClockPreset(mode, "official") },
+    { id: "community", label: "러닝타임 8분×4", patch: getModeClockPreset(mode, "community") },
+    { id: "official", label: "스톱타임 10분×4", patch: getModeClockPreset(mode, "official") },
   ];
 }
 
 export function getMatchIntentPresetPatch(intent = "standard_competitive", mode = "5v5") {
   const matchIntent = MATCH_INTENT_IDS.has(intent) ? intent : "standard_competitive";
   const pickup = matchIntent === "pickup";
-  const competitive = matchIntent === "standard_competitive" || matchIntent === "full_competitive";
+  const competitive = matchIntent === "standard_competitive";
   return {
     matchIntent,
     benchCapacity: DEFAULT_BENCH_CAPACITY,
     waitlistCapacity: 3,
-    playingTimePolicy: pickup ? "equal_rotation" : matchIntent === "full_competitive" ? "none" : "appearance_guaranteed",
+    playingTimePolicy: pickup ? "equal_rotation" : "appearance_guaranteed",
     lineupSelectionPolicy: pickup ? "no_fixed_starter" : undefined,
     paymentPolicy: "equal_all_confirmed",
-    benchPaymentAcknowledged: matchIntent !== "full_competitive",
+    benchPaymentAcknowledged: true,
     ranked: competitive,
     official: false,
     preRegistered: true,
@@ -182,7 +177,7 @@ export function getMatchCreationPolicyPayload(source = {}) {
     ? "equal_rotation"
     : PLAYING_TIME_POLICY_IDS.has(source.playingTimePolicy)
       ? source.playingTimePolicy
-      : matchIntent === "full_competitive" ? "none" : "appearance_guaranteed";
+      : "appearance_guaranteed";
   const paymentPolicy = PAYMENT_POLICY_IDS.has(source.paymentPolicy) ? source.paymentPolicy : "equal_all_confirmed";
   const venuePaymentType = VENUE_PAYMENT_TYPE_IDS.has(source.venuePaymentType) ? source.venuePaymentType : "free_public";
   const venueSecured = VENUE_SECURED_IDS.has(source.venueSecured) ? source.venueSecured : "confirmed";
@@ -288,10 +283,10 @@ export function getMatchCreationValidation(source = {}) {
   }
   if (policy.matchIntent === "pickup") {
     if (source.hostJoinMode !== "player" || source.teamOnly === true) {
-      errors.push("픽업·자유경기는 개인 참가 방식으로만 만들 수 있습니다.");
+      errors.push("픽업은 개인 참가 방식으로만 만들 수 있습니다.");
     }
     if (source.ranked !== false || source.official !== false) {
-      errors.push("픽업·자유경기는 MMR을 반영하지 않습니다.");
+      errors.push("픽업은 MMR을 반영하지 않습니다.");
     }
     warnings.push("자동 로테이션은 지원하지 않습니다. 방장이 현장에서 팀과 교대 순서를 수동으로 정합니다.");
   }
@@ -299,7 +294,7 @@ export function getMatchCreationValidation(source = {}) {
     warnings.push("현장 상황에 따라 경기가 취소되거나 다른 장소로 이동할 수 있습니다.");
   }
   if (policy.venueSecured === "unconfirmed" && source.ranked !== false) {
-    warnings.push("정규전 구장이 아직 확보되지 않았습니다.");
+    warnings.push("경쟁전 구장이 아직 확보되지 않았습니다.");
   }
   return { policy, errors, warnings };
 }

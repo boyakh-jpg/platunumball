@@ -15,7 +15,6 @@ export const MATCH_CREATION_STEPS = Object.freeze([
   { id: 1, label: "기본 설정" },
   { id: 3, label: "규칙·운영" },
   { id: 4, label: "구장·비용" },
-  { id: 6, label: "확인" },
 ]);
 
 export function getMatchCreationSteps(summaryType = "match") {
@@ -24,7 +23,6 @@ export function getMatchCreationSteps(summaryType = "match") {
       { id: 1, label: "기록 기본" },
       { id: 4, label: "구장" },
       { id: 5, label: "메모" },
-      { id: 6, label: "확인" },
     ];
   }
   if (summaryType === "match_record") {
@@ -33,7 +31,6 @@ export function getMatchCreationSteps(summaryType = "match") {
       { id: 3, label: "기록 규칙" },
       { id: 4, label: "구장" },
       { id: 5, label: "메모" },
-      { id: 6, label: "확인" },
     ];
   }
   if (summaryType === "tournament") {
@@ -95,15 +92,11 @@ export function MatchIntentPresetSelector({ value, benchCapacity = DEFAULT_BENCH
           onClick={() => onSelect(option.id)}
         >
           <strong>{option.label}</strong>
-          <span>{option.id === "pickup"
-            ? option.description
-            : benchCapacity > 0
+          <span>{benchCapacity > 0 || option.id === "pickup"
             ? option.description
             : option.id === "friendly"
-              ? "승패보다 함께 뛰는 경험을 우선합니다."
-              : option.id === "standard_competitive"
-                ? "MMR을 정상 반영하는 일반 경쟁 경기입니다."
-                : "출전 명단 중심으로 운영하고 MMR을 정상 반영합니다."}</span>
+              ? "MMR을 반영하지 않는 친선 경기입니다."
+              : "MMR을 반영하는 경쟁 경기입니다."}</span>
         </button>
       ))}
     </div>
