@@ -23,6 +23,7 @@ const Matches = lazy(() => import("./pages/Matches.jsx"));
 const MatchRoom = lazy(() => import("./pages/MatchRoom.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail.jsx"));
+const Privacy = lazy(() => import("./pages/Privacy.jsx"));
 const Profile = lazy(() => import("./pages/Profile.jsx"));
 const ProfileAchievements = lazy(() => import("./pages/ProfileAchievements.jsx"));
 const ProfileRecords = lazy(() => import("./pages/ProfileRecords.jsx"));
@@ -35,6 +36,7 @@ const Settings = lazy(() => import("./pages/Settings.jsx"));
 const Signup = lazy(() => import("./pages/Signup.jsx"));
 const TeamDetail = lazy(() => import("./pages/TeamDetail.jsx"));
 const Teams = lazy(() => import("./pages/Teams.jsx"));
+const Terms = lazy(() => import("./pages/Terms.jsx"));
 const TournamentDetail = lazy(() => import("./pages/TournamentDetail.jsx"));
 
 function preloadCoreAppRoutes() {
@@ -136,6 +138,8 @@ export default function App() {
           <Route path="/" element={<Landing state={app.state} />} />
           <Route path="/login" element={<Login auth={auth} app={app} />} />
           <Route path="/data-sources" element={<DataSources />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
         </Route>
         <Route element={<RequireAuth auth={auth} />}>
           <Route path="/app/admin/court-map" element={<AdminCourtMapPopup />} />

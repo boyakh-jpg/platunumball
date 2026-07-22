@@ -107,6 +107,12 @@ export default function Login({ auth, app }) {
             ))}
           </div>
 
+          {!auth.session ? (
+            <p className="auth-legal-note">
+              로그인하면 <Link to="/terms">서비스 약관</Link>과 <Link to="/privacy">개인정보처리방침</Link>을 확인하고 동의한 것으로 봅니다.
+            </p>
+          ) : null}
+
           {auth.testLoginAllowed ? (
             <>
             <div className="auth-divider"><span>테스트 계정으로 둘러보기</span></div>

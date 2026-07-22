@@ -5,7 +5,11 @@ const OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
 
 export default function DataAttribution() {
   return (
-    <footer className="site-data-footer" aria-label="농구장 데이터 출처">
+    <footer className="site-data-footer" aria-label="서비스 정보">
+      <Link to="/privacy">개인정보처리방침</Link>
+      <span aria-hidden="true">·</span>
+      <Link to="/terms">서비스 약관</Link>
+      <span className="site-footer-divider" aria-hidden="true">|</span>
       <Link to="/data-sources">농구장 데이터:</Link>
       <a href={DATA_PORTAL_URL} target="_blank" rel="noopener noreferrer">공공데이터포털</a>
       <span aria-hidden="true">·</span>

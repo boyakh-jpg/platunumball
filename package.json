@@ -16,6 +16,7 @@
     "simulate:backend": "node scripts/simulate-backend-flow.mjs",
     "audit:production-data": "node scripts/audit-production-data.mjs",
     "test:policies": "node --test scripts/shared-domain-policies.test.mjs scripts/api-security.test.mjs scripts/court-request-report-policy.test.mjs scripts/match-mode-policy.test.mjs",
+    "test:legal": "node --test scripts/legal-pages.test.mjs",
     "test:security": "node --test scripts/api-security.test.mjs",
     "verify:release": "vite build && node scripts/simulate-backend-flow.mjs --full --quiet",
     "preview": "vite preview --host 127.0.0.1"
