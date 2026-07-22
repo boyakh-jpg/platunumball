@@ -48,6 +48,9 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
   assert.match(component, /rowKey: "name_evidence_application_status", patchKey: "nameEvidenceApplicationStatus"/);
   assert.match(component, /rowKey: "name_evidence_proposed_facility", patchKey: "nameEvidenceProposedFacility"/);
   assert.match(component, /rowKey: "name_evidence_applied_facility", patchKey: "nameEvidenceAppliedFacility"/);
+  const courtColumnsSource = component.split("const COURT_COLUMNS = [")[1].split("];", 1)[0];
+  const frontColumnLabels = [...courtColumnsSource.matchAll(/label: "([^"]+)"/g)].map((match) => match[1]).slice(0, 16);
+  assert.deepEqual(frontColumnLabels, ["시설명", "명칭판정", "거리(m)", "코트", "실내외", "시설유형", "구장분류", "바닥", "코트형태", "골대", "이용방식", "예약", "유료", "조명", "공개", "표준 구장명"]);
   assert.match(component, /function isColumnEditable\(row, column\)/);
   assert.match(component, /!column\.requiresNameEvidence \|\| Boolean\(row\.name_evidence_decision\)/);
   assert.match(component, />OSM 열기</);
