@@ -75,6 +75,7 @@ import {
   getCourtAccessLabel,
   getCourtHoopCount,
   getCourtKindLabel,
+  getCourtCoordinate,
   getCourtLocationNote,
   getCourtMapUrl,
   getNearbyCourtCandidates,
@@ -672,6 +673,17 @@ test("profile record result and recency helpers preserve match semantics", () =>
 });
 
 test("court map URLs pin stored coordinates and search by address only", () => {
+  assert.equal(getCourtCoordinate(null), null);
+  assert.equal(getCourtCoordinate(undefined), null);
+  assert.equal(getCourtCoordinate({ lat: "", lng: "" }), null);
+  assert.deepEqual(getCourtCoordinate({ latitude: 37.56321, longitude: 126.92234 }), {
+    lat: 37.56321,
+    lng: 126.92234,
+  });
+  assert.deepEqual(getCourtCoordinate({ lat: "", lng: "", latitude: 37.56321, longitude: 126.92234 }), {
+    lat: 37.56321,
+    lng: 126.92234,
+  });
   const pinnedUrl = new URL(getCourtMapUrl({
     name: "연북중학교 농구장",
     roadAddress: "서울특별시 마포구 연남로 80",

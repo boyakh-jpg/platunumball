@@ -3,19 +3,13 @@ import { createPortal } from "react-dom";
 import { MapPin, Star, X } from "lucide-react";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { loadNaverMapsSdk } from "../../lib/naverAddress.js";
-import { getCourtAddress } from "../../lib/courts.js";
+import { getCourtAddress, getCourtCoordinate } from "../../lib/courts.js";
 import Button from "../common/Button.jsx";
 
 const DISTRICT_OVERVIEW_ZOOM = 13;
 const WIDE_DISTRICT_OVERVIEW_ZOOM = 14;
 const WIDE_MAP_MIN_WIDTH = 720;
 const DEFAULT_OVERVIEW_ZOOM = 12;
-
-function getCourtCoordinate(court = {}) {
-  const lat = Number(court.lat ?? court.latitude);
-  const lng = Number(court.lng ?? court.longitude);
-  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
-}
 
 function getClusterCellSize(zoom = 12) {
   if (zoom <= 9) return 0.35;
