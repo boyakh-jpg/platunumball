@@ -3233,6 +3233,52 @@ input[type="color"] {
   margin-top: 12px;
 }
 
+.record-impact-options {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.record-impact-options p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.record-impact-options .toggle-pair {
+  margin-top: 0;
+}
+
+.record-impact-options .toggle-pair label {
+  align-items: flex-start;
+}
+
+.record-impact-options .toggle-pair span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.record-impact-options .toggle-pair strong {
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.record-impact-options .toggle-pair em {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
 .signup-setup-grid {
   align-items: start;
 }
