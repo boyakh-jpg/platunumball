@@ -97,11 +97,15 @@ export default function CourtMapPicker({
   const [clusterCourtIds, setClusterCourtIds] = useState([]);
   useBodyScrollLock(open);
 
-  const mappedCourts = useMemo(
+  const coordinateCourts = useMemo(
     () => courts.filter((court) => court?.id && getCourtCoordinate(court)),
     [courts],
   );
-  const missingCoordinateCount = Math.max(0, courts.length - mappedCourts.length);
+  const mappedCourts = useMemo(() => {
+    if (getCourtCoordinate(selectedCourt) || !currentRegion) return coordinateCourts;
+    return coordinateCourts.filter((court) => isSameRegion(court.region, currentRegion));
+  }, [coordinateCourts, currentRegion, selectedCourt]);
+  const missingCoordinateCount = Math.max(0, courts.length - coordinateCourts.length);
   const candidate = courts.find((court) => court.id === candidateId) ?? null;
   const clusteredCourtRows = clusterCourtIds
     .map((courtId) => courts.find((court) => court.id === courtId))

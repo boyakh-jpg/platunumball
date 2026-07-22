@@ -109,6 +109,7 @@ test("court map loads bounded active coordinate rows for the current district", 
   assert.match(createSource, /context: \{ purpose: COURT_MAP_SEARCH_PURPOSE \}/);
   assert.match(createSource, /limit: COURT_MAP_SEARCH_LIMIT/);
   assert.match(pickerSource, /isSameRegion\(court\.region, currentRegion\)/);
+  assert.match(pickerSource, /return coordinateCourts\.filter\(\(court\) => isSameRegion\(court\.region, currentRegion\)\)/);
   assert.match(pickerSource, /setStatus\(loading \? "loading" : loadError \? "error" : "empty"\)/);
 });
 
