@@ -1794,7 +1794,7 @@ export default function CreateMatch({ app }) {
               </div>
               <div className="create-public-note">
                 <ClipboardList size={17} />
-                <span>생성 단계에서는 아무도 초대하지 않습니다. 방에서 {recordComposition === "team" ? "두 팀과 실제 출전 명단" : "A/B 실제 참가자"}을 구성합니다.</span>
+                <span>생성 단계에서는 아무도 초대하지 않습니다. 방에서 {recordComposition === "team" ? "두 팀과 실제 출전 명단을" : "A/B 실제 참가자를"} 구성합니다.</span>
               </div>
             </div>
           ) : null}
