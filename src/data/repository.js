@@ -4600,7 +4600,7 @@ export function submitCourtRequest(state, draft = {}) {
     };
   }
 
-  const rawName = normalizeCourtFacilityName(draft.name || draft.facilityName || draft.buildingName);
+  const rawName = normalizeCourtFacilityName(draft.buildingName || draft.facilityName || draft.name);
   const addressDong = getCourtAddressDong(draft);
   const courtUnit = normalizeCourtNamePart(draft.courtUnit);
   const addressText = String(draft.addressText ?? "").trim();

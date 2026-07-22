@@ -30,6 +30,14 @@ test("시군구 + 시설명 + 농구장 순서로 생성한다", () => {
   }), "수원시 영통구 광교호수공원 농구장");
 });
 
+test("주소 건물명을 직접 입력한 시설명보다 우선한다", () => {
+  assert.equal(getCourtStandardName({
+    sigungu: "서대문구",
+    buildingName: "연북중학교 체육관",
+    facilityName: "시설명 확인 필요",
+  }), "서대문구 연북중학교 체육관 농구장");
+});
+
 test("시군구가 없으면 저장 이름을 만들지 않는다", () => {
   assert.equal(getCourtStandardName({ facilityName: "어딘가 공원" }), "");
 });

@@ -1048,8 +1048,10 @@ export default function Settings({ app, auth, section = "main" }) {
     try {
       const pin = await openNaverMapPinPicker(courtDraft);
       const addressDong = getCourtAddressDong(pin);
+      const buildingName = normalizeCourtFacilityName(pin.buildingName);
       updateCourtDraft({
-        buildingName: "",
+        buildingName,
+        ...(buildingName ? { name: buildingName } : {}),
         region: getCourtAddressRegion(pin),
         sido: pin.sido ?? "",
         sigungu: pin.sigungu ?? "",
@@ -1064,7 +1066,9 @@ export default function Settings({ app, auth, section = "main" }) {
       setCourtAddressQuery(pin.addressText);
       setNaverAddressResults([]);
       setCourtPinConfirmed(true);
-      setCourtLookupStatus("핀 위치의 실제 주소를 저장했습니다.");
+      setCourtLookupStatus(buildingName
+        ? `핀 주소의 건물명 '${buildingName}'을 시설명에 자동 반영했습니다.`
+        : "핀 위치의 실제 주소를 저장했습니다. 시설/장소명을 확인해 주세요.");
       await loadCourtNearbyCandidates(pin);
     } catch (error) {
       setCourtLookupStatus("구장 위치를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -1073,8 +1077,10 @@ export default function Settings({ app, auth, section = "main" }) {
   const selectNaverAddress = (result) => {
     resetCourtNearbyLookup();
     const addressDong = getCourtAddressDong(result);
+    const buildingName = normalizeCourtFacilityName(result.buildingName);
     updateCourtDraft({
-      buildingName: "",
+      buildingName,
+      ...(buildingName ? { name: buildingName } : {}),
       region: getCourtAddressRegion(result),
       sido: result.sido ?? "",
       sigungu: result.sigungu ?? "",
@@ -1802,6 +1808,7 @@ export default function Settings({ app, auth, section = "main" }) {
                 </div>
                 <div className="settings-place-name-actions">
                   <small>핀 주소의 시군구와 시설명을 합쳐 `시군구 + 시설명 + 농구장`으로 저장합니다.</small>
+                  {courtDraft.buildingName ? <small>주소 건물명 `{courtDraft.buildingName}` 자동 반영 · 직접 수정하면 수동 시설명을 사용</small> : null}
                 </div>
                 {courtDisplayName ? (
                   <div className="arena-mini-note">

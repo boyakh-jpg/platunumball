@@ -486,8 +486,9 @@ export default function CreateMatch({ app }) {
   }, [app.currentUser.id, canCreateTeamRoom, defaultMode, defaultTeamA?.id, defaultTeamB, defaultTeamB?.id]);
 
   useEffect(() => {
-    if (wizardStep !== 4 || !courtMapRegion || app.remoteReady === false) return undefined;
-    if (loadedCourtMapRegionsRef.current.has(courtMapRegion)) return undefined;
+    if ((wizardStep !== 4 && !courtMapOpen) || !courtMapRegion || app.remoteReady === false) return undefined;
+    const loadKey = `${courtMapRegion}:${courtMapOpen ? "map" : "step"}`;
+    if (loadedCourtMapRegionsRef.current.has(loadKey)) return undefined;
 
     const requestId = courtMapRequestIdRef.current + 1;
     courtMapRequestIdRef.current = requestId;
@@ -502,7 +503,7 @@ export default function CreateMatch({ app }) {
       if (courtMapRequestIdRef.current !== requestId) return;
       const courts = (Array.isArray(result?.items) ? result.items : []).filter((court) => court?.kind === "court" && court?.id);
       setDiscoveredCourts((current) => mergeCourtSearchCourts(current, courts));
-      loadedCourtMapRegionsRef.current.add(courtMapRegion);
+      loadedCourtMapRegionsRef.current.add(loadKey);
       setCourtMapDirectoryStatus({ loading: false, error: "" });
     }).catch(() => {
       if (courtMapRequestIdRef.current !== requestId) return;
@@ -512,7 +513,7 @@ export default function CreateMatch({ app }) {
     return () => {
       if (courtMapRequestIdRef.current === requestId) courtMapRequestIdRef.current += 1;
     };
-  }, [app.remoteReady, courtMapRegion, wizardStep]);
+  }, [app.remoteReady, courtMapOpen, courtMapRegion, wizardStep]);
 
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
@@ -2143,7 +2144,15 @@ export default function CreateMatch({ app }) {
               </div>
             </div>
             <div className="create-selected-court-actions">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setCourtMapOpen(true)}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  loadedCourtMapRegionsRef.current.delete(`${courtMapRegion}:map`);
+                  setCourtMapOpen(true);
+                }}
+              >
                 <MapIcon size={16} /> 지도에서 찾기
               </Button>
               {selectedCourt?.id ? (

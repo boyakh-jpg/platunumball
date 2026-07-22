@@ -2,6 +2,7 @@ import { getAuthenticatedContext, readJsonBody, sendJson } from "./_supabaseAdmi
 import {
   AFFILIATION_COLUMNS,
   COURT_REVIEW_COLUMNS,
+  MAP_COURT_COLUMNS,
   PROFILE_CARD_COLUMNS as PROFILE_COLUMNS,
   SEARCH_COURT_COLUMNS as COURT_COLUMNS,
   TEAM_COLUMNS,
@@ -289,7 +290,7 @@ async function searchCourts(supabase, query, limit, searchContext = {}) {
     : ["name", "hashtag", "facility_name", "sigungu", "address_text", "road_address", "jibun_address"];
   let request = supabase
     .from("approved_courts")
-    .select(COURT_COLUMNS)
+    .select(courtMapSearch ? MAP_COURT_COLUMNS : COURT_COLUMNS)
     .eq("status", "active");
   if (courtMapSearch) request = request.not("lat", "is", null).not("lng", "is", null);
   const { data, error } = await request
