@@ -13,6 +13,7 @@ const importStatementTimeoutMigrationPath = new URL("../supabase/migrations/2026
 const importFeedFastPathMigrationPath = new URL("../supabase/migrations/20260722022500_public_court_import_feed_trigger_fast_path.sql", import.meta.url);
 const importFeedRecordFixMigrationPath = new URL("../supabase/migrations/20260722023000_public_court_import_feed_trigger_record_fix.sql", import.meta.url);
 const importValidatedTriggerFastPathMigrationPath = new URL("../supabase/migrations/20260722024000_public_court_import_validated_trigger_fast_path.sql", import.meta.url);
+const approvedPayloadNormalizationMigrationPath = new URL("../supabase/migrations/20260722220000_approved_court_payload_normalization.sql", import.meta.url);
 const prepareScriptPath = new URL("./prepare-public-court-import.py", import.meta.url);
 
 function readyRow(overrides = {}) {
@@ -242,6 +243,18 @@ test("court request public access survives approval", () => {
     { addressVerified: true, multipleCourtsVerified: true },
   );
   assert.equal(approved.settings.approvedCourts[0].publicAccess, "private");
+});
+
+test("approved courts keep relational data and only a minimal compatibility payload", async () => {
+  const sql = await readFile(approvedPayloadNormalizationMigrationPath, "utf8");
+  assert.match(sql, /create or replace function public\.rankball_slim_approved_court_payload/i);
+  assert.match(sql, /new\.payload := public\.rankball_slim_approved_court_payload\(safe_payload\)/i);
+  assert.match(sql, /new\.facility_name := safe_facility/i);
+  assert.match(sql, /new\.paid := \(safe_payload->>'paid'\)::boolean/i);
+  assert.match(sql, /create trigger approved_courts_sync_facility_info/i);
+  assert.match(sql, /create trigger "00_courts_mirror_payload"/i);
+  assert.match(sql, /court_row\.sigungu, court_row\.sido, court_row\.emd/i);
+  assert.doesNotMatch(sql, /drop table|truncate table|delete from/i);
 });
 
 test("database court names use the same conservative normalization scope", async () => {

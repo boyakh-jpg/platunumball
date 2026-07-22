@@ -436,7 +436,7 @@
 - 경기/모집/토너먼트/개인기록 생성과 방룰 수정 경로는 선택된 등록 구장이 있으면 `court_name`만 쓰지 않고 `court_id`를 먼저 채운다.
 - 방만들기 생성 경로는 등록 구장 `court_id`가 없으면 생성하지 않는다. `미정` 구장으로 새 방/기록을 만들 수 없다.
 - `court_id`가 `courts.id`를 가리키면 `court_name`은 `courts.name`, 지역은 `courts.region`에서 DB guard가 스냅샷으로 보정한다.
-- `court_id`가 legacy `courts`에 없고 active `approved_courts.id`를 가리키면 `approved_courts.name`과 `approved_courts.payload.region`을 fallback 원본으로 쓴다.
+- `court_id`가 legacy `courts`에 없고 active `approved_courts.id`를 가리키면 `approved_courts.name`과 `region_key`/`sigungu`를 fallback 원본으로 쓴다.
 - `matches.rules.region`, `recruiting_posts.region`, `user_room_feed.region_key`는 목록/피드용 스냅샷이다.
 - `court_id`가 없거나 legacy 구장 id라 active approved court를 찾지 못하면 기존 `court_name`/지역 텍스트를 유지한다. 이 경우 하드 FK를 강제하지 않는다.
 - 구장 이름 fallback은 `court_id` 기준 legacy `courts` -> active `approved_courts` -> 기존 `court_name` 순서다. hidden/disabled approved court는 원본 보정에 쓰지 않는다.
@@ -2985,7 +2985,7 @@ flowchart TD
 ## 2026-07-21 모집방 유료 구장 확인
 
 1. 모집방의 유료 판정은 모집방의 `courtPaid=true`, 현재 승인 구장의 `paid=true`, 또는 무료 표기가 아닌 `courtFee`가 있을 때만 참이다. 비용 정보가 없거나 `paid=null`인 구장은 유료로 추정하지 않는다.
-2. 모집방 목록 API는 기존 구장 ID 수화 쿼리에서 승인 구장의 `payload.paid` scalar만 함께 읽는다. 별도 구장 전체 조회나 추가 반복 요청을 만들지 않는다.
+2. 모집방 목록 API는 기존 구장 ID 수화 쿼리에서 승인 구장의 관계형 `paid` 칼럼만 함께 읽는다. 별도 구장 전체 조회나 추가 반복 요청을 만들지 않는다.
 3. 유료 구장 확인 dialog는 클라이언트의 비용 인지 절차다. 참가·팀 합류·선수 초대 수락의 기존 서버 권한, 정원, 팀장, 초대 상태 검증을 우회하거나 대체하지 않는다.
 4. 심판 초대·심판 직접 참여에는 선수 참가비 확인을 적용하지 않는다. 무료·미확인 구장은 기존 참여 흐름을 그대로 사용한다.
 
@@ -3017,6 +3017,9 @@ flowchart TD
 6. `surfaceType`, `courtLayout`, `courtKind`, `accessType`, `lighting`, `paid`는 앱의 공용 enum과 삼상 boolean 규칙으로 정규화한다. 원본 값을 확실히 매핑할 수 없으면 추정하지 않고 `unknown` 또는 `null`로 저장하며 원문을 별도 보존한다.
 7. 미리보기 호출은 DB를 쓰지 않는다. 실제 반영 함수는 최대 50행 단위, 전역 구장 identity advisory lock, 결정적 `importKey`, 출처 소유권 검사를 사용한다. 반영 전 모든 묶음을 미리보기하고 실패 묶음이 있으면 실제 반영을 시작하지 않는다.
 8. 일괄 반영 RPC와 출처·배치 테이블 쓰기는 `service_role`에만 허용한다. 일반 인증 사용자는 active 구장에 연결된 `court_facility_info`만 읽을 수 있고 출처 원문과 배치 원문은 직접 조회하지 않는다.
+9. `approved_courts`의 이름·주소·지역·시설 유형·유료 여부·공개 여부는 관계형 칼럼이 원본이다. 목록·검색·즐겨찾기는 `payload`를 select하지 않는다.
+10. `approved_courts.payload`는 기존 import 식별자와 simulation 격리 메타만 남기는 호환 필드다. 신청 원문은 `court_requests.payload`, 공공 원문은 `court_source_records`/`court_import_rows`, 연락처·운영정보는 `court_facility_info`에 보존한다.
+11. `court_import_batches`와 `court_import_rows`는 등록 감사용이며 앱 런타임 목록 원본이 아니다. `courts`는 기존 경기·모집 FK 호환 mirror라 FK 이전 전에는 삭제하지 않는다.
 
 ## 2026-07-22 구장 표준명·관리자 DB
 

@@ -8,6 +8,7 @@ import {
   TEAM_MEMBER_COLUMNS,
 } from "../../src/data/repositoryColumns.js";
 import { DEFAULT_RATING, isRefereeGrade } from "../../src/lib/constants.js";
+import { fromRemoteApprovedCourt } from "../../src/data/remotePayloadMappers.js";
 
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
 const TYPE_ALIASES = {
@@ -101,15 +102,16 @@ function isWithinOneEdit(source = "", target = "") {
 export function isCourtFuzzyMatch(row = {}, query = "") {
   const normalizedQuery = normalizeFuzzyText(stripHash(query));
   if (normalizedQuery.length < 2) return false;
-  const payload = getPayload(row);
   const tokens = [
     row.name,
     row.hashtag,
     row.address_text,
     row.road_address,
     row.jibun_address,
-    payload.name,
-    payload.region,
+    row.facility_name,
+    row.sido,
+    row.sigungu,
+    row.emd,
   ]
     .flatMap((value) => normalizeSearchQuery(value).split(" "))
     .map(normalizeFuzzyText)
@@ -197,27 +199,11 @@ function toTeam(row = {}, memberRows = []) {
 }
 
 function toCourt(row = {}) {
-  const payload = getPayload(row);
+  const court = fromRemoteApprovedCourt(row);
   return {
-    ...payload,
+    ...court,
     kind: "court",
-    id: row.id,
-    name: row.name ?? payload.name,
-    hashtag: row.hashtag ?? payload.hashtag,
-    addressText: row.address_text ?? payload.addressText,
-    roadAddress: row.road_address ?? payload.roadAddress,
-    jibunAddress: row.jibun_address ?? payload.jibunAddress,
-    zonecode: row.zonecode ?? payload.zonecode,
-    lat: row.lat ?? payload.lat,
-    lng: row.lng ?? payload.lng,
-    status: row.status ?? payload.status ?? "active",
-    region: payload.region,
-    type: payload.type,
-    surfaceType: payload.surfaceType,
-    courtLayout: payload.courtLayout,
-    courtKind: payload.courtKind,
-    paid: payload.paid,
-    searchText: [row.name, row.hashtag, row.address_text, payload.region, payload.type].filter(Boolean).join(" "),
+    searchText: [court.name, court.hashtag, court.addressText, court.region, court.type].filter(Boolean).join(" "),
   };
 }
 
@@ -300,7 +286,7 @@ async function searchCourts(supabase, query, limit) {
     .from("approved_courts")
     .select(COURT_COLUMNS)
     .eq("status", "active")
-    .or(searchFilter(["name", "hashtag", "address_text", "road_address", "jibun_address"], query))
+    .or(searchFilter(["name", "hashtag", "facility_name", "sigungu", "address_text", "road_address", "jibun_address"], query))
     .order("updated_at", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw error;
@@ -312,7 +298,7 @@ async function searchCourts(supabase, query, limit) {
     .from("approved_courts")
     .select(COURT_COLUMNS)
     .eq("status", "active")
-    .or(searchFilter(["name", "address_text", "road_address", "jibun_address"], fallbackQuery))
+    .or(searchFilter(["name", "facility_name", "sigungu", "address_text", "road_address", "jibun_address"], fallbackQuery))
     .order("updated_at", { ascending: false, nullsFirst: false })
     .limit(Math.min(100, Math.max(25, limit * 5)));
   if (fallbackError) throw fallbackError;

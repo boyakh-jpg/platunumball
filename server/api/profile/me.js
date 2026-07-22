@@ -6,6 +6,7 @@ import {
 import { createProfileShell, fromRemoteProfile, fromTeamMemberProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeamInvitation } from "../../../src/data/teamMappers.js";
 import { fromRemoteAffiliation } from "../../../src/data/affiliationMappers.js";
+import { fromRemoteApprovedCourt } from "../../../src/data/remotePayloadMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import {
   APPROVED_COURT_COLUMNS,
@@ -43,35 +44,6 @@ function fromProfileMatchSummary(row = {}) {
     lastMatchId: row.last_match_id ?? "",
     lastMatchAt: row.last_match_at ?? null,
     updatedAt: row.updated_at ?? null,
-  };
-}
-
-function getPayload(row = {}) {
-  return row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
-}
-
-function fromApprovedCourt(row = {}) {
-  const payload = getPayload(row);
-  return {
-    ...payload,
-    id: row.id ?? payload.id,
-    sourceRequestId: row.source_request_id ?? payload.sourceRequestId,
-    approvedBy: row.approved_by ?? payload.approvedBy,
-    name: row.name ?? payload.name,
-    hashtag: row.hashtag ?? payload.hashtag,
-    addressText: row.address_text ?? payload.addressText,
-    roadAddress: row.road_address ?? payload.roadAddress,
-    jibunAddress: row.jibun_address ?? payload.jibunAddress,
-    zonecode: row.zonecode ?? payload.zonecode,
-    lat: row.lat ?? payload.lat,
-    lng: row.lng ?? payload.lng,
-    status: row.status ?? payload.status ?? "active",
-    hiddenAt: row.hidden_at ?? payload.hiddenAt,
-    hiddenBy: row.hidden_by ?? payload.hiddenBy,
-    hiddenReason: row.hidden_reason ?? payload.hiddenReason,
-    approvedAt: row.approved_at ?? payload.approvedAt,
-    createdAt: row.created_at ?? payload.createdAt,
-    updatedAt: row.updated_at ?? payload.updatedAt,
   };
 }
 
@@ -290,7 +262,7 @@ export async function loadCurrentProfileState(context, options = {}) {
     favoriteRefereeIds,
     approvedCourts: unique([
       ...(remoteAppSettings.approvedCourts ?? []),
-      ...(favoriteCourtRows ?? []).map(fromApprovedCourt),
+      ...(favoriteCourtRows ?? []).map(fromRemoteApprovedCourt),
     ]),
   };
   const state = normalizeState({

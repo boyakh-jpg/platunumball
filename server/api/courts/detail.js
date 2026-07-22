@@ -8,18 +8,53 @@ import {
 import { COURTS } from "../../../src/lib/constants.js";
 
 const LEGACY_COURT_DETAIL_COLUMNS = "id,name,region,type,region_key,address_text,road_address,jibun_address,lat,lng,raw_rating,adjusted_rating,review_count,completed_match_count,recommendation_score,recent_reviews,metrics_updated_at,payload,created_at";
+const COURT_FACILITY_INFO_COLUMNS = "court_id,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope,updated_at";
 
 function fromLegacyCourt(row = {}, builtInCourt = null) {
-  return fromRemoteApprovedCourt({
-    ...row,
+  const payload = {
+    ...(builtInCourt ?? {}),
+    ...(row.payload ?? {}),
+  };
+  return {
+    ...payload,
     id: row.id ?? builtInCourt?.id,
-    name: row.name ?? builtInCourt?.name,
+    name: row.name ?? builtInCourt?.name ?? payload.name,
+    region: row.region ?? payload.region,
+    regionKey: row.region_key ?? payload.regionKey ?? row.region ?? payload.region,
+    type: row.type ?? payload.type ?? "확인 필요",
+    addressText: row.address_text ?? payload.addressText ?? "",
+    roadAddress: row.road_address ?? payload.roadAddress ?? null,
+    jibunAddress: row.jibun_address ?? payload.jibunAddress ?? null,
+    lat: row.lat ?? payload.lat ?? null,
+    lng: row.lng ?? payload.lng ?? null,
     status: "active",
-    payload: {
-      ...(builtInCourt ?? {}),
-      ...(row.payload ?? {}),
-    },
-  });
+    rawRating: row.raw_rating ?? payload.rawRating ?? null,
+    adjustedRating: row.adjusted_rating ?? payload.adjustedRating ?? null,
+    reviewCount: Number(row.review_count ?? payload.reviewCount ?? 0),
+    completedMatchCount: Number(row.completed_match_count ?? payload.completedMatchCount ?? 0),
+    recommendationScore: row.recommendation_score ?? payload.recommendationScore ?? null,
+    recentReviews: row.recent_reviews ?? payload.recentReviews ?? [],
+    metricsUpdatedAt: row.metrics_updated_at ?? payload.metricsUpdatedAt ?? null,
+    createdAt: row.created_at ?? payload.createdAt ?? null,
+  };
+}
+
+function fromCourtFacilityInfo(row = {}) {
+  if (!row?.court_id) return {};
+  return {
+    operatorName: row.operator_name ?? null,
+    contactPhone: row.contact_phone ?? null,
+    officialUrl: row.official_url ?? null,
+    reservationUrl: row.reservation_url ?? null,
+    openingHoursText: row.opening_hours_text ?? null,
+    applicationMethod: row.application_method ?? null,
+    accessNote: row.access_note ?? null,
+    detailAddress: row.detail_address ?? null,
+    locationNote: row.location_note ?? null,
+    facilityAreaSqm: row.facility_area_sqm ?? null,
+    facilityAreaScope: row.facility_area_scope ?? null,
+    facilityInfoUpdatedAt: row.updated_at ?? null,
+  };
 }
 
 function toReview(row = {}, reviewer = null, includeRawRating = false) {
@@ -99,6 +134,15 @@ export default async function handler(request, response) {
       return;
     }
 
+    const { data: facilityInfoRow, error: facilityInfoError } = approvedCourtRow
+      ? await context.supabase
+        .from("court_facility_info")
+        .select(COURT_FACILITY_INFO_COLUMNS)
+        .eq("court_id", courtId)
+        .maybeSingle()
+      : { data: null, error: null };
+    if (facilityInfoError) throw facilityInfoError;
+
     const builtInCourt = COURTS.find((item) => item.id === courtId) ?? null;
     const { data: legacyCourtRow, error: legacyCourtError } = approvedCourtRow
       ? { data: null, error: null }
@@ -114,7 +158,7 @@ export default async function handler(request, response) {
     }
 
     const court = approvedCourtRow
-      ? fromRemoteApprovedCourt(approvedCourtRow)
+      ? { ...fromRemoteApprovedCourt(approvedCourtRow), ...fromCourtFacilityInfo(facilityInfoRow) }
       : fromLegacyCourt(legacyCourtRow ?? {}, builtInCourt);
     const { data: reviewRows, error: reviewError } = await context.supabase.rpc(
       "rankball_court_detail_review_rows",

@@ -50,7 +50,7 @@ let userRoomFeedScopeAvailable = true;
 let userRoomFeedTimingColumnsAvailable = true;
 
 const RECRUITING_COUNT_POST_COLUMNS = "id,type,visibility,mode,room_state,host_join_mode,host_side,side_capacity,player_ids,player_id,team_id,status";
-const RECRUITING_APPROVED_COURT_COLUMNS = `${COURT_COLUMNS},paid:payload->paid`;
+const RECRUITING_APPROVED_COURT_COLUMNS = `${COURT_COLUMNS},paid`;
 const RECRUITING_FEED_MAX_LIMIT = 200;
 const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
 const RECRUITING_FEED_ROW_MAX_LIMIT = 320;

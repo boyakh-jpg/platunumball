@@ -13,6 +13,8 @@ import {
   isRefereeGrade,
 } from "../src/lib/constants.js";
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
+import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
+import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
 import { rejectMatchDispute, voidMatch as applyMatchVoid } from "../src/data/repository.js";
 import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
 import {
@@ -715,8 +717,32 @@ test("court identity and paid-room UI stay shared across list surfaces", async (
   assert.match(recruitingSource, /isPaidRecruitingCourt\(post, postCourt\)/);
   assert.match(matchesSource, /isPaidRecruitingCourt\(post, postCourt\)/);
   assert.match(matchListSource, /if \(tone\) return normalizeMatchListTone/);
-  assert.match(recruitingListSource, /paid:payload->paid/);
+  assert.match(recruitingListSource, /RECRUITING_APPROVED_COURT_COLUMNS = `\$\{COURT_COLUMNS\},paid`/);
+  assert.doesNotMatch(recruitingListSource, /paid:payload->paid/);
   assert.match(recruitingListSource, /courtFee: post\.courtFee/);
+});
+
+test("approved court list mapping uses relational columns without payload duplication", () => {
+  const mapped = fromRemoteApprovedCourt({
+    id: "court-1",
+    name: "마포구 한빛공원 농구장",
+    facility_name: "한빛공원",
+    sigungu: "마포구",
+    indoor_outdoor: "outdoor",
+    paid: false,
+    payload: { name: "중복 이름", paid: true, privateNote: "노출 금지" },
+  });
+  assert.equal(mapped.name, "마포구 한빛공원 농구장");
+  assert.equal(mapped.facilityName, "한빛공원");
+  assert.equal(mapped.region, "마포구");
+  assert.equal(mapped.type, "야외");
+  assert.equal(mapped.paid, false);
+  assert.equal(Object.hasOwn(mapped, "privateNote"), false);
+
+  const serialized = toApprovedCourtRow(mapped);
+  assert.equal(Object.hasOwn(serialized, "payload"), false);
+  assert.equal(serialized.facility_name, "한빛공원");
+  assert.equal(serialized.paid, false);
 });
 
 test("court facility names use source-independent conservative normalization", () => {

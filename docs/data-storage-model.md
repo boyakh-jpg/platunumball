@@ -102,7 +102,7 @@
 - Naver Maps JavaScript Client ID는 frontend public env로만 둔다: `VITE_NAVER_MAP_CLIENT_ID`.
 - Naver Client Secret은 browser bundle에 넣지 않는다.
 - `court_requests` server action은 제출 직전에 신뢰도, 정지 상태, 승인/대기 중복, 핀 역지오코딩 주소와 좌표 존재를 다시 검사한다. 새 `pending` 요청은 `lat/lng`가 없으면 DB constraint에서 거부한다.
-- `court_requests.public_access`와 `approved_courts.public_access`는 이용 방식과 분리된 `public`, `private`, `unknown` enum이다. 같은 값은 JSONB `payload.publicAccess`에도 동기화한다.
+- `court_requests.public_access`와 `approved_courts.public_access`는 이용 방식과 분리된 `public`, `private`, `unknown` enum이다. 신청 원문인 `court_requests.payload.publicAccess`는 유지하지만 승인 구장은 관계형 `public_access`만 원본으로 쓴다.
 - 승인된 구장은 정규화한 `road_address`, `jibun_address`, `address_text`, `zonecode` 기준 unique constraint 또는 unique index로 중복을 막는다.
 - 허위 구장 신고 접수는 report 생성, 요청의 `reported` 전환, 판정 전 무차감 알림을 하나의 transaction으로 커밋한다. 관리자 인정 transaction에서만 요청별 1회 신뢰도 차감과 `rejected` 전환을 적용한다.
 
@@ -114,7 +114,7 @@
 
 - `matches`에 출석, 심판 미출석, 이의 draft, 후보/사후 기록 필드를 저장할 수 있는 컬럼을 추가했다.
 - `notifications`, `reports`, `court_requests`, `approved_courts`, `referee_requests`, `referee_exam_attempts`, `admin_appointments`, `referee_appointments`, `admin_audit_log`, `admin_disciplinary_actions`, `discord_notification_deliveries` 테이블을 배포용 정규 테이블로 추가했다.
-- 일부 테이블은 `payload` JSONB를 함께 저장해 현재 앱 state shape 손실을 줄인다.
+- 신청·알림·신고처럼 원문/이벤트 snapshot이 필요한 일부 테이블만 `payload` JSONB를 함께 저장한다. `approved_courts`의 화면 데이터는 관계형 칼럼이 원본이다.
 - `repository.js`는 선택 테이블이 없거나 RLS로 막혀도 전체 원격 로드를 실패시키지 않는다.
 - 선택 테이블 write도 core profile/team/match 저장을 망가뜨리지 않게 optional write로 둔다.
 - 이 작업은 서버 권한화 완료가 아니다. 관리자 처리, 구장 승인, 허위 구장 신고, Discord DM 발송은 아직 server action/transaction/service role 경로가 필요하다.
@@ -214,7 +214,7 @@
 - `reports`는 브라우저 직접 insert를 허용하지 않고 `POST /api/reports/submit` service-role 경로만 사용한다. 읽기는 신고자/대상자 self-read와 관리자 read policy만 허용한다.
 - `referee_requests` 소유자 컬럼은 `requested_by`다.
 - 관리자/심판 임명, audit, 징계, 승인 구장 write는 client 정책을 만들지 않는다. server/service-role만 처리한다.
-- `approved_courts`는 authenticated read만 허용하고 payload에서 요청자/신뢰도/승인자 내부값을 제거한다.
+- `approved_courts`는 authenticated read만 허용한다. 목록·검색·즐겨찾기는 payload를 select하지 않고 관계형 칼럼만 읽는다.
 - `affiliations`, `seasons` public read는 public-safe 데이터만 넣는 전제다.
 
 ## 2026-06-25 recruiting server sync
@@ -458,7 +458,7 @@ Remaining:
 - `user_room_feed` 직접 RLS read는 `feed_scope='profile'`인 현재 프로필 row만 허용한다. `feed_scope='public'` 지역 공개 feed는 서버 API/service-role 경로에서만 읽는다. `profile_id='*'`는 legacy 저장키/fallback일 뿐 공개 feed 의미 기준이 아니다.
 - 구장 표시 fallback은 `court_id` 기준 legacy `courts` -> active `approved_courts` -> 기존 `court_name` 순서다. 목록/상세 API는 `courts`와 `approved_courts`를 병합하되 hidden/disabled approved court는 공개 fallback에서 제외한다.
 - `matches.court_id`, `recruiting_posts.court_id`, `tournaments.court_id`가 비어 있고 `court_name`이 단일 구장으로만 매칭되면 DB guard가 `court_id`를 채운다. 중복 이름은 수동 정리 전까지 문자열 fallback으로 둔다.
-- 2026-07-04: `approved_courts.region_key`는 승인 구장의 구/군/시 필터 원본이다. 주소/payload에서 자동 계산하고, `user_room_feed.region_key`는 구장 snapshot 기준으로 다시 만든다.
+- 2026-07-04: `approved_courts.region_key`는 승인 구장의 구/군/시 필터 원본이다. `sigungu`/`sido`/주소에서 자동 계산하고, `user_room_feed.region_key`는 구장 snapshot 기준으로 다시 만든다.
 - 공개 SPA 경로 `/`, `/login`, `/data-sources`와 인증 경로 `/app`, `/app/*`는 Vercel에서 `index.html`로 rewrite한다.
 - SPA fallback은 `/assets/*`에 적용하지 않는다. 오래된 hashed JS asset 요청은 `index.html`이 아니라 404가 되어야 한다.
 ## 2026-06-27 경기 유지보수 worker
@@ -502,7 +502,7 @@ Remaining:
 | `favorites` | `user_id`, `target_type`, `target_id` | settings/search/favorites sync | 유지 |
 | `notifications` | `id`, `user_id`, `target_user_id`, `type`, `payload`, `read_at` | home/invite/action notices, Discord queue source | 유지 |
 | `discord_notification_deliveries` | `id`, `notification_id`, `target_user_id`, `discord_user_id`, `status`, `send_at` | Discord DM worker | 유지 |
-| `approved_courts` | `id`, `name`, `address`, `region`, `status`, `hidden_at` | court search/favorites/feed fallback | 유지 |
+| `approved_courts` | `id`, `name`, 주소·지역·시설·접근·유료·검증 칼럼, `status`; `payload`는 import/simulation 호환 메타만 유지 | court search/favorites/feed fallback | 유지 |
 | `courts` | `id`, `name`, `address`, `region` | legacy court fallback | 보류 |
 | `rankball_state` | legacy snapshot | production DB에 없음 | 제거 완료 |
 
