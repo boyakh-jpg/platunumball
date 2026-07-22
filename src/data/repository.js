@@ -1029,11 +1029,12 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   ]);
 
   if (matchPageScope) {
-    const scopedProfileIds = privateProfiles.map((profile) => profile.id);
+    const scopedProfileIds = [...privateProfiles.map((profile) => profile.id), ...uniqueScopeIds(options.profileIds)];
     const scoped = collectMatchPageScope(matches, matchPlayers, matchResults, playerStats, agreements, approvals, disputes, scopedProfileIds);
-    const teamMemberTeamIds = matchListOnly ? [] : scoped.teamIds;
+    const teamIds = uniqueScopeIds([...scoped.teamIds, ...uniqueScopeIds(options.teamIds)]);
+    const teamMemberTeamIds = matchListOnly ? [] : teamIds;
     [teams, teamMembers, courts] = await Promise.all([
-      fetchRowsByIds("teams", TEAM_COLUMNS, "id", scoped.teamIds, "id", client),
+      fetchRowsByIds("teams", TEAM_COLUMNS, "id", teamIds, "id", client),
       fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", teamMemberTeamIds, null, client),
       fetchCourtRows(client, scoped.courtIds),
     ]);

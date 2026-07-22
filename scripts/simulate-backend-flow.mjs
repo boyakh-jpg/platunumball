@@ -29,7 +29,7 @@ import teamEmblemHandler, { deleteObject as deleteTeamEmblemObject, getR2Config 
 import schemaHealthHandler from "../server/api/system/schema-health.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
 import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
-import { DAY_MS, HOUR_MS, MINUTE_MS } from "../src/lib/constants.js";
+import { DAY_MS, DISPUTE_WINDOW_MINUTES, HOUR_MS, MINUTE_MS } from "../src/lib/constants.js";
 import {
   CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES,
   MATCH_CANCEL_NOTICE_PREFIXES,
@@ -1810,8 +1810,7 @@ function getKstCurrentDate() {
   }).format(new Date());
 }
 
-function getKstPastSchedule(offsetMinutes = 1) {
-  const date = new Date(Date.now() - Math.max(1, Number(offsetMinutes) || 1) * MINUTE_MS);
+function getKstScheduleAt(date) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Seoul",
@@ -1827,6 +1826,10 @@ function getKstPastSchedule(offsetMinutes = 1) {
     scheduledDate: `${parts.year}-${parts.month}-${parts.day}`,
     scheduledTime: `${parts.hour}:${parts.minute}`,
   };
+}
+
+function getKstPastSchedule(offsetMinutes = 1) {
+  return getKstScheduleAt(new Date(Date.now() - Math.max(1, Number(offsetMinutes) || 1) * MINUTE_MS));
 }
 
 async function countPendingRowsByPrefixes(table, matchId, prefixes = []) {
@@ -6557,34 +6560,46 @@ async function runOneOnOneMatchRecordScenario({
   const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
   const opponentId = await step(`${ids.label}:resolveProfile:opponent`, () => getProfileIdForLogin(opponentLogin));
   const recordSchedule = getKstPastSchedule(1);
+  const makeRecordDraft = (schedule) => ({
+    id: ids.matchId,
+    recordType: "match_record",
+    recordComposition: "individual",
+    title: getSimulationDisplayTitle(ids.label),
+    visibility: "private",
+    hostJoinMode: "player",
+    teamOnly: false,
+    mode: "1v1",
+    playerIds: [hostId],
+    opponentPlayerIds: [],
+    opponentLeaderId: "",
+    scheduledDate: schedule.scheduledDate,
+    scheduledTime: schedule.scheduledTime,
+    ranked: true,
+    official: true,
+    preRegistered: true,
+    mmrLimitMode: "block",
+    ageRestriction: "open",
+    courtReserved: true,
+    courtFee: "50000",
+    stakes: "malicious pregame payload",
+    objectionWindow: "1시간",
+  });
+
+  await expectRejected(`${ids.label}:rejectFutureRecord`, () => syncMatchAs(hostLogin, {
+    action: "createMatch",
+    preferredMatchId: ids.matchId,
+    draft: makeRecordDraft(getKstScheduleAt(new Date(Date.now() + 2 * MINUTE_MS))),
+  }), ["match_operation_noop"]);
+  await expectRejected(`${ids.label}:rejectExpiredRecord`, () => syncMatchAs(hostLogin, {
+    action: "createMatch",
+    preferredMatchId: ids.matchId,
+    draft: makeRecordDraft(getKstScheduleAt(new Date(Date.now() - DAY_MS - MINUTE_MS))),
+  }), ["match_operation_noop"]);
 
   const createResult = await step(`${ids.label}:createMatchRecord1v1`, () => syncMatchAs(hostLogin, {
     action: "createMatch",
     preferredMatchId: ids.matchId,
-    draft: {
-      id: ids.matchId,
-      recordType: "match_record",
-      recordComposition: "individual",
-      title: getSimulationDisplayTitle(ids.label),
-      visibility: "private",
-      hostJoinMode: "player",
-      teamOnly: false,
-      mode: "1v1",
-      playerIds: [hostId],
-      opponentPlayerIds: [],
-      opponentLeaderId: "",
-      scheduledDate: recordSchedule.scheduledDate,
-      scheduledTime: recordSchedule.scheduledTime,
-      ranked: true,
-      official: true,
-      preRegistered: true,
-      mmrLimitMode: "block",
-      ageRestriction: "open",
-      courtReserved: true,
-      courtFee: "50000",
-      stakes: "malicious pregame payload",
-      objectionWindow: "1시간",
-    },
+    draft: makeRecordDraft(recordSchedule),
   }));
   let match = await getMatchAfterResult(createResult, hostLogin, `${ids.label}:loadAfterCreateMatchRecord1v1`);
 
@@ -6597,7 +6612,11 @@ async function runOneOnOneMatchRecordScenario({
   assertFlow(match?.mmrLimitMode === "off" && Number(match?.ratingScale ?? 0) === 0, "1v1 match record MMR policy not disabled", match);
   assertFlow(match?.rules?.ageRestriction === "any" && match?.rules?.courtReserved === false, "1v1 match record eligibility or reservation not disabled", match?.rules);
   assertFlow(!match?.stakes, "1v1 match record pregame stakes should be empty", match);
-  assertFlow(Number(match?.disputeMinutes) === 10 && match?.objectionWindow === "10분", "1v1 match record dispute window mismatch", match);
+  assertFlow(
+    Number(match?.disputeMinutes) === DISPUTE_WINDOW_MINUTES && match?.objectionWindow === `${DISPUTE_WINDOW_MINUTES}분`,
+    "1v1 match record dispute window mismatch",
+    match,
+  );
 
   const setupResult = await step(`${ids.label}:setMatchRecordParticipants`, () => syncMatchAs(hostLogin, {
     action: "setMatchRecordParticipants",

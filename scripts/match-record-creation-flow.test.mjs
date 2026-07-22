@@ -5,6 +5,7 @@ import {
   setMatchRecordParticipants,
   setMatchRecordTeamRoster,
 } from "../src/data/repository.js";
+import { validateMatchCreateCourt } from "../server/api/matches/sync-match.js";
 
 const recordDate = new Date(Date.now() - 60_000);
 const recordParts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
@@ -18,6 +19,22 @@ const recordParts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
 }).formatToParts(recordDate).map((part) => [part.type, part.value]));
 const scheduledDate = `${recordParts.year}-${recordParts.month}-${recordParts.day}`;
 const scheduledTime = `${recordParts.hour}:${recordParts.minute}`;
+
+function getKstScheduleAt(date) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return {
+    scheduledDate: `${parts.year}-${parts.month}-${parts.day}`,
+    scheduledTime: `${parts.hour}:${parts.minute}`,
+  };
+}
 
 const users = Array.from({ length: 6 }, (_, index) => ({
   id: `u${index + 1}`,
@@ -69,6 +86,32 @@ function makeRecordDraft(composition) {
     court: "",
   };
 }
+
+test("postgame records allow an unknown court while normal matches still require one", () => {
+  assert.doesNotThrow(() => validateMatchCreateCourt({ rules: { recordType: "match_record" } }));
+  assert.doesNotThrow(() => validateMatchCreateCourt({ rules: { recordType: "solo" } }));
+  assert.throws(() => validateMatchCreateCourt({ rules: { recordType: "match" } }), /missing_match_court/);
+});
+
+test("personal and shared records reject future and over-24-hour end times", () => {
+  const future = getKstScheduleAt(new Date(Date.now() + 60 * 60 * 1000));
+  const expired = getKstScheduleAt(new Date(Date.now() - 25 * 60 * 60 * 1000));
+  const futureShared = createMatch(makeState(), { ...makeRecordDraft("individual"), ...future });
+  const expiredPersonal = createMatch(makeState(), {
+    ...makeRecordDraft("individual"),
+    ...expired,
+    id: "personal-expired",
+    recordType: "solo",
+    recordEntryMode: "quick",
+    soloScoreFor: 11,
+    soloScoreAgainst: 8,
+  });
+
+  assert.equal(futureShared.matches.length, 0);
+  assert.match(futureShared.notifications[0].body, /끝난 뒤/);
+  assert.equal(expiredPersonal.matches.length, 0);
+  assert.match(expiredPersonal.notifications[0].body, /24시간/);
+});
 
 test("individual match record is empty at creation and requires exact A/B participants in the room", () => {
   const created = createMatch(makeState(), makeRecordDraft("individual"));

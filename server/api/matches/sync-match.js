@@ -610,7 +610,8 @@ export function validateMatchShape(match = {}) {
   if (match.refereeId && allPlayerIds.includes(match.refereeId)) reject(400, "referee_cannot_be_player");
 }
 
-function validateMatchCreateCourt(match = {}) {
+export function validateMatchCreateCourt(match = {}) {
+  if (isSoloRecordMatch(match) || isMatchRecordMatch(match)) return;
   const courtId = nullableText(match.courtId ?? match.court_id ?? match.approvedCourtId ?? match.registeredCourtId);
   if (!courtId) reject(400, "missing_match_court");
 }
@@ -1080,6 +1081,10 @@ const RESULT_REPLACE_MATCH_ACTIONS = new Set([
 
 function isSoloRecordMatch(match = {}) {
   return match?.rules?.recordType === RECORD_TYPES.personalRecord;
+}
+
+function isMatchRecordMatch(match = {}) {
+  return match?.rules?.recordType === RECORD_TYPES.matchRecord;
 }
 
 function shouldReplaceMatchResult(action, match = {}) {
