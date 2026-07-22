@@ -626,7 +626,7 @@ export default function CourtDatabasePanel({ app }) {
                   return (
                     <tr key={row.id} className={[rowDirty ? "court-db-row-editing" : "", rowActive ? "court-db-row-active" : ""].filter(Boolean).join(" ")}>
                       <td className="court-db-actions court-db-sticky-actions">
-                        <a href={getCourtMapUrl(row, { zoom: 18 })} target={MAP_WINDOW_NAME}><ExternalLink size={13} /> 네이버지도</a>
+                        <a href={getCourtMapUrl(row)} target={MAP_WINDOW_NAME}><ExternalLink size={13} /> 네이버지도</a>
                         {rowDirty ? <span className="court-db-row-dirty-count">{Object.keys(rowPatch).length}셀</span> : null}
                       </td>
                       {COURT_COLUMNS.map((column) => {
