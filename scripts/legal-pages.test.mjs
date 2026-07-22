@@ -29,6 +29,19 @@ test("public footer and login expose both legal documents", async () => {
   }
 });
 
+test("OAuth homepage identifies BOXTIER, explains its purpose, and links the privacy policy", async () => {
+  const [landing, index] = await Promise.all([
+    read("src/pages/Landing.jsx"),
+    read("index.html"),
+  ]);
+
+  assert.match(landing, /BOXTIER는 농구 경기 모집, 참가자 관리, 경기 기록, MMR 랭킹과 팀 운영/);
+  assert.match(landing, /Google 로그인 정보는 회원 식별과 로그인에만 사용/);
+  assert.match(landing, /<Link to="\/privacy">개인정보처리방침<\/Link>/);
+  assert.match(index, /content="BOXTIER - 농구 경기를 기록하고 팀과 티어를 관리하는 농구 플랫폼"/);
+  assert.match(index, /<title>BOXTIER<\/title>/);
+});
+
 test("legal documents include required operating disclosures without placeholders", async () => {
   const [privacy, terms] = await Promise.all([
     read("src/pages/Privacy.jsx"),

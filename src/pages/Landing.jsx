@@ -39,6 +39,16 @@ export default function Landing({ state }) {
               <img className="brand-letter-img brand-letter-light" src={BOXTIER_LETTER_LIGHT_URL} alt="" />
             </span>
           </h1>
+          <section className="landing-purpose" aria-labelledby="landing-purpose-title">
+            <p className="eyebrow">BASKETBALL MATCH &amp; RECORD PLATFORM</p>
+            <h2 id="landing-purpose-title">농구 경기를 만들고 기록하며 팀과 랭킹을 관리합니다.</h2>
+            <p>
+              BOXTIER는 농구 경기 모집, 참가자 관리, 경기 기록, MMR 랭킹과 팀 운영을 한곳에서 제공하는 서비스입니다.
+            </p>
+            <p className="landing-oauth-purpose">
+              Google 로그인 정보는 회원 식별과 로그인에만 사용합니다. 자세한 내용은 <Link to="/privacy">개인정보처리방침</Link>에서 확인할 수 있습니다.
+            </p>
+          </section>
           <Badge tone="green">Season Zero</Badge>
           <div className="landing-actions">
             <div className="landing-primary-actions">

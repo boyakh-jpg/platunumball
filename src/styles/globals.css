@@ -19662,6 +19662,49 @@ html[data-theme="light"] .brand-letter-light {
   max-height: none;
 }
 
+.landing-purpose {
+  display: grid;
+  max-width: 560px;
+  gap: 8px;
+}
+
+.landing-purpose .eyebrow {
+  color: var(--orange);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.landing-purpose h2 {
+  max-width: 540px;
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  line-height: 1.18;
+}
+
+.landing-copy .landing-purpose > p {
+  margin: 0;
+  color: #d7e0ec;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.landing-copy .landing-purpose .landing-oauth-purpose {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.landing-oauth-purpose a {
+  color: var(--orange);
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+html[data-theme="light"] .landing-copy .landing-purpose > p {
+  color: #274c58;
+}
+
 @media (max-width: 720px) {
   .landing-hero {
     --landing-mobile-content-gutter: clamp(20px, 6vw, 28px);
@@ -19677,6 +19720,14 @@ html[data-theme="light"] .brand-letter-light {
 
   .landing-brand-lockup .brand-logo-frame {
     border-radius: 10px;
+  }
+
+  .landing-purpose {
+    gap: 7px;
+  }
+
+  .landing-purpose h2 {
+    font-size: 1.35rem;
   }
 
 }
