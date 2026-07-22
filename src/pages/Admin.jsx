@@ -26,6 +26,7 @@ import {
 import { ADMIN_USER_OPERATION_ACTIONS } from "../lib/adminUserOperations.js";
 import {
   getCourtAccessLabel,
+  getCourtCorrectionFieldLabel,
   getCourtFacilityBaseName,
   getCourtKindLabel,
   getCourtLayoutLabel,
@@ -1087,6 +1088,13 @@ export default function Admin({ app }) {
                   <span><Badge tone={selectedReport.status === "open" ? "orange" : "neutral"}>{getAdminReportTypeLabel(selectedReport.type)}</Badge><strong>{selectedReport.reason}</strong></span>
                   <small>신고자 {userMap[selectedReport.by]?.name ?? selectedReport.by ?? "-"} · {formatDate(selectedReport.createdAt)}</small>
                   {selectedReport.sourceMatchId && matchMap[selectedReport.sourceMatchId] ? <small>근거 경기 {getMatchHashtag(matchMap[selectedReport.sourceMatchId])} · {matchMap[selectedReport.sourceMatchId].title}</small> : null}
+                  {selectedReport.courtCorrection ? (
+                    <div className="admin-court-correction">
+                      <span><b>수정 항목</b>{getCourtCorrectionFieldLabel(selectedReport.courtCorrection.field)}</span>
+                      <span><b>수정 제안</b>{selectedReport.courtCorrection.proposedValue}</span>
+                      {selectedReport.courtCorrection.evidenceUrl ? <a href={selectedReport.courtCorrection.evidenceUrl} target="_blank" rel="noreferrer">근거 링크 열기 <ExternalLink size={13} /></a> : null}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="arena-field-grid">
                   <label>

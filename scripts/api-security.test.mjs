@@ -17,6 +17,7 @@ import {
   verifyDiscordOAuthStateTicket,
 } from "../server/api/auth/_discordOAuthProof.js";
 import { getPublicAppUrl, getPublicAppWebUrl } from "../server/api/_publicAppUrl.js";
+import { normalizeCourtCorrection } from "../server/api/reports/submit.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -258,6 +259,21 @@ test("authenticated court lookups use POST JSON instead of URL query", async () 
   assert.match(placeServerSource, /from\("approved_courts"\)/);
   assert.match(placeServerSource, /from\("court_requests"\)/);
   assert.doesNotMatch(placeServerSource, /openapi\.naver\.com\/v1\/search\/local|NAVER_SEARCH_CLIENT_ID|NAVER_SEARCH_CLIENT_SECRET/);
+});
+
+test("court correction reports accept bounded public data only", () => {
+  assert.deepEqual(normalizeCourtCorrection({
+    field: "name",
+    proposedValue: "새 시설명 농구장",
+    evidenceUrl: "https://example.com/court",
+  }), {
+    field: "name",
+    proposedValue: "새 시설명 농구장",
+    evidenceUrl: "https://example.com/court",
+  });
+  assert.throws(() => normalizeCourtCorrection({ field: "unknown", proposedValue: "수정 내용" }), /invalid_court_correction/);
+  assert.throws(() => normalizeCourtCorrection({ field: "name", proposedValue: "짧음" }), /invalid_court_correction/);
+  assert.throws(() => normalizeCourtCorrection({ field: "name", proposedValue: "정상 수정 내용", evidenceUrl: "javascript:alert(1)" }), /invalid_court_correction_url/);
 });
 
 test("future public database objects are deny-by-default", async () => {

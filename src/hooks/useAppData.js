@@ -3587,13 +3587,25 @@ export function useAppData(authUser = null, appLocation = null) {
         ));
         return result;
       },
-      reportCourt: async (courtId, reason) => {
+      reportCourt: async (courtId, reason, courtCorrection = null) => {
         const previousState = stateRef.current;
         let createdReport = null;
         let syncedNotifications = [];
+        const normalizedCourtCorrection = courtCorrection ?? {
+          field: "other",
+          proposedValue: String(reason || "구장 정보 확인 필요").trim(),
+          evidenceUrl: "",
+        };
         const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
-        const next = reportCourt({ ...previousState, currentUserId }, courtId, reason);
+        let next = reportCourt({ ...previousState, currentUserId }, courtId, reason);
         createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+        if (createdReport) {
+          createdReport = { ...createdReport, courtCorrection: normalizedCourtCorrection };
+          next = {
+            ...next,
+            reports: (next.reports ?? []).map((report) => report.id === createdReport.id ? createdReport : report),
+          };
+        }
         syncedNotifications = createdReport ? getNewReportNotifications(previousState, next, createdReport) : [];
         if (!createdReport) return { ok: false, error: "court_report_unavailable" };
         setState(next);

@@ -5,6 +5,16 @@ import { REPORT_MATCH_WINDOW_MS } from "../../../src/lib/constants.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../../../src/lib/reportReasons.js";
 
 const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review", "team_emblem", "team_name", "affiliation_name"]);
+const COURT_CORRECTION_FIELDS = new Map([
+  ["name", "시설명"],
+  ["location", "위치·주소"],
+  ["access", "공개·이용 방식"],
+  ["operation", "운영·폐쇄 상태"],
+  ["court", "코트 유형·시설"],
+  ["contact", "연락처·예약 URL"],
+  ["duplicate", "중복 구장"],
+  ["other", "기타"],
+]);
 
 function uniqueStrings(values) {
   return Array.from(new Set(toArray(values).map((value) => String(value).trim()).filter(Boolean)));
@@ -212,10 +222,33 @@ async function assertCanSubmitPlayerReport(context, targetId, sourceMatchId) {
   };
 }
 
-async function assertCanSubmitCourtReport(context, targetId) {
+export function normalizeCourtCorrection(value = {}) {
+  const field = String(value?.field || "").trim();
+  const proposedValue = String(value?.proposedValue || "").trim();
+  const evidenceUrl = String(value?.evidenceUrl || "").trim();
+  if (!COURT_CORRECTION_FIELDS.has(field) || proposedValue.length < 4 || proposedValue.length > 500) {
+    const error = new Error("invalid_court_correction");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (evidenceUrl) {
+    try {
+      const parsed = new URL(evidenceUrl);
+      if (!["http:", "https:"].includes(parsed.protocol) || evidenceUrl.length > 1000) throw new Error("invalid");
+    } catch {
+      const error = new Error("invalid_court_correction_url");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+  return { field, proposedValue, evidenceUrl: evidenceUrl || null };
+}
+
+async function assertCanSubmitCourtReport(context, targetId, rawCorrection) {
+  const correction = normalizeCourtCorrection(rawCorrection);
   const { data: court, error: courtError } = await context.supabase
     .from("approved_courts")
-    .select("id, source_request_id, status")
+    .select("id, source_request_id, status, name, address_text, road_address, jibun_address, public_access, access_type, operational_status, indoor_outdoor, court_kind, surface_type, court_layout, hoop_count, paid, lighting")
     .eq("id", targetId)
     .maybeSingle();
   if (courtError) throw courtError;
@@ -230,14 +263,41 @@ async function assertCanSubmitCourtReport(context, targetId) {
     throw error;
   }
 
-  if (!court.source_request_id) return [];
-  const { data: request, error: requestError } = await context.supabase
-    .from("court_requests")
-    .select("requested_by")
-    .eq("id", court.source_request_id)
-    .maybeSingle();
-  if (requestError) throw requestError;
-  return request?.requested_by && request.requested_by !== context.profileId ? [request.requested_by] : [];
+  let requestedBy = null;
+  if (court.source_request_id) {
+    const { data: request, error: requestError } = await context.supabase
+      .from("court_requests")
+      .select("requested_by")
+      .eq("id", court.source_request_id)
+      .maybeSingle();
+    if (requestError) throw requestError;
+    requestedBy = request?.requested_by ?? null;
+  }
+  return {
+    reportedUserIds: requestedBy && requestedBy !== context.profileId ? [requestedBy] : [],
+    verifiedReason: `${COURT_CORRECTION_FIELDS.get(correction.field)} 수정 요청: ${correction.proposedValue}`.slice(0, 500),
+    verifiedPayload: {
+      courtCorrection: {
+        ...correction,
+        current: {
+          name: court.name,
+          addressText: court.address_text,
+          roadAddress: court.road_address,
+          jibunAddress: court.jibun_address,
+          publicAccess: court.public_access,
+          accessType: court.access_type,
+          operationalStatus: court.operational_status,
+          indoorOutdoor: court.indoor_outdoor,
+          courtKind: court.court_kind,
+          surfaceType: court.surface_type,
+          courtLayout: court.court_layout,
+          hoopCount: court.hoop_count,
+          paid: court.paid,
+          lighting: court.lighting,
+        },
+      },
+    },
+  };
 }
 
 async function assertCanSubmitCourtReviewReport(context, targetId) {
@@ -383,7 +443,7 @@ async function buildReportRow(context, report = {}) {
   }
 
   const rawReportedUserIds = uniqueStrings(report.reportedUserIds || report.reported_user_ids);
-  const reason = String(report.reason || "기타 운영 확인 필요").trim().slice(0, 500) || "기타 운영 확인 필요";
+  let reason = String(report.reason || "기타 운영 확인 필요").trim().slice(0, 500) || "기타 운영 확인 필요";
   let reportedUserIds = [];
   let verifiedPayload = {};
   if (type === "match") {
@@ -396,7 +456,12 @@ async function buildReportRow(context, report = {}) {
     reportedUserIds = verified.reportedUserIds;
     verifiedPayload = verified.verifiedPayload;
   }
-  if (type === "court") reportedUserIds = await assertCanSubmitCourtReport(context, targetId);
+  if (type === "court") {
+    const verified = await assertCanSubmitCourtReport(context, targetId, report.courtCorrection);
+    reportedUserIds = verified.reportedUserIds;
+    verifiedPayload = verified.verifiedPayload;
+    reason = verified.verifiedReason;
+  }
   if (type === "court_review") reportedUserIds = await assertCanSubmitCourtReviewReport(context, targetId);
   if (type === "team_emblem") {
     const verified = await assertCanSubmitTeamEmblemReport(context, targetId);

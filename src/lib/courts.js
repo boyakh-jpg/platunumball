@@ -68,6 +68,21 @@ export const COURT_PUBLIC_ACCESS_OPTIONS = [
   { id: "private", label: "비공개" },
 ];
 
+export const COURT_CORRECTION_FIELD_OPTIONS = [
+  { id: "name", label: "시설명" },
+  { id: "location", label: "위치·주소" },
+  { id: "access", label: "공개·이용 방식" },
+  { id: "operation", label: "운영·폐쇄 상태" },
+  { id: "court", label: "코트 유형·시설" },
+  { id: "contact", label: "연락처·예약 URL" },
+  { id: "duplicate", label: "중복 구장" },
+  { id: "other", label: "기타" },
+];
+
+export function getCourtCorrectionFieldLabel(value = "") {
+  return COURT_CORRECTION_FIELD_OPTIONS.find((option) => option.id === value)?.label ?? "기타";
+}
+
 export const COURT_SOURCE_URL_MAX_LENGTH = 500;
 
 export function normalizeCourtType(value = "") {

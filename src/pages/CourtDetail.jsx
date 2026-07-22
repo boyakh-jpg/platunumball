@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CalendarDays, ExternalLink, MapPin, Star, Trophy } from "lucide-react";
+import { CalendarDays, ExternalLink, Flag, MapPin, Star, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
-import { getCourtAddress, getCourtLayoutLabel, getCourtMapUrl, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import {
+  COURT_CORRECTION_FIELD_OPTIONS,
+  getCourtAddress,
+  getCourtCorrectionFieldLabel,
+  getCourtLayoutLabel,
+  getCourtMapUrl,
+  getCourtSurfaceLabel,
+  getRegisteredCourts,
+} from "../lib/courts.js";
 import { getCourtHashtag } from "../lib/handles.js";
 
 function formatDate(value) {
@@ -50,6 +58,12 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const [memo, setMemo] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionField, setCorrectionField] = useState("name");
+  const [correctionValue, setCorrectionValue] = useState("");
+  const [correctionUrl, setCorrectionUrl] = useState("");
+  const [correctionSaving, setCorrectionSaving] = useState(false);
+  const [correctionMessage, setCorrectionMessage] = useState("");
   const detailRequestRef = useRef(0);
   const loadCourtDetail = app.actions?.loadCourtDetail;
 
@@ -94,6 +108,14 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     };
   }, [refreshDetail]);
 
+  useEffect(() => {
+    setCorrectionOpen(false);
+    setCorrectionField("name");
+    setCorrectionValue("");
+    setCorrectionUrl("");
+    setCorrectionMessage("");
+  }, [courtId]);
+
   const reviewableMatches = detail?.reviewableMatches ?? [];
   useEffect(() => {
     setSelectedMatchId((current) => (
@@ -130,6 +152,37 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     await refreshDetail({ silent: true });
     setSaveMessage(selectedMatch?.existingReview ? "리뷰를 수정했습니다." : "리뷰를 등록했습니다.");
     setSaving(false);
+  };
+
+  const submitCorrection = async (event) => {
+    event.preventDefault();
+    const proposedValue = correctionValue.trim();
+    const evidenceUrl = correctionUrl.trim();
+    if (proposedValue.length < 4 || correctionSaving) return;
+    if (evidenceUrl && !/^https?:\/\//i.test(evidenceUrl)) {
+      setCorrectionMessage("근거 URL은 http:// 또는 https://로 입력해 주세요.");
+      return;
+    }
+    setCorrectionSaving(true);
+    setCorrectionMessage("");
+    const fieldLabel = getCourtCorrectionFieldLabel(correctionField);
+    const result = await app.actions?.reportCourt?.(
+      courtId,
+      `${fieldLabel} 수정 요청: ${proposedValue}`,
+      { field: correctionField, proposedValue, evidenceUrl },
+    );
+    if (result?.duplicate) {
+      setCorrectionMessage("이미 검토 중인 정보 수정 신고가 있습니다.");
+    } else if (!result || result.ok === false) {
+      setCorrectionMessage(result?.error === "court_report_unavailable"
+        ? "이미 검토 중인 신고가 있거나 신고할 수 없는 구장입니다."
+        : "정보 수정 신고를 접수하지 못했습니다.");
+    } else {
+      setCorrectionValue("");
+      setCorrectionUrl("");
+      setCorrectionMessage("접수했습니다. 관리자 확인 전까지 현재 정보는 유지됩니다.");
+    }
+    setCorrectionSaving(false);
   };
 
   if (loading && !detail) {
@@ -180,10 +233,49 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
             {typeof court.paid === "boolean" ? <span>{court.paid ? "유료" : "무료"}</span> : null}
           </div>
         </div>
-        <a className="button button-secondary button-sm court-map-link" href={mapUrl} target="_blank" rel="noreferrer">
-          지도 보기 <ExternalLink size={15} />
-        </a>
+        <div className="court-detail-actions">
+          <a className="button button-secondary button-sm court-map-link" href={mapUrl} target="_blank" rel="noreferrer">
+            지도 보기 <ExternalLink size={15} />
+          </a>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setCorrectionOpen((open) => !open)} aria-expanded={correctionOpen}>
+            <Flag size={15} /> 정보 수정 신고
+          </Button>
+        </div>
       </Card>
+
+      {correctionOpen ? (
+        <Card className="section-card court-correction-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Correction Report</p>
+              <h2>구장 정보 수정 신고</h2>
+              <small>신고 즉시 정보가 바뀌지 않습니다. 관리자가 확인한 뒤 반영합니다.</small>
+            </div>
+          </div>
+          <form className="court-correction-form" onSubmit={submitCorrection}>
+            <label>
+              <span>수정할 정보</span>
+              <select value={correctionField} onChange={(event) => setCorrectionField(event.target.value)}>
+                {COURT_CORRECTION_FIELD_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="court-correction-value">
+              <span>올바른 정보 또는 수정 내용</span>
+              <textarea value={correctionValue} onChange={(event) => setCorrectionValue(event.target.value)} minLength={4} maxLength={500} rows={3} required placeholder="현재 정보에서 무엇을 어떻게 바꿔야 하는지 적어 주세요." />
+              <small>{correctionValue.length}/500</small>
+            </label>
+            <label>
+              <span>근거 URL (선택)</span>
+              <input type="url" value={correctionUrl} onChange={(event) => setCorrectionUrl(event.target.value)} maxLength={1000} placeholder="https://" />
+            </label>
+            <div className="court-correction-actions">
+              <Button type="submit" size="sm" disabled={correctionValue.trim().length < 4 || correctionSaving}>{correctionSaving ? "접수 중" : "수정 신고 접수"}</Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setCorrectionOpen(false)}>닫기</Button>
+            </div>
+          </form>
+          {correctionMessage ? <p className="court-correction-message" role="status">{correctionMessage}</p> : null}
+        </Card>
+      ) : null}
 
       <section className="court-detail-metrics" aria-label="구장 지표">
         <div>

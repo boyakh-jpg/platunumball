@@ -5831,6 +5831,100 @@ input[type="color"] {
   gap: 7px;
 }
 
+.court-detail-actions,
+.court-correction-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.court-detail-actions .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.court-correction-card {
+  display: grid;
+  gap: 14px;
+}
+
+.court-correction-card .section-title-row small {
+  display: block;
+  margin-top: 5px;
+  color: var(--rb-muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.court-correction-form {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.55fr) minmax(280px, 1.45fr) minmax(220px, 1fr);
+  align-items: end;
+  gap: 10px;
+}
+
+.court-correction-form label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.court-correction-form label > span {
+  color: var(--rb-muted);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.court-correction-form select,
+.court-correction-form input,
+.court-correction-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+}
+
+.court-correction-form select,
+.court-correction-form input {
+  height: var(--ui-button-height);
+  padding-inline: var(--control-padding-x);
+}
+
+.court-correction-form textarea {
+  min-height: 82px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.court-correction-form label > small {
+  color: var(--rb-soft);
+  font-size: 0.7rem;
+  font-weight: 750;
+  text-align: right;
+}
+
+.court-correction-form select:focus,
+.court-correction-form input:focus,
+.court-correction-form textarea:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.court-correction-actions {
+  grid-column: 1 / -1;
+}
+
+.court-correction-message {
+  color: var(--rb-text);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
 .court-detail-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6119,6 +6213,14 @@ input[type="color"] {
   .court-review-form-card {
     order: -1;
   }
+
+  .court-correction-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .court-correction-value {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 620px) {
@@ -6140,6 +6242,22 @@ input[type="color"] {
 
   .court-map-link {
     width: 100%;
+  }
+
+  .court-detail-actions,
+  .court-detail-actions .button,
+  .court-correction-actions,
+  .court-correction-actions .button {
+    width: 100%;
+  }
+
+  .court-correction-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .court-correction-value,
+  .court-correction-actions {
+    grid-column: auto;
   }
 
   .court-detail-metrics {
@@ -9298,6 +9416,38 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .admin-review-confirm strong {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.admin-court-correction {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ui-control-border);
+}
+
+.admin-court-correction span {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  color: var(--rb-text);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.admin-court-correction b {
+  color: var(--rb-muted);
+}
+
+.admin-court-correction a {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 5px;
+  color: var(--rb-gold);
+  font-size: 0.75rem;
+  font-weight: 850;
 }
 
 .admin-fixed-target {
