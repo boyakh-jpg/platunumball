@@ -396,11 +396,12 @@ export function getCourtSearchText(court = {}) {
 export function isCourtInRegion(court = {}, region = "") {
   const targetRegion = String(region ?? "").trim();
   if (!targetRegion || targetRegion === "전체") return true;
+  const mappedRegion = String(court.region ?? "").replace(/\s+/g, "").toLowerCase();
+  const mappedSido = String(court.sido ?? "").replace(/\s+/g, "").toLowerCase();
   if ([
-    court.region,
+    mappedRegion && mappedRegion !== mappedSido ? court.region : "",
     court.sigungu,
     court.regionKey,
-    court.sido,
     court.emd,
   ].some((value) => isSameRegion(value, targetRegion))) return true;
 

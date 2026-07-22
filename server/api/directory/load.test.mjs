@@ -119,6 +119,7 @@ test("court region matching falls back to address fields when labels are incompl
   assert.equal(isCourtInRegion({ region: "서울특별시", addressText: "서울특별시 마포구 월드컵로 1" }, "마포"), true);
   assert.equal(isCourtInRegion({ region: "강서구", roadAddress: "서울특별시 강서구 화곡로 1" }, "마포"), false);
   assert.equal(isCourtInRegion({ region: "서울특별시", roadAddress: "서울특별시 서초구 강남대로 1" }, "강남"), false);
+  assert.equal(isCourtInRegion({ region: "부산광역시", sido: "부산광역시", roadAddress: "부산광역시 수영구 광안로 1" }, "부산광역시 해운대구"), false);
   assert.equal(isCourtInRegion({ sigungu: "해운대구", addressText: "부산광역시 해운대구 좌동" }, "부산광역시 해운대구"), true);
 });
 
