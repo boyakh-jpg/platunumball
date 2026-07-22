@@ -8,7 +8,9 @@ import {
   getMatchCreationPolicyPayload,
   getMatchCreationSummary,
   getMatchCreationValidation,
+  getMatchIntentChangePatch,
   getMatchIntentPresetPatch,
+  getMatchModeChangePatch,
   getModeClockPreset,
   getPersonalRecordDraftPayload,
   getScopedMatchCreationPolicyPayload,
@@ -90,6 +92,44 @@ test("creation UI exposes only friendly, competitive, and pickup intents", () =>
   assert.deepEqual(MATCH_INTENT_OPTIONS.map((option) => option.id), ["friendly", "standard_competitive", "pickup"]);
 });
 
+test("intent and mode changes preserve unrelated user input", () => {
+  const source = {
+    mode: "5v5",
+    ...getMatchIntentPresetPatch("standard_competitive", "5v5"),
+    benchCapacity: 3,
+    playingTimePolicy: "none",
+    benchPaymentAcknowledged: true,
+    venueFee: 50000,
+    refereeFee: 10000,
+    meetingPoint: "체육관 1층 출입구",
+    meetBeforeMinutes: 20,
+    attackRule: "커스텀 공격권",
+    foulRule: "커스텀 파울",
+  };
+  const friendly = { ...source, ...getMatchIntentChangePatch(source, "friendly") };
+  assert.equal(friendly.benchCapacity, 3);
+  assert.equal(friendly.venueFee, 50000);
+  assert.equal(friendly.meetingPoint, "체육관 1층 출입구");
+  assert.equal(friendly.playingTimePolicy, "appearance_guaranteed");
+  assert.equal(friendly.ranked, false);
+  assert.equal(friendly.official, false);
+
+  const resized = { ...source, ...getMatchModeChangePatch(source, "3v3") };
+  assert.equal(resized.mode, "3v3");
+  assert.equal(resized.benchCapacity, 3);
+  assert.equal(resized.venueFee, 50000);
+  assert.equal(resized.meetingPoint, "체육관 1층 출입구");
+  assert.equal(resized.meetBeforeMinutes, 20);
+  assert.equal(resized.attackRule, "커스텀 공격권");
+  assert.equal(resized.foulRule, "커스텀 파울");
+  assert.equal(resized.periodCount, 1);
+
+  const customized = { ...source, periodCount: 2, periodMinutes: 9 };
+  const sameMode = { ...customized, ...getMatchModeChangePatch(customized, "5v5") };
+  assert.equal(sameMode.periodCount, 2);
+  assert.equal(sameMode.periodMinutes, 9);
+});
+
 test("pickup server guard rejects team rooms, ranked matches, and false rotation claims", () => {
   const patch = getMatchIntentPresetPatch("pickup", "5v5");
   const draft = { mode: "5v5", ...patch, rules: { ...patch } };
@@ -163,6 +203,19 @@ test("paid venue requires structured cost", () => {
   assert.equal(getMatchCreationValidation({ ...draft, venueFee: 10000 }).errors.length, 0);
 });
 
+test("free venue ignores stale venue fee while keeping other costs", () => {
+  const policy = getMatchCreationPolicyPayload({
+    mode: "3v3",
+    ...getMatchIntentPresetPatch("friendly", "3v3"),
+    venuePaymentType: "free_public",
+    venueFee: 50000,
+    refereeFee: 10000,
+  });
+  assert.equal(policy.venueFee, 0);
+  assert.equal(policy.refereeFee, 10000);
+  assert.equal(policy.totalCost, 10000);
+});
+
 test("record and tournament payloads keep only relevant creation policy", () => {
   const draft = {
     mode: "3v3",
@@ -197,6 +250,8 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(source, /rules:\s*\{[\s\S]*\.\.\.creationPolicyPayload/);
   assert.match(source, /MatchCreationWizardNav/);
   assert.match(source, /wizardStep === finalWizardStep/);
+  assert.doesNotMatch(source, /official:\s*true/);
+  assert.doesNotMatch(source, /wizardStep === \(isMatchRecordRoom \? 5 : 1\)/);
   const wizardSource = fs.readFileSync(path.join(root, "src/components/match/MatchCreationWizard.jsx"), "utf8");
   assert.doesNotMatch(wizardSource, /\{ id: 6, label: "확인" \}/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "match_record"\)/);
@@ -207,4 +262,6 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(serverSource, /rules: \{ \.\.\.\(post\.rules \?\? \{\}\), benchCapacity \}/);
   const schemaSource = fs.readFileSync(path.join(root, "supabase/schema.sql"), "utf8");
   assert.match(schemaSource, /coalesce\(draft->'rules', '\{\}'::jsonb\)/);
+  const cssSource = fs.readFileSync(path.join(root, "src/styles/globals.css"), "utf8");
+  assert.doesNotMatch(cssSource, /\.match-creation-wizard-nav ol\s*\{[^}]*min-width:\s*720px/);
 });

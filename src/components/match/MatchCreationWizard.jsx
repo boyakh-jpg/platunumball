@@ -45,7 +45,7 @@ export function MatchCreationWizardNav({ currentStep, steps = MATCH_CREATION_STE
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   return (
     <nav className="match-creation-wizard-nav" aria-label="경기 만들기 단계">
-      <ol>
+      <ol className={`step-count-${steps.length}`}>
         {steps.map((step, index) => (
           <li key={step.id} className={currentStep === step.id ? "active" : index < currentIndex ? "complete" : ""}>
             <button type="button" aria-current={currentStep === step.id ? "step" : undefined} onClick={() => onStepChange(step.id)}>
@@ -79,7 +79,10 @@ export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION
   );
 }
 
-export function MatchIntentPresetSelector({ value, benchCapacity = DEFAULT_BENCH_CAPACITY, onSelect }) {
+export function MatchIntentPresetSelector({ value, benchCapacity = DEFAULT_BENCH_CAPACITY, playingTimePolicy = "appearance_guaranteed", onSelect }) {
+  const activePlayingTimeLabel = benchCapacity > 0
+    ? PLAYING_TIME_POLICY_OPTIONS.find((item) => item.id === playingTimePolicy)?.label ?? "출전 정책 직접 설정"
+    : "후보 없음";
   return (
     <div className="match-intent-preset-grid" role="radiogroup" aria-label="경기 성격">
       {MATCH_INTENT_OPTIONS.map((option) => (
@@ -92,11 +95,11 @@ export function MatchIntentPresetSelector({ value, benchCapacity = DEFAULT_BENCH
           onClick={() => onSelect(option.id)}
         >
           <strong>{option.label}</strong>
-          <span>{benchCapacity > 0 || option.id === "pickup"
+          <span>{option.id === "pickup"
             ? option.description
-            : option.id === "friendly"
-              ? "MMR을 반영하지 않는 친선 경기입니다."
-              : "MMR을 반영하는 경쟁 경기입니다."}</span>
+            : option.id === value
+              ? `${option.id === "friendly" ? "MMR 미반영" : "MMR 반영"} · ${activePlayingTimeLabel}`
+              : option.description}</span>
         </button>
       ))}
     </div>
@@ -109,25 +112,26 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
   return (
     <div className="match-roster-policy-fields">
       <div className="field-block">
-        <span className="field-label">{pickup ? "사이드 참가 인원" : "사이드 명단"}</span>
+        <span className="field-label">{pickup ? "순환 대기 인원" : "후보 정원"}</span>
         <div className="segmented-control compact-segments match-bench-capacity-control">
           {BENCH_CAPACITY_OPTIONS.map((benchCapacity) => (
             <button
               key={benchCapacity}
               type="button"
               className={policy.benchCapacity === benchCapacity ? "active" : ""}
+              aria-label={benchCapacity === 0 ? "후보 없음" : `후보 ${benchCapacity}명`}
               onClick={() => onChange({
                 benchCapacity,
                 benchPaymentAcknowledged: benchCapacity === 0 || draft.playingTimePolicy !== "none",
               })}
             >
-              {policy.onCourtCount}+{benchCapacity}
+              {benchCapacity === 0 ? "없음" : `${benchCapacity}명`}
             </button>
           ))}
         </div>
         <small>{pickup
-          ? `코트 ${policy.onCourtCount}명과 순환 대기 ${policy.benchCapacity}명입니다. 고정 후보로 지정하지 않습니다.`
-          : `출전 ${policy.onCourtCount}명 기준입니다.`}</small>
+          ? `코트 ${policy.onCourtCount}명${policy.benchCapacity > 0 ? ` + 순환 대기 ${policy.benchCapacity}명` : " · 대기 없음"}입니다.`
+          : `출전 ${policy.onCourtCount}명${policy.benchCapacity > 0 ? ` + 후보 ${policy.benchCapacity}명` : " · 후보 없음"}, 사이드당 ${policy.teamCapacity}명입니다.`}</small>
       </div>
       {pickup ? (
         <div className="field-block">
@@ -156,6 +160,7 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
 export function MatchCostPolicyFields({ draft, onChange }) {
   const policy = getMatchCreationPolicyPayload(draft);
   const paidVenue = policy.venuePaymentType === "paid_reserved" || policy.venuePaymentType === "paid_not_reserved";
+  const freeVenue = policy.venuePaymentType === "free_public" || policy.venuePaymentType === "first_come_public";
   return (
     <div className="match-cost-policy-fields">
       <div className="form-grid two">
@@ -180,7 +185,7 @@ export function MatchCostPolicyFields({ draft, onChange }) {
         </label>
       </div>
       <div className="match-cost-components-grid">
-        <label>대관료<input type="number" min="0" step="100" value={policy.venueFee} onChange={(event) => onChange({ venueFee: event.target.value, courtFee: event.target.value })} /></label>
+        <label>대관료<input type="number" min="0" step="100" value={policy.venueFee} disabled={freeVenue} onChange={(event) => onChange({ venueFee: event.target.value, courtFee: event.target.value })} /></label>
         <label>심판비<input type="number" min="0" step="100" value={policy.refereeFee} onChange={(event) => onChange({ refereeFee: event.target.value })} /></label>
         <label>기록비<input type="number" min="0" step="100" value={policy.recordingFee} onChange={(event) => onChange({ recordingFee: event.target.value })} /></label>
         <label>장비비<input type="number" min="0" step="100" value={policy.equipmentFee} onChange={(event) => onChange({ equipmentFee: event.target.value })} /></label>

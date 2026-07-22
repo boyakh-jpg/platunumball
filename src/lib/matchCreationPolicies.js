@@ -146,6 +146,49 @@ export function getMatchIntentPresetPatch(intent = "standard_competitive", mode 
   };
 }
 
+export function getMatchIntentChangePatch(source = {}, intent = "standard_competitive") {
+  const matchIntent = MATCH_INTENT_IDS.has(intent) ? intent : "standard_competitive";
+  const pickup = matchIntent === "pickup";
+  const playingTimePolicy = pickup
+    ? "equal_rotation"
+    : matchIntent === "friendly"
+      ? "appearance_guaranteed"
+      : PLAYING_TIME_POLICY_IDS.has(source.playingTimePolicy)
+        ? source.playingTimePolicy
+        : "appearance_guaranteed";
+  const benchCapacity = clampInteger(source.benchCapacity, DEFAULT_BENCH_CAPACITY, 0, MAX_BENCH_CAPACITY);
+  const paymentPolicy = PAYMENT_POLICY_IDS.has(source.paymentPolicy) ? source.paymentPolicy : "equal_all_confirmed";
+  const requiresAcknowledgement = benchCapacity > 0
+    && paymentPolicy === "equal_all_confirmed"
+    && playingTimePolicy === "none";
+
+  return {
+    matchIntent,
+    playingTimePolicy,
+    lineupSelectionPolicy: pickup ? "no_fixed_starter" : undefined,
+    ranked: matchIntent === "standard_competitive",
+    official: false,
+    preRegistered: true,
+    benchPaymentAcknowledged: requiresAcknowledgement ? Boolean(source.benchPaymentAcknowledged) : true,
+    ...(pickup ? { hostJoinMode: "player", teamOnly: false, mmrLimitMode: "off" } : {}),
+  };
+}
+
+export function getMatchModeChangePatch(source = {}, mode = "5v5") {
+  const nextMode = String(mode || "5v5");
+  if (String(source.mode || "") === nextMode) return { mode: nextMode };
+  const preset = getModeClockPreset(nextMode, "community");
+  return {
+    mode: nextMode,
+    ...preset,
+    attackRule: source.attackRule ?? preset.attackRule,
+    foulRule: source.foulRule ?? preset.foulRule,
+    ball: source.ball ?? preset.ball,
+    meetingPoint: source.meetingPoint ?? preset.meetingPoint,
+    meetBeforeMinutes: source.meetBeforeMinutes ?? preset.meetBeforeMinutes,
+  };
+}
+
 export function getDefaultMatchCreationPolicy(mode = "5v5") {
   return {
     ...getMatchIntentPresetPatch("standard_competitive", mode),
@@ -181,7 +224,8 @@ export function getMatchCreationPolicyPayload(source = {}) {
   const paymentPolicy = PAYMENT_POLICY_IDS.has(source.paymentPolicy) ? source.paymentPolicy : "equal_all_confirmed";
   const venuePaymentType = VENUE_PAYMENT_TYPE_IDS.has(source.venuePaymentType) ? source.venuePaymentType : "free_public";
   const venueSecured = VENUE_SECURED_IDS.has(source.venueSecured) ? source.venueSecured : "confirmed";
-  const venueFee = normalizeMoney(source.venueFee ?? source.courtFee);
+  const freeVenue = venuePaymentType === "free_public" || venuePaymentType === "first_come_public";
+  const venueFee = freeVenue ? 0 : normalizeMoney(source.venueFee ?? source.courtFee);
   const refereeFee = normalizeMoney(source.refereeFee);
   const recordingFee = normalizeMoney(source.recordingFee);
   const equipmentFee = normalizeMoney(source.equipmentFee);
