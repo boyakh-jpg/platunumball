@@ -421,21 +421,22 @@ export default async function handler(request, response) {
     }
     if (operation === "normalizeAddressNames") {
       const plan = buildCourtAddressNameUpdates(await loadAllCourtAddressRows(context));
-      const updates = plan.updates.slice(0, NORMALIZATION_BATCH_SIZE);
+      const duplicateUpdates = plan.updates.filter((update) => update.patch.courtUnit);
+      const updates = duplicateUpdates.slice(0, NORMALIZATION_BATCH_SIZE);
       for (const update of updates) {
         const { error } = await context.supabase.rpc("rankball_admin_update_court_with_auto_unit", {
           p_actor_profile_id: context.profileId,
           p_actor_admin_level: adminLevel,
           p_court_id: update.courtId,
           p_patch: update.patch,
-          p_reason: "주소 건물명·중복 코트 번호 일괄 정리",
+          p_reason: "중복 주소 코트 번호 일괄 정리",
         });
         if (error) throw error;
       }
       sendJson(response, 200, {
         ok: true,
         updatedCount: updates.length,
-        remainingCount: Math.max(0, plan.updates.length - updates.length),
+        remainingCount: Math.max(0, duplicateUpdates.length - updates.length),
         scannedCount: plan.scannedCount,
         addressFacilityCount: plan.addressFacilityCount,
         duplicateAddressCount: plan.duplicateAddressCount,
