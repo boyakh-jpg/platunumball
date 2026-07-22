@@ -11,6 +11,7 @@ export default function AdminCourtMapPopup() {
   const [searchParams] = useSearchParams();
   const mapRef = useRef(null);
   const panoramaRef = useRef(null);
+  const panoramaOnly = searchParams.get("view") === "panorama";
   const [status, setStatus] = useState("지도와 거리뷰를 불러오는 중입니다.");
   const court = useMemo(() => ({
     name: searchParams.get("name") ?? "농구장",
@@ -35,17 +36,19 @@ export default function AdminCourtMapPopup() {
     void (async () => {
       try {
         await loadNaverMapsSdk();
-        if (cancelled || !mapRef.current || !panoramaRef.current) return;
+        if (cancelled || !panoramaRef.current || (!panoramaOnly && !mapRef.current)) return;
         const { maps } = window.naver;
         const center = new maps.LatLng(court.lat, court.lng);
-        map = new maps.Map(mapRef.current, {
-          center,
-          zoom: MAP_ZOOM,
-          zoomControl: true,
-          zoomControlOptions: { position: maps.Position.TOP_RIGHT },
-        });
-        new maps.Marker({ position: center, map, title: court.name });
-        setStatus("확대 18 · 지도 표시 완료 · 거리뷰를 확인하는 중입니다.");
+        if (!panoramaOnly) {
+          map = new maps.Map(mapRef.current, {
+            center,
+            zoom: MAP_ZOOM,
+            zoomControl: true,
+            zoomControlOptions: { position: maps.Position.TOP_RIGHT },
+          });
+          new maps.Marker({ position: center, map, title: court.name });
+        }
+        setStatus(panoramaOnly ? "가장 가까운 거리뷰를 확인하는 중입니다." : "확대 18 · 지도 표시 완료 · 거리뷰를 확인하는 중입니다.");
         try {
           await loadNaverPanoramaSdk();
         } catch {
@@ -78,7 +81,7 @@ export default function AdminCourtMapPopup() {
         if (panorama) window.naver.maps.Event.clearInstanceListeners(panorama);
       }
     };
-  }, [court, hasCoordinates]);
+  }, [court, hasCoordinates, panoramaOnly]);
 
   return (
     <main className="admin-court-map-popup">
@@ -97,8 +100,8 @@ export default function AdminCourtMapPopup() {
       </header>
       <p className="admin-court-map-popup-status">{status}</p>
       {hasCoordinates ? (
-        <section className="admin-court-map-popup-grid">
-          <div><strong>지도</strong><div ref={mapRef} className="admin-court-map-canvas" /></div>
+        <section className={`admin-court-map-popup-grid ${panoramaOnly ? "is-panorama-only" : ""}`}>
+          {!panoramaOnly ? <div><strong>지도</strong><div ref={mapRef} className="admin-court-map-canvas" /></div> : null}
           <div><strong>거리뷰</strong><div ref={panoramaRef} className="admin-court-panorama-canvas" /></div>
         </section>
       ) : (

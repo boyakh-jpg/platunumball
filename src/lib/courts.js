@@ -356,6 +356,36 @@ export function getCourtMapUrl(court = {}) {
   return `https://map.naver.com/p/search/${encodeURIComponent(query)}`;
 }
 
+export function getCourtNaverMapAppUrl(court = {}, platform = "ios") {
+  const coordinate = getCourtCoordinate(court);
+  const address = String(court.roadAddress || court.road_address || court.addressText || court.address_text || court.jibunAddress || court.jibun_address || "").trim();
+  const title = String(court.name || "").trim() || address || "농구장";
+  const appName = "https://boxtier.kr";
+  const action = coordinate
+    ? `place?lat=${coordinate.lat}&lng=${coordinate.lng}&name=${encodeURIComponent(title)}&appname=${encodeURIComponent(appName)}`
+    : `search?query=${encodeURIComponent(address || title)}&appname=${encodeURIComponent(appName)}`;
+
+  if (platform === "android") {
+    return `intent://${action}#Intent;scheme=nmap;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.nhn.android.nmap;end`;
+  }
+  return `nmap://${action}`;
+}
+
+export function getAdminCourtStreetViewUrl(court = {}) {
+  const coordinate = getCourtCoordinate(court);
+  const address = String(court.roadAddress || court.road_address || court.addressText || court.address_text || court.jibunAddress || court.jibun_address || "").trim();
+  const params = new URLSearchParams({
+    view: "panorama",
+    name: String(court.name || "").trim() || address || "농구장",
+    address,
+  });
+  if (coordinate) {
+    params.set("lat", String(coordinate.lat));
+    params.set("lng", String(coordinate.lng));
+  }
+  return `/app/admin/court-map?${params.toString()}`;
+}
+
 function getFallbackSurfaceType(court = {}) {
   if (court.surfaceType) return court.surfaceType;
   if (String(court.type ?? "").includes("실내")) return "indoor_synthetic";

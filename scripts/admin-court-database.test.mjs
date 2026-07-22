@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { getCourtFacilityBaseName, getCourtMapUrl } from "../src/lib/courts.js";
+import { getAdminCourtStreetViewUrl, getCourtFacilityBaseName, getCourtMapUrl, getCourtNaverMapAppUrl } from "../src/lib/courts.js";
 
 const readSource = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -33,7 +33,9 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
   assert.match(component, /createPortal\(modal, document\.body\)/);
   assert.match(component, /role="dialog" aria-modal="true"/);
   assert.match(component, /const MAP_WINDOW_NAME = "rankball-court-map";/);
-  assert.match(component, /href=\{getCourtMapUrl\(row\)\} target=\{MAP_WINDOW_NAME\}/);
+  assert.match(component, /<CourtMapLinks court=\{row\}/);
+  assert.match(component, /getCourtNaverMapAppUrl\(court, mobilePlatform\)/);
+  assert.match(component, /target=\{STREET_VIEW_WINDOW_NAME\}/);
   assert.doesNotMatch(component, /getMapPopupUrl/);
   assert.doesNotMatch(component, /\/app\/admin\/court-map\?/);
   assert.match(component, /updateDraftValues\(row, \{ \[patchKey\]: original\[patchKey\] \}\)/);
@@ -163,7 +165,7 @@ test("관리자 명칭 판정 수정은 파생 근거의 검수 필드만 감사
   assert.doesNotMatch(migration, /\bdelete\s+from\s+public\.(?:approved_courts|court_name_evidence)/i);
 });
 
-test("네이버 지도 웹 링크는 좌표 핀을 만들고 내부 팝업은 확대 18 거리뷰를 유지한다", async () => {
+test("네이버 지도는 desktop 웹, mobile 앱 핀, 별도 거리뷰를 제공한다", async () => {
   const [popup, loader, app] = await Promise.all([
     readSource("src/pages/AdminCourtMapPopup.jsx"),
     readSource("src/lib/naverAddress.js"),
@@ -178,7 +180,24 @@ test("네이버 지도 웹 링크는 좌표 핀을 만들고 내부 팝업은 �
   assert.equal(mapUrl.searchParams.get("lat"), "37.5665");
   assert.equal(mapUrl.searchParams.get("lng"), "126.978");
   assert.equal(mapUrl.searchParams.get("title"), "테스트 농구장");
+  const iosMapUrl = new URL(getCourtNaverMapAppUrl({ name: "테스트 농구장", lat: 37.5665, lng: 126.978 }, "ios"));
+  assert.equal(iosMapUrl.protocol, "nmap:");
+  assert.equal(iosMapUrl.hostname, "place");
+  assert.equal(iosMapUrl.searchParams.get("lat"), "37.5665");
+  assert.equal(iosMapUrl.searchParams.get("lng"), "126.978");
+  assert.equal(iosMapUrl.searchParams.get("name"), "테스트 농구장");
+  assert.equal(iosMapUrl.searchParams.get("appname"), "https://boxtier.kr");
+  const androidMapUrl = getCourtNaverMapAppUrl({ name: "테스트 농구장", lat: 37.5665, lng: 126.978 }, "android");
+  assert.match(androidMapUrl, /^intent:\/\/place\?lat=37\.5665&lng=126\.978/);
+  assert.match(androidMapUrl, /package=com\.nhn\.android\.nmap;end$/);
+  const streetViewUrl = new URL(getAdminCourtStreetViewUrl({ name: "테스트 농구장", lat: 37.5665, lng: 126.978 }), "https://boxtier.kr");
+  assert.equal(streetViewUrl.pathname, "/app/admin/court-map");
+  assert.equal(streetViewUrl.searchParams.get("view"), "panorama");
+  assert.equal(streetViewUrl.searchParams.get("lat"), "37.5665");
+  assert.equal(streetViewUrl.searchParams.get("lng"), "126.978");
   assert.match(popup, /const MAP_ZOOM = 18;/);
+  assert.match(popup, /searchParams\.get\("view"\) === "panorama"/);
+  assert.match(popup, /is-panorama-only/);
   assert.match(popup, /new maps\.Panorama/);
   assert.match(popup, /window\.clearTimeout\(panoramaTimer\)/);
   assert.match(loader, /export async function loadNaverPanoramaSdk/);

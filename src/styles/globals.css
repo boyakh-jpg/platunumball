@@ -11358,6 +11358,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 8px;
 }
 
+.admin-court-map-popup-grid.is-panorama-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .admin-court-map-popup-grid > div {
   display: grid;
   min-width: 0;
@@ -11474,6 +11478,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
   .admin-court-map-popup-grid {
     grid-template-columns: 1fr;
     grid-template-rows: repeat(2, minmax(420px, 1fr));
+  }
+
+  .admin-court-map-popup-grid.is-panorama-only {
+    grid-template-rows: minmax(420px, 1fr);
   }
 }
 

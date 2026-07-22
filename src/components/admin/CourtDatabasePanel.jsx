@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Database, ExternalLink, ListChecks, RotateCcw, Save, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Database, ExternalLink, ListChecks, RotateCcw, Save, ScanLine, X } from "lucide-react";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
-import { getCourtFacilityBaseName, getCourtMapUrl, getCourtStandardName } from "../../lib/courts.js";
+import { getAdminCourtStreetViewUrl, getCourtCoordinate, getCourtFacilityBaseName, getCourtMapUrl, getCourtNaverMapAppUrl, getCourtStandardName } from "../../lib/courts.js";
 
-const ACTION_COLUMN_WIDTH = 220;
+const ACTION_COLUMN_WIDTH = 250;
 const MAP_WINDOW_NAME = "rankball-court-map";
+const STREET_VIEW_WINDOW_NAME = "rankball-court-street-view";
 
 const DEFAULT_COURT_FILTERS = {
   name: "", facilityName: "", courtUnit: "", indoorOutdoor: "", venueType: "", courtKind: "",
@@ -360,6 +361,34 @@ function ReviewChipGroup({ group, value, dirty, disabled, onChange }) {
         })}
       </div>
     </fieldset>
+  );
+}
+
+function getMobileMapPlatform() {
+  if (typeof navigator === "undefined") return "";
+  const userAgent = String(navigator.userAgent || "");
+  if (/Android/i.test(userAgent)) return "android";
+  if (navigator.userAgentData?.mobile || /iPhone|iPad|iPod/i.test(userAgent)) return "ios";
+  return "";
+}
+
+function CourtMapLinks({ court, evidenceUrl = "" }) {
+  const mobilePlatform = getMobileMapPlatform();
+  const mapUrl = mobilePlatform ? getCourtNaverMapAppUrl(court, mobilePlatform) : getCourtMapUrl(court);
+  const mapTarget = mobilePlatform ? undefined : MAP_WINDOW_NAME;
+  const hasCoordinates = Boolean(getCourtCoordinate(court));
+  return (
+    <>
+      <a href={mapUrl} target={mapTarget} title={mobilePlatform ? "네이버지도 앱에서 열기" : "네이버지도 웹에서 열기"}>
+        <ExternalLink size={14} /> {mobilePlatform ? "네이버지도 앱" : "네이버지도"}
+      </a>
+      {hasCoordinates ? (
+        <a href={getAdminCourtStreetViewUrl(court)} target={STREET_VIEW_WINDOW_NAME} title="가장 가까운 네이버 거리뷰 열기">
+          <ScanLine size={14} /> 거리뷰
+        </a>
+      ) : null}
+      {evidenceUrl ? <a href={String(evidenceUrl)} target="_blank" rel="noreferrer"><ExternalLink size={14} /> OSM 근거</a> : null}
+    </>
   );
 }
 
@@ -837,8 +866,7 @@ export default function CourtDatabasePanel({ app }) {
                   <div><dt>지역순번</dt><dd>{reviewRow.regional_alias_no ? `${reviewRow.regional_alias_no}번` : "미부여"}</dd></div>
                 </dl>
                 <div className="court-db-review-links">
-                  <a href={getCourtMapUrl(reviewRow)} target={MAP_WINDOW_NAME}><ExternalLink size={14} /> 네이버지도</a>
-                  {reviewRow.name_evidence_url ? <a href={String(reviewRow.name_evidence_url)} target="_blank" rel="noreferrer"><ExternalLink size={14} /> OSM 근거</a> : null}
+                  <CourtMapLinks court={{ ...reviewRow, name: reviewEditedName || reviewRow.name }} evidenceUrl={reviewRow.name_evidence_url} />
                 </div>
               </aside>
 
@@ -978,7 +1006,7 @@ export default function CourtDatabasePanel({ app }) {
                   return (
                     <tr key={row.id} className={[rowDirty ? "court-db-row-editing" : "", rowActive ? "court-db-row-active" : ""].filter(Boolean).join(" ")}>
                       <td className="court-db-actions court-db-sticky-actions">
-                        <a href={getCourtMapUrl(row)} target={MAP_WINDOW_NAME}><ExternalLink size={13} /> 네이버지도</a>
+                        <CourtMapLinks court={row} />
                         {rowDirty ? <span className="court-db-row-dirty-count">{Object.keys(rowPatch).length}셀</span> : null}
                       </td>
                       {COURT_COLUMNS.map((column) => {
