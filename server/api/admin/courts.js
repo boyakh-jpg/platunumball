@@ -335,13 +335,49 @@ export default async function handler(request, response) {
       sendJson(response, 200, await loadHistoryRows(context, body));
       return;
     }
+    if (operation === "proximity") {
+      const { data, error } = await context.supabase.rpc("rankball_admin_auto_group_nearby_courts", {
+        p_actor_profile_id: context.profileId,
+        p_actor_admin_level: adminLevel,
+        p_court_id: safeText(body.courtId),
+        p_facility_name: safeText(body.facilityName) || null,
+        p_reason: "관리자 검수: 30m 근접 구장 자동 병합",
+      });
+      if (error) throw error;
+      sendJson(response, 200, data ?? { ok: true, detectedCount: 1, courts: [] });
+      return;
+    }
+    if (operation === "verifyCount") {
+      const actualCount = Number(body.actualCount);
+      const patch = body.patch && typeof body.patch === "object" && !Array.isArray(body.patch) ? body.patch : {};
+      if (!Number.isSafeInteger(actualCount) || actualCount < 1 || actualCount > 2_147_483_647) {
+        sendJson(response, 400, { error: "court_actual_count_invalid" });
+        return;
+      }
+      if (JSON.stringify(patch).length > 32_768) {
+        sendJson(response, 400, { error: "court_patch_invalid" });
+        return;
+      }
+      const { data, error } = await context.supabase.rpc("rankball_admin_verify_nearby_court_count", {
+        p_actor_profile_id: context.profileId,
+        p_actor_admin_level: adminLevel,
+        p_court_id: safeText(body.courtId),
+        p_actual_count: actualCount,
+        p_facility_name: safeText(body.facilityName) || null,
+        p_patch: patch,
+        p_reason: "관리자 검수: 실제 코트 수 확정",
+      });
+      if (error) throw error;
+      sendJson(response, 200, data ?? { ok: true, actualCount });
+      return;
+    }
     if (operation === "update") {
       const patch = body.patch && typeof body.patch === "object" && !Array.isArray(body.patch) ? body.patch : null;
       if (!patch || JSON.stringify(patch).length > 32_768) {
         sendJson(response, 400, { error: "court_patch_invalid" });
         return;
       }
-      const { data, error } = await context.supabase.rpc("rankball_admin_update_court", {
+      const { data, error } = await context.supabase.rpc("rankball_admin_update_court_with_auto_unit", {
         p_actor_profile_id: context.profileId,
         p_actor_admin_level: adminLevel,
         p_court_id: safeText(body.courtId),
@@ -354,7 +390,7 @@ export default async function handler(request, response) {
     }
     if (operation === "updateBatch") {
       const updates = normalizeBatchUpdates(body.updates);
-      const { data, error } = await context.supabase.rpc("rankball_admin_update_courts_batch", {
+      const { data, error } = await context.supabase.rpc("rankball_admin_update_courts_batch_with_auto_unit", {
         p_actor_profile_id: context.profileId,
         p_actor_admin_level: adminLevel,
         p_updates: updates,
@@ -371,7 +407,7 @@ export default async function handler(request, response) {
         sendJson(response, 400, { error: "court_patch_invalid" });
         return;
       }
-      const { data, error } = await context.supabase.rpc("rankball_admin_review_court", {
+      const { data, error } = await context.supabase.rpc("rankball_admin_review_court_with_auto_unit", {
         p_actor_profile_id: context.profileId,
         p_actor_admin_level: adminLevel,
         p_court_id: safeText(body.courtId),
@@ -388,11 +424,11 @@ export default async function handler(request, response) {
       return;
     }
 
-    const { data, error } = await context.supabase.rpc("rankball_admin_rename_court", {
+    const { data, error } = await context.supabase.rpc("rankball_admin_update_court_with_auto_unit", {
       p_actor_profile_id: context.profileId,
       p_actor_admin_level: adminLevel,
       p_court_id: safeText(body.courtId),
-      p_facility_name: safeText(body.facilityName),
+      p_patch: { facilityName: safeText(body.facilityName) },
       p_reason: getCourtUpdateReason(context.profileId, body.reason),
     });
     if (error) throw error;

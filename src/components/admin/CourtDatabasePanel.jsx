@@ -441,7 +441,11 @@ export default function CourtDatabasePanel({ app }) {
   const [saving, setSaving] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
+  const [proximityReview, setProximityReview] = useState(null);
+  const [proximityLoading, setProximityLoading] = useState(false);
+  const [actualCourtCount, setActualCourtCount] = useState("");
   const requestRef = useRef(0);
+  const proximityRequestRef = useRef(0);
 
   const activeColumns = tab === "courts" ? COURT_COLUMNS : HISTORY_COLUMNS;
   const activeQuery = tab === "courts" ? courtQuery : historyQuery;
@@ -533,6 +537,43 @@ export default function CourtDatabasePanel({ app }) {
       current?.courtId === row.id ? current : { courtId: row.id, patchKey: "facilityName" }
     ));
   }, [courtRows, reviewIndex, reviewMode]);
+
+  useEffect(() => {
+    const courtId = reviewRow?.id;
+    if (!reviewMode || !courtId) {
+      setProximityReview(null);
+      setActualCourtCount("");
+      return undefined;
+    }
+    const requestId = proximityRequestRef.current + 1;
+    proximityRequestRef.current = requestId;
+    setProximityLoading(true);
+    setProximityReview(null);
+    void app.actions.loadAdminCourtProximity?.({ courtId, facilityName: reviewRow.facility_name }).then((result) => {
+      if (proximityRequestRef.current !== requestId) return;
+      setProximityLoading(false);
+      if (!result || result.ok === false) {
+        setStatus(getSaveErrorMessage(result?.error));
+        return;
+      }
+      setProximityReview(result);
+      setActualCourtCount(String(result.actualCount ?? result.detectedCount ?? 1));
+      const groupedCourts = new Map((result.courts ?? []).map((court) => [court.id, court]));
+      setCourtRows((current) => current.map((row) => {
+        const grouped = groupedCourts.get(row.id);
+        return grouped ? {
+          ...row,
+          name: grouped.name ?? row.name,
+          facility_name: grouped.facilityName ?? row.facility_name,
+          court_unit: grouped.courtUnit ?? row.court_unit,
+          status: grouped.status ?? row.status,
+        } : row;
+      }));
+    });
+    return () => { proximityRequestRef.current += 1; };
+    // A new court id is the only trigger. Row refreshes must not create another audit event.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewMode, reviewRow?.id]);
 
   const clearDraftEdits = () => {
     setDraftRows({});
@@ -748,6 +789,44 @@ export default function CourtDatabasePanel({ app }) {
     await commitReview(scenario.id, `${scenario.label} 처리 후 다음 구장으로 이동했습니다.`);
   };
 
+  const verifyActualCourtCount = async () => {
+    if (!reviewRow || saving || proximityLoading) return;
+    const actualCount = Number(actualCourtCount);
+    if (!Number.isSafeInteger(actualCount) || actualCount < 1) {
+      setStatus("실제 코트 수를 1 이상의 정수로 입력해 주세요.");
+      return;
+    }
+    if (reviewValidation) {
+      setStatus(`${reviewRow.name ?? reviewRow.id}: ${reviewValidation}`);
+      return;
+    }
+    setSaving(true);
+    const result = await app.actions.verifyAdminCourtCount?.({
+      courtId: reviewRow.id,
+      actualCount,
+      facilityName: reviewValues?.facilityName,
+      patch: reviewPatch,
+    });
+    if (!result || result.ok === false) {
+      setSaving(false);
+      setStatus(getSaveErrorMessage(result?.error));
+      return;
+    }
+    clearDraftEdits();
+    const refreshed = await app.actions.loadAdminCourtProximity?.({
+      courtId: reviewRow.id,
+      facilityName: reviewValues?.facilityName,
+    });
+    if (refreshed?.ok !== false) setProximityReview(refreshed);
+    await loadRows(true);
+    setSaving(false);
+    const disabled = Number(result.disabledDuplicateCount ?? 0);
+    const missing = Number(result.missingRowCount ?? 0);
+    setStatus(missing > 0
+      ? `실제 ${actualCount}코트로 기록했습니다. DB 행이 ${missing}개 부족합니다.`
+      : `실제 ${actualCount}코트로 확정했습니다.${disabled ? ` 초과 ${disabled}개 행은 중복 비활성화했습니다.` : ""}`);
+  };
+
   const saveUpdates = async () => {
     if (!editDirty || saving) return;
     if (editValidation) {
@@ -913,6 +992,62 @@ export default function CourtDatabasePanel({ app }) {
                     })}
                   </div>
                 </div>
+
+                <section className="court-db-proximity-review" aria-busy={proximityLoading}>
+                  <div className="court-db-review-section-head">
+                    <div>
+                      <strong>30m 자동 병합 · 실제 코트 수 검증</strong>
+                      <small>근접한 DB 행은 같은 시설명과 1코트~N코트로 자동 묶임</small>
+                    </div>
+                    <span>{proximityLoading ? "검사 중" : `${Number(proximityReview?.detectedCount ?? 1).toLocaleString()}개 행 감지`}</span>
+                  </div>
+                  <div className="court-db-proximity-answer">
+                    <label>
+                      이 장소에는 실제 코트가 몇 개 있나요?
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        inputMode="numeric"
+                        value={actualCourtCount}
+                        disabled={saving || proximityLoading}
+                        onChange={(event) => setActualCourtCount(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            void verifyActualCourtCount();
+                          }
+                        }}
+                      />
+                    </label>
+                    <div>
+                      {Number(actualCourtCount) < Number(proximityReview?.detectedCount ?? 1)
+                        ? <span className="is-warning">초과 {Number(proximityReview?.detectedCount ?? 1) - Number(actualCourtCount)}개 행 중복 비활성화</span>
+                        : Number(actualCourtCount) > Number(proximityReview?.detectedCount ?? 1)
+                          ? <span>DB 행 {Number(actualCourtCount) - Number(proximityReview?.detectedCount ?? 1)}개 부족 기록</span>
+                          : <span>감지된 DB 행 수와 같음</span>}
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={saving || proximityLoading || !Number.isSafeInteger(Number(actualCourtCount)) || Number(actualCourtCount) < 1}
+                        onClick={() => void verifyActualCourtCount()}
+                      >
+                        <ScanLine size={14} /> 코트 수 확정
+                      </Button>
+                    </div>
+                  </div>
+                  {proximityReview?.courts?.length ? (
+                    <div className="court-db-proximity-courts">
+                      {proximityReview.courts.map((court) => (
+                        <span key={court.id} className={court.proximityExcess ? "is-excess" : ""}>
+                          <b>{court.courtUnit || "단일 코트"}</b>
+                          {court.distanceM == null ? "거리 미상" : `${court.distanceM}m`}
+                          {court.proximityExcess ? " · 중복 비활성" : ""}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
 
                 <div className="court-db-review-subhead">
                   <strong>코트 속성</strong>

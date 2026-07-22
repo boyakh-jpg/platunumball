@@ -3194,6 +3194,20 @@ export function useAppData(authUser = null, appLocation = null) {
           if (serverReady !== true) return serverReady;
           return runServerAction("/api/admin/courts", { operation: "list", ...options });
         },
+        loadAdminCourtProximity: async (draft = {}) => {
+          if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
+          if (!ensureRemoteReady("30m 근접 구장 검사")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/courts", "30m 근접 구장 검사");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/courts", { operation: "proximity", ...draft });
+        },
+        verifyAdminCourtCount: async (draft = {}) => {
+          if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
+          if (!ensureRemoteReady("실제 코트 수 검증")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/courts", "실제 코트 수 검증");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/courts", { operation: "verifyCount", ...draft });
+        },
         loadAdminCourtNameHistory: async (options = {}) => {
           if (!isSupabaseConfigured) return { ok: true, rows: [], page: { page: 1, pageSize: 100, total: 0, pageCount: 1 } };
           if (!ensureRemoteReady("구장 수정 이력")) return { ok: false, error: "remote_not_ready" };
