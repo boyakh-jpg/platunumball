@@ -36,7 +36,9 @@ export function getMatchCreationSteps(summaryType = "match") {
   if (summaryType === "tournament") {
     return MATCH_CREATION_STEPS.map((step) => step.id === 1
       ? { ...step, label: "대회 기본" }
-      : step.id === 3 ? { ...step, label: "규칙·일정" } : step);
+      : step.id === 3
+        ? { ...step, label: "규칙·일정" }
+        : step.id === 4 ? { ...step, label: "구장" } : step);
   }
   return MATCH_CREATION_STEPS;
 }

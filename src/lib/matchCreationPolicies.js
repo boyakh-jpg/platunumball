@@ -1,4 +1,4 @@
-import { DEFAULT_BENCH_CAPACITY, MAX_BENCH_CAPACITY, getModeSize } from "./constants.js";
+import { DEFAULT_BENCH_CAPACITY, MAX_BENCH_CAPACITY, RECORD_TYPES, getModeSize } from "./constants.js";
 import { getDefaultMatchRules, getMatchRuleSummary } from "./matchRules.js";
 
 export const MATCH_INTENT_OPTIONS = Object.freeze([
@@ -45,6 +45,13 @@ export const VENUE_SECURED_OPTIONS = Object.freeze([
   { id: "first_come", label: "현장 선점" },
   { id: "unconfirmed", label: "미확정" },
 ]);
+
+export function getMatchCreationWizardType(source = {}, { recordIntent = false } = {}) {
+  if (source.recordType === RECORD_TYPES.personalRecord) return "personal_record";
+  if (source.recordType === RECORD_TYPES.matchRecord || recordIntent) return "match_record";
+  if (source.visibility === "tournament") return "tournament";
+  return "match";
+}
 
 const MATCH_INTENT_IDS = new Set(MATCH_INTENT_OPTIONS.map((option) => option.id));
 const PLAYING_TIME_POLICY_IDS = new Set(PLAYING_TIME_POLICY_OPTIONS.map((option) => option.id));
@@ -149,13 +156,14 @@ export function getMatchIntentPresetPatch(intent = "standard_competitive", mode 
 export function getMatchIntentChangePatch(source = {}, intent = "standard_competitive") {
   const matchIntent = MATCH_INTENT_IDS.has(intent) ? intent : "standard_competitive";
   const pickup = matchIntent === "pickup";
+  const sourcePlayingTimePolicy = PLAYING_TIME_POLICY_IDS.has(source.playingTimePolicy)
+    ? source.playingTimePolicy
+    : "appearance_guaranteed";
   const playingTimePolicy = pickup
     ? "equal_rotation"
-    : matchIntent === "friendly"
+    : matchIntent === "friendly" && sourcePlayingTimePolicy === "none"
       ? "appearance_guaranteed"
-      : PLAYING_TIME_POLICY_IDS.has(source.playingTimePolicy)
-        ? source.playingTimePolicy
-        : "appearance_guaranteed";
+      : sourcePlayingTimePolicy;
   const benchCapacity = clampInteger(source.benchCapacity, DEFAULT_BENCH_CAPACITY, 0, MAX_BENCH_CAPACITY);
   const paymentPolicy = PAYMENT_POLICY_IDS.has(source.paymentPolicy) ? source.paymentPolicy : "equal_all_confirmed";
   const requiresAcknowledgement = benchCapacity > 0
@@ -321,7 +329,7 @@ export function getMatchCreationValidation(source = {}) {
   const errors = [];
   const warnings = [];
   const paidVenue = policy.venuePaymentType === "paid_reserved" || policy.venuePaymentType === "paid_not_reserved";
-  if (paidVenue && policy.totalCost <= 0) errors.push("유료구장은 비용을 1원 이상 입력해야 합니다.");
+  if (paidVenue && policy.venueFee <= 0) errors.push("유료구장은 대관료를 1원 이상 입력해야 합니다.");
   if (policy.requiresBenchPaymentAcknowledgement && !policy.benchPaymentAcknowledged) {
     errors.push("후보의 동일 결제와 출전 미보장 조건을 확인해야 합니다.");
   }

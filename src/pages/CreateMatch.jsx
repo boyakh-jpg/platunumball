@@ -29,6 +29,7 @@ import {
   getDefaultMatchCreationPolicy,
   getMatchCreationPolicyPayload,
   getMatchCreationValidation,
+  getMatchCreationWizardType,
   getMatchIntentChangePatch,
   getMatchModeChangePatch,
   getPersonalRecordDraftPayload,
@@ -39,12 +40,6 @@ import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DIRECTORY_PICKER_PAGE
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange } from "../lib/recruiting.js";
 import { postServerAction } from "../lib/serverActions.js";
 
-const today = getLocalDateInputValue();
-const minSoloRecordDate = addDateDays(today, -7);
-const nextWeek = addDateDays(today, 7);
-const maxScheduleDate = addDateDays(today, SCHEDULE_MAX_DAYS);
-const maxPrivateScheduleDate = addDateDays(today, ROOM_SCHEDULE_MAX_DAYS);
-const maxPublicScheduleDate = getPublicRoomMaxDateInput();
 const mmrLimitOptions = [
   { id: "off", label: "제한 없음" },
   { id: "warn", label: "경고만" },
@@ -318,6 +313,12 @@ function getCreateStepSearch(search = "", step = 1) {
 export default function CreateMatch({ app }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const today = getLocalDateInputValue();
+  const minSoloRecordDate = addDateDays(today, -7);
+  const nextWeek = addDateDays(today, 7);
+  const maxScheduleDate = addDateDays(today, SCHEDULE_MAX_DAYS);
+  const maxPrivateScheduleDate = addDateDays(today, ROOM_SCHEDULE_MAX_DAYS);
+  const maxPublicScheduleDate = getPublicRoomMaxDateInput();
   const isRecordCreateIntent = useMemo(() => new URLSearchParams(location.search).get("intent") === "record", [location.search]);
   const loadDirectory = app.actions.loadDirectory;
   const requestedTournamentDirectoryRef = useRef(false);
@@ -554,7 +555,7 @@ export default function CreateMatch({ app }) {
   const isPickupMatch = !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom && draft.matchIntent === "pickup";
   const isTeamRoom = !isSoloRecord && !isTournamentRoom && !isPickupMatch && draft.hostJoinMode === "team";
   const isStandardCreateWizard = !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom;
-  const creationWizardType = isSoloRecord ? "personal_record" : isMatchRecordRoom ? "match_record" : isTournamentRoom ? "tournament" : "match";
+  const creationWizardType = getMatchCreationWizardType(draft, { recordIntent: isRecordCreateIntent });
   const creationWizardSteps = useMemo(() => getMatchCreationSteps(creationWizardType), [creationWizardType]);
   const finalWizardStep = creationWizardSteps.at(-1)?.id ?? 1;
   const wizardStepIds = useMemo(() => new Set(creationWizardSteps.map((step) => step.id)), [creationWizardSteps]);

@@ -8,6 +8,7 @@ import {
   getMatchCreationPolicyPayload,
   getMatchCreationSummary,
   getMatchCreationValidation,
+  getMatchCreationWizardType,
   getMatchIntentChangePatch,
   getMatchIntentPresetPatch,
   getMatchModeChangePatch,
@@ -92,6 +93,13 @@ test("creation UI exposes only friendly, competitive, and pickup intents", () =>
   assert.deepEqual(MATCH_INTENT_OPTIONS.map((option) => option.id), ["friendly", "standard_competitive", "pickup"]);
 });
 
+test("record intent selects record steps before the draft conversion effect", () => {
+  assert.equal(getMatchCreationWizardType({ recordType: "match" }, { recordIntent: true }), "match_record");
+  assert.equal(getMatchCreationWizardType({ recordType: "match_record" }), "match_record");
+  assert.equal(getMatchCreationWizardType({ recordType: "solo" }, { recordIntent: true }), "personal_record");
+  assert.equal(getMatchCreationWizardType({ recordType: "match", visibility: "tournament" }), "tournament");
+});
+
 test("intent and mode changes preserve unrelated user input", () => {
   const source = {
     mode: "5v5",
@@ -113,6 +121,13 @@ test("intent and mode changes preserve unrelated user input", () => {
   assert.equal(friendly.playingTimePolicy, "appearance_guaranteed");
   assert.equal(friendly.ranked, false);
   assert.equal(friendly.official, false);
+
+  const rotationFriendly = {
+    ...source,
+    playingTimePolicy: "equal_rotation",
+    ...getMatchIntentChangePatch({ ...source, playingTimePolicy: "equal_rotation" }, "friendly"),
+  };
+  assert.equal(rotationFriendly.playingTimePolicy, "equal_rotation");
 
   const resized = { ...source, ...getMatchModeChangePatch(source, "3v3") };
   assert.equal(resized.mode, "3v3");
@@ -199,7 +214,8 @@ test("paid venue requires structured cost", () => {
     venuePaymentType: "paid_reserved",
     venueFee: 0,
   };
-  assert.match(getMatchCreationValidation(draft).errors.join(" "), /비용/);
+  assert.match(getMatchCreationValidation(draft).errors.join(" "), /대관료/);
+  assert.match(getMatchCreationValidation({ ...draft, refereeFee: 10000 }).errors.join(" "), /대관료/);
   assert.equal(getMatchCreationValidation({ ...draft, venueFee: 10000 }).errors.length, 0);
 });
 
@@ -257,6 +273,8 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "match_record"\)/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "tournament"\)/);
   assert.match(source, /getDefaultCreateTitle\(draft\.mode, matchIntent\)/);
+  assert.match(source, /getMatchCreationWizardType\(draft, \{ recordIntent: isRecordCreateIntent \}\)/);
+  assert.match(wizardSource, /step\.id === 4 \? \{ \.\.\.step, label: "구장" \}/);
   const serverSource = fs.readFileSync(path.join(root, "server/api/recruiting/sync-post.js"), "utf8");
   assert.match(serverSource, /validatePickupRecruitingOperation\(context, operation\)/);
   assert.match(serverSource, /rules: \{ \.\.\.\(post\.rules \?\? \{\}\), benchCapacity \}/);
