@@ -580,3 +580,10 @@ Remaining:
 - Profile insert/delete/affiliation changes refresh cached `member_count`. Search orders active organizations by `member_count desc, name asc` and never treats the count as verification.
 - Name reports use `team_name` or `affiliation_name`. `rankball_moderate_reported_name(text,integer,text,text,text,text,text,text)` allows level 50+ administrators to rename or merge under one transaction and writes report resolution, notification, and audit rows.
 - Both affiliation RPCs are revoked from `public`, `anon`, and `authenticated`; only `service_role` can execute them after server-side auth and authority checks.
+
+## 2026-07-22 OSM court name evidence
+
+- `court_source_records`는 제공자 원본과 OSM 코트 객체 추적용이다. `court_name_evidence`는 `approved_courts.court_id` FK에 연결된 최신 공간결합 판정만 저장한다.
+- `court_name_evidence`에는 provider, decision, application status, spatial relation, reference object name/type/URL, 80m 이하 거리, proposed/applied facility name, source snapshot date, inference version, run ID만 둔다. 주변 객체 전체 태그나 중복 payload는 저장하지 않는다.
+- 30m 이하 인접 시설만 자동 이름 근거가 된다. 30~80m 객체는 검수 후보이며 자동 반영명은 OSM 행정구역 또는 저장된 읍면동 fallback만 허용한다. 80m 초과 근거는 DB constraint와 RPC에서 거부한다.
+- 이 테이블과 적용 RPC는 `service_role` 전용이다. 공개 구장 목록은 `approved_courts` 관계형 칼럼을 읽고, 관리자 DB view만 파생 근거를 조인한다.

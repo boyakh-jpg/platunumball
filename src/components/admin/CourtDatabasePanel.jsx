@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, Database, ExternalLink, Pencil, RotateCcw, Save, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Database, ExternalLink, RotateCcw, Save, X } from "lucide-react";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
 import { getCourtFacilityBaseName, getCourtStandardName } from "../../lib/courts.js";
@@ -17,6 +17,10 @@ const DEFAULT_COURT_FILTERS = {
   locationNote: "", accessNote: "", facilityAreaSqm: "", facilityAreaScope: "",
   modificationCount: "zero", registrationOrigin: "", updatedAt: "", id: "", hashtag: "",
   address: "", roadAddress: "", jibunAddress: "", zonecode: "", lat: "", lng: "",
+  nameEvidenceDecision: "", nameEvidenceApplicationStatus: "", nameEvidenceReference: "",
+  nameEvidenceKind: "", nameEvidenceRelation: "", nameEvidenceDistanceM: "",
+  nameEvidenceProposedFacility: "", nameEvidenceAppliedFacility: "", nameEvidenceUrl: "",
+  nameEvidenceSnapshotDate: "",
 };
 
 const EMPTY_HISTORY_FILTERS = {
@@ -27,6 +31,16 @@ const EMPTY_HISTORY_FILTERS = {
 const COURT_COLUMNS = [
   { key: "name", rowKey: "name", label: "표준 구장명", width: "250px", readOnly: true },
   { key: "facilityName", rowKey: "facility_name", patchKey: "facilityName", label: "시설명", width: "210px", editor: "text", required: true },
+  { key: "nameEvidenceDecision", rowKey: "name_evidence_decision", label: "명칭판정", width: "125px", type: "nameEvidenceDecision", readOnly: true },
+  { key: "nameEvidenceApplicationStatus", rowKey: "name_evidence_application_status", label: "반영상태", width: "125px", type: "nameEvidenceApplicationStatus", readOnly: true },
+  { key: "nameEvidenceReference", rowKey: "name_evidence_reference", label: "근거시설", width: "220px", readOnly: true },
+  { key: "nameEvidenceKind", rowKey: "name_evidence_kind", label: "근거유형", width: "125px", type: "nameEvidenceKind", readOnly: true },
+  { key: "nameEvidenceRelation", rowKey: "name_evidence_relation", label: "공간관계", width: "105px", type: "nameEvidenceRelation", readOnly: true },
+  { key: "nameEvidenceDistanceM", rowKey: "name_evidence_distance_m", label: "거리(m)", width: "90px", readOnly: true },
+  { key: "nameEvidenceProposedFacility", rowKey: "name_evidence_proposed_facility", label: "검수후보", width: "220px", readOnly: true },
+  { key: "nameEvidenceAppliedFacility", rowKey: "name_evidence_applied_facility", label: "반영시설명", width: "220px", readOnly: true },
+  { key: "nameEvidenceUrl", rowKey: "name_evidence_url", label: "OSM 근거", width: "105px", type: "osmEvidenceUrl", readOnly: true },
+  { key: "nameEvidenceSnapshotDate", rowKey: "name_evidence_snapshot_date", label: "OSM 기준일", width: "120px", type: "date", readOnly: true },
   { key: "courtUnit", rowKey: "court_unit", patchKey: "courtUnit", label: "코트", width: "100px", editor: "text" },
   { key: "indoorOutdoor", rowKey: "indoor_outdoor", patchKey: "indoorOutdoor", label: "실내외", width: "100px", editor: "select", type: "indoorOutdoor" },
   { key: "venueType", rowKey: "venue_type", patchKey: "venueType", label: "시설유형", width: "115px", editor: "select", type: "venueType" },
@@ -93,6 +107,10 @@ const SELECT_OPTIONS = {
   verificationStatus: [["", "전체"], ["__null__", "미입력"], ["pending", "미검증"], ["source_verified", "출처검증"], ["verified", "검증완료"], ["review_required", "검토필요"]],
   status: [["", "전체"], ["active", "활성"], ["hidden", "임시 숨김"], ["disabled", "비활성"]],
   facilityAreaScope: [["", "전체"], ["__null__", "미입력"], ["court", "코트"], ["facility", "시설전체"], ["unknown", "알 수 없음"]],
+  nameEvidenceDecision: [["", "전체"], ["__null__", "근거 없음"], ["auto_apply", "자동 확정"], ["review_required", "30~80m 검수"], ["administrative_fallback", "행정동 fallback"]],
+  nameEvidenceApplicationStatus: [["", "전체"], ["__null__", "근거 없음"], ["applied", "반영"], ["skipped_duplicate", "중복 건너뜀"], ["skipped_manual", "수동 보호"], ["pending", "대기"], ["not_applicable", "미적용"]],
+  nameEvidenceKind: [["", "전체"], ["__null__", "근거 없음"], ["exact_court", "코트 자체"], ["sports_centre", "체육시설"], ["school", "학교"], ["building", "건물"], ["park_ground", "공원·운동장"], ["community_centre", "공공시설"], ["landmark", "주변시설"], ["administrative", "OSM 행정구역"], ["stored_administrative", "저장 읍면동"]],
+  nameEvidenceRelation: [["", "전체"], ["__null__", "근거 없음"], ["self", "코트 자체"], ["inside", "polygon 내부"], ["site_member", "같은 부지"], ["nearby", "인접"], ["administrative", "행정구역"], ["none", "미해결"]],
   modificationCount: [["zero", "0회"], ["positive", "1회 이상"], ["", "전체"]],
   origin: [["", "전체"], ["public_import", "공공데이터"], ["user_request", "사용자 신청"], ["system", "시스템"]],
   source: [["", "전체"], ["admin", "관리자"], ["system", "시스템"]],
@@ -147,13 +165,24 @@ function buildRowDraft(row) {
   }));
 }
 
-function buildPatch(editing) {
-  if (!editing) return {};
+function buildPatch(draft) {
+  if (!draft) return {};
   return Object.fromEntries(EDITABLE_COLUMNS.flatMap((column) => {
-    const before = normalizeEditValue(column, editing.original[column.patchKey]);
-    const after = normalizeEditValue(column, editing.values[column.patchKey]);
+    const before = normalizeEditValue(column, draft.original[column.patchKey]);
+    const after = normalizeEditValue(column, draft.values[column.patchKey]);
     return Object.is(before, after) ? [] : [[column.patchKey, after]];
   }));
+}
+
+function getDraftCourtName(row, values) {
+  return getCourtStandardName({
+    ...row,
+    facilityName: values.facilityName,
+    courtUnit: values.courtUnit,
+    sido: values.sido,
+    sigungu: values.sigungu,
+    addressText: values.addressText,
+  });
 }
 
 function validatePatch(values, patch) {
@@ -241,6 +270,7 @@ function CellEditor({ column, value, disabled, onChange, onEscape }) {
       <select
         aria-label={`${column.label} 수정`}
         value={selected}
+        autoFocus
         disabled={disabled}
         onKeyDown={onKeyDown}
         onChange={(event) => {
@@ -260,6 +290,7 @@ function CellEditor({ column, value, disabled, onChange, onEscape }) {
       min={column.min}
       max={column.max}
       step={column.step ?? (column.editor === "number" ? 1 : undefined)}
+      autoFocus
       disabled={disabled}
       onKeyDown={onKeyDown}
       onChange={(event) => onChange(event.target.value)}
@@ -309,7 +340,11 @@ export default function CourtDatabasePanel({ app }) {
   const [historyQuery, setHistoryQuery] = useState({ page: 1, sortKey: "createdAt", sortDirection: "desc", filters: EMPTY_HISTORY_FILTERS });
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
-  const [editing, setEditing] = useState(null);
+  const [draftRows, setDraftRows] = useState({});
+  const [activeCell, setActiveCell] = useState(null);
+  const [reason, setReason] = useState("");
+  const [reasonOptional, setReasonOptional] = useState(false);
+  const [saving, setSaving] = useState(false);
   const requestRef = useRef(0);
 
   const activeColumns = tab === "courts" ? COURT_COLUMNS : HISTORY_COLUMNS;
@@ -317,19 +352,25 @@ export default function CourtDatabasePanel({ app }) {
   const activeDraft = tab === "courts" ? courtFilterDraft : historyFilterDraft;
   const activePage = tab === "courts" ? courtPage : historyPage;
   const tableWidth = activeColumns.reduce((total, column) => total + Number.parseInt(column.width, 10), 0) + (tab === "courts" ? ACTION_COLUMN_WIDTH : 0);
-  const editRow = useMemo(() => courtRows.find((row) => row.id === editing?.courtId) ?? null, [courtRows, editing?.courtId]);
-  const editPatch = useMemo(() => buildPatch(editing), [editing]);
-  const editDirty = Object.keys(editPatch).length > 0;
-  const editedName = editRow && editing ? getCourtStandardName({
-    ...editRow,
-    facilityName: editing.values.facilityName,
-    courtUnit: editing.values.courtUnit,
-    sido: editing.values.sido,
-    sigungu: editing.values.sigungu,
-    addressText: editing.values.addressText,
-  }) : "";
-  const nameDirty = Boolean(editRow && editedName && editedName !== editRow.name);
-  const editValidation = editing ? validatePatch(editing.values, editPatch) : "";
+  const dirtyUpdates = useMemo(() => Object.entries(draftRows).flatMap(([courtId, draft]) => {
+    const patch = buildPatch(draft);
+    return Object.keys(patch).length ? [{ courtId, patch, ...draft }] : [];
+  }), [draftRows]);
+  const editDirty = dirtyUpdates.length > 0;
+  const dirtyFieldCount = useMemo(() => dirtyUpdates.reduce((total, update) => total + Object.keys(update.patch).length, 0), [dirtyUpdates]);
+  const editValidation = useMemo(() => {
+    for (const update of dirtyUpdates) {
+      const row = courtRows.find((candidate) => candidate.id === update.courtId);
+      const message = validatePatch(update.values, update.patch);
+      if (message) return `${row?.name ?? update.courtId}: ${message}`;
+    }
+    return "";
+  }, [courtRows, dirtyUpdates]);
+  const activeRow = useMemo(() => courtRows.find((row) => row.id === activeCell?.courtId) ?? null, [courtRows, activeCell?.courtId]);
+  const activeRowDraft = activeRow ? draftRows[activeRow.id] : null;
+  const activeEditedName = activeRow && activeRowDraft ? getDraftCourtName(activeRow, activeRowDraft.values) : "";
+  const activeNameDirty = Boolean(activeRow && activeEditedName && activeEditedName !== activeRow.name);
+  const reasonValid = reasonOptional || reason.trim().length >= 4;
 
   const loadRows = async (preserveStatus = false) => {
     const requestId = requestRef.current + 1;
@@ -348,6 +389,7 @@ export default function CourtDatabasePanel({ app }) {
     if (tab === "courts") {
       setCourtRows(result.rows ?? []);
       setCourtPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
+      setReasonOptional(result.capabilities?.reasonOptional === true);
     } else {
       setHistoryRows(result.rows ?? []);
       setHistoryPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
@@ -368,15 +410,20 @@ export default function CourtDatabasePanel({ app }) {
     return () => { document.body.style.overflow = previousOverflow; };
   }, [open]);
 
-  const canDiscard = () => !editDirty || window.confirm("저장하지 않은 수정값을 버릴까요?");
+  const resetEdits = () => {
+    setDraftRows({});
+    setActiveCell(null);
+    setReason("");
+  };
+  const canDiscard = () => !saving && (!editDirty || window.confirm("저장하지 않은 수정값을 버릴까요?"));
   const closeModal = () => {
     if (!canDiscard()) return;
-    setEditing(null);
+    resetEdits();
     setOpen(false);
   };
   const changeTab = (nextTab) => {
     if (nextTab === tab || !canDiscard()) return;
-    setEditing(null);
+    resetEdits();
     setStatus("");
     setTab(nextTab);
   };
@@ -386,13 +433,13 @@ export default function CourtDatabasePanel({ app }) {
   };
   const applyFilters = () => {
     if (!canDiscard()) return;
-    setEditing(null);
+    resetEdits();
     if (tab === "courts") setCourtQuery((current) => ({ ...current, page: 1, filters: { ...courtFilterDraft } }));
     else setHistoryQuery((current) => ({ ...current, page: 1, filters: { ...historyFilterDraft } }));
   };
   const resetFilters = () => {
     if (!canDiscard()) return;
-    setEditing(null);
+    resetEdits();
     if (tab === "courts") {
       setCourtFilterDraft({ ...DEFAULT_COURT_FILTERS });
       setCourtQuery((current) => ({ ...current, page: 1, sortKey: "modificationCount", sortDirection: "asc", filters: { ...DEFAULT_COURT_FILTERS } }));
@@ -403,7 +450,7 @@ export default function CourtDatabasePanel({ app }) {
   };
   const changeSort = (key) => {
     if (!canDiscard()) return;
-    setEditing(null);
+    resetEdits();
     const update = (current) => ({
       ...current,
       page: 1,
@@ -415,57 +462,62 @@ export default function CourtDatabasePanel({ app }) {
   };
   const changePage = (page) => {
     if (!canDiscard()) return;
-    setEditing(null);
+    resetEdits();
     if (tab === "courts") setCourtQuery((current) => ({ ...current, page }));
     else setHistoryQuery((current) => ({ ...current, page }));
   };
-  const beginEdit = (row) => {
-    if (editing?.courtId !== row.id && !canDiscard()) return;
-    const values = buildRowDraft(row);
-    setEditing({ courtId: row.id, original: { ...values }, values, reason: "", saving: false });
+  const updateDraftValues = (row, valuePatch) => setDraftRows((current) => {
+    const existing = current[row.id];
+    const original = existing?.original ?? buildRowDraft(row);
+    const values = { ...(existing?.values ?? original), ...valuePatch };
+    const nextDraft = { original, values };
+    if (Object.keys(buildPatch(nextDraft)).length) return { ...current, [row.id]: nextDraft };
+    const next = { ...current };
+    delete next[row.id];
+    return next;
+  });
+  const activateCell = (row, column) => {
+    if (!column.patchKey || saving) return;
+    setActiveCell({ courtId: row.id, patchKey: column.patchKey });
     setStatus("");
   };
-  const updateEditValue = (patchKey, value) => setEditing((current) => current ? ({
-    ...current,
-    values: { ...current.values, [patchKey]: value },
-  }) : current);
-  const restoreCell = (patchKey) => setEditing((current) => current ? ({
-    ...current,
-    values: { ...current.values, [patchKey]: current.original[patchKey] },
-  }) : current);
-  const applyQuickStatus = (kind) => {
-    setEditing((current) => {
-      if (!current) return current;
-      if (kind === "review") return { ...current, values: { ...current.values, verificationStatus: "review_required", operationalStatus: "pending", status: "hidden" } };
-      if (kind === "disabled") return { ...current, values: { ...current.values, status: "disabled" } };
-      return { ...current, values: { ...current.values, status: "active" } };
-    });
+  const updateEditValue = (row, patchKey, value) => updateDraftValues(row, { [patchKey]: value });
+  const restoreCell = (row, patchKey) => {
+    const original = draftRows[row.id]?.original ?? buildRowDraft(row);
+    updateDraftValues(row, { [patchKey]: original[patchKey] });
   };
-  const saveUpdate = async () => {
-    if (!editing || editing.saving) return;
+  const applyQuickStatus = (kind) => {
+    if (!activeRow || saving) return;
+    if (kind === "review") updateDraftValues(activeRow, { verificationStatus: "review_required", operationalStatus: "pending", status: "hidden" });
+    else if (kind === "disabled") updateDraftValues(activeRow, { status: "disabled" });
+    else updateDraftValues(activeRow, { status: "active" });
+  };
+  const saveUpdates = async () => {
+    if (!editDirty || saving) return;
     if (editValidation) {
       setStatus(editValidation);
       return;
     }
-    if (editing.reason.trim().length < 4) {
+    if (!reasonValid) {
       setStatus("변경 사유를 4자 이상 입력해 주세요.");
       return;
     }
-    setEditing((current) => ({ ...current, saving: true }));
-    const result = await app.actions.renameAdminCourt?.({
-      operation: "update",
-      courtId: editing.courtId,
-      patch: editPatch,
-      reason: editing.reason.trim(),
+    setSaving(true);
+    const result = await app.actions.saveAdminCourtBatch?.({
+      updates: dirtyUpdates.map(({ courtId, patch }) => ({ courtId, patch })),
+      reason: reason.trim(),
     });
     if (!result || result.ok === false) {
-      setEditing((current) => current ? ({ ...current, saving: false }) : current);
+      setSaving(false);
       setStatus(getSaveErrorMessage(result?.error));
       return;
     }
-    setEditing(null);
+    const savedRows = Number(result.updatedCount ?? dirtyUpdates.length);
+    const savedFields = dirtyFieldCount;
+    resetEdits();
+    setSaving(false);
     await loadRows(true);
-    setStatus(`${result.changedFields?.length ?? Object.keys(editPatch).length}개 필드를 저장했습니다.`);
+    setStatus(`${savedRows}개 구장 · ${savedFields}개 셀을 일괄 저장했습니다.`);
   };
 
   const modal = open ? (
@@ -490,41 +542,46 @@ export default function CourtDatabasePanel({ app }) {
           </div>
 
           <div className="court-db-toolbar">
-            <small>가로 스크롤은 표 하단에 고정됩니다. 수정 버튼을 누르면 허용된 셀이 입력칸으로 바뀝니다.</small>
+            <small>가로 스크롤은 표 하단에 고정됩니다. 수정 가능한 셀을 누르면 바로 입력할 수 있습니다.</small>
             <div>
               <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={resetFilters}><RotateCcw size={14} /> 초기화</Button>
               <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={applyFilters}>{loading ? "조회 중" : "필터 적용"}</Button>
             </div>
           </div>
 
-          {editing ? (
+          {tab === "courts" ? (
             <div className="court-db-edit-toolbar">
               <div>
-                <strong>{editRow?.name}</strong>
-                <span>ESC: 현재 셀만 원래 값으로 복구</span>
+                <strong>{editDirty ? `${dirtyUpdates.length}개 구장 · ${dirtyFieldCount}개 셀 수정` : activeRow?.name ?? "수정할 셀을 선택하세요"}</strong>
+                <span>{editValidation || (activeNameDirty ? `표준명 변경: ${activeEditedName}` : "ESC: 현재 셀만 원래 값으로 복구")}</span>
               </div>
               <label>
                 변경 사유
                 <input
-                  value={editing.reason}
-                  placeholder="4자 이상"
+                  value={reason}
+                  placeholder={reasonOptional ? "boyakh 한시적 입력 잠금" : "4자 이상"}
                   maxLength={160}
-                  disabled={editing.saving}
-                  onChange={(event) => setEditing((current) => ({ ...current, reason: event.target.value }))}
+                  disabled={saving || reasonOptional}
+                  onChange={(event) => setReason(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
-                      void saveUpdate();
+                      void saveUpdates();
                     }
                   }}
                 />
               </label>
               <div className="court-db-quick-status">
-                <button type="button" disabled={editing.saving} onClick={() => applyQuickStatus("review")}>확인불가 숨김</button>
-                <button type="button" disabled={editing.saving} onClick={() => applyQuickStatus("disabled")}>비활성화</button>
-                <button type="button" disabled={editing.saving} onClick={() => applyQuickStatus("active")}>활성 복구</button>
+                <button type="button" disabled={!activeRow || saving} onClick={() => applyQuickStatus("review")}>확인불가 숨김</button>
+                <button type="button" disabled={!activeRow || saving} onClick={() => applyQuickStatus("disabled")}>비활성화</button>
+                <button type="button" disabled={!activeRow || saving} onClick={() => applyQuickStatus("active")}>활성 복구</button>
               </div>
-              <small>{editValidation || (nameDirty ? `표준명 변경: ${editedName}` : "붉은 셀은 저장 전 값입니다.")}</small>
+              <div className="court-db-batch-actions">
+                <Button type="button" size="sm" disabled={!editDirty || Boolean(editValidation) || !reasonValid || saving} onClick={saveUpdates}>
+                  <Save size={13} /> {saving ? "저장 중" : "일괄 저장"}
+                </Button>
+                <Button type="button" size="sm" variant="secondary" disabled={!editDirty || saving} onClick={resetEdits}><X size={13} /> 전체 취소</Button>
+              </div>
             </div>
           ) : null}
 
@@ -542,7 +599,7 @@ export default function CourtDatabasePanel({ app }) {
                   {activeColumns.map((column) => (
                     <th key={column.key}>
                       <button type="button" className="court-db-sort" onClick={() => changeSort(column.key)}>
-                        {column.label}<SortIcon active={activeQuery.sortKey === column.key} direction={activeQuery.sortDirection} />
+                        <span title={column.label}>{column.label}</span><SortIcon active={activeQuery.sortKey === column.key} direction={activeQuery.sortDirection} />
                       </button>
                     </th>
                   ))}
@@ -563,35 +620,49 @@ export default function CourtDatabasePanel({ app }) {
               </thead>
               <tbody>
                 {tab === "courts" ? courtRows.map((row) => {
-                  const rowEditing = editing?.courtId === row.id;
+                  const rowDraft = draftRows[row.id];
+                  const rowValues = rowDraft?.values ?? buildRowDraft(row);
+                  const rowPatch = buildPatch(rowDraft);
+                  const rowDirty = Object.keys(rowPatch).length > 0;
+                  const editedName = rowDirty ? getDraftCourtName(row, rowValues) : row.name;
+                  const nameDirty = Boolean(editedName && editedName !== row.name);
+                  const rowActive = activeCell?.courtId === row.id;
                   return (
-                    <tr key={row.id} className={rowEditing ? "court-db-row-editing" : ""}>
+                    <tr key={row.id} className={[rowDirty ? "court-db-row-editing" : "", rowActive ? "court-db-row-active" : ""].filter(Boolean).join(" ")}>
                       <td className="court-db-actions court-db-sticky-actions">
                         <a href={getMapPopupUrl(row)} target={MAP_WINDOW_NAME}><ExternalLink size={13} /> 네이버지도</a>
-                        {rowEditing ? (
-                          <>
-                            <button type="button" disabled={Boolean(editValidation) || editing.reason.trim().length < 4 || editing.saving} onClick={saveUpdate}><Save size={13} /> {editing.saving ? "저장 중" : "저장"}</button>
-                            <button type="button" disabled={editing.saving} onClick={() => setEditing(null)}><X size={13} /> 취소</button>
-                          </>
-                        ) : (
-                          <button type="button" disabled={Boolean(editing)} onClick={() => beginEdit(row)}><Pencil size={13} /> 수정</button>
-                        )}
+                        {rowDirty ? <span className="court-db-row-dirty-count">{Object.keys(rowPatch).length}셀</span> : null}
                       </td>
                       {COURT_COLUMNS.map((column) => {
-                        const columnDirty = rowEditing && (column.key === "name"
+                        const columnDirty = rowDirty && (column.key === "name"
                           ? nameDirty
-                          : column.patchKey && Object.prototype.hasOwnProperty.call(editPatch, column.patchKey));
-                        const displayValue = rowEditing && column.key === "name" ? editedName : row[column.rowKey];
+                          : column.patchKey && Object.prototype.hasOwnProperty.call(rowPatch, column.patchKey));
+                        const cellActive = column.patchKey && activeCell?.courtId === row.id && activeCell.patchKey === column.patchKey;
+                        const displayValue = column.key === "name" ? editedName : column.patchKey ? rowValues[column.patchKey] : row[column.rowKey];
                         return (
-                          <td key={column.key} className={columnDirty ? "court-db-cell-dirty" : ""} title={formatValue(column, displayValue)}>
-                            {rowEditing && column.patchKey ? (
+                          <td
+                            key={column.key}
+                            className={[columnDirty ? "court-db-cell-dirty" : "", column.patchKey ? "court-db-editable-cell" : "", cellActive ? "court-db-cell-active" : ""].filter(Boolean).join(" ")}
+                            title={formatValue(column, displayValue)}
+                            tabIndex={column.patchKey ? 0 : undefined}
+                            onClick={() => activateCell(row, column)}
+                            onKeyDown={(event) => {
+                              if (column.patchKey && (event.key === "Enter" || event.key === "F2")) {
+                                event.preventDefault();
+                                activateCell(row, column);
+                              }
+                            }}
+                          >
+                            {cellActive ? (
                               <CellEditor
                                 column={column}
-                                value={editing.values[column.patchKey]}
-                                disabled={editing.saving}
-                                onChange={(value) => updateEditValue(column.patchKey, value)}
-                                onEscape={() => restoreCell(column.patchKey)}
+                                value={rowValues[column.patchKey]}
+                                disabled={saving}
+                                onChange={(value) => updateEditValue(row, column.patchKey, value)}
+                                onEscape={() => restoreCell(row, column.patchKey)}
                               />
+                            ) : column.type === "osmEvidenceUrl" && displayValue ? (
+                              <a href={String(displayValue)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>OSM 열기</a>
                             ) : formatValue(column, displayValue)}
                           </td>
                         );

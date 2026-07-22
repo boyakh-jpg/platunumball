@@ -264,7 +264,7 @@ export function getCourtFacilityBaseName(rawName = "", sigungu = "", courtUnit =
   facilityName = facilityName
     .replace(/\s*(?:(?:실내|실외|야외)\s*)?농구장\s*$/i, "")
     .replace(/\s*농구\s*코트\s*$/i, "")
-    .replace(/[\s·,()\-]+$/g, "");
+    .replace(/[\s·,\-]+$/g, "");
   return normalizeCourtNamePart(facilityName);
 }
 

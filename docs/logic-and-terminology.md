@@ -3026,13 +3026,17 @@ flowchart TD
 ## 2026-07-22 구장 표준명·관리자 DB
 
 1. 사용자 신청, 관리자 승인, 공공 원장, 관리자 이름 변경은 모두 DB `BEFORE` trigger의 `시군구 + 시설명 + 농구장 + 코트 구분(선택)` 표준명을 최종 원본으로 사용한다. 클라이언트 미리보기는 같은 규칙을 복제해 입력 전에 결과만 보여준다.
-2. 구장 DB 수정은 level 50 이상만 가능하다. 서버가 허용한 관계형 칼럼과 시설 정보 칼럼만 4~160자 사유와 함께 한 transaction에서 갱신한다. 시설명·코트 구분·지역 변경으로 표준명이 바뀌면 승인 구장, legacy mirror, 경기, 모집방, 대회, 리뷰의 이름 snapshot도 함께 갱신한다.
+2. 구장 DB 수정은 level 50 이상만 가능하다. 서버가 허용한 관계형 칼럼과 시설 정보 칼럼만 최대 100개 구장 단위의 한 transaction에서 갱신한다. 일반 관리자는 4~160자 공통 사유가 필요하다. 초기 원장 정리 기간의 `boyakh` 프로필만 UI 사유 입력을 잠그고 서버가 `한시적 boyakh 구장 DB 정리`를 자동 기록한다. 시설명·코트 구분·지역 변경으로 표준명이 바뀌면 승인 구장, legacy mirror, 경기, 모집방, 대회, 리뷰의 이름 snapshot도 함께 갱신한다.
 3. 모든 실제 필드 변경은 변경 전·후, 구장 ID, 처리자 ID·표시명, 사유, 시각을 `admin_audit_log`에 보존한다. 표준명 변경은 `court_name_change_log`에도 보존하며 초기 일괄 표준화는 처리자 `시스템`, 이후 관리자 변경은 실제 프로필을 기록한다.
 4. 관리자 `구장 DB` 목록과 수정 이력은 level 50 이상 전용 server action으로 조회한다. 칼럼별 필터와 정렬은 전체 DB query에 먼저 적용하고 그 결과만 한 페이지 100행으로 반환한다. 브라우저에 전체 구장 배열을 내려받아 현재 페이지에서 필터하지 않는다.
 5. 승인 목록에서 제거한 demo/simulation 구장은 관리자 DB와 공개 구장 후보에 다시 합치지 않는다. 과거 참조가 있는 legacy shell은 이름 fallback·기록 무결성에만 사용한다.
 6. `name_modification_count`는 초기 시스템 표준화를 제외하고 관리자가 실제 이름 변경을 저장할 때마다 1 증가한다. 관리자 구장 검색은 기본적으로 0회만 조회하며 필터를 전체로 바꿔도 수정횟수 오름차순으로 정렬한다.
 7. 관리자 구장 DB는 별도 원본 테이블을 복제하지 않는다. `approved_courts`와 `court_facility_info`를 service-role 전용 view로 결합해 조회하고, 연락처·URL·운영 정보는 `court_facility_info`에 저장한다.
-8. 확인할 수 없는 구장은 hard delete하지 않는다. 재확인 대상은 `verification_status=review_required`, `operational_status=pending`, `status=hidden`으로 임시 숨김 처리한다. 폐쇄·허위·중복이 확인된 구장은 `status=disabled`, 정상 확인된 구장은 `status=active`로 복구하며 모든 상태 변경에 사유와 처리자 로그를 남긴다.
+8. 확인할 수 없는 구장은 hard delete하지 않는다. 재확인 대상은 `verification_status=review_required`, `operational_status=pending`, `status=hidden`으로 임시 숨김 처리한다. 폐쇄·허위·중복이 확인된 구장은 `status=disabled`, 정상 확인된 구장은 `status=active`로 복구하며 모든 상태 변경에 사용자 입력 사유 또는 허용된 한시적 자동 사유와 처리자 로그를 남긴다.
+9. 이름 없는 OSM 농구 코트의 시설명은 `코트 자체 name > 포함된 sports_centre > 포함된 학교 > 포함된 건물 > 포함된 공원·운동장 > 같은 부지 relation > 인접 시설 > 행정동` 순서로 결정한다. 포함 관계와 같은 부지 관계는 단순 최근접보다 우선한다.
+10. 인접 시설은 30m 이하만 자동 확정한다. 30m 초과 80m 이하는 관리자 `검수후보`로만 보존하고 해당 후보 이름을 자동 반영하지 않는다. 이때 이름은 OSM 행정구역 또는 저장된 읍면동 fallback을 사용할 수 있다. 80m 초과 객체는 이름 근거로 저장하거나 사용하지 않는다.
+11. 자체 유효 이름이 있는 OSM 코트, 복수 출처가 결합된 구장, `name_source=manual` 또는 이름 수정횟수가 1회 이상인 구장은 공간결합 자동 변경에서 제외한다. 고유명 없는 객체에는 `농구장` 같은 일반 설명을 OSM 원본 이름으로 간주하지 않는다.
+12. `court_name_evidence`는 원본 OSM payload 복제가 아니라 구장 FK와 판정·공간관계·근거 객체·거리·후보·반영명·snapshot만 저장하는 service-role 전용 파생 근거다. 30~80m 후보와 중복 충돌은 `review_required`로 남기며 관리자가 관리자 구장 DB에서 근거 링크를 확인한 뒤 수정한다.
 
 ## 2026-07-22 완료 기록 보존과 조회
 

@@ -3,7 +3,11 @@ import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "
 const PAGE_SIZE = 100;
 const MAX_PAGE = 10_000;
 const MAX_FILTER_LENGTH = 240;
-const COURT_COLUMNS = "name,facility_name,court_unit,indoor_outdoor,venue_type,court_kind,surface_type,court_layout,hoop_count,access_type,reservation_required,paid,lighting,public_access,operational_status,verification_status,sido,sigungu,emd,name_modification_count,registration_origin,status,updated_at,id,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope";
+const MAX_BATCH_UPDATES = 100;
+const MAX_BATCH_BYTES = 524_288;
+const TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4";
+const TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리";
+const COURT_COLUMNS = "name,facility_name,court_unit,indoor_outdoor,venue_type,court_kind,surface_type,court_layout,hoop_count,access_type,reservation_required,paid,lighting,public_access,operational_status,verification_status,sido,sigungu,emd,name_modification_count,registration_origin,status,updated_at,id,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope,name_evidence_decision,name_evidence_application_status,name_evidence_reference,name_evidence_kind,name_evidence_relation,name_evidence_distance_m,name_evidence_proposed_facility,name_evidence_applied_facility,name_evidence_url,name_evidence_snapshot_date";
 const HISTORY_COLUMNS = "id,court_id,sigungu,changed_by,changed_by_name,change_source,changed_fields,changes,changes_text,reason,created_at";
 
 const COURT_SORT_COLUMNS = {
@@ -49,6 +53,16 @@ const COURT_SORT_COLUMNS = {
   locationNote: "location_note",
   facilityAreaSqm: "facility_area_sqm",
   facilityAreaScope: "facility_area_scope",
+  nameEvidenceDecision: "name_evidence_decision",
+  nameEvidenceApplicationStatus: "name_evidence_application_status",
+  nameEvidenceReference: "name_evidence_reference",
+  nameEvidenceKind: "name_evidence_kind",
+  nameEvidenceRelation: "name_evidence_relation",
+  nameEvidenceDistanceM: "name_evidence_distance_m",
+  nameEvidenceProposedFacility: "name_evidence_proposed_facility",
+  nameEvidenceAppliedFacility: "name_evidence_applied_facility",
+  nameEvidenceUrl: "name_evidence_url",
+  nameEvidenceSnapshotDate: "name_evidence_snapshot_date",
 };
 
 const HISTORY_SORT_COLUMNS = {
@@ -73,6 +87,39 @@ function safeText(value) {
 
 function safeFilters(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function isTemporaryReasonOptional(profileId) {
+  return String(profileId ?? "") === TEMPORARY_REASON_OPTIONAL_PROFILE_ID;
+}
+
+function getCourtUpdateReason(profileId, value) {
+  const reason = String(value ?? "").trim().slice(0, 160);
+  if (reason.length >= 4) return reason;
+  if (isTemporaryReasonOptional(profileId)) return TEMPORARY_COURT_UPDATE_REASON;
+  const error = new Error("court_update_reason_required");
+  error.statusCode = 400;
+  throw error;
+}
+
+function normalizeBatchUpdates(value) {
+  if (!Array.isArray(value) || !value.length || value.length > MAX_BATCH_UPDATES || JSON.stringify(value).length > MAX_BATCH_BYTES) {
+    const error = new Error("court_batch_invalid");
+    error.statusCode = 400;
+    throw error;
+  }
+  const seen = new Set();
+  return value.map((item) => {
+    const courtId = safeText(item?.courtId);
+    const patch = item?.patch && typeof item.patch === "object" && !Array.isArray(item.patch) ? item.patch : null;
+    if (!courtId || seen.has(courtId) || !patch || !Object.keys(patch).length || JSON.stringify(patch).length > 32_768) {
+      const error = new Error("court_batch_item_invalid");
+      error.statusCode = 400;
+      throw error;
+    }
+    seen.add(courtId);
+    return { courtId, patch };
+  });
 }
 
 function applyTextFilter(query, column, value) {
@@ -154,7 +201,17 @@ function applyCourtFilters(query, rawFilters) {
   next = applyTextFilter(next, "detail_address", filters.detailAddress);
   next = applyTextFilter(next, "location_note", filters.locationNote);
   next = applyNumberFilter(next, "facility_area_sqm", filters.facilityAreaSqm);
-  return applyExactFilter(next, "facility_area_scope", filters.facilityAreaScope);
+  next = applyExactFilter(next, "facility_area_scope", filters.facilityAreaScope);
+  next = applyExactFilter(next, "name_evidence_decision", filters.nameEvidenceDecision);
+  next = applyExactFilter(next, "name_evidence_application_status", filters.nameEvidenceApplicationStatus);
+  next = applyTextFilter(next, "name_evidence_reference", filters.nameEvidenceReference);
+  next = applyExactFilter(next, "name_evidence_kind", filters.nameEvidenceKind);
+  next = applyExactFilter(next, "name_evidence_relation", filters.nameEvidenceRelation);
+  next = applyNumberFilter(next, "name_evidence_distance_m", filters.nameEvidenceDistanceM);
+  next = applyTextFilter(next, "name_evidence_proposed_facility", filters.nameEvidenceProposedFacility);
+  next = applyTextFilter(next, "name_evidence_applied_facility", filters.nameEvidenceAppliedFacility);
+  next = applyTextFilter(next, "name_evidence_url", filters.nameEvidenceUrl);
+  return applyExactFilter(next, "name_evidence_snapshot_date", filters.nameEvidenceSnapshotDate);
 }
 
 function applyHistoryFilters(query, rawFilters) {
@@ -187,6 +244,7 @@ async function loadCourtRows(context, body) {
     ok: true,
     rows: data ?? [],
     page: { page, pageSize: PAGE_SIZE, total, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) },
+    capabilities: { reasonOptional: isTemporaryReasonOptional(context.profileId) },
   };
 }
 
@@ -214,7 +272,7 @@ function getErrorStatus(error) {
   const message = String(error?.message ?? "");
   if (/admin_permission_required/i.test(message)) return 403;
   if (/court_not_found/i.test(message)) return 404;
-  if (/required|invalid|unchanged|patch/i.test(message)) return 400;
+  if (/required|invalid|unchanged|patch|batch/i.test(message)) return 400;
   if (["23514", "22P02", "22003"].includes(error?.code)) return 400;
   if (error?.code === "23505") return 409;
   return error?.statusCode || 500;
@@ -256,10 +314,22 @@ export default async function handler(request, response) {
         p_actor_admin_level: adminLevel,
         p_court_id: safeText(body.courtId),
         p_patch: patch,
-        p_reason: String(body.reason ?? "").trim().slice(0, 160),
+        p_reason: getCourtUpdateReason(context.profileId, body.reason),
       });
       if (error) throw error;
       sendJson(response, 200, data ?? { ok: true });
+      return;
+    }
+    if (operation === "updateBatch") {
+      const updates = normalizeBatchUpdates(body.updates);
+      const { data, error } = await context.supabase.rpc("rankball_admin_update_courts_batch", {
+        p_actor_profile_id: context.profileId,
+        p_actor_admin_level: adminLevel,
+        p_updates: updates,
+        p_reason: getCourtUpdateReason(context.profileId, body.reason),
+      });
+      if (error) throw error;
+      sendJson(response, 200, data ?? { ok: true, updatedCount: updates.length });
       return;
     }
     if (operation !== "rename") {
@@ -272,7 +342,7 @@ export default async function handler(request, response) {
       p_actor_admin_level: adminLevel,
       p_court_id: safeText(body.courtId),
       p_facility_name: safeText(body.facilityName),
-      p_reason: safeText(body.reason),
+      p_reason: getCourtUpdateReason(context.profileId, body.reason),
     });
     if (error) throw error;
     sendJson(response, 200, data ?? { ok: true });

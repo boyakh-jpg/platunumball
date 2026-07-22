@@ -3198,6 +3198,13 @@ export function useAppData(authUser = null, appLocation = null) {
           if (serverReady !== true) return serverReady;
           return runServerAction("/api/admin/courts", { operation: "history", ...options });
         },
+        saveAdminCourtBatch: async (draft = {}) => {
+          if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
+          if (!ensureRemoteReady("구장 일괄 저장")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/courts", "구장 일괄 저장");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/courts", { operation: "updateBatch", ...draft });
+        },
         renameAdminCourt: async (draft = {}) => {
           if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
           if (!ensureRemoteReady("구장 이름 변경")) return { ok: false, error: "remote_not_ready" };
