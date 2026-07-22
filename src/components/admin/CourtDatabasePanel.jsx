@@ -5,7 +5,7 @@ import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
 import { getCourtFacilityBaseName, getCourtStandardName } from "../../lib/courts.js";
 
-const ACTION_COLUMN_WIDTH = 168;
+const ACTION_COLUMN_WIDTH = 220;
 const MAP_WINDOW_NAME = "rankball-court-map";
 
 const DEFAULT_COURT_FILTERS = {

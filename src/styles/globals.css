@@ -10334,12 +10334,18 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .court-db-modal .court-db-actions > a,
 .court-db-modal .court-db-actions > button {
-  display: flex;
-  width: 100%;
+  display: inline-flex;
+  width: auto;
   align-items: center;
   justify-content: flex-start;
   gap: 4px;
   min-height: 21px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.court-db-modal .court-db-actions > :last-child {
+  margin-right: 0;
 }
 
 .court-db-modal .court-db-actions > button:disabled {
