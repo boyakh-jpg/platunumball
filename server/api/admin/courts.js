@@ -5,6 +5,7 @@ const PAGE_SIZE = 100;
 const MAX_PAGE = 10_000;
 const MAX_FILTER_LENGTH = 240;
 const MAX_BATCH_UPDATES = 100;
+const NORMALIZATION_BATCH_SIZE = 20;
 const MAX_BATCH_BYTES = 524_288;
 const TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4";
 const TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리";
@@ -420,7 +421,7 @@ export default async function handler(request, response) {
     }
     if (operation === "normalizeAddressNames") {
       const plan = buildCourtAddressNameUpdates(await loadAllCourtAddressRows(context));
-      const updates = plan.updates.slice(0, MAX_BATCH_UPDATES);
+      const updates = plan.updates.slice(0, NORMALIZATION_BATCH_SIZE);
       if (updates.length) {
         const { error } = await context.supabase.rpc("rankball_admin_update_courts_batch_with_auto_unit", {
           p_actor_profile_id: context.profileId,
