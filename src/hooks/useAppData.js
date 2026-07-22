@@ -3222,6 +3222,23 @@ export function useAppData(authUser = null, appLocation = null) {
           if (serverReady !== true) return serverReady;
           return runServerAction("/api/admin/courts", { operation: "updateBatch", ...draft });
         },
+        normalizeAdminCourtAddressNames: async () => {
+          if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
+          if (!ensureRemoteReady("주소 기반 구장명 정리")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/courts", "주소 기반 구장명 정리");
+          if (serverReady !== true) return serverReady;
+          let updatedCount = 0;
+          let result = null;
+          let batchCount = 0;
+          do {
+            result = await runServerAction("/api/admin/courts", { operation: "normalizeAddressNames" });
+            if (!result || result.ok === false) return result;
+            updatedCount += Number(result.updatedCount ?? 0);
+            batchCount += 1;
+            if (batchCount >= 100 && Number(result.remainingCount ?? 0) > 0) return { ok: false, error: "court_address_normalization_incomplete" };
+          } while (Number(result.remainingCount ?? 0) > 0);
+          return { ...result, updatedCount };
+        },
         reviewAdminCourt: async (draft = {}) => {
           if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
           if (!ensureRemoteReady("구장 원터치 검수")) return { ok: false, error: "remote_not_ready" };

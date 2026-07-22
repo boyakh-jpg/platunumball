@@ -855,6 +855,24 @@ export default function CourtDatabasePanel({ app }) {
     setStatus(`${savedRows}개 구장 · ${savedFields}개 셀을 일괄 저장했습니다.`);
   };
 
+  const normalizeAddressNames = async () => {
+    if (saving || loading || editDirty) {
+      if (editDirty) setStatus("미저장 수정값을 먼저 저장하거나 취소해 주세요.");
+      return;
+    }
+    setSaving(true);
+    setStatus("주소 건물명과 중복 주소 코트 번호를 정리하고 있습니다.");
+    const result = await app.actions.normalizeAdminCourtAddressNames?.();
+    if (!result || result.ok === false) {
+      setSaving(false);
+      setStatus(getSaveErrorMessage(result?.error));
+      return;
+    }
+    await loadRows(true);
+    setSaving(false);
+    setStatus(`${Number(result.updatedCount ?? 0).toLocaleString()}개 구장 반영 · 중복 주소 ${Number(result.duplicateAddressCount ?? 0).toLocaleString()}곳/${Number(result.duplicateCourtCount ?? 0).toLocaleString()}코트`);
+  };
+
   const modal = open ? (
     <div className="court-db-modal-backdrop" role="presentation">
       <section className="court-db-modal" role="dialog" aria-modal="true" aria-labelledby="court-db-modal-title">
@@ -880,7 +898,10 @@ export default function CourtDatabasePanel({ app }) {
             <small>{reviewMode ? "현재 필터 결과를 한 구장씩 검수합니다. 복수 코트는 실제 별도 코트가 확인될 때만 코트 칸을 구분합니다." : "가로 스크롤은 표 하단에 고정됩니다. 수정 가능한 셀을 누르면 바로 입력할 수 있습니다."}</small>
             <div>
               {tab === "courts" && !reviewMode ? (
-                <Button type="button" size="sm" variant="secondary" disabled={loading || !courtRows.length} onClick={startReview}><ListChecks size={14} /> 1개씩 검수</Button>
+                <>
+                  <Button type="button" size="sm" variant="secondary" disabled={loading || saving || !courtRows.length} onClick={normalizeAddressNames}><ScanLine size={14} /> 주소명 일괄 정리</Button>
+                  <Button type="button" size="sm" variant="secondary" disabled={loading || saving || !courtRows.length} onClick={startReview}><ListChecks size={14} /> 1개씩 검수</Button>
+                </>
               ) : null}
               <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={resetFilters}><RotateCcw size={14} /> 초기화</Button>
               <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={applyFilters}>{loading ? "조회 중" : "필터 적용"}</Button>

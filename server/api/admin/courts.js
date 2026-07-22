@@ -1,4 +1,5 @@
 import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { buildCourtAddressNameUpdates } from "../../../src/lib/courts.js";
 
 const PAGE_SIZE = 100;
 const MAX_PAGE = 10_000;
@@ -9,6 +10,7 @@ const TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4";
 const TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리";
 const COURT_COLUMNS = "name,facility_name,court_unit,indoor_outdoor,venue_type,court_kind,surface_type,court_layout,hoop_count,access_type,reservation_required,paid,lighting,public_access,operational_status,verification_status,sido,sigungu,emd,name_modification_count,registration_origin,status,updated_at,id,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope,name_evidence_decision,name_evidence_application_status,name_evidence_reference,name_evidence_kind,name_evidence_relation,name_evidence_distance_m,name_evidence_proposed_facility,name_evidence_applied_facility,name_evidence_url,name_evidence_snapshot_date,regional_alias_no,regional_alias_region_key,admin_review_count,admin_reviewed_at,admin_reviewed_by,admin_review_scenario,admin_review_priority";
 const HISTORY_COLUMNS = "id,court_id,sigungu,changed_by,changed_by_name,change_source,changed_fields,changes,changes_text,reason,created_at";
+const ADDRESS_NAME_COLUMNS = "id,facility_name,court_unit,address_text,road_address,jibun_address,lat,lng";
 
 const COURT_SORT_COLUMNS = {
   name: "name",
@@ -300,6 +302,22 @@ async function loadHistoryRows(context, body) {
   };
 }
 
+async function loadAllCourtAddressRows(context) {
+  const rows = [];
+  const batchSize = 1_000;
+  for (let offset = 0; ; offset += batchSize) {
+    const { data, error } = await context.supabase
+      .from("approved_courts")
+      .select(ADDRESS_NAME_COLUMNS)
+      .order("id", { ascending: true })
+      .range(offset, offset + batchSize - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if ((data?.length ?? 0) < batchSize) break;
+  }
+  return rows;
+}
+
 function getErrorStatus(error) {
   const message = String(error?.message ?? "");
   if (/admin_permission_required/i.test(message)) return 403;
@@ -398,6 +416,29 @@ export default async function handler(request, response) {
       });
       if (error) throw error;
       sendJson(response, 200, data ?? { ok: true, updatedCount: updates.length });
+      return;
+    }
+    if (operation === "normalizeAddressNames") {
+      const plan = buildCourtAddressNameUpdates(await loadAllCourtAddressRows(context));
+      const updates = plan.updates.slice(0, MAX_BATCH_UPDATES);
+      if (updates.length) {
+        const { error } = await context.supabase.rpc("rankball_admin_update_courts_batch_with_auto_unit", {
+          p_actor_profile_id: context.profileId,
+          p_actor_admin_level: adminLevel,
+          p_updates: updates,
+          p_reason: "주소 건물명·중복 코트 번호 일괄 정리",
+        });
+        if (error) throw error;
+      }
+      sendJson(response, 200, {
+        ok: true,
+        updatedCount: updates.length,
+        remainingCount: Math.max(0, plan.updates.length - updates.length),
+        scannedCount: plan.scannedCount,
+        addressFacilityCount: plan.addressFacilityCount,
+        duplicateAddressCount: plan.duplicateAddressCount,
+        duplicateCourtCount: plan.duplicateCourtCount,
+      });
       return;
     }
     if (operation === "review") {

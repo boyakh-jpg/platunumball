@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { getAdminCourtStreetViewUrl, getCourtFacilityBaseName, getCourtMapUrl, getCourtNaverMapAppUrl } from "../src/lib/courts.js";
+import { buildCourtAddressNameUpdates, getAdminCourtStreetViewUrl, getCourtAddressFacilityName, getCourtFacilityBaseName, getCourtMapUrl, getCourtNaverMapAppUrl } from "../src/lib/courts.js";
 
 const readSource = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
@@ -12,13 +12,13 @@ test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사�
   assert.match(server, /from\("rankball_admin_court_change_history"\)/);
   assert.match(server, /applyCourtFilters\(query, body\.filters\)/);
   assert.match(server, /\.range\(offset, offset \+ PAGE_SIZE - 1\)/);
-  assert.match(server, /rpc\("rankball_admin_update_court"/);
-  assert.match(server, /rpc\("rankball_admin_update_courts_batch"/);
+  assert.match(server, /rpc\("rankball_admin_update_court_with_auto_unit"/);
+  assert.match(server, /rpc\("rankball_admin_update_courts_batch_with_auto_unit"/);
   assert.match(server, /TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4"/);
   assert.match(server, /TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리"/);
   assert.match(server, /name_evidence_decision/);
   assert.match(server, /applyExactFilter\(next, "name_evidence_relation", filters\.nameEvidenceRelation\)/);
-  assert.match(server, /rpc\("rankball_admin_review_court"/);
+  assert.match(server, /rpc\("rankball_admin_review_court_with_auto_unit"/);
   assert.match(server, /public: "원터치 검수: 공개"/);
   assert.match(server, /private: "원터치 검수: 비공개"/);
   assert.match(server, /reviewPriority: "admin_review_priority"/);
@@ -123,6 +123,22 @@ test("OSM 명칭 근거는 30m 자동·80m 검수 경계와 수동 보호를 강
 
 test("괄호가 포함된 시설명은 닫는 괄호를 보존한다", () => {
   assert.equal(getCourtFacilityBaseName("중앙공원 9지구 (광장지구)"), "중앙공원 9지구 (광장지구)");
+});
+
+test("주소 시설명과 동일 주소 코트 번호를 결정적으로 정리한다", () => {
+  assert.equal(getCourtAddressFacilityName("경기도 의왕시 철도박물관로 37 현대자동차그룹 의왕연구소"), "현대자동차그룹 의왕연구소");
+  assert.equal(getCourtAddressFacilityName("인천광역시 서해구 가좌로83번길 46(가좌동)"), "");
+  assert.equal(getCourtAddressFacilityName("서울특별시 강남구 테헤란로 12 101동 202호"), "");
+  const plan = buildCourtAddressNameUpdates([
+    { id: "b", facility_name: "부곡동", court_unit: null, road_address: "경기도 의왕시 철도박물관로 37 현대자동차그룹 의왕연구소", lat: 37.2, lng: 127.1 },
+    { id: "a", facility_name: "부곡동", court_unit: null, road_address: "경기도  의왕시 철도박물관로 37 현대자동차그룹 의왕연구소", lat: 37.1, lng: 127.1 },
+  ]);
+  assert.equal(plan.duplicateAddressCount, 1);
+  assert.equal(plan.duplicateCourtCount, 2);
+  assert.deepEqual(plan.updates, [
+    { courtId: "b", patch: { facilityName: "현대자동차그룹 의왕연구소", courtUnit: "2코트" } },
+    { courtId: "a", patch: { facilityName: "현대자동차그룹 의왕연구소", courtUnit: "1코트" } },
+  ]);
 });
 
 test("관리자 구장 수정 RPC는 관계형 원본과 시설 정보 및 감사 로그를 함께 유지한다", async () => {

@@ -306,6 +306,68 @@ export function getCourtStandardName(court = {}) {
   return normalizeCourtNamePart(`${sigungu} ${facilityName} 농구장${courtUnit ? ` ${courtUnit}` : ""}`);
 }
 
+export function getCourtAddressKey(value = "") {
+  return String(value ?? "").normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("ko-KR");
+}
+
+function isCourtAddressLocalityOnly(value = "") {
+  const text = normalizeCourtNamePart(value).replace(/^\(|\)$/g, "").trim();
+  return !text
+    || /^(?:\d+(?:-\d+)?(?:동|호|층|실)?\s*)+$/.test(text)
+    || /^[가-힣\d]+(?:동|리|읍|면|가)$/.test(text);
+}
+
+export function getCourtAddressFacilityName(value = "") {
+  const address = normalizeCourtNamePart(value);
+  if (!address) return "";
+  const match = address.match(/(?:^|\s)[^\s]+(?:대로|로|길)\s+\d+(?:-\d+)?(?:\s+|\s*\()(.+?)\)?$/u);
+  if (!match) return "";
+  const candidate = normalizeCourtNamePart(match[1]).replace(/^\(|\)$/g, "").trim();
+  return isCourtAddressLocalityOnly(candidate) ? "" : getCourtFacilityBaseName(candidate);
+}
+
+export function buildCourtAddressNameUpdates(rows = []) {
+  const prepared = rows.map((row) => {
+    const address = row.road_address || row.address_text || row.jibun_address || "";
+    return {
+      row,
+      addressKey: getCourtAddressKey(address),
+      facilityName: getCourtAddressFacilityName(row.road_address || row.address_text || ""),
+    };
+  });
+  const addressGroups = new Map();
+  prepared.forEach((item) => {
+    if (!item.addressKey) return;
+    const group = addressGroups.get(item.addressKey) ?? [];
+    group.push(item);
+    addressGroups.set(item.addressKey, group);
+  });
+  const duplicateGroups = [...addressGroups.values()].filter((group) => group.length > 1);
+  const duplicateUnits = new Map();
+  duplicateGroups.forEach((group) => {
+    group.sort((left, right) => {
+      const latDiff = Number(left.row.lat ?? 0) - Number(right.row.lat ?? 0);
+      if (latDiff) return latDiff;
+      const lngDiff = Number(left.row.lng ?? 0) - Number(right.row.lng ?? 0);
+      return lngDiff || String(left.row.id).localeCompare(String(right.row.id));
+    }).forEach((item, index) => duplicateUnits.set(String(item.row.id), `${index + 1}코트`));
+  });
+  const updates = prepared.flatMap(({ row, facilityName }) => {
+    const patch = {};
+    if (facilityName && getCourtFacilityBaseName(row.facility_name) !== facilityName) patch.facilityName = facilityName;
+    const duplicateUnit = duplicateUnits.get(String(row.id));
+    if (duplicateUnit && normalizeCourtNamePart(row.court_unit) !== duplicateUnit) patch.courtUnit = duplicateUnit;
+    return Object.keys(patch).length ? [{ courtId: String(row.id), patch }] : [];
+  });
+  return {
+    updates,
+    scannedCount: prepared.length,
+    addressFacilityCount: prepared.filter((item) => item.facilityName).length,
+    duplicateAddressCount: duplicateGroups.length,
+    duplicateCourtCount: duplicateGroups.reduce((total, group) => total + group.length, 0),
+  };
+}
+
 export function getCourtRequestName(rawName = "", addressDong = "", courtUnit = "") {
   const facilityName = stripCourtAddressPrefix(rawName, addressDong);
   const unit = normalizeCourtNamePart(courtUnit);
