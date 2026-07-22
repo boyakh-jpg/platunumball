@@ -12,45 +12,47 @@ import {
 } from "../../lib/matchCreationPolicies.js";
 
 export const MATCH_CREATION_STEPS = Object.freeze([
-  { id: 1, label: "경기 성격" },
-  { id: 2, label: "인원·출전" },
-  { id: 3, label: "경기 규칙" },
+  { id: 1, label: "기본 설정" },
+  { id: 3, label: "규칙·운영" },
   { id: 4, label: "구장·비용" },
-  { id: 5, label: "운영·취소" },
-  { id: 6, label: "최종 확인" },
+  { id: 6, label: "확인" },
 ]);
 
 export function getMatchCreationSteps(summaryType = "match") {
   if (summaryType === "personal_record") {
     return [
-      { id: 1, label: "기록 방식" },
-      { id: 2, label: "경기·기록" },
+      { id: 1, label: "기록 기본" },
       { id: 4, label: "구장" },
       { id: 5, label: "메모" },
-      { id: 6, label: "최종 확인" },
+      { id: 6, label: "확인" },
     ];
   }
   if (summaryType === "match_record") {
-    return MATCH_CREATION_STEPS.map((step) => step.id === 1
-      ? { ...step, label: "기록 방식" }
-      : step.id === 5 ? { ...step, label: "기록 확인" } : step);
+    return [
+      { id: 1, label: "기록 기본" },
+      { id: 3, label: "기록 규칙" },
+      { id: 4, label: "구장" },
+      { id: 5, label: "메모" },
+      { id: 6, label: "확인" },
+    ];
   }
   if (summaryType === "tournament") {
     return MATCH_CREATION_STEPS.map((step) => step.id === 1
-      ? { ...step, label: "대회 방식" }
-      : step.id === 2 ? { ...step, label: "참가팀·명단" } : step);
+      ? { ...step, label: "대회 기본" }
+      : step.id === 3 ? { ...step, label: "규칙·일정" } : step);
   }
   return MATCH_CREATION_STEPS;
 }
 
 export function MatchCreationWizardNav({ currentStep, steps = MATCH_CREATION_STEPS, onStepChange }) {
+  const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   return (
     <nav className="match-creation-wizard-nav" aria-label="경기 만들기 단계">
       <ol>
-        {steps.map((step) => (
-          <li key={step.id} className={currentStep === step.id ? "active" : currentStep > step.id ? "complete" : ""}>
+        {steps.map((step, index) => (
+          <li key={step.id} className={currentStep === step.id ? "active" : index < currentIndex ? "complete" : ""}>
             <button type="button" aria-current={currentStep === step.id ? "step" : undefined} onClick={() => onStepChange(step.id)}>
-              <span>{currentStep > step.id ? <Check size={14} /> : step.id}</span>
+              <span>{index < currentIndex ? <Check size={14} /> : index + 1}</span>
               <strong>{step.label}</strong>
             </button>
           </li>

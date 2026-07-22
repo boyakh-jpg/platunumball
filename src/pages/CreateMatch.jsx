@@ -1732,7 +1732,7 @@ export default function CreateMatch({ app }) {
         </Card>
         ) : null}
 
-        {wizardStep === 2 ? (
+        {wizardStep === 1 ? (
         <Card className="section-card full-span">
           <div className="section-title-row">
             <div>
@@ -2150,7 +2150,7 @@ export default function CreateMatch({ app }) {
           onClose={() => setCourtDetailCourtId("")}
         />
 
-        {wizardStep === (isMatchRecordRoom ? 5 : 2) ? (
+        {wizardStep === (isMatchRecordRoom ? 5 : 1) ? (
         <Card className="section-card full-span selector-panel">
           <div className="section-title-row">
             <div>
@@ -2489,7 +2489,7 @@ export default function CreateMatch({ app }) {
           </Card>
         ) : null}
 
-        {wizardStep === 5 ? (
+        {wizardStep === 3 || wizardStep === 5 ? (
         <Card className="section-card full-span">
           <div className="section-title-row">
             <div>
