@@ -36,6 +36,11 @@ function isMissingNotificationCleanupRpc(error) {
   return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_cleanup_read_notifications");
 }
 
+function isMissingRecordArchiveRpc(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_archive_and_cleanup_completed_records");
+}
+
 function isMissingTournamentLineupDeadlineRpc(error) {
   const message = String(error?.message ?? "").toLowerCase();
   return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_tournament_lineup_deadline_batch_action");
@@ -146,6 +151,22 @@ async function cleanupReadNotifications(client, now) {
   return data && typeof data === "object"
     ? { ...data, retentionDays: NOTIFICATION_RETENTION_DAYS, skipped: false }
     : { ok: true, skipped: false, retentionDays: NOTIFICATION_RETENTION_DAYS, deletedNotifications: 0, deletedDiscordDeliveries: 0 };
+}
+
+async function archiveCompletedRecords(client, now, limit) {
+  const { data, error } = await client.rpc("rankball_archive_and_cleanup_completed_records", {
+    p_batch_size: limit,
+    p_reference: now.toISOString(),
+  });
+  if (error) {
+    if (isMissingRecordArchiveRpc(error)) {
+      return { ok: true, skipped: true, error: "rankball_archive_and_cleanup_completed_records_missing" };
+    }
+    throw error;
+  }
+  return data && typeof data === "object"
+    ? { ...data, skipped: false }
+    : { ok: true, skipped: false, archivesRefreshed: 0, matchesWorkflowCompacted: 0, deletedCoreRows: 0 };
 }
 
 async function quarantineSimulationArtifacts(client, now) {
@@ -420,12 +441,14 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
 
   const feedCleanup = await cleanupRoomFeed(client, now);
   const notificationCleanup = await cleanupReadNotifications(client, now);
+  const recordArchiveCleanup = await archiveCompletedRecords(client, now, limit);
 
   return {
     ok: simulationQuarantine.ok === true
       && tournamentLineupDeadlines.ok === true
       && feedCleanup.ok === true
       && notificationCleanup.ok === true
+      && recordArchiveCleanup.ok === true
       && results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
@@ -434,6 +457,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     recruitingExpiration,
     feedCleanup,
     notificationCleanup,
+    recordArchiveCleanup,
     feedRepair: includeFeedRepair
       ? await repairStaleRoomFeed(client, limit)
       : { ok: true, skipped: true, reason: "disabled" },

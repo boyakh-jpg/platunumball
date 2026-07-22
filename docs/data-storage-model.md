@@ -153,7 +153,8 @@
 - `recruiting_posts`는 모집방 원본이다. `room_state`는 초대, 파티장, 슬롯 포지션 같은 방 내부 상태 snapshot으로만 둔다.
 - `recruiting_applications`는 모집방 참여자 원본이다. 참여/포지션 유지 여부는 이 테이블과 `recruiting_posts.room_state.slotPositions`를 함께 본다.
 - `matches`는 확정 경기 본체와 빠른 카드 표시용 snapshot을 같이 가진다.
-- `match_players`, `match_results`, `player_match_stats`, `match_agreements`, `match_approvals`, `match_disputes`는 현재 경기 상세/기록/승인 원본 경로라 삭제하지 않는다.
+- `match_record_archives`는 확정 경기의 service-only JSON snapshot이고, `match_record_participants`와 `match_record_teams`는 개인·팀 5년 목록용 fact index다. 향후 검증된 원본 정리 뒤에도 기록이 남도록 archive의 `match_id`는 `matches` FK로 묶지 않는다. core row trigger는 `match_record_refresh_queue`에 경기당 1건만 넣고 transaction 종료 시 archive를 한 번 갱신한다.
+- `match_players`, `match_results`, `player_match_stats`, `match_player_competitive_snapshots`는 프로필 요약·업적·구장 지표·대회 감사가 archive-aware가 되기 전까지 삭제하지 않는다. 6개월 초과 기록도 이번 1단계에서는 원본을 유지한다.
 - FK처럼 쓰는 text 컬럼은 빈 문자열을 저장하지 않는다. 없으면 `null`이다.
 - `profileBindings` localStorage는 Supabase 모드의 프로필 선택 기준으로 쓰지 않는다. 실제 기준은 `profiles.auth_user_id`다.
 - 테스트 시나리오 데이터는 프론트가 직접 읽지 않고 `npm run seed:supabase`로 normalized Supabase tables에 넣는다.
@@ -493,6 +494,10 @@ Remaining:
 | `match_approvals` | `match_id`, `user_id`, `side`, `approved_at` | match sync, maintenance, feed trigger | 유지 |
 | `match_disputes` | `id`, `match_id`, `user_id`, `reason`, `created_at` | match sync, feed trigger | 유지 |
 | `player_match_stats` | `match_id`, `user_id`, `points`, `rebounds`, `assists`, `steals`, `blocks`, `fouls` | match sync/detail, feed trigger | 유지 |
+| `match_record_archives` | `match_id`, `record_date`, `occurred_at`, `archive_version`, `payload` | `/api/records/list`, archive refresh trigger | service-only 유지 |
+| `match_record_participants` | `match_id`, `profile_id`, 개인 기록 compact columns, `stats` | 개인 5년 기록 목록 | 유지 |
+| `match_record_teams` | `match_id`, `team_id`, 팀 기록 compact columns | 팀 5년 기록 목록 | 유지 |
+| `match_record_refresh_queue` | `match_id`, `queued_at` | 같은 transaction의 archive refresh 중복 제거 | transaction 종료 시 비움 |
 | `recruiting_posts` | `id`, `status`, `visibility`, `player_id`, `player_ids`, `room_state`, `scheduled_date`, `scheduled_time` | recruiting list/sync, match schedule bridge | 유지 |
 | `recruiting_applications` | `post_id`, `player_id`, `player_ids`, `team_id`, `side`, `status`, `reserve`, `position` | recruiting list/sync, feed trigger | 유지 |
 | `profiles` | `id`, `auth_user_id`, `test_login_id`, `hashtag`, `ratings`, `trust_score`, `app_settings` | auth/profile/server validation/settings | 유지 |

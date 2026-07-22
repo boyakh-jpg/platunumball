@@ -38,19 +38,23 @@ function getRecordMetaPrefix(match) {
 
 export default function ProfileRecords({ app }) {
   const user = app.currentUser;
+  const loadProfileRecords = app.actions.loadProfileRecords;
+  const profileRecordsLoaded = app.actions.profileRecordsLoaded;
+  const archiveState = app.recordArchives?.profile ?? { rows: [], page: {}, loading: false, error: "" };
   const loadKeyRef = useRef("");
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
   const records = [...app.state.matches]
     .filter((match) => match.status === "confirmed" && getPlayerSideName(match, user.id))
     .sort(compareMatchRecency);
   const recentRecords = records.filter(isMatchWithinRecordDetailWindow);
-  const archivedRecords = records.filter((match) => !isMatchWithinRecordDetailWindow(match));
+  const archivedRecords = archiveState.rows ?? [];
   useEffect(() => {
-    const shouldLoadRecords = !app.actions.profileRecordsLoaded || records.length === 0;
-    if (!app.remoteReady || !app.actions.loadProfileRecords || !shouldLoadRecords) return;
+    const shouldLoadRecords = !profileRecordsLoaded;
+    if (!app.remoteReady || !loadProfileRecords || !shouldLoadRecords) return;
+    if (archiveState.error) return;
     if (loadKeyRef.current === user.id) return;
     loadKeyRef.current = user.id;
-    const request = app.actions.loadProfileRecords({ force: app.actions.profileRecordsLoaded && records.length === 0 });
+    const request = loadProfileRecords();
     if (!request?.then) {
       if (!request) loadKeyRef.current = "";
       return;
@@ -60,7 +64,7 @@ export default function ProfileRecords({ app }) {
     }).catch(() => {
       loadKeyRef.current = "";
     });
-  }, [app.actions, app.remoteReady, records.length, user.id]);
+  }, [app.remoteReady, archiveState.error, loadProfileRecords, profileRecordsLoaded, user.id]);
   const totals = getTotals(recentRecords, user.id);
   const wins = recentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "W").length;
   const losses = recentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "L").length;
@@ -155,32 +159,64 @@ export default function ProfileRecords({ app }) {
         ) : (
           <div className="empty-state">확정된 경기 기록이 없습니다.</div>
         )}
+        {archiveState.page?.detailExhausted === false ? (
+          <button
+            type="button"
+            className="button button-secondary button-md"
+            disabled={archiveState.loading}
+            onClick={() => loadProfileRecords?.({
+              loadMoreDetail: true,
+              detailOffset: archiveState.page?.detailNextOffset,
+            })}
+          >
+            {archiveState.loading ? "불러오는 중" : "상세 기록 더 보기"}
+          </button>
+        ) : null}
       </Card>
       {archivedRecords.length ? (
         <Card className="section-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Archive</p>
-              <h2>6개월 초과 기록</h2>
+              <h2>6개월 초과 · 최근 5년</h2>
             </div>
-            <Badge tone="neutral">텍스트 {archivedRecords.length}경기</Badge>
+            <Badge tone="neutral">목록 {archivedRecords.length}경기</Badge>
           </div>
           <div className="recent-match-list profile-records-list">
-            {archivedRecords.map((match) => {
-              const line = getRecordLine(match, user.id);
-              return (
-                <div key={match.id} className={`recent-match-row profile-record-row record-archive-row result-${line.result.toLowerCase()}`}>
-                  <b>{line.result}</b>
+            {archivedRecords.map((record) => (
+                <div key={record.matchId} className={`recent-match-row profile-record-row record-archive-row result-${String(record.result ?? "D").toLowerCase()}`}>
+                  <b>{record.result}</b>
                   <span>
-                    <strong>{line.side.name} vs {line.opponent.name}</strong>
-                    <em>{getRecordMetaPrefix(match)}{getRecordDate(match)} · {match.mode} · {match.court}</em>
-                    <small>상세 데이터는 보관 목록에서 텍스트로만 표시</small>
+                    <strong>{record.teamName} vs {record.opponentTeamName}</strong>
+                    <em>{record.recordDate} · {record.mode} · {record.court}</em>
+                    <small>6개월이 지난 기록은 목록으로 보관합니다.</small>
                   </span>
-                  <i>{line.score}:{line.opponentScore}</i>
+                  <i>{record.score}:{record.opponentScore}</i>
                 </div>
-              );
-            })}
+              ))}
           </div>
+          {archiveState.page?.archiveExhausted === false ? (
+            <button
+              type="button"
+              className="button button-secondary button-md"
+              disabled={archiveState.loading}
+              onClick={() => loadProfileRecords?.({
+                loadMoreArchive: true,
+                archiveOffset: archiveState.page?.archiveNextOffset,
+              })}
+            >
+              {archiveState.loading ? "불러오는 중" : "기록 더 보기"}
+            </button>
+          ) : null}
+        </Card>
+      ) : archiveState.loading && !archiveState.loaded ? (
+        <Card className="section-card"><div className="empty-state">5년 기록을 불러오는 중입니다.</div></Card>
+      ) : archiveState.error ? (
+        <Card className="section-card">
+          <div className="empty-state">기록을 불러오지 못했습니다.</div>
+          <button type="button" className="button button-secondary button-md" onClick={() => loadProfileRecords?.({ force: true })}>
+            다시 시도
+          </button>
         </Card>
       ) : null}
       <MatchRoomModal app={app} matchId={selectedRecordMatchId} onClose={() => setSelectedRecordMatchId("")} />

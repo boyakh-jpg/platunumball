@@ -469,7 +469,7 @@
 - 개인 기록 날짜는 오늘부터 과거 7일까지만 허용한다.
 - 개인 기록 삭제는 소유자만 가능하며, 안전 삭제로 `status="cancelled"`를 저장해 기록 목록에서 제외한다.
 - 개인 기록은 `/app/matches` 경기메뉴의 닫힘/일정 목록에 표시하지 않고 `/app/profile` 또는 `/app/profile/records`에서만 표시한다.
-- 개인/팀 기록 상세는 최근 6개월 안쪽만 링크형 방모달로 열고, 6개월 초과 기록은 목록에서 텍스트 요약으로만 표시한다.
+- 개인/팀 기록 상세는 최근 6개월 안쪽만 링크형 방모달로 열고, 6개월 초과 기록은 최근 5년 범위에서 텍스트 요약 목록으로만 표시한다.
 
 ## 2026-07-02 공개 참여 MMR 경고 기준
 
@@ -2205,7 +2205,9 @@ flowchart TD
 30-3. 심판 없는 경기에서 `statRecorders`가 비었거나 출전/후보 이동으로 stale이면 현재 후보 슬롯을 기준으로 effective recorder를 계산한다. 후보가 있으면 후보를 우선하고, 슬롯 이동/강퇴/교체/기록 저장 시 `matches.stat_recorders`와 `rules.statRecorders`를 같은 값으로 저장한다.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 31-1. `/api/matches/list` with `completedOnly:true` loads current-profile participant confirmed match ids from `user_room_feed` first, then loads result/stat rows only for those ids and returns compact state. If the feed is unavailable, it falls back to `match_players` candidate ids before reading match rows. Home may load only recent 6-month completed feed cards for the `내 최근 전적` list, but must not pre-load confirmed record room detail rows; `/app/profile/records` loads them once on entry.
-31-2. `/app/profile/records` loads completed detail rows for the latest 6 months only and computes date counts from that result. Older all-time records need a separate text/aggregate feed, not broad match/result/stat loading.
+31-2. `/api/records/list`는 개인(`scope=profile`)과 팀(`scope=team`) 기록을 전용으로 읽는다. KST 날짜 기준 최근 6개월 당일까지는 상세 archive snapshot을 읽고, 6개월 초과부터 최근 5년까지는 개인/팀 fact index의 텍스트 목록만 페이지 단위로 읽는다. 경기 메뉴의 broad match/result/stat hydration을 기록 조회에 재사용하지 않는다.
+31-3. `/app/profile/records`와 팀 상세의 기록 화면은 같은 `6개월 상세 / 5년 목록` 기간 정책을 사용한다. 최근 상세만 방모달을 열 수 있고 6개월 초과 목록은 클릭 가능한 방 카드처럼 표시하지 않는다.
+31-4. 프로필 화면에서 최근 6건을 미리 읽은 사실은 전체 기록 화면 로드 완료로 취급하지 않는다. 기록 화면 직접 진입과 SPA 이동 모두 전용 기록 API를 한 번 실행해야 한다.
 32. `/api/matches/list` may return `page.source` and optional `debugTiming` for diagnosis. `page.source='rpc_card'` or `feed_card` means list cards came from `room_feed_cards.card_json`; `page.source='feed'` means feed ids are active but card_json was missing; `page.source='fallback_mine'` means production is still using current-profile fallback and the feed SQL/deployment needs verification.
 32-1. `/api/matches/list` must keep usable partial `room_feed_cards.card_json` cards. If only some feed cards are missing or invalid, it may row-read only those missing match ids and merge them back in feed order; it must not discard all valid cards and re-read the whole page.
 33. Match `status='closed'` is a cleanup soft-close state, not a normal record-confirmed match state. `/api/matches/list` and `rankball_match_list()` exclude it from default current-user feed pages.
@@ -3029,3 +3031,16 @@ flowchart TD
 4. 관리자 `구장 DB` 목록과 수정 이력은 level 50 이상 전용 server action으로 조회한다. 칼럼별 필터와 정렬은 전체 DB query에 먼저 적용하고 그 결과만 한 페이지 100행으로 반환한다. 브라우저에 전체 구장 배열을 내려받아 현재 페이지에서 필터하지 않는다.
 5. 승인 목록에서 제거한 demo/simulation 구장은 관리자 DB와 공개 구장 후보에 다시 합치지 않는다. 과거 참조가 있는 legacy shell은 이름 fallback·기록 무결성에만 사용한다.
 6. `name_modification_count`는 초기 시스템 표준화를 제외하고 관리자가 실제 이름 변경을 저장할 때마다 1 증가한다. 관리자 구장 검색은 기본적으로 0회만 조회하며 필터를 전체로 바꿔도 수정횟수 오름차순으로 정렬한다.
+
+## 2026-07-22 완료 기록 보존과 조회
+
+1. `match_record_archives`는 확정 경기의 원시 JSON snapshot이며 service role만 읽고 쓴다. 클라이언트에 원시 payload를 그대로 노출하지 않는다.
+2. `match_record_participants`와 `match_record_teams`는 개인·팀 기록 조회용 compact fact index다. 개인/팀 목록은 이 인덱스를 사용하고 원본 경기 전체를 선조회하지 않는다.
+3. 확정 기록 조회 범위는 KST 달력 날짜 기준 `최근 6개월 상세`, `6개월 초과부터 최근 5년까지 목록`으로 고정한다. 정확히 6개월 전 당일은 상세에 포함한다.
+4. `matches`, `match_players`, `match_results`, `player_match_stats`, `match_player_competitive_snapshots`는 프로필 요약·업적·구장 지표·대회 감사 경로가 archive-aware가 되기 전까지 삭제하지 않는다. 특히 `match_results` 삭제는 부모 경기 점수를 0으로 되돌릴 수 있으므로 일반 정리에 포함하지 않는다.
+5. archive 생성과 fact index 검증이 끝난 데이터에 대해서만 종료 후 의미가 없는 임시 row를 보존기간에 따라 매일 bounded batch로 정리한다. 월 1회 수동 삭제를 운영 기준으로 삼지 않는다.
+6. 최근 상세와 5년 목록은 각각 독립 페이지네이션한다. 5년 목록 추가 조회는 최근 6개월 JSON payload와 프로필을 다시 읽지 않는다.
+7. 팀 공개 기록은 공개 경기만 누구나 읽을 수 있다. 비공개 경기는 해당 팀원 또는 경기 관계자만 읽고, 상세 응답은 기존 경기 상세 권한 필터를 다시 적용한다.
+8. archive의 과거 팀 snapshot은 경기 표시용으로만 사용한다. 현재 팀 전역 상태에 병합해 이름, MMR, 전적, 엠블럼을 덮어쓰지 않는다.
+9. 같은 transaction에서 여러 경기 child row가 바뀌어도 archive JSON은 경기당 transaction 종료 시 한 번만 갱신한다.
+10. `sim_m_*` 경기와 `sim_trn_*` 대회 경기를 삭제할 때 해당 archive도 제거해 테스트 기록이 개인·팀 기록에 남지 않게 한다.

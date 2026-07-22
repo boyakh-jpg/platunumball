@@ -105,6 +105,8 @@ import {
   REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
   REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
+  REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT,
+  REMOTE_CLIENT_RECORD_LIST_YEARS,
   REMOTE_CLIENT_RECORD_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
@@ -139,6 +141,56 @@ import { prepareTeamEmblemUpload } from "../lib/teamEmblem.js";
 import { getAffiliationNormalizedKey, normalizeAffiliationName } from "../lib/affiliations.js";
 
 const LOCAL_MAINTENANCE_INTERVAL_MS = MINUTE_MS;
+const EMPTY_RECORD_ARCHIVE = Object.freeze({
+  rows: [],
+  page: {
+    detailNextOffset: null,
+    detailExhausted: true,
+    archiveNextOffset: null,
+    archiveExhausted: true,
+  },
+  windows: {
+    detailMonths: REMOTE_CLIENT_RECORD_MONTHS,
+    listYears: REMOTE_CLIENT_RECORD_LIST_YEARS,
+  },
+  loaded: false,
+  loading: false,
+  error: "",
+});
+
+function mergeRecordArchiveRows(existing = [], incoming = [], replace = false) {
+  const rows = replace ? [] : [...existing];
+  const indexById = new Map(rows.map((row, index) => [row.matchId, index]));
+  (incoming ?? []).forEach((row) => {
+    if (!row?.matchId) return;
+    const index = indexById.get(row.matchId);
+    if (index === undefined) {
+      indexById.set(row.matchId, rows.length);
+      rows.push(row);
+    } else {
+      rows[index] = { ...rows[index], ...row };
+    }
+  });
+  return rows;
+}
+
+function normalizeRecordArchiveOffset(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+}
+
+function mergeRecordPage(existing = EMPTY_RECORD_ARCHIVE.page, incoming = {}) {
+  const next = { ...existing };
+  if (incoming.detailIncluded === true) {
+    next.detailNextOffset = incoming.detailNextOffset ?? null;
+    next.detailExhausted = incoming.detailExhausted !== false;
+  }
+  if (incoming.archiveIncluded === true) {
+    next.archiveNextOffset = incoming.archiveNextOffset ?? null;
+    next.archiveExhausted = incoming.archiveExhausted !== false;
+  }
+  return next;
+}
 
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
@@ -1234,20 +1286,27 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     }
     if (options.endpoint === "profileRecords") {
       const result = await postServerAction(
-        "/api/matches/list",
+        "/api/records/list",
         {
           authUserId,
           authEmail,
-          limit: options.matchLimit ?? REMOTE_CLIENT_RECORD_MATCH_LIMIT,
-          completedMonths: REMOTE_CLIENT_RECORD_MONTHS,
-          listOnly: false,
-          completedOnly: true,
-          includeRecruitingSchedule: false,
-          adminContext: false,
+          scope: "profile",
+          detailLimit: options.matchLimit ?? REMOTE_CLIENT_RECORD_MATCH_LIMIT,
+          archiveLimit: REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT,
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, profileRecordsLoaded: true });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), {
+        profileRecordsLoaded: true,
+        profileRecordArchive: {
+          rows: result.archiveRecords ?? [],
+          page: result.page ?? EMPTY_RECORD_ARCHIVE.page,
+          windows: result.windows ?? EMPTY_RECORD_ARCHIVE.windows,
+          loaded: true,
+          loading: false,
+          error: "",
+        },
+      });
     }
     if (options.endpoint === "profileMe") {
       const result = await postServerAction(
@@ -1264,7 +1323,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { profileRecordsLoaded: result.profileRecordsLoaded === true });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { profileRecordsLoaded: false });
     }
     if (options.endpoint === "homeLoad") {
       const result = await postServerAction(
@@ -1324,6 +1383,8 @@ export function useAppData(authUser = null, appLocation = null) {
   const [adminState, setAdminState] = useState(null);
   const [adminStatus, setAdminStatus] = useState({ loading: false, loaded: false, error: "", section: "", queueMode: DEFAULT_ADMIN_QUEUE_MODE, page: null, counts: {} });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
+  const [profileRecordArchive, setProfileRecordArchive] = useState(EMPTY_RECORD_ARCHIVE);
+  const [teamRecordArchives, setTeamRecordArchives] = useState({});
   const [recorderMatchesLoaded, setRecorderMatchesLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const [serverActionPendingCount, setServerActionPendingCount] = useState(0);
@@ -1357,6 +1418,9 @@ export function useAppData(authUser = null, appLocation = null) {
   const recorderMatchesPromiseRef = useRef(null);
   const reportableMatchesPromiseRef = useRef(null);
   const profileRecordsPromiseRef = useRef(null);
+  const profileRecordArchiveRef = useRef(EMPTY_RECORD_ARCHIVE);
+  const teamRecordArchivesRef = useRef({});
+  const teamRecordsPromiseRef = useRef(new Map());
   const recruitingRegionPromiseRef = useRef(new Map());
   const latestRecruitingRegionRequestRef = useRef("");
   const latestRecruitingLoadMoreRequestRef = useRef("");
@@ -1386,6 +1450,12 @@ export function useAppData(authUser = null, appLocation = null) {
   useEffect(() => {
     adminStatusRef.current = adminStatus;
   }, [adminStatus]);
+  useEffect(() => {
+    profileRecordArchiveRef.current = profileRecordArchive;
+  }, [profileRecordArchive]);
+  useEffect(() => {
+    teamRecordArchivesRef.current = teamRecordArchives;
+  }, [teamRecordArchives]);
   useEffect(() => {
     settingsAuthUserIdRef.current = authUserId;
     settingsSyncQueueRef.current = Promise.resolve(null);
@@ -1466,6 +1536,9 @@ export function useAppData(authUser = null, appLocation = null) {
       recorderMatchesPromiseRef.current = null;
       reportableMatchesPromiseRef.current = null;
       profileRecordsPromiseRef.current = null;
+      profileRecordArchiveRef.current = EMPTY_RECORD_ARCHIVE;
+      teamRecordArchivesRef.current = {};
+      teamRecordsPromiseRef.current = new Map();
       recruitingRegionPromiseRef.current = new Map();
       latestRecruitingRegionRequestRef.current = "";
       latestRecruitingLoadMoreRequestRef.current = "";
@@ -1484,6 +1557,8 @@ export function useAppData(authUser = null, appLocation = null) {
       setAdminState(null);
       setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: DEFAULT_ADMIN_QUEUE_MODE, page: null, counts: {} });
       setProfileRecordsLoaded(false);
+      setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
+      setTeamRecordArchives({});
       setRecorderMatchesLoaded(false);
       return undefined;
     }
@@ -1508,6 +1583,9 @@ export function useAppData(authUser = null, appLocation = null) {
     recorderMatchesPromiseRef.current = null;
     reportableMatchesPromiseRef.current = null;
     profileRecordsPromiseRef.current = null;
+    profileRecordArchiveRef.current = EMPTY_RECORD_ARCHIVE;
+    teamRecordArchivesRef.current = {};
+    teamRecordsPromiseRef.current = new Map();
     recruitingRegionPromiseRef.current = new Map();
     latestRecruitingRegionRequestRef.current = "";
     latestRecruitingLoadMoreRequestRef.current = "";
@@ -1524,6 +1602,8 @@ export function useAppData(authUser = null, appLocation = null) {
     setAdminState(null);
     setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: DEFAULT_ADMIN_QUEUE_MODE, page: null, counts: {} });
     setProfileRecordsLoaded(false);
+    setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
+    setTeamRecordArchives({});
     setRecorderMatchesLoaded(false);
     const initialLoadOptions = getInitialStateLoadOptions(appLocation);
     homeRouteLoadKeyRef.current = initialLoadOptions.endpoint === "homeLoad" ? "homeLoad" : getHomeRouteLoadKey(appLocation);
@@ -1574,6 +1654,10 @@ export function useAppData(authUser = null, appLocation = null) {
             setDirectoryStatus({ loading: false, loaded: true, error: "", page: remoteMeta.directoryPage ?? null, cacheKey: "initial" });
           }
           setProfileRecordsLoaded(remoteMeta.profileRecordsLoaded === true);
+          if (remoteMeta.profileRecordArchive) {
+            profileRecordArchiveRef.current = remoteMeta.profileRecordArchive;
+            setProfileRecordArchive(remoteMeta.profileRecordArchive);
+          }
           setRecorderMatchesLoaded(remoteMeta.recorderMatchesLoaded === true);
         }
         remoteReadyRef.current = true;
@@ -2375,32 +2459,65 @@ export function useAppData(authUser = null, appLocation = null) {
 
   const loadProfileRecords = useCallback(async (options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
+    const requestGeneration = authGenerationRef.current;
+    const isRequestCurrent = () => requestGeneration === authGenerationRef.current;
     const force = options?.force === true;
-    if (profileRecordsLoaded && !force) return true;
+    const loadMoreArchive = options?.loadMore === true || options?.loadMoreArchive === true;
+    const loadMoreDetail = options?.loadMoreDetail === true;
+    const pagedLoad = loadMoreArchive || loadMoreDetail;
+    if (profileRecordsLoaded && !force && !pagedLoad) return true;
     if (profileRecordsPromiseRef.current) return profileRecordsPromiseRef.current;
+    const currentArchive = profileRecordArchiveRef.current;
+    const archiveOffset = loadMoreArchive
+      ? normalizeRecordArchiveOffset(options.archiveOffset ?? currentArchive.page?.archiveNextOffset)
+      : 0;
+    const detailOffset = loadMoreDetail
+      ? normalizeRecordArchiveOffset(options.detailOffset ?? currentArchive.page?.detailNextOffset)
+      : 0;
+    setProfileRecordArchive((current) => ({ ...current, loading: true, error: "" }));
     const promise = (async () => {
       try {
         const result = await trackedPostServerAction(
-          "/api/matches/list",
+          "/api/records/list",
           {
             authUserId,
             authEmail,
-            limit: REMOTE_CLIENT_RECORD_MATCH_LIMIT,
-            completedMonths: REMOTE_CLIENT_RECORD_MONTHS,
-            listOnly: false,
-            completedOnly: true,
-            includeRecruitingSchedule: false,
-            adminContext: false,
+            scope: "profile",
+            detailLimit: REMOTE_CLIENT_RECORD_MATCH_LIMIT,
+            detailOffset,
+            archiveLimit: REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT,
+            archiveOffset,
+            includeDetail: !loadMoreArchive,
+            includeArchive: !loadMoreDetail,
           },
           { allowWhenDisabled: true },
         );
+        if (!isRequestCurrent()) return false;
         const remoteState = normalizeServerState(result?.state ?? {});
         const nextMatches = remoteState.matches ?? [];
         setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        const nextArchive = {
+          rows: result?.page?.archiveIncluded === true
+            ? mergeRecordArchiveRows(
+              profileRecordArchiveRef.current.rows,
+              result?.archiveRecords ?? [],
+              !loadMoreArchive && !loadMoreDetail,
+            )
+            : profileRecordArchiveRef.current.rows,
+          page: mergeRecordPage(profileRecordArchiveRef.current.page, result?.page),
+          windows: result?.windows ?? EMPTY_RECORD_ARCHIVE.windows,
+          loaded: true,
+          loading: false,
+          error: "",
+        };
+        profileRecordArchiveRef.current = nextArchive;
+        setProfileRecordArchive(nextArchive);
         setProfileRecordsLoaded(true);
         return nextMatches.length;
       } catch (error) {
+        if (!isRequestCurrent() || error?.code === "stale_auth_request") return false;
         console.warn("Profile records load failed.", error.message);
+        setProfileRecordArchive((current) => ({ ...current, loading: false, error: error.message ?? "record_list_failed" }));
         return false;
       }
     })().finally(() => {
@@ -2409,6 +2526,85 @@ export function useAppData(authUser = null, appLocation = null) {
     profileRecordsPromiseRef.current = promise;
     return promise;
   }, [authEmail, authUserId, profileRecordsLoaded, setState, trackedPostServerAction]);
+
+  const loadTeamRecords = useCallback(async (teamId, options = {}) => {
+    const safeTeamId = String(teamId ?? "").trim();
+    if (!isSupabaseConfigured || !authUserId || !safeTeamId) return false;
+    const requestGeneration = authGenerationRef.current;
+    const isRequestCurrent = () => requestGeneration === authGenerationRef.current;
+    const currentArchive = teamRecordArchivesRef.current[safeTeamId] ?? EMPTY_RECORD_ARCHIVE;
+    const force = options?.force === true;
+    const loadMoreArchive = options?.loadMore === true || options?.loadMoreArchive === true;
+    const loadMoreDetail = options?.loadMoreDetail === true;
+    const pagedLoad = loadMoreArchive || loadMoreDetail;
+    if (currentArchive.loaded && !force && !pagedLoad) return true;
+    if (teamRecordsPromiseRef.current.has(safeTeamId)) return teamRecordsPromiseRef.current.get(safeTeamId);
+    const archiveOffset = loadMoreArchive
+      ? normalizeRecordArchiveOffset(options.archiveOffset ?? currentArchive.page?.archiveNextOffset)
+      : 0;
+    const detailOffset = loadMoreDetail
+      ? normalizeRecordArchiveOffset(options.detailOffset ?? currentArchive.page?.detailNextOffset)
+      : 0;
+    setTeamRecordArchives((current) => ({
+      ...current,
+      [safeTeamId]: { ...(current[safeTeamId] ?? EMPTY_RECORD_ARCHIVE), loading: true, error: "" },
+    }));
+    const promise = (async () => {
+      try {
+        const result = await trackedPostServerAction(
+          "/api/records/list",
+          {
+            authUserId,
+            authEmail,
+            scope: "team",
+            teamId: safeTeamId,
+            detailLimit: REMOTE_CLIENT_RECORD_MATCH_LIMIT,
+            detailOffset,
+            archiveLimit: REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT,
+            archiveOffset,
+            includeDetail: !loadMoreArchive,
+            includeArchive: !loadMoreDetail,
+          },
+          { allowWhenDisabled: true },
+        );
+        if (!isRequestCurrent()) return false;
+        const remoteState = normalizeServerState(result?.state ?? {});
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        const latestArchive = teamRecordArchivesRef.current[safeTeamId] ?? EMPTY_RECORD_ARCHIVE;
+        const nextArchive = {
+          rows: result?.page?.archiveIncluded === true
+            ? mergeRecordArchiveRows(latestArchive.rows, result?.archiveRecords ?? [], !loadMoreArchive && !loadMoreDetail)
+            : latestArchive.rows,
+          page: mergeRecordPage(latestArchive.page, result?.page),
+          windows: result?.windows ?? EMPTY_RECORD_ARCHIVE.windows,
+          loaded: true,
+          loading: false,
+          error: "",
+        };
+        teamRecordArchivesRef.current = { ...teamRecordArchivesRef.current, [safeTeamId]: nextArchive };
+        setTeamRecordArchives((current) => ({ ...current, [safeTeamId]: nextArchive }));
+        return remoteState.matches?.length ?? 0;
+      } catch (error) {
+        if (!isRequestCurrent() || error?.code === "stale_auth_request") return false;
+        console.warn("Team records load failed.", error.message);
+        setTeamRecordArchives((current) => ({
+          ...current,
+          [safeTeamId]: {
+            ...(current[safeTeamId] ?? EMPTY_RECORD_ARCHIVE),
+            loading: false,
+            error: error.message ?? "record_list_failed",
+          },
+        }));
+        return false;
+      }
+    })().finally(() => {
+      if (teamRecordsPromiseRef.current.get(safeTeamId) === promise) {
+        teamRecordsPromiseRef.current.delete(safeTeamId);
+      }
+    });
+    teamRecordsPromiseRef.current.set(safeTeamId, promise);
+    return promise;
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadMoreRecruiting = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || recruitingPagination.loading || recruitingPagination.exhausted) return false;
@@ -3052,6 +3248,7 @@ export function useAppData(authUser = null, appLocation = null) {
         loadRecorderMatches,
         loadReportableMatches,
         loadProfileRecords,
+        loadTeamRecords,
         submitCourtDetailReview,
         profileRecordsLoaded,
         switchUser: (userId) => {
@@ -3062,6 +3259,10 @@ export function useAppData(authUser = null, appLocation = null) {
           return next;
         });
         setProfileRecordsLoaded(false);
+        profileRecordArchiveRef.current = EMPTY_RECORD_ARCHIVE;
+        teamRecordArchivesRef.current = {};
+        setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
+        setTeamRecordArchives({});
         setState((prev) => ({ ...prev, currentUserId: userId }));
         return true;
       },
@@ -4131,7 +4332,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, loadTeamRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
@@ -4153,6 +4354,10 @@ export function useAppData(authUser = null, appLocation = null) {
     matchPagination,
     recruitingPagination,
     directoryStatus,
+    recordArchives: {
+      profile: profileRecordArchive,
+      teams: teamRecordArchives,
+    },
     rankings,
     actions,
   };

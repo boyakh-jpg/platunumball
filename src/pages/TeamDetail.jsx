@@ -15,7 +15,7 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
-import { getMatchSideScore as getSideScore, isDateWithinPastMonths } from "../lib/matchUtils.js";
+import { getMatchSideScore as getSideScore, isMatchWithinRecordDetailWindow } from "../lib/matchUtils.js";
 import {
   TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS,
   TEAM_EMBLEM_FONT_OPTIONS,
@@ -34,13 +34,8 @@ function getTeamSide(match, teamId) {
   return null;
 }
 
-function getHistoryDate(match) {
-  return String(match.scheduledDate ?? match.scheduledAt ?? match.confirmedAt ?? match.createdAt ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "날짜 미정";
-}
-
 function isHistoryInDetailWindow(match) {
-  if (match.status !== "confirmed") return true;
-  return isDateWithinPastMonths(getHistoryDate(match), 6);
+  return isMatchWithinRecordDetailWindow(match);
 }
 
 const historyStatusLabel = {
@@ -63,8 +58,10 @@ function getManagedRoleOptions(member, captainId) {
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
   const loadDirectory = app.actions.loadDirectory;
+  const loadTeamRecords = app.actions.loadTeamRecords;
   const loadTeamEmblemStatus = app.actions.loadTeamEmblemStatus;
   const team = app.state.teams.find((item) => item.id === teamId);
+  const teamRecordArchive = app.recordArchives?.teams?.[teamId] ?? { rows: [], page: {}, loaded: false, loading: false, error: "" };
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
   const [memberQuery, setMemberQuery] = useState("");
   const [selectedInviteProfile, setSelectedInviteProfile] = useState(null);
@@ -126,6 +123,11 @@ export default function TeamDetail({ app }) {
     };
   }, [app.remoteReady, loadDirectory, team?.membersPartial, teamId]);
 
+  useEffect(() => {
+    if (app.remoteReady === false || !team?.id || !loadTeamRecords || teamRecordArchive.loaded || teamRecordArchive.loading || teamRecordArchive.error) return;
+    loadTeamRecords(team.id);
+  }, [app.remoteReady, loadTeamRecords, team?.id, teamRecordArchive.error, teamRecordArchive.loaded, teamRecordArchive.loading]);
+
   const directoryPending = app.remoteReady === false
     || app.directoryStatus?.loading
     || (app.directoryStatus?.loaded === false && !app.directoryStatus?.error);
@@ -159,9 +161,11 @@ export default function TeamDetail({ app }) {
   const selectedCount = membershipCounts.get(addUserId) ?? 0;
   const teamFull = team.members.length >= MAX_TEAM_MEMBERS;
   const canAddMember = canManage && Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS && !teamFull;
-  const history = app.state.matches.filter((match) => getTeamSide(match, team.id));
+  const history = app.state.matches.filter((match) => match.status === "confirmed" && getTeamSide(match, team.id));
   const detailHistory = history.filter(isHistoryInDetailWindow);
-  const archivedHistory = history.filter((match) => !isHistoryInDetailWindow(match));
+  const archivedHistory = teamRecordArchive.rows ?? [];
+  const historyIds = new Set(history.map((match) => match.id));
+  const historyCount = history.length + archivedHistory.filter((record) => !historyIds.has(record.matchId)).length;
   const loadedWins = history.filter((match) => {
     const sideName = getTeamSide(match, team.id);
     const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
@@ -394,7 +398,7 @@ export default function TeamDetail({ app }) {
             <span><strong>{wins}승</strong>승리</span>
             <span><strong>{losses}패</strong>패배</span>
             <span><strong>{winRate}%</strong>승률</span>
-            <span><strong>{history.length}</strong>전체 경기</span>
+            <span><strong>{historyCount}</strong>전체 경기</span>
           </div>
         </Card>
         <Card className="section-card rank-record-card">
@@ -422,7 +426,7 @@ export default function TeamDetail({ app }) {
                 <p className="eyebrow">Team History</p>
                 <h2>팀 경기 히스토리</h2>
               </div>
-              <Badge tone="green">{history.length}경기 · {wins}승</Badge>
+              <Badge tone="green">{historyCount}경기 · {wins}승</Badge>
             </div>
             <div className="history-list">
               {detailHistory.map((match) => {
@@ -464,26 +468,55 @@ export default function TeamDetail({ app }) {
                   </article>
                 );
               })}
-              {archivedHistory.map((match) => {
-                const sideName = getTeamSide(match, team.id);
-                const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
-                const side = match[sideName];
-                const opponent = match[oppositeSide];
-                return (
-                  <article key={match.id} className="history-item record-archive-row">
+              {teamRecordArchive.page?.detailExhausted === false ? (
+                <button
+                  type="button"
+                  className="button button-secondary button-md"
+                  disabled={teamRecordArchive.loading}
+                  onClick={() => loadTeamRecords?.(team.id, {
+                    loadMoreDetail: true,
+                    detailOffset: teamRecordArchive.page?.detailNextOffset,
+                  })}
+                >
+                  {teamRecordArchive.loading ? "불러오는 중" : "상세 기록 더 보기"}
+                </button>
+              ) : null}
+              {archivedHistory.map((record) => (
+                  <article key={record.matchId} className="history-item record-archive-row">
                     <div>
-                      <strong>{match.title}</strong>
-                      <span>{getHistoryDate(match)} · {match.mode} · {match.court}</span>
+                      <strong>{record.title}</strong>
+                      <span>{record.recordDate} · {record.mode} · {record.court}</span>
                     </div>
                     <div className="history-score">
-                      <Badge tone="neutral">텍스트</Badge>
-                      <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
+                      <Badge tone="neutral">5년 기록</Badge>
+                      <strong>{record.score}:{record.opponentScore}</strong>
                     </div>
-                    <p>{side.name} vs {opponent.name} · 6개월 초과 기록</p>
+                    <p>{record.teamName} vs {record.opponentTeamName} · 6개월 초과 기록</p>
                   </article>
-                );
-              })}
+                ))}
             </div>
+            {teamRecordArchive.page?.archiveExhausted === false ? (
+              <button
+                type="button"
+                className="button button-secondary button-md"
+                disabled={teamRecordArchive.loading}
+                onClick={() => loadTeamRecords?.(team.id, {
+                  loadMoreArchive: true,
+                  archiveOffset: teamRecordArchive.page?.archiveNextOffset,
+                })}
+              >
+                {teamRecordArchive.loading ? "불러오는 중" : "기록 더 보기"}
+              </button>
+            ) : null}
+            {teamRecordArchive.error ? (
+              <button
+                type="button"
+                className="button button-secondary button-md"
+                onClick={() => loadTeamRecords?.(team.id, { force: true })}
+              >
+                기록 다시 불러오기
+              </button>
+            ) : null}
           </Card>
         </div>
 
