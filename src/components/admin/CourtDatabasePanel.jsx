@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, Database, ExternalLink, RotateCcw, Save, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Database, ExternalLink, ListChecks, RotateCcw, Save, X } from "lucide-react";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
 import { getCourtFacilityBaseName, getCourtMapUrl, getCourtStandardName } from "../../lib/courts.js";
@@ -20,7 +20,8 @@ const DEFAULT_COURT_FILTERS = {
   nameEvidenceDecision: "", nameEvidenceApplicationStatus: "", nameEvidenceReference: "",
   nameEvidenceKind: "", nameEvidenceRelation: "", nameEvidenceDistanceM: "",
   nameEvidenceProposedFacility: "", nameEvidenceAppliedFacility: "", nameEvidenceUrl: "",
-  nameEvidenceSnapshotDate: "",
+  nameEvidenceSnapshotDate: "", regionalAliasNo: "", reviewCount: "zero", reviewedAt: "",
+  reviewedBy: "", reviewScenario: "",
 };
 
 const EMPTY_HISTORY_FILTERS = {
@@ -45,6 +46,11 @@ const COURT_COLUMNS = [
   { key: "lighting", rowKey: "lighting", patchKey: "lighting", label: "조명", width: "82px", editor: "select", type: "booleanNullable" },
   { key: "publicAccess", rowKey: "public_access", patchKey: "publicAccess", label: "공개", width: "95px", editor: "select", type: "publicAccess", nullable: false },
   { key: "name", rowKey: "name", label: "표준 구장명", width: "250px", readOnly: true },
+  { key: "regionalAliasNo", rowKey: "regional_alias_no", label: "지역순번", width: "95px", type: "number", readOnly: true },
+  { key: "reviewCount", rowKey: "admin_review_count", label: "검수횟수", width: "95px", type: "reviewCount", readOnly: true },
+  { key: "reviewScenario", rowKey: "admin_review_scenario", label: "최근판정", width: "125px", type: "reviewScenario", readOnly: true },
+  { key: "reviewedAt", rowKey: "admin_reviewed_at", label: "검수일", width: "135px", type: "date", readOnly: true },
+  { key: "reviewedBy", rowKey: "admin_reviewed_by", label: "검수자", width: "150px", readOnly: true },
   { key: "nameEvidenceApplicationStatus", rowKey: "name_evidence_application_status", patchKey: "nameEvidenceApplicationStatus", label: "반영상태", width: "125px", editor: "select", type: "nameEvidenceApplicationStatus", nullable: false, requiresNameEvidence: true },
   { key: "nameEvidenceReference", rowKey: "name_evidence_reference", label: "근거시설", width: "220px", readOnly: true },
   { key: "nameEvidenceKind", rowKey: "name_evidence_kind", label: "근거유형", width: "125px", type: "nameEvidenceKind", readOnly: true },
@@ -112,14 +118,48 @@ const SELECT_OPTIONS = {
   nameEvidenceKind: [["", "전체"], ["__null__", "근거 없음"], ["exact_court", "코트 자체"], ["sports_centre", "체육시설"], ["school", "학교"], ["building", "건물"], ["park_ground", "공원·운동장"], ["community_centre", "공공시설"], ["landmark", "주변시설"], ["administrative", "OSM 행정구역"], ["stored_administrative", "저장 읍면동"]],
   nameEvidenceRelation: [["", "전체"], ["__null__", "근거 없음"], ["self", "코트 자체"], ["inside", "polygon 내부"], ["site_member", "같은 부지"], ["nearby", "인접"], ["administrative", "행정구역"], ["none", "미해결"]],
   modificationCount: [["zero", "0회"], ["positive", "1회 이상"], ["", "전체"]],
+  reviewCount: [["zero", "0회"], ["positive", "1회 이상"], ["", "전체"]],
+  reviewScenario: [["", "전체"], ["__null__", "미검수"], ["manual", "수동 저장"], ["public", "공개"], ["private", "비공개"], ["regional_alias", "읍면동 순번명"], ["review_required", "추가 확인"], ["closed", "폐쇄"], ["duplicate", "중복"]],
   origin: [["", "전체"], ["public_import", "공공데이터"], ["user_request", "사용자 신청"], ["system", "시스템"]],
   source: [["", "전체"], ["admin", "관리자"], ["system", "시스템"]],
 };
 
+const REVIEW_SCENARIOS = [
+  { id: "public", label: "공개", description: "검증 완료 + 공개", tone: "success" },
+  { id: "private", label: "비공개", description: "검증 완료 + 비공개", tone: "neutral" },
+  { id: "regional_alias", label: "읍면동 순번명", description: "같은 장소 번호 재사용", tone: "accent" },
+  { id: "review_required", label: "추가 확인", description: "숨김 + 검토 대기", tone: "warning" },
+  { id: "closed", label: "폐쇄", description: "운영 종료 + 비활성", tone: "danger" },
+  { id: "duplicate", label: "중복", description: "중복 행 비활성", tone: "danger" },
+];
+
+const REVIEW_CHIP_GROUPS = [
+  { key: "indoorOutdoor", label: "실내외", options: [["outdoor", "야외"], ["indoor", "실내"], ["mixed", "혼합"], ["unknown", "모름"]] },
+  { key: "venueType", label: "시설유형", options: [["park", "공원"], ["sports_facility", "체육시설"], ["public_facility", "공공시설"], ["school", "학교"], ["apartment", "아파트"], ["unknown", "모름"]] },
+  { key: "courtKind", label: "구장분류", options: [["official", "정규"], ["street_hoop", "길거리"], ["unknown", "모름"]] },
+  { key: "surfaceType", label: "바닥", options: [["asphalt", "아스팔트"], ["urethane", "우레탄"], ["dirt", "흙"], ["indoor_wood", "실내목재"], ["indoor_synthetic", "실내합성"], ["unknown", "모름"]] },
+  { key: "courtLayout", label: "코트형태", options: [["full", "풀코트"], ["half", "하프코트"], ["single_hoop", "단일골대"], ["unknown", "모름"]] },
+  { key: "hoopCount", label: "골대", options: [[1, "1개"], [2, "2개"], [3, "3개"], [4, "4개"], [null, "미입력"]] },
+  { key: "accessType", label: "이용방식", options: [["walk_in", "자유이용"], ["reservation", "예약"], ["restricted", "제한"], ["unknown", "모름"]] },
+  { key: "paid", label: "유료", options: [[false, "무료"], [true, "유료"], [null, "미입력"]] },
+  { key: "lighting", label: "조명", options: [[true, "있음"], [false, "없음"], [null, "미입력"]] },
+];
+
+const COURT_UNIT_CHIPS = [[null, "미구분"], ["1코트", "1코트"], ["2코트", "2코트"], ["3코트", "3코트"], ["A코트", "A코트"], ["B코트", "B코트"]];
+
+const REVIEW_PRIORITY_LABELS = ["검토 필요", "검증 대기", "정보 보완", "검증 완료"];
+
 const LABELS = Object.fromEntries(
   Object.values(SELECT_OPTIONS).flat().filter(([id]) => id && id !== "__null__"),
 );
-const FIELD_LABELS = Object.fromEntries(COURT_COLUMNS.filter((column) => column.patchKey || column.key === "name").map((column) => [column.patchKey || column.key, column.label]));
+const FIELD_LABELS = {
+  ...Object.fromEntries(COURT_COLUMNS.filter((column) => column.patchKey || column.key === "name").map((column) => [column.patchKey || column.key, column.label])),
+  adminReviewCount: "검수횟수",
+  adminReviewScenario: "최근판정",
+  adminReviewedAt: "검수일",
+  regionalAliasNo: "지역순번",
+  regionalAliasRegionKey: "지역순번 범위",
+};
 const EDITABLE_COLUMNS = COURT_COLUMNS.filter((column) => column.patchKey);
 
 function formatDateTime(value) {
@@ -134,7 +174,7 @@ function formatDateTime(value) {
 function formatValue(column, value) {
   if (column.type === "date") return formatDateTime(value);
   if (column.type === "booleanNullable") return value === true ? "예" : value === false ? "아니오" : "미입력";
-  if (column.type === "modificationCount") return `${Number(value ?? 0).toLocaleString()}회`;
+  if (column.type === "modificationCount" || column.type === "reviewCount") return `${Number(value ?? 0).toLocaleString()}회`;
   if (column.coordinate) {
     const number = Number(value);
     return Number.isFinite(number) ? number.toFixed(6) : "-";
@@ -190,8 +230,8 @@ function getDraftCourtName(row, values) {
   });
 }
 
-function validatePatch(values, patch) {
-  if (!Object.keys(patch).length) return "수정된 셀이 없습니다.";
+function validatePatch(values, patch, allowEmpty = false) {
+  if (!allowEmpty && !Object.keys(patch).length) return "수정된 셀이 없습니다.";
   if (!String(values.facilityName ?? "").trim()) return "시설명은 비울 수 없습니다.";
   if (!String(values.addressText ?? "").trim()) return "대표주소는 비울 수 없습니다.";
   const lat = normalizeEditValue(COURT_COLUMNS.find((column) => column.patchKey === "lat"), values.lat);
@@ -213,6 +253,10 @@ function validatePatch(values, patch) {
 function getSaveErrorMessage(errorCode = "") {
   const code = String(errorCode);
   if (code.includes("court_name_evidence_not_found")) return "OSM 명칭 근거가 없는 구장은 판정 정보를 수정할 수 없습니다.";
+  if (code.includes("court_regional_alias_emd_required")) return "읍면동을 먼저 확인해야 지역 순번명을 만들 수 있습니다.";
+  if (code.includes("court_regional_alias_location_patch_invalid")) return "지역 순번명 처리와 주소·좌표 수정은 따로 저장해 주세요.";
+  if (code.includes("court_unit_required_for_shared_location")) return "같은 장소에 여러 구장이 있습니다. 1코트·2코트처럼 코트 구분을 먼저 선택해 주세요.";
+  if (code.includes("court_review_scenario_invalid")) return "지원하지 않는 검수 시나리오입니다.";
   if (code.includes("url_invalid")) return "URL은 https:// 주소만 저장할 수 있습니다.";
   if (code.includes("coordinates_invalid")) return "위도·경도 값을 확인해 주세요.";
   if (code.includes("duplicate") || code === "23505") return "같은 구장으로 판정되는 데이터가 이미 있습니다.";
@@ -294,6 +338,31 @@ function CellEditor({ column, value, disabled, onChange, onEscape }) {
   );
 }
 
+function ReviewChipGroup({ group, value, dirty, disabled, onChange }) {
+  return (
+    <fieldset className={`court-db-review-chip-group ${dirty ? "is-dirty" : ""}`}>
+      <legend>{group.label}</legend>
+      <div>
+        {group.options.map(([optionValue, label]) => {
+          const selected = Object.is(value ?? null, optionValue ?? null);
+          return (
+            <button
+              key={`${group.key}-${String(optionValue)}`}
+              type="button"
+              className={selected ? "selected" : ""}
+              aria-pressed={selected}
+              disabled={disabled}
+              onClick={() => onChange(group.key, optionValue)}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 function Pagination({ page, onChange, loading }) {
   const current = Number(page?.page ?? 1);
   const pageCount = Number(page?.pageCount ?? 1);
@@ -332,7 +401,7 @@ export default function CourtDatabasePanel({ app }) {
   const [historyPage, setHistoryPage] = useState({ page: 1, pageSize: 100, total: 0, pageCount: 1 });
   const [courtFilterDraft, setCourtFilterDraft] = useState(DEFAULT_COURT_FILTERS);
   const [historyFilterDraft, setHistoryFilterDraft] = useState(EMPTY_HISTORY_FILTERS);
-  const [courtQuery, setCourtQuery] = useState({ page: 1, sortKey: "modificationCount", sortDirection: "asc", filters: DEFAULT_COURT_FILTERS });
+  const [courtQuery, setCourtQuery] = useState({ page: 1, sortKey: "reviewPriority", sortDirection: "asc", filters: DEFAULT_COURT_FILTERS });
   const [historyQuery, setHistoryQuery] = useState({ page: 1, sortKey: "createdAt", sortDirection: "desc", filters: EMPTY_HISTORY_FILTERS });
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
@@ -341,6 +410,8 @@ export default function CourtDatabasePanel({ app }) {
   const [reason, setReason] = useState("");
   const [reasonOptional, setReasonOptional] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [reviewIndex, setReviewIndex] = useState(0);
   const requestRef = useRef(0);
 
   const activeColumns = tab === "courts" ? COURT_COLUMNS : HISTORY_COLUMNS;
@@ -363,9 +434,19 @@ export default function CourtDatabasePanel({ app }) {
     return "";
   }, [courtRows, dirtyUpdates]);
   const activeRow = useMemo(() => courtRows.find((row) => row.id === activeCell?.courtId) ?? null, [courtRows, activeCell?.courtId]);
+  const reviewRow = reviewMode ? courtRows[reviewIndex] ?? null : null;
+  const selectedRow = activeRow ?? reviewRow;
+  const reviewPosition = reviewRow
+    ? ((Number(courtPage.page ?? 1) - 1) * Number(courtPage.pageSize ?? 100)) + reviewIndex + 1
+    : 0;
   const activeRowDraft = activeRow ? draftRows[activeRow.id] : null;
   const activeEditedName = activeRow && activeRowDraft ? getDraftCourtName(activeRow, activeRowDraft.values) : "";
   const activeNameDirty = Boolean(activeRow && activeEditedName && activeEditedName !== activeRow.name);
+  const reviewDraft = reviewRow ? draftRows[reviewRow.id] : null;
+  const reviewValues = reviewRow ? (reviewDraft?.values ?? buildRowDraft(reviewRow)) : null;
+  const reviewPatch = buildPatch(reviewDraft);
+  const reviewEditedName = reviewRow && reviewValues ? getDraftCourtName(reviewRow, reviewValues) : "";
+  const reviewValidation = reviewRow && reviewValues ? validatePatch(reviewValues, reviewPatch, true) : "";
   const reasonValid = reasonOptional || reason.trim().length >= 4;
 
   const loadRows = async (preserveStatus = false) => {
@@ -376,11 +457,11 @@ export default function CourtDatabasePanel({ app }) {
     const result = tab === "courts"
       ? await app.actions.loadAdminCourtDatabase?.(courtQuery)
       : await app.actions.loadAdminCourtNameHistory?.(historyQuery);
-    if (requestRef.current !== requestId) return;
+    if (requestRef.current !== requestId) return null;
     setLoading(false);
     if (!result || result.ok === false) {
       setStatus("목록을 불러오지 못했습니다.");
-      return;
+      return result ?? null;
     }
     if (tab === "courts") {
       setCourtRows(result.rows ?? []);
@@ -390,6 +471,7 @@ export default function CourtDatabasePanel({ app }) {
       setHistoryRows(result.rows ?? []);
       setHistoryPage(result.page ?? { page: 1, pageSize: 100, total: 0, pageCount: 1 });
     }
+    return result;
   };
 
   useEffect(() => {
@@ -406,20 +488,42 @@ export default function CourtDatabasePanel({ app }) {
     return () => { document.body.style.overflow = previousOverflow; };
   }, [open]);
 
-  const resetEdits = () => {
+  useEffect(() => {
+    if (!reviewMode) return;
+    if (!courtRows.length) {
+      setActiveCell(null);
+      return;
+    }
+    const safeIndex = Math.min(reviewIndex, courtRows.length - 1);
+    if (safeIndex !== reviewIndex) {
+      setReviewIndex(safeIndex);
+      return;
+    }
+    const row = courtRows[safeIndex];
+    setActiveCell((current) => (
+      current?.courtId === row.id ? current : { courtId: row.id, patchKey: "facilityName" }
+    ));
+  }, [courtRows, reviewIndex, reviewMode]);
+
+  const clearDraftEdits = () => {
     setDraftRows({});
     setActiveCell(null);
+  };
+  const resetEdits = () => {
+    clearDraftEdits();
     setReason("");
   };
   const canDiscard = () => !saving && (!editDirty || window.confirm("저장하지 않은 수정값을 버릴까요?"));
   const closeModal = () => {
     if (!canDiscard()) return;
     resetEdits();
+    setReviewMode(false);
     setOpen(false);
   };
   const changeTab = (nextTab) => {
     if (nextTab === tab || !canDiscard()) return;
     resetEdits();
+    setReviewMode(false);
     setStatus("");
     setTab(nextTab);
   };
@@ -430,15 +534,17 @@ export default function CourtDatabasePanel({ app }) {
   const applyFilters = () => {
     if (!canDiscard()) return;
     resetEdits();
+    setReviewIndex(0);
     if (tab === "courts") setCourtQuery((current) => ({ ...current, page: 1, filters: { ...courtFilterDraft } }));
     else setHistoryQuery((current) => ({ ...current, page: 1, filters: { ...historyFilterDraft } }));
   };
   const resetFilters = () => {
     if (!canDiscard()) return;
     resetEdits();
+    setReviewIndex(0);
     if (tab === "courts") {
       setCourtFilterDraft({ ...DEFAULT_COURT_FILTERS });
-      setCourtQuery((current) => ({ ...current, page: 1, sortKey: "modificationCount", sortDirection: "asc", filters: { ...DEFAULT_COURT_FILTERS } }));
+      setCourtQuery((current) => ({ ...current, page: 1, sortKey: "reviewPriority", sortDirection: "asc", filters: { ...DEFAULT_COURT_FILTERS } }));
     } else {
       setHistoryFilterDraft({ ...EMPTY_HISTORY_FILTERS });
       setHistoryQuery((current) => ({ ...current, page: 1, sortKey: "createdAt", sortDirection: "desc", filters: { ...EMPTY_HISTORY_FILTERS } }));
@@ -447,6 +553,7 @@ export default function CourtDatabasePanel({ app }) {
   const changeSort = (key) => {
     if (!canDiscard()) return;
     resetEdits();
+    setReviewIndex(0);
     const update = (current) => ({
       ...current,
       page: 1,
@@ -459,6 +566,7 @@ export default function CourtDatabasePanel({ app }) {
   const changePage = (page) => {
     if (!canDiscard()) return;
     resetEdits();
+    setReviewIndex(0);
     if (tab === "courts") setCourtQuery((current) => ({ ...current, page }));
     else setHistoryQuery((current) => ({ ...current, page }));
   };
@@ -478,16 +586,139 @@ export default function CourtDatabasePanel({ app }) {
     setStatus("");
   };
   const updateEditValue = (row, patchKey, value) => updateDraftValues(row, { [patchKey]: value });
+  const updateReviewValue = (patchKey, value) => {
+    if (!reviewRow || saving) return;
+    const valuePatch = { [patchKey]: value };
+    if (patchKey === "accessType") {
+      valuePatch.reservationRequired = value === "reservation" ? true : value === "walk_in" ? false : null;
+    }
+    updateDraftValues(reviewRow, valuePatch);
+    setStatus("");
+  };
   const restoreCell = (row, patchKey) => {
     const original = draftRows[row.id]?.original ?? buildRowDraft(row);
     updateDraftValues(row, { [patchKey]: original[patchKey] });
   };
   const applyQuickStatus = (kind) => {
-    if (!activeRow || saving) return;
-    if (kind === "review") updateDraftValues(activeRow, { verificationStatus: "review_required", operationalStatus: "pending", status: "hidden" });
-    else if (kind === "disabled") updateDraftValues(activeRow, { status: "disabled" });
-    else updateDraftValues(activeRow, { status: "active" });
+    if (!selectedRow || saving) return;
+    if (kind === "review") updateDraftValues(selectedRow, { verificationStatus: "review_required", operationalStatus: "pending", status: "hidden" });
+    else if (kind === "disabled") updateDraftValues(selectedRow, { status: "disabled" });
+    else updateDraftValues(selectedRow, { status: "active" });
   };
+
+  const startReview = () => {
+    if (!courtRows.length || !canDiscard()) return;
+    resetEdits();
+    setReviewIndex(0);
+    setCourtQuery((current) => (
+      current.page === 1 && current.sortKey === "reviewPriority" && current.sortDirection === "asc"
+        ? current
+        : { ...current, page: 1, sortKey: "reviewPriority", sortDirection: "asc" }
+    ));
+    setReviewMode(true);
+    setStatus("현재 필터 결과를 1개씩 검수합니다.");
+  };
+
+  const stopReview = () => {
+    if (!canDiscard()) return;
+    resetEdits();
+    setReviewMode(false);
+    setReviewIndex(0);
+    setStatus("");
+  };
+
+  const moveReview = (direction) => {
+    if (!reviewMode || saving || loading) return;
+    if (editDirty) {
+      setStatus("현재 구장의 수정값을 저장하거나 전체 취소한 뒤 이동해 주세요.");
+      return;
+    }
+    const nextIndex = reviewIndex + direction;
+    if (nextIndex >= 0 && nextIndex < courtRows.length) {
+      setReviewIndex(nextIndex);
+      setStatus("");
+      return;
+    }
+    const currentPage = Number(courtPage.page ?? 1);
+    const pageCount = Number(courtPage.pageCount ?? 1);
+    if (direction > 0 && currentPage < pageCount) {
+      setReviewIndex(0);
+      setCourtQuery((current) => ({ ...current, page: currentPage + 1 }));
+      return;
+    }
+    if (direction < 0 && currentPage > 1) {
+      setReviewIndex(99);
+      setCourtQuery((current) => ({ ...current, page: currentPage - 1 }));
+      return;
+    }
+    setStatus(direction > 0 ? "현재 필터 결과의 마지막 구장입니다." : "현재 필터 결과의 첫 구장입니다.");
+  };
+
+  const advanceReviewAfterSave = (savedCourtId, refreshedResult) => {
+    const rows = refreshedResult?.rows ?? [];
+    const refreshedPage = refreshedResult?.page ?? courtPage;
+    const savedIndex = rows.findIndex((row) => row.id === savedCourtId);
+    if (savedIndex < 0 && rows.length) {
+      setReviewIndex(Math.min(reviewIndex, rows.length - 1));
+      return;
+    }
+    if (savedIndex >= 0 && savedIndex + 1 < rows.length) {
+      setReviewIndex(savedIndex + 1);
+      return;
+    }
+    const currentPage = Number(refreshedPage.page ?? 1);
+    const pageCount = Number(refreshedPage.pageCount ?? 1);
+    if (currentPage < pageCount) {
+      setReviewIndex(0);
+      setCourtQuery((current) => ({ ...current, page: currentPage + 1 }));
+      return;
+    }
+    setReviewIndex(Math.max(0, rows.length - 1));
+    setStatus("현재 필터 결과의 검수가 끝났습니다.");
+  };
+
+  const commitReview = async (scenario, successMessage) => {
+    const row = reviewRow;
+    if (!row || saving) return;
+    const draft = reviewDraft ?? { original: buildRowDraft(row), values: reviewValues };
+    const patch = buildPatch(draft);
+    const validation = validatePatch(draft.values, patch, scenario !== "manual");
+    if (validation) {
+      setStatus(`${row.name ?? row.id}: ${validation}`);
+      return;
+    }
+    if (scenario === "manual" && !reasonValid) {
+      setStatus("변경 사유를 4자 이상 입력해 주세요.");
+      return;
+    }
+    setSaving(true);
+    const result = await app.actions.reviewAdminCourt?.({
+      courtId: row.id,
+      scenario,
+      patch,
+      reason: scenario === "manual" ? reason.trim() : undefined,
+    });
+    if (!result || result.ok === false) {
+      setSaving(false);
+      setStatus(getSaveErrorMessage(result?.error));
+      return;
+    }
+    clearDraftEdits();
+    const refreshedResult = await loadRows(true);
+    setSaving(false);
+    const aliasText = scenario === "regional_alias" && result.regionalAliasNo ? ` · ${result.regionalAliasNo}번` : "";
+    setStatus(`${successMessage}${aliasText}`);
+    advanceReviewAfterSave(row.id, refreshedResult);
+  };
+
+  const saveReviewAndNext = async () => {
+    await commitReview("manual", "수정값을 저장하고 다음 구장으로 이동했습니다.");
+  };
+
+  const saveReviewScenario = async (scenario) => {
+    await commitReview(scenario.id, `${scenario.label} 처리 후 다음 구장으로 이동했습니다.`);
+  };
+
   const saveUpdates = async () => {
     if (!editDirty || saving) return;
     if (editValidation) {
@@ -538,17 +769,20 @@ export default function CourtDatabasePanel({ app }) {
           </div>
 
           <div className="court-db-toolbar">
-            <small>가로 스크롤은 표 하단에 고정됩니다. 수정 가능한 셀을 누르면 바로 입력할 수 있습니다.</small>
+            <small>{reviewMode ? "현재 필터 결과를 한 구장씩 검수합니다. 복수 코트는 실제 별도 코트가 확인될 때만 코트 칸을 구분합니다." : "가로 스크롤은 표 하단에 고정됩니다. 수정 가능한 셀을 누르면 바로 입력할 수 있습니다."}</small>
             <div>
+              {tab === "courts" && !reviewMode ? (
+                <Button type="button" size="sm" variant="secondary" disabled={loading || !courtRows.length} onClick={startReview}><ListChecks size={14} /> 1개씩 검수</Button>
+              ) : null}
               <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={resetFilters}><RotateCcw size={14} /> 초기화</Button>
               <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={applyFilters}>{loading ? "조회 중" : "필터 적용"}</Button>
             </div>
           </div>
 
-          {tab === "courts" ? (
+          {tab === "courts" && !reviewMode ? (
             <div className="court-db-edit-toolbar">
               <div>
-                <strong>{editDirty ? `${dirtyUpdates.length}개 구장 · ${dirtyFieldCount}개 셀 수정` : activeRow?.name ?? "수정할 셀을 선택하세요"}</strong>
+                <strong>{editDirty ? `${dirtyUpdates.length}개 구장 · ${dirtyFieldCount}개 셀 수정` : selectedRow?.name ?? "수정할 셀을 선택하세요"}</strong>
                 <span>{editValidation || (activeNameDirty ? `표준명 변경: ${activeEditedName}` : "ESC: 현재 셀만 원래 값으로 복구")}</span>
               </div>
               <label>
@@ -568,9 +802,9 @@ export default function CourtDatabasePanel({ app }) {
                 />
               </label>
               <div className="court-db-quick-status">
-                <button type="button" disabled={!activeRow || saving} onClick={() => applyQuickStatus("review")}>확인불가 숨김</button>
-                <button type="button" disabled={!activeRow || saving} onClick={() => applyQuickStatus("disabled")}>비활성화</button>
-                <button type="button" disabled={!activeRow || saving} onClick={() => applyQuickStatus("active")}>활성 복구</button>
+                <button type="button" disabled={!selectedRow || saving} onClick={() => applyQuickStatus("review")}>확인불가 숨김</button>
+                <button type="button" disabled={!selectedRow || saving} onClick={() => applyQuickStatus("disabled")}>비활성화</button>
+                <button type="button" disabled={!selectedRow || saving} onClick={() => applyQuickStatus("active")}>활성 복구</button>
               </div>
               <div className="court-db-batch-actions">
                 <Button type="button" size="sm" disabled={!editDirty || Boolean(editValidation) || !reasonValid || saving} onClick={saveUpdates}>
@@ -581,9 +815,127 @@ export default function CourtDatabasePanel({ app }) {
             </div>
           ) : null}
 
+          {tab === "courts" && reviewMode && reviewRow && reviewValues ? (
+            <div className="court-db-review-workspace">
+              <aside className="court-db-review-summary">
+                <div className="court-db-review-progress">
+                  <strong>남은 {Number(courtPage.total ?? 0).toLocaleString()}개</strong>
+                  <span>{reviewPosition.toLocaleString()}번째 · 검수 {Number(reviewRow.admin_review_count ?? 0).toLocaleString()}회</span>
+                </div>
+                <div>
+                  <small>현재 표준명</small>
+                  <h3>{reviewEditedName || reviewRow.name}</h3>
+                  <p>{reviewRow.road_address || reviewRow.address_text || reviewRow.jibun_address || "주소 없음"}</p>
+                </div>
+                <dl>
+                  <div><dt>읍면동</dt><dd>{reviewRow.emd || "확인 필요"}</dd></div>
+                  <div><dt>검수순위</dt><dd>{REVIEW_PRIORITY_LABELS[Number(reviewRow.admin_review_priority)] ?? "검증 완료"}</dd></div>
+                  <div><dt>명칭판정</dt><dd>{formatValue({ type: "nameEvidenceDecision" }, reviewRow.name_evidence_decision)}</dd></div>
+                  <div><dt>근거시설</dt><dd>{reviewRow.name_evidence_reference || "-"}</dd></div>
+                  <div><dt>거리</dt><dd>{reviewRow.name_evidence_distance_m == null ? "-" : `${reviewRow.name_evidence_distance_m}m`}</dd></div>
+                  <div><dt>최근판정</dt><dd>{formatValue({ type: "reviewScenario" }, reviewRow.admin_review_scenario)}</dd></div>
+                  <div><dt>지역순번</dt><dd>{reviewRow.regional_alias_no ? `${reviewRow.regional_alias_no}번` : "미부여"}</dd></div>
+                </dl>
+                <div className="court-db-review-links">
+                  <a href={getCourtMapUrl(reviewRow)} target={MAP_WINDOW_NAME}><ExternalLink size={14} /> 네이버지도</a>
+                  {reviewRow.name_evidence_url ? <a href={String(reviewRow.name_evidence_url)} target="_blank" rel="noreferrer"><ExternalLink size={14} /> OSM 근거</a> : null}
+                </div>
+              </aside>
+
+              <section className="court-db-review-editor">
+                <div className="court-db-review-section-head">
+                  <div>
+                    <strong>원터치 판정</strong>
+                    <small>선택한 속성까지 저장하고 바로 다음 구장으로 이동</small>
+                  </div>
+                  {editDirty ? <span>{Object.keys(reviewPatch).length}개 값 변경</span> : <span>속성 변경 없음</span>}
+                </div>
+                <div className="court-db-review-scenarios">
+                  {REVIEW_SCENARIOS.map((scenario) => {
+                    const unavailable = scenario.id === "regional_alias" && !reviewRow.emd;
+                    return (
+                      <button
+                        key={scenario.id}
+                        type="button"
+                        data-tone={scenario.tone}
+                        disabled={loading || saving || unavailable}
+                        title={unavailable ? "읍면동 확인 필요" : scenario.description}
+                        onClick={() => void saveReviewScenario(scenario)}
+                      >
+                        <strong>{scenario.label}</strong>
+                        <span>{scenario.description}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="court-db-review-primary-fields">
+                  <label className={Object.prototype.hasOwnProperty.call(reviewPatch, "facilityName") ? "is-dirty" : ""}>
+                    시설명 (표준명 자동 반영)
+                    <input value={reviewValues.facilityName ?? ""} disabled={saving} onChange={(event) => updateReviewValue("facilityName", event.target.value)} />
+                  </label>
+                  <label className={Object.prototype.hasOwnProperty.call(reviewPatch, "courtUnit") ? "is-dirty" : ""}>
+                    코트 구분
+                    <input value={reviewValues.courtUnit ?? ""} placeholder="예: 1코트" disabled={saving} onChange={(event) => updateReviewValue("courtUnit", event.target.value)} />
+                  </label>
+                  <div className="court-db-review-unit-chips">
+                    {COURT_UNIT_CHIPS.map(([value, label]) => {
+                      const selected = Object.is(reviewValues.courtUnit ?? null, value ?? null);
+                      return <button key={String(value)} type="button" className={selected ? "selected" : ""} aria-pressed={selected} disabled={saving} onClick={() => updateReviewValue("courtUnit", value)}>{label}</button>;
+                    })}
+                  </div>
+                </div>
+
+                <div className="court-db-review-subhead">
+                  <strong>코트 속성</strong>
+                  <span>선택한 값은 판정과 함께 저장</span>
+                </div>
+                <div className="court-db-review-chip-grid">
+                  {REVIEW_CHIP_GROUPS.map((group) => (
+                    <ReviewChipGroup
+                      key={group.key}
+                      group={group}
+                      value={reviewValues[group.key]}
+                      dirty={Object.prototype.hasOwnProperty.call(reviewPatch, group.key)}
+                      disabled={saving}
+                      onChange={updateReviewValue}
+                    />
+                  ))}
+                </div>
+
+                <label className="court-db-review-reason">
+                  수동 저장 사유
+                  <input
+                    value={reason}
+                    placeholder={reasonOptional ? "boyakh 한시적 자동 기록" : "수동 저장 때 4자 이상"}
+                    maxLength={160}
+                    disabled={saving || reasonOptional}
+                    onChange={(event) => setReason(event.target.value)}
+                  />
+                </label>
+              </section>
+            </div>
+          ) : null}
+
+          {tab === "courts" && reviewMode ? (
+            <div className="court-db-review-controls">
+              <div className="court-db-review-progress">
+                <strong>{reviewRow?.name ?? "검수할 구장이 없습니다."}</strong>
+                <span>{reviewValidation || (editDirty ? "붉게 표시된 값을 저장할 수 있습니다." : "판정 버튼은 즉시 저장됩니다.")}</span>
+              </div>
+              <div className="court-db-review-actions">
+                <Button type="button" size="sm" variant="secondary" disabled={loading || saving || editDirty || reviewPosition <= 1} onClick={() => moveReview(-1)}><ChevronLeft size={14} /> 이전</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={loading || saving || editDirty || !reviewRow} onClick={() => moveReview(1)}>변경 없이 다음 <ChevronRight size={14} /></Button>
+                <Button type="button" size="sm" disabled={loading || saving || !editDirty || Boolean(reviewValidation) || !reasonValid} onClick={() => void saveReviewAndNext()}><Save size={13} /> {saving ? "저장 중" : "수동 저장 후 다음"}</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={!editDirty || saving} onClick={resetEdits}><RotateCcw size={13} /> 수정 취소</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={saving} onClick={stopReview}><X size={13} /> 검수 종료</Button>
+              </div>
+            </div>
+          ) : null}
+
           {status ? <p className="court-db-status">{status}</p> : null}
 
-          <div className="court-db-table-wrap">
+          {!reviewMode || tab === "history" ? <div className="court-db-table-wrap">
             <table className={`court-db-table ${tab === "history" ? "court-db-table-history" : ""}`} style={{ width: `${tableWidth}px` }}>
               <colgroup>
                 {tab === "courts" ? <col style={{ width: `${ACTION_COLUMN_WIDTH}px` }} /> : null}
@@ -682,9 +1034,9 @@ export default function CourtDatabasePanel({ app }) {
                 ) : null}
               </tbody>
             </table>
-          </div>
+          </div> : null}
 
-          <Pagination page={activePage} onChange={changePage} loading={loading} />
+          {!reviewMode || tab === "history" ? <Pagination page={activePage} onChange={changePage} loading={loading} /> : null}
         </div>
       </section>
     </div>

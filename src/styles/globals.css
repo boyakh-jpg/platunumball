@@ -10702,6 +10702,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .court-db-modal .court-db-tabs,
 .court-db-modal .court-db-toolbar,
 .court-db-modal .court-db-edit-toolbar,
+.court-db-modal .court-db-review-controls,
 .court-db-modal .court-db-status,
 .court-db-modal .court-db-pagination {
   flex: 0 0 auto;
@@ -10938,6 +10939,347 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 6px;
 }
 
+.court-db-review-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--rb-blue) 38%, var(--card-border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--rb-blue) 7%, var(--card-bg));
+  padding: 7px 9px;
+}
+
+.court-db-review-progress {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.court-db-review-progress strong {
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.court-db-review-progress span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.court-db-review-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.court-db-review-workspace {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(240px, 0.62fr) minmax(0, 2fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.court-db-review-summary,
+.court-db-review-editor {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  overflow: auto;
+}
+
+.court-db-review-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.court-db-review-summary h3,
+.court-db-review-summary p,
+.court-db-review-summary dl {
+  margin: 0;
+}
+
+.court-db-review-summary h3 {
+  margin-top: 3px;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.court-db-review-summary p,
+.court-db-review-summary small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.court-db-review-summary dl {
+  display: grid;
+  gap: 7px;
+}
+
+.court-db-review-summary dl > div {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--card-border) 72%, transparent);
+  padding-bottom: 7px;
+}
+
+.court-db-review-summary dt,
+.court-db-review-summary dd {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.court-db-review-summary dt {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.court-db-review-summary dd {
+  overflow-wrap: anywhere;
+  font-weight: 850;
+}
+
+.court-db-review-links {
+  display: flex;
+  margin-top: auto;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.court-db-review-links a {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-decoration: none;
+  padding: 6px 10px;
+}
+
+.court-db-review-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.court-db-review-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.court-db-review-section-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.court-db-review-section-head strong {
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.court-db-review-section-head small,
+.court-db-review-section-head > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.court-db-review-scenarios {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.court-db-review-scenarios button {
+  display: grid;
+  min-width: 0;
+  min-height: 62px;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  background: var(--input-bg);
+  color: var(--text);
+  cursor: pointer;
+  padding: 7px 8px;
+}
+
+.court-db-review-scenarios button strong {
+  font-size: 0.76rem;
+  font-weight: 950;
+}
+
+.court-db-review-scenarios button span {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 750;
+}
+
+.court-db-review-scenarios button[data-tone="success"] {
+  border-color: color-mix(in srgb, var(--rb-green) 52%, var(--card-border));
+  background: color-mix(in srgb, var(--rb-green) 10%, var(--input-bg));
+}
+
+.court-db-review-scenarios button[data-tone="accent"] {
+  border-color: color-mix(in srgb, var(--rb-blue) 52%, var(--card-border));
+  background: color-mix(in srgb, var(--rb-blue) 10%, var(--input-bg));
+}
+
+.court-db-review-scenarios button[data-tone="warning"] {
+  border-color: color-mix(in srgb, var(--rb-orange) 55%, var(--card-border));
+  background: color-mix(in srgb, var(--rb-orange) 9%, var(--input-bg));
+}
+
+.court-db-review-scenarios button[data-tone="danger"] {
+  border-color: color-mix(in srgb, var(--danger) 48%, var(--card-border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--input-bg));
+}
+
+.court-db-review-scenarios button:disabled,
+.court-db-review-chip-group button:disabled,
+.court-db-review-unit-chips button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.court-db-review-primary-fields {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.35fr) minmax(150px, 0.65fr) minmax(280px, 1fr);
+  align-items: end;
+  gap: 8px;
+}
+
+.court-db-review-primary-fields label,
+.court-db-review-reason {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.court-db-review-primary-fields input,
+.court-db-review-reason input {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  padding: 7px 9px;
+}
+
+.court-db-review-primary-fields label.is-dirty input,
+.court-db-review-chip-group.is-dirty {
+  border-color: color-mix(in srgb, var(--danger) 66%, var(--card-border));
+  background: color-mix(in srgb, var(--danger) 10%, var(--input-bg));
+}
+
+.court-db-review-unit-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.court-db-review-unit-chips button,
+.court-db-review-chip-group button {
+  min-height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 7px;
+  background: var(--input-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 850;
+  padding: 5px 7px;
+}
+
+.court-db-review-unit-chips button.selected,
+.court-db-review-chip-group button.selected {
+  border-color: color-mix(in srgb, var(--rb-blue) 66%, var(--card-border));
+  background: color-mix(in srgb, var(--rb-blue) 17%, var(--input-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rb-blue) 30%, transparent);
+}
+
+.court-db-review-subhead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.court-db-review-subhead strong {
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.court-db-review-subhead span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.court-db-review-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+  gap: 8px;
+}
+
+.court-db-review-chip-group {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--input-bg) 72%, transparent);
+  padding: 7px;
+}
+
+.court-db-review-chip-group legend {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 0 4px;
+}
+
+.court-db-review-chip-group > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.court-db-review-chip-group button {
+  flex: 1 1 auto;
+}
+
+.court-db-review-reason {
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+}
+
 .court-db-history-cell {
   overflow: visible !important;
   white-space: normal !important;
@@ -11090,6 +11432,45 @@ html[data-theme="light"] .search-picker-result-row.selected {
     flex-wrap: wrap;
   }
 
+  .court-db-review-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .court-db-review-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .court-db-review-workspace {
+    align-content: start;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+
+  .court-db-review-summary,
+  .court-db-review-editor {
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .court-db-review-links {
+    margin-top: 0;
+  }
+
+  .court-db-review-scenarios {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .court-db-review-primary-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .court-db-review-unit-chips {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
   .admin-court-map-popup-grid {
     grid-template-columns: 1fr;
     grid-template-rows: repeat(2, minmax(420px, 1fr));
@@ -11116,6 +11497,35 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
   .admin-court-map-popup-actions {
     flex-wrap: wrap;
+  }
+
+  .court-db-review-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .court-db-review-primary-fields,
+  .court-db-review-chip-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .court-db-review-unit-chips {
+    grid-column: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .court-db-review-scenarios button,
+  .court-db-review-unit-chips button,
+  .court-db-review-chip-group button {
+    min-height: 44px;
+  }
+
+  .court-db-review-reason {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .court-db-review-actions > button {
+    flex: 1 1 140px;
   }
 }
 

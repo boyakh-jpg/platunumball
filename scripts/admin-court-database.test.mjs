@@ -18,6 +18,11 @@ test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사�
   assert.match(server, /TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리"/);
   assert.match(server, /name_evidence_decision/);
   assert.match(server, /applyExactFilter\(next, "name_evidence_relation", filters\.nameEvidenceRelation\)/);
+  assert.match(server, /rpc\("rankball_admin_review_court"/);
+  assert.match(server, /public: "원터치 검수: 공개"/);
+  assert.match(server, /private: "원터치 검수: 비공개"/);
+  assert.match(server, /reviewPriority: "admin_review_priority"/);
+  assert.doesNotMatch(server, /verified_(?:keep_access|public|restricted)/);
 });
 
 test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을 제공한다", async () => {
@@ -34,6 +39,16 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
   assert.match(component, /updateDraftValues\(row, \{ \[patchKey\]: original\[patchKey\] \}\)/);
   assert.match(component, /saveAdminCourtBatch/);
   assert.match(component, /일괄 저장/);
+  assert.match(component, /1개씩 검수/);
+  assert.match(component, /저장하고 다음/);
+  assert.match(component, /변경 없이 다음/);
+  assert.match(component, /id: "public", label: "공개"/);
+  assert.match(component, /id: "private", label: "비공개"/);
+  assert.match(component, /읍면동 순번명/);
+  assert.match(component, /sortKey: "reviewPriority"/);
+  assert.match(component, /const REVIEW_CHIP_GROUPS = \[/);
+  assert.match(component, /const COURT_UNIT_CHIPS = \[/);
+  assert.doesNotMatch(component, /정상 공개|정상 제한/);
   assert.match(component, /activateCell\(row, column\)/);
   assert.doesNotMatch(component, /수정 버튼을 누르면/);
   assert.match(component, /contactPhone/);
@@ -59,6 +74,33 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
   assert.match(styles, /\.court-db-modal \.court-db-filter-row input,[\s\S]*?height: 18px;/);
   assert.match(styles, /\.court-db-modal \.court-db-sort span[\s\S]*?text-overflow: ellipsis;/);
   assert.match(styles, /\.court-db-table \.court-db-cell-dirty select/);
+  assert.match(styles, /\.court-db-review-controls/);
+  assert.match(styles, /\.court-db-review-workspace/);
+  assert.match(styles, /\.court-db-review-chip-group\.is-dirty/);
+  assert.match(styles, /min-height: 44px;/);
+});
+
+test("원터치 검수는 단순 판정, 영구 지역순번, 감사 로그를 원자적으로 저장한다", async () => {
+  const [migration, hook] = await Promise.all([
+    readSource("supabase/migrations/20260722232500_admin_court_review_workflow.sql"),
+    readSource("src/hooks/useAppData.js"),
+  ]);
+  assert.match(migration, /add column if not exists regional_alias_no integer/);
+  assert.match(migration, /add column if not exists admin_review_count integer not null default 0/);
+  assert.match(migration, /create or replace function public\.rankball_admin_review_court/);
+  assert.match(migration, /'manual', 'public', 'private', 'regional_alias', 'review_required', 'closed', 'duplicate'/);
+  assert.doesNotMatch(migration, /verified_(?:keep_access|public|restricted)/);
+  assert.match(migration, /when 'public' then jsonb_build_object\([\s\S]*?'publicAccess', 'public'/);
+  assert.match(migration, /when 'private' then jsonb_build_object\([\s\S]*?'publicAccess', 'private'/);
+  assert.match(migration, /end as admin_review_priority/);
+  assert.match(migration, /pg_advisory_xact_lock/);
+  assert.match(migration, /public\.rankball_same_court_location/);
+  assert.match(migration, /max\(other\.regional_alias_no\)/);
+  assert.match(migration, /admin_review_count = coalesce\(admin_review_count, 0\) \+ 1/);
+  assert.match(migration, /'court_database_review'/);
+  assert.doesNotMatch(migration, /\b(?:delete\s+from|truncate|drop\s+table)\b/i);
+  assert.match(hook, /reviewAdminCourt: async/);
+  assert.match(hook, /operation: "review"/);
 });
 
 test("OSM 명칭 근거는 30m 자동·80m 검수 경계와 수동 보호를 강제한다", async () => {

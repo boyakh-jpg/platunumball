@@ -7,7 +7,7 @@ const MAX_BATCH_UPDATES = 100;
 const MAX_BATCH_BYTES = 524_288;
 const TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4";
 const TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리";
-const COURT_COLUMNS = "name,facility_name,court_unit,indoor_outdoor,venue_type,court_kind,surface_type,court_layout,hoop_count,access_type,reservation_required,paid,lighting,public_access,operational_status,verification_status,sido,sigungu,emd,name_modification_count,registration_origin,status,updated_at,id,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope,name_evidence_decision,name_evidence_application_status,name_evidence_reference,name_evidence_kind,name_evidence_relation,name_evidence_distance_m,name_evidence_proposed_facility,name_evidence_applied_facility,name_evidence_url,name_evidence_snapshot_date";
+const COURT_COLUMNS = "name,facility_name,court_unit,indoor_outdoor,venue_type,court_kind,surface_type,court_layout,hoop_count,access_type,reservation_required,paid,lighting,public_access,operational_status,verification_status,sido,sigungu,emd,name_modification_count,registration_origin,status,updated_at,id,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope,name_evidence_decision,name_evidence_application_status,name_evidence_reference,name_evidence_kind,name_evidence_relation,name_evidence_distance_m,name_evidence_proposed_facility,name_evidence_applied_facility,name_evidence_url,name_evidence_snapshot_date,regional_alias_no,regional_alias_region_key,admin_review_count,admin_reviewed_at,admin_reviewed_by,admin_review_scenario,admin_review_priority";
 const HISTORY_COLUMNS = "id,court_id,sigungu,changed_by,changed_by_name,change_source,changed_fields,changes,changes_text,reason,created_at";
 
 const COURT_SORT_COLUMNS = {
@@ -63,6 +63,12 @@ const COURT_SORT_COLUMNS = {
   nameEvidenceAppliedFacility: "name_evidence_applied_facility",
   nameEvidenceUrl: "name_evidence_url",
   nameEvidenceSnapshotDate: "name_evidence_snapshot_date",
+  regionalAliasNo: "regional_alias_no",
+  reviewCount: "admin_review_count",
+  reviewedAt: "admin_reviewed_at",
+  reviewedBy: "admin_reviewed_by",
+  reviewScenario: "admin_review_scenario",
+  reviewPriority: "admin_review_priority",
 };
 
 const HISTORY_SORT_COLUMNS = {
@@ -74,6 +80,15 @@ const HISTORY_SORT_COLUMNS = {
   changedFields: "changed_fields",
   changesText: "changes_text",
   reason: "reason",
+};
+
+const COURT_REVIEW_REASONS = {
+  public: "원터치 검수: 공개",
+  private: "원터치 검수: 비공개",
+  regional_alias: "원터치 검수: 읍면동 순번명",
+  review_required: "원터치 검수: 추가 확인",
+  closed: "원터치 검수: 폐쇄",
+  duplicate: "원터치 검수: 중복",
 };
 
 function safePage(value) {
@@ -100,6 +115,17 @@ function getCourtUpdateReason(profileId, value) {
   const error = new Error("court_update_reason_required");
   error.statusCode = 400;
   throw error;
+}
+
+function getCourtReviewReason(profileId, scenario, value) {
+  if (scenario === "manual") return getCourtUpdateReason(profileId, value);
+  const reason = COURT_REVIEW_REASONS[scenario];
+  if (!reason) {
+    const error = new Error("court_review_scenario_invalid");
+    error.statusCode = 400;
+    throw error;
+  }
+  return reason;
 }
 
 function normalizeBatchUpdates(value) {
@@ -211,7 +237,13 @@ function applyCourtFilters(query, rawFilters) {
   next = applyTextFilter(next, "name_evidence_proposed_facility", filters.nameEvidenceProposedFacility);
   next = applyTextFilter(next, "name_evidence_applied_facility", filters.nameEvidenceAppliedFacility);
   next = applyTextFilter(next, "name_evidence_url", filters.nameEvidenceUrl);
-  return applyExactFilter(next, "name_evidence_snapshot_date", filters.nameEvidenceSnapshotDate);
+  next = applyExactFilter(next, "name_evidence_snapshot_date", filters.nameEvidenceSnapshotDate);
+  next = applyNumberFilter(next, "regional_alias_no", filters.regionalAliasNo);
+  if (filters.reviewCount === "zero") next = next.eq("admin_review_count", 0);
+  if (filters.reviewCount === "positive") next = next.gt("admin_review_count", 0);
+  next = applyDayFilter(next, "admin_reviewed_at", filters.reviewedAt);
+  next = applyTextFilter(next, "admin_reviewed_by", filters.reviewedBy);
+  return applyExactFilter(next, "admin_review_scenario", filters.reviewScenario);
 }
 
 function applyHistoryFilters(query, rawFilters) {
@@ -230,7 +262,7 @@ function applyHistoryFilters(query, rawFilters) {
 async function loadCourtRows(context, body) {
   const page = safePage(body.page);
   const offset = (page - 1) * PAGE_SIZE;
-  const sortColumn = COURT_SORT_COLUMNS[body.sortKey] ?? "name_modification_count";
+  const sortColumn = COURT_SORT_COLUMNS[body.sortKey] ?? "admin_review_priority";
   const ascending = body.sortDirection !== "desc";
   let query = context.supabase.from("rankball_admin_court_database").select(COURT_COLUMNS, { count: "exact" });
   query = applyCourtFilters(query, body.filters);
@@ -330,6 +362,25 @@ export default async function handler(request, response) {
       });
       if (error) throw error;
       sendJson(response, 200, data ?? { ok: true, updatedCount: updates.length });
+      return;
+    }
+    if (operation === "review") {
+      const scenario = safeText(body.scenario);
+      const patch = body.patch && typeof body.patch === "object" && !Array.isArray(body.patch) ? body.patch : {};
+      if (JSON.stringify(patch).length > 32_768) {
+        sendJson(response, 400, { error: "court_patch_invalid" });
+        return;
+      }
+      const { data, error } = await context.supabase.rpc("rankball_admin_review_court", {
+        p_actor_profile_id: context.profileId,
+        p_actor_admin_level: adminLevel,
+        p_court_id: safeText(body.courtId),
+        p_scenario: scenario,
+        p_patch: patch,
+        p_reason: getCourtReviewReason(context.profileId, scenario, body.reason),
+      });
+      if (error) throw error;
+      sendJson(response, 200, data ?? { ok: true, scenario });
       return;
     }
     if (operation !== "rename") {
