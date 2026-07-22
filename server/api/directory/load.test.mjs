@@ -12,6 +12,8 @@ import {
 import { buildAdminReviewModel } from "../../../src/lib/admin.js";
 import {
   ADMIN_DEFAULT_PAGE_LIMIT,
+  COURT_MAP_SEARCH_LIMIT,
+  COURT_MAP_SEARCH_PURPOSE,
   DIRECTORY_CACHE_TTL_MS,
   DIRECTORY_PICKER_PAGE_LIMIT,
   DIRECTORY_TEAM_PAGE_LIMIT,
@@ -25,6 +27,8 @@ test("directory/admin page limits stay bounded", () => {
   assert.deepEqual(getPageRequest({ limit: 999 }, { kind: "teams" }), { limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0 });
   assert.deepEqual(getPageRequest({ limit: 999 }, { kind: "all" }), { limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0 });
   assert.equal(DIRECTORY_PICKER_PAGE_LIMIT, 50);
+  assert.equal(COURT_MAP_SEARCH_LIMIT, 200);
+  assert.equal(COURT_MAP_SEARCH_PURPOSE, "court_map");
   assert.equal(DIRECTORY_CACHE_TTL_MS, 30_000);
 });
 
@@ -91,6 +95,21 @@ test("directory loader does not call the legacy broad repository loader", async 
   assert.match(source, /court_reviews"\)\.select\(COURT_REVIEW_COLUMNS\)\.eq\("status", "active"\)/);
   assert.match(source, /includeTeamMemberProfiles \|\| row\.role === "captain"/);
   assert.doesNotMatch(source, /readOptional\(/);
+});
+
+test("court map loads bounded active coordinate rows for the current district", async () => {
+  const [searchSource, createSource, pickerSource] = await Promise.all([
+    readFile(new URL("../search.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../src/pages/CreateMatch.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../../../src/components/court/CourtMapPicker.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(searchSource, /courtMapSearch \? COURT_MAP_SEARCH_LIMIT : 25/);
+  assert.match(searchSource, /request\.not\("lat", "is", null\)\.not\("lng", "is", null\)/);
+  assert.match(createSource, /wizardStep !== 4/);
+  assert.match(createSource, /context: \{ purpose: COURT_MAP_SEARCH_PURPOSE \}/);
+  assert.match(createSource, /limit: COURT_MAP_SEARCH_LIMIT/);
+  assert.match(pickerSource, /isSameRegion\(court\.region, currentRegion\)/);
+  assert.match(pickerSource, /setStatus\(loading \? "loading" : loadError \? "error" : "empty"\)/);
 });
 
 test("admin route bootstraps profile only and owns a separate state cache", async () => {

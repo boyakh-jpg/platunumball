@@ -34,8 +34,9 @@ import {
   getScopedMatchCreationPolicyPayload,
 } from "../lib/matchCreationPolicies.js";
 import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
-import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange } from "../lib/recruiting.js";
+import { postServerAction } from "../lib/serverActions.js";
 
 const today = getLocalDateInputValue();
 const minSoloRecordDate = addDateDays(today, -7);
@@ -294,6 +295,8 @@ export default function CreateMatch({ app }) {
   const isRecordCreateIntent = useMemo(() => new URLSearchParams(location.search).get("intent") === "record", [location.search]);
   const loadDirectory = app.actions.loadDirectory;
   const requestedTournamentDirectoryRef = useRef(false);
+  const loadedCourtMapRegionRef = useRef("");
+  const courtMapRequestIdRef = useRef(0);
   useEffect(() => {
     if (requestedTournamentDirectoryRef.current) return;
     requestedTournamentDirectoryRef.current = true;
@@ -330,6 +333,7 @@ export default function CreateMatch({ app }) {
   const defaultMmrLimitMode = getDefaultMmrLimitMode(defaultTeamA, defaultTeamB);
   const directoryCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const [discoveredCourts, setDiscoveredCourts] = useState([]);
+  const [courtMapDirectoryStatus, setCourtMapDirectoryStatus] = useState({ loading: false, error: "" });
   const registeredCourts = useMemo(
     () => mergeCourtSearchCourts(directoryCourts, discoveredCourts),
     [directoryCourts, discoveredCourts],
@@ -412,6 +416,35 @@ export default function CreateMatch({ app }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState("");
   const [wizardStep, setWizardStep] = useState(1);
+
+  useEffect(() => {
+    if (wizardStep !== 4 || !currentRegion || app.remoteReady === false) return undefined;
+    if (loadedCourtMapRegionRef.current === currentRegion) return undefined;
+
+    const requestId = courtMapRequestIdRef.current + 1;
+    courtMapRequestIdRef.current = requestId;
+    setCourtMapDirectoryStatus({ loading: true, error: "" });
+    postServerAction("/api/search", {
+      query: currentRegion,
+      type: "court",
+      limit: COURT_MAP_SEARCH_LIMIT,
+      context: { purpose: COURT_MAP_SEARCH_PURPOSE },
+      force: true,
+    }, { allowWhenDisabled: true }).then((result) => {
+      if (courtMapRequestIdRef.current !== requestId) return;
+      const courts = (Array.isArray(result?.items) ? result.items : []).filter((court) => court?.kind === "court" && court?.id);
+      setDiscoveredCourts((current) => mergeCourtSearchCourts(current, courts));
+      loadedCourtMapRegionRef.current = currentRegion;
+      setCourtMapDirectoryStatus({ loading: false, error: "" });
+    }).catch(() => {
+      if (courtMapRequestIdRef.current !== requestId) return;
+      setCourtMapDirectoryStatus({ loading: false, error: "등록 구장을 불러오지 못했습니다. 다시 열어 주세요." });
+    });
+
+    return () => {
+      if (courtMapRequestIdRef.current === requestId) courtMapRequestIdRef.current += 1;
+    };
+  }, [app.remoteReady, currentRegion, wizardStep]);
 
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
@@ -2063,6 +2096,8 @@ export default function CreateMatch({ app }) {
           courts={registeredCourts}
           selectedCourt={selectedCourt}
           currentRegion={currentRegion}
+          loading={courtMapDirectoryStatus.loading}
+          loadError={courtMapDirectoryStatus.error}
           onClose={() => setCourtMapOpen(false)}
           onSelect={(court) => {
             selectCourt(court);

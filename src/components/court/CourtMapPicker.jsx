@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapPin, Star, X } from "lucide-react";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
+import { isSameRegion } from "../../lib/constants.js";
 import { loadNaverMapsSdk } from "../../lib/naverAddress.js";
 import { getCourtAddress, getCourtCoordinate } from "../../lib/courts.js";
 import Button from "../common/Button.jsx";
@@ -46,7 +47,7 @@ function clusterCourts(courts = [], zoom = 12) {
 
 function getInitialViewport(courts = [], selectedCourt, currentRegion = "", mapWidth = 0) {
   const selectedCoordinate = getCourtCoordinate(selectedCourt);
-  const regionalCourts = courts.filter((court) => court.region === currentRegion);
+  const regionalCourts = courts.filter((court) => isSameRegion(court.region, currentRegion));
   const focusCourts = regionalCourts.length ? regionalCourts : selectedCoordinate ? [selectedCourt] : courts;
   const coordinates = focusCourts.map(getCourtCoordinate).filter(Boolean);
   const fallback = selectedCoordinate ?? getCourtCoordinate(courts[0]) ?? { lat: 37.5665, lng: 126.978 };
@@ -80,6 +81,8 @@ export default function CourtMapPicker({
   courts = [],
   selectedCourt = null,
   currentRegion = "",
+  loading = false,
+  loadError = "",
   onSelect,
   onClose,
 }) {
@@ -122,8 +125,8 @@ export default function CourtMapPicker({
   useEffect(() => {
     if (!open || !mapElementRef.current) return undefined;
     if (!mappedCourts.length) {
-      setStatus("empty");
-      setError("");
+      setStatus(loading ? "loading" : loadError ? "error" : "empty");
+      setError(loadError);
       return undefined;
     }
 
@@ -158,7 +161,7 @@ export default function CourtMapPicker({
       cancelled = true;
       mapRef.current = null;
     };
-  }, [currentRegion, mappedCourts, open, selectedCourt]);
+  }, [currentRegion, loadError, loading, mappedCourts, open, selectedCourt]);
 
   useEffect(() => {
     const map = mapRef.current;

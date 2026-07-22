@@ -8,6 +8,7 @@ import {
   TEAM_MEMBER_COLUMNS,
 } from "../../src/data/repositoryColumns.js";
 import { DEFAULT_RATING, isRefereeGrade } from "../../src/lib/constants.js";
+import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../../src/lib/queryPolicy.js";
 import { fromRemoteApprovedCourt } from "../../src/data/remotePayloadMappers.js";
 
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
@@ -53,10 +54,10 @@ function getRequestedTypes(value = "all") {
   return [...new Set(expanded.length ? expanded : TYPE_ALIASES.all)];
 }
 
-function clampLimit(value) {
+function clampLimit(value, max = 25) {
   const limit = Number(value);
   if (!Number.isFinite(limit)) return 10;
-  return Math.min(Math.max(Math.floor(limit), 1), 25);
+  return Math.min(Math.max(Math.floor(limit), 1), max);
 }
 
 function searchFilter(fields = [], query = "") {
@@ -281,16 +282,22 @@ async function searchTeams(supabase, query, limit) {
   return teamRows.map((team) => toTeam(team, membersByTeam.get(team.id) ?? []));
 }
 
-async function searchCourts(supabase, query, limit) {
-  const { data, error } = await supabase
+async function searchCourts(supabase, query, limit, searchContext = {}) {
+  const courtMapSearch = searchContext.purpose === COURT_MAP_SEARCH_PURPOSE;
+  const fields = courtMapSearch
+    ? ["sigungu", "region_key", "address_text", "road_address", "jibun_address"]
+    : ["name", "hashtag", "facility_name", "sigungu", "address_text", "road_address", "jibun_address"];
+  let request = supabase
     .from("approved_courts")
     .select(COURT_COLUMNS)
-    .eq("status", "active")
-    .or(searchFilter(["name", "hashtag", "facility_name", "sigungu", "address_text", "road_address", "jibun_address"], query))
+    .eq("status", "active");
+  if (courtMapSearch) request = request.not("lat", "is", null).not("lng", "is", null);
+  const { data, error } = await request
+    .or(searchFilter(fields, query))
     .order("updated_at", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw error;
-  if ((data ?? []).length) return data.map(toCourt);
+  if ((data ?? []).length || courtMapSearch) return (data ?? []).map(toCourt);
 
   const fallbackQuery = normalizeFuzzyText(stripHash(query)).slice(0, 1);
   if (!fallbackQuery) return [];
@@ -382,14 +389,15 @@ export default async function handler(request, response) {
       return;
     }
 
-    const limit = clampLimit(body.limit);
     const types = getRequestedTypes(body.type ?? body.types ?? "all");
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
     const searchContext = body.context && typeof body.context === "object" ? body.context : {};
+    const courtMapSearch = types.length === 1 && types[0] === "court" && searchContext.purpose === COURT_MAP_SEARCH_PURPOSE;
+    const limit = clampLimit(body.limit, courtMapSearch ? COURT_MAP_SEARCH_LIMIT : 25);
+    const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
     const loaders = {
       profile: () => searchProfiles(context.supabase, query, limit, searchContext),
       team: () => searchTeams(context.supabase, query, limit),
-      court: () => searchCourts(context.supabase, query, limit),
+      court: () => searchCourts(context.supabase, query, limit, searchContext),
       court_review: () => searchCourtReviews(context.supabase, context.profileId, query, limit),
       referee: () => searchReferees(context.supabase, query, limit),
       affiliation: () => searchAffiliations(context.supabase, query, limit),
