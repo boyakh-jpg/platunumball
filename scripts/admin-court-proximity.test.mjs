@@ -17,6 +17,8 @@ test("30m 근접 구장은 자동 그룹화하고 실제 코트 수로 초과 �
   assert.match(migration, /proximity_excess = ranked\.unit_no > p_actual_count/);
   assert.match(migration, /else 'disabled'/);
   assert.match(migration, /admin_review_scenario = case when ranked\.unit_no > p_actual_count then 'duplicate'/);
+  assert.match(migration, /jsonb_build_object\('facilityName', safe_facility\)/);
+  assert.match(migration, /jsonb_build_object\('courtUnit', null\)/);
   assert.doesNotMatch(migration, /\bdelete\s+from\s+public\.approved_courts\b/i);
 });
 

@@ -111,6 +111,7 @@ declare
   before_rows jsonb;
   changed_row record;
   before_row jsonb;
+  current_facility text;
   now_ts timestamptz := clock_timestamp();
 begin
   if public.rankball_admin_level_for_profile(p_actor_profile_id, p_actor_admin_level) < 50 then
@@ -163,6 +164,18 @@ begin
   perform 1 from public.approved_courts where id = any(court_ids) order by id for update;
 
   if array_length(court_ids, 1) = 1 then
+    safe_facility := public.rankball_court_facility_base(p_facility_name, null, null);
+    select facility_name into current_facility
+    from public.approved_courts where id = p_court_id;
+    if safe_facility is not null and safe_facility is distinct from current_facility then
+      perform public.rankball_admin_update_court(
+        p_actor_profile_id,
+        p_actor_admin_level,
+        p_court_id,
+        jsonb_build_object('facilityName', safe_facility),
+        p_reason
+      );
+    end if;
     return jsonb_build_object(
       'ok', true,
       'groupId', null,
@@ -391,11 +404,22 @@ begin
   group_id := grouped ->> 'groupId';
 
   if group_id is null then
+    if p_actual_count = 1 and exists (
+      select 1 from public.approved_courts
+      where id = p_court_id and nullif(btrim(coalesce(court_unit, '')), '') is not null
+    ) then
+      perform public.rankball_admin_update_court(
+        p_actor_profile_id,
+        p_actor_admin_level,
+        p_court_id,
+        jsonb_build_object('courtUnit', null),
+        p_reason
+      );
+    end if;
     update public.approved_courts
     set verified_court_count = p_actual_count,
         court_count_verified_at = now_ts,
         court_count_verified_by = p_actor_profile_id,
-        court_unit = case when p_actual_count = 1 then null else court_unit end,
         updated_at = now_ts
     where id = p_court_id;
     total_rows := 1;
