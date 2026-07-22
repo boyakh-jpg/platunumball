@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ClipboardList, Globe2, Lock, Map as MapIcon, MapPin, Star, Trophy, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -289,6 +289,20 @@ function getDefaultMmrLimitMode(teamA, teamB, ranked = true, rangeMode = "narrow
   return isMmrInRecruitingRange(teamB.mmr, teamA.mmr, ranked, rangeMode) ? "block" : "warn";
 }
 
+function getCreateStepFromSearch(search = "", steps = []) {
+  const firstStep = steps[0]?.id ?? 1;
+  const step = Number(new URLSearchParams(search).get("step"));
+  return steps.some((item) => item.id === step) ? step : firstStep;
+}
+
+function getCreateStepSearch(search = "", step = 1) {
+  const params = new URLSearchParams(search);
+  if (step > 1) params.set("step", String(step));
+  else params.delete("step");
+  const nextSearch = params.toString();
+  return nextSearch ? `?${nextSearch}` : "";
+}
+
 export default function CreateMatch({ app }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -495,6 +509,31 @@ export default function CreateMatch({ app }) {
   const isStandardCreateWizard = !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom;
   const creationWizardType = isSoloRecord ? "personal_record" : isMatchRecordRoom ? "match_record" : isTournamentRoom ? "tournament" : "match";
   const creationWizardSteps = useMemo(() => getMatchCreationSteps(creationWizardType), [creationWizardType]);
+  const wizardStepIds = useMemo(() => new Set(creationWizardSteps.map((step) => step.id)), [creationWizardSteps]);
+  const goToWizardStep = useCallback((nextStep, { replace = false } = {}) => {
+    const step = Number(nextStep);
+    if (!wizardStepIds.has(step)) return;
+
+    setWizardStep(step);
+    const nextSearch = getCreateStepSearch(location.search, step);
+    if (nextSearch === location.search) return;
+
+    navigate({ pathname: location.pathname, search: nextSearch }, { replace });
+  }, [location.pathname, location.search, navigate, wizardStepIds]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const requestedStep = Number(params.get("step"));
+    const step = getCreateStepFromSearch(location.search, creationWizardSteps);
+
+    if (params.has("step") && !wizardStepIds.has(requestedStep)) {
+      navigate({ pathname: location.pathname, search: getCreateStepSearch(location.search, step) }, { replace: true });
+      return;
+    }
+
+    if (step !== wizardStep) setWizardStep(step);
+  }, [creationWizardSteps, location.pathname, location.search, navigate, wizardStep, wizardStepIds]);
+
   const matchCreationValidation = useMemo(() => getMatchCreationValidation(draft), [draft]);
   const matchCreationPolicy = matchCreationValidation.policy;
   const effectiveTeamOnly = Boolean(isTeamRoom);
@@ -1508,7 +1547,7 @@ export default function CreateMatch({ app }) {
         </div>
       </header>
 
-      <MatchCreationWizardNav currentStep={wizardStep} steps={creationWizardSteps} onStepChange={setWizardStep} />
+      <MatchCreationWizardNav currentStep={wizardStep} steps={creationWizardSteps} onStepChange={goToWizardStep} />
 
       <div className="content-grid wide-left">
         {wizardStep === 1 ? (
@@ -1528,7 +1567,7 @@ export default function CreateMatch({ app }) {
                   className={draft.recordType === RECORD_TYPES.match && draft.visibility === "private" ? "active" : ""}
                   onClick={() => {
                     const mode = getMatchModeOrDefault(draft.mode, defaultMode);
-                    setWizardStep(1);
+                    goToWizardStep(1, { replace: true });
                     update({
                       recordType: RECORD_TYPES.match,
                       visibility: "private",
@@ -1552,7 +1591,7 @@ export default function CreateMatch({ app }) {
                     const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
                     const hostJoinMode = draft.matchIntent === "pickup" || nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
                     const playerIds = hostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
-                    setWizardStep(1);
+                    goToWizardStep(1, { replace: true });
                     update({
                       recordType: RECORD_TYPES.match,
                       visibility: "public",
@@ -2553,7 +2592,7 @@ export default function CreateMatch({ app }) {
         ) : null}
       </div>
       {wizardStep < 6 ? (
-        <MatchCreationWizardActions currentStep={wizardStep} steps={creationWizardSteps} onStepChange={setWizardStep} />
+        <MatchCreationWizardActions currentStep={wizardStep} steps={creationWizardSteps} onStepChange={goToWizardStep} />
       ) : null}
       {wizardStep === 6 ? (
       <div className="create-submit-row">
