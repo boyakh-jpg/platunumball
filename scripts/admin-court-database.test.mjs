@@ -136,6 +136,10 @@ test("주소 시설명과 동일 주소 코트 번호를 결정적으로 정리�
   ]);
   assert.equal(plan.duplicateAddressCount, 1);
   assert.equal(plan.duplicateCourtCount, 2);
+  assert.deepEqual(plan.unitGroups, [[
+    { courtId: "a", patch: { courtUnit: "1코트", facilityName: "현대자동차그룹 의왕연구소" } },
+    { courtId: "b", patch: { courtUnit: "2코트", facilityName: "현대자동차그룹 의왕연구소" } },
+  ]]);
   assert.deepEqual(plan.updates, [
     { courtId: "b", patch: { facilityName: "현대자동차그룹 의왕연구소", courtUnit: "2코트" } },
     { courtId: "a", patch: { facilityName: "현대자동차그룹 의왕연구소", courtUnit: "1코트" } },

@@ -343,8 +343,43 @@ export function buildCourtAddressNameUpdates(rows = []) {
     addressGroups.set(item.addressKey, group);
   });
   const duplicateGroups = [...addressGroups.values()].filter((group) => group.length > 1);
+  const duplicateSeedIds = new Set(duplicateGroups.flatMap((group) => group.map((item) => String(item.row.id))));
+  const parents = prepared.map((_, index) => index);
+  const find = (index) => parents[index] === index ? index : (parents[index] = find(parents[index]));
+  const join = (left, right) => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) parents[rightRoot] = leftRoot;
+  };
+  for (let left = 0; left < prepared.length; left += 1) {
+    for (let right = left + 1; right < prepared.length; right += 1) {
+      const leftItem = prepared[left];
+      const rightItem = prepared[right];
+      const sameAddress = leftItem.addressKey && leftItem.addressKey === rightItem.addressKey;
+      const lat1 = Number(leftItem.row.lat);
+      const lng1 = Number(leftItem.row.lng);
+      const lat2 = Number(rightItem.row.lat);
+      const lng2 = Number(rightItem.row.lng);
+      const validCoordinates = [lat1, lng1, lat2, lng2].every(Number.isFinite);
+      const latRadians = (lat2 - lat1) * Math.PI / 180;
+      const lngRadians = (lng2 - lng1) * Math.PI / 180;
+      const distance = validCoordinates ? 6371000 * 2 * Math.asin(Math.sqrt(Math.min(1,
+        Math.sin(latRadians / 2) ** 2
+        + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(lngRadians / 2) ** 2
+      ))) : Number.POSITIVE_INFINITY;
+      if (sameAddress || distance <= 35) join(left, right);
+    }
+  }
+  const locationGroups = new Map();
+  prepared.forEach((item, index) => {
+    const root = find(index);
+    const group = locationGroups.get(root) ?? [];
+    group.push(item);
+    locationGroups.set(root, group);
+  });
+  const numberedGroups = [...locationGroups.values()].filter((group) => group.length > 1 && group.some((item) => duplicateSeedIds.has(String(item.row.id))));
   const duplicateUnits = new Map();
-  duplicateGroups.forEach((group) => {
+  numberedGroups.forEach((group) => {
     group.sort((left, right) => {
       const latDiff = Number(left.row.lat ?? 0) - Number(right.row.lat ?? 0);
       if (latDiff) return latDiff;
@@ -359,12 +394,18 @@ export function buildCourtAddressNameUpdates(rows = []) {
     if (duplicateUnit && normalizeCourtNamePart(row.court_unit) !== duplicateUnit) patch.courtUnit = duplicateUnit;
     return Object.keys(patch).length ? [{ courtId: String(row.id), patch }] : [];
   });
+  const unitGroups = numberedGroups.map((group) => group.map(({ row, facilityName }) => {
+    const patch = { courtUnit: duplicateUnits.get(String(row.id)) };
+    if (facilityName && getCourtFacilityBaseName(row.facility_name) !== facilityName) patch.facilityName = facilityName;
+    return { courtId: String(row.id), patch };
+  }));
   return {
     updates,
+    unitGroups,
     scannedCount: prepared.length,
     addressFacilityCount: prepared.filter((item) => item.facilityName).length,
     duplicateAddressCount: duplicateGroups.length,
-    duplicateCourtCount: duplicateGroups.reduce((total, group) => total + group.length, 0),
+    duplicateCourtCount: numberedGroups.reduce((total, group) => total + group.length, 0),
   };
 }
 

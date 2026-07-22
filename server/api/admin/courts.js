@@ -422,16 +422,25 @@ export default async function handler(request, response) {
     if (operation === "normalizeAddressNames") {
       const plan = buildCourtAddressNameUpdates(await loadAllCourtAddressRows(context));
       const duplicateUpdates = plan.updates.filter((update) => update.patch.courtUnit);
-      const updates = duplicateUpdates.slice(0, NORMALIZATION_BATCH_SIZE);
-      for (const update of updates) {
+      const pendingIds = new Set(duplicateUpdates.map((update) => update.courtId));
+      const group = plan.unitGroups.find((items) => items.some((item) => pendingIds.has(item.courtId))) ?? [];
+      const updates = group.filter((update) => pendingIds.has(update.courtId));
+      const saveUpdate = async (update, patch = update.patch) => {
         const { error } = await context.supabase.rpc("rankball_admin_update_court_with_auto_unit", {
           p_actor_profile_id: context.profileId,
           p_actor_admin_level: adminLevel,
           p_court_id: update.courtId,
-          p_patch: update.patch,
+          p_patch: patch,
           p_reason: "중복 주소 코트 번호 일괄 정리",
         });
         if (error) throw error;
+      };
+      try {
+        for (const update of updates) await saveUpdate(update);
+      } catch (error) {
+        if (!String(error?.message ?? "").includes("court_duplicate")) throw error;
+        for (const update of group) await saveUpdate(update, { courtUnit: `임시${update.courtId.replace(/[^a-zA-Z0-9가-힣]/g, "").slice(-16)}코트` });
+        for (const update of group) await saveUpdate(update);
       }
       sendJson(response, 200, {
         ok: true,
