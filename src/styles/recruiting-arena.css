@@ -7738,6 +7738,105 @@ html[data-theme="light"] .arena-lobby-arena {
   gap: 10px;
 }
 
+.arena-record-setup-panel {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid var(--ui-room-panel-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-room-panel-bg);
+  padding: 12px;
+}
+
+.arena-record-setup-panel > header,
+.arena-record-setup-actions,
+.arena-record-team-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 10px;
+}
+
+.arena-record-setup-panel > header > span,
+.arena-record-setup-panel > header em {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.arena-record-setup-panel > header em,
+.arena-record-setup-actions > span,
+.arena-record-setup-selected em {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.arena-record-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.arena-record-setup-grid > section,
+.arena-record-setup-grid > label {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+}
+
+.arena-record-setup-selected {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 6px;
+}
+
+.arena-record-setup-selected > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  min-height: var(--ui-button-height);
+  gap: 7px;
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--text);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.arena-record-setup-selected > button > span {
+  display: grid;
+  min-width: 0;
+}
+
+.arena-record-setup-selected strong,
+.arena-record-setup-selected em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-record-team-selected {
+  justify-content: flex-start;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-button-radius);
+  padding: 7px 9px;
+}
+
+.arena-record-team-selected .team-emblem {
+  width: 32px;
+  height: 32px;
+}
+
+.arena-record-team-selected button {
+  margin-left: auto;
+}
+
 .arena-record-roster-panel {
   display: grid;
   gap: 10px;
@@ -7813,6 +7912,20 @@ html[data-theme="light"] .arena-lobby-arena {
 }
 
 @media (max-width: 720px) {
+  .arena-record-setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-record-setup-panel > header,
+  .arena-record-setup-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .arena-record-setup-actions .button {
+    width: 100%;
+  }
+
   .arena-record-roster-row {
     grid-template-columns: 1fr;
     align-items: stretch;

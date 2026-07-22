@@ -17,15 +17,16 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
       <div>
         <div className="approval-side-header">
           <strong>{side.name}</strong>
-          <span>{status.approvals.length}/{status.majority} · 과반 승인</span>
+          <span>{status.approvals.length}/{status.majority} · {status.approvalLabel}</span>
         </div>
         <div className="approval-voter-list">
           {side.players.map((playerId) => {
             const user = userMap[playerId];
             const approved = status.approvals.includes(playerId);
             const isCurrentUser = playerId === currentUserId;
+            const isRequiredApprover = !status.requiredIds?.length || status.requiredIds.includes(playerId);
             const statSubmitted = getPlayerStatSubmitted(match, playerId);
-            const disabled = locked || approved || !isCurrentUser || !approvalReady;
+            const disabled = locked || approved || !isCurrentUser || !isRequiredApprover || !approvalReady;
             const buttonClass = [
               approved ? "approved" : "",
               statSubmitted ? "stat-submitted" : "stat-missing",
@@ -38,6 +39,8 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
                 <em>
                   {approved
                     ? "승인됨"
+                    : !isRequiredApprover
+                      ? "승인 대상 아님"
                     : !statSubmitted
                       ? "기록 미제출"
                       : !statStatus.complete

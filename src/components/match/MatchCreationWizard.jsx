@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, X } from "lucide-react";
 import Button from "../common/Button.jsx";
 import { BENCH_CAPACITY_OPTIONS, DEFAULT_BENCH_CAPACITY } from "../../lib/constants.js";
 import {
@@ -20,17 +20,14 @@ export const MATCH_CREATION_STEPS = Object.freeze([
 export function getMatchCreationSteps(summaryType = "match") {
   if (summaryType === "personal_record") {
     return [
-      { id: 1, label: "기록 기본" },
-      { id: 4, label: "구장" },
-      { id: 5, label: "메모" },
+      { id: 1, label: "기록" },
+      { id: 5, label: "확인·저장" },
     ];
   }
   if (summaryType === "match_record") {
     return [
-      { id: 1, label: "기록 기본" },
-      { id: 3, label: "기록 규칙" },
-      { id: 4, label: "구장" },
-      { id: 5, label: "메모" },
+      { id: 1, label: "기록방" },
+      { id: 5, label: "확인·생성" },
     ];
   }
   if (summaryType === "tournament") {
@@ -61,22 +58,25 @@ export function MatchCreationWizardNav({ currentStep, steps = MATCH_CREATION_STE
   );
 }
 
-export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION_STEPS, onStepChange }) {
+export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION_STEPS, onStepChange, onCancel }) {
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   const previousStep = steps[currentIndex - 1];
   const nextStep = steps[currentIndex + 1];
   return (
     <div className="match-creation-wizard-actions">
+      <Button type="button" variant="secondary" size="sm" onClick={onCancel}>
+        <X size={16} /> 취소하기
+      </Button>
       {previousStep ? (
-        <Button type="button" variant="secondary" onClick={() => onStepChange(previousStep.id)}>
+        <Button type="button" variant="secondary" size="sm" onClick={() => onStepChange(previousStep.id)}>
           <ChevronLeft size={17} /> 이전
         </Button>
       ) : <span />}
       {nextStep ? (
-        <Button type="button" onClick={() => onStepChange(nextStep.id)}>
+        <Button type="button" size="sm" onClick={() => onStepChange(nextStep.id)}>
           다음 <ChevronRight size={17} />
         </Button>
-      ) : null}
+      ) : <span />}
     </div>
   );
 }
@@ -273,10 +273,11 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
   const summary = getMatchCreationSummary(draft);
   const personalRecordRows = [
     { label: "기록 유형", value: "개인 기록" },
+    { label: "입력 방식", value: draft.recordEntryMode === "named" ? "이름 기록" : "빠른 기록" },
     { label: "경기 방식", value: draft.mode || "1v1" },
     { label: "점수", value: `${draft.soloScoreFor || 0} : ${draft.soloScoreAgainst || 0}` },
     { label: "구장", value: draft.court || "구장 미정" },
-    { label: "날짜", value: draft.scheduledDate || "날짜 미정" },
+    { label: "종료 일시", value: [draft.scheduledDate, draft.scheduledTime].filter(Boolean).join(" ") || "일시 미정" },
   ];
   const hiddenLabels = summaryType === "match_record"
     ? new Set(["경기 성격", "비용"])
@@ -285,8 +286,11 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
       : new Set();
   const scopedRows = summary.rows.filter((row) => !hiddenLabels.has(row.label));
   const matchRecordRows = [
-    ...scopedRows,
-    { label: "기록 확인", value: draft.summaryConfirmationTarget || "확인 대상 선택 필요" },
+    { label: "기록 유형", value: "경기 기록방" },
+    { label: "구성 방식", value: draft.recordComposition === "team" ? "팀 구성" : "개인 구성" },
+    { label: "경기 방식", value: draft.mode || "5v5" },
+    { label: "구장", value: draft.court || "구장 미정" },
+    { label: "종료 일시", value: [draft.scheduledDate, draft.scheduledTime].filter(Boolean).join(" ") || "일시 미정" },
   ];
   const tournamentRows = [
     { label: "대회 방식", value: draft.tournamentFormat === "tournament" ? "토너먼트" : "리그" },
@@ -303,7 +307,7 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
   const sentence = summaryType === "personal_record"
     ? "입력한 경기 결과와 개인 스탯을 내 기록으로 저장합니다."
     : summaryType === "match_record"
-      ? "입력한 명단과 규칙으로 경기 기록 확인방을 만듭니다. MMR에는 반영하지 않습니다."
+      ? "빈 기록방을 만든 뒤 공용 방 모달에서 참가자 또는 팀을 구성하고 승인받습니다. MMR에는 반영하지 않습니다."
       : summaryType === "tournament"
         ? "선택한 참가팀·명단·규칙·구장 운영값으로 대회를 만듭니다."
         : summary.sentence;

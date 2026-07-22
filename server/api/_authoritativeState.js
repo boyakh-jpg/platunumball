@@ -34,6 +34,7 @@ import {
   resumeMatchApproval,
   sendRecruitingChat,
   approveTournamentTeam,
+  setMatchRecordParticipants,
   setMatchRecordTeamRoster,
   setMatchRoomPlayerPlacement,
   setRecruitingApplicantPlacement,
@@ -186,6 +187,8 @@ function getAuthoritativeLoadScope(operation = {}) {
     matchIds,
     teamIds: [
       operation.teamId,
+      operation.setup?.teamAId,
+      operation.setup?.teamBId,
       operation.draft?.teamId,
       operation.draft?.teamAId,
       operation.draft?.opponentTeamId,
@@ -206,6 +209,8 @@ function getAuthoritativeLoadScope(operation = {}) {
       ...(Array.isArray(invite.playerIds) ? invite.playerIds : []),
       ...(Array.isArray(operation.roster?.playerIds) ? operation.roster.playerIds : []),
       ...(Array.isArray(operation.roster?.reservePlayerIds) ? operation.roster.reservePlayerIds : []),
+      ...(Array.isArray(operation.setup?.teamAPlayerIds) ? operation.setup.teamAPlayerIds : []),
+      ...(Array.isArray(operation.setup?.teamBPlayerIds) ? operation.setup.teamBPlayerIds : []),
     ].filter(Boolean),
     recruitingPostIds: [
       operation.postId,
@@ -428,6 +433,9 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       break;
     case "setMatchRecordTeamRoster":
       next = setMatchRecordTeamRoster(state, operation.matchId, operation.sideName, operation.roster ?? {});
+      break;
+    case "setMatchRecordParticipants":
+      next = setMatchRecordParticipants(state, operation.matchId, operation.setup ?? {});
       break;
     case "removeMatchRoomPlayer":
       next = removeMatchRoomPlayer(state, operation.matchId, operation.playerId);

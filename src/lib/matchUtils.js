@@ -305,6 +305,35 @@ export function getLocalDateInputValue(now = new Date()) {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+export const RECORD_CREATION_WINDOW_MS = DAY_MS;
+
+export function getSeoulTimeInputValue(now = new Date()) {
+  const date = now instanceof Date ? now : new Date(now);
+  if (!Number.isFinite(date.getTime())) return "";
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.hour}:${parts.minute}`;
+}
+
+export function getRecordCreationWindowStatus(dateValue, timeValue, now = new Date()) {
+  const date = String(dateValue ?? "").trim();
+  const time = String(timeValue ?? "").trim();
+  const nowDate = now instanceof Date ? now : new Date(now);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time) || !Number.isFinite(nowDate.getTime())) {
+    return { valid: false, reason: "invalid", occurredAtMs: null, ageMs: null };
+  }
+  const occurredAtMs = Date.parse(`${date}T${time}:00+09:00`);
+  if (!Number.isFinite(occurredAtMs)) return { valid: false, reason: "invalid", occurredAtMs: null, ageMs: null };
+  const ageMs = nowDate.getTime() - occurredAtMs;
+  if (ageMs < 0) return { valid: false, reason: "future", occurredAtMs, ageMs };
+  if (ageMs > RECORD_CREATION_WINDOW_MS) return { valid: false, reason: "expired", occurredAtMs, ageMs };
+  return { valid: true, reason: "", occurredAtMs, ageMs };
+}
+
 export function formatKoreanDateTime(value, options = {}) {
   const date = value instanceof Date ? value : new Date(value);
   if (!Number.isFinite(date.getTime())) return "";
@@ -366,7 +395,35 @@ function getSideCaptainId(match = {}, teams = [], sideName) {
 
 function getDecisionStatus(match = {}, teams = [], sideName, decisionKey) {
   const side = match[sideName] ?? { players: [] };
-  const approvals = match[decisionKey]?.[sideName] ?? [];
+  const sourceApprovals = match[decisionKey]?.[sideName] ?? [];
+  const recordApproverMap = match.rules?.recordApproverIds;
+  const recordApprovalConfigured = decisionKey === "approvals"
+    && match.rules?.recordType === RECORD_TYPES.matchRecord
+    && recordApproverMap
+    && typeof recordApproverMap === "object";
+  const requiredIds = recordApprovalConfigured
+    ? uniquePlayerIds(recordApproverMap?.[sideName] ?? [])
+    : [];
+  const approvals = recordApprovalConfigured
+    ? sourceApprovals.filter((playerId) => requiredIds.includes(playerId))
+    : sourceApprovals;
+  if (recordApprovalConfigured) {
+    const approvalMode = match.rules?.recordApprovalMode?.[sideName] === "captain" ? "captain" : "all";
+    const approved = requiredIds.length > 0 && requiredIds.every((playerId) => approvals.includes(playerId));
+    return {
+      approvals,
+      total: side.players?.length ?? 0,
+      majority: requiredIds.length,
+      requiredIds,
+      approvalMode,
+      approvalLabel: approvalMode === "captain" ? "팀장 승인" : "전원 승인",
+      captainId: approvalMode === "captain" ? requiredIds[0] ?? null : null,
+      captainRequired: approvalMode === "captain",
+      captainApproved: approvalMode !== "captain" || approved,
+      majorityApproved: approved,
+      approved,
+    };
+  }
   const captainId = getSideCaptainId(match, teams, sideName);
   const teamAgreement = decisionKey === "agreements" && Boolean(side.teamId);
   const captainRequired = teamAgreement || isCaptainApprovalRequired(match);
@@ -380,6 +437,9 @@ function getDecisionStatus(match = {}, teams = [], sideName, decisionKey) {
     approvals,
     total: side.players?.length ?? 0,
     majority,
+    requiredIds: side.players ?? [],
+    approvalMode: "majority",
+    approvalLabel: "과반 승인",
     captainId,
     captainRequired,
     captainApproved,
@@ -761,6 +821,10 @@ export function userNeedsMatchAgreement(match = {}, userId = "") {
 export function userNeedsMatchApproval(match = {}, userId = "") {
   const sideName = getMatchUserSideName(match, userId);
   if (getMatchRoomPhase(match).phase === "record") return false;
+  if (match.rules?.recordType === RECORD_TYPES.matchRecord) {
+    const requiredIds = match.rules?.recordApproverIds?.[sideName] ?? [];
+    return Boolean(sideName && match.status === "approval" && requiredIds.includes(userId) && !(match.approvals?.[sideName] ?? []).includes(userId));
+  }
   return Boolean(sideName && match.status === "approval" && !(match.approvals?.[sideName] ?? []).includes(userId));
 }
 
@@ -768,7 +832,13 @@ function userMatchDecisionDone(match = {}, userId = "") {
   const sideName = getMatchUserSideName(match, userId);
   if (!sideName) return false;
   if (match.status === "contract") return (match.agreements?.[sideName] ?? []).includes(userId);
-  if (match.status === "approval") return (match.approvals?.[sideName] ?? []).includes(userId);
+  if (match.status === "approval") {
+    if (match.rules?.recordType === RECORD_TYPES.matchRecord) {
+      const requiredIds = match.rules?.recordApproverIds?.[sideName] ?? [];
+      return !requiredIds.includes(userId) || (match.approvals?.[sideName] ?? []).includes(userId);
+    }
+    return (match.approvals?.[sideName] ?? []).includes(userId);
+  }
   return false;
 }
 

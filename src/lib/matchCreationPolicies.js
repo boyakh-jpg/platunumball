@@ -46,6 +46,45 @@ export const VENUE_SECURED_OPTIONS = Object.freeze([
   { id: "unconfirmed", label: "미확정" },
 ]);
 
+export const RECORD_ENTRY_MODE_OPTIONS = Object.freeze([
+  {
+    id: "quick",
+    label: "빠른 기록",
+    description: "상대 정보 없이 날짜·방식·점수와 내 활약만 남깁니다.",
+  },
+  {
+    id: "named",
+    label: "이름 기록",
+    description: "선수 이름을 자유롭게 적고 승인 없이 내 기록으로 저장합니다.",
+  },
+]);
+
+export const RECORD_COMPOSITION_OPTIONS = Object.freeze([
+  {
+    id: "individual",
+    label: "개인 구성",
+    description: "A/B 선수를 계정으로 직접 채웁니다.",
+  },
+  {
+    id: "team",
+    label: "팀 구성",
+    description: "등록된 두 팀의 팀장이 실제 출전 명단을 확인합니다.",
+  },
+]);
+
+const RECORD_ENTRY_MODE_IDS = new Set(RECORD_ENTRY_MODE_OPTIONS.map((option) => option.id));
+const RECORD_COMPOSITION_IDS = new Set(RECORD_COMPOSITION_OPTIONS.map((option) => option.id));
+
+export function getRecordEntryMode(source = {}) {
+  if (RECORD_ENTRY_MODE_IDS.has(source.recordEntryMode)) return source.recordEntryMode;
+  return "quick";
+}
+
+export function getRecordComposition(source = {}) {
+  if (RECORD_COMPOSITION_IDS.has(source.recordComposition)) return source.recordComposition;
+  return source.hostJoinMode === "team" || source.teamOnly === true ? "team" : "individual";
+}
+
 export function getMatchCreationWizardType(source = {}, { recordIntent = false } = {}) {
   if (source.recordType === RECORD_TYPES.personalRecord) return "personal_record";
   if (source.recordType === RECORD_TYPES.matchRecord || recordIntent) return "match_record";
@@ -306,7 +345,15 @@ export function getScopedMatchCreationPolicyPayload(source = {}, scope = "match"
     lineupSelectionPolicy: policy.lineupSelectionPolicy,
     lastPeriodStopMinutes: policy.lastPeriodStopMinutes,
   };
-  if (scope === "match_record") return rosterPolicy;
+  if (scope === "match_record") {
+    return {
+      onCourtCount: policy.onCourtCount,
+      starterCount: policy.onCourtCount,
+      benchCapacity: 0,
+      teamCapacity: policy.onCourtCount,
+      waitlistCapacity: 0,
+    };
+  }
   if (scope === "tournament") {
     return {
       ...rosterPolicy,
@@ -334,10 +381,10 @@ export function getMatchCreationValidation(source = {}) {
     errors.push("후보의 동일 결제와 출전 미보장 조건을 확인해야 합니다.");
   }
   if (policy.matchIntent === "pickup") {
-    if (source.hostJoinMode !== "player" || source.teamOnly === true) {
+    if (policy.hostJoinMode !== "player" || policy.teamOnly === true) {
       errors.push("픽업은 개인 참가 방식으로만 만들 수 있습니다.");
     }
-    if (source.ranked !== false || source.official !== false) {
+    if (policy.ranked !== false || policy.official !== false) {
       errors.push("픽업은 MMR을 반영하지 않습니다.");
     }
     warnings.push("자동 로테이션은 지원하지 않습니다. 방장이 현장에서 팀과 교대 순서를 수동으로 정합니다.");

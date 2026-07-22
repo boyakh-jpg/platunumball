@@ -73,6 +73,7 @@ const MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS = new Set([
   "removeMatchLatePlayer",
   "setMatchRoomPlayerPlacement",
   "removeMatchRoomPlayer",
+  "setMatchRecordParticipants",
   "setMatchRecordTeamRoster",
   "sync",
 ]);
@@ -1052,6 +1053,7 @@ const OPERATOR_MATCH_ACTIONS = new Set([
 ]);
 
 const MATCH_RECORD_ROSTER_ACTION = "setMatchRecordTeamRoster";
+const MATCH_RECORD_SETUP_ACTION = "setMatchRecordParticipants";
 
 const PARTICIPANT_MATCH_ACTIONS = new Set([
   "agreeMatch",
@@ -1086,6 +1088,7 @@ function shouldReplaceMatchResult(action, match = {}) {
 
 function shouldReplayMatchOperation(operation = null, match = null) {
   if (!operation) return false;
+  if (operation.action === MATCH_RECORD_SETUP_ACTION) return true;
   return operation.action === "createMatch" && (!match || !isSoloRecordMatch(match));
 }
 
@@ -1142,6 +1145,14 @@ function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch
   if (action === "handoffMatchRecorder") return isMatchOperator(profileId, existingMatch, nextMatch) || getStatRecorderIds(existingMatch).includes(profileId);
   if (action === "substituteMatchPlayer") return isMatchOperator(profileId, existingMatch, nextMatch) || getStatRecorderIds(existingMatch).includes(profileId);
   if (action === MATCH_RECORD_ROSTER_ACTION) return canSyncMatchRecordTeamRoster(profileId, existingMatch, existingPlayers, nextMatch);
+  if (action === MATCH_RECORD_SETUP_ACTION) {
+    return Boolean(
+      existingMatch?.created_by === profileId &&
+      existingMatch?.rules?.recordType === RECORD_TYPES.matchRecord &&
+      !existingMatch?.confirmed_at &&
+      !existingMatch?.result
+    );
+  }
   if (OPERATOR_MATCH_ACTIONS.has(action)) return isMatchOperator(profileId, existingMatch, nextMatch);
   if (action === "submitMatchResult") return canSubmitResult(profileId, existingMatch, nextMatch);
   if (PARTICIPANT_MATCH_ACTIONS.has(action)) return existingParticipants.has(profileId) || nextParticipants.has(profileId);
@@ -1247,6 +1258,12 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "updateTournamentMatchSchedule",
   "voidMatch",
 ]);
+
+const REPLAY_ONLY_MATCH_ACTIONS = new Set([MATCH_RECORD_SETUP_ACTION]);
+
+function isSupportedMatchAction(action = "") {
+  return SQL_REDUCER_MATCH_ACTIONS.has(action) || REPLAY_ONLY_MATCH_ACTIONS.has(action);
+}
 
 function isMissingSqlMatchReducer(error = {}) {
   const message = String(error?.message ?? "");
@@ -1436,6 +1453,10 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
 
   if (operation.action === "submitMatchResult" && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
+    const sourceMatch = match?.id ? match : await loadSyncedMatch(context, matchId);
+    if (sourceMatch?.rules?.recordType === RECORD_TYPES.matchRecord && sourceMatch.rules?.recordSetupReady !== true) {
+      reject(409, "match_record_setup_required");
+    }
     const { data, error } = await context.supabase.rpc("rankball_match_result_action", {
       p_actor_profile_id: context.profileId,
       p_match_id: matchId,
@@ -2099,7 +2120,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const operation = getOperation(body, body.action ? String(body.action) : "sync");
     if (!operation) reject(400, "match_operation_required");
-    if (!SQL_REDUCER_MATCH_ACTIONS.has(operation.action) && operation.action !== "createMatch") {
+    if (!isSupportedMatchAction(operation.action) && operation.action !== "createMatch") {
       reject(400, "unsupported_match_operation");
     }
     const { error: disciplineError } = await context.supabase.rpc("rankball_assert_match_actor_active", {

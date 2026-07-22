@@ -180,7 +180,7 @@ export function getSoloRecordDateRange(now = new Date()) {
   const today = getLocalDateInputValue(now);
   return {
     max: today,
-    min: addDateDays(today, -7),
+    min: addDateDays(today, -1),
   };
 }
 

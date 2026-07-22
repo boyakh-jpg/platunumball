@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   MATCH_INTENT_OPTIONS,
+  RECORD_COMPOSITION_OPTIONS,
+  RECORD_ENTRY_MODE_OPTIONS,
   getMatchCreationPolicyPayload,
   getMatchCreationSummary,
   getMatchCreationValidation,
@@ -14,9 +16,12 @@ import {
   getMatchModeChangePatch,
   getModeClockPreset,
   getPersonalRecordDraftPayload,
+  getRecordComposition,
+  getRecordEntryMode,
   getScopedMatchCreationPolicyPayload,
 } from "../src/lib/matchCreationPolicies.js";
 import { validatePickupRecruitingShape, validatePickupRecruitingUpdate } from "../server/api/recruiting/sync-post.js";
+import { getRecordCreationWindowStatus } from "../src/lib/matchUtils.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -89,6 +94,22 @@ test("pickup preset reuses player rooms without claiming automatic rotation", ()
   }
 });
 
+test("pickup validation normalizes stale team and ranked draft values", () => {
+  const validation = getMatchCreationValidation({
+    mode: "3v3",
+    matchIntent: "pickup",
+    hostJoinMode: "team",
+    teamOnly: true,
+    ranked: true,
+    official: true,
+  });
+  assert.equal(validation.policy.hostJoinMode, "player");
+  assert.equal(validation.policy.teamOnly, false);
+  assert.equal(validation.policy.ranked, false);
+  assert.equal(validation.policy.official, false);
+  assert.equal(validation.errors.length, 0);
+});
+
 test("creation UI exposes only friendly, competitive, and pickup intents", () => {
   assert.deepEqual(MATCH_INTENT_OPTIONS.map((option) => option.id), ["friendly", "standard_competitive", "pickup"]);
 });
@@ -98,6 +119,24 @@ test("record intent selects record steps before the draft conversion effect", ()
   assert.equal(getMatchCreationWizardType({ recordType: "match_record" }), "match_record");
   assert.equal(getMatchCreationWizardType({ recordType: "solo" }, { recordIntent: true }), "personal_record");
   assert.equal(getMatchCreationWizardType({ recordType: "match", visibility: "tournament" }), "tournament");
+});
+
+test("record entry and composition expose no mixed mode", () => {
+  assert.deepEqual(RECORD_ENTRY_MODE_OPTIONS.map((option) => option.id), ["quick", "named"]);
+  assert.deepEqual(RECORD_COMPOSITION_OPTIONS.map((option) => option.id), ["individual", "team"]);
+  assert.equal(getRecordEntryMode({ recordEntryMode: "named" }), "named");
+  assert.equal(getRecordEntryMode({ recordEntryMode: "linked" }), "quick");
+  assert.equal(getRecordComposition({ recordComposition: "team" }), "team");
+  assert.equal(getRecordComposition({ recordComposition: "mixed" }), "individual");
+});
+
+test("personal and shared records accept only the previous 24 hours", () => {
+  const now = new Date("2026-07-22T12:00:00.000Z");
+  assert.equal(getRecordCreationWindowStatus("2026-07-22", "20:59", now).valid, true);
+  assert.equal(getRecordCreationWindowStatus("2026-07-21", "21:00", now).valid, true);
+  assert.equal(getRecordCreationWindowStatus("2026-07-21", "20:59", now).reason, "expired");
+  assert.equal(getRecordCreationWindowStatus("2026-07-22", "21:01", now).reason, "future");
+  assert.equal(getRecordCreationWindowStatus("2026-07-22", "", now).reason, "invalid");
 });
 
 test("intent and mode changes preserve unrelated user input", () => {
@@ -242,8 +281,10 @@ test("record and tournament payloads keep only relevant creation policy", () => 
     vestsProvided: true,
   };
   const recordPolicy = getScopedMatchCreationPolicyPayload(draft, "match_record");
-  assert.equal(recordPolicy.benchCapacity, 2);
+  assert.equal(recordPolicy.benchCapacity, 0);
   assert.equal(recordPolicy.onCourtCount, 3);
+  assert.equal(recordPolicy.teamCapacity, 3);
+  assert.equal(recordPolicy.waitlistCapacity, 0);
   assert.equal("venueFee" in recordPolicy, false);
   assert.equal("paymentPolicy" in recordPolicy, false);
   const tournamentPolicy = getScopedMatchCreationPolicyPayload(draft, "tournament");

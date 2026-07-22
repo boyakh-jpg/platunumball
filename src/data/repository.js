@@ -100,6 +100,7 @@ import {
   getVoidMatchRestoreTargetUserId,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
+  getRecordCreationWindowStatus,
   getMatchScheduledDate,
   getMissingMatchAttendance,
   applyOperatorAttendance,
@@ -119,6 +120,7 @@ import {
   isAutoDecisionDue,
   isPersonalRecordMatch,
   makeAnonymousMatchPlayer,
+  getSeoulTimeInputValue,
   normalizeDisputeRequest,
   normalizeStatRecorders,
   normalizePlayerStats,
@@ -247,7 +249,6 @@ import {
 } from "./remoteRowSerializers.js";
 import {
   fromRemoteMatch,
-  getSoloRecordDateRange,
   getSoloRecordRosterError,
   getSoloRecordSideSize,
   makeSoloRecordAnonymousSide,
@@ -1725,80 +1726,16 @@ export function resetState(options = {}) {
   return options.includeDemo === false ? createEmptyState(options) : clone(getDemoInitialState());
 }
 
-function isIndividualMatchRecordDraft(draft = {}, mode = draft.mode) {
-  return mode === "1v1" && draft.hostJoinMode === "player" && draft.teamOnly !== true;
+function getMatchRecordComposition(draft = {}) {
+  return draft.recordComposition === "team" ? "team" : "individual";
 }
 
-function getMatchRecordSideLeaders(state, draft = {}, teamA = {}, teamB = {}) {
-  if (isIndividualMatchRecordDraft(draft)) {
-    const opponentId = uniquePlayerIds([draft.opponentLeaderId, ...(draft.opponentPlayerIds ?? [])])
-      .find((playerId) => playerId !== state.currentUserId && state.users.some((user) => user.id === playerId && !user.anonymous)) ?? "";
-    return {
-      teamAPlayers: [state.currentUserId].filter(Boolean),
-      teamBPlayers: [opponentId].filter(Boolean),
-    };
-  }
-  const teamAMembers = new Set(getTeamMemberIds(teamA));
-  const teamBMembers = new Set(getTeamMemberIds(teamB));
-  const teamALeader = uniquePlayerIds([state.currentUserId, ...(draft.playerIds ?? [])])
-    .find((playerId) => teamAMembers.has(playerId)) ?? state.currentUserId;
-  const teamBLeader = uniquePlayerIds([draft.opponentLeaderId, ...(draft.opponentPlayerIds ?? [])])
-    .find((playerId) => teamBMembers.has(playerId)) ?? getTeamPlayers(teamB, 1)[0] ?? "";
-  return {
-    teamAPlayers: [teamALeader].filter(Boolean),
-    teamBPlayers: [teamBLeader].filter(Boolean),
-  };
-}
-
-function makeMatchRecordRepresentativeNotifications(match = {}, state = {}, now = "") {
-  if (match?.rules?.recordType !== RECORD_TYPES.matchRecord) return [];
-  const individualRecord = match.mode === "1v1" && !match.teamA?.teamId && !match.teamB?.teamId;
-  const seen = new Set([state.currentUserId].filter(Boolean));
-  return [
-    { sideName: "teamA", userId: match.teamA?.players?.[0], teamName: match.teamA?.name },
-    { sideName: "teamB", userId: match.teamB?.players?.[0], teamName: match.teamB?.name },
-  ].flatMap(({ sideName, userId, teamName }) => {
-    if (!userId || seen.has(userId)) return [];
-    seen.add(userId);
-    const sideLabel = SIDE_LABEL_TEXT[sideName] ?? "해당 사이드";
-    const teamLabel = teamName || sideLabel;
-    return [{
-      id: makeId("n"),
-      title: "경기 기록 확인 요청",
-      body: individualRecord
-        ? `${match.title} 1v1 경기 기록 확인이 필요합니다.`
-        : `${match.title} ${teamLabel} ${sideLabel} 대표 확인이 필요합니다. 출전 명단은 방에서 확정해 주세요.`,
-      tone: "match",
-      targetUserId: userId,
-      fromUserId: state.currentUserId,
-      matchId: match.id,
-      discordEvent: "match",
-      createdAt: now,
-      updatedAt: now,
-    }];
-  });
-}
-
-function getMatchRecordDraftInvalidReason(state, draft = {}, mode = "", teamA = null, teamB = null) {
+function getMatchRecordDraftInvalidReason(state, draft = {}, mode = "") {
   if (draft.visibility && draft.visibility !== "private") return "경기 기록방은 비공개로만 만들 수 있습니다.";
-  if (mode === "1v1") {
-    if (!isIndividualMatchRecordDraft(draft, mode)) return "1v1 경기 기록방은 개인전으로 만들어야 합니다.";
-    const opponentId = uniquePlayerIds([draft.opponentLeaderId, ...(draft.opponentPlayerIds ?? [])])
-      .find((playerId) => playerId !== state.currentUserId && state.users.some((user) => user.id === playerId && !user.anonymous));
-    if (!opponentId) return "B사이드 기록 확인 상대 1명을 선택해야 합니다.";
-    return "";
-  }
-  if (draft.hostJoinMode !== "team" || draft.teamOnly !== true) return "경기 기록방은 팀전 전용입니다.";
-  if ((MODE_SIZES[mode] ?? 0) < 2) return "경기 기록방 팀전은 2v2 이상만 만들 수 있습니다.";
-  if (!teamA?.id || !teamB?.id || teamA.id === teamB.id) return "A/B팀은 서로 다른 팀이어야 합니다.";
-
-  const teamAMembers = new Set(getTeamMemberIds(teamA));
-  const teamBMembers = new Set(getTeamMemberIds(teamB));
-  if (!teamAMembers.has(state.currentUserId)) return "방장은 A사이드 팀원이어야 합니다.";
-
-  const opponentLeaderId = uniquePlayerIds([draft.opponentLeaderId, ...(draft.opponentPlayerIds ?? [])])
-    .find((playerId) => teamBMembers.has(playerId));
-  if (!opponentLeaderId || opponentLeaderId === state.currentUserId) return "B사이드 기록 확인 대표 1명을 선택해야 합니다.";
+  if (!isSupportedMatchMode(mode)) return "지원하지 않는 경기 인원입니다.";
+  const requestedComposition = draft.recordComposition ?? getMatchRecordComposition(draft);
+  if (!["individual", "team"].includes(requestedComposition)) return "경기 기록 구성 방식을 확인해 주세요.";
+  if (!state.currentUserId || !state.users.some((user) => user.id === state.currentUserId && !user.anonymous)) return "기록방 생성자를 확인할 수 없습니다.";
   return "";
 }
 
@@ -2490,43 +2427,46 @@ function createSoloRecordMatch(state, draft = {}) {
   const recordDate = /^\d{4}-\d{2}-\d{2}$/.test(String(draft.scheduledDate ?? ""))
     ? String(draft.scheduledDate)
     : nowIso.slice(0, 10);
-  const soloRecordDateRange = getSoloRecordDateRange(now);
-  if (recordDate < soloRecordDateRange.min || recordDate > soloRecordDateRange.max) {
+  const recordTime = /^\d{2}:\d{2}$/.test(String(draft.scheduledTime ?? ""))
+    ? String(draft.scheduledTime)
+    : getSeoulTimeInputValue(now);
+  const recordWindow = getRecordCreationWindowStatus(recordDate, recordTime, now);
+  if (!recordWindow.valid) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "개인 기록 날짜 확인",
-          body: "개인 기록은 오늘부터 과거 7일까지만 저장할 수 있습니다.",
+          body: recordWindow.reason === "future"
+            ? "경기가 끝난 뒤에만 개인 기록을 저장할 수 있습니다."
+            : "개인 기록은 경기 종료 후 24시간 이내에만 저장할 수 있습니다.",
           tone: "match",
         },
         ...state.notifications,
       ],
     };
   }
-  const recordTime = /^\d{2}:\d{2}$/.test(String(draft.scheduledTime ?? ""))
-    ? String(draft.scheduledTime)
-    : nowIso.slice(11, 16);
   const scoreA = toSoloRecordNumber(draft.soloScoreFor);
   const scoreB = toSoloRecordNumber(draft.soloScoreAgainst);
   const mode = normalizeSoloRecordMode(draft.mode);
   const sideSize = getSoloRecordSideSize(mode);
+  const recordEntryMode = draft.recordEntryMode === "named" ? "named" : "quick";
   const teamAName = String(draft.soloTeamAName ?? "").trim() || "우리팀";
   const teamBName = String(draft.soloTeamBName ?? draft.soloOpponentName ?? "").trim() || "상대팀";
-  const teamAEntries = parseSoloRecordRosterText(draft.soloTeamAPlayersText);
-  const teamBEntries = parseSoloRecordRosterText(draft.soloTeamBPlayersText);
-  if (!teamBEntries.length && String(draft.soloOpponentName ?? "").trim()) {
+  const teamAEntries = recordEntryMode === "named" ? parseSoloRecordRosterText(draft.soloTeamAPlayersText) : [];
+  const teamBEntries = recordEntryMode === "named" ? parseSoloRecordRosterText(draft.soloTeamBPlayersText) : [];
+  if (recordEntryMode === "named" && !teamBEntries.length && String(draft.soloOpponentName ?? "").trim()) {
     teamBEntries.push({ name: String(draft.soloOpponentName).trim(), position: SOLO_RECORD_ANONYMOUS_POSITION });
   }
   const rosterError = getSoloRecordRosterError(teamAEntries, teamBEntries, sideSize);
   if (rosterError) return withSoloRecordNotification(state, "개인 기록 선수 확인", rosterError);
   const teamAAnonymous = makeSoloRecordAnonymousSide({
-    count: Math.max(0, sideSize - 1),
+    count: teamAEntries.length,
     entries: teamAEntries,
   });
   const teamBAnonymous = makeSoloRecordAnonymousSide({
-    count: sideSize,
+    count: teamBEntries.length,
     entries: teamBEntries,
   });
   const anonymousPlayers = Object.fromEntries(
@@ -2557,6 +2497,7 @@ function createSoloRecordMatch(state, draft = {}) {
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
   const rules = {
     recordType: RECORD_TYPES.personalRecord,
+    recordEntryMode,
     mmrExcludedPlayerIds,
     playedPlayerIds,
     statRecorders: {},
@@ -2565,6 +2506,7 @@ function createSoloRecordMatch(state, draft = {}) {
     ratingScale: 0,
     recordSummary: {
       mode,
+      recordEntryMode,
       teamAName,
       teamBName,
       teamAPlayers: [player.name || "나", ...teamAAnonymous.map((entry) => entry.name)],
@@ -2668,12 +2610,22 @@ export function createMatch(state, draft) {
   const timingType = effectiveDraft.timingType === "instant" ? "instant" : "scheduled";
   const scheduledAt = timingType === "instant" ? "즉시" : `${effectiveDraft.scheduledDate ?? ""} ${effectiveDraft.scheduledTime ?? ""}`.trim();
   const recordDate = String(effectiveDraft.scheduledDate ?? "");
-  const recordDateRange = getSoloRecordDateRange(new Date());
-  if (recordDate < recordDateRange.min || recordDate > recordDateRange.max) {
+  const recordTime = /^\d{2}:\d{2}$/.test(String(effectiveDraft.scheduledTime ?? ""))
+    ? String(effectiveDraft.scheduledTime)
+    : "";
+  const recordWindow = getRecordCreationWindowStatus(recordDate, recordTime, new Date());
+  if (!recordWindow.valid) {
     return {
       ...state,
       notifications: [
-        { id: makeId("n"), title: "경기 기록 날짜 확인", body: "경기 기록은 오늘부터 과거 7일까지만 만들 수 있습니다.", tone: "match" },
+        {
+          id: makeId("n"),
+          title: "경기 기록 시간 확인",
+          body: recordWindow.reason === "future"
+            ? "경기가 끝난 뒤에만 경기 기록방을 만들 수 있습니다."
+            : "경기 기록방은 경기 종료 후 24시간 이내에만 만들 수 있습니다.",
+          tone: "match",
+        },
         ...state.notifications,
       ],
     };
@@ -2682,11 +2634,7 @@ export function createMatch(state, draft) {
     return { ...state, notifications: [getInvalidScheduleNotification(ROOM_SCHEDULE_MAX_DAYS), ...state.notifications] };
   }
   const nowIso = new Date().toISOString();
-  const teams = state.teams ?? [];
-  const individualMatchRecord = isMatchRecord && isIndividualMatchRecordDraft(effectiveDraft, mode);
-  const teamA = individualMatchRecord ? null : teams.find((team) => team.id === effectiveDraft.teamAId) ?? null;
-  const teamB = individualMatchRecord ? null : teams.find((team) => team.id === effectiveDraft.teamBId && team.id !== teamA?.id) ?? null;
-  const matchRecordInvalidReason = isMatchRecord ? getMatchRecordDraftInvalidReason(state, effectiveDraft, mode, teamA, teamB) : "";
+  const matchRecordInvalidReason = isMatchRecord ? getMatchRecordDraftInvalidReason(state, effectiveDraft, mode) : "";
   if (matchRecordInvalidReason) {
     return {
       ...state,
@@ -2697,25 +2645,22 @@ export function createMatch(state, draft) {
     };
   }
   const evidence = (effectiveDraft.evidence ?? []).map((item) => ({ id: item.id, label: item.label }));
-  const matchRecordLeaders = isMatchRecord ? getMatchRecordSideLeaders(state, effectiveDraft, teamA, teamB) : null;
-  const teamAPlayers = matchRecordLeaders?.teamAPlayers ?? getTeamPlayers(teamA, size);
-  const teamBPlayers = matchRecordLeaders?.teamBPlayers ?? getTeamPlayers(teamB, size);
+  const teamAPlayers = [state.currentUserId].filter(Boolean);
+  const teamBPlayers = [];
   const refereeId = getTrustedRefereeId(state, effectiveDraft.refereeId, [...teamAPlayers, ...teamBPlayers]);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(effectiveDraft.mmrRangeMode);
   const ranked = isMatchRecord ? false : effectiveDraft.ranked !== false;
   const ratingScale = ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 0;
-  const disputeMinutes = normalizeDisputeWindowMinutes(
-    Number.parseInt(effectiveDraft.objectionWindow, 10) || effectiveDraft.disputeMinutes,
-  );
+  const disputeMinutes = DISPUTE_WINDOW_MINUTES;
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === effectiveDraft.court || court.id === getCourtId(effectiveDraft)) ?? null;
   const creator = state.users.find((user) => user.id === state.currentUserId);
-  const opponent = state.users.find((user) => user.id === teamBPlayers[0]);
+  const recordComposition = getMatchRecordComposition(effectiveDraft);
   const match = {
     id: effectiveDraft.id || makeId("m"),
     title: effectiveDraft.title || `${effectiveDraft.court} ${mode} 판`,
     mode,
-    courtId: selectedCourt?.id ?? getCourtId(effectiveDraft),
-    court: effectiveDraft.court,
+    courtId: selectedCourt?.id ?? "",
+    court: selectedCourt?.name ?? (String(effectiveDraft.court ?? "").trim() || "미정"),
     scheduledDate: timingType === "instant" ? "" : effectiveDraft.scheduledDate,
     scheduledTime: timingType === "instant" ? "" : effectiveDraft.scheduledTime,
     scheduledAt: scheduledAt || "일정 미정",
@@ -2730,13 +2675,26 @@ export function createMatch(state, draft) {
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes,
     rules: {
-      ...getMatchRulesPayload({ ...(effectiveDraft.rules ?? {}), ...effectiveDraft }, { mode: effectiveDraft.mode }),
-      mmrRangeMode,
-      ratingScale,
-      ageRestriction: isMatchRecord ? "any" : effectiveDraft.ageRestriction,
-      allowedAgeGroups: isMatchRecord ? [] : effectiveDraft.allowedAgeGroups,
-      courtReserved: isMatchRecord ? false : Boolean(effectiveDraft.courtReserved),
-      recordType: isMatchRecord ? RECORD_TYPES.matchRecord : RECORD_TYPES.match,
+      recordType: RECORD_TYPES.matchRecord,
+      recordComposition,
+      recordSetupReady: false,
+      recordApprovalMode: {
+        teamA: recordComposition === "team" ? "captain" : "all",
+        teamB: recordComposition === "team" ? "captain" : "all",
+      },
+      recordApproverIds: { teamA: [], teamB: [] },
+      rosterReady: { teamA: false, teamB: false },
+      sideCapacity: size,
+      onCourtCount: size,
+      starterCount: size,
+      teamCapacity: size,
+      benchCapacity: 0,
+      waitlistCapacity: 0,
+      mmrRangeMode: "off",
+      ratingScale: 0,
+      ageRestriction: "any",
+      allowedAgeGroups: [],
+      courtReserved: false,
       visibility: "private",
       region: selectedCourt?.region ?? effectiveDraft.region,
     },
@@ -2747,8 +2705,8 @@ export function createMatch(state, draft) {
     ratingScale,
     objectionWindow: `${disputeMinutes}분`,
     evidence,
-    teamA: { name: individualMatchRecord ? creator?.name ?? "A사이드" : teamA.name, teamId: individualMatchRecord ? "" : teamA.id, players: teamAPlayers, score: 0 },
-    teamB: { name: individualMatchRecord ? opponent?.name ?? "B사이드" : teamB.name, teamId: individualMatchRecord ? "" : teamB.id, players: teamBPlayers, score: 0 },
+    teamA: { name: creator?.name ?? "A사이드", teamId: "", players: teamAPlayers, score: 0 },
+    teamB: { name: "B사이드", teamId: "", players: teamBPlayers, score: 0 },
     agreements: { teamA: [], teamB: [] },
     approvals: { teamA: [], teamB: [] },
     disputes: [],
@@ -2760,14 +2718,11 @@ export function createMatch(state, draft) {
     endedAt: isMatchRecord ? nowIso : undefined,
     createdAt: nowIso,
   };
-  const confirmationNotifications = isMatchRecord ? makeMatchRecordRepresentativeNotifications(match, state, nowIso) : [];
-
   return {
     ...state,
     matches: [match, ...state.matches],
     notifications: [
-      ...confirmationNotifications,
-      { id: makeId("n"), title: isMatchRecord ? "경기 기록방" : "새 경기방", body: isMatchRecord ? `${match.title} 기록 입력방이 만들어졌습니다.` : `${match.title} 확정방이 만들어졌습니다.`, tone: "match", matchId: match.id },
+      { id: makeId("n"), title: "경기 기록방", body: `${match.title} 빈 기록방이 만들어졌습니다. 방에서 ${recordComposition === "team" ? "두 팀" : "A/B 선수"}을 구성해 주세요.`, tone: "match", matchId: match.id },
       ...state.notifications,
     ],
   };
@@ -3097,6 +3052,12 @@ function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
   const currentUserId = state.currentUserId;
   if (!currentUserId || playerId !== currentUserId) return null;
   const sidePlayers = match[sideName]?.players ?? [];
+  if (decisionKey === "approvals" && isMatchRecordMatch(match)) {
+    const requiredIds = match.rules?.recordApproverIds?.[sideName] ?? [];
+    if (!requiredIds.includes(currentUserId)) return null;
+    if ((match.approvals?.[sideName] ?? []).includes(currentUserId)) return null;
+    return currentUserId;
+  }
   const sideTeamId = match[sideName]?.teamId;
   const captainId = decisionKey === "agreements" && sideTeamId
     ? getTeamCaptainId(state.teams, sideTeamId)
@@ -3155,6 +3116,18 @@ export function submitMatchResult(state, matchId, result) {
   if (disciplineBlock) return disciplineBlock;
   const storedMatch = state.matches.find((item) => item.id === matchId);
   if (!storedMatch) return state;
+  if (isMatchRecordMatch(storedMatch) && storedMatch.rules?.recordSetupReady !== true) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "기록 참가자 확인 필요",
+        body: "방에서 A/B 참가자 또는 양 팀 출전 명단을 먼저 확정해 주세요.",
+        tone: "orange",
+        matchId,
+      }, ...(state.notifications ?? [])],
+    };
+  }
   const match = withEffectiveMatchStatRecorders(storedMatch);
   const syncedStatRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
   const currentUserId = state.currentUserId;
@@ -7120,6 +7093,111 @@ function currentUserCanEditMatchRecordSideRoster(state, match, sideName) {
   return Boolean(leaderId && leaderId === state.currentUserId);
 }
 
+export function setMatchRecordParticipants(state, matchId, setup = {}) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!isMatchRecordMatch(match) || match.createdBy !== state.currentUserId) return state;
+  if (match.result || match.confirmedAt || match.cancelledAt || match.voidedAt) return state;
+
+  const composition = match.rules?.recordComposition === "team" ? "team" : "individual";
+  if (!["individual", "team"].includes(setup.composition)) return state;
+  const requestedComposition = setup.composition;
+  if (composition !== requestedComposition) return state;
+  const sideCapacity = getRecruitingSideCapacity(match);
+  const now = new Date().toISOString();
+  let nextMatch = match;
+  let targetIds = [];
+
+  if (composition === "individual") {
+    const knownUserIds = new Set((state.users ?? []).filter((user) => user?.id && !user.anonymous).map((user) => user.id));
+    const teamAPlayerIds = uniquePlayerIds(setup.teamAPlayerIds).filter((playerId) => knownUserIds.has(playerId));
+    const teamBPlayerIds = uniquePlayerIds(setup.teamBPlayerIds).filter((playerId) => knownUserIds.has(playerId));
+    if (teamAPlayerIds.length !== sideCapacity || teamBPlayerIds.length !== sideCapacity) return state;
+    if (!teamAPlayerIds.includes(state.currentUserId)) return state;
+    if (teamAPlayerIds.some((playerId) => teamBPlayerIds.includes(playerId))) return state;
+    targetIds = uniquePlayerIds([...teamAPlayerIds, ...teamBPlayerIds]);
+    nextMatch = {
+      ...match,
+      teamA: { ...match.teamA, name: "A사이드", teamId: "", players: teamAPlayerIds, playerTeams: {} },
+      teamB: { ...match.teamB, name: "B사이드", teamId: "", players: teamBPlayerIds, playerTeams: {} },
+      playedPlayerIds: { teamA: teamAPlayerIds, teamB: teamBPlayerIds },
+      reservePlayers: { teamA: [], teamB: [] },
+      agreements: { teamA: teamAPlayerIds, teamB: teamBPlayerIds },
+      approvals: { teamA: [], teamB: [] },
+      statRecorders: {},
+      rules: {
+        ...(match.rules ?? {}),
+        recordSetupReady: true,
+        recordApprovalMode: { teamA: "all", teamB: "all" },
+        recordApproverIds: { teamA: teamAPlayerIds, teamB: teamBPlayerIds },
+        rosterReady: { teamA: true, teamB: true },
+        playedPlayerIds: { teamA: teamAPlayerIds, teamB: teamBPlayerIds },
+        reservePlayers: { teamA: [], teamB: [] },
+        statRecorders: {},
+      },
+      updatedAt: now,
+    };
+  } else {
+    const teamA = (state.teams ?? []).find((team) => team.id === setup.teamAId);
+    const teamB = (state.teams ?? []).find((team) => team.id === setup.teamBId && team.id !== teamA?.id);
+    if (!teamA || !teamB || !getTeamMemberIds(teamA).includes(state.currentUserId)) return state;
+    const teamACaptainId = getTeamCaptainId(state.teams, teamA.id);
+    const teamBCaptainId = getTeamCaptainId(state.teams, teamB.id);
+    if (!teamACaptainId || !teamBCaptainId || teamACaptainId === teamBCaptainId) return state;
+    targetIds = [teamACaptainId, teamBCaptainId];
+    nextMatch = {
+      ...match,
+      teamA: { ...match.teamA, name: teamA.name, teamId: teamA.id, players: [teamACaptainId], playerTeams: { [teamACaptainId]: teamA.id } },
+      teamB: { ...match.teamB, name: teamB.name, teamId: teamB.id, players: [teamBCaptainId], playerTeams: { [teamBCaptainId]: teamB.id } },
+      playedPlayerIds: { teamA: [], teamB: [] },
+      reservePlayers: { teamA: [], teamB: [] },
+      agreements: { teamA: [teamACaptainId], teamB: [teamBCaptainId] },
+      approvals: { teamA: [], teamB: [] },
+      statRecorders: {},
+      rules: {
+        ...(match.rules ?? {}),
+        recordSetupReady: false,
+        recordApprovalMode: { teamA: "captain", teamB: "captain" },
+        recordApproverIds: { teamA: [teamACaptainId], teamB: [teamBCaptainId] },
+        rosterReady: { teamA: false, teamB: false },
+        playedPlayerIds: { teamA: [], teamB: [] },
+        reservePlayers: { teamA: [], teamB: [] },
+        statRecorders: {},
+      },
+      updatedAt: now,
+    };
+  }
+
+  nextMatch = withEffectiveMatchStatRecorders(nextMatch);
+  const notificationTitle = composition === "team" ? "팀 경기 기록 확인" : "경기 기록 확인 요청";
+  const notificationBody = composition === "team"
+    ? `${match.title} 기록방의 팀 명단을 확인해 주세요.`
+    : `${match.title} 기록방에 참가자로 등록됐습니다. 기록 입력 후 최종 확인이 필요합니다.`;
+  const notifications = targetIds
+    .filter((playerId) => playerId && playerId !== state.currentUserId)
+    .map((playerId) => ({
+      id: makeId("n"),
+      title: notificationTitle,
+      body: notificationBody,
+      tone: "match",
+      type: "match_record_setup",
+      actionRequired: true,
+      homeAction: true,
+      targetUserId: playerId,
+      fromUserId: state.currentUserId,
+      matchId,
+      discordEvent: "match",
+      webPath: `/app/recorder?match=${encodeURIComponent(matchId)}`,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
+    notifications: [...notifications, ...(state.notifications ?? [])],
+  };
+}
+
 export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) {
   const sourceMatch = state.matches.find((item) => item.id === matchId);
   if (!currentUserCanEditMatchRecordSideRoster(state, sourceMatch, sideName)) return state;
@@ -7176,7 +7254,9 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
   const leaderId = tournamentPregame
     ? getTeamCaptainId(state.teams, team.id)
     : getMatchSideLeaderId(match, state.teams, sideName);
-  if (tournamentPregame && nextActiveIds.length !== sideCapacity) return state;
+  const matchRecordRoom = isMatchRecordMatch(match);
+  if ((tournamentPregame || matchRecordRoom) && nextActiveIds.length !== sideCapacity) return state;
+  if (matchRecordRoom && nextReserveIds.length) return state;
   if (!tournamentPregame && leaderId && ![...nextActiveIds, ...nextReserveIds].includes(leaderId)) return state;
 
   const previousRosterIds = uniquePlayerIds([
@@ -7220,7 +7300,31 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
       tournamentHostRosterSelected: tournamentHostPlayerId && team.id === tournamentHostTeamId
         ? nextRosterIds.has(tournamentHostPlayerId)
         : match.rules?.tournamentHostRosterSelected === true,
+    } : matchRecordRoom ? {
+      ...(match.rules ?? {}),
+      rosterReady: {
+        ...(match.rules?.rosterReady ?? {}),
+        [sideName]: true,
+      },
+      rosterReadyAt: {
+        ...(match.rules?.rosterReadyAt ?? {}),
+        [sideName]: rosterSavedAt,
+      },
+      recordSetupReady: Boolean(
+        sideName === "teamA"
+          ? match.rules?.rosterReady?.teamB === true
+          : match.rules?.rosterReady?.teamA === true
+      ),
+      playedPlayerIds: {
+        ...(match.rules?.playedPlayerIds ?? match.playedPlayerIds ?? {}),
+        [sideName]: nextActiveIds,
+      },
+      reservePlayers: nextReservePlayers,
     } : match.rules,
+    playedPlayerIds: matchRecordRoom ? {
+      ...(match.playedPlayerIds ?? {}),
+      [sideName]: nextActiveIds,
+    } : match.playedPlayerIds,
   };
   previousRosterIds
     .filter((playerId) => !nextRosterIds.has(playerId))
@@ -7236,6 +7340,23 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
       ? { ...notification, readAt: rosterSavedAt, actionRequired: false, homeAction: false }
       : notification
   ));
+
+  const recordAssignmentNotifications = matchRecordRoom
+    ? nextActiveIds
+      .filter((playerId) => !previousRosterIds.includes(playerId) && playerId !== state.currentUserId)
+      .map((playerId) => ({
+        id: makeId("n"),
+        title: "팀 경기 기록 명단",
+        body: `${match.title} ${SIDE_LABEL_TEXT[sideName] ?? "사이드"} 출전 명단에 등록됐습니다. 기록을 확인해 주세요.`,
+        tone: "match",
+        type: "match_record_roster",
+        targetUserId: playerId,
+        matchId,
+        discordEvent: "match",
+        webPath: `/app/recorder?match=${encodeURIComponent(matchId)}`,
+        createdAt: rosterSavedAt,
+      }))
+    : [];
 
   return {
     ...state,
@@ -7255,7 +7376,7 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
         createdAt: rosterSavedAt,
       })),
       ...resolvedNotifications,
-    ] : resolvedNotifications,
+    ] : [...recordAssignmentNotifications, ...resolvedNotifications],
   };
 }
 

@@ -6336,7 +6336,7 @@ async function runSoloRecordScenario({
 }) {
   ids = makeScenarioIds(label);
   const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
-  const today = new Date().toISOString().slice(0, 10);
+  const recordSchedule = getKstPastSchedule(1);
 
   const createResult = await step(`${ids.label}:createSoloRecord`, () => syncMatchAs(hostLogin, {
     action: "createMatch",
@@ -6344,11 +6344,12 @@ async function runSoloRecordScenario({
     draft: {
       id: ids.matchId,
       recordType: "solo",
+      recordEntryMode: "named",
       title: getSimulationDisplayTitle(ids.label),
       courtId: "c1",
       court: "Backend Simulation Court",
-      scheduledDate: today,
-      scheduledTime: "20:30",
+      scheduledDate: recordSchedule.scheduledDate,
+      scheduledTime: recordSchedule.scheduledTime,
       soloOpponentName: "Solo Opponent",
       soloScoreFor: 17,
       soloScoreAgainst: 11,
@@ -6427,25 +6428,23 @@ async function runMatchRecordRosterScenario({
     teamB: teamBFixture.team,
   });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const recordSchedule = getKstPastSchedule(1);
   const createResult = await step(`${ids.label}:createMatchRecord`, () => syncMatchAs(teamAFixture.captainLogin, {
     action: "createMatch",
     preferredMatchId: ids.matchId,
     draft: {
       id: ids.matchId,
       recordType: "match_record",
+      recordComposition: "team",
       title: getSimulationDisplayTitle(ids.label),
       visibility: "private",
       hostJoinMode: "team",
       teamOnly: true,
       mode: "2v2",
-      teamAId: teamAFixture.team.id,
-      teamBId: teamBFixture.team.id,
-      opponentLeaderId: teamBFixture.captainId,
-      courtId: "c1",
-      court: "Backend Simulation Court",
-      scheduledDate: today,
-      scheduledTime: "20:30",
+      playerIds: [teamAFixture.captainId],
+      opponentPlayerIds: [],
+      scheduledDate: recordSchedule.scheduledDate,
+      scheduledTime: recordSchedule.scheduledTime,
       ranked: false,
       official: false,
     },
@@ -6483,8 +6482,22 @@ async function runMatchRecordRosterScenario({
     "match record missing from the recorder list",
     recorderMatchState.matches,
   );
-  assertFlow((match.teamA?.players ?? []).length === 1 && match.teamA.players[0] === teamAFixture.captainId, "match record teamA initial leader mismatch", match);
-  assertFlow((match.teamB?.players ?? []).length === 1 && match.teamB.players[0] === teamBFixture.captainId, "match record teamB initial leader mismatch", match);
+  assertFlow((match.teamA?.players ?? []).length === 1 && match.teamA.players[0] === teamAFixture.captainId, "match record creator seed mismatch", match);
+  assertFlow((match.teamB?.players ?? []).length === 0, "match record must not invite teamB during creation", match);
+  assertFlow(match.rules?.recordSetupReady === false, "match record must start without configured participants", match);
+
+  const setupResult = await step(`${ids.label}:setMatchRecordParticipants`, () => syncMatchAs(teamAFixture.captainLogin, {
+    action: "setMatchRecordParticipants",
+    matchId: ids.matchId,
+    setup: {
+      composition: "team",
+      teamAId: teamAFixture.team.id,
+      teamBId: teamBFixture.team.id,
+    },
+  }));
+  match = await getMatchAfterResult(setupResult, teamAFixture.captainLogin, `${ids.label}:loadAfterParticipantSetup`);
+  assertFlow(match.teamA?.teamId === teamAFixture.team.id && match.teamB?.teamId === teamBFixture.team.id, "match record team setup missing", match);
+  assertFlow((match.teamA?.players ?? [])[0] === teamAFixture.captainId && (match.teamB?.players ?? [])[0] === teamBFixture.captainId, "match record captain setup mismatch", match);
 
   const teamAResult = await step(`${ids.label}:setMatchRecordTeamRoster:teamA`, () => syncMatchAs(teamAFixture.captainLogin, {
     action: "setMatchRecordTeamRoster",
@@ -6543,7 +6556,7 @@ async function runOneOnOneMatchRecordScenario({
   ids = makeScenarioIds(label);
   const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
   const opponentId = await step(`${ids.label}:resolveProfile:opponent`, () => getProfileIdForLogin(opponentLogin));
-  const today = new Date().toISOString().slice(0, 10);
+  const recordSchedule = getKstPastSchedule(1);
 
   const createResult = await step(`${ids.label}:createMatchRecord1v1`, () => syncMatchAs(hostLogin, {
     action: "createMatch",
@@ -6551,18 +6564,17 @@ async function runOneOnOneMatchRecordScenario({
     draft: {
       id: ids.matchId,
       recordType: "match_record",
+      recordComposition: "individual",
       title: getSimulationDisplayTitle(ids.label),
       visibility: "private",
       hostJoinMode: "player",
       teamOnly: false,
       mode: "1v1",
       playerIds: [hostId],
-      opponentPlayerIds: [opponentId],
-      opponentLeaderId: opponentId,
-      courtId: "c1",
-      court: "Backend Simulation Court",
-      scheduledDate: today,
-      scheduledTime: "20:30",
+      opponentPlayerIds: [],
+      opponentLeaderId: "",
+      scheduledDate: recordSchedule.scheduledDate,
+      scheduledTime: recordSchedule.scheduledTime,
       ranked: true,
       official: true,
       preRegistered: true,
@@ -6574,18 +6586,31 @@ async function runOneOnOneMatchRecordScenario({
       objectionWindow: "1시간",
     },
   }));
-  const match = await getMatchAfterResult(createResult, hostLogin, `${ids.label}:loadAfterCreateMatchRecord1v1`);
+  let match = await getMatchAfterResult(createResult, hostLogin, `${ids.label}:loadAfterCreateMatchRecord1v1`);
 
   assertFlow(match?.rules?.recordType === "match_record", "1v1 match record type missing", match);
   assertFlow(match?.mode === "1v1", "1v1 match record mode mismatch", match);
   assertFlow((match?.teamA?.players ?? []).length === 1 && match.teamA.players[0] === hostId, "1v1 match record host roster mismatch", match);
-  assertFlow((match?.teamB?.players ?? []).length === 1 && match.teamB.players[0] === opponentId, "1v1 match record opponent roster mismatch", match);
+  assertFlow((match?.teamB?.players ?? []).length === 0, "1v1 match record must not invite during creation", match);
   assertFlow(!match?.teamA?.teamId && !match?.teamB?.teamId, "1v1 match record should not bind teams", match);
   assertFlow(match?.ranked === false && match?.official === false && match?.preRegistered === false, "1v1 match record pregame flags not disabled", match);
   assertFlow(match?.mmrLimitMode === "off" && Number(match?.ratingScale ?? 0) === 0, "1v1 match record MMR policy not disabled", match);
   assertFlow(match?.rules?.ageRestriction === "any" && match?.rules?.courtReserved === false, "1v1 match record eligibility or reservation not disabled", match?.rules);
   assertFlow(!match?.stakes, "1v1 match record pregame stakes should be empty", match);
-  assertFlow(Number(match?.disputeMinutes) === 60 && match?.objectionWindow === "1시간", "1v1 match record dispute window mismatch", match);
+  assertFlow(Number(match?.disputeMinutes) === 10 && match?.objectionWindow === "10분", "1v1 match record dispute window mismatch", match);
+
+  const setupResult = await step(`${ids.label}:setMatchRecordParticipants`, () => syncMatchAs(hostLogin, {
+    action: "setMatchRecordParticipants",
+    matchId: ids.matchId,
+    setup: {
+      composition: "individual",
+      teamAPlayerIds: [hostId],
+      teamBPlayerIds: [opponentId],
+    },
+  }));
+  match = await getMatchAfterResult(setupResult, hostLogin, `${ids.label}:loadAfterParticipantSetup1v1`);
+  assertFlow((match?.teamB?.players ?? []).length === 1 && match.teamB.players[0] === opponentId, "1v1 match record opponent setup mismatch", match);
+  assertFlow(match?.rules?.recordSetupReady === true, "1v1 match record setup not marked ready", match);
 
   const hostRecorderState = await loadMatchesAs(hostLogin, {
     recorderOnly: true,
