@@ -144,7 +144,7 @@ export function getMatchIntentPresetPatch(intent = "standard_competitive", mode 
     paymentPolicy: "equal_all_confirmed",
     benchPaymentAcknowledged: matchIntent !== "full_competitive",
     ranked: competitive,
-    official: competitive,
+    official: false,
     preRegistered: true,
     ...(pickup ? { hostJoinMode: "player", teamOnly: false, mmrLimitMode: "off" } : {}),
     ...getModeClockPreset(mode, "community"),

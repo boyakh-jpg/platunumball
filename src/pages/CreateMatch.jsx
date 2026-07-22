@@ -2471,28 +2471,6 @@ export default function CreateMatch({ app }) {
             </div>
             <>
               <RuleSelector draft={draft} onChange={update} />
-              {!isMatchRecordRoom ? (
-                <div className="record-impact-options">
-                  <div>
-                    <span className="field-label">기록 반영</span>
-                    <p>점수와 출전 기록을 어디까지 반영할지 정합니다.</p>
-                  </div>
-                  <div className="toggle-pair">
-                    <label title="승패와 개인/팀 MMR에 반영합니다. 끄면 친선전으로 저장됩니다.">
-                      <input type="checkbox" checked={draft.ranked} onChange={(event) => update({ ranked: event.target.checked })} />
-                      <span><strong>MMR 반영</strong><em>끄면 친선전</em></span>
-                    </label>
-                    <label title="심판·증빙 등 더 높은 신뢰 조건을 적용하는 경기입니다.">
-                      <input type="checkbox" checked={draft.ranked && draft.official} disabled={!draft.ranked} onChange={(event) => update({ official: event.target.checked })} />
-                      <span><strong>검증 강화</strong><em>신뢰 조건 강화</em></span>
-                    </label>
-                    <label title="경기 전 명단과 조건을 확정해 사후 변경에 따른 MMR 감액 위험을 줄입니다.">
-                      <input type="checkbox" checked={draft.preRegistered} onChange={(event) => update({ preRegistered: event.target.checked })} />
-                      <span><strong>명단 사전 확정</strong><em>경기 전 고정</em></span>
-                    </label>
-                  </div>
-                </div>
-              ) : null}
               <div className={`form-grid two create-rules-grid${isTournamentRoom ? " has-schedule-note" : ""}`}>
                 <label>
                   공격권 룰
