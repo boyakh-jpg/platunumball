@@ -8326,6 +8326,37 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
   background: transparent !important;
 }
 
+/* Room modal slots wrap at the panel level before fixed slot tracks collide. */
+@media (max-width: 1100px) {
+  .arena-lobby-modal .arena-lobby-versus-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal .arena-reserve-panel,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:first-child,
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) {
+    grid-column: 1;
+  }
+
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > strong,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > strong {
+    text-align: left;
+  }
+
+  .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+    grid-template-columns: repeat(var(--slot-count, 3), minmax(0, var(--room-slot-width)));
+    justify-content: start;
+  }
+}
+
 .arena-dispute-score-row .arena-derived-score {
   display: grid;
   width: 100%;
