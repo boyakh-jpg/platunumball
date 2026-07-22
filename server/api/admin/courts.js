@@ -271,7 +271,7 @@ async function loadHistoryRows(context, body) {
 function getErrorStatus(error) {
   const message = String(error?.message ?? "");
   if (/admin_permission_required/i.test(message)) return 403;
-  if (/court_not_found/i.test(message)) return 404;
+  if (/court(?:_name_evidence)?_not_found/i.test(message)) return 404;
   if (/required|invalid|unchanged|patch|batch/i.test(message)) return 400;
   if (["23514", "22P02", "22003"].includes(error?.code)) return 400;
   if (error?.code === "23505") return 409;

@@ -31,14 +31,14 @@ const EMPTY_HISTORY_FILTERS = {
 const COURT_COLUMNS = [
   { key: "name", rowKey: "name", label: "표준 구장명", width: "250px", readOnly: true },
   { key: "facilityName", rowKey: "facility_name", patchKey: "facilityName", label: "시설명", width: "210px", editor: "text", required: true },
-  { key: "nameEvidenceDecision", rowKey: "name_evidence_decision", label: "명칭판정", width: "125px", type: "nameEvidenceDecision", readOnly: true },
-  { key: "nameEvidenceApplicationStatus", rowKey: "name_evidence_application_status", label: "반영상태", width: "125px", type: "nameEvidenceApplicationStatus", readOnly: true },
+  { key: "nameEvidenceDecision", rowKey: "name_evidence_decision", patchKey: "nameEvidenceDecision", label: "명칭판정", width: "125px", editor: "select", type: "nameEvidenceDecision", nullable: false, requiresNameEvidence: true },
+  { key: "nameEvidenceApplicationStatus", rowKey: "name_evidence_application_status", patchKey: "nameEvidenceApplicationStatus", label: "반영상태", width: "125px", editor: "select", type: "nameEvidenceApplicationStatus", nullable: false, requiresNameEvidence: true },
   { key: "nameEvidenceReference", rowKey: "name_evidence_reference", label: "근거시설", width: "220px", readOnly: true },
   { key: "nameEvidenceKind", rowKey: "name_evidence_kind", label: "근거유형", width: "125px", type: "nameEvidenceKind", readOnly: true },
   { key: "nameEvidenceRelation", rowKey: "name_evidence_relation", label: "공간관계", width: "105px", type: "nameEvidenceRelation", readOnly: true },
   { key: "nameEvidenceDistanceM", rowKey: "name_evidence_distance_m", label: "거리(m)", width: "90px", readOnly: true },
-  { key: "nameEvidenceProposedFacility", rowKey: "name_evidence_proposed_facility", label: "검수후보", width: "220px", readOnly: true },
-  { key: "nameEvidenceAppliedFacility", rowKey: "name_evidence_applied_facility", label: "반영시설명", width: "220px", readOnly: true },
+  { key: "nameEvidenceProposedFacility", rowKey: "name_evidence_proposed_facility", patchKey: "nameEvidenceProposedFacility", label: "검수후보", width: "220px", editor: "text", requiresNameEvidence: true },
+  { key: "nameEvidenceAppliedFacility", rowKey: "name_evidence_applied_facility", patchKey: "nameEvidenceAppliedFacility", label: "반영시설명", width: "220px", editor: "text", requiresNameEvidence: true },
   { key: "nameEvidenceUrl", rowKey: "name_evidence_url", label: "OSM 근거", width: "105px", type: "osmEvidenceUrl", readOnly: true },
   { key: "nameEvidenceSnapshotDate", rowKey: "name_evidence_snapshot_date", label: "OSM 기준일", width: "120px", type: "date", readOnly: true },
   { key: "courtUnit", rowKey: "court_unit", patchKey: "courtUnit", label: "코트", width: "100px", editor: "text" },
@@ -107,8 +107,8 @@ const SELECT_OPTIONS = {
   verificationStatus: [["", "전체"], ["__null__", "미입력"], ["pending", "미검증"], ["source_verified", "출처검증"], ["verified", "검증완료"], ["review_required", "검토필요"]],
   status: [["", "전체"], ["active", "활성"], ["hidden", "임시 숨김"], ["disabled", "비활성"]],
   facilityAreaScope: [["", "전체"], ["__null__", "미입력"], ["court", "코트"], ["facility", "시설전체"], ["unknown", "알 수 없음"]],
-  nameEvidenceDecision: [["", "전체"], ["__null__", "근거 없음"], ["auto_apply", "자동 확정"], ["review_required", "30~80m 검수"], ["administrative_fallback", "행정동 fallback"]],
-  nameEvidenceApplicationStatus: [["", "전체"], ["__null__", "근거 없음"], ["applied", "반영"], ["skipped_duplicate", "중복 건너뜀"], ["skipped_manual", "수동 보호"], ["pending", "대기"], ["not_applicable", "미적용"]],
+  nameEvidenceDecision: [["", "전체"], ["__null__", "근거 없음"], ["auto_apply", "자동 확정"], ["review_required", "30~80m 검수"], ["administrative_fallback", "행정동 fallback"], ["unresolved", "미해결"]],
+  nameEvidenceApplicationStatus: [["", "전체"], ["__null__", "근거 없음"], ["applied", "반영"], ["unchanged", "변경 없음"], ["skipped_duplicate", "중복 건너뜀"], ["skipped_manual", "수동 보호"], ["pending", "대기"], ["not_applicable", "미적용"]],
   nameEvidenceKind: [["", "전체"], ["__null__", "근거 없음"], ["exact_court", "코트 자체"], ["sports_centre", "체육시설"], ["school", "학교"], ["building", "건물"], ["park_ground", "공원·운동장"], ["community_centre", "공공시설"], ["landmark", "주변시설"], ["administrative", "OSM 행정구역"], ["stored_administrative", "저장 읍면동"]],
   nameEvidenceRelation: [["", "전체"], ["__null__", "근거 없음"], ["self", "코트 자체"], ["inside", "polygon 내부"], ["site_member", "같은 부지"], ["nearby", "인접"], ["administrative", "행정구역"], ["none", "미해결"]],
   modificationCount: [["zero", "0회"], ["positive", "1회 이상"], ["", "전체"]],
@@ -174,6 +174,11 @@ function buildPatch(draft) {
   }));
 }
 
+function isColumnEditable(row, column) {
+  if (!column.patchKey) return false;
+  return !column.requiresNameEvidence || Boolean(row.name_evidence_decision);
+}
+
 function getDraftCourtName(row, values) {
   return getCourtStandardName({
     ...row,
@@ -217,6 +222,7 @@ function getMapPopupUrl(row) {
 
 function getSaveErrorMessage(errorCode = "") {
   const code = String(errorCode);
+  if (code.includes("court_name_evidence_not_found")) return "OSM 명칭 근거가 없는 구장은 판정 정보를 수정할 수 없습니다.";
   if (code.includes("url_invalid")) return "URL은 https:// 주소만 저장할 수 있습니다.";
   if (code.includes("coordinates_invalid")) return "위도·경도 값을 확인해 주세요.";
   if (code.includes("duplicate") || code === "23505") return "같은 구장으로 판정되는 데이터가 이미 있습니다.";
@@ -477,7 +483,7 @@ export default function CourtDatabasePanel({ app }) {
     return next;
   });
   const activateCell = (row, column) => {
-    if (!column.patchKey || saving) return;
+    if (!isColumnEditable(row, column) || saving) return;
     setActiveCell({ courtId: row.id, patchKey: column.patchKey });
     setStatus("");
   };
@@ -634,20 +640,21 @@ export default function CourtDatabasePanel({ app }) {
                         {rowDirty ? <span className="court-db-row-dirty-count">{Object.keys(rowPatch).length}셀</span> : null}
                       </td>
                       {COURT_COLUMNS.map((column) => {
+                        const columnEditable = isColumnEditable(row, column);
                         const columnDirty = rowDirty && (column.key === "name"
                           ? nameDirty
                           : column.patchKey && Object.prototype.hasOwnProperty.call(rowPatch, column.patchKey));
-                        const cellActive = column.patchKey && activeCell?.courtId === row.id && activeCell.patchKey === column.patchKey;
+                        const cellActive = columnEditable && activeCell?.courtId === row.id && activeCell.patchKey === column.patchKey;
                         const displayValue = column.key === "name" ? editedName : column.patchKey ? rowValues[column.patchKey] : row[column.rowKey];
                         return (
                           <td
                             key={column.key}
-                            className={[columnDirty ? "court-db-cell-dirty" : "", column.patchKey ? "court-db-editable-cell" : "", cellActive ? "court-db-cell-active" : ""].filter(Boolean).join(" ")}
+                            className={[columnDirty ? "court-db-cell-dirty" : "", columnEditable ? "court-db-editable-cell" : "", cellActive ? "court-db-cell-active" : ""].filter(Boolean).join(" ")}
                             title={formatValue(column, displayValue)}
-                            tabIndex={column.patchKey ? 0 : undefined}
+                            tabIndex={columnEditable ? 0 : undefined}
                             onClick={() => activateCell(row, column)}
                             onKeyDown={(event) => {
-                              if (column.patchKey && (event.key === "Enter" || event.key === "F2")) {
+                              if (columnEditable && (event.key === "Enter" || event.key === "F2")) {
                                 event.preventDefault();
                                 activateCell(row, column);
                               }

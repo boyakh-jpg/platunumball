@@ -483,7 +483,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 
 ## 2026-07-06 boxtier brand lockup
 
-1. App shell sidebar, login, and landing brand use R2 `boxtier_logo.png`, `boxtier_letter_dark.png`, and `boxtier_letter_light.png`.
+1. App shell sidebar, login, and landing brand use R2 `boxtier_logo.png`, `boxtier_letter_dark.png`, and `boxtier_letter_light.png`. 다운로드 가능한 로고 원본은 `public/assets/boxtier_logo.png`에도 보존한다.
 2. Visible brand areas do not use the old text `R` mark or `RankBall` text lockup.
 3. Light/dark brand switching swaps only the letter image. Button, card, slot, and hero layout rules stay unchanged.
 4. Dark mode brand logo frame uses the dark letter art's warm neutral color so the emblem stays visually paired with the wordmark. Light mode keeps the frame background transparent.
@@ -1652,7 +1652,7 @@ UI 수정 전:
 7. 별도 행 수정 버튼을 두지 않는다. 허용된 셀을 한 번 누르면 즉시 input/select로 바꾸고 여러 행의 변경을 동시에 누적한다. enum·boolean은 dropdown으로 제한하고 연락처·공식 URL·예약 URL·운영 정보도 같은 표에서 편집한다. 변경된 셀과 자동 재계산된 표준명은 일괄 저장 전 danger 토큰의 붉은 배경으로 표시한다.
 8. 셀에서 ESC를 누르면 다른 미저장 변경을 닫지 않고 해당 셀만 DB 조회 시점 값으로 복구한다. 모든 수정 행은 한 번의 원자적 일괄 저장으로 반영한다. 일반 관리자는 4자 이상의 공통 변경 사유를 요구하며 `boyakh`는 초기 정리 기간에만 사유 입력을 잠그고 서버가 한시적 정리 사유를 감사 로그에 자동 기록한다. 취소·탭 전환·필터·정렬·페이지 이동·modal 닫기 전에 미저장 변경 폐기를 확인한다.
 9. 행별 지도는 고정된 이름의 별도 브라우저 창을 재사용한다. 다음 행을 누르면 같은 창의 구장만 바뀌며 확대 18 지도와 가능한 경우 거리뷰를 나란히 표시한다. 좁은 화면에서는 지도와 거리뷰를 세로로 배치한다.
-10. 시설명 바로 뒤에는 OSM 명칭판정, 반영상태, 근거시설, 근거유형, 공간관계, 거리, 검수후보, 반영시설명, OSM 근거 링크, 기준일을 읽기 전용 열로 둔다. 모든 열의 필터·정렬은 전체 DB에 적용한다. `OSM 열기`는 새 탭에서 해당 객체를 열며 30~80m 후보는 현재 시설명과 분리해 표시한다.
+10. 시설명 바로 뒤에는 OSM 명칭판정, 반영상태, 근거시설, 근거유형, 공간관계, 거리, 검수후보, 반영시설명, OSM 근거 링크, 기준일을 둔다. 명칭판정·반영상태는 dropdown, 검수후보·반영시설명은 text editor로 수정하고 기존 일괄 저장·ESC 복구·감사 로그 규칙을 적용한다. OSM 근거시설·유형·공간관계·거리·링크·기준일은 출처 보존을 위해 읽기 전용으로 유지한다. 모든 열의 필터·정렬은 전체 DB에 적용한다. `OSM 열기`는 새 탭에서 해당 객체를 열며 30~80m 후보는 현재 시설명과 분리해 표시한다.
 
 ## 2026-07-22 법적 고지 공개 화면
 

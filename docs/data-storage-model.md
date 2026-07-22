@@ -587,3 +587,4 @@ Remaining:
 - `court_name_evidence`에는 provider, decision, application status, spatial relation, reference object name/type/URL, 80m 이하 거리, proposed/applied facility name, source snapshot date, inference version, run ID만 둔다. 주변 객체 전체 태그나 중복 payload는 저장하지 않는다.
 - 30m 이하 인접 시설만 자동 이름 근거가 된다. 30~80m 객체는 검수 후보이며 자동 반영명은 OSM 행정구역 또는 저장된 읍면동 fallback만 허용한다. 80m 초과 근거는 DB constraint와 RPC에서 거부한다.
 - 이 테이블과 적용 RPC는 `service_role` 전용이다. 공개 구장 목록은 `approved_courts` 관계형 칼럼을 읽고, 관리자 DB view만 파생 근거를 조인한다.
+- 관리자 검수 수정은 기존 근거 행의 decision, application status, proposed/applied facility name만 허용한다. `rankball_admin_update_court_name_evidence()`가 enum·길이·권한을 검증하고 `court_database_update` 감사 로그를 남기며, 일괄 저장 RPC가 일반 구장 patch와 같은 transaction에서 처리한다.

@@ -41,6 +41,12 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
   assert.match(component, /status: "disabled"/);
   assert.match(component, /nameEvidenceDecision/);
   assert.match(component, /nameEvidenceAppliedFacility/);
+  assert.match(component, /rowKey: "name_evidence_decision", patchKey: "nameEvidenceDecision"/);
+  assert.match(component, /rowKey: "name_evidence_application_status", patchKey: "nameEvidenceApplicationStatus"/);
+  assert.match(component, /rowKey: "name_evidence_proposed_facility", patchKey: "nameEvidenceProposedFacility"/);
+  assert.match(component, /rowKey: "name_evidence_applied_facility", patchKey: "nameEvidenceAppliedFacility"/);
+  assert.match(component, /function isColumnEditable\(row, column\)/);
+  assert.match(component, /!column\.requiresNameEvidence \|\| Boolean\(row\.name_evidence_decision\)/);
   assert.match(component, />OSM 열기</);
   assert.match(styles, /\.court-db-modal \.court-db-table-wrap[\s\S]*?overflow: scroll;/);
   assert.match(styles, /\.court-db-modal \.court-db-table \.court-db-sticky-actions[\s\S]*?position: sticky;[\s\S]*?left: 0;/);
@@ -91,6 +97,22 @@ test("구장 일괄 저장 RPC는 최대 100개를 한 transaction에서 처리�
   assert.match(migration, /public\.rankball_admin_update_court\(/);
   assert.match(migration, /grant execute on function public\.rankball_admin_update_courts_batch/);
   assert.doesNotMatch(migration, /\bdelete\s+from\s+public\.approved_courts/i);
+});
+
+test("관리자 명칭 판정 수정은 파생 근거의 검수 필드만 감사 로그와 함께 저장한다", async () => {
+  const migration = await readSource("supabase/migrations/20260722232000_admin_court_name_evidence_editor.sql");
+  assert.match(migration, /create or replace function public\.rankball_admin_update_court_name_evidence/);
+  assert.match(migration, /'nameEvidenceDecision'/);
+  assert.match(migration, /'nameEvidenceApplicationStatus'/);
+  assert.match(migration, /'nameEvidenceProposedFacility'/);
+  assert.match(migration, /'nameEvidenceAppliedFacility'/);
+  assert.match(migration, /update public\.court_name_evidence/);
+  assert.match(migration, /insert into public\.admin_audit_log/);
+  assert.match(migration, /'court_database_update'/);
+  assert.match(migration, /core_patch/);
+  assert.match(migration, /evidence_patch/);
+  assert.match(migration, /public\.rankball_admin_update_court_name_evidence\(/);
+  assert.doesNotMatch(migration, /\bdelete\s+from\s+public\.(?:approved_courts|court_name_evidence)/i);
 });
 
 test("지도 링크와 팝업은 확대 18 및 재사용 가능한 거리뷰 화면을 사용한다", async () => {
