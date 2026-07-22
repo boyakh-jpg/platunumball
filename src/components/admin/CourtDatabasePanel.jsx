@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUp, ArrowUpDown, Database, ExternalLink, RotateCcw, Save, X } from "lucide-react";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
-import { getCourtFacilityBaseName, getCourtStandardName } from "../../lib/courts.js";
+import { getCourtFacilityBaseName, getCourtMapUrl, getCourtStandardName } from "../../lib/courts.js";
 
 const ACTION_COLUMN_WIDTH = 220;
 const MAP_WINDOW_NAME = "rankball-court-map";
@@ -208,16 +208,6 @@ function validatePatch(values, patch) {
     if (url && !url.startsWith("https://")) return `${FIELD_LABELS[key]}은 https:// 주소만 사용할 수 있습니다.`;
   }
   return "";
-}
-
-function getMapPopupUrl(row) {
-  const params = new URLSearchParams({
-    name: String(row.name ?? "농구장"),
-    address: String(row.address_text ?? row.road_address ?? row.jibun_address ?? ""),
-  });
-  if (row.lat !== null && row.lat !== undefined && row.lat !== "") params.set("lat", String(row.lat));
-  if (row.lng !== null && row.lng !== undefined && row.lng !== "") params.set("lng", String(row.lng));
-  return `/app/admin/court-map?${params.toString()}`;
 }
 
 function getSaveErrorMessage(errorCode = "") {
@@ -636,7 +626,7 @@ export default function CourtDatabasePanel({ app }) {
                   return (
                     <tr key={row.id} className={[rowDirty ? "court-db-row-editing" : "", rowActive ? "court-db-row-active" : ""].filter(Boolean).join(" ")}>
                       <td className="court-db-actions court-db-sticky-actions">
-                        <a href={getMapPopupUrl(row)} target={MAP_WINDOW_NAME}><ExternalLink size={13} /> 네이버지도</a>
+                        <a href={getCourtMapUrl(row, { zoom: 18 })} target={MAP_WINDOW_NAME}><ExternalLink size={13} /> 네이버지도</a>
                         {rowDirty ? <span className="court-db-row-dirty-count">{Object.keys(rowPatch).length}셀</span> : null}
                       </td>
                       {COURT_COLUMNS.map((column) => {

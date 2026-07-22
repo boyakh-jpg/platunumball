@@ -337,8 +337,11 @@ export function getCourtMapUrl(court = {}, options = {}) {
   const query = address || String(court.name || "").trim() || "농구장";
   if (coordinate) {
     const zoom = Number(options.zoom);
-    const zoomQuery = Number.isFinite(zoom) ? `&zoom=${Math.min(21, Math.max(6, Math.round(zoom)))}` : "";
-    return `https://map.naver.com/?lng=${coordinate.lng}&lat=${coordinate.lat}&title=${encodeURIComponent(query)}${zoomQuery}`;
+    if (Number.isFinite(zoom)) {
+      const normalizedZoom = Math.min(21, Math.max(6, Math.round(zoom)));
+      return `https://map.naver.com/p?c=${coordinate.lng},${coordinate.lat},${normalizedZoom},0,0,0,dh`;
+    }
+    return `https://map.naver.com/?lng=${coordinate.lng}&lat=${coordinate.lat}&title=${encodeURIComponent(query)}`;
   }
 
   return `https://map.naver.com/p/search/${encodeURIComponent(query)}`;

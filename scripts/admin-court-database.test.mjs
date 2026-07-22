@@ -28,6 +28,9 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
   assert.match(component, /createPortal\(modal, document\.body\)/);
   assert.match(component, /role="dialog" aria-modal="true"/);
   assert.match(component, /const MAP_WINDOW_NAME = "rankball-court-map";/);
+  assert.match(component, /href=\{getCourtMapUrl\(row, \{ zoom: 18 \}\)\} target=\{MAP_WINDOW_NAME\}/);
+  assert.doesNotMatch(component, /getMapPopupUrl/);
+  assert.doesNotMatch(component, /\/app\/admin\/court-map\?/);
   assert.match(component, /updateDraftValues\(row, \{ \[patchKey\]: original\[patchKey\] \}\)/);
   assert.match(component, /saveAdminCourtBatch/);
   assert.match(component, /일괄 저장/);
@@ -115,7 +118,7 @@ test("관리자 명칭 판정 수정은 파생 근거의 검수 필드만 감사
   assert.doesNotMatch(migration, /\bdelete\s+from\s+public\.(?:approved_courts|court_name_evidence)/i);
 });
 
-test("지도 링크와 팝업은 확대 18 및 재사용 가능한 거리뷰 화면을 사용한다", async () => {
+test("네이버 지도 웹 링크와 내부 팝업은 확대 18 지도 URL을 공유한다", async () => {
   const [popup, loader, app] = await Promise.all([
     readSource("src/pages/AdminCourtMapPopup.jsx"),
     readSource("src/lib/naverAddress.js"),
@@ -127,10 +130,8 @@ test("지도 링크와 팝업은 확대 18 및 재사용 가능한 거리뷰 화
     lat: 37.5665,
     lng: 126.978,
   }, { zoom: 18 }));
-  assert.equal(mapUrl.searchParams.get("lat"), "37.5665");
-  assert.equal(mapUrl.searchParams.get("lng"), "126.978");
-  assert.equal(mapUrl.searchParams.get("zoom"), "18");
-  assert.equal(mapUrl.searchParams.get("title"), "서울특별시 중구 세종대로 110");
+  assert.equal(mapUrl.pathname, "/p");
+  assert.equal(mapUrl.searchParams.get("c"), "126.978,37.5665,18,0,0,0,dh");
   assert.match(popup, /const MAP_ZOOM = 18;/);
   assert.match(popup, /new maps\.Panorama/);
   assert.match(popup, /window\.clearTimeout\(panoramaTimer\)/);
