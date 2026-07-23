@@ -21537,6 +21537,7 @@ html[data-theme="light"] .court-map-picker-state {
 .match-roster-policy-fields .field-block {
   display: grid;
   gap: 6px;
+  align-self: start;
 }
 
 .match-bench-capacity-control {

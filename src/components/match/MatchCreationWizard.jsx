@@ -183,7 +183,7 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
           <small>시스템이 균등 교대를 추천하고 방장 또는 심판이 확정합니다.</small>
         </div>
       ) : policy.benchCapacity > 0 ? (
-        <label>
+        <label className="field-block">
           후보 출전 정책
           <select
             value={policy.playingTimePolicy}
