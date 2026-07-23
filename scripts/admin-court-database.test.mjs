@@ -41,6 +41,7 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
   assert.match(component, /중복 후보 \{duplicateReview\.index \+ 1\}/);
   assert.match(component, /이 장소에 실제 코트가 몇 개 있나요/);
   assert.match(component, /초과 .*개 행을 중복 비활성화/);
+  assert.doesNotMatch(component, /duplicateProximity/);
   assert.match(component, /createPortal\(modal, document\.body\)/);
   assert.match(component, /role="dialog" aria-modal="true"/);
   assert.match(component, /const MAP_WINDOW_NAME = "rankball-court-map";/);

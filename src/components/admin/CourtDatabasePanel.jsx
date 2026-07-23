@@ -445,7 +445,6 @@ export default function CourtDatabasePanel({ app }) {
   const [proximityLoading, setProximityLoading] = useState(false);
   const [actualCourtCount, setActualCourtCount] = useState("");
   const [duplicateReview, setDuplicateReview] = useState(null);
-  const [duplicateProximity, setDuplicateProximity] = useState(null);
   const [duplicateLoading, setDuplicateLoading] = useState(false);
   const [duplicateActualCount, setDuplicateActualCount] = useState("");
   const requestRef = useRef(0);
@@ -493,27 +492,8 @@ export default function CourtDatabasePanel({ app }) {
     ? reviewValues?.facilityName || reviewRow?.facility_name || "-"
     : reviewRow?.name_evidence_reference || "-";
   const duplicateGroup = duplicateReview?.groups?.[duplicateReview.index] ?? null;
-  const duplicateDetectedCount = Number(duplicateProximity?.detectedCount ?? duplicateGroup?.detectedCount ?? 0);
-  const duplicateGroupedById = new Map((duplicateProximity?.courts ?? []).map((court) => [court.id, court]));
-  const duplicatePreviewIds = new Set((duplicateGroup?.courts ?? []).map((court) => court.id));
-  const duplicateDisplayCourts = (duplicateGroup?.courts ?? []).map((court) => {
-    const grouped = duplicateGroupedById.get(court.id);
-    return grouped ? {
-      ...court,
-      name: grouped.name ?? court.name,
-      facilityName: grouped.facilityName ?? court.facilityName,
-      courtUnit: grouped.courtUnit ?? court.courtUnit,
-      status: grouped.status ?? court.status,
-      proximityExcess: grouped.proximityExcess === true,
-      distanceM: grouped.distanceM ?? null,
-    } : court;
-  }).concat((duplicateProximity?.courts ?? [])
-    .filter((court) => !duplicatePreviewIds.has(court.id))
-    .map((court) => ({
-      ...court,
-      address: duplicateGroup?.address || "",
-      proximityExcess: court.proximityExcess === true,
-    })));
+  const duplicateDetectedCount = Number(duplicateGroup?.detectedCount ?? 0);
+  const duplicateDisplayCourts = duplicateGroup?.courts ?? [];
   const reasonValid = reasonOptional || reason.trim().length >= 4;
 
   const loadRows = async (preserveStatus = false) => {
@@ -608,35 +588,6 @@ export default function CourtDatabasePanel({ app }) {
     // A new court id is the only trigger. Row refreshes must not create another audit event.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewMode, reviewRow?.id]);
-
-  useEffect(() => {
-    const courtId = duplicateGroup?.courts?.[0]?.id;
-    if (!duplicateReview || !courtId) {
-      setDuplicateProximity(null);
-      setDuplicateActualCount("");
-      return undefined;
-    }
-    const requestId = duplicateRequestRef.current + 1;
-    duplicateRequestRef.current = requestId;
-    setDuplicateLoading(true);
-    setDuplicateProximity(null);
-    void app.actions.loadAdminCourtProximity?.({
-      courtId,
-      facilityName: duplicateGroup.facilityName,
-    }).then((result) => {
-      if (duplicateRequestRef.current !== requestId) return;
-      setDuplicateLoading(false);
-      if (!result || result.ok === false) {
-        setStatus(getSaveErrorMessage(result?.error));
-        return;
-      }
-      setDuplicateProximity(result);
-      setDuplicateActualCount(String(result.actualCount ?? result.detectedCount ?? duplicateGroup.detectedCount ?? 1));
-    });
-    return () => { duplicateRequestRef.current += 1; };
-    // Group selection is the only trigger. Proximity refreshes must not reopen the group.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [duplicateReview, duplicateGroup?.groupId]);
 
   const clearDraftEdits = () => {
     setDraftRows({});
@@ -944,6 +895,9 @@ export default function CourtDatabasePanel({ app }) {
     const groups = result.groups ?? [];
     setDuplicateLoading(false);
     setDuplicateReview(groups.length ? { groups, index: 0 } : null);
+    setDuplicateActualCount(groups.length
+      ? String(groups[0].courts.find((court) => court.verifiedCourtCount != null)?.verifiedCourtCount ?? groups[0].detectedCount ?? 1)
+      : "");
     setStatus(groups.length
       ? `중복 후보 ${Number(result.groupCount ?? groups.length).toLocaleString()}곳 · ${Number(result.duplicateCourtCount ?? 0).toLocaleString()}개 행`
       : "중복 후보가 없습니다.");
@@ -954,6 +908,8 @@ export default function CourtDatabasePanel({ app }) {
     const nextIndex = duplicateReview.index + direction;
     if (nextIndex < 0 || nextIndex >= duplicateReview.groups.length) return;
     setDuplicateReview((current) => ({ ...current, index: nextIndex }));
+    const nextGroup = duplicateReview.groups[nextIndex];
+    setDuplicateActualCount(String(nextGroup.courts.find((court) => court.verifiedCourtCount != null)?.verifiedCourtCount ?? nextGroup.detectedCount ?? 1));
     setStatus("");
   };
 
@@ -961,7 +917,6 @@ export default function CourtDatabasePanel({ app }) {
     if (saving) return;
     duplicateRequestRef.current += 1;
     setDuplicateReview(null);
-    setDuplicateProximity(null);
     setDuplicateLoading(false);
     setDuplicateActualCount("");
     setStatus("");
@@ -994,7 +949,10 @@ export default function CourtDatabasePanel({ app }) {
       ? `실제 ${actualCount}코트로 기록 · DB 행 ${missing}개 부족`
       : `실제 ${actualCount}코트 확정${disabled ? ` · 초과 ${disabled}개 중복 비활성화` : ""}`);
     if (duplicateReview.index < duplicateReview.groups.length - 1) {
-      setDuplicateReview((current) => ({ ...current, index: current.index + 1 }));
+      const nextIndex = duplicateReview.index + 1;
+      const nextGroup = duplicateReview.groups[nextIndex];
+      setDuplicateReview((current) => ({ ...current, index: nextIndex }));
+      setDuplicateActualCount(String(nextGroup.courts.find((court) => court.verifiedCourtCount != null)?.verifiedCourtCount ?? nextGroup.detectedCount ?? 1));
     } else {
       await loadRows(true);
     }
