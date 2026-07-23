@@ -10,7 +10,7 @@ import {
   REFEREE_STAT_GUIDELINES,
 } from "../lib/refereeRulebook.js";
 
-const RULEBOOK_ASSET_VERSION = "20260722-1";
+const RULEBOOK_ASSET_VERSION = "20260723-1";
 const RULEBOOK_SOURCES = [
   {
     label: "FIBA 경기규칙 2024",
@@ -76,7 +76,7 @@ function RulebookIllustration({ scene, theme = "dark" }) {
   return (
     <figure className="rulebook-asset">
       <img
-        src={`${assetUrl(`/assets/named/${imageTheme}/webp/${scene}.webp`)}?v=${RULEBOOK_ASSET_VERSION}`}
+        src={`${assetUrl(`/assets/referee-rulebook-rendered/${imageTheme}/${scene}.webp`)}?v=${RULEBOOK_ASSET_VERSION}`}
         alt={`${title} 일러스트`}
         loading="lazy"
         onError={(event) => {

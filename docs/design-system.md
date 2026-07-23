@@ -447,7 +447,7 @@
 
 # 2026-06-28 referee rulebook images
 
-1. Rulebook source illustrations use R2 `assets/named/{dark|light}/png/{scene}.png`; the app serves the derived `assets/named/{dark|light}/webp/{scene}.webp` assets.
+1. 룰북 일러스트는 `public/assets/referee-rulebook-rendered/{dark|light}/{scene}.webp`를 사용한다. 바닥은 코트선이 없는 단색 면으로 유지하며 장면 의미에 필요한 물웅덩이·소품·그림자는 보존한다.
 2. The app theme chooses the dark or light path. All 19 scenes are exactly `1672×941`. Every pair keeps the same subject, pose, framing, prop placement, thin rounded border thickness, corner radius, figure scale, and outer margin; only background, outline glow, and theme palette change.
 3. All 19 scenes use one clean faceless colored 3D toy style. Existing PNG material and gloss do not need pixel-level preservation, but the complete set must share the same rendering quality, anatomy, lighting language, prop design, and apparent subject size. Do not mix old and new compositions, flat vectors, photorealistic people, text, logos, or unrelated rendering styles.
 4. The illustration must explain its section at thumbnail size. Do not reuse one composition for unrelated sections: clock shows timing, technical shows non-contact behavior, authority shows neutral control, dispute shows record review, and safety shows a court hazard.
