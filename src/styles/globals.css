@@ -21531,7 +21531,7 @@ html[data-theme="light"] .court-map-picker-state {
 
 .match-roster-policy-fields {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: end;
+  align-items: start;
 }
 
 .match-roster-policy-fields .field-block {
