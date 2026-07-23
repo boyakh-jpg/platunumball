@@ -311,7 +311,10 @@ export function getCourtAddressKey(value = "") {
 }
 
 function isCourtAddressLocalityOnly(value = "") {
-  const text = normalizeCourtNamePart(value).replace(/^\(|\)$/g, "").trim();
+  const normalized = normalizeCourtNamePart(value).trim();
+  const text = normalized.startsWith("(") && normalized.endsWith(")")
+    ? normalized.slice(1, -1).trim()
+    : normalized;
   return !text
     || /^(?:\d+(?:-\d+)?(?:동|호|층|실)?\s*)+$/.test(text)
     || /^[가-힣\d]+(?:동|리|읍|면|가)$/.test(text);
@@ -320,10 +323,23 @@ function isCourtAddressLocalityOnly(value = "") {
 export function getCourtAddressFacilityName(value = "") {
   const address = normalizeCourtNamePart(value);
   if (!address) return "";
-  const match = address.match(/(?:^|\s)[^\s]+(?:대로|로|길)\s+\d+(?:-\d+)?(?:\s+|\s*\()(.+?)\)?$/u);
+  const match = address.match(/(?:^|\s)[^\s]+(?:대로|로|길)\s+\d+(?:-\d+)?(?:\s+\(([^()]*)\)|\s+(.+)|\(([^()]*)\))$/u);
   if (!match) return "";
-  const candidate = normalizeCourtNamePart(match[1]).replace(/^\(|\)$/g, "").trim();
+  const normalized = normalizeCourtNamePart(match[1] || match[2] || match[3]).trim();
+  const candidate = normalized.startsWith("(") && normalized.endsWith(")")
+    ? normalized.slice(1, -1).trim()
+    : normalized;
   return isCourtAddressLocalityOnly(candidate) ? "" : getCourtFacilityBaseName(candidate);
+}
+
+function canApplyCourtAddressFacility(row = {}) {
+  const decision = String(row.name_evidence_decision ?? "").trim();
+  if (decision) return decision === "administrative_fallback" || decision === "unresolved";
+  const currentFacility = getCourtFacilityBaseName(row.facility_name);
+  return [row.emd, row.name_evidence_reference]
+    .map((value) => getCourtFacilityBaseName(value))
+    .filter(Boolean)
+    .includes(currentFacility);
 }
 
 export function buildCourtAddressNameUpdates(rows = []) {
@@ -393,14 +409,18 @@ export function buildCourtAddressNameUpdates(rows = []) {
   });
   const updates = prepared.flatMap(({ row, facilityName }) => {
     const patch = {};
-    if (facilityName && getCourtFacilityBaseName(row.facility_name) !== facilityName) patch.facilityName = facilityName;
+    if (facilityName && canApplyCourtAddressFacility(row) && getCourtFacilityBaseName(row.facility_name) !== facilityName) {
+      patch.facilityName = facilityName;
+    }
     const duplicateUnit = duplicateUnits.get(String(row.id));
     if (duplicateUnit && normalizeCourtNamePart(row.court_unit) !== duplicateUnit) patch.courtUnit = duplicateUnit;
     return Object.keys(patch).length ? [{ courtId: String(row.id), patch }] : [];
   });
   const unitGroups = numberedGroups.map((group) => group.map(({ row, facilityName }) => {
     const patch = { courtUnit: duplicateUnits.get(String(row.id)) };
-    if (facilityName && getCourtFacilityBaseName(row.facility_name) !== facilityName) patch.facilityName = facilityName;
+    if (facilityName && canApplyCourtAddressFacility(row) && getCourtFacilityBaseName(row.facility_name) !== facilityName) {
+      patch.facilityName = facilityName;
+    }
     return { courtId: String(row.id), patch };
   }));
   return {

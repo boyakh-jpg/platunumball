@@ -480,6 +480,13 @@ export default function CourtDatabasePanel({ app }) {
   const reviewPatch = buildPatch(reviewDraft);
   const reviewEditedName = reviewRow && reviewValues ? getDraftCourtName(reviewRow, reviewValues) : "";
   const reviewValidation = reviewRow && reviewValues ? validatePatch(reviewValues, reviewPatch, true) : "";
+  const reviewUsesCurrentFacility = reviewRow?.name_evidence_application_status === "skipped_manual";
+  const reviewEvidenceDecision = reviewUsesCurrentFacility
+    ? "주소·수동명 우선"
+    : formatValue({ type: "nameEvidenceDecision" }, reviewRow?.name_evidence_decision);
+  const reviewEvidenceReference = reviewUsesCurrentFacility
+    ? reviewValues?.facilityName || reviewRow?.facility_name || "-"
+    : reviewRow?.name_evidence_reference || "-";
   const reasonValid = reasonOptional || reason.trim().length >= 4;
 
   const loadRows = async (preserveStatus = false) => {
@@ -960,9 +967,9 @@ export default function CourtDatabasePanel({ app }) {
                 <dl>
                   <div><dt>읍면동</dt><dd>{reviewRow.emd || "확인 필요"}</dd></div>
                   <div><dt>검수순위</dt><dd>{REVIEW_PRIORITY_LABELS[Number(reviewRow.admin_review_priority)] ?? "검증 완료"}</dd></div>
-                  <div><dt>명칭판정</dt><dd>{formatValue({ type: "nameEvidenceDecision" }, reviewRow.name_evidence_decision)}</dd></div>
-                  <div><dt>근거시설</dt><dd>{reviewRow.name_evidence_reference || "-"}</dd></div>
-                  <div><dt>거리</dt><dd>{reviewRow.name_evidence_distance_m == null ? "-" : `${reviewRow.name_evidence_distance_m}m`}</dd></div>
+                  <div><dt>명칭판정</dt><dd>{reviewEvidenceDecision}</dd></div>
+                  <div><dt>근거시설</dt><dd>{reviewEvidenceReference}</dd></div>
+                  <div><dt>거리</dt><dd>{reviewUsesCurrentFacility || reviewRow.name_evidence_distance_m == null ? "-" : `${reviewRow.name_evidence_distance_m}m`}</dd></div>
                   <div><dt>최근판정</dt><dd>{formatValue({ type: "reviewScenario" }, reviewRow.admin_review_scenario)}</dd></div>
                   <div><dt>지역순번</dt><dd>{reviewRow.regional_alias_no ? `${reviewRow.regional_alias_no}번` : "미부여"}</dd></div>
                 </dl>

@@ -16,6 +16,7 @@ test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사�
   assert.match(server, /rpc\("rankball_admin_update_court_with_auto_unit"/);
   assert.match(server, /pendingIds = new Set\(plan\.updates\.map/);
   assert.match(server, /standaloneUpdates = plan\.updates/);
+  assert.match(server, /for \(const update of standaloneUpdates\) await saveUpdate\(update\)/);
   assert.doesNotMatch(server, /duplicateUpdates = plan\.updates\.filter/);
   assert.match(server, /rpc\("rankball_admin_update_courts_batch_with_auto_unit"/);
   assert.match(server, /TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4"/);
@@ -34,6 +35,7 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
     readSource("src/components/admin/CourtDatabasePanel.jsx"),
     readSource("src/styles/globals.css"),
   ]);
+  assert.match(component, /주소·수동명 우선/);
   assert.match(component, /createPortal\(modal, document\.body\)/);
   assert.match(component, /role="dialog" aria-modal="true"/);
   assert.match(component, /const MAP_WINDOW_NAME = "rankball-court-map";/);
@@ -134,8 +136,8 @@ test("주소 시설명과 동일 주소 코트 번호를 결정적으로 정리�
   assert.equal(getCourtAddressFacilityName("인천광역시 서해구 가좌로83번길 46(가좌동)"), "");
   assert.equal(getCourtAddressFacilityName("서울특별시 강남구 테헤란로 12 101동 202호"), "");
   const plan = buildCourtAddressNameUpdates([
-    { id: "b", facility_name: "부곡동", court_unit: null, road_address: "경기도 의왕시 철도박물관로 37 현대자동차그룹 의왕연구소", lat: 37.2, lng: 127.1 },
-    { id: "a", facility_name: "부곡동", court_unit: null, road_address: "경기도  의왕시 철도박물관로 37 현대자동차그룹 의왕연구소", lat: 37.1, lng: 127.1 },
+    { id: "b", facility_name: "부곡동", court_unit: null, road_address: "경기도 의왕시 철도박물관로 37 현대자동차그룹 의왕연구소", lat: 37.2, lng: 127.1, name_evidence_decision: "administrative_fallback" },
+    { id: "a", facility_name: "부곡동", court_unit: null, road_address: "경기도  의왕시 철도박물관로 37 현대자동차그룹 의왕연구소", lat: 37.1, lng: 127.1, name_evidence_decision: "administrative_fallback" },
   ]);
   assert.equal(plan.duplicateAddressCount, 1);
   assert.equal(plan.duplicateCourtCount, 2);
@@ -152,6 +154,18 @@ test("주소 시설명과 동일 주소 코트 번호를 결정적으로 정리�
     { id: "d", facility_name: "중앙공원", address_text: "서울시 중앙동 10", road_address: "서울시 중앙로 1 별관", lat: 38, lng: 128 },
   ]);
   assert.equal(mixedAddressPlan.duplicateCourtCount, 2);
+  assert.equal(getCourtAddressFacilityName("경기도 안성시 모산로 8 (주)코미코"), "(주)코미코");
+  assert.equal(getCourtAddressFacilityName("충청남도 서산시 지곡면 무장산업로 29-71 현대위아(주)"), "현대위아(주)");
+  assert.equal(getCourtAddressFacilityName("대전광역시 서구 구봉산북로94번길 77 한국발전인재개발원(교육연구시설)"), "한국발전인재개발원(교육연구시설)");
+
+  const protectedNamePlan = buildCourtAddressNameUpdates([
+    { id: "fallback", facility_name: "부곡동", road_address: "경기도 의왕시 철도박물관로 37 현대자동차그룹 의왕연구소", name_evidence_decision: "administrative_fallback" },
+    { id: "osm", facility_name: "왕길근린공원", road_address: "인천광역시 서구 봉수대로 123 무벽쉼터", name_evidence_decision: "auto_apply" },
+    { id: "manual", facility_name: "직접 정한 이름", road_address: "서울특별시 강남구 테헤란로 1 주소 건물명", name_evidence_decision: "review_required", name_evidence_application_status: "skipped_manual" },
+  ]);
+  assert.deepEqual(protectedNamePlan.updates, [
+    { courtId: "fallback", patch: { facilityName: "현대자동차그룹 의왕연구소" } },
+  ]);
 });
 
 test("관리자 구장 수정 RPC는 관계형 원본과 시설 정보 및 감사 로그를 함께 유지한다", async () => {

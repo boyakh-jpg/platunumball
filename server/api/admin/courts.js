@@ -11,7 +11,7 @@ const TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4";
 const TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리";
 const COURT_COLUMNS = "name,facility_name,court_unit,indoor_outdoor,venue_type,court_kind,surface_type,court_layout,hoop_count,access_type,reservation_required,paid,lighting,public_access,operational_status,verification_status,sido,sigungu,emd,name_modification_count,registration_origin,status,updated_at,id,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope,name_evidence_decision,name_evidence_application_status,name_evidence_reference,name_evidence_kind,name_evidence_relation,name_evidence_distance_m,name_evidence_proposed_facility,name_evidence_applied_facility,name_evidence_url,name_evidence_snapshot_date,regional_alias_no,regional_alias_region_key,admin_review_count,admin_reviewed_at,admin_reviewed_by,admin_review_scenario,admin_review_priority";
 const HISTORY_COLUMNS = "id,court_id,sigungu,changed_by,changed_by_name,change_source,changed_fields,changes,changes_text,reason,created_at";
-const ADDRESS_NAME_COLUMNS = "id,facility_name,court_unit,address_text,road_address,jibun_address,lat,lng";
+const ADDRESS_NAME_COLUMNS = "id,facility_name,court_unit,address_text,road_address,jibun_address,lat,lng,emd,name_evidence_decision,name_evidence_application_status,name_evidence_reference";
 
 const COURT_SORT_COLUMNS = {
   name: "name",
@@ -308,7 +308,7 @@ async function loadAllCourtAddressRows(context) {
   const batchSize = 1_000;
   for (let offset = 0; ; offset += batchSize) {
     const { data, error } = await context.supabase
-      .from("approved_courts")
+      .from("rankball_admin_court_database")
       .select(ADDRESS_NAME_COLUMNS)
       .order("id", { ascending: true })
       .range(offset, offset + batchSize - 1);
@@ -458,6 +458,7 @@ export default async function handler(request, response) {
           for (const update of group) await saveUpdate(update);
         }
       }
+      for (const update of standaloneUpdates) await saveUpdate(update);
       sendJson(response, 200, {
         ok: true,
         updatedCount: updates.length,
