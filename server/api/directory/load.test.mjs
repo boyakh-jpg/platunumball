@@ -116,6 +116,7 @@ test("court map loads bounded active coordinate rows for the current district", 
   assert.match(createSource, /const regionValue = `\$\{region\.sido\} \$\{district\}`/);
   assert.match(searchSource, /courtMapSearch \? MAP_COURT_COLUMNS : COURT_COLUMNS/);
   assert.match(pickerSource, /isCourtInRegion\(court, currentRegion\)/);
+  assert.match(pickerSource, /const focusCourts = selectedCoordinate \? \[selectedCourt\] : regionalCourts\.length \? regionalCourts : courts/);
   assert.match(pickerSource, /setStatus\(loading \? "loading" : loadError \? "error" : "empty"\)/);
 });
 

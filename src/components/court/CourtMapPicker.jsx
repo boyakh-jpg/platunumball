@@ -47,7 +47,7 @@ function clusterCourts(courts = [], zoom = 12) {
 function getInitialViewport(courts = [], selectedCourt, currentRegion = "", mapWidth = 0) {
   const selectedCoordinate = getCourtCoordinate(selectedCourt);
   const regionalCourts = courts.filter((court) => isCourtInRegion(court, currentRegion));
-  const focusCourts = regionalCourts.length ? regionalCourts : selectedCoordinate ? [selectedCourt] : courts;
+  const focusCourts = selectedCoordinate ? [selectedCourt] : regionalCourts.length ? regionalCourts : courts;
   const coordinates = focusCourts.map(getCourtCoordinate).filter(Boolean);
   const fallback = selectedCoordinate ?? getCourtCoordinate(courts[0]) ?? { lat: 37.5665, lng: 126.978 };
   const districtZoom = mapWidth >= WIDE_MAP_MIN_WIDTH ? WIDE_DISTRICT_OVERVIEW_ZOOM : DISTRICT_OVERVIEW_ZOOM;
