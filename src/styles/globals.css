@@ -6552,10 +6552,6 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-hero h2 {
 .referee-stat-guide {
   display: grid;
   gap: 12px;
-  border: 1px solid rgba(70, 224, 182, 0.2);
-  border-radius: var(--radius);
-  background: rgba(70, 224, 182, 0.045);
-  padding: 14px;
 }
 
 .referee-stat-guide-card > div:nth-child(2) {
