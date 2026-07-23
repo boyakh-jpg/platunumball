@@ -149,6 +149,7 @@
   --bottom-nav-height: 58px;
   --bg-court: none;
   --bg-action: none;
+  --bg-create: none;
   --bg-profile: none;
   --bg-hoop: none;
   --bg-ball: none;
@@ -234,6 +235,7 @@ html[data-theme="light"] {
   --team-away: #a86c14;
   --bg-court: none;
   --bg-action: none;
+  --bg-create: none;
   --bg-profile: none;
   --bg-hoop: none;
   --bg-ball: none;

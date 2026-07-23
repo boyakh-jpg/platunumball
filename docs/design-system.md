@@ -7,7 +7,7 @@
 3. 후보 정원 `없음/1명/2명/3명`은 네 칸 고정 grid와 줄바꿈 없는 짧은 라벨을 사용한다. 좁은 화면에서도 한 버튼만 다음 줄로 떨어뜨리지 않는다.
 4. 생성 하단 `취소하기/이전/다음`은 공용 기본 버튼 높이를 사용한다. `이전`과 휴대폰 뒤로가기는 현재 플로우의 전 단계로 이동하고 `취소하기`만 생성 화면을 닫는다. `420px` 이하의 첫·마지막 단계는 남는 반쪽 칸 없이 두 action을 한 줄에 배치한다.
 5. 경기 기록방은 단일 화면이다. 구장 검색·선택과 선택 취소를 같은 기록 메모 카드에 두고, 생성하지 않은 규칙 카드·규칙 요약·규칙 pill을 방 모달에 표시하지 않는다.
-6. 생성 페이지 hero는 일반 매칭에 경기 액션 배경, 경기·개인 기록에 기록 배경을 사용한다. 다크·라이트 모두 공용 page hero 배경·crop token을 사용한다.
+6. 생성 페이지 hero는 일반 경기 방 만들기에 전용 체육관 배경(`--bg-create`), 경기·개인 기록에 기록 배경을 사용한다. 다크·라이트 모두 공용 page hero 배경·crop token을 사용한다.
 7. 공용 방 모달은 하나의 shell을 유지하고 `phase renderer`가 단계별 본문과 하단 action을 결정한다. 매칭·경기·플레이 메뉴가 서로 다른 모달을 만들지 않으며 페이지 컴포넌트가 같은 단계·권한 조건을 복제하지 않는다.
 8. 공용 shell은 `헤더 → 상태 표시 → 단계별 본문 → 고정 하단 action` 순서다. 하단에는 현재 단계의 primary action 하나를 우선하고 secondary와 danger action을 분리한다.
 9. `match_record`는 사후 기록 전용 본문을 사용한다. 참가자 구성, 참가 확인, 기록 입력, 결과 승인, 부분 확인 또는 이의조정 순으로 렌더링하며 체크인·경기 시작·후보·심판·일반 경기 규칙 panel을 표시하지 않는다.
@@ -530,7 +530,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-02: "hero들"이라고 하면 홈/경기/모집만이 아니라 `page-header`, landing, team hub, season, profile, team detail, rulebook, tournament, match room 같은 모든 page-level hero를 포함한다.
 2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 `::before`/`::after` overlay를 얹지 않는다. hero 텍스트는 dark에서 `--rb-orange`/`--rb-orange-2`, light 큰 제목은 `--rb-cream`로 시인성을 확보한다.
 2026-07-02: hero 제목 폰트는 모두 `--hero-title-font`를 쓴다. 원인/결과: 개별 파일의 `linear-gradient` background와 `::before`/`::after` overlay가 뒤쪽 CSS에서 다시 살아나 이미지 위 막이 반복됐으므로, page-level hero는 최종 guard에서 image + fallback color만 남기고 `backdrop-filter`/blur/filter를 쓰지 않는다.
-2026-07-02: 방만들기(`/app/create`) page-header는 이미지 hero가 아니라 평면 카드 배경을 쓴다. 원인/결과: 작성 폼의 가장 뒤쪽 배경에 공용 page-header 이미지가 붙어 입력 화면 집중도가 떨어졌으므로 create 전용 header에서만 이미지를 제거한다.
+2026-07-23: 방만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지 hero를 쓴다. 왼쪽 제목 영역은 단순한 벽면 여백을 유지하고 오른쪽 골대·공·조명 구조는 중앙 crop 안에 둔다. 코트선은 3점선과 자유투 반원을 각각 한 번만 표시하며 중첩 반원을 금지한다.
 2026-07-02: 팀 허브 모바일 hero에도 데스크톱처럼 전체 1위 팀 보드를 포함한다. 원인/결과: 759px 이하 규칙이 `.team-hub-board`를 숨겨 모바일에서 팀 허브 정보가 빠졌으므로, 팀 페이지에서는 보드를 다시 표시한다.
 2026-07-02: 홈 image hero와 rank spotlight card는 조각난 frame처럼 보이는 border, underline, inner pseudo frame을 쓰지 않는다. 이미지 경계는 배경/간격으로 처리한다.
 2026-07-01: 일반 페이지의 floating search/card layer는 모바일 bottom nav보다 낮아야 한다. 모달/전역 로더만 bottom nav보다 위에 올 수 있다.
@@ -624,6 +624,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 | 나 메뉴 | `--bg-profile` |
 | 골대 | `--bg-hoop` |
 | 공/도시 | `--bg-ball` |
+| 방만들기 hero 전용 | `--bg-create` |
 | 매칭 hero 전용 | `--bg-recruiting` |
 | 진행 hero 전용 | `--bg-recorder` |
 | 크기 | `--hero-bg-size` |

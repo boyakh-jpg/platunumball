@@ -33,8 +33,9 @@ export function installRemoteAssetVariables() {
   style.id = styleId;
   style.textContent = `
 :root {
-  --bg-court: ${cssUrl("/assets/rankball-court-hero.webp")};
+  --bg-court: ${cssUrl("/assets/rankball-court-hero-v2.webp")};
   --bg-action: ${cssUrl("/assets/main.webp")};
+  --bg-create: ${cssUrl("/assets/rankball-create-match-night.webp")};
   --bg-profile: ${cssUrl("/assets/rankball-profile-night.webp")};
   --bg-hoop: ${cssUrl("/assets/rankball-hoop-night.webp")};
   --bg-ball: ${cssUrl("/assets/rankball-ball-night.webp")};
@@ -43,8 +44,9 @@ export function installRemoteAssetVariables() {
 }
 
 html[data-theme="light"] {
-  --bg-court: ${cssUrl("/assets/rankball-court-hero-day.webp")};
+  --bg-court: ${cssUrl("/assets/rankball-court-hero-day-v2.webp")};
   --bg-action: ${cssUrl("/assets/main-day.webp")};
+  --bg-create: ${cssUrl("/assets/rankball-create-match-day.webp")};
   --bg-profile: ${cssUrl("/assets/rankball-action-day.webp")};
   --bg-hoop: ${cssUrl("/assets/rankball-hoop-day.webp")};
   --bg-ball: ${cssUrl("/assets/rankball-ball-day.webp")};

@@ -19909,7 +19909,7 @@ html[data-theme="light"] .team-detail-hero {
 }
 
 .create-match-hero.is-match {
-  --page-hero-bg: var(--bg-action);
+  --page-hero-bg: var(--bg-create);
   --page-hero-bg-position: var(--hero-bg-position-action);
 }
 
