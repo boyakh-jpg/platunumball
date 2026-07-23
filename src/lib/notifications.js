@@ -23,6 +23,22 @@ export function getNotificationDueAt(notification = {}) {
   return notification.sendAt ?? notification.dueAt ?? notification.payload?.sendAt ?? notification.payload?.dueAt ?? "";
 }
 
+export function getNotificationDisplayAt(notification = {}) {
+  const dueAt = getNotificationDueAt(notification);
+  const dueMs = new Date(dueAt).getTime();
+  if (dueAt && Number.isFinite(dueMs)) return new Date(dueMs).toISOString();
+  return notification.createdAt ?? notification.updatedAt ?? "";
+}
+
+export function compareNotificationsNewestFirst(left = {}, right = {}) {
+  const leftDisplayMs = new Date(getNotificationDisplayAt(left)).getTime();
+  const rightDisplayMs = new Date(getNotificationDisplayAt(right)).getTime();
+  if (Number.isFinite(leftDisplayMs) && Number.isFinite(rightDisplayMs) && leftDisplayMs !== rightDisplayMs) {
+    return rightDisplayMs - leftDisplayMs;
+  }
+  return String(right.createdAt ?? "").localeCompare(String(left.createdAt ?? ""));
+}
+
 export function isNotificationDue(notification = {}, nowMs = Date.now()) {
   const dueAt = getNotificationDueAt(notification);
   if (!dueAt) return true;
@@ -114,7 +130,62 @@ export function isTerminalRoomNotice(notification = {}) {
   return /(cancel|close|expire|void)/.test(type) || /(취소|무효|만료|종료)/.test(title);
 }
 
+function getTerminalNotificationKind(notification = {}) {
+  const source = [
+    notification.type,
+    notification.discordEvent,
+    notification.payload?.action,
+    notification.payload?.status,
+    notification.title,
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (/(cancel|canceled|cancelled|취소)/.test(source)) return "cancelled";
+  if (/(void|voided|무효)/.test(source)) return "voided";
+  if (/(close|closed|expire|expired|만료|종료)/.test(source)) return "closed";
+  return "";
+}
+
+function getTerminalNotificationKey(notification = {}) {
+  const kind = getTerminalNotificationKind(notification);
+  const targetId = notification.targetUserId ?? notification.userId ?? "";
+  const entityId = notification.matchId ?? notification.recruitingPostId ?? "";
+  return kind && targetId && entityId ? `${targetId}:${entityId}:${kind}` : "";
+}
+
+function getNotificationCanonicalScore(notification = {}) {
+  return Number(Boolean(notification.type)) * 4
+    + Number(Boolean(notification.targetUserId)) * 2
+    + Number(notification.payload?.skipDiscordSync === true)
+    + Number(String(notification.id ?? "").startsWith("notice-"));
+}
+
+export function dedupeNotifications(notifications = []) {
+  const output = [];
+  const indexByKey = new Map();
+  (Array.isArray(notifications) ? notifications : []).forEach((notification) => {
+    if (!notification?.id) return;
+    const key = getTerminalNotificationKey(notification);
+    if (!key || !indexByKey.has(key)) {
+      if (key) indexByKey.set(key, output.length);
+      output.push(notification);
+      return;
+    }
+
+    const index = indexByKey.get(key);
+    const current = output[index];
+    const preferred = getNotificationCanonicalScore(notification) > getNotificationCanonicalScore(current)
+      ? notification
+      : current;
+    const other = preferred === notification ? current : notification;
+    output[index] = {
+      ...preferred,
+      readAt: preferred.readAt ?? other.readAt ?? null,
+    };
+  });
+  return output;
+}
+
 export function isNotificationDisplayable(notification = {}, options = {}) {
+  if (notification.payload?.supersededBy) return false;
   return !isNotificationTargetUnavailable(notification, options) || isTerminalRoomNotice(notification);
 }
 

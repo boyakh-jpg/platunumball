@@ -4,7 +4,7 @@ import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
 import { NOTIFICATION_COLUMNS } from "../../../src/data/repositoryColumns.js";
-import { isNotificationDisplayable, isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
+import { compareNotificationsNewestFirst, dedupeNotifications, isNotificationDisplayable, isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
 import {
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
@@ -87,9 +87,10 @@ async function loadCurrentUserHomeNotifications(supabase, profileId = "", blocke
     .limit(HOME_NOTIFICATION_QUERY_LIMIT);
   if (error) throw error;
   const notificationsWithActors = await attachNotificationActors(supabase, (data ?? []).map(fromRemoteNotification));
-  return (await attachNotificationTargetState(supabase, notificationsWithActors))
+  return dedupeNotifications((await attachNotificationTargetState(supabase, notificationsWithActors))
     .filter((notification) => isNotificationVisibleToUser(notification, profileId, { blockedUserIds }))
-    .filter((notification) => isNotificationDisplayable(notification))
+    .filter((notification) => isNotificationDisplayable(notification)))
+    .sort(compareNotificationsNewestFirst)
     .slice(0, HOME_NOTIFICATION_LIMIT);
 }
 

@@ -5,7 +5,7 @@ import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import { isInstantRoom } from "../lib/matchUtils.js";
-import { isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
+import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import { getPendingRecruitingInvitations } from "../lib/recruiting.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -40,13 +40,13 @@ export default function Notifications({ app }) {
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const selectedRecruitingPost = (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId) ?? null;
   useBodyScrollLock(Boolean(selectedRecruitingPost));
-  const visibleNotifications = useMemo(() => (app.state.notifications ?? [])
+  const visibleNotifications = useMemo(() => dedupeNotifications((app.state.notifications ?? [])
     .filter((notification) => isNotificationVisibleToUser(notification, app.currentUser.id, { blockedUserIds }))
     .map((notification) => isNotificationTargetUnavailable(notification, app.state)
       ? { ...notification, targetUnavailable: true }
       : notification)
-    .filter((notification) => isNotificationDisplayable(notification))
-    .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))), [app.currentUser.id, app.state, app.state.notifications, blockedUserIds]);
+    .filter((notification) => isNotificationDisplayable(notification)))
+    .sort(compareNotificationsNewestFirst), [app.currentUser.id, app.state, app.state.notifications, blockedUserIds]);
   const unreadNotifications = visibleNotifications.filter((notification) => !notification.readAt);
   const pastNotifications = visibleNotifications.filter((notification) => Boolean(notification.readAt));
   const unreadCount = unreadNotifications.length;
@@ -201,8 +201,8 @@ export default function Notifications({ app }) {
               <span className="home-action-main">
                 <strong>{notification.title}</strong>
                 <em>{notification.body}</em>
-                {formatNotificationTime(notification.createdAt) ? (
-                  <time dateTime={notification.createdAt}>{formatNotificationTime(notification.createdAt)}</time>
+                {formatNotificationTime(getNotificationDisplayAt(notification)) ? (
+                  <time dateTime={getNotificationDisplayAt(notification)}>{formatNotificationTime(getNotificationDisplayAt(notification))}</time>
                 ) : null}
               </span>
               <span className="notification-actions">

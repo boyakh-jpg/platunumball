@@ -574,6 +574,10 @@ const REQUIRED_RPCS = [
     args: { p_now: new Date(0).toISOString() },
   },
   {
+    name: "rankball_mark_notifications_read_action",
+    args: { p_profile_id: "", p_notification_id: "", p_all: false, p_read_at: new Date(0).toISOString() },
+  },
+  {
     name: "rankball_archive_and_cleanup_completed_records",
     args: { p_batch_size: 1, p_reference: new Date(0).toISOString() },
   },

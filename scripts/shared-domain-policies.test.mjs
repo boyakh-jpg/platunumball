@@ -16,7 +16,7 @@ import {
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
-import { rejectMatchDispute, voidMatch as applyMatchVoid } from "../src/data/repository.js";
+import { markAllNotificationsRead, rejectMatchDispute, voidMatch as applyMatchVoid } from "../src/data/repository.js";
 import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
 import {
   AFFILIATION_CHANGE_COOLDOWN_DAYS,
@@ -56,10 +56,14 @@ import {
   MATCH_CANCEL_NOTICE_PREFIXES,
   MATCH_POSTGAME_NOTICE_PREFIXES,
   MATCH_SCHEDULED_NOTICE_PREFIXES,
+  compareNotificationsNewestFirst,
+  dedupeNotifications,
+  getNotificationDisplayAt,
   getNotificationTargetPath,
   isTerminalMatchStatus,
   isTerminalRecruitingStatus,
 } from "../src/lib/notifications.js";
+import { toDiscordDeliveryRows, toMatchNotificationRows } from "../server/api/matches/sync-match.js";
 import {
   canRequestVoidMatchRestore,
   compareMatchRecency,
@@ -655,6 +659,94 @@ test("notification status and delivery prefix policies stay aligned", () => {
   MATCH_POSTGAME_NOTICE_PREFIXES.forEach((prefix) => assert.ok(MATCH_CANCEL_NOTICE_PREFIXES.includes(prefix)));
   assert.equal(getNotificationTargetPath({ tournamentId: "t 1" }), "/app/tournaments/t%201");
   assert.equal(getNotificationTargetPath({ matchId: "m/1" }), "/app/matches?match=m%2F1");
+});
+
+test("notification ordering uses due time and terminal duplicates collapse to the canonical row", () => {
+  const scheduled = {
+    id: "notice-scheduled",
+    targetUserId: "user-1",
+    type: "match_reminder",
+    matchId: "match-1",
+    dueAt: "2026-07-23T03:42:00.000Z",
+    createdAt: "2026-07-20T00:00:00.000Z",
+  };
+  const immediate = {
+    id: "notice-immediate",
+    targetUserId: "user-1",
+    type: "report",
+    createdAt: "2026-07-23T03:40:00.000Z",
+  };
+  assert.equal(getNotificationDisplayAt(scheduled), scheduled.dueAt);
+  assert.deepEqual([immediate, scheduled].sort(compareNotificationsNewestFirst).map((item) => item.id), [scheduled.id, immediate.id]);
+
+  const legacy = {
+    id: "n-legacy",
+    userId: "user-1",
+    title: "경기 취소",
+    matchId: "match-1",
+    payload: { action: "cancelMatch" },
+    createdAt: "2026-07-23T03:41:59.000Z",
+  };
+  const canonical = {
+    id: "notice-match-cancelled-match-1-user-1",
+    userId: "user-1",
+    targetUserId: "user-1",
+    title: "경기 취소",
+    type: "match_cancelled",
+    matchId: "match-1",
+    payload: { skipDiscordSync: true },
+    createdAt: "2026-07-23T03:42:00.000Z",
+  };
+  assert.deepEqual(dedupeNotifications([legacy, canonical]).map((item) => item.id), [canonical.id]);
+});
+
+test("match Discord deliveries reference the same canonical app notification", () => {
+  const match = {
+    id: "match-1",
+    title: "테스트 경기",
+    mode: "1v1",
+    court: "구장 미정",
+    scheduledAt: "2026-07-23T12:00:00.000Z",
+    teamA: { players: ["user-1"] },
+    teamB: { players: ["user-2"] },
+    rules: {},
+  };
+  const notification = { idPrefix: "match-cancelled", title: "경기 취소", intro: "경기가 취소됐습니다." };
+  const appRow = toMatchNotificationRows(match, ["user-1"], notification)[0];
+  const deliveryRow = toDiscordDeliveryRows(match, [{ id: "user-1", discord_user_id: "12345678901234567" }], notification)[0];
+
+  assert.equal(deliveryRow.notification_id, appRow.id);
+  assert.equal(deliveryRow.payload.notificationId, appRow.id);
+  assert.equal(appRow.payload.actionRequired, false);
+  assert.equal(appRow.payload.homeAction, false);
+});
+
+test("mark all notifications leaves future and other-user rows unread", () => {
+  const now = Date.now();
+  const state = {
+    currentUserId: "user-1",
+    notifications: [
+      { id: "due", targetUserId: "user-1", dueAt: new Date(now - 60_000).toISOString(), readAt: null },
+      { id: "future", targetUserId: "user-1", dueAt: new Date(now + 60_000).toISOString(), readAt: null },
+      { id: "other", targetUserId: "user-2", dueAt: new Date(now - 60_000).toISOString(), readAt: null },
+    ],
+  };
+  const next = markAllNotificationsRead(state);
+  assert.ok(next.notifications.find((item) => item.id === "due").readAt);
+  assert.equal(next.notifications.find((item) => item.id === "future").readAt, null);
+  assert.equal(next.notifications.find((item) => item.id === "other").readAt, null);
+});
+
+test("notification read action and terminal trigger stay server-atomic", async () => {
+  const [readApi, migration] = await Promise.all([
+    readSource("server/api/notifications/read.js"),
+    readSource("supabase/migrations/20260723104000_notification_consistency.sql"),
+  ]);
+  assert.match(readApi, /rankball_mark_notifications_read_action/);
+  assert.match(migration, /rankball_mark_notifications_read_action/);
+  assert.match(migration, /matches_create_terminal_notifications/);
+  assert.match(migration, /notifications_suppress_legacy_match_terminal/);
+  assert.match(migration, /supersededBy/);
 });
 
 test("profile record result and recency helpers preserve match semantics", () => {

@@ -245,15 +245,20 @@ export async function getDiscordProfiles(supabase, profileIds = [], event = "mat
   ));
 }
 
-function toDiscordDeliveryRows(match = {}, profiles = [], notification = {}) {
+export function getMatchNotificationId(matchId = "", idPrefix = "notice", profileId = "") {
+  return `notice-${idPrefix}-${matchId}-${profileId}`;
+}
+
+export function toDiscordDeliveryRows(match = {}, profiles = [], notification = {}) {
   const now = new Date().toISOString();
   const sendAt = notification.sendAt ?? now;
   const payload = getMatchDiscordPayload(match, notification.title, notification.intro);
   return profiles.map((profile) => {
     const id = `discord-${notification.idPrefix}-${match.id}-${profile.id}`;
+    const notificationId = getMatchNotificationId(match.id, notification.idPrefix, profile.id);
     return {
       id,
-      notification_id: id,
+      notification_id: notificationId,
       target_user_id: profile.id,
       discord_user_id: profile.discord_user_id,
       event: "match",
@@ -261,6 +266,7 @@ function toDiscordDeliveryRows(match = {}, profiles = [], notification = {}) {
       payload: {
         ...payload,
         id,
+        notificationId,
         matchId: match.id,
         targetUserId: profile.id,
         status: "queued",
@@ -279,13 +285,13 @@ function toDiscordDeliveryRows(match = {}, profiles = [], notification = {}) {
   });
 }
 
-function toMatchNotificationRows(match = {}, profileIds = [], notification = {}) {
+export function toMatchNotificationRows(match = {}, profileIds = [], notification = {}) {
   const now = new Date().toISOString();
   const sendAt = notification.sendAt ?? now;
   const payload = getMatchDiscordPayload(match, notification.title, notification.intro);
   const uniqueProfileIds = [...new Set(profileIds.filter(Boolean))];
   return uniqueProfileIds.map((profileId) => {
-    const id = `notice-${notification.idPrefix}-${match.id}-${profileId}`;
+    const id = getMatchNotificationId(match.id, notification.idPrefix, profileId);
     return {
       id,
       user_id: profileId,
@@ -304,8 +310,8 @@ function toMatchNotificationRows(match = {}, profileIds = [], notification = {})
         id,
         matchId: match.id,
         targetUserId: profileId,
-        actionRequired: notification.actionRequired !== false,
-        homeAction: true,
+        actionRequired: notification.actionRequired === true,
+        homeAction: notification.homeAction === true,
         skipDiscordSync: true,
         sendAt,
         queuedAt: now,
@@ -342,12 +348,12 @@ async function upsertMatchNotificationRows(supabase, rows = []) {
   const ids = rows.map((row) => row.id).filter(Boolean);
   const { data: existingRows, error: existingError } = await supabase
     .from("notifications")
-    .select("id, read_at")
+    .select("id")
     .in("id", ids);
   if (existingError) throw existingError;
 
-  const readIds = new Set((existingRows ?? []).filter((row) => row.read_at).map((row) => row.id));
-  const pendingRows = rows.filter((row) => !readIds.has(row.id));
+  const existingIds = new Set((existingRows ?? []).map((row) => row.id));
+  const pendingRows = rows.filter((row) => !existingIds.has(row.id));
   if (!pendingRows.length) return 0;
 
   const { error } = await supabase
@@ -496,11 +502,15 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     const endedAt = match.endedAt ? new Date(match.endedAt) : new Date();
     addRows(participantIds, profiles, {
       idPrefix: "match-ended-score",
+      actionRequired: true,
+      homeAction: true,
       title: "경기 종료",
       intro: "경기가 종료되었습니다. 경기 점수를 입력해 주세요.",
     });
     addRows(participantIds, profiles, {
       idPrefix: "match-dispute-check",
+      actionRequired: true,
+      homeAction: true,
       title: "이의신청 확인",
       intro: "경기 종료 후 30분이 지났습니다. 입력된 결과를 확인하고, 문제가 있으면 이의신청을 해 주세요.",
       sendAt: new Date(endedAt.getTime() + 30 * MINUTE_MS).toISOString(),

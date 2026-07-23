@@ -2128,7 +2128,8 @@ export function useAppData(authUser = null, appLocation = null) {
     });
   }, [setState, syncFavoriteServer]);
   const markNotificationReadServer = useCallback((payload = {}) => {
-    runServerAction("/api/notifications/read", payload);
+    if (!isSupabaseConfigured) return Promise.resolve({ ok: true, local: true });
+    return runServerAction("/api/notifications/read", payload);
   }, [runServerAction]);
   const loadNotifications = useCallback(() => {
     if (!isSupabaseConfigured) return Promise.resolve(stateRef.current.notifications ?? []);
@@ -3723,13 +3724,27 @@ export function useAppData(authUser = null, appLocation = null) {
         await refreshAdminState();
         return result;
       },
-      markNotificationRead: (notificationId) => {
+      markNotificationRead: async (notificationId) => {
         setState((prev) => markNotificationRead(prev, notificationId));
-        markNotificationReadServer({ notificationId });
+        try {
+          const result = await markNotificationReadServer({ notificationId });
+          if (!result || result.ok === false) await loadNotifications();
+          return result;
+        } catch (error) {
+          await loadNotifications();
+          return { ok: false, error: error?.message ?? "notification_read_failed" };
+        }
       },
-      markAllNotificationsRead: () => {
+      markAllNotificationsRead: async () => {
         setState((prev) => markAllNotificationsRead(prev));
-        markNotificationReadServer({ all: true });
+        try {
+          const result = await markNotificationReadServer({ all: true });
+          if (!result || result.ok === false) await loadNotifications();
+          return result;
+        } catch (error) {
+          await loadNotifications();
+          return { ok: false, error: error?.message ?? "notification_read_failed" };
+        }
       },
       loadNotifications,
       deleteNotification: async (notificationId) => {

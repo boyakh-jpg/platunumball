@@ -211,7 +211,7 @@ import { clearState, readState, writeState } from "../lib/storage.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNotificationDeliveries } from "../lib/discord.js";
 import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
-import { getBlockedUserIds, isNotificationFromBlockedUser } from "../lib/notifications.js";
+import { getBlockedUserIds, isNotificationDue, isNotificationFromBlockedUser } from "../lib/notifications.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
 import {
   getScheduledStartMs,
@@ -9481,7 +9481,13 @@ export function markAllNotificationsRead(state) {
   const readAt = new Date().toISOString();
   return {
     ...state,
-    notifications: state.notifications.map((notification) => ({ ...notification, readAt: notification.readAt ?? readAt })),
+    notifications: state.notifications.map((notification) => {
+      const targetUserId = notification.targetUserId ?? notification.userId ?? "";
+      if (notification.readAt || !isNotificationDue(notification) || (targetUserId && targetUserId !== state.currentUserId)) {
+        return notification;
+      }
+      return { ...notification, readAt };
+    }),
   };
 }
 

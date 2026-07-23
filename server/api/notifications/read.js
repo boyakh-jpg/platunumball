@@ -11,26 +11,32 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request);
     const readAt = new Date().toISOString();
-    let query = context.supabase
-      .from("notifications")
-      .update({ read_at: readAt, updated_at: readAt })
-      .or(`user_id.eq.${context.profileId},target_user_id.eq.${context.profileId}`);
-
-    if (!body.all) {
-      const notificationId = String(body.notificationId || "").trim();
-      if (!notificationId) {
-        sendJson(response, 400, { error: "missing_notification_id" });
-        return;
-      }
-      query = query.eq("id", notificationId);
-    } else {
-      query = query.lte("due_at", readAt);
+    const notificationId = String(body.notificationId || "").trim();
+    if (!body.all && !notificationId) {
+      sendJson(response, 400, { error: "missing_notification_id" });
+      return;
     }
 
-    const { error } = await query;
+    const { data, error } = await context.supabase.rpc("rankball_mark_notifications_read_action", {
+      p_profile_id: context.profileId,
+      p_notification_id: body.all ? null : notificationId,
+      p_all: Boolean(body.all),
+      p_read_at: readAt,
+    });
     if (error) throw error;
+    const result = data && typeof data === "object" ? data : {};
+    if (!body.all && Number(result.count ?? 0) === 0) {
+      sendJson(response, 404, { error: "notification_not_found" });
+      return;
+    }
 
-    sendJson(response, 200, { ok: true, all: Boolean(body.all), readAt });
+    sendJson(response, 200, {
+      ok: true,
+      all: Boolean(body.all),
+      readAt: result.readAt ?? readAt,
+      count: Number(result.count ?? 0),
+      notificationIds: Array.isArray(result.notificationIds) ? result.notificationIds : [],
+    });
   } catch (error) {
     console.error("Notification read failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "notification_read_failed" });

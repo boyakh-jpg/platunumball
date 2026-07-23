@@ -1,7 +1,7 @@
 import { attachNotificationActors, attachNotificationTargetState, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
 import { NOTIFICATION_COLUMNS, PROFILE_ME_COLUMNS } from "../../../src/data/repositoryColumns.js";
-import { isNotificationDisplayable, isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
+import { compareNotificationsNewestFirst, dedupeNotifications, isNotificationDisplayable, isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
 
 const DEFAULT_NOTIFICATION_LIMIT = 80;
 const MAX_NOTIFICATION_LIMIT = 100;
@@ -33,11 +33,12 @@ export default async function handler(request, response) {
     if (error) throw error;
 
     const notificationsWithActors = await attachNotificationActors(context.supabase, (data ?? []).map(fromRemoteNotification));
-    const notifications = (await attachNotificationTargetState(context.supabase, notificationsWithActors))
+    const notifications = dedupeNotifications((await attachNotificationTargetState(context.supabase, notificationsWithActors))
       .filter((notification) => isNotificationVisibleToUser(notification, context.profileId, {
         blockedUserIds: context.profile?.app_settings?.blockedUserIds,
       }))
-      .filter((notification) => isNotificationDisplayable(notification));
+      .filter((notification) => isNotificationDisplayable(notification)))
+      .sort(compareNotificationsNewestFirst);
 
     sendJson(response, 200, { ok: true, notifications });
   } catch (error) {

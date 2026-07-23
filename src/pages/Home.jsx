@@ -20,7 +20,7 @@ import { addDateDays, canUserResolveMatchDispute, getAllowedStatFields, getLocal
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
-import { getNotificationDueAt, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
+import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
@@ -376,18 +376,14 @@ export default function Home({ app }) {
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
   }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, blockedUserIds, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, todayValue, user.id]);
   const priorityItems = actionItems.slice(0, 5);
-  const homeNoticeItems = useMemo(() => (app.state.notifications ?? [])
+  const homeNoticeItems = useMemo(() => dedupeNotifications((app.state.notifications ?? [])
     .filter((notification) => isNotificationVisibleToUser(notification, user.id, { blockedUserIds }))
     .map((notification) => isNotificationTargetUnavailable(notification, app.state)
       ? { ...notification, targetUnavailable: true }
       : notification)
     .filter((notification) => isNotificationDisplayable(notification))
-    .filter((notification) => !notification.readAt)
-    .sort((a, b) => {
-      const aTime = getNotificationDueAt(a) || a.createdAt || "";
-      const bTime = getNotificationDueAt(b) || b.createdAt || "";
-      return String(bTime).localeCompare(String(aTime));
-    }), [app.state, app.state.notifications, blockedUserIds, user.id]);
+    .filter((notification) => !notification.readAt))
+    .sort(compareNotificationsNewestFirst), [app.state, app.state.notifications, blockedUserIds, user.id]);
   const priorityNoticeItems = homeNoticeItems.slice(0, 4);
 
   const searchResults = useMemo(() => {
