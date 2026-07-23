@@ -103,14 +103,14 @@ export default function RefereeRulebook({ theme = "dark" }) {
         </Link>
       </header>
 
-      <section className="referee-rulebook-hero">
+      <Card className="referee-rulebook-intro">
         <div>
           <Badge tone="blue">FIBA 2024 · BOXTIER 운영 기준</Badge>
           <h2>판정과 기록 기준</h2>
           <p>경기 전 확인, 코트 판정, 개인활약 기록, 결과 확인과 이의 처리 순서입니다.</p>
         </div>
         <RulebookIllustration scene="standard" theme={theme} />
-      </section>
+      </Card>
 
       <div className="referee-rulebook-notice">
         {REFEREE_RULEBOOK_NOTICE.map((notice) => <span key={notice}>{notice}</span>)}

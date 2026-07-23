@@ -88,7 +88,7 @@
   display: grid;
   gap: 3px;
   border: 1px solid var(--ui-control-group-border);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: var(--ui-control-group-bg);
   color: var(--muted);
   padding: 10px;
@@ -153,7 +153,7 @@
 .arena-collapse-button {
   min-height: 34px;
   border: 1px solid rgba(70, 224, 182, 0.28);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.1);
   color: var(--green);
   cursor: pointer;
@@ -226,7 +226,7 @@
   width: 42px;
   height: 42px;
   place-items: center;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--rb-orange) 16%, transparent);
   color: var(--rb-orange);
 }
@@ -272,7 +272,7 @@
   flex: 0 1 auto;
   min-height: 42px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.055);
   color: var(--muted);
   cursor: pointer;
@@ -302,7 +302,7 @@
 
 .arena-filter-select select {
   min-height: 42px;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.055);
   font-size: 0.82rem;
   font-weight: 900;
@@ -613,7 +613,7 @@
   display: grid;
   gap: 4px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
   padding: 10px;
@@ -771,7 +771,7 @@
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   cursor: pointer;
@@ -869,7 +869,7 @@
   display: grid;
   gap: 10px;
   border: 1px solid rgba(255, 211, 108, 0.18);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 211, 108, 0.07);
   padding: 12px;
 }
@@ -921,7 +921,7 @@
   display: grid;
   gap: 3px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(0, 0, 0, 0.18);
   color: var(--text);
   cursor: pointer;
@@ -960,7 +960,7 @@
   display: grid;
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 10px;
 }
@@ -999,7 +999,7 @@
   gap: 8px;
   min-height: 48px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(0, 0, 0, 0.18);
   color: var(--text);
   cursor: pointer;
@@ -1066,7 +1066,7 @@
 .arena-party-role-buttons button {
   min-height: 30px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.06);
   color: var(--muted);
   cursor: pointer;
@@ -1114,7 +1114,7 @@
   align-content: center;
   gap: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 9px 10px;
   text-align: center;
@@ -1207,7 +1207,7 @@
   min-width: 0;
   gap: 6px;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(0, 0, 0, 0.16);
   padding: 7px;
 }
@@ -1255,7 +1255,7 @@
   max-width: 100%;
   min-height: 32px;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 5px 6px;
 }
@@ -1345,21 +1345,6 @@
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 850;
-}
-
-.arena-lobby-modal {
-  width: min(1240px, 100%);
-  max-height: min(880px, calc(100vh - 36px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  opacity: var(--sheet-modal-opacity, 1);
-  transform: translateY(var(--sheet-drag-y, 0px));
-  will-change: opacity, transform;
-  border: 1px solid rgba(255, 211, 108, 0.22);
-  border-radius: var(--radius);
-  background: rgba(4, 8, 15, 0.96);
-  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.58);
-  padding: 18px;
 }
 
 .arena-lobby-modal.is-sheet-settling {
@@ -1533,7 +1518,7 @@
   align-items: center;
   gap: 3px;
   border: 1px solid rgba(240, 82, 64, 0.4);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   padding: 3px 6px;
   background: rgba(240, 82, 64, 0.12);
   color: var(--rb-orange-2);
@@ -1605,7 +1590,7 @@
   min-width: 0;
   align-items: center;
   gap: 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   color: var(--muted);
   padding: 11px 12px;
   font-size: 0.82rem;
@@ -1667,7 +1652,7 @@
   inset: -8px -7px;
   z-index: 0;
   border: 2px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background:
     radial-gradient(ellipse at 50% 48%, rgba(111, 255, 233, 0.2) 0 42%, rgba(111, 255, 233, 0.08) 66%, rgba(111, 255, 233, 0) 100%);
   box-shadow:
@@ -1729,7 +1714,7 @@
   justify-items: center;
   gap: 3px;
   border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.08);
   color: var(--muted);
   padding: 9px 6px;
@@ -1949,7 +1934,7 @@ button.arena-room-player-slot {
   gap: 10px;
   min-width: 0;
   border: 1px solid rgba(255, 211, 108, 0.28);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background:
     linear-gradient(145deg, rgba(9, 14, 23, 0.98), rgba(9, 14, 23, 0.92)),
     rgba(9, 14, 23, 0.98);
@@ -2039,11 +2024,11 @@ button.arena-room-player-slot {
 }
 
 .arena-self-position-control select {
-  min-height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: rgba(8, 16, 28, 0.88);
-  color: var(--text);
+  min-height: var(--ui-button-height-sm);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
   padding: 6px 8px;
   font-weight: 900;
 }
@@ -2281,7 +2266,7 @@ button.arena-room-player-slot {
   display: grid;
   gap: 5px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: rgba(0, 0, 0, 0.16);
   padding: 9px;
 }
@@ -2301,7 +2286,7 @@ button.arena-room-player-slot {
   display: grid;
   gap: 10px;
   border: 1px solid rgba(70, 224, 182, 0.22);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.07);
   padding: 10px;
 }
@@ -2344,7 +2329,7 @@ button.arena-room-player-slot {
   gap: 12px;
   min-height: 68px;
   border: 1px solid rgba(70, 224, 182, 0.26);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.07);
   padding: 10px 12px;
 }
@@ -2416,7 +2401,7 @@ button.arena-room-player-slot {
   align-items: center;
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.04);
   padding: 8px;
 }
@@ -2505,7 +2490,7 @@ button.arena-room-player-slot {
   gap: 10px;
   margin-top: 12px;
   border: 1px solid rgba(70, 224, 182, 0.24);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.075);
   padding: 12px;
 }
@@ -2551,7 +2536,7 @@ button.arena-room-player-slot {
   align-items: center;
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.05);
   padding: 9px 10px;
 }
@@ -2643,7 +2628,7 @@ button.arena-room-player-slot {
   width: 34px;
   height: 34px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.06);
   color: var(--muted);
 }
@@ -2684,7 +2669,7 @@ button.arena-room-player-slot {
   gap: 8px;
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);
   padding: 8px;
@@ -2732,7 +2717,7 @@ button.arena-room-player-slot {
 
 .arena-invitation-list > div.mine {
   border: 1px solid rgba(255, 211, 108, 0.3);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 211, 108, 0.08);
   padding: 8px;
 }
@@ -2791,7 +2776,7 @@ button.arena-room-player-slot {
   gap: 10px;
   margin-top: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 12px;
 }
@@ -2841,7 +2826,7 @@ button.arena-room-player-slot {
   display: grid;
   min-width: 0;
   gap: 3px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(0, 0, 0, 0.16);
   padding: 8px;
 }
@@ -2946,7 +2931,7 @@ button.arena-room-player-slot {
   align-items: center;
   gap: var(--ui-space-2, 8px);
   border: 1px solid var(--ui-room-panel-border, var(--line));
-  border-radius: var(--ui-control-radius, 8px);
+  border-radius: var(--ui-control-radius, var(--radius-xs));
   padding: var(--ui-space-3, 12px);
 }
 
@@ -2960,7 +2945,7 @@ button.arena-room-player-slot {
   gap: 10px;
   margin-top: 8px;
   border: 1px solid rgba(70, 224, 182, 0.18);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.06);
   padding: 10px;
 }
@@ -3010,7 +2995,7 @@ button.arena-room-player-slot {
   grid-template-columns: minmax(56px, 0.45fr) minmax(0, 1fr);
   gap: 8px;
   align-items: center;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: rgba(0, 0, 0, 0.18);
   padding: 6px 8px;
 }
@@ -3055,10 +3040,6 @@ button.arena-room-player-slot {
   font-size: 0.72rem;
   font-weight: 800;
   line-height: 1.25;
-}
-
-html[data-theme="light"] .arena-lobby-modal {
-  background: rgba(246, 248, 242, 0.96);
 }
 
 html[data-theme="light"] .arena-lobby-arena {
@@ -4155,11 +4136,6 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   background-image: none;
 }
 
-/* Light room surfaces: keep court background visible without losing text contrast. */
-html[data-theme="light"] .arena-lobby-modal {
-  background: rgba(246, 248, 242, 0.84);
-}
-
 html[data-theme="light"] .arena-lobby-team-panel,
 html[data-theme="light"] .arena-lobby-score-core,
 html[data-theme="light"] .arena-lobby-actions > div,
@@ -4692,16 +4668,6 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-.arena-lobby-modal {
-  max-height: calc(100dvh - 36px);
-  border: 1px solid var(--rb-line);
-  border-radius: var(--radius-lg);
-  background: rgba(36, 37, 38, 0.96);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
-  padding: 20px;
-}
-
 .arena-lobby-arena {
   --room-slot-gap: 8px;
   --room-slot-width: clamp(74px, 7vw, 96px);
@@ -4747,7 +4713,7 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 .arena-lobby-score-core,
 .arena-lobby-actions > div {
   border-color: rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: rgba(0, 0, 0, 0.16);
   backdrop-filter: none;
 }
@@ -4800,7 +4766,7 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   grid-template-rows: 44px 16px 18px 18px 16px;
   min-height: 136px;
   border-color: var(--rb-line);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--rb-surface);
   box-shadow: none;
   padding: 10px 6px;
@@ -4873,14 +4839,14 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 
 .arena-room-party-group {
   gap: 8px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: 7px;
 }
 
 .arena-room-party-group::before {
   inset: 0;
   border: 1px solid rgba(255, 118, 88, 0.42);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(ellipse at 50% 42%, rgba(240, 90, 70, 0.18), transparent 66%),
     rgba(240, 90, 70, 0.055);
@@ -4916,7 +4882,7 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 .arena-slot-command-popover,
 .arena-party-picker {
   border-color: var(--rb-line);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: rgba(36, 37, 38, 0.78);
   backdrop-filter: blur(14px);
   box-shadow: none;
@@ -4999,12 +4965,6 @@ html[data-theme="light"] .arena-card-action.button-secondary {
 html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   border-color: var(--rb-line);
   background: rgba(255, 255, 255, 0.7);
-}
-
-html[data-theme="light"] .arena-lobby-modal {
-  border-color: var(--rb-line);
-  background: rgba(255, 250, 241, 0.96);
-  box-shadow: 0 -18px 54px rgba(55, 44, 31, 0.14);
 }
 
 html[data-theme="light"] .arena-lobby-arena {
@@ -5594,7 +5554,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   .arena-lobby-modal {
     width: 100%;
     max-height: calc(100dvh - 20px);
-    border-radius: 24px 24px 32px 32px;
+    border-radius: var(--radius-xl);
     padding: 14px;
   }
 
@@ -5654,7 +5614,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   .arena-room-player-slot {
     grid-template-rows: 36px 16px 18px 18px 16px;
     min-height: 118px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 8px 4px;
     gap: 4px;
   }
@@ -5872,18 +5832,6 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
 }
 
-.arena-lobby-modal {
-  max-height: calc(100dvh - 36px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border: 1px solid var(--rb-line);
-  border-radius: var(--radius-lg);
-  background: rgba(36, 37, 38, 0.96);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
-  padding: 20px;
-}
-
 .arena-lobby-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
@@ -5948,7 +5896,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 .arena-lobby-score-core,
 .arena-lobby-actions > div {
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: rgba(0, 0, 0, 0.16);
   backdrop-filter: none;
   box-shadow: none;
@@ -6010,7 +5958,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   grid-template-rows: 44px 16px 18px 18px 16px;
   min-height: 136px;
   border: 1px solid var(--rb-line);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--rb-surface);
   box-shadow: none;
   padding: 10px 6px;
@@ -6100,14 +6048,14 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 .arena-room-party-group {
   isolation: isolate;
   gap: 8px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: 0;
 }
 
 .arena-room-party-group::before {
   inset: -7px;
   border: 1px solid rgba(255, 118, 88, 0.42);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(ellipse at 50% 42%, rgba(240, 90, 70, 0.18), transparent 66%),
     rgba(240, 90, 70, 0.055);
@@ -6136,7 +6084,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 .arena-slot-command-popover,
 .arena-party-picker {
   border: 1px solid var(--rb-line);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: rgba(36, 37, 38, 0.78);
   backdrop-filter: none;
   box-shadow: none;
@@ -6241,7 +6189,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   .arena-lobby-modal {
     width: 100%;
     max-height: calc(100dvh - 20px);
-    border-radius: 24px 24px 32px 32px;
+    border-radius: var(--radius-xl);
     padding: 14px;
   }
 
@@ -6277,7 +6225,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   .arena-room-player-slot {
     grid-template-rows: 36px 16px 18px 18px 16px;
     min-height: 118px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 8px 4px;
     gap: 4px;
   }
@@ -6350,12 +6298,6 @@ html[data-theme="light"] .arena-card-action.button-secondary {
 
 html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   background: rgba(255, 255, 255, 0.7);
-}
-
-html[data-theme="light"] .arena-lobby-modal {
-  border-color: var(--rb-line);
-  background: rgba(255, 250, 241, 0.96);
-  box-shadow: 0 -18px 54px rgba(55, 44, 31, 0.14);
 }
 
 html[data-theme="light"] .arena-lobby-arena {
@@ -6980,22 +6922,6 @@ html[data-theme="light"] .arena-lobby-arena::before {
   background: radial-gradient(ellipse at 50% 48%, rgba(240, 90, 70, 0.14), transparent 20rem);
 }
 
-.arena-lobby-modal {
-  background:
-    linear-gradient(180deg, rgba(24, 25, 26, 0.9), rgba(24, 25, 26, 0.78)),
-    radial-gradient(ellipse at 72% 28%, rgba(240, 90, 70, 0.14), transparent 20rem),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-2);
-}
-
-html[data-theme="light"] .arena-lobby-modal {
-  background:
-    linear-gradient(180deg, rgba(255, 250, 241, 0.9), rgba(245, 241, 232, 0.82)),
-    radial-gradient(ellipse at 72% 28%, rgba(229, 85, 63, 0.1), transparent 20rem),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-2);
-}
-
 /* 2026-07-01 shared primitive alignment for recruiting chunk. */
 .arena-recruit-card,
 .arena-filter-bar,
@@ -7223,16 +7149,20 @@ html[data-theme="light"] .arena-party-member-card {
 }
 
 .arena-lobby-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, calc(100dvw - 32px));
+  max-width: calc(100dvw - 32px);
+  max-height: calc(100dvh - 36px);
+  overflow: hidden;
+  padding: 0;
+  opacity: var(--sheet-modal-opacity, 1);
+  transform: translateY(var(--sheet-drag-y, 0px));
+  will-change: opacity, transform;
   border: 1px solid var(--ui-room-modal-border);
   border-radius: var(--ui-room-modal-radius);
   background: var(--ui-room-modal-bg);
-  box-shadow: var(--ui-room-modal-shadow);
-}
-
-html[data-theme="light"] .arena-lobby-modal {
-  border-color: var(--ui-room-modal-border);
-  border-radius: var(--ui-room-modal-radius);
-  background: var(--ui-room-modal-bg);
+  background-clip: padding-box;
   box-shadow: var(--ui-room-modal-shadow);
 }
 
@@ -7516,7 +7446,7 @@ html[data-theme="light"] .arena-slot-command-popover {
 
 @media (max-width: 720px) {
   .arena-lobby-modal {
-    border-radius: var(--radius-xl) var(--radius-xl) 32px 32px;
+    border-radius: var(--radius-xl);
   }
 }
 
@@ -7677,16 +7607,6 @@ html[data-theme="light"] .arena-lobby-arena {
 }
 
 /* 2026-07-09 room modal shell keeps its border/radius; only the inner layer scrolls. */
-.arena-lobby-modal {
-  display: flex;
-  flex-direction: column;
-  width: min(1180px, calc(100dvw - 32px));
-  max-width: calc(100dvw - 32px);
-  overflow: hidden;
-  padding: 0;
-  background-clip: padding-box;
-}
-
 .arena-lobby-modal-scroll {
   width: 100%;
   min-height: 0;
@@ -7919,7 +7839,7 @@ html[data-theme="light"] .arena-lobby-arena {
   align-items: center;
   gap: 8px;
   border: 1px solid var(--ui-card-border);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--ui-card-bg) 86%, transparent);
   padding: 8px;
 }
@@ -8153,6 +8073,20 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
   background: transparent;
   padding: 0;
   scroll-padding-inline: 0;
+}
+
+@media (max-width: 720px) {
+  .arena-filter-bar .arena-start-date-filter {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--ui-control-group-gap);
+    overflow: visible;
+  }
+
+  .arena-filter-bar .arena-start-date-filter button {
+    min-width: 0;
+  }
 }
 
 .arena-lobby-card.om-match-card {

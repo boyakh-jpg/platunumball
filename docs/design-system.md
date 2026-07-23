@@ -40,7 +40,7 @@
 ## 2026-07-23 CSS primitive와 lint 강제
 
 1. `tokens.css`는 색상, border, radius, shadow, control 높이, modal surface의 유일한 시각 원본이다. 새 UI는 raw 색상·수치 대신 `--ui-*`, `--rb-*`, `--radius-*` token을 사용한다.
-2. 공용 primitive는 `.ui-card`, `.ui-panel`, `.ui-control`, `.ui-action-row`, `.ui-modal-shell`, `.ui-modal-section`, `.ui-status-strip`을 기준으로 한다. 새 page selector가 같은 표면·테두리·높이를 다시 정의하지 않는다.
+2. 공용 primitive는 `.ui-card`, `.ui-button`, `.ui-badge`, `.ui-panel`, `.ui-control`, `.ui-action-row`, `.ui-modal-shell`, `.ui-modal-section`, `.ui-status-strip`을 기준으로 한다. 새 page selector가 같은 표면·테두리·높이를 다시 정의하지 않는다.
 3. feature CSS는 grid, flex, gap, 정렬, 배치, 반응형처럼 해당 화면의 layout만 정의한다. card/control/button/modal의 색상, border, radius, shadow, 높이는 primitive selector에 먼저 반영한다.
 4. 공용 방 모달 skin과 panel은 한 공용 room-modal style layer에서 한 번만 import한다. `globals.css`, 모집, 경기, 플레이 page CSS에 같은 room selector를 중복 추가하거나 뒤쪽 override로 맞추지 않는다.
 5. Stylelint는 `tokens.css` 밖의 hex·rgb·rgba 직접 색상, primitive 밖의 임의 `border-radius`, 공용 control 밖의 고정 button/input 높이, allowlist 밖의 `!important`, 동일 scope의 중복 selector를 오류로 처리한다. 원형의 `50%`, pill의 공용 token, 이미지 overlay, native control·portal 위치 보정은 명시적 allowlist만 허용한다.
@@ -457,10 +457,11 @@
 8. Profile icons `221~225` reuse the same referee character language as full-body transparent cutouts. They remain fully inside the circular safe area, stay readable at small size, and gain clearer referee equipment and premium sports accessories by tier without duplicate props or cropped limbs.
 9. Light theme rulebook hero copy uses the normal light-theme text and muted colors without the image-hero white text shadow, so the pale panel keeps readable contrast.
 10. 룰북 본문은 `경기 중 판정 → 개인활약 기록 → BOXTIER 기록·이의·후기 → 안전·심판 윤리` 순서의 chapter로 묶는다. hero는 설명성 제목과 적용 범위만 표시하고 홍보성 문구를 사용하지 않는다.
+11. 룰북의 page-header만 hero로 사용한다. 적용 범위 안내는 공용 card 한 겹으로 두고, 통계·상황 예시 안쪽은 별도 card 테두리나 배경 없이 평면 구획으로 나눈다.
 
 # 2026-06-28 recruiting start date filter
 
-1. Recruiting start-date filter uses one compact row of 8 buttons: instant plus 7 real calendar dates.
+1. Recruiting start-date filter uses 8 buttons: instant plus 7 real calendar dates. 데스크톱은 한 줄, `720px` 이하는 4열 2행을 사용한다.
 2. Weekend date chips keep the same size as weekday chips; Saturday uses blue tone and Sunday uses red tone.
 3. The row must not force horizontal scrolling on mobile.
 4. Date chips keep a fixed upper width and use visible gaps instead of stretching across wide desktop rows. Recruiting filter selects and filter buttons use the same 42px minimum height.

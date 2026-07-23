@@ -149,7 +149,7 @@
   justify-items: center;
   gap: 3px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.055);
   color: var(--muted);
   padding: 7px 4px;
@@ -239,7 +239,7 @@
   min-width: 0;
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(5, 10, 18, 0.46);
   padding: 10px;
 }
@@ -303,7 +303,7 @@
   min-width: 0;
   align-items: center;
   gap: 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   color: var(--muted);
   padding: 11px 12px;
   font-size: 0.82rem;

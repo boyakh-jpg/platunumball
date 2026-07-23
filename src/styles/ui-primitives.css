@@ -7,6 +7,102 @@
   box-shadow: var(--ui-card-shadow);
 }
 
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--ui-button-height);
+  padding-inline: var(--ui-button-padding-x);
+  color: var(--ui-button-color);
+  font: inherit;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--ui-button-bg);
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  box-shadow: none;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.ui-button.ui-button-sm {
+  min-height: var(--ui-button-height-sm);
+  padding-inline: var(--ui-button-padding-x-sm);
+}
+
+.ui-button.ui-button-primary {
+  color: var(--ui-button-color-active);
+  background: var(--ui-button-bg-active);
+  border-color: transparent;
+}
+
+.ui-button.ui-button-primary:hover:not(:disabled) {
+  background: var(--ui-button-bg-hover);
+}
+
+.ui-button.ui-button-primary:active:not(:disabled) {
+  background: var(--ui-button-bg-pressed);
+}
+
+.ui-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.ui-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-button:hover:not(:disabled) {
+  border-color: var(--rb-line-strong);
+}
+
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: var(--ui-badge-padding);
+  color: var(--ui-badge-color);
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: var(--ui-badge-bg);
+  border: 1px solid var(--ui-badge-border);
+  border-radius: var(--ui-badge-radius);
+  box-shadow: none;
+}
+
+.ui-badge.ui-badge-green {
+  color: var(--rb-green);
+  background: var(--ui-badge-green-bg);
+  border-color: var(--ui-badge-green-border);
+}
+
+.ui-badge.ui-badge-gold {
+  color: var(--rb-gold);
+  background: var(--ui-badge-gold-bg);
+  border-color: var(--ui-badge-gold-border);
+}
+
+.ui-badge.ui-badge-blue {
+  color: var(--rb-blue);
+  background: var(--ui-badge-blue-bg);
+  border-color: var(--ui-badge-blue-border);
+}
+
+.ui-badge.ui-badge-orange {
+  color: var(--rb-orange);
+  background: var(--ui-badge-orange-bg);
+  border-color: var(--ui-badge-orange-border);
+}
+
 .ui-panel {
   padding: var(--card-padding);
   color: var(--rb-text);

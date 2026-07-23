@@ -98,6 +98,7 @@
   --ui-button-height-sm: var(--control-height-sm);
   --ui-button-radius: var(--control-radius);
   --ui-button-padding-x: var(--control-padding-x);
+  --ui-button-padding-x-sm: 11px;
   --ui-button-font-size: var(--control-font-size);
   --ui-button-font-weight: 900;
   --ui-button-bg: var(--button-secondary-bg);
@@ -107,6 +108,19 @@
   --ui-button-color: var(--rb-text);
   --ui-button-color-active: #ffffff;
   --ui-button-border: var(--control-border);
+  --ui-badge-radius: 999px;
+  --ui-badge-padding: 5px 10px;
+  --ui-badge-bg: var(--button-secondary-bg);
+  --ui-badge-border: var(--control-border);
+  --ui-badge-color: var(--rb-muted);
+  --ui-badge-green-bg: color-mix(in srgb, var(--rb-green) 10%, transparent);
+  --ui-badge-green-border: color-mix(in srgb, var(--rb-green) 36%, transparent);
+  --ui-badge-gold-bg: color-mix(in srgb, var(--rb-gold) 10%, transparent);
+  --ui-badge-gold-border: color-mix(in srgb, var(--rb-gold) 36%, transparent);
+  --ui-badge-blue-bg: color-mix(in srgb, var(--rb-blue) 10%, transparent);
+  --ui-badge-blue-border: color-mix(in srgb, var(--rb-blue) 34%, transparent);
+  --ui-badge-orange-bg: color-mix(in srgb, var(--rb-orange) 12%, transparent);
+  --ui-badge-orange-border: color-mix(in srgb, var(--rb-orange) 36%, transparent);
   --ui-control-bg: var(--input-bg);
   --ui-control-border: var(--input-border);
   --ui-control-radius: var(--control-radius);
