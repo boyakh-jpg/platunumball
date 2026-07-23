@@ -19,7 +19,7 @@ import {
   normalizeBenchCapacity,
   normalizeDisputeWindowMinutes,
 } from "../../../src/lib/constants.js";
-import { makeAnonymousMatchPlayer } from "../../../src/lib/matchUtils.js";
+import { getMatchCancelCopy, makeAnonymousMatchPlayer } from "../../../src/lib/matchUtils.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeam } from "../../../src/data/teamMappers.js";
@@ -95,6 +95,15 @@ export function getMatchBenchPolicyError(error = {}) {
   if (errorText.includes("match_reserve_full")) return { statusCode: 409, message: "match_reserve_full" };
   if (errorText.includes("match_reserve_exceeds_bench_capacity")) {
     return { statusCode: 409, message: "match_reserve_exceeds_bench_capacity" };
+  }
+  if (errorText.includes("match_record_reserve_not_allowed")) {
+    return { statusCode: 400, message: "match_record_reserve_not_allowed" };
+  }
+  if (errorText.includes("match_record_roster_exact_capacity_required") || errorText.includes("match_side_leader_required")) {
+    return { statusCode: 400, message: "match_record_roster_invalid" };
+  }
+  if (errorText.includes("match_room_edit_locked")) {
+    return { statusCode: 409, message: "match_room_edit_locked" };
   }
   return null;
 }
@@ -463,10 +472,11 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
   }
 
   if (action === "cancelMatch") {
+    const cancelCopy = getMatchCancelCopy(match);
     addRows(participantIds, profiles, {
       idPrefix: "match-cancelled",
-      title: "경기 취소",
-      intro: "경기방이 취소되었습니다. 경기 상세에서 취소 사유를 확인해 주세요.",
+      title: cancelCopy.notificationTitle,
+      intro: cancelCopy.discordIntro,
       type: "match_cancelled",
       actionRequired: false,
     });

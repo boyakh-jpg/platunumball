@@ -1,11 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  approveMatch,
+  cancelMatch,
   createMatch,
   setMatchRecordParticipants,
   setMatchRecordTeamRoster,
+  submitMatchResult,
 } from "../src/data/repository.js";
-import { validateMatchCreateCourt } from "../server/api/matches/sync-match.js";
+import { getMatchBenchPolicyError, validateMatchCreateCourt } from "../server/api/matches/sync-match.js";
+import {
+  getMatchCancelCopy,
+  getMatchRecordCompositionLabel,
+  getMatchRecordSetupStatus,
+} from "../src/lib/matchUtils.js";
 
 const recordDate = new Date(Date.now() - 60_000);
 const recordParts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
@@ -66,6 +74,7 @@ function makeState() {
     teams,
     matches: [],
     notifications: [],
+    affiliations: [],
     settings: {},
     approvedCourts: [],
     courts: [],
@@ -91,6 +100,21 @@ test("postgame records allow an unknown court while normal matches still require
   assert.doesNotThrow(() => validateMatchCreateCourt({ rules: { recordType: "match_record" } }));
   assert.doesNotThrow(() => validateMatchCreateCourt({ rules: { recordType: "solo" } }));
   assert.throws(() => validateMatchCreateCourt({ rules: { recordType: "match" } }), /missing_match_court/);
+});
+
+test("match-record roster policy errors return client-safe status codes", () => {
+  assert.deepEqual(getMatchBenchPolicyError({ message: "match_record_reserve_not_allowed" }), {
+    statusCode: 400,
+    message: "match_record_reserve_not_allowed",
+  });
+  assert.deepEqual(getMatchBenchPolicyError({ message: "match_record_roster_exact_capacity_required" }), {
+    statusCode: 400,
+    message: "match_record_roster_invalid",
+  });
+  assert.deepEqual(getMatchBenchPolicyError({ message: "match_room_edit_locked" }), {
+    statusCode: 409,
+    message: "match_room_edit_locked",
+  });
 });
 
 test("personal and shared records reject future and over-24-hour end times", () => {
@@ -138,6 +162,33 @@ test("individual match record is empty at creation and requires exact A/B partic
   assert.deepEqual(configuredMatch.rules.recordApproverIds.teamA, ["u1", "u2", "u3"]);
   assert.deepEqual(configuredMatch.rules.recordApproverIds.teamB, ["u4", "u5", "u6"]);
   assert.deepEqual(configuredMatch.reservePlayers, { teamA: [], teamB: [] });
+  assert.equal(getMatchRecordCompositionLabel(configuredMatch), "개인 구성");
+  assert.deepEqual(getMatchRecordSetupStatus(configuredMatch), { stage: "complete", label: "참가자 확정", tone: "green" });
+});
+
+test("only the host can configure participants and duplicate or unknown players cannot fill a side", () => {
+  const created = createMatch(makeState(), makeRecordDraft("individual"));
+  const match = created.matches[0];
+  const validSetup = {
+    composition: "individual",
+    teamAPlayerIds: ["u1", "u2", "u3"],
+    teamBPlayerIds: ["u4", "u5", "u6"],
+  };
+
+  const nonHost = setMatchRecordParticipants({ ...created, currentUserId: "u2" }, match.id, validSetup);
+  assert.equal(nonHost.matches[0], match);
+
+  const duplicate = setMatchRecordParticipants(created, match.id, {
+    ...validSetup,
+    teamBPlayerIds: ["u3", "u4", "u5"],
+  });
+  assert.equal(duplicate.matches[0], match);
+
+  const unknown = setMatchRecordParticipants(created, match.id, {
+    ...validSetup,
+    teamBPlayerIds: ["u4", "u5", "missing-user"],
+  });
+  assert.equal(unknown.matches[0], match);
 });
 
 test("match record rejects mixed composition at creation and setup", () => {
@@ -167,6 +218,20 @@ test("team match record selects teams first, then each captain fixes an exact ro
   assert.deepEqual(configured.teamB.players, ["u4"]);
   assert.deepEqual(configured.rules.recordApproverIds, { teamA: ["u1"], teamB: ["u4"] });
   assert.equal(configured.rules.recordSetupReady, false);
+  assert.equal(getMatchRecordCompositionLabel(configured), "팀 구성");
+  assert.deepEqual(getMatchRecordSetupStatus(configured), { stage: "rosters", label: "명단 확정 대기", tone: "orange" });
+
+  const regularMemberAttempt = setMatchRecordTeamRoster({ ...selected, currentUserId: "u2" }, match.id, "teamA", {
+    playerIds: ["u1", "u2", "u3"],
+    reservePlayerIds: [],
+  });
+  assert.equal(regularMemberAttempt.matches[0], configured);
+
+  const captainMissingAttempt = setMatchRecordTeamRoster(selected, match.id, "teamA", {
+    playerIds: ["u2", "u3", "u2"],
+    reservePlayerIds: [],
+  });
+  assert.equal(captainMissingAttempt.matches[0], configured);
 
   const afterA = setMatchRecordTeamRoster(selected, match.id, "teamA", {
     playerIds: ["u1", "u2", "u3"],
@@ -174,6 +239,7 @@ test("team match record selects teams first, then each captain fixes an exact ro
   });
   assert.equal(afterA.matches[0].rules.rosterReady.teamA, true);
   assert.equal(afterA.matches[0].rules.recordSetupReady, false);
+  assert.deepEqual(getMatchRecordSetupStatus(afterA.matches[0]), { stage: "rosters", label: "1/2팀 명단 확정", tone: "orange" });
 
   const afterB = setMatchRecordTeamRoster({ ...afterA, currentUserId: "u4" }, match.id, "teamB", {
     playerIds: ["u4", "u5", "u6"],
@@ -186,6 +252,51 @@ test("team match record selects teams first, then each captain fixes an exact ro
     teamB: ["u4", "u5", "u6"],
   });
   assert.deepEqual(configured.reservePlayers, { teamA: [], teamB: [] });
+  assert.deepEqual(getMatchRecordSetupStatus(configured), { stage: "complete", label: "명단 확정 완료", tone: "green" });
+});
+
+test("match-record cancellation uses record terminology while scheduled matches keep match terminology", () => {
+  const created = createMatch(makeState(), makeRecordDraft("individual"));
+  const match = created.matches[0];
+  const cancelled = cancelMatch(created, match.id);
+
+  assert.equal(cancelled.matches[0].status, "cancelled");
+  assert.equal(cancelled.notifications[0].title, "기록 취소");
+  assert.match(cancelled.notifications[0].body, /기록이 취소됐습니다/);
+  assert.equal(getMatchCancelCopy(match).actionLabel, "기록 취소");
+  assert.equal(getMatchCancelCopy({ title: "예정 경기", rules: { recordType: "match" } }).actionLabel, "경기 취소");
+});
+
+test("individual match record uses final approval instead of participation acceptance", () => {
+  const created = createMatch(makeState(), makeRecordDraft("individual"));
+  const matchId = created.matches[0].id;
+  let state = setMatchRecordParticipants(created, matchId, {
+    composition: "individual",
+    teamAPlayerIds: ["u1", "u2", "u3"],
+    teamBPlayerIds: ["u4", "u5", "u6"],
+  });
+  const pointByPlayer = { u1: 21, u2: 0, u3: 0, u4: 12, u5: 0, u6: 0 };
+
+  users.forEach((user) => {
+    state = submitMatchResult({ ...state, currentUserId: user.id }, matchId, {
+      scoreA: 21,
+      scoreB: 12,
+      playerStats: { [user.id]: { points: pointByPlayer[user.id] } },
+    });
+  });
+
+  const submitted = state.matches.find((match) => match.id === matchId);
+  assert.equal(submitted.status, "approval");
+  assert.deepEqual(Object.keys(submitted.result.statSubmissions).sort(), users.map((user) => user.id).sort());
+
+  users.forEach((user, index) => {
+    const sideName = index < 3 ? "teamA" : "teamB";
+    state = approveMatch({ ...state, currentUserId: user.id }, matchId, sideName, user.id);
+  });
+
+  const confirmed = state.matches.find((match) => match.id === matchId);
+  assert.equal(confirmed.status, "confirmed");
+  assert.ok(confirmed.confirmedAt);
 });
 
 test("personal quick record ignores stale names and creates no approval room", () => {

@@ -32,6 +32,7 @@ import {
   getAgreementStatus,
   getApprovalStatus,
   getMatchHostPlayerId,
+  getMatchCancelCopy,
   getMatchPlayerDisputePoints,
   getOpenMatchDisputes,
   getMatchRecordWindow,
@@ -57,6 +58,7 @@ import {
   getStatSubmissionStatus,
   isEligibleReferee,
   isMatchReferee,
+  isMatchRecordMatch,
   isMatchStatRecorder,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
@@ -322,7 +324,11 @@ export default function MatchRoom({ app }) {
 
   const userMap = Object.fromEntries([...app.state.users, ...Object.values(match.anonymousPlayers ?? {})].map((user) => [user.id, user]));
   const statEditorPlayer = statEditorPlayerId ? userMap[statEditorPlayerId] : null;
-  const status = statusMeta[match.status] ?? { label: "상태 확인 중", tone: "blue" };
+  const isSharedRecord = isMatchRecordMatch(match);
+  const status = match.status === "cancelled" && isSharedRecord
+    ? { label: "기록 취소됨", tone: "neutral" }
+    : statusMeta[match.status] ?? { label: "상태 확인 중", tone: "blue" };
+  const cancelCopy = getMatchCancelCopy(match);
   const teamAAgreement = getAgreementStatus(match, app.state.teams, "teamA");
   const teamBAgreement = getAgreementStatus(match, app.state.teams, "teamB");
   const teamAApproval = getApprovalStatus(match, app.state.teams, "teamA");
@@ -403,7 +409,7 @@ export default function MatchRoom({ app }) {
   const teamBMmr = teamB?.mmr ?? getTeamMmr(app.state.teams, teamBSide.teamId);
   const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? teamASide.name : teamBSide.name;
   const currentUserDisputePoints = getMatchPlayerDisputePoints(match, app.currentUser.id);
-  const matchKind = isSoloRecord ? "개인 기록" : match.ranked === false ? "친선전" : "정규전";
+  const matchKind = isSoloRecord ? "개인 기록" : isSharedRecord ? "경기 기록" : match.ranked === false ? "친선전" : "정규전";
   const recordLockReason = recordWindow.beforeStart
     ? "경기 시작 전"
     : recordWindow.beforeEnd
@@ -868,8 +874,8 @@ export default function MatchRoom({ app }) {
             </div>
             <Badge tone={canCancel || canDeleteSoloRecord ? "orange" : "neutral"}>{canDeleteSoloRecord ? "삭제 가능" : canCancel ? "취소 가능" : "잠김"}</Badge>
           </div>
-          <p className="muted">{canDeleteSoloRecord ? "이 개인 기록은 내 기록에서 삭제할 수 있습니다." : canCancel ? "현재 운영 권한으로 경기 취소가 가능합니다." : "현재 단계에서는 경기 취소가 잠겼습니다."}</p>
-          <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
+          <p className="muted">{canDeleteSoloRecord ? "이 개인 기록은 내 기록에서 삭제할 수 있습니다." : canCancel ? `현재 운영 권한으로 ${cancelCopy.actionLabel}가 가능합니다.` : `현재 단계에서는 ${cancelCopy.actionLabel}가 잠겼습니다.`}</p>
+          <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>{cancelCopy.actionLabel}</Button>
           {canDeleteSoloRecord ? (
             <Button type="button" variant="secondary" className="danger-button" onClick={deleteSoloRecord}>개인 기록 삭제</Button>
           ) : null}
@@ -1197,7 +1203,7 @@ export default function MatchRoom({ app }) {
                 </label>
                 <div className="match-action-row">
                   <Button type="button" variant="secondary" disabled={!canRequestOwnPointDispute} onClick={submitDispute}>{hasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
-                  <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
+                  <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>{cancelCopy.actionLabel}</Button>
                   <Button type="button" variant="secondary" className="danger-button" disabled={!canVoid} onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button>
                   <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, reportReason)}>신고 접수</Button>
                 </div>

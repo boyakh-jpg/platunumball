@@ -90,6 +90,9 @@ import {
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
   getMatchPlayerDisputePoints,
+  getMatchCancelCopy,
+  getMatchRecordCompositionLabel,
+  getMatchRecordSetupStatus,
   getOpenMatchDisputes,
   getLocalDateInputValue,
   getMatchRecordPlayerIds,
@@ -1682,6 +1685,7 @@ function MatchRecordRosterPanel({
 
 function MatchRecordParticipantSetupPanel({ match, users, teams, currentUserId, onSave }) {
   const composition = match?.rules?.recordComposition === "team" ? "team" : "individual";
+  const setupStatus = getMatchRecordSetupStatus(match);
   const capacity = getRecruitingSideCapacity(match);
   const [teamAPlayerIds, setTeamAPlayerIds] = useState(() => getMatchSidePlayerIds(match, "teamA"));
   const [teamBPlayerIds, setTeamBPlayerIds] = useState(() => getMatchSidePlayerIds(match, "teamB"));
@@ -1689,7 +1693,11 @@ function MatchRecordParticipantSetupPanel({ match, users, teams, currentUserId, 
   const [queryBySide, setQueryBySide] = useState({ teamA: "", teamB: "" });
   const myTeams = useMemo(() => teams.filter((team) => (team.members ?? []).some((member) => member.userId === currentUserId)), [currentUserId, teams]);
   const [teamAId, setTeamAId] = useState(match?.teamA?.teamId || myTeams[0]?.id || "");
-  const [teamBSnapshot, setTeamBSnapshot] = useState(() => teams.find((team) => team.id === match?.teamB?.teamId) ?? null);
+  const [teamBSnapshot, setTeamBSnapshot] = useState(() => {
+    const savedTeamId = match?.teamB?.teamId || "";
+    return teams.find((team) => team.id === savedTeamId)
+      ?? (savedTeamId ? { id: savedTeamId, name: match?.teamB?.name || "B사이드" } : null);
+  });
   const [teamQuery, setTeamQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -1699,9 +1707,11 @@ function MatchRecordParticipantSetupPanel({ match, users, teams, currentUserId, 
     setTeamAPlayerIds(getMatchSidePlayerIds(match, "teamA"));
     setTeamBPlayerIds(getMatchSidePlayerIds(match, "teamB"));
     setTeamAId(match?.teamA?.teamId || myTeams[0]?.id || "");
-    setTeamBSnapshot(teams.find((team) => team.id === match?.teamB?.teamId) ?? null);
+    const savedTeamId = match?.teamB?.teamId || "";
+    setTeamBSnapshot((current) => teams.find((team) => team.id === savedTeamId)
+      ?? (current?.id === savedTeamId ? current : savedTeamId ? { id: savedTeamId, name: match?.teamB?.name || "B사이드" } : null));
     setFeedback("");
-  }, [match?.id, match?.updatedAt, match?.teamA?.teamId, match?.teamB?.teamId, myTeams, teams]);
+  }, [match?.id, match?.updatedAt, match?.teamA?.teamId, match?.teamB?.teamId, match?.teamB?.name, myTeams, teams]);
 
   const selectedIds = new Set([...teamAPlayerIds, ...teamBPlayerIds]);
   const togglePlayer = (sideName, user) => {
@@ -1752,14 +1762,19 @@ function MatchRecordParticipantSetupPanel({ match, users, teams, currentUserId, 
   );
   const individualReady = teamAPlayerIds.length === capacity && teamBPlayerIds.length === capacity && teamAPlayerIds.includes(currentUserId);
   const teamReady = Boolean(teamAId && teamBSnapshot?.id && teamAId !== teamBSnapshot.id);
+  const savedTeamAId = match?.teamA?.teamId || "";
+  const savedTeamBId = match?.teamB?.teamId || "";
+  const teamSelectionChanged = teamAId !== savedTeamAId || (teamBSnapshot?.id || "") !== savedTeamBId;
+  const saveReady = composition === "individual" ? individualReady : teamReady && teamSelectionChanged;
   const save = async () => {
-    if (saving || !(composition === "individual" ? individualReady : teamReady)) return;
+    if (saving || !saveReady) return;
     setSaving(true);
     setFeedback("");
     const result = await onSave?.(composition === "individual"
       ? { composition, teamAPlayerIds, teamBPlayerIds }
       : { composition, teamAId, teamBId: teamBSnapshot.id });
     if (!result || result?.ok === false) setFeedback("참가자 구성을 저장하지 못했습니다. 선택값과 권한을 확인해 주세요.");
+    else setFeedback(composition === "team" ? "팀 선택을 저장했습니다. 각 팀장이 실제 출전 명단을 확정해 주세요." : "실제 참가자를 저장했습니다.");
     setSaving(false);
   };
 
@@ -1767,7 +1782,7 @@ function MatchRecordParticipantSetupPanel({ match, users, teams, currentUserId, 
     <div className="arena-record-setup-panel">
       <header>
         <span><strong>경기 기록 참가자 구성</strong><em>{composition === "team" ? "팀 구성 · 양 팀장이 출전 명단과 결과를 확인" : "개인 구성 · 실제 참가자 전원이 결과를 확인"}</em></span>
-        <Badge tone={match.rules?.recordSetupReady ? "green" : "orange"}>{match.rules?.recordSetupReady ? "구성 완료" : "구성 필요"}</Badge>
+        <Badge tone={setupStatus?.tone ?? "orange"}>{setupStatus?.label ?? "구성 확인"}</Badge>
       </header>
       {composition === "individual" ? (
         <div className="arena-record-setup-grid">
@@ -1825,8 +1840,16 @@ function MatchRecordParticipantSetupPanel({ match, users, teams, currentUserId, 
         </div>
       )}
       <div className="arena-record-setup-actions">
-        <span>{feedback || (composition === "team" ? "저장 후 각 팀장이 자기 팀의 실제 출전자를 확정합니다." : `A/B 각각 ${capacity}명을 모두 선택해야 저장할 수 있습니다.`)}</span>
-        <Button type="button" size="sm" disabled={saving || !(composition === "individual" ? individualReady : teamReady)} onClick={save}>{saving ? "저장 중" : "참가자 저장"}</Button>
+        <span>{feedback || (composition === "team"
+          ? setupStatus?.stage === "complete"
+            ? "양 팀의 실제 출전 명단이 확정됐습니다."
+            : savedTeamAId && savedTeamBId
+              ? "각 팀장이 자기 팀의 실제 출전 명단을 확정해야 합니다."
+              : "팀을 저장한 뒤 각 팀장이 실제 출전 명단을 확정합니다."
+          : `A/B 각각 ${capacity}명을 모두 선택해야 저장할 수 있습니다.`)}</span>
+        <Button type="button" size="sm" disabled={saving || !saveReady} onClick={save}>
+          {saving ? "저장 중" : composition === "team" ? (savedTeamAId && savedTeamBId ? "팀 변경 저장" : "팀 선택 저장") : "참가자 저장"}
+        </Button>
       </div>
     </div>
   );
@@ -3637,13 +3660,15 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const sourceTeamSideCount = MATCH_SIDES.filter((sideName) => isMatchSideTeamParty(sourceMatch, sideName)).length;
         const lobbyTeamEntryCount = individualOnlyRoom ? 0 : (lobby.entries ?? []).filter((entry) => isPartyEntry(entry)).length;
         const teamMatchSideLocked = !individualOnlyRoom && (sourceTeamSideCount >= 2 || (selectedPost.hostJoinMode === "team" && lobbyTeamEntryCount > 0));
-        const roomMatchTypeLabel = individualOnlyRoom
+        const recordCompositionLabel = getMatchRecordCompositionLabel(sourceMatch);
+        const roomMatchTypeLabel = recordCompositionLabel || (individualOnlyRoom
           ? "개인 매칭"
           : teamOnlyRoom || sourceTeamSideCount >= 2 || (selectedPost.visibility === "private" && lobbyTeamEntryCount >= 2)
             ? "팀전"
             : lobbyTeamEntryCount > 0 || sourceTeamSideCount > 0
               ? "팀 파티 포함"
-              : "개인 매칭";
+              : "개인 매칭");
+        const sourceMatchCancelCopy = getMatchCancelCopy(sourceMatch);
         const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
         const referee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
         const showCaptainBadge = !individualOnlyRoom && (selectedPost.visibility === "private" || Boolean(sourceMatch));
@@ -4433,7 +4458,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     ) : null}
                     {!sourceRoomReadOnly && canCancelSourceMatch ? (
                       <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.cancelMatch(sourceMatch.id)}>
-                        경기 취소
+                        {sourceMatchCancelCopy.actionLabel}
                       </Button>
                     ) : null}
                     {canDeleteSourceSoloRecord ? (

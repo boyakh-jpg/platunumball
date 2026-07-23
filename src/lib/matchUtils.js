@@ -94,6 +94,47 @@ export function isMatchRecordMatch(match = {}) {
   return getMatchRecordType(match) === RECORD_TYPES.matchRecord;
 }
 
+export function getMatchRecordCompositionLabel(match = {}) {
+  if (!isMatchRecordMatch(match)) return "";
+  return match?.rules?.recordComposition === "team" ? "팀 구성" : "개인 구성";
+}
+
+export function getMatchRecordSetupStatus(match = {}) {
+  if (!isMatchRecordMatch(match)) return null;
+  const composition = match?.rules?.recordComposition === "team" ? "team" : "individual";
+  if (composition === "individual") {
+    return match?.rules?.recordSetupReady === true
+      ? { stage: "complete", label: "참가자 확정", tone: "green" }
+      : { stage: "participants", label: "참가자 선택 필요", tone: "orange" };
+  }
+
+  const teamsSelected = Boolean(match?.teamA?.teamId && match?.teamB?.teamId);
+  if (!teamsSelected) return { stage: "teams", label: "팀 선택 필요", tone: "orange" };
+  if (match?.rules?.recordSetupReady === true) return { stage: "complete", label: "명단 확정 완료", tone: "green" };
+
+  const readyCount = MATCH_SIDES.filter((sideName) => match?.rules?.rosterReady?.[sideName] === true).length;
+  return readyCount
+    ? { stage: "rosters", label: `${readyCount}/2팀 명단 확정`, tone: "orange" }
+    : { stage: "rosters", label: "명단 확정 대기", tone: "orange" };
+}
+
+export function getMatchCancelCopy(match = {}) {
+  if (isMatchRecordMatch(match)) {
+    return {
+      actionLabel: "기록 취소",
+      notificationTitle: "기록 취소",
+      notificationBody: `${cleanRoomTitle(match?.title, "경기 기록")} 기록이 취소됐습니다.`,
+      discordIntro: "경기 기록이 취소되었습니다. 기록 상세에서 상태를 확인해 주세요.",
+    };
+  }
+  return {
+    actionLabel: "경기 취소",
+    notificationTitle: "경기 취소",
+    notificationBody: `${cleanRoomTitle(match?.title, "경기")} 경기방이 취소됐습니다.`,
+    discordIntro: "경기방이 취소되었습니다. 경기 상세에서 취소 사유를 확인해 주세요.",
+  };
+}
+
 function isRecordKindMatch(match = {}) {
   return isPersonalRecordMatch(match) || isMatchRecordMatch(match);
 }

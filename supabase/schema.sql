@@ -7978,8 +7978,14 @@ begin
     update public.matches
     set status = 'cancelled', cancelled_at = coalesce(cancelled_at, now()), updated_at = now()
     where id = safe_match_id;
-    notification_title := '경기 취소';
-    notification_body := format('%s 경기방이 취소됐습니다.', current_match.title);
+    notification_title := case
+      when coalesce(current_match.rules->>'recordType', '') = 'match_record' then '기록 취소'
+      else '경기 취소'
+    end;
+    notification_body := case
+      when coalesce(current_match.rules->>'recordType', '') = 'match_record' then format('%s 기록이 취소됐습니다.', current_match.title)
+      else format('%s 경기방이 취소됐습니다.', current_match.title)
+    end;
   elsif safe_action = 'voidMatch' then
     if current_match.status <> 'disputed' then
       return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_not_voidable', 'matchId', safe_match_id);

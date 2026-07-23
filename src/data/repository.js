@@ -80,6 +80,7 @@ import {
   getApprovalStatus,
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
+  getMatchCancelCopy,
   getMatchResultEntryPermission,
   getMatchHostPlayerId as getMatchHostPlayerIdFromMatch,
   getMatchAttendance,
@@ -4081,6 +4082,7 @@ export function cancelMatch(state, matchId) {
   if (!match || !["contract", "agreed"].includes(match.status)) return state;
   const afterStart = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(getMatchRoomPhase(match).phase));
   if (afterStart ? !currentUserCanOperateStartedMatch(state, match) : !currentUserIsMatchHost(state, match)) return state;
+  const cancelCopy = getMatchCancelCopy(match);
 
   return {
     ...state,
@@ -4090,7 +4092,7 @@ export function cancelMatch(state, matchId) {
         : item,
     ),
     notifications: [
-      { id: makeId("n"), title: "경기 취소", body: `${match.title} 경기방이 취소됐습니다.`, tone: "match", matchId },
+      { id: makeId("n"), title: cancelCopy.notificationTitle, body: cancelCopy.notificationBody, tone: "match", matchId },
       ...state.notifications,
     ],
   };
