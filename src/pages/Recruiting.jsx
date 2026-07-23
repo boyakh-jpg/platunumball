@@ -74,6 +74,7 @@ import {
   isRecruitingPostForUser,
   isNationalRecruitingPost,
   isPaidRecruitingCourt,
+  isPickupRecruitingRoom,
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { assetUrl } from "../lib/assets.js";
@@ -122,7 +123,7 @@ import {
 } from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
 import { getMatchCreationSummary } from "../lib/matchCreationPolicies.js";
-import { ROOM_BODY_MODES, getPostgameRecordVerification, getRoomPhaseViewModel } from "../lib/roomFlow.js";
+import { ROOM_BODY_MODES, getPickupOpenSlotPlacements, getPickupParticipantIds, getPostgameRecordVerification, getRoomPhaseViewModel } from "../lib/roomFlow.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getUnsafeUserTextReason, UNSAFE_INPUT_MESSAGE } from "../lib/inputSecurity.js";
 import {
@@ -1013,26 +1014,40 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
   return createPortal(popover, document.body);
 }
 
-function SlotCommandPanel({ sideName, reserve = false, floating = false, anchor = null, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
+function SlotCommandPanel({
+  sideName,
+  reserve = false,
+  floating = false,
+  anchor = null,
+  canMoveHere = false,
+  partyJoinOptions = [],
+  poolMode = false,
+  onMoveHere,
+  onJoinParty,
+  onClose,
+  children,
+}) {
   return (
     <CommandPopoverFrame floating={floating} anchor={anchor} className="arena-slot-command-popover" onClose={onClose}>
       <header>
         <div>
-          <strong>{SIDE_LABELS[sideName]} {reserve ? "후보 슬롯" : "빈 슬롯"}</strong>
-          <span>이 자리로 이동하거나 선수를 초대할 수 있습니다.</span>
+          <strong>{poolMode ? "참가자 초대" : `${SIDE_LABELS[sideName]} ${reserve ? "후보 슬롯" : "빈 슬롯"}`}</strong>
+          <span>{poolMode ? "픽업 참가자 풀의 빈자리에 선수를 초대합니다." : "이 자리로 이동하거나 선수를 초대할 수 있습니다."}</span>
         </div>
         <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={16} /></button>
       </header>
-      <div className="arena-slot-command-actions">
-        <Button type="button" size="sm" variant="secondary" disabled={!canMoveHere} onClick={onMoveHere}>
-          이 자리로 이동
-        </Button>
-        {partyJoinOptions.map((option) => (
-          <Button key={getPartyOptionKey(option)} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(option.team.id, option.entry?.id)}>
-            {partyJoinOptions.length === 1 ? "파티 새로고침" : `${getPartyOptionLabel(option)} 파티 새로고침`}
+      {!poolMode ? (
+        <div className="arena-slot-command-actions">
+          <Button type="button" size="sm" variant="secondary" disabled={!canMoveHere} onClick={onMoveHere}>
+            이 자리로 이동
           </Button>
-        ))}
-      </div>
+          {partyJoinOptions.map((option) => (
+            <Button key={getPartyOptionKey(option)} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(option.team.id, option.entry?.id)}>
+              {partyJoinOptions.length === 1 ? "파티 새로고침" : `${getPartyOptionLabel(option)} 파티 새로고침`}
+            </Button>
+          ))}
+        </div>
+      ) : null}
       {children}
     </CommandPopoverFrame>
   );
@@ -1328,6 +1343,7 @@ function RoomKickPanel({
   attendanceBySide = null,
   requireMissingAttendance = false,
   currentUserId = "",
+  poolMode = false,
 }) {
   const [pendingKick, setPendingKick] = useState(null);
   const rows = [];
@@ -1374,7 +1390,7 @@ function RoomKickPanel({
                 <ProfileEmblem user={user} className="small" />
                 <span>
                   <strong>{user.name}</strong>
-                  <em>{SIDE_LABELS[entry.side]} · {reserve ? "후보" : "출전"} · {entry.team?.name ?? "개인"}</em>
+                  <em>{poolMode ? "개인 참가" : `${SIDE_LABELS[entry.side]} · ${reserve ? "후보" : "출전"} · ${entry.team?.name ?? "개인"}`}</em>
                   {attendanceBySide ? <i>{checkedIn ? "출석 완료" : "미출석"}</i> : null}
                 </span>
               </PlayerHoverCard>
@@ -1965,6 +1981,7 @@ function InvitePanel({
   favoriteTeamIds,
   allowedTeamId = "",
   playerOnly = false,
+  poolMode = false,
   canInvitePlayer = () => true,
   onTogglePlayer,
   onInvitePlayers,
@@ -2068,8 +2085,14 @@ function InvitePanel({
     <div className="arena-invite-panel">
       <header>
         <div>
-          <strong>{SIDE_LABELS[sideName]} {reserve ? "후보" : "빈 슬롯"} {actionLabel}</strong>
-          <span>{teamSummonMode ? "사이드장이 팀원을 출전 또는 후보 명단에 바로 등록할 수 있습니다." : (reserve ? "수락하면 해당 사이드의 후보 선수로 합류합니다." : "선착순으로 수락되며, 정원이 차면 참여할 수 없습니다.")}</span>
+          <strong>{poolMode ? "참가자 초대" : `${SIDE_LABELS[sideName]} ${reserve ? "후보" : "빈 슬롯"} ${actionLabel}`}</strong>
+          <span>{poolMode
+            ? "수락하면 통합 참가자 풀에 합류합니다."
+            : teamSummonMode
+              ? "사이드장이 팀원을 출전 또는 후보 명단에 바로 등록할 수 있습니다."
+              : reserve
+                ? "수락하면 해당 사이드의 후보 선수로 합류합니다."
+                : "선착순으로 수락되며, 정원이 차면 참여할 수 없습니다."}</span>
         </div>
         <button type="button" className="arena-icon-button" aria-label={`${actionNoun} 닫기`} onClick={onClose}><X size={18} /></button>
       </header>
@@ -2248,7 +2271,7 @@ function RefereeInvitePanel({
   );
 }
 
-function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyApplied, onAccept, onDecline }) {
+function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyApplied, poolMode = false, onAccept, onDecline }) {
   const pending = invitations.filter((invitation) => invitation.status === "pending");
   if (!pending.length) return null;
   return (
@@ -2259,7 +2282,7 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
         const mine = invitation.targetUserId === currentUserId;
         const inviteLabel = invitation.role === "referee"
           ? "심판"
-          : `${SIDE_LABELS[invitation.side]} · ${invitation.reserve ? "후보" : "출전"}`;
+          : poolMode ? "개인 참가" : `${SIDE_LABELS[invitation.side]} · ${invitation.reserve ? "후보" : "출전"}`;
         return (
           <div key={invitation.id} className={mine ? "mine" : ""}>
             <PlayerHoverCard as="span" user={target} teams={teams}>
@@ -2967,12 +2990,30 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       return false;
     }
     const lobby = getRecruitingLobby(roomPost, app.state);
-    const shouldReserve = joinDraft.joinMode !== "referee" &&
+    const pickupPlacement = isPickupRecruitingRoom(roomPost)
+      ? getPickupOpenSlotPlacements(lobby, {
+          sideCapacity: getRecruitingSideCapacity(roomPost),
+          benchCapacity: getRecruitingBenchCapacity(roomPost),
+        })[0]
+      : null;
+    if (isPickupRecruitingRoom(roomPost) && !pickupPlacement) return false;
+    const normalizedJoinDraft = pickupPlacement
+      ? {
+          ...joinDraft,
+          joinMode: "player",
+          teamId: "",
+          playerIds: [],
+          reservePlayerIds: [],
+          side: pickupPlacement.side,
+          reserve: pickupPlacement.reserve,
+        }
+      : joinDraft;
+    const shouldReserve = !pickupPlacement && normalizedJoinDraft.joinMode !== "referee" &&
       !isTeamOnlyRoom(roomPost) &&
-      !joinDraft.reserve &&
-      getJoinActiveCapacity(roomPost, lobby, joinDraft.side, false) <= 0 &&
-      getJoinReserveCapacity(roomPost, lobby, joinDraft.side) > 0;
-    const application = shouldReserve ? { ...joinDraft, reserve: true } : joinDraft;
+      !normalizedJoinDraft.reserve &&
+      getJoinActiveCapacity(roomPost, lobby, normalizedJoinDraft.side, false) <= 0 &&
+      getJoinReserveCapacity(roomPost, lobby, normalizedJoinDraft.side) > 0;
+    const application = shouldReserve ? { ...normalizedJoinDraft, reserve: true } : normalizedJoinDraft;
     setJoiningPostId(roomPost.id);
     try {
       const result = await app.actions.interestRecruitingPost(roomPost.id, application);
@@ -3185,6 +3226,17 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       };
     });
   };
+  const toggleSingleInvitePlayer = (playerId) => {
+    setInviteError("");
+    setInviteDraft((current) => {
+      if (!current) return current;
+      const selected = current.selectedPlayerIds ?? [];
+      return {
+        ...current,
+        selectedPlayerIds: selected.includes(playerId) ? [] : [playerId],
+      };
+    });
+  };
   const sendInvites = async (roomPost, playerIds, teamId = null, joinMode = "") => {
     if (!inviteDraft || !playerIds.length) return false;
     const playerOnlyRoom = isIndividualOnlyRecruitingRoom(roomPost);
@@ -3283,6 +3335,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const joinCapacity = getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
         const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
         const benchCapacity = getRecruitingBenchCapacity(sourceMatch ?? selectedPost);
+        const pickupOpenSlotPlacements = isPickupRecruitingRoom(selectedPost)
+          ? getPickupOpenSlotPlacements(lobby, {
+              sideCapacity: getRecruitingSideCapacity(selectedPost),
+              benchCapacity,
+            })
+          : [];
         const selectedJoinReserveIds = joinDraft.reserve
           ? []
           : getPartyReserveIds(selectedJoinTeam, joinDraft.reservePlayerIds, selectedJoinPlayerIds, benchCapacity);
@@ -3324,7 +3382,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canJoin = selectedPost.visibility === "public" && !matchRoom && !recruitingRoomConfirmed && !mine && !alreadyApplied && (
           joinDraft.joinMode === "referee"
             ? canJoinReferee
-            : joinTierAllowed && (joinDraft.joinMode === "player" || teamJoinValid)
+            : joinTierAllowed && (!pickupPoolMode || pickupOpenSlotPlacements.length > 0) && (joinDraft.joinMode === "player" || teamJoinValid)
         );
         const joiningThisRoom = joiningPostId === selectedPost.id;
         const joinModeEntries = [
@@ -3451,6 +3509,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const roomPhaseViewModel = getRoomPhaseViewModel({ post: selectedPost, match: sourceMatch });
+        const pickupPoolMode = roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool;
         const roomPhaseVersusIndex = roomPhaseViewModel.sectionOrder.indexOf("versus");
         const roomPhaseSectionsBeforeVersus = roomPhaseVersusIndex >= 0
           ? roomPhaseViewModel.sectionOrder.slice(0, roomPhaseVersusIndex)
@@ -3766,9 +3825,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           const sideName = activeSlotDraft.sideName;
           const reserve = Boolean(activeSlotDraft.reserve);
           const canMoveHere = Boolean(
-            canMoveActiveUserToSlot(sideName, reserve),
+            !pickupPoolMode && canMoveActiveUserToSlot(sideName, reserve),
           );
-          const targetPartyOptions = individualOnlyRoom ? [] : getSameSidePartyOptions(lobby, myEntry, myTeams, sideName);
+          const targetPartyOptions = pickupPoolMode || individualOnlyRoom ? [] : getSameSidePartyOptions(lobby, myEntry, myTeams, sideName);
           return (
             <SlotCommandPanel
               sideName={sideName}
@@ -3777,6 +3836,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               anchor={activeSlotDraft.anchor}
               canMoveHere={canMoveHere}
               partyJoinOptions={targetPartyOptions}
+              poolMode={pickupPoolMode}
               onMoveHere={() => moveActiveUserToSlot(sideName, reserve)}
               onJoinParty={(teamId, entryId) => { void joinSideParty(selectedPost, {
                 team: teamById[teamId] ?? { id: teamId },
@@ -3799,9 +3859,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 favoriteTeamIds={favoriteTeamIds}
                 allowedTeamId={getInviteAllowedTeamId(activeSlotDraft.sideName)}
                 playerOnly={individualOnlyRoom}
+                poolMode={pickupPoolMode}
                 canInvitePlayer={canInvitePlayerByRoom}
                 error={inviteError}
-                onTogglePlayer={toggleInvitePlayer}
+                onTogglePlayer={pickupPoolMode ? toggleSingleInvitePlayer : toggleInvitePlayer}
                 onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                 onClose={() => setInviteDraft(null)}
               />
@@ -3966,10 +4027,38 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const renderPickupParticipantPool = () => (
           <PickupParticipantPool
             lobby={lobby}
-            userById={userById}
             capacity={(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}
             assignmentMode={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment}
-            onInvite={!sourceRoomReadOnly && canInviteFromRoom ? ((event) => openInviteSlot(selectedPost, "teamA", false, null, event)) : null}
+            renderParticipant={({ playerId, entry }) => {
+              const user = userById[playerId];
+              const position = getRoomSlotDisplayPosition(user, slotPositions, playerId, entry);
+              return (
+                <PlayerRoomSlot
+                  user={user}
+                  teams={app.state.teams}
+                  status={entry?.status}
+                  title={entry?.status === "ready" ? "참가" : "대기"}
+                  mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
+                  position={position}
+                  badge={getRoomSlotBadge(playerId, entry, roomOwnerId, false, roomState, { showPartyBadge: false })}
+                />
+              );
+            }}
+            renderEmptySlot={({ index }) => {
+              const canInvite = !sourceRoomReadOnly && canInviteFromRoom;
+              const placement = pickupOpenSlotPlacements[index] ?? { side: "teamA", reserve: false };
+              return (
+                <div className="arena-room-player-slot-wrap">
+                  <PlayerRoomSlot
+                    empty
+                    invite={canInvite}
+                    title="빈 슬롯"
+                    detail={canInvite ? "초대" : ""}
+                    onInvite={(event) => openInviteSlot(selectedPost, placement.side, placement.reserve, `pickup-${index}`, event)}
+                  />
+                </div>
+              );
+            }}
           />
         );
         const renderPickupRotation = () => roomPhaseViewModel.rotation ? (
@@ -4216,7 +4305,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
 
                 <div className="arena-lobby-actions">
                   <div><Clock3 size={17} /><span>{getRecruitingSchedule(selectedPost)}</span></div>
-                  <div><UsersRound size={17} /><span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span></div>
+                  <div><UsersRound size={17} /><span>{roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool
+                    ? `참가 ${getPickupParticipantIds(lobby).length}/${(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}`
+                    : `${getRecruitingSideCapacity(selectedPost)} vs ${getRecruitingSideCapacity(selectedPost)}`}</span></div>
                   <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : `MMR ${Math.round(selectedRatingScale * 100)}%`}</span></div>
                   {!sourceMatchIsRecordRoom ? <div><Swords size={17} /><span>{getMatchRuleSummary(selectedMatchRules, selectedPost.mode)}</span></div> : null}
                 </div>
@@ -4239,9 +4330,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   favoriteTeamIds={favoriteTeamIds}
                   allowedTeamId={getInviteAllowedTeamId(activeInviteDraft.sideName)}
                   playerOnly={individualOnlyRoom}
+                  poolMode={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool}
                   canInvitePlayer={canInvitePlayerByRoom}
                   error={inviteError}
-                  onTogglePlayer={toggleInvitePlayer}
+                  onTogglePlayer={pickupPoolMode ? toggleSingleInvitePlayer : toggleInvitePlayer}
                   onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                   onClose={() => setInviteDraft(null)}
                 />
@@ -4254,6 +4346,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   teams={app.state.teams}
                   currentUserId={app.currentUser.id}
                   alreadyApplied={alreadyApplied}
+                  poolMode={pickupPoolMode}
                   onAccept={(invitation) => acceptRoomInvitation(selectedPost, invitation)}
                   onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
                 />
@@ -4278,6 +4371,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   attendanceBySide={matchRoom ? sourceMatchAttendance : null}
                   requireMissingAttendance={canManageMatchCheckin}
                   currentUserId={app.currentUser.id}
+                  poolMode={pickupPoolMode}
                 />
               ) : null}
 
@@ -4585,8 +4679,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <div className="arena-owner-panel">
                     <strong>참여 중</strong>
                     <span>
-                      {individualOnlyRoom
-                        ? "내 슬롯을 누르면 A/B 출전과 후보 위치를 변경할 수 있습니다."
+                      {pickupPoolMode
+                        ? "통합 참가자 풀에 등록됐습니다. 팀은 경기 시작 전 출석 확인 후 정합니다."
+                        : individualOnlyRoom
+                          ? "내 슬롯을 누르면 A/B 출전과 후보 위치를 변경할 수 있습니다."
                         : "내 슬롯을 누르면 위치 변경, 후보 이동, 파티 조작을 할 수 있습니다."}
                     </span>
                   </div>
@@ -4709,7 +4805,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         </select>
                       </label>
                     )}
-                    {joinDraft.joinMode !== "referee" ? (
+                    {joinDraft.joinMode !== "referee" && !pickupPoolMode ? (
                     <div className="arena-field-grid">
                       <label>
                         진영
@@ -4753,6 +4849,15 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         </span>
                       </label>
                     </div>
+                    ) : pickupPoolMode ? (
+                      <div className="arena-mini-note">
+                        <div>
+                          <span>통합 참가자 풀</span>
+                          <strong>개인 참가</strong>
+                          <em>팀은 경기 시작 전 출석 확인 후 정합니다.</em>
+                        </div>
+                        <UsersRound size={18} />
+                      </div>
                     ) : null}
                     <div className="arena-mini-note">
                       <div>

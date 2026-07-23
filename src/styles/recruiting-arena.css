@@ -8548,7 +8548,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
   }
 }
 
-/* Pickup flow layout; surfaces come from ui-primitives.css. */
+/* Pickup uses the common room slot grammar without pre-assigning A/B sides. */
 .pickup-participant-pool,
 .pickup-rotation-panel {
   display: grid;
@@ -8556,38 +8556,56 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
   margin-top: var(--space-4);
 }
 
-.pickup-participant-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--space-2);
+.arena-lobby-modal .pickup-participant-pool {
+  overflow: visible;
 }
 
-.pickup-participant-item {
+.pickup-participant-pool > header > div {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+}
+
+.pickup-participant-pool > header span {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2);
-  min-width: 0;
 }
 
-.pickup-participant-item > span {
+.arena-lobby-modal .pickup-room-slot-grid {
   display: grid;
-  min-width: 0;
+  grid-template-columns: repeat(var(--pickup-slot-columns, 8), minmax(0, 72px));
+  grid-auto-flow: row;
+  justify-content: start;
+  gap: var(--room-slot-gap);
+  margin: -10px;
+  padding: 10px;
+  overflow: visible;
 }
 
-.pickup-participant-item strong,
-.pickup-participant-item small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.pickup-room-slot-grid .arena-room-player-slot-wrap,
+.pickup-room-slot-grid .arena-room-player-slot {
+  width: 100%;
+  inline-size: 100%;
+  min-width: 0;
+  min-inline-size: 0;
+  max-width: none;
+  max-inline-size: none;
+}
+
+.pickup-participant-helper {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .pickup-rotation-panel > button {
   justify-self: end;
 }
 
-@media (max-width: 640px) {
-  .pickup-participant-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 720px) {
+  .arena-lobby-modal .pickup-room-slot-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .pickup-rotation-panel > button {

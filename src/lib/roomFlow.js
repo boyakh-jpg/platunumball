@@ -32,11 +32,64 @@ export function getPickupRotationPolicy(room = {}) {
   };
 }
 
+export function getPickupParticipants(lobby = {}) {
+  const seenPlayerIds = new Set();
+  return (lobby.entries ?? []).flatMap((entry) => [
+    ...(entry.players ?? []).map((playerId) => ({ playerId, entry, reserve: false })),
+    ...(entry.reserves ?? []).map((playerId) => ({ playerId, entry, reserve: true })),
+  ]).filter((participant) => {
+    if (!participant.playerId || seenPlayerIds.has(participant.playerId)) return false;
+    seenPlayerIds.add(participant.playerId);
+    return true;
+  });
+}
+
 export function getPickupParticipantIds(lobby = {}) {
-  return [...new Set((lobby.entries ?? []).flatMap((entry) => [
-    ...(entry.players ?? []),
-    ...(entry.reserves ?? []),
-  ]).filter(Boolean))];
+  return getPickupParticipants(lobby).map((participant) => participant.playerId);
+}
+
+export function getPickupOpenSlotPlacements(lobby = {}, { sideCapacity = 0, benchCapacity = 0 } = {}) {
+  const sides = ["teamA", "teamB"];
+  const counts = {
+    teamA: { active: 0, reserve: 0 },
+    teamB: { active: 0, reserve: 0 },
+  };
+  const seenPlayerIds = new Set();
+
+  (lobby.entries ?? []).forEach((entry) => {
+    const side = entry.side === "teamB" ? "teamB" : "teamA";
+    const activeIds = entry.reserve ? [] : (entry.players ?? []);
+    const reserveIds = entry.reserve ? (entry.players ?? []) : (entry.reserves ?? []);
+    activeIds.forEach((playerId) => {
+      if (!playerId || seenPlayerIds.has(playerId)) return;
+      seenPlayerIds.add(playerId);
+      counts[side].active += 1;
+    });
+    reserveIds.forEach((playerId) => {
+      if (!playerId || seenPlayerIds.has(playerId)) return;
+      seenPlayerIds.add(playerId);
+      counts[side].reserve += 1;
+    });
+  });
+
+  const placements = [];
+  const fill = (role, capacity) => {
+    while (sides.some((side) => counts[side][role] < capacity)) {
+      const side = [...sides]
+        .filter((candidate) => counts[candidate][role] < capacity)
+        .sort((left, right) => (
+          counts[left][role] - counts[right][role]
+          || (counts[left].active + counts[left].reserve) - (counts[right].active + counts[right].reserve)
+          || sides.indexOf(left) - sides.indexOf(right)
+        ))[0];
+      placements.push({ side, reserve: role === "reserve" });
+      counts[side][role] += 1;
+    }
+  };
+
+  fill("active", Math.max(0, Number(sideCapacity) || 0));
+  fill("reserve", Math.max(0, Number(benchCapacity) || 0));
+  return placements;
 }
 
 export function getRoomPhaseViewModel({ post = {}, match = null } = {}) {
@@ -69,7 +122,7 @@ export function getRoomPhaseViewModel({ post = {}, match = null } = {}) {
       sectionOrder: assignmentPhase
         ? ["participantPool", "versus", "rotation"]
         : phase === "waiting" || phase === "locked"
-          ? ["participantPool", "rotation"]
+          ? ["participantPool"]
           : ["recordBoard", "versus", "rotation"],
       showVersusStage: assignmentPhase || assignmentConfirmed || phase === "live" || ["postgame", "dispute", "record"].includes(phase),
       showParticipantPool: phase === "waiting" || phase === "locked" || assignmentPhase,

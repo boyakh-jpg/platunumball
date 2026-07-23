@@ -1,30 +1,44 @@
+import { Fragment } from "react";
 import { UsersRound } from "lucide-react";
-import ProfileEmblem from "../profile/ProfileEmblem.jsx";
-import Button from "../common/Button.jsx";
-import { getPickupParticipantIds } from "../../lib/roomFlow.js";
+import { getPickupParticipants } from "../../lib/roomFlow.js";
 
-export default function PickupParticipantPool({ lobby, userById, capacity = 0, assignmentMode = false, onInvite = null }) {
-  const participantIds = getPickupParticipantIds(lobby);
+export default function PickupParticipantPool({
+  lobby,
+  capacity = 0,
+  assignmentMode = false,
+  renderParticipant,
+  renderEmptySlot,
+}) {
+  const participants = getPickupParticipants(lobby);
+  const safeCapacity = Math.max(participants.length, Number(capacity) || 0);
+  const openSlotCount = Math.max(0, safeCapacity - participants.length);
+  const desktopColumns = Math.min(8, Math.max(1, safeCapacity));
   return (
-    <section className="ui-panel ui-modal-section pickup-participant-pool">
-      <header className="ui-status-strip">
-        <span><UsersRound size={17} /> {assignmentMode ? "출석·팀 배정 대상" : "통합 참가자 풀"}</span>
-        <strong>{participantIds.length}/{capacity || "-"}</strong>
+    <section className="arena-side-roster pickup-participant-pool" aria-label={assignmentMode ? "출석 및 팀 배정 대상" : "픽업 참가자"}>
+      <header>
+        <div>
+          <span><UsersRound size={17} /> {assignmentMode ? "배정 대상" : "참가자"}</span>
+          <strong>{participants.length}/{safeCapacity || "-"}</strong>
+        </div>
       </header>
-      <div className="pickup-participant-grid">
-        {participantIds.map((playerId, index) => {
-          const user = userById[playerId];
-          return (
-            <div key={playerId} className="pickup-participant-item">
-              <ProfileEmblem user={user} />
-              <span><strong>{user?.name ?? "참가자"}</strong><small>{assignmentMode ? "배정 대기" : `${index + 1}번째 참가`}</small></span>
-            </div>
-          );
-        })}
-        {!participantIds.length ? <p>아직 참가자가 없습니다.</p> : null}
+      <div
+        className="arena-room-slot-row pickup-room-slot-grid"
+        style={{ "--pickup-slot-columns": desktopColumns }}
+      >
+        {participants.map((participant, index) => (
+          <Fragment key={participant.playerId}>
+            {renderParticipant?.({ ...participant, index })}
+          </Fragment>
+        ))}
+        {Array.from({ length: openSlotCount }).map((_item, index) => (
+          <Fragment key={`pickup-empty-${index}`}>
+            {renderEmptySlot?.({ index })}
+          </Fragment>
+        ))}
       </div>
-      <small>{assignmentMode ? "출석을 확인한 뒤 A/B사이드와 대기 선수를 배정합니다." : "모집 중에는 A/B사이드를 나누지 않습니다."}</small>
-      {!assignmentMode && onInvite ? <Button type="button" size="sm" variant="secondary" onClick={onInvite}>선수 초대</Button> : null}
+      <small className="pickup-participant-helper">
+        {assignmentMode ? "출석 확인 후 팀과 교대 순서를 정합니다." : "팀은 경기 시작 전 출석 확인 후 정합니다."}
+      </small>
     </section>
   );
 }

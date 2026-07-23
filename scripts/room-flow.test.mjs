@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getPickupParticipantIds, getPostgameRecordVerification, getRoomPhaseViewModel } from "../src/lib/roomFlow.js";
+import { getPickupOpenSlotPlacements, getPickupParticipantIds, getPickupParticipants, getPostgameRecordVerification, getRoomPhaseViewModel } from "../src/lib/roomFlow.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
 
 test("경기 목적과 팀 구성은 독립 필드이고 레거시 matchIntent만 호환용으로 만든다", () => {
@@ -18,10 +18,38 @@ test("픽업 모집은 A/B 대신 통합 참가자 풀을 표시한다", () => {
   const view = getRoomPhaseViewModel({ post: { formationMode: "pickup" } });
   assert.equal(view.showParticipantPool, true);
   assert.equal(view.showVersusStage, false);
-  assert.deepEqual(getPickupParticipantIds({ entries: [
-    { players: ["a"], reserves: ["b"] },
-    { players: ["a", "c"] },
-  ] }), ["a", "b", "c"]);
+  assert.deepEqual(view.sectionOrder, ["participantPool"]);
+  const lobby = { entries: [
+    { id: "first", status: "ready", players: ["a"], reserves: ["b"] },
+    { id: "second", status: "waiting", players: ["a", "c"] },
+  ] };
+  assert.deepEqual(getPickupParticipantIds(lobby), ["a", "b", "c"]);
+  assert.deepEqual(getPickupParticipants(lobby).map(({ playerId, entry, reserve }) => ({
+    playerId,
+    entryId: entry.id,
+    reserve,
+  })), [
+    { playerId: "a", entryId: "first", reserve: false },
+    { playerId: "b", entryId: "first", reserve: true },
+    { playerId: "c", entryId: "second", reserve: false },
+  ]);
+  assert.deepEqual(getPickupOpenSlotPlacements({
+    entries: [
+      { side: "teamA", players: ["host"], reserves: [] },
+    ],
+  }, { sideCapacity: 3, benchCapacity: 3 }), [
+    { side: "teamB", reserve: false },
+    { side: "teamA", reserve: false },
+    { side: "teamB", reserve: false },
+    { side: "teamA", reserve: false },
+    { side: "teamB", reserve: false },
+    { side: "teamA", reserve: true },
+    { side: "teamB", reserve: true },
+    { side: "teamA", reserve: true },
+    { side: "teamB", reserve: true },
+    { side: "teamA", reserve: true },
+    { side: "teamB", reserve: true },
+  ]);
 });
 
 test("픽업 체크인은 배정 확정 전 A/B 작업대를 표시한다", () => {
