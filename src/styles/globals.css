@@ -2573,8 +2573,7 @@ span.referee-hover-card {
   grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
 }
 
-.match-rule-summary,
-.meeting-point-fields > small {
+.match-rule-summary {
   color: var(--muted);
   font-weight: 800;
   line-height: 1.45;
@@ -2584,8 +2583,9 @@ span.referee-hover-card {
   grid-template-columns: minmax(0, 2fr) minmax(150px, 1fr);
 }
 
-.meeting-point-fields > small {
-  grid-column: 1 / -1;
+.meeting-point-required::placeholder {
+  color: var(--danger);
+  opacity: 0.82;
 }
 
 .match-dispute-queue {
