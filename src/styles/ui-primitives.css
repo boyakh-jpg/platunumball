@@ -1,0 +1,93 @@
+.ui-card {
+  padding: var(--card-padding);
+  color: var(--rb-text);
+  background: var(--ui-card-bg);
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.ui-panel {
+  padding: var(--card-padding);
+  color: var(--rb-text);
+  background: var(--ui-room-panel-bg);
+  border: 1px solid var(--ui-room-panel-border);
+  border-radius: var(--ui-panel-radius);
+}
+
+.ui-control {
+  width: 100%;
+  min-height: var(--control-height);
+  padding-inline: var(--control-padding-x);
+  color: var(--rb-text);
+  font: inherit;
+  background: var(--ui-control-bg);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+.ui-control:disabled {
+  color: var(--rb-soft);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.ui-control:focus-visible {
+  border-color: var(--rb-orange);
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-control:hover:not(:disabled) {
+  border-color: var(--rb-line-strong);
+}
+
+.ui-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--control-group-gap);
+  align-items: center;
+}
+
+.ui-action-row > * {
+  flex: 0 1 auto;
+}
+
+.ui-modal-shell {
+  color: var(--rb-text);
+  background: var(--ui-room-modal-bg);
+  border: 1px solid var(--ui-room-modal-border);
+  border-radius: var(--ui-room-modal-radius);
+  box-shadow: var(--ui-room-modal-shadow);
+}
+
+.ui-modal-section {
+  padding: var(--card-padding);
+  background: var(--ui-room-panel-bg);
+  border: 1px solid var(--ui-room-panel-border);
+  border-radius: var(--ui-panel-radius);
+}
+
+.ui-status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--control-group-gap);
+  align-items: center;
+  min-height: var(--control-height-sm);
+  padding: var(--control-group-padding) var(--control-padding-x);
+  color: var(--rb-muted);
+  background: var(--ui-control-group-bg);
+  border: 1px solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+}
+
+@media (width <= 520px) {
+  .ui-action-row > * {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+}

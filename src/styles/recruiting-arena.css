@@ -2940,6 +2940,21 @@ button.arena-room-player-slot {
   padding: 14px;
 }
 
+.arena-record-verification-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2, 8px);
+  border: 1px solid var(--ui-room-panel-border, var(--line));
+  border-radius: var(--ui-control-radius, 8px);
+  padding: var(--ui-space-3, 12px);
+}
+
+.arena-record-verification-status small {
+  flex-basis: 100%;
+  color: var(--muted);
+}
+
 .arena-source-record-summary {
   display: grid;
   gap: 10px;
@@ -8530,5 +8545,52 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
   .arena-dispute-score-row .arena-derived-score {
     min-height: 48px;
     font-size: 1.7rem;
+  }
+}
+
+/* Pickup flow layout; surfaces come from ui-primitives.css. */
+.pickup-participant-pool,
+.pickup-rotation-panel {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.pickup-participant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2);
+}
+
+.pickup-participant-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pickup-participant-item > span {
+  display: grid;
+  min-width: 0;
+}
+
+.pickup-participant-item strong,
+.pickup-participant-item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickup-rotation-panel > button {
+  justify-self: end;
+}
+
+@media (max-width: 640px) {
+  .pickup-participant-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pickup-rotation-panel > button {
+    width: 100%;
   }
 }

@@ -2658,6 +2658,7 @@ export function createMatch(state, draft) {
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === effectiveDraft.court || court.id === getCourtId(effectiveDraft)) ?? null;
   const creator = state.users.find((user) => user.id === state.currentUserId);
   const recordComposition = getMatchRecordComposition(effectiveDraft);
+  const creationPolicy = getMatchCreationPolicyPayload(effectiveDraft);
   const match = {
     id: effectiveDraft.id || makeId("m"),
     title: effectiveDraft.title || `${effectiveDraft.court} ${mode} 판`,
@@ -2668,6 +2669,9 @@ export function createMatch(state, draft) {
     scheduledTime: timingType === "instant" ? "" : effectiveDraft.scheduledTime,
     scheduledAt: scheduledAt || "일정 미정",
     timingType,
+    matchIntent: creationPolicy.matchIntent,
+    matchPurpose: creationPolicy.matchPurpose,
+    formationMode: creationPolicy.formationMode,
     visibility: "private",
     status: "agreed",
     ranked,
@@ -2686,6 +2690,7 @@ export function createMatch(state, draft) {
         teamB: recordComposition === "team" ? "captain" : "all",
       },
       recordApproverIds: { teamA: [], teamB: [] },
+      participantAcceptedIds: [],
       rosterReady: { teamA: false, teamB: false },
       sideCapacity: size,
       onCourtCount: size,
@@ -3556,6 +3561,10 @@ export function approveMatch(state, matchId, sideName, playerId) {
 
   const approvalId = getSelfDecisionId(state, match, sideName, "approvals", playerId);
   if (!approvalId) return state;
+  if (
+    isMatchRecordMatch(match)
+    && !(match.rules?.participantAcceptedIds ?? []).includes(approvalId)
+  ) return state;
   const statStatus = getStatSubmissionStatus(match);
   const pointAudit = getResultPointAudit(match);
   if (!statStatus.complete || !pointAudit.matched) {
@@ -3613,6 +3622,28 @@ function applyDisputeRequestToResult(match = {}, baseResult = null, disputeReque
     scoreB: getMergedResultScore(match, playerStats, "teamB", nextResult.scoreB),
     playerStats,
     updatedAt: new Date().toISOString(),
+  };
+}
+
+export function confirmMatchRecordParticipation(state, matchId, playerId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!isMatchRecordMatch(match) || match.rules?.recordSetupReady !== true) return state;
+  if (!playerId || playerId !== state.currentUserId) return state;
+  if (match.confirmedAt || match.cancelledAt || match.voidedAt) return state;
+  const requiredIds = MATCH_SIDES.flatMap((sideName) => match.rules?.recordApproverIds?.[sideName] ?? []);
+  if (!requiredIds.includes(playerId)) return state;
+  const participantAcceptedIds = Array.from(new Set([
+    ...(match.rules?.participantAcceptedIds ?? []),
+    playerId,
+  ]));
+  const updatedAt = new Date().toISOString();
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? {
+      ...item,
+      rules: { ...(item.rules ?? {}), participantAcceptedIds },
+      updatedAt,
+    } : item),
   };
 }
 
@@ -3881,6 +3912,20 @@ export function startMatch(state, matchId) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin") return state;
+  const pickup = (match.formationMode ?? match.rules?.formationMode) === "pickup"
+    || (match.matchIntent ?? match.rules?.matchIntent) === "pickup";
+  if (pickup && match.rules?.sideAssignmentStatus !== "confirmed") {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "팀 배정 확정 필요",
+        body: "출석한 참가자의 A/B사이드와 대기 선수를 배정한 뒤 배정 확정을 눌러 주세요.",
+        tone: "orange",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
   if (match.tournamentId && (!match.rules?.rosterReady?.teamA || !match.rules?.rosterReady?.teamB)) {
     return {
       ...state,
@@ -4135,6 +4180,38 @@ export function voidMatch(state, matchId, reason = "") {
       { id: makeId("n"), title: "경기 무효 처리", body: `${match.title} 경기가 무효 처리됐습니다. 사유: ${safeReason}`, tone: "match", matchId },
       ...state.notifications,
     ],
+  };
+}
+
+export function confirmPickupSideAssignment(state, matchId, rotation = {}) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return state;
+  if (!currentUserCanStartMatch(state, match)) return state;
+  const pickup = (match.formationMode ?? match.rules?.formationMode) === "pickup"
+    || (match.matchIntent ?? match.rules?.matchIntent) === "pickup";
+  if (!pickup || getMissingMatchAttendance(match).length) return state;
+  const sideCapacity = getRecruitingSideCapacity(match);
+  if (getMatchSidePlayerIds(match, "teamA").length !== sideCapacity || getMatchSidePlayerIds(match, "teamB").length !== sideCapacity) return state;
+  const rotationMode = ["period", "interval", "manual"].includes(rotation.rotationMode)
+    ? rotation.rotationMode
+    : "manual";
+  const rotationIntervalMinutes = [3, 5, 7, 10].includes(Number(rotation.rotationIntervalMinutes))
+    ? Number(rotation.rotationIntervalMinutes)
+    : 5;
+  const nextMatch = {
+    ...match,
+    rules: {
+      ...(match.rules ?? {}),
+      sideAssignmentStatus: "confirmed",
+      sideAssignmentConfirmedAt: new Date().toISOString(),
+      sideAssignmentConfirmedBy: state.currentUserId,
+      rotationMode,
+      rotationIntervalMinutes: rotationMode === "interval" ? rotationIntervalMinutes : undefined,
+    },
+  };
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
   };
 }
 
@@ -6007,7 +6084,7 @@ export function createRecruitingPost(state, draft) {
   const disciplineBlock = getDisciplineBlockedState(state, "매칭방 생성");
   if (disciplineBlock) return disciplineBlock;
   const creationPolicy = getMatchCreationPolicyPayload({ ...(draft.rules ?? {}), ...draft });
-  const pickup = creationPolicy.matchIntent === "pickup";
+  const pickup = creationPolicy.formationMode === "pickup";
   const hostJoinMode = pickup ? "player" : draft.hostJoinMode === "player" ? "player" : "team";
   const visibility = draft.visibility === "private" ? "private" : "public";
   const teamOnly = hostJoinMode === "team";
@@ -6236,7 +6313,7 @@ export function createRecruitingPost(state, draft) {
     ownerId: state.currentUserId,
     hostJoinMode,
     teamOnly,
-    hostSide: "teamA",
+    hostSide: pickup ? null : "teamA",
     hostReady: true,
     visibility,
     roomState: {
@@ -6264,7 +6341,10 @@ export function createRecruitingPost(state, draft) {
     rules: {
       ...(draft.rules ?? {}),
       ...getMatchRulesPayload({ ...(draft.rules ?? {}), ...draft }, { mode: draft.mode }),
-      ...(pickup ? creationPolicy : {}),
+      ...creationPolicy,
+      sideAssignmentStatus: pickup ? "pending" : "confirmed",
+      rotationMode: creationPolicy.rotationMode,
+      rotationIntervalMinutes: creationPolicy.rotationIntervalMinutes,
       benchCapacity,
     },
     official: creationPolicy.official,
@@ -7136,6 +7216,7 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
         recordSetupReady: true,
         recordApprovalMode: { teamA: "all", teamB: "all" },
         recordApproverIds: { teamA: teamAPlayerIds, teamB: teamBPlayerIds },
+        participantAcceptedIds: [],
         rosterReady: { teamA: true, teamB: true },
         playedPlayerIds: { teamA: teamAPlayerIds, teamB: teamBPlayerIds },
         reservePlayers: { teamA: [], teamB: [] },
@@ -7165,6 +7246,7 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
         recordSetupReady: false,
         recordApprovalMode: { teamA: "captain", teamB: "captain" },
         recordApproverIds: { teamA: [teamACaptainId], teamB: [teamBCaptainId] },
+        participantAcceptedIds: [],
         rosterReady: { teamA: false, teamB: false },
         playedPlayerIds: { teamA: [], teamB: [] },
         reservePlayers: { teamA: [], teamB: [] },
@@ -7322,6 +7404,7 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
           ? match.rules?.rosterReady?.teamB === true
           : match.rules?.rosterReady?.teamA === true
       ),
+      participantAcceptedIds: [],
       playedPlayerIds: {
         ...(match.rules?.playedPlayerIds ?? match.playedPlayerIds ?? {}),
         [sideName]: nextActiveIds,

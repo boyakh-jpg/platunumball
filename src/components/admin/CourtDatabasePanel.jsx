@@ -861,7 +861,7 @@ export default function CourtDatabasePanel({ app }) {
       return;
     }
     setSaving(true);
-    setStatus("중복 주소별 코트 번호를 정리하고 있습니다.");
+    setStatus("주소 시설명과 중복 주소별 코트 번호를 정리하고 있습니다.");
     const result = await app.actions.normalizeAdminCourtAddressNames?.();
     if (!result || result.ok === false) {
       setSaving(false);
@@ -900,7 +900,7 @@ export default function CourtDatabasePanel({ app }) {
             <div>
               {tab === "courts" && !reviewMode ? (
                 <>
-                  <Button type="button" size="sm" variant="secondary" disabled={loading || saving || !courtRows.length} onClick={normalizeAddressNames}><ScanLine size={14} /> 중복주소 코트번호 정리</Button>
+                  <Button type="button" size="sm" variant="secondary" disabled={loading || saving || !courtRows.length} onClick={normalizeAddressNames}><ScanLine size={14} /> 주소 시설명·중복 코트 정리</Button>
                   <Button type="button" size="sm" variant="secondary" disabled={loading || saving || !courtRows.length} onClick={startReview}><ListChecks size={14} /> 1개씩 검수</Button>
                 </>
               ) : null}

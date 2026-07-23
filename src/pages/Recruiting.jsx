@@ -30,6 +30,8 @@ import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
 import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
 import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
+import PickupParticipantPool from "../components/match/PickupParticipantPool.jsx";
+import RoomPhaseRenderer from "../components/match/RoomPhaseRenderer.jsx";
 import MatchVoidDialog from "../components/match/MatchVoidDialog.jsx";
 import MeetingPointFields from "../components/match/MeetingPointFields.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
@@ -120,6 +122,7 @@ import {
 } from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
 import { getMatchCreationSummary } from "../lib/matchCreationPolicies.js";
+import { ROOM_BODY_MODES, getPostgameRecordVerification, getRoomPhaseViewModel } from "../lib/roomFlow.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getUnsafeUserTextReason, UNSAFE_INPUT_MESSAGE } from "../lib/inputSecurity.js";
 import {
@@ -3447,8 +3450,25 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
+        const roomPhaseViewModel = getRoomPhaseViewModel({ post: selectedPost, match: sourceMatch });
+        const roomPhaseVersusIndex = roomPhaseViewModel.sectionOrder.indexOf("versus");
+        const roomPhaseSectionsBeforeVersus = roomPhaseVersusIndex >= 0
+          ? roomPhaseViewModel.sectionOrder.slice(0, roomPhaseVersusIndex)
+          : roomPhaseViewModel.sectionOrder;
+        const roomPhaseSectionsAfterVersus = roomPhaseVersusIndex >= 0
+          ? roomPhaseViewModel.sectionOrder.slice(roomPhaseVersusIndex + 1)
+          : [];
         const recruitingRoomTerminalStatus = sourceMatch ? null : getRecruitingPostTerminalState(selectedPost);
         const sourceMatchIsRecordRoom = Boolean(sourceMatch && isMatchRecordMatch(sourceMatch));
+        const sourceMatchRecordVerification = sourceMatchIsRecordRoom
+          ? getPostgameRecordVerification(sourceMatch)
+          : null;
+        const sourceMatchParticipationRequired = Boolean(
+          sourceMatchRecordVerification?.requiredParticipantIds.includes(app.currentUser.id),
+        );
+        const sourceMatchParticipationAccepted = Boolean(
+          sourceMatchRecordVerification?.participantAcceptedIds.includes(app.currentUser.id),
+        );
         const sourceMatchIsTournamentPregame = Boolean(
           sourceMatch?.tournamentId &&
           sourceMatch?.scheduledDate &&
@@ -3523,7 +3543,15 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canManageMatchCheckin = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canShowStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const sourceMatchMissingStartAttendanceIds = canShowStartSourceMatch ? getMissingStartAttendanceIds(sourceMatch, app.currentUser.id) : [];
-        const canStartSourceMatch = canShowStartSourceMatch && sourceMatchMissingStartAttendanceIds.length === 0;
+        const pickupAssignmentSideCapacity = sourceMatch ? getRecruitingSideCapacity(sourceMatch) : 0;
+        const pickupAssignmentSidesComplete = Boolean(
+          sourceMatch
+          && getMatchSidePlayerIds(sourceMatch, "teamA").length === pickupAssignmentSideCapacity
+          && getMatchSidePlayerIds(sourceMatch, "teamB").length === pickupAssignmentSideCapacity,
+        );
+        const canStartSourceMatch = canShowStartSourceMatch
+          && sourceMatchMissingStartAttendanceIds.length === 0
+          && (roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment || roomPhaseViewModel.assignmentConfirmed);
         const canRequestRefereeAbsence = Boolean(matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canConfirmRefereeAbsence = Boolean(matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
@@ -3590,6 +3618,22 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             <div className="arena-match-source-actions arena-match-source-record-board">
               <strong>경기 기록판</strong>
               <span>기록방은 점수와 선수 기록을 먼저 확인합니다.</span>
+              {sourceMatchRecordVerification ? (
+                <div className="arena-record-verification-status">
+                  <span>
+                    참가 확인 {sourceMatchRecordVerification.participantAcceptedIds.length}/{sourceMatchRecordVerification.requiredParticipantIds.length}
+                  </span>
+                  <span>
+                    결과 승인 {sourceMatchRecordVerification.approvedIds.length}/{sourceMatchRecordVerification.requiredParticipantIds.length}
+                  </span>
+                  <small>24시간이 지나도 무응답은 자동 승인되지 않습니다.</small>
+                  {sourceMatchParticipationRequired && !sourceMatchParticipationAccepted ? (
+                    <Button type="button" size="sm" onClick={() => app.actions.confirmMatchRecordParticipation(sourceMatch.id)}>
+                      내가 참가한 경기 맞음
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
               {showSourceMatchRecordSummary ? (
                 <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
               ) : null}
@@ -3878,6 +3922,80 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             </SelfSlotCommandPanel>
           );
         };
+        const renderMatchRecordSetupPanels = () => (
+          <>
+            {!sourceRoomReadOnly && showMatchRecordRosterPanel ? (
+              <div className="arena-record-roster-panels ui-modal-section">
+                {MATCH_SIDES.map((sideName) => (
+                  <MatchRecordRosterPanel
+                    key={sideName}
+                    match={sourceMatch}
+                    sideName={sideName}
+                    team={sourceMatchRecordTeams[sideName]}
+                    userById={userById}
+                    teams={app.state.teams}
+                    currentUserId={app.currentUser.id}
+                    sideLeaderId={sourceMatchSideLeaderIds[sideName]}
+                    capacity={getRecruitingSideCapacity(sourceMatch)}
+                    tournamentRoster={sourceMatchIsTournamentPregame}
+                    reserveCapacity={sourceMatchIsRecordRoom ? 0 : MAX_RESERVE_PLAYERS_PER_SIDE}
+                    eligiblePlayerIds={sourceMatchIsTournamentPregame ? getTeamEventEligibility(sourceMatchRecordTeams[sideName], app.state.users, {
+                      capacity: getRecruitingSideCapacity(sourceMatch),
+                      ranked: sourceMatch.ranked,
+                      mmrLimitMode: sourceMatch.rules?.mmrLimitMode ?? sourceMatch.mmrLimitMode,
+                      mmrRangeMode: sourceMatch.rules?.mmrRangeMode,
+                      targetMmr: sourceMatchRecordTeams[sideName]?.mmr,
+                      allowedAgeGroups: sourceMatch.rules?.allowedAgeGroups,
+                    }).eligiblePlayerIds : null}
+                    onChange={(targetSideName, roster) => app.actions.setMatchRecordTeamRoster(sourceMatch.id, targetSideName, roster)}
+                  />
+                ))}
+              </div>
+            ) : null}
+            {!sourceRoomReadOnly && canManageMatchRecordParticipants ? (
+              <MatchRecordParticipantSetupPanel
+                match={sourceMatch}
+                users={app.state.users}
+                teams={app.state.teams}
+                currentUserId={app.currentUser.id}
+                onSave={(setup) => app.actions.setMatchRecordParticipants(sourceMatch.id, setup)}
+              />
+            ) : null}
+          </>
+        );
+        const renderPickupParticipantPool = () => (
+          <PickupParticipantPool
+            lobby={lobby}
+            userById={userById}
+            capacity={(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}
+            assignmentMode={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment}
+            onInvite={!sourceRoomReadOnly && canInviteFromRoom ? ((event) => openInviteSlot(selectedPost, "teamA", false, null, event)) : null}
+          />
+        );
+        const renderPickupRotation = () => roomPhaseViewModel.rotation ? (
+          <section className="ui-panel ui-modal-section pickup-rotation-panel">
+            <div className="ui-status-strip">
+              <span>균등 교대</span>
+              <strong>{roomPhaseViewModel.rotation.label}</strong>
+            </div>
+            <small>교대 대상은 시스템이 추천하고 방장 또는 심판이 확정합니다.</small>
+            {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && canManageMatchCheckin ? (
+              <Button
+                type="button"
+                disabled={sourceMatchMissingStartAttendanceIds.length > 0 || !pickupAssignmentSidesComplete}
+                title={sourceMatchMissingStartAttendanceIds.length
+                  ? "출석 확인을 먼저 완료해 주세요."
+                  : !pickupAssignmentSidesComplete
+                    ? "A/B 출전 정원을 먼저 채워 주세요."
+                    : "A/B사이드와 대기 선수 배정을 확정합니다."}
+                onClick={() => app.actions.confirmPickupSideAssignment(sourceMatch.id, {
+                  rotationMode: roomPhaseViewModel.rotation.rotationMode,
+                  rotationIntervalMinutes: roomPhaseViewModel.rotation.rotationIntervalMinutes,
+                })}
+              >배정 확정</Button>
+            ) : null}
+          </section>
+        ) : null;
 
         return (
           <div
@@ -3888,7 +4006,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           >
             <aside
               ref={lobbyModalRef}
-              className={`arena-lobby-modal${sheetDragSettling ? " is-sheet-settling" : ""}${sheetDragOffset > 0 ? " is-sheet-dragging" : ""}`}
+              className={`arena-lobby-modal ui-modal-shell${sheetDragSettling ? " is-sheet-settling" : ""}${sheetDragOffset > 0 ? " is-sheet-dragging" : ""}`}
               role="dialog"
               aria-modal="true"
               aria-label="매치방"
@@ -3936,11 +4054,19 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
 
-                {renderSourceMatchRecordBoard()}
+                <RoomPhaseRenderer
+                  viewModel={{ ...roomPhaseViewModel, sectionOrder: roomPhaseSectionsBeforeVersus }}
+                  sections={{
+                    recordBoard: renderSourceMatchRecordBoard,
+                    recordSetup: renderMatchRecordSetupPanels,
+                    participantPool: renderPickupParticipantPool,
+                    rotation: renderPickupRotation,
+                  }}
+                />
                 {entryPoint === "recorder" ? renderMatchRecorderHandoffPanel() : null}
                 {entryPoint === "recorder" ? renderMatchSubstitutionPanel() : null}
 
-                <div className="arena-lobby-versus-stage">
+                {roomPhaseViewModel.showVersusStage ? <div className="arena-lobby-versus-stage">
                   <div className="arena-lobby-team-panel team-a">
                     <div className="arena-lobby-team-head">
                       <div className="arena-lobby-team-kicker">
@@ -4025,9 +4151,19 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       onRemoveCandidate={removeCandidate}
                     />
                   </div>
-                </div>
+                </div> : null}
 
-                {benchCapacity > 0 ? <div className="arena-reserve-panel">
+                <RoomPhaseRenderer
+                  viewModel={{ ...roomPhaseViewModel, sectionOrder: roomPhaseSectionsAfterVersus }}
+                  sections={{
+                    recordBoard: renderSourceMatchRecordBoard,
+                    recordSetup: renderMatchRecordSetupPanels,
+                    participantPool: renderPickupParticipantPool,
+                    rotation: renderPickupRotation,
+                  }}
+                />
+
+                {roomPhaseViewModel.showSideReserves && benchCapacity > 0 ? <div className="arena-reserve-panel">
                   <ReserveLine
                     sideName="teamA"
                     candidates={lobby.sides.teamA.reserveCandidates}
@@ -4123,45 +4259,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 />
               ) : null}
 
-              {!sourceRoomReadOnly && showMatchRecordRosterPanel ? (
-                <div className="arena-record-roster-panels">
-                  {MATCH_SIDES.map((sideName) => (
-                    <MatchRecordRosterPanel
-                      key={sideName}
-                      match={sourceMatch}
-                      sideName={sideName}
-                      team={sourceMatchRecordTeams[sideName]}
-                      userById={userById}
-                      teams={app.state.teams}
-                      currentUserId={app.currentUser.id}
-                      sideLeaderId={sourceMatchSideLeaderIds[sideName]}
-                      capacity={getRecruitingSideCapacity(sourceMatch)}
-                      tournamentRoster={sourceMatchIsTournamentPregame}
-                      reserveCapacity={sourceMatchIsRecordRoom ? 0 : MAX_RESERVE_PLAYERS_PER_SIDE}
-                      eligiblePlayerIds={sourceMatchIsTournamentPregame ? getTeamEventEligibility(sourceMatchRecordTeams[sideName], app.state.users, {
-                        capacity: getRecruitingSideCapacity(sourceMatch),
-                        ranked: sourceMatch.ranked,
-                        mmrLimitMode: sourceMatch.rules?.mmrLimitMode ?? sourceMatch.mmrLimitMode,
-                        mmrRangeMode: sourceMatch.rules?.mmrRangeMode,
-                        targetMmr: sourceMatchRecordTeams[sideName]?.mmr,
-                        allowedAgeGroups: sourceMatch.rules?.allowedAgeGroups,
-                      }).eligiblePlayerIds : null}
-                      onChange={(targetSideName, roster) => app.actions.setMatchRecordTeamRoster(sourceMatch.id, targetSideName, roster)}
-                    />
-                  ))}
-                </div>
-              ) : null}
-
-              {!sourceRoomReadOnly && canManageMatchRecordParticipants ? (
-                <MatchRecordParticipantSetupPanel
-                  match={sourceMatch}
-                  users={app.state.users}
-                  teams={app.state.teams}
-                  currentUserId={app.currentUser.id}
-                  onSave={(setup) => app.actions.setMatchRecordParticipants(sourceMatch.id, setup)}
-                />
-              ) : null}
-
               {!sourceRoomReadOnly && ((!matchRoom && mine) || (matchRoom && canManageMatchCheckin)) ? (
                 <RoomKickPanel
                   lobby={lobby}
@@ -4187,7 +4284,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               {entryPoint === "recorder" ? null : renderMatchRecorderHandoffPanel()}
               {entryPoint === "recorder" ? null : renderMatchSubstitutionPanel()}
 
-              {!sourceMatchIsRecordRoom ? <div className="arena-room-rule-panel">
+              {roomPhaseViewModel.showRules ? <div className="arena-room-rule-panel">
                 <div className="arena-room-rule-head">
                   <strong>규칙</strong>
                   {canEditSourceRoomRules ? (
@@ -4425,7 +4522,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />
                     ) : null}
-                    {!sourceRoomReadOnly && sourceMatchAction.action && sourceMatchSideName ? (
+                    {!sourceRoomReadOnly && sourceMatchAction.action && sourceMatchSideName && (
+                      sourceMatchAction.action !== "approve" || !sourceMatchIsRecordRoom || sourceMatchParticipationAccepted
+                    ) ? (
                       <Button
                         type="button"
                         onClick={() => {

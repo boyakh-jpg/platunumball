@@ -6,6 +6,7 @@ import ScrollToTop from "./components/common/ScrollToTop.jsx";
 import { installRemoteAssetVariables } from "./lib/assets.js";
 import "./styles/tokens.css";
 import "./styles/globals.css";
+import "./styles/ui-primitives.css";
 
 installRemoteAssetVariables();
 

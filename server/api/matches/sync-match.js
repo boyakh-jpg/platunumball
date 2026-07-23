@@ -20,6 +20,7 @@ import {
   normalizeDisputeWindowMinutes,
 } from "../../../src/lib/constants.js";
 import { getMatchCancelCopy, makeAnonymousMatchPlayer } from "../../../src/lib/matchUtils.js";
+import { getPostgameRecordVerification, POSTGAME_RECORD_REMINDER_HOURS } from "../../../src/lib/postgameRecordVerification.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeam } from "../../../src/data/teamMappers.js";
@@ -61,6 +62,9 @@ const MATCH_REMINDER_OFFSETS = [
     intro: "경기 시작 전입니다. 경기방에서 출석 상태를 확인해 주세요.",
   },
 ];
+const MATCH_RECORD_APPROVAL_NOTICE_PREFIXES = POSTGAME_RECORD_REMINDER_HOURS.map(
+  (hours) => `match-record-approval-${hours}h`,
+);
 const MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS = new Set([
   "createMatch",
   "confirmRecruitingMatch",
@@ -424,9 +428,14 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
       ...MATCH_POSTGAME_NOTICE_PREFIXES,
     ]);
   }
+  if (["submitMatchResult", "approveMatch"].includes(action)) {
+    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_RECORD_APPROVAL_NOTICE_PREFIXES);
+    await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_RECORD_APPROVAL_NOTICE_PREFIXES);
+  }
   if (["cancelMatch", "voidMatch"].includes(action)) {
-    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_CANCEL_NOTICE_PREFIXES);
-    await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_CANCEL_NOTICE_PREFIXES);
+    const cancelPrefixes = [...MATCH_CANCEL_NOTICE_PREFIXES, ...MATCH_RECORD_APPROVAL_NOTICE_PREFIXES];
+    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, cancelPrefixes);
+    await cancelPendingMatchNotificationPrefixes(supabase, match.id, cancelPrefixes);
   }
 
   if (!participantIds.length && !managerIds.length) return 0;
@@ -514,6 +523,29 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
       title: "이의신청 확인",
       intro: "경기 종료 후 30분이 지났습니다. 입력된 결과를 확인하고, 문제가 있으면 이의신청을 해 주세요.",
       sendAt: new Date(endedAt.getTime() + 30 * MINUTE_MS).toISOString(),
+    });
+  }
+
+  if (
+    match.rules?.recordType === RECORD_TYPES.matchRecord
+    && ["submitMatchResult", "approveMatch"].includes(action)
+  ) {
+    const verification = getPostgameRecordVerification(match);
+    const submittedAtMs = new Date(verification.submittedAt ?? Date.now()).getTime();
+    const targetIds = verification.unconfirmedIds;
+    const targetIdSet = new Set(targetIds);
+    const targetProfiles = profiles.filter((profile) => targetIdSet.has(profile.id));
+    POSTGAME_RECORD_REMINDER_HOURS.forEach((hours) => {
+      const sendAtMs = submittedAtMs + hours * HOUR_MS;
+      if ((hours === 0 && action !== "submitMatchResult") || sendAtMs < nowMs) return;
+      addRows(targetIds, targetProfiles, {
+        idPrefix: `match-record-approval-${hours}h`,
+        actionRequired: true,
+        homeAction: true,
+        title: hours === 0 ? "사후 기록 확인 요청" : "사후 기록 확인 필요",
+        intro: "본인 참가 사실과 경기 결과를 확인해 주세요. 무응답은 자동 승인되지 않습니다.",
+        sendAt: new Date(Math.max(sendAtMs, nowMs)).toISOString(),
+      });
     });
   }
 
@@ -1056,6 +1088,7 @@ const OPERATOR_MATCH_ACTIONS = new Set([
   "forfeitTournamentMatch",
   "handoffMatchRecorder",
   "checkInMatchPlayer",
+  "confirmPickupSideAssignment",
   "requestMatchRefereeAbsence",
   "confirmMatchRefereeAbsence",
   "cancelMatch",
@@ -1079,6 +1112,7 @@ const MATCH_RECORD_SETUP_ACTION = "setMatchRecordParticipants";
 const PARTICIPANT_MATCH_ACTIONS = new Set([
   "agreeMatch",
   "approveMatch",
+  "confirmMatchRecordParticipation",
   "toggleMatchStar",
   "submitMatchThumbs",
   "disputeMatch",
@@ -1120,6 +1154,7 @@ function shouldReplayMatchOperation(operation = null, match = null) {
 const ROSTER_LOCKED_MATCH_ACTIONS = new Set([
   ...PARTICIPANT_MATCH_ACTIONS,
   "checkInMatchPlayer",
+  "confirmPickupSideAssignment",
   "requestMatchRefereeAbsence",
   "confirmMatchRefereeAbsence",
   "startMatch",
@@ -1130,6 +1165,7 @@ const ROSTER_LOCKED_MATCH_ACTIONS = new Set([
 const REFEREE_LOCKED_MATCH_ACTIONS = new Set([
   ...PARTICIPANT_MATCH_ACTIONS,
   "checkInMatchPlayer",
+  "confirmPickupSideAssignment",
   "requestMatchRefereeAbsence",
   "startMatch",
   "endMatch",
@@ -1260,6 +1296,8 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "approveMatch",
   "cancelMatch",
   "checkInMatchPlayer",
+  "confirmPickupSideAssignment",
+  "confirmMatchRecordParticipation",
   "deleteSoloRecord",
   "disputeMatch",
   "resolveMatchDispute",
@@ -1297,6 +1335,8 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_agree_action") ||
     message.includes("rankball_match_approval_action") ||
     message.includes("rankball_match_checkin_action") ||
+    message.includes("rankball_match_confirm_pickup_assignment") ||
+    message.includes("rankball_match_record_participation_action") ||
     message.includes("rankball_match_dispute_action") ||
     message.includes("rankball_match_resolve_dispute_action") ||
     message.includes("rankball_match_end_action") ||
@@ -1334,6 +1374,8 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "approveMatch",
     "cancelMatch",
     "checkInMatchPlayer",
+    "confirmPickupSideAssignment",
+    "confirmMatchRecordParticipation",
     "deleteSoloRecord",
     "disputeMatch",
     "resolveMatchDispute",
@@ -1391,6 +1433,9 @@ function getSqlMatchReloadPredicate(operation = {}) {
   if (action === "endMatch") return (match) => Boolean(match?.endedAt);
   if (action === "checkInMatchPlayer") {
     return (match) => (match?.attendance?.[operation.sideName] ?? []).includes(operation.playerId);
+  }
+  if (action === "confirmPickupSideAssignment") {
+    return (match) => match?.rules?.sideAssignmentStatus === "confirmed";
   }
   return null;
 }
@@ -1519,6 +1564,37 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
+  if (operation.action === "confirmPickupSideAssignment" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_confirm_pickup_assignment", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_rotation_mode: operation.rotationMode ?? "manual",
+      p_rotation_interval_minutes: Number(operation.rotationIntervalMinutes ?? 5),
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    rejectSqlMatchFallback(data);
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
+  if (operation.action === "confirmMatchRecordParticipation" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_record_participation_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_player_id: operation.playerId ?? context.profileId,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_record_participation_rpc_required");
+      throw error;
+    }
+    rejectSqlMatchFallback(data);
     return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
   }
 
@@ -1777,6 +1853,11 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
 
   if (operation.action === "startMatch" && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
+    const pickup = (match?.formationMode ?? match?.rules?.formationMode) === "pickup"
+      || (match?.matchIntent ?? match?.rules?.matchIntent) === "pickup";
+    if (pickup && match?.rules?.sideAssignmentStatus !== "confirmed") {
+      reject(409, "pickup_side_assignment_required");
+    }
     const { data, error } = await context.supabase.rpc("rankball_match_start_action_guarded", {
       p_actor_profile_id: context.profileId,
       p_match_id: matchId,

@@ -574,7 +574,8 @@ function isSoloIndividualRoom(post = {}) {
 
 function isPickupRoom(post = {}) {
   const rules = post.rules && typeof post.rules === "object" ? post.rules : {};
-  return (post.matchIntent ?? post.match_intent ?? rules.matchIntent) === "pickup";
+  return (post.formationMode ?? post.formation_mode ?? rules.formationMode) === "pickup"
+    || (post.matchIntent ?? post.match_intent ?? rules.matchIntent) === "pickup";
 }
 
 function isIndividualOnlyRoom(post = {}) {
@@ -643,7 +644,8 @@ function getRecruitingSideCounts(post = {}) {
 export function validatePickupRecruitingShape(post = {}) {
   const rules = post.rules && typeof post.rules === "object" ? post.rules : {};
   const matchIntent = post.matchIntent ?? post.match_intent ?? rules.matchIntent;
-  if (matchIntent !== "pickup") return;
+  const formationMode = post.formationMode ?? post.formation_mode ?? rules.formationMode;
+  if (formationMode !== "pickup" && matchIntent !== "pickup") return;
 
   const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
   const teamOnly = isTrue(post.teamOnly ?? post.team_only ?? roomState.teamOnly);

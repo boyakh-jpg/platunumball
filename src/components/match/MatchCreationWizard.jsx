@@ -5,6 +5,7 @@ import {
   MATCH_FORMATION_OPTIONS,
   MATCH_PURPOSE_OPTIONS,
   PAYMENT_POLICY_OPTIONS,
+  PICKUP_ROTATION_MODE_OPTIONS,
   PLAYING_TIME_POLICY_OPTIONS,
   VENUE_PAYMENT_TYPE_OPTIONS,
   VENUE_SECURED_OPTIONS,
@@ -82,9 +83,9 @@ export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION
   );
 }
 
-export function MatchIntentPresetSelector({ value, onSelect }) {
-  const pickup = value === "pickup";
-  const purposeValue = pickup ? "friendly" : value;
+export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurposeSelect, onFormationSelect }) {
+  const pickup = formationMode === "pickup";
+  const purposeValue = pickup ? "friendly" : matchPurpose;
   return (
     <div className="match-intent-axis-grid">
       <div className="match-intent-axis">
@@ -97,8 +98,10 @@ export function MatchIntentPresetSelector({ value, onSelect }) {
               role="radio"
               aria-checked={purposeValue === option.id}
               className={purposeValue === option.id ? "active" : ""}
+              disabled={pickup}
+              title={pickup ? "현장 픽업은 친선전으로 고정됩니다." : option.description}
               onClick={() => {
-                if (purposeValue !== option.id) onSelect(option.id);
+                if (purposeValue !== option.id) onPurposeSelect(option.id);
               }}
             >
               <strong>{option.label}</strong>
@@ -120,8 +123,7 @@ export function MatchIntentPresetSelector({ value, onSelect }) {
                 aria-checked={active}
                 className={active ? "active" : ""}
                 onClick={() => {
-                  if (option.id === "pickup" && !pickup) onSelect("pickup");
-                  if (option.id === "prearranged" && pickup) onSelect("friendly");
+                  if (option.id !== formationMode) onFormationSelect(option.id);
                 }}
               >
                 <strong>{option.label}</strong>
@@ -137,36 +139,48 @@ export function MatchIntentPresetSelector({ value, onSelect }) {
 
 export function MatchRosterPolicyFields({ draft, onChange }) {
   const policy = getMatchCreationPolicyPayload(draft);
-  const pickup = policy.matchIntent === "pickup";
+  const pickup = policy.formationMode === "pickup";
   return (
     <div className="match-roster-policy-fields">
       <div className="field-block">
-        <span className="field-label">{pickup ? "순환 대기 인원" : "후보 정원"}</span>
+        <span className="field-label">{pickup ? "추가 참가 인원" : "후보 정원"}</span>
         <div className="segmented-control compact-segments match-bench-capacity-control">
           {BENCH_CAPACITY_OPTIONS.map((benchCapacity) => (
             <button
               key={benchCapacity}
               type="button"
               className={policy.benchCapacity === benchCapacity ? "active" : ""}
-              aria-label={benchCapacity === 0 ? "후보 없음" : `후보 ${benchCapacity}명`}
+              aria-label={benchCapacity === 0 ? (pickup ? "추가 참가자 없음" : "후보 없음") : pickup ? `추가 참가자 ${benchCapacity * 2}명` : `후보 ${benchCapacity}명`}
               onClick={() => onChange({
                 benchCapacity,
                 benchPaymentAcknowledged: benchCapacity === 0 || draft.playingTimePolicy !== "none",
               })}
             >
-              {benchCapacity === 0 ? "없음" : `${benchCapacity}명`}
+              {benchCapacity === 0 ? "없음" : `${pickup ? benchCapacity * 2 : benchCapacity}명`}
             </button>
           ))}
         </div>
         <small>{pickup
-          ? `코트 ${policy.onCourtCount}명${policy.benchCapacity > 0 ? ` + 순환 대기 ${policy.benchCapacity}명` : " · 대기 없음"}입니다.`
+          ? `출전 ${policy.onCourtCount * 2}명${policy.waitingPlayerCapacity > 0 ? ` + 통합 대기 ${policy.waitingPlayerCapacity}명` : " · 대기 없음"}입니다.`
           : `출전 ${policy.onCourtCount}명${policy.benchCapacity > 0 ? ` + 후보 ${policy.benchCapacity}명` : " · 후보 없음"}, 사이드당 ${policy.teamCapacity}명입니다.`}</small>
       </div>
       {pickup ? (
-        <div className="field-block">
-          <span className="field-label">운영 방식</span>
-          <strong>현장 팀배정 · 방장 수동 순환</strong>
-          <small>자동 로테이션은 지원하지 않습니다. 방장이 현장에서 팀과 교대 순서를 정합니다.</small>
+        <div className="match-pickup-rotation-fields">
+          <label>
+            균등 교대 기준
+            <select value={policy.rotationMode} onChange={(event) => onChange({ rotationMode: event.target.value })}>
+              {PICKUP_ROTATION_MODE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+            </select>
+          </label>
+          {policy.rotationMode === "interval" ? (
+            <label>
+              교대 간격
+              <select value={policy.rotationIntervalMinutes} onChange={(event) => onChange({ rotationIntervalMinutes: Number(event.target.value) })}>
+                {[3, 5, 7, 10].map((minutes) => <option key={minutes} value={minutes}>{minutes}분</option>)}
+              </select>
+            </label>
+          ) : null}
+          <small>시스템이 균등 교대를 추천하고 방장 또는 심판이 확정합니다.</small>
         </div>
       ) : policy.benchCapacity > 0 ? (
         <label>

@@ -388,7 +388,8 @@ export function isSoloIndividualRecruitingRoom(post = {}) {
 }
 
 export function isPickupRecruitingRoom(post = {}) {
-  return (post.matchIntent ?? post.rules?.matchIntent) === "pickup";
+  return (post.formationMode ?? post.rules?.formationMode) === "pickup"
+    || (post.matchIntent ?? post.rules?.matchIntent) === "pickup";
 }
 
 export function isIndividualOnlyRecruitingRoom(post = {}) {

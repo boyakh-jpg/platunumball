@@ -30,6 +30,8 @@ import {
   RECORD_COMPOSITION_OPTIONS,
   RECORD_ENTRY_MODE_OPTIONS,
   getDefaultMatchCreationPolicy,
+  getMatchConfigurationChangePatch,
+  getMatchFormationMode,
   getRecordComposition,
   getRecordEntryMode,
   getMatchCreationPolicyPayload,
@@ -463,7 +465,7 @@ export default function CreateMatch({ app }) {
   useEffect(() => {
     if (!canCreateTeamRoom || defaultMode === "1v1" || modeManuallyChangedRef.current) return;
     setDraft((current) => {
-      if (current.recordType !== RECORD_TYPES.match || current.mode !== "1v1" || current.matchIntent === "pickup") return current;
+      if (current.recordType !== RECORD_TYPES.match || current.mode !== "1v1" || getMatchFormationMode(current) === "pickup") return current;
       const playerIds = getRepresentativePlayerIds(app.currentUser.id);
       const nextTeamB = defaultTeamB;
       const opponentLeaderId = current.visibility === "public"
@@ -567,7 +569,7 @@ export default function CreateMatch({ app }) {
   );
   const isPublicRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "public";
   const isTournamentRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "tournament";
-  const isPickupMatch = !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom && draft.matchIntent === "pickup";
+  const isPickupMatch = !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom && getMatchFormationMode(draft) === "pickup";
   const isTeamRoom = !isSoloRecord && !isTournamentRoom && !isPickupMatch && (isMatchRecordRoom ? recordComposition === "team" : draft.hostJoinMode === "team");
   const isStandardCreateWizard = !isSoloRecord && !isMatchRecordRoom && !isTournamentRoom;
   const creationWizardType = getMatchCreationWizardType(draft, { recordIntent: isRecordCreateIntent });
@@ -1134,7 +1136,7 @@ export default function CreateMatch({ app }) {
     if (!isPickupMatch) return;
     setDraft((current) => ({
       ...current,
-      ...getMatchIntentChangePatch(current, "pickup"),
+      ...getMatchConfigurationChangePatch(current, { formationMode: "pickup" }),
       teamAId: undefined,
       teamBId: undefined,
       playerIds: [],
@@ -1605,7 +1607,7 @@ export default function CreateMatch({ app }) {
                   onClick={() => {
                     const team = defaultTeamA ?? selectedTeamA;
                     const mode = getMatchModeOrDefault(draft.mode, defaultMode);
-                    const hostJoinMode = draft.matchIntent === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
+                    const hostJoinMode = getMatchFormationMode(draft) === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
                     const playerIds = hostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
                     const opponentLeaderId = hostJoinMode === "team" ? getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? "" : "";
                     goToWizardStep(1, { replace: true });
@@ -1639,7 +1641,7 @@ export default function CreateMatch({ app }) {
                   onClick={() => {
                     const team = defaultTeamA ?? selectedTeamA;
                     const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
-                    const hostJoinMode = draft.matchIntent === "pickup" || nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
+                    const hostJoinMode = getMatchFormationMode(draft) === "pickup" || nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
                     const playerIds = hostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
                     goToWizardStep(1, { replace: true });
                     update({
@@ -1772,18 +1774,29 @@ export default function CreateMatch({ app }) {
           {isStandardCreateWizard ? (
             <div className="match-intent-preset-section">
               <MatchIntentPresetSelector
-                value={draft.matchIntent}
-                onSelect={(matchIntent) => update({
-                  ...getMatchIntentChangePatch(draft, matchIntent),
-                  title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(draft.mode, matchIntent) : draft.title,
-                  ...(matchIntent === "pickup" ? {
+                matchPurpose={draft.matchPurpose}
+                formationMode={draft.formationMode}
+                onPurposeSelect={(matchPurpose) => {
+                  const patch = getMatchConfigurationChangePatch(draft, { matchPurpose });
+                  update({
+                    ...patch,
+                    title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(draft.mode, patch.matchIntent) : draft.title,
+                  });
+                }}
+                onFormationSelect={(formationMode) => {
+                  const patch = getMatchConfigurationChangePatch(draft, { formationMode });
+                  update({
+                  ...patch,
+                  title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(draft.mode, patch.matchIntent) : draft.title,
+                  ...(formationMode === "pickup" ? {
                     playerIds: [],
                     reservePlayerIds: [],
                     opponentPlayerIds: [],
                     opponentReservePlayerIds: [],
                     opponentLeaderId: "",
                   } : {}),
-                })}
+                  });
+                }}
               />
             </div>
           ) : null}
@@ -1932,7 +1945,7 @@ export default function CreateMatch({ app }) {
                   });
                   return;
                 }
-                const hostJoinMode = draft.matchIntent === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
+                const hostJoinMode = getMatchFormationMode(draft) === "pickup" || mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
                 const nextIsTeamRoom = !isTournamentRoom && hostJoinMode === "team";
                 const playerIds = nextIsTeamRoom ? getRepresentativePlayerIds(app.currentUser.id) : [];
                 const opponentLeaderId = !isPublicRoom && nextIsTeamRoom ? getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? "" : "";

@@ -14,6 +14,9 @@ test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사�
   assert.match(server, /applyCourtFilters\(query, body\.filters\)/);
   assert.match(server, /\.range\(offset, offset \+ PAGE_SIZE - 1\)/);
   assert.match(server, /rpc\("rankball_admin_update_court_with_auto_unit"/);
+  assert.match(server, /pendingIds = new Set\(plan\.updates\.map/);
+  assert.match(server, /standaloneUpdates = plan\.updates/);
+  assert.doesNotMatch(server, /duplicateUpdates = plan\.updates\.filter/);
   assert.match(server, /rpc\("rankball_admin_update_courts_batch_with_auto_unit"/);
   assert.match(server, /TEMPORARY_REASON_OPTIONAL_PROFILE_ID = "p_a6086f1e61b34ebca4"/);
   assert.match(server, /TEMPORARY_COURT_UPDATE_REASON = "한시적 boyakh 구장 DB 정리"/);

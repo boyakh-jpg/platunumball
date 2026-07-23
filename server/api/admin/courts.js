@@ -421,8 +421,7 @@ export default async function handler(request, response) {
     }
     if (operation === "normalizeAddressNames") {
       const plan = buildCourtAddressNameUpdates(await loadAllCourtAddressRows(context));
-      const duplicateUpdates = plan.updates.filter((update) => update.patch.courtUnit);
-      const pendingIds = new Set(duplicateUpdates.map((update) => update.courtId));
+      const pendingIds = new Set(plan.updates.map((update) => update.courtId));
       const groups = [];
       let selectedCount = 0;
       for (const items of plan.unitGroups) {
@@ -432,7 +431,12 @@ export default async function handler(request, response) {
         selectedCount += pendingCount;
         if (selectedCount >= NORMALIZATION_BATCH_SIZE) break;
       }
-      const updates = groups.flatMap((items) => items.filter((update) => pendingIds.has(update.courtId)));
+      const groupedIds = new Set(groups.flatMap((items) => items.map((update) => update.courtId)));
+      const groupedUpdates = groups.flatMap((items) => items.filter((update) => pendingIds.has(update.courtId)));
+      const standaloneUpdates = plan.updates
+        .filter((update) => !groupedIds.has(update.courtId) && !update.patch.courtUnit)
+        .slice(0, Math.max(0, NORMALIZATION_BATCH_SIZE - groupedUpdates.length));
+      const updates = [...groupedUpdates, ...standaloneUpdates];
       const saveUpdate = async (update, patch = update.patch) => {
         const { error } = await context.supabase.rpc("rankball_admin_update_court_with_auto_unit", {
           p_actor_profile_id: context.profileId,
@@ -457,7 +461,7 @@ export default async function handler(request, response) {
       sendJson(response, 200, {
         ok: true,
         updatedCount: updates.length,
-        remainingCount: Math.max(0, duplicateUpdates.length - updates.length),
+        remainingCount: Math.max(0, plan.updates.length - updates.length),
         scannedCount: plan.scannedCount,
         addressFacilityCount: plan.addressFacilityCount,
         duplicateAddressCount: plan.duplicateAddressCount,

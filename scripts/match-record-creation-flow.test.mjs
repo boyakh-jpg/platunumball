@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   approveMatch,
   cancelMatch,
+  confirmMatchRecordParticipation,
   createMatch,
   setMatchRecordParticipants,
   setMatchRecordTeamRoster,
@@ -267,7 +268,7 @@ test("match-record cancellation uses record terminology while scheduled matches 
   assert.equal(getMatchCancelCopy({ title: "예정 경기", rules: { recordType: "match" } }).actionLabel, "경기 취소");
 });
 
-test("individual match record uses final approval instead of participation acceptance", () => {
+test("individual match record requires self participation confirmation before final approval", () => {
   const created = createMatch(makeState(), makeRecordDraft("individual"));
   const matchId = created.matches[0].id;
   let state = setMatchRecordParticipants(created, matchId, {
@@ -289,8 +290,12 @@ test("individual match record uses final approval instead of participation accep
   assert.equal(submitted.status, "approval");
   assert.deepEqual(Object.keys(submitted.result.statSubmissions).sort(), users.map((user) => user.id).sort());
 
+  const blocked = approveMatch({ ...state, currentUserId: "u1" }, matchId, "teamA", "u1");
+  assert.equal(blocked.matches.find((match) => match.id === matchId), submitted);
+
   users.forEach((user, index) => {
     const sideName = index < 3 ? "teamA" : "teamB";
+    state = confirmMatchRecordParticipation({ ...state, currentUserId: user.id }, matchId, user.id);
     state = approveMatch({ ...state, currentUserId: user.id }, matchId, sideName, user.id);
   });
 
