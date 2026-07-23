@@ -8506,9 +8506,11 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
   gap: var(--space-2);
 }
 
-.arena-lobby-modal .pickup-room-slot-grid {
+.arena-lobby-modal .pickup-room-slot-grid,
+html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
   display: grid;
   grid-template-columns: repeat(var(--pickup-slot-columns, 8), minmax(0, 72px));
+  grid-auto-columns: auto;
   grid-auto-flow: row;
   justify-content: start;
   gap: var(--room-slot-gap);
@@ -8538,8 +8540,11 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
 }
 
 @media (max-width: 720px) {
-  .arena-lobby-modal .pickup-room-slot-grid {
+  .arena-lobby-modal .pickup-room-slot-grid,
+  html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-columns: auto;
+    grid-auto-flow: row;
   }
 
   .pickup-rotation-panel > button {
