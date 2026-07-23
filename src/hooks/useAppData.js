@@ -3208,6 +3208,13 @@ export function useAppData(authUser = null, appLocation = null) {
           if (serverReady !== true) return serverReady;
           return runServerAction("/api/admin/courts", { operation: "proximity", ...draft });
         },
+        loadAdminCourtDuplicateGroups: async () => {
+          if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
+          if (!ensureRemoteReady("중복 구장 목록")) return { ok: false, error: "remote_not_ready" };
+          const serverReady = await ensureServerActionAvailable("/api/admin/courts", "중복 구장 목록");
+          if (serverReady !== true) return serverReady;
+          return runServerAction("/api/admin/courts", { operation: "duplicateGroups" });
+        },
         verifyAdminCourtCount: async (draft = {}) => {
           if (!isSupabaseConfigured) return { ok: false, error: "remote_required" };
           if (!ensureRemoteReady("실제 코트 수 검증")) return { ok: false, error: "remote_not_ready" };

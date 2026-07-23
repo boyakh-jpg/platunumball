@@ -14,6 +14,8 @@ test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사�
   assert.match(server, /applyCourtFilters\(query, body\.filters\)/);
   assert.match(server, /\.range\(offset, offset \+ PAGE_SIZE - 1\)/);
   assert.match(server, /rpc\("rankball_admin_update_court_with_auto_unit"/);
+  assert.match(server, /operation === "duplicateGroups"/);
+  assert.match(server, /groups: plan\.reviewGroups/);
   assert.match(server, /pendingIds = new Set\(plan\.updates\.map/);
   assert.match(server, /standaloneUpdates = plan\.updates/);
   assert.match(server, /for \(const update of standaloneUpdates\) await saveUpdate\(update\)/);
@@ -36,6 +38,9 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
     readSource("src/styles/globals.css"),
   ]);
   assert.match(component, /주소·수동명 우선/);
+  assert.match(component, /중복 후보 \{duplicateReview\.index \+ 1\}/);
+  assert.match(component, /이 장소에 실제 코트가 몇 개 있나요/);
+  assert.match(component, /초과 .*개 행을 중복 비활성화/);
   assert.match(component, /createPortal\(modal, document\.body\)/);
   assert.match(component, /role="dialog" aria-modal="true"/);
   assert.match(component, /const MAP_WINDOW_NAME = "rankball-court-map";/);
@@ -141,6 +146,8 @@ test("주소 시설명과 동일 주소 코트 번호를 결정적으로 정리�
   ]);
   assert.equal(plan.duplicateAddressCount, 1);
   assert.equal(plan.duplicateCourtCount, 2);
+  assert.equal(plan.reviewGroups.length, 1);
+  assert.deepEqual(plan.reviewGroups[0].courts.map((court) => court.id), ["a", "b"]);
   assert.deepEqual(plan.unitGroups, [[
     { courtId: "a", patch: { courtUnit: "1코트", facilityName: "현대자동차그룹 의왕연구소" } },
     { courtId: "b", patch: { courtUnit: "2코트", facilityName: "현대자동차그룹 의왕연구소" } },

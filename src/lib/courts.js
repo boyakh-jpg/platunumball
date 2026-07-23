@@ -423,9 +423,35 @@ export function buildCourtAddressNameUpdates(rows = []) {
     }
     return { courtId: String(row.id), patch };
   }));
+  const reviewGroups = numberedGroups.map((group) => {
+    const first = group[0];
+    const address = first?.row?.road_address || first?.row?.address_text || first?.row?.jibun_address || "";
+    const facilityName = group.find((item) => item.facilityName)?.facilityName
+      || first?.row?.facility_name
+      || "";
+    return {
+      groupId: group.map((item) => String(item.row.id)).sort().join("|"),
+      detectedCount: group.length,
+      facilityName,
+      address,
+      courts: group.map(({ row }) => ({
+        id: String(row.id),
+        name: row.name || "",
+        facilityName: row.facility_name || "",
+        courtUnit: row.court_unit || "",
+        address: row.road_address || row.address_text || row.jibun_address || "",
+        lat: row.lat ?? null,
+        lng: row.lng ?? null,
+        status: row.status || "active",
+        proximityExcess: row.proximity_excess === true,
+        verifiedCourtCount: row.verified_court_count ?? null,
+      })),
+    };
+  });
   return {
     updates,
     unitGroups,
+    reviewGroups,
     scannedCount: prepared.length,
     addressFacilityCount: prepared.filter((item) => item.facilityName).length,
     duplicateAddressCount: duplicateGroups.length,

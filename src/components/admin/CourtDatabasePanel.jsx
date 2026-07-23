@@ -444,8 +444,13 @@ export default function CourtDatabasePanel({ app }) {
   const [proximityReview, setProximityReview] = useState(null);
   const [proximityLoading, setProximityLoading] = useState(false);
   const [actualCourtCount, setActualCourtCount] = useState("");
+  const [duplicateReview, setDuplicateReview] = useState(null);
+  const [duplicateProximity, setDuplicateProximity] = useState(null);
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
+  const [duplicateActualCount, setDuplicateActualCount] = useState("");
   const requestRef = useRef(0);
   const proximityRequestRef = useRef(0);
+  const duplicateRequestRef = useRef(0);
 
   const activeColumns = tab === "courts" ? COURT_COLUMNS : HISTORY_COLUMNS;
   const activeQuery = tab === "courts" ? courtQuery : historyQuery;
@@ -487,6 +492,28 @@ export default function CourtDatabasePanel({ app }) {
   const reviewEvidenceReference = reviewUsesCurrentFacility
     ? reviewValues?.facilityName || reviewRow?.facility_name || "-"
     : reviewRow?.name_evidence_reference || "-";
+  const duplicateGroup = duplicateReview?.groups?.[duplicateReview.index] ?? null;
+  const duplicateDetectedCount = Number(duplicateProximity?.detectedCount ?? duplicateGroup?.detectedCount ?? 0);
+  const duplicateGroupedById = new Map((duplicateProximity?.courts ?? []).map((court) => [court.id, court]));
+  const duplicatePreviewIds = new Set((duplicateGroup?.courts ?? []).map((court) => court.id));
+  const duplicateDisplayCourts = (duplicateGroup?.courts ?? []).map((court) => {
+    const grouped = duplicateGroupedById.get(court.id);
+    return grouped ? {
+      ...court,
+      name: grouped.name ?? court.name,
+      facilityName: grouped.facilityName ?? court.facilityName,
+      courtUnit: grouped.courtUnit ?? court.courtUnit,
+      status: grouped.status ?? court.status,
+      proximityExcess: grouped.proximityExcess === true,
+      distanceM: grouped.distanceM ?? null,
+    } : court;
+  }).concat((duplicateProximity?.courts ?? [])
+    .filter((court) => !duplicatePreviewIds.has(court.id))
+    .map((court) => ({
+      ...court,
+      address: duplicateGroup?.address || "",
+      proximityExcess: court.proximityExcess === true,
+    })));
   const reasonValid = reasonOptional || reason.trim().length >= 4;
 
   const loadRows = async (preserveStatus = false) => {
@@ -582,6 +609,35 @@ export default function CourtDatabasePanel({ app }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewMode, reviewRow?.id]);
 
+  useEffect(() => {
+    const courtId = duplicateGroup?.courts?.[0]?.id;
+    if (!duplicateReview || !courtId) {
+      setDuplicateProximity(null);
+      setDuplicateActualCount("");
+      return undefined;
+    }
+    const requestId = duplicateRequestRef.current + 1;
+    duplicateRequestRef.current = requestId;
+    setDuplicateLoading(true);
+    setDuplicateProximity(null);
+    void app.actions.loadAdminCourtProximity?.({
+      courtId,
+      facilityName: duplicateGroup.facilityName,
+    }).then((result) => {
+      if (duplicateRequestRef.current !== requestId) return;
+      setDuplicateLoading(false);
+      if (!result || result.ok === false) {
+        setStatus(getSaveErrorMessage(result?.error));
+        return;
+      }
+      setDuplicateProximity(result);
+      setDuplicateActualCount(String(result.actualCount ?? result.detectedCount ?? duplicateGroup.detectedCount ?? 1));
+    });
+    return () => { duplicateRequestRef.current += 1; };
+    // Group selection is the only trigger. Proximity refreshes must not reopen the group.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duplicateReview, duplicateGroup?.groupId]);
+
   const clearDraftEdits = () => {
     setDraftRows({});
     setActiveCell(null);
@@ -595,12 +651,18 @@ export default function CourtDatabasePanel({ app }) {
     if (!canDiscard()) return;
     resetEdits();
     setReviewMode(false);
+    duplicateRequestRef.current += 1;
+    setDuplicateReview(null);
+    setDuplicateLoading(false);
     setOpen(false);
   };
   const changeTab = (nextTab) => {
     if (nextTab === tab || !canDiscard()) return;
     resetEdits();
     setReviewMode(false);
+    duplicateRequestRef.current += 1;
+    setDuplicateReview(null);
+    setDuplicateLoading(false);
     setStatus("");
     setTab(nextTab);
   };
@@ -862,23 +924,80 @@ export default function CourtDatabasePanel({ app }) {
     setStatus(`${savedRows}개 구장 · ${savedFields}개 셀을 일괄 저장했습니다.`);
   };
 
-  const normalizeAddressNames = async () => {
+  const openDuplicateReview = async () => {
     if (saving || loading || editDirty) {
       if (editDirty) setStatus("미저장 수정값을 먼저 저장하거나 취소해 주세요.");
       return;
     }
-    setSaving(true);
-    setStatus("주소 시설명과 중복 주소별 코트 번호를 정리하고 있습니다.");
-    const result = await app.actions.normalizeAdminCourtAddressNames?.();
+    const requestId = duplicateRequestRef.current + 1;
+    duplicateRequestRef.current = requestId;
+    setDuplicateLoading(true);
+    setStatus("중복 주소·근접 코트 목록을 불러오고 있습니다.");
+    const result = await app.actions.loadAdminCourtDuplicateGroups?.();
+    if (duplicateRequestRef.current !== requestId) return;
     if (!result || result.ok === false) {
-      setSaving(false);
+      setDuplicateLoading(false);
       const errorCode = String(result?.error ?? "unknown_error");
       setStatus(`${getSaveErrorMessage(errorCode)} (${errorCode})`);
       return;
     }
-    await loadRows(true);
+    const groups = result.groups ?? [];
+    setDuplicateLoading(false);
+    setDuplicateReview(groups.length ? { groups, index: 0 } : null);
+    setStatus(groups.length
+      ? `중복 후보 ${Number(result.groupCount ?? groups.length).toLocaleString()}곳 · ${Number(result.duplicateCourtCount ?? 0).toLocaleString()}개 행`
+      : "중복 후보가 없습니다.");
+  };
+
+  const moveDuplicateReview = (direction) => {
+    if (!duplicateReview || duplicateLoading || saving) return;
+    const nextIndex = duplicateReview.index + direction;
+    if (nextIndex < 0 || nextIndex >= duplicateReview.groups.length) return;
+    setDuplicateReview((current) => ({ ...current, index: nextIndex }));
+    setStatus("");
+  };
+
+  const closeDuplicateReview = () => {
+    if (saving) return;
+    duplicateRequestRef.current += 1;
+    setDuplicateReview(null);
+    setDuplicateProximity(null);
+    setDuplicateLoading(false);
+    setDuplicateActualCount("");
+    setStatus("");
+  };
+
+  const verifyDuplicateGroup = async () => {
+    const anchorCourtId = duplicateGroup?.courts?.[0]?.id;
+    const actualCount = Number(duplicateActualCount);
+    if (!anchorCourtId || saving || duplicateLoading) return;
+    if (!Number.isSafeInteger(actualCount) || actualCount < 1) {
+      setStatus("실제 코트 수를 1 이상의 정수로 입력해 주세요.");
+      return;
+    }
+    setSaving(true);
+    const result = await app.actions.verifyAdminCourtCount?.({
+      courtId: anchorCourtId,
+      actualCount,
+      facilityName: duplicateGroup.facilityName,
+      patch: {},
+    });
+    if (!result || result.ok === false) {
+      setSaving(false);
+      setStatus(getSaveErrorMessage(result?.error));
+      return;
+    }
     setSaving(false);
-    setStatus(`${Number(result.updatedCount ?? 0).toLocaleString()}개 구장 반영 · 중복 주소 ${Number(result.duplicateAddressCount ?? 0).toLocaleString()}곳/${Number(result.duplicateCourtCount ?? 0).toLocaleString()}코트`);
+    const disabled = Number(result.disabledDuplicateCount ?? 0);
+    const missing = Number(result.missingRowCount ?? 0);
+    setStatus(missing > 0
+      ? `실제 ${actualCount}코트로 기록 · DB 행 ${missing}개 부족`
+      : `실제 ${actualCount}코트 확정${disabled ? ` · 초과 ${disabled}개 중복 비활성화` : ""}`);
+    if (duplicateReview.index < duplicateReview.groups.length - 1) {
+      setDuplicateReview((current) => ({ ...current, index: current.index + 1 }));
+    } else {
+      await loadRows(true);
+    }
   };
 
   const modal = open ? (
@@ -903,20 +1022,24 @@ export default function CourtDatabasePanel({ app }) {
           </div>
 
           <div className="court-db-toolbar">
-            <small>{reviewMode ? "현재 필터 결과를 한 구장씩 검수합니다. 복수 코트는 실제 별도 코트가 확인될 때만 코트 칸을 구분합니다." : "가로 스크롤은 표 하단에 고정됩니다. 수정 가능한 셀을 누르면 바로 입력할 수 있습니다."}</small>
+            <small>{reviewMode
+              ? "현재 필터 결과를 한 구장씩 검수합니다. 복수 코트는 실제 별도 코트가 확인될 때만 코트 칸을 구분합니다."
+              : duplicateReview
+                ? "같은 주소·35m 이내 중복 후보를 확인하고 실제 코트 수를 입력합니다."
+                : "가로 스크롤은 표 하단에 고정됩니다. 수정 가능한 셀을 누르면 바로 입력할 수 있습니다."}</small>
             <div>
-              {tab === "courts" && !reviewMode ? (
+              {tab === "courts" && !reviewMode && !duplicateReview ? (
                 <>
-                  <Button type="button" size="sm" variant="secondary" disabled={loading || saving || !courtRows.length} onClick={normalizeAddressNames}><ScanLine size={14} /> 주소 시설명·중복 코트 정리</Button>
+                  <Button type="button" size="sm" variant="secondary" disabled={loading || saving || duplicateLoading || !courtRows.length} onClick={() => void openDuplicateReview()}><ScanLine size={14} /> 주소 시설명·중복 코트 정리</Button>
                   <Button type="button" size="sm" variant="secondary" disabled={loading || saving || !courtRows.length} onClick={startReview}><ListChecks size={14} /> 1개씩 검수</Button>
                 </>
               ) : null}
-              <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={resetFilters}><RotateCcw size={14} /> 초기화</Button>
-              <Button type="button" size="sm" variant="secondary" disabled={loading} onClick={applyFilters}>{loading ? "조회 중" : "필터 적용"}</Button>
+              <Button type="button" size="sm" variant="secondary" disabled={loading || Boolean(duplicateReview)} onClick={resetFilters}><RotateCcw size={14} /> 초기화</Button>
+              <Button type="button" size="sm" variant="secondary" disabled={loading || Boolean(duplicateReview)} onClick={applyFilters}>{loading ? "조회 중" : "필터 적용"}</Button>
             </div>
           </div>
 
-          {tab === "courts" && !reviewMode ? (
+          {tab === "courts" && !reviewMode && !duplicateReview ? (
             <div className="court-db-edit-toolbar">
               <div>
                 <strong>{editDirty ? `${dirtyUpdates.length}개 구장 · ${dirtyFieldCount}개 셀 수정` : selectedRow?.name ?? "수정할 셀을 선택하세요"}</strong>
@@ -950,6 +1073,81 @@ export default function CourtDatabasePanel({ app }) {
                 <Button type="button" size="sm" variant="secondary" disabled={!editDirty || saving} onClick={resetEdits}><X size={13} /> 전체 취소</Button>
               </div>
             </div>
+          ) : null}
+
+          {tab === "courts" && duplicateReview && duplicateGroup ? (
+            <section className="court-db-duplicate-review" aria-busy={duplicateLoading}>
+              <header className="court-db-duplicate-header">
+                <div>
+                  <small>중복 후보 {duplicateReview.index + 1} / {duplicateReview.groups.length}</small>
+                  <h3>{duplicateGroup.facilityName || duplicateDisplayCourts[0]?.name || "시설명 확인 필요"}</h3>
+                  <p>{duplicateGroup.address || "주소 없음"}</p>
+                </div>
+                <div>
+                  <strong>{duplicateDetectedCount.toLocaleString()}개 DB 행</strong>
+                  <Button type="button" size="sm" variant="secondary" disabled={saving} onClick={closeDuplicateReview}><X size={14} /> 중복 검수 종료</Button>
+                </div>
+              </header>
+
+              <div className="court-db-duplicate-courts">
+                {duplicateDisplayCourts.map((court, index) => (
+                  <article key={court.id} className={court.proximityExcess ? "is-excess" : ""}>
+                    <div>
+                      <strong>{index + 1}. {court.name || court.facilityName || court.id}</strong>
+                      <span>{court.courtUnit || "코트 구분 미확정"} · {court.status === "disabled" ? "비활성" : "활성"}</span>
+                      <small>{court.address || duplicateGroup.address || "주소 없음"}</small>
+                    </div>
+                    <CourtMapLinks court={{
+                      ...court,
+                      facility_name: court.facilityName,
+                      court_unit: court.courtUnit,
+                    }} />
+                  </article>
+                ))}
+              </div>
+
+              <div className="court-db-duplicate-answer">
+                <label>
+                  이 장소에 실제 코트가 몇 개 있나요?
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    value={duplicateActualCount}
+                    disabled={saving || duplicateLoading}
+                    onChange={(event) => setDuplicateActualCount(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void verifyDuplicateGroup();
+                      }
+                    }}
+                  />
+                </label>
+                <div>
+                  {Number(duplicateActualCount) < duplicateDetectedCount
+                    ? <span className="is-warning">초과 {duplicateDetectedCount - Number(duplicateActualCount)}개 행을 중복 비활성화</span>
+                    : Number(duplicateActualCount) > duplicateDetectedCount
+                      ? <span>DB 행 {Number(duplicateActualCount) - duplicateDetectedCount}개 부족 기록</span>
+                      : <span>감지된 DB 행 수와 같음</span>}
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={saving || duplicateLoading || !Number.isSafeInteger(Number(duplicateActualCount)) || Number(duplicateActualCount) < 1}
+                    onClick={() => void verifyDuplicateGroup()}
+                  >
+                    <ScanLine size={14} /> 이 코트 수로 확정
+                  </Button>
+                </div>
+              </div>
+
+              <footer className="court-db-duplicate-navigation">
+                <Button type="button" size="sm" variant="secondary" disabled={saving || duplicateLoading || duplicateReview.index <= 0} onClick={() => moveDuplicateReview(-1)}><ChevronLeft size={14} /> 이전 중복</Button>
+                <span>{duplicateLoading ? "그룹 계산 중" : "확정하면 자동으로 다음 중복 후보로 이동"}</span>
+                <Button type="button" size="sm" variant="secondary" disabled={saving || duplicateLoading || duplicateReview.index >= duplicateReview.groups.length - 1} onClick={() => moveDuplicateReview(1)}>다음 중복 <ChevronRight size={14} /></Button>
+              </footer>
+            </section>
           ) : null}
 
           {tab === "courts" && reviewMode && reviewRow && reviewValues ? (
@@ -1127,7 +1325,7 @@ export default function CourtDatabasePanel({ app }) {
 
           {status ? <p className="court-db-status">{status}</p> : null}
 
-          {!reviewMode || tab === "history" ? <div className="court-db-table-wrap">
+          {(!reviewMode && !duplicateReview) || tab === "history" ? <div className="court-db-table-wrap">
             <table className={`court-db-table ${tab === "history" ? "court-db-table-history" : ""}`} style={{ width: `${tableWidth}px` }}>
               <colgroup>
                 {tab === "courts" ? <col style={{ width: `${ACTION_COLUMN_WIDTH}px` }} /> : null}
@@ -1228,7 +1426,7 @@ export default function CourtDatabasePanel({ app }) {
             </table>
           </div> : null}
 
-          {!reviewMode || tab === "history" ? <Pagination page={activePage} onChange={changePage} loading={loading} /> : null}
+          {(!reviewMode && !duplicateReview) || tab === "history" ? <Pagination page={activePage} onChange={changePage} loading={loading} /> : null}
         </div>
       </section>
     </div>
