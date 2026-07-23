@@ -1,4 +1,4 @@
-const PROFILE_ICON_ASSET_VERSION = "20260722-13";
+const PROFILE_ICON_ASSET_VERSION = "20260722-14";
 
 const icon = (id, name) => Object.freeze({
   id,
