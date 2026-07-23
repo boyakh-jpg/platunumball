@@ -432,6 +432,7 @@
 7. Existing `assets/referee-rulebook/{scene}.svg` files remain as load-failure fallback only.
 8. Profile icons `221~225` reuse the same referee character language as full-body transparent cutouts. They remain fully inside the circular safe area, stay readable at small size, and gain clearer referee equipment and premium sports accessories by tier without duplicate props or cropped limbs.
 9. Light theme rulebook hero copy uses the normal light-theme text and muted colors without the image-hero white text shadow, so the pale panel keeps readable contrast.
+10. 룰북 본문은 `경기 중 판정 → 개인활약 기록 → BOXTIER 기록·이의·후기 → 안전·심판 윤리` 순서의 chapter로 묶는다. hero는 설명성 제목과 적용 범위만 표시하고 홍보성 문구를 사용하지 않는다.
 
 # 2026-06-28 recruiting start date filter
 

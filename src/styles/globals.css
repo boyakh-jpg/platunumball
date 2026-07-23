@@ -6578,6 +6578,24 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-hero h2 {
   color: var(--green);
 }
 
+.referee-rulebook-chapter {
+  display: grid;
+  gap: 12px;
+}
+
+.referee-rulebook-chapter .section-title-row > div {
+  display: grid;
+  gap: 5px;
+}
+
+.referee-rulebook-chapter .section-title-row p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
 .referee-rulebook-footer > div {
   display: grid;
   gap: 8px;

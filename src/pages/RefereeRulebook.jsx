@@ -22,6 +22,27 @@ const RULEBOOK_SOURCES = [
   },
 ];
 
+const RULEBOOK_CHAPTERS = [
+  {
+    eyebrow: "Game rules",
+    title: "경기 중 판정",
+    description: "경기 전 확인부터 득점과 재개까지 실제 코트에서 먼저 찾는 기준입니다.",
+    sections: REFEREE_RULEBOOK_SECTIONS.slice(0, 6),
+  },
+  {
+    eyebrow: "BOXTIER flow",
+    title: "기록·이의·후기",
+    description: "경기 기록이 입력되고 확인되는 순서와 역할별 권한입니다.",
+    sections: REFEREE_RULEBOOK_SECTIONS.slice(7, 11),
+  },
+  {
+    eyebrow: "Safety",
+    title: "안전·심판 윤리",
+    description: "판정보다 먼저 적용할 경기 중단 기준과 심판의 중립성 원칙입니다.",
+    sections: REFEREE_RULEBOOK_SECTIONS.slice(11),
+  },
+];
+
 const SCENE_COPY = {
   standard: "콜 기준",
   pregame: "경기 전",
@@ -84,12 +105,9 @@ export default function RefereeRulebook({ theme = "dark" }) {
 
       <section className="referee-rulebook-hero">
         <div>
-          <Badge tone="blue">판정 기준 공개</Badge>
-          <h2>외우기보다, 왜 그렇게 부는지 이해할 수 있습니다</h2>
-          <p>
-            BOXTIER 심판은 동네 경기에서 양쪽이 같은 기준으로 뛸 수 있게 돕습니다. 점수와 파울부터
-            개인활약, 이의신청까지 헷갈리는 장면을 편하게 확인할 수 있습니다.
-          </p>
+          <Badge tone="blue">FIBA 2024 · BOXTIER 운영 기준</Badge>
+          <h2>판정과 기록 기준</h2>
+          <p>경기 전 확인, 코트 판정, 개인활약 기록, 결과 확인과 이의 처리 순서입니다.</p>
         </div>
         <RulebookIllustration scene="standard" theme={theme} />
       </section>
@@ -116,36 +134,13 @@ export default function RefereeRulebook({ theme = "dark" }) {
         </div>
       </section>
 
-      <section className="referee-rulebook-section-grid">
-        {REFEREE_RULEBOOK_SECTIONS.map((section) => (
-          <Card key={section.title} className="referee-rulebook-section-card">
-            <RulebookIllustration scene={section.scene} theme={theme} />
-            <div className="referee-rulebook-section-body">
-              <strong>{section.title}</strong>
-              <p>{section.summary}</p>
-              <ul>
-                {section.points.map((point) => <li key={point}>{point}</li>)}
-              </ul>
-              <div className="referee-rulebook-detail-grid">
-                {section.details.map((detail) => (
-                  <div key={detail.label}>
-                    <span>{detail.label}</span>
-                    <ul>
-                      {detail.items.map((item) => <li key={item}>{item}</li>)}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-        ))}
-      </section>
+      <RulebookChapter chapter={RULEBOOK_CHAPTERS[0]} theme={theme} />
 
       <section className="referee-stat-guide">
         <div className="section-title-row">
           <div>
             <p className="eyebrow">Stat standard</p>
-            <h2>개인활약 기록 기준</h2>
+            <h2>7. 개인활약 기록 기준</h2>
           </div>
           <ShieldCheck size={22} />
         </div>
@@ -180,6 +175,10 @@ export default function RefereeRulebook({ theme = "dark" }) {
         </div>
       </section>
 
+      {RULEBOOK_CHAPTERS.slice(1).map((chapter) => (
+        <RulebookChapter key={chapter.title} chapter={chapter} theme={theme} />
+      ))}
+
       <Card className="referee-rulebook-footer">
         <BookOpen size={20} />
         <div>
@@ -197,5 +196,39 @@ export default function RefereeRulebook({ theme = "dark" }) {
         </div>
       </Card>
     </div>
+  );
+}
+
+function RulebookChapter({ chapter, theme }) {
+  return (
+    <section className="referee-rulebook-chapter">
+      <div className="section-title-row">
+        <div>
+          <p className="eyebrow">{chapter.eyebrow}</p>
+          <h2>{chapter.title}</h2>
+          <p>{chapter.description}</p>
+        </div>
+      </div>
+      <div className="referee-rulebook-section-grid">
+        {chapter.sections.map((section) => (
+          <Card key={section.title} className="referee-rulebook-section-card">
+            <RulebookIllustration scene={section.scene} theme={theme} />
+            <div className="referee-rulebook-section-body">
+              <strong>{section.title}</strong>
+              <p>{section.summary}</p>
+              <ul>{section.points.map((point) => <li key={point}>{point}</li>)}</ul>
+              <div className="referee-rulebook-detail-grid">
+                {section.details.map((detail) => (
+                  <div key={detail.label}>
+                    <span>{detail.label}</span>
+                    <ul>{detail.items.map((item) => <li key={item}>{item}</li>)}</ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </section>
   );
 }
