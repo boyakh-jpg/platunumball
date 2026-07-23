@@ -1062,6 +1062,12 @@ test("core consumers do not restore duplicated policy literals", async () => {
   assert.doesNotMatch(discordBridge, /\^\\d\{17,20\}\$/);
 });
 
+test("pickup player invitation keeps multi-select enabled", async () => {
+  const recruitingPage = await readSource("src/pages/Recruiting.jsx");
+  assert.doesNotMatch(recruitingPage, /toggleSingleInvitePlayer/);
+  assert.ok((recruitingPage.match(/onTogglePlayer=\{toggleInvitePlayer\}/g) ?? []).length >= 2);
+});
+
 test("referee rulebook matches current FIBA and BOXTIER operating rules", async () => {
   const rulebookText = JSON.stringify({
     sections: REFEREE_RULEBOOK_SECTIONS,

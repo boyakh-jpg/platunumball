@@ -3226,17 +3226,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       };
     });
   };
-  const toggleSingleInvitePlayer = (playerId) => {
-    setInviteError("");
-    setInviteDraft((current) => {
-      if (!current) return current;
-      const selected = current.selectedPlayerIds ?? [];
-      return {
-        ...current,
-        selectedPlayerIds: selected.includes(playerId) ? [] : [playerId],
-      };
-    });
-  };
   const sendInvites = async (roomPost, playerIds, teamId = null, joinMode = "") => {
     if (!inviteDraft || !playerIds.length) return false;
     const playerOnlyRoom = isIndividualOnlyRecruitingRoom(roomPost);
@@ -3862,7 +3851,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 poolMode={pickupPoolMode}
                 canInvitePlayer={canInvitePlayerByRoom}
                 error={inviteError}
-                onTogglePlayer={pickupPoolMode ? toggleSingleInvitePlayer : toggleInvitePlayer}
+                onTogglePlayer={toggleInvitePlayer}
                 onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                 onClose={() => setInviteDraft(null)}
               />
@@ -4333,7 +4322,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   poolMode={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool}
                   canInvitePlayer={canInvitePlayerByRoom}
                   error={inviteError}
-                  onTogglePlayer={pickupPoolMode ? toggleSingleInvitePlayer : toggleInvitePlayer}
+                  onTogglePlayer={toggleInvitePlayer}
                   onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                   onClose={() => setInviteDraft(null)}
                 />
