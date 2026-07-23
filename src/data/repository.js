@@ -89,6 +89,7 @@ import {
   getMatchPlayerPlacement,
   getMatchPlayerTeamId,
   getMatchReservePlayerIds,
+  getMatchSidePlayerIds,
   getMatchSideLeaderId,
   getMatchSideRecordPlayerIds,
   getMatchStartDate,
@@ -3561,10 +3562,6 @@ export function approveMatch(state, matchId, sideName, playerId) {
 
   const approvalId = getSelfDecisionId(state, match, sideName, "approvals", playerId);
   if (!approvalId) return state;
-  if (
-    isMatchRecordMatch(match)
-    && !(match.rules?.participantAcceptedIds ?? []).includes(approvalId)
-  ) return state;
   const statStatus = getStatSubmissionStatus(match);
   const pointAudit = getResultPointAudit(match);
   if (!statStatus.complete || !pointAudit.matched) {
@@ -3587,6 +3584,15 @@ export function approveMatch(state, matchId, sideName, playerId) {
 
   const updatedMatch = {
     ...match,
+    rules: isMatchRecordMatch(match)
+      ? {
+          ...(match.rules ?? {}),
+          participantAcceptedIds: uniquePlayerIds([
+            ...(match.rules?.participantAcceptedIds ?? []),
+            approvalId,
+          ]),
+        }
+      : match.rules,
     approvals: {
       ...(match.approvals ?? { teamA: [], teamB: [] }),
       [sideName]: Array.from(new Set([...(match.approvals?.[sideName] ?? []), approvalId])),
@@ -4209,6 +4215,89 @@ export function confirmPickupSideAssignment(state, matchId, rotation = {}) {
       rotationIntervalMinutes: rotationMode === "interval" ? rotationIntervalMinutes : undefined,
     },
   };
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
+  };
+}
+
+export function swapPickupMatchPlayers(state, matchId, firstPlayerId, secondPlayerId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || !firstPlayerId || !secondPlayerId || firstPlayerId === secondPlayerId) return state;
+  if (!canEditMatchPreparation(state, match) || getMatchRoomPhase(match).phase !== "checkin") return state;
+  const pickup = (match.formationMode ?? match.rules?.formationMode) === "pickup"
+    || (match.matchIntent ?? match.rules?.matchIntent) === "pickup";
+  if (!pickup || match.rules?.sideAssignmentStatus === "confirmed") return state;
+
+  const firstPlacement = getMatchPlayerPlacement(match, firstPlayerId);
+  const secondPlacement = getMatchPlayerPlacement(match, secondPlayerId);
+  if (!firstPlacement || !secondPlacement || firstPlacement.side === secondPlacement.side) return state;
+
+  const swapIds = (playerIds = []) => uniquePlayerIds(playerIds.map((playerId) => (
+    playerId === firstPlayerId
+      ? secondPlayerId
+      : playerId === secondPlayerId
+        ? firstPlayerId
+        : playerId
+  )));
+  const firstAttended = MATCH_SIDES.some((sideName) => getMatchAttendance(match)[sideName].includes(firstPlayerId));
+  const secondAttended = MATCH_SIDES.some((sideName) => getMatchAttendance(match)[sideName].includes(secondPlayerId));
+  const nextAttendance = Object.fromEntries(MATCH_SIDES.map((sideName) => {
+    const existingIds = getMatchAttendance(match)[sideName].filter((playerId) => (
+      playerId !== firstPlayerId && playerId !== secondPlayerId
+    ));
+    return [sideName, uniquePlayerIds([
+      ...existingIds,
+      ...(firstAttended && secondPlacement.side === sideName ? [firstPlayerId] : []),
+      ...(secondAttended && firstPlacement.side === sideName ? [secondPlayerId] : []),
+    ])];
+  }));
+  const nextAgreements = Object.fromEntries(MATCH_SIDES.map((sideName) => {
+    const existingIds = (match.agreements?.[sideName] ?? []).filter((playerId) => (
+      playerId !== firstPlayerId && playerId !== secondPlayerId
+    ));
+    const firstAgreed = MATCH_SIDES.some((candidateSide) => (match.agreements?.[candidateSide] ?? []).includes(firstPlayerId));
+    const secondAgreed = MATCH_SIDES.some((candidateSide) => (match.agreements?.[candidateSide] ?? []).includes(secondPlayerId));
+    return [sideName, uniquePlayerIds([
+      ...existingIds,
+      ...(firstAgreed && secondPlacement.side === sideName ? [firstPlayerId] : []),
+      ...(secondAgreed && firstPlacement.side === sideName ? [secondPlayerId] : []),
+    ])];
+  }));
+
+  const nextMatch = {
+    ...match,
+    teamA: {
+      ...(match.teamA ?? {}),
+      name: SIDE_LABEL_TEXT.teamA,
+      teamId: null,
+      playerTeams: {},
+      players: swapIds(match.teamA?.players ?? []),
+    },
+    teamB: {
+      ...(match.teamB ?? {}),
+      name: SIDE_LABEL_TEXT.teamB,
+      teamId: null,
+      playerTeams: {},
+      players: swapIds(match.teamB?.players ?? []),
+    },
+    reservePlayers: {
+      teamA: swapIds(getMatchReservePlayerIds(match, "teamA")),
+      teamB: swapIds(getMatchReservePlayerIds(match, "teamB")),
+    },
+    attendance: nextAttendance,
+    agreements: nextAgreements,
+    approvals: { teamA: [], teamB: [] },
+    parties: [],
+    rules: {
+      ...(match.rules ?? {}),
+      sideAssignmentStatus: "pending",
+      sideAssignmentConfirmedAt: null,
+      sideAssignmentConfirmedBy: null,
+    },
+    agreedAt: null,
+  };
+
   return {
     ...state,
     matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
@@ -7244,8 +7333,8 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
       rules: {
         ...(match.rules ?? {}),
         recordSetupReady: false,
-        recordApprovalMode: { teamA: "captain", teamB: "captain" },
-        recordApproverIds: { teamA: [teamACaptainId], teamB: [teamBCaptainId] },
+        recordApprovalMode: { teamA: "all", teamB: "all" },
+        recordApproverIds: { teamA: [], teamB: [] },
         participantAcceptedIds: [],
         rosterReady: { teamA: false, teamB: false },
         playedPlayerIds: { teamA: [], teamB: [] },
@@ -7404,6 +7493,11 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
           ? match.rules?.rosterReady?.teamB === true
           : match.rules?.rosterReady?.teamA === true
       ),
+      recordApprovalMode: { teamA: "all", teamB: "all" },
+      recordApproverIds: {
+        ...(match.rules?.recordApproverIds ?? {}),
+        [sideName]: nextActiveIds,
+      },
       participantAcceptedIds: [],
       playedPlayerIds: {
         ...(match.rules?.playedPlayerIds ?? match.playedPlayerIds ?? {}),
@@ -9389,17 +9483,19 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
   const scheduledAt = timingType === "instant" ? "즉시" : (promotedPost.scheduledDate && promotedPost.scheduledTime ? `${promotedPost.scheduledDate} ${promotedPost.scheduledTime}` : "일정 미정");
   const now = new Date().toISOString();
   const benchCapacity = getRecruitingBenchCapacity(promotedPost);
+  const pickup = (promotedPost.formationMode ?? promotedPost.rules?.formationMode) === "pickup"
+    || (promotedPost.matchIntent ?? promotedPost.rules?.matchIntent) === "pickup";
   const teamAPlayers = lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity);
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
-  const teamAPlayerTeams = getLobbySidePlayerTeamIds(lobby, "teamA");
-  const teamBPlayerTeams = getLobbySidePlayerTeamIds(lobby, "teamB");
-  const playerIds = [...teamAPlayers, ...teamBPlayers];
   const teamAReservePlayers = uniquePlayerIds(lobby.sides.teamA.reserveCandidates.map((candidate) => candidate.playerId))
     .filter((playerId) => !teamAPlayers.includes(playerId))
     .slice(0, benchCapacity);
   const teamBReservePlayers = uniquePlayerIds(lobby.sides.teamB.reserveCandidates.map((candidate) => candidate.playerId))
     .filter((playerId) => !teamBPlayers.includes(playerId))
     .slice(0, benchCapacity);
+  const teamAPlayerTeams = pickup ? {} : getLobbySidePlayerTeamIds(lobby, "teamA");
+  const teamBPlayerTeams = pickup ? {} : getLobbySidePlayerTeamIds(lobby, "teamB");
+  const playerIds = [...teamAPlayers, ...teamBPlayers];
   const confirmedReserveIds = new Set([...teamAReservePlayers, ...teamBReservePlayers]);
   const refereeId = getTrustedRefereeId(state, promotedPost.refereeId, playerIds);
   const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(promotedPost, state);
@@ -9447,20 +9543,20 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
     objectionWindow: `${disputeMinutes}분`,
     evidence: [],
     teamA: {
-      name: getLobbySideName(lobby, "teamA"),
-      teamId: getLobbyPrimaryTeamId(lobby, "teamA"),
+      name: pickup ? SIDE_LABEL_TEXT.teamA : getLobbySideName(lobby, "teamA"),
+      teamId: pickup ? null : getLobbyPrimaryTeamId(lobby, "teamA"),
       playerTeams: teamAPlayerTeams,
       players: teamAPlayers,
       score: 0,
     },
     teamB: {
-      name: getLobbySideName(lobby, "teamB"),
-      teamId: getLobbyPrimaryTeamId(lobby, "teamB"),
+      name: pickup ? SIDE_LABEL_TEXT.teamB : getLobbySideName(lobby, "teamB"),
+      teamId: pickup ? null : getLobbyPrimaryTeamId(lobby, "teamB"),
       playerTeams: teamBPlayerTeams,
       players: teamBPlayers,
       score: 0,
     },
-    parties: lobby.entries
+    parties: pickup ? [] : lobby.entries
       .filter((entry) => isRecruitingPartyEntry(entry))
       .map((entry) => ({
         kind: entry.kind,

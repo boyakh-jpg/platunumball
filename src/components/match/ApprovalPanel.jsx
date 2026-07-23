@@ -1,10 +1,11 @@
 import Card from "../common/Card.jsx";
 import Badge from "../common/Badge.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
-import { getApprovalStatus, getPlayerStatSubmitted, getResultPointAudit, getStatSubmissionStatus } from "../../lib/matchUtils.js";
+import { getApprovalStatus, getPlayerStatSubmitted, getResultPointAudit, getStatSubmissionStatus, isMatchRecordMatch } from "../../lib/matchUtils.js";
 
 export default function ApprovalPanel({ match, teams, users, currentUserId, onApprove }) {
   const confirmed = match.status === "confirmed";
+  const recordRoom = isMatchRecordMatch(match);
   const locked = !match.result || ["confirmed", "disputed", "void", "cancelled"].includes(match.status);
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
   const statStatus = getStatSubmissionStatus(match);
@@ -38,7 +39,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
                 <strong>{user?.name ?? "플레이어"}</strong>
                 <em>
                   {approved
-                    ? "승인됨"
+                    ? recordRoom ? "최종 승인됨" : "승인됨"
                     : !isRequiredApprover
                       ? "승인 대상 아님"
                     : !statSubmitted
@@ -48,7 +49,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
                         : !pointAudit.matched
                           ? "득점 합계 불일치"
                           : isCurrentUser
-                            ? "내 승인"
+                            ? recordRoom ? "내 최종 승인" : "내 승인"
                             : "대리 불가"}
                 </em>
               </button>
@@ -64,8 +65,8 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
     <Card className="approval-panel">
       <div className="section-title-row">
         <div>
-          <p className="eyebrow">결과 승인</p>
-          <h2>{confirmed ? "티어 반영 완료" : "플레이어별 승인"}</h2>
+          <p className="eyebrow">{recordRoom ? "최종 승인" : "결과 승인"}</p>
+          <h2>{confirmed ? (recordRoom ? "기록 확정 완료" : "티어 반영 완료") : (recordRoom ? "참가자별 최종 승인" : "플레이어별 승인")}</h2>
         </div>
         <Badge tone={confirmed ? "green" : match.status === "disputed" ? "orange" : "orange"}>{confirmed ? "확정" : match.status === "disputed" ? "보류" : "대기"}</Badge>
       </div>
@@ -78,7 +79,9 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
           <strong>{approvalReady ? "승인 가능" : "승인 잠김"}</strong>
           <span>
             {approvalReady
-              ? "전원 개인 기록 제출과 팀 득점 합계 검사를 통과했습니다."
+              ? recordRoom
+                ? "본인 참가 사실과 점수·기록을 한 번에 최종 승인합니다."
+                : "전원 개인 기록 제출과 팀 득점 합계 검사를 통과했습니다."
               : `개인 기록 ${statStatus.submitted}/${statStatus.total}명 · A ${pointAudit.teamA.statPoints}/${pointAudit.teamA.teamScore} · B ${pointAudit.teamB.statPoints}/${pointAudit.teamB.teamScore}`}
           </span>
         </div>

@@ -3868,10 +3868,6 @@ input[type="color"] {
   background: rgba(70, 224, 182, 0.06);
 }
 
-.create-record-option-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .tournament-team-grid button.is-disabled,
 .tournament-team-grid button:disabled {
   cursor: not-allowed;
@@ -22335,15 +22331,6 @@ html[data-theme="light"] .court-map-picker-state {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .create-match-page .create-record-option-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 599px) {
-  .create-match-page .create-record-option-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 520px) {

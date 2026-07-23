@@ -100,9 +100,9 @@ test("pickup preset reuses player rooms without claiming automatic rotation", ()
     assert.equal(policy.lineupSelectionPolicy, "no_fixed_starter");
     assert.equal(policy.paymentPolicy, "equal_all_confirmed");
     assert.equal(validation.errors.length, 0);
-    assert.match(validation.warnings.join(" "), /자동 로테이션은 지원하지 않습니다/);
-    assert.match(summary.rows.map((row) => row.value).join(" "), /고정 선발·후보 없음/);
-    assert.match(summary.sentence, /수동으로 운영/);
+    assert.match(validation.warnings.join(" "), /팀 배치/);
+    assert.equal(summary.rows.find((row) => row.label === "팀 배치")?.value, "체크인에서 방장·심판이 직접 배치");
+    assert.match(summary.sentence, /직접 확정/);
     assert.doesNotThrow(() => validatePickupRecruitingShape(draft));
   }
 });
@@ -302,6 +302,7 @@ test("stored room rules drive pickup policy and the full modal rule summary", ()
   assert.equal(policy.hostJoinMode, "player");
   assert.equal(policy.teamOnly, false);
   assert.equal(policy.lastPeriodStopMinutes, 2);
+  assert.equal(summary.rows.find((row) => row.label === "팀 배치")?.value, "체크인에서 방장·심판이 직접 배치");
   assert.match(summary.rows.find((row) => row.label === "명단")?.value ?? "", /개인 참가/);
   assert.doesNotMatch(summary.rows.map((row) => row.value).join(" "), /사이드당 참가/);
   assert.match(summary.rows.find((row) => row.label === "경기 규칙")?.value ?? "", /마지막 2분 스톱/);
@@ -313,7 +314,7 @@ test("stored room rules drive pickup policy and the full modal rule summary", ()
 
 test("creation policy separates match purpose from team formation", () => {
   assert.deepEqual(MATCH_INTENT_OPTIONS.map((option) => option.id), ["friendly", "standard_competitive", "pickup"]);
-  assert.deepEqual(MATCH_PURPOSE_OPTIONS.map((option) => option.id), ["friendly", "standard_competitive"]);
+  assert.deepEqual(MATCH_PURPOSE_OPTIONS.map((option) => option.id), ["friendly", "competitive"]);
   assert.deepEqual(MATCH_FORMATION_OPTIONS.map((option) => option.id), ["prearranged", "pickup"]);
   assert.equal(MATCH_PURPOSE_OPTIONS.some((option) => /출전/.test(option.description)), false);
 });
@@ -517,7 +518,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(wizardSource, /\{ id: 6, label: "확인" \}/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "match_record"\)/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "tournament"\)/);
-  assert.match(source, /getDefaultCreateTitle\(draft\.mode, matchIntent\)/);
+  assert.match(source, /getDefaultCreateTitle\(draft\.mode, patch\.matchIntent\)/);
   assert.match(source, /getMatchCreationWizardType\(draft, \{ recordIntent: isRecordCreateIntent \}\)/);
   assert.match(wizardSource, /step\.id === 4 \? \{ \.\.\.step, label: "구장" \}/);
   const serverSource = fs.readFileSync(path.join(root, "server/api/recruiting/sync-post.js"), "utf8");
@@ -545,4 +546,9 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   const pickupCopyMigration = fs.readFileSync(path.join(root, "supabase/migrations/20260723102500_pickup_invitation_copy_repair.sql"), "utf8");
   assert.match(pickupCopyMigration, /개인 참가 초대장이 도착했습니다/);
   assert.doesNotMatch(pickupCopyMigration, /delete\s+from/i);
+  const pickupSwapMigration = fs.readFileSync(path.join(root, "supabase/migrations/20260723115000_pickup_player_swap.sql"), "utf8");
+  assert.match(pickupSwapMigration, /rankball_match_swap_pickup_players/);
+  assert.match(pickupSwapMigration, /pickup_swap_cross_side_required/);
+  assert.match(pickupSwapMigration, /sideAssignmentStatus', 'pending'/);
+  assert.doesNotMatch(pickupSwapMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });

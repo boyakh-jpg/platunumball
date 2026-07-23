@@ -180,7 +180,7 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
               </select>
             </label>
           ) : null}
-          <small>시스템이 균등 교대를 추천하고 방장 또는 심판이 확정합니다.</small>
+          <small>체크인에서 방장 또는 배정 심판이 A/B와 교대 순서를 직접 정하고 최종 확정합니다.</small>
         </div>
       ) : policy.benchCapacity > 0 ? (
         <label className="field-block">

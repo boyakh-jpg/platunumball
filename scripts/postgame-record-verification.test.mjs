@@ -65,9 +65,10 @@ test("명시적으로 반대하면 disputed가 되고 전체 통계 확정을 �
   assert.ok(status.playerStatExcludedIds.includes(players[13]));
 });
 
-test("참가 확인과 결과 승인을 모두 마친 실명 참가자만 개인 통계 대상이다", () => {
+test("최종 승인한 실명 참가자만 개인 통계 대상이다", () => {
   const match = makeRecord({
-    rules: { recordType: "match_record", participantAcceptedIds: players.slice(0, 13) },
+    rules: { recordType: "match_record", participantAcceptedIds: [] },
+    approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 13) },
   });
   const status = getPostgameRecordVerification(match);
   assert.deepEqual(status.playerStatEligibleIds, players.slice(0, 13));
@@ -111,16 +112,20 @@ test("24시간 만료 후에는 승인 독촉 알림을 더 만들지 않는다"
   assert.deepEqual(notifications, []);
 });
 
-test("참가 확인은 본인 전용 RPC이고 확인 전 결과 승인을 DB에서 거부한다", async () => {
-  const [serverSource, migration] = await Promise.all([
+test("기존 참가 확인과 별개로 최종 승인 한 번을 DB에서 허용한다", async () => {
+  const [serverSource, legacyMigration, singleApprovalMigration] = await Promise.all([
     readFile(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260723112000_match_record_participation_confirmation.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260723114000_match_record_single_final_approval.sql", import.meta.url), "utf8"),
   ]);
   assert.match(serverSource, /rankball_match_record_participation_action/);
   assert.match(serverSource, /MATCH_RECORD_APPROVAL_NOTICE_PREFIXES/);
   assert.match(serverSource, /POSTGAME_RECORD_REMINDER_HOURS\.forEach/);
-  assert.match(migration, /safe_actor_id <> safe_player_id/);
-  assert.match(migration, /participantAcceptedIds/);
-  assert.match(migration, /match_record_participation_required/);
-  assert.match(migration, /from public, anon, authenticated/);
+  assert.match(legacyMigration, /safe_actor_id <> safe_player_id/);
+  assert.match(singleApprovalMigration, /match_record_participation_required/);
+  assert.match(singleApprovalMigration, /execute replace/);
+  assert.match(singleApprovalMigration, /recordApprovalMode/);
+  assert.match(singleApprovalMigration, /recordApproverIds/);
+  assert.match(singleApprovalMigration, /update public\.matches match_row/);
+  assert.doesNotMatch(singleApprovalMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });

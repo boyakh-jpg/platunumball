@@ -472,7 +472,7 @@ export function getMatchCreationValidation(source = {}) {
     if (policy.ranked !== false || policy.official !== false) {
       errors.push("픽업은 MMR을 반영하지 않습니다.");
     }
-    warnings.push("체크인 뒤 팀 배정을 확정해야 시작할 수 있습니다. 균등 교대 추천은 방장 또는 심판이 확정합니다.");
+    warnings.push("체크인에서 방장 또는 배정 심판이 팀 배치와 교대 순서를 확정해야 시작할 수 있습니다.");
   }
   if (policy.venueSecured === "first_come") {
     warnings.push("현장 상황에 따라 경기가 취소되거나 다른 장소로 이동할 수 있습니다.");
@@ -508,14 +508,15 @@ export function getMatchCreationSummary(source = {}) {
       { label: "경기 목적", value: purpose.label },
       { label: "팀 구성", value: pickup ? "현장 픽업" : "경기 전 구성" },
       { label: "명단", value: `${policySource.mode || "5v5"} · ${rosterText}` },
-      ...(pickup ? [{ label: "운영 정책", value: policy.rotationMode === "period" ? "쿼터·하프 종료마다 균등 교대 추천" : policy.rotationMode === "interval" ? `${policy.rotationIntervalMinutes}분 간격 균등 교대 추천` : "방장·심판 직접 교대" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
+      ...(pickup ? [{ label: "팀 배치", value: "체크인에서 방장·심판이 직접 배치" }] : []),
+      ...(pickup ? [{ label: "운영 정책", value: policy.rotationMode === "period" ? "쿼터·하프 종료마다 균등 교대" : policy.rotationMode === "interval" ? `${policy.rotationIntervalMinutes}분 간격 균등 교대` : "방장·심판 직접 교대" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
       { label: "경기 규칙", value: getMatchRuleSummary(policySource, policySource.mode) },
       { label: "비용", value: `${costText} · ${payment}` },
       { label: "구장", value: policySource.court || "구장 미정" },
       { label: "일정", value: policySource.timingType === "instant" ? "즉시" : [policySource.scheduledDate, policySource.scheduledTime].filter(Boolean).join(" ") || "일정 미정" },
     ],
     sentence: pickup
-      ? "개인 참가자를 통합 풀로 모집하고 체크인 뒤 A/B사이드를 배정합니다. 균등 교대는 시스템이 추천하고 방장 또는 심판이 확정하며 MMR은 반영되지 않습니다."
+      ? "개인 참가자를 통합 풀로 모집합니다. 체크인에서 방장 또는 배정 심판이 A/B와 교대 순서를 직접 확정하며 MMR은 반영되지 않습니다."
       : policy.benchCapacity > 0
       ? `${rosterText}입니다. 후보의 출전 정책은 '${playingTime}', 비용 정책은 '${payment}'입니다.`
       : `${rosterText}이며 비용 정책은 '${payment}'입니다.`,

@@ -1339,13 +1339,16 @@ function RoomKickPanel({
   onCheckInPlayer,
   onSetReserve,
   onSetPlacement,
+  onSwapPlacement,
   allowSideMove = false,
   attendanceBySide = null,
   requireMissingAttendance = false,
   currentUserId = "",
   poolMode = false,
+  placementByPlayerId = null,
 }) {
   const [pendingKick, setPendingKick] = useState(null);
+  const [pendingSwap, setPendingSwap] = useState(null);
   const rows = [];
   (lobby.entries ?? []).forEach((entry) => {
     const partyEntry = isPartyEntry(entry);
@@ -1358,7 +1361,15 @@ function RoomKickPanel({
       if (!playerId || (!attendanceBySide && entry.fixed && playerId === entry.playerId)) return;
       const user = userById[playerId];
       if (!user) return;
-      rows.push({ entry, partyEntry, playerId, reserve, user });
+      const placement = placementByPlayerId?.[playerId];
+      rows.push({
+        entry,
+        partyEntry,
+        playerId,
+        reserve: placement?.reserve ?? reserve,
+        side: placement?.side ?? entry.side,
+        user,
+      });
     });
   });
 
@@ -1375,12 +1386,14 @@ function RoomKickPanel({
   return (
     <div className="arena-host-kick-panel">
       <header>
-        <strong>강퇴</strong>
-        <span>방장은 팀 배치 대신 퇴장만 처리할 수 있습니다.</span>
+        <strong>{onSwapPlacement ? "출석·팀 배치" : "참가자 관리"}</strong>
+        <span>{onSwapPlacement
+          ? "첫 선수를 고른 뒤 반대 사이드 선수를 선택하면 A/B·출전·대기 자리가 서로 바뀝니다."
+          : "방장은 참가자 상태와 퇴장을 관리합니다."}</span>
       </header>
       <div className="arena-host-kick-list">
-        {rows.map(({ entry, partyEntry, playerId, reserve, user }) => {
-          const checkedIn = Boolean(attendanceBySide?.[entry.side]?.includes(playerId));
+        {rows.map(({ entry, partyEntry, playerId, reserve, side, user }) => {
+          const checkedIn = Boolean(attendanceBySide?.[side]?.includes(playerId));
           const selfRow = playerId === currentUserId;
           const hostRow = playerId === hostPlayerId;
           const kickDisabled = selfRow || (requireMissingAttendance && checkedIn);
@@ -1390,51 +1403,76 @@ function RoomKickPanel({
                 <ProfileEmblem user={user} className="small" />
                 <span>
                   <strong>{user.name}</strong>
-                  <em>{poolMode ? "개인 참가" : `${SIDE_LABELS[entry.side]} · ${reserve ? "후보" : "출전"} · ${entry.team?.name ?? "개인"}`}</em>
+                  <em>{poolMode ? "개인 참가" : `${SIDE_LABELS[side]} · ${reserve ? "후보" : "출전"} · ${entry.team?.name ?? "개인"}`}</em>
                   {attendanceBySide ? <i>{checkedIn ? "출석 완료" : "미출석"}</i> : null}
                 </span>
               </PlayerHoverCard>
-              {attendanceBySide && onCheckInPlayer && !selfRow ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={checkedIn ? "secondary" : "primary"}
-                  disabled={checkedIn}
-                  onClick={() => onCheckInPlayer(entry.side, playerId)}
-                >
-                  {checkedIn ? "출석 완료" : "출석"}
-                </Button>
-              ) : attendanceBySide && selfRow ? <span className="form-chip">본인</span> : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="danger-button"
-                disabled={kickDisabled}
-                onClick={() => setPendingKick({
-                  entryId: entry.id,
-                  partyEntry,
-                  playerId: partyEntry ? playerId : entry.playerId,
-                  playerName: user.name,
-                })}
-              >
-                강퇴
-              </Button>
-              {onSetReserve ? (
-                <Button type="button" size="sm" variant="secondary" onClick={() => onSetReserve(entry, playerId, !reserve)}>
-                  {reserve ? "출전" : "후보"}
-                </Button>
-              ) : null}
-              {allowSideMove && onSetPlacement && !hostRow ? (
+              <div className="arena-host-kick-actions">
+                {attendanceBySide && onCheckInPlayer && !selfRow ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={checkedIn ? "secondary" : "primary"}
+                    disabled={checkedIn}
+                    onClick={() => onCheckInPlayer(side, playerId)}
+                  >
+                    {checkedIn ? "출석 완료" : "출석"}
+                  </Button>
+                ) : attendanceBySide && selfRow ? <span className="form-chip">본인</span> : null}
                 <Button
                   type="button"
                   size="sm"
                   variant="secondary"
-                  onClick={() => onSetPlacement(playerId, { side: entry.side === "teamA" ? "teamB" : "teamA", reserve })}
+                  className="danger-button"
+                  disabled={kickDisabled}
+                  onClick={() => setPendingKick({
+                    entryId: entry.id,
+                    partyEntry,
+                    playerId: partyEntry ? playerId : entry.playerId,
+                    playerName: user.name,
+                  })}
                 >
-                  {entry.side === "teamA" ? "B" : "A"} 이동
+                  강퇴
                 </Button>
-              ) : null}
+                {onSetReserve ? (
+                  <Button type="button" size="sm" variant="secondary" onClick={() => onSetReserve({ ...entry, side }, playerId, !reserve)}>
+                    {reserve ? "출전" : "후보"}
+                  </Button>
+                ) : null}
+                {allowSideMove && onSetPlacement && !hostRow ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onSetPlacement(playerId, { side: side === "teamA" ? "teamB" : "teamA", reserve })}
+                  >
+                    {side === "teamA" ? "B" : "A"} 이동
+                  </Button>
+                ) : null}
+                {onSwapPlacement ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="arena-player-swap-button"
+                    variant={pendingSwap?.playerId === playerId ? "primary" : "secondary"}
+                    disabled={Boolean(pendingSwap && pendingSwap.side === side && pendingSwap.playerId !== playerId)}
+                    onClick={() => {
+                      if (!pendingSwap || pendingSwap.playerId === playerId) {
+                        setPendingSwap(pendingSwap?.playerId === playerId ? null : { playerId, side });
+                        return;
+                      }
+                      onSwapPlacement(pendingSwap.playerId, playerId);
+                      setPendingSwap(null);
+                    }}
+                  >
+                    {pendingSwap?.playerId === playerId
+                      ? "선택됨"
+                      : pendingSwap
+                        ? "이 선수와 교환"
+                        : "교환 선택"}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           );
         })}
@@ -2347,9 +2385,17 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   }
   if (effectiveStatus === "approval") {
     const approved = (match.approvals?.[sideName] ?? []).includes(userId);
+    const recordRoom = isMatchRecordMatch(match);
     return approved
-      ? { label: "결과 승인", detail: "다른 참가자 승인만 남았습니다." }
-      : { label: "결과 승인", detail: "기록과 득점 합계가 맞으면 승인합니다.", action: "approve", button: "승인" };
+      ? { label: recordRoom ? "최종 승인" : "결과 승인", detail: "다른 참가자 승인만 남았습니다." }
+      : {
+          label: recordRoom ? "최종 승인" : "결과 승인",
+          detail: recordRoom
+            ? "내 참가 사실과 점수·기록이 맞으면 최종 승인합니다."
+            : "기록과 득점 합계가 맞으면 승인합니다.",
+          action: "approve",
+          button: recordRoom ? "최종 승인" : "승인",
+        };
   }
   if (effectiveStatus === "disputed") {
     const openCount = getOpenMatchDisputes(match).length;
@@ -3498,6 +3544,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const roomPhaseViewModel = getRoomPhaseViewModel({ post: selectedPost, match: sourceMatch });
+        const pickupRoom = isPickupRecruitingRoom(selectedPost);
         const pickupPoolMode = roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool;
         const roomPhaseVersusIndex = roomPhaseViewModel.sectionOrder.indexOf("versus");
         const roomPhaseSectionsBeforeVersus = roomPhaseVersusIndex >= 0
@@ -3511,12 +3558,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const sourceMatchRecordVerification = sourceMatchIsRecordRoom
           ? getPostgameRecordVerification(sourceMatch)
           : null;
-        const sourceMatchParticipationRequired = Boolean(
-          sourceMatchRecordVerification?.requiredParticipantIds.includes(app.currentUser.id),
-        );
-        const sourceMatchParticipationAccepted = Boolean(
-          sourceMatchRecordVerification?.participantAcceptedIds.includes(app.currentUser.id),
-        );
         const sourceMatchIsTournamentPregame = Boolean(
           sourceMatch?.tournamentId &&
           sourceMatch?.scheduledDate &&
@@ -3588,6 +3629,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           teamA: sourceMatch?.attendance?.teamA ?? [],
           teamB: sourceMatch?.attendance?.teamB ?? [],
         };
+        const sourceMatchPlacementByPlayerId = sourceMatch
+          ? Object.fromEntries(MATCH_SIDES.flatMap((sideName) => [
+              ...getMatchSidePlayerIds(sourceMatch, sideName).map((playerId) => [playerId, { side: sideName, reserve: false }]),
+              ...getMatchReservePlayerIds(sourceMatch, sideName).map((playerId) => [playerId, { side: sideName, reserve: true }]),
+            ]))
+          : null;
         const canManageMatchCheckin = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canShowStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const sourceMatchMissingStartAttendanceIds = canShowStartSourceMatch ? getMissingStartAttendanceIds(sourceMatch, app.currentUser.id) : [];
@@ -3600,6 +3647,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canStartSourceMatch = canShowStartSourceMatch
           && sourceMatchMissingStartAttendanceIds.length === 0
           && (roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment || roomPhaseViewModel.assignmentConfirmed);
+        const sourceMatchStartButtonLabel = canStartSourceMatch
+          ? "경기 시작"
+          : sourceMatchMissingStartAttendanceIds.length > 0
+            ? "출석체크 필요"
+            : "팀 배정 확정 필요";
+        const sourceMatchStartButtonTitle = canStartSourceMatch
+          ? ""
+          : sourceMatchMissingStartAttendanceIds.length > 0
+            ? "모든 참가자의 출석을 확인해야 경기 시작이 가능합니다."
+            : "A/B 팀 배정과 교대 기준을 확정해야 경기 시작이 가능합니다.";
         const canRequestRefereeAbsence = Boolean(matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canConfirmRefereeAbsence = Boolean(matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
@@ -3669,17 +3726,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               {sourceMatchRecordVerification ? (
                 <div className="arena-record-verification-status">
                   <span>
-                    참가 확인 {sourceMatchRecordVerification.participantAcceptedIds.length}/{sourceMatchRecordVerification.requiredParticipantIds.length}
+                    최종 승인 {sourceMatchRecordVerification.approvedIds.length}/{sourceMatchRecordVerification.requiredParticipantIds.length}
                   </span>
-                  <span>
-                    결과 승인 {sourceMatchRecordVerification.approvedIds.length}/{sourceMatchRecordVerification.requiredParticipantIds.length}
-                  </span>
-                  <small>24시간이 지나도 무응답은 자동 승인되지 않습니다.</small>
-                  {sourceMatchParticipationRequired && !sourceMatchParticipationAccepted ? (
-                    <Button type="button" size="sm" onClick={() => app.actions.confirmMatchRecordParticipation(sourceMatch.id)}>
-                      내가 참가한 경기 맞음
-                    </Button>
-                  ) : null}
+                  <small>최종 승인은 본인 참가 사실과 점수·기록 확인을 함께 처리합니다. 무응답은 자동 승인되지 않습니다.</small>
                 </div>
               ) : null}
               {showSourceMatchRecordSummary ? (
@@ -4056,7 +4105,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               <span>균등 교대</span>
               <strong>{roomPhaseViewModel.rotation.label}</strong>
             </div>
-            <small>교대 대상은 시스템이 추천하고 방장 또는 심판이 확정합니다.</small>
+            <small>교대 순서는 방장 또는 배정 심판이 정하고 직접 확정합니다.</small>
             {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && canManageMatchCheckin ? (
               <Button
                 type="button"
@@ -4353,14 +4402,24 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId) : app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)
                   )}
                   onCheckInPlayer={matchRoom ? ((sideName, playerId) => app.actions.checkInMatchPlayer(sourceMatch.id, sideName, playerId)) : null}
-                  onSetReserve={matchRoom ? ((entry, playerId, reserve) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, { side: entry.side, reserve })) : null}
-                  onSetPlacement={matchRoom ? ((playerId, placement) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, placement)) : null}
-                  allowSideMove={canMoveMatchSides}
+                  onSetReserve={matchRoom && roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
+                    ? ((entry, playerId, reserve) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, { side: entry.side, reserve }))
+                    : null}
+                  onSetPlacement={matchRoom && roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
+                    ? ((playerId, placement) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, placement))
+                    : null}
+                  onSwapPlacement={matchRoom
+                    && roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment
+                    && sourceMatchMissingStartAttendanceIds.length === 0
+                    ? ((firstPlayerId, secondPlayerId) => app.actions.swapPickupMatchPlayers(sourceMatch.id, firstPlayerId, secondPlayerId))
+                    : null}
+                  allowSideMove={canMoveMatchSides && roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment}
                   hostPlayerId={roomOwnerId}
                   attendanceBySide={matchRoom ? sourceMatchAttendance : null}
                   requireMissingAttendance={canManageMatchCheckin}
                   currentUserId={app.currentUser.id}
                   poolMode={pickupPoolMode}
+                  placementByPlayerId={sourceMatchPlacementByPlayerId}
                 />
               ) : null}
 
@@ -4514,8 +4573,17 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     <small>저장하면 방장을 제외한 참가자가 다시 수락해야 합니다.</small>
                   </div>
                 ) : null}
-                <span>팀 MMR은 실제 참가한 팀원의 비율을 기준으로 반영됩니다.</span>
-                <span>후보가 경기 밖에서 참여를 확정하면 해당 사이드의 개인 활약 기록자로 배정됩니다.</span>
+                {pickupRoom ? (
+                  <>
+                    <span>친선 경기로 MMR을 반영하지 않습니다.</span>
+                    <span>체크인 후 방장 또는 배정 심판이 A/B와 교대 순서를 직접 확정합니다.</span>
+                  </>
+                ) : (
+                  <>
+                    <span>팀 MMR은 실제 참가한 팀원의 비율을 기준으로 반영됩니다.</span>
+                    <span>후보가 경기 밖에서 참여를 확정하면 해당 사이드의 개인 활약 기록자로 배정됩니다.</span>
+                  </>
+                )}
                 <span>참여 확정 후 불참하면 신뢰점수 차감 대상이 됩니다.</span>
               </div> : null}
 
@@ -4605,9 +4673,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />
                     ) : null}
-                    {!sourceRoomReadOnly && sourceMatchAction.action && sourceMatchSideName && (
-                      sourceMatchAction.action !== "approve" || !sourceMatchIsRecordRoom || sourceMatchParticipationAccepted
-                    ) ? (
+                    {!sourceRoomReadOnly && sourceMatchAction.action && sourceMatchSideName ? (
                       <Button
                         type="button"
                         onClick={() => {
@@ -4629,8 +4695,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && canShowStartSourceMatch ? (
-                      <Button type="button" disabled={!canStartSourceMatch} title={canStartSourceMatch ? "" : "출석체크 후 경기 시작 가능"} onClick={() => app.actions.startMatch(sourceMatch.id)}>
-                        {canStartSourceMatch ? "경기 시작" : "출석체크 필요"}
+                      <Button type="button" disabled={!canStartSourceMatch} title={sourceMatchStartButtonTitle} onClick={() => app.actions.startMatch(sourceMatch.id)}>
+                        {sourceMatchStartButtonLabel}
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && canEndSourceMatch ? (

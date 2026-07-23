@@ -327,7 +327,9 @@ export default function MatchRoom({ app }) {
   const isSharedRecord = isMatchRecordMatch(match);
   const status = match.status === "cancelled" && isSharedRecord
     ? { label: "기록 취소됨", tone: "neutral" }
-    : statusMeta[match.status] ?? { label: "상태 확인 중", tone: "blue" };
+    : match.status === "approval" && isSharedRecord
+      ? { label: "최종 승인 대기", tone: "orange" }
+      : statusMeta[match.status] ?? { label: "상태 확인 중", tone: "blue" };
   const cancelCopy = getMatchCancelCopy(match);
   const teamAAgreement = getAgreementStatus(match, app.state.teams, "teamA");
   const teamBAgreement = getAgreementStatus(match, app.state.teams, "teamB");
@@ -658,9 +660,11 @@ export default function MatchRoom({ app }) {
       }
       if (currentUserSideName && !currentUserApprovalDone) {
         return {
-          label: "결과 승인",
-          detail: "기록 조건을 충족했습니다. 내 승인만 완료하면 됩니다.",
-          button: "승인",
+          label: isSharedRecord ? "최종 승인" : "결과 승인",
+          detail: isSharedRecord
+            ? "내 참가 사실과 점수·기록을 확인한 뒤 한 번만 승인합니다."
+            : "기록 조건을 충족했습니다. 내 승인만 완료하면 됩니다.",
+          button: isSharedRecord ? "최종 승인" : "승인",
           type: "approve",
         };
       }
@@ -1096,25 +1100,29 @@ export default function MatchRoom({ app }) {
           ) : null}
           <Card className="section-card">
             <div className="contract-grid single">
+              {!isSharedRecord ? (
+                <>
+                  <div>
+                    <span>{MATCH_SIDE_FALLBACK_NAMES.teamA} 동의</span>
+                    <strong>{teamAAgreement.approvals.length}/{teamAAgreement.majority}</strong>
+                  </div>
+                  <div>
+                    <span>{MATCH_SIDE_FALLBACK_NAMES.teamB} 동의</span>
+                    <strong>{teamBAgreement.approvals.length}/{teamBAgreement.majority}</strong>
+                  </div>
+                </>
+              ) : null}
               <div>
-                <span>{MATCH_SIDE_FALLBACK_NAMES.teamA} 동의</span>
-                <strong>{teamAAgreement.approvals.length}/{teamAAgreement.majority}</strong>
-              </div>
-              <div>
-                <span>{MATCH_SIDE_FALLBACK_NAMES.teamB} 동의</span>
-                <strong>{teamBAgreement.approvals.length}/{teamBAgreement.majority}</strong>
-              </div>
-              <div>
-                <span>{MATCH_SIDE_FALLBACK_NAMES.teamA} 결과 승인</span>
+                <span>{MATCH_SIDE_FALLBACK_NAMES.teamA} {isSharedRecord ? "최종 승인" : "결과 승인"}</span>
                 <strong>{teamAApproval.approvals.length}/{teamAApproval.majority}</strong>
               </div>
               <div>
-                <span>{MATCH_SIDE_FALLBACK_NAMES.teamB} 결과 승인</span>
+                <span>{MATCH_SIDE_FALLBACK_NAMES.teamB} {isSharedRecord ? "최종 승인" : "결과 승인"}</span>
                 <strong>{teamBApproval.approvals.length}/{teamBApproval.majority}</strong>
               </div>
               <div>
                 <span>승인 기준</span>
-                <strong>과반</strong>
+                <strong>{isSharedRecord ? "참가자 전원" : "과반"}</strong>
               </div>
               <div>
                 <span>현재 상태</span>

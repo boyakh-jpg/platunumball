@@ -1741,7 +1741,7 @@ export default function CreateMatch({ app }) {
                   <ClipboardList size={19} />
                   <span>
                     <strong>경기 기록</strong>
-                    <em>빈 기록방을 만든 뒤 방에서 개인 또는 팀 명단과 승인 대상을 정합니다.</em>
+                    <em>빈 기록방을 만든 뒤 실제 참가자를 등록하고 모두에게 최종 승인을 받습니다.</em>
                   </span>
                 </button>
                 <button
@@ -1812,11 +1812,13 @@ export default function CreateMatch({ app }) {
           {isMatchRecordRoom ? (
             <div className="match-intent-preset-section">
               <span className="field-label">구성 방식</span>
-              <div className="create-mode-grid create-record-option-grid">
+              <div className="match-intent-preset-grid" role="radiogroup" aria-label="경기 기록 구성 방식">
                 {RECORD_COMPOSITION_OPTIONS.map((option) => (
                   <button
                     key={option.id}
                     type="button"
+                    role="radio"
+                    aria-checked={recordComposition === option.id}
                     className={recordComposition === option.id ? "active" : ""}
                     onClick={() => update({
                       recordComposition: option.id,
@@ -1831,8 +1833,8 @@ export default function CreateMatch({ app }) {
                       opponentLeaderId: "",
                     })}
                   >
-                    <ClipboardList size={18} />
-                    <span><strong>{option.label}</strong><em>{option.description}</em></span>
+                    <strong>{option.label}</strong>
+                    <span>{option.description}</span>
                   </button>
                 ))}
               </div>
@@ -1845,11 +1847,18 @@ export default function CreateMatch({ app }) {
           {isSoloRecord ? (
             <div className="match-intent-preset-section">
               <span className="field-label">입력 방식</span>
-              <div className="create-mode-grid create-record-option-grid">
+              <div className="match-intent-preset-grid" role="radiogroup" aria-label="내 기록 입력 방식">
                 {RECORD_ENTRY_MODE_OPTIONS.map((option) => (
-                  <button key={option.id} type="button" className={recordEntryMode === option.id ? "active" : ""} onClick={() => update({ recordEntryMode: option.id })}>
-                    <ClipboardList size={18} />
-                    <span><strong>{option.label}</strong><em>{option.description}</em></span>
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={recordEntryMode === option.id}
+                    className={recordEntryMode === option.id ? "active" : ""}
+                    onClick={() => update({ recordEntryMode: option.id })}
+                  >
+                    <strong>{option.label}</strong>
+                    <span>{option.description}</span>
                   </button>
                 ))}
               </div>
@@ -2470,8 +2479,8 @@ export default function CreateMatch({ app }) {
               <ClipboardList size={17} />
               <span>
                 {recordComposition === "team"
-                  ? "빈 기록방 생성 후 방장이 두 팀을 선택합니다. 각 팀장이 실제 출전 명단을 확정하고 양 팀 주장이 결과를 승인합니다."
-                  : "빈 기록방 생성 후 방장이 A/B 참가자를 계정으로 채웁니다. 등록된 실제 참가자 전원이 결과를 승인합니다."}
+                  ? "빈 기록방 생성 후 방장이 두 팀을 선택합니다. 각 팀장이 실제 출전 명단을 확정하고 등록된 참가자 전원이 최종 승인합니다."
+                  : "빈 기록방 생성 후 방장이 A/B 참가자를 계정으로 채웁니다. 등록된 실제 참가자 전원이 최종 승인합니다."}
               </span>
             </div>
           ) : isTeamRoom ? (

@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import {
   approveMatch,
   cancelMatch,
-  confirmMatchRecordParticipation,
   createMatch,
   setMatchRecordParticipants,
   setMatchRecordTeamRoster,
@@ -217,7 +216,7 @@ test("team match record selects teams first, then each captain fixes an exact ro
   let configured = selected.matches[0];
   assert.deepEqual(configured.teamA.players, ["u1"]);
   assert.deepEqual(configured.teamB.players, ["u4"]);
-  assert.deepEqual(configured.rules.recordApproverIds, { teamA: ["u1"], teamB: ["u4"] });
+  assert.deepEqual(configured.rules.recordApproverIds, { teamA: [], teamB: [] });
   assert.equal(configured.rules.recordSetupReady, false);
   assert.equal(getMatchRecordCompositionLabel(configured), "팀 구성");
   assert.deepEqual(getMatchRecordSetupStatus(configured), { stage: "rosters", label: "명단 확정 대기", tone: "orange" });
@@ -240,6 +239,7 @@ test("team match record selects teams first, then each captain fixes an exact ro
   });
   assert.equal(afterA.matches[0].rules.rosterReady.teamA, true);
   assert.equal(afterA.matches[0].rules.recordSetupReady, false);
+  assert.deepEqual(afterA.matches[0].rules.recordApproverIds.teamA, ["u1", "u2", "u3"]);
   assert.deepEqual(getMatchRecordSetupStatus(afterA.matches[0]), { stage: "rosters", label: "1/2팀 명단 확정", tone: "orange" });
 
   const afterB = setMatchRecordTeamRoster({ ...afterA, currentUserId: "u4" }, match.id, "teamB", {
@@ -252,8 +252,34 @@ test("team match record selects teams first, then each captain fixes an exact ro
     teamA: ["u1", "u2", "u3"],
     teamB: ["u4", "u5", "u6"],
   });
+  assert.deepEqual(configured.rules.recordApprovalMode, { teamA: "all", teamB: "all" });
+  assert.deepEqual(configured.rules.recordApproverIds, {
+    teamA: ["u1", "u2", "u3"],
+    teamB: ["u4", "u5", "u6"],
+  });
   assert.deepEqual(configured.reservePlayers, { teamA: [], teamB: [] });
   assert.deepEqual(getMatchRecordSetupStatus(configured), { stage: "complete", label: "명단 확정 완료", tone: "green" });
+
+  let approvalState = afterB;
+  const pointByPlayer = { u1: 21, u2: 0, u3: 0, u4: 12, u5: 0, u6: 0 };
+  users.forEach((user) => {
+    approvalState = submitMatchResult({ ...approvalState, currentUserId: user.id }, match.id, {
+      scoreA: 21,
+      scoreB: 12,
+      playerStats: { [user.id]: { points: pointByPlayer[user.id] } },
+    });
+  });
+  approvalState = approveMatch({ ...approvalState, currentUserId: "u1" }, match.id, "teamA", "u1");
+  approvalState = approveMatch({ ...approvalState, currentUserId: "u4" }, match.id, "teamB", "u4");
+  assert.equal(approvalState.matches[0].status, "approval");
+
+  ["u2", "u3"].forEach((playerId) => {
+    approvalState = approveMatch({ ...approvalState, currentUserId: playerId }, match.id, "teamA", playerId);
+  });
+  ["u5", "u6"].forEach((playerId) => {
+    approvalState = approveMatch({ ...approvalState, currentUserId: playerId }, match.id, "teamB", playerId);
+  });
+  assert.equal(approvalState.matches[0].status, "confirmed");
 });
 
 test("match-record cancellation uses record terminology while scheduled matches keep match terminology", () => {
@@ -268,7 +294,7 @@ test("match-record cancellation uses record terminology while scheduled matches 
   assert.equal(getMatchCancelCopy({ title: "예정 경기", rules: { recordType: "match" } }).actionLabel, "경기 취소");
 });
 
-test("individual match record requires self participation confirmation before final approval", () => {
+test("individual match record uses one self final approval for participation and result", () => {
   const created = createMatch(makeState(), makeRecordDraft("individual"));
   const matchId = created.matches[0].id;
   let state = setMatchRecordParticipants(created, matchId, {
@@ -290,18 +316,15 @@ test("individual match record requires self participation confirmation before fi
   assert.equal(submitted.status, "approval");
   assert.deepEqual(Object.keys(submitted.result.statSubmissions).sort(), users.map((user) => user.id).sort());
 
-  const blocked = approveMatch({ ...state, currentUserId: "u1" }, matchId, "teamA", "u1");
-  assert.equal(blocked.matches.find((match) => match.id === matchId), submitted);
-
   users.forEach((user, index) => {
     const sideName = index < 3 ? "teamA" : "teamB";
-    state = confirmMatchRecordParticipation({ ...state, currentUserId: user.id }, matchId, user.id);
     state = approveMatch({ ...state, currentUserId: user.id }, matchId, sideName, user.id);
   });
 
   const confirmed = state.matches.find((match) => match.id === matchId);
   assert.equal(confirmed.status, "confirmed");
   assert.ok(confirmed.confirmedAt);
+  assert.deepEqual(confirmed.rules.participantAcceptedIds.sort(), users.map((user) => user.id).sort());
 });
 
 test("personal quick record ignores stale names and creates no approval room", () => {

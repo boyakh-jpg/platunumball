@@ -2397,7 +2397,7 @@ button.arena-room-player-slot {
 
 .arena-host-kick-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.09);
@@ -2440,6 +2440,17 @@ button.arena-room-player-slot {
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;
+}
+
+.arena-host-kick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.arena-host-kick-actions > :is(.button, .form-chip) {
+  flex: 0 0 auto;
 }
 
 .arena-kick-confirm-backdrop {
@@ -8038,15 +8049,25 @@ html[data-theme="light"] .arena-lobby-arena {
 
 @media (max-width: 560px) {
   .arena-host-kick-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .arena-host-kick-row > span {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
-  .arena-host-kick-row > .button {
+  .arena-host-kick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+
+  .arena-host-kick-actions > :is(.button, .form-chip) {
     width: 100%;
+  }
+
+  .arena-host-kick-actions > .arena-player-swap-button {
+    grid-column: 1 / -1;
   }
 }
 

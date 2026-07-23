@@ -76,6 +76,7 @@ const MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS = new Set([
   "addMatchLatePlayer",
   "removeMatchLatePlayer",
   "setMatchRoomPlayerPlacement",
+  "swapPickupMatchPlayers",
   "removeMatchRoomPlayer",
   "setMatchRecordParticipants",
   "setMatchRecordTeamRoster",
@@ -1103,6 +1104,7 @@ const OPERATOR_MATCH_ACTIONS = new Set([
   "removeMatchLatePlayer",
   "updateMatchRoomRules",
   "setMatchRoomPlayerPlacement",
+  "swapPickupMatchPlayers",
   "removeMatchRoomPlayer",
 ]);
 
@@ -1312,6 +1314,7 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "rejectMatchDispute",
   "setMatchRecordTeamRoster",
   "setMatchRoomPlayerPlacement",
+  "swapPickupMatchPlayers",
   "startMatch",
   "submitMatchResult",
   "submitMatchThumbs",
@@ -1391,6 +1394,7 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "rejectMatchDispute",
     "setMatchRecordTeamRoster",
     "setMatchRoomPlayerPlacement",
+    "swapPickupMatchPlayers",
     "startMatch",
     "submitMatchResult",
     "submitMatchThumbs",
@@ -1577,6 +1581,22 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    rejectSqlMatchFallback(data);
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
+  if (operation.action === "swapPickupMatchPlayers" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_swap_pickup_players", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_first_player_id: operation.firstPlayerId ?? "",
+      p_second_player_id: operation.secondPlayerId ?? "",
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "pickup_player_swap_rpc_required");
       throw error;
     }
     rejectSqlMatchFallback(data);

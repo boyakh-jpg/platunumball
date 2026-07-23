@@ -68,8 +68,7 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
   const requiredIdSet = new Set(requiredParticipantIds);
   const anonymousPlayerIds = uniqueIds(Object.keys(match.anonymousPlayers ?? {}));
 
-  // participantAcceptedIds is the canonical field. participationAcceptedIds is read for legacy rows only.
-  const participantAcceptedIds = uniqueIds([
+  const legacyParticipantAcceptedIds = uniqueIds([
     ...collectIds(match.participantAcceptedIds),
     ...collectIds(match.rules?.participantAcceptedIds),
     ...collectIds(match.rules?.participationAcceptedIds),
@@ -87,12 +86,17 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
     ...collectIds(match.rejections),
   ]).filter((playerId) => requiredIdSet.has(playerId));
 
+  // 최종 승인은 본인 참가 사실과 결과를 함께 확인한다.
+  // participantAcceptedIds는 기존 기록 호환을 위해 승인자까지 합쳐 반환한다.
+  const participantAcceptedIds = uniqueIds([
+    ...legacyParticipantAcceptedIds,
+    ...resultApprovedIds,
+  ]);
   const participantAcceptedSet = new Set(participantAcceptedIds);
   const resultApprovedSet = new Set(resultApprovedIds);
   const rejectedSet = new Set(rejectedIds);
   const verifiedPlayerIds = requiredParticipantIds.filter((playerId) => (
-    participantAcceptedSet.has(playerId)
-    && resultApprovedSet.has(playerId)
+    resultApprovedSet.has(playerId)
     && !rejectedSet.has(playerId)
   ));
   const unconfirmedIds = requiredParticipantIds.filter((playerId) => !verifiedPlayerIds.includes(playerId) && !rejectedSet.has(playerId));
