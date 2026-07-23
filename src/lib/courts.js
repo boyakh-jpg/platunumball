@@ -594,6 +594,16 @@ export function getCourtSearchText(court = {}) {
 export function isCourtInRegion(court = {}, region = "") {
   const targetRegion = String(region ?? "").trim();
   if (!targetRegion || targetRegion === "전체") return true;
+  const targetRegionParts = targetRegion.split(/\s+/).filter(Boolean);
+  const targetSido = targetRegionParts.length > 1 && /(?:특별자치시|특별시|광역시|도)$/u.test(targetRegionParts[0])
+    ? targetRegionParts[0]
+    : "";
+  const courtAddressSido = [court.addressText, court.roadAddress, court.jibunAddress]
+    .map((value) => String(value ?? "").trim().split(/\s+/)[0])
+    .find((value) => /(?:특별자치시|특별시|광역시|도)$/u.test(value)) ?? "";
+  const courtSido = String(court.sido ?? "").trim() || courtAddressSido;
+  if (targetSido && courtSido && !isSameRegion(courtSido, targetSido)) return false;
+
   const mappedRegion = String(court.region ?? "").replace(/\s+/g, "").toLowerCase();
   const mappedSido = String(court.sido ?? "").replace(/\s+/g, "").toLowerCase();
   if ([

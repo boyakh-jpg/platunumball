@@ -42,7 +42,7 @@ import {
   getPersonalRecordDraftPayload,
   getScopedMatchCreationPolicyPayload,
 } from "../lib/matchCreationPolicies.js";
-import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
+import { AGE_GROUPS, REGION_TREE, getAgeGroupForUser, getRepresentativeTeam, inferRegionSelection } from "../lib/profileSetup.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange } from "../lib/recruiting.js";
 import { postServerAction } from "../lib/serverActions.js";
@@ -365,6 +365,15 @@ export default function CreateMatch({ app }) {
   const defaultCapacity = getRecruitingSideCapacity({ mode: defaultMode });
   const defaultTournamentCapacity = getRecruitingSideCapacity({ mode: "5v5" });
   const currentRegion = getCanonicalRegion(app.currentUser.regionDistrict || app.currentUser.region);
+  const currentCourtRegionSelection = useMemo(
+    () => inferRegionSelection([
+      app.currentUser.regionSido,
+      app.currentUser.regionDistrict,
+      app.currentUser.region,
+    ].filter(Boolean).join(" ")),
+    [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
+  );
+  const currentCourtRegion = `${currentCourtRegionSelection.sido} ${currentCourtRegionSelection.district}`;
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const defaultTeamAPlayerIds = defaultHostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
   const defaultTeamB = defaultHostJoinMode === "team" && defaultTeamA
@@ -394,9 +403,9 @@ export default function CreateMatch({ app }) {
   const [soloTeamAUserQuery, setSoloTeamAUserQuery] = useState("");
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(currentRegion || "전체");
-  const [courtRegion, setCourtRegion] = useState(currentRegion || "전체");
-  const selectableRegions = useMemo(() => ["전체", ...new Set([currentRegion, ...REGIONS].filter(Boolean))], [currentRegion]);
-  const courtMapRegion = courtRegion === "전체" ? currentRegion : courtRegion;
+  const [courtRegion, setCourtRegion] = useState(currentCourtRegion);
+  const teamSelectableRegions = useMemo(() => ["전체", ...new Set([currentRegion, ...REGIONS].filter(Boolean))], [currentRegion]);
+  const courtMapRegion = courtRegion;
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
@@ -2143,7 +2152,14 @@ export default function CreateMatch({ app }) {
             <label>
               지역
               <select value={courtRegion} onChange={(event) => setCourtRegion(event.target.value)}>
-                {selectableRegions.map((region) => <option key={region}>{region}</option>)}
+                {REGION_TREE.map((region) => (
+                  <optgroup key={region.sido} label={region.sido}>
+                    {region.districts.map((district) => {
+                      const regionValue = `${region.sido} ${district}`;
+                      return <option key={regionValue} value={regionValue}>{regionValue}</option>;
+                    })}
+                  </optgroup>
+                ))}
               </select>
             </label>
             <label>
@@ -2397,7 +2413,7 @@ export default function CreateMatch({ app }) {
                 <label>
                   지역
                   <select value={teamRegion} onChange={(event) => setTeamRegion(event.target.value)}>
-                    {selectableRegions.map((region) => <option key={region}>{region}</option>)}
+                    {teamSelectableRegions.map((region) => <option key={region}>{region}</option>)}
                   </select>
                 </label>
                 <label>
