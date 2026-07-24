@@ -12,7 +12,11 @@ import {
   getMatchClockRecognition,
   requestMatchClock,
 } from "../../lib/matchClock.js";
+import { hasMatchScoreboardOperators } from "../../lib/matchUtils.js";
 import "../../styles/match-clock.css";
+
+const QUARTER_BREAK_LIMIT_MS = 5 * 60 * 1000;
+const HALFTIME_BREAK_LIMIT_MS = 10 * 60 * 1000;
 
 const ERROR_LABELS = Object.freeze({
   match_clock_forbidden: "이 경기의 시계를 볼 권한이 없습니다.",
@@ -25,13 +29,77 @@ const ERROR_LABELS = Object.freeze({
 });
 
 let buzzerAudioContext = null;
+let buzzerMediaElement = null;
+const buzzerMediaUrls = new Map();
+
+const BUZZER_PATTERNS = Object.freeze({
+  shot: Object.freeze([
+    { durationMs: 260, frequency: 980 },
+  ]),
+  period: Object.freeze([
+    { durationMs: 1500, frequency: 780 },
+  ]),
+  warning: Object.freeze([
+    { durationMs: 170, frequency: 900 },
+    { durationMs: 130, frequency: 0 },
+    { durationMs: 170, frequency: 900 },
+  ]),
+});
 
 function getErrorLabel(error) {
   const code = String(error?.code || error?.message || "");
   return ERROR_LABELS[code] || "경기시계 처리에 실패했습니다.";
 }
 
-async function beep(volume = 0.7) {
+function writeWavText(view, offset, value) {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index));
+  }
+}
+
+function getBuzzerMediaUrl(patternName) {
+  if (buzzerMediaUrls.has(patternName)) return buzzerMediaUrls.get(patternName);
+  const pattern = BUZZER_PATTERNS[patternName] || BUZZER_PATTERNS.period;
+  const sampleRate = 22050;
+  const totalSamples = pattern.reduce(
+    (total, segment) => total + Math.round((segment.durationMs / 1000) * sampleRate),
+    0,
+  );
+  const buffer = new ArrayBuffer(44 + totalSamples * 2);
+  const view = new DataView(buffer);
+  writeWavText(view, 0, "RIFF");
+  view.setUint32(4, 36 + totalSamples * 2, true);
+  writeWavText(view, 8, "WAVE");
+  writeWavText(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeWavText(view, 36, "data");
+  view.setUint32(40, totalSamples * 2, true);
+
+  let sampleOffset = 0;
+  pattern.forEach((segment) => {
+    const segmentSamples = Math.round((segment.durationMs / 1000) * sampleRate);
+    for (let index = 0; index < segmentSamples; index += 1) {
+      const edgeFade = Math.min(1, index / 80, (segmentSamples - index - 1) / 160);
+      const wave = segment.frequency > 0
+        ? Math.sign(Math.sin((2 * Math.PI * segment.frequency * index) / sampleRate))
+        : 0;
+      view.setInt16(44 + sampleOffset * 2, Math.round(wave * edgeFade * 30000), true);
+      sampleOffset += 1;
+    }
+  });
+
+  const url = URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+  buzzerMediaUrls.set(patternName, url);
+  return url;
+}
+
+async function playBuzzerFallback(patternName, volume) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass || volume <= 0) return false;
   try {
@@ -40,19 +108,48 @@ async function beep(volume = 0.7) {
     }
     const context = buzzerAudioContext;
     if (context.state === "suspended") await context.resume();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "square";
-    oscillator.frequency.setValueAtTime(880, context.currentTime);
-    gain.gain.setValueAtTime(Math.min(1, Math.max(0, volume)), context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.55);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.55);
+    let startAt = context.currentTime;
+    const safeVolume = Math.min(1, Math.max(0, volume));
+    const pattern = BUZZER_PATTERNS[patternName] || BUZZER_PATTERNS.period;
+    pattern.forEach((segment) => {
+      const durationSeconds = segment.durationMs / 1000;
+      if (segment.frequency > 0) {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(segment.frequency, startAt);
+        gain.gain.setValueAtTime(0.001, startAt);
+        gain.gain.exponentialRampToValueAtTime(safeVolume, startAt + 0.01);
+        gain.gain.setValueAtTime(safeVolume, Math.max(startAt + 0.01, startAt + durationSeconds - 0.03));
+        gain.gain.exponentialRampToValueAtTime(0.001, startAt + durationSeconds);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(startAt);
+        oscillator.stop(startAt + durationSeconds);
+      }
+      startAt += durationSeconds;
+    });
     return true;
   } catch {
     return false;
+  }
+}
+
+async function playBuzzer(patternName = "period", volume = 1) {
+  if (volume <= 0) return false;
+  try {
+    if (!buzzerMediaElement) {
+      buzzerMediaElement = new Audio();
+      buzzerMediaElement.preload = "auto";
+    }
+    buzzerMediaElement.pause();
+    buzzerMediaElement.src = getBuzzerMediaUrl(patternName);
+    buzzerMediaElement.currentTime = 0;
+    buzzerMediaElement.volume = Math.min(1, Math.max(0, volume));
+    await buzzerMediaElement.play();
+    return true;
+  } catch {
+    return playBuzzerFallback(patternName, volume);
   }
 }
 
@@ -69,15 +166,28 @@ export default function MatchClockPanel({ match }) {
   const [focusMode, setFocusMode] = useState(false);
   const [wakeLockRequested, setWakeLockRequested] = useState(false);
   const [wakeLockActive, setWakeLockActive] = useState(false);
-  const [volume, setVolume] = useState(70);
+  const [volume, setVolume] = useState(100);
   const wakeLockRef = useRef(null);
   const wakeLockRequestedRef = useRef(false);
-  const soundedRef = useRef({ period: false, shot: false });
+  const soundedRef = useRef({ period: false, shot: false, break: false });
 
   const applyResponse = useCallback((response) => {
     if (!response?.clock) return;
     const nextClock = { ...response.clock, clientReceivedAtMs: Date.now() };
-    setSnapshot(nextClock);
+    setSnapshot((current) => {
+      const sameBreak = current?.status === "break"
+        && nextClock.status === "break"
+        && current.currentPeriod === nextClock.currentPeriod
+        && current.overtimeCount === nextClock.overtimeCount;
+      return {
+        ...nextClock,
+        breakStartedAtMs: sameBreak
+          ? current.breakStartedAtMs
+          : nextClock.status === "break"
+            ? Date.parse(nextClock.serverNow || "") || Date.now()
+            : null,
+      };
+    });
     setScore(response.score || { a: 0, b: 0, updatedAt: null });
     setActivePlayers(response.activePlayers || []);
     setSelectedControllerId(nextClock.controllerId || "");
@@ -137,22 +247,43 @@ export default function MatchClockPanel({ match }) {
   const tied = score.a === score.b;
   const deadlineRemainingMs = Math.max(0, Date.parse(liveClock?.startDeadlineAt || "") - nowMs);
   const fallbackFactor = MATCH_CLOCK_FALLBACK_FACTORS[match.mode] ?? 0.8;
+  const scoreboardEnabled = hasMatchScoreboardOperators(match);
+  const isHalftimeBreak = isBreak
+    && liveClock.overtimeCount === 0
+    && liveClock.currentPeriod === Math.floor(liveClock.expectedPeriodCount / 2);
+  const breakLimitMs = isHalftimeBreak ? HALFTIME_BREAK_LIMIT_MS : QUARTER_BREAK_LIMIT_MS;
+  const breakElapsedMs = isBreak && liveClock.breakStartedAtMs
+    ? Math.max(0, nowMs - liveClock.breakStartedAtMs)
+    : 0;
+  const breakRemainingMs = Math.max(0, breakLimitMs - breakElapsedMs);
+  const breakOvertimeMs = Math.max(0, breakElapsedMs - breakLimitMs);
 
   useEffect(() => {
-    if (!liveClock || liveClock.status !== "running") {
-      soundedRef.current = { period: false, shot: false };
+    if (!liveClock) {
+      soundedRef.current = { period: false, shot: false, break: false };
       return;
     }
-    if (liveClock.periodRemainingMs <= 0 && !soundedRef.current.period) {
-      soundedRef.current.period = true;
-      void beep(volume / 100);
+    if (liveClock.status === "running") {
+      soundedRef.current.break = false;
+      if (liveClock.periodRemainingMs <= 0 && !soundedRef.current.period) {
+        soundedRef.current.period = true;
+        void playBuzzer("period", volume / 100);
+      } else if (liveClock.shotClockSeconds > 0 && liveClock.shotRemainingMs <= 0 && !soundedRef.current.shot) {
+        soundedRef.current.shot = true;
+        void playBuzzer("shot", volume / 100);
+      }
+      if (liveClock.shotRemainingMs > 0) soundedRef.current.shot = false;
+      return;
     }
-    if (liveClock.shotClockSeconds > 0 && liveClock.shotRemainingMs <= 0 && !soundedRef.current.shot) {
-      soundedRef.current.shot = true;
-      void beep(volume / 100);
+    soundedRef.current.period = false;
+    soundedRef.current.shot = false;
+    if (isBreak && breakElapsedMs >= breakLimitMs && !soundedRef.current.break) {
+      soundedRef.current.break = true;
+      void playBuzzer("warning", volume / 100);
+    } else if (!isBreak) {
+      soundedRef.current.break = false;
     }
-    if (liveClock.shotRemainingMs > 0) soundedRef.current.shot = false;
-  }, [liveClock, volume]);
+  }, [breakElapsedMs, breakLimitMs, isBreak, liveClock, volume]);
 
   const requestWakeLock = useCallback(async () => {
     if (!("wakeLock" in navigator)) {
@@ -251,7 +382,7 @@ export default function MatchClockPanel({ match }) {
 
   const testBuzzer = async () => {
     setDeviceNotice("");
-    const played = await beep(volume / 100);
+    const played = await playBuzzer("period", volume / 100);
     if (!played) {
       setDeviceNotice(volume <= 0
         ? "부저 음량이 0%입니다."
@@ -260,7 +391,17 @@ export default function MatchClockPanel({ match }) {
   };
 
   const confirmAction = (message, action, payload = {}) => {
-    if (window.confirm(message)) void runAction(action, payload);
+    if (!window.confirm(message)) return;
+    void runAction(action, payload).then((succeeded) => {
+      if (
+        succeeded
+        && (action === "endPeriod" || action === "endClock")
+        && !soundedRef.current.period
+      ) {
+        soundedRef.current.period = true;
+        void playBuzzer("period", volume / 100);
+      }
+    });
   };
 
   if (!liveClock) {
@@ -338,6 +479,7 @@ export default function MatchClockPanel({ match }) {
               </fieldset>
               <Button
                 type="button"
+                size="sm"
                 variant="secondary"
                 disabled={pendingAction === "configure" || !selectedControllerId}
                 onClick={() => void runAction("configure", { controllerId: selectedControllerId, shotClockSeconds })}
@@ -353,6 +495,7 @@ export default function MatchClockPanel({ match }) {
           {liveClock.canControl ? (
             <Button
               type="button"
+              size="sm"
               disabled={Boolean(pendingAction)}
               onClick={() => confirmAction("실제 경기시계를 시작할까요?", "start")}
             >
@@ -365,20 +508,27 @@ export default function MatchClockPanel({ match }) {
       ) : (
         <>
           <div className={`ui-match-clock-display-grid${liveClock.shotClockSeconds > 0 ? "" : " ui-match-clock-display-grid-single"}`}>
-            <div className="ui-match-clock-scoreboard" aria-label="기록 점수판">
-              <div>
-                <span className="ui-match-clock-team-label">A</span>
-                <strong className="ui-match-clock-team-score">{score.a}</strong>
-              </div>
+            <div
+              className={`ui-match-clock-scoreboard${scoreboardEnabled ? "" : " ui-match-clock-scoreboard-time-only"}`}
+              aria-label={scoreboardEnabled ? "기록 점수판" : "경기시간"}
+            >
+              {scoreboardEnabled ? (
+                <div>
+                  <span className="ui-match-clock-team-label">A</span>
+                  <strong className="ui-match-clock-team-score">{score.a}</strong>
+                </div>
+              ) : null}
               <div className="ui-match-clock-main-time">
                 <Badge tone="orange">{getMatchClockPeriodLabel(liveClock)}</Badge>
                 <time>{formatClockTime(liveClock.periodRemainingMs, { tenths: true })}</time>
                 <small>서버시간 기준</small>
               </div>
-              <div>
-                <span className="ui-match-clock-team-label">B</span>
-                <strong className="ui-match-clock-team-score">{score.b}</strong>
-              </div>
+              {scoreboardEnabled ? (
+                <div>
+                  <span className="ui-match-clock-team-label">B</span>
+                  <strong className="ui-match-clock-team-score">{score.b}</strong>
+                </div>
+              ) : null}
             </div>
 
             {liveClock.shotClockSeconds > 0 ? (
@@ -396,20 +546,33 @@ export default function MatchClockPanel({ match }) {
             ) : null}
           </div>
 
+          {isBreak ? (
+            <div className={`ui-match-clock-break${breakOvertimeMs > 0 ? " ui-match-clock-break-over" : ""}`} role="timer">
+              <span>{isHalftimeBreak ? "하프타임" : "쿼터 휴식"}</span>
+              <strong>
+                {breakOvertimeMs > 0
+                  ? `${formatClockTime(breakOvertimeMs)} 초과`
+                  : `${formatClockTime(breakRemainingMs)} 남음`}
+              </strong>
+              <small>권장 휴식 {isHalftimeBreak ? "10분" : "5분"} · 다음 구간 시작은 언제든 가능</small>
+            </div>
+          ) : null}
+
           {!isEnded && liveClock.canControl ? (
             <div className="ui-match-clock-actions ui-action-row">
               {isRunning ? (
-                <Button type="button" variant="secondary" onClick={() => void runAction("pause")}>
+                <Button type="button" size="sm" variant="secondary" onClick={() => void runAction("pause")}>
                   <Pause size={18} /> 일시정지
                 </Button>
               ) : !isBreak ? (
-                <Button type="button" onClick={() => void runAction("resume")}>
+                <Button type="button" size="sm" onClick={() => void runAction("resume")}>
                   <Play size={18} /> 계속
                 </Button>
               ) : null}
               {!isBreak ? (
                 <Button
                   type="button"
+                  size="sm"
                   variant="secondary"
                   onClick={() => confirmAction(`${getMatchClockPeriodLabel(liveClock)}를 종료할까요?`, "endPeriod")}
                 >
@@ -419,6 +582,7 @@ export default function MatchClockPanel({ match }) {
               {isBreak && !regulationEnded && liveClock.overtimeCount === 0 ? (
                 <Button
                   type="button"
+                  size="sm"
                   onClick={() => confirmAction(`${liveClock.currentPeriod + 1}쿼터를 시작할까요?`, "startPeriod")}
                 >
                   다음 쿼터 시작
@@ -427,6 +591,7 @@ export default function MatchClockPanel({ match }) {
               {isBreak && regulationEnded && tied ? (
                 <Button
                   type="button"
+                  size="sm"
                   onClick={() => confirmAction(`연장 ${liveClock.overtimeCount + 1}을 시작할까요?`, "startOvertime")}
                 >
                   연장 {liveClock.overtimeCount + 1} 시작
@@ -435,6 +600,7 @@ export default function MatchClockPanel({ match }) {
               {(isBreak && regulationEnded && !tied) || (isBreak && liveClock.overtimeCount > 0 && !tied) ? (
                 <Button
                   type="button"
+                  size="sm"
                   variant="secondary"
                   onClick={() => confirmAction("경기시계 운용을 종료할까요?", "endClock")}
                 >

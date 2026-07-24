@@ -1043,6 +1043,16 @@ export function getEffectiveStatRecorders(match = {}) {
   };
 }
 
+export function hasMatchScoreboardOperators(match = {}) {
+  if (match.refereeId) return true;
+  const recorders = getEffectiveStatRecorders(match);
+  return Boolean(
+    recorders.teamA
+    && recorders.teamB
+    && recorders.teamA !== recorders.teamB
+  );
+}
+
 export function getStatRecorderSides(match = {}, userId) {
   if (!userId) return [];
   const recorders = getEffectiveStatRecorders(match);

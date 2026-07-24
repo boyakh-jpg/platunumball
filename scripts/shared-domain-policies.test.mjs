@@ -68,6 +68,7 @@ import { toDiscordDeliveryRows, toMatchNotificationRows } from "../server/api/ma
 import {
   canRequestVoidMatchRestore,
   compareMatchRecency,
+  hasMatchScoreboardOperators,
   getVoidMatchRestoreTargetUserId,
   getMatchSideResult,
   getPlayerMatchResult,
@@ -167,6 +168,19 @@ test("core match policy has one canonical default", () => {
   assert.equal(getModeSize("unknown", 3), 3);
   assert.ok(isRefereeGrade("official"));
   assert.equal(isRefereeGrade("admin"), false);
+});
+
+test("match clock scoreboard requires a referee or recorders on both sides", () => {
+  assert.equal(hasMatchScoreboardOperators({ refereeId: "referee-1" }), true);
+  assert.equal(hasMatchScoreboardOperators({
+    reservePlayers: { teamA: ["recorder-a"], teamB: ["recorder-b"] },
+    statRecorders: { teamA: "recorder-a", teamB: "recorder-b" },
+  }), true);
+  assert.equal(hasMatchScoreboardOperators({
+    reservePlayers: { teamA: ["recorder-a"], teamB: [] },
+    statRecorders: { teamA: "recorder-a", teamB: "" },
+  }), false);
+  assert.equal(hasMatchScoreboardOperators({}), false);
 });
 
 test("room modes and administrator MMR policy use the same mode keys", () => {

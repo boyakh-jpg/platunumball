@@ -135,6 +135,10 @@
   color: var(--team-away);
 }
 
+.ui-match-clock-scoreboard-time-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .ui-match-clock-team-label {
   font-size: 0.72rem;
   font-weight: 900;
@@ -151,6 +155,11 @@
   color: var(--ui-button-color-active);
   background: var(--scoreboard-2);
   border-inline: 1px solid var(--rb-line);
+}
+
+.ui-match-clock-scoreboard-time-only .ui-match-clock-main-time {
+  color: var(--ui-button-color-active);
+  border-inline: 0;
 }
 
 .ui-match-clock-main-time time {
@@ -202,7 +211,38 @@
 }
 
 .ui-match-clock-actions > .ui-button {
-  flex: 1 1 150px;
+  flex: 0 1 auto;
+}
+
+.ui-match-clock-actions {
+  justify-content: flex-end;
+}
+
+.ui-match-clock-break {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  gap: var(--control-group-gap);
+  align-items: center;
+  padding: 8px 10px;
+  color: var(--rb-text);
+  background: var(--ui-control-group-bg);
+  border: 1px solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+}
+
+.ui-match-clock-break span,
+.ui-match-clock-break small {
+  color: var(--rb-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.ui-match-clock-break-over {
+  border-color: var(--rb-danger);
+}
+
+.ui-match-clock-break-over strong {
+  color: var(--rb-danger);
 }
 
 .ui-match-clock-readonly {
@@ -232,12 +272,14 @@
 
 .ui-match-clock-device-tools {
   display: grid;
-  grid-template-columns: repeat(3, max-content) minmax(180px, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
 }
 
 .ui-match-clock-volume {
   box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   height: var(--ui-button-height-sm);
   min-height: var(--control-height-sm);
   padding-inline: 10px;
@@ -359,9 +401,27 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .ui-match-clock-device-tools > .ui-button:nth-child(3),
-  .ui-match-clock-volume {
+  .ui-match-clock-break {
+    grid-template-columns: max-content 1fr;
+  }
+
+  .ui-match-clock-break small {
     grid-column: 1 / -1;
+  }
+}
+
+@media (orientation: portrait) and (width <= 720px) {
+  .ui-match-clock-focus-backdrop {
+    inset: 0 auto auto 0;
+    width: 100dvh;
+    height: 100dvw;
+    padding: 8px;
+    transform: translateX(100dvw) rotate(90deg);
+    transform-origin: top left;
+  }
+
+  .ui-match-clock-panel-focus {
+    min-height: calc(100dvw - 16px);
   }
 }
 
@@ -381,15 +441,6 @@
   .ui-match-clock-badges {
     max-width: none;
     justify-content: flex-start;
-  }
-
-  .ui-match-clock-device-tools {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ui-match-clock-device-tools > .ui-button:nth-child(3),
-  .ui-match-clock-volume {
-    grid-column: auto;
   }
 
   .ui-match-clock-scoreboard {
