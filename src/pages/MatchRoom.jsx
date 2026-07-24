@@ -676,7 +676,7 @@ export default function MatchRoom({ app }) {
     if (match.status === "disputed") {
       return {
         label: "이의 확인",
-        detail: openDisputes.length ? `방장이 이의제기 ${openDisputes.length}건을 건별로 가결 또는 부결합니다.` : "이의제기 처리가 끝나 결과 재승인을 기다립니다.",
+        detail: openDisputes.length ? `방장이 이의제기 ${openDisputes.length}건을 건별로 가결 또는 부결합니다.` : "이의 판정 완료 후 방장이 결과를 확정합니다.",
       };
     }
     if (match.status === "confirmed") {

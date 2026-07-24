@@ -2495,7 +2495,7 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
     const openCount = getOpenMatchDisputes(match).length;
     return {
       label: "이의신청방",
-      detail: openCount ? `방장이 이의제기 ${openCount}건을 건별로 가결 또는 부결합니다.` : "이의제기 처리가 끝나 결과 재승인을 기다립니다.",
+      detail: openCount ? `방장이 이의제기 ${openCount}건을 건별로 가결 또는 부결합니다.` : "이의 판정 완료 후 방장이 결과를 확정합니다.",
       disputed: true,
     };
   }

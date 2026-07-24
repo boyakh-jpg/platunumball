@@ -1132,8 +1132,9 @@ test("match dispute rejection, void reasons, restoration and scoped penalties st
   assert.equal(voidedState.matches[0].voidSnapshot.result.scoreA, 10);
   assert.equal(voidedState.users[0].trustScore, 78);
   const rejectedState = rejectMatchDispute(state, disputedMatch.id);
-  assert.equal(rejectedState.matches[0].status, "approval");
+  assert.equal(rejectedState.matches[0].status, "confirmed");
   assert.equal(rejectedState.matches[0].result.scoreA, 10);
+  assert.match(rejectedState.notifications[0].body, /불복은 신고/);
 
   const [matchRoom, recruiting, matchSync, reportSubmit, adminReview, migration] = await Promise.all([
     readSource("src/pages/MatchRoom.jsx"),

@@ -25,16 +25,18 @@ function makeState(currentUserId = "host") {
   return {
     currentUserId,
     users: [
-      { id: "host", name: "방장", trustScore: 100 },
-      { id: "guest", name: "참가자", trustScore: 100 },
-      { id: "reserve", name: "후보", trustScore: 100 },
+      { id: "host", name: "방장", trustScore: 100, streak: 0, ratings: { integrated: 1200, modes: { "1v1": 1200 } } },
+      { id: "guest", name: "참가자", trustScore: 100, streak: 0, ratings: { integrated: 1200, modes: { "1v1": 1200 } } },
+      { id: "reserve", name: "후보", trustScore: 100, streak: 0, ratings: { integrated: 1200, modes: { "1v1": 1200 } } },
     ],
     teams: [],
+    affiliations: [],
     recruitingPosts: [],
     matches: [{
       id: "match-queue",
       title: "병렬 이의제기 검증",
       mode: "1v1",
+      ranked: false,
       status: "approval",
       createdBy: "host",
       endedAt,
@@ -135,9 +137,10 @@ test("여러 참가자의 이의를 병렬 접수하고 방장이 건별 처리�
   const remaining = getOpenMatchDisputes(accepted.matches[0])[0];
   const finished = resolveMatchDispute(accepted, "match-queue", remaining.id, "rejected");
   assert.equal(getOpenMatchDisputes(finished.matches[0]).length, 0);
-  assert.equal(finished.matches[0].status, "approval");
+  assert.equal(finished.matches[0].status, "confirmed");
   assert.equal(finished.matches[0].result.playerStats.host.points, 8);
   assert.deepEqual(finished.matches[0].approvals, { teamA: [], teamB: [] });
+  assert.match(finished.notifications[0].body, /불복은 신고/);
 });
 
 test("기존 사유형 이의제기도 가결할 수 있다", () => {
@@ -147,7 +150,7 @@ test("기존 사유형 이의제기도 가결할 수 있다", () => {
   const finished = resolveMatchDispute({ ...disputed, currentUserId: "host" }, "match-queue", openDispute.id, "accepted");
 
   assert.equal(getOpenMatchDisputes(finished.matches[0]).length, 0);
-  assert.equal(finished.matches[0].status, "approval");
+  assert.equal(finished.matches[0].status, "confirmed");
   assert.deepEqual(finished.matches[0].result, start.matches[0].result);
 });
 
@@ -169,6 +172,11 @@ test("DB와 목록 API가 병렬 큐를 새로고침 가능한 형태로 조회�
   assert.match(migration, /rankball_match_resolve_dispute_action/);
   assert.match(migration, /safe_decision not in \('accepted', 'rejected'\)/);
   assert.match(migration, /match_host_required/);
+  const hostFinalizeMigration = await readSource("supabase/migrations/20260724235900_match_dispute_host_finalize.sql");
+  assert.match(hostFinalizeMigration, /match_dispute_host_required/);
+  assert.match(hostFinalizeMigration, /match_dispute_items_open/);
+  assert.match(hostFinalizeMigration, /'reapprovalRequired', false/);
+  assert.match(hostFinalizeMigration, /rankball_match_finalize_locked\(/);
   assert.match(listApi, /attachOpenDisputeQueues/);
   assert.match(listApi, /\.eq\("status", "open"\)/);
 });

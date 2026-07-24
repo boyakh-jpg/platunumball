@@ -4493,36 +4493,50 @@ export function resolveMatchDispute(state, matchId, disputeId, decision) {
       }
     : dispute);
   const openCount = disputes.filter((dispute) => dispute.status === "open").length;
-  const nextMatch = openCount
-    ? {
-        ...match,
-        disputes,
-        disputeDraftResult: nextDraft,
-        disputeDraftUpdatedAt: resolvedAt,
-      }
-    : {
-        ...match,
-        status: "approval",
-        result: nextDraft,
-        teamA: { ...match.teamA, score: nextDraft.scoreA },
-        teamB: { ...match.teamB, score: nextDraft.scoreB },
-        approvals: { teamA: [], teamB: [] },
-        disputes,
-        disputeDraftResult: undefined,
-        disputeDraftUpdatedAt: undefined,
-        disputeResolvedAt: resolvedAt,
-      };
   const decisionLabel = safeDecision === "accepted" ? "가결" : "부결";
 
+  if (!openCount) {
+    const resolvedMatch = {
+      ...match,
+      result: nextDraft,
+      teamA: { ...match.teamA, score: nextDraft.scoreA },
+      teamB: { ...match.teamB, score: nextDraft.scoreB },
+      approvals: { teamA: [], teamB: [] },
+      disputes,
+      disputeDraftResult: undefined,
+      disputeDraftUpdatedAt: undefined,
+      disputeResolvedAt: resolvedAt,
+    };
+    const finalizedState = finalizeMatch({
+      ...state,
+      matches: state.matches.map((item) => item.id === matchId ? resolvedMatch : item),
+    }, resolvedMatch);
+    return {
+      ...finalizedState,
+      notifications: [{
+        id: makeId("n"),
+        title: `이의제기 ${decisionLabel}`,
+        body: `${match.title} 이의제기를 모두 판정해 결과를 확정했습니다. 불복은 신고로 접수해 주세요.`,
+        tone: "match",
+        matchId,
+        targetUserId: targetDispute.by,
+      }, ...finalizedState.notifications],
+    };
+  }
+
+  const nextMatch = {
+    ...match,
+    disputes,
+    disputeDraftResult: nextDraft,
+    disputeDraftUpdatedAt: resolvedAt,
+  };
   return {
     ...state,
     matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
     notifications: [{
       id: makeId("n"),
       title: `이의제기 ${decisionLabel}`,
-      body: openCount
-        ? `${match.title} 이의제기 1건을 ${decisionLabel}했습니다. 남은 요청 ${openCount}건을 처리해 주세요.`
-        : `${match.title} 이의제기 처리가 끝났습니다. 변경된 결과를 다시 승인해 주세요.`,
+      body: `${match.title} 이의제기 1건을 ${decisionLabel}했습니다. 남은 요청 ${openCount}건을 처리해 주세요.`,
       tone: "match",
       matchId,
       targetUserId: targetDispute.by,
