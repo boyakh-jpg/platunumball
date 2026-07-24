@@ -371,18 +371,29 @@ function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = DEFAULT_R
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
-function getRoomEditDraft(post) {
-  const rules = normalizeMatchRules(post.rules, { mode: post.mode });
+function getRoomEditDraft(post, sourceMatch = null) {
+  const room = sourceMatch
+    ? {
+        ...post,
+        ...sourceMatch,
+        sideCapacity: sourceMatch.rules?.sideCapacity ?? post.sideCapacity,
+        benchCapacity: sourceMatch.rules?.benchCapacity ?? post.benchCapacity,
+        hostJoinMode: sourceMatch.rules?.hostJoinMode ?? post.hostJoinMode,
+        mmrRangeMode: sourceMatch.mmrRangeMode ?? sourceMatch.rules?.mmrRangeMode ?? post.mmrRangeMode,
+        rules: sourceMatch.rules ?? post.rules,
+      }
+    : post;
+  const rules = normalizeMatchRules(room.rules, { mode: room.mode });
   return {
-    courtId: post.courtId ?? post.court_id ?? "",
-    court: post.court ?? "",
-    sideCapacity: getRecruitingSideCapacity(post),
-    benchCapacity: getRecruitingBenchCapacity(post),
-    matchJoinMode: post.hostJoinMode === "team" ? "team" : "player",
-    mmrRangeMode: post.mmrRangeMode ?? post.roomState?.mmrRangeMode ?? "narrow",
+    courtId: room.courtId ?? room.court_id ?? "",
+    court: room.court ?? "",
+    sideCapacity: getRecruitingSideCapacity(room),
+    benchCapacity: getRecruitingBenchCapacity(room),
+    matchJoinMode: room.hostJoinMode === "team" ? "team" : "player",
+    mmrRangeMode: room.mmrRangeMode ?? room.roomState?.mmrRangeMode ?? "narrow",
     ...rules,
-    stakes: post.stakes ?? "",
-    memo: post.memo ?? "",
+    stakes: room.stakes ?? "",
+    memo: room.memo ?? "",
   };
 }
 
@@ -3272,7 +3283,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   };
   const getRoomEditDraftByPost = (roomPost) => roomEditDraftByPost[roomPost.id] ?? null;
   const openRoomEdit = (roomPost) => {
-    setRoomEditDraftByPost((current) => ({ ...current, [roomPost.id]: getRoomEditDraft(roomPost) }));
+    setRoomEditDraftByPost((current) => ({
+      ...current,
+      [roomPost.id]: getRoomEditDraft(roomPost, sourceMatch),
+    }));
     setRoomEditStatusByPost((current) => ({ ...current, [roomPost.id]: { pending: false, error: "" } }));
   };
   const closeRoomEdit = (roomPost) => {
@@ -3285,7 +3299,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const updateRoomEditDraft = (roomPost, patch) => {
     setRoomEditDraftByPost((current) => ({
       ...current,
-      [roomPost.id]: { ...(current[roomPost.id] ?? getRoomEditDraft(roomPost)), ...patch },
+      [roomPost.id]: { ...(current[roomPost.id] ?? getRoomEditDraft(roomPost, sourceMatch)), ...patch },
     }));
     setRoomEditStatusByPost((current) => ({
       ...current,

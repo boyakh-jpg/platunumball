@@ -259,4 +259,5 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(migration, /grant execute on function public\.rankball_match_room_update_action/);
   assert.match(recruitingPage, /현재 참가 슬롯은 그대로 유지됩니다/);
   assert.match(recruitingPage, /roomEditStatus\.pending \? "저장 중"/);
+  assert.match(recruitingPage, /getRoomEditDraft\(roomPost, sourceMatch\)/);
 });
