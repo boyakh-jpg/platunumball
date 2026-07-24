@@ -1433,11 +1433,11 @@ function RoomKickPanel({
   currentUserId = "",
   poolMode = false,
   placementByPlayerId = null,
-  allowedPlayerIds = null,
+  placementPlayerIds = null,
 }) {
   const [pendingKick, setPendingKick] = useState(null);
   const [pendingSwap, setPendingSwap] = useState(null);
-  const allowedPlayerIdSet = Array.isArray(allowedPlayerIds) ? new Set(allowedPlayerIds.filter(Boolean)) : null;
+  const placementPlayerIdSet = Array.isArray(placementPlayerIds) ? new Set(placementPlayerIds.filter(Boolean)) : null;
   const rows = [];
   (lobby.entries ?? []).forEach((entry) => {
     const partyEntry = isPartyEntry(entry);
@@ -1448,7 +1448,6 @@ function RoomKickPanel({
       ...reserveIds.map((playerId) => ({ playerId, reserve: true })),
     ].forEach(({ playerId, reserve }) => {
       if (!playerId || (!attendanceBySide && entry.fixed && playerId === entry.playerId)) return;
-      if (allowedPlayerIdSet && !allowedPlayerIdSet.has(playerId)) return;
       const user = userById[playerId];
       if (!user) return;
       const placement = placementByPlayerId?.[playerId];
@@ -1484,6 +1483,7 @@ function RoomKickPanel({
       <div className="arena-host-kick-list">
         {rows.map(({ entry, partyEntry, playerId, reserve, side, user }) => {
           const checkedIn = Boolean(attendanceBySide?.[side]?.includes(playerId));
+          const placementAllowed = !placementPlayerIdSet || placementPlayerIdSet.has(playerId);
           const selfRow = playerId === currentUserId;
           const hostRow = playerId === hostPlayerId;
           const kickDisabled = selfRow || (requireMissingAttendance && checkedIn);
@@ -1525,7 +1525,7 @@ function RoomKickPanel({
                   강퇴
                 </Button>
                 {onSetReserve ? (
-                  <Button type="button" size="sm" variant="secondary" onClick={() => onSetReserve({ ...entry, side }, playerId, !reserve)}>
+                  <Button type="button" size="sm" variant="secondary" disabled={!placementAllowed} onClick={() => onSetReserve({ ...entry, side }, playerId, !reserve)}>
                     {reserve ? "출전" : "후보"}
                   </Button>
                 ) : null}
@@ -1534,6 +1534,7 @@ function RoomKickPanel({
                     type="button"
                     size="sm"
                     variant="secondary"
+                    disabled={!placementAllowed}
                     onClick={() => onSetPlacement(playerId, { side: side === "teamA" ? "teamB" : "teamA", reserve })}
                   >
                     {side === "teamA" ? "B" : "A"} 이동
@@ -1545,7 +1546,7 @@ function RoomKickPanel({
                     size="sm"
                     className="arena-player-swap-button"
                     variant={pendingSwap?.playerId === playerId ? "primary" : "secondary"}
-                    disabled={Boolean(pendingSwap && pendingSwap.side === side && pendingSwap.playerId !== playerId)}
+                    disabled={!placementAllowed || Boolean(pendingSwap && pendingSwap.side === side && pendingSwap.playerId !== playerId)}
                     onClick={() => {
                       if (!pendingSwap || pendingSwap.playerId === playerId) {
                         setPendingSwap(pendingSwap?.playerId === playerId ? null : { playerId, side });
@@ -4739,7 +4740,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   currentUserId={app.currentUser.id}
                   poolMode={pickupPoolMode}
                   placementByPlayerId={sourceMatchPlacementByPlayerId}
-                  allowedPlayerIds={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? sourceMatchCheckedInIds : null}
+                  placementPlayerIds={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? sourceMatchCheckedInIds : null}
                 />
               ) : null}
 
