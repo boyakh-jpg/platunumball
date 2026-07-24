@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { BellRing, Maximize2, Minimize2, Pause, Play, Power, Volume2, VolumeX } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
@@ -208,31 +208,29 @@ export default function MatchClockPanel({ match }) {
   };
 
   const openFocusMode = async () => {
-    setFocusMode(true);
+    flushSync(() => setFocusMode(true));
     setDeviceNotice("");
+    const fullscreenTarget = document.querySelector(".ui-match-clock-focus-backdrop");
+    const requestFullscreen = fullscreenTarget?.requestFullscreen
+      || fullscreenTarget?.webkitRequestFullscreen;
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
     try {
-      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen();
+      if (!fullscreenElement && requestFullscreen) {
+        await Promise.resolve(requestFullscreen.call(fullscreenTarget));
+      } else if (!requestFullscreen) {
+        setDeviceNotice("브라우저 전체화면 대신 화면 덮기 팝업으로 열었습니다.");
       }
     } catch {
       setDeviceNotice("브라우저 전체화면을 허용하지 않아 시계 팝업으로 열었습니다.");
-    }
-    try {
-      await window.screen.orientation?.lock?.("landscape");
-    } catch {
-      setDeviceNotice((notice) => notice || "가로 고정이 안 되면 휴대폰을 가로로 돌려주세요.");
     }
   };
 
   const closeFocusMode = useCallback(async () => {
     setFocusMode(false);
-    try {
-      window.screen.orientation?.unlock?.();
-    } catch {
-      // Orientation lock is optional. Closing the clock must still continue.
-    }
-    if (document.fullscreenElement) {
-      await document.exitFullscreen().catch(() => {});
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+    const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+    if (fullscreenElement && exitFullscreen) {
+      await Promise.resolve(exitFullscreen.call(document)).catch(() => {});
     }
   }, []);
 
@@ -242,7 +240,12 @@ export default function MatchClockPanel({ match }) {
       if (event.key === "Escape") void closeFocusMode();
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [closeFocusMode, focusMode]);
 
   const testBuzzer = async () => {
@@ -288,7 +291,7 @@ export default function MatchClockPanel({ match }) {
             </Badge>
           </div>
           {focusMode ? (
-            <Button type="button" size="sm" variant="secondary" onClick={() => void closeFocusMode()}>
+            <Button type="button" size="sm" variant="primary" onClick={() => void closeFocusMode()}>
               <Minimize2 size={16} /> 닫기
             </Button>
           ) : null}
@@ -469,7 +472,7 @@ export default function MatchClockPanel({ match }) {
         <Button
           type="button"
           size="sm"
-          variant={focusMode ? "primary" : "secondary"}
+          variant="primary"
           aria-pressed={focusMode}
           onClick={() => void (focusMode ? closeFocusMode() : openFocusMode())}
         >
@@ -479,12 +482,15 @@ export default function MatchClockPanel({ match }) {
         <Button
           type="button"
           size="sm"
-          variant={wakeLockRequested ? "primary" : "secondary"}
+          variant="primary"
           aria-pressed={wakeLockRequested}
           onClick={() => void toggleWakeLock()}
         >
           <Power size={16} />
           {wakeLockActive ? "화면 유지 켜짐" : wakeLockRequested ? "화면 유지 재연결" : "화면 유지 켜기"}
+        </Button>
+        <Button type="button" size="sm" variant="primary" onClick={() => void testBuzzer()}>
+          <BellRing size={16} /> 부저 시험
         </Button>
         <label className="ui-match-clock-volume">
           {volume > 0 ? <Volume2 size={17} /> : <VolumeX size={17} />}
@@ -498,9 +504,6 @@ export default function MatchClockPanel({ match }) {
             onChange={(event) => setVolume(Number(event.target.value))}
           />
         </label>
-        <Button type="button" size="sm" variant="secondary" onClick={() => void testBuzzer()}>
-          <BellRing size={16} /> 부저 시험
-        </Button>
       </div>
       {deviceNotice ? <p className="ui-match-clock-device-notice" role="status">{deviceNotice}</p> : null}
 
