@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BellRing, Maximize2, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { createPortal } from "react-dom";
+import { BellRing, Maximize2, Minimize2, Pause, Play, Power, Volume2, VolumeX } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import {
@@ -22,26 +23,36 @@ const ERROR_LABELS = Object.freeze({
   server_actions_disabled: "서버 기능이 꺼져 있어 경기시계를 사용할 수 없습니다.",
 });
 
+let buzzerAudioContext = null;
+
 function getErrorLabel(error) {
   const code = String(error?.code || error?.message || "");
   return ERROR_LABELS[code] || "경기시계 처리에 실패했습니다.";
 }
 
-function beep(volume = 0.7) {
+async function beep(volume = 0.7) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass || volume <= 0) return;
-  const context = new AudioContextClass();
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
-  oscillator.type = "square";
-  oscillator.frequency.setValueAtTime(880, context.currentTime);
-  gain.gain.setValueAtTime(Math.min(1, Math.max(0, volume)), context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.55);
-  oscillator.connect(gain);
-  gain.connect(context.destination);
-  oscillator.start();
-  oscillator.stop(context.currentTime + 0.55);
-  oscillator.addEventListener("ended", () => context.close());
+  if (!AudioContextClass || volume <= 0) return false;
+  try {
+    if (!buzzerAudioContext || buzzerAudioContext.state === "closed") {
+      buzzerAudioContext = new AudioContextClass();
+    }
+    const context = buzzerAudioContext;
+    if (context.state === "suspended") await context.resume();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "square";
+    oscillator.frequency.setValueAtTime(880, context.currentTime);
+    gain.gain.setValueAtTime(Math.min(1, Math.max(0, volume)), context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.55);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.55);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export default function MatchClockPanel({ match }) {
@@ -52,10 +63,14 @@ export default function MatchClockPanel({ match }) {
   const [shotClockSeconds, setShotClockSeconds] = useState(0);
   const [pendingAction, setPendingAction] = useState("");
   const [error, setError] = useState("");
+  const [deviceNotice, setDeviceNotice] = useState("");
   const [nowMs, setNowMs] = useState(Date.now());
-  const [wakeLockEnabled, setWakeLockEnabled] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [wakeLockRequested, setWakeLockRequested] = useState(false);
+  const [wakeLockActive, setWakeLockActive] = useState(false);
   const [volume, setVolume] = useState(70);
   const wakeLockRef = useRef(null);
+  const wakeLockRequestedRef = useRef(false);
   const soundedRef = useRef({ period: false, shot: false });
 
   const applyResponse = useCallback((response) => {
@@ -129,34 +144,43 @@ export default function MatchClockPanel({ match }) {
     }
     if (liveClock.periodRemainingMs <= 0 && !soundedRef.current.period) {
       soundedRef.current.period = true;
-      beep(volume / 100);
+      void beep(volume / 100);
     }
     if (liveClock.shotClockSeconds > 0 && liveClock.shotRemainingMs <= 0 && !soundedRef.current.shot) {
       soundedRef.current.shot = true;
-      beep(volume / 100);
+      void beep(volume / 100);
     }
     if (liveClock.shotRemainingMs > 0) soundedRef.current.shot = false;
   }, [liveClock, volume]);
 
   const requestWakeLock = useCallback(async () => {
     if (!("wakeLock" in navigator)) {
-      setError("이 브라우저는 화면 유지를 지원하지 않습니다.");
-      setWakeLockEnabled(false);
-      return;
+      wakeLockRequestedRef.current = false;
+      setWakeLockRequested(false);
+      setWakeLockActive(false);
+      setDeviceNotice("이 브라우저는 화면 유지를 지원하지 않습니다.");
+      return false;
     }
     try {
-      wakeLockRef.current = await navigator.wakeLock.request("screen");
-      setWakeLockEnabled(true);
-      wakeLockRef.current.addEventListener("release", () => setWakeLockEnabled(false), { once: true });
+      const lock = await navigator.wakeLock.request("screen");
+      wakeLockRef.current = lock;
+      setWakeLockActive(true);
+      setDeviceNotice("");
+      lock.addEventListener("release", () => {
+        if (wakeLockRef.current === lock) wakeLockRef.current = null;
+        setWakeLockActive(false);
+      }, { once: true });
+      return true;
     } catch {
-      setWakeLockEnabled(false);
-      setError("화면 유지 권한을 허용하지 못했습니다.");
+      setWakeLockActive(false);
+      setDeviceNotice("화면 유지 권한을 허용하지 못했습니다.");
+      return false;
     }
   }, []);
 
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === "visible" && wakeLockEnabled && !wakeLockRef.current) {
+      if (document.visibilityState === "visible" && wakeLockRequestedRef.current && !wakeLockRef.current) {
         void requestWakeLock();
       }
     };
@@ -166,16 +190,69 @@ export default function MatchClockPanel({ match }) {
       wakeLockRef.current?.release().catch(() => {});
       wakeLockRef.current = null;
     };
-  }, [requestWakeLock, wakeLockEnabled]);
+  }, [requestWakeLock]);
 
   const toggleWakeLock = async () => {
-    if (wakeLockEnabled) {
+    if (wakeLockRequestedRef.current) {
+      wakeLockRequestedRef.current = false;
+      setWakeLockRequested(false);
       await wakeLockRef.current?.release().catch(() => {});
       wakeLockRef.current = null;
-      setWakeLockEnabled(false);
+      setWakeLockActive(false);
+      setDeviceNotice("");
       return;
     }
+    wakeLockRequestedRef.current = true;
+    setWakeLockRequested(true);
     await requestWakeLock();
+  };
+
+  const openFocusMode = async () => {
+    setFocusMode(true);
+    setDeviceNotice("");
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {
+      setDeviceNotice("브라우저 전체화면을 허용하지 않아 시계 팝업으로 열었습니다.");
+    }
+    try {
+      await window.screen.orientation?.lock?.("landscape");
+    } catch {
+      setDeviceNotice((notice) => notice || "가로 고정이 안 되면 휴대폰을 가로로 돌려주세요.");
+    }
+  };
+
+  const closeFocusMode = useCallback(async () => {
+    setFocusMode(false);
+    try {
+      window.screen.orientation?.unlock?.();
+    } catch {
+      // Orientation lock is optional. Closing the clock must still continue.
+    }
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!focusMode) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") void closeFocusMode();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeFocusMode, focusMode]);
+
+  const testBuzzer = async () => {
+    setDeviceNotice("");
+    const played = await beep(volume / 100);
+    if (!played) {
+      setDeviceNotice(volume <= 0
+        ? "부저 음량이 0%입니다."
+        : "브라우저에서 부저 재생을 허용하지 않았습니다.");
+    }
   };
 
   const confirmAction = (message, action, payload = {}) => {
@@ -191,20 +268,30 @@ export default function MatchClockPanel({ match }) {
     );
   }
 
-  return (
-    <section className="ui-match-clock-panel ui-panel" aria-label="경기시계">
+  const clockPanel = (
+    <section
+      className={`ui-match-clock-panel ui-panel${focusMode ? " ui-match-clock-panel-focus" : ""}`}
+      aria-label="경기시계"
+    >
       <header className="ui-match-clock-header">
         <div>
           <span className="ui-match-clock-eyebrow">GAME CLOCK</span>
           <h3>경기시계</h3>
         </div>
-        <div className="ui-match-clock-badges">
-          <Badge tone={isRunning ? "green" : isEnded ? "neutral" : "gold"}>
-            {isRunning ? "진행 중" : isEnded ? "시계 종료" : isPending ? "시작 대기" : isBreak ? "휴식" : "일시정지"}
-          </Badge>
-          <Badge tone={recognition.recognized ? "green" : "neutral"}>
-            인정 시간 {Math.round(recognition.ratio * 100)}%
-          </Badge>
+        <div className="ui-match-clock-header-tools">
+          <div className="ui-match-clock-badges">
+            <Badge tone={isRunning ? "green" : isEnded ? "neutral" : "gold"}>
+              {isRunning ? "진행 중" : isEnded ? "시계 종료" : isPending ? "시작 대기" : isBreak ? "휴식" : "일시정지"}
+            </Badge>
+            <Badge tone={recognition.recognized ? "green" : "neutral"}>
+              인정 시간 {Math.round(recognition.ratio * 100)}%
+            </Badge>
+          </div>
+          {focusMode ? (
+            <Button type="button" size="sm" variant="secondary" onClick={() => void closeFocusMode()}>
+              <Minimize2 size={16} /> 닫기
+            </Button>
+          ) : null}
         </div>
       </header>
 
@@ -273,35 +360,37 @@ export default function MatchClockPanel({ match }) {
         </div>
       ) : (
         <>
-          <div className="ui-match-clock-scoreboard" aria-label="기록 점수판">
-            <div>
-              <span className="ui-match-clock-team-label">A</span>
-              <strong className="ui-match-clock-team-score">{score.a}</strong>
+          <div className={`ui-match-clock-display-grid${liveClock.shotClockSeconds > 0 ? "" : " ui-match-clock-display-grid-single"}`}>
+            <div className="ui-match-clock-scoreboard" aria-label="기록 점수판">
+              <div>
+                <span className="ui-match-clock-team-label">A</span>
+                <strong className="ui-match-clock-team-score">{score.a}</strong>
+              </div>
+              <div className="ui-match-clock-main-time">
+                <Badge tone="orange">{getMatchClockPeriodLabel(liveClock)}</Badge>
+                <time>{formatClockTime(liveClock.periodRemainingMs, { tenths: true })}</time>
+                <small>서버시간 기준</small>
+              </div>
+              <div>
+                <span className="ui-match-clock-team-label">B</span>
+                <strong className="ui-match-clock-team-score">{score.b}</strong>
+              </div>
             </div>
-            <div className="ui-match-clock-main-time">
-              <Badge tone="orange">{getMatchClockPeriodLabel(liveClock)}</Badge>
-              <time>{formatClockTime(liveClock.periodRemainingMs, { tenths: true })}</time>
-              <small>서버시간 기준</small>
-            </div>
-            <div>
-              <span className="ui-match-clock-team-label">B</span>
-              <strong className="ui-match-clock-team-score">{score.b}</strong>
-            </div>
-          </div>
 
-          {liveClock.shotClockSeconds > 0 ? (
-            <button
-              type="button"
-              className="ui-match-shot-clock"
-              disabled={!liveClock.canControl || isEnded || isBreak}
-              onClick={() => void runAction("resetShot")}
-              aria-label={`샷클락 ${formatClockTime(liveClock.shotRemainingMs)}. 눌러서 ${liveClock.shotClockSeconds}초로 초기화`}
-            >
-              <span className="ui-match-shot-clock-label">SHOT CLOCK</span>
-              <strong className="ui-match-shot-clock-value">{Math.ceil(liveClock.shotRemainingMs / 1000)}</strong>
-              <small className="ui-match-shot-clock-hint">{liveClock.canControl ? `전체 영역을 눌러 ${liveClock.shotClockSeconds}초 초기화` : "읽기 전용"}</small>
-            </button>
-          ) : null}
+            {liveClock.shotClockSeconds > 0 ? (
+              <button
+                type="button"
+                className="ui-match-shot-clock"
+                disabled={!liveClock.canControl || isEnded || isBreak}
+                onClick={() => void runAction("resetShot")}
+                aria-label={`샷클락 ${formatClockTime(liveClock.shotRemainingMs)}. 눌러서 ${liveClock.shotClockSeconds}초로 초기화`}
+              >
+                <span className="ui-match-shot-clock-label">SHOT CLOCK</span>
+                <strong className="ui-match-shot-clock-value">{Math.ceil(liveClock.shotRemainingMs / 1000)}</strong>
+                <small className="ui-match-shot-clock-hint">{liveClock.canControl ? `전체 영역을 눌러 ${liveClock.shotClockSeconds}초 초기화` : "읽기 전용"}</small>
+              </button>
+            ) : null}
+          </div>
 
           {!isEnded && liveClock.canControl ? (
             <div className="ui-match-clock-actions ui-action-row">
@@ -377,8 +466,25 @@ export default function MatchClockPanel({ match }) {
       )}
 
       <div className="ui-match-clock-device-tools">
-        <Button type="button" size="sm" variant="secondary" onClick={() => void toggleWakeLock()}>
-          <Maximize2 size={16} /> 화면 유지 {wakeLockEnabled ? "켜짐" : "꺼짐"}
+        <Button
+          type="button"
+          size="sm"
+          variant={focusMode ? "primary" : "secondary"}
+          aria-pressed={focusMode}
+          onClick={() => void (focusMode ? closeFocusMode() : openFocusMode())}
+        >
+          {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          {focusMode ? "전체화면 닫기" : "시계 전체화면"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={wakeLockRequested ? "primary" : "secondary"}
+          aria-pressed={wakeLockRequested}
+          onClick={() => void toggleWakeLock()}
+        >
+          <Power size={16} />
+          {wakeLockActive ? "화면 유지 켜짐" : wakeLockRequested ? "화면 유지 재연결" : "화면 유지 켜기"}
         </Button>
         <label className="ui-match-clock-volume">
           {volume > 0 ? <Volume2 size={17} /> : <VolumeX size={17} />}
@@ -392,10 +498,11 @@ export default function MatchClockPanel({ match }) {
             onChange={(event) => setVolume(Number(event.target.value))}
           />
         </label>
-        <Button type="button" size="sm" variant="secondary" onClick={() => beep(volume / 100)}>
+        <Button type="button" size="sm" variant="secondary" onClick={() => void testBuzzer()}>
           <BellRing size={16} /> 부저 시험
         </Button>
       </div>
+      {deviceNotice ? <p className="ui-match-clock-device-notice" role="status">{deviceNotice}</p> : null}
 
       {isEnded ? (
         <div className="ui-match-clock-result ui-status-strip">
@@ -408,4 +515,15 @@ export default function MatchClockPanel({ match }) {
       {error ? <p className="ui-match-clock-error" role="alert">{error}</p> : null}
     </section>
   );
+
+  if (focusMode) {
+    return createPortal(
+      <div className="ui-match-clock-focus-backdrop" role="dialog" aria-modal="true" aria-label="전체화면 경기시계">
+        {clockPanel}
+      </div>,
+      document.body,
+    );
+  }
+
+  return clockPanel;
 }

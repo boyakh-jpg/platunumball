@@ -6,6 +6,7 @@
 }
 
 .ui-match-clock-header,
+.ui-match-clock-header-tools,
 .ui-match-clock-badges,
 .ui-match-clock-controller-status,
 .ui-match-clock-device-tools,
@@ -17,6 +18,10 @@
 
 .ui-match-clock-header {
   justify-content: space-between;
+}
+
+.ui-match-clock-header-tools {
+  justify-content: flex-end;
 }
 
 .ui-match-clock-header h3,
@@ -92,6 +97,13 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--control-group-gap);
+}
+
+.ui-match-clock-display-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--page-section-gap);
+  min-width: 0;
 }
 
 .ui-match-clock-scoreboard {
@@ -251,6 +263,59 @@
   font-weight: 800;
 }
 
+.ui-match-clock-device-notice {
+  margin: 0;
+  color: var(--rb-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.ui-match-clock-focus-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  overflow: auto;
+  background: var(--rb-bg);
+}
+
+.ui-match-clock-panel-focus {
+  width: 100%;
+  min-height: calc(100dvh - max(20px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
+  align-content: start;
+}
+
+@media (orientation: landscape) and (width >= 720px) {
+  .ui-match-clock-panel-focus .ui-match-clock-display-grid {
+    grid-template-columns: minmax(0, 1.45fr) minmax(240px, 0.55fr);
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-display-grid-single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-scoreboard,
+  .ui-match-clock-panel-focus .ui-match-shot-clock {
+    min-height: clamp(190px, 42vh, 390px);
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-team-score {
+    font-size: clamp(4rem, 11vw, 8rem);
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-main-time time {
+    font-size: clamp(3rem, 8vw, 6rem);
+  }
+
+  .ui-match-clock-panel-focus .ui-match-shot-clock-value {
+    font-size: clamp(6rem, 18vw, 12rem);
+  }
+}
+
 @media (width <= 720px) {
   .ui-match-clock-header {
     align-items: flex-start;
@@ -258,6 +323,11 @@
 
   .ui-match-clock-badges {
     max-width: 54%;
+  }
+
+  .ui-match-clock-header-tools {
+    align-items: flex-end;
+    flex-direction: column;
   }
 
   .ui-match-clock-scoreboard {
@@ -294,6 +364,10 @@
 
   .ui-match-clock-header {
     display: grid;
+  }
+
+  .ui-match-clock-header-tools {
+    align-items: flex-start;
   }
 
   .ui-match-clock-badges {
