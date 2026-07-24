@@ -19870,7 +19870,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
 .landing-hero,
 html[data-theme="light"] .landing-hero {
   background:
-    var(--bg-action) var(--hero-bg-position-action) / var(--hero-bg-size) no-repeat,
+    var(--bg-action) var(--landing-hero-position, var(--hero-bg-position-action)) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
   backdrop-filter: none;
   filter: none;
@@ -19893,7 +19893,7 @@ html[data-theme="light"] .match-hero {
 .team-hub-hero,
 html[data-theme="light"] .team-hub-hero {
   background:
-    var(--bg-teams) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
   backdrop-filter: none;
   filter: none;
@@ -19906,6 +19906,13 @@ html[data-theme="light"] .season-hero {
     var(--rb-bg-2);
   backdrop-filter: none;
   filter: none;
+}
+
+@media (max-width: 1079px) {
+  .landing-hero,
+  html[data-theme="light"] .landing-hero {
+    --landing-hero-position: 68% 32%;
+  }
 }
 
 .page-header,
@@ -20562,6 +20569,13 @@ html[data-theme="light"] .brand-letter-light {
 
 html[data-theme="light"] .landing-copy .landing-purpose > p {
   color: #274c58;
+}
+
+html[data-theme="light"] .landing-purpose h2,
+html[data-theme="light"] .landing-copy .landing-purpose > p:not(.landing-purpose-brand) {
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.98),
+    0 0 8px rgba(255, 255, 255, 0.92);
 }
 
 html[data-theme="light"] .landing-copy .landing-purpose > .landing-purpose-brand {

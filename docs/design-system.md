@@ -531,7 +531,8 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-02: 경기(`/app/matches`)와 매칭(`/app/recruiting`) page container는 데스크톱에서 공통 앱 폭 1440px을 따른다. 원인/결과: 각 arena CSS 뒤쪽의 1480px override가 공통 `.app-main > *` 폭보다 커져 메뉴별 폭이 달라졌으므로, 최종 page width guard로 통일한다.
 2026-07-02: 홈 hero 배경은 desktop에서는 `rank-summary-grid`, 759px 이하에서는 실제 hero인 `home-rank-board-head` 한 곳에만 둔다. 원인/결과: 부모와 자식에 같은 `--bg-court`가 동시에 적용되어 배경이 두 장처럼 보였으므로 동시 배경을 금지한다.
 2026-07-24: 홈 hero는 다크에서 `rankball-court-hero-v3.webp`, 라이트에서 같은 구도의 `rankball-court-hero-day-v3.webp`를 `--bg-home-court`로 전환한다. 두 테마는 같은 crop·height 규칙을 공유하며 별도 wash·filter를 씌우지 않는다.
-2026-07-24: 주요 메뉴 hero는 메뉴별 전용 사진을 사용한다. 각 다크·라이트 쌍은 같은 사진의 시간대와 조명만 바꾸고 `1600×900` 이상, 같은 crop·height를 유지한다. CGI·3D 렌더 질감은 쓰지 않는다. 장식용 농구공은 제외하고, 기능상 꼭 필요한 공만 실제 연속 8패널 심 구조로 검수한다.
+2026-07-24: 새로 제작하는 주요 메뉴 hero의 다크·라이트 쌍은 같은 사진의 시간대와 조명만 바꾸고 `1600×900` 이상, 같은 crop·height를 유지한다. CGI·3D 렌더 질감은 쓰지 않는다. 새 장식용 농구공은 기본적으로 제외하고, 기능상 꼭 필요한 공은 실제 연속 8패널 심 구조로 검수한다. 사용자가 유지하기로 한 팀 허브·대기 매칭의 기존 공 배경은 예외로 보존한다.
+2026-07-24: 메인 landing의 `--bg-action`은 `main-night-v3.webp`/`main-day-v3.webp` `1600×900` 실사 쌍을 쓴다. 선수와 골대는 넓은 경기장 안에서 작게 보여야 하며 포스터처럼 확대하지 않는다. `1079px` 이하에서는 선수 위치를 유지하도록 가로 crop만 `68%`로 옮기고 dark/light의 구도와 높이는 같게 유지한다. 라이트 문구 대비는 이미지 overlay가 아니라 흰 text-shadow만 사용한다. `main-*-v2.webp`는 현재 연결하지 않고 차후 화면용 후보로 보관한다.
 2026-07-01: 경기 메뉴의 상단 상태 요약 카드는 모바일에서도 내부 가로 스크롤을 만들지 않고 2열 grid로 접는다. 필터 세그먼트는 항목 수가 적으면 가로 스크롤 대신 균등 grid를 쓴다.
 2026-07-01: 방 모달의 출전 슬롯은 한 사이드 안에서 넘치지 않게 컨테이너 폭에 맞춰 줄이고, 후보 슬롯은 A/B 후보를 세로 카드처럼 쌓지 않고 각 후보 라인을 한 줄 row로 둔다. 5v5 같은 짧은 mode chip은 condensed/음수 자간을 쓰지 않는다.
 2026-07-06: 방 모달 후보 라인은 A사이드는 왼쪽, B사이드는 오른쪽으로 붙여 양옆 사이드 구조를 유지한다. 슬롯 크기, 후광, 내부 가로 스크롤은 유지한다.
@@ -635,7 +636,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 | --- | --- |
 | 코트 | `--bg-court` |
 | 홈 코트 공통 원본 | `--bg-home-court` |
-| 액션 | `--bg-action` |
+| 메인 landing 액션 | `--bg-action` |
 | 나 메뉴 | `--bg-profile` |
 | 골대 | `--bg-hoop` |
 | 공용 도시 코트 | `--bg-ball` |
@@ -644,7 +645,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 | 진행 hero 전용 | `--bg-recorder` |
 | 설정 hero 전용 | `--bg-settings` |
 | 경기 기록 만들기 hero 전용 | `--bg-record-create` |
-| 팀 hero 전용 | `--bg-teams` |
+| 팀 대체 hero 보관용(현재 미사용) | `--bg-teams` |
 | 랭킹 hero 전용 | `--bg-rankings` |
 | 크기 | `--hero-bg-size` |
 | 위치 | `--hero-bg-position-*` |
@@ -654,7 +655,8 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 - `--bg-*` URL만 바꾼다.
 - `--hero-bg-position-*`은 바꾸지 않는다.
 - 같은 위치에서 낮/밤 차이만 보여야 한다.
-- 방만들기, 매칭, 진행, 설정, 경기 기록 만들기, 팀, 랭킹 hero는 generic `--bg-ball`/`--bg-hoop`을 재사용하지 않고 전용 토큰을 쓴다. 원인/결과: 같은 배경이 여러 메뉴에 반복되어 화면 구분이 약해졌으므로 메뉴별 hero 이미지를 분리한다.
+- 방만들기, 진행, 설정, 경기 기록 만들기, 랭킹 hero는 generic `--bg-ball`/`--bg-hoop`을 재사용하지 않고 전용 토큰을 쓴다.
+- 팀 허브는 기존 `--bg-ball`, 대기 매칭은 기존 `--bg-recruiting`, 일정은 기존 `--bg-hoop` 자산을 유지한다. 신규 `--bg-teams`, `rankball-ball-*-v2.webp`, `rankball-recruiting-*-v2.webp`, `rankball-teams-*-v2.webp`는 삭제하지 않고 차후 화면용 후보로 보관한다.
 
 ## 카드 원칙
 
