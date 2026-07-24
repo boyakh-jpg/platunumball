@@ -83,6 +83,28 @@ test("player reports remain visible in the scoped admin model", () => {
   assert.equal(model.players[0].openCount, 1);
 });
 
+test("approved court reports remain visible in the scoped admin model", () => {
+  const model = buildAdminReviewModel({
+    users: [{ id: "reporter-1", name: "Reporter" }],
+    teams: [],
+    matches: [],
+    reports: [{
+      id: "court-report-1",
+      type: "court",
+      targetId: "approved-court-1",
+      reportedUserIds: [],
+      status: "open",
+      createdAt: "2026-07-24T00:00:00Z",
+    }],
+    settings: {
+      approvedCourts: [{ id: "approved-court-1", name: "신고된 구장", addressText: "서울특별시" }],
+    },
+  });
+  assert.equal(model.courts.length, 1);
+  assert.equal(model.courts[0].reportCount, 1);
+  assert.equal(model.courts[0].openCount, 1);
+});
+
 test("directory loader does not call the legacy broad repository loader", async () => {
   const source = await readFile(new URL("./load.js", import.meta.url), "utf8");
   assert.doesNotMatch(source, /loadNormalizedDirectoryStateFromClient/);

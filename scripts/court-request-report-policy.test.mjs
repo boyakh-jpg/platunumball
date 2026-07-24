@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   approveCourtRequest,
   commitAdminReviewAction,
+  reportCourt,
   reportCourtRequest,
 } from "../src/data/repository.js";
 
@@ -85,6 +86,20 @@ test("구장 요청 신고 접수만으로 요청자 신뢰도를 차감하지 �
   assert.equal(next.reports[0].status, "open");
   assert.ok(next.notifications.some((notification) => /신뢰도에 영향이 없습니다/.test(notification.body)));
   assert.ok(next.notifications.some((notification) => /차감되지 않습니다/.test(notification.body)));
+});
+
+test("구장 상세 snapshot만 있어도 승인 구장 신고를 만든다", () => {
+  const next = reportCourt(
+    makeState(),
+    "approved-court-1",
+    "위치·주소 수정 요청: 실제 주소를 확인해 주세요.",
+    { id: "approved-court-1", name: "상세에서 불러온 구장" },
+  );
+
+  assert.equal(next.reports.length, 1);
+  assert.equal(next.reports[0].type, "court");
+  assert.equal(next.reports[0].targetId, "approved-court-1");
+  assert.match(next.notifications[0].body, /상세에서 불러온 구장/);
 });
 
 test("승인 또는 반려된 구장 요청은 다시 신고 상태로 되돌리지 않는다", () => {

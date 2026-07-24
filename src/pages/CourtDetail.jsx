@@ -170,6 +170,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
       courtId,
       `${fieldLabel} 수정 요청: ${proposedValue}`,
       { field: correctionField, proposedValue, evidenceUrl },
+      detail?.court ?? null,
     );
     if (result?.duplicate) {
       setCorrectionMessage("이미 검토 중인 정보 수정 신고가 있습니다.");

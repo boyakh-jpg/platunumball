@@ -3640,7 +3640,7 @@ export function useAppData(authUser = null, appLocation = null) {
         ));
         return result;
       },
-      reportCourt: async (courtId, reason, courtCorrection = null) => {
+      reportCourt: async (courtId, reason, courtCorrection = null, courtSnapshot = null) => {
         const previousState = stateRef.current;
         let createdReport = null;
         let syncedNotifications = [];
@@ -3650,7 +3650,7 @@ export function useAppData(authUser = null, appLocation = null) {
           evidenceUrl: "",
         };
         const existingIds = new Set((previousState.reports ?? []).map((report) => report.id));
-        let next = reportCourt({ ...previousState, currentUserId }, courtId, reason);
+        let next = reportCourt({ ...previousState, currentUserId }, courtId, reason, courtSnapshot);
         createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
         if (createdReport) {
           createdReport = { ...createdReport, courtCorrection: normalizedCourtCorrection };

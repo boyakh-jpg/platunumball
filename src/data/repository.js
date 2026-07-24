@@ -5456,10 +5456,11 @@ export function reportCourtRequest(state, requestId, reason = "허위 구장 등
   };
 }
 
-export function reportCourt(state, courtId, reason = "구장 위치 오류") {
+export function reportCourt(state, courtId, reason = "구장 위치 오류", courtSnapshot = null) {
   const disciplineBlock = getDisciplineBlockedState(state, "구장 신고");
   if (disciplineBlock) return disciplineBlock;
-  const court = (state.settings?.approvedCourts ?? []).find((item) => item.id === courtId);
+  const court = (state.settings?.approvedCourts ?? []).find((item) => item.id === courtId)
+    ?? (courtSnapshot?.id === courtId ? courtSnapshot : null);
   if (!court) return state;
   const duplicate = (state.reports ?? []).some((report) => (
     report.type === "court" &&

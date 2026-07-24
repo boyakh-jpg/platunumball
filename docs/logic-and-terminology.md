@@ -2111,9 +2111,10 @@ flowchart TD
 4. 구장 등록요청 신고는 기존 `court_request` 전용 server action을 유지한다. 접수는 검토 대기만 만들고, 요청자 신뢰도 차감은 관리자 인정 상태 전환과 원자적으로 연결한다.
 5. Settings 신고 검색은 사유를 먼저 고른 뒤 경기, 선수, 구장요청, 승인 구장, 구장 리뷰 중 해당 타입만 보여준다.
 6. 관리자 큐는 `court`, `court_review`, `court_request`, `match`, `player` 신고를 같은 `reports` 목록으로 정렬한다.
-7. 관리자 `hideCourt` action은 `approved_courts.status = 'hidden'`으로 soft hide한다.
-8. 관리자 `hideCourtReview` action은 `court_reviews.status = 'hidden'`으로 soft hide한다.
-9. 일반 사용자는 active 구장/리뷰만 읽고, 관리자만 hidden row를 검토용으로 읽는다.
+7. 구장 상세는 경량 detail 응답의 구장 snapshot을 신고 action에 전달한다. 전역 `approvedCourts` 목록이 비어 있어도 신고 초안을 만들 수 있어야 하며, 최종 대상·상태·수정 내용 검증은 `/api/reports/submit` 서버가 다시 수행한다. 성공한 `court` 신고는 관리자 `구장 신청` 처리 대기열에 표시한다.
+8. 관리자 `hideCourt` action은 `approved_courts.status = 'hidden'`으로 soft hide한다.
+9. 관리자 `hideCourtReview` action은 `court_reviews.status = 'hidden'`으로 soft hide한다.
+10. 일반 사용자는 active 구장/리뷰만 읽고, 관리자만 hidden row를 검토용으로 읽는다.
 10. 물리 삭제는 신고/audit 추적을 깨므로 기본 운영 action으로 만들지 않는다.
 
 ## 2026-06-26 settings persistence

@@ -964,7 +964,12 @@ export default function Settings({ app, auth, section = "main" }) {
       } else if (selectedReportCourtRequest) {
         result = await app.actions.reportCourtRequest(selectedReportCourtRequest.id, [reportReason, memo].filter(Boolean).join(" · "));
       } else if (selectedReportCourt) {
-        result = await app.actions.reportCourt(selectedReportCourt.id, [reportReason, memo].filter(Boolean).join(" · "));
+        result = await app.actions.reportCourt(
+          selectedReportCourt.id,
+          [reportReason, memo].filter(Boolean).join(" · "),
+          null,
+          selectedReportCourt,
+        );
       } else if (selectedReportCourtReview) {
         result = await app.actions.reportCourtReview(selectedReportCourtReview.id, [reportReason, memo].filter(Boolean).join(" · "));
       } else if (selectedReportMatchId) {
