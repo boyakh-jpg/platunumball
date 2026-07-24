@@ -1437,6 +1437,7 @@ function RoomKickPanel({
 }) {
   const [pendingKick, setPendingKick] = useState(null);
   const [pendingSwap, setPendingSwap] = useState(null);
+  const pickupAssignmentMode = Array.isArray(placementPlayerIds);
   const placementPlayerIdSet = Array.isArray(placementPlayerIds) ? new Set(placementPlayerIds.filter(Boolean)) : null;
   const rows = [];
   (lobby.entries ?? []).forEach((entry) => {
@@ -1473,7 +1474,7 @@ function RoomKickPanel({
   };
 
   return (
-    <div className="arena-host-kick-panel">
+    <div className={`arena-host-kick-panel${pickupAssignmentMode ? " is-pickup-assignment" : ""}`}>
       <header>
         <strong>{onSwapPlacement ? "출석·팀 배치" : "참가자 관리"}</strong>
         <span>{onSwapPlacement

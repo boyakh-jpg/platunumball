@@ -2453,6 +2453,40 @@ button.arena-room-player-slot {
   flex: 0 0 auto;
 }
 
+.arena-host-kick-panel.is-pickup-assignment header {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: start;
+}
+
+.arena-host-kick-panel.is-pickup-assignment header span {
+  text-align: right;
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-row {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-content: stretch;
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions > :is(.button, .form-chip) {
+  width: 100%;
+  min-width: 0;
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions > .arena-player-swap-button {
+  grid-column: 1 / -1;
+}
+
 .arena-kick-confirm-backdrop {
   position: fixed;
   inset: 0;
@@ -8557,8 +8591,28 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
   font-weight: 800;
 }
 
-.pickup-rotation-panel > button {
-  justify-self: end;
+.pickup-rotation-panel .ui-status-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.pickup-rotation-panel .ui-status-strip strong {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.pickup-rotation-panel .arena-room-edit-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.pickup-rotation-panel .arena-room-edit-actions > .button {
+  width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 720px) {
@@ -8569,7 +8623,29 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
     padding-inline: 0;
   }
 
-  .pickup-rotation-panel > button {
-    width: 100%;
+  .arena-host-kick-panel.is-pickup-assignment header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-host-kick-panel.is-pickup-assignment header span {
+    text-align: left;
+  }
+
+  .pickup-rotation-panel .arena-room-edit-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pickup-rotation-panel .arena-room-edit-actions > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 380px) {
+  .pickup-rotation-panel .arena-room-edit-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pickup-rotation-panel .arena-room-edit-actions > :last-child:nth-child(odd) {
+    grid-column: auto;
   }
 }

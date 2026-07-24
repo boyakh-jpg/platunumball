@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   confirmPickupSideAssignment,
@@ -263,4 +264,14 @@ test("사후 기록은 무응답자를 자동 승인하지 않는다", () => {
   assert.equal(status.verificationStatus, "partial");
   assert.equal(status.canConfirmFully, false);
   assert.deepEqual(status.unconfirmedIds, ["d"]);
+});
+
+test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형 grid를 사용한다", () => {
+  const recruitingSource = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
+  const recruitingStyles = readFileSync(new URL("../src/styles/recruiting-arena.css", import.meta.url), "utf8");
+
+  assert.match(recruitingSource, /arena-host-kick-panel\$\{pickupAssignmentMode \? " is-pickup-assignment" : ""\}/);
+  assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-list\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
+  assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+  assert.match(recruitingStyles, /\.pickup-rotation-panel \.arena-room-edit-actions\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
 });
