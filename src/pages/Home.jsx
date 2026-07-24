@@ -620,10 +620,10 @@ export default function Home({ app }) {
         />
         <div className="home-search-actions">
           <Link to="/app/create" className="home-search-create">
-            <Button className="home-search-create-button"><PlusCircle size={18} /> 매칭 만들기</Button>
+            <Button className="ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
           </Link>
           <Link to="/app/create?intent=record" className="home-search-create">
-            <Button className="home-search-create-button"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+            <Button className="ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
           </Link>
         </div>
       </Card>
@@ -924,7 +924,7 @@ export default function Home({ app }) {
               ))}
             </div>
             <Link to="/app/rankings">
-              <Button variant="secondary" className="wide-button"><Trophy size={17} /> 전체 랭크보드</Button>
+              <Button variant="secondary" className="ui-button-block"><Trophy size={17} /> 전체 랭크보드</Button>
             </Link>
           </Card>
 
@@ -949,7 +949,7 @@ export default function Home({ app }) {
               </div>
             </div>
             <Link to="/app/season">
-              <Button variant="secondary" className="wide-button"><Trophy size={17} /> 시즌 허브</Button>
+              <Button variant="secondary" className="ui-button-block"><Trophy size={17} /> 시즌 허브</Button>
             </Link>
           </Card>
           <Card className="section-card rivalry-card">
@@ -993,7 +993,7 @@ export default function Home({ app }) {
               )) : <div className="home-team-empty"><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
             </div>
             <Link to="/app/teams">
-              <Button variant="secondary" className="wide-button">팀 전체 보기</Button>
+              <Button variant="secondary" className="ui-button-block">팀 전체 보기</Button>
             </Link>
           </Card>
         </aside>

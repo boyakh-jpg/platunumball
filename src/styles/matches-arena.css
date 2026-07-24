@@ -1,4 +1,4 @@
-﻿.om-match-page {
+.om-match-page {
   max-width: 1220px;
   margin: 0 auto;
   gap: var(--page-section-gap);
@@ -90,11 +90,6 @@
   color: var(--text);
   font-size: 1.35rem;
   line-height: 1;
-}
-
-.om-match-create {
-  width: 100%;
-  min-height: 48px;
 }
 
 .om-match-actions {
@@ -1661,31 +1656,6 @@
   font-weight: 900;
 }
 
-.om-match-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) 82px;
-  gap: 10px;
-  align-items: center;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(90deg, rgba(118, 169, 255, 0.06), transparent 28%),
-    rgba(8, 11, 16, 0.78);
-  padding: 12px;
-}
-
-.om-match-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 4px;
-  background: var(--blue);
-}
-
 .om-status-agreed::before,
 .om-status-confirmed::before {
   background: var(--green);
@@ -1746,23 +1716,6 @@
 .om-card-kicker span:not(.om-status-pill) {
   background: rgba(255, 255, 255, 0.07);
   color: var(--muted);
-}
-
-.om-match-card h3 {
-  overflow: hidden;
-  font-size: 1.08rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.om-match-card p {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 850;
 }
 
 .om-score-box {
@@ -2010,7 +1963,6 @@ html[data-theme="light"] .om-tournament-card,
 html[data-theme="light"] .om-tournament-modal-section,
 html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-list-head,
-html[data-theme="light"] .om-match-card,
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
 html[data-theme="light"] .tournament-cup-bracket,
@@ -2095,11 +2047,6 @@ html[data-theme="light"] .tournament-schedule-list input {
 }
 
 @media (max-width: 760px) {
-  .om-match-card {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
-    padding: 10px;
-  }
 
   .om-card-main {
     grid-column: 1;
@@ -2123,13 +2070,6 @@ html[data-theme="light"] .tournament-schedule-list input {
   .om-summary-meta,
   .om-summary-detail {
     white-space: normal;
-  }
-
-  .om-match-card h3 {
-    display: -webkit-box;
-    white-space: normal;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
   }
 
   .om-room-link {
@@ -2649,16 +2589,6 @@ html[data-theme="light"] .tournament-schedule-list input {
     gap: 6px;
   }
 
-  .om-match-card p {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    overflow: visible;
-    line-height: 1.35;
-    text-overflow: clip;
-    white-space: normal;
-  }
-
   .om-card-kicker {
     gap: 5px;
   }
@@ -2717,7 +2647,6 @@ html[data-theme="light"] .tournament-schedule-list input {
 .om-calendar-box,
 .om-filter-bar,
 .om-list-head,
-.om-match-card,
 .om-score-box,
 .om-match-summary-box,
 .om-match-info-box {
@@ -2750,7 +2679,6 @@ html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-list-head,
-html[data-theme="light"] .om-match-card,
 html[data-theme="light"] .om-score-box,
 html[data-theme="light"] .om-match-summary-box,
 html[data-theme="light"] .om-match-info-box {
@@ -2764,7 +2692,6 @@ html[data-theme="light"] .om-match-info-box {
 /* Match list/filter convergence */
 .om-filter-bar,
 .om-list-head,
-.om-match-card,
 .om-match-summary-box,
 .om-score-box,
 .om-match-info-box,
@@ -2838,10 +2765,6 @@ html[data-theme="light"] .om-match-info-box {
   color: var(--green);
 }
 
-.om-match-card {
-  min-height: 136px;
-}
-
 .om-card-main {
   min-width: 0;
 }
@@ -2850,7 +2773,6 @@ html[data-theme="light"] .om-match-info-box {
   gap: 7px;
 }
 
-.om-match-card p,
 .om-summary-meta,
 .om-summary-detail,
 .om-match-info-box span {
@@ -2964,7 +2886,6 @@ html[data-theme="light"] .om-match-summary-box.complete {
 
 html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-list-head,
-html[data-theme="light"] .om-match-card,
 html[data-theme="light"] .om-match-info-box,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
@@ -2988,23 +2909,9 @@ html[data-theme="light"] .om-calendar-grid button {
   .om-filter-bar label {
     max-width: none;
   }
-
-  .om-match-card {
-    gap: 10px;
-  }
 }
 
 /* Final CSS cleanup: shared match/queue list cards, calendar stability. */
-.om-match-card {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) 92px;
-  min-height: 116px;
-  gap: 10px;
-  background: rgba(10, 14, 21, 0.9);
-}
-
-.om-match-card h3 {
-  line-height: 1.16;
-}
 
 .om-room-link {
   min-width: 82px;
@@ -3073,10 +2980,6 @@ html[data-theme="light"] .om-calendar-grid button {
   bottom: 4px;
 }
 
-html[data-theme="light"] .om-match-card {
-  background: rgba(250, 254, 252, 0.92);
-}
-
 html[data-theme="light"] .om-room-link {
   border-color: rgba(53, 119, 212, 0.24);
   background: rgba(232, 243, 255, 0.92);
@@ -3094,12 +2997,6 @@ html[data-theme="light"] .om-score-box {
 }
 
 @media (max-width: 760px) {
-  .om-match-card {
-    grid-template-columns: minmax(0, 1fr) 92px;
-    min-height: 104px;
-    gap: 8px;
-    padding: 10px;
-  }
 
   .om-card-kicker {
     gap: 5px;
@@ -3109,14 +3006,6 @@ html[data-theme="light"] .om-score-box {
   .om-card-kicker span:not(.om-status-pill) {
     padding: 5px 7px;
     font-size: 0.66rem;
-  }
-
-  .om-match-card h3 {
-    font-size: 1rem;
-  }
-
-  .om-match-card p {
-    font-size: 0.74rem;
   }
 
   .om-match-summary-box,
@@ -3148,9 +3037,6 @@ html[data-theme="light"] .om-score-box {
 }
 
 @media (max-width: 420px) {
-  .om-match-card {
-    grid-template-columns: minmax(0, 1fr) 86px;
-  }
 
   .om-room-link {
     width: 86px;
@@ -3172,7 +3058,6 @@ html[data-theme="light"] .om-score-box {
 .om-calendar-box,
 .om-filter-bar,
 .om-list-head,
-.om-match-card,
 .om-score-box,
 .om-match-summary-box,
 .om-match-info-box {
@@ -3181,7 +3066,6 @@ html[data-theme="light"] .om-score-box {
 
 .om-filter-bar,
 .om-list-head,
-.om-match-card,
 .om-calendar-summary,
 .om-calendar-box,
 .om-view-card {
@@ -3196,7 +3080,6 @@ html[data-theme="light"] .om-score-box {
 
 html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-list-head,
-html[data-theme="light"] .om-match-card,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-view-card {
@@ -3251,17 +3134,9 @@ html[data-theme="light"] .om-calendar-grid button.active {
 
 /* Shared match/recruiting list readability standard. */
 @container (min-width: 1181px) {
-  .om-match-card,
-  .arena-lobby-card.om-match-card {
-    grid-template-columns: minmax(0, 0.82fr) minmax(400px, 1.18fr) 92px;
-  }
 }
 
 @container (min-width: 761px) and (max-width: 1180px) {
-  .om-match-card,
-  .arena-lobby-card.om-match-card {
-    grid-template-columns: minmax(0, 1fr) 92px;
-  }
 
   .om-card-main {
     grid-column: 1;
@@ -3326,10 +3201,6 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 }
 
 @container (max-width: 760px) {
-  .om-match-card,
-  .arena-lobby-card.om-match-card {
-    grid-template-columns: minmax(0, 1fr);
-  }
 
   .om-match-summary-box,
   .om-score-box,
@@ -3354,7 +3225,6 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 .om-calendar-box,
 .om-filter-bar,
 .om-list-head,
-.om-match-card,
 .om-match-summary-box,
 .om-score-box,
 .om-match-info-box,
@@ -3376,8 +3246,7 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 .om-view-card,
 .om-calendar-summary,
 .om-calendar-box,
-.om-list-head,
-.om-match-card {
+.om-list-head {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
 }
 
@@ -3388,19 +3257,6 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 
 .om-view-icon {
   border-radius: var(--radius-sm);
-}
-
-.om-match-card {
-  border-left: 4px solid rgba(118, 169, 255, 0.58);
-}
-
-.om-match-card.om-status-approval,
-.om-match-card.om-status-disputed {
-  border-left-color: rgba(255, 171, 76, 0.78);
-}
-
-.om-match-card.om-status-confirmed {
-  border-left-color: rgba(70, 224, 182, 0.66);
 }
 
 .om-room-link {
@@ -3438,8 +3294,7 @@ html[data-theme="light"] .om-view-card,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-filter-bar,
-html[data-theme="light"] .om-list-head,
-html[data-theme="light"] .om-match-card {
+html[data-theme="light"] .om-list-head {
   background-color: rgba(255, 255, 255, 0.92);
   background-image: none;
   box-shadow: var(--shadow);
@@ -3480,10 +3335,6 @@ html[data-theme="light"] .om-match-card {
 }
 
 @media (max-width: 560px) {
-  .om-match-card {
-    grid-template-columns: minmax(0, 1fr);
-    border-left-width: 3px;
-  }
 
   .om-card-main,
   .om-match-summary-box,
@@ -3546,8 +3397,7 @@ html[data-theme="light"] .om-match-card {
 .om-calendar-summary,
 .om-calendar-box,
 .om-filter-bar,
-.om-list-head,
-.om-match-card {
+.om-list-head {
   background-color: rgba(7, 11, 17, 0.94);
 }
 
@@ -3579,27 +3429,6 @@ html[data-theme="light"] .om-match-card {
 .om-calendar-grid button.active {
   background: var(--button-primary-bg);
   color: #fff;
-}
-
-.om-match-card {
-  border-color: rgba(199, 223, 232, 0.14);
-  border-left: 1px solid rgba(199, 223, 232, 0.14);
-  background:
-    linear-gradient(180deg, rgba(65, 215, 176, 0.06), transparent 28%),
-    rgba(7, 11, 17, 0.94);
-}
-
-.om-match-card.om-status-approval,
-.om-match-card.om-status-disputed {
-  border-color: rgba(242, 184, 75, 0.22);
-}
-
-.om-match-card.om-status-confirmed {
-  border-color: rgba(65, 215, 176, 0.22);
-}
-
-.om-match-card::before {
-  display: none;
 }
 
 .om-score-box,
@@ -3634,8 +3463,7 @@ html[data-theme="light"] .om-view-card,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-filter-bar,
-html[data-theme="light"] .om-list-head,
-html[data-theme="light"] .om-match-card {
+html[data-theme="light"] .om-list-head {
   background-color: rgba(255, 255, 255, 0.94);
 }
 
@@ -3680,20 +3508,6 @@ html[data-theme="light"] .om-match-info-box {
   box-shadow: none;
 }
 
-.om-match-card {
-  gap: 12px;
-  border: 1px solid var(--rb-line);
-  border-left: 0;
-  border-radius: var(--radius-md);
-  background: var(--rb-surface);
-  padding: 16px;
-}
-
-.om-match-card::before {
-  display: block;
-  background: var(--rb-orange);
-}
-
 .om-card-kicker {
   gap: 6px;
 }
@@ -3711,18 +3525,6 @@ html[data-theme="light"] .om-match-info-box {
 .om-status-pill.orange {
   background: rgba(240, 90, 70, 0.15);
   color: var(--rb-orange-2);
-}
-
-.om-match-card h3 {
-  font-size: clamp(19px, 1.5vw, 22px);
-  line-height: 1.08;
-  letter-spacing: 0;
-}
-
-.om-match-card p {
-  color: var(--rb-soft);
-  font-size: 12px;
-  font-weight: 780;
 }
 
 .om-score-box,
@@ -3755,9 +3557,6 @@ html[data-theme="light"] .om-match-info-box {
 }
 
 @media (max-width: 560px) {
-  .om-match-card {
-    padding: 14px;
-  }
 
   .om-room-link {
     min-height: 44px;
@@ -3770,8 +3569,7 @@ html[data-theme="light"] .om-view-card,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-filter-bar,
-html[data-theme="light"] .om-list-head,
-html[data-theme="light"] .om-match-card {
+html[data-theme="light"] .om-list-head {
   border-color: var(--rb-line);
   background-color: var(--rb-surface);
 }
@@ -3805,24 +3603,17 @@ html[data-theme="light"] .om-view-card,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-filter-bar,
-html[data-theme="light"] .om-list-head,
-html[data-theme="light"] .om-match-card {
+html[data-theme="light"] .om-list-head {
   border-color: var(--rb-line);
   background: var(--rb-surface);
   box-shadow: var(--shadow);
 }
 
-html[data-theme="light"] .om-match-card::before {
-  background: var(--rb-orange);
-}
-
-html[data-theme="light"] .om-match-card h3,
 html[data-theme="light"] .om-score-box > strong,
 html[data-theme="light"] .om-match-summary-box.count-summary .om-summary-line > strong {
   color: var(--rb-text);
 }
 
-html[data-theme="light"] .om-match-card p,
 html[data-theme="light"] .om-summary-meta,
 html[data-theme="light"] .om-summary-detail {
   color: #6f685f;
@@ -3922,14 +3713,6 @@ html[data-theme="light"] .om-room-link {
   background: rgba(0, 0, 0, 0.18);
 }
 
-.om-match-create {
-  min-height: 44px;
-  border: 0;
-  border-radius: var(--radius-xs);
-  background: var(--rb-orange);
-  color: #fff;
-}
-
 .om-view-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -4027,40 +3810,6 @@ html[data-theme="light"] .om-room-link {
   gap: 12px;
 }
 
-.om-match-card,
-.arena-lobby-card.om-match-card {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr) 116px;
-  gap: 12px;
-  align-items: stretch;
-  border: 1px solid var(--rb-line);
-  border-radius: var(--radius-md);
-  background: var(--rb-surface);
-  box-shadow: none;
-  padding: 14px 14px 14px 18px;
-}
-
-.om-match-card::before,
-.arena-lobby-card.om-match-card::before {
-  display: block;
-  width: 4px;
-  border-radius: 999px;
-  background: var(--rb-orange);
-}
-
-.om-match-card h3,
-.arena-lobby-card.om-match-card h3 {
-  max-width: 100%;
-  color: var(--rb-text);
-  font-family: var(--sports-display-font);
-  font-size: clamp(22px, 1.9vw, 30px);
-  line-height: 0.98;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .om-card-kicker {
   overflow: hidden;
   flex-wrap: nowrap;
@@ -4075,17 +3824,6 @@ html[data-theme="light"] .om-room-link {
   color: var(--rb-orange-2);
   font-size: 10px;
   font-weight: 950;
-}
-
-.om-match-card p,
-.arena-lobby-card.om-match-card p {
-  min-width: 0;
-  color: var(--rb-soft);
-  font-size: 12px;
-  font-weight: 780;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .om-score-box,
@@ -4136,11 +3874,6 @@ html[data-theme="light"] .om-room-link {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .om-match-card,
-  .arena-lobby-card.om-match-card {
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 0.66fr);
-  }
-
   .om-room-link,
   .arena-lobby-card .om-room-link {
     grid-column: 1 / -1;
@@ -4179,17 +3912,6 @@ html[data-theme="light"] .om-room-link {
     flex-wrap: initial;
   }
 
-  .om-match-card,
-  .arena-lobby-card.om-match-card {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 14px;
-  }
-
-  .om-match-card h3,
-  .arena-lobby-card.om-match-card h3 {
-    font-size: 24px;
-  }
-
   .om-score-box,
   .om-match-summary-box,
   .om-match-info-box,
@@ -4213,9 +3935,7 @@ html[data-theme="light"] .om-view-card,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-filter-bar,
-html[data-theme="light"] .om-list-head,
-html[data-theme="light"] .om-match-card,
-html[data-theme="light"] .arena-lobby-card.om-match-card {
+html[data-theme="light"] .om-list-head {
   border-color: var(--rb-line);
   background: var(--rb-surface);
   box-shadow: var(--shadow);
@@ -4378,7 +4098,6 @@ html[data-theme="light"] .om-match-hero {
 
 /* 2026-07-01 shared primitive alignment for matches chunk. */
 .om-view-card,
-.om-match-card,
 .om-filter-bar,
 .om-calendar-filter-bar,
 .om-match-panel {
@@ -4389,7 +4108,6 @@ html[data-theme="light"] .om-match-hero {
 }
 
 html[data-theme="light"] .om-view-card,
-html[data-theme="light"] .om-match-card,
 html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-calendar-filter-bar,
 html[data-theme="light"] .om-match-panel {
@@ -4547,7 +4265,6 @@ html[data-theme="light"] .om-score-box {
 /* 2026-07-01 final matches UI module.
    Matches chunk loads after globals.css, so filters/buttons/cards use --ui-* tokens here too. */
 .om-view-card,
-.om-match-card,
 .om-filter-bar,
 .om-calendar-filter-bar,
 .om-match-panel,
@@ -4762,8 +4479,6 @@ html[data-theme="light"] .tournament-hero h1 {
 :where(
   .om-match-copy h1,
   .tournament-hero h1,
-  .om-match-card h3,
-  .arena-lobby-card.om-match-card h3,
   .om-score-box > strong,
   .om-match-summary-box .om-summary-side,
   .om-match-summary-box .om-summary-side .team-hover-trigger,
@@ -4777,7 +4492,7 @@ html[data-theme="light"] .tournament-hero h1 {
   transform: var(--sports-display-condense);
 }
 
-:where(.om-match-copy h1, .tournament-hero h1, .om-match-card h3, .arena-lobby-card.om-match-card h3) {
+:where(.om-match-copy h1, .tournament-hero h1) {
   transform-origin: left center;
 }
 
@@ -4805,28 +4520,6 @@ html[data-theme="light"] .tournament-hero h1 {
 }
 
 /* 2026-07-09 recorder list cards follow the same compact row rhythm as recruiting cards. */
-.recorder-card-list .arena-lobby-card.om-match-card {
-  min-height: 96px;
-}
-
-.recorder-card-list .arena-lobby-card.om-match-card h3 {
-  display: -webkit-box;
-  max-height: 1.96em;
-  line-height: 0.98;
-  overflow: hidden;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.recorder-card-list .arena-lobby-card.om-match-card p {
-  max-height: none;
-  line-height: 1.2;
-  overflow: visible;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
 
 .recorder-card-list .arena-lobby-card .om-match-summary-box {
   height: auto;
@@ -4919,11 +4612,6 @@ html[data-theme="light"] .om-match-stats span {
   line-height: 1;
 }
 
-.om-match-create {
-  min-height: var(--control-height);
-  border-radius: var(--control-radius);
-}
-
 /* 2026-07-14 cross-page hero and mobile card rhythm. */
 .om-match-page {
   gap: var(--page-section-gap);
@@ -4963,10 +4651,6 @@ html[data-theme="light"] .om-match-stats span {
 }
 
 @container (min-width: 761px) and (max-width: 1180px) {
-  .om-match-card,
-  .arena-lobby-card.om-match-card {
-    grid-template-columns: minmax(0, 1fr) 92px;
-  }
 
   .om-card-main {
     grid-column: 1;
@@ -4994,10 +4678,6 @@ html[data-theme="light"] .om-match-stats span {
 }
 
 @container (max-width: 760px) {
-  .om-match-card,
-  .arena-lobby-card.om-match-card {
-    grid-template-columns: minmax(0, 1fr);
-  }
 
   .om-card-main,
   .om-match-summary-box,
@@ -5338,17 +5018,9 @@ html[data-theme="light"] .om-calendar-summary {
 }
 
 @container (min-width: 1181px) {
-  .om-match-card,
-  .arena-lobby-card.om-match-card {
-    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) 92px;
-  }
 }
 
 @container (min-width: 761px) and (max-width: 1180px) {
-  .om-match-card,
-  .arena-lobby-card.om-match-card {
-    grid-template-columns: minmax(0, 1fr) 92px;
-  }
 
   .om-card-main {
     grid-column: 1;

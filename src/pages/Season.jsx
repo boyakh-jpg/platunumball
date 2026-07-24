@@ -224,7 +224,7 @@ export default function Season({ app }) {
               <span><strong>{activity.official}</strong>공식전</span>
             </div>
             <Link to="/app/profile/records">
-              <Button variant="secondary" className="wide-button">전체 기록 보기</Button>
+              <Button variant="secondary" className="ui-button-block">전체 기록 보기</Button>
             </Link>
           </Card>
         </aside>

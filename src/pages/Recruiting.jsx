@@ -5836,12 +5836,12 @@ function RecruitingReady({ app }) {
           </div>
           <div className="arena-hero-actions">
             <Link to="/app/create">
-              <Button type="button" className="arena-hero-cta">
+              <Button type="button" className="ui-button-block">
                 <PlusCircle size={18} /> 매칭 만들기
               </Button>
             </Link>
             <Link to="/app/create?intent=record">
-              <Button type="button" className="arena-hero-cta">
+              <Button type="button" className="ui-button-block">
                 <ClipboardCheck size={18} /> 경기 기록하기
               </Button>
             </Link>

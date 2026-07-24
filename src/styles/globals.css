@@ -1,4 +1,4 @@
-﻿* {
+* {
   box-sizing: border-box;
 }
 
@@ -6837,7 +6837,6 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   background:
     linear-gradient(135deg, rgba(70, 224, 182, 0.1), rgba(255, 211, 108, 0.055)),
     rgba(8, 11, 16, 0.88);
-  padding: 16px;
 }
 
 .home-search-box {
@@ -7785,10 +7784,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   }
 }
 
-.wide-button {
-  width: 100%;
-}
-
 .rivalry-card {
   border-color: rgba(255, 117, 95, 0.2);
 }
@@ -8307,10 +8302,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .season-play-report > a {
   display: block;
   margin-top: 12px;
-}
-
-.season-play-report .wide-button {
-  width: 100%;
 }
 
 .season-candidate-list > .empty-state {
@@ -14237,10 +14228,6 @@ html[data-theme="light"] .team-search-popover button.selected {
     width: min(132px, 44vw);
   }
 
-  .home-search-panel {
-    padding: 12px;
-  }
-
   .home-search-box {
     gap: 8px;
     padding: 8px 10px;
@@ -15906,16 +15893,6 @@ html[data-theme="light"] .ranking-filter-card {
 .home-side-stack .compact-list > .team-hover-trigger,
 .home-team-list a,
 .home-team-list > div,
-.home-side-stack .wide-button {
-  min-height: 42px;
-  border-radius: var(--radius-xs);
-  padding: 9px 12px;
-}
-
-.home-side-stack .wide-button {
-  justify-content: center;
-}
-
 .rivalry-list strong {
   color: var(--text);
 }
@@ -16705,12 +16682,6 @@ html[data-theme="light"] .home-search-box {
   padding: 10px 12px;
 }
 
-.home-side-stack .wide-button {
-  min-height: 44px;
-  border-radius: var(--radius-md);
-  box-shadow: none;
-}
-
 .home-team-list a,
 .home-team-list > div {
   min-height: 36px;
@@ -16791,8 +16762,7 @@ body {
 
 .button-primary,
 .provider-test,
-.rank-home .home-rank-board-head .button,
-.button.om-match-create {
+.rank-home .home-rank-board-head .button {
   border: 0;
   background: var(--rb-orange);
   color: #fff;
@@ -17006,7 +16976,6 @@ html[data-theme="light"] textarea:focus-visible {
 html[data-theme="light"] .button-primary,
 html[data-theme="light"] .provider-test,
 html[data-theme="light"] .rank-home .home-rank-board-head .button,
-html[data-theme="light"] .button.om-match-create,
 html[data-theme="light"] .auth-test-login .provider-button {
   border: 0;
   background: var(--rb-orange);
@@ -17261,10 +17230,9 @@ html[data-theme="light"] .status-badge.gold {
     z-index: 1;
   }
 
-  .rank-home .home-search-panel {
-    min-height: 190px;
-    padding: 18px;
-  }
+.rank-home .home-search-panel {
+  min-height: 190px;
+}
 
   .rank-home .home-action-card {
     min-height: 230px;
@@ -17859,13 +17827,12 @@ html[data-theme="light"] .app-main {
     grid-area: dashboard;
   }
 
-  .rank-home .home-search-panel.rank-search-card {
-    display: flex;
-    min-height: 0;
-    align-items: center;
-    gap: 16px;
-    padding: 12px 16px;
-  }
+.rank-home .home-search-panel.rank-search-card {
+  display: flex;
+  min-height: 0;
+  align-items: center;
+  gap: 16px;
+}
 
   .rank-home .home-search-panel.rank-search-card > .search-picker {
     flex: 1 1 auto;
@@ -18366,7 +18333,6 @@ html[data-theme="light"] .rank-home .rank-mode-card {
 .profile-side-grid > .card,
 .home-side-stack > .card,
 .om-view-card,
-.om-match-card,
 .arena-recruit-card,
 .arena-filter-bar,
 .om-filter-bar,
@@ -18384,7 +18350,6 @@ html[data-theme="light"] .profile-main-stack > .card,
 html[data-theme="light"] .profile-side-grid > .card,
 html[data-theme="light"] .home-side-stack > .card,
 html[data-theme="light"] .om-view-card,
-html[data-theme="light"] .om-match-card,
 html[data-theme="light"] .arena-recruit-card,
 html[data-theme="light"] .arena-filter-bar,
 html[data-theme="light"] .om-filter-bar,
@@ -18434,7 +18399,6 @@ html[data-theme="light"] .om-calendar-filter-bar {
 
 .button-primary,
 .rank-home .home-rank-board-head .button,
-.button.om-match-create,
 .provider-test,
 .arena-card-action.button,
 .om-room-link {
@@ -18445,7 +18409,6 @@ html[data-theme="light"] .om-calendar-filter-bar {
 
 .button-primary:hover,
 .rank-home .home-rank-board-head .button:hover,
-.button.om-match-create:hover,
 .provider-test:hover,
 .arena-card-action.button:hover,
 .om-room-link:hover {
@@ -18456,7 +18419,6 @@ html[data-theme="light"] .om-calendar-filter-bar {
 
 .button-primary:active,
 .rank-home .home-rank-board-head .button:active,
-.button.om-match-create:active,
 .provider-test:active,
 .arena-card-action.button:active,
 .om-room-link:active {
@@ -18924,7 +18886,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .court-review-card,
 .review-controls-card,
 .om-view-card,
-.om-match-card,
 .arena-recruit-card,
 .arena-filter-bar,
 .om-filter-bar,
@@ -19102,7 +19063,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 
 .button-primary,
 .rank-home .home-rank-board-head .button,
-.button.om-match-create,
 .provider-test,
 .arena-card-action.button:not(.button-secondary),
 .om-room-link,
@@ -19135,7 +19095,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 
 .button-primary:hover,
 .rank-home .home-rank-board-head .button:hover,
-.button.om-match-create:hover,
 .provider-test:hover,
 .arena-card-action.button:not(.button-secondary):hover,
 .om-room-link:hover,
@@ -19148,7 +19107,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 
 .button-primary:active,
 .rank-home .home-rank-board-head .button:active,
-.button.om-match-create:active,
 .provider-test:active,
 .arena-card-action.button:not(.button-secondary):active,
 .om-room-link:active {
@@ -19709,10 +19667,6 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
     padding-inline: clamp(22px, 4vw, 44px);
   }
 
-  .rank-home .home-search-panel.rank-search-card {
-    padding-inline: clamp(20px, 3vw, 30px);
-  }
-
   .rank-home .home-search-panel.rank-search-card .home-search-box {
     gap: 14px;
     padding-inline: clamp(16px, 2.4vw, 24px);
@@ -20107,12 +20061,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   gap: 8px;
 }
 
-.rank-home .home-search-create-button {
-  min-height: 44px;
-  width: 100%;
-  white-space: nowrap;
-}
-
 .rank-home .home-top-rail > .home-action-card {
   height: auto;
   min-height: 0;
@@ -20237,8 +20185,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   }
 
   .rank-home .home-search-create,
-  .rank-home .home-search-actions,
-  .rank-home .home-search-create-button {
+  .rank-home .home-search-actions {
     width: 100%;
   }
 

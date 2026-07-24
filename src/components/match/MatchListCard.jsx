@@ -1,3 +1,6 @@
+import Button from "../common/Button.jsx";
+import Card from "../common/Card.jsx";
+
 const MATCH_LIST_TONE_MAP = Object.freeze({
   orange: "orange",
   gold: "orange",
@@ -44,7 +47,7 @@ export function MatchListBadge({ children, kind = "extra", tone = "" }) {
 
 export function MatchListSummary({ left, center = "vs", right, meta, detail, variant = "matchup" }) {
   return (
-    <div className="match-list-summary" data-variant={variant}>
+    <div className="match-list-summary ui-panel" data-variant={variant}>
       <div className="match-list-summary__line">
         <span className="match-list-summary__side">{left}</span>
         <strong>{center}</strong>
@@ -83,10 +86,11 @@ export default function MatchListCard({
     ...extraBadges.map((badge) => normalizeBadge(badge, badge?.kind ?? "extra")),
   ].filter((badge) => badge?.label);
   const statusTone = getBadgeTone("status", status?.tone ?? "orange");
-  const cardClassName = ["om-match-card", "match-list-card", className].filter(Boolean).join(" ");
+  const cardClassName = ["match-list-card", className].filter(Boolean).join(" ");
 
   return (
-    <article
+    <Card
+      as="article"
       id={id}
       className={cardClassName}
       data-clickable={onOpen ? "true" : undefined}
@@ -107,16 +111,15 @@ export default function MatchListCard({
 
       {summary}
 
-      <button
-        type="button"
-        className="button button-md match-list-card__action"
+      <Button
+        className="match-list-card__action"
         onClick={(event) => {
           event.stopPropagation();
           onAction?.(event);
         }}
       >
         {actionLabel}
-      </button>
-    </article>
+      </Button>
+    </Card>
   );
 }
