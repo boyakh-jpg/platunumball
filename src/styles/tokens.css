@@ -93,6 +93,8 @@
   --ui-card-bg-strong: var(--card-bg-strong);
   --ui-card-border: var(--card-border);
   --ui-card-shadow: var(--card-shadow);
+  --ui-profile-popup-bg: color-mix(in srgb, var(--surface) 82%, transparent);
+  --ui-profile-popup-backdrop-filter: blur(16px);
   --ui-panel-radius: var(--panel-radius);
   --ui-button-height: var(--control-height);
   --ui-button-height-sm: var(--control-height-sm);

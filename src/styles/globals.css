@@ -22056,6 +22056,13 @@ html[data-theme="light"] .court-map-picker-state {
   html[data-theme="light"] .hover-portal-card.touch-open {
     background: var(--surface);
   }
+
+  .player-hover-card.touch-open,
+  html[data-theme="light"] .player-hover-card.touch-open {
+    background: var(--ui-profile-popup-bg);
+    -webkit-backdrop-filter: var(--ui-profile-popup-backdrop-filter);
+    backdrop-filter: var(--ui-profile-popup-backdrop-filter);
+  }
 }
 
 /* 2026-07-19 court search previews and non-destructive court detail modal. */
