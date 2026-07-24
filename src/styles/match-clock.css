@@ -123,6 +123,7 @@
   border: 1px solid var(--rb-line-strong);
   border-radius: var(--ui-panel-radius);
   min-height: var(--match-clock-display-height, auto);
+  overflow: hidden;
 }
 
 .ui-match-clock-scoreboard > div {
@@ -350,7 +351,7 @@
 }
 
 .ui-match-clock-panel-focus:not(.ui-match-clock-panel-pending) {
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto auto;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-header,
@@ -455,7 +456,6 @@
   text-overflow: ellipsis;
 }
 
-.ui-match-clock-panel-focus .ui-match-clock-device-notice,
 .ui-match-clock-panel-focus .ui-match-clock-result,
 .ui-match-clock-panel-focus .ui-match-clock-error {
   position: absolute;
@@ -471,6 +471,24 @@
   font-size: 0.72rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+  pointer-events: none;
+  background: var(--ui-control-bg);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-device-notice {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 24px;
+  padding: 4px 8px;
+  overflow: hidden;
+  color: var(--rb-text);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
   background: var(--ui-control-bg);
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
