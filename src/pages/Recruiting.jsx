@@ -124,7 +124,7 @@ import {
 } from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
 import { getMatchCreationSummary } from "../lib/matchCreationPolicies.js";
-import { ROOM_BODY_MODES, getPickupOpenSlotPlacements, getPickupParticipantIds, getPostgameRecordVerification, getRoomPhaseViewModel } from "../lib/roomFlow.js";
+import { ROOM_BODY_MODES, getPickupOpenSlotPlacements, getPickupParticipantIds, getPickupResizeValidation, getPostgameRecordVerification, getRoomPhaseViewModel } from "../lib/roomFlow.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getUnsafeUserTextReason, UNSAFE_INPUT_MESSAGE } from "../lib/inputSecurity.js";
 import {
@@ -408,6 +408,9 @@ function getRoomEditSaveError(result, matchRoom = false) {
   ).trim();
   if (["recruiting_side_capacity_below_roster", "match_side_capacity_below_roster"].includes(errorCode)) {
     return "현재 출전 인원보다 팀당 정원을 작게 줄일 수 없습니다.";
+  }
+  if (errorCode === "pickup_participant_capacity_below_pool") {
+    return "현재 참가 인원보다 전체 참가 정원을 작게 줄일 수 없습니다.";
   }
   if ([
     "recruiting_bench_capacity_below_roster",
@@ -3565,6 +3568,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const selectedRoomOperationRows = selectedCreationSummary.rows.filter((row) => (
           row.label === "공 제공" || row.label === "운영 장비"
         ));
+        const pickupRoom = isPickupRecruitingRoom(selectedPost);
         const maxSideFilled = Math.max(
           lobby.sides.teamA.projectedPlayers.length,
           lobby.sides.teamB.projectedPlayers.length,
@@ -3573,8 +3577,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           lobby.sides.teamA.reserveCandidates.length,
           lobby.sides.teamB.reserveCandidates.length,
         );
-        const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
-        const roomEditBenchCapacityValid = !roomEditDraft || Number(roomEditDraft.benchCapacity) >= maxSideReserveFilled;
+        const pickupResize = getPickupResizeValidation(lobby, {
+          sideCapacity: roomEditDraft?.sideCapacity,
+          benchCapacity: roomEditDraft?.benchCapacity,
+        });
+        const roomEditPickupCapacityValid = !roomEditDraft || !pickupRoom || pickupResize.valid;
+        const roomEditCapacityValid = !roomEditDraft || pickupRoom || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
+        const roomEditBenchCapacityValid = !roomEditDraft || pickupRoom || Number(roomEditDraft.benchCapacity) >= maxSideReserveFilled;
         const roomEditMeetingValid = !roomEditDraft || String(roomEditDraft.meetingPoint ?? "").trim().length >= 2;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const partyJoinOptions = individualOnlyRoom ? [] : getSameSidePartyOptions(lobby, myEntry, myTeams);
@@ -3669,7 +3678,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
-        const pickupRoom = isPickupRecruitingRoom(selectedPost);
         const roomPhaseVersusIndex = roomPhaseViewModel.sectionOrder.indexOf("versus");
         const roomPhaseSectionsBeforeVersus = roomPhaseVersusIndex >= 0
           ? roomPhaseViewModel.sectionOrder.slice(0, roomPhaseVersusIndex)
@@ -4626,10 +4634,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         </select>
                       </label>
                       <label>
-                        후보 정원
+                        {pickupRoom ? "추가 참가 인원" : "후보 정원"}
                         <select value={roomEditDraft.benchCapacity} onChange={(event) => updateRoomEditDraft(selectedPost, { benchCapacity: Number(event.target.value) })}>
                           {Array.from({ length: MAX_RESERVE_PLAYERS_PER_SIDE + 1 }, (_, value) => (
-                            <option key={value} value={value}>{value}명</option>
+                            <option key={value} value={value}>{value === 0 ? "없음" : `${value}명`}</option>
                           ))}
                         </select>
                       </label>
@@ -4704,8 +4712,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       경기 메모
                       <textarea value={roomEditDraft.memo} onChange={(event) => updateRoomEditDraft(selectedPost, { memo: event.target.value })} />
                     </label>
+                    {pickupRoom ? (
+                      <small>현재 참가 {pickupResize.participantCount}명 · 변경 후 전체 정원 {pickupResize.participantCapacity}명</small>
+                    ) : null}
                     {!roomEditCapacityValid ? <span className="form-warning">현재 출전 인원이 {maxSideFilled}명이라 정원을 그보다 낮출 수 없습니다.</span> : null}
                     {!roomEditBenchCapacityValid ? <span className="form-warning">현재 후보 인원이 {maxSideReserveFilled}명이라 후보 정원을 그보다 낮출 수 없습니다.</span> : null}
+                    {!roomEditPickupCapacityValid ? <span className="form-warning">현재 참가자가 {pickupResize.participantCount}명이므로 전체 참가 정원을 {pickupResize.participantCapacity}명으로 줄일 수 없습니다.</span> : null}
                     {!roomEditMeetingValid ? <span className="form-warning">실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요.</span> : null}
                     {roomEditStatus.error ? <span className="form-warning" role="alert">{roomEditStatus.error}</span> : null}
                     <div className="arena-room-edit-actions">
@@ -4713,7 +4725,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       <Button
                         type="button"
                         size="sm"
-                        disabled={roomEditStatus.pending || !roomEditCapacityValid || !roomEditBenchCapacityValid || !roomEditMeetingValid}
+                        disabled={roomEditStatus.pending || !roomEditCapacityValid || !roomEditBenchCapacityValid || !roomEditPickupCapacityValid || !roomEditMeetingValid}
                         onClick={() => void saveRoomEdit(selectedPost)}
                       >
                         {roomEditStatus.pending ? "저장 중" : "수정 저장"}

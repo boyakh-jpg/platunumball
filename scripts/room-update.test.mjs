@@ -138,7 +138,7 @@ const COMPLETE_PATCH = {
   memo: "수정 메모",
 };
 
-for (const kind of ["public-player", "public-team", "private-team", "pickup"]) {
+for (const kind of ["public-player", "public-team", "private-team"]) {
   test(`${kind} recruiting room keeps occupied active and reserve slots while editing`, () => {
     const post = makeRecruitingPost(kind);
     const beforeStatuses = post.applicants.map((application) => application.status);
@@ -169,6 +169,50 @@ for (const kind of ["public-player", "public-team", "private-team", "pickup"]) {
     assert.equal(benchShrink.recruitingPosts[0], post);
   });
 }
+
+test("pickup room resize validates the unified participant pool and rebalances temporary placements", () => {
+  const post = {
+    ...makeRecruitingPost("pickup"),
+    applicants: [
+      { id: "a2", playerId: "a2", kind: "player", side: "teamA", reserve: false, status: "waiting", playerIds: [] },
+      { id: "a3", playerId: "a3", kind: "player", side: "teamA", reserve: true, status: "ready", playerIds: [] },
+      { id: "b1", playerId: "b1", kind: "player", side: "teamB", reserve: false, status: "waiting", playerIds: [] },
+      { id: "b2", playerId: "b2", kind: "player", side: "teamB", reserve: false, status: "ready", playerIds: [] },
+      { id: "b3", playerId: "b3", kind: "player", side: "teamB", reserve: true, status: "ready", playerIds: [] },
+    ],
+    roomState: {
+      ...makeRecruitingPost("pickup").roomState,
+      pinnedReservePlayers: { teamA: ["a3"], teamB: ["b3"] },
+    },
+  };
+  const beforeIds = post.applicants.map((application) => application.playerId).sort();
+  const beforeStatuses = post.applicants.map((application) => application.status);
+
+  const resized = updateRecruitingRoomRules(makeRecruitingState(post), post.id, {
+    ...COMPLETE_PATCH,
+    sideCapacity: 3,
+    benchCapacity: 0,
+  });
+  const updated = resized.recruitingPosts[0];
+
+  assert.notEqual(updated, post);
+  assert.equal(updated.mode, "3v3");
+  assert.equal(updated.benchCapacity, 0);
+  assert.deepEqual(updated.applicants.map((application) => application.playerId).sort(), beforeIds);
+  assert.deepEqual(updated.applicants.map((application) => application.status), beforeStatuses);
+  assert.equal(updated.applicants.some((application) => application.reserve), false);
+  assert.deepEqual(updated.roomState.pinnedReservePlayers, {});
+  assert.equal(updated.applicants.filter((application) => application.side === "teamA").length, 2);
+  assert.equal(updated.applicants.filter((application) => application.side === "teamB").length, 3);
+
+  const tooSmall = updateRecruitingRoomRules(makeRecruitingState(post), post.id, {
+    ...COMPLETE_PATCH,
+    sideCapacity: 2,
+    benchCapacity: 0,
+  });
+  assert.equal(tooSmall.recruitingPosts[0], post);
+  assert.match(tooSmall.notifications[0].body, /현재 참가자가 6명/);
+});
 
 function makeMatch({ refereeId = null } = {}) {
   return {
@@ -247,6 +291,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   const recruitingServer = readFileSync(new URL("../server/api/recruiting/sync-post.js", import.meta.url), "utf8");
   const matchServer = readFileSync(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/20260724090000_room_update_authority.sql", import.meta.url), "utf8");
+  const pickupResizeMigration = readFileSync(new URL("../supabase/migrations/20260724132500_pickup_room_resize.sql", import.meta.url), "utf8");
   const recruitingPage = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
 
   assert.match(recruitingServer, /rankball_recruiting_room_update_action/);
@@ -257,6 +302,9 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(migration, /delete from public\.match_agreements/);
   assert.match(migration, /grant execute on function public\.rankball_recruiting_room_update_action/);
   assert.match(migration, /grant execute on function public\.rankball_match_room_update_action/);
+  assert.match(pickupResizeMigration, /pickup_participant_capacity_below_pool/);
+  assert.match(pickupResizeMigration, /rankball_recruiting_room_update_action_pre_pickup_resize/);
+  assert.match(pickupResizeMigration, /row_number\(\) over/);
   assert.match(recruitingPage, /현재 참가 슬롯은 그대로 유지됩니다/);
   assert.match(recruitingPage, /roomEditStatus\.pending \? "저장 중"/);
   assert.match(recruitingPage, /getRoomEditDraft\(roomPost, sourceMatch\)/);

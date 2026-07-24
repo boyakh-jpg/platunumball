@@ -35,6 +35,7 @@ export function getRecruitingBenchPolicyError(error = {}) {
   if (errorText.includes("invalid_bench_capacity")) return { statusCode: 400, message: "invalid_bench_capacity" };
   if (errorText.includes("recruiting_side_capacity_below_roster")) return { statusCode: 409, message: "recruiting_side_capacity_below_roster" };
   if (errorText.includes("recruiting_bench_capacity_below_roster")) return { statusCode: 409, message: "recruiting_bench_capacity_below_roster" };
+  if (errorText.includes("pickup_participant_capacity_below_pool")) return { statusCode: 409, message: "pickup_participant_capacity_below_pool" };
   if (errorText.includes("recruiting_reserve_full")) return { statusCode: 409, message: "recruiting_reserve_full" };
   if (errorText.includes("recruiting_room_edit_locked")) return { statusCode: 409, message: "recruiting_room_edit_locked" };
   if (errorText.includes("room_meeting_point_required")) return { statusCode: 400, message: "room_meeting_point_required" };

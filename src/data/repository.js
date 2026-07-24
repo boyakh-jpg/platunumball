@@ -184,6 +184,7 @@ import {
   isRecruitingTeamSideLocked,
   isRecruitingEntryMember,
   isIndividualOnlyRecruitingRoom,
+  isPickupRecruitingRoom,
   isTeamOnlyRecruitingRoom,
   isMutableRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
@@ -194,6 +195,10 @@ import {
   updateManyPinnedReservePlayers,
   updatePinnedReservePlayers,
 } from "../lib/recruiting.js";
+import {
+  getPickupCompatibilityPlacements,
+  getPickupParticipantCapacity,
+} from "../lib/roomFlow.js";
 import {
   ADMIN_GRADE_META,
   ADMIN_REVIEW_ACTIONS,
@@ -7054,7 +7059,25 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
   if (!isSupportedMatchMode(nextMode)) return state;
   const benchCapacity = getRecruitingBenchCapacity({ ...post, benchCapacity: patch.benchCapacity });
   const currentLobby = getRecruitingLobby(post, state);
-  if (currentLobby.sides.teamA.projectedFilled > sideCapacity || currentLobby.sides.teamB.projectedFilled > sideCapacity) {
+  const pickupRoom = isPickupRecruitingRoom(post);
+  const pickupParticipantIds = pickupRoom ? getRecruitingRoomParticipantIds(post, state) : [];
+  const pickupParticipantCapacity = getPickupParticipantCapacity({ sideCapacity, benchCapacity });
+  if (pickupRoom && pickupParticipantIds.length > pickupParticipantCapacity) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "정원 변경 불가",
+          body: `현재 참가자가 ${pickupParticipantIds.length}명이므로 전체 참가 정원을 ${pickupParticipantCapacity}명으로 줄일 수 없습니다.`,
+          tone: "orange",
+          recruitingPostId: postId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (!pickupRoom && (currentLobby.sides.teamA.projectedFilled > sideCapacity || currentLobby.sides.teamB.projectedFilled > sideCapacity)) {
     return {
       ...state,
       notifications: [
@@ -7070,7 +7093,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     };
   }
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  if (currentLobby.sides.teamA.reserveCandidates.length > benchCapacity || currentLobby.sides.teamB.reserveCandidates.length > benchCapacity) {
+  if (!pickupRoom && (currentLobby.sides.teamA.reserveCandidates.length > benchCapacity || currentLobby.sides.teamB.reserveCandidates.length > benchCapacity)) {
     return {
       ...state,
       notifications: [getRecruitingReserveLimitNotification(postId, "teamA", benchCapacity), ...state.notifications],
@@ -7082,6 +7105,37 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
   const nextCourtName = patch.court === undefined ? post.court : String(patch.court || post.court || "미정").slice(0, 80);
   const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === patch.courtId) ?? null;
   const nextCourtId = patch.court === undefined ? getCourtId(post) : (nextCourt?.id ?? courtIdByName(nextCourtName));
+  const pickupPlacements = pickupRoom
+    ? getPickupCompatibilityPlacements(pickupParticipantIds.length, {
+        sideCapacity,
+        benchCapacity,
+        hostSide: post.hostSide,
+      })
+    : [];
+  const pickupPlacementByPlayerId = pickupRoom
+    ? Object.fromEntries(pickupParticipantIds.map((playerId, index) => [playerId, pickupPlacements[index]]))
+    : {};
+  const nextApplicants = normalizeRecruitingApplicants(post.applicants ?? []).map((applicant) => {
+    const placement = pickupPlacementByPlayerId[applicant.playerId];
+    return placement ? { ...applicant, ...placement } : applicant;
+  });
+  const nextPinnedReservePlayers = pickupRoom
+    ? MATCH_SIDES.reduce((result, sideName) => {
+        const playerIds = nextApplicants
+          .filter((applicant) => applicant.side === sideName && applicant.reserve)
+          .map((applicant) => applicant.playerId)
+          .filter(Boolean);
+        if (playerIds.length) result[sideName] = playerIds;
+        return result;
+      }, {})
+    : roomState.pinnedReservePlayers;
+  const nextInvitations = pickupRoom
+    ? (roomState.invitations ?? []).map((invitation) => (
+        invitation.role === "referee"
+          ? invitation
+          : { ...invitation, joinMode: "player", teamId: "", reserve: false }
+      ))
+    : roomState.invitations;
   const nextPost = cleanRecruitingRoomStatRecorders({
     ...post,
     mode: nextMode,
@@ -7102,9 +7156,17 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     memo: patch.memo === undefined ? post.memo : String(patch.memo ?? "").slice(0, 500),
     stakes: patch.stakes === undefined ? post.stakes : String(patch.stakes ?? "").slice(0, 500),
     hostReady: true,
-    applicants: normalizeRecruitingApplicants(post.applicants ?? []),
+    applicants: nextApplicants,
     roomState: {
       ...roomState,
+      ...(pickupRoom ? {
+        hostReserve: false,
+        partyLeaders: {},
+        partySides: {},
+        partyReserves: {},
+        pinnedReservePlayers: nextPinnedReservePlayers,
+        invitations: nextInvitations,
+      } : {}),
       mmrRangeMode: nextMmrRangeMode,
       ruleRevision: Number(roomState.ruleRevision ?? 0) + 1,
       ruleChangedAt: updatedAt,

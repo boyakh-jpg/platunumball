@@ -48,6 +48,51 @@ export function getPickupParticipantIds(lobby = {}) {
   return getPickupParticipants(lobby).map((participant) => participant.playerId);
 }
 
+export function getPickupParticipantCapacity({ sideCapacity = 0, benchCapacity = 0 } = {}) {
+  const activePerSide = Math.max(0, Number(sideCapacity) || 0);
+  const waitingPerSide = Math.max(0, Number(benchCapacity) || 0);
+  return (activePerSide + waitingPerSide) * 2;
+}
+
+export function getPickupResizeValidation(lobby = {}, capacity = {}) {
+  const participantCount = getPickupParticipantIds(lobby).length;
+  const participantCapacity = getPickupParticipantCapacity(capacity);
+  return {
+    participantCount,
+    participantCapacity,
+    valid: participantCount <= participantCapacity,
+  };
+}
+
+export function getPickupCompatibilityPlacements(
+  participantCount = 0,
+  { sideCapacity = 0, benchCapacity = 0, hostSide = "teamA" } = {},
+) {
+  const safeParticipantCount = Math.max(0, Number(participantCount) || 0);
+  if (!safeParticipantCount) return [];
+
+  const safeHostSide = hostSide === "teamB" ? "teamB" : "teamA";
+  const oppositeHostSide = safeHostSide === "teamA" ? "teamB" : "teamA";
+  const activePerSide = Math.max(1, Number(sideCapacity) || 1);
+  const totalCapacity = getPickupParticipantCapacity({ sideCapacity: activePerSide, benchCapacity });
+  const activeApplicationCapacity = activePerSide * 2 - 1;
+
+  return Array.from({ length: Math.min(safeParticipantCount, totalCapacity) }, (_, index) => {
+    if (index === 0) return { side: safeHostSide, reserve: false };
+    if (index <= activeApplicationCapacity) {
+      return {
+        side: index % 2 === 1 ? oppositeHostSide : safeHostSide,
+        reserve: false,
+      };
+    }
+    const waitingIndex = index - activeApplicationCapacity;
+    return {
+      side: waitingIndex % 2 === 1 ? "teamA" : "teamB",
+      reserve: true,
+    };
+  });
+}
+
 export function getPickupOpenSlotPlacements(lobby = {}, { sideCapacity = 0, benchCapacity = 0 } = {}) {
   const sides = ["teamA", "teamB"];
   const counts = {
