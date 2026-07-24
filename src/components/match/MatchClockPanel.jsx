@@ -184,7 +184,7 @@ export default function MatchClockPanel({ match }) {
         breakStartedAtMs: sameBreak
           ? current.breakStartedAtMs
           : nextClock.status === "break"
-            ? Date.parse(nextClock.serverNow || "") || Date.now()
+            ? Date.parse(nextClock.breakStartedAt || nextClock.serverNow || "") || Date.now()
             : null,
       };
     });

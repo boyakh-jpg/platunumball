@@ -52,7 +52,21 @@ export default async function handler(request, response) {
     });
     if (clockError) throw clockError;
 
-    const [{ data: result, error: resultError }, { data: playerRows, error: playerError }] = await Promise.all([
+    const breakEventRequest = clock?.status === "break"
+      ? context.supabase
+        .from("match_clock_events")
+        .select("created_at")
+        .eq("match_id", matchId)
+        .eq("action", "endPeriod")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      : Promise.resolve({ data: null, error: null });
+    const [
+      { data: result, error: resultError },
+      { data: playerRows, error: playerError },
+      { data: breakEvent, error: breakEventError },
+    ] = await Promise.all([
       context.supabase
         .from("match_results")
         .select("score_a,score_b,submitted_at")
@@ -64,9 +78,11 @@ export default async function handler(request, response) {
         .eq("match_id", matchId)
         .order("side")
         .order("slot_order"),
+      breakEventRequest,
     ]);
     if (resultError) throw resultError;
     if (playerError) throw playerError;
+    if (breakEventError) throw breakEventError;
 
     const playerIds = [...new Set((playerRows || []).map((row) => row.user_id).filter(Boolean))];
     let profileRows = [];
@@ -82,7 +98,12 @@ export default async function handler(request, response) {
 
     sendJson(response, 200, {
       ok: true,
-      clock,
+      clock: {
+        ...clock,
+        breakStartedAt: clock?.status === "break"
+          ? breakEvent?.created_at || clock.serverNow
+          : null,
+      },
       score: {
         a: Number(result?.score_a || 0),
         b: Number(result?.score_b || 0),
