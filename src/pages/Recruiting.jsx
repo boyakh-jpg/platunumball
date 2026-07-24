@@ -1510,7 +1510,6 @@ function RoomKickPanel({
                     >
                       {checkedIn ? "출석 완료" : "출석"}
                     </Button>
-                    {selfRow ? <span className="form-chip">본인</span> : null}
                   </>
                 ) : null}
                 <Button

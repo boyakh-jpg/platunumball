@@ -274,4 +274,5 @@ test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형
   assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-list\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
   assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(recruitingStyles, /\.pickup-rotation-panel \.arena-room-edit-actions\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
+  assert.doesNotMatch(recruitingSource, /selfRow \? <span className="form-chip">본인<\/span>/);
 });
