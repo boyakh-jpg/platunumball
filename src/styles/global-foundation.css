@@ -208,11 +208,11 @@ body.rankball-scroll-locked .app-main {
 .sidebar-profile {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .brand {
-  gap: 6px;
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -225,13 +225,13 @@ body.rankball-scroll-locked .app-main {
 
 .sidebar-nav {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border-radius: var(--radius);
   color: var(--muted);
   padding: 11px 12px;
@@ -257,7 +257,7 @@ body.rankball-scroll-locked .app-main {
 
 .sidebar-profile-copy {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .sidebar-profile-copy strong,
@@ -297,7 +297,7 @@ body.rankball-scroll-locked .app-main {
 
 .auth-card {
   display: grid;
-  gap: 22px;
+  gap: var(--space-11);
   border: 1px solid rgba(255, 255, 255, 0.14);
   padding: 22px;
   backdrop-filter: blur(18px);
@@ -307,7 +307,7 @@ body.rankball-scroll-locked .app-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .auth-brand {
@@ -316,7 +316,7 @@ body.rankball-scroll-locked .app-main {
 
 .auth-form {
   display: grid;
-  gap: 16px;
+  gap: var(--space-8);
 }
 
 .auth-message {
@@ -328,7 +328,7 @@ body.rankball-scroll-locked .app-main {
 
 .auth-browser-warning {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid rgba(255, 205, 96, 0.28);
   border-radius: var(--radius);
   background: rgba(255, 205, 96, 0.08);
@@ -351,7 +351,7 @@ body.rankball-scroll-locked .app-main {
 .auth-browser-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .auth-browser-actions button,
@@ -359,7 +359,7 @@ body.rankball-scroll-locked .app-main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-3);
   min-height: 38px;
   border: 1px solid rgba(255, 205, 96, 0.28);
   border-radius: var(--radius);
@@ -374,7 +374,7 @@ body.rankball-scroll-locked .app-main {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -392,7 +392,7 @@ body.rankball-scroll-locked .app-main {
 .auth-session-line button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   margin-left: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -405,14 +405,14 @@ body.rankball-scroll-locked .app-main {
 
 .social-login-grid {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .provider-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--space-5);
   min-height: 52px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
@@ -447,14 +447,14 @@ body.rankball-scroll-locked .app-main {
 
 .auth-test-login {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   padding: 10px;
 }
 
 .auth-test-login label {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 900;
@@ -500,7 +500,7 @@ body.rankball-scroll-locked .app-main {
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--space-2);
   margin: clamp(24px, 4vw, 48px) auto 0;
   border-top: 1px solid var(--rb-line);
   color: var(--rb-muted);
@@ -543,13 +543,13 @@ body.rankball-scroll-locked .app-main {
 .data-sources-card {
   width: min(100%, 760px);
   display: grid;
-  gap: 22px;
+  gap: var(--space-11);
   padding: clamp(20px, 4vw, 32px);
 }
 
 .data-sources-header {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .data-sources-header h1 {
@@ -566,7 +566,7 @@ body.rankball-scroll-locked .app-main {
 
 .data-source-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -605,7 +605,7 @@ body.rankball-scroll-locked .app-main {
 
 .data-source-notice {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   border-left: 3px solid var(--rb-orange);
   background: color-mix(in srgb, var(--rb-orange) 7%, transparent);
   padding: 14px 16px;
@@ -647,7 +647,7 @@ body.rankball-scroll-locked .app-main {
 .legal-document {
   display: grid;
   width: min(100%, 920px);
-  gap: clamp(28px, 5vw, 44px);
+  gap: clamp(var(--space-14), 5vw, 44px);
   margin: 0 auto;
   padding: clamp(20px, 4.5vw, 44px);
 }
@@ -659,7 +659,7 @@ body.rankball-scroll-locked .app-main {
 }
 
 .legal-document-header {
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .legal-brand-row {
@@ -668,7 +668,7 @@ body.rankball-scroll-locked .app-main {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px 20px;
+  gap: var(--space-6) var(--space-10);
   margin-bottom: 6px;
 }
 
@@ -684,7 +684,7 @@ body.rankball-scroll-locked .app-main {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .legal-document-nav a {
@@ -729,7 +729,7 @@ body.rankball-scroll-locked .app-main {
 .legal-document-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
   margin: 4px 0 0;
 }
 
@@ -737,7 +737,7 @@ body.rankball-scroll-locked .app-main {
 .legal-contact-list > div {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: var(--space-2);
   border: 1px solid var(--rb-line);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
@@ -762,11 +762,11 @@ body.rankball-scroll-locked .app-main {
 }
 
 .legal-document-body {
-  gap: clamp(30px, 5vw, 48px);
+  gap: clamp(30px, 5vw, var(--space-24));
 }
 
 .legal-document-body section {
-  gap: 12px;
+  gap: var(--space-6);
   scroll-margin-top: 20px;
 }
 
@@ -820,7 +820,7 @@ body.rankball-scroll-locked .app-main {
 .legal-summary,
 .legal-toc {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   padding: 16px 18px;
 }
 
@@ -832,7 +832,7 @@ body.rankball-scroll-locked .app-main {
 
 .legal-toc ol {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 28px;
+  column-gap: var(--space-14);
 }
 
 .legal-toc a {
@@ -899,19 +899,19 @@ body.rankball-scroll-locked .app-main {
 .legal-contact-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .legal-provider-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .legal-provider-grid article {
   display: grid;
   min-width: 0;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid var(--rb-line);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
@@ -926,11 +926,11 @@ body.rankball-scroll-locked .app-main {
 .legal-provider-grid dl,
 .legal-provider-grid dl > div {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .legal-provider-grid dl {
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .legal-provider-grid dt {
@@ -952,7 +952,7 @@ body.rankball-scroll-locked .app-main {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 18px;
+  gap: var(--space-4) var(--space-9);
   border-top: 1px solid var(--rb-line);
   padding-top: 18px;
 }
@@ -1060,7 +1060,7 @@ body.rankball-scroll-locked .app-main {
 .discord-profile-line {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .page-stack {
@@ -1103,7 +1103,7 @@ body.rankball-scroll-locked .app-main {
 
 .profile-side-grid {
   align-items: start;
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .profile-main-stack > .card,
@@ -1136,7 +1136,7 @@ body.rankball-scroll-locked .app-main {
 .mode-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .card {
@@ -1161,14 +1161,14 @@ body.rankball-scroll-locked .app-main {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-4);
   border: 0;
   cursor: pointer;
   white-space: nowrap;
@@ -1247,7 +1247,7 @@ body.rankball-scroll-locked .app-main {
 }
 
 .tier-badge-compact {
-  gap: 6px;
+  gap: var(--space-3);
   padding: 3px 1px;
   font-size: 0.74rem;
 }
@@ -1293,7 +1293,7 @@ span.referee-hover-card {
   width: min(360px, calc(100vw - 24px));
   min-width: min(320px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
-  gap: 12px;
+  gap: var(--space-6);
   overflow: hidden;
   pointer-events: none;
   overscroll-behavior: contain;
@@ -1341,7 +1341,7 @@ span.referee-hover-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .player-hover-head > span:last-child,
@@ -1354,7 +1354,7 @@ span.referee-hover-card {
 .team-hover-tier > span {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .player-hover-head strong,
@@ -1371,7 +1371,7 @@ span.referee-hover-card {
   grid-template-columns: auto minmax(0, 1fr) auto;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .player-hover-identity > strong {
@@ -1429,7 +1429,7 @@ span.referee-hover-card {
   display: grid;
   align-items: center;
   min-width: 0;
-  gap: 8px;
+  gap: var(--space-4);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
@@ -1442,7 +1442,7 @@ span.referee-hover-card {
 .player-hover-tier-grid > span > span {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .player-hover-card .tier-badge-compact img,
@@ -1483,7 +1483,7 @@ span.referee-hover-card {
 
 .team-hover-stats > span {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
@@ -1529,7 +1529,7 @@ span.referee-hover-card {
 .court-hover-address,
 .court-hover-note {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
@@ -1556,7 +1556,7 @@ span.referee-hover-card {
 
 .court-hover-stats > span {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
@@ -1613,7 +1613,7 @@ span.referee-hover-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid rgba(70, 224, 182, 0.16);
   border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.07);
@@ -1636,7 +1636,7 @@ span.referee-hover-card {
 
 .referee-hover-stats > span {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
@@ -1668,14 +1668,14 @@ span.referee-hover-card {
 }
 
 .favorite-management-card {
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .favorite-search-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.04);
@@ -1692,19 +1692,19 @@ span.referee-hover-card {
 
 .favorite-chip-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .favorite-type-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .favorite-type-grid button {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.04);
@@ -1740,7 +1740,7 @@ span.referee-hover-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
   padding: 8px;
@@ -1753,7 +1753,7 @@ span.referee-hover-card {
   display: inline-grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
   color: var(--text);
   text-decoration: none;
@@ -1764,12 +1764,12 @@ span.referee-hover-card {
 .favorite-result-identity > span:last-child {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .court-hover-reviews {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .court-hover-reviews > b {
@@ -1782,7 +1782,7 @@ span.referee-hover-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 8px;
+  gap: var(--space-4);
   border-top: 1px solid var(--ui-card-border);
   padding-top: 6px;
 }
@@ -1806,7 +1806,7 @@ span.referee-hover-card {
 }
 
 .favorite-result-identity.team-identity {
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .favorite-result-row strong,
@@ -1837,7 +1837,7 @@ span.referee-hover-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .favorite-chip-list > em {
@@ -1911,7 +1911,7 @@ span.referee-hover-card {
 .tier-emblem {
   display: grid;
   place-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   margin: 0;
   color: var(--tier-color);
 }
@@ -2044,7 +2044,7 @@ span.referee-hover-card {
   min-height: 128px;
   display: grid;
   align-content: space-between;
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .rating-card-top,
@@ -2054,7 +2054,7 @@ span.referee-hover-card {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .rating-card strong {
@@ -2179,7 +2179,7 @@ span.referee-hover-card {
   }
 
   .profile-rating-mode {
-    gap: 10px;
+    gap: var(--space-5);
     padding: 12px 10px;
   }
 
@@ -2198,20 +2198,20 @@ span.referee-hover-card {
 .match-card,
 .team-card {
   display: grid;
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .match-meta,
 .badge-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .match-meta span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   color: var(--muted);
   font-size: 0.85rem;
 }
@@ -2219,7 +2219,7 @@ span.referee-hover-card {
 .score-line {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--space-6);
   align-items: center;
   text-align: center;
 }
@@ -2236,7 +2236,7 @@ span.referee-hover-card {
 
 .compact-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .compact-list a,
@@ -2246,7 +2246,7 @@ span.referee-hover-card {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -2275,7 +2275,7 @@ span.referee-hover-card {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .notification-actions button,
@@ -2321,7 +2321,7 @@ span.referee-hover-card {
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .home-alert-heading-actions {
@@ -2329,7 +2329,7 @@ span.referee-hover-card {
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .notification-view-tabs {

@@ -196,3 +196,18 @@ test("globals.css is an import-only manifest with bounded modules", () => {
     );
   }
 });
+
+test("global modules use spacing tokens for canonical gaps", () => {
+  const rawGaps = [];
+  const canonicalGapPattern = /(?<![\w.-])(?:2|4|6|8|10|12|14|16|18|20|22|24|28|32|48)px(?![\w-])/;
+
+  for (const file of globalCssFiles) {
+    const root = parseCss(file);
+    root.walkDecls(/^(?:gap|row-gap|column-gap)$/, (declaration) => {
+      if (!canonicalGapPattern.test(declaration.value)) return;
+      rawGaps.push(`${file}:${declaration.source.start.line} ${declaration.toString()}`);
+    });
+  }
+
+  assert.deepEqual(rawGaps, []);
+});

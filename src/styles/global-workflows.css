@@ -12,7 +12,7 @@
 .match-dispute-queue-list,
 .arena-dispute-controls {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .match-rule-grid {
@@ -47,7 +47,7 @@
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .match-dispute-queue-head > div,
@@ -89,7 +89,7 @@
   display: grid;
   flex: 0 0 auto;
   grid-template-columns: repeat(2, minmax(64px, 1fr));
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .report-team-note .team-emblem {
@@ -230,14 +230,14 @@
 
 .team-card-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .favorite-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-2);
   min-height: 28px;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
@@ -265,7 +265,7 @@
 .stat-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .stat-strip span {
@@ -285,7 +285,7 @@
 
 .member-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .member-row,
@@ -294,7 +294,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 10px;
@@ -304,7 +304,7 @@
 .ranking-name > div {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .member-main span,
@@ -315,14 +315,14 @@
 
 .ranking-table {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .ranking-name {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .rank {
@@ -359,7 +359,7 @@
 .segmented-control {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--control-group-gap, 6px);
+  gap: var(--control-group-gap, var(--space-3));
   border: 1px solid var(--line);
   border-radius: var(--control-group-radius, var(--radius-md));
   padding: var(--control-group-padding, 6px);
@@ -401,12 +401,12 @@
 .contract-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .contract-card {
   display: grid;
-  gap: 16px;
+  gap: var(--space-8);
 }
 
 .contract-card .contract-grid {
@@ -434,12 +434,12 @@
 .two-column {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .two-column > div {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -456,7 +456,7 @@
 .roster a {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
   padding: 6px 9px 6px 6px;
@@ -497,7 +497,7 @@
 .contract-note-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .memo-box span {
@@ -518,7 +518,7 @@
 .form-grid,
 .form-stack {
   display: grid;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .form-grid {
@@ -567,7 +567,7 @@
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .create-submit-row .button {
@@ -661,7 +661,7 @@ input[type="color"] {
 .switch-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .signup-setup-grid {
@@ -675,12 +675,12 @@ input[type="color"] {
 .age-group-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .age-group-grid span {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -711,14 +711,14 @@ input[type="color"] {
 .create-mode-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .create-mode-grid button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -742,7 +742,7 @@ input[type="color"] {
 .create-public-note {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .create-mode-grid strong {
@@ -775,12 +775,12 @@ input[type="color"] {
 .tournament-team-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .tournament-selected-strip {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .tournament-selected-strip > span {
@@ -880,7 +880,7 @@ input[type="color"] {
 .team-picker-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
+  gap: var(--space-6);
   margin-top: 12px;
 }
 
@@ -894,7 +894,7 @@ input[type="color"] {
 .search-controls {
   display: grid;
   grid-template-columns: minmax(min(160px, 100%), 0.34fr) minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .court-search-field {
@@ -911,7 +911,7 @@ input[type="color"] {
   display: grid;
   max-height: 320px;
   overflow: auto;
-  gap: 6px;
+  gap: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
@@ -932,7 +932,7 @@ input[type="color"] {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
@@ -953,7 +953,7 @@ input[type="color"] {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   font-size: 0.86rem;
   font-weight: 950;
   overflow-wrap: anywhere;
@@ -971,13 +971,13 @@ input[type="color"] {
   display: grid;
   grid-template-columns: minmax(0, max-content) minmax(min(180px, 100%), 1fr);
   align-items: end;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .court-reservation-row label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   min-height: 44px;
 }
 
@@ -993,7 +993,7 @@ input[type="color"] {
 
 .favorite-search-label {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
   color: var(--muted);
   font-size: 0.86rem;
   font-weight: 800;
@@ -1018,7 +1018,7 @@ input[type="color"] {
 .team-search-field:focus-within .team-search-popover,
 .team-search-field.has-query .team-search-popover {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .team-search-popover small {
@@ -1033,7 +1033,7 @@ input[type="color"] {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 4px 8px;
+  gap: var(--space-2) var(--space-4);
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-xs);
@@ -1157,7 +1157,7 @@ input[type="color"] {
 .favorite-toggle-button {
   width: max-content;
   min-height: 30px;
-  gap: 4px;
+  gap: var(--space-2);
   border-radius: var(--radius-xs);
   font-size: 0.72rem;
   padding: 0 9px;
@@ -1189,7 +1189,7 @@ input[type="color"] {
 .score-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: var(--space-6);
   align-items: end;
 }
 
@@ -1222,7 +1222,7 @@ input[type="color"] {
 
 .score-form label {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .numeric-stepper {
@@ -1283,12 +1283,12 @@ input[type="color"] {
 .approval-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .approval-grid > div {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -1302,7 +1302,7 @@ input[type="color"] {
 .approval-status-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .approval-status-strip span {
@@ -1318,7 +1318,7 @@ input[type="color"] {
 
 .delta-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .delta-row {
@@ -1331,7 +1331,7 @@ input[type="color"] {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(116px, 28%, 168px);
   align-items: center;
-  gap: 16px;
+  gap: var(--space-8);
   border: 1px solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
@@ -1344,13 +1344,13 @@ input[type="color"] {
   z-index: 1;
   display: grid;
   min-width: 0;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .share-card-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   color: var(--gold);
   font-weight: 900;
   font-size: 0.78rem;
@@ -1407,7 +1407,7 @@ input[type="color"] {
 @media (max-width: 520px) {
   .share-card {
     grid-template-columns: minmax(0, 1fr) clamp(76px, 24vw, 96px);
-    gap: 10px;
+    gap: var(--space-5);
   }
 
   .share-card strong {
@@ -1444,7 +1444,7 @@ input[type="color"] {
 .oauth-static-card {
   display: grid;
   width: min(720px, 100%);
-  gap: 14px;
+  gap: var(--space-7);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-md);
   background: rgba(16, 20, 27, 0.96);
@@ -1474,7 +1474,7 @@ input[type="color"] {
 .oauth-static-card section,
 .oauth-static-card nav {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .oauth-static-card nav {
@@ -1513,7 +1513,7 @@ input[type="color"] {
 .landing-copy {
   display: grid;
   max-width: 620px;
-  gap: 22px;
+  gap: var(--space-11);
 }
 
 .landing-copy p {
@@ -1525,14 +1525,14 @@ input[type="color"] {
 .landing-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .landing-primary-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .landing-actions .landing-primary-actions .landing-create-action {
@@ -1545,7 +1545,7 @@ input[type="color"] {
 .landing-actions .landing-primary-actions .landing-create-action .button {
   width: 100%;
   min-width: 0;
-  gap: 6px;
+  gap: var(--space-3);
   padding-inline: 10px;
   white-space: nowrap;
 }
@@ -1559,7 +1559,7 @@ input[type="color"] {
   overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
-  gap: 24px;
+  gap: var(--space-12);
   border: 1px solid rgba(70, 224, 182, 0.2);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -1650,7 +1650,7 @@ input[type="color"] {
     z-index: 20;
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 4px;
+    gap: var(--space-2);
     min-height: var(--bottom-nav-height);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -1665,7 +1665,7 @@ input[type="color"] {
     align-items: center;
     justify-content: center;
     min-width: 0;
-    gap: 4px;
+    gap: var(--space-2);
     border-radius: var(--radius-xs);
     color: var(--muted);
     padding: 9px 1px;
@@ -1856,13 +1856,13 @@ input[type="color"] {
 .landing-stat-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-5);
   max-width: 560px;
 }
 
 .landing-stat-grid span {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.58);
@@ -1895,7 +1895,7 @@ input[type="color"] {
 
 .broadcast-glass {
   display: grid;
-  gap: 18px;
+  gap: var(--space-9);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius);
   background:
@@ -1928,7 +1928,7 @@ input[type="color"] {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border-block: 1px solid rgba(255, 255, 255, 0.14);
   padding-block: 18px;
 }
@@ -1963,7 +1963,7 @@ input[type="color"] {
 .team-hub-board div span {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .broadcast-list span {
@@ -2062,7 +2062,7 @@ input[type="color"] {
 .team-hub-board div {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .team-hub-board div span {
@@ -2111,7 +2111,7 @@ input[type="color"] {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: var(--space-6);
   min-width: 0;
 }
 
@@ -2163,7 +2163,7 @@ input[type="color"] {
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .team-tier-hero .team-emblem-lg {
@@ -2175,13 +2175,13 @@ input[type="color"] {
 .team-emblem-report-control {
   display: grid;
   justify-items: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .team-emblem-report-control form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
+  gap: var(--space-3);
   width: min(340px, 100%);
 }
 
@@ -2258,7 +2258,7 @@ input[type="color"] {
 .my-team-row {
   display: grid;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
@@ -2303,7 +2303,7 @@ input[type="color"] {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   color: var(--text);
   font-size: 0.74rem;
   font-weight: 950;
@@ -2326,7 +2326,7 @@ input[type="color"] {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid rgba(116, 169, 255, 0.14);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -2371,7 +2371,7 @@ input[type="color"] {
   grid-template-columns: minmax(0, 1fr);
   align-content: center;
   justify-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -2425,7 +2425,7 @@ input[type="color"] {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-4);
   margin-top: 2px;
 }
 
@@ -2475,7 +2475,7 @@ input[type="color"] {
 .match-action-row,
 .settings-toggle-grid {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .match-action-row {
@@ -2495,12 +2495,12 @@ input[type="color"] {
 
 .settings-nav-grid {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .settings-nav-grid a {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   min-height: 72px;
   align-content: center;
   border: 1px solid var(--ui-control-border);
@@ -2559,7 +2559,7 @@ input[type="color"] {
 
 .settings-address-search {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .settings-address-search,
@@ -2575,7 +2575,7 @@ input[type="color"] {
 .settings-address-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .settings-address-search small {
@@ -2586,7 +2586,7 @@ input[type="color"] {
 
 .settings-address-results {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
   overflow-x: hidden;
 }
 
@@ -2595,7 +2595,7 @@ input[type="color"] {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   min-width: 0;
-  gap: 5px 10px;
+  gap: 5px var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -2657,7 +2657,7 @@ input[type="color"] {
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .settings-nearby-courts-head > div,
@@ -2696,7 +2696,7 @@ input[type="color"] {
 
 .settings-nearby-court-list {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .settings-nearby-court-list > div {
@@ -2741,7 +2741,7 @@ input[type="color"] {
 @media (max-width: 560px) {
   .settings-address-results button {
     grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
+    gap: var(--space-2);
   }
 
   .settings-address-results strong,
@@ -2785,7 +2785,7 @@ input[type="color"] {
   min-width: 0;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
+  gap: var(--space-12);
   padding: 24px;
   overflow: hidden;
   background:
@@ -2827,7 +2827,7 @@ input[type="color"] {
 .court-review-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-3);
   margin-top: 12px;
 }
 
@@ -2855,7 +2855,7 @@ input[type="color"] {
   display: flex;
   flex: 0 0 auto;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-detail-actions .button {
@@ -2867,7 +2867,7 @@ input[type="color"] {
 
 .court-correction-card {
   display: grid;
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .court-correction-card .section-title-row small {
@@ -2882,13 +2882,13 @@ input[type="color"] {
   display: grid;
   grid-template-columns: minmax(150px, 0.55fr) minmax(280px, 1.45fr) minmax(220px, 1fr);
   align-items: end;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .court-correction-form label {
   display: grid;
   min-width: 0;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .court-correction-form label > span {
@@ -3010,7 +3010,7 @@ input[type="color"] {
   display: grid;
   min-width: 0;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 9px 14px;
+  gap: 9px var(--space-7);
   padding: 13px;
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
@@ -3027,7 +3027,7 @@ input[type="color"] {
 .court-review-author > div {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .court-review-author strong,
@@ -3089,7 +3089,7 @@ input[type="color"] {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-detail-inline-error {
@@ -3097,7 +3097,7 @@ input[type="color"] {
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-5);
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--rb-orange) 46%, var(--card-border));
   border-radius: var(--ui-control-radius);
@@ -3127,7 +3127,7 @@ input[type="color"] {
 
 .court-review-form {
   display: grid;
-  gap: 14px;
+  gap: var(--space-7);
   margin-top: 14px;
 }
 
@@ -3187,7 +3187,7 @@ input[type="color"] {
 .court-rating-buttons {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .court-rating-buttons button {
@@ -3251,7 +3251,7 @@ input[type="color"] {
   .court-detail-hero {
     align-items: stretch;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--space-8);
     padding: 17px;
   }
 
@@ -3281,7 +3281,7 @@ input[type="color"] {
 
   .court-detail-metrics {
     grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
+    gap: var(--space-4);
   }
 
   .court-detail-metrics > div {
@@ -3290,14 +3290,14 @@ input[type="color"] {
   }
 
   .court-review-row {
-    gap: 8px;
+    gap: var(--space-4);
     padding: 11px;
   }
 }
 
 .referee-rulebook-panel {
   display: grid;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid rgba(90, 168, 255, 0.24);
   border-radius: var(--radius);
   background: rgba(90, 168, 255, 0.06);
@@ -3313,13 +3313,13 @@ input[type="color"] {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .referee-rulebook-head > div {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .referee-rulebook-head strong {
@@ -3340,7 +3340,7 @@ input[type="color"] {
 
 .referee-rulebook-notice {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .referee-rulebook-notice span {
@@ -3355,7 +3355,7 @@ input[type="color"] {
 .referee-rulebook-section {
   display: grid;
   min-width: 0;
-  gap: 8px;
+  gap: var(--space-4);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
   background: rgba(0, 0, 0, 0.14);
@@ -3396,7 +3396,7 @@ input[type="color"] {
 .referee-rulebook-intro > div:first-child {
   display: grid;
   align-content: center;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .referee-rulebook-intro h2 {
@@ -3421,7 +3421,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 
 .rulebook-asset {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
   margin: 0;
   min-width: 0;
 }
@@ -3445,7 +3445,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 
 .referee-rulebook-checklist {
   display: grid;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
@@ -3455,13 +3455,13 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-rulebook-checklist > div:last-child {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .referee-rulebook-checklist span {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
@@ -3482,19 +3482,19 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-stat-guide-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .referee-rulebook-section-card,
 .referee-stat-guide-card {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .referee-rulebook-section-body {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -3510,7 +3510,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-stat-columns ul,
 .referee-stat-examples ul {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
   margin: 0;
   padding-left: 18px;
 }
@@ -3529,14 +3529,14 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-stat-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .referee-rulebook-detail-grid > div,
 .referee-stat-columns > div,
 .referee-stat-examples {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
   padding-block-start: 10px;
   border-block-start: 1px solid var(--ui-card-border);
@@ -3552,12 +3552,12 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 
 .referee-stat-guide {
   display: grid;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .referee-stat-guide-card > div:nth-child(2) {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .referee-stat-columns {
@@ -3567,7 +3567,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-rulebook-footer {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .referee-rulebook-footer svg {
@@ -3577,7 +3577,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 
 .referee-rulebook-chapter {
   display: grid;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .referee-rulebook-chapter .section-title-row > div {
@@ -3595,14 +3595,14 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 
 .referee-rulebook-footer > div {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
 }
 
 .referee-rulebook-sources {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
+  gap: var(--space-4) var(--space-7);
 }
 
 .referee-rulebook-sources a {
@@ -3615,7 +3615,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 
 .referee-exam-panel {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(70, 224, 182, 0.055);
@@ -3625,13 +3625,13 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-exam-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .referee-exam-summary span {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
   background: rgba(0, 0, 0, 0.16);
@@ -3662,20 +3662,20 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .referee-exam-list {
   display: grid;
   max-height: min(520px, 70vh);
   overflow: auto;
-  gap: 10px;
+  gap: var(--space-5);
   padding-right: 4px;
 }
 
 .referee-exam-question {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -3696,7 +3696,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-exam-choice-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .referee-exam-choice-grid button {
@@ -3741,14 +3741,14 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .report-player-picker > div {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .report-player-picker button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 8px;
+  gap: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -3761,7 +3761,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .report-player-info {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .report-player-picker button.selected {
@@ -3805,7 +3805,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-6);
   margin-top: 12px;
 }
 

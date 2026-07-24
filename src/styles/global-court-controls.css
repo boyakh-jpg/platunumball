@@ -2,14 +2,14 @@
 .tournament-court-pool {
   display: grid;
   min-width: 0;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .tournament-court-pool > div:first-child {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-5);
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 850;
@@ -23,7 +23,7 @@
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .tournament-court-pool-list > span {
@@ -85,7 +85,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: var(--space-7);
   min-width: 0;
   border-block: 1px solid var(--ui-control-border, var(--line));
   padding-block: 12px;
@@ -95,7 +95,7 @@
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -152,7 +152,7 @@
 .create-selected-court-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-map-picker-backdrop {
@@ -172,7 +172,7 @@
   width: min(920px, 100%);
   max-height: calc(100dvh - 36px);
   overflow: auto;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid var(--card-border, var(--line));
   border-radius: var(--card-radius, var(--radius));
   background: var(--card-bg-strong, var(--surface));
@@ -186,7 +186,7 @@
   min-width: 0;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .court-map-picker-header > div {
@@ -308,7 +308,7 @@
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   min-width: 0;
   border-block: 1px solid var(--ui-control-border, var(--line));
   padding-block: 10px;
@@ -316,7 +316,7 @@
 
 .court-map-picker-cluster-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-map-picker-cluster-list > strong {
@@ -326,7 +326,7 @@
 .court-map-picker-cluster-list > div {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-map-picker-cluster-list button {
@@ -489,7 +489,7 @@ html[data-theme="light"] .court-map-picker-state {
 
 .match-creation-wizard-nav ol {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -513,7 +513,7 @@ html[data-theme="light"] .court-map-picker-state {
   width: 100%;
   min-height: 44px;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   border: 1px solid transparent;
   border-radius: var(--ui-control-radius);
   background: transparent;
@@ -554,7 +554,7 @@ html[data-theme="light"] .court-map-picker-state {
 .match-cost-policy-fields,
 .match-operations-policy-fields {
   display: grid;
-  gap: 12px;
+  gap: var(--space-6);
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
@@ -563,19 +563,19 @@ html[data-theme="light"] .court-map-picker-state {
 .match-intent-axis-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .match-intent-axis {
   display: grid;
   min-width: 0;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .match-intent-preset-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .match-intent-preset-grid > button {
@@ -611,7 +611,7 @@ html[data-theme="light"] .court-map-picker-state {
 
 .match-roster-policy-fields .field-block {
   display: grid;
-  gap: 6px;
+  gap: var(--space-3);
   align-self: start;
 }
 
@@ -631,7 +631,7 @@ html[data-theme="light"] .court-map-picker-state {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: var(--space-6);
   margin-bottom: 12px;
 }
 
@@ -667,7 +667,7 @@ html[data-theme="light"] .court-map-picker-state {
 .match-cost-components-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .match-cost-components-grid label {
@@ -678,7 +678,7 @@ html[data-theme="light"] .court-map-picker-state {
   display: flex;
   min-height: 48px;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
@@ -701,7 +701,7 @@ html[data-theme="light"] .court-map-picker-state {
 .match-bench-payment-acknowledgement {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-4);
   border: 1px solid color-mix(in srgb, var(--rb-orange) 48%, var(--line));
   border-radius: var(--ui-control-radius);
   background: color-mix(in srgb, var(--rb-orange) 8%, var(--surface-2));
@@ -715,13 +715,13 @@ html[data-theme="light"] .court-map-picker-state {
 .match-creation-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .match-creation-summary-grid > div {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: var(--space-2);
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
@@ -741,7 +741,7 @@ html[data-theme="light"] .court-map-picker-state {
 .match-creation-final-summary,
 .match-creation-validation-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .match-creation-final-summary > p {
@@ -770,7 +770,7 @@ html[data-theme="light"] .court-map-picker-state {
 .match-creation-ready {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   color: var(--text);
 }
 
@@ -782,7 +782,7 @@ html[data-theme="light"] .court-map-picker-state {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .match-creation-wizard-actions .button {
@@ -800,7 +800,7 @@ html[data-theme="light"] .court-map-picker-state {
 
 .create-record-court-field {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .create-record-court-selection {
@@ -821,7 +821,7 @@ html[data-theme="light"] .court-map-picker-state {
   grid-column: 1 / -1;
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: end;
-  gap: 12px;
+  gap: var(--space-6);
   min-width: 0;
 }
 
@@ -829,7 +829,7 @@ html[data-theme="light"] .court-map-picker-state {
   display: flex;
   min-height: var(--ui-button-height);
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   white-space: nowrap;
 }
 
@@ -850,7 +850,7 @@ html[data-theme="light"] .court-map-picker-state {
 .create-eligibility-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-6);
   min-width: 0;
 }
 
@@ -861,7 +861,7 @@ html[data-theme="light"] .court-map-picker-state {
 .create-eligibility-control {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-6);
   min-width: 0;
 }
 
@@ -979,7 +979,7 @@ html[data-theme="light"] .court-map-picker-state {
   .match-creation-wizard-actions {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--space-4);
   }
 
   .match-creation-wizard-actions .button {
@@ -1007,14 +1007,14 @@ html[data-theme="light"] .court-map-picker-state {
   }
 
   .match-creation-wizard-nav ol {
-    gap: 4px;
+    gap: var(--space-2);
   }
 
   .match-creation-wizard-nav button {
     min-height: 58px;
     flex-direction: column;
     justify-content: center;
-    gap: 4px;
+    gap: var(--space-2);
     padding: 5px 2px;
     text-align: center;
   }
@@ -1359,7 +1359,7 @@ html[data-theme="light"] .court-map-picker-state {
 .affiliation-search-result > span {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .affiliation-search-result strong,
@@ -1414,7 +1414,7 @@ html[data-theme="light"] .court-map-picker-state {
 
 .admin-name-moderation-detail {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
@@ -1435,7 +1435,7 @@ html[data-theme="light"] .court-map-picker-state {
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .profile-icon-card-tools .profile-icon-card-actions {
@@ -1606,7 +1606,7 @@ html[data-theme="light"] .court-map-picker-state {
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .rank-team-hero .team-detail-heading-row .favorite-toggle-button {
@@ -1621,7 +1621,7 @@ html[data-theme="light"] .court-map-picker-state {
 .my-team-copy {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .my-team-row .my-team-copy > strong,
@@ -1638,7 +1638,7 @@ html[data-theme="light"] .court-map-picker-state {
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .my-team-row .my-team-tier {
@@ -1709,7 +1709,7 @@ html[data-theme="light"] .court-map-picker-state {
 
 .player-profile-team-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .player-profile-team-row {
@@ -1719,7 +1719,7 @@ html[data-theme="light"] .court-map-picker-state {
   min-height: 62px;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
@@ -1734,7 +1734,7 @@ html[data-theme="light"] .court-map-picker-state {
 .player-profile-team-row > span {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .player-profile-team-row small {
@@ -1870,7 +1870,7 @@ html[data-theme="light"] .court-map-picker-state {
 .naver-pin-picker-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   margin-left: auto;
 }
 
@@ -1912,7 +1912,7 @@ html[data-theme="light"] .court-map-picker-state {
 /* Admin court database */
 .court-db-card {
   min-width: 0;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .court-db-count {
@@ -1929,7 +1929,7 @@ html[data-theme="light"] .court-map-picker-state {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .court-db-toolbar > small,
@@ -1943,7 +1943,7 @@ html[data-theme="light"] .court-map-picker-state {
 .court-db-toolbar > div,
 .court-db-pagination > div {
   display: flex;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .court-db-table-wrap {
@@ -2008,7 +2008,7 @@ html[data-theme="light"] .court-map-picker-state {
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
+  gap: var(--space-2);
   padding: 0;
   border: 0;
   background: transparent;
@@ -2075,7 +2075,7 @@ html[data-theme="light"] .court-map-picker-state {
 .court-db-edit-row label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-db-edit-row label {

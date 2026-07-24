@@ -41,7 +41,7 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--space-7);
   min-height: 68px;
   border-bottom: 1px solid var(--card-border);
   background: var(--card-bg-strong);
@@ -64,7 +64,7 @@
 .court-db-modal-header > div:last-child {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .court-db-modal-body {
@@ -73,7 +73,7 @@
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-4);
   padding: 10px;
 }
 
@@ -209,7 +209,7 @@
   width: auto;
   align-items: center;
   justify-content: flex-start;
-  gap: 4px;
+  gap: var(--space-2);
   min-height: 21px;
   margin-right: 6px;
   vertical-align: middle;
@@ -314,14 +314,14 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .court-db-review-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid color-mix(in srgb, var(--rb-blue) 38%, var(--card-border));
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--rb-blue) 7%, var(--card-bg));
@@ -331,7 +331,7 @@
 .court-db-review-progress {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .court-db-review-progress strong {
@@ -352,7 +352,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .court-db-review-workspace {
@@ -361,7 +361,7 @@
   min-height: 0;
   flex: 1 1 auto;
   grid-template-columns: minmax(240px, 0.62fr) minmax(0, 2fr);
-  gap: 8px;
+  gap: var(--space-4);
   overflow: hidden;
 }
 
@@ -378,7 +378,7 @@
 .court-db-review-summary {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-6);
   padding: 12px;
 }
 
@@ -410,7 +410,7 @@
 .court-db-review-summary dl > div {
   display: grid;
   grid-template-columns: 66px minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--space-4);
   border-bottom: 1px solid color-mix(in srgb, var(--card-border) 72%, transparent);
   padding-bottom: 7px;
 }
@@ -435,7 +435,7 @@
   display: flex;
   margin-top: auto;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .court-db-review-links a {
@@ -457,7 +457,7 @@
 .court-db-review-editor {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-6);
   padding: 12px;
 }
 
@@ -465,12 +465,12 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .court-db-review-section-head > div {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .court-db-review-section-head strong {
@@ -547,7 +547,7 @@
   display: grid;
   grid-template-columns: minmax(220px, 1.35fr) minmax(150px, 0.65fr) minmax(280px, 1fr);
   align-items: end;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-db-review-primary-fields label,
@@ -608,7 +608,7 @@
   display: grid;
   min-height: 0;
   overflow: auto;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-md);
   background: var(--card-bg);
@@ -620,7 +620,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .court-db-duplicate-header > div:first-child {
@@ -645,20 +645,20 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .court-db-duplicate-courts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-db-duplicate-courts article {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
   background: var(--input-bg);
@@ -693,7 +693,7 @@
   display: grid;
   grid-template-columns: minmax(240px, 0.7fr) minmax(300px, 1.3fr);
   align-items: end;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid color-mix(in srgb, var(--rb-blue) 45%, var(--card-border));
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--rb-blue) 7%, var(--input-bg));
@@ -798,7 +798,7 @@
   display: flex;
   min-width: 0;
   overflow-x: auto;
-  gap: 6px;
+  gap: var(--space-3);
   padding-bottom: 2px;
 }
 
@@ -829,7 +829,7 @@
 .court-db-review-subhead {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-db-review-subhead strong {
@@ -846,7 +846,7 @@
 .court-db-review-chip-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .court-db-review-chip-group {
@@ -889,7 +889,7 @@
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
-  gap: 3px 10px;
+  gap: 3px var(--space-5);
   line-height: 1.35;
 }
 
@@ -907,7 +907,7 @@
   width: 100%;
   min-height: 100dvh;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-4);
   background: var(--bg);
   color: var(--text);
   padding: 10px;
@@ -918,7 +918,7 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
   background: var(--card-bg);
@@ -933,7 +933,7 @@
 .admin-court-map-popup h1 {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   font-size: 1rem;
 }
 
@@ -947,7 +947,7 @@
 .admin-court-map-popup-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .admin-court-map-popup-grid {
@@ -955,7 +955,7 @@
   min-height: 0;
   flex: 1 1 auto;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .admin-court-map-popup-grid.is-panorama-only {
@@ -992,7 +992,7 @@
   min-height: 60dvh;
   place-items: center;
   align-content: center;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
   background: var(--card-bg);
@@ -1100,7 +1100,7 @@
 
   .court-db-modal .court-db-toolbar,
   .court-db-modal .court-db-pagination {
-    gap: 6px;
+    gap: var(--space-3);
   }
 
   .admin-court-map-popup-actions {
@@ -1179,7 +1179,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid rgba(255, 91, 91, 0.24);
   border-radius: var(--radius);
   background: rgba(255, 91, 91, 0.07);
@@ -1188,7 +1188,7 @@
 
 .team-danger-zone > div {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .team-danger-zone strong {
@@ -1221,7 +1221,7 @@
 .app-confirm-dialog {
   display: grid;
   width: min(360px, 100%);
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid color-mix(in srgb, var(--card-border) 80%, var(--text) 20%);
   border-radius: var(--card-radius);
   background: color-mix(in srgb, var(--card-bg-strong) 16%, var(--bg) 84%);
@@ -1247,7 +1247,7 @@
 .app-confirm-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .match-void-dialog {
@@ -1263,7 +1263,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .match-void-acknowledgement input {
@@ -1272,7 +1272,7 @@
 
 .match-void-summary {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
@@ -1285,7 +1285,7 @@
 
 .arena-dispute-editor {
   display: grid;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid var(--ui-room-panel-border, var(--card-border, var(--line)));
   border-radius: var(--ui-card-radius, var(--radius));
   background: var(--ui-room-panel-bg, var(--ui-card-bg, rgba(255, 255, 255, 0.05)));
@@ -1296,7 +1296,7 @@
 .dispute-score-request {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(160px, 0.9fr);
-  gap: 10px;
+  gap: var(--space-5);
   align-items: end;
 }
 
@@ -1337,7 +1337,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: end;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .arena-dispute-score-row label,
@@ -1372,13 +1372,13 @@
 .arena-dispute-stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .arena-dispute-side,
 .arena-dispute-player {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .arena-dispute-side > strong {
@@ -1396,7 +1396,7 @@
 
 .arena-dispute-score-row .numeric-stepper,
 .arena-dispute-player .numeric-stepper {
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .arena-stat-stepper {
@@ -1439,7 +1439,7 @@
 .arena-dispute-player > div {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 @media (max-width: 640px) {
@@ -1481,7 +1481,7 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 18px;
+  gap: var(--space-9);
   border: 1px solid rgba(70, 224, 182, 0.24);
   border-radius: var(--radius);
   background:
@@ -1500,7 +1500,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 18px;
+  gap: var(--space-9);
 }
 
 .profile-identity > div:last-child,
@@ -1527,7 +1527,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   border: 1px solid rgba(255, 211, 108, 0.28);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.68);
@@ -1536,7 +1536,7 @@
 
 .tier-statement > div {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .tier-statement > div > span {
@@ -1558,7 +1558,7 @@
 
 .team-detail-hero > div:first-child {
   display: grid;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .team-detail-hero p:not(.eyebrow) {
@@ -1574,13 +1574,13 @@
 
 .history-list {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .history-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -1601,7 +1601,7 @@
 .history-score {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .history-score strong {
@@ -1612,7 +1612,7 @@
 .history-teams {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .history-teams a {
@@ -1628,7 +1628,7 @@
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-6);
   margin-top: 6px;
 }
 
@@ -1649,7 +1649,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   min-height: 56px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
@@ -1672,7 +1672,7 @@
 .stat-player-button > .player-hover-trigger > span:not(.avatar, .player-hover-card) {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .stat-player-button em {
@@ -1712,7 +1712,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid rgba(255, 211, 108, 0.2);
   border-radius: var(--radius);
   background: rgba(255, 211, 108, 0.075);
@@ -1730,13 +1730,13 @@
 .stat-referee-panel {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .stat-referee-panel > div {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: var(--space-2);
   border: 1px solid rgba(70, 224, 182, 0.18);
   border-radius: var(--radius);
   background: rgba(70, 224, 182, 0.055);
@@ -1759,7 +1759,7 @@
 
 .stat-trust-panel {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid rgba(116, 169, 255, 0.18);
   border-radius: var(--radius);
   background: rgba(116, 169, 255, 0.055);
@@ -1770,12 +1770,12 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .stat-trust-head > div {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .stat-trust-head strong {
@@ -1791,12 +1791,12 @@
 .stat-trust-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .stat-trust-grid > div {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -1826,7 +1826,7 @@
 
 @media (max-width: 900px) {
   .match-room .section-card {
-    gap: 12px;
+    gap: var(--space-6);
   }
 
   .match-room .card {
@@ -1879,7 +1879,7 @@
 
   .match-room .stat-player-button {
     grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
+    gap: var(--space-3);
     min-height: 0;
     padding: 8px;
   }
@@ -1922,12 +1922,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .approval-voter-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .approval-voter-list button {
@@ -1972,7 +1972,7 @@
 
 .approval-guard-note {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   margin-top: 12px;
   border: 1px solid rgba(255, 211, 108, 0.22);
   border-radius: var(--radius);
@@ -2003,7 +2003,7 @@
 .stat-editor-modal {
   width: min(560px, 100%);
   display: grid;
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .modal-header span {
@@ -2016,14 +2016,14 @@
 
 .stat-stepper-list {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .stat-stepper-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 138px;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -2045,7 +2045,7 @@
   grid-template-areas: "down value up";
   grid-template-columns: 40px 50px 40px;
   grid-template-rows: 44px;
-  gap: 4px;
+  gap: var(--space-2);
   width: 138px;
 }
 
@@ -2077,14 +2077,14 @@
 
 .trust-star-grid {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .trust-star-button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -2109,14 +2109,14 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   color: inherit;
 }
 
 .trust-star-button .player-hover-trigger > span:last-child {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .trust-star-button strong {
@@ -2142,7 +2142,7 @@
   display: grid;
   grid-template-columns: minmax(72px, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   padding: 8px 0;
 }
 
@@ -2154,7 +2154,7 @@
 
 .court-review-stars {
   display: flex;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .court-review-star-button {
@@ -2182,7 +2182,7 @@
 
 .court-review-detail-grid {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
   padding: 4px 0;
 }
 
@@ -2437,7 +2437,7 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .recorder-page {
-    gap: 10px;
+    gap: var(--space-5);
   }
 
   .recorder-header p {
@@ -2446,7 +2446,7 @@ html[data-theme="light"] .team-search-popover button.selected {
 
   .stat-stepper-row {
     grid-template-columns: minmax(0, 1fr) 120px;
-    gap: 6px;
+    gap: var(--space-3);
     padding: 8px;
   }
 
@@ -2488,14 +2488,14 @@ html[data-theme="light"] .team-search-popover button.selected {
   .landing-hero {
     min-height: auto;
     align-content: start;
-    gap: 18px;
+    gap: var(--space-9);
     overflow: visible;
     padding: 20px 14px 24px;
   }
 
   .landing-copy {
     max-width: 100%;
-    gap: 14px;
+    gap: var(--space-7);
   }
 
   .landing-copy h1 {
@@ -2514,7 +2514,7 @@ html[data-theme="light"] .team-search-popover button.selected {
     display: grid;
     width: 100%;
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: var(--space-4);
   }
 
   .landing-actions a,
@@ -2535,7 +2535,7 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .landing-stat-grid {
-    gap: 8px;
+    gap: var(--space-4);
   }
 
   .landing-stat-grid span {
@@ -2553,7 +2553,7 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .broadcast-glass {
-    gap: 12px;
+    gap: var(--space-6);
     padding: 14px;
     backdrop-filter: blur(12px);
   }
@@ -2565,7 +2565,7 @@ html[data-theme="light"] .team-search-popover button.selected {
 
   .broadcast-score {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--space-4);
     padding-block: 12px;
     text-align: center;
   }
@@ -2605,13 +2605,13 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .broadcast-list {
-    gap: 8px;
+    gap: var(--space-4);
   }
 
   .broadcast-list span {
     align-items: flex-start;
     justify-content: flex-start;
-    gap: 8px;
+    gap: var(--space-4);
     overflow-wrap: anywhere;
   }
 
@@ -2621,7 +2621,7 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .page-stack {
-    gap: 14px;
+    gap: var(--space-7);
   }
 
   .page-header h1 {
@@ -2638,7 +2638,7 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .home-search-box {
-    gap: 8px;
+    gap: var(--space-4);
     padding: 8px 10px;
   }
 
@@ -2650,13 +2650,13 @@ html[data-theme="light"] .team-search-popover button.selected {
 
   .home-dashboard-grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
+    gap: var(--space-7);
   }
 
   .season-hero {
     width: 100%;
     min-width: 0;
-    gap: 14px;
+    gap: var(--space-7);
     padding: 16px;
   }
 
@@ -2705,7 +2705,7 @@ html[data-theme="light"] .team-search-popover button.selected {
 
   .approval-status-strip {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    gap: var(--space-3);
   }
 
   .approval-status-strip span {
@@ -2799,7 +2799,7 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .bottom-nav a {
-    gap: 2px;
+    gap: var(--space-1);
     padding: 8px 0;
     font-size: 0.58rem;
   }

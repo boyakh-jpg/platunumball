@@ -35,7 +35,7 @@
 
 .page-header > div {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .page-header h1,
@@ -173,7 +173,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 
 .home-rank-board-head .rank-hero-top {
   align-items: center;
-  gap: 16px;
+  gap: var(--space-8);
 }
 
 .home-rank-board-head h1 {
@@ -261,7 +261,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 
 .rank-home .rank-tier-block {
   grid-template-columns: minmax(160px, 0.95fr) minmax(0, 1.05fr);
-  gap: 32px;
+  gap: var(--space-16);
   align-items: center;
   width: 100%;
   border: 0;
@@ -296,7 +296,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 .rank-tier-meta-line {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .rank-tier-copy,
@@ -323,7 +323,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 
 .rank-home .rank-mode-grid {
   height: 100%;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .rank-home .rank-mode-pill {
@@ -559,7 +559,7 @@ html[data-theme="light"] .recent-match-row {
 .rank-stat-grid,
 .stat-strip {
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .rank-stat-grid span,
@@ -821,12 +821,12 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   .rank-home .rank-profile-card {
     min-height: 0;
     padding: 18px;
-    gap: 12px;
+    gap: var(--space-6);
   }
 
   .rank-home .rank-tier-block {
     grid-template-columns: minmax(118px, 0.9fr) minmax(0, 1.1fr);
-    gap: 18px;
+    gap: var(--space-9);
   }
 
   .rank-home .rank-tier-block .tier-emblem {
@@ -869,7 +869,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   }
 
   .rank-mode-grid {
-    gap: 8px;
+    gap: var(--space-4);
   }
 
   .profile-rating-mode,
@@ -903,7 +903,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   grid-template-columns: minmax(0, 1fr);
   align-content: end;
   justify-items: start;
-  gap: 18px;
+  gap: var(--space-9);
   min-height: clamp(430px, 46vw, 620px);
   padding: clamp(22px, 3.4vw, 34px);
   border-color: rgba(255, 211, 108, 0.2);
@@ -915,7 +915,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 .team-hub-hero > div:first-child {
   min-height: 0;
   max-width: 720px;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .team-hub-hero h1 {
@@ -937,7 +937,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   max-width: 720px;
   align-content: start;
   justify-self: start;
-  gap: 12px;
+  gap: var(--space-6);
   border: 1px solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
@@ -1065,7 +1065,7 @@ html[data-theme="light"] .team-hub-board div span {
 .team-card .member-row,
 .member-row {
   grid-template-columns: 34px minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .team-card .member-row .tier-badge,
@@ -1075,7 +1075,7 @@ html[data-theme="light"] .team-hub-board div span {
 
 .rank-list .rank-row {
   grid-template-columns: 24px 34px minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: var(--space-4);
   align-items: center;
 }
 
@@ -1130,7 +1130,7 @@ html[data-theme="light"] .profile-records-summary {
   }
 
   .rank-mode-grid {
-    gap: 8px;
+    gap: var(--space-4);
   }
 }
 
@@ -1300,7 +1300,7 @@ html[data-theme="light"] .ranking-filter-card {
 
 .player-hover-team > span {
   grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: 4px 8px;
+  gap: var(--space-2) var(--space-4);
 }
 
 .player-hover-team > span > em {
@@ -1338,14 +1338,14 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 .home-side-stack {
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .home-side-stack > .card,
 .home-action-card,
 .home-my-teams-card,
 .rivalry-card {
-  gap: 12px;
+  gap: var(--space-6);
   padding: 14px;
 }
 
@@ -1363,7 +1363,7 @@ html[data-theme="light"] .ranking-filter-card {
 
 .home-side-stack .compact-list,
 .home-team-list {
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .home-side-stack .compact-list a,
@@ -1375,13 +1375,13 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 .team-card {
-  gap: 12px;
+  gap: var(--space-6);
   padding: 16px;
 }
 
 .team-card .team-card-top {
   grid-template-columns: minmax(0, 1fr) minmax(118px, 132px);
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .team-card h3 {
@@ -1400,7 +1400,7 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 .team-card .stat-strip {
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .team-card .stat-strip span {
@@ -1409,7 +1409,7 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 .team-card .member-list {
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .team-card .member-row {
@@ -1428,16 +1428,16 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 .settings-page .page-stack {
-  gap: 14px;
+  gap: var(--space-7);
 }
 
 .settings-page .section-card {
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .settings-page .contract-grid.single {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .settings-page .contract-grid.single > div {
@@ -1446,11 +1446,11 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 .settings-page .form-stack {
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .settings-page label {
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .settings-page input,
@@ -1463,7 +1463,7 @@ html[data-theme="light"] .ranking-filter-card {
 }
 
 .settings-page .compact-list {
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .settings-page .compact-list a,
@@ -1507,7 +1507,7 @@ html[data-theme="light"] .ranking-filter-card {
 
 .settings-page .settings-toggle-grid {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .settings-page .settings-referee-card {
@@ -1611,7 +1611,7 @@ html[data-theme="light"] .rank-home .rank-mode-card {
 
   .team-card-actions {
     min-width: 0;
-    gap: 4px;
+    gap: var(--space-2);
     justify-content: flex-end;
   }
 

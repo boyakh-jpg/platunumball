@@ -1895,3 +1895,4 @@ UI 수정 전:
 5. `global-visual-system.css`는 최종 theme·responsive 시각 계층을 담당한다. `global-court-controls.css`는 구장, 방 생성, 팀 관리의 후속 control을 담당한다.
 6. 새 규칙은 `globals.css`에 추가하지 않는다. 책임 모듈 또는 기존 feature stylesheet에 추가하며 각 전역 모듈은 `4500행`을 넘기지 않는다.
 7. build 검사는 manifest 전용 상태, 모듈 크기, import 전체의 미사용 selector와 module 경계를 넘는 완전 shadow 선언을 확인한다.
+8. 전역 모듈의 표준 짝수 gap은 `--space-1`부터 `--space-24` spacing scale을 사용한다. `3px`, `5px`, `7px`, `9px`처럼 광학 보정용 홀수값은 필요한 component 안에서만 직접 사용할 수 있다.

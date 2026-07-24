@@ -97,7 +97,7 @@ textarea {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-5);
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 900;
@@ -206,7 +206,7 @@ html[data-theme="light"] textarea {
     right: 0;
     bottom: 0;
     left: 0;
-    gap: 2px;
+    gap: var(--space-1);
     border-right: 0;
     border-bottom: 0;
     border-left: 0;
@@ -231,7 +231,7 @@ html[data-theme="light"] textarea {
   .rank-home,
   .home-primary-stack,
   .home-side-stack {
-    gap: 12px;
+    gap: var(--space-6);
   }
 
   .card,
@@ -241,7 +241,7 @@ html[data-theme="light"] textarea {
 
   .home-action-row {
     grid-template-columns: 38px minmax(0, 1fr) auto;
-    gap: 8px;
+    gap: var(--space-4);
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head h1 {
@@ -519,7 +519,7 @@ textarea:focus-visible {
 
   .bottom-nav a {
     position: relative;
-    gap: 4px;
+    gap: var(--space-2);
     color: rgba(255, 255, 255, 0.54);
     font-size: 10px;
     font-weight: 850;
@@ -744,7 +744,7 @@ html[data-theme="light"] .tag.gold {
 
   .rank-home .rank-mode-card {
     align-self: end;
-    gap: 10px;
+    gap: var(--space-5);
   }
 
   .rank-home .rank-profile-card .rank-tier-block .tier-emblem {
@@ -805,18 +805,18 @@ html[data-theme="light"] .tag.gold {
 
   .rank-home .home-dashboard-grid {
     display: grid;
-    gap: 20px;
+    gap: var(--space-10);
     align-items: start;
   }
 
   .rank-home .home-primary-stack {
-    gap: 20px;
+    gap: var(--space-10);
   }
 
   .rank-home .home-side-stack {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    gap: var(--space-7);
   }
 
   .rank-home .home-side-stack > .rank-leaderboard-card,
@@ -1169,7 +1169,7 @@ button {
   .landing-primary-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--space-4);
   }
 }
 
@@ -1186,7 +1186,7 @@ button {
 
 @media (max-width: 390px) {
   .landing-actions .landing-primary-actions .landing-create-action .button {
-    gap: 4px;
+    gap: var(--space-2);
     padding-inline: 6px;
     font-size: 0.75rem;
   }
@@ -1301,7 +1301,7 @@ html[data-theme="light"] .app-main {
   display: flex;
   min-height: 0;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-8);
 }
 
   .rank-home .home-search-panel.rank-search-card > .search-picker {
@@ -1377,7 +1377,7 @@ html[data-theme="light"] .app-main {
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-end;
-    gap: 14px;
+    gap: var(--space-7);
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head h1 {
@@ -1438,7 +1438,7 @@ html[data-theme="light"] .eyebrow {
   min-width: 0;
   max-width: 100%;
   grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: var(--space-5);
   align-items: center;
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
@@ -1450,7 +1450,7 @@ html[data-theme="light"] .eyebrow {
   display: grid;
   min-width: 0;
   align-content: center;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .rank-home .home-team-row-copy strong,
@@ -1485,7 +1485,7 @@ html[data-theme="light"] .eyebrow {
 /* 2026-07-01 desktop home compaction: lift lower panels beside the hero. */
 @media (min-width: 1080px) {
   .rank-home {
-    gap: 16px;
+    gap: var(--space-8);
   }
 
   .rank-home > .rank-summary-grid {
@@ -1513,12 +1513,12 @@ html[data-theme="light"] .eyebrow {
   }
 
   .rank-home .rank-summary-grid {
-    gap: 12px;
+    gap: var(--space-6);
     padding: 18px;
   }
 
   .rank-home .rank-summary-grid .rank-hero-top {
-    gap: 14px;
+    gap: var(--space-7);
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head h1 {
@@ -1535,7 +1535,7 @@ html[data-theme="light"] .eyebrow {
   .rank-home .rank-mode-grid {
     height: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    gap: var(--space-3);
   }
 
   .rank-home .rank-profile-card {
@@ -1553,7 +1553,7 @@ html[data-theme="light"] .eyebrow {
 
   .rank-home .rank-profile-card .rank-tier-block {
     grid-template-columns: 58px minmax(0, 1fr);
-    gap: 8px;
+    gap: var(--space-4);
     padding: 8px;
   }
 
@@ -1568,7 +1568,7 @@ html[data-theme="light"] .eyebrow {
   }
 
   .rank-home .rank-tier-meta-line {
-    gap: 6px;
+    gap: var(--space-3);
   }
 
   .rank-home .rank-tier-meta-line .badge {
@@ -1649,7 +1649,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:n
 
 .rank-home .rank-tier-rail {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   min-width: 0;
   overflow: visible;
   border: 1px solid var(--ui-card-border);
@@ -1733,7 +1733,7 @@ html[data-theme="light"] .rank-home .rank-mode-card {
 
 @media (min-width: 1080px) {
   .rank-home .home-dashboard-grid .home-side-stack {
-    gap: 10px;
+    gap: var(--space-5);
   }
 }
 
@@ -2724,7 +2724,7 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
   display: grid;
   width: 100%;
   min-width: 0;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .rank-home .rank-spotlight-content .eyebrow {
@@ -2737,7 +2737,7 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
   display: grid;
   grid-template-columns: clamp(58px, 16vw, 74px) minmax(0, 1fr);
   align-items: end;
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .rank-home .rank-spotlight-main .tier-emblem {
@@ -2769,7 +2769,7 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
 .rank-home .rank-spotlight-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .rank-home .rank-spotlight-links a {
@@ -2783,7 +2783,7 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
 /* Image cards should not contain small framed cards inside them.
    Keep secondary links as text actions unless the user explicitly asks for boxed controls. */
 .rank-home .rank-spotlight-card .rank-spotlight-links {
-  gap: 12px;
+  gap: var(--space-6);
 }
 
 .rank-home .rank-spotlight-card .rank-spotlight-links a,
@@ -2813,7 +2813,7 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
 
 /* 2026-07-02 home top rail rank fix. */
 .rank-home > .home-top-rail {
-  gap: 14px;
+  gap: var(--space-7);
   min-width: 0;
   align-self: start;
 }
@@ -2940,7 +2940,7 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
   }
 
   .rank-home .home-search-panel.rank-search-card .home-search-box {
-    gap: 14px;
+    gap: var(--space-7);
     padding-inline: clamp(16px, 2.4vw, 24px);
   }
 
@@ -3230,7 +3230,7 @@ html[data-theme="light"] .team-detail-hero::after {
     align-content: end;
     align-items: end;
     justify-items: start;
-    gap: 18px;
+    gap: var(--space-9);
     min-height: clamp(430px, 46vw, 620px);
     padding: clamp(22px, 3.4vw, 34px);
   }
@@ -3247,7 +3247,7 @@ html[data-theme="light"] .team-detail-hero::after {
   .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
     min-height: clamp(620px, 87vw, 660px);
     align-content: end;
-    gap: 12px;
+    gap: var(--space-6);
     padding: 18px;
   }
 
@@ -3255,7 +3255,7 @@ html[data-theme="light"] .team-detail-hero::after {
     display: grid;
     width: 100%;
     max-width: none;
-    gap: 8px;
+    gap: var(--space-4);
     padding: 12px;
   }
 
@@ -3315,7 +3315,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 .rank-home .home-search-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .rank-home .home-top-rail > .home-action-card {
@@ -3566,7 +3566,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 }
 
 .rank-home .match-focus-card .match-card .score-line {
-  gap: clamp(10px, 2vw, 22px);
+  gap: clamp(var(--space-5), 2vw, var(--space-11));
   padding: 6px 0 4px;
 }
 
@@ -3727,7 +3727,7 @@ html[data-theme="light"] .brand-letter-light {
 .landing-purpose {
   display: grid;
   max-width: 560px;
-  gap: 8px;
+  gap: var(--space-4);
   margin-top: clamp(6px, 0.8vw, 12px);
 }
 
@@ -3946,7 +3946,7 @@ html[data-theme="light"] .app-main :is(
   align-content: end;
   align-items: end;
   justify-items: start;
-  gap: 20px;
+  gap: var(--space-10);
 }
 
 .rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {
@@ -4060,7 +4060,7 @@ html[data-theme="light"] .app-main :is(
     grid-template-columns: minmax(0, 1fr);
     align-content: end;
     align-items: end;
-    gap: 16px;
+    gap: var(--space-8);
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {
