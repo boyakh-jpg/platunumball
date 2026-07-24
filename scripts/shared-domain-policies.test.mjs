@@ -194,6 +194,10 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /\{shotClockEnabled \? \(/);
   assert.match(panelSource, /isRunning && hasRemainingPeriodTime/);
   assert.match(panelSource, /!isBreak && hasRemainingPeriodTime/);
+  assert.match(panelSource, /normalizeMatchRules\(match\.rules, \{ mode: match\.mode \}\)/);
+  assert.match(panelSource, /matchRules\.periodBreakMinutes/);
+  assert.match(panelSource, /matchRules\.halftimeMinutes/);
+  assert.match(panelSource, /breakLimitMs > 0/);
   assert.match(panelSource, /liveClock\?\.matchEndedAt/);
   assert.match(panelSource, /closeFocusMode\(\)/);
   assert.match(recruitingSource, /onMatchEnded=\{\(\) => void app\.actions\.loadMatchDetail\(sourceMatch\.id\)\}/);
@@ -210,6 +214,8 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(forceEndMigration, /rankball_match_clock_close_on_match_end_trigger/);
   assert.match(forceEndMigration, /\* \* \* \* \*/);
   assert.doesNotMatch(forceEndMigration, /period_remaining_ms\s*=\s*0[\s\S]*ended_at/);
+  assert.doesNotMatch(panelSource, /QUARTER_BREAK_LIMIT_MS|HALFTIME_BREAK_LIMIT_MS/);
+  assert.doesNotMatch(panelSource, /isHalftimeBreak \? "10분" : "5분"/);
   assert.equal(
     clockStyles.match(/\.ui-match-clock-scoreboard:not\(\.ui-match-clock-scoreboard-time-only\)/g)?.length,
     2,

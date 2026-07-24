@@ -12,11 +12,9 @@ import {
   getMatchClockRecognition,
   requestMatchClock,
 } from "../../lib/matchClock.js";
+import { normalizeMatchRules } from "../../lib/matchRules.js";
 import { hasMatchScoreboardOperators } from "../../lib/matchUtils.js";
 import "../../styles/match-clock.css";
-
-const QUARTER_BREAK_LIMIT_MS = 5 * 60 * 1000;
-const HALFTIME_BREAK_LIMIT_MS = 10 * 60 * 1000;
 
 const ERROR_LABELS = Object.freeze({
   match_clock_forbidden: "이 경기의 시계를 볼 권한이 없습니다.",
@@ -242,10 +240,21 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
   const deadlineRemainingMs = Math.max(0, Date.parse(liveClock?.startDeadlineAt || "") - nowMs);
   const fallbackFactor = MATCH_CLOCK_FALLBACK_FACTORS[match.mode] ?? 0.8;
   const scoreboardEnabled = hasMatchScoreboardOperators(match);
+  const matchRules = useMemo(
+    () => normalizeMatchRules(match.rules, { mode: match.mode }),
+    [match.mode, match.rules],
+  );
+  const halftimeAfterPeriod = matchRules.periodCount > 1
+    ? matchRules.periodCount / 2
+    : 0;
   const isHalftimeBreak = isBreak
     && liveClock.overtimeCount === 0
-    && liveClock.currentPeriod === Math.floor(liveClock.expectedPeriodCount / 2);
-  const breakLimitMs = isHalftimeBreak ? HALFTIME_BREAK_LIMIT_MS : QUARTER_BREAK_LIMIT_MS;
+    && halftimeAfterPeriod > 0
+    && liveClock.currentPeriod === halftimeAfterPeriod;
+  const breakLimitMinutes = isHalftimeBreak
+    ? matchRules.halftimeMinutes
+    : matchRules.periodBreakMinutes;
+  const breakLimitMs = breakLimitMinutes * 60 * 1000;
   const breakElapsedMs = isBreak && liveClock.breakStartedAtMs
     ? Math.max(0, nowMs - liveClock.breakStartedAtMs)
     : 0;
@@ -271,7 +280,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
     }
     soundedRef.current.period = false;
     soundedRef.current.shot = false;
-    if (isBreak && breakElapsedMs >= breakLimitMs && !soundedRef.current.break) {
+    if (isBreak && breakLimitMs > 0 && breakElapsedMs >= breakLimitMs && !soundedRef.current.break) {
       soundedRef.current.break = true;
       void playBuzzer("warning", volume / 100);
     } else if (!isBreak) {
@@ -578,7 +587,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
                   ? `${formatClockTime(breakOvertimeMs)} 초과`
                   : `${formatClockTime(breakRemainingMs)} 남음`}
               </strong>
-              <small>권장 휴식 {isHalftimeBreak ? "10분" : "5분"} · 다음 구간 시작은 언제든 가능</small>
+              <small>권장 휴식 {breakLimitMinutes}분 · 다음 구간 시작은 언제든 가능</small>
             </div>
           ) : null}
 
