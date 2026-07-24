@@ -129,6 +129,7 @@ function normalizeFeedCard(row = {}) {
   const card = row?.card_json ?? row?.cardJson ?? row?.card ?? null;
   if (!card || typeof card !== "object" || Array.isArray(card)) return null;
   const id = card.id ?? row.entity_id ?? row.entityId;
+  const feedStatus = String(row?.status ?? "").trim();
   const relations = Array.isArray(row?.relations)
     ? row.relations
     : [row?.relation].filter(Boolean);
@@ -143,6 +144,7 @@ function normalizeFeedCard(row = {}) {
   if (!Array.isArray(nextCard.teamB.players) && !hasTeamBCount) return null;
   return {
     ...nextCard,
+    ...(feedStatus ? { status: feedStatus } : {}),
     __feedRelations: relations,
     teamA: {
       ...nextCard.teamA,
@@ -363,10 +365,10 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
   const rowLimit = Math.min(MATCH_FEED_ROW_MAX_LIMIT, cappedLimit * MATCH_FEED_ROW_FACTOR);
   let query = client
     .from("user_room_feed")
-    .select("entity_id,sort_at,relation")
+    .select("entity_id,sort_at,relation,status")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
-    .eq("is_active", false)
+    .eq("is_active", true)
     .neq("status", "closed")
     .in("relation", ["owner", "participant", "referee"]);
   if (activeOnly) query = query.not("status", "in", "(confirmed,closed)");
@@ -402,7 +404,7 @@ async function fetchRecentCompletedMatchFeedPage(client, profileId = "", hours =
   const rowLimit = Math.min(RECENT_COMPLETED_FEED_ROW_MAX_LIMIT, cappedLimit * MATCH_FEED_ROW_FACTOR);
   const { data, error } = await client
     .from("user_room_feed")
-    .select("entity_id,sort_at,relation")
+    .select("entity_id,sort_at,relation,status")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", true)
@@ -434,7 +436,7 @@ async function fetchClosedNoticeMatchFeedPage(client, profileId = "", limit = CL
   const rowLimit = Math.min(RECENT_COMPLETED_FEED_ROW_MAX_LIMIT, cappedLimit * MATCH_FEED_ROW_FACTOR);
   const { data, error } = await client
     .from("user_room_feed")
-    .select("entity_id,sort_at,relation")
+    .select("entity_id,sort_at,relation,status")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", false)
@@ -468,9 +470,13 @@ function mergeMatchFeedPages(feedPage, extraPage) {
   if (!extraPage?.ids?.length) return feedPage;
   if (!feedPage) return { ...extraPage, cursor: "", exhausted: true };
   const ids = unique([...(feedPage.ids ?? []), ...(extraPage.ids ?? [])]);
-  const cardMap = new Map();
-  [...(feedPage.cards ?? []), ...(extraPage.cards ?? [])].forEach((card) => {
-    if (card?.id && !cardMap.has(card.id)) cardMap.set(card.id, card);
+  const cardMap = new Map((feedPage.cards ?? []).filter((card) => card?.id).map((card) => [card.id, card]));
+  (extraPage.cards ?? []).forEach((card) => {
+    if (!card?.id) return;
+    const currentCard = cardMap.get(card.id);
+    if (!currentCard || card.closedNotice === true) {
+      cardMap.set(card.id, currentCard ? { ...currentCard, ...card } : card);
+    }
   });
   const cards = ids.map((id) => cardMap.get(id)).filter(Boolean);
   const hasAllCards = cards.length === ids.length;
@@ -782,7 +788,7 @@ async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit =
   }
   let query = client
     .from("user_room_feed")
-    .select("entity_id,sort_at,relation")
+    .select("entity_id,sort_at,relation,status")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", true)

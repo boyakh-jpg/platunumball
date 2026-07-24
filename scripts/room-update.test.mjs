@@ -545,6 +545,10 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(recruitingPage, /getRoomEditDraft\(roomPost, sourceMatch\)/);
   assert.match(matchesPage, /id: "cancelled"/);
   assert.match(matchListServer, /includeCancelledSchedule/);
-  assert.match(matchListServer, /fetchClosedNoticeMatchFeedPage[\s\S]*?\.eq\("is_active", false\)/);
+  assert.match(matchListServer, /const feedStatus = String\(row\?\.status/);
+  assert.match(matchListServer, /\.\.\.\(feedStatus \? \{ status: feedStatus \} : \{\}\)/);
+  assert.match(matchListServer, /fetchMatchFeedPage[\s\S]*?\.select\("entity_id,sort_at,relation,status"\)[\s\S]*?\.eq\("is_active", true\)/);
+  assert.match(matchListServer, /fetchClosedNoticeMatchFeedPage[\s\S]*?\.select\("entity_id,sort_at,relation,status"\)[\s\S]*?\.eq\("is_active", false\)/);
+  assert.match(matchListServer, /card\.closedNotice === true/);
   assert.match(recruitingListServer, /includeClosed/);
 });
