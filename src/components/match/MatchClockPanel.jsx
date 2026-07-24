@@ -3,6 +3,7 @@ import { createPortal, flushSync } from "react-dom";
 import { BellRing, Maximize2, Minimize2, Pause, Play, Power, Volume2, VolumeX } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
+import QrCode from "../common/QrCode.jsx";
 import {
   MATCH_CLOCK_FALLBACK_FACTORS,
   SHOT_CLOCK_OPTIONS,
@@ -135,6 +136,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
   const [snapshot, setSnapshot] = useState(null);
   const [score, setScore] = useState({ a: 0, b: 0, updatedAt: null });
   const [activePlayers, setActivePlayers] = useState([]);
+  const [attendanceQr, setAttendanceQr] = useState(null);
   const [selectedControllerId, setSelectedControllerId] = useState("");
   const [shotClockSeconds, setShotClockSeconds] = useState(0);
   const [pendingAction, setPendingAction] = useState("");
@@ -170,6 +172,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
     });
     setScore(response.score || { a: 0, b: 0, updatedAt: null });
     setActivePlayers(response.activePlayers || []);
+    setAttendanceQr(response.attendanceQr || null);
     if (!configurationDirtyRef.current) {
       setSelectedControllerId(nextClock.controllerId || "");
       setShotClockSeconds(Number(nextClock.shotClockSeconds || 0));
@@ -542,11 +545,11 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
         <div className={`ui-match-clock-live${shotClockEnabled ? " ui-match-clock-live-with-shot" : ""}`}>
           <div className={`ui-match-clock-display-grid${shotClockEnabled ? "" : " ui-match-clock-display-grid-single"}`}>
             <div
-              className={`ui-match-clock-scoreboard${scoreboardEnabled ? "" : " ui-match-clock-scoreboard-time-only"}`}
+              className={`ui-match-clock-scoreboard${scoreboardEnabled ? "" : " ui-match-clock-scoreboard-time-only"}${attendanceQr?.value ? " ui-match-clock-scoreboard-with-attendance" : ""}`}
               aria-label={scoreboardEnabled ? "기록 점수판" : "경기시간"}
             >
               {scoreboardEnabled ? (
-                <div>
+                <div className="ui-match-clock-team ui-match-clock-team-a">
                   <span className="ui-match-clock-team-label">A</span>
                   <strong className="ui-match-clock-team-score">{score.a}</strong>
                 </div>
@@ -557,9 +560,15 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
                 <small>서버시간 기준</small>
               </div>
               {scoreboardEnabled ? (
-                <div>
+                <div className="ui-match-clock-team ui-match-clock-team-b">
                   <span className="ui-match-clock-team-label">B</span>
                   <strong className="ui-match-clock-team-score">{score.b}</strong>
+                </div>
+              ) : null}
+              {attendanceQr?.value && (liveClock.canControl || liveClock.canManage) ? (
+                <div className="ui-match-clock-attendance-qr">
+                  <QrCode value={attendanceQr.value} label="지각 출석 QR 코드" />
+                  <span>지각 출석</span>
                 </div>
               ) : null}
             </div>

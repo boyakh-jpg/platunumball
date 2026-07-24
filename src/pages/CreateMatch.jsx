@@ -1644,6 +1644,7 @@ export default function CreateMatch({ app }) {
                       ...getMatchModeChangePatch(draft, mode),
                       recordType: RECORD_TYPES.match,
                       visibility: "private",
+                      qrAttendanceEnabled: undefined,
                       official: false,
                       preRegistered: true,
                       hostJoinMode,
@@ -1677,6 +1678,7 @@ export default function CreateMatch({ app }) {
                       ...getMatchModeChangePatch(draft, nextMode),
                       recordType: RECORD_TYPES.match,
                       visibility: "public",
+                      qrAttendanceEnabled: undefined,
                       official: false,
                       preRegistered: true,
                       hostJoinMode,
@@ -1809,21 +1811,23 @@ export default function CreateMatch({ app }) {
                   const patch = getMatchConfigurationChangePatch(draft, { matchPurpose });
                   update({
                     ...patch,
+                    qrAttendanceEnabled: undefined,
                     title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(draft.mode, patch.matchIntent) : draft.title,
                   });
                 }}
                 onFormationSelect={(formationMode) => {
                   const patch = getMatchConfigurationChangePatch(draft, { formationMode });
                   update({
-                  ...patch,
-                  title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(draft.mode, patch.matchIntent) : draft.title,
-                  ...(formationMode === "pickup" ? {
-                    playerIds: [],
-                    reservePlayerIds: [],
-                    opponentPlayerIds: [],
-                    opponentReservePlayerIds: [],
-                    opponentLeaderId: "",
-                  } : {}),
+                    ...patch,
+                    qrAttendanceEnabled: undefined,
+                    title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(draft.mode, patch.matchIntent) : draft.title,
+                    ...(formationMode === "pickup" ? {
+                      playerIds: [],
+                      reservePlayerIds: [],
+                      opponentPlayerIds: [],
+                      opponentReservePlayerIds: [],
+                      opponentLeaderId: "",
+                    } : {}),
                   });
                 }}
               />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { CalendarDays, ChevronDown, ChevronUp, Crown, MapPin, RotateCcw, ShieldCheck, Star, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
@@ -63,6 +63,7 @@ import {
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
+import { scanMatchAttendanceQr } from "../lib/matchAttendance.js";
 import "../styles/matchroom-arena.css";
 
 const statusMeta = {
@@ -74,6 +75,15 @@ const statusMeta = {
   void: { label: "경기 무효", tone: "neutral" },
   cancelled: { label: "취소됨", tone: "neutral" },
 };
+
+const ATTENDANCE_SCAN_ERROR_LABELS = Object.freeze({
+  match_attendance_qr_expired: "QR 유효시간이 끝났습니다. 경기시계의 최신 QR을 다시 스캔해 주세요.",
+  match_attendance_qr_invalid: "유효하지 않은 출석 QR입니다.",
+  match_attendance_player_not_registered: "이 경기의 사전 등록 명단에 없어 QR 출석할 수 없습니다.",
+  match_attendance_qr_disabled: "이 경기는 QR 출석을 사용하지 않습니다.",
+  match_attendance_not_checkin_time: "경기 시작 10분 전부터 QR 출석할 수 있습니다.",
+  match_late_reserve_full: "이 사이드의 후보 3명이 모두 차서 지각 후보로 등록할 수 없습니다. 현장 운영자에게 알려주세요.",
+});
 
 function makeInitialStats(match) {
   if (!match) return {};
@@ -227,11 +237,13 @@ function CourtReviewRating({ label, value, onChange, disabled = false }) {
 
 export default function MatchRoom({ app }) {
   const { matchId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const match = useMemo(
     () => app.state.matches.find((item) => item?.id === matchId) ?? null,
     [app.state.matches, matchId],
   );
   const requestedMatchIdRef = useRef("");
+  const attendanceScanTokenRef = useRef("");
   const matchDetailRequestSequenceRef = useRef(0);
   const [matchDetailMissing, setMatchDetailMissing] = useState(false);
   const [score, setScore] = useState({
@@ -255,6 +267,7 @@ export default function MatchRoom({ app }) {
   const [voidActionPending, setVoidActionPending] = useState(false);
   const [voidRestoreDetail, setVoidRestoreDetail] = useState("");
   const [voidRestoreStatus, setVoidRestoreStatus] = useState("");
+  const [attendanceScanState, setAttendanceScanState] = useState(null);
   const existingCourtReview = useMemo(
     () => (match ? (app.state.settings?.courtReviews ?? []).find((review) => review.matchId === match.id && review.reviewerId === app.currentUser.id) ?? null : null),
     [app.currentUser.id, app.state.settings?.courtReviews, match?.id],
@@ -265,8 +278,46 @@ export default function MatchRoom({ app }) {
   useEffect(() => {
     matchDetailRequestSequenceRef.current += 1;
     requestedMatchIdRef.current = "";
+    attendanceScanTokenRef.current = "";
     setMatchDetailMissing(false);
+    setAttendanceScanState(null);
   }, [app.currentUser.id, matchId]);
+
+  useEffect(() => {
+    const token = String(searchParams.get("attendanceQr") || "").trim();
+    if (!token) {
+      attendanceScanTokenRef.current = "";
+      return;
+    }
+    if (!matchId || attendanceScanTokenRef.current === token) return;
+    attendanceScanTokenRef.current = token;
+    setAttendanceScanState({ pending: true, tone: "blue", message: "QR 출석 확인 중" });
+    const clearToken = () => {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("attendanceQr");
+      setSearchParams(nextParams, { replace: true });
+    };
+    scanMatchAttendanceQr(matchId, token).then((result) => {
+      const late = result?.attendanceStatus === "late";
+      setAttendanceScanState({
+        pending: false,
+        tone: late ? "orange" : "green",
+        message: late
+          ? "지각 출석 완료 · 같은 사이드 후보로 등록됐습니다."
+          : result?.alreadyCheckedIn
+            ? "이미 출석 완료된 경기입니다."
+            : "정상 출석이 완료됐습니다.",
+      });
+      void Promise.resolve(app.actions.loadMatchDetail?.(matchId)).catch(() => {});
+    }).catch((error) => {
+      const code = String(error?.code || error?.message || "");
+      setAttendanceScanState({
+        pending: false,
+        tone: "orange",
+        message: ATTENDANCE_SCAN_ERROR_LABELS[code] || "QR 출석 처리에 실패했습니다. 현장 운영자에게 알려주세요.",
+      });
+    }).finally(clearToken);
+  }, [app.actions, matchId, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!matchId || app.remoteReady === false || requestedMatchIdRef.current === matchId) return;
@@ -759,6 +810,15 @@ export default function MatchRoom({ app }) {
 
   return (
     <div className="page-stack match-room">
+      {attendanceScanState ? (
+        <Card className="section-card">
+          <div className="section-title-row">
+            <strong>QR 출석</strong>
+            <Badge tone={attendanceScanState.tone}>{attendanceScanState.pending ? "처리 중" : "처리 결과"}</Badge>
+          </div>
+          <span>{attendanceScanState.message}</span>
+        </Card>
+      ) : null}
       <section className={match.ranked === false ? "gm-room-hero gm-friendly" : "gm-room-hero gm-ranked"}>
         <div className="gm-room-topline">
           <div className="badge-row">

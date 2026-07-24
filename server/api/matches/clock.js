@@ -1,4 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { createMatchAttendanceQr } from "./_attendanceQr.js";
 
 const ALLOWED_ACTIONS = new Set([
   "read",
@@ -66,6 +67,7 @@ export default async function handler(request, response) {
       { data: result, error: resultError },
       { data: playerRows, error: playerError },
       { data: breakEvent, error: breakEventError },
+      { data: matchRow, error: matchError },
     ] = await Promise.all([
       context.supabase
         .from("match_results")
@@ -79,10 +81,16 @@ export default async function handler(request, response) {
         .order("side")
         .order("slot_order"),
       breakEventRequest,
+      context.supabase
+        .from("matches")
+        .select("visibility,rules,ended_at,tournament_id")
+        .eq("id", matchId)
+        .maybeSingle(),
     ]);
     if (resultError) throw resultError;
     if (playerError) throw playerError;
     if (breakEventError) throw breakEventError;
+    if (matchError) throw matchError;
 
     const playerIds = [...new Set((playerRows || []).map((row) => row.user_id).filter(Boolean))];
     let profileRows = [];
@@ -115,6 +123,17 @@ export default async function handler(request, response) {
         side: player.side,
         slotOrder: Number(player.slot_order || 0),
       })),
+      attendanceQr: (
+        (clock?.canControl || clock?.canManage)
+        && matchRow?.visibility === "public"
+        && !matchRow?.ended_at
+        && !matchRow?.tournament_id
+        && ["", "match"].includes(String(matchRow?.rules?.recordType || ""))
+        && (
+          matchRow?.rules?.qrAttendanceEnabled === true
+          || matchRow?.rules?.qrAttendanceEnabled === "true"
+        )
+      ) ? createMatchAttendanceQr(matchId, request) : null,
     });
   } catch (error) {
     sendJson(response, getStatusCode(error), {

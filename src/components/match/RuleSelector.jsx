@@ -46,6 +46,17 @@ export default function RuleSelector({ draft, onChange }) {
       {!rules.gameClockEnabled ? (
         <small className="match-rule-summary">경기 진행과 점수 기록은 가능합니다. 경쟁전은 경기시계 미사용 MMR 반영률이 적용됩니다.</small>
       ) : null}
+      {draft.visibility === "public" && rules.gameClockEnabled ? (
+        <label className="switch-line">
+          <input
+            type="checkbox"
+            checked={rules.qrAttendanceEnabled}
+            onChange={(event) => updateRules({ qrAttendanceEnabled: event.target.checked })}
+          />
+          QR 출석 사용
+          <small>5분마다 바뀌는 QR입니다. 시작 전은 정상 출석, 시작 후는 지각·같은 사이드 후보로 등록됩니다.</small>
+        </label>
+      ) : null}
       {rules.gameClockEnabled && clockPresetOptions.length > 1 ? <div className="match-clock-preset-row">
         <span>경기시간 프리셋</span>
         <div className="segmented-control compact-segments">

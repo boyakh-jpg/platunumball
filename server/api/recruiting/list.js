@@ -738,6 +738,7 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
       halftimeMinutes: rules.halftimeMinutes,
       overtimeMinutes: rules.overtimeMinutes,
       gameClockEnabled: rules.gameClockEnabled,
+      qrAttendanceEnabled: rules.qrAttendanceEnabled,
       clockMode: rules.clockMode,
       lastPeriodStopMinutes: rules.lastPeriodStopMinutes,
       timeLimit: rules.timeLimit,

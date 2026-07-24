@@ -19,7 +19,7 @@ import {
   normalizeBenchCapacity,
   normalizeDisputeWindowMinutes,
 } from "../../../src/lib/constants.js";
-import { getMatchCancelCopy, makeAnonymousMatchPlayer } from "../../../src/lib/matchUtils.js";
+import { getMatchCancelCopy } from "../../../src/lib/matchUtils.js";
 import { getPostgameRecordVerification, POSTGAME_RECORD_REMINDER_HOURS } from "../../../src/lib/postgameRecordVerification.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
@@ -594,63 +594,6 @@ function getMatchPlayedIdMap(match = {}) {
   return {
     teamA: toArray(playedPlayerIds.teamA).filter(Boolean),
     teamB: toArray(playedPlayerIds.teamB).filter(Boolean),
-  };
-}
-
-function getMatchSideIdMap(value = {}) {
-  return {
-    teamA: toArray(value?.teamA).filter(Boolean),
-    teamB: toArray(value?.teamB).filter(Boolean),
-  };
-}
-
-function createAnonymousLatePlayerId() {
-  return `anon_${Date.now().toString(36)}_${randomUUID().replace(/-/g, "").slice(0, 8)}`;
-}
-
-function getLatePlayerSqlPayload(match = {}, operation = {}) {
-  const playedPlayerIds = getMatchPlayedIdMap(match);
-  const reservePlayers = getMatchSideIdMap(match.reservePlayers ?? match.rules?.reservePlayers ?? {});
-  const anonymousPlayers = match.anonymousPlayers ?? {};
-  const mmrExcludedPlayerIds = toArray(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds).filter(Boolean);
-
-  if (operation.action === "removeMatchLatePlayer") {
-    return {
-      playerId: operation.playerId ?? "",
-      playedPlayerIds,
-      reservePlayers,
-      anonymousPlayers,
-      mmrExcludedPlayerIds,
-    };
-  }
-
-  const draft = operation.draft && typeof operation.draft === "object" ? operation.draft : {};
-  if (draft.userId) return null;
-  const name = String(draft.name ?? "").trim();
-  if (!name) return null;
-
-  const sideName = draft.sideName === "teamB" ? "teamB" : "teamA";
-  const playerId = createAnonymousLatePlayerId();
-  const nextPlayedPlayerIds = {
-    ...playedPlayerIds,
-    [sideName]: uniqueIds([...(playedPlayerIds[sideName] ?? []), playerId]),
-  };
-  const nextReservePlayers = {
-    teamA: uniqueIds(reservePlayers.teamA ?? []).filter((id) => id !== playerId),
-    teamB: uniqueIds(reservePlayers.teamB ?? []).filter((id) => id !== playerId),
-  };
-  const nextAnonymousPlayers = {
-    ...anonymousPlayers,
-    [playerId]: makeAnonymousMatchPlayer(playerId, name, draft.position),
-  };
-  const nextExcludedIds = uniqueIds([...mmrExcludedPlayerIds, playerId]);
-
-  return {
-    playerId: "",
-    playedPlayerIds: nextPlayedPlayerIds,
-    reservePlayers: nextReservePlayers,
-    anonymousPlayers: nextAnonymousPlayers,
-    mmrExcludedPlayerIds: nextExcludedIds,
   };
 }
 
@@ -1374,6 +1317,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_end_action") ||
     message.includes("rankball_tournament_match_forfeit_action") ||
     message.includes("rankball_match_late_player_action") ||
+    message.includes("rankball_match_postgame_roster_action") ||
     message.includes("rankball_match_referee_absence_action") ||
     message.includes("rankball_match_result_action") ||
     message.includes("rankball_match_resume_approval_action") ||
@@ -1381,6 +1325,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_room_update_action") ||
     message.includes("rankball_match_room_action") ||
     message.includes("rankball_match_roster_move_action") ||
+    message.includes("rankball_match_substitution_action") ||
     message.includes("rankball_match_star_toggle_action") ||
     message.includes("rankball_match_thumbs_action") ||
     message.includes("rankball_match_start_action") ||
@@ -1942,15 +1887,26 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
   }
 
   if (["handoffMatchRecorder", "substituteMatchPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
-    const { data, error } = await context.supabase.rpc("rankball_match_roster_move_action", {
-      p_actor_profile_id: context.profileId,
-      p_action: operation.action,
-      p_match_id: operation.matchId ?? match.id,
-      p_side: operation.sideName ?? "",
-      p_active_player_id: operation.activePlayerId ?? "",
-      p_reserve_player_id: operation.reservePlayerId ?? "",
-      p_next_recorder_id: operation.nextRecorderId ?? "",
-    });
+    const substitution = operation.action === "substituteMatchPlayer";
+    const { data, error } = await context.supabase.rpc(
+      substitution ? "rankball_match_substitution_action" : "rankball_match_roster_move_action",
+      substitution ? {
+        p_actor_profile_id: context.profileId,
+        p_match_id: operation.matchId ?? match.id,
+        p_side: operation.sideName ?? "",
+        p_active_player_id: operation.activePlayerId ?? "",
+        p_reserve_player_id: operation.reservePlayerId ?? "",
+        p_reason: operation.reason ?? "operator",
+      } : {
+        p_actor_profile_id: context.profileId,
+        p_action: operation.action,
+        p_match_id: operation.matchId ?? match.id,
+        p_side: operation.sideName ?? "",
+        p_active_player_id: operation.activePlayerId ?? "",
+        p_reserve_player_id: operation.reservePlayerId ?? "",
+        p_next_recorder_id: operation.nextRecorderId ?? "",
+      },
+    );
     if (error) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
@@ -2009,18 +1965,24 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
   }
 
   if (["addMatchLatePlayer", "removeMatchLatePlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
-    const sourceMatch = match?.id ? match : await loadSyncedMatch(context, operation.matchId);
-    const latePlayerPayload = getLatePlayerSqlPayload(sourceMatch, operation);
-    if (!sourceMatch?.id || !latePlayerPayload) reject(409, "unsupported_match_late_player_operation");
-    const { data, error } = await context.supabase.rpc("rankball_match_late_player_action", {
+    const matchId = operation.matchId ?? match.id;
+    const draft = operation.draft && typeof operation.draft === "object" ? operation.draft : {};
+    const registeredPlayerId = String(draft.userId || "").trim();
+    const anonymousName = String(draft.name || "").trim();
+    if (
+      operation.action === "addMatchLatePlayer"
+      && !registeredPlayerId
+      && !anonymousName
+    ) reject(400, "match_late_player_identity_required");
+    const { data, error } = await context.supabase.rpc("rankball_match_postgame_roster_action", {
       p_actor_profile_id: context.profileId,
       p_action: operation.action,
-      p_match_id: operation.matchId ?? sourceMatch.id,
-      p_player_id: latePlayerPayload.playerId,
-      p_played_player_ids: latePlayerPayload.playedPlayerIds,
-      p_reserve_players: latePlayerPayload.reservePlayers,
-      p_anonymous_players: latePlayerPayload.anonymousPlayers,
-      p_mmr_excluded_player_ids: latePlayerPayload.mmrExcludedPlayerIds,
+      p_match_id: matchId,
+      p_player_id: operation.action === "removeMatchLatePlayer"
+        ? String(operation.playerId || "").trim()
+        : registeredPlayerId,
+      p_side: draft.sideName === "teamB" ? "teamB" : "teamA",
+      p_anonymous_name: registeredPlayerId ? "" : anonymousName,
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) return null;
@@ -2030,7 +1992,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
-      matchId: operation.matchId ?? sourceMatch.id,
+      matchId,
     };
   }
 

@@ -114,6 +114,7 @@
 }
 
 .ui-match-clock-scoreboard {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 1.25fr) minmax(0, 1fr);
   gap: var(--control-group-gap);
@@ -126,6 +127,33 @@
   overflow: hidden;
 }
 
+.ui-match-clock-attendance-qr {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: grid;
+  width: 116px;
+  min-height: 0 !important;
+  padding: 4px !important;
+  color: #111 !important;
+  background: #fff;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 6px;
+}
+
+.ui-match-clock-attendance-qr svg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.ui-match-clock-attendance-qr span {
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
 .ui-match-clock-scoreboard > div {
   display: grid;
   place-content: center;
@@ -135,12 +163,17 @@
   text-align: center;
 }
 
-.ui-match-clock-scoreboard > div:first-child {
+.ui-match-clock-scoreboard > .ui-match-clock-team-a {
   color: var(--team-home);
 }
 
-.ui-match-clock-scoreboard > div:last-child {
+.ui-match-clock-scoreboard > .ui-match-clock-team-b {
   color: var(--team-away);
+}
+
+.ui-match-clock-scoreboard-with-attendance > .ui-match-clock-team-b,
+.ui-match-clock-scoreboard-time-only.ui-match-clock-scoreboard-with-attendance > .ui-match-clock-main-time {
+  padding-right: 128px;
 }
 
 .ui-match-clock-scoreboard-time-only {
@@ -400,6 +433,15 @@
   display: none;
 }
 
+.ui-match-clock-panel-focus .ui-match-clock-attendance-qr {
+  width: clamp(124px, 11vw, 148px);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-scoreboard-with-attendance > .ui-match-clock-team-b,
+.ui-match-clock-panel-focus .ui-match-clock-scoreboard-time-only.ui-match-clock-scoreboard-with-attendance > .ui-match-clock-main-time {
+  padding-right: 156px;
+}
+
 .ui-match-clock-panel-focus .ui-match-clock-live {
   grid-template-rows: minmax(0, 1fr) auto auto;
   gap: 6px;
@@ -565,6 +607,22 @@
   .ui-match-clock-scoreboard > div {
     min-height: 106px;
     padding: 8px 4px;
+  }
+
+  .ui-match-clock-attendance-qr,
+  .ui-match-clock-panel-focus .ui-match-clock-attendance-qr {
+    position: static;
+    grid-column: 1 / -1;
+    width: 116px;
+    margin: 0 8px 8px;
+    justify-self: end;
+  }
+
+  .ui-match-clock-scoreboard-with-attendance > .ui-match-clock-team-b,
+  .ui-match-clock-scoreboard-time-only.ui-match-clock-scoreboard-with-attendance > .ui-match-clock-main-time,
+  .ui-match-clock-panel-focus .ui-match-clock-scoreboard-with-attendance > .ui-match-clock-team-b,
+  .ui-match-clock-panel-focus .ui-match-clock-scoreboard-time-only.ui-match-clock-scoreboard-with-attendance > .ui-match-clock-main-time {
+    padding-right: 4px;
   }
 
   .ui-match-clock-main-time time {

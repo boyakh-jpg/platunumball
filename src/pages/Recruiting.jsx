@@ -31,6 +31,8 @@ import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
 import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
 import MatchClockPanel from "../components/match/MatchClockPanel.jsx";
+import MatchAttendanceQrPanel from "../components/match/MatchAttendanceQrPanel.jsx";
+import MatchPostgameRosterPanel from "../components/match/MatchPostgameRosterPanel.jsx";
 import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
 import PickupParticipantPool from "../components/match/PickupParticipantPool.jsx";
 import RoomPhaseRenderer from "../components/match/RoomPhaseRenderer.jsx";
@@ -404,8 +406,16 @@ function getRoomEditDraft(post, sourceMatch = null) {
         rules: sourceMatch.rules ?? post.rules,
       }
     : post;
-  const rules = normalizeMatchRules(room.rules, { mode: room.mode });
+  const rules = normalizeMatchRules({
+    ...(room.rules ?? {}),
+    visibility: room.visibility,
+    matchPurpose: room.matchPurpose ?? room.rules?.matchPurpose,
+    formationMode: room.formationMode ?? room.rules?.formationMode,
+  }, { mode: room.mode });
   return {
+    visibility: room.visibility,
+    matchPurpose: room.matchPurpose ?? room.rules?.matchPurpose,
+    formationMode: room.formationMode ?? room.rules?.formationMode,
     courtId: room.courtId ?? room.court_id ?? "",
     court: room.court ?? "",
     timingType: (
@@ -1592,18 +1602,18 @@ function MatchSubstitutionPanel({
   match,
   userById,
   teams,
-  currentUserId,
   canSubstituteSide,
   onSubstitute,
 }) {
   const [draftByReserveId, setDraftByReserveId] = useState({});
+  const [reasonByReserveId, setReasonByReserveId] = useState({});
   if (!match) return null;
   const rows = MATCH_SIDES.flatMap((sideName) => {
     if (!canSubstituteSide(sideName)) return [];
     const activePlayerIds = match[sideName]?.players ?? [];
     const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
     if (!activePlayerIds.length || !reservePlayerIds.length) return [];
-    return reservePlayerIds.filter((reservePlayerId) => reservePlayerId === currentUserId).map((reservePlayerId) => ({
+    return reservePlayerIds.map((reservePlayerId) => ({
       sideName,
       activePlayerIds,
       reservePlayerId,
@@ -1638,7 +1648,28 @@ function MatchSubstitutionPanel({
                   <option value={playerId} key={playerId}>{userById[playerId]?.name ?? playerId}</option>
                 ))}
               </select>
-              <Button type="button" size="sm" variant="secondary" disabled={!activePlayerId} onClick={() => onSubstitute(sideName, activePlayerId, reservePlayerId)}>
+              <select
+                aria-label={`${reserveUser?.name ?? "후보"} 교체 사유`}
+                value={reasonByReserveId[reservePlayerId] ?? "operator"}
+                onChange={(event) => setReasonByReserveId((current) => ({ ...current, [reservePlayerId]: event.target.value }))}
+              >
+                <option value="operator">운영자 변경</option>
+                <option value="late">지각 합류</option>
+                <option value="injury">부상</option>
+                <option value="ejection">퇴장</option>
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={!activePlayerId}
+                onClick={() => onSubstitute(
+                  sideName,
+                  activePlayerId,
+                  reservePlayerId,
+                  reasonByReserveId[reservePlayerId] ?? "operator",
+                )}
+              >
                 교체
               </Button>
             </div>
@@ -3849,6 +3880,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             ]))
           : null;
         const canManageMatchCheckin = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
+        const canEditSourcePostgameRoster = Boolean(
+          matchRoom
+          && currentUserCanOperateStartedSourceMatch
+          && sourceMatchPhase?.phase === "postgame"
+          && sourceMatch?.endedAt
+          && !sourceMatch?.result
+        );
         const canShowStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const sourceMatchMissingStartAttendanceIds = canShowStartSourceMatch ? getMissingStartAttendanceIds(sourceMatch, app.currentUser.id) : [];
         const pickupAssignmentSideCapacity = sourceMatch ? getRecruitingSideCapacity(sourceMatch) : 0;
@@ -3997,9 +4035,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               match={sourceMatch}
               userById={userById}
               teams={app.state.teams}
-              currentUserId={app.currentUser.id}
               canSubstituteSide={canSubstituteSourceMatchSide}
-              onSubstitute={(sideName, activePlayerId, reservePlayerId) => app.actions.substituteMatchPlayer?.(sourceMatch.id, sideName, activePlayerId, reservePlayerId)}
+              onSubstitute={(sideName, activePlayerId, reservePlayerId, reason) => app.actions.substituteMatchPlayer?.(
+                sourceMatch.id,
+                sideName,
+                activePlayerId,
+                reservePlayerId,
+                reason,
+              )}
             />
           ) : null
         );
@@ -4744,6 +4787,25 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   poolMode={pickupPoolMode}
                   placementByPlayerId={sourceMatchPlacementByPlayerId}
                   placementPlayerIds={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? sourceMatchCheckedInIds : null}
+                />
+              ) : null}
+
+              {!sourceRoomReadOnly
+                && matchRoom
+                && canManageMatchCheckin
+                && selectedMatchRules.qrAttendanceEnabled ? (
+                  <MatchAttendanceQrPanel
+                    match={sourceMatch}
+                    onChanged={() => app.actions.loadMatchDetail?.(sourceMatch.id)}
+                  />
+                ) : null}
+
+              {!sourceRoomReadOnly && canEditSourcePostgameRoster ? (
+                <MatchPostgameRosterPanel
+                  match={sourceMatch}
+                  users={app.state.users}
+                  onAdd={(draft) => app.actions.addMatchLatePlayer?.(sourceMatch.id, draft)}
+                  onRemove={(playerId) => app.actions.removeMatchLatePlayer?.(sourceMatch.id, playerId)}
                 />
               ) : null}
 
