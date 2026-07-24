@@ -1498,17 +1498,20 @@ function RoomKickPanel({
                 </span>
               </PlayerHoverCard>
               <div className="arena-host-kick-actions">
-                {attendanceBySide && onCheckInPlayer && !selfRow ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={checkedIn ? "secondary" : "primary"}
-                    disabled={checkedIn}
-                    onClick={() => onCheckInPlayer(side, playerId)}
-                  >
-                    {checkedIn ? "출석 완료" : "출석"}
-                  </Button>
-                ) : attendanceBySide && selfRow ? <span className="form-chip">본인</span> : null}
+                {attendanceBySide && onCheckInPlayer ? (
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={checkedIn ? "secondary" : "primary"}
+                      disabled={checkedIn}
+                      onClick={() => onCheckInPlayer(side, playerId)}
+                    >
+                      {checkedIn ? "출석 완료" : "출석"}
+                    </Button>
+                    {selfRow ? <span className="form-chip">본인</span> : null}
+                  </>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
