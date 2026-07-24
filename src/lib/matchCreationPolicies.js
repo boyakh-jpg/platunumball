@@ -370,11 +370,22 @@ export function getDefaultMatchCreationPolicy(mode = "5v5") {
 
 export function getRoomRemakeDraft(source = {}) {
   const sourceRules = source?.rules && typeof source.rules === "object" ? source.rules : {};
+  const sourceRoomState = source?.roomState && typeof source.roomState === "object" ? source.roomState : {};
   const normalizedSource = {
     ...sourceRules,
     ...source,
     rules: sourceRules,
   };
+  const explicitExpectedCount = Number(normalizedSource.remakeExpectedCount);
+  const sourceSequence = Number(
+    sourceRoomState.remakeSequence
+      ?? sourceRules.remakeSequence
+      ?? normalizedSource.remakeSequence
+      ?? 0,
+  );
+  const remakeExpectedCount = Number.isInteger(explicitExpectedCount) && explicitExpectedCount > 0
+    ? explicitExpectedCount
+    : Math.max(1, Number.isInteger(sourceSequence) && sourceSequence > 0 ? sourceSequence + 1 : 1);
   const mode = String(normalizedSource.mode || "5v5");
   const policy = getMatchCreationPolicyPayload(normalizedSource);
   const rules = getMatchRulesPayload(normalizedSource, { mode });
@@ -423,7 +434,19 @@ export function getRoomRemakeDraft(source = {}) {
     evidence: [],
     memo,
     stakes: String(normalizedSource.stakes ?? ""),
+    remakeExpectedCount,
   };
+}
+
+export function getRoomRemakeWarningCopy(count = 1) {
+  const safeCount = Math.max(1, Math.floor(Number(count) || 1));
+  if (safeCount >= 3) {
+    return `같은 설정으로 방을 연속 ${safeCount}회 다시 만드는 단계입니다. 반복 취소·재생성은 운영 검토 후 신뢰도가 조정될 수 있습니다.`;
+  }
+  if (safeCount === 2) {
+    return "같은 설정으로 방을 연속 2회 다시 만드는 단계입니다. 3회 이상 반복하면 운영 검토 후 신뢰도가 조정될 수 있습니다.";
+  }
+  return "같은 설정으로 다시 만들기를 반복하면 2회부터 경고가 표시되며, 3회 이상은 운영 검토 후 신뢰도가 조정될 수 있습니다.";
 }
 
 export function getMatchCreationPolicyPayload(source = {}) {

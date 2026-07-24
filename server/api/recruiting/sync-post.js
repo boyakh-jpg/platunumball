@@ -41,6 +41,11 @@ export function getRecruitingBenchPolicyError(error = {}) {
   if (errorText.includes("room_edit_window_closed")) return { statusCode: 409, message: "room_edit_window_closed" };
   if (errorText.includes("room_schedule_target_too_soon")) return { statusCode: 409, message: "room_schedule_target_too_soon" };
   if (errorText.includes("room_cancel_locked")) return { statusCode: 409, message: "room_cancel_locked" };
+  if (errorText.includes("room_remake_source_not_found")) return { statusCode: 404, message: "room_remake_source_not_found" };
+  if (errorText.includes("room_remake_owner_required")) return { statusCode: 403, message: "room_remake_owner_required" };
+  if (errorText.includes("room_remake_source_not_terminal") || errorText.includes("room_remake_source_mismatch")) {
+    return { statusCode: 409, message: errorText.includes("mismatch") ? "room_remake_source_mismatch" : "room_remake_source_not_terminal" };
+  }
   if (errorText.includes("recruiting_room_edit_locked")) return { statusCode: 409, message: "recruiting_room_edit_locked" };
   if (errorText.includes("room_meeting_point_required")) return { statusCode: 400, message: "room_meeting_point_required" };
   if (errorText.includes("court_not_found") || errorText.includes("invalid_room_court")) return { statusCode: 400, message: "invalid_room_court" };

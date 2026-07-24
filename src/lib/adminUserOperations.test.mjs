@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   getAdminUserRiskMeta,
   getAdminUserRiskSignals,
+  mergeAdminRoomRemakeStats,
   normalizeAdminUserOperationAction,
   normalizeAdminUserOperationDuration,
   validateAdminUserOperationDraft,
@@ -38,6 +39,40 @@ test("risk metadata is explainable and does not imply automatic punishment", () 
   assert.equal(getAdminUserRiskMeta(30).label, "검토 필요");
   assert.equal(getAdminUserRiskMeta(60).label, "우선 검토");
   assert.deepEqual(getAdminUserRiskSignals(["low_trust", "low_trust"]).map((signal) => signal.id), ["low_trust"]);
+  assert.equal(getAdminUserRiskSignals(["excessive_room_remake"])[0].label, "방 다시 만들기 주의");
+});
+
+test("room remake statistics add an explainable admin review signal", () => {
+  const merged = mergeAdminRoomRemakeStats({
+    ok: true,
+    summary: { signalUsers: 0 },
+    rows: [],
+    page: { total: 0 },
+  }, {
+    ok: true,
+    summary: {
+      roomRemakeCount: 3,
+      roomRemakeCount30d: 3,
+      roomRemakeUsers: 1,
+      roomRemakeRepeatUsers: 1,
+      roomRemakeReviewUsers: 1,
+    },
+    rows: [{
+      id: "host",
+      name: "방장",
+      roomRemakeCount: 3,
+      roomRemakeCount30d: 3,
+      maxRoomRemakeSequence: 3,
+      lastRoomRemakeAt: "2026-07-24T12:00:00.000Z",
+      riskScore: 0,
+      riskSignals: [],
+    }],
+  });
+
+  assert.equal(merged.rows[0].riskScore, 25);
+  assert.deepEqual(merged.rows[0].riskSignals, ["excessive_room_remake"]);
+  assert.equal(merged.summary.roomRemakeReviewUsers, 1);
+  assert.equal(merged.page.total, 1);
 });
 
 test("report actions never mix the reporter into a target sanction", () => {

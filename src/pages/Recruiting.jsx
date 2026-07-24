@@ -4066,7 +4066,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           navigate("/app/create", {
             state: {
               remakeDraft: getRoomRemakeDraft(remakeSource),
-              remakeSourceId: sourceMatch?.id ?? selectedPost.id,
+              remakeSourceId: sourceMatch?.recruitingPostId ?? (/^match-room-/.test(selectedPost.id) ? "" : selectedPost.id),
+              remakeSourceMatchId: sourceMatch?.id ?? "",
             },
           });
         };

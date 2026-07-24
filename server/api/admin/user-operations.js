@@ -1,5 +1,6 @@
 import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import {
+  mergeAdminRoomRemakeStats,
   normalizeAdminUserOperationAction,
   normalizeAdminUserOperationDuration,
   validateAdminUserOperationDraft,
@@ -65,16 +66,30 @@ export default async function handler(request, response) {
       const limit = clampInteger(body.limit, ADMIN_USER_PAGE_LIMIT, 1, ADMIN_USER_MAX_PAGE_LIMIT);
       const offset = clampInteger(body.offset, 0, 0, ADMIN_USER_MAX_OFFSET);
       const search = normalizeDirectoryFilter(body.search ?? body.filter ?? "");
-      const { data, error } = await context.supabase.rpc("rankball_admin_user_operations", {
-        p_actor_profile_id: context.profileId,
-        p_actor_admin_level: adminLevel,
-        p_limit: limit,
-        p_offset: offset,
-        p_search: search,
-        p_risk_only: body.riskOnly !== false,
-      });
+      const riskOnly = body.riskOnly !== false;
+      const [{ data, error }, { data: remakeData, error: remakeError }] = await Promise.all([
+        context.supabase.rpc("rankball_admin_user_operations", {
+          p_actor_profile_id: context.profileId,
+          p_actor_admin_level: adminLevel,
+          p_limit: limit,
+          p_offset: offset,
+          p_search: search,
+          p_risk_only: riskOnly,
+        }),
+        context.supabase.rpc("rankball_admin_room_remake_stats", {
+          p_actor_profile_id: context.profileId,
+          p_actor_admin_level: adminLevel,
+          p_search: search,
+          p_limit: ADMIN_USER_MAX_PAGE_LIMIT,
+        }),
+      ]);
       if (error) throw error;
-      sendJson(response, 200, data ?? { ok: true, rows: [] });
+      if (remakeError) throw remakeError;
+      sendJson(response, 200, mergeAdminRoomRemakeStats(
+        data ?? { ok: true, rows: [] },
+        remakeData ?? { ok: true, rows: [] },
+        { riskOnly },
+      ));
       return;
     }
 

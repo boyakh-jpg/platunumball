@@ -81,6 +81,18 @@ const REQUIRED_COLUMNS = {
     "status",
     "player_ids",
   ],
+  room_remake_events: [
+    "id",
+    "owner_id",
+    "root_source_type",
+    "root_source_id",
+    "source_post_id",
+    "source_match_id",
+    "new_post_id",
+    "sequence",
+    "warning_level",
+    "created_at",
+  ],
   matches: [
     "id",
     "title",
@@ -306,6 +318,10 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_admin_user_operations",
     args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_limit: 1, p_offset: 0, p_search: "", p_risk_only: true },
+  },
+  {
+    name: "rankball_admin_room_remake_stats",
+    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_search: "", p_limit: 1 },
   },
   {
     name: "rankball_commit_admin_manual_user_action",

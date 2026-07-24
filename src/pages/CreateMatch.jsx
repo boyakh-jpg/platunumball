@@ -41,6 +41,7 @@ import {
   getMatchModeChangePatch,
   getPersonalRecordDraftPayload,
   getRoomRemakeDraft,
+  getRoomRemakeWarningCopy,
   getScopedMatchCreationPolicyPayload,
 } from "../lib/matchCreationPolicies.js";
 import { AGE_GROUPS, REGION_TREE, getAgeGroupForUser, getRepresentativeTeam, inferRegionSelection } from "../lib/profileSetup.js";
@@ -219,6 +220,12 @@ function formatCreateSaveError(result, fallback) {
     reason = "선택한 연령 제한과 참가자 연령대가 맞지 않습니다.";
   } else if (errorCode === "invalid_schedule_window") {
     reason = "일정이 생성 가능한 기간 밖입니다.";
+  } else if (errorCode === "room_remake_source_not_found") {
+    reason = "원본 취소방을 찾지 못했습니다. 일정의 취소된 방에서 다시 시도해 주세요.";
+  } else if (errorCode === "room_remake_owner_required") {
+    reason = "원본 방장만 같은 설정으로 다시 만들 수 있습니다.";
+  } else if (errorCode === "room_remake_source_not_terminal" || errorCode === "room_remake_source_mismatch") {
+    reason = "취소되거나 만료된 원본 방에서만 다시 만들 수 있습니다.";
   } else if (errorCode === "recruiting_core_locked" || errorCode === "match_roster_locked" || errorCode === "match_referee_locked") {
     reason = "이미 확정된 방 또는 경기 정보는 변경할 수 없습니다.";
   } else if (errorCode === "team_eligible_roster_insufficient") {
@@ -334,6 +341,8 @@ export default function CreateMatch({ app }) {
       ? getRoomRemakeDraft(source)
       : null;
   }, [location.state?.remakeDraft]);
+  const remakeSourceId = remakeDraft ? String(location.state?.remakeSourceId ?? "").trim() : "";
+  const remakeSourceMatchId = remakeDraft ? String(location.state?.remakeSourceMatchId ?? "").trim() : "";
   const today = getLocalDateInputValue();
   const minSoloRecordDate = addDateDays(today, -1);
   const nextWeek = addDateDays(today, 7);
@@ -1531,6 +1540,7 @@ export default function CreateMatch({ app }) {
     const createAsTeam = creationPolicyPayload.hostJoinMode === "team" && creationPolicyPayload.teamOnly;
     const postId = await app.actions.createRecruitingPost({
       ...creationPolicyPayload,
+      ...(remakeDraft ? { remakeSourceId, remakeSourceMatchId } : {}),
       visibility: draft.visibility,
       title: draft.title,
       hostJoinMode: creationPolicyPayload.hostJoinMode,
@@ -1601,6 +1611,7 @@ export default function CreateMatch({ app }) {
           <p className="eyebrow">{isRecordCreateIntent ? "RecordMatch" : "CreateMatch"}</p>
           <h1>{isRecordCreateIntent ? "기록하기" : "경기/대회 만들기"}</h1>
           {remakeDraft ? <Badge tone="orange">취소된 방 설정을 불러왔습니다. 새 일정을 확인해 주세요.</Badge> : null}
+          {remakeDraft ? <p className="form-warning">{getRoomRemakeWarningCopy(remakeDraft.remakeExpectedCount)}</p> : null}
         </div>
       </header>
 

@@ -20,6 +20,8 @@ const EMPTY_RESULT = Object.freeze({
     activeSanctionUsers: 0,
     newUsers30d: 0,
     warningCount30d: 0,
+    roomRemakeCount30d: 0,
+    roomRemakeReviewUsers: 0,
   },
   rows: [],
   page: { limit: 30, offset: 0, total: 0, nextOffset: null, hasMore: false },
@@ -130,6 +132,16 @@ export default function UserOperationsPanel({ app }) {
     setActionStatus("");
   };
 
+  const fillRoomRemakeWarning = () => {
+    if (!selected) return;
+    const sequence = Math.max(1, Number(selected.maxRoomRemakeSequence ?? 1));
+    updateDraft({
+      actionType: "warning",
+      reason: `같은 설정으로 방 다시 만들기 반복 확인 · 최대 연속 ${sequence}회`,
+      message: "같은 설정으로 방을 반복해서 다시 만들면 참가자 일정에 혼선이 생길 수 있습니다. 이후에도 반복되면 운영 검토 후 신뢰도가 조정될 수 있습니다.",
+    });
+  };
+
   const commit = async () => {
     if (!selected || actionPending) return;
     const operationDraft = { ...draft, targetUserId: selected.id };
@@ -171,6 +183,7 @@ export default function UserOperationsPanel({ app }) {
         <Card className="section-card"><span>검토 필요</span><strong>{result.summary.reviewUsers ?? 0}</strong><em>우선도 30 이상</em></Card>
         <Card className="section-card"><span>활성 제재</span><strong>{result.summary.activeSanctionUsers ?? 0}</strong><em>현재 제한 사용자</em></Card>
         <Card className="section-card"><span>30일 경고</span><strong>{result.summary.warningCount30d ?? 0}</strong><em>수동 경고 발송</em></Card>
+        <Card className="section-card"><span>30일 다시 만들기</span><strong>{result.summary.roomRemakeCount30d ?? 0}</strong><em>검토 {result.summary.roomRemakeReviewUsers ?? 0}명</em></Card>
       </div>
 
       <Card className="section-card admin-user-ops-toolbar">
@@ -268,6 +281,8 @@ export default function UserOperationsPanel({ app }) {
               <div className="admin-user-stat-grid">
                 <div><span>30일 경기</span><strong>{selected.matchCount30d ?? 0}</strong><em>누적 {selected.totalMatchCount ?? 0}</em></div>
                 <div><span>30일 방 생성</span><strong>{selected.roomCount30d ?? 0}</strong><em>종료 {selected.closedRoomCount30d ?? 0}</em></div>
+                <div><span>방 다시 만들기</span><strong>{selected.roomRemakeCount ?? 0}</strong><em>30일 {selected.roomRemakeCount30d ?? 0}회</em></div>
+                <div><span>최대 연속 다시 만들기</span><strong>{selected.maxRoomRemakeSequence ?? 0}</strong><em>최근 {formatDateTime(selected.lastRoomRemakeAt)}</em></div>
                 <div><span>30일 채팅</span><strong>{selected.messageCount30d ?? 0}</strong><em>메시지</em></div>
                 <div><span>30일 경기 취소</span><strong>{selected.cancelledMatchCount30d ?? 0}</strong><em>참가 경기 기준</em></div>
                 <div><span>30일 피신고</span><strong>{selected.receivedReportCount30d ?? 0}</strong><em>미처리 {selected.openReportCount ?? 0}</em></div>
@@ -281,6 +296,9 @@ export default function UserOperationsPanel({ app }) {
                   <div><ShieldAlert size={19} /><strong>신고 없는 수동 조치</strong></div>
                   <small>사유는 감사 로그, 안내 문구는 사용자 앱 알림에 저장됩니다.</small>
                 </div>
+                {Number(selected.roomRemakeCount ?? 0) > 0 ? (
+                  <Button type="button" variant="secondary" onClick={fillRoomRemakeWarning}>반복 다시 만들기 경고문 채우기</Button>
+                ) : null}
                 <div className="arena-field-grid">
                   <label>
                     조치
