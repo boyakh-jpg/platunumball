@@ -183,6 +183,18 @@ test("match clock scoreboard requires a referee or recorders on both sides", () 
   assert.equal(hasMatchScoreboardOperators({}), false);
 });
 
+test("match clock keeps shot settings stable and fullscreen compact", async () => {
+  const panelSource = await readSource("src/components/match/MatchClockPanel.jsx");
+  const clockStyles = await readSource("src/styles/match-clock.css");
+
+  assert.match(panelSource, /configurationDirtyRef\.current/);
+  assert.match(panelSource, /onClick=\{\(\) => selectShotClock\(option\.value\)\}/);
+  assert.match(panelSource, /\{shotClockEnabled \? \(/);
+  assert.doesNotMatch(panelSource, /담당·샷클락 저장|AudioContext/);
+  assert.match(clockStyles, /\.ui-match-clock-focus-backdrop[\s\S]*?overflow: hidden;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/);
+});
+
 test("room modes and administrator MMR policy use the same mode keys", () => {
   const modeIds = MATCH_MODES.map((mode) => mode.id);
   assert.deepEqual(RATING_POLICY_MODE_IDS, modeIds);

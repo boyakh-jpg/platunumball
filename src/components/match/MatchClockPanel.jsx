@@ -28,7 +28,6 @@ const ERROR_LABELS = Object.freeze({
   server_actions_disabled: "서버 기능이 꺼져 있어 경기시계를 사용할 수 없습니다.",
 });
 
-let buzzerAudioContext = null;
 let buzzerMediaElement = null;
 const buzzerMediaUrls = new Map();
 
@@ -99,57 +98,37 @@ function getBuzzerMediaUrl(patternName) {
   return url;
 }
 
-async function playBuzzerFallback(patternName, volume) {
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass || volume <= 0) return false;
-  try {
-    if (!buzzerAudioContext || buzzerAudioContext.state === "closed") {
-      buzzerAudioContext = new AudioContextClass();
-    }
-    const context = buzzerAudioContext;
-    if (context.state === "suspended") await context.resume();
-    let startAt = context.currentTime;
-    const safeVolume = Math.min(1, Math.max(0, volume));
-    const pattern = BUZZER_PATTERNS[patternName] || BUZZER_PATTERNS.period;
-    pattern.forEach((segment) => {
-      const durationSeconds = segment.durationMs / 1000;
-      if (segment.frequency > 0) {
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        oscillator.type = "square";
-        oscillator.frequency.setValueAtTime(segment.frequency, startAt);
-        gain.gain.setValueAtTime(0.001, startAt);
-        gain.gain.exponentialRampToValueAtTime(safeVolume, startAt + 0.01);
-        gain.gain.setValueAtTime(safeVolume, Math.max(startAt + 0.01, startAt + durationSeconds - 0.03));
-        gain.gain.exponentialRampToValueAtTime(0.001, startAt + durationSeconds);
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        oscillator.start(startAt);
-        oscillator.stop(startAt + durationSeconds);
-      }
-      startAt += durationSeconds;
-    });
-    return true;
-  } catch {
-    return false;
-  }
+function getBuzzerMediaElement() {
+  if (buzzerMediaElement) return buzzerMediaElement;
+  buzzerMediaElement = new Audio();
+  buzzerMediaElement.preload = "auto";
+  buzzerMediaElement.setAttribute("playsinline", "");
+  buzzerMediaElement.setAttribute("webkit-playsinline", "");
+  buzzerMediaElement.setAttribute("aria-hidden", "true");
+  buzzerMediaElement.hidden = true;
+  buzzerMediaElement.src = getBuzzerMediaUrl("period");
+  document.body.appendChild(buzzerMediaElement);
+  buzzerMediaElement.load();
+  return buzzerMediaElement;
 }
 
 async function playBuzzer(patternName = "period", volume = 1) {
   if (volume <= 0) return false;
   try {
-    if (!buzzerMediaElement) {
-      buzzerMediaElement = new Audio();
-      buzzerMediaElement.preload = "auto";
+    const mediaElement = getBuzzerMediaElement();
+    const nextSource = getBuzzerMediaUrl(patternName);
+    mediaElement.pause();
+    if (mediaElement.src !== nextSource) {
+      mediaElement.src = nextSource;
+      mediaElement.load();
     }
-    buzzerMediaElement.pause();
-    buzzerMediaElement.src = getBuzzerMediaUrl(patternName);
-    buzzerMediaElement.currentTime = 0;
-    buzzerMediaElement.volume = Math.min(1, Math.max(0, volume));
-    await buzzerMediaElement.play();
+    mediaElement.currentTime = 0;
+    mediaElement.muted = false;
+    mediaElement.volume = Math.min(1, Math.max(0, volume));
+    await mediaElement.play();
     return true;
   } catch {
-    return playBuzzerFallback(patternName, volume);
+    return false;
   }
 }
 
@@ -169,6 +148,7 @@ export default function MatchClockPanel({ match }) {
   const [volume, setVolume] = useState(100);
   const wakeLockRef = useRef(null);
   const wakeLockRequestedRef = useRef(false);
+  const configurationDirtyRef = useRef(false);
   const soundedRef = useRef({ period: false, shot: false, break: false });
 
   const applyResponse = useCallback((response) => {
@@ -190,8 +170,10 @@ export default function MatchClockPanel({ match }) {
     });
     setScore(response.score || { a: 0, b: 0, updatedAt: null });
     setActivePlayers(response.activePlayers || []);
-    setSelectedControllerId(nextClock.controllerId || "");
-    setShotClockSeconds(Number(nextClock.shotClockSeconds || 0));
+    if (!configurationDirtyRef.current) {
+      setSelectedControllerId(nextClock.controllerId || "");
+      setShotClockSeconds(Number(nextClock.shotClockSeconds || 0));
+    }
   }, []);
 
   const runAction = useCallback(async (action, payload = {}) => {
@@ -209,6 +191,14 @@ export default function MatchClockPanel({ match }) {
       setPendingAction("");
     }
   }, [applyResponse, match?.id, pendingAction]);
+
+  useEffect(() => {
+    configurationDirtyRef.current = false;
+  }, [match.id]);
+
+  useEffect(() => {
+    getBuzzerMediaElement();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -386,8 +376,34 @@ export default function MatchClockPanel({ match }) {
     if (!played) {
       setDeviceNotice(volume <= 0
         ? "부저 음량이 0%입니다."
-        : "브라우저에서 부저 재생을 허용하지 않았습니다.");
+        : "미디어 부저 재생이 차단됐습니다. 부저 시험을 다시 눌러주세요.");
+    } else {
+      setDeviceNotice("미디어 부저가 재생됐습니다.");
     }
+  };
+
+  const saveConfiguration = async (controllerId, nextShotClockSeconds) => {
+    if (!controllerId || pendingAction) return;
+    configurationDirtyRef.current = true;
+    const succeeded = await runAction("configure", {
+      controllerId,
+      shotClockSeconds: nextShotClockSeconds,
+    });
+    configurationDirtyRef.current = false;
+    if (!succeeded) {
+      const response = await requestMatchClock(match.id, "read").catch(() => null);
+      if (response) applyResponse(response);
+    }
+  };
+
+  const selectController = (controllerId) => {
+    setSelectedControllerId(controllerId);
+    void saveConfiguration(controllerId, shotClockSeconds);
+  };
+
+  const selectShotClock = (nextShotClockSeconds) => {
+    setShotClockSeconds(nextShotClockSeconds);
+    void saveConfiguration(selectedControllerId, nextShotClockSeconds);
   };
 
   const confirmAction = (message, action, payload = {}) => {
@@ -413,9 +429,11 @@ export default function MatchClockPanel({ match }) {
     );
   }
 
+  const shotClockEnabled = Number(liveClock.shotClockSeconds || 0) > 0;
+
   const clockPanel = (
     <section
-      className={`ui-match-clock-panel ui-panel${focusMode ? " ui-match-clock-panel-focus" : ""}`}
+      className={`ui-match-clock-panel ui-panel${focusMode ? " ui-match-clock-panel-focus" : ""}${isPending ? " ui-match-clock-panel-pending" : ""}`}
       aria-label="경기시계"
     >
       <header className="ui-match-clock-header">
@@ -453,7 +471,8 @@ export default function MatchClockPanel({ match }) {
                 <select
                   className="ui-control"
                   value={selectedControllerId}
-                  onChange={(event) => setSelectedControllerId(event.target.value)}
+                  disabled={pendingAction === "configure"}
+                  onChange={(event) => selectController(event.target.value)}
                 >
                   {activePlayers.map((player) => (
                     <option key={player.id} value={player.id}>{player.name}</option>
@@ -470,22 +489,14 @@ export default function MatchClockPanel({ match }) {
                       size="sm"
                       variant={shotClockSeconds === option.value ? "primary" : "secondary"}
                       aria-pressed={shotClockSeconds === option.value}
-                      onClick={() => setShotClockSeconds(option.value)}
+                      disabled={pendingAction === "configure" || !selectedControllerId}
+                      onClick={() => selectShotClock(option.value)}
                     >
                       {option.label}
                     </Button>
                   ))}
                 </div>
               </fieldset>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled={pendingAction === "configure" || !selectedControllerId}
-                onClick={() => void runAction("configure", { controllerId: selectedControllerId, shotClockSeconds })}
-              >
-                담당·샷클락 저장
-              </Button>
             </>
           ) : null}
           <div className="ui-match-clock-controller-status">
@@ -506,8 +517,8 @@ export default function MatchClockPanel({ match }) {
           )}
         </div>
       ) : (
-        <>
-          <div className={`ui-match-clock-display-grid${liveClock.shotClockSeconds > 0 ? "" : " ui-match-clock-display-grid-single"}`}>
+        <div className={`ui-match-clock-live${shotClockEnabled ? " ui-match-clock-live-with-shot" : ""}`}>
+          <div className={`ui-match-clock-display-grid${shotClockEnabled ? "" : " ui-match-clock-display-grid-single"}`}>
             <div
               className={`ui-match-clock-scoreboard${scoreboardEnabled ? "" : " ui-match-clock-scoreboard-time-only"}`}
               aria-label={scoreboardEnabled ? "기록 점수판" : "경기시간"}
@@ -531,7 +542,7 @@ export default function MatchClockPanel({ match }) {
               ) : null}
             </div>
 
-            {liveClock.shotClockSeconds > 0 ? (
+            {shotClockEnabled ? (
               <button
                 type="button"
                 className="ui-match-shot-clock"
@@ -632,7 +643,7 @@ export default function MatchClockPanel({ match }) {
               </div>
             </details>
           ) : null}
-        </>
+        </div>
       )}
 
       <div className="ui-match-clock-device-tools">
