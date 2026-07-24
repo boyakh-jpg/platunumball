@@ -17918,7 +17918,7 @@ html[data-theme="light"] .app-main {
     grid-column: 1 / -1;
     grid-row: auto;
     justify-self: start;
-    min-height: clamp(320px, 88vw, 380px);
+    min-height: clamp(500px, 132vw, 570px);
     width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;
     margin-top: -18px;
@@ -19856,8 +19856,10 @@ html[data-theme="light"] .team-detail-hero h1 {
 html[data-theme="light"] .rank-home .rank-summary-grid,
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   background:
-    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--home-court-tone),
+    var(--bg-home-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
+  background-blend-mode: var(--home-court-blend-mode);
   backdrop-filter: none;
   filter: none;
 }
@@ -20224,8 +20226,10 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .rank-home .rank-summary-grid .home-rank-board-head,
   html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
     background:
-      var(--bg-court) center 46% / cover no-repeat,
+      var(--home-court-tone),
+      var(--bg-home-court) center 46% / cover no-repeat,
       var(--rb-bg-2);
+    background-blend-mode: var(--home-court-blend-mode);
   }
 }
 
@@ -20831,7 +20835,6 @@ html[data-theme="light"] .app-main :is(
     align-content: end;
     align-items: end;
     gap: 16px;
-    min-height: clamp(500px, 132vw, 570px);
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {

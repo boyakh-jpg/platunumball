@@ -520,6 +520,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-02: 홈 759px 이하에서는 `rank-summary-grid`가 `display: contents`라 실제 hero인 `.home-rank-board-head`가 직접 `--app-main-pad-x`를 상쇄해야 한다. 이 규칙 변경 전에는 390/430/501/760/900/1024px에서 hero left, order, overflow를 다시 확인한다.
 2026-07-02: 경기(`/app/matches`)와 매칭(`/app/recruiting`) page container는 데스크톱에서 공통 앱 폭 1440px을 따른다. 원인/결과: 각 arena CSS 뒤쪽의 1480px override가 공통 `.app-main > *` 폭보다 커져 메뉴별 폭이 달라졌으므로, 최종 page width guard로 통일한다.
 2026-07-02: 홈 hero 배경은 desktop에서는 `rank-summary-grid`, 759px 이하에서는 실제 hero인 `home-rank-board-head` 한 곳에만 둔다. 원인/결과: 부모와 자식에 같은 `--bg-court`가 동시에 적용되어 배경이 두 장처럼 보였으므로 동시 배경을 금지한다.
+2026-07-24: 홈 hero의 다크·라이트는 `--bg-home-court` 단일 원본을 공유한다. 카메라 높이, 지평선, 건물, 펜스, 골대, 조명대, 코트선 좌표와 crop·height는 바꾸지 않고 다크에서만 `--home-court-tone`으로 밤 노출과 청록·주황 네온 대비를 적용한다.
 2026-07-01: 경기 메뉴의 상단 상태 요약 카드는 모바일에서도 내부 가로 스크롤을 만들지 않고 2열 grid로 접는다. 필터 세그먼트는 항목 수가 적으면 가로 스크롤 대신 균등 grid를 쓴다.
 2026-07-01: 방 모달의 출전 슬롯은 한 사이드 안에서 넘치지 않게 컨테이너 폭에 맞춰 줄이고, 후보 슬롯은 A/B 후보를 세로 카드처럼 쌓지 않고 각 후보 라인을 한 줄 row로 둔다. 5v5 같은 짧은 mode chip은 condensed/음수 자간을 쓰지 않는다.
 2026-07-06: 방 모달 후보 라인은 A사이드는 왼쪽, B사이드는 오른쪽으로 붙여 양옆 사이드 구조를 유지한다. 슬롯 크기, 후광, 내부 가로 스크롤은 유지한다.
@@ -622,6 +623,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 | 용도 | 변수 |
 | --- | --- |
 | 코트 | `--bg-court` |
+| 홈 코트 공통 원본 | `--bg-home-court` |
 | 액션 | `--bg-action` |
 | 나 메뉴 | `--bg-profile` |
 | 골대 | `--bg-hoop` |

@@ -148,6 +148,7 @@
   --sidebar-width: 300px;
   --bottom-nav-height: 58px;
   --bg-court: none;
+  --bg-home-court: none;
   --bg-action: none;
   --bg-create: none;
   --bg-profile: none;
@@ -156,6 +157,11 @@
   --bg-recruiting: none;
   --bg-recorder: none;
   --hero-bg-size: cover;
+  --home-court-tone:
+    radial-gradient(circle at 82% 88%, rgba(255, 116, 45, 0.24), transparent 34%),
+    radial-gradient(circle at 18% 80%, rgba(0, 229, 255, 0.26), transparent 38%),
+    linear-gradient(180deg, rgba(1, 4, 18, 0.86), rgba(2, 11, 18, 0.66));
+  --home-court-blend-mode: screen, screen, multiply, normal, normal;
   --hero-crop-court: center center;
   --hero-crop-action: center 32%;
   --hero-crop-profile: center 36%;
@@ -234,6 +240,7 @@ html[data-theme="light"] {
   --team-home: #218a5f;
   --team-away: #a86c14;
   --bg-court: none;
+  --bg-home-court: none;
   --bg-action: none;
   --bg-create: none;
   --bg-profile: none;
@@ -241,6 +248,10 @@ html[data-theme="light"] {
   --bg-ball: none;
   --bg-recruiting: none;
   --bg-recorder: none;
+  --home-court-tone:
+    linear-gradient(transparent, transparent),
+    linear-gradient(transparent, transparent),
+    linear-gradient(transparent, transparent);
   --hero-bg-position-court: var(--hero-crop-court);
   --hero-bg-position-action: var(--hero-crop-action);
   --hero-bg-position-profile: var(--hero-crop-profile);
