@@ -530,7 +530,8 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-02: 홈 759px 이하에서는 `rank-summary-grid`가 `display: contents`라 실제 hero인 `.home-rank-board-head`가 직접 `--app-main-pad-x`를 상쇄해야 한다. 이 규칙 변경 전에는 390/430/501/760/900/1024px에서 hero left, order, overflow를 다시 확인한다.
 2026-07-02: 경기(`/app/matches`)와 매칭(`/app/recruiting`) page container는 데스크톱에서 공통 앱 폭 1440px을 따른다. 원인/결과: 각 arena CSS 뒤쪽의 1480px override가 공통 `.app-main > *` 폭보다 커져 메뉴별 폭이 달라졌으므로, 최종 page width guard로 통일한다.
 2026-07-02: 홈 hero 배경은 desktop에서는 `rank-summary-grid`, 759px 이하에서는 실제 hero인 `home-rank-board-head` 한 곳에만 둔다. 원인/결과: 부모와 자식에 같은 `--bg-court`가 동시에 적용되어 배경이 두 장처럼 보였으므로 동시 배경을 금지한다.
-2026-07-24: 홈 hero는 다크에서 `rankball-court-hero-v3.webp`, 라이트에서 `rankball-court-hero-day-v2.webp`를 `--bg-home-court`로 전환한다. 두 테마는 같은 crop·height 규칙을 공유하며 별도 wash·filter를 씌우지 않는다.
+2026-07-24: 홈 hero는 다크에서 `rankball-court-hero-v3.webp`, 라이트에서 같은 구도의 `rankball-court-hero-day-v3.webp`를 `--bg-home-court`로 전환한다. 두 테마는 같은 crop·height 규칙을 공유하며 별도 wash·filter를 씌우지 않는다.
+2026-07-24: 주요 메뉴 hero는 메뉴별 전용 사진을 사용한다. 각 다크·라이트 쌍은 같은 사진의 시간대와 조명만 바꾸고 `1600×900` 이상, 같은 crop·height를 유지한다. CGI·3D 렌더 질감은 쓰지 않는다. 장식용 농구공은 제외하고, 기능상 꼭 필요한 공만 실제 연속 8패널 심 구조로 검수한다.
 2026-07-01: 경기 메뉴의 상단 상태 요약 카드는 모바일에서도 내부 가로 스크롤을 만들지 않고 2열 grid로 접는다. 필터 세그먼트는 항목 수가 적으면 가로 스크롤 대신 균등 grid를 쓴다.
 2026-07-01: 방 모달의 출전 슬롯은 한 사이드 안에서 넘치지 않게 컨테이너 폭에 맞춰 줄이고, 후보 슬롯은 A/B 후보를 세로 카드처럼 쌓지 않고 각 후보 라인을 한 줄 row로 둔다. 5v5 같은 짧은 mode chip은 condensed/음수 자간을 쓰지 않는다.
 2026-07-06: 방 모달 후보 라인은 A사이드는 왼쪽, B사이드는 오른쪽으로 붙여 양옆 사이드 구조를 유지한다. 슬롯 크기, 후광, 내부 가로 스크롤은 유지한다.
@@ -543,7 +544,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-02: "hero들"이라고 하면 홈/경기/모집만이 아니라 `page-header`, landing, team hub, season, profile, team detail, rulebook, tournament, match room 같은 모든 page-level hero를 포함한다.
 2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 `::before`/`::after` overlay를 얹지 않는다. hero 텍스트는 dark에서 `--rb-orange`/`--rb-orange-2`, light 큰 제목은 `--rb-cream`로 시인성을 확보한다.
 2026-07-02: hero 제목 폰트는 모두 `--hero-title-font`를 쓴다. 원인/결과: 개별 파일의 `linear-gradient` background와 `::before`/`::after` overlay가 뒤쪽 CSS에서 다시 살아나 이미지 위 막이 반복됐으므로, page-level hero는 최종 guard에서 image + fallback color만 남기고 `backdrop-filter`/blur/filter를 쓰지 않는다.
-2026-07-23: 방만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지 hero를 쓴다. 왼쪽 제목 영역은 단순한 벽면 여백을 유지하고 오른쪽 골대·공·조명 구조는 중앙 crop 안에 둔다. 코트선은 3점선과 자유투 반원을 각각 한 번만 표시하며 중첩 반원을 금지한다.
+2026-07-23: 방만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지 hero를 쓴다. 왼쪽 제목 영역은 단순한 벽면 여백을 유지하고 오른쪽 골대·접힌 관중석·조명 구조는 중앙 crop 안에 둔다. 장식용 공은 두지 않고 보이는 코트선은 실제 바닥 구조에 맞게 한 번만 표시한다.
 2026-07-02: 팀 허브 모바일 hero에도 데스크톱처럼 전체 1위 팀 보드를 포함한다. 원인/결과: 759px 이하 규칙이 `.team-hub-board`를 숨겨 모바일에서 팀 허브 정보가 빠졌으므로, 팀 페이지에서는 보드를 다시 표시한다.
 2026-07-02: 홈 image hero와 rank spotlight card는 조각난 frame처럼 보이는 border, underline, inner pseudo frame을 쓰지 않는다. 이미지 경계는 배경/간격으로 처리한다.
 2026-07-01: 일반 페이지의 floating search/card layer는 모바일 bottom nav보다 낮아야 한다. 모달/전역 로더만 bottom nav보다 위에 올 수 있다.
@@ -637,10 +638,14 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 | 액션 | `--bg-action` |
 | 나 메뉴 | `--bg-profile` |
 | 골대 | `--bg-hoop` |
-| 공/도시 | `--bg-ball` |
+| 공용 도시 코트 | `--bg-ball` |
 | 방만들기 hero 전용 | `--bg-create` |
 | 매칭 hero 전용 | `--bg-recruiting` |
 | 진행 hero 전용 | `--bg-recorder` |
+| 설정 hero 전용 | `--bg-settings` |
+| 경기 기록 만들기 hero 전용 | `--bg-record-create` |
+| 팀 hero 전용 | `--bg-teams` |
+| 랭킹 hero 전용 | `--bg-rankings` |
 | 크기 | `--hero-bg-size` |
 | 위치 | `--hero-bg-position-*` |
 
@@ -649,7 +654,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 - `--bg-*` URL만 바꾼다.
 - `--hero-bg-position-*`은 바꾸지 않는다.
 - 같은 위치에서 낮/밤 차이만 보여야 한다.
-- 매칭과 진행 hero는 generic `--bg-ball`/`--bg-hoop`을 재사용하지 않고 전용 토큰을 쓴다. 원인/결과: 같은 배경이 여러 메뉴에 반복되어 화면 구분이 약해졌으므로 메뉴별 hero 이미지를 분리한다.
+- 방만들기, 매칭, 진행, 설정, 경기 기록 만들기, 팀, 랭킹 hero는 generic `--bg-ball`/`--bg-hoop`을 재사용하지 않고 전용 토큰을 쓴다. 원인/결과: 같은 배경이 여러 메뉴에 반복되어 화면 구분이 약해졌으므로 메뉴별 hero 이미지를 분리한다.
 
 ## 카드 원칙
 

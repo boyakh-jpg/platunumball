@@ -62,7 +62,7 @@ export default function Rankings({ app }) {
             : visibleModePlayers;
 
   return (
-    <div className="page-stack">
+    <div className="page-stack rankings-page">
       <header className="page-header">
         <div>
           <p className="eyebrow">Rankings</p>

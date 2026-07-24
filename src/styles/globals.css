@@ -14467,7 +14467,9 @@ html[data-theme="light"] .team-search-popover button.selected {
   line-height: 1.5;
 }
 
-.profile-page .page-header {
+.profile-page .page-header,
+.profile-achievements-page .page-header,
+.profile-records-page .page-header {
   --page-hero-bg: var(--bg-profile);
   --page-hero-bg-position: var(--hero-bg-position-profile);
 }
@@ -14478,7 +14480,12 @@ html[data-theme="light"] .team-search-popover button.selected {
 }
 
 .settings-page .page-header {
-  --page-hero-bg: var(--bg-court);
+  --page-hero-bg: var(--bg-settings);
+  --page-hero-bg-position: var(--hero-bg-position-court);
+}
+
+.rankings-page .page-header {
+  --page-hero-bg: var(--bg-rankings);
   --page-hero-bg-position: var(--hero-bg-position-court);
 }
 
@@ -19852,9 +19859,7 @@ html[data-theme="light"] .team-detail-hero h1 {
 
 /* 2026-07-02 final hero guard: no image wash/blur and one title font. */
 .rank-home .rank-summary-grid,
-.rank-home .rank-summary-grid .home-rank-board-head,
-html[data-theme="light"] .rank-home .rank-summary-grid,
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+html[data-theme="light"] .rank-home .rank-summary-grid {
   background:
     var(--bg-home-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
@@ -19871,6 +19876,11 @@ html[data-theme="light"] .landing-hero {
   filter: none;
 }
 
+.landing-backdrop,
+html[data-theme="light"] .landing-backdrop {
+  background: none;
+}
+
 .match-hero,
 html[data-theme="light"] .match-hero {
   background:
@@ -19881,8 +19891,15 @@ html[data-theme="light"] .match-hero {
 }
 
 .team-hub-hero,
+html[data-theme="light"] .team-hub-hero {
+  background:
+    var(--bg-teams) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
 .season-hero,
-html[data-theme="light"] .team-hub-hero,
 html[data-theme="light"] .season-hero {
   background:
     var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
@@ -19910,7 +19927,7 @@ html[data-theme="light"] .team-detail-hero {
 }
 
 .create-match-hero.is-record {
-  --page-hero-bg: var(--bg-recorder);
+  --page-hero-bg: var(--bg-record-create);
   --page-hero-bg-position: var(--hero-bg-position-hoop);
 }
 
