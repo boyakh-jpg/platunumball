@@ -374,14 +374,53 @@ function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = DEFAULT_R
 function getRoomEditDraft(post) {
   const rules = normalizeMatchRules(post.rules, { mode: post.mode });
   return {
+    courtId: post.courtId ?? post.court_id ?? "",
     court: post.court ?? "",
     sideCapacity: getRecruitingSideCapacity(post),
+    benchCapacity: getRecruitingBenchCapacity(post),
     matchJoinMode: post.hostJoinMode === "team" ? "team" : "player",
     mmrRangeMode: post.mmrRangeMode ?? post.roomState?.mmrRangeMode ?? "narrow",
     ...rules,
     stakes: post.stakes ?? "",
     memo: post.memo ?? "",
   };
+}
+
+function getRoomEditSaveError(result, matchRoom = false) {
+  const errorCode = String(
+    result?.error
+    ?? result?.reason
+    ?? result?.details?.reason
+    ?? result?.message
+    ?? "",
+  ).trim();
+  if (["recruiting_side_capacity_below_roster", "match_side_capacity_below_roster"].includes(errorCode)) {
+    return "현재 출전 인원보다 팀당 정원을 작게 줄일 수 없습니다.";
+  }
+  if ([
+    "recruiting_bench_capacity_below_roster",
+    "match_bench_capacity_below_roster",
+    "recruiting_reserve_full",
+    "match_reserve_exceeds_bench_capacity",
+  ].includes(errorCode)) {
+    return "현재 후보 인원보다 후보 정원을 작게 줄일 수 없습니다.";
+  }
+  if (errorCode === "court_not_found" || errorCode === "invalid_room_court") {
+    return "등록된 구장을 다시 선택해 주세요.";
+  }
+  if (errorCode === "room_meeting_point_required") {
+    return "실제로 만날 장소를 2자 이상 적어 주세요.";
+  }
+  if (errorCode === "match_room_operator_required" || errorCode === "recruiting_owner_required") {
+    return "현재 계정에는 이 방을 수정할 권한이 없습니다.";
+  }
+  if (errorCode === "match_room_edit_locked" || errorCode === "recruiting_room_edit_locked") {
+    return matchRoom ? "이미 시작했거나 종료된 경기는 수정할 수 없습니다." : "이미 닫힌 방은 수정할 수 없습니다.";
+  }
+  if (errorCode.includes("room_update_rpc_required") || errorCode.includes("could not find the function")) {
+    return "최신 방 수정 기능을 준비 중입니다. 잠시 후 다시 시도해 주세요.";
+  }
+  return "방 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
 function getDefaultJoinDraft(post, teams, currentUser, state) {
@@ -2761,6 +2800,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     requestedPoints: "",
   });
   const [roomEditDraftByPost, setRoomEditDraftByPost] = useState({});
+  const [roomEditStatusByPost, setRoomEditStatusByPost] = useState({});
   const [refereeInviteQueryByPost, setRefereeInviteQueryByPost] = useState({});
   const [pendingRosterOpen, setPendingRosterOpen] = useState(null);
   const [confirmingMatchId, setConfirmingMatchId] = useState("");
@@ -3233,6 +3273,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const getRoomEditDraftByPost = (roomPost) => roomEditDraftByPost[roomPost.id] ?? null;
   const openRoomEdit = (roomPost) => {
     setRoomEditDraftByPost((current) => ({ ...current, [roomPost.id]: getRoomEditDraft(roomPost) }));
+    setRoomEditStatusByPost((current) => ({ ...current, [roomPost.id]: { pending: false, error: "" } }));
   };
   const closeRoomEdit = (roomPost) => {
     setRoomEditDraftByPost((current) => {
@@ -3246,14 +3287,45 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       ...current,
       [roomPost.id]: { ...(current[roomPost.id] ?? getRoomEditDraft(roomPost)), ...patch },
     }));
+    setRoomEditStatusByPost((current) => ({
+      ...current,
+      [roomPost.id]: { pending: Boolean(current[roomPost.id]?.pending), error: "" },
+    }));
   };
-  const saveRoomEdit = (roomPost) => {
+  const saveRoomEdit = async (roomPost) => {
     const roomEditDraft = getRoomEditDraftByPost(roomPost);
     if (!roomEditDraft) return;
     if (String(roomEditDraft.meetingPoint ?? "").trim().length < 2) return;
-    if (sourceMatch) app.actions.updateMatchRoomRules(sourceMatch.id, roomEditDraft);
-    else app.actions.updateRecruitingRoomRules(roomPost.id, roomEditDraft);
-    closeRoomEdit(roomPost);
+    setRoomEditStatusByPost((current) => ({
+      ...current,
+      [roomPost.id]: { pending: true, error: "" },
+    }));
+    try {
+      const result = sourceMatch
+        ? await app.actions.updateMatchRoomRules(sourceMatch.id, roomEditDraft)
+        : await app.actions.updateRecruitingRoomRules(roomPost.id, roomEditDraft);
+      if (!result || result.ok === false) {
+        setRoomEditStatusByPost((current) => ({
+          ...current,
+          [roomPost.id]: { pending: false, error: getRoomEditSaveError(result, Boolean(sourceMatch)) },
+        }));
+        return;
+      }
+      closeRoomEdit(roomPost);
+      setRoomEditStatusByPost((current) => {
+        const next = { ...current };
+        delete next[roomPost.id];
+        return next;
+      });
+    } catch (error) {
+      setRoomEditStatusByPost((current) => ({
+        ...current,
+        [roomPost.id]: {
+          pending: false,
+          error: getRoomEditSaveError({ error: error?.message }, Boolean(sourceMatch)),
+        },
+      }));
+    }
   };
   const updateInviteDraft = (patch) => {
     setInviteError("");
@@ -3349,6 +3421,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
 
   return (() => {
         const lobby = getRecruitingLobby(selectedPost, app.state);
+        const roomPhaseViewModel = getRoomPhaseViewModel({ post: selectedPost, match: sourceMatch });
+        const pickupPoolMode = roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool;
         const joinDraft = getJoinDraft(selectedPost);
         const individualOnlyRoom = isIndividualOnlyRecruitingRoom(selectedPost);
         const teamOnlyRoom = isTeamOnlyRoom(selectedPost) && !individualOnlyRoom;
@@ -3434,11 +3508,30 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         );
         const selectedRatingScale = getRecruitingRatingScale(selectedPost);
         const roomEditDraft = getRoomEditDraftByPost(selectedPost);
+        const roomEditStatus = roomEditStatusByPost[selectedPost.id] ?? { pending: false, error: "" };
+        const roomEditCurrentCourt = registeredCourts.find((court) => (
+          court.id === (roomEditDraft?.courtId || selectedPost.courtId)
+          || court.name === (roomEditDraft?.court || selectedPost.court)
+        )) ?? {
+          id: roomEditDraft?.courtId || selectedPost.courtId || "",
+          name: roomEditDraft?.court || selectedPost.court || "현재 구장",
+          region: selectedPost.region ?? "",
+        };
+        const roomEditCourtOptions = roomEditDraft
+          ? [
+              roomEditCurrentCourt,
+              ...registeredCourts.filter((court) => (
+                (court.id || court.name) !== (roomEditCurrentCourt.id || roomEditCurrentCourt.name)
+              )),
+            ]
+          : registeredCourts;
         const roomEditRange = roomEditDraft
           ? getRecruitingTierRange(getRecruitingTargetMmr(selectedPost, app.state), selectedPost.ranked !== false, roomEditDraft.mmrRangeMode)
           : null;
         const roomEditCourt = roomEditDraft
-          ? registeredCourts.find((court) => court.name === roomEditDraft.court) ?? registeredCourts.find((court) => court.name === selectedPost.court) ?? null
+          ? roomEditCourtOptions.find((court) => (
+              court.id === roomEditDraft.courtId || court.name === roomEditDraft.court
+            )) ?? null
           : null;
         const roomEditCourtWarning = roomEditDraft && roomEditCourt ? getCourtPlayWarning(roomEditCourt, `${roomEditDraft.sideCapacity}v${roomEditDraft.sideCapacity}`) : "";
         const selectedMatchRules = normalizeMatchRules(selectedPost.rules, { mode: selectedPost.mode });
@@ -3447,8 +3540,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const selectedRoomPolicyRows = selectedCreationSummary.rows.filter((row) => (
           row.label === "경기 목적" || row.label === "팀 구성" || row.label === "명단" || row.label === "운영 정책" || row.label === "출전 정책"
         ));
-        const maxSideFilled = Math.max(lobby.sides.teamA.filled, lobby.sides.teamB.filled);
+        const maxSideFilled = Math.max(
+          lobby.sides.teamA.projectedPlayers.length,
+          lobby.sides.teamB.projectedPlayers.length,
+        );
+        const maxSideReserveFilled = Math.max(
+          lobby.sides.teamA.reserveCandidates.length,
+          lobby.sides.teamB.reserveCandidates.length,
+        );
         const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
+        const roomEditBenchCapacityValid = !roomEditDraft || Number(roomEditDraft.benchCapacity) >= maxSideReserveFilled;
         const roomEditMeetingValid = !roomEditDraft || String(roomEditDraft.meetingPoint ?? "").trim().length >= 2;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const partyJoinOptions = individualOnlyRoom ? [] : getSameSidePartyOptions(lobby, myEntry, myTeams);
@@ -3543,9 +3644,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
-        const roomPhaseViewModel = getRoomPhaseViewModel({ post: selectedPost, match: sourceMatch });
         const pickupRoom = isPickupRecruitingRoom(selectedPost);
-        const pickupPoolMode = roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool;
         const roomPhaseVersusIndex = roomPhaseViewModel.sectionOrder.indexOf("versus");
         const roomPhaseSectionsBeforeVersus = roomPhaseVersusIndex >= 0
           ? roomPhaseViewModel.sectionOrder.slice(0, roomPhaseVersusIndex)
@@ -4502,10 +4601,26 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         </select>
                       </label>
                       <label>
+                        후보 정원
+                        <select value={roomEditDraft.benchCapacity} onChange={(event) => updateRoomEditDraft(selectedPost, { benchCapacity: Number(event.target.value) })}>
+                          {Array.from({ length: MAX_RESERVE_PLAYERS_PER_SIDE + 1 }, (_, value) => (
+                            <option key={value} value={value}>{value}명</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
                         구장
-                        <select value={roomEditDraft.court} onChange={(event) => updateRoomEditDraft(selectedPost, { court: event.target.value })}>
-                          {registeredCourts.map((court) => (
-                            <option key={court.id ?? court.name} value={court.name}>
+                        <select
+                          value={roomEditDraft.courtId || roomEditDraft.court}
+                          onChange={(event) => {
+                            const court = roomEditCourtOptions.find((item) => (
+                              (item.id || item.name) === event.target.value
+                            ));
+                            if (court) updateRoomEditDraft(selectedPost, { courtId: court.id ?? "", court: court.name });
+                          }}
+                        >
+                          {roomEditCourtOptions.map((court) => (
+                            <option key={court.id || court.name} value={court.id || court.name}>
                               {court.name} / {getCourtSurfaceLabel(court)} / {getCourtLayoutLabel(court)}
                             </option>
                           ))}
@@ -4565,12 +4680,21 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       <textarea value={roomEditDraft.memo} onChange={(event) => updateRoomEditDraft(selectedPost, { memo: event.target.value })} />
                     </label>
                     {!roomEditCapacityValid ? <span className="form-warning">현재 출전 인원이 {maxSideFilled}명이라 정원을 그보다 낮출 수 없습니다.</span> : null}
+                    {!roomEditBenchCapacityValid ? <span className="form-warning">현재 후보 인원이 {maxSideReserveFilled}명이라 후보 정원을 그보다 낮출 수 없습니다.</span> : null}
                     {!roomEditMeetingValid ? <span className="form-warning">실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요.</span> : null}
+                    {roomEditStatus.error ? <span className="form-warning" role="alert">{roomEditStatus.error}</span> : null}
                     <div className="arena-room-edit-actions">
-                      <Button type="button" size="sm" variant="secondary" onClick={() => closeRoomEdit(selectedPost)}>취소</Button>
-                      <Button type="button" size="sm" disabled={!roomEditCapacityValid || !roomEditMeetingValid} onClick={() => saveRoomEdit(selectedPost)}>수정 저장</Button>
+                      <Button type="button" size="sm" variant="secondary" disabled={roomEditStatus.pending} onClick={() => closeRoomEdit(selectedPost)}>취소</Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={roomEditStatus.pending || !roomEditCapacityValid || !roomEditBenchCapacityValid || !roomEditMeetingValid}
+                        onClick={() => void saveRoomEdit(selectedPost)}
+                      >
+                        {roomEditStatus.pending ? "저장 중" : "수정 저장"}
+                      </Button>
                     </div>
-                    <small>저장하면 방장을 제외한 참가자가 다시 수락해야 합니다.</small>
+                    <small>{matchRoom ? "저장하면 경기 전 동의를 다시 받아야 합니다." : "현재 참가 슬롯은 그대로 유지됩니다."}</small>
                   </div>
                 ) : null}
                 {pickupRoom ? (

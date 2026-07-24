@@ -1010,7 +1010,7 @@ export default function CreateMatch({ app }) {
               ? privateTeamInvalidReason || "팀전은 A사이드 팀과 B사이드 대표가 필요합니다."
               : isTournamentRoom && tournamentInvalidReason
                 ? tournamentInvalidReason
-                : isPublicRoom && publicTeamInvalidReason
+                : isPublicRoom && publicTeamInvalid && publicTeamInvalidReason
                   ? publicTeamInvalidReason
                   : "";
   const courtSummary = selectedCourt ?? defaultCourt;

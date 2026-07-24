@@ -33,7 +33,12 @@ function reject(statusCode, message) {
 export function getRecruitingBenchPolicyError(error = {}) {
   const errorText = [error.message, error.details, error.hint].filter(Boolean).join(" ");
   if (errorText.includes("invalid_bench_capacity")) return { statusCode: 400, message: "invalid_bench_capacity" };
+  if (errorText.includes("recruiting_side_capacity_below_roster")) return { statusCode: 409, message: "recruiting_side_capacity_below_roster" };
+  if (errorText.includes("recruiting_bench_capacity_below_roster")) return { statusCode: 409, message: "recruiting_bench_capacity_below_roster" };
   if (errorText.includes("recruiting_reserve_full")) return { statusCode: 409, message: "recruiting_reserve_full" };
+  if (errorText.includes("recruiting_room_edit_locked")) return { statusCode: 409, message: "recruiting_room_edit_locked" };
+  if (errorText.includes("room_meeting_point_required")) return { statusCode: 400, message: "room_meeting_point_required" };
+  if (errorText.includes("court_not_found") || errorText.includes("invalid_room_court")) return { statusCode: 400, message: "invalid_room_court" };
   return null;
 }
 
@@ -970,6 +975,7 @@ function isMissingSqlReducer(error = {}) {
     message.includes("rankball_recruiting_applicant_placement_action") ||
     message.includes("rankball_recruiting_interest_player_action") ||
     message.includes("rankball_recruiting_side_party_join_action") ||
+    message.includes("rankball_recruiting_room_update_action") ||
     message.includes("rankball_recruiting_management_action")
   );
 }
@@ -1185,6 +1191,24 @@ async function applyRecruitingManagementAction(context, operation = {}) {
 }
 
 async function applySqlRecruitingAction(context, operation = {}) {
+  if (operation.action === "updateRecruitingRoomRules" && operation.postId) {
+    const { data, error } = await context.supabase.rpc("rankball_recruiting_room_update_action", {
+      p_actor_profile_id: context.profileId,
+      p_post_id: operation.postId,
+      p_patch: operation.patch ?? {},
+    });
+    if (error) {
+      if (isMissingSqlReducer(error)) reject(503, "recruiting_room_update_rpc_required");
+      throw error;
+    }
+    rejectSqlRecruitingFallback(data);
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      postId: operation.postId,
+    };
+  }
+
   if (operation.action === "joinRecruitingSideParty" && (operation.entryId === "host" || String(operation.entryId ?? "").startsWith("team:"))) {
     const { data, error } = await context.supabase.rpc("rankball_recruiting_side_party_join_action", {
       p_actor_profile_id: context.profileId,

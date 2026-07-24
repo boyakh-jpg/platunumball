@@ -7100,12 +7100,9 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
       ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
     },
     memo: patch.memo === undefined ? post.memo : String(patch.memo ?? "").slice(0, 500),
+    stakes: patch.stakes === undefined ? post.stakes : String(patch.stakes ?? "").slice(0, 500),
     hostReady: true,
-    applicants: normalizeRecruitingApplicants(post.applicants ?? []).map((applicant) => ({
-      ...applicant,
-      status: "ready",
-      updatedAt,
-    })),
+    applicants: normalizeRecruitingApplicants(post.applicants ?? []),
     roomState: {
       ...roomState,
       mmrRangeMode: nextMmrRangeMode,
@@ -7119,8 +7116,8 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     notifications: [
       {
         id: makeId("n"),
-        title: "매칭방 룰 변경",
-        body: `${post.title} 룰이 바뀌어 참여자 재확인이 필요합니다.`,
+        title: "방 정보 변경",
+        body: `${post.title}의 경기 규칙이 변경되었습니다. 현재 참가 슬롯은 유지됩니다.`,
         tone: "match",
         recruitingPostId: postId,
       },

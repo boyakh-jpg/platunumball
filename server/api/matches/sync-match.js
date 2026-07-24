@@ -97,6 +97,8 @@ function reject(statusCode, message) {
 export function getMatchBenchPolicyError(error = {}) {
   const errorText = [error.message, error.details, error.hint].filter(Boolean).join(" ");
   if (errorText.includes("invalid_bench_capacity")) return { statusCode: 400, message: "invalid_bench_capacity" };
+  if (errorText.includes("match_side_capacity_below_roster")) return { statusCode: 409, message: "match_side_capacity_below_roster" };
+  if (errorText.includes("match_bench_capacity_below_roster")) return { statusCode: 409, message: "match_bench_capacity_below_roster" };
   if (errorText.includes("match_reserve_full")) return { statusCode: 409, message: "match_reserve_full" };
   if (errorText.includes("match_reserve_exceeds_bench_capacity")) {
     return { statusCode: 409, message: "match_reserve_exceeds_bench_capacity" };
@@ -110,6 +112,8 @@ export function getMatchBenchPolicyError(error = {}) {
   if (errorText.includes("match_room_edit_locked")) {
     return { statusCode: 409, message: "match_room_edit_locked" };
   }
+  if (errorText.includes("room_meeting_point_required")) return { statusCode: 400, message: "room_meeting_point_required" };
+  if (errorText.includes("court_not_found") || errorText.includes("invalid_room_court")) return { statusCode: 400, message: "invalid_room_court" };
   return null;
 }
 
@@ -1349,6 +1353,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_result_action") ||
     message.includes("rankball_match_resume_approval_action") ||
     message.includes("rankball_match_reject_dispute_action") ||
+    message.includes("rankball_match_room_update_action") ||
     message.includes("rankball_match_room_action") ||
     message.includes("rankball_match_roster_move_action") ||
     message.includes("rankball_match_star_toggle_action") ||
@@ -1496,6 +1501,20 @@ async function assertMatchTeamPlacementSide(context, operation = {}, matchId = "
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "updateMatchRoomRules" && operation.matchId) {
+    const { data, error } = await context.supabase.rpc("rankball_match_room_update_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId,
+      p_patch: operation.patch ?? {},
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_room_update_rpc_required");
+      throw error;
+    }
+    rejectSqlMatchFallback(data);
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
   if (operation.action === "updateTournamentMatchSchedule" && operation.matchId) {
     const { data, error } = await context.supabase.rpc("rankball_tournament_match_schedule_action", {
       p_actor_profile_id: context.profileId,
@@ -1618,7 +1637,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
   }
 
-  if (["updateMatchRoomRules", "setMatchRoomPlayerPlacement", "removeMatchRoomPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
+  if (["setMatchRoomPlayerPlacement", "removeMatchRoomPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
     await assertMatchTeamPlacementSide(context, operation, matchId);
     const { data, error } = await context.supabase.rpc("rankball_match_room_action", {
