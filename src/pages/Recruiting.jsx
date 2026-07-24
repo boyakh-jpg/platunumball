@@ -30,6 +30,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
 import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
+import MatchClockPanel from "../components/match/MatchClockPanel.jsx";
 import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
 import PickupParticipantPool from "../components/match/PickupParticipantPool.jsx";
 import RoomPhaseRenderer from "../components/match/RoomPhaseRenderer.jsx";
@@ -5060,6 +5061,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 onSubmit={(event) => submitChat(event, selectedPost)}
                 onVisibleChange={handleChatVisibleChange}
               />
+
+              {matchRoom && sourceMatchPhase?.phase === "live" && !sourceMatchIsRecordRoom ? (
+                <MatchClockPanel match={sourceMatch} />
+              ) : null}
 
               <div className="arena-join-panel">
                 {matchRoom ? (

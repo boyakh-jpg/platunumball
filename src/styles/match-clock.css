@@ -1,0 +1,315 @@
+.ui-match-clock-panel {
+  display: grid;
+  gap: var(--page-section-gap);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ui-match-clock-header,
+.ui-match-clock-badges,
+.ui-match-clock-controller-status,
+.ui-match-clock-device-tools,
+.ui-match-clock-volume {
+  display: flex;
+  gap: var(--control-group-gap);
+  align-items: center;
+}
+
+.ui-match-clock-header {
+  justify-content: space-between;
+}
+
+.ui-match-clock-header h3,
+.ui-match-clock-header p,
+.ui-match-clock-error,
+.ui-match-clock-readonly {
+  margin: 0;
+}
+
+.ui-match-clock-eyebrow {
+  color: var(--rb-orange);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.ui-match-clock-badges {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ui-match-clock-setup {
+  display: grid;
+  gap: var(--control-group-gap);
+}
+
+.ui-match-clock-deadline,
+.ui-match-clock-controller-status {
+  padding: var(--control-padding-x);
+  background: var(--ui-control-group-bg);
+  border: 1px solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+}
+
+.ui-match-clock-deadline {
+  display: grid;
+  gap: 4px;
+}
+
+.ui-match-clock-deadline span,
+.ui-match-clock-controller-status span,
+.ui-match-clock-readonly,
+.ui-match-clock-scoreboard small {
+  color: var(--rb-muted);
+  font-size: 0.78rem;
+}
+
+.ui-match-clock-controller-status {
+  justify-content: space-between;
+}
+
+.ui-match-clock-field {
+  display: grid;
+  gap: 6px;
+}
+
+.ui-match-clock-field > span,
+.ui-match-clock-fieldset legend {
+  color: var(--rb-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.ui-match-clock-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ui-match-clock-option-grid,
+.ui-match-clock-player-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--control-group-gap);
+}
+
+.ui-match-clock-scoreboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 1.25fr) minmax(0, 1fr);
+  gap: var(--control-group-gap);
+  align-items: stretch;
+  color: var(--ui-button-color-active);
+  background: var(--scoreboard);
+  border: 1px solid var(--rb-line-strong);
+  border-radius: var(--ui-panel-radius);
+}
+
+.ui-match-clock-scoreboard > div {
+  display: grid;
+  place-content: center;
+  min-width: 0;
+  min-height: 132px;
+  padding: 12px;
+  text-align: center;
+}
+
+.ui-match-clock-scoreboard > div:first-child {
+  color: var(--team-home);
+}
+
+.ui-match-clock-scoreboard > div:last-child {
+  color: var(--team-away);
+}
+
+.ui-match-clock-team-label {
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.ui-match-clock-team-score {
+  font-family: var(--sports-display-font);
+  font-size: clamp(2.7rem, 8vw, 5.2rem);
+  line-height: 1;
+}
+
+.ui-match-clock-main-time {
+  gap: 5px;
+  color: var(--ui-button-color-active);
+  background: var(--scoreboard-2);
+  border-inline: 1px solid var(--rb-line);
+}
+
+.ui-match-clock-main-time time {
+  font-family: var(--sports-display-font);
+  font-size: clamp(2.1rem, 6vw, 4rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ui-match-shot-clock {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 180px;
+  padding: 14px;
+  color: var(--ui-button-color-active);
+  font: inherit;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--rb-orange) 20%, var(--scoreboard));
+  border: 1px solid color-mix(in srgb, var(--rb-orange) 58%, var(--rb-line));
+  border-radius: var(--ui-panel-radius);
+}
+
+.ui-match-shot-clock:focus-visible {
+  outline: 2px solid var(--rb-orange-2);
+  outline-offset: 2px;
+}
+
+.ui-match-shot-clock:disabled {
+  cursor: default;
+}
+
+.ui-match-shot-clock:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rb-orange) 27%, var(--scoreboard));
+}
+
+.ui-match-shot-clock-label,
+.ui-match-shot-clock-hint {
+  color: var(--rb-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.ui-match-shot-clock-value {
+  font-family: var(--sports-display-font);
+  font-size: clamp(5rem, 17vw, 9rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 0.85;
+}
+
+.ui-match-clock-actions > .ui-button {
+  flex: 1 1 150px;
+}
+
+.ui-match-clock-readonly {
+  padding: 10px 12px;
+  text-align: center;
+  background: var(--ui-control-group-bg);
+  border: 1px solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+}
+
+.ui-match-clock-transfer {
+  padding: 10px 12px;
+  background: var(--ui-control-group-bg);
+  border: 1px solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+}
+
+.ui-match-clock-transfer summary {
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.ui-match-clock-player-grid {
+  margin-top: var(--control-group-gap);
+}
+
+.ui-match-clock-device-tools {
+  flex-wrap: wrap;
+}
+
+.ui-match-clock-volume {
+  flex: 1 1 220px;
+  min-height: var(--control-height-sm);
+  padding-inline: 10px;
+  color: var(--rb-muted);
+  background: var(--ui-control-bg);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+}
+
+.ui-match-clock-volume-label {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.ui-match-clock-volume input {
+  width: 100%;
+}
+
+.ui-match-clock-result {
+  justify-content: space-between;
+}
+
+.ui-match-clock-error {
+  color: var(--rb-danger);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+@media (width <= 720px) {
+  .ui-match-clock-header {
+    align-items: flex-start;
+  }
+
+  .ui-match-clock-badges {
+    max-width: 54%;
+  }
+
+  .ui-match-clock-scoreboard {
+    grid-template-columns: minmax(0, 0.8fr) minmax(132px, 1.4fr) minmax(0, 0.8fr);
+  }
+
+  .ui-match-clock-scoreboard > div {
+    min-height: 106px;
+    padding: 8px 4px;
+  }
+
+  .ui-match-clock-main-time time {
+    font-size: clamp(1.85rem, 10vw, 3.2rem);
+  }
+
+  .ui-match-shot-clock {
+    min-height: 210px;
+  }
+
+  .ui-match-clock-option-grid,
+  .ui-match-clock-player-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ui-match-clock-device-tools > .ui-button {
+    flex: 1 1 130px;
+  }
+}
+
+@media (width <= 420px) {
+  .ui-match-clock-panel {
+    padding: 10px;
+  }
+
+  .ui-match-clock-header {
+    display: grid;
+  }
+
+  .ui-match-clock-badges {
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .ui-match-clock-scoreboard {
+    grid-template-columns: minmax(0, 0.72fr) minmax(124px, 1.56fr) minmax(0, 0.72fr);
+  }
+
+  .ui-match-clock-team-score {
+    font-size: clamp(2.15rem, 14vw, 3.5rem);
+  }
+
+  .ui-match-shot-clock {
+    min-height: 230px;
+  }
+}

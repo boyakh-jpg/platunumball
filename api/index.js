@@ -23,6 +23,7 @@ import discordSyncDeliveries from "../server/api/discord/sync-deliveries.js";
 import favoriteSync from "../server/api/favorites/sync.js";
 import homeLoad from "../server/api/home/load.js";
 import matchDetail from "../server/api/matches/detail.js";
+import matchClock from "../server/api/matches/clock.js";
 import matchList from "../server/api/matches/list.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
 import notificationDelete from "../server/api/notifications/delete.js";
@@ -82,6 +83,7 @@ export const API_ROUTES = new Map([
   ["/favorites/sync", route(favoriteSync, ["POST"], "user")],
   ["/home/load", route(homeLoad, ["POST"], "user")],
   ["/matches/detail", route(matchDetail, ["POST"], "user")],
+  ["/matches/clock", route(matchClock, ["POST"], "user")],
   ["/matches/list", route(matchList, ["POST"], "user")],
   ["/matches/sync-match", route(matchSyncMatch, ["POST"], "user")],
   ["/notifications/delete", route(notificationDelete, ["POST"], "user")],
