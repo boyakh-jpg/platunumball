@@ -193,6 +193,10 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.doesNotMatch(panelSource, /담당·샷클락 저장|AudioContext/);
   assert.match(clockStyles, /\.ui-match-clock-focus-backdrop[\s\S]*?overflow: hidden;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/);
+  assert.equal(
+    clockStyles.match(/\.ui-match-clock-scoreboard:not\(\.ui-match-clock-scoreboard-time-only\)/g)?.length,
+    2,
+  );
 });
 
 test("room modes and administrator MMR policy use the same mode keys", () => {

@@ -499,7 +499,7 @@
     flex-direction: column;
   }
 
-  .ui-match-clock-scoreboard {
+  .ui-match-clock-scoreboard:not(.ui-match-clock-scoreboard-time-only) {
     grid-template-columns: minmax(0, 0.8fr) minmax(132px, 1.4fr) minmax(0, 0.8fr);
   }
 
@@ -568,7 +568,7 @@
     justify-content: flex-start;
   }
 
-  .ui-match-clock-scoreboard {
+  .ui-match-clock-scoreboard:not(.ui-match-clock-scoreboard-time-only) {
     grid-template-columns: minmax(0, 0.72fr) minmax(124px, 1.56fr) minmax(0, 0.72fr);
   }
 
