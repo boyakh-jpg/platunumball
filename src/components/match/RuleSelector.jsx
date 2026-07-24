@@ -20,7 +20,33 @@ export default function RuleSelector({ draft, onChange }) {
 
   return (
     <div className="match-rule-selector">
-      {clockPresetOptions.length > 1 ? <div className="match-clock-preset-row">
+      <div className="match-clock-preset-row">
+        <span>BOXTIER 경기시계</span>
+        <div className="segmented-control compact-segments" role="radiogroup" aria-label="BOXTIER 경기시계 사용 여부">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={rules.gameClockEnabled}
+            className={rules.gameClockEnabled ? "active" : ""}
+            onClick={() => updateRules({ gameClockEnabled: true })}
+          >
+            사용
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!rules.gameClockEnabled}
+            className={!rules.gameClockEnabled ? "active" : ""}
+            onClick={() => updateRules({ gameClockEnabled: false, lastPeriodStopMinutes: 0 })}
+          >
+            사용 안 함
+          </button>
+        </div>
+      </div>
+      {!rules.gameClockEnabled ? (
+        <small className="match-rule-summary">경기 진행과 점수 기록은 가능합니다. 경쟁전은 경기시계 미사용 MMR 반영률이 적용됩니다.</small>
+      ) : null}
+      {rules.gameClockEnabled && clockPresetOptions.length > 1 ? <div className="match-clock-preset-row">
         <span>경기시간 프리셋</span>
         <div className="segmented-control compact-segments">
           {clockPresetOptions.map((option) => (
@@ -51,13 +77,15 @@ export default function RuleSelector({ draft, onChange }) {
         {periodUnitLabel}
         <input type="number" min="1" max="60" value={rules.periodMinutes} onChange={(event) => updateRules({ periodMinutes: event.target.value })} />
       </label>
-      <label>
-        경기 시계
-        <select value={rules.clockMode} onChange={(event) => updateRules({ clockMode: event.target.value })}>
-          {MATCH_CLOCK_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </label>
-      {rules.clockMode === "running" ? (
+      {rules.gameClockEnabled ? (
+        <label>
+          시간 운영 방식
+          <select value={rules.clockMode} onChange={(event) => updateRules({ clockMode: event.target.value })}>
+            {MATCH_CLOCK_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+      ) : null}
+      {rules.gameClockEnabled && rules.clockMode === "running" ? (
         <label>
           마지막 구간 스톱 (분)
           <input type="number" min="0" max={rules.periodMinutes} value={lastPeriodStopMinutes} onChange={(event) => updateRules({ lastPeriodStopMinutes: event.target.value })} />

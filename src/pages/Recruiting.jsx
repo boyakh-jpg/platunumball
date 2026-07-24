@@ -3621,7 +3621,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           row.label === "경기 목적" || row.label === "팀 구성" || row.label === "명단" || row.label === "팀 배치" || row.label === "운영 정책" || row.label === "출전 정책"
         ));
         const selectedRoomOperationRows = selectedCreationSummary.rows.filter((row) => (
-          row.label === "공 제공" || row.label === "운영 장비"
+          row.label === "공 준비" || row.label === "조끼"
         ));
         const pickupRoom = isPickupRecruitingRoom(selectedPost);
         const pickupAssignmentPolicy = getPickupTeamAssignmentPolicy(sourceMatch ?? selectedPost);
@@ -5066,7 +5066,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 onVisibleChange={handleChatVisibleChange}
               />
 
-              {matchRoom && sourceMatchPhase?.phase === "live" && !sourceMatchIsRecordRoom ? (
+              {matchRoom && sourceMatchPhase?.phase === "live" && !sourceMatchIsRecordRoom && selectedMatchRules.gameClockEnabled ? (
                 <MatchClockPanel match={sourceMatch} />
               ) : null}
 

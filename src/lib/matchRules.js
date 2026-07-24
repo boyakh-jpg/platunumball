@@ -29,6 +29,7 @@ function clampInteger(value, fallback, min, max) {
 export function getDefaultMatchRules(mode = "3v3") {
   const fiveOnFive = mode === "5v5";
   return {
+    gameClockEnabled: true,
     endCondition: fiveOnFive ? "time" : "target_or_time",
     targetScore: 21,
     periodCount: fiveOnFive ? 4 : 1,
@@ -50,6 +51,7 @@ export function getDefaultMatchRules(mode = "3v3") {
 
 export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
   const defaults = getDefaultMatchRules(mode);
+  const gameClockEnabled = source.gameClockEnabled !== false && source.gameClockEnabled !== "false";
   const hasPeriodModel = PERIOD_COUNTS.has(Number(source.periodCount));
   const periodCount = hasPeriodModel ? Number(source.periodCount) : 1;
   const legacyPeriodMinutes = hasPeriodModel ? defaults.periodMinutes : source.timeLimit;
@@ -63,6 +65,7 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
 
   return {
     ...source,
+    gameClockEnabled,
     endCondition,
     targetScore: clampInteger(source.targetScore, defaults.targetScore, 7, 99),
     periodCount,
@@ -85,6 +88,7 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
 export function getMatchRulesPayload(source = {}, options = {}) {
   const rules = normalizeMatchRules(source, options);
   return {
+    gameClockEnabled: rules.gameClockEnabled,
     endCondition: rules.endCondition,
     targetScore: rules.targetScore,
     periodCount: rules.periodCount,
@@ -113,10 +117,11 @@ export function getMatchPeriodLabel(rules = {}, mode = "3v3") {
 
 export function getMatchClockLabel(rules = {}, mode = "3v3") {
   const normalized = normalizeMatchRules(rules, { mode });
-  if (normalized.clockMode === "stopped") return "스톱타임";
+  if (!normalized.gameClockEnabled) return "사용 안 함";
+  if (normalized.clockMode === "stopped") return "사용 · 스톱타임";
   return normalized.lastPeriodStopMinutes > 0
-    ? `러닝타임 · 마지막 ${normalized.lastPeriodStopMinutes}분 스톱`
-    : "러닝타임";
+    ? `사용 · 러닝타임 · 마지막 ${normalized.lastPeriodStopMinutes}분 스톱`
+    : "사용 · 러닝타임";
 }
 
 export function getMatchEndLabel(rules = {}, mode = "3v3") {
@@ -138,7 +143,7 @@ export function getMatchRuleDetailRows(rules = {}, mode = "3v3") {
   const normalized = normalizeMatchRules(rules, { mode });
   return [
     { label: "경기 구성", value: getMatchPeriodLabel(normalized, mode) },
-    { label: "경기 시계", value: getMatchClockLabel(normalized, mode) },
+    { label: "BOXTIER 경기시계", value: getMatchClockLabel(normalized, mode) },
     { label: "종료 기준", value: getMatchEndLabel(normalized, mode) },
     ...(normalized.periodCount > 1 ? [{ label: "휴식", value: getMatchBreakLabel(normalized, mode) }] : []),
     { label: "연장", value: `${normalized.overtimeMinutes}분` },

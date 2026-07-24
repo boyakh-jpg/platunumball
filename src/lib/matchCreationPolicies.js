@@ -166,6 +166,7 @@ const PERSONAL_RECORD_EXCLUDED_FIELDS = new Set([
   "costRoundUnit",
   "freeCancellationHours",
   "refundPolicy",
+  "gameClockEnabled",
   "ballProvider",
   "vestsProvided",
   "scoreboardAvailable",
@@ -339,6 +340,7 @@ export function getMatchModeChangePatch(source = {}, mode = "5v5") {
   return {
     mode: nextMode,
     ...preset,
+    gameClockEnabled: source.gameClockEnabled !== false && source.gameClockEnabled !== "false",
     attackRule: source.attackRule ?? preset.attackRule,
     foulRule: source.foulRule ?? preset.foulRule,
     ball: source.ball ?? preset.ball,
@@ -362,9 +364,6 @@ export function getDefaultMatchCreationPolicy(mode = "5v5") {
     refundPolicy: "full_before_deadline",
     ballProvider: "host",
     vestsProvided: false,
-    scoreboardAvailable: false,
-    shotClockAvailable: false,
-    statRecorderAvailable: false,
   };
 }
 
@@ -536,10 +535,7 @@ export function getMatchCreationPolicyPayload(source = {}) {
     ballProvider: ["host", "venue", "participant", "unknown"].includes(policySource.ballProvider)
       ? policySource.ballProvider
       : "host",
-    vestsProvided: Boolean(policySource.vestsProvided),
-    scoreboardAvailable: Boolean(policySource.scoreboardAvailable),
-    shotClockAvailable: Boolean(policySource.shotClockAvailable),
-    statRecorderAvailable: Boolean(policySource.statRecorderAvailable),
+    vestsProvided: onCourtCount > 1 && Boolean(policySource.vestsProvided),
   };
 }
 
@@ -571,9 +567,6 @@ export function getScopedMatchCreationPolicyPayload(source = {}, scope = "match"
       ...rosterPolicy,
       ballProvider: policy.ballProvider,
       vestsProvided: policy.vestsProvided,
-      scoreboardAvailable: policy.scoreboardAvailable,
-      shotClockAvailable: policy.shotClockAvailable,
-      statRecorderAvailable: policy.statRecorderAvailable,
     };
   }
   return rosterPolicy;
@@ -608,6 +601,9 @@ export function getMatchCreationValidation(source = {}) {
   if (policy.venueSecured === "unconfirmed" && policySource.ranked !== false) {
     warnings.push("경쟁전 구장이 아직 확보되지 않았습니다.");
   }
+  if (policy.ranked && getMatchRulesPayload(policySource, { mode: policySource.mode }).gameClockEnabled === false) {
+    warnings.push("경기시계를 사용하지 않으면 경기 방식별 MMR 감산 반영률이 적용됩니다.");
+  }
   return { policy, errors, warnings };
 }
 
@@ -624,15 +620,9 @@ const BALL_PROVIDER_LABELS = Object.freeze({
 
 export function getMatchOperationsSummaryRows(source = {}) {
   const policy = getMatchCreationPolicyPayload(source);
-  const equipmentLabels = [
-    policy.vestsProvided ? "조끼 제공" : "조끼 없음",
-    policy.scoreboardAvailable ? "점수판 있음" : "점수판 없음",
-    policy.shotClockAvailable ? "샷클락 있음" : "샷클락 없음",
-    policy.statRecorderAvailable ? "기록원 있음" : "기록원 없음",
-  ];
   return [
-    { label: "공 제공", value: BALL_PROVIDER_LABELS[policy.ballProvider] ?? BALL_PROVIDER_LABELS.host },
-    { label: "운영 장비", value: equipmentLabels.join(" · ") },
+    { label: "공 준비", value: BALL_PROVIDER_LABELS[policy.ballProvider] ?? BALL_PROVIDER_LABELS.host },
+    ...(policy.onCourtCount > 1 ? [{ label: "조끼", value: policy.vestsProvided ? "제공" : "미제공" }] : []),
   ];
 }
 
@@ -660,7 +650,7 @@ export function getMatchCreationSummary(source = {}) {
       ...(pickup ? [{ label: "팀 배치", value: "출석 후 현장 결정" }] : []),
       ...(pickup ? [{ label: "운영 정책", value: policy.rotationMode === "period" ? "쿼터·하프 종료마다 균등 교대" : policy.rotationMode === "interval" ? `${policy.rotationIntervalMinutes}분 간격 균등 교대` : "방장·심판 직접 교대" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
       { label: "경기 규칙", value: getMatchRuleSummary(policySource, policySource.mode) },
-      ...getMatchOperationsSummaryRows(policy),
+      ...getMatchOperationsSummaryRows(policySource),
       { label: "비용", value: `${costText} · ${payment}` },
       { label: "구장", value: policySource.court || "구장 미정" },
       { label: "일정", value: policySource.timingType === "instant" ? "즉시" : [policySource.scheduledDate, policySource.scheduledTime].filter(Boolean).join(" ") || "일정 미정" },

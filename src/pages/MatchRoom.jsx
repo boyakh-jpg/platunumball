@@ -62,7 +62,7 @@ import {
   isMatchStatRecorder,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
-import { getMatchPeriodLabel, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
+import { getMatchRuleDetailRows, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
 import "../styles/matchroom-arena.css";
 
 const statusMeta = {
@@ -748,13 +748,7 @@ export default function MatchRoom({ app }) {
   };
   const normalizedRules = normalizeMatchRules(match.rules, { mode: match.mode });
   const ruleItems = [
-    ["경기 구성", getMatchPeriodLabel(normalizedRules, match.mode)],
-    ["경기 시계", normalizedRules.clockMode === "stopped" ? "스톱타임" : "러닝타임"],
-    ["종료 기준", normalizedRules.endCondition === "target_or_time" ? `${normalizedRules.targetScore}점 또는 시간 종료` : "시간 종료"],
-    ["휴식", normalizedRules.periodCount > 1 ? `쿼터 ${normalizedRules.periodBreakMinutes}분 · 하프 ${normalizedRules.halftimeMinutes}분` : "별도 휴식 없음"],
-    ["연장", `${normalizedRules.overtimeMinutes}분`],
-    ["승리 조건", normalizedRules.winByTwo ? "2점 차 승리" : "동점 시 연장"],
-    ["사용 공", match.rules?.ball ?? "7호 공"],
+    ...getMatchRuleDetailRows(normalizedRules, match.mode).map((row) => [row.label, row.value]),
     ["만남 장소", getMeetingPointSummary(normalizedRules, match.timingType, match.mode)],
     ["공격권", match.rules?.attackRule ?? "득점 후 공격권 교대"],
     ["파울 룰", match.rules?.foulRule ?? "현장 합의"],

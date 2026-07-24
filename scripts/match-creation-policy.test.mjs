@@ -30,7 +30,7 @@ import {
   validatePickupRecruitingUpdate,
 } from "../server/api/recruiting/sync-post.js";
 import { getRecordCreationWindowStatus } from "../src/lib/matchUtils.js";
-import { getMatchRuleDetailRows, getMatchRulesPayload } from "../src/lib/matchRules.js";
+import { getMatchClockLabel, getMatchRuleDetailRows, getMatchRulesPayload, normalizeMatchRules } from "../src/lib/matchRules.js";
 import {
   acceptRecruitingInvitation,
   createRecruitingPost,
@@ -83,6 +83,7 @@ test("small modes preserve target-score defaults while 5v5 uses the community cl
   const official = getModeClockPreset("5v5", "official");
   assert.equal(official.periodMinutes, 10);
   assert.equal(official.clockMode, "stopped");
+  assert.equal(getMatchModeChangePatch({ mode: "3v3", gameClockEnabled: false }, "5v5").gameClockEnabled, false);
 });
 
 test("pickup preset reuses player rooms without claiming automatic rotation", () => {
@@ -529,9 +530,14 @@ test("record and tournament payloads keep only relevant creation policy", () => 
   assert.equal(personalDraft.mode, "3v3");
 });
 
-test("room operations summary exposes every saved equipment choice", () => {
+test("room operations keep only the clock, ball, and mode-relevant vest choices", () => {
+  assert.equal(normalizeMatchRules({ gameClockEnabled: false }, { mode: "3v3" }).gameClockEnabled, false);
+  assert.equal(getMatchClockLabel({ gameClockEnabled: false }, "3v3"), "사용 안 함");
+  assert.match(getMatchClockLabel({ gameClockEnabled: true, clockMode: "running" }, "3v3"), /^사용 · 러닝타임/);
+
   assert.deepEqual(
     getMatchOperationsSummaryRows({
+      mode: "3v3",
       ballProvider: "venue",
       vestsProvided: true,
       scoreboardAvailable: false,
@@ -539,21 +545,23 @@ test("room operations summary exposes every saved equipment choice", () => {
       statRecorderAvailable: false,
     }),
     [
-      { label: "공 제공", value: "구장 제공" },
-      { label: "운영 장비", value: "조끼 제공 · 점수판 없음 · 샷클락 있음 · 기록원 없음" },
+      { label: "공 준비", value: "구장 제공" },
+      { label: "조끼", value: "제공" },
     ],
   );
 
   const summary = getMatchCreationSummary({
-    mode: "3v3",
+    mode: "1v1",
     ballProvider: "participant",
-    vestsProvided: false,
+    vestsProvided: true,
     scoreboardAvailable: true,
     shotClockAvailable: false,
     statRecorderAvailable: true,
   });
-  assert.equal(summary.rows.find((row) => row.label === "공 제공")?.value, "참가자 제공");
-  assert.equal(summary.rows.find((row) => row.label === "운영 장비")?.value, "조끼 없음 · 점수판 있음 · 샷클락 없음 · 기록원 있음");
+  assert.equal(summary.rows.find((row) => row.label === "공 준비")?.value, "참가자 제공");
+  assert.equal(summary.rows.some((row) => row.label === "조끼"), false);
+  assert.equal(summary.rows.some((row) => row.label === "운영 장비"), false);
+  assert.equal(getMatchCreationPolicyPayload({ mode: "1v1", vestsProvided: true }).vestsProvided, false);
 });
 
 test("pickup participant slots keep a fixed width and use available desktop columns", () => {
@@ -579,6 +587,11 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(source, /wizardStep === \(isMatchRecordRoom \? 5 : 1\)/);
   const wizardSource = fs.readFileSync(path.join(root, "src/components/match/MatchCreationWizard.jsx"), "utf8");
   assert.doesNotMatch(wizardSource, /\{ id: 6, label: "확인" \}/);
+  assert.doesNotMatch(wizardSource, /점수판 있음|샷클락 있음|기록원 있음/);
+  assert.match(wizardSource, /policy\.onCourtCount > 1/);
+  const ruleSelectorSource = fs.readFileSync(path.join(root, "src/components/match/RuleSelector.jsx"), "utf8");
+  assert.match(ruleSelectorSource, /BOXTIER 경기시계 사용 여부/);
+  assert.match(ruleSelectorSource, /rules\.gameClockEnabled && rules\.clockMode === "running"/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "match_record"\)/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "tournament"\)/);
   assert.match(source, /getDefaultCreateTitle\(draft\.mode, patch\.matchIntent\)/);
@@ -602,7 +615,13 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(recruitingSource, /individualOnlyRoom\s*\? "내 슬롯을 누르면 A\/B 출전과 후보 위치를 변경할 수 있습니다\."/);
   const compactSource = fs.readFileSync(path.join(root, "server/api/recruiting/list.js"), "utf8");
   assert.match(compactSource, /lastPeriodStopMinutes: rules\.lastPeriodStopMinutes/);
+  assert.match(compactSource, /gameClockEnabled: rules\.gameClockEnabled/);
+  assert.doesNotMatch(compactSource, /scoreboardAvailable: rules\.scoreboardAvailable|shotClockAvailable: rules\.shotClockAvailable|statRecorderAvailable: rules\.statRecorderAvailable/);
   assert.match(compactSource, /matchIntent: rules\.matchIntent/);
+  const clockMigration = fs.readFileSync(path.join(root, "supabase/migrations/20260724190000_optional_match_clock_policy.sql"), "utf8");
+  assert.match(clockMigration, /match_clock_disabled/);
+  assert.match(clockMigration, /rules->>'gameClockEnabled'/);
+  assert.doesNotMatch(clockMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
   const pickupMigration = fs.readFileSync(path.join(root, "supabase/migrations/20260723100000_pickup_individual_participation_guard.sql"), "utf8");
   assert.match(pickupMigration, /pickup_party_not_allowed/);
   assert.doesNotMatch(pickupMigration, /delete\s+from/i);

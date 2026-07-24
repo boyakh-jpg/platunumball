@@ -83,6 +83,7 @@ test("이의제기 시간은 10, 15, 20분만 허용한다", () => {
 
 test("경기 기본 규칙은 모드별 현실적인 시간 모델을 사용한다", () => {
   assert.deepEqual(getDefaultMatchRules("5v5"), {
+    gameClockEnabled: true,
     endCondition: "time",
     targetScore: 21,
     periodCount: 4,

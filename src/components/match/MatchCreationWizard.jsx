@@ -294,9 +294,9 @@ export function MatchOperationsPolicyFields({ draft, onChange }) {
   const policy = getMatchCreationPolicyPayload(draft);
   return (
     <div className="match-operations-policy-fields">
-      <div className="form-grid two">
+      <div className="form-grid two match-operations-core-grid">
         <label>
-          공 제공
+          경기 공 준비
           <select value={policy.ballProvider} onChange={(event) => onChange({ ballProvider: event.target.value })}>
             <option value="host">방장 제공</option>
             <option value="venue">구장 제공</option>
@@ -304,12 +304,12 @@ export function MatchOperationsPolicyFields({ draft, onChange }) {
             <option value="unknown">현장 협의</option>
           </select>
         </label>
-      </div>
-      <div className="toggle-pair match-equipment-toggle-grid">
-        <label><input type="checkbox" checked={policy.vestsProvided} onChange={(event) => onChange({ vestsProvided: event.target.checked })} /> 조끼 제공</label>
-        <label><input type="checkbox" checked={policy.scoreboardAvailable} onChange={(event) => onChange({ scoreboardAvailable: event.target.checked })} /> 점수판 있음</label>
-        <label><input type="checkbox" checked={policy.shotClockAvailable} onChange={(event) => onChange({ shotClockAvailable: event.target.checked })} /> 샷클락 있음</label>
-        <label><input type="checkbox" checked={policy.statRecorderAvailable} onChange={(event) => onChange({ statRecorderAvailable: event.target.checked })} /> 기록원 있음</label>
+        {policy.onCourtCount > 1 ? (
+          <label className="switch-line">
+            <input type="checkbox" checked={policy.vestsProvided} onChange={(event) => onChange({ vestsProvided: event.target.checked })} />
+            조끼 제공
+          </label>
+        ) : null}
       </div>
     </div>
   );

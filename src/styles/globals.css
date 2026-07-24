@@ -21552,7 +21552,13 @@ html[data-theme="light"] .court-map-picker-state {
 }
 
 .match-operations-policy-fields .form-grid.two {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+}
+
+.match-operations-core-grid > .switch-line {
+  min-height: var(--ui-button-height);
+  align-self: end;
+  padding-inline: 4px;
 }
 
 .match-cost-components-grid {
@@ -21597,10 +21603,6 @@ html[data-theme="light"] .court-map-picker-state {
   border-radius: var(--ui-control-radius);
   background: color-mix(in srgb, var(--rb-orange) 8%, var(--surface-2));
   padding: 10px 12px;
-}
-
-.match-equipment-toggle-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .match-wizard-referee-row {
@@ -21850,8 +21852,7 @@ html[data-theme="light"] .court-map-picker-state {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .match-cost-components-grid,
-  .match-equipment-toggle-grid {
+  .match-cost-components-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

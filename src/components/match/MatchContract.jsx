@@ -90,7 +90,7 @@ export default function MatchContract({ match, users = [], teams = [], matches =
           <strong>{getMatchEndLabel(rules, match.mode)}</strong>
         </div>
         <div>
-          <span>경기 시계</span>
+          <span>BOXTIER 경기시계</span>
           <strong>{getMatchClockLabel(rules, match.mode)}</strong>
         </div>
         <div>
