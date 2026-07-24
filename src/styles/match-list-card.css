@@ -189,6 +189,14 @@
   font-size: clamp(16px, 1.6vw, 23px);
 }
 
+.match-list-summary[data-variant="participant"] .match-list-summary__line {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.match-list-summary[data-variant="participant"] .match-list-summary__side {
+  display: none;
+}
+
 .match-list-summary__meta,
 .match-list-summary__detail {
   min-width: 0;

@@ -41,7 +41,7 @@ import {
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
 import { MATCH_SIDES, ROOM_KINDS } from "../lib/constants.js";
-import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isPaidRecruitingCourt, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
+import { getRecruitingEntryForUser, getRecruitingListCardCounts, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isPaidRecruitingCourt, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
@@ -1615,8 +1615,7 @@ export default function Matches({ app }) {
             const mine = getRecruitingRoomOwnerId(post) === app.currentUser.id;
             const needConfirm = !mine && post.visibility !== "public" && myEntry && myEntry.status !== "ready";
             const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine });
-            const filled = lobby.sides.teamA.filled + lobby.sides.teamB.filled;
-            const capacity = getRecruitingSideCapacity(post) * 2;
+            const counts = getRecruitingListCardCounts(post, lobby);
             const roomTitle = getRoomCardTitle(post);
             const postCourt = courtById[post.courtId] ?? courtByName[post.court] ?? null;
             return (
@@ -1638,11 +1637,11 @@ export default function Matches({ app }) {
                 )}
                 summary={(
                   <MatchListSummary
-                    left={`A ${lobby.sides.teamA.filled}/${lobby.sides.teamA.capacity}`}
-                    center={`${filled}/${capacity}`}
-                    right={`B ${lobby.sides.teamB.filled}/${lobby.sides.teamB.capacity}`}
+                    left={counts.layout === "sides" ? `A ${counts.teamA.filled}/${counts.teamA.capacity}` : null}
+                    center={counts.layout === "unified" ? `참가 ${counts.filled}/${counts.capacity}` : `${counts.filled}/${counts.capacity}`}
+                    right={counts.layout === "sides" ? `B ${counts.teamB.filled}/${counts.teamB.capacity}` : null}
                     detail={formatMatchRules(post)}
-                    variant="count"
+                    variant={counts.layout === "unified" ? "participant" : "count"}
                   />
                 )}
                 actionLabel={needConfirm ? "확인하기" : roomStatus.actionLabel}

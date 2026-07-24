@@ -108,7 +108,7 @@ import {
   validateWebpImage,
 } from "../server/api/_r2ImageStorage.js";
 import { readJsonBody } from "../server/api/_supabaseAdmin.js";
-import { getRecruitingListCardLobby, isPaidRecruitingCourt } from "../src/lib/recruiting.js";
+import { getRecruitingListCardCounts, getRecruitingListCardLobby, isPaidRecruitingCourt } from "../src/lib/recruiting.js";
 import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
 import { getPlayerSeasonActivity } from "../src/lib/season.js";
 import { fromRemoteProfile } from "../src/data/profileMappers.js";
@@ -315,6 +315,42 @@ test("recruiting schedule cards keep fresh list counts over cached detail rows",
   assert.equal(lobby.sides.teamB.filled, 5);
   assert.equal(lobby.sides.teamA.capacity, 5);
   assert.equal(lobby.sides.teamB.capacity, 5);
+});
+
+test("pickup list cards expose one participant pool instead of temporary A/B placement", () => {
+  const pickupPost = {
+    mode: "3v3",
+    sideCapacity: 3,
+    benchCapacity: 2,
+    listCounts: {
+      pickup: true,
+      participantFilled: 4,
+      participantCapacity: 10,
+      teamA: { filled: 1, projectedFilled: 1, capacity: 3 },
+      teamB: { filled: 3, projectedFilled: 3, capacity: 3 },
+    },
+  };
+  const pickupLobby = getRecruitingListCardLobby(pickupPost, {});
+
+  assert.deepEqual(getRecruitingListCardCounts(pickupPost, pickupLobby), {
+    layout: "unified",
+    filled: 4,
+    capacity: 10,
+    teamA: { filled: 1, capacity: 3 },
+    teamB: { filled: 3, capacity: 3 },
+  });
+
+  const prearrangedPost = {
+    ...pickupPost,
+    listCounts: {
+      teamA: pickupPost.listCounts.teamA,
+      teamB: pickupPost.listCounts.teamB,
+    },
+  };
+  assert.equal(
+    getRecruitingListCardCounts(prearrangedPost, getRecruitingListCardLobby(prearrangedPost, {})).layout,
+    "sides",
+  );
 });
 
 test("paid recruiting courts require explicit fee evidence", () => {

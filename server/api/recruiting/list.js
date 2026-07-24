@@ -37,7 +37,7 @@ import {
   TEAM_COLUMNS,
   TEAM_MEMBER_COLUMNS,
 } from "../../../src/data/repositoryColumns.js";
-import { getRecruitingLobby, isPublicTeamRecruitingRoom } from "../../../src/lib/recruiting.js";
+import { getRecruitingLobby, isPickupRecruitingRoom, isPublicTeamRecruitingRoom } from "../../../src/lib/recruiting.js";
 import {
   ROOM_CHAT_HISTORY_LIMIT,
   ROOM_CHAT_MESSAGE_COLUMNS,
@@ -209,6 +209,9 @@ function normalizeRecruitingListCounts(value = {}, sideCapacity = 5) {
     projectedFilled: Number(value.projectedFilled ?? value.p ?? teamA.projectedFilled + teamB.projectedFilled) || 0,
     capacity: Number(value.capacity ?? value.c ?? teamA.capacity + teamB.capacity) || 0,
     partyCount: Number(value.partyCount ?? value.pc ?? 0) || 0,
+    pickup: value.pickup === true || value.pk === true,
+    participantFilled: Number(value.participantFilled ?? value.participantCount ?? 0) || 0,
+    participantCapacity: Number(value.participantCapacity ?? value.pickupCapacity ?? 0) || 0,
   };
 }
 
@@ -332,16 +335,29 @@ function getRecruitingListCountsFromPost(post = {}) {
   const lobby = getRecruitingLobby(post, { users: [], teams: [] });
   const teamA = getLobbySideListCounts(lobby.sides?.teamA);
   const teamB = getLobbySideListCounts(lobby.sides?.teamB);
+  const pickup = isPickupRecruitingRoom(post);
+  const participantFilled = uniqueIds(
+    (lobby.entries ?? []).flatMap((entry) => [
+      ...(entry.players ?? []),
+      ...(entry.reserves ?? []),
+    ]),
+  ).length;
+  const activeCapacity = teamA.capacity + teamB.capacity;
   return {
     teamA,
     teamB,
     filled: teamA.filled + teamB.filled,
     projectedFilled: teamA.projectedFilled + teamB.projectedFilled,
-    capacity: teamA.capacity + teamB.capacity,
+    capacity: activeCapacity,
     partyCount: (lobby.entries ?? []).filter((entry) => (
       entry.kind === "team" &&
       new Set([...(entry.players ?? []), ...(entry.reserves ?? [])].filter(Boolean)).size >= 2
     )).length,
+    pickup,
+    participantFilled: pickup ? participantFilled : 0,
+    participantCapacity: pickup
+      ? activeCapacity + normalizeBenchCapacity(post.benchCapacity ?? post.rules?.benchCapacity) * 2
+      : 0,
   };
 }
 
@@ -352,6 +368,7 @@ function toRecruitingCountPost(row = {}, applicationsByPost = new Map()) {
     type: row.type,
     visibility: row.visibility,
     mode: row.mode,
+    rules: row.rules ?? {},
     roomState,
     hostJoinMode: row.host_join_mode,
     hostSide: row.host_side,

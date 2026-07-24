@@ -54,6 +54,7 @@ import {
   getRecruitingBenchCapacity,
   getRecruitingEntryLeaderId,
   getRecruitingFit,
+  getRecruitingListCardCounts,
   getRecruitingListCardLobby,
   getRecruitingLobby,
   getRecruitingRatingScale,
@@ -943,17 +944,16 @@ function getRecruitingRoomTypeLabel(room = {}, lobby = null) {
 }
 
 function QueueRoomBoard({ post, lobby }) {
-  const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
-  const capacity = getRecruitingSideCapacity(post) * 2;
+  const counts = getRecruitingListCardCounts(post, lobby, { projected: true });
   const ruleSummary = getRecruitingRuleSummary(post);
 
   return (
     <MatchListSummary
-      left={`A ${lobby.sides.teamA.projectedFilled}/${lobby.sides.teamA.capacity}`}
-      center={`${filled}/${capacity}`}
-      right={`B ${lobby.sides.teamB.projectedFilled}/${lobby.sides.teamB.capacity}`}
+      left={counts.layout === "sides" ? `A ${counts.teamA.filled}/${counts.teamA.capacity}` : null}
+      center={counts.layout === "unified" ? `참가 ${counts.filled}/${counts.capacity}` : `${counts.filled}/${counts.capacity}`}
+      right={counts.layout === "sides" ? `B ${counts.teamB.filled}/${counts.teamB.capacity}` : null}
       detail={ruleSummary}
-      variant="count"
+      variant={counts.layout === "unified" ? "participant" : "count"}
     />
   );
 }
