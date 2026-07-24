@@ -8565,6 +8565,8 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
   .arena-lobby-modal .pickup-room-slot-grid,
   html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
     column-gap: 3px;
+    margin-inline: 0;
+    padding-inline: 0;
   }
 
   .pickup-rotation-panel > button {

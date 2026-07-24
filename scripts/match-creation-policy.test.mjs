@@ -543,6 +543,8 @@ test("pickup participant slots keep a fixed width and use available desktop colu
   assert.match(cssSource, /grid-template-columns:\s*repeat\(auto-fit,\s*var\(--pickup-slot-width\)\)/);
   assert.match(cssSource, /\.pickup-room-slot-grid \.arena-room-player-slot[\s\S]*width:\s*var\(--pickup-slot-width\)/);
   assert.doesNotMatch(cssSource, /\.arena-lobby-modal \.pickup-room-slot-grid[^{]*\{[^}]*grid-template-columns:\s*repeat\(4/);
+  assert.match(cssSource, /@media \(max-width: 720px\)[\s\S]*\.pickup-room-slot-grid[\s\S]*margin-inline:\s*0/);
+  assert.match(cssSource, /@media \(max-width: 720px\)[\s\S]*\.pickup-room-slot-grid[\s\S]*padding-inline:\s*0/);
 });
 
 test("CreateMatch persists bench capacity at top level and inside rules", () => {
