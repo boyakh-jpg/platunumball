@@ -5067,7 +5067,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               />
 
               {matchRoom && sourceMatchPhase?.phase === "live" && !sourceMatchIsRecordRoom && selectedMatchRules.gameClockEnabled ? (
-                <MatchClockPanel match={sourceMatch} />
+                <MatchClockPanel
+                  match={sourceMatch}
+                  onMatchEnded={() => void app.actions.loadMatchDetail(sourceMatch.id)}
+                />
               ) : null}
 
               <div className="arena-join-panel">

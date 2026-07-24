@@ -133,7 +133,7 @@ async function playBuzzer(patternName = "period", volume = 1) {
   }
 }
 
-export default function MatchClockPanel({ match }) {
+export default function MatchClockPanel({ match, onMatchEnded }) {
   const [snapshot, setSnapshot] = useState(null);
   const [score, setScore] = useState({ a: 0, b: 0, updatedAt: null });
   const [activePlayers, setActivePlayers] = useState([]);
@@ -150,6 +150,7 @@ export default function MatchClockPanel({ match }) {
   const wakeLockRef = useRef(null);
   const wakeLockRequestedRef = useRef(false);
   const configurationDirtyRef = useRef(false);
+  const matchEndedNotifiedRef = useRef(false);
   const soundedRef = useRef({ period: false, shot: false, break: false });
 
   const applyResponse = useCallback((response) => {
@@ -195,6 +196,7 @@ export default function MatchClockPanel({ match }) {
 
   useEffect(() => {
     configurationDirtyRef.current = false;
+    matchEndedNotifiedRef.current = false;
   }, [match.id]);
 
   useEffect(() => {
@@ -357,6 +359,15 @@ export default function MatchClockPanel({ match }) {
       await Promise.resolve(exitFullscreen.call(document)).catch(() => {});
     }
   }, []);
+
+  useEffect(() => {
+    if (!isEnded) return;
+    if (focusMode) void closeFocusMode();
+    if (liveClock?.matchEndedAt && !matchEndedNotifiedRef.current) {
+      matchEndedNotifiedRef.current = true;
+      onMatchEnded?.();
+    }
+  }, [closeFocusMode, focusMode, isEnded, liveClock?.matchEndedAt, onMatchEnded]);
 
   useEffect(() => {
     if (!focusMode) return undefined;
@@ -681,6 +692,7 @@ export default function MatchClockPanel({ match }) {
             max="100"
             step="10"
             value={volume}
+            style={{ "--match-clock-volume-progress": `${volume}%` }}
             onChange={(event) => setVolume(Number(event.target.value))}
           />
         </label>

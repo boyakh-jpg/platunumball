@@ -186,17 +186,30 @@ test("match clock scoreboard requires a referee or recorders on both sides", () 
 test("match clock keeps shot settings stable and fullscreen compact", async () => {
   const panelSource = await readSource("src/components/match/MatchClockPanel.jsx");
   const clockStyles = await readSource("src/styles/match-clock.css");
+  const recruitingSource = await readSource("src/pages/Recruiting.jsx");
+  const forceEndMigration = await readSource("supabase/migrations/20260724230000_match_clock_one_hour_force_end.sql");
 
   assert.match(panelSource, /configurationDirtyRef\.current/);
   assert.match(panelSource, /onClick=\{\(\) => selectShotClock\(option\.value\)\}/);
   assert.match(panelSource, /\{shotClockEnabled \? \(/);
   assert.match(panelSource, /isRunning && hasRemainingPeriodTime/);
   assert.match(panelSource, /!isBreak && hasRemainingPeriodTime/);
+  assert.match(panelSource, /liveClock\?\.matchEndedAt/);
+  assert.match(panelSource, /closeFocusMode\(\)/);
+  assert.match(recruitingSource, /onMatchEnded=\{\(\) => void app\.actions\.loadMatchDetail\(sourceMatch\.id\)\}/);
   assert.doesNotMatch(panelSource, /담당·샷클락 저장|AudioContext/);
   assert.match(clockStyles, /\.ui-match-clock-focus-backdrop[\s\S]*?overflow: hidden;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/);
   assert.match(clockStyles, /\.ui-match-clock-scoreboard \{[^}]*overflow: hidden;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-notice \{[^}]*pointer-events: none;/);
+  assert.match(clockStyles, /::-webkit-slider-thumb \{[^}]*margin-top: -6px;/);
+  assert.match(clockStyles, /::-moz-range-progress/);
+  assert.match(forceEndMigration, /clock_started_at \+ interval '1 hour'/);
+  assert.match(forceEndMigration, /'forceEnd'/);
+  assert.match(forceEndMigration, /ended_at = force_end_at/);
+  assert.match(forceEndMigration, /rankball_match_clock_close_on_match_end_trigger/);
+  assert.match(forceEndMigration, /\* \* \* \* \*/);
+  assert.doesNotMatch(forceEndMigration, /period_remaining_ms\s*=\s*0[\s\S]*ended_at/);
   assert.equal(
     clockStyles.match(/\.ui-match-clock-scoreboard:not\(\.ui-match-clock-scoreboard-time-only\)/g)?.length,
     2,
