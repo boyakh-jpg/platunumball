@@ -5,12 +5,13 @@ import test from "node:test";
 import postcss from "postcss";
 import selectorParser from "postcss-selector-parser";
 
-const cssFiles = [
-  "src/styles/globals.css",
+const globalManifest = "src/styles/globals.css";
+const featureCssFiles = [
   "src/styles/recruiting-arena.css",
   "src/styles/matches-arena.css",
   "src/styles/matchroom-arena.css",
 ];
+const globalModuleMaxLines = 4500;
 
 const runtimeRoots = ["src", "public"];
 const runtimeFiles = ["index.html", "privacy.html", "terms.html"];
@@ -35,6 +36,42 @@ function loadRuntimeSource() {
 
   return files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
 }
+
+function parseCss(file) {
+  return postcss.parse(fs.readFileSync(file, "utf8"), { from: file });
+}
+
+function resolveLocalCssImports(file, result = [], visiting = new Set()) {
+  const normalizedFile = path.normalize(file);
+  if (visiting.has(normalizedFile)) {
+    throw new Error(`Circular CSS import: ${normalizedFile}`);
+  }
+
+  visiting.add(normalizedFile);
+  const root = parseCss(normalizedFile);
+  const imports = root.nodes.filter((node) => node.type === "atrule" && node.name === "import");
+
+  if (!imports.length) {
+    result.push(normalizedFile);
+  } else {
+    for (const importRule of imports) {
+      const match = importRule.params.match(/^(?:url\()?["']([^"']+\.css)["']\)?$/);
+      if (!match) throw new Error(`Unsupported CSS import in ${normalizedFile}: ${importRule.params}`);
+      const importedFile = path.resolve(path.dirname(normalizedFile), match[1]);
+      resolveLocalCssImports(importedFile, result, visiting);
+    }
+  }
+
+  visiting.delete(normalizedFile);
+  return result;
+}
+
+const globalCssFiles = resolveLocalCssImports(globalManifest);
+const cssStacks = [
+  globalCssFiles,
+  ...featureCssFiles.map((file) => [file]),
+];
+const cssFiles = [...new Set(cssStacks.flat())];
 
 function getAtRuleContext(rule) {
   const context = [];
@@ -84,7 +121,7 @@ test("production CSS has no unused selector branches", () => {
   const unusedSelectors = [];
 
   for (const file of cssFiles) {
-    const root = postcss.parse(fs.readFileSync(file, "utf8"), { from: file });
+    const root = parseCss(file);
     root.walkRules((rule) => {
       if (!rule.selector.includes(".")) return;
       try {
@@ -103,32 +140,35 @@ test("production CSS has no unused selector branches", () => {
 test("later duplicate selectors do not fully shadow earlier declarations", () => {
   const shadowedDeclarations = [];
 
-  for (const file of cssFiles) {
-    const root = postcss.parse(fs.readFileSync(file, "utf8"), { from: file });
+  for (const stack of cssStacks) {
     const ruleGroups = new Map();
 
-    root.walkRules((rule) => {
-      const key = `${getAtRuleContext(rule)}||${normalizeSelector(rule.selector)}`;
-      if (!ruleGroups.has(key)) ruleGroups.set(key, []);
-      ruleGroups.get(key).push(rule);
-    });
+    for (const file of stack) {
+      const root = parseCss(file);
+      root.walkRules((rule) => {
+        const key = `${getAtRuleContext(rule)}||${normalizeSelector(rule.selector)}`;
+        if (!ruleGroups.has(key)) ruleGroups.set(key, []);
+        ruleGroups.get(key).push({ file, rule });
+      });
+    }
 
     for (const rules of ruleGroups.values()) {
       if (rules.length < 2) continue;
       for (let index = 0; index < rules.length - 1; index += 1) {
         const laterDeclarations = [];
         for (let laterIndex = index + 1; laterIndex < rules.length; laterIndex += 1) {
-          rules[laterIndex].walkDecls((declaration) => laterDeclarations.push(declaration));
+          rules[laterIndex].rule.walkDecls((declaration) => laterDeclarations.push(declaration));
         }
 
-        rules[index].walkDecls((declaration) => {
+        rules[index].rule.walkDecls((declaration) => {
           const overridden = laterDeclarations.some((later) => (
             later.prop === declaration.prop
             && (!declaration.important || later.important)
           ));
           if (!overridden) return;
           shadowedDeclarations.push(
-            `${file}:${declaration.source.start.line} ${rules[index].selector} ${declaration.prop}`,
+            `${rules[index].file}:${declaration.source.start.line} `
+              + `${rules[index].rule.selector} ${declaration.prop}`,
           );
         });
       }
@@ -136,4 +176,23 @@ test("later duplicate selectors do not fully shadow earlier declarations", () =>
   }
 
   assert.deepEqual(shadowedDeclarations, []);
+});
+
+test("globals.css is an import-only manifest with bounded modules", () => {
+  const manifestRoot = parseCss(globalManifest);
+  const nonImportNodes = manifestRoot.nodes.filter((node) => (
+    node.type !== "comment"
+    && !(node.type === "atrule" && node.name === "import")
+  ));
+
+  assert.deepEqual(nonImportNodes, []);
+  assert.ok(globalCssFiles.length >= 2);
+
+  for (const file of globalCssFiles) {
+    const lineCount = fs.readFileSync(file, "utf8").split(/\r?\n/).length;
+    assert.ok(
+      lineCount <= globalModuleMaxLines,
+      `${file} exceeds ${globalModuleMaxLines} lines (${lineCount})`,
+    );
+  }
 });

@@ -1884,3 +1884,13 @@ UI 수정 전:
 3. `Card`, `Button`, 목록 카드의 공용 표면은 primitive stylesheet가 담당한다. 기능별 stylesheet는 해당 화면의 배치와 상태 표현만 추가한다.
 4. `npm run build`와 `npm run test:design`은 미사용 selector와 완전 shadow 선언 검사를 함께 실행한다.
 5. CSS 정리는 동작과 배치를 바꾸지 않는 범위에서만 수행하고 desktop/mobile, dark/light의 computed style과 가로 overflow를 비교한다.
+
+## 2026-07-24 전역 stylesheet 모듈 경계
+
+1. `globals.css`는 규칙을 직접 갖지 않는 import 전용 manifest다. 아래 모듈 순서는 기존 cascade와 같은 공개 순서이므로 검증 없이 바꾸지 않는다.
+2. `global-foundation.css`는 reset, app shell, navigation, loader와 초기 공용 구조를 담당한다.
+3. `global-workflows.css`는 경기 규칙, 분쟁, 설정과 공용 작업 흐름을 담당한다. `global-search-profile.css`는 검색, 프로필, 엠블럼 UI를 담당한다.
+4. `global-admin-layout.css`는 관리자와 복합 레이아웃을 담당한다. `global-surfaces.css`는 page hero와 공용 surface 수렴 규칙을 담당한다.
+5. `global-visual-system.css`는 최종 theme·responsive 시각 계층을 담당한다. `global-court-controls.css`는 구장, 방 생성, 팀 관리의 후속 control을 담당한다.
+6. 새 규칙은 `globals.css`에 추가하지 않는다. 책임 모듈 또는 기존 feature stylesheet에 추가하며 각 전역 모듈은 `4500행`을 넘기지 않는다.
+7. build 검사는 manifest 전용 상태, 모듈 크기, import 전체의 미사용 selector와 module 경계를 넘는 완전 shadow 선언을 확인한다.
