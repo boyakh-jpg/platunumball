@@ -19856,10 +19856,8 @@ html[data-theme="light"] .team-detail-hero h1 {
 html[data-theme="light"] .rank-home .rank-summary-grid,
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   background:
-    var(--home-court-tone),
     var(--bg-home-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
-  background-blend-mode: var(--home-court-blend-mode);
   backdrop-filter: none;
   filter: none;
 }
@@ -20226,10 +20224,8 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .rank-home .rank-summary-grid .home-rank-board-head,
   html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
     background:
-      var(--home-court-tone),
       var(--bg-home-court) center 46% / cover no-repeat,
       var(--rb-bg-2);
-    background-blend-mode: var(--home-court-blend-mode);
   }
 }
 
