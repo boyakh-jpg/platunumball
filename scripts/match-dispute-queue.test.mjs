@@ -91,6 +91,7 @@ test("경기 기본 규칙은 모드별 현실적인 시간 모델을 사용한�
     halftimeMinutes: 10,
     overtimeMinutes: 5,
     clockMode: "stopped",
+    lastPeriodStopMinutes: 0,
     timeLimit: 40,
     ball: "7호 공",
     winByTwo: false,

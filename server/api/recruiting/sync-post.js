@@ -37,6 +37,10 @@ export function getRecruitingBenchPolicyError(error = {}) {
   if (errorText.includes("recruiting_bench_capacity_below_roster")) return { statusCode: 409, message: "recruiting_bench_capacity_below_roster" };
   if (errorText.includes("pickup_participant_capacity_below_pool")) return { statusCode: 409, message: "pickup_participant_capacity_below_pool" };
   if (errorText.includes("recruiting_reserve_full")) return { statusCode: 409, message: "recruiting_reserve_full" };
+  if (errorText.includes("room_edit_limit_reached")) return { statusCode: 409, message: "room_edit_limit_reached" };
+  if (errorText.includes("room_edit_window_closed")) return { statusCode: 409, message: "room_edit_window_closed" };
+  if (errorText.includes("room_schedule_target_too_soon")) return { statusCode: 409, message: "room_schedule_target_too_soon" };
+  if (errorText.includes("room_cancel_locked")) return { statusCode: 409, message: "room_cancel_locked" };
   if (errorText.includes("recruiting_room_edit_locked")) return { statusCode: 409, message: "recruiting_room_edit_locked" };
   if (errorText.includes("room_meeting_point_required")) return { statusCode: 400, message: "room_meeting_point_required" };
   if (errorText.includes("court_not_found") || errorText.includes("invalid_room_court")) return { statusCode: 400, message: "invalid_room_court" };
@@ -659,7 +663,7 @@ export function validatePickupRecruitingShape(post = {}) {
   if ((requestedHostJoinMode !== undefined && requestedHostJoinMode !== "player") || getCanonicalHostJoinMode(post) !== "player" || teamOnly) {
     reject(400, "pickup_requires_player_room");
   }
-  if (post.ranked !== false || isTrue(post.official)) reject(400, "pickup_must_be_unranked");
+  if (isTrue(post.official)) reject(400, "pickup_official_not_supported");
   if ((post.playingTimePolicy ?? rules.playingTimePolicy) !== "equal_rotation") reject(400, "pickup_requires_equal_rotation");
   if ((post.lineupSelectionPolicy ?? rules.lineupSelectionPolicy) !== "no_fixed_starter") reject(400, "pickup_requires_no_fixed_starter");
 }
@@ -860,6 +864,8 @@ const OWNER_RECRUITING_ACTIONS = new Set([
 ]);
 
 const PARTICIPANT_RECRUITING_ACTIONS = new Set([
+  "acknowledgeRecruitingRoomRules",
+  "respondRecruitingScheduleProposal",
   "sendRecruitingChat",
   "cancelRecruitingParticipation",
   "acceptRecruitingInvitation",
@@ -887,12 +893,27 @@ const PUBLIC_ROOM_PARTICIPATION_ACTIONS = new Set([
   "acceptRecruitingInvitation",
 ]);
 
+async function expireRecruitingRoomChangeIfDue(context, postId = "", roomState = null) {
+  const proposal = roomState?.scheduleProposal;
+  const deadlineMs = proposal?.consentDeadlineAt ? new Date(proposal.consentDeadlineAt).getTime() : Number.NaN;
+  if (roomState && (
+    proposal?.status !== "pending"
+    || !Number.isFinite(deadlineMs)
+    || deadlineMs > Date.now()
+  )) return proposal?.status ?? "none";
+  const { data, error } = await context.supabase.rpc("rankball_recruiting_expire_room_change", {
+    p_post_id: postId,
+  });
+  if (error) throw error;
+  return data?.status ?? proposal?.status ?? "none";
+}
+
 async function assertPublicRoomParticipationAllowed(context, operation = {}) {
   if (!PUBLIC_ROOM_PARTICIPATION_ACTIONS.has(operation.action)) return;
   const postId = String(operation.postId ?? "").trim();
   if (!postId) return;
   const [{ data: post, error: postError }, { data: discipline, error: disciplineError }] = await Promise.all([
-    context.supabase.from("recruiting_posts").select("visibility").eq("id", postId).maybeSingle(),
+    context.supabase.from("recruiting_posts").select("visibility,room_state").eq("id", postId).maybeSingle(),
     context.supabase
       .from("admin_disciplinary_actions")
       .select("id,ends_at")
@@ -906,7 +927,31 @@ async function assertPublicRoomParticipationAllowed(context, operation = {}) {
   ]);
   if (postError) throw postError;
   if (disciplineError) throw disciplineError;
+  const proposalStatus = await expireRecruitingRoomChangeIfDue(context, postId, post?.room_state ?? {});
+  if (proposalStatus === "pending") reject(409, "recruiting_schedule_change_pending");
   if ((post?.visibility ?? "public") === "public" && discipline?.id) reject(403, "public_room_participation_suspended");
+}
+
+async function assertRecruitingRoomChangeComplete(context, postId = "") {
+  const safePostId = String(postId ?? "").trim();
+  if (!safePostId) reject(400, "recruiting_post_id_required");
+  await expireRecruitingRoomChangeIfDue(context, safePostId);
+  const { data: post, error } = await context.supabase
+    .from("recruiting_posts")
+    .select("room_state")
+    .eq("id", safePostId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!post) reject(404, "recruiting_post_not_found");
+  const roomState = post.room_state ?? {};
+  if (roomState.scheduleProposal?.status === "pending") {
+    reject(409, "recruiting_schedule_change_pending");
+  }
+  const requiredIds = [...new Set((roomState.ruleAcknowledgementRequiredIds ?? []).filter(Boolean))];
+  const acknowledgedIds = new Set((roomState.ruleAcknowledgedIds ?? []).filter(Boolean));
+  if (requiredIds.some((profileId) => !acknowledgedIds.has(profileId))) {
+    reject(409, "recruiting_rule_acknowledgement_pending");
+  }
 }
 
 const MEMBERSHIP_ADD_RECRUITING_ACTIONS = new Set([
@@ -918,6 +963,7 @@ const MEMBERSHIP_ADD_RECRUITING_ACTIONS = new Set([
 ]);
 
 const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
+  "acknowledgeRecruitingRoomRules",
   "createRecruitingPost",
   "acceptRecruitingInvitation",
   "cancelRecruitingParticipation",
@@ -931,6 +977,7 @@ const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
   "setRecruitingStatRecorder",
   "setRecruitingSlotPosition",
   "updateRecruitingRoomRules",
+  "respondRecruitingScheduleProposal",
   "joinRecruitingSideParty",
   "setRecruitingPartyPlayerPlacement",
   "setRecruitingPartyPlayerReserve",
@@ -977,6 +1024,8 @@ function isMissingSqlReducer(error = {}) {
     message.includes("rankball_recruiting_interest_player_action") ||
     message.includes("rankball_recruiting_side_party_join_action") ||
     message.includes("rankball_recruiting_room_update_action") ||
+    message.includes("rankball_recruiting_rule_ack_action") ||
+    message.includes("rankball_recruiting_schedule_response_action") ||
     message.includes("rankball_recruiting_management_action")
   );
 }
@@ -1192,6 +1241,33 @@ async function applyRecruitingManagementAction(context, operation = {}) {
 }
 
 async function applySqlRecruitingAction(context, operation = {}) {
+  if (operation.action === "acknowledgeRecruitingRoomRules" && operation.postId) {
+    const { data, error } = await context.supabase.rpc("rankball_recruiting_rule_ack_action", {
+      p_actor_profile_id: context.profileId,
+      p_post_id: operation.postId,
+      p_rule_revision: Number(operation.revision ?? 0),
+    });
+    if (error) {
+      if (isMissingSqlReducer(error)) reject(503, "recruiting_rule_ack_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), postId: operation.postId };
+  }
+
+  if (operation.action === "respondRecruitingScheduleProposal" && operation.postId) {
+    const { data, error } = await context.supabase.rpc("rankball_recruiting_schedule_response_action", {
+      p_actor_profile_id: context.profileId,
+      p_post_id: operation.postId,
+      p_proposal_id: operation.proposalId ?? "",
+      p_decision: operation.decision ?? "approve",
+    });
+    if (error) {
+      if (isMissingSqlReducer(error)) reject(503, "recruiting_schedule_response_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), postId: operation.postId };
+  }
+
   if (operation.action === "updateRecruitingRoomRules" && operation.postId) {
     const { data, error } = await context.supabase.rpc("rankball_recruiting_room_update_action", {
       p_actor_profile_id: context.profileId,
@@ -1760,6 +1836,7 @@ export default async function handler(request, response) {
     }
 
     if (operation.action === "confirmRecruitingMatch") {
+      await timing.track("roomChangeApproval", () => assertRecruitingRoomChangeComplete(context, operation.postId));
       const state = await timing.track("authoritativeLoad", () => loadAuthoritativeState(context, { operation }));
       const result = await timing.track("authoritativeReplay", () => applyAuthoritativeRecruitingOperation(state, operation));
       replayResult = result;

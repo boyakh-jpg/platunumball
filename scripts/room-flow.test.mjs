@@ -1,7 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { confirmPickupSideAssignment, startMatch, swapPickupMatchPlayers } from "../src/data/repository.js";
-import { getPickupOpenSlotPlacements, getPickupParticipantIds, getPickupParticipants, getPostgameRecordVerification, getRoomPhaseViewModel } from "../src/lib/roomFlow.js";
+import {
+  confirmPickupSideAssignment,
+  generatePickupSideAssignment,
+  startMatch,
+  swapPickupMatchPlayers,
+} from "../src/data/repository.js";
+import {
+  buildPickupTeamAssignment,
+  getPickupOpenSlotPlacements,
+  getPickupParticipantIds,
+  getPickupParticipants,
+  getPickupRerollState,
+  getPickupTeamAssignmentPolicy,
+  getPostgameRecordVerification,
+  getRoomPhaseViewModel,
+} from "../src/lib/roomFlow.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
 
 test("경기 목적과 팀 구성은 독립 필드이고 레거시 matchIntent만 호환용으로 만든다", () => {
@@ -10,9 +24,9 @@ test("경기 목적과 팀 구성은 독립 필드이고 레거시 matchIntent�
   assert.equal(competitive.formationMode, "prearranged");
   assert.equal(competitive.matchIntent, "standard_competitive");
   const pickup = getMatchCreationPolicyPayload({ ...competitive, formationMode: "pickup" });
-  assert.equal(pickup.matchPurpose, "friendly");
+  assert.equal(pickup.matchPurpose, "competitive");
   assert.equal(pickup.formationMode, "pickup");
-  assert.equal(pickup.ranked, false);
+  assert.equal(pickup.ranked, true);
 });
 
 test("픽업 모집은 A/B 대신 통합 참가자 풀을 표시한다", () => {
@@ -59,6 +73,118 @@ test("픽업 체크인은 배정 확정 전 A/B 작업대를 표시한다", () =
   assert.equal(view.mode, "pickup_assignment");
   assert.equal(view.showVersusStage, true);
   assert.equal(view.assignmentConfirmed, false);
+});
+
+test("pickup random and MMR modes create complete deterministic drafts", () => {
+  const playerIds = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"];
+  const users = playerIds.map((id, index) => ({
+    id,
+    ratings: { integrated: 900 + index * 100 },
+  }));
+  const randomFirst = buildPickupTeamAssignment({
+    playerIds,
+    users,
+    sideCapacity: 3,
+    benchCapacity: 1,
+    mode: "random",
+    seed: "room:1",
+  });
+  const randomSecond = buildPickupTeamAssignment({
+    playerIds,
+    users,
+    sideCapacity: 3,
+    benchCapacity: 1,
+    mode: "random",
+    seed: "room:1",
+  });
+  assert.deepEqual(randomFirst, randomSecond);
+  assert.equal(randomFirst.teamA.active.length, 3);
+  assert.equal(randomFirst.teamB.active.length, 3);
+  assert.equal(randomFirst.teamA.reserve.length, 1);
+  assert.equal(randomFirst.teamB.reserve.length, 1);
+
+  const balanced = buildPickupTeamAssignment({
+    playerIds: playerIds.slice(0, 6),
+    users,
+    sideCapacity: 3,
+    benchCapacity: 0,
+    mode: "mmr_balanced",
+    seed: "room:2",
+  });
+  const teamATotal = [...balanced.teamA.active, ...balanced.teamA.reserve]
+    .reduce((sum, id) => sum + users.find((user) => user.id === id).ratings.integrated, 0);
+  const teamBTotal = [...balanced.teamB.active, ...balanced.teamB.reserve]
+    .reduce((sum, id) => sum + users.find((user) => user.id === id).ratings.integrated, 0);
+  assert.equal(balanced.teamA.active.length, 3);
+  assert.equal(balanced.teamB.active.length, 3);
+  assert.ok(Math.abs(teamATotal - teamBTotal) <= 100);
+});
+
+test("pickup assignment uses checked-in players and limits paid rerolls to two distinct users", () => {
+  const users = ["host", "p2", "p3", "p4", "absent1", "absent2"].map((id, index) => ({
+    id,
+    name: id,
+    trustScore: 10,
+    ratings: { integrated: 1000 + index * 50 },
+  }));
+  const match = {
+    id: "pickup-attendance",
+    title: "2v2 경쟁 픽업",
+    createdBy: "host",
+    mode: "2v2",
+    status: "agreed",
+    timingType: "instant",
+    ranked: true,
+    formationMode: "pickup",
+    matchIntent: "pickup",
+    teamA: { players: ["host", "p2"], teamId: "old-a", playerTeams: {} },
+    teamB: { players: ["p3", "p4"], teamId: "old-b", playerTeams: {} },
+    reservePlayers: { teamA: ["absent1"], teamB: ["absent2"] },
+    attendance: { teamA: ["host", "p2"], teamB: ["p3", "p4"] },
+    agreements: { teamA: ["host", "p2"], teamB: ["p3", "p4"] },
+    rules: {
+      formationMode: "pickup",
+      matchIntent: "pickup",
+      sideCapacity: 2,
+      benchCapacity: 1,
+      recruitingPostId: "pickup-post",
+    },
+  };
+  const initialState = {
+    currentUserId: "host",
+    users,
+    teams: [],
+    matches: [match],
+    recruitingPosts: [{ id: "pickup-post", roomState: { chatMessages: [] } }],
+    notifications: [],
+    settings: {},
+  };
+
+  const generated = generatePickupSideAssignment(initialState, match.id, "random");
+  const generatedMatch = generated.matches[0];
+  assert.equal(getPickupTeamAssignmentPolicy(generatedMatch).label, "완전 랜덤 배치");
+  assert.equal(generatedMatch.rules.ratingScale, 1);
+  assert.deepEqual(
+    [...generatedMatch.teamA.players, ...generatedMatch.teamB.players].sort(),
+    ["host", "p2", "p3", "p4"],
+  );
+  assert.deepEqual(generatedMatch.reservePlayers, { teamA: [], teamB: [] });
+  assert.equal(generated.users.find((user) => user.id === "host").trustScore, 10);
+
+  const firstReroll = generatePickupSideAssignment({ ...generated, currentUserId: "p2" }, match.id, "random");
+  assert.equal(getPickupRerollState(firstReroll.matches[0], "p2").count, 1);
+  assert.equal(getPickupRerollState(firstReroll.matches[0], "p2").usedByCurrentUser, true);
+  assert.equal(firstReroll.users.find((user) => user.id === "p2").trustScore, 9);
+  assert.match(firstReroll.recruitingPosts[0].roomState.chatMessages[0].body, /신뢰도 1점/);
+
+  const duplicateReroll = generatePickupSideAssignment(firstReroll, match.id, "random");
+  assert.equal(duplicateReroll.matches[0].rules.pickupRerollCount, 1);
+
+  const secondReroll = generatePickupSideAssignment({ ...firstReroll, currentUserId: "p3" }, match.id, "random");
+  assert.equal(getPickupRerollState(secondReroll.matches[0], "p3").count, 2);
+  assert.equal(secondReroll.users.find((user) => user.id === "p3").trustScore, 9);
+  const blockedThird = generatePickupSideAssignment({ ...secondReroll, currentUserId: "p4" }, match.id, "random");
+  assert.equal(blockedThird.matches[0].rules.pickupRerollCount, 2);
 });
 
 test("픽업 방장 또는 심판은 출석 후 두 참가자의 A/B·출전·대기 자리를 교환하고 확정한다", () => {

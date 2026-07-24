@@ -12,6 +12,7 @@ import {
   MapPin,
   MessageSquare,
   PlusCircle,
+  RotateCcw,
   Send,
   Share2,
   ShieldCheck,
@@ -123,8 +124,26 @@ import {
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
-import { getMatchCreationSummary } from "../lib/matchCreationPolicies.js";
-import { ROOM_BODY_MODES, getPickupOpenSlotPlacements, getPickupParticipantIds, getPickupResizeValidation, getPostgameRecordVerification, getRoomPhaseViewModel } from "../lib/roomFlow.js";
+import {
+  PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS,
+  getMatchCreationSummary,
+  getRoomRemakeDraft,
+} from "../lib/matchCreationPolicies.js";
+import {
+  ROOM_BODY_MODES,
+  getPickupOpenSlotPlacements,
+  getPickupParticipantIds,
+  getPickupRerollState,
+  getPickupResizeValidation,
+  getPickupTeamAssignmentPolicy,
+  getPostgameRecordVerification,
+  getRecruitingRuleAcknowledgement,
+  getRoomCancellationPolicy,
+  getRoomEditAvailability,
+  getRoomPhaseViewModel,
+  getRoomScheduleProposalProgress,
+  isRoomScheduleChangePending,
+} from "../lib/roomFlow.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getUnsafeUserTextReason, UNSAFE_INPUT_MESSAGE } from "../lib/inputSecurity.js";
 import {
@@ -388,6 +407,14 @@ function getRoomEditDraft(post, sourceMatch = null) {
   return {
     courtId: room.courtId ?? room.court_id ?? "",
     court: room.court ?? "",
+    timingType: (
+      room.timingType
+      ?? room.roomState?.timingType
+      ?? room.rules?.timingType
+      ?? (room.scheduledDate ? "scheduled" : "instant")
+    ) === "instant" ? "instant" : "scheduled",
+    scheduledDate: room.scheduledDate ?? "",
+    scheduledTime: String(room.scheduledTime ?? "").slice(0, 5),
     sideCapacity: getRecruitingSideCapacity(room),
     benchCapacity: getRecruitingBenchCapacity(room),
     matchJoinMode: room.hostJoinMode === "team" ? "team" : "player",
@@ -425,6 +452,12 @@ function getRoomEditSaveError(result, matchRoom = false) {
   }
   if (errorCode === "room_meeting_point_required") {
     return "실제로 만날 장소를 2자 이상 적어 주세요.";
+  }
+  if (errorCode === "room_edit_limit_reached") {
+    return "방 수정은 한 번만 가능합니다. 추가 변경이 필요하면 기존 방을 취소한 뒤 다시 만들어 주세요.";
+  }
+  if (errorCode === "room_edit_window_closed" || errorCode === "room_schedule_target_too_soon") {
+    return "방 수정과 새 일정 제안은 경기 시작 12시간 전까지만 가능합니다.";
   }
   if (errorCode === "match_room_operator_required" || errorCode === "recruiting_owner_required") {
     return "현재 계정에는 이 방을 수정할 권한이 없습니다.";
@@ -1399,9 +1432,11 @@ function RoomKickPanel({
   currentUserId = "",
   poolMode = false,
   placementByPlayerId = null,
+  allowedPlayerIds = null,
 }) {
   const [pendingKick, setPendingKick] = useState(null);
   const [pendingSwap, setPendingSwap] = useState(null);
+  const allowedPlayerIdSet = Array.isArray(allowedPlayerIds) ? new Set(allowedPlayerIds.filter(Boolean)) : null;
   const rows = [];
   (lobby.entries ?? []).forEach((entry) => {
     const partyEntry = isPartyEntry(entry);
@@ -1412,6 +1447,7 @@ function RoomKickPanel({
       ...reserveIds.map((playerId) => ({ playerId, reserve: true })),
     ].forEach(({ playerId, reserve }) => {
       if (!playerId || (!attendanceBySide && entry.fixed && playerId === entry.playerId)) return;
+      if (allowedPlayerIdSet && !allowedPlayerIdSet.has(playerId)) return;
       const user = userById[playerId];
       if (!user) return;
       const placement = placementByPlayerId?.[playerId];
@@ -2767,6 +2803,7 @@ function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
 }
 
 function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, entryPoint = "", onInvitationAccepted = null, onJoined = null, skipInitialDetailLoad = false }) {
+  const navigate = useNavigate();
   const selectedPost = post;
   const loadDirectory = app.actions.loadDirectory;
   const shouldLoadTeamDirectory = selectedPost.visibility === "public" && isTeamOnlyRoom(selectedPost);
@@ -3313,14 +3350,24 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     const roomEditDraft = getRoomEditDraftByPost(roomPost);
     if (!roomEditDraft) return;
     if (String(roomEditDraft.meetingPoint ?? "").trim().length < 2) return;
+    const initialDraft = getRoomEditDraft(roomPost, sourceMatch);
+    const roomEditPatch = Object.fromEntries(
+      Object.entries(roomEditDraft).filter(([key, value]) => (
+        JSON.stringify(value ?? null) !== JSON.stringify(initialDraft[key] ?? null)
+      )),
+    );
+    if (!Object.keys(roomEditPatch).length) {
+      closeRoomEdit(roomPost);
+      return;
+    }
     setRoomEditStatusByPost((current) => ({
       ...current,
       [roomPost.id]: { pending: true, error: "" },
     }));
     try {
       const result = sourceMatch
-        ? await app.actions.updateMatchRoomRules(sourceMatch.id, roomEditDraft)
-        : await app.actions.updateRecruitingRoomRules(roomPost.id, roomEditDraft);
+        ? await app.actions.updateMatchRoomRules(sourceMatch.id, roomEditPatch)
+        : await app.actions.updateRecruitingRoomRules(roomPost.id, roomEditPatch);
       if (!result || result.ok === false) {
         setRoomEditStatusByPost((current) => ({
           ...current,
@@ -3486,7 +3533,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         ));
         const alreadyApplied = Boolean(myEntry && !mine);
         const currentUserIsRoomReferee = selectedPost.refereeId === app.currentUser.id;
-        const canInviteFromRoom = !matchRoom && !recruitingRoomConfirmed && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
+        const changeApprovalSource = sourceMatch ?? selectedPost;
+        const scheduleProposalProgress = getRoomScheduleProposalProgress(changeApprovalSource);
+        const scheduleChangePending = isRoomScheduleChangePending(changeApprovalSource);
+        const canInviteFromRoom = !scheduleChangePending && !matchRoom && !recruitingRoomConfirmed && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = Boolean(storedRoomPost) && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const selectedRoomState = selectedPost.roomState ?? {};
         const refereeWanted = Boolean(selectedPost.refereeWanted || selectedRoomState.refereeWanted || selectedPost.refereeId);
@@ -3505,7 +3555,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canJoinReferee = selectedPost.visibility === "public" && refereeWanted && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments);
         const joinMmrLimitMode = selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode ?? "block";
         const joinTierAllowed = joinMmrLimitMode !== "block" || fit.allowed;
-        const canJoin = selectedPost.visibility === "public" && !matchRoom && !recruitingRoomConfirmed && !mine && !alreadyApplied && (
+        const canJoin = !scheduleChangePending && selectedPost.visibility === "public" && !matchRoom && !recruitingRoomConfirmed && !mine && !alreadyApplied && (
           joinDraft.joinMode === "referee"
             ? canJoinReferee
             : joinTierAllowed && (!pickupPoolMode || pickupOpenSlotPlacements.length > 0) && (joinDraft.joinMode === "player" || teamJoinValid)
@@ -3563,12 +3613,31 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const selectedMatchRuleRows = getMatchRuleDetailRows(selectedMatchRules, selectedRoomPolicySource.mode);
         const selectedCreationSummary = getMatchCreationSummary(selectedRoomPolicySource);
         const selectedRoomPolicyRows = selectedCreationSummary.rows.filter((row) => (
-          row.label === "경기 목적" || row.label === "팀 구성" || row.label === "명단" || row.label === "운영 정책" || row.label === "출전 정책"
+          row.label === "경기 목적" || row.label === "팀 구성" || row.label === "명단" || row.label === "팀 배치" || row.label === "운영 정책" || row.label === "출전 정책"
         ));
         const selectedRoomOperationRows = selectedCreationSummary.rows.filter((row) => (
           row.label === "공 제공" || row.label === "운영 장비"
         ));
         const pickupRoom = isPickupRecruitingRoom(selectedPost);
+        const pickupAssignmentPolicy = getPickupTeamAssignmentPolicy(sourceMatch ?? selectedPost);
+        const recruitingRuleAcknowledgement = sourceMatch ? null : getRecruitingRuleAcknowledgement(selectedPost);
+        const matchRuleRequiredIds = sourceMatch?.rules?.ruleAcknowledgementRequiredIds ?? [];
+        const matchRuleAcknowledgedIds = sourceMatch?.rules?.ruleAcknowledgedIds ?? [];
+        const ruleAcknowledgementRequiredIds = sourceMatch
+          ? matchRuleRequiredIds
+          : recruitingRuleAcknowledgement.requiredIds;
+        const ruleAcknowledgedIds = sourceMatch
+          ? matchRuleAcknowledgedIds
+          : recruitingRuleAcknowledgement.acknowledgedIds;
+        const ruleAcknowledgementPending = ruleAcknowledgementRequiredIds.some((playerId) => !ruleAcknowledgedIds.includes(playerId));
+        const currentRuleRevision = Number(sourceMatch?.rules?.ruleRevision ?? selectedPost.roomState?.ruleRevision ?? 0);
+        const currentUserNeedsRuleAcknowledgement = sourceMatch
+          ? matchRuleRequiredIds.includes(app.currentUser.id) && !matchRuleAcknowledgedIds.includes(app.currentUser.id)
+          : recruitingRuleAcknowledgement.requiredIds.includes(app.currentUser.id)
+            && !recruitingRuleAcknowledgement.acknowledgedIds.includes(app.currentUser.id);
+        const currentUserCanRespondSchedule = scheduleChangePending
+          && scheduleProposalProgress.requiredIds.includes(app.currentUser.id)
+          && !scheduleProposalProgress.approvedIds.includes(app.currentUser.id);
         const maxSideFilled = Math.max(
           lobby.sides.teamA.projectedPlayers.length,
           lobby.sides.teamB.projectedPlayers.length,
@@ -3585,6 +3654,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomEditCapacityValid = !roomEditDraft || pickupRoom || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
         const roomEditBenchCapacityValid = !roomEditDraft || pickupRoom || Number(roomEditDraft.benchCapacity) >= maxSideReserveFilled;
         const roomEditMeetingValid = !roomEditDraft || String(roomEditDraft.meetingPoint ?? "").trim().length >= 2;
+        const roomEditScheduleValid = !roomEditDraft
+          || roomEditDraft.timingType === "instant"
+          || (Boolean(roomEditDraft.scheduledDate) && Boolean(roomEditDraft.scheduledTime));
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const partyJoinOptions = individualOnlyRoom ? [] : getSameSidePartyOptions(lobby, myEntry, myTeams);
         const sidePartyJoinOptions = individualOnlyRoom ? [] : getJoinableSidePartyOptions(lobby, myTeams, app.currentUser.id);
@@ -3761,6 +3833,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           teamA: sourceMatch?.attendance?.teamA ?? [],
           teamB: sourceMatch?.attendance?.teamB ?? [],
         };
+        const sourceMatchCheckedInIds = [...new Set([
+          ...sourceMatchAttendance.teamA,
+          ...sourceMatchAttendance.teamB,
+        ].filter(Boolean))];
         const sourceMatchPlacementByPlayerId = sourceMatch
           ? Object.fromEntries(MATCH_SIDES.flatMap((sideName) => [
               ...getMatchSidePlayerIds(sourceMatch, sideName).map((playerId) => [playerId, { side: sideName, reserve: false }]),
@@ -3771,21 +3847,43 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canShowStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const sourceMatchMissingStartAttendanceIds = canShowStartSourceMatch ? getMissingStartAttendanceIds(sourceMatch, app.currentUser.id) : [];
         const pickupAssignmentSideCapacity = sourceMatch ? getRecruitingSideCapacity(sourceMatch) : 0;
+        const pickupAssignmentBenchCapacity = sourceMatch ? getRecruitingBenchCapacity(sourceMatch) : 0;
+        const pickupAssignmentAttendanceReady = sourceMatchCheckedInIds.length >= pickupAssignmentSideCapacity * 2
+          && sourceMatchCheckedInIds.length <= (pickupAssignmentSideCapacity + pickupAssignmentBenchCapacity) * 2;
         const pickupAssignmentSidesComplete = Boolean(
           sourceMatch
           && getMatchSidePlayerIds(sourceMatch, "teamA").length === pickupAssignmentSideCapacity
           && getMatchSidePlayerIds(sourceMatch, "teamB").length === pickupAssignmentSideCapacity,
         );
+        const pickupRerollState = getPickupRerollState(sourceMatch, app.currentUser.id);
+        const currentUserCheckedInForPickup = sourceMatchCheckedInIds.includes(app.currentUser.id);
+        const canRequestPickupReroll = Boolean(
+          sourceMatch
+          && pickupAssignmentPolicy.automatic
+          && sourceMatch.rules?.sideAssignmentStatus === "draft"
+          && (canManageMatchCheckin || currentUserCheckedInForPickup),
+        );
+        const pickupRerollTrustReady = Number(app.currentUser.trustScore ?? 0) >= 1;
         const canStartSourceMatch = canShowStartSourceMatch
+          && !scheduleChangePending
+          && !ruleAcknowledgementPending
           && sourceMatchMissingStartAttendanceIds.length === 0
           && (roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment || roomPhaseViewModel.assignmentConfirmed);
         const sourceMatchStartButtonLabel = canStartSourceMatch
           ? "경기 시작"
+          : scheduleChangePending
+            ? "일정 승인 대기"
+            : ruleAcknowledgementPending
+              ? "변경 확인 대기"
           : sourceMatchMissingStartAttendanceIds.length > 0
             ? "출석체크 필요"
             : "팀 배정 확정 필요";
         const sourceMatchStartButtonTitle = canStartSourceMatch
           ? ""
+          : scheduleChangePending
+            ? "일정 또는 구장 변경안을 전원이 승인해야 합니다."
+            : ruleAcknowledgementPending
+              ? "현재 참가자 전원이 최신 규칙을 확인해야 합니다."
           : sourceMatchMissingStartAttendanceIds.length > 0
             ? "모든 참가자의 출석을 확인해야 경기 시작이 가능합니다."
             : "A/B 팀 배정과 교대 기준을 확정해야 경기 시작이 가능합니다.";
@@ -3913,7 +4011,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           ) : null
         );
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
-        const canEditSourceRoomRules = Boolean(
+        const canOperateSourceRoomRules = Boolean(
           !sourceRoomReadOnly &&
           (!matchRoom ? mine : (
             sourceMatch &&
@@ -3923,6 +4021,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             (sourceMatch.refereeId && sourceMatchPhase?.phase === "checkin" ? currentUserIsSourceReferee : mine)
           )),
         );
+        const roomEditAvailability = getRoomEditAvailability(changeApprovalSource);
+        const roomEditAvailable = roomEditAvailability.allowed;
+        const roomCancellationPolicy = sourceMatchIsRecordRoom
+          ? { allowed: true, penalty: 0, waived: false }
+          : getRoomCancellationPolicy(changeApprovalSource);
         const roomCompetitionLabel = getRoomCompetitionLabel(selectedPost);
         const roomDisplayTitle = sourceMatch?.tournamentId
           ? getTournamentMatchDisplayTitle(sourceMatch, selectedPost.title)
@@ -3942,6 +4045,31 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               ? "팀 파티 포함"
               : "개인 매칭");
         const sourceMatchCancelCopy = getMatchCancelCopy(sourceMatch);
+        const canRemakeRoom = mine && (
+          Boolean(recruitingRoomTerminalStatus) ||
+          sourceMatch?.status === "cancelled"
+        );
+        const remakeRoom = () => {
+          if (!canRemakeRoom) return;
+          const remakeSource = sourceMatch
+            ? {
+                ...selectedPost,
+                ...sourceMatch,
+                visibility: selectedPost.visibility,
+                hostJoinMode: selectedPost.hostJoinMode,
+                teamOnly: selectedPost.teamOnly,
+                teamId: selectedPost.teamId,
+                targetTeamId: selectedPost.targetTeamId,
+                rules: { ...(selectedPost.rules ?? {}), ...(sourceMatch.rules ?? {}) },
+              }
+            : selectedPost;
+          navigate("/app/create", {
+            state: {
+              remakeDraft: getRoomRemakeDraft(remakeSource),
+              remakeSourceId: sourceMatch?.id ?? selectedPost.id,
+            },
+          });
+        };
         const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
         const referee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
         const showCaptainBadge = !individualOnlyRoom && (selectedPost.visibility === "private" || Boolean(sourceMatch));
@@ -4199,6 +4327,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             lobby={lobby}
             capacity={(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}
             assignmentMode={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment}
+            participantIds={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? sourceMatchCheckedInIds : null}
             renderParticipant={({ playerId, entry }) => {
               const user = userById[playerId];
               const position = getRoomSlotDisplayPosition(user, slotPositions, playerId, entry);
@@ -4206,8 +4335,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 <PlayerRoomSlot
                   user={user}
                   teams={app.state.teams}
-                  status={entry?.status}
-                  title={entry?.status === "ready" ? "참가" : "대기"}
+                  status={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? "ready" : entry?.status}
+                  title={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? "출석" : entry?.status === "ready" ? "참가" : "대기"}
                   mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
                   position={position}
                   badge={getRoomSlotBadge(playerId, entry, roomOwnerId, false, roomState, { showPartyBadge: false })}
@@ -4234,24 +4363,71 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const renderPickupRotation = () => roomPhaseViewModel.rotation ? (
           <section className="ui-panel ui-modal-section pickup-rotation-panel">
             <div className="ui-status-strip">
+              <span>팀 나누기</span>
+              <strong>{pickupAssignmentPolicy.label}</strong>
+            </div>
+            <small>{pickupAssignmentPolicy.description}</small>
+            <div className="ui-status-strip">
               <span>균등 교대</span>
               <strong>{roomPhaseViewModel.rotation.label}</strong>
             </div>
-            <small>교대 순서는 방장 또는 배정 심판이 정하고 직접 확정합니다.</small>
-            {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && canManageMatchCheckin ? (
-              <Button
-                type="button"
-                disabled={sourceMatchMissingStartAttendanceIds.length > 0 || !pickupAssignmentSidesComplete}
-                title={sourceMatchMissingStartAttendanceIds.length
-                  ? "출석 확인을 먼저 완료해 주세요."
-                  : !pickupAssignmentSidesComplete
-                    ? "A/B 출전 정원을 먼저 채워 주세요."
-                    : "A/B사이드와 대기 선수 배정을 확정합니다."}
-                onClick={() => app.actions.confirmPickupSideAssignment(sourceMatch.id, {
-                  rotationMode: roomPhaseViewModel.rotation.rotationMode,
-                  rotationIntervalMinutes: roomPhaseViewModel.rotation.rotationIntervalMinutes,
-                })}
-              >배정 확정</Button>
+            {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && !pickupAssignmentPolicy.decided && canManageMatchCheckin ? (
+              <div className="arena-room-edit-actions">
+                {PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS.map((option) => (
+                  <Button
+                    key={option.id}
+                    type="button"
+                    variant={option.id === "manual" ? "secondary" : "primary"}
+                    disabled={!pickupAssignmentAttendanceReady}
+                    title={pickupAssignmentAttendanceReady
+                      ? option.description
+                      : `출석자가 최소 ${pickupAssignmentSideCapacity * 2}명 필요합니다.`}
+                    onClick={() => app.actions.generatePickupSideAssignment(sourceMatch.id, option.id)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && !pickupAssignmentPolicy.decided && !canManageMatchCheckin ? (
+              <small>방장 또는 배정 심판이 출석자 기준 팀 배치 방식을 선택합니다.</small>
+            ) : null}
+            {roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment && pickupAssignmentPolicy.decided ? (
+              <div className="arena-room-edit-actions">
+                {canRequestPickupReroll ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={pickupRerollState.remaining <= 0 || pickupRerollState.usedByCurrentUser || !pickupRerollTrustReady}
+                    title={pickupRerollState.remaining <= 0
+                      ? "재배정 기회를 모두 사용했습니다."
+                      : pickupRerollState.usedByCurrentUser
+                        ? "한 사람은 한 번만 재배정을 요청할 수 있습니다."
+                        : !pickupRerollTrustReady
+                          ? "재배정에는 신뢰도 1점이 필요합니다."
+                          : "신뢰도 1점을 사용하며 방 채팅에 기록됩니다."}
+                    onClick={() => app.actions.generatePickupSideAssignment(sourceMatch.id, pickupAssignmentPolicy.mode)}
+                  >
+                    재배정 {pickupRerollState.count}/{pickupRerollState.limit}
+                  </Button>
+                ) : null}
+                {canManageMatchCheckin ? (
+                  <Button
+                    type="button"
+                    disabled={!pickupAssignmentSidesComplete}
+                    title={!pickupAssignmentSidesComplete
+                      ? "A/B 출전 정원을 먼저 채워 주세요."
+                      : "A/B사이드와 대기 선수 배정을 확정합니다."}
+                    onClick={() => app.actions.confirmPickupSideAssignment(sourceMatch.id, {
+                      rotationMode: roomPhaseViewModel.rotation.rotationMode,
+                      rotationIntervalMinutes: roomPhaseViewModel.rotation.rotationIntervalMinutes,
+                    })}
+                  >배정 확정</Button>
+                ) : null}
+              </div>
+            ) : null}
+            {pickupAssignmentPolicy.decided && sourceMatch?.ranked !== false ? (
+              <small>MMR 반영률: 현장 직접 90% · 완전 랜덤 100% · MMR 균형 110%</small>
             ) : null}
           </section>
         ) : null;
@@ -4534,36 +4710,121 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId) : app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)
                   )}
                   onCheckInPlayer={matchRoom ? ((sideName, playerId) => app.actions.checkInMatchPlayer(sourceMatch.id, sideName, playerId)) : null}
-                  onSetReserve={matchRoom && roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
+                  onSetReserve={matchRoom && (
+                    roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
+                    || pickupAssignmentPolicy.mode === "manual"
+                  )
                     ? ((entry, playerId, reserve) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, { side: entry.side, reserve }))
                     : null}
-                  onSetPlacement={matchRoom && roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
+                  onSetPlacement={matchRoom && (
+                    roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
+                    || pickupAssignmentPolicy.mode === "manual"
+                  )
                     ? ((playerId, placement) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, placement))
                     : null}
                   onSwapPlacement={matchRoom
                     && roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment
-                    && sourceMatchMissingStartAttendanceIds.length === 0
+                    && pickupAssignmentPolicy.automatic
                     ? ((firstPlayerId, secondPlayerId) => app.actions.swapPickupMatchPlayers(sourceMatch.id, firstPlayerId, secondPlayerId))
                     : null}
-                  allowSideMove={canMoveMatchSides && roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment}
-                  hostPlayerId={roomOwnerId}
+                  allowSideMove={canMoveMatchSides && (
+                    roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment
+                    || pickupAssignmentPolicy.mode === "manual"
+                  )}
+                  hostPlayerId={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? "" : roomOwnerId}
                   attendanceBySide={matchRoom ? sourceMatchAttendance : null}
                   requireMissingAttendance={canManageMatchCheckin}
                   currentUserId={app.currentUser.id}
                   poolMode={pickupPoolMode}
                   placementByPlayerId={sourceMatchPlacementByPlayerId}
+                  allowedPlayerIds={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? sourceMatchCheckedInIds : null}
                 />
               ) : null}
 
               {entryPoint === "recorder" ? null : renderMatchRecorderHandoffPanel()}
               {entryPoint === "recorder" ? null : renderMatchSubstitutionPanel()}
 
+              {scheduleChangePending && scheduleProposalProgress.proposal ? (
+                <section className="ui-panel ui-modal-section">
+                  <div className="ui-status-strip">
+                    <span>일정 변경 승인</span>
+                    <strong>{scheduleProposalProgress.approvedIds.length}/{scheduleProposalProgress.requiredIds.length}</strong>
+                  </div>
+                  <p>
+                    {[scheduleProposalProgress.proposal.scheduledDate, scheduleProposalProgress.proposal.scheduledTime]
+                      .filter(Boolean).join(" ") || "즉시"}
+                    {" · "}
+                    {scheduleProposalProgress.proposal.court || "구장 미정"}
+                  </p>
+                  <small>경기 6시간 전까지 전원이 승인해야 합니다. 그 전까지 기존 일정과 구장이 유지되며 새 참가·초대 수락은 잠시 중단됩니다.</small>
+                  {currentUserCanRespondSchedule ? (
+                    <div className="arena-room-edit-actions">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => (sourceMatch
+                          ? app.actions.respondMatchScheduleProposal(sourceMatch.id, scheduleProposalProgress.proposal.id, "reject")
+                          : app.actions.respondRecruitingScheduleProposal(selectedPost.id, scheduleProposalProgress.proposal.id, "reject"))}
+                      >
+                        반려
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => (sourceMatch
+                          ? app.actions.respondMatchScheduleProposal(sourceMatch.id, scheduleProposalProgress.proposal.id, "approve")
+                          : app.actions.respondRecruitingScheduleProposal(selectedPost.id, scheduleProposalProgress.proposal.id, "approve"))}
+                      >
+                        승인
+                      </Button>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {ruleAcknowledgementPending ? (
+                <section className="ui-panel ui-modal-section">
+                  <div className="ui-status-strip">
+                    <span>변경 내용 확인</span>
+                    <strong>{ruleAcknowledgedIds.length}/{ruleAcknowledgementRequiredIds.length}</strong>
+                  </div>
+                  <small>현재 참가자 전원이 최신 규칙을 확인해야 매치 확정 또는 경기 시작이 가능합니다.</small>
+                  {currentUserNeedsRuleAcknowledgement ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => (sourceMatch
+                        ? app.actions.acknowledgeMatchRoomRules(sourceMatch.id, currentRuleRevision)
+                        : app.actions.acknowledgeRecruitingRoomRules(selectedPost.id, currentRuleRevision))}
+                    >
+                      변경 내용 확인
+                    </Button>
+                  ) : null}
+                </section>
+              ) : null}
+
               {roomPhaseViewModel.showRules ? <div className="arena-room-rule-panel">
                 <div className="arena-room-rule-head">
                   <strong>규칙</strong>
-                  {canEditSourceRoomRules ? (
-                    <Button type="button" size="sm" variant="secondary" onClick={() => (roomEditDraft ? closeRoomEdit(selectedPost) : openRoomEdit(selectedPost))}>
-                      {roomEditDraft ? "수정 닫기" : "방 수정"}
+                  {canOperateSourceRoomRules ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={!roomEditAvailable}
+                      title={roomEditAvailability.reason === "limit"
+                        ? "방 수정은 한 번만 가능합니다."
+                        : roomEditAvailability.reason
+                          ? "방 수정은 경기 시작 12시간 전까지만 가능합니다."
+                          : ""}
+                      onClick={() => (roomEditDraft ? closeRoomEdit(selectedPost) : openRoomEdit(selectedPost))}
+                    >
+                      {roomEditAvailability.reason === "limit"
+                        ? "수정 1회 사용 완료"
+                        : !roomEditAvailable
+                          ? "수정 가능 시간 종료"
+                          : roomEditDraft ? "수정 닫기" : "방 수정"}
                     </Button>
                   ) : null}
                 </div>
@@ -4659,6 +4920,36 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                           ))}
                         </select>
                       </label>
+                      <label>
+                        일정 방식
+                        <select
+                          value={roomEditDraft.timingType}
+                          onChange={(event) => updateRoomEditDraft(selectedPost, { timingType: event.target.value })}
+                        >
+                          <option value="scheduled">날짜·시간 지정</option>
+                          <option value="instant">즉시 경기</option>
+                        </select>
+                      </label>
+                      {roomEditDraft.timingType !== "instant" ? (
+                        <>
+                          <label>
+                            경기 날짜
+                            <input
+                              type="date"
+                              value={roomEditDraft.scheduledDate}
+                              onChange={(event) => updateRoomEditDraft(selectedPost, { scheduledDate: event.target.value })}
+                            />
+                          </label>
+                          <label>
+                            경기 시간
+                            <input
+                              type="time"
+                              value={roomEditDraft.scheduledTime}
+                              onChange={(event) => updateRoomEditDraft(selectedPost, { scheduledTime: event.target.value })}
+                            />
+                          </label>
+                        </>
+                      ) : null}
                       {matchRoom && sourceMatchPhase?.phase === "checkin" ? (
                         <label>
                           매치 방식
@@ -4719,25 +5010,30 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     {!roomEditBenchCapacityValid ? <span className="form-warning">현재 후보 인원이 {maxSideReserveFilled}명이라 후보 정원을 그보다 낮출 수 없습니다.</span> : null}
                     {!roomEditPickupCapacityValid ? <span className="form-warning">현재 참가자가 {pickupResize.participantCount}명이므로 전체 참가 정원을 {pickupResize.participantCapacity}명으로 줄일 수 없습니다.</span> : null}
                     {!roomEditMeetingValid ? <span className="form-warning">실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요.</span> : null}
+                    {!roomEditScheduleValid ? <span className="form-warning">변경할 경기 날짜와 시간을 모두 선택해 주세요.</span> : null}
                     {roomEditStatus.error ? <span className="form-warning" role="alert">{roomEditStatus.error}</span> : null}
                     <div className="arena-room-edit-actions">
                       <Button type="button" size="sm" variant="secondary" disabled={roomEditStatus.pending} onClick={() => closeRoomEdit(selectedPost)}>취소</Button>
                       <Button
                         type="button"
                         size="sm"
-                        disabled={roomEditStatus.pending || !roomEditCapacityValid || !roomEditBenchCapacityValid || !roomEditPickupCapacityValid || !roomEditMeetingValid}
+                        disabled={roomEditStatus.pending || !roomEditCapacityValid || !roomEditBenchCapacityValid || !roomEditPickupCapacityValid || !roomEditMeetingValid || !roomEditScheduleValid}
                         onClick={() => void saveRoomEdit(selectedPost)}
                       >
                         {roomEditStatus.pending ? "저장 중" : "수정 저장"}
                       </Button>
                     </div>
-                    <small>{matchRoom ? "저장하면 경기 전 동의를 다시 받아야 합니다." : "현재 참가 슬롯은 그대로 유지됩니다."}</small>
+                    <small>
+                      참가자가 있으면 규칙 변경은 각 참가자의 확인이 필요합니다. 일정·구장 변경은 전원이 승인할 때까지 기존 일정이 유지됩니다.
+                    </small>
                   </div>
                 ) : null}
                 {pickupRoom ? (
                   <>
-                    <span>친선 경기로 MMR을 반영하지 않습니다.</span>
-                    <span>체크인 후 방장 또는 배정 심판이 A/B와 교대 순서를 직접 확정합니다.</span>
+                    <span>{sourceMatch?.ranked === false || selectedPost.ranked === false
+                      ? "친선 경기로 MMR을 반영하지 않습니다."
+                      : "경쟁 경기로 팀 배치 방식에 따라 MMR 반영률이 달라집니다."}</span>
+                    <span>{pickupAssignmentPolicy.description} 최종 배치는 방장 또는 배정 심판이 확정합니다.</span>
                   </>
                 ) : (
                   <>
@@ -4769,6 +5065,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <div className="arena-owner-panel">
                     <strong>{sourceMatchAction.label}</strong>
                     <span>{sourceMatchAction.detail}</span>
+                    {canRemakeRoom ? (
+                      <Button type="button" variant="secondary" onClick={remakeRoom}>
+                        <RotateCcw size={17} /> 같은 설정으로 다시 만들기
+                      </Button>
+                    ) : null}
                     {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
                     ) : null}
@@ -4866,7 +5167,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && canCancelSourceMatch ? (
-                      <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.cancelMatch(sourceMatch.id)}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="danger-button"
+                        disabled={!roomCancellationPolicy.allowed}
+                        title={!roomCancellationPolicy.allowed ? "경기 시작 2시간 전부터는 취소할 수 없습니다." : ""}
+                        onClick={() => app.actions.cancelMatch(sourceMatch.id)}
+                      >
                         {sourceMatchCancelCopy.actionLabel}
                       </Button>
                     ) : null}
@@ -4880,6 +5188,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <div className="arena-owner-panel">
                     <strong>{recruitingRoomTerminalStatus.label}</strong>
                     <span>{recruitingRoomTerminalStatus.detail}</span>
+                    {canRemakeRoom ? (
+                      <Button type="button" variant="secondary" onClick={remakeRoom}>
+                        <RotateCcw size={17} /> 같은 설정으로 다시 만들기
+                      </Button>
+                    ) : null}
                   </div>
                 ) : mine ? (
                   <div className="arena-owner-panel">
@@ -5096,7 +5409,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <Button
                     type="button"
                     variant="primary"
-                    disabled={!lobby.canConfirm || !roomTimingStatus.canConfirm || confirmingMatchId === selectedPost.id}
+                    disabled={
+                      !lobby.canConfirm
+                      || !roomTimingStatus.canConfirm
+                      || scheduleChangePending
+                      || ruleAcknowledgementPending
+                      || confirmingMatchId === selectedPost.id
+                    }
+                    title={scheduleChangePending
+                      ? "일정 또는 구장 변경안을 전원이 승인해야 합니다."
+                      : ruleAcknowledgementPending
+                        ? "현재 참가자 전원이 최신 규칙을 확인해야 합니다."
+                        : ""}
                     onClick={() => confirmQueueRoom(selectedPost)}
                   >
                     <Swords size={18} />
@@ -5114,8 +5438,15 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   </Button>
                 ) : null}
                 {!sourceRoomReadOnly && !matchRoom && mine ? (
-                  <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.closeRecruitingPost(selectedPost.id)}>
-                    경기 취소
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="danger-button"
+                    disabled={!roomCancellationPolicy.allowed}
+                    title={!roomCancellationPolicy.allowed ? "경기 시작 2시간 전부터는 취소할 수 없습니다." : ""}
+                    onClick={() => app.actions.closeRecruitingPost(selectedPost.id)}
+                  >
+                    {roomCancellationPolicy.penalty > 0 ? `경기 취소 · 신뢰도 -${roomCancellationPolicy.penalty}` : "경기 취소"}
                   </Button>
                 ) : null}
               </div>

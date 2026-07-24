@@ -669,6 +669,17 @@ function compactRecruitingRoomState(roomState = {}, profileId = "", options = {}
     slotPositions: roomState.slotPositions ?? {},
     statRecorders: roomState.statRecorders ?? {},
     ruleRevision: roomState.ruleRevision,
+    ruleChangedAt: roomState.ruleChangedAt,
+    roomEditCount: roomState.roomEditCount,
+    roomEditedAt: roomState.roomEditedAt,
+    roomEditedBy: roomState.roomEditedBy,
+    cancelledAt: roomState.cancelledAt,
+    cancellationReason: roomState.cancellationReason,
+    cancelPenalty: roomState.cancelPenalty,
+    cancelPenaltyWaived: roomState.cancelPenaltyWaived,
+    ruleAcknowledgementRequiredIds: roomState.ruleAcknowledgementRequiredIds ?? [],
+    ruleAcknowledgedIds: roomState.ruleAcknowledgedIds ?? [],
+    scheduleProposal: roomState.scheduleProposal ?? null,
     approvalModeA: roomState.approvalModeA,
     approvalModeB: roomState.approvalModeB,
   };
@@ -739,6 +750,7 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
       formationMode: rules.formationMode,
       playingTimePolicy: rules.playingTimePolicy,
       lineupSelectionPolicy: rules.lineupSelectionPolicy,
+      pickupTeamAssignmentMode: rules.pickupTeamAssignmentMode,
       rotationMode: rules.rotationMode,
       rotationIntervalMinutes: rules.rotationIntervalMinutes,
       paymentPolicy: rules.paymentPolicy,
@@ -909,6 +921,8 @@ async function queryRecruitingFeedPage(client, {
   feedScope = PROFILE_RECRUITING_FEED_SCOPE,
   relations = [],
   status = "open",
+  statuses = [],
+  isActive = true,
   regionKey = "",
   rowLimit = RECRUITING_FEED_ROW_MAX_LIMIT,
   safeOffset = 0,
@@ -925,11 +939,11 @@ async function queryRecruitingFeedPage(client, {
     .from("user_room_feed")
     .select(selectColumns)
     .eq("entity_type", "recruiting")
-    .eq("is_active", true)
-    .eq("status", status)
+    .eq("is_active", isActive)
     .order("sort_at", { ascending: false, nullsFirst: false })
     .order("entity_id", { ascending: false })
     .range(safeOffset, safeOffset + rowLimit - 1);
+  query = statuses.length ? query.in("status", statuses) : query.eq("status", status);
   if (useFeedScope) {
     query = query.eq("feed_scope", feedScope);
     if (feedScope !== PUBLIC_RECRUITING_FEED_SCOPE) query = query.eq("profile_id", profileId);
@@ -953,6 +967,8 @@ async function fetchRecruitingFeedPage(client, {
   feedScope = "",
   relations = [],
   status = "open",
+  statuses = [],
+  isActive = true,
   regionKey = "",
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
   offset = 0,
@@ -972,6 +988,8 @@ async function fetchRecruitingFeedPage(client, {
     feedScope: scope,
     relations,
     status,
+    statuses,
+    isActive,
     regionKey,
     rowLimit,
     safeOffset,
@@ -1030,6 +1048,17 @@ async function fetchRecruitingFeedPage(client, {
     nextOffset,
     cursor: String(nextOffset),
     exhausted: rows.length < rowLimit,
+  };
+}
+
+function mergeRecruitingFeedPages(activePage, terminalPage) {
+  if (!activePage) return terminalPage;
+  if (!terminalPage?.ids?.length) return activePage;
+  return {
+    ...activePage,
+    ids: uniqueIds([...(activePage.ids ?? []), ...(terminalPage.ids ?? [])]),
+    cards: mergeFeedCards(activePage.cards ?? [], terminalPage.cards ?? []),
+    source: `${activePage.source ?? "feed"}+${terminalPage.source ?? "terminal_feed"}`,
   };
 }
 
@@ -1771,22 +1800,34 @@ export async function loadCurrentUserRecruitingFeedList(context, {
   roomScope = "",
   skipCardReferenceRows = false,
   preferFreshRows = false,
+  includeClosed = false,
 } = {}) {
   if (!context.profileId) {
     return loadCompactRecruitingList(context, { adminLevel, limit, mineOnly: true });
   }
   const relations = getRecruitingMineRelations(roomScope);
-  const [pageResult, feedCounts] = await Promise.all([
+  const [activePageResult, terminalPageResult, feedCounts] = await Promise.all([
     fetchRecruitingFeedPage(context.supabase, {
       profileId: context.profileId,
       relations,
       limit,
       includeCards: true,
     }),
+    includeClosed
+      ? fetchRecruitingFeedPage(context.supabase, {
+          profileId: context.profileId,
+          relations,
+          statuses: ["closed", "cancelled"],
+          isActive: false,
+          limit,
+          includeCards: true,
+        })
+      : Promise.resolve(null),
     includeFeedCounts
       ? fetchRecruitingFeedCounts(context.supabase, context.profileId)
       : Promise.resolve(null),
   ]);
+  const pageResult = mergeRecruitingFeedPages(activePageResult, terminalPageResult);
   if (pageResult) {
     return loadCompactRecruitingList(context, {
       adminLevel,

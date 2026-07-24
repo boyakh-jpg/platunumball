@@ -1,5 +1,5 @@
 import { DEFAULT_BENCH_CAPACITY, MAX_BENCH_CAPACITY, RECORD_TYPES, getModeSize } from "./constants.js";
-import { getDefaultMatchRules, getMatchRuleSummary } from "./matchRules.js";
+import { getDefaultMatchRules, getMatchRuleSummary, getMatchRulesPayload } from "./matchRules.js";
 
 export const MATCH_INTENT_OPTIONS = Object.freeze([
   {
@@ -48,6 +48,30 @@ export const PICKUP_ROTATION_MODE_OPTIONS = Object.freeze([
   { id: "interval", label: "시간 간격으로" },
   { id: "manual", label: "직접 교대" },
 ]);
+
+export const PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS = Object.freeze([
+  {
+    id: "manual",
+    label: "현장 직접 배치",
+    description: "체크인한 참가자를 방장 또는 심판이 직접 나눕니다.",
+  },
+  {
+    id: "random",
+    label: "완전 랜덤 배치",
+    description: "체크인한 참가자를 무작위로 나눈 뒤 방장 또는 심판이 확정합니다.",
+  },
+  {
+    id: "mmr_balanced",
+    label: "MMR 균형 배치",
+    description: "체크인한 참가자의 MMR 합이 비슷하도록 나눈 뒤 방장 또는 심판이 확정합니다.",
+  },
+]);
+
+export const PICKUP_TEAM_ASSIGNMENT_RATING_SCALES = Object.freeze({
+  manual: 0.9,
+  random: 1,
+  mmr_balanced: 1.1,
+});
 
 export const PAYMENT_POLICY_OPTIONS = Object.freeze([
   { id: "equal_all_confirmed", label: "확정 인원 전원 균등" },
@@ -120,6 +144,7 @@ const MATCH_INTENT_IDS = new Set(MATCH_INTENT_OPTIONS.map((option) => option.id)
 const MATCH_PURPOSE_IDS = new Set(MATCH_PURPOSE_OPTIONS.map((option) => option.id));
 const MATCH_FORMATION_IDS = new Set(MATCH_FORMATION_OPTIONS.map((option) => option.id));
 const PLAYING_TIME_POLICY_IDS = new Set(PLAYING_TIME_POLICY_OPTIONS.map((option) => option.id));
+const PICKUP_TEAM_ASSIGNMENT_MODE_IDS = new Set(PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS.map((option) => option.id));
 const PAYMENT_POLICY_IDS = new Set(PAYMENT_POLICY_OPTIONS.map((option) => option.id));
 const VENUE_PAYMENT_TYPE_IDS = new Set(VENUE_PAYMENT_TYPE_OPTIONS.map((option) => option.id));
 const VENUE_SECURED_IDS = new Set(VENUE_SECURED_OPTIONS.map((option) => option.id));
@@ -184,6 +209,24 @@ export function getLegacyMatchIntent(source = {}) {
   return getMatchPurpose(source) === "friendly" ? "friendly" : "standard_competitive";
 }
 
+export function getPickupTeamAssignmentMode(source = {}) {
+  const policySource = getMatchCreationPolicySource(source);
+  return PICKUP_TEAM_ASSIGNMENT_MODE_IDS.has(policySource.pickupTeamAssignmentMode)
+    ? policySource.pickupTeamAssignmentMode
+    : "manual";
+}
+
+export function getPickupTeamAssignmentModeOption(source = {}) {
+  const mode = typeof source === "string" ? source : getPickupTeamAssignmentMode(source);
+  return PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS.find((option) => option.id === mode)
+    ?? PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS[0];
+}
+
+export function getPickupTeamAssignmentRatingScale(source = {}) {
+  const mode = typeof source === "string" ? source : getPickupTeamAssignmentMode(source);
+  return PICKUP_TEAM_ASSIGNMENT_RATING_SCALES[mode] ?? PICKUP_TEAM_ASSIGNMENT_RATING_SCALES.manual;
+}
+
 export function getModeClockPreset(mode = "5v5", presetId = "community") {
   const defaults = getDefaultMatchRules(mode);
   if (mode !== "5v5") {
@@ -232,6 +275,7 @@ export function getMatchIntentPresetPatch(intent = "standard_competitive", mode 
     waitlistCapacity: 3,
     playingTimePolicy: pickup ? "equal_rotation" : "appearance_guaranteed",
     lineupSelectionPolicy: pickup ? "no_fixed_starter" : undefined,
+    pickupTeamAssignmentMode: pickup ? "manual" : undefined,
     paymentPolicy: "equal_all_confirmed",
     benchPaymentAcknowledged: true,
     ranked: competitive,
@@ -249,7 +293,7 @@ export function getMatchConfigurationChangePatch(source = {}, change = {}) {
   const requestedPurpose = MATCH_PURPOSE_IDS.has(change.matchPurpose)
     ? change.matchPurpose
     : getMatchPurpose(source);
-  const matchPurpose = formationMode === "pickup" ? "friendly" : requestedPurpose;
+  const matchPurpose = requestedPurpose;
   const matchIntent = formationMode === "pickup"
     ? "pickup"
     : matchPurpose === "friendly" ? "friendly" : "standard_competitive";
@@ -257,6 +301,7 @@ export function getMatchConfigurationChangePatch(source = {}, change = {}) {
     ...getMatchIntentChangePatch(source, matchIntent),
     matchPurpose,
     formationMode,
+    ranked: matchPurpose === "competitive",
   };
 }
 
@@ -323,13 +368,71 @@ export function getDefaultMatchCreationPolicy(mode = "5v5") {
   };
 }
 
+export function getRoomRemakeDraft(source = {}) {
+  const sourceRules = source?.rules && typeof source.rules === "object" ? source.rules : {};
+  const normalizedSource = {
+    ...sourceRules,
+    ...source,
+    rules: sourceRules,
+  };
+  const mode = String(normalizedSource.mode || "5v5");
+  const policy = getMatchCreationPolicyPayload(normalizedSource);
+  const rules = getMatchRulesPayload(normalizedSource, { mode });
+  const visibility = normalizedSource.visibility === "public" ? "public" : "private";
+  const pickup = policy.formationMode === "pickup";
+  const teamRoom = !pickup && policy.hostJoinMode === "team";
+  const teamAId = teamRoom
+    ? normalizedSource.teamId ?? normalizedSource.teamAId ?? normalizedSource.teamA?.teamId
+    : undefined;
+  const teamBId = teamRoom && visibility === "private"
+    ? normalizedSource.targetTeamId ?? normalizedSource.opponentTeamId ?? normalizedSource.teamBId ?? normalizedSource.teamB?.teamId
+    : undefined;
+  const memo = String(normalizedSource.memo ?? "")
+    .split(/\r?\n/)
+    .filter((line) => !/^(구장 예약|공개방|비공개방):/.test(line.trim()))
+    .join("\n")
+    .trim();
+
+  return {
+    recordType: RECORD_TYPES.match,
+    visibility,
+    timingType: normalizedSource.timingType === "instant" ? "instant" : "scheduled",
+    scheduledDate: "",
+    scheduledTime: "",
+    title: String(normalizedSource.title || `${mode} 경기`).trim(),
+    mode,
+    ...rules,
+    ...policy,
+    courtId: normalizedSource.courtId ?? normalizedSource.court_id ?? "",
+    court: String(normalizedSource.court ?? normalizedSource.courtName ?? "").trim(),
+    teamAId,
+    teamBId,
+    playerIds: [],
+    reservePlayerIds: [],
+    opponentPlayerIds: [],
+    opponentReservePlayerIds: [],
+    opponentLeaderId: "",
+    approvalModeA: normalizedSource.approvalModeA ?? "leader",
+    approvalModeB: normalizedSource.approvalModeB ?? "leader",
+    mmrRangeMode: normalizedSource.mmrRangeMode ?? "narrow",
+    ageRestriction: normalizedSource.ageRestriction ?? "any",
+    refereeWanted: Boolean(normalizedSource.refereeWanted || normalizedSource.refereeId),
+    refereeId: "",
+    preRegistered: normalizedSource.preRegistered !== false,
+    objectionWindow: normalizedSource.objectionWindow ?? `${Number(normalizedSource.disputeMinutes) || 15}분`,
+    evidence: [],
+    memo,
+    stakes: String(normalizedSource.stakes ?? ""),
+  };
+}
+
 export function getMatchCreationPolicyPayload(source = {}) {
   const policySource = getMatchCreationPolicySource(source);
   const mode = String(policySource.mode || "5v5");
   const onCourtCount = getModeSize(mode, 5);
   const benchCapacity = clampInteger(policySource.benchCapacity, DEFAULT_BENCH_CAPACITY, 0, MAX_BENCH_CAPACITY);
   const formationMode = getMatchFormationMode(policySource);
-  const matchPurpose = formationMode === "pickup" ? "friendly" : getMatchPurpose(policySource);
+  const matchPurpose = getMatchPurpose(policySource);
   const matchIntent = getLegacyMatchIntent({ ...policySource, matchPurpose, formationMode });
   const pickup = formationMode === "pickup";
   const playingTimePolicy = pickup
@@ -364,6 +467,7 @@ export function getMatchCreationPolicyPayload(source = {}) {
     : undefined;
   const requestedRotationMinutes = clampInteger(policySource.rotationIntervalMinutes, 5, 3, 10);
   const rotationIntervalMinutes = [3, 5, 7, 10].includes(requestedRotationMinutes) ? requestedRotationMinutes : 5;
+  const pickupTeamAssignmentMode = pickup ? getPickupTeamAssignmentMode(policySource) : undefined;
 
   return {
     matchIntent,
@@ -379,10 +483,11 @@ export function getMatchCreationPolicyPayload(source = {}) {
     playingTimePolicy,
     rotationMode,
     rotationIntervalMinutes: pickup && rotationMode === "interval" ? rotationIntervalMinutes : undefined,
+    pickupTeamAssignmentMode,
     lineupSelectionPolicy: pickup ? "no_fixed_starter" : policySource.hostJoinMode === "team" ? "team_captain_assigns" : "automatic",
     hostJoinMode: pickup ? "player" : policySource.hostJoinMode === "team" ? "team" : "player",
     teamOnly: pickup ? false : policySource.hostJoinMode === "team" || policySource.teamOnly === true,
-    ranked: pickup ? false : matchPurpose === "competitive" && policySource.ranked !== false,
+    ranked: matchPurpose === "competitive" && policySource.ranked !== false,
     official: pickup ? false : Boolean(policySource.official),
     mmrLimitMode: pickup ? "off" : policySource.mmrLimitMode,
     paymentPolicy,
@@ -469,8 +574,8 @@ export function getMatchCreationValidation(source = {}) {
     if (policy.hostJoinMode !== "player" || policy.teamOnly === true) {
       errors.push("픽업은 개인 참가 방식으로만 만들 수 있습니다.");
     }
-    if (policy.ranked !== false || policy.official !== false) {
-      errors.push("픽업은 MMR을 반영하지 않습니다.");
+    if (policy.official !== false) {
+      errors.push("픽업은 공식 경기로 만들 수 없습니다.");
     }
     warnings.push("체크인에서 방장 또는 배정 심판이 팀 배치와 교대 순서를 확정해야 시작할 수 있습니다.");
   }
@@ -529,7 +634,7 @@ export function getMatchCreationSummary(source = {}) {
       { label: "경기 목적", value: purpose.label },
       { label: "팀 구성", value: pickup ? "현장 픽업" : "경기 전 구성" },
       { label: "명단", value: `${policySource.mode || "5v5"} · ${rosterText}` },
-      ...(pickup ? [{ label: "팀 배치", value: "체크인에서 방장·심판이 직접 배치" }] : []),
+      ...(pickup ? [{ label: "팀 배치", value: "출석 후 현장 결정" }] : []),
       ...(pickup ? [{ label: "운영 정책", value: policy.rotationMode === "period" ? "쿼터·하프 종료마다 균등 교대" : policy.rotationMode === "interval" ? `${policy.rotationIntervalMinutes}분 간격 균등 교대` : "방장·심판 직접 교대" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
       { label: "경기 규칙", value: getMatchRuleSummary(policySource, policySource.mode) },
       ...getMatchOperationsSummaryRows(policy),
@@ -538,7 +643,7 @@ export function getMatchCreationSummary(source = {}) {
       { label: "일정", value: policySource.timingType === "instant" ? "즉시" : [policySource.scheduledDate, policySource.scheduledTime].filter(Boolean).join(" ") || "일정 미정" },
     ],
     sentence: pickup
-      ? "개인 참가자를 통합 풀로 모집합니다. 체크인에서 방장 또는 배정 심판이 A/B와 교대 순서를 직접 확정하며 MMR은 반영되지 않습니다."
+      ? `개인 참가자를 통합 풀로 모집하고 출석 후 현장에서 팀 배치 방식을 정합니다.${policy.ranked ? " 최종 방식에 따라 MMR 반영률이 달라집니다." : " 친선전은 MMR을 반영하지 않습니다."}`
       : policy.benchCapacity > 0
       ? `${rosterText}입니다. 후보의 출전 정책은 '${playingTime}', 비용 정책은 '${payment}'입니다.`
       : `${rosterText}이며 비용 정책은 '${payment}'입니다.`,

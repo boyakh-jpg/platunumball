@@ -109,7 +109,7 @@
 
 .om-view-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -3932,7 +3932,7 @@ html[data-theme="light"] .om-room-link {
 
 .om-view-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -5233,7 +5233,10 @@ html[data-theme="light"] .om-calendar-filter-bar {
     grid-column: span 2;
   }
 
-  .om-view-grid > .om-view-card:nth-last-child(-n + 2) {
+}
+
+@media (max-width: 640px) {
+  .om-view-grid > .om-view-card {
     grid-column: span 3;
   }
 }

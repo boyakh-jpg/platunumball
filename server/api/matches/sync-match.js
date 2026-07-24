@@ -109,6 +109,18 @@ export function getMatchBenchPolicyError(error = {}) {
   if (errorText.includes("match_record_roster_exact_capacity_required") || errorText.includes("match_side_leader_required")) {
     return { statusCode: 400, message: "match_record_roster_invalid" };
   }
+  if (errorText.includes("room_edit_limit_reached")) {
+    return { statusCode: 409, message: "room_edit_limit_reached" };
+  }
+  if (errorText.includes("room_edit_window_closed")) {
+    return { statusCode: 409, message: "room_edit_window_closed" };
+  }
+  if (errorText.includes("room_schedule_target_too_soon")) {
+    return { statusCode: 409, message: "room_schedule_target_too_soon" };
+  }
+  if (errorText.includes("room_cancel_locked")) {
+    return { statusCode: 409, message: "room_cancel_locked" };
+  }
   if (errorText.includes("match_room_edit_locked")) {
     return { statusCode: 409, message: "match_room_edit_locked" };
   }
@@ -1116,12 +1128,14 @@ const MATCH_RECORD_ROSTER_ACTION = "setMatchRecordTeamRoster";
 const MATCH_RECORD_SETUP_ACTION = "setMatchRecordParticipants";
 
 const PARTICIPANT_MATCH_ACTIONS = new Set([
+  "acknowledgeMatchRoomRules",
   "agreeMatch",
   "approveMatch",
   "confirmMatchRecordParticipation",
   "toggleMatchStar",
   "submitMatchThumbs",
   "disputeMatch",
+  "respondMatchScheduleProposal",
 ]);
 
 const REFEREE_ELIGIBILITY_ACTIONS = new Set([
@@ -1220,6 +1234,11 @@ function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch
       !existingMatch?.result
     );
   }
+  if (action === "generatePickupSideAssignment") {
+    return isMatchOperator(profileId, existingMatch, nextMatch)
+      || existingParticipants.has(profileId)
+      || nextParticipants.has(profileId);
+  }
   if (OPERATOR_MATCH_ACTIONS.has(action)) return isMatchOperator(profileId, existingMatch, nextMatch);
   if (action === "submitMatchResult") return canSubmitResult(profileId, existingMatch, nextMatch);
   if (PARTICIPANT_MATCH_ACTIONS.has(action)) return existingParticipants.has(profileId) || nextParticipants.has(profileId);
@@ -1297,12 +1316,14 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
 }
 
 const SQL_REDUCER_MATCH_ACTIONS = new Set([
+  "acknowledgeMatchRoomRules",
   "addMatchLatePlayer",
   "agreeMatch",
   "approveMatch",
   "cancelMatch",
   "checkInMatchPlayer",
   "confirmPickupSideAssignment",
+  "generatePickupSideAssignment",
   "confirmMatchRecordParticipation",
   "deleteSoloRecord",
   "disputeMatch",
@@ -1325,6 +1346,7 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "substituteMatchPlayer",
   "toggleMatchStar",
   "updateMatchRoomRules",
+  "respondMatchScheduleProposal",
   "updateTournamentMatchSchedule",
   "voidMatch",
 ]);
@@ -1343,6 +1365,9 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_approval_action") ||
     message.includes("rankball_match_checkin_action") ||
     message.includes("rankball_match_confirm_pickup_assignment") ||
+    message.includes("rankball_match_generate_pickup_assignment") ||
+    message.includes("rankball_match_rule_ack_action") ||
+    message.includes("rankball_match_schedule_response_action") ||
     message.includes("rankball_match_record_participation_action") ||
     message.includes("rankball_match_dispute_action") ||
     message.includes("rankball_match_resolve_dispute_action") ||
@@ -1383,6 +1408,7 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "cancelMatch",
     "checkInMatchPlayer",
     "confirmPickupSideAssignment",
+    "generatePickupSideAssignment",
     "confirmMatchRecordParticipation",
     "deleteSoloRecord",
     "disputeMatch",
@@ -1406,6 +1432,8 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "substituteMatchPlayer",
     "toggleMatchStar",
     "updateMatchRoomRules",
+    "acknowledgeMatchRoomRules",
+    "respondMatchScheduleProposal",
     "updateTournamentMatchSchedule",
     "voidMatch",
   ].includes(operation?.action) && Boolean(operation?.matchId);
@@ -1445,6 +1473,9 @@ function getSqlMatchReloadPredicate(operation = {}) {
   }
   if (action === "confirmPickupSideAssignment") {
     return (match) => match?.rules?.sideAssignmentStatus === "confirmed";
+  }
+  if (action === "generatePickupSideAssignment") {
+    return (match) => match?.rules?.sideAssignmentStatus === "draft";
   }
   return null;
 }
@@ -1501,6 +1532,33 @@ async function assertMatchTeamPlacementSide(context, operation = {}, matchId = "
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "acknowledgeMatchRoomRules" && operation.matchId) {
+    const { data, error } = await context.supabase.rpc("rankball_match_rule_ack_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId,
+      p_rule_revision: Number(operation.revision ?? 0),
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_rule_ack_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
+  if (operation.action === "respondMatchScheduleProposal" && operation.matchId) {
+    const { data, error } = await context.supabase.rpc("rankball_match_schedule_response_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId,
+      p_proposal_id: operation.proposalId ?? "",
+      p_decision: operation.decision ?? "approve",
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_schedule_response_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
   if (operation.action === "updateMatchRoomRules" && operation.matchId) {
     const { data, error } = await context.supabase.rpc("rankball_match_room_update_action", {
       p_actor_profile_id: context.profileId,
@@ -1600,6 +1658,21 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    rejectSqlMatchFallback(data);
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
+  if (operation.action === "generatePickupSideAssignment" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_generate_pickup_assignment", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_assignment_mode: operation.assignmentMode ?? "",
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "pickup_assignment_rpc_required");
       throw error;
     }
     rejectSqlMatchFallback(data);

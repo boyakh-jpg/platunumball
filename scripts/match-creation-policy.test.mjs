@@ -7,6 +7,7 @@ import {
   MATCH_FORMATION_OPTIONS,
   MATCH_INTENT_OPTIONS,
   MATCH_PURPOSE_OPTIONS,
+  PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS,
   RECORD_COMPOSITION_OPTIONS,
   RECORD_ENTRY_MODE_OPTIONS,
   getMatchCreationPolicyPayload,
@@ -102,16 +103,36 @@ test("pickup preset reuses player rooms without claiming automatic rotation", ()
     assert.equal(policy.paymentPolicy, "equal_all_confirmed");
     assert.equal(validation.errors.length, 0);
     assert.match(validation.warnings.join(" "), /팀 배치/);
-    assert.equal(summary.rows.find((row) => row.label === "팀 배치")?.value, "체크인에서 방장·심판이 직접 배치");
-    assert.match(summary.sentence, /직접 확정/);
+    assert.equal(summary.rows.find((row) => row.label === "팀 배치")?.value, "출석 후 현장 결정");
+    assert.match(summary.sentence, /현장에서 팀 배치 방식을 정합니다/);
     assert.doesNotThrow(() => validatePickupRecruitingShape(draft));
   }
 });
 
-test("pickup validation normalizes stale team and ranked draft values", () => {
+test("legacy pickup assignment mode is preserved without locking the creation summary", () => {
+  assert.deepEqual(
+    PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS.map((option) => option.id),
+    ["manual", "random", "mmr_balanced"],
+  );
+  for (const option of PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS) {
+    const draft = {
+      mode: "3v3",
+      ...getMatchIntentPresetPatch("pickup", "3v3"),
+      pickupTeamAssignmentMode: option.id,
+    };
+    const policy = getMatchCreationPolicyPayload(draft);
+    const summary = getMatchCreationSummary(draft);
+    assert.equal(policy.pickupTeamAssignmentMode, option.id);
+    assert.equal(summary.rows.find((row) => row.label === "팀 배치")?.value, "출석 후 현장 결정");
+    assert.match(summary.sentence, /현장에서 팀 배치 방식을 정합니다/);
+  }
+});
+
+test("pickup validation normalizes stale team values while preserving an explicit competitive purpose", () => {
   const validation = getMatchCreationValidation({
     mode: "3v3",
     matchIntent: "pickup",
+    matchPurpose: "competitive",
     hostJoinMode: "team",
     teamOnly: true,
     ranked: true,
@@ -119,7 +140,7 @@ test("pickup validation normalizes stale team and ranked draft values", () => {
   });
   assert.equal(validation.policy.hostJoinMode, "player");
   assert.equal(validation.policy.teamOnly, false);
-  assert.equal(validation.policy.ranked, false);
+  assert.equal(validation.policy.ranked, true);
   assert.equal(validation.policy.official, false);
   assert.equal(validation.errors.length, 0);
 });
@@ -303,7 +324,7 @@ test("stored room rules drive pickup policy and the full modal rule summary", ()
   assert.equal(policy.hostJoinMode, "player");
   assert.equal(policy.teamOnly, false);
   assert.equal(policy.lastPeriodStopMinutes, 2);
-  assert.equal(summary.rows.find((row) => row.label === "팀 배치")?.value, "체크인에서 방장·심판이 직접 배치");
+  assert.equal(summary.rows.find((row) => row.label === "팀 배치")?.value, "출석 후 현장 결정");
   assert.match(summary.rows.find((row) => row.label === "명단")?.value ?? "", /개인 참가/);
   assert.doesNotMatch(summary.rows.map((row) => row.value).join(" "), /사이드당 참가/);
   assert.match(summary.rows.find((row) => row.label === "경기 규칙")?.value ?? "", /마지막 2분 스톱/);
@@ -390,16 +411,17 @@ test("intent and mode changes preserve unrelated user input", () => {
   assert.equal(sameMode.periodMinutes, 9);
 });
 
-test("pickup server guard rejects team rooms, ranked matches, and false rotation claims", () => {
+test("pickup server guard allows competitive MMR but rejects team rooms, official flags, and false rotation claims", () => {
   const patch = getMatchIntentPresetPatch("pickup", "5v5");
   const draft = { mode: "5v5", ...patch, rules: { ...patch } };
   assert.throws(() => validatePickupRecruitingShape({ ...draft, hostJoinMode: "team", teamId: "team-a" }), /pickup_requires_player_room/);
-  assert.throws(() => validatePickupRecruitingShape({ ...draft, ranked: true }), /pickup_must_be_unranked/);
+  assert.doesNotThrow(() => validatePickupRecruitingShape({ ...draft, ranked: true, official: false }));
+  assert.throws(() => validatePickupRecruitingShape({ ...draft, official: true }), /pickup_official_not_supported/);
   assert.throws(() => validatePickupRecruitingShape({ ...draft, playingTimePolicy: "appearance_guaranteed" }), /pickup_requires_equal_rotation/);
   assert.throws(() => validatePickupRecruitingShape({ ...draft, lineupSelectionPolicy: "automatic" }), /pickup_requires_no_fixed_starter/);
 });
 
-test("pickup room updates cannot bypass player, unranked, or manual rotation invariants", () => {
+test("pickup room updates cannot bypass player or rotation invariants", () => {
   const patch = getMatchIntentPresetPatch("pickup", "3v3");
   const existing = {
     mode: "3v3",
@@ -411,7 +433,7 @@ test("pickup room updates cannot bypass player, unranked, or manual rotation inv
     room_state: { teamOnly: false },
   };
   assert.doesNotThrow(() => validatePickupRecruitingUpdate(existing, { targetScore: 15 }));
-  assert.throws(() => validatePickupRecruitingUpdate(existing, { ranked: true }), /pickup_must_be_unranked/);
+  assert.doesNotThrow(() => validatePickupRecruitingUpdate(existing, { ranked: true }));
   assert.throws(() => validatePickupRecruitingUpdate(existing, { hostJoinMode: "team" }), /pickup_requires_player_room/);
   assert.throws(() => validatePickupRecruitingUpdate(existing, { matchIntent: "standard_competitive" }), /pickup_intent_cannot_be_removed/);
   assert.throws(() => validatePickupRecruitingUpdate(existing, { playingTimePolicy: "appearance_guaranteed" }), /pickup_requires_equal_rotation/);

@@ -79,6 +79,10 @@ test("database bench policy failures keep stable recruiting API statuses", () =>
     statusCode: 409,
     message: "recruiting_reserve_full",
   });
+  assert.deepEqual(getRecruitingBenchPolicyError({ message: "room_edit_limit_reached" }), {
+    statusCode: 409,
+    message: "room_edit_limit_reached",
+  });
   assert.equal(getRecruitingBenchPolicyError({ message: "unrelated" }), null);
 });
 
@@ -94,6 +98,10 @@ test("database bench policy failures keep stable match API statuses", () => {
   assert.deepEqual(getMatchBenchPolicyError({ hint: "match_reserve_exceeds_bench_capacity" }), {
     statusCode: 409,
     message: "match_reserve_exceeds_bench_capacity",
+  });
+  assert.deepEqual(getMatchBenchPolicyError({ message: "room_edit_limit_reached" }), {
+    statusCode: 409,
+    message: "room_edit_limit_reached",
   });
   assert.equal(getMatchBenchPolicyError({ message: "unrelated" }), null);
 });

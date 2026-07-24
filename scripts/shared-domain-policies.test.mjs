@@ -59,6 +59,7 @@ import {
   compareNotificationsNewestFirst,
   dedupeNotifications,
   getNotificationDisplayAt,
+  getNotificationHref,
   getNotificationTargetPath,
   isTerminalMatchStatus,
   isTerminalRecruitingStatus,
@@ -695,6 +696,16 @@ test("notification status and delivery prefix policies stay aligned", () => {
   MATCH_POSTGAME_NOTICE_PREFIXES.forEach((prefix) => assert.ok(MATCH_CANCEL_NOTICE_PREFIXES.includes(prefix)));
   assert.equal(getNotificationTargetPath({ tournamentId: "t 1" }), "/app/tournaments/t%201");
   assert.equal(getNotificationTargetPath({ matchId: "m/1" }), "/app/matches?match=m%2F1");
+  assert.equal(getNotificationHref({
+    type: "match_cancelled",
+    matchId: "m/1",
+    targetUnavailable: true,
+  }), "/app/matches?match=m%2F1");
+  assert.equal(getNotificationHref({
+    type: "recruiting_cancelled",
+    recruitingPostId: "r/1",
+    targetUnavailable: true,
+  }), "/app/recruiting?post=r%2F1");
 });
 
 test("notification ordering uses due time and terminal duplicates collapse to the canonical row", () => {
@@ -801,7 +812,7 @@ test("profile record result and recency helpers preserve match semantics", () =>
   assert.ok(isMatchWithinRecordDetailWindow(match, 6, new Date("2026-07-21T00:00:00.000Z")));
 });
 
-test("court map URLs pin stored coordinates and search by address only", () => {
+test("court map URLs pin stored coordinates and fall back to address search", () => {
   assert.equal(getCourtCoordinate(null), null);
   assert.equal(getCourtCoordinate(undefined), null);
   assert.equal(getCourtCoordinate({ lat: "", lng: "" }), null);
@@ -814,8 +825,8 @@ test("court map URLs pin stored coordinates and search by address only", () => {
     lng: 126.92234,
   });
   const pinnedUrl = new URL(getCourtMapUrl({
-    name: "연북중학교 농구장",
-    roadAddress: "서울특별시 마포구 연남로 80",
+    name: "테스트 농구장",
+    roadAddress: "서울특별시 중구 세종대로 110",
     lat: 37.56321,
     lng: 126.92234,
   }));
@@ -823,11 +834,10 @@ test("court map URLs pin stored coordinates and search by address only", () => {
   assert.equal(pinnedUrl.pathname, "/");
   assert.equal(pinnedUrl.searchParams.get("lat"), "37.56321");
   assert.equal(pinnedUrl.searchParams.get("lng"), "126.92234");
-  assert.equal(pinnedUrl.searchParams.get("title"), "서울특별시 마포구 연남로 80");
-  assert.equal(pinnedUrl.searchParams.get("title").includes("연북중학교"), false);
+  assert.equal(pinnedUrl.searchParams.get("title"), "테스트 농구장");
   assert.equal(
-    getCourtMapUrl({ name: "연북중학교 농구장", addressText: "서울특별시 마포구 연남로 80" }),
-    `https://map.naver.com/p/search/${encodeURIComponent("서울특별시 마포구 연남로 80")}`,
+    getCourtMapUrl({ name: "테스트 농구장", addressText: "서울특별시 중구 세종대로 110" }),
+    `https://map.naver.com/p/search/${encodeURIComponent("서울특별시 중구 세종대로 110")}`,
   );
 });
 

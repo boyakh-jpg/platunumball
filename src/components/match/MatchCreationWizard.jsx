@@ -166,6 +166,11 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
       </div>
       {pickup ? (
         <div className="match-pickup-rotation-fields">
+          <div className="field-block">
+            <span className="field-label">팀 나누기</span>
+            <strong>출석 후 현장 결정</strong>
+            <small>출석자끼리 현장 직접, 완전 랜덤, MMR 균형 중 하나를 정합니다.</small>
+          </div>
           <label>
             균등 교대 기준
             <select value={policy.rotationMode} onChange={(event) => onChange({ rotationMode: event.target.value })}>
@@ -180,7 +185,7 @@ export function MatchRosterPolicyFields({ draft, onChange }) {
               </select>
             </label>
           ) : null}
-          <small>체크인에서 방장 또는 배정 심판이 A/B와 교대 순서를 직접 정하고 최종 확정합니다.</small>
+          <small>최종 배치는 방장 또는 심판이 확정합니다.</small>
         </div>
       ) : policy.benchCapacity > 0 ? (
         <label className="field-block">

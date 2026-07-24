@@ -40,6 +40,7 @@ import {
   getMatchIntentChangePatch,
   getMatchModeChangePatch,
   getPersonalRecordDraftPayload,
+  getRoomRemakeDraft,
   getScopedMatchCreationPolicyPayload,
 } from "../lib/matchCreationPolicies.js";
 import { AGE_GROUPS, REGION_TREE, getAgeGroupForUser, getRepresentativeTeam, inferRegionSelection } from "../lib/profileSetup.js";
@@ -327,6 +328,12 @@ function getMatchRecordMemo(value = "") {
 export default function CreateMatch({ app }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const remakeDraft = useMemo(() => {
+    const source = location.state?.remakeDraft;
+    return source && typeof source === "object" && !Array.isArray(source)
+      ? getRoomRemakeDraft(source)
+      : null;
+  }, [location.state?.remakeDraft]);
   const today = getLocalDateInputValue();
   const minSoloRecordDate = addDateDays(today, -1);
   const nextWeek = addDateDays(today, 7);
@@ -336,7 +343,7 @@ export default function CreateMatch({ app }) {
   const isRecordCreateIntent = useMemo(() => new URLSearchParams(location.search).get("intent") === "record", [location.search]);
   const loadDirectory = app.actions.loadDirectory;
   const requestedTournamentDirectoryRef = useRef(false);
-  const modeManuallyChangedRef = useRef(false);
+  const modeManuallyChangedRef = useRef(Boolean(remakeDraft));
   const loadedCourtMapRegionsRef = useRef(new Set());
   const courtMapRequestIdRef = useRef(0);
   useEffect(() => {
@@ -466,6 +473,7 @@ export default function CreateMatch({ app }) {
     tournamentScheduleNote: "초대팀 확정 후 경기별 일정을 배정합니다.",
     tournamentMmrPolicy: "gap_adjusted",
     tournamentMaxMmrGap: DEFAULT_TOURNAMENT_MMR_GAP,
+    ...(remakeDraft ?? {}),
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState("");
@@ -1592,6 +1600,7 @@ export default function CreateMatch({ app }) {
         <div>
           <p className="eyebrow">{isRecordCreateIntent ? "RecordMatch" : "CreateMatch"}</p>
           <h1>{isRecordCreateIntent ? "기록하기" : "경기/대회 만들기"}</h1>
+          {remakeDraft ? <Badge tone="orange">취소된 방 설정을 불러왔습니다. 새 일정을 확인해 주세요.</Badge> : null}
         </div>
       </header>
 

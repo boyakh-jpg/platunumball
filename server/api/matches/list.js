@@ -289,7 +289,12 @@ function filterActiveMatchCards(matches = [], activeOnly = false, options = {}) 
     && (includeRecordRooms || (!isSoloRecordMatch(match) && !isMatchRecordMatch(match)))
   ));
   if (!activeOnly) return visibleMatches;
-  if (options.scheduleOnly === true) return visibleMatches.filter((match) => isMatchInScheduleMenu(match));
+  if (options.scheduleOnly === true) {
+    return visibleMatches.filter((match) => (
+      isMatchInScheduleMenu(match) ||
+      (options.includeCancelledSchedule === true && match?.status === "cancelled")
+    ));
+  }
   const includeRecentCompleted = options.includeRecentCompleted === true;
   return visibleMatches.filter((match) => (
     match?.status !== "closed" && (
@@ -361,7 +366,7 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
     .select("entity_id,sort_at,relation")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
-    .eq("is_active", true)
+    .eq("is_active", false)
     .neq("status", "closed")
     .in("relation", ["owner", "participant", "referee"]);
   if (activeOnly) query = query.not("status", "in", "(confirmed,closed)");
@@ -432,7 +437,7 @@ async function fetchClosedNoticeMatchFeedPage(client, profileId = "", limit = CL
     .select("entity_id,sort_at,relation")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
-    .eq("is_active", true)
+    .eq("is_active", false)
     .in("status", ["cancelled", "void"])
     .in("relation", ["owner", "participant", "referee"])
     .order("sort_at", { ascending: false, nullsFirst: false })
@@ -1057,6 +1062,7 @@ async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
       includeFeedCounts: false,
       skipCardReferenceRows: false,
       preferFreshRows: true,
+      includeClosed: true,
     });
     return result?.state?.recruitingPosts?.length ? result : null;
   } catch (error) {
@@ -1076,13 +1082,20 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const includeTeamSchedule = body.includeTeamSchedule === true;
   const shouldLoadRecentCompleted = !scheduleOnly && !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
   const recentCompletedHours = shouldLoadRecentCompleted ? getRecentCompletedHours(body) : RECENT_COMPLETED_MATCH_HOURS;
-  const shouldLoadClosedNotices = !scheduleOnly && body.includeClosedNotices !== false && !recorderOnly && !completedOnly && activeOnly && !cursor;
+  const includeCancelledSchedule = scheduleOnly && body.includeCancelledSchedule === true;
+  const shouldLoadClosedNotices = body.includeClosedNotices !== false
+    && !recorderOnly
+    && !completedOnly
+    && activeOnly
+    && !cursor
+    && (!scheduleOnly || includeCancelledSchedule);
   const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
     let filtered = filterActiveMatchCards(items, activeOnly, {
       includeRecentCompleted: shouldLoadRecentCompleted,
       includeRecordRooms: recorderOnly,
       scheduleOnly,
+      includeCancelledSchedule,
     });
     if (recorderOnly) filtered = filtered.filter((match) => isMatchInPlayMenu(match) && isRecorderMatch(match, context.profileId, adminLevel >= 30));
     if (completedOnly) filtered = filtered.filter((match) => (

@@ -198,7 +198,7 @@ export function getNotificationTargetPath(notification = {}) {
 }
 
 export function getNotificationHref(notification = {}) {
-  if (isNotificationTargetUnavailable(notification)) return "/app/notifications";
+  if (isNotificationTargetUnavailable(notification) && !isTerminalRoomNotice(notification)) return "/app/notifications";
   return getNotificationTargetPath(notification);
 }
 

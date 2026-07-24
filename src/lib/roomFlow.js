@@ -1,4 +1,9 @@
-import { getMatchRoomPhase, isMatchRecordMatch } from "./matchUtils.js";
+import { getMatchRoomPhase, getMatchScheduledDate, isMatchRecordMatch } from "./matchUtils.js";
+import {
+  getPickupTeamAssignmentMode,
+  getPickupTeamAssignmentModeOption,
+  getPickupTeamAssignmentRatingScale,
+} from "./matchCreationPolicies.js";
 
 export const ROOM_BODY_MODES = Object.freeze({
   pickupPool: "pickup_pool",
@@ -32,6 +37,119 @@ export function getPickupRotationPolicy(room = {}) {
   };
 }
 
+export function getPickupTeamAssignmentPolicy(room = {}) {
+  const rules = room?.rules && typeof room.rules === "object" ? room.rules : {};
+  const decided = Number(rules.sideAssignmentRevision ?? room.sideAssignmentRevision ?? 0) > 0
+    || ["draft", "confirmed"].includes(rules.sideAssignmentStatus ?? room.sideAssignmentStatus);
+  if (!decided) {
+    return {
+      mode: "",
+      label: "현장 합의 후 결정",
+      description: "출석자끼리 현장 직접, 완전 랜덤, MMR 균형 중 하나를 정합니다.",
+      automatic: false,
+      decided: false,
+      ratingScale: 1,
+    };
+  }
+  const mode = getPickupTeamAssignmentMode(room);
+  const option = getPickupTeamAssignmentModeOption(mode);
+  return {
+    mode,
+    label: option.label,
+    description: option.description,
+    automatic: mode !== "manual",
+    decided: true,
+    ratingScale: getPickupTeamAssignmentRatingScale(mode),
+  };
+}
+
+export function getPickupRerollState(room = {}, userId = "") {
+  const rules = room?.rules && typeof room.rules === "object" ? room.rules : {};
+  const usedByIds = [...new Set(Array.isArray(rules.pickupRerollUserIds) ? rules.pickupRerollUserIds.filter(Boolean) : [])];
+  const count = Math.max(0, Number(rules.pickupRerollCount ?? usedByIds.length) || 0);
+  return {
+    count,
+    limit: 2,
+    usedByIds,
+    usedByCurrentUser: Boolean(userId && usedByIds.includes(userId)),
+    remaining: Math.max(0, 2 - count),
+  };
+}
+
+function stableAssignmentScore(seed = "", playerId = "") {
+  const source = `${seed}:${playerId}`;
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function getPickupPlayerMmr(users = [], playerId = "") {
+  const user = users.find((item) => item?.id === playerId);
+  const mmr = Number(user?.ratings?.integrated ?? user?.mmr);
+  return Number.isFinite(mmr) ? mmr : 1200;
+}
+
+export function buildPickupTeamAssignment({
+  playerIds = [],
+  users = [],
+  sideCapacity = 0,
+  benchCapacity = 0,
+  mode = "manual",
+  seed = "",
+} = {}) {
+  const uniqueIds = [...new Set(playerIds.filter(Boolean))];
+  const activeCapacity = Math.max(1, Number(sideCapacity) || 1);
+  const reserveCapacity = Math.max(0, Number(benchCapacity) || 0);
+  const perSideCapacity = activeCapacity + reserveCapacity;
+  const assignmentMode = getPickupTeamAssignmentMode({ pickupTeamAssignmentMode: mode });
+  if (uniqueIds.length > perSideCapacity * 2) return null;
+
+  const orderedIds = assignmentMode === "random"
+    ? [...uniqueIds].sort((left, right) => (
+      stableAssignmentScore(seed, left) - stableAssignmentScore(seed, right)
+      || left.localeCompare(right)
+    ))
+    : assignmentMode === "mmr_balanced"
+      ? [...uniqueIds].sort((left, right) => (
+        getPickupPlayerMmr(users, right) - getPickupPlayerMmr(users, left)
+        || left.localeCompare(right)
+      ))
+      : [...uniqueIds];
+
+  const sides = {
+    teamA: { ids: [], mmr: 0 },
+    teamB: { ids: [], mmr: 0 },
+  };
+  orderedIds.forEach((playerId, index) => {
+    const availableSides = ["teamA", "teamB"].filter((sideName) => sides[sideName].ids.length < perSideCapacity);
+    const targetSide = assignmentMode === "mmr_balanced"
+      ? [...availableSides].sort((left, right) => (
+        sides[left].mmr - sides[right].mmr
+        || sides[left].ids.length - sides[right].ids.length
+        || (index % 2 === 0 ? ["teamA", "teamB"] : ["teamB", "teamA"]).indexOf(left)
+          - (index % 2 === 0 ? ["teamA", "teamB"] : ["teamB", "teamA"]).indexOf(right)
+      ))[0]
+      : availableSides[index % availableSides.length] ?? availableSides[0];
+    if (!targetSide) return;
+    sides[targetSide].ids.push(playerId);
+    sides[targetSide].mmr += getPickupPlayerMmr(users, playerId);
+  });
+
+  const splitSide = (sideName) => ({
+    active: sides[sideName].ids.slice(0, activeCapacity),
+    reserve: sides[sideName].ids.slice(activeCapacity, perSideCapacity),
+    mmr: sides[sideName].mmr,
+  });
+  return {
+    mode: assignmentMode,
+    teamA: splitSide("teamA"),
+    teamB: splitSide("teamB"),
+  };
+}
+
 export function getPickupParticipants(lobby = {}) {
   const seenPlayerIds = new Set();
   return (lobby.entries ?? []).flatMap((entry) => [
@@ -52,6 +170,143 @@ export function getPickupParticipantCapacity({ sideCapacity = 0, benchCapacity =
   const activePerSide = Math.max(0, Number(sideCapacity) || 0);
   const waitingPerSide = Math.max(0, Number(benchCapacity) || 0);
   return (activePerSide + waitingPerSide) * 2;
+}
+
+export function getRoomScheduleProposal(room = {}) {
+  const proposal = room.roomState?.scheduleProposal ?? room.rules?.scheduleProposal;
+  return proposal && typeof proposal === "object" ? proposal : null;
+}
+
+export const ROOM_EDIT_LIMIT = 1;
+export const ROOM_EDIT_MIN_LEAD_HOURS = 12;
+export const ROOM_CHANGE_CONSENT_LEAD_HOURS = 6;
+export const ROOM_CANCEL_LOCK_HOURS = 2;
+
+export function getRoomEditCount(room = {}) {
+  const count = Number(
+    room.roomState?.roomEditCount
+    ?? room.rules?.roomEditCount
+    ?? room.roomEditCount
+    ?? 0,
+  );
+  return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+}
+
+export function isRoomEditAvailable(room = {}) {
+  return getRoomEditCount(room) < ROOM_EDIT_LIMIT;
+}
+
+function toValidDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+export function getRoomEditAvailability(room = {}, now = new Date()) {
+  if (!isRoomEditAvailable(room)) {
+    return { allowed: false, reason: "limit", code: "room_edit_limit_reached", hoursUntilStart: null };
+  }
+  const scheduledAt = getMatchScheduledDate(room);
+  const nowAt = toValidDate(now);
+  if (!scheduledAt || !nowAt) {
+    return { allowed: false, reason: "schedule", code: "room_edit_window_closed", hoursUntilStart: null };
+  }
+  const hoursUntilStart = (scheduledAt.getTime() - nowAt.getTime()) / 3_600_000;
+  if (hoursUntilStart < ROOM_EDIT_MIN_LEAD_HOURS) {
+    return { allowed: false, reason: "time", code: "room_edit_window_closed", hoursUntilStart };
+  }
+  return { allowed: true, reason: "", code: "", hoursUntilStart };
+}
+
+export function getRoomChangeCancellationWaiver(room = {}, now = new Date()) {
+  const proposal = getRoomScheduleProposal(room);
+  if (["rejected", "expired"].includes(proposal?.status)) {
+    return { waived: true, reason: proposal.status };
+  }
+  const nowAt = toValidDate(now);
+  const proposalDeadline = toValidDate(proposal?.consentDeadlineAt);
+  if (proposal?.status === "pending" && nowAt && proposalDeadline && nowAt >= proposalDeadline) {
+    return { waived: true, reason: "schedule_consent_expired" };
+  }
+  const acknowledgement = getRecruitingRuleAcknowledgement(room);
+  const acknowledgementDeadline = toValidDate(
+    room.roomState?.ruleAcknowledgementDeadlineAt
+    ?? room.rules?.ruleAcknowledgementDeadlineAt,
+  );
+  if (acknowledgement.remainingIds.length && nowAt && acknowledgementDeadline && nowAt >= acknowledgementDeadline) {
+    return { waived: true, reason: "rule_acknowledgement_expired" };
+  }
+  return { waived: false, reason: "" };
+}
+
+export function getRoomCancellationPolicy(room = {}, now = new Date()) {
+  const scheduledAt = getMatchScheduledDate(room);
+  const nowAt = toValidDate(now);
+  const waiver = getRoomChangeCancellationWaiver(room, nowAt ?? now);
+  if (!scheduledAt || !nowAt) {
+    return { allowed: true, penalty: 0, waived: waiver.waived, waiverReason: waiver.reason, hoursUntilStart: null };
+  }
+  const hoursUntilStart = (scheduledAt.getTime() - nowAt.getTime()) / 3_600_000;
+  if (hoursUntilStart <= ROOM_CANCEL_LOCK_HOURS) {
+    return {
+      allowed: false,
+      penalty: 0,
+      waived: waiver.waived,
+      waiverReason: waiver.reason,
+      hoursUntilStart,
+      code: "room_cancel_locked",
+    };
+  }
+  const penalty = waiver.waived ? 0 : hoursUntilStart <= 6 ? 5 : hoursUntilStart <= 12 ? 3 : 0;
+  return {
+    allowed: true,
+    penalty,
+    waived: waiver.waived,
+    waiverReason: waiver.reason,
+    hoursUntilStart,
+    code: "",
+  };
+}
+
+export function isRoomScheduleChangePending(room = {}, now = new Date()) {
+  const proposal = getRoomScheduleProposal(room);
+  if (proposal?.status !== "pending") return false;
+  const deadline = toValidDate(proposal.consentDeadlineAt);
+  const nowAt = toValidDate(now);
+  return !(deadline && nowAt && nowAt >= deadline);
+}
+
+export function getRoomScheduleProposalProgress(room = {}, now = new Date()) {
+  const proposal = getRoomScheduleProposal(room);
+  const requiredIds = [...new Set((proposal?.requiredIds ?? []).filter(Boolean))];
+  const approvedIds = [...new Set((proposal?.approvedIds ?? []).filter((playerId) => requiredIds.includes(playerId)))];
+  const deadline = toValidDate(proposal?.consentDeadlineAt);
+  const nowAt = toValidDate(now);
+  const expired = Boolean(proposal?.status === "pending" && deadline && nowAt && nowAt >= deadline);
+  return {
+    proposal,
+    requiredIds,
+    approvedIds,
+    remainingIds: requiredIds.filter((playerId) => !approvedIds.includes(playerId)),
+    complete: Boolean(proposal && requiredIds.length && requiredIds.every((playerId) => approvedIds.includes(playerId))),
+    expired,
+    deadline,
+  };
+}
+
+export function getRecruitingRuleAcknowledgement(room = {}) {
+  const source = room.roomState ?? room.rules ?? {};
+  const revision = Number(source.ruleRevision ?? 0);
+  const requiredIds = [...new Set((source.ruleAcknowledgementRequiredIds ?? []).filter(Boolean))];
+  const acknowledgedIds = [...new Set(
+    (source.ruleAcknowledgedIds ?? []).filter((playerId) => requiredIds.includes(playerId)),
+  )];
+  return {
+    revision,
+    requiredIds,
+    acknowledgedIds,
+    remainingIds: requiredIds.filter((playerId) => !acknowledgedIds.includes(playerId)),
+    complete: requiredIds.every((playerId) => acknowledgedIds.includes(playerId)),
+  };
 }
 
 export function getPickupResizeValidation(lobby = {}, capacity = {}) {

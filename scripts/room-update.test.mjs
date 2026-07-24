@@ -2,9 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  acknowledgeMatchRoomRules,
+  acknowledgeRecruitingRoomRules,
+  cancelMatch,
+  closeRecruitingPost,
+  respondRecruitingScheduleProposal,
   updateMatchRoomRules,
   updateRecruitingRoomRules,
 } from "../src/data/repository.js";
+import { getRoomRemakeDraft } from "../src/lib/matchCreationPolicies.js";
 
 const COURT = {
   id: "court-room-update",
@@ -13,6 +19,25 @@ const COURT = {
   status: "active",
 };
 const PLAYER_IDS = ["host", "a2", "a3", "b1", "b2", "b3", "ra", "rb", "ref", "party-leader"];
+
+function getKstScheduleHoursFromNow(hours) {
+  const date = new Date(Date.now() + hours * 3_600_000);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  return {
+    timingType: "scheduled",
+    scheduledDate: `${parts.year}-${parts.month}-${parts.day}`,
+    scheduledTime: `${parts.hour}:${parts.minute}`,
+    scheduledAt: `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`,
+  };
+}
 
 function makeUsers() {
   return PLAYER_IDS.map((id) => ({
@@ -54,6 +79,10 @@ function makeRecruitingPost(kind) {
     targetTeamId: kind === "private-team" ? "team-b" : null,
     playerIds: teamRoom ? ["host", "a2", "a3"] : [],
     mode: "3v3",
+    timingType: "scheduled",
+    scheduledDate: "2099-07-25",
+    scheduledTime: "20:00",
+    scheduledAt: "2099-07-25 20:00",
     sideCapacity: 3,
     benchCapacity: 2,
     ranked: !pickup,
@@ -229,7 +258,10 @@ function makeMatch({ refereeId = null } = {}) {
     refereeId,
     refereeTrustMin: 90,
     status: "agreed",
-    timingType: "instant",
+    timingType: "scheduled",
+    scheduledDate: "2099-07-25",
+    scheduledTime: "20:00",
+    scheduledAt: "2099-07-25 20:00",
     mode: "3v3",
     courtId: COURT.id,
     court: COURT.name,
@@ -265,7 +297,7 @@ function makeMatchState(match, currentUserId = "host") {
   };
 }
 
-test("confirmed match edit keeps occupied rosters and resets only pregame agreement state", () => {
+test("confirmed match edit keeps roster, attendance, and participation agreements", () => {
   const match = makeMatch();
   const next = updateMatchRoomRules(makeMatchState(match), match.id, COMPLETE_PATCH);
   const updated = next.matches[0];
@@ -273,8 +305,10 @@ test("confirmed match edit keeps occupied rosters and resets only pregame agreem
   assert.deepEqual(updated.teamA.players, match.teamA.players);
   assert.deepEqual(updated.teamB.players, match.teamB.players);
   assert.deepEqual(updated.reservePlayers, match.reservePlayers);
-  assert.deepEqual(updated.agreements, { teamA: [], teamB: [] });
-  assert.deepEqual(updated.attendance, { teamA: [], teamB: [] });
+  assert.deepEqual(updated.agreements, match.agreements);
+  assert.deepEqual(updated.attendance, match.attendance);
+  assert.ok(updated.rules.ruleAcknowledgementRequiredIds.includes("a2"));
+  assert.deepEqual(updated.rules.ruleAcknowledgedIds, ["host"]);
   assert.equal(updated.rules.periodMinutes, 9);
   assert.equal(updated.rules.timeLimit, 18);
   assert.equal(updated.stakes, "수정 약속");
@@ -283,13 +317,149 @@ test("confirmed match edit keeps occupied rosters and resets only pregame agreem
   assert.equal(updateMatchRoomRules(makeMatchState(match), match.id, { ...COMPLETE_PATCH, benchCapacity: 0 }).matches[0], match);
 });
 
-test("room edit permission allows host and check-in referee but blocks player, party leader, and reserve", () => {
+test("room changes require acknowledgement and schedule rejection keeps the old schedule", () => {
+  const post = {
+    ...makeRecruitingPost("public-player"),
+    scheduledDate: "2099-07-25",
+    scheduledTime: "20:00",
+    scheduledAt: "2099-07-25 20:00",
+  };
+  const changed = updateRecruitingRoomRules(makeRecruitingState(post), post.id, {
+    periodMinutes: 10,
+  });
+  const changedPost = changed.recruitingPosts[0];
+  assert.ok(changedPost.roomState.ruleAcknowledgementRequiredIds.includes("a2"));
+  assert.deepEqual(changedPost.roomState.ruleAcknowledgedIds, ["host"]);
+
+  const acknowledged = acknowledgeRecruitingRoomRules(
+    { ...changed, currentUserId: "a2" },
+    post.id,
+    changedPost.roomState.ruleRevision,
+  );
+  assert.ok(acknowledged.recruitingPosts[0].roomState.ruleAcknowledgedIds.includes("a2"));
+
+  const proposed = updateRecruitingRoomRules(makeRecruitingState(post), post.id, {
+    timingType: "scheduled",
+    scheduledDate: "2099-07-26",
+    scheduledTime: "21:00",
+  });
+  const proposal = proposed.recruitingPosts[0].roomState.scheduleProposal;
+  assert.equal(proposal.status, "pending");
+  assert.equal(proposed.recruitingPosts[0].roomState.roomEditCount, 1);
+  assert.equal(proposed.recruitingPosts[0].scheduledDate, "2099-07-25");
+
+  const rejected = respondRecruitingScheduleProposal(
+    { ...proposed, currentUserId: "a2" },
+    post.id,
+    proposal.id,
+    "reject",
+  );
+  assert.equal(rejected.recruitingPosts[0].roomState.scheduleProposal.status, "rejected");
+  assert.equal(rejected.recruitingPosts[0].roomState.roomEditCount, 1);
+  assert.equal(rejected.recruitingPosts[0].timingType, "scheduled");
+  assert.equal(rejected.recruitingPosts[0].scheduledDate, "2099-07-25");
+});
+
+test("room edit can be accepted only once for recruiting and confirmed match rooms", () => {
+  const post = makeRecruitingPost("public-player");
+  const firstRecruitingEdit = updateRecruitingRoomRules(makeRecruitingState(post), post.id, {
+    periodMinutes: 10,
+  });
+  assert.equal(firstRecruitingEdit.recruitingPosts[0].roomState.roomEditCount, 1);
+  const secondRecruitingEdit = updateRecruitingRoomRules(firstRecruitingEdit, post.id, {
+    periodMinutes: 11,
+  });
+  assert.equal(secondRecruitingEdit.recruitingPosts[0].rules.periodMinutes, 10);
+  assert.match(secondRecruitingEdit.notifications[0].body, /한 번만/);
+
+  const match = makeMatch();
+  const firstMatchEdit = updateMatchRoomRules(makeMatchState(match), match.id, {
+    periodMinutes: 10,
+  });
+  assert.equal(firstMatchEdit.matches[0].rules.roomEditCount, 1);
+  const secondMatchEdit = updateMatchRoomRules(firstMatchEdit, match.id, {
+    periodMinutes: 11,
+  });
+  assert.equal(secondMatchEdit.matches[0].rules.periodMinutes, 10);
+  assert.match(secondMatchEdit.notifications[0].body, /한 번만/);
+});
+
+test("room cancellation locks at two hours and waives trust after a rejected edit", () => {
+  const threeHours = getKstScheduleHoursFromNow(3);
+  const penalizedPost = { ...makeRecruitingPost("public-player"), ...threeHours };
+  const penalized = closeRecruitingPost(makeRecruitingState(penalizedPost), penalizedPost.id);
+  assert.equal(penalized.recruitingPosts[0].status, "closed");
+  assert.equal(penalized.users.find((user) => user.id === "host").trustScore, 95);
+
+  const waivedPost = {
+    ...makeRecruitingPost("public-player"),
+    ...threeHours,
+    roomState: {
+      ...makeRecruitingPost("public-player").roomState,
+      roomEditCount: 1,
+      scheduleProposal: { id: "schedule-rejected", status: "rejected" },
+    },
+  };
+  const waived = closeRecruitingPost(makeRecruitingState(waivedPost), waivedPost.id);
+  assert.equal(waived.recruitingPosts[0].status, "closed");
+  assert.equal(waived.users.find((user) => user.id === "host").trustScore, 100);
+
+  const lockedMatch = { ...makeMatch(), ...getKstScheduleHoursFromNow(1) };
+  const locked = cancelMatch(makeMatchState(lockedMatch), lockedMatch.id);
+  assert.equal(locked.matches[0].status, "agreed");
+  assert.match(locked.notifications[0].body, /2시간 전/);
+});
+
+test("cancelled room remake copies configuration but clears lifecycle and participant state", () => {
+  const source = {
+    ...makeRecruitingPost("private-team"),
+    status: "closed",
+    roomState: {
+      ...makeRecruitingPost("private-team").roomState,
+      roomEditCount: 1,
+      cancelledAt: "2099-07-24T00:00:00.000Z",
+      invitations: [{ id: "invite-old", targetUserId: "b1" }],
+    },
+  };
+  const remake = getRoomRemakeDraft(source);
+
+  assert.equal(remake.title, source.title);
+  assert.equal(remake.mode, "3v3");
+  assert.equal(remake.visibility, "private");
+  assert.equal(remake.teamAId, "team-a");
+  assert.equal(remake.teamBId, "team-b");
+  assert.equal(remake.courtId, COURT.id);
+  assert.equal(remake.scheduledDate, "");
+  assert.equal(remake.scheduledTime, "");
+  assert.deepEqual(remake.playerIds, []);
+  assert.deepEqual(remake.opponentPlayerIds, []);
+  assert.equal(remake.opponentLeaderId, "");
+  assert.equal("roomState" in remake, false);
+  assert.equal("applicants" in remake, false);
+
+  const pickupRemake = getRoomRemakeDraft(makeRecruitingPost("pickup"));
+  assert.equal(pickupRemake.formationMode, "pickup");
+  assert.equal(pickupRemake.hostJoinMode, "player");
+  assert.equal(pickupRemake.teamAId, undefined);
+  assert.equal(pickupRemake.teamBId, undefined);
+});
+
+test("match rule acknowledgement records only the current revision", () => {
+  const match = makeMatch();
+  const changed = updateMatchRoomRules(makeMatchState(match), match.id, { periodMinutes: 10 });
+  const revision = changed.matches[0].rules.ruleRevision;
+  const stale = acknowledgeMatchRoomRules({ ...changed, currentUserId: "a2" }, match.id, revision - 1);
+  assert.deepEqual(stale.matches[0].rules.ruleAcknowledgedIds, ["host"]);
+  const acknowledged = acknowledgeMatchRoomRules({ ...changed, currentUserId: "a2" }, match.id, revision);
+  assert.ok(acknowledged.matches[0].rules.ruleAcknowledgedIds.includes("a2"));
+});
+
+test("room edit permission allows the host before check-in and blocks other participants", () => {
   const noRefereeMatch = makeMatch();
   assert.notEqual(updateMatchRoomRules(makeMatchState(noRefereeMatch, "host"), noRefereeMatch.id, COMPLETE_PATCH).matches[0], noRefereeMatch);
 
   const refereeMatch = makeMatch({ refereeId: "ref" });
-  assert.notEqual(updateMatchRoomRules(makeMatchState(refereeMatch, "ref"), refereeMatch.id, COMPLETE_PATCH).matches[0], refereeMatch);
-  for (const blockedId of ["a2", "party-leader", "ra"]) {
+  for (const blockedId of ["ref", "a2", "party-leader", "ra"]) {
     assert.equal(updateMatchRoomRules(makeMatchState(refereeMatch, blockedId), refereeMatch.id, COMPLETE_PATCH).matches[0], refereeMatch);
   }
 });
@@ -300,7 +470,18 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   const migration = readFileSync(new URL("../supabase/migrations/20260724090000_room_update_authority.sql", import.meta.url), "utf8");
   const pickupResizeMigration = readFileSync(new URL("../supabase/migrations/20260724132500_pickup_room_resize.sql", import.meta.url), "utf8");
   const pickupCapacityRuleMigration = readFileSync(new URL("../supabase/migrations/20260724141500_sync_pickup_capacity_rules.sql", import.meta.url), "utf8");
+  const changeApprovalMigration = readFileSync(new URL("../supabase/migrations/20260724153000_room_change_approval.sql", import.meta.url), "utf8");
+  const pickupAssignmentMigration = readFileSync(new URL("../supabase/migrations/20260724153500_pickup_assignment_modes.sql", import.meta.url), "utf8");
+  const pickupRerollMigration = readFileSync(new URL("../supabase/migrations/20260724160000_pickup_assignment_reroll_policy.sql", import.meta.url), "utf8");
+  const roomEditOnceMigration = readFileSync(new URL("../supabase/migrations/20260724155000_room_edit_once.sql", import.meta.url), "utf8");
+  const roomChangeDeadlineMigration = readFileSync(new URL("../supabase/migrations/20260724161000_room_change_deadlines.sql", import.meta.url), "utf8");
+  const roomCancelPolicyMigration = readFileSync(new URL("../supabase/migrations/20260724162000_room_cancel_policy.sql", import.meta.url), "utf8");
+  const cancelledScheduleMigration = readFileSync(new URL("../supabase/migrations/20260724163000_cancelled_room_schedule_feed.sql", import.meta.url), "utf8");
+  const scheduledAtTypeFixMigration = readFileSync(new URL("../supabase/migrations/20260724164000_fix_room_policy_scheduled_at_types.sql", import.meta.url), "utf8");
   const recruitingPage = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
+  const matchesPage = readFileSync(new URL("../src/pages/Matches.jsx", import.meta.url), "utf8");
+  const matchListServer = readFileSync(new URL("../server/api/matches/list.js", import.meta.url), "utf8");
+  const recruitingListServer = readFileSync(new URL("../server/api/recruiting/list.js", import.meta.url), "utf8");
 
   assert.match(recruitingServer, /rankball_recruiting_room_update_action/);
   assert.match(matchServer, /rankball_match_room_update_action/);
@@ -316,7 +497,38 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(pickupCapacityRuleMigration, /rankball_sync_pickup_capacity_rules/);
   assert.match(pickupCapacityRuleMigration, /'participantCapacity', \(new\.side_capacity \+ new\.bench_capacity\) \* 2/);
   assert.match(pickupCapacityRuleMigration, /'waitingPlayerCapacity', new\.bench_capacity \* 2/);
-  assert.match(recruitingPage, /현재 참가 슬롯은 그대로 유지됩니다/);
-  assert.match(recruitingPage, /roomEditStatus\.pending \? "저장 중"/);
+  assert.match(changeApprovalMigration, /rankball_recruiting_schedule_response_action/);
+  assert.match(changeApprovalMigration, /rankball_match_rule_ack_action/);
+  assert.match(changeApprovalMigration, /match_rule_acknowledgement_pending/);
+  assert.match(pickupAssignmentMigration, /rankball_match_generate_pickup_assignment/);
+  assert.match(pickupAssignmentMigration, /pickupTeamAssignmentMode/);
+  assert.match(pickupRerollMigration, /pickup_reroll_limit_reached/);
+  assert.match(pickupRerollMigration, /pickupRerollUserIds/);
+  assert.match(pickupRerollMigration, /'ratingScale', rating_scale/);
+  assert.match(pickupRerollMigration, /'chatMessages'/);
+  assert.match(roomEditOnceMigration, /room_edit_limit_reached/);
+  assert.match(roomEditOnceMigration, /'roomEditCount', 1/);
+  assert.match(roomEditOnceMigration, /rankball_recruiting_room_update_action_pre_edit_once/);
+  assert.match(roomEditOnceMigration, /rankball_match_room_update_action_pre_edit_once/);
+  assert.match(roomChangeDeadlineMigration, /room_edit_window_closed/);
+  assert.match(roomChangeDeadlineMigration, /consentDeadlineAt/);
+  assert.match(roomChangeDeadlineMigration, /rankball_match_expire_room_change/);
+  assert.match(roomChangeDeadlineMigration, /nullif\(current_post\.scheduled_at, ''\)::timestamptz/);
+  assert.match(roomChangeDeadlineMigration, /nullif\(current_match\.scheduled_at, ''\)::timestamptz/);
+  assert.match(roomCancelPolicyMigration, /room_cancel_locked/);
+  assert.match(roomCancelPolicyMigration, /cancelPenaltyWaived/);
+  assert.match(roomCancelPolicyMigration, /nullif\(current_post\.scheduled_at, ''\)::timestamptz/);
+  assert.match(roomCancelPolicyMigration, /nullif\(current_match\.scheduled_at, ''\)::timestamptz/);
+  assert.match(cancelledScheduleMigration, /user_room_feed_inactive_profile_status_idx/);
+  assert.match(scheduledAtTypeFixMigration, /pg_get_functiondef/);
+  assert.match(scheduledAtTypeFixMigration, /nullif\(current_post\.scheduled_at/);
+  assert.match(scheduledAtTypeFixMigration, /nullif\(current_match\.scheduled_at/);
+  assert.match(recruitingPage, /참가자가 있으면 규칙 변경은 각 참가자의 확인이 필요합니다/);
+  assert.match(recruitingPage, /같은 설정으로 다시 만들기/);
+  assert.match(recruitingPage, /scheduleChangePending/);
   assert.match(recruitingPage, /getRoomEditDraft\(roomPost, sourceMatch\)/);
+  assert.match(matchesPage, /id: "cancelled"/);
+  assert.match(matchListServer, /includeCancelledSchedule/);
+  assert.match(matchListServer, /fetchClosedNoticeMatchFeedPage[\s\S]*?\.eq\("is_active", false\)/);
+  assert.match(recruitingListServer, /includeClosed/);
 });

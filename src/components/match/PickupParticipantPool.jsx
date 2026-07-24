@@ -6,10 +6,12 @@ export default function PickupParticipantPool({
   lobby,
   capacity = 0,
   assignmentMode = false,
+  participantIds = null,
   renderParticipant,
   renderEmptySlot,
 }) {
-  const participants = getPickupParticipants(lobby);
+  const allowedIds = Array.isArray(participantIds) ? new Set(participantIds.filter(Boolean)) : null;
+  const participants = getPickupParticipants(lobby).filter(({ playerId }) => !allowedIds || allowedIds.has(playerId));
   const safeCapacity = Math.max(participants.length, Number(capacity) || 0);
   const openSlotCount = Math.max(0, safeCapacity - participants.length);
   return (

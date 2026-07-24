@@ -130,7 +130,10 @@ import {
   withEffectiveMatchStatRecorders,
 } from "../lib/matchUtils.js";
 import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
-import { getMatchCreationPolicyPayload } from "../lib/matchCreationPolicies.js";
+import {
+  getMatchCreationPolicyPayload,
+  getPickupTeamAssignmentRatingScale,
+} from "../lib/matchCreationPolicies.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
 import {
   applyMatchRating,
@@ -162,7 +165,6 @@ import {
   getRecruitingLobby,
   getRecruitingRatingScale,
   getRecruitingHostEditReady,
-  getRoomClosePenalty,
   getRecruitingRoomParticipantIds,
   getRecruitingRoomStatRecorders,
   getRecruitingRoomOwnerId,
@@ -196,8 +198,15 @@ import {
   updatePinnedReservePlayers,
 } from "../lib/recruiting.js";
 import {
+  buildPickupTeamAssignment,
   getPickupCompatibilityPlacements,
   getPickupParticipantCapacity,
+  getPickupRerollState,
+  getRecruitingRuleAcknowledgement,
+  getRoomCancellationPolicy,
+  getRoomEditAvailability,
+  getRoomScheduleProposalProgress,
+  isRoomScheduleChangePending,
 } from "../lib/roomFlow.js";
 import {
   ADMIN_GRADE_META,
@@ -3923,6 +3932,28 @@ export function startMatch(state, matchId) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin") return state;
+  if (isRoomScheduleChangePending(match)) {
+    return {
+      ...state,
+      notifications: [getPendingScheduleChangeNotification({ matchId }), ...state.notifications],
+    };
+  }
+  const currentRequiredIds = getMatchChangeRequiredIds(match);
+  const ruleRequiredIds = uniquePlayerIds(match.rules?.ruleAcknowledgementRequiredIds ?? [])
+    .filter((playerId) => currentRequiredIds.includes(playerId));
+  const ruleAcknowledgedIds = new Set(match.rules?.ruleAcknowledgedIds ?? []);
+  if (ruleRequiredIds.some((playerId) => !ruleAcknowledgedIds.has(playerId))) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "변경 내용 확인 필요",
+        body: "현재 참가자 전원이 최신 경기 규칙을 확인해야 시작할 수 있습니다.",
+        tone: "orange",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
   const pickup = (match.formationMode ?? match.rules?.formationMode) === "pickup"
     || (match.matchIntent ?? match.rules?.matchIntent) === "pickup";
   if (pickup && match.rules?.sideAssignmentStatus !== "confirmed") {
@@ -4138,17 +4169,49 @@ export function cancelMatch(state, matchId) {
   if (!match || !["contract", "agreed"].includes(match.status)) return state;
   const afterStart = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(getMatchRoomPhase(match).phase));
   if (afterStart ? !currentUserCanOperateStartedMatch(state, match) : !currentUserIsMatchHost(state, match)) return state;
+  const cancellationPolicy = isMatchRecordMatch(match)
+    ? { allowed: true, penalty: 0, waived: false, waiverReason: "" }
+    : getRoomCancellationPolicy(match);
+  if (!cancellationPolicy.allowed) {
+    return {
+      ...state,
+      notifications: [getRoomCancelLockedNotification({ matchId }), ...state.notifications],
+    };
+  }
   const cancelCopy = getMatchCancelCopy(match);
+  const hostPlayerId = getMatchHostPlayerIdFromMatch(match);
+  const cancelledAt = new Date().toISOString();
 
   return {
     ...state,
+    users: cancellationPolicy.penalty > 0 && hostPlayerId
+      ? adjustUserTrust(state.users, hostPlayerId, -cancellationPolicy.penalty)
+      : state.users,
     matches: state.matches.map((item) =>
       item.id === matchId
-        ? { ...item, status: "cancelled", cancelledAt: new Date().toISOString() }
+        ? {
+            ...item,
+            status: "cancelled",
+            cancelledAt,
+            rules: {
+              ...(item.rules ?? {}),
+              cancelPenalty: cancellationPolicy.penalty,
+              cancelPenaltyWaived: cancellationPolicy.waived,
+              cancelWaiverReason: cancellationPolicy.waiverReason,
+            },
+          }
         : item,
     ),
     notifications: [
       { id: makeId("n"), title: cancelCopy.notificationTitle, body: cancelCopy.notificationBody, tone: "match", matchId },
+      ...(cancellationPolicy.penalty > 0 ? [{
+        id: makeId("n"),
+        targetUserId: hostPlayerId,
+        title: "경기 취소 신뢰도 반영",
+        body: `경기 시작 12시간 이내에 취소해 신뢰도 ${cancellationPolicy.penalty}점이 감소했습니다.`,
+        tone: "orange",
+        matchId,
+      }] : []),
       ...state.notifications,
     ],
   };
@@ -4223,6 +4286,106 @@ export function confirmPickupSideAssignment(state, matchId, rotation = {}) {
   return {
     ...state,
     matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
+  };
+}
+
+export function generatePickupSideAssignment(state, matchId, assignmentMode = "") {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return state;
+  const pickup = (match.formationMode ?? match.rules?.formationMode) === "pickup"
+    || (match.matchIntent ?? match.rules?.matchIntent) === "pickup";
+  const safeMode = ["manual", "random", "mmr_balanced"].includes(assignmentMode)
+    ? assignmentMode
+    : "manual";
+  if (!pickup) return state;
+
+  const attendance = getMatchAttendance(match);
+  const playerIds = uniquePlayerIds(MATCH_SIDES.flatMap((sideName) => attendance[sideName] ?? []));
+  const sideCapacity = getRecruitingSideCapacity(match);
+  const benchCapacity = getRecruitingBenchCapacity(match);
+  if (playerIds.length < sideCapacity * 2 || playerIds.length > (sideCapacity + benchCapacity) * 2) return state;
+
+  const assignmentRevision = Number(match.rules?.sideAssignmentRevision ?? 0);
+  const operator = currentUserCanStartMatch(state, match);
+  const currentUserAttended = playerIds.includes(state.currentUserId);
+  const reroll = assignmentRevision > 0 && safeMode !== "manual";
+  const rerollState = getPickupRerollState(match, state.currentUserId);
+  if (!reroll && !operator) return state;
+  if (reroll && (!operator && !currentUserAttended || rerollState.count >= rerollState.limit || rerollState.usedByCurrentUser)) return state;
+  const currentUser = state.users.find((user) => user.id === state.currentUserId);
+  if (reroll && Number(currentUser?.trustScore ?? 0) < 1) return state;
+
+  const assignment = buildPickupTeamAssignment({
+    playerIds,
+    users: state.users,
+    sideCapacity,
+    benchCapacity,
+    mode: safeMode,
+    seed: `${matchId}:${assignmentRevision}:${playerIds.join(",")}`,
+  });
+  if (!assignment || assignment.teamA.active.length !== sideCapacity
+    || assignment.teamB.active.length !== sideCapacity) return state;
+
+  const agreedIds = new Set([
+    ...(match.agreements?.teamA ?? []),
+    ...(match.agreements?.teamB ?? []),
+  ]);
+  const nextAgreements = Object.fromEntries(MATCH_SIDES.map((sideName) => [
+    sideName,
+    [...assignment[sideName].active, ...assignment[sideName].reserve].filter((playerId) => agreedIds.has(playerId)),
+  ]));
+  const nextAttendance = Object.fromEntries(MATCH_SIDES.map((sideName) => [
+    sideName,
+    uniquePlayerIds([...assignment[sideName].active, ...assignment[sideName].reserve]),
+  ]));
+  const generatedAt = new Date().toISOString();
+  const pickupRerollUserIds = reroll
+    ? [...rerollState.usedByIds, state.currentUserId]
+    : rerollState.usedByIds;
+  const pickupRerollCount = reroll ? rerollState.count + 1 : rerollState.count;
+  const ratingScale = match.ranked === false ? 0 : getPickupTeamAssignmentRatingScale(safeMode);
+  const nextMatch = {
+    ...match,
+    teamA: { ...(match.teamA ?? {}), name: SIDE_LABEL_TEXT.teamA, teamId: null, playerTeams: {}, players: assignment.teamA.active },
+    teamB: { ...(match.teamB ?? {}), name: SIDE_LABEL_TEXT.teamB, teamId: null, playerTeams: {}, players: assignment.teamB.active },
+    reservePlayers: { teamA: assignment.teamA.reserve, teamB: assignment.teamB.reserve },
+    attendance: nextAttendance,
+    agreements: nextAgreements,
+    approvals: { teamA: [], teamB: [] },
+    parties: [],
+    rules: {
+      ...(match.rules ?? {}),
+      pickupTeamAssignmentMode: safeMode,
+      sideAssignmentStatus: "draft",
+      sideAssignmentGeneratedAt: generatedAt,
+      sideAssignmentGeneratedBy: state.currentUserId,
+      sideAssignmentRevision: assignmentRevision + 1,
+      sideAssignmentConfirmedAt: null,
+      sideAssignmentConfirmedBy: null,
+      pickupRerollUserIds,
+      pickupRerollCount,
+      ratingScale,
+    },
+    ratingScale,
+    agreedAt: null,
+  };
+  const rerollMessage = reroll ? {
+    id: makeId("chat"),
+    userId: state.currentUserId,
+    body: `${currentUser?.name ?? "참가자"}님이 신뢰도 1점을 사용해 ${safeMode === "random" ? "랜덤" : "MMR 균형"} 배치를 다시 돌렸습니다.`,
+    createdAt: generatedAt,
+  } : null;
+  return {
+    ...state,
+    users: reroll ? adjustUserTrust(state.users, state.currentUserId, -1) : state.users,
+    matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
+    recruitingPosts: rerollMessage && (match.recruitingPostId || match.rules?.recruitingPostId)
+      ? (state.recruitingPosts ?? []).map((post) => {
+          if (post.id !== (match.recruitingPostId || match.rules?.recruitingPostId)) return post;
+          const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+          return { ...post, roomState: { ...roomState, chatMessages: [...roomState.chatMessages, rerollMessage] } };
+        })
+      : state.recruitingPosts,
   };
 }
 
@@ -6494,6 +6657,9 @@ export function interestRecruitingPost(state, postId, application = {}) {
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
+  if (isRoomScheduleChangePending(post)) {
+    return { ...state, notifications: [getPendingScheduleChangeNotification({ postId }), ...state.notifications] };
+  }
   const publicRoomDisciplineBlock = getPublicRoomDisciplineBlockedState(state, post);
   if (publicRoomDisciplineBlock) return publicRoomDisciplineBlock;
   if (isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
@@ -7049,15 +7215,150 @@ export function setRecruitingReady(state, postId, ready = true) {
   });
 }
 
+const ROOM_SCHEDULE_PATCH_KEYS = new Set([
+  "timingType",
+  "scheduledDate",
+  "scheduledTime",
+  "courtId",
+  "court",
+]);
+
+function withoutRoomSchedulePatch(patch = {}) {
+  return Object.fromEntries(Object.entries(patch).filter(([key]) => !ROOM_SCHEDULE_PATCH_KEYS.has(key)));
+}
+
+function getRoomScheduleTarget(room = {}, patch = {}) {
+  const timingType = patch.timingType === "instant"
+    ? "instant"
+    : patch.timingType === "scheduled" ? "scheduled" : room.timingType === "instant" ? "instant" : "scheduled";
+  const scheduledDate = timingType === "instant" ? "" : String(patch.scheduledDate ?? room.scheduledDate ?? "");
+  const scheduledTime = timingType === "instant" ? "" : String(patch.scheduledTime ?? room.scheduledTime ?? "").slice(0, 5);
+  return {
+    timingType,
+    scheduledDate,
+    scheduledTime,
+    scheduledAt: timingType === "instant" ? "즉시" : `${scheduledDate} ${scheduledTime}`.trim(),
+    courtId: String(patch.courtId ?? getCourtId(room) ?? ""),
+    court: String(patch.court ?? room.court ?? "미정").slice(0, 80),
+  };
+}
+
+function getRoomChangeDeadlineAt(room = {}, scheduleTarget = null) {
+  const currentStart = getMatchScheduledDate(room);
+  const targetStart = scheduleTarget
+    ? getMatchScheduledDate({ ...room, ...scheduleTarget })
+    : null;
+  const candidates = [currentStart, targetStart].filter(Boolean);
+  if (!candidates.length) return "";
+  const earliestStartMs = Math.min(...candidates.map((date) => date.getTime()));
+  return new Date(earliestStartMs - 6 * 3_600_000).toISOString();
+}
+
+function hasRoomScheduleChange(room = {}, patch = {}) {
+  if (![...ROOM_SCHEDULE_PATCH_KEYS].some((key) => patch[key] !== undefined)) return false;
+  const current = getRoomScheduleTarget(room);
+  const target = getRoomScheduleTarget(room, patch);
+  return [...ROOM_SCHEDULE_PATCH_KEYS].some((key) => String(current[key] ?? "") !== String(target[key] ?? ""));
+}
+
+function hasNonScheduleRoomChange(room = {}, patch = {}) {
+  return Object.entries(withoutRoomSchedulePatch(patch)).some(([key, value]) => {
+    const currentValue = room[key] ?? room.rules?.[key] ?? room.roomState?.[key];
+    return JSON.stringify(currentValue ?? null) !== JSON.stringify(value ?? null);
+  });
+}
+
+function getRecruitingChangeRequiredIds(post = {}, state = {}) {
+  return uniquePlayerIds([
+    getRecruitingRoomOwnerId(post),
+    ...getRecruitingRoomParticipantIds(post, state),
+    post.refereeId,
+  ]);
+}
+
+function getMatchChangeRequiredIds(match = {}) {
+  return uniquePlayerIds([
+    match.createdBy,
+    match.refereeId,
+    ...getMatchPlayerIds(match),
+    ...getMatchReservePlayerIds(match, "teamA"),
+    ...getMatchReservePlayerIds(match, "teamB"),
+  ]);
+}
+
+function getPendingScheduleChangeNotification({ postId = "", matchId = "" } = {}) {
+  return {
+    id: makeId("n"),
+    title: "일정 변경 승인 대기",
+    body: "현재 일정 변경안의 승인이 끝난 뒤 다시 수정할 수 있습니다.",
+    tone: "orange",
+    ...(postId ? { recruitingPostId: postId } : {}),
+    ...(matchId ? { matchId } : {}),
+  };
+}
+
+function getRoomEditLimitNotification({ postId = "", matchId = "" } = {}) {
+  return {
+    id: makeId("n"),
+    title: "방 수정 완료",
+    body: "방 수정은 한 번만 가능합니다. 추가 변경이 필요하면 기존 방을 취소한 뒤 다시 만들어 주세요.",
+    tone: "orange",
+    ...(postId ? { recruitingPostId: postId } : {}),
+    ...(matchId ? { matchId } : {}),
+  };
+}
+
+function getRoomEditWindowNotification({ postId = "", matchId = "" } = {}) {
+  return {
+    id: makeId("n"),
+    title: "방 수정 가능 시간 종료",
+    body: "방 수정은 경기 시작 12시간 전까지만 가능합니다.",
+    tone: "orange",
+    ...(postId ? { recruitingPostId: postId } : {}),
+    ...(matchId ? { matchId } : {}),
+  };
+}
+
+function getRoomCancelLockedNotification({ postId = "", matchId = "" } = {}) {
+  return {
+    id: makeId("n"),
+    title: "취소 가능 시간 종료",
+    body: "경기 시작 2시간 전부터는 방을 취소할 수 없습니다.",
+    tone: "orange",
+    ...(postId ? { recruitingPostId: postId } : {}),
+    ...(matchId ? { matchId } : {}),
+  };
+}
+
 export function updateRecruitingRoomRules(state, postId, patch = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId)) return state;
+  const editAvailability = getRoomEditAvailability(post);
+  if (!editAvailability.allowed) {
+    const notification = editAvailability.reason === "limit"
+      ? getRoomEditLimitNotification({ postId })
+      : getRoomEditWindowNotification({ postId });
+    return { ...state, notifications: [notification, ...state.notifications] };
+  }
+  if (isRoomScheduleChangePending(post)) {
+    return { ...state, notifications: [getPendingScheduleChangeNotification({ postId }), ...state.notifications] };
+  }
+
+  const requiredIds = getRecruitingChangeRequiredIds(post, state);
+  const scheduleChanged = hasRoomScheduleChange(post, patch);
+  const scheduleNeedsApproval = scheduleChanged && requiredIds.some((playerId) => playerId !== state.currentUserId);
+  const roomPatch = scheduleNeedsApproval ? withoutRoomSchedulePatch(patch) : patch;
+  const generalRulesChanged = hasNonScheduleRoomChange(post, roomPatch);
+  const ruleAcknowledgementNeeded = generalRulesChanged
+    && requiredIds.some((playerId) => playerId !== state.currentUserId);
+  const scheduleTarget = getRoomScheduleTarget(post, patch);
+  const changeDeadlineAt = getRoomChangeDeadlineAt(post, scheduleTarget);
 
   const currentCapacity = getRecruitingSideCapacity(post);
-  const sideCapacity = Math.max(1, Math.min(5, Number(patch.sideCapacity ?? currentCapacity)));
+  const sideCapacity = Math.max(1, Math.min(5, Number(roomPatch.sideCapacity ?? currentCapacity)));
   const nextMode = `${sideCapacity}v${sideCapacity}`;
   if (!isSupportedMatchMode(nextMode)) return state;
-  const benchCapacity = getRecruitingBenchCapacity({ ...post, benchCapacity: patch.benchCapacity });
+  const benchCapacity = getRecruitingBenchCapacity({ ...post, benchCapacity: roomPatch.benchCapacity });
   const currentLobby = getRecruitingLobby(post, state);
   const pickupRoom = isPickupRecruitingRoom(post);
   const pickupParticipantIds = pickupRoom ? getRecruitingRoomParticipantIds(post, state) : [];
@@ -7099,12 +7400,12 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
       notifications: [getRecruitingReserveLimitNotification(postId, "teamA", benchCapacity), ...state.notifications],
     };
   }
-  const nextMmrRangeMode = normalizeRecruitingMmrRangeMode(patch.mmrRangeMode ?? post.mmrRangeMode ?? roomState.mmrRangeMode);
-  const nextRules = getMatchRulesPayload({ ...(post.rules ?? {}), ...patch }, { mode: post.mode });
+  const nextMmrRangeMode = normalizeRecruitingMmrRangeMode(roomPatch.mmrRangeMode ?? post.mmrRangeMode ?? roomState.mmrRangeMode);
+  const nextRules = getMatchRulesPayload({ ...(post.rules ?? {}), ...roomPatch }, { mode: post.mode });
   const updatedAt = new Date().toISOString();
-  const nextCourtName = patch.court === undefined ? post.court : String(patch.court || post.court || "미정").slice(0, 80);
-  const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === patch.courtId) ?? null;
-  const nextCourtId = patch.court === undefined ? getCourtId(post) : (nextCourt?.id ?? courtIdByName(nextCourtName));
+  const nextCourtName = roomPatch.court === undefined ? post.court : String(roomPatch.court || post.court || "미정").slice(0, 80);
+  const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === roomPatch.courtId) ?? null;
+  const nextCourtId = roomPatch.court === undefined ? getCourtId(post) : (nextCourt?.id ?? courtIdByName(nextCourtName));
   const pickupPlacements = pickupRoom
     ? getPickupCompatibilityPlacements(pickupParticipantIds.length, {
         sideCapacity,
@@ -7144,6 +7445,10 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     region: nextCourt?.region ?? post.region,
     courtId: nextCourtId,
     court: nextCourtName,
+    timingType: scheduleNeedsApproval ? post.timingType : scheduleTarget.timingType,
+    scheduledDate: scheduleNeedsApproval ? post.scheduledDate : scheduleTarget.scheduledDate,
+    scheduledTime: scheduleNeedsApproval ? post.scheduledTime : scheduleTarget.scheduledTime,
+    scheduledAt: scheduleNeedsApproval ? post.scheduledAt : scheduleTarget.scheduledAt,
     mmrRangeMode: nextMmrRangeMode,
     ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
     rules: {
@@ -7161,8 +7466,8 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
       mmrRangeMode: nextMmrRangeMode,
       ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
     },
-    memo: patch.memo === undefined ? post.memo : String(patch.memo ?? "").slice(0, 500),
-    stakes: patch.stakes === undefined ? post.stakes : String(patch.stakes ?? "").slice(0, 500),
+    memo: roomPatch.memo === undefined ? post.memo : String(roomPatch.memo ?? "").slice(0, 500),
+    stakes: roomPatch.stakes === undefined ? post.stakes : String(roomPatch.stakes ?? "").slice(0, 500),
     hostReady: true,
     applicants: nextApplicants,
     roomState: {
@@ -7176,23 +7481,64 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
         invitations: nextInvitations,
       } : {}),
       mmrRangeMode: nextMmrRangeMode,
-      ruleRevision: Number(roomState.ruleRevision ?? 0) + 1,
-      ruleChangedAt: updatedAt,
+      roomEditCount: 1,
+      roomEditedAt: updatedAt,
+      roomEditedBy: state.currentUserId,
+      ruleRevision: generalRulesChanged ? Number(roomState.ruleRevision ?? 0) + 1 : Number(roomState.ruleRevision ?? 0),
+      ruleChangedAt: generalRulesChanged ? updatedAt : roomState.ruleChangedAt,
+      ...(generalRulesChanged ? {
+        ruleAcknowledgementRequiredIds: requiredIds,
+        ruleAcknowledgedIds: [state.currentUserId],
+        ruleAcknowledgementDeadlineAt: changeDeadlineAt,
+      } : {
+        ruleAcknowledgementRequiredIds: roomState.ruleAcknowledgementRequiredIds ?? [],
+        ruleAcknowledgedIds: roomState.ruleAcknowledgedIds ?? [],
+        ruleAcknowledgementDeadlineAt: roomState.ruleAcknowledgementDeadlineAt,
+      }),
+      ...(scheduleNeedsApproval ? {
+        scheduleProposal: {
+          id: makeId("schedule"),
+          status: "pending",
+          proposedBy: state.currentUserId,
+          proposedAt: updatedAt,
+          consentDeadlineAt: changeDeadlineAt,
+          ...scheduleTarget,
+          requiredIds,
+          approvedIds: [state.currentUserId],
+        },
+      } : {}),
     },
   }, state);
+  const targetNotifications = requiredIds
+    .filter((playerId) => playerId !== state.currentUserId)
+    .flatMap((targetUserId) => [
+      ...(ruleAcknowledgementNeeded ? [{
+        id: makeId("n"),
+        targetUserId,
+        title: "방 정보 변경 확인",
+        body: `${post.title}의 경기 규칙이 변경되었습니다. 방에서 변경 내용을 확인해 주세요.`,
+        tone: "match",
+        type: "recruiting_rules_changed",
+        discordEvent: "match",
+        recruitingPostId: postId,
+        actionRequired: true,
+      }] : []),
+      ...(scheduleNeedsApproval ? [{
+        id: makeId("n"),
+        targetUserId,
+        title: "일정 변경 승인 요청",
+        body: `${post.title}의 일정 또는 구장 변경안이 도착했습니다. 기존 일정은 전원 승인 전까지 유지됩니다.`,
+        tone: "match",
+        type: "recruiting_schedule_change_requested",
+        discordEvent: "match",
+        recruitingPostId: postId,
+        actionRequired: true,
+      }] : []),
+    ]);
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? nextPost : item)),
-    notifications: [
-      {
-        id: makeId("n"),
-        title: "방 정보 변경",
-        body: `${post.title}의 경기 규칙이 변경되었습니다. 현재 참가 슬롯은 유지됩니다.`,
-        tone: "match",
-        recruitingPostId: postId,
-      },
-      ...state.notifications,
-    ],
+    notifications: [...targetNotifications, ...state.notifications],
   };
 }
 
@@ -7200,11 +7546,30 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   if (!currentUserCanOperateMatchPreparation(state, match)) return state;
-  const sideCapacity = Math.max(1, Math.min(5, Number(patch.sideCapacity ?? getRecruitingSideCapacity(match))));
+  const editAvailability = getRoomEditAvailability(match);
+  if (!editAvailability.allowed) {
+    const notification = editAvailability.reason === "limit"
+      ? getRoomEditLimitNotification({ matchId })
+      : getRoomEditWindowNotification({ matchId });
+    return { ...state, notifications: [notification, ...state.notifications] };
+  }
+  if (isRoomScheduleChangePending(match)) {
+    return { ...state, notifications: [getPendingScheduleChangeNotification({ matchId }), ...state.notifications] };
+  }
+  const requiredIds = getMatchChangeRequiredIds(match);
+  const scheduleChanged = hasRoomScheduleChange(match, patch);
+  const scheduleNeedsApproval = scheduleChanged && requiredIds.some((playerId) => playerId !== state.currentUserId);
+  const matchPatch = scheduleNeedsApproval ? withoutRoomSchedulePatch(patch) : patch;
+  const generalRulesChanged = hasNonScheduleRoomChange(match, matchPatch);
+  const ruleAcknowledgementNeeded = generalRulesChanged
+    && requiredIds.some((playerId) => playerId !== state.currentUserId);
+  const scheduleTarget = getRoomScheduleTarget(match, patch);
+  const changeDeadlineAt = getRoomChangeDeadlineAt(match, scheduleTarget);
+  const sideCapacity = Math.max(1, Math.min(5, Number(matchPatch.sideCapacity ?? getRecruitingSideCapacity(match))));
   const nextMode = `${sideCapacity}v${sideCapacity}`;
   const isSoloRecord = match.rules?.recordType === RECORD_TYPES.personalRecord;
   if (isSoloRecord ? !isSupportedSoloRecordMode(nextMode) : !isSupportedMatchMode(nextMode)) return state;
-  const benchCapacity = getRecruitingBenchCapacity({ ...match, benchCapacity: patch.benchCapacity });
+  const benchCapacity = getRecruitingBenchCapacity({ ...match, benchCapacity: matchPatch.benchCapacity });
   const teamAActiveCount = uniquePlayerIds(match.teamA?.players ?? []).length;
   const teamBActiveCount = uniquePlayerIds(match.teamB?.players ?? []).length;
   if (teamAActiveCount > sideCapacity || teamBActiveCount > sideCapacity) {
@@ -7223,17 +7588,44 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
     };
   }
   if (getMatchReservePlayerIds(match, "teamA").length > benchCapacity || getMatchReservePlayerIds(match, "teamB").length > benchCapacity) return state;
-  const convertToPlayerMatch = patch.matchJoinMode === "player";
+  const convertToPlayerMatch = matchPatch.matchJoinMode === "player";
+  const updatedAt = new Date().toISOString();
   const nextRules = {
     ...(match.rules ?? {}),
-    ...getMatchRulesPayload({ ...(match.rules ?? {}), ...patch }, { mode: match.mode }),
+    ...getMatchRulesPayload({ ...(match.rules ?? {}), ...matchPatch }, { mode: match.mode }),
     sideCapacity,
     benchCapacity,
+    roomEditCount: 1,
+    roomEditedAt: updatedAt,
+    roomEditedBy: state.currentUserId,
+    ruleRevision: generalRulesChanged ? Number(match.rules?.ruleRevision ?? 0) + 1 : Number(match.rules?.ruleRevision ?? 0),
+    ruleChangedAt: generalRulesChanged ? updatedAt : match.rules?.ruleChangedAt,
+    ...(generalRulesChanged ? {
+      ruleAcknowledgementRequiredIds: requiredIds,
+      ruleAcknowledgedIds: [state.currentUserId],
+      ruleAcknowledgementDeadlineAt: changeDeadlineAt,
+    } : {
+      ruleAcknowledgementRequiredIds: match.rules?.ruleAcknowledgementRequiredIds ?? [],
+      ruleAcknowledgedIds: match.rules?.ruleAcknowledgedIds ?? [],
+      ruleAcknowledgementDeadlineAt: match.rules?.ruleAcknowledgementDeadlineAt,
+    }),
+    ...(scheduleNeedsApproval ? {
+      scheduleProposal: {
+        id: makeId("schedule"),
+        status: "pending",
+        proposedBy: state.currentUserId,
+        proposedAt: updatedAt,
+        consentDeadlineAt: changeDeadlineAt,
+        ...scheduleTarget,
+        requiredIds,
+        approvedIds: [state.currentUserId],
+      },
+    } : {}),
   };
   delete nextRules.startedAt;
-  const nextCourtName = patch.court === undefined ? match.court : String(patch.court || match.court || "미정").slice(0, 80);
-  const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === patch.courtId) ?? null;
-  const nextCourtId = patch.court === undefined ? getCourtId(match) : (nextCourt?.id ?? courtIdByName(nextCourtName));
+  const nextCourtName = matchPatch.court === undefined ? match.court : String(matchPatch.court || match.court || "미정").slice(0, 80);
+  const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === matchPatch.courtId) ?? null;
+  const nextCourtId = matchPatch.court === undefined ? getCourtId(match) : (nextCourt?.id ?? courtIdByName(nextCourtName));
   if (nextCourt?.region) nextRules.region = nextCourt.region;
   const nextMatch = {
     ...match,
@@ -7244,8 +7636,12 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
     benchCapacity,
     courtId: nextCourtId,
     court: nextCourtName,
-    memo: patch.memo === undefined ? match.memo : String(patch.memo ?? "").slice(0, 500),
-    stakes: patch.stakes === undefined ? match.stakes : String(patch.stakes ?? "").slice(0, 500),
+    timingType: scheduleNeedsApproval ? match.timingType : scheduleTarget.timingType,
+    scheduledDate: scheduleNeedsApproval ? match.scheduledDate : scheduleTarget.scheduledDate,
+    scheduledTime: scheduleNeedsApproval ? match.scheduledTime : scheduleTarget.scheduledTime,
+    scheduledAt: scheduleNeedsApproval ? match.scheduledAt : scheduleTarget.scheduledAt,
+    memo: matchPatch.memo === undefined ? match.memo : String(matchPatch.memo ?? "").slice(0, 500),
+    stakes: matchPatch.stakes === undefined ? match.stakes : String(matchPatch.stakes ?? "").slice(0, 500),
     teamA: {
       ...(match.teamA ?? {}),
       teamId: convertToPlayerMatch ? null : match.teamA?.teamId ?? null,
@@ -7257,22 +7653,236 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
       playerTeams: convertToPlayerMatch ? {} : match.teamB?.playerTeams ?? {},
     },
     parties: convertToPlayerMatch ? [] : match.parties ?? [],
-    agreements: { teamA: [], teamB: [] },
-    attendance: { teamA: [], teamB: [] },
-    agreedAt: null,
+    agreements: match.agreements ?? { teamA: [], teamB: [] },
+    attendance: match.attendance ?? { teamA: [], teamB: [] },
+    agreedAt: match.agreedAt ?? null,
     startedAt: null,
   };
+  const targetNotifications = requiredIds
+    .filter((playerId) => playerId !== state.currentUserId)
+    .flatMap((targetUserId) => [
+      ...(ruleAcknowledgementNeeded ? [{
+        id: makeId("n"),
+        targetUserId,
+        title: "경기 정보 변경 확인",
+        body: `${match.title}의 경기 규칙이 변경되었습니다. 방에서 변경 내용을 확인해 주세요.`,
+        tone: "match",
+        type: "match_rules_changed",
+        discordEvent: "match",
+        matchId,
+        actionRequired: true,
+      }] : []),
+      ...(scheduleNeedsApproval ? [{
+        id: makeId("n"),
+        targetUserId,
+        title: "일정 변경 승인 요청",
+        body: `${match.title}의 일정 또는 구장 변경안이 도착했습니다. 기존 일정은 전원 승인 전까지 유지됩니다.`,
+        tone: "match",
+        type: "match_schedule_change_requested",
+        discordEvent: "match",
+        matchId,
+        actionRequired: true,
+      }] : []),
+    ]);
   return {
     ...state,
     matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
-    notifications: [
-      {
-        id: makeId("n"),
-        title: "경기 룰 변경",
-        body: `${match.title} 룰이 바뀌어 재확인이 필요합니다.`,
-        tone: "match",
-        matchId,
+    notifications: [...targetNotifications, ...state.notifications],
+  };
+}
+
+export function acknowledgeRecruitingRoomRules(state, postId, revision = 0) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open") return state;
+  const acknowledgement = getRecruitingRuleAcknowledgement(post);
+  if (acknowledgement.revision !== Number(revision)
+    || !acknowledgement.requiredIds.includes(state.currentUserId)
+    || acknowledgement.acknowledgedIds.includes(state.currentUserId)) return state;
+  const nextAcknowledgedIds = uniquePlayerIds([...acknowledgement.acknowledgedIds, state.currentUserId]);
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => item.id === postId ? {
+      ...item,
+      roomState: {
+        ...(item.roomState ?? {}),
+        ruleAcknowledgedIds: nextAcknowledgedIds,
       },
+    } : item),
+  };
+}
+
+export function acknowledgeMatchRoomRules(state, matchId, revision = 0) {
+  const match = state.matches.find((item) => item.id === matchId);
+  const requiredIds = uniquePlayerIds(match?.rules?.ruleAcknowledgementRequiredIds ?? []);
+  const acknowledgedIds = uniquePlayerIds(match?.rules?.ruleAcknowledgedIds ?? []);
+  if (!match || Number(match.rules?.ruleRevision ?? 0) !== Number(revision)
+    || !requiredIds.includes(state.currentUserId)
+    || acknowledgedIds.includes(state.currentUserId)) return state;
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? {
+      ...item,
+      rules: {
+        ...(item.rules ?? {}),
+        ruleAcknowledgedIds: uniquePlayerIds([...acknowledgedIds, state.currentUserId]),
+      },
+    } : item),
+  };
+}
+
+function resolveScheduleProposal({ room = {}, proposalId = "", actorId = "", decision = "approve" } = {}) {
+  const progress = getRoomScheduleProposalProgress(room);
+  const proposal = progress.proposal;
+  if (!proposal || proposal.status !== "pending" || proposal.id !== proposalId
+    || !progress.requiredIds.includes(actorId)) return null;
+  if (progress.expired) {
+    return {
+      status: "expired",
+      proposal: { ...proposal, status: "expired", expiredAt: new Date().toISOString() },
+    };
+  }
+  if (decision === "reject") {
+    return {
+      status: "rejected",
+      proposal: { ...proposal, status: "rejected", rejectedBy: actorId, rejectedAt: new Date().toISOString() },
+    };
+  }
+  const approvedIds = uniquePlayerIds([...progress.approvedIds, actorId]);
+  const complete = progress.requiredIds.every((playerId) => approvedIds.includes(playerId));
+  return {
+    status: complete ? "approved" : "pending",
+    proposal: {
+      ...proposal,
+      approvedIds,
+      status: complete ? "approved" : "pending",
+      ...(complete ? { appliedAt: new Date().toISOString() } : {}),
+    },
+  };
+}
+
+export function respondRecruitingScheduleProposal(state, postId, proposalId, decision = "approve") {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open") return state;
+  const resolution = resolveScheduleProposal({
+    room: post,
+    proposalId,
+    actorId: state.currentUserId,
+    decision,
+  });
+  if (!resolution) return state;
+  const applied = resolution.status === "approved";
+  const selectedCourt = applied
+    ? getRegisteredCourts(state).find((court) => court.id === resolution.proposal.courtId) ?? null
+    : null;
+  const nextPost = {
+    ...post,
+    ...(applied ? {
+      timingType: resolution.proposal.timingType,
+      scheduledDate: resolution.proposal.scheduledDate,
+      scheduledTime: resolution.proposal.scheduledTime,
+      scheduledAt: resolution.proposal.scheduledAt,
+      courtId: resolution.proposal.courtId,
+      court: selectedCourt?.name ?? resolution.proposal.court,
+      region: selectedCourt?.region ?? post.region,
+    } : {}),
+    roomState: {
+      ...(post.roomState ?? {}),
+      scheduleProposal: resolution.proposal,
+    },
+  };
+  const final = resolution.status !== "pending";
+  const title = resolution.status === "approved" ? "일정 변경 확정"
+    : resolution.status === "rejected" ? "일정 변경 반려"
+      : resolution.status === "expired" ? "일정 변경 기한 만료" : "일정 변경 승인";
+  const body = resolution.status === "approved"
+    ? `${post.title}의 새 일정과 구장이 확정되었습니다.`
+    : resolution.status === "rejected"
+      ? `${post.title}의 일정 변경안이 반려되어 기존 일정이 유지됩니다.`
+      : resolution.status === "expired"
+        ? `${post.title}의 일정 변경 동의 기한이 지나 기존 일정이 유지됩니다.`
+      : `${post.title} 일정 변경안에 승인했습니다.`;
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => item.id === postId ? nextPost : item),
+    notifications: [
+      ...(final ? resolution.proposal.requiredIds.map((targetUserId) => ({
+        id: makeId("n"),
+        targetUserId,
+        title,
+        body,
+        tone: "match",
+        type: resolution.status === "approved"
+          ? "recruiting_schedule_change_applied"
+          : resolution.status === "expired"
+            ? "recruiting_schedule_change_expired"
+            : "recruiting_schedule_change_rejected",
+        discordEvent: "match",
+        recruitingPostId: postId,
+      })) : []),
+      ...state.notifications,
+    ],
+  };
+}
+
+export function respondMatchScheduleProposal(state, matchId, proposalId, decision = "approve") {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match) return state;
+  const resolution = resolveScheduleProposal({
+    room: match,
+    proposalId,
+    actorId: state.currentUserId,
+    decision,
+  });
+  if (!resolution) return state;
+  const applied = resolution.status === "approved";
+  const selectedCourt = applied
+    ? getRegisteredCourts(state).find((court) => court.id === resolution.proposal.courtId) ?? null
+    : null;
+  const nextMatch = {
+    ...match,
+    ...(applied ? {
+      timingType: resolution.proposal.timingType,
+      scheduledDate: resolution.proposal.scheduledDate,
+      scheduledTime: resolution.proposal.scheduledTime,
+      scheduledAt: resolution.proposal.scheduledAt,
+      courtId: resolution.proposal.courtId,
+      court: selectedCourt?.name ?? resolution.proposal.court,
+    } : {}),
+    rules: {
+      ...(match.rules ?? {}),
+      scheduleProposal: resolution.proposal,
+      ...(applied && selectedCourt?.region ? { region: selectedCourt.region } : {}),
+    },
+  };
+  const final = resolution.status !== "pending";
+  const title = resolution.status === "approved" ? "일정 변경 확정"
+    : resolution.status === "rejected" ? "일정 변경 반려"
+      : resolution.status === "expired" ? "일정 변경 기한 만료" : "일정 변경 승인";
+  const body = resolution.status === "approved"
+    ? `${match.title}의 새 일정과 구장이 확정되었습니다.`
+    : resolution.status === "rejected"
+      ? `${match.title}의 일정 변경안이 반려되어 기존 일정이 유지됩니다.`
+      : resolution.status === "expired"
+        ? `${match.title}의 일정 변경 동의 기한이 지나 기존 일정이 유지됩니다.`
+      : `${match.title} 일정 변경안에 승인했습니다.`;
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
+    notifications: [
+      ...(final ? resolution.proposal.requiredIds.map((targetUserId) => ({
+        id: makeId("n"),
+        targetUserId,
+        title,
+        body,
+        tone: "match",
+        type: resolution.status === "approved"
+          ? "match_schedule_change_applied"
+          : resolution.status === "expired"
+            ? "match_schedule_change_expired"
+            : "match_schedule_change_rejected",
+        discordEvent: "match",
+        matchId,
+      })) : []),
       ...state.notifications,
     ],
   };
@@ -7680,8 +8290,10 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
   if (!currentPlacement) return state;
   const targetSide = MATCH_SIDES.includes(placement.side) ? placement.side : currentPlacement.side;
   const targetReserve = Boolean(placement.reserve);
+  const pickupRoom = (match.formationMode ?? match.rules?.formationMode) === "pickup"
+    || (match.matchIntent ?? match.rules?.matchIntent) === "pickup";
   const hostPlayerId = getMatchHostPlayerId(state, match);
-  if (hostPlayerId && playerId === hostPlayerId && targetSide !== currentPlacement.side) return state;
+  if (!pickupRoom && hostPlayerId && playerId === hostPlayerId && targetSide !== currentPlacement.side) return state;
   const sideCapacity = getRecruitingSideCapacity(match);
   const teamMatchLocked = Boolean(
     isMatchSideTeamParty(match, "teamA") ||
@@ -7715,7 +8327,7 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
     };
   }
 
-  const nextMatch = withEffectiveMatchStatRecorders(autoPromoteMatchReservesForCheckin(clearMatchPlayerDecision({
+  const movedMatch = {
     ...match,
     status: "agreed",
     teamA: { ...(match.teamA ?? {}), players: nextTeamAPlayers },
@@ -7723,7 +8335,33 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
     reservePlayers: nextReservePlayers,
     parties: updateMatchPartiesForPlayer(match, playerId, targetSide, targetReserve),
     agreedAt: null,
-  }, playerId), targetReserve ? [playerId] : []));
+    ...(pickupRoom ? {
+      attendance: Object.fromEntries(MATCH_SIDES.map((sideName) => [
+        sideName,
+        uniquePlayerIds([
+          ...(match.attendance?.[sideName] ?? []).filter((id) => id !== playerId),
+          ...(sideName === targetSide && MATCH_SIDES.some((candidateSide) => (match.attendance?.[candidateSide] ?? []).includes(playerId)) ? [playerId] : []),
+        ]),
+      ])),
+      agreements: Object.fromEntries(MATCH_SIDES.map((sideName) => [
+        sideName,
+        uniquePlayerIds([
+          ...(match.agreements?.[sideName] ?? []).filter((id) => id !== playerId),
+          ...(sideName === targetSide && MATCH_SIDES.some((candidateSide) => (match.agreements?.[candidateSide] ?? []).includes(playerId)) ? [playerId] : []),
+        ]),
+      ])),
+      rules: {
+        ...(match.rules ?? {}),
+        sideAssignmentStatus: "draft",
+        sideAssignmentConfirmedAt: null,
+        sideAssignmentConfirmedBy: null,
+      },
+    } : {}),
+  };
+  const nextMatch = withEffectiveMatchStatRecorders(autoPromoteMatchReservesForCheckin(
+    pickupRoom ? movedMatch : clearMatchPlayerDecision(movedMatch, playerId),
+    targetReserve ? [playerId] : [],
+  ));
 
   return {
     ...state,
@@ -8183,6 +8821,9 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
+  if (isRoomScheduleChangePending(post)) {
+    return { ...state, notifications: [getPendingScheduleChangeNotification({ postId }), ...state.notifications] };
+  }
   const publicRoomDisciplineBlock = getPublicRoomDisciplineBlockedState(state, post);
   if (publicRoomDisciplineBlock) return publicRoomDisciplineBlock;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
@@ -8706,6 +9347,9 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !teamId) return state;
+  if (isRoomScheduleChangePending(post)) {
+    return { ...state, notifications: [getPendingScheduleChangeNotification({ postId }), ...state.notifications] };
+  }
   const publicRoomDisciplineBlock = getPublicRoomDisciplineBlockedState(state, post);
   if (publicRoomDisciplineBlock) return publicRoomDisciplineBlock;
   if (isIndividualOnlyRecruitingRoom(post)) return state;
@@ -9510,6 +10154,29 @@ function promoteRecruitingReservesForConfirmation(post, state, lobby) {
 export function confirmRecruitingMatch(state, postId, options = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId)) return state;
+  if (isRoomScheduleChangePending(post)) {
+    return {
+      ...state,
+      notifications: [getPendingScheduleChangeNotification({ postId }), ...state.notifications],
+    };
+  }
+  const currentRequiredIds = getRecruitingChangeRequiredIds(post, state);
+  const acknowledgement = getRecruitingRuleAcknowledgement(post);
+  const remainingRuleAcknowledgements = acknowledgement.requiredIds
+    .filter((playerId) => currentRequiredIds.includes(playerId))
+    .filter((playerId) => !acknowledgement.acknowledgedIds.includes(playerId));
+  if (remainingRuleAcknowledgements.length) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "변경 내용 확인 필요",
+        body: "현재 참가자 전원이 최신 경기 규칙을 확인해야 매치를 확정할 수 있습니다.",
+        tone: "orange",
+        recruitingPostId: postId,
+      }, ...state.notifications],
+    };
+  }
   const promotion = promoteRecruitingReservesForConfirmation(post, state, getRecruitingLobby(post, state));
   const promotedPost = promotion.post;
   const lobby = getRecruitingLobby(promotedPost, state);
@@ -9681,7 +10348,14 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
 export function closeRecruitingPost(state, postId) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || !isRecruitingRoomOwner(post, state.currentUserId)) return state;
-  const penalty = getRoomClosePenalty(post);
+  const cancellationPolicy = getRoomCancellationPolicy(post);
+  if (!cancellationPolicy.allowed) {
+    return {
+      ...state,
+      notifications: [getRoomCancelLockedNotification({ postId }), ...state.notifications],
+    };
+  }
+  const penalty = cancellationPolicy.penalty;
   const now = new Date().toISOString();
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const hostPenalties = penalty
@@ -9696,16 +10370,29 @@ export function closeRecruitingPost(state, postId) {
     users: adjustUserTrust(state.users, state.currentUserId, -penalty),
     recruitingPosts: (state.recruitingPosts ?? []).map((post) => (
       post.id === postId && isRecruitingRoomOwner(post, state.currentUserId)
-        ? { ...post, status: "closed", roomState: { ...roomState, hostPenalties, invitations: [] } }
+        ? {
+            ...post,
+            status: "closed",
+            roomState: {
+              ...roomState,
+              hostPenalties,
+              invitations: [],
+              cancelPenalty: penalty,
+              cancelPenaltyWaived: cancellationPolicy.waived,
+              cancelWaiverReason: cancellationPolicy.waiverReason,
+              cancelledAt: now,
+            },
+          }
         : post
     )),
     notifications: penalty
       ? [
           {
             id: makeId("n"),
-            title: "방 닫기 패널티",
-            body: `대기 인원과 경기 일정이 가까운 상태에서 방을 닫아 신뢰도 ${penalty}점이 감소했습니다.`,
+            title: "경기 취소 신뢰도 반영",
+            body: `경기 시작 12시간 이내에 취소해 신뢰도 ${penalty}점이 감소했습니다.`,
             tone: "orange",
+            recruitingPostId: postId,
           },
           ...state.notifications,
         ]

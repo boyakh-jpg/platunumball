@@ -1,6 +1,6 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy, UserRound, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, RotateCcw, ShieldAlert, Swords, Trophy, UserRound, UsersRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -41,7 +41,7 @@ import {
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
 import { MATCH_SIDES, ROOM_KINDS } from "../lib/constants.js";
-import { getRecruitingEntryForUser, getRecruitingListCardCounts, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isPaidRecruitingCourt, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
+import { getRecruitingEntryForUser, getRecruitingListCardCounts, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingPostTerminalState, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isPaidRecruitingCourt, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
@@ -69,6 +69,13 @@ const VIEWS = [
     title: "예정",
     desc: "시작 전 일정",
     icon: Swords,
+  },
+  {
+    id: "cancelled",
+    code: "REMATCH",
+    title: "취소된 방",
+    desc: "확인·다시 만들기",
+    icon: RotateCcw,
   },
 ];
 const CHILD_VIEW_IDS = ["todo", "scheduled"];
@@ -342,6 +349,7 @@ function shouldShowMatchForView(match, view, userId, options = {}) {
   if (view.id === "active") {
     return CHILD_VIEW_IDS.some((viewId) => shouldShowMatchForView(match, { id: viewId }, userId, options));
   }
+  if (view.id === "cancelled") return match?.status === "cancelled";
   if (isMatchClosedNotice(match) || !isMatchInScheduleMenu(match)) return false;
   if (view.id === "todo") return userNeedsMatchAction(match, userId);
   if (view.id === "scheduled") return !userNeedsMatchAction(match, userId);
@@ -451,18 +459,28 @@ function matchesScheduleBranch(item = {}, type = "match", branchFilter = "all") 
 }
 
 function getRecruitingRoomsForView(posts = [], view, userId = "") {
-  if (view.id === "todo") return posts.filter((post) => hasPendingRecruitingInvitation(post, userId));
+  if (view.id === "cancelled") return posts.filter((post) => Boolean(getRecruitingPostTerminalState(post)));
+  const openPosts = posts.filter((post) => post.status === "open" && !getRecruitingPostTerminalState(post));
+  if (view.id === "todo") return openPosts.filter((post) => hasPendingRecruitingInvitation(post, userId));
   if (!["active", "scheduled"].includes(view.id)) return [];
-  return view.id === "scheduled" ? posts.filter((post) => !hasPendingRecruitingInvitation(post, userId)) : posts;
+  return view.id === "scheduled" ? openPosts.filter((post) => !hasPendingRecruitingInvitation(post, userId)) : openPosts;
 }
 
 function getScheduleItemsForView(matches = [], recruitingPosts = [], view, userId, hasDateFilter, options = {}) {
-  return [
+  const items = [
     ...getRecruitingRoomsForView(recruitingPosts, view, userId).map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
     ...matches
       .filter((match) => shouldShowMatchInList(match, view, userId, hasDateFilter, options))
       .map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
-  ].sort((a, b) => compareSchedule(a.item, b.item));
+  ];
+  if (view.id === "cancelled") {
+    return items.sort((a, b) => String(
+      b.item.cancelledAt ?? b.item.roomState?.cancelledAt ?? b.item.updatedAt ?? "",
+    ).localeCompare(String(
+      a.item.cancelledAt ?? a.item.roomState?.cancelledAt ?? a.item.updatedAt ?? "",
+    )));
+  }
+  return items.sort((a, b) => compareSchedule(a.item, b.item));
 }
 
 function getTournamentTeamStatus(tournament, teamId) {
@@ -958,7 +976,7 @@ export default function Matches({ app }) {
       .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
   }, [app.currentUser.id, app.state.tournaments, blockedUserIds, myTeamIds, todayValue]);
   const selectedRecruitingPost = useMemo(
-    () => (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId && post.status === "open") ?? null,
+    () => (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId) ?? null,
     [app.state.recruitingPosts, selectedRecruitingPostId],
   );
   const selectedRecruitingLobby = selectedRecruitingPost ? getRecruitingLobby(selectedRecruitingPost, app.state) : null;
@@ -1126,6 +1144,7 @@ export default function Matches({ app }) {
     return [...app.state.matches]
       .filter((match) => Boolean(getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds)))
       .filter((match) => {
+        if (match.status === "cancelled") return true;
         const matchDate = getMatchDate(match);
         if (!matchDate) return !dateFilter;
         if (matchDate > maxScheduleDate) return false;
@@ -1203,10 +1222,10 @@ export default function Matches({ app }) {
 
   const calendarMatches = useMemo(() => {
     const recruitingRooms = [...matchPageRecruitingPosts]
-      .filter((post) => post.status === "open")
       .filter((post) => getRecruitingRoomsForView([post], selectedView, app.currentUser.id).length > 0)
       .filter((post) => isRecruitingScheduleRelatedToUser(post, app.state, app.currentUser.id, myTeamIds))
       .filter((post) => {
+        if (getRecruitingPostTerminalState(post)) return true;
         if (isInstantScheduleRoom(post)) return false;
         const postDate = getMatchDate(post);
         if (!postDate) return false;
@@ -1231,10 +1250,11 @@ export default function Matches({ app }) {
   const calendarMonthCount = calendarDays.reduce((sum, day) => sum + (calendarCounts.get(day) ?? 0), 0);
   const visibleRecruitingCandidates = useMemo(() => {
     return [...matchPageRecruitingPosts]
-      .filter((post) => post.status === "open")
-      .filter((post) => !isExpiredInstantScheduleRoom(post))
+      .filter((post) => post.status === "open" || Boolean(getRecruitingPostTerminalState(post)))
+      .filter((post) => getRecruitingPostTerminalState(post) || !isExpiredInstantScheduleRoom(post))
       .filter((post) => isRecruitingScheduleRelatedToUser(post, app.state, app.currentUser.id, myTeamIds))
       .filter((post) => {
+        if (getRecruitingPostTerminalState(post)) return true;
         if (isInstantScheduleRoom(post)) return true;
         const postDate = getMatchDate(post);
         return postDate && postDate <= maxScheduleDate && shouldIncludeScheduleWindow(post, todayValue, maxScheduleDate);
