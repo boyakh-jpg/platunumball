@@ -965,6 +965,33 @@ function mergeServerRoomResult(state, result = {}, options = {}) {
   };
 }
 
+function mergeMatchThumbsResult(state, result = {}, operation = {}) {
+  const matchId = result.matchId ?? operation.matchId ?? "";
+  const actorProfileId = result.actorProfileId ?? "";
+  if (!matchId || !actorProfileId) return state;
+  const targetUserIds = Array.isArray(result.targetUserIds)
+    ? result.targetUserIds.filter(Boolean)
+    : [];
+  return {
+    ...state,
+    matches: (state.matches ?? []).map((match) => {
+      if (match.id !== matchId) return match;
+      const trustFeedback = match.trustFeedback ?? {};
+      return {
+        ...match,
+        trustFeedback: {
+          ...trustFeedback,
+          stars: {
+            ...(trustFeedback.stars ?? {}),
+            [actorProfileId]: targetUserIds,
+          },
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    }),
+  };
+}
+
 function attachRemoteMeta(state = null, meta = {}) {
   if (!state || typeof state !== "object") return state;
   Object.defineProperty(state, "__rankballLoadMeta", {
@@ -2089,6 +2116,8 @@ export function useAppData(authUser = null, appLocation = null) {
         setState((prev) => mergeServerRoomResult(prev, result, {
           preserveMatchAttendance: operation?.action === "checkInMatchPlayer",
         }));
+      } else if (result?.ok !== false && operation?.action === "submitMatchThumbs") {
+        setState((prev) => mergeMatchThumbsResult(prev, result, operation));
       }
       return result;
     }).finally(() => {

@@ -2360,12 +2360,14 @@ export default async function handler(request, response) {
     if (operation && shouldUseSqlMatchAction(operation) && (match || canUseSqlMatchActionWithoutSnapshot(operation))) {
       const sqlResult = await applySqlMatchAction(context, operation, match);
       if (sqlResult) {
-        const syncedMatch = await loadSyncedMatchAfterWrite(
-          context,
-          sqlResult.matchId ?? operation.matchId ?? match?.id,
-          match,
-          { predicate: getSqlMatchReloadPredicate(operation) },
-        );
+        const syncedMatch = operation.action === "submitMatchThumbs"
+          ? null
+          : await loadSyncedMatchAfterWrite(
+            context,
+            sqlResult.matchId ?? operation.matchId ?? match?.id,
+            match,
+            { predicate: getSqlMatchReloadPredicate(operation) },
+          );
         let discordDeliveryCount = Number(sqlResult.discordDeliveryCount ?? 0);
         let discordDeliveryError = sqlResult.discordDeliveryError ?? null;
         const shouldRefreshMatchDeliveries = MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS.has(operation.action) ||

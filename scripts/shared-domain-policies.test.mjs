@@ -222,6 +222,18 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   );
 });
 
+test("match recommendations finish from the SQL result without a full match reload", async () => {
+  const [appDataSource, matchServerSource] = await Promise.all([
+    readSource("src/hooks/useAppData.js"),
+    readSource("server/api/matches/sync-match.js"),
+  ]);
+
+  assert.match(appDataSource, /function mergeMatchThumbsResult\(/);
+  assert.match(appDataSource, /operation\?\.action === "submitMatchThumbs"/);
+  assert.match(appDataSource, /\[actorProfileId\]: targetUserIds/);
+  assert.match(matchServerSource, /operation\.action === "submitMatchThumbs"\s*\?\s*null\s*:\s*await loadSyncedMatchAfterWrite/);
+});
+
 test("room modes and administrator MMR policy use the same mode keys", () => {
   const modeIds = MATCH_MODES.map((mode) => mode.id);
   assert.deepEqual(RATING_POLICY_MODE_IDS, modeIds);
