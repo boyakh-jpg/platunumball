@@ -1875,3 +1875,11 @@ UI 수정 전:
 2. 모바일은 참가자 카드를 1열로 유지한다. action 너비는 같은 열 안에서 균등하게 맞추고 교환 action은 전체 폭을 사용해 빈 반쪽 칸과 가로 overflow를 만들지 않는다.
 3. 팀 배정 방식은 데스크톱에서 같은 너비의 grid로 표시한다. 좁은 화면은 2열과 마지막 홀수 action 전체 폭을 사용하고, 더 좁은 화면은 1열로 전환한다.
 4. 픽업 슬롯의 기존 `72px` 고정 폭은 유지한다. 작업판 반응형 변경으로 슬롯 자체를 늘리거나 줄이지 않는다.
+
+## 2026-07-24 CSS cascade 정리 기준
+
+1. 운영 CSS에는 `src`, `public`, 공개 HTML에서 사용하지 않는 selector branch를 남기지 않는다. 외부 지도 SDK와 동적 class prefix는 명시적 허용 목록으로 관리한다.
+2. 같은 at-rule 문맥의 같은 selector에서 뒤 규칙이 완전히 덮는 앞 선언은 금지한다. 서로 다른 속성을 보완하는 규칙은 cascade 순서가 동작의 일부이므로 강제로 합치지 않는다.
+3. `Card`, `Button`, 목록 카드의 공용 표면은 primitive stylesheet가 담당한다. 기능별 stylesheet는 해당 화면의 배치와 상태 표현만 추가한다.
+4. `npm run build`와 `npm run test:design`은 미사용 selector와 완전 shadow 선언 검사를 함께 실행한다.
+5. CSS 정리는 동작과 배치를 바꾸지 않는 범위에서만 수행하고 desktop/mobile, dark/light의 computed style과 가로 overflow를 비교한다.

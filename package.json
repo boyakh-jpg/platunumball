@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "node --test scripts/design-system-guards.test.mjs && vite build",
+    "build": "node --test scripts/design-system-guards.test.mjs scripts/css-cascade-guards.test.mjs && vite build",
     "seed:demo-flow": "node scripts/seed-demo-flow.mjs",
     "seed:supabase": "node scripts/seed-supabase-state.mjs",
     "seed:supabase:cleanup": "node scripts/cleanup-supabase-seed.mjs",
@@ -18,7 +18,7 @@
     "test:policies": "node --test scripts/shared-domain-policies.test.mjs scripts/api-security.test.mjs scripts/court-request-report-policy.test.mjs scripts/match-mode-policy.test.mjs",
     "test:legal": "node --test scripts/legal-pages.test.mjs",
     "test:security": "node --test scripts/api-security.test.mjs",
-    "test:design": "node --test scripts/design-system-guards.test.mjs",
+    "test:design": "node --test scripts/design-system-guards.test.mjs scripts/css-cascade-guards.test.mjs",
     "lint:styles": "stylelint \"src/styles/ui-primitives.css\"",
     "verify:release": "vite build && node scripts/simulate-backend-flow.mjs --full --quiet",
     "preview": "vite preview --host 127.0.0.1"
@@ -32,6 +32,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "postcss": "8.5.15",
+    "postcss-selector-parser": "7.1.4",
     "stylelint": "^16.23.1",
     "stylelint-config-standard": "^38.0.0",
     "vite": "^5.4.11"

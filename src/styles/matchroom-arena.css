@@ -8,7 +8,6 @@
   isolation: isolate;
   overflow: hidden;
   display: grid;
-  gap: 18px;
   min-height: min(540px, calc(100vh - 150px));
   border: 1px solid rgba(118, 169, 255, 0.28);
   border-radius: var(--radius);
@@ -16,7 +15,6 @@
     linear-gradient(90deg, rgba(3, 6, 12, 0.98), rgba(4, 8, 15, 0.78) 42%, rgba(4, 8, 15, 0.5)),
     var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
-  padding: 20px;
 }
 
 .gm-room-hero::before {
@@ -24,10 +22,6 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px) 0 0 / 100% 9px,
-    radial-gradient(circle at 50% 48%, rgba(118, 169, 255, 0.26), transparent 20rem),
-    linear-gradient(90deg, rgba(70, 224, 182, 0.15), transparent 32%, transparent 68%, rgba(255, 111, 97, 0.16));
   opacity: 0.74;
 }
 
@@ -67,17 +61,10 @@
   text-transform: uppercase;
 }
 
-.gm-room-title h1 {
-  font-size: clamp(3.4rem, 8.4vw, 6.2rem);
-  line-height: 0.85;
-  text-transform: uppercase;
-}
-
 .gm-room-title p {
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #dce5ef;
   font-size: 1.02rem;
   font-weight: 850;
 }
@@ -85,7 +72,6 @@
 .gm-versus-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(170px, 220px) minmax(0, 1fr);
-  gap: 16px;
   align-items: stretch;
   margin-top: auto;
 }
@@ -101,10 +87,7 @@
 .gm-team-panel {
   display: grid;
   align-content: space-between;
-  min-height: 220px;
-  gap: 14px;
   border-radius: var(--radius);
-  padding: 14px;
 }
 
 .gm-team-head {
@@ -231,17 +214,14 @@
 .gm-reserve-panel {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
 }
 
 .gm-reserve-line {
   display: grid;
   min-width: 0;
-  gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-xs);
   background: rgba(5, 10, 18, 0.46);
-  padding: 10px;
 }
 
 .gm-reserve-line > strong {
@@ -268,9 +248,7 @@
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 8px;
   border-radius: var(--radius);
-  padding: 16px;
   text-align: center;
 }
 
@@ -302,10 +280,8 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
   border-radius: var(--radius-xs);
   color: var(--muted);
-  padding: 11px 12px;
   font-size: 0.82rem;
   font-weight: 850;
 }
@@ -335,7 +311,6 @@
 .gm-next-action-card > div {
   display: grid;
   min-width: 0;
-  gap: 3px;
 }
 
 .gm-next-action-card span {
@@ -362,10 +337,6 @@
 
 .review-controls-card > .button {
   width: 100%;
-}
-
-.gm-room-hero + .content-grid {
-  margin-top: 4px;
 }
 
 html[data-theme="light"] .gm-room-hero {
@@ -456,10 +427,6 @@ html[data-theme="light"] .gm-player-slot em {
 }
 
 @media (max-width: 720px) {
-  .gm-room-hero {
-    gap: 16px;
-    padding: 16px;
-  }
 
   .gm-versus-stage {
     grid-template-columns: 1fr;
@@ -477,10 +444,6 @@ html[data-theme="light"] .gm-player-slot em {
     grid-column: 1 / -1;
   }
 
-  .gm-room-title h1 {
-    font-size: 3.1rem;
-  }
-
   .gm-room-topline {
     align-items: flex-start;
     flex-direction: column;
@@ -489,7 +452,6 @@ html[data-theme="light"] .gm-player-slot em {
   .gm-team-panel {
     min-height: 0;
     gap: 10px;
-    padding: 12px;
   }
 
   .gm-roster-row {
@@ -622,14 +584,6 @@ html[data-theme="light"] .gm-room-actions > div {
 }
 
 /* 2026-07-02 include match room in page-level hero rules. */
-.gm-room-hero::before,
-.gm-room-hero::after,
-html[data-theme="light"] .gm-room-hero::before,
-html[data-theme="light"] .gm-room-hero::after {
-  content: none;
-  background: none;
-  opacity: 0;
-}
 
 html[data-theme="light"] .gm-room-title h1 {
   color: var(--rb-cream);
