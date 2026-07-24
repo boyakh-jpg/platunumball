@@ -8529,12 +8529,13 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
 
 .arena-lobby-modal .pickup-room-slot-grid,
 html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
+  --pickup-slot-width: 72px;
   display: grid;
-  grid-template-columns: repeat(var(--pickup-slot-columns, 8), minmax(0, 72px));
-  grid-auto-columns: auto;
+  grid-template-columns: repeat(auto-fit, var(--pickup-slot-width));
   grid-auto-flow: row;
   justify-content: start;
-  gap: var(--room-slot-gap);
+  column-gap: clamp(3px, 0.65vw, var(--room-slot-gap));
+  row-gap: var(--room-slot-gap);
   margin: -10px;
   padding: 10px;
   overflow: visible;
@@ -8542,12 +8543,12 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
 
 .pickup-room-slot-grid .arena-room-player-slot-wrap,
 .pickup-room-slot-grid .arena-room-player-slot {
-  width: 100%;
-  inline-size: 100%;
-  min-width: 0;
-  min-inline-size: 0;
-  max-width: none;
-  max-inline-size: none;
+  width: var(--pickup-slot-width);
+  inline-size: var(--pickup-slot-width);
+  min-width: var(--pickup-slot-width);
+  min-inline-size: var(--pickup-slot-width);
+  max-width: var(--pickup-slot-width);
+  max-inline-size: var(--pickup-slot-width);
 }
 
 .pickup-participant-helper {
@@ -8563,9 +8564,7 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
 @media (max-width: 720px) {
   .arena-lobby-modal .pickup-room-slot-grid,
   html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-auto-columns: auto;
-    grid-auto-flow: row;
+    column-gap: 4px;
   }
 
   .pickup-rotation-panel > button {

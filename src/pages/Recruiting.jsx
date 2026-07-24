@@ -3548,11 +3548,22 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             )) ?? null
           : null;
         const roomEditCourtWarning = roomEditDraft && roomEditCourt ? getCourtPlayWarning(roomEditCourt, `${roomEditDraft.sideCapacity}v${roomEditDraft.sideCapacity}`) : "";
-        const selectedMatchRules = normalizeMatchRules(selectedPost.rules, { mode: selectedPost.mode });
-        const selectedMatchRuleRows = getMatchRuleDetailRows(selectedMatchRules, selectedPost.mode);
-        const selectedCreationSummary = getMatchCreationSummary(selectedPost);
+        const selectedRoomPolicySource = sourceMatch
+          ? {
+              ...selectedPost,
+              ...sourceMatch,
+              mode: sourceMatch.mode ?? selectedPost.mode,
+              rules: sourceMatch.rules ?? selectedPost.rules,
+            }
+          : selectedPost;
+        const selectedMatchRules = normalizeMatchRules(selectedRoomPolicySource.rules, { mode: selectedRoomPolicySource.mode });
+        const selectedMatchRuleRows = getMatchRuleDetailRows(selectedMatchRules, selectedRoomPolicySource.mode);
+        const selectedCreationSummary = getMatchCreationSummary(selectedRoomPolicySource);
         const selectedRoomPolicyRows = selectedCreationSummary.rows.filter((row) => (
           row.label === "경기 목적" || row.label === "팀 구성" || row.label === "명단" || row.label === "운영 정책" || row.label === "출전 정책"
+        ));
+        const selectedRoomOperationRows = selectedCreationSummary.rows.filter((row) => (
+          row.label === "공 제공" || row.label === "운영 장비"
         ));
         const maxSideFilled = Math.max(
           lobby.sides.teamA.projectedPlayers.length,
@@ -4550,11 +4561,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 </div>
                 <div className="arena-room-rule-summary">
                   {selectedRoomPolicyRows.map((row) => <span key={row.label}>{row.value}</span>)}
-                  <span>{getMeetingPointSummary(selectedMatchRules, selectedPost.timingType, selectedPost.mode)}</span>
+                  <span>{getMeetingPointSummary(selectedMatchRules, selectedRoomPolicySource.timingType, selectedRoomPolicySource.mode)}</span>
                   {selectedPost.ranked !== false ? <span>{selectedRange.label}</span> : <span>친선 · 티어 자유</span>}
                 </div>
                 <dl className="arena-room-rule-detail-grid">
-                  {selectedMatchRuleRows.map((row) => (
+                  {[...selectedMatchRuleRows, ...selectedRoomOperationRows].map((row) => (
                     <div key={row.label}>
                       <dt>{row.label}</dt>
                       <dd>{row.value}</dd>

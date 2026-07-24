@@ -11,6 +11,7 @@ import {
   RECORD_ENTRY_MODE_OPTIONS,
   getMatchCreationPolicyPayload,
   getMatchCreationSummary,
+  getMatchOperationsSummaryRows,
   getMatchCreationValidation,
   getMatchCreationWizardType,
   getMatchIntentChangePatch,
@@ -504,6 +505,44 @@ test("record and tournament payloads keep only relevant creation policy", () => 
   assert.equal("courtFee" in personalDraft, false);
   assert.equal("courtReserved" in personalDraft, false);
   assert.equal(personalDraft.mode, "3v3");
+});
+
+test("room operations summary exposes every saved equipment choice", () => {
+  assert.deepEqual(
+    getMatchOperationsSummaryRows({
+      ballProvider: "venue",
+      vestsProvided: true,
+      scoreboardAvailable: false,
+      shotClockAvailable: true,
+      statRecorderAvailable: false,
+    }),
+    [
+      { label: "공 제공", value: "구장 제공" },
+      { label: "운영 장비", value: "조끼 제공 · 점수판 없음 · 샷클락 있음 · 기록원 없음" },
+    ],
+  );
+
+  const summary = getMatchCreationSummary({
+    mode: "3v3",
+    ballProvider: "participant",
+    vestsProvided: false,
+    scoreboardAvailable: true,
+    shotClockAvailable: false,
+    statRecorderAvailable: true,
+  });
+  assert.equal(summary.rows.find((row) => row.label === "공 제공")?.value, "참가자 제공");
+  assert.equal(summary.rows.find((row) => row.label === "운영 장비")?.value, "조끼 없음 · 점수판 있음 · 샷클락 없음 · 기록원 있음");
+});
+
+test("pickup participant slots keep a fixed width and use available desktop columns", () => {
+  const componentSource = fs.readFileSync(path.join(root, "src/components/match/PickupParticipantPool.jsx"), "utf8");
+  const cssSource = fs.readFileSync(path.join(root, "src/styles/recruiting-arena.css"), "utf8");
+  assert.doesNotMatch(componentSource, /Math\.min\(8,\s*Math\.max\(1,\s*safeCapacity\)\)/);
+  assert.doesNotMatch(componentSource, /--pickup-slot-columns/);
+  assert.match(cssSource, /--pickup-slot-width:\s*72px/);
+  assert.match(cssSource, /grid-template-columns:\s*repeat\(auto-fit,\s*var\(--pickup-slot-width\)\)/);
+  assert.match(cssSource, /\.pickup-room-slot-grid \.arena-room-player-slot[\s\S]*width:\s*var\(--pickup-slot-width\)/);
+  assert.doesNotMatch(cssSource, /\.arena-lobby-modal \.pickup-room-slot-grid[^{]*\{[^}]*grid-template-columns:\s*repeat\(4/);
 });
 
 test("CreateMatch persists bench capacity at top level and inside rules", () => {

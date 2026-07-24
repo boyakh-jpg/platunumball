@@ -487,6 +487,27 @@ function formatCurrency(value) {
   return `${Number(value || 0).toLocaleString("ko-KR")}원`;
 }
 
+const BALL_PROVIDER_LABELS = Object.freeze({
+  host: "방장 제공",
+  venue: "구장 제공",
+  participant: "참가자 제공",
+  unknown: "현장 협의",
+});
+
+export function getMatchOperationsSummaryRows(source = {}) {
+  const policy = getMatchCreationPolicyPayload(source);
+  const equipmentLabels = [
+    policy.vestsProvided ? "조끼 제공" : "조끼 없음",
+    policy.scoreboardAvailable ? "점수판 있음" : "점수판 없음",
+    policy.shotClockAvailable ? "샷클락 있음" : "샷클락 없음",
+    policy.statRecorderAvailable ? "기록원 있음" : "기록원 없음",
+  ];
+  return [
+    { label: "공 제공", value: BALL_PROVIDER_LABELS[policy.ballProvider] ?? BALL_PROVIDER_LABELS.host },
+    { label: "운영 장비", value: equipmentLabels.join(" · ") },
+  ];
+}
+
 export function getMatchCreationSummary(source = {}) {
   const policySource = getMatchCreationPolicySource(source);
   const policy = getMatchCreationPolicyPayload(policySource);
@@ -511,6 +532,7 @@ export function getMatchCreationSummary(source = {}) {
       ...(pickup ? [{ label: "팀 배치", value: "체크인에서 방장·심판이 직접 배치" }] : []),
       ...(pickup ? [{ label: "운영 정책", value: policy.rotationMode === "period" ? "쿼터·하프 종료마다 균등 교대" : policy.rotationMode === "interval" ? `${policy.rotationIntervalMinutes}분 간격 균등 교대` : "방장·심판 직접 교대" }] : policy.benchCapacity > 0 ? [{ label: "출전 정책", value: playingTime }] : []),
       { label: "경기 규칙", value: getMatchRuleSummary(policySource, policySource.mode) },
+      ...getMatchOperationsSummaryRows(policy),
       { label: "비용", value: `${costText} · ${payment}` },
       { label: "구장", value: policySource.court || "구장 미정" },
       { label: "일정", value: policySource.timingType === "instant" ? "즉시" : [policySource.scheduledDate, policySource.scheduledTime].filter(Boolean).join(" ") || "일정 미정" },

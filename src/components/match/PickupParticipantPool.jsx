@@ -12,7 +12,6 @@ export default function PickupParticipantPool({
   const participants = getPickupParticipants(lobby);
   const safeCapacity = Math.max(participants.length, Number(capacity) || 0);
   const openSlotCount = Math.max(0, safeCapacity - participants.length);
-  const desktopColumns = Math.min(8, Math.max(1, safeCapacity));
   return (
     <section className="arena-side-roster pickup-participant-pool" aria-label={assignmentMode ? "출석 및 팀 배정 대상" : "픽업 참가자"}>
       <header>
@@ -21,10 +20,7 @@ export default function PickupParticipantPool({
           <strong>{participants.length}/{safeCapacity || "-"}</strong>
         </div>
       </header>
-      <div
-        className="arena-room-slot-row pickup-room-slot-grid"
-        style={{ "--pickup-slot-columns": desktopColumns }}
-      >
+      <div className="arena-room-slot-row pickup-room-slot-grid">
         {participants.map((participant, index) => (
           <Fragment key={participant.playerId}>
             {renderParticipant?.({ ...participant, index })}
