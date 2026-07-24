@@ -665,9 +665,13 @@ html[data-theme="light"] .arena-icon-button {
   color: var(--rb-text);
 }
 
-html[data-theme="light"] .eyebrow,
 html[data-theme="light"] .text-positive {
   color: var(--rb-green);
+}
+
+html[data-theme="light"] input[type="checkbox"],
+html[data-theme="light"] input[type="radio"] {
+  accent-color: var(--rb-orange);
 }
 
 html[data-theme="light"] .badge,
@@ -681,6 +685,11 @@ html[data-theme="light"] .badge.orange,
 html[data-theme="light"] .tag.orange {
   background: rgba(229, 85, 63, 0.12);
   color: #c94732;
+}
+
+html[data-theme="light"] .my-team-row b {
+  background: var(--ui-selectable-selected-bg);
+  color: var(--ui-selectable-selected-color);
 }
 
 html[data-theme="light"] .badge.green,
@@ -713,7 +722,9 @@ html[data-theme="light"] .tag.gold {
   }
 
   html[data-theme="light"] .bottom-nav a.active {
+    background: var(--ui-selectable-selected-bg);
     color: var(--rb-text);
+    box-shadow: none;
   }
 
   html[data-theme="light"] .bottom-nav a.active::before {

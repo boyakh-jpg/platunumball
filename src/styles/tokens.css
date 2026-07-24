@@ -146,6 +146,11 @@
   --ui-control-group-padding: var(--control-group-padding);
   --ui-control-group-bg: color-mix(in srgb, var(--rb-surface) 76%, transparent);
   --ui-control-group-border: var(--control-border);
+  --ui-selectable-hover-bg: color-mix(in srgb, var(--rb-green) 8%, var(--ui-control-bg));
+  --ui-selectable-hover-border: color-mix(in srgb, var(--rb-green) 28%, var(--ui-control-border));
+  --ui-selectable-selected-bg: color-mix(in srgb, var(--rb-green) 12%, var(--ui-control-bg));
+  --ui-selectable-selected-border: color-mix(in srgb, var(--rb-green) 52%, var(--ui-control-border));
+  --ui-selectable-selected-color: var(--rb-text);
   --ui-icon-button-size: 34px;
   --ui-room-modal-radius: var(--radius-lg);
   --ui-room-modal-border: var(--card-border);
@@ -244,6 +249,11 @@ html[data-theme="light"] {
   --input-border: rgba(30, 24, 18, 0.14);
   --focus-ring: 0 0 0 3px rgba(229, 85, 63, 0.16);
   --ui-control-group-bg: color-mix(in srgb, var(--rb-surface) 82%, transparent);
+  --ui-selectable-hover-bg: color-mix(in srgb, var(--rb-orange) 6%, var(--ui-control-bg));
+  --ui-selectable-hover-border: color-mix(in srgb, var(--rb-orange) 28%, var(--ui-control-border));
+  --ui-selectable-selected-bg: color-mix(in srgb, var(--rb-orange) 12%, var(--ui-control-bg));
+  --ui-selectable-selected-border: color-mix(in srgb, var(--rb-orange) 52%, var(--ui-control-border));
+  --ui-selectable-selected-color: var(--rb-orange-pressed);
   --ui-room-modal-bg: var(--card-bg-strong);
   --ui-room-panel-bg: rgba(255, 250, 241, 0.78);
   --hero-title-color: #fffaf1;

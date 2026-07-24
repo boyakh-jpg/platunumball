@@ -269,9 +269,9 @@
 }
 
 html[data-theme="light"] .search-picker-results.is-floating {
-  border-color: rgba(41, 116, 99, 0.16);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 42px rgba(35, 87, 75, 0.14);
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg-strong);
+  box-shadow: var(--ui-card-shadow);
 }
 
 .court-search-result-meta {
@@ -314,13 +314,14 @@ html[data-theme="light"] .search-picker-idle-panel {
 }
 
 html[data-theme="light"] .search-picker-result-row {
-  border-color: rgba(41, 116, 99, 0.16);
-  background: rgba(255, 255, 255, 0.72);
+  border-color: var(--ui-control-border);
+  background: var(--ui-control-bg);
 }
 
 html[data-theme="light"] .search-picker-result-row.selected {
-  border-color: rgba(15, 159, 126, 0.52);
-  background: rgba(15, 159, 126, 0.12);
+  border-color: var(--ui-selectable-selected-border);
+  background: var(--ui-selectable-selected-bg);
+  color: var(--ui-selectable-selected-color);
 }
 
 .home-dashboard-grid {

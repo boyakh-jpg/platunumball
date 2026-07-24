@@ -211,3 +211,25 @@ test("global modules use spacing tokens for canonical gaps", () => {
 
   assert.deepEqual(rawGaps, []);
 });
+
+test("light theme reserves green for semantic status only", () => {
+  const violations = [];
+  const semanticGreenSelector = /(?:\.ready\b|\.text-positive\b|\.badge\.green\b|\.tag\.green\b)/;
+  const mintValue = /(?:var\(--(?:rb-)?green\)|rgba?\(\s*(?:15\s*,\s*159\s*,\s*126|25\s*,\s*148\s*,\s*119|33\s*,\s*138\s*,\s*95|65\s*,\s*217\s*,\s*159|67\s*,\s*236\s*,\s*214|70\s*,\s*224\s*,\s*182|88\s*,\s*210\s*,\s*192|213\s*,\s*250\s*,\s*241|232\s*,\s*240\s*,\s*236|238\s*,\s*249\s*,\s*244|239\s*,\s*249\s*,\s*245|245\s*,\s*250\s*,\s*247|246\s*,\s*252\s*,\s*249|247\s*,\s*253\s*,\s*250|249\s*,\s*253\s*,\s*251))/i;
+
+  for (const file of cssFiles) {
+    const root = parseCss(file);
+    root.walkRules((rule) => {
+      if (!rule.selector.includes('html[data-theme="light"]')) return;
+      const hasNonSemanticBranch = rule.selectors.some((selector) => !semanticGreenSelector.test(selector));
+      if (!hasNonSemanticBranch) return;
+
+      rule.walkDecls((declaration) => {
+        if (!mintValue.test(declaration.value)) return;
+        violations.push(`${file}:${declaration.source.start.line} ${rule.selector} ${declaration.prop}`);
+      });
+    });
+  }
+
+  assert.deepEqual(violations, []);
+});

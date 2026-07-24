@@ -1779,10 +1779,8 @@ html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-view-card {
-  border-color: rgba(41, 116, 99, 0.16);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 249, 245, 0.78)),
-    rgba(246, 252, 249, 0.88);
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
 }
 
 /* Final CSS cleanup: shared match/queue list cards, calendar stability. */
@@ -1839,18 +1837,13 @@ html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-view-card {
-  background-color: rgba(250, 254, 252, 0.92);
+  background-color: var(--ui-card-bg);
   background-image: none;
 }
 
 .om-calendar-filter-bar,
 html[data-theme="light"] .om-calendar-filter-bar {
   background-color: transparent;
-  background-image: none;
-}
-
-html[data-theme="light"] .om-calendar-grid button.active {
-  background-color: rgba(213, 250, 241, 0.94);
   background-image: none;
 }
 
@@ -2962,8 +2955,8 @@ html[data-theme="light"] .om-calendar-filter-bar {
 }
 
 html[data-theme="light"] .om-calendar-summary {
-  border-color: rgba(41, 116, 99, 0.16);
-  background: rgba(250, 254, 252, 0.92);
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
   box-shadow: none;
 }
 

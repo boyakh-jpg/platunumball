@@ -363,9 +363,9 @@
 }
 
 html[data-theme="light"] .court-map-picker-dialog {
-  border-color: rgba(41, 116, 99, 0.2);
-  background: #fff;
-  box-shadow: 0 24px 70px rgba(35, 87, 75, 0.24);
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg-strong);
+  box-shadow: var(--shadow-strong);
 }
 
 html[data-theme="light"] .court-map-picker-state {

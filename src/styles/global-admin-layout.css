@@ -2237,9 +2237,7 @@ html[data-theme="light"] .history-item {
 }
 
 html[data-theme="light"] .home-action-card {
-  background:
-    linear-gradient(90deg, rgba(255, 211, 108, 0.14), rgba(70, 224, 182, 0.08)),
-    rgba(255, 255, 255, 0.82);
+  background: var(--ui-card-bg);
 }
 
 html[data-theme="light"] .rank-search-card {
@@ -2369,15 +2367,14 @@ html[data-theme="light"] .team-search-selected {
 }
 
 html[data-theme="light"] .team-search-popover button:hover {
-  border-color: rgba(15, 159, 126, 0.32);
-  background:
-    linear-gradient(180deg, rgba(236, 255, 247, 0.9), rgba(255, 255, 255, 0.78)),
-    rgba(255, 255, 255, 0.9);
+  border-color: var(--ui-selectable-hover-border);
+  background: var(--ui-selectable-hover-bg);
 }
 
 html[data-theme="light"] .team-search-popover button.selected {
-  border-color: rgba(15, 159, 126, 0.55);
-  background: rgba(15, 159, 126, 0.12);
+  border-color: var(--ui-selectable-selected-border);
+  background: var(--ui-selectable-selected-bg);
+  color: var(--ui-selectable-selected-color);
 }
 
 @media (max-width: 1020px) {
