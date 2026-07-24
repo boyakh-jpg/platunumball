@@ -446,6 +446,7 @@ export default function Admin({ app }) {
   const activeAdminPage = app.adminStatus?.section === section && app.adminStatus?.queueMode === queueMode
     ? app.adminStatus.page
     : null;
+  const activeQueueTotal = activeRows.length;
   const changeSection = (nextSection) => {
     const next = new URLSearchParams(searchParams);
     next.set("section", nextSection);
@@ -461,6 +462,14 @@ export default function Admin({ app }) {
     setQueueFilterByView((current) => ({ ...current, [section]: "" }));
     setAppliedQueueFilterByView((current) => ({ ...current, [section]: "" }));
   };
+  const refreshQueue = () => loadAdminSection?.({
+    section,
+    queueMode,
+    filter: appliedQueueFilter,
+    limit: ADMIN_DEFAULT_PAGE_LIMIT,
+    offset: 0,
+    force: true,
+  });
   const visibleActionOptions = useMemo(() => {
     if (selectedReportIsVoidRestore) {
       return adminLevel >= 50 ? ACTION_OPTIONS.filter((option) => ["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(option.id)) : [];
@@ -511,6 +520,8 @@ export default function Admin({ app }) {
     || (actionNeedsMergeTarget && !actionDraft.mergeTargetId);
   const reviewActionInvalid = actionDraft.reason.trim().length < 4
     || actionDraft.feedback.trim().length < 4
+    || actionDraft.reason.trim().length > 500
+    || actionDraft.feedback.trim().length > 500
     || (actionNeedsTarget && !selectedTargetUserId)
     || nameModerationInvalid;
   const reviewActionHighImpact = isHighImpactAdminReviewAction(actionDraft.actionType);
@@ -596,7 +607,9 @@ export default function Admin({ app }) {
         reportId: selectedReport.id,
       });
       if (!result || result.ok === false) {
-        setReviewActionStatus(selectedReport.type === "team_emblem"
+        setReviewActionStatus(result?.error === "report_already_processed"
+          ? "이미 다른 관리자가 처리했습니다. 최신 목록으로 갱신했습니다."
+          : selectedReport.type === "team_emblem"
           ? getTeamEmblemErrorMessage(result?.error || "admin_review_action_failed")
           : "관리자 처리를 완료하지 못했습니다.");
       } else if (result.storageCleanupPending) {
@@ -898,11 +911,18 @@ export default function Admin({ app }) {
             <div className="admin-row-actions">
               <Button type="button" variant="secondary" onClick={applyQueueFilter}>적용</Button>
               {appliedQueueFilter ? <Button type="button" variant="secondary" onClick={clearQueueFilter}>초기화</Button> : null}
+              <Button type="button" variant="secondary" disabled={app.adminStatus?.loading} onClick={refreshQueue}>
+                {app.adminStatus?.loading ? "갱신 중" : "새로고침"}
+              </Button>
             </div>
           </div>
           <div className="segmented-control compact-segments admin-queue-filter">
-            <button type="button" className={queueMode === "pending" ? "active" : ""} onClick={() => setQueueMode("pending")}>처리 대기 {pendingRows.length}</button>
-            <button type="button" className={queueMode === "history" ? "active" : ""} onClick={() => setQueueMode("history")}>전체 이력 {reviewRows.length}</button>
+            <button type="button" className={queueMode === "pending" ? "active" : ""} onClick={() => setQueueMode("pending")}>
+              처리 대기{queueMode === "pending" ? ` ${activeQueueTotal}` : ""}
+            </button>
+            <button type="button" className={queueMode === "history" ? "active" : ""} onClick={() => setQueueMode("history")}>
+              전체 이력{queueMode === "history" ? ` ${activeQueueTotal}` : ""}
+            </button>
           </div>
 
           <div className="admin-sort-list">
@@ -1190,11 +1210,11 @@ export default function Admin({ app }) {
                 </label> : null}
                 <label>
                   처리 사유
-                  <textarea value={actionDraft.reason} placeholder="관리자 처리 사유" onChange={(event) => updateActionDraft({ reason: event.target.value })} />
+                  <textarea value={actionDraft.reason} maxLength={500} placeholder="관리자 처리 사유" onChange={(event) => updateActionDraft({ reason: event.target.value })} />
                 </label>
                 <label>
                   신고자 피드백
-                  <textarea value={actionDraft.feedback} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
+                  <textarea value={actionDraft.feedback} maxLength={500} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
                 </label>
                 {!visibleActionOptions.length ? <small>현재 권한으로 실행할 수 있는 처리가 없습니다.</small> : null}
                 {reviewActionConfirming ? (

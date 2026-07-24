@@ -15,11 +15,47 @@ const HIGH_IMPACT_ACTIONS = new Set([
   "restoreMatchHalf",
   "restoreMatchFull",
 ]);
+const ALLOWED_ACTIONS = new Set([
+  "validReport",
+  "dismissReport",
+  ...HIGH_IMPACT_ACTIONS,
+]);
+const ADMIN_REVIEW_TEXT_MAX_LENGTH = 500;
 
 function makeHttpError(message, statusCode) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+}
+
+export function normalizeAdminReviewInput(body = {}) {
+  const actionType = String(body.actionType ?? "validReport").trim();
+  const reason = String(body.reason ?? "").trim();
+  const feedback = String(body.feedback ?? "").trim();
+  if (!ALLOWED_ACTIONS.has(actionType)) throw makeHttpError("invalid_admin_review_action", 400);
+  if (
+    reason.length < 4
+    || feedback.length < 4
+    || reason.length > ADMIN_REVIEW_TEXT_MAX_LENGTH
+    || feedback.length > ADMIN_REVIEW_TEXT_MAX_LENGTH
+  ) {
+    throw makeHttpError("admin_review_detail_invalid", 400);
+  }
+  return { actionType, reason, feedback };
+}
+
+export function getAdminReviewErrorStatus(error = {}) {
+  if (error?.code === "42501") return 403;
+  if (error?.code === "P0002") return 404;
+  if (error?.code === "23505" || error?.message === "team_emblem_report_stale") return 409;
+  if (["22001", "22023", "23502"].includes(error?.code)) return 400;
+  return 500;
+}
+
+function mapAdminReviewError(error, fallback) {
+  const mapped = new Error(error?.message || fallback);
+  mapped.statusCode = getAdminReviewErrorStatus(error);
+  return mapped;
 }
 
 export default async function handler(request, response) {
@@ -39,10 +75,7 @@ export default async function handler(request, response) {
 
     const context = await getAuthenticatedContext(request);
     const adminLevel = await getAdminLevel(context);
-    const actionType = String(body.actionType ?? "validReport");
-    const reason = String(body.reason ?? "").trim();
-    const feedback = String(body.feedback ?? "").trim();
-    if (reason.length < 4 || feedback.length < 4) throw makeHttpError("admin_review_detail_required", 400);
+    const { actionType, reason, feedback } = normalizeAdminReviewInput(body);
     if (HIGH_IMPACT_ACTIONS.has(actionType) && adminLevel < 50) throw makeHttpError("admin_discipline_permission_required", 403);
 
     if (["suspendTarget", "refereeDiscipline"].includes(actionType)) {
@@ -82,9 +115,7 @@ export default async function handler(request, response) {
         p_feedback: feedback,
       });
       if (error) {
-        const mapped = new Error(error.message || "void_match_review_failed");
-        mapped.statusCode = error.code === "42501" ? 403 : error.code === "P0002" ? 404 : error.code === "23505" ? 409 : 400;
-        throw mapped;
+        throw mapAdminReviewError(error, "void_match_review_failed");
       }
       sendJson(response, 200, data ?? { ok: true });
       return;
@@ -98,9 +129,7 @@ export default async function handler(request, response) {
         p_feedback: feedback,
       });
       if (error) {
-        const mapped = new Error(error.message || "team_emblem_moderation_failed");
-        mapped.statusCode = error.code === "42501" ? 403 : error.code === "P0002" ? 404 : error.code === "23505" || error.message === "team_emblem_report_stale" ? 409 : 400;
-        throw mapped;
+        throw mapAdminReviewError(error, "team_emblem_moderation_failed");
       }
 
       let storageCleanupPending = false;
@@ -126,9 +155,7 @@ export default async function handler(request, response) {
         p_feedback: feedback,
       });
       if (error) {
-        const mapped = new Error(error.message || "name_moderation_failed");
-        mapped.statusCode = error.code === "42501" ? 403 : error.code === "P0002" ? 404 : error.code === "23505" ? 409 : 400;
-        throw mapped;
+        throw mapAdminReviewError(error, "name_moderation_failed");
       }
       sendJson(response, 200, data ?? { ok: true });
       return;
@@ -144,7 +171,7 @@ export default async function handler(request, response) {
       p_feedback: feedback,
     });
 
-    if (error) throw error;
+    if (error) throw mapAdminReviewError(error, "admin_review_action_failed");
 
     sendJson(response, 200, data ?? { ok: true });
   } catch (error) {

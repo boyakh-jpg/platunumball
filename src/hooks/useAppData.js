@@ -1851,7 +1851,9 @@ export function useAppData(authUser = null, appLocation = null) {
         section,
         queueMode,
         page: result?.page ?? null,
-        counts: { ...prev.counts, ...(result?.page?.counts ?? {}) },
+        counts: queueMode === "pending"
+          ? { ...prev.counts, ...(result?.page?.counts ?? {}) }
+          : prev.counts,
       }));
       return true;
     }
@@ -1885,7 +1887,9 @@ export function useAppData(authUser = null, appLocation = null) {
         section,
         queueMode,
         page: result.page ?? null,
-        counts: { ...prev.counts, ...(result.page?.counts ?? {}) },
+        counts: queueMode === "pending"
+          ? { ...prev.counts, ...(result.page?.counts ?? {}) }
+          : prev.counts,
       }));
       return true;
     }).catch((error) => {
@@ -3727,7 +3731,12 @@ export function useAppData(authUser = null, appLocation = null) {
         const serverReady = await ensureServerActionAvailable("/api/admin/review-action", "관리자 조치");
         if (serverReady !== true) return serverReady;
         const result = await runServerAction("/api/admin/review-action", draft);
-        if (!result || result.ok === false) return result;
+        if (!result || result.ok === false) {
+          if (result?.error === "report_already_processed") {
+            await refreshAdminState();
+          }
+          return result;
+        }
         await refreshAdminState();
         return result;
       },

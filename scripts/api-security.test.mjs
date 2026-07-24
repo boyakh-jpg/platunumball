@@ -17,7 +17,14 @@ import {
   verifyDiscordOAuthStateTicket,
 } from "../server/api/auth/_discordOAuthProof.js";
 import { getPublicAppUrl, getPublicAppWebUrl } from "../server/api/_publicAppUrl.js";
-import { normalizeCourtCorrection } from "../server/api/reports/submit.js";
+import {
+  isActiveReportInsertConflict,
+  normalizeCourtCorrection,
+} from "../server/api/reports/submit.js";
+import {
+  getAdminReviewErrorStatus,
+  normalizeAdminReviewInput,
+} from "../server/api/admin/review-action.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -130,9 +137,10 @@ test("report review actions keep sanctions behind verified targets and level 50"
     readSource("server/api/search.js"),
   ]);
   assert.match(reviewSource, /HIGH_IMPACT_ACTIONS\.has\(actionType\) && adminLevel < 50/);
+  assert.match(reviewSource, /ALLOWED_ACTIONS\.has\(actionType\)/);
   assert.match(reviewSource, /verifiedTargetIds\.includes\(targetUserId\)/);
   assert.match(reviewSource, /referee_target_mismatch/);
-  assert.match(reviewSource, /reason\.length < 4 \|\| feedback\.length < 4/);
+  assert.match(reviewSource, /ADMIN_REVIEW_TEXT_MAX_LENGTH/);
   assert.match(submitSource, /verifiedPayload: \{ sourceMatchId: verifiedSourceMatchId \}/);
   assert.match(submitSource, /\.eq\("id", requestedMatchId\)/);
   assert.match(submitSource, /report\.sourceMatchId \?\? report\.payload\?\.sourceMatchId/);
@@ -142,6 +150,41 @@ test("report review actions keep sanctions behind verified targets and level 50"
   assert.match(searchSource, /court_review: \["court_review"\]/);
   assert.match(searchSource, /searchCourtReviews\(context\.supabase, context\.profileId/);
   assert.match(hookSource, /result\.ok === false \|\| result\.duplicate === true/);
+});
+
+test("report insert conflicts and admin review input fail safely", async () => {
+  assert.equal(isActiveReportInsertConflict({ code: "23505", message: "duplicate key" }), true);
+  assert.equal(isActiveReportInsertConflict({ code: "PGRST000", message: "active_report_duplicate" }), true);
+  assert.equal(isActiveReportInsertConflict({ code: "PGRST000", message: "connection failed" }), false);
+
+  assert.deepEqual(normalizeAdminReviewInput({
+    actionType: "validReport",
+    reason: "현장 정보 확인",
+    feedback: "신고 내용을 확인해 반영했습니다.",
+  }), {
+    actionType: "validReport",
+    reason: "현장 정보 확인",
+    feedback: "신고 내용을 확인해 반영했습니다.",
+  });
+  assert.throws(() => normalizeAdminReviewInput({
+    actionType: "unknownAction",
+    reason: "현장 정보 확인",
+    feedback: "신고 내용을 확인했습니다.",
+  }), /invalid_admin_review_action/);
+  assert.throws(() => normalizeAdminReviewInput({
+    actionType: "validReport",
+    reason: "현장 정보 확인",
+    feedback: "가".repeat(501),
+  }), /admin_review_detail_invalid/);
+  assert.equal(getAdminReviewErrorStatus({ code: "23505", message: "report_already_processed" }), 409);
+  assert.equal(getAdminReviewErrorStatus({ code: "42501" }), 403);
+  assert.equal(getAdminReviewErrorStatus({ code: "P0002" }), 404);
+  assert.equal(getAdminReviewErrorStatus({ code: "XX000" }), 500);
+
+  const submitSource = await readSource("server/api/reports/submit.js");
+  assert.match(submitSource, /\.from\("notifications"\)[\s\S]{0,80}\.insert\(notificationRows\)/);
+  assert.doesNotMatch(submitSource, /\.upsert\(notificationRows/);
+  assert.match(submitSource, /notificationSyncPending/);
 });
 
 test("protected API routes require one strict Authorization bearer", async () => {

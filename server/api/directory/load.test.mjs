@@ -163,5 +163,9 @@ test("admin route bootstraps profile only and owns a separate state cache", asyn
   assert.ok((hookSource.match(/isSyntheticMatchRoomId/g) ?? []).length >= 3);
   assert.doesNotMatch(adminSource, /\[app\.actions\]/);
   assert.match(adminSource, /limit: ADMIN_DEFAULT_PAGE_LIMIT/);
+  assert.match(adminSource, /처리 대기\{queueMode === "pending" \? ` \$\{activeQueueTotal\}` : ""\}/);
+  assert.match(adminSource, /force: true/);
+  assert.match(hookSource, /counts: queueMode === "pending"/);
+  assert.match(hookSource, /result\?\.error === "report_already_processed"[\s\S]{0,100}refreshAdminState/);
   assert.match(settingsSource, /limit: DIRECTORY_SELF_PAGE_LIMIT/);
 });

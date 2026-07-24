@@ -45,7 +45,7 @@ function isReportWindowOpen(match = {}, nowMs = Date.now()) {
 }
 
 function toNotificationRows(notifications = [], profileId = "", report = {}) {
-  return toArray(notifications).map((notification) => {
+  return toArray(notifications).slice(0, 3).map((notification) => {
     const targetUserId = notification.targetUserId || profileId;
     if (targetUserId !== profileId) return null;
     return {
@@ -66,6 +66,10 @@ function toNotificationRows(notifications = [], profileId = "", report = {}) {
       updated_at: notification.updatedAt || notification.createdAt || report.createdAt || new Date().toISOString(),
     };
   }).filter((row) => row?.id);
+}
+
+export function isActiveReportInsertConflict(error = {}) {
+  return error?.code === "23505" || String(error?.message || "").includes("active_report_duplicate");
 }
 
 async function assertCanSubmitMatchReport(context, targetId, reportedUserIds, reason = "") {
@@ -551,10 +555,7 @@ export default async function handler(request, response) {
 
     const { error: reportError } = await context.supabase.from("reports").insert(reportRow);
     if (reportError) {
-      if (
-        ["match", "player", "team_emblem", "team_name", "affiliation_name"].includes(reportRow.type)
-        && String(reportError.message || "").includes("active_report_duplicate")
-      ) {
+      if (isActiveReportInsertConflict(reportError)) {
         const concurrentReport = await getActiveReport(context, reportRow);
         if (concurrentReport) {
           sendJson(response, 200, {
@@ -570,14 +571,23 @@ export default async function handler(request, response) {
     }
 
     const notificationRows = toNotificationRows(body.notifications, context.profileId, reportRow.payload);
+    let notificationSyncPending = false;
     if (notificationRows.length) {
       const { error: notificationError } = await context.supabase
         .from("notifications")
-        .upsert(notificationRows, { onConflict: "id" });
-      if (notificationError) throw notificationError;
+        .insert(notificationRows);
+      if (notificationError) {
+        notificationSyncPending = true;
+        console.error("Report receipt notification insert failed.", notificationError);
+      }
     }
 
-    sendJson(response, 200, { ok: true, reportId: reportRow.id, notificationCount: notificationRows.length });
+    sendJson(response, 200, {
+      ok: true,
+      reportId: reportRow.id,
+      notificationCount: notificationSyncPending ? 0 : notificationRows.length,
+      notificationSyncPending,
+    });
   } catch (error) {
     console.error("Report submit failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "report_submit_failed" });

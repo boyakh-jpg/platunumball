@@ -2115,7 +2115,11 @@ flowchart TD
 8. 관리자 `hideCourt` action은 `approved_courts.status = 'hidden'`으로 soft hide한다.
 9. 관리자 `hideCourtReview` action은 `court_reviews.status = 'hidden'`으로 soft hide한다.
 10. 일반 사용자는 active 구장/리뷰만 읽고, 관리자만 hidden row를 검토용으로 읽는다.
-10. 물리 삭제는 신고/audit 추적을 깨므로 기본 운영 action으로 만들지 않는다.
+11. 물리 삭제는 신고/audit 추적을 깨므로 기본 운영 action으로 만들지 않는다.
+12. 같은 사용자가 같은 대상을 동시에 신고해 DB unique 충돌이 나면 서버 오류로 취급하지 않고 기존 open 신고를 조회해 `duplicate` 성공 응답으로 돌려준다.
+13. 신고 row 저장 뒤 접수 알림 저장만 실패한 경우 신고를 실패로 되돌리지 않는다. 신고 성공과 알림 동기화 지연을 분리해 응답한다.
+14. 관리자 큐 업무 탭 숫자는 `처리 대기` 조회값만 유지한다. `전체 이력` 조회가 대기 숫자를 덮어쓰지 않으며, 수동 새로고침은 30초 캐시를 우회한다.
+15. 이미 다른 관리자가 처리한 신고는 `409 report_already_processed`로 응답하고 현재 큐를 즉시 다시 불러온다.
 
 ## 2026-06-26 settings persistence
 
