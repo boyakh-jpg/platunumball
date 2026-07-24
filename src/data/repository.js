@@ -7149,7 +7149,15 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     rules: {
       ...(post.rules ?? {}),
       ...nextRules,
+      sideCapacity,
       benchCapacity,
+      onCourtCount: sideCapacity,
+      starterCount: sideCapacity,
+      teamCapacity: sideCapacity + benchCapacity,
+      ...(pickupRoom ? {
+        participantCapacity: pickupParticipantCapacity,
+        waitingPlayerCapacity: benchCapacity * 2,
+      } : {}),
       mmrRangeMode: nextMmrRangeMode,
       ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
     },
