@@ -190,6 +190,8 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /configurationDirtyRef\.current/);
   assert.match(panelSource, /onClick=\{\(\) => selectShotClock\(option\.value\)\}/);
   assert.match(panelSource, /\{shotClockEnabled \? \(/);
+  assert.match(panelSource, /isRunning && hasRemainingPeriodTime/);
+  assert.match(panelSource, /!isBreak && hasRemainingPeriodTime/);
   assert.doesNotMatch(panelSource, /담당·샷클락 저장|AudioContext/);
   assert.match(clockStyles, /\.ui-match-clock-focus-backdrop[\s\S]*?overflow: hidden;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/);
@@ -717,6 +719,7 @@ test("server and browser keep untrusted text out of executable sinks", async () 
   assert.match(csp, /object-src 'none'/);
   assert.match(csp, /frame-ancestors 'none'/);
   assert.match(csp, /script-src[^;]*https:\/\/nrbe\.pstatic\.net/);
+  assert.match(csp, /media-src 'self' blob: data:/);
   assert.doesNotMatch(csp, /script-src[^;]*'unsafe-(?:inline|eval)'/);
 });
 

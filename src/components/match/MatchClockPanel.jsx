@@ -22,6 +22,7 @@ const ERROR_LABELS = Object.freeze({
   match_clock_forbidden: "이 경기의 시계를 볼 권한이 없습니다.",
   match_clock_controller_must_be_active: "현재 출전 선수만 시계를 받을 수 있습니다.",
   match_clock_start_forbidden: "지정된 시계 담당 선수만 시작할 수 있습니다.",
+  match_clock_resume_forbidden: "남은 경기시간이 없습니다. 쿼터 종료를 눌러주세요.",
   match_clock_transfer_forbidden: "시계 담당자 또는 경기 관리자만 넘길 수 있습니다.",
   match_clock_overtime_requires_tie: "동점일 때만 연장을 시작할 수 있습니다.",
   match_clock_disabled: "이 경기는 BOXTIER 경기시계를 사용하지 않습니다.",
@@ -233,6 +234,7 @@ export default function MatchClockPanel({ match }) {
   const isEnded = liveClock?.status === "ended";
   const isBreak = liveClock?.status === "break";
   const isRunning = liveClock?.status === "running";
+  const hasRemainingPeriodTime = Number(liveClock?.periodRemainingMs || 0) > 0;
   const regulationEnded = isBreak && liveClock.currentPeriod >= liveClock.expectedPeriodCount;
   const tied = score.a === score.b;
   const deadlineRemainingMs = Math.max(0, Date.parse(liveClock?.startDeadlineAt || "") - nowMs);
@@ -571,11 +573,11 @@ export default function MatchClockPanel({ match }) {
 
           {!isEnded && liveClock.canControl ? (
             <div className="ui-match-clock-actions ui-action-row">
-              {isRunning ? (
+              {isRunning && hasRemainingPeriodTime ? (
                 <Button type="button" size="sm" variant="secondary" onClick={() => void runAction("pause")}>
                   <Pause size={18} /> 일시정지
                 </Button>
-              ) : !isBreak ? (
+              ) : !isBreak && hasRemainingPeriodTime ? (
                 <Button type="button" size="sm" onClick={() => void runAction("resume")}>
                   <Play size={18} /> 계속
                 </Button>
