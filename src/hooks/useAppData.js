@@ -119,7 +119,7 @@ import {
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../lib/constants.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
-import { readProfileBindings, readProfileCache, writeProfileBindings, writeProfileCache } from "../lib/storage.js";
+import { clearDemoStorage, readProfileBindings, readProfileCache, writeProfileBindings, writeProfileCache } from "../lib/storage.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
 import { isNotificationFromBlockedUser } from "../lib/notifications.js";
 import {
@@ -1566,6 +1566,10 @@ export function useAppData(authUser = null, appLocation = null) {
     if (!isSupabaseConfigured && hasDemoInitialState()) saveState(state);
     return undefined;
   }, [state]);
+
+  useEffect(() => {
+    if (isSupabaseConfigured) clearDemoStorage();
+  }, []);
 
   useEffect(() => {
     if (isSupabaseConfigured || hasDemoInitialState()) return undefined;

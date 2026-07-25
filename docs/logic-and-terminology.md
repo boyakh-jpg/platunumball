@@ -3275,7 +3275,7 @@ flowchart TD
 6. 관리자 전용 DB RPC는 `public`, `anon`, `authenticated` 실행권을 제거하고 `service_role`에만 허용한다. 서버는 클라이언트 body가 아닌 검증된 context의 `profileId`와 level만 RPC에 전달한다.
 7. `current_profile_id()`, `current_admin_level()`, `current_is_admin()`은 `SECURITY DEFINER`, 빈 `search_path`, 고정 소유자, 최소 실행권을 사용한다. 관리자 상태는 정확히 `active`만 허용한다.
 8. `admin_appointments`, `referee_appointments`, `admin_audit_log`, `admin_disciplinary_actions`는 RLS를 활성화하고 브라우저 role의 직접 table 권한을 제거한다.
-9. `rankball.auth.profileCache.v2`는 현재 인증 사용자 한 명의 최소 공개 프로필과 theme만 저장한다. v1은 첫 접근 때 삭제하며 관리자·감사·징계·전체 구장·Discord 식별자·인증 식별자는 저장하지 않는다.
+9. `rankball.auth.profileCache.v2`는 현재 인증 사용자 한 명의 최소 공개 프로필과 theme만 저장한다. v1은 첫 접근 때 삭제하며 관리자·감사·징계·전체 구장·Discord 식별자·인증 식별자는 저장하지 않는다. Supabase 운영 부팅 시 과거 로컬 데모 상태와 프로필 바인딩도 삭제한다.
 10. 테스트 계정 비밀번호는 frontend profile, API 응답, localStorage, production bundle에 포함하지 않는다. 테스트 로그인 자격 증명은 개발 seed 또는 서버 시뮬레이션 환경에서만 다룬다.
 
 ## 2026-07-24 방 변경 승인·픽업 팀 배치

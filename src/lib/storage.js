@@ -78,6 +78,12 @@ export function clearState() {
   window.localStorage.removeItem(STORAGE_KEY);
 }
 
+export function clearDemoStorage() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(STORAGE_KEY);
+  window.localStorage.removeItem(PROFILE_BINDINGS_KEY);
+}
+
 export function readProfileBindings() {
   if (typeof window === "undefined") return {};
   try {

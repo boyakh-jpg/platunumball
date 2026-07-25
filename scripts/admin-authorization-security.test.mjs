@@ -10,6 +10,7 @@ import {
 import { getAdminCourtErrorStatus } from "../server/api/admin/courts.js";
 import { getAdminUserOperationErrorStatus } from "../server/api/admin/user-operations.js";
 import {
+  clearDemoStorage,
   readProfileCache,
   sanitizeProfileCacheEntry,
   writeProfileCache,
@@ -269,6 +270,21 @@ test("profile cache v2 purges legacy and stores only the current public profile"
   } finally {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
+  }
+});
+
+test("production storage cleanup removes stale demo state and profile bindings", () => {
+  const localStorage = makeLocalStorage();
+  const previousWindow = globalThis.window;
+  globalThis.window = { localStorage };
+  try {
+    localStorage.setItem("rankball.mvp.state.v3", JSON.stringify({ users: [{ testPassword: "redacted" }] }));
+    localStorage.setItem("rankball.auth.profile.v1", JSON.stringify({ "old-auth": "old-profile" }));
+    clearDemoStorage();
+    assert.equal(localStorage.getItem("rankball.mvp.state.v3"), null);
+    assert.equal(localStorage.getItem("rankball.auth.profile.v1"), null);
+  } finally {
+    globalThis.window = previousWindow;
   }
 });
 

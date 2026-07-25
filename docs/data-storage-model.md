@@ -178,6 +178,7 @@
 - 해당 admin 테이블들은 browser role의 direct table 권한을 모두 제거한다. RLS의 관리자 read policy는 방어 계층으로 유지하되 실제 UI 조회는 검증된 server action만 사용한다.
 - 관리자 server action은 bearer를 `auth.getUser()`로 검증한 뒤 `profiles.auth_user_id`와 유효한 `admin_appointments`를 매 요청 확인한다. 클라이언트가 보낸 관리자 ID·level은 권한 판정에 쓰지 않는다.
 - `rankball.auth.profileCache.v2`는 현재 인증 사용자 한 명의 공개 프로필 필드와 theme만 저장하고 기존 v1 캐시는 삭제한다.
+- Supabase 운영 부팅 시 과거 로컬 데모 상태 `rankball.mvp.state.v3`와 데모 프로필 바인딩 `rankball.auth.profile.v1`도 삭제한다.
 - Supabase 설정 환경에서 관리자 UI는 local state를 먼저 갱신하고 같은 draft를 server action에 전달한다. 배포 전에는 server action 성공 결과 기준으로 재조회/동기화해야 한다.
 - Supabase 설정 환경의 프론트 bootstrap에서는 `localStorage/mockData` 앱 데이터 fallback을 제거했다. 방/경기 reducer의 authoritative RPC 이전은 2026-07-13 operation boundary에서 완료됐다.
 
