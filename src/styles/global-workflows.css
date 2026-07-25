@@ -702,13 +702,6 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(88, 210, 192, 0.15);
 }
 
-input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  min-height: 18px;
-  accent-color: var(--green);
-}
-
 input[type="color"] {
   padding: 4px;
 }

@@ -106,6 +106,24 @@ test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
   assert.doesNotMatch(hoverSurfaceStyles, /(?:^|\n)\s*\.button\s*\{[^{}]*white-space:\s*normal;/);
 });
 
+test("공용 체크박스는 iOS native 외형을 사용하지 않는다", () => {
+  const checkboxRule = getRuleBody(primitiveStyles, 'input[type="checkbox"]');
+  const checkedRule = getRuleBody(primitiveStyles, 'input[type="checkbox"]:checked');
+  const focusRule = getRuleBody(primitiveStyles, 'input[type="checkbox"]:focus-visible');
+
+  assert.match(checkboxRule, /-webkit-appearance:\s*none;/);
+  assert.match(checkboxRule, /appearance:\s*none;/);
+  assert.match(checkboxRule, /width:\s*18px;/);
+  assert.match(checkboxRule, /height:\s*18px;/);
+  assert.match(checkboxRule, /min-height:\s*18px;/);
+  assert.match(checkboxRule, /border:\s*2px solid var\(--ui-control-border\);/);
+  assert.match(checkboxRule, /background-color:\s*var\(--ui-control-bg\);/);
+  assert.match(checkedRule, /background-color:\s*var\(--rb-orange\);/);
+  assert.match(checkedRule, /background-image:\s*url\(/);
+  assert.match(focusRule, /outline:\s*2px solid/);
+  assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*input\[type="checkbox"\]\s*\{/);
+});
+
 test("공용 빈 상태와 control 높이는 페이지 override 없이 유지된다", () => {
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.empty-state\s*\{/);
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.ui-empty-state\s*\{/);
