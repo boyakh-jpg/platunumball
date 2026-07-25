@@ -118,7 +118,7 @@ export default function PracticeMatch({ app }) {
       loadMatchDetail: async () => 1,
       loadRecruitingPost: async () => 1,
       loadRecruitingRegion: async () => 1,
-      pollRecruitingChat: async () => [],
+      pollRecruitingChat: () => () => {},
       toggleFavoriteTeam: async () => true,
     };
   }, [commitState]);

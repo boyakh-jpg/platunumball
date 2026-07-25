@@ -3327,7 +3327,7 @@ flowchart TD
 4. 연습 경기의 방·경기·시계 mutation은 운영 서버로 전송하지 않는다. 모집 동기화, 경기 동기화, 경기시계 API는 practice ID 또는 payload를 인증·RPC 이전에 거부한다.
 5. 전적, 개인·팀 MMR, 신뢰점수, 업적, 추천, 알림, Discord 전달, 매칭·일정 목록, 프로필 기록에는 반영하지 않는다. 중앙 `finalizeMatch`도 practice 엔티티를 표시용 확정만 하고 rating·신뢰·알림 계산을 실행하지 않는다.
 6. UI는 실제 `CreateMatch`, `RecruitingRoomModal`, `MatchRoomModal`, `MatchClockPanel`과 중앙 phase·권한·repository 전환 함수를 재사용한다. 연습 전용 방 모달·기록판·경기시계 복제본을 만들지 않는다.
-7. 실제 모듈에는 `app` facade와 `clockClient` 계약만 주입한다. 더미 초대 수락, 더미 출석·배치, 예시 기록 입력, 더미 기록 승인은 사용자가 실제 공용 action을 이어서 체험하기 위한 보조 action이다.
+7. 실제 모듈에는 `app` facade와 `clockClient` 계약만 주입한다. 더미 초대 수락, 더미 출석·배치, 예시 기록 입력, 더미 기록 승인은 사용자가 실제 공용 action을 이어서 체험하기 위한 보조 action이다. 채팅 polling no-op도 공용 action과 같은 동기 cleanup 반환 계약을 지킨다.
 8. 연습 facade의 action은 명시적 allowlist만 노출한다. 선수 검색, 파일 업로드, 신고, 구장 제보, 실제 알림 전달 등 운영 외부효과는 제공하지 않는다.
 9. 연습 경기 재사용은 UI·phase·권한 helper의 동기화를 보장하는 장치다. 운영 DB 전용 RPC까지 실행하는 서버 동등성 테스트는 아니며, 로컬 repository와 운영 RPC가 다른 항목은 별도 계약 테스트로 검증한다.
 10. 연습 경기시계도 시작 기한, 명시적 종료, 예상 정규시간의 70% 이상 실제 진행 조건을 모두 충족할 때만 정상 사용으로 표시한다. 담당을 넘기면 이전 연습 기기는 읽기 전용이 되며 새 담당자 역할에서만 조작할 수 있다.

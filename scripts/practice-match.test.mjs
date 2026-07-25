@@ -346,6 +346,7 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.match(pageSource, /<MatchRoomModal/);
   assert.match(pageSource, /remoteReady: true/);
   assert.match(pageSource, /roomShare: false/);
+  assert.match(pageSource, /pollRecruitingChat: \(\) => \(\) => \{\}/);
   assert.match(pageSource, /meetingPoint: "연습 코트 입구"/);
   assert.match(pageSource, /\s+embedded\s+practiceMode/);
   assert.match(pageSource, /key=\{practiceSession\}/);
