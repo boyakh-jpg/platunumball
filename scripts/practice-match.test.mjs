@@ -17,6 +17,7 @@ import {
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
 import { getMatchReservePlayerIds } from "../src/lib/matchUtils.js";
+import { getRegisteredCourts } from "../src/lib/courts.js";
 import {
   PRACTICE_LOCAL_ONLY_ERROR,
   hasPracticeMutationPayload,
@@ -89,6 +90,7 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   assert.ok(state.users.every((user) => user.id.startsWith("practice-")));
   assert.equal(state.users.some((user) => user.id === "real-user"), false);
   assert.equal(typeof state.users[1].ratings.modes["3v3"], "number");
+  assert.equal(getRegisteredCourts(state).length, 1);
 
   const created = createPracticeRecruitingRoom(state, {
     title: "연습 3v3",
@@ -180,6 +182,13 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
     playerSnapshot,
   );
   assert.equal(JSON.stringify(realState), realStateSnapshot);
+});
+
+test("운영 구장 목록이 비어 있어도 연습용 등록 구장으로 생성을 막지 않는다", () => {
+  const state = createPracticeState({ settings: { approvedCourts: [] } }, { name: "테스터" });
+  const [court] = getRegisteredCourts(state);
+  assert.equal(court?.id, "practice-court");
+  assert.equal(court?.status, "active");
 });
 
 test("연습방은 자격 심판 경로도 연습용 참가자로만 구성한다", () => {

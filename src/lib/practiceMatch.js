@@ -111,14 +111,12 @@ function makePracticeProfile([key, name, position, rating], region) {
   };
 }
 
-function getPracticeCourt(settings = {}, region = "") {
-  const existing = settings.approvedCourts?.[0];
-  if (existing) return existing;
+function getPracticeCourt(region = "") {
   return {
     id: `${PRACTICE_ID_PREFIX}court`,
     name: "연습 코트",
     region: region || "서울",
-    status: "approved",
+    status: "active",
   };
 }
 
@@ -137,9 +135,12 @@ export function createPracticeState(realState = {}, realUser = {}) {
     trustScore: 100,
     ratings: { ...baseSelf.ratings, ...(realUser.ratings ?? {}) },
   };
-  const approvedCourts = realState.settings?.approvedCourts?.length
-    ? realState.settings.approvedCourts
-    : [getPracticeCourt(realState.settings, region)];
+  const activeApprovedCourts = (realState.settings?.approvedCourts ?? []).filter((court) => (
+    court?.id && (!court.status || court.status === "active")
+  ));
+  const approvedCourts = activeApprovedCourts.length
+    ? activeApprovedCourts
+    : [getPracticeCourt(region)];
   return {
     ...EMPTY_STATE,
     currentUserId: PRACTICE_SELF_ID,
