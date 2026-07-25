@@ -624,17 +624,13 @@ export async function getAuthenticatedContext(request, options = {}) {
 export async function getAdminLevel(context) {
   if (!context?.profileId || !context?.supabase) return 0;
 
-  const { data, error } = await context.supabase
-    .from("admin_appointments")
-    .select("grade, status, starts_at, ends_at")
-    .eq("user_id", context.profileId)
-    .eq("role", "admin");
+  const { data, error } = await context.supabase.rpc("rankball_admin_level_for_profile", {
+    actor_profile_id: context.profileId,
+    override_level: 0,
+  });
 
   if (error) throw error;
-
-  return (data ?? [])
-    .filter(isActiveAdminAppointment)
-    .reduce((level, appointment) => Math.max(level, ADMIN_GRADE_LEVELS[appointment.grade] ?? 0), 0);
+  return Math.max(0, Number(data ?? 0) || 0);
 }
 
 export function assertAdminLevel(adminLevel = 0, minimumLevel = 30) {

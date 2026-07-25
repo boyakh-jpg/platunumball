@@ -62,31 +62,21 @@ async function invokeApi({ path = "admin/context", query = {}, headers = {} } = 
   return response;
 }
 
-function makeAdminLevelContext(profileId, rows = []) {
-  const filters = [];
-  const query = {
-    select() {
-      return this;
-    },
-    eq(column, value) {
-      filters.push([column, value]);
-      if (filters.length < 2) return this;
-      return Promise.resolve({ data: rows, error: null });
-    },
-  };
+function makeAdminLevelContext(profileId, resolvedLevel = 0) {
+  const calls = [];
   return {
     context: {
       profileId,
       authUserId: "verified-auth-user",
       clientRequestedUserId: "foreign-admin-profile",
       supabase: {
-        from(table) {
-          assert.equal(table, "admin_appointments");
-          return query;
+        rpc(name, parameters) {
+          calls.push([name, parameters]);
+          return Promise.resolve({ data: resolvedLevel, error: null });
         },
       },
     },
-    filters,
+    calls,
   };
 }
 
@@ -122,10 +112,7 @@ test("admin level accepts only strict active and valid appointments", () => {
 });
 
 test("server admin lookup uses the verified profile only and ignores override-like values", async () => {
-  const { context, filters } = makeAdminLevelContext("verified-profile", [
-    { grade: "support", status: "active", starts_at: null, ends_at: null },
-    { grade: "owner", status: "inactive", starts_at: null, ends_at: null },
-  ]);
+  const { context, calls } = makeAdminLevelContext("verified-profile", 30);
   const previousAuthOwners = process.env.RANKBALL_OWNER_AUTH_USER_IDS;
   const previousProfileOwners = process.env.RANKBALL_OWNER_PROFILE_IDS;
   process.env.RANKBALL_OWNER_AUTH_USER_IDS = "verified-auth-user";
@@ -138,9 +125,11 @@ test("server admin lookup uses the verified profile only and ignores override-li
     if (previousProfileOwners === undefined) delete process.env.RANKBALL_OWNER_PROFILE_IDS;
     else process.env.RANKBALL_OWNER_PROFILE_IDS = previousProfileOwners;
   }
-  assert.deepEqual(filters, [
-    ["user_id", "verified-profile"],
-    ["role", "admin"],
+  assert.deepEqual(calls, [
+    ["rankball_admin_level_for_profile", {
+      actor_profile_id: "verified-profile",
+      override_level: 0,
+    }],
   ]);
 });
 
