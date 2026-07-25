@@ -37,12 +37,14 @@ async function isConfiguredOwner(context, targetUserId) {
   return ownerAuthIds.has(String(data?.auth_user_id ?? ""));
 }
 
-function getErrorStatus(error) {
+export function getAdminUserOperationErrorStatus(error) {
+  const explicitStatus = Number(error?.statusCode);
+  if (Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus <= 599) return explicitStatus;
   const message = String(error?.message ?? "");
   if (/profile_not_found/i.test(message)) return 404;
   if (/admin_permission_required|admin_target_protected|owner_target_protected|self_admin_action_denied/i.test(message)) return 403;
   if (/required|invalid|unsupported/i.test(message)) return 400;
-  return error?.statusCode || 500;
+  return 500;
 }
 
 export default async function handler(request, response) {
@@ -130,6 +132,6 @@ export default async function handler(request, response) {
     sendJson(response, 200, data ?? { ok: true });
   } catch (error) {
     console.error("Admin user operation failed.", error);
-    sendJson(response, getErrorStatus(error), { error: error.message || "admin_user_operation_failed" });
+    sendJson(response, getAdminUserOperationErrorStatus(error), { error: error.message || "admin_user_operation_failed" });
   }
 }

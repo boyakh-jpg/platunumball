@@ -336,14 +336,16 @@ async function loadAllCourtDuplicateRows(context) {
   return rows;
 }
 
-function getErrorStatus(error) {
+export function getAdminCourtErrorStatus(error) {
+  const explicitStatus = Number(error?.statusCode);
+  if (Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus <= 599) return explicitStatus;
   const message = String(error?.message ?? "");
   if (/admin_permission_required/i.test(message)) return 403;
   if (/court(?:_name_evidence)?_not_found/i.test(message)) return 404;
   if (/required|invalid|unchanged|patch|batch/i.test(message)) return 400;
   if (["23514", "22P02", "22003"].includes(error?.code)) return 400;
   if (error?.code === "23505") return 409;
-  return error?.statusCode || 500;
+  return 500;
 }
 
 export default async function handler(request, response) {
@@ -528,6 +530,6 @@ export default async function handler(request, response) {
     sendJson(response, 200, data ?? { ok: true });
   } catch (error) {
     console.error("Admin court database failed.", error);
-    sendJson(response, getErrorStatus(error), { error: error.message || "admin_court_database_failed" });
+    sendJson(response, getAdminCourtErrorStatus(error), { error: error.message || "admin_court_database_failed" });
   }
 }

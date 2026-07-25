@@ -7,6 +7,8 @@ import {
   getAdminLevel,
   isActiveAdminAppointment,
 } from "../server/api/_supabaseAdmin.js";
+import { getAdminCourtErrorStatus } from "../server/api/admin/courts.js";
+import { getAdminUserOperationErrorStatus } from "../server/api/admin/user-operations.js";
 import {
   readProfileCache,
   sanitizeProfileCacheEntry,
@@ -109,6 +111,15 @@ test("admin level accepts only strict active and valid appointments", () => {
     () => assertAdminLevel(0, 30),
     (error) => error?.message === "admin_required" && error?.statusCode === 403,
   );
+});
+
+test("admin error mappers preserve explicit authentication and authorization statuses", () => {
+  const unauthorized = Object.assign(new Error("missing_bearer_token"), { statusCode: 401 });
+  const forbidden = Object.assign(new Error("admin_required"), { statusCode: 403 });
+  assert.equal(getAdminCourtErrorStatus(unauthorized), 401);
+  assert.equal(getAdminCourtErrorStatus(forbidden), 403);
+  assert.equal(getAdminUserOperationErrorStatus(unauthorized), 401);
+  assert.equal(getAdminUserOperationErrorStatus(forbidden), 403);
 });
 
 test("server admin lookup uses the verified profile only and ignores override-like values", async () => {
