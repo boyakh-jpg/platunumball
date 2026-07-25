@@ -73,6 +73,10 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
     : as === "span" ? {} : { role: "button", tabIndex: 0 };
   const played = Number(team.wins ?? 0) + Number(team.losses ?? 0);
   const winRate = played ? Math.round((Number(team.wins ?? 0) / played) * 100) : 0;
+  const memberCount = Number(team.memberCount);
+  const rosterCountLabel = Number.isInteger(memberCount) && memberCount >= 0
+    ? `${memberCount}명`
+    : team.membersPartial === true ? "확인 필요" : `${team.members?.length ?? 0}명`;
   const showHover = () => {
     if (canUseHoverPreview() && !pinnedHoverKey) setHoverOpen(true);
   };
@@ -188,7 +192,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
         <span className="team-hover-stats">
           <span><b>{team.wins ?? 0}승</b><em>{team.losses ?? 0}패</em></span>
           <span><b>{winRate}%</b><em>승률</em></span>
-          <span><b>{team.members?.length ?? 0}명</b><em>로스터</em></span>
+          <span><b>{rosterCountLabel}</b><em>로스터</em></span>
         </span>
         <Link className="hover-card-action" to={teamPath} onClick={(event) => {
           event.stopPropagation();

@@ -136,10 +136,15 @@ export default function Home({ app }) {
   const searchText = query.trim().toLowerCase();
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
+  const homeOwnTeamIds = app.state.homeSummary?.ownTeamIds;
   const myTeams = useMemo(() => app.state.teams
-    .filter((team) => team.members.some((member) => member.userId === user.id))
+    .filter((team) => (
+      Array.isArray(homeOwnTeamIds)
+        ? homeOwnTeamIds.includes(team.id)
+        : team.members.some((member) => member.userId === user.id)
+    ))
     .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === user.id)?.role ?? "regular" }))
-    .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr), [app.state.teams, user.id]);
+    .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr), [app.state.teams, homeOwnTeamIds, user.id]);
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const todayValue = getLocalDateInputValue();
@@ -170,19 +175,32 @@ export default function Home({ app }) {
   const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
   const season = getCurrentSeason(app.state);
   const seasonProgress = getSeasonProgress(season);
-  const seasonRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, user.region);
-  const mySeasonIndex = seasonRows.findIndex((row) => row.id === user.id);
-  const mySeasonRow = mySeasonIndex >= 0 ? seasonRows[mySeasonIndex] : null;
+  const regionalPlayerIds = app.state.homeSummary?.regionalPlayerIds;
+  const hasRegionalPlayerSnapshot = Array.isArray(regionalPlayerIds);
+  const seasonRows = hasRegionalPlayerSnapshot
+    ? regionalPlayerIds
+      .map((playerId) => app.state.users.find((item) => item.id === playerId))
+      .filter(Boolean)
+      .map((item) => ({ ...item, seasonScore: item.ratings.integrated }))
+    : getPlayerSeasonRows(app.state.users, app.state.matches, season, user.region);
+  const snapshotRegionalRank = Number(app.state.homeSummary?.regionalRank);
+  const mySeasonIndex = Number.isInteger(snapshotRegionalRank) && snapshotRegionalRank > 0
+    ? snapshotRegionalRank - 1
+    : seasonRows.findIndex((row) => row.id === user.id);
+  const mySeasonRow = getPlayerSeasonRows([user], app.state.matches, season, user.region)[0] ?? null;
   const localRivals = useMemo(() => {
-    const regionTeams = app.state.teams
-      .filter((team) => team.region === user.region)
-      .sort((a, b) => b.mmr - a.mmr);
+    const rivalTeamIds = app.state.homeSummary?.rivalTeamIds;
+    const regionTeams = Array.isArray(rivalTeamIds)
+      ? rivalTeamIds.map((teamId) => teamById[teamId]).filter(Boolean)
+      : app.state.teams
+        .filter((team) => team.region === user.region)
+        .sort((a, b) => b.mmr - a.mmr)
+        .filter((team) => !myTeamIds.includes(team.id))
+        .slice(0, HOME_RIVAL_TEAM_LIMIT);
     const referenceMmr = myTeams[0]?.mmr ?? regionTeams[0]?.mmr ?? user.ratings.integrated;
     return regionTeams
-      .filter((team) => !myTeamIds.includes(team.id))
-      .slice(0, HOME_RIVAL_TEAM_LIMIT)
       .map((team) => ({ ...team, gap: team.mmr - referenceMmr }));
-  }, [app.state.teams, myTeamIds, myTeams, user.ratings.integrated, user.region]);
+  }, [app.state.homeSummary?.rivalTeamIds, app.state.teams, myTeamIds, myTeams, teamById, user.ratings.integrated, user.region]);
   const acceptHomeRecruitingInvitation = async (postId, invitationId) => {
     const key = `${postId}:${invitationId}`;
     setProcessingInviteId(key);

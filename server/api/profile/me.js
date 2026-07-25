@@ -159,7 +159,10 @@ export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamId
   });
 
   return {
-    teams: (teamRows ?? []).map((team) => toClientTeam(team, membersByTeam.get(team.id) ?? [])),
+    teams: (teamRows ?? []).map((team) => ({
+      ...toClientTeam(team, membersByTeam.get(team.id) ?? []),
+      ...(ownMembersOnly ? { membersPartial: true } : {}),
+    })),
     users: (profileRows ?? []).map(fromTeamMemberProfile),
   };
 }

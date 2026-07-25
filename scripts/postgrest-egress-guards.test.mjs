@@ -69,19 +69,62 @@ test("match rows and child tables stay behind bounded related IDs", async () => 
 });
 
 test("home team bootstrap is route-independent and remains bounded", async () => {
-  const [homeSource, hookSource, homePageSource, adminSource] = await Promise.all([
+  const [homeSource, profileSource, hookSource, homePageSource, hoverSource, adminSource] = await Promise.all([
     readSource("server/api/home/load.js"),
+    readSource("server/api/profile/me.js"),
     readSource("src/hooks/useAppData.js"),
     readSource("src/pages/Home.jsx"),
+    readSource("src/components/team/TeamHoverCard.jsx"),
     readSource("server/api/_supabaseAdmin.js"),
   ]);
 
+  assert.match(homeSource, /includeFavorites: true/);
   assert.match(homeSource, /includeTeams: true/);
   assert.match(homeSource, /loadOptionalHomeSection\("match"/);
   assert.match(homeSource, /\.limit\(HOME_RIVAL_TEAM_LIMIT \+ MAX_TEAM_MEMBERSHIPS\)/);
+  assert.match(homeSource, /\.limit\(HOME_REGION_PLAYER_LIMIT\)/);
+  assert.match(homeSource, /\.select\("team_id"\)/);
+  assert.match(homeSource, /regionalPlayerIds: regionPlayerResult\.playerIds/);
+  assert.match(homeSource, /rivalTeamIds/);
+  assert.match(homeSource, /filter\(\(row\) => row\.id !== profileId\)\.map/);
+  assert.match(profileSource, /ownMembersOnly \? \{ membersPartial: true \} : \{\}/);
+  assert.match(hookSource, /teams: mergeTeamsById\(state\.teams, remoteState\.teams\)/);
+  assert.match(hookSource, /const partialMembers = new Map/);
+  assert.match(hookSource, /members: existingIsPartial[\s\S]{0,120}\[\.\.\.partialMembers\.values\(\)\]/);
+  assert.match(hookSource, /homeSummary: remoteState\.homeSummary \?\? mergedState\.homeSummary/);
+  assert.match(hookSource, /loadBackendStateWithHomeRetry/);
+  assert.match(hookSource, /getHomeLoadFailureCount\(retryResult\) < getHomeLoadFailureCount\(firstResult\)/);
+  assert.match(hookSource, /includeFavorites: options\.endpoint === "homeLoad"/);
   assert.match(hookSource, /includeTeams: options\.endpoint === "homeLoad"/);
+  assert.match(homePageSource, /homeSummary\?\.ownTeamIds/);
+  assert.match(homePageSource, /homeSummary\?\.regionalPlayerIds/);
   assert.match(homePageSource, /!myTeamIds\.includes\(team\.id\)/);
   assert.match(homePageSource, /\.slice\(0, HOME_RIVAL_TEAM_LIMIT\)/);
+  assert.match(hoverSource, /team\.membersPartial === true \? "확인 필요"/);
   assert.match(adminSource, /\.filter\("referee_ids", "cs", JSON\.stringify\(\[profileId\]\)\)/);
   assert.doesNotMatch(adminSource, /\.contains\("referee_ids", \[profileId\]\)/);
+});
+
+test("direct detail routes request their own authoritative payload", async () => {
+  const [hookSource, playerSource, teamSource, courtSource, matchRoomSource, tournamentSource, notificationSource, matchesSource, recruitingSource] = await Promise.all([
+    readSource("src/hooks/useAppData.js"),
+    readSource("src/pages/PlayerDetail.jsx"),
+    readSource("src/pages/TeamDetail.jsx"),
+    readSource("src/pages/CourtDetail.jsx"),
+    readSource("src/pages/MatchRoom.jsx"),
+    readSource("src/pages/TournamentDetail.jsx"),
+    readSource("src/pages/Notifications.jsx"),
+    readSource("src/pages/Matches.jsx"),
+    readSource("src/pages/Recruiting.jsx"),
+  ]);
+
+  assert.match(hookSource, /teamDetailMatch[\s\S]{0,220}endpoint: "teamDetail"/);
+  assert.match(playerSource, /loadDirectory\?\.\(\)/);
+  assert.match(teamSource, /loadDirectory\?\.\(\{ force: true \}\)/);
+  assert.match(courtSource, /loadCourtDetail\?\.\(courtId\)/);
+  assert.match(matchRoomSource, /loadMatchDetail\?\.\(matchId\)/);
+  assert.match(tournamentSource, /loadTournament\?\.\(tournamentId\)/);
+  assert.match(notificationSource, /loadNotifications\?\.\(\)/);
+  assert.match(matchesSource, /loadMatchDetail\?\.\(matchId\)/);
+  assert.match(recruitingSource, /loadRecruitingPost\?\.\(roomPostId\)/);
 });

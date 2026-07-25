@@ -400,10 +400,18 @@ function mergeTeamsById(current = [], incoming = []) {
     if (!item?.id) return;
     const existing = merged.get(item.id);
     if (existing && item.membersPartial) {
+      const existingIsPartial = existing.membersPartial === true;
+      const partialMembers = new Map([
+        ...(existing.members ?? []),
+        ...(item.members ?? []),
+      ].filter((member) => member?.userId).map((member) => [member.userId, member]));
       merged.set(item.id, {
         ...existing,
         ...item,
-        members: existing.members?.length ? existing.members : item.members ?? [],
+        members: existingIsPartial
+          ? [...partialMembers.values()]
+          : existing.members ?? [],
+        membersPartial: existingIsPartial,
       });
       return;
     }
@@ -832,7 +840,7 @@ function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
   return {
     ...state,
     users: mergeRemoteById(state.users, remoteState.users),
-    teams: mergeRemoteById(state.teams, remoteState.teams),
+    teams: mergeTeamsById(state.teams, remoteState.teams),
     teamInvitations: mergeRemoteById(state.teamInvitations, visibleTeamInvitations),
     affiliations: remoteState.affiliations?.length
       ? (append ? mergeRemoteById(state.affiliations, remoteState.affiliations) : remoteState.affiliations)
@@ -864,6 +872,7 @@ function mergeRemoteHomeState(state, remoteState = {}) {
   const mergedState = mergeRemoteMatchPage(nextState, remoteState);
   return {
     ...mergedState,
+    homeSummary: remoteState.homeSummary ?? mergedState.homeSummary,
     notifications: Array.isArray(remoteState.notifications)
       ? mergeRemoteById(mergedState.notifications, filterBlockedIncomingNotifications(remoteState.notifications, mergedState))
       : mergedState.notifications,
@@ -1284,6 +1293,7 @@ async function loadProfileState(authUserId, authEmail, options = {}) {
 
 function getEndpointFallbackMeta(options = {}, errorMessage = "") {
   const error = String(errorMessage ?? "").trim();
+  const homeLoadError = options.endpoint === "homeLoad" ? error || "home_load_empty_response" : "";
   return {
     matchPage: {
       exhausted: true,
@@ -1300,6 +1310,7 @@ function getEndpointFallbackMeta(options = {}, errorMessage = "") {
     },
     directoryLoaded: ["teamsList", "teamDetail"].includes(options.endpoint),
     profileRecordsLoaded: false,
+    ...(homeLoadError ? { homeLoadError } : {}),
   };
 }
 
@@ -1443,11 +1454,14 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         matchPage: result.page ?? null,
         recruitingPage: result.recruitingPage ?? null,
         directoryLoaded: false,
+        homeLoadError: "",
+        homeSectionErrors: result.sectionErrors ?? {},
       });
     }
     if (options.endpoint) {
       return attachRemoteMeta(await loadProfileState(authUserId, authEmail, {
         thin: true,
+        includeFavorites: options.endpoint === "homeLoad",
         includeTeams: options.endpoint === "homeLoad",
       }), getEndpointFallbackMeta(options));
     }
@@ -1464,6 +1478,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
   if (options.endpoint) {
     return attachRemoteMeta(await loadProfileState(authUserId, authEmail, {
       thin: true,
+      includeFavorites: options.endpoint === "homeLoad",
       includeTeams: options.endpoint === "homeLoad",
     }), getEndpointFallbackMeta(options, fallbackErrorMessage));
   }
@@ -1473,6 +1488,28 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     directoryLoaded: false,
     profileRecordsLoaded: false,
   });
+}
+
+function hasHomeLoadFailure(state = null) {
+  const meta = getRemoteMeta(state);
+  return Boolean(
+    meta.homeLoadError
+    || Object.keys(meta.homeSectionErrors ?? {}).length,
+  );
+}
+
+function getHomeLoadFailureCount(state = null) {
+  const meta = getRemoteMeta(state);
+  return Number(Boolean(meta.homeLoadError)) + Object.keys(meta.homeSectionErrors ?? {}).length;
+}
+
+async function loadBackendStateWithHomeRetry(authUserId, authEmail, options = getInitialStateLoadOptions()) {
+  const firstResult = await loadBackendState(authUserId, authEmail, options);
+  if (options.endpoint !== "homeLoad" || !hasHomeLoadFailure(firstResult)) return firstResult;
+  const retryResult = await loadBackendState(authUserId, authEmail, options);
+  return getHomeLoadFailureCount(retryResult) < getHomeLoadFailureCount(firstResult)
+    ? retryResult
+    : firstResult;
 }
 
 export function useAppData(authUser = null, appLocation = null) {
@@ -1724,7 +1761,7 @@ export function useAppData(authUser = null, appLocation = null) {
         includeFavorites: initialLoadOptions.includeFavorites === true,
         includeMatchSummary: initialLoadOptions.includeMatchSummary !== false,
       })
-      : loadBackendState(authUserId, authEmail, initialLoadOptions);
+      : loadBackendStateWithHomeRetry(authUserId, authEmail, initialLoadOptions);
     initialLoad
       .then((remoteState) => {
         if (!mounted) return;
@@ -1806,7 +1843,7 @@ export function useAppData(authUser = null, appLocation = null) {
       recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT,
       tournamentLimit: 0,
     };
-    loadBackendState(authUserId, authEmail, homeLoadOptions)
+    loadBackendStateWithHomeRetry(authUserId, authEmail, homeLoadOptions)
       .then((remoteState) => {
         if (!mounted) return;
         const remoteMeta = getRemoteMeta(remoteState);
