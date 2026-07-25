@@ -81,6 +81,7 @@ export function getRoomKindFromDraft(draft = {}) {
 }
 
 export const MAX_TEAM_MEMBERSHIPS = 3;
+export const HOME_RIVAL_TEAM_LIMIT = 4;
 export const MAX_TEAM_MEMBERS = 10;
 export const MAX_TEAM_NAME_LENGTH = 14;
 export const REFEREE_TRUST_MIN = 90;

@@ -1,12 +1,14 @@
-import { attachNotificationActors, attachNotificationTargetState, getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson, timeStep } from "../_supabaseAdmin.js";
+import { attachNotificationActors, attachNotificationTargetState, getAdminLevel, getAuthenticatedContext, getRowsMaxUpdatedAt, mergeById, readJsonBody, sendJson, timeStep, toClientTeamWithMembers } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
-import { NOTIFICATION_COLUMNS } from "../../../src/data/repositoryColumns.js";
+import { NOTIFICATION_COLUMNS, TEAM_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, isNotificationDisplayable, isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
 import {
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
+  HOME_RIVAL_TEAM_LIMIT,
+  MAX_TEAM_MEMBERSHIPS,
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
@@ -15,6 +17,34 @@ import {
 const HOME_RECENT_COMPLETED_HOURS = 24 * 31 * REMOTE_CLIENT_RECORD_MONTHS;
 const HOME_NOTIFICATION_QUERY_LIMIT = 80;
 const HOME_NOTIFICATION_LIMIT = 12;
+
+const EMPTY_HOME_MATCH_RESULT = Object.freeze({
+  state: {},
+  page: {
+    cursor: "",
+    exhausted: true,
+    error: "home_match_load_failed",
+  },
+  updatedAt: 0,
+});
+
+const EMPTY_HOME_RECRUITING_RESULT = Object.freeze({
+  state: {},
+  page: {
+    exhausted: true,
+    feedCounts: null,
+  },
+  updatedAt: 0,
+});
+
+async function loadOptionalHomeSection(label, loader, fallback) {
+  try {
+    return await loader();
+  } catch (error) {
+    console.warn(`Home ${label} load skipped.`, error.message);
+    return fallback;
+  }
+}
 
 function mergeHomeState(profileState = {}, feedState = {}) {
   return {
@@ -74,6 +104,27 @@ function getCappedRecruitingLimit(value) {
   return Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Math.floor(number)));
 }
 
+async function loadHomeRegionTeams(supabase, region = "") {
+  const safeRegion = String(region ?? "").trim();
+  if (!safeRegion) return { teams: [], updatedAt: 0 };
+  const { data, error } = await supabase
+    .from("teams")
+    .select(TEAM_COLUMNS)
+    .eq("region", safeRegion)
+    .is("deleted_at", null)
+    .order("mmr", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: true })
+    .limit(HOME_RIVAL_TEAM_LIMIT + MAX_TEAM_MEMBERSHIPS);
+  if (error) throw error;
+  return {
+    teams: (data ?? []).map((team) => ({
+      ...toClientTeamWithMembers(team, []),
+      membersPartial: true,
+    })),
+    updatedAt: getRowsMaxUpdatedAt(data ?? []),
+  };
+}
+
 async function loadCurrentUserHomeNotifications(supabase, profileId = "", blockedUserIds = []) {
   if (!profileId) return [];
   const now = new Date().toISOString();
@@ -112,15 +163,16 @@ export default async function handler(request, response) {
     const recruitingLimit = getCappedRecruitingLimit(body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
     const includeFeedCounts = body.includeFeedCounts === true;
 
-    const [profileResult, matchResult, recruitingResult, homeNotifications] = await Promise.all([
+    const [profileResult, matchResult, recruitingResult, homeNotifications, regionTeamResult] = await Promise.all([
       timeStep(debugTiming, "profileMs", () => loadCurrentProfileState(context, {
         debugTiming,
         includeFavorites: false,
         includeMatchSummary: false,
+        includeTeams: true,
         includeTeamMemberProfiles: false,
         ownMembersOnly: true,
       })),
-      loadCompactMatchList(context, {
+      loadOptionalHomeSection("match", () => loadCompactMatchList(context, {
         limit: matchLimit,
         listOnly: true,
         activeOnly: true,
@@ -129,18 +181,22 @@ export default async function handler(request, response) {
         recentCompletedHours: HOME_RECENT_COMPLETED_HOURS,
         includeRecruitingSchedule: false,
         adminContext: false,
-      }, adminLevel, matchLimit, debugTiming),
-      timeStep(debugTiming, "recruitingMs", () => loadCurrentUserRecruitingFeedList(context, {
+      }, adminLevel, matchLimit, debugTiming), EMPTY_HOME_MATCH_RESULT),
+      loadOptionalHomeSection("recruiting", () => timeStep(debugTiming, "recruitingMs", () => loadCurrentUserRecruitingFeedList(context, {
         adminLevel,
         limit: recruitingLimit,
         includeFeedCounts,
         skipCardReferenceRows: true,
-      })),
-      timeStep(debugTiming, "notificationsMs", () => loadCurrentUserHomeNotifications(
+      })), EMPTY_HOME_RECRUITING_RESULT),
+      loadOptionalHomeSection("notifications", () => timeStep(debugTiming, "notificationsMs", () => loadCurrentUserHomeNotifications(
         context.supabase,
         context.profileId,
         context.profile?.app_settings?.blockedUserIds,
-      )),
+      )), []),
+      loadOptionalHomeSection("region teams", () => timeStep(debugTiming, "regionTeamsMs", () => loadHomeRegionTeams(
+        context.supabase,
+        context.profile?.region,
+      )), { teams: [], updatedAt: 0 }),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
@@ -151,7 +207,10 @@ export default async function handler(request, response) {
       ok: true,
       state: mergeHomeState(
         mergeHomeState(
-          mergeHomeState(profileResult.state, matchResult.state),
+          mergeHomeState(
+            mergeHomeState(profileResult.state, { teams: regionTeamResult.teams }),
+            matchResult.state,
+          ),
           currentUserRecruitingState,
         ),
         { notifications: homeNotifications },
@@ -170,6 +229,7 @@ export default async function handler(request, response) {
         profileResult.updatedAt ?? 0,
         matchResult.updatedAt ?? 0,
         recruitingResult.updatedAt ?? 0,
+        regionTeamResult.updatedAt ?? 0,
       ),
       debugTiming: debugTiming ?? undefined,
     });

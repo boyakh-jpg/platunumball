@@ -67,3 +67,21 @@ test("match rows and child tables stay behind bounded related IDs", async () => 
   assert.match(migrationSource, /rules->'reservePlayers'/);
   assert.match(migrationSource, /grant execute[\s\S]*to service_role/);
 });
+
+test("home team bootstrap is route-independent and remains bounded", async () => {
+  const [homeSource, hookSource, homePageSource, adminSource] = await Promise.all([
+    readSource("server/api/home/load.js"),
+    readSource("src/hooks/useAppData.js"),
+    readSource("src/pages/Home.jsx"),
+    readSource("server/api/_supabaseAdmin.js"),
+  ]);
+
+  assert.match(homeSource, /includeTeams: true/);
+  assert.match(homeSource, /loadOptionalHomeSection\("match"/);
+  assert.match(homeSource, /\.limit\(HOME_RIVAL_TEAM_LIMIT \+ MAX_TEAM_MEMBERSHIPS\)/);
+  assert.match(hookSource, /includeTeams: options\.endpoint === "homeLoad"/);
+  assert.match(homePageSource, /!myTeamIds\.includes\(team\.id\)/);
+  assert.match(homePageSource, /\.slice\(0, HOME_RIVAL_TEAM_LIMIT\)/);
+  assert.match(adminSource, /\.filter\("referee_ids", "cs", JSON\.stringify\(\[profileId\]\)\)/);
+  assert.doesNotMatch(adminSource, /\.contains\("referee_ids", \[profileId\]\)/);
+});

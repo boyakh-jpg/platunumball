@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
-import { BellRing, Maximize2, Minimize2, Pause, Play, Power, Volume2, VolumeX } from "lucide-react";
+import {
+  BellRing,
+  Maximize2,
+  Minimize2,
+  Pause,
+  Play,
+  Power,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import QrCode from "../common/QrCode.jsx";
@@ -455,6 +465,7 @@ export default function MatchClockPanel({ match, onMatchEnded, clockClient = req
   }
 
   const shotClockEnabled = Number(liveClock.shotClockSeconds || 0) > 0;
+  const canResetShotClock = liveClock.canControl && !isEnded && !isBreak;
 
   const clockPanel = (
     <section
@@ -549,19 +560,23 @@ export default function MatchClockPanel({ match, onMatchEnded, clockClient = req
               aria-label={scoreboardEnabled ? "기록 점수판" : "경기시간"}
             >
               {scoreboardEnabled ? (
+                <span className="ui-match-clock-scoreboard-label">점수판</span>
+              ) : null}
+              {scoreboardEnabled ? (
                 <div className="ui-match-clock-team ui-match-clock-team-a">
-                  <span className="ui-match-clock-team-label">A SIDE</span>
+                  <span className="ui-match-clock-team-label">A 점수</span>
                   <strong className="ui-match-clock-team-score">{score.a}</strong>
                 </div>
               ) : null}
               <div className="ui-match-clock-main-time">
+                <span className="ui-match-clock-main-time-label">경기시계</span>
                 <Badge tone="orange">{getMatchClockPeriodLabel(liveClock)}</Badge>
                 <time>{formatClockTime(liveClock.periodRemainingMs, { tenths: true })}</time>
                 <small>{scoreboardEnabled ? "서버시간 · 점수 3초 자동 갱신" : "서버시간 기준"}</small>
               </div>
               {scoreboardEnabled ? (
                 <div className="ui-match-clock-team ui-match-clock-team-b">
-                  <span className="ui-match-clock-team-label">B SIDE</span>
+                  <span className="ui-match-clock-team-label">B 점수</span>
                   <strong className="ui-match-clock-team-score">{score.b}</strong>
                 </div>
               ) : null}
@@ -577,19 +592,20 @@ export default function MatchClockPanel({ match, onMatchEnded, clockClient = req
               <button
                 type="button"
                 className="ui-match-shot-clock"
-                disabled={!liveClock.canControl || isEnded || isBreak}
+                disabled={!canResetShotClock}
                 onClick={() => void runAction("resetShot")}
                 aria-label={`샷클락 ${formatClockTime(liveClock.shotRemainingMs)}. 눌러서 ${liveClock.shotClockSeconds}초로 초기화`}
               >
-                <span className="ui-match-shot-clock-label">SHOT CLOCK</span>
+                <span className="ui-match-shot-clock-label">샷클락</span>
                 <strong className="ui-match-shot-clock-value">{Math.ceil(liveClock.shotRemainingMs / 1000)}</strong>
-                <small className="ui-match-shot-clock-hint">
-                  {liveClock.canControl
-                    ? liveClock.shotRemainingMs <= 0
-                      ? `0초 유지 · 다음 공격권에 눌러 ${liveClock.shotClockSeconds}초 초기화`
-                      : `전체 영역을 눌러 ${liveClock.shotClockSeconds}초 초기화`
-                    : "읽기 전용"}
-                </small>
+                <span className="ui-match-shot-clock-action">
+                  <RotateCcw size={15} aria-hidden="true" />
+                  {canResetShotClock
+                    ? `${liveClock.shotClockSeconds}초로 초기화`
+                    : liveClock.canControl
+                      ? isBreak ? "휴식 중" : "사용 종료"
+                      : "읽기 전용"}
+                </span>
               </button>
             ) : null}
           </div>

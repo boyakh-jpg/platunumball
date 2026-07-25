@@ -13,7 +13,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { DEFAULT_RATING, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
+import { DEFAULT_RATING, HOME_RIVAL_TEAM_LIMIT, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
@@ -135,7 +135,6 @@ export default function Home({ app }) {
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState("");
   const searchText = query.trim().toLowerCase();
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
-  const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const myTeams = useMemo(() => app.state.teams
     .filter((team) => team.members.some((member) => member.userId === user.id))
@@ -178,12 +177,12 @@ export default function Home({ app }) {
     const regionTeams = app.state.teams
       .filter((team) => team.region === user.region)
       .sort((a, b) => b.mmr - a.mmr);
-    const referenceMmr = myTeam?.mmr ?? regionTeams[0]?.mmr ?? user.ratings.integrated;
+    const referenceMmr = myTeams[0]?.mmr ?? regionTeams[0]?.mmr ?? user.ratings.integrated;
     return regionTeams
-      .filter((team) => team.id !== myTeam?.id)
-      .slice(0, 4)
+      .filter((team) => !myTeamIds.includes(team.id))
+      .slice(0, HOME_RIVAL_TEAM_LIMIT)
       .map((team) => ({ ...team, gap: team.mmr - referenceMmr }));
-  }, [app.state.teams, myTeam?.id, myTeam?.mmr, user.ratings.integrated, user.region]);
+  }, [app.state.teams, myTeamIds, myTeams, user.ratings.integrated, user.region]);
   const acceptHomeRecruitingInvitation = async (postId, invitationId) => {
     const key = `${postId}:${invitationId}`;
     setProcessingInviteId(key);

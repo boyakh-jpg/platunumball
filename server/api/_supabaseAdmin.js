@@ -325,7 +325,7 @@ export async function loadCurrentUserTournamentIndex(client, profileId = "") {
     client
       .from("tournaments")
       .select(TOURNAMENT_COLUMNS)
-      .contains("referee_ids", [profileId])
+      .filter("referee_ids", "cs", JSON.stringify([profileId]))
       .order("updated_at", { ascending: false })
       .limit(RELATED_TOURNAMENT_LIMIT),
   ]);

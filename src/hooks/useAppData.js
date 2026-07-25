@@ -1247,12 +1247,13 @@ function cacheCurrentProfileState(authUserId, state = {}) {
 
 function getThinProfilePayload(authUserId, authEmail, options = {}) {
   const includeFavorites = options.includeFavorites === true;
+  const includeTeams = includeFavorites || options.includeTeams === true;
   return {
     authUserId,
     authEmail,
     includeFavorites,
     includeTeamInvitations: false,
-    includeTeams: includeFavorites,
+    includeTeams,
     includeExtraProfiles: includeFavorites,
     includeTeamMemberProfiles: false,
     includeMatchSummary: options.includeMatchSummary !== false && !includeFavorites,
@@ -1445,7 +1446,10 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
       });
     }
     if (options.endpoint) {
-      return attachRemoteMeta(await loadProfileState(authUserId, authEmail, { thin: true }), getEndpointFallbackMeta(options));
+      return attachRemoteMeta(await loadProfileState(authUserId, authEmail, {
+        thin: true,
+        includeTeams: options.endpoint === "homeLoad",
+      }), getEndpointFallbackMeta(options));
     }
     const result = await postServerAction(
       "/api/state/load",
@@ -1458,7 +1462,10 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     fallbackErrorMessage = error.message ?? "state_load_failed";
   }
   if (options.endpoint) {
-    return attachRemoteMeta(await loadProfileState(authUserId, authEmail, { thin: true }), getEndpointFallbackMeta(options, fallbackErrorMessage));
+    return attachRemoteMeta(await loadProfileState(authUserId, authEmail, {
+      thin: true,
+      includeTeams: options.endpoint === "homeLoad",
+    }), getEndpointFallbackMeta(options, fallbackErrorMessage));
   }
   return attachRemoteMeta(await loadProfileState(authUserId, authEmail, { thin: true }), {
     matchPage: { exhausted: true, recruitingScheduleChecked: true },

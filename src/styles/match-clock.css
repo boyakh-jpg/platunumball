@@ -109,7 +109,7 @@
 
 .ui-match-clock-display-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(180px, 0.45fr);
+  grid-template-columns: minmax(0, 1.72fr) minmax(144px, 0.28fr);
   gap: var(--page-section-gap);
   align-items: stretch;
   min-width: 0;
@@ -127,10 +127,24 @@
   align-items: stretch;
   color: var(--rb-text);
   background: var(--scoreboard);
-  border: 1px solid var(--rb-line-strong);
+  border: 2px solid var(--rb-line-strong);
   border-radius: var(--ui-panel-radius);
   min-height: var(--match-clock-display-height, auto);
   overflow: hidden;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rb-text) 6%, transparent);
+}
+
+.ui-match-clock-scoreboard-label {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 2;
+  color: var(--rb-orange);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .ui-match-clock-scoreboard > .ui-match-clock-attendance-qr {
@@ -187,7 +201,7 @@
 
 .ui-match-clock-team-label {
   font-family: var(--sports-display-font);
-  font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+  font-size: clamp(0.9rem, 2vw, 1.15rem);
   font-weight: 900;
   letter-spacing: 0.04em;
 }
@@ -199,10 +213,18 @@
 }
 
 .ui-match-clock-main-time {
-  gap: 5px;
+  gap: 4px;
   color: var(--rb-text);
   background: var(--scoreboard-2);
   border-inline: 1px solid var(--rb-line);
+}
+
+.ui-match-clock-main-time-label {
+  color: var(--rb-orange);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
 }
 
 .ui-match-clock-scoreboard-time-only .ui-match-clock-main-time {
@@ -217,23 +239,35 @@
 
 .ui-match-clock-main-time time {
   font-family: var(--sports-display-font);
-  font-size: clamp(2.1rem, 6vw, 4rem);
+  font-size: clamp(3.6rem, 9vw, 6.5rem);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
 .ui-match-shot-clock {
+  box-sizing: border-box;
   display: grid;
   place-items: center;
+  align-self: center;
   width: 100%;
-  min-height: var(--match-clock-display-height, 180px);
-  padding: 14px;
+  height: 100%;
+  min-height: var(--match-clock-display-height, 156px);
+  max-height: 240px;
+  padding: 12px 8px;
   color: var(--rb-text);
   font: inherit;
   cursor: pointer;
   background: color-mix(in srgb, var(--rb-orange) 20%, var(--scoreboard));
-  border: 1px solid color-mix(in srgb, var(--rb-orange) 58%, var(--rb-line));
+  border: 2px solid color-mix(in srgb, var(--rb-orange) 76%, var(--rb-line));
   border-radius: var(--ui-panel-radius);
+  box-shadow:
+    0 5px 0 color-mix(in srgb, var(--rb-orange-pressed) 72%, var(--rb-line)),
+    0 12px 24px color-mix(in srgb, var(--rb-orange) 16%, transparent);
+  touch-action: manipulation;
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .ui-match-shot-clock:focus-visible {
@@ -243,20 +277,41 @@
 
 .ui-match-shot-clock:disabled {
   cursor: default;
+  opacity: 0.72;
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--rb-orange-pressed) 48%, var(--rb-line));
 }
 
-.ui-match-shot-clock-label,
-.ui-match-shot-clock-hint {
-  color: var(--rb-muted);
-  font-size: 0.72rem;
+.ui-match-shot-clock-label {
+  color: var(--rb-orange);
+  font-size: 0.76rem;
   font-weight: 900;
+  letter-spacing: 0.08em;
 }
 
 .ui-match-shot-clock-value {
   font-family: var(--sports-display-font);
-  font-size: clamp(5rem, 17vw, 9rem);
+  font-size: clamp(3.25rem, 10vw, 5.5rem);
   font-variant-numeric: tabular-nums;
-  line-height: 0.85;
+  line-height: 0.9;
+}
+
+.ui-match-shot-clock-action {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 5px 8px;
+  overflow: hidden;
+  color: var(--ui-button-color-active);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--rb-orange);
+  border-radius: var(--ui-button-radius);
 }
 
 .ui-match-clock-actions > .ui-button {
@@ -474,7 +529,7 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-display-grid {
-  grid-template-columns: minmax(0, 3fr) minmax(160px, 1fr);
+  grid-template-columns: minmax(0, 4.3fr) minmax(124px, 0.7fr);
   gap: var(--match-clock-focus-gap);
   height: 100%;
   min-height: 0;
@@ -484,10 +539,16 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.ui-match-clock-panel-focus .ui-match-clock-scoreboard,
-.ui-match-clock-panel-focus .ui-match-shot-clock {
+.ui-match-clock-panel-focus .ui-match-clock-scoreboard {
   height: 100%;
   min-height: 0;
+}
+
+.ui-match-clock-panel-focus .ui-match-shot-clock {
+  align-self: center;
+  height: min(72%, 280px);
+  min-height: 132px;
+  max-height: 280px;
 }
 
 .ui-match-clock-panel-focus
@@ -501,29 +562,34 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-team-score {
-  font-size: clamp(3rem, 18vmin, 7rem);
+  font-size: clamp(3rem, 8cqi, 6rem);
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-main-time time {
-  font-size: clamp(3.4rem, 11vmin, 6.5rem);
+  font-size: clamp(4.75rem, 14cqi, 10rem);
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-scoreboard-time-only .ui-match-clock-main-time time {
-  font-size: clamp(5.5rem, 30vmin, 12rem);
+  font-size: clamp(5.5rem, 18cqi, 12rem);
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock {
-  padding: 6px;
+  padding: 8px 6px;
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock-value {
-  font-size: clamp(5rem, 28vmin, 11rem);
+  font-size: clamp(3rem, 8cqi, 5.5rem);
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-main-time small,
-.ui-match-clock-panel-focus .ui-match-shot-clock-hint,
 .ui-match-clock-panel-focus .ui-match-clock-break small {
   display: none;
+}
+
+.ui-match-clock-panel-focus .ui-match-shot-clock-action {
+  min-height: 26px;
+  padding: 4px 6px;
+  font-size: 0.62rem;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-break {
@@ -642,6 +708,12 @@
     padding: 8px 4px;
   }
 
+  .ui-match-clock-scoreboard-label {
+    top: 7px;
+    left: 8px;
+    font-size: 0.6rem;
+  }
+
   .ui-match-clock-scoreboard > .ui-match-clock-attendance-qr,
   .ui-match-clock-panel-focus .ui-match-clock-attendance-qr {
     position: static;
@@ -663,7 +735,9 @@
   }
 
   .ui-match-shot-clock {
-    min-height: var(--match-clock-display-height, 210px);
+    height: auto;
+    min-height: var(--match-clock-display-height, 144px);
+    max-height: none;
   }
 
   .ui-match-clock-option-grid,
@@ -750,7 +824,7 @@
   }
 
   .ui-match-shot-clock {
-    min-height: var(--match-clock-display-height, 230px);
+    min-height: var(--match-clock-display-height, 136px);
   }
 
   .ui-match-clock-panel-focus {
@@ -765,4 +839,11 @@
 
 .ui-match-shot-clock:hover:not(:disabled) {
   background: color-mix(in srgb, var(--rb-orange) 27%, var(--scoreboard));
+}
+
+.ui-match-shot-clock:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    0 2px 0 color-mix(in srgb, var(--rb-orange-pressed) 72%, var(--rb-line)),
+    0 7px 14px color-mix(in srgb, var(--rb-orange) 13%, transparent);
 }
