@@ -11,7 +11,7 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { addDateDays, getLocalDateInputValue, getMatchRoomPhase } from "../lib/matchUtils.js";
+import { addDateDays, getLocalDateInputValue, getMatchRoomPhase, getTournamentScheduleEditPolicy } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/matches-arena.css";
 
@@ -54,8 +54,22 @@ function isTournamentForfeitAvailable(match) {
 }
 
 function isTournamentScheduleEditable(match) {
-  if (!match || match.startedAt || match.endedAt) return false;
-  return !["live", "postgame", "dispute", "record", "cancelled", "void"].includes(getMatchRoomPhase(match).phase);
+  return getTournamentScheduleEditPolicy(match).allowed;
+}
+
+function getTournamentSchedulePolicyLabel(match) {
+  const policy = getTournamentScheduleEditPolicy(match);
+  if (policy.allowed) return policy.hasSchedule ? "수정 1회 가능" : "일정 설정 가능";
+  if (policy.reason === "lineup_submitted") return "출전 명단 제출 후 잠금";
+  if (policy.reason === "revision_limit") return "일정 수정 1회 사용";
+  return "일정 잠금";
+}
+
+function getTournamentSchedulePolicyMessage(match) {
+  const policy = getTournamentScheduleEditPolicy(match);
+  if (policy.reason === "lineup_submitted") return "한 팀이라도 출전 명단을 제출한 뒤에는 경기 일정을 변경할 수 없습니다.";
+  if (policy.reason === "revision_limit") return "경기 일정은 최초 지정 후 한 번만 변경할 수 있습니다.";
+  return "이미 시작·종료·취소·무효 처리된 경기의 일정은 변경할 수 없습니다.";
 }
 
 function getTournamentMatches(tournament, matchesById, matches = []) {
@@ -492,7 +506,7 @@ export default function TournamentDetail({ app }) {
     event.preventDefault();
     if (!canManageSchedule) return;
     if (!isTournamentScheduleEditable(matchesById[matchId])) {
-      setScheduleDialog({ mode: "notice", matchId, message: "이미 시작되었거나 종료된 경기의 일정은 변경할 수 없습니다." });
+      setScheduleDialog({ mode: "notice", matchId, message: getTournamentSchedulePolicyMessage(matchesById[matchId]) });
       return;
     }
     const form = new FormData(event.currentTarget);
@@ -507,6 +521,8 @@ export default function TournamentDetail({ app }) {
     setScheduleDialog({ mode: "confirm", matchId, scheduledDate, scheduledTime, courtId, courtName: court.name });
   };
   const formatScheduleError = (message = "") => {
+    if (message.includes("tournament_schedule_lineup_submitted")) return "한 팀이라도 출전 명단을 제출한 뒤에는 경기 일정을 변경할 수 없습니다.";
+    if (message.includes("tournament_schedule_revision_limit")) return "경기 일정은 최초 지정 후 한 번만 변경할 수 있습니다.";
     if (message.includes("tournament_match_schedule_locked")) return "이미 시작·종료·취소·무효 처리된 경기는 일정을 바꿀 수 없습니다.";
     if (message.includes("invalid_tournament_match_schedule")) return "오늘부터 365일 안의 날짜와 시간을 입력해야 합니다.";
     if (message.includes("tournament_owner_required")) return "대회 생성자만 경기 일정을 저장할 수 있습니다.";
@@ -748,16 +764,20 @@ export default function TournamentDetail({ app }) {
                         ) : (
                           <span className="league-fixture-pending">생성 전</span>
                         )}
-                        {canManageSchedule && match && !result && isTournamentScheduleEditable(match) ? (
-                          <button
-                            type="button"
-                            className="league-fixture-schedule-toggle"
-                            aria-expanded={editingScheduleId === match.id}
-                            onClick={() => setEditingScheduleId((current) => current === match.id ? "" : match.id)}
-                          >
-                            <CalendarDays size={14} />
-                            {editingScheduleId === match.id ? "입력 닫기" : match.scheduledDate ? "일정 수정" : "일정 설정"}
-                          </button>
+                        {canManageSchedule && match && !result ? (
+                          isTournamentScheduleEditable(match) ? (
+                            <button
+                              type="button"
+                              className="league-fixture-schedule-toggle"
+                              aria-expanded={editingScheduleId === match.id}
+                              onClick={() => setEditingScheduleId((current) => current === match.id ? "" : match.id)}
+                            >
+                              <CalendarDays size={14} />
+                              {editingScheduleId === match.id ? "입력 닫기" : match.scheduledDate ? "일정 수정" : "일정 설정"}
+                            </button>
+                          ) : (
+                            <span className="tournament-schedule-policy">{getTournamentSchedulePolicyLabel(match)}</span>
+                          )
                         ) : null}
                       </div>
                       {canManageSchedule && match && !result && isTournamentScheduleEditable(match) && editingScheduleId === match.id ? (
@@ -797,7 +817,12 @@ export default function TournamentDetail({ app }) {
           </div>
           <div className="tournament-schedule-list">
             {tournamentMatches.map((match) => (
-              <form key={match.id} className={canManageSchedule && isTournamentScheduleEditable(match) ? "" : "locked"} onSubmit={(event) => saveSchedule(event, match.id)}>
+              <form
+                key={match.id}
+                className={canManageSchedule && isTournamentScheduleEditable(match) ? "" : "locked"}
+                onSubmit={(event) => saveSchedule(event, match.id)}
+                title={getTournamentSchedulePolicyLabel(match)}
+              >
                 <button type="button" className="tournament-match-open" onClick={() => setSelectedMatchId(match.id)}>
                   <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
                   {" vs "}
@@ -809,7 +834,7 @@ export default function TournamentDetail({ app }) {
                 <select name="courtId" defaultValue={match.courtId ?? tournament.courtId ?? tournamentCourts[0]?.id} disabled={!canManageSchedule || !isTournamentScheduleEditable(match)} aria-label="경기 구장">
                   {tournamentCourts.map((court) => <option key={court.id} value={court.id}>{court.name}</option>)}
                 </select>
-                <button type="submit" disabled={!canManageSchedule || !isTournamentScheduleEditable(match) || savingScheduleId === match.id}><Save size={14} /> {savingScheduleId === match.id ? "저장 중" : "저장"}</button>
+                <button type="submit" disabled={!canManageSchedule || !isTournamentScheduleEditable(match) || savingScheduleId === match.id}><Save size={14} /> {savingScheduleId === match.id ? "저장 중" : isTournamentScheduleEditable(match) ? "저장" : getTournamentSchedulePolicyLabel(match)}</button>
                 {canManageSchedule ? (
                   <button
                     type="button"

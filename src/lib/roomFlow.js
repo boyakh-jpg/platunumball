@@ -1,4 +1,9 @@
-import { getMatchRoomPhase, getMatchScheduledDate, isMatchRecordMatch } from "./matchUtils.js";
+import {
+  getMatchRoomPhase,
+  getMatchScheduledDate,
+  isMatchRecordMatch,
+  isTournamentMatchLineupEditable,
+} from "./matchUtils.js";
 import {
   getPickupTeamAssignmentMode,
   getPickupTeamAssignmentModeOption,
@@ -408,6 +413,19 @@ export function getRoomPhaseViewModel({ post = {}, match = null } = {}) {
       showSideReserves: false,
       showRules: false,
       primaryAction: setupReady ? "기록 확인" : "참가자 구성",
+    };
+  }
+
+  if (match && isTournamentMatchLineupEditable(match)) {
+    return {
+      mode: ROOM_BODY_MODES.prearranged,
+      phase,
+      sectionOrder: ["recordSetup", "versus", "recordBoard"],
+      showVersusStage: true,
+      showParticipantPool: false,
+      showSideReserves: true,
+      showRules: true,
+      primaryAction: "출전 명단 구성",
     };
   }
 

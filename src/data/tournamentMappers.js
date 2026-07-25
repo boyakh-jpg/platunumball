@@ -25,6 +25,37 @@ export function getTournamentTeamStatuses(tournament = {}) {
   };
 }
 
+export function getTournamentTeamRosterSnapshot(tournament = {}, teamId = "") {
+  const snapshot = tournament.rules?.teamRosterSnapshot?.teams?.[teamId];
+  return snapshot && typeof snapshot === "object" ? snapshot : null;
+}
+
+export function getTournamentRosterTeam(team = null, tournament = {}, teamId = "", fallbackName = "") {
+  const snapshot = getTournamentTeamRosterSnapshot(tournament, teamId);
+  const snapshotMembers = Array.isArray(snapshot?.members)
+    ? snapshot.members
+        .map((member) => ({
+          userId: member.userId ?? member.user_id ?? "",
+          role: member.role ?? "regular",
+        }))
+        .filter((member) => member.userId)
+    : [];
+  const membersById = new Map(snapshotMembers.map((member) => [member.userId, member]));
+  (team?.members ?? []).forEach((member) => {
+    if (member?.userId) membersById.set(member.userId, member);
+  });
+  if (snapshot?.captainId && !membersById.has(snapshot.captainId)) {
+    membersById.set(snapshot.captainId, { userId: snapshot.captainId, role: "captain" });
+  }
+  if (!team && !snapshot) return null;
+  return {
+    ...(team ?? {}),
+    id: team?.id ?? teamId,
+    name: team?.name ?? fallbackName ?? "",
+    members: [...membersById.values()],
+  };
+}
+
 export function buildLeaguePairings(teamIds = []) {
   const pairings = [];
   for (let homeIndex = 0; homeIndex < teamIds.length; homeIndex += 1) {

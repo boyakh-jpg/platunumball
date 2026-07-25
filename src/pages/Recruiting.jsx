@@ -48,6 +48,7 @@ import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { ensureTeamPartyLeader, getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
+import { getTournamentRosterTeam } from "../data/tournamentMappers.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { DEFAULT_RATING, MATCH_MODES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, MINUTE_MS, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORDABLE_RESERVE_SOURCES, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
@@ -126,6 +127,7 @@ import {
   isMatchRoomChatLocked,
   isMatchSideTeamParty,
   isPersonalRecordMatch,
+  isTournamentMatchLineupEditable,
 } from "../lib/matchUtils.js";
 import {
   getMatchRuleDetailRows,
@@ -3819,17 +3821,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const sourceMatchRecordVerification = sourceMatchIsRecordRoom
           ? getPostgameRecordVerification(sourceMatch)
           : null;
-        const sourceMatchIsTournamentPregame = Boolean(
-          sourceMatch?.tournamentId &&
-          sourceMatch?.scheduledDate &&
-          sourceMatch?.scheduledTime &&
-          !sourceMatch?.startedAt &&
-          !sourceMatch?.endedAt &&
-          !sourceMatch?.result &&
-          !sourceMatch?.confirmedAt &&
-          !sourceMatch?.cancelledAt &&
-          !sourceMatch?.voidedAt
-        );
+        const sourceMatchIsTournamentPregame = isTournamentMatchLineupEditable(sourceMatch);
         const sourceMatchRecordEditable = Boolean(sourceMatchIsRecordRoom && !sourceMatch?.result && !sourceMatch?.confirmedAt);
         const canManageMatchRecordParticipants = Boolean(sourceMatchRecordEditable && sourceMatch?.createdBy === app.currentUser.id);
         const sourceRoomReadOnly = Boolean(
@@ -3854,30 +3846,48 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         );
         const sourceMatchHostSideName = sourceMatch && getMatchSidePlayerIds(sourceMatch, "teamB").includes(sourceMatch.createdBy) ? "teamB" : "teamA";
         const sourceMatchOpponentSideName = sourceMatchHostSideName === "teamA" ? "teamB" : "teamA";
+        const sourceTournament = sourceMatch?.tournamentId
+          ? app.state.tournaments?.find((tournament) => tournament.id === sourceMatch.tournamentId) ?? null
+          : null;
+        const sourceMatchRecordTeams = {
+          teamA: sourceMatch ? getTournamentRosterTeam(
+            teamById[sourceMatch.teamA?.teamId],
+            sourceTournament,
+            sourceMatch.teamA?.teamId,
+            sourceMatch.teamA?.name,
+          ) : null,
+          teamB: sourceMatch ? getTournamentRosterTeam(
+            teamById[sourceMatch.teamB?.teamId],
+            sourceTournament,
+            sourceMatch.teamB?.teamId,
+            sourceMatch.teamB?.name,
+          ) : null,
+        };
         const sourceMatchSideLeaderIds = {
           teamA: sourceMatchIsTournamentPregame
-            ? teamById[sourceMatch?.teamA?.teamId]?.members?.find((member) => member.role === "captain")?.userId ?? ""
+            ? getTeamCaptainId(sourceMatchRecordTeams.teamA) ?? ""
             : sourceMatch
             ? getMatchSideLeaderId(sourceMatch, app.state.teams, "teamA")
             : individualOnlyRoom ? "" : getRecruitingSideLeaderId(lobby, "teamA", roomOwnerId, roomState),
           teamB: sourceMatchIsTournamentPregame
-            ? teamById[sourceMatch?.teamB?.teamId]?.members?.find((member) => member.role === "captain")?.userId ?? ""
+            ? getTeamCaptainId(sourceMatchRecordTeams.teamB) ?? ""
             : sourceMatch
             ? getMatchSideLeaderId(sourceMatch, app.state.teams, "teamB")
             : individualOnlyRoom ? "" : getRecruitingSideLeaderId(lobby, "teamB", roomOwnerId, roomState),
         };
-        const sourceMatchRecordTeams = {
-          teamA: sourceMatch ? app.state.teams.find((team) => team.id === sourceMatch.teamA?.teamId) : null,
-          teamB: sourceMatch ? app.state.teams.find((team) => team.id === sourceMatch.teamB?.teamId) : null,
-        };
         const canEditMatchRecordRoster = Boolean(
           matchRoom &&
           sourceMatch &&
-          (sourceMatchIsRecordRoom || sourceMatchIsTournamentPregame) &&
-          !sourceMatch.result &&
-          !sourceMatch.confirmedAt &&
-          !sourceMatch.cancelledAt &&
-          !sourceMatch.voidedAt,
+          (
+            sourceMatchIsTournamentPregame ||
+            (
+              sourceMatchIsRecordRoom &&
+              !sourceMatch.result &&
+              !sourceMatch.confirmedAt &&
+              !sourceMatch.cancelledAt &&
+              !sourceMatch.voidedAt
+            )
+          ),
         );
         const showMatchRecordRosterPanel = Boolean(
           canEditMatchRecordRoster &&
@@ -4367,7 +4377,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     sideLeaderId={sourceMatchSideLeaderIds[sideName]}
                     capacity={getRecruitingSideCapacity(sourceMatch)}
                     tournamentRoster={sourceMatchIsTournamentPregame}
-                    reserveCapacity={sourceMatchIsRecordRoom ? 0 : MAX_RESERVE_PLAYERS_PER_SIDE}
+                    reserveCapacity={sourceMatchIsRecordRoom ? 0 : benchCapacity}
                     eligiblePlayerIds={sourceMatchIsTournamentPregame ? getTeamEventEligibility(sourceMatchRecordTeams[sideName], app.state.users, {
                       capacity: getRecruitingSideCapacity(sourceMatch),
                       ranked: sourceMatch.ranked,

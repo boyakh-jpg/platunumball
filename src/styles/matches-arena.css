@@ -3079,3 +3079,37 @@ html[data-theme="light"] .page-stack.tournament-detail-page .tournament-hero-bad
   background: transparent;
   box-shadow: none;
 }
+
+/* Tournament schedule controls keep their native picker without contributing intrinsic overflow. */
+.tournament-inline-schedule,
+.tournament-schedule-list form {
+  min-width: 0;
+  max-width: 100%;
+  contain: inline-size;
+}
+
+.tournament-inline-schedule input:is([type="date"], [type="time"]),
+.tournament-schedule-list input:is([type="date"], [type="time"]) {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  width: 100%;
+  min-inline-size: 0;
+  min-width: 0;
+  max-inline-size: 100%;
+  max-width: 100%;
+  justify-self: stretch;
+}
+
+.tournament-schedule-policy {
+  color: var(--muted);
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .tournament-inline-schedule,
+  .tournament-schedule-list form {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

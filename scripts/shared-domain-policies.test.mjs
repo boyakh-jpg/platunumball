@@ -16,7 +16,8 @@ import {
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
-import { markAllNotificationsRead, rejectMatchDispute, voidMatch as applyMatchVoid } from "../src/data/repository.js";
+import { markAllNotificationsRead, rejectMatchDispute, updateTournamentMatchSchedule, voidMatch as applyMatchVoid } from "../src/data/repository.js";
+import { getTournamentRosterTeam } from "../src/data/tournamentMappers.js";
 import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
 import {
   AFFILIATION_CHANGE_COOLDOWN_DAYS,
@@ -71,11 +72,15 @@ import {
   hasMatchScoreboardOperators,
   getVoidMatchRestoreTargetUserId,
   getMatchSideResult,
+  getLocalDateInputValue,
   getPlayerMatchResult,
+  getTournamentScheduleEditPolicy,
   isMatchWithinRecordDetailWindow,
+  isTournamentMatchLineupEditable,
 } from "../src/lib/matchUtils.js";
 import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../src/lib/ratingPolicy.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../src/lib/reportReasons.js";
+import { getRoomPhaseViewModel } from "../src/lib/roomFlow.js";
 import { PROFILE_ICON_CATALOG } from "../src/lib/profileIcons.js";
 import {
   getCourtAccessLabel,
@@ -168,6 +173,157 @@ test("core match policy has one canonical default", () => {
   assert.equal(getModeSize("unknown", 3), 3);
   assert.ok(isRefereeGrade("official"));
   assert.equal(isRefereeGrade("admin"), false);
+});
+
+test("tournament schedule allows one revision and locks after lineup submission", () => {
+  const scheduledMatch = {
+    id: "match-1",
+    tournamentId: "tournament-1",
+    status: "agreed",
+    scheduledDate: "2026-07-30",
+    scheduledTime: "19:00",
+    rules: {},
+  };
+
+  assert.deepEqual(getTournamentScheduleEditPolicy({
+    ...scheduledMatch,
+    scheduledDate: "",
+    scheduledTime: "",
+  }), {
+    allowed: true,
+    reason: "",
+    hasSchedule: false,
+    revisionCount: 0,
+  });
+  assert.equal(getTournamentScheduleEditPolicy(scheduledMatch).allowed, true);
+  assert.equal(getTournamentScheduleEditPolicy({
+    ...scheduledMatch,
+    rules: { tournamentScheduleRevisionCount: 1 },
+  }).reason, "revision_limit");
+  assert.equal(getTournamentScheduleEditPolicy({
+    ...scheduledMatch,
+    rules: { rosterReady: { teamA: false, teamB: true } },
+  }).reason, "lineup_submitted");
+  assert.equal(isTournamentMatchLineupEditable({
+    ...scheduledMatch,
+    confirmedAt: "2026-07-25T12:00:00.000Z",
+  }), true);
+  assert.equal(isTournamentMatchLineupEditable({
+    ...scheduledMatch,
+    status: "confirmed",
+  }), false);
+  assert.deepEqual(
+    getRoomPhaseViewModel({
+      match: {
+        ...scheduledMatch,
+        confirmedAt: "2026-07-25T12:00:00.000Z",
+      },
+    }).sectionOrder,
+    ["recordSetup", "versus", "recordBoard"],
+  );
+});
+
+test("local tournament schedule reducer counts only a real revision", () => {
+  const formatKstDate = (days) => getLocalDateInputValue(new Date(Date.now() + days * 86_400_000));
+  const state = {
+    currentUserId: "organizer-1",
+    tournaments: [{
+      id: "tournament-1",
+      createdBy: "organizer-1",
+      courtId: "court-1",
+      rules: { allowedCourtIds: ["court-1"] },
+    }],
+    matches: [{
+      id: "match-1",
+      tournamentId: "tournament-1",
+      title: "1경기",
+      status: "agreed",
+      teamA: { teamId: "team-a" },
+      teamB: { teamId: "team-b" },
+      rules: {},
+    }],
+    teams: [],
+    notifications: [],
+    settings: {
+      approvedCourts: [{ id: "court-1", name: "테스트 구장", status: "active" }],
+    },
+  };
+
+  const initial = updateTournamentMatchSchedule(state, "tournament-1", "match-1", {
+    scheduledDate: formatKstDate(2),
+    scheduledTime: "19:00",
+    courtId: "court-1",
+  });
+  assert.equal(initial.matches[0].rules.tournamentScheduleRevisionCount, 0);
+
+  const unchanged = updateTournamentMatchSchedule(initial, "tournament-1", "match-1", {
+    scheduledDate: formatKstDate(2),
+    scheduledTime: "19:00",
+    courtId: "court-1",
+  });
+  assert.equal(unchanged, initial);
+
+  const revised = updateTournamentMatchSchedule(initial, "tournament-1", "match-1", {
+    scheduledDate: formatKstDate(3),
+    scheduledTime: "20:00",
+    courtId: "court-1",
+  });
+  assert.equal(revised.matches[0].rules.tournamentScheduleRevisionCount, 1);
+
+  const rejected = updateTournamentMatchSchedule(revised, "tournament-1", "match-1", {
+    scheduledDate: formatKstDate(4),
+    scheduledTime: "21:00",
+    courtId: "court-1",
+  });
+  assert.equal(rejected.matches[0].scheduledDate, formatKstDate(3));
+  assert.equal(rejected.notifications[0].title, "일정 수정 불가");
+});
+
+test("tournament roster snapshot restores a captain omitted from the current directory", () => {
+  const team = getTournamentRosterTeam(
+    { id: "team-a", name: "마포 러너스", members: [{ userId: "member-1", role: "regular" }] },
+    {
+      rules: {
+        teamRosterSnapshot: {
+          teams: {
+            "team-a": {
+              captainId: "captain-1",
+              members: [{ userId: "captain-1", role: "captain" }],
+            },
+          },
+        },
+      },
+    },
+    "team-a",
+  );
+
+  assert.deepEqual(team.members, [
+    { userId: "captain-1", role: "captain" },
+    { userId: "member-1", role: "regular" },
+  ]);
+});
+
+test("tournament schedule guard is enforced in UI, CSS, and DB", async () => {
+  const [detailSource, recruitingSource, roomFlowSource, styles, migration] = await Promise.all([
+    readSource("src/pages/TournamentDetail.jsx"),
+    readSource("src/pages/Recruiting.jsx"),
+    readSource("src/lib/roomFlow.js"),
+    readSource("src/styles/matches-arena.css"),
+    readSource("supabase/migrations/20260725017000_tournament_schedule_revision_lock.sql"),
+  ]);
+
+  assert.match(detailSource, /getTournamentScheduleEditPolicy/);
+  assert.match(detailSource, /출전 명단 제출 후 잠금/);
+  assert.match(recruitingSource, /getTournamentRosterTeam/);
+  assert.match(recruitingSource, /isTournamentMatchLineupEditable/);
+  assert.match(recruitingSource, /reserveCapacity=\{sourceMatchIsRecordRoom \? 0 : benchCapacity\}/);
+  assert.match(roomFlowSource, /\["recordSetup", "versus", "recordBoard"\]/);
+  assert.match(styles, /\.tournament-schedule-list input:is\(\[type="date"\], \[type="time"\]\)[\s\S]*min-inline-size: 0;/);
+  assert.match(styles, /@media \(max-width: 720px\)[\s\S]*\.tournament-schedule-list form[\s\S]*grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(migration, /tournament_schedule_lineup_submitted/);
+  assert.match(migration, /tournament_schedule_revision_limit/);
+  assert.match(migration, /if not schedule_changed then/);
+  assert.match(migration, /rankball_tournament_match_schedule_action_unrestricted/);
 });
 
 test("match clock scoreboard requires a referee or recorders on both sides", () => {

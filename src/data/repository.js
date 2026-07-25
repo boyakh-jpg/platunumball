@@ -93,6 +93,7 @@ import {
   getMatchSideLeaderId,
   getMatchSideRecordPlayerIds,
   getMatchStartDate,
+  getTournamentScheduleEditPolicy,
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
   getMergedResultScore,
@@ -3012,6 +3013,32 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
   if (!isScheduleDateInAllowedWindow(scheduledDate, new Date(), maxDays)) {
     return { ...state, notifications: [getInvalidScheduleNotification(maxDays), ...state.notifications] };
   }
+  const scheduleChanged = (
+    match.scheduledDate !== scheduledDate ||
+    String(match.scheduledTime ?? "").slice(0, 5) !== scheduledTime ||
+    String(match.courtId ?? "") !== selectedCourt.id
+  );
+  if (!scheduleChanged) return state;
+  const scheduleEditPolicy = getTournamentScheduleEditPolicy(match);
+  if (!scheduleEditPolicy.allowed) {
+    const body = scheduleEditPolicy.reason === "lineup_submitted"
+      ? "한 팀이라도 출전 명단을 제출한 뒤에는 경기 일정을 변경할 수 없습니다."
+      : scheduleEditPolicy.reason === "revision_limit"
+        ? "경기 일정은 최초 지정 후 한 번만 변경할 수 있습니다."
+        : "이미 시작·종료·취소·무효 처리된 경기는 일정을 변경할 수 없습니다.";
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "일정 수정 불가",
+        body,
+        tone: "match",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
+  const now = new Date().toISOString();
+  const scheduleRevisionCount = scheduleEditPolicy.revisionCount + (scheduleEditPolicy.hasSchedule ? 1 : 0);
   const updatedMatch = {
     ...match,
     scheduledDate,
@@ -3021,23 +3048,20 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
     court: selectedCourt.name,
     rules: {
       ...(match.rules ?? {}),
-      rosterReady: {
-        teamA: false,
-        teamB: false,
-      },
-      rosterReadyAt: {},
+      tournamentScheduleRevisionCount: scheduleRevisionCount,
+      tournamentScheduleSetAt: match.rules?.tournamentScheduleSetAt ?? now,
+      tournamentScheduleUpdatedAt: scheduleEditPolicy.hasSchedule ? now : null,
       lineupDeadlineState: "pending",
       lineupDeadlineCheckedAt: null,
     },
   };
-  const now = new Date().toISOString();
   const captainNotifications = MATCH_SIDES.map((sideName) => {
     const teamId = match[sideName]?.teamId;
     const captainId = getTeamCaptainId(state.teams, teamId);
     if (!teamId || !captainId) return null;
     return {
       id: makeId("n"),
-      title: "대회 경기 일정 확정",
+      title: scheduleEditPolicy.hasSchedule ? "대회 경기 일정 변경" : "대회 경기 일정 확정",
       body: `${updatedMatch.scheduledAt} 경기의 출전 선수와 후보 선수를 구성해 주세요.`,
       tone: "match",
       type: "tournament_match_schedule",
@@ -3061,8 +3085,10 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
       ...captainNotifications,
       {
         id: makeId("n"),
-        title: "대회 일정 수정",
-        body: `${match.title} 경기 일정이 변경되었습니다. 새 일정: ${updatedMatch.scheduledAt}`,
+        title: scheduleEditPolicy.hasSchedule ? "대회 일정 수정" : "대회 일정 확정",
+        body: scheduleEditPolicy.hasSchedule
+          ? `${match.title} 경기 일정이 변경되었습니다. 새 일정: ${updatedMatch.scheduledAt}`
+          : `${match.title} 경기 일정이 확정되었습니다: ${updatedMatch.scheduledAt}`,
         tone: "match",
         matchId,
       },
