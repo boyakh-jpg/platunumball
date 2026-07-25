@@ -57,6 +57,10 @@ const publicTeamRepresentativeMigrationSource = fs.readFileSync(
   path.join(root, "supabase/migrations/20260725019000_public_team_representative_guard.sql"),
   "utf8",
 );
+const publicTeamRepresentativeApplicationMigrationSource = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260725021000_allow_team_representative_application.sql"),
+  "utf8",
+);
 
 function readCssManifest(relativePath) {
   const manifestPath = path.join(root, relativePath);
@@ -736,6 +740,11 @@ test("public team joins persist only the captain representative", () => {
   assert.match(publicTeamRepresentativeMigrationSource, /'playerIds', jsonb_build_array\(safe_actor_id\)/);
   assert.match(publicTeamRepresentativeMigrationSource, /'reservePlayerIds', '\[\]'::jsonb/);
   assert.match(publicTeamRepresentativeMigrationSource, /recruiting_team_side_occupied/);
+  assert.match(publicTeamRepresentativeApplicationMigrationSource, /rankball_recruiting_application_event_guard/);
+  assert.match(publicTeamRepresentativeApplicationMigrationSource, /post_row\.host_join_mode = 'team'/);
+  assert.match(publicTeamRepresentativeApplicationMigrationSource, /new\.player_id = eligibility->>'captainId'/);
+  assert.match(publicTeamRepresentativeApplicationMigrationSource, /jsonb_array_length\(coalesce\(new\.player_ids, '\[\]'::jsonb\)\) = 1/);
+  assert.match(publicTeamRepresentativeApplicationMigrationSource, /team_representative_application_guard_shape_changed/);
 });
 
 test("pickup participant slots keep a fixed width and use available desktop columns", () => {
