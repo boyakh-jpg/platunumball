@@ -29,6 +29,7 @@ const Privacy = lazy(() => import("./pages/Privacy.jsx"));
 const Profile = lazy(() => import("./pages/Profile.jsx"));
 const ProfileAchievements = lazy(() => import("./pages/ProfileAchievements.jsx"));
 const ProfileRecords = lazy(() => import("./pages/ProfileRecords.jsx"));
+const PracticeMatch = lazy(() => import("./pages/PracticeMatch.jsx"));
 const Rankings = lazy(() => import("./pages/Rankings.jsx"));
 const Recorder = lazy(() => import("./pages/Recorder.jsx"));
 const RefereeRulebook = lazy(() => import("./pages/RefereeRulebook.jsx"));
@@ -148,6 +149,7 @@ export default function App() {
           <Route element={<AppShell app={app} auth={auth} />}>
             <Route path="/app" element={<Home app={app} />} />
             <Route path="/app/guide" element={<GettingStarted />} />
+            <Route path="/app/guide/practice" element={<PracticeMatch app={app} />} />
             <Route path="/app/create" element={<CreateMatch app={app} />} />
             <Route path="/app/courts/:courtId" element={<CourtDetail app={app} />} />
             <Route path="/app/matches/:matchId" element={<MatchRoom app={app} />} />

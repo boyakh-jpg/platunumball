@@ -132,7 +132,7 @@ async function playBuzzer(patternName = "period", volume = 1) {
   }
 }
 
-export default function MatchClockPanel({ match, onMatchEnded }) {
+export default function MatchClockPanel({ match, onMatchEnded, clockClient = requestMatchClock }) {
   const [snapshot, setSnapshot] = useState(null);
   const [score, setScore] = useState({ a: 0, b: 0, updatedAt: null });
   const [activePlayers, setActivePlayers] = useState([]);
@@ -184,7 +184,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
     setPendingAction(action);
     setError("");
     try {
-      const response = await requestMatchClock(match.id, action, payload);
+      const response = await clockClient(match.id, action, payload);
       applyResponse(response);
       return true;
     } catch (actionError) {
@@ -193,7 +193,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
     } finally {
       setPendingAction("");
     }
-  }, [applyResponse, match?.id, pendingAction]);
+  }, [applyResponse, clockClient, match?.id, pendingAction]);
 
   useEffect(() => {
     configurationDirtyRef.current = false;
@@ -208,7 +208,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
     let cancelled = false;
     const load = async () => {
       try {
-        const response = await requestMatchClock(match.id, "read");
+        const response = await clockClient(match.id, "read");
         if (!cancelled) {
           setError("");
           applyResponse(response);
@@ -223,7 +223,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
       cancelled = true;
       window.clearInterval(pollId);
     };
-  }, [applyResponse, match.id]);
+  }, [applyResponse, clockClient, match.id]);
 
   useEffect(() => {
     const tickId = window.setInterval(() => setNowMs(Date.now()), 100);
@@ -416,7 +416,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
     });
     configurationDirtyRef.current = false;
     if (!succeeded) {
-      const response = await requestMatchClock(match.id, "read").catch(() => null);
+      const response = await clockClient(match.id, "read").catch(() => null);
       if (response) applyResponse(response);
     }
   };
@@ -636,7 +636,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
                   다음 쿼터 시작
                 </Button>
               ) : null}
-              {isBreak && regulationEnded && tied ? (
+              {isBreak && regulationEnded && (!scoreboardEnabled || tied) ? (
                 <Button
                   type="button"
                   size="sm"
@@ -645,7 +645,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
                   연장 {liveClock.overtimeCount + 1} 시작
                 </Button>
               ) : null}
-              {(isBreak && regulationEnded && !tied) || (isBreak && liveClock.overtimeCount > 0 && !tied) ? (
+              {isBreak && regulationEnded && (!scoreboardEnabled || !tied) ? (
                 <Button
                   type="button"
                   size="sm"

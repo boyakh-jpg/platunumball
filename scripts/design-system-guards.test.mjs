@@ -14,6 +14,7 @@ const courtControlStyles = read("src/styles/global-court-controls.css");
 const gettingStartedStyles = read("src/styles/getting-started.css");
 const appSource = read("src/App.jsx");
 const gettingStartedSource = read("src/pages/GettingStarted.jsx");
+const practiceMatchSource = read("src/pages/PracticeMatch.jsx");
 const termsSource = read("src/pages/Terms.jsx");
 const hoverSurfaceStyles = [
   read("src/styles/global-foundation.css"),
@@ -126,16 +127,19 @@ test("폐기한 목록 카드와 CTA override 선택자는 돌아오지 않는�
 
 test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", () => {
   assert.match(appSource, /const GettingStarted = lazy\(\(\) => import\("\.\/pages\/GettingStarted\.jsx"\)\);/);
+  assert.match(appSource, /const PracticeMatch = lazy\(\(\) => import\("\.\/pages\/PracticeMatch\.jsx"\)\);/);
   assert.match(appSource, /path="\/app\/guide" element=\{<GettingStarted \/>\}/);
+  assert.match(appSource, /path="\/app\/guide\/practice" element=\{<PracticeMatch app=\{app\} \/>\}/);
   assert.equal(count(pageSources.home, 'to="/app/guide"'), 1);
   assert.match(pageSources.home, /처음 사용하시나요\?/);
-  assert.match(pageSources.home, /5단계 안내/);
+  assert.match(pageSources.home, /6단계 안내/);
+  assert.match(pageSources.home, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(gettingStartedSource, /useSearchParams/);
   assert.match(gettingStartedSource, /aria-label="사용 설명 목차"/);
   assert.match(gettingStartedSource, /aria-current=\{item\.id === chapter\.id \? "page" : undefined\}/);
   assert.match(gettingStartedSource, /chapterTitleRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(gettingStartedSource, /ref=\{chapterTitleRef\} tabIndex=\{-1\}/);
-  for (const chapterId of ["start", "matching", "live", "records", "tier"]) {
+  for (const chapterId of ["start", "matching", "live", "records", "tier", "practice"]) {
     assert.match(gettingStartedSource, new RegExp(`id: "${chapterId}"`));
   }
   for (const image of [
@@ -151,10 +155,17 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /<figcaption>\{chapter\.caption\}<\/figcaption>/);
   assert.match(gettingStartedSource, /농구 기록 웹입니다/);
   assert.match(gettingStartedSource, /필수 웹 기능은 평생 무료/);
+  assert.match(gettingStartedSource, /양쪽 출전 선수의 과반 승인/);
   assert.match(gettingStartedSource, /경기시계/);
   assert.match(gettingStartedSource, /심판·기록원/);
   assert.match(gettingStartedSource, /티어는 확정 기록에서 자동 계산됩니다/);
   assert.match(gettingStartedSource, /기기별 베타/);
+  assert.match(gettingStartedSource, /to: "\/app\/guide\/practice"/);
+  assert.match(practiceMatchSource, /aria-current=\{index \+ 1 === progress\.step \? "step" : undefined\}/);
+  assert.match(practiceMatchSource, /className="practice-match-banner__actions ui-action-row"/);
+  assert.doesNotMatch(practiceMatchSource, /practice-room-guide ui-panel|practice-room-guide ui-modal-section/);
+  assert.equal(count(practiceMatchSource, "<h1>"), 1);
+  assert.equal(count(gettingStartedStyles, ".practice-match-safety {"), 1);
   assert.match(gettingStartedSource, /className="ui-action-row"/);
   assert.match(termsSource, /필수 웹 기능은 평생 무료입니다/);
   assert.match(gettingStartedStyles, /@media \(max-width: 720px\)/);

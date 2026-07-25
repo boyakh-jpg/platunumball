@@ -19,6 +19,7 @@ import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } f
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
 import { getRecruitingBenchCapacity, normalizeRecruitingApplicationStatus } from "../../../src/lib/recruiting.js";
 import { assertSafeUserText } from "../../../src/lib/inputSecurity.js";
+import { hasPracticeMutationPayload, PRACTICE_LOCAL_ONLY_ERROR } from "../../../src/lib/practiceMode.js";
 
 function isTrue(value) {
   return value === true || value === "true";
@@ -1803,6 +1804,10 @@ export default async function handler(request, response) {
 
   try {
     const body = await timing.track("body", () => readJsonBody(request));
+    if (hasPracticeMutationPayload(body)) {
+      sendTimedJson(response, 400, { error: PRACTICE_LOCAL_ONLY_ERROR }, timing, debugTiming);
+      return;
+    }
     debugTiming = debugTiming || isTrue(body.debugTiming);
     const context = await timing.track("auth", () => getAuthenticatedContext(request));
     let operation = withRecruitingCreatePostId(getOperation(body, body.action ? String(body.action) : "sync"));

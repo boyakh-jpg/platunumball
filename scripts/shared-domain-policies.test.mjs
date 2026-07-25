@@ -392,7 +392,7 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.doesNotMatch(panelSource, /isHalftimeBreak \? "10분" : "5분"/);
   assert.equal(
     clockStyles.match(/\.ui-match-clock-scoreboard:not\(\.ui-match-clock-scoreboard-time-only\)/g)?.length,
-    2,
+    3,
   );
 });
 

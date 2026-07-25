@@ -338,7 +338,15 @@ function getMatchRecordMemo(value = "") {
   return !String(value).trim() || value === DEFAULT_MATCH_MEMO ? DEFAULT_MATCH_RECORD_MEMO : value;
 }
 
-export default function CreateMatch({ app }) {
+export default function CreateMatch({
+  app,
+  initialDraft = null,
+  onRecruitingCreated = null,
+  onCancel = null,
+  embedded = false,
+  practiceMode = false,
+  syncStepToUrl = true,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const remakeDraft = useMemo(() => {
@@ -355,8 +363,12 @@ export default function CreateMatch({ app }) {
   const maxScheduleDate = addDateDays(today, SCHEDULE_MAX_DAYS);
   const maxPrivateScheduleDate = addDateDays(today, ROOM_SCHEDULE_MAX_DAYS);
   const maxPublicScheduleDate = getPublicRoomMaxDateInput();
-  const isRecordCreateIntent = useMemo(() => new URLSearchParams(location.search).get("intent") === "record", [location.search]);
+  const isRecordCreateIntent = useMemo(
+    () => !practiceMode && new URLSearchParams(location.search).get("intent") === "record",
+    [location.search, practiceMode],
+  );
   const loadDirectory = app.actions.loadDirectory;
+  const remoteDirectoryEnabled = app.capabilities?.remoteDirectory !== false;
   const requestedTournamentDirectoryRef = useRef(false);
   const modeManuallyChangedRef = useRef(Boolean(remakeDraft));
   const loadedCourtMapRegionsRef = useRef(new Set());
@@ -491,6 +503,7 @@ export default function CreateMatch({ app }) {
     tournamentMmrPolicy: "gap_adjusted",
     tournamentMaxMmrGap: DEFAULT_TOURNAMENT_MMR_GAP,
     ...(remakeDraft ?? {}),
+    ...(initialDraft ?? {}),
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState("");
@@ -529,7 +542,12 @@ export default function CreateMatch({ app }) {
   }, [app.currentUser.id, canCreateTeamRoom, defaultMode, defaultTeamA?.id, defaultTeamB, defaultTeamB?.id]);
 
   useEffect(() => {
-    if ((wizardStep !== 4 && !courtMapOpen) || !courtMapRegion || app.remoteReady === false) return undefined;
+    if (
+      (wizardStep !== 4 && !courtMapOpen)
+      || !courtMapRegion
+      || app.remoteReady === false
+      || !remoteDirectoryEnabled
+    ) return undefined;
     const loadKey = `${courtMapRegion}:${courtMapOpen ? "map" : "step"}`;
     if (loadedCourtMapRegionsRef.current.has(loadKey)) return undefined;
 
@@ -556,7 +574,7 @@ export default function CreateMatch({ app }) {
     return () => {
       if (courtMapRequestIdRef.current === requestId) courtMapRequestIdRef.current += 1;
     };
-  }, [app.remoteReady, courtMapOpen, courtMapRegion, wizardStep]);
+  }, [app.remoteReady, courtMapOpen, courtMapRegion, remoteDirectoryEnabled, wizardStep]);
 
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
@@ -615,13 +633,15 @@ export default function CreateMatch({ app }) {
     if (!wizardStepIds.has(step)) return;
 
     setWizardStep(step);
+    if (!syncStepToUrl) return;
     const nextSearch = getCreateStepSearch(location.search, step);
     if (nextSearch === location.search) return;
 
     navigate({ pathname: location.pathname, search: nextSearch }, { replace });
-  }, [location.pathname, location.search, navigate, wizardStepIds]);
+  }, [location.pathname, location.search, navigate, syncStepToUrl, wizardStepIds]);
 
   useEffect(() => {
+    if (!syncStepToUrl) return;
     const params = new URLSearchParams(location.search);
     const requestedStep = Number(params.get("step"));
     const step = getCreateStepFromSearch(location.search, creationWizardSteps);
@@ -632,7 +652,7 @@ export default function CreateMatch({ app }) {
     }
 
     if (step !== wizardStep) setWizardStep(step);
-  }, [creationWizardSteps, location.pathname, location.search, navigate, wizardStep, wizardStepIds]);
+  }, [creationWizardSteps, location.pathname, location.search, navigate, syncStepToUrl, wizardStep, wizardStepIds]);
 
   const matchCreationValidation = useMemo(() => getMatchCreationValidation(draft), [draft]);
   const matchCreationPolicy = matchCreationValidation.policy;
@@ -1506,6 +1526,15 @@ export default function CreateMatch({ app }) {
   const submit = async (event) => {
     event.preventDefault();
     if (submitting) return;
+    if (practiceMode && (
+      isSoloRecord
+      || isMatchRecordRoom
+      || isTournamentRoom
+      || draft.visibility !== "private"
+    )) {
+      setSubmitFeedback("연습 경기는 비공개 경기방으로만 만들 수 있습니다.");
+      return;
+    }
     if (submitDisabled) {
       setSubmitFeedback(submitDisabledReason || "경기 생성 조건을 확인해 주세요.");
       return;
@@ -1671,7 +1700,10 @@ export default function CreateMatch({ app }) {
         isPublicRoom ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
       ].filter(Boolean).join("\n"),
     });
-    if (typeof postId === "string" && postId) navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
+    if (typeof postId === "string" && postId) {
+      if (onRecruitingCreated) onRecruitingCreated(postId);
+      else navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
+    }
     else {
       setSubmitFeedback(formatCreateSaveError(postId, "경기를 저장하지 못했습니다."));
     }
@@ -1685,14 +1717,14 @@ export default function CreateMatch({ app }) {
 
   return (
     <form className="page-stack create-match-page" onSubmit={submit}>
-      <header className={`page-header create-match-hero ${isRecordCreateIntent ? "is-record" : "is-match"}`}>
+      {!embedded ? <header className={`page-header create-match-hero ${isRecordCreateIntent ? "is-record" : "is-match"}`}>
         <div>
           <p className="eyebrow">{isRecordCreateIntent ? "RecordMatch" : "CreateMatch"}</p>
           <h1>{isRecordCreateIntent ? "기록하기" : "경기/대회 만들기"}</h1>
           {remakeDraft ? <Badge tone="orange">취소된 방 설정을 불러왔습니다. 새 일정을 확인해 주세요.</Badge> : null}
           {remakeDraft ? <p className="form-warning">{getRoomRemakeWarningCopy(remakeDraft.remakeExpectedCount)}</p> : null}
         </div>
-      </header>
+      </header> : null}
 
       <MatchCreationWizardNav currentStep={wizardStep} steps={creationWizardSteps} onStepChange={goToWizardStep} />
 
@@ -1747,6 +1779,7 @@ export default function CreateMatch({ app }) {
                 <button
                   type="button"
                   className={draft.recordType === RECORD_TYPES.match && draft.visibility === "public" ? "active" : ""}
+                  disabled={practiceMode}
                   onClick={() => {
                     const team = defaultTeamA ?? selectedTeamA;
                     const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
@@ -1777,7 +1810,7 @@ export default function CreateMatch({ app }) {
                     <em>매칭 목록에서 선수·팀을 모집합니다.</em>
                   </span>
                 </button>
-                <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => {
+                <button type="button" className={isTournamentRoom ? "active" : ""} disabled={practiceMode} onClick={() => {
                   setTeamRegion("전체");
                   const mode = getMatchModeOrDefault(draft.mode, defaultMode);
                   update({
@@ -1881,6 +1914,7 @@ export default function CreateMatch({ app }) {
               </>
             )}
           </div>
+          {practiceMode ? <p className="form-helper">연습에서는 비공개 경기방만 사용합니다. 경기 목적·팀 구성·시계 규칙은 직접 바꿔볼 수 있습니다.</p> : null}
           {isStandardCreateWizard ? (
             <div className="match-intent-preset-section">
               <MatchIntentPresetSelector
@@ -2138,7 +2172,7 @@ export default function CreateMatch({ app }) {
                     placeholder="이름, #해시태그 검색"
                     items={soloRecordUserCandidates}
                     getSearchText={getSoloRecordUserSearchText}
-                    remoteSearchType="player"
+                    remoteSearchType={remoteDirectoryEnabled ? "player" : ""}
                     remoteLimit={10}
                     idleItems={soloRecordUserCandidates.slice(0, 5)}
                     idleTitle="최근/지역 선수"
@@ -2158,7 +2192,7 @@ export default function CreateMatch({ app }) {
                     placeholder="이름, #해시태그 검색"
                     items={soloRecordUserCandidates}
                     getSearchText={getSoloRecordUserSearchText}
-                    remoteSearchType="player"
+                    remoteSearchType={remoteDirectoryEnabled ? "player" : ""}
                     remoteLimit={10}
                     idleItems={soloRecordUserCandidates.slice(0, 5)}
                     idleTitle="최근/지역 선수"
@@ -2207,7 +2241,7 @@ export default function CreateMatch({ app }) {
                       }}
                       placeholder="심판 이름, #해시태그, 지역 검색"
                       items={refereeSearchResults}
-                      remoteSearchType="referee"
+                      remoteSearchType={remoteDirectoryEnabled ? "referee" : ""}
                       idleItems={favoriteReferees.length ? favoriteReferees : refereeCandidates.slice(0, 8)}
                       idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
                       title="심판 검색 결과"
@@ -2286,7 +2320,7 @@ export default function CreateMatch({ app }) {
                 showIdleOnFocus
                 floating
                 closeOnResultClick
-                remoteSearchType="court"
+                remoteSearchType={remoteDirectoryEnabled ? "court" : ""}
                 getSearchText={getCourtSearchText}
                 renderItem={renderCourtSearchItem}
               />
@@ -2535,7 +2569,7 @@ export default function CreateMatch({ app }) {
                     onChange={setTeamQuery}
                     placeholder="팀, 지역, 홈코트 검색"
                     items={sortedTeams}
-                    remoteSearchType="team"
+                    remoteSearchType={remoteDirectoryEnabled ? "team" : ""}
                     idleItems={favoriteTeams}
                     idleTitle="즐겨찾기 팀"
                     showIdleOnFocus
@@ -2580,7 +2614,7 @@ export default function CreateMatch({ app }) {
                     onChange={setRefereeQuery}
                     placeholder="심판 이름, #해시태그, 지역 검색"
                     items={refereeSearchResults}
-                    remoteSearchType="referee"
+                    remoteSearchType={remoteDirectoryEnabled ? "referee" : ""}
                     remoteSearchContext={{ refereeThroughDate: draft.tournamentEndDate }}
                     idleItems={favoriteReferees.length ? favoriteReferees : tournamentRefereeCandidates.slice(0, 8)}
                     idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
@@ -2649,7 +2683,7 @@ export default function CreateMatch({ app }) {
                       onChange={setOpponentTeamQuery}
                       placeholder="상대 팀명 검색"
                       items={opponentTeamResults}
-                      remoteSearchType="team"
+                      remoteSearchType={remoteDirectoryEnabled ? "team" : ""}
                       idleItems={favoriteOpponentTeams.length ? favoriteOpponentTeams : opponentTeamResults}
                       idleTitle={favoriteOpponentTeams.length ? "즐겨찾기 팀" : "추천 B사이드"}
                       resultsClassName="create-opponent-team-results"
@@ -2784,7 +2818,7 @@ export default function CreateMatch({ app }) {
                     }}
                     placeholder="심판 이름, #해시태그, 지역 검색"
                     items={refereeSearchResults}
-                    remoteSearchType="referee"
+                    remoteSearchType={remoteDirectoryEnabled ? "referee" : ""}
                     idleItems={favoriteReferees.length ? favoriteReferees : refereeCandidates.slice(0, 8)}
                     idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
                     title="심판 검색 결과"
@@ -2834,7 +2868,7 @@ export default function CreateMatch({ app }) {
                 showIdleOnFocus
                 floating
                 closeOnResultClick
-                remoteSearchType="court"
+                remoteSearchType={remoteDirectoryEnabled ? "court" : ""}
                 getSearchText={getCourtSearchText}
                 renderItem={renderCourtSearchItem}
               />
@@ -2874,7 +2908,15 @@ export default function CreateMatch({ app }) {
           </Card>
         ) : null}
       </div>
-      <MatchCreationWizardActions currentStep={wizardStep} steps={creationWizardSteps} onStepChange={goToWizardStep} onCancel={() => navigate("/app")} />
+      <MatchCreationWizardActions
+        currentStep={wizardStep}
+        steps={creationWizardSteps}
+        onStepChange={goToWizardStep}
+        onCancel={() => {
+          if (onCancel) onCancel();
+          else navigate("/app");
+        }}
+      />
       {wizardStep === finalWizardStep ? (
       <div className="create-submit-row">
         {submitFeedback ? <span className="create-submit-warning">{submitFeedback}</span> : null}

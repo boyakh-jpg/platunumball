@@ -1,5 +1,6 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { createMatchAttendanceQr } from "./_attendanceQr.js";
+import { isPracticeId, PRACTICE_LOCAL_ONLY_ERROR } from "../../../src/lib/practiceMode.js";
 
 const ALLOWED_ACTIONS = new Set([
   "read",
@@ -37,6 +38,10 @@ export default async function handler(request, response) {
     const payload = body.payload && typeof body.payload === "object" ? body.payload : {};
     if (!matchId) {
       sendJson(response, 400, { error: "match_id_required" });
+      return;
+    }
+    if (isPracticeId(matchId)) {
+      sendJson(response, 400, { error: PRACTICE_LOCAL_ONLY_ERROR });
       return;
     }
     if (!ALLOWED_ACTIONS.has(action)) {

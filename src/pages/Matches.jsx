@@ -853,7 +853,15 @@ export function getMatchRoomPost(match, state) {
   };
 }
 
-export function MatchRoomModal({ app, matchId, onClose, entryPoint = "" }) {
+export function MatchRoomModal({
+  app,
+  matchId,
+  onClose,
+  entryPoint = "",
+  contextPanel = null,
+  clockClient = undefined,
+  onRemake = null,
+}) {
   const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
   const [openedMatchId, setOpenedMatchId] = useState("");
   const requestedMatchDetailsRef = useRef(new Set());
@@ -913,6 +921,9 @@ export function MatchRoomModal({ app, matchId, onClose, entryPoint = "" }) {
         post={selectedMatchRoom.post}
         sourceMatch={selectedMatch}
         entryPoint={entryPoint}
+        contextPanel={contextPanel}
+        clockClient={clockClient}
+        onRemake={onRemake}
         skipInitialDetailLoad
         onClose={onClose}
       />

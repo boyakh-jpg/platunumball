@@ -163,10 +163,12 @@ export function getRemoteAppSettings(profile = {}) {
   const notificationChannels = settings.notificationChannels && typeof settings.notificationChannels === "object" && !Array.isArray(settings.notificationChannels)
     ? settings.notificationChannels
     : null;
+  const showHomeGuideCard = typeof settings.showHomeGuideCard === "boolean" ? settings.showHomeGuideCard : null;
   return {
     ...(theme ? { theme } : {}),
     ...(privacy ? { privacy } : {}),
     ...(representativeTeamId ? { representativeTeamId } : {}),
     ...(notificationChannels ? { notificationChannels } : {}),
+    ...(showHomeGuideCard !== null ? { showHomeGuideCard } : {}),
   };
 }

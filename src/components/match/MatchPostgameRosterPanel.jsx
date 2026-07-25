@@ -26,6 +26,7 @@ export default function MatchPostgameRosterPanel({
   users = [],
   onAdd,
   onRemove,
+  remoteSearchEnabled = true,
 }) {
   const [sideName, setSideName] = useState("teamA");
   const [query, setQuery] = useState("");
@@ -130,7 +131,7 @@ export default function MatchPostgameRosterPanel({
             placeholder="선수 이름, #해시태그 검색"
             items={localCandidates}
             idleItems={localCandidates.slice(0, 8)}
-            remoteSearchType="profile"
+            remoteSearchType={remoteSearchEnabled ? "profile" : ""}
             mapRemoteItem={normalizeCandidate}
             title="추가할 선수"
             emptyText="추가 가능한 선수 없음"

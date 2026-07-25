@@ -388,6 +388,7 @@ import {
 } from "./scheduleUtils.js";
 import { adjustUserTrust, clampTrustScore, getFoulTrustPenalty } from "./trustUtils.js";
 import { getUnsafeUserTextReason } from "../lib/inputSecurity.js";
+import { isPracticeEntity } from "../lib/practiceMode.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 export { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "./profileMappers.js";
 export { fromRemoteTeamInvitation } from "./teamMappers.js";
@@ -2119,6 +2120,19 @@ function updateAffiliationScores(state) {
 }
 
 function finalizeMatch(state, targetMatch) {
+  if (isPracticeEntity(targetMatch)) {
+    const confirmedMatch = {
+      ...targetMatch,
+      status: "confirmed",
+      ratingResult: [],
+      teamRatingResult: null,
+      confirmedAt: new Date().toISOString(),
+    };
+    return {
+      ...state,
+      matches: state.matches.map((match) => (match.id === targetMatch.id ? confirmedMatch : match)),
+    };
+  }
   const ratingContext = getFinalizationRatingContext(targetMatch, state.teams);
   const ratingMatch = ratingContext.matchForRating;
   const ratings = Object.fromEntries(state.users.map((user) => [user.id, clone(user.ratings)]));

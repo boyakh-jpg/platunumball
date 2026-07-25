@@ -1,5 +1,6 @@
 export const DEFAULT_SETTINGS = {
   theme: "dark",
+  showHomeGuideCard: true,
   privacy: {
     regionRanking: true,
     teamHistory: true,

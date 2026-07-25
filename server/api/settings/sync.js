@@ -33,6 +33,9 @@ function sanitizeSettingsPatch(value) {
   const patch = {};
 
   if (source.theme === "light" || source.theme === "dark") patch.theme = source.theme;
+  if (typeof source.showHomeGuideCard === "boolean") {
+    patch.showHomeGuideCard = source.showHomeGuideCard;
+  }
   if (typeof source.representativeTeamId === "string") {
     patch.representativeTeamId = source.representativeTeamId.trim().slice(0, 128);
   }

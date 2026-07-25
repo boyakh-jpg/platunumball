@@ -1,4 +1,5 @@
 import { postServerAction } from "./serverActions.js";
+import { isPracticeId, PRACTICE_LOCAL_ONLY_ERROR } from "./practiceMode.js";
 
 export const SHOT_CLOCK_OPTIONS = Object.freeze([
   { value: 0, label: "사용 안 함" },
@@ -15,6 +16,11 @@ export const MATCH_CLOCK_FALLBACK_FACTORS = Object.freeze({
 });
 
 export function requestMatchClock(matchId, action = "read", payload = {}) {
+  if (isPracticeId(matchId)) {
+    const error = new Error(PRACTICE_LOCAL_ONLY_ERROR);
+    error.code = PRACTICE_LOCAL_ONLY_ERROR;
+    return Promise.reject(error);
+  }
   return postServerAction("/api/matches/clock", { matchId, action, payload });
 }
 

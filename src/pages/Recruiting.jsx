@@ -2188,6 +2188,7 @@ function InvitePanel({
   onInvitePlayers,
   onClose,
   error = "",
+  remoteSearchEnabled = true,
 }) {
   const teamSummonMode = Boolean(allowedTeamId);
   const relationTerms = teamSummonMode ? ROOM_RELATION_TERMS.teamRoster : ROOM_RELATION_TERMS.pregame;
@@ -2304,7 +2305,7 @@ function InvitePanel({
           placeholder={playerOnly ? "선수 검색" : "선수 또는 팀 검색"}
           items={inviteSearchItems}
           getSearchText={getInviteItemSearchText}
-          remoteSearchType={playerOnly ? "profile" : ["profile", "team"]}
+          remoteSearchType={remoteSearchEnabled ? (playerOnly ? "profile" : ["profile", "team"]) : ""}
           mapRemoteItem={(item) => {
             if (item.kind === "team") return playerOnly ? null : { type: "team", team: item };
             if (!isAllowedPlayer(item.id, item)) return null;
@@ -2389,6 +2390,7 @@ function RefereeInvitePanel({
   disabledRefereeIds = [],
   onInviteReferee,
   onJoin,
+  remoteSearchEnabled = true,
 }) {
   const normalizedQuery = query.trim().toLowerCase();
   const disabledRefereeSet = new Set(disabledRefereeIds);
@@ -2442,7 +2444,7 @@ function RefereeInvitePanel({
           onChange={onQueryChange}
           placeholder="심판 이름, #해시태그, 지역 검색"
           items={searchItems}
-          remoteSearchType="referee"
+          remoteSearchType={remoteSearchEnabled ? "referee" : ""}
           mapRemoteItem={(item) => (disabledRefereeSet.has(item.id) ? null : item)}
           idleItems={idleItems}
           idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
@@ -2889,10 +2891,26 @@ function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
   );
 }
 
-function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, entryPoint = "", attendanceScanState = null, onInvitationAccepted = null, onJoined = null, skipInitialDetailLoad = false }) {
+function RecruitingRoomModalReady({
+  app,
+  post,
+  onClose,
+  onOpenMatch = null,
+  sourceMatch = null,
+  entryPoint = "",
+  attendanceScanState = null,
+  onInvitationAccepted = null,
+  onJoined = null,
+  skipInitialDetailLoad = false,
+  contextPanel = null,
+  clockClient = undefined,
+  onRemake = null,
+}) {
   const navigate = useNavigate();
   const selectedPost = post;
   const loadDirectory = app.actions.loadDirectory;
+  const remoteDirectoryEnabled = app.capabilities?.remoteDirectory !== false;
+  const roomShareEnabled = app.capabilities?.roomShare !== false;
   const shouldLoadTeamDirectory = selectedPost.visibility === "public" && isTeamOnlyRoom(selectedPost);
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -3828,12 +3846,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           selectedPost.refereeId,
           ...pendingRefereeInvitations.map((invitation) => invitation.targetUserId),
         ].filter(Boolean));
-        const refereeInviteCandidates = isSupabaseConfigured
-          ? []
-          : app.state.users
+        const refereeInviteCandidates = app.capabilities?.remoteDirectory === false || !isSupabaseConfigured
+          ? app.state.users
             .filter((user) => !disabledRefereeIds.has(user.id))
             .filter((user) => isEligibleReferee(user, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments))
-            .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0));
+            .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0))
+          : [];
         const showRefereeInviteSlot = refereeWanted && !selectedPost.refereeId;
         const canInviteRefereeFromRoom = showRefereeInviteSlot && canInviteFromRoom;
         const activeInviteDraftRaw = inviteDraft?.postId === selectedPost.id ? inviteDraft : null;
@@ -4183,6 +4201,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         );
         const remakeRoom = () => {
           if (!canRemakeRoom) return;
+          if (onRemake) {
+            onRemake();
+            return;
+          }
           const remakeSource = sourceMatch
             ? {
                 ...selectedPost,
@@ -4296,6 +4318,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 onTogglePlayer={toggleInvitePlayer}
                 onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                 onClose={() => setInviteDraft(null)}
+                remoteSearchEnabled={remoteDirectoryEnabled}
               />
             </SlotCommandPanel>
           );
@@ -4603,13 +4626,17 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     <Badge tone={referee ? "blue" : "neutral"}>{getRoomRefereeLabel(selectedPost)}</Badge>
                     {requiresPaidCourtNotice(selectedPost) ? <Badge tone="orange">유료 구장</Badge> : null}
                   </div>
-                  <div className="arena-room-share-actions" aria-label="방 공유">
-                    <Button type="button" size="sm" variant="secondary" onClick={copyRoomShareUrl}>
-                      <Copy size={15} /> URL 복사
-                    </Button>
-                    <Button type="button" size="sm" variant="secondary" onClick={shareRoom}>
-                      <Share2 size={15} /> 공유하기
-                    </Button>
+                  <div className="arena-room-share-actions" aria-label={roomShareEnabled ? "방 공유" : "방 작업"}>
+                    {roomShareEnabled ? (
+                      <>
+                        <Button type="button" size="sm" variant="secondary" onClick={copyRoomShareUrl}>
+                          <Copy size={15} /> URL 복사
+                        </Button>
+                        <Button type="button" size="sm" variant="secondary" onClick={shareRoom}>
+                          <Share2 size={15} /> 공유하기
+                        </Button>
+                      </>
+                    ) : null}
                     <Button type="button" size="sm" variant="secondary" onClick={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
                       <X size={15} /> 방 닫기
                     </Button>
@@ -4621,6 +4648,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <h2 className={roomTitleSizeClass}>{roomDisplayTitle}</h2>
                   <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
+
+                {contextPanel}
 
                 {attendanceScanState ? (
                   <div className="ui-status-strip" role="status" aria-live="polite">
@@ -4822,6 +4851,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   onTogglePlayer={toggleInvitePlayer}
                   onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                   onClose={() => setInviteDraft(null)}
+                  remoteSearchEnabled={remoteDirectoryEnabled}
                 />
               ) : null}
 
@@ -4895,6 +4925,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 <MatchPostgameRosterPanel
                   match={sourceMatch}
                   users={app.state.users}
+                  remoteSearchEnabled={remoteDirectoryEnabled}
                   onAdd={(draft) => app.actions.addMatchLatePlayer?.(sourceMatch.id, draft)}
                   onRemove={(playerId) => app.actions.removeMatchLatePlayer?.(sourceMatch.id, playerId)}
                 />
@@ -5030,6 +5061,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     disabledRefereeIds={[...disabledRefereeIds]}
                     onInviteReferee={(refereeId) => app.actions.inviteRecruitingReferee(selectedPost.id, refereeId)}
                     onJoin={() => app.actions.interestRecruitingPost(selectedPost.id, { joinMode: "referee" })}
+                    remoteSearchEnabled={remoteDirectoryEnabled}
                   />
                 ) : null}
                 {selectedPost.stakes ? (
@@ -5230,6 +5262,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 <MatchClockPanel
                   match={sourceMatch}
                   onMatchEnded={() => void app.actions.loadMatchDetail(sourceMatch.id)}
+                  clockClient={clockClient}
                 />
               ) : null}
 

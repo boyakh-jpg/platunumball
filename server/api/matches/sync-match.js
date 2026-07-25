@@ -24,6 +24,7 @@ import { getPostgameRecordVerification, POSTGAME_RECORD_REMINDER_HOURS } from ".
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeam } from "../../../src/data/teamMappers.js";
+import { hasPracticeMutationPayload, PRACTICE_LOCAL_ONLY_ERROR } from "../../../src/lib/practiceMode.js";
 import {
   applyAuthoritativeMatchOperation,
   getOperation,
@@ -2273,6 +2274,10 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
+    if (hasPracticeMutationPayload(body)) {
+      sendJson(response, 400, { error: PRACTICE_LOCAL_ONLY_ERROR });
+      return;
+    }
     const context = await getAuthenticatedContext(request);
     const operation = getOperation(body, body.action ? String(body.action) : "sync");
     if (!operation) reject(400, "match_operation_required");

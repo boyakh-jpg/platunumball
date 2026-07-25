@@ -43,6 +43,10 @@ export function normalizeSettings(settings = {}, options = {}) {
   };
 }
 
+export function isHomeGuideCardVisible(settings = {}) {
+  return settings.showHomeGuideCard !== false;
+}
+
 export function isDiscordNotificationEnabled(settings = {}, event = "match") {
   const discord = normalizeSettings(settings).notificationChannels.discord;
   return discord.enabled === true && discord.events?.[event] !== false;

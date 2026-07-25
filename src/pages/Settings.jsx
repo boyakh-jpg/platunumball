@@ -41,6 +41,7 @@ import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses, searchNearbyCourtCandidates } from "../lib/naverAddress.js";
 import { getAdminStatusLabel } from "../lib/admin.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
 import {
   DISCORD_NOTIFICATION_EVENTS,
   acknowledgeDiscordOAuthResult,
@@ -263,6 +264,9 @@ export default function Settings({ app, auth, section = "main" }) {
   const [themeSaveStatus, setThemeSaveStatus] = useState("");
   const lastThemeRef = useRef(theme);
   const themeSaveRequestRef = useRef(0);
+  const homeGuideCardVisible = isHomeGuideCardVisible(app.state.settings);
+  const [homeGuideCardSavePending, setHomeGuideCardSavePending] = useState(false);
+  const [homeGuideCardSaveStatus, setHomeGuideCardSaveStatus] = useState("");
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
   const [blockSavePending, setBlockSavePending] = useState(false);
@@ -1126,6 +1130,19 @@ export default function Settings({ app, auth, section = "main" }) {
     }
     void saveTheme(nextTheme);
   };
+  const selectHomeGuideCardVisibility = async (visible) => {
+    if (visible === homeGuideCardVisible || homeGuideCardSavePending) return;
+    setHomeGuideCardSavePending(true);
+    setHomeGuideCardSaveStatus("저장 중");
+    try {
+      const saved = await app.actions.updateSettings({ showHomeGuideCard: visible });
+      setHomeGuideCardSaveStatus(saved && saved.ok !== false ? "저장되었습니다." : "표시 설정을 저장하지 못했습니다.");
+    } catch {
+      setHomeGuideCardSaveStatus("표시 설정을 저장하지 못했습니다.");
+    } finally {
+      setHomeGuideCardSavePending(false);
+    }
+  };
   const savePrivacy = async () => {
     setPrivacySaveStatus("저장 중");
     try {
@@ -1376,6 +1393,40 @@ export default function Settings({ app, auth, section = "main" }) {
             </div>
             <div className="settings-save-row">
               <small>{themeSaveStatus || (themeDirty ? "변경 있음" : "저장됨")}</small>
+            </div>
+          </Card>
+
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">사용 설명</p>
+                <h2>홈 안내 카드</h2>
+              </div>
+              <BookOpen size={22} />
+            </div>
+            <p>홈의 ‘처음 사용하시나요?’ 카드만 숨깁니다. 사용 설명 페이지와 연습 경기는 계속 이용할 수 있습니다.</p>
+            <div className="segmented-control">
+              <button
+                type="button"
+                className={homeGuideCardVisible ? "active" : ""}
+                aria-pressed={homeGuideCardVisible}
+                disabled={homeGuideCardSavePending}
+                onClick={() => void selectHomeGuideCardVisibility(true)}
+              >
+                표시
+              </button>
+              <button
+                type="button"
+                className={!homeGuideCardVisible ? "active" : ""}
+                aria-pressed={!homeGuideCardVisible}
+                disabled={homeGuideCardSavePending}
+                onClick={() => void selectHomeGuideCardVisibility(false)}
+              >
+                숨김
+              </button>
+            </div>
+            <div className="settings-save-row">
+              <small>{homeGuideCardSaveStatus || "선택 즉시 저장됩니다."}</small>
             </div>
           </Card>
 

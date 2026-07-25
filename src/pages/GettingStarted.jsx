@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock3,
+  FlaskConical,
   Gauge,
   Play,
   ShieldCheck,
@@ -56,8 +57,8 @@ const GUIDE_CHAPTERS = [
       Icon: ShieldCheck,
     },
     actions: [
-      { to: "/app/create?intent=record", label: "경기 기록하기", Icon: ClipboardCheck, primary: true },
-      { to: "/app/recruiting", label: "매칭 보기", Icon: ArrowRight },
+      { to: "/app/guide/practice", label: "연습 경기 시작", Icon: FlaskConical, primary: true },
+      { to: "/app/create?intent=record", label: "경기 기록하기", Icon: ClipboardCheck },
     ],
   },
   {
@@ -167,7 +168,7 @@ const GUIDE_CHAPTERS = [
       },
       {
         title: "일반 경기 확인",
-        body: "참가자가 결과를 확인하고 실제 출전 선수는 본인 득점에 이의를 신청할 수 있습니다.",
+        body: "결과 제출 뒤 양쪽 출전 선수의 과반 승인이 필요합니다. 실제 출전 선수는 본인 득점에 이의를 신청할 수 있습니다.",
         Icon: Users,
       },
       {
@@ -240,6 +241,49 @@ const GUIDE_CHAPTERS = [
       { to: "/app/rankings", label: "랭킹 보기", Icon: ArrowRight },
     ],
   },
+  {
+    id: "practice",
+    navLabel: "연습",
+    eyebrow: "06 · PRACTICE",
+    title: "연습 선수와 실제 흐름을 익힙니다.",
+    lead: "경기 만들기부터 초대, 출석, 경기시계, 기록 승인까지 공용 화면을 그대로 사용합니다.",
+    practicePreview: true,
+    steps: [
+      {
+        title: "실제 설정 화면",
+        body: "실제 경기 만들기 모듈에서 3v3 연습방을 설정합니다. 비공개·비저장만 고정하고 경기 방식과 시계 규칙은 바꿔볼 수 있습니다.",
+        Icon: Swords,
+      },
+      {
+        title: "초대와 출석",
+        body: "연습 선수에게 초대장을 보내고 보조 버튼으로 다른 참가자의 응답과 출석을 처리합니다.",
+        Icon: Users,
+      },
+      {
+        title: "실제 공용 방과 시계",
+        body: "매칭·경기·플레이 메뉴가 함께 쓰는 방 모달과 경기시계에서 시작·정지·종료를 시험합니다.",
+        Icon: Clock3,
+      },
+      {
+        title: "기록과 승인",
+        body: "직접 점수·개인 기록을 입력하거나 예시 기록을 채운 뒤 다른 참가자 승인과 본인 승인을 확인합니다.",
+        Icon: ClipboardCheck,
+      },
+    ],
+    callout: {
+      title: "연습 결과는 어디에도 남지 않습니다",
+      body: "로그인 프로필은 표시 이름만 복제하고 모든 참가자를 격리된 연습용 선수로 만듭니다. 실제 전적, MMR, 신뢰점수, 알림, 디스코드에는 기록하지 않으며 새로고침하거나 페이지를 나가면 초기화됩니다.",
+      details: [
+        "시작 버튼이 막히면 초대 응답, 출석, 선택한 방식에 필요한 팀 배정 확정이 끝났는지 확인하세요.",
+        "점수판은 심판이 있거나 양쪽 기록자가 배정된 실제 경기에서만 열립니다.",
+      ],
+      Icon: ShieldCheck,
+    },
+    actions: [
+      { to: "/app/guide/practice", label: "연습 경기 열기", Icon: Play, primary: true },
+      { to: "/app/guide?chapter=matching", label: "매칭 설명 다시 보기", Icon: ArrowRight },
+    ],
+  },
 ];
 
 const GUIDE_CHAPTER_IDS = GUIDE_CHAPTERS.map((chapter) => chapter.id);
@@ -274,7 +318,7 @@ export default function GettingStarted() {
           <ArrowLeft size={16} aria-hidden="true" />
           홈으로
         </Link>
-        <span>ALPHA GUIDE · 5단계</span>
+        <span>ALPHA GUIDE · {GUIDE_CHAPTERS.length}단계</span>
       </div>
 
       <nav className="getting-started-chapter-nav ui-panel" aria-label="사용 설명 목차">
@@ -315,15 +359,28 @@ export default function GettingStarted() {
           </div>
         </header>
 
-        <figure className="getting-started-shot">
-          <img
-            src={assetUrl(chapter.image)}
-            alt={chapter.imageAlt}
-            loading="eager"
-            decoding="async"
-          />
-          <figcaption>{chapter.caption}</figcaption>
-        </figure>
+        {chapter.practicePreview ? (
+          <div className="getting-started-practice-preview ui-panel">
+            <Badge tone="orange">현재 서비스 화면</Badge>
+            <ol>
+              <li><strong>CREATE</strong><span>경기 만들기</span></li>
+              <li><strong>INVITE</strong><span>초대·출석</span></li>
+              <li><strong>PLAY</strong><span>시계·진행</span></li>
+              <li><strong>RECORD</strong><span>기록·승인</span></li>
+            </ol>
+            <p>실제 경기 만들기와 공용 방 모달을 사용하고 저장 통로만 이 페이지의 연습 상태로 분리합니다.</p>
+          </div>
+        ) : (
+          <figure className="getting-started-shot">
+            <img
+              src={assetUrl(chapter.image)}
+              alt={chapter.imageAlt}
+              loading="eager"
+              decoding="async"
+            />
+            <figcaption>{chapter.caption}</figcaption>
+          </figure>
+        )}
       </Card>
 
       <section className="getting-started-section" aria-labelledby="getting-started-steps-title">
