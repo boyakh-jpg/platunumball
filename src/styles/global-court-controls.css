@@ -1103,9 +1103,6 @@ html[data-theme="light"] .court-map-picker-state {
   .home-side-stack .compact-list a,
   .home-side-stack .compact-list > div,
   .home-side-stack .compact-list > .team-hover-trigger,
-  .home-team-list a,
-  .home-team-list > div,
-  .home-team-list > .team-hover-trigger,
   .season-mini-card .contract-grid > div
 ) {
   border: 1px solid var(--ui-control-border);
@@ -1118,32 +1115,6 @@ html[data-theme="light"] .court-map-picker-state {
   border-color: var(--ui-control-border);
   background: var(--ui-control-bg);
   box-shadow: none;
-}
-
-.rank-home .home-team-list > .home-team-row {
-  min-height: var(--home-team-row-height);
-}
-
-.rank-home .home-team-list > .home-team-empty {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.rank-home .home-team-empty > span,
-.rank-home .home-team-empty > strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-panel-empty {
-  display: grid;
-  min-height: 66px;
-  place-items: center;
-  color: var(--rb-muted);
-  font-size: 0.82rem;
-  font-weight: 850;
-  text-align: center;
 }
 
 @media (min-width: 1080px) {

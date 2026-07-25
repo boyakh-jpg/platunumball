@@ -178,6 +178,24 @@ test("later duplicate selectors do not fully shadow earlier declarations", () =>
   assert.deepEqual(shadowedDeclarations, []);
 });
 
+test("home team summaries are not restyled by the late court-control module", () => {
+  const visualSystem = fs.readFileSync("src/styles/global-visual-system.css", "utf8");
+  const courtControls = fs.readFileSync("src/styles/global-court-controls.css", "utf8");
+  const teamRule = visualSystem.match(
+    /\.rank-home \.home-team-list > \.home-team-row\s*\{([^{}]*)\}/,
+  )?.[1] ?? "";
+  const emptyRule = visualSystem.match(
+    /\.rank-home \.home-team-list > \.home-team-empty\s*\{([^{}]*)\}/,
+  )?.[1] ?? "";
+
+  assert.doesNotMatch(courtControls, /\.home-team-list|\.home-team-empty|\.home-panel-empty/);
+  assert.match(teamRule, /\bborder:\s*1px solid var\(--ui-control-border\);/);
+  assert.match(teamRule, /\bbackground:\s*var\(--ui-control-bg\);/);
+  assert.match(emptyRule, /\bborder:\s*0;/);
+  assert.match(emptyRule, /\bbackground:\s*transparent;/);
+  assert.match(emptyRule, /\bbox-shadow:\s*none;/);
+});
+
 test("globals.css is an import-only manifest with bounded modules", () => {
   const manifestRoot = parseCss(globalManifest);
   const nonImportNodes = manifestRoot.nodes.filter((node) => (
