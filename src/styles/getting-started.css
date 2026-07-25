@@ -624,6 +624,49 @@
   font-weight: 900;
 }
 
+.getting-started-home-guide-setting {
+  --ui-panel-padding: var(--space-8);
+  display: flex;
+  min-width: 0;
+  gap: var(--space-8);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.getting-started-home-guide-setting > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.getting-started-home-guide-setting h2,
+.getting-started-home-guide-setting p {
+  margin: 0;
+  font-family: var(--font-body);
+}
+
+.getting-started-home-guide-setting h2 {
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.getting-started-home-guide-setting p,
+.getting-started-home-guide-setting small {
+  color: var(--rb-muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+
+.getting-started-home-guide-setting small {
+  color: var(--rb-orange);
+}
+
+.getting-started-home-guide-setting > .button {
+  flex: none;
+}
+
 .getting-started-pager {
   display: grid;
   grid-template-columns: minmax(74px, 1fr) auto minmax(74px, 1fr);
@@ -732,6 +775,15 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .getting-started-home-guide-setting {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .getting-started-home-guide-setting > .button {
+    align-self: flex-start;
+  }
+
   .getting-started-practice-preview ol,
   .practice-match-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -753,6 +805,7 @@
   }
 
   .practice-role-switch {
+    flex: none;
     width: 100%;
   }
 }

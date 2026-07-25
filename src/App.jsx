@@ -148,7 +148,7 @@ export default function App() {
           <Route path="/app/admin/court-map" element={<RequireAdmin app={app}><AdminCourtMapPopup /></RequireAdmin>} />
           <Route element={<AppShell app={app} auth={auth} />}>
             <Route path="/app" element={<Home app={app} />} />
-            <Route path="/app/guide" element={<GettingStarted />} />
+            <Route path="/app/guide" element={<GettingStarted app={app} />} />
             <Route path="/app/guide/practice" element={<PracticeMatch app={app} />} />
             <Route path="/app/create" element={<CreateMatch app={app} />} />
             <Route path="/app/courts/:courtId" element={<CourtDetail app={app} />} />

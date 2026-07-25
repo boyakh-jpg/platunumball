@@ -260,7 +260,7 @@ test("폐기한 목록 카드와 CTA override 선택자는 돌아오지 않는�
 test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", () => {
   assert.match(appSource, /const GettingStarted = lazy\(\(\) => import\("\.\/pages\/GettingStarted\.jsx"\)\);/);
   assert.match(appSource, /const PracticeMatch = lazy\(\(\) => import\("\.\/pages\/PracticeMatch\.jsx"\)\);/);
-  assert.match(appSource, /path="\/app\/guide" element=\{<GettingStarted \/>\}/);
+  assert.match(appSource, /path="\/app\/guide" element=\{<GettingStarted app=\{app\} \/>\}/);
   assert.match(appSource, /path="\/app\/guide\/practice" element=\{<PracticeMatch app=\{app\} \/>\}/);
   assert.equal(count(pageSources.home, 'to="/app/guide"'), 1);
   assert.match(pageSources.home, /처음 사용하시나요\?/);
@@ -287,12 +287,20 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /<figcaption>\{chapter\.caption\}<\/figcaption>/);
   assert.match(gettingStartedSource, /농구 기록 웹입니다/);
   assert.match(gettingStartedSource, /필수 웹 기능은 평생 무료/);
-  assert.match(gettingStartedSource, /양쪽 출전 선수의 과반 승인/);
+  assert.match(gettingStartedSource, /선수·팀 초대/);
+  assert.match(gettingStartedSource, /초대 수락은 출석이 아닙니다/);
+  assert.match(gettingStartedSource, /양쪽 실제 출전 선수의 과반 승인/);
   assert.match(gettingStartedSource, /경기시계/);
-  assert.match(gettingStartedSource, /심판·기록원/);
+  assert.match(gettingStartedSource, /심판·기록원·경기시계가 역할을 나눕니다/);
+  assert.match(gettingStartedSource, /점수판은 심판·기록원이 저장한 점수를 읽기만/);
+  assert.match(gettingStartedSource, /A\/B 점수판과 30초 샷클락이 함께 열린/);
   assert.match(gettingStartedSource, /티어는 확정 기록에서 자동 계산됩니다/);
   assert.match(gettingStartedSource, /기기별 베타/);
   assert.match(gettingStartedSource, /to: "\/app\/guide\/practice"/);
+  assert.match(gettingStartedSource, /isHomeGuideCardVisible\(app\.state\.settings\)/);
+  assert.match(gettingStartedSource, /updateSettings\(\{\s*showHomeGuideCard: !homeGuideCardVisible,/);
+  assert.match(gettingStartedSource, /홈에서 사용 설명 안 보기/);
+  assert.match(gettingStartedSource, /숨겨도 사용 설명과 연습 경기는 계속 이용할 수 있습니다/);
   assert.match(practiceMatchSource, /aria-current=\{index \+ 1 === progress\.step \? "step" : undefined\}/);
   assert.match(practiceMatchSource, /className="practice-match-banner__actions ui-action-row"/);
   assert.doesNotMatch(practiceMatchSource, /practice-room-guide ui-panel|practice-room-guide ui-modal-section/);
@@ -302,5 +310,6 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(termsSource, /필수 웹 기능은 평생 무료입니다/);
   assert.match(gettingStartedStyles, /@media \(max-width: 720px\)/);
   assert.match(gettingStartedStyles, /@media \(max-width: 480px\)/);
+  assert.match(gettingStartedStyles, /@media \(max-width: 720px\)[\s\S]*?\.practice-role-switch\s*\{[^}]*flex:\s*none;/);
   assert.doesNotMatch(pageSources.home, /onboardingComplete[\s\S]*home-guide-card/);
 });

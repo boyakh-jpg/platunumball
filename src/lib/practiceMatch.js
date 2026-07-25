@@ -8,6 +8,12 @@ import {
   getMatchRoomPhase,
 } from "./matchUtils.js";
 import { PRACTICE_ID_PREFIX, isPracticeEntity } from "./practiceMode.js";
+import {
+  getRecruitingBenchCapacity,
+  getRecruitingLobby,
+  getRecruitingSideCapacity,
+} from "./recruiting.js";
+import { getPickupParticipantCapacity, getPickupParticipantIds } from "./roomFlow.js";
 
 export const PRACTICE_SELF_ID = `${PRACTICE_ID_PREFIX}player-self`;
 
@@ -214,7 +220,7 @@ export function runPracticeReducer(state, actionName, args = [], actorId = PRACT
   };
 }
 
-export function createPracticeRecruitingRoom(state, draft = {}) {
+export function createPracticeRecruitingRoom(state, draft = {}, { inviteTutorial = false } = {}) {
   const roomId = `${PRACTICE_ID_PREFIX}room-${Date.now().toString(36)}`;
   const safeDraft = {
     ...draft,
@@ -269,37 +275,50 @@ export function createPracticeRecruitingRoom(state, draft = {}) {
     activePlayerCount + teamAReserveIds.length,
     activePlayerCount + teamAReserveIds.length + benchCapacity,
   );
-  if (teamAIds.length) {
-    next = withPracticeActor(next, PRACTICE_SELF_ID, repository.inviteRecruitingPlayers, roomId, {
-      joinMode: "player",
-      side: "teamA",
-      reserve: false,
-      playerIds: teamAIds,
-    });
+  const invitationPlans = [
+    { side: "teamA", reserve: false, playerIds: teamAIds },
+    { side: "teamB", reserve: false, playerIds: teamBIds },
+    { side: "teamA", reserve: true, playerIds: teamAReserveIds },
+    { side: "teamB", reserve: true, playerIds: teamBReserveIds },
+  ];
+  let tutorialInvite = null;
+  if (inviteTutorial) {
+    const tutorialPlan = [...invitationPlans].reverse().find((plan) => plan.playerIds.length);
+    const targetPlayerId = tutorialPlan?.playerIds[tutorialPlan.playerIds.length - 1] ?? "";
+    if (targetPlayerId) {
+      tutorialPlan.playerIds = tutorialPlan.playerIds.slice(0, -1);
+      tutorialInvite = {
+        targetPlayerId,
+        side: tutorialPlan.side,
+        reserve: tutorialPlan.reserve,
+      };
+    }
   }
-  if (teamBIds.length) {
+  invitationPlans.forEach((plan) => {
+    if (!plan.playerIds.length) return;
     next = withPracticeActor(next, PRACTICE_SELF_ID, repository.inviteRecruitingPlayers, roomId, {
       joinMode: "player",
-      side: "teamB",
-      reserve: false,
-      playerIds: teamBIds,
+      side: plan.side,
+      reserve: plan.reserve,
+      playerIds: plan.playerIds,
     });
-  }
-  if (teamAReserveIds.length) {
-    next = withPracticeActor(next, PRACTICE_SELF_ID, repository.inviteRecruitingPlayers, roomId, {
-      joinMode: "player",
-      side: "teamA",
-      reserve: true,
-      playerIds: teamAReserveIds,
-    });
-  }
-  if (teamBReserveIds.length) {
-    next = withPracticeActor(next, PRACTICE_SELF_ID, repository.inviteRecruitingPlayers, roomId, {
-      joinMode: "player",
-      side: "teamB",
-      reserve: true,
-      playerIds: teamBReserveIds,
-    });
+  });
+  if (tutorialInvite) {
+    next = acceptPracticeInvitations(next, roomId);
+    next = {
+      ...next,
+      recruitingPosts: next.recruitingPosts.map((item) => (
+        item.id === roomId
+          ? {
+              ...item,
+              roomState: {
+                ...(item.roomState ?? {}),
+                practiceInviteTutorial: tutorialInvite,
+              },
+            }
+          : item
+      )),
+    };
   }
   return { state: next, postId: roomId, error: "" };
 }
@@ -650,12 +669,31 @@ export function getPracticeProgress(state, postId = "", matchId = "") {
     if (match?.status === "confirmed") return { step: 5, label: "연습 완료", phase: "completed" };
   }
   if (postId) {
-    const pendingCount = state.recruitingPosts
-      .find((post) => post.id === postId)
-      ?.roomState?.invitations
+    const post = state.recruitingPosts.find((item) => item.id === postId);
+    const pendingCount = post?.roomState?.invitations
       ?.filter((invitation) => invitation.status === "pending")
       .length ?? 0;
-    return { step: 2, label: pendingCount ? "초대 응답 대기" : "매치 확정", phase: "recruiting", pendingCount };
+    const lobby = getRecruitingLobby(post, state);
+    const participantCount = getPickupParticipantIds(lobby).length;
+    const participantCapacity = getPickupParticipantCapacity({
+      sideCapacity: getRecruitingSideCapacity(post),
+      benchCapacity: getRecruitingBenchCapacity(post),
+    });
+    const needsInvite = Boolean(post && participantCount < participantCapacity && pendingCount === 0);
+    const tutorialInvite = post?.roomState?.practiceInviteTutorial ?? null;
+    const inviteTarget = state.users.find((user) => user.id === tutorialInvite?.targetPlayerId);
+    return {
+      step: 2,
+      label: needsInvite ? "빈 슬롯 초대" : pendingCount ? "초대 응답 대기" : "매치 확정",
+      phase: "recruiting",
+      pendingCount,
+      needsInvite,
+      participantCount,
+      participantCapacity,
+      inviteTargetName: inviteTarget?.name ?? "",
+      inviteSide: tutorialInvite?.side ?? "",
+      inviteReserve: Boolean(tutorialInvite?.reserve),
+    };
   }
   return { step: 1, label: "연습방 만들기", phase: "create" };
 }

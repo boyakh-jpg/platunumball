@@ -24,11 +24,17 @@ import CreateMatch from "./CreateMatch.jsx";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
 
-const PRACTICE_STEPS = ["방 만들기", "초대 응답", "출석·확정", "경기 진행", "기록 확인"];
+const PRACTICE_STEPS = ["방 만들기", "초대·응답", "출석·확정", "경기 진행", "기록 확인"];
 
 function getPracticeInstruction(progress, match = null) {
+  if (progress.phase === "recruiting" && progress.needsInvite) {
+    const sideLabel = progress.inviteSide === "teamB" ? "B사이드" : "A사이드";
+    const slotLabel = progress.inviteReserve ? "후보 빈 슬롯" : "출전 빈 슬롯";
+    const targetLabel = progress.inviteTargetName ? `‘${progress.inviteTargetName}’ 선수를 검색·선택해` : "선수를 검색·선택해";
+    return `${sideLabel} ${slotLabel}을 누르고 ${targetLabel} 직접 초대하세요.`;
+  }
   if (progress.phase === "recruiting" && progress.pendingCount > 0) {
-    return "연습 선수들의 초대 수락을 받은 뒤 공용 방 하단에서 매치를 확정하세요.";
+    return "초대를 보냈습니다. 연습 선수의 수락을 받은 뒤 공용 방 하단에서 매치를 확정하세요.";
   }
   if (progress.phase === "recruiting") {
     return "양쪽 인원이 찼습니다. 공용 방의 ‘매치 확정’을 눌러 경기 준비방으로 이동하세요.";
@@ -106,7 +112,7 @@ export default function PracticeMatch({ app }) {
     return {
       ...actions,
       createRecruitingPost: async (draft) => {
-        const result = createPracticeRecruitingRoom(stateRef.current, draft);
+        const result = createPracticeRecruitingRoom(stateRef.current, draft, { inviteTutorial: true });
         if (!result.postId) return { ok: false, error: result.error };
         commitState(result.state);
         return result.postId;
@@ -183,9 +189,12 @@ export default function PracticeMatch({ app }) {
       ...getMatchReservePlayerIds(match, "teamA"),
       ...getMatchReservePlayerIds(match, "teamB"),
     ];
+    const statRecorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
     const actorIds = [...new Set([
       match.createdBy,
       match.refereeId,
+      statRecorders.teamA,
+      statRecorders.teamB,
       ...activePlayerIds,
       ...reservePlayerIds,
     ].filter(Boolean))];
@@ -196,6 +205,8 @@ export default function PracticeMatch({ app }) {
         actorId === match.refereeId ? "심판" : "",
         activePlayerIds.includes(actorId) ? "출전 선수" : "",
         reservePlayerIds.includes(actorId) ? "후보 선수" : "",
+        actorId === statRecorders.teamA ? "A 기록원" : "",
+        actorId === statRecorders.teamB ? "B 기록원" : "",
         actorId === clockControllerId ? "시계 담당" : "",
       ].filter(Boolean);
       return { id: actorId, label: `${user?.name || "연습 선수"} · ${roles.join("·")}` };

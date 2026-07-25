@@ -14,11 +14,13 @@ import {
   createPracticeClockClient,
   createPracticeRecruitingRoom,
   createPracticeState,
+  getPracticeProgress,
   runPracticeReducer,
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
 import { getMatchReservePlayerIds } from "../src/lib/matchUtils.js";
 import { getRegisteredCourts } from "../src/lib/courts.js";
+import { getRecruitingLobby } from "../src/lib/recruiting.js";
 import {
   PRACTICE_LOCAL_ONLY_ERROR,
   hasPracticeMutationPayload,
@@ -194,6 +196,87 @@ test("운영 구장 목록이 비어 있어도 연습용 등록 구장으로 생
   const [court] = getRegisteredCourts(state);
   assert.equal(court?.id, "practice-court");
   assert.equal(court?.status, "active");
+});
+
+test("가이드 연습방은 공용 빈 슬롯에서 마지막 후보 한 명을 직접 초대하게 한다", () => {
+  let state = createPracticeState({}, { name: "테스터" });
+  const created = createPracticeRecruitingRoom(state, {
+    title: "초대 체험 3v3",
+    mode: "3v3",
+    sideCapacity: 3,
+    benchCapacity: 1,
+    rules: { gameClockEnabled: true, periodCount: 1, periodMinutes: 3 },
+  }, { inviteTutorial: true });
+  state = created.state;
+  let post = state.recruitingPosts.find((item) => item.id === created.postId);
+  const tutorialInvite = post.roomState.practiceInviteTutorial;
+  let lobby = getRecruitingLobby(post, state);
+  let progress = getPracticeProgress(state, created.postId);
+
+  assert.equal(tutorialInvite.side, "teamB");
+  assert.equal(tutorialInvite.reserve, true);
+  assert.equal(post.roomState.invitations.length, 0);
+  assert.equal(lobby.sides.teamA.projectedPlayers.length, 3);
+  assert.equal(lobby.sides.teamB.projectedPlayers.length, 3);
+  assert.equal(lobby.sides.teamA.reserveCandidates.length, 1);
+  assert.equal(lobby.sides.teamB.reserveCandidates.length, 0);
+  assert.equal(progress.label, "빈 슬롯 초대");
+  assert.equal(progress.needsInvite, true);
+  assert.equal(progress.participantCount, 7);
+  assert.equal(progress.participantCapacity, 8);
+  assert.equal(progress.inviteTargetName.length > 0, true);
+
+  const invited = runPracticeReducer(state, "inviteRecruitingPlayers", [
+    created.postId,
+    {
+      joinMode: "player",
+      side: tutorialInvite.side,
+      reserve: tutorialInvite.reserve,
+      playerIds: [tutorialInvite.targetPlayerId],
+    },
+  ]);
+  assert.equal(invited.applied, true);
+  state = invited.state;
+  progress = getPracticeProgress(state, created.postId);
+  assert.equal(progress.label, "초대 응답 대기");
+  assert.equal(progress.pendingCount, 1);
+  assert.equal(progress.needsInvite, false);
+
+  state = acceptPracticeInvitations(state, created.postId);
+  post = state.recruitingPosts.find((item) => item.id === created.postId);
+  lobby = getRecruitingLobby(post, state);
+  progress = getPracticeProgress(state, created.postId);
+  assert.equal(lobby.sides.teamB.reserveCandidates.some(
+    (candidate) => candidate.playerId === tutorialInvite.targetPlayerId,
+  ), true);
+  assert.equal(progress.participantCount, 8);
+  assert.equal(progress.participantCapacity, 8);
+  assert.equal(progress.needsInvite, false);
+  assert.equal(progress.label, "매치 확정");
+
+  const confirmed = confirmPracticeRecruitingRoom(state, created.postId);
+  const match = confirmed.state.matches.find((item) => item.id === confirmed.matchId);
+  assert.ok(confirmed.matchId);
+  assert.equal(getMatchReservePlayerIds(match, "teamB").includes(tutorialInvite.targetPlayerId), true);
+});
+
+test("가이드 연습방은 후보가 없으면 마지막 출전 슬롯 한 명만 직접 초대하게 한다", () => {
+  const state = createPracticeState({}, { name: "테스터" });
+  const created = createPracticeRecruitingRoom(state, {
+    title: "초대 체험 1v1",
+    mode: "1v1",
+    sideCapacity: 1,
+    benchCapacity: 0,
+  }, { inviteTutorial: true });
+  const post = created.state.recruitingPosts.find((item) => item.id === created.postId);
+  const progress = getPracticeProgress(created.state, created.postId);
+
+  assert.equal(post.roomState.practiceInviteTutorial.side, "teamB");
+  assert.equal(post.roomState.practiceInviteTutorial.reserve, false);
+  assert.equal(post.roomState.invitations.length, 0);
+  assert.equal(progress.participantCount, 1);
+  assert.equal(progress.participantCapacity, 2);
+  assert.equal(progress.needsInvite, true);
 });
 
 test("일반 경기방은 대회 정보가 null이어도 공용 팀 명단을 만든다", () => {
@@ -426,6 +509,8 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.match(pageSource, /<MatchRoomModal/);
   assert.match(pageSource, /remoteReady: true/);
   assert.match(pageSource, /roomShare: false/);
+  assert.match(pageSource, /inviteTutorial: true/);
+  assert.match(pageSource, /progress\.needsInvite/);
   assert.match(pageSource, /pollRecruitingChat: \(\) => \(\) => \{\}/);
   assert.match(pageSource, /meetingPoint: "연습 코트 입구"/);
   assert.match(pageSource, /\s+embedded\s+practiceMode/);
@@ -446,6 +531,8 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.match(pageSource, /!match\?\.startedAt/);
   assert.match(pageSource, /getMatchReservePlayerIds\(match, "teamA"\)/);
   assert.match(pageSource, /actorId === clockControllerId \? "시계 담당"/);
+  assert.match(pageSource, /actorId === statRecorders\.teamA \? "A 기록원"/);
+  assert.match(pageSource, /actorId === statRecorders\.teamB \? "B 기록원"/);
   assert.match(pageSource, /key=\{`\$\{matchId\}:\$\{practiceActorId\}`\}/);
   assert.match(postgameRosterSource, /remoteSearchType=\{remoteSearchEnabled \? "profile" : ""\}/);
   assert.match(matchClockPanelSource, /regulationEnded && \(!scoreboardEnabled \|\| tied\)/);
