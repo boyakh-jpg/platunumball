@@ -307,16 +307,22 @@ test("cache sanitizer cannot retain arbitrary profile or settings fields", () =>
   assert.deepEqual(sanitized.settings, { theme: "dark" });
 });
 
-test("browser and API source contain no testPassword field or production test-password login", async () => {
-  const [browserSource, serverSource, apiSource, authSource] = await Promise.all([
+test("production test login accepts a manually entered credential without bundling it", async () => {
+  const [browserSource, serverSource, apiSource, authSource, loginSource] = await Promise.all([
     readSourceTree("src"),
     readSourceTree("server/api"),
     readSourceTree("api"),
     readSource("src/hooks/useAuthSession.js"),
+    readSource("src/pages/Login.jsx"),
   ]);
   assert.doesNotMatch(`${browserSource}\n${serverSource}\n${apiSource}`, /\btestPassword\b/);
-  assert.doesNotMatch(authSource, /VITE_TEST_AUTH_PASSWORD|signInWithPassword|VITE_DEMO_LOGIN/);
-  assert.match(authSource, /if \(!import\.meta\.env\.DEV\) return false/);
+  assert.doesNotMatch(authSource, /VITE_TEST_AUTH_PASSWORD|test-0000/);
+  assert.match(authSource, /VITE_DEMO_LOGIN/);
+  assert.match(authSource, /signInWithPassword\(\{[\s\S]*password:\s*credential/);
+  assert.match(loginSource, /type="password"/);
+  assert.match(loginSource, /autoComplete="off"/);
+  assert.match(loginSource, /const credential = testCredential;[\s\S]*signInWithTestAccount\(selectedTestLoginId,\s*credential\)/);
+  assert.match(loginSource, /setTestCredential\(""\)/);
 });
 
 test("migration fixes helper search_path, status, grants, and admin table RLS", async () => {

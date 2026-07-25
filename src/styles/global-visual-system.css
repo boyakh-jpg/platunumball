@@ -496,6 +496,7 @@ textarea:focus-visible {
 }
 
 .auth-test-login select,
+.auth-test-login input,
 .auth-test-login .provider-button {
   min-height: 44px;
 }

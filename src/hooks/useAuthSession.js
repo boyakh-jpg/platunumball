@@ -6,6 +6,8 @@ import { setClientActionSession } from "../lib/serverActions.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
+const DEMO_LOGIN_ENV = import.meta.env.VITE_DEMO_LOGIN;
+const TEST_AUTH_EMAIL_DOMAIN = import.meta.env.VITE_TEST_AUTH_EMAIL_DOMAIN || "rankball.test";
 
 const TEST_ACCOUNTS = Array.from({ length: TEST_ACCOUNT_COUNT }, (_item, index) => {
   const loginId = normalizeTestLoginId(index + 1);
@@ -69,12 +71,17 @@ function makeLocalTestSession(testLoginId) {
   };
 }
 
+function getTestAuthEmail(testLoginId) {
+  return `${normalizeTestLoginId(testLoginId)}@${TEST_AUTH_EMAIL_DOMAIN}`;
+}
+
 function isDemoLoginAllowed() {
-  if (!import.meta.env.DEV) return false;
+  if (DEMO_LOGIN_ENV === "true") return true;
+  if (DEMO_LOGIN_ENV === "false") return false;
   if (typeof window === "undefined") return false;
 
   const host = window.location.hostname;
-  return host === "localhost" || host === "127.0.0.1";
+  return import.meta.env.DEV && (host === "localhost" || host === "127.0.0.1");
 }
 
 function getOAuthCode() {
@@ -234,8 +241,12 @@ export function useAuthSession() {
         if (signOutError) setError(formatAuthError(signOutError.message));
       }
     },
-    signInWithTestAccount: async (testLoginId) => {
+    signInWithTestAccount: async (testLoginId, credential = "") => {
       if (testLoginPendingRef.current) return null;
+      if (isSupabaseConfigured && !credential) {
+        setError("테스트 계정 비밀번호를 입력해 주세요.");
+        return null;
+      }
 
       const loginGeneration = testLoginGenerationRef.current + 1;
       testLoginGenerationRef.current = loginGeneration;
@@ -251,8 +262,19 @@ export function useAuthSession() {
         }
         const normalizedLoginId = normalizeTestLoginId(testLoginId);
         if (isSupabaseConfigured) {
-          setError("Supabase 테스트 계정은 개발용 seed 또는 서버 시뮬레이션에서만 사용할 수 있습니다.");
-          return null;
+          const { data: testAuthData, error: testAuthError } = await supabase.auth.signInWithPassword({
+            email: getTestAuthEmail(normalizedLoginId),
+            password: credential,
+          }).catch((testAuthError) => ({ data: null, error: testAuthError }));
+          if (loginGeneration !== testLoginGenerationRef.current) return null;
+          if (!testAuthData?.session || testAuthError) {
+            setError("테스트 계정 번호 또는 비밀번호를 확인해 주세요.");
+            return null;
+          }
+          writeTestSession(null);
+          setClientActionSession(testAuthData.session);
+          setSession(testAuthData.session);
+          return testAuthData.session;
         }
         const nextSession = makeLocalTestSession(normalizedLoginId);
         if (loginGeneration !== testLoginGenerationRef.current) return null;

@@ -25,6 +25,7 @@ export default function Login({ auth, app }) {
   const location = useLocation();
   const [copyMessage, setCopyMessage] = useState("");
   const [selectedTestLoginId, setSelectedTestLoginId] = useState(auth.testAccounts?.[0]?.id ?? "rankball-001");
+  const [testCredential, setTestCredential] = useState("");
   const from = getAppRedirectFromLocation(location);
   const activeProviders = auth.configured ? providers.filter((provider) => provider.id === "google") : providers;
   const embeddedOAuthBrowser = auth.configured && isEmbeddedOAuthBrowser();
@@ -39,8 +40,11 @@ export default function Login({ auth, app }) {
     const nextSession = await auth.signInWithProvider(providerId, from);
     if (nextSession) enterApp();
   };
-  const signInWithTestAccount = async () => {
-    const nextSession = await auth.signInWithTestAccount(selectedTestLoginId);
+  const signInWithTestAccount = async (event) => {
+    event.preventDefault();
+    const credential = testCredential;
+    setTestCredential("");
+    const nextSession = await auth.signInWithTestAccount(selectedTestLoginId, credential);
     if (nextSession) enterApp();
   };
   const copyBrowserOpenUrl = async () => {
@@ -116,7 +120,7 @@ export default function Login({ auth, app }) {
           {auth.testLoginAllowed ? (
             <>
             <div className="auth-divider"><span>테스트 계정으로 둘러보기</span></div>
-            <div className="auth-test-login">
+            <form className="auth-test-login" onSubmit={signInWithTestAccount}>
               <label>
                 둘러볼 계정
                 <select value={selectedTestLoginId} onChange={(event) => setSelectedTestLoginId(event.target.value)} disabled={auth.testLoginPending}>
@@ -125,11 +129,26 @@ export default function Login({ auth, app }) {
                   ))}
                 </select>
               </label>
-              <button type="button" className="provider-button provider-test" onClick={signInWithTestAccount} disabled={auth.testLoginPending}>
+              {auth.configured ? (
+                <label>
+                  테스트 계정 비밀번호
+                  <input
+                    type="password"
+                    value={testCredential}
+                    onChange={(event) => setTestCredential(event.target.value)}
+                    autoComplete="off"
+                    maxLength={128}
+                    required
+                    disabled={auth.testLoginPending}
+                  />
+                </label>
+              ) : null}
+              <small>입력한 비밀번호는 앱 프로필이나 로컬 저장소에 보관하지 않습니다.</small>
+              <button type="submit" className="provider-button provider-test" disabled={auth.testLoginPending}>
                 <span>T</span>
                 {auth.testLoginPending ? "로그인 중..." : "테스트 계정으로 입장"}
               </button>
-            </div>
+            </form>
             </>
           ) : null}
 
