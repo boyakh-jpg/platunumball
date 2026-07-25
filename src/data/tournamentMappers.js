@@ -35,7 +35,7 @@ export function getTournamentTeamStatuses(tournament = {}) {
 }
 
 export function getTournamentTeamRosterSnapshot(tournament = {}, teamId = "") {
-  const snapshot = tournament.rules?.teamRosterSnapshot?.teams?.[teamId];
+  const snapshot = tournament?.rules?.teamRosterSnapshot?.teams?.[teamId];
   return snapshot && typeof snapshot === "object" ? snapshot : null;
 }
 

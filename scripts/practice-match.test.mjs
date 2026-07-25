@@ -4,6 +4,7 @@ import test from "node:test";
 import { getRemoteAppSettings } from "../src/data/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../src/data/repositoryDefaults.js";
 import { isHomeGuideCardVisible } from "../src/data/settingsMappers.js";
+import { getTournamentRosterTeam } from "../src/data/tournamentMappers.js";
 import {
   PRACTICE_SELF_ID,
   acceptPracticeInvitations,
@@ -189,6 +190,12 @@ test("운영 구장 목록이 비어 있어도 연습용 등록 구장으로 생
   const [court] = getRegisteredCourts(state);
   assert.equal(court?.id, "practice-court");
   assert.equal(court?.status, "active");
+});
+
+test("일반 경기방은 대회 정보가 null이어도 공용 팀 명단을 만든다", () => {
+  const team = { id: "team-a", name: "A사이드", members: [] };
+  assert.equal(getTournamentRosterTeam(team, null, team.id, team.name)?.id, team.id);
+  assert.equal(getTournamentRosterTeam(null, null), null);
 });
 
 test("연습방은 자격 심판 경로도 연습용 참가자로만 구성한다", () => {
