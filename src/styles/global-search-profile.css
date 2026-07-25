@@ -333,14 +333,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: var(--space-10);
 }
 
-.home-side-stack > .card {
-  border-color: rgba(255, 255, 255, 0.1);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.014)),
-    rgba(8, 11, 16, 0.76);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
-}
-
 .home-side-stack .section-title-row {
   align-items: start;
 }
@@ -490,13 +482,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .home-search-more:hover {
   border-color: rgba(70, 224, 182, 0.36);
   background: rgba(70, 224, 182, 0.12);
-}
-
-.home-action-card {
-  border-color: rgba(255, 211, 108, 0.28);
-  background:
-    linear-gradient(90deg, rgba(255, 211, 108, 0.08), rgba(70, 224, 182, 0.035)),
-    rgba(8, 11, 16, 0.9);
 }
 
 .home-action-list {
@@ -918,53 +903,12 @@ html[data-theme="light"] .search-picker-result-row.selected {
   }
 }
 
-.rivalry-card {
-  border-color: rgba(255, 117, 95, 0.2);
-}
-
 .approval-teaser-card .compact-list a > span {
   color: var(--rb-orange);
   font-family: var(--sports-display-font);
   letter-spacing: 0;
   transform: var(--sports-display-condense);
   transform-origin: left center;
-}
-
-.home-my-teams-card {
-  border-color: rgba(116, 169, 255, 0.2);
-}
-
-.home-team-list {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.home-team-list a,
-.home-team-list > div {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: var(--space-4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-}
-
-.home-team-list strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-team-list em {
-  font-size: 0.7rem;
-  font-style: normal;
-  font-weight: 950;
-}
-
-.home-team-list b {
-  color: var(--muted);
-  font-size: 0.8rem;
 }
 
 .home-recent-card {

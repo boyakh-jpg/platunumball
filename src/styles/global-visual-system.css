@@ -21,8 +21,6 @@ body {
 .home-recent-card,
 .rank-leaderboard-card,
 .season-mini-card,
-.rivalry-card,
-.home-my-teams-card,
 .settings-page .section-card {
   box-shadow: var(--shadow);
 }
@@ -146,9 +144,7 @@ textarea {
 .home-action-main strong,
 .home-action-main em,
 .compact-list a span,
-.compact-list > div span,
-.home-team-list strong,
-.home-team-list em {
+.compact-list > div span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -171,8 +167,6 @@ html[data-theme="light"] .match-focus-card,
 html[data-theme="light"] .home-recent-card,
 html[data-theme="light"] .rank-leaderboard-card,
 html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .rivalry-card,
-html[data-theme="light"] .home-my-teams-card,
 html[data-theme="light"] .settings-page .section-card {
   border-color: rgba(32, 56, 68, 0.14);
   background: rgba(255, 255, 255, 0.92);
@@ -349,9 +343,7 @@ html[data-theme="light"] .home-search-box {
   background: rgba(255, 255, 255, 0.76);
 }
 
-.home-side-stack > .card,
-.approval-teaser-card,
-.home-my-teams-card {
+.approval-teaser-card {
   border-radius: var(--radius-lg);
 }
 
@@ -364,42 +356,11 @@ html[data-theme="light"] .home-search-box {
   padding: 10px 12px;
 }
 
-.home-team-list a,
-.home-team-list > div {
-  min-height: 36px;
-  border-color: transparent;
-  background: transparent;
-  padding: 3px 0;
-}
-
-.home-team-list em {
-  border-radius: 0;
-  background: transparent;
-  color: var(--blue);
-  padding: 0;
-}
-
-.home-team-list b {
-  min-width: 42px;
-  text-align: right;
-}
-
 html[data-theme="light"] .home-side-stack .compact-list a,
 html[data-theme="light"] .home-side-stack .compact-list > div,
 html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
   border-color: rgba(32, 56, 68, 0.12);
   background: rgba(238, 244, 240, 0.64);
-}
-
-html[data-theme="light"] .home-team-list a,
-html[data-theme="light"] .home-team-list > div {
-  border-color: transparent;
-  background: transparent;
-}
-
-html[data-theme="light"] .home-team-list em {
-  background: transparent;
-  color: #2f6fa8;
 }
 
 /* 2026-07-01 imweb fitness tone pass: charcoal surface, orange CTA, condensed heroes. */
@@ -417,8 +378,6 @@ html[data-theme="light"] .home-team-list em {
 .home-recent-card,
 .rank-leaderboard-card,
 .season-mini-card,
-.rivalry-card,
-.home-my-teams-card,
 .settings-page .section-card {
   border-color: var(--rb-line);
   border-radius: var(--radius-md);
@@ -611,8 +570,6 @@ html[data-theme="light"] .match-focus-card,
 html[data-theme="light"] .home-recent-card,
 html[data-theme="light"] .rank-leaderboard-card,
 html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .rivalry-card,
-html[data-theme="light"] .home-my-teams-card,
 html[data-theme="light"] .settings-page .section-card {
   border-color: var(--rb-line);
   background-color: var(--rb-surface);
@@ -830,8 +787,7 @@ html[data-theme="light"] .tag.gold {
     gap: var(--space-7);
   }
 
-  .rank-home .home-side-stack > .rank-leaderboard-card,
-  .rank-home .home-side-stack > .home-my-teams-card {
+  .rank-home .home-side-stack > .home-side-wide-card {
     grid-column: 1 / -1;
   }
 
@@ -927,9 +883,6 @@ body {
 .rank-leaderboard-card,
 .rank-record-card,
 .season-mini-card,
-.rivalry-card,
-.home-my-teams-card,
-.home-side-stack > .card,
 .settings-page .section-card {
   border: 1px solid var(--rb-line);
   border-radius: var(--radius-md);
@@ -946,8 +899,6 @@ body {
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
 .home-side-stack .compact-list > .team-hover-trigger,
-.home-team-list a,
-.home-team-list > div,
 .team-card .member-row,
 .segmented-control button,
 .favorite-type-grid button {
@@ -957,10 +908,10 @@ body {
   box-shadow: none;
 }
 
-.button,
-.provider-button,
-button {
-  box-shadow: none !important;
+.button:not(:focus-visible),
+.provider-button:not(:focus-visible),
+button:not(:focus-visible) {
+  box-shadow: none;
 }
 
 .button-primary,
@@ -1101,7 +1052,6 @@ button {
 }
 
 .home-action-main strong,
-.home-team-list strong,
 .home-side-stack .compact-list strong {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1196,7 +1146,7 @@ button {
 
 
 @media (max-width: 390px) {
-  .landing-actions .landing-primary-actions .landing-create-action .button {
+  .landing-actions .landing-primary-actions .landing-create-action {
     gap: var(--space-2);
     padding-inline: 6px;
     font-size: 0.75rem;
@@ -1245,9 +1195,6 @@ html[data-theme="light"] .rank-mode-card,
 html[data-theme="light"] .rank-leaderboard-card,
 html[data-theme="light"] .rank-record-card,
 html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .rivalry-card,
-html[data-theme="light"] .home-my-teams-card,
-html[data-theme="light"] .home-side-stack > .card,
 html[data-theme="light"] .settings-page .section-card {
   border-color: var(--rb-line);
   background: var(--rb-surface);
@@ -1439,54 +1386,6 @@ html[data-theme="light"] .eyebrow {
   color: var(--rb-orange);
 }
 
-.rank-home .home-team-list {
-  --home-team-row-height: 56px;
-}
-
-.rank-home .home-team-list > .home-team-row {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: var(--space-5);
-  align-items: center;
-  border: 1px solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  padding: 7px 10px;
-}
-
-.rank-home .home-team-list > .home-team-empty {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-4);
-  padding: 4px 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: var(--rb-muted);
-}
-
-.rank-home .home-team-empty > span,
-.rank-home .home-team-empty > strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rank-home .home-team-empty > strong {
-  color: var(--rb-muted);
-  font-size: 0.76rem;
-  text-align: right;
-}
-
 .rank-home .home-panel-empty {
   display: grid;
   min-height: 66px;
@@ -1495,42 +1394,6 @@ html[data-theme="light"] .eyebrow {
   font-size: 0.82rem;
   font-weight: 850;
   text-align: center;
-}
-
-.rank-home .home-team-row-copy {
-  display: grid;
-  min-width: 0;
-  align-content: center;
-  gap: var(--space-1);
-}
-
-.rank-home .home-team-row-copy strong,
-.rank-home .home-team-row-copy em {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rank-home .home-team-row-copy em {
-  border-radius: 0;
-  background: transparent;
-  color: var(--rb-muted);
-  font-size: 0.7rem;
-  font-style: normal;
-  font-weight: 800;
-  line-height: 1.2;
-  padding: 0;
-}
-
-.rank-home .home-team-row > b {
-  min-width: 0;
-  color: var(--rb-muted);
-  font-size: 0.72rem;
-  font-weight: 900;
-  text-align: right;
-  white-space: nowrap;
 }
 
 /* 2026-07-01 desktop home compaction: lift lower panels beside the hero. */
@@ -1794,7 +1657,6 @@ html[data-theme="light"] .rank-home .rank-mode-card {
 .ranking-filter-card,
 .profile-main-stack > .card,
 .profile-side-grid > .card,
-.home-side-stack > .card,
 .om-view-card,
 .arena-filter-bar,
 .om-calendar-filter-bar {
@@ -1809,7 +1671,6 @@ html[data-theme="light"] .selector-panel,
 html[data-theme="light"] .ranking-filter-card,
 html[data-theme="light"] .profile-main-stack > .card,
 html[data-theme="light"] .profile-side-grid > .card,
-html[data-theme="light"] .home-side-stack > .card,
 html[data-theme="light"] .om-view-card,
 html[data-theme="light"] .arena-filter-bar,
 html[data-theme="light"] .om-calendar-filter-bar {
@@ -1822,8 +1683,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
 .selector-panel,
 .ranking-filter-card,
 .profile-main-stack > .card,
-.profile-side-grid > .card,
-.home-side-stack > .card {
+.profile-side-grid > .card {
   padding: var(--card-padding);
 }
 
@@ -2246,7 +2106,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .ranking-filter-card,
 .profile-main-stack > .card,
 .profile-side-grid > .card,
-.home-side-stack > .card,
 .admin-action-panel,
 .gm-next-action-card,
 .gm-rule-summary-card,
@@ -4075,8 +3934,9 @@ html[data-theme="light"] .app-main :is(
 }
 
 .home-hero-next:focus-visible {
-  outline: var(--focus-ring);
+  outline: 2px solid var(--rb-orange);
   outline-offset: -2px;
+  box-shadow: var(--focus-ring);
 }
 
 .home-hero-stats {

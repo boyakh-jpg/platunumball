@@ -1392,12 +1392,8 @@ export default function Matches({ app }) {
             <span><strong>{displayScheduledCount}</strong>SOON</span>
           </div>
           <div className="om-match-actions">
-            <Link to="/app/create">
-              <Button className="ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
-            </Link>
-            <Link to="/app/create?intent=record">
-              <Button className="ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
-            </Link>
+            <Button as={Link} to="/app/create" className="ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
+            <Button as={Link} to="/app/create?intent=record" className="ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
           </div>
         </div>
       </section>

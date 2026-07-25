@@ -135,6 +135,66 @@
   line-height: 1.45;
 }
 
+.ui-entity-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ui-entity-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding-block: 7px;
+}
+
+.ui-entity-copy {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: var(--space-1);
+}
+
+.ui-entity-copy > strong,
+.ui-entity-copy > em,
+.ui-entity-row > b,
+.ui-entity-empty > span,
+.ui-entity-empty > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-entity-copy > em {
+  color: var(--rb-muted);
+  font-size: 0.7rem;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.ui-entity-row > b {
+  color: var(--rb-muted);
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.ui-entity-empty {
+  display: grid;
+  min-width: 0;
+  min-height: var(--ui-button-height);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--rb-muted);
+}
+
+.ui-entity-empty > strong {
+  font-size: 0.76rem;
+  text-align: right;
+}
+
 .ui-control {
   width: 100%;
   min-height: var(--control-height);

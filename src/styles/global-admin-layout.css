@@ -2713,21 +2713,10 @@ html[data-theme="light"] .team-search-popover button.selected {
   .affiliation-challenge-grid,
   .team-overview-grid,
   .home-primary-stack,
-  .home-side-stack,
-  .home-side-stack > .card {
+  .home-side-stack {
     width: 100%;
     min-width: 0;
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .home-team-list a,
-  .home-team-list > div {
-    grid-template-columns: 22px minmax(0, 1fr) auto auto;
-  }
-
-  .home-team-list b {
-    grid-column: auto;
-    justify-self: end;
   }
 
   .my-team-row {

@@ -179,22 +179,40 @@ test("later duplicate selectors do not fully shadow earlier declarations", () =>
   assert.deepEqual(shadowedDeclarations, []);
 });
 
-test("home team summaries are not restyled by the late court-control module", () => {
-  const visualSystem = fs.readFileSync("src/styles/global-visual-system.css", "utf8");
-  const courtControls = fs.readFileSync("src/styles/global-court-controls.css", "utf8");
-  const teamRule = visualSystem.match(
-    /\.rank-home \.home-team-list > \.home-team-row\s*\{([^{}]*)\}/,
-  )?.[1] ?? "";
-  const emptyRule = visualSystem.match(
-    /\.rank-home \.home-team-list > \.home-team-empty\s*\{([^{}]*)\}/,
-  )?.[1] ?? "";
+test("home team summaries use one shared entity primitive", () => {
+  const homeSource = fs.readFileSync("src/pages/Home.jsx", "utf8");
+  const primitiveSource = fs.readFileSync(primitiveCssFile, "utf8");
+  const legacySelectors = /(?:rivalry-card|home-my-teams-card|home-team-list|home-team-row|home-team-empty)/;
 
-  assert.doesNotMatch(courtControls, /\.home-team-list|\.home-team-empty|\.home-panel-empty/);
-  assert.match(teamRule, /\bborder:\s*1px solid var\(--ui-control-border\);/);
-  assert.match(teamRule, /\bbackground:\s*var\(--ui-control-bg\);/);
-  assert.match(emptyRule, /\bborder:\s*0;/);
-  assert.match(emptyRule, /\bbackground:\s*transparent;/);
-  assert.match(emptyRule, /\bbox-shadow:\s*none;/);
+  assert.match(homeSource, /className="ui-entity-list"/);
+  assert.match(homeSource, /className="ui-control ui-entity-row"/);
+  assert.match(homeSource, /className="ui-entity-empty"/);
+  assert.match(primitiveSource, /\.ui-entity-row\s*\{/);
+  assert.match(primitiveSource, /\.ui-entity-empty\s*\{/);
+  assert.doesNotMatch(homeSource, legacySelectors);
+
+  for (const file of cssFiles) {
+    assert.doesNotMatch(fs.readFileSync(file, "utf8"), legacySelectors, file);
+  }
+});
+
+test("navigation actions use the shared polymorphic button without nested controls", () => {
+  const buttonSource = fs.readFileSync("src/components/common/Button.jsx", "utf8");
+  const navigationPages = [
+    "src/pages/Home.jsx",
+    "src/pages/Landing.jsx",
+    "src/pages/Matches.jsx",
+    "src/pages/Recruiting.jsx",
+    "src/pages/Season.jsx",
+  ];
+
+  assert.match(buttonSource, /as:\s*Tag\s*=\s*"button"/);
+  assert.match(buttonSource, /if\s*\(Tag\s*!==\s*"button"\)/);
+
+  for (const file of navigationPages) {
+    const source = fs.readFileSync(file, "utf8");
+    assert.doesNotMatch(source, /<Link\b[^>]*>\s*<Button\b/, file);
+  }
 });
 
 test("shared empty-state surfaces have one primitive owner", () => {
@@ -251,6 +269,15 @@ test("critical interactive branches keep a visible focus indicator", () => {
     assert.doesNotMatch(declarations.get("outline") ?? "", /^(?:0|none)$/);
     assert.notEqual(declarations.get("box-shadow"), "none");
   }
+
+  for (const file of cssFiles) {
+    const source = fs.readFileSync(file, "utf8");
+    assert.doesNotMatch(source, /outline:\s*var\(--focus-ring\)/, file);
+  }
+  assert.doesNotMatch(
+    fs.readFileSync("src/styles/global-visual-system.css", "utf8"),
+    /box-shadow:\s*none\s*!important/,
+  );
 });
 
 test("globals.css is an import-only manifest with bounded modules", () => {

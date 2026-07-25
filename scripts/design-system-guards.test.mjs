@@ -4,6 +4,9 @@ import test from "node:test";
 
 const read = (file) => fs.readFileSync(file, "utf8");
 const count = (source, value) => source.split(value).length - 1;
+const countClassToken = (source, token) => [...source.matchAll(/className="([^"]*)"/g)]
+  .filter(([, className]) => className.split(/\s+/).includes(token))
+  .length;
 const styleFiles = fs.readdirSync("src/styles")
   .filter((file) => file.endsWith(".css"))
   .map((file) => `src/styles/${file}`);
@@ -92,10 +95,10 @@ test("모든 페이지 본문 굵기는 600 이상을 유지한다", () => {
 });
 
 test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
-  assert.equal(count(pageSources.home, 'className="ui-button-block"'), 5);
-  assert.equal(count(pageSources.matches, 'className="ui-button-block"'), 2);
-  assert.equal(count(pageSources.recruiting, 'className="ui-button-block"'), 2);
-  assert.equal(count(pageSources.season, 'className="ui-button-block"'), 1);
+  assert.equal(countClassToken(pageSources.home, "ui-button-block"), 5);
+  assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 2);
+  assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
+  assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
   assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
 });
 

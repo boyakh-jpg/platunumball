@@ -1588,11 +1588,6 @@ input[type="color"] {
   width: 100%;
   min-width: 0;
   max-width: 100%;
-}
-
-.landing-actions .landing-primary-actions .landing-create-action .button {
-  width: 100%;
-  min-width: 0;
   gap: var(--space-3);
   padding-inline: 10px;
   white-space: nowrap;

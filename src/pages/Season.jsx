@@ -97,12 +97,8 @@ export default function Season({ app }) {
           <span><MapPin size={16} /> {region} {myRegionalRank ? `${myRegionalRank}위` : "순위 준비 중"}</span>
           <span><Activity size={16} /> 주 플레이 {activity.primaryMode}</span>
           <div className="season-rule-actions">
-            <Link to="/app/create">
-              <Button><Swords size={18} /> 매칭 만들기</Button>
-            </Link>
-            <Link to="/app/create?intent=record">
-              <Button><ClipboardCheck size={18} /> 경기 기록하기</Button>
-            </Link>
+            <Button as={Link} to="/app/create"><Swords size={18} /> 매칭 만들기</Button>
+            <Button as={Link} to="/app/create?intent=record"><ClipboardCheck size={18} /> 경기 기록하기</Button>
           </div>
         </div>
       </section>
@@ -223,9 +219,7 @@ export default function Season({ app }) {
               <span><strong>{mySeasonRow?.seasonStats.assists ?? 0}</strong>어시스트</span>
               <span><strong>{activity.official}</strong>공식전</span>
             </div>
-            <Link to="/app/profile/records">
-              <Button variant="secondary" className="ui-button-block">전체 기록 보기</Button>
-            </Link>
+            <Button as={Link} to="/app/profile/records" variant="secondary" className="ui-button-block">전체 기록 보기</Button>
           </Card>
         </aside>
       </div>

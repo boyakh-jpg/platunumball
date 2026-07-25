@@ -6071,16 +6071,12 @@ function RecruitingReady({ app }) {
             <span><strong>{friendlyCount}</strong>FRIENDLY</span>
           </div>
           <div className="arena-hero-actions">
-            <Link to="/app/create">
-              <Button type="button" className="ui-button-block">
-                <PlusCircle size={18} /> 매칭 만들기
-              </Button>
-            </Link>
-            <Link to="/app/create?intent=record">
-              <Button type="button" className="ui-button-block">
-                <ClipboardCheck size={18} /> 경기 기록하기
-              </Button>
-            </Link>
+            <Button as={Link} to="/app/create" className="ui-button-block">
+              <PlusCircle size={18} /> 매칭 만들기
+            </Button>
+            <Button as={Link} to="/app/create?intent=record" className="ui-button-block">
+              <ClipboardCheck size={18} /> 경기 기록하기
+            </Button>
           </div>
         </div>
       </section>

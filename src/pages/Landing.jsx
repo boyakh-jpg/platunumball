@@ -52,26 +52,16 @@ export default function Landing({ state }) {
           <Badge tone="green">Season Zero</Badge>
           <div className="landing-actions">
             <div className="landing-primary-actions">
-              <Link to="/app/create" className="landing-create-action">
-                <Button>
-                  매칭 만들기 <ArrowRight size={18} />
-                </Button>
-              </Link>
-              <Link to="/app/create?intent=record" className="landing-create-action">
-                <Button>
-                  경기 기록하기 <ClipboardCheck size={18} />
-                </Button>
-              </Link>
+              <Button as={Link} to="/app/create" className="landing-create-action">
+                매칭 만들기 <ArrowRight size={18} />
+              </Button>
+              <Button as={Link} to="/app/create?intent=record" className="landing-create-action">
+                경기 기록하기 <ClipboardCheck size={18} />
+              </Button>
             </div>
-            <Link to="/app">
-              <Button variant="secondary"><House size={18} /> 홈</Button>
-            </Link>
-            <Link to="/app/rankings">
-              <Button variant="secondary"><Trophy size={18} /> 랭크보드</Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="secondary"><LogIn size={18} /> 로그인</Button>
-            </Link>
+            <Button as={Link} to="/app" variant="secondary"><House size={18} /> 홈</Button>
+            <Button as={Link} to="/app/rankings" variant="secondary"><Trophy size={18} /> 랭크보드</Button>
+            <Button as={Link} to="/login" variant="secondary"><LogIn size={18} /> 로그인</Button>
           </div>
           <div className="landing-stat-grid">
             <span><strong>{matches.length}</strong> matches</span>

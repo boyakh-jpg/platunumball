@@ -622,12 +622,8 @@ export default function Home({ app }) {
           resultsClassName="home-global-search-results"
         />
         <div className="home-search-actions">
-          <Link to="/app/create" className="home-search-create">
-            <Button className="ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
-          </Link>
-          <Link to="/app/create?intent=record" className="home-search-create">
-            <Button className="ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
-          </Link>
+          <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
+          <Button as={Link} to="/app/create?intent=record" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
         </div>
       </Card>
 
@@ -709,9 +705,7 @@ export default function Home({ app }) {
                     return <MatchCard key={entry.id} match={entry.item} teams={app.state.teams} courts={registeredCourts} onOpen={openMatchRoom} />;
                   })}
                   {upcomingItems.length > 3 ? (
-                    <Link to="/app/matches" className="button button-secondary button-sm home-upcoming-more">
-                      전체 보기
-                    </Link>
+                    <Button as={Link} to="/app/matches" variant="secondary" size="sm" className="home-upcoming-more">전체 보기</Button>
                   ) : null}
                 </div>
               ) : (
@@ -828,7 +822,7 @@ export default function Home({ app }) {
                         <span className="home-action-buttons">
                           <Button size="sm" type="button" disabled={isProcessing} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "수락 중" : "수락"}</Button>
                           <Button size="sm" type="button" variant="secondary" disabled={isProcessing} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "처리 중" : "거절"}</Button>
-                          <Link className="button button-secondary button-sm" to={item.href} onClick={(event) => openActionRoom(event, item)}>보기</Link>
+                          <Button as={Link} variant="secondary" size="sm" to={item.href} onClick={(event) => openActionRoom(event, item)}>보기</Button>
                         </span>
                       </div>
                     );
@@ -879,7 +873,7 @@ export default function Home({ app }) {
                 <h2>알림</h2>
               </div>
               <div className="home-alert-heading-actions">
-                <Link to="/app/notifications" className="button button-secondary button-sm">지난 알림</Link>
+                <Button as={Link} to="/app/notifications" variant="secondary" size="sm">지난 알림</Button>
                 <Badge tone={homeNoticeItems.length ? "orange" : "neutral"}>{homeNoticeItems.length}개</Badge>
               </div>
             </div>
@@ -938,7 +932,7 @@ export default function Home({ app }) {
         </aside>
 
         <aside className="page-stack home-side-stack">
-          <Card className="section-card rank-leaderboard-card">
+          <Card className="section-card rank-leaderboard-card home-side-wide-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Local Ranking</p>
@@ -955,9 +949,7 @@ export default function Home({ app }) {
                 </PlayerHoverCard>
               ))}
             </div>
-            <Link to="/app/rankings">
-              <Button variant="secondary" className="ui-button-block"><Trophy size={17} /> 전체 랭크보드</Button>
-            </Link>
+            <Button as={Link} to="/app/rankings" variant="secondary" className="ui-button-block"><Trophy size={17} /> 전체 랭크보드</Button>
           </Card>
 
           <Card className="section-card season-mini-card">
@@ -980,31 +972,29 @@ export default function Home({ app }) {
                 <strong>{mySeasonRow ? `${mySeasonRow.seasonWins}승 ${mySeasonRow.seasonLosses}패` : "0승 0패"}</strong>
               </div>
             </div>
-            <Link to="/app/season">
-              <Button variant="secondary" className="ui-button-block"><Trophy size={17} /> 시즌 허브</Button>
-            </Link>
+            <Button as={Link} to="/app/season" variant="secondary" className="ui-button-block"><Trophy size={17} /> 시즌 허브</Button>
           </Card>
-          <Card className="section-card rivalry-card">
+          <Card className="section-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Local Rivalry</p>
                 <h2>{user.region} 라이벌</h2>
               </div>
             </div>
-            <div className="home-team-list">
+            <div className="ui-entity-list">
               {localRivals.length ? localRivals.map((team) => (
-                <TeamHoverCard className="home-team-row" key={team.id} team={team}>
+                <TeamHoverCard className="ui-control ui-entity-row" key={team.id} team={team}>
                   <TeamEmblem team={team} size="xs" />
-                  <span className="home-team-row-copy">
+                  <span className="ui-entity-copy">
                     <strong>{team.name}</strong>
                     <em>MMR 차이 {team.gap > 0 ? `+${team.gap}` : team.gap}</em>
                   </span>
                   <b>{team.mmr} MMR</b>
                 </TeamHoverCard>
-              )) : <div className="home-team-empty"><span>지역 라이벌 없음</span><strong>대기</strong></div>}
+              )) : <div className="ui-entity-empty"><span>지역 라이벌 없음</span><strong>대기</strong></div>}
             </div>
           </Card>
-          <Card className="section-card home-my-teams-card">
+          <Card className="section-card home-side-wide-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">My Teams</p>
@@ -1012,21 +1002,19 @@ export default function Home({ app }) {
               </div>
               <Badge tone={myTeamCount > MAX_TEAM_MEMBERSHIPS ? "orange" : myTeamCount ? "green" : "neutral"}>{myTeamCount}/{MAX_TEAM_MEMBERSHIPS}</Badge>
             </div>
-            <div className="home-team-list">
+            <div className="ui-entity-list">
               {myTeams.length ? myTeams.slice(0, 5).map((team) => (
-                <TeamHoverCard className="home-team-row" key={team.id} team={team}>
+                <TeamHoverCard className="ui-control ui-entity-row" key={team.id} team={team}>
                   <TeamEmblem team={team} size="xs" />
-                  <span className="home-team-row-copy">
+                  <span className="ui-entity-copy">
                     <strong>{team.name}</strong>
                     <em>{getTeamRoleLabel(team.myRole)}</em>
                   </span>
                   <b>{team.mmr} MMR</b>
                 </TeamHoverCard>
-              )) : <div className="home-team-empty"><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
+              )) : <div className="ui-entity-empty"><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
             </div>
-            <Link to="/app/teams">
-              <Button variant="secondary" className="ui-button-block">팀 전체 보기</Button>
-            </Link>
+            <Button as={Link} to="/app/teams" variant="secondary" className="ui-button-block">팀 전체 보기</Button>
           </Card>
         </aside>
       </aside>

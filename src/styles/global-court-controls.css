@@ -63,8 +63,9 @@
 }
 
 .tournament-court-pool-list button:focus-visible {
-  outline: var(--focus-ring);
+  outline: 2px solid var(--rb-orange);
   outline-offset: 1px;
+  box-shadow: var(--focus-ring);
 }
 
 .tournament-court-pool-list button:disabled {
@@ -1059,9 +1060,7 @@ html[data-theme="light"] .court-map-picker-state {
   .home-action-card,
   .home-alert-card,
   .rank-leaderboard-card,
-  .season-mini-card,
-  .rivalry-card,
-  .home-my-teams-card
+  .season-mini-card
 ) {
   padding: var(--card-padding);
 }
@@ -1071,9 +1070,7 @@ html[data-theme="light"] .court-map-picker-state {
   .home-action-card,
   .home-alert-card,
   .rank-leaderboard-card,
-  .season-mini-card,
-  .rivalry-card,
-  .home-my-teams-card
+  .season-mini-card
 ) > .section-title-row {
   min-width: 0;
   min-height: var(--ui-button-height);
@@ -1085,9 +1082,7 @@ html[data-theme="light"] .court-map-picker-state {
   .home-action-card,
   .home-alert-card,
   .rank-leaderboard-card,
-  .season-mini-card,
-  .rivalry-card,
-  .home-my-teams-card
+  .season-mini-card
 ) > .section-title-row h2 {
   font-size: 1.25rem;
   line-height: 1.15;
@@ -1152,10 +1147,15 @@ html[data-theme="light"] .court-map-picker-state {
   text-align: left;
 }
 
-.rank-home .home-global-search-results > .home-search-entity-trigger:hover,
-.rank-home .home-global-search-results > .home-search-entity-trigger:focus-visible {
+.rank-home .home-global-search-results > .home-search-entity-trigger:hover {
   border-color: color-mix(in srgb, var(--rb-orange) 46%, var(--ui-control-border));
-  outline: 0;
+}
+
+.rank-home .home-global-search-results > .home-search-entity-trigger:focus-visible {
+  border-color: var(--rb-orange);
+  outline: 2px solid var(--rb-orange);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
 }
 
 .rank-home .home-global-search-results > .home-search-entity-trigger > small {

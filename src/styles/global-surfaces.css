@@ -373,10 +373,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 .rank-record-card,
 .match-focus-card,
 .home-recent-card,
-.season-mini-card,
-.rivalry-card,
-.home-my-teams-card,
-.home-side-stack > .card {
+.season-mini-card {
   border-color: rgba(163, 185, 208, 0.16);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
@@ -399,17 +396,13 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
 .home-side-stack .compact-list > .team-hover-trigger,
-.home-team-list a,
-.home-team-list > div,
 .recent-match-row {
   border-color: rgba(163, 185, 208, 0.14);
   background: rgba(255, 255, 255, 0.045);
   box-shadow: none;
 }
 
-.home-action-card,
-.rivalry-card,
-.home-my-teams-card {
+.home-action-card {
   border-color: rgba(163, 185, 208, 0.16);
 }
 
@@ -419,8 +412,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 }
 
 .home-action-row b,
-.rank-search-results small,
-.home-team-list em {
+.rank-search-results small {
   background: rgba(116, 169, 255, 0.1);
   color: var(--blue);
 }
@@ -429,14 +421,6 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 .home-action-card .section-title-row,
 .rank-summary-grid .section-title-row {
   min-height: 34px;
-}
-
-.home-side-stack .compact-list a,
-.home-side-stack .compact-list > div,
-.home-side-stack .compact-list > .team-hover-trigger,
-.home-team-list a,
-.home-team-list > div {
-  min-height: 46px;
 }
 
 .recent-match-row.result-w,
@@ -453,10 +437,7 @@ html[data-theme="light"] .rank-leaderboard-card,
 html[data-theme="light"] .rank-record-card,
 html[data-theme="light"] .match-focus-card,
 html[data-theme="light"] .home-recent-card,
-html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .rivalry-card,
-html[data-theme="light"] .home-my-teams-card,
-html[data-theme="light"] .home-side-stack > .card {
+html[data-theme="light"] .season-mini-card {
   border-color: rgba(32, 56, 68, 0.14);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66)),
@@ -479,8 +460,6 @@ html[data-theme="light"] .home-invitation-row,
 html[data-theme="light"] .home-side-stack .compact-list a,
 html[data-theme="light"] .home-side-stack .compact-list > div,
 html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
-html[data-theme="light"] .home-team-list a,
-html[data-theme="light"] .home-team-list > div,
 html[data-theme="light"] .recent-match-row {
   border-color: rgba(32, 56, 68, 0.14);
   background: rgba(255, 255, 255, 0.58);
@@ -512,10 +491,7 @@ html[data-theme="light"] .recent-match-row {
 .rank-record-card,
 .match-focus-card,
 .home-recent-card,
-.season-mini-card,
-.rivalry-card,
-.home-my-teams-card,
-.home-side-stack > .card {
+.season-mini-card {
   border-color: rgba(163, 185, 208, 0.16);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
@@ -547,8 +523,6 @@ html[data-theme="light"] .recent-match-row {
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
 .home-side-stack .compact-list > .team-hover-trigger,
-.home-team-list a,
-.home-team-list > div,
 .favorite-result-row,
 .favorite-mini-chip {
   border-color: rgba(163, 185, 208, 0.14);
@@ -575,8 +549,6 @@ html[data-theme="light"] .recent-match-row {
 .home-action-row,
 .home-invitation-row,
 .my-team-row,
-.home-team-list a,
-.home-team-list > div,
 .rank-list .rank-row {
   min-width: 0;
   min-height: 48px;
@@ -596,8 +568,6 @@ html[data-theme="light"] .recent-match-row {
 .recent-match-row small,
 .my-team-row strong,
 .my-team-row em,
-.home-team-list strong,
-.home-team-list em,
 .rank-list .rank-row > strong,
 .rank-list .rank-row > em {
   min-width: 0;
@@ -672,10 +642,7 @@ html[data-theme="light"] .rank-leaderboard-card,
 html[data-theme="light"] .rank-record-card,
 html[data-theme="light"] .match-focus-card,
 html[data-theme="light"] .home-recent-card,
-html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .rivalry-card,
-html[data-theme="light"] .home-my-teams-card,
-html[data-theme="light"] .home-side-stack > .card {
+html[data-theme="light"] .season-mini-card {
   border-color: var(--ui-card-border);
   background: var(--ui-card-bg-strong);
   box-shadow: var(--ui-card-shadow);
@@ -705,8 +672,6 @@ html[data-theme="light"] .rank-list .rank-row,
 html[data-theme="light"] .home-side-stack .compact-list a,
 html[data-theme="light"] .home-side-stack .compact-list > div,
 html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
-html[data-theme="light"] .home-team-list a,
-html[data-theme="light"] .home-team-list > div,
 html[data-theme="light"] .favorite-result-row,
 html[data-theme="light"] .favorite-mini-chip,
 html[data-theme="light"] .ranking-filter-card {
@@ -1025,7 +990,6 @@ html[data-theme="light"] .team-hub-board div span {
 .team-card,
 .rating-card,
 .home-action-card,
-.home-my-teams-card,
 .rank-leaderboard-card,
 .rank-mode-card,
 .profile-records-summary {
@@ -1035,8 +999,6 @@ html[data-theme="light"] .team-hub-board div span {
 .team-card-title,
 .team-card-title .team-hover-trigger,
 .team-card-title h3,
-.home-team-list strong,
-.home-team-list em,
 .rank-list .rank-row > span,
 .rank-list .rank-row > strong,
 .rank-list .rank-row > em,
@@ -1089,7 +1051,6 @@ html[data-theme="light"] .team-hub-board div span {
 html[data-theme="light"] .team-card,
 html[data-theme="light"] .rating-card,
 html[data-theme="light"] .home-action-card,
-html[data-theme="light"] .home-my-teams-card,
 html[data-theme="light"] .rank-leaderboard-card,
 html[data-theme="light"] .rank-mode-card,
 html[data-theme="light"] .profile-records-summary {
@@ -1147,10 +1108,7 @@ html[data-theme="light"] .profile-records-summary {
 .rank-record-card,
 .match-focus-card,
 .home-recent-card,
-.season-mini-card,
-.rivalry-card,
-.home-my-teams-card,
-.home-side-stack > .card {
+.season-mini-card {
   background-color: rgba(10, 14, 21, 0.9);
   background-image: none;
 }
@@ -1176,8 +1134,6 @@ html[data-theme="light"] .profile-records-summary {
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
 .home-side-stack .compact-list > .team-hover-trigger,
-.home-team-list a,
-.home-team-list > div,
 .favorite-result-row,
 .favorite-mini-chip,
 .ranking-filter-card {
@@ -1206,10 +1162,7 @@ html[data-theme="light"] .rank-leaderboard-card,
 html[data-theme="light"] .rank-record-card,
 html[data-theme="light"] .match-focus-card,
 html[data-theme="light"] .home-recent-card,
-html[data-theme="light"] .season-mini-card,
-html[data-theme="light"] .rivalry-card,
-html[data-theme="light"] .home-my-teams-card,
-html[data-theme="light"] .home-side-stack > .card {
+html[data-theme="light"] .season-mini-card {
   background-color: rgba(255, 255, 255, 0.9);
   background-image: none;
 }
@@ -1235,8 +1188,6 @@ html[data-theme="light"] .rank-list .rank-row,
 html[data-theme="light"] .home-side-stack .compact-list a,
 html[data-theme="light"] .home-side-stack .compact-list > div,
 html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
-html[data-theme="light"] .home-team-list a,
-html[data-theme="light"] .home-team-list > div,
 html[data-theme="light"] .favorite-result-row,
 html[data-theme="light"] .favorite-mini-chip,
 html[data-theme="light"] .ranking-filter-card {
@@ -1330,10 +1281,7 @@ html[data-theme="light"] .ranking-filter-card {
   gap: var(--space-7);
 }
 
-.home-side-stack > .card,
-.home-action-card,
-.home-my-teams-card,
-.rivalry-card {
+.home-action-card {
   gap: var(--space-6);
   padding: 14px;
 }
@@ -1350,16 +1298,13 @@ html[data-theme="light"] .ranking-filter-card {
   line-height: 1.08;
 }
 
-.home-side-stack .compact-list,
-.home-team-list {
+.home-side-stack .compact-list {
   gap: var(--space-4);
 }
 
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
-.home-side-stack .compact-list > .team-hover-trigger,
-.home-team-list a,
-.home-team-list > div {
+.home-side-stack .compact-list > .team-hover-trigger {
   color: var(--text);
 }
 
@@ -1535,10 +1480,7 @@ html[data-theme="light"] .referee-hover-tier > span {
   background-image: none;
 }
 
-html[data-theme="light"] .home-side-stack > .card,
 html[data-theme="light"] .home-action-card,
-html[data-theme="light"] .home-my-teams-card,
-html[data-theme="light"] .rivalry-card,
 html[data-theme="light"] .settings-page .section-card {
   background-color: rgba(255, 255, 255, 0.92);
   background-image: none;
