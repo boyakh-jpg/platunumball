@@ -4,6 +4,12 @@ import test from "node:test";
 
 const read = (file) => fs.readFileSync(file, "utf8");
 const count = (source, value) => source.split(value).length - 1;
+const styleFiles = fs.readdirSync("src/styles")
+  .filter((file) => file.endsWith(".css"))
+  .map((file) => `src/styles/${file}`);
+const sourceFiles = fs.readdirSync("src", { recursive: true })
+  .filter((file) => /\.(?:js|jsx|ts|tsx)$/.test(file))
+  .map((file) => `src/${file.replaceAll("\\", "/")}`);
 
 const componentSource = read("src/components/match/MatchListCard.jsx");
 const matchListStyles = read("src/styles/match-list-card.css");
@@ -45,6 +51,45 @@ function getRuleBody(source, selector) {
   assert.ok(match, `${selector} 규칙이 필요합니다.`);
   return match[1];
 }
+
+test("모든 페이지 본문 굵기는 600 이상을 유지한다", () => {
+  const foundationStyles = read("src/styles/global-foundation.css");
+  const bodyRule = getRuleBody(foundationStyles, "body");
+  const forbiddenWeights = [];
+
+  assert.match(tokenStyles, /--font-weight-body:\s*600;/);
+  assert.match(bodyRule, /font-weight:\s*var\(--font-weight-body\);/);
+
+  for (const file of styleFiles) {
+    const source = read(file);
+    for (const match of source.matchAll(/font-weight\s*:\s*([^;}{]+)\s*;/g)) {
+      const value = match[1].trim();
+      const numericWeight = Number(value);
+      if (
+        (Number.isFinite(numericWeight) && numericWeight < 600)
+        || /^(?:normal|lighter|initial|unset|revert|revert-layer)$/i.test(value)
+      ) {
+        forbiddenWeights.push(`${file}: ${value}`);
+      }
+    }
+  }
+
+  for (const file of sourceFiles) {
+    const source = read(file);
+    for (const match of source.matchAll(/fontWeight\s*:\s*["']?([^"',}\s]+)/g)) {
+      const value = match[1].trim();
+      const numericWeight = Number(value);
+      if (
+        (Number.isFinite(numericWeight) && numericWeight < 600)
+        || /^(?:normal|lighter|initial|unset|revert|revert-layer)$/i.test(value)
+      ) {
+        forbiddenWeights.push(`${file}: ${value}`);
+      }
+    }
+  }
+
+  assert.deepEqual(forbiddenWeights, []);
+});
 
 test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
   assert.equal(count(pageSources.home, 'className="ui-button-block"'), 5);
