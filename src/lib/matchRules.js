@@ -2,6 +2,20 @@ const PERIOD_COUNTS = new Set([1, 2, 4]);
 const END_CONDITIONS = new Set(["time", "target_or_time"]);
 const CLOCK_MODES = new Set(["running", "stopped"]);
 
+export const MATCH_CLOCK_FORCE_END_MINUTES = 90;
+export const MATCH_CONFIGURED_DURATION_PERCENT = 70;
+export const MATCH_MAX_REGULATION_MINUTES = Math.floor(
+  (MATCH_CLOCK_FORCE_END_MINUTES * MATCH_CONFIGURED_DURATION_PERCENT) / 100,
+);
+export const MATCH_RULE_NUMBER_FIELDS = Object.freeze([
+  "targetScore",
+  "periodMinutes",
+  "lastPeriodStopMinutes",
+  "periodBreakMinutes",
+  "halftimeMinutes",
+  "overtimeMinutes",
+]);
+
 export const MATCH_PERIOD_OPTIONS = Object.freeze([
   { value: 1, label: "단일 경기" },
   { value: 2, label: "2하프" },
@@ -21,9 +35,115 @@ export const MATCH_CLOCK_MODE_OPTIONS = Object.freeze([
 export const MEET_BEFORE_MINUTE_OPTIONS = Object.freeze([10, 15, 20, 30]);
 
 function clampInteger(value, fallback, min, max) {
+  if (value === null || value === undefined || String(value).trim() === "") return fallback;
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, Math.round(number)));
+}
+
+function parseInteger(value) {
+  const text = String(value ?? "").trim();
+  if (!/^-?\d+$/.test(text)) return null;
+  const number = Number(text);
+  return Number.isSafeInteger(number) ? number : null;
+}
+
+export function getMatchPeriodMinutesMax(periodCount = 1) {
+  const count = PERIOD_COUNTS.has(Number(periodCount)) ? Number(periodCount) : 1;
+  return Math.max(1, Math.floor(MATCH_MAX_REGULATION_MINUTES / count));
+}
+
+export function getMatchRuleInputValidation(source = {}, { mode = source.mode || "3v3" } = {}) {
+  const defaults = getDefaultMatchRules(mode);
+  const hasValue = (key) => Object.prototype.hasOwnProperty.call(source, key);
+  const valueFor = (key) => (hasValue(key) ? source[key] : defaults[key]);
+  const normalized = normalizeMatchRules(source, { mode });
+  const fieldMessages = {};
+  const errors = [];
+
+  const validateInteger = (key, {
+    min,
+    max,
+    minimumLabel = `최소 ${min}`,
+    maximumLabel = `최대 ${max}`,
+    errorLabel,
+  }) => {
+    const rawValue = valueFor(key);
+    const text = String(rawValue ?? "").trim();
+    const number = parseInteger(rawValue);
+    let message = "";
+    if (!text) message = "필수";
+    else if (number === null) message = "정수만";
+    else if (number < min) message = minimumLabel;
+    else if (number > max) message = maximumLabel;
+    if (!message) return number;
+    fieldMessages[key] = message;
+    errors.push(errorLabel);
+    return null;
+  };
+
+  if (normalized.endCondition === "target_or_time") {
+    validateInteger("targetScore", {
+      min: 7,
+      max: 99,
+      minimumLabel: "최소 7점",
+      maximumLabel: "최대 99점",
+      errorLabel: "목표 점수는 7~99점의 정수로 입력해 주세요.",
+    });
+  }
+
+  const periodCount = normalized.periodCount;
+  const periodMinutesMax = getMatchPeriodMinutesMax(periodCount);
+  const periodMinutes = validateInteger("periodMinutes", {
+    min: 1,
+    max: periodMinutesMax,
+    minimumLabel: "최소 1분",
+    maximumLabel: `전체 최대 ${MATCH_MAX_REGULATION_MINUTES}분`,
+    errorLabel: `정규 경기시간은 총 ${MATCH_MAX_REGULATION_MINUTES}분 이하로 입력해 주세요.`,
+  });
+
+  if (normalized.gameClockEnabled && normalized.clockMode === "running") {
+    validateInteger("lastPeriodStopMinutes", {
+      min: 0,
+      max: periodMinutes ?? periodMinutesMax,
+      minimumLabel: "최소 0분",
+      maximumLabel: `최대 ${periodMinutes ?? periodMinutesMax}분`,
+      errorLabel: "마지막 스톱 구간은 해당 경기 구간 시간 이내로 입력해 주세요.",
+    });
+  }
+  if (periodCount === 4) {
+    validateInteger("periodBreakMinutes", {
+      min: 0,
+      max: 30,
+      minimumLabel: "최소 0분",
+      maximumLabel: "최대 30분",
+      errorLabel: "쿼터 사이 휴식은 0~30분으로 입력해 주세요.",
+    });
+  }
+  if (periodCount > 1) {
+    validateInteger("halftimeMinutes", {
+      min: 0,
+      max: 30,
+      minimumLabel: "최소 0분",
+      maximumLabel: "최대 30분",
+      errorLabel: "하프타임은 0~30분으로 입력해 주세요.",
+    });
+  }
+  validateInteger("overtimeMinutes", {
+    min: 1,
+    max: 20,
+    minimumLabel: "최소 1분",
+    maximumLabel: "최대 20분",
+    errorLabel: "연장 시간은 1~20분으로 입력해 주세요.",
+  });
+
+  return {
+    valid: errors.length === 0,
+    fieldMessages,
+    errors: [...new Set(errors)],
+    regulationMinutes: periodMinutes === null ? null : periodCount * periodMinutes,
+    maxRegulationMinutes: MATCH_MAX_REGULATION_MINUTES,
+  };
 }
 
 export function getDefaultMatchRules(mode = "3v3") {
@@ -68,7 +188,12 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
   const hasPeriodModel = PERIOD_COUNTS.has(Number(source.periodCount));
   const periodCount = hasPeriodModel ? Number(source.periodCount) : 1;
   const legacyPeriodMinutes = hasPeriodModel ? defaults.periodMinutes : source.timeLimit;
-  const periodMinutes = clampInteger(source.periodMinutes ?? legacyPeriodMinutes, defaults.periodMinutes, 1, 60);
+  const periodMinutes = clampInteger(
+    source.periodMinutes ?? legacyPeriodMinutes,
+    defaults.periodMinutes,
+    1,
+    getMatchPeriodMinutesMax(periodCount),
+  );
   const endCondition = END_CONDITIONS.has(source.endCondition) ? source.endCondition : defaults.endCondition;
   const clockMode = CLOCK_MODES.has(source.clockMode) ? source.clockMode : defaults.clockMode;
   const lastPeriodStopMinutes = clockMode === "running"

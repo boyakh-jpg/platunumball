@@ -220,6 +220,8 @@ function formatCreateSaveError(result, fallback) {
     reason = "선택한 연령 제한과 참가자 연령대가 맞지 않습니다.";
   } else if (errorCode === "invalid_schedule_window") {
     reason = "일정이 생성 가능한 기간 밖입니다.";
+  } else if (errorCode === "match_regulation_duration_exceeded") {
+    reason = "정규 경기시간은 총 63분 이하로 입력해 주세요.";
   } else if (errorCode === "room_remake_source_not_found") {
     reason = "원본 취소방을 찾지 못했습니다. 일정의 취소된 방에서 다시 시도해 주세요.";
   } else if (errorCode === "room_remake_owner_required") {
@@ -995,8 +997,9 @@ export default function CreateMatch({ app }) {
     soloStatsInvalid
   );
   const meetingPointInvalid = !isSoloRecord && !isMatchRecordRoom && draft.meetingPoint.trim().length < 2;
-  const matchCreationPolicyInvalid = isStandardCreateWizard && matchCreationValidation.errors.length > 0;
-  const submitDisabled = courtRequiredBlocked || meetingPointInvalid || matchCreationPolicyInvalid || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isMatchRecordRoom
+  const matchRuleInvalid = !isSoloRecord && !matchCreationValidation.ruleValidation.valid;
+  const matchCreationPolicyInvalid = isStandardCreateWizard && matchCreationValidation.policyErrors.length > 0;
+  const submitDisabled = courtRequiredBlocked || meetingPointInvalid || matchRuleInvalid || matchCreationPolicyInvalid || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isMatchRecordRoom
     ? matchRecordInvalid
     : isTournamentRoom
     ? tournamentInvalid
@@ -1007,8 +1010,10 @@ export default function CreateMatch({ app }) {
     ? "등록된 구장을 선택해야 생성할 수 있습니다."
     : meetingPointInvalid
       ? "실제로 만날 출입구·층·코트 번호를 2자 이상 적어 주세요."
+    : matchRuleInvalid
+      ? matchCreationValidation.ruleErrors[0]
     : matchCreationPolicyInvalid
-      ? matchCreationValidation.errors[0]
+      ? matchCreationValidation.policyErrors[0]
     : isSoloRecord && soloRecordInvalid
     ? (recordEntryMode === "named" ? soloRosterError : "") || "제목, 종료 시각, 점수를 확인해 주세요. 내 기록은 경기 종료 후 24시간 이내에만 저장할 수 있습니다."
     : isMatchRecordRoom && matchRecordInvalid
@@ -2752,7 +2757,8 @@ export default function CreateMatch({ app }) {
               }}
               summaryType={creationWizardType}
               errors={Array.from(new Set([
-                ...(isStandardCreateWizard ? matchCreationValidation.errors : []),
+                ...(!isSoloRecord ? matchCreationValidation.ruleErrors : []),
+                ...(isStandardCreateWizard ? matchCreationValidation.policyErrors : []),
                 ...(submitDisabledReason ? [submitDisabledReason] : []),
               ]))}
               warnings={isStandardCreateWizard ? matchCreationValidation.warnings : []}

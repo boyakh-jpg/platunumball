@@ -1,5 +1,10 @@
 import { DEFAULT_BENCH_CAPACITY, MAX_BENCH_CAPACITY, RECORD_TYPES, getModeSize } from "./constants.js";
-import { getDefaultMatchRules, getMatchRuleSummary, getMatchRulesPayload } from "./matchRules.js";
+import {
+  getDefaultMatchRules,
+  getMatchRuleInputValidation,
+  getMatchRuleSummary,
+  getMatchRulesPayload,
+} from "./matchRules.js";
 
 export const MATCH_INTENT_OPTIONS = Object.freeze([
   {
@@ -579,19 +584,20 @@ export function getPersonalRecordDraftPayload(source = {}) {
 export function getMatchCreationValidation(source = {}) {
   const policySource = getMatchCreationPolicySource(source);
   const policy = getMatchCreationPolicyPayload(policySource);
-  const errors = [];
+  const ruleValidation = getMatchRuleInputValidation(policySource, { mode: policySource.mode });
+  const policyErrors = [];
   const warnings = [];
   const paidVenue = policy.venuePaymentType === "paid_reserved" || policy.venuePaymentType === "paid_not_reserved";
-  if (paidVenue && policy.venueFee <= 0) errors.push("유료구장은 대관료를 1원 이상 입력해야 합니다.");
+  if (paidVenue && policy.venueFee <= 0) policyErrors.push("유료구장은 대관료를 1원 이상 입력해야 합니다.");
   if (policy.requiresBenchPaymentAcknowledgement && !policy.benchPaymentAcknowledged) {
-    errors.push("후보의 동일 결제와 출전 미보장 조건을 확인해야 합니다.");
+    policyErrors.push("후보의 동일 결제와 출전 미보장 조건을 확인해야 합니다.");
   }
   if (policy.formationMode === "pickup") {
     if (policy.hostJoinMode !== "player" || policy.teamOnly === true) {
-      errors.push("픽업은 개인 참가 방식으로만 만들 수 있습니다.");
+      policyErrors.push("픽업은 개인 참가 방식으로만 만들 수 있습니다.");
     }
     if (policy.official !== false) {
-      errors.push("픽업은 공식 경기로 만들 수 없습니다.");
+      policyErrors.push("픽업은 공식 경기로 만들 수 없습니다.");
     }
     warnings.push("체크인에서 방장 또는 배정 심판이 팀 배치와 교대 순서를 확정해야 시작할 수 있습니다.");
   }
@@ -604,7 +610,14 @@ export function getMatchCreationValidation(source = {}) {
   if (policy.ranked && getMatchRulesPayload(policySource, { mode: policySource.mode }).gameClockEnabled === false) {
     warnings.push("경기시계를 사용하지 않으면 경기 방식별 MMR 감산 반영률이 적용됩니다.");
   }
-  return { policy, errors, warnings };
+  return {
+    policy,
+    ruleValidation,
+    ruleErrors: ruleValidation.errors,
+    policyErrors,
+    errors: [...ruleValidation.errors, ...policyErrors],
+    warnings,
+  };
 }
 
 function formatCurrency(value) {

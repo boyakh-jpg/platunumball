@@ -30,7 +30,16 @@ import {
   validatePickupRecruitingUpdate,
 } from "../server/api/recruiting/sync-post.js";
 import { getRecordCreationWindowStatus } from "../src/lib/matchUtils.js";
-import { getMatchClockLabel, getMatchRuleDetailRows, getMatchRulesPayload, normalizeMatchRules } from "../src/lib/matchRules.js";
+import {
+  MATCH_CLOCK_FORCE_END_MINUTES,
+  MATCH_MAX_REGULATION_MINUTES,
+  getMatchClockLabel,
+  getMatchPeriodMinutesMax,
+  getMatchRuleDetailRows,
+  getMatchRuleInputValidation,
+  getMatchRulesPayload,
+  normalizeMatchRules,
+} from "../src/lib/matchRules.js";
 import {
   acceptRecruitingInvitation,
   createRecruitingPost,
@@ -84,6 +93,47 @@ test("small modes preserve target-score defaults while 5v5 uses the community cl
   assert.equal(official.periodMinutes, 10);
   assert.equal(official.clockMode, "stopped");
   assert.equal(getMatchModeChangePatch({ mode: "3v3", gameClockEnabled: false }, "5v5").gameClockEnabled, false);
+});
+
+test("match rule number inputs stay editable and enforce the 70 percent regulation limit", () => {
+  assert.equal(MATCH_CLOCK_FORCE_END_MINUTES, 90);
+  assert.equal(MATCH_MAX_REGULATION_MINUTES, 63);
+  assert.equal(getMatchPeriodMinutesMax(1), 63);
+  assert.equal(getMatchPeriodMinutesMax(2), 31);
+  assert.equal(getMatchPeriodMinutesMax(4), 15);
+
+  const emptyTarget = getMatchRuleInputValidation({
+    mode: "3v3",
+    endCondition: "target_or_time",
+    targetScore: "",
+    periodCount: 1,
+    periodMinutes: 12,
+    overtimeMinutes: 3,
+  });
+  assert.equal(emptyTarget.valid, false);
+  assert.equal(emptyTarget.fieldMessages.targetScore, "필수");
+
+  const oversizedPeriod = getMatchRuleInputValidation({
+    mode: "5v5",
+    endCondition: "time",
+    periodCount: 4,
+    periodMinutes: "16",
+    periodBreakMinutes: 2,
+    halftimeMinutes: 10,
+    overtimeMinutes: 5,
+    clockMode: "stopped",
+  });
+  assert.equal(oversizedPeriod.valid, false);
+  assert.equal(oversizedPeriod.fieldMessages.periodMinutes, "전체 최대 63분");
+  assert.match(oversizedPeriod.errors.join(" "), /63분/);
+
+  const normalized = normalizeMatchRules({ mode: "5v5", periodCount: 4, periodMinutes: 60 }, { mode: "5v5" });
+  assert.equal(normalized.periodMinutes, 15);
+  assert.equal(normalized.timeLimit, 60);
+
+  const selectorSource = fs.readFileSync(path.join(root, "src/components/match/RuleSelector.jsx"), "utf8");
+  assert.match(selectorSource, /updateNumber\("targetScore", event\.target\.value\)/);
+  assert.doesNotMatch(selectorSource, /updateRules\(\{ targetScore: event\.target\.value \}\)/);
 });
 
 test("pickup preset reuses player rooms without claiming automatic rotation", () => {

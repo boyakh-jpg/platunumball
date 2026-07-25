@@ -1,17 +1,27 @@
+import InlineValidatedInput from "../common/InlineValidatedInput.jsx";
 import { MEET_BEFORE_MINUTE_OPTIONS } from "../../lib/matchRules.js";
 
 export default function MeetingPointFields({ draft, onChange, required = false, timingType = "scheduled" }) {
+  const meetingPoint = String(draft.meetingPoint ?? "");
+  const meetingPointMessage = required
+    ? meetingPoint.trim().length === 0
+      ? "필수"
+      : meetingPoint.trim().length < 2 ? "2자 이상" : ""
+    : "";
+
   return (
     <div className="meeting-point-fields">
       <label>
         구체적인 만남 장소
-        <input
+        <InlineValidatedInput
           className={required ? "meeting-point-required" : ""}
-          value={draft.meetingPoint ?? ""}
+          value={meetingPoint}
+          message={meetingPointMessage}
+          aria-label="구체적인 만남 장소"
           maxLength={120}
           required={required}
           aria-required={required}
-          placeholder={`${required ? "필수 · " : ""}예: 체육관 1층 안내데스크 앞, 2번 코트 출입구`}
+          placeholder="예: 체육관 1층 안내데스크 앞, 2번 코트 출입구"
           onChange={(event) => onChange({ meetingPoint: event.target.value })}
         />
       </label>

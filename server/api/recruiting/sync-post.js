@@ -48,6 +48,7 @@ export function getRecruitingBenchPolicyError(error = {}) {
   }
   if (errorText.includes("recruiting_room_edit_locked")) return { statusCode: 409, message: "recruiting_room_edit_locked" };
   if (errorText.includes("room_meeting_point_required")) return { statusCode: 400, message: "room_meeting_point_required" };
+  if (errorText.includes("match_regulation_duration_exceeded")) return { statusCode: 400, message: "match_regulation_duration_exceeded" };
   if (errorText.includes("court_not_found") || errorText.includes("invalid_room_court")) return { statusCode: 400, message: "invalid_room_court" };
   return null;
 }

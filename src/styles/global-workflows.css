@@ -25,6 +25,46 @@
   line-height: 1.45;
 }
 
+.match-rule-summary.is-invalid {
+  color: var(--danger);
+}
+
+.inline-validated-input {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.inline-validated-input > input {
+  width: 100%;
+}
+
+.inline-validated-input.has-error > input {
+  border-color: color-mix(in srgb, var(--danger) 72%, var(--ui-control-border));
+  padding-inline-end: 94px;
+}
+
+.inline-validated-input-message {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: 12px;
+  max-width: 82px;
+  overflow: hidden;
+  transform: translateY(-50%);
+  color: var(--danger);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-validated-input > input[type="number"] + .inline-validated-input-message {
+  right: 30px;
+}
+
 .meeting-point-fields {
   grid-template-columns: minmax(0, 2fr) minmax(150px, 1fr);
 }

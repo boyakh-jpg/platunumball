@@ -126,7 +126,13 @@ import {
   isMatchSideTeamParty,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
-import { getMatchRuleDetailRows, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
+import {
+  getMatchRuleDetailRows,
+  getMatchRuleInputValidation,
+  getMatchRuleSummary,
+  getMeetingPointSummary,
+  normalizeMatchRules,
+} from "../lib/matchRules.js";
 import {
   PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS,
   getMatchCreationSummary,
@@ -463,6 +469,9 @@ function getRoomEditSaveError(result, matchRoom = false) {
   }
   if (errorCode === "room_meeting_point_required") {
     return "실제로 만날 장소를 2자 이상 적어 주세요.";
+  }
+  if (errorCode === "match_regulation_duration_exceeded") {
+    return "정규 경기시간은 총 63분 이하로 입력해 주세요.";
   }
   if (errorCode === "room_edit_limit_reached") {
     return "방 수정은 한 번만 가능합니다. 추가 변경이 필요하면 기존 방을 취소한 뒤 다시 만들어 주세요.";
@@ -3386,6 +3395,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     const roomEditDraft = getRoomEditDraftByPost(roomPost);
     if (!roomEditDraft) return;
     if (String(roomEditDraft.meetingPoint ?? "").trim().length < 2) return;
+    if (!getMatchRuleInputValidation(roomEditDraft, { mode: roomPost.mode }).valid) return;
     const initialDraft = getRoomEditDraft(roomPost, sourceMatch);
     const roomEditPatch = Object.fromEntries(
       Object.entries(roomEditDraft).filter(([key, value]) => (
@@ -3690,6 +3700,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomEditCapacityValid = !roomEditDraft || pickupRoom || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
         const roomEditBenchCapacityValid = !roomEditDraft || pickupRoom || Number(roomEditDraft.benchCapacity) >= maxSideReserveFilled;
         const roomEditMeetingValid = !roomEditDraft || String(roomEditDraft.meetingPoint ?? "").trim().length >= 2;
+        const roomEditRulesValid = !roomEditDraft
+          || getMatchRuleInputValidation(roomEditDraft, { mode: selectedPost.mode }).valid;
         const roomEditScheduleValid = !roomEditDraft
           || roomEditDraft.timingType === "instant"
           || (Boolean(roomEditDraft.scheduledDate) && Boolean(roomEditDraft.scheduledTime));
@@ -5085,7 +5097,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       <Button
                         type="button"
                         size="sm"
-                        disabled={roomEditStatus.pending || !roomEditCapacityValid || !roomEditBenchCapacityValid || !roomEditPickupCapacityValid || !roomEditMeetingValid || !roomEditScheduleValid}
+                        disabled={roomEditStatus.pending || !roomEditCapacityValid || !roomEditBenchCapacityValid || !roomEditPickupCapacityValid || !roomEditMeetingValid || !roomEditRulesValid || !roomEditScheduleValid}
                         onClick={() => void saveRoomEdit(selectedPost)}
                       >
                         {roomEditStatus.pending ? "저장 중" : "수정 저장"}

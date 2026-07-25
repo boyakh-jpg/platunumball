@@ -187,7 +187,10 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   const panelSource = await readSource("src/components/match/MatchClockPanel.jsx");
   const clockStyles = await readSource("src/styles/match-clock.css");
   const recruitingSource = await readSource("src/pages/Recruiting.jsx");
-  const forceEndMigration = await readSource("supabase/migrations/20260724230000_match_clock_one_hour_force_end.sql");
+  const forceEndMigration = [
+    await readSource("supabase/migrations/20260724230000_match_clock_one_hour_force_end.sql"),
+    await readSource("supabase/migrations/20260725012000_match_duration_and_clock_limits.sql"),
+  ].join("\n");
 
   assert.match(panelSource, /configurationDirtyRef\.current/);
   assert.match(panelSource, /onClick=\{\(\) => selectShotClock\(option\.value\)\}/);
@@ -208,7 +211,9 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-notice \{[^}]*pointer-events: none;/);
   assert.match(clockStyles, /::-webkit-slider-thumb \{[^}]*margin-top: -6px;/);
   assert.match(clockStyles, /::-moz-range-progress/);
-  assert.match(forceEndMigration, /clock_started_at \+ interval '1 hour'/);
+  assert.match(forceEndMigration, /clock_started_at \+ interval '90 minutes'/);
+  assert.match(forceEndMigration, /period_count \* period_minutes > 63/);
+  assert.match(forceEndMigration, /match_regulation_duration_exceeded/);
   assert.match(forceEndMigration, /'forceEnd'/);
   assert.match(forceEndMigration, /ended_at = force_end_at/);
   assert.match(forceEndMigration, /rankball_match_clock_close_on_match_end_trigger/);

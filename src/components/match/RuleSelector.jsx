@@ -1,8 +1,12 @@
+import InlineValidatedInput from "../common/InlineValidatedInput.jsx";
 import {
   MATCH_CLOCK_MODE_OPTIONS,
   MATCH_END_CONDITION_OPTIONS,
   MATCH_PERIOD_OPTIONS,
+  MATCH_RULE_NUMBER_FIELDS,
   getMatchRuleSummary,
+  getMatchRuleInputValidation,
+  getMatchPeriodMinutesMax,
   getMatchRulesPayload,
   normalizeMatchRules,
 } from "../../lib/matchRules.js";
@@ -10,12 +14,22 @@ import { getMatchClockPresetOptions } from "../../lib/matchCreationPolicies.js";
 
 export default function RuleSelector({ draft, onChange }) {
   const rules = normalizeMatchRules(draft, { mode: draft.mode });
-  const lastPeriodStopMinutes = rules.lastPeriodStopMinutes;
+  const inputValidation = getMatchRuleInputValidation(draft, { mode: draft.mode });
   const clockPresetOptions = getMatchClockPresetOptions(draft.mode);
   const updateRules = (patch) => {
-    const next = { ...rules, lastPeriodStopMinutes, ...patch };
-    onChange(getMatchRulesPayload(next, { mode: draft.mode }));
+    const next = { ...rules, ...patch };
+    const payload = getMatchRulesPayload(next, { mode: draft.mode });
+    const preservedRawNumbers = Object.fromEntries(
+      MATCH_RULE_NUMBER_FIELDS
+        .filter((key) => Object.prototype.hasOwnProperty.call(draft, key) && !Object.prototype.hasOwnProperty.call(patch, key))
+        .map((key) => [key, draft[key]]),
+    );
+    onChange({ ...payload, ...preservedRawNumbers });
   };
+  const updateNumber = (key, value) => onChange({ [key]: value });
+  const numberValue = (key) => (
+    Object.prototype.hasOwnProperty.call(draft, key) ? draft[key] : rules[key]
+  );
   const periodUnitLabel = rules.periodCount === 4 ? "쿼터당 시간 (분)" : rules.periodCount === 2 ? "하프당 시간 (분)" : "경기 시간 (분)";
 
   return (
@@ -75,7 +89,15 @@ export default function RuleSelector({ draft, onChange }) {
       {rules.endCondition === "target_or_time" ? (
       <label>
         목표 점수
-        <input type="number" min="7" max="99" value={rules.targetScore} onChange={(event) => updateRules({ targetScore: event.target.value })} />
+        <InlineValidatedInput
+          type="number"
+          min="7"
+          max="99"
+          aria-label="목표 점수"
+          value={numberValue("targetScore")}
+          message={inputValidation.fieldMessages.targetScore}
+          onChange={(event) => updateNumber("targetScore", event.target.value)}
+        />
       </label>
       ) : null}
       <label>
@@ -86,7 +108,15 @@ export default function RuleSelector({ draft, onChange }) {
       </label>
       <label>
         {periodUnitLabel}
-        <input type="number" min="1" max="60" value={rules.periodMinutes} onChange={(event) => updateRules({ periodMinutes: event.target.value })} />
+        <InlineValidatedInput
+          type="number"
+          min="1"
+          max={getMatchPeriodMinutesMax(rules.periodCount)}
+          aria-label={periodUnitLabel}
+          value={numberValue("periodMinutes")}
+          message={inputValidation.fieldMessages.periodMinutes}
+          onChange={(event) => updateNumber("periodMinutes", event.target.value)}
+        />
       </label>
       {rules.gameClockEnabled ? (
         <label>
@@ -99,24 +129,56 @@ export default function RuleSelector({ draft, onChange }) {
       {rules.gameClockEnabled && rules.clockMode === "running" ? (
         <label>
           마지막 구간 스톱 (분)
-          <input type="number" min="0" max={rules.periodMinutes} value={lastPeriodStopMinutes} onChange={(event) => updateRules({ lastPeriodStopMinutes: event.target.value })} />
+          <InlineValidatedInput
+            type="number"
+            min="0"
+            max={rules.periodMinutes}
+            aria-label="마지막 구간 스톱 (분)"
+            value={numberValue("lastPeriodStopMinutes")}
+            message={inputValidation.fieldMessages.lastPeriodStopMinutes}
+            onChange={(event) => updateNumber("lastPeriodStopMinutes", event.target.value)}
+          />
         </label>
       ) : null}
       {rules.periodCount === 4 ? (
         <label>
           쿼터 사이 휴식 (분)
-          <input type="number" min="0" max="30" value={rules.periodBreakMinutes} onChange={(event) => updateRules({ periodBreakMinutes: event.target.value })} />
+          <InlineValidatedInput
+            type="number"
+            min="0"
+            max="30"
+            aria-label="쿼터 사이 휴식 (분)"
+            value={numberValue("periodBreakMinutes")}
+            message={inputValidation.fieldMessages.periodBreakMinutes}
+            onChange={(event) => updateNumber("periodBreakMinutes", event.target.value)}
+          />
         </label>
       ) : null}
       {rules.periodCount > 1 ? (
         <label>
           하프타임 (분)
-          <input type="number" min="0" max="30" value={rules.halftimeMinutes} onChange={(event) => updateRules({ halftimeMinutes: event.target.value })} />
+          <InlineValidatedInput
+            type="number"
+            min="0"
+            max="30"
+            aria-label="하프타임 (분)"
+            value={numberValue("halftimeMinutes")}
+            message={inputValidation.fieldMessages.halftimeMinutes}
+            onChange={(event) => updateNumber("halftimeMinutes", event.target.value)}
+          />
         </label>
       ) : null}
       <label>
         연장 1회 (분)
-        <input type="number" min="1" max="20" value={rules.overtimeMinutes} onChange={(event) => updateRules({ overtimeMinutes: event.target.value })} />
+        <InlineValidatedInput
+          type="number"
+          min="1"
+          max="20"
+          aria-label="연장 1회 (분)"
+          value={numberValue("overtimeMinutes")}
+          message={inputValidation.fieldMessages.overtimeMinutes}
+          onChange={(event) => updateNumber("overtimeMinutes", event.target.value)}
+        />
       </label>
       <label>
         사용 공
@@ -133,8 +195,8 @@ export default function RuleSelector({ draft, onChange }) {
       </label>
       ) : null}
       </div>
-      <small className="match-rule-summary">
-        {getMatchRuleSummary(rules, draft.mode)}
+      <small className={`match-rule-summary${inputValidation.valid ? "" : " is-invalid"}`}>
+        {inputValidation.valid ? getMatchRuleSummary(rules, draft.mode) : "빨간 안내가 표시된 값을 확인해 주세요."}
       </small>
     </div>
   );
