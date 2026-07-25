@@ -18,6 +18,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
+import { hasAdminAccess } from "../lib/admin.js";
 import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeBenchCapacity, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS, REPORT_TARGET_TYPES, VOID_MATCH_RESTORE_REPORT_REASON, getReportTargetType } from "../lib/reportReasons.js";
 import {
@@ -370,10 +371,13 @@ export default function MatchRoom({ app }) {
   const benchCapacity = normalizeBenchCapacity(match.benchCapacity ?? match.rules?.benchCapacity ?? sourceRecruitingPost?.benchCapacity);
   const matchHostPlayerId = getMatchHostPlayerId(match, sourceRecruitingPost);
   const isMatchHost = matchHostPlayerId === app.currentUser.id;
+  const currentUserIsAdmin = Number(app.adminContext?.level ?? 0) >= 30
+    || hasAdminAccess(app.currentUser, app.state.settings);
   const matchPhase = getMatchRoomPhase(match).phase;
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
   const currentUserCanResolveDispute = canUserResolveMatchDispute(match, app.currentUser.id, sourceRecruitingPost) && isMatchHost;
+  const currentUserCanRefreshReview = isMatchHost || currentUserIsAdmin;
   const currentUserCanFileDispute = getMatchRecordPlayerIds(match).includes(app.currentUser.id);
   const resultEntryPermission = getMatchResultEntryPermission(match, app.currentUser.id, {
     canOperatePostStart: currentUserCanOperateStartedMatch,
@@ -666,11 +670,9 @@ export default function MatchRoom({ app }) {
       }
       if (currentUserSideName && !currentUserApprovalDone) {
         return {
-          label: isSharedRecord ? "최종 승인" : "결과 승인",
-          detail: isSharedRecord
-            ? "내 참가 사실과 점수·기록을 확인한 뒤 한 번만 승인합니다."
-            : "기록 조건을 충족했습니다. 내 승인만 완료하면 됩니다.",
-          button: isSharedRecord ? "최종 승인" : "승인",
+          label: "최종 승인",
+          detail: "내 참가 사실과 점수·기록, 마지막 이의신청을 확인한 뒤 한 번만 승인합니다.",
+          button: "최종 승인",
           type: "approve",
         };
       }
@@ -843,7 +845,10 @@ export default function MatchRoom({ app }) {
         {nextAction.type === "agree" ? (
           <Button type="button" onClick={() => app.actions.agreeMatch(match.id, currentUserSideName, app.currentUser.id)}>{nextAction.button}</Button>
         ) : nextAction.type === "approve" ? (
-          <Button type="button" onClick={() => app.actions.approveMatch(match.id, currentUserSideName, app.currentUser.id)}>{nextAction.button}</Button>
+          <Button type="button" onClick={() => {
+            if (!window.confirm("최종 승인하기 전에 이의신청을 마지막으로 확인해 주세요. 점수와 기록이 맞습니까?")) return;
+            app.actions.approveMatch(match.id, currentUserSideName, app.currentUser.id);
+          }}>{nextAction.button}</Button>
         ) : nextAction.href ? (
           <a className="button button-primary button-md" href={nextAction.href}>{nextAction.button}</a>
         ) : (
@@ -1113,11 +1118,11 @@ export default function MatchRoom({ app }) {
                 </>
               ) : null}
               <div>
-                <span>{MATCH_SIDE_FALLBACK_NAMES.teamA} {isSharedRecord ? "최종 승인" : "결과 승인"}</span>
+                <span>{MATCH_SIDE_FALLBACK_NAMES.teamA} 최종 승인</span>
                 <strong>{teamAApproval.approvals.length}/{teamAApproval.majority}</strong>
               </div>
               <div>
-                <span>{MATCH_SIDE_FALLBACK_NAMES.teamB} {isSharedRecord ? "최종 승인" : "결과 승인"}</span>
+                <span>{MATCH_SIDE_FALLBACK_NAMES.teamB} 최종 승인</span>
                 <strong>{teamBApproval.approvals.length}/{teamBApproval.majority}</strong>
               </div>
               <div>
@@ -1143,6 +1148,8 @@ export default function MatchRoom({ app }) {
               userById={userMap}
               canResolve={currentUserCanResolveDispute}
               onResolve={(disputeId, decision) => app.actions.resolveMatchDispute(match.id, disputeId, decision)}
+              onRefresh={currentUserCanRefreshReview ? refreshMatchDetail : null}
+              refreshing={matchDetailRefreshing}
             />
             {match.status === "void" ? (
               <div className="match-void-summary">

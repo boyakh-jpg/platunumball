@@ -550,18 +550,18 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
             >
               {scoreboardEnabled ? (
                 <div className="ui-match-clock-team ui-match-clock-team-a">
-                  <span className="ui-match-clock-team-label">A</span>
+                  <span className="ui-match-clock-team-label">A SIDE</span>
                   <strong className="ui-match-clock-team-score">{score.a}</strong>
                 </div>
               ) : null}
               <div className="ui-match-clock-main-time">
                 <Badge tone="orange">{getMatchClockPeriodLabel(liveClock)}</Badge>
                 <time>{formatClockTime(liveClock.periodRemainingMs, { tenths: true })}</time>
-                <small>서버시간 기준</small>
+                <small>{scoreboardEnabled ? "서버시간 · 점수 3초 자동 갱신" : "서버시간 기준"}</small>
               </div>
               {scoreboardEnabled ? (
                 <div className="ui-match-clock-team ui-match-clock-team-b">
-                  <span className="ui-match-clock-team-label">B</span>
+                  <span className="ui-match-clock-team-label">B SIDE</span>
                   <strong className="ui-match-clock-team-score">{score.b}</strong>
                 </div>
               ) : null}
@@ -583,7 +583,13 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
               >
                 <span className="ui-match-shot-clock-label">SHOT CLOCK</span>
                 <strong className="ui-match-shot-clock-value">{Math.ceil(liveClock.shotRemainingMs / 1000)}</strong>
-                <small className="ui-match-shot-clock-hint">{liveClock.canControl ? `전체 영역을 눌러 ${liveClock.shotClockSeconds}초 초기화` : "읽기 전용"}</small>
+                <small className="ui-match-shot-clock-hint">
+                  {liveClock.canControl
+                    ? liveClock.shotRemainingMs <= 0
+                      ? `0초 유지 · 다음 공격권에 눌러 ${liveClock.shotClockSeconds}초 초기화`
+                      : `전체 영역을 눌러 ${liveClock.shotClockSeconds}초 초기화`
+                    : "읽기 전용"}
+                </small>
               </button>
             ) : null}
           </div>

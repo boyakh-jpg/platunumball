@@ -554,6 +554,33 @@ export function getMatchReservePlayerIds(match = {}, sideName) {
     ));
 }
 
+export function getMatchSubstitutionAccess(
+  match = {},
+  userId = "",
+  sideName = "",
+  { canOperate = false, recorderSides = [] } = {},
+) {
+  const reservePlayerIds = MATCH_SIDES.includes(sideName)
+    ? getMatchReservePlayerIds(match, sideName)
+    : [];
+  const canManage = Boolean(canOperate || recorderSides.includes(sideName));
+  const canSelfSubstitute = Boolean(userId && reservePlayerIds.includes(userId));
+  return {
+    canManage,
+    canSelfSubstitute,
+    allowedReservePlayerIds: canManage
+      ? reservePlayerIds
+      : canSelfSubstitute
+        ? [userId]
+        : [],
+  };
+}
+
+export function isMatchLateAttendancePlayer(match = {}, playerId = "") {
+  const latePlayerIds = match.rules?.lateAttendancePlayerIds;
+  return Boolean(playerId && Array.isArray(latePlayerIds) && latePlayerIds.includes(playerId));
+}
+
 export function getMatchPlayerPlacement(match = {}, playerId = "") {
   for (const sideName of MATCH_SIDES) {
     if ((match[sideName]?.players ?? []).includes(playerId)) return { side: sideName, reserve: false };

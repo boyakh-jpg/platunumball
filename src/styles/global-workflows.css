@@ -113,6 +113,13 @@
   font-weight: 950;
 }
 
+.match-dispute-queue-head-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .match-dispute-queue-item {
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
@@ -139,6 +146,15 @@
 @media (max-width: 640px) {
   .meeting-point-fields {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .match-dispute-queue-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .match-dispute-queue-head-actions {
+    justify-content: space-between;
   }
 
   .match-dispute-queue-item {

@@ -89,6 +89,7 @@ import {
   getMatchPlayerPlacement,
   getMatchPlayerTeamId,
   getMatchReservePlayerIds,
+  getMatchSubstitutionAccess,
   getMatchSidePlayerIds,
   getMatchSideLeaderId,
   getMatchSideRecordPlayerIds,
@@ -114,6 +115,7 @@ import {
   getSubmittedStatPatch,
   getTeamCaptainId,
   isMatchTrustFeedbackOpen,
+  isMatchLateAttendancePlayer,
   isEligibleReferee,
   isMatchPartyTeamParty,
   isMatchReferee,
@@ -3552,18 +3554,21 @@ export function forfeitTournamentMatch(state, tournamentId, matchId, losingSide,
   return advanceTournamentAfterMatch(nextState, confirmedMatch);
 }
 
-function currentUserCanSubstituteMatchSide(state, match, sideName) {
-  if (currentUserCanOperateStartedMatch(state, match)) return true;
-  return getStatRecorderSides(match, state.currentUserId).includes(sideName);
-}
-
-export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, reservePlayerId) {
+export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, reservePlayerId, reason = "operator") {
   const storedMatch = state.matches.find((item) => item.id === matchId);
   const match = withEffectiveMatchStatRecorders(storedMatch);
   if (!match || match.status !== "agreed" || match.endedAt) return state;
   if (getMatchRoomPhase(match).phase !== "live") return state;
   if (!MATCH_SIDES.includes(sideName)) return state;
-  if (!currentUserCanSubstituteMatchSide(state, match, sideName)) return state;
+  if (!["self", "late", "injury", "ejection", "operator"].includes(reason)) return state;
+  const substitutionAccess = getMatchSubstitutionAccess(match, state.currentUserId, sideName, {
+    canOperate: currentUserCanOperateStartedMatch(state, match),
+    recorderSides: getStatRecorderSides(match, state.currentUserId),
+  });
+  if (!substitutionAccess.allowedReservePlayerIds.includes(reservePlayerId)) return state;
+  if (!substitutionAccess.canManage && reason !== "self") return state;
+  if (substitutionAccess.canManage && reason === "self") return state;
+  if (reason === "late" && !isMatchLateAttendancePlayer(match, reservePlayerId)) return state;
 
   const activeIds = match[sideName]?.players ?? [];
   const reserveIds = getMatchReservePlayerIds(match, sideName);

@@ -370,7 +370,7 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       next = handoffMatchRecorder(state, operation.matchId, operation.sideName, operation.nextRecorderId);
       break;
     case "substituteMatchPlayer":
-      next = substituteMatchPlayer(state, operation.matchId, operation.sideName, operation.activePlayerId, operation.reservePlayerId);
+      next = substituteMatchPlayer(state, operation.matchId, operation.sideName, operation.activePlayerId, operation.reservePlayerId, operation.reason);
       break;
     case "approveMatch":
       next = approveMatch(state, operation.matchId, operation.sideName, operation.playerId);

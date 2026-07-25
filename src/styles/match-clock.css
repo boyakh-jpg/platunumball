@@ -181,8 +181,10 @@
 }
 
 .ui-match-clock-team-label {
-  font-size: 0.72rem;
+  font-family: var(--sports-display-font);
+  font-size: clamp(0.95rem, 2.2vw, 1.25rem);
   font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
 .ui-match-clock-team-score {

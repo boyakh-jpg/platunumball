@@ -6,6 +6,8 @@ const MATCH_ATTENDANCE_SCAN_ERROR_LABELS = Object.freeze({
   match_attendance_player_not_registered: "이 경기에 사전 등록된 명단이 없어 QR 출석할 수 없습니다.",
   match_attendance_qr_disabled: "이 경기는 QR 출석을 사용하지 않습니다.",
   match_attendance_not_checkin_time: "경기 시작 10분 전부터 QR 출석할 수 있습니다.",
+  match_late_attendance_requires_no_show: "경기 시작 시 미출석 처리된 선수만 지각 합류할 수 있습니다.",
+  match_late_attendance_requires_live_match: "진행 중인 경기의 미출석 선수만 지각 합류할 수 있습니다.",
   match_late_reserve_full: "내 사이드의 후보 3명이 모두 차서 지각 후보로 등록할 수 없습니다. 현장 운영자에게 알려 주세요.",
 });
 

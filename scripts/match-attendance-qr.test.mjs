@@ -5,7 +5,13 @@ import {
   getRecommendedSideSize,
   isAttendanceCheckinOpen,
 } from "../server/api/matches/attendance-qr.js";
+import { substituteMatchPlayer } from "../src/data/repository.js";
 import { mergeMatchesById } from "../src/hooks/useAppData.js";
+import { deriveMatchClock } from "../src/lib/matchClock.js";
+import {
+  getMatchSubstitutionAccess,
+  isMatchLateAttendancePlayer,
+} from "../src/lib/matchUtils.js";
 import { normalizeMatchRules } from "../src/lib/matchRules.js";
 import { createQrMatrix, createQrPath } from "../src/lib/qrCode.js";
 
@@ -121,6 +127,126 @@ test("출석 정리는 경기 10분 전부터 열린다", () => {
   assert.equal(isAttendanceCheckinOpen({ ...match, started_at: "2026-07-24T11:00:00Z" }, 0), true);
 });
 
+test("후보는 자기 교체만 하고 운영자만 전체 후보와 사유를 관리한다", () => {
+  const match = {
+    id: "candidate-substitution",
+    status: "agreed",
+    startedAt: "2026-07-25T10:00:00.000Z",
+    teamA: { name: "A", players: ["active-a"] },
+    teamB: { name: "B", players: ["active-b"] },
+    reservePlayers: { teamA: ["reserve-a", "reserve-a2"], teamB: [] },
+    playedPlayerIds: { teamA: ["active-a"], teamB: ["active-b"] },
+    refereeId: "referee",
+    rules: { lateAttendancePlayerIds: ["reserve-a"] },
+  };
+  const selfAccess = getMatchSubstitutionAccess(match, "reserve-a2", "teamA");
+  assert.equal(selfAccess.canManage, false);
+  assert.deepEqual(selfAccess.allowedReservePlayerIds, ["reserve-a2"]);
+  const refereeAccess = getMatchSubstitutionAccess(match, "referee", "teamA", { canOperate: true });
+  assert.equal(refereeAccess.canManage, true);
+  assert.deepEqual(refereeAccess.allowedReservePlayerIds, ["reserve-a", "reserve-a2"]);
+  assert.equal(isMatchLateAttendancePlayer(match, "reserve-a"), true);
+  assert.equal(isMatchLateAttendancePlayer(match, "reserve-a2"), false);
+
+  const state = {
+    currentUserId: "reserve-a2",
+    matches: [match],
+    users: [
+      { id: "active-a", name: "출전 A" },
+      { id: "active-b", name: "출전 B" },
+      { id: "reserve-a", name: "후보 A1" },
+      { id: "reserve-a2", name: "후보 A2" },
+      { id: "referee", name: "심판", trustScore: 100, refereeGrade: "official" },
+    ],
+    notifications: [],
+  };
+  const selfSubstituted = substituteMatchPlayer(
+    state,
+    match.id,
+    "teamA",
+    "active-a",
+    "reserve-a2",
+    "self",
+  );
+  assert.deepEqual(selfSubstituted.matches[0].teamA.players, ["reserve-a2"]);
+  assert.deepEqual(selfSubstituted.matches[0].reservePlayers.teamA, ["reserve-a", "active-a"]);
+
+  const otherCandidateBlocked = substituteMatchPlayer(
+    state,
+    match.id,
+    "teamA",
+    "active-a",
+    "reserve-a",
+    "self",
+  );
+  assert.equal(otherCandidateBlocked, state);
+
+  const invalidReasonBlocked = substituteMatchPlayer(
+    state,
+    match.id,
+    "teamA",
+    "active-a",
+    "reserve-a2",
+    "unknown",
+  );
+  assert.equal(invalidReasonBlocked, state);
+
+  const refereeSubstituted = substituteMatchPlayer(
+    { ...state, currentUserId: "referee" },
+    match.id,
+    "teamA",
+    "active-a",
+    "reserve-a",
+    "injury",
+  );
+  assert.deepEqual(refereeSubstituted.matches[0].teamA.players, ["reserve-a"]);
+});
+
+test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", async () => {
+  const runningClock = {
+    status: "running",
+    serverNow: "2026-07-25T10:00:00.000Z",
+    lastResumedAt: "2026-07-25T10:00:00.000Z",
+    clientReceivedAtMs: Date.parse("2026-07-25T10:00:00.000Z"),
+    periodRemainingMs: 60_000,
+    shotClockSeconds: 30,
+    shotRemainingMs: 30_000,
+    activeElapsedMs: 0,
+  };
+  const afterFiveSeconds = deriveMatchClock(
+    runningClock,
+    Date.parse("2026-07-25T10:00:05.000Z"),
+  );
+  assert.equal(afterFiveSeconds.periodRemainingMs, 55_000);
+  assert.equal(afterFiveSeconds.shotRemainingMs, 25_000);
+  const afterExpiry = deriveMatchClock(
+    runningClock,
+    Date.parse("2026-07-25T10:00:35.000Z"),
+  );
+  assert.equal(afterExpiry.shotRemainingMs, 0);
+
+  const panelSource = await readSource("src/components/match/MatchClockPanel.jsx");
+  const clockApiSource = await readSource("server/api/matches/clock.js");
+  const authoritativeStateSource = await readSource("server/api/_authoritativeState.js");
+  const recruitingSource = await readSource("src/pages/Recruiting.jsx");
+  const matchRoomSource = await readSource("src/pages/MatchRoom.jsx");
+  const disputeQueueSource = await readSource("src/components/match/MatchDisputeQueue.jsx");
+  assert.match(panelSource, /window\.setInterval\(load, 3000\)/u);
+  assert.match(panelSource, /점수 3초 자동 갱신/u);
+  assert.match(panelSource, /0초 유지 · 다음 공격권/u);
+  assert.match(clockApiSource, /\.from\("match_results"\)[\s\S]*\.select\("score_a,score_b,submitted_at"\)/u);
+  assert.match(authoritativeStateSource, /substituteMatchPlayer\(state,[\s\S]*operation\.reason\)/u);
+  assert.match(recruitingSource, /button: "최종 승인"/u);
+  assert.match(recruitingSource, /최종 승인하기 전에 이의신청을 마지막으로 확인해 주세요/u);
+  assert.match(recruitingSource, /mine \|\| currentUserIsAdmin/u);
+  assert.match(recruitingSource, /sourceMatchPhase\?\.phase === "live"[\s\S]*sourceMatchRecordWindow\?\.beforeEnd/u);
+  assert.match(matchRoomSource, /button: "최종 승인"/u);
+  assert.match(matchRoomSource, /최종 승인하기 전에 이의신청을 마지막으로 확인해 주세요/u);
+  assert.match(matchRoomSource, /currentUserCanRefreshReview = isMatchHost \|\| currentUserIsAdmin/u);
+  assert.match(matchRoomSource, /onRefresh=\{currentUserCanRefreshReview \? refreshMatchDetail : null\}/u);
+  assert.match(disputeQueueSource, /refreshing \? "갱신 중" : "새로고침"/u);
+});
+
 test("일정 목록 카드는 이미 연 경기방의 출석 규칙과 상세 명단을 덮지 않는다", () => {
   const detailed = {
     id: "match-detail-preserved",
@@ -170,6 +296,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const sql = await readSource("supabase/migrations/20260724234800_match_qr_attendance_and_substitution.sql");
   const clockAccuracySql = await readSource("supabase/migrations/20260725001000_match_play_time_clock_accuracy.sql");
   const roomEquipmentSql = await readSource("supabase/migrations/20260725001500_room_equipment_edit.sql");
+  const candidateSubstitutionSql = await readSource("supabase/migrations/20260725018000_candidate_self_substitution_and_late_guard.sql");
   assert.match(sql, /interval '10 minutes'/u);
   assert.match(sql, /candidate_size <= current_side_size/u);
   assert.match(sql, /'attendanceStatus', 'late'/u);
@@ -187,4 +314,12 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(roomEquipmentSql, /'ballProvider', ball_provider/u);
   assert.match(roomEquipmentSql, /when p_mode = '1v1' then false/u);
   assert.match(roomEquipmentSql, /'vestsProvided', vests_provided/u);
+  assert.match(candidateSubstitutionSql, /old\.status not in \('no_show', 'late'\)/u);
+  assert.match(candidateSubstitutionSql, /old\.status = 'no_show'[\s\S]*match\.started_at is not null[\s\S]*match\.ended_at is null/u);
+  assert.match(candidateSubstitutionSql, /old\.started_at is null and new\.started_at is not null[\s\S]*status = 'no_show'/u);
+  assert.match(candidateSubstitutionSql, /entry\.first_registered_at <= match\.started_at/u);
+  assert.match(candidateSubstitutionSql, /safe_actor_id = safe_reserve_player_id/u);
+  assert.match(candidateSubstitutionSql, /safe_reason := case when late_eligible then 'late' else 'self' end/u);
+  assert.match(candidateSubstitutionSql, /match_late_substitution_not_eligible/u);
+  assert.match(candidateSubstitutionSql, /'actorProfileId', safe_actor_id/u);
 });

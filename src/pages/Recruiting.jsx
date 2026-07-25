@@ -12,6 +12,7 @@ import {
   MapPin,
   MessageSquare,
   PlusCircle,
+  RefreshCw,
   RotateCcw,
   Send,
   Share2,
@@ -85,6 +86,7 @@ import {
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { assetUrl } from "../lib/assets.js";
+import { hasAdminAccess } from "../lib/admin.js";
 import { BRAND_NAME } from "../lib/brand.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
@@ -110,6 +112,7 @@ import {
   getMatchRecordWindow,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
+  getMatchSubstitutionAccess,
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
   getMatchSideRecordPlayerIds,
@@ -125,6 +128,7 @@ import {
   isMatchReferee,
   isMatchRecordMatch,
   isMatchRoomChatLocked,
+  isMatchLateAttendancePlayer,
   isMatchSideTeamParty,
   isPersonalRecordMatch,
   isTournamentMatchLineupEditable,
@@ -1628,22 +1632,26 @@ function MatchSubstitutionPanel({
   match,
   userById,
   teams,
-  canSubstituteSide,
+  currentUserId,
+  canManageSide,
   onSubstitute,
 }) {
   const [draftByReserveId, setDraftByReserveId] = useState({});
   const [reasonByReserveId, setReasonByReserveId] = useState({});
   if (!match) return null;
   const rows = MATCH_SIDES.flatMap((sideName) => {
-    if (!canSubstituteSide(sideName)) return [];
+    const access = getMatchSubstitutionAccess(match, currentUserId, sideName, {
+      canOperate: canManageSide(sideName),
+    });
     const activePlayerIds = match[sideName]?.players ?? [];
-    const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
+    const reservePlayerIds = access.allowedReservePlayerIds;
     if (!activePlayerIds.length || !reservePlayerIds.length) return [];
     return reservePlayerIds.map((reservePlayerId) => ({
       sideName,
       activePlayerIds,
       reservePlayerId,
       reserveUser: userById[reservePlayerId],
+      canManage: access.canManage,
     }));
   });
   if (!rows.length) return null;
@@ -1652,11 +1660,12 @@ function MatchSubstitutionPanel({
     <div className="arena-record-roster-panel">
       <header>
         <strong>선수 교체</strong>
-        <span>후보를 출전으로 올리고 기존 출전 선수는 후보로 내립니다.</span>
+        <span>후보는 본인 교체를 누르고, 운영자·기록자는 현장 사유를 지정합니다.</span>
       </header>
       <div className="arena-record-roster-list">
-        {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser }) => {
+        {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser, canManage }) => {
           const activePlayerId = draftByReserveId[reservePlayerId] ?? activePlayerIds[0] ?? "";
+          const lateEligible = isMatchLateAttendancePlayer(match, reservePlayerId);
           return (
             <div key={`${sideName}:${reservePlayerId}`} className="arena-record-roster-row selected">
               <PlayerHoverCard user={reserveUser} teams={teams} as="span">
@@ -1674,16 +1683,18 @@ function MatchSubstitutionPanel({
                   <option value={playerId} key={playerId}>{userById[playerId]?.name ?? playerId}</option>
                 ))}
               </select>
-              <select
-                aria-label={`${reserveUser?.name ?? "후보"} 교체 사유`}
-                value={reasonByReserveId[reservePlayerId] ?? "operator"}
-                onChange={(event) => setReasonByReserveId((current) => ({ ...current, [reservePlayerId]: event.target.value }))}
-              >
-                <option value="operator">운영자 변경</option>
-                <option value="late">지각 합류</option>
-                <option value="injury">부상</option>
-                <option value="ejection">퇴장</option>
-              </select>
+              {canManage ? (
+                <select
+                  aria-label={`${reserveUser?.name ?? "후보"} 교체 사유`}
+                  value={reasonByReserveId[reservePlayerId] ?? "operator"}
+                  onChange={(event) => setReasonByReserveId((current) => ({ ...current, [reservePlayerId]: event.target.value }))}
+                >
+                  <option value="operator">운영자 변경</option>
+                  {lateEligible ? <option value="late">지각 합류</option> : null}
+                  <option value="injury">부상</option>
+                  <option value="ejection">퇴장</option>
+                </select>
+              ) : <em>본인 현장 교체</em>}
               <Button
                 type="button"
                 size="sm"
@@ -1693,7 +1704,7 @@ function MatchSubstitutionPanel({
                   sideName,
                   activePlayerId,
                   reservePlayerId,
-                  reasonByReserveId[reservePlayerId] ?? "operator",
+                  canManage ? reasonByReserveId[reservePlayerId] ?? "operator" : "self",
                 )}
               >
                 교체
@@ -2545,16 +2556,13 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   }
   if (effectiveStatus === "approval") {
     const approved = (match.approvals?.[sideName] ?? []).includes(userId);
-    const recordRoom = isMatchRecordMatch(match);
     return approved
-      ? { label: recordRoom ? "최종 승인" : "결과 승인", detail: "다른 참가자 승인만 남았습니다." }
+      ? { label: "최종 승인", detail: "다른 참가자 승인만 남았습니다." }
       : {
-          label: recordRoom ? "최종 승인" : "결과 승인",
-          detail: recordRoom
-            ? "내 참가 사실과 점수·기록이 맞으면 최종 승인합니다."
-            : "기록과 득점 합계가 맞으면 승인합니다.",
+          label: "최종 승인",
+          detail: "이의신청을 마지막으로 확인하고 점수·기록이 맞으면 최종 승인합니다.",
           action: "approve",
-          button: recordRoom ? "최종 승인" : "승인",
+          button: "최종 승인",
         };
   }
   const phase = getMatchRoomPhase(match);
@@ -2810,14 +2818,29 @@ function SourceMatchDisputeEditor({
   );
 }
 
-function SourceMatchDisputeControls({ match, userById, canResolve, onResolve, onVoid }) {
+function SourceMatchDisputeControls({
+  match,
+  userById,
+  canResolve,
+  onResolve,
+  onVoid,
+  onRefresh,
+  refreshing = false,
+}) {
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   const [voidPending, setVoidPending] = useState(false);
   if (!match || match.status !== "disputed") return null;
 
   return (
     <div className="arena-dispute-controls">
-      <MatchDisputeQueue match={match} userById={userById} canResolve={canResolve} onResolve={onResolve} />
+      <MatchDisputeQueue
+        match={match}
+        userById={userById}
+        canResolve={canResolve}
+        onResolve={onResolve}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+      />
       {canResolve ? (
         <Button type="button" variant="secondary" className="danger-button" onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button>
       ) : null}
@@ -2889,6 +2912,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     [app.state.users, sourceMatch?.anonymousPlayers],
   );
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
+  const currentUserIsAdmin = Number(app.adminContext?.level ?? 0) >= 30
+    || hasAdminAccess(app.currentUser, app.state.settings);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtById = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.id, court])), [registeredCourts]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
@@ -2921,8 +2946,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [joiningPostId, setJoiningPostId] = useState("");
   const [roomShareStatus, setRoomShareStatus] = useState("");
   const [soloRecordDeleteTarget, setSoloRecordDeleteTarget] = useState(null);
+  const [sourceMatchReviewRefreshing, setSourceMatchReviewRefreshing] = useState(false);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [sheetDragSettling, setSheetDragSettling] = useState(false);
+  const refreshSourceMatchReview = async () => {
+    if (!sourceMatch?.id || sourceMatchReviewRefreshing) return;
+    setSourceMatchReviewRefreshing(true);
+    try {
+      await app.actions.loadMatchDetail?.(sourceMatch.id);
+    } finally {
+      setSourceMatchReviewRefreshing(false);
+    }
+  };
   const roomPostId = selectedPost?.id ?? "";
   const roomPostIsSynthetic = isSyntheticMatchRoomId(roomPostId);
   const roomDetailRequestKey = `${roomPostId}:${app.currentUser.id}`;
@@ -3996,7 +4031,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
         const sourceOpenDisputes = sourceMatch ? getOpenMatchDisputes(sourceMatch) : [];
         const sourceHasOwnOpenDispute = sourceOpenDisputes.some((dispute) => dispute.by === app.currentUser.id);
-        const canSubstituteSourceMatchSide = (sideName) => Boolean(
+        const canManageSourceMatchSubstitutionSide = (sideName) => Boolean(
           matchRoom &&
           sourceMatch?.status === "agreed" &&
           sourceMatchPhase?.phase === "live" &&
@@ -4008,6 +4043,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           sourceMatch?.result &&
           sourceMatchRecordWindow?.disputeOpen &&
           (["approval", "disputed"].includes(sourceMatch.status) || (sourceMatch.status === "agreed" && sourceMatch.endedAt)),
+        );
+        const canRefreshSourceMatchReview = Boolean(
+          matchRoom
+          && sourceMatch
+          && (mine || currentUserIsAdmin)
+          && (sourceMatchApprovalOpen || sourceMatch.status === "disputed")
         );
         const canRequestSourceMatchPointDispute = Boolean(
           matchRoom &&
@@ -4053,6 +4094,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   canResolve={canResolveSourceMatchDispute}
                   onResolve={(disputeId, decision) => app.actions.resolveMatchDispute(sourceMatch.id, disputeId, decision)}
                   onVoid={(reason) => app.actions.voidMatch(sourceMatch.id, reason)}
+                  onRefresh={canRefreshSourceMatchReview ? refreshSourceMatchReview : null}
+                  refreshing={sourceMatchReviewRefreshing}
                 />
               ) : null}
               {canShowSourceMatchRecordEditor ? (
@@ -4069,12 +4112,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           );
         };
         const renderMatchSubstitutionPanel = () => (
-          !sourceRoomReadOnly && matchRoom ? (
+          !sourceRoomReadOnly
+          && matchRoom
+          && sourceMatch?.status === "agreed"
+          && sourceMatchPhase?.phase === "live"
+          && !sourceMatch?.endedAt
+          && sourceMatchRecordWindow?.beforeEnd ? (
             <MatchSubstitutionPanel
               match={sourceMatch}
               userById={userById}
               teams={app.state.teams}
-              canSubstituteSide={canSubstituteSourceMatchSide}
+              currentUserId={app.currentUser.id}
+              canManageSide={canManageSourceMatchSubstitutionSide}
               onSubstitute={(sideName, activePlayerId, reservePlayerId, reason) => app.actions.substituteMatchPlayer?.(
                 sourceMatch.id,
                 sideName,
@@ -5201,6 +5250,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
                     ) : null}
+                    {sourceMatchApprovalOpen && !sourceMatchAction.disputed && canRefreshSourceMatchReview ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={sourceMatchReviewRefreshing}
+                        onClick={() => void refreshSourceMatchReview()}
+                      >
+                        <RefreshCw size={15} />
+                        {sourceMatchReviewRefreshing ? "갱신 중" : "결과·이의 새로고침"}
+                      </Button>
+                    ) : null}
                     {sourceMatchApprovalOpen ? (
                       <form className="arena-dispute-editor" onSubmit={submitSourceDispute}>
                         <div className="arena-dispute-score-row">
@@ -5251,6 +5312,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         canResolve={canResolveSourceMatchDispute}
                         onResolve={(disputeId, decision) => app.actions.resolveMatchDispute(sourceMatch.id, disputeId, decision)}
                         onVoid={(reason) => app.actions.voidMatch(sourceMatch.id, reason)}
+                        onRefresh={canRefreshSourceMatchReview ? refreshSourceMatchReview : null}
+                        refreshing={sourceMatchReviewRefreshing}
                       />
                     ) : null}
                     {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (
@@ -5268,7 +5331,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         type="button"
                         onClick={() => {
                           if (sourceMatchAction.action === "agree") app.actions.agreeMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id);
-                          if (sourceMatchAction.action === "approve") app.actions.approveMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id);
+                          if (
+                            sourceMatchAction.action === "approve"
+                            && window.confirm("최종 승인하기 전에 이의신청을 마지막으로 확인해 주세요. 점수와 기록이 맞습니까?")
+                          ) {
+                            app.actions.approveMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id);
+                          }
                         }}
                       >
                         {sourceMatchAction.button}

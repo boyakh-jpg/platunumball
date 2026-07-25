@@ -3574,7 +3574,7 @@ export function useAppData(authUser = null, appLocation = null) {
         applyMatchMutation(matchId, (prev) => handoffMatchRecorder({ ...prev, currentUserId }, matchId, sideName, nextRecorderId), { action: "handoffMatchRecorder", sideName, nextRecorderId });
       },
       substituteMatchPlayer: (matchId, sideName, activePlayerId, reservePlayerId, reason = "operator") => {
-        return applyMatchMutation(matchId, (prev) => substituteMatchPlayer({ ...prev, currentUserId }, matchId, sideName, activePlayerId, reservePlayerId), { action: "substituteMatchPlayer", sideName, activePlayerId, reservePlayerId, reason });
+        return applyMatchMutation(matchId, (prev) => substituteMatchPlayer({ ...prev, currentUserId }, matchId, sideName, activePlayerId, reservePlayerId, reason), { action: "substituteMatchPlayer", sideName, activePlayerId, reservePlayerId, reason });
       },
       approveMatch: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => approveMatch({ ...prev, currentUserId }, matchId, sideName, playerId), { action: "approveMatch", sideName, playerId }),
       checkInMatchPlayer: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => checkInMatchPlayer({ ...prev, currentUserId }, matchId, sideName, playerId), { action: "checkInMatchPlayer", sideName, playerId }),
