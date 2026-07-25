@@ -209,6 +209,7 @@ export function MatchCostPolicyFields({ draft, onChange }) {
   const policy = getMatchCreationPolicyPayload(draft);
   const paidVenue = policy.venuePaymentType === "paid_reserved" || policy.venuePaymentType === "paid_not_reserved";
   const freeVenue = policy.venuePaymentType === "free_public" || policy.venuePaymentType === "first_come_public";
+  const getMoneyInputValue = (fieldName) => draft[fieldName] ?? policy[fieldName];
   return (
     <div className="match-cost-policy-fields">
       <div className="form-grid two">
@@ -233,11 +234,11 @@ export function MatchCostPolicyFields({ draft, onChange }) {
         </label>
       </div>
       <div className="match-cost-components-grid">
-        <label>대관료<input type="number" min="0" step="100" value={policy.venueFee} disabled={freeVenue} onChange={(event) => onChange({ venueFee: event.target.value, courtFee: event.target.value })} /></label>
-        <label>심판비<input type="number" min="0" step="100" value={policy.refereeFee} onChange={(event) => onChange({ refereeFee: event.target.value })} /></label>
-        <label>기록비<input type="number" min="0" step="100" value={policy.recordingFee} onChange={(event) => onChange({ recordingFee: event.target.value })} /></label>
-        <label>장비비<input type="number" min="0" step="100" value={policy.equipmentFee} onChange={(event) => onChange({ equipmentFee: event.target.value })} /></label>
-        <label>기타비<input type="number" min="0" step="100" value={policy.otherFee} onChange={(event) => onChange({ otherFee: event.target.value })} /></label>
+        <label>대관료<input type="number" min="0" step="100" value={freeVenue ? policy.venueFee : getMoneyInputValue("venueFee")} disabled={freeVenue} onChange={(event) => onChange({ venueFee: event.target.value, courtFee: event.target.value })} /></label>
+        <label>심판비<input type="number" min="0" step="100" value={getMoneyInputValue("refereeFee")} onChange={(event) => onChange({ refereeFee: event.target.value })} /></label>
+        <label>기록비<input type="number" min="0" step="100" value={getMoneyInputValue("recordingFee")} onChange={(event) => onChange({ recordingFee: event.target.value })} /></label>
+        <label>장비비<input type="number" min="0" step="100" value={getMoneyInputValue("equipmentFee")} onChange={(event) => onChange({ equipmentFee: event.target.value })} /></label>
+        <label>기타비<input type="number" min="0" step="100" value={getMoneyInputValue("otherFee")} onChange={(event) => onChange({ otherFee: event.target.value })} /></label>
       </div>
       <div className="form-grid two">
         <label>

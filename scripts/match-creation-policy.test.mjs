@@ -570,6 +570,16 @@ test("paid venue requires structured cost", () => {
   assert.equal(getMatchCreationValidation({ ...draft, venueFee: 10000 }).errors.length, 0);
 });
 
+test("match cost inputs keep an empty editing value instead of restoring normalized zero", () => {
+  const wizardSource = fs.readFileSync(path.join(root, "src/components/match/MatchCreationWizard.jsx"), "utf8");
+  assert.match(wizardSource, /const getMoneyInputValue = \(fieldName\) => draft\[fieldName\] \?\? policy\[fieldName\]/);
+  for (const fieldName of ["refereeFee", "recordingFee", "equipmentFee", "otherFee"]) {
+    assert.match(wizardSource, new RegExp(`value=\\{getMoneyInputValue\\("${fieldName}"\\)\\}`));
+  }
+  assert.match(wizardSource, /value=\{freeVenue \? policy\.venueFee : getMoneyInputValue\("venueFee"\)\}/);
+  assert.doesNotMatch(wizardSource, /value=\{policy\.(?:venueFee|refereeFee|recordingFee|equipmentFee|otherFee)\}\s+onChange/);
+});
+
 test("free venue ignores stale venue fee while keeping other costs", () => {
   const policy = getMatchCreationPolicyPayload({
     mode: "3v3",
