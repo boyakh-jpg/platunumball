@@ -283,6 +283,7 @@ export default function PracticeMatch({ app }) {
     timeLimit: 3,
     courtId: defaultCourt?.id ?? "",
     court: defaultCourt?.name ?? "연습 코트",
+    meetingPoint: "연습 코트 입구",
   }), [defaultCourt?.id, defaultCourt?.name]);
 
   return (
