@@ -2511,7 +2511,6 @@ html[data-theme="light"] .team-search-popover button.selected {
 
   .button {
     max-width: 100%;
-    white-space: normal;
   }
 
   .landing-actions .button {

@@ -71,12 +71,14 @@
 
 .ui-badge {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   width: max-content;
   padding: var(--ui-badge-padding);
   color: var(--ui-badge-color);
   font-size: 0.75rem;
   font-weight: 800;
+  white-space: nowrap;
   background: var(--ui-badge-bg);
   border: 1px solid var(--ui-badge-border);
   border-radius: var(--ui-badge-radius);
@@ -172,7 +174,7 @@
 }
 
 .ui-action-row > * {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
 }
 
 .ui-modal-shell {
@@ -248,11 +250,4 @@
 
 .ui-qr-expand-dialog small {
   color: var(--rb-muted);
-}
-
-@media (width <= 520px) {
-  .ui-action-row > * {
-    flex: 1 1 140px;
-    min-width: 0;
-  }
 }

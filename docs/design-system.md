@@ -35,7 +35,7 @@
 ## 2026-07-24 공통 surface·CTA·목록 카드 기준
 
 1. 홈·일정·매칭·플레이·팀·프로필의 일반 content surface는 `Card`/`.ui-card`를 기준으로 한다. 배경, 테두리, radius, shadow, padding은 `--ui-card-*`와 `--ui-card-padding`에서만 정하고 page CSS가 같은 외형을 다시 선언하지 않는다. 이미지가 핵심인 hero·랭크 spotlight만 예외다.
-2. 일반 버튼은 `Button`/`.ui-button`의 `md 42px`, `sm 34px` 높이를 사용한다. 가로 전체 확장은 `.ui-button-block`만 추가하며 홈·일정·매칭별 CTA class로 높이·색상·radius를 덮지 않는다.
+2. 일반 버튼은 `Button`/`.ui-button`의 `md 42px`, `sm 34px` 높이를 사용한다. 버튼과 상태 badge의 라벨은 기본 한 줄이며 모바일에서도 글자 단위로 접지 않는다. 공용 `.ui-action-row`의 자식은 내용 너비를 유지하고 실제 가로 공간이 부족할 때만 다음 줄로 이동한다. 가로 전체 확장은 `.ui-button-block`만 추가하며 홈·일정·매칭별 CTA class로 높이·색상·radius를 덮지 않는다.
 3. 일정·매칭·플레이 목록은 `MatchListCard` 하나를 사용한다. 외부 surface는 `Card`, 내부 요약은 `.ui-panel`, action은 `Button`이 담당하고 `match-list-card.css`에는 grid·gap·줄바꿈·상태 bar 같은 배치만 둔다.
 4. `om-match-card`, `om-match-create`, `arena-hero-cta`, `home-search-create-button`, `wide-button`은 폐기한다. 해당 selector를 다시 추가하거나 feature CSS에서 공용 surface·CTA 외형을 덮으면 빌드의 `design-system-guards`가 실패해야 한다.
 5. 공통 디자인 변경은 primitive를 먼저 수정해 전 화면에 반영한다. 화면별 예외가 필요하면 정보 구조나 배치 차이인지 먼저 확인하고, 단순 외형 차이면 예외 selector를 만들지 않는다.
@@ -1939,7 +1939,8 @@ UI 수정 전:
 ## 2026-07-25 알파 온보딩·사용 설명
 
 1. 홈의 `처음 사용하시나요?` 카드는 검색과 `매칭 만들기`·`경기 기록하기` 2열 CTA를 대체하거나 분리하지 않는다. 랭크 hero 다음의 compact 진입 카드로 표시하고 기존 좌·우 rail의 desktop/mobile 순서를 유지한다.
-2. 사용 설명 페이지의 첫 정보 구조는 `경기 → 기록 → 티어`다. 기록 웹이라는 서비스 정체성과 `기록 → 확인 → 티어` 4단계 흐름을 기능 목록보다 먼저 보여준다.
-3. `매칭`, `BOXTIER 경기시계`, `심판·기록원`, `티어·MMR`은 같은 높이의 기능 카드로 설명하고 `핵심`, `선택`, `확정 기록`, `기기별 베타` 상태를 문구로 구분한다. 준비 중 기능을 현재 지원 기능처럼 표시하지 않는다.
-4. 온보딩 화면은 공용 `Card`, `Badge`, `ui-panel`, button primitive와 기존 dark/light 토큰을 사용한다. 본문·설명은 `--font-body`, 큰 hero와 단계 숫자만 `--sports-display-font`를 사용한다.
-5. 데스크톱과 모바일은 같은 내용 순서를 유지한다. `320px`, `375px`, `768px`, `1024px`, `1440px`에서 가로 overflow 없이 action과 기능 grid를 접고, 홈의 기존 검색 CTA 2열 규칙을 바꾸지 않는다.
+2. 사용 설명은 `/app/guide?chapter=start|matching|live|records|tier`의 5개 챕터를 사용한다. 한 번에 활성 챕터 하나만 표시하고 상단 목차와 이전·다음으로 이동한다. 잘못된 chapter 값은 시작 챕터로 안전하게 표시한다.
+3. 각 챕터는 `정체성·매칭·경기 진행·기록 확정·티어` 순서를 유지한다. 현재 화면을 직접 캡처한 대표 이미지 한 장, 3~4개의 짧은 단계, 핵심 주의 한 묶음만 표시해 장문 기능 목록을 만들지 않는다.
+4. 캡처 이미지는 설명 대상 UI와 같은 챕터에 두고 구체적인 대체 텍스트와 설명문을 제공한다. 준비 중 기능, 자동화되지 않은 운영, 기기별 베타를 현재 보장 기능처럼 표시하지 않는다.
+5. 온보딩 화면은 공용 `Card`, `Badge`, `ui-panel`, `.ui-action-row`, button primitive와 기존 dark/light 토큰을 사용한다. 본문·설명은 `--font-body`, 단계 숫자만 `--sports-display-font`를 사용한다.
+6. 데스크톱과 모바일은 같은 내용 순서를 유지한다. `320px`, `375px`, `768px`, `1024px`, `1440px`에서 가로 overflow가 없어야 하며 액션은 임의로 세로 고정하지 않고 실제 공간이 부족할 때만 공용 규칙으로 접는다. 홈의 기존 검색 CTA 2열 규칙은 바꾸지 않는다.

@@ -49,6 +49,13 @@ test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
   assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
 });
 
+test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
+  assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?white-space:\s*nowrap;/);
+  assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
+  assert.match(primitiveStyles, /\.ui-action-row > \*\s*\{\s*flex:\s*0 0 auto;\s*\}/);
+  assert.doesNotMatch(hoverSurfaceStyles, /(?:^|\n)\s*\.button\s*\{[^{}]*white-space:\s*normal;/);
+});
+
 test("목록 카드는 Card, Button, ui-panel primitive를 사용한다", () => {
   assert.match(componentSource, /import Button from "\.\.\/common\/Button\.jsx";/);
   assert.match(componentSource, /import Card from "\.\.\/common\/Card\.jsx";/);
@@ -122,12 +129,33 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(appSource, /path="\/app\/guide" element=\{<GettingStarted \/>\}/);
   assert.equal(count(pageSources.home, 'to="/app/guide"'), 1);
   assert.match(pageSources.home, /처음 사용하시나요\?/);
+  assert.match(pageSources.home, /5단계 안내/);
+  assert.match(gettingStartedSource, /useSearchParams/);
+  assert.match(gettingStartedSource, /aria-label="사용 설명 목차"/);
+  assert.match(gettingStartedSource, /aria-current=\{item\.id === chapter\.id \? "page" : undefined\}/);
+  assert.match(gettingStartedSource, /chapterTitleRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(gettingStartedSource, /ref=\{chapterTitleRef\} tabIndex=\{-1\}/);
+  for (const chapterId of ["start", "matching", "live", "records", "tier"]) {
+    assert.match(gettingStartedSource, new RegExp(`id: "${chapterId}"`));
+  }
+  for (const image of [
+    "start-home.jpg",
+    "matching-create.jpg",
+    "live-clock.jpg",
+    "records-create.jpg",
+    "tier-profile.jpg",
+  ]) {
+    assert.match(gettingStartedSource, new RegExp(`/assets/guide/${image.replace(".", "\\.")}`));
+  }
+  assert.match(gettingStartedSource, /<img[\s\S]*?alt=\{chapter\.imageAlt\}[\s\S]*?loading="eager"[\s\S]*?decoding="async"/);
+  assert.match(gettingStartedSource, /<figcaption>\{chapter\.caption\}<\/figcaption>/);
   assert.match(gettingStartedSource, /농구 기록 웹입니다/);
   assert.match(gettingStartedSource, /필수 웹 기능은 평생 무료/);
   assert.match(gettingStartedSource, /경기시계/);
   assert.match(gettingStartedSource, /심판·기록원/);
-  assert.match(gettingStartedSource, /티어 관리/);
+  assert.match(gettingStartedSource, /티어는 확정 기록에서 자동 계산됩니다/);
   assert.match(gettingStartedSource, /기기별 베타/);
+  assert.match(gettingStartedSource, /className="ui-action-row"/);
   assert.match(termsSource, /필수 웹 기능은 평생 무료입니다/);
   assert.match(gettingStartedStyles, /@media \(max-width: 720px\)/);
   assert.match(gettingStartedStyles, /@media \(max-width: 480px\)/);

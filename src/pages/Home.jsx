@@ -671,7 +671,7 @@ export default function Home({ app }) {
             <BookOpenCheck size={24} aria-hidden="true" />
           </span>
           <span className="home-guide-card__copy">
-            <small>FIRST STEP · 2분 가이드</small>
+            <small>FIRST STEP · 5단계 안내</small>
             <strong>처음 사용하시나요?</strong>
             <span>경기 기록부터 티어 반영까지 한 번에 확인하세요.</span>
           </span>
