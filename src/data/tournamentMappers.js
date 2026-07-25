@@ -2,9 +2,14 @@ import { shuffleItems } from "./rowUtils.js";
 
 export function normalizeTournament(tournament = {}) {
   const teamIds = tournament.teamIds ?? [];
+  const refereeIds = tournament.refereeIds ?? [];
   const teamStatuses = {
     ...Object.fromEntries(teamIds.map((teamId) => [teamId, "invited"])),
     ...(tournament.teamStatuses ?? {}),
+  };
+  const refereeStatuses = {
+    ...Object.fromEntries(refereeIds.map((refereeId) => [refereeId, "invited"])),
+    ...(tournament.refereeStatuses ?? {}),
   };
 
   return {
@@ -13,6 +18,10 @@ export function normalizeTournament(tournament = {}) {
     teamIds,
     teamStatuses,
     teamApprovals: tournament.teamApprovals ?? {},
+    refereeIds,
+    refereeStatuses,
+    refereeApprovals: tournament.refereeApprovals ?? {},
+    sanctionStatus: tournament.sanctionStatus ?? "pending",
     matchIds: tournament.matchIds ?? [],
     bracket: tournament.bracket ?? null,
   };
@@ -164,6 +173,13 @@ export function fromRemoteTournament(tournament = {}, { tournamentTeamsByTournam
     matchIds: tournament.match_ids ?? [],
     teamStatuses: { ...rowTeamStatuses, ...(tournament.team_statuses ?? {}) },
     teamApprovals: { ...rowTeamApprovals, ...(tournament.team_approvals ?? {}) },
+    refereeIds: tournament.referee_ids ?? [],
+    refereeStatuses: tournament.referee_statuses ?? {},
+    refereeApprovals: tournament.referee_approvals ?? {},
+    sanctionStatus: tournament.sanction_status ?? "pending",
+    sanctionReviewedBy: tournament.sanction_reviewed_by ?? null,
+    sanctionReviewedAt: tournament.sanction_reviewed_at ?? null,
+    sanctionReviewNote: tournament.sanction_review_note ?? "",
     bracket: tournament.bracket ?? null,
     teamIds: teamRows.map((team) => team.team_id),
   };

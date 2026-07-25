@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ClipboardList, Globe2, Lock, Map as MapIcon, MapPin, Star, Trophy, X } from "lucide-react";
+import { ClipboardList, Globe2, Lock, Map as MapIcon, MapPin, ShieldCheck, Star, Trophy, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -48,6 +48,10 @@ import { AGE_GROUPS, REGION_TREE, getAgeGroupForUser, getRepresentativeTeam, inf
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange } from "../lib/recruiting.js";
 import { postServerAction } from "../lib/serverActions.js";
+import {
+  getRequiredTournamentRefereeCount,
+  getTournamentRefereePoolValidation,
+} from "../lib/tournamentGovernance.js";
 
 const mmrLimitOptions = [
   { id: "off", label: "제한 없음" },
@@ -418,6 +422,7 @@ export default function CreateMatch({ app }) {
   const [courtMapOpen, setCourtMapOpen] = useState(false);
   const [courtDetailCourtId, setCourtDetailCourtId] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
+  const [selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles] = useState([]);
   const [soloTeamAUserQuery, setSoloTeamAUserQuery] = useState("");
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(currentRegion || "전체");
@@ -479,6 +484,7 @@ export default function CreateMatch({ app }) {
     soloStats: makeEmptySoloStats(),
     tournamentFormat: "league",
     tournamentTeamIds: [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean),
+    tournamentRefereeIds: [],
     tournamentEndDate: nextWeek,
     tournamentSchedulePolicy: "weekly",
     tournamentScheduleNote: "초대팀 확정 후 경기별 일정을 배정합니다.",
@@ -815,20 +821,35 @@ export default function CreateMatch({ app }) {
       .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0)),
     [activePlayerIds, app.state.settings?.refereeAppointments, app.state.users],
   );
+  const tournamentRefereeCandidates = useMemo(
+    () => [...new Map([...app.state.users, ...selectedTournamentRefereeProfiles].map((user) => [user.id, user])).values()]
+      .filter((user) => isEligibleReferee(
+        user,
+        REFEREE_TRUST_MIN,
+        app.state.settings?.refereeAppointments,
+        draft.tournamentEndDate,
+      ))
+      .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0)),
+    [app.state.settings?.refereeAppointments, app.state.users, draft.tournamentEndDate, selectedTournamentRefereeProfiles],
+  );
+  const activeRefereeCandidates = isTournamentRoom ? tournamentRefereeCandidates : refereeCandidates;
   const selectedReferee = refereeCandidates.find((user) => user.id === draft.refereeId) ?? null;
+  const selectedTournamentReferees = (draft.tournamentRefereeIds ?? [])
+    .map((refereeId) => tournamentRefereeCandidates.find((user) => user.id === refereeId))
+    .filter(Boolean);
   const favoriteReferees = useMemo(
     () => favoriteRefereeIds
-      .map((userId) => refereeCandidates.find((user) => user.id === userId))
+      .map((userId) => activeRefereeCandidates.find((user) => user.id === userId))
       .filter(Boolean),
-    [favoriteRefereeIds, refereeCandidates],
+    [activeRefereeCandidates, favoriteRefereeIds],
   );
   const refereeSearchResults = useMemo(() => {
     const query = refereeQuery.trim();
-    return refereeCandidates.filter((user) => (
+    return activeRefereeCandidates.filter((user) => (
       !query ||
       includesQuery(`${user.name} ${getUserHashtag(user)} ${user.position} ${user.region} 신뢰도 ${user.trustScore}`, query)
     ));
-  }, [refereeCandidates, refereeQuery]);
+  }, [activeRefereeCandidates, refereeQuery]);
   const soloRecordUserCandidates = useMemo(
     () => app.state.users
       .filter((user) => user.id !== app.currentUser.id && !user.anonymous)
@@ -924,7 +945,32 @@ export default function CreateMatch({ app }) {
       draft.mmrLimitMode === "block" &&
       tournamentMmrSpread > Number(draft.tournamentMaxMmrGap ?? DEFAULT_TOURNAMENT_MMR_GAP),
   );
-  const tournamentInvalid = !draft.title.trim() || tournamentDirectoryPending || Boolean(tournamentDirectoryError) || !representativeTournamentTeamSelected || tournamentTeams.length < 2 || tournamentMmrBlocked || ineligibleTournamentTeams.length > 0;
+  const tournamentOrganizerEligible = isEligibleReferee(
+    app.currentUser,
+    REFEREE_TRUST_MIN,
+    app.state.settings?.refereeAppointments,
+    draft.tournamentEndDate,
+  );
+  const requiredTournamentRefereeCount = getRequiredTournamentRefereeCount(tournamentTeams.length);
+  const tournamentRefereePoolValidation = getTournamentRefereePoolValidation({
+    tournament: {
+      teamIds: draft.tournamentTeamIds ?? [],
+      refereeIds: draft.tournamentRefereeIds ?? [],
+      endDate: draft.tournamentEndDate,
+    },
+    teams: tournamentTeams,
+    users: [...app.state.users, ...selectedTournamentRefereeProfiles],
+    refereeAppointments: app.state.settings?.refereeAppointments,
+  });
+  const tournamentInvalid = !draft.title.trim()
+    || tournamentDirectoryPending
+    || Boolean(tournamentDirectoryError)
+    || !representativeTournamentTeamSelected
+    || tournamentTeams.length < 2
+    || !tournamentOrganizerEligible
+    || !tournamentRefereePoolValidation.allowed
+    || tournamentMmrBlocked
+    || ineligibleTournamentTeams.length > 0;
   const publicTeamInvalidReason = !myTeams.some((team) => team.id === draft.teamAId)
     ? "내 팀을 먼저 선택해야 팀방을 만들 수 있습니다."
     : !selectedTeamAEligibility.allowed
@@ -968,6 +1014,14 @@ export default function CreateMatch({ app }) {
       ? "내 대표팀을 참가팀에 포함해야 합니다."
     : tournamentTeams.length < 2
       ? "대회는 최소 2개 팀을 선택해야 생성할 수 있습니다."
+    : !tournamentOrganizerEligible
+      ? `대회 주최자는 신뢰도 ${REFEREE_TRUST_MIN} 이상인 자격심판이어야 합니다.`
+    : tournamentRefereePoolValidation.refereeIds.length < requiredTournamentRefereeCount
+      ? `${tournamentTeams.length}팀 대회는 자격심판 ${requiredTournamentRefereeCount}명 이상을 섭외해야 합니다.`
+    : tournamentRefereePoolValidation.ineligibleRefereeId
+      ? "자격 또는 신뢰도 조건을 충족하지 못한 심판이 포함되어 있습니다."
+    : tournamentRefereePoolValidation.uncoveredPairs.length
+      ? "모든 가능한 대진에 양 팀과 무관한 중립 심판을 배정할 수 있도록 심판을 추가해 주세요."
       : tournamentMmrBlocked
         ? "대회 팀 MMR 차이가 허용값을 넘었습니다. MMR 제한을 경고만 또는 제한 없음으로 바꾸면 생성할 수 있습니다."
         : ineligibleTournamentTeams.length
@@ -1394,8 +1448,27 @@ export default function CreateMatch({ app }) {
     );
   };
   const selectReferee = (user) => {
+    if (isTournamentRoom) {
+      setSelectedTournamentRefereeProfiles((current) => (
+        current.some((referee) => referee.id === user.id) ? current : [...current, user]
+      ));
+      setDraft((current) => ({
+        ...current,
+        tournamentRefereeIds: (current.tournamentRefereeIds ?? []).includes(user.id)
+          ? current.tournamentRefereeIds
+          : [...(current.tournamentRefereeIds ?? []), user.id],
+      }));
+      setRefereeQuery("");
+      return;
+    }
     update({ refereeWanted: true, refereeId: user.id });
     setRefereeQuery(user.name ?? "");
+  };
+  const removeTournamentReferee = (refereeId) => {
+    setDraft((current) => ({
+      ...current,
+      tournamentRefereeIds: (current.tournamentRefereeIds ?? []).filter((id) => id !== refereeId),
+    }));
   };
   const clearReferee = () => {
     update({ refereeWanted: false, refereeId: "" });
@@ -1406,10 +1479,10 @@ export default function CreateMatch({ app }) {
     return (
       <div
         key={user.id}
-        className={user.id === draft.refereeId ? "search-picker-result-row search-picker-result-row-actionable selected" : "search-picker-result-row search-picker-result-row-actionable"}
+        className={(isTournamentRoom ? (draft.tournamentRefereeIds ?? []).includes(user.id) : user.id === draft.refereeId) ? "search-picker-result-row search-picker-result-row-actionable selected" : "search-picker-result-row search-picker-result-row-actionable"}
         onMouseDown={(event) => event.preventDefault()}
       >
-        <button type="button" className="search-picker-result-main" onClick={() => selectReferee(user)}>
+        <button type="button" className="search-picker-result-main" disabled={isTournamentRoom && (draft.tournamentRefereeIds ?? []).includes(user.id)} onClick={() => selectReferee(user)}>
           <strong>{user.name}</strong>
           <span>{getUserHashtag(user)} · {user.position} · {user.region}</span>
           <em>{favorite ? "즐겨찾기 · " : ""}신뢰도 {user.trustScore} · {user.refereeProfile?.grade ?? user.refereeGrade ?? "심판"}</em>
@@ -1514,6 +1587,7 @@ export default function CreateMatch({ app }) {
         sideCapacity: creationPolicyPayload.onCourtCount,
         benchCapacity: creationPolicyPayload.benchCapacity,
         teamIds: draft.tournamentTeamIds,
+        refereeIds: draft.tournamentRefereeIds,
         courtId: selectedCourt.id,
         court: selectedCourt.name,
         region: selectedCourt.region,
@@ -2498,9 +2572,43 @@ export default function CreateMatch({ app }) {
                   );
                 })}
               </div>
+              <div className="search-controls tournament-referee-search">
+                <label>
+                  필수 심판
+                  <SearchPicker
+                    value={refereeQuery}
+                    onChange={setRefereeQuery}
+                    placeholder="심판 이름, #해시태그, 지역 검색"
+                    items={refereeSearchResults}
+                    remoteSearchType="referee"
+                    remoteSearchContext={{ refereeThroughDate: draft.tournamentEndDate }}
+                    idleItems={favoriteReferees.length ? favoriteReferees : tournamentRefereeCandidates.slice(0, 8)}
+                    idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
+                    title="심판 검색 결과"
+                    emptyText="초대 가능한 심판 없음"
+                    showIdleOnFocus
+                    floating
+                    closeOnResultClick
+                    renderItem={renderRefereeSearchItem}
+                  />
+                </label>
+              </div>
+              <div className="tournament-selected-strip tournament-referee-selected-strip">
+                <span>
+                  선택 {selectedTournamentReferees.length}명 · 최소 {requiredTournamentRefereeCount}명 · 모든 대진에 중립 심판 배정 필요
+                </span>
+                <div>
+                  {selectedTournamentReferees.map((referee) => (
+                    <button key={referee.id} type="button" onClick={() => removeTournamentReferee(referee.id)}>
+                      <strong>{referee.name}</strong>
+                      <em>해제</em>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="create-public-note">
-                <Trophy size={17} />
-                <span>비공개 대회에는 조건을 충족한 팀만 초대할 수 있습니다. 팀장이 승인하면 경기와 출전 명단 구성 작업이 생성됩니다.</span>
+                <ShieldCheck size={17} />
+                <span>팀장과 필수 심판이 모두 승인한 뒤 지역관리자가 승인하면 공식 대회가 열립니다. 지역 비승인 대회도 같은 심판 조건을 충족해야 합니다.</span>
               </div>
             </>
           ) : isMatchRecordRoom ? (

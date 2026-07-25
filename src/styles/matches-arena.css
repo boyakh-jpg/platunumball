@@ -483,6 +483,10 @@
   scrollbar-width: none;
 }
 
+.tournament-summary-grid.is-governed {
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+}
+
 .tournament-summary-grid > div {
   display: grid;
   gap: 5px;
@@ -585,6 +589,134 @@
 .tournament-team-list button,
 .tournament-schedule-list button {
   cursor: pointer;
+}
+
+.tournament-referee-list,
+.tournament-match-referee-list {
+  display: grid;
+  gap: 8px;
+}
+
+.tournament-referee-list article,
+.tournament-match-referee-list form,
+.tournament-sanction-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 16, 0.66);
+}
+
+.tournament-referee-list article {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.tournament-referee-list article.accepted {
+  border-color: rgba(70, 224, 182, 0.24);
+  background: rgba(70, 224, 182, 0.07);
+}
+
+.tournament-referee-list article > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.tournament-referee-list span,
+.tournament-referee-list b,
+.tournament-governance-note,
+.tournament-sanction-panel p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.tournament-referee-actions,
+.tournament-sanction-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tournament-referee-actions button,
+.tournament-match-referee-list button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--gold);
+  color: #17130a;
+  font-size: 0.76rem;
+  font-weight: 950;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.tournament-referee-actions button.secondary {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+}
+
+.tournament-referee-actions button:disabled,
+.tournament-match-referee-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tournament-referee-invite {
+  max-width: 520px;
+}
+
+.tournament-governance-note {
+  margin: 0;
+}
+
+.tournament-sanction-panel {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 14px;
+}
+
+.tournament-sanction-panel h2,
+.tournament-sanction-panel p {
+  margin: 0;
+}
+
+.tournament-sanction-panel > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.tournament-governance-feedback {
+  grid-column: 1 / -1;
+  color: var(--gold);
+  font-size: 0.82rem;
+}
+
+.tournament-match-referee-list form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 240px) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.tournament-match-referee-list select {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  padding: 0 10px;
 }
 
 .tournament-schedule-list .tournament-match-open {
@@ -1192,6 +1324,9 @@ html[data-theme="light"] .om-tournament-card,
 html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
+html[data-theme="light"] .tournament-referee-list article,
+html[data-theme="light"] .tournament-match-referee-list form,
+html[data-theme="light"] .tournament-sanction-panel,
 html[data-theme="light"] .tournament-cup-bracket,
 html[data-theme="light"] .tournament-vertical-bracket,
 html[data-theme="light"] .vertical-bracket-title,
@@ -1207,6 +1342,12 @@ html[data-theme="light"] .tournament-empty {
 
 html[data-theme="light"] .tournament-schedule-list input {
   background: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .tournament-match-referee-list select,
+html[data-theme="light"] .tournament-referee-actions button.secondary {
+  border-color: rgba(16, 20, 28, 0.12);
+  background: rgba(16, 20, 28, 0.06);
 }
 
 @media (max-width: 1120px) {
@@ -2758,8 +2899,21 @@ html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-lis
 
   .tournament-inline-schedule,
   .tournament-schedule-list form,
-  .tournament-forfeit-actions {
+  .tournament-forfeit-actions,
+  .tournament-match-referee-list form,
+  .tournament-sanction-panel {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tournament-referee-list article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tournament-referee-actions > button,
+  .tournament-sanction-actions > button,
+  .tournament-match-referee-list button {
+    flex: 1 1 120px;
   }
 }
 

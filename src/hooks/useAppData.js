@@ -6,7 +6,9 @@ import {
   acceptRecruitingInvitation,
   acknowledgeMatchRoomRules,
   acknowledgeRecruitingRoomRules,
+  activateTournamentSanction,
   agreeMatch,
+  approveTournamentReferee,
   approveTournamentTeam,
   approveCourtRequest,
   approveMatch,
@@ -30,11 +32,13 @@ import {
   deleteSoloRecord,
   deleteTeam,
   detachRecruitingPartyPlayer,
+  declineTournamentReferee,
   declineTeamInvitation,
   declineRecruitingInvitation,
   disputeMatch,
   endMatch,
   interestRecruitingPost,
+  inviteTournamentReferee,
   inviteRecruitingReferee,
   inviteRecruitingPlayers,
   joinRecruitingSideParty,
@@ -52,6 +56,7 @@ import {
   reportMatch,
   reportPlayer,
   reportTeamEmblem,
+  rejectTournamentRegion,
   resolveMatchDispute,
   resetState,
   requestMatchRefereeAbsence,
@@ -75,6 +80,7 @@ import {
   setRecruitingPartyPlayerReserve,
   setRecruitingTeamPartyRoster,
   setRecruitingStatRecorder,
+  assignTournamentMatchReferee,
   startMatch,
   substituteMatchPlayer,
   startRefereeExamAttempt,
@@ -243,6 +249,13 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "createMatch",
   "createTournament",
   "approveTournamentTeam",
+  "approveTournamentReferee",
+  "declineTournamentReferee",
+  "inviteTournamentReferee",
+  "approveTournamentRegion",
+  "rejectTournamentRegion",
+  "startCommunityTournament",
+  "assignTournamentMatchReferee",
   "loadTournament",
   "updateTournamentMatchSchedule",
   "forfeitTournamentMatch",
@@ -3565,6 +3578,76 @@ export function useAppData(authUser = null, appLocation = null) {
             },
           }), rollbackState, "토너먼트 팀 승인", { action: "approveTournamentTeam", tournamentId, teamId });
         }
+      },
+      approveTournamentReferee: (tournamentId) => {
+        if (isSupabaseConfigured) {
+          if (!ensureRemoteReady("대회 심판 승인")) return Promise.resolve(null);
+          return syncTournamentServer(null, [], {
+            operation: { action: "approveTournamentReferee", tournamentId },
+          });
+        }
+        setState((prev) => approveTournamentReferee({ ...prev, currentUserId }, tournamentId));
+        return Promise.resolve({ ok: true, tournamentId });
+      },
+      declineTournamentReferee: (tournamentId) => {
+        if (isSupabaseConfigured) {
+          if (!ensureRemoteReady("대회 심판 거절")) return Promise.resolve(null);
+          return syncTournamentServer(null, [], {
+            operation: { action: "declineTournamentReferee", tournamentId },
+          });
+        }
+        setState((prev) => declineTournamentReferee({ ...prev, currentUserId }, tournamentId));
+        return Promise.resolve({ ok: true, tournamentId });
+      },
+      inviteTournamentReferee: (tournamentId, refereeId) => {
+        if (isSupabaseConfigured) {
+          if (!ensureRemoteReady("대회 심판 초대")) return Promise.resolve(null);
+          return syncTournamentServer(null, [], {
+            operation: { action: "inviteTournamentReferee", tournamentId, refereeId },
+          });
+        }
+        setState((prev) => inviteTournamentReferee({ ...prev, currentUserId }, tournamentId, refereeId));
+        return Promise.resolve({ ok: true, tournamentId, refereeId });
+      },
+      approveTournamentRegion: (tournamentId, note = "") => {
+        if (isSupabaseConfigured) {
+          if (!ensureRemoteReady("대회 지역 승인")) return Promise.resolve(null);
+          return syncTournamentServer(null, [], {
+            operation: { action: "approveTournamentRegion", tournamentId, note },
+          });
+        }
+        setState((prev) => activateTournamentSanction({ ...prev, currentUserId }, tournamentId, "approved", currentUserId));
+        return Promise.resolve({ ok: true, tournamentId });
+      },
+      rejectTournamentRegion: (tournamentId, note = "") => {
+        if (isSupabaseConfigured) {
+          if (!ensureRemoteReady("대회 지역 비승인")) return Promise.resolve(null);
+          return syncTournamentServer(null, [], {
+            operation: { action: "rejectTournamentRegion", tournamentId, note },
+          });
+        }
+        setState((prev) => rejectTournamentRegion({ ...prev, currentUserId }, tournamentId, note));
+        return Promise.resolve({ ok: true, tournamentId });
+      },
+      startCommunityTournament: (tournamentId) => {
+        if (isSupabaseConfigured) {
+          if (!ensureRemoteReady("지역 비승인 대회 개최")) return Promise.resolve(null);
+          return syncTournamentServer(null, [], {
+            operation: { action: "startCommunityTournament", tournamentId },
+          });
+        }
+        setState((prev) => activateTournamentSanction({ ...prev, currentUserId }, tournamentId, "community"));
+        return Promise.resolve({ ok: true, tournamentId });
+      },
+      assignTournamentMatchReferee: (tournamentId, matchId, refereeId) => {
+        if (isSupabaseConfigured) {
+          if (!ensureRemoteReady("대회 경기 심판 배정")) return Promise.resolve(null);
+          return syncTournamentServer(null, [], {
+            operation: { action: "assignTournamentMatchReferee", tournamentId, matchId, refereeId },
+          });
+        }
+        setState((prev) => assignTournamentMatchReferee({ ...prev, currentUserId }, tournamentId, matchId, refereeId));
+        return Promise.resolve({ ok: true, tournamentId, matchId, refereeId });
       },
       updateTournamentMatchSchedule: (tournamentId, matchId, schedule) => {
         return applyMatchMutation(matchId, (prev) => updateTournamentMatchSchedule({ ...prev, currentUserId }, tournamentId, matchId, schedule), { action: "updateTournamentMatchSchedule", tournamentId, schedule });

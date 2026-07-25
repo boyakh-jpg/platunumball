@@ -393,13 +393,23 @@ create table if not exists public.tournaments (
   match_ids jsonb not null default '[]'::jsonb,
   team_statuses jsonb not null default '{}'::jsonb,
   team_approvals jsonb not null default '{}'::jsonb,
+  referee_ids jsonb not null default '[]'::jsonb,
+  referee_statuses jsonb not null default '{}'::jsonb,
+  referee_approvals jsonb not null default '{}'::jsonb,
+  sanction_status text not null default 'pending',
+  sanction_reviewed_by text,
+  sanction_reviewed_at timestamptz,
+  sanction_review_note text,
   bracket jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   constraint tournaments_format_check check (format in ('league', 'tournament')),
   constraint tournaments_visibility_check check (visibility in ('private', 'public')),
   constraint tournaments_status_check check (status in ('draft', 'scheduled', 'active', 'closed', 'cancelled')),
   constraint tournaments_mmr_limit_mode_check check (mmr_limit_mode in ('off', 'warn', 'block')),
-  constraint tournaments_mmr_policy_check check (mmr_policy in ('gap_adjusted', 'standard', 'event_only'))
+  constraint tournaments_mmr_policy_check check (mmr_policy in ('gap_adjusted', 'standard', 'event_only')),
+  constraint tournaments_sanction_status_check check (
+    sanction_status in ('pending', 'regional_pending', 'regional_rejected', 'approved', 'community')
+  )
 );
 
 create table if not exists public.tournament_teams (
@@ -416,6 +426,7 @@ create table if not exists public.tournament_teams (
 
 create index if not exists tournaments_created_at_idx on public.tournaments (created_at desc);
 create index if not exists tournaments_court_id_idx on public.tournaments (court_id) where court_id is not null;
+create index if not exists tournaments_referee_ids_idx on public.tournaments using gin (referee_ids);
 create index if not exists tournament_teams_team_id_idx on public.tournament_teams (team_id);
 
 create or replace function public.rankball_normalize_dispute_minutes(p_value integer default null)

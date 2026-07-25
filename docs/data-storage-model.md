@@ -1,5 +1,20 @@
 # RankBall 데이터 저장 모델
 
+## 2026-07-25 대회 심판·지역 승인 원본
+
+| 원본 | 필드 | 역할 |
+| --- | --- | --- |
+| `tournaments` | `referee_ids` | 대회에 섭외된 심판 ID 목록 |
+| `tournaments` | `referee_statuses`, `referee_approvals` | 심판별 초대·승인·거절 상태와 승인자·시각 |
+| `tournaments` | `sanction_status` | `pending`, `regional_pending`, `regional_rejected`, `approved`, `community` 결재 상태 |
+| `tournaments` | `sanction_reviewed_by`, `sanction_reviewed_at`, `sanction_review_note` | 지역관리자 결재 원본 |
+| `tournaments.rules` | `governanceVersion`, `sanctionFactor`, `ratingScale` | 신규 권위 흐름 버전과 공식 1·지역 비승인 0.8 MMR 계수 |
+| `matches` | `referee_id` | 해당 대진에 실제 배정된 승인 중립 심판 |
+
+- 심판 최소 인원, 자격·신뢰도, 모든 가능한 대진의 중립 커버리지, 팀장·심판 승인 완료 여부는 service-role 전용 tournament RPC가 원본이다.
+- 대진 생성 함수는 승인 상태를 확인한 뒤 승인 중립 심판을 자동 배정한다. 일정 저장은 같은 심판의 같은 날짜·시간 중복을 거부하고 경기 시작 함수는 승인 상태·심판 자격·중립성을 다시 검사한다.
+- 기존 대회 row는 필드 기본값을 받지만 `rules.governanceVersion=2`가 없으면 신규 시작 차단을 소급 적용하지 않는다.
+
 ## 2026-07-20 프로필 아이콘·팀 엠블럼 확장
 
 | 원본 | 필드 | 역할 |

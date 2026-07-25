@@ -232,6 +232,16 @@ import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
 import { getBlockedUserIds, isNotificationDue, isNotificationFromBlockedUser } from "../lib/notifications.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
 import {
+  TOURNAMENT_COMMUNITY_RATING_SCALE,
+  TOURNAMENT_SANCTION_STATUS,
+  getAcceptedTournamentRefereeIds,
+  getRequiredTournamentRefereeCount,
+  getTournamentRefereePoolValidation,
+  getTournamentRefereeStatus,
+  isTournamentGovernanceEnabled,
+  isTournamentRefereeNeutral,
+} from "../lib/tournamentGovernance.js";
+import {
   getScheduledStartMs,
 } from "./matchLifecycleUtils.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
@@ -1622,6 +1632,13 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     match_ids: tournament.matchIds ?? [],
     team_statuses: tournament.teamStatuses ?? {},
     team_approvals: tournament.teamApprovals ?? {},
+    referee_ids: tournament.refereeIds ?? [],
+    referee_statuses: tournament.refereeStatuses ?? {},
+    referee_approvals: tournament.refereeApprovals ?? {},
+    sanction_status: tournament.sanctionStatus ?? TOURNAMENT_SANCTION_STATUS.pending,
+    sanction_reviewed_by: nullableText(tournament.sanctionReviewedBy),
+    sanction_reviewed_at: tournament.sanctionReviewedAt ?? null,
+    sanction_review_note: nullableText(tournament.sanctionReviewNote),
     bracket: tournament.bracket ?? {},
     updated_at: new Date().toISOString(),
   }));
@@ -1776,6 +1793,27 @@ function getRecruitingReserveLimitNotification(postId, sideName, benchCapacity =
   };
 }
 
+function getLocalTournamentMatchRefereeId(state, tournament, teamAId, teamBId) {
+  const assignmentCounts = new Map();
+  (state.matches ?? []).forEach((match) => {
+    if (match.tournamentId === tournament.id && match.refereeId) {
+      assignmentCounts.set(match.refereeId, (assignmentCounts.get(match.refereeId) ?? 0) + 1);
+    }
+  });
+  return getAcceptedTournamentRefereeIds(tournament)
+    .filter((refereeId) => isEligibleReferee(
+      state.users.find((user) => user.id === refereeId),
+      REFEREE_TRUST_MIN,
+      state.settings?.refereeAppointments,
+      tournament.endDate,
+    ))
+    .filter((refereeId) => isTournamentRefereeNeutral(tournament, refereeId, teamAId, teamBId, state.teams))
+    .sort((left, right) => (
+      (assignmentCounts.get(left) ?? 0) - (assignmentCounts.get(right) ?? 0)
+      || String(left).localeCompare(String(right))
+    ))[0] ?? "";
+}
+
 function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matchId = "") {
   const mode = tournament.mode || "5v5";
   const size = MODE_SIZES[mode] ?? 5;
@@ -1798,7 +1836,7 @@ function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matc
     ranked: tournament.ranked !== false,
     official: Boolean(tournament.official),
     preRegistered: true,
-    refereeId: "",
+    refereeId: getLocalTournamentMatchRefereeId(state, tournament, teamA.id, teamB.id),
     refereeTrustMin: REFEREE_TRUST_MIN,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes,
@@ -1845,14 +1883,22 @@ function generateTournamentMatches(state, tournament, options = {}) {
     ? buildTournamentPairings(tournament.teamIds ?? [])
     : { seedOrder: tournament.teamIds ?? [], pairings: buildLeaguePairings(tournament.teamIds ?? []), byes: [] };
   const preferredMatchIds = Array.isArray(options.preferredMatchIds) ? options.preferredMatchIds : [];
-  const matches = pairSource.pairings
-    .map((pairing, index) => {
-      const teamA = teamById[pairing.teamAId];
-      const teamB = teamById[pairing.teamBId];
-      if (!teamA || !teamB) return null;
-      return makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, preferredMatchIds[index]);
-    })
-    .filter(Boolean);
+  const matches = [];
+  pairSource.pairings.forEach((pairing, index) => {
+    const teamA = teamById[pairing.teamAId];
+    const teamB = teamById[pairing.teamBId];
+    if (!teamA || !teamB) return;
+    const match = makeTournamentMatch(
+      { ...state, matches: [...(state.matches ?? []), ...matches] },
+      tournament,
+      teamA,
+      teamB,
+      pairing,
+      now,
+      preferredMatchIds[index],
+    );
+    matches.push(match);
+  });
   const matchIds = matches.map((match) => match.id);
   const fixtureRows = matches.map((match) => ({
     matchId: match.id,
@@ -2773,6 +2819,10 @@ export function createTournament(state, draft) {
   const tournamentRules = {
     ...(draft.rules ?? {}),
     ...getMatchRulesPayload({ ...(draft.rules ?? {}), ...draft }, { mode: draft.mode }),
+    governanceVersion: 2,
+    sanctionStatus: TOURNAMENT_SANCTION_STATUS.pending,
+    sanctionFactor: 1,
+    ratingScale: 1,
     disputeMinutes: normalizeDisputeWindowMinutes(Number.parseInt(draft.objectionWindow, 10) || draft.disputeMinutes),
     sideCapacity,
     mmrLimitMode,
@@ -2791,6 +2841,26 @@ export function createTournament(state, draft) {
   })]));
   const creatorRepresentativeTeamId = getStateRepresentativeTeamId(state, state.currentUserId);
   const ineligibleTeam = invitedTeams.find((team) => !tournamentTeamSnapshots[team.id]?.allowed);
+  const refereeIds = [...new Set(draft.refereeIds ?? draft.tournamentRefereeIds ?? [])]
+    .filter((refereeId) => state.users.some((user) => user.id === refereeId));
+  const organizer = state.users.find((user) => user.id === state.currentUserId);
+  const organizerEligible = isEligibleReferee(
+    organizer,
+    REFEREE_TRUST_MIN,
+    state.settings?.refereeAppointments,
+    tournamentEndDate,
+  );
+  const refereePoolValidation = getTournamentRefereePoolValidation({
+    tournament: {
+      teamIds,
+      refereeIds,
+      endDate: tournamentEndDate,
+      rules: { teamRosterSnapshot: { teams: tournamentTeamSnapshots } },
+    },
+    teams: invitedTeams,
+    users: state.users,
+    refereeAppointments: state.settings?.refereeAppointments,
+  });
 
   if (teamIds.length < 2) {
     return {
@@ -2834,6 +2904,35 @@ export function createTournament(state, draft) {
     };
   }
 
+  if (!organizerEligible) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "심판 자격 필요",
+        body: `대회 주최자는 신뢰도 ${REFEREE_TRUST_MIN} 이상인 자격심판이어야 합니다.`,
+        tone: "match",
+      }, ...state.notifications],
+    };
+  }
+
+  if (!refereePoolValidation.allowed) {
+    const body = refereePoolValidation.refereeIds.length < refereePoolValidation.requiredCount
+      ? `${teamIds.length}팀 대회는 자격심판 ${refereePoolValidation.requiredCount}명 이상을 초대해야 합니다.`
+      : refereePoolValidation.ineligibleRefereeId
+        ? "자격 또는 신뢰도 조건을 충족하지 못한 심판이 포함되어 있습니다."
+        : "모든 가능한 대진에 양 팀과 무관한 중립 심판을 배정할 수 있어야 합니다.";
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "심판 구성 필요",
+        body,
+        tone: "match",
+      }, ...state.notifications],
+    };
+  }
+
   if (ineligibleTeam) {
     const eligibility = tournamentTeamSnapshots[ineligibleTeam.id];
     return {
@@ -2865,6 +2964,15 @@ export function createTournament(state, draft) {
       .filter((teamId) => teamStatuses[teamId] === "accepted")
       .map((teamId) => [teamId, { by: state.currentUserId, approvedAt: createdAt }]),
   );
+  const refereeStatuses = Object.fromEntries(
+    refereeIds.map((refereeId) => [
+      refereeId,
+      refereeId === state.currentUserId ? "accepted" : "invited",
+    ]),
+  );
+  const refereeApprovals = state.currentUserId && refereeStatuses[state.currentUserId] === "accepted"
+    ? { [state.currentUserId]: { by: state.currentUserId, approvedAt: createdAt } }
+    : {};
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
   const tournament = {
     id: draft.id || makeId("trn"),
@@ -2877,7 +2985,7 @@ export function createTournament(state, draft) {
     court: draft.court || "미정",
     mode: draft.mode || "5v5",
     ranked,
-    official: ranked && Boolean(draft.official),
+    official: false,
     startDate: tournamentStartDate,
     endDate: tournamentEndDate,
     schedulePolicy: draft.tournamentSchedulePolicy ?? "weekly",
@@ -2892,30 +3000,51 @@ export function createTournament(state, draft) {
     teamIds,
     teamStatuses,
     teamApprovals,
+    refereeIds,
+    refereeStatuses,
+    refereeApprovals,
+    sanctionStatus: TOURNAMENT_SANCTION_STATUS.pending,
     matchIds: [],
     bracket: null,
   };
-  const allAccepted = teamIds.every((teamId) => teamStatuses[teamId] === "accepted");
-  const generated = allAccepted
-    ? generateTournamentMatches(state, tournament, { preferredMatchIds: draft.preferredMatchIds })
-    : { matches: [], tournament };
 
   return {
     ...state,
-    matches: generated.matches.length ? [...generated.matches, ...state.matches] : state.matches,
-    tournaments: [generated.tournament, ...(state.tournaments ?? [])],
+    tournaments: [tournament, ...(state.tournaments ?? [])],
     notifications: [
       {
         id: makeId("n"),
-        title: allAccepted ? "대회 시작" : "대회 생성",
-        body: allAccepted
-          ? `${tournament.title} 대회가 시작됐습니다. 경기 ${generated.matches.length}개 생성.`
-          : `${tournament.title} 대회방을 만들었습니다. 초대팀 ${teamIds.length}개.`,
+        title: "대회 생성",
+        body: `${tournament.title} 대회방을 만들었습니다. ${teamIds.length}팀·심판 ${refereeIds.length}명 승인을 기다립니다.`,
         tone: "match",
         tournamentId: tournament.id,
       },
       ...state.notifications,
     ],
+  };
+}
+
+function getLocalTournamentReadiness(state, tournament) {
+  const allTeamsAccepted = (tournament.teamIds ?? []).length >= 2
+    && (tournament.teamIds ?? []).every((teamId) => getTournamentTeamStatuses(tournament)[teamId] === "accepted");
+  const organizerEligible = !isTournamentGovernanceEnabled(tournament) || isEligibleReferee(
+    (state.users ?? []).find((user) => user.id === tournament.createdBy),
+    REFEREE_TRUST_MIN,
+    state.settings?.refereeAppointments,
+    tournament.endDate,
+  );
+  const refereePool = getTournamentRefereePoolValidation({
+    tournament,
+    teams: state.teams,
+    users: state.users,
+    refereeAppointments: state.settings?.refereeAppointments,
+    requireAccepted: true,
+  });
+  return {
+    ready: allTeamsAccepted && organizerEligible && refereePool.allowed,
+    allTeamsAccepted,
+    organizerEligible,
+    refereePool,
   };
 }
 
@@ -2946,22 +3075,44 @@ export function approveTournamentTeam(state, tournamentId, teamId, options = {})
     [teamId]: { by: state.currentUserId, approvedAt: now },
   };
   const approvedTournament = { ...tournament, teamStatuses, teamApprovals };
-  const allAccepted = (approvedTournament.teamIds ?? []).every((id) => teamStatuses[id] === "accepted");
-  const generated = allAccepted
-    ? generateTournamentMatches(state, approvedTournament, { preferredMatchIds: options.preferredMatchIds })
-    : { matches: [], tournament: approvedTournament };
-
-  return {
-    ...state,
-    matches: generated.matches.length ? [...generated.matches, ...state.matches] : state.matches,
-    tournaments: (state.tournaments ?? []).map((item) => (item.id === tournamentId ? generated.tournament : item)),
-    notifications: [
-      {
+  if (!isTournamentGovernanceEnabled(approvedTournament)) {
+    const allAccepted = (approvedTournament.teamIds ?? []).every((id) => teamStatuses[id] === "accepted");
+    const generated = allAccepted
+      ? generateTournamentMatches(state, approvedTournament, { preferredMatchIds: options.preferredMatchIds })
+      : { matches: [], tournament: approvedTournament };
+    return {
+      ...state,
+      matches: generated.matches.length ? [...generated.matches, ...state.matches] : state.matches,
+      tournaments: (state.tournaments ?? []).map((item) => (item.id === tournamentId ? generated.tournament : item)),
+      notifications: [{
         id: makeId("n"),
         title: allAccepted ? "대회 시작" : "대회 참가 승인",
         body: allAccepted
           ? `${tournament.title} 대회가 시작됐습니다. 경기 ${generated.matches.length}개 생성.`
           : `${tournament.title} 참가 승인 완료. 남은 팀 승인을 기다립니다.`,
+        tone: "match",
+        tournamentId: tournament.id,
+      }, ...state.notifications],
+    };
+  }
+  const readiness = getLocalTournamentReadiness(state, approvedTournament);
+  const nextTournament = {
+    ...approvedTournament,
+    sanctionStatus: readiness.ready
+      ? TOURNAMENT_SANCTION_STATUS.regionalPending
+      : TOURNAMENT_SANCTION_STATUS.pending,
+  };
+
+  return {
+    ...state,
+    tournaments: (state.tournaments ?? []).map((item) => (item.id === tournamentId ? nextTournament : item)),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: readiness.ready ? "지역 승인 대기" : "대회 참가 승인",
+        body: readiness.ready
+          ? `${tournament.title} 팀장·심판 승인이 완료되어 지역관리자 승인을 기다립니다.`
+          : `${tournament.title} 참가 승인 완료. 남은 팀장·심판 승인을 기다립니다.`,
         tone: "match",
         tournamentId: tournament.id,
       },
@@ -3038,6 +3189,53 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
         matchId,
       }, ...state.notifications],
     };
+  }
+  if (isTournamentGovernanceEnabled(tournament)) {
+    const referee = (state.users ?? []).find((user) => user.id === match.refereeId);
+    const teamAId = match.teamA?.teamId ?? match.teamAId;
+    const teamBId = match.teamB?.teamId ?? match.teamBId;
+    const refereeAccepted = Boolean(match.refereeId)
+      && getTournamentRefereeStatus(tournament, match.refereeId) === "accepted";
+    const refereeEligible = refereeAccepted && isEligibleReferee(
+      referee,
+      REFEREE_TRUST_MIN,
+      state.settings?.refereeAppointments,
+      tournament.endDate,
+    );
+    const refereeNeutral = refereeEligible
+      && isTournamentRefereeNeutral(tournament, match.refereeId, teamAId, teamBId, state.teams);
+    if (!refereeNeutral) {
+      return {
+        ...state,
+        notifications: [{
+          id: makeId("n"),
+          title: "일정 수정 불가",
+          body: "자격이 유효한 승인 중립 심판을 먼저 배정해야 대회 경기 일정을 수정할 수 있습니다.",
+          tone: "match",
+          matchId,
+        }, ...state.notifications],
+      };
+    }
+    const refereeScheduleConflict = scheduledDate && scheduledTime && (state.matches ?? []).some((item) => (
+      item.id !== match.id
+      && item.refereeId === match.refereeId
+      && item.scheduledDate === scheduledDate
+      && String(item.scheduledTime ?? "").slice(0, 5) === scheduledTime
+      && !["confirmed", "cancelled", "void", "voided", "closed"].includes(item.status)
+      && !item.endedAt
+    ));
+    if (refereeScheduleConflict) {
+      return {
+        ...state,
+        notifications: [{
+          id: makeId("n"),
+          title: "일정 수정 불가",
+          body: "배정 심판의 다른 경기와 일정이 겹칩니다.",
+          tone: "match",
+          matchId,
+        }, ...state.notifications],
+      };
+    }
   }
   const now = new Date().toISOString();
   const scheduleRevisionCount = scheduleEditPolicy.revisionCount + (scheduleEditPolicy.hasSchedule ? 1 : 0);
@@ -3480,6 +3678,235 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
       },
       ...state.notifications,
     ],
+  };
+}
+
+export function approveTournamentReferee(state, tournamentId) {
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
+  if (!tournament || !["draft", "active"].includes(tournament.status)) return state;
+  const refereeId = state.currentUserId;
+  if (!(tournament.refereeIds ?? []).includes(refereeId)) return state;
+  const referee = state.users.find((user) => user.id === refereeId);
+  if (!isEligibleReferee(
+    referee,
+    REFEREE_TRUST_MIN,
+    state.settings?.refereeAppointments,
+    tournament.endDate,
+  )) return state;
+
+  const now = new Date().toISOString();
+  const approvedTournament = {
+    ...tournament,
+    refereeStatuses: { ...(tournament.refereeStatuses ?? {}), [refereeId]: "accepted" },
+    refereeApprovals: {
+      ...(tournament.refereeApprovals ?? {}),
+      [refereeId]: { by: refereeId, approvedAt: now },
+    },
+  };
+  const readiness = getLocalTournamentReadiness(state, approvedTournament);
+  const nextTournament = {
+    ...approvedTournament,
+    sanctionStatus: tournament.status === "draft" && readiness.ready
+      ? TOURNAMENT_SANCTION_STATUS.regionalPending
+      : tournament.sanctionStatus,
+  };
+  return {
+    ...state,
+    tournaments: (state.tournaments ?? []).map((item) => (item.id === tournamentId ? nextTournament : item)),
+    notifications: [{
+      id: makeId("n"),
+      title: readiness.ready ? "지역 승인 대기" : "대회 심판 승인",
+      body: readiness.ready
+        ? `${tournament.title} 팀장·심판 승인이 완료되어 지역관리자 승인을 기다립니다.`
+        : `${tournament.title} 심판 참여를 승인했습니다.`,
+      tone: "match",
+      tournamentId,
+    }, ...state.notifications],
+  };
+}
+
+export function declineTournamentReferee(state, tournamentId) {
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
+  const refereeId = state.currentUserId;
+  if (!tournament || !["draft", "active"].includes(tournament.status) || !(tournament.refereeIds ?? []).includes(refereeId)) {
+    return state;
+  }
+  const declinedTournament = {
+    ...tournament,
+    refereeStatuses: { ...(tournament.refereeStatuses ?? {}), [refereeId]: "declined" },
+    refereeApprovals: Object.fromEntries(
+      Object.entries(tournament.refereeApprovals ?? {}).filter(([id]) => id !== refereeId),
+    ),
+  };
+  const readiness = getLocalTournamentReadiness(state, declinedTournament);
+  const nextTournament = {
+    ...declinedTournament,
+    sanctionStatus: tournament.status === "draft"
+      ? readiness.ready ? TOURNAMENT_SANCTION_STATUS.regionalPending : TOURNAMENT_SANCTION_STATUS.pending
+      : tournament.sanctionStatus,
+  };
+  return {
+    ...state,
+    tournaments: (state.tournaments ?? []).map((item) => (item.id === tournamentId ? nextTournament : item)),
+    matches: (state.matches ?? []).map((match) => (
+      match.tournamentId === tournamentId && match.refereeId === refereeId && !match.startedAt && !match.endedAt
+        ? { ...match, refereeId: "" }
+        : match
+    )),
+  };
+}
+
+export function inviteTournamentReferee(state, tournamentId, refereeId) {
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
+  const referee = (state.users ?? []).find((user) => user.id === refereeId);
+  if (
+    !tournament
+    || tournament.createdBy !== state.currentUserId
+    || !["draft", "active"].includes(tournament.status)
+    || !isEligibleReferee(
+      referee,
+      REFEREE_TRUST_MIN,
+      state.settings?.refereeAppointments,
+      tournament.endDate,
+    )
+  ) {
+    return state;
+  }
+  const invitedTournament = {
+    ...tournament,
+    refereeIds: [...new Set([...(tournament.refereeIds ?? []), refereeId])],
+    refereeStatuses: { ...(tournament.refereeStatuses ?? {}), [refereeId]: "invited" },
+    refereeApprovals: Object.fromEntries(
+      Object.entries(tournament.refereeApprovals ?? {}).filter(([id]) => id !== refereeId),
+    ),
+    sanctionStatus: tournament.status === "draft"
+      ? TOURNAMENT_SANCTION_STATUS.pending
+      : tournament.sanctionStatus,
+  };
+  return {
+    ...state,
+    tournaments: (state.tournaments ?? []).map((item) => (item.id === tournamentId ? invitedTournament : item)),
+    notifications: [{
+      id: makeId("n"),
+      title: "대회 심판 초대",
+      body: `${tournament.title} 심판으로 초대했습니다.`,
+      tone: "match",
+      tournamentId,
+      targetUserId: refereeId,
+    }, ...state.notifications],
+  };
+}
+
+export function activateTournamentSanction(state, tournamentId, sanctionStatus, reviewerId = "") {
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
+  if (!tournament || tournament.status !== "draft") return state;
+  if (![TOURNAMENT_SANCTION_STATUS.approved, TOURNAMENT_SANCTION_STATUS.community].includes(sanctionStatus)) return state;
+  if (
+    sanctionStatus === TOURNAMENT_SANCTION_STATUS.approved
+      ? getAdminAuthorityLevel(state) < ADMIN_GRADE_META.regionManager.level
+      : tournament.createdBy !== state.currentUserId
+  ) return state;
+  const readiness = getLocalTournamentReadiness(state, tournament);
+  if (!readiness.ready) return state;
+  const official = sanctionStatus === TOURNAMENT_SANCTION_STATUS.approved;
+  const ratingScale = official ? 1 : TOURNAMENT_COMMUNITY_RATING_SCALE;
+  const now = new Date().toISOString();
+  const approvedTournament = {
+    ...tournament,
+    official,
+    sanctionStatus,
+    sanctionReviewedBy: reviewerId || null,
+    sanctionReviewedAt: reviewerId ? now : null,
+    rules: {
+      ...(tournament.rules ?? {}),
+      sanctionStatus,
+      sanctionFactor: ratingScale,
+      ratingScale,
+    },
+  };
+  const generated = generateTournamentMatches(state, approvedTournament);
+  return {
+    ...state,
+    matches: generated.matches.length ? [...generated.matches, ...state.matches] : state.matches,
+    tournaments: (state.tournaments ?? []).map((item) => (item.id === tournamentId ? generated.tournament : item)),
+    notifications: [{
+      id: makeId("n"),
+      title: official ? "공식 대회 시작" : "지역 비승인 대회 시작",
+      body: official
+        ? `${tournament.title} 지역 승인이 완료되어 공식 대회가 시작됐습니다.`
+        : `${tournament.title} 지역 비승인 대회가 시작됐습니다. MMR은 0.8 계수로 반영됩니다.`,
+      tone: "match",
+      tournamentId,
+    }, ...state.notifications],
+  };
+}
+
+export function rejectTournamentRegion(state, tournamentId, note = "") {
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
+  if (
+    !tournament
+    || tournament.status !== "draft"
+    || !isTournamentGovernanceEnabled(tournament)
+    || getAdminAuthorityLevel(state) < ADMIN_GRADE_META.regionManager.level
+  ) return state;
+  const readiness = getLocalTournamentReadiness(state, tournament);
+  if (!readiness.ready) return state;
+  const now = new Date().toISOString();
+  const rejectedTournament = {
+    ...tournament,
+    official: false,
+    sanctionStatus: TOURNAMENT_SANCTION_STATUS.regionalRejected,
+    sanctionReviewedBy: state.currentUserId,
+    sanctionReviewedAt: now,
+    sanctionReviewNote: String(note ?? "").trim().slice(0, 500),
+    rules: {
+      ...(tournament.rules ?? {}),
+      sanctionStatus: TOURNAMENT_SANCTION_STATUS.regionalRejected,
+    },
+  };
+  return {
+    ...state,
+    tournaments: (state.tournaments ?? []).map((item) => (
+      item.id === tournamentId ? rejectedTournament : item
+    )),
+    notifications: [{
+      id: makeId("n"),
+      title: "대회 지역 비승인",
+      body: `${tournament.title}은 지역 비승인 대회로 개최할 수 있습니다. 필수 심판 조건은 그대로 유지됩니다.`,
+      tone: "match",
+      tournamentId,
+      targetUserId: tournament.createdBy,
+    }, ...state.notifications],
+  };
+}
+
+export function assignTournamentMatchReferee(state, tournamentId, matchId, refereeId) {
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
+  const match = (state.matches ?? []).find((item) => item.id === matchId && item.tournamentId === tournamentId);
+  if (!tournament || !match || tournament.createdBy !== state.currentUserId || match.startedAt || match.endedAt) return state;
+  if (getTournamentRefereeStatus(tournament, refereeId) !== "accepted") return state;
+  if (!isEligibleReferee(
+    state.users.find((user) => user.id === refereeId),
+    REFEREE_TRUST_MIN,
+    state.settings?.refereeAppointments,
+    tournament.endDate,
+  )) return state;
+  const teamAId = match.teamA?.teamId ?? match.teamAId;
+  const teamBId = match.teamB?.teamId ?? match.teamBId;
+  if (!isTournamentRefereeNeutral(tournament, refereeId, teamAId, teamBId, state.teams)) return state;
+  if (match.scheduledDate && match.scheduledTime && (state.matches ?? []).some((item) => (
+    item.id !== match.id
+    && item.refereeId === refereeId
+    && item.scheduledDate === match.scheduledDate
+    && item.scheduledTime === match.scheduledTime
+    && !["confirmed", "cancelled", "void", "voided", "closed"].includes(item.status)
+    && !item.endedAt
+  ))) return state;
+  return {
+    ...state,
+    matches: (state.matches ?? []).map((item) => (
+      item.id === matchId ? { ...item, refereeId } : item
+    )),
   };
 }
 
@@ -3963,6 +4390,35 @@ export function startMatch(state, matchId) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin") return state;
+  if (match.tournamentId) {
+    const tournament = (state.tournaments ?? []).find((item) => item.id === match.tournamentId);
+    if (isTournamentGovernanceEnabled(tournament)) {
+      const teamAId = match.teamA?.teamId ?? match.teamAId;
+      const teamBId = match.teamB?.teamId ?? match.teamBId;
+      const refereeReady = [TOURNAMENT_SANCTION_STATUS.approved, TOURNAMENT_SANCTION_STATUS.community].includes(tournament.sanctionStatus)
+        && match.refereeId
+        && getTournamentRefereeStatus(tournament, match.refereeId) === "accepted"
+        && isEligibleReferee(
+          (state.users ?? []).find((user) => user.id === match.refereeId),
+          REFEREE_TRUST_MIN,
+          state.settings?.refereeAppointments,
+          tournament.endDate,
+        )
+        && isTournamentRefereeNeutral(tournament, match.refereeId, teamAId, teamBId, state.teams);
+      if (!refereeReady) {
+        return {
+          ...state,
+          notifications: [{
+            id: makeId("n"),
+            title: "중립 심판 필요",
+            body: "승인된 대회 심판 중 양 팀에 속하지 않은 심판을 배정해야 경기를 시작할 수 있습니다.",
+            tone: "orange",
+            matchId,
+          }, ...state.notifications],
+        };
+      }
+    }
+  }
   if (isRoomScheduleChangePending(match)) {
     return {
       ...state,

@@ -1055,15 +1055,16 @@ function isActiveRefereeStatus(status = "active") {
   return !INACTIVE_REFEREE_STATUSES.has(String(status || "active"));
 }
 
-function isActiveRefereeTerm(record = {}, nowMs = Date.now()) {
+function isActiveRefereeTerm(record = {}, nowMs = Date.now(), throughMs = nowMs) {
   const startsAt = record.startsAt ? new Date(record.startsAt).getTime() : 0;
   const endsAt = record.endsAt ? new Date(record.endsAt).getTime() : Infinity;
   const normalizedStart = Number.isFinite(startsAt) ? startsAt : 0;
   const normalizedEnd = Number.isFinite(endsAt) ? endsAt : Infinity;
-  return normalizedStart <= nowMs && nowMs <= normalizedEnd;
+  const normalizedThrough = Number.isFinite(throughMs) ? Math.max(nowMs, throughMs) : nowMs;
+  return normalizedStart <= nowMs && normalizedThrough <= normalizedEnd;
 }
 
-function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Date.now()) {
+function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Date.now(), throughMs = nowMs) {
   if (!user?.id) return false;
   if (TEST_REFEREE_LOGIN_IDS.has(String(user.testLoginId ?? "").toLowerCase())) return true;
   const profile = user.refereeProfile ?? {};
@@ -1076,7 +1077,7 @@ function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Da
     profile.examPassed === true ||
     isRefereeGrade(profileGrade)
   );
-  if (profileQualified && isActiveRefereeStatus(profileStatus) && isActiveRefereeTerm(profile, nowMs)) return true;
+  if (profileQualified && isActiveRefereeStatus(profileStatus) && isActiveRefereeTerm(profile, nowMs, throughMs)) return true;
 
   return refereeAppointments.some((appointment) => {
     const appointmentUserId = appointment.userId ?? appointment.user_id;
@@ -1087,15 +1088,18 @@ function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Da
       role === "referee" &&
       isRefereeGrade(grade) &&
       isActiveRefereeStatus(appointment.status) &&
-      isActiveRefereeTerm(appointment, nowMs)
+      isActiveRefereeTerm(appointment, nowMs, throughMs)
     );
   });
 }
 
-export function isEligibleReferee(user = {}, minTrust = REFEREE_TRUST_MIN, refereeAppointments = []) {
+export function isEligibleReferee(user = {}, minTrust = REFEREE_TRUST_MIN, refereeAppointments = [], throughDate = null) {
+  const parsedThroughMs = throughDate
+    ? new Date(String(throughDate).length === 10 ? `${throughDate}T23:59:59.999Z` : throughDate).getTime()
+    : Date.now();
   return (
     Number(user?.trustScore ?? 0) >= Number(minTrust ?? REFEREE_TRUST_MIN) &&
-    hasRefereeQualification(user, refereeAppointments)
+    hasRefereeQualification(user, refereeAppointments, Date.now(), parsedThroughMs)
   );
 }
 

@@ -4,6 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Flag, MapPin, Save, ShieldChec
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
+import SearchPicker from "../components/common/SearchPicker.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
@@ -11,7 +12,19 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { addDateDays, getLocalDateInputValue, getMatchRoomPhase, getTournamentScheduleEditPolicy } from "../lib/matchUtils.js";
+import { addDateDays, getLocalDateInputValue, getMatchRoomPhase, getTournamentScheduleEditPolicy, isEligibleReferee } from "../lib/matchUtils.js";
+import { REFEREE_TRUST_MIN } from "../lib/constants.js";
+import {
+  TOURNAMENT_COMMUNITY_RATING_SCALE,
+  TOURNAMENT_SANCTION_STATUS,
+  getActiveTournamentTeamIds,
+  getAcceptedTournamentRefereeIds,
+  getRequiredTournamentRefereeCount,
+  getTournamentRefereeStatus,
+  getTournamentSanctionLabel,
+  isTournamentGovernanceEnabled,
+  isTournamentRefereeNeutral,
+} from "../lib/tournamentGovernance.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/matches-arena.css";
 
@@ -409,6 +422,9 @@ export default function TournamentDetail({ app }) {
   const [savingForfeitId, setSavingForfeitId] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [editingScheduleId, setEditingScheduleId] = useState("");
+  const [refereeQuery, setRefereeQuery] = useState("");
+  const [governanceAction, setGovernanceAction] = useState("");
+  const [governanceFeedback, setGovernanceFeedback] = useState("");
   useBodyScrollLock(Boolean(scheduleDialog || forfeitDialog));
   const teamById = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
   const userById = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
@@ -472,6 +488,38 @@ export default function TournamentDetail({ app }) {
   const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
   const hasPendingTeamApprovals = (tournament.teamIds ?? [])
     .some((teamId) => getTournamentTeamStatus(tournament, teamId) !== "accepted");
+  const governanceEnabled = isTournamentGovernanceEnabled(tournament);
+  const requiredRefereeCount = getRequiredTournamentRefereeCount(getActiveTournamentTeamIds(tournament).length);
+  const acceptedRefereeIds = getAcceptedTournamentRefereeIds(tournament);
+  const refereeRows = (tournament.refereeIds ?? []).map((refereeId) => ({
+    refereeId,
+    referee: userById[refereeId] ?? (refereeId === app.currentUser.id ? app.currentUser : null),
+    status: getTournamentRefereeStatus(tournament, refereeId),
+    canApprove: governanceEnabled
+      && ["draft", "active"].includes(tournament.status)
+      && refereeId === app.currentUser.id
+      && getTournamentRefereeStatus(tournament, refereeId) === "invited",
+  }));
+  const eligibleRefereeCandidates = (app.state.users ?? [])
+    .filter((user) => isEligibleReferee(
+      user,
+      REFEREE_TRUST_MIN,
+      app.state.settings?.refereeAppointments,
+      tournament.endDate,
+    ))
+    .filter((user) => !(tournament.refereeIds ?? []).includes(user.id))
+    .sort((left, right) => Number(right.trustScore ?? 0) - Number(left.trustScore ?? 0));
+  const canInviteReferee = governanceEnabled
+    && tournament.createdBy === app.currentUser.id
+    && ["draft", "active"].includes(tournament.status);
+  const canReviewRegion = governanceEnabled
+    && Boolean(tournament.viewerCanReviewRegion)
+    && tournament.status === "draft"
+    && [TOURNAMENT_SANCTION_STATUS.regionalPending, TOURNAMENT_SANCTION_STATUS.regionalRejected].includes(tournament.sanctionStatus);
+  const canStartCommunity = governanceEnabled
+    && tournament.createdBy === app.currentUser.id
+    && tournament.status === "draft"
+    && [TOURNAMENT_SANCTION_STATUS.regionalPending, TOURNAMENT_SANCTION_STATUS.regionalRejected].includes(tournament.sanctionStatus);
   const bracketTree = tournament.format === "tournament" ? buildTournamentBracketTree(tournament, matchesById) : [];
   const verticalBracket = tournament.format === "tournament" ? getVerticalBracketLayout(bracketTree) : { baseSlots: 1, rounds: [], finalNode: null };
   const championTeamId = verticalBracket.finalNode ? getNodeWinnerTeamId(verticalBracket.finalNode) : "";
@@ -565,6 +613,62 @@ export default function TournamentDetail({ app }) {
       setSavingForfeitId("");
     }
   };
+  const formatGovernanceError = (message = "") => {
+    if (message.includes("tournament_referee_not_eligible")) return "심판 자격, 임기 또는 신뢰도 조건을 충족하지 못했습니다.";
+    if (message.includes("tournament_referee_pool_insufficient")) return "팀 수에 필요한 승인 심판 수가 부족합니다.";
+    if (message.includes("tournament_neutral_referee_coverage_required")) return "모든 가능한 대진에 중립 심판을 배정할 수 있어야 합니다.";
+    if (message.includes("tournament_approval_not_ready")) return "팀장과 필수 심판 전원의 승인이 먼저 필요합니다.";
+    if (message.includes("tournament_region_manager_required")) return "해당 지역관리자 이상만 처리할 수 있습니다.";
+    if (message.includes("tournament_referee_not_neutral")) return "양 팀 어느 쪽에도 속하지 않은 중립 심판만 배정할 수 있습니다.";
+    if (message.includes("tournament_referee_schedule_conflict")) return "같은 심판이 같은 시각의 다른 경기에 배정되어 있습니다.";
+    return "대회 승인·심판 작업을 완료하지 못했습니다.";
+  };
+  const runGovernanceAction = async (key, action, successMessage) => {
+    if (governanceAction) return;
+    setGovernanceAction(key);
+    setGovernanceFeedback("");
+    try {
+      const result = await action();
+      if (!result || result?.ok === false) throw new Error(result?.error ?? "tournament_governance_failed");
+      await app.actions.loadTournament?.(tournament.id);
+      setGovernanceFeedback(successMessage);
+    } catch (error) {
+      setGovernanceFeedback(formatGovernanceError(error.message));
+    } finally {
+      setGovernanceAction("");
+    }
+  };
+  const inviteTournamentReferee = (referee) => runGovernanceAction(
+    `invite:${referee.id}`,
+    () => app.actions.inviteTournamentReferee(tournament.id, referee.id),
+    `${referee.name} 심판에게 초대했습니다.`,
+  ).then(() => setRefereeQuery(""));
+  const saveMatchReferee = (event, match) => {
+    event.preventDefault();
+    const refereeId = String(new FormData(event.currentTarget).get("refereeId") ?? "");
+    if (!refereeId) {
+      setGovernanceFeedback("중립 심판을 선택해 주세요.");
+      return;
+    }
+    runGovernanceAction(
+      `assign:${match.id}`,
+      () => app.actions.assignTournamentMatchReferee(tournament.id, match.id, refereeId),
+      "경기 심판을 배정했습니다.",
+    );
+  };
+  const renderRefereeInviteItem = (referee) => (
+    <button
+      key={referee.id}
+      type="button"
+      className="search-picker-result-row"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => inviteTournamentReferee(referee)}
+    >
+      <strong>{referee.name}</strong>
+      <span>{getUserHashtag(referee)} · {referee.region ?? "지역 미정"}</span>
+      <em>신뢰도 {referee.trustScore} · 대회 심판 초대</em>
+    </button>
+  );
   const organizer = userById[tournament.createdBy] ?? null;
   const dialogMatch = scheduleDialog?.matchId ? matchesById[scheduleDialog.matchId] : null;
   const forfeitMatch = forfeitDialog?.matchId ? matchesById[forfeitDialog.matchId] : null;
@@ -587,26 +691,45 @@ export default function TournamentDetail({ app }) {
         </div>
         <div className="tournament-hero-badges" aria-label="대회 상태">
           <Badge tone="gold">{formatLabels[tournament.format] ?? "대회"}</Badge>
-          <Badge tone={tournament.status === "active" ? "green" : "orange"}>{statusLabels[tournament.status] ?? "상태 확인 중"}</Badge>
+          <Badge tone={tournament.status === "active" ? "green" : "orange"}>
+            {tournament.status === "draft" && governanceEnabled
+              ? getTournamentSanctionLabel(tournament)
+              : statusLabels[tournament.status] ?? "상태 확인 중"}
+          </Badge>
           <Badge tone="blue">{tournament.mode}</Badge>
         </div>
       </section>
 
-      <section className="tournament-summary-grid">
+      <section className={`tournament-summary-grid${governanceEnabled ? " is-governed" : ""}`}>
         <div>
           <span>팀 승인</span>
           <strong>{acceptedCount}/{teamRows.length}</strong>
-          <em>모든 팀 승인 후 시작</em>
+          <em>모든 팀장 승인 필수</em>
         </div>
+        {governanceEnabled ? (
+          <div>
+            <span>심판 승인</span>
+            <strong>{acceptedRefereeIds.length}/{requiredRefereeCount}</strong>
+            <em>대진별 중립 심판 필수</em>
+          </div>
+        ) : null}
         <div>
           <span>생성 경기</span>
           <strong>{tournamentMatches.length}</strong>
-          <em>{tournament.status === "draft" ? "승인 후 자동 생성" : "일정 입력 가능"}</em>
+          <em>
+            {tournament.status === "draft"
+              ? governanceEnabled ? "지역 승인 또는 비승인 개최 후 생성" : "승인 후 자동 생성"
+              : "일정 입력 가능"}
+          </em>
         </div>
         <div>
           <span>MMR</span>
           <strong>{mmrPolicyLabels[tournament.mmrPolicy] ?? "MMR 조건 확인"}</strong>
-          <em>{tournament.format === "tournament" ? "토너먼트 보너스 1.18" : "리그 보너스 1.12"}</em>
+          <em>
+            {tournament.sanctionStatus === TOURNAMENT_SANCTION_STATUS.community
+              ? `지역 비승인 계수 ${TOURNAMENT_COMMUNITY_RATING_SCALE}`
+              : tournament.format === "tournament" ? "토너먼트 보너스 1.18" : "리그 보너스 1.12"}
+          </em>
         </div>
       </section>
 
@@ -643,6 +766,123 @@ export default function TournamentDetail({ app }) {
         </section>
       ) : null}
 
+      {governanceEnabled ? (
+        <section className="tournament-section tournament-governance-section">
+        <div className="om-list-head">
+          <div>
+            <span className="om-kicker">REFEREE APPROVAL</span>
+            <h2>대회 심판</h2>
+          </div>
+          <span>최소 {requiredRefereeCount}명 · 승인 {acceptedRefereeIds.length}명</span>
+        </div>
+        <div className="tournament-referee-list">
+          {refereeRows.map((row) => (
+            <article key={row.refereeId} className={row.status === "accepted" ? "accepted" : ""}>
+              <div>
+                <strong>{row.referee?.name ?? row.refereeId}</strong>
+                <span>{row.referee ? `${getUserHashtag(row.referee)} · 신뢰도 ${row.referee.trustScore}` : "심판 정보 확인 중"}</span>
+              </div>
+              {row.canApprove ? (
+                <div className="tournament-referee-actions">
+                  <button
+                    type="button"
+                    disabled={Boolean(governanceAction)}
+                    onClick={() => runGovernanceAction(
+                      `approve-referee:${row.refereeId}`,
+                      () => app.actions.approveTournamentReferee(tournament.id),
+                      "대회 심판 참여를 승인했습니다.",
+                    )}
+                  ><ShieldCheck size={15} /> 승인</button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={Boolean(governanceAction)}
+                    onClick={() => runGovernanceAction(
+                      `decline-referee:${row.refereeId}`,
+                      () => app.actions.declineTournamentReferee(tournament.id),
+                      "대회 심판 초대를 거절했습니다.",
+                    )}
+                  >거절</button>
+                </div>
+              ) : (
+                <b>{row.status === "accepted" ? "승인 완료" : row.status === "declined" ? "거절" : "승인 대기"}</b>
+              )}
+            </article>
+          ))}
+        </div>
+        {canInviteReferee ? (
+          <div className="tournament-referee-invite">
+            <SearchPicker
+              value={refereeQuery}
+              onChange={setRefereeQuery}
+              placeholder="교체·추가 심판 검색"
+              items={eligibleRefereeCandidates}
+              remoteSearchType="referee"
+              remoteSearchContext={{ refereeThroughDate: tournament.endDate }}
+              title="초대 가능한 심판"
+              emptyText="초대 가능한 심판 없음"
+              floating
+              closeOnResultClick
+              renderItem={renderRefereeInviteItem}
+            />
+          </div>
+        ) : null}
+        <p className="tournament-governance-note">
+          공식 대회와 지역 비승인 대회 모두 필수 심판 전원 승인과 모든 가능한 대진의 중립 심판 커버리지가 필요합니다.
+        </p>
+        </section>
+      ) : null}
+
+      {governanceEnabled && tournament.status === "draft" ? (
+        <section className="tournament-section tournament-sanction-panel">
+          <div>
+            <span className="om-kicker">REGIONAL REVIEW</span>
+            <h2>{getTournamentSanctionLabel(tournament)}</h2>
+            <p>팀장·심판 승인이 완료된 뒤 지역관리자가 승인하면 공식 대회로, 주최자가 비승인 개최를 선택하면 MMR 0.8 계수 대회로 시작합니다.</p>
+          </div>
+          <div className="tournament-sanction-actions">
+            {canReviewRegion ? (
+              <>
+                <Button
+                  type="button"
+                  disabled={Boolean(governanceAction)}
+                  onClick={() => runGovernanceAction(
+                    "region-approve",
+                    () => app.actions.approveTournamentRegion(tournament.id),
+                    "지역 승인 공식 대회로 시작했습니다.",
+                  )}
+                >지역 승인</Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={Boolean(governanceAction)}
+                  onClick={() => runGovernanceAction(
+                    "region-reject",
+                    () => app.actions.rejectTournamentRegion(tournament.id),
+                    "지역 비승인 처리했습니다.",
+                  )}
+                >비승인</Button>
+              </>
+            ) : null}
+            {canStartCommunity ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={Boolean(governanceAction)}
+                onClick={() => runGovernanceAction(
+                  "community-start",
+                  () => app.actions.startCommunityTournament(tournament.id),
+                  "지역 비승인 대회로 시작했습니다.",
+                )}
+              >지역 비승인으로 개최</Button>
+            ) : null}
+          </div>
+          {governanceFeedback ? <strong className="tournament-governance-feedback">{governanceFeedback}</strong> : null}
+        </section>
+      ) : governanceEnabled && governanceFeedback ? (
+        <div className="tournament-governance-feedback">{governanceFeedback}</div>
+      ) : null}
+
       <section className="tournament-section">
         <div className="om-list-head">
           <div>
@@ -655,7 +895,11 @@ export default function TournamentDetail({ app }) {
         {tournament.status === "draft" ? (
           <div className="tournament-empty">
             <strong>대진 생성 전</strong>
-            <p>초대팀 주장이 모두 승인하면 경기와 대진이 자동으로 생성됩니다.</p>
+            <p>
+              {governanceEnabled
+                ? "팀장·심판 승인 후 지역 승인 또는 지역 비승인 개최를 선택하면 경기와 대진이 생성됩니다."
+                : "초대팀 주장이 모두 승인하면 경기와 대진이 자동으로 생성됩니다."}
+            </p>
           </div>
         ) : tournament.format === "tournament" ? (
           <div className="tournament-bracket tournament-vertical-bracket" style={{ "--bracket-slots": verticalBracket.baseSlots }}>
@@ -805,6 +1049,56 @@ export default function TournamentDetail({ app }) {
           </div>
         )}
       </section>
+
+      {governanceEnabled && tournamentMatches.length ? (
+        <section className="tournament-section">
+          <div className="om-list-head">
+            <div>
+              <span className="om-kicker">MATCH REFEREES</span>
+              <h2>경기별 중립 심판</h2>
+            </div>
+            <span>{canManageSchedule ? "주최자 배정" : "배정 현황"}</span>
+          </div>
+          <div className="tournament-match-referee-list">
+            {tournamentMatches.map((match) => {
+              const teamAId = match.teamA?.teamId ?? match.teamAId;
+              const teamBId = match.teamB?.teamId ?? match.teamBId;
+              const neutralRefereeIds = acceptedRefereeIds.filter((refereeId) => (
+                isEligibleReferee(
+                  userById[refereeId],
+                  REFEREE_TRUST_MIN,
+                  app.state.settings?.refereeAppointments,
+                  tournament.endDate,
+                )
+                && isTournamentRefereeNeutral(tournament, refereeId, teamAId, teamBId, app.state.teams)
+              ));
+              return (
+                <form key={`${match.id}:${match.refereeId ?? ""}`} onSubmit={(event) => saveMatchReferee(event, match)}>
+                  <strong>{match.teamA?.name ?? "A"} vs {match.teamB?.name ?? "B"}</strong>
+                  <select
+                    name="refereeId"
+                    defaultValue={match.refereeId ?? ""}
+                    disabled={!canManageSchedule || Boolean(match.startedAt || match.endedAt)}
+                    aria-label={`${match.teamA?.name ?? "A"} 대 ${match.teamB?.name ?? "B"} 심판`}
+                  >
+                    <option value="">심판 선택</option>
+                    {neutralRefereeIds.map((refereeId) => (
+                      <option key={refereeId} value={refereeId}>{userById[refereeId]?.name ?? refereeId}</option>
+                    ))}
+                  </select>
+                  {canManageSchedule ? (
+                    <button type="submit" disabled={Boolean(governanceAction || match.startedAt || match.endedAt || !neutralRefereeIds.length)}>
+                      <ShieldCheck size={14} /> 배정
+                    </button>
+                  ) : (
+                    <span>{userById[match.refereeId]?.name ?? "미배정"}</span>
+                  )}
+                </form>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {tournament.format === "tournament" && tournamentMatches.length ? (
         <section className="tournament-section">

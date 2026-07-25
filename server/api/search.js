@@ -135,10 +135,15 @@ function activeTerm(row = {}, nowMs = Date.now()) {
   return (!startsAt || startsAt <= nowMs) && (!endsAt || endsAt >= nowMs);
 }
 
-function isActiveRefereeAppointment(row = {}) {
+function isActiveRefereeAppointment(row = {}, throughMs = Date.now()) {
   const status = row.status || "active";
   const role = row.role || "referee";
-  return role === "referee" && status === "active" && isRefereeGrade(row.grade) && activeTerm(row);
+  const endsAt = row.ends_at ? new Date(row.ends_at).getTime() : Infinity;
+  return role === "referee"
+    && status === "active"
+    && isRefereeGrade(row.grade)
+    && activeTerm(row)
+    && (!Number.isFinite(throughMs) || endsAt >= throughMs);
 }
 
 function getPayload(row = {}) {
@@ -327,7 +332,9 @@ async function searchCourtReviews(supabase, profileId, query, limit) {
   return (data ?? []).map(toCourtReview);
 }
 
-async function searchReferees(supabase, query, limit) {
+async function searchReferees(supabase, query, limit, searchContext = {}) {
+  const throughText = String(searchContext.refereeThroughDate ?? "").slice(0, 10);
+  const throughMs = throughText ? new Date(`${throughText}T23:59:59.999Z`).getTime() : Date.now();
   const { data, error } = await supabase
     .from("public_profiles")
     .select(PROFILE_COLUMNS)
@@ -342,11 +349,25 @@ async function searchReferees(supabase, query, limit) {
     ? await supabase.from("referee_appointments").select(REFEREE_APPOINTMENT_COLUMNS).in("user_id", profileIds)
     : { data: [], error: null };
   if (appointmentError) throw appointmentError;
-  const appointedIds = new Set((appointmentRows ?? []).filter(isActiveRefereeAppointment).map((row) => row.user_id));
+  const appointmentByUserId = new Map();
+  (appointmentRows ?? []).filter((appointment) => isActiveRefereeAppointment(appointment, throughMs)).forEach((appointment) => {
+    if (!appointmentByUserId.has(appointment.user_id)) appointmentByUserId.set(appointment.user_id, appointment);
+  });
   return profileRows
-    .filter((profile) => appointedIds.has(profile.id))
+    .filter((profile) => appointmentByUserId.has(profile.id))
     .slice(0, limit)
-    .map((row) => toProfile(row, "referee"));
+    .map((row) => {
+      const appointment = appointmentByUserId.get(row.id);
+      return toProfile(row, "referee", {
+        refereeGrade: appointment.grade,
+        refereeProfile: {
+          grade: appointment.grade,
+          status: appointment.status,
+          startsAt: appointment.starts_at,
+          endsAt: appointment.ends_at,
+        },
+      });
+    });
 }
 
 async function searchAffiliations(supabase, query, limit) {
@@ -400,7 +421,7 @@ export default async function handler(request, response) {
       team: () => searchTeams(context.supabase, query, limit),
       court: () => searchCourts(context.supabase, query, limit, searchContext),
       court_review: () => searchCourtReviews(context.supabase, context.profileId, query, limit),
-      referee: () => searchReferees(context.supabase, query, limit),
+      referee: () => searchReferees(context.supabase, query, limit, searchContext),
       affiliation: () => searchAffiliations(context.supabase, query, limit),
     };
     const chunks = await Promise.all(types.map((type) => loaders[type]?.() ?? []));

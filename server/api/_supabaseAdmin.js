@@ -312,7 +312,7 @@ export async function loadCurrentUserTournamentIndex(client, profileId = "") {
   if (relatedTeamError) throw relatedTeamError;
 
   const relatedTournamentIds = uniqueValues((relatedTeamRows ?? []).map((row) => row.tournament_id));
-  const [createdResult, relatedResult] = await Promise.all([
+  const [createdResult, relatedResult, refereeResult] = await Promise.all([
     client
       .from("tournaments")
       .select(TOURNAMENT_COLUMNS)
@@ -322,11 +322,21 @@ export async function loadCurrentUserTournamentIndex(client, profileId = "") {
     relatedTournamentIds.length
       ? client.from("tournaments").select(TOURNAMENT_COLUMNS).in("id", relatedTournamentIds)
       : Promise.resolve({ data: [], error: null }),
+    client
+      .from("tournaments")
+      .select(TOURNAMENT_COLUMNS)
+      .contains("referee_ids", [profileId])
+      .order("updated_at", { ascending: false })
+      .limit(RELATED_TOURNAMENT_LIMIT),
   ]);
   if (createdResult.error) throw createdResult.error;
   if (relatedResult.error) throw relatedResult.error;
+  if (refereeResult.error) throw refereeResult.error;
 
-  const tournamentRows = mergeById(createdResult.data ?? [], relatedResult.data ?? [])
+  const tournamentRows = mergeById(
+    mergeById(createdResult.data ?? [], relatedResult.data ?? []),
+    refereeResult.data ?? [],
+  )
     .sort((a, b) => String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? "")))
     .slice(0, RELATED_TOURNAMENT_LIMIT);
   const tournamentIds = tournamentRows.map((row) => row.id).filter(Boolean);
@@ -354,7 +364,11 @@ export async function loadCurrentUserTournamentIndex(client, profileId = "") {
     .forEach((row) => memberByKey.set(`${row.team_id}:${row.user_id}`, row));
   const memberRows = [...memberByKey.values()];
 
-  const profileIds = uniqueValues(memberRows.map((row) => row.user_id));
+  const profileIds = uniqueValues([
+    ...memberRows.map((row) => row.user_id),
+    ...tournamentRows.flatMap((row) => row.referee_ids ?? []),
+    ...tournamentRows.map((row) => row.sanction_reviewed_by),
+  ]);
   const { data: profileRows, error: profileError } = profileIds.length
     ? await client.from("profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIds)
     : { data: [], error: null };

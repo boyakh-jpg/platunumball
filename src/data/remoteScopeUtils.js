@@ -98,7 +98,10 @@ export function collectTournamentPageScope(tournaments = [], tournamentTeams = [
     courtIds.push(tournament.court_id);
     scopedProfileIds.push(
       tournament.created_by,
+      tournament.sanction_reviewed_by,
+      ...(tournament.referee_ids ?? []),
       ...flattenIdValues(tournament.team_approvals),
+      ...flattenIdValues(tournament.referee_approvals),
       ...flattenIdValues(tournament.bracket),
     );
   });

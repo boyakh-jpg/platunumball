@@ -246,7 +246,7 @@ export default function Home({ app }) {
     const loadedTournamentInviteIds = new Set(tournamentInviteItems.map((item) => item.tournamentId).filter(Boolean));
     const tournamentNotificationItems = (app.state.notifications ?? [])
       .filter((notification) => isNotificationVisibleToUser(notification, user.id, { blockedUserIds }))
-      .filter((notification) => notification.type === "tournament_invite" && isHomeActionNotification(notification))
+      .filter((notification) => ["tournament_invite", "tournament_referee_invite", "tournament_region_review"].includes(notification.type) && isHomeActionNotification(notification))
       .filter((notification) => !loadedTournamentInviteIds.has(notification.tournamentId))
       .filter((notification) => {
         const tournament = (app.state.tournaments ?? []).find((item) => item.id === notification.tournamentId);
@@ -255,9 +255,11 @@ export default function Home({ app }) {
       .map((notification) => ({
         id: `notification-${notification.id}`,
         priority: 0,
-        label: "대회 초대",
+        label: notification.type === "tournament_referee_invite"
+          ? "대회 심판 초대"
+          : notification.type === "tournament_region_review" ? "대회 지역 승인" : "대회 초대",
         title: notification.title,
-        meta: notification.body || "팀장 승인 필요",
+        meta: notification.body || "승인 필요",
         href: getNotificationHref(notification),
         icon: Trophy,
       }));

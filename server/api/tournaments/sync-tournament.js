@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
+import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
 import {
   getOperation,
   loadAuthoritativeState,
@@ -13,7 +13,18 @@ const STATUSES = new Set(["draft", "scheduled", "active", "closed", "cancelled"]
 const MMR_LIMIT_MODES = new Set(MMR_LIMIT_MODE_IDS);
 const MMR_POLICIES = new Set(["gap_adjusted", "standard", "event_only"]);
 const TEAM_STATUSES = new Set(["invited", "accepted", "declined"]);
-const TOURNAMENT_OPERATION_ACTIONS = new Set(["createTournament", "approveTournamentTeam", "loadTournament"]);
+const TOURNAMENT_OPERATION_ACTIONS = new Set([
+  "createTournament",
+  "approveTournamentTeam",
+  "approveTournamentReferee",
+  "declineTournamentReferee",
+  "inviteTournamentReferee",
+  "approveTournamentRegion",
+  "rejectTournamentRegion",
+  "startCommunityTournament",
+  "assignTournamentMatchReferee",
+  "loadTournament",
+]);
 
 function reject(statusCode, message) {
   const error = new Error(message);
@@ -90,6 +101,10 @@ function getTournamentCoreSnapshot(tournament = {}, teamRows = []) {
     matchIds: toArray(tournament.matchIds ?? tournament.match_ids),
     bracket: tournament.bracket ?? {},
     teamIds,
+    refereeIds: toArray(tournament.refereeIds ?? tournament.referee_ids),
+    refereeStatuses: tournament.refereeStatuses ?? tournament.referee_statuses ?? {},
+    refereeApprovals: tournament.refereeApprovals ?? tournament.referee_approvals ?? {},
+    sanctionStatus: tournament.sanctionStatus ?? tournament.sanction_status ?? "pending",
   });
 }
 
@@ -141,6 +156,13 @@ function normalizeTournament(tournament = {}, actorProfileId = "") {
     teamIds,
     teamStatuses: tournament.teamStatuses || tournament.team_statuses || {},
     teamApprovals: tournament.teamApprovals || tournament.team_approvals || {},
+    refereeIds: toArray(tournament.refereeIds || tournament.referee_ids),
+    refereeStatuses: tournament.refereeStatuses || tournament.referee_statuses || {},
+    refereeApprovals: tournament.refereeApprovals || tournament.referee_approvals || {},
+    sanctionStatus: tournament.sanctionStatus || tournament.sanction_status || "pending",
+    sanctionReviewedBy: tournament.sanctionReviewedBy || tournament.sanction_reviewed_by || null,
+    sanctionReviewedAt: tournament.sanctionReviewedAt || tournament.sanction_reviewed_at || null,
+    sanctionReviewNote: tournament.sanctionReviewNote || tournament.sanction_review_note || "",
     bracket: tournament.bracket || {},
   };
 }
@@ -180,6 +202,13 @@ function toTournamentRow(tournament = {}) {
     match_ids: tournament.matchIds,
     team_statuses: tournament.teamStatuses,
     team_approvals: tournament.teamApprovals,
+    referee_ids: tournament.refereeIds,
+    referee_statuses: tournament.refereeStatuses,
+    referee_approvals: tournament.refereeApprovals,
+    sanction_status: tournament.sanctionStatus,
+    sanction_reviewed_by: tournament.sanctionReviewedBy,
+    sanction_reviewed_at: tournament.sanctionReviewedAt,
+    sanction_review_note: tournament.sanctionReviewNote,
     bracket: tournament.bracket || {},
     updated_at: new Date().toISOString(),
   };
@@ -244,6 +273,8 @@ function getTournamentScopedState(state = {}, tournament = null) {
   const userIds = new Set([
     state.currentUserId,
     tournament.createdBy,
+    tournament.sanctionReviewedBy,
+    ...(tournament.refereeIds ?? []),
     ...teams.flatMap((team) => toArray(team.members).map((member) => member.userId)),
   ].filter(Boolean));
   const matches = (state.matches ?? []).filter((match) => match.tournamentId === tournament.id);
@@ -271,12 +302,17 @@ function toTournamentListMatch(match = {}) {
 async function assertCanLoadTournament(context, tournamentId) {
   const { data: tournament, error: tournamentError } = await context.supabase
     .from("tournaments")
-    .select("id, created_by, visibility")
+    .select("id, created_by, visibility, referee_ids")
     .eq("id", tournamentId)
     .maybeSingle();
   if (tournamentError) throw tournamentError;
   if (!tournament?.id) reject(404, "tournament_not_found");
-  if (tournament.created_by === context.profileId || tournament.visibility === "public") return;
+  if (
+    tournament.created_by === context.profileId
+    || tournament.visibility === "public"
+    || toArray(tournament.referee_ids).includes(context.profileId)
+    || (await getAdminLevel(context)) >= 60
+  ) return;
 
   const { data: teamRows, error: teamError } = await context.supabase
     .from("tournament_teams")
@@ -305,7 +341,11 @@ async function loadTournamentOperation(context, operation = {}) {
   });
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId) ?? null;
   if (!tournament) reject(404, "tournament_not_found");
-  const scopedState = getTournamentScopedState(state, tournament);
+  const adminLevel = await getAdminLevel(context);
+  const scopedState = getTournamentScopedState(state, {
+    ...tournament,
+    viewerCanReviewRegion: adminLevel >= 60,
+  });
   const listMatches = scopedState.matches.map(toTournamentListMatch);
   return {
     ok: true,
@@ -397,14 +437,13 @@ function getInitialTournamentFixtures(format, teamCount) {
 }
 
 async function assertPreferredMatchIdsAssignable(context, operation = {}) {
-  if (operation.action !== "approveTournamentTeam") return;
+  if (!["approveTournamentRegion", "startCommunityTournament"].includes(operation.action)) return;
 
   const preferredMatchIds = toArray(operation.preferredMatchIds ?? operation.draft?.preferredMatchIds)
     .map((matchId) => String(matchId ?? "").trim());
   if (!preferredMatchIds.some(Boolean)) return;
 
   const tournamentId = String(operation.preferredTournamentId ?? operation.tournamentId ?? operation.draft?.id ?? "").trim();
-  const teamId = String(operation.teamId ?? "").trim();
   if (!tournamentId) reject(400, "missing_tournament_id");
 
   const { data: tournament, error: tournamentError } = await context.supabase
@@ -422,9 +461,9 @@ async function assertPreferredMatchIdsAssignable(context, operation = {}) {
     .order("seed_order", { ascending: true });
   if (teamError) throw teamError;
 
-  const activeTeams = toArray(teamRows).filter((row) => row.team_id === teamId || row.status !== "declined");
+  const activeTeams = toArray(teamRows).filter((row) => row.status !== "declined");
   const allAccepted = activeTeams.length >= 2
-    && activeTeams.every((row) => row.team_id === teamId || row.status === "accepted");
+    && activeTeams.every((row) => row.status === "accepted");
   if (!allAccepted) return;
 
   const fixtures = getInitialTournamentFixtures(tournament.format, activeTeams.length);
@@ -471,14 +510,19 @@ async function applySqlTournamentOperation(context, operation = {}) {
     operation: { action: "loadTournament", tournamentId },
   });
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId) ?? null;
-  const scopedState = getTournamentScopedState(state, tournament);
+  const adminLevel = await getAdminLevel(context);
+  const scopedTournament = tournament ? {
+    ...tournament,
+    viewerCanReviewRegion: adminLevel >= 60,
+  } : null;
+  const scopedState = getTournamentScopedState(state, scopedTournament);
   const createdMatchIds = new Set(toArray(data?.createdMatches).map((item) => item?.id).filter(Boolean));
   const createdMatches = scopedState.matches.filter((match) => createdMatchIds.has(match.id));
   return {
     ok: true,
     ...data,
     tournamentId,
-    tournament,
+    tournament: scopedTournament,
     createdMatches,
     createdMatchCount: createdMatches.length,
     state: scopedState,
@@ -524,7 +568,7 @@ export default async function handler(request, response) {
 
     const { data: existingTournament, error: existingError } = await context.supabase
       .from("tournaments")
-      .select("id, title, format, visibility, status, region, court_id, court_name, mode, ranked, official, start_date, end_date, schedule_policy, schedule_note, mmr_limit_mode, max_mmr_gap, mmr_policy, rules, memo, created_by, started_at, match_ids, bracket")
+      .select("id, title, format, visibility, status, region, court_id, court_name, mode, ranked, official, start_date, end_date, schedule_policy, schedule_note, mmr_limit_mode, max_mmr_gap, mmr_policy, rules, memo, created_by, started_at, match_ids, bracket, referee_ids, referee_statuses, referee_approvals, sanction_status, sanction_reviewed_by, sanction_reviewed_at, sanction_review_note")
       .eq("id", tournament.id)
       .maybeSingle();
     if (existingError) throw existingError;
