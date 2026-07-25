@@ -21,6 +21,7 @@ import {
 } from "../src/lib/roomFlow.js";
 import { getMatchSideLeaderId } from "../src/lib/matchUtils.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
+import { getRecruitingLobby } from "../src/lib/recruiting.js";
 
 test("경기 목적과 팀 구성은 독립 필드이고 레거시 matchIntent만 호환용으로 만든다", () => {
   const competitive = getMatchConfigurationChangePatch({}, { matchPurpose: "competitive", formationMode: "prearranged" });
@@ -332,4 +333,90 @@ test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형
     parties: [],
   }, [], "teamA"), "host");
   assert.doesNotMatch(recruitingSource, /selfRow \? <span className="form-chip">본인<\/span>/);
+});
+
+test("확정 픽업 방모달은 실제 A/B 출전·후보 명단을 그대로 표시한다", async () => {
+  const { createServer } = await import("vite");
+  const vite = await createServer({
+    appType: "custom",
+    logLevel: "silent",
+    server: { middlewareMode: true },
+  });
+
+  try {
+    const { getMatchRoomPost } = await vite.ssrLoadModule("/src/pages/Matches.jsx");
+    const userIds = ["host", "a1", "a2", "a3", "b1", "b2", "b3", "ra", "rb"];
+    const users = userIds.map((id) => ({ id, name: id }));
+    const sourcePost = {
+      id: "pickup-room-post",
+      title: "3v3 픽업",
+      playerId: "host",
+      ownerId: "host",
+      hostSide: "teamA",
+      hostJoinMode: "player",
+      sideCapacity: 3,
+      benchCapacity: 1,
+      formationMode: "pickup",
+      matchIntent: "pickup",
+      applicants: [],
+      roomState: { ownerId: "host", hostReserve: false },
+    };
+    const match = {
+      id: "pickup-room-match",
+      recruitingPostId: sourcePost.id,
+      title: sourcePost.title,
+      createdBy: "host",
+      mode: "3v3",
+      status: "agreed",
+      formationMode: "pickup",
+      matchIntent: "pickup",
+      teamA: { players: ["a1", "a2", "a3"], teamId: null },
+      teamB: { players: ["b1", "host", "b2"], teamId: null },
+      reservePlayers: { teamA: ["ra"], teamB: ["rb"] },
+      parties: [{ side: "teamA", players: ["host", "a1"] }],
+      rules: {
+        formationMode: "pickup",
+        matchIntent: "pickup",
+        sideCapacity: 3,
+        benchCapacity: 1,
+        sideAssignmentStatus: "confirmed",
+        sideAssignmentRevision: 1,
+      },
+      createdAt: "2026-07-25T00:00:00.000Z",
+    };
+    const state = {
+      currentUserId: "host",
+      users,
+      teams: [],
+      matches: [match],
+      recruitingPosts: [sourcePost],
+      settings: {},
+    };
+
+    const roomPost = getMatchRoomPost(match, state);
+    const lobby = getRecruitingLobby(roomPost, state);
+    assert.equal(roomPost.hostSide, "teamB");
+    assert.equal(roomPost.roomState.hostReserve, false);
+    assert.deepEqual([...lobby.sides.teamA.projectedPlayers].sort(), ["a1", "a2", "a3"]);
+    assert.deepEqual([...lobby.sides.teamB.projectedPlayers].sort(), ["b1", "b2", "host"]);
+    assert.equal(lobby.sides.teamA.projectedPlayers.includes("host"), false);
+
+    const reserveMatch = {
+      ...match,
+      teamB: { players: ["b1", "b2", "b3"], teamId: null },
+      reservePlayers: { teamA: ["ra"], teamB: ["host"] },
+    };
+    const reserveState = { ...state, matches: [reserveMatch] };
+    const reserveRoomPost = getMatchRoomPost(reserveMatch, reserveState);
+    const reserveLobby = getRecruitingLobby(reserveRoomPost, reserveState);
+    assert.equal(reserveRoomPost.hostSide, "teamB");
+    assert.equal(reserveRoomPost.roomState.hostReserve, true);
+    assert.deepEqual([...reserveLobby.sides.teamB.projectedPlayers].sort(), ["b1", "b2", "b3"]);
+    assert.equal(
+      reserveLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "host"),
+      true,
+    );
+  } finally {
+    await vite.close();
+  }
 });

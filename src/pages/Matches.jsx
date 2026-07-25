@@ -595,9 +595,21 @@ export function getMatchRoomPost(match, state) {
   const fallbackTeamBReserves = uniquePlayerIds((sourcePostLobby?.sides?.teamB?.reserveCandidates ?? []).map((candidate) => candidate.playerId));
   const teamAReserves = sourceTeamAReserves.length ? sourceTeamAReserves : fallbackTeamAReserves;
   const teamBReserves = sourceTeamBReserves.length ? sourceTeamBReserves : fallbackTeamBReserves;
+  const pickupAssignmentUsesMatchRoster = (
+    (sourceMatch.formationMode ?? sourceMatch.rules?.formationMode) === "pickup"
+    || (sourceMatch.matchIntent ?? sourceMatch.rules?.matchIntent) === "pickup"
+  ) && (
+    ["draft", "confirmed"].includes(sourceMatch.rules?.sideAssignmentStatus)
+    || Number(sourceMatch.rules?.sideAssignmentRevision ?? 0) > 0
+  );
+  const assignedHostSide = MATCH_SIDES.find((sideName) => (
+    sideName === "teamA"
+      ? [...sourceTeamAPlayers, ...sourceTeamAReserves].includes(hostPlayerId)
+      : [...sourceTeamBPlayers, ...sourceTeamBReserves].includes(hostPlayerId)
+  )) ?? "";
   const applicants = [];
   const partyReserves = {};
-  const matchParties = (match.parties ?? [])
+  const matchParties = (pickupAssignmentUsesMatchRoster ? [] : match.parties ?? [])
     .map((party, index) => ({
       ...party,
       index,
@@ -614,7 +626,12 @@ export function getMatchRoomPost(match, state) {
     party.reserves.includes(hostPlayerId)
   );
   const hostParty = matchParties.find(partyHasHost) ?? matchParties.find((party) => party.side === "teamA") ?? null;
-  const hostSide = tournamentRoom ? projectedTournamentHostSide || "teamA" : hostParty?.side ?? "teamA";
+  const hostSide = tournamentRoom
+    ? projectedTournamentHostSide || "teamA"
+    : assignedHostSide || hostParty?.side || "teamA";
+  const hostReserve = assignedHostSide
+    ? (assignedHostSide === "teamA" ? sourceTeamAReserves : sourceTeamBReserves).includes(hostPlayerId)
+    : Boolean(hostParty?.reserves.includes(hostPlayerId) || sourcePost?.roomState?.hostReserve);
   const hostJoinMode = tournamentRoom
     ? (hasExplicitSideTeam(hostSide) ? "team" : "player")
     : (hostParty?.teamId || hasExplicitSideTeam(hostSide) || isMatchSideTeamParty(match, hostSide) ? "team" : "player");
@@ -764,6 +781,7 @@ export function getMatchRoomPost(match, state) {
   const baseRoomState = {
     ...(sourcePost?.roomState ?? {}),
     ruleRevision: sourcePost?.roomState?.ruleRevision ?? 1,
+    hostReserve,
     partyReserves,
     pinnedReservePlayers: {
       ...(sourcePost?.roomState?.pinnedReservePlayers ?? {}),
