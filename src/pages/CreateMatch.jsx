@@ -2063,10 +2063,10 @@ export default function CreateMatch({
               <div className="field-block create-timing-field">
                 <span className="field-label">일정</span>
                 <div className="segmented-control compact-segments">
-                  <button type="button" className={draft.timingType === "scheduled" ? "active" : ""} onClick={() => update({ timingType: "scheduled" })}>일정 지정</button>
+                  <button type="button" className={draft.timingType === "scheduled" ? "active" : ""} disabled={practiceMode} onClick={() => update({ timingType: "scheduled" })}>일정 지정</button>
                   <button type="button" className={draft.timingType === "instant" ? "active" : ""} onClick={() => update({ timingType: "instant" })}>즉시</button>
                 </div>
-                <small>{isInstantRoom ? "날짜와 시간 없이 바로 경기 준비방을 만듭니다." : isPublicRoom ? "공개 예약방은 5일 이내이면서 시작까지 4시간 이상 남은 일정만 만들 수 있습니다." : "비공개 예약방은 1개월 이내 일정으로 만들 수 있습니다."}</small>
+                <small>{practiceMode ? "연습에서는 즉시 경기만 사용합니다." : isInstantRoom ? "날짜와 시간 없이 바로 경기 준비방을 만듭니다." : isPublicRoom ? "공개 예약방은 5일 이내이면서 시작까지 4시간 이상 남은 일정만 만들 수 있습니다." : "비공개 예약방은 1개월 이내 일정으로 만들 수 있습니다."}</small>
               </div>
             ) : null}
             <label className="create-capacity-field">

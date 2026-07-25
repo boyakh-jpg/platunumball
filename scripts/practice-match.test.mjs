@@ -122,6 +122,10 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   assert.equal(state.matches[0].practiceMode, true);
   assert.equal(state.matches[0].ranked, false);
 
+  const blockedStart = runPracticeReducer(state, "startMatch", [confirmed.matchId]);
+  assert.equal(blockedStart.applied, false);
+  assert.equal(Boolean(blockedStart.state.matches[0].startedAt), false);
+
   state = completePracticeAttendance(state, confirmed.matchId);
   const readyMatch = state.matches[0];
   assert.ok(
@@ -360,6 +364,8 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.match(pageSource, /syncStepToUrl=\{false\}/);
   assert.match(createSource, /app\.capabilities\?\.remoteDirectory !== false/);
   assert.match(createSource, /practiceMode && \(/);
+  assert.match(createSource, /disabled=\{practiceMode\}/);
+  assert.match(createSource, /연습에서는 즉시 경기만 사용합니다/);
   assert.match(createSource, /\(\) => !practiceMode && new URLSearchParams/);
   assert.match(createSource, /if \(!syncStepToUrl\) return/);
   assert.match(createSource, /\|\| !remoteDirectoryEnabled/);

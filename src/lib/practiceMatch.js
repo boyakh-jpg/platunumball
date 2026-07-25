@@ -204,10 +204,13 @@ export function runPracticeReducer(state, actionName, args = [], actorId = PRACT
   if (typeof reducer !== "function") {
     return { state, applied: false, error: "practice_action_unavailable" };
   }
+  const baseline = markPracticeState({ ...state, currentUserId: PRACTICE_SELF_ID });
+  const next = withPracticeActor(state, actorId, reducer, ...args);
+  const applied = JSON.stringify(next) !== JSON.stringify(baseline);
   return {
-    state: withPracticeActor(state, actorId, reducer, ...args),
-    applied: true,
-    error: "",
+    state: applied ? next : baseline,
+    applied,
+    error: applied ? "" : "practice_action_not_applied",
   };
 }
 
