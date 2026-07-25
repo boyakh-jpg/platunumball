@@ -626,7 +626,6 @@ html[data-theme="light"] .text-positive {
   color: var(--rb-green);
 }
 
-html[data-theme="light"] input[type="checkbox"],
 html[data-theme="light"] input[type="radio"] {
   accent-color: var(--rb-orange);
 }

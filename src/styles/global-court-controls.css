@@ -657,12 +657,7 @@ html[data-theme="light"] .court-map-picker-state {
 
 .match-operations-policy-fields .form-grid.two {
   grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-}
-
-.match-operations-core-grid > .switch-line {
-  min-height: var(--ui-button-height);
-  align-self: end;
-  padding-inline: 4px;
+  align-items: center;
 }
 
 .match-cost-components-grid {
@@ -811,10 +806,6 @@ html[data-theme="light"] .court-map-picker-state {
 .create-record-court-selection > span {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.create-match-page input[type="checkbox"] {
-  accent-color: var(--rb-orange);
 }
 
 .create-referee-row {

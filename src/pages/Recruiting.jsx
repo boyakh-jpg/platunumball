@@ -5581,7 +5581,7 @@ function RecruitingRoomModalReady({
                       </label>
                     )}
                     {joinDraft.joinMode !== "referee" && !pickupPoolMode ? (
-                    <div className="arena-field-grid">
+                    <div className="arena-field-grid arena-participation-fields">
                       <label>
                         진영
                         <select
@@ -5602,12 +5602,12 @@ function RecruitingRoomModalReady({
                           <option value="teamB" disabled={teamOnlyRoom && Boolean(getLobbyPrimaryTeamId(lobby, "teamB"))}>B사이드</option>
                         </select>
                       </label>
-                      <label className="arena-check-row">
-                        <input
-                          type="checkbox"
-                          checked={joinDraft.reserve}
+                      <label className="arena-participation-field">
+                        참가 상태
+                        <select
+                          value={joinDraft.reserve ? "reserve" : "starter"}
                           onChange={(event) => {
-                            const reserve = event.target.checked;
+                            const reserve = event.target.value === "reserve";
                             if (joinDraft.joinMode !== "team") {
                               updateJoinDraft(selectedPost, { reserve });
                               return;
@@ -5617,11 +5617,11 @@ function RecruitingRoomModalReady({
                               ...getJoinRosterPatch(selectedJoinTeam, joinDraft.side, reserve),
                             });
                           }}
-                        />
-                        <span>
-                          후보로 참여
-                          <small>출전선수 부족하면 자동으로 출전됩니다.</small>
-                        </span>
+                        >
+                          <option value="starter">출전</option>
+                          <option value="reserve">후보</option>
+                        </select>
+                        <small>출전 인원이 부족하면 후보가 자동으로 출전됩니다.</small>
                       </label>
                     </div>
                     ) : pickupPoolMode ? (

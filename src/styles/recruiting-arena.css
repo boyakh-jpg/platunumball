@@ -2117,24 +2117,11 @@ button.arena-room-player-slot {
   white-space: normal;
 }
 
-.arena-check-row {
-  align-content: center;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px;
+.arena-participation-fields {
+  align-items: center;
 }
 
-.arena-check-row input {
-  width: 18px;
-  height: 18px;
-}
-
-.arena-check-row span {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.arena-check-row small {
+.arena-participation-field small {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 800;

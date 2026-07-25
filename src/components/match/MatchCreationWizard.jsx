@@ -305,9 +305,15 @@ export function MatchOperationsPolicyFields({ draft, onChange }) {
           </select>
         </label>
         {policy.onCourtCount > 1 ? (
-          <label className="switch-line">
-            <input type="checkbox" checked={policy.vestsProvided} onChange={(event) => onChange({ vestsProvided: event.target.checked })} />
-            조끼 제공
+          <label>
+            조끼 준비
+            <select
+              value={policy.vestsProvided ? "provided" : "not_provided"}
+              onChange={(event) => onChange({ vestsProvided: event.target.value === "provided" })}
+            >
+              <option value="provided">제공</option>
+              <option value="not_provided">미제공</option>
+            </select>
           </label>
         ) : null}
       </div>

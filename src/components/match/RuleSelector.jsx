@@ -189,9 +189,15 @@ export default function RuleSelector({ draft, onChange }) {
         </select>
       </label>
       {rules.endCondition === "target_or_time" ? (
-      <label className="switch-line">
-        <input type="checkbox" checked={rules.winByTwo} onChange={(event) => updateRules({ winByTwo: event.target.checked })} />
+      <label>
         2점 차 승리
+        <select
+          value={rules.winByTwo ? "enabled" : "disabled"}
+          onChange={(event) => updateRules({ winByTwo: event.target.value === "enabled" })}
+        >
+          <option value="enabled">적용</option>
+          <option value="disabled">미적용</option>
+        </select>
       </label>
       ) : null}
       </div>

@@ -698,8 +698,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(88, 210, 192, 0.15);
+  border-color: var(--rb-orange);
+  box-shadow: var(--focus-ring);
 }
 
 input[type="color"] {
@@ -2648,15 +2648,6 @@ input[type="color"] {
   font-size: 0.8rem;
   font-weight: 850;
   padding: 9px 10px;
-}
-
-.settings-nearby-confirm input {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  min-height: 0;
-  margin: 0;
-  accent-color: var(--orange);
 }
 
 @media (max-width: 560px) {

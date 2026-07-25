@@ -772,9 +772,14 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(wizardSource, /\{ id: 6, label: "확인" \}/);
   assert.doesNotMatch(wizardSource, /점수판 있음|샷클락 있음|기록원 있음/);
   assert.match(wizardSource, /policy\.onCourtCount > 1/);
+  assert.match(wizardSource, /조끼 준비/);
+  assert.match(wizardSource, /vestsProvided:\s*event\.target\.value === "provided"/);
+  assert.doesNotMatch(wizardSource, /type="checkbox" checked=\{policy\.vestsProvided\}/);
   const ruleSelectorSource = fs.readFileSync(path.join(root, "src/components/match/RuleSelector.jsx"), "utf8");
   assert.match(ruleSelectorSource, /BOXTIER 경기시계 사용 여부/);
   assert.match(ruleSelectorSource, /rules\.gameClockEnabled && rules\.clockMode === "running"/);
+  assert.match(ruleSelectorSource, /winByTwo:\s*event\.target\.value === "enabled"/);
+  assert.doesNotMatch(ruleSelectorSource, /type="checkbox" checked=\{rules\.winByTwo\}/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "match_record"\)/);
   assert.match(source, /getScopedMatchCreationPolicyPayload\(draft, "tournament"\)/);
   assert.match(source, /getDefaultCreateTitle\(draft\.mode, patch\.matchIntent\)/);
@@ -787,9 +792,12 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(schemaSource, /coalesce\(draft->'rules', '\{\}'::jsonb\)/);
   const cssSource = readCssManifest("src/styles/globals.css");
   assert.doesNotMatch(cssSource, /\.match-creation-wizard-nav ol\s*\{[^}]*min-width:\s*720px/);
-  assert.match(cssSource, /\.create-match-page input\[type="checkbox"\][\s\S]*accent-color:\s*var\(--rb-orange\)/);
+  assert.doesNotMatch(cssSource, /\.create-match-page input\[type="checkbox"\][\s\S]*accent-color:/);
   assert.match(cssSource, /@media \(max-width: 420px\)[\s\S]*\.match-creation-wizard-actions/);
   const recruitingSource = fs.readFileSync(path.join(root, "src/pages/Recruiting.jsx"), "utf8");
+  assert.match(recruitingSource, /참가 상태[\s\S]*?joinDraft\.reserve \? "reserve" : "starter"/);
+  assert.match(recruitingSource, /const reserve = event\.target\.value === "reserve"/);
+  assert.doesNotMatch(recruitingSource, /arena-check-row/);
   assert.match(recruitingSource, /getMatchRuleDetailRows/);
   assert.match(recruitingSource, /selectedRoomPolicyRows/);
   assert.match(recruitingSource, /playerOnly=\{individualOnlyRoom\}/);

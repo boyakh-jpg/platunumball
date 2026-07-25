@@ -13,8 +13,15 @@ const styleFiles = fs.readdirSync("src/styles")
 const sourceFiles = fs.readdirSync("src", { recursive: true })
   .filter((file) => /\.(?:js|jsx|ts|tsx)$/.test(file))
   .map((file) => `src/${file.replaceAll("\\", "/")}`);
+const allStyleSources = styleFiles.map((file) => read(file)).join("\n");
 
 const componentSource = read("src/components/match/MatchListCard.jsx");
+const matchCreationWizardSource = read("src/components/match/MatchCreationWizard.jsx");
+const matchOperationsFieldsSource = matchCreationWizardSource.slice(
+  matchCreationWizardSource.indexOf("export function MatchOperationsPolicyFields"),
+  matchCreationWizardSource.indexOf("export function MatchCreationFinalSummary"),
+);
+const ruleSelectorSource = read("src/components/match/RuleSelector.jsx");
 const matchListStyles = read("src/styles/match-list-card.css");
 const primitiveStyles = read("src/styles/ui-primitives.css");
 const tokenStyles = read("src/styles/tokens.css");
@@ -125,6 +132,37 @@ test("공용 체크박스는 iOS native 외형을 사용하지 않는다", () =>
   assert.match(checkedRule, /background-image:\s*url\(/);
   assert.match(focusRule, /outline:\s*2px solid/);
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*input\[type="checkbox"\]\s*\{/);
+  assert.doesNotMatch(allStyleSources, /input\[type="checkbox"\][^{]*\{[^}]*accent-color:/);
+  assert.doesNotMatch(globalWorkflowStyles, /\.settings-nearby-confirm input\s*\{/);
+});
+
+test("같은 정책 행은 명시형 선택 필드와 중앙 control 정렬을 사용한다", () => {
+  assert.match(matchOperationsFieldsSource, /조끼 준비/);
+  assert.match(matchOperationsFieldsSource, /value=\{policy\.vestsProvided \? "provided" : "not_provided"\}/);
+  assert.match(matchOperationsFieldsSource, /vestsProvided:\s*event\.target\.value === "provided"/);
+  assert.doesNotMatch(matchOperationsFieldsSource, /type="checkbox"/);
+
+  assert.match(ruleSelectorSource, /2점 차 승리[\s\S]*?value=\{rules\.winByTwo \? "enabled" : "disabled"\}/);
+  assert.match(ruleSelectorSource, /winByTwo:\s*event\.target\.value === "enabled"/);
+  assert.doesNotMatch(ruleSelectorSource, /type="checkbox" checked=\{rules\.winByTwo\}/);
+
+  assert.match(pageSources.recruiting, /참가 상태[\s\S]*?value=\{joinDraft\.reserve \? "reserve" : "starter"\}/);
+  assert.match(pageSources.recruiting, /const reserve = event\.target\.value === "reserve"/);
+  assert.doesNotMatch(pageSources.recruiting, /arena-check-row/);
+
+  assert.match(courtControlStyles, /\.match-operations-policy-fields \.form-grid\.two\s*\{[^}]*align-items:\s*center;/);
+  assert.match(recruitingStyles, /\.arena-participation-fields\s*\{[^}]*align-items:\s*center;/);
+  assert.match(matchesStyles, /\.tournament-inline-schedule\s*\{[^}]*align-items:\s*center;/);
+  assert.match(matchesStyles, /\.tournament-schedule-list form\s*\{[^}]*align-items:\s*center;/);
+
+  assert.match(
+    globalWorkflowStyles,
+    /input:focus,\s*select:focus,\s*textarea:focus\s*\{[^}]*border-color:\s*var\(--rb-orange\);[^}]*box-shadow:\s*var\(--focus-ring\);/,
+  );
+  assert.doesNotMatch(
+    globalWorkflowStyles,
+    /input:focus,\s*select:focus,\s*textarea:focus\s*\{[^}]*var\(--green\)/,
+  );
 });
 
 test("공용 빈 상태와 control 높이는 페이지 override 없이 유지된다", () => {
