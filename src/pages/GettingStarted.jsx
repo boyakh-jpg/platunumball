@@ -115,9 +115,9 @@ const GUIDE_CHAPTERS = [
     eyebrow: "03 · LIVE",
     title: "심판·기록원·경기시계가 역할을 나눕니다.",
     lead: "심판 유무에 따라 시작·기록·종료 권한이 달라지고, 경기시계는 시간만 담당합니다.",
-    image: "/assets/guide/live-clock.jpg?v=20260725-scoreboard-shotclock-r2",
+    image: "/assets/guide/live-clock.jpg?v=20260725-clock-hierarchy-r2",
     imageAlt: "A/B 점수판과 30초 샷클락이 함께 열린 가로형 BOXTIER 경기시계",
-    caption: "심판·기록원이 저장한 A/B 점수와 경기시간을 보고, 샷클락은 큰 타일을 눌러 초기화합니다.",
+    caption: "심판·기록원이 저장한 A/B 점수와 큰 경기시간을 보고, 오른쪽 샷클락 버튼을 눌러 초기화합니다.",
     steps: [
       {
         title: "심판이 있는 경기",
