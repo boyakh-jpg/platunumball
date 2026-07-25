@@ -16,6 +16,7 @@ const Affiliations = lazy(() => import("./pages/Affiliations.jsx"));
 const CreateMatch = lazy(() => import("./pages/CreateMatch.jsx"));
 const CourtDetail = lazy(() => import("./pages/CourtDetail.jsx"));
 const DataSources = lazy(() => import("./pages/DataSources.jsx"));
+const GettingStarted = lazy(() => import("./pages/GettingStarted.jsx"));
 const Home = lazy(() => import("./pages/Home.jsx"));
 const Landing = lazy(() => import("./pages/Landing.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
@@ -145,6 +146,7 @@ export default function App() {
           <Route path="/app/admin/court-map" element={<AdminCourtMapPopup />} />
           <Route element={<AppShell app={app} auth={auth} />}>
             <Route path="/app" element={<Home app={app} />} />
+            <Route path="/app/guide" element={<GettingStarted />} />
             <Route path="/app/create" element={<CreateMatch app={app} />} />
             <Route path="/app/courts/:courtId" element={<CourtDetail app={app} />} />
             <Route path="/app/matches/:matchId" element={<MatchRoom app={app} />} />

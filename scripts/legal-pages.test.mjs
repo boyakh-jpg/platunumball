@@ -74,6 +74,7 @@ test("OAuth legal URLs have dedicated non-JavaScript HTML disclosures", async ()
   }
 
   assert.match(termsHtml, /BOXTIER 서비스 약관/);
+  assert.match(termsHtml, /필수 웹 기능은 평생 무료/);
   assert.match(termsHtml, /href="\/privacy">개인정보처리방침<\/a>/);
   assert.match(main, /rootElement\.replaceChildren\(\)/);
 });
@@ -103,6 +104,7 @@ test("legal documents include required operating disclosures without placeholder
     "기록·랭킹·신뢰도",
     "금지행위",
     "비용과 결제",
+    "필수 웹 기능은 평생 무료",
     "준거법과 분쟁",
   ]) {
     assert.ok(terms.includes(required), `terms disclosure missing: ${required}`);

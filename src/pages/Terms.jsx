@@ -1,6 +1,6 @@
 import LegalDocumentPage from "../components/legal/LegalDocumentPage.jsx";
 
-const EFFECTIVE_DATE = "2026년 7월 22일";
+const EFFECTIVE_DATE = "2026년 7월 25일";
 
 export default function Terms() {
   return (
@@ -15,6 +15,7 @@ export default function Terms() {
         <ul>
           <li>정확한 출생연도와 경기 정보를 입력해야 합니다.</li>
           <li>경기 참가와 안전은 실제 현장 상황을 확인해 스스로 판단해야 합니다.</li>
+          <li>경기 기록에 필요한 필수 웹 기능은 서비스 운영 기간 동안 평생 무료입니다.</li>
           <li>BOXTIER는 구장비·참가비 결제나 환불을 중개하지 않습니다.</li>
           <li>조작·사칭·폭언·불법 콘텐츠·무단 자동화는 제한될 수 있습니다.</li>
         </ul>
@@ -47,6 +48,7 @@ export default function Terms() {
           <li><strong>이용자</strong>: 이 약관에 따라 서비스에 접속하거나 가입해 이용하는 사람</li>
           <li><strong>콘텐츠</strong>: 이용자가 입력·게시·전송한 프로필, 글, 채팅, 경기·구장 정보, 기록, 이미지와 기타 자료</li>
           <li><strong>방</strong>: 경기 모집 또는 진행을 위해 생성한 공개·비공개 공간</li>
+          <li><strong>필수 웹 기능</strong>: 계정 생성, 경기 모집·초대·참가, 경기 결과·개인 기록의 생성·확인, 개인·팀 티어·MMR 조회, 기본 BOXTIER 경기시계, 커뮤니티 심판 룰북·시험·참여 기능</li>
         </ul>
       </section>
 
@@ -129,8 +131,10 @@ export default function Terms() {
 
       <section id="terms-fees">
         <h2>10. 비용과 결제</h2>
+        <p><strong>필수 웹 기능은 평생 무료입니다.</strong> BOXTIER는 서비스가 운영되는 동안 필수 웹 기능에 구독료 또는 기능 이용료를 부과하지 않습니다.</p>
+        <p>구장비·심판비·기록비·장비비·통신·데이터 비용 등 현장·외부 비용은 무료 범위에 포함되지 않습니다.</p>
         <p>서비스는 구장비·심판비·기록비·장비비 등 예상 비용과 분담 정보를 표시할 수 있지만 현재 결제대행, 예치, 정산, 자동 환불을 제공하지 않습니다. 실제 비용 지급·환불·정산은 경기 관계자 또는 시설과 직접 협의해야 합니다.</p>
-        <p>운영팀이 별도의 유료 기능을 도입하면 가격, 결제·청약철회·환불 조건을 사전에 명확히 고지하고 필요한 동의를 받습니다.</p>
+        <p>운영팀은 선택형 부가 기능을 별도로 유료 제공할 수 있지만, 이를 이유로 필수 웹 기능을 유료로 전환하거나 이용을 제한하지 않습니다. 유료 부가 기능을 도입하면 가격, 결제·청약철회·환불 조건을 사전에 명확히 고지하고 필요한 동의를 받습니다.</p>
       </section>
 
       <section id="terms-moderation">

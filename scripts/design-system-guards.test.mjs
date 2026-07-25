@@ -11,6 +11,10 @@ const primitiveStyles = read("src/styles/ui-primitives.css");
 const tokenStyles = read("src/styles/tokens.css");
 const visualSystemStyles = read("src/styles/global-visual-system.css");
 const courtControlStyles = read("src/styles/global-court-controls.css");
+const gettingStartedStyles = read("src/styles/getting-started.css");
+const appSource = read("src/App.jsx");
+const gettingStartedSource = read("src/pages/GettingStarted.jsx");
+const termsSource = read("src/pages/Terms.jsx");
 const hoverSurfaceStyles = [
   read("src/styles/global-foundation.css"),
   read("src/styles/global-admin-layout.css"),
@@ -111,4 +115,21 @@ test("폐기한 목록 카드와 CTA override 선택자는 돌아오지 않는�
   ]) {
     assert.equal(allSources.includes(legacyClass), false, `${legacyClass} 사용 금지`);
   }
+});
+
+test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", () => {
+  assert.match(appSource, /const GettingStarted = lazy\(\(\) => import\("\.\/pages\/GettingStarted\.jsx"\)\);/);
+  assert.match(appSource, /path="\/app\/guide" element=\{<GettingStarted \/>\}/);
+  assert.equal(count(pageSources.home, 'to="/app/guide"'), 1);
+  assert.match(pageSources.home, /처음 사용하시나요\?/);
+  assert.match(gettingStartedSource, /농구 기록 웹입니다/);
+  assert.match(gettingStartedSource, /필수 웹 기능은 평생 무료/);
+  assert.match(gettingStartedSource, /경기시계/);
+  assert.match(gettingStartedSource, /심판·기록원/);
+  assert.match(gettingStartedSource, /티어 관리/);
+  assert.match(gettingStartedSource, /기기별 베타/);
+  assert.match(termsSource, /필수 웹 기능은 평생 무료입니다/);
+  assert.match(gettingStartedStyles, /@media \(max-width: 720px\)/);
+  assert.match(gettingStartedStyles, /@media \(max-width: 480px\)/);
+  assert.doesNotMatch(pageSources.home, /onboardingComplete[\s\S]*home-guide-card/);
 });

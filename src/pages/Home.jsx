@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Bell, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, BookOpenCheck, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -660,6 +660,33 @@ export default function Home({ app }) {
             </aside>
           </div>
         </section>
+
+        <Card
+          as={Link}
+          to="/app/guide"
+          className="home-guide-card"
+          aria-label="BOXTIER 처음 사용 설명 보기"
+        >
+          <span className="home-guide-card__icon">
+            <BookOpenCheck size={24} aria-hidden="true" />
+          </span>
+          <span className="home-guide-card__copy">
+            <small>FIRST STEP · 2분 가이드</small>
+            <strong>처음 사용하시나요?</strong>
+            <span>경기 기록부터 티어 반영까지 한 번에 확인하세요.</span>
+          </span>
+          <span className="home-guide-card__path" aria-hidden="true">
+            <b>PLAY</b>
+            <i>→</i>
+            <b>RECORD</b>
+            <i>→</i>
+            <b>TIER</b>
+          </span>
+          <span className="home-guide-card__link">
+            사용 설명
+            <ArrowRight size={18} aria-hidden="true" />
+          </span>
+        </Card>
 
         <div className="content-grid home-dashboard-grid rank-dashboard-grid">
           <div className="page-stack home-primary-stack">
