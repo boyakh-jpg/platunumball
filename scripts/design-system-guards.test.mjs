@@ -8,6 +8,16 @@ const count = (source, value) => source.split(value).length - 1;
 const componentSource = read("src/components/match/MatchListCard.jsx");
 const matchListStyles = read("src/styles/match-list-card.css");
 const primitiveStyles = read("src/styles/ui-primitives.css");
+const tokenStyles = read("src/styles/tokens.css");
+const visualSystemStyles = read("src/styles/global-visual-system.css");
+const courtControlStyles = read("src/styles/global-court-controls.css");
+const hoverSurfaceStyles = [
+  read("src/styles/global-foundation.css"),
+  read("src/styles/global-admin-layout.css"),
+  read("src/styles/global-surfaces.css"),
+  visualSystemStyles,
+  courtControlStyles,
+].join("\n");
 const pageSources = {
   home: read("src/pages/Home.jsx"),
   matches: read("src/pages/Matches.jsx"),
@@ -59,6 +69,29 @@ test("홈 검색 카드가 공용 card padding을 덮지 않는다", () => {
     legacyStyleSources,
     /\.home-search-panel(?:\.rank-search-card)?\s*\{[^{}]*\bpadding(?:-[a-z]+)?\s*:/,
   );
+});
+
+test("프로필 호버 카드는 하나의 반투명 표면 토큰을 사용한다", () => {
+  const hoverCardBody = getRuleBody(visualSystemStyles, ".hover-portal-card");
+  const touchCardBody = getRuleBody(courtControlStyles, ".hover-portal-card.touch-open");
+  const typeSpecificBackgrounds = [];
+
+  for (const match of hoverSurfaceStyles.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selectors = match[1].split(",").map((selector) => selector.trim());
+    const isCardRoot = selectors.some((selector) => (
+      /(?:player|team|court|referee)-hover-card(?:\.touch-open)?$/.test(selector)
+    ));
+    if (isCardRoot && /\bbackground(?:-color|-image)?\s*:/.test(match[2])) {
+      typeSpecificBackgrounds.push(match[1].trim());
+    }
+  }
+
+  assert.match(tokenStyles, /--ui-profile-popup-bg:\s*color-mix\(/);
+  assert.match(tokenStyles, /--ui-profile-popup-backdrop-filter:\s*blur\(/);
+  assert.match(hoverCardBody, /background:\s*var\(--ui-profile-popup-bg\)/);
+  assert.match(hoverCardBody, /backdrop-filter:\s*var\(--ui-profile-popup-backdrop-filter\)/);
+  assert.doesNotMatch(touchCardBody, /\bbackground(?:-color|-image)?\s*:/);
+  assert.deepEqual(typeSpecificBackgrounds, []);
 });
 
 test("폐기한 목록 카드와 CTA override 선택자는 돌아오지 않는다", () => {

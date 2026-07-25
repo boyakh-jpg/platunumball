@@ -2278,17 +2278,6 @@ html[data-theme="light"] .segmented-control button.active {
   color: #f7fffb;
 }
 
-html[data-theme="light"] .player-hover-card,
-html[data-theme="light"] .team-hover-card,
-html[data-theme="light"] .court-hover-card,
-html[data-theme="light"] .referee-hover-card {
-  border-color: rgba(32, 56, 68, 0.16);
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 246, 0.96)),
-    rgba(255, 255, 255, 0.98);
-  box-shadow: 0 22px 55px rgba(21, 38, 46, 0.18);
-}
-
 html[data-theme="light"] .rank-profile-card,
 html[data-theme="light"] .rank-mode-card,
 html[data-theme="light"] .rank-leaderboard-card,

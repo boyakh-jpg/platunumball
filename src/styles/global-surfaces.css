@@ -1244,12 +1244,6 @@ html[data-theme="light"] .ranking-filter-card {
   background-image: none;
 }
 
-/* 2026-06-23 dense surface cleanup: hover cards, home rail, teams, settings. */
-.hover-portal-card {
-  background-color: rgba(7, 11, 17, 0.98);
-  background-image: none;
-}
-
 .player-hover-tier-grid > span,
 .player-hover-team > span,
 .team-hover-tier,
@@ -1527,11 +1521,6 @@ html[data-theme="light"] .ranking-filter-card {
 
 .rank-home .rank-profile-card {
   background-color: rgba(10, 14, 21, 0.9);
-  background-image: none;
-}
-
-html[data-theme="light"] .hover-portal-card {
-  background-color: rgba(255, 255, 255, 0.98);
   background-image: none;
 }
 

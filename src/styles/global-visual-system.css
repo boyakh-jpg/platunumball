@@ -1970,11 +1970,6 @@ html[data-theme="light"] .bottom-nav {
 .stat-referee-panel,
 .stat-trust-panel,
 .match-card,
-.hover-portal-card,
-.player-hover-card,
-.team-hover-card,
-.court-hover-card,
-.referee-hover-card,
 .notification-invitation-card,
 .affiliation-card,
 .profile-record-card,
@@ -1996,11 +1991,6 @@ html[data-theme="light"] .gm-rule-summary-card,
 html[data-theme="light"] .stat-referee-panel,
 html[data-theme="light"] .stat-trust-panel,
 html[data-theme="light"] .match-card,
-html[data-theme="light"] .hover-portal-card,
-html[data-theme="light"] .player-hover-card,
-html[data-theme="light"] .team-hover-card,
-html[data-theme="light"] .court-hover-card,
-html[data-theme="light"] .referee-hover-card,
 html[data-theme="light"] .notification-invitation-card,
 html[data-theme="light"] .affiliation-card,
 html[data-theme="light"] .profile-record-card,
@@ -2223,11 +2213,6 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .stat-referee-panel,
 .stat-trust-panel,
 .match-card,
-.hover-portal-card,
-.player-hover-card,
-.team-hover-card,
-.court-hover-card,
-.referee-hover-card,
 .notification-invitation-card,
 .affiliation-card,
 .profile-record-card,
@@ -2243,6 +2228,15 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
+}
+
+.hover-portal-card {
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-profile-popup-bg);
+  box-shadow: var(--ui-profile-popup-shadow);
+  -webkit-backdrop-filter: var(--ui-profile-popup-backdrop-filter);
+  backdrop-filter: var(--ui-profile-popup-backdrop-filter);
 }
 
 .segmented-control,

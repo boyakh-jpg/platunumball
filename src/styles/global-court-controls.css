@@ -1161,18 +1161,6 @@ html[data-theme="light"] .court-map-picker-state {
     top: auto !important;
     bottom: calc(var(--bottom-nav-height) + 22px + env(safe-area-inset-bottom, 0px)) !important;
     max-height: min(62dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 560px) !important;
-    background: var(--surface);
-  }
-
-  html[data-theme="light"] .hover-portal-card.touch-open {
-    background: var(--surface);
-  }
-
-  .player-hover-card.touch-open,
-  html[data-theme="light"] .player-hover-card.touch-open {
-    background: var(--ui-profile-popup-bg);
-    -webkit-backdrop-filter: var(--ui-profile-popup-backdrop-filter);
-    backdrop-filter: var(--ui-profile-popup-backdrop-filter);
   }
 }
 
