@@ -111,7 +111,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "03 · LIVE",
     title: "경기시계는 현장을 보조합니다.",
     lead: "시계 담당자는 시간만 운용하고, 점수는 심판·기록원이 확정한 기록을 읽어옵니다.",
-    image: "/assets/guide/live-clock.jpg",
+    image: "/assets/guide/live-clock.jpg?v=20260725-responsive-clock",
     imageAlt: "가로형 BOXTIER 경기시계와 샷클락 화면",
     caption: "경기시간을 크게 보고, 샷클락은 설정했을 때만 큰 타일로 초기화합니다.",
     steps: [
