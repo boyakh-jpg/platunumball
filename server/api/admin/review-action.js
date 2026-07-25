@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 import { deleteObject, getR2Config } from "../teams/emblem.js";
 
 const HIGH_IMPACT_ACTIONS = new Set([
@@ -66,6 +66,8 @@ export default async function handler(request, response) {
   }
 
   try {
+    const context = await requireAdminContext(request);
+    const adminLevel = context.adminLevel;
     const body = await readJsonBody(request);
     const reportId = String(body.reportId ?? "").trim();
     if (!reportId) {
@@ -73,8 +75,6 @@ export default async function handler(request, response) {
       return;
     }
 
-    const context = await getAuthenticatedContext(request);
-    const adminLevel = await getAdminLevel(context);
     const { actionType, reason, feedback } = normalizeAdminReviewInput(body);
     if (HIGH_IMPACT_ACTIONS.has(actionType) && adminLevel < 50) throw makeHttpError("admin_discipline_permission_required", 403);
 

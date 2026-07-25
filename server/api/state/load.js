@@ -1,4 +1,4 @@
-import { flattenIdValues as toArray, getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
+import { flattenIdValues as toArray, getAuthenticatedContext, readJsonBody, requireAdminContext, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadNormalizedDirectoryStateFromClient } from "../../../src/data/repository.js";
 
@@ -90,7 +90,6 @@ function sanitizeUser(user = {}, profileId = "", isAdmin = false) {
   const {
     authUserId: _authUserId,
     birthYear: _birthYear,
-    testPassword: _testPassword,
     ...publicUser
   } = user;
   return publicUser;
@@ -153,7 +152,6 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
     const requestedScope = String(body.scope ?? body.pagination?.scope ?? "").trim();
     if (requestedScope && !["profile", "admin"].includes(requestedScope)) {
       sendJson(response, 410, {
@@ -163,11 +161,7 @@ export default async function handler(request, response) {
       return;
     }
     if (requestedScope === "admin") {
-      const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
-      if (adminLevel < 30) {
-        sendJson(response, 403, { error: "admin_required" });
-        return;
-      }
+      const context = await requireAdminContext(request, { profileSelect: PROFILE_ME_COLUMNS });
       const result = await loadNormalizedDirectoryStateFromClient(
         context.supabase,
         context.authUserId,
@@ -177,6 +171,7 @@ export default async function handler(request, response) {
       sendJson(response, 200, { ok: true, state: result.state, updatedAt: result.updatedAt ?? 0 });
       return;
     }
+    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
     const result = await loadCurrentProfileState(context, { includeTeamMemberProfiles: false });
     sendJson(response, 200, { ok: true, state: result.state, updatedAt: result.updatedAt ?? 0 });
   } catch (error) {

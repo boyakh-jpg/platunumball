@@ -86,7 +86,6 @@ import {
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { assetUrl } from "../lib/assets.js";
-import { hasAdminAccess } from "../lib/admin.js";
 import { BRAND_NAME } from "../lib/brand.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
@@ -2914,8 +2913,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     [app.state.users, sourceMatch?.anonymousPlayers],
   );
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
-  const currentUserIsAdmin = Number(app.adminContext?.level ?? 0) >= 30
-    || hasAdminAccess(app.currentUser, app.state.settings);
+  const currentUserIsAdmin = Number(app.adminContext?.level ?? 0) >= 30;
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtById = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.id, court])), [registeredCourts]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);

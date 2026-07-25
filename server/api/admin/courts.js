@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 import { buildCourtAddressNameUpdates } from "../../../src/lib/courts.js";
 
 const PAGE_SIZE = 100;
@@ -354,13 +354,9 @@ export default async function handler(request, response) {
   }
 
   try {
+    const context = await requireAdminContext(request, { minimumLevel: 50 });
+    const adminLevel = context.adminLevel;
     const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request);
-    const adminLevel = await getAdminLevel(context);
-    if (adminLevel < 50) {
-      sendJson(response, 403, { error: "admin_permission_required" });
-      return;
-    }
 
     const operation = safeText(body.operation || "list");
     if (operation === "list") {

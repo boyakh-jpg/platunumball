@@ -3265,6 +3265,19 @@ flowchart TD
 13. 쿼터·연장 구간의 남은 시간이 0이 된 것만으로 경기를 종료하지 않는다. 실제 경기시계 `start` 서버시각부터 90분 동안 정규 구간과 연장을 허용하고, 90분이 되면 DB 서버시각과 매분 작업으로 경기시계를 `ended` 처리하고 경기 `endedAt`을 저장해 `postgame`으로 전환한다. 경기시계 조회도 같은 만료 검증을 실행하며 수동 경기 종료가 먼저 발생하면 해당 경기시계도 함께 닫는다.
 14. `내 슬롯 관리`와 사전 출전 명단 편집은 `startedAt` 저장 전까지만 허용한다. 시작 뒤 실제 출전 변경은 `live` 교체, 종료 뒤 누락 인원은 사후 인원 추가 흐름만 사용한다. 사후 경기기록방의 별도 참가자 구성은 `recordSetupReady=true`가 되기 전까지만 열고 확정 뒤 다시 노출하지 않는다.
 
+## 2026-07-25 관리자 권한 보안 기준
+
+1. 관리자 권한의 유일한 근거는 서버가 검증한 Supabase 세션의 `auth.uid()`와 `profiles.auth_user_id` 매핑, `admin_appointments`의 `role='admin'`, `status='active'`, 유효한 `starts_at`·`ends_at`이다.
+2. URL query, localStorage, `profileCache`, frontend state, `user_metadata`, 이메일, 클라이언트가 전달한 사용자 ID·프로필 ID·관리자 level은 권한 근거로 쓰지 않는다.
+3. `/app/admin`과 `/app/admin/court-map`은 `POST /api/admin/context`가 반환한 서버 관리자 context로만 연다. 메뉴 숨김은 보조 UX이며 보안 경계가 아니다.
+4. 모든 관리자 조회·승인·수정·삭제·임명·징계 API는 body를 읽거나 RPC를 호출하기 전에 공통 `requireAdminContext()`를 통과해야 한다. 인증 실패는 401, 활성 관리자 권한 부족은 403이다.
+5. 관리자 API는 매 요청마다 Supabase `auth.getUser()`로 bearer를 다시 검증하고 관리자 level 캐시, frontend owner seed, owner env 우회를 사용하지 않는다.
+6. 관리자 전용 DB RPC는 `public`, `anon`, `authenticated` 실행권을 제거하고 `service_role`에만 허용한다. 서버는 클라이언트 body가 아닌 검증된 context의 `profileId`와 level만 RPC에 전달한다.
+7. `current_profile_id()`, `current_admin_level()`, `current_is_admin()`은 `SECURITY DEFINER`, 빈 `search_path`, 고정 소유자, 최소 실행권을 사용한다. 관리자 상태는 정확히 `active`만 허용한다.
+8. `admin_appointments`, `referee_appointments`, `admin_audit_log`, `admin_disciplinary_actions`는 RLS를 활성화하고 브라우저 role의 직접 table 권한을 제거한다.
+9. `rankball.auth.profileCache.v2`는 현재 인증 사용자 한 명의 최소 공개 프로필과 theme만 저장한다. v1은 첫 접근 때 삭제하며 관리자·감사·징계·전체 구장·Discord 식별자·인증 식별자는 저장하지 않는다.
+10. 테스트 계정 비밀번호는 frontend profile, API 응답, localStorage, production bundle에 포함하지 않는다. 테스트 로그인 자격 증명은 개발 seed 또는 서버 시뮬레이션 환경에서만 다룬다.
+
 ## 2026-07-24 방 변경 승인·픽업 팀 배치
 
 1. 참가자가 있는 모집방·확정 경기에서 일반 규칙을 바꾸면 슬롯, 출석, 참가 합의는 유지하고 새 `ruleRevision` 확인 대상만 만든다. 방장 또는 수정한 심판은 자동 확인되며 현재 참가자는 최신 revision을 확인해야 경기 확정·시작이 가능하다.

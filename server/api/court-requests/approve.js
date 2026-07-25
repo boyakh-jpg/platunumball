@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST") {
@@ -8,6 +8,8 @@ export default async function handler(request, response) {
   }
 
   try {
+    const context = await requireAdminContext(request);
+    const adminLevel = context.adminLevel;
     const body = await readJsonBody(request);
     const requestId = String(body.requestId ?? "").trim();
     const approval = body.approval && typeof body.approval === "object" ? body.approval : {};
@@ -16,8 +18,6 @@ export default async function handler(request, response) {
       return;
     }
 
-    const context = await getAuthenticatedContext(request);
-    const adminLevel = await getAdminLevel(context);
     const { data, error } = await context.supabase.rpc("rankball_approve_court_request", {
       actor_profile_id: context.profileId,
       actor_admin_level: adminLevel,

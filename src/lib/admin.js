@@ -183,16 +183,15 @@ export function isAppointmentActive(appointment = {}, nowMs = Date.now()) {
   const endsAt = getTime(appointment.endsAt);
   const afterStart = !startsAt || startsAt <= nowMs;
   const beforeEnd = !endsAt || endsAt >= nowMs;
-  return appointment.status !== "revoked" && appointment.status !== "expired" && afterStart && beforeEnd;
+  return appointment.status === "active" && afterStart && beforeEnd;
 }
 
 export function hasAdminAccess(user = {}, settings = {}) {
-  const grade = getAdminGrade(user);
-  if (grade) return true;
   const appointments = settings.adminAppointments ?? [];
   return Boolean(
     user.id &&
     appointments.some((appointment) => (
+      appointment.source === "server_context" &&
       appointment.userId === user.id &&
       appointment.role === "admin" &&
       isAppointmentActive(appointment)
@@ -205,12 +204,15 @@ export function getReportTargetUserId(report = {}, fallbackUserId = "") {
 }
 
 export function getAdminAuthorityLevel(state = {}) {
-  const currentUser = state.users?.find((user) => user.id === state.currentUserId) ?? {};
-  const profileLevel = getAdminGradeMeta(getAdminGrade(currentUser))?.level ?? 0;
   const appointmentLevel = (state.settings?.adminAppointments ?? [])
-    .filter((appointment) => appointment.userId === state.currentUserId && (appointment.role ?? "admin") === "admin" && isAppointmentActive(appointment))
+    .filter((appointment) => (
+      appointment.source === "server_context"
+      && appointment.userId === state.currentUserId
+      && appointment.role === "admin"
+      && isAppointmentActive(appointment)
+    ))
     .reduce((max, appointment) => Math.max(max, getAdminGradeMeta(appointment.grade)?.level ?? 0), 0);
-  return Math.max(profileLevel, appointmentLevel);
+  return appointmentLevel;
 }
 
 export function getAppointmentTermDays(role, grade, termDays) {

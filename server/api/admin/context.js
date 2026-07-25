@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, sendJson } from "../_supabaseAdmin.js";
+import { requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 
 function getAdminGradeFromLevel(level = 0) {
   if (level >= 100) return "owner";
@@ -17,13 +17,12 @@ export default async function handler(request, response) {
   }
 
   try {
-    const context = await getAuthenticatedContext(request);
-    const adminLevel = await getAdminLevel(context);
+    const context = await requireAdminContext(request);
     sendJson(response, 200, {
       ok: true,
       profileId: context.profileId,
-      adminLevel,
-      adminGrade: getAdminGradeFromLevel(adminLevel),
+      adminLevel: context.adminLevel,
+      adminGrade: getAdminGradeFromLevel(context.adminLevel),
     });
   } catch (error) {
     console.error("Admin context failed.", error);

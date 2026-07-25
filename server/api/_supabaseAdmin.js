@@ -30,7 +30,6 @@ const ADMIN_GRADE_LEVELS = {
 let adminClient = null;
 const authUserCache = new Map();
 const authContextCache = new Map();
-const adminLevelCache = new Map();
 const AUTH_CONTEXT_CACHE_TTL_MS = 30 * 1000;
 const RELATED_TOURNAMENT_LIMIT = 40;
 
@@ -184,32 +183,6 @@ function writeAuthContextCache(token = "", profileSelect = "", allowMissingProfi
     const now = Date.now();
     for (const [cacheKey, value] of authContextCache) {
       if (value.expiresAt <= now || authContextCache.size > 100) authContextCache.delete(cacheKey);
-    }
-  }
-}
-
-function getAdminLevelCacheKey(context = {}) {
-  return `${context.authUserId || ""}\n${context.profileId || ""}`;
-}
-
-function readAdminLevelCache(context = {}) {
-  const key = getAdminLevelCacheKey(context);
-  const cached = adminLevelCache.get(key);
-  if (!cached || cached.expiresAt <= Date.now()) {
-    adminLevelCache.delete(key);
-    return null;
-  }
-  return cached.level;
-}
-
-function writeAdminLevelCache(context = {}, level = 0) {
-  const key = getAdminLevelCacheKey(context);
-  if (!key.trim()) return;
-  adminLevelCache.set(key, { expiresAt: Date.now() + AUTH_CONTEXT_CACHE_TTL_MS, level });
-  if (adminLevelCache.size > 100) {
-    const now = Date.now();
-    for (const [cacheKey, value] of adminLevelCache) {
-      if (value.expiresAt <= now || adminLevelCache.size > 100) adminLevelCache.delete(cacheKey);
     }
   }
 }
@@ -572,22 +545,18 @@ export async function fetchCourtRowsByIds(supabase, courtIds = [], columns = "*"
   return { data: [...rowsById.values()], error: null };
 }
 
-function getEnvList(name) {
-  return String(process.env[name] || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
-
-function isActiveAppointment(appointment = {}, nowMs = Date.now()) {
-  if (appointment.status && !["active", "approved"].includes(appointment.status)) return false;
-  const startsAt = appointment.starts_at ? new Date(appointment.starts_at).getTime() : 0;
-  const endsAt = appointment.ends_at ? new Date(appointment.ends_at).getTime() : 0;
-  return (!startsAt || startsAt <= nowMs) && (!endsAt || endsAt >= nowMs);
+export function isActiveAdminAppointment(appointment = {}, nowMs = Date.now()) {
+  if (appointment.status !== "active") return false;
+  const startsAt = appointment.starts_at ? new Date(appointment.starts_at).getTime() : null;
+  const endsAt = appointment.ends_at ? new Date(appointment.ends_at).getTime() : null;
+  if (startsAt !== null && !Number.isFinite(startsAt)) return false;
+  if (endsAt !== null && !Number.isFinite(endsAt)) return false;
+  return (startsAt === null || startsAt <= nowMs) && (endsAt === null || endsAt >= nowMs);
 }
 
 export async function getAuthenticatedContext(request, options = {}) {
   const allowMissingProfile = Boolean(options.allowMissingProfile);
+  const freshAuth = options.freshAuth === true;
   const profileSelect = options.profileSelect || "id, auth_user_id";
   const supabase = getSupabaseAdminClient();
   const token = getBearerToken(request);
@@ -598,13 +567,13 @@ export async function getAuthenticatedContext(request, options = {}) {
   }
 
   const cacheProfileContext = canCacheProfileContext(profileSelect);
-  const cachedContext = cacheProfileContext
+  const cachedContext = !freshAuth && cacheProfileContext
     ? readAuthContextCache(token, profileSelect, allowMissingProfile)
     : null;
   if (cachedContext) return { ...cachedContext, supabase };
 
   // Test accounts use the same Supabase Auth JWT path as production accounts.
-  let authUser = readAuthUserCache(token);
+  let authUser = freshAuth ? null : readAuthUserCache(token);
   if (!authUser) {
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData?.user?.id) {
@@ -653,26 +622,7 @@ export async function getAuthenticatedContext(request, options = {}) {
 }
 
 export async function getAdminLevel(context) {
-  const cachedLevel = readAdminLevelCache(context);
-  if (cachedLevel !== null) return cachedLevel;
-  if (getEnvList("RANKBALL_OWNER_AUTH_USER_IDS").includes(context.authUserId)) {
-    writeAdminLevelCache(context, 100);
-    return 100;
-  }
-  if (getEnvList("RANKBALL_OWNER_PROFILE_IDS").includes(context.profileId)) {
-    writeAdminLevelCache(context, 100);
-    return 100;
-  }
-
-  const { data: rpcLevel, error: rpcError } = await context.supabase.rpc("rankball_admin_level_for_profile", {
-    actor_profile_id: context.profileId,
-    override_level: 0,
-  });
-  const rpcAdminLevel = !rpcError && Number.isFinite(Number(rpcLevel)) ? Number(rpcLevel) : 0;
-  if (rpcAdminLevel >= 30) {
-    writeAdminLevelCache(context, rpcAdminLevel);
-    return rpcAdminLevel;
-  }
+  if (!context?.profileId || !context?.supabase) return 0;
 
   const { data, error } = await context.supabase
     .from("admin_appointments")
@@ -682,9 +632,25 @@ export async function getAdminLevel(context) {
 
   if (error) throw error;
 
-  const level = (data ?? [])
-    .filter(isActiveAppointment)
-    .reduce((level, appointment) => Math.max(level, ADMIN_GRADE_LEVELS[appointment.grade] ?? 0), rpcAdminLevel);
-  writeAdminLevelCache(context, level);
-  return level;
+  return (data ?? [])
+    .filter(isActiveAdminAppointment)
+    .reduce((level, appointment) => Math.max(level, ADMIN_GRADE_LEVELS[appointment.grade] ?? 0), 0);
+}
+
+export function assertAdminLevel(adminLevel = 0, minimumLevel = 30) {
+  if (Number(adminLevel) >= Number(minimumLevel)) return;
+  const error = new Error("admin_required");
+  error.statusCode = 403;
+  throw error;
+}
+
+export async function requireAdminContext(request, options = {}) {
+  const minimumLevel = Number(options.minimumLevel ?? 30);
+  const context = await getAuthenticatedContext(request, {
+    ...options,
+    freshAuth: true,
+  });
+  const adminLevel = await getAdminLevel(context);
+  assertAdminLevel(adminLevel, minimumLevel);
+  return { ...context, adminLevel };
 }

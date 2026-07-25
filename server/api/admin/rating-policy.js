@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST") {
@@ -8,14 +8,10 @@ export default async function handler(request, response) {
   }
 
   try {
+    const context = await requireAdminContext(request, { minimumLevel: 100 });
+    const adminLevel = context.adminLevel;
     const body = await readJsonBody(request);
     const action = String(body.action ?? "load").trim();
-    const context = await getAuthenticatedContext(request);
-    const adminLevel = await getAdminLevel(context);
-    if (adminLevel < 100) {
-      sendJson(response, 403, { error: "owner_permission_required" });
-      return;
-    }
 
     if (action === "load") {
       const { data, error } = await context.supabase.rpc("rankball_get_rating_policy", {

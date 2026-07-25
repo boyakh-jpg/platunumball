@@ -108,7 +108,6 @@ export function fromRemoteProfile(row) {
     avatarBorderColor: row.avatar_border_color ?? row.avatar_color ?? "#58d2c0",
     discordAvatarUrl: row.discord_avatar_url ?? row.discord_connection?.avatarUrl ?? null,
     testLoginId: row.test_login_id,
-    testPassword: "test-0000",
     authUserId: row.auth_user_id ?? null,
     hashtag,
     birthYear: row.birth_year ?? (isTestProfile ? TEST_PROFILE_BIRTH_YEAR : null),

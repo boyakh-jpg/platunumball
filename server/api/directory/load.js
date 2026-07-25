@@ -4,6 +4,7 @@ import {
   getRowsMaxUpdatedAt,
   groupRowsBy,
   readJsonBody,
+  requireAdminContext,
   sendJson,
   uniqueValues,
 } from "../_supabaseAdmin.js";
@@ -659,7 +660,9 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
+    const context = body.scope === "admin"
+      ? await requireAdminContext(request, { profileSelect: PROFILE_ME_COLUMNS })
+      : await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
     const result = body.scope === "admin"
       ? await loadAdminSection(context, body)
       : await loadDirectoryPage(context, body);

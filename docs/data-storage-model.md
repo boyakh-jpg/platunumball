@@ -132,7 +132,7 @@
 - `court_requests` write는 `POST /api/court-requests/submit`, `approve`, `report` server action으로 처리한다.
 - `approved_courts`, 관리자 임명, 심판 임명, audit log, 징계 row는 전용 server action/RPC만 사용한다.
 - 서버 API에는 `SUPABASE_SERVICE_ROLE_KEY`가 필요하다. 프론트 env에 넣으면 안 된다.
-- 최초 최고관리자는 `RANKBALL_OWNER_AUTH_USER_IDS` 또는 `RANKBALL_OWNER_PROFILE_IDS` env로 지정하거나 DB에 active `admin_appointments`를 넣어야 한다.
+- 최초 최고관리자도 DB의 유효한 `status='active'` `admin_appointments`로만 지정한다. 서버 env, 이메일, frontend seed는 관리자 권한 근거가 아니다.
 - Supabase 설정 환경이면 구장 등록요청 제출/신고/승인은 local state 갱신과 함께 서버 transaction API도 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
 - `POST /api/court-requests/approve`는 `rankball_approve_court_request()` RPC로 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
 - `POST /api/court-requests/report`는 `rankball_report_court_request()` RPC로 신고 생성, 요청의 `reported` 전환, 판정 전 무차감 알림을 한 transaction으로 처리한다. 신뢰도 차감은 관리자 신고 인정 시 reports 상태 전환 trigger가 처리한다.
@@ -175,7 +175,9 @@
 - `POST /api/admin/appointment-action`은 `rankball_commit_admin_appointment_action()` RPC로 관리자/심판 임명과 회수, audit log, 대상자 알림을 한 transaction으로 처리한다.
 - `POST /api/admin/disciplinary-action`은 `rankball_commit_admin_disciplinary_action()` RPC로 직접 징계, audit log, 대상자 알림을 한 transaction으로 처리한다.
 - 브라우저는 `admin_audit_log`, `admin_disciplinary_actions`, `admin_appointments`, `referee_appointments`를 직접 insert/update/delete 하지 않는다.
-- 해당 admin 테이블들은 browser role의 write/truncate/trigger/reference grant를 모두 제거하고, authenticated admin select만 RLS로 허용한다.
+- 해당 admin 테이블들은 browser role의 direct table 권한을 모두 제거한다. RLS의 관리자 read policy는 방어 계층으로 유지하되 실제 UI 조회는 검증된 server action만 사용한다.
+- 관리자 server action은 bearer를 `auth.getUser()`로 검증한 뒤 `profiles.auth_user_id`와 유효한 `admin_appointments`를 매 요청 확인한다. 클라이언트가 보낸 관리자 ID·level은 권한 판정에 쓰지 않는다.
+- `rankball.auth.profileCache.v2`는 현재 인증 사용자 한 명의 공개 프로필 필드와 theme만 저장하고 기존 v1 캐시는 삭제한다.
 - Supabase 설정 환경에서 관리자 UI는 local state를 먼저 갱신하고 같은 draft를 server action에 전달한다. 배포 전에는 server action 성공 결과 기준으로 재조회/동기화해야 한다.
 - Supabase 설정 환경의 프론트 bootstrap에서는 `localStorage/mockData` 앱 데이터 fallback을 제거했다. 방/경기 reducer의 authoritative RPC 이전은 2026-07-13 operation boundary에서 완료됐다.
 

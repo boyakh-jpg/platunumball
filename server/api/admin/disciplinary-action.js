@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST") {
@@ -8,6 +8,8 @@ export default async function handler(request, response) {
   }
 
   try {
+    const context = await requireAdminContext(request, { minimumLevel: 50 });
+    const adminLevel = context.adminLevel;
     const body = await readJsonBody(request);
     const targetUserId = String(body.userId ?? body.targetUserId ?? "").trim();
     if (!targetUserId) {
@@ -15,8 +17,6 @@ export default async function handler(request, response) {
       return;
     }
 
-    const context = await getAuthenticatedContext(request);
-    const adminLevel = await getAdminLevel(context);
     const { data, error } = await context.supabase.rpc("rankball_commit_admin_disciplinary_action", {
       p_actor_profile_id: context.profileId,
       p_actor_admin_level: adminLevel,

@@ -1,9 +1,52 @@
 import { STORAGE_KEY } from "./constants.js";
 
 const PROFILE_BINDINGS_KEY = "rankball.auth.profile.v1";
-const PROFILE_CACHE_KEY = "rankball.auth.profileCache.v1";
+const PROFILE_CACHE_KEY = "rankball.auth.profileCache.v2";
+const LEGACY_PROFILE_CACHE_KEYS = ["rankball.auth.profileCache.v1"];
 const MAX_LOCAL_STATE_CHARS = 1_800_000;
-const MAX_PROFILE_CACHE_ENTRIES = 8;
+const PROFILE_CACHE_USER_FIELDS = [
+  "id",
+  "name",
+  "handle",
+  "hashtag",
+  "position",
+  "region",
+  "regionSido",
+  "regionDistrict",
+  "trustScore",
+  "avatarColor",
+  "avatarKey",
+  "avatarSource",
+  "avatarIconKey",
+  "avatarUpdatedAt",
+  "avatarBackgroundEnabled",
+  "avatarBorderEnabled",
+  "avatarBorderColor",
+  "ratings",
+];
+
+function pickFields(source = {}, fields = []) {
+  return Object.fromEntries(fields
+    .filter((field) => Object.prototype.hasOwnProperty.call(source, field))
+    .map((field) => [field, source[field]]));
+}
+
+export function sanitizeProfileCacheEntry(entry = {}) {
+  const user = entry?.user && typeof entry.user === "object"
+    ? pickFields(entry.user, PROFILE_CACHE_USER_FIELDS)
+    : {};
+  const theme = entry?.settings?.theme === "light" ? "light" : "dark";
+  return {
+    user,
+    settings: { theme },
+    updatedAt: Number(entry.updatedAt ?? Date.now()),
+  };
+}
+
+function clearLegacyProfileCaches() {
+  if (typeof window === "undefined") return;
+  LEGACY_PROFILE_CACHE_KEYS.forEach((key) => window.localStorage.removeItem(key));
+}
 
 export function readState(fallback) {
   if (typeof window === "undefined") return fallback;
@@ -53,9 +96,13 @@ export function writeProfileBindings(bindings) {
 function readProfileCacheMap() {
   if (typeof window === "undefined") return {};
   try {
+    clearLegacyProfileCaches();
     const raw = window.localStorage.getItem(PROFILE_CACHE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed)
+      .map(([authUserId, entry]) => [authUserId, sanitizeProfileCacheEntry(entry)])
+      .filter(([, entry]) => entry.user?.id));
   } catch {
     return {};
   }
@@ -74,23 +121,18 @@ function writeProfileCacheMap(cache) {
 export function readProfileCache(authUserId) {
   if (!authUserId) return null;
   const entry = readProfileCacheMap()[authUserId];
-  if (!entry || typeof entry !== "object") return null;
-  if (!entry.user?.id) return null;
+  if (!entry || typeof entry !== "object" || !entry.user?.id) {
+    writeProfileCacheMap({});
+    return null;
+  }
+  writeProfileCacheMap({ [authUserId]: entry });
   return entry;
 }
 
 export function writeProfileCache(authUserId, entry = {}) {
   if (!authUserId || !entry?.user?.id) return;
-  const cache = readProfileCacheMap();
-  cache[authUserId] = {
-    user: entry.user,
-    settings: entry.settings && typeof entry.settings === "object" ? entry.settings : {},
-    updatedAt: Date.now(),
-  };
-  const trimmed = Object.fromEntries(
-    Object.entries(cache)
-      .sort(([, a], [, b]) => Number(b?.updatedAt ?? 0) - Number(a?.updatedAt ?? 0))
-      .slice(0, MAX_PROFILE_CACHE_ENTRIES),
-  );
-  writeProfileCacheMap(trimmed);
+  readProfileCacheMap();
+  writeProfileCacheMap({
+    [authUserId]: sanitizeProfileCacheEntry({ ...entry, updatedAt: Date.now() }),
+  });
 }

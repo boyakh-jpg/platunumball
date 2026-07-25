@@ -18,7 +18,7 @@
     "audit:production-data": "node scripts/audit-production-data.mjs",
     "test:policies": "node --test scripts/shared-domain-policies.test.mjs scripts/api-security.test.mjs scripts/court-request-report-policy.test.mjs scripts/match-mode-policy.test.mjs && node scripts/seed-demo-flow.mjs --check",
     "test:legal": "node --test scripts/legal-pages.test.mjs",
-    "test:security": "node --test scripts/api-security.test.mjs",
+    "test:security": "node --test scripts/api-security.test.mjs scripts/admin-authorization-security.test.mjs",
     "test:design": "node --test scripts/design-system-guards.test.mjs scripts/css-cascade-guards.test.mjs",
     "lint:styles": "stylelint \"src/styles/ui-primitives.css\"",
     "verify:release": "vite build && node scripts/simulate-backend-flow.mjs --full --quiet",

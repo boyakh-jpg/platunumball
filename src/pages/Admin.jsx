@@ -20,7 +20,6 @@ import {
   getAdminReportTypeLabel,
   getAdminReviewMetrics,
   getAdminStatusLabel,
-  hasAdminAccess,
   isHighImpactAdminReviewAction,
 } from "../lib/admin.js";
 import { ADMIN_USER_OPERATION_ACTIONS } from "../lib/adminUserOperations.js";
@@ -363,7 +362,7 @@ export default function Admin({ app }) {
   const [reviewActionStatus, setReviewActionStatus] = useState("");
   const [reviewActionPending, setReviewActionPending] = useState(false);
   const [reviewActionConfirming, setReviewActionConfirming] = useState(false);
-  const canAdmin = adminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
+  const canAdmin = adminLevel >= 30;
   const adminViewState = app.adminState ?? app.state;
   const model = useMemo(() => buildAdminReviewModel(adminViewState), [adminViewState]);
   const appointments = useMemo(() => buildAdminAppointmentModel(adminViewState), [adminViewState]);

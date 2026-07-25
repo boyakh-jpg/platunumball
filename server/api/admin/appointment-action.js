@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST") {
@@ -8,6 +8,8 @@ export default async function handler(request, response) {
   }
 
   try {
+    const context = await requireAdminContext(request);
+    const adminLevel = context.adminLevel;
     const body = await readJsonBody(request);
     const actionType = String(body.actionType ?? "appointReferee");
     const targetUserId = String(body.userId ?? body.targetUserId ?? "").trim();
@@ -22,8 +24,6 @@ export default async function handler(request, response) {
       return;
     }
 
-    const context = await getAuthenticatedContext(request);
-    const adminLevel = await getAdminLevel(context);
     if (actionType === "extendAppointment") {
       const { data, error } = await context.supabase.rpc("rankball_extend_admin_appointment_action", {
         p_actor_profile_id: context.profileId,

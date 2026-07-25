@@ -150,7 +150,7 @@ returns text
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   profile_id text;
@@ -2077,10 +2077,10 @@ returns integer
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select coalesce(max(
-    case grade
+    case appointment.grade
       when 'owner' then 100
       when 'senior' then 80
       when 'regionManager' then 60
@@ -2089,12 +2089,12 @@ as $$
       else 0
     end
   ), 0)
-  from public.admin_appointments
-  where user_id = public.current_profile_id()
-    and role = 'admin'
-    and status not in ('revoked', 'expired')
-    and (starts_at is null or starts_at <= now())
-    and (ends_at is null or ends_at >= now())
+  from public.admin_appointments appointment
+  where appointment.user_id = public.current_profile_id()
+    and appointment.role = 'admin'
+    and appointment.status = 'active'
+    and (appointment.starts_at is null or appointment.starts_at <= now())
+    and (appointment.ends_at is null or appointment.ends_at >= now())
 $$;
 
 create or replace function public.current_is_admin(min_level integer default 30)
@@ -2102,9 +2102,9 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
-  select public.current_admin_level() >= min_level
+  select public.current_admin_level() >= greatest(coalesce(min_level, 30), 30)
 $$;
 
 create or replace function public.rankball_is_match_actor(target_match_id text)
@@ -2262,30 +2262,51 @@ using (public.rankball_can_read_private_tournament(tournament_id));
 
 create or replace function public.rankball_admin_level_for_profile(actor_profile_id text, override_level integer default 0)
 returns integer
-language sql
+language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
-  select greatest(
-    coalesce(override_level, 0),
-    coalesce(max(
-      case grade
-        when 'owner' then 100
-        when 'senior' then 80
-        when 'regionManager' then 60
-        when 'matchManager' then 50
-        when 'support' then 30
-        else 0
-      end
-    ), 0)
-  )
-  from public.admin_appointments
-  where user_id = actor_profile_id
-    and role = 'admin'
-    and status not in ('revoked', 'expired')
-    and (starts_at is null or starts_at <= now())
-    and (ends_at is null or ends_at >= now())
+declare
+  caller_profile_id text := public.current_profile_id();
+  target_profile_id text;
+  resolved_level integer;
+begin
+  if caller_profile_id is not null then
+    if caller_profile_id is distinct from nullif(btrim(actor_profile_id), '') then
+      return 0;
+    end if;
+    target_profile_id := caller_profile_id;
+  elsif coalesce(auth.role(), '') = 'service_role' then
+    target_profile_id := nullif(btrim(actor_profile_id), '');
+  else
+    return 0;
+  end if;
+
+  if target_profile_id is null then
+    return 0;
+  end if;
+
+  select coalesce(max(
+    case appointment.grade
+      when 'owner' then 100
+      when 'senior' then 80
+      when 'regionManager' then 60
+      when 'matchManager' then 50
+      when 'support' then 30
+      else 0
+    end
+  ), 0)
+  into resolved_level
+  from public.admin_appointments appointment
+  where appointment.user_id = target_profile_id
+    and appointment.role = 'admin'
+    and appointment.status = 'active'
+    and (appointment.starts_at is null or appointment.starts_at <= now())
+    and (appointment.ends_at is null or appointment.ends_at >= now());
+
+  return resolved_level;
+end;
 $$;
 
 create or replace function public.rankball_approve_court_request(
@@ -14217,5 +14238,76 @@ revoke all on function public.rankball_rpc_grant_health() from public;
 revoke all on function public.rankball_rpc_grant_health() from anon;
 revoke all on function public.rankball_rpc_grant_health() from authenticated;
 grant execute on function public.rankball_rpc_grant_health() to service_role;
+
+alter function public.current_profile_id() owner to postgres;
+alter function public.current_admin_level() owner to postgres;
+alter function public.current_is_admin(integer) owner to postgres;
+alter function public.rankball_admin_level_for_profile(text, integer) owner to postgres;
+
+revoke all on function public.current_profile_id() from public, anon;
+revoke all on function public.current_admin_level() from public, anon;
+revoke all on function public.current_is_admin(integer) from public, anon;
+revoke all on function public.rankball_admin_level_for_profile(text, integer) from public, anon, authenticated;
+
+grant execute on function public.current_profile_id() to authenticated, service_role;
+grant execute on function public.current_admin_level() to authenticated, service_role;
+grant execute on function public.current_is_admin(integer) to authenticated, service_role;
+grant execute on function public.rankball_admin_level_for_profile(text, integer) to service_role;
+
+alter table public.rating_policy enable row level security;
+revoke all privileges on table public.admin_appointments from anon, authenticated;
+revoke all privileges on table public.referee_appointments from anon, authenticated;
+revoke all privileges on table public.admin_audit_log from anon, authenticated;
+revoke all privileges on table public.admin_disciplinary_actions from anon, authenticated;
+revoke all privileges on table public.rating_policy from anon, authenticated;
+revoke all privileges on table public.rankball_admin_court_database from anon, authenticated;
+revoke all privileges on table public.rankball_admin_court_change_history from anon, authenticated;
+grant select, insert, update, delete on table public.admin_appointments to service_role;
+grant select, insert, update, delete on table public.referee_appointments to service_role;
+grant select, insert, update, delete on table public.admin_audit_log to service_role;
+grant select, insert, update, delete on table public.admin_disciplinary_actions to service_role;
+grant select, insert, update, delete on table public.rating_policy to service_role;
+grant select on table public.rankball_admin_court_database to service_role;
+grant select on table public.rankball_admin_court_change_history to service_role;
+
+do $$
+declare
+  function_row record;
+  function_signature text;
+begin
+  for function_row in
+    select
+      namespace.nspname,
+      procedure.proname,
+      pg_get_function_identity_arguments(procedure.oid) as identity_arguments
+    from pg_proc procedure
+    join pg_namespace namespace on namespace.oid = procedure.pronamespace
+    where namespace.nspname = 'public'
+      and procedure.prokind = 'f'
+      and (
+        procedure.proname like 'rankball_admin_%'
+        or procedure.proname like 'rankball_commit_admin_%'
+        or procedure.proname in (
+          'rankball_approve_court_request',
+          'rankball_get_rating_policy',
+          'rankball_moderate_reported_name',
+          'rankball_moderate_team_emblem_guarded',
+          'rankball_review_void_match_report',
+          'rankball_update_rating_policy'
+        )
+        or pg_get_functiondef(procedure.oid) like '%rankball_admin_level_for_profile%'
+      )
+  loop
+    function_signature := format(
+      '%I.%I(%s)',
+      function_row.nspname,
+      function_row.proname,
+      function_row.identity_arguments
+    );
+    execute 'revoke all on function ' || function_signature || ' from public, anon, authenticated';
+    execute 'grant execute on function ' || function_signature || ' to service_role';
+  end loop;
+end
+$$;
 
 select pg_notify('pgrst', 'reload schema');

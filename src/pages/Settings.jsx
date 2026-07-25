@@ -39,7 +39,7 @@ import {
 } from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses, searchNearbyCourtCandidates } from "../lib/naverAddress.js";
-import { getAdminStatusLabel, hasAdminAccess } from "../lib/admin.js";
+import { getAdminStatusLabel } from "../lib/admin.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import {
   DISCORD_NOTIFICATION_EVENTS,
@@ -415,7 +415,7 @@ export default function Settings({ app, auth, section = "main" }) {
     );
   };
   const serverAdminLevel = Number(app.adminContext?.level ?? 0);
-  const canOpenAdminMenu = serverAdminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
+  const canOpenAdminMenu = serverAdminLevel >= 30;
   const themeDirty = themeDraft !== theme;
   const privacyDirty = JSON.stringify(privacyDraft) !== privacySnapshot;
   const discordDirty = Boolean(discordDraft.unlink) ||

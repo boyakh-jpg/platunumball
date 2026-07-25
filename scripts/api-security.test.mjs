@@ -85,8 +85,8 @@ test("API routes use deny-by-default method and credential policies", async () =
     assert.ok(validAuthModes.has(route.auth));
 
     const handlerSource = route.handler.toString();
-    if (["user", "admin"].includes(route.auth)) assert.match(handlerSource, /getAuthenticatedContext/);
-    if (route.auth === "admin") assert.match(handlerSource, /getAdminLevel/);
+    if (route.auth === "user") assert.match(handlerSource, /getAuthenticatedContext/);
+    if (route.auth === "admin") assert.match(handlerSource, /requireAdminContext/);
     if (route.auth === "internal") assert.match(handlerSource, /assert(?:WorkerAccess|BridgeAccess|Access)\(request\)/);
     if (route.auth === "signedWebhook") assert.match(handlerSource, /verifyDiscordSignature/);
   }

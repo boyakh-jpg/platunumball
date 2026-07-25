@@ -840,7 +840,6 @@ function makeDemoUser(index) {
     streak: (index % 7) - 3,
     avatarColor: cycle(demoColors, index),
     testLoginId: `rankball-${padNumber(index)}`,
-    testPassword: "test-0000",
     ratings: {
       integrated: mmr,
       modes: {
@@ -860,7 +859,6 @@ function buildDemoUsers(baseUsers) {
   }
   return users.map((user, userIndex) => ({
     testLoginId: `rankball-${padNumber(userIndex + 1)}`,
-    testPassword: "test-0000",
     ...user,
   }));
 }

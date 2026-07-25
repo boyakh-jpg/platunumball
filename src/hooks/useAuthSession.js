@@ -6,9 +6,6 @@ import { setClientActionSession } from "../lib/serverActions.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
-const DEMO_LOGIN_ENV = import.meta.env.VITE_DEMO_LOGIN;
-const TEST_AUTH_EMAIL_DOMAIN = import.meta.env.VITE_TEST_AUTH_EMAIL_DOMAIN || "rankball.test";
-const TEST_AUTH_PASSWORD = import.meta.env.VITE_TEST_AUTH_PASSWORD || "test-0000";
 
 const TEST_ACCOUNTS = Array.from({ length: TEST_ACCOUNT_COUNT }, (_item, index) => {
   const loginId = normalizeTestLoginId(index + 1);
@@ -72,13 +69,8 @@ function makeLocalTestSession(testLoginId) {
   };
 }
 
-function getTestAuthEmail(testLoginId) {
-  return `${normalizeTestLoginId(testLoginId)}@${TEST_AUTH_EMAIL_DOMAIN}`;
-}
-
 function isDemoLoginAllowed() {
-  if (DEMO_LOGIN_ENV === "true") return true;
-  if (DEMO_LOGIN_ENV === "false") return false;
+  if (!import.meta.env.DEV) return false;
   if (typeof window === "undefined") return false;
 
   const host = window.location.hostname;
@@ -259,23 +251,7 @@ export function useAuthSession() {
         }
         const normalizedLoginId = normalizeTestLoginId(testLoginId);
         if (isSupabaseConfigured) {
-          setSession(null);
-          writeTestSession(null);
-          setClientActionSession(null);
-          const { data: testAuthData, error: testAuthError } = await supabase.auth.signInWithPassword({
-            email: getTestAuthEmail(normalizedLoginId),
-            password: TEST_AUTH_PASSWORD,
-          }).catch((testAuthError) => ({ data: null, error: testAuthError }));
-          if (loginGeneration !== testLoginGenerationRef.current) return null;
-          if (testAuthData?.session && !testAuthError) {
-            setClientActionSession(testAuthData.session);
-            setSession(testAuthData.session);
-            return testAuthData.session;
-          }
-          const { error: signOutError } = await supabase.auth.signOut().catch((signOutError) => ({ error: signOutError }));
-          if (loginGeneration !== testLoginGenerationRef.current) return null;
-          if (signOutError) console.warn("Supabase sign-out before test login failed.", signOutError.message);
-          setError(formatAuthError(testAuthError?.message) || "선택한 테스트 계정으로 로그인하지 못했습니다.");
+          setError("Supabase 테스트 계정은 개발용 seed 또는 서버 시뮬레이션에서만 사용할 수 있습니다.");
           return null;
         }
         const nextSession = makeLocalTestSession(normalizedLoginId);

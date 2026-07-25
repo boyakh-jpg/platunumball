@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import RequireAdmin from "./components/auth/RequireAdmin.jsx";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import BasketballLoader from "./components/common/BasketballLoader.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
@@ -143,7 +144,7 @@ export default function App() {
           <Route path="/terms" element={<Terms />} />
         </Route>
         <Route element={<RequireAuth auth={auth} />}>
-          <Route path="/app/admin/court-map" element={<AdminCourtMapPopup />} />
+          <Route path="/app/admin/court-map" element={<RequireAdmin app={app}><AdminCourtMapPopup /></RequireAdmin>} />
           <Route element={<AppShell app={app} auth={auth} />}>
             <Route path="/app" element={<Home app={app} />} />
             <Route path="/app/guide" element={<GettingStarted />} />
@@ -165,7 +166,7 @@ export default function App() {
             <Route path="/app/profile/records" element={<ProfileRecords app={app} />} />
             <Route path="/app/affiliations" element={<Affiliations app={app} />} />
             <Route path="/app/notifications" element={<Notifications app={app} />} />
-            <Route path="/app/admin" element={<Admin app={app} />} />
+            <Route path="/app/admin" element={<RequireAdmin app={app}><Admin app={app} /></RequireAdmin>} />
             <Route path="/app/settings" element={<Settings app={app} auth={auth} />} />
             <Route path="/app/settings/favorites" element={<Settings app={app} auth={auth} section="favorites" />} />
             <Route path="/app/settings/profile" element={<Settings app={app} auth={auth} section="profile" />} />

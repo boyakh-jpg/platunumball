@@ -18,7 +18,6 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { hasAdminAccess } from "../lib/admin.js";
 import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeBenchCapacity, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS, REPORT_TARGET_TYPES, VOID_MATCH_RESTORE_REPORT_REASON, getReportTargetType } from "../lib/reportReasons.js";
 import {
@@ -371,8 +370,7 @@ export default function MatchRoom({ app }) {
   const benchCapacity = normalizeBenchCapacity(match.benchCapacity ?? match.rules?.benchCapacity ?? sourceRecruitingPost?.benchCapacity);
   const matchHostPlayerId = getMatchHostPlayerId(match, sourceRecruitingPost);
   const isMatchHost = matchHostPlayerId === app.currentUser.id;
-  const currentUserIsAdmin = Number(app.adminContext?.level ?? 0) >= 30
-    || hasAdminAccess(app.currentUser, app.state.settings);
+  const currentUserIsAdmin = Number(app.adminContext?.level ?? 0) >= 30;
   const matchPhase = getMatchRoomPhase(match).phase;
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
