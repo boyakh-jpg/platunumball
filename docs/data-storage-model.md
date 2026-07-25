@@ -197,10 +197,10 @@
 - Discord interaction 버튼 수락/거절 처리는 `/api/discord/interactions`가 담당한다. 방 채팅 동기화는 `room_discord_links`와 `/api/discord/room-chat` bridge를 사용한다.
 - 수동 테스트 DM은 `/api/discord/dm-worker` `POST`에서만 Discord username을 받을 수 있다. 서버는 봇이 들어간 Discord 서버 멤버 검색으로 숫자 `discord_user_id`를 찾은 뒤 발송한다. 자동 발송 큐와 프로필 저장 원본은 계속 숫자 `discord_user_id`다. username 테스트에는 봇이 같은 서버에 있어야 하고 Discord Bot의 Server Members Intent가 필요할 수 있다.
 - `/api/discord/dm-worker` `POST`에 `botCheck: true`를 보내면 Bot token 설정, 봇 계정, 참여 서버 수를 토큰 노출 없이 점검한다.
-- Match server action은 디코 연동된 경기 참가자/심판에게 시작 24시간 전, 2시간 전, 1시간 전, 방관리자 10분 전·5분 전, 경기 종료, 종료 30분 이의신청 안내 delivery row를 만든다. 5분 전 시작 준비 알림은 예정 시작 시각 이후 발송하지 않는다.
+- Match server action은 디코 연동된 경기 참가자/심판에게 시작 24시간 전, 2시간 전, 1시간 전, 방관리자 10분 전·5분 전, 경기 종료, 설정된 이의신청 마감 5분 전 안내 delivery row를 만든다. 이의신청 안내 시각은 10분·15분·20분 창에 맞춰 종료 5분·10분·15분 뒤로 계산한다. 5분 전 시작 준비 알림은 예정 시작 시각 이후 발송하지 않는다.
 - Match server action은 방관리자에게 시작 10분 전 참여자 도착 여부 확인 안내와 5분 전 시작 처리 준비 안내를 만든다. 5분 전 안내는 예정 시작 시각을 만료 시각으로 저장한다. 일정/roster/방관리자가 바뀌면 미발송 시작 전 리마인더와 방관리자 안내 row를 현재 대상자 기준으로 재생성하고, 조기 시작 시 해당 row를 삭제한다.
 - 같은 경기 안내는 Discord 연결 여부와 무관하게 `notifications` row도 만든다. 홈은 `payload.sendAt`이 지난 unread 알림만 별도 `알림` 카드에 보여주고, 서버가 만든 예약 알림은 `skipDiscordSync`로 클라이언트 중복 Discord delivery 생성을 막는다.
-- 경기 종료, 점수 제출, 이의신청, 승인 처리, 이의 처리 재개가 일어나면 미발송 시작 전 리마인더, 방관리자 안내, 경기 종료 점수 입력 안내, 종료 30분 뒤 이의신청 안내 row는 삭제한다.
+- 경기 종료, 점수 제출, 이의신청, 승인 처리, 이의 판정이 일어나면 미발송 시작 전 리마인더, 방관리자 안내, 경기 종료 점수 입력 안내, 설정된 마감 5분 전 이의신청 안내 row는 삭제한다.
 - 경기 취소 또는 무효 처리 시 해당 경기의 미발송 Discord delivery row를 삭제한다.
 - 경기 리마인더 stale 삭제는 현재 snapshot에 참가자/방관리자 대상자가 없어도 먼저 실행한다. 대상자 없음은 새 row 생성을 막는 조건이지 기존 예약 row 삭제를 막는 조건이 아니다.
 - Recruiting server action은 방 생성 자체로 알림을 만들지 않는다. 수동·자동 취소는 참가자별 `방 취소` 웹 알림을 원본으로 만들고, Discord 연동·수신 설정이 켜진 참가자에게 delivery row도 만든다.
@@ -254,11 +254,18 @@
 - 경기 신고 생성 후 새 `report`와 신고 접수 `notifications`를 서버에 저장한다.
 - 서버는 Supabase bearer를 검증하고 신고자 `user_id`를 현재 `profileId`로 강제한다.
 - `match` 신고는 경기 참가자/후보/출전 이력/방장/심판만 가능하고 7일 신고 기한을 서버에서도 확인한다.
-- `player` 신고는 대상 프로필 존재 여부와 자기신고 금지만 확인한다.
+- `player` 신고는 사용자가 선택한 `sourceMatchId`의 공동 참가 여부와 7일 신고 기한을 서버에서 확인하고 자기신고를 금지한다.
 - 신고 `created_at`은 클라이언트 값이 아니라 서버 접수 시각으로 고정한다.
 - 신고 사유는 서버에서 최대 500자로 제한한다.
 - `court_request` 신고는 중복 신고, 신뢰도 차감, 상태 변경이 묶인 기존 `POST /api/court-requests/report`만 사용한다.
 - 아직 신고 생성만 server action화한 단계다. 신고 판정/징계/피드백은 기존 관리자 RPC가 처리한다.
+
+## 2026-07-25 시뮬레이션 산출물 정리
+
+- 자동 시뮬레이션 종료는 현재 실행이 추적한 `sim_m_*` 경기와 현재 DB에서 추적 `sim_trn_*` 대회에 연결된 경기·대회 ID만 `rankball_cleanup_simulation_artifacts_exact()`로 정리한다. DB에 없는 일반 경기 ID는 정리 대상으로 인정하지 않는다.
+- 경기 ID는 한 호출당 10개로 제한하고, `sim_m_*`, `sim_q_*` 모집방 연계 경기, `sim_trn_*` 대회 경기만 삭제할 수 있다.
+- 파생 갱신은 삭제 트랜잭션에서 잠시 억제하고 영향 선수·코트만 배치 종료 후 한 번씩 재계산한다.
+- 전체 `sim_*` 광역 정리는 자동 종료 경로에서 사용하지 않고 운영자가 잔여물을 감사한 뒤 수행하는 복구 도구로만 남긴다.
 
 ## 2026-06-25 team sync server action
 
@@ -398,7 +405,7 @@ Done:
 - `rankball_match_star_toggle_action()` wraps the thumbs RPC for single-target star toggles and enforces trust-feedback limits in DB.
 - `agreeMatch` and `checkInMatchPlayer` now use direct operation-only SQL reducer calls when `matchId`, `sideName`, and `playerId` are present, without sending a client match snapshot.
 - Supabase frontend `createMatch` calls send operation-only draft payloads; the server replays `createMatch` and returns the persisted match as the source of truth.
-- `startMatch`, `endMatch`, referee-absence, attendance, room-rule, roster, removal, result, dispute, and approval flows use operation-only locked SQL reducers.
+- `startMatch`, `endMatch`, referee-absence, attendance, room-rule, roster, removal, result, dispute, dispute-item resolution, and approval flows use operation-only locked SQL reducers.
 - Backend flow simulation seeds pending app/Discord match notice rows and verifies stale cleanup for `startMatch`, `cancelMatch`, `approveMatch`, and `voidMatch`.
 - Match rating commit responses now reload affected profiles/teams from DB and return them in `state.users` / `state.teams`, so MMR UI merges DB-authoritative values after approve/auto-confirm.
 - Final match confirmation and profile/team MMR changes now commit in one `rankball_match_action_with_rating()` transaction.
@@ -422,6 +429,11 @@ Done:
 Retained compatibility paths:
 
 - Frontend local reducers remain only for non-Supabase demo behavior. Production room/match/tournament mutations are thin server calls.
+- 경기 이의 처리는 명시적인 `disputeId`를 받는 `resolveMatchDispute`만 유지한다. 구형 `resumeMatchApproval`, 일괄 `rejectMatchDispute`와 대응 RPC는 제거한다.
+- 공개 팀전의 `interestRecruitingPost` team 참가 payload는 DB에서 팀 주장 1명·후보 없음으로 정규화한다. 같은 사이드의 다른 팀과 일반 팀원의 대표 참가를 거부한다.
+- 자동 확정은 실제 출전자 중 `player_match_stats`가 없는 선수에게만 `record_source='auto_finalize'` 0 통계 row를 추가한다. 기존 통계 row는 `ON CONFLICT DO NOTHING`으로 보존한다.
+- exact simulation cleanup은 삭제와 프로필·구장 파생 집계 갱신을 같은 transaction에서 끝내며, 이미 삭제된 ID의 동일 요청은 멱등 no-op으로 처리한다.
+- `room_remake_events`는 직접 mutation 권한을 열지 않고 schema health가 컬럼을 검증할 수 있도록 `service_role`에 `select`만 부여한다.
 - Match creation and recruiting confirmation still use server-side composition for cross-entity payload construction, then commit through one locked DB RPC transaction.
 - `mockData.js` and generated demo flow remain for non-Supabase local dev and seed generation, not production source of truth.
 - Admin review and appointment UI waits for the server action and reloads `scope=admin` before changing visible state. Local-first admin state remains only in non-Supabase demo mode.

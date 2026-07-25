@@ -388,6 +388,12 @@ function getJoinReserveCapacity(post, lobby, sideName) {
 }
 
 function getDefaultJoinRoster(post, lobby, team, currentUser, sideName, reserve = false) {
+  if (isTeamOnlyRoom(post)) {
+    return {
+      playerIds: currentUser?.id ? [currentUser.id] : [],
+      reservePlayerIds: [],
+    };
+  }
   const capacity = getJoinActiveCapacity(post, lobby, sideName, reserve);
   const playerIds = getDefaultTeamPlayerIds(team, capacity, currentUser.id);
   return {
@@ -2518,10 +2524,19 @@ function getSourceMatchStatus(match, lobby, userId = "") {
 }
 
 function getSourceMatchAction(match, userId, teams = [], userById = {}) {
-  const sideName = getSourceMatchDecisionSideName(match, userId, teams);
-  if (!match || !sideName) return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
+  if (!match) return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
   const agreedResultOpen = match.status === "agreed" && match.endedAt && match.result && !getMatchRecordWindow(match).disputeExpired;
   const effectiveStatus = agreedResultOpen ? "approval" : match.status;
+  if (effectiveStatus === "disputed") {
+    const openCount = getOpenMatchDisputes(match).length;
+    return {
+      label: "이의신청방",
+      detail: openCount ? `방장이 이의제기 ${openCount}건을 건별로 가결 또는 부결합니다.` : "마지막 이의 판정과 함께 결과가 확정됩니다.",
+      disputed: true,
+    };
+  }
+  const sideName = getSourceMatchDecisionSideName(match, userId, teams);
+  if (!sideName) return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
   if (effectiveStatus === "contract") {
     const agreed = (match.agreements?.[sideName] ?? []).includes(userId);
     return agreed
@@ -2541,14 +2556,6 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
           action: "approve",
           button: recordRoom ? "최종 승인" : "승인",
         };
-  }
-  if (effectiveStatus === "disputed") {
-    const openCount = getOpenMatchDisputes(match).length;
-    return {
-      label: "이의신청방",
-      detail: openCount ? `방장이 이의제기 ${openCount}건을 건별로 가결 또는 부결합니다.` : "이의 판정 완료 후 방장이 결과를 확정합니다.",
-      disputed: true,
-    };
   }
   const phase = getMatchRoomPhase(match);
   if (phase.phase === "locked") {
@@ -3563,7 +3570,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const selectedJoinSideAvailable = !teamOnlyRoom || !selectedJoinSideTeamId;
         const teamRoomHasJoinableSide = !teamOnlyRoom || MATCH_SIDES.some((sideName) => !getLobbyPrimaryTeamId(lobby, sideName));
         const joinCapacity = getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
-        const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
+        const selectedJoinPlayerIds = teamOnlyRoom
+          ? (app.currentUser.id ? [app.currentUser.id] : [])
+          : getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
         const benchCapacity = getRecruitingBenchCapacity(sourceMatch ?? selectedPost);
         const pickupOpenSlotPlacements = isPickupRecruitingRoom(selectedPost)
           ? getPickupOpenSlotPlacements(lobby, {
@@ -3606,8 +3615,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           selectedJoinTeamEligibility.allowed &&
           selectedJoinPlayerIds.includes(app.currentUser.id) &&
           [...selectedJoinPlayerIds, ...selectedJoinReserveIds].every((playerId) => selectedJoinTeamEligibility.eligiblePlayerIds.includes(playerId)) &&
-          selectedJoinPlayerIds.length > 0 &&
-          (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
+          selectedJoinPlayerIds.length > 0
         ));
         const canJoinReferee = selectedPost.visibility === "public" && refereeWanted && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments);
         const joinMmrLimitMode = selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode ?? "block";
@@ -4025,9 +4033,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           if (!sourceMatchRecordBoardFirst) return null;
           return (
             <div className="arena-match-source-actions arena-match-source-record-board">
-              <strong>경기 기록판</strong>
-              <span>기록방은 점수와 선수 기록을 먼저 확인합니다.</span>
-              {sourceMatchRecordVerification ? (
+              <strong className="ui-panel-title">경기 기록판</strong>
+              <span className="ui-panel-copy">기록방은 점수와 선수 기록을 먼저 확인합니다.</span>
+              {sourceMatchRecordVerification && sourceMatchRecordVerification.verificationStatus !== "disputed" ? (
                 <div className="arena-record-verification-status">
                   <span>
                     최종 승인 {sourceMatchRecordVerification.approvedIds.length}/{sourceMatchRecordVerification.requiredParticipantIds.length}
@@ -5425,17 +5433,28 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                             <em>내 팀 없음</em>
                           )}
                         </div>
-                        <TeamMemberPicker
-                          team={selectedJoinTeam}
-                          userById={userById}
-                          selectedIds={selectedJoinPlayerIds}
-                          reserveIds={selectedJoinReserveIds}
-                          capacity={joinCapacity}
-                          reserveCapacity={benchCapacity}
-                          onRosterChange={({ selectedIds: playerIds, reserveIds: reservePlayerIds }) => updateJoinDraft(selectedPost, { playerIds, reservePlayerIds })}
-                          requiredPlayerId={app.currentUser.id}
-                          eligiblePlayerIds={selectedJoinTeamEligibility.eligiblePlayerIds}
-                        />
+                        {teamOnlyRoom ? (
+                          <div className="arena-mini-note">
+                            <div>
+                              <span>대표 1명 참가</span>
+                              <strong>{app.currentUser.name}</strong>
+                              <em>참가 후 방 안에서 사이드장이 출전·후보 명단을 확정합니다.</em>
+                            </div>
+                            <ShieldCheck size={18} />
+                          </div>
+                        ) : (
+                          <TeamMemberPicker
+                            team={selectedJoinTeam}
+                            userById={userById}
+                            selectedIds={selectedJoinPlayerIds}
+                            reserveIds={selectedJoinReserveIds}
+                            capacity={joinCapacity}
+                            reserveCapacity={benchCapacity}
+                            onRosterChange={({ selectedIds: playerIds, reserveIds: reservePlayerIds }) => updateJoinDraft(selectedPost, { playerIds, reservePlayerIds })}
+                            requiredPlayerId={app.currentUser.id}
+                            eligiblePlayerIds={selectedJoinTeamEligibility.eligiblePlayerIds}
+                          />
+                        )}
                       </>
                     ) : joinDraft.joinMode === "referee" ? (
                       <div className="arena-mini-note">

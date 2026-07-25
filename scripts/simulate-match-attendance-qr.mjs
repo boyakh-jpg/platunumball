@@ -261,14 +261,44 @@ async function persistMatch(match) {
 }
 
 async function cleanup() {
+  for (const table of ["user_room_feed", "room_feed_cards"]) {
+    const { error } = await admin
+      .from(table)
+      .delete()
+      .eq("entity_type", "match")
+      .in("entity_id", matchIds);
+    if (error) throw error;
+  }
+  for (const table of ["match_record_refresh_queue", "match_record_archives"]) {
+    const { error } = await admin.from(table).delete().in("match_id", matchIds);
+    if (error) throw error;
+  }
   const { error } = await admin.from("matches").delete().in("id", matchIds);
   if (error) throw error;
-  const { count, error: verifyError } = await admin
-    .from("matches")
-    .select("id", { count: "exact", head: true })
-    .in("id", matchIds);
-  if (verifyError) throw verifyError;
-  assert.equal(count, 0, "simulation match cleanup failed");
+  for (const table of ["user_room_feed", "room_feed_cards"]) {
+    const { error: feedError } = await admin
+      .from(table)
+      .delete()
+      .eq("entity_type", "match")
+      .in("entity_id", matchIds);
+    if (feedError) throw feedError;
+  }
+  for (const table of ["match_record_refresh_queue", "match_record_archives"]) {
+    const { error: archiveError } = await admin.from(table).delete().in("match_id", matchIds);
+    if (archiveError) throw archiveError;
+  }
+  for (const [table, column] of [
+    ["matches", "id"],
+    ["user_room_feed", "entity_id"],
+    ["room_feed_cards", "entity_id"],
+    ["match_record_archives", "match_id"],
+  ]) {
+    let query = admin.from(table).select(column, { count: "exact", head: true }).in(column, matchIds);
+    if (table === "user_room_feed" || table === "room_feed_cards") query = query.eq("entity_type", "match");
+    const { count, error: verifyError } = await query;
+    if (verifyError) throw verifyError;
+    assert.equal(count, 0, `${table} simulation cleanup failed`);
+  }
 }
 
 async function main() {

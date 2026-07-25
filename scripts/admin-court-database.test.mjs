@@ -33,10 +33,12 @@ test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사�
 });
 
 test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을 제공한다", async () => {
-  const [component, styles] = await Promise.all([
+  const [component, adminStyles, courtStyles] = await Promise.all([
     readSource("src/components/admin/CourtDatabasePanel.jsx"),
-    readSource("src/styles/globals.css"),
+    readSource("src/styles/global-admin-layout.css"),
+    readSource("src/styles/global-court-controls.css"),
   ]);
+  const styles = `${adminStyles}\n${courtStyles}`;
   assert.match(component, /주소·수동명 우선/);
   assert.match(component, /중복 후보 \{duplicateReview\.index \+ 1\}/);
   assert.match(component, /이 장소에 실제 코트가 몇 개 있나요/);

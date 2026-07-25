@@ -16,7 +16,7 @@ import {
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
-import { markAllNotificationsRead, rejectMatchDispute, updateTournamentMatchSchedule, voidMatch as applyMatchVoid } from "../src/data/repository.js";
+import { markAllNotificationsRead, resolveMatchDispute, updateTournamentMatchSchedule, voidMatch as applyMatchVoid } from "../src/data/repository.js";
 import { getTournamentRosterTeam } from "../src/data/tournamentMappers.js";
 import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
 import {
@@ -65,7 +65,11 @@ import {
   isTerminalMatchStatus,
   isTerminalRecruitingStatus,
 } from "../src/lib/notifications.js";
-import { toDiscordDeliveryRows, toMatchNotificationRows } from "../server/api/matches/sync-match.js";
+import {
+  getMatchDisputeReminderTiming,
+  toDiscordDeliveryRows,
+  toMatchNotificationRows,
+} from "../server/api/matches/sync-match.js";
 import {
   canRequestVoidMatchRestore,
   compareMatchRecency,
@@ -130,6 +134,15 @@ import {
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
+
+async function readGlobalStyles() {
+  const manifestPath = "src/styles/globals.css";
+  const manifestUrl = new URL(manifestPath, root);
+  const manifest = await readFile(manifestUrl, "utf8");
+  const imports = [...manifest.matchAll(/@import\s+["']([^"']+)["'];/g)].map((match) => match[1]);
+  const modules = await Promise.all(imports.map((relativePath) => readFile(new URL(relativePath, manifestUrl), "utf8")));
+  return [manifest, ...modules].join("\n");
+}
 
 const PUBLIC_COPY_SOURCE_PATHS = Object.freeze([
   "index.html",
@@ -711,7 +724,7 @@ test("profile icon background choice and image preview stay persistent and separ
     readSource("server/api/profile/emblem.js"),
     readSource("src/data/repositoryColumns.js"),
     readSource("supabase/migrations/20260721190000_profile_icon_background_toggle.sql"),
-    readSource("src/styles/globals.css"),
+    readGlobalStyles(),
   ]);
   assert.match(dialog, /avatarBackgroundEnabled/);
   assert.match(dialog, /profile-icon-preview-dialog/);
@@ -730,7 +743,7 @@ test("profile icon picker lists owned icons only and locked achievements conceal
     readSource("src/components/profile/ProfileIconDialog.jsx"),
     readSource("src/pages/ProfileAchievements.jsx"),
     readSource("server/api/_profileIconAchievements.js"),
-    readSource("src/styles/globals.css"),
+    readGlobalStyles(),
   ]);
   assert.match(dialog, /group\.icons\.filter\(\(icon\) => unlockedSet\.has\(icon\.id\)\)/);
   assert.match(dialog, /unlockedGroups\.map\(\(group\) =>/);
@@ -768,7 +781,7 @@ test("image native menus and drag stay blocked by one shared guard", async () =>
   const [app, guard, styles] = await Promise.all([
     readSource("src/App.jsx"),
     readSource("src/hooks/useImageInteractionGuard.js"),
-    readSource("src/styles/globals.css"),
+    readGlobalStyles(),
   ]);
   assert.match(app, /useImageInteractionGuard\(\)/);
   assert.match(guard, /addEventListener\("contextmenu", preventImageNativeAction, true\)/);
@@ -810,7 +823,7 @@ test("primary match pages share one empty state component", async () => {
 test("empty home upcoming card does not keep the desktop match minimum height", async () => {
   const [home, styles] = await Promise.all([
     readSource("src/pages/Home.jsx"),
-    readSource("src/styles/globals.css"),
+    readGlobalStyles(),
   ]);
   assert.match(home, /home-upcoming-card\$\{upcomingItems\.length \? "" : " is-empty"\}/);
   assert.match(styles, /\.rank-home \.home-upcoming-card\.is-empty\s*\{\s*min-height:\s*auto;/);
@@ -852,7 +865,7 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   const [seasonPage, rankingsPage, styles] = await Promise.all([
     readSource("src/pages/Season.jsx"),
     readSource("src/pages/Rankings.jsx"),
-    readSource("src/styles/globals.css"),
+    readGlobalStyles(),
   ]);
   assert.match(seasonPage, /getPlayerSeasonRows\(app\.state\.users, app\.state\.matches, season, "전체"\)/);
   assert.match(seasonPage, /전국 개인 승격권/);
@@ -933,6 +946,29 @@ test("notification status and delivery prefix policies stay aligned", () => {
     recruitingPostId: "r/1",
     targetUnavailable: true,
   }), "/app/recruiting?post=r%2F1");
+});
+
+test("postgame dispute reminders follow each configured window", () => {
+  assert.deepEqual(getMatchDisputeReminderTiming({ disputeMinutes: 10 }), {
+    windowMinutes: 10,
+    leadMinutes: 5,
+    offsetMinutes: 5,
+  });
+  assert.deepEqual(getMatchDisputeReminderTiming({ disputeMinutes: 15 }), {
+    windowMinutes: 15,
+    leadMinutes: 5,
+    offsetMinutes: 10,
+  });
+  assert.deepEqual(getMatchDisputeReminderTiming({ disputeMinutes: 20 }), {
+    windowMinutes: 20,
+    leadMinutes: 5,
+    offsetMinutes: 15,
+  });
+  assert.deepEqual(getMatchDisputeReminderTiming({ disputeMinutes: 30 }), {
+    windowMinutes: 15,
+    leadMinutes: 5,
+    offsetMinutes: 10,
+  });
 });
 
 test("notification ordering uses due time and terminal duplicates collapse to the canonical row", () => {
@@ -1292,28 +1328,38 @@ test("match dispute rejection, void reasons, restoration and scoped penalties st
   assert.equal(voidedState.matches[0].status, "void");
   assert.equal(voidedState.matches[0].voidSnapshot.result.scoreA, 10);
   assert.equal(voidedState.users[0].trustScore, 78);
-  const rejectedState = rejectMatchDispute(state, disputedMatch.id);
+  const rejectedState = resolveMatchDispute(state, disputedMatch.id, "dispute-open", "rejected");
   assert.equal(rejectedState.matches[0].status, "confirmed");
   assert.equal(rejectedState.matches[0].result.scoreA, 10);
   assert.match(rejectedState.notifications[0].body, /불복은 신고/);
 
-  const [matchRoom, recruiting, matchSync, reportSubmit, adminReview, migration] = await Promise.all([
+  const [matchRoom, recruiting, matchSync, reportSubmit, adminReview, migration, cleanupMigration, disputeBoundMigration, disputeNormalizationMigration] = await Promise.all([
     readSource("src/pages/MatchRoom.jsx"),
     readSource("src/pages/Recruiting.jsx"),
     readSource("server/api/matches/sync-match.js"),
     readSource("server/api/reports/submit.js"),
     readSource("server/api/admin/review-action.js"),
     readSource("supabase/migrations/20260721210000_match_void_review_and_dispute_rejection.sql"),
+    readSource("supabase/migrations/20260725010000_remove_legacy_match_dispute_actions.sql"),
+    readSource("supabase/migrations/20260725014000_restore_dispute_points_upper_bound.sql"),
+    readSource("supabase/migrations/20260725015000_preserve_dispute_wrapper_normalization_health.sql"),
   ]);
   assert.match(matchRoom, /MatchDisputeQueue/);
   assert.match(recruiting, /경기 무효 처리/);
-  assert.match(matchSync, /rankball_match_reject_dispute_action/);
+  assert.match(matchSync, /rankball_match_resolve_dispute_action/);
+  assert.doesNotMatch(matchSync, /rankball_match_(resume_approval|reject_dispute)_action/);
   assert.match(matchSync, /p_reason: operation\.reason/);
   assert.match(reportSubmit, /matchReviewType:\s*"void_restore"/);
   assert.match(adminReview, /rankball_review_void_match_report/);
   assert.match(migration, /char_length\(safe_reason\) < 10/);
   assert.match(migration, /'restoreMatchHalf'/);
   assert.match(migration, /public_room_suspension/);
+  assert.match(cleanupMigration, /drop function if exists public\.rankball_match_resume_approval_action/);
+  assert.match(cleanupMigration, /drop function if exists public\.rankball_match_reject_dispute_action/);
+  assert.match(disputeBoundMigration, /round\(requested_points_text::numeric\) > 999/);
+  assert.match(disputeBoundMigration, /raise exception 'match_stat_value_out_of_range'/);
+  assert.match(disputeNormalizationMigration, /rankball_normalize_dispute_minutes\(null\)/);
+  assert.match(disputeNormalizationMigration, /rankball_match_dispute_action_pre_points_bound/);
 });
 
 test("core consumers do not restore duplicated policy literals", async () => {
@@ -1355,7 +1401,9 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.doesNotMatch(rulebookText, /림 위 원통|4번 드리블|낮은 가중치/);
   assert.match(rulebookText, /1m 안에서 밀착 수비/);
   assert.match(rulebookText, /비접촉 테크니컬/);
-  assert.match(rulebookText, /30분 또는 60분/);
+  assert.match(rulebookText, /10분·15분·20분/);
+  assert.match(rulebookText, /방장이 항목별로 판정/);
+  assert.doesNotMatch(rulebookText, /30분 또는 60분|새 과반 승인/);
   assert.match(rulebookText, /손에서 떠나기 전이어도 블록/);
   assert.match(page, /FIBA 경기규칙 2024/);
   assert.match(page, /FIBA 통계 매뉴얼 2024/);

@@ -512,6 +512,7 @@
 9. Light theme rulebook hero copy uses the normal light-theme text and muted colors without the image-hero white text shadow, so the pale panel keeps readable contrast.
 10. 룰북 본문은 `경기 중 판정 → 개인활약 기록 → BOXTIER 기록·이의·후기 → 안전·심판 윤리` 순서의 chapter로 묶는다. hero는 설명성 제목과 적용 범위만 표시하고 홍보성 문구를 사용하지 않는다.
 11. 룰북의 page-header만 hero로 사용한다. 적용 범위 안내는 공용 card 한 겹으로 두고, 통계·상황 예시 안쪽은 별도 card 테두리나 배경 없이 평면 구획으로 나눈다.
+12. 이의신청 chapter는 `10분·15분·20분`, 참가자별 병렬 요청, 방장 항목별 판정, 마지막 판정 즉시 확정을 설명한다. 심판 확정, 단일 전역 큐, 재승인 필요 문구를 사용하지 않는다.
 
 # 2026-06-28 recruiting start date filter
 
@@ -1368,6 +1369,9 @@ UI 수정 전:
 7-1. Sports display emphasis uses `KBO Dia Gothic` Bold through `--sports-display-font` only for hero titles, tier spotlight text, team/versus labels, and scoreboard/record numbers. Do not apply it to body copy, buttons, inputs, or dense helper text. Width tuning uses `scaleX(0.92)` via `--sports-display-condense`; do not simulate it with negative letter spacing.
 7-2. Home upcoming match cards may enlarge team labels with the sports display font and orange emphasis. Scores stay neutral gray, no text shadow. The room-open CTA is orange, and tier spotlight text must fit without ellipsis.
 7-3. Match/recruiting summary center labels such as `VS` and fill counts stay about half the side label size.
+7-4. Default text uses `--font-body`. Functional panel titles and descriptions use the shared `.ui-panel-title` and `.ui-panel-copy` typography instead of browser-default `strong`/`span` weights. Sports display typography remains an explicit override only.
+7-5. 공개 팀전 참가 화면은 대표 1명만 표시하고 팀원 명단 picker를 노출하지 않는다. 출전·후보 명단은 참가 뒤 방 안에서 사이드장이 확정한다.
+7-6. 이의 판정 중인 기록판은 참가자 최종 승인 수와 무응답 안내를 숨긴다. 이 상태에서는 open 이의와 방장 판정 action만 보여 주며 마지막 판정이 즉시 확정된다는 현재 흐름과 충돌하는 구형 승인 문구를 표시하지 않는다.
 8. Segmented control groups use `--control-group-*` tokens. Group radius and padding must leave enough inner space so active buttons are never clipped by the group border or scroll container.
 9. New buttons, button groups, cards, inputs, and room modal surfaces use the `--ui-*` aliases in `tokens.css` as the stable module API.
 10. `recruiting-arena.css` and `matches-arena.css` load after `globals.css`; each file must end by reconnecting page selectors to the same `--ui-*` primitive layer to prevent chunk-specific override drift.

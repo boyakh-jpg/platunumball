@@ -731,6 +731,7 @@ export function normalizePickupRecruitingOperation(existingPost = {}, operation 
   }
 
   if (operation.action === "interestRecruitingPost") {
+    if ((operation.application?.joinMode ?? operation.joinMode) === "referee") return operation;
     return {
       ...operation,
       joinMode: "player",
@@ -755,12 +756,21 @@ async function validatePickupRecruitingOperation(context, operation = {}) {
   if (!postId) return operation;
   const { data, error } = await context.supabase
     .from("recruiting_posts")
-    .select("id,ranked,official,host_join_mode,team_id,room_state,rules")
+    .select("id,ranked,official,host_join_mode,team_id,side_capacity,room_state,rules")
     .eq("id", postId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return operation;
   if (operation.action === "updateRecruitingRoomRules") validatePickupRecruitingUpdate(data, operation.patch ?? {});
+  const requestedJoinMode = operation.application?.joinMode ?? operation.joinMode;
+  if (
+    operation.action === "interestRecruitingPost"
+    && requestedJoinMode === "team"
+    && !isPickupRoom(data)
+    && isSoloIndividualRoom(data)
+  ) {
+    reject(400, "solo_room_team_party_not_allowed");
+  }
   return normalizePickupRecruitingOperation(data, operation);
 }
 
@@ -1398,6 +1408,9 @@ async function applySqlRecruitingAction(context, operation = {}) {
     const application = operation.application && typeof operation.application === "object"
       ? operation.application
       : {};
+    if ((application.joinMode ?? operation.joinMode) === "referee") {
+      return applyRecruitingManagementAction(context, operation);
+    }
     const { data, error } = await context.supabase.rpc("rankball_recruiting_interest_player_action", {
       p_actor_profile_id: context.profileId,
       p_post_id: operation.postId,

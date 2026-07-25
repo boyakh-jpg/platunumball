@@ -17,7 +17,7 @@ import {
   joinRecruitingSideParty,
   removeMatchRoomPlayer,
   requestMatchRefereeAbsence,
-  resumeMatchApproval,
+  resolveMatchDispute,
   runAutomaticStateMaintenance,
   sendRecruitingChat,
   setRecruitingApplicantPlacement,
@@ -39,6 +39,7 @@ const outDir = new URL("../tmp/", import.meta.url);
 const stateOut = new URL("rankball-demo-state.json", outDir);
 const reportOut = new URL("rankball-flow-report.json", outDir);
 const generatedStateOut = new URL("../src/lib/demoFlowState.js", import.meta.url);
+const checkOnly = process.argv.includes("--check");
 
 const report = {
   storageKey: STORAGE_KEY,
@@ -146,16 +147,19 @@ function patchMatch(state, matchId, patcher) {
 }
 
 function addPastMatch(state, index, teamAId, teamBId, daysAgo) {
-  const scheduledDate = todayPlus(2);
+  const mode = index % 2 ? "3v3" : "5v5";
+  const sideCapacity = mode === "3v3" ? 3 : 5;
+  const teamA = state.teams.find((team) => team.id === teamAId);
+  const teamB = state.teams.find((team) => team.id === teamBId);
   const beforeIds = new Set(state.matches.map((match) => match.id));
   let nextState = withUser(state, "u1", (scoped) => createMatch(scoped, {
     title: `과거 기록 ${index}`,
-    mode: index % 2 ? "3v3" : "5v5",
+    recordType: "match_record",
+    recordComposition: "team",
+    mode,
     court: index % 2 ? "성수 브릿지파크" : "한강 노을코트",
-    teamAId,
-    teamBId,
-    scheduledDate,
-    scheduledTime: "19:00",
+    scheduledDate: todayPlus(0),
+    scheduledTime: "00:00",
     ranked: index % 3 !== 0,
     official: index % 4 === 0,
     preRegistered: true,
@@ -167,33 +171,55 @@ function addPastMatch(state, index, teamAId, teamBId, daysAgo) {
   const pastDate = todayPlus(-daysAgo);
   const scheduledTime = index % 2 ? "20:00" : "18:30";
   nextState = patchMatch(nextState, matchId, (match) => {
-    const result = createResult(match, 21, 14 + (index % 6));
+    const historicalMatch = {
+      ...match,
+      teamA: {
+        ...match.teamA,
+        name: teamA?.name ?? "A사이드",
+        teamId: teamAId,
+        players: teamRoster(teamA, sideCapacity),
+      },
+      teamB: {
+        ...match.teamB,
+        name: teamB?.name ?? "B사이드",
+        teamId: teamBId,
+        players: teamRoster(teamB, sideCapacity),
+      },
+      rules: {
+        ...(match.rules ?? {}),
+        recordType: "match",
+      },
+    };
+    const result = createResult(historicalMatch, 21, 14 + (index % 6));
     const endedAt = isoFor(pastDate, scheduledTime, 14);
     const submittedAt = isoFor(pastDate, scheduledTime, 25);
     return {
-      ...match,
-      title: `기록방 데모 ${index} · ${match.teamA.name} vs ${match.teamB.name}`,
+      ...historicalMatch,
+      title: `기록방 데모 ${index} · ${historicalMatch.teamA.name} vs ${historicalMatch.teamB.name}`,
       scheduledDate: pastDate,
       scheduledTime,
       scheduledAt: `${pastDate} ${scheduledTime}`,
       status: "confirmed",
-      teamA: { ...match.teamA, score: result.scoreA },
-      teamB: { ...match.teamB, score: result.scoreB },
-      agreements: { teamA: match.teamA.players, teamB: match.teamB.players },
-      approvals: { teamA: match.teamA.players, teamB: match.teamB.players },
+      ranked: index % 3 !== 0,
+      official: index % 4 === 0,
+      preRegistered: true,
+      teamA: { ...historicalMatch.teamA, score: result.scoreA },
+      teamB: { ...historicalMatch.teamB, score: result.scoreB },
+      agreements: { teamA: historicalMatch.teamA.players, teamB: historicalMatch.teamB.players },
+      approvals: { teamA: historicalMatch.teamA.players, teamB: historicalMatch.teamB.players },
       result: {
         ...result,
-        submittedBy: match.teamA.players[0],
+        submittedBy: historicalMatch.teamA.players[0],
         submittedAt,
         updatedAt: submittedAt,
       },
       endedAt,
       confirmedAt: submittedAt,
-      ratingResult: getMatchPlayerIds(match).map((playerId) => ({
+      ratingResult: getMatchPlayerIds(historicalMatch).map((playerId) => ({
         playerId,
-        integratedDelta: match.teamA.players.includes(playerId) ? 8 : -7,
-        modeDelta: match.teamA.players.includes(playerId) ? 10 : -9,
-        result: match.teamA.players.includes(playerId) ? "win" : "loss",
+        integratedDelta: historicalMatch.teamA.players.includes(playerId) ? 8 : -7,
+        modeDelta: historicalMatch.teamA.players.includes(playerId) ? 10 : -9,
+        result: historicalMatch.teamA.players.includes(playerId) ? "win" : "loss",
       })),
       teamRatingResult: { teamA: 9, teamB: -8 },
     };
@@ -240,10 +266,12 @@ function trustedUserByIndex(state, index, minTrust = 75) {
 function ensureTrustedPartyLeader(state, team = {}, playerIds = [], minTrust = 75) {
   const trustById = new Map(state.users.map((user) => [user.id, Number(user.trustScore ?? 0)]));
   const teamIds = (team.members ?? []).map((member) => member.userId);
-  const leaderId = playerIds.find((playerId) => (trustById.get(playerId) ?? 0) >= minTrust)
-    ?? teamIds.find((playerId) => (trustById.get(playerId) ?? 0) >= minTrust)
-    ?? playerIds[0]
-    ?? "";
+  const captainId = (team.members ?? []).find((member) => member.role === "captain")?.userId ?? "";
+  const leaderId = captainId
+    || playerIds.find((playerId) => (trustById.get(playerId) ?? 0) >= minTrust)
+    || teamIds.find((playerId) => (trustById.get(playerId) ?? 0) >= minTrust)
+    || playerIds[0]
+    || "";
   if (!leaderId) return playerIds;
   return [leaderId, ...playerIds.filter((playerId) => playerId !== leaderId)].slice(0, playerIds.length);
 }
@@ -257,8 +285,12 @@ function pickDisjointTeamPair(state, capacity = 5, seed = 0) {
     for (let other = 1; other < teams.length; other += 1) {
       const opponentTeam = teams[(seed + attempt + other) % teams.length];
       if (opponentTeam.id === hostTeam.id) continue;
-      const opponentPlayers = teamRoster(opponentTeam, capacity + 2, seed + other)
-        .filter((playerId) => !hostSet.has(playerId))
+      const opponentCaptainId = (opponentTeam.members ?? []).find((member) => member.role === "captain")?.userId ?? "";
+      const opponentPlayers = [
+        opponentCaptainId,
+        ...teamRoster(opponentTeam, capacity + 2, seed + other),
+      ]
+        .filter((playerId, index, rows) => playerId && rows.indexOf(playerId) === index && !hostSet.has(playerId))
         .slice(0, capacity);
       if (opponentPlayers.length >= capacity) {
         return { hostTeam, opponentTeam, hostPlayers, opponentPlayers };
@@ -309,6 +341,11 @@ function addBulkDemoContent(state) {
       memo: "방 생성 플로우로 만든 확정 데모",
     });
     nextState = room.state;
+    nextState = withUser(nextState, hostPlayers[0], (scoped) => setRecruitingTeamPartyRoster(scoped, room.postId, "host", {
+      teamId: hostTeam.id,
+      playerIds: hostPlayers,
+      reservePlayerIds: hostReserves,
+    }));
     let bulkPost = getPost(nextState, room.postId);
     const bulkInvite = bulkPost.roomState.invitations.find((invitation) => invitation.targetUserId === opponentPlayers[0]);
     assertFlow(Boolean(bulkInvite), `확정 데모 B사이드 파티장 초대 ${index + 1}`, {});
@@ -346,7 +383,13 @@ function addBulkDemoContent(state) {
     const visibility = "public";
     const hostJoinMode = index % 3 === 0 ? "team" : "player";
     const teams = teamsWithSize(nextState, modeMeta.capacity);
-    const hostTeam = teams[(index + 3) % teams.length];
+    const eligibleHostTeams = hostJoinMode === "team"
+      ? teams.filter((team) => {
+          const captainId = (team.members ?? []).find((member) => member.role === "captain")?.userId ?? "";
+          return Number(nextState.users.find((user) => user.id === captainId)?.trustScore ?? 0) >= 75;
+        })
+      : teams;
+    const hostTeam = eligibleHostTeams[(index + 3) % eligibleHostTeams.length];
     let hostPlayers = teamRoster(hostTeam, Math.max(1, Math.min(modeMeta.capacity, index % 2 ? 1 : modeMeta.capacity)), index);
     if (hostJoinMode === "team") {
       hostPlayers = ensureTrustedPartyLeader(nextState, hostTeam, hostPlayers, visibility === "public" ? 75 : 70);
@@ -363,6 +406,7 @@ function addBulkDemoContent(state) {
       scheduledDate: todayPlus((index % 5) + 1),
       scheduledTime: `${String(12 + (index % 8)).padStart(2, "0")}:30`,
       ranked: index % 4 !== 0,
+      mmrRangeMode: hostJoinMode === "team" ? "wide" : "narrow",
       official: false,
       preRegistered: true,
       playerIds: hostJoinMode === "team" ? hostPlayers : [],
@@ -696,12 +740,13 @@ room = createRoom(state, "u1", {
   sideCapacity: 3,
   timingType: "instant",
   ranked: true,
+  mmrRangeMode: "wide",
   official: true,
   preRegistered: false,
   playerIds: ["u1", "u2", "u3"],
   reservePlayerIds: ["u4", "u5"],
   opponentPlayerIds: ["u6", "u7", "u8"],
-  opponentLeaderId: "u7",
+  opponentLeaderId: "u6",
   opponentReservePlayerIds: ["u9", "u10"],
   refereeId: "u11",
   court: "한강 노을코트",
@@ -711,7 +756,13 @@ room = createRoom(state, "u1", {
 state = room.state;
 const lifecyclePostId = room.postId;
 let lifecyclePost = getPost(state, lifecyclePostId);
-let lifecycleInvite = lifecyclePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u7");
+state = withUser(state, "u1", (scoped) => setRecruitingTeamPartyRoster(scoped, lifecyclePostId, "host", {
+  teamId: "t1",
+  playerIds: ["u1", "u2", "u3"],
+  reservePlayerIds: ["u4", "u5"],
+}));
+lifecyclePost = getPost(state, lifecyclePostId);
+let lifecycleInvite = lifecyclePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u6");
 assertFlow(Boolean(lifecycleInvite), "비공개 팀전 즉시: B 파티장 초대장 발송", {
   targetUserId: lifecycleInvite?.targetUserId,
   scheduledAt: lifecyclePost.scheduledAt,
@@ -726,37 +777,28 @@ lifecyclePost = getPost(state, lifecyclePostId);
 assertFlow(lifecyclePost.refereeId === "u11", "비공개 심판 초대 수락", {
   refereeId: lifecyclePost.refereeId,
 });
-lifecycleInvite = lifecyclePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u7");
-state = withUser(state, "u7", (scoped) => acceptRecruitingInvitation(scoped, lifecyclePostId, lifecycleInvite.id));
+lifecycleInvite = lifecyclePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u6");
+state = withUser(state, "u6", (scoped) => acceptRecruitingInvitation(scoped, lifecyclePostId, lifecycleInvite.id));
 let lifecyclePostAfterLeaderAccept = getPost(state, lifecyclePostId);
 let lifecycleLobby = getRecruitingLobby(lifecyclePostAfterLeaderAccept, state);
 let lifecycleTeamBEntry = lifecycleLobby.entries.find((entry) => entry.id === "team:t2");
-assertFlow(lifecycleTeamBEntry?.players?.length === 1 && lifecycleTeamBEntry.players.includes("u7") && !lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 파티장 수락 직후 단독 입장", {
+assertFlow(lifecycleTeamBEntry?.players?.length === 1 && lifecycleTeamBEntry.players.includes("u6") && !lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 팀장 수락 직후 단독 입장", {
   teamA: lifecycleLobby.sides.teamA.confirmationProjectedFilled,
   teamB: lifecycleLobby.sides.teamB.confirmationProjectedFilled,
   canConfirm: lifecycleLobby.canConfirm,
   entry: lifecycleTeamBEntry,
 });
-state = withUser(state, "u7", (scoped) => setRecruitingTeamPartyRoster(scoped, lifecyclePostId, lifecycleTeamBEntry.id, {
+state = withUser(state, "u6", (scoped) => setRecruitingTeamPartyRoster(scoped, lifecyclePostId, lifecycleTeamBEntry.id, {
   teamId: "t2",
-  playerIds: ["u7", "u6", "u8"],
+  playerIds: ["u6", "u7", "u8"],
   reservePlayerIds: ["u9", "u10"],
 }));
 lifecyclePostAfterLeaderAccept = getPost(state, lifecyclePostId);
 lifecycleLobby = getRecruitingLobby(lifecyclePostAfterLeaderAccept, state);
 lifecycleTeamBEntry = lifecycleLobby.entries.find((entry) => entry.id === "team:t2");
-assertFlow(lifecycleTeamBEntry?.players?.length === 3 && lifecycleTeamBEntry?.reserves?.length === 2 && !lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 파티장 roster 선택 후 ready 전 확정 불가", {
+assertFlow(lifecycleTeamBEntry?.players?.length === 3 && lifecycleTeamBEntry?.reserves?.length === 2 && lifecycleLobby.canConfirm, "비공개 팀전 즉시: 양 팀 roster 충족 후 확정 가능", {
   teamA: lifecycleLobby.sides.teamA.confirmationProjectedFilled,
   teamB: lifecycleLobby.sides.teamB.confirmationProjectedFilled,
-  canConfirm: lifecycleLobby.canConfirm,
-  entry: lifecycleTeamBEntry,
-});
-state = withUser(state, "u7", (scoped) => setRecruitingReady(scoped, lifecyclePostId, true));
-lifecycleLobby = getRecruitingLobby(getPost(state, lifecyclePostId), state);
-assertFlow(lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 파티장 roster 선택 및 ready 후 확정 가능", {
-  teamA: lifecycleLobby.sides.teamA.confirmationProjectedFilled,
-  teamB: lifecycleLobby.sides.teamB.confirmationProjectedFilled,
-  ready: lifecycleLobby.ready,
   confirmationFillReady: lifecycleLobby.confirmationFillReady,
   entries: lifecycleLobby.entries.map((entry) => ({
     id: entry.id,
@@ -775,7 +817,7 @@ assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "check
   phase: getMatchRoomPhase(getMatch(state, lifecycleMatchId)),
 });
 
-assertFlow(getMatchSideLeaderId(getMatch(state, lifecycleMatchId), state.teams, "teamB") === "u7", "비공개 팀전: 초대 수락자가 B사이드장", {
+assertFlow(getMatchSideLeaderId(getMatch(state, lifecycleMatchId), state.teams, "teamB") === "u6", "비공개 팀전: 팀장이 B사이드장", {
   leaderId: getMatchSideLeaderId(getMatch(state, lifecycleMatchId), state.teams, "teamB"),
 });
 
@@ -789,7 +831,7 @@ state = withUser(state, "u1", (scoped) => updateMatchRoomRules(scoped, lifecycle
   memo: "현장 합의로 15점 10분",
   stakes: "구장 예약비 현장 정산",
 }));
-assertFlow(getMatch(state, lifecycleMatchId).rules.targetScore !== 15, "심판 배정 경기준비방: 방장 룰 수정 불가", {
+assertFlow(getMatch(state, lifecycleMatchId).rules.targetScore !== 15, "즉시 경기준비방: 방장 룰 수정 불가", {
   targetScore: getMatch(state, lifecycleMatchId).rules.targetScore,
 });
 
@@ -799,7 +841,7 @@ state = withUser(state, "u11", (scoped) => updateMatchRoomRules(scoped, lifecycl
   memo: "현장 합의로 15점 10분",
   stakes: "구장 예약비 현장 정산",
 }));
-assertFlow(getMatch(state, lifecycleMatchId).rules.targetScore === 15, "심판 배정 경기준비방: 심판 룰 수정", {
+assertFlow(getMatch(state, lifecycleMatchId).rules.targetScore !== 15, "즉시 경기준비방: 심판도 룰 수정 불가", {
   targetScore: getMatch(state, lifecycleMatchId).rules.targetScore,
 });
 
@@ -864,13 +906,18 @@ assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "참가자 �
   disputes: getMatch(state, lifecycleMatchId).disputes?.length,
 });
 
-state = withUser(state, "u6", (scoped) => resumeMatchApproval(scoped, lifecycleMatchId));
-assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "참가자는 이의 확정 불가", {
+const lifecycleDisputeId = getMatch(state, lifecycleMatchId).disputes?.find((dispute) => dispute.status === "open")?.id;
+assertFlow(Boolean(lifecycleDisputeId), "열린 이의신청 식별", {
+  disputes: getMatch(state, lifecycleMatchId).disputes,
+});
+
+state = withUser(state, "u6", (scoped) => resolveMatchDispute(scoped, lifecycleMatchId, lifecycleDisputeId, "rejected"));
+assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "참가자는 이의 판정 불가", {
   status: getMatch(state, lifecycleMatchId).status,
 });
 
-state = withUser(state, "u11", (scoped) => resumeMatchApproval(scoped, lifecycleMatchId));
-assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "record", "심판 이의 확정 후 기록방", {
+state = withUser(state, "u1", (scoped) => resolveMatchDispute(scoped, lifecycleMatchId, lifecycleDisputeId, "rejected"));
+assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "record", "방장 이의 판정 후 기록방", {
   status: getMatch(state, lifecycleMatchId).status,
 });
 
@@ -936,103 +983,44 @@ assertFlow(
     notification: state.notifications?.[0],
   },
 );
-state = withUser(state, "u7", (scoped) => interestRecruitingPost(scoped, publicTeamInvitePostId, {
+state = withUser(state, "u6", (scoped) => interestRecruitingPost(scoped, publicTeamInvitePostId, {
   joinMode: "team",
   teamId: "t2",
   side: "teamB",
-  playerIds: ["u7", "u6"],
-  reservePlayerIds: ["u8"],
+  playerIds: ["u6"],
+  reservePlayerIds: [],
 }));
 publicTeamInvitePost = getPost(state, publicTeamInvitePostId);
 publicTeamInviteLobby = getRecruitingLobby(publicTeamInvitePost, state);
 assertFlow(
-  publicTeamInvitePost.roomState.partyLeaders["team:t2"] === "u7" &&
-    publicTeamInviteLobby.sides.teamB.players.includes("u7") &&
-    !publicTeamInviteLobby.sides.teamB.players.includes("u6"),
-  "공개 팀전: 참여자가 사이드장, 나머지는 초대 대기",
+  publicTeamInvitePost.roomState.partyLeaders["team:t2"] === "u6" &&
+    publicTeamInviteLobby.sides.teamB.players.includes("u6") &&
+    publicTeamInviteLobby.sides.teamB.players.length === 1 &&
+    publicTeamInvitePost.roomState.invitations.length === 0,
+  "공개 팀전: 팀 대표만 먼저 입장하고 개인 초대는 만들지 않음",
   {
     leader: publicTeamInvitePost.roomState.partyLeaders["team:t2"],
     teamB: publicTeamInviteLobby.sides.teamB.players,
     invitations: publicTeamInvitePost.roomState.invitations,
   },
 );
-const publicTeamActiveInvite = publicTeamInvitePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u6" && invitation.reserve === false);
-const publicTeamReserveInvite = publicTeamInvitePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u8" && invitation.reserve === true);
-assertFlow(Boolean(publicTeamActiveInvite && publicTeamReserveInvite), "공개 팀전: 선택 팀원 초대장 발송", {
-  activeInvite: publicTeamActiveInvite,
-  reserveInvite: publicTeamReserveInvite,
-});
-state = withUser(state, "u7", (scoped) => inviteRecruitingPlayers(scoped, publicTeamInvitePostId, {
-  side: "teamB",
-  reserve: false,
-  teamId: "t2",
-  playerIds: ["u9"],
+state = withUser(state, "u6", (scoped) => setRecruitingTeamPartyRoster(scoped, publicTeamInvitePostId, "team:t2", {
+  playerIds: ["u6", "u7"],
+  reservePlayerIds: ["u8", "u9"],
 }));
 publicTeamInvitePost = getPost(state, publicTeamInvitePostId);
-const publicTeamSlotFillInvite = publicTeamInvitePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u9" && invitation.reserve === false);
-assertFlow(Boolean(publicTeamSlotFillInvite), "공개 팀전: 같은 팀원 추가 출전 초대", {
-  invitation: publicTeamSlotFillInvite,
-});
-state = withUser(state, "u9", (scoped) => acceptRecruitingInvitation(scoped, publicTeamInvitePostId, publicTeamSlotFillInvite.id));
-publicTeamInvitePost = getPost(state, publicTeamInvitePostId);
 publicTeamInviteLobby = getRecruitingLobby(publicTeamInvitePost, state);
 assertFlow(
-  publicTeamInviteLobby.sides.teamB.players.includes("u9") &&
-    !publicTeamInviteLobby.sides.teamB.players.includes("u6"),
-  "공개 팀전: 늦은 초대 수락 전 출전 슬롯 선점",
+  publicTeamInviteLobby.sides.teamB.players.includes("u6") &&
+    publicTeamInviteLobby.sides.teamB.players.includes("u7") &&
+    publicTeamInviteLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "u8") &&
+    publicTeamInviteLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "u9") &&
+    publicTeamInvitePost.roomState.invitations.length === 0,
+  "공개 팀전: 사이드장이 방 안에서 출전·후보 명단 직접 확정",
   {
     teamB: publicTeamInviteLobby.sides.teamB.players,
     reserves: publicTeamInviteLobby.sides.teamB.reserveCandidates,
-  },
-);
-state = withUser(state, "u6", (scoped) => acceptRecruitingInvitation(scoped, publicTeamInvitePostId, publicTeamActiveInvite.id));
-publicTeamInvitePost = getPost(state, publicTeamInvitePostId);
-publicTeamInviteLobby = getRecruitingLobby(publicTeamInvitePost, state);
-assertFlow(
-  publicTeamInviteLobby.sides.teamB.players.includes("u9") &&
-    publicTeamInviteLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "u6"),
-  "공개 팀전: 출전 슬롯 만석이면 초대 수락자를 후보로 자동 전환",
-  {
-    teamB: publicTeamInviteLobby.sides.teamB.players,
-    reserves: publicTeamInviteLobby.sides.teamB.reserveCandidates,
-  },
-);
-state = withUser(state, "u8", (scoped) => acceptRecruitingInvitation(scoped, publicTeamInvitePostId, publicTeamReserveInvite.id));
-publicTeamInvitePost = getPost(state, publicTeamInvitePostId);
-publicTeamInviteLobby = getRecruitingLobby(publicTeamInvitePost, state);
-assertFlow(
-  publicTeamInviteLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "u6") &&
-    publicTeamInviteLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "u8"),
-  "공개 팀전: 후보 슬롯 만석",
-  {
-    teamB: publicTeamInviteLobby.sides.teamB.players,
-    reserves: publicTeamInviteLobby.sides.teamB.reserveCandidates,
-  },
-);
-state = withUser(state, "u7", (scoped) => inviteRecruitingPlayers(scoped, publicTeamInvitePostId, {
-  side: "teamB",
-  reserve: false,
-  teamId: "t2",
-  playerIds: ["u10"],
-}));
-publicTeamInvitePost = getPost(state, publicTeamInvitePostId);
-const publicTeamFullInvite = publicTeamInvitePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u10" && invitation.reserve === false && invitation.status === "pending");
-assertFlow(Boolean(publicTeamFullInvite), "공개 팀전: 만석 상태 출전 초대 발송", {
-  invitation: publicTeamFullInvite,
-});
-state = withUser(state, "u10", (scoped) => acceptRecruitingInvitation(scoped, publicTeamInvitePostId, publicTeamFullInvite.id));
-publicTeamInvitePost = getPost(state, publicTeamInvitePostId);
-publicTeamInviteLobby = getRecruitingLobby(publicTeamInvitePost, state);
-const publicTeamExpiredInvite = publicTeamInvitePost.roomState.invitations.find((invitation) => invitation.id === publicTeamFullInvite.id);
-assertFlow(
-  publicTeamExpiredInvite?.status === "expired" &&
-    !publicTeamInviteLobby.sides.teamB.players.includes("u10") &&
-    !publicTeamInviteLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "u10"),
-  "공개 팀전: 출전과 후보가 모두 차면 초대 만료",
-  {
-    invite: publicTeamExpiredInvite,
-    teamB: publicTeamInviteLobby.sides.teamB.players,
-    reserves: publicTeamInviteLobby.sides.teamB.reserveCandidates,
+    invitations: publicTeamInvitePost.roomState.invitations,
   },
 );
 
@@ -1217,12 +1205,14 @@ assertFlow(partyEntry.reserves.includes("u1"), "내슬롯관리: 파티원을 �
   reserves: partyEntry.reserves,
 });
 state = withUser(state, "u1", (scoped) => setRecruitingPartyPlayerPlacement(scoped, partyPostId, partyEntry.id, "u1", { side: "teamA", reserve: false }));
-state = withUser(state, "u1", (scoped) => inviteRecruitingPlayers(scoped, partyPostId, { side: "teamA", reserve: true, teamId: "t3", playerIds: ["u5"] }));
-const u5Invite = getPost(state, partyPostId).roomState.invitations.find((invitation) => invitation.targetUserId === "u5");
-assertFlow(Boolean(u5Invite), "참여자가 후보 초대장 발송", { invitation: u5Invite });
-state = withUser(state, "u5", (scoped) => acceptRecruitingInvitation(scoped, partyPostId, u5Invite.id));
+state = withUser(state, "u2", (scoped) => inviteRecruitingPlayers(scoped, partyPostId, { side: "teamA", reserve: true, teamId: "t3", playerIds: ["u5"] }));
 partyLobby = getRecruitingLobby(getPost(state, partyPostId), state);
-assertFlow(partyLobby.entries.some((entry) => (entry.reserves ?? []).includes("u5")), "후보 초대 수락", {});
+assertFlow(
+  partyLobby.entries.some((entry) => (entry.reserves ?? []).includes("u5")) &&
+    getPost(state, partyPostId).roomState.invitations.every((invitation) => invitation.targetUserId !== "u5"),
+  "팀 전용 방: 사이드장이 후보를 직접 소집하고 초대 row는 만들지 않음",
+  {},
+);
 state = withUser(state, "u1", (scoped) => detachRecruitingPartyPlayer(scoped, partyPostId, partyEntry.id, "u1", { side: "teamA", reserve: false }));
 partyLobby = getRecruitingLobby(getPost(state, partyPostId), state);
 assertFlow(partyLobby.entries.some((entry) => entry.kind === "player" && entry.playerId === "u1"), "파티 나가기 후 개인 참여 전환", {});
@@ -1308,21 +1298,24 @@ report.summary = {
   }, {}),
 };
 
-await mkdir(outDir, { recursive: true });
-await writeFile(stateOut, JSON.stringify(state, null, 2), "utf8");
-await writeFile(reportOut, JSON.stringify(report, null, 2), "utf8");
-await writeFile(
-  generatedStateOut,
-  `// Generated by \`npm run seed:demo-flow\`.\nexport const demoFlowState = ${JSON.stringify(state)};\n`,
-  "utf8",
-);
+if (!checkOnly) {
+  await mkdir(outDir, { recursive: true });
+  await writeFile(stateOut, JSON.stringify(state, null, 2), "utf8");
+  await writeFile(reportOut, JSON.stringify(report, null, 2), "utf8");
+  await writeFile(
+    generatedStateOut,
+    `// Generated by \`npm run seed:demo-flow\`.\nexport const demoFlowState = ${JSON.stringify(state)};\n`,
+    "utf8",
+  );
+}
 
 console.log(JSON.stringify({
   ok: true,
+  checkOnly,
   storageKey: STORAGE_KEY,
-  statePath: stateOut.pathname,
-  reportPath: reportOut.pathname,
-  generatedStatePath: generatedStateOut.pathname,
+  statePath: checkOnly ? null : stateOut.pathname,
+  reportPath: checkOnly ? null : reportOut.pathname,
+  generatedStatePath: checkOnly ? null : generatedStateOut.pathname,
   summary: report.summary,
   checks: report.checks.length,
 }, null, 2));

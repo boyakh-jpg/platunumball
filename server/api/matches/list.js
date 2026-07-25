@@ -1189,7 +1189,12 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   }
   const loadedMatchIds = new Set(matchRows.map((row) => row?.id).filter(Boolean));
   const relatedRowIds = unique(relatedActiveRows.map((row) => row?.id)).filter((id) => (
-    !loadedMatchIds.has(id) && !feedCardIds.has(id)
+    !loadedMatchIds.has(id)
+    && (
+      !feedCardIds.has(id)
+      || captainTournamentMatchIds.has(id)
+      || memberTeamMatchIds.has(id)
+    )
   ));
   if (relatedRowIds.length) {
     const relatedMatchRows = await timeStep(debugTiming, "relatedActiveMatchRowsMs", () => (

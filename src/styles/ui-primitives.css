@@ -115,6 +115,24 @@
   border-radius: var(--ui-panel-radius);
 }
 
+.ui-panel-title,
+.ui-panel-copy {
+  font-family: var(--font-body);
+}
+
+.ui-panel-title {
+  color: var(--rb-text);
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.ui-panel-copy {
+  color: var(--rb-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
 .ui-control {
   width: 100%;
   min-height: var(--control-height);

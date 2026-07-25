@@ -43,11 +43,28 @@ import {
 import {
   acceptRecruitingInvitation,
   createRecruitingPost,
+  interestRecruitingPost,
   inviteRecruitingPlayers,
 } from "../src/data/repository.js";
 import { getRecruitingLobby, isIndividualOnlyRecruitingRoom } from "../src/lib/recruiting.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const pickupRefereeMigrationSource = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260725011000_preserve_pickup_referee_interest.sql"),
+  "utf8",
+);
+const publicTeamRepresentativeMigrationSource = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260725019000_public_team_representative_guard.sql"),
+  "utf8",
+);
+
+function readCssManifest(relativePath) {
+  const manifestPath = path.join(root, relativePath);
+  const manifest = fs.readFileSync(manifestPath, "utf8");
+  const modules = [...manifest.matchAll(/@import\s+["']([^"']+)["'];/g)]
+    .map((match) => fs.readFileSync(path.resolve(path.dirname(manifestPath), match[1]), "utf8"));
+  return [manifest, ...modules].join("\n");
+}
 
 test("all supported modes keep mode-aware active capacity and presets", () => {
   for (const [mode, expectedOnCourtCount] of [["1v1", 1], ["2v2", 2], ["3v3", 3], ["5v5", 5]]) {
@@ -342,6 +359,18 @@ test("pickup API normalizes team payloads and blocks party mutations", () => {
   assert.equal(join.joinMode, "player");
   assert.equal(join.application.joinMode, "player");
   assert.equal(join.application.teamId, "");
+
+  const refereeJoin = normalizePickupRecruitingOperation(post, {
+    action: "interestRecruitingPost",
+    joinMode: "referee",
+    application: { joinMode: "referee" },
+  });
+  assert.equal(refereeJoin.joinMode, "referee");
+  assert.equal(refereeJoin.application.joinMode, "referee");
+  assert.match(
+    pickupRefereeMigrationSource,
+    /normalized_operation #>> '\{application,joinMode\}'[\s\S]*?<> 'referee'/,
+  );
   assert.throws(
     () => normalizePickupRecruitingOperation(post, { action: "setRecruitingTeamPartyRoster" }),
     /pickup_party_not_allowed/,
@@ -614,6 +643,101 @@ test("room operations keep only the clock, ball, and mode-relevant vest choices"
   assert.equal(getMatchCreationPolicyPayload({ mode: "1v1", vestsProvided: true }).vestsProvided, false);
 });
 
+test("public team joins persist only the captain representative", () => {
+  const users = [
+    { id: "host", name: "방장", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
+    { id: "captain", name: "상대 팀장", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
+    { id: "member", name: "상대 팀원", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
+  ];
+  const post = {
+    id: "public-team-room",
+    title: "공개 팀전",
+    status: "open",
+    visibility: "public",
+    mode: "2v2",
+    sideCapacity: 2,
+    benchCapacity: 2,
+    hostJoinMode: "team",
+    hostSide: "teamA",
+    teamOnly: true,
+    teamId: "host-team",
+    playerId: "host",
+    playerIds: ["host"],
+    ranked: false,
+    mmrLimitMode: "off",
+    roomState: {
+      ownerId: "host",
+      teamOnly: true,
+      mmrLimitMode: "off",
+      partyLeaders: { host: "host" },
+      partySides: { host: "teamA" },
+      partyReserves: {},
+    },
+    rules: { teamOnly: true, mmrLimitMode: "off", allowedAgeGroups: [] },
+    applicants: [],
+  };
+  const teams = [
+    {
+      id: "host-team",
+      name: "방장팀",
+      mmr: 1200,
+      members: [{ userId: "host", role: "captain" }],
+    },
+    {
+      id: "opponent-team",
+      name: "상대팀",
+      mmr: 1200,
+      members: [
+        { userId: "captain", role: "captain" },
+        { userId: "member", role: "regular" },
+      ],
+    },
+  ];
+  const baseState = {
+    currentUserId: "captain",
+    users,
+    teams,
+    recruitingPosts: [post],
+    notifications: [],
+    settings: {},
+  };
+  const joined = interestRecruitingPost(baseState, post.id, {
+    joinMode: "team",
+    teamId: "opponent-team",
+    side: "teamB",
+    playerIds: ["captain", "member"],
+    reservePlayerIds: ["member"],
+    reserve: true,
+  });
+  const application = joined.recruitingPosts[0].applicants[0];
+
+  assert.equal(application.playerId, "captain");
+  assert.equal(application.side, "teamB");
+  assert.equal(application.reserve, false);
+  assert.deepEqual(application.playerIds, ["captain"]);
+  assert.deepEqual(joined.recruitingPosts[0].roomState.partyReserves, {});
+
+  const rejected = interestRecruitingPost(
+    { ...baseState, currentUserId: "member" },
+    post.id,
+    {
+      joinMode: "team",
+      teamId: "opponent-team",
+      side: "teamB",
+      playerIds: ["member"],
+    },
+  );
+  assert.equal(rejected.recruitingPosts[0].applicants.length, 0);
+  assert.match(rejected.notifications[0].body, /팀장만/);
+
+  assert.match(publicTeamRepresentativeMigrationSource, /rankball_recruiting_management_action_unguarded/);
+  assert.match(publicTeamRepresentativeMigrationSource, /member\.role = 'captain'/);
+  assert.match(publicTeamRepresentativeMigrationSource, /recruiting_team_captain_required/);
+  assert.match(publicTeamRepresentativeMigrationSource, /'playerIds', jsonb_build_array\(safe_actor_id\)/);
+  assert.match(publicTeamRepresentativeMigrationSource, /'reservePlayerIds', '\[\]'::jsonb/);
+  assert.match(publicTeamRepresentativeMigrationSource, /recruiting_team_side_occupied/);
+});
+
 test("pickup participant slots keep a fixed width and use available desktop columns", () => {
   const componentSource = fs.readFileSync(path.join(root, "src/components/match/PickupParticipantPool.jsx"), "utf8");
   const cssSource = fs.readFileSync(path.join(root, "src/styles/recruiting-arena.css"), "utf8");
@@ -652,7 +776,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(serverSource, /rules: \{ \.\.\.\(post\.rules \?\? \{\}\), benchCapacity \}/);
   const schemaSource = fs.readFileSync(path.join(root, "supabase/schema.sql"), "utf8");
   assert.match(schemaSource, /coalesce\(draft->'rules', '\{\}'::jsonb\)/);
-  const cssSource = fs.readFileSync(path.join(root, "src/styles/globals.css"), "utf8");
+  const cssSource = readCssManifest("src/styles/globals.css");
   assert.doesNotMatch(cssSource, /\.match-creation-wizard-nav ol\s*\{[^}]*min-width:\s*720px/);
   assert.match(cssSource, /\.create-match-page input\[type="checkbox"\][\s\S]*accent-color:\s*var\(--rb-orange\)/);
   assert.match(cssSource, /@media \(max-width: 420px\)[\s\S]*\.match-creation-wizard-actions/);
@@ -663,6 +787,11 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(recruitingSource, /placeholder=\{playerOnly \? "선수 검색" : "선수 또는 팀 검색"\}/);
   assert.match(recruitingSource, /const currentUserInParty = Boolean\(!individualOnlyRoom/);
   assert.match(recruitingSource, /individualOnlyRoom\s*\? "내 슬롯을 누르면 A\/B 출전과 후보 위치를 변경할 수 있습니다\."/);
+  assert.match(recruitingSource, /const selectedJoinPlayerIds = teamOnlyRoom[\s\S]*app\.currentUser\.id \? \[app\.currentUser\.id\] : \[\]/);
+  assert.doesNotMatch(recruitingSource, /teamOnlyRoom \|\| selectedJoinPlayerIds\.length >= getRecruitingSideCapacity/);
+  assert.match(recruitingSource, /<span>대표 1명 참가<\/span>/);
+  assert.match(recruitingSource, /참가 후 방 안에서 사이드장이 출전·후보 명단을 확정합니다\./);
+  assert.match(recruitingSource, /sourceMatchRecordVerification && sourceMatchRecordVerification\.verificationStatus !== "disputed"/);
   const compactSource = fs.readFileSync(path.join(root, "server/api/recruiting/list.js"), "utf8");
   assert.match(compactSource, /lastPeriodStopMinutes: rules\.lastPeriodStopMinutes/);
   assert.match(compactSource, /gameClockEnabled: rules\.gameClockEnabled/);

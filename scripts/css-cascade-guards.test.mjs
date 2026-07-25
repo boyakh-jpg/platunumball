@@ -212,6 +212,44 @@ test("global modules use spacing tokens for canonical gaps", () => {
   assert.deepEqual(rawGaps, []);
 });
 
+test("default and functional panel typography use shared body tokens", () => {
+  const tokenRoot = parseCss("src/styles/tokens.css");
+  const foundationRoot = parseCss("src/styles/global-foundation.css");
+  const primitiveRoot = parseCss("src/styles/ui-primitives.css");
+  const recruitingSource = fs.readFileSync("src/pages/Recruiting.jsx", "utf8");
+  const declarations = new Map();
+
+  for (const [name, root] of [
+    ["tokens", tokenRoot],
+    ["foundation", foundationRoot],
+    ["primitives", primitiveRoot],
+  ]) {
+    root.walkDecls((declaration) => {
+      declarations.set(`${name}:${declaration.prop}:${declaration.parent.selector ?? ""}`, declaration.value);
+    });
+  }
+
+  assert.ok(
+    [...declarations.entries()].some(([key]) => key.startsWith("tokens:--font-body::root")),
+    "--font-body token is required",
+  );
+  assert.equal(declarations.get("foundation:font-family:body"), "var(--font-body)");
+  const panelTypographyFamily = [...declarations.entries()].find(([key]) => (
+    key.startsWith("primitives:font-family:")
+    && key.includes(".ui-panel-title")
+    && key.includes(".ui-panel-copy")
+  ))?.[1];
+  assert.equal(panelTypographyFamily, "var(--font-body)");
+  assert.match(
+    recruitingSource,
+    /<strong className="ui-panel-title">경기 기록판<\/strong>/,
+  );
+  assert.match(
+    recruitingSource,
+    /<span className="ui-panel-copy">기록방은 점수와 선수 기록을 먼저 확인합니다\.<\/span>/,
+  );
+});
+
 test("light theme reserves green for semantic status only", () => {
   const violations = [];
   const semanticGreenSelector = /(?:\.ready\b|\.text-positive\b|\.badge\.green\b|\.tag\.green\b)/;

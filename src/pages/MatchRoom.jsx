@@ -682,7 +682,7 @@ export default function MatchRoom({ app }) {
     if (match.status === "disputed") {
       return {
         label: "이의 확인",
-        detail: openDisputes.length ? `방장이 이의제기 ${openDisputes.length}건을 건별로 가결 또는 부결합니다.` : "이의 판정 완료 후 방장이 결과를 확정합니다.",
+        detail: openDisputes.length ? `방장이 이의제기 ${openDisputes.length}건을 건별로 가결 또는 부결합니다.` : "마지막 이의 판정과 함께 결과가 확정됩니다.",
       };
     }
     if (match.status === "confirmed") {
@@ -946,7 +946,7 @@ export default function MatchRoom({ app }) {
               <div>
                 <span>이의제기 마감</span>
                 <strong>{formatWindowTime(recordWindow.disputeClosesAt)}</strong>
-                <em>경기 종료 후 {match.disputeMinutes ?? 30}분</em>
+                <em>경기 종료 후 {normalizeDisputeWindowMinutes(match.disputeMinutes)}분</em>
               </div>
             </div>
             <form className="score-form" onSubmit={submitResult}>

@@ -489,6 +489,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   const cancelledScheduleMigration = readFileSync(new URL("../supabase/migrations/20260724163000_cancelled_room_schedule_feed.sql", import.meta.url), "utf8");
   const scheduledAtTypeFixMigration = readFileSync(new URL("../supabase/migrations/20260724164000_fix_room_policy_scheduled_at_types.sql", import.meta.url), "utf8");
   const roomRemakeMigration = readFileSync(new URL("../supabase/migrations/20260724170000_room_remake_tracking.sql", import.meta.url), "utf8");
+  const roomRemakeGrantMigration = readFileSync(new URL("../supabase/migrations/20260725010500_fix_room_remake_service_role_grant.sql", import.meta.url), "utf8");
   const createMatchPage = readFileSync(new URL("../src/pages/CreateMatch.jsx", import.meta.url), "utf8");
   const adminUserPanel = readFileSync(new URL("../src/components/admin/UserOperationsPanel.jsx", import.meta.url), "utf8");
   const recruitingPage = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
@@ -541,6 +542,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(roomRemakeMigration, /when next_sequence >= 3 then 'review'/);
   assert.match(roomRemakeMigration, /rankball_admin_room_remake_stats/);
   assert.match(roomRemakeMigration, /room_remake_warning/);
+  assert.match(roomRemakeGrantMigration, /grant select on table public\.room_remake_events[\s\S]*to service_role/);
   assert.match(recruitingPage, /참가자가 있으면 규칙 변경은 각 참가자의 확인이 필요합니다/);
   assert.match(recruitingPage, /같은 설정으로 다시 만들기/);
   assert.match(recruitingPage, /remakeSourceMatchId/);

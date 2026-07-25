@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,31 @@ import test from "node:test";
 const PRODUCTION_REF = "olzxextphxpniwiiwwda";
 const TEST_REF = "rankballtestproject01";
 const scriptPath = join(dirname(fileURLToPath(import.meta.url)), "simulate-backend-flow.mjs");
+const scriptSource = readFileSync(scriptPath, "utf8");
+const exactCleanupMigration = readFileSync(
+  join(dirname(scriptPath), "../supabase/migrations/20260725013000_exact_simulation_artifact_cleanup.sql"),
+  "utf8",
+);
+const exactCleanupHardeningMigration = readFileSync(
+  join(dirname(scriptPath), "../supabase/migrations/20260725016000_harden_exact_simulation_cleanup.sql"),
+  "utf8",
+);
+const autoFinalizeMigration = readFileSync(
+  join(dirname(scriptPath), "../supabase/migrations/20260725018500_auto_finalize_missing_player_stats.sql"),
+  "utf8",
+);
+const exactCleanupIdempotentMigration = readFileSync(
+  join(dirname(scriptPath), "../supabase/migrations/20260725020000_idempotent_exact_simulation_cleanup.sql"),
+  "utf8",
+);
+const autoFinalizeNormalizationMigration = readFileSync(
+  join(dirname(scriptPath), "../supabase/migrations/20260725020500_restore_auto_finalize_dispute_normalization.sql"),
+  "utf8",
+);
+const schemaHealthSource = readFileSync(
+  join(dirname(scriptPath), "../server/api/system/schema-health.js"),
+  "utf8",
+);
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "rankball-sim-safety-"));
 
 function childEnvironment(projectRef, url = `https://${projectRef}.supabase.co`) {
@@ -146,4 +171,45 @@ test("local Supabase target remains available without production confirmation", 
   const result = runSafetyCheck([], childEnvironment("", "http://127.0.0.1:54321"));
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stderr, /"environment":"local"/);
+});
+
+test("simulation cleanup is exact, bounded, and guarded from user matches", () => {
+  assert.match(scriptSource, /rankball_cleanup_simulation_artifacts_exact/);
+  assert.doesNotMatch(scriptSource, /\.rpc\("rankball_cleanup_simulation_artifacts"\)/);
+  assert.match(scriptSource, /matchIds\.slice\(index \* 10, \(index \+ 1\) \* 10\)/);
+  assert.match(exactCleanupMigration, /cardinality\(safe_match_ids\) > 10/);
+  assert.match(exactCleanupMigration, /simulation_cleanup_match_id_required/);
+  assert.match(exactCleanupMigration, /rankball\.skip_derived_refresh/);
+  assert.match(scriptSource, /trackedMatchIds\.filter\(\(matchId\) => matchId\.startsWith\("sim_m_"\)\)/);
+  assert.match(exactCleanupHardeningMigration, /left join public\.matches match_row/);
+  assert.match(exactCleanupHardeningMigration, /match_row\.id is null/);
+  assert.match(exactCleanupHardeningMigration, /remaining_matches = 0 and remaining_tournaments = 0/);
+  assert.match(exactCleanupIdempotentMigration, /match_row\.id is not null/);
+  assert.match(exactCleanupIdempotentMigration, /rankball_rebuild_profile_match_summary/);
+  assert.match(exactCleanupIdempotentMigration, /rankball_refresh_court_metrics/);
+  assert.match(exactCleanupIdempotentMigration, /'derivedRefreshCompleted', true/);
+  assert.match(scriptSource, /if \(!derivedRefreshCompleted\)/);
+  assert.match(schemaHealthSource, /name: "rankball_cleanup_simulation_artifacts_exact"/);
+});
+
+test("maintenance auto-finalization fills only missing active-player stats", () => {
+  assert.match(autoFinalizeMigration, /'auto_finalize'/);
+  assert.match(autoFinalizeMigration, /on conflict \(match_id, user_id\) do nothing/);
+  assert.match(autoFinalizeMigration, /current_match\.reserve_players/);
+  assert.match(autoFinalizeMigration, /rankball_match_finalize_locked\(operator_id, safe_match_id, 'autoConfirmMatch'\)/);
+  assert.doesNotMatch(autoFinalizeMigration, /update public\.player_match_stats/i);
+  assert.match(autoFinalizeNormalizationMigration, /rankball_normalize_dispute_minutes\(current_match\.dispute_minutes\)/);
+});
+
+test("production simulation verifies one-representative public team joins", () => {
+  const tailOnlyBranch = scriptSource.match(
+    /else if \(tailOnly\) \{([\s\S]*?)\n\s*\} else if \(recordPermissionsOnly\)/,
+  )?.[1] ?? "";
+  assert.match(tailOnlyBranch, /runPublicTeamRegionFeedScenario/);
+  assert.match(tailOnlyBranch, /label: "public_team_region_feed"/);
+  assert.match(scriptSource, /playerIds: \[hostId\]/);
+  assert.match(scriptSource, /rejectOpponentNonCaptainRepresentative/);
+  assert.match(scriptSource, /recruiting_team_captain_required/);
+  assert.match(scriptSource, /joinOpponentRepresentative/);
+  assert.match(scriptSource, /opponentApplication\.playerIds/);
 });

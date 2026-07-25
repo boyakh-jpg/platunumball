@@ -345,6 +345,16 @@ export function toMatchNotificationRows(match = {}, profileIds = [], notificatio
   });
 }
 
+export function getMatchDisputeReminderTiming(match = {}) {
+  const windowMinutes = normalizeDisputeWindowMinutes(match.disputeMinutes);
+  const leadMinutes = Math.min(5, Math.max(1, windowMinutes - 1));
+  return {
+    windowMinutes,
+    leadMinutes,
+    offsetMinutes: windowMinutes - leadMinutes,
+  };
+}
+
 export async function upsertDiscordDeliveryRows(supabase, rows = []) {
   if (!rows.length) return 0;
   const ids = rows.map((row) => row.id).filter(Boolean);
@@ -436,7 +446,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
     await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
   }
-  if (["endMatch", "submitMatchResult", "disputeMatch", "approveMatch", "resolveMatchDispute", "resumeMatchApproval", "rejectMatchDispute", "forfeitTournamentMatch"].includes(action)) {
+  if (["endMatch", "submitMatchResult", "disputeMatch", "approveMatch", "resolveMatchDispute", "forfeitTournamentMatch"].includes(action)) {
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
       ...MATCH_SCHEDULED_NOTICE_PREFIXES,
       ...MATCH_POSTGAME_NOTICE_PREFIXES,
@@ -527,6 +537,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
 
   if (action === "endMatch") {
     const endedAt = match.endedAt ? new Date(match.endedAt) : new Date();
+    const disputeReminder = getMatchDisputeReminderTiming(match);
     addRows(participantIds, profiles, {
       idPrefix: "match-ended-score",
       actionRequired: true,
@@ -539,8 +550,8 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
       actionRequired: true,
       homeAction: true,
       title: "이의신청 확인",
-      intro: "경기 종료 후 30분이 지났습니다. 입력된 결과를 확인하고, 문제가 있으면 이의신청을 해 주세요.",
-      sendAt: new Date(endedAt.getTime() + 30 * MINUTE_MS).toISOString(),
+      intro: `이의신청 마감 ${disputeReminder.leadMinutes}분 전입니다. 입력된 결과를 확인하고, 문제가 있으면 이의신청을 해 주세요.`,
+      sendAt: new Date(endedAt.getTime() + disputeReminder.offsetMinutes * MINUTE_MS).toISOString(),
     });
   }
 
@@ -1056,8 +1067,6 @@ const OPERATOR_MATCH_ACTIONS = new Set([
   "deleteSoloRecord",
   "voidMatch",
   "resolveMatchDispute",
-  "rejectMatchDispute",
-  "resumeMatchApproval",
   "startMatch",
   "endMatch",
   "addMatchLatePlayer",
@@ -1093,8 +1102,7 @@ const REFEREE_ELIGIBILITY_ACTIONS = new Set([
 
 const RESULT_REPLACE_MATCH_ACTIONS = new Set([
   "submitMatchResult",
-  "resumeMatchApproval",
-  "rejectMatchDispute",
+  "resolveMatchDispute",
 ]);
 
 function isSoloRecordMatch(match = {}) {
@@ -1256,7 +1264,7 @@ function validateResultOnlyOnSubmission(action, existingResult, existingStats, n
 }
 
 function canCommitRatingResult(action, existingResult, nextMatch) {
-  return ["approveMatch", "resumeMatchApproval", "rejectMatchDispute"].includes(action) && Boolean(existingResult) && nextMatch?.status === "confirmed";
+  return ["approveMatch", "resolveMatchDispute"].includes(action) && Boolean(existingResult) && nextMatch?.status === "confirmed";
 }
 
 const SQL_REDUCER_MATCH_ACTIONS = new Set([
@@ -1279,8 +1287,6 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "removeMatchRoomPlayer",
   "requestMatchRefereeAbsence",
   "confirmMatchRefereeAbsence",
-  "resumeMatchApproval",
-  "rejectMatchDispute",
   "setMatchRecordTeamRoster",
   "setMatchRoomPlayerPlacement",
   "swapPickupMatchPlayers",
@@ -1321,8 +1327,6 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_postgame_roster_action") ||
     message.includes("rankball_match_referee_absence_action") ||
     message.includes("rankball_match_result_action") ||
-    message.includes("rankball_match_resume_approval_action") ||
-    message.includes("rankball_match_reject_dispute_action") ||
     message.includes("rankball_match_room_update_action") ||
     message.includes("rankball_match_room_action") ||
     message.includes("rankball_match_roster_move_action") ||
@@ -1367,8 +1371,6 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "removeMatchRoomPlayer",
     "requestMatchRefereeAbsence",
     "confirmMatchRefereeAbsence",
-    "resumeMatchApproval",
-    "rejectMatchDispute",
     "setMatchRecordTeamRoster",
     "setMatchRoomPlayerPlacement",
     "swapPickupMatchPlayers",
@@ -1672,20 +1674,6 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
   }
 
-  if (operation.action === "resumeMatchApproval" && (match?.id || operation.matchId)) {
-    const matchId = operation.matchId ?? match.id;
-    const { data, error } = await context.supabase.rpc("rankball_match_resume_approval_action", {
-      p_actor_profile_id: context.profileId,
-      p_match_id: matchId,
-      p_result_draft: operation.resultDraft ?? null,
-    });
-    if (error) {
-      if (isMissingSqlMatchReducer(error)) return null;
-      throw error;
-    }
-    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
-  }
-
   if (operation.action === "resolveMatchDispute" && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
     const { data, error } = await context.supabase.rpc("rankball_match_resolve_dispute_action", {
@@ -1699,19 +1687,6 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       throw error;
     }
     rejectSqlMatchFallback(data);
-    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
-  }
-
-  if (operation.action === "rejectMatchDispute" && (match?.id || operation.matchId)) {
-    const matchId = operation.matchId ?? match.id;
-    const { data, error } = await context.supabase.rpc("rankball_match_reject_dispute_action", {
-      p_actor_profile_id: context.profileId,
-      p_match_id: matchId,
-    });
-    if (error) {
-      if (isMissingSqlMatchReducer(error)) return null;
-      throw error;
-    }
     return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
   }
 
@@ -2334,7 +2309,7 @@ export default async function handler(request, response) {
         let discordDeliveryCount = Number(sqlResult.discordDeliveryCount ?? 0);
         let discordDeliveryError = sqlResult.discordDeliveryError ?? null;
         const shouldRefreshMatchDeliveries = MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS.has(operation.action) ||
-          ["submitMatchResult", "approveMatch", "resolveMatchDispute", "resumeMatchApproval", "rejectMatchDispute", "forfeitTournamentMatch"].includes(operation.action);
+          ["submitMatchResult", "approveMatch", "resolveMatchDispute", "forfeitTournamentMatch"].includes(operation.action);
         if (shouldRefreshMatchDeliveries && syncedMatch?.id) {
           try {
             discordDeliveryCount = await withTimeout(

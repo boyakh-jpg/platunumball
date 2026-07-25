@@ -129,12 +129,13 @@ test("credentials are rejected from every URL query", async () => {
 });
 
 test("report review actions keep sanctions behind verified targets and level 50", async () => {
-  const [reviewSource, submitSource, settingsSource, hookSource, searchSource] = await Promise.all([
+  const [reviewSource, submitSource, settingsSource, hookSource, searchSource, simulationSource] = await Promise.all([
     readSource("server/api/admin/review-action.js"),
     readSource("server/api/reports/submit.js"),
     readSource("src/pages/Settings.jsx"),
     readSource("src/hooks/useAppData.js"),
     readSource("server/api/search.js"),
+    readSource("scripts/simulate-backend-flow.mjs"),
   ]);
   assert.match(reviewSource, /HIGH_IMPACT_ACTIONS\.has\(actionType\) && adminLevel < 50/);
   assert.match(reviewSource, /ALLOWED_ACTIONS\.has\(actionType\)/);
@@ -150,6 +151,8 @@ test("report review actions keep sanctions behind verified targets and level 50"
   assert.match(searchSource, /court_review: \["court_review"\]/);
   assert.match(searchSource, /searchCourtReviews\(context\.supabase, context\.profileId/);
   assert.match(hookSource, /result\.ok === false \|\| result\.duplicate === true/);
+  assert.match(simulationSource, /sourceMatchId: basicScenario\.matchId/);
+  assert.match(simulationSource, /sourceMatchId,\s+reason: `simulation shared match report/);
 });
 
 test("report insert conflicts and admin review input fail safely", async () => {

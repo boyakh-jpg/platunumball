@@ -49,6 +49,10 @@ test("match rows and child tables stay behind bounded related IDs", async () => 
   assert.match(listSource, /MATCH_RELATED_FALLBACK_MAX_LIMIT = 80/);
   assert.match(listSource, /ACTIVE_MATCH_EXCLUDED_STATUS_VALUES/);
   assert.match(listSource, /ACTIVE_MATCH_EXCLUDED_STATUS_VALUES\.join/);
+  assert.match(
+    listSource,
+    /!feedCardIds\.has\(id\)[\s\S]{0,160}captainTournamentMatchIds\.has\(id\)[\s\S]{0,160}memberTeamMatchIds\.has\(id\)/,
+  );
 
   const playerHydrateAt = listSource.indexOf("const playerRowsPromise = matchIds.length");
   const readableFilterAt = listSource.indexOf("const readableRows = matchRows.filter");

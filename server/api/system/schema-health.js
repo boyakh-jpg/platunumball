@@ -449,10 +449,6 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_action: "", p_match_id: "", p_payload: {} },
   },
   {
-    name: "rankball_match_resume_approval_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_result_draft: null },
-  },
-  {
     name: "rankball_tournament_operation_action",
     args: { p_actor_profile_id: "", p_operation: {} },
   },
@@ -620,6 +616,10 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_cleanup_read_notifications",
     args: { p_now: new Date(0).toISOString() },
+  },
+  {
+    name: "rankball_cleanup_simulation_artifacts_exact",
+    args: { p_match_ids: [], p_tournament_ids: [] },
   },
   {
     name: "rankball_mark_notifications_read_action",

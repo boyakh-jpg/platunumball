@@ -17,6 +17,21 @@
 4. 90분 상한은 4쿼터 10분 스톱타임, 휴식, 파울 중단과 연장 가능성을 수용하면서 무기한 live 경기로 인한 어뷰징을 막기 위한 운영 상한이다. 정규 설정 최대 63분과 남은 27분을 중단·휴식·연장 여유로 사용한다.
 5. 클라이언트 정규화, 생성 검증, 방 수정 DB 함수는 같은 63분 상한을 사용한다. API 우회 입력도 DB에서 `match_regulation_duration_exceeded`로 거부한다.
 
+## 2026-07-25 충돌 제거와 구조 정리 로드맵
+
+1. P0 실행 경로: 같은 상태 전이를 만드는 구형 action·RPC·권한 예외를 먼저 제거한다. 경기 이의는 `resolveMatchDispute`와 `rankball_match_resolve_dispute_action()`만 사용하며 방장이 각 open 항목을 판정하고 마지막 판정이 경기 확정과 MMR commit을 끝낸다.
+2. P1 계약 단일화: 클라이언트 operation-only 목록, 서버 지원 action 목록, SQL reducer 목록, 권한·결과·알림 후처리 목록을 공용 정책 모듈에서 파생한다. 역할이 다른 목록은 이름만 같게 합치지 않고 차이를 테스트로 고정한다.
+3. P2 도메인 분리: `repository.js`는 순수 계산·로컬 데모 reducer·원격 저장소를 분리한다. 호출 경로와 순환 의존성을 먼저 확인하고 한 번에 한 도메인씩 옮긴다.
+4. P3 화면 분리: `Recruiting.jsx`, `useAppData.js`, `sync-match.js`는 단계 panel, 데이터 로드, mutation adapter를 분리한다. 방 phase·party·permission 계산은 페이지에 복제하지 않는다.
+5. P4 스타일 정리: 전역 CSS는 현재 import manifest와 selector 사용처를 기준으로만 줄인다. desktop/mobile, dark/light computed style과 overflow 검증 없이 selector를 삭제하지 않는다.
+6. P5 DB 정리: 적용된 migration은 운영 이력이라 수정·삭제하지 않는다. 현재 스키마에서 참조 0인 함수만 새 migration으로 제거하고, 새 환경용 baseline은 운영 schema 검증 뒤 별도로 만든다.
+7. 각 단계는 역할별 흐름, 정책 테스트, build, 운영 schema health를 모두 통과해야 완료다. 파일 크기만으로 코드를 삭제하거나 서로 다른 권한 경로를 억지로 합치지 않는다.
+8. 공개 팀전은 팀장이 대표 1명으로 참가한 뒤 방 안에서 사이드장이 출전·후보 명단을 직접 확정한다. 참가 시 정원 전체를 강제하거나 팀원별 pending 초대 row를 만드는 구형 경로는 사용하지 않는다.
+9. 데모 전체 흐름은 파일을 쓰지 않는 `npm run seed:demo-flow:check`로 정책 테스트마다 검증한다. 생성 snapshot이 현재 reducer를 통과한다는 사실과 실제 로컬 seed 파일 갱신을 분리한다.
+10. 공개 팀전 참가의 대표 1명 제한은 UI가 아니라 DB reducer가 원본이다. 팀 주장만 상대 사이드에 참가할 수 있고 요청에 팀원·후보가 섞여도 주장 1명으로 정규화한다. 같은 사이드를 다른 팀이 선점하거나 일반 팀원이 대표가 되는 요청은 거부한다.
+11. 결과가 제출됐고 이의 시간이 끝난 경기의 자동 확정은 기록이 없는 실제 출전자에게만 0 통계 row를 보충한다. 이미 제출된 선수 기록은 갱신하지 않으며 후보 전용 선수는 보충·MMR 대상에서 제외한다.
+12. exact simulation cleanup은 기존 non-simulation 경기 ID를 계속 거부하되 이미 삭제된 ID의 동일 요청 재시도는 no-op으로 허용한다. 파생 프로필·구장 집계는 삭제 transaction 안에서 다시 계산해 응답 유실 뒤에도 일관성을 유지한다.
+
 ## 2026-07-24 공개 매칭 QR 출석·현장 교체
 
 1. QR 출석은 일반 공개 매칭에서만 방 생성 옵션으로 사용한다. 공개 경쟁전은 기본 활성화, 공개 친선전과 현장 픽업은 기본 비활성화다. 비공개·대회·경기시계 미사용 방에서는 강제로 비활성화한다.
@@ -89,6 +104,7 @@
 6. 비용은 구장비·심판비·기록비·장비비·기타비와 분담 기준을 구조화해 저장하고 예상 금액만 계산한다. 실제 결제, PG, 자동 환불, 정산 원장은 이 단계에서 만들지 않는다.
 7. 경기의 `mode`는 결과 확정 RPC가 갱신할 모드 MMR key와 관리자 `rating_policy.playerMmr.modeScalePercent`·`integratedScalePercent` key에 그대로 연결한다. 알 수 없는 방식만 기존 호환 기본값으로 보정하며 지원 방식이 5v5로 묵시 변환되면 안 된다.
 8. 픽업은 개인 참가 모집방을 사용한다. `teamOnly=false`, `ranked=false`, `official=false`, `playingTimePolicy=equal_rotation`, `lineupSelectionPolicy=no_fixed_starter`로 저장하고 확정 인원 균등 비용을 기본값으로 사용한다. 모집·잠금에서는 통합 참가자 풀을 사용하고 체크인에서 방장 또는 배정 심판이 A/B와 교대 순서를 직접 확정한다. 자동 팀배정이나 자동 로테이션으로 표시하지 않는다.
+9. 픽업의 선수 참가·초대는 개인으로 정규화하지만 `joinMode=referee` 심판 지원은 선수 참가로 바꾸지 않는다. 자격·신뢰점수 검증을 통과한 심판 지원은 다른 공개방과 같은 원자적 심판 배정 경로를 사용한다.
 
 ## 2026-07-22 경기 규칙과 병렬 이의제기 큐
 
@@ -687,7 +703,7 @@
 - 이의신청방은 경기 관계자가 열람할 수 있고, 점수판/개인기록 수정은 심판이 있으면 심판, 없으면 방장만 한다.
 - 이의 수정 저장은 `match.result`를 바로 덮지 않고 `disputeDraftResult`를 갱신한다. 다른 기기는 방 상세 새로고침으로 최신 수정안을 확인한다.
 - 서버도 `disputed` 결과 저장은 심판 또는 방장만 허용한다.
-- 이의 처리자가 수정안을 확정하면 수정 기록을 저장하고 양팀 새 과반 승인 단계로 돌아간다. 이의신청 반려는 변경 전 원본 결과를 즉시 확정한다.
+- 심판 또는 방장은 판정 전 작업 draft를 보정할 수 있지만 항목별 가결·부결은 방장만 한다. 마지막 open 항목 판정은 현재 draft로 결과를 즉시 확정하며 새 과반 승인 단계로 돌아가지 않는다.
 - 선수의 이의신청은 점수판을 읽기 전용으로 확인하고 본인 개인 득점만 수정 요청으로 남긴다. 사이드 점수나 다른 선수 기록은 심판/방장 수정안 단계에서만 바꾼다.
 
 ## 2026-06-30 feed pagination offset
@@ -801,7 +817,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 
 4. 상태는 한 방향으로만 흐른다.
    - 대기방 -> 확정방 -> 경기준비방 -> 경기시작 -> 경기종료 -> 이의신청 -> 기록방.
-   - 뒤로 돌리는 예외는 `dispute -> approval 재개`, `cancelled`, `void`처럼 명시된 함수로만 한다.
+   - 이의 마지막 판정은 `disputed -> confirmed`로 끝난다. `cancelled`, `void` 같은 예외 전이도 명시된 함수로만 처리한다.
 
 5. 버튼은 지금 가능한 행동만 보여준다.
    - 누르면 안 되는 버튼을 흐리게 남발하지 않는다.
@@ -809,7 +825,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 
 6. 심판이 있으면 경기 시작 이후 권한은 심판이 우선한다.
    - 경기 전 운영은 방장.
-   - 경기 시작 이후 기록, 종료, 이의 처리, 결과 처리 권한은 심판 우선.
+   - 경기 시작 이후 기록, 종료, 결과 처리 권한은 심판 우선이다. 이의 항목 판정은 방장만 한다.
    - 심판이 없으면 방장이 운영자다.
 
 7. 후보는 보조 줄이 아니라 선수 슬롯이다.
@@ -1083,8 +1099,8 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 | 경기준비방 | `checkin` | 즉시방 또는 경기 임박/도달 | 출석, 미도착, 룰, 슬롯 | 출석체크, 강퇴, 인원/룰 수정, 시작 |
 | 경기시작 | `live` | `startedAt` 있음 | 기록판, 채팅 | 기록 입력, 기록자 인수인계, 경기 종료 |
 | 경기종료 | `postgame` | `endedAt` 있음 | 기록판, 따봉, 사후 인원 | 결과/개인활약 제출, 사후 추가 |
-| 이의신청 | `dispute` | `status=approval/disputed`이고 창 열림 | 기록, 이의 내역 | 참가자 열람, 심판/방장 수정/확정 |
-| 기록방 | `record` | `status=confirmed` 또는 이의 시간 만료 | 읽기 전용 기록 | 열람만 |
+| 이의신청 | `dispute` | `status=approval/disputed`이고 창 열림 또는 open 이의가 남음 | 기록, 이의 내역 | 참가자 열람, 심판/방장 draft 보정, 방장 항목 판정 |
+| 기록방 | `record` | `status=confirmed` | 읽기 전용 기록 | 열람만 |
 | 취소 | `cancelled` | `status=cancelled` | 취소 사유 | 보기만 |
 | 무효 | `void` | `status=void` | 무효 사유 | 보기만 |
 
@@ -1110,12 +1126,12 @@ flowchart TD
 
 | 역할 | 대기방 | 확정방 | 경기준비방 | 경기시작 이후 |
 | --- | --- | --- | --- | --- |
-| 방장 | 방 수정, 초대, 강퇴, 확정, 취소 | 방 수정, 취소 | 심판 없을 때 출석 관리, 강퇴, 룰 수정, 시작 | 심판 없을 때 종료/결과/이의 처리 |
+| 방장 | 방 수정, 초대, 강퇴, 확정, 취소 | 방 수정, 취소 | 심판 없을 때 출석 관리, 강퇴, 룰 수정, 시작 | 심판 없을 때 종료/결과, 심판 유무와 무관하게 이의 판정 |
 | 파티장 | 자기 파티 출전/후보 조정 | 자기 파티 확인 | 자기 파티 출석 독려 | 기록 보조 없음 |
 | 팀장 | 팀 관리 화면 권한 | 방 모달 권한 없음 | 방 모달 권한 없음 | 방 모달 권한 없음 |
 | 출전 선수 | 내 슬롯 관리, 초대, READY | 확인 | 출석 대상 | 자기 기록 확인/따봉/신고 |
 | 후보 선수 | 내 후보 슬롯 관리, 초대, READY | 확인 | 출석 대상 | 기록자 가능, 교체 가능, 신고 가능 |
-| 심판 | 심판 표시 | 심판 표시 | 심판 배정 경기의 출석, 강퇴, 룰 수정, 시작 | 기록/종료/이의/결과 처리 우선 |
+| 심판 | 심판 표시 | 심판 표시 | 심판 배정 경기의 출석, 강퇴, 룰 수정, 시작 | 기록/종료/결과 처리 우선, 이의 판정은 방장 |
 | 기록자 | 심판 없을 때만 후보/참가자 기반 | 표시 | 대기 | 자기 사이드 기록 입력 |
 
 권한 우선순위:
@@ -1270,7 +1286,7 @@ flowchart TD
 | 경기 중 + 심판·기록자 없음 | 실제 출전 선수가 본인 득점만 입력 |
 | 경기 중 방장 | 시작·종료만 담당한다. 실제 출전 선수인 경우에만 본인 득점 입력 |
 | 경기 종료 후 + 심판 없음 | 방장은 실제 출전 선수의 누락 득점만 보완. 고급 기록 수정 불가 |
-| 이의제기 | 심판이 있으면 현재 심판, 없으면 방장이 전체 수정안 처리 |
+| 이의제기 | 심판 또는 방장이 판정 전 draft 보정, 방장이 각 open 항목 가결·부결 |
 | 기록 확정 | 읽기 전용 |
 
 개인활약 항목:
@@ -1755,10 +1771,10 @@ flowchart TD
 6. 파티원: 파티 나가기 -> 개인 표시 확인 -> 같은 사이드 파티 재합류.
 7. 파티원: 다른 사이드 이동 시 파티 해제/보존 규칙 확인.
 8. 파티장: 자기 파티 출전/후보 조정.
-9. 심판: 경기 시작 후 기록/종료/이의 처리 권한 확인.
+9. 심판: 경기 시작 후 기록/종료 권한과 이의 판정 불가 확인.
 10. 심판 없음: 방장/기록자 권한 확인.
 11. 경기 종료: 득점/개인활약 저장 -> 다른 사용자 반영 확인.
-12. 이의신청: 30분 창, 만료 후 기록방 전환.
+12. 이의신청: 10분·15분·20분 접수창, 참가자별 병렬 큐, 마지막 방장 판정 즉시 확정, 미판정 요청은 시간 만료 뒤에도 유지.
 13. 신고: 최근 1주일 경기, 후보 포함 대상 선택.
 14. 라이트/다크 전환: 같은 히어로 구도, 같은 카드 정렬.
 15. 모바일: 슬롯, 후보, 하단 메뉴, 기록방, 모달 스크롤 확인.
@@ -1807,10 +1823,10 @@ flowchart TD
 19. Vercel Hobby Cron은 알림 worker에 쓰지 않는다. 알파 테스트에서는 cron-job.org가 5분마다 `/api/discord/dm-worker`를 호출한다.
 20. 수동 테스트 DM은 username을 받을 수 있지만 서버가 봇이 들어간 Discord 서버 멤버 검색으로 숫자 `discord_user_id`를 찾은 뒤 보낸다. 자동 발송 큐와 프로필 연동 원본은 username이 아니라 숫자 `discord_user_id`다.
 21. 경기 Discord 자동 알림은 match server action이 `discord_notification_deliveries`에 직접 저장한다. 예정 경기는 시작 24시간 전, 2시간 전, 1시간 전 리마인더와 방관리자 10분 전·5분 전 안내를 만들고, 경기 종료는 즉시 발송 큐로 넣는다.
-22. 경기 종료 알림은 점수 입력을 요청한다. 종료 30분 뒤에는 결과 확인과 이의신청 안내를 다시 보낸다.
+22. 경기 종료 알림은 점수 입력을 요청한다. 결과 제출 뒤에는 경기별 이의신청 제한시간 5분 전에 결과 확인과 이의신청 안내를 다시 보낸다.
 23. 모집방 생성 자체는 앱 알림이나 Discord DM을 만들지 않는다. 수동·자동 모집방 취소는 참가자별 앱 알림과 Discord delivery를 만들며, 초대장 수락/거절 버튼은 cron reminder가 아니라 Discord interaction server action으로 처리한다.
 24. 방관리자 Discord 알림은 심판이 있으면 심판, 없으면 방장에게 보낸다. 경기 10분 전에는 참여자 도착 여부 확인 안내, 5분 전에는 시작 처리 준비 안내를 보낸다. 5분 전 안내는 예정 시작 시각이 지나면 발송하지 않는다. 일정/roster/방관리자가 바뀌면 아직 발송되지 않은 참가자 경기 시작 전 리마인더와 방관리자 안내를 현재 대상자 기준으로 재생성하고, 경기를 일찍 시작하면 취소한다.
-25. 경기 종료, 점수 제출, 이의신청, 승인 처리, 이의 처리 재개가 일어나면 아직 발송되지 않은 시작 전 리마인더, 방관리자 안내, 경기 종료 점수 입력 안내, 종료 30분 뒤 이의신청 안내는 취소한다.
+25. 경기 종료, 점수 제출, 이의신청, 승인 처리, 이의 판정이 일어나면 아직 발송되지 않은 시작 전 리마인더, 방관리자 안내, 경기 종료 점수 입력 안내, 이의신청 마감 전 안내를 현재 상태에 맞춰 취소하거나 다시 만든다.
 26. 경기 취소 또는 무효 처리 시 아직 발송되지 않은 해당 경기의 시작 전 리마인더, 방관리자 안내, 시작/종료/이의 안내는 모두 취소한다.
 27. 경기 리마인더 stale 삭제는 현재 match snapshot의 참가자/방관리자 대상자가 0명이어도 먼저 실행한다. 대상자 없음은 새 row 생성을 막을 뿐 기존 예약 row 삭제를 막으면 안 된다.
 27-1. Backend flow simulation seeds pending match notice/delivery rows and verifies stale cleanup for `startMatch`, `approveMatch`, and `voidMatch` action branches.
@@ -2060,7 +2076,7 @@ flowchart TD
 3. Roster edits must go through explicit roster actions such as late-player add/remove or room player placement actions.
 4. Participant actions must not mutate score or player stats. Approval/dispute/thumb actions only carry their own action state.
 5. Result submission stats may only target active match players or `playedPlayerIds`; reserve-only players can record but cannot create their own stat row.
-6. Match score and player stats may only be written through `submitMatchResult` or dispute finalization by `resumeMatchApproval`; other match actions preserve existing DB score/stat fields.
+6. Match score and player stats may only be written through `submitMatchResult` or the accepted-item application inside `resolveMatchDispute`; other match actions preserve existing DB score/stat fields.
 7. `ratingResult` and `teamRatingResult` may be written only when `approveMatch` confirms an existing submitted result.
 
 ## 2026-06-26 roster membership server guard
@@ -2288,7 +2304,7 @@ flowchart TD
 23-3. `approveMatch` may use `rankball_match_approval_action()` as a SQL reducer only when the approval does not complete both sides. The RPC validates the active player, complete stat rows, and point-score consistency before inserting `match_approvals`; final confirmation calculation still uses server reducer replay, then match confirmation and MMR commit atomically through `rankball_match_action_with_rating()`.
 23-4. `submitMatchThumbs` may use `rankball_match_thumbs_action()` as a SQL reducer for confirmed matches inside the 24-hour trust feedback window. The RPC validates feedback participants, caps target count by match trust-feedback limit, updates `matches.trust_feedback`, and commits profile trust deltas in the same transaction. Unsupported states fall back to the existing authoritative match action path.
 23-5. `toggleMatchStar` may use `rankball_match_star_toggle_action()` as a SQL reducer for single-target trust feedback toggles. The RPC keeps the same trust-feedback participant and limit rules as `submitMatchThumbs`; if a new star would exceed the limit, it falls back to the authoritative replay path so the existing limit notification is preserved.
-23-6. Completed match lifecycle/roster/result/trust mutations are sent from the frontend as operation-only, including `agreeMatch`, `addMatchLatePlayer`, `approveMatch`, `checkInMatchPlayer`, `handoffMatchRecorder`, `removeMatchLatePlayer`, `substituteMatchPlayer`, `requestMatchRefereeAbsence`, `confirmMatchRefereeAbsence`, `startMatch`, `endMatch`, `cancelMatch`, `deleteSoloRecord`, `voidMatch`, `submitMatchResult`, `disputeMatch`, `resumeMatchApproval`, `submitMatchThumbs`, `toggleMatchStar`, `updateMatchRoomRules`, `setMatchRoomPlayerPlacement`, `setMatchRecordTeamRoster`, and `removeMatchRoomPlayer`. The server must use the SQL reducer when supported or reload authoritative match state and run the central reducer before persisting attendance, roster, lifecycle, room rules, record-room roster, postgame late-player changes, result rows, dispute rows, draft results, approvals, rating commits, and trust commits; client match snapshots are not accepted as the source of truth for these actions.
+23-6. Completed match lifecycle/roster/result/trust mutations are sent from the frontend as operation-only, including `agreeMatch`, `addMatchLatePlayer`, `approveMatch`, `checkInMatchPlayer`, `handoffMatchRecorder`, `removeMatchLatePlayer`, `substituteMatchPlayer`, `requestMatchRefereeAbsence`, `confirmMatchRefereeAbsence`, `startMatch`, `endMatch`, `cancelMatch`, `deleteSoloRecord`, `voidMatch`, `submitMatchResult`, `disputeMatch`, `resolveMatchDispute`, `submitMatchThumbs`, `toggleMatchStar`, `updateMatchRoomRules`, `setMatchRoomPlayerPlacement`, `setMatchRecordTeamRoster`, and `removeMatchRoomPlayer`. The server must use the SQL reducer when supported or reload authoritative match state and run the central reducer before persisting attendance, roster, lifecycle, room rules, record-room roster, postgame late-player changes, result rows, dispute rows, draft results, approvals, rating commits, and trust commits; client match snapshots are not accepted as the source of truth for these actions.
 23-7. If `endedAt` already exists, `submitMatchResult` is a postgame result submission even when DB/server clock skew makes `endedAt` a few milliseconds later than the app server's current time.
 23-8. `setMatchRecordTeamRoster` uses server authoritative replay before snapshot persistence. Each side captain can edit only their own team roster in a `match_record` room, and the server validates the changed side with the existing DB roster before committing.
 24. `/api/matches/list` default reads use `rankball_match_list()` / `room_feed_cards.card_json` current-profile match cards first. It must not load `matches`, `match_players`, `public_profiles`, teams, or courts for the default card list when `card_json` is present. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
@@ -2421,7 +2437,7 @@ flowchart TD
 1. Supabase remote mode에서는 클라이언트가 경기 lifecycle write를 실행하지 않는다.
 2. `/api/system/maintenance`는 서버 전용 유지보수 진입점이고 `CRON_SECRET`이 필요하다.
 3. 첫 유지보수 범위는 `status = 'approval'`, 결과 row 있음, dispute draft 없음, rating commit 없음, 이의제기 시간이 만료된 경기로 제한한다.
-4. 유지보수는 경기를 1개씩 로드하고 기존 JS 자동 reducer를 실행한 뒤 `rankball_commit_match_rating()`으로 레이팅을 커밋하고 누락된 승인 row를 upsert한다.
+4. 유지보수는 경기를 1개씩 DB lock으로 확정한다. 누락 승인 row와 실제 출전자 중 기록이 없는 선수의 0 통계 row만 보충한 뒤 수동 확정과 같은 DB MMR 함수를 한 번 호출한다. 기존 선수 기록은 덮어쓰지 않는다.
 5. 제출된 결과가 없는 postgame 경기는 자동 확정하지 않고, 허용된 기록자/운영자가 결과를 제출할 때까지 postgame에 남긴다.
 6. 기존 외부 스케줄러가 `/api/discord/dm-worker`를 호출할 때도 같은 유지보수를 함께 실행한다.
 
@@ -2754,7 +2770,7 @@ flowchart TD
 - DB는 경기 참가자, 후보, 기록자, 방장, 심판 관계와 경기 종료 후 이의 시간창을 다시 확인한다.
 - 접수 시 기존 `match_results`와 `player_match_stats`로 `dispute_draft_result`를 만들고 `match_disputes`와 알림을 같은 트랜잭션에 저장한다.
 - 본인 득점 수정 요청이 있으면 본인 기록만 draft에 반영하고 해당 사이드 점수를 다시 합산한다.
-- `resumeMatchApproval`의 선택적 최종 draft 병합, 최종 승인 계산, MMR commit은 한 잠긴 DB RPC transaction에서 처리한다.
+- `resolveMatchDispute`의 항목별 판정, 가결안 draft 병합, 마지막 항목의 경기 확정과 MMR commit은 한 잠긴 DB RPC transaction에서 처리한다.
 
 ## 2026-07-13 관리자 화면 반영 순서
 
@@ -2804,7 +2820,7 @@ flowchart TD
 
 1. Supabase 운영 환경의 모집·경기·토너먼트 mutation API는 `{ operation }`만 받는다. 브라우저가 계산한 room/match/tournament snapshot은 저장 원본으로 받지 않는다.
 2. 모집방 생성, 초대, 초대 응답, 룰, 참가자·후보 배치, 팀 파티 명단·분리·강퇴는 방 advisory lock과 row lock 안의 DB reducer가 처리한다.
-3. 경기 결과·부분 기록 병합, 심판 부재, 룰·명단·선수 제거, 이의 재개, 최종 승인과 MMR은 경기 advisory lock과 row lock 안의 DB reducer가 처리한다.
+3. 경기 결과·부분 기록 병합, 심판 부재, 룰·명단·선수 제거, 이의 항목 판정·최종 확정, 일반 승인과 MMR은 경기 advisory lock과 row lock 안의 DB reducer가 처리한다.
 4. 토너먼트 대진 검증, 1라운드 생성, 승자 후속 라운드 생성은 토너먼트 DB RPC와 확정 경기 trigger가 처리한다.
 5. 지원 RPC가 없으면 JS snapshot replay로 후퇴하지 않고 `503`으로 실패한다. 생성·모집 확정에 필요한 서버 조합 계산은 검증 후 단일 DB transaction RPC로만 커밋한다.
 6. Discord 초대 수락·거절도 웹과 같은 `rankball_recruiting_management_action()`을 사용해 개인·팀·파티 초대를 동일하게 처리한다.
@@ -2936,8 +2952,8 @@ flowchart TD
 
 ## 2026-07-19 승인·연동·파생 캐시 강제
 
-1. 일반 `approval` 확정은 현재 슬롯과 `playedPlayerIds`를 합친 실제 출전자 기준으로 양 사이드 과반 승인을 모두 요구한다. 방장·심판·`resumeMatchApproval`도 과반을 우회하지 못한다.
-2. `resumeMatchApproval`은 `disputed` 단계 전용이다. 심판이 있으면 현재 심판, 없으면 방장만 이의 수정안을 확정한다.
+1. 일반 `approval` 확정은 현재 슬롯과 `playedPlayerIds`를 합친 실제 출전자 기준으로 양 사이드 과반 승인을 모두 요구한다. 방장·심판도 일반 승인 과반을 우회하지 못한다.
+2. `resolveMatchDispute`는 `disputed` 단계 전용이다. 방장만 각 open 항목을 가결·부결하며 마지막 항목 판정은 일반 승인 단계로 돌아가지 않고 결과를 즉시 확정한다.
 3. 교체되어 현재 슬롯에서 내려간 선수도 `playedPlayerIds`로 승인권과 MMR 반영 대상을 유지한다. 팀 역할은 대회 명단 스냅샷, 현재 팀원, 수락된 팀 초대 순으로 확인하며 근거 없는 `regular` 추정은 하지 않는다.
 4. `endMatch`는 DB에 `started_at`이 이미 저장된 경기만 허용한다. 종료 요청이 시작 시각을 임의 생성하면 안 된다.
 5. 종료 후 심판이 없는 후보 기록자도 방장·일반 출전자와 같이 아직 제출되지 않은 실제 출전자의 `PTS`만 보완한다. 기존 득점과 고급 기록은 수정하지 못한다.
@@ -3007,14 +3023,14 @@ flowchart TD
 4. 일반 경기의 팀 점수는 실제 출전자의 PTS 합계가 단일 원본이다. 경기 중 기록과 이의 수정안 모두 선수 PTS를 저장한 뒤 같은 transaction에서 양 팀 점수를 다시 계산한다.
 5. 승인 구장 행이 비활성 상태이면 같은 ID의 구형 `courts` 또는 내장 상수로 되살리지 않는다. 비활성 승인 행은 해당 구장 ID의 tombstone이다.
 6. Discord DM worker는 알림·피드·리마인더 유지보수가 실패하면 큐를 claim하거나 전송하지 않고 `503`으로 종료한다.
-7. `resumeMatchApproval`은 이의 수정안을 실제 기록에 반영한 뒤 경기를 `approval`로 되돌린다. 이의 해결 시각보다 앞선 승인 행은 화면과 과반 계산에서 제외하며, 실제 출전자 양 사이드의 새 과반이 모여야 확정과 MMR commit을 수행한다.
+7. `resolveMatchDispute`는 가결한 요청을 작업 draft에 순서대로 반영한다. 마지막 open 항목을 방장이 판정하면 이전 승인 행을 재사용하거나 새 과반을 기다리지 않고 현재 draft로 경기 확정과 MMR commit을 수행한다.
 
 ## 2026-07-20 운영 조회와 활성 참조 보호
 
 1. 웹 알림의 예약 시각은 `notifications.due_at`이 원본이다. 홈과 알림 목록은 `due_at <= now()`를 DB 조회 제한 전에 적용하며, 전체 읽음도 아직 도래하지 않은 알림을 변경하지 않는다.
 2. 일반 경기 feed는 `rules.recordType='match'`인 경기만 페이지 제한 전에 포함한다. `match_record`와 `personal_record`는 일반 경기 페이지 수를 소비하지 않는다.
 3. 플레이 메뉴 전용 조회는 `agreed`, `approval`, `disputed` 상태, `live`/`postgame`/`dispute` phase와 현재 사용자 관계를 DB에서 먼저 판정한 뒤 페이지를 자른다. 관계에는 방장, 현재·이전 심판, 출전·후보·교체 선수, 기록자, 결과 제출자가 포함된다. 이의신청 시간이 끝난 `record` phase와 `confirmed` 상태는 제외한다.
-4. 심판 자격 ID는 `candidate`, `silver`, `gold`, `platinum`, `official`만 사용한다. 현재 배정 심판의 기록, 이의 접수, 이의 수정안 확정은 활성 임명, 임기, 등급, 최소 신뢰도를 모두 다시 확인한다.
+4. 심판 자격 ID는 `candidate`, `silver`, `gold`, `platinum`, `official`만 사용한다. 현재 배정 심판의 기록, 이의 접수, 판정 전 draft 보정은 활성 임명, 임기, 등급, 최소 신뢰도를 모두 다시 확인한다. 항목별 가결·부결은 방장만 한다.
 5. 선수 기록과 이의 득점의 단일 필드 상한은 `999`다. 이의 득점이 상한을 넘으면 저장 전에 거부한다.
 6. 활성 경기, 공개 모집, 대회 초대·참가가 참조하는 팀은 삭제할 수 없다. 활성 참조를 먼저 종료한 뒤 주장만 팀을 삭제할 수 있고, 남은 대기 팀 초대는 만료 처리한다.
 7. 리그·토너먼트 후속 계산은 경기 row의 형식 snapshot이 아니라 `tournaments.format`을 원본으로 사용한다. 기존 불일치 snapshot은 현재 대회 형식으로 정규화한다.
@@ -3102,10 +3118,10 @@ flowchart TD
 3. 유료 구장 확인 dialog는 클라이언트의 비용 인지 절차다. 참가·팀 합류·선수 초대 수락의 기존 서버 권한, 정원, 팀장, 초대 상태 검증을 우회하거나 대체하지 않는다.
 4. 심판 초대·심판 직접 참여에는 선수 참가비 확인을 적용하지 않는다. 무료·미확인 구장은 기존 참여 흐름을 그대로 사용한다.
 
-## 2026-07-21 이의신청 반려·경기 무효·관리자 복구
+## 2026-07-21 이의신청 판정·경기 무효·관리자 복구
 
-1. 한 경기에는 열린 이의신청을 하나만 둔다. 처리 중 추가 이의는 병렬로 만들지 않고, 처리 완료 뒤 남은 불복은 경기 신고로 전환한다.
-2. `이의신청 반려`는 이의 draft를 폐기하고 변경 전 `match_results`·`player_match_stats`를 확정한다. 경기 전체를 무효로 만들지 않는다.
+1. 실제 출전자는 경기당 열린 이의신청을 한 건씩 둘 수 있고 서로 다른 출전자의 이의는 병렬 큐에 둔다. 방장이 각 항목을 가결 또는 부결하며 마지막 항목 판정과 함께 결과·MMR을 확정한다. 판정 뒤 남은 불복은 경기 신고로 전환한다.
+2. `이의신청 부결`은 해당 요청만 결과 draft에 반영하지 않는다. 다른 열린 항목은 유지하고, 마지막 항목 부결은 현재 draft를 최종 결과로 확정한다. 경기 전체를 무효로 만들지 않는다.
 3. `경기 무효 처리`는 심판이 있으면 자격이 유효한 현재 심판, 없으면 방장만 실행한다. 10~500자의 사유를 필수로 저장하고 방장 신뢰도를 중앙 정책 기본 2점만큼 차감한다.
 4. 무효 처리 전 랭크 여부, MMR 배율, 점수, 개인 기록, 기록 제출자를 `void_snapshot`에 보존한다. 복구는 이 원본만 사용하며 이의 draft나 관리자 임의 점수를 사용하지 않는다.
 5. 무효 처리자 이외의 경기 관계자는 무효 시각부터 7일 안에 `무효 경기 복구 요청`을 한 건 접수할 수 있다. 처리자 본인은 자기 무효 처리를 복구 신고할 수 없다.

@@ -4570,63 +4570,6 @@ export function resolveMatchDispute(state, matchId, disputeId, decision) {
   };
 }
 
-export function rejectMatchDispute(state, matchId) {
-  const match = state.matches.find((item) => item.id === matchId);
-  const openDispute = (match?.disputes ?? [])
-    .filter((dispute) => dispute.status === "open")
-    .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))[0];
-  if (!openDispute) return state;
-  return resolveMatchDispute(state, matchId, openDispute.id, "rejected");
-}
-
-export function resumeMatchApproval(state, matchId, resultDraft = null) {
-  const match = state.matches.find((item) => item.id === matchId);
-  if (!match || match.status !== "disputed") return state;
-  if (!currentUserCanResolveMatchDispute(state, match)) return state;
-  if ((match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
-  const result = resultDraft ?? match.disputeDraftResult ?? match.result;
-  if (!result) return state;
-  const resolvedMatchForCheck = { ...match, result };
-  const statStatus = getStatSubmissionStatus(resolvedMatchForCheck);
-  const pointAudit = getResultPointAudit(resolvedMatchForCheck, result);
-  if (!statStatus.complete || !pointAudit.matched) {
-    return {
-      ...state,
-      notifications: [
-        {
-          id: makeId("n"),
-          title: "이의 확정 보류",
-          body: !statStatus.complete
-            ? `개인 기록 ${statStatus.submitted}/${statStatus.total}명 제출 상태입니다. 전원 기록 후 확정할 수 있습니다.`
-            : `득점 합계가 팀 스코어와 맞지 않습니다. A ${pointAudit.teamA.statPoints}/${pointAudit.teamA.teamScore}, B ${pointAudit.teamB.statPoints}/${pointAudit.teamB.teamScore}.`,
-          tone: "match",
-          matchId,
-        },
-        ...state.notifications,
-      ],
-    };
-  }
-
-  const resolvedAt = new Date().toISOString();
-  const resolvedMatch = {
-    ...match,
-    result,
-    teamA: { ...match.teamA, score: result.scoreA },
-    teamB: { ...match.teamB, score: result.scoreB },
-    approvals: { teamA: [], teamB: [] },
-    disputeDraftResult: undefined,
-    disputeDraftUpdatedAt: undefined,
-    disputeResolvedAt: resolvedAt,
-    disputes: (match.disputes ?? []).map((dispute, index) => index === 0 && dispute.status === "open"
-      ? { ...dispute, status: "accepted", resolution: "draft_accepted", resolvedAt, resolvedBy: state.currentUserId }
-      : dispute),
-  };
-  return {
-    ...state,
-    matches: state.matches.map((item) => (item.id === matchId ? { ...resolvedMatch, status: "approval" } : item)),
-  };
-}
-
 export function toggleMatchStar(state, matchId, targetUserId) {
   const disciplineBlock = getDisciplineBlockedState(state, "경기 평가");
   if (disciplineBlock) return disciplineBlock;
@@ -6878,6 +6821,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
   const side = MATCH_SIDES.includes(application.side) ? application.side : getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
   const occupiedSideTeamId = applicantKind === "team" ? getLobbyPrimaryTeamId(lobby, side) : null;
+  const publicTeamJoin = post.visibility === "public" && teamOnly && applicantKind === "team";
   if (teamOnly && occupiedSideTeamId && occupiedSideTeamId !== team?.id) {
     return {
       ...state,
@@ -6890,7 +6834,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
       }, ...state.notifications],
     };
   }
-  const reserveRequested = Boolean(application.reserve);
+  const reserveRequested = publicTeamJoin ? false : Boolean(application.reserve);
   const sideState = lobby.sides[side];
   const teamSelectionCapacity = applicantKind === "team"
     ? teamOnly
@@ -6921,9 +6865,11 @@ export function interestRecruitingPost(state, postId, application = {}) {
     };
   }
   const selectedPlayerIds = applicantKind === "team"
-    ? ensureTeamPartyLeader(team, getSelectedTeamPlayerIds(team, teamSelectionCapacity, application.playerIds), state.currentUserId, teamSelectionCapacity)
+    ? publicTeamJoin
+      ? [state.currentUserId]
+      : ensureTeamPartyLeader(team, getSelectedTeamPlayerIds(team, teamSelectionCapacity, application.playerIds), state.currentUserId, teamSelectionCapacity)
     : [];
-  const selectedReservePlayerIds = applicantKind === "team" && !reserveRequested
+  const selectedReservePlayerIds = applicantKind === "team" && !reserveRequested && !publicTeamJoin
     ? getSelectedReservePlayerIds(team, selectedPlayerIds, application.reservePlayerIds, reserveSelectionCapacity)
     : [];
   if (applicantKind === "team") {
@@ -6940,7 +6886,6 @@ export function interestRecruitingPost(state, postId, application = {}) {
       };
     }
   }
-  const publicTeamJoin = post.visibility === "public" && applicantKind === "team";
   const teamSummonPlayerIds = publicTeamJoin
     ? [...selectedPlayerIds, ...selectedReservePlayerIds].filter((playerId) => playerId && playerId !== state.currentUserId)
     : [];
@@ -6964,14 +6909,14 @@ export function interestRecruitingPost(state, postId, application = {}) {
     };
   }
 
-  if (applicantKind === "team" && (!selectedPlayerIds.length || (teamOnly && selectedPlayerIds.length < sideCapacity))) {
+  if (applicantKind === "team" && !selectedPlayerIds.length) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "참여 팀원 필요",
-          body: teamOnly ? "팀으로만 참여 방은 출전 슬롯을 모두 채울 팀 파티로만 들어갈 수 있습니다." : "팀으로 대기하려면 실제 참여할 팀원을 1명 이상 선택해야 합니다.",
+          body: teamOnly ? "팀으로만 참여 방은 팀 대표가 먼저 들어간 뒤 방 안에서 출전·후보 명단을 확정합니다." : "팀으로 대기하려면 실제 참여할 팀원을 1명 이상 선택해야 합니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -6979,7 +6924,9 @@ export function interestRecruitingPost(state, postId, application = {}) {
     };
   }
   const partySize = applicantKind === "team" ? selectedPlayerIds.length : 1;
-  const reserve = Boolean(application.reserve) || lobby.sides[side].filled + partySize > lobby.sides[side].capacity;
+  const reserve = publicTeamJoin
+    ? false
+    : Boolean(application.reserve) || lobby.sides[side].filled + partySize > lobby.sides[side].capacity;
   const now = new Date().toISOString();
   const nextApplicant = applicantKind === "team"
     ? {
