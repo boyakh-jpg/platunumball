@@ -567,7 +567,7 @@ export default function MatchClockPanel({ match, onMatchEnded }) {
               ) : null}
               {attendanceQr?.value && (liveClock.canControl || liveClock.canManage) ? (
                 <div className="ui-match-clock-attendance-qr">
-                  <QrCode value={attendanceQr.value} label="지각 출석 QR 코드" />
+                  <QrCode value={attendanceQr.value} label="지각 출석 QR 코드" expandable />
                   <span>지각 출석</span>
                 </div>
               ) : null}

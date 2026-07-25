@@ -28,14 +28,18 @@ export default function MatchAttendanceQrPanel({ match, onChanged }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [nowMs, setNowMs] = useState(Date.now());
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(0);
+  const [lastUpdateKind, setLastUpdateKind] = useState("initial");
 
-  const load = useCallback(async ({ quiet = false } = {}) => {
+  const load = useCallback(async ({ quiet = false, reason = "manual" } = {}) => {
     if (!match?.id) return;
     if (!quiet) setPending(true);
     try {
       const next = await requestMatchAttendanceQr(match.id);
       setResponse(next);
       setError("");
+      setLastUpdatedAt(Date.now());
+      setLastUpdateKind(reason);
     } catch (loadError) {
       setError(getErrorLabel(loadError));
     } finally {
@@ -44,8 +48,8 @@ export default function MatchAttendanceQrPanel({ match, onChanged }) {
   }, [match?.id]);
 
   useEffect(() => {
-    void load();
-    const pollId = window.setInterval(() => void load({ quiet: true }), 15000);
+    void load({ reason: "initial" });
+    const pollId = window.setInterval(() => void load({ quiet: true, reason: "auto" }), 15000);
     return () => window.clearInterval(pollId);
   }, [load]);
 
@@ -64,7 +68,7 @@ export default function MatchAttendanceQrPanel({ match, onChanged }) {
     try {
       await resizeMatchForAttendance(match.id);
       await onChanged?.();
-      await load({ quiet: true });
+      await load({ quiet: true, reason: "manual" });
     } catch (resizeError) {
       setError(getErrorLabel(resizeError));
     } finally {
@@ -75,6 +79,12 @@ export default function MatchAttendanceQrPanel({ match, onChanged }) {
   const expiresAtMs = Date.parse(response?.qr?.expiresAt || "") || 0;
   const remainingSeconds = Math.max(0, Math.ceil((expiresAtMs - nowMs) / 1000));
   const summary = response?.summary;
+  const updatedSecondsAgo = lastUpdatedAt ? Math.max(0, Math.floor((nowMs - lastUpdatedAt) / 1000)) : 0;
+  const refreshStatus = pending
+    ? "출석 현황 갱신 중"
+    : lastUpdatedAt
+      ? `${lastUpdateKind === "manual" ? "새로고침 완료" : lastUpdateKind === "auto" ? "자동 갱신 완료" : "현황 불러오기 완료"} · ${updatedSecondsAgo ? `${updatedSecondsAgo}초 전` : "방금"}`
+      : "";
 
   return (
     <section className="ui-panel ui-match-attendance-panel" aria-label="QR 출석">
@@ -83,13 +93,14 @@ export default function MatchAttendanceQrPanel({ match, onChanged }) {
           <ScanLine size={18} />
           <strong>QR 출석</strong>
         </span>
-        <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => void load()}>
-          <RefreshCw size={15} /> 새로고침
+        <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => void load({ reason: "manual" })}>
+          <RefreshCw className={pending ? "ui-match-attendance-spin" : ""} size={15} /> {pending ? "갱신 중" : "새로고침"}
         </Button>
       </header>
+      {refreshStatus ? <small className="ui-match-attendance-refresh-status" role="status" aria-live="polite">{refreshStatus}</small> : null}
       {response?.qr?.value ? (
         <div className="ui-match-attendance-body">
-          <QrCode value={response.qr.value} className="ui-match-attendance-qr" label="경기 출석 QR 코드" />
+          <QrCode value={response.qr.value} className="ui-match-attendance-qr" label="경기 출석 QR 코드" expandable />
           <div className="ui-match-attendance-copy">
             <strong>참가자가 카메라로 스캔</strong>
             <span><Clock3 size={15} /> {remainingSeconds}초 뒤 자동 교체</span>

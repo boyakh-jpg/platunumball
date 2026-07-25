@@ -7416,7 +7416,17 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     };
   }
   const nextMmrRangeMode = normalizeRecruitingMmrRangeMode(roomPatch.mmrRangeMode ?? post.mmrRangeMode ?? roomState.mmrRangeMode);
-  const nextRules = getMatchRulesPayload({ ...(post.rules ?? {}), ...roomPatch }, { mode: post.mode });
+  const nextOperations = getMatchCreationPolicyPayload({
+    ...post,
+    ...(post.rules ?? {}),
+    ...roomPatch,
+    mode: nextMode,
+  });
+  const nextRules = {
+    ...getMatchRulesPayload({ ...(post.rules ?? {}), ...roomPatch }, { mode: nextMode }),
+    ballProvider: nextOperations.ballProvider,
+    vestsProvided: nextOperations.vestsProvided,
+  };
   const updatedAt = new Date().toISOString();
   const nextCourtName = roomPatch.court === undefined ? post.court : String(roomPatch.court || post.court || "미정").slice(0, 80);
   const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === roomPatch.courtId) ?? null;
@@ -7605,9 +7615,17 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
   if (getMatchReservePlayerIds(match, "teamA").length > benchCapacity || getMatchReservePlayerIds(match, "teamB").length > benchCapacity) return state;
   const convertToPlayerMatch = matchPatch.matchJoinMode === "player";
   const updatedAt = new Date().toISOString();
+  const nextOperations = getMatchCreationPolicyPayload({
+    ...match,
+    ...(match.rules ?? {}),
+    ...matchPatch,
+    mode: nextMode,
+  });
   const nextRules = {
     ...(match.rules ?? {}),
-    ...getMatchRulesPayload({ ...(match.rules ?? {}), ...matchPatch }, { mode: match.mode }),
+    ...getMatchRulesPayload({ ...(match.rules ?? {}), ...matchPatch }, { mode: nextMode }),
+    ballProvider: nextOperations.ballProvider,
+    vestsProvided: nextOperations.vestsProvided,
     sideCapacity,
     benchCapacity,
     roomEditCount: 1,

@@ -5,6 +5,7 @@ import {
   getRecommendedSideSize,
   isAttendanceCheckinOpen,
 } from "../server/api/matches/attendance-qr.js";
+import { mergeMatchesById } from "../src/hooks/useAppData.js";
 import { normalizeMatchRules } from "../src/lib/matchRules.js";
 import { createQrMatrix, createQrPath } from "../src/lib/qrCode.js";
 
@@ -65,6 +66,10 @@ test("출석 QR은 5분 단위로 교체되고 경기와 서명에 묶인다", (
   assert.notEqual(current.token, nextBucket.token);
   assert.match(current.token, /^2\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/u);
   assert.ok(current.value.includes(encodeURIComponent(current.token)));
+  const currentUrl = new URL(current.value);
+  assert.equal(currentUrl.pathname, "/app/matches");
+  assert.equal(currentUrl.searchParams.get("match"), matchId);
+  assert.equal(currentUrl.searchParams.get("attendanceQr"), current.token);
   assert.equal(verifyMatchAttendanceQr(current.token, matchId, nowMs).matchId, matchId);
   assert.throws(
     () => verifyMatchAttendanceQr(current.token, "another-match", nowMs),
@@ -116,15 +121,55 @@ test("출석 정리는 경기 10분 전부터 열린다", () => {
   assert.equal(isAttendanceCheckinOpen({ ...match, started_at: "2026-07-24T11:00:00Z" }, 0), true);
 });
 
+test("일정 목록 카드는 이미 연 경기방의 출석 규칙과 상세 명단을 덮지 않는다", () => {
+  const detailed = {
+    id: "match-detail-preserved",
+    title: "상세 경기방",
+    updatedAt: "2026-07-25T00:00:00.000Z",
+    teamA: { name: "A", players: ["player-a"] },
+    teamB: { name: "B", players: ["player-b"] },
+    rules: { qrAttendanceEnabled: true, visibility: "public", targetScore: 21 },
+    attendance: { teamA: ["player-a"], teamB: [] },
+    agreements: { teamA: ["player-a"], teamB: ["player-b"] },
+  };
+  const listCard = {
+    id: detailed.id,
+    title: "목록에서 갱신된 제목",
+    matchListOnly: true,
+    updatedAt: "2026-07-25T00:01:00.000Z",
+    teamA: { name: "A", players: [], count: 1 },
+    teamB: { name: "B", players: [], count: 1 },
+    rules: { targetScore: 21 },
+    attendance: { teamA: [], teamB: [] },
+    agreements: { teamA: [], teamB: [] },
+  };
+
+  const [merged] = mergeMatchesById([detailed], [listCard]);
+  assert.equal(merged.title, listCard.title);
+  assert.equal(merged.matchListOnly, undefined);
+  assert.equal(merged.rules.qrAttendanceEnabled, true);
+  assert.deepEqual(merged.teamA.players, detailed.teamA.players);
+  assert.deepEqual(merged.teamB.players, detailed.teamB.players);
+  assert.deepEqual(merged.attendance, detailed.attendance);
+  assert.deepEqual(merged.agreements, detailed.agreements);
+
+  const [hydrated] = mergeMatchesById([listCard], [detailed]);
+  assert.equal(hydrated.matchListOnly, undefined);
+  assert.equal(hydrated.rules.qrAttendanceEnabled, true);
+});
+
 test("공용 API 디스패처가 QR 출석 핸들러를 노출한다", async () => {
   const apiIndex = await readSource("api/index.js");
+  const matchListApi = await readSource("server/api/matches/list.js");
   assert.match(apiIndex, /import matchAttendanceQr from "\.\.\/server\/api\/matches\/attendance-qr\.js";/u);
   assert.match(apiIndex, /\["\/matches\/attendance-qr", route\(matchAttendanceQr, \["POST"\], "user"\)\]/u);
+  assert.match(matchListApi, /matchListOnly: true/u);
 });
 
 test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, 사후 MMR 제외를 강제한다", async () => {
   const sql = await readSource("supabase/migrations/20260724234800_match_qr_attendance_and_substitution.sql");
   const clockAccuracySql = await readSource("supabase/migrations/20260725001000_match_play_time_clock_accuracy.sql");
+  const roomEquipmentSql = await readSource("supabase/migrations/20260725001500_room_equipment_edit.sql");
   assert.match(sql, /interval '10 minutes'/u);
   assert.match(sql, /candidate_size <= current_side_size/u);
   assert.match(sql, /'attendanceStatus', 'late'/u);
@@ -139,4 +184,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(clockAccuracySql, /started_active_elapsed_ms/u);
   assert.match(clockAccuracySql, /ended_active_elapsed_ms/u);
   assert.match(clockAccuracySql, /play_interval\.ended_active_elapsed_ms/u);
+  assert.match(roomEquipmentSql, /'ballProvider', ball_provider/u);
+  assert.match(roomEquipmentSql, /when p_mode = '1v1' then false/u);
+  assert.match(roomEquipmentSql, /'vestsProvided', vests_provided/u);
 });

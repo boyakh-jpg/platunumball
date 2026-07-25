@@ -158,6 +158,8 @@ const COMPLETE_PATCH = {
   lastPeriodStopMinutes: 1,
   winByTwo: true,
   ball: "7호 공",
+  ballProvider: "venue",
+  vestsProvided: true,
   attackRule: "공격권 교대",
   foulRule: "파울 즉시 중단",
   meetingPoint: "체육관 1층 출입구",
@@ -180,6 +182,8 @@ for (const kind of ["public-player", "public-team", "private-team"]) {
     assert.equal(updated.rules.periodCount, 2);
     assert.equal(updated.rules.periodMinutes, 9);
     assert.equal(updated.rules.timeLimit, 18);
+    assert.equal(updated.rules.ballProvider, "venue");
+    assert.equal(updated.rules.vestsProvided, true);
     assert.equal(updated.rules.meetingPoint, "체육관 1층 출입구");
     assert.equal(updated.stakes, "수정 약속");
     assert.equal(updated.memo, "수정 메모");
@@ -311,6 +315,8 @@ test("confirmed match edit keeps roster, attendance, and participation agreement
   assert.deepEqual(updated.rules.ruleAcknowledgedIds, ["host"]);
   assert.equal(updated.rules.periodMinutes, 9);
   assert.equal(updated.rules.timeLimit, 18);
+  assert.equal(updated.rules.ballProvider, "venue");
+  assert.equal(updated.rules.vestsProvided, true);
   assert.equal(updated.stakes, "수정 약속");
 
   assert.equal(updateMatchRoomRules(makeMatchState(match), match.id, { ...COMPLETE_PATCH, sideCapacity: 2 }).matches[0], match);

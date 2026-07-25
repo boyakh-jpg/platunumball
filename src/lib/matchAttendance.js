@@ -1,5 +1,14 @@
 import { postServerAction } from "./serverActions.js";
 
+const MATCH_ATTENDANCE_SCAN_ERROR_LABELS = Object.freeze({
+  match_attendance_qr_expired: "QR 유효시간이 끝났습니다. 경기시계의 최신 QR을 다시 스캔해 주세요.",
+  match_attendance_qr_invalid: "유효하지 않은 출석 QR입니다.",
+  match_attendance_player_not_registered: "이 경기에 사전 등록된 명단이 없어 QR 출석할 수 없습니다.",
+  match_attendance_qr_disabled: "이 경기는 QR 출석을 사용하지 않습니다.",
+  match_attendance_not_checkin_time: "경기 시작 10분 전부터 QR 출석할 수 있습니다.",
+  match_late_reserve_full: "내 사이드의 후보 3명이 모두 차서 지각 후보로 등록할 수 없습니다. 현장 운영자에게 알려 주세요.",
+});
+
 export function requestMatchAttendanceQr(matchId) {
   return postServerAction("/api/matches/attendance-qr", { action: "issue", matchId });
 }
@@ -10,4 +19,16 @@ export function scanMatchAttendanceQr(matchId, token) {
 
 export function resizeMatchForAttendance(matchId) {
   return postServerAction("/api/matches/attendance-qr", { action: "resize", matchId });
+}
+
+export function getMatchAttendanceScanSuccessMessage(result = {}) {
+  if (result.attendanceStatus === "late") return "지각 출석 완료 · 같은 사이드 후보로 등록됐습니다.";
+  if (result.alreadyCheckedIn) return "이미 출석 완료된 경기입니다.";
+  return "정상 출석이 완료됐습니다.";
+}
+
+export function getMatchAttendanceScanErrorMessage(error) {
+  const code = String(error?.code || error?.message || "");
+  return MATCH_ATTENDANCE_SCAN_ERROR_LABELS[code]
+    || "QR 출석 처리에 실패했습니다. 현장 운영자에게 알려 주세요.";
 }

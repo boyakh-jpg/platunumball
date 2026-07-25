@@ -185,6 +185,53 @@
   border-radius: var(--ui-control-group-radius);
 }
 
+.ui-qr-expand-trigger {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ui-control-radius);
+  cursor: zoom-in;
+}
+
+.ui-qr-expand-trigger:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-qr-expand-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: var(--page-gutter);
+  background: color-mix(in srgb, var(--rb-bg) 84%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.ui-qr-expand-dialog {
+  display: grid;
+  width: min(78vw, 360px);
+  gap: var(--control-group-gap);
+  justify-items: stretch;
+  padding: var(--card-padding);
+  text-align: center;
+}
+
+.ui-qr-expanded-code {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--ui-control-radius);
+}
+
+.ui-qr-expand-dialog small {
+  color: var(--rb-muted);
+}
+
 @media (width <= 520px) {
   .ui-action-row > * {
     flex: 1 1 140px;

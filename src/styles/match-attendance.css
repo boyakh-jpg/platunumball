@@ -22,6 +22,10 @@
   align-items: center;
 }
 
+.ui-match-attendance-body > .ui-qr-expand-trigger {
+  max-width: 168px;
+}
+
 .ui-match-attendance-qr {
   display: block;
   width: 100%;
@@ -29,6 +33,22 @@
   aspect-ratio: 1;
   border: 6px solid #fff;
   border-radius: 8px;
+}
+
+.ui-match-attendance-refresh-status {
+  color: var(--rb-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ui-match-attendance-spin {
+  animation: ui-match-attendance-spin 800ms linear infinite;
+}
+
+@keyframes ui-match-attendance-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .ui-match-attendance-copy {

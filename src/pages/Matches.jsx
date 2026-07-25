@@ -41,6 +41,11 @@ import {
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
 import { MATCH_SIDES, ROOM_KINDS } from "../lib/constants.js";
+import {
+  getMatchAttendanceScanErrorMessage,
+  getMatchAttendanceScanSuccessMessage,
+  scanMatchAttendanceQr,
+} from "../lib/matchAttendance.js";
 import { getRecruitingEntryForUser, getRecruitingListCardCounts, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingPostTerminalState, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isPaidRecruitingCourt, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
@@ -940,7 +945,9 @@ export default function Matches({ app }) {
   const [selectedMatchDetailFailedId, setSelectedMatchDetailFailedId] = useState(null);
   const [selectedRecruitingPostDetailLoadingId, setSelectedRecruitingPostDetailLoadingId] = useState(null);
   const [selectedRecruitingPostDetailFailedId, setSelectedRecruitingPostDetailFailedId] = useState(null);
+  const [attendanceScanState, setAttendanceScanState] = useState(null);
   const queryMatchId = searchParams.get("match");
+  const attendanceQrToken = String(searchParams.get("attendanceQr") || "").trim();
   const activeSelectedMatchId = selectedMatchId ?? queryMatchId;
   const todayValue = getLocalDateInputValue();
   const maxScheduleDate = addDateDays(todayValue, 365);
@@ -949,6 +956,8 @@ export default function Matches({ app }) {
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const requestedMatchDetailsRef = useRef(new Set());
+  const attendanceScanTokenRef = useRef("");
+  const loadMatchDetail = app.actions.loadMatchDetail;
   const scheduleLoadRequestedRef = useRef("");
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtById = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.id, court])), [registeredCourts]);
@@ -1001,9 +1010,9 @@ export default function Matches({ app }) {
   const selectedMatchDetailLoading = Boolean(activeSelectedMatchId && selectedMatchDetailLoadingId === activeSelectedMatchId);
   const selectedMatchDetailFailed = Boolean(activeSelectedMatchId && selectedMatchDetailFailedId === activeSelectedMatchId && !selectedMatch);
   useEffect(() => {
-    if (!activeSelectedMatchId || !selectedMatch || !isMatchInPlayMenu(selectedMatch)) return;
+    if (!activeSelectedMatchId || !selectedMatch || attendanceQrToken || attendanceScanState || !isMatchInPlayMenu(selectedMatch)) return;
     navigate(`/app/recorder?match=${encodeURIComponent(activeSelectedMatchId)}`, { replace: true });
-  }, [activeSelectedMatchId, navigate, selectedMatch]);
+  }, [activeSelectedMatchId, attendanceQrToken, attendanceScanState, navigate, selectedMatch]);
   const applyFilterState = (patch, options = {}) => {
     const nextPanelMode = patch.panelMode ?? panelMode;
     const nextViewId = patch.viewId ?? viewId;
@@ -1048,10 +1057,12 @@ export default function Matches({ app }) {
   useBodyScrollLock(Boolean(selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedMatchDetailFailed || selectedRecruitingPostDetailLoading));
   const closeSelectedMatch = () => {
     if (activeSelectedMatchId) requestedMatchDetailsRef.current.delete(activeSelectedMatchId);
+    attendanceScanTokenRef.current = "";
+    setAttendanceScanState(null);
     setSelectedMatchId(null);
     setSelectedMatchDetailLoadingId(null);
     setSelectedMatchDetailFailedId(null);
-    if (!queryMatchId) return;
+    if (!queryMatchId && !attendanceQrToken) return;
     if (typeof location.state?.matchModalReturnTo === "string" && location.state.matchModalReturnTo.startsWith("/app/")) {
       if (Number(window.history.state?.idx ?? 0) > 0) {
         navigate(-1);
@@ -1066,6 +1077,7 @@ export default function Matches({ app }) {
     }
     const next = new URLSearchParams(searchParams);
     next.delete("match");
+    next.delete("attendanceQr");
     setSearchParams(next, { replace: true });
   };
   const requestMatchDetail = (matchId) => {
@@ -1112,6 +1124,54 @@ export default function Matches({ app }) {
     setSelectedMatchId(queryMatchId);
     requestMatchDetail(queryMatchId);
   }, [app.actions, app.currentUser.id, app.remoteReady, queryMatchId]);
+
+  useEffect(() => {
+    attendanceScanTokenRef.current = "";
+    setAttendanceScanState(null);
+  }, [app.currentUser.id, queryMatchId]);
+
+  useEffect(() => {
+    if (!attendanceQrToken || !queryMatchId || !app.currentUser.id || attendanceScanTokenRef.current === attendanceQrToken) return undefined;
+    attendanceScanTokenRef.current = attendanceQrToken;
+    let cancelled = false;
+    setAttendanceScanState({ pending: true, tone: "blue", message: "QR 출석 확인 중" });
+
+    const clearAttendanceToken = () => {
+      setSearchParams((current) => {
+        if (current.get("attendanceQr") !== attendanceQrToken) return current;
+        const next = new URLSearchParams(current);
+        next.delete("attendanceQr");
+        return next;
+      }, { replace: true });
+    };
+
+    const scan = async () => {
+      try {
+        const result = await scanMatchAttendanceQr(queryMatchId, attendanceQrToken);
+        if (cancelled) return;
+        setAttendanceScanState({
+          pending: false,
+          tone: result?.attendanceStatus === "late" ? "orange" : "green",
+          message: getMatchAttendanceScanSuccessMessage(result),
+        });
+        await loadMatchDetail?.(queryMatchId);
+      } catch (error) {
+        if (cancelled) return;
+        setAttendanceScanState({
+          pending: false,
+          tone: "orange",
+          message: getMatchAttendanceScanErrorMessage(error),
+        });
+      } finally {
+        if (!cancelled) clearAttendanceToken();
+      }
+    };
+
+    void scan();
+    return () => {
+      cancelled = true;
+    };
+  }, [app.currentUser.id, attendanceQrToken, loadMatchDetail, queryMatchId, setSearchParams]);
 
   useEffect(() => {
     if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;
@@ -1559,6 +1619,7 @@ export default function Matches({ app }) {
             app={app}
             post={selectedMatchRoomPost}
             sourceMatch={selectedMatch}
+            attendanceScanState={attendanceScanState}
             skipInitialDetailLoad
             onClose={closeSelectedMatch}
           />

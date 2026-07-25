@@ -36,7 +36,7 @@ export function createMatchAttendanceQr(matchId, request = null, nowMs = Date.no
   const bucket = Math.floor(nowMs / ATTENDANCE_QR_ROTATION_MS);
   const token = `2.${bucket.toString(36)}.${signToken(safeMatchId, bucket)}`;
   const expiresAtMs = (bucket + 1) * ATTENDANCE_QR_ROTATION_MS;
-  const path = `/app/matches/${encodeURIComponent(safeMatchId)}?attendanceQr=${encodeURIComponent(token)}`;
+  const path = `/app/matches?match=${encodeURIComponent(safeMatchId)}&attendanceQr=${encodeURIComponent(token)}`;
   return {
     token,
     value: getPublicAppWebUrl(path, request),

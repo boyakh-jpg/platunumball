@@ -95,7 +95,7 @@ function mergeMatchCardsWithRows(cards = [], rows = []) {
   (rows ?? []).forEach((rowMatch) => {
     if (!rowMatch?.id) return;
     const cardMatch = merged.get(rowMatch.id);
-    merged.set(rowMatch.id, cardMatch
+    const nextMatch = cardMatch
       ? {
           ...cardMatch,
           ...rowMatch,
@@ -104,7 +104,9 @@ function mergeMatchCardsWithRows(cards = [], rows = []) {
           disputes: rowMatch.disputes?.length ? rowMatch.disputes : cardMatch.disputes,
           result: rowMatch.result ?? cardMatch.result ?? null,
         }
-      : rowMatch);
+      : rowMatch;
+    delete nextMatch.matchListOnly;
+    merged.set(rowMatch.id, nextMatch);
   });
   return [...merged.values()];
 }
@@ -145,6 +147,7 @@ function normalizeFeedCard(row = {}) {
   return {
     ...nextCard,
     ...(feedStatus ? { status: feedStatus } : {}),
+    matchListOnly: true,
     __feedRelations: relations,
     teamA: {
       ...nextCard.teamA,

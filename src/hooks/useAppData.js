@@ -433,6 +433,15 @@ function shouldUseIncomingRoomRow(incoming, existing) {
   return incomingTime >= existingTime;
 }
 
+function shouldUseIncomingMatchRow(incoming, existing) {
+  if (!existing) return true;
+  const incomingListOnly = incoming?.matchListOnly === true;
+  const existingListOnly = existing?.matchListOnly === true;
+  if (existingListOnly && !incomingListOnly) return true;
+  if (incomingListOnly && !existingListOnly) return true;
+  return shouldUseIncomingRoomRow(incoming, existing);
+}
+
 function shouldUseIncomingRecruitingPostRow(incoming, existing) {
   if (!existing) return true;
   const incomingListOnly = incoming?.listCardOnly === true;
@@ -449,7 +458,7 @@ function getTournamentMatchKey(match = {}) {
   return round && fixture ? `${match.tournamentId}:${round}:${fixture}` : "";
 }
 
-function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
+export function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
     if (!item?.id) return;
@@ -460,7 +469,35 @@ function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
       });
     }
     const existing = merged.get(item.id);
-    if (!forceIds.has(item.id) && !shouldUseIncomingRoomRow(item, existing)) return;
+    if (!forceIds.has(item.id) && !shouldUseIncomingMatchRow(item, existing)) return;
+    if (item.matchListOnly === true && existing && existing.matchListOnly !== true) {
+      const next = preserveExistingWhenEmpty(item, existing, [
+        "agreements",
+        "approvals",
+        "disputes",
+        "playedPlayerIds",
+        "reservePlayers",
+        "anonymousPlayers",
+        "parties",
+        "result",
+        "attendance",
+        "statRecorders",
+      ]);
+      next.teamA = {
+        ...(existing.teamA ?? {}),
+        ...(item.teamA ?? {}),
+        players: existing.teamA?.players ?? [],
+      };
+      next.teamB = {
+        ...(existing.teamB ?? {}),
+        ...(item.teamB ?? {}),
+        players: existing.teamB?.players ?? [],
+      };
+      next.rules = existing.rules;
+      delete next.matchListOnly;
+      merged.set(item.id, next);
+      return;
+    }
     if (item.tournamentListOnly === true && existing && existing.tournamentListOnly !== true) {
       const next = { ...existing, ...item, rules: existing.rules };
       delete next.tournamentListOnly;
@@ -477,6 +514,7 @@ function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
       "parties",
       "result",
     ]);
+    if (item.matchListOnly !== true) delete next.matchListOnly;
     if (item.tournamentListOnly !== true) delete next.tournamentListOnly;
     merged.set(item.id, next);
   });

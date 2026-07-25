@@ -32,6 +32,7 @@ import MatchListCard, { MatchListSummary } from "../components/match/MatchListCa
 import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
 import MatchClockPanel from "../components/match/MatchClockPanel.jsx";
 import MatchAttendanceQrPanel from "../components/match/MatchAttendanceQrPanel.jsx";
+import { MatchOperationsPolicyFields } from "../components/match/MatchCreationWizard.jsx";
 import MatchPostgameRosterPanel from "../components/match/MatchPostgameRosterPanel.jsx";
 import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
 import PickupParticipantPool from "../components/match/PickupParticipantPool.jsx";
@@ -135,6 +136,7 @@ import {
 } from "../lib/matchRules.js";
 import {
   PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS,
+  getMatchCreationPolicyPayload,
   getMatchCreationSummary,
   getRoomRemakeDraft,
 } from "../lib/matchCreationPolicies.js";
@@ -418,6 +420,11 @@ function getRoomEditDraft(post, sourceMatch = null) {
     matchPurpose: room.matchPurpose ?? room.rules?.matchPurpose,
     formationMode: room.formationMode ?? room.rules?.formationMode,
   }, { mode: room.mode });
+  const operations = getMatchCreationPolicyPayload({
+    ...room,
+    ...(room.rules ?? {}),
+    mode: room.mode,
+  });
   return {
     visibility: room.visibility,
     matchPurpose: room.matchPurpose ?? room.rules?.matchPurpose,
@@ -437,6 +444,8 @@ function getRoomEditDraft(post, sourceMatch = null) {
     matchJoinMode: room.hostJoinMode === "team" ? "team" : "player",
     mmrRangeMode: room.mmrRangeMode ?? room.roomState?.mmrRangeMode ?? "narrow",
     ...rules,
+    ballProvider: operations.ballProvider,
+    vestsProvided: operations.vestsProvided,
     stakes: room.stakes ?? "",
     memo: room.memo ?? "",
   };
@@ -2847,7 +2856,7 @@ function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
   );
 }
 
-function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, entryPoint = "", onInvitationAccepted = null, onJoined = null, skipInitialDetailLoad = false }) {
+function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, entryPoint = "", attendanceScanState = null, onInvitationAccepted = null, onJoined = null, skipInitialDetailLoad = false }) {
   const navigate = useNavigate();
   const selectedPost = post;
   const loadDirectory = app.actions.loadDirectory;
@@ -4550,6 +4559,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
 
+                {attendanceScanState ? (
+                  <div className="ui-status-strip" role="status" aria-live="polite">
+                    <Badge tone={attendanceScanState.tone}>{attendanceScanState.pending ? "출석 처리 중" : "출석 처리 결과"}</Badge>
+                    <strong>{attendanceScanState.message}</strong>
+                  </div>
+                ) : null}
+
                 <RoomPhaseRenderer
                   viewModel={{ ...roomPhaseViewModel, sectionOrder: roomPhaseSectionsBeforeVersus }}
                   sections={{
@@ -5042,6 +5058,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     </div>
                     <RuleSelector
                       draft={{ ...roomEditDraft, mode: selectedPost.mode }}
+                      onChange={(patch) => updateRoomEditDraft(selectedPost, patch)}
+                    />
+                    <MatchOperationsPolicyFields
+                      draft={{
+                        ...roomEditDraft,
+                        mode: `${roomEditDraft.sideCapacity}v${roomEditDraft.sideCapacity}`,
+                      }}
                       onChange={(patch) => updateRoomEditDraft(selectedPost, patch)}
                     />
                     <MeetingPointFields
