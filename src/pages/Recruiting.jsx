@@ -159,6 +159,8 @@ import {
   getRoomEditAvailability,
   getRoomPhaseViewModel,
   getRoomScheduleProposalProgress,
+  isMatchPregameSlotManagementOpen,
+  isMatchRecordParticipantSetupOpen,
   isRoomScheduleChangePending,
 } from "../lib/roomFlow.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
@@ -3866,7 +3868,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           : null;
         const sourceMatchIsTournamentPregame = isTournamentMatchLineupEditable(sourceMatch);
         const sourceMatchRecordEditable = Boolean(sourceMatchIsRecordRoom && !sourceMatch?.result && !sourceMatch?.confirmedAt);
-        const canManageMatchRecordParticipants = Boolean(sourceMatchRecordEditable && sourceMatch?.createdBy === app.currentUser.id);
+        const sourceMatchRecordSetupOpen = isMatchRecordParticipantSetupOpen(sourceMatch);
+        const canManageMatchRecordParticipants = Boolean(sourceMatchRecordSetupOpen && sourceMatch?.createdBy === app.currentUser.id);
         const sourceRoomReadOnly = Boolean(
           recruitingRoomTerminalStatus ||
           (matchRoom && (
@@ -3875,10 +3878,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             (sourceMatchPhase?.phase === "record" && !sourceMatchRecordEditable)
           )),
         );
-        const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
-        const activeSelfSlotDraft = sourceRoomReadOnly ? null : activeSelfSlotDraftRaw;
-        const canUseChat = canChat && !sourceRoomReadOnly && !roomChatLocked;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
+        const sourceMatchSlotManagementOpen = Boolean(
+          !sourceRoomReadOnly
+          && (!matchRoom || isMatchPregameSlotManagementOpen(sourceMatch)),
+        );
+        const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
+        const activeSelfSlotDraft = sourceMatchSlotManagementOpen ? activeSelfSlotDraftRaw : null;
+        const canUseChat = canChat && !sourceRoomReadOnly && !roomChatLocked;
         const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin, app.state.settings?.refereeAppointments));
         const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const currentUserCanStartSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
@@ -3921,16 +3928,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canEditMatchRecordRoster = Boolean(
           matchRoom &&
           sourceMatch &&
-          (
-            sourceMatchIsTournamentPregame ||
-            (
-              sourceMatchIsRecordRoom &&
-              !sourceMatch.result &&
-              !sourceMatch.confirmedAt &&
-              !sourceMatch.cancelledAt &&
-              !sourceMatch.voidedAt
-            )
-          ),
+          (sourceMatchIsTournamentPregame || sourceMatchRecordSetupOpen),
         );
         const showMatchRecordRosterPanel = Boolean(
           canEditMatchRecordRoster &&
@@ -4674,7 +4672,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                       canManage={mine}
                       onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
-                      onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
+                      onSelfSlotAction={sourceMatchSlotManagementOpen ? ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)) : null}
                       onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                       onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
                       onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
@@ -4720,7 +4718,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                       canManage={mine}
                       onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
-                      onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
+                      onSelfSlotAction={sourceMatchSlotManagementOpen ? ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)) : null}
                       onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                       onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
                       onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
@@ -4763,7 +4761,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     capacity={benchCapacity}
                     lobby={lobby}
                     onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
-                    onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
+                    onSelfSlotAction={sourceMatchSlotManagementOpen ? ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)) : null}
                     onMoveCandidate={moveCandidate}
                     onRemoveCandidate={removeCandidate}
                   />
@@ -4787,7 +4785,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     capacity={benchCapacity}
                     lobby={lobby}
                     onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
-                    onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
+                    onSelfSlotAction={sourceMatchSlotManagementOpen ? ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)) : null}
                     onMoveCandidate={moveCandidate}
                     onRemoveCandidate={removeCandidate}
                   />

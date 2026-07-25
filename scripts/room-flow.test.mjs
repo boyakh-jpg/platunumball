@@ -16,6 +16,8 @@ import {
   getPickupTeamAssignmentPolicy,
   getPostgameRecordVerification,
   getRoomPhaseViewModel,
+  isMatchPregameSlotManagementOpen,
+  isMatchRecordParticipantSetupOpen,
 } from "../src/lib/roomFlow.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
 
@@ -74,6 +76,38 @@ test("픽업 체크인은 배정 확정 전 A/B 작업대를 표시한다", () =
   assert.equal(view.mode, "pickup_assignment");
   assert.equal(view.showVersusStage, true);
   assert.equal(view.assignmentConfirmed, false);
+});
+
+test("슬롯 관리는 경기 시작 전까지만 열린다", () => {
+  const pregame = { status: "agreed", timingType: "instant" };
+  assert.equal(isMatchPregameSlotManagementOpen(pregame), true);
+  assert.equal(isMatchPregameSlotManagementOpen({ ...pregame, startedAt: "2026-07-25T10:00:00.000Z" }), false);
+  assert.equal(isMatchPregameSlotManagementOpen({
+    ...pregame,
+    startedAt: "2026-07-25T10:00:00.000Z",
+    endedAt: "2026-07-25T11:00:00.000Z",
+  }), false);
+  assert.equal(isMatchPregameSlotManagementOpen({
+    ...pregame,
+    rules: { recordType: "match_record" },
+    startedAt: "2026-07-25T10:00:00.000Z",
+    endedAt: "2026-07-25T11:00:00.000Z",
+  }), false);
+});
+
+test("사후 경기기록방 출전자 확인은 명단 확정 전까지만 열린다", () => {
+  const recordRoom = {
+    status: "agreed",
+    rules: { recordType: "match_record", recordSetupReady: false },
+    startedAt: "2026-07-25T10:00:00.000Z",
+    endedAt: "2026-07-25T11:00:00.000Z",
+  };
+  assert.equal(isMatchRecordParticipantSetupOpen(recordRoom), true);
+  assert.equal(isMatchRecordParticipantSetupOpen({
+    ...recordRoom,
+    rules: { ...recordRoom.rules, recordSetupReady: true },
+  }), false);
+  assert.equal(isMatchRecordParticipantSetupOpen({ ...recordRoom, result: { scoreA: 21, scoreB: 18 } }), false);
 });
 
 test("pickup random and MMR modes create complete deterministic drafts", () => {

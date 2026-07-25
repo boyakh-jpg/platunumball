@@ -397,6 +397,28 @@ export function getPickupOpenSlotPlacements(lobby = {}, { sideCapacity = 0, benc
   return placements;
 }
 
+export function isMatchPregameSlotManagementOpen(match = null) {
+  if (!match) return true;
+  const phase = getMatchRoomPhase(match).phase;
+  return Boolean(
+    !match.startedAt
+    && !match.endedAt
+    && !match.result
+    && ["waiting", "locked", "checkin"].includes(phase)
+  );
+}
+
+export function isMatchRecordParticipantSetupOpen(match = null) {
+  return Boolean(
+    isMatchRecordMatch(match)
+    && match?.rules?.recordSetupReady !== true
+    && !match?.result
+    && !match?.confirmedAt
+    && !match?.cancelledAt
+    && !match?.voidedAt
+  );
+}
+
 export function getRoomPhaseViewModel({ post = {}, match = null } = {}) {
   const source = match ?? post;
   const phase = match ? getMatchRoomPhase(match).phase : "waiting";
