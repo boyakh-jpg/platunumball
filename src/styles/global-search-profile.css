@@ -75,7 +75,7 @@
 }
 
 .search-picker-title,
-.search-picker-results .empty-state,
+.search-picker-results .ui-empty-state-compact,
 .search-picker-results .home-search-more {
   grid-column: 1 / -1;
 }
@@ -1394,7 +1394,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   margin-top: 12px;
 }
 
-.season-candidate-list > .empty-state {
+.season-candidate-list > .ui-empty-state-compact {
   min-height: 86px;
 }
 
@@ -1468,10 +1468,11 @@ html[data-theme="light"] .search-picker-result-row.selected {
   display: inline-flex;
   width: 100%;
   max-width: 100%;
+  min-height: var(--ui-button-height-sm);
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  color: var(--green);
+  color: var(--rb-orange);
   font-size: 0.82rem;
   font-weight: 900;
 }

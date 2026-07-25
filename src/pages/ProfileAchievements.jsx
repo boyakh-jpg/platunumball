@@ -104,8 +104,8 @@ export default function ProfileAchievements({ app }) {
         <p>조건을 달성한 아이콘은 한 번 해금되면 기록이나 등급이 바뀌어도 유지됩니다.</p>
       </Card>
 
-      {loading ? <Card className="section-card"><div className="empty-state">업적 정리 중</div></Card> : null}
-      {error ? <Card className="section-card"><div className="empty-state">{error}</div></Card> : null}
+      {loading ? <Card className="section-card"><div className="ui-empty-state-compact">업적 정리 중</div></Card> : null}
+      {error ? <Card className="section-card"><div className="ui-empty-state-compact">{error}</div></Card> : null}
       {!loading && !error ? PROFILE_ICON_GROUPS.map((group) => (
         <section key={group.id} className="profile-achievement-group">
           <div className="section-title-row">

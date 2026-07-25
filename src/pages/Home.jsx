@@ -715,7 +715,7 @@ export default function Home({ app }) {
                   ) : null}
                 </div>
               ) : (
-                <div className="empty-state">확정 경기 없음</div>
+                <div className="ui-empty-state-compact">확정 경기 없음</div>
               )}
             </Card>
 

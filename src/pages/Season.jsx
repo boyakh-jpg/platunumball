@@ -202,7 +202,7 @@ export default function Season({ app }) {
                   </div>
                   <TierBadge mmr={user.ratings.integrated} compact />
                 </PlayerHoverCard>
-              )) : <div className="empty-state">지역 시즌 기록이 없습니다.</div>}
+              )) : <div className="ui-empty-state-compact">지역 시즌 기록이 없습니다.</div>}
             </div>
           </Card>
 

@@ -2394,19 +2394,6 @@ span.referee-hover-card {
   color: var(--rb-orange);
 }
 
-.notifications-list > .notification-empty-state {
-  display: grid;
-  width: 100%;
-  min-height: 96px;
-  justify-content: center;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: var(--muted);
-  font-weight: 800;
-  text-align: center;
-}
-
 @media (max-width: 760px) {
   .notification-row-open {
     min-height: 42px;

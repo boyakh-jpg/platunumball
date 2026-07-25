@@ -72,6 +72,7 @@ const cssStacks = [
   ...featureCssFiles.map((file) => [file]),
 ];
 const cssFiles = [...new Set(cssStacks.flat())];
+const primitiveCssFile = "src/styles/ui-primitives.css";
 
 function getAtRuleContext(rule) {
   const context = [];
@@ -194,6 +195,62 @@ test("home team summaries are not restyled by the late court-control module", ()
   assert.match(emptyRule, /\bborder:\s*0;/);
   assert.match(emptyRule, /\bbackground:\s*transparent;/);
   assert.match(emptyRule, /\bbox-shadow:\s*none;/);
+});
+
+test("shared empty-state surfaces have one primitive owner", () => {
+  const primitiveSource = fs.readFileSync(primitiveCssFile, "utf8");
+  const duplicateOwners = [];
+  const protectedBranches = new Set([
+    ".ui-empty-state",
+    ".ui-empty-state-compact",
+  ]);
+
+  assert.match(primitiveSource, /\.ui-empty-state-compact\s*\{/);
+  assert.match(primitiveSource, /\.ui-empty-state\s*\{/);
+
+  for (const file of cssFiles) {
+    const root = parseCss(file);
+    root.walkRules((rule) => {
+      for (const selector of rule.selectors ?? [rule.selector]) {
+        const normalized = normalizeSelector(selector);
+        if (!protectedBranches.has(normalized)) continue;
+        duplicateOwners.push(`${file}:${rule.source.start.line} ${normalized}`);
+      }
+    });
+  }
+
+  assert.deepEqual(duplicateOwners, []);
+});
+
+test("critical interactive branches keep a visible focus indicator", () => {
+  const checks = [
+    {
+      files: globalCssFiles,
+      selector: ".rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible",
+    },
+    {
+      files: ["src/styles/recruiting-arena.css"],
+      selector: ".arena-room-player-slot.self-action:focus-visible",
+    },
+  ];
+
+  for (const { files, selector } of checks) {
+    let lastRule = null;
+    for (const file of files) {
+      const root = parseCss(file);
+      root.walkRules((rule) => {
+        const matchingBranch = (rule.selectors ?? [rule.selector])
+          .some((branch) => normalizeSelector(branch) === selector);
+        if (matchingBranch) lastRule = rule;
+      });
+    }
+
+    assert.ok(lastRule, `${selector} focus rule is required`);
+    const declarations = new Map();
+    lastRule.walkDecls((declaration) => declarations.set(declaration.prop, declaration.value));
+    assert.doesNotMatch(declarations.get("outline") ?? "", /^(?:0|none)$/);
+    assert.notEqual(declarations.get("box-shadow"), "none");
+  }
 });
 
 test("globals.css is an import-only manifest with bounded modules", () => {

@@ -914,7 +914,7 @@ export default function MatchRoom({ app }) {
                   </div>
                   <Badge tone={status.tone}>{status.label}</Badge>
                 </div>
-                <div className="empty-state">경기가 종료되면 결과를 입력할 수 있습니다.</div>
+                <div className="ui-empty-state-compact">경기가 종료되면 결과를 입력할 수 있습니다.</div>
               </Card>
             ) : null}
             {shouldShowResultEntry ? (
@@ -927,7 +927,7 @@ export default function MatchRoom({ app }) {
               <Badge tone={canSubmitResult ? "green" : recordWindow.statExpired ? "orange" : "neutral"}>{recordLockReason}</Badge>
             </div>
             {!canSubmitResult ? (
-              <div className="empty-state">{match.status === "contract" ? "동의 필요" : "수정 잠김"}</div>
+              <div className="ui-empty-state-compact">{match.status === "contract" ? "동의 필요" : "수정 잠김"}</div>
             ) : null}
             <div className="stat-referee-panel">
               <div>
@@ -1054,7 +1054,7 @@ export default function MatchRoom({ app }) {
                 })}
               </div>
             ) : (
-              <div className="empty-state">승인 대기</div>
+              <div className="ui-empty-state-compact">승인 대기</div>
             )}
           </Card>
           <MatchRecommendationPanel

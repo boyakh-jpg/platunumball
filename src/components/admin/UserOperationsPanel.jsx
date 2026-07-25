@@ -225,7 +225,7 @@ export default function UserOperationsPanel({ app }) {
             <div><p className="eyebrow">Review Queue</p><h2>{riskOnly ? "주의 신호 사용자" : "전체 사용자"}</h2></div>
             <Badge tone="blue">{result.page.total ?? result.rows.length}명</Badge>
           </div>
-          {loadError ? <div className="empty-state">{loadError}</div> : null}
+          {loadError ? <div className="ui-empty-state-compact">{loadError}</div> : null}
           <div className="admin-user-risk-list">
             {result.rows.map((user) => {
               const risk = getAdminUserRiskMeta(user.riskScore);
@@ -248,8 +248,8 @@ export default function UserOperationsPanel({ app }) {
                 </button>
               );
             })}
-            {!loading && !result.rows.length ? <div className="empty-state">조건에 맞는 사용자가 없습니다.</div> : null}
-            {loading && !result.rows.length ? <div className="empty-state">불러오는 중</div> : null}
+            {!loading && !result.rows.length ? <div className="ui-empty-state-compact">조건에 맞는 사용자가 없습니다.</div> : null}
+            {loading && !result.rows.length ? <div className="ui-empty-state-compact">불러오는 중</div> : null}
           </div>
           {result.page.hasMore ? (
             <Button type="button" variant="secondary" disabled={loading} onClick={() => loadPage({ offset: result.page.nextOffset, append: true })}>
@@ -337,7 +337,7 @@ export default function UserOperationsPanel({ app }) {
                 {actionStatus ? <small className="admin-user-action-status">{actionStatus}</small> : null}
               </section>
             </>
-          ) : <div className="empty-state">검토할 사용자를 선택해 주세요.</div>}
+          ) : <div className="ui-empty-state-compact">검토할 사용자를 선택해 주세요.</div>}
         </Card>
       </div>
     </div>

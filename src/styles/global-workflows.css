@@ -692,7 +692,6 @@ select option:disabled {
 }
 
 textarea {
-  min-height: 112px;
   resize: vertical;
 }
 
@@ -1648,7 +1647,7 @@ input[type="color"] {
   color: var(--text);
 }
 
-.match-waiting-card .empty-state {
+.match-waiting-card .ui-empty-state-compact {
   display: grid;
   min-height: 88px;
   place-items: center;
@@ -2404,124 +2403,6 @@ input[type="color"] {
 .match-focus-card,
 .result-card {
   border-color: rgba(255, 211, 108, 0.24);
-}
-
-.empty-state {
-  border: 1px dashed rgba(255, 255, 255, 0.18);
-  border-radius: var(--radius);
-  color: var(--muted);
-  padding: 14px;
-  text-align: center;
-  font-weight: 850;
-}
-
-.ui-empty-state {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  min-height: 112px;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: center;
-  justify-items: center;
-  gap: var(--space-4);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 18px 16px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.ui-empty-state-icon {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  color: var(--rb-orange);
-}
-
-.ui-empty-state.is-error .ui-empty-state-icon {
-  color: var(--danger);
-}
-
-.ui-empty-state.is-loading .ui-empty-state-icon {
-  animation: ui-empty-state-spin 1s linear infinite;
-}
-
-.ui-empty-state-copy {
-  display: grid;
-  min-width: 0;
-  max-width: 44rem;
-  justify-items: center;
-  gap: 5px;
-}
-
-.ui-empty-state-copy strong {
-  color: var(--text);
-  font-size: 1rem;
-  line-height: 1.3;
-}
-
-.ui-empty-state-copy p {
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 750;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-.ui-empty-state-actions {
-  display: flex;
-  max-width: 100%;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  margin-top: 2px;
-}
-
-@keyframes ui-empty-state-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ui-empty-state.is-loading .ui-empty-state-icon {
-    animation: none;
-  }
-}
-
-@media (max-width: 520px) {
-  .ui-empty-state {
-    min-height: 104px;
-    gap: 7px;
-    padding: 16px 12px;
-  }
-
-  .ui-empty-state-actions {
-    width: min(240px, 100%);
-  }
-
-  .ui-empty-state-actions > .button {
-    width: 100%;
-  }
-}
-
-:is(
-  .rank-home,
-  .profile-page,
-  .profile-records-page,
-  .teams-page,
-  .settings-page,
-  .admin-page
-) .empty-state {
-  min-height: 56px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
 }
 
 .match-action-row,

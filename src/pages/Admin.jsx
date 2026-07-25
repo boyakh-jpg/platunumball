@@ -224,7 +224,7 @@ function RatingPolicyPanel({ app }) {
         <Badge tone="orange">최고관리자</Badge>
       </div>
 
-      {loading ? <div className="empty-state">정책 불러오는 중</div> : (
+      {loading ? <div className="ui-empty-state-compact">정책 불러오는 중</div> : (
         <>
           <div className="admin-rating-groups">
             {RATING_POLICY_GROUPS.map((group) => (
@@ -952,7 +952,7 @@ export default function Admin({ app }) {
                 </span>
               </button>
             )) : null}
-            {!app.adminStatus?.loading && !app.adminStatus?.error && !activeRows.length ? <div className="empty-state">{queueMode === "pending" ? "처리할 항목이 없습니다." : "처리 이력이 없습니다."}</div> : null}
+            {!app.adminStatus?.loading && !app.adminStatus?.error && !activeRows.length ? <div className="ui-empty-state-compact">{queueMode === "pending" ? "처리할 항목이 없습니다." : "처리 이력이 없습니다."}</div> : null}
           </div>
           {activeAdminPage?.hasMore ? (
             <Button type="button" variant="secondary" disabled={app.adminStatus?.loading} onClick={() => app.actions.loadMoreAdminSection?.()}>
@@ -1314,7 +1314,7 @@ export default function Admin({ app }) {
               </DetailList> : null}
             </>
           ) : (
-            <div className="empty-state">검토할 큐가 없습니다.</div>
+            <div className="ui-empty-state-compact">검토할 큐가 없습니다.</div>
           )}
         </Card>
       </div>

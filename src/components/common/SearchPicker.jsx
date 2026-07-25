@@ -294,7 +294,7 @@ export default function SearchPicker({
               ) : null}
             </>
           ) : null}
-          {visibleItems.length ? visibleItems.map(renderItem) : <div className="empty-state">{remoteLoading ? "검색 중..." : emptyText}</div>}
+          {visibleItems.length ? visibleItems.map(renderItem) : <div className="ui-empty-state-compact">{remoteLoading ? "검색 중..." : emptyText}</div>}
           {hasMore ? (
             <button
               type="button"

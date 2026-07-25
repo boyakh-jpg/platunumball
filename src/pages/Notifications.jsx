@@ -251,7 +251,7 @@ export default function Notifications({ app }) {
               </span>
             </article>
           )) : (
-            <div className="notification-empty-state">
+            <div className="ui-empty-state-compact">
               {notificationView === "past" ? "지난 알림이 없습니다." : "읽지 않은 알림이 없습니다."}
             </div>
           )}

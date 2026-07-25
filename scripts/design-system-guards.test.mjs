@@ -11,6 +11,10 @@ const primitiveStyles = read("src/styles/ui-primitives.css");
 const tokenStyles = read("src/styles/tokens.css");
 const visualSystemStyles = read("src/styles/global-visual-system.css");
 const courtControlStyles = read("src/styles/global-court-controls.css");
+const globalAdminStyles = read("src/styles/global-admin-layout.css");
+const globalWorkflowStyles = read("src/styles/global-workflows.css");
+const recruitingStyles = read("src/styles/recruiting-arena.css");
+const matchesStyles = read("src/styles/matches-arena.css");
 const gettingStartedStyles = read("src/styles/getting-started.css");
 const appSource = read("src/App.jsx");
 const gettingStartedSource = read("src/pages/GettingStarted.jsx");
@@ -55,6 +59,30 @@ test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
   assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
   assert.match(primitiveStyles, /\.ui-action-row > \*\s*\{\s*flex:\s*0 0 auto;\s*\}/);
   assert.doesNotMatch(hoverSurfaceStyles, /(?:^|\n)\s*\.button\s*\{[^{}]*white-space:\s*normal;/);
+});
+
+test("공용 빈 상태와 control 높이는 페이지 override 없이 유지된다", () => {
+  assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.empty-state\s*\{/);
+  assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.ui-empty-state\s*\{/);
+  assert.match(primitiveStyles, /\.ui-empty-state-compact\s*\{/);
+  assert.match(recruitingStyles, /\.arena-modal-close-button\s*\{\s*min-height:\s*var\(--ui-button-height\);/);
+  assert.match(
+    matchesStyles,
+    /@media \(max-width:\s*480px\)[\s\S]*?\.om-calendar-filter-row \.segmented-control button\s*\{[\s\S]*?min-height:\s*var\(--ui-button-height\);[\s\S]*?height:\s*var\(--ui-button-height\);/,
+  );
+});
+
+test("화면별 점수 입력 layout은 feature CSS만 소유한다", () => {
+  assert.doesNotMatch(
+    globalAdminStyles,
+    /@media \(max-width:\s*640px\)\s*\{[^{}]*\.arena-dispute-score-row\s*\{/,
+  );
+  assert.doesNotMatch(
+    globalAdminStyles,
+    /@media \(max-width:\s*640px\)\s*\{[^{}]*\.match-room \.score-form\s*\{/,
+  );
+  assert.match(recruitingStyles, /\.arena-dispute-score-row \.arena-derived-score/);
+  assert.match(read("src/styles/matchroom-arena.css"), /\.match-room \.match-derived-score/);
 });
 
 test("목록 카드는 Card, Button, ui-panel primitive를 사용한다", () => {

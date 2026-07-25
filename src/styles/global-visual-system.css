@@ -2481,12 +2481,21 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
 select,
-textarea,
 .auth-card select,
 .home-search-box input,
 .arena-filter-select select,
 .om-calendar-filter-bar select {
   min-height: var(--ui-button-height);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: max(0.9rem, 16px);
+}
+
+textarea {
+  min-height: 112px;
   border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
@@ -3065,14 +3074,19 @@ html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a
 }
 
 .rank-home .rank-spotlight-card .rank-spotlight-links a:hover,
-.rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible,
-html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:hover,
-html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible {
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:hover {
   border: 0;
   border-bottom: 0;
-  outline: 0;
   box-shadow: none;
   text-decoration: none;
+}
+
+.rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible {
+  border-radius: var(--ui-control-radius);
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 3px;
+  box-shadow: var(--focus-ring);
 }
 
 /* 2026-07-02 image-led home cards should not show partial frame lines. */

@@ -2122,7 +2122,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   </small>
                 </div>
               ) : (
-                <div className="empty-state">신고 사유를 먼저 선택해 주세요.</div>
+                <div className="ui-empty-state-compact">신고 사유를 먼저 선택해 주세요.</div>
               )}
               {selectedReportCourt ? (
                 <div className="arena-mini-note">

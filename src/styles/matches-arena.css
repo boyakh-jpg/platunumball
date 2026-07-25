@@ -3086,8 +3086,8 @@ html[data-theme="light"] .om-calendar-filter-bar {
   }
 
   .om-calendar-filter-row .segmented-control button {
-    min-height: 38px;
-    height: 38px;
+    min-height: var(--ui-button-height);
+    height: var(--ui-button-height);
     padding-inline: 6px;
     font-size: 0.72rem;
   }

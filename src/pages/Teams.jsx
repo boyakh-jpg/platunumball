@@ -247,11 +247,11 @@ export default function Teams({ app }) {
                 </TeamHoverCard>
               );
             }) : myTeamCountPending ? (
-              <div className="empty-state">팀 정보 확인 중</div>
+              <div className="ui-empty-state-compact">팀 정보 확인 중</div>
             ) : teamDirectoryError ? (
-              <div className="empty-state">팀 정보를 불러오지 못했습니다.</div>
+              <div className="ui-empty-state-compact">팀 정보를 불러오지 못했습니다.</div>
             ) : (
-              <div className="empty-state">소속 팀이 없습니다. 새 팀을 만들거나 팀 모집에 지원해 주세요.</div>
+              <div className="ui-empty-state-compact">소속 팀이 없습니다. 새 팀을 만들거나 팀 모집에 지원해 주세요.</div>
             )}
           </div>
         </Card>

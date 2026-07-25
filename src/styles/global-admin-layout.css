@@ -1443,15 +1443,6 @@
 }
 
 @media (max-width: 640px) {
-  .arena-dispute-score-row {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
-  }
-
-  .arena-dispute-score-row > strong {
-    display: none;
-  }
-
   .arena-dispute-stat-grid {
     grid-template-columns: 1fr;
   }
@@ -1848,16 +1839,6 @@
 
   .match-room .stat-referee-panel {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .match-room .score-form {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .match-room .score-form > span {
-    display: none;
   }
 }
 

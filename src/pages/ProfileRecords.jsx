@@ -157,7 +157,7 @@ export default function ProfileRecords({ app }) {
             })}
           </div>
         ) : (
-          <div className="empty-state">확정된 경기 기록이 없습니다.</div>
+          <div className="ui-empty-state-compact">확정된 경기 기록이 없습니다.</div>
         )}
         {archiveState.page?.detailExhausted === false ? (
           <button
@@ -210,10 +210,10 @@ export default function ProfileRecords({ app }) {
           ) : null}
         </Card>
       ) : archiveState.loading && !archiveState.loaded ? (
-        <Card className="section-card"><div className="empty-state">5년 기록을 불러오는 중입니다.</div></Card>
+        <Card className="section-card"><div className="ui-empty-state-compact">5년 기록을 불러오는 중입니다.</div></Card>
       ) : archiveState.error ? (
         <Card className="section-card">
-          <div className="empty-state">기록을 불러오지 못했습니다.</div>
+          <div className="ui-empty-state-compact">기록을 불러오지 못했습니다.</div>
           <button type="button" className="button button-secondary button-md" onClick={() => loadProfileRecords?.({ force: true })}>
             다시 시도
           </button>

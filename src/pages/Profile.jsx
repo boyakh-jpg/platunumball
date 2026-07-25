@@ -62,7 +62,7 @@ function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
         <Link className="button button-secondary button-sm" to="/app/profile/records">기록 더보기</Link>
       </div>
       {loading ? (
-        <div className="empty-state">기록 정리 중</div>
+        <div className="ui-empty-state-compact">기록 정리 중</div>
       ) : records.length ? (
         <div className="recent-match-list">
           {records.map((match) => {
@@ -88,7 +88,7 @@ function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
           })}
         </div>
       ) : (
-        <div className="empty-state">확정된 경기 기록이 없습니다.</div>
+        <div className="ui-empty-state-compact">확정된 경기 기록이 없습니다.</div>
       )}
     </Card>
   );

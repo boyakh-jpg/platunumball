@@ -13,7 +13,7 @@ export default function EmptyState({
 
   return (
     <div
-      className={`ui-empty-state is-${normalizedTone} ${className}`.trim()}
+      className={`ui-empty-state ui-empty-state-${normalizedTone} ${className}`.trim()}
       role={normalizedTone === "error" ? "alert" : "status"}
       aria-live={normalizedTone === "error" ? "assertive" : "polite"}
       aria-busy={normalizedTone === "loading" || undefined}

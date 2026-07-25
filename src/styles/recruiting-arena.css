@@ -3055,11 +3055,15 @@ html[data-theme="light"] .arena-room-player-slot.empty {
 /* 2026-07-01 final room slot override: transparent avatar, no slot border, live party line. */
 
 .arena-room-player-slot.self-action:hover,
+html[data-theme="light"] .arena-room-player-slot.self-action:hover {
+  border-color: transparent;
+}
+
 .arena-room-player-slot.self-action:focus-visible,
-html[data-theme="light"] .arena-room-player-slot.self-action:hover,
 html[data-theme="light"] .arena-room-player-slot.self-action:focus-visible {
   border-color: transparent;
-  outline: 0;
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
 }
 
 /* 2026-07-01 room slot restore: keep avatar cutout and party line from the slot layer. */
@@ -5092,7 +5096,7 @@ html[data-theme="light"] .arena-lobby-arena {
 }
 
 .arena-modal-close-button {
-  min-height: 56px;
+  min-height: var(--ui-button-height);
 }
 
 .arena-filter-bar .segmented-control button {
