@@ -307,22 +307,27 @@ test("cache sanitizer cannot retain arbitrary profile or settings fields", () =>
   assert.deepEqual(sanitized.settings, { theme: "dark" });
 });
 
-test("production test login accepts a manually entered credential without bundling it", async () => {
-  const [browserSource, serverSource, apiSource, authSource, loginSource] = await Promise.all([
+test("alpha test login uses a one-time server token without bundling a password", async () => {
+  const [browserSource, serverSource, apiSource, authSource, loginSource, alphaLoginSource] = await Promise.all([
     readSourceTree("src"),
     readSourceTree("server/api"),
     readSourceTree("api"),
     readSource("src/hooks/useAuthSession.js"),
     readSource("src/pages/Login.jsx"),
+    readSource("server/api/auth/alpha-test-login.js"),
   ]);
   assert.doesNotMatch(`${browserSource}\n${serverSource}\n${apiSource}`, /\btestPassword\b/);
   assert.doesNotMatch(authSource, /VITE_TEST_AUTH_PASSWORD|test-0000/);
   assert.match(authSource, /VITE_DEMO_LOGIN/);
-  assert.match(authSource, /signInWithPassword\(\{[\s\S]*password:\s*credential/);
-  assert.match(loginSource, /type="password"/);
-  assert.match(loginSource, /autoComplete="off"/);
-  assert.match(loginSource, /const credential = testCredential;[\s\S]*signInWithTestAccount\(selectedTestLoginId,\s*credential\)/);
-  assert.match(loginSource, /setTestCredential\(""\)/);
+  assert.match(authSource, /\/api\/auth\/alpha-test-login/);
+  assert.match(authSource, /verifyOtp\(\{[\s\S]*token_hash:\s*alphaPayload\.tokenHash[\s\S]*type:\s*"magiclink"/);
+  assert.doesNotMatch(authSource, /signInWithPassword/);
+  assert.doesNotMatch(loginSource, /type="password"|testCredential/);
+  assert.match(alphaLoginSource, /VITE_DEMO_LOGIN/);
+  assert.match(alphaLoginSource, /TEST_ACCOUNT_COUNT/);
+  assert.match(alphaLoginSource, /isActiveAdminAppointment/);
+  assert.match(alphaLoginSource, /generateLink\(\{[\s\S]*type:\s*"magiclink"/);
+  assert.doesNotMatch(alphaLoginSource, /password|VITE_TEST_AUTH_PASSWORD|RANKBALL_TEST_PASSWORD/);
 });
 
 test("migration fixes helper search_path, status, grants, and admin table RLS", async () => {

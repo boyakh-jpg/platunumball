@@ -3276,7 +3276,7 @@ flowchart TD
 7. `current_profile_id()`, `current_admin_level()`, `current_is_admin()`은 `SECURITY DEFINER`, 빈 `search_path`, 고정 소유자, 최소 실행권을 사용한다. 관리자 상태는 정확히 `active`만 허용한다.
 8. `admin_appointments`, `referee_appointments`, `admin_audit_log`, `admin_disciplinary_actions`는 RLS를 활성화하고 브라우저 role의 직접 table 권한을 제거한다.
 9. `rankball.auth.profileCache.v2`는 현재 인증 사용자 한 명의 최소 공개 프로필과 theme만 저장한다. v1은 첫 접근 때 삭제하며 관리자·감사·징계·전체 구장·Discord 식별자·인증 식별자는 저장하지 않는다. Supabase 운영 부팅 시 과거 로컬 데모 상태와 프로필 바인딩도 삭제한다.
-10. 테스트 계정 비밀번호는 frontend profile, API 응답, localStorage, production bundle에 포함하지 않는다. 운영 테스트 로그인이 필요하면 `VITE_DEMO_LOGIN=true`인 로그인 화면에서 운영자가 직접 입력하고 Supabase password Auth로 검증하며, 입력값은 요청 뒤 즉시 화면 메모리에서 지운다.
+10. 테스트 계정 비밀번호는 frontend profile, API 응답, localStorage, production bundle에 포함하지 않는다. `VITE_DEMO_LOGIN=true`인 알파 환경은 1~50번 allowlist의 비관리자 테스트 계정에만 서버가 일회용 magic-link token을 발급하고 브라우저가 Supabase OTP로 교환한다. 활성 관리자 임명이 있는 계정은 차단하며 분당 요청 상한을 적용한다. 베타 전환 시 같은 환경변수를 `false`로 바꿔 UI와 API를 함께 닫는다.
 
 ## 2026-07-24 방 변경 승인·픽업 팀 배치
 

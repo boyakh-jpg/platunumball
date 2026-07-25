@@ -25,7 +25,6 @@ export default function Login({ auth, app }) {
   const location = useLocation();
   const [copyMessage, setCopyMessage] = useState("");
   const [selectedTestLoginId, setSelectedTestLoginId] = useState(auth.testAccounts?.[0]?.id ?? "rankball-001");
-  const [testCredential, setTestCredential] = useState("");
   const from = getAppRedirectFromLocation(location);
   const activeProviders = auth.configured ? providers.filter((provider) => provider.id === "google") : providers;
   const embeddedOAuthBrowser = auth.configured && isEmbeddedOAuthBrowser();
@@ -42,9 +41,7 @@ export default function Login({ auth, app }) {
   };
   const signInWithTestAccount = async (event) => {
     event.preventDefault();
-    const credential = testCredential;
-    setTestCredential("");
-    const nextSession = await auth.signInWithTestAccount(selectedTestLoginId, credential);
+    const nextSession = await auth.signInWithTestAccount(selectedTestLoginId);
     if (nextSession) enterApp();
   };
   const copyBrowserOpenUrl = async () => {
@@ -129,21 +126,7 @@ export default function Login({ auth, app }) {
                   ))}
                 </select>
               </label>
-              {auth.configured ? (
-                <label>
-                  테스트 계정 비밀번호
-                  <input
-                    type="password"
-                    value={testCredential}
-                    onChange={(event) => setTestCredential(event.target.value)}
-                    autoComplete="off"
-                    maxLength={128}
-                    required
-                    disabled={auth.testLoginPending}
-                  />
-                </label>
-              ) : null}
-              <small>입력한 비밀번호는 앱 프로필이나 로컬 저장소에 보관하지 않습니다.</small>
+              <small>알파 테스트 기간에만 제공되며 베타 전환 시 종료됩니다.</small>
               <button type="submit" className="provider-button provider-test" disabled={auth.testLoginPending}>
                 <span>T</span>
                 {auth.testLoginPending ? "로그인 중..." : "테스트 계정으로 입장"}

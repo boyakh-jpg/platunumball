@@ -5,6 +5,7 @@ import adminDisciplinaryAction from "../server/api/admin/disciplinary-action.js"
 import adminRatingPolicy from "../server/api/admin/rating-policy.js";
 import adminReviewAction from "../server/api/admin/review-action.js";
 import adminUserOperations from "../server/api/admin/user-operations.js";
+import alphaTestLogin from "../server/api/auth/alpha-test-login.js";
 import discordCallback from "../server/api/auth/discord/callback.js";
 import discordComplete from "../server/api/auth/discord/complete.js";
 import discordStart from "../server/api/auth/discord/start.js";
@@ -66,6 +67,7 @@ export const API_ROUTES = new Map([
   ["/admin/rating-policy", route(adminRatingPolicy, ["POST"], "admin")],
   ["/admin/review-action", route(adminReviewAction, ["POST"], "admin")],
   ["/admin/user-operations", route(adminUserOperations, ["POST"], "admin")],
+  ["/auth/alpha-test-login", route(alphaTestLogin, ["POST"], "alphaTest")],
   ["/auth/discord/callback", route(discordCallback, ["GET"], "oauthCallback")],
   ["/auth/discord/complete", route(discordComplete, ["POST"], "user")],
   ["/auth/discord/start", route(discordStart, ["POST"], "user")],

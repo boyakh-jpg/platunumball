@@ -1224,7 +1224,7 @@ UI 수정 전:
 2. Google OAuth 버튼과 테스트 계정 버튼은 같은 provider button 계열을 쓴다.
 3. 테스트 계정 선택기는 `VITE_DEMO_LOGIN=true` 또는 localhost에서만 보인다.
 4. 테스트 계정 UI는 실제 가입/프로필 설정 흐름을 대체하지 않는다.
-5. Supabase가 연결된 테스트 로그인은 계정 선택, 비밀번호 입력, 입장 버튼을 한 flat form에 세로 배치한다. 비밀번호 입력값은 로그인 요청 뒤 지우며 별도 저장 UI를 만들지 않는다.
+5. Supabase가 연결된 알파 테스트 로그인은 계정 선택과 입장 버튼만 한 flat form에 세로 배치하고, `알파 테스트 기간에만 제공되며 베타 전환 시 종료됩니다.`를 같은 surface 안에 표시한다.
 
 ## 2026-06-26 settings save UI
 

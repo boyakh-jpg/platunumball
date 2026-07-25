@@ -75,7 +75,7 @@ async function invokeApi({ path = "search", method = "POST", query = {}, headers
 }
 
 test("API routes use deny-by-default method and credential policies", async () => {
-  const validAuthModes = new Set(["user", "admin", "internal", "signedWebhook", "oauthCallback"]);
+  const validAuthModes = new Set(["user", "admin", "internal", "signedWebhook", "oauthCallback", "alphaTest"]);
   assert.ok(API_ROUTES.size > 40);
   for (const [path, route] of API_ROUTES) {
     assert.match(path, /^\/[a-z0-9/-]+$/);
@@ -89,6 +89,7 @@ test("API routes use deny-by-default method and credential policies", async () =
     if (route.auth === "admin") assert.match(handlerSource, /requireAdminContext/);
     if (route.auth === "internal") assert.match(handlerSource, /assert(?:WorkerAccess|BridgeAccess|Access)\(request\)/);
     if (route.auth === "signedWebhook") assert.match(handlerSource, /verifyDiscordSignature/);
+    if (route.auth === "alphaTest") assert.match(handlerSource, /assertAlphaTestLoginEnabled/);
   }
   assert.deepEqual(
     [...API_ROUTES].filter(([, route]) => route.auth === "oauthCallback").map(([path]) => path),

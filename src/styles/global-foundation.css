@@ -459,8 +459,7 @@ body.rankball-scroll-locked .app-main {
   font-weight: 900;
 }
 
-.auth-test-login select,
-.auth-test-login input {
+.auth-test-login select {
   min-height: 42px;
   width: 100%;
 }
