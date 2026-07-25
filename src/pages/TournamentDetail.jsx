@@ -448,7 +448,7 @@ export default function TournamentDetail({ app }) {
   if (!tournament) {
     return (
       <div className="page-stack tournament-detail-page">
-        <Link className="button button-secondary button-md tournament-back-link" to="/app/matches"><ChevronLeft size={17} /> 경기로</Link>
+        <Button as={Link} variant="secondary" className="tournament-back-link" to="/app/matches"><ChevronLeft size={17} /> 경기로</Button>
         <section className="tournament-empty">
           <strong>대회 없음</strong>
           <p>삭제되었거나 아직 불러오지 못한 대회입니다.</p>
@@ -678,7 +678,7 @@ export default function TournamentDetail({ app }) {
 
   return (
     <div className="page-stack tournament-detail-page">
-      <Link className="button button-secondary button-md tournament-back-link" to={matchesReturnTo}><ChevronLeft size={17} /> 경기로</Link>
+      <Button as={Link} variant="secondary" className="tournament-back-link" to={matchesReturnTo}><ChevronLeft size={17} /> 경기로</Button>
 
       <section className="tournament-hero">
         <div>

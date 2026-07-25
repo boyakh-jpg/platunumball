@@ -213,6 +213,15 @@ test("navigation actions use the shared polymorphic button without nested contro
     const source = fs.readFileSync(file, "utf8");
     assert.doesNotMatch(source, /<Link\b[^>]*>\s*<Button\b/, file);
   }
+
+  const jsxFiles = fs.readdirSync("src", { recursive: true })
+    .filter((file) => file.endsWith(".jsx"))
+    .map((file) => `src/${file.replaceAll("\\", "/")}`);
+
+  for (const file of jsxFiles) {
+    const source = fs.readFileSync(file, "utf8");
+    assert.doesNotMatch(source, /<(?:Link|a)\b[^>]*className="button\b/, file);
+  }
 });
 
 test("shared empty-state surfaces have one primitive owner", () => {

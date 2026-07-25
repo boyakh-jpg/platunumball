@@ -1327,7 +1327,7 @@ export default function Settings({ app, auth, section = "main" }) {
           <h1>{sectionMeta.title}</h1>
         </div>
         {settingsSection !== "main" ? (
-          <Link className="button button-secondary button-md" to="/app/settings">설정</Link>
+          <Button as={Link} variant="secondary" to="/app/settings">설정</Button>
         ) : null}
       </header>
       <div className={`content-grid ${settingsSection === "main" ? "" : "settings-section-grid"}`}>
@@ -1748,7 +1748,7 @@ export default function Settings({ app, auth, section = "main" }) {
                   <strong>신고 · 기록 · 구장요청</strong>
                 </div>
               </div>
-              <Link className="button button-secondary button-md" to="/app/admin?section=courts">구장 신청 관리 열기</Link>
+              <Button as={Link} variant="secondary" to="/app/admin?section=courts">구장 신청 관리 열기</Button>
             </Card>
           ) : null}
 
@@ -2247,9 +2247,9 @@ export default function Settings({ app, auth, section = "main" }) {
                 </div>
                 <Badge tone="blue">학습자료</Badge>
               </div>
-              <Link className="button button-secondary button-md" to="/app/referee-rulebook">
+              <Button as={Link} variant="secondary" to="/app/referee-rulebook">
                 <BookOpen size={16} /> 룰북 보기
-              </Link>
+              </Button>
             </div>
             {canOpenRefereeRequestForm ? (
               <>

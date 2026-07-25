@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays } from "lucide-react";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
+import Button from "../components/common/Button.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
@@ -219,7 +220,7 @@ export default function Recorder({ app }) {
             action={(
               <>
                 <button type="button" className="button button-secondary button-md" onClick={retryRecorderLoad}>다시 시도</button>
-                <Link to="/app/matches" className="button button-secondary button-md">일정 보기</Link>
+                <Button as={Link} to="/app/matches" variant="secondary">일정 보기</Button>
               </>
             )}
           />
@@ -227,7 +228,7 @@ export default function Recorder({ app }) {
           <EmptyState
             title="플레이 중인 경기 없음"
             description="이의신청이 끝나 기록이 확정되면 나/팀 기록으로 이동합니다."
-            action={<Link to="/app/matches" className="button button-secondary button-md">일정 보기</Link>}
+            action={<Button as={Link} to="/app/matches" variant="secondary">일정 보기</Button>}
           />
         ) : (
           <section className="om-match-list recorder-card-list" aria-label="플레이 목록">

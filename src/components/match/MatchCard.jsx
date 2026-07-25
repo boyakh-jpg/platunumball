@@ -1,6 +1,7 @@
 import { CalendarDays, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
+import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
 import CourtHoverCard from "../court/CourtHoverCard.jsx";
 import TeamHoverCard from "../team/TeamHoverCard.jsx";
@@ -64,8 +65,9 @@ export default function MatchCard({ match, teams = [], courts = [], onOpen = nul
         <strong>{sideA.score} : {sideB.score}</strong>
         <TeamHoverCard team={teamB} to={sideB.teamId ? `/app/teams/${sideB.teamId}` : undefined}>{sideB.name}</TeamHoverCard>
       </div>
-      <Link
-        className="button button-secondary button-md"
+      <Button
+        as={Link}
+        variant="secondary"
         to={`/app/matches?match=${match.id}`}
         onClick={onOpen ? (event) => {
           event.preventDefault();
@@ -73,7 +75,7 @@ export default function MatchCard({ match, teams = [], courts = [], onOpen = nul
         } : undefined}
       >
         방 보기
-      </Link>
+      </Button>
     </Card>
   );
 }

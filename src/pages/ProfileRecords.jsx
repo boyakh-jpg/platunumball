@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
+import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { compareMatchRecency, formatStatLine, getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerSideName, isMatchWithinRecordDetailWindow, isPersonalRecordMatch } from "../lib/matchUtils.js";
@@ -83,7 +84,7 @@ export default function ProfileRecords({ app }) {
           <p className="eyebrow">MY RECORDS</p>
           <h1>내 기록</h1>
         </div>
-        <Link className="button button-secondary button-md" to="/app/profile">프로필로</Link>
+        <Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>
       </header>
 
       <Card className="section-card profile-records-summary">

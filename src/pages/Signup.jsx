@@ -130,7 +130,7 @@ export default function Signup({ app, auth }) {
           <p className="eyebrow">Signup</p>
           <h1>가입 정보 설정</h1>
         </div>
-        <Link className="button button-secondary" to={redirectTo}><ArrowLeft size={17} /> 프로필로</Link>
+        <Button as={Link} variant="secondary" to={redirectTo}><ArrowLeft size={17} /> 프로필로</Button>
       </header>
 
       <div className="content-grid signup-setup-grid">

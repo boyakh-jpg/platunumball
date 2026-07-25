@@ -199,7 +199,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           {embedded ? (
             <Button type="button" variant="secondary" size="sm" onClick={onClose}>닫기</Button>
           ) : (
-            <Link className="button button-secondary button-sm" to="/app">홈으로</Link>
+            <Button as={Link} variant="secondary" size="sm" to="/app">홈으로</Button>
           )}
         </div>
       </div>
@@ -235,9 +235,9 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           </div>
         </div>
         <div className="court-detail-actions">
-          <a className="button button-secondary button-sm court-map-link" href={mapUrl} target="_blank" rel="noreferrer">
+          <Button as="a" variant="secondary" size="sm" className="court-map-link" href={mapUrl} target="_blank" rel="noreferrer">
             지도 보기 <ExternalLink size={15} />
-          </a>
+          </Button>
           <Button type="button" variant="secondary" size="sm" onClick={() => setCorrectionOpen((open) => !open)} aria-expanded={correctionOpen}>
             <Flag size={15} /> 정보 수정 신고
           </Button>

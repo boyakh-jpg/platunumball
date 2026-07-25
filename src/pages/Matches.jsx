@@ -1587,13 +1587,14 @@ export default function Matches({ app }) {
                   <em>{pendingRows.length ? `${pendingRows.length}팀 승인 대기` : "참가 승인 완료"}</em>
                 </div>
                 <div className="om-tournament-actions">
-                  <Link
-                    className="button button-primary button-md om-tournament-detail-link"
+                  <Button
+                    as={Link}
+                    className="om-tournament-detail-link"
                     to={`/app/tournaments/${tournament.id}`}
                     state={{ from: `${location.pathname}${location.search}` }}
                   >
                     {tournament.format === "tournament" ? "대진표" : "리그표"}
-                  </Link>
+                  </Button>
                 </div>
               </article>
             );

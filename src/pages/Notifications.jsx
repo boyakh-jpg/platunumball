@@ -118,8 +118,10 @@ export default function Notifications({ app }) {
                 <span className="home-invitation-actions">
                   <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
                   <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
-                  <Link
-                    className="button button-secondary button-sm"
+                  <Button
+                    as={Link}
+                    variant="secondary"
+                    size="sm"
                     to={`/app/recruiting?filter=invited&post=${post.id}`}
                     onClick={(event) => {
                       event.preventDefault();
@@ -127,7 +129,7 @@ export default function Notifications({ app }) {
                     }}
                   >
                     방 보기
-                  </Link>
+                  </Button>
                 </span>
               </div>
             ))}
@@ -156,7 +158,7 @@ export default function Notifications({ app }) {
                   <span className="home-invitation-actions">
                     <Button size="sm" type="button" onClick={() => acceptTeamInvite(invitation)}>수락</Button>
                     <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineTeamInvitation(invitation.id)}>거절</Button>
-                    <Link className="button button-secondary button-sm" to={`/app/teams/${invitation.teamId}`}>팀 보기</Link>
+                    <Button as={Link} variant="secondary" size="sm" to={`/app/teams/${invitation.teamId}`}>팀 보기</Button>
                   </span>
                 </div>
               );

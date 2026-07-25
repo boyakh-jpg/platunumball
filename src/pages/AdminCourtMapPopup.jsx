@@ -92,9 +92,9 @@ export default function AdminCourtMapPopup() {
           <small>{court.addressText || "주소 미입력"}</small>
         </div>
         <div className="admin-court-map-popup-actions">
-          <a className="button button-secondary button-sm" href={externalMapUrl} target="rankball-court-map-external">
+          <Button as="a" variant="secondary" size="sm" href={externalMapUrl} target="rankball-court-map-external">
             <ExternalLink size={14} /> 네이버 지도 웹
-          </a>
+          </Button>
           <Button type="button" size="sm" variant="secondary" onClick={() => window.close()}><X size={15} /> 창 닫기</Button>
         </div>
       </header>
@@ -107,7 +107,7 @@ export default function AdminCourtMapPopup() {
       ) : (
         <section className="admin-court-map-popup-empty">
           <p>위도·경도를 먼저 입력하면 확대 18 지도와 거리뷰를 함께 볼 수 있습니다.</p>
-          <a className="button button-primary button-md" href={externalMapUrl} target="rankball-court-map-external">주소로 네이버 지도 열기</a>
+          <Button as="a" href={externalMapUrl} target="rankball-court-map-external">주소로 네이버 지도 열기</Button>
         </section>
       )}
     </main>

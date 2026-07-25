@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
+import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { assetUrl } from "../lib/assets.js";
 
@@ -311,13 +312,15 @@ export default function GettingStarted() {
   return (
     <div className="getting-started-page">
       <div className="getting-started-topbar">
-        <Link
-          className="button ui-button button-secondary ui-button-secondary button-sm ui-button-sm"
+        <Button
+          as={Link}
+          variant="secondary"
+          size="sm"
           to="/app"
         >
           <ArrowLeft size={16} aria-hidden="true" />
           홈으로
-        </Link>
+        </Button>
         <span>ALPHA GUIDE · {GUIDE_CHAPTERS.length}단계</span>
       </div>
 
@@ -422,31 +425,35 @@ export default function GettingStarted() {
 
       <nav className="getting-started-pager" aria-label="사용 설명 이전 다음">
         {previousChapter ? (
-          <Link
-            className="button ui-button button-secondary ui-button-secondary button-sm ui-button-sm"
+          <Button
+            as={Link}
+            variant="secondary"
+            size="sm"
             to={`?chapter=${previousChapter.id}`}
           >
             <ArrowLeft size={16} aria-hidden="true" />
             이전
-          </Link>
+          </Button>
         ) : <span />}
         <span>{chapter.navLabel} · {activeIndex + 1}/{GUIDE_CHAPTERS.length}</span>
         {nextChapter ? (
-          <Link
-            className="button ui-button button-primary ui-button-primary button-sm ui-button-sm"
+          <Button
+            as={Link}
+            size="sm"
             to={`?chapter=${nextChapter.id}`}
           >
             다음
             <ArrowRight size={16} aria-hidden="true" />
-          </Link>
+          </Button>
         ) : (
-          <Link
-            className="button ui-button button-primary ui-button-primary button-sm ui-button-sm"
+          <Button
+            as={Link}
+            size="sm"
             to="/app"
           >
             완료
             <ArrowRight size={16} aria-hidden="true" />
-          </Link>
+          </Button>
         )}
       </nav>
     </div>

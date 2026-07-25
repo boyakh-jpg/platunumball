@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { assetUrl } from "../lib/assets.js";
 import { getProfileIconAchievementState, PROFILE_ICON_GROUPS } from "../lib/profileIcons.js";
@@ -93,7 +94,7 @@ export default function ProfileAchievements({ app }) {
           <p className="eyebrow">Achievements</p>
           <h1>아이콘 업적</h1>
         </div>
-        <Link className="button button-secondary" to="/app/profile">프로필로</Link>
+        <Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>
       </header>
 
       <Card className="section-card profile-achievement-summary">

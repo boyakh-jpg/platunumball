@@ -59,7 +59,7 @@ function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
           <p className="eyebrow">Record</p>
           <h2>내 기록</h2>
         </div>
-        <Link className="button button-secondary button-sm" to="/app/profile/records">기록 더보기</Link>
+        <Button as={Link} variant="secondary" size="sm" to="/app/profile/records">기록 더보기</Button>
       </div>
       {loading ? (
         <div className="ui-empty-state-compact">기록 정리 중</div>
@@ -167,7 +167,7 @@ export default function Profile({ app }) {
           <p className="eyebrow">Profile</p>
           <h1>프로필</h1>
         </div>
-        <Link className="button button-secondary" to="/app/signup">가입 정보 설정</Link>
+        <Button as={Link} variant="secondary" to="/app/signup">가입 정보 설정</Button>
       </header>
       <div className="content-grid profile-overview-grid">
         <div className="page-stack profile-main-stack">
@@ -181,7 +181,7 @@ export default function Profile({ app }) {
                 <ProfileEmblem user={user} className="hero-avatar" />
                 <div className="profile-icon-card-actions">
                   <Button type="button" size="sm" onClick={() => setIconDialogOpen(true)}>아이콘 변경</Button>
-                  <Link className="button button-secondary button-sm" to="/app/profile/achievements">업적 보기</Link>
+                  <Button as={Link} variant="secondary" size="sm" to="/app/profile/achievements">업적 보기</Button>
                 </div>
               </div>
             </div>

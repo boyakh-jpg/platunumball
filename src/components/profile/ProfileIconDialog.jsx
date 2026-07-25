@@ -251,7 +251,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
 
         {feedback ? <p className="form-warning profile-icon-dialog-feedback">{feedback}</p> : null}
         <footer className="profile-icon-dialog-actions">
-          <Link className="button button-secondary button-sm" to="/app/profile/achievements" onClick={onClose}>업적 보기</Link>
+          <Button as={Link} variant="secondary" size="sm" to="/app/profile/achievements" onClick={onClose}>업적 보기</Button>
           <Button type="submit" size="sm" disabled={pending || loading}>{pending ? "저장 중" : "저장"}</Button>
         </footer>
         </form>

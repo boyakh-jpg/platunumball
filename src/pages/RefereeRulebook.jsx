@@ -1,6 +1,7 @@
 import { ArrowLeft, BookOpen, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
+import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { assetUrl } from "../lib/assets.js";
 import {
@@ -98,9 +99,9 @@ export default function RefereeRulebook({ theme = "dark" }) {
           <p className="eyebrow">Study guide</p>
           <h1>커뮤니티 심판 룰북</h1>
         </div>
-        <Link className="button button-secondary button-md" to="/app/settings">
+        <Button as={Link} variant="secondary" to="/app/settings">
           <ArrowLeft size={16} /> 설정
-        </Link>
+        </Button>
       </header>
 
       <Card className="referee-rulebook-intro">

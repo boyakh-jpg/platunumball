@@ -848,7 +848,7 @@ export default function MatchRoom({ app }) {
             app.actions.approveMatch(match.id, currentUserSideName, app.currentUser.id);
           }}>{nextAction.button}</Button>
         ) : nextAction.href ? (
-          <a className="button button-primary button-md" href={nextAction.href}>{nextAction.button}</a>
+          <Button as="a" href={nextAction.href}>{nextAction.button}</Button>
         ) : (
           <Badge tone={status.tone}>{status.label}</Badge>
         )}
