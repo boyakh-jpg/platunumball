@@ -355,18 +355,6 @@ export function completePracticeAttendance(state, matchId) {
       next = withPracticeActor(next, operatorId, repository.checkInMatchPlayer, matchId, sideName, playerId);
     });
   });
-  const updatedMatch = next.matches.find((item) => item.id === matchId);
-  const pickup = updatedMatch?.formationMode === "pickup"
-    || updatedMatch?.rules?.formationMode === "pickup"
-    || updatedMatch?.matchIntent === "pickup"
-    || updatedMatch?.rules?.matchIntent === "pickup";
-  if (pickup && updatedMatch?.rules?.sideAssignmentStatus !== "confirmed") {
-    next = withPracticeActor(next, operatorId, repository.generatePickupSideAssignment, matchId, "mmr_balanced");
-    next = withPracticeActor(next, operatorId, repository.confirmPickupSideAssignment, matchId, {
-      rotationMode: "manual",
-      rotationIntervalMinutes: null,
-    });
-  }
   return next;
 }
 

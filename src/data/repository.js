@@ -4003,12 +4003,13 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
   if (!MATCH_SIDES.includes(sideName)) return state;
   if (!["self", "late", "injury", "ejection", "operator"].includes(reason)) return state;
   const substitutionAccess = getMatchSubstitutionAccess(match, state.currentUserId, sideName, {
-    canOperate: currentUserCanOperateStartedMatch(state, match),
+    canOperate: currentUserIsEligibleMatchReferee(state, match),
     recorderSides: getStatRecorderSides(match, state.currentUserId),
   });
   if (!substitutionAccess.allowedReservePlayerIds.includes(reservePlayerId)) return state;
-  if (!substitutionAccess.canManage && reason !== "self") return state;
-  if (substitutionAccess.canManage && reason === "self") return state;
+  const selfSubstitution = reason === "self" && state.currentUserId === reservePlayerId;
+  if (reason === "self" && !selfSubstitution) return state;
+  if (!selfSubstitution && !substitutionAccess.canManage) return state;
   if (reason === "late" && !isMatchLateAttendancePlayer(match, reservePlayerId)) return state;
 
   const activeIds = match[sideName]?.players ?? [];
@@ -4293,21 +4294,6 @@ export function checkInMatchPlayer(state, matchId, sideName, playerId) {
   if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !playerId) return state;
-  if (playerId === state.currentUserId) {
-    return {
-      ...state,
-      notifications: [
-        {
-          id: makeId("n"),
-          title: "본인 출석 불가",
-          body: "출석체크는 심판 또는 방장이 다른 참가자만 처리합니다.",
-          tone: "orange",
-          matchId,
-        },
-        ...state.notifications,
-      ],
-    };
-  }
   if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return state;
   const placement = getMatchPlayerPlacement(match, playerId);
@@ -4765,6 +4751,8 @@ export function confirmPickupSideAssignment(state, matchId, rotation = {}) {
   const pickup = (match.formationMode ?? match.rules?.formationMode) === "pickup"
     || (match.matchIntent ?? match.rules?.matchIntent) === "pickup";
   if (!pickup || getMissingMatchAttendance(match).length) return state;
+  if (match.rules?.sideAssignmentStatus !== "draft"
+    || Number(match.rules?.sideAssignmentRevision ?? 0) < 1) return state;
   const sideCapacity = getRecruitingSideCapacity(match);
   if (getMatchSidePlayerIds(match, "teamA").length !== sideCapacity || getMatchSidePlayerIds(match, "teamB").length !== sideCapacity) return state;
   const rotationMode = ["period", "interval", "manual"].includes(rotation.rotationMode)
@@ -4896,7 +4884,9 @@ export function swapPickupMatchPlayers(state, matchId, firstPlayerId, secondPlay
   if (!canEditMatchPreparation(state, match) || getMatchRoomPhase(match).phase !== "checkin") return state;
   const pickup = (match.formationMode ?? match.rules?.formationMode) === "pickup"
     || (match.matchIntent ?? match.rules?.matchIntent) === "pickup";
-  if (!pickup || match.rules?.sideAssignmentStatus === "confirmed") return state;
+  if (!pickup
+    || match.rules?.sideAssignmentStatus !== "draft"
+    || Number(match.rules?.sideAssignmentRevision ?? 0) < 1) return state;
 
   const firstPlacement = getMatchPlayerPlacement(match, firstPlayerId);
   const secondPlacement = getMatchPlayerPlacement(match, secondPlayerId);
@@ -4960,7 +4950,7 @@ export function swapPickupMatchPlayers(state, matchId, firstPlayerId, secondPlay
     parties: [],
     rules: {
       ...(match.rules ?? {}),
-      sideAssignmentStatus: "pending",
+      sideAssignmentStatus: "draft",
       sideAssignmentConfirmedAt: null,
       sideAssignmentConfirmedBy: null,
     },

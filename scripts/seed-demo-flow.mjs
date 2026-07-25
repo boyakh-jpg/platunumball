@@ -1065,7 +1065,7 @@ assertFlow(!getMatch(state, refereeAbsentMatchId).refereeId && getMatch(state, r
   formerRefereeId: getMatch(state, refereeAbsentMatchId).formerRefereeId,
 });
 state = withUser(state, "u1", (scoped) => checkInMatchPlayer(scoped, refereeAbsentMatchId, "teamA", "u1"));
-assertFlow(!getMatch(state, refereeAbsentMatchId).attendance.teamA.includes("u1"), "심판 미출석 전환 후 방장 self-check 금지", {
+assertFlow(getMatch(state, refereeAbsentMatchId).attendance.teamA.includes("u1"), "심판 미출석 전환 후 방장 본인 출석 저장", {
   attendance: getMatch(state, refereeAbsentMatchId).attendance,
 });
 state = withUser(state, "u1", (scoped) => checkInMatchPlayer(scoped, refereeAbsentMatchId, "teamB", "u6"));

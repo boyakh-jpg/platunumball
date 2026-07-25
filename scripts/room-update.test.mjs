@@ -483,6 +483,10 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   const changeApprovalMigration = readFileSync(new URL("../supabase/migrations/20260724153000_room_change_approval.sql", import.meta.url), "utf8");
   const pickupAssignmentMigration = readFileSync(new URL("../supabase/migrations/20260724153500_pickup_assignment_modes.sql", import.meta.url), "utf8");
   const pickupRerollMigration = readFileSync(new URL("../supabase/migrations/20260724160000_pickup_assignment_reroll_policy.sql", import.meta.url), "utf8");
+  const pickupConfirmationGuardMigration = readFileSync(new URL("../supabase/migrations/20260725024500_guard_pickup_assignment_confirmation.sql", import.meta.url), "utf8");
+  const pickupSwapConfirmationGuard = pickupConfirmationGuardMigration.match(
+    /create or replace function public\.rankball_match_swap_pickup_players[\s\S]*?revoke all on function public\.rankball_match_swap_pickup_players/,
+  )?.[0] ?? "";
   const roomEditOnceMigration = readFileSync(new URL("../supabase/migrations/20260724155000_room_edit_once.sql", import.meta.url), "utf8");
   const roomChangeDeadlineMigration = readFileSync(new URL("../supabase/migrations/20260724161000_room_change_deadlines.sql", import.meta.url), "utf8");
   const roomCancelPolicyMigration = readFileSync(new URL("../supabase/migrations/20260724162000_room_cancel_policy.sql", import.meta.url), "utf8");
@@ -520,6 +524,16 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(pickupRerollMigration, /pickupRerollUserIds/);
   assert.match(pickupRerollMigration, /'ratingScale', rating_scale/);
   assert.match(pickupRerollMigration, /'chatMessages'/);
+  assert.match(pickupConfirmationGuardMigration, /rules->>'sideAssignmentStatus', ''\) <> 'draft'/);
+  assert.match(pickupConfirmationGuardMigration, /rules->>'sideAssignmentRevision', ''\) !~ '\^\[1-9\]\[0-9\]\*\$'/);
+  assert.match(pickupConfirmationGuardMigration, /pickup_side_assignment_draft_required/);
+  assert.match(pickupConfirmationGuardMigration, /grant execute on function public\.rankball_match_confirm_pickup_assignment\(text, text, text, integer\) to service_role/);
+  assert.match(pickupSwapConfirmationGuard, /rules->>'sideAssignmentStatus', ''\) <> 'draft'/);
+  assert.match(pickupSwapConfirmationGuard, /rules->>'sideAssignmentRevision', ''\) !~ '\^\[1-9\]\[0-9\]\*\$'/);
+  assert.match(pickupSwapConfirmationGuard, /jsonb_build_object\('sideAssignmentStatus', 'draft'\)/);
+  assert.match(pickupSwapConfirmationGuard, /'sideAssignmentStatus', 'draft'\s*\n\s*\);/);
+  assert.match(pickupConfirmationGuardMigration, /grant execute on function public\.rankball_match_swap_pickup_players\(text, text, text, text\) to service_role/);
+  assert.doesNotMatch(pickupConfirmationGuardMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
   assert.match(roomEditOnceMigration, /room_edit_limit_reached/);
   assert.match(roomEditOnceMigration, /'roomEditCount', 1/);
   assert.match(roomEditOnceMigration, /rankball_recruiting_room_update_action_pre_edit_once/);

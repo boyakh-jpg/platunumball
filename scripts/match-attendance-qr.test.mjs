@@ -5,7 +5,7 @@ import {
   getRecommendedSideSize,
   isAttendanceCheckinOpen,
 } from "../server/api/matches/attendance-qr.js";
-import { substituteMatchPlayer } from "../src/data/repository.js";
+import { checkInMatchPlayer, substituteMatchPlayer } from "../src/data/repository.js";
 import { mergeMatchesById } from "../src/hooks/useAppData.js";
 import { deriveMatchClock } from "../src/lib/matchClock.js";
 import {
@@ -127,7 +127,7 @@ test("출석 정리는 경기 10분 전부터 열린다", () => {
   assert.equal(isAttendanceCheckinOpen({ ...match, started_at: "2026-07-24T11:00:00Z" }, 0), true);
 });
 
-test("후보는 자기 교체만 하고 운영자만 전체 후보와 사유를 관리한다", () => {
+test("후보 본인·배정 심판·무심판 해당 사이드 기록자만 교체할 수 있다", () => {
   const match = {
     id: "candidate-substitution",
     status: "agreed",
@@ -200,6 +200,76 @@ test("후보는 자기 교체만 하고 운영자만 전체 후보와 사유를 
     "injury",
   );
   assert.deepEqual(refereeSubstituted.matches[0].teamA.players, ["reserve-a"]);
+
+  const noRefereeMatch = {
+    ...match,
+    createdBy: "host",
+    refereeId: "",
+    reservePlayers: { teamA: ["reserve-a", "reserve-a2"], teamB: ["reserve-b"] },
+    rules: { lateAttendancePlayerIds: ["reserve-a"] },
+  };
+  const noRefereeState = {
+    ...state,
+    matches: [noRefereeMatch],
+    users: [
+      ...state.users,
+      { id: "host", name: "방장" },
+      { id: "reserve-b", name: "후보 B" },
+    ],
+  };
+  const hostBlocked = substituteMatchPlayer(
+    { ...noRefereeState, currentUserId: "host" },
+    match.id,
+    "teamA",
+    "active-a",
+    "reserve-a2",
+    "operator",
+  );
+  assert.equal(hostBlocked.matches[0].teamA.players[0], "active-a");
+
+  const sideRecorderSubstituted = substituteMatchPlayer(
+    { ...noRefereeState, currentUserId: "reserve-a" },
+    match.id,
+    "teamA",
+    "active-a",
+    "reserve-a",
+    "injury",
+  );
+  assert.equal(sideRecorderSubstituted.matches[0].teamA.players[0], "reserve-a");
+
+  const crossSideRecorderBlocked = substituteMatchPlayer(
+    { ...noRefereeState, currentUserId: "reserve-b" },
+    match.id,
+    "teamA",
+    "active-a",
+    "reserve-a2",
+    "operator",
+  );
+  assert.equal(crossSideRecorderBlocked.matches[0].teamA.players[0], "active-a");
+});
+
+test("출석 운영자는 자기 출석도 같은 중앙 action으로 저장한다", () => {
+  const match = {
+    id: "host-self-checkin",
+    createdBy: "host",
+    status: "agreed",
+    timingType: "instant",
+    teamA: { players: ["host"] },
+    teamB: { players: ["guest"] },
+    reservePlayers: { teamA: [], teamB: [] },
+    attendance: { teamA: [], teamB: [] },
+    rules: {},
+  };
+  const state = {
+    currentUserId: "host",
+    users: [{ id: "host", name: "방장" }, { id: "guest", name: "참가자" }],
+    matches: [match],
+    recruitingPosts: [],
+    notifications: [],
+    settings: {},
+  };
+  const checkedIn = checkInMatchPlayer(state, match.id, "teamA", "host");
+  assert.deepEqual(checkedIn.matches[0].attendance.teamA, ["host"]);
 });
 
 test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", async () => {
@@ -297,6 +367,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const clockAccuracySql = await readSource("supabase/migrations/20260725001000_match_play_time_clock_accuracy.sql");
   const roomEquipmentSql = await readSource("supabase/migrations/20260725001500_room_equipment_edit.sql");
   const candidateSubstitutionSql = await readSource("supabase/migrations/20260725018000_candidate_self_substitution_and_late_guard.sql");
+  const substitutionPermissionSql = await readSource("supabase/migrations/20260725025000_match_substitution_permission_hardening.sql");
   assert.match(sql, /interval '10 minutes'/u);
   assert.match(sql, /candidate_size <= current_side_size/u);
   assert.match(sql, /'attendanceStatus', 'late'/u);
@@ -322,4 +393,13 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(candidateSubstitutionSql, /safe_reason := case when late_eligible then 'late' else 'self' end/u);
   assert.match(candidateSubstitutionSql, /match_late_substitution_not_eligible/u);
   assert.match(candidateSubstitutionSql, /'actorProfileId', safe_actor_id/u);
+  assert.match(substitutionPermissionSql, /public\.rankball_is_match_referee_eligible\(safe_actor_id, safe_match_id\)/u);
+  assert.match(substitutionPermissionSql, /assigned_referee_id is null[\s\S]*effective_recorder_id := public\.rankball_match_effective_recorder_id/u);
+  assert.match(substitutionPermissionSql, /self_substitution := safe_reason = 'self'/u);
+  assert.match(substitutionPermissionSql, /elsif assigned_referee_id is not null then[\s\S]*roster_move_actor_id := assigned_referee_id/u);
+  assert.match(substitutionPermissionSql, /elsif assigned_referee_id is null and effective_recorder_id is not null/u);
+  assert.match(substitutionPermissionSql, /if self_substitution then[\s\S]*rankball_match_roster_move_action_pre_substitution_permission/u);
+  assert.match(substitutionPermissionSql, /pg_get_functiondef\([\s\S]*rankball_match_roster_move_action_pre_substitution_permission/u);
+  assert.doesNotMatch(substitutionPermissionSql, /alter function public\.rankball_match_roster_move_action/u);
+  assert.doesNotMatch(substitutionPermissionSql, /safe_actor_id = coalesce\(current_match\.created_by/u);
 });

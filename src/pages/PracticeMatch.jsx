@@ -19,6 +19,7 @@ import {
   submitPracticeSampleResult,
 } from "../lib/practiceMatch.js";
 import { getMatchReservePlayerIds } from "../lib/matchUtils.js";
+import { isPickupRoomFlow } from "../lib/roomFlow.js";
 import CreateMatch from "./CreateMatch.jsx";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
@@ -33,7 +34,9 @@ function getPracticeInstruction(progress, match = null) {
     return "양쪽 인원이 찼습니다. 공용 방의 ‘매치 확정’을 눌러 경기 준비방으로 이동하세요.";
   }
   if (progress.phase === "checkin") {
-    return "연습 선수 출석을 처리한 뒤 공용 방의 ‘경기 시작’을 직접 눌러보세요.";
+    return isPickupRoomFlow(match)
+      ? "연습 선수 출석을 처리한 뒤 ‘팀 나누기’에서 방식을 고르고 ‘배정 확정’을 누르세요."
+      : "연습 선수 출석을 처리한 뒤 공용 방의 ‘경기 시작’을 직접 눌러보세요.";
   }
   if (progress.phase === "live") {
     return match?.rules?.gameClockEnabled
@@ -207,7 +210,9 @@ export default function PracticeMatch({ app }) {
     }
     if (progress.phase === "checkin") {
       commitState(completePracticeAttendance(stateRef.current, matchId));
-      setHelperStatus("연습 선수 출석과 필요한 팀 배치를 완료했습니다.");
+      setHelperStatus(isPickupRoomFlow(match)
+        ? "연습 선수 출석을 완료했습니다. 이제 팀 나누기와 배정 확정을 직접 해보세요."
+        : "연습 선수 출석을 완료했습니다.");
       return;
     }
     if (["postgame", "dispute"].includes(progress.phase) && !match?.result) {

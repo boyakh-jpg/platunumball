@@ -19,6 +19,7 @@ import {
   isMatchPregameSlotManagementOpen,
   isMatchRecordParticipantSetupOpen,
 } from "../src/lib/roomFlow.js";
+import { getMatchSideLeaderId } from "../src/lib/matchUtils.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
 
 test("경기 목적과 팀 구성은 독립 필드이고 레거시 matchIntent만 호환용으로 만든다", () => {
@@ -253,21 +254,33 @@ test("픽업 방장 또는 심판은 출석 후 두 참가자의 A/B·출전·�
     },
   };
   const state = { currentUserId: "host", users, teams: [], matches: [match], notifications: [], settings: {} };
+  const pendingConfirm = confirmPickupSideAssignment(state, match.id, { rotationMode: "manual" });
+  assert.equal(pendingConfirm.matches[0].rules.sideAssignmentStatus, "pending");
+  const draftMatch = {
+    ...match,
+    rules: {
+      ...match.rules,
+      pickupTeamAssignmentMode: "manual",
+      sideAssignmentStatus: "draft",
+      sideAssignmentRevision: 1,
+    },
+  };
+  const draftState = { ...state, matches: [draftMatch] };
 
-  assert.equal(startMatch(state, match.id).matches[0].startedAt, undefined);
-  const deniedSwap = swapPickupMatchPlayers({ ...state, currentUserId: "a2" }, match.id, "host", "b1");
-  assert.equal(deniedSwap.matches[0], match);
-  const deniedReserveSwap = swapPickupMatchPlayers({ ...state, currentUserId: "ra" }, match.id, "host", "b1");
-  assert.equal(deniedReserveSwap.matches[0], match);
-  const refereeMatch = { ...match, refereeId: "ref", refereeTrustMin: 90 };
+  assert.equal(startMatch(draftState, match.id).matches[0].startedAt, undefined);
+  const deniedSwap = swapPickupMatchPlayers({ ...draftState, currentUserId: "a2" }, match.id, "host", "b1");
+  assert.equal(deniedSwap.matches[0], draftMatch);
+  const deniedReserveSwap = swapPickupMatchPlayers({ ...draftState, currentUserId: "ra" }, match.id, "host", "b1");
+  assert.equal(deniedReserveSwap.matches[0], draftMatch);
+  const refereeMatch = { ...draftMatch, refereeId: "ref", refereeTrustMin: 90 };
   const refereeSwap = swapPickupMatchPlayers({
-    ...state,
+    ...draftState,
     currentUserId: "ref",
     matches: [refereeMatch],
   }, match.id, "host", "b1");
   assert.deepEqual(refereeSwap.matches[0].teamA.players, ["b1", "a2"]);
 
-  const activeSwap = swapPickupMatchPlayers(state, match.id, "host", "b1");
+  const activeSwap = swapPickupMatchPlayers(draftState, match.id, "host", "b1");
   assert.deepEqual(activeSwap.matches[0].teamA.players, ["b1", "a2"]);
   assert.deepEqual(activeSwap.matches[0].teamB.players, ["host", "b2"]);
   assert.deepEqual(activeSwap.matches[0].attendance, {
@@ -308,5 +321,15 @@ test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형
   assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-list\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
   assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(recruitingStyles, /\.pickup-rotation-panel \.arena-room-edit-actions\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
+  assert.match(recruitingSource, /sideLeader:\s*\{\s*tone:\s*"captain",\s*label:\s*"사이드장"\s*\}/);
+  assert.match(recruitingSource, /const slotTrackCount = Math\.max\(1,\s*Number\(side\.capacity\) \|\| activeSlots\.length \|\| 1\)/);
+  assert.match(recruitingSource, /displayedSideLeaderId = \([\s\S]*playerId === hostPlayerId[\s\S]*\) \? "" : sideLeaderId/);
+  assert.match(recruitingSource, /showCaptainBadge=\{!sourceMatch && showCaptainBadge\}/);
+  assert.equal(getMatchSideLeaderId({
+    createdBy: "host",
+    teamA: { players: ["other", "host"] },
+    reservePlayers: { teamA: [] },
+    parties: [],
+  }, [], "teamA"), "host");
   assert.doesNotMatch(recruitingSource, /selfRow \? <span className="form-chip">본인<\/span>/);
 });

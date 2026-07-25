@@ -630,6 +630,7 @@ function RoomSlotAvatar({ user, mmr = DEFAULT_RATING, position = null }) {
 
 const ROOM_SLOT_BADGES = {
   host: { tone: "host", label: "방장" },
+  sideLeader: { tone: "captain", label: "사이드장" },
   partyLeader: { tone: "captain", label: "파티장" },
 };
 
@@ -654,7 +655,7 @@ function getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge = fals
   const sideLeaderId = options.sideLeaderId ?? "";
   if (!playerId) return null;
   if (playerId === hostPlayerId) return ROOM_SLOT_BADGES.host;
-  if (sideLeaderId && sideLeaderId === playerId) return ROOM_SLOT_BADGES.partyLeader;
+  if (sideLeaderId && sideLeaderId === playerId) return ROOM_SLOT_BADGES.sideLeader;
   if (!showCaptainBadge || !showPartyBadge) return null;
   if (isPartyEntry(entry) && getEntryPartyLeaderId(entry, hostPlayerId, roomState) === playerId) return ROOM_SLOT_BADGES.partyLeader;
   return null;
@@ -1277,6 +1278,11 @@ function SideRoster({
   });
   const activeSlotGroups = groupPartySlots(activeSlots);
   const openSlots = Math.max(0, side.capacity - side.projectedFilled);
+  const slotTrackCount = Math.max(1, Number(side.capacity) || activeSlots.length || 1);
+  const displayedSideLeaderId = (
+    activeSlots.some(({ playerId }) => playerId === hostPlayerId)
+    || (side.fillSlots ?? []).some(({ playerId }) => playerId === hostPlayerId)
+  ) ? "" : sideLeaderId;
   const renderActiveSlot = ({ entry, playerId, user }) => {
     const partyEntry = isPartyEntry(entry);
     const partyLabel = isRecruitingTeamEntry(entry) && entry.team ? entry.team.name : "개인 참여";
@@ -1293,7 +1299,7 @@ function SideRoster({
         detail={partyLabel}
         mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
         position={displayPosition}
-        badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge, roomState, { sideLeaderId })}
+        badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge, roomState, { sideLeaderId: displayedSideLeaderId })}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, false, playerId, entry.id, event) : null}
       />
     );
@@ -1306,7 +1312,7 @@ function SideRoster({
           <strong>{side.projectedFilled}/{side.capacity}</strong>
         </div>
       </header>
-      <div className="arena-room-slot-row" style={{ "--slot-count": 5 }}>
+      <div className="arena-room-slot-row" style={{ "--slot-count": slotTrackCount }}>
         {activeSlotGroups.map((group) => (
           group.type === "party" ? (
             <div
@@ -1329,7 +1335,7 @@ function SideRoster({
             currentUserId={currentUserId}
             showCaptainBadge={showCaptainBadge}
             roomState={roomState}
-            sideLeaderId={sideLeaderId}
+            sideLeaderId={displayedSideLeaderId}
             slotPositions={slotPositions}
             canManageEntry={canManageEntry}
             onSelfAction={(event) => onSelfSlotAction?.(sideName, false, candidate.playerId, candidate.entryId, event)}
@@ -1385,6 +1391,10 @@ function ReserveLine({
   const slots = candidates.slice(0, capacity);
   const openSlots = Math.max(0, capacity - slots.length);
   const slotTrackCount = capacity;
+  const displayedSideLeaderId = (
+    playingSet.has(hostPlayerId)
+    || candidates.some(({ playerId }) => playerId === hostPlayerId)
+  ) ? "" : sideLeaderId;
   const reserveSlots = slots.map((candidate) => {
     const entry = (lobby.entries ?? []).find((item) => item.id === candidate.entryId);
     return {
@@ -1413,7 +1423,7 @@ function ReserveLine({
         detail={candidate.sourceLabel}
         mmr={user.ratings?.integrated ?? DEFAULT_RATING}
         position={displayPosition}
-        badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: false, sideLeaderId })}
+        badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: false, sideLeaderId: displayedSideLeaderId })}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, true, candidate.playerId, candidate.entryId, event) : null}
       />
     );
@@ -1661,7 +1671,7 @@ function MatchSubstitutionPanel({
     <div className="arena-record-roster-panel">
       <header>
         <strong>선수 교체</strong>
-        <span>후보는 본인 교체를 누르고, 운영자·기록자는 현장 사유를 지정합니다.</span>
+        <span>후보는 본인 교체를 누르고, 배정 심판·해당 사이드 기록자는 현장 사유를 지정합니다.</span>
       </header>
       <div className="arena-record-roster-list">
         {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser, canManage }) => {
@@ -4051,7 +4061,7 @@ function RecruitingRoomModalReady({
           sourceMatchPhase?.phase === "live" &&
           !sourceMatch?.endedAt &&
           sourceMatchRecordWindow?.beforeEnd &&
-          (currentUserCanOperateStartedSourceMatch || sourceMatchRecorderSides.includes(sideName))
+          (currentUserIsSourceReferee || sourceMatchRecorderSides.includes(sideName))
         );
         const sourceMatchApprovalOpen = Boolean(
           sourceMatch?.result &&
@@ -4690,7 +4700,7 @@ function RecruitingRoomModalReady({
                       teams={app.state.teams}
                       hostPlayerId={roomOwnerId}
                       currentUserId={app.currentUser.id}
-                      showCaptainBadge={showCaptainBadge}
+                      showCaptainBadge={!sourceMatch && showCaptainBadge}
                       roomState={roomState}
                       sideLeaderId={sourceMatchSideLeaderIds.teamA}
                       slotPositions={slotPositions}
@@ -4736,7 +4746,7 @@ function RecruitingRoomModalReady({
                       teams={app.state.teams}
                       hostPlayerId={roomOwnerId}
                       currentUserId={app.currentUser.id}
-                      showCaptainBadge={showCaptainBadge}
+                      showCaptainBadge={!sourceMatch && showCaptainBadge}
                       roomState={roomState}
                       sideLeaderId={sourceMatchSideLeaderIds.teamB}
                       slotPositions={slotPositions}
@@ -4776,7 +4786,7 @@ function RecruitingRoomModalReady({
                     teams={app.state.teams}
                     hostPlayerId={roomOwnerId}
                     currentUserId={app.currentUser.id}
-                    showCaptainBadge={showCaptainBadge}
+                    showCaptainBadge={!sourceMatch && showCaptainBadge}
                     roomState={roomState}
                     sideLeaderId={sourceMatchSideLeaderIds.teamA}
                     slotPositions={slotPositions}
@@ -4800,7 +4810,7 @@ function RecruitingRoomModalReady({
                     teams={app.state.teams}
                     hostPlayerId={roomOwnerId}
                     currentUserId={app.currentUser.id}
-                    showCaptainBadge={showCaptainBadge}
+                    showCaptainBadge={!sourceMatch && showCaptainBadge}
                     roomState={roomState}
                     sideLeaderId={sourceMatchSideLeaderIds.teamB}
                     slotPositions={slotPositions}

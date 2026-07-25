@@ -809,6 +809,8 @@ export function getMatchSideLeaderId(match = {}, teams = [], sideName) {
     ])
     .find((playerId) => playerId && sideRosterIds.includes(playerId));
   if (partyLeaderId) return partyLeaderId;
+  const hostPlayerId = sourceMatch.createdBy ?? "";
+  if (hostPlayerId && sideRosterIds.includes(hostPlayerId)) return hostPlayerId;
   return sidePlayerIds[0] ?? sideReserveIds[0] ?? "";
 }
 

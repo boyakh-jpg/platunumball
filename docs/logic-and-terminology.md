@@ -50,7 +50,7 @@
 2. QR은 경기 ID와 5분 구간에 묶인 서버 서명 토큰이다. 로그인한 사전 등록 선수만 스캔할 수 있고 만료되거나 다른 경기에서 가져온 토큰은 거부한다. 별도 전역 3초 polling을 만들지 않으며 준비 패널은 15초 갱신, 경기시계 QR은 기존 시계 조회 응답을 사용한다.
 3. 예정 경기는 시작 10분 전부터 QR 출석을 받는다. 경기 시작 전 스캔은 `on_time`으로 저장한다. 실제 경기 시작 시점에 기존 `pending` 출석을 원자적으로 `no_show`로 확정하고, 진행 중에는 이 `no_show` 사전 등록 선수만 QR로 `late` 전환해 원래 사이드 후보에 등록한다. 경기 시작 뒤 새로 등록됐거나 이미 끝난 경기의 선수는 지각 합류할 수 없다. 사이드 후보는 최대 3명이며 QR 출석만으로 실제 출전 선수와 자리를 바꾸지 않는다.
 4. 방장 또는 배정 심판은 경기 시작 전에 출석 인원 기준 정리를 실행할 수 있다. 양쪽 출석 인원이 들어가는 가장 큰 지원 방식 `5v5 → 3v3 → 2v2 → 1v1`을 고르되 현재 방식보다 키우지 않고 사이드별 후보 3명 한도를 지킨다. 미출석자는 `no_show`로 남기며 이 정리와 축소는 방 수정 1회를 소모하지 않는다.
-5. 실제 출전은 후보 본인이 같은 사이드 출전 선수를 골라 `교체`를 누르면 성립한다. 후보 본인에게는 자기 행만 보인다. 방장, 배정 심판 또는 해당 사이드 기록자는 해당 사이드 후보 전체를 교체할 수 있고 `부상·퇴장·운영자 변경` 사유를 지정한다. `지각` 사유는 DB 출석 상태가 실제 `late`인 선수에게만 허용한다. 교체 시각, 들어간 선수, 나온 선수, 사이드, 실제 요청자, 경기시계 상태와 사유를 저장한다.
+5. 실제 출전은 후보 본인이 같은 사이드 출전 선수를 골라 `교체`를 누르면 성립한다. 후보 본인에게는 자기 행만 보인다. 배정 심판 또는 심판 없는 경기의 해당 사이드 기록자만 해당 사이드 후보 전체를 교체하고 `부상·퇴장·운영자 변경` 사유를 지정한다. 방장 역할만으로는 교체 권한을 얻지 않는다. `지각` 사유는 DB 출석 상태가 실제 `late`인 선수에게만 허용한다. 교체 시각, 들어간 선수, 나온 선수, 사이드, 실제 요청자, 경기시계 상태와 사유를 저장한다.
 6. 교체로 들어온 후보의 의미 있는 최소 출전시간은 예상 경기시간의 10%이며 최소 1분, 최대 3분이다. 실제 출전 구간은 경기시계의 누적 진행시간으로 계산해 일시정지·휴식 시간을 제외한다. 합계가 기준보다 짧으면 MMR 반영 대상에서 제외하고, 기준을 채운 선수의 정확한 MMR 계수는 별도 정책 확정 전까지 기존 반영 방식을 유지한다.
 7. 경기 종료 뒤 결과 제출 전 기록 입력 가능 시간에는 방장 또는 배정 심판이 누락된 가입 선수나 무기명 선수를 실제 출전 명단에 추가할 수 있다. 이 흐름으로 추가된 선수만 다시 제거할 수 있으며 모두 MMR에서 제외한다.
 8. 출석 신뢰도 정책의 목표값은 지각 `-1`, 미출석 `-4`다. 다른 신뢰도 규칙과 함께 확정하기 전에는 자동 차감하지 않는다.
@@ -94,8 +94,8 @@
 3. 픽업 초대는 A/B 슬롯이 아니라 하나의 참가자 풀로 수락한다. 모집·잠금 단계에서는 참가자의 A/B, 출전, 대기 위치를 저장하거나 이동 기능을 제공하지 않으며 방장도 생성 사이드를 갖지 않는 운영자로 표시한다.
 4. 홈, 알림, 방 모달의 초대 수락은 같은 원자적 서버 작업을 사용한다. 처리된 초대는 행동 큐에서 빠지고 개인 참가 row와 인원수가 같은 응답에서 갱신돼야 한다. 픽업 초대 알림에는 팀·파티장 문구를 표시하지 않는다.
 5. 과거 픽업방에 남은 팀 엔트리는 참가자를 잃지 않고 개인 참가 row로 변환하고, 팀·파티 메타데이터와 팀 초대값만 제거한다.
-6. 픽업 체크인에서는 먼저 참석 여부를 확정한 뒤 방장 또는 배정 심판이 참석자만 A/B 출전과 사이드별 대기에 직접 배정한다. 표시와 조작은 승격 전 모집방 호환 row가 아니라 현재 경기의 `match_players`와 `reserve_players`를 기준으로 한다. 양쪽 정원이 이미 찬 상태에서는 두 참가자를 선택해 각자의 A/B·출전·대기 자리를 원자적으로 교환한다. `배정 확정` 전에는 경기 시작을 허용하지 않는다.
-7. 배정 확정은 A/B 출전 인원이 경기 방식의 정원과 일치하고, 모든 참석자가 출전 또는 대기 중 하나에만 배치되며, 한 선수가 양쪽 사이드에 중복되지 않을 때만 성공한다.
+6. 픽업 체크인에서는 먼저 참석 여부를 확정한 뒤 방장 또는 배정 심판이 팀 나누기 방식을 선택해 `draft`를 만든 다음 참석자만 A/B 출전과 사이드별 대기에 배정한다. 표시와 조작은 승격 전 모집방 호환 row가 아니라 현재 경기의 `match_players`와 `reserve_players`를 기준으로 한다. 양쪽 정원이 이미 찬 상태에서는 두 참가자를 선택해 각자의 A/B·출전·대기 자리를 원자적으로 교환하며 교환 뒤에도 `draft` 상태를 유지한다. `배정 확정` 전에는 경기 시작을 허용하지 않는다.
+7. 배정 확정은 `sideAssignmentStatus=draft`이고 `sideAssignmentRevision`이 1 이상이며, A/B 출전 인원이 경기 방식의 정원과 일치하고, 모든 참석자가 출전 또는 대기 중 하나에만 배치되며, 한 선수가 양쪽 사이드에 중복되지 않을 때만 성공한다.
 8. 배정 확정 뒤 경기 중에는 사이드를 바꾸지 않는다. 교대는 같은 사이드의 출전·대기 사이에서만 수행해 결과와 선수 기록의 소속을 유지한다.
 9. 균등 교대 방식은 경기 구간이 4개면 `매 쿼터`, 2개면 `하프 종료`, 단일 구간이면 `3분`, `5분`, `7분`, `10분` 간격 또는 `직접 교대`를 사용한다. 시스템은 자동으로 팀이나 슬롯을 변경하지 않는다.
 10. 교대 순서와 대상은 방장 또는 배정 심판이 직접 정하고 확정해야 반영한다. 실제 교대 시각, 들어간 선수, 나온 선수, 사이드, 확정자를 교대 이벤트로 저장하며 지각·부상·퇴장·운영자 직접 변경을 허용하고 사유를 남긴다.
@@ -416,7 +416,7 @@
 - 진행 메뉴 카드는 얇은 목록 row 요약만 쓰고, 방 모달을 열 때 선택된 경기 1건만 상세 로드해 `statRecorders`, `playedPlayerIds`, `result.playerStats`를 맞춘다.
 - 후보는 실제 출전 전까지 점수판 기록 대상이 아니며, `playedPlayerIds`에 들어간 뒤에만 기록 대상이 된다.
 - 상세 로드 중에는 입력/저장을 잠깐 막아 늦게 도착한 상세 데이터가 사용자의 임시 입력을 덮지 않게 한다.
-- live 경기 중 후보는 자기 행에서 같은 사이드 출전 선수와 본인 교체를 처리한다. 운영자 또는 해당 사이드 기록자는 해당 사이드 후보 전체와 운영 사유를 관리한다. 후보를 출전으로 올리면 기존 출전 선수는 후보로 내려가고, 양쪽 선수 모두 `playedPlayerIds`에 남아 기록 대상이 된다. 교체로 들어온 후보가 의미 있는 최소 출전시간을 채우지 못하면 MMR에서는 제외한다.
+- live 경기 중 후보는 자기 행에서 같은 사이드 출전 선수와 본인 교체를 처리한다. 배정 심판 또는 심판 없는 경기의 해당 사이드 기록자는 해당 사이드 후보 전체와 운영 사유를 관리한다. 방장 역할만으로는 교체를 관리하지 않는다. 후보를 출전으로 올리면 기존 출전 선수는 후보로 내려가고, 양쪽 선수 모두 `playedPlayerIds`에 남아 기록 대상이 된다. 교체로 들어온 후보가 의미 있는 최소 출전시간을 채우지 못하면 MMR에서는 제외한다.
 
 ## 2026-07-07 방 종류 표준값
 
@@ -1162,7 +1162,7 @@ flowchart TD
 
 1. 비공개 팀전 대기방에서는 B사이드 초대를 받은 사람이 수락하면 그 사람이 B사이드장이다.
 2. 확정 경기에서는 `match.parties[].partyLeaderId`가 현재 로스터에 있으면 그 사람이 사이드장이다.
-3. 공개방 또는 비공개 개인전에서 사이드장이 미출석 강퇴되면 같은 파티의 다음 인원, 없으면 해당 사이드 다음 출전 선수가 즉시 사이드장이 된다.
+3. 명시적 파티장이 없으면 방장이 속한 사이드는 방장을 우선하고, 그 외 사이드는 첫 출전 선수와 첫 후보 순으로 사이드장을 정한다. 사이드장이 미출석 강퇴되면 같은 기준으로 즉시 승계한다.
 4. 팀장/주장은 사이드장 fallback 기준이 아니다.
 5. 팀 파티의 사이드장은 “파티 만든 사람”이라는 표현을 쓰지 않고, 팀 파티를 등록한 계정 또는 초대 수락자로 본다.
 
@@ -1175,14 +1175,14 @@ flowchart TD
 | 팀장 표시 | 팀 관리 화면 또는 팀 프로필에서만 |
 
 겹치면 노란 왕관만 표시한다.
-공개방/비공개방 모두 사이드장 기준이 필요하면 파란 왕관을 표시한다.
+공개방/비공개방 모두 사이드장 기준이 필요하면 파란 왕관을 표시한다. 확정 경기 슬롯은 유효 사이드장 한 명만 표시하고 모집 엔트리의 파티장 왕관을 중복해 그리지 않는다. 방장이 속한 사이드는 별도 파란 왕관을 함께 그리지 않고 방장 노란 왕관만 표시한다.
 팀 주장은 파란 왕관 기준이 아니다.
 
 ## 슬롯 원칙
 
 1. 출전 슬롯과 후보 슬롯은 같은 컴포넌트 크기를 쓴다.
 2. 슬롯 내용이 들어와도 너비와 높이가 변하면 안 된다.
-3. 한 사이드 출전 슬롯은 최대 5개를 한 줄 기준으로 정렬한다.
+3. 한 사이드 출전 슬롯은 실제 경기 정원만큼의 grid track을 사용하며 최대 5개를 한 줄 기준으로 정렬한다.
 4. 후보 슬롯은 사이드별 최대 3개다.
 5. 빈 슬롯을 누르면 그 자리 기준 액션 팝업이 떠야 한다.
 6. 액션 팝업은 최상단 포털로 떠야 하고, 부모 박스에 잘리면 안 된다.
@@ -1270,7 +1270,7 @@ flowchart TD
 10. 미출석 출전선수를 강퇴하거나 후보로 내렸을 때 같은 사이드에 출석한 후보가 있으면 자동으로 출전 슬롯에 올릴 수 있다.
 11. 배정 심판이 경기준비방에 오지 않으면 방장이 `심판 미출석`을 요청하고 상대 사이드장이 인정해야 심판 없는 경기로 전환된다.
 12. 심판 미출석 인정 후에는 `refereeId`를 비우고 `formerRefereeId`, `refereeAbsenceRequest`만 남긴다. 이후 출석/인원/룰/시작 권한은 심판 없는 방처럼 방장에게 간다.
-13. 심판 없는 방에서 방장이 출전/후보 명단에 포함되어 있으면 경기 시작 시 방장 본인 출석은 자동 기록한다. 별도 self-check 버튼은 만들지 않는다.
+13. 출석 운영자인 방장 또는 배정 심판은 같은 중앙 출석 action으로 자기 출석을 포함해 현재 명단의 출석을 저장한다. 시작 action의 방장 자동 출석은 이전 데이터와 누락 복구용 fallback으로 유지한다.
 
 ## 경기 시작/종료 원칙
 
@@ -2310,7 +2310,7 @@ flowchart TD
 18. `/api/profile/me` bootstraps the current user's own teams, those teams' member ids, and compact public profiles for other team members so team-room creation and mine/joined filters do not wait for broad list hydration. It must not fetch the current user's public profile again after the private profile is already loaded.
 19. `endMatch` may use `rankball_match_end_action()` as a SQL reducer only for no-referee host-operated matches. When `matchId` is present, the server can call this RPC without a client match snapshot. Referee matches and unsupported states must fall back to the existing authoritative match action path.
 20. `agreeMatch` may use `rankball_match_agree_action()` as a SQL reducer only for active-player personal-side agreement that does not complete the whole match agreement. When `matchId`, `sideName`, and `playerId` are present, the server can call this RPC without a client match snapshot. Team, party, completion, and unsupported states must fall back to the existing authoritative match action path so status transition and notifications stay consistent.
-21. `checkInMatchPlayer` may use `rankball_match_checkin_action()` as a SQL reducer only for no-referee host-operated active-player check-in. When `matchId`, `sideName`, and `playerId` are present, the server can call this RPC without a client match snapshot. Referee, reserve, party, self-check-in, future scheduled, and unsupported states must fall back to the existing authoritative match action path.
+21. `checkInMatchPlayer`는 `matchId`, `sideName`, `playerId`가 있으면 `rankball_match_checkin_action()`을 중앙 SQL reducer로 호출한다. RPC가 방장·배정 심판 권한, 현재 출석 단계, 명단 포함 여부를 검증하며 출석 운영자의 self-check도 같은 경로로 처리한다.
 22. `startMatch` may use `rankball_match_start_action()` as a SQL reducer only for no-referee host-operated matches with active-player attendance complete. When `matchId` is present, the server can call this RPC without a client match snapshot, use DB `matches.attendance` as the attendance source, and auto-include the host actor's active-side attendance. Referee, reserve, party, future scheduled, and unsupported states must fall back to the existing authoritative match action path.
 23. `addMatchLatePlayer`/`removeMatchLatePlayer` may use `rankball_match_late_player_action()` as a SQL reducer only for no-referee host-operated postgame matches inside the stat entry window. When `matchId` is present, the server can call this RPC without a client match snapshot by deriving the anonymous add/remove delta from the current DB row. The SQL path only accepts a single anonymous late-player add or a single excluded late-player remove; registered late-player add and unsupported states fall back to the existing authoritative match action path.
 23-1. `rankball_match_action()` keeps the per-match transaction lock when a branch SQL reducer returns `fallback=true`, then persists the provided authoritative snapshot instead of returning the fallback payload as success.
@@ -3327,7 +3327,7 @@ flowchart TD
 4. 연습 경기의 방·경기·시계 mutation은 운영 서버로 전송하지 않는다. 모집 동기화, 경기 동기화, 경기시계 API는 practice ID 또는 payload를 인증·RPC 이전에 거부한다.
 5. 전적, 개인·팀 MMR, 신뢰점수, 업적, 추천, 알림, Discord 전달, 매칭·일정 목록, 프로필 기록에는 반영하지 않는다. 중앙 `finalizeMatch`도 practice 엔티티를 표시용 확정만 하고 rating·신뢰·알림 계산을 실행하지 않는다.
 6. UI는 실제 `CreateMatch`, `RecruitingRoomModal`, `MatchRoomModal`, `MatchClockPanel`과 중앙 phase·권한·repository 전환 함수를 재사용한다. 연습 전용 방 모달·기록판·경기시계 복제본을 만들지 않는다.
-7. 실제 모듈에는 `app` facade와 `clockClient` 계약만 주입한다. 더미 초대 수락, 더미 출석·배치, 예시 기록 입력, 더미 기록 승인은 사용자가 실제 공용 action을 이어서 체험하기 위한 보조 action이다. 채팅 polling no-op도 공용 action과 같은 동기 cleanup 반환 계약을 지킨다.
+7. 실제 모듈에는 `app` facade와 `clockClient` 계약만 주입한다. 더미 초대 수락, 더미 출석, 예시 기록 입력, 더미 기록 승인은 사용자가 실제 공용 action을 이어서 체험하기 위한 보조 action이다. 픽업 팀 생성·배정 확정은 보조 action이 대신 처리하지 않고 사용자가 공용 `팀 나누기 → 배정 확정` action을 직접 실행한다. 채팅 polling no-op도 공용 action과 같은 동기 cleanup 반환 계약을 지킨다.
 8. 연습 facade의 action은 명시적 allowlist만 노출한다. 선수 검색, 파일 업로드, 신고, 구장 제보, 실제 알림 전달 등 운영 외부효과는 제공하지 않는다.
 9. 연습 경기 재사용은 UI·phase·권한 helper의 동기화를 보장하는 장치다. 운영 DB 전용 RPC까지 실행하는 서버 동등성 테스트는 아니며, 로컬 repository와 운영 RPC가 다른 항목은 별도 계약 테스트로 검증한다.
 10. 연습 경기시계도 시작 기한, 명시적 종료, 예상 정규시간의 70% 이상 실제 진행 조건을 모두 충족할 때만 정상 사용으로 표시한다. 담당을 넘기면 이전 연습 기기는 읽기 전용이 되며 새 담당자 역할에서만 조작할 수 있다.

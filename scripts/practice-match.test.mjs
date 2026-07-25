@@ -247,14 +247,83 @@ test("연습방은 설정한 후보를 초대하고 공용 교체 흐름으로 �
   assert.ok(readyMatch.attendance.teamA.includes(teamAReserveId));
 
   state = runPracticeReducer(state, "startMatch", [confirmed.matchId]).state;
-  state = runPracticeReducer(
+  const hostSubstitution = runPracticeReducer(
     state,
     "substituteMatchPlayer",
     [confirmed.matchId, "teamA", teamAActiveId, teamAReserveId, "operator"],
+  );
+  assert.equal(hostSubstitution.applied, false);
+  state = runPracticeReducer(
+    state,
+    "substituteMatchPlayer",
+    [confirmed.matchId, "teamA", teamAActiveId, teamAReserveId, "self"],
+    teamAReserveId,
   ).state;
   const liveMatch = state.matches.find((match) => match.id === confirmed.matchId);
   assert.ok(liveMatch.teamA.players.includes(teamAReserveId));
   assert.ok(getMatchReservePlayerIds(liveMatch, "teamA").includes(teamAActiveId));
+});
+
+test("픽업 연습은 출석 뒤 공용 팀 나누기와 배정 확정을 직접 거친다", () => {
+  for (const assignmentMode of ["manual", "random", "mmr_balanced"]) {
+    let state = createPracticeState({}, { name: "테스터" });
+    const created = createPracticeRecruitingRoom(state, {
+      title: `픽업 ${assignmentMode}`,
+      mode: "3v3",
+      sideCapacity: 3,
+      benchCapacity: 1,
+      formationMode: "pickup",
+      matchIntent: "pickup",
+      rules: {
+        formationMode: "pickup",
+        matchIntent: "pickup",
+        gameClockEnabled: true,
+        periodCount: 1,
+        periodMinutes: 3,
+      },
+    });
+    state = acceptPracticeInvitations(created.state, created.postId);
+    const confirmed = confirmPracticeRecruitingRoom(state, created.postId);
+    state = completePracticeAttendance(confirmed.state, confirmed.matchId);
+    let match = state.matches.find((item) => item.id === confirmed.matchId);
+
+    assert.equal(match.rules.sideAssignmentStatus, "pending");
+    assert.equal(Number(match.rules.sideAssignmentRevision ?? 0), 0);
+    assert.equal(runPracticeReducer(
+      state,
+      "confirmPickupSideAssignment",
+      [confirmed.matchId, { rotationMode: "manual" }],
+    ).applied, false);
+    assert.equal(runPracticeReducer(state, "startMatch", [confirmed.matchId]).applied, false);
+
+    const generated = runPracticeReducer(
+      state,
+      "generatePickupSideAssignment",
+      [confirmed.matchId, assignmentMode],
+    );
+    assert.equal(generated.applied, true);
+    state = generated.state;
+    match = state.matches.find((item) => item.id === confirmed.matchId);
+    assert.equal(match.rules.sideAssignmentStatus, "draft");
+    assert.equal(match.rules.sideAssignmentRevision, 1);
+    assert.equal(match.teamA.players.length, 3);
+    assert.equal(match.teamB.players.length, 3);
+    assert.equal(getMatchReservePlayerIds(match, "teamA").length, 1);
+    assert.equal(getMatchReservePlayerIds(match, "teamB").length, 1);
+
+    const assignmentConfirmed = runPracticeReducer(
+      state,
+      "confirmPickupSideAssignment",
+      [confirmed.matchId, { rotationMode: "manual" }],
+    );
+    assert.equal(assignmentConfirmed.applied, true);
+    state = assignmentConfirmed.state;
+    assert.equal(
+      state.matches.find((item) => item.id === confirmed.matchId).rules.sideAssignmentStatus,
+      "confirmed",
+    );
+    assert.equal(runPracticeReducer(state, "startMatch", [confirmed.matchId]).applied, true);
+  }
 });
 
 test("심판과 시계 담당 화면을 바꾸면 실제 권한처럼 시작과 이전을 체험한다", async () => {
