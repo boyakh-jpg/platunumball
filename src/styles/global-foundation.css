@@ -2384,7 +2384,6 @@ span.referee-hover-card {
 
 .notification-row-open,
 .notification-terminal-state {
-  border-radius: 999px;
   background: color-mix(in srgb, var(--rb-blue) 14%, transparent);
   color: var(--rb-blue);
   font-size: 0.74rem;
@@ -2396,9 +2395,15 @@ span.referee-hover-card {
 
 .notification-row-open {
   display: inline-flex;
-  min-height: 34px;
+  min-width: calc(var(--ui-button-height) + var(--space-6));
+  min-height: var(--ui-button-height);
   align-items: center;
   justify-content: center;
+  border-radius: var(--ui-button-radius);
+}
+
+.notification-terminal-state {
+  border-radius: 999px;
 }
 
 .notification-terminal-state,
@@ -2466,7 +2471,8 @@ span.referee-hover-card {
 }
 
 .notification-actions .notification-read-button {
-  min-width: max-content;
+  min-width: calc(var(--ui-button-height) + var(--space-6));
+  height: var(--ui-button-height);
   padding: 0 10px;
   white-space: nowrap;
 }

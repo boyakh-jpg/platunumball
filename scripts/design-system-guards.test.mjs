@@ -25,6 +25,7 @@ const ruleSelectorSource = read("src/components/match/RuleSelector.jsx");
 const matchListStyles = read("src/styles/match-list-card.css");
 const primitiveStyles = read("src/styles/ui-primitives.css");
 const tokenStyles = read("src/styles/tokens.css");
+const foundationStyles = read("src/styles/global-foundation.css");
 const globalSearchStyles = read("src/styles/global-search-profile.css");
 const visualSystemStyles = read("src/styles/global-visual-system.css");
 const courtControlStyles = read("src/styles/global-court-controls.css");
@@ -197,6 +198,21 @@ test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
   assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
   assert.match(primitiveStyles, /\.ui-action-row > \*\s*\{\s*flex:\s*0 0 auto;\s*\}/);
   assert.doesNotMatch(hoverSurfaceStyles, /(?:^|\n)\s*\.button\s*\{[^{}]*white-space:\s*normal;/);
+});
+
+test("알림 보기와 읽음은 같은 네모 버튼 규격을 사용한다", () => {
+  assert.match(
+    foundationStyles,
+    /\.notification-row-open\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*min-height:\s*var\(--ui-button-height\);[^}]*border-radius:\s*var\(--ui-button-radius\);/,
+  );
+  assert.match(
+    foundationStyles,
+    /\.notification-actions \.notification-read-button\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height\);/,
+  );
+  assert.doesNotMatch(
+    foundationStyles,
+    /\.notification-row-open[^}]*border-radius:\s*999px/,
+  );
 });
 
 test("공용 체크박스는 iOS native 외형을 사용하지 않는다", () => {
