@@ -3202,6 +3202,9 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 }
 
 .rank-home .home-search-results.home-global-search-results.is-floating {
+  width: 100%;
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr);
   max-height: min(320px, var(--search-picker-max-height, 320px));
   overscroll-behavior: contain;
 }

@@ -108,6 +108,21 @@ test("general UI copy wraps at spaces without splitting words", () => {
   assert.doesNotMatch(allStyleSources, /word-break:\s*break-all;/);
 });
 
+test("home favorite search uses the full input width without splitting court names", () => {
+  assert.match(
+    visualSystemStyles,
+    /\.rank-home \.home-search-results\.home-global-search-results\.is-floating\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*none;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/,
+  );
+  assert.match(
+    courtControlStyles,
+    /\.rank-home \.home-global-search-results \.rank-result-main > strong\s*\{[^}]*word-break:\s*keep-all;[^}]*overflow-wrap:\s*break-word;/,
+  );
+  assert.match(
+    courtControlStyles,
+    /@media \(max-width:\s*759px\)\s*\{[\s\S]*?\.rank-home \.home-global-search-results > \.home-search-entity-trigger\s*\{[^}]*grid-template-columns:\s*auto minmax\(0,\s*1fr\);[\s\S]*?\.rank-home \.home-global-search-results > \.home-search-entity-trigger > small\s*\{[^}]*grid-column:\s*2;/,
+  );
+});
+
 function getRuleBody(source, selector) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = source.match(new RegExp(`${escapedSelector}\\s*\\{([^{}]*)\\}`));

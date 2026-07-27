@@ -1177,6 +1177,22 @@ html[data-theme="light"] .court-map-picker-state {
   padding: 4px 7px;
 }
 
+.rank-home .home-global-search-results .rank-result-main > strong {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 759px) {
+  .rank-home .home-global-search-results > .home-search-entity-trigger {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .rank-home .home-global-search-results > .home-search-entity-trigger > small {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 .court-detail-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1228,15 +1244,6 @@ html[data-theme="light"] .court-map-picker-state {
 }
 
 @media (max-width: 620px) {
-  .rank-home .home-global-search-results > .home-search-entity-trigger {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .rank-home .home-global-search-results > .home-search-entity-trigger > small {
-    grid-column: 2;
-    justify-self: start;
-  }
-
   .court-detail-modal-backdrop {
     padding: 8px;
   }
