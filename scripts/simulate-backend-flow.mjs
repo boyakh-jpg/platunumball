@@ -921,9 +921,10 @@ async function ensureSimulationTrustScore(profileId = "", minimum = 90) {
   return { skipped: false, updated: Number(profile?.trust_score ?? 0) < minimum };
 }
 
-async function ensureSimulationRefereeEligibility(profileId = "", label = "referee") {
+async function ensureSimulationRefereeEligibility(profileId = "", label = "referee", minimumTermDays = 3) {
   if (!supabase || !profileId) return { skipped: true };
   const nowMs = Date.now();
+  const requiredEndsAtMs = nowMs + Math.max(1, Number(minimumTermDays) || 3) * DAY_MS;
   await ensureSimulationTrustScore(profileId, 90);
   const { data: activeRows, error: activeError } = await supabase
     .from("referee_appointments")
@@ -932,12 +933,12 @@ async function ensureSimulationRefereeEligibility(profileId = "", label = "refer
     .eq("role", "referee")
     .eq("status", "active");
   if (activeError) throw activeError;
-  const liveAppointment = (activeRows ?? []).find((row) => !row.ends_at || Date.parse(row.ends_at) > nowMs);
+  const liveAppointment = (activeRows ?? []).find((row) => !row.ends_at || Date.parse(row.ends_at) > requiredEndsAtMs);
   if (liveAppointment?.id) return { alreadyEligible: true, appointmentId: liveAppointment.id };
 
   const appointmentId = `sim_referee_appt_${label}_${suffix}`;
   const now = new Date(nowMs).toISOString();
-  const endsAt = new Date(nowMs + 3 * DAY_MS).toISOString();
+  const endsAt = new Date(requiredEndsAtMs).toISOString();
   const { error: upsertError } = await supabase
     .from("referee_appointments")
     .upsert({
@@ -2261,7 +2262,7 @@ function withSubstitution(match = {}, sideName = "teamA", activePlayerId = "", r
 
 async function cleanupTrackedMatchArtifacts() {
   const trackedMatchIds = uniqueIds(scenarioIds.flatMap((scenario) => [scenario.matchId, ...(scenario.matchIds ?? [])]));
-  const tournamentIds = uniqueIds(scenarioIds.map((scenario) => scenario.tournamentId));
+  const trackedTournamentIds = uniqueIds(scenarioIds.map((scenario) => scenario.tournamentId));
   if (!supabase) {
     return {
       ok: true,
@@ -2274,15 +2275,25 @@ async function cleanupTrackedMatchArtifacts() {
     };
   }
 
-  let tournamentMatchIds = [];
+  let tournamentIds = [];
+  let tournamentMatchRows = [];
+  if (trackedTournamentIds.length) {
+    const { data: tournamentRows, error: tournamentError } = await supabase
+      .from("tournaments")
+      .select("id")
+      .in("id", trackedTournamentIds);
+    if (tournamentError) throw tournamentError;
+    tournamentIds = (tournamentRows ?? []).map((row) => row.id);
+  }
   if (tournamentIds.length) {
     const { data, error } = await supabase
       .from("matches")
-      .select("id")
+      .select("id,tournament_id")
       .in("tournament_id", tournamentIds);
     if (error) throw error;
-    tournamentMatchIds = (data ?? []).map((row) => row.id);
+    tournamentMatchRows = data ?? [];
   }
+  const tournamentMatchIds = tournamentMatchRows.map((row) => row.id);
   const matchIds = uniqueIds([
     ...trackedMatchIds.filter((matchId) => matchId.startsWith("sim_m_")),
     ...tournamentMatchIds,
@@ -2304,13 +2315,15 @@ async function cleanupTrackedMatchArtifacts() {
   let deletedMatches = 0;
   let deletedTournaments = 0;
   let derivedRefreshCompleted = true;
-  const batches = matchIds.length
-    ? Array.from({ length: Math.ceil(matchIds.length / 10) }, (_, index) => matchIds.slice(index * 10, (index + 1) * 10))
-    : [[]];
-  for (const matchBatch of batches) {
+  const tournamentMatchIdSet = new Set(tournamentMatchIds);
+  const standaloneMatchIds = matchIds.filter((matchId) => !tournamentMatchIdSet.has(matchId));
+  const matchBatches = standaloneMatchIds.length
+    ? Array.from({ length: Math.ceil(standaloneMatchIds.length / 10) }, (_, index) => standaloneMatchIds.slice(index * 10, (index + 1) * 10))
+    : [];
+  const applyCleanupBatch = async (matchBatch, tournamentBatch) => {
     const { data, error } = await supabase.rpc("rankball_cleanup_simulation_artifacts_exact", {
       p_match_ids: matchBatch,
-      p_tournament_ids: tournamentIds,
+      p_tournament_ids: tournamentBatch,
     });
     if (error) throw error;
     for (const profileId of data?.affectedProfileIds ?? []) affectedProfileIds.add(profileId);
@@ -2318,6 +2331,24 @@ async function cleanupTrackedMatchArtifacts() {
     deletedMatches += Number(data?.deletedMatches ?? 0);
     deletedTournaments += Number(data?.deletedTournaments ?? 0);
     derivedRefreshCompleted = derivedRefreshCompleted && data?.derivedRefreshCompleted === true;
+  };
+  for (const matchBatch of matchBatches) {
+    await applyCleanupBatch(matchBatch, []);
+  }
+  for (const tournamentId of tournamentIds) {
+    const tournamentMatchIdsForCleanup = tournamentMatchRows
+      .filter((row) => row.tournament_id === tournamentId)
+      .map((row) => row.id);
+    const tournamentMatchBatches = tournamentMatchIdsForCleanup.length
+      ? Array.from(
+        { length: Math.ceil(tournamentMatchIdsForCleanup.length / 10) },
+        (_, index) => tournamentMatchIdsForCleanup.slice(index * 10, (index + 1) * 10),
+      )
+      : [];
+    for (const matchBatch of tournamentMatchBatches) {
+      await applyCleanupBatch(matchBatch, [tournamentId]);
+    }
+    await applyCleanupBatch([], [tournamentId]);
   }
   if (!derivedRefreshCompleted) {
     for (const profileId of affectedProfileIds) {
@@ -4002,7 +4033,6 @@ async function runAdminControlScenario({
 }) {
   ids = makeScenarioIds(label);
   assertFlow(Boolean(supabase), "admin control scenario requires service role client");
-  const startedAt = new Date(Date.now() - 1000).toISOString();
   const adminId = await step(`${ids.label}:resolveProfile:admin`, () => getProfileIdForLogin(adminLogin));
   const targetId = await step(`${ids.label}:resolveProfile:target`, () => getProfileIdForLogin(targetLogin));
   assertFlow(adminId !== targetId, "admin control target must differ from actor", { adminId, targetId });
@@ -4073,8 +4103,7 @@ async function runAdminControlScenario({
     .from("admin_audit_log")
     .select("id,appointment_id,target_user_id,payload,created_at")
     .eq("created_by", adminId)
-    .eq("target_user_id", targetId)
-    .gte("created_at", startedAt);
+    .eq("target_user_id", targetId);
   if (auditError) throw auditError;
   const scenarioAuditRows = (auditRows ?? []).filter((row) => (
     row.appointment_id === appointed.appointmentId
@@ -6992,12 +7021,14 @@ async function playTournamentMatchToConfirmed({ label, matchId, operatorLogin })
   const teamALogin = await getTestLoginForProfileId(teamAPlayerId);
   const teamBLogin = await getTestLoginForProfileId(teamBPlayerId);
   const hostPlayerId = match.rules?.tournamentHostPlayerId ?? match.createdBy ?? "";
-  const resultOperatorLogin = await getTestLoginForProfileId(hostPlayerId);
-  assertFlow(Boolean(teamAPlayerId && teamBPlayerId && teamALogin && teamBLogin && resultOperatorLogin), "tournament match player or host login missing", {
+  const refereeId = match.refereeId ?? "";
+  const resultOperatorLogin = await getTestLoginForProfileId(refereeId);
+  assertFlow(Boolean(teamAPlayerId && teamBPlayerId && teamALogin && teamBLogin && resultOperatorLogin), "tournament match player or referee login missing", {
     matchId,
     teamAPlayerId,
     teamBPlayerId,
     hostPlayerId,
+    refereeId,
   });
 
   assertFlow(
@@ -7092,9 +7123,43 @@ async function playTournamentMatchToConfirmed({ label, matchId, operatorLogin })
   return { match, result: approveBResult, teamAPlayerId, teamBPlayerId };
 }
 
+async function prepareSimulationTournamentReferees({
+  label,
+  creatorId,
+  refereeLogin,
+}) {
+  const refereeId = await step(`${label}:resolveProfile:tournamentReferee`, () => getProfileIdForLogin(refereeLogin));
+  assertFlow(creatorId && refereeId && creatorId !== refereeId, "tournament referee fixture must be distinct from creator", {
+    creatorId,
+    refereeId,
+  });
+  await step(`${label}:ensureCreatorRefereeEligibility`, () => ensureSimulationRefereeEligibility(creatorId, `${label}_creator`, 7));
+  await step(`${label}:ensureNeutralRefereeEligibility`, () => ensureSimulationRefereeEligibility(refereeId, `${label}_neutral`, 7));
+  return { refereeId, refereeIds: [creatorId, refereeId] };
+}
+
+async function approveSimulationTournamentReferee({
+  label,
+  tournamentId,
+  refereeLogin,
+  refereeId,
+}) {
+  const result = await step(`${label}:approveTournamentReferee`, () => syncTournamentAs(refereeLogin, {
+    action: "approveTournamentReferee",
+    tournamentId,
+  }));
+  assertFlow(
+    result?.ok && result?.refereeId === refereeId && result?.tournamentSqlReducer === true,
+    "tournament referee approval failed",
+    result,
+  );
+  return result;
+}
+
 async function runTournamentFollowupRoundScenario({
   label,
   creatorLogin,
+  refereeLogin = process.env.RANKBALL_SIM_TOURNAMENT_REFEREE || "rankball-048",
   teamIds = ["team-rb-01", "team-rb-02", "team-rb-03", "team-rb-04"],
 }) {
   ids = makeScenarioIds(label);
@@ -7106,6 +7171,11 @@ async function runTournamentFollowupRoundScenario({
     creatorId,
     firstTeamCaptainId: fixtures[0]?.captainId,
     selectedTeamIds,
+  });
+  const tournamentReferees = await prepareSimulationTournamentReferees({
+    label: ids.label,
+    creatorId,
+    refereeLogin,
   });
 
   const firstRoundMatchIds = [`${ids.matchId}_r1_1`, `${ids.matchId}_r1_2`];
@@ -7125,6 +7195,7 @@ async function runTournamentFollowupRoundScenario({
       official: false,
       scheduledDate: startDate,
       tournamentEndDate: startDate,
+      refereeIds: tournamentReferees.refereeIds,
       courtId: simulationCourtId,
       court: "Backend Simulation Court",
       region: "Backend Simulation",
@@ -7137,17 +7208,27 @@ async function runTournamentFollowupRoundScenario({
   }));
   assertFlow(createResult?.ok && createResult?.tournamentId === ids.tournamentId, "tournament create failed", createResult);
   assertFlow(Number(createResult?.createdMatchCount ?? 0) === 0, "tournament should wait for invited teams", createResult);
+  await approveSimulationTournamentReferee({
+    label: ids.label,
+    tournamentId: ids.tournamentId,
+    refereeLogin,
+    refereeId: tournamentReferees.refereeId,
+  });
 
-  let finalApproveResult = null;
   for (const fixture of fixtures.slice(1)) {
-    finalApproveResult = await step(`${ids.label}:approveTournamentTeam:${fixture.team.id}`, () => syncTournamentAs(fixture.captainLogin, {
+    await step(`${ids.label}:approveTournamentTeam:${fixture.team.id}`, () => syncTournamentAs(fixture.captainLogin, {
       action: "approveTournamentTeam",
       tournamentId: ids.tournamentId,
       teamId: fixture.team.id,
       preferredMatchIds: firstRoundMatchIds,
     }));
   }
-  assertFlow(Number(finalApproveResult?.createdMatchCount ?? 0) === firstRoundMatchIds.length, "tournament first round was not generated", finalApproveResult);
+  const startResult = await step(`${ids.label}:startCommunityTournament`, () => syncTournamentAs(effectiveCreatorLogin, {
+    action: "startCommunityTournament",
+    tournamentId: ids.tournamentId,
+    preferredMatchIds: firstRoundMatchIds,
+  }));
+  assertFlow(Number(startResult?.createdMatchCount ?? 0) === firstRoundMatchIds.length, "tournament first round was not generated", startResult);
 
   const firstRoundMatches = [];
   for (const matchId of firstRoundMatchIds) {
@@ -7229,6 +7310,7 @@ async function runTournamentFollowupRoundScenario({
 async function runTournamentByeRoundScenario({
   label,
   creatorLogin,
+  refereeLogin = process.env.RANKBALL_SIM_TOURNAMENT_REFEREE || "rankball-048",
   teamIds = ["team-rb-01", "team-rb-02", "team-rb-03"],
 }) {
   ids = makeScenarioIds(label);
@@ -7239,6 +7321,11 @@ async function runTournamentByeRoundScenario({
   assertFlow(fixtures.length === 3 && fixtures[0]?.captainId === creatorId, "three-team tournament fixture mismatch", {
     creatorId,
     selectedTeamIds,
+  });
+  const tournamentReferees = await prepareSimulationTournamentReferees({
+    label: ids.label,
+    creatorId,
+    refereeLogin,
   });
 
   const firstRoundMatchId = `${ids.matchId}_r1`;
@@ -7258,6 +7345,7 @@ async function runTournamentByeRoundScenario({
       official: false,
       scheduledDate: startDate,
       tournamentEndDate: startDate,
+      refereeIds: tournamentReferees.refereeIds,
       courtId: simulationCourtId,
       court: "Backend Simulation Court",
       region: "Backend Simulation",
@@ -7269,18 +7357,28 @@ async function runTournamentByeRoundScenario({
     },
   }));
   assertFlow(createResult?.ok && Number(createResult?.createdMatchCount ?? 0) === 0, "three-team tournament create failed", createResult);
+  await approveSimulationTournamentReferee({
+    label: ids.label,
+    tournamentId: ids.tournamentId,
+    refereeLogin,
+    refereeId: tournamentReferees.refereeId,
+  });
 
-  let finalApproveResult = null;
   for (const fixture of fixtures.slice(1)) {
-    finalApproveResult = await step(`${ids.label}:approveTournamentTeam:${fixture.team.id}`, () => syncTournamentAs(fixture.captainLogin, {
+    await step(`${ids.label}:approveTournamentTeam:${fixture.team.id}`, () => syncTournamentAs(fixture.captainLogin, {
       action: "approveTournamentTeam",
       tournamentId: ids.tournamentId,
       teamId: fixture.team.id,
       preferredMatchIds: [firstRoundMatchId],
     }));
   }
-  assertFlow(Number(finalApproveResult?.createdMatchCount ?? 0) === 1, "three-team first round match count mismatch", finalApproveResult);
-  const tournament = finalApproveResult?.tournament;
+  const startResult = await step(`${ids.label}:startCommunityTournament`, () => syncTournamentAs(effectiveCreatorLogin, {
+    action: "startCommunityTournament",
+    tournamentId: ids.tournamentId,
+    preferredMatchIds: [firstRoundMatchId],
+  }));
+  assertFlow(Number(startResult?.createdMatchCount ?? 0) === 1, "three-team first round match count mismatch", startResult);
+  const tournament = startResult?.tournament;
   const firstRound = tournament?.bracket?.firstRound ?? [];
   const byeEntries = firstRound.filter((entry) => entry?.byeTeamId);
   assertFlow(firstRound.length === 2 && byeEntries.length === 1, "three-team bye bracket mismatch", tournament?.bracket);
@@ -7337,6 +7435,7 @@ async function runTournamentByeRoundScenario({
 async function runTournamentRepresentativeTeamGuardScenario({
   label,
   creatorLogin = "rankball-001",
+  refereeLogin = process.env.RANKBALL_SIM_TOURNAMENT_REFEREE || "rankball-048",
   teamBCaptainLogin = "rankball-006",
   teamCCaptainLogin = "rankball-011",
   representativeTeamId = "team-rb-01",
@@ -7345,6 +7444,12 @@ async function runTournamentRepresentativeTeamGuardScenario({
   teamCId = "team-rb-03",
 }) {
   ids = makeScenarioIds(label);
+  const creatorId = await step(`${ids.label}:resolveProfile:creator`, () => getProfileIdForLogin(creatorLogin));
+  const tournamentReferees = await prepareSimulationTournamentReferees({
+    label: ids.label,
+    creatorId,
+    refereeLogin,
+  });
   const automaticForfeitSchedule = getKstFutureSchedule(120);
   const startDate = automaticForfeitSchedule.scheduledDate;
   await expectRejected(
@@ -7383,12 +7488,12 @@ async function runTournamentRepresentativeTeamGuardScenario({
       enabled: true,
       events: { approval: true },
     }));
-    await step(`${ids.label}:setTeamCCaptainDiscord`, () => setTemporaryProfileDiscordUser(
-      teamCCaptainId,
+    await step(`${ids.label}:setTournamentCreatorDiscord`, () => setTemporaryProfileDiscordUser(
+      creatorId,
       makeDiscordSnowflake(821),
       "rankball-sim-tournament-start",
     ));
-    await step(`${ids.label}:enableTeamCCaptainMatchDiscord`, () => setTemporaryDiscordNotificationSettings(teamCCaptainId, {
+    await step(`${ids.label}:enableTournamentCreatorMatchDiscord`, () => setTemporaryDiscordNotificationSettings(creatorId, {
       enabled: true,
       events: { match: true },
     }));
@@ -7410,6 +7515,7 @@ async function runTournamentRepresentativeTeamGuardScenario({
       official: false,
       scheduledDate: startDate,
       tournamentEndDate: startDate,
+      refereeIds: tournamentReferees.refereeIds,
       courtId: simulationCourtId,
       court: "Backend Simulation Court",
       mmrLimitMode: "warn",
@@ -7417,6 +7523,12 @@ async function runTournamentRepresentativeTeamGuardScenario({
     },
   }));
   assertFlow(createResult?.ok && Number(createResult?.createdMatchCount ?? 0) === 0, "representative league create failed", createResult);
+  await approveSimulationTournamentReferee({
+    label: ids.label,
+    tournamentId: ids.tournamentId,
+    refereeLogin,
+    refereeId: tournamentReferees.refereeId,
+  });
 
   const expectedInvites = [
     { teamId: teamBId, captainLogin: teamBCaptainLogin, captainId: teamBCaptainId },
@@ -7448,6 +7560,12 @@ async function runTournamentRepresentativeTeamGuardScenario({
     teamId: teamBId,
     preferredMatchIds: matchIds,
   }));
+  await step(`${ids.label}:approveTeamC`, () => syncTournamentAs(teamCCaptainLogin, {
+    action: "approveTournamentTeam",
+    tournamentId: ids.tournamentId,
+    teamId: teamCId,
+    preferredMatchIds: matchIds,
+  }));
   const conflictMatch = await step(`${ids.label}:findPreferredMatchConflict`, async () => {
     const { data, error } = await supabase
       .from("matches")
@@ -7462,20 +7580,57 @@ async function runTournamentRepresentativeTeamGuardScenario({
   });
   assertFlow(Boolean(conflictMatch?.id), "preferred match conflict fixture missing", conflictMatch);
   const conflictingMatchIds = [conflictMatch.id, matchIds[1], matchIds[2]];
-  const apiConflict = await expectRejected(`${ids.label}:rejectPreferredMatchConflictApi`, () => syncTournamentAs(teamCCaptainLogin, {
-    action: "approveTournamentTeam",
+  const apiConflict = await expectRejected(`${ids.label}:rejectPreferredMatchConflictApi`, () => syncTournamentAs(creatorLogin, {
+    action: "startCommunityTournament",
     tournamentId: ids.tournamentId,
-    teamId: teamCId,
     preferredMatchIds: conflictingMatchIds,
   }), ["tournament_preferred_match_id_conflict"]);
   assertFlow(apiConflict.rejected, "tournament API accepted another match id", apiConflict);
+  const approvalReadiness = await step(`${ids.label}:assertTournamentApprovalReady`, async () => {
+    const [{ data: tournamentRow, error: tournamentError }, { data: teamRows, error: teamError }] = await Promise.all([
+      supabase
+        .from("tournaments")
+        .select("referee_ids,referee_statuses,sanction_status,end_date")
+        .eq("id", ids.tournamentId)
+        .maybeSingle(),
+      supabase
+        .from("tournament_teams")
+        .select("team_id,status")
+        .eq("tournament_id", ids.tournamentId),
+    ]);
+    if (tournamentError) throw tournamentError;
+    if (teamError) throw teamError;
+    const refereeIds = tournamentRow?.referee_ids ?? [];
+    const [{ data: appointments, error: appointmentError }, { data: profiles, error: profileError }, { data: refereeTeams, error: refereeTeamError }] = await Promise.all([
+      supabase
+        .from("referee_appointments")
+        .select("user_id,status,starts_at,ends_at")
+        .in("user_id", refereeIds),
+      supabase
+        .from("profiles")
+        .select("id,trust_score")
+        .in("id", refereeIds),
+      supabase
+        .from("team_members")
+        .select("user_id,team_id")
+        .in("user_id", refereeIds)
+        .in("team_id", [representativeTeamId, teamBId, teamCId]),
+    ]);
+    if (appointmentError) throw appointmentError;
+    if (profileError) throw profileError;
+    if (refereeTeamError) throw refereeTeamError;
+    const ready = teamRows?.every((row) => row.status === "accepted")
+      && refereeIds.length >= 2
+      && refereeIds.every((refereeId) => tournamentRow?.referee_statuses?.[refereeId] === "accepted");
+    return { ready, tournamentRow, teamRows, appointments, profiles, refereeTeams };
+  });
+  assertFlow(approvalReadiness.ready === true, "tournament approval fixture is not ready", approvalReadiness);
   const dbConflict = await step(`${ids.label}:rejectPreferredMatchConflictDb`, async () => {
     const { error } = await supabase.rpc("rankball_tournament_operation_action", {
-      p_actor_profile_id: teamCCaptainId,
+      p_actor_profile_id: creatorId,
       p_operation: {
-        action: "approveTournamentTeam",
+        action: "startCommunityTournament",
         tournamentId: ids.tournamentId,
-        teamId: teamCId,
         preferredMatchIds: conflictingMatchIds,
       },
     });
@@ -7484,12 +7639,11 @@ async function runTournamentRepresentativeTeamGuardScenario({
   assertFlow(
     dbConflict.rejected && dbConflict.message.includes("tournament_preferred_match_id_conflict"),
     "tournament DB reducer accepted another match id",
-    dbConflict,
+    { dbConflict, approvalReadiness },
   );
-  const finalApproval = await step(`${ids.label}:approveTeamC`, () => syncTournamentAs(teamCCaptainLogin, {
-    action: "approveTournamentTeam",
+  const finalApproval = await step(`${ids.label}:startCommunityTournament`, () => syncTournamentAs(creatorLogin, {
+    action: "startCommunityTournament",
     tournamentId: ids.tournamentId,
-    teamId: teamCId,
     preferredMatchIds: matchIds,
   }));
   assertFlow(Number(finalApproval?.createdMatchCount ?? 0) === 3, "representative league fixture count mismatch", finalApproval);
@@ -7500,8 +7654,8 @@ async function runTournamentRepresentativeTeamGuardScenario({
   );
   const tournamentStartDeliveryCheck = await step(`${ids.label}:assertTournamentStartDelivery`, () => assertTournamentStartNotificationDelivery({
     tournamentId: ids.tournamentId,
-    targetUserId: teamCCaptainId,
-    targetLogin: teamCCaptainLogin,
+    targetUserId: creatorId,
+    targetLogin: creatorLogin,
   }));
   const inviteResolutionCheck = await step(`${ids.label}:assertCaptainInvitesResolved`, () => assertTournamentInviteNotificationsResolved({
     tournamentId: ids.tournamentId,
@@ -7764,7 +7918,7 @@ async function runTournamentRepresentativeTeamGuardScenario({
   return {
     label: ids.label,
     tournamentId: ids.tournamentId,
-    actorLogins: [creatorLogin, teamBCaptainLogin, teamCCaptainLogin],
+    actorLogins: [creatorLogin, teamBCaptainLogin, teamCCaptainLogin, refereeLogin],
     participatingTeamIds,
     blockedTeamId: nonRepresentativeTeamId,
     createdMatchCount: matches.length,

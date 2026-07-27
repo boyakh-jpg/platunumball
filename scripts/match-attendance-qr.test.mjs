@@ -367,6 +367,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const clockAccuracySql = await readSource("supabase/migrations/20260725001000_match_play_time_clock_accuracy.sql");
   const roomEquipmentSql = await readSource("supabase/migrations/20260725001500_room_equipment_edit.sql");
   const candidateSubstitutionSql = await readSource("supabase/migrations/20260725018000_candidate_self_substitution_and_late_guard.sql");
+  const attendanceStartOrderSql = await readSource("supabase/migrations/20260727090000_fix_match_start_attendance_trigger_order.sql");
   const substitutionPermissionSql = await readSource("supabase/migrations/20260725025000_match_substitution_permission_hardening.sql");
   const consistencySql = await readSource("supabase/migrations/20260726090000_match_policy_consistency.sql");
   assert.match(sql, /interval '10 minutes'/u);
@@ -399,6 +400,9 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(candidateSubstitutionSql, /old\.status = 'no_show'[\s\S]*match\.started_at is not null[\s\S]*match\.ended_at is null/u);
   assert.match(candidateSubstitutionSql, /old\.started_at is null and new\.started_at is not null[\s\S]*status = 'no_show'/u);
   assert.match(candidateSubstitutionSql, /entry\.first_registered_at <= match\.started_at/u);
+  assert.match(attendanceStartOrderSql, /drop trigger if exists zz_mark_pending_attendance_no_show_at_start/u);
+  assert.match(attendanceStartOrderSql, /create trigger aa_mark_pending_attendance_no_show_at_start/u);
+  assert.match(attendanceStartOrderSql, /execute function public\.rankball_mark_pending_attendance_no_show_at_start\(\)/u);
   assert.match(candidateSubstitutionSql, /safe_actor_id = safe_reserve_player_id/u);
   assert.match(candidateSubstitutionSql, /safe_reason := case when late_eligible then 'late' else 'self' end/u);
   assert.match(candidateSubstitutionSql, /match_late_substitution_not_eligible/u);

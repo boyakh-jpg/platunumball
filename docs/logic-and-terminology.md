@@ -1973,7 +1973,7 @@ flowchart TD
 8. `sync-match`는 후속 라운드가 생성되면 서버가 실제 저장한 tournament snapshot과 새 match snapshot을 `state.tournaments`/`state.matches`로 응답한다.
 9. 클라이언트는 같은 `tournamentId + tournamentRound + tournamentFixture`를 가진 optimistic 경기와 서버 경기를 같은 경기로 보고 서버 경기 id를 남긴다.
 10. 토너먼트 생성·팀 승인·대진 1차 생성·후속 라운드 생성은 authoritative DB RPC가 원본이다. `rankball_persist_tournament_snapshot_locked()`와 tournament action RPC는 대회별 advisory/row lock 안에서 처리한다.
-10-1. 마지막 초대팀 승인으로 대진이 처음 생성되면 `rankball_tournament_operation_action()`이 넣는 `대회 시작` 앱 알림을 원본으로 같은 DB transaction에서 Discord delivery도 만든다. 앱 알림은 Discord 연결·수신 설정과 무관하게 유지하고, Discord 큐는 연결 상태와 `match` 이벤트 수신 설정이 모두 켜진 마지막 승인자에게만 만든다. 알림 payload에는 실제 `/app/tournaments/:tournamentId` 경로와 `skipDiscordSync=true`를 넣어 브라우저 재큐잉을 막는다. 앱 알림 또는 큐 저장이 실패하면 대회 시작 transaction 전체를 rollback한다.
+10-1. 팀·심판 승인이 준비된 뒤 지역 승인 또는 지역 비승인 개최 action으로 대진이 처음 생성되면 `rankball_tournament_operation_action()`이 넣는 `대회 시작` 앱 알림을 원본으로 같은 DB transaction에서 Discord delivery도 만든다. 앱 알림은 Discord 연결·수신 설정과 무관하게 유지하고, Discord 큐는 연결 상태와 `match` 이벤트 수신 설정이 모두 켜진 최종 개최 action 수행자에게만 만든다. 알림 payload에는 실제 `/app/tournaments/:tournamentId` 경로와 `skipDiscordSync=true`를 넣어 브라우저 재큐잉을 막는다. 앱 알림 또는 큐 저장이 실패하면 대회 시작 transaction 전체를 rollback한다.
 11. `npm run simulate:backend -- --full`의 `tournament_followup_round`는 4팀 토너먼트 생성, 팀장 승인, 1라운드 2경기 확정, 2라운드 1경기 생성, DB `match_ids` 반영을 검증한다.
 12. 리그 현재 순위는 저장 상태를 새로 만들지 않고 DB 경기 결과 projection으로 계산한다. 완료 경기의 승수, 득실차, 득점, 팀명 순으로 정렬하며 경기 원본 점수와 대회 상태를 수정하지 않는다.
 13. 리그는 `match_ids`의 모든 경기가 동점 없이 `confirmed`가 되면 마지막 경기 transaction 안에서 자동 종료한다. DB는 승수, 득실차, 득점, 팀명, 팀 ID 순으로 우승팀을 정하고 `championTeamId`, `completedAt`, 최종 `standings`를 저장한다. 화면 추정값은 저장하지 않는다.

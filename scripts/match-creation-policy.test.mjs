@@ -53,6 +53,10 @@ const pickupRefereeMigrationSource = fs.readFileSync(
   path.join(root, "supabase/migrations/20260725011000_preserve_pickup_referee_interest.sql"),
   "utf8",
 );
+const pickupRefereeWrapperMigrationSource = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260727093000_preserve_pickup_referee_self_interest.sql"),
+  "utf8",
+);
 const publicTeamRepresentativeMigrationSource = fs.readFileSync(
   path.join(root, "supabase/migrations/20260725019000_public_team_representative_guard.sql"),
   "utf8",
@@ -374,6 +378,10 @@ test("pickup API normalizes team payloads and blocks party mutations", () => {
   assert.match(
     pickupRefereeMigrationSource,
     /normalized_operation #>> '\{application,joinMode\}'[\s\S]*?<> 'referee'/,
+  );
+  assert.match(
+    pickupRefereeWrapperMigrationSource,
+    /rankball_recruiting_management_action\(text,jsonb\)[\s\S]*?normalized_operation #>> '\{application,joinMode\}'[\s\S]*?<> 'referee'/,
   );
   assert.throws(
     () => normalizePickupRecruitingOperation(post, { action: "setRecruitingTeamPartyRoster" }),

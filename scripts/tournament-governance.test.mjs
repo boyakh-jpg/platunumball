@@ -348,9 +348,11 @@ test("심판 일정은 예상 경기 종료 시각과 맞닿으면 겹치지 않
 });
 
 test("DB 권위 흐름은 비승인 대회에도 심판과 중립성·일정 충돌·시작 가드를 둔다", async () => {
-  const [migration, consistencyMigration] = await Promise.all([
+  const [migration, consistencyMigration, ambiguityFixMigration, scopedVariableFixMigration] = await Promise.all([
     readSource("supabase/migrations/20260725023000_tournament_referee_sanction_flow.sql"),
     readSource("supabase/migrations/20260726090000_match_policy_consistency.sql"),
+    readSource("supabase/migrations/20260727091000_fix_tournament_referee_variable_ambiguity.sql"),
+    readSource("supabase/migrations/20260727092000_scope_tournament_referee_variables.sql"),
   ]);
   const server = await readSource("server/api/tournaments/sync-tournament.js");
   for (const action of [
@@ -383,4 +385,10 @@ test("DB 권위 흐름은 비승인 대회에도 심판과 중립성·일정 충
   assert.match(consistencyMigration, /new\.referee_absence_request is distinct from old\.referee_absence_request/);
   assert.match(consistencyMigration, /active_tournament_referee_decline_locked/);
   assert.doesNotMatch(consistencyMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
+  assert.match(ambiguityFixMigration, /pg_get_functiondef\(/);
+  assert.match(ambiguityFixMigration, /#variable_conflict use_variable/);
+  assert.match(ambiguityFixMigration, /execute function_definition/);
+  assert.match(scopedVariableFixMigration, /safe_referee_ids jsonb/);
+  assert.match(scopedVariableFixMigration, /referee_statuses = safe_referee_statuses/);
+  assert.match(scopedVariableFixMigration, /replace\(function_definition, '#variable_conflict use_variable', ''\)/);
 });

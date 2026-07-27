@@ -176,7 +176,11 @@ test("local Supabase target remains available without production confirmation", 
 test("simulation cleanup is exact, bounded, and guarded from user matches", () => {
   assert.match(scriptSource, /rankball_cleanup_simulation_artifacts_exact/);
   assert.doesNotMatch(scriptSource, /\.rpc\("rankball_cleanup_simulation_artifacts"\)/);
-  assert.match(scriptSource, /matchIds\.slice\(index \* 10, \(index \+ 1\) \* 10\)/);
+  assert.match(scriptSource, /standaloneMatchIds\.slice\(index \* 10, \(index \+ 1\) \* 10\)/);
+  assert.match(scriptSource, /tournamentMatchIdsForCleanup\.slice\(index \* 10, \(index \+ 1\) \* 10\)/);
+  assert.match(scriptSource, /await applyCleanupBatch\(matchBatch, \[\]\)/);
+  assert.match(scriptSource, /await applyCleanupBatch\(matchBatch, \[tournamentId\]\)/);
+  assert.match(scriptSource, /await applyCleanupBatch\(\[\], \[tournamentId\]\)/);
   assert.match(exactCleanupMigration, /cardinality\(safe_match_ids\) > 10/);
   assert.match(exactCleanupMigration, /simulation_cleanup_match_id_required/);
   assert.match(exactCleanupMigration, /rankball\.skip_derived_refresh/);
@@ -212,4 +216,30 @@ test("production simulation verifies one-representative public team joins", () =
   assert.match(scriptSource, /recruiting_team_captain_required/);
   assert.match(scriptSource, /joinOpponentRepresentative/);
   assert.match(scriptSource, /opponentApplication\.playerIds/);
+});
+
+test("tournament simulation satisfies referee governance before generating fixtures", () => {
+  assert.match(scriptSource, /ensureSimulationRefereeEligibility\(creatorId/);
+  assert.match(scriptSource, /ensureSimulationRefereeEligibility\(refereeId/);
+  assert.match(scriptSource, /ensureSimulationRefereeEligibility\(refereeId, `\$\{label\}_neutral`, 7\)/);
+  assert.match(scriptSource, /refereeIds: tournamentReferees\.refereeIds/);
+  assert.match(scriptSource, /action: "approveTournamentReferee"/);
+  assert.match(scriptSource, /action: "startCommunityTournament"/);
+  assert.match(scriptSource, /const refereeId = match\.refereeId/);
+  assert.match(scriptSource, /getTestLoginForProfileId\(refereeId\)/);
+});
+
+test("admin audit verification relies on exact artifact ids without a client clock bound", () => {
+  const scenarioStart = scriptSource.indexOf("async function runAdminControlScenario");
+  const scenarioEnd = scriptSource.indexOf("async function runProfilePrivacyScenario", scenarioStart);
+  const scenarioSource = scriptSource.slice(scenarioStart, scenarioEnd);
+
+  assert.ok(scenarioStart >= 0 && scenarioEnd > scenarioStart);
+  assert.match(scenarioSource, /row\.appointment_id === appointed\.appointmentId/);
+  assert.match(
+    scenarioSource,
+    /row\.payload\?\.disciplinaryActionId === disciplined\.disciplinaryActionId/,
+  );
+  assert.doesNotMatch(scenarioSource, /\.gte\("created_at"/);
+  assert.doesNotMatch(scenarioSource, /Date\.now\(\) - 1000/);
 });
