@@ -9,6 +9,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../src/lib/constants.js";
 import { getReadableMatchStatRows } from "../src/data/matchMappers.js";
+import { getPlayerRecentRecordMatches } from "../src/lib/matchUtils.js";
 import { getRecordWindowDates, isRecordDetailDate } from "../src/lib/recordRetention.js";
 
 const root = new URL("../", import.meta.url);
@@ -25,6 +26,30 @@ test("record windows use KST calendar cutoffs", () => {
   assert.equal(REMOTE_CLIENT_RECORD_MONTHS, 6);
   assert.equal(REMOTE_CLIENT_RECORD_LIST_YEARS, 5);
   assert.equal(REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT, 100);
+});
+
+test("profile preview is the first six rows of the recent record detail list", () => {
+  const now = new Date("2026-07-28T09:00:00.000Z");
+  const matches = Array.from({ length: 8 }, (_, index) => ({
+    id: `recent-${index}`,
+    status: "confirmed",
+    scheduledDate: `2026-07-${String(20 - index).padStart(2, "0")}`,
+    scheduledAt: `2026-07-${String(20 - index).padStart(2, "0")} 19:00`,
+    teamA: { players: ["player-1"] },
+    teamB: { players: ["opponent-1"] },
+  })).concat({
+    id: "too-old",
+    status: "confirmed",
+    scheduledDate: "2026-01-27",
+    scheduledAt: "2026-01-27 19:00",
+    teamA: { players: ["player-1"] },
+    teamB: { players: ["opponent-1"] },
+  });
+  const detailRecords = getPlayerRecentRecordMatches(matches, "player-1", { now });
+  const previewRecords = getPlayerRecentRecordMatches(matches, "player-1", { now, limit: 6 });
+
+  assert.deepEqual(previewRecords.map((match) => match.id), detailRecords.slice(0, 6).map((match) => match.id));
+  assert.equal(detailRecords.some((match) => match.id === "too-old"), false);
 });
 
 test("team record visibility keeps public rows readable and private rows scoped", () => {

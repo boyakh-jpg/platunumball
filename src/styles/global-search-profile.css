@@ -947,16 +947,60 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .recent-match-row .profile-record-badges {
-  display: flex;
+  display: inline-flex;
+  flex: none;
+  flex-wrap: nowrap;
   width: fit-content;
   max-width: 100%;
   grid-auto-flow: column;
+  white-space: nowrap;
 }
 
 .recent-match-row .profile-record-badges .ui-badge {
   display: inline-flex;
   width: fit-content;
   white-space: nowrap;
+}
+
+.match-record-meta,
+.recent-match-row .match-record-meta,
+.history-item .match-record-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.match-record-meta > span {
+  display: inline;
+  min-width: 0;
+}
+
+.match-record-meta .profile-record-badges {
+  display: inline-flex;
+  flex: none;
+  flex-wrap: nowrap;
+  width: fit-content;
+  white-space: nowrap;
+}
+
+.match-record-meta .profile-record-badges .ui-badge {
+  white-space: nowrap;
+}
+
+.match-record-meta__prefix,
+.match-record-meta__court {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-record-meta__court {
+  flex: 1 1 auto;
 }
 
 .personal-record-profile-card .history-list,

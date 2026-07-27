@@ -432,6 +432,18 @@ export function isMatchWithinRecordDetailWindow(match = {}, months = REMOTE_CLIE
   return isDateWithinPastMonths(source, months, now);
 }
 
+export function getPlayerRecentRecordMatches(matches = [], playerId = "", options = {}) {
+  const limit = Number(options.limit);
+  const records = [...matches]
+    .filter((match) => (
+      match.status === "confirmed"
+      && getPlayerSideName(match, playerId)
+      && isMatchWithinRecordDetailWindow(match, options.months, options.now)
+    ))
+    .sort(compareMatchRecency);
+  return Number.isInteger(limit) && limit >= 0 ? records.slice(0, limit) : records;
+}
+
 function getSideMajority(side = {}) {
   const total = side.players?.length ?? 0;
   return Math.floor(total / 2) + 1;

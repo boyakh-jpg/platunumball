@@ -23,6 +23,33 @@ import { getMatchSideLeaderId } from "../src/lib/matchUtils.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
 import { getRecruitingLobby } from "../src/lib/recruiting.js";
 
+test("cancelled instant rooms stay visible for their calendar date", async () => {
+  const { createServer } = await import("vite");
+  const vite = await createServer({
+    appType: "custom",
+    logLevel: "silent",
+    server: { middlewareMode: true },
+  });
+
+  try {
+    const { matchesRecruitingScheduleDate } = await vite.ssrLoadModule("/src/pages/Matches.jsx");
+    const cancelledInstant = {
+      status: "cancelled",
+      timingType: "instant",
+      scheduledAt: "즉시",
+      createdAt: "2026-07-28T09:00:00.000Z",
+    };
+    const openInstant = { ...cancelledInstant, status: "open" };
+
+    assert.equal(matchesRecruitingScheduleDate(cancelledInstant, "2026-07-28"), true);
+    assert.equal(matchesRecruitingScheduleDate(cancelledInstant, "2026-07-27"), false);
+    assert.equal(matchesRecruitingScheduleDate(openInstant, "2026-07-28"), false);
+    assert.equal(matchesRecruitingScheduleDate(openInstant, ""), true);
+  } finally {
+    await vite.close();
+  }
+});
+
 test("경기 목적과 팀 구성은 독립 필드이고 레거시 matchIntent만 호환용으로 만든다", () => {
   const competitive = getMatchConfigurationChangePatch({}, { matchPurpose: "competitive", formationMode: "prearranged" });
   assert.equal(competitive.matchPurpose, "competitive");

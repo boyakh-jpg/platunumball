@@ -571,6 +571,8 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(recruitingPage, /scheduleChangePending/);
   assert.match(recruitingPage, /getRoomEditDraft\(roomPost, sourceMatch\)/);
   assert.match(matchesPage, /id: "cancelled"/);
+  assert.match(matchesPage, /desc: "취소 후 7일 보관"/);
+  assert.match(matchesPage, /function matchesRecruitingScheduleDate/);
   assert.match(matchListServer, /includeCancelledSchedule/);
   assert.match(matchListServer, /const feedStatus = String\(row\?\.status/);
   assert.match(matchListServer, /\.\.\.\(feedStatus \? \{ status: feedStatus \} : \{\}\)/);

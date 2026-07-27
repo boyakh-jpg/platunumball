@@ -79,7 +79,7 @@ const VIEWS = [
     id: "cancelled",
     code: "REMATCH",
     title: "취소된 방",
-    desc: "확인·다시 만들기",
+    desc: "취소 후 7일 보관",
     icon: RotateCcw,
   },
 ];
@@ -193,6 +193,12 @@ function isInstantScheduleRoom(room) {
 
 function isExpiredInstantScheduleRoom(room) {
   return isInstantScheduleRoom(room) && getPublicRoomTimingStatus(room).expired;
+}
+
+export function matchesRecruitingScheduleDate(post = {}, dateFilter = "") {
+  if (!dateFilter) return true;
+  if (isInstantScheduleRoom(post) && !getRecruitingPostTerminalState(post)) return false;
+  return getMatchDate(post) === dateFilter;
 }
 
 function hasAssignedTeamSchedule(match) {
@@ -1351,11 +1357,10 @@ export default function Matches({ app }) {
       .filter((post) => matchesScheduleBranch(post, "room", branchFilter))
       .filter((post) => matchesScheduleRelation(getRecruitingScheduleRelation(post, app.state, app.currentUser.id, myTeamIds), relationFilter));
   }, [app.currentUser.id, app.state, branchFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, relationFilter, todayValue]);
-  const dateScopedRecruitingCandidates = useMemo(() => visibleRecruitingCandidates.filter((post) => {
-    if (isInstantScheduleRoom(post)) return !dateFilter;
-    const postDate = getMatchDate(post);
-    return !dateFilter || postDate === dateFilter;
-  }), [dateFilter, visibleRecruitingCandidates]);
+  const dateScopedRecruitingCandidates = useMemo(
+    () => visibleRecruitingCandidates.filter((post) => matchesRecruitingScheduleDate(post, dateFilter)),
+    [dateFilter, visibleRecruitingCandidates],
+  );
 
   const hasDateFilter = Boolean(dateFilter);
   const personalScheduleItemsByView = useMemo(() => Object.fromEntries(

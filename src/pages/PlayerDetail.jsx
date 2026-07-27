@@ -4,6 +4,7 @@ import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
+import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
@@ -313,11 +314,15 @@ export default function PlayerDetail({ app }) {
                           <button type="button" className="personal-record-open-button" onClick={() => setSelectedMatchId(match.id)}>
                             <strong>{match.title}</strong>
                           </button>
-                          <span>{match.court} · {match.scheduledAt}</span>
-                          <span className="profile-record-badges">
-                            <Badge tone="gold">내 기록</Badge>
-                            <Badge tone={match.visibility === "public" ? "green" : "blue"}>{match.visibility === "public" ? "공개" : "비공개"}</Badge>
-                          </span>
+                          <MatchRecordMeta
+                            record={match}
+                            afterMode={(
+                              <span className="profile-record-badges">
+                                <Badge tone="gold">내 기록</Badge>
+                                <Badge tone={match.visibility === "public" ? "green" : "blue"}>{match.visibility === "public" ? "공개" : "비공개"}</Badge>
+                              </span>
+                            )}
+                          />
                         </div>
                         <div className="history-score"><strong>{getSideScore(match, "teamA")}:{getSideScore(match, "teamB")}</strong></div>
                         {match.result?.playerStats?.[player.id] ? <p>{formatStatLine(match.result.playerStats[player.id])}</p> : null}
@@ -333,8 +338,10 @@ export default function PlayerDetail({ app }) {
                       <b>{record.result}</b>
                       <span>
                         <strong>{record.teamName} vs {record.opponentTeamName}</strong>
-                        <span className="profile-record-badges"><Badge tone="gold">내 기록</Badge><Badge tone={record.visibility === "public" ? "green" : "blue"}>{record.visibility === "public" ? "공개" : "비공개"}</Badge></span>
-                        <em>{record.recordDate} · {record.mode} · {record.court}</em>
+                        <MatchRecordMeta
+                          record={record}
+                          afterMode={<span className="profile-record-badges"><Badge tone="gold">내 기록</Badge><Badge tone={record.visibility === "public" ? "green" : "blue"}>{record.visibility === "public" ? "공개" : "비공개"}</Badge></span>}
+                        />
                       </span>
                       <i>{record.score}:{record.opponentScore}</i>
                     </div>
@@ -373,7 +380,7 @@ export default function PlayerDetail({ app }) {
                         >
                           <strong>{match.title}</strong>
                         </Link>
-                        <span>{match.court} · {match.scheduledAt}</span>
+                        <MatchRecordMeta record={match} />
                       </div>
                       <div className="history-score">
                         <Badge tone={outcome === null ? "blue" : outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>

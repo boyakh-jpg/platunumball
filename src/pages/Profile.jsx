@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProfileIconDialog from "../components/profile/ProfileIconDialog.jsx";
 import AffiliationEditor from "../components/profile/AffiliationEditor.jsx";
@@ -11,7 +12,7 @@ import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import { BASKETBALL_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { compareMatchRecency, getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerSideName, isMatchWithinRecordDetailWindow, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { canChangeProfileName, getNextNameChangeDate, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
@@ -63,7 +64,7 @@ function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
       <div className="section-title-row">
         <div>
           <p className="eyebrow">Record</p>
-          <h2>내 기록</h2>
+          <h2>최근 기록</h2>
         </div>
         <Button as={Link} variant="secondary" size="sm" to="/app/profile/records">기록 더보기</Button>
       </div>
@@ -86,8 +87,7 @@ function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
                 <b>{line.result}</b>
                 <span>
                   <strong>{line.side.name} vs {line.opponent.name}</strong>
-                  <PersonalRecordBadges match={match} />
-                  <em>{match.scheduledAt} · {match.mode}</em>
+                  <MatchRecordMeta record={match} afterMode={<PersonalRecordBadges match={match} />} />
                 </span>
                 <i>{line.score}:{line.opponentScore}</i>
               </Link>
@@ -140,10 +140,7 @@ export default function Profile({ app }) {
       setProfileError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     }
   };
-  const myRecords = [...app.state.matches]
-    .filter((match) => match.status === "confirmed" && getPlayerSideName(match, user.id) && isMatchWithinRecordDetailWindow(match))
-    .sort(compareMatchRecency)
-    .slice(0, 6);
+  const myRecords = getPlayerRecentRecordMatches(app.state.matches, user.id, { limit: 6 });
   useEffect(() => {
     const shouldLoadRecords = !app.actions.profileRecordsLoaded;
     if (!app.remoteReady || !app.actions.loadProfileRecords || !shouldLoadRecords) return;

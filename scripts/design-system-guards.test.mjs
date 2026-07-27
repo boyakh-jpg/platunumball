@@ -17,6 +17,7 @@ const allStyleSources = styleFiles.map((file) => read(file)).join("\n");
 
 const componentSource = read("src/components/match/MatchListCard.jsx");
 const matchCreationWizardSource = read("src/components/match/MatchCreationWizard.jsx");
+const matchRecordMetaSource = read("src/components/match/MatchRecordMeta.jsx");
 const matchOperationsFieldsSource = matchCreationWizardSource.slice(
   matchCreationWizardSource.indexOf("export function MatchOperationsPolicyFields"),
   matchCreationWizardSource.indexOf("export function MatchCreationFinalSummary"),
@@ -125,19 +126,22 @@ test("home favorite search uses the full input width without splitting court nam
   );
 });
 
-test("home recent matches keep matchup and court on two stable lines", () => {
+test("record result cards share matchup and date mode court metadata", () => {
   assert.match(
     pageSources.home,
-    /className="recent-match-matchup"[\s\S]*?<strong>\{line\.side\.name\}<\/strong>[\s\S]*?className="recent-match-vs">vs<\/span>[\s\S]*?\{line\.opponent\.name\}[\s\S]*?className="recent-match-court"/,
+    /className="recent-match-matchup"[\s\S]*?<strong>\{line\.side\.name\}<\/strong>[\s\S]*?className="recent-match-vs">vs<\/span>[\s\S]*?\{line\.opponent\.name\}[\s\S]*?<MatchRecordMeta record=\{match\}/,
   );
   assert.match(
-    courtControlStyles,
-    /\.rank-home \.home-recent-card \.recent-match-matchup\s*\{[^}]*display:\s*flex;[^}]*overflow:\s*hidden;[^}]*white-space:\s*nowrap;/,
+    matchRecordMetaSource,
+    /const prefix = \[date, mode\]\.filter\(Boolean\)\.join\(" · "\)/,
   );
   assert.match(
-    courtControlStyles,
-    /\.rank-home \.home-recent-card \.recent-match-court\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/,
+    globalSearchStyles,
+    /\.recent-match-row \.match-record-meta,[\s\S]*?\.history-item \.match-record-meta\s*\{[^}]*display:\s*flex;[^}]*white-space:\s*nowrap;/,
   );
+  for (const page of ["home", "playerDetail", "teamDetail"]) {
+    assert.match(pageSources[page], /MatchRecordMeta/);
+  }
 });
 
 function getRuleBody(source, selector) {

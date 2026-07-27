@@ -7,6 +7,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
+import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -449,7 +450,7 @@ export default function TeamDetail({ app }) {
                       >
                         <strong>{match.title}</strong>
                       </Link>
-                      <span>{match.court} · {match.scheduledAt}</span>
+                      <MatchRecordMeta record={match} />
                     </div>
                     <div className="history-score">
                       <Badge tone={match.status === "confirmed" ? "green" : match.status === "contract" ? "blue" : "orange"}>{historyStatusLabel[match.status] ?? "상태 확인 중"}</Badge>
@@ -485,7 +486,7 @@ export default function TeamDetail({ app }) {
                   <article key={record.matchId} className="history-item record-archive-row">
                     <div>
                       <strong>{record.title}</strong>
-                      <span>{record.recordDate} · {record.mode} · {record.court}</span>
+                      <MatchRecordMeta record={record} />
                     </div>
                     <div className="history-score">
                       <Badge tone="neutral">5년 기록</Badge>

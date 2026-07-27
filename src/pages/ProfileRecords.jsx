@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { compareMatchRecency, formatStatLine, getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerSideName, isMatchWithinRecordDetailWindow, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { formatStatLine, getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function getRecordDate(match) {
@@ -57,10 +58,7 @@ export default function ProfileRecords({ app }) {
   const archiveState = app.recordArchives?.profile ?? { rows: [], page: {}, loading: false, error: "" };
   const loadKeyRef = useRef("");
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
-  const records = [...app.state.matches]
-    .filter((match) => match.status === "confirmed" && getPlayerSideName(match, user.id))
-    .sort(compareMatchRecency);
-  const recentRecords = records.filter(isMatchWithinRecordDetailWindow);
+  const recentRecords = getPlayerRecentRecordMatches(app.state.matches, user.id);
   const officialRecentRecords = recentRecords.filter((match) => !isPersonalRecordMatch(match));
   const personalRecentRecords = recentRecords.filter(isPersonalRecordMatch);
   const archivedRecords = archiveState.rows ?? [];
@@ -195,8 +193,10 @@ export default function ProfileRecords({ app }) {
                   <b>{line.result}</b>
                   <span>
                     <strong>{line.side.name} vs {line.opponent.name}</strong>
-                    {isPersonalRecordMatch(match) ? <PersonalRecordBadges visibility={match.visibility} /> : null}
-                    <em>{match.scheduledAt} · {match.mode} · {match.court}</em>
+                    <MatchRecordMeta
+                      record={match}
+                      afterMode={isPersonalRecordMatch(match) ? <PersonalRecordBadges visibility={match.visibility} /> : null}
+                    />
                     {stats ? <small>{formatStatLine(stats)}</small> : null}
                   </span>
                   <i>{line.score}:{line.opponentScore}</i>
@@ -236,8 +236,10 @@ export default function ProfileRecords({ app }) {
                   <b>{record.result}</b>
                   <span>
                     <strong>{record.teamName} vs {record.opponentTeamName}</strong>
-                    {isPersonalArchiveRecord(record) ? <PersonalRecordBadges visibility={record.visibility} /> : null}
-                    <em>{record.recordDate} · {record.mode} · {record.court}</em>
+                    <MatchRecordMeta
+                      record={record}
+                      afterMode={isPersonalArchiveRecord(record) ? <PersonalRecordBadges visibility={record.visibility} /> : null}
+                    />
                     <small>6개월이 지난 기록은 목록으로 보관합니다.</small>
                   </span>
                   <i>{record.score}:{record.opponentScore}</i>

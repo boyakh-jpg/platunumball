@@ -1151,8 +1151,8 @@ html[data-theme="light"] .court-map-picker-state {
   color: var(--muted);
 }
 
-.rank-home .home-recent-card .recent-match-court {
-  display: block;
+.rank-home .home-recent-card .match-record-meta {
+  display: flex;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

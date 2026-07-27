@@ -7,6 +7,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard, { CourtIdentityIcon } from "../components/court/CourtHoverCard.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
+import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
@@ -780,7 +781,7 @@ export default function Home({ app }) {
                                   <span className="recent-match-vs">vs</span>
                                   <TeamHoverCard team={teamById[line.opponent.teamId]} as="span">{line.opponent.name}</TeamHoverCard>
                                 </span>
-                                <em className="recent-match-court">{match.court || "구장 미정"}</em>
+                                <MatchRecordMeta record={match} />
                               </span>
                               <i>{line.score}:{line.opponentScore}</i>
                             </>
