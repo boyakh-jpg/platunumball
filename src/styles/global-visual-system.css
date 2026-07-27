@@ -3648,6 +3648,17 @@ html[data-theme="light"] .brand-letter-light {
   max-width: 560px;
   gap: var(--space-4);
   margin-top: clamp(6px, 0.8vw, 12px);
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--ui-panel-radius);
+  background:
+    linear-gradient(145deg, rgba(18, 23, 30, 0.66), rgba(5, 7, 10, 0.46)),
+    rgba(5, 7, 10, 0.5);
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(24px) saturate(1.16);
+  backdrop-filter: blur(24px) saturate(1.16);
 }
 
 .landing-purpose h2 {
@@ -3700,6 +3711,17 @@ html[data-theme="light"] .landing-copy .landing-purpose > .landing-purpose-brand
   color: var(--orange);
 }
 
+html[data-theme="light"] .landing-purpose {
+  border-color: rgba(255, 255, 255, 0.88);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(242, 246, 247, 0.58)),
+    rgba(248, 248, 246, 0.62);
+  box-shadow:
+    0 16px 38px rgba(35, 50, 59, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 0 0 0 1px rgba(71, 88, 99, 0.05);
+}
+
 @media (max-width: 720px) {
   .landing-hero {
     --landing-mobile-content-gutter: clamp(20px, 6vw, 28px);
@@ -3720,24 +3742,10 @@ html[data-theme="light"] .landing-copy .landing-purpose > .landing-purpose-brand
   .landing-purpose {
     gap: 7px;
     padding: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: var(--ui-panel-radius);
-    background: rgba(5, 7, 10, 0.74);
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
-    -webkit-backdrop-filter: blur(16px) saturate(0.86);
-    backdrop-filter: blur(16px) saturate(0.86);
   }
 
   .landing-purpose h2 {
     font-size: 1.35rem;
-  }
-
-  html[data-theme="light"] .landing-purpose {
-    border-color: rgba(255, 255, 255, 0.76);
-    background: rgba(248, 248, 246, 0.84);
-    box-shadow:
-      0 14px 34px rgba(35, 50, 59, 0.16),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
 
 }
