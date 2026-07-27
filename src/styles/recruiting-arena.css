@@ -5300,6 +5300,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
 }
 
 .arena-lobby-modal .arena-lobby-actions > div {
+  min-height: var(--ui-button-height);
   gap: var(--ui-control-group-gap);
   padding: 8px 10px;
 }
@@ -5634,7 +5635,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
 .pickup-participant-pool,
 .pickup-rotation-panel {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--ui-control-group-gap);
   margin-top: var(--space-4);
 }
 
@@ -5686,6 +5687,7 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
 
 .pickup-rotation-panel .ui-status-strip {
   display: grid;
+  min-height: var(--ui-button-height);
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
 }
@@ -5706,6 +5708,7 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
 .pickup-rotation-panel .arena-room-edit-actions > .button {
   width: 100%;
   min-width: 0;
+  min-height: var(--ui-button-height);
 }
 
 @media (max-width: 720px) {
