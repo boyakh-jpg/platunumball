@@ -544,10 +544,14 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
 });
 
-test("팀 허브 대표팀 보드는 팀 전용 너비와 단색 gold 팀명을 사용한다", () => {
+test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명을 사용한다", () => {
+  assert.match(
+    read("src/styles/tokens.css"),
+    /--rb-yellow:\s*#ffd36c;/,
+  );
   assert.match(
     visualSystemStyles,
-    /\.team-hub-board strong\s*\{[^}]*color:\s*var\(--rb-gold\);/,
+    /\.team-hub-board strong\s*\{[^}]*color:\s*var\(--rb-yellow\);/,
   );
   assert.match(
     read("src/styles/global-surfaces.css"),

@@ -3974,7 +3974,7 @@ html[data-theme] .app-main :is(
 }
 
 html[data-theme] .app-main .team-hub-board strong {
-  color: var(--rb-gold);
+  color: var(--rb-yellow);
 }
 
 html[data-theme] .app-main :is(
