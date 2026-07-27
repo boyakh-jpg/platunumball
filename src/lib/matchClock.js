@@ -3,8 +3,8 @@ import { isPracticeId, PRACTICE_LOCAL_ONLY_ERROR } from "./practiceMode.js";
 
 export const SHOT_CLOCK_OPTIONS = Object.freeze([
   { value: 0, label: "사용 안 함" },
+  { value: 24, label: "24초" },
   { value: 30, label: "30초" },
-  { value: 35, label: "35초" },
   { value: 60, label: "1분" },
 ]);
 
