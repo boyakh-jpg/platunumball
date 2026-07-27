@@ -3643,83 +3643,15 @@ html[data-theme="light"] .brand-letter-light {
   max-height: none;
 }
 
-.landing-purpose {
-  display: grid;
-  max-width: 560px;
-  gap: var(--space-4);
-  margin-top: clamp(6px, 0.8vw, 12px);
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: var(--ui-panel-radius);
-  background:
-    linear-gradient(145deg, rgba(18, 23, 30, 0.48), rgba(5, 7, 10, 0.3)),
-    rgba(5, 7, 10, 0.26);
-  box-shadow:
-    0 16px 38px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  -webkit-backdrop-filter: blur(28px) saturate(1.16);
-  backdrop-filter: blur(28px) saturate(1.16);
-}
-
-.landing-purpose h2 {
-  max-width: 540px;
+.landing-compact-summary {
+  width: max-content;
+  max-width: 100%;
   margin: 0;
-  color: var(--text);
-  font-size: clamp(1.35rem, 2vw, 2rem);
-  line-height: 1.18;
-}
-
-.landing-copy .landing-purpose > p {
-  margin: 0;
-  color: #d7e0ec;
-  font-size: 0.92rem;
-  line-height: 1.55;
-}
-
-.landing-copy .landing-purpose > .landing-purpose-brand {
-  color: var(--orange);
-  font-size: 0.78rem;
-  font-weight: 950;
-  letter-spacing: 0.08em;
-  line-height: 1.2;
-}
-
-.landing-copy .landing-purpose .landing-oauth-purpose {
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.landing-oauth-purpose a {
-  color: var(--orange);
+  color: var(--hero-copy-color);
+  font-size: 0.82rem;
   font-weight: 900;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-html[data-theme="light"] .landing-copy .landing-purpose > p {
-  color: #274c58;
-}
-
-html[data-theme="light"] .landing-purpose h2,
-html[data-theme="light"] .landing-copy .landing-purpose > p:not(.landing-purpose-brand) {
-  text-shadow:
-    0 1px 1px rgba(255, 255, 255, 0.98),
-    0 0 8px rgba(255, 255, 255, 0.92);
-}
-
-html[data-theme="light"] .landing-copy .landing-purpose > .landing-purpose-brand {
-  color: var(--orange);
-}
-
-html[data-theme="light"] .landing-purpose {
-  border-color: rgba(255, 255, 255, 0.8);
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.56), rgba(242, 246, 247, 0.34)),
-    rgba(248, 248, 246, 0.28);
-  box-shadow:
-    0 16px 38px rgba(35, 50, 59, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    inset 0 0 0 1px rgba(71, 88, 99, 0.05);
+  line-height: 1.35;
+  text-shadow: var(--hero-copy-shadow);
 }
 
 @media (max-width: 720px) {
@@ -3733,19 +3665,21 @@ html[data-theme="light"] .landing-purpose {
     --landing-brand-logo-size: 60px;
     --landing-brand-letter-width: 201px;
     --landing-brand-gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--ui-liquid-glass-border);
+    border-radius: var(--ui-panel-radius);
+    background: var(--ui-liquid-glass-bg);
+    box-shadow: var(--ui-liquid-glass-shadow);
+    -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
+    backdrop-filter: var(--ui-liquid-glass-filter);
   }
 
   .landing-brand-lockup .brand-logo-frame {
     border-radius: var(--radius-sm);
   }
 
-  .landing-purpose {
-    gap: 7px;
-    padding: 14px;
-  }
-
-  .landing-purpose h2 {
-    font-size: 1.35rem;
+  .landing-compact-summary {
+    font-size: 0.76rem;
   }
 
 }
@@ -3997,19 +3931,14 @@ html[data-theme="light"] .app-main :is(
   white-space: nowrap;
 }
 
-/* Light image heroes use one opaque frosted-glass summary surface. */
-html[data-theme="light"] .home-hero-board,
-html[data-theme="light"] .team-hub-board {
-  border-color: rgba(255, 255, 255, 0.82);
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(245, 247, 247, 0.86)),
-    rgba(248, 248, 246, 0.9);
-  box-shadow:
-    0 18px 46px rgba(35, 50, 59, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.94),
-    inset 0 0 0 1px rgba(71, 88, 99, 0.06);
-  -webkit-backdrop-filter: blur(20px) saturate(1.12);
-  backdrop-filter: blur(20px) saturate(1.12);
+/* Image-hero summaries use one translucent Liquid Glass material. */
+.home-hero-board,
+.team-hub-board {
+  border-color: var(--ui-liquid-glass-border);
+  background: var(--ui-liquid-glass-bg);
+  box-shadow: var(--ui-liquid-glass-shadow);
+  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
+  backdrop-filter: var(--ui-liquid-glass-filter);
 }
 
 @media (max-width: 759px) {

@@ -122,6 +122,15 @@
   --ui-profile-popup-bg: color-mix(in srgb, var(--surface) 82%, transparent);
   --ui-profile-popup-shadow: var(--shadow-strong);
   --ui-profile-popup-backdrop-filter: blur(16px) saturate(1.08);
+  --ui-liquid-glass-bg:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+    rgba(8, 11, 16, 0.24);
+  --ui-liquid-glass-border: rgba(255, 255, 255, 0.26);
+  --ui-liquid-glass-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --ui-liquid-glass-filter: blur(28px) saturate(1.28) brightness(0.94);
   --ui-panel-radius: var(--panel-radius);
   --ui-button-height: var(--control-height);
   --ui-button-height-sm: var(--control-height-sm);
@@ -269,6 +278,15 @@ html[data-theme="light"] {
   --ui-selectable-selected-color: var(--rb-orange-pressed);
   --ui-room-modal-bg: var(--card-bg-strong);
   --ui-room-panel-bg: rgba(255, 250, 241, 0.78);
+  --ui-liquid-glass-bg:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.18)),
+    rgba(248, 248, 246, 0.16);
+  --ui-liquid-glass-border: rgba(255, 255, 255, 0.72);
+  --ui-liquid-glass-shadow:
+    0 18px 44px rgba(35, 50, 59, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 0 0 0 1px rgba(71, 88, 99, 0.05);
+  --ui-liquid-glass-filter: blur(28px) saturate(1.22) brightness(1.05);
   --hero-title-color: #fffaf1;
   --hero-title-shadow: 0 14px 34px rgba(30, 24, 18, 0.5);
   --hero-copy-color: rgba(255, 250, 241, 0.88);
