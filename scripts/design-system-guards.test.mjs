@@ -49,6 +49,8 @@ const pageSources = {
   matches: read("src/pages/Matches.jsx"),
   recruiting: read("src/pages/Recruiting.jsx"),
   season: read("src/pages/Season.jsx"),
+  teams: read("src/pages/Teams.jsx"),
+  playerDetail: read("src/pages/PlayerDetail.jsx"),
 };
 const legacyStyleSources = [
   read("src/styles/globals.css"),
@@ -383,26 +385,32 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(appSource, /id="ui-liquid-glass-refraction"/);
   assert.match(appSource, /<feTurbulence[^>]*type="fractalNoise"[^>]*baseFrequency="0\.008 0\.018"/);
   assert.match(appSource, /<feDisplacementMap[^>]*in="SourceGraphic"[^>]*scale="3"/);
-  assert.match(visualSystemStyles, /\.home-hero-board,[\s\S]*?\.om-match-panel,[\s\S]*?\.arena-hero-panel,[\s\S]*?\.season-rule-board,[\s\S]*?\.rank-tier-statement[\s\S]*?\)\s*\{[^}]*border:\s*0;/);
-  assert.match(visualSystemStyles, /\.home-hero-board,[\s\S]*?\.rank-tier-statement[\s\S]*?\)::before\s*\{/);
-  assert.match(visualSystemStyles, /\.rank-tier-statement,\s*\.page-header > \.ui-button[\s\S]*?\)::before\s*\{/);
-  assert.doesNotMatch(visualSystemStyles, /\.home-hero-board::after|\.team-hub-board::after/);
-  assert.match(visualSystemStyles, /padding:\s*var\(--ui-liquid-glass-edge-width\);/);
-  assert.match(visualSystemStyles, /backdrop-filter:\s*var\(--ui-liquid-glass-refraction\);/);
-  assert.match(visualSystemStyles, /\.page-header > \.ui-button,[\s\S]*?\.gm-room-actions > div[\s\S]*?\)\s*\{[\s\S]*?backdrop-filter:\s*var\(--ui-liquid-glass-filter\);/);
+  assert.match(tokenStyles, /--ui-liquid-glass-divider:\s*var\(--ui-card-border\);/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)\s*\{[^}]*border:\s*0;[^}]*backdrop-filter:\s*var\(--ui-liquid-glass-filter\);/);
+  assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)::before\s*\{/);
+  assert.match(primitiveStyles, /padding:\s*var\(--ui-liquid-glass-edge-width\);/);
+  assert.match(primitiveStyles, /backdrop-filter:\s*var\(--ui-liquid-glass-refraction\);/);
+  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments\s*\{[^}]*border:\s*1px solid var\(--ui-liquid-glass-divider\);/);
+  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \* \+ \*\s*\{[^}]*border-left:\s*1px solid var\(--ui-liquid-glass-divider\);/);
+  assert.match(pageSources.home, /home-hero-board ui-liquid-glass/);
+  assert.match(pageSources.teams, /team-hub-board ui-liquid-glass/);
+  assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-stats ui-liquid-glass-segments/);
+  assert.match(pageSources.recruiting, /arena-hero-panel ui-liquid-glass[\s\S]*arena-hero-stats ui-liquid-glass-segments/);
+  assert.match(pageSources.season, /season-rule-board ui-liquid-glass/);
+  assert.match(pageSources.playerDetail, /rank-tier-statement ui-liquid-glass/);
   assert.match(visualSystemStyles, /\.om-match-hero,\s*\.arena-recruit-hero[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
   assert.match(visualSystemStyles, /\.home-rank-board-head[\s\S]*?\)\s*\.eyebrow,[\s\S]*?color:\s*var\(--rb-orange-2\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.season-rule-board > strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
-  assert.equal(count(visualSystemStyles, "-webkit-mask-composite: xor;"), 1);
-  assert.equal(count(visualSystemStyles, "mask-composite: exclude;"), 1);
+  assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 1);
+  assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
 });
 
 test("tier emblem halo stays inside the shared emblem paint box", () => {
   const foundationStyles = read("src/styles/global-foundation.css");
 
-  assert.match(foundationStyles, /\.tier-emblem::before\s*\{[\s\S]*?aspect-ratio:\s*1;[\s\S]*?radial-gradient\([\s\S]*?transparent 82%/);
+  assert.match(foundationStyles, /\.tier-emblem::before\s*\{[\s\S]*?aspect-ratio:\s*1;[\s\S]*?radial-gradient\([\s\S]*?at 50% 50%,[\s\S]*?transparent 82%/);
   assert.match(foundationStyles, /\.tier-emblem img,\s*\.tier-emblem svg\s*\{[\s\S]*?filter:\s*none;/);
   assert.doesNotMatch(foundationStyles, /\.tier-emblem img,\s*\.tier-emblem svg\s*\{[\s\S]*?drop-shadow/);
 });

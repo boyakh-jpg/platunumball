@@ -6147,8 +6147,8 @@ function RecruitingReady({ app }) {
           <h1>대기 매칭</h1>
           <p>공개 모집방을 확인할 수 있으며, 개인전과 팀전은 방을 만들 때 선택합니다.</p>
         </div>
-        <div className="arena-hero-panel">
-          <div className="arena-hero-stats">
+        <div className="arena-hero-panel ui-liquid-glass">
+          <div className="arena-hero-stats ui-liquid-glass-segments">
             <span><strong>{scopedPosts.length}</strong>OPEN</span>
             <span><strong>{rankedCount}</strong>RANKED</span>
             <span><strong>{friendlyCount}</strong>FRIENDLY</span>

@@ -3944,58 +3944,7 @@ html[data-theme] .app-main :is(.om-match-copy, .arena-hero-copy) > :is(.om-kicke
   white-space: nowrap;
 }
 
-/* Hero-internal boards use one translucent Liquid Glass material. */
 html[data-theme] .app-main :is(
-  .home-hero-board,
-  .team-hub-board,
-  .om-match-panel,
-  .arena-hero-panel,
-  .season-rule-board,
-  .rank-tier-statement,
-  .page-header > .ui-button
-) {
-  position: relative;
-  isolation: isolate;
-  border: 0;
-  background: var(--ui-liquid-glass-bg);
-  color: var(--hero-title-color);
-  box-shadow: var(--ui-liquid-glass-shadow);
-  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
-  backdrop-filter: var(--ui-liquid-glass-filter);
-  text-shadow: var(--hero-copy-shadow);
-}
-
-html[data-theme] .app-main :is(
-  .home-hero-board,
-  .team-hub-board,
-  .om-match-panel,
-  .arena-hero-panel,
-  .season-rule-board,
-  .rank-tier-statement,
-  .page-header > .ui-button
-)::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  padding: var(--ui-liquid-glass-edge-width);
-  -webkit-backdrop-filter: var(--ui-liquid-glass-refraction);
-  backdrop-filter: var(--ui-liquid-glass-refraction);
-  background: var(--ui-liquid-glass-edge);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-html[data-theme] .app-main :is(
-  .page-header > .ui-button,
   .rank-team-hero .favorite-toggle-button,
   .season-hero-copy > .ui-badge,
   .season-meta-row > span,
@@ -4014,10 +3963,6 @@ html[data-theme] .app-main :is(
   -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
   backdrop-filter: var(--ui-liquid-glass-filter);
   text-shadow: var(--hero-copy-shadow);
-}
-
-html[data-theme] .app-main .page-header > .ui-button {
-  color: var(--hero-copy-color);
 }
 
 html[data-theme] .app-main :is(.home-hero-next > span, .team-hub-board > span) {
@@ -4071,7 +4016,6 @@ html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
 html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
 }
 
 html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) > span {
@@ -4079,12 +4023,7 @@ html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) > span {
   align-content: center;
   justify-items: center;
   gap: var(--space-1);
-  border: 0;
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-liquid-glass-bg);
   padding: var(--space-5);
-  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
-  backdrop-filter: var(--ui-liquid-glass-filter);
 }
 
 html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) {

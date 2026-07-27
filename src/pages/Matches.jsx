@@ -1403,8 +1403,8 @@ export default function Matches({ app }) {
           <h1>일정</h1>
           <p>내가 참가한 시작 전 경기만 날짜별로 표시합니다.</p>
         </div>
-        <div className="om-match-panel">
-          <div className="om-match-stats">
+        <div className="om-match-panel ui-liquid-glass">
+          <div className="om-match-stats ui-liquid-glass-segments">
             <span><strong>{displayActiveCount}</strong>MY</span>
             <span><strong>{displayTodoCount}</strong>ACTION</span>
             <span><strong>{displayScheduledCount}</strong>SOON</span>

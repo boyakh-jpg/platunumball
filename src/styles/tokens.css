@@ -126,6 +126,7 @@
     linear-gradient(145deg, rgba(255, 255, 255, 0.012), transparent 42%),
     rgba(8, 11, 16, 0.006);
   --ui-liquid-glass-border: transparent;
+  --ui-liquid-glass-divider: var(--ui-card-border);
   --ui-liquid-glass-edge:
     radial-gradient(58% 16% at 18% 0%, rgba(255, 255, 255, 0.62), transparent 82%),
     radial-gradient(44% 18% at 100% 86%, rgba(160, 215, 240, 0.18), transparent 80%),

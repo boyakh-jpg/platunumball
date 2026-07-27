@@ -1936,7 +1936,7 @@ span.referee-hover-card {
   aspect-ratio: 1;
   border-radius: 50%;
   background: radial-gradient(
-    ellipse 52% 56% at 50% 54%,
+    ellipse 52% 56% at 50% 50%,
     color-mix(in srgb, var(--tier-color) 42%, transparent) 0%,
     color-mix(in srgb, var(--tier-color) 20%, transparent) 48%,
     transparent 82%

@@ -654,7 +654,7 @@ export default function Home({ app }) {
                 <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
               </div>
             </div>
-            <aside className="home-hero-board" aria-label="내 코트 요약">
+            <aside className="home-hero-board ui-liquid-glass" aria-label="내 코트 요약">
               <Link
                 className="home-hero-next"
                 to={nextUpcomingMatch ? `/app/matches?match=${nextUpcomingMatch.id}` : "/app/recruiting"}

@@ -150,7 +150,7 @@ export default function PlayerDetail({ app }) {
             </div>
           </div>
         </div>
-        <div className="tier-statement rank-tier-statement">
+        <div className="tier-statement rank-tier-statement ui-liquid-glass">
           <TierEmblem mmr={player.ratings.integrated} size="hero" showLabel />
           <div>
             <span>{getTierDivision(player.ratings.integrated)}</span>

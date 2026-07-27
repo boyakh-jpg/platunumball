@@ -91,7 +91,7 @@ export default function Season({ app }) {
             <span><MapPin size={16} /> 지역 랭킹 {region}</span>
           </div>
         </div>
-        <div className="season-rule-board">
+        <div className="season-rule-board ui-liquid-glass">
           <strong>{app.currentUser.name} 시즌 요약</strong>
           <span><Trophy size={16} /> 전국 {myNationalRank ? `${myNationalRank}위` : "순위 준비 중"}</span>
           <span><MapPin size={16} /> {region} {myRegionalRank ? `${myRegionalRank}위` : "순위 준비 중"}</span>

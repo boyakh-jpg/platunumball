@@ -190,7 +190,7 @@ export default function Teams({ app }) {
           <h1>팀 허브</h1>
           <p>내 팀 관리, 팀 검색, 전체 팀 랭킹을 한 화면에서 확인합니다.</p>
         </div>
-        <div className="team-hub-board">
+        <div className="team-hub-board ui-liquid-glass">
           <span><Crown size={18} /> 전체 1위 팀</span>
           <TeamHoverCard team={topTeam} as="span"><strong>{topTeam?.name}</strong></TeamHoverCard>
           <em>{topTeam?.mmr} MMR · {topTeam?.wins}승 {topTeam?.losses}패 · {topTeam?.played}경기</em>
