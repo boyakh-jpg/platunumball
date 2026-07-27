@@ -4798,6 +4798,10 @@ html[data-theme="light"] .arena-lobby-arena {
   flex-wrap: wrap;
 }
 
+.arena-lobby-modal .arena-lobby-title p {
+  text-shadow: none;
+}
+
 .arena-lobby-modal .arena-dispute-player label {
   min-width: 0;
 }
