@@ -2989,6 +2989,8 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .team-emblem-text-controls label {
   display: grid;
   min-width: 0;
+  grid-template-rows: auto var(--ui-team-emblem-text-control-height) auto;
+  align-content: start;
   gap: var(--space-3);
   color: var(--muted);
   font-size: 0.76rem;
@@ -2999,7 +3001,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .team-emblem-text-controls input,
 .team-emblem-text-controls textarea {
   width: 100%;
-  min-height: 38px;
+  height: var(--ui-team-emblem-text-control-height);
+  min-height: var(--ui-team-emblem-text-control-height);
+  max-height: var(--ui-team-emblem-text-control-height);
   border: 1px solid var(--ui-control-border, var(--line));
   border-radius: var(--ui-control-radius, var(--radius-sm));
   background: var(--ui-control-bg, var(--surface-2));
@@ -3008,7 +3012,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .team-emblem-text-controls textarea {
-  min-height: 64px;
   resize: none;
 }
 

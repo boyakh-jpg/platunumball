@@ -169,6 +169,7 @@
   --ui-result-loss-border: var(--danger);
   --ui-result-draw-border: var(--gold);
   --ui-profile-identity-gap: var(--space-4);
+  --ui-team-emblem-text-control-height: 64px;
   --ui-control-bg: var(--input-bg);
   --ui-control-border: var(--input-border);
   --ui-control-radius: var(--control-radius);

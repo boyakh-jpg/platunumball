@@ -25,6 +25,7 @@ const ruleSelectorSource = read("src/components/match/RuleSelector.jsx");
 const matchListStyles = read("src/styles/match-list-card.css");
 const primitiveStyles = read("src/styles/ui-primitives.css");
 const tokenStyles = read("src/styles/tokens.css");
+const globalSearchStyles = read("src/styles/global-search-profile.css");
 const visualSystemStyles = read("src/styles/global-visual-system.css");
 const courtControlStyles = read("src/styles/global-court-controls.css");
 const globalAdminStyles = read("src/styles/global-admin-layout.css");
@@ -84,6 +85,18 @@ test("inline profile identities share one icon text gap", () => {
     /\.ui-profile-identity-inline\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*gap:\s*var\(--ui-profile-identity-gap\);/,
   );
   assert.equal(countClassToken(pageSources.teamDetail, "ui-profile-identity-inline"), 1);
+});
+
+test("team emblem text controls keep one height at every form factor", () => {
+  assert.match(tokenStyles, /--ui-team-emblem-text-control-height:\s*64px;/);
+  assert.match(
+    globalSearchStyles,
+    /\.team-emblem-text-controls label\s*\{[^}]*grid-template-rows:\s*auto var\(--ui-team-emblem-text-control-height\) auto;[^}]*align-content:\s*start;/,
+  );
+  assert.match(
+    globalSearchStyles,
+    /\.team-emblem-text-controls select,[\s\S]*?\.team-emblem-text-controls textarea\s*\{[^}]*height:\s*var\(--ui-team-emblem-text-control-height\);[^}]*min-height:\s*var\(--ui-team-emblem-text-control-height\);[^}]*max-height:\s*var\(--ui-team-emblem-text-control-height\);/,
+  );
 });
 
 function getRuleBody(source, selector) {
