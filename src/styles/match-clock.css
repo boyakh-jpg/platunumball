@@ -215,16 +215,16 @@
 
 .ui-match-clock-score-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(28px, 1fr));
-  gap: 4px;
-  width: min(100%, 180px);
-  margin: 6px auto 0;
+  grid-template-columns: repeat(4, minmax(40px, 1fr));
+  gap: 8px;
+  width: min(100%, 224px);
+  margin: 10px auto 0;
 }
 
 .ui-match-clock-score-actions .ui-button {
   min-width: 0;
-  min-height: 28px;
-  padding-inline: 4px;
+  min-height: 44px;
+  padding-inline: 8px;
   font-variant-numeric: tabular-nums;
 }
 .ui-match-clock-main-time {
@@ -698,6 +698,23 @@
 .ui-match-clock-panel-focus.ui-match-clock-panel-pending .ui-match-clock-setup {
   min-height: 0;
   overflow: auto;
+}
+
+@media (width >= 721px) {
+  .ui-match-clock-panel-focus:not(.ui-match-clock-panel-pending) {
+    grid-template-rows: max-content;
+    align-content: center;
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-live {
+    grid-template-rows: max-content auto auto;
+    align-content: center;
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-display-grid {
+    height: min(64dvh, 34dvw, 720px);
+    min-height: 360px;
+  }
 }
 
 @media (width <= 720px) {

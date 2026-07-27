@@ -366,6 +366,9 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /normalizeMatchRules\(match\.rules, \{ mode: match\.mode \}\)/);
   assert.match(panelSource, /matchRules\.periodBreakMinutes/);
   assert.match(panelSource, /matchRules\.halftimeMinutes/);
+  assert.match(panelSource, /directScoreControlsEnabled = matchRules\.onCourtCount === 1/);
+  assert.match(panelSource, /directScoreControlsEnabled && editableScoreSides\.includes\("teamA"\)/);
+  assert.match(panelSource, /directScoreControlsEnabled && editableScoreSides\.includes\("teamB"\)/);
   assert.match(panelSource, /breakLimitMs > 0/);
   assert.match(panelSource, /liveClock\?\.matchEndedAt/);
   assert.match(panelSource, /closeFocusMode\(\)/);
@@ -380,6 +383,8 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(clockStyles, /\.ui-match-clock-scoreboard \{[^}]*overflow: hidden;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-notice \{[^}]*pointer-events: none;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-display-grid \{[^}]*grid-template-columns: minmax\(0, 4\.3fr\) minmax\(124px, 0\.7fr\);/);
+  assert.match(clockStyles, /@media \(width >= 721px\)[\s\S]*?height: min\(64dvh, 34dvw, 720px\);[\s\S]*?min-height: 360px;/);
+  assert.match(clockStyles, /\.ui-match-clock-score-actions \.ui-button \{[^}]*min-height: 44px;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-main-time time \{[^}]*font-size: clamp\(4\.75rem, 14cqi, 10rem\);/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-shot-clock-value \{[^}]*font-size: clamp\(3rem, 8cqi, 5\.5rem\);/);
   assert.match(clockStyles, /\.ui-match-shot-clock-action \{[^}]*background: var\(--rb-orange\);/);

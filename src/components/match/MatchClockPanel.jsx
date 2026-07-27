@@ -304,6 +304,7 @@ export default function MatchClockPanel({
     () => normalizeMatchRules(match.rules, { mode: match.mode }),
     [match.mode, match.rules],
   );
+  const directScoreControlsEnabled = matchRules.onCourtCount === 1;
   const halftimeAfterPeriod = matchRules.periodCount > 1
     ? matchRules.periodCount / 2
     : 0;
@@ -613,7 +614,7 @@ export default function MatchClockPanel({
                 <div className="ui-match-clock-team ui-match-clock-team-a">
                   <span className="ui-match-clock-team-label">A 점수</span>
                   <strong className="ui-match-clock-team-score">{score.a}</strong>
-                  {editableScoreSides.includes("teamA") && !isEnded ? (
+                  {directScoreControlsEnabled && editableScoreSides.includes("teamA") && !isEnded ? (
                     <div className="ui-match-clock-score-actions" aria-label="A 점수 조정">
                       {[-1, 1, 2, 3].map((delta) => (
                         <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamA", delta)}>
@@ -634,7 +635,7 @@ export default function MatchClockPanel({
                 <div className="ui-match-clock-team ui-match-clock-team-b">
                   <span className="ui-match-clock-team-label">B 점수</span>
                   <strong className="ui-match-clock-team-score">{score.b}</strong>
-                  {editableScoreSides.includes("teamB") && !isEnded ? (
+                  {directScoreControlsEnabled && editableScoreSides.includes("teamB") && !isEnded ? (
                     <div className="ui-match-clock-score-actions" aria-label="B 점수 조정">
                       {[-1, 1, 2, 3].map((delta) => (
                         <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamB", delta)}>
