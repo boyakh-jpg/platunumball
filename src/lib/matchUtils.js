@@ -556,7 +556,7 @@ export function getMatchReservePlayerIds(match = {}, sideName) {
 
 export function getMatchSubstitutionAccess(
   match = {},
-  userId = "",
+  _userId = "",
   sideName = "",
   { canOperate = false, recorderSides = [] } = {},
 ) {
@@ -564,15 +564,10 @@ export function getMatchSubstitutionAccess(
     ? getMatchReservePlayerIds(match, sideName)
     : [];
   const canManage = Boolean(canOperate || recorderSides.includes(sideName));
-  const canSelfSubstitute = Boolean(userId && reservePlayerIds.includes(userId));
   return {
     canManage,
-    canSelfSubstitute,
-    allowedReservePlayerIds: canManage
-      ? reservePlayerIds
-      : canSelfSubstitute
-        ? [userId]
-        : [],
+    canSelfSubstitute: false,
+    allowedReservePlayerIds: canManage ? reservePlayerIds : [],
   };
 }
 

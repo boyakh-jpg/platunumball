@@ -1329,6 +1329,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_room_action") ||
     message.includes("rankball_match_roster_move_action") ||
     message.includes("rankball_match_substitution_action") ||
+    message.includes("rankball_match_roster_transition_action") ||
     message.includes("rankball_match_star_toggle_action") ||
     message.includes("rankball_match_thumbs_action") ||
     message.includes("rankball_match_start_action") ||
@@ -1845,26 +1846,16 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
   }
 
   if (["handoffMatchRecorder", "substituteMatchPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
-    const substitution = operation.action === "substituteMatchPlayer";
-    const { data, error } = await context.supabase.rpc(
-      substitution ? "rankball_match_substitution_action" : "rankball_match_roster_move_action",
-      substitution ? {
-        p_actor_profile_id: context.profileId,
-        p_match_id: operation.matchId ?? match.id,
-        p_side: operation.sideName ?? "",
-        p_active_player_id: operation.activePlayerId ?? "",
-        p_reserve_player_id: operation.reservePlayerId ?? "",
-        p_reason: operation.reason ?? "operator",
-      } : {
-        p_actor_profile_id: context.profileId,
-        p_action: operation.action,
-        p_match_id: operation.matchId ?? match.id,
-        p_side: operation.sideName ?? "",
-        p_active_player_id: operation.activePlayerId ?? "",
-        p_reserve_player_id: operation.reservePlayerId ?? "",
-        p_next_recorder_id: operation.nextRecorderId ?? "",
-      },
-    );
+    const { data, error } = await context.supabase.rpc("rankball_match_roster_transition_action", {
+      p_actor_profile_id: context.profileId,
+      p_action: operation.action,
+      p_match_id: operation.matchId ?? match.id,
+      p_side: operation.sideName ?? "",
+      p_active_player_id: operation.activePlayerId ?? "",
+      p_reserve_player_id: operation.reservePlayerId ?? "",
+      p_next_recorder_id: operation.nextRecorderId ?? "",
+      p_reason: operation.reason ?? "operator",
+    });
     if (error) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;

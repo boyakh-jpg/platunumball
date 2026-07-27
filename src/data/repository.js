@@ -3653,6 +3653,23 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
   const nextUser = state.users.find((user) => user.id === nextRecorderId);
   const activeInUser = state.users.find((user) => user.id === handoffPatch.activeInId);
   const benchedUser = state.users.find((user) => user.id === handoffPatch.benchedId);
+  const now = new Date().toISOString();
+  const handoffEvent = {
+    id: makeId("handoff"),
+    side: sideName,
+    from: currentRecorderId,
+    to: nextRecorderId,
+    createdAt: now,
+  };
+  const substitutionEvent = handoffPatch.swapped ? {
+    id: makeId("substitution"),
+    side: sideName,
+    activeOutPlayerId: handoffPatch.benchedId,
+    activeInPlayerId: handoffPatch.activeInId,
+    reason: "recorder_handoff",
+    confirmedBy: state.currentUserId,
+    createdAt: now,
+  } : null;
 
   return {
     ...state,
@@ -3662,22 +3679,20 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
             const patched = getRecorderHandoffPatch(item, sideName, currentRecorderId, nextRecorderId).match;
             return {
               ...patched,
-            statRecorders: nextRecorders,
-            rules: {
-              ...(patched.rules ?? {}),
               statRecorders: nextRecorders,
-            },
-            recorderHandoffs: [
-              {
-                id: makeId("handoff"),
-                side: sideName,
-                from: currentRecorderId,
-                to: nextRecorderId,
-                createdAt: new Date().toISOString(),
+              rules: {
+                ...(patched.rules ?? {}),
+                statRecorders: nextRecorders,
+                ...(substitutionEvent ? { lastSubstitutionAt: now } : {}),
               },
-              ...(patched.recorderHandoffs ?? []),
-            ],
-          };
+              recorderHandoffs: [
+                handoffEvent,
+                ...(patched.recorderHandoffs ?? []),
+              ],
+              ...(substitutionEvent ? {
+                substitutionEvents: [substitutionEvent, ...(patched.substitutionEvents ?? [])],
+              } : {}),
+            };
         })()
         : item
     )),
@@ -4025,15 +4040,13 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
   if (!match || match.status !== "agreed" || match.endedAt) return state;
   if (getMatchRoomPhase(match).phase !== "live") return state;
   if (!MATCH_SIDES.includes(sideName)) return state;
-  if (!["self", "late", "injury", "ejection", "operator"].includes(reason)) return state;
+  if (!["late", "ejection", "operator"].includes(reason)) return state;
   const substitutionAccess = getMatchSubstitutionAccess(match, state.currentUserId, sideName, {
     canOperate: currentUserIsEligibleMatchReferee(state, match),
     recorderSides: getStatRecorderSides(match, state.currentUserId),
   });
   if (!substitutionAccess.allowedReservePlayerIds.includes(reservePlayerId)) return state;
-  const selfSubstitution = reason === "self" && state.currentUserId === reservePlayerId;
-  if (reason === "self" && !selfSubstitution) return state;
-  if (!selfSubstitution && !substitutionAccess.canManage) return state;
+  if (!substitutionAccess.canManage) return state;
   if (reason === "late" && !isMatchLateAttendancePlayer(match, reservePlayerId)) return state;
 
   const activeIds = match[sideName]?.players ?? [];
@@ -4042,7 +4055,30 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
 
   const substitutionPatch = getRecorderHandoffPatch(match, sideName, activePlayerId, reservePlayerId);
   if (!substitutionPatch.valid || !substitutionPatch.swapped) return state;
-  const nextMatch = withEffectiveMatchStatRecorders(substitutionPatch.match);
+  const now = new Date().toISOString();
+  const currentRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const nextRecorders = !match.refereeId && currentRecorders[sideName] === reservePlayerId
+    ? { ...currentRecorders, [sideName]: activePlayerId }
+    : currentRecorders;
+  const substitutionEvent = {
+    id: makeId("substitution"),
+    side: sideName,
+    activeOutPlayerId: activePlayerId,
+    activeInPlayerId: reservePlayerId,
+    reason,
+    confirmedBy: state.currentUserId,
+    createdAt: now,
+  };
+  const nextMatch = {
+    ...substitutionPatch.match,
+    statRecorders: nextRecorders,
+    rules: {
+      ...(substitutionPatch.match.rules ?? {}),
+      statRecorders: nextRecorders,
+      lastSubstitutionAt: now,
+    },
+    substitutionEvents: [substitutionEvent, ...(substitutionPatch.match.substitutionEvents ?? [])],
+  };
 
   const activeUser = state.users.find((user) => user.id === activePlayerId);
   const reserveUser = state.users.find((user) => user.id === reservePlayerId);

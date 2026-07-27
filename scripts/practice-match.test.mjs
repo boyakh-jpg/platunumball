@@ -339,12 +339,13 @@ test("연습방은 설정한 후보를 초대하고 공용 교체 흐름으로 �
   state = runPracticeReducer(
     state,
     "substituteMatchPlayer",
-    [confirmed.matchId, "teamA", teamAActiveId, teamAReserveId, "self"],
+    [confirmed.matchId, "teamA", teamAActiveId, teamAReserveId, "operator"],
     teamAReserveId,
   ).state;
   const liveMatch = state.matches.find((match) => match.id === confirmed.matchId);
   assert.ok(liveMatch.teamA.players.includes(teamAReserveId));
   assert.ok(getMatchReservePlayerIds(liveMatch, "teamA").includes(teamAActiveId));
+  assert.equal(liveMatch.statRecorders.teamA, teamAActiveId);
 });
 
 test("픽업 연습은 출석 뒤 공용 팀 나누기와 배정 확정을 직접 거친다", () => {

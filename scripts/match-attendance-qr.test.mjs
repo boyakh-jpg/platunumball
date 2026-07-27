@@ -5,7 +5,7 @@ import {
   getRecommendedSideSize,
   isAttendanceCheckinOpen,
 } from "../server/api/matches/attendance-qr.js";
-import { checkInMatchPlayer, substituteMatchPlayer } from "../src/data/repository.js";
+import { checkInMatchPlayer, handoffMatchRecorder, substituteMatchPlayer } from "../src/data/repository.js";
 import { mergeMatchesById } from "../src/hooks/useAppData.js";
 import { deriveMatchClock } from "../src/lib/matchClock.js";
 import {
@@ -127,7 +127,7 @@ test("출석 정리는 경기 10분 전부터 열린다", () => {
   assert.equal(isAttendanceCheckinOpen({ ...match, started_at: "2026-07-24T11:00:00Z" }, 0), true);
 });
 
-test("후보 본인·배정 심판·무심판 해당 사이드 기록자만 교체할 수 있다", () => {
+test("배정 심판·무심판 해당 사이드 기록자만 교체할 수 있다", () => {
   const match = {
     id: "candidate-substitution",
     status: "agreed",
@@ -139,15 +139,15 @@ test("후보 본인·배정 심판·무심판 해당 사이드 기록자만 교�
     refereeId: "referee",
     rules: { lateAttendancePlayerIds: ["reserve-a"] },
   };
-  const selfAccess = getMatchSubstitutionAccess(match, "reserve-a2", "teamA");
-  assert.equal(selfAccess.canManage, false);
-  assert.deepEqual(selfAccess.allowedReservePlayerIds, ["reserve-a2"]);
+  const reserveAccess = getMatchSubstitutionAccess(match, "reserve-a2", "teamA");
+  assert.equal(reserveAccess.canManage, false);
+  assert.equal(reserveAccess.canSelfSubstitute, false);
+  assert.deepEqual(reserveAccess.allowedReservePlayerIds, []);
   const refereeAccess = getMatchSubstitutionAccess(match, "referee", "teamA", { canOperate: true });
   assert.equal(refereeAccess.canManage, true);
   assert.deepEqual(refereeAccess.allowedReservePlayerIds, ["reserve-a", "reserve-a2"]);
   assert.equal(isMatchLateAttendancePlayer(match, "reserve-a"), true);
   assert.equal(isMatchLateAttendancePlayer(match, "reserve-a2"), false);
-
   const state = {
     currentUserId: "reserve-a2",
     matches: [match],
@@ -160,7 +160,7 @@ test("후보 본인·배정 심판·무심판 해당 사이드 기록자만 교�
     ],
     notifications: [],
   };
-  const selfSubstituted = substituteMatchPlayer(
+  const reserveBlocked = substituteMatchPlayer(
     state,
     match.id,
     "teamA",
@@ -168,30 +168,8 @@ test("후보 본인·배정 심판·무심판 해당 사이드 기록자만 교�
     "reserve-a2",
     "self",
   );
-  assert.deepEqual(selfSubstituted.matches[0].teamA.players, ["reserve-a2"]);
-  assert.deepEqual(selfSubstituted.matches[0].reservePlayers.teamA, ["reserve-a", "active-a"]);
-
-  const otherCandidateBlocked = substituteMatchPlayer(
-    state,
-    match.id,
-    "teamA",
-    "active-a",
-    "reserve-a",
-    "self",
-  );
-  assert.equal(otherCandidateBlocked, state);
-
-  const invalidReasonBlocked = substituteMatchPlayer(
-    state,
-    match.id,
-    "teamA",
-    "active-a",
-    "reserve-a2",
-    "unknown",
-  );
-  assert.equal(invalidReasonBlocked, state);
-
-  const refereeSubstituted = substituteMatchPlayer(
+  assert.equal(reserveBlocked, state);
+  const injuryBlocked = substituteMatchPlayer(
     { ...state, currentUserId: "referee" },
     match.id,
     "teamA",
@@ -199,14 +177,27 @@ test("후보 본인·배정 심판·무심판 해당 사이드 기록자만 교�
     "reserve-a",
     "injury",
   );
+  assert.equal(injuryBlocked.matches[0].teamA.players[0], "active-a");
+  const refereeSubstituted = substituteMatchPlayer(
+    { ...state, currentUserId: "referee" },
+    match.id,
+    "teamA",
+    "active-a",
+    "reserve-a",
+    "operator",
+  );
   assert.deepEqual(refereeSubstituted.matches[0].teamA.players, ["reserve-a"]);
-
+  assert.equal(refereeSubstituted.matches[0].substitutionEvents[0].reason, "operator");
   const noRefereeMatch = {
     ...match,
     createdBy: "host",
     refereeId: "",
+    statRecorders: { teamA: "reserve-a", teamB: "reserve-b" },
     reservePlayers: { teamA: ["reserve-a", "reserve-a2"], teamB: ["reserve-b"] },
-    rules: { lateAttendancePlayerIds: ["reserve-a"] },
+    rules: {
+      lateAttendancePlayerIds: ["reserve-a"],
+      statRecorders: { teamA: "reserve-a", teamB: "reserve-b" },
+    },
   };
   const noRefereeState = {
     ...state,
@@ -214,29 +205,43 @@ test("후보 본인·배정 심판·무심판 해당 사이드 기록자만 교�
     users: [
       ...state.users,
       { id: "host", name: "방장" },
+      { id: "party-leader", name: "파티장" },
       { id: "reserve-b", name: "후보 B" },
     ],
   };
-  const hostBlocked = substituteMatchPlayer(
-    { ...noRefereeState, currentUserId: "host" },
+  for (const actorId of ["host", "party-leader", "active-a", "reserve-a2"]) {
+    const blocked = substituteMatchPlayer(
+      { ...noRefereeState, currentUserId: actorId },
+      match.id,
+      "teamA",
+      "active-a",
+      "reserve-a2",
+      "operator",
+    );
+    assert.equal(blocked.matches[0].teamA.players[0], "active-a");
+  }
+  const regularReserveSubstituted = substituteMatchPlayer(
+    { ...noRefereeState, currentUserId: "reserve-a" },
     match.id,
     "teamA",
     "active-a",
     "reserve-a2",
     "operator",
   );
-  assert.equal(hostBlocked.matches[0].teamA.players[0], "active-a");
-
-  const sideRecorderSubstituted = substituteMatchPlayer(
+  assert.equal(regularReserveSubstituted.matches[0].teamA.players[0], "reserve-a2");
+  assert.equal(regularReserveSubstituted.matches[0].statRecorders.teamA, "reserve-a");
+  const recorderSubstituted = substituteMatchPlayer(
     { ...noRefereeState, currentUserId: "reserve-a" },
     match.id,
     "teamA",
     "active-a",
     "reserve-a",
-    "injury",
+    "operator",
   );
-  assert.equal(sideRecorderSubstituted.matches[0].teamA.players[0], "reserve-a");
-
+  assert.equal(recorderSubstituted.matches[0].teamA.players[0], "reserve-a");
+  assert.deepEqual(recorderSubstituted.matches[0].reservePlayers.teamA, ["reserve-a2", "active-a"]);
+  assert.equal(recorderSubstituted.matches[0].statRecorders.teamA, "active-a");
+  assert.equal(recorderSubstituted.matches[0].rules.statRecorders.teamA, "active-a");
   const crossSideRecorderBlocked = substituteMatchPlayer(
     { ...noRefereeState, currentUserId: "reserve-b" },
     match.id,
@@ -246,8 +251,29 @@ test("후보 본인·배정 심판·무심판 해당 사이드 기록자만 교�
     "operator",
   );
   assert.equal(crossSideRecorderBlocked.matches[0].teamA.players[0], "active-a");
+  const handoffWithSwap = handoffMatchRecorder(
+    { ...noRefereeState, currentUserId: "reserve-a" },
+    match.id,
+    "teamA",
+    "active-a",
+  );
+  assert.equal(handoffWithSwap.matches[0].teamA.players[0], "reserve-a");
+  assert.equal(handoffWithSwap.matches[0].statRecorders.teamA, "active-a");
+  assert.equal(handoffWithSwap.matches[0].substitutionEvents[0].reason, "recorder_handoff");
+  assert.equal(
+    handoffWithSwap.matches[0].substitutionEvents[0].createdAt,
+    handoffWithSwap.matches[0].recorderHandoffs[0].createdAt,
+  );
+  const handoffOnly = handoffMatchRecorder(
+    { ...noRefereeState, currentUserId: "reserve-a" },
+    match.id,
+    "teamA",
+    "reserve-a2",
+  );
+  assert.equal(handoffOnly.matches[0].teamA.players[0], "active-a");
+  assert.equal(handoffOnly.matches[0].statRecorders.teamA, "reserve-a2");
+  assert.deepEqual(handoffOnly.matches[0].substitutionEvents ?? [], []);
 });
-
 test("출석 운영자는 자기 출석도 같은 중앙 action으로 저장한다", () => {
   const match = {
     id: "host-self-checkin",
@@ -370,6 +396,9 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const attendanceStartOrderSql = await readSource("supabase/migrations/20260727090000_fix_match_start_attendance_trigger_order.sql");
   const substitutionPermissionSql = await readSource("supabase/migrations/20260725025000_match_substitution_permission_hardening.sql");
   const consistencySql = await readSource("supabase/migrations/20260726090000_match_policy_consistency.sql");
+  const unifiedRosterSql = await readSource("supabase/migrations/20260727110000_unified_match_roster_transition.sql");
+  const syncMatchSource = await readSource("server/api/matches/sync-match.js");
+  const recruitingSource = await readSource("src/pages/Recruiting.jsx");
   assert.match(sql, /interval '10 minutes'/u);
   assert.match(sql, /candidate_size <= current_side_size/u);
   assert.match(sql, /'attendanceStatus', 'late'/u);
@@ -416,6 +445,18 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(substitutionPermissionSql, /pg_get_functiondef\([\s\S]*rankball_match_roster_move_action_pre_substitution_permission/u);
   assert.doesNotMatch(substitutionPermissionSql, /alter function public\.rankball_match_roster_move_action/u);
   assert.doesNotMatch(substitutionPermissionSql, /safe_actor_id = coalesce\(current_match\.created_by/u);
+  assert.match(unifiedRosterSql, /create or replace function public\.rankball_match_roster_transition_action/u);
+  assert.match(unifiedRosterSql, /safe_reason not in \('late', 'ejection', 'operator'\)/u);
+  assert.match(unifiedRosterSql, /safe_actor_id = assigned_referee_id[\s\S]*rankball_is_match_referee_eligible/u);
+  assert.match(unifiedRosterSql, /recorder_authorized := safe_actor_id = current_recorder_id/u);
+  assert.match(unifiedRosterSql, /current_recorder_id = safe_reserve_player_id[\s\S]*to_jsonb\(safe_active_player_id\)/u);
+  assert.match(unifiedRosterSql, /event_reason := 'recorder_handoff'/u);
+  assert.match(unifiedRosterSql, /update public\.match_play_intervals[\s\S]*insert into public\.match_play_intervals/u);
+  assert.match(unifiedRosterSql, /return public\.rankball_match_roster_transition_action/u);
+  assert.match(syncMatchSource, /rpc\("rankball_match_roster_transition_action"/u);
+  assert.doesNotMatch(recruitingSource, /function MatchRecorderHandoffPanel/u);
+  assert.doesNotMatch(recruitingSource, /<option value="injury">/u);
+  assert.match(recruitingSource, /recorderSides=\{sourceMatchRecorderSides\}/u);
 });
 
 test("local/demo 경기 방장 권한은 방장 식별자가 비어 있으면 허용하지 않는다", async () => {

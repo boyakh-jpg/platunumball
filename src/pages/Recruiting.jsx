@@ -1646,10 +1646,13 @@ function MatchSubstitutionPanel({
   teams,
   currentUserId,
   canManageSide,
+  recorderSides = [],
   onSubstitute,
+  onHandoff,
 }) {
   const [draftByReserveId, setDraftByReserveId] = useState({});
   const [reasonByReserveId, setReasonByReserveId] = useState({});
+  const [handoffDraftBySide, setHandoffDraftBySide] = useState({});
   if (!match) return null;
   const rows = MATCH_SIDES.flatMap((sideName) => {
     const access = getMatchSubstitutionAccess(match, currentUserId, sideName, {
@@ -1663,19 +1666,44 @@ function MatchSubstitutionPanel({
       activePlayerIds,
       reservePlayerId,
       reserveUser: userById[reservePlayerId],
-      canManage: access.canManage,
     }));
   });
-  if (!rows.length) return null;
+  const recordWindow = getMatchRecordWindow(match);
+  const handoffRows = recorderSides.flatMap((sideName) => {
+    const activePlayerIds = match[sideName]?.players ?? [];
+    const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
+    const candidateIds = [...new Set([...activePlayerIds, ...reservePlayerIds])]
+      .filter((playerId) => playerId && playerId !== currentUserId && userById[playerId]);
+    if (!candidateIds.length) return [];
+    const selectedId = candidateIds.includes(handoffDraftBySide[sideName])
+      ? handoffDraftBySide[sideName]
+      : candidateIds[0];
+    const currentIsReserve = reservePlayerIds.includes(currentUserId);
+    const selectedIsReserve = reservePlayerIds.includes(selectedId);
+    const selectedIsActive = activePlayerIds.includes(selectedId);
+    const willSwap = Boolean(recordWindow.beforeEnd && (
+      (currentIsReserve && selectedIsActive) ||
+      (!currentIsReserve && selectedIsReserve)
+    ));
+    return [{
+      sideName,
+      candidateIds,
+      selectedId,
+      currentUser: userById[currentUserId],
+      selectedUser: userById[selectedId],
+      willSwap,
+    }];
+  });
+  if (!rows.length && !handoffRows.length) return null;
 
   return (
     <div className="arena-record-roster-panel">
       <header>
         <strong>선수 교체</strong>
-        <span>후보는 본인 교체를 누르고, 배정 심판·해당 사이드 기록자는 현장 사유를 지정합니다.</span>
+        <span>배정 심판이 교체하고, 심판이 없으면 해당 사이드 기록자가 처리합니다. 기록자가 출전하면 나오는 선수가 권한을 이어받습니다.</span>
       </header>
       <div className="arena-record-roster-list">
-        {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser, canManage }) => {
+        {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser }) => {
           const activePlayerId = draftByReserveId[reservePlayerId] ?? activePlayerIds[0] ?? "";
           const lateEligible = isMatchLateAttendancePlayer(match, reservePlayerId);
           return (
@@ -1695,18 +1723,15 @@ function MatchSubstitutionPanel({
                   <option value={playerId} key={playerId}>{userById[playerId]?.name ?? playerId}</option>
                 ))}
               </select>
-              {canManage ? (
-                <select
-                  aria-label={`${reserveUser?.name ?? "후보"} 교체 사유`}
-                  value={reasonByReserveId[reservePlayerId] ?? "operator"}
-                  onChange={(event) => setReasonByReserveId((current) => ({ ...current, [reservePlayerId]: event.target.value }))}
-                >
-                  <option value="operator">운영자 변경</option>
-                  {lateEligible ? <option value="late">지각 합류</option> : null}
-                  <option value="injury">부상</option>
-                  <option value="ejection">퇴장</option>
-                </select>
-              ) : <em>본인 현장 교체</em>}
+              <select
+                aria-label={`${reserveUser?.name ?? "후보"} 교체 사유`}
+                value={reasonByReserveId[reservePlayerId] ?? "operator"}
+                onChange={(event) => setReasonByReserveId((current) => ({ ...current, [reservePlayerId]: event.target.value }))}
+              >
+                <option value="operator">일반 교체</option>
+                {lateEligible ? <option value="late">지각 합류</option> : null}
+                <option value="ejection">퇴장</option>
+              </select>
               <Button
                 type="button"
                 size="sm"
@@ -1716,7 +1741,7 @@ function MatchSubstitutionPanel({
                   sideName,
                   activePlayerId,
                   reservePlayerId,
-                  canManage ? reasonByReserveId[reservePlayerId] ?? "operator" : "self",
+                  reasonByReserveId[reservePlayerId] ?? "operator",
                 )}
               >
                 교체
@@ -1724,69 +1749,19 @@ function MatchSubstitutionPanel({
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function MatchRecorderHandoffPanel({
-  match,
-  userById,
-  teams,
-  currentUserId,
-  recorderSides = [],
-  onHandoff,
-}) {
-  const [draftBySide, setDraftBySide] = useState({});
-  if (!match || !recorderSides.length) return null;
-  const recordWindow = getMatchRecordWindow(match);
-  const rows = recorderSides.flatMap((sideName) => {
-    const activePlayerIds = match[sideName]?.players ?? [];
-    const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
-    const candidateIds = [...new Set([...activePlayerIds, ...reservePlayerIds])]
-      .filter((playerId) => playerId && playerId !== currentUserId && userById[playerId]);
-    if (!candidateIds.length) return [];
-    const selectedId = candidateIds.includes(draftBySide[sideName])
-      ? draftBySide[sideName]
-      : candidateIds[0];
-    const currentIsReserve = reservePlayerIds.includes(currentUserId);
-    const selectedIsReserve = reservePlayerIds.includes(selectedId);
-    const selectedIsActive = activePlayerIds.includes(selectedId);
-    const willSwap = Boolean(recordWindow.beforeEnd && (
-      (currentIsReserve && selectedIsActive) ||
-      (!currentIsReserve && selectedIsReserve)
-    ));
-    return [{
-      sideName,
-      candidateIds,
-      selectedId,
-      currentUser: userById[currentUserId],
-      selectedUser: userById[selectedId],
-      willSwap,
-    }];
-  });
-  if (!rows.length) return null;
-
-  return (
-    <div className="arena-record-roster-panel">
-      <header>
-        <strong>기록권한 넘기기</strong>
-        <span>같은 사이드 출전 선수나 후보에게 기록권한을 넘깁니다.</span>
-      </header>
-      <div className="arena-record-roster-list">
-        {rows.map(({ sideName, candidateIds, selectedId, currentUser, selectedUser, willSwap }) => (
-          <div key={sideName} className="arena-record-roster-row selected">
+        {handoffRows.map(({ sideName, candidateIds, selectedId, currentUser, selectedUser, willSwap }) => (
+          <div key={`handoff:${sideName}`} className="arena-record-roster-row selected">
             <PlayerHoverCard user={currentUser} teams={teams} as="span">
               <ProfileEmblem user={currentUser} className="small" initial="R" />
               <span>
-                <strong>{SIDE_LABELS[sideName]} 기록자</strong>
-                <em>{selectedUser?.name ?? "선수"}에게 넘김{willSwap ? " · 교체 포함" : ""}</em>
+                <strong>{SIDE_LABELS[sideName]} 기록권한</strong>
+                <em>{selectedUser?.name ?? "선수"}에게 넘김{willSwap ? " · 선수 교체 자동 포함" : ""}</em>
               </span>
             </PlayerHoverCard>
             <select
               aria-label={`${SIDE_LABELS[sideName]} 기록권한 받을 선수`}
               value={selectedId}
-              onChange={(event) => setDraftBySide((current) => ({ ...current, [sideName]: event.target.value }))}
+              onChange={(event) => setHandoffDraftBySide((current) => ({ ...current, [sideName]: event.target.value }))}
             >
               {candidateIds.map((playerId) => {
                 const user = userById[playerId];
@@ -4153,6 +4128,7 @@ function RecruitingRoomModalReady({
               teams={app.state.teams}
               currentUserId={app.currentUser.id}
               canManageSide={canManageSourceMatchSubstitutionSide}
+              recorderSides={sourceMatchRecorderSides}
               onSubstitute={(sideName, activePlayerId, reservePlayerId, reason) => app.actions.substituteMatchPlayer?.(
                 sourceMatch.id,
                 sideName,
@@ -4160,17 +4136,6 @@ function RecruitingRoomModalReady({
                 reservePlayerId,
                 reason,
               )}
-            />
-          ) : null
-        );
-        const renderMatchRecorderHandoffPanel = () => (
-          !sourceRoomReadOnly && matchRoom && sourceMatchRecorderSides.length ? (
-            <MatchRecorderHandoffPanel
-              match={sourceMatch}
-              userById={userById}
-              teams={app.state.teams}
-              currentUserId={app.currentUser.id}
-              recorderSides={sourceMatchRecorderSides}
               onHandoff={(sideName, nextRecorderId) => app.actions.handoffMatchRecorder?.(sourceMatch.id, sideName, nextRecorderId)}
             />
           ) : null
@@ -4682,7 +4647,6 @@ function RecruitingRoomModalReady({
                     rotation: renderPickupRotation,
                   }}
                 />
-                {entryPoint === "recorder" ? renderMatchRecorderHandoffPanel() : null}
                 {entryPoint === "recorder" ? renderMatchSubstitutionPanel() : null}
 
                 {roomPhaseViewModel.showVersusStage ? <div className="arena-lobby-versus-stage">
@@ -4946,7 +4910,6 @@ function RecruitingRoomModalReady({
                 />
               ) : null}
 
-              {entryPoint === "recorder" ? null : renderMatchRecorderHandoffPanel()}
               {entryPoint === "recorder" ? null : renderMatchSubstitutionPanel()}
 
               {scheduleChangePending && scheduleProposalProgress.proposal ? (
