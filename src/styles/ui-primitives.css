@@ -59,6 +59,18 @@ html[data-theme] .app-main .ui-liquid-glass-segments > * + * {
   border-left: 1px solid var(--ui-liquid-glass-divider);
 }
 
+html[data-theme] .app-main :is(.recent-match-row.result-w, .rank-match-win) {
+  border-left-color: var(--ui-result-win-border);
+}
+
+html[data-theme] .app-main :is(.recent-match-row.result-l, .rank-match-loss) {
+  border-left-color: var(--ui-result-loss-border);
+}
+
+html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
+  border-left-color: var(--ui-result-draw-border);
+}
+
 .ui-button {
   display: inline-flex;
   align-items: center;

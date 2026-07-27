@@ -58,6 +58,24 @@ const legacyStyleSources = [
   read("src/styles/recruiting-arena.css"),
 ].join("\n");
 
+test("win loss draw record borders keep semantic colors in every theme", () => {
+  assert.match(tokenStyles, /--ui-result-win-border:\s*var\(--blue\);/);
+  assert.match(tokenStyles, /--ui-result-loss-border:\s*var\(--danger\);/);
+  assert.match(tokenStyles, /--ui-result-draw-border:\s*var\(--gold\);/);
+  assert.match(
+    primitiveStyles,
+    /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-w, \.rank-match-win\)\s*\{[^}]*border-left-color:\s*var\(--ui-result-win-border\);/,
+  );
+  assert.match(
+    primitiveStyles,
+    /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-l, \.rank-match-loss\)\s*\{[^}]*border-left-color:\s*var\(--ui-result-loss-border\);/,
+  );
+  assert.match(
+    primitiveStyles,
+    /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-d, \.rank-match-draw\)\s*\{[^}]*border-left-color:\s*var\(--ui-result-draw-border\);/,
+  );
+});
+
 function getRuleBody(source, selector) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = source.match(new RegExp(`${escapedSelector}\\s*\\{([^{}]*)\\}`));

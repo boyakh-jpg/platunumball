@@ -165,6 +165,9 @@
   --ui-badge-blue-border: color-mix(in srgb, var(--rb-blue) 34%, transparent);
   --ui-badge-orange-bg: color-mix(in srgb, var(--rb-orange) 12%, transparent);
   --ui-badge-orange-border: color-mix(in srgb, var(--rb-orange) 36%, transparent);
+  --ui-result-win-border: var(--blue);
+  --ui-result-loss-border: var(--danger);
+  --ui-result-draw-border: var(--gold);
   --ui-control-bg: var(--input-bg);
   --ui-control-border: var(--input-border);
   --ui-control-radius: var(--control-radius);
