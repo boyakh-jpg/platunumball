@@ -3655,8 +3655,10 @@ html[data-theme="light"] .brand-letter-light {
 }
 
 @media (max-width: 720px) {
-  .landing-hero {
+  .landing-hero,
+  html[data-theme="light"] .landing-hero {
     --landing-mobile-content-gutter: clamp(20px, 6vw, 28px);
+    --landing-hero-position: 38% 100%;
     padding-right: max(var(--landing-mobile-content-gutter), env(safe-area-inset-right));
     padding-left: max(var(--landing-mobile-content-gutter), env(safe-area-inset-left));
   }
@@ -3665,13 +3667,6 @@ html[data-theme="light"] .brand-letter-light {
     --landing-brand-logo-size: 60px;
     --landing-brand-letter-width: 201px;
     --landing-brand-gap: 10px;
-    padding: 8px 10px;
-    border: 1px solid var(--ui-liquid-glass-border);
-    border-radius: var(--ui-panel-radius);
-    background: var(--ui-liquid-glass-bg);
-    box-shadow: var(--ui-liquid-glass-shadow);
-    -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
-    backdrop-filter: var(--ui-liquid-glass-filter);
   }
 
   .landing-brand-lockup .brand-logo-frame {
@@ -3932,8 +3927,8 @@ html[data-theme="light"] .app-main :is(
 }
 
 /* Image-hero summaries use one translucent Liquid Glass material. */
-.home-hero-board,
-.team-hub-board {
+html[data-theme] .home-hero-board,
+html[data-theme] .team-hub-board {
   border-color: var(--ui-liquid-glass-border);
   background: var(--ui-liquid-glass-bg);
   box-shadow: var(--ui-liquid-glass-shadow);
