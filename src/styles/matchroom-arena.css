@@ -117,14 +117,18 @@
 }
 
 .gm-roster-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 6px;
 }
 
 .gm-player-slot {
   position: relative;
   display: grid;
+  width: 100%;
+  max-width: 108px;
+  flex: 1 1 56px;
   grid-template-rows: 42px 16px 18px 16px;
   min-width: 0;
   min-height: 96px;
@@ -230,8 +234,13 @@
   font-weight: 950;
 }
 
-.gm-reserve-row {
-  grid-template-columns: repeat(2, minmax(76px, 1fr));
+.gm-team-panel.team-b .gm-roster-row,
+.gm-reserve-line:nth-child(2) .gm-reserve-row {
+  justify-content: flex-end;
+}
+
+.gm-reserve-line:nth-child(2) > strong {
+  text-align: right;
 }
 
 .gm-player-slot.reserve {
@@ -450,11 +459,6 @@ html[data-theme="light"] .gm-player-slot em {
   .gm-team-panel {
     min-height: 0;
     gap: 10px;
-  }
-
-  .gm-roster-row {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px;
   }
 
   .gm-player-slot {

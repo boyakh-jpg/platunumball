@@ -32,6 +32,7 @@ const globalWorkflowStyles = read("src/styles/global-workflows.css");
 const recruitingStyles = read("src/styles/recruiting-arena.css");
 const matchesStyles = read("src/styles/matches-arena.css");
 const gettingStartedStyles = read("src/styles/getting-started.css");
+const matchRoomStyles = read("src/styles/matchroom-arena.css");
 const appSource = read("src/App.jsx");
 const gettingStartedSource = read("src/pages/GettingStarted.jsx");
 const practiceMatchSource = read("src/pages/PracticeMatch.jsx");
@@ -180,6 +181,34 @@ test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사�
     courtControlStyles,
     /@media \(max-width:\s*1100px\)[\s\S]*?\.create-match-info-grid\.is-standard-room > :is\(\.create-capacity-field, \.create-timing-field\)\s*\{[^}]*grid-row:\s*2;/,
   );
+});
+
+test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정렬을 사용한다", () => {
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-room-slot-row\s*\{[^}]*grid-auto-columns:\s*minmax\(72px,\s*72px\);[^}]*grid-auto-flow:\s*column;[^}]*grid-template-columns:\s*none;[^}]*justify-content:\s*start;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-lobby-team-panel\.team-b \.arena-room-slot-row\s*\{[^}]*justify-content:\s*safe end;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-reserve-line > \.arena-room-reserve-row,[\s\S]*?\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(72px,\s*72px\)\);[^}]*column-gap:\s*var\(--room-slot-gap\);[^}]*row-gap:\s*var\(--room-slot-gap\);/,
+  );
+  assert.match(
+    matchRoomStyles,
+    /\.gm-roster-row\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;[^}]*justify-content:\s*flex-start;[^}]*gap:\s*6px;/,
+  );
+  assert.match(
+    matchRoomStyles,
+    /\.gm-player-slot\s*\{[^}]*max-width:\s*108px;[^}]*flex:\s*1 1 56px;/,
+  );
+  assert.match(
+    matchRoomStyles,
+    /\.gm-team-panel\.team-b \.gm-roster-row,\s*\.gm-reserve-line:nth-child\(2\) \.gm-reserve-row\s*\{[^}]*justify-content:\s*flex-end;/,
+  );
+  assert.doesNotMatch(matchRoomStyles, /\.gm-reserve-row\s*\{[^}]*repeat\(2,/);
 });
 
 test("공용 빈 상태와 control 높이는 페이지 override 없이 유지된다", () => {

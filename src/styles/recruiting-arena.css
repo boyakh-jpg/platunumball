@@ -4085,7 +4085,6 @@ html[data-theme="light"] .arena-room-player-slot.ready [title="참가"] {
 }
 
 .arena-lobby-modal .arena-room-slot-row {
-  grid-template-columns: repeat(var(--slot-count, 5), minmax(0, 1fr));
   overflow-x: hidden;
 }
 
@@ -4143,9 +4142,6 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel > .arena-reserv
 
 .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
 html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
-  grid-auto-columns: minmax(72px, 72px);
-  grid-auto-flow: column;
-  grid-template-columns: none;
   justify-content: start;
   scrollbar-width: none;
 }
@@ -5309,6 +5305,7 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
 
 .arena-lobby-modal .arena-reserve-panel {
   margin-top: 0;
+  padding: 12px;
 }
 
 .arena-lobby-modal .arena-lobby-actions > div {
@@ -5474,6 +5471,20 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
   max-block-size: var(--room-slot-height);
 }
 
+.arena-lobby-modal .arena-room-slot-row {
+  grid-auto-columns: minmax(72px, 72px);
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  inline-size: calc(100% + 36px);
+  min-inline-size: 0;
+  max-width: none;
+  justify-content: start;
+}
+
+.arena-lobby-modal .arena-lobby-team-panel.team-b .arena-room-slot-row {
+  justify-content: safe end;
+}
+
 .arena-lobby-modal .arena-room-player-slot,
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot,
 html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot.ready,
@@ -5517,6 +5528,11 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
 /* Reserve rows must not clip the same outer glow shown by active slots. */
 .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
 html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  grid-auto-columns: auto;
+  grid-auto-flow: row;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 72px));
+  column-gap: var(--room-slot-gap);
+  row-gap: var(--room-slot-gap);
   overflow: visible;
 }
 
@@ -5557,6 +5573,10 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
 }
 
 @media (max-width: 720px) {
+  .arena-lobby-modal .arena-room-slot-row {
+    grid-auto-columns: minmax(var(--room-slot-width), var(--room-slot-width));
+  }
+
   .arena-lobby-modal .arena-reserve-panel,
   html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
     grid-template-columns: minmax(0, 1fr);
@@ -5575,8 +5595,13 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
 
   .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
   html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
-    grid-template-columns: repeat(var(--slot-count, 3), minmax(0, var(--room-slot-width)));
+    grid-template-columns: repeat(auto-fit, minmax(var(--room-slot-width), var(--room-slot-width)));
     justify-content: start;
+  }
+
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row {
+    justify-content: safe end;
   }
 }
 
