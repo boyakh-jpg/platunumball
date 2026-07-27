@@ -5303,7 +5303,8 @@ html[data-theme="light"] .arena-filter-bar .arena-start-date-filter {
   padding: 12px;
 }
 
-.arena-lobby-modal .arena-reserve-panel {
+.arena-lobby-modal .arena-reserve-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
   margin-top: 0;
   padding: 12px;
 }
@@ -5581,6 +5582,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
   html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
+    padding: 10px;
   }
 
   .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:first-child,

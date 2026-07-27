@@ -194,7 +194,15 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
   );
   assert.match(
     recruitingStyles,
+    /\.arena-lobby-modal \.arena-reserve-panel,\s*html\[data-theme="light"\] \.arena-lobby-modal \.arena-reserve-panel\s*\{[^}]*padding:\s*12px;/,
+  );
+  assert.match(
+    recruitingStyles,
     /\.arena-lobby-modal \.arena-reserve-line > \.arena-room-reserve-row,[\s\S]*?\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(72px,\s*72px\)\);[^}]*column-gap:\s*var\(--room-slot-gap\);[^}]*row-gap:\s*var\(--room-slot-gap\);/,
+  );
+  assert.match(
+    recruitingStyles,
+    /@media \(max-width:\s*720px\)[\s\S]*?\.arena-lobby-modal \.arena-reserve-panel,\s*html\[data-theme="light"\] \.arena-lobby-modal \.arena-reserve-panel\s*\{[^}]*padding:\s*10px;/,
   );
   assert.match(
     matchRoomStyles,
