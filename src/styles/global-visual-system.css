@@ -3421,6 +3421,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .profile-hero h1,
   .team-detail-hero h1,
   .gm-room-title h1,
+  .team-hub-board strong,
   .rank-home .rank-spotlight-main strong,
   .rank-tier-block strong,
   .rank-record-main strong,
@@ -3450,6 +3451,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .profile-hero h1,
   .team-detail-hero h1,
   .gm-room-title h1,
+  .team-hub-board strong,
   .rank-home .rank-spotlight-main strong
 ) {
   transform-origin: left center;
@@ -3970,6 +3972,21 @@ html[data-theme="light"] .app-main :is(
   font-style: normal;
   font-weight: 800;
   white-space: nowrap;
+}
+
+/* Light image heroes use one opaque frosted-glass summary surface. */
+html[data-theme="light"] .home-hero-board,
+html[data-theme="light"] .team-hub-board {
+  border-color: rgba(255, 255, 255, 0.82);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(245, 247, 247, 0.86)),
+    rgba(248, 248, 246, 0.9);
+  box-shadow:
+    0 18px 46px rgba(35, 50, 59, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    inset 0 0 0 1px rgba(71, 88, 99, 0.06);
+  -webkit-backdrop-filter: blur(20px) saturate(1.12);
+  backdrop-filter: blur(20px) saturate(1.12);
 }
 
 @media (max-width: 759px) {

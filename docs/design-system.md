@@ -1400,6 +1400,7 @@ UI 수정 전:
 7-2. Home upcoming match cards may enlarge team labels with the sports display font and orange emphasis. Scores stay neutral gray, no text shadow. The room-open CTA is orange, and tier spotlight text must fit without ellipsis.
 7-3. Match/recruiting summary center labels such as `VS` and fill counts stay about half the side label size.
 7-4. Default text uses `--font-body`. Functional panel titles and descriptions use the shared `.ui-panel-title` and `.ui-panel-copy` typography instead of browser-default `strong`/`span` weights. Sports display typography remains an explicit override only.
+7-4-1. 라이트 홈 경기 요약과 팀 허브 전체 1위 패널은 동일한 고불투명 frosted-glass surface를 사용한다. blur와 내부광은 패널에만 적용하고 hero 이미지 전체에는 wash/filter를 추가하지 않는다. 전체 1위 팀명은 `--sports-display-font`를 유지한다.
 7-5. 공개 팀전 참가 화면은 대표 1명만 표시하고 팀원 명단 picker를 노출하지 않는다. 출전·후보 명단은 참가 뒤 방 안에서 사이드장이 확정한다.
 7-6. 이의 판정 중인 기록판은 참가자 최종 승인 수와 무응답 안내를 숨긴다. 이 상태에서는 open 이의와 방장 판정 action만 보여 주며 마지막 판정이 즉시 확정된다는 현재 흐름과 충돌하는 구형 승인 문구를 표시하지 않는다.
 8. Segmented control groups use `--control-group-*` tokens. Group radius and padding must leave enough inner space so active buttons are never clipped by the group border or scroll container.
