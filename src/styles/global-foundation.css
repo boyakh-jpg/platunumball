@@ -19,6 +19,8 @@ body {
   min-height: 100vh;
   font-family: var(--font-body);
   font-weight: var(--font-weight-body);
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 button,

@@ -99,6 +99,15 @@ test("team emblem text controls keep one height at every form factor", () => {
   );
 });
 
+test("general UI copy wraps at spaces without splitting words", () => {
+  const foundationStyles = read("src/styles/global-foundation.css");
+  const bodyRule = getRuleBody(foundationStyles, "body");
+
+  assert.match(bodyRule, /word-break:\s*keep-all;/);
+  assert.match(bodyRule, /overflow-wrap:\s*break-word;/);
+  assert.doesNotMatch(allStyleSources, /word-break:\s*break-all;/);
+});
+
 function getRuleBody(source, selector) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = source.match(new RegExp(`${escapedSelector}\\s*\\{([^{}]*)\\}`));
