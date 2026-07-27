@@ -2007,7 +2007,7 @@ button.danger-button {
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 .home-rank-board-head p:not(.eyebrow),
 .page-header p:not(.eyebrow),
-.landing-hero p,
+.landing-hero p:not(.landing-compact-summary),
 .match-hero p,
 .team-hub-hero p:not(.eyebrow),
 .season-hero-copy p,

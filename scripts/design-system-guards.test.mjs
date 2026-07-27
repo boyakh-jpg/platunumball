@@ -486,6 +486,7 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(visualSystemStyles, /\.home-rank-board-head[\s\S]*?\)\s*\.eyebrow,[\s\S]*?color:\s*var\(--rb-orange-2\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.season-rule-board > strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
   assert.match(visualSystemStyles, /\.landing-compact-summary\s*\{[^}]*text-shadow:\s*none;/);
+  assert.match(visualSystemStyles, /\.landing-hero p:not\(\.landing-compact-summary\),/);
   assert.equal(count(visualSystemStyles, "p:not(.eyebrow):not(.landing-compact-summary)"), 2);
   assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 1);
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
