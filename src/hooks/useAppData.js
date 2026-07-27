@@ -82,6 +82,7 @@ import {
   setMatchRecordTeamRoster,
   setRecruitingPartyPlayerPlacement,
   setRecruitingPartyPlayerReserve,
+  setRecruitingRoomTeam,
   setRecruitingTeamPartyRoster,
   setRecruitingStatRecorder,
   assignTournamentMatchReferee,
@@ -160,6 +161,7 @@ import { getAffiliationNormalizedKey, normalizeAffiliationName } from "../lib/af
 const LOCAL_MAINTENANCE_INTERVAL_MS = MINUTE_MS;
 const EMPTY_RECORD_ARCHIVE = Object.freeze({
   rows: [],
+  personalSummary: null,
   page: {
     detailNextOffset: null,
     detailExhausted: true,
@@ -299,6 +301,7 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "removeMatchRoomPlayer",
   "createRecruitingPost",
   "interestRecruitingPost",
+  "setRecruitingRoomTeam",
   "inviteRecruitingReferee",
   "inviteRecruitingPlayers",
   "acceptRecruitingInvitation",
@@ -376,6 +379,7 @@ const RECRUITING_OPERATION_ONLY_ACTIONS = new Set([
   "inviteRecruitingPlayers",
   "inviteRecruitingReferee",
   "interestRecruitingPost",
+  "setRecruitingRoomTeam",
   "joinRecruitingSideParty",
   "kickRecruitingApplicant",
   "removeRecruitingPartyPlayer",
@@ -1427,6 +1431,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
       if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), {
         profileRecordsLoaded: true,
         profileRecordArchive: {
+          personalSummary: result.personalSummary ?? null,
           rows: result.archiveRecords ?? [],
           page: result.page ?? EMPTY_RECORD_ARCHIVE.page,
           windows: result.windows ?? EMPTY_RECORD_ARCHIVE.windows,
@@ -1544,6 +1549,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const [adminStatus, setAdminStatus] = useState({ loading: false, loaded: false, error: "", section: "", queueMode: DEFAULT_ADMIN_QUEUE_MODE, page: null, counts: {} });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
   const [profileRecordArchive, setProfileRecordArchive] = useState(EMPTY_RECORD_ARCHIVE);
+  const [publicProfileRecordArchives, setPublicProfileRecordArchives] = useState({});
   const [teamRecordArchives, setTeamRecordArchives] = useState({});
   const [recorderMatchesLoaded, setRecorderMatchesLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
@@ -1579,6 +1585,8 @@ export function useAppData(authUser = null, appLocation = null) {
   const reportableMatchesPromiseRef = useRef(null);
   const profileRecordsPromiseRef = useRef(null);
   const profileRecordArchiveRef = useRef(EMPTY_RECORD_ARCHIVE);
+  const publicProfileRecordsPromiseRef = useRef(new Map());
+  const publicProfileRecordArchivesRef = useRef({});
   const teamRecordArchivesRef = useRef({});
   const teamRecordsPromiseRef = useRef(new Map());
   const recruitingRegionPromiseRef = useRef(new Map());
@@ -1701,6 +1709,8 @@ export function useAppData(authUser = null, appLocation = null) {
       reportableMatchesPromiseRef.current = null;
       profileRecordsPromiseRef.current = null;
       profileRecordArchiveRef.current = EMPTY_RECORD_ARCHIVE;
+      publicProfileRecordsPromiseRef.current = new Map();
+      publicProfileRecordArchivesRef.current = {};
       teamRecordArchivesRef.current = {};
       teamRecordsPromiseRef.current = new Map();
       recruitingRegionPromiseRef.current = new Map();
@@ -1722,6 +1732,7 @@ export function useAppData(authUser = null, appLocation = null) {
       setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: DEFAULT_ADMIN_QUEUE_MODE, page: null, counts: {} });
       setProfileRecordsLoaded(false);
       setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
+      setPublicProfileRecordArchives({});
       setTeamRecordArchives({});
       setRecorderMatchesLoaded(false);
       return undefined;
@@ -1748,6 +1759,8 @@ export function useAppData(authUser = null, appLocation = null) {
     reportableMatchesPromiseRef.current = null;
     profileRecordsPromiseRef.current = null;
     profileRecordArchiveRef.current = EMPTY_RECORD_ARCHIVE;
+    publicProfileRecordsPromiseRef.current = new Map();
+    publicProfileRecordArchivesRef.current = {};
     teamRecordArchivesRef.current = {};
     teamRecordsPromiseRef.current = new Map();
     recruitingRegionPromiseRef.current = new Map();
@@ -1767,6 +1780,7 @@ export function useAppData(authUser = null, appLocation = null) {
     setAdminStatus({ loading: false, loaded: false, error: "", section: "", queueMode: DEFAULT_ADMIN_QUEUE_MODE, page: null, counts: {} });
     setProfileRecordsLoaded(false);
     setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
+    setPublicProfileRecordArchives({});
     setTeamRecordArchives({});
     setRecorderMatchesLoaded(false);
     const initialLoadOptions = getInitialStateLoadOptions(appLocation);
@@ -2669,6 +2683,7 @@ export function useAppData(authUser = null, appLocation = null) {
         const nextMatches = remoteState.matches ?? [];
         setState((prev) => mergeRemoteMatchPage(prev, remoteState));
         const nextArchive = {
+          personalSummary: result?.personalSummary ?? profileRecordArchiveRef.current.personalSummary,
           rows: result?.page?.archiveIncluded === true
             ? mergeRecordArchiveRows(
               profileRecordArchiveRef.current.rows,
@@ -2698,6 +2713,65 @@ export function useAppData(authUser = null, appLocation = null) {
     profileRecordsPromiseRef.current = promise;
     return promise;
   }, [authEmail, authUserId, profileRecordsLoaded, setState, trackedPostServerAction]);
+
+  const loadPublicProfileRecords = useCallback(async (profileId, options = {}) => {
+    const safeProfileId = String(profileId ?? "").trim();
+    if (!isSupabaseConfigured || !authUserId || !safeProfileId) return false;
+    if (safeProfileId === currentUserId) return loadProfileRecords(options);
+    const requestGeneration = authGenerationRef.current;
+    const isRequestCurrent = () => requestGeneration === authGenerationRef.current;
+    const currentArchive = publicProfileRecordArchivesRef.current[safeProfileId] ?? EMPTY_RECORD_ARCHIVE;
+    if (currentArchive.loaded && options.force !== true) return true;
+    if (publicProfileRecordsPromiseRef.current.has(safeProfileId)) return publicProfileRecordsPromiseRef.current.get(safeProfileId);
+    setPublicProfileRecordArchives((current) => ({
+      ...current,
+      [safeProfileId]: { ...(current[safeProfileId] ?? EMPTY_RECORD_ARCHIVE), loading: true, error: "" },
+    }));
+    const promise = (async () => {
+      try {
+        const result = await trackedPostServerAction(
+          "/api/records/list",
+          { authUserId, authEmail, scope: "profile", profileId: safeProfileId, detailLimit: REMOTE_CLIENT_RECORD_MATCH_LIMIT, archiveLimit: REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT, includeDetail: true, includeArchive: true },
+          { allowWhenDisabled: true },
+        );
+        if (!isRequestCurrent()) return false;
+        const remoteState = normalizeServerState(result?.state ?? {});
+        setState((prev) => {
+          const merged = mergeRemoteMatchPage(prev, remoteState);
+          return {
+            ...merged,
+            users: (merged.users ?? []).map((user) => user.id === safeProfileId
+              ? { ...user, personalRecordSummary: result?.personalSummary ?? null }
+              : user),
+          };
+        });
+        const nextArchive = {
+          personalSummary: result?.personalSummary ?? null,
+          rows: result?.archiveRecords ?? [],
+          page: result?.page ?? EMPTY_RECORD_ARCHIVE.page,
+          windows: result?.windows ?? EMPTY_RECORD_ARCHIVE.windows,
+          loaded: true,
+          loading: false,
+          error: "",
+        };
+        publicProfileRecordArchivesRef.current = { ...publicProfileRecordArchivesRef.current, [safeProfileId]: nextArchive };
+        setPublicProfileRecordArchives((current) => ({ ...current, [safeProfileId]: nextArchive }));
+        return remoteState.matches?.length ?? 0;
+      } catch (error) {
+        if (!isRequestCurrent() || error?.code === "stale_auth_request") return false;
+        console.warn("Public profile records load failed.", error.message);
+        setPublicProfileRecordArchives((current) => ({
+          ...current,
+          [safeProfileId]: { ...(current[safeProfileId] ?? EMPTY_RECORD_ARCHIVE), loading: false, error: error.message ?? "record_list_failed" },
+        }));
+        return false;
+      }
+    })().finally(() => {
+      if (publicProfileRecordsPromiseRef.current.get(safeProfileId) === promise) publicProfileRecordsPromiseRef.current.delete(safeProfileId);
+    });
+    publicProfileRecordsPromiseRef.current.set(safeProfileId, promise);
+    return promise;
+  }, [authEmail, authUserId, currentUserId, loadProfileRecords, setState, trackedPostServerAction]);
 
   const loadTeamRecords = useCallback(async (teamId, options = {}) => {
     const safeTeamId = String(teamId ?? "").trim();
@@ -3472,6 +3546,7 @@ export function useAppData(authUser = null, appLocation = null) {
         loadRecorderMatches,
         loadReportableMatches,
         loadProfileRecords,
+        loadPublicProfileRecords,
         loadTeamRecords,
         submitCourtDetailReview,
         profileRecordsLoaded,
@@ -3484,8 +3559,11 @@ export function useAppData(authUser = null, appLocation = null) {
         });
         setProfileRecordsLoaded(false);
         profileRecordArchiveRef.current = EMPTY_RECORD_ARCHIVE;
+        publicProfileRecordsPromiseRef.current = new Map();
+        publicProfileRecordArchivesRef.current = {};
         teamRecordArchivesRef.current = {};
         setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
+        setPublicProfileRecordArchives({});
         setTeamRecordArchives({});
         setState((prev) => ({ ...prev, currentUserId: userId }));
         return true;
@@ -4507,6 +4585,11 @@ export function useAppData(authUser = null, appLocation = null) {
           return result?.post?.id ?? result?.postId ?? createdPost.id;
         });
       },
+      setRecruitingRoomTeam: (postId, side, teamId) => applyRecruitingPostMutation(
+        postId,
+        (prev) => setRecruitingRoomTeam({ ...prev, currentUserId }, postId, side, teamId),
+        { action: "setRecruitingRoomTeam", side, teamId },
+      ),
       interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),
       inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite), { action: "inviteRecruitingPlayers", invite }),
@@ -4670,7 +4753,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, loadTeamRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, loadPublicProfileRecords, loadTeamRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
@@ -4694,6 +4777,7 @@ export function useAppData(authUser = null, appLocation = null) {
     directoryStatus,
     recordArchives: {
       profile: profileRecordArchive,
+      publicProfiles: publicProfileRecordArchives,
       teams: teamRecordArchives,
     },
     rankings,

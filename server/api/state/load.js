@@ -28,6 +28,7 @@ function isUserTeamMatch(match = {}, userTeamIds = []) {
 function canReadMatch(match = {}, profileId = "", isAdmin = false, userTeamIds = []) {
   if (isAdmin) return true;
   if ((match.visibility ?? "public") !== "private") return true;
+  if (["solo", "personal_record"].includes(String(match.rules?.recordType ?? "").trim().toLowerCase())) return match.createdBy === profileId;
   if (isUserTeamMatch(match, userTeamIds)) return true;
   return getMatchActorIds(match).includes(profileId);
 }

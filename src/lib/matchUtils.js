@@ -1014,6 +1014,7 @@ export function getMatchHostPlayerId(match = {}, sourcePost = null) {
 
 export function canUserResolveMatchDispute(match = {}, userId = "", sourcePost = null) {
   if (!userId || match.status !== "disputed") return false;
+  if (match.refereeId) return isMatchReferee(match, userId);
   return getMatchHostPlayerId(match, sourcePost) === userId;
 }
 
@@ -1393,8 +1394,6 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
     return ROOM_PHASE_META.record;
   }
   if (match.status === "approval" || match.status === "disputed") return ROOM_PHASE_META.dispute;
-  if (match.status === "agreed" && match.endedAt && match.result && getMatchRecordWindow(match, now).disputeExpired) return ROOM_PHASE_META.record;
-  if (match.status === "agreed" && match.endedAt && match.result) return ROOM_PHASE_META.dispute;
   if (match.endedAt) return ROOM_PHASE_META.postgame;
   if (getMatchStartDate(match)) return ROOM_PHASE_META.live;
   if (match.status === "agreed" && match.result) return ROOM_PHASE_META.postgame;
@@ -1494,14 +1493,31 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
     canOperatePostStart,
     refereeEligible: options.refereeEligible,
   });
-  const canOperatePostgame = hasReferee ? currentUserIsReferee : canOperatePostStart;
-  const editableScoreSides = match.endedAt || match.status === "disputed"
-    ? canOperatePostgame ? MATCH_SIDES : []
-    : liveEditableScoreSides;
+  const canEnterSharedRecordScore = Boolean(
+    !hasReferee &&
+    isMatchRecordMatch(match) &&
+    match.rules?.recordSetupReady === true &&
+    match.status === "agreed" &&
+    match.endedAt &&
+    !match.confirmedAt &&
+    canOperatePostStart,
+  );
+  const hasRefereeAuthority = hasReferee && currentUserIsReferee;
+  const canOperatePostgame = Boolean(
+    hasRefereeAuthority &&
+    !match.confirmedAt &&
+    ["agreed", "approval"].includes(match.status),
+  );
+  const editableScoreSides = match.status === "disputed"
+    ? []
+    : match.endedAt
+      ? canOperatePostgame || canEnterSharedRecordScore ? MATCH_SIDES : []
+      : liveEditableScoreSides;
   const canEditDisputeDraft = Boolean(
+    hasReferee &&
     match.status === "disputed" &&
     recordWindow.disputeOpen &&
-    canOperatePostgame,
+    hasRefereeAuthority,
   );
   const postgameEntry = Boolean(
     match.endedAt &&
@@ -1521,9 +1537,7 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
     return fields;
   };
   const editablePlayerIds = playerIds.filter((playerId) => getEditableStatFields(playerId).length > 0);
-  const canRecordByRole = hasReferee
-    ? currentUserIsReferee
-    : liveEditableScoreSides.length > 0;
+  const canRecordByRole = hasReferee && currentUserIsReferee;
   const canSubmitLive = Boolean(
     canRecordByRole &&
     match.status === "agreed" &&
@@ -1531,7 +1545,8 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
     !match.endedAt &&
     recordWindow.beforeEnd,
   );
-  const canSubmitMissingPostgameResult = canOperatorSubmitMissingPostgameResult(match, canOperatePostStart, now);
+  const canSubmitMissingPostgameResult = hasReferee
+    && canOperatorSubmitMissingPostgameResult(match, canOperatePostStart, now);
   const canSubmitPostgame = Boolean(
     canOperatePostgame &&
     postgameEntry &&

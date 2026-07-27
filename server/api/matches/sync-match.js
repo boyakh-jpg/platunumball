@@ -20,7 +20,7 @@ import {
   normalizeDisputeWindowMinutes,
 } from "../../../src/lib/constants.js";
 import { getMatchCancelCopy } from "../../../src/lib/matchUtils.js";
-import { getPostgameRecordVerification, POSTGAME_RECORD_REMINDER_MINUTES } from "../../../src/lib/postgameRecordVerification.js";
+import { POSTGAME_RECORD_REMINDER_MINUTES } from "../../../src/lib/postgameRecordVerification.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeam } from "../../../src/data/teamMappers.js";
@@ -447,7 +447,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
     await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
   }
-  if (["endMatch", "submitMatchResult", "disputeMatch", "approveMatch", "resolveMatchDispute", "forfeitTournamentMatch"].includes(action)) {
+  if (["endMatch", "submitMatchResult", "disputeMatch", "approveMatch", "finalizeMatch", "resolveMatchDispute", "forfeitTournamentMatch"].includes(action)) {
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
       ...MATCH_SCHEDULED_NOTICE_PREFIXES,
       ...MATCH_POSTGAME_NOTICE_PREFIXES,
@@ -457,7 +457,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
       ...MATCH_POSTGAME_NOTICE_PREFIXES,
     ]);
   }
-  if (["submitMatchResult", "approveMatch"].includes(action)) {
+  if (["submitMatchResult", "approveMatch", "finalizeMatch"].includes(action)) {
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_RECORD_APPROVAL_NOTICE_PREFIXES);
     await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_RECORD_APPROVAL_NOTICE_PREFIXES);
   }
@@ -556,28 +556,6 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     });
   }
 
-  if (
-    match.rules?.recordType === RECORD_TYPES.matchRecord
-    && ["submitMatchResult", "approveMatch"].includes(action)
-  ) {
-    const verification = getPostgameRecordVerification(match);
-    const submittedAtMs = new Date(verification.submittedAt ?? Date.now()).getTime();
-    const targetIds = verification.unconfirmedIds;
-    const targetIdSet = new Set(targetIds);
-    const targetProfiles = profiles.filter((profile) => targetIdSet.has(profile.id));
-    POSTGAME_RECORD_REMINDER_MINUTES.forEach((minutes) => {
-      const sendAtMs = submittedAtMs + minutes * MINUTE_MS;
-      if ((minutes === 0 && action !== "submitMatchResult") || sendAtMs < nowMs) return;
-      addRows(targetIds, targetProfiles, {
-        idPrefix: `match-record-approval-${minutes}m`,
-        actionRequired: true,
-        homeAction: true,
-        title: minutes === 0 ? "사후 기록 확인 요청" : "사후 기록 자동확정 예정",
-        intro: "본인 참가 사실과 경기 결과를 확인해 주세요. 이의시간이 끝나면 자동확정됩니다.",
-        sendAt: new Date(Math.max(sendAtMs, nowMs)).toISOString(),
-      });
-    });
-  }
 
   await upsertMatchNotificationRows(supabase, notificationRows);
   return upsertDiscordDeliveryRows(supabase, rows);
@@ -696,7 +674,7 @@ function validateSoloRecordSnapshot(match = {}, actorProfileId = "") {
   const teamAPlayers = toArray(match.teamA?.players);
   const teamBPlayers = toArray(match.teamB?.players);
   if (match.createdBy && match.createdBy !== actorProfileId) reject(403, "solo_record_owner_mismatch");
-  if (match.visibility !== "private") reject(400, "solo_record_visibility_invalid");
+  if (!["public", "private"].includes(match.visibility)) reject(400, "solo_record_visibility_invalid");
   if (match.status !== "confirmed" && match.status !== "cancelled") reject(400, "solo_record_status_invalid");
   if (match.ranked !== false) reject(400, "solo_record_ranked_invalid");
   if (teamAPlayers.length !== 1 || teamAPlayers[0] !== actorProfileId || teamBPlayers.length) {
@@ -2372,7 +2350,7 @@ export default async function handler(request, response) {
         let discordDeliveryCount = Number(sqlResult.discordDeliveryCount ?? 0);
         let discordDeliveryError = sqlResult.discordDeliveryError ?? null;
         const shouldRefreshMatchDeliveries = MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS.has(operation.action) ||
-          ["submitMatchResult", "approveMatch", "resolveMatchDispute", "forfeitTournamentMatch"].includes(operation.action);
+          ["submitMatchResult", "approveMatch", "finalizeMatch", "resolveMatchDispute", "forfeitTournamentMatch"].includes(operation.action);
         if (shouldRefreshMatchDeliveries && syncedMatch?.id) {
           try {
             discordDeliveryCount = await withTimeout(

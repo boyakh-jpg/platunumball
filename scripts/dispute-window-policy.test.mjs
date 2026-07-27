@@ -61,3 +61,16 @@ test("parallel dispute queue remains item-based", async () => {
   assert.match(parallelQueue, /select count\(\*\)::integer into open_count/);
   assert.match(parallelQueue, /if open_count > 0 then/);
 });
+
+test("postgame score mutation is role-scoped and no-referee corrections use disputes", async () => {
+  const migration = await readSource("supabase/migrations/20260727142000_lock_postgame_score_increments.sql");
+
+  assert.match(migration, /current_match\.status in \('agreed', 'approval'\)/);
+  assert.match(migration, /current_match\.ended_at is not null/);
+  assert.match(migration, /rankball_is_match_referee_eligible/);
+  assert.match(migration, /rules->>'recordType', ''\) = 'match_record'/);
+  assert.match(migration, /rules->>'recordSetupReady', 'false'\) = 'true'/);
+  assert.match(migration, /safe_actor_id = nullif\(btrim\(current_match\.created_by\), ''\)/);
+  assert.match(migration, /match_score_update_locked/);
+  assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
+});

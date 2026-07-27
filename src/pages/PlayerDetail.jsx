@@ -14,7 +14,7 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import { getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getTeamRoleLabel, PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine, getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
+import { compareMatchRecency, formatStatLine, getMatchSideScore as getSideScore, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { getRepresentativeTeam, getUserProfileTeams } from "../lib/profileSetup.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
@@ -57,9 +57,14 @@ export default function PlayerDetail({ app }) {
   const { playerId } = useParams();
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const loadDirectory = app.actions?.loadDirectory;
+  const loadPublicProfileRecords = app.actions?.loadPublicProfileRecords;
   useEffect(() => {
     loadDirectory?.();
   }, [loadDirectory]);
+  useEffect(() => {
+    if (!app.remoteReady || !playerId || !loadPublicProfileRecords) return;
+    void loadPublicProfileRecords(playerId);
+  }, [app.remoteReady, loadPublicProfileRecords, playerId]);
   const player = app.state.users.find((user) => user.id === playerId);
 
   const directoryPending = app.remoteReady === false
@@ -78,7 +83,24 @@ export default function PlayerDetail({ app }) {
   const orderedPlayerTeams = [...playerTeams].sort((teamA, teamB) => (
     Number(teamB.id === representativeTeam?.id) - Number(teamA.id === representativeTeam?.id)
   ));
-  const history = app.state.matches.filter((match) => getPlayerSide(match, player.id));
+  const allPlayerHistory = app.state.matches.filter((match) => getPlayerSide(match, player.id));
+  const history = allPlayerHistory.filter((match) => !isPersonalRecordMatch(match));
+  const personalRecordHistory = allPlayerHistory
+    .filter((match) => (
+      isPersonalRecordMatch(match)
+      && match.createdBy === player.id
+      && match.status === "confirmed"
+      && (isOwnProfile || match.visibility === "public")
+    ))
+    .sort(compareMatchRecency);
+  const personalArchive = isOwnProfile ? app.recordArchives?.profile : app.recordArchives?.publicProfiles?.[player.id];
+  const personalArchivedRecords = (personalArchive?.rows ?? []).filter((record) => {
+    const personalRecord = ["solo", "personal_record"].includes(record.recordType);
+    const ownerMatches = record.ownerProfileId ? record.ownerProfileId === player.id : isOwnProfile;
+    return personalRecord && ownerMatches && (isOwnProfile || record.visibility === "public");
+  });
+  const personalSummary = personalArchive?.personalSummary ?? player.personalRecordSummary ?? null;
+  const personalRecordCount = Number(personalSummary?.recordCount ?? (personalRecordHistory.length + personalArchivedRecords.length));
   const teammateCounts = new Map();
   const opponentCounts = new Map();
   const totals = Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, 0]));
@@ -263,6 +285,65 @@ export default function PlayerDetail({ app }) {
               <RatingCard key={mode} title={mode} mmr={mmr} subtitle="모드 티어" />
             ))}
           </section>
+
+          {(personalRecordCount > 0 || personalArchive?.loading) ? (
+            <Card id="personal-records" className="section-card personal-record-profile-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Self Authored</p>
+                  <h2>{isOwnProfile ? "내 기록" : player.name + "의 공개 기록"}</h2>
+                </div>
+                <Badge tone="gold">{personalArchive?.loading && !personalRecordCount ? "불러오는 중" : personalRecordCount + "경기"}</Badge>
+              </div>
+              {personalSummary && Number(personalSummary.statCount ?? 0) > 0 ? (
+                <div className="rank-stat-grid personal-record-stat-grid">
+                  <span><strong>{personalSummary.winCount ?? 0}</strong>승</span>
+                  <span><strong>{personalSummary.lossCount ?? 0}</strong>패</span>
+                  <span><strong>{personalSummary.drawCount ?? 0}</strong>무</span>
+                  {PLAYER_STAT_FIELDS.map((field) => <span key={field.id}><strong>{personalSummary[field.id] ?? 0}</strong>{field.label}</span>)}
+                </div>
+              ) : null}
+              <p className="form-helper">직접 작성한 기록입니다. 공식 통계·업적·MMR과 분리됩니다.</p>
+              {personalRecordHistory.length ? (
+                <div className="history-list personal-record-history-list">
+                  {personalRecordHistory.map((match) => {
+                    const outcome = getPlayerOutcome(match, player.id);
+                    return (
+                      <article key={match.id} className={"history-item rank-match-item " + (outcome ? "rank-match-" + outcome : "")}>
+                        <div>
+                          <button type="button" className="personal-record-open-button" onClick={() => setSelectedMatchId(match.id)}>
+                            <strong>{match.title}</strong>
+                          </button>
+                          <span>{match.court} · {match.scheduledAt}</span>
+                          <span className="profile-record-badges">
+                            <Badge tone="gold">내 기록</Badge>
+                            <Badge tone={match.visibility === "public" ? "green" : "blue"}>{match.visibility === "public" ? "공개" : "비공개"}</Badge>
+                          </span>
+                        </div>
+                        <div className="history-score"><strong>{getSideScore(match, "teamA")}:{getSideScore(match, "teamB")}</strong></div>
+                        {match.result?.playerStats?.[player.id] ? <p>{formatStatLine(match.result.playerStats[player.id])}</p> : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {personalArchivedRecords.length ? (
+                <div className="recent-match-list profile-records-list personal-record-archive-list">
+                  {personalArchivedRecords.map((record) => (
+                    <div key={record.matchId} className={"recent-match-row profile-record-row record-archive-row result-" + String(record.result ?? "D").toLowerCase()}>
+                      <b>{record.result}</b>
+                      <span>
+                        <strong>{record.teamName} vs {record.opponentTeamName}</strong>
+                        <span className="profile-record-badges"><Badge tone="gold">내 기록</Badge><Badge tone={record.visibility === "public" ? "green" : "blue"}>{record.visibility === "public" ? "공개" : "비공개"}</Badge></span>
+                        <em>{record.recordDate} · {record.mode} · {record.court}</em>
+                      </span>
+                      <i>{record.score}:{record.opponentScore}</i>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </Card>
+          ) : null}
 
           {canViewTeamHistory ? (
             <Card id="history" className="section-card">

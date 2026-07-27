@@ -42,11 +42,18 @@ import {
 } from "../src/lib/matchRules.js";
 import {
   acceptRecruitingInvitation,
+  confirmRecruitingMatch,
   createRecruitingPost,
   interestRecruitingPost,
   inviteRecruitingPlayers,
+  setRecruitingRoomTeam,
 } from "../src/data/repository.js";
-import { getRecruitingLobby, isIndividualOnlyRecruitingRoom } from "../src/lib/recruiting.js";
+import {
+  MMR_RANGE_POLICIES,
+  getRecruitingLobby,
+  isIndividualOnlyRecruitingRoom,
+  normalizeRecruitingMmrRangeMode,
+} from "../src/lib/recruiting.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pickupRefereeMigrationSource = fs.readFileSync(
@@ -736,6 +743,149 @@ test("room operations keep only the clock, ball, and mode-relevant vest choices"
   assert.equal(getMatchCreationPolicyPayload({ mode: "1v1", vestsProvided: true }).vestsProvided, false);
 });
 
+test("general prearranged matches keep only three MMR ranges and force the limit mode", () => {
+  assert.deepEqual(Object.keys(MMR_RANGE_POLICIES), ["narrow", "normal", "wide"]);
+  assert.deepEqual(Object.values(MMR_RANGE_POLICIES).map((policy) => policy.ratingScale), [1.1, 1, 0.8]);
+  assert.equal(normalizeRecruitingMmrRangeMode("standard"), "normal");
+
+  const state = {
+    currentUserId: "host",
+    users: [{ id: "host", name: "방장", region: "마포", trustScore: 100, ratings: { integrated: 1200 } }],
+    teams: [],
+    settings: {},
+    recruitingPosts: [],
+    notifications: [],
+  };
+  const baseDraft = {
+    mode: "1v1",
+    sideCapacity: 1,
+    visibility: "public",
+    timingType: "instant",
+    hostJoinMode: "player",
+    formationMode: "prearranged",
+    matchPurpose: "competitive",
+    ranked: true,
+    mmrRangeMode: "standard",
+    mmrLimitMode: "off",
+    rules: { formationMode: "prearranged", matchPurpose: "competitive" },
+  };
+  const competitive = createRecruitingPost(state, baseDraft).recruitingPosts[0];
+  assert.equal(competitive.mmrRangeMode, "normal");
+  assert.equal(competitive.mmrLimitMode, "block");
+  assert.equal(competitive.roomState.mmrLimitMode, "block");
+  assert.equal(competitive.rules.mmrLimitMode, "block");
+
+  const friendly = createRecruitingPost(state, {
+    ...baseDraft,
+    matchPurpose: "friendly",
+    ranked: false,
+    mmrLimitMode: "block",
+    rules: { formationMode: "prearranged", matchPurpose: "friendly" },
+  }).recruitingPosts[0];
+  assert.equal(friendly.mmrLimitMode, "off");
+  assert.equal(friendly.roomState.mmrLimitMode, "off");
+  assert.equal(friendly.rules.mmrLimitMode, "off");
+});
+
+test("empty team rooms select teams only through the central reducer", () => {
+  const users = [
+    { id: "host", name: "방장", region: "마포", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
+    { id: "captain-b", name: "B팀장", region: "마포", trustScore: 100, ageGroup: "open", ratings: { integrated: 1210 } },
+  ];
+  const teams = [
+    { id: "team-a", name: "A팀", mmr: 1200, members: [{ userId: "host", role: "captain" }] },
+    { id: "team-b", name: "B팀", mmr: 1210, members: [{ userId: "captain-b", role: "captain" }] },
+    { id: "team-no-captain", name: "주장없음", mmr: 1200, members: [] },
+  ];
+  const state = {
+    currentUserId: "host",
+    users,
+    teams,
+    settings: {},
+    recruitingPosts: [],
+    notifications: [],
+  };
+  const created = createRecruitingPost(state, {
+    title: "빈 비공개 팀방",
+    mode: "1v1",
+    sideCapacity: 1,
+    visibility: "private",
+    timingType: "instant",
+    hostJoinMode: "team",
+    teamOnly: true,
+    formationMode: "prearranged",
+    matchPurpose: "competitive",
+    ranked: true,
+    mmrRangeMode: "normal",
+    rules: { formationMode: "prearranged", matchPurpose: "competitive", teamOnly: true },
+  });
+  const emptyPost = created.recruitingPosts[0];
+  assert.ok(emptyPost);
+  assert.equal(emptyPost.hostJoinMode, "team");
+  assert.equal(emptyPost.teamOnly, true);
+  assert.equal(emptyPost.teamId, null);
+  assert.equal(emptyPost.targetTeamId, null);
+  assert.deepEqual(emptyPost.playerIds, []);
+  assert.deepEqual(emptyPost.roomState.invitations, []);
+
+  const joinedBeforeTeamSelection = interestRecruitingPost(
+    { ...created, currentUserId: "captain-b" },
+    emptyPost.id,
+    { joinMode: "team", teamId: "team-b", side: "teamB" },
+  );
+  assert.deepEqual(joinedBeforeTeamSelection.recruitingPosts[0].applicants, []);
+  const confirmedBeforeTeamSelection = confirmRecruitingMatch(created, emptyPost.id);
+  assert.equal(confirmedBeforeTeamSelection.recruitingPosts[0].status, "open");
+  assert.equal(confirmedBeforeTeamSelection.recruitingPosts.length, 1);
+
+  const beforeA = setRecruitingRoomTeam(created, emptyPost.id, "teamB", "team-b");
+  assert.equal(beforeA.recruitingPosts[0].targetTeamId, null);
+  const withA = setRecruitingRoomTeam(created, emptyPost.id, "teamA", "team-a");
+  assert.equal(withA.recruitingPosts[0].teamId, "team-a");
+  assert.deepEqual(withA.recruitingPosts[0].playerIds, ["host"]);
+
+  const withoutCaptain = setRecruitingRoomTeam(withA, emptyPost.id, "teamB", "team-no-captain");
+  assert.equal(withoutCaptain.recruitingPosts[0].targetTeamId, null);
+  const withB = setRecruitingRoomTeam(withA, emptyPost.id, "teamB", "team-b");
+  const selectedPost = withB.recruitingPosts[0];
+  assert.equal(selectedPost.targetTeamId, "team-b");
+  assert.equal(selectedPost.roomState.invitations.length, 1);
+  assert.deepEqual(
+    selectedPost.roomState.invitations.map(({ targetUserId, teamId, joinMode, side, status }) => ({ targetUserId, teamId, joinMode, side, status })),
+    [{ targetUserId: "captain-b", teamId: "team-b", joinMode: "team", side: "teamB", status: "pending" }],
+  );
+  const duplicate = setRecruitingRoomTeam(withB, emptyPost.id, "teamB", "team-b");
+  assert.equal(duplicate.recruitingPosts[0].roomState.invitations.length, 1);
+});
+
+test("team selection is routed through the server and DB authority", () => {
+  const serverSource = fs.readFileSync(path.join(root, "server/api/recruiting/sync-post.js"), "utf8");
+  const authoritativeSource = fs.readFileSync(path.join(root, "server/api/_authoritativeState.js"), "utf8");
+  assert.match(serverSource, /team_room_must_start_without_team_selection/);
+  assert.match(serverSource, /operation\.action === "setRecruitingRoomTeam"/);
+  assert.match(serverSource, /rankball_recruiting_set_room_team_action/);
+  assert.match(serverSource, /recruiting_set_room_team_rpc_required/);
+  assert.match(authoritativeSource, /case "setRecruitingRoomTeam":[\s\S]*setRecruitingRoomTeam\(state, operation\.postId, operation\.side, operation\.teamId\)/);
+
+  const migrationName = fs.readdirSync(path.join(root, "supabase/migrations"))
+    .filter((name) => name.endsWith(".sql"))
+    .find((name) => fs.readFileSync(path.join(root, "supabase/migrations", name), "utf8").includes("rankball_recruiting_set_room_team_action"));
+  assert.ok(migrationName, "room team selection migration is required");
+  const migrationSource = fs.readFileSync(path.join(root, "supabase/migrations", migrationName), "utf8");
+  assert.match(migrationSource, /create or replace function public\.rankball_recruiting_set_room_team_action/);
+  assert.match(migrationSource, /for update/);
+  assert.match(migrationSource, /rankball_assert_team_event_eligible/);
+  assert.match(migrationSource, /captainId/);
+  assert.match(migrationSource, /recruiting_room_team_already_selected/);
+  assert.match(migrationSource, /recruiting_host_team_selection_required/);
+  assert.match(migrationSource, /public_team_room_side_b_direct_selection_not_allowed/);
+  assert.match(migrationSource, /rankball_recruiting_team_selection_application_guard/);
+  assert.match(migrationSource, /'targetUserId'/);
+  assert.match(migrationSource, /'pending'/);
+  assert.match(migrationSource, /target_team_id/);
+  assert.doesNotMatch(migrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
+});
+
 test("public team joins persist only the captain representative", () => {
   const users = [
     { id: "host", name: "방장", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
@@ -921,4 +1071,10 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(pickupSwapMigration, /pickup_swap_cross_side_required/);
   assert.match(pickupSwapMigration, /sideAssignmentStatus', 'pending'/);
   assert.doesNotMatch(pickupSwapMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
+});
+
+test("무심판 생성 안내는 개인 기록이 아니라 팀 점수 전용 정책을 표시한다", () => {
+  const source = fs.readFileSync(path.join(root, "src/pages/CreateMatch.jsx"), "utf8");
+  assert.doesNotMatch(source, /심판 없으면 개인 기록은 득점 중심/);
+  assert.match(source, /심판 초대 안 함 · 무심판 경기는 팀 점수만 기록/);
 });

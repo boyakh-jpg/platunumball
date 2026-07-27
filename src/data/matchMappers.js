@@ -201,12 +201,33 @@ export function getRemoteMatchActivePlayerIds(row = {}, sideName, playerRows = [
   );
 }
 
+const VERIFIED_MATCH_STAT_SOURCES = new Set(["referee", "dispute_operator"]);
+
+export function getReadableMatchStatRows(row = {}, statRows = []) {
+  const recordType = String(row.rules?.recordType ?? row.record_type ?? "").trim().toLowerCase();
+  if (["solo", "personal_record"].includes(recordType)) {
+    const ownerId = row.created_by ?? row.createdBy ?? "";
+    return (statRows ?? []).filter((stat) => stat?.user_id === ownerId);
+  }
+  if (!row.referee_id && !row.refereeId) return [];
+  return (statRows ?? []).filter((stat) => VERIFIED_MATCH_STAT_SOURCES.has(stat?.record_source));
+}
+
+export function getReadableMatchStatSubmissions(statRows = [], submissions = {}) {
+  return Object.fromEntries(
+    (statRows ?? [])
+      .filter((stat) => stat?.user_id && submissions?.[stat.user_id])
+      .map((stat) => [stat.user_id, submissions[stat.user_id]]),
+  );
+}
+
 export function fromRemoteMatch(row, context) {
   const matchPlayers = context.playersByMatch.get(row.id) ?? [];
   const teamAPlayers = getRemoteMatchActivePlayerIds(row, "teamA", matchPlayers);
   const teamBPlayers = getRemoteMatchActivePlayerIds(row, "teamB", matchPlayers);
   const resultRow = context.resultsByMatch[row.id];
-  const statRows = row.referee_id ? context.statsByMatch.get(row.id) ?? [] : [];
+  const allowPersonalStats = Boolean(row.referee_id) || ["solo", "personal_record"].includes(String(row.rules?.recordType ?? "").trim().toLowerCase());
+  const statRows = getReadableMatchStatRows(row, context.statsByMatch.get(row.id) ?? []);
   const playerStats = Object.fromEntries(
     statRows.map((stat) => [
       stat.user_id,
@@ -328,7 +349,7 @@ export function fromRemoteMatch(row, context) {
           scoreRevisionB: Number(resultRow.score_revision_b ?? 0),
           scoreSubmissions: resultRow.score_submissions ?? {},
           playerStats,
-          statSubmissions: row.referee_id ? resultRow.stat_submissions ?? {} : {},
+          statSubmissions: allowPersonalStats ? getReadableMatchStatSubmissions(statRows, resultRow.stat_submissions) : {},
           submittedBy: resultRow.submitted_by,
           submittedAt: resultRow.submitted_at,
         }

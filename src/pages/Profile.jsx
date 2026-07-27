@@ -30,7 +30,7 @@ function getUserRecordLine(match, userId) {
 }
 
 function getAverageFouls(matches = [], userId) {
-  const confirmed = matches.filter((match) => match.status === "confirmed" && match.result && getPlayerSideName(match, userId));
+  const confirmed = matches.filter((match) => match.status === "confirmed" && match.result && match.refereeId && !isPersonalRecordMatch(match) && getPlayerSideName(match, userId));
   if (!confirmed.length) return 0;
   const total = confirmed.reduce((sum, match) => sum + Number(match.result?.playerStats?.[userId]?.fouls ?? 0), 0);
   return total / confirmed.length;
@@ -47,8 +47,14 @@ function formatDate(date) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function getRecordMetaPrefix(match) {
-  return isPersonalRecordMatch(match) ? "개인 기록 · " : "";
+function PersonalRecordBadges({ match }) {
+  if (!isPersonalRecordMatch(match)) return null;
+  return (
+    <span className="profile-record-badges">
+      <Badge tone="gold">내 기록</Badge>
+      <Badge tone={match.visibility === "public" ? "green" : "blue"}>{match.visibility === "public" ? "공개" : "비공개"}</Badge>
+    </span>
+  );
 }
 
 function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
@@ -80,7 +86,8 @@ function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
                 <b>{line.result}</b>
                 <span>
                   <strong>{line.side.name} vs {line.opponent.name}</strong>
-                  <em>{getRecordMetaPrefix(match)}{match.scheduledAt} · {match.mode}</em>
+                  <PersonalRecordBadges match={match} />
+                  <em>{match.scheduledAt} · {match.mode}</em>
                 </span>
                 <i>{line.score}:{line.opponentScore}</i>
               </Link>

@@ -28,6 +28,7 @@ function makeState(currentUserId = "host") {
       { id: "host", name: "방장", trustScore: 100, streak: 0, ratings: { integrated: 1200, modes: { "1v1": 1200 } } },
       { id: "guest", name: "참가자", trustScore: 100, streak: 0, ratings: { integrated: 1200, modes: { "1v1": 1200 } } },
       { id: "reserve", name: "후보", trustScore: 100, streak: 0, ratings: { integrated: 1200, modes: { "1v1": 1200 } } },
+      { id: "referee", name: "심판", trustScore: 100, officialReferee: true, streak: 0, ratings: { integrated: 1200, modes: { "1v1": 1200 } } },
     ],
     teams: [],
     affiliations: [],
@@ -39,6 +40,7 @@ function makeState(currentUserId = "host") {
       ranked: false,
       status: "approval",
       createdBy: "host",
+      refereeId: "referee",
       endedAt,
       disputeMinutes: 10,
       teamA: { name: "A", players: ["host"], score: 5 },
@@ -116,7 +118,7 @@ test("후보는 제외하고 실제 출전 선수만 이의를 접수한다", ()
   assert.equal(next.notifications[0]?.title, "이의신청 권한 없음");
 });
 
-test("여러 참가자의 이의를 병렬 접수하고 방장이 건별 처리한다", () => {
+test("여러 참가자의 이의를 병렬 접수하고 배정 심판이 건별 처리한다", () => {
   const start = makeState("host");
   const first = disputeMatch(start, "match-queue", requestFor(start, "host", 8));
   const secondInput = { ...first, currentUserId: "guest" };
@@ -125,17 +127,18 @@ test("여러 참가자의 이의를 병렬 접수하고 방장이 건별 처리�
 
   assert.equal(open.length, 2);
   assert.equal(second.matches[0].status, "disputed");
-  assert.equal(canUserResolveMatchDispute(second.matches[0], "host"), true);
+  assert.equal(canUserResolveMatchDispute(second.matches[0], "referee"), true);
+  assert.equal(canUserResolveMatchDispute(second.matches[0], "host"), false);
   assert.equal(canUserResolveMatchDispute(second.matches[0], "guest"), false);
 
   const hostDispute = open.find((dispute) => dispute.by === "host");
-  const accepted = resolveMatchDispute({ ...second, currentUserId: "host" }, "match-queue", hostDispute.id, "accepted");
+  const accepted = resolveMatchDispute({ ...second, currentUserId: "referee" }, "match-queue", hostDispute.id, "accepted");
   assert.equal(getOpenMatchDisputes(accepted.matches[0]).length, 1);
   assert.equal(accepted.matches[0].status, "disputed");
   assert.equal(accepted.matches[0].disputeDraftResult.playerStats.host.points, 8);
 
   const remaining = getOpenMatchDisputes(accepted.matches[0])[0];
-  const finished = resolveMatchDispute(accepted, "match-queue", remaining.id, "rejected");
+  const finished = resolveMatchDispute({ ...accepted, currentUserId: "referee" }, "match-queue", remaining.id, "rejected");
   assert.equal(getOpenMatchDisputes(finished.matches[0]).length, 0);
   assert.equal(finished.matches[0].status, "confirmed");
   assert.equal(finished.matches[0].result.playerStats.host.points, 8);
@@ -147,11 +150,38 @@ test("기존 사유형 이의제기도 가결할 수 있다", () => {
   const start = makeState("guest");
   const disputed = disputeMatch(start, "match-queue", "기존 기록을 다시 확인해 주세요.");
   const openDispute = getOpenMatchDisputes(disputed.matches[0])[0];
-  const finished = resolveMatchDispute({ ...disputed, currentUserId: "host" }, "match-queue", openDispute.id, "accepted");
+  const finished = resolveMatchDispute({ ...disputed, currentUserId: "referee" }, "match-queue", openDispute.id, "accepted");
 
   assert.equal(getOpenMatchDisputes(finished.matches[0]).length, 0);
   assert.equal(finished.matches[0].status, "confirmed");
   assert.deepEqual(finished.matches[0].result, start.matches[0].result);
+});
+
+test("무심판 점수 이의 수락은 요청한 사이드 점수만 바꾸고 개인 스탯을 만들지 않는다", () => {
+  const start = makeState("guest");
+  const noRefereeMatch = {
+    ...start.matches[0],
+    refereeId: undefined,
+    result: {
+      ...start.matches[0].result,
+      playerStats: {},
+      statSubmissions: {},
+    },
+  };
+  const noRefereeState = { ...start, matches: [noRefereeMatch] };
+  const disputed = disputeMatch(noRefereeState, "match-queue", {
+    kind: "team_score",
+    side: "teamB",
+    requestedScore: 10,
+    reason: "B 점수 정정",
+  });
+  const openDispute = getOpenMatchDisputes(disputed.matches[0])[0];
+  const finished = resolveMatchDispute({ ...disputed, currentUserId: "host" }, "match-queue", openDispute.id, "accepted");
+
+  assert.equal(finished.matches[0].status, "confirmed");
+  assert.equal(finished.matches[0].result.scoreA, 5);
+  assert.equal(finished.matches[0].result.scoreB, 10);
+  assert.deepEqual(finished.matches[0].result.playerStats, {});
 });
 
 test("미처리 이의는 제한시간이 지나도 이의 단계에 남는다", () => {

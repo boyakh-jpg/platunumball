@@ -166,10 +166,6 @@
   padding: 6px;
 }
 
-.create-opponent-team-results .search-picker-result-row-actionable {
-  grid-template-columns: minmax(0, 1fr) 38px;
-  align-items: stretch;
-}
 
 .search-picker-result-main {
   display: grid;
@@ -186,26 +182,6 @@
   text-align: left;
 }
 
-.create-opponent-team-results .search-picker-result-main {
-  grid-template-columns: minmax(0, 1fr);
-  align-content: center;
-  min-height: 74px;
-}
-
-.create-opponent-team-results .search-picker-result-main strong,
-.create-opponent-team-results .search-picker-result-main span,
-.create-opponent-team-results .search-picker-result-main em {
-  grid-column: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.create-opponent-team-results .search-picker-result-main em {
-  grid-row: auto;
-  align-self: auto;
-  white-space: normal;
-}
 
 .search-picker-favorite-action {
   display: grid;
@@ -963,6 +939,48 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: var(--space-1);
 }
 
+.profile-record-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.recent-match-row .profile-record-badges {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  grid-auto-flow: column;
+}
+
+.recent-match-row .profile-record-badges .ui-badge {
+  display: inline-flex;
+  width: fit-content;
+  white-space: nowrap;
+}
+
+.personal-record-profile-card .history-list,
+.personal-record-profile-card .personal-record-archive-list {
+  margin-top: var(--space-5);
+}
+
+.personal-record-open-button {
+  display: inline-flex;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.personal-record-open-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
 .recent-match-row strong {
   min-width: 0;
   overflow: hidden;
@@ -1513,10 +1531,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .queue-note svg {
   flex: 0 0 auto;
   color: var(--blue);
-}
-
-.admin-seed-card {
-  border-color: rgba(118, 169, 255, 0.22);
 }
 
 .admin-account-search {

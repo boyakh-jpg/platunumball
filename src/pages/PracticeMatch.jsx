@@ -46,13 +46,15 @@ function getPracticeInstruction(progress, match = null) {
   }
   if (progress.phase === "live") {
     return match?.rules?.gameClockEnabled
-      ? "경기시계를 시작해 일시정지·샷클락을 시험하고 시계를 종료한 뒤, 방의 ‘경기 종료’를 누르세요."
+      ? "경기시계를 시작해 일시정지·샷클락을 시험하고, 예시 점수 또는 점수판을 기록한 뒤 경기를 종료하세요."
       : "공용 방에서 경기 진행 상태를 확인한 뒤 경기 종료를 눌러 기록 단계로 이동하세요.";
   }
   if (progress.phase === "postgame") {
     return match?.result
       ? "연습 선수 승인 후 본인 승인을 눌러 연습 기록을 확정하세요."
-      : "직접 기록하거나 ‘예시 기록 채우기’로 승인 단계를 확인하세요.";
+      : match?.refereeId
+        ? "심판 예시 기록을 채운 뒤 최종 확정 단계를 확인하세요."
+        : "경기 중 기록된 현재 팀 점수로 최종 확정하세요.";
   }
   if (progress.phase === "dispute") {
     return "이의가 있으면 방장이 판정합니다. 이의가 없으면 다른 참가자 승인 후 본인 승인을 진행하세요.";
@@ -227,9 +229,19 @@ export default function PracticeMatch({ app }) {
         : "연습 선수 출석을 완료했습니다.");
       return;
     }
-    if (["postgame", "dispute"].includes(progress.phase) && !match?.result) {
+    if (progress.phase === "live" && !match?.result) {
       commitState(submitPracticeSampleResult(stateRef.current, matchId));
-      setHelperStatus("예시 팀 점수를 채웠습니다.");
+      setHelperStatus("예시 팀 점수를 경기 중 기록하고 경기를 종료했습니다.");
+      return;
+    }
+    if (["postgame", "dispute"].includes(progress.phase) && !match?.result) {
+      if (match?.refereeId) {
+        commitState(submitPracticeSampleResult(stateRef.current, matchId));
+        setHelperStatus("심판 예시 기록을 채웠습니다.");
+      } else {
+        commitState(approvePracticeDummyPlayers(stateRef.current, matchId));
+        setHelperStatus("현재 팀 점수로 최종 확정했습니다.");
+      }
       return;
     }
     if (["postgame", "dispute"].includes(progress.phase) && match?.result) {
@@ -242,8 +254,12 @@ export default function PracticeMatch({ app }) {
     ? `연습 선수 ${pendingInvitationCount}명 초대 수락`
     : progress.phase === "checkin"
       ? "연습 선수 출석 완료"
+      : progress.phase === "live" && !match?.result
+        ? "예시 팀 점수 기록 후 종료"
       : ["postgame", "dispute"].includes(progress.phase) && !match?.result
-        ? "예시 팀 점수 채우기"
+        ? match?.refereeId
+          ? "심판 예시 기록 채우기"
+          : "현재 팀 점수로 최종 확정"
         : ["postgame", "dispute"].includes(progress.phase) && match?.result
           ? "연습 결과 최종 확정"
           : "";

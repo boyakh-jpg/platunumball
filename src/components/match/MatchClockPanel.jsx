@@ -142,6 +142,102 @@ async function playBuzzer(patternName = "period", volume = 1) {
   }
 }
 
+function getMatchScoreState(match = {}) {
+  return {
+    scoreA: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
+    scoreB: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
+    revisionA: Number(match.result?.scoreRevisionA ?? 0),
+    revisionB: Number(match.result?.scoreRevisionB ?? 0),
+  };
+}
+
+export function MatchScoreControls({
+  match,
+  editableScoreSides = [],
+  onIncrementScore = null,
+  label = "실시간 팀 점수",
+}) {
+  const [score, setScore] = useState(() => getMatchScoreState(match));
+  const [pendingSide, setPendingSide] = useState("");
+  const [scoreError, setScoreError] = useState("");
+
+  useEffect(() => {
+    setScore(getMatchScoreState(match));
+  }, [
+    match.id,
+    match.result?.scoreA,
+    match.result?.scoreB,
+    match.result?.scoreRevisionA,
+    match.result?.scoreRevisionB,
+    match.teamA?.score,
+    match.teamB?.score,
+  ]);
+
+  const incrementScore = async (sideName, delta) => {
+    if (!onIncrementScore || pendingSide || !editableScoreSides.includes(sideName)) return;
+    setPendingSide(sideName);
+    setScoreError("");
+    try {
+      const response = await onIncrementScore(sideName, delta, {
+        expectedRevisionA: score.revisionA,
+        expectedRevisionB: score.revisionB,
+      });
+      if (response?.ok === false) throw new Error(response.error || response.message || "score_update_failed");
+      const responseScore = response?.match ? getMatchScoreState(response.match) : null;
+      setScore((current) => ({
+        scoreA: Number(response?.scoreA ?? responseScore?.scoreA ?? current.scoreA + (sideName === "teamA" ? delta : 0)),
+        scoreB: Number(response?.scoreB ?? responseScore?.scoreB ?? current.scoreB + (sideName === "teamB" ? delta : 0)),
+        revisionA: Number(response?.scoreRevisionA ?? responseScore?.revisionA ?? current.revisionA + (sideName === "teamA" ? 1 : 0)),
+        revisionB: Number(response?.scoreRevisionB ?? responseScore?.revisionB ?? current.revisionB + (sideName === "teamB" ? 1 : 0)),
+      }));
+    } catch (error) {
+      setScoreError(String(error?.message || error?.code || "점수를 갱신하지 못했습니다."));
+    } finally {
+      setPendingSide("");
+    }
+  };
+
+  return (
+    <section className="ui-match-score-control-panel" aria-label={label}>
+      <header>
+        <div>
+          <strong>{label}</strong>
+          <span>팀 점수만 저장합니다.</span>
+        </div>
+        <Badge tone="neutral">개인 스탯 미기록</Badge>
+      </header>
+      <div className="ui-match-score-control-grid">
+        {[
+          { sideName: "teamA", name: match.teamA?.name ?? "A", value: score.scoreA },
+          { sideName: "teamB", name: match.teamB?.name ?? "B", value: score.scoreB },
+        ].map((side) => (
+          <div key={side.sideName} className="ui-match-score-control-side">
+            <span>{side.name}</span>
+            <strong>{side.value}</strong>
+            {editableScoreSides.includes(side.sideName) ? (
+              <div className="ui-match-clock-score-actions" aria-label={`${side.name} 점수 조정`}>
+                {[-1, 1, 2, 3].map((delta) => (
+                  <Button
+                    key={delta}
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={Boolean(pendingSide)}
+                    onClick={() => void incrementScore(side.sideName, delta)}
+                  >
+                    {delta > 0 ? `+${delta}` : delta}
+                  </Button>
+                ))}
+              </div>
+            ) : <small>읽기 전용</small>}
+          </div>
+        ))}
+      </div>
+      {scoreError ? <p className="ui-match-score-control-error">{scoreError}</p> : null}
+    </section>
+  );
+}
+
 export default function MatchClockPanel({
   match,
   onMatchEnded,
@@ -304,7 +400,7 @@ export default function MatchClockPanel({
     () => normalizeMatchRules(match.rules, { mode: match.mode }),
     [match.mode, match.rules],
   );
-  const directScoreControlsEnabled = matchRules.onCourtCount === 1;
+  const directScoreControlsEnabled = scoreboardEnabled;
   const halftimeAfterPeriod = matchRules.periodCount > 1
     ? matchRules.periodCount / 2
     : 0;

@@ -168,11 +168,9 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   assert.equal(endedClock.clock.status, "ended");
   assert.equal(endedClock.clock.clockUsed, false);
   assert.equal(Boolean(stateRef.current.matches[0].endedAt), false);
-  state = runPracticeReducer(stateRef.current, "endMatch", [confirmed.matchId]).state;
+  state = submitPracticeSampleResult(stateRef.current, confirmed.matchId);
   assert.ok(state.matches[0].endedAt);
-
-  state = submitPracticeSampleResult(state, confirmed.matchId);
-  assert.equal(state.matches[0].status, "approval");
+  assert.equal(state.matches[0].status, "agreed");
   state = approvePracticeDummyPlayers(state, confirmed.matchId);
   assert.equal(state.matches[0].status, "confirmed");
   assert.deepEqual(state.notifications, []);
@@ -332,7 +330,7 @@ test("연습방은 설정한 후보를 초대하고 공용 교체 흐름으로 �
   state = runPracticeReducer(
     state,
     "substituteMatchPlayer",
-    [confirmed.matchId, "teamA", teamAActiveId, teamAReserveId, "operator"],
+    [confirmed.matchId, "teamA", teamAActiveId, teamAReserveId, "self"],
     teamAReserveId,
   ).state;
   const liveMatch = state.matches.find((match) => match.id === confirmed.matchId);

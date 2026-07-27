@@ -64,7 +64,7 @@
 4. 방장 또는 배정 심판은 경기 시작 전에 출석 인원 기준 정리를 실행할 수 있다. 양쪽 출석 인원이 들어가는 가장 큰 지원 방식 `5v5 → 3v3 → 2v2 → 1v1`을 고르되 현재 방식보다 키우지 않고 사이드별 후보 3명 한도를 지킨다. 미출석자는 `no_show`로 남기며 이 정리와 축소는 방 수정 1회를 소모하지 않는다.
 5. 실제 출전은 후보 본인이 같은 사이드 출전 선수를 골라 `교체`를 누르면 성립한다. 후보 본인에게는 자기 행만 보인다. 배정 심판 또는 심판 없는 경기의 해당 사이드 기록자만 해당 사이드 후보 전체를 교체하고 `부상·퇴장·운영자 변경` 사유를 지정한다. 방장 역할만으로는 교체 권한을 얻지 않는다. `지각` 사유는 DB 출석 상태가 실제 `late`인 선수에게만 허용한다. 교체 시각, 들어간 선수, 나온 선수, 사이드, 실제 요청자, 경기시계 상태와 사유를 저장한다.
 6. 교체로 들어온 후보의 의미 있는 최소 출전시간은 예상 경기시간의 10%이며 최소 1분, 최대 3분이다. 실제 출전 구간은 경기시계의 누적 진행시간으로 계산해 일시정지·휴식 시간을 제외한다. 합계가 기준보다 짧으면 MMR 반영 대상에서 제외하고, 기준을 채운 선수의 정확한 MMR 계수는 별도 정책 확정 전까지 기존 반영 방식을 유지한다.
-7. 경기 종료 뒤 결과 제출 전 기록 입력 가능 시간에는 방장 또는 배정 심판이 누락된 가입 선수나 무기명 선수를 실제 출전 명단에 추가할 수 있다. 이 흐름으로 추가된 선수만 다시 제거할 수 있으며 모두 MMR에서 제외한다.
+7. 경기 종료 뒤 결과 제출 전 기록 입력 가능 시간에는 방장 또는 배정 심판이 누락된 가입 선수나 무기명 선수를 실제 출전 명단에 추가할 수 있다. 실시간 팀 점수만 저장된 `match_results` 행은 결과 제출로 보지 않는다. 이 흐름으로 추가된 선수만 다시 제거할 수 있으며 모두 MMR에서 제외한다.
 8. 출석 신뢰도 정책의 목표값은 지각 `-1`, 미출석 `-4`다. 다른 신뢰도 규칙과 함께 확정하기 전에는 자동 차감하지 않는다.
 9. QR 링크는 공용 매칭 목록의 `match` query로 해당 경기의 공통 방 모달을 연다. 구형 `/app/matches/:matchId` QR 링크도 같은 공통 방 모달로 전환하며, 출석 결과는 스캔한 경기 모달 안에서 표시한다.
 10. 얇은 경기 일정 카드는 이미 불러온 경기 상세의 `rules`, 출전·후보 명단, 출석, 동의, 기록 데이터를 덮지 않는다. 목록 표기값은 합치되 상세 응답을 우선한다.
@@ -334,9 +334,9 @@
 
 ## 2026-07-14 팀 경기 참가 자격·대회 일정
 
-1. 공개/비공개 팀전과 대회는 팀장 지정 및 경기 인원수 이상의 참가 가능 팀원을 생성·초대·참가 전에 검사한다. 대회는 각 사용자의 대표팀 배정도 함께 검사한다.
+1. 공개/비공개 팀전과 대회는 팀장 지정 및 경기 인원수 이상의 참가 가능 팀원을 팀 선택·초대·참가 전에 검사한다. 빈 팀방 생성 자체는 팀을 확정하지 않는다. 대회는 각 사용자의 대표팀 배정도 함께 검사한다.
 2. 일반 팀전 참가 가능 팀원은 팀에 실제 등록된 정규 팀원 또는 용병 중 연령 조건을 충족한 선수다. 대회 참가 가능 팀원은 이 조건에 더해 해당 팀이 자신의 대표팀이어야 한다. 정규전의 `mmrLimitMode="block"`에서만 선수 MMR 범위도 강제한다.
-3. 공개/비공개 팀전은 팀장만 팀으로 방을 만들거나 참가할 수 있고 팀장 본인도 참가 조건을 충족해야 한다.
+3. 공개/비공개 팀방은 빈 상태로 만든다. A팀 선택은 방장만 수행하며 방장이 선택 팀의 현재 팀장이고 참가 조건을 충족해야 한다. 공개 B팀 참가도 해당 팀의 현재 팀장만 수행한다.
 4. 대회 팀장은 운영 대표라 출전 의무가 없지만 해당 팀을 자신의 대표팀으로 둔 팀장만 대회 참가를 승인할 수 있다. 한 사용자가 여러 팀의 팀장이더라도 한 대회에는 대표팀 1개로만 참가한다.
 5. 용병은 먼저 해당 팀의 팀원으로 등록되고 해당 팀을 대표팀으로 둬야 대회 참가 가능 인원에 포함된다.
 6. 대회 생성 시점에 초대팀별 대표팀 소속원, 연령대, MMR, 참가 가능 여부를 `rules.teamRosterSnapshot`으로 고정한다. 이후 대표팀 변경은 이미 생성된 대회의 참가 명단 기준을 바꾸지 않는다.
@@ -351,7 +351,7 @@
 ## 2026-07-14 초대 생성·수신 규칙
 
 1. 비공개 개인방은 방 생성 단계에서 여러 선수를 초대할 수 있다.
-2. 비공개 팀방은 방 생성 단계에서 상대 팀 대표를 초대한다. 팀 명단 확정은 초대된 대표가 수행한다.
+2. 비공개 팀방은 빈 상태로 생성한 뒤 공용 방 모달에서 A팀, B팀 순서로 고른다. B팀 선택 시 DB가 현재 팀장에게 초대 1건을 만들고, 수락한 팀장이 팀 명단을 확정한다.
 3. 공개 개인방과 공개 팀방은 방 생성 단계에서 상대 초대를 받지 않는다. 생성 후 빈 슬롯 초대 또는 공개 참가를 사용한다.
 4. 토너먼트는 생성 단계에서 여러 팀을 초대한다. 초대팀 팀장은 홈 처리 항목과 알림에서 대회 상세로 진입해 승인한다.
 5. 비공개 토너먼트 상세은 생성자 또는 초대팀 소속원만 읽을 수 있다. 승인 명령은 해당 팀 팀장만 실행한다.
@@ -363,13 +363,14 @@
 - 신규 대회 ID는 `/api/tournaments/sync-tournament`가 생성 operation에 보강하고 DB RPC는 그 ID를 transaction lock과 저장의 단일 키로 사용한다.
 - 방/대회 생성 화면의 오늘, 과거 7일, 7일 후, 30일 후, 365일 후 날짜는 브라우저 로컬 달력 날짜 기준으로 계산한다. UTC 날짜 문자열로 기본값을 만들지 않는다.
 
-## 2026-07-07 팀전 생성/표시 기준
+## 2026-07-27 팀방 생성·팀 선택 기준
 
-- 팀전 방 생성 화면은 A/B 출전 명단을 고르지 않는다.
-- 팀전 방 생성 시 저장하는 host `playerIds`는 방장 대표 1명만 둔다.
-- 팀전 방은 공개/비공개 모두 `teamOnly=true`로 저장한다. 개인방과 팀방을 섞지 않는다.
+- 팀방 생성 화면은 A/B 팀, 대표, 출전/후보 명단을 고르지 않는다. 공개/비공개 모두 `teamOnly=true`, 빈 `teamId`, 빈 `targetTeamId`, 빈 `playerIds`로 저장한다.
+- 팀 선택은 공용 방 모달의 중앙 action만 사용한다. A사이드는 owner만 선택할 수 있고 owner가 선택 팀의 DB 현재 팀장이어야 한다.
+- 비공개 B사이드는 owner가 A팀과 다른 팀을 선택한다. DB가 선택 시점의 현재 팀장을 조회해 pending 팀 초대를 정확히 1건 만들며 클라이언트가 대표 ID를 지정하지 않는다.
+- 공개 B사이드는 상대 팀의 현재 주장이 대표 1명으로 참가한다. 팀원별 pending 초대나 생성 시점 로스터를 만들지 않는다.
+- A/B 팀 선택은 각 사이드에서 1회만 허용하고 선택 뒤 해제·교체하지 않는다. 팀 미선택 상태에서는 팀원 소집, 참가 확정, 방 확정, 경기 확정을 거부한다.
 - `createMatch`는 `solo`와 `match_record` 기록 생성만 담당한다. 일반 사전방은 `createRecruitingPost`로만 만든다.
-- 모집방 create 서버 저장은 방장 A사이드, 팀전 대표 1명, 비공개 팀전 B대표 초대 1명, 생성 시 B로스터 미저장을 다시 검사한다.
 - 팀전/팀 파티 표시 라벨은 참가자 2명 이상 여부가 아니라 `hostJoinMode`, `teamOnly`, `teamId`, `targetTeamId`, entry `kind/joinMode/teamId` 기준으로 판단한다.
 - `teamOnly=true`인 방 모달은 상대 팀 참가 전이라 팀 entry가 한쪽에만 있어도 `팀전`으로 표시한다. `isRecruitingPartyEntry` 성립 여부로 방 종류 라벨을 낮추지 않는다.
 - `isRecruitingPartyEntry`는 실제 파티 성립 조건이라 2명 이상 실제 참가/후보가 있을 때만 true로 둔다.
@@ -437,7 +438,7 @@
 - `public_recruiting`: 앞으로 할 공개 모집방이다. 매칭 공개 목록에 노출한다.
 - `private_invite`: 앞으로 할 비공개 초대방이다. 매칭 공개 목록에는 노출하지 않고 경기 메뉴 관계 목록에서만 다룬다.
 - `match_record`: 이미 끝난 경기의 기록 검증방이다. 경기 일정이 아니라 진행 메뉴의 기록 확인 대상으로 시작한다.
-- `personal_record`: 내 기록이다. 모집/초대/참가/READY/이의신청/MMR이 없고 프로필 기록에만 붙는다. 열람 UI는 방모달을 재사용할 수 있다.
+- `personal_record`: 내 기록이다. 모집/초대/참가/READY/이의신청/MMR이 없고 프로필 기록에만 붙는다. 기본은 비공개이며 생성자가 공개를 선택하면 다른 사용자도 생성자 프로필의 기록에서만 볼 수 있다. 열람 UI는 방모달을 재사용한다. 무심판 개인 스탯 금지의 유일한 예외이며, 생성자 본인의 단일 스탯만 저장한다.
 - `tournament`: 대회방이다. 대회 메뉴와 대회 규칙을 따른다.
 - 매칭 메뉴는 공개 모집 탐색만 담당한다. 내가 만든 방/내 참여방/초대받은 방은 경기 메뉴 관계 필터, 홈 알림, 직접 링크에서 다룬다.
 
@@ -600,7 +601,7 @@
 ## 2026-07-02 개인 기록 기준
 
 - `방만들기`의 개인 기록은 기존 `matches`, `match_results`, `player_match_stats`를 재사용한다.
-- 저장 row는 `visibility="private"`, `rules.recordType="solo"`, `status="confirmed"`로 저장한다.
+- 저장 row는 기본 `visibility="private"`이며 생성자가 `public/private`를 선택할 수 있다. `rules.recordType="solo"`, `status="confirmed"`는 동일하게 유지한다. `public`도 모집·일정·일반 경기 feed에는 넣지 않고 생성자 프로필 기록에서만 공개한다.
 - `recordEntryMode="quick"`은 현재 사용자만 참가자로 저장하고 상대·팀·선수 연결을 만들지 않는다.
 - `recordEntryMode="named"`은 팀명과 우리팀/상대팀 선수명을 자유 입력으로 저장하되 프로필 승인이나 계정 연결을 만들지 않는다. 입력하지 않은 슬롯을 무기명 선수로 채우지 않는다.
 - 개인 기록은 `1v1`, `2v2`, `3v3`, `4v4`, `5v5`를 허용한다.
@@ -613,15 +614,17 @@
 - 개인 기록은 `/app/matches` 경기메뉴의 닫힘/일정 목록에 표시하지 않고 `/app/profile` 또는 `/app/profile/records`에서만 표시한다.
 - 개인/팀 기록 상세는 최근 6개월 안쪽만 링크형 방모달로 열고, 6개월 초과 기록은 최근 5년 범위에서 텍스트 요약 목록으로만 표시한다.
 
-## 2026-07-02 공개 참여 MMR 경고 기준
+## 2026-07-27 일반 경쟁전 MMR 기준
 
-- 공개 모집방 참여 버튼은 `mmrLimitMode="block"`일 때만 MMR 범위 밖 참여를 막는다.
-- `mmrLimitMode="warn"` 또는 `"off"`는 티어 경고만 보여주고 개인/팀 참여 저장을 막지 않는다.
-- 서버 reducer와 프론트 참여 버튼의 차단 조건은 같아야 한다.
+- 경기 전 구성의 일반 경쟁전은 개인전·팀전 모두 `mmrRangeMode`를 `narrow`, `normal`, `wide` 중 하나로 저장하고 `mmrLimitMode="block"`을 서버가 강제한다.
+- `narrow`는 ±120·반영률 1.1, `normal`은 ±220·반영률 1.0, `wide`는 ±360·반영률 0.8을 중앙 정책으로 사용한다.
+- `좁게/보통/넓게`만 사용자에게 보여준다. `제한 없음/경고만/생성 차단` 선택은 노출하지 않으며 범위 밖 팀 선택·초대·참가를 프론트와 서버가 동일하게 막는다.
+- 구형 `mmrRangeMode="standard"` row는 읽을 때 `normal`로 정규화한다. 구형 `warn/off` 방은 기존 참가 호환성을 유지하지만 신규 일반 경쟁전에 다시 저장하지 않는다.
+- 친선전은 MMR control을 숨기고 `mmrLimitMode="off"`로 저장한다. 현장 픽업은 기존 개인 참가 정책의 `off`를 유지한다.
 
-## 2026-07-02 초대 수락 MMR/roster 기준
+## 2026-07-02 레거시 초대 수락 MMR/roster 기준
 
-- 모집방 `mmrLimitMode`는 `roomState.mmrLimitMode`에 저장한다. `block`만 초대 수락을 MMR 범위 밖에서 차단하고, `warn`/`off`는 생성/수락을 막지 않는다.
+- 레거시 모집방 `mmrLimitMode`는 `roomState.mmrLimitMode`에서 읽는다. `block`만 초대 수락을 MMR 범위 밖에서 차단하고, 기존 `warn`/`off` row는 생성/수락 호환성을 유지한다.
 - `/api/recruiting/list`가 방 상세 또는 feed card 보정으로 modal 상태를 만들 때는 scoped `team_members`를 같이 읽어야 한다. 팀 멤버가 빠진 thin team으로 normalize하면 팀 파티가 개인 참가처럼 축소되면 안 된다.
 
 ## 2026-07-01 중복 호출/egress fallback 기준
@@ -782,11 +785,13 @@
 
 ## 2026-06-29 비공개 팀전 B사이드 초대
 
-- 비공개 팀전 생성자는 B사이드 전체 출전/후보 명단을 미리 고르지 않는다. 상대팀과 초대 대상 1명만 선택한다.
+- 비공개 팀전 생성 화면은 상대팀과 초대 대상을 고르지 않고 빈 팀방을 만든다.
+- 공용 방 모달에서 A팀을 고른 뒤 owner가 B팀만 선택한다. 대표 선택 UI·payload는 없고 DB가 해당 팀의 현재 팀장을 초대 대상으로 확정한다.
+- B팀 선택 transaction은 pending 팀 초대를 정확히 1건만 만들며 동일 팀, 빈 팀, 팀장 없음, 중복 선택을 거부한다.
 - B사이드 초대 수락자는 해당 팀 파티장으로 지정된다. 수락 뒤 방 모달에서 자기 팀의 출전/후보 명단을 고른다.
 - 비공개 팀전 B사이드 초대 수락 직후 방 모달은 수락자에게 팀원 선택 패널을 열어준다. 이 명단 선택은 추가 개인 초대가 아니라 B사이드 파티장의 강제 출전/후보 지정이다.
 - B사이드 팀 파티장은 같은 팀, 같은 사이드, 같은 파티의 명단만 바꿀 수 있다. 상대 사이드 이동은 허용하지 않는다.
-- 비공개 팀전 생성 조건은 A사이드 팀 선택 + B사이드 확인 대표 1명이다. A/B 출전·후보 명단은 방 안에서 각 사이드장이 확정한다.
+- 비공개 팀전 확정 조건은 A사이드 owner/current captain + B사이드 초대 수락 current captain이다. A/B 출전·후보 명단은 방 안에서 각 사이드장이 확정한다.
 
 ## 2026-06-29 즐겨찾기 상태 원천
 
@@ -1041,7 +1046,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 | 일정 방식 | 예약, 즉시 | 날짜/시간 필요 여부 |
 | 인원 방식 | `1v1`, `2v2`, `3v3`, `5v5` | 사이드별 출전 슬롯 수 |
 | 후보 | 사이드별 최대 3명 | 자동승격/기록/교체 대상 |
-| MMR 허용구간 | 좁게, 보통, 넓게 | 넓을수록 MMR 반영 낮음 |
+| MMR 허용구간 | `narrow`(좁게), `normal`(보통), `wide`(넓게) | 일반 경쟁전에서 강제, 넓을수록 MMR 반영 낮음 |
 | 연령 제한 | Junior, Rising, Open 조합 | 세 개 선택이면 연령무관 |
 | 심판 | 없음/있음 | 경기 시작 이후 권한 분기 |
 | 구장 예약됨 | true/false | 예약금/비용은 룰 메모에 적음 |
@@ -1050,19 +1055,15 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 
 ### 비공개 팀전
 
-1. A사이드는 방장 사이드다.
-2. 방장은 반드시 A사이드 파티장이다.
-3. 방장은 자기 소속 팀 중 하나를 고른다.
-4. 생성 시 출전 인원을 모두 채우지 않는다.
-   - 방장은 A사이드 대표로 들어간다.
-   - 출전/후보는 방 안에서 사이드장이 확정한다.
-5. B사이드는 상대 팀 검색으로 고른다.
-6. B사이드는 방장이 전체 명단을 채우지 않고 상대팀 대표 1명에게 초대장을 보낸다.
-7. B사이드 초대 수락자가 B사이드 파티장/사이드장이며, 수락 뒤 자기 팀 출전/후보 명단을 지정한다.
-8. B사이드 파티장의 명단 지정은 팀원별 추가 수락을 기다리지 않는 강제 참여 지정이다.
-8-1. 비공개 팀전의 빈 B사이드 슬롯은 추가 초대 버튼으로 채우지 않고, B사이드 파티장의 출전/후보 명단 지정으로 채운다.
-9. 팀전에서는 사이드 이동 금지.
-10. 팀전에서 다른 사이드로 가려면 파티에서 나가 개인 참가로 전환해야 한다.
+1. 생성 단계에서는 A/B 팀과 대표를 고르지 않고 빈 팀방을 만든다.
+2. A사이드는 방장 사이드다. 공용 방 모달에서 방장이 현재 팀장인 팀을 선택하면 방장이 A사이드 파티장/대표가 된다.
+3. A팀 선택 전에는 B팀 선택, 팀원 소집, 참가·방 확정을 할 수 없다.
+4. B사이드는 공용 방 모달의 상대 팀 검색으로 팀만 고른다. 대표는 직접 고르지 않는다.
+5. DB가 선택 시점 B팀의 현재 팀장을 조회하고 pending 초대장을 정확히 1건 만든다.
+6. B사이드 초대 수락자가 B사이드 파티장/사이드장이며, 수락 뒤 자기 팀 출전/후보 명단을 지정한다.
+7. B사이드 파티장의 명단 지정은 팀원별 추가 수락을 기다리지 않는 강제 참여 지정이다.
+8. 비공개 팀전의 빈 B사이드 슬롯은 추가 초대 버튼으로 채우지 않고, B사이드 파티장의 출전/후보 명단 지정으로 채운다.
+9. 팀전에서는 사이드 이동을 금지한다.
 
 ### 비공개 개인전
 
@@ -1389,8 +1390,8 @@ flowchart TD
 ## MMR 원칙
 
 1. 정규전만 MMR 반영.
-2. 친선전은 티어 제한 없이 열 수 있다.
-3. 좁게/보통/넓게에 따라 허용 구간과 반영률이 달라진다.
+2. 친선전은 MMR UI를 숨기고 `mmrLimitMode=off`로 연다.
+3. 경기 전 구성의 일반 경쟁전은 개인전·팀전 모두 `narrow/normal/wide`에 따라 허용 구간과 반영률이 달라지고 `mmrLimitMode=block`을 강제한다. 친선·현장 픽업·기록은 `off`이며 레거시 `standard`는 `normal`로 읽는다.
 4. 넓게 선택하면 MMR 반영률을 낮춘다.
 5. 팀 파티로 출전하면 팀 MMR에도 반영.
 6. 팀 MMR은 실제 출전한 파티원 비율 기준.
@@ -1792,7 +1793,7 @@ flowchart TD
 
 1. 방장: 공개 개인방 생성 -> 개인 참여자 초대 -> 확정 -> 경기준비.
 2. 방장: 공개 팀 전용방 생성 -> 상대 팀 파티 참여 -> 확정.
-3. 방장: 비공개 팀전 즉시 생성 -> B사이드 파티장 초대 -> 수락 -> 경기준비.
+3. 방장: 빈 비공개 팀전 즉시 생성 -> 공용 방 모달 A팀 선택 -> B팀 선택·DB 현재 팀장 단일 초대 -> 수락 -> 경기준비.
 4. 일반 선수: 초대 수락 -> 내 슬롯 관리 -> READY -> 출석.
 5. 후보 선수: 후보 수락 -> 자동승격 -> 출석 -> 기록 확인.
 6. 파티원: 파티 나가기 -> 개인 표시 확인 -> 같은 사이드 파티 재합류.
@@ -2349,8 +2350,8 @@ flowchart TD
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 30-1. `recorderOnly` match loads must include fallback candidate ids from `matches.stat_recorders`, `matches.reserve_players`, and `matches.played_player_ids` so candidate/reserve stat recorders can enter `/app/recorder` even when their `user_room_feed` card is stale or missing.
 30-1-1. `recorderOnly` match loads use the recorder candidate path directly and do not also load the normal match feed or closed notice feed. The client tracks `recorderMatchesLoaded` so direct `/app/recorder` entry does not immediately repeat the same request when the result is empty.
-30-2. A current stat recorder may call `handoffMatchRecorder` for their own side even without host/referee operator status. Server authorization must check the existing `stat_recorders` value, because the next match snapshot may already point the recorder role to the replacement player.
-30-2-1. Match room modal shows a direct recorder handoff panel only to the current recorder side. The target must be an active or reserve player on the same side. The SQL reducer may commit safe active/reserve swaps directly, and the central `handoffMatchRecorder` reducer remains the fallback authority for unsupported states.
+30-2. 직접 `handoffMatchRecorder` 호출은 최신 takeover 정책에서 폐기한다. 클라이언트 reducer는 no-op이고 DB reducer는 `match_recorder_takeover_request_required`로 거부한다. 기록권한 변경은 요청·승인 action만 사용한다.
+30-2-1. 방 모달은 직접 기록자 인계 패널을 표시하지 않는다. 같은 사이드 후보가 takeover를 요청하고 현재 기록자 또는 방장이 승인·거절하며, 승인 시 서버가 현재 기록자 CAS와 match lock 안에서 권한을 변경한다.
 30-3. 심판 없는 경기에서 `statRecorders`가 비었거나 출전/후보 이동으로 stale이면 현재 후보 슬롯을 기준으로 effective recorder를 계산한다. 후보가 있으면 후보를 우선하고, 슬롯 이동/강퇴/교체/기록 저장 시 `matches.stat_recorders`와 `rules.statRecorders`를 같은 값으로 저장한다.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 31-1. `/api/matches/list` with `completedOnly:true` loads current-profile participant confirmed match ids from `user_room_feed` first, then loads result/stat rows only for those ids and returns compact state. If the feed is unavailable, it falls back to `match_players` candidate ids before reading match rows. Home may load only recent 6-month completed feed cards for the `내 최근 전적` list, but must not pre-load confirmed record room detail rows; `/app/profile/records` loads them once on entry.
@@ -2479,7 +2480,7 @@ flowchart TD
 5-2. 팀 초대는 role을 함께 저장하고, 대상자가 수락하면 정규화된 `team_invitations.role`이 `team_members.role`로 보존된다. 용병은 팀 MMR 기여 가중치가 낮고, 정규멤버보다 느슨한 임시 참여 성격이다.
 6. 한 팀의 등록 인원은 최대 10명이다. 정규멤버와 용병을 합친 운영 단위로 보며 프론트, 서버 action, DB RPC/trigger가 모두 차단한다.
 7. 팀 가입은 팀장의 직접 추가가 아니라 pending 팀 초대 발송 후 대상자가 수락하는 흐름이다. 팀 정원 10명 도달 시 같은 서버 transaction에서 남은 pending 팀 가입 초대를 `expired`로 만료 처리한다. 정원 도달 뒤 새 팀 가입 초대 발송도 막는다.
-8. 매칭 만들기에서 팀전은 내 팀이 있는 사용자만 만들 수 있다. A사이드는 내 소속 팀만 선택하고, B사이드는 상대 팀 검색/초대로만 선택한다.
+8. 매칭 만들기에서 팀전은 내 팀이 있는 사용자만 활성화하되 생성 화면에서는 팀을 고르지 않는다. 생성 후 공용 방 모달에서 A사이드는 owner가 현재 팀장인 팀, 비공개 B사이드는 상대 팀 검색으로만 선택한다.
 9. 기존 팀에 새 멤버를 넣는 것은 `/api/teams/sync-team`의 일반 팀 저장 payload로 허용하지 않는다. 새 가입은 `rankball_invite_team_member`와 `rankball_respond_team_invitation` 수락 경로만 쓴다.
 10. `/api/profile/me` 초기 부트스트랩은 현재 사용자 소속 팀뿐 아니라 관련 pending 팀 초대와 초대 대상 팀 정보를 함께 싣는다. 전체 state 로드 전에도 팀 초대 수락/거절 UI가 빈 상태로 보이면 안 된다.
 11. `/app/teams/:teamId` 직접 진입한 주장 화면은 팀 관리 후보와 pending 팀 초대 상태를 위해 팀 디렉터리를 보강 로드하고, 디렉터리 응답의 `teamInvitations`를 기존 state에 병합해야 한다.
@@ -2701,9 +2702,9 @@ flowchart TD
 
 - 방만들기 분기는 생성 payload 기준으로 고정한다.
 - `공개 매칭방 + 개인전`: `visibility:"public"`, `hostJoinMode:"player"`로 만들고 매칭 메뉴 공개 큐에 노출한다.
-- `공개 매칭방 + 팀전`: `visibility:"public"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀 파티를 선택한다. `teamOnly:true`로 고정하며 개인 참여를 막는다. `teamOnly:false` 공개 팀전 생성 요청은 서버에서 거부한다.
+- `공개 매칭방 + 팀전`: `visibility:"public"`, `hostJoinMode:"team"`, `teamOnly:true`와 빈 팀/명단으로 만든다. 공용 방 모달에서 A팀을 선택한 뒤 공개 B팀의 현재 주장이 대표 1명으로 참가하며 개인 참여는 막는다.
 - `비공개 경기방 + 개인전`: `visibility:"private"`, `hostJoinMode:"player"`로 만들고 생성 단계의 `invitePlayerIds`는 비운다. 선수 초대는 생성 후 방모달의 빈 슬롯에서 보낸다.
-- `비공개 경기방 + 팀전`: `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀과 B사이드 대표 1명만 정한다. A/B 라인업은 각 사이드장이 방에서 고른다.
+- `비공개 경기방 + 팀전`: `visibility:"private"`, `hostJoinMode:"team"`, `teamOnly:true`와 빈 팀/명단으로 만든다. 공용 방 모달에서 A팀과 B팀을 순서대로 고르고 DB가 B팀 현재 팀장을 1명 초대한다.
 - `경기 기록방`은 `1v1`, `2v2`, `3v3`, `5v5`에서 `recordComposition="individual" | "team"` 중 하나를 선택한다. 인원수와 구성 방식은 독립이며 팀·개인 혼합 구성은 만들지 않는다.
 - 생성 단계는 `recordType:"match_record"`, `visibility:"private"`인 빈 기록방만 만든다. A사이드에는 생성자만 임시 표시하고 상대 선수, 상대 팀, 초대, 출전/후보 명단을 저장하지 않는다.
 - 개인 구성은 방모달에서 A/B 참가자를 각 사이드 정원만큼 계정으로 선택한다. 생성자는 A사이드에 포함되어야 하고 중복 선수는 금지한다. 기록 입력이 끝나면 각 참가자가 본인 참가 사실과 결과를 한 번에 최종 승인한다.
@@ -2723,9 +2724,10 @@ flowchart TD
 - 팀 호스트 A사이드 팀원이 초대를 수락해 `playerIds`가 늘어나는 것은 수락된 초대 범위 안에서만 허용한다. 그 외 핵심 룰 변경은 계속 `recruiting_core_locked`로 막는다.
 - 공개/비공개 모집방의 모든 다중 초대는 대상별 pending 초대이며, 각 수락은 서버에서 슬롯/사이드/파티/나이/MMR/권한 검사를 다시 통과해야 한다.
 
-## 2026-07-18 방 생성 초대 범위
+## 2026-07-27 방 생성 초대 범위
 
-- 방 생성 화면에서 초대 대상을 고르는 흐름은 비공개 팀전의 B사이드 파티장 1명만 허용한다.
+- 방 생성 화면에서는 팀·선수·대표·초대 대상을 고르지 않는다.
+- 비공개 팀전의 B사이드 초대는 공용 방 모달에서 owner가 B팀을 선택할 때 DB가 현재 팀장에게 자동 생성한다.
 - 공개·비공개 개인전은 생성 화면에 선수 검색, 추천 선수, 선택 chip을 표시하지 않는다.
 - 비공개 개인전의 선수 초대는 방 생성 후 공용 방모달의 빈 슬롯에서 처리한다.
 
@@ -3037,7 +3039,7 @@ flowchart TD
 1. 운영 DB의 원본 행은 현재 server action과 authoritative RPC가 생성하는 컬럼, 상태, 참조 규칙을 표준으로 한다. 화면용 mock 객체를 원본 테이블에 직접 저장하지 않는다.
 2. 프로필, 팀, 모집방, 경기, 기록, 대회는 유효한 원본 ID와 이력을 유지한다. 실제 근거 없이 이름, 점수, MMR, 신뢰도, 출전 기록을 추정하거나 다시 만들지 않는다.
 3. `user_room_feed`와 `room_feed_cards`는 원본이 아닌 파생 캐시다. 원본 없는 행과 명시적인 시뮬레이션 행은 비활성화한 뒤 7일 보존 정책으로 정리한다.
-4. 중단된 backend simulation의 팀, 초대, 모집방, 구장 신청, 심판 시험·신청·임명, 관리자 임명·징계, 알림은 ID prefix와 JSON 표식을 함께 확인해 격리한다. 사용자 데이터와 참조가 있는 구장은 자동 격리하지 않는다.
+4. 중단된 backend simulation의 팀, 초대, 모집방, 미결 구장 신청, 심판 시험·신청·임명, 관리자 임명·징계, 알림은 ID prefix와 JSON 표식을 함께 확인해 격리한다. 승인·반려가 끝난 구장 신청과 사용자 데이터·참조가 있는 구장은 자동 격리하지 않는다.
 5. maintenance는 `rankball_quarantine_simulation_artifacts`를 먼저 실행한다. 시뮬레이션 종료 처리가 누락돼도 다음 정기 실행에서 운영 목록과 권한 계산에서 제외한다.
 6. `rankball_operational_data_health`는 프로필/Auth, 팀 명단, 승인 구장 좌표, 모집방 만료·피드, 경기·대회 참조, 시뮬레이션 잔존을 검사한다. `npm run audit:production-data`가 critical 항목이 남으면 실패한다.
 7. 기본 구장 `c1..c12`와 격리된 simulation 구장은 승인 구장 목록에서 제거한다. 과거 경기·모집·대회 참조가 있는 `c1..c12` legacy row는 기록 무결성용 호환 shell로만 남기며 공개 승인 구장 목록이나 관리자 구장 DB에는 노출하지 않는다.
@@ -3348,7 +3350,7 @@ flowchart TD
 4. 연습 경기의 방·경기·시계 mutation은 운영 서버로 전송하지 않는다. 모집 동기화, 경기 동기화, 경기시계 API는 practice ID 또는 payload를 인증·RPC 이전에 거부한다.
 5. 전적, 개인·팀 MMR, 신뢰점수, 업적, 추천, 알림, Discord 전달, 매칭·일정 목록, 프로필 기록에는 반영하지 않는다. 중앙 `finalizeMatch`도 practice 엔티티를 표시용 확정만 하고 rating·신뢰·알림 계산을 실행하지 않는다.
 6. UI는 실제 `CreateMatch`, `RecruitingRoomModal`, `MatchRoomModal`, `MatchClockPanel`과 중앙 phase·권한·repository 전환 함수를 재사용한다. 연습 전용 방 모달·기록판·경기시계 복제본을 만들지 않는다.
-7. 실제 모듈에는 `app` facade와 `clockClient` 계약만 주입한다. 안내용 연습방은 나머지 더미 참가자를 로컬 수락 상태로 채우고 한 자리를 비워 사용자가 공용 빈 슬롯 검색과 초대 action을 직접 실행하게 한다. 더미 초대 수락, 더미 출석, 예시 팀 점수 입력, 권한자 최종 확정은 사용자가 실제 공용 action을 이어서 체험하기 위한 보조 action이다. 픽업 팀 생성·배정 확정은 보조 action이 대신 처리하지 않고 사용자가 공용 `팀 나누기 → 배정 확정` action을 직접 실행한다. 채팅 polling no-op도 공용 action과 같은 동기 cleanup 반환 계약을 지킨다.
+7. 실제 모듈에는 `app` facade와 `clockClient` 계약만 주입한다. 안내용 연습방은 나머지 더미 참가자를 로컬 수락 상태로 채우고 한 자리를 비워 사용자가 공용 빈 슬롯 검색과 초대 action을 직접 실행하게 한다. 더미 초대 수락, 더미 출석, 예시 팀 점수 입력, 권한자 최종 확정은 사용자가 실제 공용 action을 이어서 체험하기 위한 보조 action이다. 무심판 예시 팀 점수는 `live`에서 revision 기반 공용 점수 action으로 입력한 뒤 경기를 종료하며, 종료 후 점수 증감을 우회하지 않는다. 종료 전 점수가 없으면 방장은 현재 팀 점수로만 확정한다. 픽업 팀 생성·배정 확정은 보조 action이 대신 처리하지 않고 사용자가 공용 `팀 나누기 → 배정 확정` action을 직접 실행한다. 채팅 polling no-op도 공용 action과 같은 동기 cleanup 반환 계약을 지킨다.
 8. 연습 facade의 action은 명시적 allowlist만 노출한다. 선수 검색, 파일 업로드, 신고, 구장 제보, 실제 알림 전달 등 운영 외부효과는 제공하지 않는다.
 9. 연습 경기 재사용은 UI·phase·권한 helper의 동기화를 보장하는 장치다. 운영 DB 전용 RPC까지 실행하는 서버 동등성 테스트는 아니며, 로컬 repository와 운영 RPC가 다른 항목은 별도 계약 테스트로 검증한다.
 10. 연습 경기시계도 시작 기한, 명시적 종료, 예상 정규시간의 70% 이상 실제 진행 조건을 모두 충족할 때만 정상 사용으로 표시한다. 담당을 넘기면 이전 연습 기기는 읽기 전용이 되며 새 담당자 역할에서만 조작할 수 있다.
@@ -3374,10 +3376,9 @@ flowchart TD
 ## 2026-07-27 심판 기반 개인 기록과 무심판 점수 확정
 
 1. 최신 정책은 이 문서의 과거 개인 기록·점수 합산·자동 0 통계 보충 규칙보다 우선한다. 경기 결과는 `심판 기록(referee-verified)`과 `무심판 점수 전용(score-only)`으로 구분한다.
-2. 배정 심판이 없는 일반전·픽업·사후 기록·개인 기록은 개인 스탯 입력 UI를 렌더링하지 않고 `player_match_stats`를 생성·보충하지 않는다. 과거 `auto_finalize` 0 통계 row도 심판 기록으로 해석하거나 프로필 통계 분모에 넣지 않는다.
-3. 개인 스탯은 경기 row에 실제 배정되고 현재 자격이 유효한 심판만 양 사이드에 입력·수정할 수 있다. 대회도 해당 대진의 배정 심판만 가능하며 방장·파티장·사이드 기록자·일반 선수·후보 선수는 개인 스탯을 입력하거나 대신 확정할 수 없다.
+2. 배정 심판이 없는 일반전·픽업·사후 경기기록방은 개인 스탯 입력 UI를 렌더링하지 않고 `player_match_stats`를 생성·보충하지 않는다. `personal_record`는 생성자가 자기 스탯 한 건을 직접 저장하는 유일한 예외다. 과거 `auto_finalize` 0 통계 row는 심판 기록이나 프로필 통계 분모에 넣지 않는다.
+3. 일반 경기와 대회의 개인 스탯은 경기 row에 실제 배정되고 현재 자격이 유효한 심판만 양 사이드에 입력·수정할 수 있다. 방장·파티장·사이드 기록자·일반 선수·후보 선수는 타인의 개인 스탯을 입력하거나 대신 확정할 수 없다. `personal_record` 생성자는 자기 스탯만 입력한다.
 4. 무심판 경기에서 방장은 A/B 양쪽 점수를 입력할 수 있고, 사이드 기록자는 자기 사이드 점수만 입력할 수 있다. 점수 권한은 개인 스탯 권한이나 심판 권한으로 승격되지 않는다.
-4-1. 경기시계의 직접 팀 점수 증감은 양쪽 득점자가 각각 한 명으로 확정되는 `1v1`에서만 제공한다. `2v2` 이상에서는 심판 개인 기록과 분리된 팀 점수 증감으로 득점자 귀속을 잃지 않도록 해당 action을 표시하지 않는다. 무심판 사이드 기록자는 계속 개인 스탯 기록자가 아닌 score-only 권한이다.
 5. 한쪽에만 기록자가 있고 반대 사이드에는 기록자가 없을 때 방장이 경기 시작 전에 그 기록자 사이드를 양면 점수 담당으로 명시 지정할 수 있다. 위임은 사용자 ID가 아니라 사이드에 저장해 승인된 기록자 교대가 발생하면 승계하되, 반대 사이드 기록자가 생기면 즉시 무효화한다. 시작 뒤 새 위임·변경·소급 위임은 금지한다.
 6. 기록권한 인수(takeover)는 같은 사이드의 다른 후보만 요청할 수 있고 현재 기록자 또는 방장이 즉시 승인·거절할 수 있다. 직접 탈취는 금지하며 open 요청 중복 방지, 현재 기록자 CAS, match lock, 승인·거절 이력을 같은 서버 전이에 저장한다. 승인되면 사이드에 저장된 양면 점수 위임도 새 기록자에게 승계된다.
 7. 본인 교체(self-sub)는 심판 유무와 관계없이 후보 본인이 요청할 수 있고 배정 심판도 양 사이드를 교체할 수 있다. 무심판 방장·기록자는 타인을 교체할 수 없다. 현재 기록자인 후보가 출전하면 나오는 출전선수가 같은 transaction에서 후보와 새 기록자가 되며, 후보가 아닌 출전선수에게 기록권한만 넘기는 수동 경로는 제공하지 않는다.
@@ -3386,4 +3387,10 @@ flowchart TD
 10. 무심판 경기의 확정·MMR 반영은 개인 스탯 row 없이 `match_results`의 authoritative A/B 점수로 완료한다. 심판 경기의 팀 점수와 개인 PTS 합계도 별도 값이며 불일치는 경고로 표시한다. 누락 개인 스탯을 자동 0 row로 보충하지 않는다.
 11. 무심판 참가자는 정확한 사이드와 요청 점수를 지정해 이의를 제출하고 방장은 그 요청을 그대로 수락하거나 거절한다. 방장이 이의와 무관한 임의 점수·개인 스탯을 입력하는 경로는 두지 않는다. 심판 경기의 점수·개인 스탯 이의는 배정 심판이 판정한다.
 12. 개인 스탯과 기록 출처는 개인·모드·통합·팀 MMR 계산에 사용하지 않는다. 레이팅은 확정 점수의 승패, 상대 MMR, 경기 품질, 신뢰도, 용병·팀 조건만 사용하며 로컬·DB의 호환 `statBoost` 값은 항상 `0`이다.
-13. 무심판 score-only 경기도 경기수·승패·전적에는 포함할 수 있지만 누적 개인 스탯과 평균 분모에는 포함하지 않는다. `profile_match_summaries.stat_match_count`는 실제 배정 심판이 저장한 stats row가 있는 확정 경기만 센다.
+13. 무심판 score-only 경기도 일반 경기수·승패·전적에는 포함할 수 있지만 누적 개인 스탯과 평균 분모에는 포함하지 않는다. `profile_match_summaries.stat_match_count`는 실제 배정 심판이 저장한 stats row가 있는 확정 경기만 센다.
+14. `personal_record`의 경기수·승패·자기 스탯은 `profile_personal_record_summaries`에 별도 집계한다. `profile_match_summaries`, 프로필 아이콘 업적, 개인·팀 MMR에는 포함하지 않는다.
+15. 개인 기록 공개 상태는 기록 단위다. 비공개는 서비스 역할을 제외하면 생성자만 읽고, 공개는 생성자 프로필의 기록 API에서만 다른 로그인 사용자에게 제공한다.
+16. 장기 보관 인덱스 `match_record_participants`는 `record_type`, `visibility`, `owner_profile_id`를 보존한다. 타인 프로필 조회는 archive payload를 읽기 전에 `personal_record + public + owner` 조건으로 먼저 제한한다.
+17. 일반 무심판 경기의 점수 증감은 `live` 단계에서만 허용하고 종료 후에는 정확한 사이드·요청 점수 이의의 수락·거절만 사용한다. 배정 심판은 종료 후 최종 확정 전까지 점수와 개인 스탯을 수정할 수 있다. 사후 `match_record`는 명단 확정 뒤 생성자에게 최초 팀 점수 입력을 허용하되 이의 상태에서는 직접 수정하지 않는다.
+18. 경기시계를 사용하지 않는 경기에도 `incrementMatchScore`와 같은 revision 기반 점수 control을 표시한다. 경기시계를 사용하는 1v1·2v2·3v3·5v5는 시계 점수판에서 같은 control을 사용하며 개인 PTS 제출로 팀 점수를 다시 계산하지 않는다.
+19. 실시간 팀 점수만 저장된 무심판 경기는 종료 직후에도 `postgame` 단계다. `match_results` 행 존재만으로 이의 단계에 들어가지 않으며, 명시적 결과 제출·이의·최종확정 상태 전환을 단계 기준으로 사용한다.

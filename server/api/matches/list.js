@@ -20,7 +20,7 @@ import {
 } from "../../../src/data/repository.js";
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
-import { getRemoteMatchActivePlayerIds } from "../../../src/data/matchMappers.js";
+import { getReadableMatchStatRows, getReadableMatchStatSubmissions, getRemoteMatchActivePlayerIds } from "../../../src/data/matchMappers.js";
 import {
   COURT_COLUMNS,
   MATCH_DISPUTE_COLUMNS,
@@ -926,6 +926,7 @@ function getMatchRowActorIds(row = {}, players = []) {
 function canReadMatchRow(row = {}, players = [], profileId = "", isAdmin = false) {
   if (isAdmin) return true;
   if ((row.visibility ?? row.rules?.visibility ?? "public") !== "private") return true;
+  if (["solo", "personal_record"].includes(String(row.rules?.recordType ?? "").trim().toLowerCase())) return row.created_by === profileId;
   return getMatchRowActorIds(row, players).includes(profileId);
 }
 
@@ -1036,7 +1037,7 @@ function toClientMatchResult(resultRow = null, statRows = [], allowPersonalStats
         fouls: Number(row.fouls ?? 0),
       },
     ])),
-    statSubmissions: allowPersonalStats ? resultRow?.stat_submissions ?? {} : {},
+    statSubmissions: allowPersonalStats ? getReadableMatchStatSubmissions(safeStatRows, resultRow?.stat_submissions) : {},
     submittedBy: resultRow?.submitted_by ?? "",
     submittedAt: resultRow?.submitted_at ?? "",
     updatedAt: resultRow?.submitted_at ?? "",
@@ -1052,10 +1053,11 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
   const anonymousPlayers = row.anonymous_players ?? {};
   const statRecorders = row.stat_recorders ?? row.rules?.statRecorders ?? {};
+  const allowPersonalStats = Boolean(row.referee_id) || ["solo", "personal_record"].includes(String(row.rules?.recordType ?? "").trim().toLowerCase());
   const result = toClientMatchResult(
     resultsByMatch[row.id],
-    statsByMatch.get(row.id) ?? [],
-    Boolean(row.referee_id),
+    getReadableMatchStatRows(row, statsByMatch.get(row.id) ?? []),
+    allowPersonalStats,
   );
   return {
     id: row.id,

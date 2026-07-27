@@ -2078,6 +2078,39 @@ async function getMatchAfterResult(result, login, label) {
   return step(label, () => loadMatchAs(login));
 }
 
+async function setMatchScoreByIncrements({ label, login, match, scoreA, scoreB }) {
+  let currentMatch = match;
+  let lastResult = null;
+  let iteration = 0;
+  while (Number(currentMatch?.result?.scoreA ?? currentMatch?.teamA?.score ?? 0) !== scoreA
+    || Number(currentMatch?.result?.scoreB ?? currentMatch?.teamB?.score ?? 0) !== scoreB) {
+    iteration += 1;
+    assertFlow(iteration <= 100, "score increment iteration limit exceeded", { match: currentMatch, scoreA, scoreB });
+    const currentScoreA = Number(currentMatch?.result?.scoreA ?? currentMatch?.teamA?.score ?? 0);
+    const currentScoreB = Number(currentMatch?.result?.scoreB ?? currentMatch?.teamB?.score ?? 0);
+    const deltaA = Math.sign(scoreA - currentScoreA) * Math.min(3, Math.abs(scoreA - currentScoreA));
+    const deltaB = Math.sign(scoreB - currentScoreB) * Math.min(3, Math.abs(scoreB - currentScoreB));
+    lastResult = await step(`${label}:incrementMatchScore:${iteration}`, () => syncMatchAs(login, {
+      action: "incrementMatchScore",
+      matchId: currentMatch.id,
+      deltaA,
+      deltaB,
+      expectedRevisionA: Number(currentMatch?.result?.scoreRevisionA ?? 0),
+      expectedRevisionB: Number(currentMatch?.result?.scoreRevisionB ?? 0),
+    }));
+    assertFlow(Boolean(lastResult?.sqlReducer), "score increment SQL reducer not used", lastResult);
+    const nextMatch = await getMatchAfterResult(lastResult, login, `${label}:loadAfterScoreIncrement:${iteration}`);
+    assertFlow(
+      Number(nextMatch?.result?.scoreA ?? nextMatch?.teamA?.score ?? 0) !== currentScoreA
+        || Number(nextMatch?.result?.scoreB ?? nextMatch?.teamB?.score ?? 0) !== currentScoreB,
+      "score increment did not advance",
+      { before: currentMatch, after: nextMatch },
+    );
+    currentMatch = nextMatch;
+  }
+  return { match: currentMatch, lastResult, sqlReducer: Boolean(lastResult?.sqlReducer) };
+}
+
 function makeResult(match) {
   const teamAPlayer = match.teamA?.players?.[0];
   const teamBPlayer = match.teamB?.players?.[0];
@@ -2232,25 +2265,6 @@ function withStartedMatch(match = {}, operatorId = "") {
       startedAt: matchWithOperatorAttendance.rules?.startedAt ?? startedAt,
     },
   };
-}
-
-function withRecorderHandoff(match = {}, sideName = "teamA", currentRecorderId = "", nextRecorderId = "") {
-  const effectiveMatch = withEffectiveMatchStatRecorders(match);
-  const patch = getRecorderHandoffPatch(effectiveMatch, sideName, currentRecorderId, nextRecorderId);
-  if (!patch.valid) return { valid: false, patch, match: effectiveMatch };
-  const nextRecorders = {
-    ...(effectiveMatch.statRecorders ?? effectiveMatch.rules?.statRecorders ?? {}),
-    [sideName]: nextRecorderId,
-  };
-  const nextMatch = {
-    ...patch.match,
-    statRecorders: nextRecorders,
-    rules: {
-      ...(patch.match.rules ?? {}),
-      statRecorders: nextRecorders,
-    },
-  };
-  return { valid: true, patch, match: nextMatch };
 }
 
 function withSubstitution(match = {}, sideName = "teamA", activePlayerId = "", reservePlayerId = "") {
@@ -2479,6 +2493,7 @@ async function runOneOnOneScenario({
       title: getSimulationDisplayTitle(ids.label),
       visibility: "public",
       hostJoinMode: "player",
+      matchPurpose: ranked ? "competitive" : "friendly",
       mode: "1v1",
       sideCapacity: 1,
       ...scheduleDraft,
@@ -2495,7 +2510,7 @@ async function runOneOnOneScenario({
       position: "PG",
       memo: "Backend simulation row. Safe to delete.",
       rules: {
-        matchPurpose: "friendly",
+        matchPurpose: ranked ? "competitive" : "friendly",
         formationMode: "prearranged",
         targetScore: 21,
         timeLimit: 12,
@@ -2678,6 +2693,19 @@ async function runOneOnOneScenario({
     ));
   }
 
+  let scoreWrite = null;
+  if (!refereeWanted) {
+    scoreWrite = await setMatchScoreByIncrements({
+      label: ids.label,
+      login: operatorLogin,
+      match,
+      scoreA: 21,
+      scoreB: 12,
+    });
+    match = scoreWrite.match;
+    assertFlow(match?.result?.scoreA === 21 && match?.result?.scoreB === 12, "team score result not persisted", match);
+  }
+
   const matchWithEnd = withEndedMatch(match);
   const endResult = await step(`${ids.label}:endMatch`, () => syncMatchAs(operatorLogin, {
     action: "endMatch",
@@ -2722,54 +2750,57 @@ async function runOneOnOneScenario({
     };
   }
 
-  const resultSubmit = await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
-    action: "submitMatchResult",
+  if (refereeWanted) {
+    scoreWrite = await setMatchScoreByIncrements({
+      label: ids.label,
+      login: operatorLogin,
+      match,
+      scoreA: 21,
+      scoreB: 12,
+    });
+    match = scoreWrite.match;
+    assertFlow(match?.result?.scoreA === 21 && match?.result?.scoreB === 12, "team score result not persisted", match);
+
+    const resultSubmit = await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
+      action: "submitMatchResult",
+      matchId: ids.matchId,
+      result: makeResult(match),
+    }));
+    match = resultSubmit?.match;
+    assertFlow(Boolean(match?.endedAt && match?.result && !match?.confirmedAt), "referee match result not persisted", match);
+    assertFlow(match.result.scoreA === 21 && match.result.scoreB === 12, "referee stats submission changed team score", match.result);
+    assertFlow(match.result.submittedBy === refereeId, "referee result submitter not persisted", { refereeId, result: match.result });
+  } else {
+    assertFlow(Object.keys(match?.result?.playerStats ?? {}).length === 0, "no-referee match persisted personal stats", match);
+  }
+
+  const finalizeResult = await step(`${ids.label}:finalizeMatch`, () => syncMatchAs(operatorLogin, {
+    action: "finalizeMatch",
     matchId: ids.matchId,
-    result: refereeWanted ? makeResult(match) : makePointsOnlyResult(match),
   }));
-  match = resultSubmit?.match;
-  assertFlow(match?.status === "approval" && match?.result, "match result not persisted", match);
-  reminderChecks.afterSubmitResult = await step(`${ids.label}:postgameAfterSubmitResult`, () => assertPendingMatchNotices(
+  match = await getMatchAfterResult(finalizeResult, operatorLogin, `${ids.label}:loadAfterFinalizeMatch`);
+  assertFlow(match?.status === "confirmed", "authority finalization did not confirm match", match);
+  assertFlow(Boolean(finalizeResult?.sqlReducer), "finalize SQL reducer not used", finalizeResult);
+  reminderChecks.afterSubmitResult = await step(`${ids.label}:postgameAfterFinalize`, () => assertPendingMatchNotices(
     ids.matchId,
     MATCH_POSTGAME_NOTICE_PREFIXES,
     { maxNotifications: 0 },
   ));
-  if (refereeWanted) {
-    assertFlow(match.result.submittedBy === refereeId, "referee result submitter not persisted", { refereeId, result: match.result });
-  }
 
-  const approveAResult = await step(`${ids.label}:approveMatch:teamA`, () => syncMatchAs(hostLogin, {
-    action: "approveMatch",
-    matchId: ids.matchId,
-    sideName: "teamA",
-    playerId: hostId,
-  }));
-  match = approveAResult?.match;
-  assertFlow(match?.approvals?.teamA?.includes(hostId), "teamA approval not persisted", match);
-  assertFlow(Boolean(approveAResult?.sqlReducer), "approval SQL reducer not used", approveAResult);
-
-  const approveBResult = await step(`${ids.label}:approveMatch:teamB`, () => syncMatchAs(opponentLogin, {
-    action: "approveMatch",
-    matchId: ids.matchId,
-    sideName: "teamB",
-    playerId: opponentId,
-  }));
-  match = approveBResult?.match;
-  assertFlow(match?.status === "confirmed", "match approval not confirmed", match);
   if (verifyRatingCommit) {
-    assertFlow(approveBResult?.ratingCommitted === true, "rating commit RPC was not used", approveBResult);
-    assertFlow(approveBResult?.ratingAtomic === true, "match confirmation and rating commit were not atomic", approveBResult);
+    assertFlow(finalizeResult?.ratingCommitted === true, "rating commit RPC was not used", finalizeResult);
+    assertFlow(finalizeResult?.ratingAtomic === true, "match confirmation and rating commit were not atomic", finalizeResult);
     assertFlow(Array.isArray(match?.ratingResult) && match.ratingResult.length > 0, "rating result missing after ranked confirmation", match);
-    const responseUserIds = new Set((approveBResult?.state?.users ?? []).map((user) => user.id));
+    const responseUserIds = new Set((finalizeResult?.state?.users ?? []).map((user) => user.id));
     assertFlow(responseUserIds.has(hostId) && responseUserIds.has(opponentId), "rating commit response missing DB users", {
       hostId,
       opponentId,
-      users: approveBResult?.state?.users,
+      users: finalizeResult?.state?.users,
     });
   }
   if (verifyUnrankedNoRating) {
     assertFlow(ranked === false && match?.ranked === false, "unranked rating verification requires friendly match", match);
-    assertFlow(approveBResult?.ratingCommitted === true && approveBResult?.ratingAtomic === true, "unranked confirmation was not atomic", approveBResult);
+    assertFlow(finalizeResult?.ratingCommitted === true && finalizeResult?.ratingAtomic === true, "unranked confirmation was not atomic", finalizeResult);
     assertFlow(Array.isArray(match?.ratingResult) && match.ratingResult.length === 0, "unranked match produced rating changes", match);
     await step(`${ids.label}:assertUnrankedRatingsUnchanged`, () => assertProfileRatingsUnchanged([hostId, opponentId]));
   }
@@ -2785,15 +2816,16 @@ async function runOneOnOneScenario({
     postId: ids.postId,
     matchId: ids.matchId,
     finalStatus: match.status,
-    ratingCommitted: verifyRatingCommit ? Boolean(approveBResult?.ratingCommitted) : undefined,
-    ratingAtomic: verifyRatingCommit ? Boolean(approveBResult?.ratingAtomic) : undefined,
+    ratingCommitted: verifyRatingCommit ? Boolean(finalizeResult?.ratingCommitted) : undefined,
+    ratingAtomic: verifyRatingCommit ? Boolean(finalizeResult?.ratingAtomic) : undefined,
     sqlReducers: {
       setRecruitingReady: Boolean(readyResult?.sqlReducer),
       agreeMatch: agreeASqlReducer || agreeBSqlReducer,
       checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),
       startMatch: Boolean(startResult?.sqlReducer),
       endMatch: Boolean(endResult?.sqlReducer),
-      approveMatch: Boolean(approveAResult?.sqlReducer),
+      incrementMatchScore: Boolean(scoreWrite?.sqlReducer),
+      finalizeMatch: Boolean(finalizeResult?.sqlReducer),
       latePlayer: latePlayerSqlReducers,
     },
     reminderChecks,
@@ -3326,8 +3358,6 @@ async function runPublicTeamRegionFeedScenario({
       region: "마포",
       courtId: simulationCourtId,
       court: "Backend Simulation Court",
-      teamId: resolvedTeamId,
-      playerIds: [hostId],
       position: "PG",
       memo: "Backend simulation row. Safe to delete.",
       rules: {
@@ -3343,20 +3373,35 @@ async function runPublicTeamRegionFeedScenario({
   }));
   const createdPost = createResult?.post;
   assertFlow(createdPost?.id === ids.postId, "created public team post not returned", createResult);
-  assertFlow(createdPost.visibility === "public" && createdPost.hostJoinMode === "team" && createdPost.teamId === resolvedTeamId, "public team post shape mismatch", createdPost);
   assertFlow(
-    (createdPost.playerIds ?? []).length === 1 && createdPost.playerIds[0] === hostId,
-    "public team host roster must start with one representative",
+    createdPost.visibility === "public"
+      && createdPost.hostJoinMode === "team"
+      && !createdPost.teamId
+      && !(createdPost.playerIds ?? []).length,
+    "public team room must start without a selected team or roster",
     createdPost,
   );
-
+  const teamSelectionResult = await step(`${ids.label}:selectHostTeam`, () => syncRecruitingAs(hostLogin, {
+    action: "setRecruitingRoomTeam",
+    postId: ids.postId,
+    side: "teamA",
+    teamId: resolvedTeamId,
+  }));
+  const selectedPost = await getRecruitingPostAfterResult(teamSelectionResult, hostLogin, `${ids.label}:loadAfterHostTeamSelection`);
+  assertFlow(
+    selectedPost.teamId === resolvedTeamId
+      && (selectedPost.playerIds ?? []).length === 1
+      && selectedPost.playerIds[0] === hostId,
+    "public team room host selection did not persist one captain representative",
+    selectedPost,
+  );
   const regionResult = await step(`${ids.label}:regionFeed:createdRegion`, () => loadRecruitingRegionAs(hostLogin, {
-    regionKey: createdPost.region,
+    regionKey: selectedPost.region,
     startFilter: "instant",
   }));
   assertFlow(Boolean(regionResult.post), "public team post missing from its canonical court region feed", {
     postId: ids.postId,
-    region: createdPost.region,
+    region: selectedPost.region,
     page: regionResult.payload?.page,
   });
   assertFlow(regionResult.payload?.page?.feedCounts == null, "region feed unexpectedly loaded profile feed counts", {
@@ -3699,6 +3744,17 @@ async function runTeamLifecycleScenario({
     },
   }));
   assertFlow(recruitingResult?.post?.id === ids.postId, "active team recruiting reference creation failed", recruitingResult);
+  const selectRoomTeamResult = await step(`${ids.label}:selectActiveRecruitingTeam`, () => syncRecruitingAs(captainLogin, {
+    action: "setRecruitingRoomTeam",
+    postId: ids.postId,
+    side: "teamA",
+    teamId,
+  }));
+  assertFlow(
+    selectRoomTeamResult?.ok && selectRoomTeamResult?.teamId === teamId,
+    "active team recruiting reference team selection failed",
+    selectRoomTeamResult,
+  );
   const activeReferenceDelete = await expectRejected(
     `${ids.label}:deleteTeamWithActiveReference`,
     () => syncTeamAs(captainLogin, { deletedTeamId: teamId }),
@@ -4713,11 +4769,14 @@ async function runDisputeResumeThumbsScenario({
   match = await getMatchAfterResult(checkInBResult, hostLogin, `${ids.label}:loadAfterCheckInTeamB`);
   assertFlow(match?.attendance?.teamB?.includes(opponentId), "dispute teamB check-in not persisted", match);
 
-  await expectRejected(`${ids.label}:submitMatchResult:beforeStartBlocked`, () => syncMatchAs(hostLogin, {
-    action: "submitMatchResult",
+  await expectRejected(`${ids.label}:incrementMatchScore:beforeStartBlocked`, () => syncMatchAs(hostLogin, {
+    action: "incrementMatchScore",
     matchId: ids.matchId,
-    result: makePointsOnlyResult(match, 999, 888),
-  }), ["match_result_phase_locked"]);
+    deltaA: 1,
+    deltaB: 0,
+    expectedRevisionA: 0,
+    expectedRevisionB: 0,
+  }), ["match_score_update_locked"]);
 
   await expectRejected(`${ids.label}:endMatch:beforeStartBlocked`, () => syncMatchAs(hostLogin, {
     action: "endMatch",
@@ -4731,7 +4790,7 @@ async function runDisputeResumeThumbsScenario({
   match = await getMatchAfterResult(startResult, hostLogin, `${ids.label}:loadAfterStartMatch`);
   assertFlow(Boolean(match?.startedAt), "dispute match start not persisted", match);
 
-  await expectRejected(`${ids.label}:submitMatchResult:liveOtherPlayerAdvancedBlocked`, () => syncMatchAs(hostLogin, {
+  await expectRejected(`${ids.label}:submitMatchResult:noRefereeStatsBlocked`, () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
     result: {
@@ -4739,31 +4798,24 @@ async function runDisputeResumeThumbsScenario({
       scoreB: 888,
       playerStats: { [opponentId]: { rebounds: 1 } },
     },
-  }), ["match_stat_player_permission_denied"]);
+  }), ["no_referee_personal_stats_forbidden"]);
 
-  const livePlayerPermission = getMatchResultEntryPermission(match, hostId, { canOperatePostStart: true });
-  const livePlayerPayload = buildMatchResultSubmission(match, {
-    playerStats: {
-      [hostId]: { points: 3, rebounds: 9, assists: 9, steals: 9, blocks: 9, fouls: 9 },
-      [opponentId]: { points: 88, rebounds: 8, assists: 8, steals: 8, blocks: 8, fouls: 8 },
-    },
-  }, livePlayerPermission.getEditableStatFields);
+  const scoreWrite = await setMatchScoreByIncrements({
+    label: ids.label,
+    login: hostLogin,
+    match,
+    scoreA: 3,
+    scoreB: 12,
+  });
+  match = scoreWrite.match;
   assertFlow(
-    Object.keys(livePlayerPayload.playerStats).length === 1
-      && Object.keys(livePlayerPayload.playerStats[hostId] ?? {}).join(",") === "points",
-    "live player UI payload leaked disabled stats",
-    livePlayerPayload,
-  );
-
-  const livePointsResult = await step(`${ids.label}:submitMatchResult:liveOwnPoints`, () => syncMatchAs(hostLogin, {
-    action: "submitMatchResult",
-    matchId: ids.matchId,
-    result: livePlayerPayload,
-  }));
-  match = livePointsResult?.match;
-  assertFlow(
-    match?.status === "agreed" && !match?.endedAt && getMatchRoomPhase(match).phase === "live" && match?.result?.scoreA === 3 && match?.result?.scoreB === 0,
-    "live own points did not derive team score",
+    match?.status === "agreed"
+      && !match?.endedAt
+      && getMatchRoomPhase(match).phase === "live"
+      && match?.result?.scoreA === 3
+      && match?.result?.scoreB === 12
+      && Object.keys(match?.result?.playerStats ?? {}).length === 0,
+    "live score-only result was not persisted",
     match,
   );
 
@@ -4774,7 +4826,7 @@ async function runDisputeResumeThumbsScenario({
   match = await getMatchAfterResult(endResult, hostLogin, `${ids.label}:loadAfterEndMatch`);
   assertFlow(Boolean(match?.endedAt), "dispute match end not persisted", match);
 
-  await expectRejected(`${ids.label}:submitMatchResult:postgameAdvancedBlocked`, () => syncMatchAs(hostLogin, {
+  await expectRejected(`${ids.label}:submitMatchResult:postgameStatsBlocked`, () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
     result: {
@@ -4782,56 +4834,27 @@ async function runDisputeResumeThumbsScenario({
       scoreB: 888,
       playerStats: { [opponentId]: { points: 12, rebounds: 1 } },
     },
-  }), ["match_postgame_points_only"]);
+  }), ["no_referee_personal_stats_forbidden"]);
 
-  const postgameHostPermission = getMatchResultEntryPermission(match, hostId, { canOperatePostStart: true });
-  const postgameHostPayload = buildMatchResultSubmission(match, {
-    playerStats: {
-      [hostId]: { points: 21, rebounds: 9, assists: 9, steals: 9, blocks: 9, fouls: 9 },
-      [opponentId]: { points: 12, rebounds: 8, assists: 8, steals: 8, blocks: 8, fouls: 8 },
-    },
-  }, postgameHostPermission.getEditableStatFields);
-  assertFlow(
-    Object.keys(postgameHostPayload.playerStats).length === 1
-      && Object.keys(postgameHostPayload.playerStats[opponentId] ?? {}).join(",") === "points",
-    "postgame host UI payload was not limited to missing PTS",
-    postgameHostPayload,
-  );
-
-  const resultSubmit = await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(hostLogin, {
-    action: "submitMatchResult",
-    matchId: ids.matchId,
-    result: postgameHostPayload,
-  }));
-  match = resultSubmit?.match;
-  assertFlow(match?.status === "approval" && match?.result, "dispute result not persisted", match);
-  assertFlow(match.result.scoreA === 3 && match.result.scoreB === 12, "postgame team score was not derived from PTS", match.result);
-
-  await expectRejected(`${ids.label}:submitMatchResult:postgameSubmittedPointsLocked`, () => syncMatchAs(hostLogin, {
-    action: "submitMatchResult",
-    matchId: ids.matchId,
-    result: {
-      playerStats: { [hostId]: { points: 21 } },
-    },
-  }), ["match_postgame_missing_only"]);
-
-  await expectRejected(`${ids.label}:disputeMatch:pointsOutOfRange`, () => syncMatchAs(opponentLogin, {
+  await expectRejected(`${ids.label}:disputeMatch:scoreOutOfRange`, () => syncMatchAs(opponentLogin, {
     action: "disputeMatch",
     matchId: ids.matchId,
     reason: {
-      reason: "Backend simulation invalid dispute points",
-      playerId: opponentId,
-      requestedPoints: 1000,
+      kind: "team_score",
+      side: "teamB",
+      requestedScore: 1000,
+      reason: "Backend simulation invalid dispute score",
     },
-  }), ["match_stat_value_out_of_range"]);
+  }), ["match_score_dispute_request_invalid"]);
 
   const disputeResult = await step(`${ids.label}:disputeMatch`, () => syncMatchAs(opponentLogin, {
     action: "disputeMatch",
     matchId: ids.matchId,
     reason: {
+      kind: "team_score",
+      side: "teamB",
+      requestedScore: 15,
       reason: "Backend simulation dispute",
-      playerId: opponentId,
-      requestedPoints: 15,
     },
   }));
   assertFlow(disputeResult?.sqlReducer === true, "match dispute did not use SQL reducer", disputeResult);
@@ -4839,8 +4862,9 @@ async function runDisputeResumeThumbsScenario({
   const openedDispute = (match?.disputes ?? []).find((item) => item.by === opponentId && item.status === "open");
   assertFlow(match?.status === "disputed" && openedDispute, "dispute not persisted", match);
   assertFlow(
-    Number(openedDispute?.request?.requestedPoints) === 15
-      && match?.disputeDraftResult?.playerStats?.[opponentId]?.points === 12
+    openedDispute?.request?.kind === "team_score"
+      && openedDispute?.request?.side === "teamB"
+      && Number(openedDispute?.request?.requestedScore) === 15
       && match?.disputeDraftResult?.scoreB === 12,
     "open dispute mutated the draft before the host ruling",
     { openedDispute, disputeDraftResult: match?.disputeDraftResult },
@@ -4873,21 +4897,6 @@ async function runDisputeResumeThumbsScenario({
     };
   }
 
-  const disputeDraft = makeResult(match);
-  disputeDraft.scoreA = 22;
-  disputeDraft.scoreB = 14;
-  const teamAPlayer = match.teamA?.players?.[0];
-  const teamBPlayer = match.teamB?.players?.[0];
-  disputeDraft.playerStats[teamAPlayer].points = 22;
-  disputeDraft.playerStats[teamBPlayer].points = 14;
-  const draftResult = await step(`${ids.label}:submitMatchResult:disputeDraft`, () => syncMatchAs(hostLogin, {
-    action: "submitMatchResult",
-    matchId: ids.matchId,
-    result: disputeDraft,
-  }));
-  match = draftResult?.match;
-  assertFlow(match?.status === "disputed" && match?.disputeDraftResult?.scoreA === 22 && match?.disputeDraftResult?.scoreB === 14, "dispute draft edit not persisted", match);
-
   const openDisputeId = match?.disputes?.find((item) => item.status === "open")?.id;
   assertFlow(Boolean(openDisputeId), "open dispute id missing before ruling", match?.disputes);
 
@@ -4902,19 +4911,24 @@ async function runDisputeResumeThumbsScenario({
     action: "resolveMatchDispute",
     matchId: ids.matchId,
     disputeId: openDisputeId,
-    decision: "rejected",
+    decision: "accepted",
   }));
   assertFlow(resolveResult?.sqlReducer === true, "match dispute ruling did not use SQL reducer", resolveResult);
   match = await getMatchAfterResult(resolveResult, hostLogin, `${ids.label}:loadAfterDisputeRuling`);
   assertFlow(match?.status === "confirmed", "last host dispute ruling did not confirm match", match);
-  assertFlow(match?.result?.scoreA === 22 && match?.result?.scoreB === 14, "host dispute draft result not committed", match);
+  assertFlow(match?.result?.scoreA === 3 && match?.result?.scoreB === 15, "accepted score dispute was not committed", match);
+  assertFlow(Object.keys(match?.result?.playerStats ?? {}).length === 0, "no-referee dispute created personal stats", match);
   assertFlow((match?.approvals?.teamA ?? []).length === 0 && (match?.approvals?.teamB ?? []).length === 0, "stale approvals survived dispute resolution", match);
 
   await expectRejected(`${ids.label}:submitMatchResult:confirmedBlocked`, () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
-    result: makePointsOnlyResult(match, 999, 888),
-  }), ["match_result_locked"]);
+    result: {
+      scoreA: 999,
+      scoreB: 888,
+      playerStats: { [hostId]: { points: 999 } },
+    },
+  }), ["no_referee_personal_stats_forbidden"]);
 
   await step(`${ids.label}:snapshotTrustSubjects`, () => snapshotRatingSubjects([opponentId]));
   const opponentTrustBeforeThumbs = await step(`${ids.label}:loadTrustBeforeThumbs`, () => getCurrentProfileTrustScore(opponentLogin, opponentId));
@@ -5438,7 +5452,7 @@ async function runRecorderHandoffScenario({
     result: {
       playerStats: { [teamAReserveId]: { points: 1 } },
     },
-  }), ["stat_player_not_in_match"]);
+  }), ["no_referee_personal_stats_forbidden"]);
 
   await expectRejected(`${ids.label}:submitMatchResult:playerBlockedByRecorder`, () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",
@@ -5448,7 +5462,7 @@ async function runRecorderHandoffScenario({
       scoreB: 888,
       playerStats: { [hostId]: { points: 4 } },
     },
-  }), ["match_result_permission_denied", "match_stat_player_permission_denied"]);
+  }), ["no_referee_personal_stats_forbidden"]);
 
   const sideRecorderPermission = getMatchResultEntryPermission(match, teamAReserveId);
   const sideRecorderPayload = buildMatchResultSubmission(match, {
@@ -5458,38 +5472,41 @@ async function runRecorderHandoffScenario({
     },
   }, sideRecorderPermission.getEditableStatFields);
   assertFlow(
-    Object.keys(sideRecorderPayload.playerStats).length === 1
-      && Object.keys(sideRecorderPayload.playerStats[hostId] ?? {}).length === 6,
-    "side recorder UI payload leaked the opponent side",
+    Object.keys(sideRecorderPayload.playerStats).length === 0,
+    "no-referee recorder UI payload exposed personal stats",
     sideRecorderPayload,
   );
 
-  const recorderResult = await step(`${ids.label}:submitMatchResult:sideRecorder`, () => syncMatchAs(teamAReserveLogin, {
-    action: "submitMatchResult",
-    matchId: ids.matchId,
-    result: sideRecorderPayload,
-  }));
-  match = recorderResult?.match;
+  const recorderScoreWrite = await setMatchScoreByIncrements({
+    label: `${ids.label}:sideRecorder`,
+    login: teamAReserveLogin,
+    match,
+    scoreA: 4,
+    scoreB: 0,
+  });
+  match = recorderScoreWrite.match;
   assertFlow(
     match?.status === "agreed" && !match?.endedAt && getMatchRoomPhase(match).phase === "live" && match?.result?.scoreA === 4 && match?.result?.scoreB === 0,
-    "side recorder result did not derive live score",
+    "side recorder score increment did not persist",
     match,
   );
 
-  const handoffDraft = withRecorderHandoff(match, "teamA", teamAReserveId, hostId);
-  assertFlow(handoffDraft.valid && handoffDraft.patch?.swapped, "recorder handoff draft not valid", handoffDraft);
-  const handoffResult = await step(`${ids.label}:handoffMatchRecorder`, () => syncMatchAs(teamAReserveLogin, {
-    action: "handoffMatchRecorder",
+  const recorderSelfSubDraft = withSubstitution(match, "teamA", hostId, teamAReserveId);
+  assertFlow(recorderSelfSubDraft.valid && recorderSelfSubDraft.patch?.swapped, "recorder self-substitution draft not valid", recorderSelfSubDraft);
+  const recorderSelfSubResult = await step(`${ids.label}:substituteMatchPlayer:recorderSelf`, () => syncMatchAs(teamAReserveLogin, {
+    action: "substituteMatchPlayer",
     matchId: ids.matchId,
     sideName: "teamA",
-    nextRecorderId: hostId,
+    activePlayerId: hostId,
+    reservePlayerId: teamAReserveId,
+    reason: "self",
   }));
-  match = await getMatchAfterResult(handoffResult, teamAReserveLogin, `${ids.label}:loadAfterRecorderHandoff`);
-  assertFlow(match?.statRecorders?.teamA === hostId && match?.rules?.statRecorders?.teamA === hostId, "recorder handoff not persisted", match);
-  assertFlow((match.teamA?.players ?? []).includes(teamAReserveId) && !(match.teamA?.players ?? []).includes(hostId), "recorder handoff did not swap active player", match);
-  assertFlow((match.reservePlayers?.teamA ?? []).includes(hostId) && !(match.reservePlayers?.teamA ?? []).includes(teamAReserveId), "recorder handoff reserve roster mismatch", match);
-  assertFlow((match.playedPlayerIds?.teamA ?? []).includes(hostId) && (match.playedPlayerIds?.teamA ?? []).includes(teamAReserveId), "recorder handoff played ids missing", match);
-  assertFlow(Boolean(handoffResult?.sqlReducer), "recorder handoff SQL reducer not used", handoffResult);
+  match = await getMatchAfterResult(recorderSelfSubResult, teamAReserveLogin, `${ids.label}:loadAfterRecorderSelfSubstitution`);
+  assertFlow(match?.statRecorders?.teamA === hostId && match?.rules?.statRecorders?.teamA === hostId, "outgoing active player did not inherit recorder role", match);
+  assertFlow((match.teamA?.players ?? []).includes(teamAReserveId) && !(match.teamA?.players ?? []).includes(hostId), "recorder self-substitution active roster mismatch", match);
+  assertFlow((match.reservePlayers?.teamA ?? []).includes(hostId) && !(match.reservePlayers?.teamA ?? []).includes(teamAReserveId), "recorder self-substitution reserve roster mismatch", match);
+  assertFlow((match.playedPlayerIds?.teamA ?? []).includes(hostId) && (match.playedPlayerIds?.teamA ?? []).includes(teamAReserveId), "recorder self-substitution played ids missing", match);
+  assertFlow(Boolean(recorderSelfSubResult?.sqlReducer), "recorder self-substitution SQL reducer not used", recorderSelfSubResult);
 
   const substituteDraft = withSubstitution(match, "teamA", teamAReserveId, hostId);
   assertFlow(substituteDraft.valid && substituteDraft.patch?.swapped, "substitution draft not valid", substituteDraft);
@@ -5499,10 +5516,11 @@ async function runRecorderHandoffScenario({
     sideName: "teamA",
     activePlayerId: teamAReserveId,
     reservePlayerId: hostId,
+    reason: "self",
   }));
   match = await getMatchAfterResult(substituteResult, hostLogin, `${ids.label}:loadAfterSubstitution`);
   assertFlow(Boolean(substituteResult?.sqlReducer), "substitution SQL reducer not used", substituteResult);
-  assertFlow(match?.statRecorders?.teamA === hostId && match?.rules?.statRecorders?.teamA === hostId, "substitution changed recorder unexpectedly", match);
+  assertFlow(match?.statRecorders?.teamA === teamAReserveId && match?.rules?.statRecorders?.teamA === teamAReserveId, "second self-substitution did not transfer recorder to outgoing player", match);
   assertFlow((match.teamA?.players ?? []).includes(hostId) && !(match.teamA?.players ?? []).includes(teamAReserveId), "substitution did not promote reserve", match);
   assertFlow((match.reservePlayers?.teamA ?? []).includes(teamAReserveId) && !(match.reservePlayers?.teamA ?? []).includes(hostId), "substitution reserve roster mismatch", match);
   assertFlow((match.playedPlayerIds?.teamA ?? []).includes(hostId) && (match.playedPlayerIds?.teamA ?? []).includes(teamAReserveId), "substitution played ids missing", match);
@@ -5528,7 +5546,7 @@ async function runRecorderHandoffScenario({
       checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),
       checkInReservePlayer: Boolean(checkInReserveResult?.sqlReducer),
       startMatch: Boolean(startResult?.sqlReducer),
-      handoffMatchRecorder: Boolean(handoffResult?.sqlReducer),
+      recorderSelfSubstitution: Boolean(recorderSelfSubResult?.sqlReducer),
       substituteMatchPlayer: Boolean(substituteResult?.sqlReducer),
     },
   };
@@ -6403,6 +6421,7 @@ async function runSoloRecordScenario({
       id: ids.matchId,
       recordType: "solo",
       recordEntryMode: "named",
+      visibility: "public",
       title: getSimulationDisplayTitle(ids.label),
       courtId: simulationCourtId,
       court: "Backend Simulation Court",
@@ -6429,6 +6448,7 @@ async function runSoloRecordScenario({
   assertFlow(match?.id === ids.matchId, "solo record id mismatch", match);
   assertFlow(match?.status === "confirmed", "solo record not confirmed", match);
   assertFlow(match?.rules?.recordType === "solo", "solo record type missing", match);
+  assertFlow(match?.visibility === "public" && match?.rules?.visibility === "public", "solo record visibility missing", match);
   assertFlow(match?.ranked === false && Number(match?.ratingScale ?? 0) === 0, "solo record rating not disabled", match);
   assertFlow((match?.ratingResult ?? []).length === 0, "solo record rating result should be empty", match);
   assertFlow((match?.teamA?.players ?? []).includes(hostId), "solo record host missing", { hostId, match });
@@ -7092,6 +7112,14 @@ async function playTournamentMatchToConfirmed({ label, matchId, operatorLogin })
   match = await getMatchAfterResult(endResult, resultOperatorLogin, `${label}:loadAfterEnd`);
   assertFlow(Boolean(match?.endedAt), "tournament match end not persisted", match);
 
+  const scoreWrite = await setMatchScoreByIncrements({
+    label,
+    login: resultOperatorLogin,
+    match,
+    scoreA: 21,
+    scoreB: 12,
+  });
+  match = scoreWrite.match;
   const result = makePointsOnlyResult(match);
 
   const resultSubmit = await step(`${label}:submitMatchResult`, () => syncMatchAs(resultOperatorLogin, {
@@ -7100,27 +7128,17 @@ async function playTournamentMatchToConfirmed({ label, matchId, operatorLogin })
     result,
   }));
   match = resultSubmit?.match;
-  assertFlow(match?.status === "approval" && match?.result, "tournament match result not persisted", match);
+  assertFlow(Boolean(match?.endedAt && match?.result && !match?.confirmedAt), "tournament match result not persisted", match);
+  assertFlow(match.result.scoreA === 21 && match.result.scoreB === 12, "tournament stats submission changed team score", match.result);
 
-  const approveAResult = await step(`${label}:approveMatch:teamA`, () => syncMatchAs(teamALogin, {
-    action: "approveMatch",
+  const finalizeResult = await step(`${label}:finalizeMatch`, () => syncMatchAs(resultOperatorLogin, {
+    action: "finalizeMatch",
     matchId,
-    sideName: "teamA",
-    playerId: teamAPlayerId,
   }));
-  match = approveAResult?.match;
-  assertFlow(match?.approvals?.teamA?.includes(teamAPlayerId), "tournament teamA approval not persisted", match);
+  match = await getMatchAfterResult(finalizeResult, resultOperatorLogin, `${label}:loadAfterFinalize`);
+  assertFlow(match?.status === "confirmed", "tournament referee finalization did not confirm match", match);
 
-  const approveBResult = await step(`${label}:approveMatch:teamB`, () => syncMatchAs(teamBLogin, {
-    action: "approveMatch",
-    matchId,
-    sideName: "teamB",
-    playerId: teamBPlayerId,
-  }));
-  match = approveBResult?.match;
-  assertFlow(match?.status === "confirmed", "tournament match not confirmed", match);
-
-  return { match, result: approveBResult, teamAPlayerId, teamBPlayerId };
+  return { match, result: finalizeResult, teamAPlayerId, teamBPlayerId };
 }
 
 async function prepareSimulationTournamentReferees({

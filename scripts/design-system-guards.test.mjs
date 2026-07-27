@@ -54,6 +54,7 @@ const pageSources = {
   teams: read("src/pages/Teams.jsx"),
   teamDetail: read("src/pages/TeamDetail.jsx"),
   playerDetail: read("src/pages/PlayerDetail.jsx"),
+  settings: read("src/pages/Settings.jsx"),
 };
 const legacyStyleSources = [
   read("src/styles/globals.css"),
@@ -233,6 +234,21 @@ test("공용 체크박스는 iOS native 외형을 사용하지 않는다", () =>
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*input\[type="checkbox"\]\s*\{/);
   assert.doesNotMatch(allStyleSources, /input\[type="checkbox"\][^{]*\{[^}]*accent-color:/);
   assert.doesNotMatch(globalWorkflowStyles, /\.settings-nearby-confirm input\s*\{/);
+});
+
+test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 한 카드에 모은다", () => {
+  assert.equal(countClassToken(pageSources.settings, "settings-preference-card"), 1);
+  assert.match(pageSources.settings, /<h2>표시 설정<\/h2>/);
+  assert.match(
+    pageSources.settings,
+    /checked=\{homeGuideCardVisible\}[\s\S]*?onChange=\{\(event\) => void selectHomeGuideCardVisibility\(event\.target\.checked\)\}/,
+  );
+  assert.match(pageSources.settings, /홈 안내 카드[\s\S]*프로필 표시[\s\S]*saveGeneralSettings/);
+  assert.doesNotMatch(pageSources.settings, /<h2>(?:온라인 저장|테스트 리그 현황|테스트 계정 로그인)<\/h2>/);
+  assert.match(
+    globalWorkflowStyles,
+    /\.settings-page \.settings-toggle-grid input\[type="checkbox"\]\s*\{[^}]*width:\s*18px;[^}]*min-height:\s*18px;/,
+  );
 });
 
 test("같은 정책 행은 명시형 선택 필드와 중앙 control 정렬을 사용한다", () => {

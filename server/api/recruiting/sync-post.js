@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getDbScheduleParts, toDbTime } from "../../../src/data/scheduleUtils.js";
 import { getAuthenticatedContext, nullableText, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
-import { DEFAULT_RATING, MATCH_SIDES, getModeSize, isSupportedMatchMode, isValidBenchCapacity, normalizeDisputeWindowMinutes, normalizeMmrLimitMode } from "../../../src/lib/constants.js";
+import { DEFAULT_RATING, MATCH_SIDES, getModeSize, isSupportedMatchMode, isValidBenchCapacity, normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
 import {
   ROOM_CHAT_MESSAGE_COLUMNS,
   ROOM_CHAT_MESSAGE_MAX_LENGTH,
@@ -17,7 +17,7 @@ import { syncRoomChatMessageToDiscord } from "../discord/_roomChatBridge.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } from "../matches/sync-match.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
-import { getRecruitingBenchCapacity, normalizeRecruitingApplicationStatus } from "../../../src/lib/recruiting.js";
+import { getRecruitingBenchCapacity, normalizeRecruitingApplicationStatus, normalizeRecruitingMmrRangeMode } from "../../../src/lib/recruiting.js";
 import { assertSafeUserText } from "../../../src/lib/inputSecurity.js";
 import { hasPracticeMutationPayload, PRACTICE_LOCAL_ONLY_ERROR } from "../../../src/lib/practiceMode.js";
 
@@ -60,11 +60,18 @@ function getTimestamp(item = {}) {
 
 function normalizeRoomState(roomState = {}, post = {}) {
   const source = roomState && typeof roomState === "object" ? roomState : {};
+  const rules = post.rules && typeof post.rules === "object" ? post.rules : {};
+  const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? source.mmrRangeMode ?? rules.mmrRangeMode);
+  const matchIntent = post.matchIntent ?? rules.matchIntent;
+  const pickup = matchIntent === "pickup" || (post.formationMode ?? rules.formationMode) === "pickup";
+  const record = matchIntent === "record" || matchIntent === "match_record";
+  const mmrLimitMode = post.ranked === false || pickup || record ? "off" : "block";
   return {
     ...source,
     ownerId: post.ownerId ?? source.ownerId ?? post.playerId ?? "",
     timingType: post.timingType ?? source.timingType ?? "scheduled",
-    mmrLimitMode: normalizeMmrLimitMode(post.mmrLimitMode ?? source.mmrLimitMode),
+    mmrRangeMode,
+    mmrLimitMode,
   };
 }
 
@@ -775,6 +782,29 @@ async function validatePickupRecruitingOperation(context, operation = {}) {
   return normalizePickupRecruitingOperation(data, operation);
 }
 
+export function normalizeRecruitingCreationPolicyOperation(operation = {}) {
+  if (operation.action !== "createRecruitingPost") return operation;
+  const draft = operation.draft && typeof operation.draft === "object" ? operation.draft : {};
+  const rules = draft.rules && typeof draft.rules === "object" ? draft.rules : {};
+  const matchIntent = draft.matchIntent ?? rules.matchIntent;
+  const matchPurpose = draft.matchPurpose ?? rules.matchPurpose;
+  const pickup = matchIntent === "pickup" || (draft.formationMode ?? rules.formationMode) === "pickup";
+  const record = matchIntent === "record" || matchIntent === "match_record";
+  const competitive = matchPurpose === "competitive" || (!matchPurpose && draft.ranked !== false);
+  const ranked = !record && competitive;
+  const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode ?? rules.mmrRangeMode);
+  const mmrLimitMode = !ranked || pickup || record ? "off" : "block";
+  return {
+    ...operation,
+    draft: {
+      ...draft,
+      ranked,
+      mmrRangeMode,
+      mmrLimitMode,
+      rules: { ...rules, ranked, mmrRangeMode, mmrLimitMode },
+    },
+  };
+}
 export function validateRecruitingPostShape(post = {}) {
   validatePickupRecruitingShape(post);
   const mode = post.mode ?? "5v5";
@@ -837,22 +867,9 @@ function validateRecruitingCreateBranchShape(post = {}) {
   if (hostSide !== "teamA") reject(400, "recruiting_host_side_must_be_team_a");
 
   if (hostJoinMode === "team") {
-    if (!hostTeamId) reject(400, "team_room_requires_host_team");
     if (!teamOnly) reject(400, "team_room_requires_team_only");
-    if (hostPlayerIds.length !== 1) reject(400, "team_room_requires_single_host_representative");
     if (applications.length) reject(400, "team_room_create_cannot_preload_opponent_roster");
-    if (visibility === "private") {
-      const representativeInvites = playerInvitations.filter((invitation) => (
-        nullableText(invitation.teamId ?? invitation.team_id) === targetTeamId &&
-        (invitation.joinMode ?? invitation.join_mode) === "team" &&
-        (invitation.side ?? "teamB") === "teamB"
-      ));
-      if (!targetTeamId || targetTeamId === hostTeamId || representativeInvites.length !== 1 || playerInvitations.length !== 1) {
-        reject(400, "private_team_room_requires_one_team_representative_invite");
-      }
-    } else if (playerInvitations.length) {
-      reject(400, "public_team_room_cannot_have_player_invites");
-    }
+    if (hostTeamId || targetTeamId || hostPlayerIds.length || playerInvitations.length) reject(400, "team_room_must_start_without_team_selection");
     return;
   }
 
@@ -874,6 +891,7 @@ function validateRecruitingCreateCourt(post = {}) {
 
 const OWNER_RECRUITING_ACTIONS = new Set([
   "updateRecruitingRoomRules",
+  "setRecruitingRoomTeam",
   "setRecruitingStatRecorder",
   "kickRecruitingApplicant",
   "confirmRecruitingMatch",
@@ -989,6 +1007,7 @@ const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
   "inviteRecruitingPlayers",
   "inviteRecruitingReferee",
   "closeRecruitingPost",
+  "setRecruitingRoomTeam",
   "setRecruitingApplicantPlacement",
   "setRecruitingApplicantReserve",
   "setRecruitingStatRecorder",
@@ -1043,7 +1062,8 @@ function isMissingSqlReducer(error = {}) {
     message.includes("rankball_recruiting_room_update_action") ||
     message.includes("rankball_recruiting_rule_ack_action") ||
     message.includes("rankball_recruiting_schedule_response_action") ||
-    message.includes("rankball_recruiting_management_action")
+    message.includes("rankball_recruiting_management_action") ||
+    message.includes("rankball_recruiting_set_room_team_action")
   );
 }
 
@@ -1220,10 +1240,9 @@ async function assertRecruitingPartyManagementGuard(context, operation = {}) {
 
   const roomState = snapshot.post.room_state ?? {};
   const rules = snapshot.post.rules ?? {};
-  const mmrRangeMode = ["narrow", "normal", "wide"].includes(roomState.mmrRangeMode ?? rules.mmrRangeMode)
-    ? (roomState.mmrRangeMode ?? rules.mmrRangeMode)
-    : "narrow";
-  const mmrLimitMode = normalizeMmrLimitMode(roomState.mmrLimitMode ?? rules.mmrLimitMode);
+  const normalizedPolicyState = normalizeRoomState(roomState, snapshot.post);
+  const mmrRangeMode = normalizedPolicyState.mmrRangeMode;
+  const mmrLimitMode = normalizedPolicyState.mmrLimitMode;
   const allowedAgeGroups = normalizeAllowedAgeGroups(snapshot.post);
   const eligibilityResults = await Promise.all(allIds.map(async (playerId) => {
     const { data, error } = await context.supabase.rpc("rankball_event_profile_eligible", {
@@ -1258,6 +1277,25 @@ async function applyRecruitingManagementAction(context, operation = {}) {
 }
 
 async function applySqlRecruitingAction(context, operation = {}) {
+  if (operation.action === "setRecruitingRoomTeam") {
+    const postId = String(operation.postId ?? "").trim();
+    const teamId = String(operation.teamId ?? "").trim();
+    const side = operation.side === "teamA" || operation.side === "teamB" ? operation.side : "";
+    if (!postId) reject(400, "missing_recruiting_post");
+    if (!teamId) reject(400, "recruiting_team_required");
+    if (!side) reject(400, "invalid_recruiting_team_side");
+    const { data, error } = await context.supabase.rpc("rankball_recruiting_set_room_team_action", {
+      p_actor_profile_id: context.profileId,
+      p_post_id: postId,
+      p_side: side,
+      p_team_id: teamId,
+    });
+    if (error) {
+      if (isMissingSqlReducer(error)) reject(503, "recruiting_set_room_team_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), postId };
+  }
   if (operation.action === "acknowledgeRecruitingRoomRules" && operation.postId) {
     const { data, error } = await context.supabase.rpc("rankball_recruiting_rule_ack_action", {
       p_actor_profile_id: context.profileId,
@@ -1813,6 +1851,7 @@ export default async function handler(request, response) {
     let operation = withRecruitingCreatePostId(getOperation(body, body.action ? String(body.action) : "sync"));
     if (!operation) reject(400, "recruiting_operation_required");
     operation = await timing.track("pickupPolicy", () => validatePickupRecruitingOperation(context, operation));
+    operation = normalizeRecruitingCreationPolicyOperation(operation);
     if (!SQL_REDUCER_RECRUITING_ACTIONS.has(operation.action) && !["sendRecruitingChat", "confirmRecruitingMatch"].includes(operation.action)) {
       reject(400, "unsupported_recruiting_operation");
     }

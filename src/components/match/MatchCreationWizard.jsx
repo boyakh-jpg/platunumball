@@ -327,6 +327,7 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
   const personalRecordRows = [
     { label: "기록 유형", value: "개인 기록" },
     { label: "입력 방식", value: draft.recordEntryMode === "named" ? "이름 기록" : "빠른 기록" },
+    { label: "공개 상태", value: draft.visibility === "public" ? "공개 · 프로필 기록에 표시" : "비공개 · 나만 열람" },
     { label: "경기 방식", value: draft.mode || "1v1" },
     { label: "점수", value: `${draft.soloScoreFor || 0} : ${draft.soloScoreAgainst || 0}` },
     { label: "구장", value: draft.court || "구장 미정" },

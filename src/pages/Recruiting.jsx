@@ -31,7 +31,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard, { MatchListSummary } from "../components/match/MatchListCard.jsx";
 import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
-import MatchClockPanel from "../components/match/MatchClockPanel.jsx";
+import MatchClockPanel, { MatchScoreControls } from "../components/match/MatchClockPanel.jsx";
 import MatchAttendanceQrPanel from "../components/match/MatchAttendanceQrPanel.jsx";
 import { MatchOperationsPolicyFields } from "../components/match/MatchCreationWizard.jsx";
 import MatchPostgameRosterPanel from "../components/match/MatchPostgameRosterPanel.jsx";
@@ -1650,7 +1650,6 @@ function MatchSubstitutionPanel({
   canManageSide,
   recorderSides = [],
   onSubstitute,
-  onHandoff,
   onRequestTakeover,
   onApproveTakeover,
   onRejectTakeover,
@@ -1658,7 +1657,6 @@ function MatchSubstitutionPanel({
 }) {
   const [draftByReserveId, setDraftByReserveId] = useState({});
   const [reasonByReserveId, setReasonByReserveId] = useState({});
-  const [handoffDraftBySide, setHandoffDraftBySide] = useState({});
   const [pendingActionKey, setPendingActionKey] = useState("");
   const runAction = async (key, action) => {
     if (pendingActionKey || typeof action !== "function") return;
@@ -1684,22 +1682,8 @@ function MatchSubstitutionPanel({
       activePlayerIds,
       reservePlayerId,
       reserveUser: userById[reservePlayerId],
+      canManage: access.canManage,
     }));
-  });
-  const handoffRows = recorderSides.flatMap((sideName) => {
-    const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
-    const candidateIds = reservePlayerIds.filter((playerId) => playerId !== currentUserId && userById[playerId]);
-    if (!candidateIds.length) return [];
-    const selectedId = candidateIds.includes(handoffDraftBySide[sideName])
-      ? handoffDraftBySide[sideName]
-      : candidateIds[0];
-    return [{
-      sideName,
-      candidateIds,
-      selectedId,
-      currentUser: userById[currentUserId],
-      selectedUser: userById[selectedId],
-    }];
   });
   const takeoverRequestRows = MATCH_SIDES.filter((sideName) => (
     getMatchReservePlayerIds(match, sideName).includes(currentUserId)
@@ -1712,16 +1696,16 @@ function MatchSubstitutionPanel({
     canResolve: isHost || effectiveRecorders[request.side] === currentUserId,
     canCancel: request.requestedBy === currentUserId,
   })).filter((request) => request.canResolve || request.canCancel);
-  if (!rows.length && !handoffRows.length && !takeoverRequestRows.length && !pendingTakeoverRows.length) return null;
+  if (!rows.length && !takeoverRequestRows.length && !pendingTakeoverRows.length) return null;
 
   return (
     <div className="arena-record-roster-panel">
       <header>
         <strong>선수 교체</strong>
-        <span>배정 심판만 다른 선수를 교체합니다. 기록권한은 같은 사이드 후보에게 직접 넘기거나 후보가 기록 맡기를 요청할 수 있습니다.</span>
+        <span>배정 심판은 양 사이드를 교체하고, 후보는 본인 교체를 실행합니다. 기록 맡기는 같은 사이드 후보가 요청하고 현재 기록자 또는 방장이 승인합니다.</span>
       </header>
       <div className="arena-record-roster-list">
-        {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser }) => {
+        {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser, canManage }) => {
           const activePlayerId = draftByReserveId[reservePlayerId] ?? activePlayerIds[0] ?? "";
           const lateEligible = isMatchLateAttendancePlayer(match, reservePlayerId);
           return (
@@ -1741,6 +1725,7 @@ function MatchSubstitutionPanel({
                   <option value={playerId} key={playerId}>{userById[playerId]?.name ?? playerId}</option>
                 ))}
               </select>
+              {canManage ? (
               <select
                 aria-label={`${reserveUser?.name ?? "후보"} 교체 사유`}
                 value={reasonByReserveId[reservePlayerId] ?? "operator"}
@@ -1750,6 +1735,7 @@ function MatchSubstitutionPanel({
                 {lateEligible ? <option value="late">지각 합류</option> : null}
                 <option value="ejection">퇴장</option>
               </select>
+              ) : <Badge tone="blue">본인 교체</Badge>}
               <Button
                 type="button"
                 size="sm"
@@ -1759,7 +1745,7 @@ function MatchSubstitutionPanel({
                   sideName,
                   activePlayerId,
                   reservePlayerId,
-                  reasonByReserveId[reservePlayerId] ?? "operator",
+                  canManage ? reasonByReserveId[reservePlayerId] ?? "operator" : "self",
                 )}
               >
                 교체
@@ -1767,29 +1753,6 @@ function MatchSubstitutionPanel({
             </div>
           );
         })}
-        {handoffRows.map(({ sideName, candidateIds, selectedId, currentUser, selectedUser }) => (
-          <div key={`handoff:${sideName}`} className="arena-record-roster-row selected">
-            <PlayerHoverCard user={currentUser} teams={teams} as="span">
-              <ProfileEmblem user={currentUser} className="small" initial="R" />
-              <span>
-                <strong>{SIDE_LABELS[sideName]} 기록권한</strong>
-                <em>{selectedUser?.name ?? "후보"}에게 넘김</em>
-              </span>
-            </PlayerHoverCard>
-            <select
-              aria-label={`${SIDE_LABELS[sideName]} 기록권한 받을 후보`}
-              value={selectedId}
-              onChange={(event) => setHandoffDraftBySide((current) => ({ ...current, [sideName]: event.target.value }))}
-            >
-              {candidateIds.map((playerId) => (
-                <option value={playerId} key={playerId}>{userById[playerId]?.name ?? playerId} · 후보</option>
-              ))}
-            </select>
-            <Button type="button" size="sm" variant="secondary" disabled={!selectedId || Boolean(pendingActionKey)} onClick={() => void runAction(`handoff:${sideName}`, () => onHandoff?.(sideName, selectedId))}>
-              넘기기
-            </Button>
-          </div>
-        ))}
         {takeoverRequestRows.map((sideName) => (
           <div key={`takeover-request:${sideName}`} className="arena-record-roster-row selected">
             <PlayerHoverCard user={userById[currentUserId]} teams={teams} as="span">
@@ -2592,9 +2555,10 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   const effectiveStatus = agreedResultOpen ? "approval" : match.status;
   if (effectiveStatus === "disputed") {
     const openCount = getOpenMatchDisputes(match).length;
+    const decisionOwner = match.refereeId ? "배정 심판" : "방장";
     return {
       label: "이의신청방",
-      detail: openCount ? `방장이 이의제기 ${openCount}건을 건별로 가결 또는 부결합니다.` : "마지막 이의 판정과 함께 결과가 확정됩니다.",
+      detail: openCount ? `${decisionOwner}이 이의제기 ${openCount}건을 건별로 가결 또는 부결합니다.` : "마지막 이의 판정과 함께 결과가 확정됩니다.",
       disputed: true,
     };
   }
@@ -2618,13 +2582,28 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
     return { label: "경기준비방", detail: "인원 체크 후 미출석자는 정리하고 경기 시작을 누릅니다." };
   }
   if (phase.phase === "live") {
-    return { label: "경기시작", detail: "기록판이 열려 있습니다. 경기 종료 전까지 개인활약을 입력합니다." };
+    return {
+      label: "경기시작",
+      detail: match.refereeId
+        ? "심판 기록판이 열려 있습니다. 경기 종료 전까지 팀 점수와 개인 스탯을 기록합니다."
+        : "팀 점수판이 열려 있습니다. 경기 종료 전까지 팀 점수를 기록합니다.",
+    };
   }
   if (phase.phase === "postgame") {
-    return { label: "경기 종료", detail: "파울과 점수를 정리하고 기록 확정을 기다립니다." };
+    return {
+      label: "경기 종료",
+      detail: match.refereeId
+        ? "배정 심판이 팀 점수와 개인 스탯을 정리하고 최종 확정합니다."
+        : "방장이 경기 중 기록된 팀 점수를 확인하고 최종 확정합니다.",
+    };
   }
   if (phase.phase === "dispute") return { label: "결과 확인", detail: "이의신청 시간 안에 기록을 확인합니다." };
-  if (phase.phase === "record") return { label: "기록방", detail: "확정된 점수, 개인활약, 파울을 열람합니다." };
+  if (phase.phase === "record") return {
+    label: "기록방",
+    detail: match.refereeId
+      ? "확정된 팀 점수와 개인 스탯을 열람합니다."
+      : "확정된 팀 점수를 열람합니다.",
+  };
   if (phase.phase === "cancelled" || phase.phase === "void") return { label: phase.label, detail: "닫힌 방입니다." };
   return { label: "경기 정보", detail: "현재 상태를 확인합니다." };
 }
@@ -2953,7 +2932,7 @@ function RecruitingRoomModalReady({
   const loadDirectory = app.actions.loadDirectory;
   const remoteDirectoryEnabled = app.capabilities?.remoteDirectory !== false;
   const roomShareEnabled = app.capabilities?.roomShare !== false;
-  const shouldLoadTeamDirectory = selectedPost.visibility === "public" && isTeamOnlyRoom(selectedPost);
+  const shouldLoadTeamDirectory = !sourceMatch && isTeamOnlyRoom(selectedPost);
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
@@ -2981,6 +2960,9 @@ function RecruitingRoomModalReady({
   const requiresPaidCourtNotice = (roomPost) => isPaidRecruitingCourt(roomPost, getRoomCourt(roomPost));
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
   const [joiningPartyKey, setJoiningPartyKey] = useState("");
+  const [roomTeamQuery, setRoomTeamQuery] = useState("");
+  const [roomTeamSavingSide, setRoomTeamSavingSide] = useState("");
+  const [roomTeamFeedback, setRoomTeamFeedback] = useState("");
   const [paidCourtJoinPrompt, setPaidCourtJoinPrompt] = useState(null);
   const [chatDraftByPost, setChatDraftByPost] = useState({});
   const [chatErrorByPost, setChatErrorByPost] = useState({});
@@ -3039,6 +3021,12 @@ function RecruitingRoomModalReady({
   const pollRecruitingChatRef = useRef(app.actions.pollRecruitingChat);
   const chatSendLogRef = useRef({});
   const roomShareStatusTimerRef = useRef(0);
+
+  useEffect(() => {
+    setRoomTeamQuery("");
+    setRoomTeamSavingSide("");
+    setRoomTeamFeedback("");
+  }, [selectedPost.id]);
   const lobbyModalRef = useRef(null);
   const sheetDragRef = useRef(null);
   const sheetDragTimerRef = useRef(0);
@@ -3662,6 +3650,10 @@ function RecruitingRoomModalReady({
         const joinDraft = getJoinDraft(selectedPost);
         const individualOnlyRoom = isIndividualOnlyRecruitingRoom(selectedPost);
         const teamOnlyRoom = isTeamOnlyRoom(selectedPost) && !individualOnlyRoom;
+        const selectedRoomTeamAId = getLobbyPrimaryTeamId(lobby, "teamA") ?? selectedPost.teamId ?? "";
+        const selectedRoomTeamBId = getLobbyPrimaryTeamId(lobby, "teamB") ?? selectedPost.opponentTeamId ?? selectedPost.targetTeamId ?? "";
+        const selectedRoomTeamA = teamById[selectedRoomTeamAId] ?? null;
+        const selectedRoomTeamB = teamById[selectedRoomTeamBId] ?? null;
         const roomTargetMmr = getRecruitingTargetMmr(selectedPost, app.state);
         const getJoinTeamEligibility = (team) => getTeamEventEligibility(team, app.state.users, {
           capacity: getRecruitingSideCapacity(selectedPost),
@@ -3728,11 +3720,74 @@ function RecruitingRoomModalReady({
         const canJoinReferee = selectedPost.visibility === "public" && refereeWanted && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments);
         const joinMmrLimitMode = selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode ?? "block";
         const joinTierAllowed = joinMmrLimitMode !== "block" || fit.allowed;
-        const canJoin = !scheduleChangePending && selectedPost.visibility === "public" && !matchRoom && !recruitingRoomConfirmed && !mine && !alreadyApplied && (
+        const canJoin = !scheduleChangePending
+          && selectedPost.visibility === "public"
+          && !matchRoom
+          && !recruitingRoomConfirmed
+          && !mine
+          && !alreadyApplied
+          && (!teamOnlyRoom || Boolean(selectedRoomTeamAId))
+          && (
           joinDraft.joinMode === "referee"
             ? canJoinReferee
             : joinTierAllowed && (!pickupPoolMode || pickupOpenSlotPlacements.length > 0) && (joinDraft.joinMode === "player" || teamJoinValid)
         );
+        const roomTeamSelectionOpen = teamOnlyRoom && !sourceMatch && selectedPost.status === "open" && !recruitingRoomConfirmed;
+        const getRoomTeamSelectionEligibility = (team, sideName) => getTeamEventEligibility(team, app.state.users, {
+          capacity: getRecruitingSideCapacity(selectedPost),
+          ranked: selectedPost.ranked,
+          mmrLimitMode: selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode,
+          mmrRangeMode: selectedPost.mmrRangeMode ?? selectedPost.roomState?.mmrRangeMode,
+          targetMmr: sideName === "teamA" ? team?.mmr : selectedRoomTeamA?.mmr,
+          allowedAgeGroups: selectedPost.allowedAgeGroups ?? selectedPost.rules?.allowedAgeGroups,
+          requireCaptainEligible: true,
+        });
+        const roomTeamACandidates = captainTeams;
+        const roomTeamBCandidates = app.state.teams.filter((team) => (
+          team.id !== selectedRoomTeamAId && Boolean(getTeamCaptainId(team))
+        ));
+        const saveRoomTeam = async (sideName, team) => {
+          if (!roomTeamSelectionOpen || !mine || !team?.id || roomTeamSavingSide) return;
+          const eligibility = getRoomTeamSelectionEligibility(team, sideName);
+          if (!eligibility.allowed) {
+            setRoomTeamFeedback(`${team.name}: ${eligibility.reason}`);
+            return;
+          }
+          setRoomTeamSavingSide(sideName);
+          setRoomTeamFeedback("");
+          try {
+            const result = await app.actions.setRecruitingRoomTeam?.(selectedPost.id, sideName, team.id);
+            if (result === false || result?.ok === false) {
+              setRoomTeamFeedback("팀을 선택하지 못했습니다. 현재 주장·팀 조건·방 상태를 확인해 주세요.");
+              return;
+            }
+            setRoomTeamQuery("");
+            setRoomTeamFeedback(sideName === "teamA"
+              ? "A팀을 선택했습니다."
+              : "B팀 현재 주장에게 초대 1건을 보냈습니다.");
+          } catch {
+            setRoomTeamFeedback("팀을 선택하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+          } finally {
+            setRoomTeamSavingSide("");
+          }
+        };
+        const renderRoomTeamResult = (team) => {
+          const eligibility = getRoomTeamSelectionEligibility(team, "teamB");
+          return (
+            <div key={team.id} className="search-picker-result-row search-picker-result-row-actionable">
+              <button
+                type="button"
+                className="search-picker-result-main"
+                disabled={!eligibility.allowed || Boolean(roomTeamSavingSide)}
+                onClick={() => { void saveRoomTeam("teamB", team); }}
+              >
+                <strong>{team.name}</strong>
+                <span>{getTeamHashtag(team)} · {team.region ?? "지역 미정"} · {team.mmr} MMR</span>
+                <em>{eligibility.allowed ? "B팀 선택" : eligibility.reason}</em>
+              </button>
+            </div>
+          );
+        };
         const joiningThisRoom = joiningPostId === selectedPost.id;
         const joinModeEntries = [
           ...Object.entries(RECRUITING_JOIN_MODES).filter(([mode]) => {
@@ -3855,7 +3910,7 @@ function RecruitingRoomModalReady({
         };
         const canInviteSideFromRoom = (sideName) => {
           if (!canInviteFromRoom) return false;
-          if (selectedPost.visibility === "private" && selectedPost.hostJoinMode === "team") return false;
+
           if (!teamOnlyRoom) return true;
           const allowedTeamId = getInviteAllowedTeamId(sideName);
           if (!allowedTeamId) return false;
@@ -3934,6 +3989,7 @@ function RecruitingRoomModalReady({
           : [];
         const recruitingRoomTerminalStatus = sourceMatch ? null : getRecruitingPostTerminalState(selectedPost);
         const sourceMatchIsRecordRoom = Boolean(sourceMatch && isMatchRecordMatch(sourceMatch));
+        const sourceMatchIsPersonalRecord = Boolean(sourceMatch && isPersonalRecordMatch(sourceMatch));
         const sourceMatchRecordVerification = sourceMatchIsRecordRoom
           ? getPostgameRecordVerification(sourceMatch)
           : null;
@@ -3963,7 +4019,7 @@ function RecruitingRoomModalReady({
         const canResolveSourceMatchDispute = Boolean(
           sourceMatch &&
           canUserResolveMatchDispute(sourceMatch, app.currentUser.id, selectedPost) &&
-          mine
+          (sourceMatch.refereeId ? currentUserIsSourceReferee : mine)
         );
         const sourceMatchHostSideName = sourceMatch && getMatchSidePlayerIds(sourceMatch, "teamB").includes(sourceMatch.createdBy) ? "teamB" : "teamA";
         const sourceMatchOpponentSideName = sourceMatchHostSideName === "teamA" ? "teamB" : "teamA";
@@ -4078,7 +4134,7 @@ function RecruitingRoomModalReady({
         const canConfirmRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
         const canFinalizeSourceMatch = Boolean(
-          matchRoom && sourceMatch?.result && sourceMatch?.endedAt && !sourceMatch?.confirmedAt
+          matchRoom && sourceMatch?.endedAt && (sourceMatch.refereeId ? sourceMatch.result : true) && !sourceMatch?.confirmedAt
           && sourceMatch.status !== "disputed" && currentUserCanOperateStartedSourceMatch
         );
         const sourceMatchRecorderSides = sourceMatch ? getStatRecorderSides(sourceMatch, app.currentUser.id) : [];
@@ -4129,7 +4185,7 @@ function RecruitingRoomModalReady({
         const canRefreshSourceMatchReview = Boolean(
           matchRoom
           && sourceMatch
-          && (mine || currentUserIsAdmin)
+          && (mine || currentUserIsSourceReferee || currentUserIsAdmin)
           && (sourceMatchApprovalOpen || sourceMatch.status === "disputed")
         );
         const canRequestSourceMatchPointDispute = Boolean(
@@ -4207,7 +4263,6 @@ function RecruitingRoomModalReady({
                 reservePlayerId,
                 reason,
               )}
-              onHandoff={(sideName, nextRecorderId) => app.actions.handoffMatchRecorder?.(sourceMatch.id, sideName, nextRecorderId)}
               onRequestTakeover={(sideName) => app.actions.requestMatchRecorderTakeover?.(sourceMatch.id, sideName)}
               onApproveTakeover={(sideName, requestId) => app.actions.approveMatchRecorderTakeover?.(sourceMatch.id, sideName, requestId)}
               onRejectTakeover={(sideName, requestId) => app.actions.rejectMatchRecorderTakeover?.(sourceMatch.id, sideName, requestId)}
@@ -4236,13 +4291,15 @@ function RecruitingRoomModalReady({
           ? getTournamentMatchDisplayTitle(sourceMatch, selectedPost.title)
           : getRecruitingDisplayTitle(selectedPost, `${roomCompetitionLabel} ${selectedPost.mode || ""} 매치 큐`.trim());
         const roomTitleSizeClass = getRoomTitleSizeClass(roomDisplayTitle);
-        const roomVisibilityLabel = getRoomVisibilityLabel(sourceMatch ?? selectedPost, selectedPost);
-        const roomVisibilityTone = roomVisibilityLabel === "대회방" ? "gold" : roomVisibilityLabel === "비공개방" ? "blue" : "green";
+        const roomVisibilityLabel = sourceMatchIsPersonalRecord
+          ? ((sourceMatch?.visibility ?? selectedPost.visibility) === "public" ? "공개" : "비공개")
+          : getRoomVisibilityLabel(sourceMatch ?? selectedPost, selectedPost);
+        const roomVisibilityTone = roomVisibilityLabel === "대회방" ? "gold" : ["비공개방", "비공개"].includes(roomVisibilityLabel) ? "blue" : "green";
         const sourceTeamSideCount = MATCH_SIDES.filter((sideName) => isMatchSideTeamParty(sourceMatch, sideName)).length;
         const lobbyTeamEntryCount = individualOnlyRoom ? 0 : (lobby.entries ?? []).filter((entry) => isPartyEntry(entry)).length;
         const teamMatchSideLocked = !individualOnlyRoom && (sourceTeamSideCount >= 2 || (selectedPost.hostJoinMode === "team" && lobbyTeamEntryCount > 0));
         const recordCompositionLabel = getMatchRecordCompositionLabel(sourceMatch);
-        const roomMatchTypeLabel = recordCompositionLabel || (individualOnlyRoom
+        const roomMatchTypeLabel = sourceMatchIsPersonalRecord ? "내 기록" : recordCompositionLabel || (individualOnlyRoom
           ? "개인 매칭"
           : teamOnlyRoom || sourceTeamSideCount >= 2 || (selectedPost.visibility === "private" && lobbyTeamEntryCount >= 2)
             ? "팀전"
@@ -4722,6 +4779,90 @@ function RecruitingRoomModalReady({
                     rotation: renderPickupRotation,
                   }}
                 />
+
+                {roomTeamSelectionOpen ? (
+                  <section className="arena-record-setup-panel ui-modal-section">
+                    <header>
+                      <div>
+                        <strong>팀 선택</strong>
+                        <span>팀 선택과 명단 관리는 이 공용 방 모달에서만 진행합니다.</span>
+                      </div>
+                      <Badge tone="blue">ROOM ONLY</Badge>
+                    </header>
+                    <div className="arena-record-setup-grid">
+                      <section>
+                        <strong>A사이드</strong>
+                        {selectedRoomTeamAId ? (
+                          <span className="arena-record-team-selected">
+                            {selectedRoomTeamA ? <TeamEmblem team={selectedRoomTeamA} size="xs" /> : null}
+                            <strong>{selectedRoomTeamA?.name ?? "선택된 A팀"}</strong>
+                            <Badge tone="green">고정</Badge>
+                          </span>
+                        ) : mine ? (
+                          roomTeamACandidates.length ? (
+                            <div className="arena-team-choice-grid">
+                              {roomTeamACandidates.map((team) => {
+                                const eligibility = getRoomTeamSelectionEligibility(team, "teamA");
+                                return (
+                                  <button
+                                    key={team.id}
+                                    type="button"
+                                    className={!eligibility.allowed ? "is-disabled" : ""}
+                                    disabled={!eligibility.allowed || Boolean(roomTeamSavingSide)}
+                                    onClick={() => { void saveRoomTeam("teamA", team); }}
+                                  >
+                                    <TeamEmblem team={team} size="xs" />
+                                    <strong>{team.name}</strong>
+                                    <em>{eligibility.allowed ? "A팀 선택" : eligibility.reason}</em>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : <em>현재 주장인 팀이 없습니다.</em>
+                        ) : <em>방장이 A팀을 선택하는 중입니다.</em>}
+                      </section>
+                      <section>
+                        <strong>B사이드</strong>
+                        {selectedRoomTeamBId ? (
+                          <span className="arena-record-team-selected">
+                            {selectedRoomTeamB ? <TeamEmblem team={selectedRoomTeamB} size="xs" /> : null}
+                            <strong>{selectedRoomTeamB?.name ?? "선택된 B팀"}</strong>
+                            <Badge tone={selectedPost.visibility === "private" ? "orange" : "green"}>
+                              {selectedPost.visibility === "private" && !getLobbyPrimaryTeamId(lobby, "teamB") ? "주장 초대 대기" : "고정"}
+                            </Badge>
+                          </span>
+                        ) : !selectedRoomTeamAId ? (
+                          <em>A팀을 먼저 선택해야 합니다.</em>
+                        ) : selectedPost.visibility === "public" ? (
+                          <em>상대 팀 현재 주장이 B사이드로 참가할 때까지 기다립니다.</em>
+                        ) : mine ? (
+                          <SearchPicker
+                            value={roomTeamQuery}
+                            onChange={setRoomTeamQuery}
+                            placeholder="B팀 이름, #해시태그 검색"
+                            items={roomTeamBCandidates}
+                            getSearchText={(team) => `${team.name} ${getTeamHashtag(team)} ${team.region ?? ""}`}
+                            remoteSearchType={remoteDirectoryEnabled ? "team" : ""}
+                            mapRemoteItem={(team) => team?.id !== selectedRoomTeamAId && getTeamCaptainId(team) ? team : null}
+                            idleItems={roomTeamBCandidates.slice(0, 8)}
+                            title="B팀 선택"
+                            emptyText="선택 가능한 팀 없음"
+                            showIdleOnFocus
+                            floating
+                            closeOnResultClick
+                            renderItem={renderRoomTeamResult}
+                          />
+                        ) : <em>방장이 B팀을 선택하고 있습니다.</em>}
+                      </section>
+                    </div>
+                    {roomTeamFeedback ? (
+                      <div className="ui-status-strip" role="status" aria-live="polite">
+                        <strong>{roomTeamFeedback}</strong>
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
+
                 {entryPoint === "recorder" ? renderMatchSubstitutionPanel() : null}
 
                 {roomPhaseViewModel.showVersusStage ? <div className="arena-lobby-versus-stage">
@@ -5334,6 +5475,30 @@ function RecruitingRoomModalReady({
                   clockClient={clockClient}
                   onRosterChanged={() => void app.actions.loadMatchDetail(sourceMatch.id)}
                   editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
+                  onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
+                    sourceMatch.id,
+                    sideName === "teamA" ? delta : 0,
+                    sideName === "teamB" ? delta : 0,
+                    revisions,
+                  )}
+                />
+              ) : null}
+              {matchRoom && sourceMatch && sourceMatchResultEntryPermission?.editableScoreSides?.length && (
+                (
+                  sourceMatchPhase?.phase === "live"
+                  && !sourceMatchIsRecordRoom
+                  && !selectedMatchRules.gameClockEnabled
+                )
+                || (
+                  sourceMatch.endedAt
+                  && sourceMatch.status !== "disputed"
+                  && (Boolean(sourceMatch.refereeId) || sourceMatchIsRecordRoom)
+                )
+              ) ? (
+                <MatchScoreControls
+                  match={sourceMatch}
+                  label={sourceMatchIsRecordRoom ? "사후 기록 팀 점수" : sourceMatch.endedAt ? "최종 팀 점수" : "실시간 팀 점수"}
+                  editableScoreSides={sourceMatchResultEntryPermission.editableScoreSides}
                   onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
                     sourceMatch.id,
                     sideName === "teamA" ? delta : 0,

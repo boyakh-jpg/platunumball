@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { API_ROUTES } from "../api/index.js";
-import { buildRecordPage, canReadTeamRecord } from "../server/api/records/list.js";
+import { buildRecordPage, canReadProfileRecord, canReadTeamRecord } from "../server/api/records/list.js";
 import {
   REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT,
   REMOTE_CLIENT_RECORD_LIST_YEARS,
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../src/lib/constants.js";
+import { getReadableMatchStatRows } from "../src/data/matchMappers.js";
 import { getRecordWindowDates, isRecordDetailDate } from "../src/lib/recordRetention.js";
 
 const root = new URL("../", import.meta.url);
@@ -33,6 +34,35 @@ test("team record visibility keeps public rows readable and private rows scoped"
   assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", reader_ids: [] }, "viewer", new Set(["team-a"])), true);
   assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", opponent_team_id: "team-b", reader_ids: [] }, "viewer", new Set(["team-b"])), true);
   assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", reader_ids: [] }, "viewer", new Set(), true), true);
+});
+
+test("profile personal records expose only public owner rows to other users", () => {
+  const publicPersonal = { record_type: "solo", visibility: "public", owner_profile_id: "owner" };
+  assert.equal(canReadProfileRecord(publicPersonal, "owner", "owner"), true);
+  assert.equal(canReadProfileRecord(publicPersonal, "viewer", "owner"), true);
+  assert.equal(canReadProfileRecord({ ...publicPersonal, visibility: "private" }, "viewer", "owner"), false);
+  assert.equal(canReadProfileRecord({ ...publicPersonal, visibility: "private", owner_profile_id: "other" }, "owner", "owner"), false);
+  assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match" }, "owner", "owner"), true);
+  assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match" }, "viewer", "owner"), false);
+  assert.equal(canReadProfileRecord({ ...publicPersonal, owner_profile_id: "other" }, "viewer", "owner"), false);
+});
+
+test("match stats expose only referee-verified rows or the personal-record owner", () => {
+  const rows = [
+    { user_id: "owner", record_source: "host_postgame" },
+    { user_id: "player", record_source: "player" },
+    { user_id: "verified", record_source: "referee" },
+    { user_id: "adjusted", record_source: "dispute_operator" },
+  ];
+  assert.deepEqual(
+    getReadableMatchStatRows({ referee_id: "referee", rules: { recordType: "match" } }, rows).map((row) => row.user_id),
+    ["verified", "adjusted"],
+  );
+  assert.deepEqual(
+    getReadableMatchStatRows({ created_by: "owner", rules: { recordType: "personal_record" } }, rows).map((row) => row.user_id),
+    ["owner"],
+  );
+  assert.deepEqual(getReadableMatchStatRows({ rules: { recordType: "match" } }, rows), []);
 });
 
 test("record pagination preserves the 201st detail row and separates archive paging", () => {

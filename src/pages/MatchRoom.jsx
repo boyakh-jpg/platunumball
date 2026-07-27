@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { CalendarDays, ChevronDown, ChevronUp, Crown, MapPin, RotateCcw, ShieldCheck, Star, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
-import MatchClockPanel from "../components/match/MatchClockPanel.jsx";
+import MatchClockPanel, { MatchScoreControls } from "../components/match/MatchClockPanel.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
 import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
@@ -371,8 +371,9 @@ export default function MatchRoom({ app }) {
   const matchPhase = getMatchRoomPhase(match).phase;
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
-  const currentUserCanResolveDispute = canUserResolveMatchDispute(match, app.currentUser.id, sourceRecruitingPost) && isMatchHost;
-  const currentUserCanRefreshReview = isMatchHost || currentUserIsAdmin;
+  const currentUserCanResolveDispute = canUserResolveMatchDispute(match, app.currentUser.id, sourceRecruitingPost)
+    && (hasReferee ? currentUserIsEligibleReferee : isMatchHost);
+  const currentUserCanRefreshReview = isMatchHost || currentUserIsEligibleReferee || currentUserIsAdmin;
   const currentUserCanFileDispute = getMatchRecordPlayerIds(match).includes(app.currentUser.id);
   const resultEntryPermission = getMatchResultEntryPermission(match, app.currentUser.id, {
     canOperatePostStart: currentUserCanOperateStartedMatch,
@@ -387,8 +388,8 @@ export default function MatchRoom({ app }) {
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
   const isSoloRecord = isPersonalRecordMatch(match);
   const canFinalizeMatch = Boolean(
-    match.result &&
     match.endedAt &&
+    (hasReferee ? match.result : true) &&
     !match.confirmedAt &&
     match.status !== "disputed" &&
     currentUserCanOperateStartedMatch,
@@ -890,6 +891,18 @@ export default function MatchRoom({ app }) {
           )}
         />
       ) : null}
+      {matchPhase === "live" && normalizedRules.gameClockEnabled === false && resultEntryPermission.editableScoreSides.length ? (
+        <MatchScoreControls
+          match={match}
+          editableScoreSides={resultEntryPermission.editableScoreSides}
+          onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
+            match.id,
+            sideName === "teamA" ? delta : 0,
+            sideName === "teamB" ? delta : 0,
+            revisions,
+          )}
+        />
+      ) : null}
       {isContractStage ? (
         <div className="content-grid match-stage-contract">
           <div className="page-stack">
@@ -953,15 +966,28 @@ export default function MatchRoom({ app }) {
                 <em>경기 종료 후 {normalizeDisputeWindowMinutes(match.disputeMinutes)}분</em>
               </div>
             </div>
+            {match.endedAt && resultEntryPermission.editableScoreSides.length ? (
+              <MatchScoreControls
+                match={match}
+                label="최종 팀 점수"
+                editableScoreSides={resultEntryPermission.editableScoreSides}
+                onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
+                  match.id,
+                  sideName === "teamA" ? delta : 0,
+                  sideName === "teamB" ? delta : 0,
+                  revisions,
+                )}
+              />
+            ) : null}
             <form className="score-form" onSubmit={submitResult}>
               <label>
                 {teamASide.name}
-                <input type="number" min="0" max="999" aria-label={`${teamASide.name} 팀 점수`} disabled={!resultEntryPermission.editableScoreSides.includes("teamA")} value={draftScoreA} onChange={(event) => setScore((current) => ({ ...current, scoreA: event.target.value }))} />
+                <input type="number" min="0" max="999" aria-label={`${teamASide.name} 팀 점수`} disabled value={draftScoreA} readOnly />
               </label>
               <span>:</span>
               <label>
                 {teamBSide.name}
-                <input type="number" min="0" max="999" aria-label={`${teamBSide.name} 팀 점수`} disabled={!resultEntryPermission.editableScoreSides.includes("teamB")} value={draftScoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
+                <input type="number" min="0" max="999" aria-label={`${teamBSide.name} 팀 점수`} disabled value={draftScoreB} readOnly />
               </label>
               <div className="match-action-row stat-entry-actions">
                 <Button type="button" variant="secondary" disabled={matchDetailRefreshing} onClick={refreshMatchDetail}>
@@ -1031,28 +1057,32 @@ export default function MatchRoom({ app }) {
                   </div>
                   <Badge tone={canFinalizeMatch ? "green" : "neutral"}>개인 스탯 미기록</Badge>
                 </div>
-                <div className="arena-dispute-score-row">
-                  {MATCH_SIDES.map((sideName) => {
-                    const side = sideName === "teamA" ? teamASide : teamBSide;
-                    const sideScore = sideName === "teamA" ? scoreA : scoreB;
-                    return (
-                      <div key={sideName}>
-                        <span>{side.name}</span>
-                        <strong>{sideScore}</strong>
-                        {currentUserCanOperateStartedMatch && !match.confirmedAt ? (
-                          <div className="match-action-row">
-                            {[-1, 1, 2, 3].map((delta) => (
-                              <Button key={delta} type="button" size="sm" variant="secondary" onClick={() => app.actions.incrementMatchScore?.(match.id, sideName === "teamA" ? delta : 0, sideName === "teamB" ? delta : 0, {
-                                expectedRevisionA: match.result?.scoreRevisionA ?? 0,
-                                expectedRevisionB: match.result?.scoreRevisionB ?? 0,
-                              })}>{delta > 0 ? `+${delta}` : delta}</Button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
+                {isSharedRecord && match.rules?.recordSetupReady === true && resultEntryPermission.editableScoreSides.length ? (
+                  <MatchScoreControls
+                    match={match}
+                    label="사후 기록 팀 점수"
+                    editableScoreSides={resultEntryPermission.editableScoreSides}
+                    onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
+                      match.id,
+                      sideName === "teamA" ? delta : 0,
+                      sideName === "teamB" ? delta : 0,
+                      revisions,
+                    )}
+                  />
+                ) : (
+                  <div className="arena-dispute-score-row">
+                    {MATCH_SIDES.map((sideName) => {
+                      const side = sideName === "teamA" ? teamASide : teamBSide;
+                      const sideScore = sideName === "teamA" ? scoreA : scoreB;
+                      return (
+                        <div key={sideName}>
+                          <span>{side.name}</span>
+                          <strong>{sideScore}</strong>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 {canFinalizeMatch ? <Button type="button" onClick={() => app.actions.finalizeMatch?.(match.id)}>최종 확정</Button> : null}
               </Card>
             ) : null}

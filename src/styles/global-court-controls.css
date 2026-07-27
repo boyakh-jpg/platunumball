@@ -1363,6 +1363,10 @@ html[data-theme="light"] .court-map-picker-state {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.settings-privacy-card .settings-home-guide-group .settings-toggle-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .settings-privacy-card .settings-toggle-grid > :last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }

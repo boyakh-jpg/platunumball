@@ -227,6 +227,63 @@
   padding-inline: 8px;
   font-variant-numeric: tabular-nums;
 }
+
+.ui-match-score-control-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  color: var(--rb-text);
+  background: var(--ui-card-bg);
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-lg);
+}
+
+.ui-match-score-control-panel > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ui-match-score-control-panel > header > div,
+.ui-match-score-control-side {
+  display: grid;
+  gap: 4px;
+}
+
+.ui-match-score-control-panel > header span,
+.ui-match-score-control-side > span,
+.ui-match-score-control-side > small {
+  color: var(--rb-muted);
+}
+
+.ui-match-score-control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ui-match-score-control-side {
+  min-width: 0;
+  padding: 14px;
+  text-align: center;
+  background: var(--scoreboard);
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-md);
+}
+
+.ui-match-score-control-side > strong {
+  font-family: var(--sports-display-font);
+  font-size: clamp(2.2rem, 7vw, 4rem);
+  line-height: 1;
+}
+
+.ui-match-score-control-error {
+  margin: 0;
+  color: var(--rb-danger);
+  font-size: 0.86rem;
+}
+
 .ui-match-clock-main-time {
   gap: 4px;
   color: var(--rb-text);
@@ -861,6 +918,15 @@
 
   .ui-match-clock-score-actions {
     grid-template-columns: repeat(2, minmax(28px, 1fr));
+  }
+
+  .ui-match-score-control-panel > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ui-match-score-control-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .ui-match-clock-panel-focus {

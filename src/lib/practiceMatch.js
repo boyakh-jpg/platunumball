@@ -402,8 +402,8 @@ export function submitPracticeSampleResult(state, matchId) {
   const operatorId = match.refereeId || match.createdBy || PRACTICE_SELF_ID;
   const scoreA = 21;
   const scoreB = 17;
-  const endedState = nextMatchEnded(state, matchId);
   if (match.refereeId) {
+    const endedState = nextMatchEnded(state, matchId);
     return withPracticeActor(endedState, operatorId, repository.submitMatchResult, matchId, {
       scoreA,
       scoreB,
@@ -414,7 +414,8 @@ export function submitPracticeSampleResult(state, matchId) {
     });
   }
 
-  let next = endedState;
+  if (match.endedAt) return state;
+  let next = state;
   while (true) {
     const current = next.matches.find((item) => item.id === matchId);
     const currentScoreA = Number(current?.result?.scoreA ?? current?.teamA?.score ?? 0);
@@ -422,12 +423,14 @@ export function submitPracticeSampleResult(state, matchId) {
     const deltaA = Math.min(3, Math.max(0, scoreA - currentScoreA));
     const deltaB = Math.min(3, Math.max(0, scoreB - currentScoreB));
     if (!deltaA && !deltaB) break;
-    next = withPracticeActor(next, operatorId, repository.incrementMatchScore, matchId, deltaA, deltaB, {
+    const updated = withPracticeActor(next, operatorId, repository.incrementMatchScore, matchId, deltaA, deltaB, {
       expectedRevisionA: Number(current?.result?.scoreRevisionA ?? 0),
       expectedRevisionB: Number(current?.result?.scoreRevisionB ?? 0),
     });
+    if (updated === next) break;
+    next = updated;
   }
-  return next;
+  return nextMatchEnded(next, matchId);
 }
 
 function nextMatchEnded(state, matchId) {
@@ -439,7 +442,7 @@ function nextMatchEnded(state, matchId) {
 
 export function approvePracticeDummyPlayers(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match?.result) return state;
+  if (!match?.endedAt || (match.refereeId && !match.result)) return state;
   const operatorId = match.refereeId || match.createdBy || PRACTICE_SELF_ID;
   return withPracticeActor(state, operatorId, repository.finalizeMatchByAuthority, matchId);
 }

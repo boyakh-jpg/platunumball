@@ -287,7 +287,8 @@ export function getMatchIntentPresetPatch(intent = "standard_competitive", mode 
     ranked: competitive,
     official: false,
     preRegistered: true,
-    ...(pickup ? { hostJoinMode: "player", teamOnly: false, mmrLimitMode: "off" } : {}),
+    mmrLimitMode: competitive ? "block" : "off",
+    ...(pickup ? { hostJoinMode: "player", teamOnly: false } : {}),
     ...getModeClockPreset(mode, "community"),
   };
 }
@@ -331,10 +332,11 @@ export function getMatchIntentChangePatch(source = {}, intent = "standard_compet
     playingTimePolicy,
     lineupSelectionPolicy: pickup ? "no_fixed_starter" : undefined,
     ranked: matchIntent === "standard_competitive",
+    mmrLimitMode: matchIntent === "standard_competitive" ? "block" : "off",
     official: false,
     preRegistered: true,
     benchPaymentAcknowledged: requiresAcknowledgement ? Boolean(source.benchPaymentAcknowledged) : true,
-    ...(pickup ? { hostJoinMode: "player", teamOnly: false, mmrLimitMode: "off" } : {}),
+    ...(pickup ? { hostJoinMode: "player", teamOnly: false } : {}),
   };
 }
 
@@ -516,7 +518,7 @@ export function getMatchCreationPolicyPayload(source = {}) {
     teamOnly: pickup ? false : policySource.hostJoinMode === "team" || policySource.teamOnly === true,
     ranked: matchPurpose === "competitive" && policySource.ranked !== false,
     official: pickup ? false : Boolean(policySource.official),
-    mmrLimitMode: pickup ? "off" : policySource.mmrLimitMode,
+    mmrLimitMode: pickup || matchPurpose !== "competitive" ? "off" : "block",
     paymentPolicy,
     benchPaymentAcknowledged: Boolean(policySource.benchPaymentAcknowledged),
     requiresBenchPaymentAcknowledgement,

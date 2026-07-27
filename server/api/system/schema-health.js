@@ -218,6 +218,9 @@ const REQUIRED_COLUMNS = {
     "score_against",
     "outcome",
     "stats",
+    "record_type",
+    "visibility",
+    "owner_profile_id",
   ],
   match_record_teams: [
     "match_id",
@@ -275,6 +278,13 @@ const REQUIRED_COLUMNS = {
     "steals",
     "blocks",
     "fouls",
+  ],
+  profile_personal_record_summaries: [
+    "profile_id", "record_count", "win_count", "loss_count", "draw_count", "stat_count",
+    "points", "rebounds", "assists", "steals", "blocks", "fouls",
+    "public_record_count", "public_win_count", "public_loss_count", "public_draw_count", "public_stat_count",
+    "public_points", "public_rebounds", "public_assists", "public_steals", "public_blocks", "public_fouls",
+    "last_record_id", "last_record_at", "updated_at",
   ],
   profile_match_summaries: [
     "profile_id",

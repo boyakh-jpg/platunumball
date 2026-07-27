@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Database, MapPin, MessageCircle, Moon, Send, ShieldCheck, Star, Sun, Unlink2, UserRound } from "lucide-react";
+import { BookOpen, Database, MapPin, MessageCircle, Moon, Send, ShieldCheck, Star, Sun, Unlink2 } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -13,7 +13,7 @@ import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportReasonValue, getReportTargetType } from "../lib/reportReasons.js";
 import { formatKoreanDateTime, formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
-import { COURT_REQUEST_TRUST_MIN, REFEREE_EXAM_COOLDOWN_DAYS, REFEREE_TRUST_MIN, REGIONS, REPORT_MATCH_WINDOW_MS, getTestAccountDisplayLabel } from "../lib/constants.js";
+import { COURT_REQUEST_TRUST_MIN, REFEREE_EXAM_COOLDOWN_DAYS, REFEREE_TRUST_MIN, REGIONS, REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
 import {
   COURT_ACCESS_OPTIONS,
   COURT_KIND_OPTIONS,
@@ -126,28 +126,12 @@ const SETTINGS_SECTIONS = {
   referee: { eyebrow: "Referee", title: "심판 등록" },
 };
 const EMBEDDED_SETTINGS_SECTIONS = new Set(["profile", "discord"]);
-const AUTH_PROVIDER_LABELS = {
-  google: "Google",
-  kakao: "Kakao",
-  naver: "Naver",
-  test: "Test",
-};
-
 function getPrivacyDraft(privacy = {}) {
   return {
     regionRanking: privacy.regionRanking !== false,
     teamHistory: privacy.teamHistory !== false,
     statSummary: privacy.statSummary !== false,
   };
-}
-
-function getAuthSessionLabel(authUser = null) {
-  if (!authUser) return "비로그인";
-  const providerName = authUser.user_metadata?.providerName;
-  if (providerName) return getTestAccountDisplayLabel(providerName);
-  const provider = String(authUser.app_metadata?.provider ?? "").trim().toLowerCase();
-  if (provider) return AUTH_PROVIDER_LABELS[provider] ?? provider;
-  return getTestAccountDisplayLabel(authUser.email ?? "이메일 계정");
 }
 
 function getMatchReportTime(match = {}) {
@@ -245,7 +229,7 @@ function formatCourtDistance(distanceMeters) {
   return `${(distance / 1000).toFixed(1)}km`;
 }
 
-export default function Settings({ app, auth, section = "main" }) {
+export default function Settings({ app, section = "main" }) {
   const loadDirectory = app.actions.loadDirectory;
   const loadAdminContext = app.actions.loadAdminContext;
   useEffect(() => {
@@ -285,7 +269,6 @@ export default function Settings({ app, auth, section = "main" }) {
   const [reportMatchesLoading, setReportMatchesLoading] = useState(false);
   const [reportMatchesError, setReportMatchesError] = useState("");
   const reportMatchesLoadRef = useRef("");
-  const [accountQuery, setAccountQuery] = useState("");
   const [favoriteQuery, setFavoriteQuery] = useState("");
   const [favoriteListType, setFavoriteListType] = useState("");
   const [courtAddressQuery, setCourtAddressQuery] = useState("");
@@ -820,32 +803,6 @@ export default function Settings({ app, auth, section = "main" }) {
         ? Boolean(selectedReportMatch && selectedReportedUserIds.length)
         : Boolean(selectedReportMatch || selectedReportCourtRequest || selectedReportCourt || selectedReportCourtReview)
   );
-  const matchCountByUser = useMemo(() => {
-    const counts = new Map();
-    app.state.matches.forEach((match) => {
-      [...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])].forEach((userId) => {
-        counts.set(userId, (counts.get(userId) ?? 0) + 1);
-      });
-    });
-    return counts;
-  }, [app.state.matches]);
-  const testAccounts = useMemo(
-    () => app.state.users.filter((user) => user.testLoginId),
-    [app.state.users],
-  );
-  const visibleTestAccounts = useMemo(() => {
-    const keyword = accountQuery.trim().toLowerCase();
-    return testAccounts
-      .filter((user) => (
-        keyword
-          ? `${user.name} ${getUserHashtag(user)} ${user.region} ${user.position} ${user.testLoginId}`.toLowerCase().includes(keyword)
-          : true
-      ))
-      .slice(0, 12);
-  }, [accountQuery, testAccounts]);
-  const averageMatches = testAccounts.length
-    ? Math.round(testAccounts.reduce((sum, user) => sum + (matchCountByUser.get(user.id) ?? 0), 0) / testAccounts.length)
-    : 0;
   const answeredRefereeExamCount = Object.keys(refereeExamAnswers).length;
   const refereeExamRequired = refereeDraft.qualification === "community_exam";
   const refereeExamPassed = refereeExamResult?.passed === true;
@@ -856,19 +813,6 @@ export default function Settings({ app, auth, section = "main" }) {
   const refereeExamLockedUntilMs = latestRefereeExamAttempt?.availableAfter ? new Date(latestRefereeExamAttempt.availableAfter).getTime() : 0;
   const refereeExamLocked = Number.isFinite(refereeExamLockedUntilMs) && refereeExamLockedUntilMs > Date.now();
   const refereeExamLockLabel = refereeExamLocked ? formatKoreanDateTime(latestRefereeExamAttempt.availableAfter) : "";
-  const renderAccountSearchItem = (user) => (
-    <button
-      key={user.id}
-      type="button"
-      className={user.id === app.currentUserId ? "search-picker-result-row selected" : "search-picker-result-row"}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => app.actions.switchUser(user.id)}
-    >
-      <strong>{user.name}</strong>
-      <span>{getTestAccountDisplayLabel(user.testLoginId)} · {user.region} · {matchCountByUser.get(user.id) ?? 0}경기</span>
-      <em>{user.position}</em>
-    </button>
-  );
   const selectReportTarget = (item) => {
     setReportTargetQuery(`${item.title} ${item.meta ?? ""}`.trim());
     if (item.kind === "court_request") {
@@ -1332,26 +1276,6 @@ export default function Settings({ app, auth, section = "main" }) {
       </header>
       <div className={`content-grid ${settingsSection === "main" ? "" : "settings-section-grid"}`}>
         <div className="page-stack settings-main-column">
-          <Card className="section-card settings-data-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">데이터 모드</p>
-                <h2>{isSupabaseConfigured ? "온라인 저장" : "체험 모드"}</h2>
-              </div>
-              <Badge tone={isSupabaseConfigured ? "green" : "orange"}>{isSupabaseConfigured ? "연결됨" : "체험 중"}</Badge>
-            </div>
-            <div className="contract-grid single">
-              <div>
-                <span>저장 위치</span>
-                <strong>{isSupabaseConfigured ? "온라인" : "이 기기"}</strong>
-              </div>
-              <div>
-                <span>세션</span>
-                <strong>{getAuthSessionLabel(auth?.user)}</strong>
-              </div>
-            </div>
-          </Card>
-
           <Card className="section-card settings-nav-card">
             <div className="section-title-row">
               <div>
@@ -1393,40 +1317,6 @@ export default function Settings({ app, auth, section = "main" }) {
             </div>
             <div className="settings-save-row">
               <small>{themeSaveStatus || (themeDirty ? "변경 있음" : "저장됨")}</small>
-            </div>
-          </Card>
-
-          <Card className="section-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">사용 설명</p>
-                <h2>홈 안내 카드</h2>
-              </div>
-              <BookOpen size={22} />
-            </div>
-            <p>홈의 ‘처음 사용하시나요?’ 카드만 숨깁니다. 사용 설명 페이지와 연습 경기는 계속 이용할 수 있습니다.</p>
-            <div className="segmented-control">
-              <button
-                type="button"
-                className={homeGuideCardVisible ? "active" : ""}
-                aria-pressed={homeGuideCardVisible}
-                disabled={homeGuideCardSavePending}
-                onClick={() => void selectHomeGuideCardVisibility(true)}
-              >
-                표시
-              </button>
-              <button
-                type="button"
-                className={!homeGuideCardVisible ? "active" : ""}
-                aria-pressed={!homeGuideCardVisible}
-                disabled={homeGuideCardSavePending}
-                onClick={() => void selectHomeGuideCardVisibility(false)}
-              >
-                숨김
-              </button>
-            </div>
-            <div className="settings-save-row">
-              <small>{homeGuideCardSaveStatus || "선택 즉시 저장됩니다."}</small>
             </div>
           </Card>
 
@@ -1604,125 +1494,67 @@ export default function Settings({ app, auth, section = "main" }) {
             {discordSaveStatus ? <small>{discordSaveStatus}</small> : null}
           </Card>
 
-          <Card className="section-card admin-seed-card">
+          <Card className="section-card settings-privacy-card settings-preference-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">테스트 데이터</p>
-                <h2>테스트 리그 현황</h2>
-              </div>
-              <Database size={22} />
-            </div>
-            <div className="contract-grid single">
-              <div>
-                <span>로그인 계정</span>
-                <strong>{testAccounts.length}개</strong>
-              </div>
-              <div>
-                <span>경기 데이터</span>
-                <strong>{app.state.matches.length}경기</strong>
-              </div>
-              <div>
-                <span>평균 경기</span>
-                <strong>{averageMatches}경기/계정</strong>
-              </div>
-              <div>
-                <span>모집방</span>
-                <strong>{app.state.recruitingPosts.length}개</strong>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="section-card settings-account-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Admin Login</p>
-                <h2>테스트 계정 로그인</h2>
-              </div>
-              <UserRound size={22} />
-            </div>
-            {app.profileLocked ? (
-              <div className="contract-grid single">
-                <div>
-                  <span>프로필 고정</span>
-                  <strong>{app.currentUser?.name ?? app.currentUserId}</strong>
-                </div>
-                <div>
-                  <span>전환 제한</span>
-                  <strong>Google 계정당 1개</strong>
-                </div>
-              </div>
-            ) : (
-              <>
-                <SearchPicker
-                  value={accountQuery}
-                  onChange={setAccountQuery}
-                  placeholder="이름, 지역, 포지션, 사용자 ID 검색"
-                  items={visibleTestAccounts}
-                  idleItems={visibleTestAccounts}
-                  idleTitle="테스트 계정"
-                  showIdleOnFocus
-                  fieldClassName="admin-account-search"
-                  renderItem={renderAccountSearchItem}
-                />
-                <label>
-                  전체 계정 선택
-                  <select value={app.currentUserId} onChange={(event) => app.actions.switchUser(event.target.value)}>
-                    {app.state.users.map((user) => (
-                      <option key={user.id} value={user.id}>{user.testLoginId ? `${getTestAccountDisplayLabel(user.testLoginId)} · ` : ""}{user.name} · {user.region} · {user.position}</option>
-                    ))}
-                  </select>
-                </label>
-              </>
-            )}
-          </Card>
-
-          <Card className="section-card settings-privacy-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">공개 범위</p>
-                <h2>프로필 표시</h2>
-              </div>
-              <ShieldCheck size={22} />
-            </div>
-            <div className="settings-toggle-grid">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={privacyDraft.regionRanking !== false}
-                  onChange={(event) => setPrivacyDraft((current) => ({ ...current, regionRanking: event.target.checked }))}
-                />
-                지역 랭킹에 표시
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={privacyDraft.teamHistory !== false}
-                  onChange={(event) => setPrivacyDraft((current) => ({ ...current, teamHistory: event.target.checked }))}
-                />
-                소속팀 히스토리 표시
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={privacyDraft.statSummary !== false}
-                  onChange={(event) => setPrivacyDraft((current) => ({ ...current, statSummary: event.target.checked }))}
-                />
-                개인 스탯 요약 표시
-              </label>
-            </div>
-            <div className="settings-save-row">
-              <small>{privacySaveStatus || (privacyDirty ? "변경 있음" : "저장됨")}</small>
-            </div>
-          </Card>
-
-          <Card className="section-card settings-unified-save-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Save</p>
-                <h2>설정 저장</h2>
+                <p className="eyebrow">Display</p>
+                <h2>표시 설정</h2>
               </div>
               <Badge tone={generalSettingsDirty ? "orange" : "neutral"}>{generalSettingsDirty ? "변경 있음" : "저장됨"}</Badge>
             </div>
+
+            <div className="settings-preference-group settings-home-guide-group">
+              <div className="settings-preference-heading">
+                <strong>홈 안내 카드</strong>
+                <span>홈의 ‘처음 사용하시나요?’ 카드만 숨깁니다. 사용 설명과 연습 경기는 계속 이용할 수 있습니다.</span>
+              </div>
+              <div className="settings-toggle-grid">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={homeGuideCardVisible}
+                    disabled={homeGuideCardSavePending}
+                    onChange={(event) => void selectHomeGuideCardVisibility(event.target.checked)}
+                  />
+                  홈에서 안내 카드 표시
+                </label>
+              </div>
+              <small className="settings-preference-status">{homeGuideCardSaveStatus || "선택 즉시 저장됩니다."}</small>
+            </div>
+
+            <div className="settings-preference-group">
+              <div className="settings-preference-heading">
+                <strong>프로필 표시</strong>
+                <span>다른 사용자에게 보여줄 프로필 정보를 선택합니다.</span>
+              </div>
+              <div className="settings-toggle-grid">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={privacyDraft.regionRanking !== false}
+                    onChange={(event) => setPrivacyDraft((current) => ({ ...current, regionRanking: event.target.checked }))}
+                  />
+                  지역 랭킹에 표시
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={privacyDraft.teamHistory !== false}
+                    onChange={(event) => setPrivacyDraft((current) => ({ ...current, teamHistory: event.target.checked }))}
+                  />
+                  소속팀 히스토리 표시
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={privacyDraft.statSummary !== false}
+                    onChange={(event) => setPrivacyDraft((current) => ({ ...current, statSummary: event.target.checked }))}
+                  />
+                  개인 스탯 요약 표시
+                </label>
+              </div>
+            </div>
+
             <div className="settings-save-row">
               <small>{generalSettingsStatus}</small>
               <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty}>저장</Button>

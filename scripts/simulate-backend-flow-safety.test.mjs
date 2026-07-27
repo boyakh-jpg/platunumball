@@ -30,6 +30,10 @@ const autoFinalizeNormalizationMigration = readFileSync(
   join(dirname(scriptPath), "../supabase/migrations/20260725020500_restore_auto_finalize_dispute_normalization.sql"),
   "utf8",
 );
+const courtRequestQuarantineMigration = readFileSync(
+  join(dirname(scriptPath), "../supabase/migrations/20260727143000_preserve_approved_court_requests_in_quarantine.sql"),
+  "utf8",
+);
 const schemaHealthSource = readFileSync(
   join(dirname(scriptPath), "../server/api/system/schema-health.js"),
   "utf8",
@@ -173,6 +177,44 @@ test("local Supabase target remains available without production confirmation", 
   assert.match(result.stderr, /"environment":"local"/);
 });
 
+test("ranked one-on-one simulation sends the central competitive purpose", () => {
+  const scenarioStart = scriptSource.indexOf("async function runOneOnOneScenario");
+  const scenarioEnd = scriptSource.indexOf("async function runMatchReminderCancelScenario", scenarioStart);
+  const scenarioSource = scriptSource.slice(scenarioStart, scenarioEnd);
+
+  assert.ok(scenarioStart >= 0 && scenarioEnd > scenarioStart);
+  assert.match(scenarioSource, /matchPurpose: ranked \? "competitive" : "friendly"/);
+  assert.doesNotMatch(scenarioSource, /matchPurpose: "friendly"/);
+});
+
+test("no-referee dispute simulation remains score-only", () => {
+  const scenarioStart = scriptSource.indexOf("async function runDisputeResumeThumbsScenario");
+  const scenarioEnd = scriptSource.indexOf("async function runRecruitingActorScenario", scenarioStart);
+  const scenarioSource = scriptSource.slice(scenarioStart, scenarioEnd);
+
+  assert.ok(scenarioStart >= 0 && scenarioEnd > scenarioStart);
+  assert.match(scenarioSource, /setMatchScoreByIncrements/);
+  assert.match(scenarioSource, /kind: "team_score"/);
+  assert.match(scenarioSource, /requestedScore: 15/);
+  assert.match(scenarioSource, /decision: "accepted"/);
+  assert.match(scenarioSource, /Object\.keys\(match\?\.result\?\.playerStats \?\? \{\}\)\.length === 0/);
+  assert.doesNotMatch(scenarioSource, /makePointsOnlyResult/);
+  assert.doesNotMatch(scenarioSource, /disputeDraft\.playerStats/);
+});
+
+test("one-on-one simulation records no-referee scores before ending the match", () => {
+  const scenarioStart = scriptSource.indexOf("async function runOneOnOneScenario");
+  const scenarioEnd = scriptSource.indexOf("async function runMatchReminderCancelScenario", scenarioStart);
+  const scenarioSource = scriptSource.slice(scenarioStart, scenarioEnd);
+  const liveScoreIndex = scenarioSource.indexOf("if (!refereeWanted) {\n    scoreWrite = await setMatchScoreByIncrements");
+  const endMatchIndex = scenarioSource.indexOf("action: \"endMatch\"");
+  const refereePostgameIndex = scenarioSource.indexOf("if (refereeWanted) {\n    scoreWrite = await setMatchScoreByIncrements");
+
+  assert.ok(scenarioStart >= 0 && scenarioEnd > scenarioStart);
+  assert.ok(liveScoreIndex >= 0 && liveScoreIndex < endMatchIndex);
+  assert.ok(refereePostgameIndex > endMatchIndex);
+});
+
 test("simulation cleanup is exact, bounded, and guarded from user matches", () => {
   assert.match(scriptSource, /rankball_cleanup_simulation_artifacts_exact/);
   assert.doesNotMatch(scriptSource, /\.rpc\("rankball_cleanup_simulation_artifacts"\)/);
@@ -194,6 +236,12 @@ test("simulation cleanup is exact, bounded, and guarded from user matches", () =
   assert.match(exactCleanupIdempotentMigration, /'derivedRefreshCompleted', true/);
   assert.match(scriptSource, /if \(!derivedRefreshCompleted\)/);
   assert.match(schemaHealthSource, /name: "rankball_cleanup_simulation_artifacts_exact"/);
+});
+
+test("maintenance quarantine preserves terminal court-request decisions", () => {
+  assert.match(courtRequestQuarantineMigration, /request\.status not in \(''approved'', ''rejected'', ''simulation_closed''\)/);
+  assert.match(courtRequestQuarantineMigration, /rankball_quarantine_simulation_artifacts_unexpected_definition/);
+  assert.doesNotMatch(courtRequestQuarantineMigration, /drop\s+table|truncate\s+table|delete\s+from/i);
 });
 
 test("maintenance auto-finalization fills only missing active-player stats", () => {

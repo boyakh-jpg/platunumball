@@ -353,6 +353,7 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   const panelSource = await readSource("src/components/match/MatchClockPanel.jsx");
   const clockStyles = await readSource("src/styles/match-clock.css");
   const recruitingSource = await readSource("src/pages/Recruiting.jsx");
+  const matchRoomSource = await readSource("src/pages/MatchRoom.jsx");
   const forceEndMigration = [
     await readSource("supabase/migrations/20260724230000_match_clock_one_hour_force_end.sql"),
     await readSource("supabase/migrations/20260725012000_match_duration_and_clock_limits.sql"),
@@ -366,7 +367,8 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /normalizeMatchRules\(match\.rules, \{ mode: match\.mode \}\)/);
   assert.match(panelSource, /matchRules\.periodBreakMinutes/);
   assert.match(panelSource, /matchRules\.halftimeMinutes/);
-  assert.match(panelSource, /directScoreControlsEnabled = matchRules\.onCourtCount === 1/);
+  assert.match(panelSource, /directScoreControlsEnabled = scoreboardEnabled/);
+  assert.match(panelSource, /export function MatchScoreControls/);
   assert.match(panelSource, /directScoreControlsEnabled && editableScoreSides\.includes\("teamA"\)/);
   assert.match(panelSource, /directScoreControlsEnabled && editableScoreSides\.includes\("teamB"\)/);
   assert.match(panelSource, /breakLimitMs > 0/);
@@ -377,10 +379,15 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /ui-match-shot-clock-action/);
   assert.match(panelSource, /<RotateCcw size=\{15\}/);
   assert.match(recruitingSource, /onMatchEnded=\{\(\) => void app\.actions\.loadMatchDetail\(sourceMatch\.id\)\}/);
+  assert.match(recruitingSource, /!selectedMatchRules\.gameClockEnabled[\s\S]*?<MatchScoreControls/);
+  assert.match(matchRoomSource, /normalizedRules\.gameClockEnabled === false[\s\S]*?<MatchScoreControls/);
+  assert.match(matchRoomSource, /isSharedRecord && match\.rules\?\.recordSetupReady === true/);
   assert.doesNotMatch(panelSource, /담당·샷클락 저장|AudioContext/);
   assert.match(clockStyles, /\.ui-match-clock-focus-backdrop[\s\S]*?overflow: hidden;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/);
   assert.match(clockStyles, /\.ui-match-clock-scoreboard \{[^}]*overflow: hidden;/);
+  assert.match(clockStyles, /\.ui-match-score-control-grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(clockStyles, /@media \(width <= 720px\)[\s\S]*\.ui-match-score-control-grid[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-notice \{[^}]*pointer-events: none;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-display-grid \{[^}]*grid-template-columns: minmax\(0, 4\.3fr\) minmax\(124px, 0\.7fr\);/);
   assert.match(clockStyles, /@media \(width >= 721px\)[\s\S]*?height: min\(64dvh, 34dvw, 720px\);[\s\S]*?min-height: 360px;/);

@@ -61,9 +61,9 @@ export const RECRUITING_JOIN_MODES = {
 };
 
 export const MMR_RANGE_POLICIES = {
-  narrow: { label: "좁게", detail: "비슷한 실력만", gap: 120, ratingScale: 1 },
-  standard: { label: "보통", detail: "적당한 범위", gap: 220, ratingScale: 0.9 },
-  wide: { label: "넓게", detail: "대기 풀 우선", gap: 360, ratingScale: 0.7 },
+  narrow: { label: "좁게", detail: "비슷한 실력만", gap: 120, ratingScale: 1.1 },
+  normal: { label: "보통", detail: "적당한 범위", gap: 220, ratingScale: 1 },
+  wide: { label: "넓게", detail: "대기 풀 우선", gap: 360, ratingScale: 0.8 },
 };
 
 const RESERVE_ROLES = new Set();
@@ -361,7 +361,7 @@ function uniqueCandidates(candidates = []) {
 }
 
 export function normalizeRecruitingMmrRangeMode(mode = "narrow") {
-  if (mode === "normal") return "standard";
+  if (mode === "standard") return "normal";
   return MMR_RANGE_POLICIES[mode] ? mode : "narrow";
 }
 
@@ -798,7 +798,10 @@ export function isRecruitingRoomInUserSchedule(post, state, userId, teamIds = []
 export function normalizeRecruitingPost(post = {}) {
   post = post && typeof post === "object" ? post : {};
   const type = RECRUITING_TYPES[post.type] ? post.type : "need_player";
-  const hostJoinMode = post.hostJoinMode === "player" || !post.teamId ? "player" : "team";
+  const hostJoinMode = post.hostJoinMode === "team"
+    || (post.hostJoinMode !== "player" && Boolean(post.teamId))
+    ? "team"
+    : "player";
   const playerIds = unique(post.playerIds ?? post.players ?? []);
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const ownerId = getRecruitingRoomOwnerId({ ...post, roomState });
@@ -902,7 +905,9 @@ function getRecruitingHostEntry(post = {}, state = {}) {
   const capacity = getRecruitingSideCapacity(post);
   const benchCapacity = getRecruitingBenchCapacity(post);
   const exactTournamentRoster = Boolean(post.tournamentId);
-  const joinMode = post.hostJoinMode === "team" && (team || post.teamId || post.playerIds?.length) ? "team" : "player";
+  const joinMode = post.hostJoinMode === "team" ? "team" : "player";
+  const waitingForHostTeam = joinMode === "team" && !post.teamId && !post.playerIds?.length;
+  if (waitingForHostTeam) return null;
   const players = joinMode === "team"
     ? (exactTournamentRoster ? unique(post.playerIds ?? []).slice(0, capacity) : getTeamEntryPlayerIds(team, capacity, post.playerIds, post.playerId))
     : [post.playerId].filter(Boolean);

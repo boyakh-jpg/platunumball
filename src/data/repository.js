@@ -2540,6 +2540,7 @@ function createSoloRecordMatch(state, draft = {}) {
   const mode = normalizeSoloRecordMode(draft.mode);
   const sideSize = getSoloRecordSideSize(mode);
   const recordEntryMode = draft.recordEntryMode === "named" ? "named" : "quick";
+  const visibility = draft.visibility === "public" ? "public" : "private";
   const teamAName = String(draft.soloTeamAName ?? "").trim() || "우리팀";
   const teamBName = String(draft.soloTeamBName ?? draft.soloOpponentName ?? "").trim() || "상대팀";
   const teamAEntries = recordEntryMode === "named" ? parseSoloRecordRosterText(draft.soloTeamAPlayersText) : [];
@@ -2589,7 +2590,7 @@ function createSoloRecordMatch(state, draft = {}) {
     mmrExcludedPlayerIds,
     playedPlayerIds,
     statRecorders: {},
-    visibility: "private",
+    visibility,
     region: selectedCourt?.region ?? draft.region,
     ratingScale: 0,
     recordSummary: {
@@ -2611,7 +2612,7 @@ function createSoloRecordMatch(state, draft = {}) {
     scheduledTime: recordTime,
     scheduledAt: `${recordDate} ${recordTime}`,
     timingType: "scheduled",
-    visibility: "private",
+    visibility,
     status: "confirmed",
     ranked: false,
     official: false,
@@ -3570,8 +3571,9 @@ export function submitMatchResult(state, matchId, result) {
       return [playerId, { by: currentUserId, side: sideName, source, submittedAt: now }];
     })),
   };
-  const nextScoreA = getMergedResultScore(scoringMatch, nextPlayerStats, "teamA", result.scoreA);
-  const nextScoreB = getMergedResultScore(scoringMatch, nextPlayerStats, "teamB", result.scoreB);
+  const currentResult = draftEntry ? match.disputeDraftResult ?? match.result : match.result;
+  const nextScoreA = Number(currentResult?.scoreA ?? match.teamA?.score ?? 0);
+  const nextScoreB = Number(currentResult?.scoreB ?? match.teamB?.score ?? 0);
   const nextResult = {
     scoreA: nextScoreA,
     scoreB: nextScoreB,
@@ -3627,75 +3629,8 @@ export function submitMatchResult(state, matchId, result) {
   };
 }
 
-export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
-  const storedMatch = state.matches.find((item) => item.id === matchId);
-  const match = withEffectiveMatchStatRecorders(storedMatch);
-  if (!match || match.refereeId || !["agreed", "approval"].includes(match.status)) return state;
-  if (!MATCH_SIDES.includes(sideName)) return state;
-
-  const currentRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
-  const currentRecorderId = currentRecorders[sideName];
-  if (!currentRecorderId || currentRecorderId !== state.currentUserId) return state;
-
-  const handoffPatch = { valid: getMatchReservePlayerIds(match, sideName).includes(nextRecorderId) && nextRecorderId !== currentRecorderId, match, swapped: false };
-  if (!handoffPatch.valid) {
-    return {
-      ...state,
-      notifications: [
-        {
-          id: makeId("n"),
-          title: "인수인계 불가",
-          body: "같은 사이드의 다른 후보에게만 기록 권한을 넘길 수 있습니다.",
-          tone: "orange",
-          matchId,
-        },
-        ...state.notifications,
-      ],
-    };
-  }
-
-  const nextRecorders = { ...currentRecorders, [sideName]: nextRecorderId };
-  const nextUser = state.users.find((user) => user.id === nextRecorderId);
-  const now = new Date().toISOString();
-  const handoffEvent = {
-    id: makeId("handoff"),
-    side: sideName,
-    from: currentRecorderId,
-    to: nextRecorderId,
-    createdAt: now,
-  };
-  return {
-    ...state,
-    matches: state.matches.map((item) => (
-      item.id === matchId
-        ? (() => {
-            const patched = item;
-            return {
-              ...patched,
-              statRecorders: nextRecorders,
-              rules: {
-                ...(patched.rules ?? {}),
-                statRecorders: nextRecorders,
-              },
-              recorderHandoffs: [
-                handoffEvent,
-                ...(patched.recorderHandoffs ?? []),
-              ],
-            };
-        })()
-        : item
-    )),
-    notifications: [
-      {
-        id: makeId("n"),
-        title: "기록자 인수인계",
-        body: `${match.title} ${SIDE_LABEL_TEXT[sideName]} 기록 권한이 ${nextUser?.name ?? "후보"}에게 넘어갔습니다.`,
-        tone: "match",
-        matchId,
-      },
-      ...state.notifications,
-    ],
-  };
+export function handoffMatchRecorder(state) {
+  return state;
 }
 
 export function approveTournamentReferee(state, tournamentId) {
@@ -4027,14 +3962,15 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
   if (!match || match.status !== "agreed" || match.endedAt) return state;
   if (getMatchRoomPhase(match).phase !== "live") return state;
   if (!MATCH_SIDES.includes(sideName)) return state;
-  if (!["late", "ejection", "operator"].includes(reason)) return state;
+  if (!["self", "late", "injury", "ejection", "operator"].includes(reason)) return state;
   const substitutionAccess = getMatchSubstitutionAccess(match, state.currentUserId, sideName, {
     canOperate: currentUserIsEligibleMatchReferee(state, match),
     recorderSides: getStatRecorderSides(match, state.currentUserId),
   });
   if (!substitutionAccess.allowedReservePlayerIds.includes(reservePlayerId)) return state;
-  if (!substitutionAccess.canManage && !substitutionAccess.canSelfSubstitute) return state;
+  if (!substitutionAccess.canManage && (!substitutionAccess.canSelfSubstitute || reason !== "self")) return state;
   if (reason === "late" && !isMatchLateAttendancePlayer(match, reservePlayerId)) return state;
+  const finalReason = reason === "self" && isMatchLateAttendancePlayer(match, reservePlayerId) ? "late" : reason;
 
   const activeIds = match[sideName]?.players ?? [];
   const reserveIds = getMatchReservePlayerIds(match, sideName);
@@ -4052,7 +3988,7 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
     side: sideName,
     activeOutPlayerId: activePlayerId,
     activeInPlayerId: reservePlayerId,
-    reason,
+    reason: finalReason,
     confirmedBy: state.currentUserId,
     createdAt: now,
   };
@@ -4118,11 +4054,20 @@ export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revi
   if ((!deltaA && !deltaB) || Math.abs(deltaA) > 3 || Math.abs(deltaB) > 3) return state;
   const canOperate = currentUserCanOperateStartedMatch(state, match);
   const live = !match.endedAt && match.status === "agreed";
-  const postgameAuthority = Boolean(match.endedAt && canOperate && ["agreed", "approval", "disputed"].includes(match.status));
-  if (!live && !postgameAuthority) return state;
-  const editableSides = postgameAuthority
-    ? MATCH_SIDES
-    : getMatchScoreEditableSides(match, state.currentUserId, { canOperatePostStart: canOperate });
+  const sharedRecordEntry = Boolean(
+    match.endedAt &&
+    isMatchRecordMatch(match) &&
+    match.rules?.recordSetupReady === true &&
+    match.status === "agreed" &&
+    canOperate,
+  );
+  const refereePostgame = Boolean(
+    match.endedAt &&
+    ["agreed", "approval"].includes(match.status) &&
+    currentUserIsEligibleMatchReferee(state, match),
+  );
+  if (!live && !sharedRecordEntry && !refereePostgame) return state;
+  const editableSides = getMatchScoreEditableSides(match, state.currentUserId, { canOperatePostStart: canOperate });
   if ((deltaA && !editableSides.includes("teamA")) || (deltaB && !editableSides.includes("teamB"))) return state;
   const result = match.result ?? { playerStats: {}, statSubmissions: {}, scoreSubmissions: {} };
   const revisionA = Number(result.scoreRevisionA ?? 0);
@@ -4148,7 +4093,6 @@ export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revi
     ...state,
     matches: state.matches.map((item) => item.id === matchId ? {
       ...item,
-      status: item.endedAt ? "approval" : item.status,
       teamA: { ...item.teamA, score: scoreA },
       teamB: { ...item.teamB, score: scoreB },
       result: nextResult,
@@ -4214,13 +4158,20 @@ export function resolveMatchRecorderTakeover(state, matchId, sideName, requestId
 
 export function finalizeMatchByAuthority(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match?.result || !match.endedAt || match.confirmedAt || match.status === "disputed") return state;
+  if (!match?.endedAt || match.confirmedAt || match.status === "disputed" || (match.refereeId && !match.result)) return state;
   if (!currentUserCanOperateStartedMatch(state, match) || (match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
-  const result = match.refereeId ? match.result : { ...match.result, playerStats: {}, statSubmissions: {} };
+  const baseResult = match.result ?? {
+    scoreA: Number(match.teamA?.score ?? 0),
+    scoreB: Number(match.teamB?.score ?? 0),
+    submittedBy: state.currentUserId,
+    submittedAt: new Date().toISOString(),
+  };
+  const result = match.refereeId ? baseResult : { ...baseResult, playerStats: {}, statSubmissions: {} };
   return finalizeMatch(state, { ...match, result, finalizedBy: state.currentUserId });
 }
 export function approveMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
+  if (isMatchRecordMatch(match)) return state;
   if (!match?.result || ["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
 
   const approvalId = getSelfDecisionId(state, match, sideName, "approvals", playerId);
@@ -4275,6 +4226,18 @@ export function approveMatch(state, matchId, sideName, playerId) {
 
 function applyDisputeRequestToResult(match = {}, baseResult = null, disputeRequest = {}) {
   const nextResult = clone(baseResult ?? match.disputeDraftResult ?? match.result);
+  if (disputeRequest.kind === "team_score") {
+    const requestedSide = disputeRequest.side;
+    const requestedScore = Number(disputeRequest.requestedScore);
+    if (!nextResult || !MATCH_SIDES.includes(requestedSide) || !Number.isFinite(requestedScore)) return nextResult;
+    return {
+      ...nextResult,
+      [requestedSide === "teamA" ? "scoreA" : "scoreB"]: Math.min(999, Math.max(0, Math.round(requestedScore))),
+      playerStats: match.refereeId ? nextResult.playerStats ?? {} : {},
+      statSubmissions: match.refereeId ? nextResult.statSubmissions ?? {} : {},
+      updatedAt: new Date().toISOString(),
+    };
+  }
   const requestedPlayerId = String(disputeRequest.playerId ?? "");
   const requestedPoints = Number(disputeRequest.requestedPoints);
   if (!nextResult || !requestedPlayerId || !Number.isFinite(requestedPoints)) return nextResult;
@@ -4430,8 +4393,8 @@ function currentUserCanOperateStartedMatch(state, match) {
 
 function currentUserCanResolveMatchDispute(state, match) {
   if (!match) return false;
-  const hostPlayerId = getMatchHostPlayerId(state, match);
-  return Boolean(hostPlayerId && hostPlayerId === state.currentUserId);
+  if (match.refereeId) return currentUserIsEligibleMatchReferee(state, match);
+  return currentUserIsMatchHost(state, match);
 }
 
 function currentUserCanOperateMatchPreparation(state, match) {
@@ -4693,11 +4656,10 @@ export function endMatch(state, matchId) {
   if (!match || match.status !== "agreed" || match.endedAt) return state;
   if (!currentUserCanOperateStartedMatch(state, match)) return state;
   const now = new Date().toISOString();
-  const hasLiveResult = Boolean(match.result);
   const nextMatch = {
     ...match,
-    status: hasLiveResult ? "approval" : match.status,
-    approvals: hasLiveResult ? { teamA: [], teamB: [] } : match.approvals,
+    status: match.status,
+    approvals: match.approvals,
     startedAt: match.startedAt ?? match.rules?.startedAt ?? now,
     endedAt: now,
     rules: {
@@ -7003,6 +6965,7 @@ export function createRecruitingPost(state, draft) {
   const hostJoinMode = pickup ? "player" : draft.hostJoinMode === "player" ? "player" : "team";
   const visibility = draft.visibility === "private" ? "private" : "public";
   const teamOnly = hostJoinMode === "team";
+  const teamSelectionPending = teamOnly;
   const postType = teamOnly ? "need_team" : hostJoinMode === "team" ? "need_player" : "find_team";
   const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, ranked: creationPolicy.ranked, official: creationPolicy.official, visibility });
   if (hostTrustBlock) return { ...state, notifications: [hostTrustBlock, ...state.notifications] };
@@ -7012,7 +6975,7 @@ export function createRecruitingPost(state, draft) {
       .map((team) => team.id),
   );
 
-  if (hostJoinMode === "team" && !userTeamIds.has(draft.teamId)) {
+  if (!teamSelectionPending && hostJoinMode === "team" && draft.teamId && !userTeamIds.has(draft.teamId)) {
     return {
       ...state,
       notifications: [
@@ -7030,13 +6993,13 @@ export function createRecruitingPost(state, draft) {
   const sideCapacity = getRecruitingSideCapacity(draft);
   const benchCapacity = getRecruitingBenchCapacity(draft);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
-  const mmrLimitMode = pickup ? "off" : normalizeRecruitingMmrLimitMode(draft.mmrLimitMode);
+  const mmrLimitMode = pickup || creationPolicy.ranked === false ? "off" : "block";
   const allowedAgeGroups = draft.allowedAgeGroups ?? draft.rules?.allowedAgeGroups ?? [];
-  const hostTeam = hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
-  const hostPlayerIds = hostJoinMode === "team" ? [state.currentUserId].filter((playerId) => getTeamMemberIds(hostTeam).includes(playerId)) : [];
+  const hostTeam = teamSelectionPending ? null : hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
+  const hostPlayerIds = hostJoinMode === "team" && hostTeam ? [state.currentUserId].filter((playerId) => getTeamMemberIds(hostTeam).includes(playerId)) : [];
   const hostReservePlayerIds = [];
   const privateTeamInviteOnly = visibility === "private" && hostJoinMode === "team";
-  const opponentTeam = visibility === "private" && hostJoinMode === "team"
+  const opponentTeam = !teamSelectionPending && visibility === "private" && hostJoinMode === "team"
     ? state.teams.find((team) => team.id === (draft.opponentTeamId ?? draft.targetTeamId))
     : null;
   const hostSidePlayerIds = new Set([...hostPlayerIds, ...hostReservePlayerIds]);
@@ -7075,7 +7038,7 @@ export function createRecruitingPost(state, draft) {
   const hostPlayerId = state.currentUserId;
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
   const roomRegion = selectedCourt?.region || draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체";
-  if (hostJoinMode === "team" && !hostPlayerIds.length) {
+  if (!teamSelectionPending && hostJoinMode === "team" && draft.teamId && !hostPlayerIds.length) {
     return {
       ...state,
       notifications: [
@@ -7089,7 +7052,7 @@ export function createRecruitingPost(state, draft) {
       ],
     };
   }
-  if (hostJoinMode === "team" && (!hostEligibility?.allowed || hostEligibility.captainId !== state.currentUserId)) {
+  if (!teamSelectionPending && hostJoinMode === "team" && draft.teamId && (!hostEligibility?.allowed || hostEligibility.captainId !== state.currentUserId)) {
     return {
       ...state,
       notifications: [{
@@ -7100,7 +7063,7 @@ export function createRecruitingPost(state, draft) {
       }, ...state.notifications],
     };
   }
-  if (privateTeamInviteOnly && !opponentEligibility?.allowed) {
+  if (privateTeamInviteOnly && opponentTeam && !opponentEligibility?.allowed) {
     return {
       ...state,
       notifications: [{
@@ -7111,7 +7074,7 @@ export function createRecruitingPost(state, draft) {
       }, ...state.notifications],
     };
   }
-  if (privateTeamInviteOnly && (!opponentTeam || opponentTeam.id === hostTeam?.id || !opponentLeaderId || opponentLeaderId !== opponentEligibility?.captainId)) {
+  if (privateTeamInviteOnly && opponentTeam && (opponentTeam.id === hostTeam?.id || !opponentLeaderId || opponentLeaderId !== opponentEligibility?.captainId)) {
     return {
       ...state,
       notifications: [
@@ -7218,8 +7181,8 @@ export function createRecruitingPost(state, draft) {
     allowedAgeGroups: draft.allowedAgeGroups ?? draft.rules?.allowedAgeGroups ?? [],
     ratingScale,
     spots: Math.max(0, sideCapacity * 2 - hostSize - opponentSize),
-    teamId: hostJoinMode === "team" ? draft.teamId : null,
-    targetTeamId: privateTeamInviteOnly ? opponentTeam.id : draft.targetTeamId ?? null,
+    teamId: teamSelectionPending ? null : hostJoinMode === "team" ? draft.teamId || null : null,
+    targetTeamId: teamSelectionPending ? null : privateTeamInviteOnly ? opponentTeam?.id ?? null : draft.targetTeamId ?? null,
     refereeWanted,
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
@@ -7229,7 +7192,7 @@ export function createRecruitingPost(state, draft) {
     hostJoinMode,
     teamOnly,
     hostSide: pickup ? null : "teamA",
-    hostReady: true,
+    hostReady: hostJoinMode !== "team" || Boolean(hostTeam),
     visibility,
     roomState: {
       ownerId: state.currentUserId,
@@ -7242,10 +7205,12 @@ export function createRecruitingPost(state, draft) {
       approvalModeA: draft.approvalModeA === "all" ? "all" : "leader",
       approvalModeB: draft.approvalModeB === "all" ? "all" : "leader",
       partyReserves,
-      partyLeaders: {
-        host: state.currentUserId,
-        ...(opponentTeam && orderedOpponentPlayerIds.length && opponentLeaderId ? { [`team:${opponentTeam.id}`]: opponentLeaderId } : {}),
-      },
+      partyLeaders: hostJoinMode === "team" && !hostTeam
+        ? {}
+        : {
+            host: state.currentUserId,
+            ...(opponentTeam && orderedOpponentPlayerIds.length && opponentLeaderId ? { [`team:${opponentTeam.id}`]: opponentLeaderId } : {}),
+          },
       invitations: [...initialInvitations, ...initialRefereeInvitations],
     },
     sideCapacity,
@@ -7257,6 +7222,8 @@ export function createRecruitingPost(state, draft) {
       ...(draft.rules ?? {}),
       ...getMatchRulesPayload({ ...(draft.rules ?? {}), ...draft }, { mode: draft.mode }),
       ...creationPolicy,
+      mmrRangeMode,
+      mmrLimitMode,
       sideAssignmentStatus: pickup ? "pending" : "confirmed",
       rotationMode: creationPolicy.rotationMode,
       rotationIntervalMinutes: creationPolicy.rotationIntervalMinutes,
@@ -7310,6 +7277,118 @@ export function createRecruitingPost(state, draft) {
   };
 }
 
+export function setRecruitingRoomTeam(state, postId, side, teamId) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  const safeSide = side === "teamA" || side === "teamB" ? side : "";
+  const team = state.teams?.find((item) => item.id === teamId);
+  const roomState = normalizeRecruitingRoomState(post?.roomState ?? {});
+  const teamOnly = post ? isTeamOnlyRecruitingRoom({ ...post, roomState }) : false;
+  if (
+    !post ||
+    post.status !== "open" ||
+    post.confirmedAt ||
+    !isRecruitingRoomOwner(post, state.currentUserId) ||
+    post.hostJoinMode !== "team" ||
+    !teamOnly ||
+    !safeSide ||
+    !team
+  ) return state;
+
+  const captainId = team.members?.find((member) => member.role === "captain")?.userId ?? "";
+  const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? roomState.mmrRangeMode);
+  const mmrLimitMode = post.ranked === false ? "off" : "block";
+  const hostTeam = state.teams?.find((item) => item.id === post.teamId) ?? null;
+  const eligibility = getTeamEventEligibility(team, state.users, {
+    capacity: getRecruitingSideCapacity(post),
+    ranked: post.ranked !== false,
+    mmrLimitMode,
+    mmrRangeMode,
+    targetMmr: safeSide === "teamA" ? team.mmr : hostTeam?.mmr ?? team.mmr,
+    allowedAgeGroups: post.allowedAgeGroups ?? post.rules?.allowedAgeGroups,
+    requireCaptainEligible: true,
+  });
+  if (!captainId || !eligibility?.allowed || (safeSide === "teamA" && captainId !== state.currentUserId)) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "\uD300 \uC120\uD0DD \uC81C\uD55C",
+        body: safeSide === "teamA" && captainId !== state.currentUserId
+          ? "\uBC29\uC7A5\uC774 \uD604\uC7AC \uC8FC\uC7A5\uC778 \uD300\uB9CC A\uC0AC\uC774\uB4DC\uB85C \uC120\uD0DD\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+          : eligibility?.reason ?? "\uD604\uC7AC \uD300 \uCC38\uAC00 \uC870\uAC74\uC744 \uCDA9\uC871\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+        tone: "team",
+        recruitingPostId: postId,
+      }, ...state.notifications],
+    };
+  }
+
+  if (safeSide === "teamA") {
+    if (post.teamId || post.targetTeamId === team.id) return state;
+    return {
+      ...state,
+      recruitingPosts: state.recruitingPosts.map((item) => item.id === postId ? {
+        ...item,
+        teamId: team.id,
+        playerIds: [state.currentUserId],
+        spots: Math.max(0, Number(item.spots ?? 0) - 1),
+        hostReady: false,
+        mmrRangeMode,
+        mmrLimitMode,
+        roomState: {
+          ...roomState,
+          mmrRangeMode,
+          mmrLimitMode,
+          partyLeaders: { ...(roomState.partyLeaders ?? {}), host: state.currentUserId },
+          partySides: { ...(roomState.partySides ?? {}), host: "teamA" },
+        },
+        rules: { ...(item.rules ?? {}), mmrRangeMode, mmrLimitMode },
+      } : item),
+    };
+  }
+
+  if (post.visibility !== "private" || !post.teamId || post.targetTeamId || team.id === post.teamId) return state;
+  const createdAt = new Date().toISOString();
+  const invitation = {
+    id: makeId("inv"),
+    role: "player",
+    targetUserId: captainId,
+    fromUserId: state.currentUserId,
+    teamId: team.id,
+    joinMode: "team",
+    side: "teamB",
+    reserve: false,
+    status: "pending",
+    createdAt,
+    updatedAt: createdAt,
+  };
+  return {
+    ...state,
+    recruitingPosts: state.recruitingPosts.map((item) => item.id === postId ? {
+      ...item,
+      targetTeamId: team.id,
+      mmrRangeMode,
+      mmrLimitMode,
+      roomState: {
+        ...roomState,
+        mmrRangeMode,
+        mmrLimitMode,
+        invitations: [...(roomState.invitations ?? []), invitation],
+      },
+      rules: { ...(item.rules ?? {}), mmrRangeMode, mmrLimitMode },
+    } : item),
+    notifications: [{
+      id: makeId("n"),
+      title: "\uB9E4\uCE58\uBC29 \uCD08\uB300",
+      body: `${post.title} B\uC0AC\uC774\uB4DC \uD300 \uCD08\uB300\uAC00 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4.`,
+      tone: "match",
+      targetUserId: captainId,
+      recruitingPostId: postId,
+      invitationId: invitation.id,
+      fromUserId: state.currentUserId,
+    }, ...state.notifications],
+  };
+}
+
 export function interestRecruitingPost(state, postId, application = {}) {
   const disciplineBlock = getDisciplineBlockedState(state, "매칭방 참여");
   if (disciplineBlock) return disciplineBlock;
@@ -7323,6 +7402,18 @@ export function interestRecruitingPost(state, postId, application = {}) {
   if (isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
   const user = state.users.find((item) => item.id === state.currentUserId);
   const teamOnly = isTeamOnlyRecruitingRoom(post);
+  if (teamOnly && !post.teamId) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "A\uD300 \uC120\uD0DD \uD544\uC694",
+        body: "\uBC29\uC7A5\uC774 A\uC0AC\uC774\uB4DC \uD300\uC744 \uC120\uD0DD\uD55C \uB4A4 \uCC38\uAC00\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+        tone: "team",
+        recruitingPostId: postId,
+      }, ...state.notifications],
+    };
+  }
   const refereeWanted = Boolean(post.refereeWanted || post.roomState?.refereeWanted || post.refereeId);
   if (application.joinMode === "referee") {
     if (post.visibility === "private") {
@@ -10894,6 +10985,18 @@ function promoteRecruitingReservesForConfirmation(post, state, lobby) {
 export function confirmRecruitingMatch(state, postId, options = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId)) return state;
+  if (isTeamOnlyRecruitingRoom(post) && !post.teamId) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "A\uD300 \uC120\uD0DD \uD544\uC694",
+        body: "A\uC0AC\uC774\uB4DC \uD300\uC744 \uC120\uD0DD\uD55C \uB4A4 \uB9E4\uCE58\uB97C \uD655\uC815\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+        tone: "team",
+        recruitingPostId: postId,
+      }, ...state.notifications],
+    };
+  }
   if (isRoomScheduleChangePending(post)) {
     return {
       ...state,

@@ -124,7 +124,10 @@ test("별도 참가 확인 경로를 닫고 최종 승인 한 번과 이의시�
   assert.doesNotMatch(serverSource, /rankball_match_record_participation_action/);
   assert.doesNotMatch(clientSource, /confirmMatchRecordParticipation/);
   assert.match(serverSource, /MATCH_RECORD_APPROVAL_NOTICE_PREFIXES/);
-  assert.match(serverSource, /POSTGAME_RECORD_REMINDER_MINUTES\.forEach/);
+  assert.doesNotMatch(serverSource, /getPostgameRecordVerification/);
+  assert.doesNotMatch(serverSource, /POSTGAME_RECORD_REMINDER_MINUTES\.forEach/);
+  assert.match(serverSource, /\["submitMatchResult", "approveMatch", "finalizeMatch"\]/);
+  assert.match(serverSource, /\["submitMatchResult", "approveMatch", "finalizeMatch", "resolveMatchDispute", "forfeitTournamentMatch"\]\.includes\(operation\.action\)/);
   assert.match(singleApprovalMigration, /match_record_participation_required/);
   assert.match(singleApprovalMigration, /execute replace/);
   assert.match(singleApprovalMigration, /recordApprovalMode/);
@@ -136,4 +139,41 @@ test("별도 참가 확인 경로를 닫고 최종 승인 한 번과 이의시�
   assert.match(consistencyMigration, /now_at < result_submitted_at \+ make_interval/);
   assert.match(consistencyMigration, /revoke all on function public\.rankball_match_record_participation_action/);
   assert.doesNotMatch(consistencyMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
+});
+test("개인 기록만 생성자 본인 스탯을 저장하고 무심판 일반 경기 스탯은 계속 차단한다", async () => {
+  const migration = await readFile(
+    new URL("../supabase/migrations/20260727131000_personal_record_stat_guard_exception.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /match_record_type in \('solo', 'personal_record'\)/);
+  assert.match(migration, /new\.user_id = match_creator_id/);
+  assert.match(migration, /new\.recorded_by/);
+  assert.match(migration, /no_referee_personal_stats_forbidden/);
+  assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
+});
+
+test("개인 기록 공개 범위와 별도 통계는 공식 통계·업적에서 분리된다", async () => {
+  const migration = await readFile(
+    new URL("../supabase/migrations/20260727132000_personal_record_visibility_and_summary.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /profile_personal_record_summaries/);
+  assert.match(migration, /record_type text not null default 'match'/);
+  assert.match(migration, /visibility text not null default 'private'/);
+  assert.match(migration, /owner_profile_id text/);
+  assert.match(migration, /not in \('solo', 'personal_record'\)/);
+  assert.match(migration, /match_row\.created_by = profile_id/);
+  assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
+});
+
+test("referee stat submissions preserve the authoritative team score", async () => {
+  const repository = await readFile(new URL("../src/data/repository.js", import.meta.url), "utf8");
+  const matchUtils = await readFile(new URL("../src/lib/matchUtils.js", import.meta.url), "utf8");
+
+  assert.match(repository, /const nextScoreA = Number\(currentResult\?\.scoreA/);
+  assert.match(repository, /const nextScoreB = Number\(currentResult\?\.scoreB/);
+  assert.doesNotMatch(repository, /const nextScoreA = getMergedResultScore/);
+  assert.match(matchUtils, /const canEnterSharedRecordScore = Boolean/);
+  assert.match(matchUtils, /match\.rules\?\.recordSetupReady === true/);
+  assert.match(matchUtils, /match\.status === "disputed"[\s\S]*\? \[\]/);
 });

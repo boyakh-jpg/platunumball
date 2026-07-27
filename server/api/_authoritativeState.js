@@ -41,6 +41,7 @@ import {
   setRecruitingPartyPlayerReserve,
   setRecruitingTeamPartyRoster,
   setRecruitingSlotPosition,
+  setRecruitingRoomTeam,
   setRecruitingStatRecorder,
   startMatch,
   substituteMatchPlayer,
@@ -272,6 +273,9 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
       break;
     case "sendRecruitingChat":
       next = sendRecruitingChat(state, operation.postId, operation.body);
+      break;
+    case "setRecruitingRoomTeam":
+      next = setRecruitingRoomTeam(state, operation.postId, operation.side, operation.teamId);
       break;
     case "setRecruitingApplicantReserve":
       next = setRecruitingApplicantReserve(state, operation.postId, operation.playerId, operation.reserve);

@@ -1063,8 +1063,7 @@ input[type="color"] {
   padding: 7px;
 }
 
-.team-search-field:focus-within .team-search-popover,
-.team-search-field.has-query .team-search-popover {
+.team-search-field:focus-within .team-search-popover {
   display: grid;
   gap: var(--space-3);
 }
@@ -1140,66 +1139,15 @@ input[type="color"] {
   opacity: 0.52;
 }
 
-.create-opponent-team-control {
-  position: relative;
-  min-width: 0;
-}
-
-.create-opponent-team-control .search-picker {
-  gap: 0;
-}
-
 .create-match-page .form-grid.two > label > select,
-.create-match-page .form-grid.two > label > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
-.create-opponent-team-control .search-picker-field input {
+.create-match-page .form-grid.two > label > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]) {
   height: var(--ui-button-height);
   min-height: var(--ui-button-height);
 }
-
-.create-opponent-team-control .search-picker-field input {
-  padding-right: calc(min(43%, 315px) + 14px);
-}
-
 .create-match-page .form-grid.two > .stat-integrity-note {
   align-self: end;
   min-height: var(--ui-button-height);
   padding: 10px 12px;
-}
-
-.create-opponent-team-selected {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  right: 0;
-  width: min(315px, 43%);
-  height: var(--ui-button-height);
-  min-height: var(--ui-button-height);
-  padding: 0 10px;
-  pointer-events: none;
-  transform: none;
-}
-
-.create-opponent-team-selected strong {
-  font-size: 0.78rem;
-}
-
-.create-opponent-team-selected span {
-  font-size: 0.68rem;
-}
-
-@media (max-width: 620px) {
-  .create-opponent-team-control .search-picker-field input {
-    padding-right: 12px;
-  }
-
-  .create-opponent-team-selected {
-    position: static;
-    width: 100%;
-    height: var(--ui-button-height);
-    margin-top: 6px;
-    pointer-events: auto;
-    transform: none;
-  }
 }
 
 .favorite-toggle-button {
@@ -2411,10 +2359,49 @@ input[type="color"] {
 }
 
 .settings-toggle-grid label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 10px;
+}
+
+.settings-page .settings-toggle-grid input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+}
+
+.settings-preference-card .settings-preference-group {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.settings-preference-card .settings-preference-group + .settings-preference-group {
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--ui-control-border);
+}
+
+.settings-preference-heading {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-preference-heading strong {
+  color: var(--rb-text);
+  font-size: 0.94rem;
+}
+
+.settings-preference-heading span,
+.settings-preference-status {
+  color: var(--rb-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .settings-section-grid {
@@ -2469,12 +2456,6 @@ input[type="color"] {
   order: 12;
 }
 
-.settings-section-main .settings-unified-save-card {
-  order: 13;
-}
-
-.settings-section-main .admin-seed-card,
-.settings-section-main .settings-account-card,
 .settings-section-main .admin-menu-card,
 .settings-section-main .settings-reset-card,
 .settings-section-main .settings-block-card {

@@ -23,6 +23,7 @@ import {
   setRecruitingApplicantPlacement,
   setRecruitingPartyPlayerPlacement,
   setRecruitingReady,
+  setRecruitingRoomTeam,
   setRecruitingSlotPosition,
   setRecruitingTeamPartyRoster,
   startMatch,
@@ -341,6 +342,8 @@ function addBulkDemoContent(state) {
       memo: "방 생성 플로우로 만든 확정 데모",
     });
     nextState = room.state;
+    nextState = withUser(nextState, hostPlayers[0], (scoped) => setRecruitingRoomTeam(scoped, room.postId, "teamA", hostTeam.id));
+    nextState = withUser(nextState, hostPlayers[0], (scoped) => setRecruitingRoomTeam(scoped, room.postId, "teamB", opponentTeam.id));
     nextState = withUser(nextState, hostPlayers[0], (scoped) => setRecruitingTeamPartyRoster(scoped, room.postId, "host", {
       teamId: hostTeam.id,
       playerIds: hostPlayers,
@@ -755,6 +758,8 @@ room = createRoom(state, "u1", {
 });
 state = room.state;
 const lifecyclePostId = room.postId;
+state = withUser(state, "u1", (scoped) => setRecruitingRoomTeam(scoped, lifecyclePostId, "teamA", "t1"));
+state = withUser(state, "u1", (scoped) => setRecruitingRoomTeam(scoped, lifecyclePostId, "teamB", "t2"));
 let lifecyclePost = getPost(state, lifecyclePostId);
 state = withUser(state, "u1", (scoped) => setRecruitingTeamPartyRoster(scoped, lifecyclePostId, "host", {
   teamId: "t1",
@@ -917,7 +922,12 @@ assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "참가자�
 });
 
 state = withUser(state, "u1", (scoped) => resolveMatchDispute(scoped, lifecycleMatchId, lifecycleDisputeId, "rejected"));
-assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "record", "방장 이의 판정 후 기록방", {
+assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "심판 경기 방장은 이의 판정 불가", {
+  status: getMatch(state, lifecycleMatchId).status,
+});
+
+state = withUser(state, "u11", (scoped) => resolveMatchDispute(scoped, lifecycleMatchId, lifecycleDisputeId, "rejected"));
+assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "record", "심판 이의 판정 후 기록방", {
   status: getMatch(state, lifecycleMatchId).status,
 });
 
@@ -969,6 +979,7 @@ room = createRoom(state, "u1", {
 });
 state = room.state;
 const publicTeamInvitePostId = room.postId;
+state = withUser(state, "u1", (scoped) => setRecruitingRoomTeam(scoped, publicTeamInvitePostId, "teamA", "t1"));
 state = withUser(state, "u7", (scoped) => interestRecruitingPost(scoped, publicTeamInvitePostId, {
   joinMode: "player",
   side: "teamB",
@@ -1044,6 +1055,8 @@ room = createRoom(state, "u1", {
 });
 state = room.state;
 const refereeAbsentPostId = room.postId;
+state = withUser(state, "u1", (scoped) => setRecruitingRoomTeam(scoped, refereeAbsentPostId, "teamA", "t1"));
+state = withUser(state, "u1", (scoped) => setRecruitingRoomTeam(scoped, refereeAbsentPostId, "teamB", "t2"));
 let refereeAbsentPost = getPost(state, refereeAbsentPostId);
 const refereeAbsentInvite = refereeAbsentPost.roomState.invitations.find((invitation) => invitation.role === "referee" && invitation.targetUserId === "u11");
 const refereeAbsentOpponentInvite = refereeAbsentPost.roomState.invitations.find((invitation) => invitation.targetUserId === "u6");
@@ -1187,6 +1200,7 @@ room = createRoom(state, "u2", {
 });
 state = room.state;
 const partyPostId = room.postId;
+state = withUser(state, "u2", (scoped) => setRecruitingRoomTeam(scoped, partyPostId, "teamA", "t3"));
 state = withUser(state, "u1", (scoped) => interestRecruitingPost(scoped, partyPostId, { joinMode: "player", side: "teamA", reserve: false, position: "PG" }));
 state = withUser(state, "u1", (scoped) => joinRecruitingSideParty(scoped, partyPostId, "t3", "teamA"));
 let partyLobby = getRecruitingLobby(getPost(state, partyPostId), state);
