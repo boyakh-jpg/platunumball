@@ -1340,16 +1340,7 @@ input[type="color"] {
   z-index: 1;
   display: grid;
   min-width: 0;
-  gap: var(--space-5);
-}
-
-.share-card-label {
-  display: flex;
-  align-items: center;
   gap: var(--space-4);
-  color: var(--gold);
-  font-weight: 900;
-  font-size: 0.78rem;
 }
 
 .share-card strong {
@@ -1372,17 +1363,6 @@ input[type="color"] {
 
 .share-card-emblem .tier-emblem {
   width: clamp(118px, 24vw, 176px);
-}
-
-.share-card-url {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .share-card-action {

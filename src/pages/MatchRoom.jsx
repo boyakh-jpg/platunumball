@@ -1309,7 +1309,7 @@ export default function MatchRoom({ app }) {
               </div>
             </Card>
           ) : null}
-          <ShareCard user={app.currentUser} match={match} />
+          <ShareCard user={app.currentUser} />
           </aside>
         </div>
       )}
