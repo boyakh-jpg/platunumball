@@ -130,10 +130,10 @@
     radial-gradient(58% 16% at 18% 0%, rgba(255, 255, 255, 0.62), transparent 82%),
     radial-gradient(44% 18% at 100% 86%, rgba(160, 215, 240, 0.18), transparent 80%),
     radial-gradient(38% 16% at 0% 78%, rgba(255, 255, 255, 0.12), transparent 82%);
-  --ui-liquid-glass-edge-width: 2px;
+  --ui-liquid-glass-edge-width: 3px;
   --ui-liquid-glass-refraction: url("#ui-liquid-glass-refraction");
   --ui-liquid-glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-  --ui-liquid-glass-filter: none;
+  --ui-liquid-glass-filter: blur(2px);
   --ui-panel-radius: var(--panel-radius);
   --ui-button-height: var(--control-height);
   --ui-button-height-sm: var(--control-height-sm);
@@ -289,10 +289,10 @@ html[data-theme="light"] {
     radial-gradient(58% 16% at 18% 0%, rgba(255, 255, 255, 0.68), transparent 82%),
     radial-gradient(44% 18% at 100% 86%, rgba(111, 184, 218, 0.16), transparent 80%),
     radial-gradient(38% 16% at 0% 78%, rgba(35, 50, 59, 0.12), transparent 82%);
-  --ui-liquid-glass-edge-width: 2px;
+  --ui-liquid-glass-edge-width: 3px;
   --ui-liquid-glass-refraction: url("#ui-liquid-glass-refraction");
   --ui-liquid-glass-shadow: 0 10px 30px rgba(35, 50, 59, 0.08);
-  --ui-liquid-glass-filter: none;
+  --ui-liquid-glass-filter: blur(2px);
   --hero-title-color: #fffaf1;
   --hero-title-shadow: 0 14px 34px rgba(30, 24, 18, 0.5);
   --hero-copy-color: rgba(255, 250, 241, 0.88);
