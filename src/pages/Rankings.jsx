@@ -66,7 +66,7 @@ export default function Rankings({ app }) {
       <header className="page-header">
         <div>
           <p className="eyebrow">Rankings</p>
-          <h1>전국과 지역을 나눠 보는 랭크보드</h1>
+          <h1>랭크보드</h1>
         </div>
         <Badge tone={tab === "region" ? "blue" : "gold"}>{tab === "region" ? myRegion : "전국 기준"}</Badge>
       </header>
