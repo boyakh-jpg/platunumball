@@ -199,6 +199,7 @@ import {
   normalizeRecruitingPost,
   normalizeRecruitingRoomState,
   removeAcceptedRecruitingInvitations,
+  expirePendingPlayerInvitationsWhenFull,
   updateManyPinnedReservePlayers,
   updatePinnedReservePlayers,
 } from "../lib/recruiting.js";
@@ -9495,6 +9496,28 @@ function makeRecruitingTeamNoticeNotifications({ post, team, side, acceptedBy, a
   }));
 }
 
+function expirePendingPlayerInvitationsForFilledRoom(post, state, now) {
+  const lobby = getRecruitingLobby(post, state);
+  const occupiedCount = MATCH_SIDES.reduce((total, side) => (
+    total
+    + (lobby.sides[side]?.filled ?? 0)
+    + (lobby.sides[side]?.reserveCandidates?.length ?? 0)
+  ), 0);
+  const capacity = MATCH_SIDES.reduce((total, side) => (
+    total + (lobby.sides[side]?.capacity ?? getRecruitingSideCapacity(post)) + getRecruitingBenchCapacity(post)
+  ), 0);
+  return {
+    ...post,
+    roomState: {
+      ...post.roomState,
+      invitations: expirePendingPlayerInvitationsWhenFull(
+        post.roomState?.invitations ?? [],
+        { occupiedCount, capacity, now },
+      ),
+    },
+  };
+}
+
 export function acceptRecruitingInvitation(state, postId, invitationId) {
   const disciplineBlock = getDisciplineBlockedState(state, "초대 수락");
   if (disciplineBlock) return disciplineBlock;
@@ -9753,10 +9776,11 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
       }
     }
 
+    const nextPostWithExpiredInvitations = expirePendingPlayerInvitationsForFilledRoom(nextPost, state, now);
     return applyAutomaticRecruitingConfirmations({
       ...state,
       recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-        item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+        item.id === postId ? cleanRecruitingRoomStatRecorders(nextPostWithExpiredInvitations, state) : item
       )),
       notifications: [
         ...makeRecruitingTeamNoticeNotifications({
@@ -9793,19 +9817,19 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   };
   if (hasRecruitingApplicant(post, nextApplicant)) return state;
 
+  const nextPost = expirePendingPlayerInvitationsForFilledRoom({
+    ...post,
+    applicants: [...normalizeRecruitingApplicants(post.applicants ?? []), nextApplicant],
+    roomState: {
+      ...updatePinnedReservePlayers(roomState, side, state.currentUserId, reserve),
+      invitations: removeAcceptedRecruitingInvitations(roomState.invitations, invitation, state.currentUserId),
+    },
+  }, state, now);
+
   return applyAutomaticRecruitingConfirmations({
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-      item.id === postId
-        ? {
-            ...item,
-            applicants: [...normalizeRecruitingApplicants(item.applicants ?? []), nextApplicant],
-            roomState: {
-              ...updatePinnedReservePlayers(roomState, side, state.currentUserId, reserve),
-              invitations: removeAcceptedRecruitingInvitations(roomState.invitations, invitation, state.currentUserId),
-            },
-          }
-        : item
+      item.id === postId ? nextPost : item
     )),
     notifications: [
       ...makeOwnerAcceptNotifications(`${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "출전"} 초대가 수락되었습니다.`),

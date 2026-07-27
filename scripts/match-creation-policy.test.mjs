@@ -312,6 +312,53 @@ test("pickup invitations and joins stay individual even when a team id is submit
   assert.equal(applicant.side, "teamA");
 });
 
+test("filling every player slot expires remaining player invitations but keeps referee invitations", () => {
+  const post = {
+    id: "filled-invite-room",
+    title: "1v1 초대방",
+    status: "open",
+    mode: "1v1",
+    sideCapacity: 1,
+    benchCapacity: 0,
+    visibility: "private",
+    playerId: "host",
+    hostSide: "teamA",
+    hostJoinMode: "player",
+    hostReady: true,
+    ranked: false,
+    official: false,
+    roomState: {
+      ownerId: "host",
+      invitations: [
+        { id: "accepted", role: "player", targetUserId: "invitee", side: "teamB", status: "pending" },
+        { id: "waiting", role: "player", targetUserId: "waiting", side: "teamB", status: "pending" },
+        { id: "referee", role: "referee", targetUserId: "referee", status: "pending" },
+      ],
+    },
+    applicants: [],
+  };
+  const state = {
+    currentUserId: "invitee",
+    users: ["host", "invitee", "waiting", "referee"].map((id) => ({
+      id,
+      name: id,
+      trustScore: 100,
+      ratings: { integrated: 1200 },
+    })),
+    teams: [],
+    recruitingPosts: [post],
+    notifications: [],
+    settings: {},
+  };
+
+  const acceptedState = acceptRecruitingInvitation(state, post.id, "accepted");
+  const invitations = acceptedState.recruitingPosts[0].roomState.invitations;
+  assert.equal(invitations.find((item) => item.id === "accepted"), undefined);
+  assert.equal(invitations.find((item) => item.id === "waiting")?.status, "expired");
+  assert.equal(invitations.find((item) => item.id === "referee")?.status, "pending");
+  assert.ok(invitations.find((item) => item.id === "waiting")?.updatedAt);
+});
+
 test("pickup lobby expands a legacy team party into independent player slots", () => {
   const post = {
     id: "legacy-pickup",

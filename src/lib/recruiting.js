@@ -105,6 +105,18 @@ export function removeAcceptedRecruitingInvitations(invitations = [], acceptedIn
   });
 }
 
+export function expirePendingPlayerInvitationsWhenFull(
+  invitations = [],
+  { occupiedCount = 0, capacity = 0, now = new Date().toISOString() } = {},
+) {
+  if (capacity <= 0 || occupiedCount < capacity) return invitations;
+  return invitations.map((candidate) => (
+    candidate.role !== "referee" && candidate.status === "pending"
+      ? { ...candidate, status: "expired", updatedAt: now }
+      : candidate
+  ));
+}
+
 export function isMutableRecruitingRoom(post) {
   return Boolean(post && !getRecruitingPostTerminalState(post));
 }
