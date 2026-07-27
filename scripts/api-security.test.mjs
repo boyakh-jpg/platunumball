@@ -170,6 +170,11 @@ test("report insert conflicts and admin review input fail safely", async () => {
     reason: "현장 정보 확인",
     feedback: "신고 내용을 확인해 반영했습니다.",
   });
+  assert.equal(normalizeAdminReviewInput({
+    actionType: "markCourtDuplicate",
+    reason: "중복 구장 현장 확인",
+    feedback: "중복 구장으로 확인되어 노출에서 제외했습니다.",
+  }).actionType, "markCourtDuplicate");
   assert.throws(() => normalizeAdminReviewInput({
     actionType: "unknownAction",
     reason: "현장 정보 확인",
@@ -186,6 +191,8 @@ test("report insert conflicts and admin review input fail safely", async () => {
   assert.equal(getAdminReviewErrorStatus({ code: "XX000" }), 500);
 
   const submitSource = await readSource("server/api/reports/submit.js");
+  const reviewSource = await readSource("server/api/admin/review-action.js");
+  assert.match(reviewSource, /rankball_resolve_duplicate_court_report/);
   assert.match(submitSource, /\.from\("notifications"\)[\s\S]{0,80}\.insert\(notificationRows\)/);
   assert.doesNotMatch(submitSource, /\.upsert\(notificationRows/);
   assert.match(submitSource, /notificationSyncPending/);

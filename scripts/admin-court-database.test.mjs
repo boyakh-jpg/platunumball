@@ -119,6 +119,25 @@ test("원터치 검수는 단순 판정, 영구 지역순번, 감사 로그를 �
   assert.match(hook, /operation: "review"/);
 });
 
+test("중복 구장 신고 확정은 중앙 구장 검수와 신고 해결을 한 transaction으로 묶는다", async () => {
+  const [migration, adminPage, logic, schemaHealth] = await Promise.all([
+    readSource("supabase/migrations/20260727100000_resolve_duplicate_court_reports.sql"),
+    readSource("src/pages/Admin.jsx"),
+    readSource("docs/logic-and-terminology.md"),
+    readSource("server/api/system/schema-health.js"),
+  ]);
+  assert.match(migration, /create or replace function public\.rankball_resolve_duplicate_court_report/);
+  assert.match(migration, /rankball_admin_review_court_with_auto_unit\([\s\S]*?'duplicate'/);
+  assert.match(migration, /rankball_commit_admin_review_action\([\s\S]*?'validReport'/);
+  assert.match(migration, /'match', 'player', 'court', 'court_review'/);
+  assert.match(migration, /create unique index if not exists reports_court_active_reporter_unique/);
+  assert.doesNotMatch(migration, /\b(?:delete\s+from|truncate|drop\s+table)\b/i);
+  assert.match(adminPage, /"markCourtDuplicate", "dismissReport", "hideCourt", "maliciousReporter"/);
+  assert.match(adminPage, /대상 구장은 비활성화되고 중복 판정과 관리자 감사 기록이 남습니다/);
+  assert.match(logic, /courtCorrection\.field=duplicate/);
+  assert.match(schemaHealth, /name: "rankball_resolve_duplicate_court_report"/);
+});
+
 test("OSM 명칭 근거는 30m 자동·80m 검수 경계와 수동 보호를 강제한다", async () => {
   const [migration, identityFix] = await Promise.all([
     readSource("supabase/migrations/20260722231000_osm_court_name_evidence.sql"),

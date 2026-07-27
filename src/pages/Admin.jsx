@@ -473,6 +473,12 @@ export default function Admin({ app }) {
     if (selectedReportIsVoidRestore) {
       return adminLevel >= 50 ? ACTION_OPTIONS.filter((option) => ["keepMatchVoid", "restoreMatchHalf", "restoreMatchFull"].includes(option.id)) : [];
     }
+    if (selectedReport?.type === "court" && selectedReport.courtCorrection?.field === "duplicate") {
+      const ids = adminLevel >= 50
+        ? ["markCourtDuplicate", "dismissReport", "hideCourt", "maliciousReporter"]
+        : ["dismissReport"];
+      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
+    }
     if (selectedReport?.type === "team_emblem") {
       const ids = adminLevel >= 50 ? ["resetTeamEmblem", "dismissReport", "maliciousReporter"] : ["dismissReport"];
       return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
@@ -517,9 +523,10 @@ export default function Admin({ app }) {
   const nameModerationAction = actionNeedsReplacementName || actionNeedsMergeTarget;
   const nameModerationInvalid = (actionNeedsReplacementName && !actionDraft.replacementName.trim())
     || (actionNeedsMergeTarget && !actionDraft.mergeTargetId);
+  const reviewReasonMaxLength = actionDraft.actionType === "markCourtDuplicate" ? 160 : 500;
   const reviewActionInvalid = actionDraft.reason.trim().length < 4
     || actionDraft.feedback.trim().length < 4
-    || actionDraft.reason.trim().length > 500
+    || actionDraft.reason.trim().length > reviewReasonMaxLength
     || actionDraft.feedback.trim().length > 500
     || (actionNeedsTarget && !selectedTargetUserId)
     || nameModerationInvalid;
@@ -1209,16 +1216,17 @@ export default function Admin({ app }) {
                 </label> : null}
                 <label>
                   처리 사유
-                  <textarea value={actionDraft.reason} maxLength={500} placeholder="관리자 처리 사유" onChange={(event) => updateActionDraft({ reason: event.target.value })} />
+                  <textarea value={actionDraft.reason} maxLength={reviewReasonMaxLength} placeholder="관리자 처리 사유" onChange={(event) => updateActionDraft({ reason: event.target.value })} />
                 </label>
                 <label>
                   신고자 피드백
                   <textarea value={actionDraft.feedback} maxLength={500} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
                 </label>
                 {!visibleActionOptions.length ? <small>현재 권한으로 실행할 수 있는 처리가 없습니다.</small> : null}
+                {actionDraft.actionType === "markCourtDuplicate" ? <small className="form-warning">대상 구장은 비활성화되고 중복 판정과 관리자 감사 기록이 남습니다.</small> : null}
                 {reviewActionConfirming ? (
                   <div className="admin-review-confirm" role="alert">
-                    <span><strong>{ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label}</strong><small>대상과 기간, 처리 사유를 다시 확인해 주세요. 실행 후 처리 기록이 남습니다.</small></span>
+                    <span><strong>{ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label}</strong><small>{actionDraft.actionType === "markCourtDuplicate" ? "대상 구장을 중복으로 확정하고 서비스 노출에서 제외합니다." : "대상과 기간, 처리 사유를 다시 확인해 주세요. 실행 후 처리 기록이 남습니다."}</small></span>
                     <Button type="button" variant="secondary" disabled={reviewActionPending} onClick={() => setReviewActionConfirming(false)}>취소</Button>
                     <Button type="button" variant="secondary" disabled={reviewActionPending || reviewActionInvalid} onClick={commitSelectedAction}>{reviewActionPending ? "처리 중" : "확정 실행"}</Button>
                   </div>

@@ -6271,6 +6271,21 @@ export function commitAdminReviewAction(state, draft = {}) {
       notifications: [getAdminActionNotification("구장 리뷰 신고만 리뷰 숨김 처리할 수 있습니다."), ...state.notifications],
     };
   }
+  if (
+    actionType === "markCourtDuplicate"
+    && (report.type !== "court" || report.courtCorrection?.field !== "duplicate")
+  ) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("중복 구장 신고만 중복으로 확정할 수 있습니다."), ...state.notifications],
+    };
+  }
+  if (actionType === "markCourtDuplicate" && getAdminAuthorityLevel(state) < 50) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("경기관리자 이상만 중복 구장을 확정할 수 있습니다."), ...state.notifications],
+    };
+  }
 
   if (report.matchReviewType === "void_restore") {
     return commitVoidMatchReviewAction(state, report, draft);
@@ -6345,10 +6360,20 @@ export function commitAdminReviewAction(state, draft = {}) {
     createdAt: now,
     createdBy: state.currentUserId,
   };
-  const nextApprovedCourts = actionType === "hideCourt"
+  const nextApprovedCourts = ["hideCourt", "markCourtDuplicate"].includes(actionType)
     ? (state.settings?.approvedCourts ?? []).map((court) => (
       court.id === report.targetId
-        ? { ...court, status: "hidden", hiddenAt: now, hiddenBy: state.currentUserId, hiddenReason: reason }
+        ? actionType === "markCourtDuplicate"
+          ? {
+            ...court,
+            status: "disabled",
+            verificationStatus: "verified",
+            adminReviewCount: Number(court.adminReviewCount ?? 0) + 1,
+            adminReviewedAt: now,
+            adminReviewedBy: state.currentUserId,
+            adminReviewScenario: "duplicate",
+          }
+          : { ...court, status: "hidden", hiddenAt: now, hiddenBy: state.currentUserId, hiddenReason: reason }
         : court
     ))
     : (state.settings?.approvedCourts ?? []);

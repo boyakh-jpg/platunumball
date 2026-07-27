@@ -3243,6 +3243,8 @@ flowchart TD
 2. 신고 접수는 `approved_courts` 원본을 즉시 변경하지 않는다. `reports.type=court`와 작은 `courtCorrection` payload로 저장하고 관리자가 구장 신고 대기열에서 검수한다.
 3. 서버는 수정 항목, 4~500자 제안값, 선택 근거 URL을 검증하고 현재 구장 주요 정보 snapshot을 기록한다. 클라이언트가 보낸 현재값은 신뢰하지 않는다.
 4. 같은 사용자의 같은 구장 미처리 신고는 한 건만 허용한다. 기존 신고가 처리된 뒤 다시 신고할 수 있다.
+5. `courtCorrection.field=duplicate` 신고는 경기관리자 level 50 이상이 `중복 구장 확정`으로 처리한다. DB는 신고 row와 대상 구장 row를 잠그고 기존 중앙 구장 검수의 `duplicate` scenario를 실행해 구장을 `status=disabled`, `verification_status=verified`, `admin_review_scenario=duplicate`로 저장한 뒤 신고 해결, 구장 검수·신고 처리 감사 로그, 신고자 알림을 한 transaction으로 커밋한다.
+6. 일반 `신고 인정`이나 임시 `구장 숨김`은 중복 확정을 대신하지 않는다. 같은 사용자의 같은 구장 미처리 신고는 API 선조회뿐 아니라 DB advisory lock과 고유 index로 동시 요청도 한 건만 허용한다.
 
 ## 2026-07-23 주소 건물명 구장 표준화·지도 노출
 

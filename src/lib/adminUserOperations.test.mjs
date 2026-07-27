@@ -15,7 +15,7 @@ import {
   getAdminReviewMetrics,
   isHighImpactAdminReviewAction,
 } from "./admin.js";
-import { reportPlayer } from "../data/repository.js";
+import { commitAdminReviewAction, reportPlayer } from "../data/repository.js";
 
 test("manual admin user operations keep a strict action and duration allowlist", () => {
   assert.equal(normalizeAdminUserOperationAction("warning"), "warning");
@@ -83,7 +83,52 @@ test("report actions never mix the reporter into a target sanction", () => {
   assert.deepEqual(getAdminActionTargetUserIds(report, "refereeDiscipline", { formerRefereeId: "referee-1" }), ["referee-1"]);
   assert.deepEqual(getAdminActionTargetUserIds(report, "refereeDiscipline", { refereeId: "other" }), []);
   assert.equal(isHighImpactAdminReviewAction("suspendTarget"), true);
+  assert.equal(isHighImpactAdminReviewAction("markCourtDuplicate"), true);
   assert.equal(isHighImpactAdminReviewAction("dismissReport"), false);
+});
+
+test("duplicate court report resolution disables the court in local fallback", () => {
+  const state = {
+    currentUserId: "admin-1",
+    users: [{ id: "admin-1", name: "관리자" }],
+    teams: [],
+    affiliations: [],
+    reports: [{
+      id: "report-1",
+      type: "court",
+      targetId: "court-1",
+      by: "reporter-1",
+      status: "open",
+      courtCorrection: { field: "duplicate", proposedValue: "중복 구장" },
+      createdAt: "2026-07-27T00:00:00.000Z",
+    }],
+    notifications: [],
+    settings: {
+      approvedCourts: [{ id: "court-1", name: "중복 구장", status: "active", adminReviewCount: 0 }],
+      adminAppointments: [{
+        id: "appointment-1",
+        source: "server_context",
+        userId: "admin-1",
+        role: "admin",
+        grade: "matchManager",
+        status: "active",
+      }],
+      adminAuditLog: [],
+      adminDisciplinaryActions: [],
+    },
+  };
+  const next = commitAdminReviewAction(state, {
+    reportId: "report-1",
+    actionType: "markCourtDuplicate",
+    reason: "중복 구장 현장 확인",
+    feedback: "중복 구장으로 확인되어 노출에서 제외했습니다.",
+  });
+  assert.equal(next.reports[0].status, "resolved");
+  assert.equal(next.reports[0].resolution.actionType, "markCourtDuplicate");
+  assert.equal(next.settings.approvedCourts[0].status, "disabled");
+  assert.equal(next.settings.approvedCourts[0].verificationStatus, "verified");
+  assert.equal(next.settings.approvedCourts[0].adminReviewScenario, "duplicate");
+  assert.equal(next.settings.approvedCourts[0].adminReviewCount, 1);
 });
 
 test("admin review metrics do not duplicate the same report count", () => {

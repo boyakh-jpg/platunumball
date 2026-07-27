@@ -360,6 +360,10 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_target_user_id: "", p_action_type: "warning", p_duration_days: 3, p_reason: "", p_message: "" },
   },
   {
+    name: "rankball_resolve_duplicate_court_report",
+    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_report_id: "", p_reason: "", p_feedback: "" },
+  },
+  {
     name: "rankball_get_rating_policy",
     args: { p_actor_profile_id: "", p_actor_admin_level: 0 },
   },

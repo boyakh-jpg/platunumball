@@ -2,6 +2,7 @@ import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.j
 import { deleteObject, getR2Config } from "../teams/emblem.js";
 
 const HIGH_IMPACT_ACTIONS = new Set([
+  "markCourtDuplicate",
   "maliciousReporter",
   "suspendTarget",
   "refereeDiscipline",
@@ -118,6 +119,20 @@ export default async function handler(request, response) {
         throw mapAdminReviewError(error, "void_match_review_failed");
       }
       sendJson(response, 200, data ?? { ok: true });
+      return;
+    }
+    if (actionType === "markCourtDuplicate") {
+      const { data, error } = await context.supabase.rpc("rankball_resolve_duplicate_court_report", {
+        p_actor_profile_id: context.profileId,
+        p_actor_admin_level: adminLevel,
+        p_report_id: reportId,
+        p_reason: reason,
+        p_feedback: feedback,
+      });
+      if (error) {
+        throw mapAdminReviewError(error, "duplicate_court_report_resolution_failed");
+      }
+      sendJson(response, 200, data ?? { ok: true, actionType });
       return;
     }
     if (actionType === "resetTeamEmblem") {
