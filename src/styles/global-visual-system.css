@@ -3652,13 +3652,13 @@ html[data-theme="light"] .brand-letter-light {
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: var(--ui-panel-radius);
   background:
-    linear-gradient(145deg, rgba(18, 23, 30, 0.66), rgba(5, 7, 10, 0.46)),
-    rgba(5, 7, 10, 0.5);
+    linear-gradient(145deg, rgba(18, 23, 30, 0.48), rgba(5, 7, 10, 0.3)),
+    rgba(5, 7, 10, 0.26);
   box-shadow:
     0 16px 38px rgba(0, 0, 0, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  -webkit-backdrop-filter: blur(24px) saturate(1.16);
-  backdrop-filter: blur(24px) saturate(1.16);
+  -webkit-backdrop-filter: blur(28px) saturate(1.16);
+  backdrop-filter: blur(28px) saturate(1.16);
 }
 
 .landing-purpose h2 {
@@ -3712,10 +3712,10 @@ html[data-theme="light"] .landing-copy .landing-purpose > .landing-purpose-brand
 }
 
 html[data-theme="light"] .landing-purpose {
-  border-color: rgba(255, 255, 255, 0.88);
+  border-color: rgba(255, 255, 255, 0.8);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(242, 246, 247, 0.58)),
-    rgba(248, 248, 246, 0.62);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.56), rgba(242, 246, 247, 0.34)),
+    rgba(248, 248, 246, 0.28);
   box-shadow:
     0 16px 38px rgba(35, 50, 59, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.96),
