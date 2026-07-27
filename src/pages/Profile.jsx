@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
+import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProfileIconDialog from "../components/profile/ProfileIconDialog.jsx";
 import AffiliationEditor from "../components/profile/AffiliationEditor.jsx";
@@ -48,16 +48,6 @@ function formatDate(date) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function PersonalRecordBadges({ match }) {
-  if (!isPersonalRecordMatch(match)) return null;
-  return (
-    <span className="profile-record-badges">
-      <Badge tone="gold">내 기록</Badge>
-      <Badge tone={match.visibility === "public" ? "green" : "blue"}>{match.visibility === "public" ? "공개" : "비공개"}</Badge>
-    </span>
-  );
-}
-
 function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
   return (
     <Card className="section-card profile-record-card">
@@ -87,7 +77,10 @@ function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
                 <b>{line.result}</b>
                 <span>
                   <strong>{line.side.name} vs {line.opponent.name}</strong>
-                  <MatchRecordMeta record={match} afterMode={<PersonalRecordBadges match={match} />} />
+                  <MatchRecordMeta
+                    record={match}
+                    afterCourt={isPersonalRecordMatch(match) ? <PersonalRecordMetaLabels visibility={match.visibility} /> : null}
+                  />
                 </span>
                 <i>{line.score}:{line.opponentScore}</i>
               </Link>

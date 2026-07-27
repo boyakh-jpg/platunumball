@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
+import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine, getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -36,15 +36,6 @@ function getTotals(records, userId) {
     });
     return totals;
   }, {});
-}
-
-function PersonalRecordBadges({ visibility = "private" }) {
-  return (
-    <span className="profile-record-badges">
-      <Badge tone="gold">내 기록</Badge>
-      <Badge tone={visibility === "public" ? "green" : "blue"}>{visibility === "public" ? "공개" : "비공개"}</Badge>
-    </span>
-  );
 }
 
 function isPersonalArchiveRecord(record = {}) {
@@ -195,7 +186,7 @@ export default function ProfileRecords({ app }) {
                     <strong>{line.side.name} vs {line.opponent.name}</strong>
                     <MatchRecordMeta
                       record={match}
-                      afterMode={isPersonalRecordMatch(match) ? <PersonalRecordBadges visibility={match.visibility} /> : null}
+                      afterCourt={isPersonalRecordMatch(match) ? <PersonalRecordMetaLabels visibility={match.visibility} /> : null}
                     />
                     {stats ? <small>{formatStatLine(stats)}</small> : null}
                   </span>
@@ -238,7 +229,7 @@ export default function ProfileRecords({ app }) {
                     <strong>{record.teamName} vs {record.opponentTeamName}</strong>
                     <MatchRecordMeta
                       record={record}
-                      afterMode={isPersonalArchiveRecord(record) ? <PersonalRecordBadges visibility={record.visibility} /> : null}
+                      afterCourt={isPersonalArchiveRecord(record) ? <PersonalRecordMetaLabels visibility={record.visibility} /> : null}
                     />
                     <small>6개월이 지난 기록은 목록으로 보관합니다.</small>
                   </span>

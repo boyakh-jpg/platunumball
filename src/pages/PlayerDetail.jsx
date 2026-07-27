@@ -4,7 +4,7 @@ import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
-import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
+import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
@@ -316,12 +316,7 @@ export default function PlayerDetail({ app }) {
                           </button>
                           <MatchRecordMeta
                             record={match}
-                            afterMode={(
-                              <span className="profile-record-badges">
-                                <Badge tone="gold">내 기록</Badge>
-                                <Badge tone={match.visibility === "public" ? "green" : "blue"}>{match.visibility === "public" ? "공개" : "비공개"}</Badge>
-                              </span>
-                            )}
+                            afterCourt={<PersonalRecordMetaLabels visibility={match.visibility} />}
                           />
                         </div>
                         <div className="history-score"><strong>{getSideScore(match, "teamA")}:{getSideScore(match, "teamB")}</strong></div>
@@ -340,7 +335,7 @@ export default function PlayerDetail({ app }) {
                         <strong>{record.teamName} vs {record.opponentTeamName}</strong>
                         <MatchRecordMeta
                           record={record}
-                          afterMode={<span className="profile-record-badges"><Badge tone="gold">내 기록</Badge><Badge tone={record.visibility === "public" ? "green" : "blue"}>{record.visibility === "public" ? "공개" : "비공개"}</Badge></span>}
+                          afterCourt={<PersonalRecordMetaLabels visibility={record.visibility} />}
                         />
                       </span>
                       <i>{record.score}:{record.opponentScore}</i>

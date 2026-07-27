@@ -981,7 +981,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   min-width: 0;
 }
 
-.match-record-meta .profile-record-badges {
+.match-record-meta__labels {
   display: inline-flex;
   flex: none;
   flex-wrap: nowrap;
@@ -989,8 +989,22 @@ html[data-theme="light"] .search-picker-result-row.selected {
   white-space: nowrap;
 }
 
-.match-record-meta .profile-record-badges .ui-badge {
+.match-record-meta__label {
+  display: inline;
+  font: inherit;
   white-space: nowrap;
+}
+
+.match-record-meta__label--personal {
+  color: var(--gold);
+}
+
+.match-record-meta__label--public {
+  color: var(--green);
+}
+
+.match-record-meta__label--private {
+  color: var(--blue);
 }
 
 .match-record-meta__prefix,
@@ -1000,7 +1014,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .match-record-meta__court {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 
 .personal-record-profile-card .history-list,

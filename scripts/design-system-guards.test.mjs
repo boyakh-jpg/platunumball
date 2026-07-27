@@ -136,8 +136,21 @@ test("record result cards share matchup and date mode court metadata", () => {
     /const prefix = \[date, mode\]\.filter\(Boolean\)\.join\(" · "\)/,
   );
   assert.match(
+    matchRecordMetaSource,
+    /match-record-meta__court[\s\S]*?\{afterCourt\}/,
+  );
+  assert.match(
+    matchRecordMetaSource,
+    /match-record-meta__labels[\s\S]*?match-record-meta__label--personal[\s\S]*?match-record-meta__label--\$\{isPublic \? "public" : "private"\}/,
+  );
+  assert.doesNotMatch(matchRecordMetaSource, /afterMode|ui-badge/);
+  assert.match(
     globalSearchStyles,
     /\.recent-match-row \.match-record-meta,[\s\S]*?\.history-item \.match-record-meta\s*\{[^}]*display:\s*flex;[^}]*white-space:\s*nowrap;/,
+  );
+  assert.match(
+    globalSearchStyles,
+    /\.match-record-meta__label--personal\s*\{[^}]*color:\s*var\(--gold\);[\s\S]*?\.match-record-meta__label--public\s*\{[^}]*color:\s*var\(--green\);[\s\S]*?\.match-record-meta__label--private\s*\{[^}]*color:\s*var\(--blue\);/,
   );
   for (const page of ["home", "playerDetail", "teamDetail"]) {
     assert.match(pageSources[page], /MatchRecordMeta/);
