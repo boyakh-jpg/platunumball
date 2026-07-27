@@ -373,13 +373,13 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
 
 test("home and team heroes use one masked spatial-refraction edge", () => {
   assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: none;"), 2);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 3px;"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 2px;"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction: url(\"#ui-liquid-glass-refraction\");"), 2);
   assert.doesNotMatch(tokenStyles, /--ui-liquid-glass-(?:caustic|edge-inset|refraction-inner)/);
   assert.match(tokenStyles, /--ui-liquid-glass-edge:\s*[\s\S]*?radial-gradient\(58% 16% at 18% 0%/);
   assert.match(appSource, /id="ui-liquid-glass-refraction"/);
   assert.match(appSource, /<feTurbulence[^>]*type="fractalNoise"[^>]*baseFrequency="0\.008 0\.018"/);
-  assert.match(appSource, /<feDisplacementMap[^>]*in="SourceGraphic"[^>]*scale="3"/);
+  assert.match(appSource, /<feDisplacementMap[^>]*in="SourceGraphic"[^>]*scale="2"/);
   assert.match(visualSystemStyles, /html\[data-theme\] \.home-hero-board,\s*html\[data-theme\] \.team-hub-board \{[^}]*border:\s*0;/);
   assert.match(visualSystemStyles, /html\[data-theme\] \.home-hero-board::before,\s*html\[data-theme\] \.team-hub-board::before \{/);
   assert.doesNotMatch(visualSystemStyles, /\.home-hero-board::after|\.team-hub-board::after/);

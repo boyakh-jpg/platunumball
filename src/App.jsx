@@ -146,7 +146,7 @@ export default function App() {
             colorInterpolationFilters="sRGB"
           >
             <feTurbulence type="fractalNoise" baseFrequency="0.008 0.018" numOctaves="1" seed="8" stitchTiles="stitch" result="liquidNoise" />
-            <feDisplacementMap in="SourceGraphic" in2="liquidNoise" scale="3" xChannelSelector="R" yChannelSelector="G" />
+            <feDisplacementMap in="SourceGraphic" in2="liquidNoise" scale="2" xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
