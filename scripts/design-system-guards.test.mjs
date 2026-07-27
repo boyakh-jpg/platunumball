@@ -174,7 +174,7 @@ test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사�
   assert.match(landingStats, /max-width:\s*none;/);
   assert.match(
     courtControlStyles,
-    /\.create-match-info-grid\.is-standard-room :is\(input, select\),\s*\.match-roster-policy-fields > label > select\s*\{[^}]*min-height:\s*var\(--ui-segmented-field-height\);/,
+    /\.create-match-info-grid\.is-standard-room input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="color"\]\),\s*\.create-match-info-grid\.is-standard-room select,\s*\.match-roster-policy-fields > label > select\s*\{[^}]*min-height:\s*var\(--ui-segmented-field-height\);/,
   );
   assert.match(
     courtControlStyles,
