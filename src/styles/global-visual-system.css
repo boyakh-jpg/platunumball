@@ -3154,8 +3154,8 @@ html[data-theme="light"] .team-detail-hero::after {
 
   .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
     display: grid;
-    width: min(100%, 720px);
-    max-width: 720px;
+    width: fit-content;
+    max-width: min(100%, 560px);
     justify-self: start;
   }
 }
@@ -3974,12 +3974,15 @@ html[data-theme] .app-main :is(.home-hero-next > span, .team-hub-board > span) {
 html[data-theme] .app-main :is(
   .home-hero-next > strong,
   .home-hero-stats strong,
-  .team-hub-board strong,
   .om-match-stats strong,
   .arena-hero-stats strong,
   .season-rule-board > strong
 ) {
   color: var(--hero-title-color);
+}
+
+html[data-theme] .app-main .team-hub-board strong {
+  color: var(--rb-gold);
 }
 
 html[data-theme] .app-main :is(

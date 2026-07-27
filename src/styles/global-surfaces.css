@@ -896,8 +896,8 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
 .team-hub-board {
   display: grid;
-  width: min(100%, 720px);
-  max-width: 720px;
+  width: fit-content;
+  max-width: min(100%, 560px);
   align-content: start;
   justify-self: start;
   gap: var(--space-6);

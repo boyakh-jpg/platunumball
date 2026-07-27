@@ -524,6 +524,21 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
 });
 
+test("팀 허브 1위 보드는 팀 전용 너비와 단색 gold 팀명을 사용한다", () => {
+  assert.match(
+    visualSystemStyles,
+    /\.team-hub-board strong\s*\{[^}]*color:\s*var\(--rb-gold\);/,
+  );
+  assert.match(
+    read("src/styles/global-surfaces.css"),
+    /\.team-hub-board\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*min\(100%,\s*560px\);/,
+  );
+  assert.doesNotMatch(
+    visualSystemStyles,
+    /\.team-hub-board strong[^}]*background(?:-image)?:\s*(?:linear|radial)-gradient/,
+  );
+});
+
 test("tier emblem halo stays inside the shared emblem paint box", () => {
   const foundationStyles = read("src/styles/global-foundation.css");
 
