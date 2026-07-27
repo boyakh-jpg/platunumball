@@ -3719,10 +3719,25 @@ html[data-theme="light"] .landing-copy .landing-purpose > .landing-purpose-brand
 
   .landing-purpose {
     gap: 7px;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--ui-panel-radius);
+    background: rgba(5, 7, 10, 0.74);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+    -webkit-backdrop-filter: blur(16px) saturate(0.86);
+    backdrop-filter: blur(16px) saturate(0.86);
   }
 
   .landing-purpose h2 {
     font-size: 1.35rem;
+  }
+
+  html[data-theme="light"] .landing-purpose {
+    border-color: rgba(255, 255, 255, 0.76);
+    background: rgba(248, 248, 246, 0.84);
+    box-shadow:
+      0 14px 34px rgba(35, 50, 59, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
 
 }
