@@ -402,6 +402,11 @@ async function assertCanSubmitTeamNameReport(context, targetId) {
     error.statusCode = 404;
     throw error;
   }
+  if (captain?.user_id === context.profileId) {
+    const error = new Error("cannot_report_own_team_name");
+    error.statusCode = 400;
+    throw error;
+  }
   return {
     reportedUserIds: captain?.user_id ? [captain.user_id] : [],
     verifiedPayload: { teamName: team.name, captainId: captain?.user_id ?? null },
@@ -420,6 +425,11 @@ async function assertCanSubmitAffiliationNameReport(context, targetId) {
   if (!affiliation?.id) {
     const error = new Error("affiliation_not_found");
     error.statusCode = 404;
+    throw error;
+  }
+  if (affiliation.created_by === context.profileId) {
+    const error = new Error("cannot_report_own_affiliation_name");
+    error.statusCode = 400;
     throw error;
   }
   return {

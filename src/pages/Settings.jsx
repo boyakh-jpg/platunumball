@@ -11,8 +11,24 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
-import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportReasonValue, getReportTargetType } from "../lib/reportReasons.js";
-import { formatKoreanDateTime, formatStatLine, getMatchReservePlayerIds, getMatchScheduledDate, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
+import {
+  REPORT_REASONS,
+  REPORT_TARGET_TYPES,
+  VOID_MATCH_RESTORE_REPORT_REASON,
+  getCourtCorrectionFieldForReportReason,
+  getReportReasonValue,
+  getReportTargetType,
+} from "../lib/reportReasons.js";
+import {
+  canRequestVoidMatchRestore,
+  formatKoreanDateTime,
+  formatStatLine,
+  getMatchReservePlayerIds,
+  getMatchScheduledDate,
+  getMatchSidePlayerIds,
+  getReportableMatchTimeMs,
+  isEligibleReferee,
+} from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, REFEREE_EXAM_COOLDOWN_DAYS, REFEREE_TRUST_MIN, REGIONS, REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
 import {
   COURT_ACCESS_OPTIONS,
@@ -134,16 +150,6 @@ function getPrivacyDraft(privacy = {}) {
   };
 }
 
-function getMatchReportTime(match = {}) {
-  const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
-  if (!rawDate) return 0;
-  if (match.scheduledDate && rawDate === match.scheduledDate) {
-    return getMatchScheduledDate(match)?.getTime() ?? 0;
-  }
-  const value = new Date(rawDate).getTime();
-  return Number.isFinite(value) ? value : 0;
-}
-
 function makeRefereeAttemptId() {
   return `rea_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -196,7 +202,7 @@ function getMatchReportTitle(match = {}) {
 function getReportTargetLabel(targetType) {
   if (targetType === REPORT_TARGET_TYPES.player) return "선수 검색";
   if (targetType === REPORT_TARGET_TYPES.match) return "경기기록 검색";
-  if (targetType === REPORT_TARGET_TYPES.courtRequest) return "구장/요청 검색";
+  if (targetType === REPORT_TARGET_TYPES.courtRequest) return "구장 등록요청 검색";
   if (targetType === REPORT_TARGET_TYPES.court) return "구장 검색";
   if (targetType === REPORT_TARGET_TYPES.courtReview) return "구장 리뷰 검색";
   if (targetType === REPORT_TARGET_TYPES.teamName || targetType === REPORT_TARGET_TYPES.teamEmblem) return "팀 검색";
@@ -206,7 +212,7 @@ function getReportTargetLabel(targetType) {
 function getReportTargetPlaceholder(targetType) {
   if (targetType === REPORT_TARGET_TYPES.player) return "선수명, 포지션, 경기, #경기기록 검색";
   if (targetType === REPORT_TARGET_TYPES.match) return "경기명, 팀명, 구장, #경기기록 검색";
-  if (targetType === REPORT_TARGET_TYPES.courtRequest) return "구장명, 주소, #구장 검색";
+  if (targetType === REPORT_TARGET_TYPES.courtRequest) return "요청 구장명, 주소, #구장 검색";
   if (targetType === REPORT_TARGET_TYPES.court) return "구장명, 주소, #구장 검색";
   if (targetType === REPORT_TARGET_TYPES.courtReview) return "구장명, 리뷰, 경기, #구장 검색";
   if (targetType === REPORT_TARGET_TYPES.teamName || targetType === REPORT_TARGET_TYPES.teamEmblem) return "팀명, 홈코트, 지역 검색";
@@ -214,7 +220,7 @@ function getReportTargetPlaceholder(targetType) {
 }
 
 function getReportTargetEmptyText(targetType) {
-  if (targetType === REPORT_TARGET_TYPES.courtRequest) return "신고 가능한 구장/요청 없음";
+  if (targetType === REPORT_TARGET_TYPES.courtRequest) return "신고 가능한 구장 등록요청 없음";
   if (targetType === REPORT_TARGET_TYPES.court) return "신고 가능한 구장 없음";
   if (targetType === REPORT_TARGET_TYPES.courtReview) return "신고 가능한 구장 리뷰 없음";
   if (targetType === REPORT_TARGET_TYPES.player) return "신고 가능한 선수 없음";
@@ -544,7 +550,7 @@ export default function Settings({ app, section = "main" }) {
     const now = Date.now();
     const cutoff = now - REPORT_MATCH_WINDOW_MS;
     return [...app.state.matches]
-      .map((match) => ({ match, reportTime: getMatchReportTime(match) }))
+      .map((match) => ({ match, reportTime: getReportableMatchTimeMs(match) }))
       .filter(({ match, reportTime }) => (
         reportTime >= cutoff &&
         reportTime <= now &&
@@ -554,6 +560,13 @@ export default function Settings({ app, section = "main" }) {
       .map(({ match }) => match);
   }, [app.currentUserId, app.state.matches, userMap]);
   const reportTargetType = reportReason ? getReportTargetType(reportReason) : "";
+  const isVoidRestoreReport = reportReason === VOID_MATCH_RESTORE_REPORT_REASON;
+  const reportableMatchCandidates = useMemo(
+    () => (isVoidRestoreReport
+      ? recentReportMatches.filter((match) => canRequestVoidMatchRestore(match, app.currentUserId))
+      : recentReportMatches),
+    [app.currentUserId, isVoidRestoreReport, recentReportMatches],
+  );
   const reportNeedsMatchData = [REPORT_TARGET_TYPES.player, REPORT_TARGET_TYPES.match, REPORT_TARGET_TYPES.mixed].includes(reportTargetType);
   useEffect(() => {
     if (!reportNeedsMatchData || !app.currentUserId || reportMatchesLoadRef.current === app.currentUserId) return;
@@ -612,9 +625,10 @@ export default function Settings({ app, section = "main" }) {
       team.id && !team.members?.some((member) => member.role === "captain" && member.userId === app.currentUserId)
     ))
   ), [app.currentUserId, app.state.teams]);
-  const selectedReportMatchId = recentReportMatches.some((match) => match.id === reportMatchId) ? reportMatchId : "";
-  const selectedReportMatch = recentReportMatches.find((match) => match.id === selectedReportMatchId) ?? null;
-  const selectedReportCourtRequest = reportableCourtRequests.find((request) => request.id === reportCourtRequestId) ?? null;
+  const selectedReportMatchId = reportableMatchCandidates.some((match) => match.id === reportMatchId) ? reportMatchId : "";
+  const selectedReportMatch = reportableMatchCandidates.find((match) => match.id === selectedReportMatchId) ?? null;
+  const selectedReportCourtRequest = reportableCourtRequests.find((request) => request.id === reportCourtRequestId)
+    ?? (reportRemoteTarget?.kind === "court_request" && reportRemoteTarget.request?.id === reportCourtRequestId ? reportRemoteTarget.request : null);
   const selectedReportCourt = reportableCourts.find((court) => court.id === reportCourtId)
     ?? (reportRemoteTarget?.kind === "court" && reportRemoteTarget.court?.id === reportCourtId ? reportRemoteTarget.court : null);
   const selectedReportCourtReview = reportableCourtReviews.find((review) => review.id === reportCourtReviewId)
@@ -639,13 +653,13 @@ export default function Settings({ app, section = "main" }) {
     const includePlayers = reportTargetType === REPORT_TARGET_TYPES.player || reportTargetType === REPORT_TARGET_TYPES.mixed;
     const includeMatches = reportTargetType === REPORT_TARGET_TYPES.match || reportTargetType === REPORT_TARGET_TYPES.mixed;
     const includeCourtRequests = reportTargetType === REPORT_TARGET_TYPES.courtRequest || reportTargetType === REPORT_TARGET_TYPES.mixed;
-    const includeCourts = reportTargetType === REPORT_TARGET_TYPES.court || reportTargetType === REPORT_TARGET_TYPES.courtRequest || reportTargetType === REPORT_TARGET_TYPES.mixed;
+    const includeCourts = reportTargetType === REPORT_TARGET_TYPES.court || reportTargetType === REPORT_TARGET_TYPES.mixed;
     const includeCourtReviews = reportTargetType === REPORT_TARGET_TYPES.courtReview || reportTargetType === REPORT_TARGET_TYPES.mixed;
     const includeTeams = reportTargetType === REPORT_TARGET_TYPES.teamName || reportTargetType === REPORT_TARGET_TYPES.teamEmblem;
     const items = [];
 
     if (includeMatches) {
-      recentReportMatches.forEach((match) => {
+      reportableMatchCandidates.forEach((match) => {
         const hashtag = getMatchHashtag(match);
         const title = getMatchReportTitle(match);
         items.push({
@@ -661,7 +675,7 @@ export default function Settings({ app, section = "main" }) {
     }
 
     if (includePlayers) {
-      recentReportMatches.forEach((match) => {
+      reportableMatchCandidates.forEach((match) => {
         const matchHashtag = getMatchHashtag(match);
         getReportParticipantRows(match, userMap).forEach((row) => {
           if (row.userId === app.currentUserId) return;
@@ -743,17 +757,29 @@ export default function Settings({ app, section = "main" }) {
     }
 
     return items.filter((item) => (keyword ? item.haystack.includes(keyword) : true));
-  }, [app.currentUserId, matchMap, recentReportMatches, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, reportableTeams, userMap]);
+  }, [app.currentUserId, matchMap, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, reportableMatchCandidates, reportableTeams, userMap]);
   const reportRemoteSearchTypes = reportTargetType === REPORT_TARGET_TYPES.courtReview
     ? ["court_review"]
     : reportTargetType === REPORT_TARGET_TYPES.teamName || reportTargetType === REPORT_TARGET_TYPES.teamEmblem
       ? ["team"]
-    : reportTargetType === REPORT_TARGET_TYPES.court || reportTargetType === REPORT_TARGET_TYPES.courtRequest
-      ? ["court"]
-      : reportTargetType === REPORT_TARGET_TYPES.mixed
-        ? ["court", "court_review"]
-        : [];
+      : reportTargetType === REPORT_TARGET_TYPES.courtRequest
+        ? ["court_request"]
+        : reportTargetType === REPORT_TARGET_TYPES.court
+          ? ["court"]
+          : reportTargetType === REPORT_TARGET_TYPES.mixed
+            ? ["court", "court_review"]
+            : [];
   const mapRemoteReportTarget = (item) => {
+    if (item?.kind === "court_request") {
+      return {
+        id: `court-request:${item.id}`,
+        kind: "court_request",
+        request: item,
+        title: item.name,
+        subtitle: `${item.addressText || "주소 미정"} · 등록요청`,
+        meta: item.hashtag || "구장요청",
+      };
+    }
     if (item?.kind === "team") {
       if (item.members?.some((member) => member.role === "captain" && member.userId === app.currentUserId)) return null;
       return {
@@ -788,9 +814,10 @@ export default function Settings({ app, section = "main" }) {
     }
     return null;
   };
-  const canSubmitReport = Boolean(reportReason) && (
+  const hasValidVoidRestoreMemo = !isVoidRestoreReport || reportMemo.trim().length >= 10;
+  const canSubmitReport = Boolean(reportReason) && hasValidVoidRestoreMemo && (
     reportTargetType === REPORT_TARGET_TYPES.courtRequest
-      ? Boolean(selectedReportCourtRequest || selectedReportCourt)
+      ? Boolean(selectedReportCourtRequest)
       : reportTargetType === REPORT_TARGET_TYPES.court
         ? Boolean(selectedReportCourt)
         : reportTargetType === REPORT_TARGET_TYPES.courtReview
@@ -816,7 +843,7 @@ export default function Settings({ app, section = "main" }) {
   const selectReportTarget = (item) => {
     setReportTargetQuery(`${item.title} ${item.meta ?? ""}`.trim());
     if (item.kind === "court_request") {
-      setReportRemoteTarget(null);
+      setReportRemoteTarget(item);
       setReportCourtRequestId(item.request.id);
       setReportCourtId("");
       setReportCourtReviewId("");
@@ -862,6 +889,16 @@ export default function Settings({ app, section = "main" }) {
     setReportTeamId("");
     setReportMatchId(item.match.id);
     setReportedUserIds(item.kind === "player" ? [item.row.userId] : []);
+  };
+  const changeReportTargetQuery = (value) => {
+    setReportTargetQuery(value);
+    setReportMatchId("");
+    setReportCourtRequestId("");
+    setReportCourtId("");
+    setReportCourtReviewId("");
+    setReportTeamId("");
+    setReportRemoteTarget(null);
+    setReportedUserIds([]);
   };
   const renderReportTargetSearchItem = (item) => (
     <button
@@ -912,10 +949,15 @@ export default function Settings({ app, section = "main" }) {
       } else if (selectedReportCourtRequest) {
         result = await app.actions.reportCourtRequest(selectedReportCourtRequest.id, [reportReason, memo].filter(Boolean).join(" · "));
       } else if (selectedReportCourt) {
+        const correctionField = getCourtCorrectionFieldForReportReason(reportReason);
         result = await app.actions.reportCourt(
           selectedReportCourt.id,
           [reportReason, memo].filter(Boolean).join(" · "),
-          null,
+          {
+            field: correctionField,
+            proposedValue: memo || (correctionField === "duplicate" ? "동일 구장 중복 등록 확인 필요" : reportReason),
+            evidenceUrl: "",
+          },
           selectedReportCourt,
         );
       } else if (selectedReportCourtReview) {
@@ -928,12 +970,18 @@ export default function Settings({ app, section = "main" }) {
         } else {
           const targetNames = selectedReportedUserIds.map((userId) => userMap[userId]?.name).filter(Boolean);
           const targetLine = targetNames.length ? `대상: ${targetNames.join(", ")}` : "대상: 경기 기록";
-          result = await app.actions.reportMatch(selectedReportMatchId, [reportReason, matchLine, targetLine, memo].filter(Boolean).join(" · "), selectedReportedUserIds);
+          const reason = isVoidRestoreReport
+            ? `${VOID_MATCH_RESTORE_REPORT_REASON}: ${memo}`
+            : [reportReason, matchLine, targetLine, memo].filter(Boolean).join(" · ");
+          result = await app.actions.reportMatch(selectedReportMatchId, reason, selectedReportedUserIds);
         }
       }
       if (!result || result.ok === false) {
         setReportSubmitStatus("신고를 접수하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
+      }
+      if (loadDirectory) {
+        await Promise.resolve(loadDirectory({ kind: "self", limit: DIRECTORY_SELF_PAGE_LIMIT, offset: 0, force: true })).catch(() => false);
       }
       setReportSubmitStatus(result.duplicate ? "이미 접수된 신고입니다." : "신고가 접수됐습니다.");
       setReportReason("");
@@ -1923,7 +1971,7 @@ export default function Settings({ app, section = "main" }) {
                     {getReportTargetLabel(reportTargetType)}
                     <SearchPicker
                       value={reportTargetQuery}
-                      onChange={setReportTargetQuery}
+                      onChange={changeReportTargetQuery}
                       placeholder={getReportTargetPlaceholder(reportTargetType)}
                       items={reportTargetSearchItems}
                       idleItems={reportTargetSearchItems}
@@ -1941,16 +1989,20 @@ export default function Settings({ app, section = "main" }) {
                   </label>
                   <small>
                     {reportTargetType === REPORT_TARGET_TYPES.courtRequest
-                      ? "허위 구장 등록은 신고 가능한 등록요청과 승인 구장만 표시됩니다."
+                      ? "허위 구장 등록은 타인의 검토 대기·신고 상태 등록요청만 표시됩니다."
                       : reportTargetType === REPORT_TARGET_TYPES.court
-                        ? "승인된 구장 중 위치나 상태 확인이 필요한 대상만 선택합니다."
+                        ? "승인된 구장 중 위치·상태·중복 확인이 필요한 대상만 선택합니다."
                         : reportTargetType === REPORT_TARGET_TYPES.courtReview
                           ? "내가 작성하지 않은 구장 리뷰만 신고할 수 있습니다."
                           : reportTargetType === REPORT_TARGET_TYPES.teamName
                             ? "내가 팀장인 팀은 신고할 수 없습니다."
                             : reportTargetType === REPORT_TARGET_TYPES.teamEmblem
                               ? "사용자가 올린 사진 엠블럼만 신고할 수 있습니다."
-                          : "최근 7일 내 내가 출전했거나 후보로 등록된 경기 안에서만 검색됩니다."}
+                              : reportTargetType === REPORT_TARGET_TYPES.mixed
+                                ? "경기는 최근 7일 내 내 경기만, 구장과 리뷰는 신고 가능한 공개 대상만 검색됩니다."
+                                : isVoidRestoreReport
+                                  ? "최근 7일 안에 무효 처리됐고 내가 복구 요청할 수 있는 경기만 표시됩니다."
+                                  : "최근 7일 내 내가 출전했거나 후보로 등록된 경기 안에서만 검색됩니다."}
                   </small>
                 </div>
               ) : (
@@ -2030,7 +2082,13 @@ export default function Settings({ app, section = "main" }) {
               ) : null}
               <label>
                 상세 메모
-                <textarea value={reportMemo} placeholder="상황을 짧게 적어 주세요." onChange={(event) => setReportMemo(event.target.value)} />
+                <textarea
+                  value={reportMemo}
+                  minLength={isVoidRestoreReport ? 10 : undefined}
+                  placeholder={isVoidRestoreReport ? "복구가 필요한 이유를 10자 이상 적어 주세요." : "상황을 짧게 적어 주세요."}
+                  onChange={(event) => setReportMemo(event.target.value)}
+                />
+                {isVoidRestoreReport ? <small>{reportMemo.trim().length}/10자 이상</small> : null}
               </label>
               <Button type="submit" variant="secondary" disabled={!canSubmitReport || reportSubmitPending}>{reportSubmitPending ? "저장 중" : "신고 접수"}</Button>
               {reportSubmitStatus ? <small role="status">{reportSubmitStatus}</small> : null}

@@ -10,7 +10,7 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const requestId = String(body.requestId ?? "").trim();
-    const reason = String(body.reason ?? "허위 구장 등록").trim() || "허위 구장 등록";
+    const reason = (String(body.reason ?? "허위 구장 등록").trim() || "허위 구장 등록").slice(0, 500);
     if (!requestId) {
       sendJson(response, 400, { error: "missing_request_id" });
       return;

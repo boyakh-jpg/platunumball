@@ -1,4 +1,5 @@
 export const VOID_MATCH_RESTORE_REPORT_REASON = "무효 경기 복구 요청";
+export const COURT_DUPLICATE_REPORT_REASON = "중복 구장";
 
 export const TEAM_NAME_REPORT_REASONS = Object.freeze([
   "팀명 · 혐오·차별 표현",
@@ -27,6 +28,7 @@ export const REPORT_REASONS = [
   "허위 구장 등록",
   "구장 위치 오류",
   "구장 상태 위험",
+  COURT_DUPLICATE_REPORT_REASON,
   "구장 리뷰 문제",
   ...TEAM_NAME_REPORT_REASONS,
   ...TEAM_EMBLEM_REPORT_REASONS,
@@ -59,6 +61,7 @@ const REPORT_REASON_TARGET_TYPES = {
   "허위 구장 등록": REPORT_TARGET_TYPES.courtRequest,
   "구장 위치 오류": REPORT_TARGET_TYPES.court,
   "구장 상태 위험": REPORT_TARGET_TYPES.court,
+  [COURT_DUPLICATE_REPORT_REASON]: REPORT_TARGET_TYPES.court,
   "구장 리뷰 문제": REPORT_TARGET_TYPES.courtReview,
   ...Object.fromEntries(TEAM_NAME_REPORT_REASONS.map((reason) => [reason, REPORT_TARGET_TYPES.teamName])),
   ...Object.fromEntries(TEAM_EMBLEM_REPORT_REASONS.map((reason) => [reason, REPORT_TARGET_TYPES.teamEmblem])),
@@ -71,4 +74,11 @@ export function getReportReasonValue(reason = "") {
 
 export function getReportTargetType(reason = "") {
   return REPORT_REASON_TARGET_TYPES[reason] ?? REPORT_TARGET_TYPES.mixed;
+}
+
+export function getCourtCorrectionFieldForReportReason(reason = "") {
+  if (reason === "구장 위치 오류") return "location";
+  if (reason === "구장 상태 위험") return "operation";
+  if (reason === COURT_DUPLICATE_REPORT_REASON) return "duplicate";
+  return "other";
 }

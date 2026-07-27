@@ -149,8 +149,17 @@ test("report review actions keep sanctions behind verified targets and level 50"
   assert.match(settingsSource, /app\.actions\.reportPlayer\(targetUserId, selectedReportMatchId/);
   assert.match(settingsSource, /if \(row\.userId === app\.currentUserId\) return/);
   assert.match(settingsSource, /remoteSearchType=\{reportRemoteSearchTypes\}/);
+  assert.match(settingsSource, /onChange=\{changeReportTargetQuery\}/);
+  assert.match(settingsSource, /canRequestVoidMatchRestore\(match, app\.currentUserId\)/);
+  assert.match(settingsSource, /reportMemo\.trim\(\)\.length >= 10/);
+  assert.match(settingsSource, /`\$\{VOID_MATCH_RESTORE_REPORT_REASON\}: \$\{memo\}`/);
   assert.match(searchSource, /court_review: \["court_review"\]/);
+  assert.match(searchSource, /court_request: \["court_request"\]/);
+  assert.match(searchSource, /\.from\("court_requests"\)[\s\S]{0,220}\.in\("status", \["pending", "reported"\]\)[\s\S]{0,100}\.neq\("requested_by", profileId\)/);
   assert.match(searchSource, /searchCourtReviews\(context\.supabase, context\.profileId/);
+  assert.match(searchSource, /searchCourtRequests\(context\.supabase, context\.profileId/);
+  assert.match(submitSource, /cannot_report_own_team_name/);
+  assert.match(submitSource, /cannot_report_own_affiliation_name/);
   assert.match(hookSource, /result\.ok === false \|\| result\.duplicate === true/);
   assert.match(simulationSource, /sourceMatchId: basicScenario\.matchId/);
   assert.match(simulationSource, /sourceMatchId,\s+reason: `simulation shared match report/);

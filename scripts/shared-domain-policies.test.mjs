@@ -84,7 +84,13 @@ import {
   isTournamentMatchLineupEditable,
 } from "../src/lib/matchUtils.js";
 import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../src/lib/ratingPolicy.js";
-import { VOID_MATCH_RESTORE_REPORT_REASON } from "../src/lib/reportReasons.js";
+import {
+  COURT_DUPLICATE_REPORT_REASON,
+  REPORT_TARGET_TYPES,
+  VOID_MATCH_RESTORE_REPORT_REASON,
+  getCourtCorrectionFieldForReportReason,
+  getReportTargetType,
+} from "../src/lib/reportReasons.js";
 import { getRoomPhaseViewModel } from "../src/lib/roomFlow.js";
 import { PROFILE_ICON_CATALOG } from "../src/lib/profileIcons.js";
 import {
@@ -1311,6 +1317,11 @@ test("match dispute rejection, void reasons, restoration and scoped penalties st
   assert.equal(canRequestVoidMatchRestore(voidedMatch, "referee"), false);
   assert.equal(DEFAULT_RATING_POLICY.trust.matchVoidHostPenalty, 2);
   assert.equal(VOID_MATCH_RESTORE_REPORT_REASON, "무효 경기 복구 요청");
+  assert.equal(COURT_DUPLICATE_REPORT_REASON, "중복 구장");
+  assert.equal(getReportTargetType(COURT_DUPLICATE_REPORT_REASON), REPORT_TARGET_TYPES.court);
+  assert.equal(getCourtCorrectionFieldForReportReason("구장 위치 오류"), "location");
+  assert.equal(getCourtCorrectionFieldForReportReason("구장 상태 위험"), "operation");
+  assert.equal(getCourtCorrectionFieldForReportReason(COURT_DUPLICATE_REPORT_REASON), "duplicate");
 
   const ratings = { integrated: 1200, modes: { "1v1": 1200 } };
   const disputedMatch = {

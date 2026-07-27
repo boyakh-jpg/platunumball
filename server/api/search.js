@@ -19,6 +19,7 @@ const TYPE_ALIASES = {
   profile: ["profile"],
   team: ["team"],
   court: ["court"],
+  court_request: ["court_request"],
   court_review: ["court_review"],
   referee: ["referee"],
   affiliation: ["affiliation"],
@@ -214,6 +215,23 @@ function toCourt(row = {}) {
   };
 }
 
+function toCourtRequest(row = {}) {
+  return {
+    kind: "court_request",
+    id: row.id,
+    requestedBy: row.requested_by,
+    status: row.status ?? "pending",
+    name: row.name,
+    hashtag: row.hashtag ?? null,
+    addressText: row.address_text ?? "",
+    roadAddress: row.road_address ?? null,
+    jibunAddress: row.jibun_address ?? null,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? row.created_at ?? null,
+    searchText: [row.name, row.hashtag, row.address_text, row.road_address, row.jibun_address].filter(Boolean).join(" "),
+  };
+}
+
 function toCourtReview(row = {}) {
   const payload = getPayload(row);
   return {
@@ -318,6 +336,20 @@ async function searchCourts(supabase, query, limit, searchContext = {}) {
   return (fallbackData ?? []).filter((row) => isCourtFuzzyMatch(row, query)).slice(0, limit).map(toCourt);
 }
 
+async function searchCourtRequests(supabase, profileId, query, limit) {
+  if (!profileId) return [];
+  const { data, error } = await supabase
+    .from("court_requests")
+    .select("id,requested_by,status,name,hashtag,address_text,road_address,jibun_address,created_at,updated_at")
+    .in("status", ["pending", "reported"])
+    .neq("requested_by", profileId)
+    .or(searchFilter(["name", "hashtag", "address_text", "road_address", "jibun_address"], query))
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map(toCourtRequest);
+}
+
 async function searchCourtReviews(supabase, profileId, query, limit) {
   let request = supabase
     .from("court_reviews")
@@ -420,6 +452,7 @@ export default async function handler(request, response) {
       profile: () => searchProfiles(context.supabase, query, limit, searchContext),
       team: () => searchTeams(context.supabase, query, limit),
       court: () => searchCourts(context.supabase, query, limit, searchContext),
+      court_request: () => searchCourtRequests(context.supabase, context.profileId, query, limit),
       court_review: () => searchCourtReviews(context.supabase, context.profileId, query, limit),
       referee: () => searchReferees(context.supabase, query, limit, searchContext),
       affiliation: () => searchAffiliations(context.supabase, query, limit),
