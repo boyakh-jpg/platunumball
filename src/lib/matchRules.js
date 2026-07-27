@@ -177,8 +177,7 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
     || source.qrAttendanceEnabled === "true"
     || source.qrAttendanceEnabled === "false";
   const qrAttendanceDefault = source.visibility === "public"
-    && source.matchPurpose === "competitive"
-    && source.formationMode !== "pickup";
+    && source.matchPurpose === "competitive";
   const qrAttendanceEnabled = gameClockEnabled
     && source.visibility !== "private"
     && source.visibility !== "tournament"

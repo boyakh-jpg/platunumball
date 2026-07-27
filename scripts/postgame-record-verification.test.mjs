@@ -35,7 +35,7 @@ test("14명 중 13명만 승인하면 전체 확정하지 않는다", () => {
   const match = makeRecord({
     approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 13) },
   });
-  const status = getPostgameRecordVerification(match, { now: "2026-07-23T23:00:00.000Z" });
+  const status = getPostgameRecordVerification(match, { now: "2026-07-23T00:10:00.000Z" });
   assert.equal(status.verificationStatus, "partial");
   assert.equal(status.canConfirmFully, false);
   assert.equal(status.canAutoApprove, false);
@@ -43,17 +43,19 @@ test("14명 중 13명만 승인하면 전체 확정하지 않는다", () => {
   assert.deepEqual(status.playerStatExcludedIds, [players[13]]);
 });
 
-test("24시간이 지나도 무응답자를 자동 승인하지 않고 부분 검증으로 남긴다", () => {
+test("이의시간이 지나고 열린 이의가 없으면 무응답자도 자동 승인한다", () => {
   const match = makeRecord({
     rules: { recordType: "match_record", participantAcceptedIds: players.slice(0, 13) },
     approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 13) },
   });
-  const status = getPostgameRecordVerification(match, { now: "2026-07-24T00:00:00.000Z" });
+  const status = getPostgameRecordVerification(match, { now: "2026-07-23T00:15:00.000Z" });
   assert.equal(status.expired, true);
-  assert.equal(status.requiresReview, true);
-  assert.equal(status.verificationStatus, "partial");
-  assert.deepEqual(status.timedOutUnconfirmedIds, [players[13]]);
-  assert.equal(status.canConfirmFully, false);
+  assert.equal(status.requiresReview, false);
+  assert.equal(status.verificationStatus, "confirmed");
+  assert.deepEqual(status.unconfirmedIds, []);
+  assert.deepEqual(status.playerStatEligibleIds, players);
+  assert.equal(status.canConfirmFully, true);
+  assert.equal(status.canAutoApprove, true);
 });
 
 test("명시적으로 반대하면 disputed가 되고 전체 통계 확정을 막는다", () => {
@@ -70,7 +72,7 @@ test("최종 승인한 실명 참가자만 개인 통계 대상이다", () => {
     rules: { recordType: "match_record", participantAcceptedIds: [] },
     approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 13) },
   });
-  const status = getPostgameRecordVerification(match);
+  const status = getPostgameRecordVerification(match, { now: "2026-07-23T00:10:00.000Z" });
   assert.deepEqual(status.playerStatEligibleIds, players.slice(0, 13));
   assert.deepEqual(status.participationUnconfirmedIds, [players[13]]);
   assert.deepEqual(status.playerStatExcludedIds, [players[13]]);
@@ -93,39 +95,45 @@ test("본인이 아닌 참가자의 승인 대리는 허용하지 않는다", ()
   );
 });
 
-test("즉시·12시간·22시간 알림은 미확인자에게만 보내고 중복 전송하지 않는다", () => {
+test("즉시·5분 알림은 미확인자에게만 보내고 중복 전송하지 않는다", () => {
   const match = makeRecord({
     approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 13) },
-    recordNotificationSentKeys: ["postgame_record_approval_0h"],
+    recordNotificationSentKeys: ["postgame_record_approval_0m"],
   });
-  const notifications = getDuePostgameRecordNotifications(match, { now: "2026-07-23T22:30:00.000Z" });
-  assert.deepEqual(notifications.map((event) => event.afterHours), [12, 22]);
+  const notifications = getDuePostgameRecordNotifications(match, { now: "2026-07-23T00:06:00.000Z" });
+  assert.deepEqual(notifications.map((event) => event.afterMinutes), [5]);
   assert.ok(notifications.every((event) => event.targetUserIds.length === 1));
   assert.ok(notifications.every((event) => event.targetUserIds[0] === players[13]));
 });
 
-test("24시간 만료 후에는 승인 독촉 알림을 더 만들지 않는다", () => {
+test("이의시간 만료 후에는 승인 독촉 알림을 더 만들지 않는다", () => {
   const match = makeRecord({
     approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 13) },
   });
-  const notifications = getDuePostgameRecordNotifications(match, { now: "2026-07-24T00:00:00.000Z" });
+  const notifications = getDuePostgameRecordNotifications(match, { now: "2026-07-23T00:15:00.000Z" });
   assert.deepEqual(notifications, []);
 });
 
-test("기존 참가 확인과 별개로 최종 승인 한 번을 DB에서 허용한다", async () => {
-  const [serverSource, legacyMigration, singleApprovalMigration] = await Promise.all([
+test("별도 참가 확인 경로를 닫고 최종 승인 한 번과 이의시간 자동 확정을 사용한다", async () => {
+  const [serverSource, clientSource, singleApprovalMigration, consistencyMigration] = await Promise.all([
     readFile(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8"),
-    readFile(new URL("../supabase/migrations/20260723112000_match_record_participation_confirmation.sql", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/useAppData.js", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260723114000_match_record_single_final_approval.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260726090000_match_policy_consistency.sql", import.meta.url), "utf8"),
   ]);
-  assert.match(serverSource, /rankball_match_record_participation_action/);
+  assert.doesNotMatch(serverSource, /rankball_match_record_participation_action/);
+  assert.doesNotMatch(clientSource, /confirmMatchRecordParticipation/);
   assert.match(serverSource, /MATCH_RECORD_APPROVAL_NOTICE_PREFIXES/);
-  assert.match(serverSource, /POSTGAME_RECORD_REMINDER_HOURS\.forEach/);
-  assert.match(legacyMigration, /safe_actor_id <> safe_player_id/);
+  assert.match(serverSource, /POSTGAME_RECORD_REMINDER_MINUTES\.forEach/);
   assert.match(singleApprovalMigration, /match_record_participation_required/);
   assert.match(singleApprovalMigration, /execute replace/);
   assert.match(singleApprovalMigration, /recordApprovalMode/);
   assert.match(singleApprovalMigration, /recordApproverIds/);
   assert.match(singleApprovalMigration, /update public\.matches match_row/);
   assert.doesNotMatch(singleApprovalMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
+  assert.match(consistencyMigration, /match_auto_finalization_not_due/);
+  assert.match(consistencyMigration, /rankball_normalize_dispute_minutes\(current_match\.dispute_minutes\)/);
+  assert.match(consistencyMigration, /now_at < result_submitted_at \+ make_interval/);
+  assert.match(consistencyMigration, /revoke all on function public\.rankball_match_record_participation_action/);
+  assert.doesNotMatch(consistencyMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });

@@ -1,7 +1,7 @@
-const HOUR_MS = 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
 
-export const POSTGAME_RECORD_APPROVAL_WINDOW_HOURS = 24;
-export const POSTGAME_RECORD_REMINDER_HOURS = Object.freeze([0, 12, 22]);
+export const POSTGAME_RECORD_AUTO_APPROVAL_MINUTES = 15;
+export const POSTGAME_RECORD_REMINDER_MINUTES = Object.freeze([0, 5]);
 
 function uniqueIds(values = []) {
   return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))];
@@ -108,17 +108,24 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
     && !resultApprovedSet.has(playerId)
     && !rejectedSet.has(playerId)
   ));
+  const requestedApprovalMinutes = Number(match.disputeMinutes ?? match.rules?.disputeMinutes);
+  const approvalWindowMinutes = [10, 15, 20].includes(requestedApprovalMinutes)
+    ? requestedApprovalMinutes
+    : POSTGAME_RECORD_AUTO_APPROVAL_MINUTES;
   const elapsedMs = submittedAtMs === null ? 0 : Math.max(0, nowMs - submittedAtMs);
   const deadlineAtMs = submittedAtMs === null
     ? null
-    : submittedAtMs + POSTGAME_RECORD_APPROVAL_WINDOW_HOURS * HOUR_MS;
+    : submittedAtMs + approvalWindowMinutes * MINUTE_MS;
   const expired = deadlineAtMs !== null && nowMs >= deadlineAtMs;
   const explicitlyDisputed = match.status === "disputed" || rejectedIds.length > 0;
   const fullyApproved = requiredParticipantIds.length > 0
     && verifiedPlayerIds.length === requiredParticipantIds.length;
+  const autoApproved = expired && !explicitlyDisputed;
+  const finalVerifiedPlayerIds = autoApproved ? requiredParticipantIds : verifiedPlayerIds;
+  const finalUnconfirmedIds = autoApproved ? [] : unconfirmedIds;
   const verificationStatus = explicitlyDisputed
     ? "disputed"
-    : fullyApproved
+    : fullyApproved || autoApproved
       ? "confirmed"
       : "partial";
 
@@ -127,23 +134,24 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
     requiredParticipantIds,
     participantAcceptedIds,
     resultApprovedIds,
-    approvedIds: verifiedPlayerIds,
-    unconfirmedIds,
+    approvedIds: finalVerifiedPlayerIds,
+    unconfirmedIds: finalUnconfirmedIds,
     participationUnconfirmedIds,
     resultUnconfirmedIds,
     rejectedIds,
     anonymousPlayerIds,
-    verifiedPlayerIds,
-    playerStatEligibleIds: verifiedPlayerIds,
-    playerStatExcludedIds: uniqueIds([...unconfirmedIds, ...rejectedIds, ...anonymousPlayerIds]),
+    verifiedPlayerIds: finalVerifiedPlayerIds,
+    playerStatEligibleIds: finalVerifiedPlayerIds,
+    playerStatExcludedIds: uniqueIds([...finalUnconfirmedIds, ...rejectedIds, ...anonymousPlayerIds]),
     submittedAt,
     deadlineAt: deadlineAtMs === null ? null : new Date(deadlineAtMs).toISOString(),
-    elapsedHours: elapsedMs / HOUR_MS,
+    approvalWindowMinutes,
+    elapsedMinutes: elapsedMs / MINUTE_MS,
     expired,
-    timedOutUnconfirmedIds: expired ? unconfirmedIds : [],
-    requiresReview: expired && unconfirmedIds.length > 0,
+    timedOutUnconfirmedIds: [],
+    requiresReview: explicitlyDisputed,
     canConfirmFully: verificationStatus === "confirmed",
-    canAutoApprove: false,
+    canAutoApprove: autoApproved,
     ranked: false,
     mmrPolicy: "forbidden",
     canApplyPersonalMmr: false,
@@ -164,13 +172,13 @@ export function getDuePostgameRecordNotifications(match = {}, options = {}) {
   const targets = verification.unconfirmedIds;
   if (!targets.length) return [];
 
-  return POSTGAME_RECORD_REMINDER_HOURS
-    .map((afterHours) => ({
-      key: `postgame_record_approval_${afterHours}h`,
-      afterHours,
-      dueAt: new Date(new Date(verification.submittedAt).getTime() + afterHours * HOUR_MS).toISOString(),
+  return POSTGAME_RECORD_REMINDER_MINUTES
+    .map((afterMinutes) => ({
+      key: `postgame_record_approval_${afterMinutes}m`,
+      afterMinutes,
+      dueAt: new Date(new Date(verification.submittedAt).getTime() + afterMinutes * MINUTE_MS).toISOString(),
       targetUserIds: targets,
-      type: afterHours === 0 ? "postgame_record_approval_requested" : "postgame_record_approval_reminder",
+      type: afterMinutes === 0 ? "postgame_record_approval_requested" : "postgame_record_approval_reminder",
     }))
-    .filter((event) => verification.elapsedHours >= event.afterHours && !sentKeys.has(event.key));
+    .filter((event) => verification.elapsedMinutes >= event.afterMinutes && !sentKeys.has(event.key));
 }

@@ -779,6 +779,9 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(source, /official:\s*true/);
   assert.doesNotMatch(source, /wizardStep === \(isMatchRecordRoom \? 5 : 1\)/);
   const wizardSource = fs.readFileSync(path.join(root, "src/components/match/MatchCreationWizard.jsx"), "utf8");
+  assert.match(wizardSource, /const purposeValue = matchPurpose/);
+  assert.doesNotMatch(wizardSource, /disabled=\{pickup\}/);
+  assert.doesNotMatch(wizardSource, /현장 픽업은 친선전으로 고정/);
   assert.doesNotMatch(wizardSource, /\{ id: 6, label: "확인" \}/);
   assert.doesNotMatch(wizardSource, /점수판 있음|샷클락 있음|기록원 있음/);
   assert.match(wizardSource, /policy\.onCourtCount > 1/);

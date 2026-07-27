@@ -9,13 +9,16 @@ import {
   getTournamentRefereePoolValidation,
   getTournamentSanctionLabel,
   getTournamentUncoveredTeamPairs,
+  doTournamentMatchSchedulesOverlap,
   isTournamentGovernanceEnabled,
   isTournamentRefereeNeutral,
 } from "../src/lib/tournamentGovernance.js";
 import {
   activateTournamentSanction,
   assignTournamentMatchReferee,
+  declineTournamentReferee,
   rejectTournamentRegion,
+  requestMatchRefereeAbsence,
   updateTournamentMatchSchedule,
 } from "../src/data/repository.js";
 
@@ -50,6 +53,7 @@ test("팀 수에 따라 필수 심판 수가 2·3·4명으로 증가한다", () 
   assert.equal(getRequiredTournamentRefereeCount(9), 4);
   assert.equal(isTournamentGovernanceEnabled({ rules: { governanceVersion: 2 } }), true);
   assert.equal(isTournamentGovernanceEnabled({ rules: {} }), false);
+  assert.equal(isTournamentGovernanceEnabled(null), false);
 });
 
 test("공식·지역 비승인 모두 승인된 중립 심판 풀을 요구한다", () => {
@@ -105,6 +109,7 @@ function makeGovernedTournamentState() {
     tournaments: [{
       id: "tournament-1",
       title: "심판 검증 대회",
+      region: "마포",
       status: "draft",
       format: "league",
       mode: "3v3",
@@ -179,6 +184,7 @@ test("지역관리자 비승인 뒤에도 필수 심판 조건을 유지한 채 
   const reviewed = rejectTournamentRegion({
     ...state,
     currentUserId: "region-manager",
+    users: [...state.users, { id: "region-manager", trustScore: 95, region: "마포" }],
     settings: {
       ...state.settings,
       adminAppointments: [{
@@ -188,6 +194,7 @@ test("지역관리자 비승인 뒤에도 필수 심판 조건을 유지한 채 
         grade: "regionManager",
         status: "active",
         source: "server_context",
+        payload: { region: "마포" },
       }],
     },
   }, "tournament-1", "지역 일정 조정 필요");
@@ -203,7 +210,45 @@ test("지역관리자 비승인 뒤에도 필수 심판 조건을 유지한 채 
   assert.ok(started.matches[0].refereeId);
 });
 
-test("심판 승인 부족과 같은 시각 중복 배정은 로컬 시뮬레이션에서도 막는다", () => {
+test("다른 지역 지역관리자는 대회를 승인하거나 반려할 수 없다", () => {
+  const state = makeGovernedTournamentState();
+  const attemptedState = {
+    ...state,
+    currentUserId: "region-manager",
+    users: [...state.users, { id: "region-manager", trustScore: 95, region: "성수" }],
+    settings: {
+      ...state.settings,
+      adminAppointments: [{
+        id: "appointment-region-manager",
+        userId: "region-manager",
+        role: "admin",
+        grade: "regionManager",
+        status: "active",
+        source: "server_context",
+        payload: { region: "성수" },
+      }],
+    },
+  };
+  const reviewed = rejectTournamentRegion(attemptedState, "tournament-1", "다른 지역");
+  assert.equal(reviewed, attemptedState);
+});
+
+test("대회 활성화 뒤에는 확정 심판이 일방적으로 거절할 수 없다", () => {
+  const active = activateTournamentSanction(makeGovernedTournamentState(), "tournament-1", "community");
+  const result = declineTournamentReferee({
+    ...active,
+    currentUserId: "referee-a",
+  }, "tournament-1");
+  assert.equal(result.tournaments[0].refereeStatuses["referee-a"], "accepted");
+});
+
+test("운영 대회는 심판 미출석을 무심판 경기로 전환하지 않는다", () => {
+  const active = activateTournamentSanction(makeGovernedTournamentState(), "tournament-1", "community");
+  const requested = requestMatchRefereeAbsence(active, active.matches[0].id);
+  assert.equal(requested, active);
+});
+
+test("심판 승인 부족과 경기시간 구간 중복 배정은 로컬 시뮬레이션에서도 막는다", () => {
   const state = makeGovernedTournamentState();
   const missingApproval = {
     ...state,
@@ -228,7 +273,7 @@ test("심판 승인 부족과 같은 시각 중복 배정은 로컬 시뮬레이
         tournamentId: "other-tournament",
         refereeId: "referee-b",
         scheduledDate: "2026-08-01",
-        scheduledTime: "14:00",
+        scheduledTime: "14:05",
       },
     ],
   };
@@ -273,7 +318,7 @@ test("대회 일정 변경도 승인 중립 심판 자격과 새 일정 중복�
         id: "conflicting-match",
         tournamentId: "other-tournament",
         scheduledDate,
-        scheduledTime: "14:00",
+        scheduledTime: "14:05",
       },
     ],
   };
@@ -286,8 +331,27 @@ test("대회 일정 변경도 승인 중립 심판 자격과 새 일정 중복�
   assert.equal(updated.matches[0].scheduledTime, "14:00");
 });
 
+test("심판 일정은 예상 경기 종료 시각과 맞닿으면 겹치지 않는다", () => {
+  const match = {
+    scheduledDate: "2026-08-01",
+    scheduledTime: "14:00",
+    rules: { periodCount: 1, periodMinutes: 12, overtimeMinutes: 3 },
+  };
+  assert.equal(doTournamentMatchSchedulesOverlap(match, {
+    ...match,
+    scheduledTime: "14:05",
+  }), true);
+  assert.equal(doTournamentMatchSchedulesOverlap(match, {
+    ...match,
+    scheduledTime: "14:20",
+  }), false);
+});
+
 test("DB 권위 흐름은 비승인 대회에도 심판과 중립성·일정 충돌·시작 가드를 둔다", async () => {
-  const migration = await readSource("supabase/migrations/20260725023000_tournament_referee_sanction_flow.sql");
+  const [migration, consistencyMigration] = await Promise.all([
+    readSource("supabase/migrations/20260725023000_tournament_referee_sanction_flow.sql"),
+    readSource("supabase/migrations/20260726090000_match_policy_consistency.sql"),
+  ]);
   const server = await readSource("server/api/tournaments/sync-tournament.js");
   for (const action of [
     "approveTournamentReferee",
@@ -311,4 +375,12 @@ test("DB 권위 흐름은 비승인 대회에도 심판과 중립성·일정 충
   assert.doesNotMatch(migration, /if match_row\.referee_id is null then\s*assignment_result/);
   assert.match(migration, /rankball_match_start_action_guarded_pre_tournament_referee/);
   assert.match(migration, /governanceVersion/);
+  assert.match(consistencyMigration, /appointment\.ends_at >= case[\s\S]*p_through_date \+ 1/);
+  assert.match(consistencyMigration, /appointment\.payload->>'region'/);
+  assert.match(consistencyMigration, /tstzrange\([\s\S]*&& tstzrange\(/);
+  assert.match(consistencyMigration, /referee_active_match_conflict/);
+  assert.match(consistencyMigration, /tournament_referee_replacement_required/);
+  assert.match(consistencyMigration, /new\.referee_absence_request is distinct from old\.referee_absence_request/);
+  assert.match(consistencyMigration, /active_tournament_referee_decline_locked/);
+  assert.doesNotMatch(consistencyMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });

@@ -620,7 +620,7 @@ export default function TournamentDetail({ app }) {
     if (message.includes("tournament_approval_not_ready")) return "팀장과 필수 심판 전원의 승인이 먼저 필요합니다.";
     if (message.includes("tournament_region_manager_required")) return "해당 지역관리자 이상만 처리할 수 있습니다.";
     if (message.includes("tournament_referee_not_neutral")) return "양 팀 어느 쪽에도 속하지 않은 중립 심판만 배정할 수 있습니다.";
-    if (message.includes("tournament_referee_schedule_conflict")) return "같은 심판이 같은 시각의 다른 경기에 배정되어 있습니다.";
+    if (message.includes("tournament_referee_schedule_conflict")) return "같은 심판이 겹치는 시간대의 다른 경기에 배정되어 있습니다.";
     return "대회 승인·심판 작업을 완료하지 못했습니다.";
   };
   const runGovernanceAction = async (key, action, successMessage) => {

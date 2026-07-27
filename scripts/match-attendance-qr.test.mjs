@@ -42,7 +42,7 @@ test("QR 출석 기본값은 공개 경쟁전만 켜진다", () => {
     visibility: "public",
     matchPurpose: "competitive",
     formationMode: "pickup",
-  }).qrAttendanceEnabled, false);
+  }).qrAttendanceEnabled, true);
   assert.equal(normalizeMatchRules({
     visibility: "private",
     matchPurpose: "competitive",
@@ -303,7 +303,7 @@ test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", 
   const disputeQueueSource = await readSource("src/components/match/MatchDisputeQueue.jsx");
   assert.match(panelSource, /window\.setInterval\(load, 3000\)/u);
   assert.match(panelSource, /점수 3초 자동 갱신/u);
-  assert.match(panelSource, /0초 유지 · 다음 공격권/u);
+  assert.match(panelSource, /눌러서 \$\{liveClock\.shotClockSeconds\}초로 초기화/u);
   assert.match(clockApiSource, /\.from\("match_results"\)[\s\S]*\.select\("score_a,score_b,submitted_at"\)/u);
   assert.match(authoritativeStateSource, /substituteMatchPlayer\(state,[\s\S]*operation\.reason\)/u);
   assert.match(recruitingSource, /button: "최종 승인"/u);
@@ -368,6 +368,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const roomEquipmentSql = await readSource("supabase/migrations/20260725001500_room_equipment_edit.sql");
   const candidateSubstitutionSql = await readSource("supabase/migrations/20260725018000_candidate_self_substitution_and_late_guard.sql");
   const substitutionPermissionSql = await readSource("supabase/migrations/20260725025000_match_substitution_permission_hardening.sql");
+  const consistencySql = await readSource("supabase/migrations/20260726090000_match_policy_consistency.sql");
   assert.match(sql, /interval '10 minutes'/u);
   assert.match(sql, /candidate_size <= current_side_size/u);
   assert.match(sql, /'attendanceStatus', 'late'/u);
@@ -382,6 +383,15 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(clockAccuracySql, /started_active_elapsed_ms/u);
   assert.match(clockAccuracySql, /ended_active_elapsed_ms/u);
   assert.match(clockAccuracySql, /play_interval\.ended_active_elapsed_ms/u);
+  assert.match(consistencySql, /when play_interval\.started_active_elapsed_ms is not null/u);
+  assert.match(consistencySql, /else 0/u);
+  assert.doesNotMatch(
+    consistencySql.slice(
+      consistencySql.indexOf("create or replace function public.rankball_sync_match_play_intervals"),
+      consistencySql.indexOf("do $migration$", consistencySql.indexOf("create or replace function public.rankball_sync_match_play_intervals")),
+    ),
+    /extract\(epoch/u,
+  );
   assert.match(roomEquipmentSql, /'ballProvider', ball_provider/u);
   assert.match(roomEquipmentSql, /when p_mode = '1v1' then false/u);
   assert.match(roomEquipmentSql, /'vestsProvided', vests_provided/u);
@@ -402,4 +412,13 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(substitutionPermissionSql, /pg_get_functiondef\([\s\S]*rankball_match_roster_move_action_pre_substitution_permission/u);
   assert.doesNotMatch(substitutionPermissionSql, /alter function public\.rankball_match_roster_move_action/u);
   assert.doesNotMatch(substitutionPermissionSql, /safe_actor_id = coalesce\(current_match\.created_by/u);
+});
+
+test("local/demo 경기 방장 권한은 방장 식별자가 비어 있으면 허용하지 않는다", async () => {
+  const repositorySource = await readSource("src/data/repository.js");
+  const guardStart = repositorySource.indexOf("function currentUserIsMatchHost");
+  const guardEnd = repositorySource.indexOf("function currentUserIsEligibleMatchReferee", guardStart);
+  const hostGuardSource = repositorySource.slice(guardStart, guardEnd);
+  assert.match(hostGuardSource, /return Boolean\(hostPlayerId && hostPlayerId === state\.currentUserId\)/u);
+  assert.doesNotMatch(hostGuardSource, /return !hostPlayerId \|\|/u);
 });

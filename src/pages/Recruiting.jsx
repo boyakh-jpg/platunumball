@@ -85,6 +85,7 @@ import {
   isPickupRecruitingRoom,
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
+import { isTournamentGovernanceEnabled } from "../lib/tournamentGovernance.js";
 import { assetUrl } from "../lib/assets.js";
 import { BRAND_NAME } from "../lib/brand.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -3925,6 +3926,7 @@ function RecruitingRoomModalReady({
         const sourceTournament = sourceMatch?.tournamentId
           ? app.state.tournaments?.find((tournament) => tournament.id === sourceMatch.tournamentId) ?? null
           : null;
+        const sourceMatchRequiresTournamentReferee = isTournamentGovernanceEnabled(sourceTournament);
         const sourceMatchRecordTeams = {
           teamA: sourceMatch ? getTournamentRosterTeam(
             teamById[sourceMatch.teamA?.teamId],
@@ -4028,8 +4030,8 @@ function RecruitingRoomModalReady({
           : sourceMatchMissingStartAttendanceIds.length > 0
             ? "모든 참가자의 출석을 확인해야 경기 시작이 가능합니다."
             : "A/B 팀 배정과 교대 기준을 확정해야 경기 시작이 가능합니다.";
-        const canRequestRefereeAbsence = Boolean(matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
-        const canConfirmRefereeAbsence = Boolean(matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
+        const canRequestRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
+        const canConfirmRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
         const sourceMatchRecorderSides = sourceMatch ? getStatRecorderSides(sourceMatch, app.currentUser.id) : [];
         const sourceMatchResultEntryPermission = sourceMatch
@@ -4105,7 +4107,10 @@ function RecruitingRoomModalReady({
                   <span>
                     최종 승인 {sourceMatchRecordVerification.approvedIds.length}/{sourceMatchRecordVerification.requiredParticipantIds.length}
                   </span>
-                  <small>최종 승인은 본인 참가 사실과 점수·기록 확인을 함께 처리합니다. 무응답은 자동 승인되지 않습니다.</small>
+                  <small>
+                    최종 승인은 본인 참가 사실과 점수·기록 확인을 함께 처리합니다.
+                    열린 이의가 없으면 {sourceMatchRecordVerification.approvalWindowMinutes}분 뒤 자동 확정됩니다.
+                  </small>
                 </div>
               ) : null}
               {showSourceMatchRecordSummary ? (

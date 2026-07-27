@@ -85,7 +85,7 @@ export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION
 
 export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurposeSelect, onFormationSelect }) {
   const pickup = formationMode === "pickup";
-  const purposeValue = pickup ? "friendly" : matchPurpose;
+  const purposeValue = matchPurpose;
   return (
     <div className="match-intent-axis-grid">
       <div className="match-intent-axis">
@@ -98,8 +98,7 @@ export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurpo
               role="radio"
               aria-checked={purposeValue === option.id}
               className={purposeValue === option.id ? "active" : ""}
-              disabled={pickup}
-              title={pickup ? "현장 픽업은 친선전으로 고정됩니다." : option.description}
+              title={option.description}
               onClick={() => {
                 if (purposeValue !== option.id) onPurposeSelect(option.id);
               }}

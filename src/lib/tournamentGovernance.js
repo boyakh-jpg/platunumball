@@ -18,7 +18,7 @@ export const TOURNAMENT_REFEREE_STATUS = Object.freeze({
 });
 
 export function isTournamentGovernanceEnabled(tournament = {}) {
-  return Number(tournament.rules?.governanceVersion ?? 0) === 2;
+  return Number(tournament?.rules?.governanceVersion ?? 0) === 2;
 }
 
 export function getRequiredTournamentRefereeCount(teamCount = 0) {
@@ -126,4 +126,35 @@ export function getTournamentSanctionLabel(tournament = {}) {
   if (sanctionStatus === TOURNAMENT_SANCTION_STATUS.regionalPending) return "지역관리자 승인 대기";
   if (sanctionStatus === TOURNAMENT_SANCTION_STATUS.regionalRejected) return "지역 비승인";
   return "팀장·심판 승인 대기";
+}
+
+export function getTournamentMatchScheduleDurationMinutes(match = {}) {
+  const rules = match.rules ?? {};
+  const periodCount = Math.min(4, Math.max(1, Number(rules.periodCount ?? 1) || 1));
+  const periodMinutes = Math.min(60, Math.max(1, Number(rules.periodMinutes ?? rules.timeLimit ?? 12) || 12));
+  const periodBreakMinutes = Math.min(30, Math.max(0, Number(rules.periodBreakMinutes ?? 2) || 0));
+  const halftimeMinutes = Math.min(30, Math.max(0, Number(rules.halftimeMinutes ?? 5) || 0));
+  const overtimeMinutes = Math.min(20, Math.max(0, Number(rules.overtimeMinutes ?? 3) || 0));
+  const breakMinutes = periodCount === 4
+    ? periodBreakMinutes * 2 + halftimeMinutes
+    : periodCount === 2 ? halftimeMinutes : 0;
+  return Math.min(90, Math.max(15, periodCount * periodMinutes + breakMinutes + overtimeMinutes + 5));
+}
+
+export function getTournamentMatchScheduleWindow(match = {}, schedule = {}) {
+  const scheduledDate = String(schedule.scheduledDate ?? match.scheduledDate ?? "").slice(0, 10);
+  const scheduledTime = String(schedule.scheduledTime ?? match.scheduledTime ?? "").slice(0, 5);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate) || !/^\d{2}:\d{2}$/.test(scheduledTime)) return null;
+  const startMs = new Date(`${scheduledDate}T${scheduledTime}:00+09:00`).getTime();
+  if (!Number.isFinite(startMs)) return null;
+  return {
+    startMs,
+    endMs: startMs + getTournamentMatchScheduleDurationMinutes(match) * 60_000,
+  };
+}
+
+export function doTournamentMatchSchedulesOverlap(leftMatch = {}, rightMatch = {}, leftSchedule = {}) {
+  const left = getTournamentMatchScheduleWindow(leftMatch, leftSchedule);
+  const right = getTournamentMatchScheduleWindow(rightMatch);
+  return Boolean(left && right && left.startMs < right.endMs && right.startMs < left.endMs);
 }

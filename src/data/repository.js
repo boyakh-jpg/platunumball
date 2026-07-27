@@ -38,6 +38,7 @@ import {
   TEST_PROFILE_BIRTH_YEAR,
   TEST_PROFILE_SETUP_AT,
   getHostTrustRequirement,
+  isSameRegion,
   isSupportedMatchMode,
   isSupportedSoloRecordMode,
   normalizeDisputeWindowMinutes,
@@ -240,6 +241,7 @@ import {
   getTournamentRefereeStatus,
   isTournamentGovernanceEnabled,
   isTournamentRefereeNeutral,
+  doTournamentMatchSchedulesOverlap,
 } from "../lib/tournamentGovernance.js";
 import {
   getScheduledStartMs,
@@ -3233,8 +3235,7 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
     const refereeScheduleConflict = scheduledDate && scheduledTime && (state.matches ?? []).some((item) => (
       item.id !== match.id
       && item.refereeId === match.refereeId
-      && item.scheduledDate === scheduledDate
-      && String(item.scheduledTime ?? "").slice(0, 5) === scheduledTime
+      && doTournamentMatchSchedulesOverlap(match, item, { scheduledDate, scheduledTime })
       && !["confirmed", "cancelled", "void", "voided", "closed"].includes(item.status)
       && !item.endedAt
     ));
@@ -3742,7 +3743,13 @@ export function approveTournamentReferee(state, tournamentId) {
 export function declineTournamentReferee(state, tournamentId) {
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
   const refereeId = state.currentUserId;
-  if (!tournament || !["draft", "active"].includes(tournament.status) || !(tournament.refereeIds ?? []).includes(refereeId)) {
+  const currentStatus = tournament ? getTournamentRefereeStatus(tournament, refereeId) : "";
+  if (
+    !tournament
+    || !["draft", "active"].includes(tournament.status)
+    || !(tournament.refereeIds ?? []).includes(refereeId)
+    || (tournament.status === "active" && currentStatus === "accepted")
+  ) {
     return state;
   }
   const declinedTournament = {
@@ -3811,13 +3818,31 @@ export function inviteTournamentReferee(state, tournamentId, refereeId) {
   };
 }
 
+function currentUserCanReviewTournamentRegion(state, tournament) {
+  const authorityLevel = getAdminAuthorityLevel(state);
+  if (authorityLevel >= ADMIN_GRADE_META.senior.level) return true;
+  if (authorityLevel < ADMIN_GRADE_META.regionManager.level) return false;
+  const currentUser = (state.users ?? []).find((user) => user.id === state.currentUserId);
+  const regionalAppointment = (state.settings?.adminAppointments ?? []).find((appointment) => (
+    appointment.source === "server_context"
+    && appointment.userId === state.currentUserId
+    && appointment.role === "admin"
+    && appointment.grade === "regionManager"
+    && isAppointmentActive(appointment)
+  ));
+  const assignedRegion = regionalAppointment?.payload?.region
+    ?? regionalAppointment?.region
+    ?? currentUser?.region;
+  return isSameRegion(assignedRegion, tournament?.region ?? tournament?.rules?.region);
+}
+
 export function activateTournamentSanction(state, tournamentId, sanctionStatus, reviewerId = "") {
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
   if (!tournament || tournament.status !== "draft") return state;
   if (![TOURNAMENT_SANCTION_STATUS.approved, TOURNAMENT_SANCTION_STATUS.community].includes(sanctionStatus)) return state;
   if (
     sanctionStatus === TOURNAMENT_SANCTION_STATUS.approved
-      ? getAdminAuthorityLevel(state) < ADMIN_GRADE_META.regionManager.level
+      ? !currentUserCanReviewTournamentRegion(state, tournament)
       : tournament.createdBy !== state.currentUserId
   ) return state;
   const readiness = getLocalTournamentReadiness(state, tournament);
@@ -3861,7 +3886,7 @@ export function rejectTournamentRegion(state, tournamentId, note = "") {
     !tournament
     || tournament.status !== "draft"
     || !isTournamentGovernanceEnabled(tournament)
-    || getAdminAuthorityLevel(state) < ADMIN_GRADE_META.regionManager.level
+    || !currentUserCanReviewTournamentRegion(state, tournament)
   ) return state;
   const readiness = getLocalTournamentReadiness(state, tournament);
   if (!readiness.ready) return state;
@@ -3911,8 +3936,7 @@ export function assignTournamentMatchReferee(state, tournamentId, matchId, refer
   if (match.scheduledDate && match.scheduledTime && (state.matches ?? []).some((item) => (
     item.id !== match.id
     && item.refereeId === refereeId
-    && item.scheduledDate === match.scheduledDate
-    && item.scheduledTime === match.scheduledTime
+    && doTournamentMatchSchedulesOverlap(match, item)
     && !["confirmed", "cancelled", "void", "voided", "closed"].includes(item.status)
     && !item.endedAt
   ))) return state;
@@ -4238,7 +4262,7 @@ function getMatchHostPlayerId(state, match) {
 
 function currentUserIsMatchHost(state, match) {
   const hostPlayerId = getMatchHostPlayerId(state, match);
-  return !hostPlayerId || hostPlayerId === state.currentUserId;
+  return Boolean(hostPlayerId && hostPlayerId === state.currentUserId);
 }
 
 function currentUserIsEligibleMatchReferee(state, match) {
@@ -4321,6 +4345,10 @@ export function checkInMatchPlayer(state, matchId, sideName, playerId) {
 export function requestMatchRefereeAbsence(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.refereeId || !currentUserIsMatchHost(state, match)) return state;
+  const tournament = match.tournamentId
+    ? (state.tournaments ?? []).find((item) => item.id === match.tournamentId)
+    : null;
+  if (isTournamentGovernanceEnabled(tournament)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return state;
   if (match.refereeAbsenceRequest?.confirmedAt) return state;
   const now = new Date().toISOString();
@@ -4353,6 +4381,10 @@ export function requestMatchRefereeAbsence(state, matchId) {
 export function confirmMatchRefereeAbsence(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.refereeId || !match.refereeAbsenceRequest || match.refereeAbsenceRequest.confirmedAt) return state;
+  const tournament = match.tournamentId
+    ? (state.tournaments ?? []).find((item) => item.id === match.tournamentId)
+    : null;
+  if (isTournamentGovernanceEnabled(tournament)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return state;
   if (!currentUserCanConfirmRefereeAbsence(state, match)) return state;
   const now = new Date().toISOString();

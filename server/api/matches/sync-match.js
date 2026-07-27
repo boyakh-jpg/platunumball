@@ -20,7 +20,7 @@ import {
   normalizeDisputeWindowMinutes,
 } from "../../../src/lib/constants.js";
 import { getMatchCancelCopy } from "../../../src/lib/matchUtils.js";
-import { getPostgameRecordVerification, POSTGAME_RECORD_REMINDER_HOURS } from "../../../src/lib/postgameRecordVerification.js";
+import { getPostgameRecordVerification, POSTGAME_RECORD_REMINDER_MINUTES } from "../../../src/lib/postgameRecordVerification.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeam } from "../../../src/data/teamMappers.js";
@@ -63,8 +63,8 @@ const MATCH_REMINDER_OFFSETS = [
     intro: "경기 시작 전입니다. 경기방에서 출석 상태를 확인해 주세요.",
   },
 ];
-const MATCH_RECORD_APPROVAL_NOTICE_PREFIXES = POSTGAME_RECORD_REMINDER_HOURS.map(
-  (hours) => `match-record-approval-${hours}h`,
+const MATCH_RECORD_APPROVAL_NOTICE_PREFIXES = POSTGAME_RECORD_REMINDER_MINUTES.map(
+  (minutes) => `match-record-approval-${minutes}m`,
 );
 const MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS = new Set([
   "createMatch",
@@ -565,15 +565,15 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     const targetIds = verification.unconfirmedIds;
     const targetIdSet = new Set(targetIds);
     const targetProfiles = profiles.filter((profile) => targetIdSet.has(profile.id));
-    POSTGAME_RECORD_REMINDER_HOURS.forEach((hours) => {
-      const sendAtMs = submittedAtMs + hours * HOUR_MS;
-      if ((hours === 0 && action !== "submitMatchResult") || sendAtMs < nowMs) return;
+    POSTGAME_RECORD_REMINDER_MINUTES.forEach((minutes) => {
+      const sendAtMs = submittedAtMs + minutes * MINUTE_MS;
+      if ((minutes === 0 && action !== "submitMatchResult") || sendAtMs < nowMs) return;
       addRows(targetIds, targetProfiles, {
-        idPrefix: `match-record-approval-${hours}h`,
+        idPrefix: `match-record-approval-${minutes}m`,
         actionRequired: true,
         homeAction: true,
-        title: hours === 0 ? "사후 기록 확인 요청" : "사후 기록 확인 필요",
-        intro: "본인 참가 사실과 경기 결과를 확인해 주세요. 무응답은 자동 승인되지 않습니다.",
+        title: minutes === 0 ? "사후 기록 확인 요청" : "사후 기록 자동확정 예정",
+        intro: "본인 참가 사실과 경기 결과를 확인해 주세요. 이의시간이 끝나면 자동확정됩니다.",
         sendAt: new Date(Math.max(sendAtMs, nowMs)).toISOString(),
       });
     });
@@ -1085,7 +1085,6 @@ const PARTICIPANT_MATCH_ACTIONS = new Set([
   "acknowledgeMatchRoomRules",
   "agreeMatch",
   "approveMatch",
-  "confirmMatchRecordParticipation",
   "toggleMatchStar",
   "submitMatchThumbs",
   "disputeMatch",
@@ -1277,7 +1276,6 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "checkInMatchPlayer",
   "confirmPickupSideAssignment",
   "generatePickupSideAssignment",
-  "confirmMatchRecordParticipation",
   "deleteSoloRecord",
   "disputeMatch",
   "resolveMatchDispute",
@@ -1319,7 +1317,6 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_generate_pickup_assignment") ||
     message.includes("rankball_match_rule_ack_action") ||
     message.includes("rankball_match_schedule_response_action") ||
-    message.includes("rankball_match_record_participation_action") ||
     message.includes("rankball_match_dispute_action") ||
     message.includes("rankball_match_resolve_dispute_action") ||
     message.includes("rankball_match_end_action") ||
@@ -1360,7 +1357,6 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "checkInMatchPlayer",
     "confirmPickupSideAssignment",
     "generatePickupSideAssignment",
-    "confirmMatchRecordParticipation",
     "deleteSoloRecord",
     "disputeMatch",
     "resolveMatchDispute",
@@ -1638,21 +1634,6 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) reject(503, "pickup_player_swap_rpc_required");
-      throw error;
-    }
-    rejectSqlMatchFallback(data);
-    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
-  }
-
-  if (operation.action === "confirmMatchRecordParticipation" && (match?.id || operation.matchId)) {
-    const matchId = operation.matchId ?? match.id;
-    const { data, error } = await context.supabase.rpc("rankball_match_record_participation_action", {
-      p_actor_profile_id: context.profileId,
-      p_match_id: matchId,
-      p_player_id: operation.playerId ?? context.profileId,
-    });
-    if (error) {
-      if (isMissingSqlMatchReducer(error)) reject(503, "match_record_participation_rpc_required");
       throw error;
     }
     rejectSqlMatchFallback(data);
