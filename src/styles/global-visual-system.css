@@ -3958,6 +3958,28 @@ html[data-theme] .team-hub-board::before {
   mask-composite: exclude;
   pointer-events: none;
 }
+html[data-theme] .home-hero-board::after,
+html[data-theme] .team-hub-board::after {
+  content: "";
+  position: absolute;
+  inset: var(--ui-liquid-glass-edge-inset);
+  z-index: 2;
+  border-radius: calc(var(--panel-radius) - var(--ui-liquid-glass-edge-inset));
+  padding: 2px;
+  background: var(--ui-liquid-glass-caustic);
+  -webkit-backdrop-filter: var(--ui-liquid-glass-refraction-inner);
+  backdrop-filter: var(--ui-liquid-glass-refraction-inner);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
 
 @media (max-width: 759px) {
   .rank-home .rank-summary-grid .home-rank-board-head {
