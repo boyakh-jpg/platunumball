@@ -1916,18 +1916,41 @@ span.referee-hover-card {
 }
 
 .tier-emblem {
+  position: relative;
+  isolation: isolate;
   display: grid;
   place-items: center;
   gap: var(--space-3);
   margin: 0;
+  overflow: visible;
   color: var(--tier-color);
+}
+
+.tier-emblem::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse 52% 56% at 50% 54%,
+    color-mix(in srgb, var(--tier-color) 42%, transparent) 0%,
+    color-mix(in srgb, var(--tier-color) 20%, transparent) 48%,
+    transparent 82%
+  );
+  pointer-events: none;
 }
 
 .tier-emblem img,
 .tier-emblem svg {
+  position: relative;
+  z-index: 1;
   width: 100%;
   overflow: visible;
-  filter: drop-shadow(0 18px 30px color-mix(in srgb, var(--tier-color) 25%, transparent));
+  filter: none;
 }
 
 .tier-emblem img {
@@ -1954,6 +1977,8 @@ span.referee-hover-card {
 }
 
 .tier-emblem figcaption {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 1px;
   text-align: center;

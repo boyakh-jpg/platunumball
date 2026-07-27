@@ -398,3 +398,11 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(visualSystemStyles, "-webkit-mask-composite: xor;"), 1);
   assert.equal(count(visualSystemStyles, "mask-composite: exclude;"), 1);
 });
+
+test("tier emblem halo stays inside the shared emblem paint box", () => {
+  const foundationStyles = read("src/styles/global-foundation.css");
+
+  assert.match(foundationStyles, /\.tier-emblem::before\s*\{[\s\S]*?aspect-ratio:\s*1;[\s\S]*?radial-gradient\([\s\S]*?transparent 82%/);
+  assert.match(foundationStyles, /\.tier-emblem img,\s*\.tier-emblem svg\s*\{[\s\S]*?filter:\s*none;/);
+  assert.doesNotMatch(foundationStyles, /\.tier-emblem img,\s*\.tier-emblem svg\s*\{[\s\S]*?drop-shadow/);
+});
