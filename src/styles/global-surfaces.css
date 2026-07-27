@@ -88,8 +88,7 @@ html[data-theme="light"] .team-hub-hero h1 {
   color: #152026;
 }
 
-html[data-theme="light"] .page-header p:not(.eyebrow),
-html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
+html[data-theme="light"] .page-header p:not(.eyebrow) {
   color: #56666f;
 }
 
@@ -122,8 +121,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
     font-size: 3rem;
   }
 
-  .page-header p:not(.eyebrow),
-  .team-hub-hero p:not(.eyebrow) {
+  .page-header p:not(.eyebrow) {
     display: none;
   }
 
@@ -482,7 +480,7 @@ html[data-theme="light"] .recent-match-row {
 .selector-panel,
 .team-create-panel,
 .my-team-management-card,
-.team-rank-rule-card,
+.team-search-card,
 .home-search-panel,
 .home-action-card,
 .rank-profile-card,
@@ -501,12 +499,10 @@ html[data-theme="light"] .recent-match-row {
 
 .rank-stat-grid span,
 .stat-strip span,
-.rank-rule-list > div,
 .rank-tier-block,
 .rank-record-main,
 .rank-mode-pill,
 .team-hub-board,
-.team-hub-board div span,
 .team-card .member-row,
 .member-row,
 .ranking-row,
@@ -537,8 +533,7 @@ html[data-theme="light"] .recent-match-row {
 }
 
 .rank-stat-grid span,
-.stat-strip span,
-.rank-rule-list > div {
+.stat-strip span {
   min-height: 62px;
   align-content: center;
   padding: 10px 12px;
@@ -633,7 +628,7 @@ html[data-theme="light"] .profile-records-summary,
 html[data-theme="light"] .selector-panel,
 html[data-theme="light"] .team-create-panel,
 html[data-theme="light"] .my-team-management-card,
-html[data-theme="light"] .team-rank-rule-card,
+html[data-theme="light"] .team-search-card,
 html[data-theme="light"] .home-search-panel,
 html[data-theme="light"] .home-action-card,
 html[data-theme="light"] .rank-profile-card,
@@ -650,12 +645,10 @@ html[data-theme="light"] .season-mini-card {
 
 html[data-theme="light"] .rank-stat-grid span,
 html[data-theme="light"] .stat-strip span,
-html[data-theme="light"] .rank-rule-list > div,
 html[data-theme="light"] .rank-tier-block,
 html[data-theme="light"] .rank-record-main,
 html[data-theme="light"] .rank-mode-pill,
 html[data-theme="light"] .team-hub-board,
-html[data-theme="light"] .team-hub-board div span,
 html[data-theme="light"] .team-card .member-row,
 html[data-theme="light"] .member-row,
 html[data-theme="light"] .ranking-row,
@@ -886,14 +879,6 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   color: #f7fbff;
 }
 
-.team-hub-hero p:not(.eyebrow) {
-  display: block;
-  max-width: 720px;
-  color: rgba(246, 248, 251, 0.82);
-  font-size: clamp(0.94rem, 1.7vw, 1.12rem);
-  font-weight: 800;
-}
-
 .team-hub-board {
   display: grid;
   width: fit-content;
@@ -925,11 +910,6 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   font-size: clamp(0.95rem, 1.8vw, 1.15rem);
 }
 
-.team-hub-board div span {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(226, 233, 242, 0.8);
-}
-
 html[data-theme="light"] .team-hub-hero {
   border-color: rgba(184, 118, 19, 0.24);
   background:
@@ -941,18 +921,13 @@ html[data-theme="light"] .team-hub-hero h1 {
   color: #142129;
 }
 
-html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
-  color: #41535d;
-}
-
 html[data-theme="light"] .team-hub-board {
   border-color: var(--ui-card-border);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
 }
 
-html[data-theme="light"] .team-hub-board em,
-html[data-theme="light"] .team-hub-board div span {
+html[data-theme="light"] .team-hub-board em {
   color: #50626b;
 }
 
@@ -964,10 +939,6 @@ html[data-theme="light"] .team-hub-board div span {
 
   .team-hub-hero h1 {
     font-size: 3.3rem;
-  }
-
-  .team-hub-hero p:not(.eyebrow) {
-    display: block;
   }
 
   .team-hub-board {
@@ -1099,7 +1070,7 @@ html[data-theme="light"] .profile-records-summary {
 .selector-panel,
 .team-create-panel,
 .my-team-management-card,
-.team-rank-rule-card,
+.team-search-card,
 .home-search-panel,
 .home-action-card,
 .rank-profile-card,
@@ -1115,7 +1086,6 @@ html[data-theme="light"] .profile-records-summary {
 
 .rank-stat-grid span,
 .stat-strip span,
-.rank-rule-list > div,
 .rank-record-main,
 .rank-mode-pill,
 .team-card .member-row,
@@ -1153,7 +1123,7 @@ html[data-theme="light"] .profile-records-summary,
 html[data-theme="light"] .selector-panel,
 html[data-theme="light"] .team-create-panel,
 html[data-theme="light"] .my-team-management-card,
-html[data-theme="light"] .team-rank-rule-card,
+html[data-theme="light"] .team-search-card,
 html[data-theme="light"] .home-search-panel,
 html[data-theme="light"] .home-action-card,
 html[data-theme="light"] .rank-profile-card,
@@ -1169,7 +1139,6 @@ html[data-theme="light"] .season-mini-card {
 
 html[data-theme="light"] .rank-stat-grid span,
 html[data-theme="light"] .stat-strip span,
-html[data-theme="light"] .rank-rule-list > div,
 html[data-theme="light"] .rank-record-main,
 html[data-theme="light"] .rank-mode-pill,
 html[data-theme="light"] .team-card .member-row,

@@ -78,14 +78,6 @@ h3 {
   color: var(--muted);
 }
 
-.text-positive {
-  color: var(--green);
-}
-
-.text-negative {
-  color: var(--danger);
-}
-
 .eyebrow {
   font-size: 0.75rem;
   font-weight: 800;
@@ -2132,14 +2124,13 @@ span.referee-hover-card {
 }
 
 .rating-card {
-  min-height: 128px;
+  min-height: 112px;
   display: grid;
   align-content: space-between;
-  gap: var(--space-7);
+  gap: var(--space-5);
 }
 
 .rating-card-top,
-.rating-card-bottom,
 .match-card-header,
 .team-card-top {
   display: flex;
@@ -2177,35 +2168,16 @@ span.referee-hover-card {
   background: linear-gradient(90deg, var(--green), var(--gold));
 }
 
-.rating-card-bottom {
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
-.tier-quote {
-  color: #d7e0ec;
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.rating-card .tier-quote {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  color: var(--muted);
-}
-
 .profile-rating-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: minmax(146px, auto);
+  grid-auto-rows: minmax(118px, auto);
   gap: var(--page-section-gap);
 }
 
 .profile-rating-primary {
   grid-row: span 2;
-  min-height: 304px;
+  min-height: 252px;
 }
 
 .profile-rating-primary .rating-card-top {
@@ -2224,10 +2196,6 @@ span.referee-hover-card {
   font-size: 0.92rem;
 }
 
-.profile-rating-primary .tier-quote {
-  -webkit-line-clamp: 4;
-}
-
 .profile-rating-mode {
   min-width: 0;
 }
@@ -2240,10 +2208,6 @@ span.referee-hover-card {
   align-items: center;
 }
 
-.profile-rating-mode .tier-quote {
-  -webkit-line-clamp: 1;
-}
-
 @media (max-width: 1180px) {
   .profile-rating-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2252,7 +2216,7 @@ span.referee-hover-card {
   .profile-rating-primary {
     grid-column: 1 / -1;
     grid-row: auto;
-    min-height: 220px;
+    min-height: 180px;
   }
 }
 

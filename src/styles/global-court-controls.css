@@ -1328,16 +1328,6 @@ html[data-theme="light"] .court-map-picker-state {
   align-items: start;
 }
 
-.teams-page .rank-rule-list {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.teams-page .rank-rule-list > div {
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: center;
-  text-align: center;
-}
-
 .profile-achievement-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

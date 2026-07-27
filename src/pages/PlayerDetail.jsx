@@ -17,7 +17,7 @@ import { getTeamRoleLabel, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { compareMatchRecency, formatStatLine, getMatchSideScore as getSideScore, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { getRepresentativeTeam, getUserProfileTeams } from "../lib/profileSetup.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { getTierDivision, getTierQuote } from "../lib/tier.js";
+import { getTierDivision } from "../lib/tier.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function getPlayerSide(match, playerId) {
@@ -177,7 +177,6 @@ export default function PlayerDetail({ app }) {
           <div>
             <span>{getTierDivision(player.ratings.integrated)}</span>
             <em className="tier-score-line">{Math.round(player.ratings.integrated)} MMR</em>
-            <strong>{getTierQuote(player.ratings.integrated)}</strong>
           </div>
         </div>
       </section>
@@ -280,9 +279,9 @@ export default function PlayerDetail({ app }) {
         <div className={`${canViewStatSummary || canViewTeamHistory ? "content-grid wide-left" : "page-stack"} player-profile-detail-content`}>
         <div className="page-stack">
           <section className="mode-grid">
-            <RatingCard title="통합" mmr={player.ratings.integrated} subtitle="메인 티어" />
+            <RatingCard title="통합" mmr={player.ratings.integrated} />
             {Object.entries(player.ratings.modes).map(([mode, mmr]) => (
-              <RatingCard key={mode} title={mode} mmr={mmr} subtitle="모드 티어" />
+              <RatingCard key={mode} title={mode} mmr={mmr} />
             ))}
           </section>
 

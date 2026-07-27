@@ -190,7 +190,7 @@
 4. 설정 바로가기 세 개는 한 행에 균등 배치한다. `359px` 이하에서는 첫 행 두 개와 마지막 전체 폭 하나로 전환한다.
 5. 일정 관계 버튼 네 개는 `2 x 2`, 유형 버튼 다섯 개는 넓은 화면에서 `3 + 2` 균등 행으로 배치한다. `359px` 이하에서는 두 열로 전환하고 마지막 홀수 버튼은 한 행 전체를 사용한다.
 6. 제목 옆 아이콘과 작업 버튼은 공간이 허용되면 같은 도구 묶음에 둔다. 좁은 화면에서는 내용이 잘리지 않도록 도구 묶음만 다음 행으로 내린다.
-7. 팀 랭킹 기준처럼 같은 성격의 짧은 하위 박스는 세로 나열 대신 균등 열을 우선한다.
+7. 같은 성격의 짧은 하위 박스는 세로 나열 대신 균등 열을 우선한다.
 8. 경기 상태 다섯 개는 `1120px` 이하에서 `3 + 2`, 랭킹 탭 일곱 개는 좁은 화면에서 `4 + 3` 또는 `3 + 2 + 2`로 마지막 행의 고립 단추를 만들지 않는다.
 9. 시즌 운영 체크 네 개는 `360px` 이상에서 `2 x 2`로 배치한다.
 10. Discord 알림 네 개는 `2 x 2`, 공개범위 세 개는 데스크톱 한 행과 모바일 `2 + 전체 폭 1`로 배치한다.
@@ -622,7 +622,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 `::before`/`::after` overlay를 얹지 않는다. hero 텍스트는 dark에서 `--rb-orange`/`--rb-orange-2`, light 큰 제목은 `--rb-cream`로 시인성을 확보한다.
 2026-07-02: hero 제목 폰트는 모두 `--hero-title-font`를 쓴다. 원인/결과: 개별 파일의 `linear-gradient` background와 `::before`/`::after` overlay가 뒤쪽 CSS에서 다시 살아나 이미지 위 막이 반복됐으므로, page-level hero는 최종 guard에서 image + fallback color만 남기고 `backdrop-filter`/blur/filter를 쓰지 않는다.
 2026-07-23: 방만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지 hero를 쓴다. 왼쪽 제목 영역은 단순한 벽면 여백을 유지하고 오른쪽 골대·접힌 관중석·조명 구조는 중앙 crop 안에 둔다. 장식용 공은 두지 않고 보이는 코트선은 실제 바닥 구조에 맞게 한 번만 표시한다.
-2026-07-02: 팀 허브 모바일 hero에도 데스크톱처럼 전체 1위 팀 보드를 포함한다. 원인/결과: 759px 이하 규칙이 `.team-hub-board`를 숨겨 모바일에서 팀 허브 정보가 빠졌으므로, 팀 페이지에서는 보드를 다시 표시한다.
+2026-07-28: 팀 허브 모바일 hero에도 데스크톱처럼 대표팀 보드를 포함한다. 대표팀이 있으면 팀명·MMR·전적을 표시하며 759px 이하에서도 숨기지 않는다.
 2026-07-02: 홈 image hero와 rank spotlight card는 조각난 frame처럼 보이는 border, underline, inner pseudo frame을 쓰지 않는다. 이미지 경계는 배경/간격으로 처리한다.
 2026-07-01: 일반 페이지의 floating search/card layer는 모바일 bottom nav보다 낮아야 한다. 모달/전역 로더만 bottom nav보다 위에 올 수 있다.
 2026-06-28: 즐겨찾기 검색은 프로필, 팀, 구장, 심판을 각각 최대 10개까지 저장하고, 관련 SearchPicker의 idle 목록과 검색 결과 별 토글에 연결한다.
@@ -1409,7 +1409,7 @@ UI 수정 전:
 7-3. Match/recruiting summary center labels such as `VS` and fill counts stay about half the side label size.
 7-4. Default text uses `--font-body`. Functional panel titles and descriptions use the shared `.ui-panel-title` and `.ui-panel-copy` typography instead of browser-default `strong`/`span` weights. Sports display typography remains an explicit override only.
 7-4-0. `--font-body`는 프로젝트가 직접 제공하는 `Pretendard Variable` 웹폰트를 우선 사용해 Windows, macOS, iOS, Android에서 같은 기본 UI 글꼴을 유지한다. 시스템 폰트는 웹폰트 로드 실패 시에만 fallback으로 사용한다.
-7-4-1. 모든 clear glass surface는 화면별 재구현 없이 공용 `.ui-liquid-glass` 클래스와 `--ui-liquid-glass-*` 토큰을 사용한다. 이 클래스 하나가 border 없는 투명 본체, 중앙 `2px` blur, 그림자와 중앙을 뚫은 `3px` 단일 `mask-composite: exclude` 굴절 가장자리를 소유한다. 세 칸처럼 구획이 필요한 내부 metric은 `.ui-liquid-glass-segments`를 추가해 `--ui-liquid-glass-divider`의 얇은 외곽선과 세로 구획선을 사용하며 개별 불투명 카드로 분리하지 않는다. 홈 경기 요약, 팀 허브 전체 1위, 경기·매칭 상황판, 시즌 요약, 프로필 티어와 이후 추가하는 glass surface 모두 이 primitive를 사용한다. 경기·매칭 상황판은 `--ui-hero-status-width`, metric 최소 높이와 공용 버튼 높이를 공유해 가로·세로 위치와 전체 너비·높이를 맞춘다. 글라스는 상위 hero의 `text-shadow`를 내부 자식까지 차단하는 스타일 경계다. 내부 제목·주요 수치는 `--hero-title-color`, 설명·보조 수치는 `--hero-copy-color`, 상태 소제목은 `--rb-orange-2`를 사용하되 별도 text shadow를 만들지 않는다. 팀 허브 전체 1위 팀명만 순위 의미의 단색 `--rb-gold`를 사용하며 텍스트 그라데이션을 적용하지 않는다. page hero의 보조 버튼·배지·세부 정보 surface도 같은 투명 배경과 `2px` blur를 사용하되 primary CTA의 주황색 의미는 유지한다. 색상 강조를 굴절처럼 사용하거나 안쪽 장식 링, 불투명 surface, 균일한 흰 테두리, 전체 inset shadow를 겹치지 않는다. SVG backdrop filter 미지원 환경에서는 비정형 반사광만 남는 투명 fallback을 사용하고 전체 1위 팀명은 `--sports-display-font`를 유지한다.
+7-4-1. 모든 clear glass surface는 화면별 재구현 없이 공용 `.ui-liquid-glass` 클래스와 `--ui-liquid-glass-*` 토큰을 사용한다. 이 클래스 하나가 border 없는 투명 본체, 중앙 `2px` blur, 그림자와 중앙을 뚫은 `3px` 단일 `mask-composite: exclude` 굴절 가장자리를 소유한다. 세 칸처럼 구획이 필요한 내부 metric은 `.ui-liquid-glass-segments`를 추가해 `--ui-liquid-glass-divider`의 얇은 외곽선과 세로 구획선을 사용하며 개별 불투명 카드로 분리하지 않는다. 홈 경기 요약, 팀 허브 대표팀, 경기·매칭 상황판, 시즌 요약, 프로필 티어와 이후 추가하는 glass surface 모두 이 primitive를 사용한다. 경기·매칭 상황판은 `--ui-hero-status-width`, metric 최소 높이와 공용 버튼 높이를 공유해 가로·세로 위치와 전체 너비·높이를 맞춘다. 글라스는 상위 hero의 `text-shadow`를 내부 자식까지 차단하는 스타일 경계다. 내부 제목·주요 수치는 `--hero-title-color`, 설명·보조 수치는 `--hero-copy-color`, 상태 소제목은 `--rb-orange-2`를 사용하되 별도 text shadow를 만들지 않는다. 팀 허브 대표팀 이름은 단색 `--rb-gold`를 사용하며 텍스트 그라데이션을 적용하지 않는다. page hero의 보조 버튼·배지·세부 정보 surface도 같은 투명 배경과 `2px` blur를 사용하되 primary CTA의 주황색 의미는 유지한다. 색상 강조를 굴절처럼 사용하거나 안쪽 장식 링, 불투명 surface, 균일한 흰 테두리, 전체 inset shadow를 겹치지 않는다. SVG backdrop filter 미지원 환경에서는 비정형 반사광만 남는 투명 fallback을 사용하고 대표팀 이름은 `--sports-display-font`를 유지한다.
 7-4-1-1. 공개 랜딩의 `.landing-compact-summary`는 글래스 밖에 있어도 text shadow를 사용하지 않는다. 배경 구도와 `--hero-copy-color`로 대비를 확보한다.
 7-4-2. 공개 랜딩의 장문 `.landing-purpose` 박스는 표시하지 않는다. 공개 홈페이지의 기능 설명은 로고 아래 한 줄 `.landing-compact-summary`로 유지하고 개인정보처리방침·약관 링크는 공용 푸터에 둔다. 모바일 로고·레터에는 별도 받침을 두지 않고, 랜딩 배경 초점을 왼쪽 빈 공간 쪽으로 이동해 인물과 공이 로고·레터에 닿지 않게 한다.
 7-4-3. 경기 기록의 WIN·LOSS·DRAW 왼쪽 상태선은 라이트·다크 모두 각각 `--ui-result-win-border`, `--ui-result-loss-border`, `--ui-result-draw-border`를 사용한다. 일반 카드의 테마별 `border-color`가 상태선을 회색으로 덮어쓰면 안 된다.
@@ -1514,7 +1514,7 @@ UI 수정 전:
 3. 홈의 의도된 우측 레일을 제외한 2열 콘텐츠는 `1180px` 이하에서 1열로 전환한다.
 4. 경기와 매칭 hero는 데스크톱 `214px / 24px`, 모바일 `174px / 16px` 프레임을 함께 쓴다.
 5. 모바일 카드 배지는 잘라 숨기지 않고 줄바꿈하며, 전체폭 액션은 공용 버튼 높이를 쓴다.
-6. 팀 hero는 공통 압축 hero의 예외다. 데스크톱은 `min-height: clamp(430px, 46vw, 620px)` 세로형 한 열을 유지하고, 전체 1위 팀 순위판을 팀 허브 제목과 설명 아래에 둔다. 순위판 너비는 공용 글라스 너비와 묶지 않고 팀 전용 `fit-content`, 최대 `560px`를 사용하며 모바일에서만 가용 폭 전체를 쓴다. 태블릿·모바일에서도 순위판을 숨기지 않는다.
+6. 팀 hero는 공통 압축 hero의 예외다. 데스크톱은 `min-height: clamp(430px, 46vw, 620px)` 세로형 한 열을 유지하고, 대표팀 보드를 팀 허브 제목 아래에 둔다. 보드 너비는 공용 글라스 너비와 묶지 않고 팀 전용 `fit-content`, 최대 `560px`를 사용하며 모바일에서만 가용 폭 전체를 쓴다. 태블릿·모바일에서도 보드를 숨기지 않는다.
 7. 이미지 hero의 본문은 라이트·다크 테마 모두 사진 위에서 읽히는 공통 hero 복사 색과 그림자를 유지한다.
 8. 경기방·시즌·대회 상세도 최상위 섹션 간격 토큰을 사용한다.
 9. 경기·매칭 hero 상황판 셀은 테마 대응 공용 control-group 표면을 사용한다.
@@ -1756,11 +1756,19 @@ UI 수정 전:
 3. 문구와 action 유무만 화면별로 바꾼다. 기본 아이콘은 주황, 오류는 danger 토큰을 사용하고 네온 색은 사용하지 않는다.
 4. 데스크톱 최소 높이는 `112px`, `520px` 이하에서는 `104px`로 줄인다. action은 좁은 화면에서 한 열로 쌓고 문구는 가로 overflow 없이 줄바꿈한다.
 
-## 2026-07-21 팀 랭킹과 근처 팀 구분
+## 2026-07-28 팀 메뉴 추천과 검색
 
-1. 팀 검색·랭킹의 기본 지역은 `전체`로 두고 첫 진입부터 현재 bounded directory의 모든 팀을 표시한다.
-2. 지역 필터는 검색 조건이다. 현재 화면을 `팀 탐색`이나 `근처 팀`으로 부르지 않는다.
-3. `근처 팀`을 추가할 때는 팀 랭킹 카드에 섞지 않고 별도 제목과 후속 action을 가진 section으로 만든다.
+1. 팀 메뉴 첫 화면은 내 팀과 `주변 팀`, `라이벌 팀`, `같은 소속 팀`을 각각 최대 5개씩 표시한다. 전체 팀 목록을 기본 카드 grid로 노출하지 않는다.
+2. 추천 묶음은 설명 paragraph를 붙이지 않고 제목과 개수만 표시한다. 팀 상세 이동은 각 팀 카드가 담당한다.
+3. 팀 찾기는 `추천`을 기본값으로 두고 특정 지역이나 검색어를 사용자가 선택했을 때만 검색 결과 section으로 전환한다.
+4. 팀 hero는 전체 1위와 랭킹 규칙을 반복하지 않고 대표팀 이름·MMR·전적만 표시한다.
+
+## 2026-07-28 카드 설명 밀도
+
+1. 카드 제목·숫자·상태 라벨만으로 의미가 명확하면 같은 내용을 다시 설명하는 paragraph, subtitle, quote를 표시하지 않는다.
+2. 오류, 빈 상태의 다음 행동, 권한, 공개 범위, MMR 반영, 출석, 일정 잠금, 삭제·신고·제재 위험, 입력 제약 안내는 제거 대상이 아니다.
+3. 프로필 평점 카드는 모드명, 티어·MMR, 엠블럼, 진행률만 표시하며 티어 문장과 `메인 티어/모드 티어` 반복 라벨을 표시하지 않는다.
+4. desktop/mobile, dark/light에서 설명 제거 뒤 카드에 과도한 고정 높이나 빈 공간이 남지 않게 한다.
 
 ## 2026-07-21 plain-text 입력 피드백
 

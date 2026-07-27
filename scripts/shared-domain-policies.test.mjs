@@ -17,6 +17,7 @@ import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
 import { markAllNotificationsRead, resolveMatchDispute, updateTournamentMatchSchedule, voidMatch as applyMatchVoid } from "../src/data/repository.js";
+import { getTeamDiscoveryGroups } from "../src/data/teamMappers.js";
 import { getTournamentRosterTeam } from "../src/data/tournamentMappers.js";
 import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
 import {
@@ -846,10 +847,12 @@ test("empty home upcoming card does not keep the desktop match minimum height", 
   assert.match(styles, /\.rank-home \.home-upcoming-card\.is-empty\s*\{\s*min-height:\s*auto;/);
 });
 
-test("team ranking starts from the full bounded directory", async () => {
+test("team menu starts from curated recommendations", async () => {
   const teams = await readSource("src/pages/Teams.jsx");
-  assert.match(teams, /const \[region, setRegion\] = useState\("전체"\);/);
-  assert.doesNotMatch(teams, /팀 탐색/);
+  assert.match(teams, /const \[region, setRegion\] = useState\(TEAM_DISCOVERY_VIEW\);/);
+  assert.match(teams, /const TEAM_DISCOVERY_VIEW = "추천";/);
+  assert.match(teams, /TEAM_SEARCH_RESULT_LIMIT = 15/);
+  assert.doesNotMatch(teams, /loadMoreDirectory/);
 });
 
 test("season hub is player-centered while regional MMR stays separate", async () => {
@@ -1403,6 +1406,52 @@ test("pickup player invitation keeps multi-select enabled", async () => {
   const recruitingPage = await readSource("src/pages/Recruiting.jsx");
   assert.doesNotMatch(recruitingPage, /toggleSingleInvitePlayer/);
   assert.ok((recruitingPage.match(/onTogglePlayer=\{toggleInvitePlayer\}/g) ?? []).length >= 2);
+});
+
+test("team discovery uses canonical regions and bounded deduplicated groups", () => {
+  const currentUser = {
+    id: "me",
+    region: "서울특별시 성동구",
+    ageGroup: "adult",
+    affiliationId: "affiliation-1",
+    ratings: { integrated: 1280 },
+  };
+  const users = [
+    { id: "rival-member", ageGroup: "adult" },
+    { id: "young-member", ageGroup: "youth" },
+    { id: "affiliation-member", ageGroup: "open", affiliationId: "affiliation-1" },
+    { id: "nearby-affiliation-member", ageGroup: "adult", affiliationId: "affiliation-1" },
+  ];
+  const nearbyTeams = Array.from({ length: 6 }, (_, index) => ({
+    id: `nearby-${index + 1}`,
+    name: `주변 ${index + 1}`,
+    region: "성동",
+    mmr: 1280 + index,
+    members: index === 0 ? [{ userId: "nearby-affiliation-member" }] : [],
+  }));
+  const teams = [
+    { id: "own-team", name: "내 팀", region: "성동", mmr: 1280, members: [{ userId: "me" }] },
+    ...nearbyTeams,
+    { id: "rival-team", name: "라이벌", region: "마포", mmr: 1300, members: [{ userId: "rival-member" }] },
+    { id: "wrong-age-team", name: "다른 연령", region: "마포", mmr: 1290, members: [{ userId: "young-member" }] },
+    { id: "affiliation-team", name: "같은 소속", region: "마포", mmr: 1700, members: [{ userId: "affiliation-member" }] },
+  ];
+
+  const groups = getTeamDiscoveryGroups({
+    teams,
+    users,
+    currentUser,
+    ownTeamIds: ["own-team"],
+  });
+  const allTeamIds = Object.values(groups).flat().map((team) => team.id);
+
+  assert.equal(groups.nearby.length, 5);
+  assert.ok(groups.nearby.every((team) => team.region === "성동"));
+  assert.deepEqual(groups.rivals.map((team) => team.id), ["rival-team"]);
+  assert.deepEqual(groups.affiliation.map((team) => team.id), ["affiliation-team"]);
+  assert.equal(new Set(allTeamIds).size, allTeamIds.length);
+  assert.equal(allTeamIds.includes("own-team"), false);
+  assert.equal(allTeamIds.includes("wrong-age-team"), false);
 });
 
 test("referee rulebook matches current FIBA and BOXTIER operating rules", async () => {

@@ -622,10 +622,6 @@ html[data-theme="light"] .arena-icon-button {
   color: var(--rb-text);
 }
 
-html[data-theme="light"] .text-positive {
-  color: var(--rb-green);
-}
-
 html[data-theme="light"] input[type="radio"] {
   accent-color: var(--rb-orange);
 }
@@ -2009,7 +2005,6 @@ button.danger-button {
 .page-header p:not(.eyebrow),
 .landing-hero p:not(.landing-compact-summary),
 .match-hero p,
-.team-hub-hero p:not(.eyebrow),
 .season-hero-copy p,
 .profile-hero p:not(.eyebrow),
 .team-detail-hero p:not(.eyebrow),
@@ -3780,9 +3775,6 @@ html[data-theme="light"] .brand-letter-light {
     grid-column: 1 / -1;
   }
 
-  .profile-rating-mode .tier-quote {
-    display: none;
-  }
 }
 
 html[data-theme] .app-main :is(
@@ -3989,7 +3981,6 @@ html[data-theme] .app-main :is(
   .home-hero-next > em,
   .home-hero-stats em,
   .team-hub-board em,
-  .team-hub-board div span,
   .home-hero-next > svg:last-child,
   .om-match-stats > span,
   .arena-hero-stats > span,

@@ -230,9 +230,9 @@ export default function Profile({ app }) {
           </Card>
           <AffiliationEditor user={user} affiliations={app.state.affiliations} actions={app.actions} />
           <section className="profile-rating-grid">
-            <RatingCard className="profile-rating-primary" title="통합" mmr={user.ratings.integrated} subtitle="메인 티어" />
+            <RatingCard className="profile-rating-primary" title="통합" mmr={user.ratings.integrated} />
             {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
-              <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} subtitle="모드 티어" />
+              <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} />
             ))}
           </section>
           <RecentRecordCard records={myRecords} userId={user.id} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} />

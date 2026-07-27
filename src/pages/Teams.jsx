@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Crown, PlusCircle, Search, Shield, Swords } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -9,14 +9,16 @@ import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, getTeamRoleLabel } from "../lib/constants.js";
+import { getTeamDiscoveryGroups } from "../data/teamMappers.js";
+import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, getCanonicalRegion, getTeamRoleLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
 import { getRepresentativeTeam } from "../lib/profileSetup.js";
 import { DIRECTORY_TEAM_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getTierDivision } from "../lib/tier.js";
 
-const allRegions = ["전체", ...REGIONS];
+const TEAM_DISCOVERY_VIEW = "추천";
+const TEAM_SEARCH_RESULT_LIMIT = 15;
 
 function compareTeamRank(a, b) {
   const aWinRate = a.played ? a.wins / a.played : 0;
@@ -44,18 +46,27 @@ export default function Teams({ app }) {
     [directoryCourts, discoveredCourts],
   );
   const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
-  const [draft, setDraft] = useState({ name: "", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+  const canonicalUserRegion = getCanonicalRegion(app.currentUser.region);
+  const defaultTeamRegion = REGIONS.includes(canonicalUserRegion) ? canonicalUserRegion : REGIONS[0];
+  const [draft, setDraft] = useState({ name: "", region: defaultTeamRegion, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
   const [teamCreatePending, setTeamCreatePending] = useState(false);
   const [teamCreateError, setTeamCreateError] = useState("");
   const [query, setQuery] = useState("");
-  const [region, setRegion] = useState("전체");
+  const [region, setRegion] = useState(TEAM_DISCOVERY_VIEW);
   const [courtQuery, setCourtQuery] = useState("");
-  const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
+  const [courtRegion, setCourtRegion] = useState(defaultTeamRegion);
   const directoryFilter = query.trim();
-  const directoryRegion = isHashtagQuery(query) || region === "전체" ? "" : region;
+  const directoryRegion = isHashtagQuery(query) || region === TEAM_DISCOVERY_VIEW ? "" : region;
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      loadDirectory?.({ kind: "teams", filter: directoryFilter, region: directoryRegion, limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0 });
+      loadDirectory?.({
+        kind: "teams",
+        filter: directoryFilter,
+        region: directoryRegion,
+        limit: DIRECTORY_TEAM_PAGE_LIMIT,
+        offset: 0,
+        includeTeamMemberProfiles: true,
+      });
     }, directoryFilter ? 250 : 0);
     return () => window.clearTimeout(timer);
   }, [directoryFilter, directoryRegion, loadDirectory]);
@@ -82,7 +93,6 @@ export default function Teams({ app }) {
       .sort(compareTeamRank)
       .map((team, index) => ({ ...team, rank: index + 1 }));
   }, [app.state.teams]);
-  const topTeam = rankingTeams[0];
   const myTeams = useMemo(() => {
     return rankingTeams
       .filter((team) => team.members.some((member) => member.userId === app.currentUser.id))
@@ -93,6 +103,13 @@ export default function Teams({ app }) {
     () => getRepresentativeTeam(app.currentUser.id, myTeams, representativeTeamId),
     [app.currentUser.id, myTeams, representativeTeamId],
   );
+  const teamDiscoveryGroups = useMemo(() => getTeamDiscoveryGroups({
+    teams: rankingTeams,
+    users: app.state.users,
+    currentUser: app.currentUser,
+    ownTeamIds: myTeams.map((team) => team.id),
+    referenceTeam: representativeTeam,
+  }), [app.currentUser, app.state.users, myTeams, rankingTeams, representativeTeam]);
   const teamDirectoryError = app.directoryStatus?.error ?? "";
   const teamDirectoryPending = app.remoteReady === false || app.directoryStatus?.loading || (app.directoryStatus?.loaded === false && !teamDirectoryError);
   const myTeamCountPending = teamDirectoryPending && !myTeams.length;
@@ -117,10 +134,19 @@ export default function Teams({ app }) {
   }, [app.currentUser.region, favoriteCourtIds, registeredCourts]);
   const visibleTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(query);
+    const selectedRegion = region === TEAM_DISCOVERY_VIEW ? "" : region;
     return rankingTeams
-      .filter((team) => hashtagSearch || region === "전체" || team.region === region)
+      .filter((team) => hashtagSearch || !selectedRegion || isSameRegion(team.region, selectedRegion))
       .filter((team) => `${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`.toLowerCase().includes(query.trim().toLowerCase()));
   }, [query, rankingTeams, region]);
+  const searchViewActive = Boolean(query.trim()) || region !== TEAM_DISCOVERY_VIEW;
+  const searchResultTeams = visibleTeams.slice(0, TEAM_SEARCH_RESULT_LIMIT);
+  const currentRegionLabel = defaultTeamRegion || "내 지역";
+  const discoverySections = [
+    { id: "nearby", title: `${currentRegionLabel} 주변 팀`, teams: teamDiscoveryGroups.nearby },
+    { id: "rivals", title: "라이벌 팀", teams: teamDiscoveryGroups.rivals },
+    { id: "affiliation", title: "같은 소속 팀", teams: teamDiscoveryGroups.affiliation },
+  ].filter((section) => section.teams.length);
   const renderTeamSearchItem = (team) => (
     <button
       key={team.id}
@@ -128,7 +154,8 @@ export default function Teams({ app }) {
       className="search-picker-result-row"
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => {
-        setRegion(team.region);
+        const canonicalRegion = getCanonicalRegion(team.region);
+        setRegion(REGIONS.includes(canonicalRegion) ? canonicalRegion : TEAM_DISCOVERY_VIEW);
         setQuery(team.name);
       }}
     >
@@ -171,9 +198,9 @@ export default function Teams({ app }) {
         setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
-      setDraft({ name: "", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+      setDraft({ name: "", region: defaultTeamRegion, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
       setCourtQuery("");
-      setCourtRegion(app.currentUser.region ?? "전체");
+      setCourtRegion(defaultTeamRegion);
     } catch (error) {
       setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     } finally {
@@ -186,19 +213,16 @@ export default function Teams({ app }) {
       {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : null}
       <section className="team-hub-hero">
         <div>
-          <p className="eyebrow">Squad House</p>
-          <h1>팀 허브</h1>
-          <p>내 팀 관리, 팀 검색, 전체 팀 랭킹을 한 화면에서 확인합니다.</p>
+          <p className="eyebrow">Team Hub</p>
+          <h1>팀</h1>
         </div>
-        <div className="team-hub-board ui-liquid-glass">
-          <span><Crown size={18} /> 전체 1위 팀</span>
-          <TeamHoverCard team={topTeam} as="span"><strong>{topTeam?.name}</strong></TeamHoverCard>
-          <em>{topTeam?.mmr} MMR · {topTeam?.wins}승 {topTeam?.losses}패 · {topTeam?.played}경기</em>
-          <div>
-            <span><Shield size={16} /> MMR 우선</span>
-            <span><Swords size={16} /> 승률 보정</span>
+        {representativeTeam ? (
+          <div className="team-hub-board ui-liquid-glass">
+            <span>대표팀</span>
+            <TeamHoverCard team={representativeTeam} as="span"><strong>{representativeTeam.name}</strong></TeamHoverCard>
+            <em>{representativeTeam.mmr} MMR · {representativeTeam.wins}승 {representativeTeam.losses}패</em>
           </div>
-        </div>
+        ) : null}
       </section>
 
       <section className="team-overview-grid">
@@ -256,76 +280,88 @@ export default function Teams({ app }) {
           </div>
         </Card>
 
-        <Card className="section-card team-rank-rule-card">
+        <Card className="section-card team-search-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Ranking Rule</p>
-              <h2>랭킹 기준</h2>
+              <p className="eyebrow">Find Teams</p>
+              <h2>팀 찾기</h2>
+            </div>
+            <Search size={22} />
+          </div>
+          <div className="search-controls">
+            <label>
+              팀 보기
+              <select value={region} onChange={(event) => setRegion(event.target.value)}>
+                <option value={TEAM_DISCOVERY_VIEW}>추천</option>
+                {REGIONS.map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+            <div className="favorite-search-label">
+              <span>팀 검색</span>
+              <SearchPicker
+                value={query}
+                onChange={setQuery}
+                placeholder="팀명, 홈코트, 해시태그"
+                items={visibleTeams}
+                remoteSearchType="team"
+                idleItems={favoriteTeams}
+                idleTitle="즐겨찾기 팀"
+                showIdleOnFocus
+                floating
+                closeOnResultClick
+                renderItem={renderTeamSearchItem}
+              />
             </div>
           </div>
-          <div className="rank-rule-list">
-            <div><strong>1</strong><span>팀 MMR 높은 순</span></div>
-            <div><strong>2</strong><span>동률이면 확정 경기 승률</span></div>
-            <div><strong>3</strong><span>그래도 같으면 확정 경기수</span></div>
-          </div>
-          <p className="team-ranking-note">즐겨찾기와 지역 필터는 검색 조건입니다. 순위 번호는 전체 랭킹 기준으로 고정됩니다.</p>
         </Card>
       </section>
 
-      <Card className="section-card selector-panel">
-        <div className="section-title-row">
-          <div>
-            <p className="eyebrow">Team Ranking</p>
-            <h2>팀 검색과 지역 정렬</h2>
-          </div>
-          <Search size={22} />
-        </div>
-        <div className="search-controls">
-          <label>
-            지역
-            <select value={region} onChange={(event) => setRegion(event.target.value)}>
-              {allRegions.map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </label>
-          <div className="favorite-search-label">
-            <span>팀명/홈코트</span>
-            <SearchPicker
-              value={query}
-              onChange={setQuery}
-              placeholder="Noeul, 마포, 한강..."
-              items={visibleTeams}
-              remoteSearchType="team"
-              idleItems={favoriteTeams}
-              idleTitle="즐겨찾기 팀"
-              showIdleOnFocus
-              floating
-              closeOnResultClick
-              renderItem={renderTeamSearchItem}
-            />
-          </div>
-        </div>
-      </Card>
-
       <div className="content-grid">
-        <section className="card-grid">
-          {visibleTeams.map((team) => (
-            <TeamCard
-              key={team.id}
-              team={team}
-              users={app.state.users}
-              teams={app.state.teams}
-              rank={team.rank}
-            />
-          ))}
-          {app.directoryStatus?.page?.kind === "teams"
-            && app.directoryStatus?.page?.filter === directoryFilter
-            && app.directoryStatus?.page?.region === directoryRegion
-            && app.directoryStatus?.page?.hasMore ? (
-              <Button type="button" variant="secondary" disabled={app.directoryStatus.loading} onClick={() => app.actions.loadMoreDirectory?.()}>
-                {app.directoryStatus.loading ? "불러오는 중" : "팀 더 보기"}
-              </Button>
-            ) : null}
-        </section>
+        <div className="team-discovery-stack">
+          {searchViewActive ? (
+            <section className="team-discovery-section">
+              <div className="section-title-row">
+                <h2>{query.trim() ? "검색 결과" : `${region} 팀`}</h2>
+                <Badge tone="neutral">{searchResultTeams.length}</Badge>
+              </div>
+              {searchResultTeams.length ? (
+                <div className="card-grid">
+                  {searchResultTeams.map((team) => (
+                    <TeamCard
+                      key={team.id}
+                      team={team}
+                      users={app.state.users}
+                      teams={app.state.teams}
+                      rank={team.rank}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="ui-empty-state-compact">조건에 맞는 팀이 없습니다.</div>
+              )}
+            </section>
+          ) : discoverySections.length ? discoverySections.map((section) => (
+            <section className="team-discovery-section" key={section.id}>
+              <div className="section-title-row">
+                <h2>{section.title}</h2>
+                <Badge tone="neutral">{section.teams.length}</Badge>
+              </div>
+              <div className="card-grid">
+                {section.teams.map((team) => (
+                  <TeamCard
+                    key={team.id}
+                    team={team}
+                    users={app.state.users}
+                    teams={app.state.teams}
+                    rank={team.rank}
+                  />
+                ))}
+              </div>
+            </section>
+          )) : (
+            <div className="ui-empty-state-compact">추천할 팀이 아직 없습니다.</div>
+          )}
+        </div>
         <Card className="section-card team-create-panel">
           <div className="section-title-row">
             <div>

@@ -540,7 +540,7 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
 });
 
-test("팀 허브 1위 보드는 팀 전용 너비와 단색 gold 팀명을 사용한다", () => {
+test("팀 허브 대표팀 보드는 팀 전용 너비와 단색 gold 팀명을 사용한다", () => {
   assert.match(
     visualSystemStyles,
     /\.team-hub-board strong\s*\{[^}]*color:\s*var\(--rb-gold\);/,
@@ -553,6 +553,18 @@ test("팀 허브 1위 보드는 팀 전용 너비와 단색 gold 팀명을 사�
     visualSystemStyles,
     /\.team-hub-board strong[^}]*background(?:-image)?:\s*(?:linear|radial)-gradient/,
   );
+});
+
+test("팀 메뉴는 추천 팀만 기본 노출하고 반복 설명을 만들지 않는다", () => {
+  const ratingCardSource = read("src/components/rating/RatingCard.jsx");
+
+  assert.match(pageSources.teams, /const TEAM_DISCOVERY_VIEW = "추천";/);
+  assert.match(pageSources.teams, /getTeamDiscoveryGroups\(\{/);
+  assert.match(pageSources.teams, /includeTeamMemberProfiles:\s*true/);
+  assert.match(pageSources.teams, /title:\s*"라이벌 팀"/);
+  assert.match(pageSources.teams, /title:\s*"같은 소속 팀"/);
+  assert.doesNotMatch(pageSources.teams, /랭킹 기준|team-ranking-note/);
+  assert.doesNotMatch(ratingCardSource, /getTierQuote|tier-quote|subtitle/);
 });
 
 test("tier emblem halo stays inside the shared emblem paint box", () => {
