@@ -800,6 +800,14 @@ html[data-theme="light"] .court-map-picker-state {
   display: none;
 }
 
+.match-creation-wizard-actions.is-last-step {
+  justify-content: flex-start;
+}
+
+.match-creation-wizard-actions.is-last-step > span {
+  display: none;
+}
+
 .create-record-court-field {
   display: grid;
   gap: var(--space-4);
@@ -1002,6 +1010,15 @@ html[data-theme="light"] .court-map-picker-state {
   }
 
   .match-creation-wizard-actions.is-single-step .button {
+    width: auto;
+    min-width: 112px;
+  }
+
+  .match-creation-wizard-actions.is-last-step {
+    display: flex;
+  }
+
+  .match-creation-wizard-actions.is-last-step .button {
     width: auto;
     min-width: 112px;
   }

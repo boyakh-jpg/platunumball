@@ -267,6 +267,14 @@ test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사�
     courtControlStyles,
     /@media \(min-width:\s*900px\)[\s\S]*?\.create-match-page \.create-mode-grid:has\(> button:nth-child\(2\):last-child\)\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
   );
+  assert.match(
+    courtControlStyles,
+    /\.match-creation-wizard-actions\.is-last-step\s*\{[^}]*justify-content:\s*flex-start;/,
+  );
+  assert.match(
+    courtControlStyles,
+    /@media \(max-width:\s*640px\)[\s\S]*?\.match-creation-wizard-actions\.is-last-step\s*\{[^}]*display:\s*flex;/,
+  );
 });
 
 test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정렬을 사용한다", () => {

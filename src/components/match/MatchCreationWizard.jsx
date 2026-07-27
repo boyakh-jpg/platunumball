@@ -64,8 +64,9 @@ export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION
   const nextStep = steps[currentIndex + 1];
   const singleStep = steps.length < 2;
   const edgeStep = !previousStep || !nextStep;
+  const lastStep = Boolean(previousStep && !nextStep);
   return (
-    <div className={`match-creation-wizard-actions${singleStep ? " is-single-step" : ""}${edgeStep ? " is-edge-step" : ""}`}>
+    <div className={`match-creation-wizard-actions${singleStep ? " is-single-step" : ""}${edgeStep ? " is-edge-step" : ""}${lastStep ? " is-last-step" : ""}`}>
       <Button type="button" variant="secondary" onClick={onCancel}>
         <X size={16} /> 취소하기
       </Button>
