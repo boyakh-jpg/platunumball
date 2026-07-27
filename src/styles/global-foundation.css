@@ -483,6 +483,59 @@ body.rankball-scroll-locked .app-main {
   display: none;
 }
 
+.scroll-to-top-button {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 40;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--ui-control-border);
+  border-radius: 50%;
+  background: var(--ui-card-bg);
+  box-shadow: var(--shadow-strong);
+  color: var(--rb-text);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.scroll-to-top-button.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.scroll-to-top-button:hover,
+.scroll-to-top-button:focus-visible {
+  border-color: var(--green);
+  background: var(--ui-selectable-hover-bg);
+}
+
+@media (max-width: 759px) {
+  .scroll-to-top-button {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  body:has(.bottom-nav) .scroll-to-top-button {
+    bottom: calc(var(--bottom-nav-height) + 14px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-to-top-button {
+    transition: none;
+  }
+}
+
 .avatar {
   position: relative;
   display: grid;
