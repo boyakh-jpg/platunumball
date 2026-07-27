@@ -117,6 +117,7 @@ const REQUIRED_COLUMNS = {
     "cancelled_at",
     "voided_at",
     "updated_at",
+    "dual_score_recorder_side",
   ],
   match_players: [
     "match_id",
@@ -156,6 +157,30 @@ const REQUIRED_COLUMNS = {
     "started_active_elapsed_ms",
     "ended_at",
     "ended_active_elapsed_ms",
+  ],
+  match_score_events: [
+    "id",
+    "match_id",
+    "side",
+    "actor_profile_id",
+    "event_type",
+    "requested_delta",
+    "score_before",
+    "score_after",
+    "score_revision",
+    "authority_scope",
+    "created_at",
+  ],
+  match_recorder_takeover_requests: [
+    "id",
+    "match_id",
+    "side",
+    "requested_by",
+    "expected_recorder_id",
+    "status",
+    "created_at",
+    "resolved_at",
+    "resolved_by",
   ],
   profile_icon_unlocks: [
     "profile_id",
@@ -237,6 +262,9 @@ const REQUIRED_COLUMNS = {
     "score_b",
     "submitted_by",
     "stat_submissions",
+    "score_revision_a",
+    "score_revision_b",
+    "score_submissions",
   ],
   player_match_stats: [
     "match_id",
@@ -252,6 +280,7 @@ const REQUIRED_COLUMNS = {
     "profile_id",
     "match_count",
     "win_count",
+    "stat_match_count",
     "loss_count",
     "draw_count",
     "points",
@@ -443,6 +472,22 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_match_result_action",
     args: { p_actor_profile_id: "", p_match_id: "", p_result: {} },
+  },
+  {
+    name: "rankball_match_scorekeeper_scope_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_side: null },
+  },
+  {
+    name: "rankball_match_score_increment_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_delta_a: 0, p_delta_b: 0, p_expected_revision_a: null, p_expected_revision_b: null },
+  },
+  {
+    name: "rankball_match_recorder_takeover_action",
+    args: { p_actor_profile_id: "", p_action: "request", p_match_id: "", p_side: "teamA", p_request_id: null },
+  },
+  {
+    name: "rankball_match_finalize_locked",
+    args: { p_actor_profile_id: "", p_match_id: "", p_action: "finalizeMatch" },
   },
   {
     name: "rankball_match_referee_absence_action",
@@ -683,6 +728,10 @@ const REQUIRED_RPCS = [
     },
   },
   {
+    name: "rankball_match_score_operation_policy_health",
+    args: {},
+  },
+  {
     name: "rankball_match_attendance_qr_action",
     args: { p_actor_profile_id: "", p_match_id: "" },
   },
@@ -784,10 +833,27 @@ async function checkRpc(client, name, args) {
   };
 }
 
-async function checkDisputeWindowPolicy(client) {
+async function checkScoreOperationPolicy(client) {
+  const { data, error } = await client.rpc("rankball_match_score_operation_policy_health");
+  const result = Array.isArray(data) ? data[0] : data;
+  return {
+    ok: !error && result?.ok === true,
+    error: error?.message ?? (!result ? "score_operation_policy_health_empty" : null),
+    checks: result?.checks ?? {},
+  };
+}
+
+async function checkDisputeWindowPolicy(client, scoreOperationPolicyCheck) {
   const { data, error } = await client.rpc("rankball_dispute_window_health");
   const checks = Array.isArray(data) ? data : [];
-  const failed = checks.filter((check) => check?.ok !== true);
+  const failed = checks.filter((check) => {
+    if (check?.ok === true) return false;
+    return !(
+      scoreOperationPolicyCheck?.checks?.autoFinalizeLocked === true
+      && check?.check_name === "rpc_normalization"
+      && check?.detail === "public.rankball_match_auto_finalize_action(text,timestamp with time zone)"
+    );
+  });
   return {
     ok: !error && checks.length > 0 && failed.length === 0,
     error: error?.message ?? (checks.length === 0 ? "dispute_window_health_empty" : null),
@@ -848,7 +914,7 @@ async function checkRlsPolicies(client) {
   };
 }
 
-async function checkRpcGrants(client) {
+async function checkRpcGrants(client, scoreOperationPolicyCheck) {
   const results = await Promise.all([
     client.rpc("rankball_rpc_grant_health"),
     client.rpc("rankball_authoritative_rpc_grant_health"),
@@ -864,7 +930,13 @@ async function checkRpcGrants(client) {
   }
 
   const checks = results.flatMap((result) => Array.isArray(result.data) ? result.data : []);
-  const failed = checks.filter((check) => !check.ok);
+  const failed = checks.filter((check) => {
+    if (check.ok) return false;
+    return !(
+      scoreOperationPolicyCheck?.checks?.legacyRosterMoveServiceRevoked === true
+      && check.check_name === "rpc_grant:rankball_match_roster_move_action"
+    );
+  });
   return {
     ok: failed.length === 0,
     error: null,
@@ -1101,8 +1173,9 @@ export default async function handler(request, response) {
     const rpcChecks = await Promise.all(REQUIRED_RPCS.map((rpc) => checkRpc(client, rpc.name, rpc.args)));
     const feedTriggerCheck = await checkFeedTriggers(client);
     const rlsPolicyCheck = await checkRlsPolicies(client);
-    const rpcGrantCheck = await checkRpcGrants(client);
-    const disputeWindowCheck = await checkDisputeWindowPolicy(client);
+    const scoreOperationPolicyCheck = await checkScoreOperationPolicy(client);
+    const rpcGrantCheck = await checkRpcGrants(client, scoreOperationPolicyCheck);
+    const disputeWindowCheck = await checkDisputeWindowPolicy(client, scoreOperationPolicyCheck);
     const profileIdentityCheck = await checkProfileIdentity(client);
     const tournamentInvitationCheck = await checkTournamentInvitations(client);
     const tournamentStartDeliveryCheck = await checkTournamentStartDeliveries(client);
@@ -1117,7 +1190,7 @@ export default async function handler(request, response) {
       ? await ensureCourtAdminAppointments(client)
       : null;
     sendJson(response, 200, {
-      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && rpcGrantCheck.ok && disputeWindowCheck.ok && profileIdentityCheck.ok && tournamentInvitationCheck.ok && tournamentStartDeliveryCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
+      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && scoreOperationPolicyCheck.ok && rpcGrantCheck.ok && disputeWindowCheck.ok && profileIdentityCheck.ok && tournamentInvitationCheck.ok && tournamentStartDeliveryCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
       failedCount: failed.length,
       failedRpcCount: failedRpcs.length,
       failedFeedTriggerCount: feedTriggerCheck.missing.length,
@@ -1131,6 +1204,7 @@ export default async function handler(request, response) {
       rpcChecks,
       feedTriggerCheck,
       rlsPolicyCheck,
+      scoreOperationPolicyCheck,
       rpcGrantCheck,
       disputeWindowCheck,
       profileIdentityCheck,

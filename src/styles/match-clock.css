@@ -212,6 +212,21 @@
   line-height: 1;
 }
 
+
+.ui-match-clock-score-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(28px, 1fr));
+  gap: 4px;
+  width: min(100%, 180px);
+  margin: 6px auto 0;
+}
+
+.ui-match-clock-score-actions .ui-button {
+  min-width: 0;
+  min-height: 28px;
+  padding-inline: 4px;
+  font-variant-numeric: tabular-nums;
+}
 .ui-match-clock-main-time {
   gap: 4px;
   color: var(--rb-text);
@@ -825,6 +840,10 @@
 
   .ui-match-shot-clock {
     min-height: var(--match-clock-display-height, 136px);
+  }
+
+  .ui-match-clock-score-actions {
+    grid-template-columns: repeat(2, minmax(28px, 1fr));
   }
 
   .ui-match-clock-panel-focus {

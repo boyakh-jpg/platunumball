@@ -1268,6 +1268,13 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
 }
 
 const SQL_REDUCER_MATCH_ACTIONS = new Set([
+  "approveMatchRecorderTakeover",
+  "cancelMatchRecorderTakeover",
+  "finalizeMatch",
+  "incrementMatchScore",
+  "rejectMatchRecorderTakeover",
+  "requestMatchRecorderTakeover",
+  "setMatchDualScoreRecorderSide",
   "acknowledgeMatchRoomRules",
   "addMatchLatePlayer",
   "agreeMatch",
@@ -1315,6 +1322,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_checkin_action") ||
     message.includes("rankball_match_confirm_pickup_assignment") ||
     message.includes("rankball_match_generate_pickup_assignment") ||
+    message.includes("rankball_match_finalize_locked") ||
     message.includes("rankball_match_rule_ack_action") ||
     message.includes("rankball_match_schedule_response_action") ||
     message.includes("rankball_match_dispute_action") ||
@@ -1328,6 +1336,9 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_room_update_action") ||
     message.includes("rankball_match_room_action") ||
     message.includes("rankball_match_roster_move_action") ||
+    message.includes("rankball_match_score_increment_action") ||
+    message.includes("rankball_match_scorekeeper_scope_action") ||
+    message.includes("rankball_match_recorder_takeover_action") ||
     message.includes("rankball_match_substitution_action") ||
     message.includes("rankball_match_roster_transition_action") ||
     message.includes("rankball_match_star_toggle_action") ||
@@ -1359,6 +1370,13 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "confirmPickupSideAssignment",
     "generatePickupSideAssignment",
     "deleteSoloRecord",
+    "approveMatchRecorderTakeover",
+    "cancelMatchRecorderTakeover",
+    "finalizeMatch",
+    "incrementMatchScore",
+    "rejectMatchRecorderTakeover",
+    "requestMatchRecorderTakeover",
+    "setMatchDualScoreRecorderSide",
     "disputeMatch",
     "resolveMatchDispute",
     "endMatch",
@@ -1478,6 +1496,74 @@ async function assertMatchTeamPlacementSide(context, operation = {}, matchId = "
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "setMatchDualScoreRecorderSide" && operation.matchId) {
+    const { data, error } = await context.supabase.rpc("rankball_match_scorekeeper_scope_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId,
+      p_side: operation.sideName ?? operation.side ?? null,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_scorekeeper_scope_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
+  if (operation.action === "incrementMatchScore" && operation.matchId) {
+    const { data, error } = await context.supabase.rpc("rankball_match_score_increment_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId,
+      p_delta_a: Number(operation.deltaA ?? 0),
+      p_delta_b: Number(operation.deltaB ?? 0),
+      p_expected_revision_a: operation.expectedRevisionA == null ? null : Number(operation.expectedRevisionA),
+      p_expected_revision_b: operation.expectedRevisionB == null ? null : Number(operation.expectedRevisionB),
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_score_increment_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
+  if ([
+    "requestMatchRecorderTakeover",
+    "approveMatchRecorderTakeover",
+    "rejectMatchRecorderTakeover",
+    "cancelMatchRecorderTakeover",
+  ].includes(operation.action) && operation.matchId) {
+    const takeoverAction = {
+      requestMatchRecorderTakeover: "request",
+      approveMatchRecorderTakeover: "approve",
+      rejectMatchRecorderTakeover: "reject",
+      cancelMatchRecorderTakeover: "cancel",
+    }[operation.action];
+    const { data, error } = await context.supabase.rpc("rankball_match_recorder_takeover_action", {
+      p_actor_profile_id: context.profileId,
+      p_action: takeoverAction,
+      p_match_id: operation.matchId,
+      p_side: operation.sideName ?? operation.side ?? "",
+      p_request_id: operation.requestId ?? null,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_recorder_takeover_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
+  if (operation.action === "finalizeMatch" && operation.matchId) {
+    const { data, error } = await context.supabase.rpc("rankball_match_finalize_locked", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId,
+      p_action: operation.action,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) reject(503, "match_finalize_rpc_required");
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
   if (operation.action === "acknowledgeMatchRoomRules" && operation.matchId) {
     const { data, error } = await context.supabase.rpc("rankball_match_rule_ack_action", {
       p_actor_profile_id: context.profileId,
@@ -2377,9 +2463,13 @@ export default async function handler(request, response) {
     console.error("Match sync failed.", error);
     const benchPolicyError = getMatchBenchPolicyError(error);
     const permissionDenied = error.code === "42501";
+    const invalidRequest = error.code === "22023";
+    const missingResource = error.code === "P0002";
+    const operationConflict = ["23505", "23514", "40001"].includes(error.code)
+      || error.message === "match_stale_snapshot";
     const statusCode = benchPolicyError?.statusCode
       ?? error.statusCode
-      ?? (permissionDenied ? 403 : error.code === "40001" || error.message === "match_stale_snapshot" ? 409 : 500);
+      ?? (permissionDenied ? 403 : invalidRequest ? 400 : missingResource ? 404 : operationConflict ? 409 : 500);
     sendJson(response, statusCode, {
       error: benchPolicyError?.message ?? (permissionDenied ? "match_sync_permission_denied" : error.message || "match_sync_failed"),
       ...(permissionDenied ? { reason: error.message || "match_sync_permission_denied" } : {}),

@@ -2025,21 +2025,6 @@ button.arena-room-player-slot {
   padding: 14px;
 }
 
-.arena-record-verification-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ui-space-2, 8px);
-  border: 1px solid var(--ui-room-panel-border, var(--line));
-  border-radius: var(--ui-control-radius, var(--radius-xs));
-  padding: var(--ui-space-3, 12px);
-}
-
-.arena-record-verification-status small {
-  flex-basis: 100%;
-  color: var(--muted);
-}
-
 .arena-source-record-summary {
   display: grid;
   gap: 10px;

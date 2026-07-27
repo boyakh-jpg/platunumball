@@ -117,10 +117,10 @@ export default function MatchContract({ match, users = [], teams = [], matches =
           <span>이의제기</span>
           <strong>{normalizeDisputeWindowMinutes(match.disputeMinutes)}분</strong>
         </div>
-        <div>
+        {referee ? <div>
           <span>개인 기록</span>
           <strong>{match.statEntryMinutes ?? 60}분 안에 입력</strong>
-        </div>
+        </div> : null}
         <div>
           <span>심판</span>
           <strong>
@@ -132,8 +132,8 @@ export default function MatchContract({ match, users = [], teams = [], matches =
           </strong>
         </div>
         <div>
-          <span>후보 기록자</span>
-          <strong>{referee ? "심판 우선 · 없음" : recorderLabel || "없음"}</strong>
+          <span>{referee ? "개인 스탯 기록" : "점수 기록자"}</span>
+          <strong>{referee ? "배정 심판" : recorderLabel || "방장 양쪽 기록"}</strong>
         </div>
         <div>
           <span>공격권</span>

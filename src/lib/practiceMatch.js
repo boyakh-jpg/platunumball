@@ -55,6 +55,7 @@ export const PRACTICE_REDUCER_ACTIONS = new Set([
   "disputeMatch",
   "endMatch",
   "generatePickupSideAssignment",
+  "finalizeMatchByAuthority",
   "handoffMatchRecorder",
   "interestRecruitingPost",
   "inviteRecruitingPlayers",
@@ -401,14 +402,32 @@ export function submitPracticeSampleResult(state, matchId) {
   const operatorId = match.refereeId || match.createdBy || PRACTICE_SELF_ID;
   const scoreA = 21;
   const scoreB = 17;
-  return withPracticeActor(nextMatchEnded(state, matchId), operatorId, repository.submitMatchResult, matchId, {
-    scoreA,
-    scoreB,
-    playerStats: {
-      ...makeSideStats(match.teamA?.players ?? [], scoreA),
-      ...makeSideStats(match.teamB?.players ?? [], scoreB),
-    },
-  });
+  const endedState = nextMatchEnded(state, matchId);
+  if (match.refereeId) {
+    return withPracticeActor(endedState, operatorId, repository.submitMatchResult, matchId, {
+      scoreA,
+      scoreB,
+      playerStats: {
+        ...makeSideStats(match.teamA?.players ?? [], scoreA),
+        ...makeSideStats(match.teamB?.players ?? [], scoreB),
+      },
+    });
+  }
+
+  let next = endedState;
+  while (true) {
+    const current = next.matches.find((item) => item.id === matchId);
+    const currentScoreA = Number(current?.result?.scoreA ?? current?.teamA?.score ?? 0);
+    const currentScoreB = Number(current?.result?.scoreB ?? current?.teamB?.score ?? 0);
+    const deltaA = Math.min(3, Math.max(0, scoreA - currentScoreA));
+    const deltaB = Math.min(3, Math.max(0, scoreB - currentScoreB));
+    if (!deltaA && !deltaB) break;
+    next = withPracticeActor(next, operatorId, repository.incrementMatchScore, matchId, deltaA, deltaB, {
+      expectedRevisionA: Number(current?.result?.scoreRevisionA ?? 0),
+      expectedRevisionB: Number(current?.result?.scoreRevisionB ?? 0),
+    });
+  }
+  return next;
 }
 
 function nextMatchEnded(state, matchId) {
@@ -421,17 +440,8 @@ function nextMatchEnded(state, matchId) {
 export function approvePracticeDummyPlayers(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result) return state;
-  const selfSideName = match.teamA?.players?.includes(PRACTICE_SELF_ID) ? "teamA" : "teamB";
-  let next = state;
-  ["teamA", "teamB"].forEach((sideName) => {
-    const playerIds = match[sideName]?.players ?? [];
-    const majority = Math.floor(playerIds.length / 2) + 1;
-    const dummyApprovalCount = Math.max(0, majority - (sideName === selfSideName ? 1 : 0));
-    playerIds.filter((playerId) => playerId !== PRACTICE_SELF_ID).slice(0, dummyApprovalCount).forEach((playerId) => {
-      next = withPracticeActor(next, playerId, repository.approveMatch, matchId, sideName, playerId);
-    });
-  });
-  return next;
+  const operatorId = match.refereeId || match.createdBy || PRACTICE_SELF_ID;
+  return withPracticeActor(state, operatorId, repository.finalizeMatchByAuthority, matchId);
 }
 
 function settleClock(clock, nowMs) {

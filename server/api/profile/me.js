@@ -21,18 +21,20 @@ import { REMOTE_CLIENT_RECORD_MONTHS } from "../../../src/lib/constants.js";
 
 export { PROFILE_ME_COLUMNS };
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,avatar_key,avatar_source,avatar_icon_key,avatar_updated_at,avatar_background_enabled,avatar_border_enabled,avatar_border_color,discord_avatar_url,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
-const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
+const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,stat_match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
 const PROFILE_RECENT_RECORD_LIMIT = 6;
 
 function fromProfileMatchSummary(row = {}) {
   const matchCount = Number(row.match_count ?? 0);
+  const statMatchCount = Number(row.stat_match_count ?? 0);
   const fouls = Number(row.fouls ?? 0);
   return {
     matchCount,
+    statMatchCount,
     wins: Number(row.win_count ?? 0),
     losses: Number(row.loss_count ?? 0),
     draws: Number(row.draw_count ?? 0),
-    averageFouls: matchCount ? fouls / matchCount : 0,
+    averageFouls: statMatchCount ? fouls / statMatchCount : 0,
     totals: {
       points: Number(row.points ?? 0),
       rebounds: Number(row.rebounds ?? 0),

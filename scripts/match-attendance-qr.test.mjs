@@ -141,8 +141,8 @@ test("배정 심판·무심판 해당 사이드 기록자만 교체할 수 있�
   };
   const reserveAccess = getMatchSubstitutionAccess(match, "reserve-a2", "teamA");
   assert.equal(reserveAccess.canManage, false);
-  assert.equal(reserveAccess.canSelfSubstitute, false);
-  assert.deepEqual(reserveAccess.allowedReservePlayerIds, []);
+  assert.equal(reserveAccess.canSelfSubstitute, true);
+  assert.deepEqual(reserveAccess.allowedReservePlayerIds, ["reserve-a2"]);
   const refereeAccess = getMatchSubstitutionAccess(match, "referee", "teamA", { canOperate: true });
   assert.equal(refereeAccess.canManage, true);
   assert.deepEqual(refereeAccess.allowedReservePlayerIds, ["reserve-a", "reserve-a2"]);
@@ -209,7 +209,7 @@ test("배정 심판·무심판 해당 사이드 기록자만 교체할 수 있�
       { id: "reserve-b", name: "후보 B" },
     ],
   };
-  for (const actorId of ["host", "party-leader", "active-a", "reserve-a2"]) {
+  for (const actorId of ["host", "party-leader", "active-a"]) {
     const blocked = substituteMatchPlayer(
       { ...noRefereeState, currentUserId: actorId },
       match.id,
@@ -221,7 +221,7 @@ test("배정 심판·무심판 해당 사이드 기록자만 교체할 수 있�
     assert.equal(blocked.matches[0].teamA.players[0], "active-a");
   }
   const regularReserveSubstituted = substituteMatchPlayer(
-    { ...noRefereeState, currentUserId: "reserve-a" },
+    { ...noRefereeState, currentUserId: "reserve-a2" },
     match.id,
     "teamA",
     "active-a",
@@ -257,13 +257,9 @@ test("배정 심판·무심판 해당 사이드 기록자만 교체할 수 있�
     "teamA",
     "active-a",
   );
-  assert.equal(handoffWithSwap.matches[0].teamA.players[0], "reserve-a");
-  assert.equal(handoffWithSwap.matches[0].statRecorders.teamA, "active-a");
-  assert.equal(handoffWithSwap.matches[0].substitutionEvents[0].reason, "recorder_handoff");
-  assert.equal(
-    handoffWithSwap.matches[0].substitutionEvents[0].createdAt,
-    handoffWithSwap.matches[0].recorderHandoffs[0].createdAt,
-  );
+  assert.equal(handoffWithSwap.matches[0].teamA.players[0], "active-a");
+  assert.equal(handoffWithSwap.matches[0].statRecorders.teamA, "reserve-a");
+  assert.deepEqual(handoffWithSwap.matches[0].recorderHandoffs ?? [], []);
   const handoffOnly = handoffMatchRecorder(
     { ...noRefereeState, currentUserId: "reserve-a" },
     match.id,
@@ -330,14 +326,14 @@ test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", 
   assert.match(panelSource, /window\.setInterval\(load, 3000\)/u);
   assert.match(panelSource, /점수 3초 자동 갱신/u);
   assert.match(panelSource, /눌러서 \$\{liveClock\.shotClockSeconds\}초로 초기화/u);
-  assert.match(clockApiSource, /\.from\("match_results"\)[\s\S]*\.select\("score_a,score_b,submitted_at"\)/u);
+  assert.match(clockApiSource, /\.from\("match_results"\)[\s\S]*\.select\("score_a,score_b,score_revision_a,score_revision_b,submitted_at"\)/u);
   assert.match(authoritativeStateSource, /substituteMatchPlayer\(state,[\s\S]*operation\.reason\)/u);
-  assert.match(recruitingSource, /button: "최종 승인"/u);
-  assert.match(recruitingSource, /최종 승인하기 전에 이의신청을 마지막으로 확인해 주세요/u);
+  assert.match(recruitingSource, /finalizeMatch/u);
+  assert.match(recruitingSource, /canFinalizeSourceMatch/u);
   assert.match(recruitingSource, /mine \|\| currentUserIsAdmin/u);
   assert.match(recruitingSource, /sourceMatchPhase\?\.phase === "live"[\s\S]*sourceMatchRecordWindow\?\.beforeEnd/u);
-  assert.match(matchRoomSource, /button: "최종 승인"/u);
-  assert.match(matchRoomSource, /최종 승인하기 전에 이의신청을 마지막으로 확인해 주세요/u);
+  assert.match(matchRoomSource, /finalizeMatch/u);
+  assert.match(matchRoomSource, /canFinalizeMatch/u);
   assert.match(matchRoomSource, /currentUserCanRefreshReview = isMatchHost \|\| currentUserIsAdmin/u);
   assert.match(matchRoomSource, /onRefresh=\{currentUserCanRefreshReview \? refreshMatchDetail : null\}/u);
   assert.match(disputeQueueSource, /refreshing \? "갱신 중" : "새로고침"/u);

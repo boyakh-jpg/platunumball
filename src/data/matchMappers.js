@@ -206,7 +206,7 @@ export function fromRemoteMatch(row, context) {
   const teamAPlayers = getRemoteMatchActivePlayerIds(row, "teamA", matchPlayers);
   const teamBPlayers = getRemoteMatchActivePlayerIds(row, "teamB", matchPlayers);
   const resultRow = context.resultsByMatch[row.id];
-  const statRows = context.statsByMatch.get(row.id) ?? [];
+  const statRows = row.referee_id ? context.statsByMatch.get(row.id) ?? [] : [];
   const playerStats = Object.fromEntries(
     statRows.map((stat) => [
       stat.user_id,
@@ -253,6 +253,7 @@ export function fromRemoteMatch(row, context) {
   const playedPlayerIds = row.played_player_ids ?? row.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
   const statRecorders = normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders);
+  const dualScoreRecorderSide = row.dual_score_recorder_side ?? row.rules?.dualScoreRecorderSide ?? null;
   const recordTeamAName = String(row.rules?.recordSummary?.teamAName ?? "").trim() || MATCH_SIDE_FALLBACK_NAMES.teamA;
   const recordTeamBName = String(row.rules?.recordSummary?.teamBName ?? "").trim() || MATCH_SIDE_FALLBACK_NAMES.teamB;
   const scoreA = resultRow?.score_a ?? row.score_a ?? 0;
@@ -272,7 +273,7 @@ export function fromRemoteMatch(row, context) {
     status: row.status ?? "contract",
     official: Boolean(row.official),
     preRegistered: Boolean(row.pre_registered),
-    rules: { ...(row.rules ?? {}), benchCapacity: normalizeBenchCapacity(row.benchCapacity ?? row.rules?.benchCapacity), playedPlayerIds, mmrExcludedPlayerIds, statRecorders },
+    rules: { ...(row.rules ?? {}), benchCapacity: normalizeBenchCapacity(row.benchCapacity ?? row.rules?.benchCapacity), playedPlayerIds, mmrExcludedPlayerIds, statRecorders, dualScoreRecorderSide },
     memo: row.memo,
     stakes: row.stakes,
     ranked: row.ranked !== false,
@@ -283,6 +284,7 @@ export function fromRemoteMatch(row, context) {
     refereeId: row.referee_id ?? "",
     refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
     statRecorders,
+    dualScoreRecorderSide,
     statEntryMinutes: row.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes: normalizeDisputeWindowMinutes(row.dispute_minutes),
     createdBy: row.created_by ?? "",
@@ -322,8 +324,11 @@ export function fromRemoteMatch(row, context) {
       ? {
           scoreA: resultRow.score_a,
           scoreB: resultRow.score_b,
+          scoreRevisionA: Number(resultRow.score_revision_a ?? 0),
+          scoreRevisionB: Number(resultRow.score_revision_b ?? 0),
+          scoreSubmissions: resultRow.score_submissions ?? {},
           playerStats,
-          statSubmissions: resultRow.stat_submissions ?? {},
+          statSubmissions: row.referee_id ? resultRow.stat_submissions ?? {} : {},
           submittedBy: resultRow.submitted_by,
           submittedAt: resultRow.submitted_at,
         }

@@ -76,7 +76,7 @@ export default async function handler(request, response) {
     ] = await Promise.all([
       context.supabase
         .from("match_results")
-        .select("score_a,score_b,submitted_at")
+        .select("score_a,score_b,score_revision_a,score_revision_b,submitted_at")
         .eq("match_id", matchId)
         .maybeSingle(),
       context.supabase
@@ -88,7 +88,7 @@ export default async function handler(request, response) {
       breakEventRequest,
       context.supabase
         .from("matches")
-        .select("visibility,rules,ended_at,tournament_id")
+        .select("visibility,rules,ended_at,tournament_id,updated_at")
         .eq("id", matchId)
         .maybeSingle(),
     ]);
@@ -121,7 +121,10 @@ export default async function handler(request, response) {
         a: Number(result?.score_a || 0),
         b: Number(result?.score_b || 0),
         updatedAt: result?.submitted_at || null,
+        revisionA: Number(result?.score_revision_a || 0),
+        revisionB: Number(result?.score_revision_b || 0),
       },
+      rosterRevision: matchRow?.updated_at || null,
       activePlayers: (playerRows || []).map((player) => ({
         id: player.user_id,
         name: nameById[player.user_id] || "출전 선수",

@@ -106,6 +106,7 @@ import {
   getMatchRecordCompositionLabel,
   getMatchRecordSetupStatus,
   getOpenMatchDisputes,
+  getEffectiveStatRecorders,
   getLocalDateInputValue,
   getMatchRecordPlayerIds,
   getMatchResultEntryPermission,
@@ -1645,15 +1646,32 @@ function MatchSubstitutionPanel({
   userById,
   teams,
   currentUserId,
+  isHost = false,
   canManageSide,
   recorderSides = [],
   onSubstitute,
   onHandoff,
+  onRequestTakeover,
+  onApproveTakeover,
+  onRejectTakeover,
+  onCancelTakeover,
 }) {
   const [draftByReserveId, setDraftByReserveId] = useState({});
   const [reasonByReserveId, setReasonByReserveId] = useState({});
   const [handoffDraftBySide, setHandoffDraftBySide] = useState({});
+  const [pendingActionKey, setPendingActionKey] = useState("");
+  const runAction = async (key, action) => {
+    if (pendingActionKey || typeof action !== "function") return;
+    setPendingActionKey(key);
+    try {
+      await action();
+    } finally {
+      setPendingActionKey("");
+    }
+  };
   if (!match) return null;
+  const effectiveRecorders = getEffectiveStatRecorders(match);
+  const openTakeoverRequests = (match.recorderTakeoverRequests ?? []).filter((request) => request.status === "open");
   const rows = MATCH_SIDES.flatMap((sideName) => {
     const access = getMatchSubstitutionAccess(match, currentUserId, sideName, {
       canOperate: canManageSide(sideName),
@@ -1668,39 +1686,39 @@ function MatchSubstitutionPanel({
       reserveUser: userById[reservePlayerId],
     }));
   });
-  const recordWindow = getMatchRecordWindow(match);
   const handoffRows = recorderSides.flatMap((sideName) => {
-    const activePlayerIds = match[sideName]?.players ?? [];
     const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
-    const candidateIds = [...new Set([...activePlayerIds, ...reservePlayerIds])]
-      .filter((playerId) => playerId && playerId !== currentUserId && userById[playerId]);
+    const candidateIds = reservePlayerIds.filter((playerId) => playerId !== currentUserId && userById[playerId]);
     if (!candidateIds.length) return [];
     const selectedId = candidateIds.includes(handoffDraftBySide[sideName])
       ? handoffDraftBySide[sideName]
       : candidateIds[0];
-    const currentIsReserve = reservePlayerIds.includes(currentUserId);
-    const selectedIsReserve = reservePlayerIds.includes(selectedId);
-    const selectedIsActive = activePlayerIds.includes(selectedId);
-    const willSwap = Boolean(recordWindow.beforeEnd && (
-      (currentIsReserve && selectedIsActive) ||
-      (!currentIsReserve && selectedIsReserve)
-    ));
     return [{
       sideName,
       candidateIds,
       selectedId,
       currentUser: userById[currentUserId],
       selectedUser: userById[selectedId],
-      willSwap,
     }];
   });
-  if (!rows.length && !handoffRows.length) return null;
+  const takeoverRequestRows = MATCH_SIDES.filter((sideName) => (
+    getMatchReservePlayerIds(match, sideName).includes(currentUserId)
+    && effectiveRecorders[sideName]
+    && effectiveRecorders[sideName] !== currentUserId
+    && !openTakeoverRequests.some((request) => request.side === sideName)
+  ));
+  const pendingTakeoverRows = openTakeoverRequests.map((request) => ({
+    ...request,
+    canResolve: isHost || effectiveRecorders[request.side] === currentUserId,
+    canCancel: request.requestedBy === currentUserId,
+  })).filter((request) => request.canResolve || request.canCancel);
+  if (!rows.length && !handoffRows.length && !takeoverRequestRows.length && !pendingTakeoverRows.length) return null;
 
   return (
     <div className="arena-record-roster-panel">
       <header>
         <strong>선수 교체</strong>
-        <span>배정 심판이 교체하고, 심판이 없으면 해당 사이드 기록자가 처리합니다. 기록자가 출전하면 나오는 선수가 권한을 이어받습니다.</span>
+        <span>배정 심판만 다른 선수를 교체합니다. 기록권한은 같은 사이드 후보에게 직접 넘기거나 후보가 기록 맡기를 요청할 수 있습니다.</span>
       </header>
       <div className="arena-record-roster-list">
         {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser }) => {
@@ -1749,31 +1767,76 @@ function MatchSubstitutionPanel({
             </div>
           );
         })}
-        {handoffRows.map(({ sideName, candidateIds, selectedId, currentUser, selectedUser, willSwap }) => (
+        {handoffRows.map(({ sideName, candidateIds, selectedId, currentUser, selectedUser }) => (
           <div key={`handoff:${sideName}`} className="arena-record-roster-row selected">
             <PlayerHoverCard user={currentUser} teams={teams} as="span">
               <ProfileEmblem user={currentUser} className="small" initial="R" />
               <span>
                 <strong>{SIDE_LABELS[sideName]} 기록권한</strong>
-                <em>{selectedUser?.name ?? "선수"}에게 넘김{willSwap ? " · 선수 교체 자동 포함" : ""}</em>
+                <em>{selectedUser?.name ?? "후보"}에게 넘김</em>
               </span>
             </PlayerHoverCard>
             <select
-              aria-label={`${SIDE_LABELS[sideName]} 기록권한 받을 선수`}
+              aria-label={`${SIDE_LABELS[sideName]} 기록권한 받을 후보`}
               value={selectedId}
               onChange={(event) => setHandoffDraftBySide((current) => ({ ...current, [sideName]: event.target.value }))}
             >
-              {candidateIds.map((playerId) => {
-                const user = userById[playerId];
-                const role = getMatchReservePlayerIds(match, sideName).includes(playerId) ? "후보" : "출전";
-                return <option value={playerId} key={playerId}>{user?.name ?? playerId} · {role}</option>;
-              })}
+              {candidateIds.map((playerId) => (
+                <option value={playerId} key={playerId}>{userById[playerId]?.name ?? playerId} · 후보</option>
+              ))}
             </select>
-            <Button type="button" size="sm" variant="secondary" disabled={!selectedId} onClick={() => onHandoff?.(sideName, selectedId)}>
+            <Button type="button" size="sm" variant="secondary" disabled={!selectedId || Boolean(pendingActionKey)} onClick={() => void runAction(`handoff:${sideName}`, () => onHandoff?.(sideName, selectedId))}>
               넘기기
             </Button>
           </div>
         ))}
+        {takeoverRequestRows.map((sideName) => (
+          <div key={`takeover-request:${sideName}`} className="arena-record-roster-row selected">
+            <PlayerHoverCard user={userById[currentUserId]} teams={teams} as="span">
+              <ProfileEmblem user={userById[currentUserId]} className="small" initial="P" />
+              <span>
+                <strong>{SIDE_LABELS[sideName]} 기록권한 요청</strong>
+                <em>현재 {userById[effectiveRecorders[sideName]]?.name ?? "후보"} 기록자</em>
+              </span>
+            </PlayerHoverCard>
+            <span>같은 사이드 후보만 요청할 수 있습니다.</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={Boolean(pendingActionKey)}
+              onClick={() => void runAction(`takeover-request:${sideName}`, () => onRequestTakeover?.(sideName))}
+            >
+              기록권한 요청
+            </Button>
+          </div>
+        ))}
+        {pendingTakeoverRows.map((request) => {
+          const requester = userById[request.requestedBy];
+          return (
+            <div key={`takeover-pending:${request.id}`} className="arena-record-roster-row selected">
+              <PlayerHoverCard user={requester} teams={teams} as="span">
+                <ProfileEmblem user={requester} className="small" initial="P" />
+                <span>
+                  <strong>{requester?.name ?? "후보"} 인수 요청</strong>
+                  <em>{SIDE_LABELS[request.side]} 기록권한</em>
+                </span>
+              </PlayerHoverCard>
+              <span>{request.canResolve ? "현재 기록자 또는 방장 확인 필요" : "승인 대기 중"}</span>
+              <div className="match-action-row">
+                {request.canResolve ? (
+                  <>
+                    <Button type="button" size="sm" disabled={Boolean(pendingActionKey)} onClick={() => void runAction(`takeover-approve:${request.id}`, () => onApproveTakeover?.(request.side, request.id))}>승인</Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(pendingActionKey)} onClick={() => void runAction(`takeover-reject:${request.id}`, () => onRejectTakeover?.(request.side, request.id))}>거절</Button>
+                  </>
+                ) : null}
+                {request.canCancel ? (
+                  <Button type="button" size="sm" variant="secondary" disabled={Boolean(pendingActionKey)} onClick={() => void runAction(`takeover-cancel:${request.id}`, () => onCancelTakeover?.(request.side, request.id))}>요청 취소</Button>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -2543,17 +2606,10 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
       ? { label: "확정방", detail: "다른 참가자 동의를 기다립니다." }
       : { label: "확정방", detail: "현재 명단과 룰에 동의하면 경기준비로 넘어갑니다.", action: "agree", button: "동의" };
   }
-  if (effectiveStatus === "approval") {
-    const approved = (match.approvals?.[sideName] ?? []).includes(userId);
-    return approved
-      ? { label: "최종 승인", detail: "다른 참가자 승인만 남았습니다." }
-      : {
-          label: "최종 승인",
-          detail: "이의신청을 마지막으로 확인하고 점수·기록이 맞으면 최종 승인합니다.",
-          action: "approve",
-          button: "최종 승인",
-        };
-  }
+  if (effectiveStatus === "approval") return {
+    label: "최종 확정 대기",
+    detail: match.refereeId ? "배정 심판의 최종 확정을 기다립니다." : "방장의 최종 확정을 기다립니다.",
+  };
   const phase = getMatchRoomPhase(match);
   if (phase.phase === "locked") {
     return { label: "확정방", detail: "경기 전까지 방 수정만 가능합니다." };
@@ -2675,9 +2731,9 @@ function SourceMatchRecordSummary({ match, userById }) {
         <strong>{Number(result.scoreA ?? match.teamA?.score ?? 0)} : {Number(result.scoreB ?? match.teamB?.score ?? 0)}</strong>
         <span>{match.teamB?.name ?? "B"}</span>
       </div>
-      <div className="arena-source-record-grid">
+      {match.refereeId ? <div className="arena-source-record-grid">
         {MATCH_SIDES.map(renderSide)}
-      </div>
+      </div> : null}
     </div>
   );
 }
@@ -2707,7 +2763,7 @@ function SourceMatchDisputeEditor({
 
   useEffect(() => {
     setDraft(makeSourceMatchDraft(match));
-  }, [match?.id, match?.updatedAt, match?.result?.updatedAt, match?.disputeDraftResult?.updatedAt]);
+  }, [match?.id, match?.result?.updatedAt, match?.disputeDraftResult?.updatedAt]);
 
   if (!match) return null;
   const hasResult = Boolean(match.result);
@@ -2720,7 +2776,7 @@ function SourceMatchDisputeEditor({
         : []
   );
   const getDerivedScore = (sideName) => getMergedResultScore(match, draft.playerStats, sideName, 0);
-  const getDerivedDraft = () => buildMatchResultSubmission(match, draft, getEditableFieldsForPlayer);
+  const getDerivedDraft = () => buildMatchResultSubmission(match, draft, getEditableFieldsForPlayer, { editableScoreSides: [] });
   const canSaveDraft = (
     canReview ||
     sideNames
@@ -2941,6 +2997,8 @@ function RecruitingRoomModalReady({
     reason: MATCH_DISPUTE_REASON_OPTIONS[0],
     customReason: "",
     requestedPoints: "",
+    requestedSide: "teamA",
+    requestedScore: "",
   });
   const [roomEditDraftByPost, setRoomEditDraftByPost] = useState({});
   const [roomEditStatusByPost, setRoomEditStatusByPost] = useState({});
@@ -3028,6 +3086,8 @@ function RecruitingRoomModalReady({
           reason: MATCH_DISPUTE_REASON_OPTIONS[0],
           customReason: "",
           requestedPoints: String(getMatchPlayerDisputePoints(sourceMatch, app.currentUser.id)),
+          requestedSide: "teamA",
+          requestedScore: String(sourceMatch.result?.scoreA ?? sourceMatch.teamA?.score ?? 0),
         }
     ));
   }, [app.currentUser.id, sourceMatch?.id, sourceMatch?.result?.updatedAt]);
@@ -3178,6 +3238,15 @@ function RecruitingRoomModalReady({
   const submitSourceDispute = (event) => {
     event.preventDefault();
     if (!sourceMatch?.id) return;
+    if (!sourceMatch.refereeId) {
+      app.actions.disputeMatch(sourceMatch.id, {
+        kind: "team_score",
+        side: sourceDisputeDraft.requestedSide,
+        requestedScore: Number(sourceDisputeDraft.requestedScore),
+        reason: sourceDisputeDraft.customReason.trim() || sourceDisputeDraft.reason,
+      });
+      return;
+    }
     app.actions.disputeMatch(sourceMatch.id, buildMatchDisputeRequest({
       match: sourceMatch,
       playerId: app.currentUser.id,
@@ -4008,7 +4077,19 @@ function RecruitingRoomModalReady({
         const canRequestRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canConfirmRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
+        const canFinalizeSourceMatch = Boolean(
+          matchRoom && sourceMatch?.result && sourceMatch?.endedAt && !sourceMatch?.confirmedAt
+          && sourceMatch.status !== "disputed" && currentUserCanOperateStartedSourceMatch
+        );
         const sourceMatchRecorderSides = sourceMatch ? getStatRecorderSides(sourceMatch, app.currentUser.id) : [];
+        const sourceEffectiveRecorders = sourceMatch ? getEffectiveStatRecorders(sourceMatch) : {};
+        const sourceRecorderSideNames = MATCH_SIDES.filter((sideName) => sourceEffectiveRecorders[sideName]);
+        const sourceSingleRecorderSide = sourceRecorderSideNames.length === 1 ? sourceRecorderSideNames[0] : "";
+        const canConfigureDualScoreRecorder = Boolean(
+          matchRoom && mine && sourceMatch && !sourceMatch.refereeId
+          && !sourceMatch.startedAt && !sourceMatch.endedAt
+          && sourceSingleRecorderSide,
+        );
         const sourceMatchResultEntryPermission = sourceMatch
           ? getMatchResultEntryPermission(sourceMatch, app.currentUser.id, {
               canOperatePostStart: currentUserCanOperateStartedSourceMatch,
@@ -4038,7 +4119,7 @@ function RecruitingRoomModalReady({
           sourceMatchPhase?.phase === "live" &&
           !sourceMatch?.endedAt &&
           sourceMatchRecordWindow?.beforeEnd &&
-          (currentUserIsSourceReferee || sourceMatchRecorderSides.includes(sideName))
+          currentUserIsSourceReferee
         );
         const sourceMatchApprovalOpen = Boolean(
           sourceMatch?.result &&
@@ -4063,9 +4144,9 @@ function RecruitingRoomModalReady({
           sourceMatch?.result &&
           ["postgame", "dispute", "record"].includes(sourceMatchPhase?.phase),
         );
-        const canShowSourceMatchRecordEditor = canReviewSourceMatch || canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult;
+        const canShowSourceMatchRecordEditor = Boolean(sourceMatch?.refereeId) && (canReviewSourceMatch || canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult);
         const sourceMatchRecordBoardFirst = Boolean(
-          matchRoom &&
+          matchRoom && Boolean(sourceMatch?.refereeId) &&
           (
             sourceMatchIsRecordRoom ||
             (entryPoint === "recorder" && (showSourceMatchRecordSummary || canShowSourceMatchRecordEditor))
@@ -4077,17 +4158,6 @@ function RecruitingRoomModalReady({
             <div className="arena-match-source-actions arena-match-source-record-board">
               <strong className="ui-panel-title">경기 기록판</strong>
               <span className="ui-panel-copy">기록방은 점수와 선수 기록을 먼저 확인합니다.</span>
-              {sourceMatchRecordVerification && sourceMatchRecordVerification.verificationStatus !== "disputed" ? (
-                <div className="arena-record-verification-status">
-                  <span>
-                    최종 승인 {sourceMatchRecordVerification.approvedIds.length}/{sourceMatchRecordVerification.requiredParticipantIds.length}
-                  </span>
-                  <small>
-                    최종 승인은 본인 참가 사실과 점수·기록 확인을 함께 처리합니다.
-                    열린 이의가 없으면 {sourceMatchRecordVerification.approvalWindowMinutes}분 뒤 자동 확정됩니다.
-                  </small>
-                </div>
-              ) : null}
               {showSourceMatchRecordSummary ? (
                 <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
               ) : null}
@@ -4127,6 +4197,7 @@ function RecruitingRoomModalReady({
               userById={userById}
               teams={app.state.teams}
               currentUserId={app.currentUser.id}
+              isHost={mine}
               canManageSide={canManageSourceMatchSubstitutionSide}
               recorderSides={sourceMatchRecorderSides}
               onSubstitute={(sideName, activePlayerId, reservePlayerId, reason) => app.actions.substituteMatchPlayer?.(
@@ -4137,6 +4208,10 @@ function RecruitingRoomModalReady({
                 reason,
               )}
               onHandoff={(sideName, nextRecorderId) => app.actions.handoffMatchRecorder?.(sourceMatch.id, sideName, nextRecorderId)}
+              onRequestTakeover={(sideName) => app.actions.requestMatchRecorderTakeover?.(sourceMatch.id, sideName)}
+              onApproveTakeover={(sideName, requestId) => app.actions.approveMatchRecorderTakeover?.(sourceMatch.id, sideName, requestId)}
+              onRejectTakeover={(sideName, requestId) => app.actions.rejectMatchRecorderTakeover?.(sourceMatch.id, sideName, requestId)}
+              onCancelTakeover={(sideName, requestId) => app.actions.cancelMatchRecorderTakeover?.(sourceMatch.id, sideName, requestId)}
             />
           ) : null
         );
@@ -5214,7 +5289,7 @@ function RecruitingRoomModalReady({
                 ) : (
                   <>
                     <span>팀 MMR은 실제 참가한 팀원의 비율을 기준으로 반영됩니다.</span>
-                    <span>후보가 경기 밖에서 참여를 확정하면 해당 사이드의 개인 활약 기록자로 배정됩니다.</span>
+                    <span>후보가 경기 밖에서 참여를 확정하면 해당 사이드의 점수 기록자로 배정됩니다.</span>
                   </>
                 )}
                 <span>참여 확정 후 불참하면 신뢰점수 차감 대상이 됩니다.</span>
@@ -5236,11 +5311,35 @@ function RecruitingRoomModalReady({
                 onVisibleChange={handleChatVisibleChange}
               />
 
+              {canConfigureDualScoreRecorder ? (
+                <div className="arena-owner-panel">
+                  <strong>양쪽 점수 기록자</strong>
+                  <span>기록자가 한 사이드에만 있을 때 방장이 그 후보에게 A/B 양쪽 점수를 맡길 수 있습니다.</span>
+                  <label className="memo-label">
+                    점수 권한
+                    <select
+                      value={(sourceMatch.rules?.dualScoreRecorderSide ?? sourceMatch.dualScoreRecorderSide ?? "") === sourceSingleRecorderSide ? sourceSingleRecorderSide : ""}
+                      onChange={(event) => app.actions.setMatchDualScoreRecorderSide?.(sourceMatch.id, event.target.value || null)}
+                    >
+                      <option value="">자기 사이드 점수만</option>
+                      <option value={sourceSingleRecorderSide}>{SIDE_LABELS[sourceSingleRecorderSide]} 기록자가 양쪽 점수</option>
+                    </select>
+                  </label>
+                </div>
+              ) : null}
               {matchRoom && sourceMatchPhase?.phase === "live" && !sourceMatchIsRecordRoom && selectedMatchRules.gameClockEnabled ? (
                 <MatchClockPanel
                   match={sourceMatch}
                   onMatchEnded={() => void app.actions.loadMatchDetail(sourceMatch.id)}
                   clockClient={clockClient}
+                  onRosterChanged={() => void app.actions.loadMatchDetail(sourceMatch.id)}
+                  editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
+                  onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
+                    sourceMatch.id,
+                    sideName === "teamA" ? delta : 0,
+                    sideName === "teamB" ? delta : 0,
+                    revisions,
+                  )}
                 />
               ) : null}
 
@@ -5269,7 +5368,7 @@ function RecruitingRoomModalReady({
                         {sourceMatchReviewRefreshing ? "갱신 중" : "결과·이의 새로고침"}
                       </Button>
                     ) : null}
-                    {sourceMatchApprovalOpen ? (
+                    {sourceMatchApprovalOpen && sourceMatch.refereeId ? (
                       <form className="arena-dispute-editor" onSubmit={submitSourceDispute}>
                         <div className="arena-dispute-score-row">
                           <label>
@@ -5312,6 +5411,30 @@ function RecruitingRoomModalReady({
                         </div>
                       </form>
                     ) : null}
+                    {sourceMatchApprovalOpen && !sourceMatch.refereeId ? (
+                      <form className="arena-dispute-editor" onSubmit={submitSourceDispute}>
+                        <div className="arena-dispute-score-row">
+                          <label>
+                            이의 대상
+                            <select value={sourceDisputeDraft.requestedSide} disabled={!canRequestSourceMatchPointDispute} onChange={(event) => setSourceDisputeDraft((current) => ({ ...current, requestedSide: event.target.value }))}>
+                              <option value="teamA">{sourceMatch.teamA?.name ?? "A"}</option>
+                              <option value="teamB">{sourceMatch.teamB?.name ?? "B"}</option>
+                            </select>
+                          </label>
+                          <label>
+                            요청 점수
+                            <input type="number" min="0" max="999" disabled={!canRequestSourceMatchPointDispute} value={sourceDisputeDraft.requestedScore} onChange={(event) => setSourceDisputeDraft((current) => ({ ...current, requestedScore: event.target.value }))} />
+                          </label>
+                        </div>
+                        <label className="memo-label">
+                          점수 정정 사유
+                          <textarea disabled={!canRequestSourceMatchPointDispute} value={sourceDisputeDraft.customReason} onChange={(event) => setSourceDisputeDraft((current) => ({ ...current, customReason: event.target.value }))} />
+                        </label>
+                        <div className="match-action-row">
+                          <Button type="submit" variant="secondary" disabled={!canRequestSourceMatchPointDispute || !sourceDisputeDraft.customReason.trim()}>이의제기</Button>
+                        </div>
+                      </form>
+                    ) : null}
                     {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && sourceMatchAction.disputed ? (
                       <SourceMatchDisputeControls
                         match={sourceMatch}
@@ -5323,7 +5446,7 @@ function RecruitingRoomModalReady({
                         refreshing={sourceMatchReviewRefreshing}
                       />
                     ) : null}
-                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (
+                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && Boolean(sourceMatch.refereeId) && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}
@@ -5333,19 +5456,11 @@ function RecruitingRoomModalReady({
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />
                     ) : null}
-                    {!sourceRoomReadOnly && sourceMatchAction.action && sourceMatchSideName ? (
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          if (sourceMatchAction.action === "agree") app.actions.agreeMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id);
-                          if (
-                            sourceMatchAction.action === "approve"
-                            && window.confirm("최종 승인하기 전에 이의신청을 마지막으로 확인해 주세요. 점수와 기록이 맞습니까?")
-                          ) {
-                            app.actions.approveMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id);
-                          }
-                        }}
-                      >
+                    {!sourceRoomReadOnly && canFinalizeSourceMatch ? (
+                      <Button type="button" onClick={() => app.actions.finalizeMatch?.(sourceMatch.id)}>최종 확정</Button>
+                    ) : null}
+                    {!sourceRoomReadOnly && sourceMatchAction.action === "agree" && sourceMatchSideName ? (
+                      <Button type="button" onClick={() => app.actions.agreeMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id)}>
                         {sourceMatchAction.button}
                       </Button>
                     ) : null}

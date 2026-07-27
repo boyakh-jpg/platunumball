@@ -339,15 +339,12 @@ test("tournament schedule guard is enforced in UI, CSS, and DB", async () => {
   assert.match(migration, /rankball_tournament_match_schedule_action_unrestricted/);
 });
 
-test("match clock scoreboard requires a referee or recorders on both sides", () => {
+test("match clock scoreboard requires a referee or an identified host", () => {
   assert.equal(hasMatchScoreboardOperators({ refereeId: "referee-1" }), true);
+  assert.equal(hasMatchScoreboardOperators({ createdBy: "host-1" }), true);
   assert.equal(hasMatchScoreboardOperators({
     reservePlayers: { teamA: ["recorder-a"], teamB: ["recorder-b"] },
     statRecorders: { teamA: "recorder-a", teamB: "recorder-b" },
-  }), true);
-  assert.equal(hasMatchScoreboardOperators({
-    reservePlayers: { teamA: ["recorder-a"], teamB: [] },
-    statRecorders: { teamA: "recorder-a", teamB: "" },
   }), false);
   assert.equal(hasMatchScoreboardOperators({}), false);
 });

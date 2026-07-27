@@ -111,6 +111,7 @@ export default function PracticeMatch({ app }) {
     });
     return {
       ...actions,
+      finalizeMatch: (...args) => actions.finalizeMatchByAuthority?.(...args),
       createRecruitingPost: async (draft) => {
         const result = createPracticeRecruitingRoom(stateRef.current, draft, { inviteTutorial: true });
         if (!result.postId) return { ok: false, error: result.error };
@@ -228,12 +229,12 @@ export default function PracticeMatch({ app }) {
     }
     if (["postgame", "dispute"].includes(progress.phase) && !match?.result) {
       commitState(submitPracticeSampleResult(stateRef.current, matchId));
-      setHelperStatus("예시 점수와 개인 기록을 채웠습니다.");
+      setHelperStatus("예시 팀 점수를 채웠습니다.");
       return;
     }
     if (["postgame", "dispute"].includes(progress.phase) && match?.result) {
       commitState(approvePracticeDummyPlayers(stateRef.current, matchId));
-      setHelperStatus("연습 선수들의 기록 승인을 처리했습니다. 본인 승인을 눌러주세요.");
+      setHelperStatus("예시 결과를 최종 확정했습니다.");
     }
   };
 
@@ -242,9 +243,9 @@ export default function PracticeMatch({ app }) {
     : progress.phase === "checkin"
       ? "연습 선수 출석 완료"
       : ["postgame", "dispute"].includes(progress.phase) && !match?.result
-        ? "예시 기록 채우기"
+        ? "예시 팀 점수 채우기"
         : ["postgame", "dispute"].includes(progress.phase) && match?.result
-          ? "연습 선수 기록 승인"
+          ? "연습 결과 최종 확정"
           : "";
 
   const contextPanel = (

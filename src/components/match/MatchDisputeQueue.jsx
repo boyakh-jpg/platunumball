@@ -4,6 +4,15 @@ import Button from "../common/Button.jsx";
 
 function getDisputeRequestSummary(dispute = {}, match = {}) {
   const request = dispute.request ?? {};
+  if (request.kind === "team_score") {
+    const sideName = request.side === "teamB" ? "teamB" : "teamA";
+    const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
+    const sideLabel = sideName === "teamA" ? "A" : "B";
+    const requestedScore = Number(request.requestedScore);
+    if (!Number.isFinite(requestedScore)) return "점수 확인 요청";
+    const currentScore = Number(match.result?.[scoreKey] ?? match[sideName]?.score ?? 0);
+    return `${sideLabel} 점수 ${currentScore}점 → ${Math.max(0, Math.round(requestedScore))}점 요청`;
+  }
   const playerId = String(request.playerId ?? "");
   const requestedPoints = Number(request.requestedPoints);
   if (!playerId || !Number.isFinite(requestedPoints)) return "기록 확인 요청";

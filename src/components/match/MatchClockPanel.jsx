@@ -142,9 +142,18 @@ async function playBuzzer(patternName = "period", volume = 1) {
   }
 }
 
-export default function MatchClockPanel({ match, onMatchEnded, clockClient = requestMatchClock }) {
+export default function MatchClockPanel({
+  match,
+  onMatchEnded,
+  clockClient = requestMatchClock,
+  editableScoreSides = [],
+  onIncrementScore = null,
+  onRosterChanged = null,
+}) {
   const [snapshot, setSnapshot] = useState(null);
-  const [score, setScore] = useState({ a: 0, b: 0, updatedAt: null });
+  const [score, setScore] = useState({ a: 0, b: 0, revisionA: 0, revisionB: 0, updatedAt: null });
+  const [scorePendingSide, setScorePendingSide] = useState("");
+  const [scoreError, setScoreError] = useState("");
   const [activePlayers, setActivePlayers] = useState([]);
   const [attendanceQr, setAttendanceQr] = useState(null);
   const [selectedControllerId, setSelectedControllerId] = useState("");
@@ -162,6 +171,7 @@ export default function MatchClockPanel({ match, onMatchEnded, clockClient = req
   const configurationDirtyRef = useRef(false);
   const matchEndedNotifiedRef = useRef(false);
   const soundedRef = useRef({ period: false, shot: false, break: false });
+  const rosterRevisionRef = useRef("");
 
   const applyResponse = useCallback((response) => {
     if (!response?.clock) return;
@@ -180,14 +190,20 @@ export default function MatchClockPanel({ match, onMatchEnded, clockClient = req
             : null,
       };
     });
-    setScore(response.score || { a: 0, b: 0, updatedAt: null });
+    setScore(response.score || { a: 0, b: 0, revisionA: 0, revisionB: 0, updatedAt: null });
     setActivePlayers(response.activePlayers || []);
     setAttendanceQr(response.attendanceQr || null);
+    if (response.rosterRevision) {
+      if (rosterRevisionRef.current && rosterRevisionRef.current !== response.rosterRevision) {
+        onRosterChanged?.();
+      }
+      rosterRevisionRef.current = response.rosterRevision;
+    }
     if (!configurationDirtyRef.current) {
       setSelectedControllerId(nextClock.controllerId || "");
       setShotClockSeconds(Number(nextClock.shotClockSeconds || 0));
     }
-  }, []);
+  }, [onRosterChanged]);
 
   const runAction = useCallback(async (action, payload = {}) => {
     if (!match?.id || pendingAction) return false;
@@ -205,9 +221,40 @@ export default function MatchClockPanel({ match, onMatchEnded, clockClient = req
     }
   }, [applyResponse, clockClient, match?.id, pendingAction]);
 
+  const incrementScore = useCallback(async (sideName, delta) => {
+    if (!onIncrementScore || scorePendingSide || !editableScoreSides.includes(sideName)) return;
+    setScorePendingSide(sideName);
+    setScoreError("");
+    try {
+      const response = await onIncrementScore(sideName, delta, {
+        expectedRevisionA: score.revisionA,
+        expectedRevisionB: score.revisionB,
+      });
+      if (response?.scoreA != null && response?.scoreB != null) {
+        setScore((current) => ({
+          ...current,
+          a: Number(response.scoreA),
+          b: Number(response.scoreB),
+          revisionA: Number(response.scoreRevisionA ?? current.revisionA),
+          revisionB: Number(response.scoreRevisionB ?? current.revisionB),
+        }));
+      } else {
+        const refreshed = await clockClient(match.id, "read").catch(() => null);
+        if (refreshed) applyResponse(refreshed);
+      }
+    } catch (actionError) {
+      const refreshed = await clockClient(match.id, "read").catch(() => null);
+      if (refreshed) applyResponse(refreshed);
+      setScoreError(String(actionError?.message || actionError?.code || "점수를 갱신하지 못했습니다."));
+    } finally {
+      setScorePendingSide("");
+    }
+  }, [applyResponse, clockClient, editableScoreSides, match.id, onIncrementScore, score.revisionA, score.revisionB, scorePendingSide]);
+
   useEffect(() => {
     configurationDirtyRef.current = false;
     matchEndedNotifiedRef.current = false;
+    rosterRevisionRef.current = "";
   }, [match.id]);
 
   useEffect(() => {
@@ -566,6 +613,15 @@ export default function MatchClockPanel({ match, onMatchEnded, clockClient = req
                 <div className="ui-match-clock-team ui-match-clock-team-a">
                   <span className="ui-match-clock-team-label">A 점수</span>
                   <strong className="ui-match-clock-team-score">{score.a}</strong>
+                  {editableScoreSides.includes("teamA") && !isEnded ? (
+                    <div className="ui-match-clock-score-actions" aria-label="A 점수 조정">
+                      {[-1, 1, 2, 3].map((delta) => (
+                        <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamA", delta)}>
+                          {delta > 0 ? `+${delta}` : delta}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               <div className="ui-match-clock-main-time">
@@ -578,6 +634,15 @@ export default function MatchClockPanel({ match, onMatchEnded, clockClient = req
                 <div className="ui-match-clock-team ui-match-clock-team-b">
                   <span className="ui-match-clock-team-label">B 점수</span>
                   <strong className="ui-match-clock-team-score">{score.b}</strong>
+                  {editableScoreSides.includes("teamB") && !isEnded ? (
+                    <div className="ui-match-clock-score-actions" aria-label="B 점수 조정">
+                      {[-1, 1, 2, 3].map((delta) => (
+                        <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamB", delta)}>
+                          {delta > 0 ? `+${delta}` : delta}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               {attendanceQr?.value && (liveClock.canControl || liveClock.canManage) ? (
@@ -738,6 +803,7 @@ export default function MatchClockPanel({ match, onMatchEnded, clockClient = req
         </label>
       </div>
       {deviceNotice ? <p className="ui-match-clock-device-notice" role="status">{deviceNotice}</p> : null}
+      {scoreError ? <p className="ui-match-clock-error" role="alert">{scoreError}</p> : null}
 
       {isEnded ? (
         <div className="ui-match-clock-result ui-status-strip">

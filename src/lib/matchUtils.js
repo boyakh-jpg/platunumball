@@ -278,8 +278,9 @@ export function getMergedResultScore(match, playerStats, sideName, fallbackScore
   return sidePlayerIds.reduce((sum, playerId) => sum + Number(playerStats[playerId]?.points ?? 0), 0);
 }
 
-export function buildMatchResultSubmission(match = {}, draft = {}, getEditableStatFields = () => []) {
+export function buildMatchResultSubmission(match = {}, draft = {}, getEditableStatFields = () => [], options = {}) {
   const sourcePlayerStats = draft.playerStats ?? {};
+  const editableScoreSides = new Set(options.editableScoreSides ?? []);
   const playerStats = Object.fromEntries(
     getMatchRecordPlayerIds(match)
       .map((playerId) => {
@@ -294,9 +295,24 @@ export function buildMatchResultSubmission(match = {}, draft = {}, getEditableSt
       .filter(([, statPatch]) => Object.keys(statPatch).length > 0),
   );
 
+  const getSubmittedScore = (sideName) => {
+    const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
+    const currentScore = match.disputeDraftResult?.[resultKey]
+      ?? match.result?.[resultKey]
+      ?? match[sideName]?.score
+      ?? 0;
+    if (!editableScoreSides.has(sideName)) {
+      return options.editableScoreSides
+        ? Number(currentScore)
+        : getMergedResultScore(match, sourcePlayerStats, sideName, currentScore);
+    }
+    const nextScore = Number(draft[resultKey]);
+    return Number.isFinite(nextScore) ? Math.min(999, Math.max(0, nextScore)) : Number(currentScore);
+  };
+
   return {
-    scoreA: getMergedResultScore(match, sourcePlayerStats, "teamA", 0),
-    scoreB: getMergedResultScore(match, sourcePlayerStats, "teamB", 0),
+    scoreA: getSubmittedScore("teamA"),
+    scoreB: getSubmittedScore("teamB"),
     playerStats,
   };
 }
@@ -556,18 +572,19 @@ export function getMatchReservePlayerIds(match = {}, sideName) {
 
 export function getMatchSubstitutionAccess(
   match = {},
-  _userId = "",
+  userId = "",
   sideName = "",
-  { canOperate = false, recorderSides = [] } = {},
+  { canOperate = false } = {},
 ) {
   const reservePlayerIds = MATCH_SIDES.includes(sideName)
     ? getMatchReservePlayerIds(match, sideName)
     : [];
-  const canManage = Boolean(canOperate || recorderSides.includes(sideName));
+  const canManage = Boolean(canOperate);
+  const canSelfSubstitute = Boolean(userId && reservePlayerIds.includes(userId));
   return {
     canManage,
-    canSelfSubstitute: false,
-    allowedReservePlayerIds: canManage ? reservePlayerIds : [],
+    canSelfSubstitute,
+    allowedReservePlayerIds: canManage ? reservePlayerIds : canSelfSubstitute ? [userId] : [],
   };
 }
 
@@ -1130,14 +1147,29 @@ export function getEffectiveStatRecorders(match = {}) {
   };
 }
 
+export function getDesignatedScoreRecorderId(match = {}) {
+  if (match.refereeId) return "";
+  const designatedSide = match.rules?.dualScoreRecorderSide ?? match.dualScoreRecorderSide ?? match.dual_score_recorder_side;
+  if (!MATCH_SIDES.includes(designatedSide)) return "";
+  const recorders = getEffectiveStatRecorders(match);
+  const oppositeSide = designatedSide === "teamA" ? "teamB" : "teamA";
+  if (!recorders[designatedSide] || recorders[oppositeSide]) return "";
+  return recorders[designatedSide];
+}
+
+export function getMatchScoreEditableSides(match = {}, userId = "", { canOperatePostStart = false, refereeEligible = true } = {}) {
+  if (!userId) return [];
+  if (match.refereeId) {
+    return isMatchReferee(match, userId) && refereeEligible !== false ? MATCH_SIDES : [];
+  }
+  if (canOperatePostStart) return MATCH_SIDES;
+  if (getDesignatedScoreRecorderId(match) === userId) return MATCH_SIDES;
+  return getStatRecorderSides(match, userId);
+}
+
 export function hasMatchScoreboardOperators(match = {}) {
   if (match.refereeId) return true;
-  const recorders = getEffectiveStatRecorders(match);
-  return Boolean(
-    recorders.teamA
-    && recorders.teamB
-    && recorders.teamA !== recorders.teamB
-  );
+  return Boolean(getMatchHostPlayerId(match));
 }
 
 export function getStatRecorderSides(match = {}, userId) {
@@ -1445,22 +1477,11 @@ export function canOperatorSubmitMissingPostgameResult(match = {}, canOperatePos
 
 export function getAllowedStatFields(match = {}, userId, playerId = userId) {
   if (isMatchReferee(match, userId)) return PLAYER_STAT_FIELDS;
-  const playerSideName = getMatchRosterSideName(match, playerId);
-  const recorders = getEffectiveStatRecorders(match);
-  if (playerSideName && recorders[playerSideName]) {
-    return recorders[playerSideName] === userId ? PLAYER_STAT_FIELDS : [];
-  }
-  if (playerId !== userId) return [];
-  return PLAYER_STAT_FIELDS.filter((field) => field.id === "points");
+  return [];
 }
 
-export function getAllowedResultStatFields(match = {}, userId, playerId = userId, operatorPostgameScore = false) {
-  const fields = getAllowedStatFields(match, userId, playerId);
-  if (!operatorPostgameScore) return fields;
-  const fieldById = Object.fromEntries(fields.map((field) => [field.id, field]));
-  const pointsField = PLAYER_STAT_FIELDS.find((field) => field.id === "points");
-  if (pointsField) fieldById.points = pointsField;
-  return Object.values(fieldById);
+export function getAllowedResultStatFields(match = {}, userId, playerId = userId) {
+  return getAllowedStatFields(match, userId, playerId);
 }
 
 export function getMatchResultEntryPermission(match = {}, userId = "", options = {}) {
@@ -1469,10 +1490,18 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
   const hasReferee = Boolean(match.refereeId);
   const currentUserIsReferee = isMatchReferee(match, userId) && options.refereeEligible !== false;
   const canOperatePostStart = Boolean(options.canOperatePostStart);
+  const liveEditableScoreSides = getMatchScoreEditableSides(match, userId, {
+    canOperatePostStart,
+    refereeEligible: options.refereeEligible,
+  });
+  const canOperatePostgame = hasReferee ? currentUserIsReferee : canOperatePostStart;
+  const editableScoreSides = match.endedAt || match.status === "disputed"
+    ? canOperatePostgame ? MATCH_SIDES : []
+    : liveEditableScoreSides;
   const canEditDisputeDraft = Boolean(
     match.status === "disputed" &&
     recordWindow.disputeOpen &&
-    (hasReferee ? currentUserIsReferee : canOperatePostStart),
+    canOperatePostgame,
   );
   const postgameEntry = Boolean(
     match.endedAt &&
@@ -1481,10 +1510,10 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
     !match.voidedAt &&
     !match.cancelledAt,
   );
-  const operatorPostgamePoints = Boolean(!hasReferee && canOperatePostStart && postgameEntry);
+  const operatorPostgamePoints = false;
   const playerIds = getMatchRecordPlayerIds(match);
   const getEditableStatFields = (playerId) => {
-    if (canEditDisputeDraft) return PLAYER_STAT_FIELDS;
+    if (canEditDisputeDraft && hasReferee) return PLAYER_STAT_FIELDS;
     if (hasReferee) return currentUserIsReferee ? PLAYER_STAT_FIELDS : [];
     const fields = getAllowedResultStatFields(match, userId, playerId, operatorPostgamePoints);
     const pointsOnly = fields.length === 1 && fields[0]?.id === "points";
@@ -1492,7 +1521,9 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
     return fields;
   };
   const editablePlayerIds = playerIds.filter((playerId) => getEditableStatFields(playerId).length > 0);
-  const canRecordByRole = hasReferee ? currentUserIsReferee : editablePlayerIds.length > 0;
+  const canRecordByRole = hasReferee
+    ? currentUserIsReferee
+    : liveEditableScoreSides.length > 0;
   const canSubmitLive = Boolean(
     canRecordByRole &&
     match.status === "agreed" &&
@@ -1502,17 +1533,27 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
   );
   const canSubmitMissingPostgameResult = canOperatorSubmitMissingPostgameResult(match, canOperatePostStart, now);
   const canSubmitPostgame = Boolean(
-    canRecordByRole &&
+    canOperatePostgame &&
     postgameEntry &&
     (recordWindow.statOpen || canSubmitMissingPostgameResult),
   );
 
   return {
+    role: currentUserIsReferee
+      ? "referee"
+      : !hasReferee && canOperatePostStart
+        ? "no_ref_host"
+        : getDesignatedScoreRecorderId(match) === userId
+          ? "score_recorder"
+          : editableScoreSides.length
+            ? "side_recorder"
+            : "none",
     canEditDisputeDraft,
     canSubmit: canEditDisputeDraft || canSubmitLive || canSubmitPostgame,
     canSubmitLive,
     canSubmitPostgame,
     canSubmitMissingPostgameResult,
+    editableScoreSides,
     editablePlayerIds,
     getEditableStatFields,
     operatorPostgamePoints,

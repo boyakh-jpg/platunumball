@@ -174,13 +174,6 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   state = submitPracticeSampleResult(state, confirmed.matchId);
   assert.equal(state.matches[0].status, "approval");
   state = approvePracticeDummyPlayers(state, confirmed.matchId);
-  assert.equal(state.matches[0].status, "approval");
-  const selfSide = state.matches[0].teamA.players.includes(PRACTICE_SELF_ID) ? "teamA" : "teamB";
-  state = runPracticeReducer(
-    state,
-    "approveMatch",
-    [confirmed.matchId, selfSide, PRACTICE_SELF_ID],
-  ).state;
   assert.equal(state.matches[0].status, "confirmed");
   assert.deepEqual(state.notifications, []);
   assert.deepEqual(state.discordNotificationDeliveries, []);

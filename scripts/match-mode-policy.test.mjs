@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { validateMatchShape } from "../server/api/matches/sync-match.js";
@@ -79,4 +80,85 @@ test("네 가지 모드는 자신의 모드 MMR·통합 MMR·팀 MMR을 각각 �
     assert.notEqual(result.ratings["player-a"].integrated, 1200);
     assert.notEqual(calculateTeamDelta({ teamMmr: 1200, opponentTeamMmr: 1200, actual: 1, match }), 0);
   });
+});
+
+test("개인 스탯과 기록 출처는 로컬 MMR 변화에 영향을 주지 않는다", () => {
+  const mode = "3v3";
+  const baseMatch = { ...makeMatch(mode), refereeId: "referee-1" };
+  const statMatch = {
+    ...baseMatch,
+    refereeId: "referee-1",
+    result: {
+      ...baseMatch.result,
+      playerStats: {
+        "player-a": { points: 999, rebounds: 99, assists: 99, steals: 99, blocks: 99 },
+        "player-b": { points: 0, rebounds: 0, assists: 0, steals: 0, blocks: 0 },
+      },
+      statSubmissions: {
+        "player-a": { by: "referee-1", source: "referee" },
+        "player-b": { by: "referee-1", source: "referee" },
+      },
+    },
+  };
+  const users = [
+    { id: "player-a", trustScore: 80, ratings: { integrated: 1200, modes: { [mode]: 1200 } } },
+    { id: "player-b", trustScore: 80, ratings: { integrated: 1200, modes: { [mode]: 1200 } } },
+  ];
+  const ratings = Object.fromEntries(users.map((user) => [user.id, user.ratings]));
+  const withoutStats = applyMatchRating(baseMatch, users, ratings, [], []);
+  const withStats = applyMatchRating(statMatch, users, ratings, [], []);
+
+  assert.deepEqual(withStats.ratings, withoutStats.ratings);
+  assert.deepEqual(withStats.changes, withoutStats.changes);
+  assert.ok(withStats.changes.every((change) => change.statBoost === 0));
+});
+
+test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정한다", async () => {
+  const [ratingSource, profileApiSource, playerDetailSource, profileRecordsSource, matchRoomSource, recruitingSource, matchContractSource, logicSource, designSource] = await Promise.all([
+    readFile(new URL("../src/lib/rating.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/profile/me.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/PlayerDetail.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/ProfileRecords.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/MatchContract.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../docs/logic-and-terminology.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/design-system.md", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(ratingSource, /calculatePlayerStatBoost/);
+  assert.match(ratingSource, /const statBoost = 0/);
+  assert.match(profileApiSource, /stat_match_count/);
+  assert.match(profileApiSource, /averageFouls: statMatchCount \? fouls \/ statMatchCount : 0/);
+  [playerDetailSource, profileRecordsSource].forEach((source) => {
+    assert.match(source, /Boolean\(match\.refereeId\).*hasOwnProperty/);
+  });
+  assert.match(playerDetailSource, /recordedStatHistory\.length/);
+  assert.match(profileRecordsSource, /recordedStatRecords\.length/);
+  assert.match(matchRoomSource, /\{hasReferee && shouldShowResultEntry \? \(/);
+  assert.match(matchRoomSource, /\{match\.result && hasReferee \? \(/);
+  assert.match(matchRoomSource, /\{statEditorPlayer && hasReferee \? \(/);
+  assert.match(recruitingSource, /matchRoom && Boolean\(sourceMatch\?\.refereeId\) &&/);
+  assert.match(recruitingSource, /Boolean\(sourceMatch\.refereeId\).*SourceMatchDisputeEditor/s);
+  assert.match(matchContractSource, /\{referee \? <div>\s*<span>[^<]+<\/span>\s*<strong>\{match\.statEntryMinutes/);
+  [logicSource, designSource].forEach((source) => {
+    assert.match(source, /score-only/);
+  });
+  assert.match(logicSource, /takeover/);
+  assert.match(logicSource, /self-sub/);
+  assert.match(logicSource, /stat_match_count/);
+  assert.match(designSource, /0 PTS/);
+});
+
+test("score policy health owns intentional legacy RPC and auto-finalize exceptions", async () => {
+  const [schemaHealthSource, migrationSource] = await Promise.all([
+    readFile(new URL("../server/api/system/schema-health.js", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260727123000_match_score_policy_health_alignment.sql", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(schemaHealthSource, /checkScoreOperationPolicy/);
+  assert.match(schemaHealthSource, /legacyRosterMoveServiceRevoked/);
+  assert.match(schemaHealthSource, /autoFinalizeLocked/);
+  assert.match(migrationSource, /not coalesce\(has_function_privilege/);
+  assert.match(migrationSource, /match_auto_finalization_locked/);
 });

@@ -83,6 +83,7 @@ import {
   getMatchRecordPlayerIds,
   getMatchCancelCopy,
   getMatchResultEntryPermission,
+  getMatchScoreEditableSides,
   getMatchHostPlayerId as getMatchHostPlayerIdFromMatch,
   getMatchAttendance,
   getMatchRosterSideName,
@@ -1506,6 +1507,9 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       submitted_by: match.result.submittedBy ?? match.refereeId ?? match.teamA?.players?.[0] ?? currentUserId,
       score_a: Number(match.result.scoreA ?? 0),
       score_b: Number(match.result.scoreB ?? 0),
+      score_revision_a: Number(match.result.scoreRevisionA ?? 0),
+      score_revision_b: Number(match.result.scoreRevisionB ?? 0),
+      score_submissions: match.result.scoreSubmissions ?? {},
       stat_submissions: match.result.statSubmissions ?? {},
       submitted_at: match.result.submittedAt,
     }));
@@ -3632,7 +3636,7 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
   const currentRecorderId = currentRecorders[sideName];
   if (!currentRecorderId || currentRecorderId !== state.currentUserId) return state;
 
-  const handoffPatch = getRecorderHandoffPatch(match, sideName, currentRecorderId, nextRecorderId);
+  const handoffPatch = { valid: getMatchReservePlayerIds(match, sideName).includes(nextRecorderId) && nextRecorderId !== currentRecorderId, match, swapped: false };
   if (!handoffPatch.valid) {
     return {
       ...state,
@@ -3640,7 +3644,7 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
         {
           id: makeId("n"),
           title: "인수인계 불가",
-          body: "같은 팀 출전선수 또는 후보에게만 기록 권한을 넘길 수 있습니다.",
+          body: "같은 사이드의 다른 후보에게만 기록 권한을 넘길 수 있습니다.",
           tone: "orange",
           matchId,
         },
@@ -3651,8 +3655,6 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
 
   const nextRecorders = { ...currentRecorders, [sideName]: nextRecorderId };
   const nextUser = state.users.find((user) => user.id === nextRecorderId);
-  const activeInUser = state.users.find((user) => user.id === handoffPatch.activeInId);
-  const benchedUser = state.users.find((user) => user.id === handoffPatch.benchedId);
   const now = new Date().toISOString();
   const handoffEvent = {
     id: makeId("handoff"),
@@ -3661,37 +3663,23 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
     to: nextRecorderId,
     createdAt: now,
   };
-  const substitutionEvent = handoffPatch.swapped ? {
-    id: makeId("substitution"),
-    side: sideName,
-    activeOutPlayerId: handoffPatch.benchedId,
-    activeInPlayerId: handoffPatch.activeInId,
-    reason: "recorder_handoff",
-    confirmedBy: state.currentUserId,
-    createdAt: now,
-  } : null;
-
   return {
     ...state,
     matches: state.matches.map((item) => (
       item.id === matchId
         ? (() => {
-            const patched = getRecorderHandoffPatch(item, sideName, currentRecorderId, nextRecorderId).match;
+            const patched = item;
             return {
               ...patched,
               statRecorders: nextRecorders,
               rules: {
                 ...(patched.rules ?? {}),
                 statRecorders: nextRecorders,
-                ...(substitutionEvent ? { lastSubstitutionAt: now } : {}),
               },
               recorderHandoffs: [
                 handoffEvent,
                 ...(patched.recorderHandoffs ?? []),
               ],
-              ...(substitutionEvent ? {
-                substitutionEvents: [substitutionEvent, ...(patched.substitutionEvents ?? [])],
-              } : {}),
             };
         })()
         : item
@@ -3700,9 +3688,7 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
       {
         id: makeId("n"),
         title: "기록자 인수인계",
-        body: handoffPatch.swapped
-          ? `${match.title} ${SIDE_LABEL_TEXT[sideName]} 기록 권한이 ${nextUser?.name ?? "후보"}에게 넘어갔습니다. ${activeInUser?.name ?? "후보"} 출전, ${benchedUser?.name ?? "선수"} 후보 전환.`
-          : `${match.title} ${SIDE_LABEL_TEXT[sideName]} 기록 권한이 ${nextUser?.name ?? "후보"}에게 넘어갔습니다.`,
+        body: `${match.title} ${SIDE_LABEL_TEXT[sideName]} 기록 권한이 ${nextUser?.name ?? "후보"}에게 넘어갔습니다.`,
         tone: "match",
         matchId,
       },
@@ -4046,7 +4032,7 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
     recorderSides: getStatRecorderSides(match, state.currentUserId),
   });
   if (!substitutionAccess.allowedReservePlayerIds.includes(reservePlayerId)) return state;
-  if (!substitutionAccess.canManage) return state;
+  if (!substitutionAccess.canManage && !substitutionAccess.canSelfSubstitute) return state;
   if (reason === "late" && !isMatchLateAttendancePlayer(match, reservePlayerId)) return state;
 
   const activeIds = match[sideName]?.players ?? [];
@@ -4103,6 +4089,135 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
   };
 }
 
+
+export function setMatchDualScoreRecorderSide(state, matchId, sideName = null) {
+  const storedMatch = state.matches.find((item) => item.id === matchId);
+  const match = withEffectiveMatchStatRecorders(storedMatch);
+  if (!match || match.refereeId || match.startedAt || match.endedAt) return state;
+  if (getMatchHostPlayerId(state, match) !== state.currentUserId) return state;
+  const safeSide = MATCH_SIDES.includes(sideName) ? sideName : null;
+  const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const recorderSides = MATCH_SIDES.filter((side) => recorders[side]);
+  if (safeSide && (recorderSides.length !== 1 || recorderSides[0] !== safeSide)) return state;
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? {
+      ...item,
+      dualScoreRecorderSide: safeSide,
+      rules: { ...(item.rules ?? {}), dualScoreRecorderSide: safeSide },
+      updatedAt: new Date().toISOString(),
+    } : item),
+  };
+}
+
+export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revisions = {}) {
+  const storedMatch = state.matches.find((item) => item.id === matchId);
+  const match = withEffectiveMatchStatRecorders(storedMatch);
+  if (!match || !match.startedAt || match.confirmedAt || !Number.isInteger(deltaA) || !Number.isInteger(deltaB)) return state;
+  if ((!deltaA && !deltaB) || Math.abs(deltaA) > 3 || Math.abs(deltaB) > 3) return state;
+  const canOperate = currentUserCanOperateStartedMatch(state, match);
+  const live = !match.endedAt && match.status === "agreed";
+  const postgameAuthority = Boolean(match.endedAt && canOperate && ["agreed", "approval", "disputed"].includes(match.status));
+  if (!live && !postgameAuthority) return state;
+  const editableSides = postgameAuthority
+    ? MATCH_SIDES
+    : getMatchScoreEditableSides(match, state.currentUserId, { canOperatePostStart: canOperate });
+  if ((deltaA && !editableSides.includes("teamA")) || (deltaB && !editableSides.includes("teamB"))) return state;
+  const result = match.result ?? { playerStats: {}, statSubmissions: {}, scoreSubmissions: {} };
+  const revisionA = Number(result.scoreRevisionA ?? 0);
+  const revisionB = Number(result.scoreRevisionB ?? 0);
+  if (deltaA && (revisions.expectedRevisionA == null || Number(revisions.expectedRevisionA) !== revisionA)) return state;
+  if (deltaB && (revisions.expectedRevisionB == null || Number(revisions.expectedRevisionB) !== revisionB)) return state;
+  const scoreA = Number(result.scoreA ?? match.teamA?.score ?? 0) + deltaA;
+  const scoreB = Number(result.scoreB ?? match.teamB?.score ?? 0) + deltaB;
+  if (scoreA < 0 || scoreB < 0 || scoreA > 999 || scoreB > 999) return state;
+  const now = new Date().toISOString();
+  const nextResult = {
+    ...result,
+    scoreA,
+    scoreB,
+    playerStats: match.refereeId ? result.playerStats ?? {} : {},
+    statSubmissions: match.refereeId ? result.statSubmissions ?? {} : {},
+    scoreRevisionA: revisionA + (deltaA ? 1 : 0),
+    scoreRevisionB: revisionB + (deltaB ? 1 : 0),
+    submittedBy: state.currentUserId,
+    submittedAt: now,
+  };
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? {
+      ...item,
+      status: item.endedAt ? "approval" : item.status,
+      teamA: { ...item.teamA, score: scoreA },
+      teamB: { ...item.teamB, score: scoreB },
+      result: nextResult,
+      updatedAt: now,
+    } : item),
+  };
+}
+
+export function requestMatchRecorderTakeover(state, matchId, sideName) {
+  const storedMatch = state.matches.find((item) => item.id === matchId);
+  const match = withEffectiveMatchStatRecorders(storedMatch);
+  if (!match || match.refereeId || !MATCH_SIDES.includes(sideName) || !match.startedAt || match.endedAt) return state;
+  const reserveIds = getMatchReservePlayerIds(match, sideName);
+  const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  if (!reserveIds.includes(state.currentUserId) || !recorders[sideName] || recorders[sideName] === state.currentUserId) return state;
+  if ((match.recorderTakeoverRequests ?? []).some((request) => request.side === sideName && request.status === "open")) return state;
+  const request = {
+    id: makeId("recorder-takeover"),
+    side: sideName,
+    requestedBy: state.currentUserId,
+    expectedRecorderId: recorders[sideName],
+    status: "open",
+    createdAt: new Date().toISOString(),
+  };
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? {
+      ...item,
+      recorderTakeoverRequests: [request, ...(item.recorderTakeoverRequests ?? [])],
+    } : item),
+  };
+}
+
+export function resolveMatchRecorderTakeover(state, matchId, sideName, requestId, decision) {
+  const storedMatch = state.matches.find((item) => item.id === matchId);
+  const match = withEffectiveMatchStatRecorders(storedMatch);
+  const request = (match?.recorderTakeoverRequests ?? []).find((item) => item.id === requestId && item.side === sideName && item.status === "open");
+  if (!match || !request || match.refereeId || match.endedAt) return state;
+  const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const isHost = getMatchHostPlayerId(state, match) === state.currentUserId;
+  const isRecorder = recorders[sideName] === state.currentUserId;
+  const isRequester = request.requestedBy === state.currentUserId;
+  if ((decision === "cancelled" && !isRequester) || (["approved", "rejected"].includes(decision) && !isHost && !isRecorder)) return state;
+  if (decision === "approved" && (request.expectedRecorderId !== recorders[sideName] || !getMatchReservePlayerIds(match, sideName).includes(request.requestedBy))) return state;
+  const nextRecorders = decision === "approved" ? { ...recorders, [sideName]: request.requestedBy } : recorders;
+  const now = new Date().toISOString();
+  return {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? {
+      ...item,
+      statRecorders: nextRecorders,
+      rules: { ...(item.rules ?? {}), statRecorders: nextRecorders },
+      recorderTakeoverRequests: (item.recorderTakeoverRequests ?? []).map((entry) => entry.id === requestId ? {
+        ...entry,
+        status: decision,
+        resolvedAt: now,
+        resolvedBy: state.currentUserId,
+      } : entry),
+      updatedAt: now,
+    } : item),
+  };
+}
+
+export function finalizeMatchByAuthority(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match?.result || !match.endedAt || match.confirmedAt || match.status === "disputed") return state;
+  if (!currentUserCanOperateStartedMatch(state, match) || (match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
+  const result = match.refereeId ? match.result : { ...match.result, playerStats: {}, statSubmissions: {} };
+  return finalizeMatch(state, { ...match, result, finalizedBy: state.currentUserId });
+}
 export function approveMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || ["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;

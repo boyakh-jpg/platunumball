@@ -283,6 +283,55 @@ async function attachOpenDisputeQueues(client, matches = [], debugTiming = null)
     : match);
 }
 
+function isMissingRecorderTakeoverTable(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "42P01"
+    || error?.code === "PGRST205"
+    || (message.includes("match_recorder_takeover_requests") && /could not find|does not exist/i.test(message));
+}
+
+async function attachRecorderTakeoverRequests(client, matches = [], debugTiming = null) {
+  const matchIds = unique((matches ?? []).map((match) => match?.id));
+  if (!matchIds.length) return matches;
+  const { data, error } = await timeStep(debugTiming, "recorderTakeoversMs", () => (
+    client
+      .from("match_recorder_takeover_requests")
+      .select("id,match_id,side,requested_by,expected_recorder_id,status,created_at,resolved_at,resolved_by,resolution")
+      .in("match_id", matchIds)
+      .order("created_at", { ascending: false })
+  ));
+  if (error) {
+    if (isMissingRecorderTakeoverTable(error)) return matches;
+    throw error;
+  }
+
+  const requestsByMatch = groupBy(data ?? [], "match_id");
+  return (matches ?? []).map((match) => {
+    const sideRows = new Map();
+    for (const row of requestsByMatch.get(match?.id) ?? []) {
+      if (!MATCH_SIDES.includes(row?.side)) continue;
+      const current = sideRows.get(row.side);
+      if (!current || (row.status === "open" && current.status !== "open")) {
+        sideRows.set(row.side, row);
+      }
+    }
+    return {
+      ...match,
+      recorderTakeoverRequests: [...sideRows.values()].map((request) => ({
+        id: request.id,
+        matchId: request.match_id,
+        side: request.side,
+        requestedBy: request.requested_by,
+        expectedRecorderId: request.expected_recorder_id,
+        status: request.status,
+        createdAt: request.created_at,
+        resolvedAt: request.resolved_at ?? null,
+        resolvedBy: request.resolved_by ?? "",
+        resolution: request.resolution ?? "",
+      })),
+    };
+  });
+}
 function isSoloRecordMatch(match = {}) {
   return isPersonalRecordMatch(match);
 }
@@ -967,12 +1016,16 @@ function toClientMatchSide(row = {}, sideName = "teamA", playersByMatch = new Ma
   };
 }
 
-function toClientMatchResult(resultRow = null, statRows = []) {
-  if (!resultRow && !(statRows ?? []).length) return null;
+function toClientMatchResult(resultRow = null, statRows = [], allowPersonalStats = true) {
+  const safeStatRows = allowPersonalStats ? statRows ?? [] : [];
+  if (!resultRow && !safeStatRows.length) return null;
   return {
     scoreA: Number(resultRow?.score_a ?? 0),
     scoreB: Number(resultRow?.score_b ?? 0),
-    playerStats: Object.fromEntries((statRows ?? []).filter((row) => row?.user_id).map((row) => [
+    scoreRevisionA: Number(resultRow?.score_revision_a ?? 0),
+    scoreRevisionB: Number(resultRow?.score_revision_b ?? 0),
+    scoreSubmissions: resultRow?.score_submissions ?? {},
+    playerStats: Object.fromEntries(safeStatRows.filter((row) => row?.user_id).map((row) => [
       row.user_id,
       {
         points: Number(row.points ?? 0),
@@ -983,7 +1036,7 @@ function toClientMatchResult(resultRow = null, statRows = []) {
         fouls: Number(row.fouls ?? 0),
       },
     ])),
-    statSubmissions: resultRow?.stat_submissions ?? {},
+    statSubmissions: allowPersonalStats ? resultRow?.stat_submissions ?? {} : {},
     submittedBy: resultRow?.submitted_by ?? "",
     submittedAt: resultRow?.submitted_at ?? "",
     updatedAt: resultRow?.submitted_at ?? "",
@@ -999,7 +1052,11 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
   const anonymousPlayers = row.anonymous_players ?? {};
   const statRecorders = row.stat_recorders ?? row.rules?.statRecorders ?? {};
-  const result = toClientMatchResult(resultsByMatch[row.id], statsByMatch.get(row.id) ?? []);
+  const result = toClientMatchResult(
+    resultsByMatch[row.id],
+    statsByMatch.get(row.id) ?? [],
+    Boolean(row.referee_id),
+  );
   return {
     id: row.id,
     title: row.title,
@@ -1018,6 +1075,7 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
     refereeId: row.referee_id ?? "",
     formerRefereeId: row.former_referee_id ?? "",
     refereeWanted: Boolean(row.referee_id || row.rules?.refereeWanted),
+    dualScoreRecorderSide: row.dual_score_recorder_side ?? row.rules?.dualScoreRecorderSide ?? null,
     createdBy: row.created_by ?? "",
     recruitingPostId: row.rules?.recruitingPostId ?? "",
     tournamentId: row.tournament_id ?? "",
@@ -1215,7 +1273,8 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   if (matches.length && !matchRows.length) {
     const countedMatches = await attachMatchPlayerCountsToCards(context.supabase, matches, debugTiming);
     const queuedMatches = await attachOpenDisputeQueues(context.supabase, countedMatches, debugTiming);
-    const cardScope = collectMissingMatchCardReferences(queuedMatches);
+    const takeoverMatches = await attachRecorderTakeoverRequests(context.supabase, queuedMatches, debugTiming);
+    const cardScope = collectMissingMatchCardReferences(takeoverMatches);
     const [
       { data: teamRows, error: teamError },
       { data: courtRows, error: courtError },
@@ -1230,7 +1289,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     const teams = (teamRows ?? []).map(toClientTeam);
     const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
     const courtById = firstBy(courtRows ?? [], "id");
-    const referencedMatches = queuedMatches.map((match) => attachMatchCardReferences(match, teamById, courtById));
+    const referencedMatches = takeoverMatches.map((match) => attachMatchCardReferences(match, teamById, courtById));
     const state = normalizeState({
       currentUserId: currentUser.id,
       users: [compactUser(currentUser, currentUser.id)],
@@ -1368,6 +1427,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     ? sortByFeedOrder(mergeMatchCardsWithRows(countedMatches, rowMatches), feedPage.ids)
     : rowMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
   matches = await attachOpenDisputeQueues(context.supabase, matches, debugTiming);
+  matches = await attachRecorderTakeoverRequests(context.supabase, matches, debugTiming);
   const state = normalizeState({
     currentUserId: currentUser.id,
     users,

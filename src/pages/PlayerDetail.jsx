@@ -39,6 +39,10 @@ function getPlayerOutcome(match, playerId) {
 function addCount(map, userId) {
   map.set(userId, (map.get(userId) ?? 0) + 1);
 }
+function hasPlayerStats(match, playerId) {
+  return Boolean(match.refereeId) && Object.prototype.hasOwnProperty.call(match.result?.playerStats ?? {}, playerId);
+}
+
 
 const historyStatusLabel = {
   contract: "동의 대기",
@@ -84,16 +88,19 @@ export default function PlayerDetail({ app }) {
     const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
     (match[sideName]?.players ?? []).filter((id) => id !== player.id).forEach((id) => addCount(teammateCounts, id));
     (match[oppositeSide]?.players ?? []).forEach((id) => addCount(opponentCounts, id));
-    const stats = match.result?.playerStats?.[player.id];
-    if (stats) PLAYER_STAT_FIELDS.forEach((field) => { totals[field.id] += Number(stats[field.id] ?? 0); });
   }
   const confirmedHistory = history.filter((match) => match.status === "confirmed" && match.result);
+  const recordedStatHistory = confirmedHistory.filter((match) => hasPlayerStats(match, player.id));
+  recordedStatHistory.forEach((match) => {
+    const stats = match.result.playerStats[player.id];
+    PLAYER_STAT_FIELDS.forEach((field) => { totals[field.id] += Number(stats[field.id] ?? 0); });
+  });
   const wins = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "win").length;
   const losses = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "loss").length;
   const winRate = confirmedHistory.length ? Math.round((wins / confirmedHistory.length) * 100) : 0;
   const recentOutcomes = confirmedHistory.slice(0, 10).map((match) => getPlayerOutcome(match, player.id));
-  const averageFouls = confirmedHistory.length
-    ? confirmedHistory.reduce((sum, match) => sum + Number(match.result?.playerStats?.[player.id]?.fouls ?? 0), 0) / confirmedHistory.length
+  const averageFouls = recordedStatHistory.length
+    ? recordedStatHistory.reduce((sum, match) => sum + Number(match.result.playerStats[player.id]?.fouls ?? 0), 0) / recordedStatHistory.length
     : 0;
   const discordProfileUrl = getDiscordProfileUrl(player);
   const discordDisplayName = getDiscordDisplayName(player);
@@ -225,7 +232,7 @@ export default function PlayerDetail({ app }) {
               ))}
             </div>
           </Card>
-          <Card className="section-card rank-record-card">
+          {recordedStatHistory.length ? <Card className="section-card rank-record-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Career Totals</p>
@@ -244,7 +251,7 @@ export default function PlayerDetail({ app }) {
                 평균 파울
               </span>
             </div>
-          </Card>
+          </Card> : null}
         </section>
         ) : null}
 
@@ -299,7 +306,7 @@ export default function PlayerDetail({ app }) {
                         <span>vs</span>
                         {opponent.teamId ? <Link to={`/app/teams/${opponent.teamId}`}>{teamMap[opponent.teamId]?.name ?? opponent.name}</Link> : <span>{opponent.name}</span>}
                       </div>
-                      {canViewStatSummary ? <p>{formatStatLine(stats)}</p> : null}
+                      {canViewStatSummary && stats ? <p>{formatStatLine(stats)}</p> : null}
                     </article>
                   );
                 })}
@@ -311,7 +318,7 @@ export default function PlayerDetail({ app }) {
         {canViewStatSummary || canViewTeamHistory ? (
           <aside className="page-stack">
             {canViewStatSummary ? <ProgressionChecklist user={player} matches={app.state.matches} /> : null}
-            {canViewStatSummary ? (
+            {canViewStatSummary && recordedStatHistory.length ? (
               <Card className="section-card">
                 <div className="section-title-row">
                   <div>

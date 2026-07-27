@@ -1,6 +1,5 @@
 import { CREDIBILITY_LEVELS, DEFAULT_RATING, EVIDENCE_OPTIONS, MATCH_MODES, MINUTE_MS, isSupportedMatchMode } from "./constants.js";
 import {
-  calculatePlayerStatBoost,
   evaluateRecordVerification,
   getMatchScheduledDate,
   getMatchRecordPlayerIds,
@@ -276,7 +275,7 @@ export function applyMatchRating(match, players, ratings, history = [], teams = 
         trustScore,
         history,
       });
-      const statBoost = calculatePlayerStatBoost(match, playerId, actual);
+      const statBoost = 0;
       const adjustedModeDelta = round(clamp((modeDelta + statBoost) * mercenaryFactor, -48, 48));
       const integratedDelta = calculateIntegratedDelta({ modeDelta: adjustedModeDelta, mode, match });
 

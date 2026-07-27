@@ -829,7 +829,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(recruitingSource, /teamOnlyRoom \|\| selectedJoinPlayerIds\.length >= getRecruitingSideCapacity/);
   assert.match(recruitingSource, /<span>대표 1명 참가<\/span>/);
   assert.match(recruitingSource, /참가 후 방 안에서 사이드장이 출전·후보 명단을 확정합니다\./);
-  assert.match(recruitingSource, /sourceMatchRecordVerification && sourceMatchRecordVerification\.verificationStatus !== "disputed"/);
+  assert.match(recruitingSource, /const sourceMatchRecordBoardFirst = Boolean\([\s\S]*Boolean\(sourceMatch\?\.refereeId\)/);
   const compactSource = fs.readFileSync(path.join(root, "server/api/recruiting/list.js"), "utf8");
   assert.match(compactSource, /lastPeriodStopMinutes: rules\.lastPeriodStopMinutes/);
   assert.match(compactSource, /gameClockEnabled: rules\.gameClockEnabled/);

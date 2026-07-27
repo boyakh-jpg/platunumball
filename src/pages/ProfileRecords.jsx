@@ -22,6 +22,10 @@ function getRecordLine(match, userId) {
     result: getPlayerMatchResult(match, userId),
   };
 }
+function hasPlayerStats(match, userId) {
+  return Boolean(match.refereeId) && Object.prototype.hasOwnProperty.call(match.result?.playerStats ?? {}, userId);
+}
+
 
 function getTotals(records, userId) {
   return records.reduce((totals, match) => {
@@ -66,11 +70,12 @@ export default function ProfileRecords({ app }) {
       loadKeyRef.current = "";
     });
   }, [app.remoteReady, archiveState.error, loadProfileRecords, profileRecordsLoaded, user.id]);
-  const totals = getTotals(recentRecords, user.id);
+  const recordedStatRecords = recentRecords.filter((match) => hasPlayerStats(match, user.id));
+  const totals = getTotals(recordedStatRecords, user.id);
   const wins = recentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "W").length;
   const losses = recentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "L").length;
   const draws = recentRecords.length - wins - losses;
-  const averageFouls = recentRecords.length ? Number(totals.fouls ?? 0) / recentRecords.length : 0;
+  const averageFouls = recordedStatRecords.length ? Number(totals.fouls ?? 0) / recordedStatRecords.length : 0;
   const dateRows = [...recentRecords.reduce((map, match) => {
     const date = getRecordDate(match);
     map.set(date, (map.get(date) ?? 0) + 1);
@@ -99,13 +104,14 @@ export default function ProfileRecords({ app }) {
           <span><strong>{wins}</strong>승</span>
           <span><strong>{losses}</strong>패</span>
           <span><strong>{draws}</strong>무</span>
+          {recordedStatRecords.length ? <>
           <span><strong>{averageFouls.toFixed(1)}</strong>평균 파울</span>
           {PLAYER_STAT_FIELDS.map((field) => (
             <span key={field.id}>
               <strong>{totals[field.id] ?? 0}</strong>
               {field.label}
             </span>
-          ))}
+          ))}</> : null}
         </div>
       </Card>
 
@@ -135,7 +141,7 @@ export default function ProfileRecords({ app }) {
           <div className="recent-match-list profile-records-list">
             {recentRecords.map((match) => {
               const line = getRecordLine(match, user.id);
-              const stats = match.result?.playerStats?.[user.id] ?? {};
+              const stats = hasPlayerStats(match, user.id) ? match.result.playerStats[user.id] : null;
               return (
                 <Link
                   key={match.id}
@@ -150,7 +156,7 @@ export default function ProfileRecords({ app }) {
                   <span>
                     <strong>{line.side.name} vs {line.opponent.name}</strong>
                     <em>{getRecordMetaPrefix(match)}{match.scheduledAt} · {match.mode} · {match.court}</em>
-                    <small>{formatStatLine(stats)}</small>
+                    {stats ? <small>{formatStatLine(stats)}</small> : null}
                   </span>
                   <i>{line.score}:{line.opponentScore}</i>
                 </Link>
