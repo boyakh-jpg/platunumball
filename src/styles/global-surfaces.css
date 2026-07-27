@@ -1025,7 +1025,7 @@ html[data-theme="light"] .team-hub-board div span {
 .team-card .member-row,
 .member-row {
   grid-template-columns: 34px minmax(0, 1fr) auto;
-  gap: var(--space-4);
+  gap: var(--ui-profile-identity-gap);
 }
 
 .team-card .member-row .tier-badge,

@@ -606,7 +606,7 @@ export default function TeamDetail({ app }) {
                     const roleOptions = getManagedRoleOptions(member, captain?.userId);
                     return (
                       <div key={`${team.id}-${member.userId}-control`} className="member-control-row">
-                        <PlayerHoverCard user={user} teams={app.state.teams}>
+                        <PlayerHoverCard className="ui-profile-identity-inline" user={user} teams={app.state.teams}>
                           <ProfileEmblem user={user} className="small" />
                           <strong>{user.name}</strong>
                         </PlayerHoverCard>

@@ -71,6 +71,14 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   border-left-color: var(--ui-result-draw-border);
 }
 
+.ui-profile-identity-inline {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: var(--ui-profile-identity-gap);
+}
+
 .ui-button {
   display: inline-flex;
   align-items: center;

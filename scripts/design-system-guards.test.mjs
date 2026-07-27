@@ -50,6 +50,7 @@ const pageSources = {
   recruiting: read("src/pages/Recruiting.jsx"),
   season: read("src/pages/Season.jsx"),
   teams: read("src/pages/Teams.jsx"),
+  teamDetail: read("src/pages/TeamDetail.jsx"),
   playerDetail: read("src/pages/PlayerDetail.jsx"),
 };
 const legacyStyleSources = [
@@ -74,6 +75,15 @@ test("win loss draw record borders keep semantic colors in every theme", () => {
     primitiveStyles,
     /html\[data-theme\] \.app-main :is\(\.recent-match-row\.result-d, \.rank-match-draw\)\s*\{[^}]*border-left-color:\s*var\(--ui-result-draw-border\);/,
   );
+});
+
+test("inline profile identities share one icon text gap", () => {
+  assert.match(tokenStyles, /--ui-profile-identity-gap:\s*var\(--space-4\);/);
+  assert.match(
+    primitiveStyles,
+    /\.ui-profile-identity-inline\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*gap:\s*var\(--ui-profile-identity-gap\);/,
+  );
+  assert.equal(countClassToken(pageSources.teamDetail, "ui-profile-identity-inline"), 1);
 });
 
 function getRuleBody(source, selector) {
