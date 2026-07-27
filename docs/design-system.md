@@ -1401,7 +1401,7 @@ UI 수정 전:
 7-3. Match/recruiting summary center labels such as `VS` and fill counts stay about half the side label size.
 7-4. Default text uses `--font-body`. Functional panel titles and descriptions use the shared `.ui-panel-title` and `.ui-panel-copy` typography instead of browser-default `strong`/`span` weights. Sports display typography remains an explicit override only.
 7-4-0. `--font-body`는 프로젝트가 직접 제공하는 `Pretendard Variable` 웹폰트를 우선 사용해 Windows, macOS, iOS, Android에서 같은 기본 UI 글꼴을 유지한다. 시스템 폰트는 웹폰트 로드 실패 시에만 fallback으로 사용한다.
-7-4-1. 홈 경기 요약과 팀 허브 전체 1위 패널은 라이트·다크 모두 `--ui-liquid-glass-*` 토큰을 사용하는 동일한 clear glass surface를 사용한다. 본체는 border와 blur 없이 거의 완전히 투명하게 유지한다. 유리 가장자리는 중앙을 뚫은 `mask-composite: exclude` pseudo-element 한 겹만 사용하며 좌상단 반사광과 우하단 굴절색을 둥근 모서리 링에만 표시한다. 불투명 surface나 전체 inset shadow를 겹치지 않고 전체 1위 팀명은 `--sports-display-font`를 유지한다.
+7-4-1. 홈 경기 요약과 팀 허브 전체 1위 패널은 라이트·다크 모두 `--ui-liquid-glass-*` 토큰을 사용하는 동일한 clear glass surface를 사용한다. 본체는 border와 blur 없이 거의 완전히 투명하게 유지한다. 유리 가장자리는 중앙을 뚫은 `mask-composite: exclude` pseudo-element 한 겹만 사용하며 좁은 가장자리에서만 원본 배경의 채도·대비·밝기를 바꾸고 비정형 반사광과 청색·주황색 색 분산을 더해 굴절을 표현한다. 불투명 surface, 균일한 흰 테두리, 전체 inset shadow를 겹치지 않고 전체 1위 팀명은 `--sports-display-font`를 유지한다.
 7-4-2. 공개 랜딩의 장문 `.landing-purpose` 박스는 표시하지 않는다. 공개 홈페이지의 기능 설명은 로고 아래 한 줄 `.landing-compact-summary`로 유지하고 개인정보처리방침·약관 링크는 공용 푸터에 둔다. 모바일 로고·레터에는 별도 받침을 두지 않고, 랜딩 배경 초점을 왼쪽 빈 공간 쪽으로 이동해 인물과 공이 로고·레터에 닿지 않게 한다.
 7-5. 공개 팀전 참가 화면은 대표 1명만 표시하고 팀원 명단 picker를 노출하지 않는다. 출전·후보 명단은 참가 뒤 방 안에서 사이드장이 확정한다.
 7-6. 이의 판정 중인 기록판은 참가자 최종 승인 수와 무응답 안내를 숨긴다. 이 상태에서는 open 이의와 방장 판정 action만 보여 주며 마지막 판정이 즉시 확정된다는 현재 흐름과 충돌하는 구형 승인 문구를 표시하지 않는다.

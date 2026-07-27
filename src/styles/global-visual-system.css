@@ -3944,7 +3944,9 @@ html[data-theme] .team-hub-board::before {
   inset: 0;
   z-index: 2;
   border-radius: inherit;
-  padding: 1.5px;
+  padding: var(--ui-liquid-glass-edge-width);
+  -webkit-backdrop-filter: var(--ui-liquid-glass-refraction);
+  backdrop-filter: var(--ui-liquid-glass-refraction);
   background: var(--ui-liquid-glass-edge);
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
