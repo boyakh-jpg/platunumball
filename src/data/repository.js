@@ -4957,6 +4957,7 @@ export function generatePickupSideAssignment(state, matchId, assignmentMode = ""
     benchCapacity,
     mode: safeMode,
     seed: `${matchId}:${assignmentRevision}:${playerIds.join(",")}`,
+    hostPlayerId: match.createdBy,
   });
   if (!assignment || assignment.teamA.active.length !== sideCapacity
     || assignment.teamB.active.length !== sideCapacity) return state;

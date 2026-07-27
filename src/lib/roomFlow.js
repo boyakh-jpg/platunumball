@@ -104,6 +104,7 @@ export function buildPickupTeamAssignment({
   benchCapacity = 0,
   mode = "manual",
   seed = "",
+  hostPlayerId = "",
 } = {}) {
   const uniqueIds = [...new Set(playerIds.filter(Boolean))];
   const activeCapacity = Math.max(1, Number(sideCapacity) || 1);
@@ -142,6 +143,10 @@ export function buildPickupTeamAssignment({
     sides[targetSide].ids.push(playerId);
     sides[targetSide].mmr += getPickupPlayerMmr(users, playerId);
   });
+
+  if (hostPlayerId && sides.teamB.ids.includes(hostPlayerId)) {
+    [sides.teamA, sides.teamB] = [sides.teamB, sides.teamA];
+  }
 
   const splitSide = (sideName) => ({
     active: sides[sideName].ids.slice(0, activeCapacity),

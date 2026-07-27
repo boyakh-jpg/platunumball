@@ -140,6 +140,37 @@ test("pickup random and MMR modes create complete deterministic drafts", () => {
   assert.equal(randomFirst.teamA.reserve.length, 1);
   assert.equal(randomFirst.teamB.reserve.length, 1);
 
+  const hostAnchored = buildPickupTeamAssignment({
+    playerIds: ["host", "p2", "p3", "p4"],
+    users: [
+      { id: "host", ratings: { integrated: 1000 } },
+      { id: "p2", ratings: { integrated: 1050 } },
+      { id: "p3", ratings: { integrated: 1100 } },
+      { id: "p4", ratings: { integrated: 1150 } },
+    ],
+    sideCapacity: 2,
+    benchCapacity: 0,
+    mode: "random",
+    seed: "seed:0",
+    hostPlayerId: "host",
+  });
+  assert.deepEqual(hostAnchored.teamA.active, ["p2", "host"]);
+  assert.deepEqual(hostAnchored.teamB.active, ["p4", "p3"]);
+
+  const mmrHostAnchored = buildPickupTeamAssignment({
+    playerIds: ["host", "p2", "p3", "p4", "p5", "p6"],
+    users: ["host", "p2", "p3", "p4", "p5", "p6"].map((id, index) => ({
+      id,
+      ratings: { integrated: 800 + index * 170 },
+    })),
+    sideCapacity: 3,
+    benchCapacity: 0,
+    mode: "mmr_balanced",
+    hostPlayerId: "host",
+  });
+  assert.equal(mmrHostAnchored.teamA.active.includes("host"), true);
+  assert.equal(mmrHostAnchored.teamB.active.includes("host"), false);
+
   const balanced = buildPickupTeamAssignment({
     playerIds: playerIds.slice(0, 6),
     users,
@@ -205,6 +236,7 @@ test("pickup assignment uses checked-in players and limits paid rerolls to two d
     [...generatedMatch.teamA.players, ...generatedMatch.teamB.players].sort(),
     ["host", "p2", "p3", "p4"],
   );
+  assert.equal(generatedMatch.teamA.players.includes("host"), true);
   assert.deepEqual(generatedMatch.reservePlayers, { teamA: [], teamB: [] });
   assert.equal(generated.users.find((user) => user.id === "host").trustScore, 10);
 

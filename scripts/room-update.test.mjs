@@ -484,6 +484,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   const pickupAssignmentMigration = readFileSync(new URL("../supabase/migrations/20260724153500_pickup_assignment_modes.sql", import.meta.url), "utf8");
   const pickupRerollMigration = readFileSync(new URL("../supabase/migrations/20260724160000_pickup_assignment_reroll_policy.sql", import.meta.url), "utf8");
   const pickupConfirmationGuardMigration = readFileSync(new URL("../supabase/migrations/20260725024500_guard_pickup_assignment_confirmation.sql", import.meta.url), "utf8");
+  const pickupHostAnchorMigration = readFileSync(new URL("../supabase/migrations/20260728100000_anchor_pickup_host_to_team_a.sql", import.meta.url), "utf8");
   const pickupSwapConfirmationGuard = pickupConfirmationGuardMigration.match(
     /create or replace function public\.rankball_match_swap_pickup_players[\s\S]*?revoke all on function public\.rankball_match_swap_pickup_players/,
   )?.[0] ?? "";
@@ -524,6 +525,10 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(pickupRerollMigration, /pickupRerollUserIds/);
   assert.match(pickupRerollMigration, /'ratingScale', rating_scale/);
   assert.match(pickupRerollMigration, /'chatMessages'/);
+  assert.match(pickupHostAnchorMigration, /host_on_team_b/);
+  assert.match(pickupHostAnchorMigration, /rankball_swap_match_side_json\(assignment_result\)/);
+  assert.match(pickupHostAnchorMigration, /'hostAnchoredTo', 'teamA'/);
+  assert.doesNotMatch(pickupHostAnchorMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
   assert.match(pickupConfirmationGuardMigration, /rules->>'sideAssignmentStatus', ''\) <> 'draft'/);
   assert.match(pickupConfirmationGuardMigration, /rules->>'sideAssignmentRevision', ''\) !~ '\^\[1-9\]\[0-9\]\*\$'/);
   assert.match(pickupConfirmationGuardMigration, /pickup_side_assignment_draft_required/);
