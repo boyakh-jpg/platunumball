@@ -774,9 +774,13 @@ export default function Home({ app }) {
                           return (
                             <>
                               <b>{line.result}</b>
-                              <span>
-                                <TeamHoverCard team={teamById[line.side.teamId]} as="span"><strong>{line.side.name}</strong></TeamHoverCard>
-                                <em>vs <TeamHoverCard team={teamById[line.opponent.teamId]} as="span">{line.opponent.name}</TeamHoverCard> · {match.court}</em>
+                              <span className="recent-match-copy">
+                                <span className="recent-match-matchup">
+                                  <TeamHoverCard team={teamById[line.side.teamId]} as="span"><strong>{line.side.name}</strong></TeamHoverCard>
+                                  <span className="recent-match-vs">vs</span>
+                                  <TeamHoverCard team={teamById[line.opponent.teamId]} as="span">{line.opponent.name}</TeamHoverCard>
+                                </span>
+                                <em className="recent-match-court">{match.court || "구장 미정"}</em>
                               </span>
                               <i>{line.score}:{line.opponentScore}</i>
                             </>

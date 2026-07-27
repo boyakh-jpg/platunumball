@@ -123,6 +123,21 @@ test("home favorite search uses the full input width without splitting court nam
   );
 });
 
+test("home recent matches keep matchup and court on two stable lines", () => {
+  assert.match(
+    pageSources.home,
+    /className="recent-match-matchup"[\s\S]*?<strong>\{line\.side\.name\}<\/strong>[\s\S]*?className="recent-match-vs">vs<\/span>[\s\S]*?\{line\.opponent\.name\}[\s\S]*?className="recent-match-court"/,
+  );
+  assert.match(
+    courtControlStyles,
+    /\.rank-home \.home-recent-card \.recent-match-matchup\s*\{[^}]*display:\s*flex;[^}]*overflow:\s*hidden;[^}]*white-space:\s*nowrap;/,
+  );
+  assert.match(
+    courtControlStyles,
+    /\.rank-home \.home-recent-card \.recent-match-court\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/,
+  );
+});
+
 function getRuleBody(source, selector) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = source.match(new RegExp(`${escapedSelector}\\s*\\{([^{}]*)\\}`));
