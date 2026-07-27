@@ -455,6 +455,10 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
 
 test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
+  assert.equal(count(tokenStyles, "0 4px 12px"), 2);
+  assert.equal(count(tokenStyles, "0 3px 8px"), 2);
+  assert.doesNotMatch(tokenStyles, /--hero-title-shadow:[\s\S]{0,100}?14px 34px/);
+  assert.doesNotMatch(tokenStyles, /--hero-copy-shadow:[\s\S]{0,100}?8px 20px/);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: blur(2px);"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 3px;"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction: url(\"#ui-liquid-glass-refraction\");"), 2);

@@ -1398,7 +1398,7 @@ UI 수정 전:
 2. Page CSS may change layout, width, and contextual emphasis, but should not invent unrelated border radius, shadow, border, or primary color rules.
 3. Primary actions use orange. Secondary controls use surface plus border. Green is reserved for READY/success state.
 4. Raw page-specific button/card overrides should be migrated back to the shared primitive layer instead of adding new late overrides.
-5. Hero title typography uses the shared `--hero-title-*` tokens. Home, Matches, Recruiting, room, profile, team, season, rulebook, and tournament heroes keep page layout differences but share title color, shadow, condensed font stack, line-height, and letter spacing.
+5. Hero title typography uses the shared `--hero-title-*` tokens. Home, Matches, Recruiting, room, profile, team, season, rulebook, and tournament heroes keep page layout differences but share title color, shadow, condensed font stack, line-height, and letter spacing. 이미지 대비용 그림자는 `1~4px`의 얇은 깊이만 허용하고 `14px/34px`처럼 글자 덩어리를 만드는 큰 검은 그림자는 사용하지 않는다. 화면별 그림자 예외를 만들지 않는다.
 6. Page-specific cards and panels should be added to the shared primitive selector layer first. Only layout-specific size/gap/placement belongs in page CSS.
 7. Condensed hero title fonts use non-negative tracking through `--hero-title-letter-spacing`. English-heavy words like `RANKBALL` must not use tight negative spacing.
 7-1. Sports display emphasis uses `KBO Dia Gothic` Bold through `--sports-display-font` only for hero titles, tier spotlight text, team/versus labels, and scoreboard/record numbers. Do not apply it to body copy, buttons, inputs, or dense helper text. Width tuning uses `scaleX(0.92)` via `--sports-display-condense`; do not simulate it with negative letter spacing.
