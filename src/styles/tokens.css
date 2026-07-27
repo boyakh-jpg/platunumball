@@ -123,14 +123,15 @@
   --ui-profile-popup-shadow: var(--shadow-strong);
   --ui-profile-popup-backdrop-filter: blur(16px) saturate(1.08);
   --ui-liquid-glass-bg:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.008)),
-    rgba(8, 11, 16, 0.035);
-  --ui-liquid-glass-border: rgba(255, 255, 255, 0.26);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 42%),
+    rgba(8, 11, 16, 0.012);
+  --ui-liquid-glass-border: rgba(160, 174, 184, 0.12);
   --ui-liquid-glass-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  --ui-liquid-glass-filter: blur(14px) saturate(1.12) brightness(0.99);
+    0 14px 36px rgba(0, 0, 0, 0.16),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.18),
+    inset -1px -1px 0 rgba(4, 7, 10, 0.32),
+    inset 0 0 18px rgba(255, 255, 255, 0.025);
+  --ui-liquid-glass-filter: none;
   --ui-panel-radius: var(--panel-radius);
   --ui-button-height: var(--control-height);
   --ui-button-height-sm: var(--control-height-sm);
@@ -279,14 +280,15 @@ html[data-theme="light"] {
   --ui-room-modal-bg: var(--card-bg-strong);
   --ui-room-panel-bg: rgba(255, 250, 241, 0.78);
   --ui-liquid-glass-bg:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.008)),
-    rgba(248, 248, 246, 0.012);
-  --ui-liquid-glass-border: rgba(255, 255, 255, 0.72);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 42%),
+    rgba(248, 248, 246, 0.006);
+  --ui-liquid-glass-border: rgba(35, 50, 59, 0.14);
   --ui-liquid-glass-shadow:
-    0 18px 44px rgba(35, 50, 59, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    inset 0 0 0 1px rgba(71, 88, 99, 0.05);
-  --ui-liquid-glass-filter: blur(14px) saturate(1.12) brightness(1.005);
+    0 14px 36px rgba(35, 50, 59, 0.1),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.46),
+    inset -1px -1px 0 rgba(35, 50, 59, 0.16),
+    inset 0 0 18px rgba(255, 255, 255, 0.06);
+  --ui-liquid-glass-filter: none;
   --hero-title-color: #fffaf1;
   --hero-title-shadow: 0 14px 34px rgba(30, 24, 18, 0.5);
   --hero-copy-color: rgba(255, 250, 241, 0.88);
