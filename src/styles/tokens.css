@@ -134,6 +134,8 @@
   --ui-liquid-glass-refraction: url("#ui-liquid-glass-refraction");
   --ui-liquid-glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   --ui-liquid-glass-filter: blur(2px);
+  --ui-hero-status-width: 428px;
+  --ui-hero-metric-min-height: 72px;
   --ui-panel-radius: var(--panel-radius);
   --ui-button-height: var(--control-height);
   --ui-button-height-sm: var(--control-height-sm);
@@ -189,9 +191,13 @@
   --hero-title-line-height: 0.9;
   --hero-title-letter-spacing: 0.018em;
   --hero-title-color: var(--rb-cream);
-  --hero-title-shadow: 0 14px 34px rgba(0, 0, 0, 0.52);
-  --hero-copy-color: rgba(255, 250, 241, 0.86);
-  --hero-copy-shadow: 0 8px 20px rgba(0, 0, 0, 0.42);
+  --hero-title-shadow:
+    0 2px 3px rgba(5, 7, 10, 0.86),
+    0 14px 34px rgba(0, 0, 0, 0.52);
+  --hero-copy-color: var(--rb-cream);
+  --hero-copy-shadow:
+    0 1px 2px rgba(5, 7, 10, 0.9),
+    0 8px 20px rgba(0, 0, 0, 0.42);
   --sidebar-width: 300px;
   --bottom-nav-height: 58px;
   --bg-court: none;
@@ -293,10 +299,14 @@ html[data-theme="light"] {
   --ui-liquid-glass-refraction: url("#ui-liquid-glass-refraction");
   --ui-liquid-glass-shadow: 0 10px 30px rgba(35, 50, 59, 0.08);
   --ui-liquid-glass-filter: blur(2px);
-  --hero-title-color: #fffaf1;
-  --hero-title-shadow: 0 14px 34px rgba(30, 24, 18, 0.5);
-  --hero-copy-color: rgba(255, 250, 241, 0.88);
-  --hero-copy-shadow: 0 8px 20px rgba(30, 24, 18, 0.38);
+  --hero-title-color: var(--rb-cream);
+  --hero-title-shadow:
+    0 2px 3px rgba(5, 7, 10, 0.82),
+    0 14px 34px rgba(30, 24, 18, 0.5);
+  --hero-copy-color: var(--rb-cream);
+  --hero-copy-shadow:
+    0 1px 2px rgba(5, 7, 10, 0.86),
+    0 8px 20px rgba(30, 24, 18, 0.38);
   --court-line: rgba(30, 24, 18, 0.05);
   --scoreboard: #fffaf1;
   --scoreboard-2: #ebe3d6;

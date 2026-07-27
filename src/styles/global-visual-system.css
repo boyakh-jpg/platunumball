@@ -3782,7 +3782,7 @@ html[data-theme="light"] .brand-letter-light {
   }
 }
 
-.app-main :is(
+html[data-theme] .app-main :is(
   .page-header,
   .landing-hero,
   .match-hero,
@@ -3807,6 +3807,24 @@ html[data-theme="light"] .app-main :is(
   .gm-room-hero
 ) p:not(.eyebrow) {
   color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+html[data-theme] .app-main :is(
+  .page-header,
+  .landing-hero,
+  .match-hero,
+  .team-hub-hero,
+  .season-hero,
+  .profile-hero,
+  .team-detail-hero,
+  .om-match-hero,
+  .arena-recruit-hero,
+  .gm-room-hero,
+  .home-rank-board-head
+) .eyebrow,
+html[data-theme] .app-main :is(.om-match-copy, .arena-hero-copy) > :is(.om-kicker, .arena-kicker) {
+  color: var(--rb-orange-2);
   text-shadow: var(--hero-copy-shadow);
 }
 
@@ -3926,19 +3944,36 @@ html[data-theme="light"] .app-main :is(
   white-space: nowrap;
 }
 
-/* Image-hero summaries use one translucent Liquid Glass material. */
-html[data-theme] .home-hero-board,
-html[data-theme] .team-hub-board {
+/* Hero-internal boards use one translucent Liquid Glass material. */
+html[data-theme] .app-main :is(
+  .home-hero-board,
+  .team-hub-board,
+  .om-match-panel,
+  .arena-hero-panel,
+  .season-rule-board,
+  .rank-tier-statement,
+  .page-header > .ui-button
+) {
   position: relative;
+  isolation: isolate;
   border: 0;
   background: var(--ui-liquid-glass-bg);
+  color: var(--hero-title-color);
   box-shadow: var(--ui-liquid-glass-shadow);
   -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
   backdrop-filter: var(--ui-liquid-glass-filter);
+  text-shadow: var(--hero-copy-shadow);
 }
 
-html[data-theme] .home-hero-board::before,
-html[data-theme] .team-hub-board::before {
+html[data-theme] .app-main :is(
+  .home-hero-board,
+  .team-hub-board,
+  .om-match-panel,
+  .arena-hero-panel,
+  .season-rule-board,
+  .rank-tier-statement,
+  .page-header > .ui-button
+)::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -3957,6 +3992,127 @@ html[data-theme] .team-hub-board::before {
     linear-gradient(#000 0 0);
   mask-composite: exclude;
   pointer-events: none;
+}
+
+html[data-theme] .app-main :is(
+  .page-header > .ui-button,
+  .rank-team-hero .favorite-toggle-button,
+  .season-hero-copy > .ui-badge,
+  .season-meta-row > span,
+  .profile-hero .badge-row .ui-badge,
+  .team-detail-hero .badge-row .ui-badge,
+  .tournament-hero-badges .ui-badge,
+  .gm-room-topline .ui-badge,
+  .gm-team-panel,
+  .gm-score-core,
+  .gm-reserve-panel,
+  .gm-room-actions > div
+) {
+  border-color: transparent;
+  background: var(--ui-liquid-glass-bg);
+  box-shadow: var(--ui-liquid-glass-shadow);
+  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
+  backdrop-filter: var(--ui-liquid-glass-filter);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+html[data-theme] .app-main .page-header > .ui-button {
+  color: var(--hero-copy-color);
+}
+
+html[data-theme] .app-main :is(.home-hero-next > span, .team-hub-board > span) {
+  color: var(--rb-orange-2);
+}
+
+html[data-theme] .app-main :is(
+  .home-hero-next > strong,
+  .home-hero-stats strong,
+  .team-hub-board strong,
+  .om-match-stats strong,
+  .arena-hero-stats strong,
+  .season-rule-board > strong
+) {
+  color: var(--hero-title-color);
+  text-shadow: var(--hero-title-shadow);
+}
+
+html[data-theme] .app-main :is(
+  .home-hero-next > em,
+  .home-hero-stats em,
+  .team-hub-board em,
+  .team-hub-board div span,
+  .home-hero-next > svg:last-child,
+  .om-match-stats > span,
+  .arena-hero-stats > span,
+  .season-rule-board > span,
+  .season-meta-row > span,
+  .gm-reserve-panel,
+  .gm-room-actions > div
+) {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--ui-hero-status-width));
+  gap: var(--space-11);
+}
+
+html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+  display: grid;
+  width: min(100%, var(--ui-hero-status-width));
+  align-self: end;
+  justify-self: end;
+  grid-template-rows: minmax(var(--ui-hero-metric-min-height), auto) auto;
+  gap: var(--space-6);
+  padding: var(--space-8);
+}
+
+html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) > span {
+  min-height: var(--ui-hero-metric-min-height);
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-1);
+  border: 0;
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-liquid-glass-bg);
+  padding: var(--space-5);
+  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
+  backdrop-filter: var(--ui-liquid-glass-filter);
+}
+
+html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) > .ui-button {
+  width: 100%;
+  min-height: var(--ui-button-height);
+  height: var(--ui-button-height);
+}
+
+@media (max-width: 1020px) {
+  html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+    justify-self: center;
+  }
+}
+
+@media (max-width: 720px) {
+  html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+    width: 100%;
+  }
 }
 
 

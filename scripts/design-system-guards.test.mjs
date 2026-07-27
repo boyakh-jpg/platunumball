@@ -371,20 +371,30 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.doesNotMatch(pageSources.home, /onboardingComplete[\s\S]*home-guide-card/);
 });
 
-test("home and team heroes use one masked spatial-refraction edge", () => {
+test("hero inner boards share one readable liquid-glass system", () => {
+  assert.equal(count(tokenStyles, "--hero-copy-color: var(--rb-cream);"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: blur(2px);"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 3px;"), 2);
   assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction: url(\"#ui-liquid-glass-refraction\");"), 2);
+  assert.match(tokenStyles, /--ui-hero-status-width:\s*428px;/);
+  assert.match(tokenStyles, /--ui-hero-metric-min-height:\s*72px;/);
   assert.doesNotMatch(tokenStyles, /--ui-liquid-glass-(?:caustic|edge-inset|refraction-inner)/);
   assert.match(tokenStyles, /--ui-liquid-glass-edge:\s*[\s\S]*?radial-gradient\(58% 16% at 18% 0%/);
   assert.match(appSource, /id="ui-liquid-glass-refraction"/);
   assert.match(appSource, /<feTurbulence[^>]*type="fractalNoise"[^>]*baseFrequency="0\.008 0\.018"/);
   assert.match(appSource, /<feDisplacementMap[^>]*in="SourceGraphic"[^>]*scale="3"/);
-  assert.match(visualSystemStyles, /html\[data-theme\] \.home-hero-board,\s*html\[data-theme\] \.team-hub-board \{[^}]*border:\s*0;/);
-  assert.match(visualSystemStyles, /html\[data-theme\] \.home-hero-board::before,\s*html\[data-theme\] \.team-hub-board::before \{/);
+  assert.match(visualSystemStyles, /\.home-hero-board,[\s\S]*?\.om-match-panel,[\s\S]*?\.arena-hero-panel,[\s\S]*?\.season-rule-board,[\s\S]*?\.rank-tier-statement[\s\S]*?\)\s*\{[^}]*border:\s*0;/);
+  assert.match(visualSystemStyles, /\.home-hero-board,[\s\S]*?\.rank-tier-statement[\s\S]*?\)::before\s*\{/);
+  assert.match(visualSystemStyles, /\.rank-tier-statement,\s*\.page-header > \.ui-button[\s\S]*?\)::before\s*\{/);
   assert.doesNotMatch(visualSystemStyles, /\.home-hero-board::after|\.team-hub-board::after/);
   assert.match(visualSystemStyles, /padding:\s*var\(--ui-liquid-glass-edge-width\);/);
   assert.match(visualSystemStyles, /backdrop-filter:\s*var\(--ui-liquid-glass-refraction\);/);
+  assert.match(visualSystemStyles, /\.page-header > \.ui-button,[\s\S]*?\.gm-room-actions > div[\s\S]*?\)\s*\{[\s\S]*?backdrop-filter:\s*var\(--ui-liquid-glass-filter\);/);
+  assert.match(visualSystemStyles, /\.om-match-hero,\s*\.arena-recruit-hero[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
+  assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
+  assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
+  assert.match(visualSystemStyles, /\.home-rank-board-head[\s\S]*?\)\s*\.eyebrow,[\s\S]*?color:\s*var\(--rb-orange-2\);/);
+  assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.season-rule-board > strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
   assert.equal(count(visualSystemStyles, "-webkit-mask-composite: xor;"), 1);
   assert.equal(count(visualSystemStyles, "mask-composite: exclude;"), 1);
 });
