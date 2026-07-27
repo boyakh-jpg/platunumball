@@ -133,6 +133,7 @@ test("중복 구장 신고 확정은 중앙 구장 검수와 신고 해결을 �
   assert.match(migration, /create unique index if not exists reports_court_active_reporter_unique/);
   assert.doesNotMatch(migration, /\b(?:delete\s+from|truncate|drop\s+table)\b/i);
   assert.match(adminPage, /"markCourtDuplicate", "dismissReport", "hideCourt", "maliciousReporter"/);
+  assert.match(adminPage, /reason: ADMIN_REVIEW_ACTIONS\[nextActionType\]\?\.reason \?\? ""/);
   assert.match(adminPage, /대상 구장은 비활성화되고 중복 판정과 관리자 감사 기록이 남습니다/);
   assert.match(logic, /courtCorrection\.field=duplicate/);
   assert.match(schemaHealth, /name: "rankball_resolve_duplicate_court_report"/);

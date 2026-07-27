@@ -9,6 +9,7 @@ import {
   validateAdminUserOperationDraft,
 } from "./adminUserOperations.js";
 import {
+  ADMIN_REVIEW_ACTIONS,
   buildAdminReviewModel,
   getAdminActionTargetUserIds,
   getAdminReportTypeLabel,
@@ -84,6 +85,7 @@ test("report actions never mix the reporter into a target sanction", () => {
   assert.deepEqual(getAdminActionTargetUserIds(report, "refereeDiscipline", { refereeId: "other" }), []);
   assert.equal(isHighImpactAdminReviewAction("suspendTarget"), true);
   assert.equal(isHighImpactAdminReviewAction("markCourtDuplicate"), true);
+  assert.equal(ADMIN_REVIEW_ACTIONS.markCourtDuplicate.reason, "동일 시설 중복 등록 확인");
   assert.equal(isHighImpactAdminReviewAction("dismissReport"), false);
 });
 

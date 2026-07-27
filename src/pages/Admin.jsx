@@ -554,7 +554,7 @@ export default function Admin({ app }) {
         targetUserId: "",
         replacementName: selectedRow?.team?.name ?? selectedRow?.affiliation?.name ?? "",
         mergeTargetId: "",
-        reason: "",
+        reason: ADMIN_REVIEW_ACTIONS[nextActionType]?.reason ?? "",
         feedback: ADMIN_REVIEW_ACTIONS[nextActionType]?.feedback ?? "",
       };
     });
@@ -581,6 +581,7 @@ export default function Admin({ app }) {
     updateActionDraft({
       actionType,
       targetUserId: "",
+      reason: ADMIN_REVIEW_ACTIONS[actionType]?.reason ?? "",
       feedback: ADMIN_REVIEW_ACTIONS[actionType]?.feedback ?? "",
     });
   };

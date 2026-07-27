@@ -59,7 +59,11 @@ export const SUSPENSION_TIERS = [
 ];
 
 export const ADMIN_REVIEW_ACTIONS = {
-  markCourtDuplicate: { label: "중복 구장 확정", feedback: "신고된 구장이 중복으로 확인되어 서비스 노출에서 제외되었습니다." },
+  markCourtDuplicate: {
+    label: "중복 구장 확정",
+    reason: "동일 시설 중복 등록 확인",
+    feedback: "신고된 구장이 중복으로 확인되어 서비스 노출에서 제외되었습니다.",
+  },
   keepMatchVoid: { label: "경기 무효 유지", feedback: "검토 결과 경기 무효 처리를 유지했습니다." },
   restoreMatchHalf: { label: "경기 복구 · MMR 50%", feedback: "경기를 복구하고 MMR을 50% 반영했습니다." },
   restoreMatchFull: { label: "경기 복구 · MMR 100%", feedback: "경기를 복구하고 MMR을 정상 반영했습니다." },
