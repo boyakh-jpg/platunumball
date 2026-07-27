@@ -3004,16 +3004,19 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
 
 .landing-hero,
 html[data-theme="light"] .landing-hero {
-  background:
-    var(--bg-action) var(--landing-hero-position, var(--hero-bg-position-action)) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-2);
+  background: var(--rb-bg-2);
   backdrop-filter: none;
   filter: none;
 }
 
 .landing-backdrop,
 html[data-theme="light"] .landing-backdrop {
-  background: none;
+  background:
+    var(--bg-action) var(--landing-hero-position, var(--hero-bg-position-action)) / var(--hero-bg-size) no-repeat;
+  -webkit-mask-image: radial-gradient(ellipse 78% 72% at 62% 50%, #000 38%, rgba(0, 0, 0, 0.85) 56%, transparent 100%);
+  mask-image: radial-gradient(ellipse 78% 72% at 62% 50%, #000 38%, rgba(0, 0, 0, 0.85) 56%, transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 .match-hero,
