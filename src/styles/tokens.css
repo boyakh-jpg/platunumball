@@ -127,17 +127,11 @@
     rgba(8, 11, 16, 0.006);
   --ui-liquid-glass-border: transparent;
   --ui-liquid-glass-edge:
-    radial-gradient(125% 56% at 9% -10%, rgba(255, 255, 255, 0.72) 0 12%, rgba(174, 226, 250, 0.28) 27%, transparent 52%),
-    radial-gradient(92% 74% at 106% 108%, rgba(2, 7, 11, 0.42) 0 16%, rgba(255, 205, 181, 0.14) 31%, transparent 60%),
-    linear-gradient(125deg, rgba(255, 255, 255, 0.16), transparent 30% 67%, rgba(0, 7, 12, 0.24));
-  --ui-liquid-glass-caustic:
-    radial-gradient(52% 19% at 20% 0%, rgba(255, 255, 255, 0.8), transparent 78%),
-    radial-gradient(44% 24% at 100% 82%, rgba(131, 207, 241, 0.34), transparent 76%),
-    radial-gradient(38% 20% at 0% 72%, rgba(255, 190, 156, 0.2), transparent 78%);
-  --ui-liquid-glass-edge-width: 7px;
-  --ui-liquid-glass-edge-inset: 4px;
-  --ui-liquid-glass-refraction: saturate(1.68) contrast(1.28) brightness(1.06);
-  --ui-liquid-glass-refraction-inner: saturate(0.8) contrast(1.22) brightness(1.12);
+    radial-gradient(58% 16% at 18% 0%, rgba(255, 255, 255, 0.62), transparent 82%),
+    radial-gradient(44% 18% at 100% 86%, rgba(160, 215, 240, 0.18), transparent 80%),
+    radial-gradient(38% 16% at 0% 78%, rgba(255, 255, 255, 0.12), transparent 82%);
+  --ui-liquid-glass-edge-width: 9px;
+  --ui-liquid-glass-refraction: url("#ui-liquid-glass-refraction");
   --ui-liquid-glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   --ui-liquid-glass-filter: none;
   --ui-panel-radius: var(--panel-radius);
@@ -292,17 +286,11 @@ html[data-theme="light"] {
     rgba(248, 248, 246, 0.003);
   --ui-liquid-glass-border: transparent;
   --ui-liquid-glass-edge:
-    radial-gradient(125% 56% at 9% -10%, rgba(255, 255, 255, 0.82) 0 12%, rgba(154, 215, 242, 0.24) 27%, transparent 52%),
-    radial-gradient(92% 74% at 106% 108%, rgba(23, 38, 48, 0.28) 0 16%, rgba(224, 156, 125, 0.12) 31%, transparent 60%),
-    linear-gradient(125deg, rgba(255, 255, 255, 0.2), transparent 30% 67%, rgba(25, 45, 57, 0.16));
-  --ui-liquid-glass-caustic:
-    radial-gradient(52% 19% at 20% 0%, rgba(255, 255, 255, 0.86), transparent 78%),
-    radial-gradient(44% 24% at 100% 82%, rgba(104, 184, 220, 0.3), transparent 76%),
-    radial-gradient(38% 20% at 0% 72%, rgba(221, 139, 101, 0.17), transparent 78%);
-  --ui-liquid-glass-edge-width: 7px;
-  --ui-liquid-glass-edge-inset: 4px;
-  --ui-liquid-glass-refraction: saturate(1.55) contrast(1.24) brightness(1.04);
-  --ui-liquid-glass-refraction-inner: saturate(0.82) contrast(1.18) brightness(1.08);
+    radial-gradient(58% 16% at 18% 0%, rgba(255, 255, 255, 0.68), transparent 82%),
+    radial-gradient(44% 18% at 100% 86%, rgba(111, 184, 218, 0.16), transparent 80%),
+    radial-gradient(38% 16% at 0% 78%, rgba(35, 50, 59, 0.12), transparent 82%);
+  --ui-liquid-glass-edge-width: 9px;
+  --ui-liquid-glass-refraction: url("#ui-liquid-glass-refraction");
   --ui-liquid-glass-shadow: 0 10px 30px rgba(35, 50, 59, 0.08);
   --ui-liquid-glass-filter: none;
   --hero-title-color: #fffaf1;

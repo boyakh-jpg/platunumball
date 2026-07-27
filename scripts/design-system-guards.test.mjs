@@ -371,19 +371,20 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.doesNotMatch(pageSources.home, /onboardingComplete[\s\S]*home-guide-card/);
 });
 
-test("home and team heroes use one masked clear-glass edge", () => {
+test("home and team heroes use one masked spatial-refraction edge", () => {
   assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: none;"), 2);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 7px;"), 2);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction: saturate("), 2);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction-inner: saturate("), 2);
-  assert.equal(count(tokenStyles, "--ui-liquid-glass-caustic:"), 2);
-  assert.match(tokenStyles, /--ui-liquid-glass-edge:\s*[\s\S]*?radial-gradient\(125% 56% at 9% -10%/);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-edge-width: 9px;"), 2);
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-refraction: url(\"#ui-liquid-glass-refraction\");"), 2);
+  assert.doesNotMatch(tokenStyles, /--ui-liquid-glass-(?:caustic|edge-inset|refraction-inner)/);
+  assert.match(tokenStyles, /--ui-liquid-glass-edge:\s*[\s\S]*?radial-gradient\(58% 16% at 18% 0%/);
+  assert.match(appSource, /id="ui-liquid-glass-refraction"/);
+  assert.match(appSource, /<feTurbulence[^>]*type="fractalNoise"[^>]*baseFrequency="0\.008 0\.018"/);
+  assert.match(appSource, /<feDisplacementMap[^>]*in="SourceGraphic"[^>]*scale="6"/);
   assert.match(visualSystemStyles, /html\[data-theme\] \.home-hero-board,\s*html\[data-theme\] \.team-hub-board \{[^}]*border:\s*0;/);
   assert.match(visualSystemStyles, /html\[data-theme\] \.home-hero-board::before,\s*html\[data-theme\] \.team-hub-board::before \{/);
-  assert.match(visualSystemStyles, /html\[data-theme\] \.home-hero-board::after,\s*html\[data-theme\] \.team-hub-board::after \{/);
+  assert.doesNotMatch(visualSystemStyles, /\.home-hero-board::after|\.team-hub-board::after/);
   assert.match(visualSystemStyles, /padding:\s*var\(--ui-liquid-glass-edge-width\);/);
   assert.match(visualSystemStyles, /backdrop-filter:\s*var\(--ui-liquid-glass-refraction\);/);
-  assert.match(visualSystemStyles, /backdrop-filter:\s*var\(--ui-liquid-glass-refraction-inner\);/);
-  assert.equal(count(visualSystemStyles, "-webkit-mask-composite: xor;"), 2);
-  assert.equal(count(visualSystemStyles, "mask-composite: exclude;"), 2);
+  assert.equal(count(visualSystemStyles, "-webkit-mask-composite: xor;"), 1);
+  assert.equal(count(visualSystemStyles, "mask-composite: exclude;"), 1);
 });

@@ -135,6 +135,22 @@ export default function App() {
 
   return (
     <AppErrorBoundary resetKey={location.pathname}>
+      <svg aria-hidden="true" width="0" height="0" focusable="false">
+        <defs>
+          <filter
+            id="ui-liquid-glass-refraction"
+            x="-8%"
+            y="-12%"
+            width="116%"
+            height="124%"
+            colorInterpolationFilters="sRGB"
+          >
+            <feTurbulence type="fractalNoise" baseFrequency="0.008 0.018" numOctaves="1" seed="8" stitchTiles="stitch" result="liquidNoise" />
+            <feDisplacementMap in="SourceGraphic" in2="liquidNoise" scale="6" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+
       <Suspense fallback={<BasketballLoader overlay label="페이지 불러오는 중" />}>
         <Routes>
         <Route element={<PublicShell />}>
