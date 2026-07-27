@@ -513,6 +513,10 @@ body.rankball-scroll-locked .app-main {
   transform: translateY(0);
 }
 
+html[data-theme="light"] .scroll-to-top-button {
+  border-color: #fff;
+}
+
 .scroll-to-top-button:hover,
 .scroll-to-top-button:focus-visible {
   border-color: var(--green);
@@ -526,7 +530,7 @@ body.rankball-scroll-locked .app-main {
   }
 
   body:has(.bottom-nav) .scroll-to-top-button {
-    bottom: calc(var(--bottom-nav-height) + 14px + env(safe-area-inset-bottom));
+    bottom: calc(var(--bottom-nav-height) + 24px + env(safe-area-inset-bottom));
   }
 }
 
