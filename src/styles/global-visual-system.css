@@ -3929,11 +3929,32 @@ html[data-theme="light"] .app-main :is(
 /* Image-hero summaries use one translucent Liquid Glass material. */
 html[data-theme] .home-hero-board,
 html[data-theme] .team-hub-board {
-  border-color: var(--ui-liquid-glass-border);
+  position: relative;
+  border: 0;
   background: var(--ui-liquid-glass-bg);
   box-shadow: var(--ui-liquid-glass-shadow);
   -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
   backdrop-filter: var(--ui-liquid-glass-filter);
+}
+
+html[data-theme] .home-hero-board::before,
+html[data-theme] .team-hub-board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: var(--ui-liquid-glass-edge);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 @media (max-width: 759px) {

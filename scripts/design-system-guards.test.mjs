@@ -370,3 +370,12 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedStyles, /@media \(max-width: 720px\)[\s\S]*?\.practice-role-switch\s*\{[^}]*flex:\s*none;/);
   assert.doesNotMatch(pageSources.home, /onboardingComplete[\s\S]*home-guide-card/);
 });
+
+test("home and team heroes use one masked clear-glass edge", () => {
+  assert.equal(count(tokenStyles, "--ui-liquid-glass-filter: none;"), 2);
+  assert.match(tokenStyles, /--ui-liquid-glass-edge:\s*[\s\S]*?radial-gradient\(circle at 11% 9%/);
+  assert.match(visualSystemStyles, /html\[data-theme\] \.home-hero-board,\s*html\[data-theme\] \.team-hub-board \{[^}]*border:\s*0;/);
+  assert.match(visualSystemStyles, /html\[data-theme\] \.home-hero-board::before,\s*html\[data-theme\] \.team-hub-board::before \{/);
+  assert.equal(count(visualSystemStyles, "-webkit-mask-composite: xor;"), 1);
+  assert.equal(count(visualSystemStyles, "mask-composite: exclude;"), 1);
+});

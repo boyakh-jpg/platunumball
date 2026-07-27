@@ -123,14 +123,14 @@
   --ui-profile-popup-shadow: var(--shadow-strong);
   --ui-profile-popup-backdrop-filter: blur(16px) saturate(1.08);
   --ui-liquid-glass-bg:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 42%),
-    rgba(8, 11, 16, 0.012);
-  --ui-liquid-glass-border: rgba(160, 174, 184, 0.12);
-  --ui-liquid-glass-shadow:
-    0 14px 36px rgba(0, 0, 0, 0.16),
-    inset 1px 1px 0 rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0 rgba(4, 7, 10, 0.32),
-    inset 0 0 18px rgba(255, 255, 255, 0.025);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.012), transparent 42%),
+    rgba(8, 11, 16, 0.006);
+  --ui-liquid-glass-border: transparent;
+  --ui-liquid-glass-edge:
+    radial-gradient(circle at 11% 9%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.32) 7%, transparent 25%),
+    radial-gradient(circle at 90% 93%, rgba(4, 7, 10, 0.56), rgba(4, 7, 10, 0.22) 10%, transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.04) 38%, rgba(4, 7, 10, 0.32));
+  --ui-liquid-glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   --ui-liquid-glass-filter: none;
   --ui-panel-radius: var(--panel-radius);
   --ui-button-height: var(--control-height);
@@ -280,14 +280,14 @@ html[data-theme="light"] {
   --ui-room-modal-bg: var(--card-bg-strong);
   --ui-room-panel-bg: rgba(255, 250, 241, 0.78);
   --ui-liquid-glass-bg:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 42%),
-    rgba(248, 248, 246, 0.006);
-  --ui-liquid-glass-border: rgba(35, 50, 59, 0.14);
-  --ui-liquid-glass-shadow:
-    0 14px 36px rgba(35, 50, 59, 0.1),
-    inset 1px 1px 0 rgba(255, 255, 255, 0.46),
-    inset -1px -1px 0 rgba(35, 50, 59, 0.16),
-    inset 0 0 18px rgba(255, 255, 255, 0.06);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.012), transparent 42%),
+    rgba(248, 248, 246, 0.003);
+  --ui-liquid-glass-border: transparent;
+  --ui-liquid-glass-edge:
+    radial-gradient(circle at 11% 9%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.34) 7%, transparent 25%),
+    radial-gradient(circle at 90% 93%, rgba(35, 50, 59, 0.28), rgba(35, 50, 59, 0.12) 10%, transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.04) 38%, rgba(35, 50, 59, 0.2));
+  --ui-liquid-glass-shadow: 0 10px 30px rgba(35, 50, 59, 0.08);
   --ui-liquid-glass-filter: none;
   --hero-title-color: #fffaf1;
   --hero-title-shadow: 0 14px 34px rgba(30, 24, 18, 0.5);
