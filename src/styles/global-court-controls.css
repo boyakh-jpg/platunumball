@@ -479,6 +479,11 @@ html[data-theme="light"] .court-map-picker-state {
   flex: 1 1 0;
 }
 
+.create-match-info-grid.is-standard-room :is(input, select),
+.match-roster-policy-fields > label > select {
+  min-height: var(--ui-segmented-field-height);
+}
+
 .match-creation-wizard-nav {
   overflow: hidden;
   border: 1px solid var(--line);
@@ -898,6 +903,18 @@ html[data-theme="light"] .court-map-picker-state {
   .create-match-info-grid.is-standard-room > .create-time-field,
   .create-match-info-grid.is-standard-room > .create-capacity-field {
     grid-row: auto;
+  }
+
+  .create-match-info-grid.is-standard-room > :is(.create-title-field, .create-format-field) {
+    grid-row: 1;
+  }
+
+  .create-match-info-grid.is-standard-room > :is(.create-capacity-field, .create-timing-field) {
+    grid-row: 2;
+  }
+
+  .create-match-info-grid.is-standard-room > :is(.create-date-field, .create-time-field) {
+    grid-row: 3;
   }
 
   .create-match-info-grid.is-standard-room > .create-title-field,

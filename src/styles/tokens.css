@@ -148,6 +148,7 @@
   --ui-control-group-radius: var(--control-group-radius);
   --ui-control-group-gap: var(--control-group-gap);
   --ui-control-group-padding: var(--control-group-padding);
+  --ui-segmented-field-height: calc(var(--ui-button-height) + var(--ui-control-group-padding) + var(--ui-control-group-padding) + 2px);
   --ui-control-group-bg: color-mix(in srgb, var(--rb-surface) 76%, transparent);
   --ui-control-group-border: var(--control-border);
   --ui-selectable-hover-bg: color-mix(in srgb, var(--rb-green) 8%, var(--ui-control-bg));

@@ -165,6 +165,23 @@ test("같은 정책 행은 명시형 선택 필드와 중앙 control 정렬을 �
   );
 });
 
+test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사용한다", () => {
+  const landingStats = getRuleBody(globalWorkflowStyles, ".landing-stat-grid");
+
+  assert.match(tokenStyles, /--ui-segmented-field-height:\s*calc\(/);
+  assert.match(globalWorkflowStyles, /\.landing-actions > \.button\s*\{[^}]*flex:\s*1 1 0;[^}]*min-width:\s*0;/);
+  assert.match(landingStats, /width:\s*100%;/);
+  assert.match(landingStats, /max-width:\s*none;/);
+  assert.match(
+    courtControlStyles,
+    /\.create-match-info-grid\.is-standard-room :is\(input, select\),\s*\.match-roster-policy-fields > label > select\s*\{[^}]*min-height:\s*var\(--ui-segmented-field-height\);/,
+  );
+  assert.match(
+    courtControlStyles,
+    /@media \(max-width:\s*1100px\)[\s\S]*?\.create-match-info-grid\.is-standard-room > :is\(\.create-capacity-field, \.create-timing-field\)\s*\{[^}]*grid-row:\s*2;/,
+  );
+});
+
 test("공용 빈 상태와 control 높이는 페이지 override 없이 유지된다", () => {
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.empty-state\s*\{/);
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.ui-empty-state\s*\{/);
