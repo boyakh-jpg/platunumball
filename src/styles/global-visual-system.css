@@ -3654,7 +3654,7 @@ html[data-theme="light"] .brand-letter-light {
   font-size: 0.82rem;
   font-weight: 900;
   line-height: 1.35;
-  text-shadow: var(--hero-copy-shadow);
+  text-shadow: none;
 }
 
 @media (max-width: 720px) {
@@ -3796,7 +3796,7 @@ html[data-theme] .app-main :is(
   .om-match-hero,
   .arena-recruit-hero,
   .gm-room-hero
-) p:not(.eyebrow),
+) p:not(.eyebrow):not(.landing-compact-summary),
 html[data-theme="light"] .app-main :is(
   .page-header,
   .landing-hero,
@@ -3808,7 +3808,7 @@ html[data-theme="light"] .app-main :is(
   .om-match-hero,
   .arena-recruit-hero,
   .gm-room-hero
-) p:not(.eyebrow) {
+) p:not(.eyebrow):not(.landing-compact-summary) {
   color: var(--hero-copy-color);
   text-shadow: var(--hero-copy-shadow);
 }
@@ -3965,7 +3965,6 @@ html[data-theme] .app-main :is(
   box-shadow: var(--ui-liquid-glass-shadow);
   -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
   backdrop-filter: var(--ui-liquid-glass-filter);
-  text-shadow: var(--hero-copy-shadow);
 }
 
 html[data-theme] .app-main :is(.home-hero-next > span, .team-hub-board > span) {
@@ -3981,7 +3980,6 @@ html[data-theme] .app-main :is(
   .season-rule-board > strong
 ) {
   color: var(--hero-title-color);
-  text-shadow: var(--hero-title-shadow);
 }
 
 html[data-theme] .app-main :is(
@@ -3998,7 +3996,6 @@ html[data-theme] .app-main :is(
   .gm-room-actions > div
 ) {
   color: var(--hero-copy-color);
-  text-shadow: var(--hero-copy-shadow);
 }
 
 html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {

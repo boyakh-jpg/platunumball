@@ -16,7 +16,11 @@ html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button) {
   box-shadow: var(--ui-liquid-glass-shadow);
   -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
   backdrop-filter: var(--ui-liquid-glass-filter);
-  text-shadow: var(--hero-copy-shadow);
+  text-shadow: none;
+}
+
+html[data-theme] .app-main .ui-liquid-glass :where(*) {
+  text-shadow: none;
 }
 
 html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button)::before {
