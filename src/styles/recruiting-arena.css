@@ -5059,6 +5059,11 @@ html[data-theme="light"] .arena-lobby-arena {
     width: 100%;
   }
 
+  .arena-record-roster-panel header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .arena-record-roster-row {
     grid-template-columns: 1fr;
     align-items: stretch;
