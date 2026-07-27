@@ -1403,7 +1403,11 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
     if (isInstantRoom(match)) return ROOM_PHASE_META.checkin;
     const scheduledAt = getMatchScheduledDate(match);
     const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
-    if (scheduledAt && Number.isFinite(nowMs) && nowMs >= scheduledAt.getTime()) return ROOM_PHASE_META.checkin;
+    if (
+      scheduledAt
+      && Number.isFinite(nowMs)
+      && nowMs >= scheduledAt.getTime() - (10 * MINUTE_MS)
+    ) return ROOM_PHASE_META.checkin;
     return ROOM_PHASE_META.locked;
   }
 

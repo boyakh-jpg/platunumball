@@ -311,6 +311,9 @@ async function main() {
   if (profileError) throw profileError;
   const profiles = (profileRows || []).filter((profile) => profile.id && profile.test_login_id);
   assert.ok(profiles.length >= 10, "QR attendance simulation needs 10 test profiles");
+  const referee = profiles.find((profile) => profile.test_login_id === "rankball-001");
+  assert.ok(referee?.id, "QR attendance simulation needs an appointed referee profile");
+  const playerProfiles = profiles.filter((profile) => profile.id !== referee.id);
   const [
     host,
     regularA,
@@ -318,11 +321,10 @@ async function main() {
     regularB,
     regularB2,
     lateB,
-    referee,
     extraRegistered,
     noRefHost,
     noRefOpponent,
-  ] = profiles;
+  ] = playerProfiles;
   const { data: courtRows, error: courtError } = await admin
     .from("courts")
     .select("id,name")
@@ -441,35 +443,53 @@ async function main() {
   if (recorderError) throw recorderError;
 
   currentStage = "deny_party_leader_substitution";
-  await expectRpcError("rankball_match_substitution_action", {
+  await expectRpcError("rankball_match_roster_transition_action", {
     p_actor_profile_id: regularA.id,
+    p_action: "substituteMatchPlayer",
     p_match_id: primaryMatch.id,
     p_side: "teamA",
     p_active_player_id: regularA.id,
     p_reserve_player_id: lateA.id,
+    p_next_recorder_id: "",
     p_reason: "late",
   }, /42501|match_substitution_permission_denied/u);
 
-  currentStage = "substitute_as_side_recorder";
-  const substitutionB = await rpc("rankball_match_substitution_action", {
+  currentStage = "deny_side_recorder_substitution_with_referee";
+  await expectRpcError("rankball_match_roster_transition_action", {
     p_actor_profile_id: lateB.id,
+    p_action: "substituteMatchPlayer",
     p_match_id: primaryMatch.id,
     p_side: "teamB",
     p_active_player_id: regularB2.id,
     p_reserve_player_id: lateB.id,
+    p_next_recorder_id: "",
     p_reason: "operator",
+  }, /42501|match_substitution_permission_denied/u);
+
+  currentStage = "substitute_team_b_as_referee";
+  const substitutionB = await rpc("rankball_match_roster_transition_action", {
+    p_actor_profile_id: referee.id,
+    p_action: "substituteMatchPlayer",
+    p_match_id: primaryMatch.id,
+    p_side: "teamB",
+    p_active_player_id: regularB2.id,
+    p_reserve_player_id: lateB.id,
+    p_next_recorder_id: "",
+    p_reason: "late",
   });
   assert.equal(substitutionB.substitutionEventSaved, true);
   assert.equal(substitutionB.clockActiveElapsedMs, 0);
 
   await setClockActiveElapsed(primaryMatch.id, 90_000);
   currentStage = "substitute_as_referee";
-  const substitutionA = await rpc("rankball_match_substitution_action", {
+  const substitutionA = await rpc("rankball_match_roster_transition_action", {
     p_actor_profile_id: referee.id,
+    p_action: "substituteMatchPlayer",
     p_match_id: primaryMatch.id,
     p_side: "teamA",
     p_active_player_id: regularA.id,
     p_reserve_player_id: lateA.id,
+    p_next_recorder_id: "",
     p_reason: "late",
   });
   assert.equal(substitutionA.substitutionEventSaved, true);
@@ -551,31 +571,19 @@ async function main() {
   });
   currentStage = "persist_no_referee_match";
   await persistMatch(noRefMatch);
+  currentStage = "issue_no_referee_qr";
   const noRefIssue = await callAttendance(noRefHost.test_login_id, {
     action: "issue",
     matchId: noRefMatch.id,
   });
   assert.equal(noRefIssue.statusCode, 200);
-  for (const profile of [noRefHost, noRefOpponent]) {
-    const scan = await callAttendance(profile.test_login_id, {
-      action: "scan",
-      matchId: noRefMatch.id,
-      token: noRefIssue.payload.qr.token,
-    });
-    assert.equal(scan.statusCode, 200);
-  }
-  const noRefResize = await callAttendance(noRefHost.test_login_id, {
-    action: "resize",
+  currentStage = "scan_no_referee_opponent";
+  const noRefOpponentScan = await callAttendance(noRefOpponent.test_login_id, {
+    action: "scan",
     matchId: noRefMatch.id,
+    token: noRefIssue.payload.qr.token,
   });
-  assert.equal(noRefResize.statusCode, 200);
-  await rpc("rankball_match_start_action_guarded", {
-    p_actor_profile_id: noRefHost.id,
-    p_match_id: noRefMatch.id,
-    p_started_at: "",
-    p_agreed_at: "",
-    p_attendance: (await loadMatch(noRefMatch.id)).attendance,
-  });
+  assert.equal(noRefOpponentScan.statusCode, 200);
   if (holdMs > 0) {
     console.log(JSON.stringify({
       fixtureReady: true,
@@ -585,6 +593,20 @@ async function main() {
     }));
     await new Promise((resolve) => setTimeout(resolve, holdMs));
   }
+  currentStage = "deny_resize_without_host_attendance";
+  const noRefResize = await callAttendance(noRefHost.test_login_id, {
+    action: "resize",
+    matchId: noRefMatch.id,
+  });
+  assert.equal(noRefResize.statusCode, 409);
+  currentStage = "start_without_host_attendance";
+  await rpc("rankball_match_start_action_guarded", {
+    p_actor_profile_id: noRefHost.id,
+    p_match_id: noRefMatch.id,
+    p_started_at: "",
+    p_agreed_at: "",
+    p_attendance: (await loadMatch(noRefMatch.id)).attendance,
+  });
 
   return {
     ok: true,
@@ -598,7 +620,7 @@ async function main() {
       lateReserve: true,
       partyLeaderDenied: true,
       refereeSubstitution: true,
-      sideRecorderSubstitution: true,
+      sideRecorderDeniedWithReferee: true,
       minimumPlayExclusion: true,
       postgameRegisteredAndAnonymous: true,
       hostWithoutReferee: true,

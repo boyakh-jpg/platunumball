@@ -1540,6 +1540,7 @@ function RoomKickPanel({
           const placementAllowed = !placementPlayerIdSet || placementPlayerIdSet.has(playerId);
           const selfRow = playerId === currentUserId;
           const hostRow = playerId === hostPlayerId;
+          const operatorAttendanceOptional = requireMissingAttendance && selfRow;
           const kickDisabled = selfRow || (requireMissingAttendance && checkedIn);
           return (
             <div key={`${entry.id}-${playerId}`} className="arena-host-kick-row">
@@ -1548,7 +1549,7 @@ function RoomKickPanel({
                 <span>
                   <strong>{user.name}</strong>
                   <em>{poolMode ? "개인 참가" : `${SIDE_LABELS[side]} · ${reserve ? "후보" : "출전"} · ${entry.team?.name ?? "개인"}`}</em>
-                  {attendanceBySide ? <i>{checkedIn ? "출석 완료" : "미출석"}</i> : null}
+                  {attendanceBySide ? <i>{checkedIn ? "출석 완료" : operatorAttendanceOptional ? "방장 확인 생략" : "미출석"}</i> : null}
                 </span>
               </PlayerHoverCard>
               <div className="arena-host-kick-actions">
@@ -1558,10 +1559,10 @@ function RoomKickPanel({
                       type="button"
                       size="sm"
                       variant={checkedIn ? "secondary" : "primary"}
-                      disabled={checkedIn}
+                      disabled={checkedIn || operatorAttendanceOptional}
                       onClick={() => onCheckInPlayer(side, playerId)}
                     >
-                      {checkedIn ? "출석 완료" : "출석"}
+                      {checkedIn ? "출석 완료" : operatorAttendanceOptional ? "확인 생략" : "출석"}
                     </Button>
                   </>
                 ) : null}
@@ -4119,7 +4120,7 @@ function RecruitingRoomModalReady({
             : ruleAcknowledgementPending
               ? "변경 확인 대기"
           : sourceMatchMissingStartAttendanceIds.length > 0
-            ? "출석체크 필요"
+            ? `참가자 ${sourceMatchMissingStartAttendanceIds.length}명 출석 필요`
             : "팀 배정 확정 필요";
         const sourceMatchStartButtonTitle = canStartSourceMatch
           ? ""
@@ -4128,7 +4129,7 @@ function RecruitingRoomModalReady({
             : ruleAcknowledgementPending
               ? "현재 참가자 전원이 최신 규칙을 확인해야 합니다."
           : sourceMatchMissingStartAttendanceIds.length > 0
-            ? "모든 참가자의 출석을 확인해야 경기 시작이 가능합니다."
+            ? "방장 본인은 시작 처리로 확인하며, 나머지 참가자의 출석을 확인해야 경기 시작이 가능합니다."
             : "A/B 팀 배정과 교대 기준을 확정해야 경기 시작이 가능합니다.";
         const canRequestRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canConfirmRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);

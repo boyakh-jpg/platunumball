@@ -16,6 +16,7 @@ import { mergeMatchesById } from "../src/hooks/useAppData.js";
 import { deriveMatchClock } from "../src/lib/matchClock.js";
 import {
   getMatchSubstitutionAccess,
+  getMatchRoomPhase,
   isMatchLateAttendancePlayer,
 } from "../src/lib/matchUtils.js";
 import { normalizeMatchRules } from "../src/lib/matchRules.js";
@@ -300,6 +301,17 @@ test("출석 운영자는 자기 출석도 같은 중앙 action으로 저장한�
   };
   const checkedIn = checkInMatchPlayer(state, match.id, "teamA", "host");
   assert.deepEqual(checkedIn.matches[0].attendance.teamA, ["host"]);
+});
+
+test("예정 경기방도 시작 10분 전부터 체크인 단계와 QR 운영을 연다", () => {
+  const match = {
+    status: "agreed",
+    timingType: "scheduled",
+    scheduledDate: "2026-07-28",
+    scheduledTime: "20:00",
+  };
+  assert.equal(getMatchRoomPhase(match, new Date("2026-07-28T10:49:59.000Z")).phase, "locked");
+  assert.equal(getMatchRoomPhase(match, new Date("2026-07-28T10:50:00.000Z")).phase, "checkin");
 });
 
 test("실시간 점수만 있는 경기는 종료 후 누락 출전자를 보완할 수 있다", () => {
