@@ -357,6 +357,30 @@ test("filling every player slot expires remaining player invitations but keeps r
   assert.equal(invitations.find((item) => item.id === "waiting")?.status, "expired");
   assert.equal(invitations.find((item) => item.id === "referee")?.status, "pending");
   assert.ok(invitations.find((item) => item.id === "waiting")?.updatedAt);
+  assert.ok(acceptedState.recruitingPosts[0].roomState.playerCapacityFilledAt);
+  assert.equal(
+    acceptedState.notifications.some((item) => (
+      item.targetUserId === "waiting"
+      && item.title === "초대 종료"
+      && item.body.includes("슬롯이 모두 찼습니다")
+    )),
+    true,
+  );
+  assert.equal(
+    acceptedState.notifications.some((item) => (
+      item.targetUserId === "host"
+      && item.title === "방 정원 충족"
+      && item.body.includes("경기를 확정")
+    )),
+    true,
+  );
+  assert.equal(
+    acceptedState.notifications.some((item) => (
+      item.targetUserId === "referee"
+      && item.title === "초대 종료"
+    )),
+    false,
+  );
 });
 
 test("pickup lobby expands a legacy team party into independent player slots", () => {
