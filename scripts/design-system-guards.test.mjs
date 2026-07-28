@@ -802,6 +802,10 @@ test("팀 메뉴는 추천 팀만 기본 노출하고 반복 설명을 만들지
   assert.match(pageSources.teams, /title:\s*"같은 소속 팀"/);
   assert.doesNotMatch(pageSources.teams, /랭킹 기준|team-ranking-note/);
   assert.doesNotMatch(ratingCardSource, /getTierQuote|tier-quote|subtitle/);
+  assert.match(pageSources.teams, /inferRegionSelection,\s*REGION_TREE/);
+  assert.match(pageSources.teams, /aria-label="팀 지역 시도"/);
+  assert.match(pageSources.teams, /aria-label="팀 지역 시군구"/);
+  assert.doesNotMatch(pageSources.teams, /\bREGIONS\b/);
 });
 
 test("지역 랭크보드는 지역 선수와 팀만 표시하고 소속은 별도 탭에 둔다", () => {

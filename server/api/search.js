@@ -282,14 +282,17 @@ async function searchProfiles(supabase, query, limit, searchContext = {}) {
   return (data ?? []).map((row) => toProfile(row, "profile", teamId ? { teamIds: [teamId] } : {}));
 }
 
-async function searchTeams(supabase, query, limit) {
-  const { data, error } = await supabase
+async function searchTeams(supabase, query, limit, searchContext = {}) {
+  let teamQuery = supabase
     .from("teams")
     .select(TEAM_COLUMNS)
     .is("deleted_at", null)
     .or(searchFilter(["name", "home_court", "region", "id"], query))
     .order("mmr", { ascending: false })
     .limit(limit);
+  const region = String(searchContext.region ?? "").trim();
+  if (region) teamQuery = teamQuery.eq("region", region);
+  const { data, error } = await teamQuery;
   if (error) throw error;
   const teamRows = data ?? [];
   const teamIds = teamRows.map((team) => team.id).filter(Boolean);
@@ -452,7 +455,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
     const loaders = {
       profile: () => searchProfiles(context.supabase, query, limit, searchContext),
-      team: () => searchTeams(context.supabase, query, limit),
+      team: () => searchTeams(context.supabase, query, limit, searchContext),
       court: () => searchCourts(context.supabase, query, limit, searchContext),
       court_request: () => searchCourtRequests(context.supabase, context.profileId, query, limit),
       court_review: () => searchCourtReviews(context.supabase, context.profileId, query, limit),

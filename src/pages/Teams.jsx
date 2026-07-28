@@ -10,10 +10,10 @@ import TeamCard from "../components/team/TeamCard.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getTeamDiscoveryGroups } from "../data/teamMappers.js";
-import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, getCanonicalRegion, getTeamRoleLabel, isSameRegion } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, getTeamRoleLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
-import { getRepresentativeTeam } from "../lib/profileSetup.js";
+import { getRepresentativeTeam, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { DIRECTORY_TEAM_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -46,17 +46,29 @@ export default function Teams({ app }) {
     [directoryCourts, discoveredCourts],
   );
   const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
-  const canonicalUserRegion = getCanonicalRegion(app.currentUser.region);
-  const defaultTeamRegion = REGIONS.includes(canonicalUserRegion) ? canonicalUserRegion : REGIONS[0];
+  const defaultRegionSelection = useMemo(
+    () => inferRegionSelection([
+      app.currentUser.regionSido,
+      app.currentUser.regionDistrict,
+      app.currentUser.region,
+    ].filter(Boolean).join(" ")),
+    [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
+  );
+  const defaultTeamRegion = `${defaultRegionSelection.sido} ${defaultRegionSelection.district}`;
   const [draft, setDraft] = useState({ name: "", region: defaultTeamRegion, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
   const [teamCreatePending, setTeamCreatePending] = useState(false);
   const [teamCreateError, setTeamCreateError] = useState("");
   const [query, setQuery] = useState("");
-  const [region, setRegion] = useState(TEAM_DISCOVERY_VIEW);
+  const [regionSido, setRegionSido] = useState(TEAM_DISCOVERY_VIEW);
+  const [regionDistrict, setRegionDistrict] = useState(defaultRegionSelection.district);
   const [courtQuery, setCourtQuery] = useState("");
   const [courtRegion, setCourtRegion] = useState(defaultTeamRegion);
   const directoryFilter = query.trim();
-  const directoryRegion = isHashtagQuery(query) || region === TEAM_DISCOVERY_VIEW ? "" : region;
+  const selectedRegionGroup = REGION_TREE.find((item) => item.sido === regionSido) ?? REGION_TREE[0];
+  const regionDistrictOptions = selectedRegionGroup?.districts ?? [];
+  const selectedRegionDistrict = regionDistrictOptions.includes(regionDistrict) ? regionDistrict : regionDistrictOptions[0] ?? "";
+  const selectedRegion = regionSido === TEAM_DISCOVERY_VIEW ? "" : `${regionSido} ${selectedRegionDistrict}`;
+  const directoryRegion = isHashtagQuery(query) ? "" : selectedRegion;
   useEffect(() => {
     const timer = window.setTimeout(() => {
       loadDirectory?.({
@@ -134,12 +146,11 @@ export default function Teams({ app }) {
   }, [app.currentUser.region, favoriteCourtIds, registeredCourts]);
   const visibleTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(query);
-    const selectedRegion = region === TEAM_DISCOVERY_VIEW ? "" : region;
     return rankingTeams
       .filter((team) => hashtagSearch || !selectedRegion || isSameRegion(team.region, selectedRegion))
       .filter((team) => `${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`.toLowerCase().includes(query.trim().toLowerCase()));
-  }, [query, rankingTeams, region]);
-  const searchViewActive = Boolean(query.trim()) || region !== TEAM_DISCOVERY_VIEW;
+  }, [query, rankingTeams, selectedRegion]);
+  const searchViewActive = Boolean(query.trim()) || regionSido !== TEAM_DISCOVERY_VIEW;
   const searchResultTeams = visibleTeams.slice(0, TEAM_SEARCH_RESULT_LIMIT);
   const currentRegionLabel = defaultTeamRegion || "내 지역";
   const discoverySections = [
@@ -154,8 +165,9 @@ export default function Teams({ app }) {
       className="search-picker-result-row"
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => {
-        const canonicalRegion = getCanonicalRegion(team.region);
-        setRegion(REGIONS.includes(canonicalRegion) ? canonicalRegion : TEAM_DISCOVERY_VIEW);
+        const nextRegion = inferRegionSelection(team.region);
+        setRegionSido(nextRegion.sido);
+        setRegionDistrict(nextRegion.district);
         setQuery(team.name);
       }}
     >
@@ -305,9 +317,30 @@ export default function Teams({ app }) {
           <div className="search-controls">
             <label>
               팀 보기
-              <select value={region} onChange={(event) => setRegion(event.target.value)}>
+              <select
+                aria-label="팀 지역 시도"
+                value={regionSido}
+                onChange={(event) => {
+                  const nextSido = event.target.value;
+                  setRegionSido(nextSido);
+                  if (nextSido !== TEAM_DISCOVERY_VIEW) {
+                    setRegionDistrict(REGION_TREE.find((item) => item.sido === nextSido)?.districts[0] ?? "");
+                  }
+                }}
+              >
                 <option value={TEAM_DISCOVERY_VIEW}>추천</option>
-                {REGIONS.map((item) => <option key={item}>{item}</option>)}
+                {REGION_TREE.map((item) => <option key={item.sido} value={item.sido}>{item.sido}</option>)}
+              </select>
+            </label>
+            <label>
+              시군구
+              <select
+                aria-label="팀 지역 시군구"
+                value={selectedRegionDistrict}
+                disabled={regionSido === TEAM_DISCOVERY_VIEW}
+                onChange={(event) => setRegionDistrict(event.target.value)}
+              >
+                {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
               </select>
             </label>
             <div className="favorite-search-label">
@@ -318,6 +351,7 @@ export default function Teams({ app }) {
                 placeholder="팀명, 홈코트, 해시태그"
                 items={visibleTeams}
                 remoteSearchType="team"
+                remoteSearchContext={selectedRegion && !isHashtagQuery(query) ? { region: selectedRegion } : null}
                 idleItems={favoriteTeams}
                 idleTitle="즐겨찾기 팀"
                 showIdleOnFocus
@@ -335,7 +369,7 @@ export default function Teams({ app }) {
           {searchViewActive ? (
             <section className="team-discovery-section">
               <div className="section-title-row">
-                <h2>{query.trim() ? "검색 결과" : `${region} 팀`}</h2>
+                <h2>{query.trim() ? "검색 결과" : `${selectedRegion} 팀`}</h2>
                 <Badge tone="neutral">{searchResultTeams.length}</Badge>
               </div>
               {searchResultTeams.length ? (
@@ -398,11 +432,26 @@ export default function Teams({ app }) {
             </label>
             <label>
               지역
-              <select value={draft.region} onChange={(event) => {
-                update({ region: event.target.value });
-                setCourtRegion(event.target.value);
+              <select value={inferRegionSelection(draft.region).sido} onChange={(event) => {
+                const nextSido = event.target.value;
+                const nextDistrict = REGION_TREE.find((item) => item.sido === nextSido)?.districts[0] ?? "";
+                const nextRegion = `${nextSido} ${nextDistrict}`;
+                update({ region: nextRegion });
+                setCourtRegion(nextRegion);
               }}>
-                {REGIONS.map((item) => <option key={item}>{item}</option>)}
+                {REGION_TREE.map((item) => <option key={item.sido} value={item.sido}>{item.sido}</option>)}
+              </select>
+            </label>
+            <label>
+              시군구
+              <select value={inferRegionSelection(draft.region).district} onChange={(event) => {
+                const nextRegion = `${inferRegionSelection(draft.region).sido} ${event.target.value}`;
+                update({ region: nextRegion });
+                setCourtRegion(nextRegion);
+              }}>
+                {(REGION_TREE.find((item) => item.sido === inferRegionSelection(draft.region).sido)?.districts ?? []).map((district) => (
+                  <option key={district} value={district}>{district}</option>
+                ))}
               </select>
             </label>
             <label>
