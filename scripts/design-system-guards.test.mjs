@@ -275,9 +275,13 @@ test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
 });
 
 test("알림 보기와 읽음은 같은 네모 버튼 규격을 사용한다", () => {
+  const notificationSource = read("src/pages/Notifications.jsx");
+  assert.match(notificationSource, /notification-action-control notification-terminal-state/);
+  assert.match(notificationSource, /notification-action-control notification-row-open/);
+  assert.match(notificationSource, /notification-action-control notification-read-button/);
   assert.match(
     foundationStyles,
-    /\.notification-row-open,[\s\S]*?\.notification-terminal-state\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*min-height:\s*var\(--ui-button-height\);[^}]*border-radius:\s*var\(--ui-button-radius\);/,
+    /\.notification-actions \.notification-action-control\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height\);[^}]*min-height:\s*var\(--ui-button-height\);[^}]*border-radius:\s*var\(--ui-button-radius\);/,
   );
   assert.match(
     foundationStyles,

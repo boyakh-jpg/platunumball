@@ -209,10 +209,10 @@ export default function Notifications({ app }) {
               </span>
               <span className="notification-actions">
                 {notification.targetUnavailable ? (
-                  <b className="notification-terminal-state">종료됨</b>
+                  <b className="notification-action-control notification-terminal-state">종료됨</b>
                 ) : notification.matchId ? (
                   <Link
-                    className="notification-row-open"
+                    className="notification-action-control notification-row-open"
                     to={`/app/matches?match=${notification.matchId}`}
                     onClick={(event) => {
                       event.preventDefault();
@@ -224,7 +224,7 @@ export default function Notifications({ app }) {
                 ) : null}
                 {!notification.targetUnavailable && !notification.matchId && notification.recruitingPostId ? (
                   <Link
-                    className="notification-row-open"
+                    className="notification-action-control notification-row-open"
                     to={`/app/recruiting?post=${notification.recruitingPostId}`}
                     onClick={(event) => {
                       event.preventDefault();
@@ -246,7 +246,7 @@ export default function Notifications({ app }) {
                     <Trash2 size={16} aria-hidden="true" />
                   </button>
                 ) : (
-                  <button type="button" className="notification-read-button" title="읽음 처리" aria-label={`${notification.title} 읽음 처리`} onClick={() => app.actions.markNotificationRead(notification.id)}>
+                  <button type="button" className="notification-action-control notification-read-button" title="읽음 처리" aria-label={`${notification.title} 읽음 처리`} onClick={() => app.actions.markNotificationRead(notification.id)}>
                     읽음
                   </button>
                 )}

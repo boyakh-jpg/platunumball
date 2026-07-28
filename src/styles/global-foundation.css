@@ -2390,14 +2390,17 @@ span.referee-hover-card {
   white-space: nowrap;
 }
 
-.notification-row-open,
-.notification-terminal-state {
+.notification-actions .notification-action-control {
   display: inline-flex;
+  box-sizing: border-box;
   min-width: calc(var(--ui-button-height) + var(--space-6));
+  height: var(--ui-button-height);
   min-height: var(--ui-button-height);
   align-items: center;
   justify-content: center;
   border-radius: var(--ui-button-radius);
+  padding: 0 10px;
+  white-space: nowrap;
 }
 
 .notification-terminal-state,
@@ -2467,8 +2470,6 @@ span.referee-hover-card {
 .notification-actions .notification-read-button {
   min-width: calc(var(--ui-button-height) + var(--space-6));
   height: var(--ui-button-height);
-  padding: 0 10px;
-  white-space: nowrap;
 }
 
 .notification-actions .notification-delete-button:hover,
