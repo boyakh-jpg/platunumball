@@ -5554,12 +5554,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
 }
 
 .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row {
-  justify-content: start;
-  direction: rtl;
-}
-
-.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row > * {
-  direction: ltr;
+  justify-content: end;
 }
 
 .arena-side-inline-reserve {
@@ -5622,12 +5617,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
 
   .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-room-reserve-row,
   html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-room-reserve-row {
-    justify-content: start;
-    direction: rtl;
-  }
-
-  .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-room-reserve-row > * {
-    direction: ltr;
+    justify-content: end;
   }
 }
 

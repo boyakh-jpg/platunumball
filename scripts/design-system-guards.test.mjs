@@ -396,11 +396,15 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
   );
   assert.match(
     recruitingStyles,
-    /\.arena-lobby-modal \.arena-reserve-panel > \.arena-reserve-line:nth-child\(2\) > \.arena-room-reserve-row\s*\{[^}]*justify-content:\s*start;[^}]*direction:\s*rtl;/,
+    /\.arena-lobby-modal \.arena-reserve-panel > \.arena-reserve-line:nth-child\(2\) > \.arena-room-reserve-row\s*\{[^}]*justify-content:\s*end;/,
   );
   assert.match(
     recruitingStyles,
     /@media \(max-width:\s*1100px\)[\s\S]*?\.arena-lobby-modal \.arena-reserve-panel\s*\{[^}]*display:\s*none;[\s\S]*?\.arena-lobby-modal \.arena-side-inline-reserve\s*\{[^}]*display:\s*block;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-lobby-team-panel\.team-b \.arena-side-inline-reserve \.arena-room-reserve-row,[\s\S]*?\{[^}]*justify-content:\s*end;/,
   );
   assert.match(
     recruitingStyles,
