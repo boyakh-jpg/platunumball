@@ -593,14 +593,14 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(appSource, /path="\/app\/guide\/practice" element=\{<PracticeMatch app=\{app\} \/>\}/);
   assert.equal(count(pageSources.home, 'to="/app/guide"'), 1);
   assert.match(pageSources.home, /처음 사용하시나요\?/);
-  assert.match(pageSources.home, /12단계 안내/);
+  assert.match(pageSources.home, /13단계 안내/);
   assert.match(pageSources.home, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(gettingStartedSource, /useSearchParams/);
   assert.match(gettingStartedSource, /aria-label="사용 설명 목차"/);
   assert.match(gettingStartedSource, /aria-current=\{item\.id === chapter\.id \? "page" : undefined\}/);
   assert.match(gettingStartedSource, /chapterTitleRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(gettingStartedSource, /ref=\{chapterTitleRef\} tabIndex=\{-1\}/);
-  for (const chapterId of ["start", "matching", "attendance", "live", "records", "tier", "teams", "courts", "tournaments", "profile", "settings", "practice"]) {
+  for (const chapterId of ["start", "matching", "attendance", "live", "records", "tier", "teams", "courts", "tournaments", "profile", "settings", "terms", "practice"]) {
     assert.match(gettingStartedSource, new RegExp(`id: "${chapterId}"`));
   }
   for (const image of [
@@ -631,6 +631,15 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /심판·경기시계 담당자·선수가 역할을 나눕니다/);
   assert.match(gettingStartedSource, /양쪽 점수는 심판 경기에서는 배정 심판, 무심판 경기에서는 시계 담당자가 조작/);
   assert.match(gettingStartedSource, /A\/B 점수판과 30초 샷클락이 함께 열린/);
+  assert.match(gettingStartedSource, /블루투스 설정에서 워치 또는 비오디오 미디어 리모컨을 먼저 연결/);
+  assert.match(gettingStartedSource, /재생 또는 일시정지를 누르면 설정한 샷클락 시간으로 초기화/);
+  assert.match(gettingStartedSource, /이어폰·헤드셋은 부저 소리를 가져갈 수 있어 지원 기기로 안내하지 않습니다/);
+  assert.match(gettingStartedSource, /MMR은 확정된 경쟁 경기 결과로 바뀌는 매칭·랭킹용 점수/);
+  assert.match(gettingStartedSource, /팀 파티는 그 팀 선수가 특정 팀전에 함께 들어온 참가 묶음/);
+  assert.match(gettingStartedSource, /팀장은 팀 자체를 관리합니다\. 사이드장은 이번 경기의 자기 사이드 명단을 관리/);
+  assert.match(gettingStartedSource, /경기시계 담당자는 현장에서 시계·샷클락을 맡으며 무심판 시계 경기에서는 양쪽 점수도 조작/);
+  assert.match(gettingStartedSource, /개인전은 선수가 개인으로 참가하고, 팀전은 등록팀이 A\/B를 이룹니다\. 픽업은 개인 참가자를 현장에서 두 사이드로 나누는 방식/);
+  assert.match(gettingStartedSource, /`match_record`는 끝난 경기를 함께 등록하는 경기 기록/);
   assert.match(gettingStartedSource, /티어는 확정 기록에서 자동 계산됩니다/);
   assert.match(gettingStartedSource, /팀전은 팀장만 만드는 기능이 아닙니다/);
   assert.match(gettingStartedSource, /주변 팀, 비슷한 연령대·MMR의 라이벌 팀, 같은 소속 팀/);

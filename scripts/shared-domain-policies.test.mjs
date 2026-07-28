@@ -1799,6 +1799,8 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(rulebookText, /심판 경기는 배정 심판, 무심판 경기는 방장이 판정/);
   assert.match(rulebookText, /사용 안 함·24초·30초·60초/);
   assert.match(rulebookText, /자동 공격권 판정과 14초 자동 재설정은 지원하지 않습니다/);
+  assert.match(rulebookText, /현재 경기시계 담당자는 담당 기기에 연결된 워치·비오디오 미디어 리모컨의 재생·일시정지 입력으로 샷클락을 초기화/);
+  assert.match(rulebookText, /이어폰·헤드셋은 부저 출력과 충돌할 수 있어 지원 대상으로 안내하지 않습니다/);
   assert.match(rulebookText, /무심판 경기에는 개인활약 입력과 빈 0 스탯을 만들지 않습니다/);
   assert.match(rulebookText, /지각 QR만 찍고 실제 교체하지 않은 선수는 실제 출전 기록·개인 전적·MMR 대상이 아닙니다/);
   assert.match(rulebookText, /만료됐거나 다른 경기에 발급됐거나 서명이 잘못된 QR과 미등록 사용자의 스캔은 서버에서 거부합니다/);
