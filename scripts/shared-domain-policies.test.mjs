@@ -385,6 +385,12 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /ui-match-clock-main-time-label">경기시계/);
   assert.match(panelSource, /ui-match-shot-clock-action/);
   assert.match(panelSource, /<RotateCcw size=\{15\}/);
+  assert.match(panelSource, /navigator\.mediaSession\.setActionHandler\("play", resetFromMediaControl\)/);
+  assert.match(panelSource, /navigator\.mediaSession\.setActionHandler\("pause", resetFromMediaControl\)/);
+  assert.match(panelSource, /resetRequestedAt - lastMediaResetAtRef\.current < 300/);
+  assert.match(panelSource, /mediaResetEnabled[\s\S]*void runAction\("resetShot"\)/);
+  assert.match(panelSource, /onPointerDown=\{enableMediaControl\}/);
+  assert.doesNotMatch(panelSource, /setActionHandler\("(?:nexttrack|previoustrack)"/);
   assert.match(recruitingSource, /onMatchEnded=\{\(\) => void app\.actions\.loadMatchDetail\(sourceMatch\.id\)\}/);
   assert.match(recruitingSource, /!selectedMatchRules\.gameClockEnabled[\s\S]*?<MatchScoreControls/);
   assert.match(matchRoomSource, /normalizedRules\.gameClockEnabled === false[\s\S]*?<MatchScoreControls/);

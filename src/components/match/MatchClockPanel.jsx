@@ -39,9 +39,13 @@ const ERROR_LABELS = Object.freeze({
 });
 
 let buzzerMediaElement = null;
+let matchClockControlMediaElement = null;
 const buzzerMediaUrls = new Map();
 
 const BUZZER_PATTERNS = Object.freeze({
+  control: Object.freeze([
+    { durationMs: 1000, frequency: 20, gain: 0.0001 },
+  ]),
   shot: Object.freeze([
     { durationMs: 260, frequency: 980 },
   ]),
@@ -98,7 +102,11 @@ function getBuzzerMediaUrl(patternName) {
       const wave = segment.frequency > 0
         ? Math.sign(Math.sin((2 * Math.PI * segment.frequency * index) / sampleRate))
         : 0;
-      view.setInt16(44 + sampleOffset * 2, Math.round(wave * edgeFade * 30000), true);
+      view.setInt16(
+        44 + sampleOffset * 2,
+        Math.round(wave * edgeFade * 30000 * Number(segment.gain ?? 1)),
+        true,
+      );
       sampleOffset += 1;
     }
   });
@@ -120,6 +128,56 @@ function getBuzzerMediaElement() {
   document.body.appendChild(buzzerMediaElement);
   buzzerMediaElement.load();
   return buzzerMediaElement;
+}
+
+function getMatchClockControlMediaElement() {
+  if (matchClockControlMediaElement) return matchClockControlMediaElement;
+  matchClockControlMediaElement = new Audio();
+  matchClockControlMediaElement.preload = "auto";
+  matchClockControlMediaElement.loop = true;
+  matchClockControlMediaElement.setAttribute("playsinline", "");
+  matchClockControlMediaElement.setAttribute("webkit-playsinline", "");
+  matchClockControlMediaElement.setAttribute("aria-hidden", "true");
+  matchClockControlMediaElement.hidden = true;
+  matchClockControlMediaElement.src = getBuzzerMediaUrl("control");
+  document.body.appendChild(matchClockControlMediaElement);
+  matchClockControlMediaElement.load();
+  return matchClockControlMediaElement;
+}
+
+function setMatchClockMediaPlaybackState(state) {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.playbackState = state;
+  } catch {
+    // Unsupported media-session state must not block the game clock.
+  }
+}
+
+async function activateMatchClockMediaSession() {
+  try {
+    const mediaElement = getMatchClockControlMediaElement();
+    if ("mediaSession" in navigator && "MediaMetadata" in window) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "BOXTIER 경기시계",
+        artist: "재생·일시정지로 샷클락 초기화",
+      });
+    }
+    if (mediaElement.paused) await mediaElement.play();
+    setMatchClockMediaPlaybackState("playing");
+    return true;
+  } catch {
+    setMatchClockMediaPlaybackState("none");
+    return false;
+  }
+}
+
+function deactivateMatchClockMediaSession() {
+  if (matchClockControlMediaElement) {
+    matchClockControlMediaElement.pause();
+    matchClockControlMediaElement.currentTime = 0;
+  }
+  setMatchClockMediaPlaybackState("none");
 }
 
 async function playBuzzer(patternName = "period", volume = 1) {
@@ -268,6 +326,7 @@ export default function MatchClockPanel({
   const matchEndedNotifiedRef = useRef(false);
   const soundedRef = useRef({ period: false, shot: false, break: false });
   const rosterRevisionRef = useRef("");
+  const lastMediaResetAtRef = useRef(0);
 
   const applyResponse = useCallback((response) => {
     if (!response?.clock) return;
@@ -417,6 +476,71 @@ export default function MatchClockPanel({
     : 0;
   const breakRemainingMs = Math.max(0, breakLimitMs - breakElapsedMs);
   const breakOvertimeMs = Math.max(0, breakElapsedMs - breakLimitMs);
+  const shotClockEnabled = Number(liveClock?.shotClockSeconds || 0) > 0;
+  const canResetShotClock = Boolean(liveClock?.canControl && !isEnded && !isBreak);
+  const mediaControlEligible = Boolean(
+    shotClockEnabled
+    && liveClock?.canControl
+    && !isEnded,
+  );
+  const mediaResetEnabled = Boolean(
+    mediaControlEligible
+    && !isPending
+    && !isBreak,
+  );
+
+  const enableMediaControl = useCallback(() => {
+    if (!mediaControlEligible) return;
+    void activateMatchClockMediaSession();
+  }, [mediaControlEligible]);
+
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || !mediaControlEligible) return undefined;
+
+    const resetFromMediaControl = () => {
+      void activateMatchClockMediaSession();
+      if (!mediaResetEnabled || pendingAction) return;
+      const resetRequestedAt = Date.now();
+      if (resetRequestedAt - lastMediaResetAtRef.current < 300) return;
+      lastMediaResetAtRef.current = resetRequestedAt;
+      void runAction("resetShot");
+    };
+
+    try {
+      navigator.mediaSession.setActionHandler("play", resetFromMediaControl);
+      navigator.mediaSession.setActionHandler("pause", resetFromMediaControl);
+    } catch {
+      try {
+        navigator.mediaSession.setActionHandler("play", null);
+        navigator.mediaSession.setActionHandler("pause", null);
+      } catch {
+        // Unsupported media controls remain untouched.
+      }
+      return undefined;
+    }
+
+    return () => {
+      try {
+        navigator.mediaSession.setActionHandler("play", null);
+        navigator.mediaSession.setActionHandler("pause", null);
+      } catch {
+        // Unsupported media controls keep their native behavior.
+      }
+    };
+  }, [mediaControlEligible, mediaResetEnabled, pendingAction, runAction]);
+
+  useEffect(() => {
+    if (mediaControlEligible) {
+      void activateMatchClockMediaSession();
+      return undefined;
+    }
+    deactivateMatchClockMediaSession();
+    return undefined;
+  }, [mediaControlEligible]);
+
+  useEffect(() => () => {
+    deactivateMatchClockMediaSession();
+  }, []);
 
   useEffect(() => {
     if (!liveClock) {
@@ -608,13 +732,11 @@ export default function MatchClockPanel({
     );
   }
 
-  const shotClockEnabled = Number(liveClock.shotClockSeconds || 0) > 0;
-  const canResetShotClock = liveClock.canControl && !isEnded && !isBreak;
-
   const clockPanel = (
     <section
       className={`ui-match-clock-panel ui-panel${focusMode ? " ui-match-clock-panel-focus" : ""}${isPending ? " ui-match-clock-panel-pending" : ""}`}
       aria-label="경기시계"
+      onPointerDown={enableMediaControl}
     >
       <header className="ui-match-clock-header">
         <div>
