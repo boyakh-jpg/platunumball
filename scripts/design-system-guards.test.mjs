@@ -41,6 +41,7 @@ const gettingStartedSource = read("src/pages/GettingStarted.jsx");
 const practiceMatchSource = read("src/pages/PracticeMatch.jsx");
 const termsSource = read("src/pages/Terms.jsx");
 const tierEmblemSource = read("src/components/rating/TierEmblem.jsx");
+const teamDetailSource = read("src/pages/TeamDetail.jsx");
 const placementEmblemPath = "public/assets/tier-emblems/tier-placement-v2.webp";
 const hoverSurfaceStyles = [
   read("src/styles/global-foundation.css"),
@@ -678,4 +679,12 @@ test("배정 전 엠블럼은 공용 자산이며 방 슬롯 아바타 뒤에도
     pageSources.recruiting,
     /className="arena-position-avatar-tier"[\s\S]*?getTierEmblemSrc\(user\?\.ratings\?\.integrated \?\? mmr,\s*user\?\.ratings\)/,
   );
+});
+
+test("팀 경기 히스토리는 공용 승패 카드 스타일과 핵심 정보만 사용한다", () => {
+  assert.match(teamDetailSource, /className=\{`history-item rank-match-item rank-match-\$\{outcome\}`\}/);
+  assert.match(teamDetailSource, /const outcomeLabel = \{[\s\S]*?win:\s*"승",[\s\S]*?loss:\s*"패",[\s\S]*?draw:\s*"무"/);
+  assert.match(teamDetailSource, /\(side\?\.players \?\? \[\]\)\.map/);
+  assert.doesNotMatch(teamDetailSource, /상대 <TeamHoverCard/);
+  assert.doesNotMatch(teamDetailSource, /· 용병/);
 });

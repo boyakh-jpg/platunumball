@@ -14,7 +14,6 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
-import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore, isMatchWithinRecordDetailWindow } from "../lib/matchUtils.js";
 import {
@@ -39,14 +38,27 @@ function isHistoryInDetailWindow(match) {
   return isMatchWithinRecordDetailWindow(match);
 }
 
-const historyStatusLabel = {
-  contract: "동의 대기",
-  agreed: "예정",
-  approval: "승인 대기",
-  disputed: "보류",
-  confirmed: "확정",
-  void: "무효",
-  cancelled: "취소",
+function getTeamOutcome(match, teamId) {
+  const sideName = getTeamSide(match, teamId);
+  if (!sideName) return null;
+  const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
+  const score = getSideScore(match, sideName);
+  const opponentScore = getSideScore(match, oppositeSide);
+  if (score === opponentScore) return "draw";
+  return score > opponentScore ? "win" : "loss";
+}
+
+function getScoreOutcome(score, opponentScore) {
+  const normalizedScore = Number(score ?? 0);
+  const normalizedOpponentScore = Number(opponentScore ?? 0);
+  if (normalizedScore === normalizedOpponentScore) return "draw";
+  return normalizedScore > normalizedOpponentScore ? "win" : "loss";
+}
+
+const outcomeLabel = {
+  win: "승",
+  loss: "패",
+  draw: "무",
 };
 const managedTeamRoleOptions = TEAM_INVITE_ROLES.map((role) => [role, getTeamRoleLabel(role)]);
 const inviteRoleOptions = managedTeamRoleOptions;
@@ -136,7 +148,6 @@ export default function TeamDetail({ app }) {
   if (!team) return <Navigate to="/app/teams" replace />;
 
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
-  const teamById = Object.fromEntries(app.state.teams.map((item) => [item.id, item]));
   const membershipCounts = new Map();
   app.state.teams.forEach((item) => {
     item.members.forEach((member) => membershipCounts.set(member.userId, (membershipCounts.get(member.userId) ?? 0) + 1));
@@ -434,12 +445,9 @@ export default function TeamDetail({ app }) {
                 const sideName = getTeamSide(match, team.id);
                 const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
                 const side = match[sideName];
-                const opponent = match[oppositeSide];
-                const reserveUsed = (side?.players ?? [])
-                  .map((id) => team.members.find((member) => member.userId === id))
-                  .filter((member) => member && isMercenaryTeamRole(member.role));
+                const outcome = getTeamOutcome(match, team.id);
                 return (
-                  <article key={match.id} className="history-item">
+                  <article key={match.id} className={`history-item rank-match-item rank-match-${outcome}`}>
                     <div>
                       <Link
                         to={`/app/matches?match=${match.id}`}
@@ -453,7 +461,7 @@ export default function TeamDetail({ app }) {
                       <MatchRecordMeta record={match} />
                     </div>
                     <div className="history-score">
-                      <Badge tone={match.status === "confirmed" ? "green" : match.status === "contract" ? "blue" : "orange"}>{historyStatusLabel[match.status] ?? "상태 확인 중"}</Badge>
+                      <Badge tone={outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>{outcomeLabel[outcome]}</Badge>
                       <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
                     </div>
                     <div className="roster compact-roster">
@@ -462,10 +470,6 @@ export default function TeamDetail({ app }) {
                         return user ? <PlayerHoverCard key={id} user={user} teams={app.state.teams}><i style={{ "--avatar": user.avatarColor }} />{user.name}</PlayerHoverCard> : null;
                       })}
                     </div>
-                    <p>
-                      상대 <TeamHoverCard team={teamById[opponent.teamId]} as="span">{opponent.name}</TeamHoverCard>
-                      {reserveUsed.length ? ` · 용병 ${reserveUsed.map((member) => `${userMap[member.userId]?.name ?? "플레이어"}(${getTeamRoleLabel(member.role)})`).join(", ")}` : ""}
-                    </p>
                   </article>
                 );
               })}
@@ -482,19 +486,21 @@ export default function TeamDetail({ app }) {
                   {teamRecordArchive.loading ? "불러오는 중" : "상세 기록 더 보기"}
                 </button>
               ) : null}
-              {archivedHistory.map((record) => (
-                  <article key={record.matchId} className="history-item record-archive-row">
+              {archivedHistory.map((record) => {
+                const outcome = getScoreOutcome(record.score, record.opponentScore);
+                return (
+                  <article key={record.matchId} className={`history-item record-archive-row rank-match-item rank-match-${outcome}`}>
                     <div>
                       <strong>{record.title}</strong>
                       <MatchRecordMeta record={record} />
                     </div>
                     <div className="history-score">
-                      <Badge tone="neutral">5년 기록</Badge>
+                      <Badge tone={outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>{outcomeLabel[outcome]}</Badge>
                       <strong>{record.score}:{record.opponentScore}</strong>
                     </div>
-                    <p>{record.teamName} vs {record.opponentTeamName} · 6개월 초과 기록</p>
                   </article>
-                ))}
+                );
+              })}
             </div>
             {teamRecordArchive.page?.archiveExhausted === false ? (
               <button
