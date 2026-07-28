@@ -220,12 +220,12 @@ function getRuleBody(source, selector) {
   return match[1];
 }
 
-test("모든 페이지 본문 굵기는 600 이상을 유지한다", () => {
+test("모든 페이지 기본 본문은 800이며 명시형 굵기는 600 이상을 유지한다", () => {
   const foundationStyles = read("src/styles/global-foundation.css");
   const bodyRule = getRuleBody(foundationStyles, "body");
   const forbiddenWeights = [];
 
-  assert.match(tokenStyles, /--font-weight-body:\s*600;/);
+  assert.match(tokenStyles, /--font-weight-body:\s*800;/);
   assert.match(bodyRule, /font-weight:\s*var\(--font-weight-body\);/);
 
   for (const file of styleFiles) {
