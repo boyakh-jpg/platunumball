@@ -1387,33 +1387,62 @@ html[data-theme="light"] .search-picker-result-row.selected {
   width: 100%;
 }
 
-.season-metric-grid {
+.season-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--page-section-gap);
+  overflow: hidden;
+  border-radius: var(--radius);
 }
 
-.season-metric-card {
+.season-summary-item {
   display: grid;
+  align-content: center;
   gap: 5px;
+  min-width: 0;
+  min-height: 118px;
+  padding: 18px;
 }
 
-.season-metric-card span {
+.season-summary-item span {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 850;
 }
 
-.season-metric-card strong {
+.season-summary-item strong {
+  color: var(--text);
   font-size: 2rem;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
-.season-metric-card em {
+.season-summary-item em {
   color: var(--subtle);
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 800;
+}
+
+.season-content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.85fr);
+  gap: var(--page-section-gap);
+  align-items: start;
+}
+
+.season-race-column,
+.season-side-rail {
+  min-width: 0;
+}
+
+.season-section-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.season-section-actions .button {
+  min-height: 34px;
 }
 
 .season-race-list {

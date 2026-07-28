@@ -715,6 +715,9 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-stats ui-liquid-glass-segments/);
   assert.match(pageSources.recruiting, /arena-hero-panel ui-liquid-glass[\s\S]*arena-hero-stats ui-liquid-glass-segments/);
   assert.match(pageSources.season, /season-rule-board ui-liquid-glass/);
+  assert.match(pageSources.season, /season-summary ui-liquid-glass ui-liquid-glass-segments/);
+  assert.match(pageSources.season, /season-content-grid/);
+  assert.doesNotMatch(pageSources.season, /season-metric-card/);
   assert.match(pageSources.playerDetail, /rank-tier-statement ui-liquid-glass/);
   assert.match(visualSystemStyles, /\.om-match-hero,\s*\.arena-recruit-hero[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);

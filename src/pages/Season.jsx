@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Activity, ArrowRight, CalendarClock, ClipboardCheck, MapPin, Swords, Trophy } from "lucide-react";
+import { ArrowRight, CalendarClock, ClipboardCheck, MapPin, Swords, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -98,7 +98,6 @@ export default function Season({ app }) {
           <strong>{app.currentUser.name} 시즌 요약</strong>
           <span><Trophy size={16} /> 전국 {myNationalRank ? `${myNationalRank}위` : "순위 준비 중"}</span>
           <span><MapPin size={16} /> {region} {myRegionalRank ? `${myRegionalRank}위` : "순위 준비 중"}</span>
-          <span><Activity size={16} /> 주 플레이 {activity.primaryMode}</span>
           <div className="season-rule-actions">
             <Button as={Link} to="/app/create"><Swords size={18} /> 매칭 만들기</Button>
             <Button as={Link} to="/app/create?intent=record"><ClipboardCheck size={18} /> 경기 기록하기</Button>
@@ -106,38 +105,41 @@ export default function Season({ app }) {
         </div>
       </section>
 
-      <section className="season-metric-grid">
-        <Card className="season-metric-card">
+      <section className="season-summary ui-liquid-glass ui-liquid-glass-segments" aria-label="내 시즌 요약">
+        <div className="season-summary-item">
           <span>이번 시즌 경기</span>
           <strong>{mySeasonRow?.seasonPlayed ?? 0}</strong>
           <em>확정 기록 기준</em>
-        </Card>
-        <Card className="season-metric-card">
+        </div>
+        <div className="season-summary-item">
           <span>이번 시즌 승패</span>
           <strong>{mySeasonRow?.seasonWins ?? 0}승 {mySeasonRow?.seasonLosses ?? 0}패</strong>
           <em>무승부 제외</em>
-        </Card>
-        <Card className="season-metric-card">
+        </div>
+        <div className="season-summary-item">
           <span>시즌 MMR 변화</span>
           <strong>{(mySeasonRow?.seasonDelta ?? 0) >= 0 ? "+" : ""}{mySeasonRow?.seasonDelta ?? 0}</strong>
           <em>확정 경기 누적</em>
-        </Card>
-        <Card className="season-metric-card">
+        </div>
+        <div className="season-summary-item">
           <span>주 플레이</span>
           <strong>{activity.primaryMode}</strong>
           <em>{activity.ranked} 정규 · {activity.friendly} 친선</em>
-        </Card>
+        </div>
       </section>
 
-      <div className="content-grid wide-left">
-        <div className="page-stack">
+      <div className="season-content-grid">
+        <main className="page-stack season-race-column">
           <Card className="section-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Promotion Race</p>
                 <h2>전국 개인 승격권</h2>
               </div>
-              <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
+              <div className="season-section-actions">
+                <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
+                <Button as={Link} to="/app/rankings" variant="secondary">전체 순위</Button>
+              </div>
             </div>
             <div className="season-race-list">
               {nationalPlayerRows.slice(0, 8).map((user, index) => (
@@ -179,9 +181,9 @@ export default function Season({ app }) {
               ))}
             </div>
           </Card>
-        </div>
+        </main>
 
-        <aside className="page-stack">
+        <aside className="page-stack season-side-rail">
           <Card className="section-card">
             <div className="section-title-row">
               <div>
