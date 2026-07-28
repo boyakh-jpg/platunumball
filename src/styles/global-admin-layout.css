@@ -1554,33 +1554,6 @@
   font-size: 2.2rem;
 }
 
-.tier-statement {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-4);
-  border: 1px solid rgba(255, 211, 108, 0.28);
-  border-radius: var(--radius);
-  background: rgba(8, 11, 16, 0.68);
-  padding: 18px;
-}
-
-.tier-statement > div {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.tier-statement > div > span {
-  color: var(--gold);
-  font-size: 0.78rem;
-  font-weight: 950;
-}
-
-.tier-statement > div > strong {
-  font-size: 1.5rem;
-  line-height: 1.35;
-}
-
 .team-detail-hero {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
@@ -2166,8 +2139,7 @@ html[data-theme="light"] .landing-backdrop {
 }
 
 html[data-theme="light"] .broadcast-glass,
-html[data-theme="light"] .team-hub-board,
-html[data-theme="light"] .tier-statement {
+html[data-theme="light"] .team-hub-board {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.64)),
     rgba(255, 255, 255, 0.72);
@@ -2330,13 +2302,9 @@ html[data-theme="light"] .team-search-popover button.selected {
     justify-content: center;
   }
 
-  .rank-profile-page .rank-tier-statement,
+  .rank-profile-page .player-tier-hero,
   .rank-team-page .team-tier-hero {
     margin-inline: auto;
-  }
-
-  .tier-statement {
-    grid-template-columns: 1fr;
   }
 
   .approval-side-header,

@@ -1992,20 +1992,6 @@ input[type="color"] {
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
 }
 
-.tier-score-line {
-  width: max-content;
-  max-width: 100%;
-  border: 1px solid rgba(255, 211, 108, 0.28);
-  border-radius: 999px;
-  background: rgba(255, 211, 108, 0.1);
-  color: var(--gold);
-  padding: 5px 9px;
-  font-size: 0.78rem;
-  font-style: normal;
-  font-weight: 950;
-  line-height: 1;
-}
-
 .match-hero {
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.95), rgba(5, 7, 10, 0.64), rgba(5, 7, 10, 0.92)),

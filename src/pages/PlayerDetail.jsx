@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
@@ -12,7 +11,6 @@ import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
-import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import { getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
@@ -158,29 +156,28 @@ export default function PlayerDetail({ app }) {
         eyebrow="Player Profile"
         title={player.name}
         subtitle={`${getUserHashtag(player)} · 신뢰도 ${player.trustScore}`}
-        leading={<ProfileEmblem user={player} className="hero-avatar" />}
-        identityClassName="profile-identity rank-profile-identity"
         badges={(
           <>
-              <TierBadge mmr={player.ratings.integrated} ratings={player.ratings} />
-              <Badge tone="green">{player.region}</Badge>
-              <Badge tone="blue">{player.position}</Badge>
+              <Badge tone="gold" className="ui-liquid-glass">
+                {placementComplete ? `${Math.round(player.ratings.integrated)} MMR` : placementLabel}
+              </Badge>
+              <Badge tone="green" className="ui-liquid-glass">{player.region}</Badge>
+              <Badge tone="blue" className="ui-liquid-glass">{player.position}</Badge>
               {discordProfileUrl ? (
-                <a className="discord-link-badge" href={discordProfileUrl} target="_blank" rel="noreferrer">
-                  <MessageCircle size={14} /> {discordDisplayName}
+                <a
+                  className="badge ui-badge badge-blue ui-badge-blue ui-liquid-glass discord-link-badge"
+                  href={discordProfileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {discordDisplayName}
                 </a>
               ) : null}
           </>
         )}
         visual={(
-          <div className="tier-statement rank-tier-statement ui-liquid-glass">
-          <TierEmblem mmr={player.ratings.integrated} ratings={player.ratings} size="hero" showLabel />
-          {placementComplete ? (
-            <div>
-              <span>{getTierDivision(player.ratings.integrated)}</span>
-              <em className="tier-score-line">{Math.round(player.ratings.integrated)} MMR</em>
-            </div>
-          ) : null}
+          <div className="player-tier-hero">
+            <TierEmblem mmr={player.ratings.integrated} ratings={player.ratings} size="hero" showLabel />
           </div>
         )}
       />

@@ -92,6 +92,9 @@ test("player and team details share one entity profile hero", () => {
   assert.doesNotMatch(pageSources.playerDetail, /<section className="profile-hero/);
   assert.doesNotMatch(teamDetailSource, /<section className="team-detail-hero/);
   assert.match(globalAdminStyles, /\.entity-profile-hero-copy,/);
+  assert.doesNotMatch(pageSources.playerDetail, /leading=\{<ProfileEmblem|<TierBadge|rank-tier-statement|<MessageCircle/);
+  assert.match(pageSources.playerDetail, /className="player-tier-hero"/);
+  assert.match(pageSources.playerDetail, /className="ui-liquid-glass"/);
 });
 
 test("프로필 공유 action은 엠블럼 열을 침범하지 않는다", () => {
@@ -732,7 +735,8 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(pageSources.season, /className="rank-stat-grid season-summary-grid"/);
   assert.match(pageSources.season, /className="card-grid season-board-grid"/);
   assert.doesNotMatch(pageSources.season, /season-(?:hero|rule-board|summary-item|content-grid|side-rail|metric-card)|ui-liquid-glass/);
-  assert.match(pageSources.playerDetail, /rank-tier-statement ui-liquid-glass/);
+  assert.match(pageSources.playerDetail, /className="player-tier-hero"/);
+  assert.doesNotMatch(pageSources.playerDetail, /rank-tier-statement ui-liquid-glass/);
   assert.match(visualSystemStyles, /\.om-match-hero,\s*\.arena-recruit-hero[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
@@ -797,12 +801,10 @@ test("mobile detail heroes center tier emblems and placement copy is not repeate
   );
   assert.match(
     globalAdminStyles,
-    /\.rank-profile-page \.rank-tier-statement,\s*\.rank-team-page \.team-tier-hero\s*\{[^}]*margin-inline:\s*auto;/,
+    /\.rank-profile-page \.player-tier-hero,\s*\.rank-team-page \.team-tier-hero\s*\{[^}]*margin-inline:\s*auto;/,
   );
-  assert.match(
-    pageSources.playerDetail,
-    /\{placementComplete \? \(\s*<div>[\s\S]*?<span>\{getTierDivision\(player\.ratings\.integrated\)\}<\/span>[\s\S]*?<\/div>\s*\) : null\}/,
-  );
+  assert.match(pageSources.playerDetail, /<TierEmblem mmr=\{player\.ratings\.integrated\} ratings=\{player\.ratings\} size="hero" showLabel \/>/);
+  assert.doesNotMatch(pageSources.playerDetail, /rank-tier-statement|tier-score-line/);
   assert.doesNotMatch(
     pageSources.playerDetail,
     /placementLabel\.replace\("배정 전 · ", ""\)/,
