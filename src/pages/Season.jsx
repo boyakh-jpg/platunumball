@@ -80,7 +80,7 @@ export default function Season({ app }) {
 
   return (
     <div className="page-stack season-page">
-      <section className="season-hero">
+      <section className="season-hero season-hero-standard">
         <div className="season-hero-copy">
           <Badge tone="gold">시즌 진행 중</Badge>
           <h1>{season.name}</h1>
@@ -142,7 +142,7 @@ export default function Season({ app }) {
               </div>
             </div>
             <div className="season-race-list">
-              {nationalPlayerRows.slice(0, 8).map((user, index) => (
+              {nationalPlayerRows.slice(0, 5).map((user, index) => (
                 <PlayerHoverCard key={user.id} user={user} teams={app.state.teams} className={user.id === app.currentUser.id ? "mine" : ""}>
                   <strong>{index + 1}</strong>
                   <ProfileEmblem user={user} className="small" />
@@ -168,7 +168,7 @@ export default function Season({ app }) {
               </div>
             </div>
             <div className="season-race-list team-race-list">
-              {nationalTeamRows.slice(0, 8).map((team, index) => (
+              {nationalTeamRows.slice(0, 5).map((team, index) => (
                 <Link key={team.id} to={`/app/teams/${team.id}`}>
                   <strong>{index + 1}</strong>
                   <TeamEmblem team={team} size="xs" />

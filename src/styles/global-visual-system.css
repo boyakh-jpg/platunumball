@@ -3820,6 +3820,51 @@ html[data-theme="light"] .app-main :is(
   text-shadow: var(--hero-copy-shadow);
 }
 
+/* Season uses the shared compact hero rhythm instead of a campaign billboard. */
+.season-hero.season-hero-standard {
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-2) 94%, var(--rb-orange) 6%), var(--surface-2));
+  box-shadow: none;
+  padding: var(--section-card-padding);
+}
+
+.season-hero-standard .season-hero-copy {
+  align-content: start;
+  gap: var(--space-5);
+}
+
+.season-hero-standard .season-hero-copy h1 {
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 1;
+}
+
+.season-hero-standard .season-rule-board {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.season-hero-standard .season-rule-board > strong,
+.season-hero-standard .season-rule-actions {
+  grid-column: 1 / -1;
+}
+
+.season-race-column,
+.season-side-rail {
+  display: contents;
+}
+
+@media (max-width: 720px) {
+  .season-hero-standard .season-rule-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 html[data-theme] .app-main :is(
   .page-header,
   .landing-hero,
