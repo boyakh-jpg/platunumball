@@ -847,11 +847,11 @@ export default function CreateMatch({
       .slice(0, 10);
   }, [app.state.teams, currentRegion, draft.ageRestriction, draft.mmrRangeMode, favoriteTeamIds, isPublicRoom, isTeamRoom, ownerSidePlayerIds, selectedTeamA]);
   const refereeCandidates = useMemo(
-    () => app.state.users
+    () => [...new Map([...app.state.users, ...selectedTournamentRefereeProfiles].map((user) => [user.id, user])).values()]
       .filter((user) => isEligibleReferee(user, REFEREE_TRUST_MIN, app.state.settings?.refereeAppointments))
       .filter((user) => !activePlayerIds.has(user.id))
       .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0)),
-    [activePlayerIds, app.state.settings?.refereeAppointments, app.state.users],
+    [activePlayerIds, app.state.settings?.refereeAppointments, app.state.users, selectedTournamentRefereeProfiles],
   );
   const tournamentRefereeCandidates = useMemo(
     () => [...new Map([...app.state.users, ...selectedTournamentRefereeProfiles].map((user) => [user.id, user])).values()]
@@ -1454,10 +1454,10 @@ export default function CreateMatch({
     );
   };
   const selectReferee = (user) => {
+    setSelectedTournamentRefereeProfiles((current) => (
+      current.some((referee) => referee.id === user.id) ? current : [...current, user]
+    ));
     if (isTournamentRoom) {
-      setSelectedTournamentRefereeProfiles((current) => (
-        current.some((referee) => referee.id === user.id) ? current : [...current, user]
-      ));
       setDraft((current) => ({
         ...current,
         tournamentRefereeIds: (current.tournamentRefereeIds ?? []).includes(user.id)

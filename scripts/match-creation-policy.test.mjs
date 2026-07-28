@@ -1122,3 +1122,15 @@ test("무심판 생성 안내는 개인 기록이 아니라 팀 점수 전용 �
   assert.doesNotMatch(source, /심판 없으면 개인 기록은 득점 중심/);
   assert.match(source, /심판 초대 안 함 · 무심판 경기는 팀 점수만 기록/);
 });
+
+test("원격 심판 검색에서 선택한 프로필은 일반 경기 후보에 유지한다", () => {
+  const source = fs.readFileSync(path.join(root, "src/pages/CreateMatch.jsx"), "utf8");
+  assert.match(
+    source,
+    /const refereeCandidates = useMemo\([\s\S]*\[\.\.\.app\.state\.users, \.\.\.selectedTournamentRefereeProfiles\]/,
+  );
+  assert.match(
+    source,
+    /const selectReferee = \(user\) => \{[\s\S]*setSelectedTournamentRefereeProfiles[\s\S]*if \(isTournamentRoom\)/,
+  );
+});
