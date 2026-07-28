@@ -376,7 +376,7 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
   const sentence = summaryType === "personal_record"
     ? "입력한 경기 결과와 개인 스탯을 내 기록으로 저장합니다."
     : summaryType === "match_record"
-      ? "빈 기록방을 만든 뒤 공용 방 모달에서 참가자 또는 팀을 구성하고 승인받습니다. MMR에는 반영하지 않습니다."
+      ? "빈 기록방을 만든 뒤 참가자 또는 팀을 구성합니다. 24시간 뒤 2/3 이상이 내 참가 확인을 완료하면 확인자에게만 낮은 개인 MMR을 반영하며 팀 MMR은 반영하지 않습니다."
       : summaryType === "tournament"
         ? "선택한 참가팀·명단·규칙·구장 운영값으로 대회를 만듭니다."
         : summary.sentence;
