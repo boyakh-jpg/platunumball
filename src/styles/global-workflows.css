@@ -2449,13 +2449,17 @@ input[type="color"] {
 .settings-address-results {
   display: grid;
   gap: var(--space-4);
-  overflow-x: hidden;
+  max-height: none;
+  overflow: visible;
 }
 
 .settings-address-results button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
+  align-content: start;
+  height: auto;
+  min-height: 70px;
   min-width: 0;
   gap: 5px var(--space-5);
   border: 1px solid var(--line);
@@ -2546,9 +2550,18 @@ input[type="color"] {
   flex: 0 0 auto;
 }
 
-.settings-nearby-courts {
+.arena-mini-note.settings-nearby-courts {
+  display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
+  gap: var(--space-5);
+}
+
+.settings-nearby-courts > * {
+  grid-column: 1;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .settings-nearby-courts-head svg {
@@ -3277,6 +3290,86 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   min-width: 0;
 }
 
+.court-profile-information {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.court-profile-information-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--page-column-gap);
+}
+
+.court-profile-information-grid > section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+}
+
+.court-profile-information-grid h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+  color: var(--rb-text);
+  font-size: 0.9rem;
+}
+
+.court-profile-information-grid h3 svg {
+  color: var(--rb-orange);
+}
+
+.court-profile-information-grid dl {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.court-profile-information-grid dl > div {
+  display: grid;
+  grid-template-columns: minmax(86px, 0.35fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  padding-block: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--ui-control-border) 65%, transparent);
+}
+
+.court-profile-information-grid dt,
+.court-profile-information-grid dd {
+  margin: 0;
+}
+
+.court-profile-information-grid dt {
+  color: var(--rb-muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.court-profile-information-grid dd {
+  color: var(--rb-text);
+  font-size: 0.78rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.court-profile-information-grid dd a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--rb-orange);
+}
+
+.court-profile-information-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--rb-muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
 .rulebook-asset img {
   display: block;
   width: 100%;
@@ -3678,6 +3771,14 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 }
 
 @media (max-width: 640px) {
+  .court-profile-information-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .court-profile-information-grid dl > div {
+    grid-template-columns: minmax(80px, 0.35fr) minmax(0, 1fr);
+  }
+
   h1,
   .landing-copy h1 {
     font-size: 2.55rem;

@@ -33,6 +33,7 @@ const visualSystemStyles = read("src/styles/global-visual-system.css");
 const courtControlStyles = read("src/styles/global-court-controls.css");
 const globalAdminStyles = read("src/styles/global-admin-layout.css");
 const globalWorkflowStyles = read("src/styles/global-workflows.css");
+const globalSurfaceStyles = read("src/styles/global-surfaces.css");
 const recruitingStyles = read("src/styles/recruiting-arena.css");
 const matchesStyles = read("src/styles/matches-arena.css");
 const gettingStartedStyles = read("src/styles/getting-started.css");
@@ -732,4 +733,20 @@ test("일반 경기 최종 승인은 공용 확인창을 거친다", () => {
   assert.match(recruitingSource, /setFinalizeMatchTarget\(\{/);
   assert.doesNotMatch(matchRoomSource, /onClick=\{\(\) => app\.actions\.finalizeMatch/);
   assert.doesNotMatch(recruitingSource, /onClick=\{\(\) => app\.actions\.finalizeMatch/);
+});
+
+test("구장 등록 주소와 중복 후보는 폼 흐름 안에서 세로로 쌓인다", () => {
+  assert.match(
+    globalWorkflowStyles,
+    /\.settings-address-results\s*\{[^}]*max-height:\s*none;[^}]*overflow:\s*visible;/,
+  );
+  assert.match(
+    globalWorkflowStyles,
+    /\.settings-address-results button\s*\{[^}]*height:\s*auto;[^}]*min-height:\s*70px;/,
+  );
+  assert.match(
+    globalWorkflowStyles,
+    /\.arena-mini-note\.settings-nearby-courts\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/,
+  );
+  assert.doesNotMatch(globalSurfaceStyles, /\.settings-page \.settings-address-results/);
 });

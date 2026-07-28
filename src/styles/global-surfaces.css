@@ -1438,33 +1438,14 @@ html[data-theme="light"] .ranking-filter-card {
   padding: 9px 12px;
 }
 
-.settings-page .settings-address-results,
 .settings-page .report-player-picker > div {
   max-height: 240px;
   overflow: auto;
   padding-right: 2px;
 }
 
-.settings-page .settings-address-results button,
 .settings-page .report-player-picker button {
   padding: 8px 10px;
-}
-
-.settings-page .settings-address-results button {
-  min-height: 70px;
-  padding: 10px 12px;
-}
-
-@media (max-width: 560px) {
-  .settings-page .settings-address-results {
-    max-height: none;
-    overflow: visible;
-    padding-right: 0;
-  }
-
-  .settings-page .settings-address-results button {
-    overflow: visible;
-  }
 }
 
 .settings-page .report-player-picker button {

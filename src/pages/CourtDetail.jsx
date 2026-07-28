@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CalendarDays, ExternalLink, Flag, MapPin, Star, Trophy } from "lucide-react";
+import { Building2, CalendarDays, Clock3, ExternalLink, Flag, Lightbulb, MapPin, Phone, Star, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import {
   COURT_CORRECTION_FIELD_OPTIONS,
   getCourtAddress,
+  getCourtAccessLabel,
   getCourtCorrectionFieldLabel,
+  getCourtHoopCount,
   getCourtLayoutLabel,
+  getCourtLightingLabel,
   getCourtMapUrl,
+  getCourtPaidLabel,
+  getCourtPublicAccessLabel,
+  getCourtKindLabel,
   getCourtSurfaceLabel,
   getRegisteredCourts,
 } from "../lib/courts.js";
@@ -211,6 +217,23 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const adjustedRating = Number(court.adjustedRating ?? court.rating ?? 0);
   const reviewCount = Number(court.reviewCount ?? reviews.length ?? 0);
   const mapUrl = getCourtMapUrl(court);
+  const hoopCount = getCourtHoopCount(court);
+  const facilityDetails = [
+    ["실내외", court.type || court.indoorOutdoor || "확인 필요"],
+    ["코트 유형", getCourtKindLabel(court)],
+    ["바닥", getCourtSurfaceLabel(court)],
+    ["코트 형태", getCourtLayoutLabel(court)],
+    ["골대", hoopCount == null ? "확인 필요" : `${hoopCount}개`],
+    ["조명", getCourtLightingLabel(court)],
+  ];
+  const accessDetails = [
+    ["공개 범위", getCourtPublicAccessLabel(court)],
+    ["이용 방식", getCourtAccessLabel(court)],
+    ["비용", getCourtPaidLabel(court)],
+    ["운영시간", court.openingHoursText || "확인 필요"],
+    ["신청 방법", court.applicationMethod || "확인 필요"],
+    ["운영 주체", court.operatorName || "확인 필요"],
+  ];
 
   return (
     <div className={`page-stack court-detail-page${embedded ? " is-embedded" : ""}`}>
@@ -295,6 +318,59 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           <strong>{reviewCount}개</strong>
         </div>
       </section>
+
+      <Card className="section-card court-profile-information">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Court Information</p>
+            <h2>구장 이용 정보</h2>
+          </div>
+        </div>
+        <div className="court-profile-information-grid">
+          <section>
+            <h3><Building2 size={17} /> 시설</h3>
+            <dl>
+              {facilityDetails.map(([label, value]) => (
+                <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+              ))}
+            </dl>
+          </section>
+          <section>
+            <h3><Clock3 size={17} /> 이용</h3>
+            <dl>
+              {accessDetails.map(([label, value]) => (
+                <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+              ))}
+            </dl>
+          </section>
+          <section>
+            <h3><MapPin size={17} /> 위치·안내</h3>
+            <dl>
+              <div><dt>도로명</dt><dd>{court.roadAddress || court.addressText || "확인 필요"}</dd></div>
+              <div><dt>지번</dt><dd>{court.jibunAddress || "확인 필요"}</dd></div>
+              <div><dt>상세 위치</dt><dd>{court.detailAddress || "확인 필요"}</dd></div>
+              <div><dt>찾아가는 메모</dt><dd>{court.locationNote || "등록된 메모 없음"}</dd></div>
+              <div><dt>이용 안내</dt><dd>{court.accessNote || "등록된 안내 없음"}</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><Phone size={17} /> 연락·예약</h3>
+            <dl>
+              <div><dt>연락처</dt><dd>{court.contactPhone || "확인 필요"}</dd></div>
+              <div>
+                <dt>공식 정보</dt>
+                <dd>{court.officialUrl ? <a href={court.officialUrl} target="_blank" rel="noreferrer">공식 페이지 <ExternalLink size={13} /></a> : "등록된 링크 없음"}</dd>
+              </div>
+              <div>
+                <dt>예약</dt>
+                <dd>{court.reservationUrl ? <a href={court.reservationUrl} target="_blank" rel="noreferrer">예약 페이지 <ExternalLink size={13} /></a> : "등록된 링크 없음"}</dd>
+              </div>
+              <div><dt>시설 면적</dt><dd>{court.facilityAreaSqm ? `${court.facilityAreaSqm}㎡${court.facilityAreaScope ? ` · ${court.facilityAreaScope}` : ""}` : "확인 필요"}</dd></div>
+            </dl>
+          </section>
+        </div>
+        <p className="court-profile-information-note"><Lightbulb size={15} /> 확인되지 않은 정보는 추정하지 않고 ‘확인 필요’로 표시합니다.</p>
+      </Card>
 
       <div className="court-detail-layout">
         <Card className="section-card court-review-section">
