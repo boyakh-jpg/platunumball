@@ -50,7 +50,6 @@ export default function Rankings({ app }) {
     )
   ));
   const regionalTeams = app.rankings.teams.filter((team) => team.region === myRegion);
-  const regionalAffiliations = app.rankings.affiliations.filter((affiliation) => affiliation.name === myRegion || affiliation.type !== "region").slice(0, 6);
   const type = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : "players";
   const rows =
     tab === "teams"
@@ -86,26 +85,15 @@ export default function Rankings({ app }) {
             </div>
             <RankingTable rows={regionalPlayers} type="players" mode="integrated" teams={app.state.teams} />
           </Card>
-          <div className="page-stack">
-            <Card className="section-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Local Teams</p>
-                  <h2>{myRegion} 팀</h2>
-                </div>
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Local Teams</p>
+                <h2>{myRegion} 팀</h2>
               </div>
-              <RankingTable rows={regionalTeams} type="teams" teams={app.state.teams} />
-            </Card>
-            <Card className="section-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Affiliations</p>
-                  <h2>주변 소속</h2>
-                </div>
-              </div>
-              <RankingTable rows={regionalAffiliations} type="affiliations" teams={app.state.teams} />
-            </Card>
-          </div>
+            </div>
+            <RankingTable rows={regionalTeams} type="teams" teams={app.state.teams} />
+          </Card>
         </div>
       ) : null}
       {tab !== "region" ? (

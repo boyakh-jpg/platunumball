@@ -64,6 +64,7 @@ const pageSources = {
   teams: read("src/pages/Teams.jsx"),
   teamDetail: read("src/pages/TeamDetail.jsx"),
   playerDetail: read("src/pages/PlayerDetail.jsx"),
+  rankings: read("src/pages/Rankings.jsx"),
   settings: read("src/pages/Settings.jsx"),
 };
 const legacyStyleSources = [
@@ -725,6 +726,12 @@ test("팀 메뉴는 추천 팀만 기본 노출하고 반복 설명을 만들지
   assert.match(pageSources.teams, /title:\s*"같은 소속 팀"/);
   assert.doesNotMatch(pageSources.teams, /랭킹 기준|team-ranking-note/);
   assert.doesNotMatch(ratingCardSource, /getTierQuote|tier-quote|subtitle/);
+});
+
+test("지역 랭크보드는 지역 선수와 팀만 표시하고 소속은 별도 탭에 둔다", () => {
+  assert.match(pageSources.rankings, /\{ id: "affiliations", label: "소속" \}/);
+  assert.match(pageSources.rankings, /<RankingTable rows=\{regionalTeams\} type="teams"/);
+  assert.doesNotMatch(pageSources.rankings, /regionalAffiliations|주변 소속/);
 });
 
 test("tier emblem halo stays inside the shared emblem paint box", () => {
