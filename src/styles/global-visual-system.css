@@ -2131,6 +2131,21 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   backdrop-filter: var(--ui-profile-popup-backdrop-filter);
 }
 
+.card.court-detail-hero {
+  background:
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--card-bg-strong);
+}
+
+.court-hover-card :is(em, i) {
+  font-style: normal;
+}
+
+.court-hover-card :is(.court-hover-address, .court-hover-note, .court-hover-stats > span) {
+  border-color: var(--ui-card-border);
+  background: var(--ui-control-group-bg);
+}
+
 .segmented-control,
 .favorite-type-grid,
 .theme-choice-card .segmented-control,

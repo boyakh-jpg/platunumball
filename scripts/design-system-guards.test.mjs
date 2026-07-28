@@ -754,10 +754,18 @@ test("구장 등록 주소와 중복 후보는 폼 흐름 안에서 세로로 �
 
 test("구장 프로필 hero는 공용 구장 배경과 항목명이 있는 정보 뱃지를 사용한다", () => {
   assert.match(
-    globalWorkflowStyles,
-    /\.court-detail-hero\s*\{[\s\S]*?var\(--bg-court\) var\(--hero-bg-position-court\)/,
+    visualSystemStyles,
+    /\.card\.court-detail-hero\s*\{[\s\S]*?var\(--bg-court\) var\(--hero-bg-position-court\)/,
   );
   assert.match(courtDetailSource, /실내외 · \{court\.type/);
   assert.match(courtDetailSource, /바닥 · \{getCourtSurfaceLabel\(court\)\}/);
   assert.match(courtDetailSource, /코트 형태 · \{getCourtLayoutLabel\(court\)\}/);
+});
+
+test("구장 팝업 프로필은 공용 표면과 정자체를 사용한다", () => {
+  assert.match(visualSystemStyles, /\.court-hover-card :is\(em, i\)\s*\{[^}]*font-style:\s*normal;/);
+  assert.match(
+    visualSystemStyles,
+    /\.court-hover-card :is\(\.court-hover-address, \.court-hover-note, \.court-hover-stats > span\)\s*\{[^}]*background:\s*var\(--ui-control-group-bg\);/,
+  );
 });
