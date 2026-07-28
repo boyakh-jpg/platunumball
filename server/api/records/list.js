@@ -177,11 +177,8 @@ async function loadSubjectRows(client, options) {
   const columns = options.scope === RECORD_SCOPE_TEAM ? TEAM_RECORD_INDEX_COLUMNS : PROFILE_RECORD_INDEX_COLUMNS;
   const base = () => {
     let query = client.from(table).select(columns).eq(subjectColumn, options.subjectId);
-    if (options.publicPersonalOnly) {
-      query = query
-        .in("record_type", ["solo", "personal_record"])
-        .eq("visibility", "public")
-        .eq("owner_profile_id", options.subjectId);
+    if (options.publicProfileOnly) {
+      query = query.eq("visibility", "public");
     }
     return query
       .order("record_date", { ascending: false })
@@ -225,9 +222,9 @@ async function loadViewerTeamIds(client, profileId = "", enabled = false) {
 
 export function canReadProfileRecord(row = {}, viewerProfileId = "", subjectId = "") {
   const personalRecord = ["solo", "personal_record"].includes(String(row.record_type ?? "").trim().toLowerCase());
-  if (!personalRecord) return Boolean(viewerProfileId && viewerProfileId === subjectId);
-  if (row.owner_profile_id !== subjectId) return false;
-  return viewerProfileId === row.owner_profile_id || (row.visibility ?? "private") === "public";
+  const ownsProfile = Boolean(viewerProfileId && viewerProfileId === subjectId);
+  if (personalRecord && row.owner_profile_id !== subjectId) return false;
+  return ownsProfile || (row.visibility ?? "private") === "public";
 }
 
 function mapPersonalRecordMetrics(row = {}, prefix = "") {
@@ -371,7 +368,7 @@ export default async function handler(request, response) {
       sendJson(response, 400, { error: scope === RECORD_SCOPE_TEAM ? "team_id_required" : "profile_required" });
       return;
     }
-    const publicPersonalOnly = scope === RECORD_SCOPE_PROFILE && subjectId !== context.profileId;
+    const publicProfileOnly = scope === RECORD_SCOPE_PROFILE && subjectId !== context.profileId;
     if (scope === RECORD_SCOPE_PROFILE) {
       const { data: profileRow, error: profileError } = await context.supabase
         .from("profiles").select("id").eq("id", subjectId).maybeSingle();
@@ -425,7 +422,7 @@ export default async function handler(request, response) {
       archiveOffset,
       includeDetail,
       includeArchive,
-      publicPersonalOnly,
+      publicProfileOnly,
     });
     const readableRecentRows = scope === RECORD_SCOPE_TEAM
       ? subjectRows.recentRows.filter((row) => canReadTeamRecord(row, context.profileId, viewerTeamIds, isAdmin))
@@ -440,7 +437,7 @@ export default async function handler(request, response) {
     const state = filterStateForProfile(rawState, context.profileId, isAdmin);
     const archiveRecords = readableArchiveRows.map(mapCompactRecord);
     const personalSummary = scope === RECORD_SCOPE_PROFILE
-      ? await loadPersonalRecordSummary(context.supabase, subjectId, publicPersonalOnly)
+      ? await loadPersonalRecordSummary(context.supabase, subjectId, publicProfileOnly)
       : null;
 
     sendJson(response, 200, {

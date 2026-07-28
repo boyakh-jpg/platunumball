@@ -81,7 +81,10 @@ export default function PlayerDetail({ app }) {
     Number(teamB.id === representativeTeam?.id) - Number(teamA.id === representativeTeam?.id)
   ));
   const allPlayerHistory = app.state.matches.filter((match) => getPlayerSide(match, player.id));
-  const history = allPlayerHistory.filter((match) => !isPersonalRecordMatch(match));
+  const history = allPlayerHistory.filter((match) => (
+    !isPersonalRecordMatch(match)
+    && (isOwnProfile || (match.visibility ?? match.rules?.visibility ?? "public") !== "private")
+  ));
   const personalRecordHistory = allPlayerHistory
     .filter((match) => (
       isPersonalRecordMatch(match)
@@ -90,14 +93,22 @@ export default function PlayerDetail({ app }) {
       && (isOwnProfile || match.visibility === "public")
     ))
     .sort(compareMatchRecency);
-  const personalArchive = isOwnProfile ? app.recordArchives?.profile : app.recordArchives?.publicProfiles?.[player.id];
-  const personalArchivedRecords = (personalArchive?.rows ?? []).filter((record) => {
+  const profileRecordArchive = isOwnProfile ? app.recordArchives?.profile : app.recordArchives?.publicProfiles?.[player.id];
+  const personalArchivedRecords = (profileRecordArchive?.rows ?? []).filter((record) => {
     const personalRecord = ["solo", "personal_record"].includes(record.recordType);
     const ownerMatches = record.ownerProfileId ? record.ownerProfileId === player.id : isOwnProfile;
     return personalRecord && ownerMatches && (isOwnProfile || record.visibility === "public");
   });
-  const personalSummary = personalArchive?.personalSummary ?? player.personalRecordSummary ?? null;
+  const archivedPublicHistory = (profileRecordArchive?.rows ?? []).filter((record) => (
+    !["solo", "personal_record"].includes(record.recordType)
+    && (isOwnProfile || record.visibility === "public")
+  ));
+  const personalSummary = profileRecordArchive?.personalSummary ?? player.personalRecordSummary ?? null;
   const personalRecordCount = Number(personalSummary?.recordCount ?? (personalRecordHistory.length + personalArchivedRecords.length));
+  const personalStatCount = Number(personalSummary?.statCount ?? 0);
+  const personalAverageFouls = personalStatCount
+    ? Number(personalSummary?.fouls ?? 0) / personalStatCount
+    : 0;
   const teammateCounts = new Map();
   const opponentCounts = new Map();
   const totals = Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, 0]));
@@ -146,6 +157,7 @@ export default function PlayerDetail({ app }) {
             </PlayerHoverCard>
           );
         })}
+        {!counts.size ? <div className="ui-empty-state-compact">공개 경기 기록이 아직 없습니다.</div> : null}
       </div>
     </Card>
   );
@@ -238,8 +250,9 @@ export default function PlayerDetail({ app }) {
           </aside>
         ) : null}
 
+        <div className="page-stack player-profile-main-column">
         {canViewStatSummary ? (
-        <section id="summary" className="rank-profile-summary">
+        <section id="summary" className={`rank-profile-summary${recordedStatHistory.length ? "" : " is-single"}`}>
           <Card className="section-card rank-record-card">
             <div className="section-title-row">
               <div>
@@ -287,27 +300,27 @@ export default function PlayerDetail({ app }) {
         ) : null}
 
         <div className="page-stack player-profile-detail-content">
-          <section className="mode-grid">
-            <RatingCard title="통합" mmr={player.ratings.integrated} ratings={player.ratings} />
-            {placementComplete ? Object.entries(player.ratings.modes).map(([mode, mmr]) => (
+          {placementComplete ? <section className="mode-grid">
+            {Object.entries(player.ratings.modes).map(([mode, mmr]) => (
               <RatingCard key={mode} title={mode} mmr={mmr} ratings={player.ratings} mode={mode} />
-            )) : null}
-          </section>
+            ))}
+          </section> : null}
 
-          {(personalRecordCount > 0 || personalArchive?.loading) ? (
+          {(personalRecordCount > 0 || profileRecordArchive?.loading) ? (
             <Card id="personal-records" className="section-card personal-record-profile-card">
               <div className="section-title-row">
                 <div>
                   <p className="eyebrow">Self Authored</p>
                   <h2>{isOwnProfile ? "내 기록" : player.name + "의 공개 기록"}</h2>
                 </div>
-                <Badge tone="gold">{personalArchive?.loading && !personalRecordCount ? "불러오는 중" : personalRecordCount + "경기"}</Badge>
+                <Badge tone="gold">{profileRecordArchive?.loading && !personalRecordCount ? "불러오는 중" : personalRecordCount + "경기"}</Badge>
               </div>
-              {personalSummary && Number(personalSummary.statCount ?? 0) > 0 ? (
+              {canViewStatSummary && personalSummary && personalStatCount > 0 ? (
                 <div className="rank-stat-grid personal-record-stat-grid">
                   <span><strong>{personalSummary.winCount ?? 0}</strong>승</span>
                   <span><strong>{personalSummary.lossCount ?? 0}</strong>패</span>
                   <span><strong>{personalSummary.drawCount ?? 0}</strong>무</span>
+                  <span><strong>{personalAverageFouls.toFixed(1)}</strong>평균 파울</span>
                   {PLAYER_STAT_FIELDS.map((field) => <span key={field.id}><strong>{personalSummary[field.id] ?? 0}</strong>{field.label}</span>)}
                 </div>
               ) : null}
@@ -362,7 +375,7 @@ export default function PlayerDetail({ app }) {
                   <p className="eyebrow">Player History</p>
                   <h2>누구와 뛰었는지</h2>
                 </div>
-                <Badge tone="green">{history.length}경기</Badge>
+                <Badge tone="green">{history.length + archivedPublicHistory.length}경기</Badge>
               </div>
               <div className="recent-match-list">
                 {history.map((match) => {
@@ -391,9 +404,24 @@ export default function PlayerDetail({ app }) {
                     />
                   );
                 })}
+                {archivedPublicHistory.map((record) => (
+                  <RecentMatchRow
+                    key={record.matchId}
+                    record={record}
+                    result={record.result}
+                    side={{ name: record.teamName }}
+                    opponent={{ name: record.opponentTeamName }}
+                    score={record.score}
+                    opponentScore={record.opponentScore}
+                  />
+                ))}
+                {!history.length && !archivedPublicHistory.length
+                  ? <div className="ui-empty-state-compact">공개 경기 기록이 아직 없습니다.</div>
+                  : null}
               </div>
             </Card>
           ) : null}
+        </div>
         </div>
       </div>
       <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="player-history" onClose={() => setSelectedMatchId("")} />

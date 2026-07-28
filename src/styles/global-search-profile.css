@@ -786,6 +786,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: var(--space-7);
 }
 
+.rank-profile-summary.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .rank-match-item {
   border-left: 4px solid var(--line);
 }

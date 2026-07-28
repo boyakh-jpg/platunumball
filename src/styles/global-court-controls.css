@@ -1750,43 +1750,22 @@ html[data-theme="light"] .court-map-picker-state {
 .rank-profile-body-grid {
   display: grid;
   min-width: 0;
-  grid-template-areas: "detail";
   grid-template-columns: minmax(0, 1fr);
   gap: var(--page-column-gap);
   align-items: start;
 }
 
-.rank-profile-body-grid.has-summary {
-  grid-template-areas:
-    "summary"
-    "detail";
-}
-
 .rank-profile-body-grid.has-team-rail {
-  grid-template-areas:
-    "team"
-    "detail";
-}
-
-.rank-profile-body-grid.has-team-rail.has-summary {
-  grid-template-areas:
-    "team"
-    "summary"
-    "detail";
-}
-
-.rank-profile-body-grid > .rank-profile-summary {
-  grid-area: summary;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .player-profile-left-rail {
   min-width: 0;
-  grid-area: team;
 }
 
+.player-profile-main-column,
 .player-profile-detail-content {
   min-width: 0;
-  grid-area: detail;
 }
 
 .player-profile-team-list {
@@ -1856,14 +1835,7 @@ html[data-theme="light"] .court-map-picker-state {
 
 @container (min-width: 900px) {
   .rank-profile-body-grid.has-team-rail {
-    grid-template-areas: "team detail";
     grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
-  }
-
-  .rank-profile-body-grid.has-team-rail.has-summary {
-    grid-template-areas:
-      "team summary"
-      "team detail";
   }
 }
 

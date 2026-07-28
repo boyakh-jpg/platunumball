@@ -96,14 +96,15 @@ test("team record visibility keeps public rows readable and private rows scoped"
   assert.equal(canReadTeamRecord({ visibility: "private", team_id: "team-a", reader_ids: [] }, "viewer", new Set(), true), true);
 });
 
-test("profile personal records expose only public owner rows to other users", () => {
+test("profile records expose public rows and only owned personal rows to other users", () => {
   const publicPersonal = { record_type: "solo", visibility: "public", owner_profile_id: "owner" };
   assert.equal(canReadProfileRecord(publicPersonal, "owner", "owner"), true);
   assert.equal(canReadProfileRecord(publicPersonal, "viewer", "owner"), true);
   assert.equal(canReadProfileRecord({ ...publicPersonal, visibility: "private" }, "viewer", "owner"), false);
   assert.equal(canReadProfileRecord({ ...publicPersonal, visibility: "private", owner_profile_id: "other" }, "owner", "owner"), false);
   assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match" }, "owner", "owner"), true);
-  assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match" }, "viewer", "owner"), false);
+  assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match" }, "viewer", "owner"), true);
+  assert.equal(canReadProfileRecord({ ...publicPersonal, record_type: "match", visibility: "private" }, "viewer", "owner"), false);
   assert.equal(canReadProfileRecord({ ...publicPersonal, owner_profile_id: "other" }, "viewer", "owner"), false);
 });
 
@@ -218,6 +219,9 @@ test("profile and team records use the dedicated archive-backed API", async () =
   assert.match(profileSource, /getPersonalSummaryByVisibility/);
   assert.doesNotMatch(profileSource, /날짜별 기록 수|const dateRows/);
   assert.match(apiSource, /publicSummary/);
+  assert.match(apiSource, /publicProfileOnly/);
+  assert.match(apiSource, /query = query\.eq\("visibility", "public"\)/);
+  assert.match(await readSource("src/pages/PlayerDetail.jsx"), /archivedPublicHistory/);
   assert.match(profileSource, /if \(archiveState\.error\) return/);
   assert.match(teamSource, /loadTeamRecords\(team\.id\)/);
   assert.match(teamSource, /teamRecordArchive\.error\) return/);
