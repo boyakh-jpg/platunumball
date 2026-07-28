@@ -60,7 +60,7 @@ function getInitialViewport(courts = [], selectedCourt, currentRegion = "", mapW
   };
 }
 
-function makeMarkerElement(group, activeCourtId) {
+function makeMarkerElement(group, activeCourtId, courtNumber) {
   const element = document.createElement("button");
   const isCluster = group.items.length > 1;
   const court = group.items[0]?.court;
@@ -70,7 +70,7 @@ function makeMarkerElement(group, activeCourtId) {
     isCluster ? "is-cluster" : "is-court",
     !isCluster && court?.id === activeCourtId ? "is-active" : "",
   ].filter(Boolean).join(" ");
-  element.textContent = isCluster ? String(group.items.length) : court?.name ?? "구장";
+  element.textContent = isCluster ? String(group.items.length) : String(courtNumber ?? 1);
   element.setAttribute("aria-label", isCluster ? `등록 구장 ${group.items.length}개 확대` : `${court?.name ?? "구장"} 확인`);
   return element;
 }
@@ -182,6 +182,7 @@ export default function CourtMapPicker({
     const drawMarkers = () => {
       clearMarkers();
       const groups = clusterCourts(mappedCourts, map.getZoom());
+      const courtNumberById = new Map(mappedCourts.map((court, index) => [court.id, index + 1]));
       groups.forEach((group) => {
         const position = new maps.LatLng(group.lat, group.lng);
         const isCluster = group.items.length > 1;
@@ -191,7 +192,7 @@ export default function CourtMapPicker({
           clickable: true,
           zIndex: isCluster ? 120 : group.items[0]?.court?.id === candidateId ? 140 : 100,
           icon: {
-            content: makeMarkerElement(group, candidateId),
+            content: makeMarkerElement(group, candidateId, courtNumberById.get(group.items[0]?.court?.id)),
             anchor: new maps.Point(0, 0),
           },
         });
@@ -241,7 +242,7 @@ export default function CourtMapPicker({
           <div>
             <span>COURT MAP</span>
             <h2>지도에서 구장 찾기</h2>
-            <p>숫자는 등록 구장 묶음입니다. 숫자를 눌러 확대한 뒤 구장명을 선택해 주소를 확인해 주세요.</p>
+            <p>숫자는 등록 구장 또는 구장 묶음입니다. 번호를 누르면 아래에서 이름과 주소를 확인할 수 있습니다.</p>
           </div>
           <Button type="button" variant="secondary" size="sm" className="court-map-picker-close" aria-label="지도 닫기" onClick={onClose}>
             <X size={18} />
@@ -254,7 +255,7 @@ export default function CourtMapPicker({
             <div className="court-map-picker-state" role="status">
               <MapPin size={24} />
               <strong>{status === "loading" ? "등록 구장 지도 불러오는 중" : status === "empty" ? "좌표가 저장된 구장 없음" : "지도를 불러오지 못함"}</strong>
-              <span>{status === "error" ? error : status === "empty" ? "주소를 검색해 구장을 선택해 주세요." : "잠시만 기다려 주세요."}</span>
+              <span>{status === "error" ? error : status === "empty" ? "선택한 지역에는 좌표가 저장된 구장이 없습니다." : "잠시만 기다려 주세요."}</span>
             </div>
           ) : null}
         </div>
@@ -294,7 +295,7 @@ export default function CourtMapPicker({
         ) : (
           <div className="court-map-picker-hint">
             <MapPin size={17} />
-            <span>지도에서 구장명 마커를 누르면 주소와 평점을 확인할 수 있습니다.</span>
+            <span>지도에서 번호 마커를 누르면 아래에서 구장명과 주소를 확인할 수 있습니다.</span>
           </div>
         )}
 

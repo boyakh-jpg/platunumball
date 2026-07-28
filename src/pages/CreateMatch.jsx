@@ -2321,7 +2321,7 @@ export default function CreateMatch({
             </div>
             <Badge tone={selectedCourt ? "green" : "orange"}>{selectedCourt?.name ?? "구장 선택 필요"}</Badge>
           </div>
-          <div className="search-controls">
+          <div className="search-controls court-finder-controls">
             <label>
               지역
               <select value={courtRegion} onChange={(event) => setCourtRegion(event.target.value)}>
@@ -2335,6 +2335,19 @@ export default function CreateMatch({
                 ))}
               </select>
             </label>
+            <div className="court-map-launch-control">
+              <span>지도</span>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  loadedCourtMapRegionsRef.current.delete(`${courtMapRegion}:map`);
+                  setCourtMapOpen(true);
+                }}
+              >
+                <MapIcon size={16} /> 지도에서 찾기
+              </Button>
+            </div>
             <label>
               코트명
               <SearchPicker
@@ -2367,17 +2380,6 @@ export default function CreateMatch({
               </div>
             </div>
             <div className="create-selected-court-actions">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  loadedCourtMapRegionsRef.current.delete(`${courtMapRegion}:map`);
-                  setCourtMapOpen(true);
-                }}
-              >
-                <MapIcon size={16} /> 지도에서 찾기
-              </Button>
               {selectedCourt?.id ? (
                 <Button type="button" variant="secondary" size="sm" onClick={() => setCourtDetailCourtId(selectedCourt.id)}>
                   구장 정보
