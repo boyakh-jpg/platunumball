@@ -5,12 +5,15 @@ import Button from "../components/common/Button.jsx";
 import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../lib/assets.js";
 import { BRAND_NAME } from "../lib/brand.js";
 import { MATCH_SIDE_FALLBACK_NAMES } from "../lib/constants.js";
+import { isPlacementComplete } from "../lib/rating.js";
 
 export default function Landing({ state }) {
   const users = state?.users ?? [];
   const matches = state?.matches ?? [];
   const teams = state?.teams ?? [];
-  const topUser = [...users].sort((a, b) => (b.ratings?.integrated ?? 0) - (a.ratings?.integrated ?? 0))[0];
+  const topUser = users
+    .filter((user) => isPlacementComplete(user.ratings))
+    .sort((a, b) => (b.ratings?.integrated ?? 0) - (a.ratings?.integrated ?? 0))[0];
   const featuredMatch =
     matches.find((match) => ["approval", "agreed", "contract"].includes(match.status)) ??
     matches.find((match) => match.status === "confirmed") ??

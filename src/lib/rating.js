@@ -7,12 +7,18 @@ import {
   isMatchRecordMatch,
   isPersonalRecordMatch,
 } from "./matchUtils.js";
-import { getMercenaryPlayerFactor, getMercenaryTeamWeight } from "./recruiting.js";
+import { getMercenaryPlayerFactor } from "./recruiting.js";
 import { getTier, getTierDisplay, getTierDivision, getTierLabel } from "./tier.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
 const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean))];
+export const PLACEMENT_MATCH_TARGET = 5;
+export const PLACEMENT_MIN_MMR = 800;
+export const PLACEMENT_MAX_MMR = 1799;
+export const PLACEMENT_PRIOR_WEIGHT = 2.5;
+export const TEAM_ROSTER_MMR_LIMIT = 5;
+export const TEAM_PERFORMANCE_ADJUSTMENT_LIMIT = 150;
 
 const matchModeMap = Object.fromEntries(MATCH_MODES.map((mode) => [mode.id, mode]));
 
@@ -29,6 +35,93 @@ const modeCapMap = MATCH_MODES.reduce((map, mode) => {
 }, {});
 
 export { getTier, getTierDisplay, getTierDivision, getTierLabel };
+
+export function normalizePlacement(placement = null, integrated = DEFAULT_RATING) {
+  if (!placement || typeof placement !== "object") {
+    return {
+      matchCount: PLACEMENT_MATCH_TARGET,
+      target: PLACEMENT_MATCH_TARGET,
+      completed: true,
+      completedAt: null,
+      evidenceWeight: 0,
+      weightedTotal: Number(integrated || DEFAULT_RATING) * PLACEMENT_PRIOR_WEIGHT,
+      modeCounts: {},
+    };
+  }
+  const matchCount = clamp(Math.floor(Number(placement.matchCount) || 0), 0, PLACEMENT_MATCH_TARGET);
+  const evidenceWeight = Math.max(0, Number(placement.evidenceWeight) || 0);
+  const weightedTotal = Number(placement.weightedTotal);
+  return {
+    matchCount,
+    target: PLACEMENT_MATCH_TARGET,
+    completed: matchCount >= PLACEMENT_MATCH_TARGET,
+    completedAt: placement.completedAt ?? null,
+    evidenceWeight,
+    weightedTotal: Number.isFinite(weightedTotal)
+      ? weightedTotal
+      : Number(integrated || DEFAULT_RATING) * (PLACEMENT_PRIOR_WEIGHT + evidenceWeight),
+    modeCounts: placement.modeCounts && typeof placement.modeCounts === "object" ? { ...placement.modeCounts } : {},
+  };
+}
+
+export function isPlacementComplete(ratings = {}) {
+  return normalizePlacement(ratings?.placement, ratings?.integrated).completed;
+}
+
+export function getPlacementLabel(ratings = {}) {
+  const placement = normalizePlacement(ratings?.placement, ratings?.integrated);
+  return placement.completed ? "" : `배정 전 · ${placement.matchCount}/${PLACEMENT_MATCH_TARGET}`;
+}
+
+export function hasModeRating(ratings = {}, mode = "") {
+  const placement = normalizePlacement(ratings?.placement, ratings?.integrated);
+  if (!placement.completed) return false;
+  if (!ratings?.placement) return Number.isFinite(Number(ratings?.modes?.[mode]));
+  return Number(placement.modeCounts?.[mode] ?? 0) > 0;
+}
+
+export function calculatePlacementPerformance({
+  sideSize = 1,
+  opponentMmr = DEFAULT_RATING,
+  teammateMmrTotal = 0,
+  actual = 0.5,
+}) {
+  const resultAdjustment = actual === 1 ? 200 : actual === 0 ? -200 : 0;
+  return Math.round(clamp(
+    Math.max(1, Number(sideSize) || 1) * Number(opponentMmr || DEFAULT_RATING)
+      + resultAdjustment
+      - Number(teammateMmrTotal || 0),
+    600,
+    2000,
+  ));
+}
+
+export function calculateTeamRosterMmr(team = {}, users = []) {
+  const userById = Object.fromEntries(users.map((user) => [user.id, user]));
+  const values = (team.members ?? [])
+    .filter((member) => ["captain", "regular"].includes(member.role))
+    .map((member) => Number(userById[member.userId]?.ratings?.integrated))
+    .filter(Number.isFinite)
+    .sort((a, b) => b - a)
+    .slice(0, TEAM_ROSTER_MMR_LIMIT);
+  return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : DEFAULT_RATING;
+}
+
+export function getTeamPerformanceAdjustment(team = {}, rosterMmr = DEFAULT_RATING) {
+  const explicit = Number(team.performanceAdjustment);
+  if (Number.isFinite(explicit)) return clamp(explicit, -TEAM_PERFORMANCE_ADJUSTMENT_LIMIT, TEAM_PERFORMANCE_ADJUSTMENT_LIMIT);
+  return clamp(Number(team.mmr ?? DEFAULT_RATING) - Number(rosterMmr || DEFAULT_RATING), -TEAM_PERFORMANCE_ADJUSTMENT_LIMIT, TEAM_PERFORMANCE_ADJUSTMENT_LIMIT);
+}
+
+export function calculateRosterBasedTeamMmr(team = {}, users = []) {
+  const rosterMmr = calculateTeamRosterMmr(team, users);
+  const performanceAdjustment = getTeamPerformanceAdjustment(team, rosterMmr);
+  return {
+    rosterMmr,
+    performanceAdjustment,
+    mmr: Math.round(rosterMmr + performanceAdjustment),
+  };
+}
 
 function expectedScore(teamMmr = DEFAULT_RATING, opponentMmr = DEFAULT_RATING) {
   return 1 / (1 + 10 ** ((opponentMmr - teamMmr) / 400));
@@ -98,8 +191,18 @@ function getTournamentFactor(match = {}) {
 }
 
 function getRatingScaleFactor(match = {}) {
+  const rangeScale = Number(match.rules?.mmrRangeRatingScale);
+  const assignmentScale = Number(match.rules?.pickupAssignmentRatingScale);
+  if (Number.isFinite(rangeScale) || Number.isFinite(assignmentScale)) {
+    return clamp(
+      (Number.isFinite(rangeScale) ? rangeScale : 1)
+        * (Number.isFinite(assignmentScale) ? assignmentScale : 1),
+      0.2,
+      1.5,
+    );
+  }
   const scale = Number(match.ratingScale ?? match.rules?.ratingScale ?? 1);
-  return Number.isFinite(scale) ? clamp(scale, 0.2, 1.15) : 1;
+  return Number.isFinite(scale) ? clamp(scale, 0.2, 1.5) : 1;
 }
 
 function getQualityFactor(match = {}, trustScore = 80, history = []) {
@@ -150,20 +253,16 @@ export function calculateTeamDelta({
   regularRatio = 1,
 }) {
   const base = 24 * (actual - expectedScore(teamMmr, opponentTeamMmr));
-  const factor = getQualityFactor(match, 80, []) * clamp(regularRatio, 0.45, 1);
+  const factor = getQualityFactor(match, 80, []) * clamp(regularRatio, 0, 1);
   return round(clamp(base * factor, -34, 34));
 }
 
-export function teamRegularRatio(team, playerIds, users = []) {
+export function teamRegularRatio(team, playerIds) {
   if (!team) return 1;
-  const userById = Object.fromEntries(users.map((user) => [user.id, user]));
-  const selected = team.members.filter((member) => playerIds.includes(member.userId));
-  if (!selected.length) return 1;
-  const weighted = selected.reduce((sum, member) => {
-    const memberMmr = userById[member.userId]?.ratings?.integrated ?? team.mmr;
-    return sum + getMercenaryTeamWeight(memberMmr, team.mmr, member.role);
-  }, 0);
-  return weighted / selected.length;
+  const selected = (team.members ?? []).filter((member) => playerIds.includes(member.userId));
+  if (!selected.length) return 0;
+  const regularCount = selected.filter((member) => ["captain", "regular"].includes(member.role)).length;
+  return regularCount / selected.length;
 }
 
 export function averageTeamMmr(groups = []) {
@@ -257,9 +356,65 @@ export function applyMatchRating(match, players, ratings, history = [], teams = 
     ["teamA", actualA, teamAMmr, teamBMmr],
     ["teamB", actualB, teamBMmr, teamAMmr],
   ]) {
-    for (const playerId of getRatedSidePlayerIds(match, sideName)) {
+    const sidePlayerIds = getRatedSidePlayerIds(match, sideName);
+    for (const playerId of sidePlayerIds) {
       const current = ratings[playerId] ?? { integrated: DEFAULT_RATING, modes: {} };
       const modeRating = current.modes?.[mode] ?? current.integrated ?? DEFAULT_RATING;
+      const placement = normalizePlacement(current.placement, current.integrated);
+      if (!placement.completed) {
+        const teammateMmrTotal = sidePlayerIds
+          .filter((candidateId) => candidateId !== playerId)
+          .reduce((sum, candidateId) => (
+            sum + Number(ratings[candidateId]?.modes?.[mode] ?? ratings[candidateId]?.integrated ?? DEFAULT_RATING)
+          ), 0);
+        const performanceMmr = calculatePlacementPerformance({
+          sideSize: sidePlayerIds.length,
+          opponentMmr,
+          teammateMmrTotal,
+          actual,
+        });
+        const weight = getRatingScaleFactor(match);
+        const nextCount = Math.min(PLACEMENT_MATCH_TARGET, placement.matchCount + 1);
+        const nextEvidenceWeight = placement.evidenceWeight + weight;
+        const nextWeightedTotal = placement.weightedTotal + performanceMmr * weight;
+        const rawMmr = nextWeightedTotal / (PLACEMENT_PRIOR_WEIGHT + nextEvidenceWeight);
+        const nextIntegrated = Math.round(nextCount >= PLACEMENT_MATCH_TARGET
+          ? clamp(rawMmr, PLACEMENT_MIN_MMR, PLACEMENT_MAX_MMR)
+          : clamp(rawMmr, 600, 2000));
+        const nextPlacement = {
+          ...placement,
+          matchCount: nextCount,
+          completed: nextCount >= PLACEMENT_MATCH_TARGET,
+          completedAt: nextCount >= PLACEMENT_MATCH_TARGET
+            ? match.confirmedAt ?? match.endedAt ?? match.scheduledAt ?? match.createdAt ?? null
+            : null,
+          evidenceWeight: nextEvidenceWeight,
+          weightedTotal: nextWeightedTotal,
+          modeCounts: {
+            ...placement.modeCounts,
+            [mode]: Number(placement.modeCounts?.[mode] ?? 0) + 1,
+          },
+        };
+        nextRatings[playerId] = {
+          ...current,
+          integrated: nextIntegrated,
+          modes: { ...current.modes, [mode]: nextIntegrated },
+          placement: nextPlacement,
+        };
+        changes.push({
+          playerId,
+          side: sideName,
+          modeDelta: nextIntegrated - modeRating,
+          integratedDelta: nextIntegrated - Number(current.integrated ?? DEFAULT_RATING),
+          statBoost: 0,
+          mercenaryFactor: 1,
+          placement: true,
+          placementMatchCount: nextCount,
+          placementPerformanceMmr: performanceMmr,
+          result: actual === 1 ? "win" : actual === 0 ? "loss" : "draw",
+        });
+        continue;
+      }
       const trustScore = playerById[playerId]?.trustScore ?? 80;
       const playerTeamId = match[sideName].playerTeams?.[playerId] ?? match[sideName].teamId;
       const playerTeam = teamById[playerTeamId];

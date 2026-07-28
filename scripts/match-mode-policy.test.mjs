@@ -12,7 +12,19 @@ import {
   isSupportedMatchMode,
   isSupportedSoloRecordMode,
 } from "../src/lib/constants.js";
-import { applyMatchRating, calculateTeamDelta } from "../src/lib/rating.js";
+import {
+  PLACEMENT_MATCH_TARGET,
+  PLACEMENT_MAX_MMR,
+  PLACEMENT_MIN_MMR,
+  TEAM_PERFORMANCE_ADJUSTMENT_LIMIT,
+  applyMatchRating,
+  calculatePlacementPerformance,
+  calculateRosterBasedTeamMmr,
+  calculateTeamDelta,
+  calculateTeamRosterMmr,
+  getTeamPerformanceAdjustment,
+  teamRegularRatio,
+} from "../src/lib/rating.js";
 import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../src/lib/ratingPolicy.js";
 
 function makeMatch(mode, recordType = RECORD_TYPES.match) {
@@ -80,6 +92,153 @@ test("네 가지 모드는 자신의 모드 MMR·통합 MMR·팀 MMR을 각각 �
     assert.notEqual(result.ratings["player-a"].integrated, 1200);
     assert.notEqual(calculateTeamDelta({ teamMmr: 1200, opponentTeamMmr: 1200, actual: 1, match }), 0);
   });
+});
+
+test("개인 배치는 승패와 상대 MMR을 반영하고 5경기 뒤 브론즈~다이아몬드 범위로 확정한다", () => {
+  assert.equal(calculatePlacementPerformance({
+    sideSize: 1,
+    opponentMmr: 1200,
+    teammateMmrTotal: 0,
+    actual: 1,
+  }), 1400);
+  assert.equal(calculatePlacementPerformance({
+    sideSize: 1,
+    opponentMmr: 1200,
+    teammateMmrTotal: 0,
+    actual: 0,
+  }), 1000);
+  assert.equal(calculatePlacementPerformance({
+    sideSize: 5,
+    opponentMmr: 2000,
+    teammateMmrTotal: 0,
+    actual: 1,
+  }), 2000);
+  assert.equal(calculatePlacementPerformance({
+    sideSize: 1,
+    opponentMmr: 600,
+    teammateMmrTotal: 5000,
+    actual: 0,
+  }), 600);
+
+  const player = {
+    id: "player-a",
+    trustScore: 80,
+    ratings: {
+      integrated: 1200,
+      modes: {},
+      placement: {
+        matchCount: 0,
+        evidenceWeight: 0,
+        weightedTotal: 3000,
+        modeCounts: {},
+      },
+    },
+  };
+  const opponent = {
+    id: "player-b",
+    trustScore: 80,
+    ratings: { integrated: 600, modes: { "1v1": 600 } },
+  };
+  let currentRatings = {
+    [player.id]: player.ratings,
+    [opponent.id]: opponent.ratings,
+  };
+
+  for (let index = 0; index < PLACEMENT_MATCH_TARGET; index += 1) {
+    const match = {
+      ...makeMatch("1v1"),
+      id: `placement-${index + 1}`,
+      result: { scoreA: 0, scoreB: 1, playerStats: {} },
+      teamA: { players: [player.id], score: 0 },
+      teamB: { players: [opponent.id], score: 1 },
+    };
+    const result = applyMatchRating(match, [player, opponent], currentRatings, [], []);
+    currentRatings = {
+      ...currentRatings,
+      [player.id]: result.ratings[player.id],
+      [opponent.id]: opponent.ratings,
+    };
+    assert.equal(currentRatings[player.id].placement.matchCount, index + 1);
+    assert.equal(currentRatings[player.id].placement.completed, index + 1 === PLACEMENT_MATCH_TARGET);
+  }
+
+  assert.equal(currentRatings[player.id].integrated, PLACEMENT_MIN_MMR);
+  assert.ok(currentRatings[player.id].integrated <= PLACEMENT_MAX_MMR);
+});
+
+test("팀 기준 MMR은 주장·정규멤버 상위 5명 평균이며 성과 보정은 ±150으로 제한한다", () => {
+  const team = {
+    mmr: 2400,
+    members: [
+      { userId: "captain", role: "captain" },
+      { userId: "regular-1", role: "regular" },
+      { userId: "regular-2", role: "regular" },
+      { userId: "regular-3", role: "regular" },
+      { userId: "regular-4", role: "regular" },
+      { userId: "regular-5", role: "regular" },
+      { userId: "mercenary", role: "mercenary" },
+    ],
+  };
+  const users = [
+    { id: "captain", ratings: { integrated: 2000 } },
+    { id: "regular-1", ratings: { integrated: 1800 } },
+    { id: "regular-2", ratings: { integrated: 1600 } },
+    { id: "regular-3", ratings: { integrated: 1400 } },
+    { id: "regular-4", ratings: { integrated: 1200 } },
+    { id: "regular-5", ratings: { integrated: 1000 } },
+    { id: "mercenary", ratings: { integrated: 2500 } },
+  ];
+
+  assert.equal(calculateTeamRosterMmr(team, users), 1600);
+  assert.equal(getTeamPerformanceAdjustment(team, 1600), TEAM_PERFORMANCE_ADJUSTMENT_LIMIT);
+  assert.equal(getTeamPerformanceAdjustment({ mmr: 1000 }, 1600), -TEAM_PERFORMANCE_ADJUSTMENT_LIMIT);
+  assert.deepEqual(calculateRosterBasedTeamMmr(team, users), {
+    rosterMmr: 1600,
+    performanceAdjustment: TEAM_PERFORMANCE_ADJUSTMENT_LIMIT,
+    mmr: 1750,
+  });
+});
+
+test("팀 MMR 변동은 실제 출전한 주장·정규멤버 비율 1·혼합·0을 그대로 반영한다", () => {
+  const team = {
+    members: [
+      { userId: "captain", role: "captain" },
+      { userId: "regular", role: "regular" },
+      { userId: "mercenary-1", role: "mercenary" },
+      { userId: "mercenary-2", role: "mercenary" },
+    ],
+  };
+  const fullRegularRatio = teamRegularRatio(team, ["captain", "regular"]);
+  const mixedRatio = teamRegularRatio(team, ["captain", "regular", "mercenary-1", "mercenary-2"]);
+  const mercenaryOnlyRatio = teamRegularRatio(team, ["mercenary-1", "mercenary-2"]);
+  const match = makeMatch("3v3");
+  const fullDelta = calculateTeamDelta({
+    teamMmr: 1200,
+    opponentTeamMmr: 1200,
+    actual: 1,
+    match,
+    regularRatio: fullRegularRatio,
+  });
+  const mixedDelta = calculateTeamDelta({
+    teamMmr: 1200,
+    opponentTeamMmr: 1200,
+    actual: 1,
+    match,
+    regularRatio: mixedRatio,
+  });
+  const mercenaryOnlyDelta = calculateTeamDelta({
+    teamMmr: 1200,
+    opponentTeamMmr: 1200,
+    actual: 1,
+    match,
+    regularRatio: mercenaryOnlyRatio,
+  });
+
+  assert.equal(fullRegularRatio, 1);
+  assert.equal(mixedRatio, 0.5);
+  assert.equal(mercenaryOnlyRatio, 0);
+  assert.ok(Math.abs(mixedDelta - fullDelta / 2) <= 0.1);
+  assert.equal(mercenaryOnlyDelta, 0);
 });
 
 test("개인 스탯과 기록 출처는 로컬 MMR 변화에 영향을 주지 않는다", () => {
@@ -164,4 +323,23 @@ test("score policy health owns intentional legacy RPC and auto-finalize exceptio
   assert.match(schemaHealthSource, /autoFinalizeLocked/);
   assert.match(migrationSource, /not coalesce\(has_function_privilege/);
   assert.match(migrationSource, /match_auto_finalization_locked/);
+});
+
+test("배치·팀 MMR migration은 소급·용병 비율·계수 분리를 한 번의 확정 경로에 고정한다", async () => {
+  const migrationSource = await readFile(
+    new URL("../supabase/migrations/20260728110000_player_placement_and_roster_team_mmr.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(migrationSource, /placement_match_count/);
+  assert.match(migrationSource, /status = 'confirmed'/);
+  assert.match(migrationSource, /least\(5, count\(\*\)\)/);
+  assert.match(migrationSource, /rankball_apply_placement_and_team_rating/);
+  assert.match(migrationSource, /team_role in \('captain', 'regular'\)/);
+  assert.match(migrationSource, /raw_team_delta \* coalesce\(regular_ratio, 0\)/);
+  assert.match(migrationSource, /performance_adjustment between -150 and 150/);
+  assert.match(migrationSource, /mmrRangeRatingScale/);
+  assert.match(migrationSource, /pickupAssignmentRatingScale/);
+  assert.match(migrationSource, /ranked_rating_locked_finalizer_required/);
+  assert.doesNotMatch(migrationSource, /drop\s+table|truncate\s+table|delete\s+from/i);
 });

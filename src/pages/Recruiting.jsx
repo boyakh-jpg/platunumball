@@ -53,6 +53,7 @@ import { getTournamentRosterTeam } from "../data/tournamentMappers.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { DEFAULT_RATING, MATCH_MODES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, MINUTE_MS, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORDABLE_RESERVE_SOURCES, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { isPlacementComplete } from "../lib/rating.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import {
   MMR_RANGE_POLICIES,
@@ -608,16 +609,18 @@ function RoomSlotAvatar({ user, mmr = DEFAULT_RATING, position = null }) {
 
   return (
     <span className="avatar arena-position-avatar" data-position={normalizedPosition} style={{ "--avatar": user?.avatarColor }}>
-      <img
-        className="arena-position-avatar-tier"
-        src={getTierEmblemSrc(user?.ratings?.integrated ?? mmr)}
-        alt=""
-        aria-hidden="true"
-        loading="lazy"
-        onError={(event) => {
-          event.currentTarget.hidden = true;
-        }}
-      />
+      {isPlacementComplete(user?.ratings) ? (
+        <img
+          className="arena-position-avatar-tier"
+          src={getTierEmblemSrc(user?.ratings?.integrated ?? mmr)}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.hidden = true;
+          }}
+        />
+      ) : null}
       <img
         className="arena-position-avatar-player"
         src={avatarSrc}
@@ -990,7 +993,7 @@ function TeamMemberPicker({
                 <strong>{user?.name ?? "알 수 없음"}</strong>
                 <em>{!eligible ? `${getPlayerPosition(user)} · 조건 불일치` : required ? `${getPlayerPosition(user)} · 필수` : getPlayerPosition(user)}</em>
               </span>
-              <TierBadge mmr={user?.ratings?.integrated ?? DEFAULT_RATING} compact />
+              <TierBadge mmr={user?.ratings?.integrated ?? DEFAULT_RATING} ratings={user?.ratings} compact />
               <div className="arena-party-role-buttons">
                 <button type="button" className={selected ? "active" : ""} disabled={!eligible || activeLocked} onClick={() => setMemberRole(playerId, "active")}>출전</button>
                 {canSelectReserves ? (
@@ -5889,7 +5892,13 @@ function RecruitingRoomModalReady({
                         <strong>{joinDraft.joinMode === "referee" ? "심판 가능" : joinDraft.joinMode === "team" && !selectedJoinTeamEligibility.allowed ? "참가 불가" : fit.label}</strong>
                         <em>{joinDraft.joinMode === "referee" ? "슬롯 사용 안 함" : joinDraft.joinMode === "team" && !selectedJoinTeamEligibility.allowed ? selectedJoinTeamEligibility.reason : fit.range.label}</em>
                       </div>
-                      {joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <TierBadge mmr={candidateMmr || app.currentUser.ratings.integrated} compact />}
+                      {joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : (
+                        <TierBadge
+                          mmr={candidateMmr || app.currentUser.ratings.integrated}
+                          ratings={joinDraft.joinMode === "player" ? app.currentUser.ratings : null}
+                          compact
+                        />
+                      )}
                     </div>
                     <Button type="submit" disabled={!canJoin || joiningThisRoom}>
                       {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <UserRound size={18} />}

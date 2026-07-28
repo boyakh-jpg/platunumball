@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cloneRatingPolicy, DEFAULT_RATING_POLICY } from "../lib/ratingPolicy.js";
+import { hasModeRating, isPlacementComplete } from "../lib/rating.js";
 import {
   acceptTeamInvitation,
   addMatchLatePlayer,
@@ -3032,7 +3033,8 @@ export function useAppData(authUser = null, appLocation = null) {
     const profileId = String(options.profileId ?? (playerDetailMatch ? decodeURIComponent(playerDetailMatch[1]) : "")).trim();
     const teamId = teamDetailMatch ? decodeURIComponent(teamDetailMatch[1]) : "";
     const includeTeamMemberProfiles = options.includeTeamMemberProfiles === true;
-    const cacheKey = [endpoint, kind, limit, offset, filter, region, profileId, teamId, includeTeamMemberProfiles].join(":");
+    const placementCompleteOnly = options.placementCompleteOnly === true;
+    const cacheKey = [endpoint, kind, limit, offset, filter, region, profileId, teamId, includeTeamMemberProfiles, placementCompleteOnly].join(":");
     latestDirectoryRequestRef.current = cacheKey;
     const cached = directoryCacheRef.current.get(cacheKey);
     if (!force && cached?.expiresAt > Date.now()) {
@@ -3052,7 +3054,7 @@ export function useAppData(authUser = null, appLocation = null) {
       endpoint,
       teamDetailMatch
         ? { authUserId, authEmail, teamId }
-        : { authUserId, authEmail, scope: "directory", kind, limit, offset, filter, region, profileId, includeTeamMemberProfiles },
+        : { authUserId, authEmail, scope: "directory", kind, limit, offset, filter, region, profileId, includeTeamMemberProfiles, placementCompleteOnly },
       { allowWhenDisabled: true },
     ).then((result) => {
       const remoteState = result?.state ?? {};
@@ -3125,8 +3127,11 @@ export function useAppData(authUser = null, appLocation = null) {
 
   const rankings = useMemo(
     () => ({
-      players: sortByRating(state.users, (user) => user.ratings?.integrated ?? DEFAULT_RATING),
-      mode: (mode) => sortByRating(state.users, (user) => user.ratings?.modes?.[mode] ?? user.ratings?.integrated ?? DEFAULT_RATING),
+      players: sortByRating(state.users.filter((user) => isPlacementComplete(user.ratings)), (user) => user.ratings?.integrated ?? DEFAULT_RATING),
+      mode: (mode) => sortByRating(
+        state.users.filter((user) => isPlacementComplete(user.ratings) && hasModeRating(user.ratings, mode)),
+        (user) => user.ratings?.modes?.[mode] ?? DEFAULT_RATING,
+      ),
       teams: sortByRating(state.teams, (team) => team.mmr),
       affiliations: sortByRating(state.affiliations.filter((affiliation) => affiliation.type !== "club"), (affiliation) => affiliation.score),
     }),
@@ -3407,6 +3412,7 @@ export function useAppData(authUser = null, appLocation = null) {
             region: current.page?.region ?? "",
             profileId: current.page?.profileId ?? "",
             includeTeamMemberProfiles: current.page?.includeTeamMemberProfiles === true,
+            placementCompleteOnly: current.page?.placementCompleteOnly === true,
           });
         },
         loadAdminContext,

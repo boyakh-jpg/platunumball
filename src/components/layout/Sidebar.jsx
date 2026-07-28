@@ -52,7 +52,7 @@ export default function Sidebar({ user, teams = [], auth }) {
         <div className="sidebar-profile-copy">
           <strong>{displayName}</strong>
           <small>{displayHashtag}</small>
-          <TierBadge mmr={integratedRating} compact />
+          <TierBadge mmr={integratedRating} ratings={safeUser.ratings} compact />
         </div>
         {auth?.session ? (
           <button type="button" className="sidebar-signout" onClick={auth.signOut} aria-label="로그아웃">

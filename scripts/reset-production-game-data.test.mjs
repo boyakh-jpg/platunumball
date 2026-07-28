@@ -118,9 +118,9 @@ test("catalog validation blocks unknown tables and preserved inbound references"
 });
 
 test("reset waits for every new match policy migration", () => {
-  assert.equal(REQUIRED_MIGRATIONS.length, 4);
+  assert.equal(REQUIRED_MIGRATIONS.length, 5);
   assert.equal(validateRequiredMigrations(REQUIRED_MIGRATIONS).ok, true);
-  assert.deepEqual(validateRequiredMigrations(REQUIRED_MIGRATIONS.slice(0, 3)).missing, ["20260722225700"]);
+  assert.deepEqual(validateRequiredMigrations(REQUIRED_MIGRATIONS.slice(0, 4)).missing, ["20260728110000"]);
 });
 
 test("reset SQL backs up first, resets canonical ratings, and never touches auth or R2", () => {

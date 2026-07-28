@@ -5,6 +5,7 @@ import Card from "../components/common/Card.jsx";
 import RankingTable from "../components/ranking/RankingTable.jsx";
 import RankingTabs from "../components/ranking/RankingTabs.jsx";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import { hasModeRating, isPlacementComplete } from "../lib/rating.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 const tabs = [
@@ -32,14 +33,15 @@ export default function Rankings({ app }) {
   const loadDirectory = app.actions.loadDirectory;
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";
   const directoryRegion = tab === "region" ? myRegion : "";
+  const placementCompleteOnly = !["teams", "affiliations"].includes(tab);
   useEffect(() => {
-    loadDirectory?.({ kind: directoryKind, region: directoryRegion, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
-  }, [directoryKind, directoryRegion, loadDirectory]);
+    loadDirectory?.({ kind: directoryKind, region: directoryRegion, placementCompleteOnly, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
+  }, [directoryKind, directoryRegion, loadDirectory, placementCompleteOnly]);
   const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
-  const visiblePlayers = app.rankings.players.filter((user) => !hiddenUserIds.has(user.id));
+  const visiblePlayers = app.rankings.players.filter((user) => isPlacementComplete(user.ratings) && !hiddenUserIds.has(user.id));
   const visibleModePlayers = tab === "teams" || tab === "affiliations" || tab === "integrated" || tab === "region"
     ? visiblePlayers
-    : app.rankings.mode(tab).filter((user) => !hiddenUserIds.has(user.id));
+    : app.rankings.mode(tab).filter((user) => isPlacementComplete(user.ratings) && hasModeRating(user.ratings, tab) && !hiddenUserIds.has(user.id));
   const regionalPlayers = visiblePlayers.filter((user) => (
     user.region === myRegion && (
       user.id === app.currentUser.id ||

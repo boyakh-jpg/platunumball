@@ -74,6 +74,8 @@ export function fromRemoteTeam(row, memberRows) {
     homeCourt: row.home_court,
     region: row.region,
     mmr: row.mmr ?? DEFAULT_RATING,
+    rosterMmr: row.roster_mmr ?? row.mmr ?? DEFAULT_RATING,
+    performanceAdjustment: Number(row.performance_adjustment ?? 0),
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     accent: row.accent,

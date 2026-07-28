@@ -9,15 +9,39 @@ import { getUserHashtag, toHashtag } from "../lib/handles.js";
 import { nullableText } from "./rowUtils.js";
 
 function makeDefaultRatings() {
-  return { integrated: DEFAULT_PLAYER_RATINGS.integrated, modes: { ...DEFAULT_PLAYER_RATINGS.modes } };
+  return {
+    integrated: DEFAULT_PLAYER_RATINGS.integrated,
+    modes: { ...DEFAULT_PLAYER_RATINGS.modes },
+    placement: {
+      ...DEFAULT_PLAYER_RATINGS.placement,
+      modeCounts: { ...DEFAULT_PLAYER_RATINGS.placement.modeCounts },
+    },
+  };
 }
 
 export function normalizeRatings(ratings = {}) {
   const defaults = makeDefaultRatings();
   const integrated = Number(ratings?.integrated);
+  const hasLegacyRatings = Boolean(
+    ratings
+    && typeof ratings === "object"
+    && (
+      Object.prototype.hasOwnProperty.call(ratings, "integrated")
+      || Object.prototype.hasOwnProperty.call(ratings, "modes")
+    ),
+  );
   return {
     integrated: Number.isFinite(integrated) ? integrated : defaults.integrated,
     modes: { ...defaults.modes, ...(ratings?.modes && typeof ratings.modes === "object" ? ratings.modes : {}) },
+    placement: ratings?.placement && typeof ratings.placement === "object"
+      ? {
+        ...defaults.placement,
+        ...ratings.placement,
+        modeCounts: ratings.placement.modeCounts && typeof ratings.placement.modeCounts === "object"
+          ? { ...ratings.placement.modeCounts }
+          : {},
+      }
+      : hasLegacyRatings ? null : defaults.placement,
   };
 }
 
@@ -123,7 +147,14 @@ export function fromRemoteProfile(row) {
     discordConnection: row.discord_connection ?? null,
     discordUserId: row.discord_user_id ?? row.discord_connection?.userId ?? null,
     representativeTeamId: row.app_settings?.representativeTeamId ?? "",
-    ratings: normalizeRatings(row.ratings),
+    ratings: normalizeRatings({
+      ...(row.ratings ?? {}),
+      placement: row.ratings?.placement ?? (
+        Number.isFinite(Number(row.placement_match_count))
+          ? { matchCount: Number(row.placement_match_count) }
+          : undefined
+      ),
+    }),
   };
 }
 

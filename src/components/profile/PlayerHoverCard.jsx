@@ -9,6 +9,7 @@ import { getDiscordDisplayName, getDiscordProfileUrl } from "../../lib/discord.j
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { canUseHoverPreview, clearPinnedHoverPreview, getPinnedHoverPreviewKey, isTouchPreviewEvent, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 import { getAgeGroupForUser, getAgeGroupLabel, getRepresentativeTeam, getUserProfileTeams } from "../../lib/profileSetup.js";
+import { getPlacementLabel, hasModeRating, isPlacementComplete } from "../../lib/rating.js";
 import { getTierDivision } from "../../lib/tier.js";
 import { getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../../lib/constants.js";
 import ProfileEmblem from "./ProfileEmblem.jsx";
@@ -90,10 +91,13 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
   const activeTeam = getRepresentativeTeam(user.id, userTeams, user.representativeTeamId) ?? userTeams[0];
   const discordProfileUrl = getDiscordProfileUrl(user);
   const discordDisplayName = getDiscordDisplayName(user);
-  const modes = [
-    ["통합", user.ratings?.integrated],
-    ...Object.entries(user.ratings?.modes ?? {}),
-  ].filter(([, mmr]) => Number.isFinite(Number(mmr)));
+  const placementComplete = isPlacementComplete(user.ratings);
+  const modes = placementComplete
+    ? [
+        { label: "통합", mode: "", mmr: user.ratings?.integrated },
+        ...Object.entries(user.ratings?.modes ?? {}).map(([mode, mmr]) => ({ label: mode, mode, mmr })),
+      ]
+    : [{ label: "통합", mode: "", mmr: user.ratings?.integrated }];
   const profilePath = to ?? `/app/players/${user.id}`;
   const props = as === "span" ? {} : { role: "button", tabIndex: 0 };
   const showHover = () => {
@@ -193,15 +197,20 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
           </span>
         </span>
         <span className="player-hover-tier-grid">
-          {modes.map(([mode, mmr]) => (
-            <span className={`player-hover-tier-row${mode === "통합" ? " is-integrated" : ""}`} key={mode}>
-              <TierEmblem mmr={Number(mmr)} size="sm" />
-              <span>
-                <b>{mode}</b>
-                <span className="hover-tier-label">{getTierDivision(Number(mmr))}</span>
+          {modes.map(({ label, mode, mmr }) => {
+            const modeMissing = Boolean(mode) && !hasModeRating(user.ratings, mode);
+            return (
+              <span className={`player-hover-tier-row${label === "통합" ? " is-integrated" : ""}`} key={label}>
+                {modeMissing ? <span className="rating-card-empty-mark" aria-hidden="true">—</span> : <TierEmblem mmr={Number(mmr)} ratings={user.ratings} size="sm" />}
+                <span>
+                  <b>{label}</b>
+                  <span className="hover-tier-label">
+                    {!placementComplete ? getPlacementLabel(user.ratings) : modeMissing ? "기록 없음" : getTierDivision(Number(mmr))}
+                  </span>
+                </span>
               </span>
-            </span>
-          ))}
+            );
+          })}
         </span>
         <span className="player-hover-team">
           <b>대표팀</b>

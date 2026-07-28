@@ -20,6 +20,7 @@ import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
 import { addDateDays, canUserResolveMatchDispute, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideResult, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getOpenMatchDisputes, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
+import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
@@ -76,6 +77,13 @@ function compareSchedule(a, b) {
 function getUserResult(match, userId) {
   const sideName = getMatchUserParticipantSideName(match, userId) ?? "teamA";
   return getMatchSideResult(match, sideName);
+}
+
+function getPlayerRatingSummary(user = {}) {
+  if (!user.ratings) return user.trustScore ?? "-";
+  if (!isPlacementComplete(user.ratings)) return getPlacementLabel(user.ratings);
+  const mmr = Number(user.ratings?.integrated ?? DEFAULT_RATING);
+  return `${getTierDivision(mmr)} · ${Math.round(mmr)} MMR`;
 }
 
 function userNeedsResultInput(match, userId) {
@@ -182,10 +190,12 @@ export default function Home({ app }) {
     ? regionalPlayerIds
       .map((playerId) => app.state.users.find((item) => item.id === playerId))
       .filter(Boolean)
+      .filter((item) => isPlacementComplete(item.ratings))
       .map((item) => ({ ...item, seasonScore: item.ratings.integrated }))
-    : getPlayerSeasonRows(app.state.users, app.state.matches, season, user.region);
+    : getPlayerSeasonRows(app.state.users, app.state.matches, season, user.region)
+      .filter((item) => isPlacementComplete(item.ratings));
   const snapshotRegionalRank = Number(app.state.homeSummary?.regionalRank);
-  const mySeasonIndex = Number.isInteger(snapshotRegionalRank) && snapshotRegionalRank > 0
+  const mySeasonIndex = isPlacementComplete(user.ratings) && Number.isInteger(snapshotRegionalRank) && snapshotRegionalRank > 0
     ? snapshotRegionalRank - 1
     : seasonRows.findIndex((row) => row.id === user.id);
   const mySeasonRow = getPlayerSeasonRows([user], app.state.matches, season, user.region)[0] ?? null;
@@ -419,7 +429,7 @@ export default function Home({ app }) {
           entityId: item.id,
           label: item.name,
           kind: "PLAYER",
-          meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
+          meta: `${item.region} · ${item.position} · ${getPlayerRatingSummary(item)}`,
           href: `/app/players/${item.id}`,
           score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(favoritePlayerIds.includes(item.id) || favoriteRefereeIds.includes(item.id)) * 20000 + Number(item.region === user.region) * 10000 + item.ratings.integrated,
           haystack: `${item.name} ${hashtag} ${item.region} ${item.position} ${item.club}`,
@@ -478,7 +488,7 @@ export default function Home({ app }) {
           id: `favorite-player-${item.id}`,
           label: item.name,
           kind: "PLAYER",
-          meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
+          meta: `${item.region} · ${item.position} · ${getPlayerRatingSummary(item)}`,
           href: `/app/players/${item.id}`,
           haystack: `${item.name} ${hashtag} ${item.region} ${item.position} ${item.club}`,
           avatar: item.avatarColor,
@@ -543,9 +553,12 @@ export default function Home({ app }) {
   const latestMyMatches = recentFiveMatches;
   const nextUpcomingMatch = upcomingItems[0]?.item ?? null;
   const nextUpcomingLine = nextUpcomingMatch ? getUserMatchLine(nextUpcomingMatch, user.id) : null;
-  const rankSpotlightTier = getTier(user.ratings.integrated);
-  const rankSpotlightDivision = getTierDivisionNumber(user.ratings.integrated);
-  const rankSpotlightLabel = rankSpotlightDivision ? `${rankSpotlightTier.name} ${rankSpotlightDivision}` : rankSpotlightTier.name;
+  const placementComplete = isPlacementComplete(user.ratings);
+  const rankSpotlightTier = placementComplete ? getTier(user.ratings.integrated) : null;
+  const rankSpotlightDivision = placementComplete ? getTierDivisionNumber(user.ratings.integrated) : null;
+  const rankSpotlightLabel = placementComplete
+    ? (rankSpotlightDivision ? `${rankSpotlightTier.name} ${rankSpotlightDivision}` : rankSpotlightTier.name)
+    : "배정 전";
   const renderHomeSearchItem = (item) => {
     const content = (
       <>
@@ -608,7 +621,7 @@ export default function Home({ app }) {
       entityId: item.id,
       label: item.name,
       kind: item.kind === "referee" ? "REFEREE" : "PLAYER",
-      meta: `${item.region ?? "지역 미정"} · ${item.position ?? "포지션"} · ${item.ratings?.integrated ?? item.trustScore ?? "-"}`,
+      meta: `${item.region ?? "지역 미정"} · ${item.position ?? "포지션"} · ${getPlayerRatingSummary(item)}`,
       href: `/app/players/${item.id}`,
       avatar: item.avatarColor,
       user: item,
@@ -652,7 +665,7 @@ export default function Home({ app }) {
               <div>
                 <p className="eyebrow">내 랭크 보드</p>
                 <h1>{user.name}님의 오늘 코트 현황</h1>
-                <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
+                <p>{user.region} · {user.position} · 통합 {getPlayerRatingSummary(user)}</p>
               </div>
             </div>
             <aside className="home-hero-board ui-liquid-glass" aria-label="내 코트 요약">
@@ -804,10 +817,10 @@ export default function Home({ app }) {
               <div className="rank-spotlight-content">
                 <p className="eyebrow">My Rank</p>
                 <div className="rank-spotlight-main">
-                  <TierEmblem mmr={user.ratings.integrated} size="md" />
+                  <TierEmblem mmr={user.ratings.integrated} ratings={user.ratings} size="md" />
                   <div>
                     <strong>{rankSpotlightLabel}</strong>
-                    <span>{Math.round(user.ratings.integrated)} MMR · 최근 5경기 {recentFiveWins}승</span>
+                    <span>{placementComplete ? `${Math.round(user.ratings.integrated)} MMR` : getPlacementLabel(user.ratings)} · 최근 5경기 {recentFiveWins}승</span>
                   </div>
                 </div>
                 <div className="rank-profile-tabs rank-spotlight-links">

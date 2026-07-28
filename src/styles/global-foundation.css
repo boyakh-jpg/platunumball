@@ -1315,6 +1315,10 @@ html[data-theme="light"] .scroll-to-top-button {
   height: 24px;
 }
 
+.tier-badge-placement {
+  color: var(--muted);
+}
+
 .player-hover-trigger,
 .team-hover-trigger,
 .court-hover-trigger,
@@ -2027,6 +2031,26 @@ span.referee-hover-card {
   width: 168px;
 }
 
+.tier-emblem-placement {
+  --tier-color: var(--muted);
+  min-height: 68px;
+}
+
+.tier-emblem-placement::before {
+  border: 1px dashed color-mix(in srgb, var(--muted) 42%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+}
+
+.tier-emblem-placement > span {
+  position: relative;
+  z-index: 1;
+  color: var(--muted);
+  font-family: var(--sports-display-font);
+  font-size: clamp(1.45rem, 45%, 3.2rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
 .tier-emblem figcaption {
   position: relative;
   z-index: 1;
@@ -2173,6 +2197,16 @@ span.referee-hover-card {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-auto-rows: minmax(118px, auto);
   gap: var(--page-section-gap);
+}
+
+.rating-card-pending {
+  align-content: center;
+}
+
+.rating-card-empty-mark {
+  color: var(--muted);
+  font-size: 2rem;
+  font-weight: 900;
 }
 
 .profile-rating-primary {

@@ -17,6 +17,10 @@ const REQUIRED_COLUMNS = {
     "avatar_border_enabled",
     "avatar_border_color",
     "discord_avatar_url",
+    "placement_match_count",
+    "placement_evidence_weight",
+    "placement_weighted_sum",
+    "placement_completed_at",
   ],
   public_profiles: [
     "id",
@@ -31,6 +35,7 @@ const REQUIRED_COLUMNS = {
     "avatar_border_enabled",
     "avatar_border_color",
     "discord_avatar_url",
+    "placement_match_count",
   ],
   teams: [
     "id",
@@ -54,6 +59,8 @@ const REQUIRED_COLUMNS = {
     "emblem_moderated_at",
     "emblem_moderation_reason",
     "deleted_at",
+    "roster_mmr",
+    "performance_adjustment",
   ],
   team_members: [
     "team_id",
@@ -194,7 +201,10 @@ const REQUIRED_COLUMNS = {
     "side",
     "age_group",
     "mode_mmr",
+    "integrated_mmr",
     "mmr_eligible",
+    "team_id",
+    "team_role",
     "snapshot_source",
     "snapshotted_at",
   ],

@@ -143,10 +143,12 @@ import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
 import {
   applyMatchRating,
   averageTeamMmr,
+  calculateRosterBasedTeamMmr,
   calculateTeamDelta,
   getAveragePlayerMmr,
   getFinalizationRatingContext,
   getMatchSideTeamGroups,
+  TEAM_PERFORMANCE_ADJUSTMENT_LIMIT,
   teamRegularRatio,
 } from "../lib/rating.js";
 import {
@@ -1407,6 +1409,8 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     region: team.region,
     home_court: team.homeCourt,
     mmr: team.mmr ?? DEFAULT_RATING,
+    roster_mmr: team.rosterMmr ?? team.mmr ?? DEFAULT_RATING,
+    performance_adjustment: team.performanceAdjustment ?? 0,
     wins: team.wins ?? 0,
     losses: team.losses ?? 0,
     accent: team.accent,
@@ -2222,15 +2226,22 @@ function finalizeMatch(state, targetMatch) {
 
   const teams = state.teams.map((team) => {
     const teamDelta = teamDeltaById[team.id];
+    const base = calculateRosterBasedTeamMmr(team, users);
     if (teamDelta) {
+      const performanceAdjustment = Math.max(
+        -TEAM_PERFORMANCE_ADJUSTMENT_LIMIT,
+        Math.min(TEAM_PERFORMANCE_ADJUSTMENT_LIMIT, base.performanceAdjustment + teamDelta.delta),
+      );
       return {
         ...team,
-        mmr: Math.round(team.mmr + teamDelta.delta),
+        rosterMmr: base.rosterMmr,
+        performanceAdjustment,
+        mmr: Math.round(base.rosterMmr + performanceAdjustment),
         wins: team.wins + (teamDelta.actual === 1 ? 1 : 0),
         losses: team.losses + (teamDelta.actual === 0 ? 1 : 0),
       };
     }
-    return team;
+    return { ...team, ...base };
   });
 
   const confirmedMatch = {
@@ -4979,7 +4990,16 @@ export function generatePickupSideAssignment(state, matchId, assignmentMode = ""
     ? [...rerollState.usedByIds, state.currentUserId]
     : rerollState.usedByIds;
   const pickupRerollCount = reroll ? rerollState.count + 1 : rerollState.count;
-  const ratingScale = match.ranked === false ? 0 : getPickupTeamAssignmentRatingScale(safeMode);
+  const mmrRangeRatingScale = Number(
+    match.rules?.mmrRangeRatingScale
+      ?? match.ratingScale
+      ?? match.rules?.ratingScale
+      ?? 1,
+  );
+  const pickupAssignmentRatingScale = getPickupTeamAssignmentRatingScale(safeMode);
+  const ratingScale = match.ranked === false
+    ? 0
+    : mmrRangeRatingScale * pickupAssignmentRatingScale;
   const nextMatch = {
     ...match,
     teamA: { ...(match.teamA ?? {}), name: SIDE_LABEL_TEXT.teamA, teamId: null, playerTeams: {}, players: assignment.teamA.active },
@@ -5000,6 +5020,8 @@ export function generatePickupSideAssignment(state, matchId, assignmentMode = ""
       sideAssignmentConfirmedBy: null,
       pickupRerollUserIds,
       pickupRerollCount,
+      mmrRangeRatingScale,
+      pickupAssignmentRatingScale,
       ratingScale,
     },
     ratingScale,

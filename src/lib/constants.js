@@ -252,6 +252,15 @@ export const DEFAULT_RATING = 1200;
 export const DEFAULT_PLAYER_RATINGS = Object.freeze({
   integrated: DEFAULT_RATING,
   modes: Object.freeze(Object.fromEntries(MATCH_MODES.map((mode) => [mode.id, DEFAULT_RATING]))),
+  placement: Object.freeze({
+    matchCount: 0,
+    target: 5,
+    completed: false,
+    completedAt: null,
+    evidenceWeight: 0,
+    weightedTotal: DEFAULT_RATING * 2.5,
+    modeCounts: Object.freeze({}),
+  }),
 });
 
 export const CREDIBILITY_LEVELS = {

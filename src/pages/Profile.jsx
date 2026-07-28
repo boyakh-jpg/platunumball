@@ -14,6 +14,7 @@ import { BASKETBALL_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { canChangeProfileName, getNextNameChangeDate, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { isPlacementComplete } from "../lib/rating.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 const POSITION_OPTIONS = BASKETBALL_POSITIONS;
@@ -220,10 +221,10 @@ export default function Profile({ app }) {
           </Card>
           <AffiliationEditor user={user} affiliations={app.state.affiliations} actions={app.actions} />
           <section className="profile-rating-grid">
-            <RatingCard className="profile-rating-primary" title="통합" mmr={user.ratings.integrated} />
-            {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
-              <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} />
-            ))}
+            <RatingCard className="profile-rating-primary" title="통합" mmr={user.ratings.integrated} ratings={user.ratings} />
+            {isPlacementComplete(user.ratings) ? Object.entries(user.ratings.modes).map(([mode, mmr]) => (
+              <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} ratings={user.ratings} mode={mode} />
+            )) : null}
           </section>
           <RecentRecordCard records={myRecords} userId={user.id} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} />
         </div>

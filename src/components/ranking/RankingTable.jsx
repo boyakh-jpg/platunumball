@@ -41,7 +41,7 @@ export default function RankingTable({ rows, type = "players", mode = "integrate
               </Link>
               )
             )}
-            {type === "players" || type === "teams" ? <TierBadge mmr={mmr} compact /> : <Badge tone="blue">{row.wins}승</Badge>}
+            {type === "players" || type === "teams" ? <TierBadge mmr={mmr} ratings={type === "players" ? row.ratings : null} compact /> : <Badge tone="blue">{row.wins}승</Badge>}
             <strong className="ranking-score">{Math.round(mmr)}</strong>
           </div>
         );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Copy } from "lucide-react";
 import TierEmblem from "../rating/TierEmblem.jsx";
+import { getPlacementLabel, isPlacementComplete } from "../../lib/rating.js";
 import { getTierDivision } from "../../lib/tier.js";
 
 function getShareUrl(user) {
@@ -14,6 +15,7 @@ function getShareUrl(user) {
 export default function ShareCard({ user }) {
   const [copied, setCopied] = useState(false);
   const mmr = Number(user.ratings.integrated);
+  const placementComplete = isPlacementComplete(user.ratings);
   const shareUrl = getShareUrl(user);
 
   const copyLink = async () => {
@@ -27,14 +29,16 @@ export default function ShareCard({ user }) {
     <div className="share-card">
       <div className="share-card-copy">
         <strong>{user.name}</strong>
-        <span className="share-card-tier-copy">{getTierDivision(mmr)} · {Math.round(mmr)} MMR</span>
+        <span className="share-card-tier-copy">
+          {placementComplete ? `${getTierDivision(mmr)} · ${Math.round(mmr)} MMR` : getPlacementLabel(user.ratings)}
+        </span>
         <button className="share-card-action" type="button" onClick={copyLink}>
           <Copy size={16} />
           {copied ? "복사됨" : "프로필 링크 복사"}
         </button>
       </div>
       <div className="share-card-emblem" aria-hidden="true">
-        <TierEmblem mmr={mmr} size="hero" />
+        <TierEmblem mmr={mmr} ratings={user.ratings} size="hero" />
       </div>
     </div>
   );

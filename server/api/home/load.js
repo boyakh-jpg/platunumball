@@ -141,7 +141,14 @@ async function loadHomeRegionTeams(supabase, region = "") {
 async function loadHomeRegionPlayers(supabase, profile = null) {
   const region = String(profile?.region ?? "").trim();
   const profileId = String(profile?.id ?? "").trim();
-  if (!region || !profileId) return { users: [], playerIds: [], rank: null, updatedAt: 0 };
+  const placementMatchCount = Number(
+    profile?.placement_match_count
+      ?? profile?.ratings?.placement?.matchCount
+      ?? 5,
+  );
+  if (!region || !profileId || placementMatchCount < 5) {
+    return { users: [], playerIds: [], rank: null, updatedAt: 0 };
+  }
 
   const integratedRatingValue = Number(profile?.ratings?.integrated);
   const integratedRating = Number.isFinite(integratedRatingValue) ? integratedRatingValue : DEFAULT_RATING;
@@ -149,6 +156,7 @@ async function loadHomeRegionPlayers(supabase, profile = null) {
     .from("profiles")
     .select(`${PUBLIC_PROFILE_COLUMNS},app_settings`)
     .eq("region", region)
+    .gte("placement_match_count", 5)
     .or(HOME_REGION_RANKING_PRIVACY_FILTER)
     .order("ratings->integrated", { ascending: false, nullsFirst: false })
     .order("id", { ascending: true })
@@ -157,12 +165,14 @@ async function loadHomeRegionPlayers(supabase, profile = null) {
     .from("profiles")
     .select("id", { count: "exact", head: true })
     .eq("region", region)
+    .gte("placement_match_count", 5)
     .or(HOME_REGION_RANKING_PRIVACY_FILTER)
     .gt("ratings->integrated", integratedRating);
   const tiedBeforeQuery = supabase
     .from("profiles")
     .select("id", { count: "exact", head: true })
     .eq("region", region)
+    .gte("placement_match_count", 5)
     .or(HOME_REGION_RANKING_PRIVACY_FILTER)
     .eq("ratings->integrated", integratedRating)
     .lt("id", profileId);

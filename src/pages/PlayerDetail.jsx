@@ -17,6 +17,7 @@ import { getUserHashtag } from "../lib/handles.js";
 import { getTeamRoleLabel, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { compareMatchRecency, formatStatLine, getMatchSideScore as getSideScore, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { getRepresentativeTeam, getUserProfileTeams } from "../lib/profileSetup.js";
+import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTierDivision } from "../lib/tier.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -127,6 +128,8 @@ export default function PlayerDetail({ app }) {
     : 0;
   const discordProfileUrl = getDiscordProfileUrl(player);
   const discordDisplayName = getDiscordDisplayName(player);
+  const placementComplete = isPlacementComplete(player.ratings);
+  const placementLabel = getPlacementLabel(player.ratings);
 
   const renderRelationship = (title, counts) => (
     <Card className="section-card">
@@ -162,7 +165,7 @@ export default function PlayerDetail({ app }) {
             <h1>{player.name}</h1>
             <p>{getUserHashtag(player)} · 신뢰도 {player.trustScore}</p>
             <div className="badge-row">
-              <TierBadge mmr={player.ratings.integrated} />
+              <TierBadge mmr={player.ratings.integrated} ratings={player.ratings} />
               <Badge tone="green">{player.region}</Badge>
               <Badge tone="blue">{player.position}</Badge>
               {discordProfileUrl ? (
@@ -174,10 +177,10 @@ export default function PlayerDetail({ app }) {
           </div>
         </div>
         <div className="tier-statement rank-tier-statement ui-liquid-glass">
-          <TierEmblem mmr={player.ratings.integrated} size="hero" showLabel />
+          <TierEmblem mmr={player.ratings.integrated} ratings={player.ratings} size="hero" showLabel />
           <div>
-            <span>{getTierDivision(player.ratings.integrated)}</span>
-            <em className="tier-score-line">{Math.round(player.ratings.integrated)} MMR</em>
+            <span>{placementComplete ? getTierDivision(player.ratings.integrated) : "배정 전"}</span>
+            <em className="tier-score-line">{placementComplete ? `${Math.round(player.ratings.integrated)} MMR` : placementLabel.replace("배정 전 · ", "")}</em>
           </div>
         </div>
       </section>
@@ -237,12 +240,12 @@ export default function PlayerDetail({ app }) {
                 <p className="eyebrow">Ranked Solo</p>
                 <h2>통합 랭크</h2>
               </div>
-              <Badge tone="gold">{Math.round(player.ratings.integrated)} MMR</Badge>
+              <Badge tone={placementComplete ? "gold" : "neutral"}>{placementComplete ? `${Math.round(player.ratings.integrated)} MMR` : placementLabel}</Badge>
             </div>
             <div className="rank-record-main">
-              <TierEmblem mmr={player.ratings.integrated} size="md" showLabel />
+              <TierEmblem mmr={player.ratings.integrated} ratings={player.ratings} size="md" showLabel />
               <div>
-                <strong>{getTierDivision(player.ratings.integrated)}</strong>
+                <strong>{placementComplete ? getTierDivision(player.ratings.integrated) : "배정 전"}</strong>
                 <span>{wins}승 {losses}패 · 승률 {winRate}%</span>
               </div>
             </div>
@@ -280,10 +283,10 @@ export default function PlayerDetail({ app }) {
         <div className={`${canViewStatSummary || canViewTeamHistory ? "content-grid wide-left" : "page-stack"} player-profile-detail-content`}>
         <div className="page-stack">
           <section className="mode-grid">
-            <RatingCard title="통합" mmr={player.ratings.integrated} />
-            {Object.entries(player.ratings.modes).map(([mode, mmr]) => (
-              <RatingCard key={mode} title={mode} mmr={mmr} />
-            ))}
+            <RatingCard title="통합" mmr={player.ratings.integrated} ratings={player.ratings} />
+            {placementComplete ? Object.entries(player.ratings.modes).map(([mode, mmr]) => (
+              <RatingCard key={mode} title={mode} mmr={mmr} ratings={player.ratings} mode={mode} />
+            )) : null}
           </section>
 
           {(personalRecordCount > 0 || personalArchive?.loading) ? (

@@ -17,6 +17,7 @@ import {
   getTeamSeasonRows,
 } from "../lib/season.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import { isPlacementComplete } from "../lib/rating.js";
 
 function formatDate(value) {
   return value ? value.replaceAll("-", ".") : "일정 미정";
@@ -28,9 +29,11 @@ export default function Season({ app }) {
   const season = getCurrentSeason(app.state);
   const region = app.currentUser.region;
   const progress = getSeasonProgress(season);
-  const nationalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체");
+  const nationalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체")
+    .filter((user) => isPlacementComplete(user.ratings));
   const nationalTeamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, "전체");
   const regionalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, region)
+    .filter((user) => isPlacementComplete(user.ratings))
     .filter((user) => user.id === app.currentUser.id || user.privacy?.regionRanking !== false);
   const nationalRankByPlayerId = new Map(nationalPlayerRows.map((user, index) => [user.id, index + 1]));
   const nationalCandidates = regionalPlayerRows.slice(0, 5);
@@ -149,7 +152,7 @@ export default function Season({ app }) {
                       {user.seasonStats.points}P/{user.seasonStats.rebounds}R/{user.seasonStats.assists}A
                     </em>
                   </div>
-                  <TierBadge mmr={user.ratings.integrated} compact />
+                  <TierBadge mmr={user.ratings.integrated} ratings={user.ratings} compact />
                 </PlayerHoverCard>
               ))}
             </div>
@@ -196,7 +199,7 @@ export default function Season({ app }) {
                     <b>{user.name}</b>
                     <em>지역 {index + 1}위 · 전국 {nationalRankByPlayerId.get(user.id) ?? "-"}위</em>
                   </div>
-                  <TierBadge mmr={user.ratings.integrated} compact />
+                  <TierBadge mmr={user.ratings.integrated} ratings={user.ratings} compact />
                 </PlayerHoverCard>
               )) : <div className="ui-empty-state-compact">지역 시즌 기록이 없습니다.</div>}
             </div>

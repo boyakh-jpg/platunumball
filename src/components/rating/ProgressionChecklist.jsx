@@ -1,5 +1,6 @@
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
+import { getPlacementLabel, isPlacementComplete } from "../../lib/rating.js";
 import { getTier, TIERS } from "../../lib/tier.js";
 
 function playerInMatch(match, userId) {
@@ -11,6 +12,26 @@ function countMatches(matches, userId, predicate) {
 }
 
 export default function ProgressionChecklist({ user, matches }) {
+  if (!isPlacementComplete(user.ratings)) {
+    return (
+      <Card className="section-card progression-card">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Placement</p>
+            <h2>배치 진행 중</h2>
+          </div>
+          <Badge tone="neutral">{getPlacementLabel(user.ratings)}</Badge>
+        </div>
+        <div className="progression-list">
+          <div>
+            <span>·</span>
+            <strong>경쟁전 5경기 완료</strong>
+            <em>{getPlacementLabel(user.ratings).replace("배정 전 · ", "")}</em>
+          </div>
+        </div>
+      </Card>
+    );
+  }
   const currentTier = getTier(user.ratings.integrated);
   const nextTier = TIERS.find((tier) => tier.min > currentTier.min);
   const ranked3Or5 = countMatches(matches, user.id, (match) => match.ranked !== false && ["3v3", "5v5"].includes(match.mode));

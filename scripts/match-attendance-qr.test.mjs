@@ -441,6 +441,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const attendanceStartOrderSql = await readSource("supabase/migrations/20260727090000_fix_match_start_attendance_trigger_order.sql");
   const substitutionPermissionSql = await readSource("supabase/migrations/20260725025000_match_substitution_permission_hardening.sql");
   const consistencySql = await readSource("supabase/migrations/20260726090000_match_policy_consistency.sql");
+  const placementAndTeamMmrSql = await readSource("supabase/migrations/20260728110000_player_placement_and_roster_team_mmr.sql");
   const unifiedRosterSql = await readSource("supabase/migrations/20260727110000_unified_match_roster_transition.sql");
   const scoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727144000_allow_score_only_postgame_roster.sql");
   const enforcedScoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727145000_enforce_score_only_postgame_roster.sql");
@@ -461,14 +462,13 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(clockAccuracySql, /ended_active_elapsed_ms/u);
   assert.match(clockAccuracySql, /play_interval\.ended_active_elapsed_ms/u);
   assert.match(consistencySql, /when play_interval\.started_active_elapsed_ms is not null/u);
-  assert.match(consistencySql, /else 0/u);
-  assert.doesNotMatch(
-    consistencySql.slice(
-      consistencySql.indexOf("create or replace function public.rankball_sync_match_play_intervals"),
-      consistencySql.indexOf("do $migration$", consistencySql.indexOf("create or replace function public.rankball_sync_match_play_intervals")),
-    ),
-    /extract\(epoch/u,
+  assert.match(placementAndTeamMmrSql, /gameClockEnabled/u);
+  assert.match(placementAndTeamMmrSql, /extract\(epoch\s+from/u);
+  assert.match(
+    placementAndTeamMmrSql,
+    /coalesce\(\(new\.rules\s*->>\s*'gameClockEnabled'\)::boolean,\s*false\)\s*=\s*false/u,
   );
+  assert.match(placementAndTeamMmrSql, /else 0/u);
   assert.match(roomEquipmentSql, /'ballProvider', ball_provider/u);
   assert.match(roomEquipmentSql, /when p_mode = '1v1' then false/u);
   assert.match(roomEquipmentSql, /'vestsProvided', vests_provided/u);

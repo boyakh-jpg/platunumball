@@ -202,7 +202,7 @@ export default function TeamDetail({ app }) {
                 <strong>{user.name}</strong>
                 <span>{user.position} · {user.region}</span>
               </div>
-              <TierBadge mmr={user.ratings.integrated} compact />
+              <TierBadge mmr={user.ratings.integrated} ratings={user.ratings} compact />
               <MemberTypeBadge role={member.role} />
             </PlayerHoverCard>
           );

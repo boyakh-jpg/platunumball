@@ -1,4 +1,5 @@
 import { getTier, getTierDivision } from "../../lib/tier.js";
+import { getPlacementLabel, isPlacementComplete } from "../../lib/rating.js";
 import { assetUrl } from "../../lib/assets.js";
 
 const emblemByTier = {
@@ -17,7 +18,20 @@ export function getTierEmblemSrc(mmr) {
   return assetUrl(emblemByTier[tier.name] ?? emblemByTier.Rookie);
 }
 
-export default function TierEmblem({ mmr, size = "md", showLabel = false }) {
+export default function TierEmblem({ mmr, ratings = null, size = "md", showLabel = false }) {
+  if (ratings && !isPlacementComplete(ratings)) {
+    return (
+      <figure className={`tier-emblem tier-emblem-${size} tier-emblem-placement`}>
+        <span aria-hidden="true">?</span>
+        {showLabel ? (
+          <figcaption>
+            <strong>배정 전</strong>
+            <span>{getPlacementLabel(ratings).replace("배정 전 · ", "")}</span>
+          </figcaption>
+        ) : null}
+      </figure>
+    );
+  }
   const tier = getTier(mmr);
   const division = getTierDivision(mmr);
   const src = getTierEmblemSrc(mmr);

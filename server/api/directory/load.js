@@ -436,6 +436,7 @@ async function loadDirectoryPage(context, body = {}) {
   const pageRequest = getPageRequest(body, { kind });
   const includeSelfDetails = kind === "self";
   const includeTeamMemberProfiles = body.includeTeamMemberProfiles === true;
+  const placementCompleteOnly = body.placementCompleteOnly === true;
   const currentUser = getCurrentUser(context);
   const currentProfileId = context.profileId ?? currentUser.id;
 
@@ -503,6 +504,7 @@ async function loadDirectoryPage(context, body = {}) {
     if (profileId) query = query.eq("id", profileId);
     else {
       if (region) query = query.eq("region", region);
+      if (placementCompleteOnly) query = query.gte("placement_match_count", 5);
       query = applyDirectoryTextFilter(query, ["name", "hashtag", "handle", "region", "position"], filter);
     }
     profilePage = await readPage(query, profileId ? { limit: 1, offset: 0 } : pageRequest, "public_profiles");
@@ -633,6 +635,7 @@ async function loadDirectoryPage(context, body = {}) {
       region,
       profileId,
       includeTeamMemberProfiles,
+      placementCompleteOnly,
       limit: pageRequest.limit,
       offset: pageRequest.offset,
       nextOffset: hasMore ? pageRequest.offset + pageRequest.limit : null,

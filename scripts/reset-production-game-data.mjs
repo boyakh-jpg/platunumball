@@ -9,6 +9,7 @@ export const REQUIRED_MIGRATIONS = Object.freeze([
   "20260722225500",
   "20260722225600",
   "20260722225700",
+  "20260728110000",
 ]);
 
 export const DELETE_TABLES = Object.freeze([
@@ -243,11 +244,12 @@ create table ${quoteIdentifier(backupSchema)}.courts_match_snapshot as
   from public.courts;
 
 create table ${quoteIdentifier(backupSchema)}.profiles_rating_snapshot as
-  select id, ratings, trust_score, streak, updated_at
+  select id, ratings, placement_match_count, placement_evidence_weight,
+    placement_weighted_sum, placement_completed_at, trust_score, streak, updated_at
   from public.profiles;
 
 create table ${quoteIdentifier(backupSchema)}.teams_rating_snapshot as
-  select id, mmr, wins, losses, updated_at
+  select id, mmr, roster_mmr, performance_adjustment, wins, losses, updated_at
   from public.teams;
 
 update ${quoteIdentifier(backupSchema)}.reset_manifest
@@ -380,13 +382,19 @@ where completed_match_count is distinct from 0
    or recommendation_score is distinct from round(adjusted_rating::numeric, 3);
 
 update public.profiles
-set ratings = '{"integrated":1200,"modes":{"1v1":1200,"2v2":1200,"3v3":1200,"5v5":1200}}'::jsonb,
+set ratings = '{"integrated":1200,"modes":{"1v1":1200,"2v2":1200,"3v3":1200,"5v5":1200},"placement":{"matchCount":0,"target":5,"completed":false,"completedAt":null,"evidenceWeight":0,"weightedTotal":3000,"modeCounts":{}}}'::jsonb,
+    placement_match_count = 0,
+    placement_evidence_weight = 0,
+    placement_weighted_sum = 3000,
+    placement_completed_at = null,
     trust_score = 80,
     streak = 0,
     updated_at = now();
 
 update public.teams
 set mmr = 1200,
+    roster_mmr = 1200,
+    performance_adjustment = 0,
     wins = 0,
     losses = 0,
     updated_at = now();
@@ -447,13 +455,19 @@ begin
 
   select count(*)::bigint into invalid_profiles
   from public.profiles
-  where ratings is distinct from '{"integrated":1200,"modes":{"1v1":1200,"2v2":1200,"3v3":1200,"5v5":1200}}'::jsonb
+  where ratings is distinct from '{"integrated":1200,"modes":{"1v1":1200,"2v2":1200,"3v3":1200,"5v5":1200},"placement":{"matchCount":0,"target":5,"completed":false,"completedAt":null,"evidenceWeight":0,"weightedTotal":3000,"modeCounts":{}}}'::jsonb
+     or placement_match_count is distinct from 0
+     or placement_evidence_weight is distinct from 0
+     or placement_weighted_sum is distinct from 3000
+     or placement_completed_at is not null
      or trust_score is distinct from 80
      or streak is distinct from 0;
 
   select count(*)::bigint into invalid_teams
   from public.teams
   where mmr is distinct from 1200
+     or roster_mmr is distinct from 1200
+     or performance_adjustment is distinct from 0
      or wins is distinct from 0
      or losses is distinct from 0;
 

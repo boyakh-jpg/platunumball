@@ -948,7 +948,9 @@ function compactUser(user = {}, profileId = "") {
     avatarBorderColor: user.avatarBorderColor ?? user.avatarColor,
     discordAvatarUrl: user.discordAvatarUrl ?? null,
     trustScore: user.trustScore,
-    ratings: Number.isFinite(Number(user.ratings?.integrated)) ? { integrated: user.ratings.integrated } : undefined,
+    ratings: Number.isFinite(Number(user.ratings?.integrated))
+      ? { integrated: user.ratings.integrated, placement: user.ratings?.placement }
+      : undefined,
     ageGroup: user.ageGroup,
   };
   if (user.id !== profileId) return compact;
