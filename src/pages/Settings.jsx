@@ -255,10 +255,12 @@ export default function Settings({ app, section = "main" }) {
   const lastThemeRef = useRef(theme);
   const themeSaveRequestRef = useRef(0);
   const homeGuideCardVisible = isHomeGuideCardVisible(app.state.settings);
+  const [homeGuideCardDraft, setHomeGuideCardDraft] = useState(homeGuideCardVisible);
   const [homeGuideCardSavePending, setHomeGuideCardSavePending] = useState(false);
   const [homeGuideCardSaveStatus, setHomeGuideCardSaveStatus] = useState("");
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
-  const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
+  const [blockUserId, setBlockUserId] = useState("");
+  const [blockUserQuery, setBlockUserQuery] = useState("");
   const [blockSavePending, setBlockSavePending] = useState(false);
   const [reportMatchId, setReportMatchId] = useState("");
   const [reportReason, setReportReason] = useState("");
@@ -411,12 +413,14 @@ export default function Settings({ app, section = "main" }) {
   const canOpenAdminMenu = serverAdminLevel >= 30;
   const themeDirty = themeDraft !== theme;
   const privacyDirty = JSON.stringify(privacyDraft) !== privacySnapshot;
+  const homeGuideCardDirty = homeGuideCardDraft !== homeGuideCardVisible;
   const discordDirty = Boolean(discordDraft.unlink) ||
     discordDraft.enabled !== Boolean(discordLinked && discordChannel.enabled) ||
     DISCORD_NOTIFICATION_EVENTS.some((option) => Boolean(discordDraft.events?.[option.id]) !== Boolean(discordChannel.events?.[option.id]));
-  const generalSettingsDirty = privacyDirty || discordDirty;
+  const generalSettingsDirty = homeGuideCardDirty || privacyDirty || discordDirty;
   const generalSettingsStatus = [
     themeSaveStatus ? `테마 ${themeSaveStatus}` : null,
+    homeGuideCardSaveStatus ? `홈 안내 ${homeGuideCardSaveStatus}` : null,
     privacySaveStatus ? `노출 ${privacySaveStatus}` : null,
     discordSaveStatus ? `디스코드 ${discordSaveStatus}` : null,
   ].filter(Boolean).join(" · ") || (generalSettingsDirty ? "변경 있음" : "저장됨");
@@ -484,6 +488,10 @@ export default function Settings({ app, section = "main" }) {
     setPrivacySaveStatus("");
   }, [privacySnapshot]);
   useEffect(() => {
+    setHomeGuideCardDraft(homeGuideCardVisible);
+    setHomeGuideCardSaveStatus("");
+  }, [homeGuideCardVisible]);
+  useEffect(() => {
     setDiscordDraft({
       enabled: Boolean(discordLinked && discordChannel.enabled),
       events: { ...discordChannel.events },
@@ -545,7 +553,7 @@ export default function Settings({ app, section = "main" }) {
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
     [app.currentUserId, app.state.users, blockedUserIds],
   );
-  const selectedBlockUserId = blockableUsers.some((user) => user.id === blockUserId) ? blockUserId : blockableUsers[0]?.id ?? "";
+  const selectedBlockUserId = blockableUsers.some((user) => user.id === blockUserId) ? blockUserId : "";
   const recentReportMatches = useMemo(() => {
     const now = Date.now();
     const cutoff = now - REPORT_MATCH_WINDOW_MS;
@@ -920,9 +928,34 @@ export default function Settings({ app, section = "main" }) {
     setBlockSavePending(true);
     try {
       await app.actions.blockUser(selectedBlockUserId);
+      setBlockUserId("");
+      setBlockUserQuery("");
     } finally {
       setBlockSavePending(false);
     }
+  };
+  const selectBlockUser = (user) => {
+    if (!user?.id || user.id === app.currentUserId || blockedUserIds.includes(user.id)) return;
+    setBlockUserId(user.id);
+    setBlockUserQuery(`${user.name} ${getUserHashtag(user)}`.trim());
+  };
+  const renderBlockUserSearchItem = (item) => {
+    const user = item.player ?? item;
+    const unavailable = user.id === app.currentUserId || blockedUserIds.includes(user.id);
+    return (
+      <button
+        key={user.id}
+        type="button"
+        className="search-picker-result-row"
+        disabled={unavailable}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => selectBlockUser(user)}
+      >
+        <strong>{user.name}</strong>
+        <span>{getUserHashtag(user)}</span>
+        <em>{unavailable ? "선택할 수 없음" : user.region || user.position || "플레이어"}</em>
+      </button>
+    );
   };
   const releaseBlock = async (userId) => {
     if (!userId || blockSavePending) return;
@@ -1122,12 +1155,12 @@ export default function Settings({ app, section = "main" }) {
     }
     void saveTheme(nextTheme);
   };
-  const selectHomeGuideCardVisibility = async (visible) => {
-    if (visible === homeGuideCardVisible || homeGuideCardSavePending) return;
+  const saveHomeGuideCardVisibility = async () => {
+    if (!homeGuideCardDirty || homeGuideCardSavePending) return;
     setHomeGuideCardSavePending(true);
     setHomeGuideCardSaveStatus("저장 중");
     try {
-      const saved = await app.actions.updateSettings({ showHomeGuideCard: visible });
+      const saved = await app.actions.updateSettings({ showHomeGuideCard: homeGuideCardDraft });
       setHomeGuideCardSaveStatus(saved && saved.ok !== false ? "저장되었습니다." : "표시 설정을 저장하지 못했습니다.");
     } catch {
       setHomeGuideCardSaveStatus("표시 설정을 저장하지 못했습니다.");
@@ -1178,6 +1211,7 @@ export default function Settings({ app, section = "main" }) {
   };
   const saveGeneralSettings = async () => {
     if (!generalSettingsDirty) return;
+    if (homeGuideCardDirty) await saveHomeGuideCardVisibility();
     if (privacyDirty) await savePrivacy();
     if (discordDirty) await saveDiscordSettings();
   };
@@ -1560,14 +1594,16 @@ export default function Settings({ app, section = "main" }) {
                 <label>
                   <input
                     type="checkbox"
-                    checked={homeGuideCardVisible}
+                    checked={homeGuideCardDraft}
                     disabled={homeGuideCardSavePending}
-                    onChange={(event) => void selectHomeGuideCardVisibility(event.target.checked)}
+                    onChange={(event) => {
+                      setHomeGuideCardDraft(event.target.checked);
+                      setHomeGuideCardSaveStatus("");
+                    }}
                   />
                   홈에서 안내 카드 표시
                 </label>
               </div>
-              <small className="settings-preference-status">{homeGuideCardSaveStatus || "선택 즉시 저장됩니다."}</small>
             </div>
 
             <div className="settings-preference-group">
@@ -1605,7 +1641,7 @@ export default function Settings({ app, section = "main" }) {
 
             <div className="settings-save-row">
               <small>{generalSettingsStatus}</small>
-              <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty}>저장</Button>
+              <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty || homeGuideCardSavePending}>저장</Button>
             </div>
           </Card>
 
@@ -1632,16 +1668,9 @@ export default function Settings({ app, section = "main" }) {
             </Card>
           ) : null}
 
-          <Card className="section-card settings-reset-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">초기화</p>
-                <h2>샘플 데이터 복원</h2>
-              </div>
-            </div>
-            <Button variant="secondary" onClick={app.actions.reset}>데모 데이터 초기화</Button>
-          </Card>
+        </div>
 
+        <aside className="page-stack settings-side-column">
           <Card className="section-card settings-block-card">
             <div className="section-title-row">
               <div>
@@ -1651,12 +1680,22 @@ export default function Settings({ app, section = "main" }) {
               <Badge tone={blockedUserIds.length ? "orange" : "neutral"}>{blockedUserIds.length}명</Badge>
             </div>
             <form className="form-stack" onSubmit={submitBlock}>
-              <label>
-                차단할 플레이어
-                <select value={selectedBlockUserId} disabled={blockSavePending} onChange={(event) => setBlockUserId(event.target.value)}>
-                  {blockableUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.region}</option>)}
-                </select>
-              </label>
+              <SearchPicker
+                value={blockUserQuery}
+                onChange={(value) => {
+                  setBlockUserQuery(value);
+                  setBlockUserId("");
+                }}
+                placeholder="이름 또는 해시태그 검색"
+                items={blockableUsers}
+                remoteSearchType="player"
+                mapRemoteItem={(item) => item.player ?? item}
+                title="플레이어 검색 결과"
+                emptyText="검색 결과 없음"
+                floating
+                closeOnResultClick
+                renderItem={renderBlockUserSearchItem}
+              />
               <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
             </form>
             <div className="compact-list">
@@ -1668,9 +1707,6 @@ export default function Settings({ app, section = "main" }) {
               )) : <div><span>차단한 플레이어가 없습니다.</span><strong>0</strong></div>}
             </div>
           </Card>
-        </div>
-
-        <aside className="page-stack settings-side-column">
 
           <Card className="section-card settings-court-card">
             <div className="section-title-row">

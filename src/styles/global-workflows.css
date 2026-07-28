@@ -2339,8 +2339,7 @@ input[type="color"] {
   font-size: 0.94rem;
 }
 
-.settings-preference-heading span,
-.settings-preference-status {
+.settings-preference-heading span {
   color: var(--rb-muted);
   font-size: 0.78rem;
   font-weight: 800;
@@ -2400,7 +2399,6 @@ input[type="color"] {
 }
 
 .settings-section-main .admin-menu-card,
-.settings-section-main .settings-reset-card,
 .settings-section-main .settings-block-card {
   order: 30;
 }

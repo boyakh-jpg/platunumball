@@ -258,9 +258,14 @@ test("설정 메인은 운영·테스트 카드를 숨기고 표시 설정을 �
   assert.match(pageSources.settings, /<h2>표시 설정<\/h2>/);
   assert.match(
     pageSources.settings,
-    /checked=\{homeGuideCardVisible\}[\s\S]*?onChange=\{\(event\) => void selectHomeGuideCardVisibility\(event\.target\.checked\)\}/,
+    /checked=\{homeGuideCardDraft\}[\s\S]*?setHomeGuideCardDraft\(event\.target\.checked\)/,
   );
+  assert.match(pageSources.settings, /homeGuideCardDirty[\s\S]*saveHomeGuideCardVisibility[\s\S]*saveGeneralSettings/);
+  assert.doesNotMatch(pageSources.settings, /선택 즉시 저장됩니다/);
   assert.match(pageSources.settings, /홈 안내 카드[\s\S]*프로필 표시[\s\S]*saveGeneralSettings/);
+  assert.match(pageSources.settings, /<aside className="page-stack settings-side-column">[\s\S]*플레이어 숨김[\s\S]*remoteSearchType="player"/);
+  assert.match(pageSources.settings, /플레이어 숨김[\s\S]*releaseBlock/);
+  assert.doesNotMatch(pageSources.settings, /샘플 데이터 복원|데모 데이터 초기화/);
   assert.doesNotMatch(pageSources.settings, /<h2>(?:온라인 저장|테스트 리그 현황|테스트 계정 로그인)<\/h2>/);
   assert.match(
     globalWorkflowStyles,
