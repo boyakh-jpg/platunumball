@@ -140,7 +140,8 @@ test("court map loads bounded active coordinate rows for the current district", 
   assert.match(pickerSource, /isCourtInRegion\(court, currentRegion\)/);
   assert.match(pickerSource, /const focusCourts = selectedCoordinate \? \[selectedCourt\] : regionalCourts\.length \? regionalCourts : courts/);
   assert.match(pickerSource, /setStatus\(loading \? "loading" : loadError \? "error" : "empty"\)/);
-  assert.match(pickerSource, /element\.textContent = isCluster \? String\(group\.items\.length\) : String\(courtNumber \?\? 1\)/);
+  assert.match(pickerSource, /element\.textContent = isCluster \? String\(group\.items\.length\) : "1"/);
+  assert.doesNotMatch(pickerSource, /courtNumberById/);
   assert.doesNotMatch(pickerSource, /element\.textContent = .*court\?\.name/);
   assert.match(createSource, /search-controls court-finder-controls/);
   assert.match(createSource, /court-map-launch-control/);

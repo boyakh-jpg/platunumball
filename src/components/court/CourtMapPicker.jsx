@@ -60,7 +60,7 @@ function getInitialViewport(courts = [], selectedCourt, currentRegion = "", mapW
   };
 }
 
-function makeMarkerElement(group, activeCourtId, courtNumber) {
+function makeMarkerElement(group, activeCourtId) {
   const element = document.createElement("button");
   const isCluster = group.items.length > 1;
   const court = group.items[0]?.court;
@@ -70,7 +70,7 @@ function makeMarkerElement(group, activeCourtId, courtNumber) {
     isCluster ? "is-cluster" : "is-court",
     !isCluster && court?.id === activeCourtId ? "is-active" : "",
   ].filter(Boolean).join(" ");
-  element.textContent = isCluster ? String(group.items.length) : String(courtNumber ?? 1);
+  element.textContent = isCluster ? String(group.items.length) : "1";
   element.setAttribute("aria-label", isCluster ? `등록 구장 ${group.items.length}개 확대` : `${court?.name ?? "구장"} 확인`);
   return element;
 }
@@ -182,7 +182,6 @@ export default function CourtMapPicker({
     const drawMarkers = () => {
       clearMarkers();
       const groups = clusterCourts(mappedCourts, map.getZoom());
-      const courtNumberById = new Map(mappedCourts.map((court, index) => [court.id, index + 1]));
       groups.forEach((group) => {
         const position = new maps.LatLng(group.lat, group.lng);
         const isCluster = group.items.length > 1;
@@ -192,7 +191,7 @@ export default function CourtMapPicker({
           clickable: true,
           zIndex: isCluster ? 120 : group.items[0]?.court?.id === candidateId ? 140 : 100,
           icon: {
-            content: makeMarkerElement(group, candidateId, courtNumberById.get(group.items[0]?.court?.id)),
+            content: makeMarkerElement(group, candidateId),
             anchor: new maps.Point(0, 0),
           },
         });
