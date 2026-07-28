@@ -1,11 +1,4 @@
-function getRecordDate(value = {}) {
-  return value.recordDate
-    ?? value.scheduledDate
-    ?? value.scheduledAt
-    ?? value.confirmedAt
-    ?? value.createdAt
-    ?? "";
-}
+import { getMatchPlayedDate } from "../../lib/matchUtils.js";
 
 export function PersonalRecordMetaLabels({ visibility = "private" }) {
   const isPublic = visibility === "public";
@@ -20,7 +13,7 @@ export function PersonalRecordMetaLabels({ visibility = "private" }) {
 }
 
 export default function MatchRecordMeta({ record = {}, afterCourt = null, className = "" }) {
-  const date = getRecordDate(record);
+  const date = getMatchPlayedDate(record);
   const mode = record.mode ?? "";
   const court = record.court ?? "";
   const prefix = [date, mode].filter(Boolean).join(" · ");

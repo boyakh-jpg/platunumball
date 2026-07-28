@@ -5,12 +5,8 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine, getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { formatStatLine, getMatchPlayedDate, getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
-
-function getRecordDate(match) {
-  return String(match.scheduledDate ?? match.scheduledAt ?? match.confirmedAt ?? match.createdAt ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "날짜 미정";
-}
 
 function getRecordLine(match, userId) {
   const sideName = getPlayerSideName(match, userId) ?? "teamA";
@@ -87,7 +83,7 @@ export default function ProfileRecords({ app }) {
     ...fallbackPersonalTotals,
   };
   const dateRows = [...recentRecords.reduce((map, match) => {
-    const date = getRecordDate(match);
+    const date = getMatchPlayedDate(match) || "날짜 미정";
     map.set(date, (map.get(date) ?? 0) + 1);
     return map;
   }, new Map()).entries()].sort((a, b) => String(b[0]).localeCompare(String(a[0])));

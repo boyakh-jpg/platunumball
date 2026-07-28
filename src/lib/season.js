@@ -1,4 +1,4 @@
-import { getMatchSideScore as getSideScore } from "./matchUtils.js";
+import { getMatchPlayedDate, getMatchSideScore as getSideScore } from "./matchUtils.js";
 import { SOLO_RECORD_MODE_IDS } from "./constants.js";
 
 const fallbackSeason = {
@@ -21,7 +21,7 @@ function isConfirmed(match) {
 }
 
 function isInSeason(match, season = fallbackSeason) {
-  const matchDate = parseDate(match.scheduledDate ?? match.createdAt);
+  const matchDate = parseDate(getMatchPlayedDate(match));
   const start = parseDate(season.startsAt);
   const end = parseDate(season.endsAt);
   if (!matchDate || !start || !end) return true;

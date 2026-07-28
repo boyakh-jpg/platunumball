@@ -9,7 +9,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../src/lib/constants.js";
 import { getReadableMatchStatRows } from "../src/data/matchMappers.js";
-import { getPlayerRecentRecordMatches } from "../src/lib/matchUtils.js";
+import { getMatchPlayedDate, getPlayerRecentRecordMatches } from "../src/lib/matchUtils.js";
 import { getRecordWindowDates, isRecordDetailDate } from "../src/lib/recordRetention.js";
 
 const root = new URL("../", import.meta.url);
@@ -50,6 +50,27 @@ test("profile preview is the first six rows of the recent record detail list", (
 
   assert.deepEqual(previewRecords.map((match) => match.id), detailRecords.slice(0, 6).map((match) => match.id));
   assert.equal(detailRecords.some((match) => match.id === "too-old"), false);
+});
+
+test("instant and rescheduled records use the actual played date", () => {
+  assert.equal(getMatchPlayedDate({
+    timingType: "instant",
+    scheduledAt: "즉시",
+    createdAt: "2026-07-27T15:00:00.000Z",
+    startedAt: "2026-07-28T16:10:00.000Z",
+    confirmedAt: "2026-07-29T01:00:00.000Z",
+  }), "2026-07-29");
+  assert.equal(getMatchPlayedDate({
+    scheduledDate: "2026-07-20",
+    scheduledAt: "2026-07-20 19:00",
+    startedAt: "2026-07-21T14:50:00.000Z",
+    endedAt: "2026-07-21T15:30:00.000Z",
+  }), "2026-07-21");
+  assert.equal(getMatchPlayedDate({
+    rules: { recordType: "match_record" },
+    scheduledDate: "2026-07-18",
+    createdAt: "2026-07-28T00:00:00.000Z",
+  }), "2026-07-18");
 });
 
 test("team record visibility keeps public rows readable and private rows scoped", () => {
