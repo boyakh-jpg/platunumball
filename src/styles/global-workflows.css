@@ -2655,7 +2655,7 @@ input[type="color"] {
   padding: 24px;
   overflow: hidden;
   background:
-    linear-gradient(120deg, color-mix(in srgb, var(--rb-orange) 14%, transparent), transparent 42%),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     var(--card-bg-strong);
 }
 

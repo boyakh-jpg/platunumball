@@ -44,6 +44,7 @@ const practiceMatchSource = read("src/pages/PracticeMatch.jsx");
 const termsSource = read("src/pages/Terms.jsx");
 const tierEmblemSource = read("src/components/rating/TierEmblem.jsx");
 const teamDetailSource = read("src/pages/TeamDetail.jsx");
+const courtDetailSource = read("src/pages/CourtDetail.jsx");
 const placementEmblemPath = "public/assets/tier-emblems/tier-placement-v2.webp";
 const hoverSurfaceStyles = [
   read("src/styles/global-foundation.css"),
@@ -749,4 +750,14 @@ test("구장 등록 주소와 중복 후보는 폼 흐름 안에서 세로로 �
     /\.arena-mini-note\.settings-nearby-courts\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/,
   );
   assert.doesNotMatch(globalSurfaceStyles, /\.settings-page \.settings-address-results/);
+});
+
+test("구장 프로필 hero는 공용 구장 배경과 항목명이 있는 정보 뱃지를 사용한다", () => {
+  assert.match(
+    globalWorkflowStyles,
+    /\.court-detail-hero\s*\{[\s\S]*?var\(--bg-court\) var\(--hero-bg-position-court\)/,
+  );
+  assert.match(courtDetailSource, /실내외 · \{court\.type/);
+  assert.match(courtDetailSource, /바닥 · \{getCourtSurfaceLabel\(court\)\}/);
+  assert.match(courtDetailSource, /코트 형태 · \{getCourtLayoutLabel\(court\)\}/);
 });

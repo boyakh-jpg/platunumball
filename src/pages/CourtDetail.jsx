@@ -251,10 +251,10 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           <div className="court-detail-tags">
             <span>{getCourtHashtag(court)}</span>
             <span>{court.region || "지역 미정"}</span>
-            <span>{court.type || court.courtKind || "농구장"}</span>
-            <span>{getCourtSurfaceLabel(court)}</span>
-            <span>{getCourtLayoutLabel(court)}</span>
-            {typeof court.paid === "boolean" ? <span>{court.paid ? "유료" : "무료"}</span> : null}
+            <span>실내외 · {court.type || court.indoorOutdoor || "확인 필요"}</span>
+            <span>바닥 · {getCourtSurfaceLabel(court)}</span>
+            <span>코트 형태 · {getCourtLayoutLabel(court)}</span>
+            {typeof court.paid === "boolean" ? <span>이용료 · {court.paid ? "유료" : "무료"}</span> : null}
           </div>
         </div>
         <div className="court-detail-actions">
