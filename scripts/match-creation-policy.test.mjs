@@ -80,6 +80,10 @@ const teamMemberPublicJoinMigrationSource = fs.readFileSync(
   path.join(root, "supabase/migrations/20260728121000_team_member_public_side_leader_join.sql"),
   "utf8",
 );
+const teamMemberPostGuardMigrationSource = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260728122000_team_member_room_post_guard.sql"),
+  "utf8",
+);
 
 function readCssManifest(relativePath) {
   const manifestPath = path.join(root, relativePath);
@@ -907,9 +911,15 @@ test("team selection is routed through the server and DB authority", () => {
   assert.match(teamMemberSideLeaderMigrationSource, /member\.user_id = safe_actor_id/);
   assert.match(teamMemberSideLeaderMigrationSource, /post_row\.allowed_age_groups,\s*false/);
   assert.doesNotMatch(teamMemberSideLeaderMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
+  assert.match(teamMemberPostGuardMigrationSource, /rankball_recruiting_team_event_guard/);
+  assert.match(teamMemberPostGuardMigrationSource, /recruiting_team_membership_required/);
+  assert.match(teamMemberPostGuardMigrationSource, /recruiting_team_representative_ineligible/);
+  assert.match(teamMemberPostGuardMigrationSource, /host_result->'eligiblePlayerIds'/);
+  assert.doesNotMatch(teamMemberPostGuardMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
 test("public team joins persist only the applying team member as side leader", () => {
+  const recruitingSource = fs.readFileSync(path.join(root, "src/pages/Recruiting.jsx"), "utf8");
   const users = [
     { id: "host", name: "방장", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
     { id: "captain", name: "상대 팀장", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
@@ -1016,6 +1026,8 @@ test("public team joins persist only the applying team member as side leader", (
   assert.match(teamMemberPublicJoinMigrationSource, /recruiting_team_representative_ineligible/);
   assert.match(teamMemberPublicJoinMigrationSource, /eligibility->'eligiblePlayerIds'[\s\S]*\? new\.player_id/);
   assert.doesNotMatch(teamMemberPublicJoinMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
+  assert.match(recruitingSource, /상대 팀원이 B사이드장으로 참가할 때까지 기다립니다\./);
+  assert.doesNotMatch(recruitingSource, /상대 팀 현재 주장이 B사이드로 참가/);
 });
 
 test("pickup participant slots keep a fixed width and use available desktop columns", () => {

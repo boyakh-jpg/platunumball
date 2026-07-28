@@ -4847,7 +4847,7 @@ function RecruitingRoomModalReady({
                         ) : !selectedRoomTeamAId ? (
                           <em>A팀을 먼저 선택해야 합니다.</em>
                         ) : selectedPost.visibility === "public" ? (
-                          <em>상대 팀 현재 주장이 B사이드로 참가할 때까지 기다립니다.</em>
+                          <em>상대 팀원이 B사이드장으로 참가할 때까지 기다립니다.</em>
                         ) : mine ? (
                           <SearchPicker
                             value={roomTeamQuery}
