@@ -609,7 +609,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-02: 홈 hero 배경은 desktop에서는 `rank-summary-grid`, 759px 이하에서는 실제 hero인 `home-rank-board-head` 한 곳에만 둔다. 원인/결과: 부모와 자식에 같은 `--bg-court`가 동시에 적용되어 배경이 두 장처럼 보였으므로 동시 배경을 금지한다.
 2026-07-24: 홈 hero는 다크에서 `rankball-court-hero-v3.webp`, 라이트에서 같은 구도의 `rankball-court-hero-day-v3.webp`를 `--bg-home-court`로 전환한다. 두 테마는 같은 crop·height 규칙을 공유하며 별도 wash·filter를 씌우지 않는다.
 2026-07-24: 새로 제작하는 주요 메뉴 hero의 다크·라이트 쌍은 같은 사진의 시간대와 조명만 바꾸고 `1600×900` 이상, 같은 crop·height를 유지한다. CGI·3D 렌더 질감은 쓰지 않는다. 새 장식용 농구공은 기본적으로 제외하고, 기능상 꼭 필요한 공은 실제 연속 8패널 심 구조로 검수한다. 사용자가 유지하기로 한 팀 허브·대기 매칭의 기존 공 배경은 예외로 보존한다.
-2026-07-27: 메인 landing의 `--bg-action`은 `main-night-v5.webp`/`main-day-v5.webp` `1672×941` 실사 쌍을 쓴다. 예전 선수 중심 레이업 장면을 고해상도 가로 구도로 재구성하고, 선수는 오른쪽에 두어 왼쪽 문구 공간을 확보한다. 청록·분홍 페인트는 선수 뒤의 좁고 반투명한 연기만 허용하며 넓은 폭발·파티클은 사용하지 않는다. 두 원본 WebP 자체에 비정형 원형 외곽, 짧은 feather, 물방울처럼 흩어진 소형 splash 알파를 동일하게 굽고 CSS radial mask·filter·blur·wash는 사용하지 않는다. `1079px` 이하에서는 선수 위치를 유지하도록 가로 crop만 `68%`로 옮기고 dark/light의 구도와 높이는 같게 유지한다. 라이트 문구 대비는 이미지 overlay가 아니라 흰 text-shadow만 사용한다. 이전 `main-*-v2`~`v4`는 현재 연결하지 않고 후보로 보관한다.
+2026-07-27: 메인 landing의 `--bg-action`은 `main-night-v6.webp`/`main-day-v6.webp` `1672×941` 실사 쌍을 쓴다. 예전 선수 중심 레이업 장면을 고해상도 가로 구도로 재구성하고, 선수는 오른쪽에 두어 왼쪽 문구 공간을 확보한다. 청록·분홍 페인트는 선수 뒤의 좁고 반투명한 연기만 허용하며 넓은 폭발·파티클은 사용하지 않는다. 두 원본 WebP 자체에 선수·림 중심의 하나로 연결된 비정형 외곽과 넓고 매끈한 feather 알파를 동일하게 굽는다. 물방울처럼 분리된 splash·점·소형 돌기는 사용하지 않고, 왼쪽 관중석과 외곽 배경의 투명도를 더 높여 인물을 우선한다. CSS radial mask·filter·blur·wash는 사용하지 않는다. `1079px` 이하에서는 선수 위치를 유지하도록 가로 crop만 `68%`로 옮기고 dark/light의 구도와 높이는 같게 유지한다. 라이트 문구 대비는 이미지 overlay가 아니라 흰 text-shadow만 사용한다. 이전 `main-*-v2`~`v5`는 현재 연결하지 않고 후보로 보관한다.
 2026-07-27: `src/lib/assets.js`에서 연결하는 dark/light hero 배경은 모두 `1672×941` WebP로 정규화한다. 기존 `1600×900` 장면은 구도 변경 없이 고품질 리샘플링하고, 저해상도 정사각 원본이던 대기 매칭 `court-ball-day.webp`/`court-ball-night.webp`는 같은 공·손·바닥 연기 구도의 16:9 실사 쌍으로 재구성한다. 파일 바이트 수를 억지로 동일하게 맞추지 않고 해상도·압축 품질 기준만 통일한다.
 2026-07-01: 경기 메뉴의 상단 상태 요약 카드는 모바일에서도 내부 가로 스크롤을 만들지 않고 2열 grid로 접는다. 필터 세그먼트는 항목 수가 적으면 가로 스크롤 대신 균등 grid를 쓴다.
 2026-07-01: 방 모달의 출전 슬롯은 한 사이드 안에서 넘치지 않게 컨테이너 폭에 맞춰 줄이고, 후보 슬롯은 A/B 후보를 세로 카드처럼 쌓지 않고 각 후보 라인을 한 줄 row로 둔다. 5v5 같은 짧은 mode chip은 condensed/음수 자간을 쓰지 않는다.
@@ -1968,7 +1968,7 @@ UI 수정 전:
 1. 메인 랜딩 배경은 예전 선수 중심 레이업 장면을 고해상도 가로 구도로 재구성하고 dark/light에서 같은 선수·림·공 배치를 사용한다.
 2. 농구공은 표준 검은 심을 사용하며 로고·공기 주입구를 노출하지 않는다. 선수 뒤 페인트는 `court-ball` 수준의 좁고 반투명한 청록·분홍 연기로 제한한다.
 3. 데스크톱 경기 현황 패널은 오른쪽 최대 `390px`로 제한해 선수·공·림을 가리지 않는다. 모바일은 기존 단일 열 흐름을 유지한다.
-4. 메인 배경의 비정형 원형 feather와 물방울 splash는 `main-night-v5.webp`/`main-day-v5.webp` 원본 알파에 직접 포함한다. `.landing-hero`는 image + `--rb-bg-2` fallback만 사용하고 `.landing-backdrop`에는 CSS mask, `filter`, `blur`, 별도 wash overlay를 적용하지 않는다.
+4. 메인 배경의 선수·림 중심 단일 비정형 feather는 `main-night-v6.webp`/`main-day-v6.webp` 원본 알파에 직접 포함한다. 분리된 물방울 splash·점·소형 돌기는 금지한다. `.landing-hero`는 image + `--rb-bg-2` fallback만 사용하고 `.landing-backdrop`에는 CSS mask, `filter`, `blur`, 별도 wash overlay를 적용하지 않는다.
 
 ## 2026-07-24 픽업 팀 나누기 작업판
 
