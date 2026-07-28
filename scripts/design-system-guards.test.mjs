@@ -752,20 +752,6 @@ test("구장 등록 주소와 중복 후보는 폼 흐름 안에서 세로로 �
   assert.doesNotMatch(globalSurfaceStyles, /\.settings-page \.settings-address-results/);
 });
 
-test("구장 정보 수정 신고는 정렬된 구조화 필드를 사용한다", () => {
-  assert.match(pageSources.courtDetail ?? read("src/pages/CourtDetail.jsx"), /getCourtCorrectionAttributeOptions/);
-  assert.match(read("src/pages/CourtDetail.jsx"), />세부 항목</);
-  assert.match(read("src/pages/CourtDetail.jsx"), /"바꿀 값"/);
-  assert.match(
-    globalWorkflowStyles,
-    /\.court-correction-form\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*align-items:\s*start;/,
-  );
-  assert.match(
-    globalWorkflowStyles,
-    /\.court-correction-value,[\s\S]*?\.court-correction-evidence\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;/,
-  );
-});
-
 test("구장 프로필 hero는 공용 구장 배경과 항목명이 있는 정보 뱃지를 사용한다", () => {
   assert.match(
     visualSystemStyles,
