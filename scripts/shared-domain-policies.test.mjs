@@ -1822,6 +1822,8 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(rulebookText, /마지막 요청을 판정해도 자동 확정하지 않고 별도 최종 승인을 기다립니다/);
   assert.match(rulebookText, /모든 실제 출전선수는 개인기록 입력 또는 심판의 0 기록 확인이 필요합니다/);
   assert.match(rulebookText, /통합은 실제 출전한 공식 개인전과 팀전의 합계/);
+  assert.match(rulebookText, /MMR은 실력이 비슷한 상대를 찾고 순위를 계산하는 경기력 점수/);
+  assert.doesNotMatch(rulebookText, /일반 live 경기|personal_record|match_record|결과 revision|교체 transaction/);
   assert.match(rulebookText, /상세 산식과 내부 보정값은 공개하지 않습니다/);
   assert.doesNotMatch(rulebookText, /1v1 10%|2v2 20%|3v3 35%|5v5 50%|상위 최대 5명 평균|정규멤버 비율만큼|-150부터 \+150/);
   assert.match(tutorial, /상세 산식과 내부 보정값은 공개하지 않습니다/);
