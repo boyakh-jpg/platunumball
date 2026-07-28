@@ -45,6 +45,7 @@ const termsSource = read("src/pages/Terms.jsx");
 const tierEmblemSource = read("src/components/rating/TierEmblem.jsx");
 const teamDetailSource = read("src/pages/TeamDetail.jsx");
 const courtDetailSource = read("src/pages/CourtDetail.jsx");
+const entityProfileHeroSource = read("src/components/profile/EntityProfileHero.jsx");
 const placementEmblemPath = "public/assets/tier-emblems/tier-placement-v2.webp";
 const hoverSurfaceStyles = [
   read("src/styles/global-foundation.css"),
@@ -78,6 +79,15 @@ test("court detail hero tags use shared glass badges", () => {
   assert.doesNotMatch(courtHeroTags, /<span>/);
   assert.match(visualSystemStyles, /\.court-detail-tags \.ui-badge,/);
   assert.doesNotMatch(globalWorkflowStyles, /\.court-detail-tags span/);
+});
+
+test("player and team details share one entity profile hero", () => {
+  assert.match(entityProfileHeroSource, /export default function EntityProfileHero/);
+  assert.match(pageSources.playerDetail, /<EntityProfileHero/);
+  assert.match(teamDetailSource, /<EntityProfileHero/);
+  assert.doesNotMatch(pageSources.playerDetail, /<section className="profile-hero/);
+  assert.doesNotMatch(teamDetailSource, /<section className="team-detail-hero/);
+  assert.match(globalAdminStyles, /\.entity-profile-hero-copy,/);
 });
 
 test("win loss draw record borders keep semantic colors in every theme", () => {

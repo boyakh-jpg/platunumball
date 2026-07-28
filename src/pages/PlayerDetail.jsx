@@ -5,6 +5,7 @@ import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
 import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
+import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
@@ -157,14 +158,15 @@ export default function PlayerDetail({ app }) {
 
   return (
     <div className="page-stack profile-detail-page rank-profile-page">
-      <section className="profile-hero rank-profile-hero">
-        <div className="profile-identity rank-profile-identity">
-          <ProfileEmblem user={player} className="hero-avatar" />
-          <div>
-            <p className="eyebrow">Player Profile</p>
-            <h1>{player.name}</h1>
-            <p>{getUserHashtag(player)} · 신뢰도 {player.trustScore}</p>
-            <div className="badge-row">
+      <EntityProfileHero
+        className="profile-hero rank-profile-hero"
+        eyebrow="Player Profile"
+        title={player.name}
+        subtitle={`${getUserHashtag(player)} · 신뢰도 ${player.trustScore}`}
+        leading={<ProfileEmblem user={player} className="hero-avatar" />}
+        identityClassName="profile-identity rank-profile-identity"
+        badges={(
+          <>
               <TierBadge mmr={player.ratings.integrated} ratings={player.ratings} />
               <Badge tone="green">{player.region}</Badge>
               <Badge tone="blue">{player.position}</Badge>
@@ -173,17 +175,18 @@ export default function PlayerDetail({ app }) {
                   <MessageCircle size={14} /> {discordDisplayName}
                 </a>
               ) : null}
-            </div>
-          </div>
-        </div>
-        <div className="tier-statement rank-tier-statement ui-liquid-glass">
+          </>
+        )}
+        visual={(
+          <div className="tier-statement rank-tier-statement ui-liquid-glass">
           <TierEmblem mmr={player.ratings.integrated} ratings={player.ratings} size="hero" showLabel />
           <div>
             <span>{placementComplete ? getTierDivision(player.ratings.integrated) : "배정 전"}</span>
             <em className="tier-score-line">{placementComplete ? `${Math.round(player.ratings.integrated)} MMR` : placementLabel.replace("배정 전 · ", "")}</em>
           </div>
-        </div>
-      </section>
+          </div>
+        )}
+      />
 
       {canViewStatSummary || canViewTeamHistory ? (
         <nav className="rank-profile-tabs">

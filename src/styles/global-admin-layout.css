@@ -1493,6 +1493,35 @@
   padding: 24px;
 }
 
+.entity-profile-hero-copy,
+.entity-profile-hero-visual {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.entity-profile-hero-copy {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.entity-profile-hero-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.entity-profile-hero-identity {
+  min-width: 0;
+}
+
+.entity-profile-hero-visual {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
 .profile-hero {
   grid-template-columns: minmax(0, 0.8fr) minmax(280px, 0.7fr);
   align-items: end;

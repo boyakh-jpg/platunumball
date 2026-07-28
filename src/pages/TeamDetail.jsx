@@ -8,6 +8,7 @@ import Card from "../components/common/Card.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
+import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -355,11 +356,14 @@ export default function TeamDetail({ app }) {
 
   return (
     <div className="page-stack team-detail-page rank-team-page">
-      <section className="team-detail-hero rank-profile-hero rank-team-hero" style={{ "--team-color": team.accent }}>
-        <div>
-          <div className="team-detail-heading-row">
-            <p className="eyebrow">Team Profile</p>
-            <Button
+      <EntityProfileHero
+        className="team-detail-hero rank-profile-hero rank-team-hero"
+        style={{ "--team-color": team.accent }}
+        eyebrow="Team Profile"
+        title={team.name}
+        subtitle={`${team.region} · ${team.homeCourt}`}
+        action={(
+          <Button
               type="button"
               variant={isFavoriteTeam ? "primary" : "secondary"}
               className={isFavoriteTeam ? "favorite-toggle-button ui-liquid-glass active" : "favorite-toggle-button ui-liquid-glass"}
@@ -367,19 +371,16 @@ export default function TeamDetail({ app }) {
             >
               <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
               {isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
-            </Button>
-          </div>
-          <h1>{team.name}</h1>
-          <p>{team.region} · {team.homeCourt}</p>
-          <div className="badge-row">
+          </Button>
+        )}
+        badges={(
+          <>
             <Badge tone="green" className="ui-liquid-glass">{team.mmr} 팀 MMR</Badge>
             <Badge tone="gold" className="ui-liquid-glass">팀장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
-          </div>
-        </div>
-        <div className="team-tier-hero">
-          <TierEmblem mmr={team.mmr} size="hero" showLabel />
-        </div>
-      </section>
+          </>
+        )}
+        visual={<div className="team-tier-hero"><TierEmblem mmr={team.mmr} size="hero" showLabel /></div>}
+      />
 
       <nav className="rank-profile-tabs">
         <a href="#team-history">전적</a>
