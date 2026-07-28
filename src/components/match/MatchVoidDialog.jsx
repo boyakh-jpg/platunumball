@@ -5,6 +5,43 @@ import Button from "../common/Button.jsx";
 export const MATCH_VOID_REASON_MIN_LENGTH = 10;
 export const MATCH_VOID_REASON_MAX_LENGTH = 500;
 
+export function MatchFinalizeDialog({
+  open,
+  pending = false,
+  openDisputeCount = 0,
+  onClose,
+  onConfirm,
+}) {
+  if (!open || typeof document === "undefined") return null;
+  const blocked = openDisputeCount > 0;
+
+  return createPortal(
+    <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !pending && onClose?.()}>
+      <div
+        className="app-confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="match-finalize-dialog-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <strong id="match-finalize-dialog-title">더 이상 이의가 없음을 확인하셨나요?</strong>
+        <p>
+          {blocked
+            ? `열린 이의신청 ${openDisputeCount}건을 먼저 처리해 주세요.`
+            : "현장 참가자들과 최종 점수를 확인한 뒤 승인해 주세요."}
+        </p>
+        <div className="app-confirm-actions">
+          <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>취소</Button>
+          <Button type="button" disabled={blocked || pending} onClick={onConfirm}>
+            {pending ? "승인 중" : "최종 승인"}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function MatchVoidDialog({ open, pending = false, onClose, onConfirm }) {
   const [reason, setReason] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);

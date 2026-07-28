@@ -283,55 +283,6 @@ async function attachOpenDisputeQueues(client, matches = [], debugTiming = null)
     : match);
 }
 
-function isMissingRecorderTakeoverTable(error = {}) {
-  const message = String(error?.message ?? "");
-  return error?.code === "42P01"
-    || error?.code === "PGRST205"
-    || (message.includes("match_recorder_takeover_requests") && /could not find|does not exist/i.test(message));
-}
-
-async function attachRecorderTakeoverRequests(client, matches = [], debugTiming = null) {
-  const matchIds = unique((matches ?? []).map((match) => match?.id));
-  if (!matchIds.length) return matches;
-  const { data, error } = await timeStep(debugTiming, "recorderTakeoversMs", () => (
-    client
-      .from("match_recorder_takeover_requests")
-      .select("id,match_id,side,requested_by,expected_recorder_id,status,created_at,resolved_at,resolved_by,resolution")
-      .in("match_id", matchIds)
-      .order("created_at", { ascending: false })
-  ));
-  if (error) {
-    if (isMissingRecorderTakeoverTable(error)) return matches;
-    throw error;
-  }
-
-  const requestsByMatch = groupBy(data ?? [], "match_id");
-  return (matches ?? []).map((match) => {
-    const sideRows = new Map();
-    for (const row of requestsByMatch.get(match?.id) ?? []) {
-      if (!MATCH_SIDES.includes(row?.side)) continue;
-      const current = sideRows.get(row.side);
-      if (!current || (row.status === "open" && current.status !== "open")) {
-        sideRows.set(row.side, row);
-      }
-    }
-    return {
-      ...match,
-      recorderTakeoverRequests: [...sideRows.values()].map((request) => ({
-        id: request.id,
-        matchId: request.match_id,
-        side: request.side,
-        requestedBy: request.requested_by,
-        expectedRecorderId: request.expected_recorder_id,
-        status: request.status,
-        createdAt: request.created_at,
-        resolvedAt: request.resolved_at ?? null,
-        resolvedBy: request.resolved_by ?? "",
-        resolution: request.resolution ?? "",
-      })),
-    };
-  });
-}
 function isSoloRecordMatch(match = {}) {
   return isPersonalRecordMatch(match);
 }
@@ -1277,8 +1228,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   if (matches.length && !matchRows.length) {
     const countedMatches = await attachMatchPlayerCountsToCards(context.supabase, matches, debugTiming);
     const queuedMatches = await attachOpenDisputeQueues(context.supabase, countedMatches, debugTiming);
-    const takeoverMatches = await attachRecorderTakeoverRequests(context.supabase, queuedMatches, debugTiming);
-    const cardScope = collectMissingMatchCardReferences(takeoverMatches);
+    const cardScope = collectMissingMatchCardReferences(queuedMatches);
     const [
       { data: teamRows, error: teamError },
       { data: courtRows, error: courtError },
@@ -1293,7 +1243,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     const teams = (teamRows ?? []).map(toClientTeam);
     const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
     const courtById = firstBy(courtRows ?? [], "id");
-    const referencedMatches = takeoverMatches.map((match) => attachMatchCardReferences(match, teamById, courtById));
+    const referencedMatches = queuedMatches.map((match) => attachMatchCardReferences(match, teamById, courtById));
     const state = normalizeState({
       currentUserId: currentUser.id,
       users: [compactUser(currentUser, currentUser.id)],
@@ -1431,7 +1381,6 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     ? sortByFeedOrder(mergeMatchCardsWithRows(countedMatches, rowMatches), feedPage.ids)
     : rowMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
   matches = await attachOpenDisputeQueues(context.supabase, matches, debugTiming);
-  matches = await attachRecorderTakeoverRequests(context.supabase, matches, debugTiming);
   const state = normalizeState({
     currentUserId: currentUser.id,
     users,

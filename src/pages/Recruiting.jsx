@@ -38,7 +38,7 @@ import MatchPostgameRosterPanel from "../components/match/MatchPostgameRosterPan
 import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
 import PickupParticipantPool from "../components/match/PickupParticipantPool.jsx";
 import RoomPhaseRenderer from "../components/match/RoomPhaseRenderer.jsx";
-import MatchVoidDialog from "../components/match/MatchVoidDialog.jsx";
+import MatchVoidDialog, { MatchFinalizeDialog } from "../components/match/MatchVoidDialog.jsx";
 import MeetingPointFields from "../components/match/MeetingPointFields.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -2473,10 +2473,9 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   const effectiveStatus = agreedResultOpen ? "approval" : match.status;
   if (effectiveStatus === "disputed") {
     const openCount = getOpenMatchDisputes(match).length;
-    const decisionOwner = match.refereeId ? "배정 심판" : "방장";
     return {
       label: "이의신청방",
-      detail: openCount ? `${decisionOwner}이 이의제기 ${openCount}건을 건별로 가결 또는 부결합니다.` : "마지막 이의 판정과 함께 결과가 확정됩니다.",
+      detail: openCount ? `방장이 이의제기 ${openCount}건을 건별로 가결 또는 부결합니다.` : "이의 처리가 끝나면 방장이 별도로 최종 승인합니다.",
       disputed: true,
     };
   }
@@ -2490,7 +2489,7 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   }
   if (effectiveStatus === "approval") return {
     label: "최종 확정 대기",
-    detail: match.refereeId ? "배정 심판의 최종 확정을 기다립니다." : "방장의 최종 확정을 기다립니다.",
+    detail: "방장이 현장 합의를 확인한 뒤 최종 승인합니다.",
   };
   const phase = getMatchRoomPhase(match);
   if (phase.phase === "locked") {
@@ -2511,7 +2510,7 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
     return {
       label: "경기 종료",
       detail: match.refereeId
-        ? "배정 심판이 팀 점수와 개인 스탯을 정리하고 최종 확정합니다."
+        ? "배정 심판이 팀 점수와 개인 스탯을 정리하고 방장이 최종 승인합니다."
         : "방장이 경기 중 기록된 팀 점수를 확인하고 최종 확정합니다.",
     };
   }
@@ -2903,6 +2902,8 @@ function RecruitingRoomModalReady({
   const [joiningPostId, setJoiningPostId] = useState("");
   const [roomShareStatus, setRoomShareStatus] = useState("");
   const [soloRecordDeleteTarget, setSoloRecordDeleteTarget] = useState(null);
+  const [finalizeMatchTarget, setFinalizeMatchTarget] = useState(null);
+  const [finalizeMatchPending, setFinalizeMatchPending] = useState(false);
   const [sourceMatchReviewRefreshing, setSourceMatchReviewRefreshing] = useState(false);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [sheetDragSettling, setSheetDragSettling] = useState(false);
@@ -2914,6 +2915,27 @@ function RecruitingRoomModalReady({
     } finally {
       setSourceMatchReviewRefreshing(false);
     }
+  };
+  const confirmSourceMatchFinalization = async () => {
+    if (!finalizeMatchTarget?.matchId || finalizeMatchPending) return;
+    setFinalizeMatchPending(true);
+    try {
+      const result = await app.actions.finalizeMatch?.(finalizeMatchTarget.matchId);
+      if (result?.ok !== false) {
+        const finalizedMatchId = finalizeMatchTarget.matchId;
+        setFinalizeMatchTarget(null);
+        await app.actions.loadMatchDetail?.(finalizedMatchId);
+      }
+    } finally {
+      setFinalizeMatchPending(false);
+    }
+  };
+  const requestSourceMatchFinalization = (matchId, openDisputeCount, recordMatch = false) => {
+    if (recordMatch) {
+      void app.actions.finalizeMatch?.(matchId);
+      return;
+    }
+    setFinalizeMatchTarget({ matchId, openDisputeCount });
   };
   const roomPostId = selectedPost?.id ?? "";
   const roomPostIsSynthetic = isSyntheticMatchRoomId(roomPostId);
@@ -3966,7 +3988,7 @@ function RecruitingRoomModalReady({
         const canResolveSourceMatchDispute = Boolean(
           sourceMatch &&
           canUserResolveMatchDispute(sourceMatch, app.currentUser.id, selectedPost) &&
-          (sourceMatch.refereeId ? currentUserIsSourceReferee : mine)
+          mine
         );
         const sourceMatchHostSideName = sourceMatch && getMatchSidePlayerIds(sourceMatch, "teamB").includes(sourceMatch.createdBy) ? "teamB" : "teamA";
         const sourceMatchOpponentSideName = sourceMatchHostSideName === "teamA" ? "teamB" : "teamA";
@@ -4082,7 +4104,7 @@ function RecruitingRoomModalReady({
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
         const canFinalizeSourceMatch = Boolean(
           matchRoom && sourceMatch?.endedAt && (sourceMatch.refereeId ? sourceMatch.result : true) && !sourceMatch?.confirmedAt
-          && sourceMatch.status !== "disputed" && currentUserCanOperateStartedSourceMatch
+          && sourceMatch.status !== "disputed" && mine
         );
         const sourceMatchResultEntryPermission = sourceMatch
           ? getMatchResultEntryPermission(sourceMatch, app.currentUser.id, {
@@ -5514,7 +5536,7 @@ function RecruitingRoomModalReady({
                         refreshing={sourceMatchReviewRefreshing}
                       />
                     ) : null}
-                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && Boolean(sourceMatch.refereeId) && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (
+                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && Boolean(sourceMatch.refereeId) && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult) ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}
@@ -5525,7 +5547,16 @@ function RecruitingRoomModalReady({
                       />
                     ) : null}
                     {!sourceRoomReadOnly && canFinalizeSourceMatch ? (
-                      <Button type="button" onClick={() => app.actions.finalizeMatch?.(sourceMatch.id)}>최종 확정</Button>
+                      <Button
+                        type="button"
+                        onClick={() => requestSourceMatchFinalization(
+                          sourceMatch.id,
+                          sourceOpenDisputes.length,
+                          sourceMatchIsRecordRoom,
+                        )}
+                      >
+                        최종 승인
+                      </Button>
                     ) : null}
                     {!sourceRoomReadOnly && sourceMatchAction.action === "agree" && sourceMatchSideName ? (
                       <Button type="button" onClick={() => app.actions.agreeMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id)}>
@@ -5889,6 +5920,13 @@ function RecruitingRoomModalReady({
                 </div>,
                 document.body,
               ) : null}
+              <MatchFinalizeDialog
+                open={Boolean(finalizeMatchTarget)}
+                pending={finalizeMatchPending}
+                openDisputeCount={finalizeMatchTarget?.openDisputeCount ?? 0}
+                onClose={() => setFinalizeMatchTarget(null)}
+                onConfirm={confirmSourceMatchFinalization}
+              />
               <div className="arena-modal-close-row">
                 <Button
                   type="button"

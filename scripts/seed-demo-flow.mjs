@@ -921,13 +921,13 @@ assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "참가자�
   status: getMatch(state, lifecycleMatchId).status,
 });
 
-state = withUser(state, "u1", (scoped) => resolveMatchDispute(scoped, lifecycleMatchId, lifecycleDisputeId, "rejected"));
-assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "심판 경기 방장은 이의 판정 불가", {
+state = withUser(state, "u11", (scoped) => resolveMatchDispute(scoped, lifecycleMatchId, lifecycleDisputeId, "rejected"));
+assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "심판 경기 심판은 이의 판정 불가", {
   status: getMatch(state, lifecycleMatchId).status,
 });
 
-state = withUser(state, "u11", (scoped) => resolveMatchDispute(scoped, lifecycleMatchId, lifecycleDisputeId, "rejected"));
-assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "record", "심판 이의 판정 후 기록방", {
+state = withUser(state, "u1", (scoped) => resolveMatchDispute(scoped, lifecycleMatchId, lifecycleDisputeId, "rejected"));
+assertFlow(getMatch(state, lifecycleMatchId).status === "approval", "방장 이의 판정 후 최종 승인 대기", {
   status: getMatch(state, lifecycleMatchId).status,
 });
 

@@ -18,7 +18,6 @@ import {
   disputeMatch,
   endMatch,
   forfeitTournamentMatch,
-  handoffMatchRecorder,
   interestRecruitingPost,
   inviteRecruitingPlayers,
   inviteRecruitingReferee,
@@ -42,7 +41,6 @@ import {
   setRecruitingTeamPartyRoster,
   setRecruitingSlotPosition,
   setRecruitingRoomTeam,
-  setRecruitingStatRecorder,
   startMatch,
   substituteMatchPlayer,
   submitMatchResult,
@@ -304,9 +302,6 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
     case "removeRecruitingPartyPlayer":
       next = removeRecruitingPartyPlayer(state, operation.postId, operation.entryId, operation.playerId);
       break;
-    case "setRecruitingStatRecorder":
-      next = setRecruitingStatRecorder(state, operation.postId, operation.sideName, operation.playerId);
-      break;
     case "kickRecruitingApplicant":
       next = kickRecruitingApplicant(state, operation.postId, operation.playerId);
       break;
@@ -369,9 +364,6 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       break;
     case "submitMatchResult":
       next = submitMatchResult(state, operation.matchId, operation.result ?? {});
-      break;
-    case "handoffMatchRecorder":
-      next = handoffMatchRecorder(state, operation.matchId, operation.sideName, operation.nextRecorderId);
       break;
     case "substituteMatchPlayer":
       next = substituteMatchPlayer(state, operation.matchId, operation.sideName, operation.activePlayerId, operation.reservePlayerId, operation.reason);

@@ -301,7 +301,8 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
   assert.match(recruitingSource, /Boolean\(sourceMatch\.refereeId\).*SourceMatchDisputeEditor/s);
   assert.doesNotMatch(recruitingSource, /경기 종료 전까지 개인활약을 입력합니다/);
   assert.match(recruitingSource, /팀 점수판이 열려 있습니다\. 경기 종료 전까지 팀 점수를 기록합니다/);
-  assert.match(recruitingSource, /const decisionOwner = match\.refereeId \? "배정 심판" : "방장"/);
+  assert.match(recruitingSource, /방장이 이의제기 \$\{openCount\}건을 건별로 가결 또는 부결/);
+  assert.match(recruitingSource, /방장이 현장 합의를 확인한 뒤 최종 승인/);
   assert.match(matchContractSource, /\{referee \? <div>\s*<span>[^<]+<\/span>\s*<strong>\{match\.statEntryMinutes/);
   [logicSource, designSource].forEach((source) => {
     assert.match(source, /score-only/);

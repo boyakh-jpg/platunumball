@@ -892,7 +892,6 @@ function validateRecruitingCreateCourt(post = {}) {
 const OWNER_RECRUITING_ACTIONS = new Set([
   "updateRecruitingRoomRules",
   "setRecruitingRoomTeam",
-  "setRecruitingStatRecorder",
   "kickRecruitingApplicant",
   "confirmRecruitingMatch",
   "closeRecruitingPost",
@@ -1010,7 +1009,6 @@ const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
   "setRecruitingRoomTeam",
   "setRecruitingApplicantPlacement",
   "setRecruitingApplicantReserve",
-  "setRecruitingStatRecorder",
   "setRecruitingSlotPosition",
   "updateRecruitingRoomRules",
   "respondRecruitingScheduleProposal",
@@ -1053,7 +1051,6 @@ function isMissingSqlReducer(error = {}) {
     message.includes("rankball_recruiting_invitation_decision_action") ||
     message.includes("rankball_recruiting_invite_players_action") ||
     message.includes("rankball_recruiting_close_action") ||
-    message.includes("rankball_recruiting_stat_recorder_action") ||
     message.includes("rankball_recruiting_slot_position_action") ||
     message.includes("rankball_recruiting_cancel_participation_action") ||
     message.includes("rankball_recruiting_applicant_placement_action") ||
@@ -1376,25 +1373,6 @@ async function applySqlRecruitingAction(context, operation = {}) {
       if (isMissingSqlReducer(error)) return null;
       throw error;
     }
-    return {
-      ok: true,
-      ...(data && typeof data === "object" ? data : {}),
-      postId: operation.postId,
-    };
-  }
-
-  if (operation.action === "setRecruitingStatRecorder") {
-    const { data, error } = await context.supabase.rpc("rankball_recruiting_stat_recorder_action", {
-      p_actor_profile_id: context.profileId,
-      p_post_id: operation.postId,
-      p_side: operation.sideName ?? "",
-      p_player_id: operation.playerId ?? "",
-    });
-    if (error) {
-      if (isMissingSqlReducer(error)) return null;
-      throw error;
-    }
-    rejectSqlRecruitingFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),

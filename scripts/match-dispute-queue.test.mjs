@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { disputeMatch, resolveMatchDispute } from "../src/data/repository.js";
+import { approveMatch, disputeMatch, finalizeMatchByAuthority, resolveMatchDispute } from "../src/data/repository.js";
 import {
   DISPUTE_WINDOW_MINUTES,
   DISPUTE_WINDOW_OPTIONS,
@@ -118,7 +118,7 @@ test("후보는 제외하고 실제 출전 선수만 이의를 접수한다", ()
   assert.equal(next.notifications[0]?.title, "이의신청 권한 없음");
 });
 
-test("여러 참가자의 이의를 병렬 접수하고 배정 심판이 건별 처리한다", () => {
+test("여러 참가자의 이의를 병렬 접수하고 방장이 건별 처리한 뒤 별도 승인한다", () => {
   const start = makeState("host");
   const first = disputeMatch(start, "match-queue", requestFor(start, "host", 8));
   const secondInput = { ...first, currentUserId: "guest" };
@@ -127,33 +127,47 @@ test("여러 참가자의 이의를 병렬 접수하고 배정 심판이 건별 
 
   assert.equal(open.length, 2);
   assert.equal(second.matches[0].status, "disputed");
-  assert.equal(canUserResolveMatchDispute(second.matches[0], "referee"), true);
-  assert.equal(canUserResolveMatchDispute(second.matches[0], "host"), false);
+  assert.equal(canUserResolveMatchDispute(second.matches[0], "referee"), false);
+  assert.equal(canUserResolveMatchDispute(second.matches[0], "host"), true);
   assert.equal(canUserResolveMatchDispute(second.matches[0], "guest"), false);
 
   const hostDispute = open.find((dispute) => dispute.by === "host");
-  const accepted = resolveMatchDispute({ ...second, currentUserId: "referee" }, "match-queue", hostDispute.id, "accepted");
+  const refereeAttempt = resolveMatchDispute({ ...second, currentUserId: "referee" }, "match-queue", hostDispute.id, "accepted");
+  assert.equal(getOpenMatchDisputes(refereeAttempt.matches[0]).length, 2);
+  const accepted = resolveMatchDispute({ ...second, currentUserId: "host" }, "match-queue", hostDispute.id, "accepted");
   assert.equal(getOpenMatchDisputes(accepted.matches[0]).length, 1);
   assert.equal(accepted.matches[0].status, "disputed");
   assert.equal(accepted.matches[0].disputeDraftResult.playerStats.host.points, 8);
 
   const remaining = getOpenMatchDisputes(accepted.matches[0])[0];
-  const finished = resolveMatchDispute({ ...accepted, currentUserId: "referee" }, "match-queue", remaining.id, "rejected");
-  assert.equal(getOpenMatchDisputes(finished.matches[0]).length, 0);
+  const resolved = resolveMatchDispute({ ...accepted, currentUserId: "host" }, "match-queue", remaining.id, "rejected");
+  assert.equal(getOpenMatchDisputes(resolved.matches[0]).length, 0);
+  assert.equal(resolved.matches[0].status, "approval");
+  assert.equal(resolved.matches[0].result.playerStats.host.points, 8);
+  assert.deepEqual(resolved.matches[0].approvals, { teamA: [], teamB: [] });
+  assert.match(resolved.notifications[0].body, /방장이 최종 승인/);
+
+  const participantAttempt = finalizeMatchByAuthority({ ...resolved, currentUserId: "guest" }, "match-queue");
+  assert.equal(participantAttempt.matches[0].status, "approval");
+  const finished = finalizeMatchByAuthority({ ...resolved, currentUserId: "host" }, "match-queue");
   assert.equal(finished.matches[0].status, "confirmed");
-  assert.equal(finished.matches[0].result.playerStats.host.points, 8);
-  assert.deepEqual(finished.matches[0].approvals, { teamA: [], teamB: [] });
-  assert.match(finished.notifications[0].body, /불복은 신고/);
+});
+
+test("일반 경기 참가자 승인 경로는 폐기되고 방장 최종 승인만 남는다", () => {
+  const state = makeState("guest");
+  const approved = approveMatch(state, "match-queue", "teamB", "guest");
+  assert.strictEqual(approved, state);
+  assert.equal(approved.matches[0].status, "approval");
 });
 
 test("기존 사유형 이의제기도 가결할 수 있다", () => {
   const start = makeState("guest");
   const disputed = disputeMatch(start, "match-queue", "기존 기록을 다시 확인해 주세요.");
   const openDispute = getOpenMatchDisputes(disputed.matches[0])[0];
-  const finished = resolveMatchDispute({ ...disputed, currentUserId: "referee" }, "match-queue", openDispute.id, "accepted");
+  const finished = resolveMatchDispute({ ...disputed, currentUserId: "host" }, "match-queue", openDispute.id, "accepted");
 
   assert.equal(getOpenMatchDisputes(finished.matches[0]).length, 0);
-  assert.equal(finished.matches[0].status, "confirmed");
+  assert.equal(finished.matches[0].status, "approval");
   assert.deepEqual(finished.matches[0].result, start.matches[0].result);
 });
 
@@ -178,10 +192,12 @@ test("무심판 점수 이의 수락은 요청한 사이드 점수만 바꾸고 
   const openDispute = getOpenMatchDisputes(disputed.matches[0])[0];
   const finished = resolveMatchDispute({ ...disputed, currentUserId: "host" }, "match-queue", openDispute.id, "accepted");
 
-  assert.equal(finished.matches[0].status, "confirmed");
+  assert.equal(finished.matches[0].status, "approval");
   assert.equal(finished.matches[0].result.scoreA, 5);
   assert.equal(finished.matches[0].result.scoreB, 10);
   assert.deepEqual(finished.matches[0].result.playerStats, {});
+  const confirmed = finalizeMatchByAuthority({ ...finished, currentUserId: "host" }, "match-queue");
+  assert.equal(confirmed.matches[0].status, "confirmed");
 });
 
 test("미처리 이의는 제한시간이 지나도 이의 단계에 남는다", () => {
@@ -202,11 +218,12 @@ test("DB와 목록 API가 병렬 큐를 새로고침 가능한 형태로 조회�
   assert.match(migration, /rankball_match_resolve_dispute_action/);
   assert.match(migration, /safe_decision not in \('accepted', 'rejected'\)/);
   assert.match(migration, /match_host_required/);
-  const hostFinalizeMigration = await readSource("supabase/migrations/20260724235900_match_dispute_host_finalize.sql");
+  const hostFinalizeMigration = await readSource("supabase/migrations/20260728130000_general_match_host_finalization.sql");
   assert.match(hostFinalizeMigration, /match_dispute_host_required/);
-  assert.match(hostFinalizeMigration, /match_dispute_items_open/);
-  assert.match(hostFinalizeMigration, /'reapprovalRequired', false/);
-  assert.match(hostFinalizeMigration, /rankball_match_finalize_locked\(/);
+  assert.match(hostFinalizeMigration, /match_finalize_host_required/);
+  assert.match(hostFinalizeMigration, /general_match_participant_approval_retired/);
+  assert.match(hostFinalizeMigration, /'finalized', false/);
+  assert.match(hostFinalizeMigration, /replace\(function_definition, old_finalize, ''\)/);
   assert.match(listApi, /attachOpenDisputeQueues/);
   assert.match(listApi, /\.eq\("status", "open"\)/);
 });

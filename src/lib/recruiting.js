@@ -1,4 +1,4 @@
-import { DEFAULT_RATING, DISPUTE_WINDOW_MINUTES, MATCH_SIDES, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole, normalizeBenchCapacity } from "./constants.js";
+import { DEFAULT_RATING, DISPUTE_WINDOW_MINUTES, MATCH_SIDES, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole, normalizeBenchCapacity } from "./constants.js";
 import { normalizeCourtOptionalBoolean } from "./courts.js";
 import { getMatchScheduledDate, isEligibleReferee, isInstantRoom } from "./matchUtils.js";
 import { getAgeGroupForUser } from "./profileSetup.js";
@@ -274,45 +274,16 @@ export function currentUserCanRefereeRecruitingRoom(state, post) {
   return !getRecruitingRoomParticipantIds(post, state).includes(state.currentUserId);
 }
 
-export function getValidRecruitingRecorder(post, state, sideName, playerId) {
-  if (!playerId || post.refereeId) return "";
-  const lobby = getRecruitingLobby(post, state);
-  const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
-  const candidate = (lobby.sides[sideName]?.reserveCandidates ?? []).find((item) => (
-    item.playerId === playerId &&
-    RECORDABLE_RESERVE_SOURCES.has(item.source) &&
-    item.status === "ready" &&
-    !playingIds.has(item.playerId)
-  ));
-  return candidate ? playerId : "";
+export function getValidRecruitingRecorder() {
+  return "";
 }
 
-export function getRecruitingRoomStatRecorders(post, state) {
-  const lobby = getRecruitingLobby(post, state);
-  const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
-  const getRecorder = (sideName) => {
-    const candidate = (lobby.sides[sideName]?.reserveCandidates ?? []).find((item) => (
-      RECORDABLE_RESERVE_SOURCES.has(item.source) &&
-      item.status === "ready" &&
-      !playingIds.has(item.playerId)
-    ));
-    return candidate?.playerId ?? "";
-  };
-  return {
-    teamA: getRecorder("teamA"),
-    teamB: getRecorder("teamB"),
-  };
+export function getRecruitingRoomStatRecorders() {
+  return { teamA: "", teamB: "" };
 }
 
-export function cleanRecruitingRoomStatRecorders(post, state) {
-  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  return {
-    ...post,
-    roomState: {
-      ...roomState,
-      statRecorders: getRecruitingRoomStatRecorders({ ...post, roomState }, state),
-    },
-  };
+export function cleanRecruitingRoomStatRecorders(post) {
+  return post;
 }
 
 export function inferSidePartyTeamIdForUser(post = {}, state = {}, sideName = "", userId = "") {

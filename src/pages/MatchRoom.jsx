@@ -7,7 +7,7 @@ import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
 import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
 import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
-import MatchVoidDialog from "../components/match/MatchVoidDialog.jsx";
+import MatchVoidDialog, { MatchFinalizeDialog } from "../components/match/MatchVoidDialog.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -251,6 +251,8 @@ export default function MatchRoom({ app }) {
   const [soloRecordDeleteOpen, setSoloRecordDeleteOpen] = useState(false);
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   const [voidActionPending, setVoidActionPending] = useState(false);
+  const [finalizeDialogOpen, setFinalizeDialogOpen] = useState(false);
+  const [finalizeActionPending, setFinalizeActionPending] = useState(false);
   const [voidRestoreDetail, setVoidRestoreDetail] = useState("");
   const [voidRestoreStatus, setVoidRestoreStatus] = useState("");
   const existingCourtReview = useMemo(
@@ -258,7 +260,7 @@ export default function MatchRoom({ app }) {
     [app.currentUser.id, app.state.settings?.courtReviews, match?.id],
   );
   const [courtReviewDraft, setCourtReviewDraft] = useState(() => getCourtReviewDraft(existingCourtReview));
-  useBodyScrollLock(Boolean((match?.refereeId && statEditorPlayerId) || soloRecordDeleteOpen || voidDialogOpen));
+  useBodyScrollLock(Boolean((match?.refereeId && statEditorPlayerId) || soloRecordDeleteOpen || voidDialogOpen || finalizeDialogOpen));
 
   useEffect(() => {
     matchDetailRequestSequenceRef.current += 1;
@@ -368,7 +370,7 @@ export default function MatchRoom({ app }) {
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
   const currentUserCanResolveDispute = canUserResolveMatchDispute(match, app.currentUser.id, sourceRecruitingPost)
-    && (hasReferee ? currentUserIsEligibleReferee : isMatchHost);
+    && isMatchHost;
   const currentUserCanRefreshReview = isMatchHost || currentUserIsEligibleReferee || currentUserIsAdmin;
   const currentUserCanFileDispute = getMatchRecordPlayerIds(match).includes(app.currentUser.id);
   const resultEntryPermission = getMatchResultEntryPermission(match, app.currentUser.id, {
@@ -387,7 +389,7 @@ export default function MatchRoom({ app }) {
     (hasReferee ? match.result : true) &&
     !match.confirmedAt &&
     match.status !== "disputed" &&
-    currentUserCanOperateStartedMatch,
+    isMatchHost,
   );
   const openDisputes = getOpenMatchDisputes(match);
   const hasOwnOpenDispute = openDisputes.some((dispute) => dispute.by === app.currentUser.id);
@@ -399,6 +401,23 @@ export default function MatchRoom({ app }) {
   const canVoid = match.status === "disputed" && currentUserCanResolveDispute;
   const canRequestVoidRestore = canRequestVoidMatchRestore(match, app.currentUser.id);
   const canDeleteSoloRecord = isSoloRecord && match.createdBy === app.currentUser.id && match.status !== "cancelled";
+  const requestFinalizeMatch = () => {
+    if (isSharedRecord || isSoloRecord) {
+      void app.actions.finalizeMatch?.(match.id);
+      return;
+    }
+    setFinalizeDialogOpen(true);
+  };
+  const submitFinalizeMatch = async () => {
+    if (finalizeActionPending) return;
+    setFinalizeActionPending(true);
+    try {
+      const result = await app.actions.finalizeMatch?.(match.id);
+      if (result?.ok !== false) setFinalizeDialogOpen(false);
+    } finally {
+      setFinalizeActionPending(false);
+    }
+  };
   const reportTime = getReportableMatchTimeMs(match);
   const canReport = !["cancelled", "void"].includes(match.status)
     && getReportableMatchUserIds(match).includes(app.currentUser.id)
@@ -660,12 +679,12 @@ export default function MatchRoom({ app }) {
     }
     if (match.status === "approval") return {
       label: "최종 확정 대기",
-      detail: hasReferee ? "배정 심판의 최종 확정을 기다립니다." : "방장의 최종 확정을 기다립니다.",
+      detail: "방장이 현장 합의를 확인한 뒤 최종 승인합니다.",
     };
     if (match.status === "disputed") {
       return {
         label: "이의 확인",
-        detail: openDisputes.length ? `방장이 이의제기 ${openDisputes.length}건을 건별로 가결 또는 부결합니다.` : "마지막 이의 판정과 함께 결과가 확정됩니다.",
+        detail: openDisputes.length ? `방장이 이의제기 ${openDisputes.length}건을 건별로 가결 또는 부결합니다.` : "이의 처리가 끝나면 방장이 별도로 최종 승인합니다.",
       };
     }
     if (match.status === "confirmed") {
@@ -818,7 +837,7 @@ export default function MatchRoom({ app }) {
           <em>{nextAction.detail}</em>
         </div>
         {canFinalizeMatch ? (
-          <Button type="button" onClick={() => app.actions.finalizeMatch?.(match.id)}>최종 확정</Button>
+          <Button type="button" onClick={requestFinalizeMatch}>최종 승인</Button>
         ) : nextAction.type === "agree" ? (
           <Button type="button" onClick={() => app.actions.agreeMatch(match.id, currentUserSideName, app.currentUser.id)}>{nextAction.button}</Button>
         ) : nextAction.href ? (
@@ -1069,7 +1088,7 @@ export default function MatchRoom({ app }) {
                     })}
                   </div>
                 )}
-                {canFinalizeMatch ? <Button type="button" onClick={() => app.actions.finalizeMatch?.(match.id)}>최종 확정</Button> : null}
+                {canFinalizeMatch ? <Button type="button" onClick={requestFinalizeMatch}>최종 승인</Button> : null}
               </Card>
             ) : null}
           </div>
@@ -1338,6 +1357,13 @@ export default function MatchRoom({ app }) {
         pending={voidActionPending}
         onClose={() => setVoidDialogOpen(false)}
         onConfirm={submitVoidMatch}
+      />
+      <MatchFinalizeDialog
+        open={finalizeDialogOpen}
+        pending={finalizeActionPending}
+        openDisputeCount={openDisputes.length}
+        onClose={() => setFinalizeDialogOpen(false)}
+        onConfirm={submitFinalizeMatch}
       />
     </div>
   );

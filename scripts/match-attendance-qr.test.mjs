@@ -9,6 +9,10 @@ import {
   addMatchLatePlayer,
   checkInMatchPlayer,
   endMatch,
+  requestMatchRecorderTakeover,
+  resolveMatchRecorderTakeover,
+  setMatchDualScoreRecorderSide,
+  setRecruitingStatRecorder,
   substituteMatchPlayer,
 } from "../src/data/repository.js";
 import { mergeMatchesById } from "../src/hooks/useAppData.js";
@@ -259,6 +263,24 @@ test("배정 심판과 후보 본인만 출전·후보를 교체할 수 있다",
   );
   assert.equal(crossSideRecorderBlocked.matches[0].teamA.players[0], "active-a");
 });
+
+test("폐기된 기록자 실행 경로는 레거시 데이터를 바꾸지 않는다", () => {
+  const state = {
+    currentUserId: "reserve-a",
+    matches: [{
+      id: "retired-recorder-flow",
+      statRecorders: { teamA: "legacy-recorder" },
+      recorderTakeoverRequests: [],
+    }],
+  };
+  assert.strictEqual(setMatchDualScoreRecorderSide(state, "retired-recorder-flow", "teamA"), state);
+  assert.strictEqual(requestMatchRecorderTakeover(state, "retired-recorder-flow", "teamA"), state);
+  assert.strictEqual(
+    resolveMatchRecorderTakeover(state, "retired-recorder-flow", "teamA", "request-1", "approved"),
+    state,
+  );
+  assert.strictEqual(setRecruitingStatRecorder(state, "legacy-post", "teamA", "reserve-a"), state);
+});
 test("출석 운영자는 자기 출석도 같은 중앙 action으로 저장한다", () => {
   const match = {
     id: "host-self-checkin",
@@ -381,6 +403,8 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
     teamPartyGuardSql,
     appDataSource,
     liveOperationsSql,
+    matchListApiSource,
+    authoritativeStateSource,
   ] = await Promise.all([
     readSource("src/components/match/MatchClockPanel.jsx"),
     readSource("server/api/matches/clock.js"),
@@ -393,6 +417,8 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
     readSource("supabase/migrations/20260728123000_block_team_room_party_detach.sql"),
     readSource("src/hooks/useAppData.js"),
     readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql"),
+    readSource("server/api/matches/list.js"),
+    readSource("server/api/_authoritativeState.js"),
   ]);
 
   assert.match(clockApiSource, /reserve_players,referee_id/u);
@@ -413,6 +439,10 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
   assert.match(matchesSource, /!attendanceQrFlow && selectedMatchDetailLoading/u);
   assert.match(syncMatchSource, /match_recorder_flow_retired/u);
   assert.doesNotMatch(appDataSource, /requestMatchRecorderTakeover|approveMatchRecorderTakeover|handoffMatchRecorder/u);
+  assert.doesNotMatch(appDataSource, /setRecruitingStatRecorder/u);
+  assert.doesNotMatch(recruitingApiSource, /setRecruitingStatRecorder|rankball_recruiting_stat_recorder_action/u);
+  assert.doesNotMatch(matchListApiSource, /match_recorder_takeover_requests|recorderTakeoverRequests/u);
+  assert.doesNotMatch(authoritativeStateSource, /handoffMatchRecorder|setRecruitingStatRecorder/u);
   assert.match(liveOperationsSql, /elsif game_clock_enabled[\s\S]*authority_a := 'clock_controller'/u);
   assert.match(repositorySource, /if \(isTeamOnlyRecruitingRoom\(post\)\) return state;/u);
   assert.match(recruitingApiSource, /team_room_party_detach_forbidden/u);
@@ -475,6 +505,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const placementAndTeamMmrSql = await readSource("supabase/migrations/20260728110000_player_placement_and_roster_team_mmr.sql");
   const unifiedRosterSql = await readSource("supabase/migrations/20260727110000_unified_match_roster_transition.sql");
   const simplifiedLiveMatchSql = await readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql");
+  const hostFinalizationSql = await readSource("supabase/migrations/20260728130000_general_match_host_finalization.sql");
   const scoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727144000_allow_score_only_postgame_roster.sql");
   const enforcedScoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727145000_enforce_score_only_postgame_roster.sql");
   const syncMatchSource = await readSource("server/api/matches/sync-match.js");
@@ -529,6 +560,10 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(simplifiedLiveMatchSql, /match_row\.reserve_players->'teamA'/u);
   assert.match(simplifiedLiveMatchSql, /authority_a := 'clock_controller'/u);
   assert.match(simplifiedLiveMatchSql, /not game_clock_enabled[\s\S]*current_match\.created_by/u);
+  assert.match(hostFinalizationSql, /match_finalize_host_required/u);
+  assert.match(hostFinalizationSql, /match_dispute_host_required/u);
+  assert.match(hostFinalizationSql, /check \(reason in \('self', 'late', 'ejection', 'operator'\)\) not valid/u);
+  assert.match(hostFinalizationSql, /revoke all on function public\.rankball_match_recorder_takeover_action/u);
   assert.match(scoreOnlyPostgameRosterSql, /rankball_match_postgame_roster_action/u);
   assert.match(scoreOnlyPostgameRosterSql, /score_row_lock constant text/u);
   assert.doesNotMatch(scoreOnlyPostgameRosterSql, /drop\s+table|truncate\s+table|delete\s+from/iu);

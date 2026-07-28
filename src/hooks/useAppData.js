@@ -81,7 +81,6 @@ import {
   setRecruitingPartyPlayerReserve,
   setRecruitingRoomTeam,
   setRecruitingTeamPartyRoster,
-  setRecruitingStatRecorder,
   assignTournamentMatchReferee,
   startMatch,
   substituteMatchPlayer,
@@ -313,7 +312,6 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "setRecruitingTeamPartyRoster",
   "detachRecruitingPartyPlayer",
   "removeRecruitingPartyPlayer",
-  "setRecruitingStatRecorder",
   "kickRecruitingApplicant",
   "confirmRecruitingMatch",
   "closeRecruitingPost",
@@ -373,7 +371,6 @@ const RECRUITING_OPERATION_ONLY_ACTIONS = new Set([
   "setRecruitingPartyPlayerPlacement",
   "setRecruitingPartyPlayerReserve",
   "setRecruitingSlotPosition",
-  "setRecruitingStatRecorder",
   "setRecruitingTeamPartyRoster",
   "updateRecruitingRoomRules",
   "acknowledgeRecruitingRoomRules",
@@ -4673,9 +4670,6 @@ export function useAppData(authUser = null, appLocation = null) {
       },
       removeRecruitingPartyPlayer: (postId, entryId, playerId) => {
         applyRecruitingPostMutation(postId, (prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId), { action: "removeRecruitingPartyPlayer", entryId, playerId });
-      },
-      setRecruitingStatRecorder: (postId, sideName, playerId) => {
-        applyRecruitingPostMutation(postId, (prev) => setRecruitingStatRecorder({ ...prev, currentUserId }, postId, sideName, playerId), { action: "setRecruitingStatRecorder", sideName, playerId });
       },
       kickRecruitingApplicant: (postId, playerId) => applyRecruitingPostMutation(postId, (prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId), { action: "kickRecruitingApplicant", playerId }),
       confirmRecruitingMatch: async (postId) => {

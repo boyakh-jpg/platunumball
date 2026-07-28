@@ -714,3 +714,17 @@ test("팀 경기 히스토리는 공용 최근 경기 행을 사용한다", () =
   assert.doesNotMatch(teamDetailSource, /history-item rank-match-item|outcomeLabel|compact-roster/);
   assert.doesNotMatch(teamDetailSource, /\(side\?\.players \?\? \[\]\)\.map/);
 });
+
+test("일반 경기 최종 승인은 공용 확인창을 거친다", () => {
+  const dialogSource = read("src/components/match/MatchVoidDialog.jsx");
+  const matchRoomSource = read("src/pages/MatchRoom.jsx");
+  const recruitingSource = read("src/pages/Recruiting.jsx");
+
+  assert.match(dialogSource, /더 이상 이의가 없음을 확인하셨나요\?/);
+  assert.match(dialogSource, /열린 이의신청 \$\{openDisputeCount\}건을 먼저 처리/);
+  assert.match(dialogSource, /disabled=\{blocked \|\| pending\}/);
+  assert.match(matchRoomSource, /setFinalizeDialogOpen\(true\)/);
+  assert.match(recruitingSource, /setFinalizeMatchTarget\(\{/);
+  assert.doesNotMatch(matchRoomSource, /onClick=\{\(\) => app\.actions\.finalizeMatch/);
+  assert.doesNotMatch(recruitingSource, /onClick=\{\(\) => app\.actions\.finalizeMatch/);
+});

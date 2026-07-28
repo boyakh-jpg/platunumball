@@ -522,6 +522,21 @@ export function getAgreementStatus(match = {}, teams = [], sideName) {
 }
 
 export function getApprovalStatus(match = {}, teams = [], sideName) {
+  if (!isMatchRecordMatch(match)) {
+    return {
+      approvals: [],
+      total: match[sideName]?.players?.length ?? 0,
+      majority: 0,
+      requiredIds: [],
+      approvalMode: "host",
+      approvalLabel: "방장 최종 승인",
+      captainId: null,
+      captainRequired: false,
+      captainApproved: false,
+      majorityApproved: false,
+      approved: false,
+    };
+  }
   return getDecisionStatus(match, teams, sideName, "approvals");
 }
 
@@ -674,14 +689,14 @@ export function withEffectiveMatchStatRecorders(match = {}) {
   };
 }
 
-export function getRecorderHandoffPatch(match, sideName, currentRecorderId, nextRecorderId) {
+export function getMatchRosterSwapPatch(match, sideName, activePlayerId, reservePlayerId) {
   const side = match[sideName] ?? {};
   const sidePlayers = side.players ?? [];
   const reserveIds = getMatchReservePlayerIds(match, sideName);
-  const currentIsPlayer = sidePlayers.includes(currentRecorderId);
-  const currentIsReserve = reserveIds.includes(currentRecorderId);
-  const nextIsPlayer = sidePlayers.includes(nextRecorderId);
-  const nextIsReserve = reserveIds.includes(nextRecorderId);
+  const currentIsPlayer = sidePlayers.includes(activePlayerId);
+  const currentIsReserve = reserveIds.includes(activePlayerId);
+  const nextIsPlayer = sidePlayers.includes(reservePlayerId);
+  const nextIsReserve = reserveIds.includes(reservePlayerId);
   if (!nextIsPlayer && !nextIsReserve) return { valid: false, match, swapped: false };
 
   const recordWindow = getMatchRecordWindow(match);
@@ -691,8 +706,8 @@ export function getRecorderHandoffPatch(match, sideName, currentRecorderId, next
   );
   if (!shouldSwap) return { valid: true, match, swapped: false };
 
-  const activeInId = currentIsReserve ? currentRecorderId : nextRecorderId;
-  const benchedId = currentIsReserve ? nextRecorderId : currentRecorderId;
+  const activeInId = currentIsReserve ? activePlayerId : reservePlayerId;
+  const benchedId = currentIsReserve ? reservePlayerId : activePlayerId;
   const nextPlayers = sidePlayers.map((playerId) => (playerId === benchedId ? activeInId : playerId));
   const currentReservePlayers = match.reservePlayers?.[sideName] ?? [];
   const nextReservePlayers = uniquePlayerIds([
@@ -1026,7 +1041,6 @@ export function getMatchHostPlayerId(match = {}, sourcePost = null) {
 
 export function canUserResolveMatchDispute(match = {}, userId = "", sourcePost = null) {
   if (!userId || match.status !== "disputed") return false;
-  if (match.refereeId) return isMatchReferee(match, userId);
   return getMatchHostPlayerId(match, sourcePost) === userId;
 }
 
@@ -1035,14 +1049,12 @@ export function getOpenMatchDisputes(match = {}) {
 }
 
 export function getMatchTrustFeedbackParticipantIds(match = {}) {
-  const statRecorders = getEffectiveStatRecorders(match);
   return uniquePlayerIds([
     ...getMatchPlayerIds(match),
     ...getMatchReservePlayerIds(match, "teamA"),
     ...getMatchReservePlayerIds(match, "teamB"),
     getMatchHostPlayerId(match),
     match.refereeId,
-    ...Object.values(statRecorders),
   ]);
 }
 
@@ -1176,6 +1188,7 @@ export function getMatchScoreEditableSides(match = {}, userId = "", {
   clockController = false,
 } = {}) {
   if (!userId) return [];
+  if (isMatchRecordMatch(match) && match.endedAt && canOperatePostStart) return MATCH_SIDES;
   const gameClockEnabled = match.rules?.gameClockEnabled !== false
     && match.rules?.gameClockEnabled !== "false";
   if (gameClockEnabled && clockController) return MATCH_SIDES;
@@ -1581,11 +1594,7 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
       ? "referee"
       : !hasReferee && canOperatePostStart
         ? "no_ref_host"
-        : getDesignatedScoreRecorderId(match) === userId
-          ? "score_recorder"
-          : editableScoreSides.length
-            ? "side_recorder"
-            : "none",
+        : "none",
     canEditDisputeDraft,
     canSubmit: canEditDisputeDraft || canSubmitLive || canSubmitPostgame,
     canSubmitLive,

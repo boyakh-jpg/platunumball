@@ -242,14 +242,6 @@ function getParticipantIds(match = {}) {
   ].filter(Boolean));
 }
 
-function getRecordPlayerIds(match = {}) {
-  return new Set([
-    ...(match.teamA?.players ?? []),
-    ...(match.teamB?.players ?? []),
-    ...Object.values(match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {}).flatMap(toArray),
-  ].filter(Boolean));
-}
-
 function getRoomManagerIds(match = {}) {
   return [match.refereeId || match.createdBy || match.ownerId || match.playerId].filter(Boolean);
 }
@@ -987,11 +979,6 @@ function normalizeResultSnapshot(result = null, statRows = []) {
   });
 }
 
-function getStatRecorderIds(match = {}) {
-  const recorders = match.statRecorders ?? match.stat_recorders ?? match.rules?.statRecorders ?? {};
-  return Object.values(recorders).flatMap((value) => Array.isArray(value) ? value : [value]).filter(Boolean);
-}
-
 async function isActiveReferee(supabase, userId, minTrust = 90) {
   if (!userId) return false;
 
@@ -1037,7 +1024,6 @@ const CREATE_MATCH_ACTIONS = new Set([
 const OPERATOR_MATCH_ACTIONS = new Set([
   "updateTournamentMatchSchedule",
   "forfeitTournamentMatch",
-  "handoffMatchRecorder",
   "checkInMatchPlayer",
   "confirmPickupSideAssignment",
   "requestMatchRefereeAbsence",
@@ -1126,15 +1112,25 @@ function canSubmitResult(profileId, existingMatch, nextMatch) {
   const disputeDraftSubmission = existingMatch?.status === "disputed" || nextMatch?.status === "disputed" || nextMatch?.disputeDraftResult;
   const refereeId = nextMatch.refereeId || existingMatch?.referee_id;
   const hostId = nextMatch.createdBy || existingMatch?.created_by;
-  if (disputeDraftSubmission) return refereeId ? profileId === refereeId : profileId === hostId;
+  const recordType = nextMatch.rules?.recordType || existingMatch?.rules?.recordType || "";
+  if (recordType === RECORD_TYPES.personalRecord || recordType === RECORD_TYPES.matchRecord) {
+    return profileId === hostId;
+  }
+  if (disputeDraftSubmission) return Boolean(refereeId && profileId === refereeId);
   const startedAt = nextMatch.startedAt || existingMatch?.started_at;
   const endedAt = nextMatch.endedAt || existingMatch?.ended_at;
   if (!startedAt && !endedAt) return false;
+  return Boolean(refereeId && profileId === refereeId);
+}
+
+function canSyncSelfSubstitution(profileId, existingMatch, nextMatch) {
+  const refereeId = String(nextMatch.refereeId ?? existingMatch?.referee_id ?? "").trim();
   if (refereeId) return profileId === refereeId;
-  const recorderIds = getStatRecorderIds(nextMatch);
-  const recordPlayer = getRecordPlayerIds(nextMatch).has(profileId);
-  if (endedAt) return recorderIds.includes(profileId) || recordPlayer || profileId === hostId;
-  return recorderIds.includes(profileId) || recordPlayer;
+  return MATCH_SIDES.some((sideName) => {
+    const existingReserveIds = toArray(existingMatch?.reserve_players?.[sideName]);
+    const nextActiveIds = toArray(nextMatch?.[sideName]?.players);
+    return existingReserveIds.includes(profileId) && nextActiveIds.includes(profileId);
+  });
 }
 
 function canDeleteSoloRecord(profileId, existingMatch, nextMatch) {
@@ -1153,8 +1149,9 @@ function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch
   if (!existingMatch) return CREATE_MATCH_ACTIONS.has(action) && nextParticipants.has(profileId);
   const existingParticipants = existingParticipantIds(existingMatch, existingPlayers);
   if (action === "deleteSoloRecord") return canDeleteSoloRecord(profileId, existingMatch, nextMatch);
-  if (action === "handoffMatchRecorder") return isMatchOperator(profileId, existingMatch, nextMatch) || getStatRecorderIds(existingMatch).includes(profileId);
-  if (action === "substituteMatchPlayer") return isMatchOperator(profileId, existingMatch, nextMatch) || getStatRecorderIds(existingMatch).includes(profileId);
+  if (action === "handoffMatchRecorder") return false;
+  if (action === "substituteMatchPlayer") return canSyncSelfSubstitution(profileId, existingMatch, nextMatch);
+  if (action === "resolveMatchDispute") return profileId === (nextMatch.createdBy || existingMatch?.created_by);
   if (action === MATCH_RECORD_ROSTER_ACTION) return canSyncMatchRecordTeamRoster(profileId, existingMatch, existingPlayers, nextMatch);
   if (action === MATCH_RECORD_SETUP_ACTION) {
     return Boolean(
@@ -1483,6 +1480,9 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     "handoffMatchRecorder",
   ].includes(operation.action)) {
     reject(409, "match_recorder_flow_retired");
+  }
+  if (operation.action === "approveMatch" && !isMatchRecordMatch(match)) {
+    reject(409, "general_match_participant_approval_retired");
   }
 
   if (operation.action === "incrementMatchScore" && operation.matchId) {
