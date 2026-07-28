@@ -30,6 +30,7 @@ const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
 const MATCH_CLOSED_NOTICE_GRACE_MINUTES = INSTANT_ROOM_EXPIRE_MINUTES;
 export const MATCH_FINALIZATION_MINIMUM_MINUTES = 3;
 export const MATCH_MANUAL_FINALIZATION_DELAY_MINUTES = 3;
+export const MATCH_FINALIZATION_MINIMUM_MINUTES = 3;
 export const MATCH_RECORD_DURATION_MINUTES = 30;
 export { INSTANT_ROOM_EXPIRE_MINUTES };
 export const MATCH_DISPUTE_REASON_OPTIONS = [
@@ -1688,6 +1689,26 @@ export function getMatchManualFinalizationStatus(match = {}, now = Date.now()) {
     remainingMs: Number.isFinite(nowMs) && Number.isFinite(readyAtMs)
       ? Math.max(0, readyAtMs - nowMs)
       : null,
+  };
+}
+
+export function getMatchFinalizationWindow(match = {}, now = Date.now()) {
+  const sourceMatch = match ?? {};
+  const nowMs = typeof now === "number" ? now : new Date(now).getTime();
+  const submittedAtMs = new Date(
+    sourceMatch.result?.submittedAt ?? sourceMatch.result?.submitted_at ?? "",
+  ).getTime();
+  const endedAtMs = new Date(sourceMatch.endedAt ?? sourceMatch.ended_at ?? "").getTime();
+  const baseMs = Math.max(
+    Number.isFinite(submittedAtMs) ? submittedAtMs : 0,
+    Number.isFinite(endedAtMs) ? endedAtMs : 0,
+  );
+  const availableAtMs = baseMs
+    ? baseMs + MATCH_FINALIZATION_MINIMUM_MINUTES * MINUTE_MS
+    : 0;
+  return {
+    availableAt: availableAtMs ? new Date(availableAtMs) : null,
+    ready: availableAtMs > 0 && nowMs >= availableAtMs,
   };
 }
 
