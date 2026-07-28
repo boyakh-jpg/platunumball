@@ -23,6 +23,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../../../src/lib/constants.js";
 import { getRecordWindowDates } from "../../../src/lib/recordRetention.js";
+import { toPublicProfilePrivacy } from "../directory/load.js";
 
 const RECORD_SCOPE_PROFILE = "profile";
 const RECORD_SCOPE_TEAM = "team";
@@ -49,6 +50,7 @@ const RECORD_INDEX_COLUMNS = [
 const PROFILE_RECORD_INDEX_COLUMNS = `${RECORD_INDEX_COLUMNS},profile_id,position,stats,record_type,visibility,owner_profile_id`;
 const TEAM_RECORD_INDEX_COLUMNS = `${RECORD_INDEX_COLUMNS},visibility,reader_ids`;
 const PROFILE_QUERY_CHUNK_SIZE = 100;
+const VERIFIED_PUBLIC_STAT_SOURCES = new Set(["referee", "dispute_operator"]);
 
 function normalizeLimit(value, fallback, maximum) {
   const parsed = Number(value);
@@ -71,6 +73,11 @@ function toArray(value) {
 
 function mapCompactRecord(row = {}) {
   const isTeamB = row.side === "teamB";
+  const recordType = String(row.record_type ?? "match").trim().toLowerCase();
+  const personalRecord = ["solo", "personal_record"].includes(recordType);
+  const rawStats = row.stats && typeof row.stats === "object" ? row.stats : {};
+  const statsSource = String(rawStats.record_source ?? rawStats.recordSource ?? "").trim().toLowerCase();
+  const stats = personalRecord || VERIFIED_PUBLIC_STAT_SOURCES.has(statsSource) ? rawStats : {};
   return {
     matchId: row.match_id ?? "",
     recordDate: row.record_date ?? "",
@@ -90,8 +97,8 @@ function mapCompactRecord(row = {}) {
     ranked: row.ranked !== false,
     tournamentId: row.tournament_id ?? "",
     position: row.position ?? "",
-    stats: row.stats && typeof row.stats === "object" ? row.stats : {},
-    recordType: row.record_type ?? "match",
+    stats,
+    recordType,
     visibility: row.visibility ?? "private",
     ownerProfileId: row.owner_profile_id ?? "",
   };
@@ -136,7 +143,10 @@ function buildArchiveMatchState(context, archiveRows = [], profileRows = [], vie
     if (payload.court?.id) courtById[payload.court.id] = payload.court;
   });
 
-  const users = profileRows.map(fromRemoteProfile);
+  const users = profileRows.map((row) => ({
+    ...fromRemoteProfile(row),
+    privacy: toPublicProfilePrivacy(row.app_settings),
+  }));
   const currentUser = context.profile
     ? fromRemoteProfile(context.profile)
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
@@ -234,6 +244,39 @@ function mapPersonalRecordMetrics(row = {}, prefix = "") {
     drawCount: number("draw_count"), statCount: number("stat_count"), points: number("points"),
     rebounds: number("rebounds"), assists: number("assists"), steals: number("steals"),
     blocks: number("blocks"), fouls: number("fouls"),
+  };
+}
+
+export function limitPublicProfileStats(state = {}, subjectId = "", allowStats = false) {
+  return {
+    ...state,
+    matches: (state.matches ?? []).map((match) => {
+      if (!match.result) return match;
+      const targetStats = match.result.playerStats?.[subjectId];
+      const targetSubmission = match.result.statSubmissions?.[subjectId];
+      return {
+        ...match,
+        result: {
+          ...match.result,
+          playerStats: allowStats && targetStats ? { [subjectId]: targetStats } : {},
+          statSubmissions: allowStats && targetSubmission ? { [subjectId]: targetSubmission } : {},
+        },
+      };
+    }),
+  };
+}
+
+export function limitPublicPersonalSummary(summary = null, allowStats = false) {
+  if (!summary || allowStats) return summary;
+  return {
+    ...summary,
+    statCount: 0,
+    points: 0,
+    rebounds: 0,
+    assists: 0,
+    steals: 0,
+    blocks: 0,
+    fouls: 0,
   };
 }
 
@@ -335,7 +378,7 @@ async function loadProfileRows(client, archiveRows = []) {
   for (let index = 0; index < profileIds.length; index += PROFILE_QUERY_CHUNK_SIZE) {
     const { data, error } = await client
       .from("profiles")
-      .select(PROFILE_CARD_COLUMNS)
+      .select(`${PROFILE_CARD_COLUMNS},app_settings`)
       .in("id", profileIds.slice(index, index + PROFILE_QUERY_CHUNK_SIZE));
     if (error) throw error;
     rows.push(...(data ?? []));
@@ -369,14 +412,16 @@ export default async function handler(request, response) {
       return;
     }
     const publicProfileOnly = scope === RECORD_SCOPE_PROFILE && subjectId !== context.profileId;
+    let subjectProfileRow = null;
     if (scope === RECORD_SCOPE_PROFILE) {
       const { data: profileRow, error: profileError } = await context.supabase
-        .from("profiles").select("id").eq("id", subjectId).maybeSingle();
+        .from("profiles").select(`${PROFILE_CARD_COLUMNS},app_settings`).eq("id", subjectId).maybeSingle();
       if (profileError) throw profileError;
       if (!profileRow) {
         sendJson(response, 404, { error: "profile_not_found", profileId: subjectId });
         return;
       }
+      subjectProfileRow = profileRow;
     }
     if (scope === RECORD_SCOPE_TEAM) {
       const { data: teamRow, error: teamError } = await context.supabase
@@ -432,13 +477,32 @@ export default async function handler(request, response) {
       : subjectRows.archiveRows.filter((row) => canReadProfileRecord(row, context.profileId, subjectId));
     const recentMatchIds = unique(readableRecentRows.map((row) => row.match_id));
     const archivePayloads = await loadArchivePayloads(context.supabase, recentMatchIds);
-    const profileRows = await loadProfileRows(context.supabase, archivePayloads);
+    const loadedProfileRows = await loadProfileRows(context.supabase, archivePayloads);
+    const profileRows = [...new Map(
+      [subjectProfileRow, ...loadedProfileRows]
+        .filter((row) => row?.id)
+        .map((row) => [row.id, row]),
+    ).values()];
+    const profilePrivacy = scope === RECORD_SCOPE_PROFILE
+      ? toPublicProfilePrivacy(subjectProfileRow?.app_settings)
+      : null;
     const rawState = buildArchiveMatchState(context, archivePayloads, profileRows, viewerTeamIds);
-    const state = filterStateForProfile(rawState, context.profileId, isAdmin);
-    const archiveRecords = readableArchiveRows.map(mapCompactRecord);
-    const personalSummary = scope === RECORD_SCOPE_PROFILE
+    const readableState = filterStateForProfile(rawState, context.profileId, isAdmin);
+    const state = publicProfileOnly
+      ? limitPublicProfileStats(readableState, subjectId, profilePrivacy?.statSummary === true)
+      : readableState;
+    const archiveRecords = readableArchiveRows.map((row) => {
+      const record = mapCompactRecord(row);
+      return publicProfileOnly && profilePrivacy?.statSummary !== true
+        ? { ...record, stats: {} }
+        : record;
+    });
+    const rawPersonalSummary = scope === RECORD_SCOPE_PROFILE
       ? await loadPersonalRecordSummary(context.supabase, subjectId, publicProfileOnly)
       : null;
+    const personalSummary = publicProfileOnly
+      ? limitPublicPersonalSummary(rawPersonalSummary, profilePrivacy?.statSummary === true)
+      : rawPersonalSummary;
 
     sendJson(response, 200, {
       ok: true,

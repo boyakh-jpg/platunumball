@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { API_ROUTES } from "../api/index.js";
-import { buildRecordPage, canReadProfileRecord, canReadTeamRecord } from "../server/api/records/list.js";
+import {
+  buildRecordPage,
+  canReadProfileRecord,
+  canReadTeamRecord,
+  limitPublicPersonalSummary,
+  limitPublicProfileStats,
+} from "../server/api/records/list.js";
 import {
   REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT,
   REMOTE_CLIENT_RECORD_LIST_YEARS,
@@ -126,6 +132,34 @@ test("match stats expose only referee-verified rows or the personal-record owner
   assert.deepEqual(getReadableMatchStatRows({ rules: { recordType: "match" } }, rows), []);
 });
 
+test("public profile stat setting is enforced by the record API", () => {
+  const state = {
+    matches: [{
+      id: "match-1",
+      result: {
+        playerStats: {
+          target: { points: 8 },
+          other: { points: 12 },
+        },
+        statSubmissions: {
+          target: { points: true },
+          other: { points: true },
+        },
+      },
+    }],
+  };
+  const publicState = limitPublicProfileStats(state, "target", true);
+  assert.deepEqual(publicState.matches[0].result.playerStats, { target: { points: 8 } });
+  assert.deepEqual(publicState.matches[0].result.statSubmissions, { target: { points: true } });
+  const privateState = limitPublicProfileStats(state, "target", false);
+  assert.deepEqual(privateState.matches[0].result.playerStats, {});
+  assert.deepEqual(privateState.matches[0].result.statSubmissions, {});
+  assert.deepEqual(
+    limitPublicPersonalSummary({ recordCount: 2, statCount: 2, points: 15, fouls: 3 }, false),
+    { recordCount: 2, statCount: 0, points: 0, fouls: 0, rebounds: 0, assists: 0, steals: 0, blocks: 0 },
+  );
+});
+
 test("record pagination preserves the 201st detail row and separates archive paging", () => {
   assert.deepEqual(buildRecordPage({
     includeDetail: true,
@@ -221,7 +255,12 @@ test("profile and team records use the dedicated archive-backed API", async () =
   assert.match(apiSource, /publicSummary/);
   assert.match(apiSource, /publicProfileOnly/);
   assert.match(apiSource, /query = query\.eq\("visibility", "public"\)/);
+  assert.match(apiSource, /\.select\(`\$\{PROFILE_CARD_COLUMNS\},app_settings`\)/);
+  assert.match(apiSource, /privacy:\s*toPublicProfilePrivacy\(row\.app_settings\)/);
+  assert.match(apiSource, /profilePrivacy\?\.statSummary === true/);
   assert.match(await readSource("src/pages/PlayerDetail.jsx"), /archivedPublicHistory/);
+  assert.match(await readSource("src/pages/PlayerDetail.jsx"), /location\.state\?\.playerPreview/);
+  assert.match(await readSource("src/components/profile/PlayerHoverCard.jsx"), /state=\{\{ playerPreview: user \}\}/);
   assert.match(profileSource, /if \(archiveState\.error\) return/);
   assert.match(teamSource, /loadTeamRecords\(team\.id\)/);
   assert.match(teamSource, /teamRecordArchive\.error\) return/);

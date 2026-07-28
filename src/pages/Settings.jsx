@@ -1634,7 +1634,7 @@ export default function Settings({ app, section = "main" }) {
                     checked={privacyDraft.statSummary !== false}
                     onChange={(event) => setPrivacyDraft((current) => ({ ...current, statSummary: event.target.checked }))}
                   />
-                  개인 스탯 요약 표시
+                  개인 통계 공개
                 </label>
               </div>
             </div>

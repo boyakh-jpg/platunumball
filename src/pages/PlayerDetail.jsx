@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -53,6 +53,7 @@ const historyStatusLabel = {
 
 export default function PlayerDetail({ app }) {
   const { playerId } = useParams();
+  const location = useLocation();
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const loadDirectory = app.actions?.loadDirectory;
   const loadPublicProfileRecords = app.actions?.loadPublicProfileRecords;
@@ -63,7 +64,10 @@ export default function PlayerDetail({ app }) {
     if (!app.remoteReady || !playerId || !loadPublicProfileRecords) return;
     void loadPublicProfileRecords(playerId);
   }, [app.remoteReady, loadPublicProfileRecords, playerId]);
-  const player = app.state.users.find((user) => user.id === playerId);
+  const previewPlayer = location.state?.playerPreview?.id === playerId
+    ? location.state.playerPreview
+    : null;
+  const player = app.state.users.find((user) => user.id === playerId) ?? previewPlayer;
 
   const directoryPending = app.remoteReady === false
     || app.directoryStatus?.loading
@@ -103,6 +107,10 @@ export default function PlayerDetail({ app }) {
     !["solo", "personal_record"].includes(record.recordType)
     && (isOwnProfile || record.visibility === "public")
   ));
+  const archivedStatHistory = archivedPublicHistory.filter((record) => (
+    PLAYER_STAT_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(record.stats ?? {}, field.id))
+    || Object.prototype.hasOwnProperty.call(record.stats ?? {}, "fouls")
+  ));
   const personalSummary = profileRecordArchive?.personalSummary ?? player.personalRecordSummary ?? null;
   const personalRecordCount = Number(personalSummary?.recordCount ?? (personalRecordHistory.length + personalArchivedRecords.length));
   const personalStatCount = Number(personalSummary?.statCount ?? 0);
@@ -125,12 +133,20 @@ export default function PlayerDetail({ app }) {
     const stats = match.result.playerStats[player.id];
     PLAYER_STAT_FIELDS.forEach((field) => { totals[field.id] += Number(stats[field.id] ?? 0); });
   });
+  archivedStatHistory.forEach((record) => {
+    PLAYER_STAT_FIELDS.forEach((field) => { totals[field.id] += Number(record.stats?.[field.id] ?? 0); });
+  });
+  const officialStatRecordCount = recordedStatHistory.length + archivedStatHistory.length;
   const wins = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "win").length;
   const losses = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "loss").length;
   const winRate = confirmedHistory.length ? Math.round((wins / confirmedHistory.length) * 100) : 0;
   const recentOutcomes = confirmedHistory.slice(0, 10).map((match) => getPlayerOutcome(match, player.id));
-  const averageFouls = recordedStatHistory.length
-    ? recordedStatHistory.reduce((sum, match) => sum + Number(match.result.playerStats[player.id]?.fouls ?? 0), 0) / recordedStatHistory.length
+  const officialFoulTotal = recordedStatHistory.reduce(
+    (sum, match) => sum + Number(match.result.playerStats[player.id]?.fouls ?? 0),
+    0,
+  ) + archivedStatHistory.reduce((sum, record) => sum + Number(record.stats?.fouls ?? 0), 0);
+  const averageFouls = officialStatRecordCount
+    ? officialFoulTotal / officialStatRecordCount
     : 0;
   const discordProfileUrl = getDiscordProfileUrl(player);
   const discordDisplayName = getDiscordDisplayName(player);
@@ -251,8 +267,7 @@ export default function PlayerDetail({ app }) {
         ) : null}
 
         <div className="page-stack player-profile-main-column">
-        {canViewStatSummary ? (
-        <section id="summary" className={`rank-profile-summary${recordedStatHistory.length ? "" : " is-single"}`}>
+        <section id="summary" className={`rank-profile-summary${canViewStatSummary ? "" : " is-single"}`}>
           <Card className="section-card rank-record-card">
             <div className="section-title-row">
               <div>
@@ -276,14 +291,15 @@ export default function PlayerDetail({ app }) {
               ))}
             </div>
           </Card>
-          {recordedStatHistory.length ? <Card className="section-card rank-record-card">
+          {canViewStatSummary ? <Card className="section-card rank-record-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Career Totals</p>
                 <h2>누적 스탯</h2>
               </div>
+              <Badge tone={officialStatRecordCount ? "blue" : "neutral"}>{officialStatRecordCount}경기</Badge>
             </div>
-            <div className="rank-stat-grid">
+            {officialStatRecordCount ? <div className="rank-stat-grid">
               {PLAYER_STAT_FIELDS.map((field) => (
                 <span key={field.id}>
                   <strong>{totals[field.id]}</strong>
@@ -294,10 +310,9 @@ export default function PlayerDetail({ app }) {
                 <strong>{averageFouls.toFixed(1)}</strong>
                 평균 파울
               </span>
-            </div>
+            </div> : <div className="ui-empty-state-compact">공개된 검증 스탯이 아직 없습니다.</div>}
           </Card> : null}
         </section>
-        ) : null}
 
         <div className="page-stack player-profile-detail-content">
           {placementComplete ? <section className="mode-grid">
