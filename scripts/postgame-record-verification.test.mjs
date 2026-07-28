@@ -114,7 +114,7 @@ test("이의시간 만료 후에는 승인 독촉 알림을 더 만들지 않는
   assert.deepEqual(notifications, []);
 });
 
-test("별도 참가 확인 경로를 닫고 최종 승인 한 번과 이의시간 자동 확정을 사용한다", async () => {
+test("별도 참가 확인 경로 없이 본인 승인 한 번으로 참가와 결과를 함께 확인한다", async () => {
   const [serverSource, clientSource, singleApprovalMigration, consistencyMigration] = await Promise.all([
     readFile(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8"),
     readFile(new URL("../src/hooks/useAppData.js", import.meta.url), "utf8"),

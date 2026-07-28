@@ -588,8 +588,8 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
       total: match[sideName]?.players?.length ?? 0,
       majority: 0,
       requiredIds: [],
-      approvalMode: "host",
-      approvalLabel: "방장 최종 승인",
+      approvalMode: match.refereeId ? "referee" : "host",
+      approvalLabel: match.refereeId ? "심판 최종 승인" : "방장 최종 승인",
       captainId: null,
       captainRequired: false,
       captainApproved: false,
@@ -597,7 +597,28 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
       approved: false,
     };
   }
-  return getDecisionStatus(match, teams, sideName, "approvals");
+  const requiredIds = uniquePlayerIds(
+    match.rules?.recordApproverIds?.[sideName]?.length
+      ? match.rules.recordApproverIds[sideName]
+      : getMatchSidePlayerIds(match, sideName),
+  ).filter((playerId) => !match.anonymousPlayers?.[playerId]);
+  const approvals = uniquePlayerIds(match.approvals?.[sideName] ?? [])
+    .filter((playerId) => requiredIds.includes(playerId));
+  const approved = requiredIds.length > 0
+    && requiredIds.every((playerId) => approvals.includes(playerId));
+  return {
+    approvals,
+    total: requiredIds.length,
+    majority: requiredIds.length,
+    requiredIds,
+    approvalMode: "participant_confirmation",
+    approvalLabel: "내 참가 확인",
+    captainId: null,
+    captainRequired: false,
+    captainApproved: approved,
+    majorityApproved: approved,
+    approved,
+  };
 }
 
 export function getMatchPlayerIds(match = {}) {
@@ -693,7 +714,6 @@ export function getReportableMatchUserIds(match = {}) {
     match.createdBy,
     match.refereeId,
     match.formerRefereeId,
-    ...Object.values(normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders)),
     ...getMatchPlayerIds(match),
     ...getMatchReservePlayerIds(match, "teamA"),
     ...getMatchReservePlayerIds(match, "teamB"),
@@ -732,21 +752,6 @@ export function getMatchPlayerTeamId(match = {}, sideName, playerId) {
     [...(item.players ?? []), ...(item.reserves ?? [])].includes(playerId)
   ));
   return party?.teamId ?? side.teamId ?? null;
-}
-
-export function withEffectiveMatchStatRecorders(match = {}) {
-  if (!match || match.refereeId) return match;
-  const currentRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
-  const nextRecorders = getEffectiveStatRecorders(match);
-  if (currentRecorders.teamA === nextRecorders.teamA && currentRecorders.teamB === nextRecorders.teamB) return match;
-  return {
-    ...match,
-    statRecorders: nextRecorders,
-    rules: {
-      ...(match.rules ?? {}),
-      statRecorders: nextRecorders,
-    },
-  };
 }
 
 export function getMatchRosterSwapPatch(match, sideName, activePlayerId, reservePlayerId) {
@@ -1101,6 +1106,7 @@ export function getMatchHostPlayerId(match = {}, sourcePost = null) {
 
 export function canUserResolveMatchDispute(match = {}, userId = "", sourcePost = null) {
   if (!userId || match.status !== "disputed") return false;
+  if (match.refereeId) return isMatchReferee(match, userId);
   return getMatchHostPlayerId(match, sourcePost) === userId;
 }
 
@@ -1138,7 +1144,6 @@ export function getMatchTrustFeedbackLimit(match = {}) {
   const operationIds = new Set([
     getMatchHostPlayerId(match),
     match.refereeId,
-    ...Object.values(getEffectiveStatRecorders(match)),
   ].filter(Boolean));
   return Math.max(1, Math.floor(activeCount / 2)) + (operationIds.size ? 1 : 0);
 }
@@ -1207,39 +1212,13 @@ export function isMatchReferee(match = {}, userId) {
 }
 
 export function normalizeStatRecorders(recorders = {}) {
+  // LEGACY READ-ONLY:
+  // 과거 경기 데이터 해석 전용.
+  // 신규 권한 판정 및 저장에 사용하지 않는다.
   return {
     teamA: recorders.teamA ?? "",
     teamB: recorders.teamB ?? "",
   };
-}
-
-export function getEffectiveStatRecorders(match = {}) {
-  if (match.refereeId) return { teamA: "", teamB: "" };
-  const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
-  const getRecorder = (sideName) => {
-    const currentRecorderId = recorders[sideName];
-    const reserveIds = getMatchReservePlayerIds(match, sideName);
-    if (currentRecorderId && reserveIds.includes(currentRecorderId)) return currentRecorderId;
-    if (reserveIds[0]) return reserveIds[0];
-    const sideRosterIds = getMatchSideRecordPlayerIds(match, sideName, true);
-    if (currentRecorderId && sideRosterIds.includes(currentRecorderId)) return currentRecorderId;
-    return "";
-  };
-
-  return {
-    teamA: getRecorder("teamA"),
-    teamB: getRecorder("teamB"),
-  };
-}
-
-export function getDesignatedScoreRecorderId(match = {}) {
-  if (match.refereeId) return "";
-  const designatedSide = match.rules?.dualScoreRecorderSide ?? match.dualScoreRecorderSide ?? match.dual_score_recorder_side;
-  if (!MATCH_SIDES.includes(designatedSide)) return "";
-  const recorders = getEffectiveStatRecorders(match);
-  const oppositeSide = designatedSide === "teamA" ? "teamB" : "teamA";
-  if (!recorders[designatedSide] || recorders[oppositeSide]) return "";
-  return recorders[designatedSide];
 }
 
 export function getMatchScoreEditableSides(match = {}, userId = "", {
@@ -1251,10 +1230,10 @@ export function getMatchScoreEditableSides(match = {}, userId = "", {
   if (isMatchRecordMatch(match) && match.endedAt && canOperatePostStart) return MATCH_SIDES;
   const gameClockEnabled = match.rules?.gameClockEnabled !== false
     && match.rules?.gameClockEnabled !== "false";
-  if (gameClockEnabled && clockController) return MATCH_SIDES;
   if (match.refereeId) {
     return isMatchReferee(match, userId) && refereeEligible !== false ? MATCH_SIDES : [];
   }
+  if (gameClockEnabled && clockController) return MATCH_SIDES;
   if (gameClockEnabled) return [];
   if (canOperatePostStart) return MATCH_SIDES;
   return [];
@@ -1263,17 +1242,6 @@ export function getMatchScoreEditableSides(match = {}, userId = "", {
 export function hasMatchScoreboardOperators(match = {}) {
   if (match.refereeId) return true;
   return Boolean(getMatchHostPlayerId(match));
-}
-
-export function getStatRecorderSides(match = {}, userId) {
-  if (!userId) return [];
-  const recorders = getEffectiveStatRecorders(match);
-  return MATCH_SIDES.filter((sideName) => recorders[sideName] === userId);
-}
-
-export function isMatchStatRecorder(match = {}, userId, sideName = null) {
-  const recorderSides = getStatRecorderSides(match, userId);
-  return sideName ? recorderSides.includes(sideName) : recorderSides.length > 0;
 }
 
 export function getMatchStartDate(match = {}) {
@@ -1722,18 +1690,6 @@ export function getResultPointAudit(match = {}, result = match.result) {
     teamB,
     matched: teamA.matched && teamB.matched,
   };
-}
-
-export function calculatePlayerStatBoost(match = {}, playerId, actual = 0.5) {
-  const stats = match.result?.playerStats?.[playerId] ?? match.playerStats?.[playerId];
-  if (!stats) return 0;
-
-  const source = match.result?.statSubmissions?.[playerId]?.source;
-  const sourceFactor = source === "referee" ? 1 : source === "candidate_recorder" ? 0.72 : source === "player" ? 0.5 : 1;
-  const raw = PLAYER_STAT_FIELDS.reduce((sum, field) => sum + Number(stats[field.id] ?? 0) * field.weight, 0);
-  const capped = clamp(raw, -0.8, 2.2);
-  const resultFactor = actual === 1 ? 1 : actual === 0 ? 0.55 : 0.75;
-  return round(capped * resultFactor * sourceFactor);
 }
 
 export function formatStatLine(stats = {}) {

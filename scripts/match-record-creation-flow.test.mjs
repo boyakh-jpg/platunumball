@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   approveMatch,
   cancelMatch,
@@ -15,6 +16,8 @@ import {
   getMatchRecordCompositionLabel,
   getMatchRecordSetupStatus,
 } from "../src/lib/matchUtils.js";
+
+const matchListSource = readFileSync(new URL("../server/api/matches/list.js", import.meta.url), "utf8");
 
 const recordDate = new Date(Date.now() - 60_000);
 const recordParts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
@@ -117,6 +120,24 @@ function setPostgameScore(state, matchId, targetScoreA, targetScoreB) {
       },
     );
   }
+}
+
+function approveAllMatchRecordParticipants(state, matchId, excludedIds = []) {
+  const excluded = new Set(excludedIds);
+  let nextState = state;
+  for (const sideName of ["teamA", "teamB"]) {
+    const match = nextState.matches.find((item) => item.id === matchId);
+    for (const playerId of match.rules.recordApproverIds[sideName]) {
+      if (excluded.has(playerId)) continue;
+      nextState = approveMatch(
+        { ...nextState, currentUserId: playerId },
+        matchId,
+        sideName,
+        playerId,
+      );
+    }
+  }
+  return nextState;
 }
 
 test("postgame records allow an unknown court while normal matches still require one", () => {
@@ -287,12 +308,33 @@ test("team match record selects teams first, then each captain fixes an exact ro
   assert.equal(scoreState.matches[0].status, "agreed");
   assert.deepEqual(scoreState.matches[0].result.playerStats, {});
 
-  const participantAttempt = approveMatch({ ...scoreState, currentUserId: "u4" }, match.id, "teamB", "u4");
-  assert.equal(participantAttempt.matches[0], scoreState.matches[0]);
+  const proxyAttempt = approveMatch(
+    { ...scoreState, currentUserId: "u1" },
+    match.id,
+    "teamB",
+    "u4",
+  );
+  assert.equal(proxyAttempt.matches[0], scoreState.matches[0]);
+  assert.equal(
+    finalizeMatchByAuthority({ ...scoreState, currentUserId: "u1" }, match.id).matches[0],
+    scoreState.matches[0],
+  );
 
-  const confirmedState = finalizeMatchByAuthority({ ...scoreState, currentUserId: "u1" }, match.id);
+  const participantApproval = approveMatch(
+    { ...scoreState, currentUserId: "u4" },
+    match.id,
+    "teamB",
+    "u4",
+  );
+  assert.deepEqual(participantApproval.matches[0].approvals.teamB, ["u4"]);
+  assert.deepEqual(participantApproval.matches[0].rules.participantAcceptedIds, ["u4"]);
+
+  const confirmedState = approveAllMatchRecordParticipants(participantApproval, match.id, ["u4"]);
   assert.equal(confirmedState.matches[0].status, "confirmed");
-  assert.equal(confirmedState.matches[0].finalizedBy, "u1");
+  assert.deepEqual(
+    [...confirmedState.matches[0].rules.participantAcceptedIds].sort(),
+    users.map((user) => user.id).sort(),
+  );
 });
 
 test("match-record cancellation uses record terminology while scheduled matches keep match terminology", () => {
@@ -307,7 +349,7 @@ test("match-record cancellation uses record terminology while scheduled matches 
   assert.equal(getMatchCancelCopy({ title: "예정 경기", rules: { recordType: "match" } }).actionLabel, "경기 취소");
 });
 
-test("individual match record uses one self final approval for participation and result", () => {
+test("individual match record requires each actual participant to confirm their own participation and result", () => {
   const created = createMatch(makeState(), makeRecordDraft("individual"));
   const matchId = created.matches[0].id;
   let state = setMatchRecordParticipants(created, matchId, {
@@ -324,12 +366,29 @@ test("individual match record uses one self final approval for participation and
   const nonHostAttempt = finalizeMatchByAuthority({ ...state, currentUserId: "u2" }, matchId);
   assert.equal(nonHostAttempt.matches[0], state.matches[0]);
 
-  state = finalizeMatchByAuthority({ ...state, currentUserId: "u1" }, matchId);
+  const hostAttempt = finalizeMatchByAuthority({ ...state, currentUserId: "u1" }, matchId);
+  assert.equal(hostAttempt.matches[0], state.matches[0]);
+
+  const proxyAttempt = approveMatch(
+    { ...state, currentUserId: "u1" },
+    matchId,
+    "teamB",
+    "u4",
+  );
+  assert.equal(proxyAttempt.matches[0], state.matches[0]);
+
+  state = approveAllMatchRecordParticipants(state, matchId);
   const confirmed = state.matches.find((match) => match.id === matchId);
   assert.equal(confirmed.status, "confirmed");
   assert.ok(confirmed.confirmedAt);
-  assert.equal(confirmed.finalizedBy, "u1");
-  assert.deepEqual(confirmed.rules.participantAcceptedIds, []);
+  assert.deepEqual(
+    [...confirmed.rules.participantAcceptedIds].sort(),
+    users.map((user) => user.id).sort(),
+  );
+  assert.strictEqual(
+    approveMatch(state, matchId, "teamA", "u1"),
+    state,
+  );
 });
 
 test("personal quick record ignores stale names and creates no approval room", () => {
@@ -370,4 +429,12 @@ test("personal quick record ignores stale names and creates no approval room", (
   }).matches[0];
   assert.equal(publicRecord.visibility, "public");
   assert.equal(publicRecord.rules.visibility, "public");
+});
+
+test("play list keeps match_record participants without reviving recorder authority", () => {
+  assert.match(
+    matchListSource,
+    /fetchPlayMatchPage[\s\S]*fetchCurrentUserMatchCandidateIds\([\s\S]*true[\s\S]*\["agreed", "approval", "disputed"\]/u,
+  );
+  assert.doesNotMatch(matchListSource, /rankball_recorder_match_list/u);
 });

@@ -9,6 +9,7 @@ export function MatchFinalizeDialog({
   open,
   pending = false,
   openDisputeCount = 0,
+  authorityLabel = "방장",
   onClose,
   onConfirm,
 }) {
@@ -17,26 +18,30 @@ export function MatchFinalizeDialog({
 
   return createPortal(
     <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !pending && onClose?.()}>
-      <div
+      <form
         className="app-confirm-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="match-finalize-dialog-title"
         onMouseDown={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!blocked && !pending) onConfirm?.();
+        }}
       >
         <strong id="match-finalize-dialog-title">더 이상 이의가 없음을 확인하셨나요?</strong>
         <p>
           {blocked
             ? `열린 이의신청 ${openDisputeCount}건을 먼저 처리해 주세요.`
-            : "현장 참가자들과 최종 점수를 확인한 뒤 승인해 주세요."}
+            : `${authorityLabel}이 현장 참가자들과 최종 점수를 확인한 뒤 승인합니다.`}
         </p>
         <div className="app-confirm-actions">
           <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>취소</Button>
-          <Button type="button" disabled={blocked || pending} onClick={onConfirm}>
+          <Button type="submit" disabled={blocked || pending}>
             {pending ? "승인 중" : "최종 승인"}
           </Button>
         </div>
-      </div>
+      </form>
     </div>,
     document.body,
   );

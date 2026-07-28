@@ -1921,14 +1921,6 @@
   background: rgba(88, 210, 192, 0.11);
 }
 
-.approval-voter-list button.stat-submitted:not(.approved) {
-  border-color: rgba(118, 169, 255, 0.26);
-}
-
-.approval-voter-list button.stat-missing:not(.approved) {
-  border-color: rgba(255, 211, 108, 0.22);
-}
-
 .approval-voter-list button:disabled {
   cursor: default;
   opacity: 0.72;

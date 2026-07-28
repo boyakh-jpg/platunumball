@@ -386,15 +386,16 @@ export default function MatchClockPanel({
     }
   }, [applyResponse, clockClient, match?.id, pendingAction]);
 
+  const controllerCanEditScores = Boolean(snapshot?.canControl && !match.refereeId);
   const incrementScore = useCallback(async (sideName, delta) => {
-    if (!onIncrementScore || scorePendingSide || (!snapshot?.canControl && !editableScoreSides.includes(sideName))) return;
+    if (!onIncrementScore || scorePendingSide || (!controllerCanEditScores && !editableScoreSides.includes(sideName))) return;
     setScorePendingSide(sideName);
     setScoreError("");
     try {
       const response = await onIncrementScore(sideName, delta, {
         expectedRevisionA: score.revisionA,
         expectedRevisionB: score.revisionB,
-        clockController: Boolean(snapshot?.canControl),
+        clockController: controllerCanEditScores,
       });
       if (response?.scoreA != null && response?.scoreB != null) {
         setScore((current) => ({
@@ -415,7 +416,7 @@ export default function MatchClockPanel({
     } finally {
       setScorePendingSide("");
     }
-  }, [applyResponse, clockClient, editableScoreSides, match.id, onIncrementScore, score.revisionA, score.revisionB, scorePendingSide, snapshot?.canControl]);
+  }, [applyResponse, clockClient, controllerCanEditScores, editableScoreSides, match.id, onIncrementScore, score.revisionA, score.revisionB, scorePendingSide]);
 
   useEffect(() => {
     configurationDirtyRef.current = false;
@@ -489,7 +490,8 @@ export default function MatchClockPanel({
   const breakOvertimeMs = Math.max(0, breakElapsedMs - breakLimitMs);
   const shotClockEnabled = Number(liveClock?.shotClockSeconds || 0) > 0;
   const showAttendanceQr = Boolean(attendanceQr?.value && liveClock?.canControl);
-  const clockEditableScoreSides = liveClock?.canControl ? MATCH_SIDES : editableScoreSides;
+  const liveControllerCanEditScores = Boolean(liveClock?.canControl && !match.refereeId);
+  const clockEditableScoreSides = liveControllerCanEditScores ? MATCH_SIDES : editableScoreSides;
   const canResetShotClock = Boolean(liveClock?.canControl && !isEnded && !isBreak);
   const mediaControlEligible = Boolean(
     shotClockEnabled

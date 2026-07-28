@@ -676,7 +676,9 @@ function validateSoloRecordSnapshot(match = {}, actorProfileId = "") {
 }
 
 function toMatchRow(match = {}, actorProfileId = "") {
-  const statRecorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
+  const rules = { ...(match.rules ?? {}) };
+  delete rules.statRecorders;
+  delete rules.dualScoreRecorderSide;
   const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [];
   const recruitingPostId = nullableText(match.recruitingPostId ?? match.rules?.recruitingPostId);
@@ -699,7 +701,7 @@ function toMatchRow(match = {}, actorProfileId = "") {
     referee_trust_min: Number(match.refereeTrustMin ?? 90),
     stat_entry_minutes: Number(match.statEntryMinutes ?? 60),
     dispute_minutes: normalizeDisputeWindowMinutes(match.disputeMinutes),
-    stat_recorders: statRecorders,
+    stat_recorders: {},
     played_player_ids: playedPlayerIds,
     reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
     promoted_reserve_ids: match.promotedReserveIds ?? {},
@@ -725,11 +727,10 @@ function toMatchRow(match = {}, actorProfileId = "") {
     score_a: Number(match.result?.scoreA ?? 0),
     score_b: Number(match.result?.scoreB ?? 0),
     rules: {
-      ...(match.rules ?? {}),
+      ...rules,
       timingType: schedule.timingType,
       visibility: match.visibility ?? match.rules?.visibility ?? "private",
       benchCapacity,
-      statRecorders,
       playedPlayerIds,
       mmrExcludedPlayerIds,
       ...(recruitingPostId ? { recruitingPostId } : {}),
@@ -1149,9 +1150,12 @@ function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch
   if (!existingMatch) return CREATE_MATCH_ACTIONS.has(action) && nextParticipants.has(profileId);
   const existingParticipants = existingParticipantIds(existingMatch, existingPlayers);
   if (action === "deleteSoloRecord") return canDeleteSoloRecord(profileId, existingMatch, nextMatch);
-  if (action === "handoffMatchRecorder") return false;
   if (action === "substituteMatchPlayer") return canSyncSelfSubstitution(profileId, existingMatch, nextMatch);
-  if (action === "resolveMatchDispute") return profileId === (nextMatch.createdBy || existingMatch?.created_by);
+  if (action === "resolveMatchDispute") {
+    const refereeId = nextMatch.refereeId || existingMatch?.referee_id;
+    const authorityId = refereeId || nextMatch.createdBy || existingMatch?.created_by;
+    return profileId === authorityId;
+  }
   if (action === MATCH_RECORD_ROSTER_ACTION) return canSyncMatchRecordTeamRoster(profileId, existingMatch, existingPlayers, nextMatch);
   if (action === MATCH_RECORD_SETUP_ACTION) {
     return Boolean(
@@ -1242,14 +1246,18 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
   return ["approveMatch", "resolveMatchDispute"].includes(action) && Boolean(existingResult) && nextMatch?.status === "confirmed";
 }
 
-const SQL_REDUCER_MATCH_ACTIONS = new Set([
+const RETIRED_RECORDER_MATCH_ACTIONS = new Set([
   "approveMatchRecorderTakeover",
   "cancelMatchRecorderTakeover",
-  "finalizeMatch",
-  "incrementMatchScore",
   "rejectMatchRecorderTakeover",
   "requestMatchRecorderTakeover",
   "setMatchDualScoreRecorderSide",
+  "handoffMatchRecorder",
+]);
+
+const SQL_REDUCER_MATCH_ACTIONS = new Set([
+  "finalizeMatch",
+  "incrementMatchScore",
   "acknowledgeMatchRoomRules",
   "addMatchLatePlayer",
   "agreeMatch",
@@ -1263,7 +1271,6 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "resolveMatchDispute",
   "endMatch",
   "forfeitTournamentMatch",
-  "handoffMatchRecorder",
   "removeMatchLatePlayer",
   "removeMatchRoomPlayer",
   "requestMatchRefereeAbsence",
@@ -1314,6 +1321,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_score_increment_action") ||
     message.includes("rankball_match_scorekeeper_scope_action") ||
     message.includes("rankball_match_recorder_takeover_action") ||
+    message.includes("rankball_match_substitute_action") ||
     message.includes("rankball_match_substitution_action") ||
     message.includes("rankball_match_roster_transition_action") ||
     message.includes("rankball_match_star_toggle_action") ||
@@ -1345,18 +1353,12 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "confirmPickupSideAssignment",
     "generatePickupSideAssignment",
     "deleteSoloRecord",
-    "approveMatchRecorderTakeover",
-    "cancelMatchRecorderTakeover",
     "finalizeMatch",
     "incrementMatchScore",
-    "rejectMatchRecorderTakeover",
-    "requestMatchRecorderTakeover",
-    "setMatchDualScoreRecorderSide",
     "disputeMatch",
     "resolveMatchDispute",
     "endMatch",
     "forfeitTournamentMatch",
-    "handoffMatchRecorder",
     "addMatchLatePlayer",
     "removeMatchLatePlayer",
     "removeMatchRoomPlayer",
@@ -1471,18 +1473,11 @@ async function assertMatchTeamPlacementSide(context, operation = {}, matchId = "
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
-  if ([
-    "setMatchDualScoreRecorderSide",
-    "requestMatchRecorderTakeover",
-    "approveMatchRecorderTakeover",
-    "rejectMatchRecorderTakeover",
-    "cancelMatchRecorderTakeover",
-    "handoffMatchRecorder",
-  ].includes(operation.action)) {
-    reject(409, "match_recorder_flow_retired");
-  }
-  if (operation.action === "approveMatch" && !isMatchRecordMatch(match)) {
+  if (operation.action === "approveMatch" && match?.id && !isMatchRecordMatch(match)) {
     reject(409, "general_match_participant_approval_retired");
+  }
+  if (operation.action === "resolveMatchDispute" && !String(operation.resolutionReason ?? "").trim()) {
+    reject(400, "match_dispute_resolution_reason_required");
   }
 
   if (operation.action === "incrementMatchScore" && operation.matchId) {
@@ -1700,6 +1695,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       p_match_id: matchId,
       p_dispute_id: operation.disputeId ?? "",
       p_decision: operation.decision ?? "",
+      p_resolution_reason: operation.resolutionReason ?? "",
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) reject(503, "match_dispute_resolution_rpc_required");
@@ -1882,14 +1878,12 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
   }
 
   if (operation.action === "substituteMatchPlayer" && (match?.id || operation.matchId)) {
-    const { data, error } = await context.supabase.rpc("rankball_match_roster_transition_action", {
+    const { data, error } = await context.supabase.rpc("rankball_match_substitute_action", {
       p_actor_profile_id: context.profileId,
-      p_action: operation.action,
       p_match_id: operation.matchId ?? match.id,
       p_side: operation.sideName ?? "",
       p_active_player_id: operation.activePlayerId ?? "",
       p_reserve_player_id: operation.reservePlayerId ?? "",
-      p_next_recorder_id: operation.nextRecorderId ?? "",
       p_reason: operation.reason ?? "operator",
     });
     if (error) {
@@ -2289,6 +2283,9 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const operation = getOperation(body, body.action ? String(body.action) : "sync");
     if (!operation) reject(400, "match_operation_required");
+    if (RETIRED_RECORDER_MATCH_ACTIONS.has(operation.action)) {
+      reject(409, "match_recorder_flow_retired");
+    }
     if (!isSupportedMatchAction(operation.action) && operation.action !== "createMatch") {
       reject(400, "unsupported_match_operation");
     }

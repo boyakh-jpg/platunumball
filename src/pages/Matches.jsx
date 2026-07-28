@@ -813,7 +813,6 @@ export function getMatchRoomPost(match, state) {
       teamA: teamAReserves,
       teamB: teamBReserves,
     },
-    statRecorders: match.statRecorders ?? match.rules?.statRecorders ?? sourcePost?.roomState?.statRecorders ?? {},
   };
 
   if (sourcePost) {

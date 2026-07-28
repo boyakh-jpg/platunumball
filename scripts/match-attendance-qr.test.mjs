@@ -9,10 +9,6 @@ import {
   addMatchLatePlayer,
   checkInMatchPlayer,
   endMatch,
-  requestMatchRecorderTakeover,
-  resolveMatchRecorderTakeover,
-  setMatchDualScoreRecorderSide,
-  setRecruitingStatRecorder,
   substituteMatchPlayer,
 } from "../src/data/repository.js";
 import { mergeMatchesById } from "../src/hooks/useAppData.js";
@@ -264,22 +260,12 @@ test("배정 심판과 후보 본인만 출전·후보를 교체할 수 있다",
   assert.equal(crossSideRecorderBlocked.matches[0].teamA.players[0], "active-a");
 });
 
-test("폐기된 기록자 실행 경로는 레거시 데이터를 바꾸지 않는다", () => {
-  const state = {
-    currentUserId: "reserve-a",
-    matches: [{
-      id: "retired-recorder-flow",
-      statRecorders: { teamA: "legacy-recorder" },
-      recorderTakeoverRequests: [],
-    }],
-  };
-  assert.strictEqual(setMatchDualScoreRecorderSide(state, "retired-recorder-flow", "teamA"), state);
-  assert.strictEqual(requestMatchRecorderTakeover(state, "retired-recorder-flow", "teamA"), state);
-  assert.strictEqual(
-    resolveMatchRecorderTakeover(state, "retired-recorder-flow", "teamA", "request-1", "approved"),
-    state,
-  );
-  assert.strictEqual(setRecruitingStatRecorder(state, "legacy-post", "teamA", "reserve-a"), state);
+test("폐기된 기록자 실행 경로는 repository export에서 제거된다", async () => {
+  const repositorySource = await readSource("src/data/repository.js");
+  assert.doesNotMatch(repositorySource, /export function setRecruitingStatRecorder/u);
+  assert.doesNotMatch(repositorySource, /export function setMatchDualScoreRecorderSide/u);
+  assert.doesNotMatch(repositorySource, /export function requestMatchRecorderTakeover/u);
+  assert.doesNotMatch(repositorySource, /export function resolveMatchRecorderTakeover/u);
 });
 test("출석 운영자는 자기 출석도 같은 중앙 action으로 저장한다", () => {
   const match = {
@@ -426,7 +412,9 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
   assert.match(clockApiSource, /role:\s*"referee"/u);
   assert.match(clockApiSource, /attendanceQr:\s*\(\s*clock\?\.canControl/u);
   assert.doesNotMatch(clockApiSource, /clock\?\.canControl \|\| clock\?\.canManage/u);
-  assert.match(panelSource, /clockEditableScoreSides = liveClock\?\.canControl \? MATCH_SIDES/u);
+  assert.match(panelSource, /controllerCanEditScores = Boolean\(snapshot\?\.canControl && !match\.refereeId\)/u);
+  assert.match(panelSource, /liveControllerCanEditScores = Boolean\(liveClock\?\.canControl && !match\.refereeId\)/u);
+  assert.match(panelSource, /clockEditableScoreSides = liveControllerCanEditScores \? MATCH_SIDES : editableScoreSides/u);
   assert.match(panelSource, /showAttendanceQr = Boolean\(attendanceQr\?\.value && liveClock\?\.canControl\)/u);
   assert.match(panelSource, /getClockControllerLabel/u);
   assert.match(clockStyles, /\.ui-match-clock-display-grid-with-attendance\s*\{[^}]*grid-template-columns:\s*minmax\(144px, 0\.28fr\) minmax\(0, 1\.44fr\) minmax\(144px, 0\.28fr\);/u);
@@ -506,6 +494,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const unifiedRosterSql = await readSource("supabase/migrations/20260727110000_unified_match_roster_transition.sql");
   const simplifiedLiveMatchSql = await readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql");
   const hostFinalizationSql = await readSource("supabase/migrations/20260728130000_general_match_host_finalization.sql");
+  const liveAuthoritySql = await readSource("supabase/migrations/20260728143000_referee_live_match_authority.sql");
   const scoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727144000_allow_score_only_postgame_roster.sql");
   const enforcedScoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727145000_enforce_score_only_postgame_roster.sql");
   const syncMatchSource = await readSource("server/api/matches/sync-match.js");
@@ -564,6 +553,25 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(hostFinalizationSql, /match_dispute_host_required/u);
   assert.match(hostFinalizationSql, /check \(reason in \('self', 'late', 'ejection', 'operator'\)\) not valid/u);
   assert.match(hostFinalizationSql, /revoke all on function public\.rankball_match_recorder_takeover_action/u);
+  assert.match(liveAuthoritySql, /if assigned_referee_id is not null[\s\S]*match_score_referee_required/u);
+  assert.match(liveAuthoritySql, /elsif game_clock_enabled[\s\S]*rankball_match_clock_controller_eligible/u);
+  assert.match(liveAuthoritySql, /match_score_clock_controller_required/u);
+  assert.match(liveAuthoritySql, /match_score_host_required/u);
+  assert.match(liveAuthoritySql, /rankball_match_live_finalize_action/u);
+  assert.match(liveAuthoritySql, /match_finalize_referee_required/u);
+  assert.match(liveAuthoritySql, /match_finalize_host_required/u);
+  assert.match(liveAuthoritySql, /match_live_finalize_record_type_invalid/u);
+  assert.match(liveAuthoritySql, /match_record_approval_actor_mismatch/u);
+  assert.match(liveAuthoritySql, /match_record_approval_player_not_actual/u);
+  assert.match(liveAuthoritySql, /participantAcceptedIds/u);
+  assert.match(liveAuthoritySql, /participationAccepted/u);
+  assert.match(liveAuthoritySql, /match_record_participant_approval_required/u);
+  assert.match(liveAuthoritySql, /rankball_match_record_finalize_after_approvals/u);
+  assert.match(liveAuthoritySql, /approved_count <> required_count/u);
+  assert.match(liveAuthoritySql, /safe_action <> 'substituteMatchPlayer' or safe_next_recorder_id is not null[\s\S]*match_recorder_flow_retired/u);
+  assert.match(liveAuthoritySql, /match_substitution_injury_retired/u);
+  assert.doesNotMatch(liveAuthoritySql, /safe_reason := 'operator'/u);
+  assert.match(liveAuthoritySql, /create or replace function public\.rankball_match_substitute_action/u);
   assert.match(scoreOnlyPostgameRosterSql, /rankball_match_postgame_roster_action/u);
   assert.match(scoreOnlyPostgameRosterSql, /score_row_lock constant text/u);
   assert.doesNotMatch(scoreOnlyPostgameRosterSql, /drop\s+table|truncate\s+table|delete\s+from/iu);
@@ -571,7 +579,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(enforcedScoreOnlyPostgameRosterSql, /set status = current_match\.status/u);
   assert.doesNotMatch(enforcedScoreOnlyPostgameRosterSql, /has_result|case when has_result/u);
   assert.doesNotMatch(enforcedScoreOnlyPostgameRosterSql, /drop\s+table|truncate\s+table|delete\s+from/iu);
-  assert.match(syncMatchSource, /rpc\("rankball_match_roster_transition_action"/u);
+  assert.match(syncMatchSource, /rpc\("rankball_match_substitute_action"/u);
   assert.match(syncMatchSource, /match_recorder_flow_retired/u);
   assert.doesNotMatch(recruitingSource, /function MatchRecorderHandoffPanel/u);
   assert.doesNotMatch(recruitingSource, /<option value="injury">/u);

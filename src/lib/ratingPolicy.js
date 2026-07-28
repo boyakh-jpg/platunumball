@@ -19,6 +19,9 @@ export const DEFAULT_RATING_POLICY = Object.freeze({
     foulGrace: 2,
     foulPenaltyPer: 1,
     maxFoulPenalty: 4,
+    // LEGACY READ-ONLY:
+    // 과거 경기 데이터 해석 전용.
+    // 신규 권한 판정 및 저장에 사용하지 않는다.
     candidateRecorderReward: 2,
     refereeReward: 1,
     thumbsDelta: 1,
@@ -74,13 +77,12 @@ export const RATING_POLICY_GROUPS = Object.freeze([
   {
     id: "match-trust",
     label: "경기 신뢰도",
-    description: "경기 확정, 파울, 기록자, 심판, 추천 이벤트의 신뢰도 증감값입니다.",
+    description: "경기 확정, 파울, 심판, 추천 이벤트의 신뢰도 증감값입니다.",
     fields: [
       { path: ["trust", "matchCompletionReward"], label: "경기 확정", unit: "점", min: 0, max: 5, step: 1 },
       { path: ["trust", "foulGrace"], label: "파울 허용", unit: "개", min: 0, max: 6, step: 1 },
       { path: ["trust", "foulPenaltyPer"], label: "초과 파울당 차감", unit: "점", min: 0, max: 5, step: 1 },
       { path: ["trust", "maxFoulPenalty"], label: "파울 최대 차감", unit: "점", min: 0, max: 15, step: 1 },
-      { path: ["trust", "candidateRecorderReward"], label: "후보 기록자", unit: "점", min: 0, max: 5, step: 1 },
       { path: ["trust", "refereeReward"], label: "심판 수행", unit: "점", min: 0, max: 5, step: 1 },
       { path: ["trust", "thumbsDelta"], label: "추천 증감", unit: "점", min: 0, max: 5, step: 1 },
       { path: ["trust", "refereeAbsencePenalty"], label: "심판 불참", unit: "점", min: 0, max: 15, step: 1 },

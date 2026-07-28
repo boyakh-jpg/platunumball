@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { CalendarDays, ChevronDown, ChevronUp, Crown, MapPin, RotateCcw, ShieldCheck, Star, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
+import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchClockPanel, { MatchScoreControls } from "../components/match/MatchClockPanel.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
@@ -335,7 +336,7 @@ export default function MatchRoom({ app }) {
   const status = match.status === "cancelled" && isSharedRecord
     ? { label: "기록 취소됨", tone: "neutral" }
     : match.status === "approval" && isSharedRecord
-      ? { label: "최종 승인 대기", tone: "orange" }
+      ? { label: "참가 확인 대기", tone: "orange" }
       : statusMeta[match.status] ?? { label: "상태 확인 중", tone: "blue" };
   const cancelCopy = getMatchCancelCopy(match);
   const teamAAgreement = getAgreementStatus(match, app.state.teams, "teamA");
@@ -370,7 +371,7 @@ export default function MatchRoom({ app }) {
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
   const currentUserCanResolveDispute = canUserResolveMatchDispute(match, app.currentUser.id, sourceRecruitingPost)
-    && isMatchHost;
+    && (hasReferee ? currentUserIsEligibleReferee : isMatchHost);
   const currentUserCanRefreshReview = isMatchHost || currentUserIsEligibleReferee || currentUserIsAdmin;
   const currentUserCanFileDispute = getMatchRecordPlayerIds(match).includes(app.currentUser.id);
   const resultEntryPermission = getMatchResultEntryPermission(match, app.currentUser.id, {
@@ -385,12 +386,14 @@ export default function MatchRoom({ app }) {
   const canSubmitResult = resultEntryPermission.canSubmit;
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
   const canFinalizeMatch = Boolean(
+    !isSharedRecord &&
     match.endedAt &&
     (hasReferee ? match.result : true) &&
     !match.confirmedAt &&
     match.status !== "disputed" &&
-    isMatchHost,
+    (hasReferee ? currentUserIsEligibleReferee : isMatchHost),
   );
+  const finalAuthorityLabel = hasReferee ? "배정 심판" : "방장";
   const openDisputes = getOpenMatchDisputes(match);
   const hasOwnOpenDispute = openDisputes.some((dispute) => dispute.by === app.currentUser.id);
   const matchApprovalOpen = Boolean(match.result && (["approval", "disputed"].includes(match.status) || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
@@ -402,7 +405,8 @@ export default function MatchRoom({ app }) {
   const canRequestVoidRestore = canRequestVoidMatchRestore(match, app.currentUser.id);
   const canDeleteSoloRecord = isSoloRecord && match.createdBy === app.currentUser.id && match.status !== "cancelled";
   const requestFinalizeMatch = () => {
-    if (isSharedRecord || isSoloRecord) {
+    if (isSharedRecord) return;
+    if (isSoloRecord) {
       void app.actions.finalizeMatch?.(match.id);
       return;
     }
@@ -678,13 +682,17 @@ export default function MatchRoom({ app }) {
       };
     }
     if (match.status === "approval") return {
-      label: "최종 확정 대기",
-      detail: "방장이 현장 합의를 확인한 뒤 최종 승인합니다.",
+      label: "최종 승인 대기",
+      detail: isSharedRecord
+        ? "각 참가자가 본인의 참가 사실을 확인합니다."
+        : `${finalAuthorityLabel}이 최종 점수를 확인한 뒤 확정합니다.`,
     };
     if (match.status === "disputed") {
       return {
         label: "이의 확인",
-        detail: openDisputes.length ? `방장이 이의제기 ${openDisputes.length}건을 건별로 가결 또는 부결합니다.` : "이의 처리가 끝나면 방장이 별도로 최종 승인합니다.",
+        detail: openDisputes.length
+          ? `${finalAuthorityLabel}이 이의제기 ${openDisputes.length}건을 사유와 함께 가결 또는 부결합니다.`
+          : `이의 처리가 끝나면 ${finalAuthorityLabel}이 별도로 최종 승인합니다.`,
       };
     }
     if (match.status === "confirmed") {
@@ -1011,7 +1019,7 @@ export default function MatchRoom({ app }) {
                 <div className="stat-trust-head">
                   <div>
                     <strong>개인 기록 신뢰도</strong>
-                    <span>{hasReferee ? "심판 제출 상태, 득점 합계, 양 팀 승인, 증거 첨부를 함께 확인합니다." : "본인 제출 상태와 득점 합계, 증거 첨부를 함께 확인합니다."}</span>
+                    <span>{hasReferee ? "심판 제출 상태, 득점 합계, 증거 첨부를 함께 확인합니다." : "본인 제출 상태와 득점 합계, 증거 첨부를 함께 확인합니다."}</span>
                   </div>
                   <Badge tone={statTrustPercent >= 75 ? "green" : statTrustPercent >= 50 ? "orange" : "neutral"}>{statTrustPercent}%</Badge>
                 </div>
@@ -1090,6 +1098,15 @@ export default function MatchRoom({ app }) {
                 )}
                 {canFinalizeMatch ? <Button type="button" onClick={requestFinalizeMatch}>최종 승인</Button> : null}
               </Card>
+            ) : null}
+            {isSharedRecord && match.rules?.recordSetupReady === true ? (
+              <ApprovalPanel
+                match={match}
+                teams={app.state.teams}
+                users={app.state.users}
+                currentUserId={app.currentUser.id}
+                onApprove={(sideName, playerId) => app.actions.approveMatch(match.id, sideName, playerId)}
+              />
             ) : null}
           </div>
           <aside className="page-stack">
@@ -1194,7 +1211,7 @@ export default function MatchRoom({ app }) {
               match={match}
               userById={userMap}
               canResolve={currentUserCanResolveDispute}
-              onResolve={(disputeId, decision) => app.actions.resolveMatchDispute(match.id, disputeId, decision)}
+              onResolve={(disputeId, decision, resolutionReason) => app.actions.resolveMatchDispute(match.id, disputeId, decision, resolutionReason)}
               onRefresh={currentUserCanRefreshReview ? refreshMatchDetail : null}
               refreshing={matchDetailRefreshing}
             />
@@ -1362,6 +1379,7 @@ export default function MatchRoom({ app }) {
         open={finalizeDialogOpen}
         pending={finalizeActionPending}
         openDisputeCount={openDisputes.length}
+        authorityLabel={finalAuthorityLabel}
         onClose={() => setFinalizeDialogOpen(false)}
         onConfirm={submitFinalizeMatch}
       />

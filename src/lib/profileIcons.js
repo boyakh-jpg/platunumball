@@ -27,7 +27,7 @@ const PROFILE_ICON_ACHIEVEMENTS = {
   "15-perfect-pass": achievement("비공개 경기 10회", [requirement("privateMatchCount", 10, "비공개 경기")]),
   "16-three-point": achievement("랭크 경기 10회", [requirement("rankedMatchCount", 10, "랭크 경기")]),
   "17-clutch-clock": achievement("2점 차 이내 승리 3회", [requirement("closeWinCount", 3, "접전 승리")]),
-  "18-lock-down": achievement("심판·기록원 수행 5회", [requirement("communityServiceCount", 5, "운영 기여")]),
+  "18-lock-down": achievement("경기 운영 기여 5회", [requirement("communityServiceCount", 5, "운영 기여")]),
   "19-rebound-crown": achievement("팀 경기 승리 10회", [requirement("teamMatchWinCount", 10, "팀 경기 승리")]),
   "20-fair-play": achievement("확정 경기 10회 및 신뢰도 90", [
     requirement("matchCount", 10, "확정 경기"),
@@ -48,7 +48,7 @@ const PROFILE_ICON_ACHIEVEMENTS = {
   "58-team-huddle": achievement("팀 소속으로 확정 경기 10회", [requirement("teamMatchCount", 10, "팀 경기")]),
   "59-mentor-torch": achievement("수락된 초대 25회", [requirement("acceptedInviteCount", 25, "수락된 초대")]),
   "60-referee-shield": achievement("심판 수행 5회", [requirement("refereeCount", 5, "심판 경기")]),
-  "61-record-keeper": achievement("기록원 수행 5회", [requirement("recorderCount", 5, "기록 경기")]),
+  "61-record-keeper": achievement("경기 운영 기여 5회", [requirement("recorderCount", 5, "운영 경기")]),
   "62-court-scout": achievement("구장 후기·승인 제보 합계 3회", [requirement("courtContributionCount", 3, "구장 기여")]),
   "63-team-founder": achievement("팀 주장 되기", [requirement("captainCount", 1, "주장 팀")]),
   "64-trusted-player": achievement("확정 경기 100회 및 신뢰도 95", [
@@ -158,7 +158,7 @@ const PROFILE_ICON_SERIES_GROUPS = Object.freeze([
       trackedSeries("scoring-leader", "함께 뛴 선수", "distinctTeammateCount", [10, 30, 75, 150, 300], "서로 다른 팀 동료", "명"),
       trackedSeries("rebound-leader", "상대한 선수", "distinctOpponentCount", [10, 50, 100, 250, 500], "서로 다른 상대", "명"),
       trackedSeries("assist-leader", "초대 연결", "acceptedInviteCount", [5, 25, 75, 150, 300], "수락된 초대"),
-      trackedSeries("steal-leader", "운영 기여", "communityServiceCount", [10, 30, 75, 150, 300], "심판·기록원 수행"),
+      trackedSeries("steal-leader", "운영 기여", "communityServiceCount", [10, 30, 75, 150, 300], "경기 운영 기여"),
       trackedSeries("block-leader", "대회 베테랑", "tournamentMatchCount", [5, 15, 50, 100, 200], "대회 확정 경기"),
     ]),
   }),
@@ -178,7 +178,7 @@ const PROFILE_ICON_SERIES_GROUPS = Object.freeze([
     name: "운영·커뮤니티",
     series: Object.freeze([
       trackedSeries("referee-service", "심판 경력", "refereeCount", [10, 50, 100, 300, 500], "심판 수행"),
-      trackedSeries("recorder-service", "기록원 경력", "recorderCount", [10, 50, 100, 300, 500], "기록원 수행"),
+      trackedSeries("recorder-service", "운영 경력", "recorderCount", [10, 50, 100, 300, 500], "경기 운영 기여"),
       trackedSeries("recruiting-invites", "매칭 초대 성공", "recruitingInviteAcceptedCount", [5, 25, 75, 150, 300], "수락된 매칭 초대"),
       trackedSeries("team-invites", "팀 초대 성공", "teamInviteAcceptedCount", [5, 25, 75, 150, 300], "수락된 팀 초대"),
       trackedSeries("approved-courts", "구장 등록", "approvedCourtCount", [1, 3, 10, 25, 50], "승인 구장 등록"),

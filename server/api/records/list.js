@@ -300,6 +300,9 @@ async function loadProfileRows(client, archiveRows = []) {
     const payload = archiveRow?.payload && typeof archiveRow.payload === "object" ? archiveRow.payload : {};
     const matchRow = payload.match && typeof payload.match === "object" ? payload.match : {};
     const resultRow = payload.result && typeof payload.result === "object" ? payload.result : {};
+    // LEGACY READ-ONLY:
+    // 과거 경기 데이터 해석 전용.
+    // 신규 권한 판정 및 저장에 사용하지 않는다.
     return [
       matchRow.created_by,
       matchRow.referee_id,

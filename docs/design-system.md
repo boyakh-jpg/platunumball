@@ -4,18 +4,23 @@
 
 1. 일반 경기 화면에는 `방장`, `출전선수`, `후보선수`, `배정 심판`, `경기시계 담당자`만 역할로 표시한다. 자동 기록자, 사이드 기록자, 기록 후보, 기록권한 요청·승인·거절·취소·인계·takeover control과 안내는 렌더링하지 않는다.
 2. 경기시계 담당자 UI는 현재 담당자와 변경 action을 같은 panel에 표시한다. 선택 대상은 출전선수, 후보선수, 배정 심판이며 이전 완료 즉시 기존 담당자 control은 읽기 전용으로 바뀐다.
-3. 점수 control은 현재 경기시계 담당자와 배정 심판에게 A/B 양쪽을 표시한다. 경기시계 미사용 무심판 경기만 방장에게 A/B 양쪽을 표시한다. 경기시계 담당자가 있는 경기에서 방장 전용 점수 control을 추가하지 않는다.
+3. 배정 심판 경기의 점수 control은 배정 심판에게만 A/B 양쪽을 표시한다. 경기시계 담당자는 시간·샷클락 control만 본다. 무심판 경기에서 경기시계를 사용하면 현재 담당자에게 A/B 점수 control을 표시하고, 경기시계 미사용 경기만 방장에게 표시한다.
 4. 일반 무심판 경기에는 개인 스탯 입력기·빈 stat row·0 stat placeholder를 만들지 않는다. 배정 심판 경기의 개인 스탯 입력기는 심판에게만 표시한다. `personal_record` 본인 입력기는 별도 기록 유형 화면으로 유지한다.
 5. 교체 UI는 같은 사이드의 `출전선수 ↔ 후보선수`만 선택할 수 있다. 후보 본인에게는 자신이 들어가는 자진 교체 action만 표시하고 배정 심판에게는 양 사이드 교체 action을 표시한다. `부상`과 기록권한 관련 사유는 신규 선택지에 표시하지 않는다.
-6. 일반 경기의 `최종 승인` action은 심판 유무와 관계없이 방장에게만 표시한다. 누르면 공용 확인창에서 `더 이상 이의가 없음을 확인하셨나요?`를 먼저 표시하고 확인 뒤에만 서버 action을 호출한다.
-7. 열린 이의신청이 있으면 확인창은 건수를 안내하고 최종 승인 버튼을 비활성화한다. 마지막 이의 처리 뒤에는 자동 확정 문구를 표시하지 않고 방장의 별도 최종 승인을 안내한다.
-8. 위 panel과 확인창은 공용 surface·button·focus token을 사용한다. desktop/mobile에서 control이 겹치거나 화면 밖으로 나가지 않아야 하고 dark/light에서 같은 정보 순서와 대비를 유지한다.
+6. 일반 경기의 `최종 승인` action은 배정 심판 경기에서는 배정 심판에게, 무심판 경기에서는 방장에게만 표시한다. 누르면 공용 확인창에서 `더 이상 이의가 없음을 확인하셨나요?`를 먼저 표시하고 확인 뒤에만 서버 action을 호출한다.
+7. 열린 이의신청이 있으면 확인창은 건수를 안내하고 최종 승인 버튼을 비활성화한다. 이의 처리자는 필수 처리 사유를 입력해야 한다. 마지막 이의 처리 뒤에는 자동 확정 문구를 표시하지 않고 배정 심판 또는 방장의 별도 최종 승인을 안내한다.
+8. `match_record`는 일반 경기 `최종 승인` panel을 사용하지 않는다. 실제 참가자 본인에게만 `내 참가 확인` action을 표시하고, 확인한 참가자와 남은 참가자를 같은 panel에서 구분한다.
+9. 위 panel과 확인창은 공용 surface·button·focus token을 사용한다. desktop/mobile에서 control이 겹치거나 화면 밖으로 나가지 않아야 하고 dark/light에서 같은 정보 순서와 대비를 유지한다.
 
 ### 폐기된 UI 규칙
 
-- 기록자 자동 배정, 기록 후보, 권한 교대·승계·takeover, 양면 점수 위임 UI는 폐기됐다.
-- 심판 경기에서 심판에게 일반 경기 최종 승인 버튼을 표시하는 규칙은 폐기됐다.
-- 일반 경기 과반·전원·팀장 승인 control과 마지막 이의 처리 즉시 확정 문구는 폐기됐다.
+> 폐기됨: 경기시계·심판 중심 운영 정책으로 대체됨.
+> 신규 UI·API·권한 판정에서 사용하지 않는다.
+> 과거 데이터 해석 목적으로만 남긴다.
+
+- 기록자 자동 배정, 기록 후보, 권한 교대·승계·takeover, 양면 점수 위임 UI.
+- 심판 경기에서 경기시계 담당자에게 점수 control을 표시하거나 방장에게 이의 처리·최종 승인 control을 표시하는 규칙.
+- 일반 경기 과반·전원·팀장 승인 control과 마지막 이의 처리 즉시 확정 문구.
 - 아래 날짜별 UI 기록이 이 절과 충돌하면 이 절이 우선한다.
 
 ## 2026-07-25 공용 체크박스 iOS 외형
@@ -1356,7 +1361,7 @@ UI 수정 전:
 2. Primary CTA color is orange. Green is kept for success/ready states only.
 3. Match list cards stay summary-only: title, status, time, court, count, score/result, CTA. Player slot grids must not be rendered directly in list cards.
 4. Room modal and lobby must preserve `SideRoster`, `ReserveLine`, `PlayerRoomSlot`, empty slots, reserve slots, avatar, READY/WAIT, party group, and party connection line.
-4-1. Match room modal recorder handoff uses the same compact roster panel rhythm as substitution/record roster panels. Do not create a separate modal or card skin for recorder handoff.
+4-1. Match room modal keeps clock-controller transfer and player substitution as separate compact controls. Do not create recorder handoff controls.
 5. Party connection glow stays visible but subdued, using orange line/glow instead of neon green/blue.
 6. Light mode must not become a white SaaS dashboard. Use warm cream background, charcoal text, orange CTA, soft card surface, and court/gym wall tone.
 
@@ -2070,7 +2075,7 @@ UI 수정 전:
 2. 배정 심판 경기의 개인 스탯 입력기는 실제 배정 심판에게만 활성화한다. 다른 역할에는 심판 제출 뒤의 읽기 전용 기록만 보여주며 입력 control처럼 보이는 disabled field를 만들지 않는다.
 3. 무심판 점수 UI는 경기시계를 사용하면 현재 경기시계 담당자에게만 A/B 두 점수를 활성화하고, 경기시계를 사용하지 않으면 방장에게만 활성화한다. 권한 없는 점수칸은 편집 가능하게 보이지 않게 한다.
 4. 경기 중 기록권한 takeover와 점수 권한 인계 안내는 표시하지 않는다. 경기시계 담당 변경과 선수 교체를 서로 독립된 action으로 안내한다.
-5. 참가자 과반·전원 최종승인 control은 렌더링하지 않는다. 종료 화면은 심판 유무와 관계없이 방장에게만 `최종 승인` action을 표시하고 다른 참가자에게는 방장 승인을 안내한다. action 실행 전 공용 확인창에서 `더 이상 이의가 없음을 확인하셨나요?`를 표시한다.
+5. 참가자 과반·전원 최종승인 control은 렌더링하지 않는다. 종료 화면은 배정 심판 경기에서는 심판에게, 무심판 경기에서는 방장에게만 `최종 승인` action을 표시한다. action 실행 전 공용 확인창에서 `더 이상 이의가 없음을 확인하셨나요?`를 표시한다.
 6. 이의 UI는 무심판에서 A/B 점수 정정 입력만 표시하고 선수별 PTS·리바운드 등 개인 스탯 field를 만들지 않는다. 심판 경기에서만 심판 기록 이의 항목을 표시한다.
 7. 프로필과 기록 목록은 해당 선수의 referee stats row가 없는 경기에서 `0 PTS` 같은 stat line을 표시하지 않는다. 실제 심판 기록 경기가 하나 이상일 때만 누적 스탯·평균 스탯 묶음을 표시하고 경기수·승패는 항상 별도로 유지한다.
 8. 점수 입력, 승인, 이의, 프로필 요약은 desktop/mobile과 dark/light에서 같은 정보 순서를 유지한다. stats 영역이 사라진 score-only 화면은 남은 control을 임의의 고정 높이로 늘리지 않고 공용 gap으로 자연스럽게 닫는다.
@@ -2139,7 +2144,9 @@ UI 수정 전:
 3. 팀 상세 hero의 티어 엠블럼 아래 티어명은 `--rb-yellow`, MMR은 `--rb-cream`을 사용해 배경 이미지 위에서도 밝은·어두운 테마 모두 같은 대비를 유지한다.
 4. 팀 상세 hero의 즐겨찾기 버튼과 정보 배지는 공용 `.ui-liquid-glass`를 직접 사용한다. 별도 반투명 배경만 흉내 내는 화면 전용 글라스 규칙을 만들지 않는다.
 
-## 2026-07-28 교체·경기시계·출석 UI 단순화
+## 2026-07-28 교체·경기시계·출석 UI 단순화 (대체됨)
+
+> 대체됨: 문서 상단 `현재 유효한 경기 운영 UI`를 적용한다. 아래 내용은 과거 UI 기록으로만 남긴다.
 
 1. 경기 중 선수 패널은 `선수 교체`만 표시한다. 자동 기록자, 기록 후보, 기록권한 요청·승인·거절·취소·인계, `본인 교체` 배지는 표시하지 않는다. 후보 본인은 별도 역할 배지 없이 교체 버튼만 사용한다.
 2. 경기시계 담당 선택 목록은 출전·후보·심판을 `이름 · 역할`로 구분한다. 담당자는 A/B 점수·QR·경기시계·샷클락을 한 화면에서 사용하고, 비담당 방장 화면에는 QR과 점수 조작 버튼을 표시하지 않는다.

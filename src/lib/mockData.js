@@ -72,10 +72,6 @@ function getTeamDemoPlayerIds(team = {}, capacity = 5) {
     .slice(0, capacity);
 }
 
-function makeEmptyStatRecorders() {
-  return { teamA: "", teamB: "" };
-}
-
 function makeTrustFeedback(stars = {}) {
   return { stars, updatedAt: null };
 }
@@ -506,17 +502,17 @@ const baseState = {
       promotionLine: 4,
       rules: [
         "지역 랭킹은 같은 지역 플레이어를 먼저 정렬합니다.",
-        "정규전은 티어 구간 제한과 과반 승인을 모두 통과해야 합니다.",
-        "경기 전 동의와 결과 승인은 각 팀 과반 기준으로 처리합니다.",
+        "정규전은 티어 구간 제한과 경기 운영 권한 검증을 통과해야 합니다.",
+        "일반 경기 최종 승인은 심판 경기의 배정 심판, 무심판 경기의 방장이 처리합니다.",
       ],
     },
   ],
   matches: [
     {
-      id: "m-live-recorder",
-      title: "Recorder Live 3v3 · Hongdae Rimfire vs Bridge Ballers",
+      id: "m-live-clock",
+      title: "Clock Live 3v3 · Hongdae Rimfire vs Bridge Ballers",
       mode: "3v3",
-      court: "Recorder Test Court",
+      court: "Clock Test Court",
       scheduledDate: "2026-06-16",
       scheduledTime: "00:00",
       scheduledAt: "2026-06-16 00:00",
@@ -525,12 +521,11 @@ const baseState = {
       preRegistered: true,
       refereeId: "",
       refereeTrustMin: REFEREE_TRUST_MIN,
-      statRecorders: { teamA: "u1", teamB: "" },
       statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
       disputeMinutes: DISPUTE_WINDOW_MINUTES,
       rules: { targetScore: 21, timeLimit: 1440, winByTwo: false, ball: "7호" },
-      memo: "u1 recorder live demo. u1 is not playing and records teamA stats.",
-      stakes: "Demo match for recorder room access.",
+      memo: "경기시계 담당자 권한 검증용 live demo.",
+      stakes: "Demo match for live clock access.",
       ranked: true,
       objectionWindow: "2시간",
       evidence: [],
@@ -567,7 +562,6 @@ const baseState = {
       preRegistered: true,
       refereeId: "",
       refereeTrustMin: REFEREE_TRUST_MIN,
-      statRecorders: makeEmptyStatRecorders(),
       statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
       disputeMinutes: DISPUTE_WINDOW_MINUTES,
       rules: { targetScore: 21, timeLimit: 12, winByTwo: true, ball: "7호 공" },
@@ -602,7 +596,6 @@ const baseState = {
       preRegistered: true,
       refereeId: "",
       refereeTrustMin: REFEREE_TRUST_MIN,
-      statRecorders: makeEmptyStatRecorders(),
       statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
       disputeMinutes: DISPUTE_WINDOW_MINUTES,
       rules: { targetScore: 15, timeLimit: 10, winByTwo: false, ball: "7호 공" },
@@ -971,7 +964,6 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
     preRegistered: true,
     refereeId: "",
     refereeTrustMin: REFEREE_TRUST_MIN,
-    statRecorders: makeEmptyStatRecorders(),
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes: DISPUTE_WINDOW_MINUTES,
     rules: {

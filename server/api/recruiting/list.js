@@ -669,7 +669,6 @@ function compactRecruitingRoomState(roomState = {}, profileId = "", options = {}
     reserveReady: roomState.reserveReady ?? {},
     pinnedReservePlayers: roomState.pinnedReservePlayers ?? {},
     slotPositions: roomState.slotPositions ?? {},
-    statRecorders: roomState.statRecorders ?? {},
     ruleRevision: roomState.ruleRevision,
     ruleChangedAt: roomState.ruleChangedAt,
     roomEditCount: roomState.roomEditCount,
@@ -866,7 +865,6 @@ function canReadRecruitingPostDetail(row = {}, applications = [], profileId = ""
     ...flattenIdValues(roomState.partyLeaders),
     ...flattenIdValues(roomState.partyReserves),
     ...flattenIdValues(roomState.pinnedReservePlayers),
-    ...flattenIdValues(roomState.statRecorders),
     ...getRoomStateParticipantIds(roomState),
     ...applications.flatMap((application) => [
       application?.player_id,

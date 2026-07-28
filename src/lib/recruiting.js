@@ -274,18 +274,6 @@ export function currentUserCanRefereeRecruitingRoom(state, post) {
   return !getRecruitingRoomParticipantIds(post, state).includes(state.currentUserId);
 }
 
-export function getValidRecruitingRecorder() {
-  return "";
-}
-
-export function getRecruitingRoomStatRecorders() {
-  return { teamA: "", teamB: "" };
-}
-
-export function cleanRecruitingRoomStatRecorders(post) {
-  return post;
-}
-
 export function inferSidePartyTeamIdForUser(post = {}, state = {}, sideName = "", userId = "") {
   if (!userId || !VALID_SIDES.has(sideName)) return null;
   const lobby = getRecruitingLobby(post, state);

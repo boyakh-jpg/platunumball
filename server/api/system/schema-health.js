@@ -474,10 +474,6 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_post_id: "", p_target_user_ids: [], p_side: "", p_reserve: false, p_join_mode: "", p_team_id: "" },
   },
   {
-    name: "rankball_recruiting_stat_recorder_action",
-    args: { p_actor_profile_id: "", p_post_id: "", p_side: "", p_player_id: "" },
-  },
-  {
     name: "rankball_recruiting_ready_action",
     args: { p_actor_profile_id: "", p_post_id: "", p_ready: true },
   },
@@ -494,16 +490,8 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_match_id: "", p_result: {} },
   },
   {
-    name: "rankball_match_scorekeeper_scope_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_side: null },
-  },
-  {
     name: "rankball_match_score_increment_action",
     args: { p_actor_profile_id: "", p_match_id: "", p_delta_a: 0, p_delta_b: 0, p_expected_revision_a: null, p_expected_revision_b: null },
-  },
-  {
-    name: "rankball_match_recorder_takeover_action",
-    args: { p_actor_profile_id: "", p_action: "request", p_match_id: "", p_side: "teamA", p_request_id: null },
   },
   {
     name: "rankball_match_finalize_locked",
@@ -675,10 +663,6 @@ const REQUIRED_RPCS = [
     args: { p_profile_id: "", p_limit: 1, p_cursor: "", p_active_only: true },
   },
   {
-    name: "rankball_recorder_match_list",
-    args: { p_profile_id: "", p_limit: 1, p_cursor: "", p_admin: false },
-  },
-  {
     name: "rankball_cleanup_room_feed",
     args: { p_now: new Date(0).toISOString() },
   },
@@ -716,7 +700,7 @@ const REQUIRED_RPCS = [
   },
   {
     name: "rankball_match_resolve_dispute_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_dispute_id: "", p_decision: "rejected" },
+    args: { p_actor_profile_id: "", p_match_id: "", p_dispute_id: "", p_decision: "rejected", p_resolution_reason: "" },
   },
   {
     name: "rankball_match_terminal_action",
@@ -760,7 +744,7 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_match_id: "" },
   },
   {
-    name: "rankball_match_substitution_action",
+    name: "rankball_match_substitute_action",
     args: {
       p_actor_profile_id: "",
       p_match_id: "",
@@ -952,6 +936,18 @@ async function checkRpcGrants(client, scoreOperationPolicyCheck) {
   const checks = results.flatMap((result) => Array.isArray(result.data) ? result.data : []);
   const failed = checks.filter((check) => {
     if (check.ok) return false;
+    if (
+      [
+        "rpc_grant:rankball_recruiting_stat_recorder_action",
+        "authoritative_rpc_grant:rankball_recruiting_stat_recorder_action",
+      ].includes(check.check_name)
+      && check.detail?.exists === true
+      && check.detail?.anonExecute === false
+      && check.detail?.authenticatedExecute === false
+      && check.detail?.serviceRoleExecute === false
+    ) {
+      return false;
+    }
     return !(
       scoreOperationPolicyCheck?.checks?.legacyRosterMoveServiceRevoked === true
       && check.check_name === "rpc_grant:rankball_match_roster_move_action"

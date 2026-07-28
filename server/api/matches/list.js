@@ -277,6 +277,8 @@ async function attachOpenDisputeQueues(client, matches = [], debugTiming = null)
           resolvedAt: dispute.resolved_at ?? null,
           resolvedBy: dispute.resolved_by ?? "",
           resolution: dispute.resolution ?? "",
+          resolutionReason: dispute.resolution_reason ?? "",
+          resolutionAudit: dispute.resolution_audit ?? {},
           createdAt: dispute.created_at,
         })),
       }
@@ -509,8 +511,6 @@ async function fetchJsonActorMatchIds(client, profileId = "", limit = REMOTE_CLI
   if (!profileId) return [];
   const candidateLimit = Math.max(1, Math.min(MATCH_RELATED_FALLBACK_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const filters = [
-    ["stat_recorders", { teamA: profileId }],
-    ["stat_recorders", { teamB: profileId }],
     ["played_player_ids", { teamA: [profileId] }],
     ["played_player_ids", { teamB: [profileId] }],
     ["reserve_players", { teamA: [profileId] }],
@@ -730,24 +730,29 @@ async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_
   };
 }
 
-async function fetchRecorderMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "", isAdmin = false) {
+async function fetchPlayMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "") {
   if (!profileId) return { rows: [], cursor: "", exhausted: true };
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
-  const { data, error } = await client.rpc("rankball_recorder_match_list", {
-    p_profile_id: profileId,
-    p_limit: cappedLimit,
-    p_cursor: cursor,
-    p_admin: isAdmin,
-  });
-  if (error) {
-    if (error.code !== "PGRST202" && error.code !== "42883") throw error;
-    return fetchCurrentUserMatchPage(client, profileId, cappedLimit, cursor, true, true);
-  }
-  const ids = unique(Array.isArray(data?.ids) ? data.ids : []);
+  const offset = getMineOffsetCursor(cursor);
+  const candidateIds = await fetchCurrentUserMatchCandidateIds(
+    client,
+    profileId,
+    offset + cappedLimit,
+    true,
+  );
+  const rows = await fetchMatchRowsByIds(client, candidateIds);
+  const sortedRows = rows
+    .filter((row) => ["agreed", "approval", "disputed"].includes(String(row.status ?? "")))
+    .sort((a, b) => (
+      String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? ""))
+        || String(b.id ?? "").localeCompare(String(a.id ?? ""))
+    ));
+  const pageRows = sortedRows.slice(offset, offset + cappedLimit);
+  const nextOffset = offset + pageRows.length;
   return {
-    rows: await fetchMatchRowsByIds(client, ids),
-    cursor: String(data?.cursor ?? ""),
-    exhausted: data?.exhausted !== false,
+    rows: pageRows,
+    cursor: nextOffset < sortedRows.length ? `mine:${nextOffset}` : "",
+    exhausted: nextOffset >= sortedRows.length,
   };
 }
 
@@ -841,24 +846,16 @@ function getMatchPlayerIds(match = {}) {
   ]);
 }
 
-function getRecorderMatchUserIds(match = {}) {
-  return unique([
-    ...getMatchUserIds(match),
-    match.result?.submittedBy,
-    ...Object.keys(match.result?.playerStats ?? {}),
-    ...flattenIdValues(match.result?.statSubmissions),
-    ...flattenIdValues(match.statRecorders),
-    ...flattenIdValues(match.rules?.statRecorders),
-  ]);
-}
-
-function isRecorderMatch(match = {}, profileId = "", isAdmin = false) {
+function isPlayableMatch(match = {}, profileId = "", isAdmin = false) {
   if (!["agreed", "approval", "disputed"].includes(match.status)) return false;
   if (isAdmin) return true;
-  return getRecorderMatchUserIds(match).includes(profileId);
+  return getMatchUserIds(match).includes(profileId);
 }
 
 function getMatchRowActorIds(row = {}, players = []) {
+  // LEGACY READ-ONLY:
+  // 과거 경기 데이터 해석 전용.
+  // 신규 권한 판정 및 저장에 사용하지 않는다.
   return unique([
     row.created_by,
     row.rules?.tournamentOrganizerId,
@@ -1005,6 +1002,9 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
   const reservePlayers = row.reserve_players ?? row.rules?.reservePlayers ?? {};
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
   const anonymousPlayers = row.anonymous_players ?? {};
+  // LEGACY READ-ONLY:
+  // 과거 경기 데이터 해석 전용.
+  // 신규 권한 판정 및 저장에 사용하지 않는다.
   const statRecorders = row.stat_recorders ?? row.rules?.statRecorders ?? {};
   const allowPersonalStats = Boolean(row.referee_id) || ["solo", "personal_record"].includes(String(row.rules?.recordType ?? "").trim().toLowerCase());
   const result = toClientMatchResult(
@@ -1097,16 +1097,16 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const cursor = String(body.cursor ?? body.matchUpdatedBefore ?? "").trim();
   const shouldLoadRecruitingSchedule = !cursor && body.includeRecruitingSchedule === true;
   const completedOnly = body.completedOnly === true;
-  const recorderOnly = body.recorderOnly === true;
-  const scheduleOnly = body.scheduleOnly === true && !recorderOnly && !completedOnly;
+  const playOnly = body.playOnly === true;
+  const scheduleOnly = body.scheduleOnly === true && !playOnly && !completedOnly;
   const completedSince = completedOnly ? getCompletedSince(body) : "";
-  const activeOnly = body.activeOnly === true || recorderOnly;
+  const activeOnly = body.activeOnly === true || playOnly;
   const includeTeamSchedule = body.includeTeamSchedule === true;
   const shouldLoadRecentCompleted = !scheduleOnly && !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
   const recentCompletedHours = shouldLoadRecentCompleted ? getRecentCompletedHours(body) : RECENT_COMPLETED_MATCH_HOURS;
   const includeCancelledSchedule = scheduleOnly && body.includeCancelledSchedule === true;
   const shouldLoadClosedNotices = body.includeClosedNotices !== false
-    && !recorderOnly
+    && !playOnly
     && !completedOnly
     && activeOnly
     && !cursor
@@ -1115,11 +1115,11 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const filterMatchItems = (items = []) => {
     let filtered = filterActiveMatchCards(items, activeOnly, {
       includeRecentCompleted: shouldLoadRecentCompleted,
-      includeRecordRooms: recorderOnly,
+      includeRecordRooms: playOnly,
       scheduleOnly,
       includeCancelledSchedule,
     });
-    if (recorderOnly) filtered = filtered.filter((match) => isMatchInPlayMenu(match) && isRecorderMatch(match, context.profileId, adminLevel >= 30));
+    if (playOnly) filtered = filtered.filter((match) => isMatchInPlayMenu(match) && isPlayableMatch(match, context.profileId, adminLevel >= 30));
     if (completedOnly) filtered = filtered.filter((match) => (
       match.status === "confirmed" &&
       (getMatchPlayerIds(match).includes(context.profileId) || match.__feedRelations?.includes("participant"))
@@ -1130,7 +1130,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
   const [baseFeedPage, recentCompletedPage, closedNoticePage, relatedActivePage, relatedTournamentState] = await Promise.all([
-    recorderOnly
+    playOnly
       ? Promise.resolve(null)
       : completedOnly
       ? timeStep(debugTiming, "completedFeedMs", () => fetchCurrentUserCompletedMatchIds(context.supabase, context.profileId, limit, completedSince, allowLegacyFallback))
@@ -1141,12 +1141,12 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     shouldLoadClosedNotices
       ? timeStep(debugTiming, "closedNoticeMs", () => fetchClosedNoticeMatchFeedPage(context.supabase, context.profileId))
       : Promise.resolve(null),
-    !cursor && !completedOnly && !recorderOnly && (activeOnly || includeTeamSchedule)
+    !cursor && !completedOnly && !playOnly && (activeOnly || includeTeamSchedule)
       ? timeStep(debugTiming, "relatedActiveMatchIdsMs", () => (
           fetchRelatedActiveMatchPage(context.supabase, context.profileId, limit, includeTeamSchedule)
         ))
       : Promise.resolve({ rows: [], source: "none" }),
-    !cursor && !completedOnly && !recorderOnly
+    !cursor && !completedOnly && !playOnly
       ? timeStep(debugTiming, "relatedTournamentsMs", () => loadCurrentUserTournamentIndex(context.supabase, context.profileId))
       : Promise.resolve({ users: [], teams: [], tournaments: [] }),
   ]);
@@ -1190,15 +1190,15 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     }
   }
 
-  if (recorderOnly) {
-    const recorderPage = await timeStep(debugTiming, "recorderMatchesMs", () => (
-      fetchRecorderMatchPage(context.supabase, context.profileId, limit, cursor, adminLevel >= 30)
+  if (playOnly) {
+    const playPage = await timeStep(debugTiming, "playMatchesMs", () => (
+      fetchPlayMatchPage(context.supabase, context.profileId, limit, cursor)
     ));
-    const recorderRows = recorderPage?.rows ?? [];
-    matchRows = mergeMatchRowsById(matchRows, recorderRows);
-    pageSource = "recorder";
-    pageCursor = recorderPage?.cursor ?? "";
-    pageExhausted = recorderPage?.exhausted ?? true;
+    const playRows = playPage?.rows ?? [];
+    matchRows = mergeMatchRowsById(matchRows, playRows);
+    pageSource = "play";
+    pageCursor = playPage?.cursor ?? "";
+    pageExhausted = playPage?.exhausted ?? true;
   }
   const loadedMatchIds = new Set(matchRows.map((row) => row?.id).filter(Boolean));
   const relatedRowIds = unique(relatedActiveRows.map((row) => row?.id)).filter((id) => (
@@ -1312,7 +1312,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     canReadMatchRow(row, playersByMatch.get(row.id) ?? [], context.profileId ?? "", adminLevel >= 30)
   ));
   const hydrationRows = readableRows.filter((row) => {
-    if (recorderOnly && row.status === "agreed") return true;
+    if (playOnly && row.status === "agreed") return true;
     const preview = toClientMatch(row, playersByMatch, {}, {}, {}, new Map());
     return filterMatchItems([preview]).length > 0;
   });

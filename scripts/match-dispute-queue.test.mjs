@@ -118,7 +118,7 @@ test("후보는 제외하고 실제 출전 선수만 이의를 접수한다", ()
   assert.equal(next.notifications[0]?.title, "이의신청 권한 없음");
 });
 
-test("여러 참가자의 이의를 병렬 접수하고 방장이 건별 처리한 뒤 별도 승인한다", () => {
+test("여러 참가자의 이의를 병렬 접수하고 심판이 건별 처리한 뒤 별도 승인한다", () => {
   const start = makeState("host");
   const first = disputeMatch(start, "match-queue", requestFor(start, "host", 8));
   const secondInput = { ...first, currentUserId: "guest" };
@@ -127,33 +127,53 @@ test("여러 참가자의 이의를 병렬 접수하고 방장이 건별 처리�
 
   assert.equal(open.length, 2);
   assert.equal(second.matches[0].status, "disputed");
-  assert.equal(canUserResolveMatchDispute(second.matches[0], "referee"), false);
-  assert.equal(canUserResolveMatchDispute(second.matches[0], "host"), true);
+  assert.equal(canUserResolveMatchDispute(second.matches[0], "referee"), true);
+  assert.equal(canUserResolveMatchDispute(second.matches[0], "host"), false);
   assert.equal(canUserResolveMatchDispute(second.matches[0], "guest"), false);
 
   const hostDispute = open.find((dispute) => dispute.by === "host");
-  const refereeAttempt = resolveMatchDispute({ ...second, currentUserId: "referee" }, "match-queue", hostDispute.id, "accepted");
-  assert.equal(getOpenMatchDisputes(refereeAttempt.matches[0]).length, 2);
-  const accepted = resolveMatchDispute({ ...second, currentUserId: "host" }, "match-queue", hostDispute.id, "accepted");
+  const hostAttempt = resolveMatchDispute(
+    { ...second, currentUserId: "host" },
+    "match-queue",
+    hostDispute.id,
+    "accepted",
+    "방장은 심판 경기 이의를 처리할 수 없음",
+  );
+  assert.equal(getOpenMatchDisputes(hostAttempt.matches[0]).length, 2);
+  const accepted = resolveMatchDispute(
+    { ...second, currentUserId: "referee" },
+    "match-queue",
+    hostDispute.id,
+    "accepted",
+    "현장 기록과 이의 내용을 확인함",
+  );
   assert.equal(getOpenMatchDisputes(accepted.matches[0]).length, 1);
   assert.equal(accepted.matches[0].status, "disputed");
   assert.equal(accepted.matches[0].disputeDraftResult.playerStats.host.points, 8);
 
   const remaining = getOpenMatchDisputes(accepted.matches[0])[0];
-  const resolved = resolveMatchDispute({ ...accepted, currentUserId: "host" }, "match-queue", remaining.id, "rejected");
+  const resolved = resolveMatchDispute(
+    { ...accepted, currentUserId: "referee" },
+    "match-queue",
+    remaining.id,
+    "rejected",
+    "현장 기록과 기존 결과가 일치함",
+  );
   assert.equal(getOpenMatchDisputes(resolved.matches[0]).length, 0);
   assert.equal(resolved.matches[0].status, "approval");
   assert.equal(resolved.matches[0].result.playerStats.host.points, 8);
   assert.deepEqual(resolved.matches[0].approvals, { teamA: [], teamB: [] });
-  assert.match(resolved.notifications[0].body, /방장이 최종 승인/);
+  assert.match(resolved.notifications[0].body, /심판이 최종 승인/);
 
   const participantAttempt = finalizeMatchByAuthority({ ...resolved, currentUserId: "guest" }, "match-queue");
   assert.equal(participantAttempt.matches[0].status, "approval");
-  const finished = finalizeMatchByAuthority({ ...resolved, currentUserId: "host" }, "match-queue");
+  const hostFinalizeAttempt = finalizeMatchByAuthority({ ...resolved, currentUserId: "host" }, "match-queue");
+  assert.equal(hostFinalizeAttempt.matches[0].status, "approval");
+  const finished = finalizeMatchByAuthority({ ...resolved, currentUserId: "referee" }, "match-queue");
   assert.equal(finished.matches[0].status, "confirmed");
 });
 
-test("일반 경기 참가자 승인 경로는 폐기되고 방장 최종 승인만 남는다", () => {
+test("일반 경기 참가자 승인 경로는 폐기되고 경기 권한자의 명시적 최종 승인만 남는다", () => {
   const state = makeState("guest");
   const approved = approveMatch(state, "match-queue", "teamB", "guest");
   assert.strictEqual(approved, state);
@@ -164,7 +184,13 @@ test("기존 사유형 이의제기도 가결할 수 있다", () => {
   const start = makeState("guest");
   const disputed = disputeMatch(start, "match-queue", "기존 기록을 다시 확인해 주세요.");
   const openDispute = getOpenMatchDisputes(disputed.matches[0])[0];
-  const finished = resolveMatchDispute({ ...disputed, currentUserId: "host" }, "match-queue", openDispute.id, "accepted");
+  const finished = resolveMatchDispute(
+    { ...disputed, currentUserId: "referee" },
+    "match-queue",
+    openDispute.id,
+    "accepted",
+    "기존 이의 사유를 현장에서 확인함",
+  );
 
   assert.equal(getOpenMatchDisputes(finished.matches[0]).length, 0);
   assert.equal(finished.matches[0].status, "approval");
@@ -190,7 +216,13 @@ test("무심판 점수 이의 수락은 요청한 사이드 점수만 바꾸고 
     reason: "B 점수 정정",
   });
   const openDispute = getOpenMatchDisputes(disputed.matches[0])[0];
-  const finished = resolveMatchDispute({ ...disputed, currentUserId: "host" }, "match-queue", openDispute.id, "accepted");
+  const finished = resolveMatchDispute(
+    { ...disputed, currentUserId: "host" },
+    "match-queue",
+    openDispute.id,
+    "accepted",
+    "요청한 B사이드 점수를 현장에서 확인함",
+  );
 
   assert.equal(finished.matches[0].status, "approval");
   assert.equal(finished.matches[0].result.scoreA, 5);
@@ -224,6 +256,19 @@ test("DB와 목록 API가 병렬 큐를 새로고침 가능한 형태로 조회�
   assert.match(hostFinalizeMigration, /general_match_participant_approval_retired/);
   assert.match(hostFinalizeMigration, /'finalized', false/);
   assert.match(hostFinalizeMigration, /replace\(function_definition, old_finalize, ''\)/);
+  const liveAuthorityMigration = await readSource("supabase/migrations/20260728143000_referee_live_match_authority.sql");
+  assert.match(liveAuthorityMigration, /add column if not exists resolution_reason text/u);
+  assert.match(liveAuthorityMigration, /add column if not exists resolution_audit jsonb/u);
+  assert.match(liveAuthorityMigration, /match_disputes_resolution_reason_length_check/u);
+  assert.match(liveAuthorityMigration, /p_resolution_reason text/u);
+  assert.match(liveAuthorityMigration, /match_dispute_resolution_reason_required/u);
+  assert.match(liveAuthorityMigration, /match_dispute_referee_required/u);
+  assert.match(liveAuthorityMigration, /match_dispute_host_required/u);
+  assert.match(liveAuthorityMigration, /'resolutionReason', safe_resolution_reason/u);
+  assert.match(liveAuthorityMigration, /'previousResult', before_result/u);
+  assert.match(liveAuthorityMigration, /'nextResult', after_result/u);
+  assert.match(liveAuthorityMigration, /resolved_result := public\.rankball_match_resolve_dispute_pre_reason/u);
+  assert.match(liveAuthorityMigration, /return resolved_result \|\| jsonb_build_object/u);
   assert.match(listApi, /attachOpenDisputeQueues/);
   assert.match(listApi, /\.eq\("status", "open"\)/);
 });

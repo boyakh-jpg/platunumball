@@ -567,10 +567,11 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /QR 출석은 경기시계를 사용하는 일반 공개 매칭방에서만 선택/);
   assert.match(gettingStartedSource, /QR 토큰은 5분마다 바뀌며 경기 10분 전부터 로그인한 사전 등록 선수/);
   assert.match(gettingStartedSource, /출전·팀 배치를 자동 확정하지 않습니다/);
-  assert.match(gettingStartedSource, /양쪽 실제 출전 선수의 과반 승인/);
+  assert.doesNotMatch(gettingStartedSource, /양쪽 실제 출전 선수의 과반 승인/);
+  assert.match(gettingStartedSource, /심판 또는 방장이 열린 이의를 처리한 뒤 직접 최종 승인/);
   assert.match(gettingStartedSource, /경기시계/);
   assert.match(gettingStartedSource, /심판·경기시계 담당자·선수가 역할을 나눕니다/);
-  assert.match(gettingStartedSource, /지정된 담당자만 양쪽 점수와 경기시계·샷클락을 조작하고 출석 QR을 표시/);
+  assert.match(gettingStartedSource, /양쪽 점수는 심판 경기에서는 배정 심판, 무심판 경기에서는 시계 담당자가 조작/);
   assert.match(gettingStartedSource, /A\/B 점수판과 30초 샷클락이 함께 열린/);
   assert.match(gettingStartedSource, /티어는 확정 기록에서 자동 계산됩니다/);
   assert.match(gettingStartedSource, /기기별 베타/);

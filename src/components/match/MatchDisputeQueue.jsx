@@ -29,6 +29,7 @@ export default function MatchDisputeQueue({
   refreshing = false,
 }) {
   const [pendingId, setPendingId] = useState("");
+  const [resolutionReasons, setResolutionReasons] = useState({});
   const openDisputes = (match?.disputes ?? [])
     .filter((dispute) => dispute?.status === "open")
     .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")));
@@ -37,9 +38,14 @@ export default function MatchDisputeQueue({
 
   const resolveItem = async (disputeId, decision) => {
     if (!canResolve || pendingId) return;
+    const resolutionReason = String(resolutionReasons[disputeId] ?? "").trim();
+    if (!resolutionReason) return;
     setPendingId(disputeId);
     try {
-      await onResolve?.(disputeId, decision);
+      const result = await onResolve?.(disputeId, decision, resolutionReason);
+      if (result?.ok !== false) {
+        setResolutionReasons((current) => ({ ...current, [disputeId]: "" }));
+      }
     } finally {
       setPendingId("");
     }
@@ -71,14 +77,24 @@ export default function MatchDisputeQueue({
             </div>
             {canResolve ? (
               <div className="match-dispute-queue-actions">
-                <Button type="button" size="sm" disabled={Boolean(pendingId)} onClick={() => resolveItem(dispute.id, "accepted")}>
+                <label className="memo-label match-dispute-resolution-reason">
+                  처리 사유
+                  <textarea
+                    value={resolutionReasons[dispute.id] ?? ""}
+                    maxLength={500}
+                    placeholder="가결·부결 근거를 입력"
+                    disabled={Boolean(pendingId)}
+                    onChange={(event) => setResolutionReasons((current) => ({ ...current, [dispute.id]: event.target.value }))}
+                  />
+                </label>
+                <Button type="button" size="sm" disabled={Boolean(pendingId) || !String(resolutionReasons[dispute.id] ?? "").trim()} onClick={() => resolveItem(dispute.id, "accepted")}>
                   {pendingId === dispute.id ? "처리 중" : "가결"}
                 </Button>
-                <Button type="button" size="sm" variant="secondary" disabled={Boolean(pendingId)} onClick={() => resolveItem(dispute.id, "rejected")}>
+                <Button type="button" size="sm" variant="secondary" disabled={Boolean(pendingId) || !String(resolutionReasons[dispute.id] ?? "").trim()} onClick={() => resolveItem(dispute.id, "rejected")}>
                   부결
                 </Button>
               </div>
-            ) : <small>방장 처리 대기</small>}
+            ) : <small>{match?.refereeId ? "심판" : "방장"} 처리 대기</small>}
           </article>
         ))}
       </div>

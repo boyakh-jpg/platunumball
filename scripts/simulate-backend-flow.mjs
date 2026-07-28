@@ -9,6 +9,7 @@ import discordRoomChatHandler from "../server/api/discord/room-chat.js";
 import discordSyncDeliveriesHandler from "../server/api/discord/sync-deliveries.js";
 import settingsSyncHandler from "../server/api/settings/sync.js";
 import syncMatchHandler, { getDiscordProfiles, persistMatchSnapshot, queueMatchDiscordDeliveries } from "../server/api/matches/sync-match.js";
+import matchClockHandler from "../server/api/matches/clock.js";
 import matchDetailHandler from "../server/api/matches/detail.js";
 import matchesListHandler from "../server/api/matches/list.js";
 import syncTournamentHandler from "../server/api/tournaments/sync-tournament.js";
@@ -37,15 +38,11 @@ import {
   MATCH_SCHEDULED_NOTICE_PREFIXES,
 } from "../src/lib/notifications.js";
 import {
-  buildMatchResultSubmission,
-  getRecorderHandoffPatch,
-  getMatchResultEntryPermission,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
   getTournamentMatchDisplayTitle,
   isMatchRecordMatch,
   isTournamentMatchInUserSchedule,
-  withEffectiveMatchStatRecorders,
 } from "../src/lib/matchUtils.js";
 
 function loadEnvFile(path) {
@@ -1767,6 +1764,14 @@ async function syncMatchAs(testLoginId, operation, extra = {}) {
   return callHandler("/api/matches/sync-match", syncMatchHandler, await getAuthToken(testLoginId), { operation, ...extra });
 }
 
+async function controlMatchClockAs(testLoginId, matchId, action = "read", payload = {}) {
+  return callHandler("/api/matches/clock", matchClockHandler, await getAuthToken(testLoginId), {
+    matchId,
+    action,
+    payload,
+  });
+}
+
 async function syncTournamentAs(testLoginId, operation) {
   return callHandler("/api/tournaments/sync-tournament", syncTournamentHandler, await getAuthToken(testLoginId), { operation });
 }
@@ -2265,13 +2270,6 @@ function withStartedMatch(match = {}, operatorId = "") {
       startedAt: matchWithOperatorAttendance.rules?.startedAt ?? startedAt,
     },
   };
-}
-
-function withSubstitution(match = {}, sideName = "teamA", activePlayerId = "", reservePlayerId = "") {
-  const effectiveMatch = withEffectiveMatchStatRecorders(match);
-  const patch = getRecorderHandoffPatch(effectiveMatch, sideName, activePlayerId, reservePlayerId);
-  if (!patch.valid || !patch.swapped) return { valid: false, patch, match: effectiveMatch };
-  return { valid: true, patch, match: patch.match };
 }
 
 async function cleanupTrackedMatchArtifacts() {
@@ -3246,7 +3244,6 @@ async function runMatchAgreeSqlReducerScenario({
       timingType: "instant",
       visibility: "private",
       mmrRangeMode: "off",
-      statRecorders: { teamA: "", teamB: "" },
       playedPlayerIds: { teamA: [], teamB: [] },
       mmrExcludedPlayerIds: [],
     },
@@ -4776,7 +4773,7 @@ async function runDisputeResumeThumbsScenario({
     deltaB: 0,
     expectedRevisionA: 0,
     expectedRevisionB: 0,
-  }), ["match_score_update_locked"]);
+  }), ["match_score_update_locked", "match_score_clock_controller_required"]);
 
   await expectRejected(`${ids.label}:endMatch:beforeStartBlocked`, () => syncMatchAs(hostLogin, {
     action: "endMatch",
@@ -4905,6 +4902,7 @@ async function runDisputeResumeThumbsScenario({
     matchId: ids.matchId,
     disputeId: openDisputeId,
     decision: "rejected",
+    resolutionReason: "참가자에게는 이의신청 판정 권한이 없습니다.",
   }), ["match_host_required", "match_dispute_host_required"]);
 
   const resolveResult = await step(`${ids.label}:resolveMatchDispute`, () => syncMatchAs(hostLogin, {
@@ -4912,15 +4910,16 @@ async function runDisputeResumeThumbsScenario({
     matchId: ids.matchId,
     disputeId: openDisputeId,
     decision: "accepted",
+    resolutionReason: "현장 합의에 따라 요청 점수로 정정합니다.",
   }));
   assertFlow(resolveResult?.sqlReducer === true, "match dispute ruling did not use SQL reducer", resolveResult);
   match = await getMatchAfterResult(resolveResult, hostLogin, `${ids.label}:loadAfterDisputeRuling`);
-  assertFlow(match?.status === "confirmed", "last host dispute ruling did not confirm match", match);
+  assertFlow(match?.status === "approval" && !match?.confirmedAt, "last dispute ruling did not return match to approval", match);
   assertFlow(match?.result?.scoreA === 3 && match?.result?.scoreB === 15, "accepted score dispute was not committed", match);
   assertFlow(Object.keys(match?.result?.playerStats ?? {}).length === 0, "no-referee dispute created personal stats", match);
   assertFlow((match?.approvals?.teamA ?? []).length === 0 && (match?.approvals?.teamB ?? []).length === 0, "stale approvals survived dispute resolution", match);
 
-  await expectRejected(`${ids.label}:submitMatchResult:confirmedBlocked`, () => syncMatchAs(hostLogin, {
+  await expectRejected(`${ids.label}:submitMatchResult:noRefereePostDisputeBlocked`, () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
     result: {
@@ -4929,6 +4928,14 @@ async function runDisputeResumeThumbsScenario({
       playerStats: { [hostId]: { points: 999 } },
     },
   }), ["no_referee_personal_stats_forbidden"]);
+
+  const finalizeResult = await step(`${ids.label}:finalizeMatch`, () => syncMatchAs(hostLogin, {
+    action: "finalizeMatch",
+    matchId: ids.matchId,
+  }));
+  assertFlow(finalizeResult?.sqlReducer === true, "match finalization did not use SQL reducer", finalizeResult);
+  match = await getMatchAfterResult(finalizeResult, hostLogin, `${ids.label}:loadAfterFinalization`);
+  assertFlow(match?.status === "confirmed" && Boolean(match?.confirmedAt), "host finalization did not confirm match", match);
 
   await step(`${ids.label}:snapshotTrustSubjects`, () => snapshotRatingSubjects([opponentId]));
   const opponentTrustBeforeThumbs = await step(`${ids.label}:loadTrustBeforeThumbs`, () => getCurrentProfileTrustScore(opponentLogin, opponentId));
@@ -5101,21 +5108,6 @@ async function runRecruitingActorScenario({
   post = await getRecruitingPostAfterResult(hostReserveResult, hostLogin, `${ids.label}:loadAfterHostReserve`);
   assertFlow(post?.roomState?.hostReserve === true, "host reserve placement not persisted", post);
 
-  const hostRecorderResult = await step(`${ids.label}:setRecruitingStatRecorder:hostReserve`, () => syncRecruitingAs(hostLogin, {
-    action: "setRecruitingStatRecorder",
-    postId: ids.postId,
-    sideName: "teamA",
-    playerId: hostId,
-  }));
-  post = await getRecruitingPostAfterResult(hostRecorderResult, hostLogin, `${ids.label}:loadAfterHostRecorder`);
-  assertFlow(post?.roomState?.statRecorders?.teamA === hostId, "host reserve recorder not persisted", post);
-
-  await step(`${ids.label}:clearRecruitingStatRecorder:hostReserve`, () => syncRecruitingAs(hostLogin, {
-    action: "setRecruitingStatRecorder",
-    postId: ids.postId,
-    sideName: "teamA",
-    playerId: hostId,
-  }));
   const hostActiveResult = await step(`${ids.label}:setRecruitingApplicantPlacement:hostActive`, () => syncRecruitingAs(hostLogin, {
     action: "setRecruitingApplicantPlacement",
     postId: ids.postId,
@@ -5123,7 +5115,7 @@ async function runRecruitingActorScenario({
     placement: { side: "teamA", reserve: false },
   }));
   post = await getRecruitingPostAfterResult(hostActiveResult, hostLogin, `${ids.label}:loadAfterHostActive`);
-  assertFlow(post?.roomState?.hostReserve === false && !post?.roomState?.statRecorders?.teamA, "host active placement not persisted", post);
+  assertFlow(post?.roomState?.hostReserve === false, "host active placement not persisted", post);
 
   const joinResult = await step(`${ids.label}:interestRecruitingPost:opponent`, () => syncRecruitingAs(opponentLogin, {
     action: "interestRecruitingPost",
@@ -5200,7 +5192,6 @@ async function runRecruitingActorScenario({
       interestRecruitingPost: Boolean(joinResult?.sqlReducer),
       updateRecruitingRoomRules: Boolean(rulesResult?.sqlReducer),
       hostReservePlacement: Boolean(hostReserveResult?.sqlReducer),
-      hostReserveRecorder: Boolean(hostRecorderResult?.sqlReducer),
       hostActivePlacement: Boolean(hostActiveResult?.sqlReducer),
       setRecruitingSlotPosition: Boolean(positionResult?.sqlReducer),
       reservePlacement: Boolean(reserveResult?.sqlReducer),
@@ -5210,7 +5201,7 @@ async function runRecruitingActorScenario({
   };
 }
 
-async function runRecorderHandoffScenario({
+async function runLiveSubstitutionScenario({
   label,
   hostLogin,
   teamAReserveLogin,
@@ -5224,7 +5215,7 @@ async function runRecorderHandoffScenario({
   const removableReserveId = await step(`${ids.label}:resolveProfile:removableReserve`, () => getProfileIdForLogin(removableReserveLogin));
   assertFlow(
     new Set([hostId, teamAReserveId, teamBActiveId, removableReserveId]).size === 4,
-    "recorder handoff profiles must be unique",
+    "live substitution profiles must be unique",
     { hostId, teamAReserveId, teamBActiveId, removableReserveId },
   );
 
@@ -5258,7 +5249,7 @@ async function runRecorderHandoffScenario({
     },
   }));
   let post = createResult?.post;
-  assertFlow(post?.id === ids.postId, "created recorder handoff post not returned", createResult);
+  assertFlow(post?.id === ids.postId, "created live substitution post not returned", createResult);
 
   const joinTeamAReserveResult = await step(`${ids.label}:interestRecruitingPost:teamAReserve`, () => syncRecruitingAs(teamAReserveLogin, {
     action: "interestRecruitingPost",
@@ -5308,15 +5299,13 @@ async function runRecorderHandoffScenario({
   }));
   assertFlow(confirmResult?.confirmationAtomic === true, "recruiting confirmation was not atomic", confirmResult);
   let match = confirmResult?.createdMatch;
-  assertFlow(match?.id === ids.matchId, "recorder handoff match not returned", confirmResult);
-  match = withEffectiveMatchStatRecorders(match);
+  assertFlow(match?.id === ids.matchId, "live substitution match not returned", confirmResult);
   assertFlow((match.teamA?.players ?? []).includes(hostId), "teamA active roster mismatch", match);
   assertFlow((match.teamB?.players ?? []).includes(teamBActiveId), "teamB active roster mismatch", match);
   assertFlow((match.reservePlayers?.teamA ?? []).includes(teamAReserveId), "teamA reserve not persisted", match);
   assertFlow((match.reservePlayers?.teamB ?? []).includes(removableReserveId), "removable teamB reserve not persisted", match);
   assertFlow(!(match.teamA?.players ?? []).includes(teamAReserveId), "teamA reserve leaked into active roster", match);
   assertFlow(!(match.teamB?.players ?? []).includes(removableReserveId), "teamB reserve leaked into active roster", match);
-  assertFlow(match.statRecorders?.teamA === teamAReserveId, "teamA reserve recorder not assigned", match);
 
   await expectRejected(`${ids.label}:updateMatchRoomRules:nonOperatorBlocked`, () => syncMatchAs(teamBActiveLogin, {
     action: "updateMatchRoomRules",
@@ -5428,7 +5417,7 @@ async function runRecorderHandoffScenario({
     playerId: teamBActiveId,
   }, { match: withAttendance(match, "teamB", teamBActiveId) }));
   match = await getMatchAfterResult(checkInBResult, hostLogin, `${ids.label}:loadAfterCheckInTeamB`);
-  assertFlow((match.attendance?.teamB ?? []).includes(teamBActiveId), "recorder handoff teamB check-in not persisted", match);
+  assertFlow((match.attendance?.teamB ?? []).includes(teamBActiveId), "live substitution teamB check-in not persisted", match);
 
   const checkInReserveResult = await step(`${ids.label}:checkInMatchPlayer:teamAReserve`, () => syncMatchAs(hostLogin, {
     action: "checkInMatchPlayer",
@@ -5437,14 +5426,29 @@ async function runRecorderHandoffScenario({
     playerId: teamAReserveId,
   }));
   match = await getMatchAfterResult(checkInReserveResult, hostLogin, `${ids.label}:loadAfterCheckInTeamAReserve`);
-  assertFlow((match.attendance?.teamA ?? []).includes(teamAReserveId), "recorder handoff teamA reserve check-in not persisted", match);
+  assertFlow((match.attendance?.teamA ?? []).includes(teamAReserveId), "live substitution teamA reserve check-in not persisted", match);
 
   const startResult = await step(`${ids.label}:startMatch`, () => syncMatchAs(hostLogin, {
     action: "startMatch",
     matchId: ids.matchId,
   }));
   match = await getMatchAfterResult(startResult, hostLogin, `${ids.label}:loadAfterStartMatch`);
-  assertFlow(Boolean(match?.startedAt), "recorder handoff match start not persisted", match);
+  assertFlow(Boolean(match?.startedAt), "live substitution match start not persisted", match);
+
+  const clockTransferResult = await step(`${ids.label}:transferMatchClock:teamAReserve`, () => controlMatchClockAs(
+    hostLogin,
+    ids.matchId,
+    "transfer",
+    { controllerId: teamAReserveId },
+  ));
+  assertFlow(
+    clockTransferResult?.clock?.controllerId === teamAReserveId
+      && clockTransferResult?.activePlayers?.some((player) => (
+        player.id === teamAReserveId && player.role === "reserve"
+      )),
+    "reserve player did not receive match clock control",
+    clockTransferResult,
+  );
 
   await expectRejected(`${ids.label}:submitMatchResult:reserveOwnRowBlocked`, () => syncMatchAs(teamAReserveLogin, {
     action: "submitMatchResult",
@@ -5454,7 +5458,7 @@ async function runRecorderHandoffScenario({
     },
   }), ["no_referee_personal_stats_forbidden"]);
 
-  await expectRejected(`${ids.label}:submitMatchResult:playerBlockedByRecorder`, () => syncMatchAs(hostLogin, {
+  await expectRejected(`${ids.label}:submitMatchResult:noRefereeStatsBlocked`, () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
     result: {
@@ -5464,36 +5468,30 @@ async function runRecorderHandoffScenario({
     },
   }), ["no_referee_personal_stats_forbidden"]);
 
-  const sideRecorderPermission = getMatchResultEntryPermission(match, teamAReserveId);
-  const sideRecorderPayload = buildMatchResultSubmission(match, {
-    playerStats: {
-      [hostId]: { points: 4, rebounds: 2, assists: 1, steals: 1, blocks: 0, fouls: 1 },
-      [teamBActiveId]: { points: 88, rebounds: 8, assists: 8, steals: 8, blocks: 8, fouls: 8 },
-    },
-  }, sideRecorderPermission.getEditableStatFields);
-  assertFlow(
-    Object.keys(sideRecorderPayload.playerStats).length === 0,
-    "no-referee recorder UI payload exposed personal stats",
-    sideRecorderPayload,
-  );
+  await expectRejected(`${ids.label}:incrementMatchScore:nonControllerBlocked`, () => syncMatchAs(hostLogin, {
+    action: "incrementMatchScore",
+    matchId: ids.matchId,
+    deltaA: 1,
+    deltaB: 0,
+    expectedRevisionA: Number(match?.result?.scoreRevisionA ?? 0),
+    expectedRevisionB: Number(match?.result?.scoreRevisionB ?? 0),
+  }), ["match_score_clock_controller_required"]);
 
-  const recorderScoreWrite = await setMatchScoreByIncrements({
-    label: `${ids.label}:sideRecorder`,
+  const clockScoreWrite = await setMatchScoreByIncrements({
+    label: `${ids.label}:clockController`,
     login: teamAReserveLogin,
     match,
     scoreA: 4,
     scoreB: 0,
   });
-  match = recorderScoreWrite.match;
+  match = clockScoreWrite.match;
   assertFlow(
     match?.status === "agreed" && !match?.endedAt && getMatchRoomPhase(match).phase === "live" && match?.result?.scoreA === 4 && match?.result?.scoreB === 0,
-    "side recorder score increment did not persist",
+    "clock controller score increment did not persist",
     match,
   );
 
-  const recorderSelfSubDraft = withSubstitution(match, "teamA", hostId, teamAReserveId);
-  assertFlow(recorderSelfSubDraft.valid && recorderSelfSubDraft.patch?.swapped, "recorder self-substitution draft not valid", recorderSelfSubDraft);
-  const recorderSelfSubResult = await step(`${ids.label}:substituteMatchPlayer:recorderSelf`, () => syncMatchAs(teamAReserveLogin, {
+  const reserveSelfSubResult = await step(`${ids.label}:substituteMatchPlayer:reserveSelf`, () => syncMatchAs(teamAReserveLogin, {
     action: "substituteMatchPlayer",
     matchId: ids.matchId,
     sideName: "teamA",
@@ -5501,15 +5499,12 @@ async function runRecorderHandoffScenario({
     reservePlayerId: teamAReserveId,
     reason: "self",
   }));
-  match = await getMatchAfterResult(recorderSelfSubResult, teamAReserveLogin, `${ids.label}:loadAfterRecorderSelfSubstitution`);
-  assertFlow(match?.statRecorders?.teamA === hostId && match?.rules?.statRecorders?.teamA === hostId, "outgoing active player did not inherit recorder role", match);
-  assertFlow((match.teamA?.players ?? []).includes(teamAReserveId) && !(match.teamA?.players ?? []).includes(hostId), "recorder self-substitution active roster mismatch", match);
-  assertFlow((match.reservePlayers?.teamA ?? []).includes(hostId) && !(match.reservePlayers?.teamA ?? []).includes(teamAReserveId), "recorder self-substitution reserve roster mismatch", match);
-  assertFlow((match.playedPlayerIds?.teamA ?? []).includes(hostId) && (match.playedPlayerIds?.teamA ?? []).includes(teamAReserveId), "recorder self-substitution played ids missing", match);
-  assertFlow(Boolean(recorderSelfSubResult?.sqlReducer), "recorder self-substitution SQL reducer not used", recorderSelfSubResult);
+  match = await getMatchAfterResult(reserveSelfSubResult, teamAReserveLogin, `${ids.label}:loadAfterReserveSelfSubstitution`);
+  assertFlow((match.teamA?.players ?? []).includes(teamAReserveId) && !(match.teamA?.players ?? []).includes(hostId), "reserve self-substitution active roster mismatch", match);
+  assertFlow((match.reservePlayers?.teamA ?? []).includes(hostId) && !(match.reservePlayers?.teamA ?? []).includes(teamAReserveId), "reserve self-substitution reserve roster mismatch", match);
+  assertFlow((match.playedPlayerIds?.teamA ?? []).includes(hostId) && (match.playedPlayerIds?.teamA ?? []).includes(teamAReserveId), "reserve self-substitution played ids missing", match);
+  assertFlow(Boolean(reserveSelfSubResult?.sqlReducer), "reserve self-substitution SQL reducer not used", reserveSelfSubResult);
 
-  const substituteDraft = withSubstitution(match, "teamA", teamAReserveId, hostId);
-  assertFlow(substituteDraft.valid && substituteDraft.patch?.swapped, "substitution draft not valid", substituteDraft);
   const substituteResult = await step(`${ids.label}:substituteMatchPlayer`, () => syncMatchAs(hostLogin, {
     action: "substituteMatchPlayer",
     matchId: ids.matchId,
@@ -5520,7 +5515,6 @@ async function runRecorderHandoffScenario({
   }));
   match = await getMatchAfterResult(substituteResult, hostLogin, `${ids.label}:loadAfterSubstitution`);
   assertFlow(Boolean(substituteResult?.sqlReducer), "substitution SQL reducer not used", substituteResult);
-  assertFlow(match?.statRecorders?.teamA === teamAReserveId && match?.rules?.statRecorders?.teamA === teamAReserveId, "second self-substitution did not transfer recorder to outgoing player", match);
   assertFlow((match.teamA?.players ?? []).includes(hostId) && !(match.teamA?.players ?? []).includes(teamAReserveId), "substitution did not promote reserve", match);
   assertFlow((match.reservePlayers?.teamA ?? []).includes(teamAReserveId) && !(match.reservePlayers?.teamA ?? []).includes(hostId), "substitution reserve roster mismatch", match);
   assertFlow((match.playedPlayerIds?.teamA ?? []).includes(hostId) && (match.playedPlayerIds?.teamA ?? []).includes(teamAReserveId), "substitution played ids missing", match);
@@ -5528,12 +5522,10 @@ async function runRecorderHandoffScenario({
   return {
     label: ids.label,
     hostLogin,
-    recorderLogin: teamAReserveLogin,
-    nextRecorderLogin: hostLogin,
+    reserveLogin: teamAReserveLogin,
+    clockControllerLogin: teamAReserveLogin,
     postId: ids.postId,
     matchId: ids.matchId,
-    recorderBefore: teamAReserveId,
-    recorderAfter: match.statRecorders.teamA,
     swapped: true,
     sqlReducers: {
       teamAReserveJoin: Boolean(joinTeamAReserveResult?.sqlReducer),
@@ -5546,7 +5538,9 @@ async function runRecorderHandoffScenario({
       checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),
       checkInReservePlayer: Boolean(checkInReserveResult?.sqlReducer),
       startMatch: Boolean(startResult?.sqlReducer),
-      recorderSelfSubstitution: Boolean(recorderSelfSubResult?.sqlReducer),
+      transferMatchClock: clockTransferResult?.clock?.controllerId === teamAReserveId,
+      clockScore: Boolean(clockScoreWrite?.sqlReducer),
+      reserveSelfSubstitution: Boolean(reserveSelfSubResult?.sqlReducer),
       substituteMatchPlayer: Boolean(substituteResult?.sqlReducer),
     },
   };
@@ -6322,36 +6316,8 @@ async function runBulkHomeInviteAcceptScenario({
     reserveIds,
   });
 
-  let recorderSqlReducer;
   let partySqlReducers;
   if (!overflow) {
-    const recorderId = reserveIds[0];
-    const recorderSide = expectedPlacements.find((item) => item.profileId === recorderId)?.side;
-    const recorderResult = await step(`${ids.label}:setRecruitingStatRecorder`, () => syncRecruitingAs(hostLogin, {
-      action: "setRecruitingStatRecorder",
-      postId: ids.postId,
-      sideName: recorderSide,
-      playerId: recorderId,
-    }));
-    assertFlow(recorderResult?.sqlReducer === true, "recruiting recorder SQL reducer not used", recorderResult);
-    post = await getRecruitingPostAfterResult(recorderResult, hostLogin, `${ids.label}:loadAfterRecorderSet`);
-    assertFlow(post.roomState?.statRecorders?.[recorderSide] === recorderId, "recruiting recorder not persisted", {
-      recorderId,
-      recorderSide,
-      statRecorders: post.roomState?.statRecorders,
-    });
-
-    const clearRecorderResult = await step(`${ids.label}:clearRecruitingStatRecorder`, () => syncRecruitingAs(hostLogin, {
-      action: "setRecruitingStatRecorder",
-      postId: ids.postId,
-      sideName: recorderSide,
-      playerId: recorderId,
-    }));
-    assertFlow(clearRecorderResult?.sqlReducer === true, "recruiting recorder clear SQL reducer not used", clearRecorderResult);
-    post = await getRecruitingPostAfterResult(clearRecorderResult, hostLogin, `${ids.label}:loadAfterRecorderClear`);
-    assertFlow(!post.roomState?.statRecorders?.[recorderSide], "recruiting recorder not cleared", post.roomState?.statRecorders);
-    recorderSqlReducer = true;
-
     const kickedReserveId = inviteBReserveIds[0];
     const kickReserveResult = await step(`${ids.label}:kickRecruitingApplicant:freeReserve`, () => syncRecruitingAs(hostLogin, {
       action: "kickRecruitingApplicant",
@@ -6399,7 +6365,6 @@ async function runBulkHomeInviteAcceptScenario({
     activeB: activeBIds.length,
     reserves: reserveIds.length,
     expired: expiredIds.length,
-    recorderSqlReducer,
     partySqlReducers,
     closeSqlReducer,
     closePenalty,
@@ -6549,16 +6514,16 @@ async function runMatchRecordRosterScenario({
     "match record leaked into the standard match list",
     standardMatchState.matches,
   );
-  const recorderMatchState = await loadMatchesAs(teamAFixture.captainLogin, {
-    recorderOnly: true,
+  const playMatchState = await loadMatchesAs(teamAFixture.captainLogin, {
+    playOnly: true,
     activeOnly: true,
     includeRecentCompleted: false,
     includeClosedNotices: false,
   });
   assertFlow(
-    (recorderMatchState.matches ?? []).some((item) => item.id === ids.matchId),
-    "match record missing from the recorder list",
-    recorderMatchState.matches,
+    (playMatchState.matches ?? []).some((item) => item.id === ids.matchId),
+    "match record missing from the play list",
+    playMatchState.matches,
   );
   assertFlow((match.teamA?.players ?? []).length === 1 && match.teamA.players[0] === teamAFixture.captainId, "match record creator seed mismatch", match);
   assertFlow((match.teamB?.players ?? []).length === 0, "match record must not invite teamB during creation", match);
@@ -6706,20 +6671,20 @@ async function runOneOnOneMatchRecordScenario({
   assertFlow((match?.teamB?.players ?? []).length === 1 && match.teamB.players[0] === opponentId, "1v1 match record opponent setup mismatch", match);
   assertFlow(match?.rules?.recordSetupReady === true, "1v1 match record setup not marked ready", match);
 
-  const hostRecorderState = await loadMatchesAs(hostLogin, {
-    recorderOnly: true,
+  const hostPlayState = await loadMatchesAs(hostLogin, {
+    playOnly: true,
     activeOnly: true,
     includeRecentCompleted: false,
     includeClosedNotices: false,
   });
-  const opponentRecorderState = await loadMatchesAs(opponentLogin, {
-    recorderOnly: true,
+  const opponentPlayState = await loadMatchesAs(opponentLogin, {
+    playOnly: true,
     activeOnly: true,
     includeRecentCompleted: false,
     includeClosedNotices: false,
   });
-  assertFlow((hostRecorderState.matches ?? []).some((item) => item.id === ids.matchId), "1v1 match record missing from host recorder list", hostRecorderState.matches);
-  assertFlow((opponentRecorderState.matches ?? []).some((item) => item.id === ids.matchId), "1v1 match record missing from opponent recorder list", opponentRecorderState.matches);
+  assertFlow((hostPlayState.matches ?? []).some((item) => item.id === ids.matchId), "1v1 match record missing from host play list", hostPlayState.matches);
+  assertFlow((opponentPlayState.matches ?? []).some((item) => item.id === ids.matchId), "1v1 match record missing from opponent play list", opponentPlayState.matches);
 
   if (supabase) {
     const { data: notificationRows, error: notificationError } = await supabase
@@ -6741,8 +6706,8 @@ async function runOneOnOneMatchRecordScenario({
     opponentId,
     ranked: match.ranked,
     ratingScale: match.ratingScale,
-    hostRecorderVisible: true,
-    opponentRecorderVisible: true,
+    hostPlayVisible: true,
+    opponentPlayVisible: true,
   };
 }
 
@@ -7968,10 +7933,10 @@ async function main() {
   const refereeLogin = process.env.RANKBALL_SIM_REFEREE || "rankball-001";
   const actorHostLogin = process.env.RANKBALL_SIM_ACTOR_HOST || "rankball-014";
   const actorOpponentLogin = process.env.RANKBALL_SIM_ACTOR_OPPONENT || "rankball-015";
-  const recorderHandoffHostLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_HOST || "rankball-032";
-  const recorderHandoffTeamAReserveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_TEAM_A_RESERVE || "rankball-034";
-  const recorderHandoffTeamBActiveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_TEAM_B_ACTIVE || "rankball-036";
-  const recorderHandoffRemovableReserveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_REMOVABLE_RESERVE || "rankball-042";
+  const liveSubstitutionHostLogin = process.env.RANKBALL_SIM_LIVE_SUBSTITUTION_HOST || "rankball-032";
+  const liveSubstitutionTeamAReserveLogin = process.env.RANKBALL_SIM_LIVE_SUBSTITUTION_TEAM_A_RESERVE || "rankball-034";
+  const liveSubstitutionTeamBActiveLogin = process.env.RANKBALL_SIM_LIVE_SUBSTITUTION_TEAM_B_ACTIVE || "rankball-036";
+  const liveSubstitutionRemovableReserveLogin = process.env.RANKBALL_SIM_LIVE_SUBSTITUTION_REMOVABLE_RESERVE || "rankball-042";
   const discordChatHostLogin = process.env.RANKBALL_SIM_DISCORD_CHAT_HOST || "rankball-033";
   const discordChatGuestLogin = process.env.RANKBALL_SIM_DISCORD_CHAT_GUEST || "rankball-035";
   const discordOptInLogin = process.env.RANKBALL_SIM_DISCORD_OPT_IN_LOGIN || "rankball-043";
@@ -8160,12 +8125,12 @@ async function main() {
       refereeLogin,
       refereeWanted: true,
     }));
-    scenarios.push(await runRecorderHandoffScenario({
-      label: "record_permission_side_recorder",
-      hostLogin: recorderHandoffHostLogin,
-      teamAReserveLogin: recorderHandoffTeamAReserveLogin,
-      teamBActiveLogin: recorderHandoffTeamBActiveLogin,
-      removableReserveLogin: recorderHandoffRemovableReserveLogin,
+    scenarios.push(await runLiveSubstitutionScenario({
+      label: "record_permission_live_substitution",
+      hostLogin: liveSubstitutionHostLogin,
+      teamAReserveLogin: liveSubstitutionTeamAReserveLogin,
+      teamBActiveLogin: liveSubstitutionTeamBActiveLogin,
+      removableReserveLogin: liveSubstitutionRemovableReserveLogin,
     }));
   } else {
   scenarios.push(await runSoloRecordScenario({
@@ -8276,12 +8241,12 @@ async function main() {
       hostLogin: actorHostLogin,
       opponentLogin: actorOpponentLogin,
     }));
-    scenarios.push(await runRecorderHandoffScenario({
-      label: "recorder_handoff_1v1",
-      hostLogin: recorderHandoffHostLogin,
-      teamAReserveLogin: recorderHandoffTeamAReserveLogin,
-      teamBActiveLogin: recorderHandoffTeamBActiveLogin,
-      removableReserveLogin: recorderHandoffRemovableReserveLogin,
+    scenarios.push(await runLiveSubstitutionScenario({
+      label: "live_substitution_1v1",
+      hostLogin: liveSubstitutionHostLogin,
+      teamAReserveLogin: liveSubstitutionTeamAReserveLogin,
+      teamBActiveLogin: liveSubstitutionTeamBActiveLogin,
+      removableReserveLogin: liveSubstitutionRemovableReserveLogin,
     }));
     scenarios.push(await runOneOnOneScenario({
       label: "referee_absence_confirmation",

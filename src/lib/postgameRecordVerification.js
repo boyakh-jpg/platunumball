@@ -86,8 +86,8 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
     ...collectIds(match.rejections),
   ]).filter((playerId) => requiredIdSet.has(playerId));
 
-  // 최종 승인은 본인 참가 사실과 결과를 함께 확인한다.
-  // participantAcceptedIds는 기존 기록 호환을 위해 승인자까지 합쳐 반환한다.
+  // 내 참가 확인은 본인 참가 사실과 결과를 함께 확인한다.
+  // participantAcceptedIds는 기존 기록 호환을 위해 확인자까지 합쳐 반환한다.
   const participantAcceptedIds = uniqueIds([
     ...legacyParticipantAcceptedIds,
     ...resultApprovedIds,

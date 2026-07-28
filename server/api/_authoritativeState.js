@@ -399,7 +399,13 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       next = voidMatch(state, operation.matchId, operation.reason);
       break;
     case "resolveMatchDispute":
-      next = resolveMatchDispute(state, operation.matchId, operation.disputeId, operation.decision);
+      next = resolveMatchDispute(
+        state,
+        operation.matchId,
+        operation.disputeId,
+        operation.decision,
+        operation.resolutionReason,
+      );
       break;
     case "startMatch":
       next = startMatch(state, operation.matchId);

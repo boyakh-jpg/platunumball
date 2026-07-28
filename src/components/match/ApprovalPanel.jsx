@@ -1,18 +1,22 @@
 import Card from "../common/Card.jsx";
 import Badge from "../common/Badge.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
-import { getApprovalStatus, getPlayerStatSubmitted, getResultPointAudit, getStatSubmissionStatus, isMatchRecordMatch } from "../../lib/matchUtils.js";
+import { getApprovalStatus, isMatchRecordMatch } from "../../lib/matchUtils.js";
 
 export default function ApprovalPanel({ match, teams, users, currentUserId, onApprove }) {
-  const confirmed = match.status === "confirmed";
   const recordRoom = isMatchRecordMatch(match);
+  if (!recordRoom) return null;
+  const confirmed = match.status === "confirmed";
   const locked = !match.result || ["confirmed", "disputed", "void", "cancelled"].includes(match.status);
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
-  const statStatus = getStatSubmissionStatus(match);
-  const pointAudit = getResultPointAudit(match);
-  const approvalReady = !locked && statStatus.complete && pointAudit.matched;
+  const sideStatuses = {
+    teamA: getApprovalStatus(match, teams, "teamA"),
+    teamB: getApprovalStatus(match, teams, "teamB"),
+  };
+  const currentUserRequired = Object.values(sideStatuses).some((status) => status.requiredIds.includes(currentUserId));
+  const currentUserConfirmed = Object.values(sideStatuses).some((status) => status.approvals.includes(currentUserId));
   const renderSide = (sideName) => {
-    const status = getApprovalStatus(match, teams, sideName);
+    const status = sideStatuses[sideName];
     const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", players: [] };
     return (
       <div>
@@ -25,12 +29,10 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
             const user = userMap[playerId];
             const approved = status.approvals.includes(playerId);
             const isCurrentUser = playerId === currentUserId;
-            const isRequiredApprover = !status.requiredIds?.length || status.requiredIds.includes(playerId);
-            const statSubmitted = getPlayerStatSubmitted(match, playerId);
-            const disabled = locked || approved || !isCurrentUser || !isRequiredApprover || !approvalReady;
+            const isRequiredApprover = status.requiredIds.includes(playerId);
+            const disabled = locked || approved || !isCurrentUser || !isRequiredApprover || !onApprove;
             const buttonClass = [
               approved ? "approved" : "",
-              statSubmitted ? "stat-submitted" : "stat-missing",
               isCurrentUser ? "is-current-user" : "is-not-current-user",
             ].filter(Boolean).join(" ");
             return (
@@ -39,18 +41,12 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
                 <strong>{user?.name ?? "플레이어"}</strong>
                 <em>
                   {approved
-                    ? recordRoom ? "최종 승인됨" : "승인됨"
+                    ? "참가 확인됨"
                     : !isRequiredApprover
-                      ? "승인 대상 아님"
-                    : !statSubmitted
-                      ? "기록 미제출"
-                      : !statStatus.complete
-                        ? "전원 제출 대기"
-                        : !pointAudit.matched
-                          ? "득점 합계 불일치"
-                          : isCurrentUser
-                            ? recordRoom ? "내 최종 승인" : "내 승인"
-                            : "대리 불가"}
+                      ? "확인 대상 아님"
+                      : isCurrentUser
+                        ? "내 참가 확인"
+                        : "본인 확인 대기"}
                 </em>
               </button>
             );
@@ -65,8 +61,8 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
     <Card className="approval-panel">
       <div className="section-title-row">
         <div>
-          <p className="eyebrow">{recordRoom ? "최종 승인" : "결과 승인"}</p>
-          <h2>{confirmed ? (recordRoom ? "기록 확정 완료" : "티어 반영 완료") : (recordRoom ? "참가자별 최종 승인" : "플레이어별 승인")}</h2>
+          <p className="eyebrow">참가 확인</p>
+          <h2>{confirmed ? "기록 확정 완료" : "내 참가 사실 확인"}</h2>
         </div>
         <Badge tone={confirmed ? "green" : match.status === "disputed" ? "orange" : "orange"}>{confirmed ? "확정" : match.status === "disputed" ? "보류" : "대기"}</Badge>
       </div>
@@ -75,14 +71,16 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
         {renderSide("teamB")}
       </div>
       {!confirmed ? (
-        <div className={approvalReady ? "approval-guard-note ready" : "approval-guard-note"}>
-          <strong>{approvalReady ? "승인 가능" : "승인 잠김"}</strong>
+        <div className={!locked && currentUserRequired && !currentUserConfirmed ? "approval-guard-note ready" : "approval-guard-note"}>
+          <strong>{currentUserConfirmed ? "내 참가 확인 완료" : currentUserRequired ? "내 참가 확인 필요" : "참가자 확인 대기"}</strong>
           <span>
-            {approvalReady
-              ? recordRoom
-                ? "본인 참가 사실과 점수·기록을 한 번에 최종 승인합니다."
-                : "전원 개인 기록 제출과 팀 득점 합계 검사를 통과했습니다."
-              : `개인 기록 ${statStatus.submitted}/${statStatus.total}명 · A ${pointAudit.teamA.statPoints}/${pointAudit.teamA.teamScore} · B ${pointAudit.teamB.statPoints}/${pointAudit.teamB.teamScore}`}
+            {locked
+              ? "결과가 제출되면 각 참가자가 본인 참가 사실을 확인합니다."
+              : currentUserConfirmed
+                ? "다른 참가자의 확인을 기다립니다."
+                : currentUserRequired
+                  ? "본인 계정으로만 참가 사실을 확인할 수 있습니다."
+                  : "확인 대상 참가자가 직접 처리해야 합니다."}
           </span>
         </div>
       ) : null}

@@ -3,6 +3,9 @@ import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadNormalizedDirectoryStateFromClient } from "../../../src/data/repository.js";
 
 function getMatchActorIds(match = {}) {
+  // LEGACY READ-ONLY:
+  // 과거 경기 데이터 해석 전용.
+  // 신규 권한 판정 및 저장에 사용하지 않는다.
   return unique([
     ...(match.teamA?.players ?? []),
     ...(match.teamB?.players ?? []),

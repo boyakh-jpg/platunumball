@@ -78,6 +78,7 @@ import {
   clearMatchPlayerDecision,
   fillMatchDecision,
   getAgreementStatus,
+  getApprovalStatus,
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
   getMatchCancelCopy,
@@ -126,10 +127,8 @@ import {
   makeAnonymousMatchPlayer,
   getSeoulTimeInputValue,
   normalizeDisputeRequest,
-  normalizeStatRecorders,
   normalizePlayerStats,
   updateMatchPartiesForPlayer,
-  withEffectiveMatchStatRecorders,
 } from "../lib/matchUtils.js";
 import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
 import {
@@ -149,7 +148,6 @@ import {
   teamRegularRatio,
 } from "../lib/rating.js";
 import {
-  cleanRecruitingRoomStatRecorders,
   currentUserCanRefereeRecruitingRoom,
   inferRecruitingInvitationTeamId,
   inferSidePartyTeamIdForUser,
@@ -170,7 +168,6 @@ import {
   getRecruitingRatingScale,
   getRecruitingHostEditReady,
   getRecruitingRoomParticipantIds,
-  getRecruitingRoomStatRecorders,
   getRecruitingRoomOwnerId,
   getRecruitingSideCapacity,
   getRecruitingSlotEditStatus,
@@ -1421,7 +1418,13 @@ export async function saveNormalizedRemoteState(state, options = {}) {
   );
   const matchRows = state.matches.map((match) => {
     const schedule = getDbScheduleParts(match);
-    const statRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+    const {
+      statRecorders: legacyStatRecorders,
+      dualScoreRecorderSide: legacyDualScoreRecorderSide,
+      ...persistedRules
+    } = match.rules ?? {};
+    void legacyStatRecorders;
+    void legacyDualScoreRecorderSide;
     return {
       id: match.id,
       title: match.title,
@@ -1438,7 +1441,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       referee_trust_min: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
       stat_entry_minutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
       dispute_minutes: normalizeDisputeWindowMinutes(match.disputeMinutes),
-      stat_recorders: statRecorders,
+      stat_recorders: {},
       played_player_ids: match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {},
       reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
       promoted_reserve_ids: match.promotedReserveIds ?? {},
@@ -1463,7 +1466,11 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       team_b_id: match.teamB?.teamId || null,
       score_a: Number(match.result?.scoreA ?? 0),
       score_b: Number(match.result?.scoreB ?? 0),
-      rules: { ...(match.rules ?? {}), timingType: schedule.timingType, visibility: match.visibility ?? match.rules?.visibility ?? "private", statRecorders },
+      rules: {
+        ...persistedRules,
+        timingType: schedule.timingType,
+        visibility: match.visibility ?? match.rules?.visibility ?? "private",
+      },
       memo: match.memo,
       stakes: match.stakes,
       objection_window: match.objectionWindow,
@@ -2191,11 +2198,6 @@ function finalizeMatch(state, targetMatch) {
     .filter((entry) => entry.side === "teamB")
     .reduce((sum, entry) => sum + entry.delta, 0);
   const trustRewards = new Map();
-  Object.values(targetMatch.result?.statSubmissions ?? {}).forEach((submission) => {
-    if (submission?.source === "candidate_recorder" && submission.by) {
-      trustRewards.set(submission.by, (trustRewards.get(submission.by) ?? 0) + 2);
-    }
-  });
   if (targetMatch.refereeId) {
     trustRewards.set(targetMatch.refereeId, (trustRewards.get(targetMatch.refereeId) ?? 0) + 1);
   }
@@ -2596,7 +2598,6 @@ function createSoloRecordMatch(state, draft = {}) {
     recordEntryMode,
     mmrExcludedPlayerIds,
     playedPlayerIds,
-    statRecorders: {},
     visibility,
     region: selectedCourt?.region ?? draft.region,
     ratingScale: 0,
@@ -2645,7 +2646,6 @@ function createSoloRecordMatch(state, draft = {}) {
     reservePlayers: { teamA: [], teamB: [] },
     anonymousPlayers,
     mmrExcludedPlayerIds,
-    statRecorders: {},
     result,
     ratingResult: [],
     teamRatingResult: { teamA: 0, teamB: 0, teams: {} },
@@ -3594,7 +3594,7 @@ export function submitMatchResult(state, matchId, result) {
         id: makeId("n"),
         title: draftEntry ? "이의 수정안 저장" : "심판 기록 제출",
         body: draftEntry
-          ? `${match.title} 이의 수정안이 임시 저장됐습니다. 방장이 최종 승인해야 확정됩니다.`
+          ? `${match.title} 이의 수정안이 임시 저장됐습니다. ${match.refereeId ? "배정 심판" : "방장"}이 최종 승인해야 확정됩니다.`
           : `${match.title} 스코어와 전체 개인 활약이 저장됐습니다.`,
         tone: "match",
         matchId,
@@ -3602,10 +3602,6 @@ export function submitMatchResult(state, matchId, result) {
       ...state.notifications,
     ],
   };
-}
-
-export function handoffMatchRecorder(state) {
-  return state;
 }
 
 export function approveTournamentReferee(state, tournamentId) {
@@ -3994,15 +3990,8 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
 }
 
 
-export function setMatchDualScoreRecorderSide(state, matchId, sideName = null) {
-  void matchId;
-  void sideName;
-  return state;
-}
-
 export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revisions = {}) {
-  const storedMatch = state.matches.find((item) => item.id === matchId);
-  const match = withEffectiveMatchStatRecorders(storedMatch);
+  const match = state.matches.find((item) => item.id === matchId);
   if (!match || !match.startedAt || match.confirmedAt || !Number.isInteger(deltaA) || !Number.isInteger(deltaB)) return state;
   if ((!deltaA && !deltaB) || Math.abs(deltaA) > 3 || Math.abs(deltaB) > 3) return state;
   const canOperate = currentUserCanOperateStartedMatch(state, match);
@@ -4057,24 +4046,14 @@ export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revi
   };
 }
 
-export function requestMatchRecorderTakeover(state, matchId, sideName) {
-  void matchId;
-  void sideName;
-  return state;
-}
-
-export function resolveMatchRecorderTakeover(state, matchId, sideName, requestId, decision) {
-  void matchId;
-  void sideName;
-  void requestId;
-  void decision;
-  return state;
-}
-
 export function finalizeMatchByAuthority(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
+  if (isMatchRecordMatch(match)) return state;
   if (!match?.endedAt || match.confirmedAt || match.status === "disputed" || (match.refereeId && !match.result)) return state;
-  if (!currentUserIsMatchHost(state, match) || (match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
+  const canFinalize = match.refereeId
+    ? currentUserIsEligibleMatchReferee(state, match)
+    : currentUserIsMatchHost(state, match);
+  if (!canFinalize || (match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
   const baseResult = match.result ?? {
     scoreA: Number(match.teamA?.score ?? 0),
     scoreB: Number(match.teamB?.score ?? 0),
@@ -4085,10 +4064,34 @@ export function finalizeMatchByAuthority(state, matchId) {
   return finalizeMatch(state, { ...match, result, finalizedBy: state.currentUserId });
 }
 export function approveMatch(state, matchId, sideName, playerId) {
-  void matchId;
-  void sideName;
-  void playerId;
-  return state;
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!isMatchRecordMatch(match) || match.rules?.recordSetupReady !== true) return state;
+  if (!match?.result || match.confirmedAt || match.cancelledAt || match.voidedAt || match.status === "disputed") return state;
+  const approvalId = getSelfDecisionId(state, match, sideName, "approvals", playerId);
+  if (!approvalId) return state;
+
+  const updatedMatch = {
+    ...match,
+    approvals: {
+      ...(match.approvals ?? { teamA: [], teamB: [] }),
+      [sideName]: Array.from(new Set([...(match.approvals?.[sideName] ?? []), approvalId])),
+    },
+    rules: {
+      ...(match.rules ?? {}),
+      participantAcceptedIds: Array.from(new Set([
+        ...(match.rules?.participantAcceptedIds ?? []),
+        approvalId,
+      ])),
+    },
+  };
+  const stateWithApproval = {
+    ...state,
+    matches: state.matches.map((item) => item.id === matchId ? updatedMatch : item),
+  };
+  const fullyConfirmed = MATCH_SIDES.every((matchSide) => (
+    getApprovalStatus(updatedMatch, state.teams, matchSide).approved
+  ));
+  return fullyConfirmed ? finalizeMatch(stateWithApproval, updatedMatch) : stateWithApproval;
 }
 
 function applyDisputeRequestToResult(match = {}, baseResult = null, disputeRequest = {}) {
@@ -4260,6 +4263,7 @@ function currentUserCanOperateStartedMatch(state, match) {
 
 function currentUserCanResolveMatchDispute(state, match) {
   if (!match) return false;
+  if (match.refereeId) return currentUserIsEligibleMatchReferee(state, match);
   return currentUserIsMatchHost(state, match);
 }
 
@@ -4987,22 +4991,32 @@ export function swapPickupMatchPlayers(state, matchId, firstPlayerId, secondPlay
   };
 }
 
-export function resolveMatchDispute(state, matchId, disputeId, decision) {
+export function resolveMatchDispute(state, matchId, disputeId, decision, resolutionReason = "") {
   const match = state.matches.find((item) => item.id === matchId);
   const safeDecision = decision === "accepted" ? "accepted" : decision === "rejected" ? "rejected" : "";
+  const safeResolutionReason = String(resolutionReason ?? "").trim();
   const targetDispute = (match?.disputes ?? []).find((dispute) => dispute.id === disputeId && dispute.status === "open");
-  if (!match?.result || match.status !== "disputed" || !targetDispute || !safeDecision) return state;
+  if (!match?.result || match.status !== "disputed" || !targetDispute || !safeDecision || !safeResolutionReason) return state;
   if (!currentUserCanResolveMatchDispute(state, match)) return state;
 
   const resolvedAt = new Date().toISOString();
+  const previousResult = clone(match.disputeDraftResult ?? match.result);
   const nextDraft = safeDecision === "accepted"
-    ? applyDisputeRequestToResult(match, match.disputeDraftResult ?? match.result, targetDispute.request ?? {})
-    : clone(match.disputeDraftResult ?? match.result);
+    ? applyDisputeRequestToResult(match, previousResult, targetDispute.request ?? {})
+    : clone(previousResult);
   const disputes = (match.disputes ?? []).map((dispute) => dispute.id === targetDispute.id
     ? {
         ...dispute,
         status: safeDecision,
         resolution: safeDecision === "accepted" ? "request_applied" : "request_rejected",
+        resolutionReason: safeResolutionReason,
+        resolutionAudit: {
+          handledBy: state.currentUserId,
+          handledAt: resolvedAt,
+          decision: safeDecision,
+          previousResult,
+          nextResult: clone(nextDraft),
+        },
         resolvedAt,
         resolvedBy: state.currentUserId,
       }
@@ -5029,7 +5043,7 @@ export function resolveMatchDispute(state, matchId, disputeId, decision) {
       notifications: [{
         id: makeId("n"),
         title: `이의제기 ${decisionLabel}`,
-        body: `${match.title} 이의제기를 모두 판정했습니다. 참가자 합의 후 방장이 최종 승인해 주세요.`,
+        body: `${match.title} 이의제기를 모두 판정했습니다. 참가자 합의 후 ${match.refereeId ? "배정 심판" : "방장"}이 최종 승인해 주세요.`,
         tone: "match",
         matchId,
         targetUserId: targetDispute.by,
@@ -7783,7 +7797,7 @@ function applyTeamOnlyRosterSummon(state, post, roomState, lobby, side, reserve,
     state: {
       ...state,
       recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-        item.id === post.id ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+        item.id === post.id ? nextPost : item
       )),
       notifications: [
         ...summonedIds.map((playerId) => ({
@@ -7848,7 +7862,7 @@ export function setRecruitingReady(state, postId, ready = true) {
       if (hostPartyUser) {
         return { ...item, hostReady: Boolean(ready), roomState: nextRoomState };
       }
-      return cleanRecruitingRoomStatRecorders({
+      return {
         ...item,
         roomState: nextRoomState,
         applicants: normalizeRecruitingApplicants(item.applicants ?? []).map((applicant) => (
@@ -7856,7 +7870,7 @@ export function setRecruitingReady(state, postId, ready = true) {
             ? { ...applicant, status: ready ? "ready" : "waiting", updatedAt }
             : applicant
         )),
-      }, state);
+      };
     }),
   });
 }
@@ -8093,7 +8107,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
           : { ...invitation, joinMode: "player", teamId: "", reserve: false }
       ))
     : roomState.invitations;
-  const nextPost = cleanRecruitingRoomStatRecorders({
+  const nextPost = {
     ...post,
     mode: nextMode,
     sideCapacity,
@@ -8164,7 +8178,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
         },
       } : {}),
     },
-  }, state);
+  };
   const targetNotifications = requiredIds
     .filter((playerId) => playerId !== state.currentUserId)
     .flatMap((targetUserId) => [
@@ -8564,11 +8578,21 @@ function swapMatchSideMap(value) {
 }
 
 function swapTournamentMatchSides(match = {}) {
+  const {
+    statRecorders: legacyStatRecorders,
+    ...matchWithoutLegacyRecorders
+  } = match;
+  const {
+    statRecorders: legacyRuleStatRecorders,
+    ...rulesWithoutLegacyRecorders
+  } = match.rules ?? {};
+  void legacyStatRecorders;
+  void legacyRuleStatRecorders;
   const nextTeamA = match.teamB ?? {};
   const nextTeamB = match.teamA ?? {};
   const titlePrefix = String(match.title ?? "").split("·")[0].trim();
   return {
-    ...match,
+    ...matchWithoutLegacyRecorders,
     title: `${titlePrefix ? `${titlePrefix} · ` : ""}${nextTeamA.name ?? "A"} vs ${nextTeamB.name ?? "B"}`,
     teamA: nextTeamA,
     teamB: nextTeamB,
@@ -8578,18 +8602,16 @@ function swapTournamentMatchSides(match = {}) {
     attendance: swapMatchSideMap(match.attendance),
     agreements: swapMatchSideMap(match.agreements),
     approvals: swapMatchSideMap(match.approvals),
-    statRecorders: swapMatchSideMap(match.statRecorders),
     parties: (match.parties ?? []).map((party) => ({
       ...party,
       side: party.side === "teamA" ? "teamB" : party.side === "teamB" ? "teamA" : party.side,
     })),
     rules: {
-      ...(match.rules ?? {}),
+      ...rulesWithoutLegacyRecorders,
       rosterReady: swapMatchSideMap(match.rules?.rosterReady),
       rosterReadyAt: swapMatchSideMap(match.rules?.rosterReadyAt),
       reservePlayers: swapMatchSideMap(match.rules?.reservePlayers),
       playedPlayerIds: swapMatchSideMap(match.rules?.playedPlayerIds),
-      statRecorders: swapMatchSideMap(match.rules?.statRecorders),
     },
   };
 }
@@ -8640,7 +8662,6 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
       reservePlayers: { teamA: [], teamB: [] },
       agreements: { teamA: teamAPlayerIds, teamB: teamBPlayerIds },
       approvals: { teamA: [], teamB: [] },
-      statRecorders: {},
       rules: {
         ...(match.rules ?? {}),
         recordSetupReady: true,
@@ -8650,7 +8671,6 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
         rosterReady: { teamA: true, teamB: true },
         playedPlayerIds: { teamA: teamAPlayerIds, teamB: teamBPlayerIds },
         reservePlayers: { teamA: [], teamB: [] },
-        statRecorders: {},
       },
       updatedAt: now,
     };
@@ -8670,7 +8690,6 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
       reservePlayers: { teamA: [], teamB: [] },
       agreements: { teamA: [teamACaptainId], teamB: [teamBCaptainId] },
       approvals: { teamA: [], teamB: [] },
-      statRecorders: {},
       rules: {
         ...(match.rules ?? {}),
         recordSetupReady: false,
@@ -8680,13 +8699,11 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
         rosterReady: { teamA: false, teamB: false },
         playedPlayerIds: { teamA: [], teamB: [] },
         reservePlayers: { teamA: [], teamB: [] },
-        statRecorders: {},
       },
       updatedAt: now,
     };
   }
 
-  nextMatch = withEffectiveMatchStatRecorders(nextMatch);
   const notificationTitle = composition === "team" ? "팀 경기 기록 확인" : "경기 기록 확인 요청";
   const notificationBody = composition === "team"
     ? `${match.title} 기록방의 팀 명단을 확인해 주세요.`
@@ -8856,7 +8873,6 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
     .forEach((playerId) => {
       nextMatch = clearMatchPlayerDecision(nextMatch, playerId);
   });
-  nextMatch = withEffectiveMatchStatRecorders(nextMatch);
   const resolvedNotifications = (state.notifications ?? []).map((notification) => (
     tournamentPregame &&
     notification.type === "tournament_match_schedule" &&
@@ -8944,7 +8960,7 @@ function autoPromoteMatchReservesForCheckin(match = {}, excludedPlayerIds = []) 
     }
   }
 
-  return withEffectiveMatchStatRecorders(nextMatch);
+  return nextMatch;
 }
 
 export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement = {}) {
@@ -9022,10 +9038,10 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
       },
     } : {}),
   };
-  const nextMatch = withEffectiveMatchStatRecorders(autoPromoteMatchReservesForCheckin(
+  const nextMatch = autoPromoteMatchReservesForCheckin(
     pickupRoom ? movedMatch : clearMatchPlayerDecision(movedMatch, playerId),
     targetReserve ? [playerId] : [],
-  ));
+  );
 
   return {
     ...state,
@@ -9043,7 +9059,7 @@ export function removeMatchRoomPlayer(state, matchId, playerId) {
     teamA: getMatchReservePlayerIds(match, "teamA").filter((id) => id !== playerId),
     teamB: getMatchReservePlayerIds(match, "teamB").filter((id) => id !== playerId),
   };
-  const nextMatch = withEffectiveMatchStatRecorders(autoPromoteMatchReservesForCheckin(clearMatchPlayerDecision({
+  const nextMatch = autoPromoteMatchReservesForCheckin(clearMatchPlayerDecision({
     ...match,
     status: "agreed",
     teamA: { ...(match.teamA ?? {}), players: uniquePlayerIds(match.teamA?.players ?? []).filter((id) => id !== playerId) },
@@ -9051,7 +9067,7 @@ export function removeMatchRoomPlayer(state, matchId, playerId) {
     reservePlayers: nextReservePlayers,
     parties: updateMatchPartiesForPlayer(match, playerId, placement.side, placement.reserve, true),
     agreedAt: null,
-  }, playerId)));
+  }, playerId));
 
   return {
     ...state,
@@ -9131,12 +9147,12 @@ export function cancelRecruitingParticipation(state, postId) {
       const playerIds = Array.isArray(item.playerIds)
         ? item.playerIds.filter((playerId) => playerId !== currentUserId)
         : [];
-      return cleanRecruitingRoomStatRecorders({
+      return {
         ...item,
         playerIds,
         roomState: removeUserFromRoomState(item.roomState ?? {}, applicants, playerIds),
         applicants,
-      }, state);
+      };
     }),
   };
 }
@@ -9799,7 +9815,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     return applyAutomaticRecruitingConfirmations({
       ...state,
       recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-        item.id === postId ? cleanRecruitingRoomStatRecorders(filledRoomResult.post, state) : item
+        item.id === postId ? filledRoomResult.post : item
       )),
       notifications: [
         ...filledRoomResult.notifications,
@@ -10032,7 +10048,7 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-      item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+      item.id === postId ? nextPost : item
     )),
   };
 }
@@ -10154,7 +10170,7 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
     return {
       ...state,
       recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-        item.id === postId ? cleanRecruitingRoomStatRecorders(absorbedPost, state) : item
+        item.id === postId ? absorbedPost : item
       )),
     };
   }
@@ -10183,7 +10199,7 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
     return {
       ...state,
       recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-        item.id === postId ? cleanRecruitingRoomStatRecorders(absorbedPost, state) : item
+        item.id === postId ? absorbedPost : item
       )),
     };
   }
@@ -10265,7 +10281,7 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-      item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+      item.id === postId ? nextPost : item
     )),
   };
 }
@@ -10357,7 +10373,7 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-      item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+      item.id === postId ? nextPost : item
     )),
   };
 }
@@ -10450,7 +10466,7 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-      item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+      item.id === postId ? nextPost : item
     )),
   };
 }
@@ -10587,7 +10603,7 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-      item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+      item.id === postId ? nextPost : item
     )),
     notifications: [
       {
@@ -10671,7 +10687,7 @@ export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
     ...state,
     users: adjustUserTrust(state.users, state.currentUserId, -hostPenalty),
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-      item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+      item.id === postId ? nextPost : item
     )),
     notifications: [
       {
@@ -10685,10 +10701,6 @@ export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
       ...state.notifications,
     ],
   };
-}
-
-export function setRecruitingStatRecorder(state) {
-  return state;
 }
 
 export function kickRecruitingApplicant(state, postId, playerId) {
@@ -10713,11 +10725,11 @@ export function kickRecruitingApplicant(state, postId, playerId) {
     users: adjustUserTrust(state.users, state.currentUserId, -hostPenalty),
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
       item.id === postId
-        ? cleanRecruitingRoomStatRecorders({
+        ? {
             ...item,
             roomState: { ...nextRoomState, kickLog },
             applicants: applicants.filter((applicant) => applicant.playerId !== playerId),
-          }, state)
+          }
         : item
     )),
     notifications: [
@@ -10940,7 +10952,6 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
   const playerIds = [...teamAPlayers, ...teamBPlayers];
   const confirmedReserveIds = new Set([...teamAReservePlayers, ...teamBReservePlayers]);
   const refereeId = getTrustedRefereeId(state, promotedPost.refereeId, playerIds);
-  const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(promotedPost, state);
   const promotedRoomState = normalizeRecruitingRoomState(promotedPost.roomState ?? {});
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(promotedPost.mmrRangeMode ?? promotedPost.roomState?.mmrRangeMode);
   const ranked = promotedPost.ranked !== false;
@@ -10963,7 +10974,6 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
     preRegistered: true,
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
-    statRecorders,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes,
     rules: {

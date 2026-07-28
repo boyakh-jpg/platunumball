@@ -16,7 +16,15 @@ import {
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
-import { markAllNotificationsRead, resolveMatchDispute, updateTournamentMatchSchedule, voidMatch as applyMatchVoid } from "../src/data/repository.js";
+import {
+  finalizeMatchByAuthority,
+  incrementMatchScore,
+  markAllNotificationsRead,
+  resolveMatchDispute,
+  submitMatchResult,
+  updateTournamentMatchSchedule,
+  voidMatch as applyMatchVoid,
+} from "../src/data/repository.js";
 import { getTeamDiscoveryGroups } from "../src/data/teamMappers.js";
 import { getTournamentRosterTeam } from "../src/data/tournamentMappers.js";
 import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
@@ -75,6 +83,7 @@ import {
   canRequestVoidMatchRestore,
   compareMatchRecency,
   getMatchScoreEditableSides,
+  getMatchResultEntryPermission,
   hasMatchScoreboardOperators,
   getVoidMatchRestoreTargetUserId,
   getMatchSideResult,
@@ -357,20 +366,225 @@ test("match clock scoreboard requires a referee or an identified host", () => {
   assert.equal(hasMatchScoreboardOperators({}), false);
 });
 
-test("경기시계 담당자는 심판 경기에서도 양쪽 팀 점수를 조작한다", () => {
+test("점수 권한은 심판 경기의 심판, 무심판 시계 경기의 담당자, 시계 없는 경기의 방장으로 분리한다", () => {
   const refereeMatch = {
     refereeId: "referee-1",
     rules: { gameClockEnabled: true },
   };
   assert.deepEqual(
-    getMatchScoreEditableSides(refereeMatch, "clock-controller", { clockController: true }),
-    MATCH_SIDES,
-  );
-  assert.deepEqual(
     getMatchScoreEditableSides(refereeMatch, "referee-1", { refereeEligible: true }),
     MATCH_SIDES,
   );
+  assert.deepEqual(
+    getMatchScoreEditableSides(refereeMatch, "clock-controller", { clockController: true }),
+    [],
+  );
   assert.deepEqual(getMatchScoreEditableSides(refereeMatch, "host-1"), []);
+
+  const noRefereeClockMatch = {
+    createdBy: "host-1",
+    rules: { gameClockEnabled: true },
+  };
+  assert.deepEqual(
+    getMatchScoreEditableSides(noRefereeClockMatch, "clock-controller", { clockController: true }),
+    MATCH_SIDES,
+  );
+  assert.deepEqual(
+    getMatchScoreEditableSides(noRefereeClockMatch, "host-1", { canOperatePostStart: true }),
+    [],
+  );
+
+  const noClockMatch = {
+    createdBy: "host-1",
+    rules: { gameClockEnabled: false },
+  };
+  assert.deepEqual(
+    getMatchScoreEditableSides(noClockMatch, "host-1", { canOperatePostStart: true }),
+    MATCH_SIDES,
+  );
+  assert.deepEqual(getMatchScoreEditableSides(noClockMatch, "guest-1"), []);
+});
+
+test("심판 경기의 기록·이의·최종 확정은 심판만 수행하고 마지막 이의 판정은 자동 확정하지 않는다", () => {
+  const now = new Date().toISOString();
+  const match = {
+    id: "practice-referee-authority",
+    practiceMode: true,
+    title: "심판 권한 경기",
+    status: "disputed",
+    createdBy: "host-1",
+    refereeId: "referee-1",
+    refereeTrustMin: 80,
+    startedAt: now,
+    endedAt: now,
+    ranked: false,
+    teamA: { name: "A", players: ["host-1"], score: 21 },
+    teamB: { name: "B", players: ["guest-1"], score: 20 },
+    playedPlayerIds: { teamA: ["host-1"], teamB: ["guest-1"] },
+    reservePlayers: { teamA: [], teamB: [] },
+    result: {
+      scoreA: 21,
+      scoreB: 20,
+      submittedAt: now,
+      playerStats: {
+        "host-1": { points: 21 },
+        "guest-1": { points: 20 },
+      },
+      statSubmissions: {},
+    },
+    disputes: [{
+      id: "dispute-1",
+      by: "guest-1",
+      status: "open",
+      request: { kind: "team_score", side: "teamB", requestedScore: 22 },
+    }],
+    rules: {
+      recordType: "match",
+      gameClockEnabled: true,
+      playedPlayerIds: { teamA: ["host-1"], teamB: ["guest-1"] },
+    },
+  };
+  const users = [
+    { id: "host-1", name: "방장", trustScore: 100, ratings: {} },
+    { id: "guest-1", name: "선수", trustScore: 100, ratings: {} },
+    {
+      id: "referee-1",
+      name: "심판",
+      trustScore: 100,
+      refereeGrade: "official",
+      officialReferee: true,
+      ratings: {},
+    },
+  ];
+  const baseState = {
+    currentUserId: "host-1",
+    users,
+    teams: [],
+    matches: [match],
+    notifications: [],
+    affiliations: [],
+    settings: {},
+  };
+
+  const refereePermission = getMatchResultEntryPermission(match, "referee-1", {
+    canOperatePostStart: true,
+    refereeEligible: true,
+    now,
+  });
+  const hostPermission = getMatchResultEntryPermission(match, "host-1", {
+    canOperatePostStart: false,
+    now,
+  });
+  assert.equal(refereePermission.canEditDisputeDraft, true);
+  assert.deepEqual(refereePermission.editablePlayerIds, ["host-1", "guest-1"]);
+  assert.equal(hostPermission.canEditDisputeDraft, false);
+  assert.deepEqual(hostPermission.editablePlayerIds, []);
+
+  assert.strictEqual(finalizeMatchByAuthority(baseState, match.id), baseState);
+  assert.strictEqual(
+    resolveMatchDispute(baseState, match.id, "dispute-1", "accepted", "요청 점수를 확인함"),
+    baseState,
+  );
+
+  const refereeState = { ...baseState, currentUserId: "referee-1" };
+  assert.strictEqual(finalizeMatchByAuthority(refereeState, match.id), refereeState);
+  const resolved = resolveMatchDispute(
+    refereeState,
+    match.id,
+    "dispute-1",
+    "accepted",
+    "현장 기록과 요청 점수를 확인함",
+  );
+  assert.equal(resolved.matches[0].status, "approval");
+  assert.equal(resolved.matches[0].result.scoreB, 22);
+  assert.equal(resolved.matches[0].confirmedAt, undefined);
+
+  const finalized = finalizeMatchByAuthority(resolved, match.id);
+  assert.equal(finalized.matches[0].status, "confirmed");
+  assert.ok(finalized.matches[0].confirmedAt);
+
+  assert.strictEqual(
+    resolveMatchDispute(finalized, match.id, "dispute-1", "rejected", "이미 확정된 경기"),
+    finalized,
+  );
+  assert.strictEqual(
+    incrementMatchScore(finalized, match.id, 1, 0, { expectedRevisionA: 0 }),
+    finalized,
+  );
+  assert.strictEqual(
+    submitMatchResult(finalized, match.id, { scoreA: 99, scoreB: 0, playerStats: {} }),
+    finalized,
+  );
+});
+
+test("무심판 경기의 최종 확정은 방장만 수행한다", () => {
+  const now = new Date().toISOString();
+  const match = {
+    id: "practice-no-referee-authority",
+    practiceMode: true,
+    title: "무심판 권한 경기",
+    status: "approval",
+    createdBy: "host-1",
+    refereeId: "",
+    startedAt: now,
+    endedAt: now,
+    ranked: false,
+    teamA: { name: "A", players: ["host-1"], score: 15 },
+    teamB: { name: "B", players: ["guest-1"], score: 13 },
+    result: { scoreA: 15, scoreB: 13, submittedAt: now },
+    disputes: [],
+    rules: { recordType: "match", gameClockEnabled: false },
+  };
+  const state = {
+    currentUserId: "guest-1",
+    users: [
+      { id: "host-1", name: "방장", ratings: {} },
+      { id: "guest-1", name: "선수", ratings: {} },
+    ],
+    teams: [],
+    matches: [match],
+    notifications: [],
+    affiliations: [],
+    settings: {},
+  };
+
+  assert.strictEqual(finalizeMatchByAuthority(state, match.id), state);
+  const finalized = finalizeMatchByAuthority({ ...state, currentUserId: "host-1" }, match.id);
+  assert.equal(finalized.matches[0].status, "confirmed");
+  assert.deepEqual(finalized.matches[0].result.playerStats, {});
+  assert.deepEqual(finalized.matches[0].result.statSubmissions, {});
+
+  const disputedMatch = {
+    ...match,
+    status: "disputed",
+    disputes: [{
+      id: "no-ref-dispute-1",
+      by: "guest-1",
+      status: "open",
+      request: { kind: "team_score", side: "teamB", requestedScore: 14 },
+    }],
+  };
+  const disputedState = { ...state, matches: [disputedMatch] };
+  assert.strictEqual(
+    resolveMatchDispute(
+      disputedState,
+      match.id,
+      "no-ref-dispute-1",
+      "accepted",
+      "방장이 현장 점수를 확인함",
+    ),
+    disputedState,
+  );
+  const resolved = resolveMatchDispute(
+    { ...disputedState, currentUserId: "host-1" },
+    match.id,
+    "no-ref-dispute-1",
+    "accepted",
+    "방장이 현장 점수를 확인함",
+  );
+  assert.equal(resolved.matches[0].status, "approval");
+  assert.equal(resolved.matches[0].result.scoreB, 14);
+  assert.equal(resolved.matches[0].confirmedAt, undefined);
 });
 
 test("match clock keeps shot settings stable and fullscreen compact", async () => {
@@ -1382,7 +1596,13 @@ test("match dispute rejection, void reasons, restoration and scoped penalties st
   assert.equal(voidedState.matches[0].status, "void");
   assert.equal(voidedState.matches[0].voidSnapshot.result.scoreA, 10);
   assert.equal(voidedState.users[0].trustScore, 78);
-  const rejectedState = resolveMatchDispute(state, disputedMatch.id, "dispute-open", "rejected");
+  const rejectedState = resolveMatchDispute(
+    state,
+    disputedMatch.id,
+    "dispute-open",
+    "rejected",
+    "현장 점수와 기존 결과가 일치함",
+  );
   assert.equal(rejectedState.matches[0].status, "approval");
   assert.equal(rejectedState.matches[0].result.scoreA, 10);
   assert.match(rejectedState.notifications[0].body, /방장이 최종 승인/);

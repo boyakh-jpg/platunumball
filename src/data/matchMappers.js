@@ -70,6 +70,9 @@ export function normalizeMatch(match = {}, options = {}) {
     disputes: source.disputes ?? [],
     refereeId: source.refereeId ?? "",
     refereeTrustMin: Number(source.refereeTrustMin ?? REFEREE_TRUST_MIN),
+    // LEGACY READ-ONLY:
+    // 과거 경기 데이터 해석 전용.
+    // 신규 권한 판정 및 저장에 사용하지 않는다.
     statRecorders: normalizeStatRecorders(source.statRecorders ?? source.rules?.statRecorders),
     statEntryMinutes: Number(source.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: normalizeDisputeMinutes(source),
@@ -250,6 +253,8 @@ export function fromRemoteMatch(row, context) {
     resolvedAt: dispute.resolved_at ?? null,
     resolvedBy: dispute.resolved_by ?? "",
     resolution: dispute.resolution ?? "",
+    resolutionReason: dispute.resolution_reason ?? "",
+    resolutionAudit: dispute.resolution_audit ?? {},
     createdAt: dispute.created_at,
   }));
   const agreements = {
@@ -273,6 +278,9 @@ export function fromRemoteMatch(row, context) {
   const scheduledAt = timingType === "instant" ? "즉시" : rawScheduledAt;
   const playedPlayerIds = row.played_player_ids ?? row.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
+  // LEGACY READ-ONLY:
+  // 과거 경기 데이터 해석 전용.
+  // 신규 권한 판정 및 저장에 사용하지 않는다.
   const statRecorders = normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders);
   const dualScoreRecorderSide = row.dual_score_recorder_side ?? row.rules?.dualScoreRecorderSide ?? null;
   const recordTeamAName = String(row.rules?.recordSummary?.teamAName ?? "").trim() || MATCH_SIDE_FALLBACK_NAMES.teamA;

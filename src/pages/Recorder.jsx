@@ -146,14 +146,14 @@ export default function Recorder({ app }) {
   }, [queryMatchId]);
 
   useEffect(() => {
-    if (!app.remoteReady || !user.id || app.recorderMatchesLoaded) return;
-    const loadRecorderMatches = app.actions.loadRecorderMatches;
-    if (!loadRecorderMatches) return;
+    if (!app.remoteReady || !user.id || app.playMatchesLoaded) return;
+    const loadPlayMatches = app.actions.loadPlayMatches;
+    if (!loadPlayMatches) return;
     if (recorderLoadRef.current === user.id) return;
     recorderLoadRef.current = user.id;
     setRecorderLoading(true);
     setRecorderLoadError("");
-    Promise.resolve(loadRecorderMatches())
+    Promise.resolve(loadPlayMatches())
       .then((result) => {
         if (result === false) {
           recorderLoadRef.current = "";
@@ -167,7 +167,7 @@ export default function Recorder({ app }) {
       .finally(() => {
         setRecorderLoading(false);
       });
-  }, [app.actions.loadRecorderMatches, app.recorderMatchesLoaded, app.remoteReady, recorderLoadAttempt, user.id]);
+  }, [app.actions.loadPlayMatches, app.playMatchesLoaded, app.remoteReady, recorderLoadAttempt, user.id]);
 
   const retryRecorderLoad = () => {
     recorderLoadRef.current = "";
@@ -194,7 +194,7 @@ export default function Recorder({ app }) {
     }, { replace: true });
   };
 
-  const recorderPending = !matches.length && !recorderLoadError && (!app.recorderMatchesLoaded || recorderLoading);
+  const recorderPending = !matches.length && !recorderLoadError && (!app.playMatchesLoaded || recorderLoading);
 
   return (
     <>

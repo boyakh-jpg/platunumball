@@ -488,6 +488,9 @@ export function mergeMatchesById(current = [], incoming = [], forceIds = new Set
     const existing = merged.get(item.id);
     if (!forceIds.has(item.id) && !shouldUseIncomingMatchRow(item, existing)) return;
     if (item.matchListOnly === true && existing && existing.matchListOnly !== true) {
+      // LEGACY READ-ONLY:
+      // 과거 경기 데이터 해석 전용.
+      // 신규 권한 판정 및 저장에 사용하지 않는다.
       const next = preserveExistingWhenEmpty(item, existing, [
         "agreements",
         "approvals",
@@ -1194,7 +1197,7 @@ function getInitialStateLoadOptions(location = null) {
     return { endpoint: "recruitingList", matchLimit: 0, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0, startFilter: "instant" };
   }
   if (pathname === "/app/recorder") {
-    return { endpoint: "recorderMatches", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
+    return { endpoint: "playMatches", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app/profile") {
     return { endpoint: "profileMe", matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
@@ -1383,7 +1386,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
       );
       if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { recruitingPage: result.page ?? null });
     }
-    if (options.endpoint === "recorderMatches") {
+    if (options.endpoint === "playMatches") {
       const result = await postServerAction(
         "/api/matches/list",
         {
@@ -1391,12 +1394,12 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           authEmail,
           limit: loadOptions.matchLimit,
           listOnly: false,
-          recorderOnly: true,
+          playOnly: true,
           adminContext: false,
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, recorderMatchesLoaded: true });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, playMatchesLoaded: true });
     }
     if (options.endpoint === "profileRecords") {
       const result = await postServerAction(
@@ -1533,7 +1536,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const [profileRecordArchive, setProfileRecordArchive] = useState(EMPTY_RECORD_ARCHIVE);
   const [publicProfileRecordArchives, setPublicProfileRecordArchives] = useState({});
   const [teamRecordArchives, setTeamRecordArchives] = useState({});
-  const [recorderMatchesLoaded, setRecorderMatchesLoaded] = useState(false);
+  const [playMatchesLoaded, setPlayMatchesLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const [serverActionPendingCount, setServerActionPendingCount] = useState(0);
   const homeRouteLoadKey = useMemo(() => getHomeRouteLoadKey(appLocation), [appLocation?.pathname]);
@@ -1563,7 +1566,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const blockedSettingsCommittedIdsRef = useRef(getBlockedUserIdsFromState(state));
   const blockedSettingsPendingCountRef = useRef(0);
   const recruitingPagePromiseRef = useRef(null);
-  const recorderMatchesPromiseRef = useRef(null);
+  const playMatchesPromiseRef = useRef(null);
   const reportableMatchesPromiseRef = useRef(null);
   const profileRecordsPromiseRef = useRef(null);
   const profileRecordArchiveRef = useRef(EMPTY_RECORD_ARCHIVE);
@@ -1687,7 +1690,7 @@ export function useAppData(authUser = null, appLocation = null) {
       matchRecruitingSchedulePromiseRef.current = null;
       matchTeamSchedulePromiseRef.current = null;
       recruitingPagePromiseRef.current = null;
-      recorderMatchesPromiseRef.current = null;
+      playMatchesPromiseRef.current = null;
       reportableMatchesPromiseRef.current = null;
       profileRecordsPromiseRef.current = null;
       profileRecordArchiveRef.current = EMPTY_RECORD_ARCHIVE;
@@ -1716,7 +1719,7 @@ export function useAppData(authUser = null, appLocation = null) {
       setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
       setPublicProfileRecordArchives({});
       setTeamRecordArchives({});
-      setRecorderMatchesLoaded(false);
+      setPlayMatchesLoaded(false);
       return undefined;
     }
 
@@ -1737,7 +1740,7 @@ export function useAppData(authUser = null, appLocation = null) {
     matchRecruitingSchedulePromiseRef.current = null;
     matchTeamSchedulePromiseRef.current = null;
     recruitingPagePromiseRef.current = null;
-    recorderMatchesPromiseRef.current = null;
+    playMatchesPromiseRef.current = null;
     reportableMatchesPromiseRef.current = null;
     profileRecordsPromiseRef.current = null;
     profileRecordArchiveRef.current = EMPTY_RECORD_ARCHIVE;
@@ -1764,7 +1767,7 @@ export function useAppData(authUser = null, appLocation = null) {
     setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
     setPublicProfileRecordArchives({});
     setTeamRecordArchives({});
-    setRecorderMatchesLoaded(false);
+    setPlayMatchesLoaded(false);
     const initialLoadOptions = getInitialStateLoadOptions(appLocation);
     homeRouteLoadKeyRef.current = initialLoadOptions.endpoint === "homeLoad" ? "homeLoad" : getHomeRouteLoadKey(appLocation);
     const initialLoad = initialLoadOptions.profileOnly
@@ -1818,7 +1821,7 @@ export function useAppData(authUser = null, appLocation = null) {
             profileRecordArchiveRef.current = remoteMeta.profileRecordArchive;
             setProfileRecordArchive(remoteMeta.profileRecordArchive);
           }
-          setRecorderMatchesLoaded(remoteMeta.recorderMatchesLoaded === true);
+          setPlayMatchesLoaded(remoteMeta.playMatchesLoaded === true);
         }
         remoteReadyRef.current = true;
         setRemoteReady(true);
@@ -2541,9 +2544,9 @@ export function useAppData(authUser = null, appLocation = null) {
     return promise;
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
-  const loadRecorderMatches = useCallback(async () => {
+  const loadPlayMatches = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId) return false;
-    if (recorderMatchesPromiseRef.current) return recorderMatchesPromiseRef.current;
+    if (playMatchesPromiseRef.current) return playMatchesPromiseRef.current;
     const promise = (async () => {
       try {
         const result = await trackedPostServerAction(
@@ -2553,7 +2556,7 @@ export function useAppData(authUser = null, appLocation = null) {
             authEmail,
             limit: REMOTE_CLIENT_MATCH_LIMIT,
             listOnly: false,
-            recorderOnly: true,
+            playOnly: true,
             adminContext: false,
           },
           { allowWhenDisabled: true },
@@ -2561,16 +2564,16 @@ export function useAppData(authUser = null, appLocation = null) {
         const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
         const nextMatches = remoteState.matches ?? [];
         setState((prev) => mergeRemoteMatchPage(prev, remoteState));
-        setRecorderMatchesLoaded(true);
+        setPlayMatchesLoaded(true);
         return nextMatches.length;
       } catch (error) {
-        console.warn("Recorder match load failed.", error.message);
+        console.warn("Play match load failed.", error.message);
         return false;
       }
     })().finally(() => {
-      if (recorderMatchesPromiseRef.current === promise) recorderMatchesPromiseRef.current = null;
+      if (playMatchesPromiseRef.current === promise) playMatchesPromiseRef.current = null;
     });
-    recorderMatchesPromiseRef.current = promise;
+    playMatchesPromiseRef.current = promise;
     return promise;
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
@@ -3530,7 +3533,7 @@ export function useAppData(authUser = null, appLocation = null) {
         loadMoreRecruiting,
         loadRecruitingRegion,
         loadRecruitingPost,
-        loadRecorderMatches,
+        loadPlayMatches,
         loadReportableMatches,
         loadProfileRecords,
         loadPublicProfileRecords,
@@ -3799,7 +3802,11 @@ export function useAppData(authUser = null, appLocation = null) {
       cancelMatch: (matchId) => applyMatchMutation(matchId, (prev) => cancelMatch({ ...prev, currentUserId }, matchId), { action: "cancelMatch" }),
       deleteSoloRecord: (matchId) => applyMatchMutation(matchId, (prev) => deleteSoloRecord({ ...prev, currentUserId }, matchId), { action: "deleteSoloRecord" }),
       voidMatch: (matchId, reason) => applyMatchMutation(matchId, (prev) => voidMatch({ ...prev, currentUserId }, matchId, reason), { action: "voidMatch", reason }),
-      resolveMatchDispute: (matchId, disputeId, decision) => applyMatchMutation(matchId, (prev) => resolveMatchDispute({ ...prev, currentUserId }, matchId, disputeId, decision), { action: "resolveMatchDispute", disputeId, decision }),
+      resolveMatchDispute: (matchId, disputeId, decision, resolutionReason) => applyMatchMutation(
+        matchId,
+        (prev) => resolveMatchDispute({ ...prev, currentUserId }, matchId, disputeId, decision, resolutionReason),
+        { action: "resolveMatchDispute", disputeId, decision, resolutionReason },
+      ),
       startMatch: (matchId) => applyMatchMutation(matchId, (prev) => startMatch({ ...prev, currentUserId }, matchId), { action: "startMatch" }),
       endMatch: (matchId) => applyMatchMutation(matchId, (prev) => endMatch({ ...prev, currentUserId }, matchId), { action: "endMatch" }),
       addMatchLatePlayer: (matchId, draft) => applyMatchMutation(matchId, (prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft), { action: "addMatchLatePlayer", draft }),
@@ -4729,7 +4736,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadReportableMatches, loadProfileRecords, loadPublicProfileRecords, loadTeamRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadPlayMatches, loadReportableMatches, loadProfileRecords, loadPublicProfileRecords, loadTeamRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
@@ -4744,7 +4751,7 @@ export function useAppData(authUser = null, appLocation = null) {
     profileLocked,
     remoteReady,
     serverBusy: serverActionPendingCount > 0,
-    recorderMatchesLoaded,
+    playMatchesLoaded,
     adminContext,
     adminState,
     adminStatus,
