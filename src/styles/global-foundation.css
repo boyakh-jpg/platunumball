@@ -2449,17 +2449,14 @@ html[data-theme="light"] .tier-emblem-placement-inner {
   white-space: nowrap;
 }
 
-.notification-row-open {
+.notification-row-open,
+.notification-terminal-state {
   display: inline-flex;
   min-width: calc(var(--ui-button-height) + var(--space-6));
   min-height: var(--ui-button-height);
   align-items: center;
   justify-content: center;
   border-radius: var(--ui-button-radius);
-}
-
-.notification-terminal-state {
-  border-radius: 999px;
 }
 
 .notification-terminal-state,
