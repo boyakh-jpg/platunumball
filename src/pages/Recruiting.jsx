@@ -106,7 +106,6 @@ import {
   getMatchRecordCompositionLabel,
   getMatchRecordSetupStatus,
   getOpenMatchDisputes,
-  getMatchFinalizationWindow,
   getLocalDateInputValue,
   getMatchRecordPlayerIds,
   getMatchResultEntryPermission,
@@ -4119,7 +4118,6 @@ function RecruitingRoomModalReady({
           matchRoom && !sourceMatchIsRecordRoom
           && sourceMatch?.endedAt && sourceMatch.result && sourceManualFinalizationStatus.ready && !sourceMatch?.confirmedAt
           && sourceMatch.status !== "disputed"
-          && getMatchFinalizationWindow(sourceMatch).ready
           && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine)
         );
         const sourceMatchResultEntryPermission = sourceMatch
