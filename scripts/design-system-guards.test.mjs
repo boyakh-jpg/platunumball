@@ -593,19 +593,20 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(appSource, /path="\/app\/guide\/practice" element=\{<PracticeMatch app=\{app\} \/>\}/);
   assert.equal(count(pageSources.home, 'to="/app/guide"'), 1);
   assert.match(pageSources.home, /처음 사용하시나요\?/);
-  assert.match(pageSources.home, /10단계 안내/);
+  assert.match(pageSources.home, /12단계 안내/);
   assert.match(pageSources.home, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(gettingStartedSource, /useSearchParams/);
   assert.match(gettingStartedSource, /aria-label="사용 설명 목차"/);
   assert.match(gettingStartedSource, /aria-current=\{item\.id === chapter\.id \? "page" : undefined\}/);
   assert.match(gettingStartedSource, /chapterTitleRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(gettingStartedSource, /ref=\{chapterTitleRef\} tabIndex=\{-1\}/);
-  for (const chapterId of ["start", "matching", "live", "records", "tier", "teams", "courts", "tournaments", "account", "practice"]) {
+  for (const chapterId of ["start", "matching", "attendance", "live", "records", "tier", "teams", "courts", "tournaments", "profile", "settings", "practice"]) {
     assert.match(gettingStartedSource, new RegExp(`id: "${chapterId}"`));
   }
   for (const image of [
     "start-home.jpg",
     "matching-create.jpg",
+    "attendance-qr.png",
     "live-clock.jpg",
     "records-create.jpg",
     "tier-profile.jpg",
@@ -620,6 +621,9 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /초대 수락은 출석이 아닙니다/);
   assert.match(gettingStartedSource, /QR 출석은 경기시계를 사용하는 일반 공개 매칭방에서만 선택/);
   assert.match(gettingStartedSource, /QR 토큰은 5분마다 바뀌며 경기 10분 전부터 로그인한 사전 등록 선수/);
+  assert.match(gettingStartedSource, /QR 출석과 실제 출전은 다릅니다/);
+  assert.match(gettingStartedSource, /체크인 참가자 표는 3초, 경기 전 QR 패널은 15초, 경기시계와 지각 QR은 3초/);
+  assert.match(gettingStartedSource, /만료된 QR, 다른 경기의 QR, 서명이 잘못된 QR, 미등록 사용자 스캔은 거부/);
   assert.match(gettingStartedSource, /출전·팀 배치를 자동 확정하지 않습니다/);
   assert.doesNotMatch(gettingStartedSource, /양쪽 실제 출전 선수의 과반 승인/);
   assert.match(gettingStartedSource, /열린 이의를 처리하고 별도 최종 승인/);

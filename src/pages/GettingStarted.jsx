@@ -11,6 +11,7 @@ import {
   Gauge,
   MapPin,
   Play,
+  QrCode,
   Settings,
   ShieldCheck,
   Swords,
@@ -120,9 +121,56 @@ const GUIDE_CHAPTERS = [
     ],
   },
   {
+    id: "attendance",
+    navLabel: "출석",
+    eyebrow: "03 · ATTENDANCE",
+    title: "QR 출석과 실제 출전은 다릅니다.",
+    lead: "초대 수락, 현장 출석, 지각 후보 등록, 실제 교체 출전을 순서대로 확인합니다.",
+    image: "/assets/guide/attendance-qr.png?v=20260728-attendance-r1",
+    imageAlt: "QR 출석 코드와 A/B 사이드별 출석 상태가 함께 표시된 출석판",
+    caption: "방장·배정 심판은 출석판을 확인하고, 선수는 현장에서 QR을 스캔합니다.",
+    steps: [
+      {
+        title: "QR 적용 경기 확인",
+        body: "QR 출석은 경기시계를 사용하는 일반 공개 매칭의 선택 기능입니다. 공개 경쟁전은 기본 사용하고, 공개 친선전은 방을 만들 때 선택합니다.",
+        Icon: ShieldCheck,
+      },
+      {
+        title: "경기 전 QR 출석",
+        body: "경기 10분 전부터 경기시계 담당자 화면의 QR을 로그인한 사전 등록 선수가 스캔합니다. QR은 경기와 5분 구간에 묶인 서버 서명값입니다.",
+        Icon: QrCode,
+      },
+      {
+        title: "미출석과 지각 QR",
+        body: "경기 시작 시 미출석 선수를 확정합니다. 진행 중에는 그 선수만 지각 QR로 원래 사이드 후보에 등록할 수 있으며 새 선수를 추가하지 않습니다.",
+        Icon: Clock3,
+      },
+      {
+        title: "실제 교체 출전",
+        body: "지각 QR은 후보 등록까지만 처리합니다. 후보 본인의 자진 교체 또는 배정 심판의 교체가 실제로 기록돼야 출전시간·개인 전적·MMR 출전자로 계산합니다.",
+        Icon: UserRoundCheck,
+      },
+    ],
+    callout: {
+      title: "출석판은 서버 상태로 자동 갱신합니다",
+      body: "체크인 참가자 표는 3초, 경기 전 QR 패널은 15초, 경기시계와 지각 QR은 3초 간격으로 서버 상태를 다시 확인합니다. 수동 새로고침도 같은 서버 원본을 읽습니다.",
+      details: [
+        "초대 수락만으로 현장 출석이 되지 않고, 경기 전 QR 출석만으로 출전·후보 자리를 바꾸지 않습니다.",
+        "만료된 QR, 다른 경기의 QR, 서명이 잘못된 QR, 미등록 사용자 스캔은 거부합니다.",
+        "경기 시작 때 미출석 처리된 사전 등록 선수만 지각 QR을 사용할 수 있습니다.",
+        "지각 QR 뒤 실제 교체하지 않으면 팀 히스토리에는 경기 자체가 보여도 홈·나 메뉴의 개인 출전 기록에는 포함되지 않습니다.",
+      ],
+      Icon: CheckCircle2,
+    },
+    actions: [
+      { to: "/app/matches", label: "내 일정 확인", Icon: QrCode, primary: true },
+      { to: "/app/guide?chapter=live", label: "경기 진행 보기", Icon: ArrowRight },
+    ],
+  },
+  {
     id: "live",
     navLabel: "진행",
-    eyebrow: "03 · LIVE",
+    eyebrow: "04 · LIVE",
     title: "심판·경기시계 담당자·선수가 역할을 나눕니다.",
     lead: "심판 유무와 경기시계 사용 여부에 따라 점수·기록·최종 승인 권한이 분리됩니다.",
     image: "/assets/guide/live-clock.jpg?v=20260725-clock-hierarchy-r2",
@@ -170,7 +218,7 @@ const GUIDE_CHAPTERS = [
   {
     id: "records",
     navLabel: "기록",
-    eyebrow: "04 · RECORDS",
+    eyebrow: "05 · RECORDS",
     title: "기록 유형과 확인 절차를 구분합니다.",
     lead: "일반 live 경기, 함께 만든 사후 경기기록, 본인이 작성한 내 기록은 권한·확정·MMR 규칙이 서로 다릅니다.",
     image: "/assets/guide/records-create.jpg",
@@ -218,7 +266,7 @@ const GUIDE_CHAPTERS = [
   {
     id: "tier",
     navLabel: "티어",
-    eyebrow: "05 · TIER",
+    eyebrow: "06 · TIER",
     title: "티어는 확정 기록에서 자동 계산됩니다.",
     lead: "티어를 직접 고르지 않습니다. 조건을 충족한 경쟁전 결과가 모드별 MMR과 통합 MMR에 쌓입니다.",
     image: "/assets/guide/tier-profile.jpg",
@@ -264,7 +312,7 @@ const GUIDE_CHAPTERS = [
   {
     id: "teams",
     navLabel: "팀",
-    eyebrow: "06 · TEAMS",
+    eyebrow: "07 · TEAMS",
     title: "팀 소속과 경기 역할은 구분됩니다.",
     lead: "팀장은 팀 자체를 관리하고, 실제 경기에서는 방장과 사이드장이 방의 명단과 진행 역할을 맡습니다.",
     previewItems: [
@@ -313,7 +361,7 @@ const GUIDE_CHAPTERS = [
   {
     id: "courts",
     navLabel: "구장",
-    eyebrow: "07 · COURTS",
+    eyebrow: "08 · COURTS",
     title: "승인 구장을 찾고 현장 정보를 보완합니다.",
     lead: "구장 프로필에서 위치·시설·리뷰를 확인하고, 새 구장이나 잘못된 정보를 구조화해 제보할 수 있습니다.",
     previewItems: [
@@ -362,7 +410,7 @@ const GUIDE_CHAPTERS = [
   {
     id: "tournaments",
     navLabel: "대회",
-    eyebrow: "08 · TOURNAMENTS",
+    eyebrow: "09 · TOURNAMENTS",
     title: "대회는 일반 경기보다 엄격하게 운영됩니다.",
     lead: "팀 초대, 참가 명단, 일정, 중립 심판, 대진과 경기 결과를 대회 단위로 잠그고 관리합니다.",
     previewItems: [
@@ -409,16 +457,16 @@ const GUIDE_CHAPTERS = [
     ],
   },
   {
-    id: "account",
-    navLabel: "설정",
-    eyebrow: "09 · ACCOUNT",
-    title: "프로필·알림·공개 범위를 직접 관리합니다.",
-    lead: "나 메뉴와 설정에서 프로필, 기록 공개, 즐겨찾기, 알림, 차단, 신고와 화면 표시를 관리합니다.",
+    id: "profile",
+    navLabel: "프로필",
+    eyebrow: "10 · PROFILE",
+    title: "내 프로필과 기록 공개 범위를 관리합니다.",
+    lead: "나 메뉴에서 프로필, 공식 출전 기록, 직접 만든 내 기록과 공개 범위를 구분해 관리합니다.",
     previewItems: [
       { label: "PROFILE", title: "아이콘·소속·포지션" },
       { label: "RECORDS", title: "통합·개인·팀·내 기록" },
-      { label: "NOTICE", title: "앱·Discord 알림" },
-      { label: "SAFETY", title: "차단·신고·공개 범위" },
+      { label: "PRIVACY", title: "공개·비공개 범위" },
+      { label: "FAVORITE", title: "선수·팀·구장 저장" },
     ],
     steps: [
       {
@@ -432,35 +480,83 @@ const GUIDE_CHAPTERS = [
         Icon: ClipboardCheck,
       },
       {
-        title: "알림과 Discord",
-        body: "받은 경기·팀 초대, 출석·참가 확인·이의·확정 알림을 앱에서 처리합니다. Discord를 연결하면 선택한 경기 알림을 같은 원본으로 받을 수 있습니다.",
-        Icon: Bell,
+        title: "내 기록 공개",
+        body: "본인이 만든 내 기록은 공식 전적과 분리해 표시하고 기록별 공개·비공개를 선택합니다. 공개 기록도 공식 MMR과 업적에는 반영하지 않습니다.",
+        Icon: ShieldCheck,
       },
       {
-        title: "차단과 신고",
-        body: "사용자를 숨기거나 선수·경기·팀·구장 문제를 실제 관계와 사유에 맞게 검색해 신고합니다. 처리 전 같은 대상 중복 신고는 한 건으로 유지됩니다.",
-        Icon: Settings,
+        title: "즐겨찾기",
+        body: "선수·팀·구장·심판을 저장하고 설정의 즐겨찾기 화면에서 종류별로 다시 찾습니다.",
+        Icon: Users,
       },
     ],
     callout: {
-      title: "검색 결과와 실제 제출 대상을 함께 확인합니다",
-      body: "신고 검색어를 바꾸면 이전에 선택한 대상은 초기화됩니다. 화면에 보이는 이름과 서버에 제출되는 대상이 달라지지 않게 다시 선택해야 합니다.",
+      title: "팀 히스토리와 내 히스토리는 기준이 다릅니다",
+      body: "팀 히스토리는 소속팀의 경기를 보여주지만 홈·나 메뉴는 본인이 실제 출전한 경기만 개인 기록으로 집계합니다.",
       details: [
-        "최종 승인 전 결과 문제는 이의신청, 승인 뒤 문제는 경기 신고를 사용합니다.",
-        "구장 위치 오류·운영 위험·중복은 각각 다른 구조화 신고로 접수합니다.",
-        "테마와 홈 안내 카드 표시 설정은 계정 설정에 저장됩니다.",
+        "QR 출석이나 지각 후보 등록만 하고 실제 교체하지 않은 경기는 개인 출전 기록이 아닙니다.",
+        "통합·개인전·팀전·내 기록 필터는 같은 실제 출전 기준을 사용합니다.",
+        "비공개 내 기록은 작성자에게만 보이고 공개 내 기록은 다른 사용자도 볼 수 있습니다.",
       ],
       Icon: ShieldCheck,
     },
     actions: [
       { to: "/app/profile", label: "나 메뉴 보기", Icon: UserRoundCheck, primary: true },
-      { to: "/app/settings", label: "설정 보기", Icon: ArrowRight },
+      { to: "/app/settings/favorites", label: "즐겨찾기 보기", Icon: ArrowRight },
+    ],
+  },
+  {
+    id: "settings",
+    navLabel: "설정",
+    eyebrow: "11 · SETTINGS",
+    title: "알림·안전·화면 설정을 관리합니다.",
+    lead: "앱과 Discord 알림, 차단, 신고, 테마와 홈 안내 표시를 한곳에서 관리합니다.",
+    previewItems: [
+      { label: "NOTICE", title: "앱·Discord 알림" },
+      { label: "REPORT", title: "선수·경기·팀·구장 신고" },
+      { label: "SAFETY", title: "차단 사용자 관리" },
+      { label: "DISPLAY", title: "테마·홈 안내 표시" },
+    ],
+    steps: [
+      {
+        title: "알림과 Discord",
+        body: "받은 경기·팀 초대, 출석·참가 확인·이의·확정 알림을 앱에서 처리합니다. Discord를 연결하면 선택한 경기 알림을 같은 원본으로 받을 수 있습니다.",
+        Icon: Bell,
+      },
+      {
+        title: "차단",
+        body: "차단한 사용자의 검색·추천·초대 노출을 줄이고 설정에서 해제합니다. 이미 성립한 경기의 운영 기록은 임의로 지우지 않습니다.",
+        Icon: ShieldCheck,
+      },
+      {
+        title: "신고",
+        body: "선수·경기·팀·구장 문제를 실제 관계와 사유에 맞게 검색해 신고합니다. 처리 전 같은 대상의 중복 신고는 기존 접수로 연결합니다.",
+        Icon: ClipboardCheck,
+      },
+      {
+        title: "화면 설정",
+        body: "다크·라이트 테마와 홈 안내 카드 표시를 저장합니다. 홈 카드를 숨겨도 설정과 사용 설명에서 다시 열 수 있습니다.",
+        Icon: Settings,
+      },
+    ],
+    callout: {
+      title: "검색 결과와 실제 제출 대상을 함께 확인합니다",
+      body: "신고 검색어를 바꾸면 이전에 선택한 대상은 초기화됩니다. 화면에 보이는 이름과 서버에 제출되는 대상을 다시 확인합니다.",
+      details: [
+        "최종 승인 전 결과 문제는 이의신청, 승인 뒤 문제는 경기 신고를 사용합니다.",
+        "구장 위치 오류·운영 위험·중복은 각각 다른 구조화 신고로 접수합니다.",
+        "경기 출석 알림과 QR 출석 상태는 서버의 같은 경기 원본을 사용합니다.",
+      ],
+      Icon: ShieldCheck,
+    },
+    actions: [
+      { to: "/app/settings", label: "설정 보기", Icon: Settings, primary: true },
     ],
   },
   {
     id: "practice",
     navLabel: "연습",
-    eyebrow: "10 · PRACTICE",
+    eyebrow: "12 · PRACTICE",
     title: "초대부터 기록 확정까지 직접 해봅니다.",
     lead: "실제 공용 방에서 연습 선수를 초대하고, 심판·경기시계 담당자·선수 화면을 바꿔 전체 흐름을 시험합니다.",
     practicePreview: true,
