@@ -18,6 +18,7 @@ const allStyleSources = styleFiles.map((file) => read(file)).join("\n");
 const componentSource = read("src/components/match/MatchListCard.jsx");
 const matchCreationWizardSource = read("src/components/match/MatchCreationWizard.jsx");
 const matchRecordMetaSource = read("src/components/match/MatchRecordMeta.jsx");
+const recentMatchRowSource = read("src/components/match/RecentMatchRow.jsx");
 const matchOperationsFieldsSource = matchCreationWizardSource.slice(
   matchCreationWizardSource.indexOf("export function MatchOperationsPolicyFields"),
   matchCreationWizardSource.indexOf("export function MatchCreationFinalSummary"),
@@ -53,6 +54,7 @@ const hoverSurfaceStyles = [
 const pageSources = {
   landing: read("src/pages/Landing.jsx"),
   home: read("src/pages/Home.jsx"),
+  profile: read("src/pages/Profile.jsx"),
   matches: read("src/pages/Matches.jsx"),
   recruiting: read("src/pages/Recruiting.jsx"),
   season: read("src/pages/Season.jsx"),
@@ -132,8 +134,8 @@ test("home favorite search uses the full input width without splitting court nam
 
 test("record result cards share matchup and date mode court metadata", () => {
   assert.match(
-    pageSources.home,
-    /className="recent-match-matchup"[\s\S]*?<strong>\{line\.side\.name\}<\/strong>[\s\S]*?className="recent-match-vs">vs<\/span>[\s\S]*?\{line\.opponent\.name\}[\s\S]*?<MatchRecordMeta record=\{match\}/,
+    recentMatchRowSource,
+    /className="recent-match-matchup"[\s\S]*?<MatchTeamName side=\{side\}[\s\S]*?className="recent-match-vs">vs<\/span>[\s\S]*?<MatchTeamName side=\{opponent\}[\s\S]*?<MatchRecordMeta record=\{record\}/,
   );
   assert.match(
     matchRecordMetaSource,
@@ -160,9 +162,10 @@ test("record result cards share matchup and date mode court metadata", () => {
     globalSearchStyles,
     /\.match-record-meta__label--personal\s*\{[^}]*color:\s*var\(--gold\);[\s\S]*?\.match-record-meta__label--public\s*\{[^}]*color:\s*var\(--green\);[\s\S]*?\.match-record-meta__label--private\s*\{[^}]*color:\s*var\(--blue\);/,
   );
-  for (const page of ["home", "playerDetail", "teamDetail"]) {
-    assert.match(pageSources[page], /MatchRecordMeta/);
+  for (const page of ["home", "profile", "teamDetail"]) {
+    assert.match(pageSources[page], /RecentMatchRow/);
   }
+  assert.doesNotMatch(courtControlStyles, /\.home-recent-card \.recent-match-(?:copy|matchup|vs)/);
 });
 
 function getRuleBody(source, selector) {
@@ -705,10 +708,9 @@ test("배정 전 엠블럼은 공용 자산이며 방 슬롯 아바타 뒤에도
   );
 });
 
-test("팀 경기 히스토리는 공용 승패 카드 스타일과 핵심 정보만 사용한다", () => {
-  assert.match(teamDetailSource, /className=\{`history-item rank-match-item rank-match-\$\{outcome\}`\}/);
-  assert.match(teamDetailSource, /const outcomeLabel = \{[\s\S]*?win:\s*"승",[\s\S]*?loss:\s*"패",[\s\S]*?draw:\s*"무"/);
-  assert.match(teamDetailSource, /\(side\?\.players \?\? \[\]\)\.map/);
-  assert.doesNotMatch(teamDetailSource, /상대 <TeamHoverCard/);
-  assert.doesNotMatch(teamDetailSource, /· 용병/);
+test("팀 경기 히스토리는 공용 최근 경기 행을 사용한다", () => {
+  assert.match(teamDetailSource, /detailHistory\.map[\s\S]*?<RecentMatchRow/);
+  assert.match(teamDetailSource, /archivedHistory\.map[\s\S]*?<RecentMatchRow/);
+  assert.doesNotMatch(teamDetailSource, /history-item rank-match-item|outcomeLabel|compact-roster/);
+  assert.doesNotMatch(teamDetailSource, /\(side\?\.players \?\? \[\]\)\.map/);
 });
