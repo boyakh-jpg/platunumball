@@ -317,7 +317,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "07 · TEAMS",
     title: "팀 소속과 경기 역할은 구분됩니다.",
     lead: "팀장은 팀 자체를 관리하고, 실제 경기에서는 방장과 사이드장이 방의 명단과 진행 역할을 맡습니다.",
-    image: "/assets/guide/teams.jpg?v=20260728-guide-r1",
+    image: "/assets/guide/teams.jpg?v=20260728-guide-r2",
     imageAlt: "대표팀 정보와 내 팀 관리 영역이 보이는 팀 메뉴",
     caption: "대표팀과 내 팀을 먼저 확인하고 주변·라이벌·소속 팀을 필요한 만큼 찾아봅니다.",
     steps: [
@@ -363,7 +363,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "08 · COURTS",
     title: "승인 구장을 찾고 현장 정보를 보완합니다.",
     lead: "구장 프로필에서 위치·시설·리뷰를 확인하고, 새 구장이나 잘못된 정보를 구조화해 제보할 수 있습니다.",
-    image: "/assets/guide/courts.jpg?v=20260728-guide-r1",
+    image: "/assets/guide/courts.jpg?v=20260728-guide-r2",
     imageAlt: "주소 검색과 시설 정보를 입력하는 구장 신청 화면",
     caption: "근처 주소를 먼저 확인하고 시설명·코트 형태·세부 위치를 입력해 구장을 신청합니다.",
     steps: [
@@ -409,7 +409,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "09 · TOURNAMENTS",
     title: "대회는 일반 경기보다 엄격하게 운영됩니다.",
     lead: "팀 초대, 참가 명단, 일정, 중립 심판, 대진과 경기 결과를 대회 단위로 잠그고 관리합니다.",
-    image: "/assets/guide/tournaments.jpg?v=20260728-guide-r1",
+    image: "/assets/guide/tournaments.jpg?v=20260728-guide-r2",
     imageAlt: "일정 메뉴의 비공개 대회 목록과 대진표 버튼",
     caption: "일정에서 참가 대회를 찾고 대진표·일정·승인 상태를 한곳에서 확인합니다.",
     steps: [
@@ -455,7 +455,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "10 · PROFILE",
     title: "내 프로필과 기록 공개 범위를 관리합니다.",
     lead: "나 메뉴에서 프로필, 공식 출전 기록, 직접 만든 내 기록과 공개 범위를 구분해 관리합니다.",
-    image: "/assets/guide/profile.jpg?v=20260728-guide-r1",
+    image: "/assets/guide/profile.jpg?v=20260728-guide-r2",
     imageAlt: "프로필 아이콘과 배치 진행 상태, 개인정보 입력 영역",
     caption: "나 메뉴에서 프로필·소속·배치 상태를 확인하고 공식 기록과 내 기록을 구분합니다.",
     steps: [
@@ -501,7 +501,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "11 · SETTINGS",
     title: "알림·안전·화면 설정을 관리합니다.",
     lead: "앱과 Discord 알림, 차단, 신고, 테마와 홈 안내 표시를 한곳에서 관리합니다.",
-    image: "/assets/guide/settings.jpg?v=20260728-guide-r1",
+    image: "/assets/guide/settings.jpg?v=20260728-guide-r2",
     imageAlt: "세부 설정, 화면 테마, 신고 접수 영역이 보이는 설정 화면",
     caption: "설정에서 즐겨찾기·구장·심판 메뉴와 테마·Discord·신고·차단을 관리합니다.",
     steps: [
@@ -546,7 +546,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "12 · TERMS",
     title: "자주 쓰는 말만 간단히 정리합니다.",
     lead: "비슷해 보이는 경기 구성, 역할, 기록 용어를 실제 권한과 반영 기준에 맞춰 구분합니다.",
-    image: "/assets/guide/terms.jpg?v=20260728-guide-r1",
+    image: "/assets/guide/terms.jpg?v=20260728-guide-r2",
     imageAlt: "MMR, 팀과 사이드, 경기 역할을 나눠 설명하는 용어 화면",
     caption: "MMR·티어, 팀·파티·사이드, 방장·사이드장·심판처럼 헷갈리는 말을 역할별로 확인합니다.",
     steps: [
