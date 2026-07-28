@@ -1139,14 +1139,31 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .profile-record-filter {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   width: 100%;
   margin-bottom: var(--space-5);
 }
 
-.profile-record-filter button {
+.profile-record-filter button,
+.profile-record-mode-filter button,
+.profile-record-visibility-filter button {
   min-width: 0;
   white-space: nowrap;
+}
+
+.profile-record-mode-filter,
+.profile-record-visibility-filter {
+  display: grid;
+  width: 100%;
+  margin: calc(var(--space-2) * -1) 0 var(--space-5);
+}
+
+.profile-record-mode-filter {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.profile-record-visibility-filter {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .record-archive-row {
@@ -1180,7 +1197,11 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 @media (max-width: 520px) {
   .profile-record-filter {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .profile-record-mode-filter {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .age-restriction-segments {

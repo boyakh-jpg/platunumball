@@ -159,6 +159,12 @@ export function isMatchRecordMatch(match = {}) {
   return getMatchRecordType(match) === RECORD_TYPES.matchRecord;
 }
 
+export function getProfileRecordCategory(match = {}) {
+  if (isPersonalRecordMatch(match)) return "personal";
+  if (match.tournamentId) return "tournament";
+  return match.ranked === false || match.rules?.matchPurpose === "friendly" ? "friendly" : "competitive";
+}
+
 export function getMatchParticipationType(match = {}) {
   if (isPersonalRecordMatch(match)) return "personal";
   if (isMatchRecordMatch(match) && match?.rules?.recordComposition) {

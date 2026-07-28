@@ -9,7 +9,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../src/lib/constants.js";
 import { getReadableMatchStatRows } from "../src/data/matchMappers.js";
-import { getMatchPlayedDate, getPlayerRecentRecordMatches } from "../src/lib/matchUtils.js";
+import { getMatchPlayedDate, getPlayerRecentRecordMatches, getProfileRecordCategory } from "../src/lib/matchUtils.js";
 import { getRecordWindowDates, isRecordDetailDate } from "../src/lib/recordRetention.js";
 
 const root = new URL("../", import.meta.url);
@@ -26,6 +26,13 @@ test("record windows use KST calendar cutoffs", () => {
   assert.equal(REMOTE_CLIENT_RECORD_MONTHS, 6);
   assert.equal(REMOTE_CLIENT_RECORD_LIST_YEARS, 5);
   assert.equal(REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT, 100);
+});
+
+test("profile record categories are exclusive and keep personal records out of combined stats", () => {
+  assert.equal(getProfileRecordCategory({ rules: { recordType: "solo" } }), "personal");
+  assert.equal(getProfileRecordCategory({ tournamentId: "tournament-1", ranked: true }), "tournament");
+  assert.equal(getProfileRecordCategory({ ranked: true, rules: { matchPurpose: "competitive" } }), "competitive");
+  assert.equal(getProfileRecordCategory({ ranked: false, rules: { matchPurpose: "friendly" } }), "friendly");
 });
 
 test("profile preview is the first six rows of the recent record detail list", () => {
@@ -195,6 +202,14 @@ test("profile and team records use the dedicated archive-backed API", async () =
   assert.match(hookSource, /includeArchive: !loadMoreDetail/);
   assert.match(hookSource, /if \(!isRequestCurrent\(\) \|\| error\?\.code === "stale_auth_request"\) return false/);
   assert.match(profileSource, /6개월 초과 · 최근 5년/);
+  assert.match(profileSource, /\{ id: "competitive", label: "경쟁전" \}/);
+  assert.match(profileSource, /\{ id: "friendly", label: "친선전" \}/);
+  assert.match(profileSource, /\{ id: "tournament", label: "대회 경기" \}/);
+  assert.match(profileSource, /PERSONAL_VISIBILITY_FILTERS/);
+  assert.match(profileSource, /MODE_FILTERS/);
+  assert.match(profileSource, /matchesModeFilter/);
+  assert.match(profileSource, /getPersonalSummaryByVisibility/);
+  assert.match(apiSource, /publicSummary/);
   assert.match(profileSource, /if \(archiveState\.error\) return/);
   assert.match(teamSource, /loadTeamRecords\(team\.id\)/);
   assert.match(teamSource, /teamRecordArchive\.error\) return/);

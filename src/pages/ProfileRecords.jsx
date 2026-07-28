@@ -5,7 +5,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine, getActualMatchPlayerSideName, getMatchParticipationType, getMatchPlayedDate, getMatchSideResult, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { formatStatLine, getActualMatchPlayerSideName, getMatchPlayedDate, getMatchSideResult, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, getProfileRecordCategory, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function getRecordLine(match, userId) {
@@ -40,16 +40,58 @@ function isPersonalArchiveRecord(record = {}) {
 
 const RECORD_FILTERS = [
   { id: "all", label: "통합" },
-  { id: "individual", label: "개인전" },
-  { id: "team", label: "팀전" },
+  { id: "competitive", label: "경쟁전" },
+  { id: "friendly", label: "친선전" },
+  { id: "tournament", label: "대회 경기" },
   { id: "personal", label: "내 기록" },
 ];
 
+const PERSONAL_VISIBILITY_FILTERS = [
+  { id: "all", label: "통합" },
+  { id: "public", label: "공개" },
+  { id: "private", label: "비공개" },
+];
+
+const MODE_FILTERS = [
+  { id: "all", label: "통합" },
+  { id: "1v1", label: "1v1" },
+  { id: "2v2", label: "2v2" },
+  { id: "3v3", label: "3v3" },
+  { id: "5v5", label: "5v5" },
+];
+
+const PERSONAL_SUMMARY_FIELDS = [
+  "recordCount",
+  "winCount",
+  "lossCount",
+  "drawCount",
+  "statCount",
+  ...PLAYER_STAT_FIELDS.map((field) => field.id),
+];
+
 function matchesRecordFilter(record = {}, filter = "all") {
-  const participationType = getMatchParticipationType(record);
-  if (filter === "personal") return participationType === "personal";
-  if (participationType === "personal") return false;
-  return filter === "all" || participationType === filter;
+  const category = isPersonalArchiveRecord(record) ? "personal" : getProfileRecordCategory(record);
+  if (filter === "personal") return category === "personal";
+  if (category === "personal") return false;
+  return filter === "all" || category === filter;
+}
+
+function matchesPersonalVisibility(record = {}, filter = "all") {
+  return filter === "all" || (record.visibility ?? record.rules?.visibility ?? "private") === filter;
+}
+
+function matchesModeFilter(record = {}, filter = "all") {
+  return filter === "all" || record.mode === filter;
+}
+
+function getPersonalSummaryByVisibility(summary = {}, filter = "all") {
+  if (filter === "all") return summary;
+  const publicSummary = summary.publicSummary ?? {};
+  if (filter === "public") return publicSummary;
+  return Object.fromEntries(PERSONAL_SUMMARY_FIELDS.map((field) => [
+    field,
+    Math.max(0, Number(summary[field] ?? 0) - Number(publicSummary[field] ?? 0)),
+  ]));
 }
 
 export default function ProfileRecords({ app }) {
@@ -60,6 +102,8 @@ export default function ProfileRecords({ app }) {
   const loadKeyRef = useRef("");
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
   const [recordFilter, setRecordFilter] = useState("all");
+  const [personalVisibilityFilter, setPersonalVisibilityFilter] = useState("all");
+  const [modeFilter, setModeFilter] = useState("all");
   const recentRecords = getPlayerRecentRecordMatches(app.state.matches, user.id);
   const officialRecentRecords = recentRecords.filter((match) => !isPersonalRecordMatch(match));
   const personalRecentRecords = recentRecords.filter(isPersonalRecordMatch);
@@ -81,9 +125,19 @@ export default function ProfileRecords({ app }) {
       loadKeyRef.current = "";
     });
   }, [app.remoteReady, archiveState.error, loadProfileRecords, profileRecordsLoaded, user.id]);
-  const filteredOfficialRecords = officialRecentRecords.filter((match) => matchesRecordFilter(match, recordFilter));
-  const visibleRecentRecords = recentRecords.filter((match) => matchesRecordFilter(match, recordFilter));
-  const visibleArchivedRecords = archivedRecords.filter((record) => matchesRecordFilter(record, recordFilter));
+  const filteredOfficialRecords = officialRecentRecords.filter((match) => (
+    matchesRecordFilter(match, recordFilter) && matchesModeFilter(match, modeFilter)
+  ));
+  const visibleRecentRecords = recentRecords.filter((match) => (
+    matchesRecordFilter(match, recordFilter)
+    && (recordFilter !== "personal" || matchesPersonalVisibility(match, personalVisibilityFilter))
+    && (recordFilter === "personal" || matchesModeFilter(match, modeFilter))
+  ));
+  const visibleArchivedRecords = archivedRecords.filter((record) => (
+    matchesRecordFilter(record, recordFilter)
+    && (recordFilter !== "personal" || matchesPersonalVisibility(record, personalVisibilityFilter))
+    && (recordFilter === "personal" || matchesModeFilter(record, modeFilter))
+  ));
   const recordedStatRecords = filteredOfficialRecords.filter((match) => hasPlayerStats(match, user.id));
   const totals = getTotals(recordedStatRecords, user.id);
   const wins = filteredOfficialRecords.filter((match) => getRecordLine(match, user.id).result === "W").length;
@@ -91,6 +145,7 @@ export default function ProfileRecords({ app }) {
   const draws = filteredOfficialRecords.length - wins - losses;
   const averageFouls = recordedStatRecords.length ? Number(totals.fouls ?? 0) / recordedStatRecords.length : 0;
   const fallbackPersonalTotals = getTotals(personalRecentRecords, user.id);
+  const fallbackPublicPersonalRecords = personalRecentRecords.filter((match) => matchesPersonalVisibility(match, "public"));
   const personalSummary = archiveState.personalSummary ?? {
     recordCount: personalRecentRecords.length,
     winCount: personalRecentRecords.filter((match) => getRecordLine(match, user.id).result === "W").length,
@@ -98,8 +153,23 @@ export default function ProfileRecords({ app }) {
     drawCount: personalRecentRecords.filter((match) => getRecordLine(match, user.id).result === "D").length,
     statCount: personalRecentRecords.filter((match) => match.result?.playerStats?.[user.id]).length,
     publicRecordCount: personalRecentRecords.filter((match) => match.visibility === "public").length,
+    publicSummary: {
+      recordCount: fallbackPublicPersonalRecords.length,
+      winCount: fallbackPublicPersonalRecords.filter((match) => getRecordLine(match, user.id).result === "W").length,
+      lossCount: fallbackPublicPersonalRecords.filter((match) => getRecordLine(match, user.id).result === "L").length,
+      drawCount: fallbackPublicPersonalRecords.filter((match) => getRecordLine(match, user.id).result === "D").length,
+      statCount: fallbackPublicPersonalRecords.filter((match) => match.result?.playerStats?.[user.id]).length,
+      ...getTotals(fallbackPublicPersonalRecords, user.id),
+    },
     ...fallbackPersonalTotals,
   };
+  const visiblePersonalSummary = getPersonalSummaryByVisibility(personalSummary, personalVisibilityFilter);
+  const officialGameCount = filteredOfficialRecords.length;
+  const officialWinRate = officialGameCount ? Math.round((wins / officialGameCount) * 100) : 0;
+  const personalGameCount = Number(visiblePersonalSummary.recordCount ?? 0);
+  const personalWinRate = personalGameCount
+    ? Math.round((Number(visiblePersonalSummary.winCount ?? 0) / personalGameCount) * 100)
+    : 0;
   const dateRows = [...visibleRecentRecords.reduce((map, match) => {
     const date = getMatchPlayedDate(match) || "날짜 미정";
     map.set(date, (map.get(date) ?? 0) + 1);
@@ -120,12 +190,15 @@ export default function ProfileRecords({ app }) {
         <div className="section-title-row">
           <div>
             <p className="eyebrow">{recordFilter === "personal" ? "Self Authored" : "Official & General"}</p>
-            <h2>{recordFilter === "personal" ? "내 기록 통계" : `${RECORD_FILTERS.find((item) => item.id === recordFilter)?.label ?? "통합"} 경기 통계`}</h2>
+            <h2>{recordFilter === "personal"
+              ? "내 기록 통계"
+              : `${modeFilter === "all" ? "" : `${modeFilter} `}${RECORD_FILTERS.find((item) => item.id === recordFilter)?.label ?? "통합"} 경기 통계`}
+            </h2>
           </div>
           <Badge tone={recordFilter === "personal" ? "gold" : "green"}>
             {recordFilter === "personal"
-              ? `내 기록 ${personalSummary.recordCount ?? 0} · 공개 ${personalSummary.publicRecordCount ?? 0}`
-              : `최근 6개월 ${filteredOfficialRecords.length}경기`}
+              ? `${PERSONAL_VISIBILITY_FILTERS.find((item) => item.id === personalVisibilityFilter)?.label ?? "통합"} ${personalGameCount}경기`
+              : `최근 6개월 ${officialGameCount}경기`}
           </Badge>
         </div>
         <div className="segmented-control profile-record-filter" aria-label="경기 기록 구분">
@@ -141,18 +214,52 @@ export default function ProfileRecords({ app }) {
             </button>
           ))}
         </div>
+        {recordFilter !== "personal" ? (
+          <div className="segmented-control profile-record-mode-filter" aria-label="경기 인원 구분">
+            {MODE_FILTERS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={modeFilter === item.id ? "active" : ""}
+                aria-pressed={modeFilter === item.id}
+                onClick={() => setModeFilter(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {recordFilter === "personal" ? (
+          <div className="segmented-control profile-record-visibility-filter" aria-label="내 기록 공개 범위">
+            {PERSONAL_VISIBILITY_FILTERS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={personalVisibilityFilter === item.id ? "active" : ""}
+                aria-pressed={personalVisibilityFilter === item.id}
+                onClick={() => setPersonalVisibilityFilter(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="rank-stat-grid">
           {recordFilter === "personal" ? <>
-            <span><strong>{personalSummary.winCount ?? 0}</strong>승</span>
-            <span><strong>{personalSummary.lossCount ?? 0}</strong>패</span>
-            <span><strong>{personalSummary.drawCount ?? 0}</strong>무</span>
-            {Number(personalSummary.statCount ?? 0) > 0 ? PLAYER_STAT_FIELDS.map((field) => (
-              <span key={field.id}><strong>{personalSummary[field.id] ?? 0}</strong>{field.label}</span>
+            <span><strong>{personalGameCount}</strong>경기</span>
+            <span><strong>{visiblePersonalSummary.winCount ?? 0}</strong>승</span>
+            <span><strong>{visiblePersonalSummary.lossCount ?? 0}</strong>패</span>
+            <span><strong>{visiblePersonalSummary.drawCount ?? 0}</strong>무</span>
+            <span><strong>{personalWinRate}%</strong>승률</span>
+            {Number(visiblePersonalSummary.statCount ?? 0) > 0 ? PLAYER_STAT_FIELDS.map((field) => (
+              <span key={field.id}><strong>{visiblePersonalSummary[field.id] ?? 0}</strong>{field.label}</span>
             )) : null}
           </> : <>
+            <span><strong>{officialGameCount}</strong>경기</span>
             <span><strong>{wins}</strong>승</span>
             <span><strong>{losses}</strong>패</span>
             <span><strong>{draws}</strong>무</span>
+            <span><strong>{officialWinRate}%</strong>승률</span>
             {recordedStatRecords.length ? <>
               <span><strong>{averageFouls.toFixed(1)}</strong>평균 파울</span>
               {PLAYER_STAT_FIELDS.map((field) => (

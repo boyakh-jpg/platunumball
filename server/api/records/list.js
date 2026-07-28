@@ -230,15 +230,30 @@ export function canReadProfileRecord(row = {}, viewerProfileId = "", subjectId =
   return viewerProfileId === row.owner_profile_id || (row.visibility ?? "private") === "public";
 }
 
-function mapPersonalRecordSummary(row = {}, publicOnly = false) {
-  const prefix = publicOnly ? "public_" : "";
-  const number = (field) => Number(row[prefix + field] ?? 0);
+function mapPersonalRecordMetrics(row = {}, prefix = "") {
+  const number = (field) => Number(row[`${prefix}${field}`] ?? 0);
   return {
     recordCount: number("record_count"), winCount: number("win_count"), lossCount: number("loss_count"),
     drawCount: number("draw_count"), statCount: number("stat_count"), points: number("points"),
     rebounds: number("rebounds"), assists: number("assists"), steals: number("steals"),
-    blocks: number("blocks"), fouls: number("fouls"), publicRecordCount: Number(row.public_record_count ?? 0),
-    visibilityScope: publicOnly ? "public" : "all",
+    blocks: number("blocks"), fouls: number("fouls"),
+  };
+}
+
+function mapPersonalRecordSummary(row = {}, publicOnly = false) {
+  const publicSummary = {
+    ...mapPersonalRecordMetrics(row, "public_"),
+    visibilityScope: "public",
+  };
+  if (publicOnly) return {
+    ...publicSummary,
+    publicRecordCount: publicSummary.recordCount,
+  };
+  return {
+    ...mapPersonalRecordMetrics(row),
+    publicRecordCount: publicSummary.recordCount,
+    publicSummary,
+    visibilityScope: "all",
   };
 }
 
