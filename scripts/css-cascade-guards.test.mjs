@@ -382,3 +382,19 @@ test("light theme reserves green for semantic status only", () => {
 
   assert.deepEqual(violations, []);
 });
+
+test("mobile Safari first paint uses the app theme and never flashes the static OAuth copy", () => {
+  const indexSource = fs.readFileSync("index.html", "utf8");
+  const appSource = fs.readFileSync("src/App.jsx", "utf8");
+  const foundationSource = fs.readFileSync("src/styles/global-foundation.css", "utf8");
+  const visualSource = fs.readFileSync("src/styles/global-visual-system.css", "utf8");
+
+  assert.match(indexSource, /viewport-fit=cover/);
+  assert.match(indexSource, /id="app-theme-color"/);
+  assert.match(indexSource, /<div id="root"><\/div>\s*<noscript>/);
+  assert.match(indexSource, /rankball\.auth\.profileCache\.v2/);
+  assert.match(appSource, /getElementById\("app-theme-color"\)/);
+  assert.match(foundationSource, /#root\s*\{[^}]*min-height:\s*100dvh/s);
+  assert.match(visualSource, /env\(safe-area-inset-top,\s*0px\)/);
+  assert.match(visualSource, /env\(safe-area-inset-bottom,\s*0px\)/);
+});

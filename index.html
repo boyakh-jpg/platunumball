@@ -2,7 +2,9 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta id="app-theme-color" name="theme-color" content="#303132" />
     <meta
       name="description"
       content="BOXTIER - 농구 경기를 기록하고 팀과 티어를 관리하는 농구 플랫폼"
@@ -10,10 +12,44 @@
     <meta name="application-name" content="BOXTIER" />
     <link rel="canonical" href="https://boxtier.kr/" />
     <link rel="preload" href="/assets/fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+        background: #303132;
+        color-scheme: dark;
+      }
+
+      html[data-theme="light"],
+      html[data-theme="light"] body {
+        background: #f5f1e8;
+        color-scheme: light;
+      }
+    </style>
+    <script>
+      (() => {
+        let theme = "dark";
+        try {
+          const cache = JSON.parse(localStorage.getItem("rankball.auth.profileCache.v2") || "{}");
+          const latest = Object.values(cache)
+            .sort((a, b) => Number(b?.updatedAt || 0) - Number(a?.updatedAt || 0))[0];
+          if (latest?.settings?.theme === "light") theme = "light";
+        } catch {
+          theme = "dark";
+        }
+        document.documentElement.dataset.theme = theme;
+        document.getElementById("app-theme-color")?.setAttribute(
+          "content",
+          theme === "light" ? "#f5f1e8" : "#303132",
+        );
+      })();
+    </script>
     <title>BOXTIER</title>
   </head>
   <body>
-    <div id="root">
+    <div id="root"></div>
+    <noscript>
       <main class="oauth-static-shell">
         <article class="oauth-static-card">
           <p class="oauth-static-brand">BOXTIER</p>
@@ -27,7 +63,7 @@
           </nav>
         </article>
       </main>
-    </div>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

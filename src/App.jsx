@@ -116,6 +116,10 @@ export default function App() {
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
+    document.getElementById("app-theme-color")?.setAttribute(
+      "content",
+      theme === "light" ? "#f5f1e8" : "#303132",
+    );
   }, [theme]);
 
   useEffect(() => {

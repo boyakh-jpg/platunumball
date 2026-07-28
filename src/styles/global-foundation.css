@@ -4,6 +4,7 @@
 
 html {
   min-width: 0;
+  min-height: 100%;
   background: var(--bg);
   --bottom-nav-height: 58px;
 }
@@ -17,10 +18,17 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   font-family: var(--font-body);
   font-weight: var(--font-weight-body);
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
 }
 
 button,
@@ -86,11 +94,13 @@ h3 {
 
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: block;
 }
 
 .public-shell {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .app-main {
