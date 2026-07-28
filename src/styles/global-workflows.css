@@ -1329,7 +1329,7 @@ input[type="color"] {
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(116px, 28%, 168px);
+  grid-template-columns: minmax(0, 1fr) clamp(132px, 36%, 168px);
   align-items: center;
   gap: var(--space-8);
   border: 1px solid var(--ui-card-border);
@@ -1361,12 +1361,14 @@ input[type="color"] {
 .share-card-emblem {
   position: relative;
   z-index: 0;
+  width: 100%;
   justify-self: end;
   margin-right: -6px;
 }
 
 .share-card-emblem .tier-emblem {
-  width: clamp(118px, 24vw, 176px);
+  width: 100%;
+  max-width: 168px;
 }
 
 .share-card-action {

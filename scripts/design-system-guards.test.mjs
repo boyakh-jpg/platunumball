@@ -99,6 +99,11 @@ test("프로필 공유 action은 엠블럼 열을 침범하지 않는다", () =>
     /\.share-card-action\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*min-width:\s*0;[^}]*overflow:\s*hidden;/,
   );
   assert.doesNotMatch(globalWorkflowStyles, /\.share-card-action\s*\{[^}]*width:\s*max-content;/);
+  assert.match(
+    globalWorkflowStyles,
+    /\.share-card-emblem\s*\{[^}]*width:\s*100%;[\s\S]*?\.share-card-emblem \.tier-emblem\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*168px;/,
+  );
+  assert.doesNotMatch(globalWorkflowStyles, /\.share-card-emblem \.tier-emblem\s*\{[^}]*\d+vw/);
 });
 
 test("player detail uses shared record rows and one support rail", () => {
