@@ -2326,13 +2326,8 @@ html[data-theme="light"] .team-search-popover button.selected {
   .team-detail-hero,
   .season-hero,
   .season-content-grid,
-  .stat-entry-grid,
-  .season-metric-grid {
+  .stat-entry-grid {
     grid-template-columns: 1fr;
-  }
-
-  .season-metric-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .season-summary {
@@ -2616,7 +2611,6 @@ html[data-theme="light"] .team-search-popover button.selected {
   .season-hero-copy,
   .season-rule-board,
   .season-summary-item,
-  .season-metric-card,
   .rivalry-matchup {
     min-width: 0;
   }
@@ -2650,11 +2644,6 @@ html[data-theme="light"] .team-search-popover button.selected {
 
   .season-rule-board {
     padding: 12px;
-  }
-
-  .season-metric-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--page-section-gap-mobile);
   }
 
   .season-summary {
