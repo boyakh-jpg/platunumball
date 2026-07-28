@@ -106,12 +106,12 @@ import {
   getVoidMatchRestoreTargetUserId,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
+  getMatchFinalizationWindow,
   getRecordCreationWindowStatus,
   getMatchScheduledDate,
   getMissingMatchAttendance,
   applyOperatorAttendance,
   getPlayerSideName,
-  getResultPointAudit,
   getStatSubmissionStatus,
   getSubmittedStatPatch,
   getTeamCaptainId,
@@ -136,6 +136,7 @@ import {
   getPickupTeamAssignmentRatingScale,
 } from "../lib/matchCreationPolicies.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
+import { getPostgameRecordVerification } from "../lib/postgameRecordVerification.js";
 import {
   applyMatchRating,
   averageTeamMmr,
@@ -2285,10 +2286,52 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
     const current = nextState.matches.find((item) => item.id === match.id);
     if (!current) continue;
 
-    if ((current.status === "approval" || current.status === "disputed") && current.result) {
+    if ((
+      current.status === "approval"
+      || current.status === "disputed"
+      || (isMatchRecordMatch(current) && current.status === "agreed")
+    ) && current.result) {
+      const hasOpenReport = (nextState.reports ?? []).some((report) => (
+        report.type === "match"
+        && report.targetId === current.id
+        && report.status === "open"
+      ));
+      if (hasOpenReport) continue;
+      if (isMatchRecordMatch(current)) {
+        const verification = getPostgameRecordVerification(current, { now });
+        if (!verification.canAutoApprove) continue;
+        const confirmedSet = new Set(verification.verifiedPlayerIds);
+        const mmrExcludedPlayerIds = verification.requiredParticipantIds
+          .filter((playerId) => !confirmedSet.has(playerId));
+        const nextMatch = {
+          ...current,
+          ranked: true,
+          ratingScale: 0.2,
+          mmrExcludedPlayerIds,
+          rules: {
+            ...(current.rules ?? {}),
+            ratingScale: 0.2,
+            teamRatingDisabled: true,
+            mmrExcludedPlayerIds,
+          },
+          autoConfirmedAt: current.autoConfirmedAt ?? nowIso,
+        };
+        nextState = finalizeMatch(
+          {
+            ...nextState,
+            matches: nextState.matches.map((item) => (item.id === current.id ? nextMatch : item)),
+          },
+          nextMatch,
+        );
+        continue;
+      }
       const recordWindow = getMatchRecordWindow(current, nowMs);
       if (!recordWindow.disputeExpired) continue;
       if (current.status === "disputed" && (current.disputes ?? []).some((dispute) => dispute.status === "open")) continue;
+      if (current.refereeId) {
+        const statStatus = getStatSubmissionStatus(current);
+        if (!statStatus.complete) continue;
+      }
       const result = current.disputeDraftResult ?? current.result;
       const nextMatch = {
         ...current,
@@ -2335,24 +2378,6 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
         ],
       };
       continue;
-    }
-
-    if (current.status === "approval" && current.result) {
-      const statStatus = getStatSubmissionStatus(current);
-      const pointAudit = getResultPointAudit(current);
-      if (!statStatus.complete || !pointAudit.matched) continue;
-      const nextMatch = {
-        ...current,
-        approvals: fillMatchDecision(current, "approvals"),
-        autoApprovedAt: current.autoApprovedAt ?? nowIso,
-      };
-      nextState = finalizeMatch(
-        {
-          ...nextState,
-          matches: nextState.matches.map((item) => (item.id === current.id ? nextMatch : item)),
-        },
-        nextMatch,
-      );
     }
 
   }
@@ -2579,7 +2604,7 @@ function createSoloRecordMatch(state, draft = {}) {
   };
   const mmrExcludedPlayerIds = uniquePlayerIds([...playedPlayerIds.teamA, ...playedPlayerIds.teamB]);
   const statSubmissions = {
-    [playerId]: { by: playerId, source: "host_postgame", submittedAt: nowIso },
+    [playerId]: { by: playerId, source: "player", submittedAt: nowIso },
   };
   const result = {
     scoreA,
@@ -2686,7 +2711,7 @@ export function createMatch(state, draft) {
     ? {
         ...draft,
         visibility: "private",
-        ranked: false,
+        ranked: true,
         official: false,
         preRegistered: false,
         mmrLimitMode: "off",
@@ -2745,8 +2770,8 @@ export function createMatch(state, draft) {
   const teamBPlayers = [];
   const refereeId = getTrustedRefereeId(state, effectiveDraft.refereeId, [...teamAPlayers, ...teamBPlayers]);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(effectiveDraft.mmrRangeMode);
-  const ranked = isMatchRecord ? false : effectiveDraft.ranked !== false;
-  const ratingScale = ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 0;
+  const ranked = isMatchRecord ? true : effectiveDraft.ranked !== false;
+  const ratingScale = isMatchRecord ? 0.2 : ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 0;
   const disputeMinutes = DISPUTE_WINDOW_MINUTES;
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === effectiveDraft.court || court.id === getCourtId(effectiveDraft)) ?? null;
   const creator = state.users.find((user) => user.id === state.currentUserId);
@@ -2792,7 +2817,8 @@ export function createMatch(state, draft) {
       benchCapacity: 0,
       waitlistCapacity: 0,
       mmrRangeMode: "off",
-      ratingScale: 0,
+      ratingScale: 0.2,
+      teamRatingDisabled: true,
       ageRestriction: "any",
       allowedAgeGroups: [],
       courtReserved: false,
@@ -4050,10 +4076,16 @@ export function finalizeMatchByAuthority(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (isMatchRecordMatch(match)) return state;
   if (!match?.endedAt || match.confirmedAt || match.status === "disputed" || (match.refereeId && !match.result)) return state;
+  if (!getMatchFinalizationWindow(match).ready) return state;
   const canFinalize = match.refereeId
     ? currentUserIsEligibleMatchReferee(state, match)
     : currentUserIsMatchHost(state, match);
-  if (!canFinalize || (match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
+  const hasOpenReport = (state.reports ?? []).some((report) => (
+    report.type === "match"
+    && report.targetId === match.id
+    && report.status === "open"
+  ));
+  if (!canFinalize || hasOpenReport || (match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
   const baseResult = match.result ?? {
     scoreA: Number(match.teamA?.score ?? 0),
     scoreB: Number(match.teamB?.score ?? 0),
@@ -4088,10 +4120,7 @@ export function approveMatch(state, matchId, sideName, playerId) {
     ...state,
     matches: state.matches.map((item) => item.id === matchId ? updatedMatch : item),
   };
-  const fullyConfirmed = MATCH_SIDES.every((matchSide) => (
-    getApprovalStatus(updatedMatch, state.teams, matchSide).approved
-  ));
-  return fullyConfirmed ? finalizeMatch(stateWithApproval, updatedMatch) : stateWithApproval;
+  return stateWithApproval;
 }
 
 function applyDisputeRequestToResult(match = {}, baseResult = null, disputeRequest = {}) {
@@ -4124,28 +4153,6 @@ function applyDisputeRequestToResult(match = {}, baseResult = null, disputeReque
     scoreB: getMergedResultScore(match, playerStats, "teamB", nextResult.scoreB),
     playerStats,
     updatedAt: new Date().toISOString(),
-  };
-}
-
-export function confirmMatchRecordParticipation(state, matchId, playerId) {
-  const match = state.matches.find((item) => item.id === matchId);
-  if (!isMatchRecordMatch(match) || match.rules?.recordSetupReady !== true) return state;
-  if (!playerId || playerId !== state.currentUserId) return state;
-  if (match.confirmedAt || match.cancelledAt || match.voidedAt) return state;
-  const requiredIds = MATCH_SIDES.flatMap((sideName) => match.rules?.recordApproverIds?.[sideName] ?? []);
-  if (!requiredIds.includes(playerId)) return state;
-  const participantAcceptedIds = Array.from(new Set([
-    ...(match.rules?.participantAcceptedIds ?? []),
-    playerId,
-  ]));
-  const updatedAt = new Date().toISOString();
-  return {
-    ...state,
-    matches: state.matches.map((item) => item.id === matchId ? {
-      ...item,
-      rules: { ...(item.rules ?? {}), participantAcceptedIds },
-      updatedAt,
-    } : item),
   };
 }
 

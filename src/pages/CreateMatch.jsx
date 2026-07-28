@@ -1861,7 +1861,7 @@ export default function CreateMatch({
                   <ClipboardList size={19} />
                   <span>
                     <strong>경기 기록</strong>
-                    <em>빈 기록방을 만든 뒤 실제 참가자를 등록하고 모두에게 내 참가 확인을 받습니다.</em>
+                    <em>등록된 참가자의 2/3 이상이 내 참가 확인을 완료하면 기록할 수 있습니다.</em>
                   </span>
                 </button>
                 <button
@@ -2672,8 +2672,8 @@ export default function CreateMatch({
               <ClipboardList size={17} />
               <span>
                 {recordComposition === "team"
-                  ? "빈 기록방 생성 후 방장이 두 팀을 선택합니다. 각 팀장이 실제 출전 명단을 확정하고 등록된 참가자 전원이 내 참가 확인을 합니다."
-                  : "빈 기록방 생성 후 방장이 A/B 참가자를 계정으로 채웁니다. 등록된 실제 참가자 전원이 내 참가 확인을 합니다."}
+                  ? "빈 기록방 생성 후 방장이 두 팀을 선택합니다. 각 팀장이 실제 출전 명단을 확정하고 24시간 동안 확인과 문제 신고를 받습니다."
+                  : "빈 기록방 생성 후 방장이 A/B 참가자를 계정으로 채웁니다. 24시간 동안 확인과 문제 신고를 받습니다."}
               </span>
             </div>
           ) : isTeamRoom ? (

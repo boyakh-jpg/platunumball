@@ -35,6 +35,7 @@ import {
   getMatchCancelCopy,
   getMatchPlayerDisputePoints,
   getOpenMatchDisputes,
+  getMatchFinalizationWindow,
   getMatchRecordWindow,
   getMatchReferee,
   getMatchRecordPlayerIds,
@@ -343,6 +344,7 @@ export default function MatchRoom({ app }) {
   const teamBAgreement = getAgreementStatus(match, app.state.teams, "teamB");
   const currentUserSideName = getPlayerSideName(match, app.currentUser.id);
   const recordWindow = getMatchRecordWindow(match);
+  const finalizationWindow = getMatchFinalizationWindow(match);
   const referee = getMatchReferee(match, app.state.users);
   const hasReferee = Boolean(match.refereeId);
   const isSoloRecord = isPersonalRecordMatch(match);
@@ -391,6 +393,7 @@ export default function MatchRoom({ app }) {
     (hasReferee ? match.result : true) &&
     !match.confirmedAt &&
     match.status !== "disputed" &&
+    finalizationWindow.ready &&
     (hasReferee ? currentUserIsEligibleReferee : isMatchHost),
   );
   const finalAuthorityLabel = hasReferee ? "배정 심판" : "방장";

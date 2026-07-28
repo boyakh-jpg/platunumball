@@ -108,6 +108,7 @@ import {
   getMatchRecordCompositionLabel,
   getMatchRecordSetupStatus,
   getOpenMatchDisputes,
+  getMatchFinalizationWindow,
   getLocalDateInputValue,
   getMatchRecordPlayerIds,
   getMatchResultEntryPermission,
@@ -1932,7 +1933,7 @@ function MatchRecordParticipantSetupPanel({ match, users, teams, currentUserId, 
   return (
     <div className="arena-record-setup-panel">
       <header>
-        <span><strong>경기 기록 참가자 구성</strong><em>{composition === "team" ? "팀 구성 · 양 팀장이 출전 명단과 결과를 확인" : "개인 구성 · 실제 참가자 전원이 결과를 확인"}</em></span>
+        <span><strong>경기 기록 참가자 구성</strong><em>{composition === "team" ? "팀 구성 · 양 팀장이 출전 명단을 확정" : "개인 구성 · 실제 참가자가 각자 결과를 확인"}</em></span>
         <Badge tone={setupStatus?.tone ?? "orange"}>{setupStatus?.label ?? "구성 확인"}</Badge>
       </header>
       {composition === "individual" ? (
@@ -4118,6 +4119,7 @@ function RecruitingRoomModalReady({
           matchRoom && !sourceMatchIsRecordRoom
           && sourceMatch?.endedAt && (sourceMatch.refereeId ? sourceMatch.result : true) && !sourceMatch?.confirmedAt
           && sourceMatch.status !== "disputed"
+          && getMatchFinalizationWindow(sourceMatch).ready
           && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine)
         );
         const sourceMatchResultEntryPermission = sourceMatch

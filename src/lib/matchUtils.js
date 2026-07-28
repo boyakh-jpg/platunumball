@@ -27,6 +27,7 @@ export { PUBLIC_ROOM_SCHEDULE_MAX_DAYS };
 const PUBLIC_ROOM_CONFIRM_OPEN_HOURS = 24;
 const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
 const MATCH_CLOSED_NOTICE_GRACE_MINUTES = INSTANT_ROOM_EXPIRE_MINUTES;
+export const MATCH_FINALIZATION_MINIMUM_MINUTES = 3;
 export { INSTANT_ROOM_EXPIRE_MINUTES };
 export const MATCH_DISPUTE_REASON_OPTIONS = [
   "최종 점수 오기록",
@@ -248,18 +249,24 @@ export function evaluateRecordVerification(match = {}, options = {}) {
   const teamARoster = getRecordSideRosterStatus(match, "teamA");
   const teamBRoster = getRecordSideRosterStatus(match, "teamB");
   const teamRosterConfirmed = isTeamRecord && teamARoster.rosterConfirmed && teamBRoster.rosterConfirmed;
-  const sideApprovalsComplete = getApprovalStatus(match, teams, "teamA").approved && getApprovalStatus(match, teams, "teamB").approved;
+  const confirmationStatus = getMatchRecordConfirmationStatus(match);
+  const sideApprovalsComplete = confirmationStatus.thresholdMet;
   const anonymousIds = new Set(Object.keys(match.anonymousPlayers ?? {}));
   const excludedIds = new Set([...(match.mmrExcludedPlayerIds ?? []), ...(match.rules?.mmrExcludedPlayerIds ?? [])]);
   const playerIds = getMatchRecordPlayerIds(match);
-  const mmrEligiblePlayerIds = playerIds.filter((playerId) => !anonymousIds.has(playerId) && !excludedIds.has(playerId));
+  const confirmedIds = new Set(confirmationStatus.confirmedIds);
+  const mmrEligiblePlayerIds = playerIds.filter((playerId) => (
+    !anonymousIds.has(playerId)
+    && !excludedIds.has(playerId)
+    && (!isMatchRecordMatch(match) || confirmedIds.has(playerId))
+  ));
   const hasMmrBlockedPlayer = playerIds.some((playerId) => anonymousIds.has(playerId) || excludedIds.has(playerId));
   const blockingReasons = [];
 
   if (isPersonalRecordMatch(match)) blockingReasons.push("내 기록은 검증/MMR 대상이 아님");
   if (!hasResult) blockingReasons.push("결과 없음");
   if (disputed) blockingReasons.push("이의 처리 필요");
-  if (isMatchRecordMatch(match) && !sideApprovalsComplete) blockingReasons.push("양측 기록 확인 필요");
+  if (isMatchRecordMatch(match) && !sideApprovalsComplete) blockingReasons.push("참가자 2/3 확인 필요");
   if (isTeamRecord && !teamRosterConfirmed) blockingReasons.push("팀 출전 명단 확정 필요");
   if (isTeamRecord && hasMmrBlockedPlayer) blockingReasons.push("팀 MMR 제외 선수가 있음");
   if (!isTeamRecord && getMatchRecordType(match) === RECORD_TYPES.matchRecord) blockingReasons.push("팀 MMR 대상 아님");
@@ -274,7 +281,7 @@ export function evaluateRecordVerification(match = {}, options = {}) {
     canConfirm: isMatchRecordMatch(match) && hasResult,
     canVerify,
     canApplyPersonalMmr: canVerify && ranked && recordRosterConfirmed && mmrEligiblePlayerIds.length > 0,
-    canApplyTeamMmr: canVerify && ranked && recordRosterConfirmed && isTeamRecord && !hasMmrBlockedPlayer,
+    canApplyTeamMmr: canVerify && ranked && !isMatchRecordMatch(match) && recordRosterConfirmed && isTeamRecord && !hasMmrBlockedPlayer,
     isTeamRecord,
     teamRosterConfirmed,
     mmrEligiblePlayerIds,
@@ -602,14 +609,16 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
       ? match.rules.recordApproverIds[sideName]
       : getMatchSidePlayerIds(match, sideName),
   ).filter((playerId) => !match.anonymousPlayers?.[playerId]);
-  const approvals = uniquePlayerIds(match.approvals?.[sideName] ?? [])
+  const submittedApprovals = uniquePlayerIds(match.approvals?.[sideName] ?? [])
     .filter((playerId) => requiredIds.includes(playerId));
-  const approved = requiredIds.length > 0
-    && requiredIds.every((playerId) => approvals.includes(playerId));
+  const confirmationStatus = getMatchRecordConfirmationStatus(match);
+  const confirmedSet = new Set(confirmationStatus.confirmedIds);
+  const approvals = submittedApprovals.filter((playerId) => confirmedSet.has(playerId));
+  const approved = confirmationStatus.thresholdMet;
   return {
     approvals,
     total: requiredIds.length,
-    majority: requiredIds.length,
+    majority: confirmationStatus.threshold,
     requiredIds,
     approvalMode: "participant_confirmation",
     approvalLabel: "내 참가 확인",
@@ -618,6 +627,43 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
     captainApproved: approved,
     majorityApproved: approved,
     approved,
+  };
+}
+
+export function getMatchRecordConfirmationStatus(match = {}) {
+  if (!isMatchRecordMatch(match)) {
+    return {
+      requiredIds: [],
+      confirmedIds: [],
+      requiredCount: 0,
+      confirmedCount: 0,
+      threshold: 0,
+      thresholdMet: false,
+    };
+  }
+  const requiredIds = uniquePlayerIds(MATCH_SIDES.flatMap((sideName) => (
+    match.rules?.recordApproverIds?.[sideName]?.length
+      ? match.rules.recordApproverIds[sideName]
+      : getMatchSidePlayerIds(match, sideName)
+  ))).filter((playerId) => !match.anonymousPlayers?.[playerId]);
+  const requiredSet = new Set(requiredIds);
+  const acceptedSet = new Set(uniquePlayerIds(match.rules?.participantAcceptedIds ?? []));
+  const approvalSet = new Set(uniquePlayerIds(
+    MATCH_SIDES.flatMap((sideName) => match.approvals?.[sideName] ?? []),
+  ));
+  const confirmedIds = requiredIds.filter((playerId) => (
+    requiredSet.has(playerId)
+    && approvalSet.has(playerId)
+    && acceptedSet.has(playerId)
+  ));
+  const threshold = requiredIds.length ? Math.ceil(requiredIds.length * 2 / 3) : 0;
+  return {
+    requiredIds,
+    confirmedIds,
+    requiredCount: requiredIds.length,
+    confirmedCount: confirmedIds.length,
+    threshold,
+    thresholdMet: threshold > 0 && confirmedIds.length >= threshold,
   };
 }
 
@@ -1528,6 +1574,23 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
     disputeOpen: nowMs >= endMs && nowMs <= disputeClosesAt.getTime(),
     statExpired: nowMs > statClosesAt.getTime(),
     disputeExpired: nowMs > disputeClosesAt.getTime(),
+  };
+}
+
+export function getMatchFinalizationWindow(match = {}, now = Date.now()) {
+  const nowMs = typeof now === "number" ? now : new Date(now).getTime();
+  const submittedAtMs = new Date(match.result?.submittedAt ?? "").getTime();
+  const endedAtMs = new Date(match.endedAt ?? "").getTime();
+  const baseMs = Math.max(
+    Number.isFinite(submittedAtMs) ? submittedAtMs : 0,
+    Number.isFinite(endedAtMs) ? endedAtMs : 0,
+  );
+  const availableAtMs = baseMs
+    ? baseMs + MATCH_FINALIZATION_MINIMUM_MINUTES * MINUTE_MS
+    : 0;
+  return {
+    availableAt: availableAtMs ? new Date(availableAtMs) : null,
+    ready: availableAtMs > 0 && nowMs >= availableAtMs,
   };
 }
 

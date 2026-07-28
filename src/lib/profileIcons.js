@@ -7,7 +7,12 @@ const icon = (id, name) => Object.freeze({
 });
 
 const requirement = (metric, target, label) => Object.freeze({ metric, target, label });
-const achievement = (condition, requirements = []) => Object.freeze({ condition, requirements: Object.freeze(requirements) });
+const achievement = (condition, requirements = [], options = {}) => Object.freeze({
+  condition,
+  requirements: Object.freeze(requirements),
+  ...options,
+});
+const retiredAchievement = (condition) => achievement(condition, [], { retired: true });
 
 const PROFILE_ICON_ACHIEVEMENTS = {
   "01-first-bucket": achievement("기본 지급"),
@@ -48,7 +53,7 @@ const PROFILE_ICON_ACHIEVEMENTS = {
   "58-team-huddle": achievement("팀 소속으로 확정 경기 10회", [requirement("teamMatchCount", 10, "팀 경기")]),
   "59-mentor-torch": achievement("수락된 초대 25회", [requirement("acceptedInviteCount", 25, "수락된 초대")]),
   "60-referee-shield": achievement("심판 수행 5회", [requirement("refereeCount", 5, "심판 경기")]),
-  "61-record-keeper": achievement("경기 운영 기여 5회", [requirement("recorderCount", 5, "운영 경기")]),
+  "61-record-keeper": retiredAchievement("과거 기록원 활동 5회"),
   "62-court-scout": achievement("구장 후기·승인 제보 합계 3회", [requirement("courtContributionCount", 3, "구장 기여")]),
   "63-team-founder": achievement("팀 주장 되기", [requirement("captainCount", 1, "주장 팀")]),
   "64-trusted-player": achievement("확정 경기 100회 및 신뢰도 95", [
@@ -112,8 +117,9 @@ const trackedSeries = (slug, name, metric, targets, requirementLabel, unit = "�
   condition: condition ?? ((target) => `${requirementLabel} ${target}${unit}`),
 });
 
-const retiredSeries = (slug) => Object.freeze({
+const retiredSeries = (slug, name = "종료된 업적") => Object.freeze({
   slug,
+  name,
   retired: true,
   targets: Object.freeze([0, 0, 0, 0, 0]),
 });
@@ -178,7 +184,7 @@ const PROFILE_ICON_SERIES_GROUPS = Object.freeze([
     name: "운영·커뮤니티",
     series: Object.freeze([
       trackedSeries("referee-service", "심판 경력", "refereeCount", [10, 50, 100, 300, 500], "심판 수행"),
-      trackedSeries("recorder-service", "운영 경력", "recorderCount", [10, 50, 100, 300, 500], "경기 운영 기여"),
+      retiredSeries("recorder-service", "과거 기록원 활동"),
       trackedSeries("recruiting-invites", "매칭 초대 성공", "recruitingInviteAcceptedCount", [5, 25, 75, 150, 300], "수락된 매칭 초대"),
       trackedSeries("team-invites", "팀 초대 성공", "teamInviteAcceptedCount", [5, 25, 75, 150, 300], "수락된 팀 초대"),
       trackedSeries("approved-courts", "구장 등록", "approvedCourtCount", [1, 3, 10, 25, 50], "승인 구장 등록"),
@@ -228,6 +234,9 @@ for (const seriesGroup of PROFILE_ICON_SERIES_GROUPS) {
         PROFILE_ICON_ACHIEVEMENTS[iconId] = achievement(seriesDefinition.condition(target), [
           requirement(seriesDefinition.metric, target, seriesDefinition.requirementLabel),
         ]);
+        entries.push([iconId, `${seriesDefinition.name} · ${tier.name}`]);
+      } else if (seriesDefinition.slug === "recorder-service") {
+        PROFILE_ICON_ACHIEVEMENTS[iconId] = retiredAchievement(`${seriesDefinition.name} · 신규 획득 종료`);
         entries.push([iconId, `${seriesDefinition.name} · ${tier.name}`]);
       }
       nextExpandedIconNumber += 1;
@@ -336,7 +345,7 @@ export const PROFILE_ICON_GROUPS = Object.freeze([
     ["58-team-huddle", "팀 허들"],
     ["59-mentor-torch", "초대 마스터"],
     ["60-referee-shield", "심판 방패"],
-    ["61-record-keeper", "기록관"],
+    ["61-record-keeper", "기록관 · 과거 기록원 활동"],
     ["62-court-scout", "코트 스카우트"],
     ["63-team-founder", "팀 창단자"],
     ["64-trusted-player", "신뢰받는 선수"],
@@ -379,7 +388,8 @@ export function getProfileIconAchievementState(iconId = "", metrics = {}, unlock
   const requirements = item.achievement?.requirements ?? [];
   const persisted = new Set(unlockedIconKeys).has(item.id);
   const ratios = requirements.map(({ metric, target }) => Math.min(1, Math.max(0, Number(metrics?.[metric] ?? 0) / target)));
-  const achieved = requirements.length === 0 || ratios.every((ratio) => ratio >= 1);
+  const achieved = item.achievement?.retired !== true
+    && (requirements.length === 0 || ratios.every((ratio) => ratio >= 1));
   return {
     ...item,
     unlocked: persisted || achieved,

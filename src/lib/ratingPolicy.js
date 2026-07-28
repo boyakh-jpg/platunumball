@@ -19,9 +19,9 @@ export const DEFAULT_RATING_POLICY = Object.freeze({
     foulGrace: 2,
     foulPenaltyPer: 1,
     maxFoulPenalty: 4,
-    // LEGACY READ-ONLY:
-    // 과거 경기 데이터 해석 전용.
-    // 신규 권한 판정 및 저장에 사용하지 않는다.
+    // LEGACY POLICY FIELD:
+    // 과거 정책 snapshot 해석 전용.
+    // 신규 경기 보상 계산과 관리자 설정 UI에서 사용하지 않는다.
     candidateRecorderReward: 2,
     refereeReward: 1,
     thumbsDelta: 1,
@@ -138,5 +138,9 @@ export function normalizeRatingPolicy(policy = {}) {
     const stepped = field.step >= 1 ? Math.round(value) : value;
     normalized = setRatingPolicyValue(normalized, field.path, Math.max(field.min, Math.min(field.max, stepped)));
   });
+  const legacyCandidateRecorderReward = Number(policy?.trust?.candidateRecorderReward);
+  if (Number.isFinite(legacyCandidateRecorderReward)) {
+    normalized.trust.candidateRecorderReward = legacyCandidateRecorderReward;
+  }
   return normalized;
 }

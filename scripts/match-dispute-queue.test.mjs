@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { approveMatch, disputeMatch, finalizeMatchByAuthority, resolveMatchDispute } from "../src/data/repository.js";
+import {
+  approveMatch,
+  disputeMatch,
+  finalizeMatchByAuthority,
+  resolveMatchDispute,
+  runAutomaticStateMaintenance,
+} from "../src/data/repository.js";
 import {
   DISPUTE_WINDOW_MINUTES,
   DISPUTE_WINDOW_OPTIONS,
@@ -21,7 +27,7 @@ const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
 
 function makeState(currentUserId = "host") {
-  const endedAt = new Date(Date.now() - 60_000).toISOString();
+  const endedAt = new Date(Date.now() - 4 * 60_000).toISOString();
   return {
     currentUserId,
     users: [
@@ -241,6 +247,36 @@ test("미처리 이의는 제한시간이 지나도 이의 단계에 남는다",
     disputes: [{ id: "open-1", by: "guest", status: "open", reason: "확인 필요" }],
   };
   assert.equal(getMatchRoomPhase(match).phase, "dispute");
+});
+
+test("심판 개인기록이 미완성이면 disputeMinutes 뒤에도 보험성 자동 확정하지 않는다", () => {
+  const state = makeState("referee");
+  const submittedAt = new Date(Date.now() - 20 * 60_000).toISOString();
+  const incompleteMatch = {
+    ...state.matches[0],
+    endedAt: submittedAt,
+    result: {
+      ...state.matches[0].result,
+      submittedAt,
+      playerStats: { host: state.matches[0].result.playerStats.host },
+    },
+  };
+  const incompleteState = { ...state, matches: [incompleteMatch] };
+  const blocked = runAutomaticStateMaintenance(incompleteState, new Date());
+  assert.equal(blocked.matches[0].status, "approval");
+
+  const completeState = {
+    ...blocked,
+    matches: [{
+      ...blocked.matches[0],
+      result: {
+        ...blocked.matches[0].result,
+        playerStats: state.matches[0].result.playerStats,
+      },
+    }],
+  };
+  const finalized = runAutomaticStateMaintenance(completeState, new Date());
+  assert.equal(finalized.matches[0].status, "confirmed");
 });
 
 test("DB와 목록 API가 병렬 큐를 새로고침 가능한 형태로 조회한다", async () => {

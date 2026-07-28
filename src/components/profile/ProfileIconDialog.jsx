@@ -12,7 +12,7 @@ import Button from "../common/Button.jsx";
 import ProfileEmblem from "./ProfileEmblem.jsx";
 
 const DEFAULT_UNLOCKED_KEYS = PROFILE_ICON_CATALOG
-  .filter((icon) => (icon.achievement?.requirements ?? []).length === 0)
+  .filter((icon) => icon.achievement?.retired !== true && (icon.achievement?.requirements ?? []).length === 0)
   .map((icon) => icon.id);
 
 function getInitialDraft(user) {

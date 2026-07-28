@@ -7,6 +7,7 @@ import {
   createMatch,
   finalizeMatchByAuthority,
   incrementMatchScore,
+  runAutomaticStateMaintenance,
   setMatchRecordParticipants,
   setMatchRecordTeamRoster,
 } from "../src/data/repository.js";
@@ -329,12 +330,24 @@ test("team match record selects teams first, then each captain fixes an exact ro
   assert.deepEqual(participantApproval.matches[0].approvals.teamB, ["u4"]);
   assert.deepEqual(participantApproval.matches[0].rules.participantAcceptedIds, ["u4"]);
 
-  const confirmedState = approveAllMatchRecordParticipants(participantApproval, match.id, ["u4"]);
+  const thresholdState = approveAllMatchRecordParticipants(participantApproval, match.id, ["u4", "u5", "u6"]);
+  assert.equal(thresholdState.matches[0].status, "agreed");
+  assert.deepEqual(
+    [...thresholdState.matches[0].rules.participantAcceptedIds].sort(),
+    ["u1", "u2", "u3", "u4"],
+  );
+  const submittedAtMs = Date.parse(thresholdState.matches[0].result.submittedAt);
+  const confirmedState = runAutomaticStateMaintenance(
+    thresholdState,
+    new Date(submittedAtMs + 24 * 60 * 60 * 1000),
+  );
   assert.equal(confirmedState.matches[0].status, "confirmed");
   assert.deepEqual(
     [...confirmedState.matches[0].rules.participantAcceptedIds].sort(),
-    users.map((user) => user.id).sort(),
+    ["u1", "u2", "u3", "u4"],
   );
+  assert.deepEqual(confirmedState.matches[0].mmrExcludedPlayerIds.sort(), ["u5", "u6"]);
+  assert.equal(confirmedState.matches[0].rules.teamRatingDisabled, true);
 });
 
 test("match-record cancellation uses record terminology while scheduled matches keep match terminology", () => {
@@ -377,13 +390,16 @@ test("individual match record requires each actual participant to confirm their 
   );
   assert.equal(proxyAttempt.matches[0], state.matches[0]);
 
-  state = approveAllMatchRecordParticipants(state, matchId);
+  state = approveAllMatchRecordParticipants(state, matchId, ["u5", "u6"]);
+  assert.equal(state.matches.find((match) => match.id === matchId).status, "agreed");
+  const submittedAtMs = Date.parse(state.matches.find((match) => match.id === matchId).result.submittedAt);
+  state = runAutomaticStateMaintenance(state, new Date(submittedAtMs + 24 * 60 * 60 * 1000));
   const confirmed = state.matches.find((match) => match.id === matchId);
   assert.equal(confirmed.status, "confirmed");
   assert.ok(confirmed.confirmedAt);
   assert.deepEqual(
     [...confirmed.rules.participantAcceptedIds].sort(),
-    users.map((user) => user.id).sort(),
+    ["u1", "u2", "u3", "u4"],
   );
   assert.strictEqual(
     approveMatch(state, matchId, "teamA", "u1"),

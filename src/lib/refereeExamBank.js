@@ -278,6 +278,27 @@ const BASE_QUESTIONS = [
   },
   {
     category: "rankball",
+    stem: "BOXTIER 심판 경기에서 개인 기록을 입력할 수 있는 사람은?",
+    choices: ["배정 심판만", "경기시계 담당자", "방장", "모든 출전 선수"],
+    answerIndex: 0,
+    explanation: "심판 경기의 개인 기록은 배정 심판만 입력한다.",
+  },
+  {
+    category: "rankball",
+    stem: "BOXTIER 무심판 일반 경기의 개인 기록 원칙은?",
+    choices: ["개인 기록을 생성하지 않는다", "방장이 전원 기록한다", "각자 기록한다", "경기시계 담당자가 기록한다"],
+    answerIndex: 0,
+    explanation: "무심판 일반 경기는 팀 점수만 저장하고 개인 기록을 생성하지 않는다.",
+  },
+  {
+    category: "rankball",
+    stem: "경기 결과에 열린 이의가 남아 있을 때 최종 확정은?",
+    choices: ["이의를 처리할 때까지 불가", "방장이 즉시 가능", "과반 동의로 가능", "시간이 지나면 즉시 가능"],
+    answerIndex: 0,
+    explanation: "열린 이의가 하나라도 있으면 최종 승인과 자동 확정을 모두 보류한다.",
+  },
+  {
+    category: "rankball",
     stem: "정규전에서 경기 후 임의로 참가자를 추가하면 MMR 반영은 어떻게 보는 게 안전한가?",
     choices: ["추가 참가자는 기록만 남기고 MMR에서는 제외한다", "처음부터 뛴 선수와 동일하게 반영한다", "상대팀만 반영한다", "무조건 경기 무효다"],
     answerIndex: 0,

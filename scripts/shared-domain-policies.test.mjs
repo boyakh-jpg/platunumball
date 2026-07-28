@@ -93,7 +93,12 @@ import {
   isMatchWithinRecordDetailWindow,
   isTournamentMatchLineupEditable,
 } from "../src/lib/matchUtils.js";
-import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../src/lib/ratingPolicy.js";
+import {
+  DEFAULT_RATING_POLICY,
+  RATING_POLICY_FIELDS,
+  RATING_POLICY_MODE_IDS,
+  normalizeRatingPolicy,
+} from "../src/lib/ratingPolicy.js";
 import {
   COURT_DUPLICATE_REPORT_REASON,
   REPORT_TARGET_TYPES,
@@ -499,7 +504,18 @@ test("심판 경기의 기록·이의·최종 확정은 심판만 수행하고 �
   assert.equal(resolved.matches[0].result.scoreB, 22);
   assert.equal(resolved.matches[0].confirmedAt, undefined);
 
-  const finalized = finalizeMatchByAuthority(resolved, match.id);
+  const tooEarly = finalizeMatchByAuthority(resolved, match.id);
+  assert.equal(tooEarly.matches[0].status, "approval");
+  const finalizableAt = new Date(Date.now() - 4 * 60_000).toISOString();
+  const readyResolved = {
+    ...resolved,
+    matches: resolved.matches.map((item) => item.id === match.id ? {
+      ...item,
+      endedAt: finalizableAt,
+      result: { ...item.result, submittedAt: finalizableAt },
+    } : item),
+  };
+  const finalized = finalizeMatchByAuthority(readyResolved, match.id);
   assert.equal(finalized.matches[0].status, "confirmed");
   assert.ok(finalized.matches[0].confirmedAt);
 
@@ -549,7 +565,18 @@ test("무심판 경기의 최종 확정은 방장만 수행한다", () => {
   };
 
   assert.strictEqual(finalizeMatchByAuthority(state, match.id), state);
-  const finalized = finalizeMatchByAuthority({ ...state, currentUserId: "host-1" }, match.id);
+  const hostState = { ...state, currentUserId: "host-1" };
+  assert.strictEqual(finalizeMatchByAuthority(hostState, match.id), hostState);
+  const finalizableAt = new Date(Date.now() - 4 * 60_000).toISOString();
+  const readyState = {
+    ...hostState,
+    matches: hostState.matches.map((item) => item.id === match.id ? {
+      ...item,
+      endedAt: finalizableAt,
+      result: { ...item.result, submittedAt: finalizableAt },
+    } : item),
+  };
+  const finalized = finalizeMatchByAuthority(readyState, match.id);
   assert.equal(finalized.matches[0].status, "confirmed");
   assert.deepEqual(finalized.matches[0].result.playerStats, {});
   assert.deepEqual(finalized.matches[0].result.statSubmissions, {});
@@ -674,6 +701,8 @@ test("room modes and administrator MMR policy use the same mode keys", () => {
   assert.deepEqual(RATING_POLICY_MODE_IDS, modeIds);
   assert.deepEqual(Object.keys(DEFAULT_RATING_POLICY.playerMmr.modeScalePercent), modeIds);
   assert.deepEqual(Object.keys(DEFAULT_RATING_POLICY.playerMmr.integratedScalePercent), modeIds);
+  assert.equal(RATING_POLICY_FIELDS.some((field) => field.path.at(-1) === "candidateRecorderReward"), false);
+  assert.equal(normalizeRatingPolicy({ trust: { candidateRecorderReward: 4 } }).trust.candidateRecorderReward, 4);
   for (const mode of MATCH_MODES) {
     assert.equal(getModeSize(mode.id), mode.size);
   }

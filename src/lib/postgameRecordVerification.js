@@ -1,7 +1,7 @@
 const MINUTE_MS = 60 * 1000;
 
-export const POSTGAME_RECORD_AUTO_APPROVAL_MINUTES = 15;
-export const POSTGAME_RECORD_REMINDER_MINUTES = Object.freeze([0, 5]);
+export const POSTGAME_RECORD_AUTO_APPROVAL_MINUTES = 24 * 60;
+export const POSTGAME_RECORD_REMINDER_MINUTES = Object.freeze([0, 12 * 60]);
 
 function uniqueIds(values = []) {
   return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))];
@@ -108,24 +108,28 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
     && !resultApprovedSet.has(playerId)
     && !rejectedSet.has(playerId)
   ));
-  const requestedApprovalMinutes = Number(match.disputeMinutes ?? match.rules?.disputeMinutes);
-  const approvalWindowMinutes = [10, 15, 20].includes(requestedApprovalMinutes)
-    ? requestedApprovalMinutes
-    : POSTGAME_RECORD_AUTO_APPROVAL_MINUTES;
+  const approvalWindowMinutes = POSTGAME_RECORD_AUTO_APPROVAL_MINUTES;
   const elapsedMs = submittedAtMs === null ? 0 : Math.max(0, nowMs - submittedAtMs);
   const deadlineAtMs = submittedAtMs === null
     ? null
     : submittedAtMs + approvalWindowMinutes * MINUTE_MS;
   const expired = deadlineAtMs !== null && nowMs >= deadlineAtMs;
-  const explicitlyDisputed = match.status === "disputed" || rejectedIds.length > 0;
-  const fullyApproved = requiredParticipantIds.length > 0
-    && verifiedPlayerIds.length === requiredParticipantIds.length;
-  const autoApproved = expired && !explicitlyDisputed;
-  const finalVerifiedPlayerIds = autoApproved ? requiredParticipantIds : verifiedPlayerIds;
-  const finalUnconfirmedIds = autoApproved ? [] : unconfirmedIds;
+  const openReportCount = Number(options.openReportCount ?? match.openReportCount ?? match.rules?.openReportCount ?? 0);
+  const explicitlyDisputed = match.status === "disputed"
+    || rejectedIds.length > 0
+    || openReportCount > 0
+    || (match.disputes ?? []).some((dispute) => dispute.status === "open");
+  const confirmationThreshold = requiredParticipantIds.length
+    ? Math.ceil(requiredParticipantIds.length * 2 / 3)
+    : 0;
+  const thresholdMet = confirmationThreshold > 0
+    && verifiedPlayerIds.length >= confirmationThreshold;
+  const autoApproved = expired && thresholdMet && !explicitlyDisputed;
+  const finalVerifiedPlayerIds = verifiedPlayerIds;
+  const finalUnconfirmedIds = unconfirmedIds;
   const verificationStatus = explicitlyDisputed
     ? "disputed"
-    : fullyApproved || autoApproved
+    : autoApproved
       ? "confirmed"
       : "partial";
 
@@ -146,15 +150,18 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
     submittedAt,
     deadlineAt: deadlineAtMs === null ? null : new Date(deadlineAtMs).toISOString(),
     approvalWindowMinutes,
+    confirmationThreshold,
+    confirmedCount: verifiedPlayerIds.length,
+    thresholdMet,
     elapsedMinutes: elapsedMs / MINUTE_MS,
     expired,
     timedOutUnconfirmedIds: [],
     requiresReview: explicitlyDisputed,
     canConfirmFully: verificationStatus === "confirmed",
     canAutoApprove: autoApproved,
-    ranked: false,
-    mmrPolicy: "forbidden",
-    canApplyPersonalMmr: false,
+    ranked: match.ranked !== false,
+    mmrPolicy: "confirmed_participants_low",
+    canApplyPersonalMmr: autoApproved && match.ranked !== false && verifiedPlayerIds.length > 0,
     canApplyTeamMmr: false,
   };
 }

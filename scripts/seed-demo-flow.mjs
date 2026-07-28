@@ -113,6 +113,18 @@ function getMatch(state, matchId) {
   return state.matches.find((match) => match.id === matchId);
 }
 
+function ageMatchFinalizationWindow(state, matchId, minutes = 4) {
+  const elapsedAt = new Date(Date.now() - (minutes * 60 * 1000)).toISOString();
+  return {
+    ...state,
+    matches: state.matches.map((match) => match.id === matchId ? {
+      ...match,
+      endedAt: elapsedAt,
+      result: match.result ? { ...match.result, submittedAt: elapsedAt } : match.result,
+    } : match),
+  };
+}
+
 const COURT_ROTATION = [
   "한강 노을코트",
   "성수 브릿지파크",
@@ -971,6 +983,7 @@ assertFlow(getMatch(state, lifecycleMatchId).status === "approval", "심판 경�
   status: getMatch(state, lifecycleMatchId).status,
 });
 
+state = ageMatchFinalizationWindow(state, lifecycleMatchId);
 state = withUser(state, "u11", (scoped) => finalizeMatchByAuthority(scoped, lifecycleMatchId));
 assertFlow(getMatch(state, lifecycleMatchId).status === "confirmed", "심판 경기 심판 최종 확정", {
   status: getMatch(state, lifecycleMatchId).status,

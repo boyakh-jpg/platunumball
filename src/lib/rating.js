@@ -308,7 +308,11 @@ export function getFinalizationRatingContext(match, teams = []) {
     matchForRating: {
       ...match,
       mmrExcludedPlayerIds,
-      rules: { ...(match.rules ?? {}), mmrExcludedPlayerIds },
+      rules: {
+        ...(match.rules ?? {}),
+        mmrExcludedPlayerIds,
+        ...(isMatchRecordMatch(match) ? { ratingScale: 0.2, teamRatingDisabled: true } : {}),
+      },
     },
     canApplyPersonalMmr: verification.canApplyPersonalMmr,
     canApplyTeamMmr: verification.canApplyTeamMmr,

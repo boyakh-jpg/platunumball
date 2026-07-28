@@ -1246,6 +1246,9 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
   return ["approveMatch", "resolveMatchDispute"].includes(action) && Boolean(existingResult) && nextMatch?.status === "confirmed";
 }
 
+// LEGACY REJECT-ONLY:
+// 구형 클라이언트의 폐기된 기록자 action을 명시적으로 거부한다.
+// 신규 UI와 내부 코드에서는 호출하지 않는다.
 const RETIRED_RECORDER_MATCH_ACTIONS = new Set([
   "approveMatchRecorderTakeover",
   "cancelMatchRecorderTakeover",
