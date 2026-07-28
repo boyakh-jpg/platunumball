@@ -2269,6 +2269,7 @@ export default function CreateMatch({
                       items={refereeSearchResults}
                       remoteSearchType={remoteDirectoryEnabled ? "referee" : ""}
                       remoteSearchOnFocus={remoteDirectoryEnabled}
+                      mapRemoteItem={(user) => activePlayerIds.has(user.id) ? null : user}
                       idleItems={favoriteReferees.length ? favoriteReferees : refereeCandidates.slice(0, 8)}
                       idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
                       title="심판 검색 결과"
@@ -2646,6 +2647,7 @@ export default function CreateMatch({
                     remoteSearchType={remoteDirectoryEnabled ? "referee" : ""}
                     remoteSearchOnFocus={remoteDirectoryEnabled}
                     remoteSearchContext={{ refereeThroughDate: draft.tournamentEndDate }}
+                    mapRemoteItem={(user) => activePlayerIds.has(user.id) ? null : user}
                     idleItems={favoriteReferees.length ? favoriteReferees : tournamentRefereeCandidates.slice(0, 8)}
                     idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
                     title="심판 검색 결과"
@@ -2783,6 +2785,7 @@ export default function CreateMatch({
                     items={refereeSearchResults}
                     remoteSearchType={remoteDirectoryEnabled ? "referee" : ""}
                     remoteSearchOnFocus={remoteDirectoryEnabled}
+                    mapRemoteItem={(user) => activePlayerIds.has(user.id) ? null : user}
                     idleItems={favoriteReferees.length ? favoriteReferees : refereeCandidates.slice(0, 8)}
                     idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
                     title="심판 검색 결과"

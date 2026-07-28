@@ -15,6 +15,7 @@ import {
   SOLO_RECORD_ANONYMOUS_POSITION,
   SOLO_RECORD_ANONYMOUS_SOURCE,
   STAT_ENTRY_WINDOW_MINUTES,
+  TEST_REFEREE_LOGIN_IDS,
   isRefereeGrade,
   normalizeDisputeWindowMinutes,
 } from "./constants.js";
@@ -1315,7 +1316,7 @@ export function getMatchReferee(match = {}, users = []) {
 }
 
 const INACTIVE_REFEREE_STATUSES = new Set(["pending", "rejected", "revoked", "expired", "suspended", "blocked"]);
-const TEST_REFEREE_LOGIN_IDS = new Set(["rankball-001", "rankball-011"]);
+const TEST_REFEREE_LOGIN_ID_SET = new Set(TEST_REFEREE_LOGIN_IDS);
 
 function isActiveRefereeStatus(status = "active") {
   return !INACTIVE_REFEREE_STATUSES.has(String(status || "active"));
@@ -1332,7 +1333,7 @@ function isActiveRefereeTerm(record = {}, nowMs = Date.now(), throughMs = nowMs)
 
 function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Date.now(), throughMs = nowMs) {
   if (!user?.id) return false;
-  if (TEST_REFEREE_LOGIN_IDS.has(String(user.testLoginId ?? "").toLowerCase())) return true;
+  if (TEST_REFEREE_LOGIN_ID_SET.has(String(user.testLoginId ?? "").toLowerCase())) return true;
   const profile = user.refereeProfile ?? {};
   const profileGrade = profile.grade ?? user.refereeGrade;
   const profileStatus = profile.status ?? user.refereeStatus ?? "active";

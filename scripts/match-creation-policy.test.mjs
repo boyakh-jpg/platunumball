@@ -1135,4 +1135,5 @@ test("원격 심판 검색에서 선택한 프로필은 일반 경기 후보에 
     source,
     /const selectReferee = \(user\) => \{[\s\S]*setSelectedTournamentRefereeProfiles[\s\S]*if \(isTournamentRoom\)/,
   );
+  assert.match(source, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);
 });

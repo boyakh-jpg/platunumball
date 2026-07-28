@@ -8,11 +8,12 @@ import {
   TEAM_COLUMNS,
   TEAM_MEMBER_COLUMNS,
 } from "../../src/data/repositoryColumns.js";
-import { DEFAULT_RATING, isRefereeGrade } from "../../src/lib/constants.js";
+import { DEFAULT_RATING, TEST_REFEREE_LOGIN_IDS, isRefereeGrade } from "../../src/lib/constants.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../../src/lib/queryPolicy.js";
 import { fromRemoteApprovedCourt } from "../../src/data/remotePayloadMappers.js";
 
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
+const REFEREE_QUALIFICATION_SEARCH_LIMIT = 500;
 const TYPE_ALIASES = {
   all: ["profile", "team", "court", "referee"],
   player: ["profile"],
@@ -370,37 +371,65 @@ async function searchCourtReviews(supabase, profileId, query, limit) {
 async function searchReferees(supabase, query, limit, searchContext = {}) {
   const throughText = String(searchContext.refereeThroughDate ?? "").slice(0, 10);
   const throughMs = throughText ? new Date(`${throughText}T23:59:59.999Z`).getTime() : Date.now();
-  let profileQuery = supabase
-    .from("public_profiles")
-    .select(PROFILE_COLUMNS)
+  let testProfileQuery = supabase
+    .from("profiles")
+    .select(`${PROFILE_COLUMNS},test_login_id`)
+    .in("test_login_id", TEST_REFEREE_LOGIN_IDS)
     .gte("trust_score", 90)
-    .order("trust_score", { ascending: false })
-    .limit(limit * 3);
-  if (query) profileQuery = profileQuery.or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
-  const { data, error } = await profileQuery;
-  if (error) throw error;
-  const profileRows = data ?? [];
-  const profileIds = profileRows.map((profile) => profile.id).filter(Boolean);
-  const { data: appointmentRows, error: appointmentError } = profileIds.length
-    ? await supabase.from("referee_appointments").select(REFEREE_APPOINTMENT_COLUMNS).in("user_id", profileIds)
-    : { data: [], error: null };
+    .limit(TEST_REFEREE_LOGIN_IDS.length);
+  if (query) testProfileQuery = testProfileQuery.or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
+  const [appointmentResult, testProfileResult] = await Promise.all([
+    supabase
+      .from("referee_appointments")
+      .select(REFEREE_APPOINTMENT_COLUMNS)
+      .eq("role", "referee")
+      .eq("status", "active")
+      .limit(REFEREE_QUALIFICATION_SEARCH_LIMIT),
+    testProfileQuery,
+  ]);
+  const { data: appointmentRows, error: appointmentError } = appointmentResult;
   if (appointmentError) throw appointmentError;
+  const { data: testProfileRows, error: testProfileError } = testProfileResult;
+  if (testProfileError) throw testProfileError;
   const appointmentByUserId = new Map();
   (appointmentRows ?? []).filter((appointment) => isActiveRefereeAppointment(appointment, throughMs)).forEach((appointment) => {
     if (!appointmentByUserId.has(appointment.user_id)) appointmentByUserId.set(appointment.user_id, appointment);
   });
+  const appointmentProfileIds = [...appointmentByUserId.keys()];
+  let qualifiedProfileRows = [];
+  if (appointmentProfileIds.length) {
+    let profileQuery = supabase
+      .from("public_profiles")
+      .select(PROFILE_COLUMNS)
+      .in("id", appointmentProfileIds)
+      .gte("trust_score", 90)
+      .order("trust_score", { ascending: false })
+      .limit(Math.max(limit * 3, limit));
+    if (query) profileQuery = profileQuery.or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
+    const { data, error } = await profileQuery;
+    if (error) throw error;
+    qualifiedProfileRows = data ?? [];
+  }
+  const testProfileIdSet = new Set((testProfileRows ?? []).map((profile) => profile.id));
+  const profileRows = [...new Map([
+    ...qualifiedProfileRows,
+    ...(testProfileRows ?? []),
+  ].map((profile) => [profile.id, profile])).values()]
+    .filter((profile) => Number(profile.trust_score ?? 0) >= 90)
+    .sort((a, b) => Number(b.trust_score ?? 0) - Number(a.trust_score ?? 0) || String(a.name ?? "").localeCompare(String(b.name ?? "")));
   return profileRows
-    .filter((profile) => appointmentByUserId.has(profile.id))
+    .filter((profile) => appointmentByUserId.has(profile.id) || testProfileIdSet.has(profile.id))
     .slice(0, limit)
     .map((row) => {
       const appointment = appointmentByUserId.get(row.id);
+      const grade = appointment?.grade ?? "candidate";
       return toProfile(row, "referee", {
-        refereeGrade: appointment.grade,
+        refereeGrade: grade,
         refereeProfile: {
-          grade: appointment.grade,
-          status: appointment.status,
-          startsAt: appointment.starts_at,
-          endsAt: appointment.ends_at,
+          grade,
+          status: appointment?.status ?? "active",
+          startsAt: appointment?.starts_at ?? null,
+          endsAt: appointment?.ends_at ?? null,
         },
       });
     });

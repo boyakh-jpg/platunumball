@@ -172,9 +172,18 @@ test("referee search supports qualified discovery on focus only", async () => {
     readSource("src/pages/CreateMatch.jsx"),
   ]);
   assert.match(searchSource, /const refereeDiscovery = forceSearch && queryLength === 0 && types\.length === 1 && types\[0\] === "referee";/);
-  assert.match(searchSource, /if \(query\) profileQuery = profileQuery\.or\(/);
+  const refereeSearchSource = searchSource.slice(
+    searchSource.indexOf("async function searchReferees"),
+    searchSource.indexOf("async function searchAffiliations"),
+  );
+  assert.ok(
+    refereeSearchSource.indexOf('.from("referee_appointments")') < refereeSearchSource.indexOf('.from("public_profiles")'),
+  );
+  assert.match(refereeSearchSource, /\.from\("profiles"\)[\s\S]*?\.in\("test_login_id", TEST_REFEREE_LOGIN_IDS\)/);
+  assert.match(refereeSearchSource, /\.in\("id", appointmentProfileIds\)/);
   assert.match(pickerSource, /const canRemoteSearch = canSearch \|\| \(remoteSearchOnFocus && focused\);/);
   assert.match(createMatchSource, /remoteSearchOnFocus=\{remoteDirectoryEnabled\}/);
+  assert.match(createMatchSource, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);
 });
 
 test("report insert conflicts and admin review input fail safely", async () => {
