@@ -3293,6 +3293,9 @@ flowchart TD
 4. 같은 사용자의 같은 구장 미처리 신고는 한 건만 허용한다. 기존 신고가 처리된 뒤 다시 신고할 수 있다.
 5. `courtCorrection.field=duplicate` 신고는 경기관리자 level 50 이상이 `중복 구장 확정`으로 처리한다. DB는 신고 row와 대상 구장 row를 잠그고 기존 중앙 구장 검수의 `duplicate` scenario를 실행해 구장을 `status=disabled`, `verification_status=verified`, `admin_review_scenario=duplicate`로 저장한 뒤 신고 해결, 구장 검수·신고 처리 감사 로그, 신고자 알림을 한 transaction으로 커밋한다.
 6. 일반 `신고 인정`이나 임시 `구장 숨김`은 중복 확정을 대신하지 않는다. 같은 사용자의 같은 구장 미처리 신고는 API 선조회뿐 아니라 DB advisory lock과 고유 index로 동시 요청도 한 건만 허용한다.
+7. 공개 범위, 이용 방식, 이용료, 운영 상태, 실내외, 구장 유형, 바닥, 코트 형태, 조명은 `courtCorrection.attribute`와 서버 허용값으로 구조화한다. 시설명, 주소, 연락처, 중복, 기타처럼 자유 입력이 필요한 항목은 자동 DB 반영 대상으로 사용하지 않는다.
+8. 경기관리자 level 50 이상의 `제안값 반영`은 신고에 저장된 구조화 값만 다시 검증한다. 클라이언트가 관리자 처리 시 보낸 patch는 사용하지 않는다.
+9. 구조화 수정 반영은 구장 row, 구장 변경 감사 로그, 신고 해결, 신고 처리 감사 로그와 신고자 알림을 한 transaction에서 커밋한다. 일부만 반영된 상태를 허용하지 않는다.
 
 ## 2026-07-23 주소 건물명 구장 표준화·지도 노출
 

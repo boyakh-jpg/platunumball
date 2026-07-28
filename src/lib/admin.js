@@ -59,6 +59,11 @@ export const SUSPENSION_TIERS = [
 ];
 
 export const ADMIN_REVIEW_ACTIONS = {
+  applyCourtCorrection: {
+    label: "제안값 반영",
+    reason: "구조화된 구장 정보 수정 제안 확인",
+    feedback: "제안한 구장 정보가 관리자 확인 후 반영되었습니다.",
+  },
   markCourtDuplicate: {
     label: "중복 구장 확정",
     reason: "동일 시설 중복 등록 확인",
@@ -92,6 +97,7 @@ export const ADMIN_REPORT_TYPE_META = {
 };
 
 const HIGH_IMPACT_REVIEW_ACTIONS = new Set([
+  "applyCourtCorrection",
   "markCourtDuplicate",
   "maliciousReporter",
   "suspendTarget",

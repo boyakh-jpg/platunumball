@@ -413,6 +413,10 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_report_id: "", p_reason: "", p_feedback: "" },
   },
   {
+    name: "rankball_apply_court_correction_report",
+    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_report_id: "", p_reason: "", p_feedback: "" },
+  },
+  {
     name: "rankball_get_rating_policy",
     args: { p_actor_profile_id: "", p_actor_admin_level: 0 },
   },

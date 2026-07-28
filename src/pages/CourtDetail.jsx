@@ -8,6 +8,7 @@ import {
   COURT_CORRECTION_FIELD_OPTIONS,
   getCourtAddress,
   getCourtAccessLabel,
+  getCourtCorrectionAttributeOptions,
   getCourtCorrectionFieldLabel,
   getCourtHoopCount,
   getCourtLayoutLabel,
@@ -66,12 +67,41 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const [saveMessage, setSaveMessage] = useState("");
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [correctionField, setCorrectionField] = useState("name");
+  const [correctionAttribute, setCorrectionAttribute] = useState("");
   const [correctionValue, setCorrectionValue] = useState("");
+  const [correctionNote, setCorrectionNote] = useState("");
   const [correctionUrl, setCorrectionUrl] = useState("");
   const [correctionSaving, setCorrectionSaving] = useState(false);
   const [correctionMessage, setCorrectionMessage] = useState("");
   const detailRequestRef = useRef(0);
   const loadCourtDetail = app.actions?.loadCourtDetail;
+  const correctionAttributes = useMemo(
+    () => getCourtCorrectionAttributeOptions(correctionField),
+    [correctionField],
+  );
+  const selectedCorrectionAttribute = correctionAttributes.find((option) => option.id === correctionAttribute)
+    ?? correctionAttributes[0]
+    ?? null;
+  const correctionIsStructured = Boolean(selectedCorrectionAttribute);
+  const correctionCanSubmit = correctionIsStructured
+    ? Boolean(selectedCorrectionAttribute.options.some((option) => option.id === correctionValue))
+    : correctionValue.trim().length >= 4;
+
+  const changeCorrectionField = (field) => {
+    const nextAttribute = getCourtCorrectionAttributeOptions(field)[0] ?? null;
+    setCorrectionField(field);
+    setCorrectionAttribute(nextAttribute?.id ?? "");
+    setCorrectionValue(nextAttribute?.options[0]?.id ?? "");
+    setCorrectionNote("");
+    setCorrectionMessage("");
+  };
+
+  const changeCorrectionAttribute = (attribute) => {
+    const nextAttribute = correctionAttributes.find((option) => option.id === attribute) ?? correctionAttributes[0];
+    setCorrectionAttribute(nextAttribute?.id ?? "");
+    setCorrectionValue(nextAttribute?.options[0]?.id ?? "");
+    setCorrectionMessage("");
+  };
 
   const refreshDetail = useCallback(async ({ silent = false } = {}) => {
     const requestId = detailRequestRef.current + 1;
@@ -117,7 +147,9 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   useEffect(() => {
     setCorrectionOpen(false);
     setCorrectionField("name");
+    setCorrectionAttribute("");
     setCorrectionValue("");
+    setCorrectionNote("");
     setCorrectionUrl("");
     setCorrectionMessage("");
   }, [courtId]);
@@ -163,8 +195,9 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const submitCorrection = async (event) => {
     event.preventDefault();
     const proposedValue = correctionValue.trim();
+    const note = correctionNote.trim();
     const evidenceUrl = correctionUrl.trim();
-    if (proposedValue.length < 4 || correctionSaving) return;
+    if (!correctionCanSubmit || correctionSaving) return;
     if (evidenceUrl && !/^https?:\/\//i.test(evidenceUrl)) {
       setCorrectionMessage("근거 URL은 http:// 또는 https://로 입력해 주세요.");
       return;
@@ -175,7 +208,13 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     const result = await app.actions?.reportCourt?.(
       courtId,
       `${fieldLabel} 수정 요청: ${proposedValue}`,
-      { field: correctionField, proposedValue, evidenceUrl },
+      {
+        field: correctionField,
+        attribute: selectedCorrectionAttribute?.id ?? "",
+        proposedValue,
+        note,
+        evidenceUrl,
+      },
       detail?.court ?? null,
     );
     if (result?.duplicate) {
@@ -185,7 +224,8 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
         ? "이미 검토 중인 신고가 있거나 신고할 수 없는 구장입니다."
         : "정보 수정 신고를 접수하지 못했습니다.");
     } else {
-      setCorrectionValue("");
+      if (!correctionIsStructured) setCorrectionValue("");
+      setCorrectionNote("");
       setCorrectionUrl("");
       setCorrectionMessage("접수했습니다. 관리자 확인 전까지 현재 정보는 유지됩니다.");
     }
@@ -279,21 +319,44 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           <form className="court-correction-form" onSubmit={submitCorrection}>
             <label>
               <span>수정할 정보</span>
-              <select value={correctionField} onChange={(event) => setCorrectionField(event.target.value)}>
+              <select value={correctionField} onChange={(event) => changeCorrectionField(event.target.value)}>
                 {COURT_CORRECTION_FIELD_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </label>
+            {selectedCorrectionAttribute ? (
+              <label>
+                <span>세부 항목</span>
+                <select value={selectedCorrectionAttribute.id} onChange={(event) => changeCorrectionAttribute(event.target.value)}>
+                  {correctionAttributes.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                </select>
+              </label>
+            ) : null}
             <label className="court-correction-value">
-              <span>올바른 정보 또는 수정 내용</span>
-              <textarea value={correctionValue} onChange={(event) => setCorrectionValue(event.target.value)} minLength={4} maxLength={500} rows={3} required placeholder="현재 정보에서 무엇을 어떻게 바꿔야 하는지 적어 주세요." />
-              <small>{correctionValue.length}/500</small>
+              <span>{selectedCorrectionAttribute ? "바꿀 값" : "올바른 정보 또는 수정 내용"}</span>
+              {selectedCorrectionAttribute ? (
+                <select value={correctionValue} onChange={(event) => setCorrectionValue(event.target.value)}>
+                  {selectedCorrectionAttribute.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                </select>
+              ) : (
+                <>
+                  <textarea value={correctionValue} onChange={(event) => setCorrectionValue(event.target.value)} minLength={4} maxLength={500} rows={3} required placeholder="현재 정보에서 무엇을 어떻게 바꿔야 하는지 적어 주세요." />
+                  <small>{correctionValue.length}/500</small>
+                </>
+              )}
             </label>
-            <label>
+            {selectedCorrectionAttribute ? (
+              <label className="court-correction-note">
+                <span>추가 설명 (선택)</span>
+                <textarea value={correctionNote} onChange={(event) => setCorrectionNote(event.target.value)} maxLength={500} rows={2} placeholder="관리자가 확인할 내용이 있으면 적어 주세요." />
+                <small>{correctionNote.length}/500</small>
+              </label>
+            ) : null}
+            <label className="court-correction-evidence">
               <span>근거 URL (선택)</span>
               <input type="url" value={correctionUrl} onChange={(event) => setCorrectionUrl(event.target.value)} maxLength={1000} placeholder="https://" />
             </label>
             <div className="court-correction-actions">
-              <Button type="submit" size="sm" disabled={correctionValue.trim().length < 4 || correctionSaving}>{correctionSaving ? "접수 중" : "수정 신고 접수"}</Button>
+              <Button type="submit" size="sm" disabled={!correctionCanSubmit || correctionSaving}>{correctionSaving ? "접수 중" : "수정 신고 접수"}</Button>
               <Button type="button" variant="secondary" size="sm" onClick={() => setCorrectionOpen(false)}>닫기</Button>
             </div>
           </form>

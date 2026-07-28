@@ -2746,8 +2746,8 @@ input[type="color"] {
 
 .court-correction-form {
   display: grid;
-  grid-template-columns: minmax(150px, 0.55fr) minmax(280px, 1.45fr) minmax(220px, 1fr);
-  align-items: end;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: var(--space-5);
 }
 
@@ -2791,6 +2791,12 @@ input[type="color"] {
   font-size: 0.7rem;
   font-weight: 750;
   text-align: right;
+}
+
+.court-correction-value,
+.court-correction-note,
+.court-correction-evidence {
+  grid-column: 1 / -1;
 }
 
 .court-correction-form select:focus,
@@ -3099,13 +3105,6 @@ input[type="color"] {
     order: -1;
   }
 
-  .court-correction-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .court-correction-value {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 620px) {
@@ -3141,6 +3140,8 @@ input[type="color"] {
   }
 
   .court-correction-value,
+  .court-correction-note,
+  .court-correction-evidence,
   .court-correction-actions {
     grid-column: auto;
   }

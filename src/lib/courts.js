@@ -79,8 +79,87 @@ export const COURT_CORRECTION_FIELD_OPTIONS = [
   { id: "other", label: "기타" },
 ];
 
+const COURT_CORRECTION_BOOLEAN_OPTIONS = Object.freeze([
+  { id: "true", label: "있음" },
+  { id: "false", label: "없음" },
+  { id: "null", label: "확인 필요" },
+]);
+
+export const COURT_CORRECTION_ATTRIBUTE_OPTIONS = Object.freeze({
+  access: [
+    { id: "publicAccess", label: "공개 범위", options: COURT_PUBLIC_ACCESS_OPTIONS },
+    { id: "accessType", label: "이용 방식", options: COURT_ACCESS_OPTIONS },
+    {
+      id: "paid",
+      label: "이용료",
+      options: [
+        { id: "true", label: "유료" },
+        { id: "false", label: "무료" },
+        { id: "null", label: "확인 필요" },
+      ],
+    },
+  ],
+  operation: [
+    {
+      id: "operationalStatus",
+      label: "운영 상태",
+      options: [
+        { id: "active", label: "운영 중" },
+        { id: "pending", label: "확인 중" },
+        { id: "closed", label: "폐쇄" },
+        { id: "unknown", label: "확인 필요" },
+      ],
+    },
+  ],
+  court: [
+    {
+      id: "indoorOutdoor",
+      label: "실내외",
+      options: [
+        { id: "outdoor", label: "야외" },
+        { id: "indoor", label: "실내" },
+        { id: "mixed", label: "혼합" },
+        { id: "unknown", label: "확인 필요" },
+      ],
+    },
+    { id: "courtKind", label: "구장 유형", options: COURT_KIND_OPTIONS },
+    { id: "surfaceType", label: "바닥", options: COURT_SURFACE_OPTIONS },
+    { id: "courtLayout", label: "코트 형태", options: COURT_LAYOUT_OPTIONS },
+    { id: "lighting", label: "조명", options: COURT_CORRECTION_BOOLEAN_OPTIONS },
+  ],
+});
+
 export function getCourtCorrectionFieldLabel(value = "") {
   return COURT_CORRECTION_FIELD_OPTIONS.find((option) => option.id === value)?.label ?? "기타";
+}
+
+export function getCourtCorrectionAttributeOptions(field = "") {
+  return COURT_CORRECTION_ATTRIBUTE_OPTIONS[field] ?? [];
+}
+
+export function getCourtCorrectionAttribute(correction = {}) {
+  return getCourtCorrectionAttributeOptions(correction.field)
+    .find((option) => option.id === correction.attribute) ?? null;
+}
+
+export function getCourtCorrectionAttributeLabel(correction = {}) {
+  return getCourtCorrectionAttribute(correction)?.label ?? "";
+}
+
+export function getCourtCorrectionProposedLabel(correction = {}) {
+  const attribute = getCourtCorrectionAttribute(correction);
+  return attribute?.options.find((option) => option.id === String(correction.proposedValue))?.label
+    ?? String(correction.proposedValue ?? "");
+}
+
+export function getCourtCorrectionPatch(correction = {}) {
+  const attribute = getCourtCorrectionAttribute(correction);
+  const option = attribute?.options.find((item) => item.id === String(correction.proposedValue));
+  if (!attribute || !option) return null;
+  if (["paid", "lighting"].includes(attribute.id)) {
+    return { [attribute.id]: option.id === "null" ? null : option.id === "true" };
+  }
+  return { [attribute.id]: option.id };
 }
 
 export const COURT_SOURCE_URL_MAX_LENGTH = 500;

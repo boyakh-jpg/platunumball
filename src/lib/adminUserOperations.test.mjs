@@ -84,6 +84,7 @@ test("report actions never mix the reporter into a target sanction", () => {
   assert.deepEqual(getAdminActionTargetUserIds(report, "refereeDiscipline", { formerRefereeId: "referee-1" }), ["referee-1"]);
   assert.deepEqual(getAdminActionTargetUserIds(report, "refereeDiscipline", { refereeId: "other" }), []);
   assert.equal(isHighImpactAdminReviewAction("suspendTarget"), true);
+  assert.equal(isHighImpactAdminReviewAction("applyCourtCorrection"), true);
   assert.equal(isHighImpactAdminReviewAction("markCourtDuplicate"), true);
   assert.equal(ADMIN_REVIEW_ACTIONS.markCourtDuplicate.reason, "동일 시설 중복 등록 확인");
   assert.equal(isHighImpactAdminReviewAction("dismissReport"), false);
@@ -131,6 +132,50 @@ test("duplicate court report resolution disables the court in local fallback", (
   assert.equal(next.settings.approvedCourts[0].verificationStatus, "verified");
   assert.equal(next.settings.approvedCourts[0].adminReviewScenario, "duplicate");
   assert.equal(next.settings.approvedCourts[0].adminReviewCount, 1);
+});
+
+test("structured court correction applies the verified option in local fallback", () => {
+  const state = {
+    currentUserId: "admin-1",
+    users: [{ id: "admin-1", name: "관리자" }],
+    teams: [],
+    affiliations: [],
+    reports: [{
+      id: "report-structured",
+      type: "court",
+      targetId: "court-1",
+      by: "reporter-1",
+      status: "open",
+      courtCorrection: {
+        field: "access",
+        attribute: "publicAccess",
+        proposedValue: "public",
+      },
+      createdAt: "2026-07-28T00:00:00.000Z",
+    }],
+    notifications: [],
+    settings: {
+      approvedCourts: [{ id: "court-1", name: "테스트 구장", publicAccess: "unknown" }],
+      adminAppointments: [{
+        id: "appointment-1",
+        source: "server_context",
+        userId: "admin-1",
+        role: "admin",
+        grade: "matchManager",
+        status: "active",
+      }],
+      adminAuditLog: [],
+      adminDisciplinaryActions: [],
+    },
+  };
+  const next = commitAdminReviewAction(state, {
+    reportId: "report-structured",
+    actionType: "applyCourtCorrection",
+    reason: "현장 공개 이용 확인",
+    feedback: "공개 구장으로 반영했습니다.",
+  });
+  assert.equal(next.reports[0].status, "resolved");
+  assert.equal(next.settings.approvedCourts[0].publicAccess, "public");
 });
 
 test("admin review metrics do not duplicate the same report count", () => {
