@@ -981,7 +981,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
   min-width: 0;
 }
 
-.match-record-meta__labels {
+.match-record-meta__labels,
+.recent-match-row .match-record-meta__labels,
+.history-item .match-record-meta__labels {
   display: inline-flex;
   flex: none;
   flex-wrap: nowrap;

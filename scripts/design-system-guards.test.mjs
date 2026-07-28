@@ -150,6 +150,10 @@ test("record result cards share matchup and date mode court metadata", () => {
   );
   assert.match(
     globalSearchStyles,
+    /\.recent-match-row \.match-record-meta__labels,[\s\S]*?\.history-item \.match-record-meta__labels\s*\{[^}]*display:\s*inline-flex;[^}]*flex-wrap:\s*nowrap;/,
+  );
+  assert.match(
+    globalSearchStyles,
     /\.match-record-meta__label--personal\s*\{[^}]*color:\s*var\(--gold\);[\s\S]*?\.match-record-meta__label--public\s*\{[^}]*color:\s*var\(--green\);[\s\S]*?\.match-record-meta__label--private\s*\{[^}]*color:\s*var\(--blue\);/,
   );
   for (const page of ["home", "playerDetail", "teamDetail"]) {
