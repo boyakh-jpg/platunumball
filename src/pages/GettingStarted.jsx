@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock3,
+  ChevronDown,
   FlaskConical,
   Gauge,
   MapPin,
@@ -172,7 +173,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "04 · LIVE",
     title: "심판·경기시계 담당자·선수가 역할을 나눕니다.",
     lead: "심판 유무와 경기시계 사용 여부에 따라 점수·기록·최종 승인 권한이 분리됩니다.",
-    image: "/assets/guide/live-clock.jpg?v=20260728-guide-r2",
+    image: "/assets/guide/live-clock.jpg?v=20260728-guide-r3",
     imageAlt: "A/B 점수판과 30초 샷클락이 함께 열린 가로형 BOXTIER 경기시계",
     caption: "지정된 담당자 화면에서 A/B 점수와 경기시간을 조작하고 샷클락을 초기화합니다.",
     steps: [
@@ -655,6 +656,7 @@ export default function GettingStarted({ app }) {
   const [searchParams] = useSearchParams();
   const [homeGuideCardSavePending, setHomeGuideCardSavePending] = useState(false);
   const [homeGuideCardSaveStatus, setHomeGuideCardSaveStatus] = useState("");
+  const [chapterMenuOpen, setChapterMenuOpen] = useState(false);
   const chapterTitleRef = useRef(null);
   const requestedChapterId = searchParams.get("chapter") ?? GUIDE_CHAPTER_IDS[0];
   const requestedChapterIndex = GUIDE_CHAPTER_IDS.indexOf(requestedChapterId);
@@ -667,6 +669,7 @@ export default function GettingStarted({ app }) {
   const homeGuideCardVisible = isHomeGuideCardVisible(app.state.settings);
 
   useEffect(() => {
+    setChapterMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "auto" });
     if (previousChapterIdRef.current !== chapter.id) {
       chapterTitleRef.current?.focus({ preventScroll: true });
@@ -707,18 +710,36 @@ export default function GettingStarted({ app }) {
         <span>ALPHA GUIDE · {GUIDE_CHAPTERS.length}단계</span>
       </div>
 
-      <nav className="getting-started-chapter-nav ui-panel" aria-label="사용 설명 목차">
-        {GUIDE_CHAPTERS.map((item, index) => (
-          <Link
-            key={item.id}
-            className={item.id === chapter.id ? "is-active" : ""}
-            to={`?chapter=${item.id}`}
-            aria-current={item.id === chapter.id ? "page" : undefined}
-          >
-            <span aria-hidden="true">{index + 1}</span>
-            {item.navLabel}
-          </Link>
-        ))}
+      <nav
+        className={`getting-started-chapter-nav ui-panel${chapterMenuOpen ? " is-open" : ""}`}
+        aria-label="사용 설명 목차"
+      >
+        <button
+          className="getting-started-chapter-nav__toggle"
+          type="button"
+          aria-expanded={chapterMenuOpen}
+          aria-controls="getting-started-chapter-links"
+          onClick={() => setChapterMenuOpen((open) => !open)}
+        >
+          <span>{activeIndex + 1} / {GUIDE_CHAPTERS.length}</span>
+          <strong>{chapter.navLabel}</strong>
+          <small>단계 선택</small>
+          <ChevronDown size={17} aria-hidden="true" />
+        </button>
+        <div className="getting-started-chapter-nav__links" id="getting-started-chapter-links">
+          {GUIDE_CHAPTERS.map((item, index) => (
+            <Link
+              key={item.id}
+              className={item.id === chapter.id ? "is-active" : ""}
+              to={`?chapter=${item.id}`}
+              aria-current={item.id === chapter.id ? "page" : undefined}
+              onClick={() => setChapterMenuOpen(false)}
+            >
+              <span aria-hidden="true">{index + 1}</span>
+              {item.navLabel}
+            </Link>
+          ))}
+        </div>
       </nav>
 
       <Card as="article" className="getting-started-chapter">

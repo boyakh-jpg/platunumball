@@ -141,12 +141,19 @@
 
 .getting-started-chapter-nav {
   --ui-panel-padding: var(--space-3);
+}
+
+.getting-started-chapter-nav__toggle {
+  display: none;
+}
+
+.getting-started-chapter-nav__links {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
-.getting-started-chapter-nav a {
+.getting-started-chapter-nav__links a {
   display: inline-flex;
   gap: var(--space-3);
   align-items: center;
@@ -164,23 +171,23 @@
   border-radius: var(--ui-button-radius);
 }
 
-.getting-started-chapter-nav a:hover {
+.getting-started-chapter-nav__links a:hover {
   color: var(--rb-text);
   background: color-mix(in srgb, var(--rb-text) 5%, transparent);
 }
 
-.getting-started-chapter-nav a:focus-visible {
+.getting-started-chapter-nav__links a:focus-visible {
   outline: 2px solid var(--rb-orange-2);
   outline-offset: 1px;
 }
 
-.getting-started-chapter-nav a.is-active {
+.getting-started-chapter-nav__links a.is-active {
   color: #151515;
   background: var(--rb-orange);
   border-color: transparent;
 }
 
-.getting-started-chapter-nav a > span {
+.getting-started-chapter-nav__links a > span {
   display: grid;
   flex: 0 0 22px;
   width: 22px;
@@ -740,17 +747,70 @@
   }
 
   .getting-started-chapter-nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
+    --ui-panel-padding: var(--space-2);
   }
 
-  .getting-started-chapter-nav a {
+  .getting-started-chapter-nav__toggle {
+    display: grid;
+    width: 100%;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-4);
+    color: var(--rb-text);
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: var(--ui-button-radius);
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    gap: var(--space-3);
+    align-items: center;
+  }
+
+  .getting-started-chapter-nav__toggle > span,
+  .getting-started-chapter-nav__toggle > small {
+    color: var(--rb-muted);
+    font-size: 0.68rem;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+
+  .getting-started-chapter-nav__toggle > strong {
+    overflow: hidden;
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .getting-started-chapter-nav__toggle > svg {
+    transition: transform 160ms ease;
+  }
+
+  .getting-started-chapter-nav__toggle:focus-visible {
+    outline: 2px solid var(--rb-orange-2);
+    outline-offset: 1px;
+  }
+
+  .getting-started-chapter-nav__links {
+    display: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+  }
+
+  .getting-started-chapter-nav.is-open .getting-started-chapter-nav__links {
+    display: grid;
+  }
+
+  .getting-started-chapter-nav.is-open .getting-started-chapter-nav__toggle > svg {
+    transform: rotate(180deg);
+  }
+
+  .getting-started-chapter-nav__links a {
     gap: var(--space-2);
     padding-inline: var(--space-2);
     font-size: 0.72rem;
   }
 
-  .getting-started-chapter-nav a > span {
+  .getting-started-chapter-nav__links a > span {
     display: none;
   }
 
@@ -820,11 +880,7 @@
     letter-spacing: 0.04em;
   }
 
-  .getting-started-chapter-nav {
-    --ui-panel-padding: var(--space-2);
-  }
-
-  .getting-started-chapter-nav a {
+  .getting-started-chapter-nav__links a {
     min-height: var(--ui-button-height-sm);
     font-size: 0.68rem;
   }

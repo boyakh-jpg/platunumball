@@ -293,18 +293,29 @@
 }
 
 .ui-match-clock-main-time {
-  gap: 4px;
+  gap: clamp(6px, 0.8cqi, 12px);
   color: var(--rb-text);
   background: var(--scoreboard-2);
   border-inline: 1px solid var(--rb-line);
 }
 
 .ui-match-clock-main-time-label {
+  justify-self: center;
   color: var(--rb-orange);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   line-height: 1;
+  white-space: nowrap;
+}
+
+.ui-match-clock-period {
+  justify-self: center;
+  color: var(--rb-orange);
+  font-family: var(--sports-display-font);
+  font-size: clamp(1.2rem, 2.2cqi, 1.7rem);
+  line-height: 0.9;
+  letter-spacing: 0.04em;
 }
 
 .ui-match-clock-scoreboard-time-only .ui-match-clock-main-time {
@@ -646,6 +657,10 @@
   font-size: clamp(4.75rem, 14cqi, 10rem);
 }
 
+.ui-match-clock-panel-focus .ui-match-clock-period {
+  font-size: clamp(1.5rem, 3cqi, 2.5rem);
+}
+
 .ui-match-clock-panel-focus .ui-match-clock-scoreboard-time-only .ui-match-clock-main-time time {
   font-size: clamp(5.5rem, 18cqi, 12rem);
 }
@@ -817,6 +832,10 @@
 
   .ui-match-clock-main-time time {
     font-size: clamp(1.85rem, 10vw, 3.2rem);
+  }
+
+  .ui-match-clock-period {
+    font-size: clamp(1.1rem, 5vw, 1.5rem);
   }
 
   .ui-match-shot-clock {

@@ -460,6 +460,9 @@ export default function MatchClockPanel({
   const isPending = liveClock?.status === "pending";
   const isEnded = liveClock?.status === "ended";
   const isBreak = liveClock?.status === "break";
+  const periodDisplayLabel = Number(liveClock?.overtimeCount || 0) > 0
+    ? `OT${liveClock.overtimeCount}`
+    : `${liveClock?.currentPeriod || 1}Q`;
   const isRunning = liveClock?.status === "running";
   const hasRemainingPeriodTime = Number(liveClock?.periodRemainingMs || 0) > 0;
   const regulationEnded = isBreak && liveClock.currentPeriod >= liveClock.expectedPeriodCount;
@@ -866,7 +869,7 @@ export default function MatchClockPanel({
               ) : null}
               <div className="ui-match-clock-main-time">
                 <span className="ui-match-clock-main-time-label">경기시계</span>
-                <Badge tone="orange">{getMatchClockPeriodLabel(liveClock)}</Badge>
+                <strong className="ui-match-clock-period">{periodDisplayLabel}</strong>
                 <time>{formatClockTime(liveClock.periodRemainingMs, { tenths: true })}</time>
                 <small>{scoreboardEnabled ? "서버시간 · 점수 3초 자동 갱신" : "서버시간 기준"}</small>
               </div>

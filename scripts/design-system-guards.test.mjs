@@ -38,6 +38,7 @@ const recruitingStyles = read("src/styles/recruiting-arena.css");
 const matchesStyles = read("src/styles/matches-arena.css");
 const gettingStartedStyles = read("src/styles/getting-started.css");
 const matchClockStyles = read("src/styles/match-clock.css");
+const matchClockSource = read("src/components/match/MatchClockPanel.jsx");
 const matchRoomStyles = read("src/styles/matchroom-arena.css");
 const appSource = read("src/App.jsx");
 const gettingStartedSource = read("src/pages/GettingStarted.jsx");
@@ -318,6 +319,9 @@ test("guide screenshots ship with the app and the shot clock has one separated o
     matchClockStyles,
     /\.ui-match-shot-clock(?::[^{]+)?\s*\{[^}]*box-shadow:[^}]*(?:0 5px 0|0 2px 0)/,
   );
+  assert.match(matchClockSource, /className="ui-match-clock-period">\{periodDisplayLabel\}/);
+  assert.match(matchClockSource, /`\$\{liveClock\?\.currentPeriod \|\| 1\}Q`/);
+  assert.doesNotMatch(matchClockSource, /<Badge[^>]*>\{getMatchClockPeriodLabel\(liveClock\)\}<\/Badge>/);
 });
 
 test("공용 체크박스는 iOS native 외형을 사용하지 않는다", () => {
@@ -615,6 +619,10 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(pageSources.home, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(gettingStartedSource, /useSearchParams/);
   assert.match(gettingStartedSource, /aria-label="사용 설명 목차"/);
+  assert.match(gettingStartedSource, /aria-expanded=\{chapterMenuOpen\}/);
+  assert.match(gettingStartedSource, /현재 단계|chapter\.navLabel/);
+  assert.match(gettingStartedStyles, /\.getting-started-chapter-nav__links\s*\{\s*display: none;/);
+  assert.match(gettingStartedStyles, /\.getting-started-chapter-nav\.is-open \.getting-started-chapter-nav__links\s*\{\s*display: grid;/);
   assert.match(gettingStartedSource, /aria-current=\{item\.id === chapter\.id \? "page" : undefined\}/);
   assert.match(gettingStartedSource, /chapterTitleRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(gettingStartedSource, /ref=\{chapterTitleRef\} tabIndex=\{-1\}/);
