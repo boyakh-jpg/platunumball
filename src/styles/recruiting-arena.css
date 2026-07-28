@@ -4910,6 +4910,11 @@ html[data-theme="light"] .arena-lobby-arena {
   gap: 8px;
 }
 
+.arena-record-setup-grid em {
+  font-style: normal;
+  font-weight: 800;
+}
+
 .arena-record-setup-selected {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
@@ -4951,8 +4956,7 @@ html[data-theme="light"] .arena-lobby-arena {
 }
 
 .arena-record-team-selected .team-emblem {
-  width: 32px;
-  height: 32px;
+  --team-emblem-size: 32px;
 }
 
 .arena-record-team-selected button {

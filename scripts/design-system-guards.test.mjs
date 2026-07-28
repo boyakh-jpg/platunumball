@@ -338,6 +338,14 @@ test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사�
 test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정렬을 사용한다", () => {
   assert.match(
     recruitingStyles,
+    /\.arena-record-team-selected \.team-emblem\s*\{[^}]*--team-emblem-size:\s*32px;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-record-setup-grid em\s*\{[^}]*font-style:\s*normal;[^}]*font-weight:\s*800;/,
+  );
+  assert.match(
+    recruitingStyles,
     /\.arena-lobby-modal \.arena-room-slot-row\s*\{[^}]*grid-auto-columns:\s*minmax\(72px,\s*72px\);[^}]*grid-auto-flow:\s*column;[^}]*grid-template-columns:\s*none;[^}]*justify-content:\s*start;/,
   );
   assert.match(
