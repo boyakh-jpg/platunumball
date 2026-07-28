@@ -40,7 +40,6 @@ export const PRACTICE_REDUCER_ACTIONS = new Set([
   "acceptRecruitingInvitation",
   "acknowledgeMatchRoomRules",
   "acknowledgeRecruitingRoomRules",
-  "addMatchLatePlayer",
   "agreeMatch",
   "approveMatch",
   "cancelMatch",
@@ -61,7 +60,6 @@ export const PRACTICE_REDUCER_ACTIONS = new Set([
   "inviteRecruitingReferee",
   "joinRecruitingSideParty",
   "kickRecruitingApplicant",
-  "removeMatchLatePlayer",
   "removeMatchRoomPlayer",
   "removeRecruitingPartyPlayer",
   "requestMatchRefereeAbsence",
@@ -452,7 +450,13 @@ export function approvePracticeDummyPlayers(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.endedAt || (match.refereeId && !match.result)) return state;
   const operatorId = match.refereeId || match.createdBy || PRACTICE_SELF_ID;
-  return withPracticeActor(state, operatorId, repository.finalizeMatchByAuthority, matchId);
+  return withPracticeActor(
+    state,
+    operatorId,
+    repository.finalizeMatchByAuthority,
+    matchId,
+    { disputesAcknowledged: true },
+  );
 }
 
 function settleClock(clock, nowMs) {

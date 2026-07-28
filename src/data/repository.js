@@ -79,6 +79,7 @@ import {
   fillMatchDecision,
   getAgreementStatus,
   getApprovalStatus,
+  getActualMatchPlayerIds,
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
   getMatchCancelCopy,
@@ -106,12 +107,15 @@ import {
   getVoidMatchRestoreTargetUserId,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
-  getMatchFinalizationWindow,
+  getMatchRecordEndedAt,
+  getMatchResultRevision,
+  getMatchOverlapConflict,
   getRecordCreationWindowStatus,
   getMatchScheduledDate,
   getMissingMatchAttendance,
   applyOperatorAttendance,
   getPlayerSideName,
+  getResultPointAudit,
   getStatSubmissionStatus,
   getSubmittedStatPatch,
   getTeamCaptainId,
@@ -127,7 +131,9 @@ import {
   makeAnonymousMatchPlayer,
   getSeoulTimeInputValue,
   normalizeDisputeRequest,
+  normalizePlayerStatsDisputeRequest,
   normalizePlayerStats,
+  normalizeTeamScoresDisputeRequest,
   updateMatchPartiesForPlayer,
 } from "../lib/matchUtils.js";
 import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
@@ -136,7 +142,6 @@ import {
   getPickupTeamAssignmentRatingScale,
 } from "../lib/matchCreationPolicies.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
-import { getPostgameRecordVerification } from "../lib/postgameRecordVerification.js";
 import {
   applyMatchRating,
   averageTeamMmr,
@@ -148,6 +153,10 @@ import {
   TEAM_PERFORMANCE_ADJUSTMENT_LIMIT,
   teamRegularRatio,
 } from "../lib/rating.js";
+import {
+  getPostgameRecordMmrScale,
+  getPostgameRecordVerification,
+} from "../lib/postgameRecordVerification.js";
 import {
   currentUserCanRefereeRecruitingRoom,
   inferRecruitingInvitationTeamId,
@@ -2286,52 +2295,65 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
     const current = nextState.matches.find((item) => item.id === match.id);
     if (!current) continue;
 
-    if ((
-      current.status === "approval"
-      || current.status === "disputed"
-      || (isMatchRecordMatch(current) && current.status === "agreed")
-    ) && current.result) {
+    if (isMatchRecordMatch(current) && ["agreed", "approval", "disputed"].includes(current.status) && current.result) {
+      const verification = getPostgameRecordVerification(current, { now });
+      if (!verification.expired) continue;
       const hasOpenReport = (nextState.reports ?? []).some((report) => (
         report.type === "match"
         && report.targetId === current.id
-        && report.status === "open"
+        && !["resolved", "dismissed"].includes(report.status)
       ));
-      if (hasOpenReport) continue;
-      if (isMatchRecordMatch(current)) {
-        const verification = getPostgameRecordVerification(current, { now });
-        if (!verification.canAutoApprove) continue;
-        const confirmedSet = new Set(verification.verifiedPlayerIds);
-        const mmrExcludedPlayerIds = verification.requiredParticipantIds
-          .filter((playerId) => !confirmedSet.has(playerId));
+      const hasOpenDispute = (current.disputes ?? []).some((dispute) => dispute.status === "open");
+      if (!verification.canAutoFinalize || hasOpenReport || hasOpenDispute) {
+        const verificationStatus = hasOpenReport || hasOpenDispute ? "review" : "insufficient";
         const nextMatch = {
           ...current,
-          ranked: true,
-          ratingScale: 0.2,
-          mmrExcludedPlayerIds,
           rules: {
             ...(current.rules ?? {}),
-            ratingScale: 0.2,
-            teamRatingDisabled: true,
-            mmrExcludedPlayerIds,
+            matchRecordVerificationStatus: verificationStatus,
+            matchRecordConfirmationClosedAt: current.rules?.matchRecordConfirmationClosedAt ?? nowIso,
           },
-          autoConfirmedAt: current.autoConfirmedAt ?? nowIso,
+          updatedAt: nowIso,
         };
-        nextState = finalizeMatch(
-          {
-            ...nextState,
-            matches: nextState.matches.map((item) => (item.id === current.id ? nextMatch : item)),
-          },
-          nextMatch,
-        );
+        nextState = {
+          ...nextState,
+          matches: nextState.matches.map((item) => item.id === current.id ? nextMatch : item),
+        };
         continue;
       }
-      const recordWindow = getMatchRecordWindow(current, nowMs);
-      if (!recordWindow.disputeExpired) continue;
-      if (current.status === "disputed" && (current.disputes ?? []).some((dispute) => dispute.status === "open")) continue;
-      if (current.refereeId) {
-        const statStatus = getStatSubmissionStatus(current);
-        if (!statStatus.complete) continue;
-      }
+      const nextMatch = {
+        ...current,
+        ranked: true,
+        mmrExcludedPlayerIds: verification.unconfirmedIds,
+        rules: {
+          ...(current.rules ?? {}),
+          ratingScale: verification.mmrScale,
+          mmrExcludedPlayerIds: verification.unconfirmedIds,
+          teamRatingDisabled: true,
+          matchRecordVerificationStatus: "confirmed",
+          matchRecordAutoFinalizedAt: nowIso,
+        },
+        autoConfirmedAt: current.autoConfirmedAt ?? nowIso,
+      };
+      nextState = finalizeMatch(
+        {
+          ...nextState,
+          matches: nextState.matches.map((item) => (item.id === current.id ? nextMatch : item)),
+        },
+        nextMatch,
+      );
+      continue;
+    }
+
+    if (current.status === "approval" && current.result) {
+      const submittedAtMs = new Date(current.result.submittedAt ?? "").getTime();
+      const disputeMinutes = normalizeDisputeWindowMinutes(current.disputeMinutes);
+      if (!Number.isFinite(submittedAtMs) || nowMs < submittedAtMs + disputeMinutes * 60 * 1000) continue;
+      if ((current.disputes ?? []).some((dispute) => dispute.status === "open")) continue;
+      const resultValid = [current.result.scoreA, current.result.scoreB]
+        .every((value) => Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 999);
+      const statStatus = getStatSubmissionStatus(current);
+      if (!resultValid || (current.refereeId && !statStatus.complete)) continue;
       const result = current.disputeDraftResult ?? current.result;
       const nextMatch = {
         ...current,
@@ -2340,8 +2362,15 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
         teamB: { ...current.teamB, score: result.scoreB },
         disputeDraftResult: undefined,
         disputeDraftUpdatedAt: undefined,
-        approvals: fillMatchDecision(current, "approvals"),
         autoConfirmedAt: current.autoConfirmedAt ?? nowIso,
+        rules: {
+          ...(current.rules ?? {}),
+          autoFinalizationAudit: {
+            actor: "system",
+            finalizedAt: nowIso,
+            policy: "dispute_window_elapsed",
+          },
+        },
       };
       nextState = finalizeMatch(
         {
@@ -2604,7 +2633,7 @@ function createSoloRecordMatch(state, draft = {}) {
   };
   const mmrExcludedPlayerIds = uniquePlayerIds([...playedPlayerIds.teamA, ...playedPlayerIds.teamB]);
   const statSubmissions = {
-    [playerId]: { by: playerId, source: "player", submittedAt: nowIso },
+    [playerId]: { by: playerId, source: "host_postgame", submittedAt: nowIso },
   };
   const result = {
     scoreA,
@@ -2711,7 +2740,7 @@ export function createMatch(state, draft) {
     ? {
         ...draft,
         visibility: "private",
-        ranked: true,
+        ranked: false,
         official: false,
         preRegistered: false,
         mmrLimitMode: "off",
@@ -2755,6 +2784,8 @@ export function createMatch(state, draft) {
     return { ...state, notifications: [getInvalidScheduleNotification(ROOM_SCHEDULE_MAX_DAYS), ...state.notifications] };
   }
   const nowIso = new Date().toISOString();
+  const recordStartedAt = isMatchRecord ? new Date(recordWindow.occurredAtMs).toISOString() : null;
+  const recordEndedAt = isMatchRecord ? getMatchRecordEndedAt(recordStartedAt)?.toISOString() : null;
   const matchRecordInvalidReason = isMatchRecord ? getMatchRecordDraftInvalidReason(state, effectiveDraft, mode) : "";
   if (matchRecordInvalidReason) {
     return {
@@ -2770,8 +2801,10 @@ export function createMatch(state, draft) {
   const teamBPlayers = [];
   const refereeId = getTrustedRefereeId(state, effectiveDraft.refereeId, [...teamAPlayers, ...teamBPlayers]);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(effectiveDraft.mmrRangeMode);
-  const ranked = isMatchRecord ? true : effectiveDraft.ranked !== false;
-  const ratingScale = isMatchRecord ? 0.2 : ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 0;
+  const ranked = isMatchRecord ? false : effectiveDraft.ranked !== false;
+  const ratingScale = isMatchRecord
+    ? getPostgameRecordMmrScale({ mode })
+    : ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 0;
   const disputeMinutes = DISPUTE_WINDOW_MINUTES;
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === effectiveDraft.court || court.id === getCourtId(effectiveDraft)) ?? null;
   const creator = state.users.find((user) => user.id === state.currentUserId);
@@ -2817,13 +2850,13 @@ export function createMatch(state, draft) {
       benchCapacity: 0,
       waitlistCapacity: 0,
       mmrRangeMode: "off",
-      ratingScale: 0.2,
-      teamRatingDisabled: true,
+      ratingScale,
       ageRestriction: "any",
       allowedAgeGroups: [],
       courtReserved: false,
       visibility: "private",
       region: selectedCourt?.region ?? effectiveDraft.region,
+      recordDurationMinutes: 30,
     },
     memo: effectiveDraft.memo || (isMatchRecord ? "경기 종료 후 기록 입력 대기." : "결과 승인 대기."),
     stakes: isMatchRecord ? "" : effectiveDraft.stakes || "다음 경기 우선권.",
@@ -2841,8 +2874,8 @@ export function createMatch(state, draft) {
     ratingResult: null,
     createdBy: state.currentUserId,
     agreedAt: nowIso,
-    startedAt: isMatchRecord ? nowIso : undefined,
-    endedAt: isMatchRecord ? nowIso : undefined,
+    startedAt: recordStartedAt ?? undefined,
+    endedAt: recordEndedAt ?? undefined,
     createdAt: nowIso,
   };
   return {
@@ -4072,20 +4105,31 @@ export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revi
   };
 }
 
-export function finalizeMatchByAuthority(state, matchId) {
+export function finalizeMatchByAuthority(state, matchId, options = {}) {
   const match = state.matches.find((item) => item.id === matchId);
   if (isMatchRecordMatch(match)) return state;
-  if (!match?.endedAt || match.confirmedAt || match.status === "disputed" || (match.refereeId && !match.result)) return state;
-  if (!getMatchFinalizationWindow(match).ready) return state;
+  if (!match?.endedAt || !match.result || match.confirmedAt || match.status === "disputed") return state;
+  if (options.disputesAcknowledged !== true) return state;
+  const submittedAtMs = new Date(match.result?.submittedAt ?? match.endedAt).getTime();
+  const nowMs = new Date(options.now ?? Date.now()).getTime();
+  if (!Number.isFinite(submittedAtMs) || !Number.isFinite(nowMs) || nowMs < submittedAtMs + (3 * 60 * 1000)) return state;
   const canFinalize = match.refereeId
     ? currentUserIsEligibleMatchReferee(state, match)
     : currentUserIsMatchHost(state, match);
-  const hasOpenReport = (state.reports ?? []).some((report) => (
-    report.type === "match"
-    && report.targetId === match.id
-    && report.status === "open"
-  ));
-  if (!canFinalize || hasOpenReport || (match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
+  if (!canFinalize || (match.disputes ?? []).some((dispute) => dispute.status === "open")) return state;
+  const overlapConflict = getMatchOverlapConflict(match, state.matches);
+  if (overlapConflict) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "중복 경기 차단",
+        body: `${overlapConflict.title}와 같은 출전선수의 시간이 겹칩니다.`,
+        tone: "orange",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
   const baseResult = match.result ?? {
     scoreA: Number(match.teamA?.score ?? 0),
     scoreB: Number(match.teamB?.score ?? 0),
@@ -4093,7 +4137,20 @@ export function finalizeMatchByAuthority(state, matchId) {
     submittedAt: new Date().toISOString(),
   };
   const result = match.refereeId ? baseResult : { ...baseResult, playerStats: {}, statSubmissions: {} };
-  return finalizeMatch(state, { ...match, result, finalizedBy: state.currentUserId });
+  return finalizeMatch(state, {
+    ...match,
+    result,
+    finalizedBy: state.currentUserId,
+    rules: {
+      ...(match.rules ?? {}),
+      manualFinalizationAudit: {
+        actor: state.currentUserId,
+        finalizedAt: new Date(nowMs).toISOString(),
+        disputesAcknowledged: true,
+        openDisputeCount: 0,
+      },
+    },
+  });
 }
 export function approveMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
@@ -4125,32 +4182,29 @@ export function approveMatch(state, matchId, sideName, playerId) {
 
 function applyDisputeRequestToResult(match = {}, baseResult = null, disputeRequest = {}) {
   const nextResult = clone(baseResult ?? match.disputeDraftResult ?? match.result);
-  if (disputeRequest.kind === "team_score") {
-    const requestedSide = disputeRequest.side;
-    const requestedScore = Number(disputeRequest.requestedScore);
-    if (!nextResult || !MATCH_SIDES.includes(requestedSide) || !Number.isFinite(requestedScore)) return nextResult;
+  const nextRevision = getMatchResultRevision({ result: nextResult }) + 1;
+  if (disputeRequest.kind === "team_scores") {
+    const normalized = normalizeTeamScoresDisputeRequest(disputeRequest);
+    if (!nextResult || !normalized) return nextResult;
     return {
       ...nextResult,
-      [requestedSide === "teamA" ? "scoreA" : "scoreB"]: Math.min(999, Math.max(0, Math.round(requestedScore))),
-      playerStats: match.refereeId ? nextResult.playerStats ?? {} : {},
-      statSubmissions: match.refereeId ? nextResult.statSubmissions ?? {} : {},
+      scoreA: normalized.requestedScoreA,
+      scoreB: normalized.requestedScoreB,
+      revision: nextRevision,
+      playerStats: {},
+      statSubmissions: {},
       updatedAt: new Date().toISOString(),
     };
   }
-  const requestedPlayerId = String(disputeRequest.playerId ?? "");
-  const requestedPoints = Number(disputeRequest.requestedPoints);
-  if (!nextResult || !requestedPlayerId || !Number.isFinite(requestedPoints)) return nextResult;
-  const recordPlayerIds = getMatchRecordPlayerIds(match);
-  if (!recordPlayerIds.includes(requestedPlayerId)) return nextResult;
-  const playerStats = normalizePlayerStats(nextResult.playerStats ?? {}, recordPlayerIds);
-  playerStats[requestedPlayerId] = {
-    ...(playerStats[requestedPlayerId] ?? {}),
-    points: Math.min(999, Math.max(0, Math.round(requestedPoints))),
-  };
+  const normalized = normalizePlayerStatsDisputeRequest(disputeRequest);
+  if (!nextResult || !normalized || !getActualMatchPlayerIds(match).includes(normalized.playerId)) return nextResult;
+  const playerStats = normalizePlayerStats(nextResult.playerStats ?? {}, getActualMatchPlayerIds(match));
+  playerStats[normalized.playerId] = normalized.requestedStats;
   return {
     ...nextResult,
     scoreA: getMergedResultScore(match, playerStats, "teamA", nextResult.scoreA),
     scoreB: getMergedResultScore(match, playerStats, "teamB", nextResult.scoreB),
+    revision: nextRevision,
     playerStats,
     updatedAt: new Date().toISOString(),
   };
@@ -4162,7 +4216,15 @@ export function disputeMatch(state, matchId, disputeInput = "") {
   const match = state.matches.find((item) => item.id === matchId);
   const canOpenDispute = ["approval", "disputed"].includes(match?.status) || Boolean(match?.status === "agreed" && match?.endedAt && match?.result);
   if (!match?.result || !canOpenDispute) return state;
-  const disputeRequest = normalizeDisputeRequest(disputeInput);
+  const rawRequest = normalizeDisputeRequest(disputeInput);
+  const disputeRequest = match.refereeId
+    ? normalizePlayerStatsDisputeRequest(rawRequest)
+    : normalizeTeamScoresDisputeRequest(rawRequest);
+  if (!disputeRequest || disputeRequest.baseRevision !== getMatchResultRevision(match)) return state;
+  if (match.refereeId && disputeRequest.playerId !== state.currentUserId) return state;
+  if (!match.refereeId
+    && disputeRequest.requestedScoreA === Number(match.result.scoreA ?? 0)
+    && disputeRequest.requestedScoreB === Number(match.result.scoreB ?? 0)) return state;
   if (!currentUserCanFileMatchDispute(state, match)) {
     return {
       ...state,
@@ -4302,7 +4364,7 @@ function currentUserCanConfirmRefereeAbsence(state, match) {
 
 function currentUserCanFileMatchDispute(state, match) {
   if (!match) return false;
-  return getMatchRecordPlayerIds(match).includes(state.currentUserId);
+  return getActualMatchPlayerIds(match).includes(state.currentUserId);
 }
 
 export function checkInMatchPlayer(state, matchId, sideName, playerId) {
@@ -4412,6 +4474,27 @@ export function startMatch(state, matchId) {
   const rawMatch = state.matches.find((item) => item.id === matchId);
   const match = applyOperatorAttendance(rawMatch, state.currentUserId);
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
+  const actualPlayerIds = getActualMatchPlayerIds(match);
+  const activeConflict = state.matches.find((item) => (
+    item.id !== match.id
+    && item.startedAt
+    && !item.endedAt
+    && !item.cancelledAt
+    && !item.voidedAt
+    && getActualMatchPlayerIds(item).some((playerId) => actualPlayerIds.includes(playerId))
+  ));
+  if (activeConflict) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "중복 경기 차단",
+        body: `${activeConflict.title}에 같은 출전선수가 경기 중입니다.`,
+        tone: "orange",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
   if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin") return state;
   if (match.tournamentId) {
@@ -4554,14 +4637,6 @@ export function endMatch(state, matchId) {
   };
 }
 
-function canEditPostgameRoster(state, match) {
-  if (!match || ["approval", "confirmed", "void", "cancelled", "disputed"].includes(match.status)) return false;
-  if (getMatchRoomPhase(match).phase !== "postgame") return false;
-  const canOperatePostStart = currentUserCanOperateStartedMatch(state, match);
-  if (getMatchRecordWindow(match).statExpired && !canOperatorSubmitMissingPostgameResult(match, canOperatePostStart)) return false;
-  return canOperatePostStart;
-}
-
 export function deleteSoloRecord(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !isPersonalRecordMatch(match) || match.createdBy !== state.currentUserId || match.status === "cancelled") return state;
@@ -4582,96 +4657,22 @@ export function deleteSoloRecord(state, matchId) {
 }
 
 export function addMatchLatePlayer(state, matchId, draft = {}) {
-  const match = state.matches.find((item) => item.id === matchId);
-  if (!canEditPostgameRoster(state, match)) return state;
-  const sideName = MATCH_SIDES.includes(draft.sideName) ? draft.sideName : "teamA";
-  const registeredUserId = state.users.some((user) => user.id === draft.userId) ? draft.userId : "";
-  const anonymousName = String(draft.name ?? "").trim();
-  if (!registeredUserId && !anonymousName) return state;
-
-  const playerId = registeredUserId || makeId("anon");
-  if (getPlayerSideName(match, playerId)) {
-    return {
-      ...state,
-      notifications: [
-        { id: makeId("n"), title: "이미 기록 대상", body: "이미 출전 또는 교체 출전 기록에 포함된 선수입니다.", tone: "orange", matchId },
-        ...state.notifications,
-      ],
-    };
-  }
-
-  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
-  const nextPlayedPlayerIds = {
-    ...playedPlayerIds,
-    [sideName]: uniquePlayerIds([...(playedPlayerIds[sideName] ?? []), playerId]),
-  };
-  const nextReservePlayers = {
-    teamA: getMatchReservePlayerIds(match, "teamA").filter((id) => id !== playerId),
-    teamB: getMatchReservePlayerIds(match, "teamB").filter((id) => id !== playerId),
-  };
-  const nextExcludedIds = uniquePlayerIds([...(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? []), playerId]);
-  const nextAnonymousPlayers = registeredUserId
-    ? match.anonymousPlayers ?? {}
-    : { ...(match.anonymousPlayers ?? {}), [playerId]: makeAnonymousMatchPlayer(playerId, anonymousName) };
-  const nextMatch = {
-    ...match,
-    playedPlayerIds: nextPlayedPlayerIds,
-    reservePlayers: nextReservePlayers,
-    anonymousPlayers: nextAnonymousPlayers,
-    mmrExcludedPlayerIds: nextExcludedIds,
-    rules: {
-      ...(match.rules ?? {}),
-      playedPlayerIds: nextPlayedPlayerIds,
-      mmrExcludedPlayerIds: nextExcludedIds,
-    },
-  };
-
+  void draft;
   return {
     ...state,
-    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
-    notifications: [
-      { id: makeId("n"), title: "경기 후 선수 추가", body: `${SIDE_LABEL_TEXT[sideName]} 기록 대상에 추가했습니다. MMR에는 반영되지 않습니다.`, tone: "match", matchId },
-      ...state.notifications,
-    ],
+    notifications: [{
+      id: makeId("n"),
+      title: "명단 변경 불가",
+      body: "일반 경기는 종료 후 출전 명단을 변경할 수 없습니다.",
+      tone: "orange",
+      matchId,
+    }, ...state.notifications],
   };
 }
 
 export function removeMatchLatePlayer(state, matchId, playerId) {
-  const match = state.matches.find((item) => item.id === matchId);
-  if (!canEditPostgameRoster(state, match) || !playerId) return state;
-  const excludedIds = new Set(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? []);
-  if (!excludedIds.has(playerId)) return state;
-  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
-  const nextPlayedPlayerIds = {
-    teamA: uniquePlayerIds(playedPlayerIds.teamA ?? []).filter((id) => id !== playerId),
-    teamB: uniquePlayerIds(playedPlayerIds.teamB ?? []).filter((id) => id !== playerId),
-  };
-  const nextExcludedIds = [...excludedIds].filter((id) => id !== playerId);
-  const nextAnonymousPlayers = { ...(match.anonymousPlayers ?? {}) };
-  delete nextAnonymousPlayers[playerId];
-
-  return {
-    ...state,
-    matches: state.matches.map((item) =>
-      item.id === matchId
-        ? {
-            ...item,
-            playedPlayerIds: nextPlayedPlayerIds,
-            anonymousPlayers: nextAnonymousPlayers,
-            mmrExcludedPlayerIds: nextExcludedIds,
-            rules: {
-              ...(item.rules ?? {}),
-              playedPlayerIds: nextPlayedPlayerIds,
-              mmrExcludedPlayerIds: nextExcludedIds,
-            },
-          }
-        : item,
-    ),
-    notifications: [
-      { id: makeId("n"), title: "경기 후 선수 제거", body: "기록 전용 추가 선수를 제거했습니다.", tone: "match", matchId },
-      ...state.notifications,
-    ],
-  };
+  void playerId;
+  return addMatchLatePlayer(state, matchId);
 }
 
 export function cancelMatch(state, matchId) {
@@ -5005,6 +5006,10 @@ export function resolveMatchDispute(state, matchId, disputeId, decision, resolut
   const targetDispute = (match?.disputes ?? []).find((dispute) => dispute.id === disputeId && dispute.status === "open");
   if (!match?.result || match.status !== "disputed" || !targetDispute || !safeDecision || !safeResolutionReason) return state;
   if (!currentUserCanResolveMatchDispute(state, match)) return state;
+  if (
+    safeDecision === "accepted"
+    && Number(targetDispute.request?.baseRevision) !== getMatchResultRevision({ result: match.disputeDraftResult ?? match.result })
+  ) return state;
 
   const resolvedAt = new Date().toISOString();
   const previousResult = clone(match.disputeDraftResult ?? match.result);
@@ -8642,7 +8647,7 @@ function currentUserCanEditMatchRecordSideRoster(state, match, sideName) {
 export function setMatchRecordParticipants(state, matchId, setup = {}) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!isMatchRecordMatch(match) || match.createdBy !== state.currentUserId) return state;
-  if (match.result || match.confirmedAt || match.cancelledAt || match.voidedAt) return state;
+  if (match.result || match.confirmedAt || match.cancelledAt || match.voidedAt || match.rules?.recordSetupReady === true) return state;
 
   const composition = match.rules?.recordComposition === "team" ? "team" : "individual";
   if (!["individual", "team"].includes(setup.composition)) return state;
@@ -8734,6 +8739,19 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
       updatedAt: now,
     }));
 
+  const overlapConflict = getMatchOverlapConflict(nextMatch, state.matches);
+  if (overlapConflict) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "중복 경기 차단",
+        body: `${overlapConflict.title}와 같은 출전선수의 시간이 겹칩니다.`,
+        tone: "orange",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
   return {
     ...state,
     matches: state.matches.map((item) => item.id === matchId ? nextMatch : item),
@@ -8743,6 +8761,7 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
 
 export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) {
   const sourceMatch = state.matches.find((item) => item.id === matchId);
+  if (isMatchRecordMatch(sourceMatch) && sourceMatch?.rules?.recordSetupReady === true) return state;
   if (!currentUserCanEditMatchRecordSideRoster(state, sourceMatch, sideName)) return state;
   const tournamentPregame = Boolean(sourceMatch.tournamentId && !sourceMatch.startedAt && !sourceMatch.endedAt);
   let match = sourceMatch;
@@ -8906,6 +8925,19 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
       }))
     : [];
 
+  const overlapConflict = matchRecordRoom ? getMatchOverlapConflict(nextMatch, state.matches) : null;
+  if (overlapConflict) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "중복 경기 차단",
+        body: `${overlapConflict.title}와 같은 출전선수의 시간이 겹칩니다.`,
+        tone: "orange",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
   return {
     ...state,
     matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),

@@ -114,6 +114,7 @@ const REQUIRED_COLUMNS = {
     "team_b_id",
     "score_a",
     "score_b",
+    "result_revision",
     "rules",
     "dispute_minutes",
     "created_by",
@@ -287,6 +288,7 @@ const REQUIRED_COLUMNS = {
     "assists",
     "steals",
     "blocks",
+    "turnovers",
     "fouls",
   ],
   profile_personal_record_summaries: [
@@ -495,7 +497,12 @@ const REQUIRED_RPCS = [
   },
   {
     name: "rankball_match_finalize_locked",
-    args: { p_actor_profile_id: "", p_match_id: "", p_action: "finalizeMatch" },
+    args: {
+      p_actor_profile_id: "",
+      p_match_id: "",
+      p_action: "finalizeMatch",
+      p_disputes_acknowledged: true,
+    },
   },
   {
     name: "rankball_match_referee_absence_action",
@@ -707,19 +714,6 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_action: "", p_match_id: "" },
   },
   {
-    name: "rankball_match_late_player_action",
-    args: {
-      p_actor_profile_id: "",
-      p_action: "addMatchLatePlayer",
-      p_match_id: "",
-      p_player_id: "",
-      p_played_player_ids: {},
-      p_reserve_players: {},
-      p_anonymous_players: {},
-      p_mmr_excluded_player_ids: [],
-    },
-  },
-  {
     name: "rankball_match_roster_move_action",
     args: {
       p_actor_profile_id: "",
@@ -755,15 +749,8 @@ const REQUIRED_RPCS = [
     },
   },
   {
-    name: "rankball_match_postgame_roster_action",
-    args: {
-      p_actor_profile_id: "",
-      p_action: "addMatchLatePlayer",
-      p_match_id: "",
-      p_player_id: "",
-      p_side: "teamA",
-      p_anonymous_name: "",
-    },
+    name: "rankball_match_overlap_policy_health",
+    args: {},
   },
   {
     name: "rankball_match_approval_action",

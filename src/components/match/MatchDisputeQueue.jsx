@@ -4,6 +4,27 @@ import Button from "../common/Button.jsx";
 
 function getDisputeRequestSummary(dispute = {}, match = {}) {
   const request = dispute.request ?? {};
+  if (request.kind === "team_scores") {
+    const currentA = Number(match.result?.scoreA ?? match.teamA?.score ?? 0);
+    const currentB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
+    return `팀 점수 A ${currentA} → ${request.requestedScoreA} · B ${currentB} → ${request.requestedScoreB}`;
+  }
+  if (request.kind === "player_stats") {
+    const labels = {
+      points: "PTS",
+      rebounds: "REB",
+      assists: "AST",
+      steals: "STL",
+      blocks: "BLK",
+      turnovers: "TO",
+      fouls: "F",
+    };
+    const current = match.result?.playerStats?.[request.playerId] ?? {};
+    const changes = Object.entries(request.requestedStats ?? {})
+      .filter(([field, value]) => Number(current[field] ?? 0) !== Number(value))
+      .map(([field, value]) => `${labels[field] ?? field} ${current[field] ?? 0} → ${value}`);
+    return changes.length ? `내 기록 · ${changes.join(" · ")}` : "내 기록 확인 요청";
+  }
   if (request.kind === "team_score") {
     const sideName = request.side === "teamB" ? "teamB" : "teamA";
     const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";

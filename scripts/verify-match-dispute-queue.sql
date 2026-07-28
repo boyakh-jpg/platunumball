@@ -10,7 +10,7 @@ declare
   action_result jsonb;
   open_count integer;
   saved_status text;
-  saved_guest_points integer;
+  saved_score_b integer;
   saved_approval_count integer;
 begin
   select profile.id into host_id
@@ -73,7 +73,13 @@ begin
   action_result := public.rankball_match_dispute_action(
     host_id,
     verify_match_id,
-    jsonb_build_object('reason', '방장 득점 확인', 'playerId', host_id, 'requestedPoints', 6)
+    jsonb_build_object(
+      'kind', 'team_scores',
+      'requestedScoreA', 6,
+      'requestedScoreB', 7,
+      'baseRevision', 0,
+      'reason', '방장 점수 확인'
+    )
   );
   if coalesce((action_result->>'ok')::boolean, false) is not true then
     raise exception 'parallel_dispute_host_submit_failed';
@@ -82,7 +88,13 @@ begin
   action_result := public.rankball_match_dispute_action(
     guest_id,
     verify_match_id,
-    jsonb_build_object('reason', '참가자 득점 확인', 'playerId', guest_id, 'requestedPoints', 9)
+    jsonb_build_object(
+      'kind', 'team_scores',
+      'requestedScoreA', 5,
+      'requestedScoreB', 9,
+      'baseRevision', 0,
+      'reason', '참가자 점수 확인'
+    )
   );
   if coalesce((action_result->>'ok')::boolean, false) is not true then
     raise exception 'parallel_dispute_guest_submit_failed';
@@ -102,7 +114,13 @@ begin
   from public.match_disputes dispute
   where dispute.match_id = verify_match_id and dispute.user_id = guest_id and dispute.status = 'open';
 
-  action_result := public.rankball_match_resolve_dispute_action(host_id, verify_match_id, guest_dispute_id, 'accepted');
+  action_result := public.rankball_match_resolve_dispute_action(
+    host_id,
+    verify_match_id,
+    guest_dispute_id,
+    'accepted',
+    '현장 점수판 확인'
+  );
   if coalesce((action_result->>'openCount')::integer, -1) <> 1 then
     raise exception 'parallel_dispute_first_resolution_failed';
   end if;
@@ -112,22 +130,28 @@ begin
     raise exception 'parallel_dispute_closed_too_early';
   end if;
 
-  action_result := public.rankball_match_resolve_dispute_action(host_id, verify_match_id, host_dispute_id, 'rejected');
+  action_result := public.rankball_match_resolve_dispute_action(
+    host_id,
+    verify_match_id,
+    host_dispute_id,
+    'rejected',
+    '현재 결과 유지'
+  );
   if coalesce((action_result->>'openCount')::integer, -1) <> 0 then
     raise exception 'parallel_dispute_final_resolution_failed';
   end if;
 
   select status into saved_status from public.matches where id = verify_match_id;
-  select points into saved_guest_points
-  from public.player_match_stats where match_id = verify_match_id and user_id = guest_id;
+  select score_b into saved_score_b
+  from public.match_results where match_id = verify_match_id;
   select count(*)::integer into saved_approval_count
   from public.match_approvals where match_id = verify_match_id;
 
   if saved_status <> 'approval' then
     raise exception 'parallel_dispute_reapproval_expected';
   end if;
-  if saved_guest_points <> 9 then
-    raise exception 'parallel_dispute_accepted_points_not_saved';
+  if saved_score_b <> 9 then
+    raise exception 'parallel_dispute_accepted_scores_not_saved';
   end if;
   if saved_approval_count <> 0 then
     raise exception 'parallel_dispute_old_approvals_not_cleared';

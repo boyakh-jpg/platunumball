@@ -3,7 +3,6 @@ import { cloneRatingPolicy, DEFAULT_RATING_POLICY } from "../lib/ratingPolicy.js
 import { hasModeRating, isPlacementComplete } from "../lib/rating.js";
 import {
   acceptTeamInvitation,
-  addMatchLatePlayer,
   acceptRecruitingInvitation,
   acknowledgeMatchRoomRules,
   acknowledgeRecruitingRoomRules,
@@ -61,7 +60,6 @@ import {
   resolveMatchDispute,
   resetState,
   requestMatchRefereeAbsence,
-  removeMatchLatePlayer,
   removeMatchRoomPlayer,
   removeRecruitingPartyPlayer,
   respondMatchScheduleProposal,
@@ -281,8 +279,6 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "resolveMatchDispute",
   "startMatch",
   "endMatch",
-  "addMatchLatePlayer",
-  "removeMatchLatePlayer",
   "updateMatchRoomRules",
   "setMatchRoomPlayerPlacement",
   "swapPickupMatchPlayers",
@@ -319,7 +315,6 @@ const SERVER_OPERATION_ACTIONS = new Set([
 
 const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "agreeMatch",
-  "addMatchLatePlayer",
   "approveMatch",
   "cancelMatch",
   "checkInMatchPlayer",
@@ -333,7 +328,6 @@ const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "incrementMatchScore",
   "finalizeMatch",
   "resolveMatchDispute",
-  "removeMatchLatePlayer",
   "startMatch",
   "submitMatchThumbs",
   "submitMatchResult",
@@ -3786,7 +3780,11 @@ export function useAppData(authUser = null, appLocation = null) {
       agreeMatch: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId), { action: "agreeMatch", sideName, playerId }),
       submitMatchResult: (matchId, result) => applyMatchMutation(matchId, (prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result), { action: "submitMatchResult", result }),
       incrementMatchScore: (matchId, deltaA, deltaB, revisions = {}) => applyMatchMutation(matchId, (prev) => incrementMatchScore({ ...prev, currentUserId }, matchId, deltaA, deltaB, revisions), { action: "incrementMatchScore", deltaA, deltaB, ...revisions }),
-      finalizeMatch: (matchId) => applyMatchMutation(matchId, (prev) => finalizeMatchByAuthority({ ...prev, currentUserId }, matchId), { action: "finalizeMatch" }),
+      finalizeMatch: (matchId, options = {}) => applyMatchMutation(
+        matchId,
+        (prev) => finalizeMatchByAuthority({ ...prev, currentUserId }, matchId, options),
+        { action: "finalizeMatch", disputesAcknowledged: options.disputesAcknowledged === true },
+      ),
       substituteMatchPlayer: (matchId, sideName, activePlayerId, reservePlayerId, reason = "operator") => {
         return applyMatchMutation(matchId, (prev) => substituteMatchPlayer({ ...prev, currentUserId }, matchId, sideName, activePlayerId, reservePlayerId, reason), { action: "substituteMatchPlayer", sideName, activePlayerId, reservePlayerId, reason });
       },
@@ -3809,8 +3807,6 @@ export function useAppData(authUser = null, appLocation = null) {
       ),
       startMatch: (matchId) => applyMatchMutation(matchId, (prev) => startMatch({ ...prev, currentUserId }, matchId), { action: "startMatch" }),
       endMatch: (matchId) => applyMatchMutation(matchId, (prev) => endMatch({ ...prev, currentUserId }, matchId), { action: "endMatch" }),
-      addMatchLatePlayer: (matchId, draft) => applyMatchMutation(matchId, (prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft), { action: "addMatchLatePlayer", draft }),
-      removeMatchLatePlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchLatePlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchLatePlayer", playerId }),
       updateSettings: (patch) => {
         if (!isSupabaseConfigured) {
           setState((prev) => updateSettings({ ...prev, currentUserId }, patch));

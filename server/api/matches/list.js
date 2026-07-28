@@ -973,6 +973,7 @@ function toClientMatchResult(resultRow = null, statRows = [], allowPersonalStats
   return {
     scoreA: Number(resultRow?.score_a ?? 0),
     scoreB: Number(resultRow?.score_b ?? 0),
+    revision: Number(resultRow?.result_revision ?? 0),
     scoreRevisionA: Number(resultRow?.score_revision_a ?? 0),
     scoreRevisionB: Number(resultRow?.score_revision_b ?? 0),
     scoreSubmissions: resultRow?.score_submissions ?? {},
@@ -984,6 +985,7 @@ function toClientMatchResult(resultRow = null, statRows = [], allowPersonalStats
         assists: Number(row.assists ?? 0),
         steals: Number(row.steals ?? 0),
         blocks: Number(row.blocks ?? 0),
+        turnovers: Number(row.turnovers ?? 0),
         fouls: Number(row.fouls ?? 0),
       },
     ])),

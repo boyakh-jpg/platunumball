@@ -13,8 +13,14 @@ export function MatchFinalizeDialog({
   onClose,
   onConfirm,
 }) {
+  const [acknowledged, setAcknowledged] = useState(false);
+
+  useEffect(() => {
+    if (open) setAcknowledged(false);
+  }, [open]);
+
   if (!open || typeof document === "undefined") return null;
-  const blocked = openDisputeCount > 0;
+  const blocked = openDisputeCount > 0 || !acknowledged;
 
   return createPortal(
     <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !pending && onClose?.()}>
@@ -26,7 +32,7 @@ export function MatchFinalizeDialog({
         onMouseDown={(event) => event.stopPropagation()}
         onSubmit={(event) => {
           event.preventDefault();
-          if (!blocked && !pending) onConfirm?.();
+          if (!blocked && !pending) onConfirm?.({ disputesAcknowledged: true });
         }}
       >
         <strong id="match-finalize-dialog-title">더 이상 이의가 없음을 확인하셨나요?</strong>
@@ -35,6 +41,10 @@ export function MatchFinalizeDialog({
             ? `열린 이의신청 ${openDisputeCount}건을 먼저 처리해 주세요.`
             : `${authorityLabel}이 현장 참가자들과 최종 점수를 확인한 뒤 승인합니다.`}
         </p>
+        <label className="match-void-acknowledgement">
+          <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
+          <span>열린 이의가 없고 현장 최종 점수를 확인했습니다.</span>
+        </label>
         <div className="app-confirm-actions">
           <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>취소</Button>
           <Button type="submit" disabled={blocked || pending}>
