@@ -2341,6 +2341,16 @@ html[data-theme="light"] .team-search-popover button.selected {
     flex-direction: column;
   }
 
+  .entity-profile-hero-visual {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rank-profile-page .rank-tier-statement,
+  .rank-team-page .team-tier-hero {
+    margin-inline: auto;
+  }
+
   .tier-statement {
     grid-template-columns: 1fr;
   }

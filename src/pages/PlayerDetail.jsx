@@ -180,10 +180,12 @@ export default function PlayerDetail({ app }) {
         visual={(
           <div className="tier-statement rank-tier-statement ui-liquid-glass">
           <TierEmblem mmr={player.ratings.integrated} ratings={player.ratings} size="hero" showLabel />
-          <div>
-            <span>{placementComplete ? getTierDivision(player.ratings.integrated) : "배정 전"}</span>
-            <em className="tier-score-line">{placementComplete ? `${Math.round(player.ratings.integrated)} MMR` : placementLabel.replace("배정 전 · ", "")}</em>
-          </div>
+          {placementComplete ? (
+            <div>
+              <span>{getTierDivision(player.ratings.integrated)}</span>
+              <em className="tier-score-line">{Math.round(player.ratings.integrated)} MMR</em>
+            </div>
+          ) : null}
           </div>
         )}
       />

@@ -754,6 +754,25 @@ test("team heroes keep emblems focused and use the shared liquid-glass primitive
   );
 });
 
+test("mobile detail heroes center tier emblems and placement copy is not repeated", () => {
+  assert.match(
+    globalAdminStyles,
+    /@media \(max-width:\s*720px\)\s*\{[\s\S]*?\.entity-profile-hero-visual\s*\{[^}]*width:\s*100%;[^}]*justify-content:\s*center;/,
+  );
+  assert.match(
+    globalAdminStyles,
+    /\.rank-profile-page \.rank-tier-statement,\s*\.rank-team-page \.team-tier-hero\s*\{[^}]*margin-inline:\s*auto;/,
+  );
+  assert.match(
+    pageSources.playerDetail,
+    /\{placementComplete \? \(\s*<div>[\s\S]*?<span>\{getTierDivision\(player\.ratings\.integrated\)\}<\/span>[\s\S]*?<\/div>\s*\) : null\}/,
+  );
+  assert.doesNotMatch(
+    pageSources.playerDetail,
+    /placementLabel\.replace\("배정 전 · ", ""\)/,
+  );
+});
+
 test("팀 메뉴는 추천 팀만 기본 노출하고 반복 설명을 만들지 않는다", () => {
   const ratingCardSource = read("src/components/rating/RatingCard.jsx");
 
