@@ -2867,17 +2867,22 @@ export default function CreateMatch({
         currentStep={wizardStep}
         steps={creationWizardSteps}
         onStepChange={goToWizardStep}
+        submitLabel={wizardStep === finalWizardStep
+          ? isSoloRecord
+            ? "기록 저장"
+            : isMatchRecordRoom
+              ? "기록방 만들기"
+              : isTournamentRoom
+                ? "대회 생성"
+                : "경기 생성"
+          : ""}
+        submitDisabled={submitDisabled || submitting}
+        submitFeedback={wizardStep === finalWizardStep ? submitFeedback : ""}
         onCancel={() => {
           if (onCancel) onCancel();
           else navigate("/app");
         }}
       />
-      {wizardStep === finalWizardStep ? (
-      <div className="create-submit-row">
-        {submitFeedback ? <span className="create-submit-warning">{submitFeedback}</span> : null}
-        <Button type="submit" disabled={submitDisabled || submitting}>{isSoloRecord ? "기록 저장" : isMatchRecordRoom ? "기록방 만들기" : isTournamentRoom ? "대회 생성" : "경기 생성"}</Button>
-      </div>
-      ) : null}
     </form>
   );
 }

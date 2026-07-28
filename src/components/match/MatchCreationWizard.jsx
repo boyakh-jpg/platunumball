@@ -58,7 +58,15 @@ export function MatchCreationWizardNav({ currentStep, steps = MATCH_CREATION_STE
   );
 }
 
-export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION_STEPS, onStepChange, onCancel }) {
+export function MatchCreationWizardActions({
+  currentStep,
+  steps = MATCH_CREATION_STEPS,
+  onStepChange,
+  onCancel,
+  submitLabel = "",
+  submitDisabled = false,
+  submitFeedback = "",
+}) {
   const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
   const previousStep = steps[currentIndex - 1];
   const nextStep = steps[currentIndex + 1];
@@ -67,19 +75,26 @@ export function MatchCreationWizardActions({ currentStep, steps = MATCH_CREATION
   const lastStep = Boolean(previousStep && !nextStep);
   return (
     <div className={`match-creation-wizard-actions${singleStep ? " is-single-step" : ""}${edgeStep ? " is-edge-step" : ""}${lastStep ? " is-last-step" : ""}`}>
-      <Button type="button" variant="secondary" onClick={onCancel}>
-        <X size={16} /> 취소하기
-      </Button>
-      {previousStep ? (
-        <Button type="button" variant="secondary" onClick={() => onStepChange(previousStep.id)}>
-          <ChevronLeft size={17} /> 이전
+      <span className="match-creation-wizard-secondary-actions">
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          <X size={16} /> 취소하기
         </Button>
-      ) : <span />}
-      {nextStep ? (
-        <Button type="button" onClick={() => onStepChange(nextStep.id)}>
-          다음 <ChevronRight size={17} />
-        </Button>
-      ) : <span />}
+        {previousStep ? (
+          <Button type="button" variant="secondary" onClick={() => onStepChange(previousStep.id)}>
+            <ChevronLeft size={17} /> 이전
+          </Button>
+        ) : null}
+      </span>
+      <span className="match-creation-wizard-primary-actions">
+        {submitFeedback ? <small className="create-submit-warning">{submitFeedback}</small> : null}
+        {nextStep ? (
+          <Button type="button" onClick={() => onStepChange(nextStep.id)}>
+            다음 <ChevronRight size={17} />
+          </Button>
+        ) : submitLabel ? (
+          <Button type="submit" disabled={submitDisabled}>{submitLabel}</Button>
+        ) : null}
+      </span>
     </div>
   );
 }

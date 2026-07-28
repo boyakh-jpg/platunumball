@@ -332,11 +332,15 @@ test("같은 행의 랜딩 칸과 생성 control은 같은 폭과 높이를 사�
   );
   assert.match(
     courtControlStyles,
-    /\.match-creation-wizard-actions\.is-last-step\s*\{[^}]*justify-content:\s*flex-start;/,
+    /\.match-creation-wizard-secondary-actions,[\s\S]*?\.match-creation-wizard-primary-actions\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;/,
   );
   assert.match(
     courtControlStyles,
-    /@media \(max-width:\s*640px\)[\s\S]*?\.match-creation-wizard-actions\.is-last-step\s*\{[^}]*display:\s*flex;/,
+    /\.match-creation-wizard-primary-actions\s*\{[^}]*margin-left:\s*auto;/,
+  );
+  assert.match(
+    matchCreationWizardSource,
+    /match-creation-wizard-secondary-actions[\s\S]*취소하기[\s\S]*이전[\s\S]*match-creation-wizard-primary-actions[\s\S]*다음[\s\S]*type="submit"/,
   );
 });
 
