@@ -7041,7 +7041,7 @@ export function createRecruitingPost(state, draft) {
     mmrRangeMode,
     targetMmr: hostTeam.mmr,
     allowedAgeGroups,
-    requireCaptainEligible: true,
+    requireCaptainEligible: false,
   }) : null;
   const opponentEligibility = opponentTeam ? getTeamEventEligibility(opponentTeam, state.users, {
     capacity: sideCapacity,
@@ -7075,13 +7075,16 @@ export function createRecruitingPost(state, draft) {
       ],
     };
   }
-  if (!teamSelectionPending && hostJoinMode === "team" && draft.teamId && (!hostEligibility?.allowed || hostEligibility.captainId !== state.currentUserId)) {
+  const hostRepresentativeEligible = hostEligibility?.eligiblePlayerIds?.includes(state.currentUserId);
+  if (!teamSelectionPending && hostJoinMode === "team" && draft.teamId && (!hostEligibility?.allowed || !hostRepresentativeEligible)) {
     return {
       ...state,
       notifications: [{
         id: makeId("n"),
         title: "팀전 생성 제한",
-        body: hostEligibility?.captainId !== state.currentUserId ? "팀장만 팀전 방을 만들 수 있습니다." : hostEligibility?.reason,
+        body: !hostRepresentativeEligible
+          ? "방장이 현재 경기의 연령·MMR 조건을 충족하지 않습니다."
+          : hostEligibility?.reason,
         tone: "team",
       }, ...state.notifications],
     };
@@ -7318,6 +7321,7 @@ export function setRecruitingRoomTeam(state, postId, side, teamId) {
   ) return state;
 
   const captainId = team.members?.find((member) => member.role === "captain")?.userId ?? "";
+  const currentUserIsMember = team.members?.some((member) => member.userId === state.currentUserId) ?? false;
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? roomState.mmrRangeMode);
   const mmrLimitMode = post.ranked === false ? "off" : "block";
   const hostTeam = state.teams?.find((item) => item.id === post.teamId) ?? null;
@@ -7328,16 +7332,23 @@ export function setRecruitingRoomTeam(state, postId, side, teamId) {
     mmrRangeMode,
     targetMmr: safeSide === "teamA" ? team.mmr : hostTeam?.mmr ?? team.mmr,
     allowedAgeGroups: post.allowedAgeGroups ?? post.rules?.allowedAgeGroups,
-    requireCaptainEligible: true,
+    requireCaptainEligible: safeSide !== "teamA",
   });
-  if (!captainId || !eligibility?.allowed || (safeSide === "teamA" && captainId !== state.currentUserId)) {
+  const currentUserEligible = eligibility?.eligiblePlayerIds?.includes(state.currentUserId);
+  if (
+    !captainId
+    || !eligibility?.allowed
+    || (safeSide === "teamA" && (!currentUserIsMember || !currentUserEligible))
+  ) {
     return {
       ...state,
       notifications: [{
         id: makeId("n"),
         title: "\uD300 \uC120\uD0DD \uC81C\uD55C",
-        body: safeSide === "teamA" && captainId !== state.currentUserId
-          ? "\uBC29\uC7A5\uC774 \uD604\uC7AC \uC8FC\uC7A5\uC778 \uD300\uB9CC A\uC0AC\uC774\uB4DC\uB85C \uC120\uD0DD\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+        body: safeSide === "teamA" && !currentUserIsMember
+          ? "\uBC29\uC7A5\uC774 \uD604\uC7AC \uC18C\uC18D\uB41C \uD300\uB9CC A\uC0AC\uC774\uB4DC\uB85C \uC120\uD0DD\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+          : safeSide === "teamA" && !currentUserEligible
+            ? "\uBC29\uC7A5\uC774 \uD604\uC7AC \uACBD\uAE30\uC758 \uC5F0\uB839\u00B7MMR \uC870\uAC74\uC744 \uCDA9\uC871\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
           : eligibility?.reason ?? "\uD604\uC7AC \uD300 \uCC38\uAC00 \uC870\uAC74\uC744 \uCDA9\uC871\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
         tone: "team",
         recruitingPostId: postId,
@@ -7639,15 +7650,21 @@ export function interestRecruitingPost(state, postId, application = {}) {
     mmrRangeMode: post.mmrRangeMode ?? roomState.mmrRangeMode,
     targetMmr: getRecruitingTargetMmr(post, state),
     allowedAgeGroups: post.allowedAgeGroups ?? post.rules?.allowedAgeGroups,
-    requireCaptainEligible: true,
+    requireCaptainEligible: false,
   }) : null;
-  if (applicantKind === "team" && (teamEligibility?.captainId !== state.currentUserId || !teamEligibility?.allowed)) {
+  const currentUserIsTeamMember = team?.members?.some((member) => member.userId === state.currentUserId) ?? false;
+  const currentUserEligible = teamEligibility?.eligiblePlayerIds?.includes(state.currentUserId) ?? false;
+  if (applicantKind === "team" && (!currentUserIsTeamMember || !currentUserEligible || !teamEligibility?.allowed)) {
     return {
       ...state,
       notifications: [{
         id: makeId("n"),
         title: "팀전 참가 제한",
-        body: teamEligibility?.captainId !== state.currentUserId ? "팀장만 팀으로 참가할 수 있습니다." : teamEligibility?.reason,
+        body: !currentUserIsTeamMember
+          ? "현재 소속된 팀으로만 참가할 수 있습니다."
+          : !currentUserEligible
+            ? "현재 경기의 연령·MMR 조건을 충족하지 않습니다."
+            : teamEligibility?.reason,
         tone: "team",
       }, ...state.notifications],
     };

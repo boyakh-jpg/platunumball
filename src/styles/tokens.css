@@ -189,7 +189,7 @@
   --ui-room-modal-radius: var(--radius-lg);
   --ui-room-modal-border: var(--card-border);
   --ui-room-modal-shadow: none;
-  --ui-room-modal-bg: var(--card-bg-strong);
+  --ui-room-modal-bg: color-mix(in srgb, var(--rb-bg-2) 92%, transparent);
   --ui-room-panel-bg: color-mix(in srgb, var(--rb-bg-2) 78%, transparent);
   --ui-room-panel-border: var(--card-border);
   --hero-title-font: var(--sports-display-font);

@@ -2941,11 +2941,6 @@ function RecruitingRoomModalReady({
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
   );
-  const captainTeams = useMemo(
-    () => myTeams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id && member.role === "captain")),
-    [app.currentUser.id, myTeams],
-  );
-
   useEffect(() => {
     if (!shouldLoadTeamDirectory) return;
     loadDirectory?.({ kind: "teams", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true });
@@ -3666,9 +3661,9 @@ function RecruitingRoomModalReady({
           mmrRangeMode: selectedPost.mmrRangeMode ?? selectedPost.roomState?.mmrRangeMode,
           targetMmr: roomTargetMmr,
           allowedAgeGroups: selectedPost.allowedAgeGroups ?? selectedPost.rules?.allowedAgeGroups,
-          requireCaptainEligible: true,
+          requireCaptainEligible: false,
         });
-        const selectedJoinTeam = captainTeams.find((team) => team.id === joinDraft.teamId) ?? captainTeams[0] ?? null;
+        const selectedJoinTeam = myTeams.find((team) => team.id === joinDraft.teamId) ?? myTeams[0] ?? null;
         const selectedJoinTeamEligibility = getJoinTeamEligibility(selectedJoinTeam);
         const selectedJoinSideTeamId = getLobbyPrimaryTeamId(lobby, joinDraft.side);
         const selectedJoinSideAvailable = !teamOnlyRoom || !selectedJoinSideTeamId;
@@ -3737,16 +3732,30 @@ function RecruitingRoomModalReady({
             : joinTierAllowed && (!pickupPoolMode || pickupOpenSlotPlacements.length > 0) && (joinDraft.joinMode === "player" || teamJoinValid)
         );
         const roomTeamSelectionOpen = teamOnlyRoom && !sourceMatch && selectedPost.status === "open" && !recruitingRoomConfirmed;
-        const getRoomTeamSelectionEligibility = (team, sideName) => getTeamEventEligibility(team, app.state.users, {
-          capacity: getRecruitingSideCapacity(selectedPost),
-          ranked: selectedPost.ranked,
-          mmrLimitMode: selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode,
-          mmrRangeMode: selectedPost.mmrRangeMode ?? selectedPost.roomState?.mmrRangeMode,
-          targetMmr: sideName === "teamA" ? team?.mmr : selectedRoomTeamA?.mmr,
-          allowedAgeGroups: selectedPost.allowedAgeGroups ?? selectedPost.rules?.allowedAgeGroups,
-          requireCaptainEligible: true,
-        });
-        const roomTeamACandidates = captainTeams;
+        const getRoomTeamSelectionEligibility = (team, sideName) => {
+          const eligibility = getTeamEventEligibility(team, app.state.users, {
+            capacity: getRecruitingSideCapacity(selectedPost),
+            ranked: selectedPost.ranked,
+            mmrLimitMode: selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode,
+            mmrRangeMode: selectedPost.mmrRangeMode ?? selectedPost.roomState?.mmrRangeMode,
+            targetMmr: sideName === "teamA" ? team?.mmr : selectedRoomTeamA?.mmr,
+            allowedAgeGroups: selectedPost.allowedAgeGroups ?? selectedPost.rules?.allowedAgeGroups,
+            requireCaptainEligible: sideName !== "teamA",
+          });
+          if (
+            sideName === "teamA"
+            && eligibility.allowed
+            && !eligibility.eligiblePlayerIds.includes(app.currentUser.id)
+          ) {
+            return {
+              ...eligibility,
+              allowed: false,
+              reason: "방장이 현재 경기의 연령·MMR 조건을 충족하지 않습니다.",
+            };
+          }
+          return eligibility;
+        };
+        const roomTeamACandidates = myTeams;
         const roomTeamBCandidates = app.state.teams.filter((team) => (
           team.id !== selectedRoomTeamAId && Boolean(getTeamCaptainId(team))
         ));
@@ -3762,7 +3771,7 @@ function RecruitingRoomModalReady({
           try {
             const result = await app.actions.setRecruitingRoomTeam?.(selectedPost.id, sideName, team.id);
             if (result === false || result?.ok === false) {
-              setRoomTeamFeedback("팀을 선택하지 못했습니다. 현재 주장·팀 조건·방 상태를 확인해 주세요.");
+              setRoomTeamFeedback("팀을 선택하지 못했습니다. 소속·팀 조건·방 상태를 확인해 주세요.");
               return;
             }
             setRoomTeamQuery("");
@@ -4822,7 +4831,7 @@ function RecruitingRoomModalReady({
                                 );
                               })}
                             </div>
-                          ) : <em>현재 주장인 팀이 없습니다.</em>
+                          ) : <em>현재 소속된 팀이 없습니다.</em>
                         ) : <em>방장이 A팀을 선택하는 중입니다.</em>}
                       </section>
                       <section>
@@ -5744,8 +5753,8 @@ function RecruitingRoomModalReady({
                           type="button"
                           className={joinDraft.joinMode === mode ? "active" : ""}
                           onClick={() => {
-                            const teamId = mode === "team" ? getDefaultApplyTeamId(selectedPost, captainTeams) : "";
-                            const team = captainTeams.find((item) => item.id === teamId) ?? null;
+                            const teamId = mode === "team" ? getDefaultApplyTeamId(selectedPost, myTeams) : "";
+                            const team = myTeams.find((item) => item.id === teamId) ?? null;
                             const rosterPatch = mode === "team"
                               ? getJoinRosterPatch(team)
                               : { playerIds: [], reservePlayerIds: [] };
@@ -5765,9 +5774,9 @@ function RecruitingRoomModalReady({
                       <>
                         <div className="arena-team-choice-field">
                           <span>참여 팀</span>
-                          {captainTeams.length ? (
+                          {myTeams.length ? (
                             <div className="arena-team-choice-grid">
-                              {captainTeams.map((team) => {
+                              {myTeams.map((team) => {
                                 const eligibility = getJoinTeamEligibility(team);
                                 return (
                                   <button

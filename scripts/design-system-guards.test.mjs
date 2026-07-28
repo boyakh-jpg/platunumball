@@ -371,6 +371,21 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
   assert.doesNotMatch(matchRoomStyles, /\.gm-reserve-row\s*\{[^}]*repeat\(2,/);
 });
 
+test("공용 방모달은 배경 페이지와 섞이지 않는 전용 표면을 사용한다", () => {
+  assert.match(
+    tokenStyles,
+    /--ui-room-modal-bg:\s*color-mix\(in srgb,\s*var\(--rb-bg-2\) 92%,\s*transparent\);/,
+  );
+  assert.match(
+    tokenStyles,
+    /html\[data-theme="light"\][\s\S]*--ui-room-modal-bg:\s*var\(--card-bg-strong\);/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-modal\s*\{[^}]*background:\s*var\(--ui-room-modal-bg\);/,
+  );
+});
+
 test("공용 빈 상태와 control 높이는 페이지 override 없이 유지된다", () => {
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.empty-state\s*\{/);
   assert.doesNotMatch(globalWorkflowStyles, /(?:^|\n)\s*\.ui-empty-state\s*\{/);

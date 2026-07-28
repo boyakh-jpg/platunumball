@@ -72,6 +72,14 @@ const publicTeamRepresentativeApplicationMigrationSource = fs.readFileSync(
   path.join(root, "supabase/migrations/20260725021000_allow_team_representative_application.sql"),
   "utf8",
 );
+const teamMemberSideLeaderMigrationSource = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260728120000_team_member_side_leader_team_selection.sql"),
+  "utf8",
+);
+const teamMemberPublicJoinMigrationSource = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260728121000_team_member_public_side_leader_join.sql"),
+  "utf8",
+);
 
 function readCssManifest(relativePath) {
   const manifestPath = path.join(root, relativePath);
@@ -790,10 +798,19 @@ test("general prearranged matches keep only three MMR ranges and force the limit
 test("empty team rooms select teams only through the central reducer", () => {
   const users = [
     { id: "host", name: "방장", region: "마포", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
+    { id: "captain-a", name: "A팀장", region: "마포", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
     { id: "captain-b", name: "B팀장", region: "마포", trustScore: 100, ageGroup: "open", ratings: { integrated: 1210 } },
   ];
   const teams = [
-    { id: "team-a", name: "A팀", mmr: 1200, members: [{ userId: "host", role: "captain" }] },
+    {
+      id: "team-a",
+      name: "A팀",
+      mmr: 1200,
+      members: [
+        { userId: "captain-a", role: "captain" },
+        { userId: "host", role: "regular" },
+      ],
+    },
     { id: "team-b", name: "B팀", mmr: 1210, members: [{ userId: "captain-b", role: "captain" }] },
     { id: "team-no-captain", name: "주장없음", mmr: 1200, members: [] },
   ];
@@ -843,6 +860,7 @@ test("empty team rooms select teams only through the central reducer", () => {
   const withA = setRecruitingRoomTeam(created, emptyPost.id, "teamA", "team-a");
   assert.equal(withA.recruitingPosts[0].teamId, "team-a");
   assert.deepEqual(withA.recruitingPosts[0].playerIds, ["host"]);
+  assert.equal(withA.recruitingPosts[0].roomState.partyLeaders.host, "host");
 
   const withoutCaptain = setRecruitingRoomTeam(withA, emptyPost.id, "teamB", "team-no-captain");
   assert.equal(withoutCaptain.recruitingPosts[0].targetTeamId, null);
@@ -884,9 +902,14 @@ test("team selection is routed through the server and DB authority", () => {
   assert.match(migrationSource, /'pending'/);
   assert.match(migrationSource, /target_team_id/);
   assert.doesNotMatch(migrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
+  assert.match(teamMemberSideLeaderMigrationSource, /recruiting_team_member_required/);
+  assert.match(teamMemberSideLeaderMigrationSource, /recruiting_team_representative_ineligible/);
+  assert.match(teamMemberSideLeaderMigrationSource, /member\.user_id = safe_actor_id/);
+  assert.match(teamMemberSideLeaderMigrationSource, /post_row\.allowed_age_groups,\s*false/);
+  assert.doesNotMatch(teamMemberSideLeaderMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
-test("public team joins persist only the captain representative", () => {
+test("public team joins persist only the applying team member as side leader", () => {
   const users = [
     { id: "host", name: "방장", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
     { id: "captain", name: "상대 팀장", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
@@ -937,7 +960,7 @@ test("public team joins persist only the captain representative", () => {
     },
   ];
   const baseState = {
-    currentUserId: "captain",
+    currentUserId: "member",
     users,
     teams,
     recruitingPosts: [post],
@@ -949,29 +972,34 @@ test("public team joins persist only the captain representative", () => {
     teamId: "opponent-team",
     side: "teamB",
     playerIds: ["captain", "member"],
-    reservePlayerIds: ["member"],
+    reservePlayerIds: ["captain"],
     reserve: true,
   });
   const application = joined.recruitingPosts[0].applicants[0];
 
-  assert.equal(application.playerId, "captain");
+  assert.equal(application.playerId, "member");
   assert.equal(application.side, "teamB");
   assert.equal(application.reserve, false);
-  assert.deepEqual(application.playerIds, ["captain"]);
+  assert.deepEqual(application.playerIds, ["member"]);
   assert.deepEqual(joined.recruitingPosts[0].roomState.partyReserves, {});
+  assert.equal(joined.recruitingPosts[0].roomState.partyLeaders["team:opponent-team"], "member");
 
   const rejected = interestRecruitingPost(
-    { ...baseState, currentUserId: "member" },
+    {
+      ...baseState,
+      currentUserId: "outsider",
+      users: [...users, { id: "outsider", name: "외부인", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } }],
+    },
     post.id,
     {
       joinMode: "team",
       teamId: "opponent-team",
       side: "teamB",
-      playerIds: ["member"],
+      playerIds: ["outsider"],
     },
   );
   assert.equal(rejected.recruitingPosts[0].applicants.length, 0);
-  assert.match(rejected.notifications[0].body, /팀장만/);
+  assert.match(rejected.notifications[0].body, /내 팀|소속된 팀/);
 
   assert.match(publicTeamRepresentativeMigrationSource, /rankball_recruiting_management_action_unguarded/);
   assert.match(publicTeamRepresentativeMigrationSource, /member\.role = 'captain'/);
@@ -984,6 +1012,10 @@ test("public team joins persist only the captain representative", () => {
   assert.match(publicTeamRepresentativeApplicationMigrationSource, /new\.player_id = eligibility->>'captainId'/);
   assert.match(publicTeamRepresentativeApplicationMigrationSource, /jsonb_array_length\(coalesce\(new\.player_ids, '\[\]'::jsonb\)\) = 1/);
   assert.match(publicTeamRepresentativeApplicationMigrationSource, /team_representative_application_guard_shape_changed/);
+  assert.match(teamMemberPublicJoinMigrationSource, /recruiting_team_membership_required/);
+  assert.match(teamMemberPublicJoinMigrationSource, /recruiting_team_representative_ineligible/);
+  assert.match(teamMemberPublicJoinMigrationSource, /eligibility->'eligiblePlayerIds'[\s\S]*\? new\.player_id/);
+  assert.doesNotMatch(teamMemberPublicJoinMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
 test("pickup participant slots keep a fixed width and use available desktop columns", () => {
