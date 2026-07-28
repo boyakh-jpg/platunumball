@@ -1113,6 +1113,11 @@ html[data-theme="light"] .search-picker-result-row.selected {
   color: #141107;
 }
 
+.recent-match-row.result-neutral b {
+  background: var(--ui-control-bg);
+  color: var(--muted);
+}
+
 .recent-match-row.result-w {
   border-left-color: var(--blue);
   background: rgba(116, 169, 255, 0.07);

@@ -166,6 +166,7 @@ test("record result cards share matchup and date mode court metadata", () => {
     recentMatchRowSource,
     /className="recent-match-matchup"[\s\S]*?<MatchTeamName side=\{side\}[\s\S]*?className="recent-match-vs">vs<\/span>[\s\S]*?<MatchTeamName side=\{opponent\}[\s\S]*?<MatchRecordMeta record=\{record\}/,
   );
+  assert.match(recentMatchRowSource, /neutral:\s*"neutral"[\s\S]*?neutral:\s*"-"/);
   assert.match(
     matchRecordMetaSource,
     /const prefix = \[date, mode\]\.filter\(Boolean\)\.join\(" · "\)/,

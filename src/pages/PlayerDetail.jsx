@@ -379,7 +379,7 @@ export default function PlayerDetail({ app }) {
                     <RecentMatchRow
                       key={match.id}
                       record={match}
-                      result={outcome ?? "D"}
+                      result={outcome ?? "neutral"}
                       side={side}
                       opponent={opponent}
                       score={getSideScore(match, sideName)}

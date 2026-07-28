@@ -12,12 +12,14 @@ const RESULT_TOKEN = {
   d: "d",
   draw: "d",
   "무": "d",
+  neutral: "neutral",
 };
 
 const RESULT_LABEL = {
   w: "W",
   l: "L",
   d: "D",
+  neutral: "-",
 };
 
 function MatchTeamName({ side = {}, team = null, strong = false }) {
