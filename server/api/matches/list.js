@@ -1157,6 +1157,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const memberTeamMatchIds = new Set(relatedActiveRows.filter((row) => row?.memberTeam).map((row) => row.id));
   const feedPage = mergeMatchFeedPages(mergeMatchFeedPages(baseFeedPage, recentCompletedPage), closedNoticePage);
   const feedCardIds = new Set((feedPage?.cards ?? []).map((card) => card?.id).filter(Boolean));
+  const recentCompletedIds = new Set(recentCompletedPage?.ids ?? []);
   let pageSource = "feed";
   let pageCursor = feedPage?.cursor ?? "";
   let pageExhausted = feedPage?.exhausted ?? true;
@@ -1173,7 +1174,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     }
     const rowFallbackIds = completedOnly
       ? feedPage.ids ?? []
-      : (feedPage.ids ?? []).filter((id) => !feedCardIds.has(id));
+      : (feedPage.ids ?? []).filter((id) => !feedCardIds.has(id) || recentCompletedIds.has(id));
     if (rowFallbackIds.length) {
       pageSource = appendRowFallbackSource(pageSource);
       matchRows = await timeStep(debugTiming, "matchRowsMs", () => (

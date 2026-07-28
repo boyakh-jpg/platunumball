@@ -18,7 +18,7 @@ import { DEFAULT_RATING, HOME_RIVAL_TEAM_LIMIT, MAX_TEAM_MEMBERSHIPS, getTeamRol
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
-import { addDateDays, canUserResolveMatchDispute, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideResult, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getOpenMatchDisputes, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
+import { addDateDays, canUserResolveMatchDispute, getActualMatchPlayerSideName, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideResult, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getOpenMatchDisputes, getPlayerRecentRecordMatches, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
@@ -75,7 +75,7 @@ function compareSchedule(a, b) {
 }
 
 function getUserResult(match, userId) {
-  const sideName = getMatchUserParticipantSideName(match, userId) ?? "teamA";
+  const sideName = getActualMatchPlayerSideName(match, userId) ?? getMatchUserParticipantSideName(match, userId) ?? "teamA";
   return getMatchSideResult(match, sideName);
 }
 
@@ -122,7 +122,7 @@ function getNotificationPreviewBody(notification = {}) {
 const getSafeMatchSide = (match = {}, sideName = "teamA") => getSafeMatchSideBase(match, sideName, { includeScore: true });
 
 function getUserMatchLine(match, userId) {
-  const sideName = getMatchUserParticipantSideName(match, userId) ?? "teamA";
+  const sideName = getActualMatchPlayerSideName(match, userId) ?? getMatchUserParticipantSideName(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
   return {
     side: getSafeMatchSide(match, sideName),
@@ -255,7 +255,8 @@ export default function Home({ app }) {
       setProcessingInviteId("");
     }
   };
-  const myCompletedMatches = completedMatches.filter((match) => isHomeUserMatch(match, user.id));
+  const myCompletedMatches = getPlayerRecentRecordMatches(completedMatches, user.id)
+    .filter((match) => !isPersonalRecordMatch(match));
   const actionItems = useMemo(() => {
     const tournamentInviteItems = (app.state.tournaments ?? [])
       .filter((tournament) => isActionableTournamentInvite(tournament, blockedUserIds, todayValue))

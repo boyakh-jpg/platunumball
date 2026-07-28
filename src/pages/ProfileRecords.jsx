@@ -5,18 +5,18 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine, getMatchPlayedDate, getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { formatStatLine, getActualMatchPlayerSideName, getMatchParticipationType, getMatchPlayedDate, getMatchSideResult, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function getRecordLine(match, userId) {
-  const sideName = getPlayerSideName(match, userId) ?? "teamA";
+  const sideName = getActualMatchPlayerSideName(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
   return {
     side: match[sideName],
     opponent: match[otherSide],
     score: getSideScore(match, sideName),
     opponentScore: getSideScore(match, otherSide),
-    result: getPlayerMatchResult(match, userId),
+    result: getMatchSideResult(match, sideName),
   };
 }
 function hasPlayerStats(match, userId) {
@@ -38,6 +38,20 @@ function isPersonalArchiveRecord(record = {}) {
   return ["solo", "personal_record"].includes(String(record.recordType ?? "").trim().toLowerCase());
 }
 
+const RECORD_FILTERS = [
+  { id: "all", label: "통합" },
+  { id: "individual", label: "개인전" },
+  { id: "team", label: "팀전" },
+  { id: "personal", label: "내 기록" },
+];
+
+function matchesRecordFilter(record = {}, filter = "all") {
+  const participationType = getMatchParticipationType(record);
+  if (filter === "personal") return participationType === "personal";
+  if (participationType === "personal") return false;
+  return filter === "all" || participationType === filter;
+}
+
 export default function ProfileRecords({ app }) {
   const user = app.currentUser;
   const loadProfileRecords = app.actions.loadProfileRecords;
@@ -45,6 +59,7 @@ export default function ProfileRecords({ app }) {
   const archiveState = app.recordArchives?.profile ?? { rows: [], page: {}, loading: false, error: "" };
   const loadKeyRef = useRef("");
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
+  const [recordFilter, setRecordFilter] = useState("all");
   const recentRecords = getPlayerRecentRecordMatches(app.state.matches, user.id);
   const officialRecentRecords = recentRecords.filter((match) => !isPersonalRecordMatch(match));
   const personalRecentRecords = recentRecords.filter(isPersonalRecordMatch);
@@ -66,23 +81,26 @@ export default function ProfileRecords({ app }) {
       loadKeyRef.current = "";
     });
   }, [app.remoteReady, archiveState.error, loadProfileRecords, profileRecordsLoaded, user.id]);
-  const recordedStatRecords = officialRecentRecords.filter((match) => hasPlayerStats(match, user.id));
+  const filteredOfficialRecords = officialRecentRecords.filter((match) => matchesRecordFilter(match, recordFilter));
+  const visibleRecentRecords = recentRecords.filter((match) => matchesRecordFilter(match, recordFilter));
+  const visibleArchivedRecords = archivedRecords.filter((record) => matchesRecordFilter(record, recordFilter));
+  const recordedStatRecords = filteredOfficialRecords.filter((match) => hasPlayerStats(match, user.id));
   const totals = getTotals(recordedStatRecords, user.id);
-  const wins = officialRecentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "W").length;
-  const losses = officialRecentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "L").length;
-  const draws = officialRecentRecords.length - wins - losses;
+  const wins = filteredOfficialRecords.filter((match) => getRecordLine(match, user.id).result === "W").length;
+  const losses = filteredOfficialRecords.filter((match) => getRecordLine(match, user.id).result === "L").length;
+  const draws = filteredOfficialRecords.length - wins - losses;
   const averageFouls = recordedStatRecords.length ? Number(totals.fouls ?? 0) / recordedStatRecords.length : 0;
   const fallbackPersonalTotals = getTotals(personalRecentRecords, user.id);
   const personalSummary = archiveState.personalSummary ?? {
     recordCount: personalRecentRecords.length,
-    winCount: personalRecentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "W").length,
-    lossCount: personalRecentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "L").length,
-    drawCount: personalRecentRecords.filter((match) => getPlayerMatchResult(match, user.id) === "D").length,
+    winCount: personalRecentRecords.filter((match) => getRecordLine(match, user.id).result === "W").length,
+    lossCount: personalRecentRecords.filter((match) => getRecordLine(match, user.id).result === "L").length,
+    drawCount: personalRecentRecords.filter((match) => getRecordLine(match, user.id).result === "D").length,
     statCount: personalRecentRecords.filter((match) => match.result?.playerStats?.[user.id]).length,
     publicRecordCount: personalRecentRecords.filter((match) => match.visibility === "public").length,
     ...fallbackPersonalTotals,
   };
-  const dateRows = [...recentRecords.reduce((map, match) => {
+  const dateRows = [...visibleRecentRecords.reduce((map, match) => {
     const date = getMatchPlayedDate(match) || "날짜 미정";
     map.set(date, (map.get(date) ?? 0) + 1);
     return map;
@@ -101,43 +119,49 @@ export default function ProfileRecords({ app }) {
       <Card className="section-card profile-records-summary">
         <div className="section-title-row">
           <div>
-            <p className="eyebrow">Official & General</p>
-            <h2>일반 경기 통계</h2>
+            <p className="eyebrow">{recordFilter === "personal" ? "Self Authored" : "Official & General"}</p>
+            <h2>{recordFilter === "personal" ? "내 기록 통계" : `${RECORD_FILTERS.find((item) => item.id === recordFilter)?.label ?? "통합"} 경기 통계`}</h2>
           </div>
-          <Badge tone="green">최근 6개월 {officialRecentRecords.length}경기</Badge>
+          <Badge tone={recordFilter === "personal" ? "gold" : "green"}>
+            {recordFilter === "personal"
+              ? `내 기록 ${personalSummary.recordCount ?? 0} · 공개 ${personalSummary.publicRecordCount ?? 0}`
+              : `최근 6개월 ${filteredOfficialRecords.length}경기`}
+          </Badge>
+        </div>
+        <div className="segmented-control profile-record-filter" aria-label="경기 기록 구분">
+          {RECORD_FILTERS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={recordFilter === item.id ? "active" : ""}
+              aria-pressed={recordFilter === item.id}
+              onClick={() => setRecordFilter(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
         <div className="rank-stat-grid">
-          <span><strong>{wins}</strong>승</span>
-          <span><strong>{losses}</strong>패</span>
-          <span><strong>{draws}</strong>무</span>
-          {recordedStatRecords.length ? <>
-          <span><strong>{averageFouls.toFixed(1)}</strong>평균 파울</span>
-          {PLAYER_STAT_FIELDS.map((field) => (
-            <span key={field.id}><strong>{totals[field.id] ?? 0}</strong>{field.label}</span>
-          ))}</> : null}
+          {recordFilter === "personal" ? <>
+            <span><strong>{personalSummary.winCount ?? 0}</strong>승</span>
+            <span><strong>{personalSummary.lossCount ?? 0}</strong>패</span>
+            <span><strong>{personalSummary.drawCount ?? 0}</strong>무</span>
+            {Number(personalSummary.statCount ?? 0) > 0 ? PLAYER_STAT_FIELDS.map((field) => (
+              <span key={field.id}><strong>{personalSummary[field.id] ?? 0}</strong>{field.label}</span>
+            )) : null}
+          </> : <>
+            <span><strong>{wins}</strong>승</span>
+            <span><strong>{losses}</strong>패</span>
+            <span><strong>{draws}</strong>무</span>
+            {recordedStatRecords.length ? <>
+              <span><strong>{averageFouls.toFixed(1)}</strong>평균 파울</span>
+              {PLAYER_STAT_FIELDS.map((field) => (
+                <span key={field.id}><strong>{totals[field.id] ?? 0}</strong>{field.label}</span>
+              ))}
+            </> : null}
+          </>}
         </div>
-      </Card>
-
-      <Card className="section-card profile-records-summary personal-record-summary-card">
-        <div className="section-title-row">
-          <div>
-            <p className="eyebrow">Self Authored</p>
-            <h2>내 기록 통계</h2>
-          </div>
-          <div className="profile-record-badges">
-            <Badge tone="gold">내 기록 {personalSummary.recordCount ?? 0}</Badge>
-            <Badge tone="green">공개 {personalSummary.publicRecordCount ?? 0}</Badge>
-          </div>
-        </div>
-        <div className="rank-stat-grid">
-          <span><strong>{personalSummary.winCount ?? 0}</strong>승</span>
-          <span><strong>{personalSummary.lossCount ?? 0}</strong>패</span>
-          <span><strong>{personalSummary.drawCount ?? 0}</strong>무</span>
-          {Number(personalSummary.statCount ?? 0) > 0 ? PLAYER_STAT_FIELDS.map((field) => (
-            <span key={field.id}><strong>{personalSummary[field.id] ?? 0}</strong>{field.label}</span>
-          )) : null}
-        </div>
-        <p className="form-helper">직접 만든 기록만 합산합니다. 공식 통계·업적·MMR에는 포함되지 않습니다.</p>
+        {recordFilter === "personal" ? <p className="form-helper">직접 만든 기록만 합산합니다. 공식 통계·업적·MMR에는 포함되지 않습니다.</p> : null}
       </Card>
 
       <Card className="section-card">
@@ -162,9 +186,9 @@ export default function ProfileRecords({ app }) {
             <h2>최근 6개월 경기 기록</h2>
           </div>
         </div>
-        {recentRecords.length ? (
+        {visibleRecentRecords.length ? (
           <div className="recent-match-list profile-records-list">
-            {recentRecords.map((match) => {
+            {visibleRecentRecords.map((match) => {
               const line = getRecordLine(match, user.id);
               const stats = hasPlayerStats(match, user.id) ? match.result.playerStats[user.id] : null;
               return (
@@ -208,17 +232,17 @@ export default function ProfileRecords({ app }) {
           </button>
         ) : null}
       </Card>
-      {archivedRecords.length ? (
+      {visibleArchivedRecords.length ? (
         <Card className="section-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Archive</p>
               <h2>6개월 초과 · 최근 5년</h2>
             </div>
-            <Badge tone="neutral">목록 {archivedRecords.length}경기</Badge>
+            <Badge tone="neutral">목록 {visibleArchivedRecords.length}경기</Badge>
           </div>
           <div className="recent-match-list profile-records-list">
-            {archivedRecords.map((record) => (
+            {visibleArchivedRecords.map((record) => (
                 <div key={record.matchId} className={`recent-match-row profile-record-row record-archive-row result-${String(record.result ?? "D").toLowerCase()}`}>
                   <b>{record.result}</b>
                   <span>

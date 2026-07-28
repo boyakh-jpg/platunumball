@@ -159,6 +159,23 @@ export function isMatchRecordMatch(match = {}) {
   return getMatchRecordType(match) === RECORD_TYPES.matchRecord;
 }
 
+export function getMatchParticipationType(match = {}) {
+  if (isPersonalRecordMatch(match)) return "personal";
+  if (isMatchRecordMatch(match) && match?.rules?.recordComposition) {
+    return match.rules.recordComposition === "team" ? "team" : "individual";
+  }
+  const teamAId = match?.teamA?.teamId ?? match?.teamAId ?? (match?.side === "teamA" ? match?.teamId : match?.opponentTeamId);
+  const teamBId = match?.teamB?.teamId ?? match?.teamBId ?? (match?.side === "teamB" ? match?.teamId : match?.opponentTeamId);
+  const teamConfigured = Boolean(
+    (teamAId && teamBId)
+    || match?.hostJoinMode === "team"
+    || match?.rules?.hostJoinMode === "team"
+    || match?.teamOnly === true
+    || match?.rules?.teamOnly === true
+  );
+  return teamConfigured ? "team" : "individual";
+}
+
 export function getMatchRecordCompositionLabel(match = {}) {
   if (!isMatchRecordMatch(match)) return "";
   return match?.rules?.recordComposition === "team" ? "팀 구성" : "개인 구성";
@@ -570,7 +587,7 @@ export function getPlayerRecentRecordMatches(matches = [], playerId = "", option
   const records = [...matches]
     .filter((match) => (
       match.status === "confirmed"
-      && getPlayerSideName(match, playerId)
+      && getActualMatchPlayerSideName(match, playerId)
       && isMatchWithinRecordDetailWindow(match, options.months, options.now)
     ))
     .sort(compareMatchRecency);
@@ -711,9 +728,9 @@ export function getActualMatchPlayerIds(match = {}) {
   if (isPersonalRecordMatch(match)) return [];
   const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
   const played = uniquePlayerIds(MATCH_SIDES.flatMap((sideName) => playedPlayerIds?.[sideName] ?? []));
-  if (played.length) return played.filter((playerId) => !match.anonymousPlayers?.[playerId]);
   const reserves = new Set(MATCH_SIDES.flatMap((sideName) => getMatchReservePlayerIds(match, sideName)));
-  return getMatchPlayerIds(match).filter((playerId) => !reserves.has(playerId) && !match.anonymousPlayers?.[playerId]);
+  const currentPlayers = getMatchPlayerIds(match).filter((playerId) => !reserves.has(playerId));
+  return uniquePlayerIds([...played, ...currentPlayers]).filter((playerId) => !match.anonymousPlayers?.[playerId]);
 }
 
 export function getMatchRecordEndedAt(startedAt) {
@@ -1058,6 +1075,17 @@ export function getPlayerSideName(match = {}, playerId) {
   if (getMatchSidePlayerIds(match, "teamA").includes(playerId)) return "teamA";
   if (getMatchSidePlayerIds(match, "teamB").includes(playerId)) return "teamB";
   return null;
+}
+
+export function getActualMatchPlayerSideName(match = {}, playerId = "") {
+  if (!playerId) return null;
+  if (isPersonalRecordMatch(match)) return getPlayerSideName(match, playerId);
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const playedSide = MATCH_SIDES.find((sideName) => (playedPlayerIds?.[sideName] ?? []).includes(playerId));
+  if (playedSide) return playedSide;
+  const currentSide = getPlayerSideName(match, playerId);
+  if (!currentSide) return null;
+  return getMatchReservePlayerIds(match, currentSide).includes(playerId) ? null : currentSide;
 }
 
 export function getPlayerMatchResult(match = {}, playerId = "") {

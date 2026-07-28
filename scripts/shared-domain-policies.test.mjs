@@ -82,6 +82,9 @@ import {
 import {
   canRequestVoidMatchRestore,
   compareMatchRecency,
+  getActualMatchPlayerIds,
+  getActualMatchPlayerSideName,
+  getMatchParticipationType,
   getMatchScoreEditableSides,
   getMatchResultEntryPermission,
   hasMatchScoreboardOperators,
@@ -89,6 +92,7 @@ import {
   getMatchSideResult,
   getLocalDateInputValue,
   getPlayerMatchResult,
+  getPlayerRecentRecordMatches,
   getTournamentScheduleEditPolicy,
   isMatchWithinRecordDetailWindow,
   isTournamentMatchLineupEditable,
@@ -1348,6 +1352,64 @@ test("profile record result and recency helpers preserve match semantics", () =>
   assert.equal(getPlayerMatchResult(match, "player-b"), "L");
   assert.equal(getPlayerMatchResult(match, "unknown"), "D");
   assert.ok(isMatchWithinRecordDetailWindow(match, 6, new Date("2026-07-21T00:00:00.000Z")));
+});
+
+test("profile records use actual participation and split individual, team, and personal records", () => {
+  const playedAt = "2026-07-20T10:00:00.000Z";
+  const teamMatch = {
+    id: "team-match",
+    status: "confirmed",
+    scheduledAt: playedAt,
+    teamA: { teamId: "team-a", players: ["active-a"] },
+    teamB: { teamId: "team-b", players: ["active-b"] },
+    playedPlayerIds: { teamA: ["played-a"], teamB: [] },
+    reservePlayers: { teamA: ["late-reserve", "played-a"], teamB: [] },
+  };
+  const individualMatch = {
+    id: "individual-match",
+    status: "confirmed",
+    scheduledAt: playedAt,
+    teamA: { players: ["played-a"] },
+    teamB: { players: ["other"] },
+  };
+  const personalRecord = {
+    id: "personal-record",
+    status: "confirmed",
+    scheduledAt: playedAt,
+    rules: { recordType: "solo" },
+    teamA: { players: ["played-a"] },
+    teamB: { players: ["anonymous"] },
+  };
+
+  assert.equal(getActualMatchPlayerSideName(teamMatch, "played-a"), "teamA");
+  assert.equal(getActualMatchPlayerSideName(teamMatch, "active-a"), "teamA");
+  assert.equal(getActualMatchPlayerSideName(teamMatch, "late-reserve"), null);
+  assert.deepEqual(getActualMatchPlayerIds(teamMatch), ["played-a", "active-a", "active-b"]);
+  assert.equal(getMatchParticipationType(teamMatch), "team");
+  assert.equal(getMatchParticipationType(individualMatch), "individual");
+  assert.equal(getMatchParticipationType(personalRecord), "personal");
+  assert.deepEqual(
+    getPlayerRecentRecordMatches(
+      [teamMatch, individualMatch, personalRecord],
+      "late-reserve",
+      { now: new Date("2026-07-21T00:00:00.000Z") },
+    ),
+    [],
+  );
+  assert.deepEqual(
+    getPlayerRecentRecordMatches(
+      [teamMatch, individualMatch, personalRecord],
+      "played-a",
+      { now: new Date("2026-07-21T00:00:00.000Z") },
+    ).map((matchItem) => matchItem.id).sort(),
+    ["individual-match", "personal-record", "team-match"],
+  );
+});
+
+test("home recent records hydrate authoritative played and reserve fields", async () => {
+  const source = await readSource("server/api/matches/list.js");
+  assert.match(source, /const recentCompletedIds = new Set\(recentCompletedPage\?\.ids \?\? \[\]\)/);
+  assert.match(source, /!feedCardIds\.has\(id\) \|\| recentCompletedIds\.has\(id\)/);
 });
 
 test("court map URLs pin stored coordinates and fall back to address search", () => {
