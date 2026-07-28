@@ -48,6 +48,7 @@ const hoverSurfaceStyles = [
   courtControlStyles,
 ].join("\n");
 const pageSources = {
+  landing: read("src/pages/Landing.jsx"),
   home: read("src/pages/Home.jsx"),
   matches: read("src/pages/Matches.jsx"),
   recruiting: read("src/pages/Recruiting.jsx"),
@@ -582,9 +583,11 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
   assert.match(visualSystemStyles, /\.home-rank-board-head[\s\S]*?\)\s*\.eyebrow,[\s\S]*?color:\s*var\(--rb-orange-2\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.season-rule-board > strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
-  assert.match(visualSystemStyles, /\.landing-compact-summary\s*\{[^}]*text-shadow:\s*none;/);
-  assert.match(visualSystemStyles, /\.landing-hero p:not\(\.landing-compact-summary\),/);
-  assert.equal(count(visualSystemStyles, "p:not(.eyebrow):not(.landing-compact-summary)"), 2);
+  assert.doesNotMatch(pageSources.landing, /landing-compact-summary/);
+  assert.match(
+    visualSystemStyles,
+    /@media \(max-width:\s*720px\)[\s\S]*?--landing-hero-size:\s*auto min\(58svh,\s*620px\);[\s\S]*?--landing-hero-position:\s*54% 8%;/,
+  );
   assert.equal(count(primitiveStyles, "-webkit-mask-composite: xor;"), 1);
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
 });

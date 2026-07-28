@@ -2003,7 +2003,6 @@ button.danger-button {
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 .home-rank-board-head p:not(.eyebrow),
 .page-header p:not(.eyebrow),
-.landing-hero p:not(.landing-compact-summary),
 .match-hero p,
 .season-hero-copy p,
 .profile-hero p:not(.eyebrow),
@@ -3000,7 +2999,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
 .landing-hero,
 html[data-theme="light"] .landing-hero {
   background:
-    var(--bg-action) var(--landing-hero-position, var(--hero-bg-position-action)) / var(--hero-bg-size) no-repeat,
+    var(--bg-action) var(--landing-hero-position, var(--hero-bg-position-action)) / var(--landing-hero-size, var(--hero-bg-size)) no-repeat,
     var(--rb-bg-2);
   backdrop-filter: none;
   filter: none;
@@ -3641,22 +3640,12 @@ html[data-theme="light"] .brand-letter-light {
   max-height: none;
 }
 
-.landing-compact-summary {
-  width: max-content;
-  max-width: 100%;
-  margin: 0;
-  color: var(--hero-copy-color);
-  font-size: 0.82rem;
-  font-weight: 900;
-  line-height: 1.35;
-  text-shadow: none;
-}
-
 @media (max-width: 720px) {
   .landing-hero,
   html[data-theme="light"] .landing-hero {
     --landing-mobile-content-gutter: clamp(20px, 6vw, 28px);
-    --landing-hero-position: 38% 100%;
+    --landing-hero-size: auto min(58svh, 620px);
+    --landing-hero-position: 54% 8%;
     padding-right: max(var(--landing-mobile-content-gutter), env(safe-area-inset-right));
     padding-left: max(var(--landing-mobile-content-gutter), env(safe-area-inset-left));
   }
@@ -3669,10 +3658,6 @@ html[data-theme="light"] .brand-letter-light {
 
   .landing-brand-lockup .brand-logo-frame {
     border-radius: var(--radius-sm);
-  }
-
-  .landing-compact-summary {
-    font-size: 0.76rem;
   }
 
 }
@@ -3788,7 +3773,7 @@ html[data-theme] .app-main :is(
   .om-match-hero,
   .arena-recruit-hero,
   .gm-room-hero
-) p:not(.eyebrow):not(.landing-compact-summary),
+) p:not(.eyebrow),
 html[data-theme="light"] .app-main :is(
   .page-header,
   .landing-hero,
@@ -3800,7 +3785,7 @@ html[data-theme="light"] .app-main :is(
   .om-match-hero,
   .arena-recruit-hero,
   .gm-room-hero
-) p:not(.eyebrow):not(.landing-compact-summary) {
+) p:not(.eyebrow) {
   color: var(--hero-copy-color);
   text-shadow: var(--hero-copy-shadow);
 }

@@ -42,7 +42,6 @@ export default function Landing({ state }) {
               <img className="brand-letter-img brand-letter-light" src={BOXTIER_LETTER_LIGHT_URL} alt="" />
             </span>
           </h1>
-          <p className="landing-compact-summary">농구 경기 모집 · 기록 · MMR 랭킹 · 팀 운영</p>
           <Badge tone="green">Season Zero</Badge>
           <div className="landing-actions">
             <div className="landing-primary-actions">

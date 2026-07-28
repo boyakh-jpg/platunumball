@@ -1414,8 +1414,8 @@ UI 수정 전:
 7-4. Default text uses `--font-body`. Functional panel titles and descriptions use the shared `.ui-panel-title` and `.ui-panel-copy` typography instead of browser-default `strong`/`span` weights. Sports display typography remains an explicit override only.
 7-4-0. `--font-body`는 프로젝트가 직접 제공하는 `Pretendard Variable` 웹폰트를 우선 사용해 Windows, macOS, iOS, Android에서 같은 기본 UI 글꼴을 유지한다. 시스템 폰트는 웹폰트 로드 실패 시에만 fallback으로 사용한다.
 7-4-1. 모든 clear glass surface는 화면별 재구현 없이 공용 `.ui-liquid-glass` 클래스와 `--ui-liquid-glass-*` 토큰을 사용한다. 이 클래스 하나가 border 없는 투명 본체, 중앙 `2px` blur, 그림자와 중앙을 뚫은 `3px` 단일 `mask-composite: exclude` 굴절 가장자리를 소유한다. 세 칸처럼 구획이 필요한 내부 metric은 `.ui-liquid-glass-segments`를 추가해 `--ui-liquid-glass-divider`의 얇은 외곽선과 세로 구획선을 사용하며 개별 불투명 카드로 분리하지 않는다. 홈 경기 요약, 팀 허브 대표팀, 경기·매칭 상황판, 시즌 요약, 프로필 티어와 이후 추가하는 glass surface 모두 이 primitive를 사용한다. 경기·매칭 상황판은 `--ui-hero-status-width`, metric 최소 높이와 공용 버튼 높이를 공유해 가로·세로 위치와 전체 너비·높이를 맞춘다. 글라스는 상위 hero의 `text-shadow`를 내부 자식까지 차단하는 스타일 경계다. 내부 제목·주요 수치는 `--hero-title-color`, 설명·보조 수치는 `--hero-copy-color`, 상태 소제목은 `--rb-orange-2`를 사용하되 별도 text shadow를 만들지 않는다. 팀 허브 대표팀 이름은 테마에 따라 갈색으로 바뀌지 않는 단색 `--rb-yellow`를 사용하며 텍스트 그라데이션을 적용하지 않는다. page hero의 보조 버튼·배지·세부 정보 surface도 같은 투명 배경과 `2px` blur를 사용하되 primary CTA의 주황색 의미는 유지한다. 색상 강조를 굴절처럼 사용하거나 안쪽 장식 링, 불투명 surface, 균일한 흰 테두리, 전체 inset shadow를 겹치지 않는다. SVG backdrop filter 미지원 환경에서는 비정형 반사광만 남는 투명 fallback을 사용하고 대표팀 이름은 `--sports-display-font`를 유지한다.
-7-4-1-1. 공개 랜딩의 `.landing-compact-summary`는 글래스 밖에 있어도 text shadow를 사용하지 않는다. 배경 구도와 `--hero-copy-color`로 대비를 확보한다.
-7-4-2. 공개 랜딩의 장문 `.landing-purpose` 박스는 표시하지 않는다. 공개 홈페이지의 기능 설명은 로고 아래 한 줄 `.landing-compact-summary`로 유지하고 개인정보처리방침·약관 링크는 공용 푸터에 둔다. 모바일 로고·레터에는 별도 받침을 두지 않고, 랜딩 배경 초점을 왼쪽 빈 공간 쪽으로 이동해 인물과 공이 로고·레터에 닿지 않게 한다.
+7-4-1-1. 공개 랜딩의 로고·레터는 별도 글래스나 text shadow를 사용하지 않는다. 배경 구도와 원본 브랜드 자산으로 대비를 확보한다.
+7-4-2. 공개 랜딩의 장문 `.landing-purpose` 박스와 로고 아래 기능 요약 문구는 표시하지 않는다. 개인정보처리방침·약관 링크는 공용 푸터에 둔다. 모바일은 배경을 `cover`로 확대하지 않고 뷰포트 높이 기준으로 축소해 선수의 몸이 보이되 로고·레터에 닿지 않게 오른쪽에 둔다.
 7-4-3. 경기 기록의 WIN·LOSS·DRAW 왼쪽 상태선은 라이트·다크 모두 각각 `--ui-result-win-border`, `--ui-result-loss-border`, `--ui-result-draw-border`를 사용한다. 일반 카드의 테마별 `border-color`가 상태선을 회색으로 덮어쓰면 안 된다.
 7-4-4. 일반 UI 문장은 공백 단위로 줄바꿈하도록 `body` 기본값에 `word-break: keep-all`과 `overflow-wrap: break-word`를 사용한다. URL·해시태그·긴 식별자처럼 반드시 잘라야 하는 값만 해당 selector에서 `overflow-wrap: anywhere`를 명시한다.
 7-5. 공개 팀전 참가 화면은 대표 1명만 표시하고 팀원 명단 picker를 노출하지 않는다. 출전·후보 명단은 참가 뒤 방 안에서 사이드장이 확정한다.
@@ -1860,7 +1860,7 @@ UI 수정 전:
 
 ## 2026-07-22 OAuth 검증용 공개 홈페이지
 
-1. 공개 홈페이지는 로그인 없이 BOXTIER 서비스명, 농구 경기 모집·기록·랭킹·팀 관리 목적을 본문 텍스트로 설명한다.
+1. 공개 홈페이지는 로그인 없이 BOXTIER 서비스명과 매칭 만들기·경기 기록하기 CTA를 표시한다. 로고 아래에는 기능을 나열하는 별도 요약 문구를 반복하지 않는다.
 2. Google 로그인 정보는 회원 식별과 로그인에만 사용한다는 안내와 `/privacy` 링크를 주요 액션 앞에서 확인할 수 있게 한다. 공용 푸터의 법적 고지 링크도 유지한다.
 3. 목적 안내는 기존 랜딩 히어로 안에서만 배치하고 별도 카드 skin이나 새 색상을 만들지 않는다. 주황 강조와 기존 텍스트 토큰을 사용한다.
 4. 데스크톱과 모바일에서 목적 문구가 액션을 밀어 가로 overflow를 만들지 않아야 하며, dark/light에서 동일한 정보 위계를 유지한다.

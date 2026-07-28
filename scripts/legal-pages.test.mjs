@@ -35,16 +35,16 @@ test("public footer and login expose both legal documents", async () => {
   }
 });
 
-test("OAuth homepage identifies BOXTIER, explains its purpose, and links the privacy policy", async () => {
+test("OAuth homepage identifies BOXTIER and links the privacy policy", async () => {
   const [landing, footer, index] = await Promise.all([
     read("src/pages/Landing.jsx"),
     read("src/components/layout/DataAttribution.jsx"),
     read("index.html"),
   ]);
 
-  assert.match(landing, /landing-compact-summary/);
+  assert.doesNotMatch(landing, /landing-compact-summary/);
   assert.doesNotMatch(landing, /BASKETBALL MATCH &amp; RECORD PLATFORM/);
-  assert.match(landing, /농구 경기 모집 · 기록 · MMR 랭킹 · 팀 운영/);
+  assert.doesNotMatch(landing, /농구 경기 모집 · 기록 · MMR 랭킹 · 팀 운영/);
   assert.match(footer, /to="\/privacy"/);
   assert.match(index, /content="BOXTIER - 농구 경기를 기록하고 팀과 티어를 관리하는 농구 플랫폼"/);
   assert.match(index, /<meta name="application-name" content="BOXTIER" \/>/);
