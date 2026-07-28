@@ -5409,6 +5409,8 @@ function RecruitingRoomModalReady({
                 <MatchClockPanel
                   match={sourceMatch}
                   onMatchEnded={() => void app.actions.loadMatchDetail(sourceMatch.id)}
+                  canEndMatch={canEndSourceMatch}
+                  onEndMatch={() => app.actions.endMatch(sourceMatch.id)}
                   clockClient={clockClient}
                   onRosterChanged={() => void app.actions.loadMatchDetail(sourceMatch.id)}
                   editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
@@ -5599,7 +5601,7 @@ function RecruitingRoomModalReady({
                         {sourceMatchStartButtonLabel}
                       </Button>
                     ) : null}
-                    {!sourceRoomReadOnly && canEndSourceMatch ? (
+                    {!sourceRoomReadOnly && canEndSourceMatch && !selectedMatchRules.gameClockEnabled ? (
                       <Button type="button" variant="secondary" onClick={() => app.actions.endMatch(sourceMatch.id)}>
                         경기 종료
                       </Button>

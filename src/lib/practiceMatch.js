@@ -54,6 +54,7 @@ export const PRACTICE_REDUCER_ACTIONS = new Set([
   "disputeMatch",
   "endMatch",
   "generatePickupSideAssignment",
+  "incrementMatchScore",
   "finalizeMatchByAuthority",
   "interestRecruitingPost",
   "inviteRecruitingPlayers",

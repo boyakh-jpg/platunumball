@@ -162,6 +162,20 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   assert.equal(runningClock.clock.status, "running");
   assert.equal(runningClock.clock.shotClockSeconds, 30);
   assert.equal(runningClock.clock.clockUsed, false);
+  const scoreUpdated = runPracticeReducer(stateRef.current, "incrementMatchScore", [
+    confirmed.matchId,
+    1,
+    2,
+    {
+      expectedRevisionA: 0,
+      expectedRevisionB: 0,
+      clockController: true,
+    },
+  ], PRACTICE_SELF_ID);
+  assert.equal(scoreUpdated.applied, true);
+  stateRef.current = scoreUpdated.state;
+  assert.equal(stateRef.current.matches[0].result.scoreA, 1);
+  assert.equal(stateRef.current.matches[0].result.scoreB, 2);
   const nextControllerId = runningClock.activePlayers.find((player) => player.id !== PRACTICE_SELF_ID)?.id;
   const transferredClock = await clockClient(confirmed.matchId, "transfer", { controllerId: nextControllerId });
   assert.equal(transferredClock.clock.canControl, false);
@@ -551,7 +565,9 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.doesNotMatch(pageSource, /actorId === statRecorders\.teamB \? "B 기록원"/);
   assert.match(pageSource, /key=\{`\$\{matchId\}:\$\{practiceActorId\}`\}/);
   assert.match(matchClockPanelSource, /regulationEnded && \(!scoreboardEnabled \|\| tied\)/);
-  assert.match(matchClockPanelSource, /regulationEnded && \(!scoreboardEnabled \|\| !tied\)/);
+  assert.match(matchClockPanelSource, /onClick=\{\(\) => confirmAction\("경기시계 운용을 종료할까요\?", "endClock"\)\}/);
+  assert.match(matchClockPanelSource, /canEndMatch && onEndMatch && !match\.endedAt/);
+  assert.match(recruitingSource, /canEndSourceMatch && !selectedMatchRules\.gameClockEnabled/);
   assert.match(settingsSyncSource, /typeof source\.showHomeGuideCard === "boolean"/);
   assert.ok(recruitingSyncSource.indexOf("hasPracticeMutationPayload(body)") < recruitingSyncSource.indexOf("getAuthenticatedContext(request)"));
   assert.ok(matchSyncSource.indexOf("hasPracticeMutationPayload(body)") < matchSyncSource.indexOf("getAuthenticatedContext(request)"));

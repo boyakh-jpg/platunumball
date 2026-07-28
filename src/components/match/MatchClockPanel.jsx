@@ -309,6 +309,8 @@ export function MatchScoreControls({
 export default function MatchClockPanel({
   match,
   onMatchEnded,
+  canEndMatch = false,
+  onEndMatch = null,
   clockClient = requestMatchClock,
   editableScoreSides = [],
   onIncrementScore = null,
@@ -506,6 +508,24 @@ export default function MatchClockPanel({
     && !isPending
     && !isBreak,
   );
+  const requestMatchEnd = async () => {
+    if (!canEndMatch || !onEndMatch || pendingAction) return;
+    const message = isEnded
+      ? "경기를 종료하고 사후 기록 단계로 이동할까요?"
+      : "경기시계를 먼저 종료하지 않으면 경기시계 미사용 처리됩니다. 그래도 경기를 종료할까요?";
+    if (!window.confirm(message)) return;
+    setPendingAction("endMatch");
+    setError("");
+    try {
+      const response = await onEndMatch();
+      if (response?.ok === false || response === false) throw new Error("match_end_failed");
+      onMatchEnded?.();
+    } catch {
+      setError("경기 종료 처리에 실패했습니다.");
+    } finally {
+      setPendingAction("");
+    }
+  };
 
   const enableMediaControl = useCallback(() => {
     if (!mediaControlEligible) return;
@@ -963,16 +983,14 @@ export default function MatchClockPanel({
                   연장 {liveClock.overtimeCount + 1} 시작
                 </Button>
               ) : null}
-              {isBreak && regulationEnded && (!scoreboardEnabled || !tied) ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => confirmAction("경기시계 운용을 종료할까요?", "endClock")}
-                >
-                  경기시계 종료
-                </Button>
-              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => confirmAction("경기시계 운용을 종료할까요?", "endClock")}
+              >
+                경기시계 종료
+              </Button>
             </div>
           ) : null}
 
@@ -1000,6 +1018,20 @@ export default function MatchClockPanel({
           ) : null}
         </div>
       )}
+
+      {canEndMatch && onEndMatch && !match.endedAt ? (
+        <div className="ui-match-clock-match-actions ui-action-row">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={Boolean(pendingAction)}
+            onClick={() => void requestMatchEnd()}
+          >
+            경기 종료
+          </Button>
+        </div>
+      ) : null}
 
       <div className="ui-match-clock-device-tools">
         <Button

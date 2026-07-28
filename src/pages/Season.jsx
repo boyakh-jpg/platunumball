@@ -80,56 +80,46 @@ export default function Season({ app }) {
 
   return (
     <div className="page-stack season-page">
-      <section className="season-hero season-hero-standard">
-        <div className="season-hero-copy">
-          <Badge tone="gold">시즌 진행 중</Badge>
-          <h1>{season.name}</h1>
-          <p>{season.subtitle}</p>
-          <div className="season-progress">
-            <span style={{ width: `${progress}%` }} />
-          </div>
-          <div className="season-meta-row">
-            <span><CalendarClock size={16} /> {formatDate(season.startsAt)} - {formatDate(season.endsAt)}</span>
-            <span><Trophy size={16} /> 전국 통합 시즌</span>
-            <span><MapPin size={16} /> 지역 랭킹 {region}</span>
-          </div>
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">Season</p>
+          <h1>시즌</h1>
+          <p>{season.name} · {season.subtitle}</p>
         </div>
-        <div className="season-rule-board ui-liquid-glass">
-          <strong>{app.currentUser.name} 시즌 요약</strong>
-          <span><Trophy size={16} /> 전국 {myNationalRank ? `${myNationalRank}위` : "순위 준비 중"}</span>
-          <span><MapPin size={16} /> {region} {myRegionalRank ? `${myRegionalRank}위` : "순위 준비 중"}</span>
-          <div className="season-rule-actions">
-            <Button as={Link} to="/app/create"><Swords size={18} /> 매칭 만들기</Button>
-            <Button as={Link} to="/app/create?intent=record"><ClipboardCheck size={18} /> 경기 기록하기</Button>
-          </div>
-        </div>
-      </section>
+        <Badge tone="gold">진행 중</Badge>
+      </header>
 
-      <section className="season-summary ui-liquid-glass ui-liquid-glass-segments" aria-label="내 시즌 요약">
-        <div className="season-summary-item">
-          <span>이번 시즌 경기</span>
-          <strong>{mySeasonRow?.seasonPlayed ?? 0}</strong>
-          <em>확정 기록 기준</em>
+      <Card className="section-card season-overview-card">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">My Season</p>
+            <h2>{app.currentUser.name} 시즌 현황</h2>
+          </div>
+          <Badge tone="neutral">{progress}% 진행</Badge>
         </div>
-        <div className="season-summary-item">
-          <span>이번 시즌 승패</span>
-          <strong>{mySeasonRow?.seasonWins ?? 0}승 {mySeasonRow?.seasonLosses ?? 0}패</strong>
-          <em>무승부 제외</em>
+        <div className="progress-track" aria-label={`시즌 ${progress}% 진행`}>
+          <span style={{ width: `${progress}%` }} />
         </div>
-        <div className="season-summary-item">
-          <span>시즌 MMR 변화</span>
-          <strong>{(mySeasonRow?.seasonDelta ?? 0) >= 0 ? "+" : ""}{mySeasonRow?.seasonDelta ?? 0}</strong>
-          <em>확정 경기 누적</em>
+        <div className="season-meta-row">
+          <span><CalendarClock size={16} /> {formatDate(season.startsAt)} - {formatDate(season.endsAt)}</span>
+          <span><Trophy size={16} /> 전국 통합 시즌</span>
+          <span><MapPin size={16} /> {region}</span>
         </div>
-        <div className="season-summary-item">
-          <span>주 플레이</span>
-          <strong>{activity.primaryMode}</strong>
-          <em>{activity.ranked} 정규 · {activity.friendly} 친선</em>
+        <div className="rank-stat-grid season-summary-grid">
+          <span><strong>{myNationalRank ?? "-"}</strong>전국 순위</span>
+          <span><strong>{myRegionalRank ?? "-"}</strong>지역 순위</span>
+          <span><strong>{mySeasonRow?.seasonPlayed ?? 0}</strong>경기</span>
+          <span><strong>{mySeasonRow?.seasonWins ?? 0}승 {mySeasonRow?.seasonLosses ?? 0}패</strong>승패</span>
+          <span><strong>{(mySeasonRow?.seasonDelta ?? 0) >= 0 ? "+" : ""}{mySeasonRow?.seasonDelta ?? 0}</strong>MMR 변화</span>
+          <span><strong>{activity.primaryMode}</strong>주 플레이</span>
         </div>
-      </section>
+        <div className="ui-action-row">
+          <Button as={Link} to="/app/create"><Swords size={18} /> 매칭 만들기</Button>
+          <Button as={Link} to="/app/create?intent=record" variant="secondary"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+        </div>
+      </Card>
 
-      <div className="season-content-grid">
-        <main className="page-stack season-race-column">
+      <div className="card-grid season-board-grid">
           <Card className="section-card">
             <div className="section-title-row">
               <div>
@@ -181,9 +171,6 @@ export default function Season({ app }) {
               ))}
             </div>
           </Card>
-        </main>
-
-        <aside className="page-stack season-side-rail">
           <Card className="section-card">
             <div className="section-title-row">
               <div>
@@ -226,7 +213,6 @@ export default function Season({ app }) {
             </div>
             <Button as={Link} to="/app/profile/records" variant="secondary" className="ui-button-block">전체 기록 보기</Button>
           </Card>
-        </aside>
       </div>
 
       <Card className="section-card">

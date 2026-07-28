@@ -1712,7 +1712,6 @@ input[type="color"] {
   .content-grid,
   .content-grid.wide-left,
   .create-mode-grid,
-  .season-hero,
   .match-hero,
   .landing-hero {
     grid-template-columns: 1fr;

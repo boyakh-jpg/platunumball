@@ -374,6 +374,11 @@ export default function MatchRoom({ app }) {
   const matchPhase = getMatchRoomPhase(match).phase;
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
+  const currentUserCanEndMatch = Boolean(
+    matchPhase === "live"
+    && currentUserCanOperateStartedMatch
+    && !match.endedAt,
+  );
   const currentUserCanResolveDispute = canUserResolveMatchDispute(match, app.currentUser.id, sourceRecruitingPost)
     && (hasReferee ? currentUserIsEligibleReferee : isMatchHost);
   const currentUserCanRefreshReview = isMatchHost || currentUserIsEligibleReferee || currentUserIsAdmin;
@@ -902,6 +907,8 @@ export default function MatchRoom({ app }) {
         <MatchClockPanel
           match={match}
           onMatchEnded={() => void refreshMatchDetail()}
+          canEndMatch={currentUserCanEndMatch}
+          onEndMatch={() => app.actions.endMatch(match.id)}
           onRosterChanged={() => void refreshMatchDetail()}
           editableScoreSides={resultEntryPermission.editableScoreSides}
           onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(

@@ -2166,7 +2166,6 @@ html[data-theme="light"] .landing-backdrop {
 }
 
 html[data-theme="light"] .broadcast-glass,
-html[data-theme="light"] .season-rule-board,
 html[data-theme="light"] .team-hub-board,
 html[data-theme="light"] .tier-statement {
   background:
@@ -2180,8 +2179,6 @@ html[data-theme="light"] .rating-card,
 html[data-theme="light"] .contract-grid div,
 html[data-theme="light"] .memo-box,
 html[data-theme="light"] .approval-grid > div,
-html[data-theme="light"] .season-meta-row span,
-html[data-theme="light"] .season-rule-board span,
 html[data-theme="light"] .stat-player-button,
 html[data-theme="light"] .approval-voter-list button,
 html[data-theme="light"] .stat-stepper-row,
@@ -2208,13 +2205,6 @@ html[data-theme="light"] .match-hero {
     var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
 }
 
-html[data-theme="light"] .team-hub-hero,
-html[data-theme="light"] .season-hero {
-  background:
-    linear-gradient(105deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.7), rgba(246, 248, 242, 0.93)),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
-}
-
 html[data-theme="light"] .profile-hero,
 html[data-theme="light"] .team-detail-hero {
   background:
@@ -2222,7 +2212,6 @@ html[data-theme="light"] .team-detail-hero {
     var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
 }
 
-html[data-theme="light"] .season-hero-copy p,
 html[data-theme="light"] .landing-copy p {
   color: var(--muted);
 }
@@ -2324,15 +2313,10 @@ html[data-theme="light"] .team-search-popover button.selected {
   .home-search-results,
   .profile-hero,
   .team-detail-hero,
-  .season-hero,
-  .season-content-grid,
   .stat-entry-grid {
     grid-template-columns: 1fr;
   }
 
-  .season-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 720px) {
@@ -2601,32 +2585,8 @@ html[data-theme="light"] .team-search-popover button.selected {
     gap: var(--space-7);
   }
 
-  .season-hero {
-    width: 100%;
-    min-width: 0;
-    gap: var(--space-7);
-    padding: 16px;
-  }
-
-  .season-hero-copy,
-  .season-rule-board,
-  .season-summary-item,
   .rivalry-matchup {
     min-width: 0;
-  }
-
-  .season-hero-copy {
-    align-content: start;
-  }
-
-  .season-hero-copy h1 {
-    font-size: clamp(2rem, 12vw, 3rem);
-    overflow-wrap: anywhere;
-  }
-
-  .season-hero-copy p {
-    max-width: 100%;
-    font-size: 0.96rem;
   }
 
   .season-meta-row {
@@ -2634,29 +2594,11 @@ html[data-theme="light"] .team-search-popover button.selected {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .season-meta-row span,
-  .season-rule-board span {
+  .season-meta-row span {
     width: 100%;
     min-width: 0;
     align-items: flex-start;
     overflow-wrap: anywhere;
-  }
-
-  .season-rule-board {
-    padding: 12px;
-  }
-
-  .season-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .season-summary-item {
-    min-height: 104px;
-    padding: 14px;
-  }
-
-  .season-summary-item strong {
-    font-size: 1.55rem;
   }
 
   .season-section-actions {

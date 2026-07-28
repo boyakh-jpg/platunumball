@@ -1534,7 +1534,6 @@ html[data-theme="light"] .app-main {
 .landing-hero::after,
 .team-hub-hero::after,
 .match-hero::before,
-.season-hero::after,
 .page-header::after,
 .team-hub-hero::before {
   background: linear-gradient(90deg, rgba(240, 90, 70, 0.14), transparent 28%, transparent 76%, rgba(255, 211, 108, 0.08));
@@ -1973,8 +1972,7 @@ button.danger-button {
 .page-header .eyebrow,
 .profile-hero .eyebrow,
 .team-detail-hero .eyebrow,
-.team-hub-hero .eyebrow,
-.season-hero-copy .eyebrow {
+.team-hub-hero .eyebrow {
   color: var(--rb-orange);
 }
 
@@ -1985,7 +1983,6 @@ button.danger-button {
 .landing-hero h1,
 .match-hero h1,
 .team-hub-hero h1,
-.season-hero-copy h1,
 .profile-hero h1,
 .team-detail-hero h1,
 .gm-room-title h1 {
@@ -2004,7 +2001,6 @@ button.danger-button {
 .home-rank-board-head p:not(.eyebrow),
 .page-header p:not(.eyebrow),
 .match-hero p,
-.season-hero-copy p,
 .profile-hero p:not(.eyebrow),
 .team-detail-hero p:not(.eyebrow),
 .gm-room-title p {
@@ -2019,7 +2015,6 @@ button.danger-button {
   .landing-hero h1,
   .match-hero h1,
   .team-hub-hero h1,
-  .season-hero-copy h1,
   .profile-hero h1,
   .team-detail-hero h1,
   .gm-room-title h1 {
@@ -2033,7 +2028,6 @@ button.danger-button {
   .landing-hero,
   .match-hero,
   .team-hub-hero,
-  .season-hero,
   .profile-hero,
   .team-detail-hero,
   .rank-home > .rank-summary-grid {
@@ -2051,7 +2045,6 @@ button.danger-button {
   .page-stack > .landing-hero,
   .page-stack > .match-hero,
   .page-stack > .team-hub-hero,
-  .page-stack > .season-hero,
   .page-stack > .profile-hero,
   .page-stack > .team-detail-hero,
   .rank-home > .rank-summary-grid {
@@ -2495,7 +2488,6 @@ button:disabled,
     .landing-hero,
     .match-hero,
     .team-hub-hero,
-    .season-hero,
     .profile-hero,
     .team-detail-hero
   ):first-child,
@@ -2895,7 +2887,6 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
 .match-hero::before,
 .team-hub-hero::before,
 .team-hub-hero::after,
-.season-hero::after,
 .page-header::after {
   content: none;
   background: none;
@@ -2997,8 +2988,6 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
 .match-hero::after,
 .team-hub-hero::before,
 .team-hub-hero::after,
-.season-hero::before,
-.season-hero::after,
 .page-header::before,
 .page-header::after,
 .profile-hero::before,
@@ -3015,7 +3004,6 @@ html[data-theme="light"] .page-header h1,
 html[data-theme="light"] .landing-hero h1,
 html[data-theme="light"] .match-hero h1,
 html[data-theme="light"] .team-hub-hero h1,
-html[data-theme="light"] .season-hero-copy h1,
 html[data-theme="light"] .profile-hero h1,
 html[data-theme="light"] .team-detail-hero h1 {
   color: var(--rb-cream);
@@ -3063,15 +3051,6 @@ html[data-theme="light"] .team-hub-hero {
   filter: none;
 }
 
-.season-hero,
-html[data-theme="light"] .season-hero {
-  background:
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-2);
-  backdrop-filter: none;
-  filter: none;
-}
-
 @media (max-width: 1079px) {
   .landing-hero,
   html[data-theme="light"] .landing-hero {
@@ -3110,8 +3089,6 @@ html[data-theme="light"] .team-detail-hero {
 .match-hero::after,
 .team-hub-hero::before,
 .team-hub-hero::after,
-.season-hero::before,
-.season-hero::after,
 .page-header::before,
 .page-header::after,
 .profile-hero::before,
@@ -3126,8 +3103,6 @@ html[data-theme="light"] .match-hero::before,
 html[data-theme="light"] .match-hero::after,
 html[data-theme="light"] .team-hub-hero::before,
 html[data-theme="light"] .team-hub-hero::after,
-html[data-theme="light"] .season-hero::before,
-html[data-theme="light"] .season-hero::after,
 html[data-theme="light"] .page-header::before,
 html[data-theme="light"] .page-header::after,
 html[data-theme="light"] .profile-hero::before,
@@ -3145,7 +3120,6 @@ html[data-theme="light"] .team-detail-hero::after {
 .landing-hero h1,
 .match-hero h1,
 .team-hub-hero h1,
-.season-hero-copy h1,
 .profile-hero h1,
 .team-detail-hero h1 {
   font-family: var(--hero-title-font);
@@ -3162,7 +3136,6 @@ html[data-theme="light"] .team-detail-hero::after {
   .landing-hero h1,
   .match-hero h1,
   .team-hub-hero h1,
-  .season-hero-copy h1,
   .profile-hero h1,
   .team-detail-hero h1 {
     font-size: var(--hero-title-size-mobile);
@@ -3395,7 +3368,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
     width: 100%;
   }
 
-  .season-rule-actions,
   .rivalry-challenge-actions {
     grid-template-columns: 1fr;
   }
@@ -3449,7 +3421,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .landing-hero h1,
   .match-hero h1,
   .team-hub-hero h1,
-  .season-hero-copy h1,
   .profile-hero h1,
   .team-detail-hero h1,
   .gm-room-title h1,
@@ -3477,7 +3448,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .landing-hero h1,
   .match-hero h1,
   .team-hub-hero h1,
-  .season-hero-copy h1,
   .profile-hero h1,
   .team-detail-hero h1,
   .gm-room-title h1,
@@ -3797,7 +3767,6 @@ html[data-theme] .app-main :is(
   .landing-hero,
   .match-hero,
   .team-hub-hero,
-  .season-hero,
   .profile-hero,
   .team-detail-hero,
   .om-match-hero,
@@ -3809,7 +3778,6 @@ html[data-theme="light"] .app-main :is(
   .landing-hero,
   .match-hero,
   .team-hub-hero,
-  .season-hero,
   .profile-hero,
   .team-detail-hero,
   .om-match-hero,
@@ -3820,57 +3788,11 @@ html[data-theme="light"] .app-main :is(
   text-shadow: var(--hero-copy-shadow);
 }
 
-/* Season uses the shared compact hero rhythm instead of a campaign billboard. */
-.season-hero.season-hero-standard {
-  min-height: 0;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-8);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--surface-2) 94%, var(--rb-orange) 6%), var(--surface-2));
-  box-shadow: none;
-  padding: var(--section-card-padding);
-}
-
-.season-hero-standard .season-hero-copy {
-  align-content: start;
-  gap: var(--space-5);
-}
-
-.season-hero-standard .season-hero-copy h1 {
-  font-size: clamp(2rem, 5vw, 3.4rem);
-  line-height: 1;
-}
-
-.season-hero-standard .season-rule-board {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
-  border: 0;
-  background: transparent;
-  padding: 0;
-}
-
-.season-hero-standard .season-rule-board > strong,
-.season-hero-standard .season-rule-actions {
-  grid-column: 1 / -1;
-}
-
-.season-race-column,
-.season-side-rail {
-  display: contents;
-}
-
-@media (max-width: 720px) {
-  .season-hero-standard .season-rule-board {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 html[data-theme] .app-main :is(
   .page-header,
   .landing-hero,
   .match-hero,
   .team-hub-hero,
-  .season-hero,
   .profile-hero,
   .team-detail-hero,
   .om-match-hero,
@@ -4000,8 +3922,6 @@ html[data-theme] .app-main :is(.om-match-copy, .arena-hero-copy) > :is(.om-kicke
 }
 
 html[data-theme] .app-main :is(
-  .season-hero-copy > .ui-badge,
-  .season-meta-row > span,
   .profile-hero .badge-row .ui-badge,
   .court-detail-tags .ui-badge,
   .tournament-hero-badges .ui-badge,
@@ -4026,8 +3946,7 @@ html[data-theme] .app-main :is(
   .home-hero-next > strong,
   .home-hero-stats strong,
   .om-match-stats strong,
-  .arena-hero-stats strong,
-  .season-rule-board > strong
+  .arena-hero-stats strong
 ) {
   color: var(--hero-title-color);
 }
@@ -4043,8 +3962,6 @@ html[data-theme] .app-main :is(
   .home-hero-next > svg:last-child,
   .om-match-stats > span,
   .arena-hero-stats > span,
-  .season-rule-board > span,
-  .season-meta-row > span,
   .gm-reserve-panel,
   .gm-room-actions > div
 ) {

@@ -727,16 +727,17 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(pageSources.teams, /team-hub-board ui-liquid-glass/);
   assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-stats ui-liquid-glass-segments/);
   assert.match(pageSources.recruiting, /arena-hero-panel ui-liquid-glass[\s\S]*arena-hero-stats ui-liquid-glass-segments/);
-  assert.match(pageSources.season, /season-rule-board ui-liquid-glass/);
-  assert.match(pageSources.season, /season-summary ui-liquid-glass ui-liquid-glass-segments/);
-  assert.match(pageSources.season, /season-content-grid/);
-  assert.doesNotMatch(pageSources.season, /season-metric-card/);
+  assert.match(pageSources.season, /<header className="page-header">/);
+  assert.match(pageSources.season, /section-card season-overview-card/);
+  assert.match(pageSources.season, /className="rank-stat-grid season-summary-grid"/);
+  assert.match(pageSources.season, /className="card-grid season-board-grid"/);
+  assert.doesNotMatch(pageSources.season, /season-(?:hero|rule-board|summary-item|content-grid|side-rail|metric-card)|ui-liquid-glass/);
   assert.match(pageSources.playerDetail, /rank-tier-statement ui-liquid-glass/);
   assert.match(visualSystemStyles, /\.om-match-hero,\s*\.arena-recruit-hero[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
   assert.match(visualSystemStyles, /\.home-rank-board-head[\s\S]*?\)\s*\.eyebrow,[\s\S]*?color:\s*var\(--rb-orange-2\);/);
-  assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.season-rule-board > strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
+  assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
   assert.doesNotMatch(pageSources.landing, /landing-compact-summary/);
   assert.match(
     visualSystemStyles,
