@@ -1052,7 +1052,8 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(source, /official:\s*true/);
   assert.doesNotMatch(source, /wizardStep === \(isMatchRecordRoom \? 5 : 1\)/);
   const wizardSource = fs.readFileSync(path.join(root, "src/components/match/MatchCreationWizard.jsx"), "utf8");
-  assert.match(wizardSource, /확인자 개인 MMR만 1v1 10%·2v2 20%·3v3 35%·5v5 50%로 반영/);
+  assert.match(wizardSource, /참가를 확인한 선수만 서버 정책에 따라 개인 MMR 반영 대상/);
+  assert.doesNotMatch(wizardSource, /1v1 10%|2v2 20%|3v3 35%|5v5 50%/);
   assert.doesNotMatch(wizardSource, /MMR에는 반영하지 않습니다/);
   assert.match(wizardSource, /const purposeValue = matchPurpose/);
   assert.doesNotMatch(wizardSource, /disabled=\{pickup\}/);

@@ -15,7 +15,6 @@ import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import QrCode from "../common/QrCode.jsx";
 import {
-  MATCH_CLOCK_FALLBACK_FACTORS,
   SHOT_CLOCK_OPTIONS,
   deriveMatchClock,
   formatClockTime,
@@ -470,7 +469,6 @@ export default function MatchClockPanel({
   const regulationEnded = isBreak && liveClock.currentPeriod >= liveClock.expectedPeriodCount;
   const tied = score.a === score.b;
   const deadlineRemainingMs = Math.max(0, Date.parse(liveClock?.startDeadlineAt || "") - nowMs);
-  const fallbackFactor = MATCH_CLOCK_FALLBACK_FACTORS[match.mode] ?? 0.8;
   const scoreboardEnabled = hasMatchScoreboardOperators(match);
   const matchRules = useMemo(
     () => normalizeMatchRules(match.rules, { mode: match.mode }),
@@ -802,7 +800,7 @@ export default function MatchClockPanel({
         <div className="ui-match-clock-setup">
           <div className="ui-match-clock-deadline">
             <strong>{deadlineRemainingMs > 0 ? `${formatClockTime(deadlineRemainingMs)} 안에 시계 시작` : "시계 시작 인정 시간 경과"}</strong>
-            <span>경기는 계속 진행됩니다. 시계 미사용 시 MMR은 {Math.round(fallbackFactor * 100)}% 반영됩니다.</span>
+            <span>경기는 계속 진행됩니다. 시계 미사용 여부는 최종 MMR 반영 전에 서버에서 검증합니다.</span>
           </div>
           {liveClock.canManage ? (
             <>

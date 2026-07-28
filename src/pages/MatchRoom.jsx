@@ -777,7 +777,7 @@ export default function MatchRoom({ app }) {
     ["파울 룰", match.rules?.foulRule ?? "현장 합의"],
     ["운영 권한", operationSummary],
     ["이의제기", `${normalizeDisputeWindowMinutes(match.disputeMinutes)}분`],
-    ["티어 반영", isSoloRecord ? "개인 기록 · MMR 미반영" : match.ranked === false ? "친선 · 티어 자유" : `정규 · MMR ${Math.round((match.ratingScale ?? match.rules?.ratingScale ?? 1) * 100)}%`],
+    ["티어 반영", isSoloRecord ? "개인 기록 · MMR 미반영" : match.ranked === false ? "친선 · 티어 자유" : "정규 · 서버 정책 적용"],
   ];
 
   return (

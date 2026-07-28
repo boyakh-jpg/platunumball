@@ -65,7 +65,6 @@ import {
   getRecruitingListCardCounts,
   getRecruitingListCardLobby,
   getRecruitingLobby,
-  getRecruitingRatingScale,
   getRecruitingRoomOwnerId,
   getRecruitingPostTerminalState,
   getRecruitingSideCapacity,
@@ -3788,7 +3787,6 @@ function RecruitingRoomModalReady({
           selectedPost.ranked !== false,
           selectedPost.mmrRangeMode ?? selectedPost.roomState?.mmrRangeMode,
         );
-        const selectedRatingScale = getRecruitingRatingScale(selectedPost);
         const roomEditDraft = getRoomEditDraftByPost(selectedPost);
         const roomEditStatus = roomEditStatusByPost[selectedPost.id] ?? { pending: false, error: "" };
         const roomEditCurrentCourt = registeredCourts.find((court) => (
@@ -4693,7 +4691,7 @@ function RecruitingRoomModalReady({
               </div>
             ) : null}
             {pickupAssignmentPolicy.decided && sourceMatch?.ranked !== false ? (
-              <small>MMR 반영률: 현장 직접 90% · 완전 랜덤 100% · MMR 균형 110%</small>
+              <small>MMR 반영 여부와 결과는 확정된 배치와 서버 정책에 따라 결정됩니다.</small>
             ) : null}
           </section>
         ) : null;
@@ -4980,7 +4978,7 @@ function RecruitingRoomModalReady({
                   <div><UsersRound size={17} /><span>{roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool
                     ? `참가 ${getPickupParticipantIds(lobby).length}/${(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}`
                     : `${getRecruitingSideCapacity(selectedPost)} vs ${getRecruitingSideCapacity(selectedPost)}`}</span></div>
-                  <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : `MMR ${Math.round(selectedRatingScale * 100)}%`}</span></div>
+                  <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : "MMR 서버 검증"}</span></div>
                   {!sourceMatchIsRecordRoom ? <div><Swords size={17} /><span>{getMatchRuleSummary(selectedMatchRules, selectedPost.mode)}</span></div> : null}
                 </div>
               </div>
@@ -5377,12 +5375,12 @@ function RecruitingRoomModalReady({
                   <>
                     <span>{sourceMatch?.ranked === false || selectedPost.ranked === false
                       ? "친선 경기로 MMR을 반영하지 않습니다."
-                      : "경쟁 경기로 팀 배치 방식에 따라 MMR 반영률이 달라집니다."}</span>
+                      : "경쟁 경기로 확정 배치 결과를 서버에서 검증해 MMR 반영 여부를 결정합니다."}</span>
                     <span>{pickupAssignmentPolicy.description} 최종 배치는 방장 또는 배정 심판이 확정합니다.</span>
                   </>
                 ) : (
                   <>
-                    <span>팀 MMR은 실제 참가한 팀원의 비율을 기준으로 반영됩니다.</span>
+                    <span>팀 MMR은 실제 참가 명단을 서버에서 검증한 뒤 반영합니다.</span>
                     <span>후보는 경기 중 본인 교체를 요청할 수 있습니다.</span>
                   </>
                 )}
@@ -6537,7 +6535,7 @@ function RecruitingReady({ app }) {
                       </button>
                     ))}
                   </div>
-                  <small>{draftRangePolicy.detail} · 경기 확정 시 MMR {Math.round(draftRangePolicy.ratingScale * 100)}% 반영</small>
+                  <small>{draftRangePolicy.detail} · 확정 경기만 서버 검증 후 반영</small>
                 </div>
               ) : null}
 

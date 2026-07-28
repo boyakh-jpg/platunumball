@@ -824,7 +824,7 @@ export function getRecruitingTierRange(targetMmr = DEFAULT_RATING, ranked = true
 
   return {
     label: `${policy.label} · ${min}~${max} MMR`,
-    detail: `${getTierDivision(min)} ~ ${getTierDivision(max)} · MMR ${Math.round(policy.ratingScale * 100)}% 반영`,
+    detail: `${getTierDivision(min)} ~ ${getTierDivision(max)} · 상세 산식 비공개`,
     mode,
     min,
     max,

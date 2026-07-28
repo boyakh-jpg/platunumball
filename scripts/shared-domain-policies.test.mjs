@@ -1792,6 +1792,10 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
     notice: REFEREE_RULEBOOK_NOTICE,
   });
   const page = await readSource("src/pages/RefereeRulebook.jsx");
+  const tutorial = await readSource("src/pages/GettingStarted.jsx");
+  const recruiting = await readSource("src/pages/Recruiting.jsx");
+  const matchRoom = await readSource("src/pages/MatchRoom.jsx");
+  const matchClockPanel = await readSource("src/components/match/MatchClockPanel.jsx");
 
   assert.equal(REFEREE_EXAM_VERSION, "rankball-referee-2026-07");
   assert.equal(REFEREE_RULEBOOK_EASY_SECTIONS.length, 6);
@@ -1813,7 +1817,13 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(rulebookText, /마지막 요청을 판정해도 자동 확정하지 않고 별도 최종 승인을 기다립니다/);
   assert.match(rulebookText, /모든 실제 출전선수는 개인기록 입력 또는 심판의 0 기록 확인이 필요합니다/);
   assert.match(rulebookText, /통합은 실제 출전한 공식 개인전과 팀전의 합계/);
-  assert.match(rulebookText, /팀 MMR은 주장·정규멤버 중 통합 MMR 상위 최대 5명 평균/);
+  assert.match(rulebookText, /상세 산식과 내부 보정값은 공개하지 않습니다/);
+  assert.doesNotMatch(rulebookText, /1v1 10%|2v2 20%|3v3 35%|5v5 50%|상위 최대 5명 평균|정규멤버 비율만큼|-150부터 \+150/);
+  assert.match(tutorial, /상세 산식과 내부 보정값은 공개하지 않습니다/);
+  assert.doesNotMatch(tutorial, /1v1 10%|2v2 20%|3v3 35%|5v5 50%|상위 5명 평균|정규멤버 비율만큼|MMR 100%|성과 보정은 0%/);
+  assert.doesNotMatch(recruiting, /MMR 반영률:|현장 직접 90%|완전 랜덤 100%|MMR 균형 110%|팀원의 비율을 기준|ratingScale \* 100/);
+  assert.doesNotMatch(matchRoom, /정규 · MMR \$\{|ratingScale \?\?/);
+  assert.doesNotMatch(matchClockPanel, /시계 미사용 시 MMR은|fallbackFactor \* 100/);
   assert.doesNotMatch(rulebookText, /마지막 요청을 판정하면 별도 재승인 없이 결과가 확정/);
   assert.match(rulebookText, /기록 확정 뒤 24시간 추천·신고 안내/);
   assert.doesNotMatch(rulebookText, /따봉/);

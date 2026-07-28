@@ -58,7 +58,7 @@ export default function RuleSelector({ draft, onChange }) {
         </div>
       </div>
       {!rules.gameClockEnabled ? (
-        <small className="match-rule-summary">경기 진행과 점수 기록은 가능합니다. 경쟁전은 경기시계 미사용 MMR 반영률이 적용됩니다.</small>
+        <small className="match-rule-summary">경기 진행과 점수 기록은 가능합니다. 경쟁전은 경기시계 사용 여부를 서버에서 검증합니다.</small>
       ) : null}
       {draft.visibility === "public" && rules.gameClockEnabled ? (
         <label className="switch-line">

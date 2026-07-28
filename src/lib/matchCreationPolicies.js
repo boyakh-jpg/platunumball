@@ -610,7 +610,7 @@ export function getMatchCreationValidation(source = {}) {
     warnings.push("경쟁전 구장이 아직 확보되지 않았습니다.");
   }
   if (policy.ranked && getMatchRulesPayload(policySource, { mode: policySource.mode }).gameClockEnabled === false) {
-    warnings.push("경기시계를 사용하지 않으면 경기 방식별 MMR 감산 반영률이 적용됩니다.");
+    warnings.push("경기시계를 사용하지 않으면 해당 여부를 최종 MMR 반영 전에 서버에서 검증합니다.");
   }
   return {
     policy,
@@ -671,7 +671,7 @@ export function getMatchCreationSummary(source = {}) {
       { label: "일정", value: policySource.timingType === "instant" ? "즉시" : [policySource.scheduledDate, policySource.scheduledTime].filter(Boolean).join(" ") || "일정 미정" },
     ],
     sentence: pickup
-      ? `개인 참가자를 통합 풀로 모집하고 출석 후 현장에서 팀 배치 방식을 정합니다.${policy.ranked ? " 최종 방식에 따라 MMR 반영률이 달라집니다." : " 친선전은 MMR을 반영하지 않습니다."}`
+      ? `개인 참가자를 통합 풀로 모집하고 출석 후 현장에서 팀 배치 방식을 정합니다.${policy.ranked ? " 최종 방식과 경기 검증 결과를 서버 정책으로 판정합니다." : " 친선전은 MMR을 반영하지 않습니다."}`
       : policy.benchCapacity > 0
       ? `${rosterText}입니다. 후보의 출전 정책은 '${playingTime}', 비용 정책은 '${payment}'입니다.`
       : `${rosterText}이며 비용 정책은 '${payment}'입니다.`,
