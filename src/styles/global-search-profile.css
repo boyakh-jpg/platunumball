@@ -933,10 +933,47 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-size: 0.78rem;
 }
 
-.recent-match-row span {
+.recent-match-row > span {
   display: grid;
   min-width: 0;
   gap: var(--space-1);
+}
+
+.recent-match-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.recent-match-matchup {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: var(--space-2);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.recent-match-matchup > :is(.team-hover-trigger, span) {
+  display: inline-block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-match-matchup > :is(.team-hover-trigger, span):first-child {
+  flex: 0 1 auto;
+}
+
+.recent-match-matchup > :is(.team-hover-trigger, span):last-child {
+  flex: 1 1 auto;
+}
+
+.recent-match-vs {
+  display: inline;
+  flex: 0 0 auto;
+  color: var(--muted);
 }
 
 .profile-record-badges {
@@ -974,6 +1011,11 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-style: normal;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.recent-match-row .match-record-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .match-record-meta > span {

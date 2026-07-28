@@ -2124,6 +2124,20 @@ input[type="color"] {
   align-content: center;
 }
 
+.team-tier-hero .tier-emblem figcaption {
+  gap: var(--space-1);
+}
+
+.team-tier-hero .tier-emblem figcaption strong {
+  color: var(--rb-yellow);
+  font-size: 1rem;
+}
+
+.team-tier-hero .tier-emblem figcaption span {
+  color: var(--rb-cream);
+  font-size: 0.75rem;
+}
+
 .team-emblem-report-control {
   display: grid;
   justify-items: center;

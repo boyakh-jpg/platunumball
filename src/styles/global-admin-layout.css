@@ -1605,10 +1605,6 @@
   font-weight: 850;
 }
 
-.compact-roster {
-  grid-column: 1 / -1;
-}
-
 .stat-entry-grid {
   display: grid;
   grid-column: 1 / -1;

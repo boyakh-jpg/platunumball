@@ -7,7 +7,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
-import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
+import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -55,11 +55,6 @@ function getScoreOutcome(score, opponentScore) {
   return normalizedScore > normalizedOpponentScore ? "win" : "loss";
 }
 
-const outcomeLabel = {
-  win: "승",
-  loss: "패",
-  draw: "무",
-};
 const managedTeamRoleOptions = TEAM_INVITE_ROLES.map((role) => [role, getTeamRoleLabel(role)]);
 const inviteRoleOptions = managedTeamRoleOptions;
 
@@ -442,33 +437,20 @@ export default function TeamDetail({ app }) {
               {detailHistory.map((match) => {
                 const sideName = getTeamSide(match, team.id);
                 const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
-                const side = match[sideName];
                 const outcome = getTeamOutcome(match, team.id);
                 return (
-                  <article key={match.id} className={`history-item rank-match-item rank-match-${outcome}`}>
-                    <div>
-                      <Link
-                        to={`/app/matches?match=${match.id}`}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setSelectedHistoryMatchId(match.id);
-                        }}
-                      >
-                        <strong>{match.title}</strong>
-                      </Link>
-                      <MatchRecordMeta record={match} />
-                    </div>
-                    <div className="history-score">
-                      <Badge tone={outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>{outcomeLabel[outcome]}</Badge>
-                      <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
-                    </div>
-                    <div className="roster compact-roster">
-                      {(side?.players ?? []).map((id) => {
-                        const user = userMap[id];
-                        return user ? <PlayerHoverCard key={id} user={user} teams={app.state.teams}><i style={{ "--avatar": user.avatarColor }} />{user.name}</PlayerHoverCard> : null;
-                      })}
-                    </div>
-                  </article>
+                  <RecentMatchRow
+                    key={match.id}
+                    record={match}
+                    result={outcome}
+                    side={match[sideName]}
+                    opponent={match[oppositeSide]}
+                    score={getSideScore(match, sideName)}
+                    opponentScore={getSideScore(match, oppositeSide)}
+                    teams={app.state.teams}
+                    to={`/app/matches?match=${match.id}`}
+                    onOpen={() => setSelectedHistoryMatchId(match.id)}
+                  />
                 );
               })}
               {teamRecordArchive.page?.detailExhausted === false ? (
@@ -487,16 +469,17 @@ export default function TeamDetail({ app }) {
               {archivedHistory.map((record) => {
                 const outcome = getScoreOutcome(record.score, record.opponentScore);
                 return (
-                  <article key={record.matchId} className={`history-item record-archive-row rank-match-item rank-match-${outcome}`}>
-                    <div>
-                      <strong>{record.title}</strong>
-                      <MatchRecordMeta record={record} />
-                    </div>
-                    <div className="history-score">
-                      <Badge tone={outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>{outcomeLabel[outcome]}</Badge>
-                      <strong>{record.score}:{record.opponentScore}</strong>
-                    </div>
-                  </article>
+                  <RecentMatchRow
+                    key={record.matchId}
+                    record={record}
+                    result={outcome}
+                    side={{ name: record.teamName, teamId: team.id }}
+                    opponent={{ name: record.opponentTeamName }}
+                    score={record.score}
+                    opponentScore={record.opponentScore}
+                    teams={app.state.teams}
+                    className="record-archive-row"
+                  />
                 );
               })}
             </div>

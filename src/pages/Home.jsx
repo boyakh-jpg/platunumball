@@ -7,7 +7,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard, { CourtIdentityIcon } from "../components/court/CourtHoverCard.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
-import MatchRecordMeta from "../components/match/MatchRecordMeta.jsx";
+import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
@@ -773,35 +773,23 @@ export default function Home({ app }) {
                     })}
                   </div>
                   <div className="recent-match-list">
-                    {latestMyMatches.map((match) => (
-                      <Link
-                        key={match.id}
-                        to={`/app/matches?match=${match.id}`}
-                        className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          openMatchRoom(match.id);
-                        }}
-                      >
-                        {(() => {
-                          const line = getUserMatchLine(match, user.id);
-                          return (
-                            <>
-                              <b>{line.result}</b>
-                              <span className="recent-match-copy">
-                                <span className="recent-match-matchup">
-                                  <TeamHoverCard team={teamById[line.side.teamId]} as="span"><strong>{line.side.name}</strong></TeamHoverCard>
-                                  <span className="recent-match-vs">vs</span>
-                                  <TeamHoverCard team={teamById[line.opponent.teamId]} as="span">{line.opponent.name}</TeamHoverCard>
-                                </span>
-                                <MatchRecordMeta record={match} />
-                              </span>
-                              <i>{line.score}:{line.opponentScore}</i>
-                            </>
-                          );
-                        })()}
-                      </Link>
-                    ))}
+                    {latestMyMatches.map((match) => {
+                      const line = getUserMatchLine(match, user.id);
+                      return (
+                        <RecentMatchRow
+                          key={match.id}
+                          record={match}
+                          result={line.result}
+                          side={line.side}
+                          opponent={line.opponent}
+                          score={line.score}
+                          opponentScore={line.opponentScore}
+                          teams={app.state.teams}
+                          to={`/app/matches?match=${match.id}`}
+                          onOpen={() => openMatchRoom(match.id)}
+                        />
+                      );
+                    })}
                   </div>
                 </>
               ) : <div className="home-panel-empty">최근 확정 경기 없음</div>}

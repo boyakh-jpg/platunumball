@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
+import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
+import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProfileIconDialog from "../components/profile/ProfileIconDialog.jsx";
 import AffiliationEditor from "../components/profile/AffiliationEditor.jsx";
@@ -49,7 +50,7 @@ function formatDate(date) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
+function RecentRecordCard({ records, userId, teams, onOpenRecord, loading = false }) {
   return (
     <Card className="section-card profile-record-card">
       <div className="section-title-row">
@@ -66,25 +67,19 @@ function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
           {records.map((match) => {
             const line = getUserRecordLine(match, userId);
             return (
-              <Link
+              <RecentMatchRow
                 key={match.id}
+                record={match}
+                result={line.result}
+                side={line.side}
+                opponent={line.opponent}
+                score={line.score}
+                opponentScore={line.opponentScore}
+                teams={teams}
                 to={`/app/matches?match=${match.id}`}
-                className={`recent-match-row result-${line.result.toLowerCase()}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  onOpenRecord(match.id);
-                }}
-              >
-                <b>{line.result}</b>
-                <span>
-                  <strong>{line.side.name} vs {line.opponent.name}</strong>
-                  <MatchRecordMeta
-                    record={match}
-                    afterCourt={isPersonalRecordMatch(match) ? <PersonalRecordMetaLabels visibility={match.visibility} /> : null}
-                  />
-                </span>
-                <i>{line.score}:{line.opponentScore}</i>
-              </Link>
+                onOpen={() => onOpenRecord(match.id)}
+                afterCourt={isPersonalRecordMatch(match) ? <PersonalRecordMetaLabels visibility={match.visibility} /> : null}
+              />
             );
           })}
         </div>
@@ -226,7 +221,7 @@ export default function Profile({ app }) {
               <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} ratings={user.ratings} mode={mode} />
             )) : null}
           </section>
-          <RecentRecordCard records={myRecords} userId={user.id} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} />
+          <RecentRecordCard records={myRecords} userId={user.id} teams={app.state.teams} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} />
         </div>
         <aside className="page-stack profile-side-grid">
           <ProgressionChecklist user={user} matches={app.state.matches} />
