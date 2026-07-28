@@ -56,7 +56,6 @@ export const PRACTICE_REDUCER_ACTIONS = new Set([
   "endMatch",
   "generatePickupSideAssignment",
   "finalizeMatchByAuthority",
-  "handoffMatchRecorder",
   "interestRecruitingPost",
   "inviteRecruitingPlayers",
   "inviteRecruitingReferee",
@@ -415,6 +414,11 @@ export function submitPracticeSampleResult(state, matchId) {
   }
 
   if (match.endedAt) return state;
+  const gameClockEnabled = match.rules?.gameClockEnabled !== false
+    && match.rules?.gameClockEnabled !== "false";
+  const scoreActorId = gameClockEnabled
+    ? match.teamA?.players?.[0] || operatorId
+    : operatorId;
   let next = state;
   while (true) {
     const current = next.matches.find((item) => item.id === matchId);
@@ -423,11 +427,15 @@ export function submitPracticeSampleResult(state, matchId) {
     const deltaA = Math.min(3, Math.max(0, scoreA - currentScoreA));
     const deltaB = Math.min(3, Math.max(0, scoreB - currentScoreB));
     if (!deltaA && !deltaB) break;
-    const updated = withPracticeActor(next, operatorId, repository.incrementMatchScore, matchId, deltaA, deltaB, {
+    const updated = withPracticeActor(next, scoreActorId, repository.incrementMatchScore, matchId, deltaA, deltaB, {
       expectedRevisionA: Number(current?.result?.scoreRevisionA ?? 0),
       expectedRevisionB: Number(current?.result?.scoreRevisionB ?? 0),
+      clockController: gameClockEnabled,
     });
-    if (updated === next) break;
+    const updatedMatch = updated.matches.find((item) => item.id === matchId);
+    const updatedScoreA = Number(updatedMatch?.result?.scoreA ?? updatedMatch?.teamA?.score ?? 0);
+    const updatedScoreB = Number(updatedMatch?.result?.scoreB ?? updatedMatch?.teamB?.score ?? 0);
+    if (updatedScoreA === currentScoreA && updatedScoreB === currentScoreB) break;
     next = updated;
   }
   return nextMatchEnded(next, matchId);
@@ -466,6 +474,46 @@ function settleClock(clock, nowMs) {
   };
 }
 
+function getPracticeClockControllerCandidates(match = {}, users = []) {
+  const userById = Object.fromEntries(users.map((user) => [user.id, user]));
+  const activeCandidates = ["teamA", "teamB"].flatMap((side) => (
+    (match?.[side]?.players ?? []).map((playerId, slotOrder) => ({
+      id: playerId,
+      name: userById[playerId]?.name || "연습 선수",
+      side,
+      slotOrder,
+      role: "active",
+    }))
+  ));
+  const usedIds = new Set(activeCandidates.map((player) => player.id));
+  const reserveCandidates = ["teamA", "teamB"].flatMap((side) => (
+    getMatchReservePlayerIds(match, side)
+      .filter((playerId) => playerId && !usedIds.has(playerId))
+      .map((playerId, slotOrder) => ({
+        id: playerId,
+        name: userById[playerId]?.name || "연습 후보",
+        side,
+        slotOrder,
+        role: "reserve",
+      }))
+  ));
+  reserveCandidates.forEach((player) => usedIds.add(player.id));
+  const refereeId = String(match?.refereeId || "").trim();
+  return [
+    ...activeCandidates,
+    ...reserveCandidates,
+    ...(refereeId && !usedIds.has(refereeId)
+      ? [{
+          id: refereeId,
+          name: userById[refereeId]?.name || "연습 심판",
+          side: null,
+          slotOrder: 0,
+          role: "referee",
+        }]
+      : []),
+  ];
+}
+
 export function createPracticeClockClient(
   getState,
   getActorId = () => PRACTICE_SELF_ID,
@@ -485,8 +533,7 @@ export function createPracticeClockClient(
       && clock.endedExplicitly
       && Number(clock.activeElapsedMs || 0) >= Number(clock.minimumActiveMs || 0),
     );
-    const activeIds = [...(match?.teamA?.players ?? []), ...(match?.teamB?.players ?? [])];
-    const userById = Object.fromEntries(state.users.map((user) => [user.id, user]));
+    const controllerCandidates = getPracticeClockControllerCandidates(match, state.users);
     return {
       ok: true,
       clock: {
@@ -501,12 +548,7 @@ export function createPracticeClockClient(
         b: Number(match?.result?.scoreB ?? match?.teamB?.score ?? 0),
         updatedAt: match?.result?.submittedAt ?? null,
       },
-      activePlayers: activeIds.map((playerId, index) => ({
-        id: playerId,
-        name: userById[playerId]?.name || "연습 선수",
-        side: match?.teamA?.players?.includes(playerId) ? "teamA" : "teamB",
-        slotOrder: index,
-      })),
+      activePlayers: controllerCandidates,
       attendanceQr: null,
     };
   };
@@ -598,8 +640,9 @@ export function createPracticeClockClient(
       throw error;
     }
     if (["configure", "transfer"].includes(action) && payload.controllerId) {
-      const activePlayerIds = [...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])];
-      if (!activePlayerIds.includes(payload.controllerId)) {
+      const controllerIds = getPracticeClockControllerCandidates(match, state.users)
+        .map((player) => player.id);
+      if (!controllerIds.includes(payload.controllerId)) {
         const error = new Error("match_clock_controller_must_be_active");
         error.code = error.message;
         throw error;

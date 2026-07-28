@@ -1157,7 +1157,7 @@ async function loadRecruitingPartyGuardSnapshot(context, operation = {}) {
 
   const { data: post, error: postError } = await context.supabase
     .from("recruiting_posts")
-    .select("id,team_id,player_id,host_side,ranked,allowed_age_groups,age_restriction,rules,room_state,side_capacity,bench_capacity")
+    .select("id,team_id,player_id,host_side,host_join_mode,ranked,allowed_age_groups,age_restriction,rules,room_state,side_capacity,bench_capacity")
     .eq("id", postId)
     .maybeSingle();
   if (postError) throw postError;
@@ -1193,6 +1193,9 @@ async function assertRecruitingPartyManagementGuard(context, operation = {}) {
   const snapshot = await loadRecruitingPartyGuardSnapshot(context, operation);
 
   if (operation.action === "detachRecruitingPartyPlayer") {
+    if (snapshot.post.host_join_mode === "team" || isTrue(snapshot.post.room_state?.teamOnly)) {
+      reject(409, "team_room_party_detach_forbidden");
+    }
     const requestedSide = MATCH_SIDES.includes(operation.placement?.side)
       ? operation.placement.side
       : null;

@@ -317,6 +317,7 @@ test("연습방은 설정한 후보를 초대하고 공용 교체 흐름으로 �
   const readyMatch = state.matches.find((match) => match.id === confirmed.matchId);
   const teamAReserveId = getMatchReservePlayerIds(readyMatch, "teamA")[0];
   const teamAActiveId = readyMatch.teamA.players.find((playerId) => playerId !== PRACTICE_SELF_ID);
+  const initialTeamARecorderId = readyMatch.statRecorders?.teamA;
   assert.ok(teamAReserveId?.startsWith("practice-"));
   assert.ok(readyMatch.attendance.teamA.includes(teamAReserveId));
 
@@ -336,7 +337,7 @@ test("연습방은 설정한 후보를 초대하고 공용 교체 흐름으로 �
   const liveMatch = state.matches.find((match) => match.id === confirmed.matchId);
   assert.ok(liveMatch.teamA.players.includes(teamAReserveId));
   assert.ok(getMatchReservePlayerIds(liveMatch, "teamA").includes(teamAActiveId));
-  assert.equal(liveMatch.statRecorders.teamA, teamAActiveId);
+  assert.equal(liveMatch.statRecorders?.teamA, initialTeamARecorderId);
 });
 
 test("픽업 연습은 출석 뒤 공용 팀 나누기와 배정 확정을 직접 거친다", () => {
@@ -480,6 +481,7 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
     matchSyncSource,
     clockSource,
     clockPolicyMigrationSource,
+    simplifiedLiveOperationsSource,
   ] = await Promise.all([
     readFile(new URL("../src/lib/practiceMatch.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/PracticeMatch.jsx", import.meta.url), "utf8"),
@@ -492,10 +494,14 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
     readFile(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/matches/clock.js", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260725024000_match_clock_explicit_end_and_scoreless_overtime.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260728124000_simplify_live_match_operations.sql", import.meta.url), "utf8"),
   ]);
   const source = `${practiceSource}\n${pageSource}`;
   assert.doesNotMatch(source, /\blocalStorage\b|\bsessionStorage\b/);
   assert.doesNotMatch(source, /\bfetch\s*\(|postServerAction|runServerAction/);
+  assert.doesNotMatch(practiceSource, /"handoffMatchRecorder"/);
+  assert.match(practiceSource, /role: "reserve"/);
+  assert.match(practiceSource, /role: "referee"/);
   assert.match(pageSource, /<CreateMatch/);
   assert.match(pageSource, /<RecruitingRoomModal/);
   assert.match(pageSource, /<MatchRoomModal/);
@@ -522,9 +528,9 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.match(pageSource, /window\.setInterval\(pollClock, 15_000\)/);
   assert.match(pageSource, /!match\?\.startedAt/);
   assert.match(pageSource, /getMatchReservePlayerIds\(match, "teamA"\)/);
-  assert.match(pageSource, /actorId === clockControllerId \? "시계 담당"/);
-  assert.match(pageSource, /actorId === statRecorders\.teamA \? "A 기록원"/);
-  assert.match(pageSource, /actorId === statRecorders\.teamB \? "B 기록원"/);
+  assert.match(pageSource, /actorId === clockControllerId \? "경기시계 담당"/);
+  assert.doesNotMatch(pageSource, /actorId === statRecorders\.teamA \? "A 기록원"/);
+  assert.doesNotMatch(pageSource, /actorId === statRecorders\.teamB \? "B 기록원"/);
   assert.match(pageSource, /key=\{`\$\{matchId\}:\$\{practiceActorId\}`\}/);
   assert.match(postgameRosterSource, /remoteSearchType=\{remoteSearchEnabled \? "profile" : ""\}/);
   assert.match(matchClockPanelSource, /regulationEnded && \(!scoreboardEnabled \|\| tied\)/);
@@ -534,6 +540,7 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.ok(matchSyncSource.indexOf("hasPracticeMutationPayload(body)") < matchSyncSource.indexOf("getAuthenticatedContext(request)"));
   assert.ok(clockSource.indexOf("isPracticeId(matchId)") < clockSource.indexOf("getAuthenticatedContext(request)"));
   assert.match(clockPolicyMigrationSource, /event\.action = 'endClock'/);
-  assert.match(clockPolicyMigrationSource, /current_match\.stat_recorders->>'teamA'/);
   assert.match(clockPolicyMigrationSource, /'clockUsed',[\s\S]*explicit_end_recorded/);
+  assert.match(simplifiedLiveOperationsSource, /rankball_match_clock_controller_eligible/);
+  assert.match(simplifiedLiveOperationsSource, /authority_a := 'clock_controller'/);
 });

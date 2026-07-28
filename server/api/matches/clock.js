@@ -88,7 +88,7 @@ export default async function handler(request, response) {
       breakEventRequest,
       context.supabase
         .from("matches")
-        .select("visibility,rules,ended_at,tournament_id,updated_at")
+        .select("visibility,rules,ended_at,tournament_id,updated_at,reserve_players,referee_id")
         .eq("id", matchId)
         .maybeSingle(),
     ]);
@@ -97,7 +97,40 @@ export default async function handler(request, response) {
     if (breakEventError) throw breakEventError;
     if (matchError) throw matchError;
 
-    const playerIds = [...new Set((playerRows || []).map((row) => row.user_id).filter(Boolean))];
+    const activeControllerCandidates = (playerRows || []).map((player) => ({
+      id: player.user_id,
+      side: player.side,
+      slotOrder: Number(player.slot_order || 0),
+      role: "active",
+    }));
+    const activePlayerIds = new Set(activeControllerCandidates.map((player) => player.id));
+    const reserveControllerCandidates = ["teamA", "teamB"].flatMap((side) => (
+      Array.isArray(matchRow?.reserve_players?.[side])
+        ? matchRow.reserve_players[side]
+          .filter((playerId) => playerId && !activePlayerIds.has(playerId))
+          .map((playerId, index) => ({
+            id: playerId,
+            side,
+            slotOrder: index,
+            role: "reserve",
+          }))
+        : []
+    ));
+    const refereeId = String(matchRow?.referee_id || "").trim();
+    const controllerCandidates = [
+      ...activeControllerCandidates,
+      ...reserveControllerCandidates,
+      ...(refereeId && !activePlayerIds.has(refereeId)
+        && !reserveControllerCandidates.some((player) => player.id === refereeId)
+        ? [{
+            id: refereeId,
+            side: null,
+            slotOrder: 0,
+            role: "referee",
+          }]
+        : []),
+    ];
+    const playerIds = [...new Set(controllerCandidates.map((row) => row.id).filter(Boolean))];
     let profileRows = [];
     if (playerIds.length) {
       const { data, error } = await context.supabase
@@ -125,14 +158,18 @@ export default async function handler(request, response) {
         revisionB: Number(result?.score_revision_b || 0),
       },
       rosterRevision: matchRow?.updated_at || null,
-      activePlayers: (playerRows || []).map((player) => ({
-        id: player.user_id,
-        name: nameById[player.user_id] || "출전 선수",
-        side: player.side,
-        slotOrder: Number(player.slot_order || 0),
+      activePlayers: controllerCandidates.map((player) => ({
+        ...player,
+        name: nameById[player.id] || (
+          player.role === "referee"
+            ? "배정 심판"
+            : player.role === "reserve"
+              ? "후보 선수"
+              : "출전 선수"
+        ),
       })),
       attendanceQr: (
-        (clock?.canControl || clock?.canManage)
+        clock?.canControl
         && matchRow?.visibility === "public"
         && !matchRow?.ended_at
         && !matchRow?.tournament_id

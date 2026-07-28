@@ -1170,14 +1170,21 @@ export function getDesignatedScoreRecorderId(match = {}) {
   return recorders[designatedSide];
 }
 
-export function getMatchScoreEditableSides(match = {}, userId = "", { canOperatePostStart = false, refereeEligible = true } = {}) {
+export function getMatchScoreEditableSides(match = {}, userId = "", {
+  canOperatePostStart = false,
+  refereeEligible = true,
+  clockController = false,
+} = {}) {
   if (!userId) return [];
+  const gameClockEnabled = match.rules?.gameClockEnabled !== false
+    && match.rules?.gameClockEnabled !== "false";
+  if (gameClockEnabled && clockController) return MATCH_SIDES;
   if (match.refereeId) {
     return isMatchReferee(match, userId) && refereeEligible !== false ? MATCH_SIDES : [];
   }
+  if (gameClockEnabled) return [];
   if (canOperatePostStart) return MATCH_SIDES;
-  if (getDesignatedScoreRecorderId(match) === userId) return MATCH_SIDES;
-  return getStatRecorderSides(match, userId);
+  return [];
 }
 
 export function hasMatchScoreboardOperators(match = {}) {

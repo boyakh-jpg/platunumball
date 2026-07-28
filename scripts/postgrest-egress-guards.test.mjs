@@ -15,7 +15,9 @@ test("recruiting detail is initial-only and synthetic rooms never reach its API"
   ]);
   assert.doesNotMatch(recruitingSource, /RECRUITING_ROOM_REFRESH_INTERVAL_MS/);
   assert.doesNotMatch(matchesSource, /RECRUITING_ROOM_REFRESH_INTERVAL_MS/);
-  assert.doesNotMatch(recruitingSource, /setInterval/);
+  assert.equal((recruitingSource.match(/setInterval/g) ?? []).length, 1);
+  assert.match(recruitingSource, /getMatchRoomPhase\(sourceMatch\)\.phase !== "checkin"[\s\S]*document\.hidden[\s\S]*loadMatchDetailRef\.current\?\.\(sourceMatch\.id\)[\s\S]*setInterval\(refreshAttendance, 3000\)/);
+  assert.doesNotMatch(recruitingSource, /setInterval\([^)]*loadRecruitingPostDetail/);
   assert.doesNotMatch(matchesSource, /setInterval/);
   assert.ok(isSyntheticMatchRoomId("match-room-smoke"));
   assert.equal(isSyntheticMatchRoomId("recruiting-post"), false);

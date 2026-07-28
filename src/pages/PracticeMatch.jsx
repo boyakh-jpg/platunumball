@@ -192,12 +192,9 @@ export default function PracticeMatch({ app }) {
       ...getMatchReservePlayerIds(match, "teamA"),
       ...getMatchReservePlayerIds(match, "teamB"),
     ];
-    const statRecorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
     const actorIds = [...new Set([
       match.createdBy,
       match.refereeId,
-      statRecorders.teamA,
-      statRecorders.teamB,
       ...activePlayerIds,
       ...reservePlayerIds,
     ].filter(Boolean))];
@@ -208,9 +205,7 @@ export default function PracticeMatch({ app }) {
         actorId === match.refereeId ? "심판" : "",
         activePlayerIds.includes(actorId) ? "출전 선수" : "",
         reservePlayerIds.includes(actorId) ? "후보 선수" : "",
-        actorId === statRecorders.teamA ? "A 기록원" : "",
-        actorId === statRecorders.teamB ? "B 기록원" : "",
-        actorId === clockControllerId ? "시계 담당" : "",
+        actorId === clockControllerId ? "경기시계 담당" : "",
       ].filter(Boolean);
       return { id: actorId, label: `${user?.name || "연습 선수"} · ${roles.join("·")}` };
     });

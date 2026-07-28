@@ -74,6 +74,7 @@ import {
 import {
   canRequestVoidMatchRestore,
   compareMatchRecency,
+  getMatchScoreEditableSides,
   hasMatchScoreboardOperators,
   getVoidMatchRestoreTargetUserId,
   getMatchSideResult,
@@ -356,6 +357,22 @@ test("match clock scoreboard requires a referee or an identified host", () => {
   assert.equal(hasMatchScoreboardOperators({}), false);
 });
 
+test("경기시계 담당자는 심판 경기에서도 양쪽 팀 점수를 조작한다", () => {
+  const refereeMatch = {
+    refereeId: "referee-1",
+    rules: { gameClockEnabled: true },
+  };
+  assert.deepEqual(
+    getMatchScoreEditableSides(refereeMatch, "clock-controller", { clockController: true }),
+    MATCH_SIDES,
+  );
+  assert.deepEqual(
+    getMatchScoreEditableSides(refereeMatch, "referee-1", { refereeEligible: true }),
+    MATCH_SIDES,
+  );
+  assert.deepEqual(getMatchScoreEditableSides(refereeMatch, "host-1"), []);
+});
+
 test("match clock keeps shot settings stable and fullscreen compact", async () => {
   const panelSource = await readSource("src/components/match/MatchClockPanel.jsx");
   const clockStyles = await readSource("src/styles/match-clock.css");
@@ -376,8 +393,8 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /matchRules\.halftimeMinutes/);
   assert.match(panelSource, /directScoreControlsEnabled = scoreboardEnabled/);
   assert.match(panelSource, /export function MatchScoreControls/);
-  assert.match(panelSource, /directScoreControlsEnabled && editableScoreSides\.includes\("teamA"\)/);
-  assert.match(panelSource, /directScoreControlsEnabled && editableScoreSides\.includes\("teamB"\)/);
+  assert.match(panelSource, /directScoreControlsEnabled && clockEditableScoreSides\.includes\("teamA"\)/);
+  assert.match(panelSource, /directScoreControlsEnabled && clockEditableScoreSides\.includes\("teamB"\)/);
   assert.match(panelSource, /breakLimitMs > 0/);
   assert.match(panelSource, /liveClock\?\.matchEndedAt/);
   assert.match(panelSource, /closeFocusMode\(\)/);
@@ -402,7 +419,7 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(clockStyles, /\.ui-match-score-control-grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(clockStyles, /@media \(width <= 720px\)[\s\S]*\.ui-match-score-control-grid[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-notice \{[^}]*pointer-events: none;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-display-grid \{[^}]*grid-template-columns: minmax\(0, 4\.3fr\) minmax\(124px, 0\.7fr\);/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-display-grid-with-attendance \{[^}]*grid-template-columns: minmax\(124px, 0\.7fr\) minmax\(0, 4\.3fr\) minmax\(124px, 0\.7fr\);/);
   assert.match(clockStyles, /@media \(width >= 721px\)[\s\S]*?height: min\(64dvh, 34dvw, 720px\);[\s\S]*?min-height: 360px;/);
   assert.match(clockStyles, /\.ui-match-clock-score-actions \.ui-button \{[^}]*min-height: 44px;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-main-time time \{[^}]*font-size: clamp\(4\.75rem, 14cqi, 10rem\);/);

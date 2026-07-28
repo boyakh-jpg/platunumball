@@ -3968,12 +3968,11 @@ export function forfeitTournamentMatch(state, tournamentId, matchId, losingSide,
 }
 
 export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, reservePlayerId, reason = "operator") {
-  const storedMatch = state.matches.find((item) => item.id === matchId);
-  const match = withEffectiveMatchStatRecorders(storedMatch);
+  const match = state.matches.find((item) => item.id === matchId);
   if (!match || match.status !== "agreed" || match.endedAt) return state;
   if (getMatchRoomPhase(match).phase !== "live") return state;
   if (!MATCH_SIDES.includes(sideName)) return state;
-  if (!["self", "late", "injury", "ejection", "operator"].includes(reason)) return state;
+  if (!["self", "late", "ejection", "operator"].includes(reason)) return state;
   const substitutionAccess = getMatchSubstitutionAccess(match, state.currentUserId, sideName, {
     canOperate: currentUserIsEligibleMatchReferee(state, match),
     recorderSides: getStatRecorderSides(match, state.currentUserId),
@@ -3990,10 +3989,6 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
   const substitutionPatch = getRecorderHandoffPatch(match, sideName, activePlayerId, reservePlayerId);
   if (!substitutionPatch.valid || !substitutionPatch.swapped) return state;
   const now = new Date().toISOString();
-  const currentRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
-  const nextRecorders = !match.refereeId && currentRecorders[sideName] === reservePlayerId
-    ? { ...currentRecorders, [sideName]: activePlayerId }
-    : currentRecorders;
   const substitutionEvent = {
     id: makeId("substitution"),
     side: sideName,
@@ -4005,10 +4000,8 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
   };
   const nextMatch = {
     ...substitutionPatch.match,
-    statRecorders: nextRecorders,
     rules: {
       ...(substitutionPatch.match.rules ?? {}),
-      statRecorders: nextRecorders,
       lastSubstitutionAt: now,
     },
     substitutionEvents: [substitutionEvent, ...(substitutionPatch.match.substitutionEvents ?? [])],
@@ -4078,7 +4071,10 @@ export function incrementMatchScore(state, matchId, deltaA = 0, deltaB = 0, revi
     currentUserIsEligibleMatchReferee(state, match),
   );
   if (!live && !sharedRecordEntry && !refereePostgame) return state;
-  const editableSides = getMatchScoreEditableSides(match, state.currentUserId, { canOperatePostStart: canOperate });
+  const editableSides = getMatchScoreEditableSides(match, state.currentUserId, {
+    canOperatePostStart: canOperate,
+    clockController: revisions.clockController === true,
+  });
   if ((deltaA && !editableSides.includes("teamA")) || (deltaB && !editableSides.includes("teamB"))) return state;
   const result = match.result ?? { playerStats: {}, statSubmissions: {}, scoreSubmissions: {} };
   const revisionA = Number(result.scoreRevisionA ?? 0);
@@ -10632,6 +10628,7 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !entryId || !playerId) return state;
+  if (isTeamOnlyRecruitingRoom(post)) return state;
 
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);

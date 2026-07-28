@@ -51,7 +51,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { ensureTeamPartyLeader, getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { getTournamentRosterTeam } from "../data/tournamentMappers.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { DEFAULT_RATING, MATCH_MODES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, MINUTE_MS, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORDABLE_RESERVE_SOURCES, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
+import { DEFAULT_RATING, MATCH_MODES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, MINUTE_MS, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { isPlacementComplete } from "../lib/rating.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
@@ -107,7 +107,6 @@ import {
   getMatchRecordCompositionLabel,
   getMatchRecordSetupStatus,
   getOpenMatchDisputes,
-  getEffectiveStatRecorders,
   getLocalDateInputValue,
   getMatchRecordPlayerIds,
   getMatchResultEntryPermission,
@@ -120,7 +119,6 @@ import {
   getMatchSideRecordPlayerIds,
   getMergedResultScore,
   getTournamentMatchDisplayTitle,
-  getStatRecorderSides,
   normalizePlayerStats,
   getPublicRoomMaxDateInput,
   getPublicRoomTimingStatus,
@@ -680,19 +678,6 @@ function getMissingStartAttendanceIds(match = {}, operatorId = "") {
       .filter((playerId) => playerId !== operatorId)
       .filter((playerId) => !(attendance[sideName] ?? []).includes(playerId))
   ));
-}
-
-function getLobbyRecorderIds(lobby) {
-  const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
-  return MATCH_SIDES.reduce((acc, sideName) => {
-    const candidate = (lobby.sides[sideName].reserveCandidates ?? []).find((item) => (
-      RECORDABLE_RESERVE_SOURCES.has(item.source) &&
-      item.status === "ready" &&
-      !playingIds.has(item.playerId)
-    ));
-    acc[sideName] = candidate?.playerId ?? "";
-    return acc;
-  }, { teamA: "", teamB: "" });
 }
 
 function canMovePlayerTo(post, lobby, playerId, sideName, reserve = false) {
@@ -1389,7 +1374,6 @@ function ReserveLine({
   canInvite = false,
   inviteLabel = "초대",
   canManageEntry = null,
-  recorderId = "",
   capacity = MAX_RESERVE_PLAYERS_PER_SIDE,
   onInviteSlot,
   onSelfSlotAction,
@@ -1415,9 +1399,6 @@ function ReserveLine({
   const renderReserveSlot = ({ candidate, entry }) => {
     const user = userById[candidate.playerId];
     if (!user) return null;
-    const canRecord = RECORDABLE_RESERVE_SOURCES.has(candidate.source) && candidate.status === "ready" && !playingSet.has(candidate.playerId);
-    const assigned = recorderId === candidate.playerId;
-    const readyText = canRecord ? (assigned ? "자동 기록자" : "기록 후보") : "후보";
     const isSelfSlot = candidate.playerId === currentUserId;
     const canOpenAction = Boolean(onSelfSlotAction) && (isSelfSlot || Boolean(canManageEntry?.(entry)));
     const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, candidate.playerId, entry);
@@ -1427,7 +1408,7 @@ function ReserveLine({
         user={user}
         teams={teams}
         status={candidate.status}
-        title={readyText}
+        title="후보"
         detail={candidate.sourceLabel}
         mmr={user.ratings?.integrated ?? DEFAULT_RATING}
         position={displayPosition}
@@ -1493,6 +1474,7 @@ function RoomKickPanel({
   poolMode = false,
   placementByPlayerId = null,
   placementPlayerIds = null,
+  onRefresh = null,
 }) {
   const [pendingKick, setPendingKick] = useState(null);
   const [pendingSwap, setPendingSwap] = useState(null);
@@ -1539,6 +1521,11 @@ function RoomKickPanel({
         <span>{onSwapPlacement
           ? "첫 선수를 고른 뒤 반대 사이드 선수를 선택하면 A/B·출전·대기 자리가 서로 바뀝니다."
           : "방장은 참가자 상태와 퇴장을 관리합니다."}</span>
+        {attendanceBySide && onRefresh ? (
+          <Button type="button" size="sm" variant="secondary" onClick={onRefresh}>
+            <RefreshCw size={15} /> 새로고침
+          </Button>
+        ) : null}
       </header>
       <div className="arena-host-kick-list">
         {rows.map(({ entry, partyEntry, playerId, reserve, side, user }) => {
@@ -1581,7 +1568,7 @@ function RoomKickPanel({
                   onClick={() => setPendingKick({
                     entryId: entry.id,
                     partyEntry,
-                    playerId: partyEntry ? playerId : entry.playerId,
+                    playerId,
                     playerName: user.name,
                   })}
                 >
@@ -1653,30 +1640,12 @@ function MatchSubstitutionPanel({
   userById,
   teams,
   currentUserId,
-  isHost = false,
   canManageSide,
-  recorderSides = [],
   onSubstitute,
-  onRequestTakeover,
-  onApproveTakeover,
-  onRejectTakeover,
-  onCancelTakeover,
 }) {
   const [draftByReserveId, setDraftByReserveId] = useState({});
   const [reasonByReserveId, setReasonByReserveId] = useState({});
-  const [pendingActionKey, setPendingActionKey] = useState("");
-  const runAction = async (key, action) => {
-    if (pendingActionKey || typeof action !== "function") return;
-    setPendingActionKey(key);
-    try {
-      await action();
-    } finally {
-      setPendingActionKey("");
-    }
-  };
   if (!match) return null;
-  const effectiveRecorders = getEffectiveStatRecorders(match);
-  const openTakeoverRequests = (match.recorderTakeoverRequests ?? []).filter((request) => request.status === "open");
   const rows = MATCH_SIDES.flatMap((sideName) => {
     const access = getMatchSubstitutionAccess(match, currentUserId, sideName, {
       canOperate: canManageSide(sideName),
@@ -1692,24 +1661,13 @@ function MatchSubstitutionPanel({
       canManage: access.canManage,
     }));
   });
-  const takeoverRequestRows = MATCH_SIDES.filter((sideName) => (
-    getMatchReservePlayerIds(match, sideName).includes(currentUserId)
-    && effectiveRecorders[sideName]
-    && effectiveRecorders[sideName] !== currentUserId
-    && !openTakeoverRequests.some((request) => request.side === sideName)
-  ));
-  const pendingTakeoverRows = openTakeoverRequests.map((request) => ({
-    ...request,
-    canResolve: isHost || effectiveRecorders[request.side] === currentUserId,
-    canCancel: request.requestedBy === currentUserId,
-  })).filter((request) => request.canResolve || request.canCancel);
-  if (!rows.length && !takeoverRequestRows.length && !pendingTakeoverRows.length) return null;
+  if (!rows.length) return null;
 
   return (
     <div className="arena-record-roster-panel">
       <header>
         <strong>선수 교체</strong>
-        <span>배정 심판은 양 사이드를 교체하고, 후보는 본인 교체를 실행합니다. 기록 맡기는 같은 사이드 후보가 요청하고 현재 기록자 또는 방장이 승인합니다.</span>
+        <span>배정 심판은 양 사이드를 교체하고, 후보는 본인 교체를 실행합니다.</span>
       </header>
       <div className="arena-record-roster-list">
         {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser, canManage }) => {
@@ -1742,7 +1700,7 @@ function MatchSubstitutionPanel({
                 {lateEligible ? <option value="late">지각 합류</option> : null}
                 <option value="ejection">퇴장</option>
               </select>
-              ) : <Badge tone="blue">본인 교체</Badge>}
+              ) : null}
               <Button
                 type="button"
                 size="sm"
@@ -1757,53 +1715,6 @@ function MatchSubstitutionPanel({
               >
                 교체
               </Button>
-            </div>
-          );
-        })}
-        {takeoverRequestRows.map((sideName) => (
-          <div key={`takeover-request:${sideName}`} className="arena-record-roster-row selected">
-            <PlayerHoverCard user={userById[currentUserId]} teams={teams} as="span">
-              <ProfileEmblem user={userById[currentUserId]} className="small" initial="P" />
-              <span>
-                <strong>{SIDE_LABELS[sideName]} 기록권한 요청</strong>
-                <em>현재 {userById[effectiveRecorders[sideName]]?.name ?? "후보"} 기록자</em>
-              </span>
-            </PlayerHoverCard>
-            <span>같은 사이드 후보만 요청할 수 있습니다.</span>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={Boolean(pendingActionKey)}
-              onClick={() => void runAction(`takeover-request:${sideName}`, () => onRequestTakeover?.(sideName))}
-            >
-              기록권한 요청
-            </Button>
-          </div>
-        ))}
-        {pendingTakeoverRows.map((request) => {
-          const requester = userById[request.requestedBy];
-          return (
-            <div key={`takeover-pending:${request.id}`} className="arena-record-roster-row selected">
-              <PlayerHoverCard user={requester} teams={teams} as="span">
-                <ProfileEmblem user={requester} className="small" initial="P" />
-                <span>
-                  <strong>{requester?.name ?? "후보"} 인수 요청</strong>
-                  <em>{SIDE_LABELS[request.side]} 기록권한</em>
-                </span>
-              </PlayerHoverCard>
-              <span>{request.canResolve ? "현재 기록자 또는 방장 확인 필요" : "승인 대기 중"}</span>
-              <div className="match-action-row">
-                {request.canResolve ? (
-                  <>
-                    <Button type="button" size="sm" disabled={Boolean(pendingActionKey)} onClick={() => void runAction(`takeover-approve:${request.id}`, () => onApproveTakeover?.(request.side, request.id))}>승인</Button>
-                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(pendingActionKey)} onClick={() => void runAction(`takeover-reject:${request.id}`, () => onRejectTakeover?.(request.side, request.id))}>거절</Button>
-                  </>
-                ) : null}
-                {request.canCancel ? (
-                  <Button type="button" size="sm" variant="secondary" disabled={Boolean(pendingActionKey)} onClick={() => void runAction(`takeover-cancel:${request.id}`, () => onCancelTakeover?.(request.side, request.id))}>요청 취소</Button>
-                ) : null}
-              </div>
             </div>
           );
         })}
@@ -3021,6 +2932,7 @@ function RecruitingRoomModalReady({
     : Boolean(selectedPost?.confirmedAt || getRecruitingPostTerminalState(selectedPost));
   const modalPostDetailLoadRef = useRef("");
   const pollRecruitingChatRef = useRef(app.actions.pollRecruitingChat);
+  const loadMatchDetailRef = useRef(app.actions.loadMatchDetail);
   const chatSendLogRef = useRef({});
   const roomShareStatusTimerRef = useRef(0);
 
@@ -3063,6 +2975,26 @@ function RecruitingRoomModalReady({
   useEffect(() => {
     pollRecruitingChatRef.current = app.actions.pollRecruitingChat;
   }, [app.actions.pollRecruitingChat]);
+
+  useEffect(() => {
+    loadMatchDetailRef.current = app.actions.loadMatchDetail;
+  }, [app.actions.loadMatchDetail]);
+
+  useEffect(() => {
+    if (!sourceMatch?.id || getMatchRoomPhase(sourceMatch).phase !== "checkin") return undefined;
+    let refreshing = false;
+    const refreshAttendance = async () => {
+      if (document.hidden || refreshing) return;
+      refreshing = true;
+      try {
+        await loadMatchDetailRef.current?.(sourceMatch.id);
+      } finally {
+        refreshing = false;
+      }
+    };
+    const pollId = window.setInterval(refreshAttendance, 3000);
+    return () => window.clearInterval(pollId);
+  }, [sourceMatch?.id, sourceMatch?.startedAt, sourceMatch?.endedAt, sourceMatch?.status]);
 
   useEffect(() => {
     if (!sourceMatch?.id) return;
@@ -3907,7 +3839,6 @@ function RecruitingRoomModalReady({
         const partyJoinOptions = individualOnlyRoom ? [] : getSameSidePartyOptions(lobby, myEntry, myTeams);
         const sidePartyJoinOptions = individualOnlyRoom ? [] : getJoinableSidePartyOptions(lobby, myTeams, app.currentUser.id);
         const roomState = selectedRoomState;
-        const recorderIds = getLobbyRecorderIds(lobby);
         const chatMessages = roomState.chatMessages ?? [];
         const invitations = roomState.invitations ?? [];
         const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
@@ -4153,15 +4084,6 @@ function RecruitingRoomModalReady({
           matchRoom && sourceMatch?.endedAt && (sourceMatch.refereeId ? sourceMatch.result : true) && !sourceMatch?.confirmedAt
           && sourceMatch.status !== "disputed" && currentUserCanOperateStartedSourceMatch
         );
-        const sourceMatchRecorderSides = sourceMatch ? getStatRecorderSides(sourceMatch, app.currentUser.id) : [];
-        const sourceEffectiveRecorders = sourceMatch ? getEffectiveStatRecorders(sourceMatch) : {};
-        const sourceRecorderSideNames = MATCH_SIDES.filter((sideName) => sourceEffectiveRecorders[sideName]);
-        const sourceSingleRecorderSide = sourceRecorderSideNames.length === 1 ? sourceRecorderSideNames[0] : "";
-        const canConfigureDualScoreRecorder = Boolean(
-          matchRoom && mine && sourceMatch && !sourceMatch.refereeId
-          && !sourceMatch.startedAt && !sourceMatch.endedAt
-          && sourceSingleRecorderSide,
-        );
         const sourceMatchResultEntryPermission = sourceMatch
           ? getMatchResultEntryPermission(sourceMatch, app.currentUser.id, {
               canOperatePostStart: currentUserCanOperateStartedSourceMatch,
@@ -4171,15 +4093,12 @@ function RecruitingRoomModalReady({
         const canReviewSourceMatch = Boolean(matchRoom && sourceMatch?.status !== "disputed" && sourceMatchResultEntryPermission?.canEditDisputeDraft);
         const canSubmitSourceMatchLiveResult = Boolean(matchRoom && sourceMatchResultEntryPermission?.canSubmitLive);
         const canSubmitSourceMatchPostgameResult = Boolean(matchRoom && sourceMatchResultEntryPermission?.canSubmitPostgame);
-        const canSubmitSourceMatchRecorderResult = Boolean(canSubmitSourceMatchLiveResult && sourceMatchRecorderSides.length);
         const getEditableSourceMatchStatFields = (playerId) => sourceMatchResultEntryPermission?.getEditableStatFields(playerId) ?? [];
         const sourceMatchResultSubmitLabel = sourceMatchResultEntryPermission?.operatorPostgamePoints
           ? "누락 득점 저장"
-          : canSubmitSourceMatchRecorderResult
-            ? "후보 기록 제출"
-            : currentUserIsSourceReferee
-              ? "심판 기록 제출"
-              : "내 득점 저장";
+          : currentUserIsSourceReferee
+            ? "심판 기록 제출"
+            : "내 득점 저장";
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const canDeleteSourceSoloRecord = Boolean(matchRoom && isPersonalRecordMatch(sourceMatch) && sourceMatch.createdBy === app.currentUser.id && sourceMatch.status !== "cancelled");
         const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
@@ -4269,9 +4188,7 @@ function RecruitingRoomModalReady({
               userById={userById}
               teams={app.state.teams}
               currentUserId={app.currentUser.id}
-              isHost={mine}
               canManageSide={canManageSourceMatchSubstitutionSide}
-              recorderSides={sourceMatchRecorderSides}
               onSubstitute={(sideName, activePlayerId, reservePlayerId, reason) => app.actions.substituteMatchPlayer?.(
                 sourceMatch.id,
                 sideName,
@@ -4279,12 +4196,33 @@ function RecruitingRoomModalReady({
                 reservePlayerId,
                 reason,
               )}
-              onRequestTakeover={(sideName) => app.actions.requestMatchRecorderTakeover?.(sourceMatch.id, sideName)}
-              onApproveTakeover={(sideName, requestId) => app.actions.approveMatchRecorderTakeover?.(sourceMatch.id, sideName, requestId)}
-              onRejectTakeover={(sideName, requestId) => app.actions.rejectMatchRecorderTakeover?.(sourceMatch.id, sideName, requestId)}
-              onCancelTakeover={(sideName, requestId) => app.actions.cancelMatchRecorderTakeover?.(sourceMatch.id, sideName, requestId)}
             />
           ) : null
+        );
+        const renderRoomReserveLine = (sideName) => (
+          <ReserveLine
+            sideName={sideName}
+            candidates={lobby.sides[sideName].reserveCandidates}
+            playingIds={playingIds}
+            userById={userById}
+            teams={app.state.teams}
+            hostPlayerId={roomOwnerId}
+            currentUserId={app.currentUser.id}
+            showCaptainBadge={!sourceMatch && showCaptainBadge}
+            roomState={roomState}
+            sideLeaderId={sourceMatchSideLeaderIds[sideName]}
+            slotPositions={slotPositions}
+            canInvite={!sourceRoomReadOnly && canInviteSideFromRoom(sideName)}
+            inviteLabel={teamOnlyRoom ? "소집" : "초대"}
+            canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
+            canManage={mine}
+            capacity={benchCapacity}
+            lobby={lobby}
+            onInviteSlot={sourceRoomReadOnly ? null : ((targetSideName, reserve, slotKey, event) => openInviteSlot(selectedPost, targetSideName, reserve, slotKey, event))}
+            onSelfSlotAction={sourceMatchSlotManagementOpen ? ((targetSideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, targetSideName, reserve, playerId, entryId, event)) : null}
+            onMoveCandidate={moveCandidate}
+            onRemoveCandidate={removeCandidate}
+          />
         );
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
         const canOperateSourceRoomRules = Boolean(
@@ -4528,7 +4466,7 @@ function RecruitingRoomModalReady({
               sourceTeam={sourceTeam}
               anchor={activeSelfSlotDraft.anchor}
               heading={targetIsCurrentUser ? "내 슬롯 관리" : "파티원 관리"}
-              canLeaveParty={targetIsCurrentUser && currentUserInParty}
+              canLeaveParty={targetIsCurrentUser && currentUserInParty && !teamOnlyRoom}
               partyJoinOptions={targetPartyOptions}
               currentPosition={currentSlotPosition}
               onPositionChange={targetIsCurrentUser ? (position) => app.actions.setRecruitingSlotPosition(selectedPost.id, targetPlayerId, position) : null}
@@ -4919,6 +4857,11 @@ function RecruitingRoomModalReady({
                       onMoveCandidate={moveCandidate}
                       onRemoveCandidate={removeCandidate}
                     />
+                    {roomPhaseViewModel.showSideReserves && benchCapacity > 0 ? (
+                      <div className="arena-side-inline-reserve">
+                        {renderRoomReserveLine("teamA")}
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="arena-lobby-score-core">
@@ -4965,6 +4908,11 @@ function RecruitingRoomModalReady({
                       onMoveCandidate={moveCandidate}
                       onRemoveCandidate={removeCandidate}
                     />
+                    {roomPhaseViewModel.showSideReserves && benchCapacity > 0 ? (
+                      <div className="arena-side-inline-reserve">
+                        {renderRoomReserveLine("teamB")}
+                      </div>
+                    ) : null}
                   </div>
                 </div> : null}
 
@@ -4979,54 +4927,8 @@ function RecruitingRoomModalReady({
                 />
 
                 {roomPhaseViewModel.showSideReserves && benchCapacity > 0 ? <div className="arena-reserve-panel">
-                  <ReserveLine
-                    sideName="teamA"
-                    candidates={lobby.sides.teamA.reserveCandidates}
-                    playingIds={playingIds}
-                    userById={userById}
-                    teams={app.state.teams}
-                    hostPlayerId={roomOwnerId}
-                    currentUserId={app.currentUser.id}
-                    showCaptainBadge={!sourceMatch && showCaptainBadge}
-                    roomState={roomState}
-                    sideLeaderId={sourceMatchSideLeaderIds.teamA}
-                    slotPositions={slotPositions}
-                    canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamA")}
-                    inviteLabel={teamOnlyRoom ? "소집" : "초대"}
-                    canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
-                    canManage={mine}
-                    recorderId={recorderIds.teamA}
-                    capacity={benchCapacity}
-                    lobby={lobby}
-                    onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
-                    onSelfSlotAction={sourceMatchSlotManagementOpen ? ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)) : null}
-                    onMoveCandidate={moveCandidate}
-                    onRemoveCandidate={removeCandidate}
-                  />
-                  <ReserveLine
-                    sideName="teamB"
-                    candidates={lobby.sides.teamB.reserveCandidates}
-                    playingIds={playingIds}
-                    userById={userById}
-                    teams={app.state.teams}
-                    hostPlayerId={roomOwnerId}
-                    currentUserId={app.currentUser.id}
-                    showCaptainBadge={!sourceMatch && showCaptainBadge}
-                    roomState={roomState}
-                    sideLeaderId={sourceMatchSideLeaderIds.teamB}
-                    slotPositions={slotPositions}
-                    canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamB")}
-                    inviteLabel={teamOnlyRoom ? "소집" : "초대"}
-                    canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
-                    canManage={mine}
-                    recorderId={recorderIds.teamB}
-                    capacity={benchCapacity}
-                    lobby={lobby}
-                    onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
-                    onSelfSlotAction={sourceMatchSlotManagementOpen ? ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)) : null}
-                    onMoveCandidate={moveCandidate}
-                    onRemoveCandidate={removeCandidate}
-                  />
+                  {renderRoomReserveLine("teamA")}
+                  {renderRoomReserveLine("teamB")}
                 </div> : null}
 
                 <div className="arena-lobby-actions">
@@ -5119,6 +5021,7 @@ function RecruitingRoomModalReady({
                   poolMode={pickupPoolMode}
                   placementByPlayerId={sourceMatchPlacementByPlayerId}
                   placementPlayerIds={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupAssignment ? sourceMatchCheckedInIds : null}
+                  onRefresh={matchRoom ? (() => app.actions.loadMatchDetail?.(sourceMatch.id)) : null}
                 />
               ) : null}
 
@@ -5446,7 +5349,7 @@ function RecruitingRoomModalReady({
                 ) : (
                   <>
                     <span>팀 MMR은 실제 참가한 팀원의 비율을 기준으로 반영됩니다.</span>
-                    <span>후보가 경기 밖에서 참여를 확정하면 해당 사이드의 점수 기록자로 배정됩니다.</span>
+                    <span>후보는 경기 중 본인 교체를 요청할 수 있습니다.</span>
                   </>
                 )}
                 <span>참여 확정 후 불참하면 신뢰점수 차감 대상이 됩니다.</span>
@@ -5468,22 +5371,6 @@ function RecruitingRoomModalReady({
                 onVisibleChange={handleChatVisibleChange}
               />
 
-              {canConfigureDualScoreRecorder ? (
-                <div className="arena-owner-panel">
-                  <strong>양쪽 점수 기록자</strong>
-                  <span>기록자가 한 사이드에만 있을 때 방장이 그 후보에게 A/B 양쪽 점수를 맡길 수 있습니다.</span>
-                  <label className="memo-label">
-                    점수 권한
-                    <select
-                      value={(sourceMatch.rules?.dualScoreRecorderSide ?? sourceMatch.dualScoreRecorderSide ?? "") === sourceSingleRecorderSide ? sourceSingleRecorderSide : ""}
-                      onChange={(event) => app.actions.setMatchDualScoreRecorderSide?.(sourceMatch.id, event.target.value || null)}
-                    >
-                      <option value="">자기 사이드 점수만</option>
-                      <option value={sourceSingleRecorderSide}>{SIDE_LABELS[sourceSingleRecorderSide]} 기록자가 양쪽 점수</option>
-                    </select>
-                  </label>
-                </div>
-              ) : null}
               {matchRoom && sourceMatchPhase?.phase === "live" && !sourceMatchIsRecordRoom && selectedMatchRules.gameClockEnabled ? (
                 <MatchClockPanel
                   match={sourceMatch}

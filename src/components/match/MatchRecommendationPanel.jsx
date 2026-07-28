@@ -8,7 +8,6 @@ import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import { MATCH_SIDES } from "../../lib/constants.js";
 import {
   formatKoreanDateTime,
-  getEffectiveStatRecorders,
   getMatchPlayerIds,
   getMatchReservePlayerIds,
   getMatchTrustFeedbackClosesAt,
@@ -21,7 +20,6 @@ function getRecommendationRole(match, playerId) {
   const roles = [];
   if ([match.createdBy, match.hostPlayerId, match.createdPlayerId, match.teamA?.players?.[0]].includes(playerId)) roles.push("방장");
   if (match.refereeId === playerId) roles.push("심판");
-  if (Object.values(getEffectiveStatRecorders(match)).includes(playerId)) roles.push("기록자");
   if (getMatchPlayerIds(match).includes(playerId)) roles.push("선수");
   if (MATCH_SIDES.some((sideName) => getMatchReservePlayerIds(match, sideName).includes(playerId))) roles.push("후보");
   return roles.length ? roles.join(" · ") : "관계자";
@@ -95,7 +93,7 @@ export default function MatchRecommendationPanel({ match, currentUserId, users =
         </div>
         <Badge tone={canSubmit ? "gold" : "neutral"}>{selectedIds.length}/{limit}</Badge>
       </div>
-      <p className="muted">기록 확정 후 24시간 안에 함께한 사람을 추천할 수 있습니다. 선수·방장·기록자·심판의 추천은 같은 신뢰 평가로 반영됩니다.</p>
+      <p className="muted">기록 확정 후 24시간 안에 함께한 사람을 추천할 수 있습니다. 선수·후보·방장·심판의 추천은 같은 신뢰 평가로 반영됩니다.</p>
       <div className="trust-star-grid">
         {targets.map((playerId) => {
           const user = userById[playerId];

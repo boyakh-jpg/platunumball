@@ -23,13 +23,14 @@ import {
   getMatchClockRecognition,
   requestMatchClock,
 } from "../../lib/matchClock.js";
+import { MATCH_SIDES } from "../../lib/constants.js";
 import { normalizeMatchRules } from "../../lib/matchRules.js";
 import { hasMatchScoreboardOperators } from "../../lib/matchUtils.js";
 import "../../styles/match-clock.css";
 
 const ERROR_LABELS = Object.freeze({
   match_clock_forbidden: "이 경기의 시계를 볼 권한이 없습니다.",
-  match_clock_controller_must_be_active: "현재 출전 선수만 시계를 받을 수 있습니다.",
+  match_clock_controller_must_be_active: "현재 출전·후보 선수 또는 심판만 시계를 받을 수 있습니다.",
   match_clock_start_forbidden: "지정된 시계 담당 선수만 시작할 수 있습니다.",
   match_clock_resume_forbidden: "남은 경기시간이 없습니다. 쿼터 종료를 눌러주세요.",
   match_clock_transfer_forbidden: "시계 담당자 또는 경기 관리자만 넘길 수 있습니다.",
@@ -128,6 +129,15 @@ function getBuzzerMediaElement() {
   document.body.appendChild(buzzerMediaElement);
   buzzerMediaElement.load();
   return buzzerMediaElement;
+}
+
+function getClockControllerLabel(player = {}) {
+  const roleLabel = player.role === "referee"
+    ? "심판"
+    : player.role === "reserve"
+      ? "후보"
+      : "출전";
+  return `${player.name} · ${roleLabel}`;
 }
 
 function getMatchClockControlMediaElement() {
@@ -377,13 +387,14 @@ export default function MatchClockPanel({
   }, [applyResponse, clockClient, match?.id, pendingAction]);
 
   const incrementScore = useCallback(async (sideName, delta) => {
-    if (!onIncrementScore || scorePendingSide || !editableScoreSides.includes(sideName)) return;
+    if (!onIncrementScore || scorePendingSide || (!snapshot?.canControl && !editableScoreSides.includes(sideName))) return;
     setScorePendingSide(sideName);
     setScoreError("");
     try {
       const response = await onIncrementScore(sideName, delta, {
         expectedRevisionA: score.revisionA,
         expectedRevisionB: score.revisionB,
+        clockController: Boolean(snapshot?.canControl),
       });
       if (response?.scoreA != null && response?.scoreB != null) {
         setScore((current) => ({
@@ -404,7 +415,7 @@ export default function MatchClockPanel({
     } finally {
       setScorePendingSide("");
     }
-  }, [applyResponse, clockClient, editableScoreSides, match.id, onIncrementScore, score.revisionA, score.revisionB, scorePendingSide]);
+  }, [applyResponse, clockClient, editableScoreSides, match.id, onIncrementScore, score.revisionA, score.revisionB, scorePendingSide, snapshot?.canControl]);
 
   useEffect(() => {
     configurationDirtyRef.current = false;
@@ -477,6 +488,8 @@ export default function MatchClockPanel({
   const breakRemainingMs = Math.max(0, breakLimitMs - breakElapsedMs);
   const breakOvertimeMs = Math.max(0, breakElapsedMs - breakLimitMs);
   const shotClockEnabled = Number(liveClock?.shotClockSeconds || 0) > 0;
+  const showAttendanceQr = Boolean(attendanceQr?.value && liveClock?.canControl);
+  const clockEditableScoreSides = liveClock?.canControl ? MATCH_SIDES : editableScoreSides;
   const canResetShotClock = Boolean(liveClock?.canControl && !isEnded && !isBreak);
   const mediaControlEligible = Boolean(
     shotClockEnabled
@@ -777,7 +790,7 @@ export default function MatchClockPanel({
                   onChange={(event) => selectController(event.target.value)}
                 >
                   {activePlayers.map((player) => (
-                    <option key={player.id} value={player.id}>{player.name}</option>
+                    <option key={player.id} value={player.id}>{getClockControllerLabel(player)}</option>
                   ))}
                 </select>
               </label>
@@ -815,14 +828,20 @@ export default function MatchClockPanel({
               <Play size={18} /> 경기시계 시작
             </Button>
           ) : (
-            <p className="ui-match-clock-readonly">담당 선수의 휴대폰에서 경기시계를 시작합니다.</p>
+            <p className="ui-match-clock-readonly">지정된 경기시계 화면에서 시작합니다.</p>
           )}
         </div>
       ) : (
         <div className={`ui-match-clock-live${shotClockEnabled ? " ui-match-clock-live-with-shot" : ""}`}>
-          <div className={`ui-match-clock-display-grid${shotClockEnabled ? "" : " ui-match-clock-display-grid-single"}`}>
+          <div className={`ui-match-clock-display-grid${shotClockEnabled ? "" : " ui-match-clock-display-grid-single"}${showAttendanceQr ? " ui-match-clock-display-grid-with-attendance" : ""}`}>
+            {showAttendanceQr ? (
+              <div className="ui-match-clock-attendance-qr">
+                <QrCode value={attendanceQr.value} label="지각 출석 QR 코드" expandable />
+                <span>지각 출석</span>
+              </div>
+            ) : null}
             <div
-              className={`ui-match-clock-scoreboard${scoreboardEnabled ? "" : " ui-match-clock-scoreboard-time-only"}${attendanceQr?.value ? " ui-match-clock-scoreboard-with-attendance" : ""}`}
+              className={`ui-match-clock-scoreboard${scoreboardEnabled ? "" : " ui-match-clock-scoreboard-time-only"}`}
               aria-label={scoreboardEnabled ? "기록 점수판" : "경기시간"}
             >
               {scoreboardEnabled ? (
@@ -832,7 +851,7 @@ export default function MatchClockPanel({
                 <div className="ui-match-clock-team ui-match-clock-team-a">
                   <span className="ui-match-clock-team-label">A 점수</span>
                   <strong className="ui-match-clock-team-score">{score.a}</strong>
-                  {directScoreControlsEnabled && editableScoreSides.includes("teamA") && !isEnded ? (
+                  {directScoreControlsEnabled && clockEditableScoreSides.includes("teamA") && !isEnded ? (
                     <div className="ui-match-clock-score-actions" aria-label="A 점수 조정">
                       {[-1, 1, 2, 3].map((delta) => (
                         <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamA", delta)}>
@@ -853,7 +872,7 @@ export default function MatchClockPanel({
                 <div className="ui-match-clock-team ui-match-clock-team-b">
                   <span className="ui-match-clock-team-label">B 점수</span>
                   <strong className="ui-match-clock-team-score">{score.b}</strong>
-                  {directScoreControlsEnabled && editableScoreSides.includes("teamB") && !isEnded ? (
+                  {directScoreControlsEnabled && clockEditableScoreSides.includes("teamB") && !isEnded ? (
                     <div className="ui-match-clock-score-actions" aria-label="B 점수 조정">
                       {[-1, 1, 2, 3].map((delta) => (
                         <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamB", delta)}>
@@ -862,12 +881,6 @@ export default function MatchClockPanel({
                       ))}
                     </div>
                   ) : null}
-                </div>
-              ) : null}
-              {attendanceQr?.value && (liveClock.canControl || liveClock.canManage) ? (
-                <div className="ui-match-clock-attendance-qr">
-                  <QrCode value={attendanceQr.value} label="지각 출석 QR 코드" expandable />
-                  <span>지각 출석</span>
                 </div>
               ) : null}
             </div>
@@ -959,12 +972,12 @@ export default function MatchClockPanel({
           ) : null}
 
           {!liveClock.canControl && !isEnded ? (
-            <p className="ui-match-clock-readonly">{controller?.name || "지정 선수"}님이 시계를 조작 중입니다.</p>
+            <p className="ui-match-clock-readonly">{controller?.name || "지정 담당자"}님이 시계를 조작 중입니다.</p>
           ) : null}
 
           {!isEnded && (liveClock.canControl || liveClock.canManage) ? (
             <details className="ui-match-clock-transfer">
-              <summary>시계 담당 선수 변경</summary>
+              <summary>시계 담당자 변경</summary>
               <div className="ui-match-clock-player-grid">
                 {activePlayers.filter((player) => player.id !== liveClock.controllerId).map((player) => (
                   <Button
@@ -972,9 +985,9 @@ export default function MatchClockPanel({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    onClick={() => confirmAction(`${player.name} 선수에게 시계를 넘길까요? 넘긴 뒤 현재 기기에서는 조작할 수 없습니다.`, "transfer", { controllerId: player.id })}
+                    onClick={() => confirmAction(`${getClockControllerLabel(player)}에게 시계를 넘길까요? 넘긴 뒤 현재 기기에서는 조작할 수 없습니다.`, "transfer", { controllerId: player.id })}
                   >
-                    {player.name}
+                    {getClockControllerLabel(player)}
                   </Button>
                 ))}
               </div>

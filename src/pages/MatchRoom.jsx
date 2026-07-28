@@ -49,15 +49,12 @@ import {
   getMatchSideLeaderId,
   getMatchSideRecordPlayerIds,
   getMergedResultScore,
-  getEffectiveStatRecorders,
   getPlayerSideName,
   getPlayerStatSubmitted,
-  getStatRecorderSides,
   getStatSubmissionStatus,
   isEligibleReferee,
   isMatchReferee,
   isMatchRecordMatch,
-  isMatchStatRecorder,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
@@ -345,17 +342,16 @@ export default function MatchRoom({ app }) {
   const recordWindow = getMatchRecordWindow(match);
   const referee = getMatchReferee(match, app.state.users);
   const hasReferee = Boolean(match.refereeId);
+  const isSoloRecord = isPersonalRecordMatch(match);
   const currentUserIsReferee = isMatchReferee(match, app.currentUser.id);
   const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(app.currentUser, match.refereeTrustMin, app.state.settings?.refereeAppointments);
-  const statRecorders = hasReferee ? {} : getEffectiveStatRecorders(match);
-  const recorderSummary = referee
-    ? `심판 ${referee.name}`
-    : MATCH_SIDES
-        .filter((sideName) => statRecorders[sideName])
-        .map((sideName) => `${sideName === "teamA" ? "A사이드" : "B사이드"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
-        .join(" · ") || "참가자 본인 득점";
-  const currentRecorderSides = hasReferee ? [] : getStatRecorderSides(match, app.currentUser.id);
-  const hasSideRecorders = !hasReferee && Boolean(statRecorders.teamA || statRecorders.teamB);
+  const operationSummary = isSoloRecord
+    ? "작성자 · 내 기록"
+    : referee
+      ? `심판 ${referee.name}`
+      : match.rules?.gameClockEnabled === false
+        ? "방장 · 양쪽 점수"
+        : "경기시계 담당자 · 양쪽 점수";
   const statSubmissionStatus = getStatSubmissionStatus(match);
   const activeEvidenceIds = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
   const activeEvidenceCount = (match.evidence ?? []).filter((evidence) => activeEvidenceIds.has(evidence.id ?? evidence.type)).length;
@@ -386,7 +382,6 @@ export default function MatchRoom({ app }) {
   const canSubmitLiveResult = resultEntryPermission.canSubmitLive;
   const canSubmitResult = resultEntryPermission.canSubmit;
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
-  const isSoloRecord = isPersonalRecordMatch(match);
   const canFinalizeMatch = Boolean(
     match.endedAt &&
     (hasReferee ? match.result : true) &&
@@ -441,7 +436,7 @@ export default function MatchRoom({ app }) {
       : hasReferee && !currentUserIsReferee
         ? "심판만 입력"
         : !currentUserCanSubmit
-          ? benchCapacity > 0 ? "참가자/후보 기록자만 입력" : "참가자만 입력"
+          ? isSoloRecord ? "작성자만 입력" : "개인 스탯 미기록"
         : "입력 가능";
   const renderHeroRoster = (sideName) => {
     const team = getSafeMatchSide(match, sideName);
@@ -492,7 +487,6 @@ export default function MatchRoom({ app }) {
         <div className="gm-roster-row gm-reserve-row">
           {reservePlayerIds.map((playerId) => {
             const user = userMap[playerId];
-            const recorder = statRecorders[sideName] === playerId;
             const roleBadge = playerId === matchHostPlayerId
               ? { tone: "host", label: "방장" }
               : sideLeaderId === playerId
@@ -508,7 +502,7 @@ export default function MatchRoom({ app }) {
                 <ProfileEmblem user={user} anonymous={isAnonymousDisplayUser(user)} initial={getAvatarInitial(user)} />
                 <strong>{user?.name ?? "플레이어"}</strong>
                 <small>{getPlayerMetaLabel(user)}</small>
-                <em>{recorder ? "REC" : "SUB"}</em>
+                <em>SUB</em>
               </PlayerHoverCard>
             );
           })}
@@ -607,36 +601,28 @@ export default function MatchRoom({ app }) {
     }).catch(() => setResultSaveFeedback("최신 경기 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."))
       .finally(() => setMatchDetailRefreshing(false));
   };
-  const getSideLabel = (sideName) => (sideName === "teamA" ? "A사이드" : "B사이드");
-  const getRecorderName = (sideName) => hasReferee ? "" : userMap[statRecorders[sideName]]?.name ?? "";
   const canEditPlayerStat = (playerId) => canSubmitResult && resultEntryPermission.getEditableStatFields(playerId).length > 0;
   const editableStatFields = statEditorPlayerId ? resultEntryPermission.getEditableStatFields(statEditorPlayerId) : [];
   const getPlayerStatState = (playerId, submitted) => {
-    const sideName = getPlayerSideName(match, playerId);
-    const recorderName = sideName ? getRecorderName(sideName) : "";
     if (canEditPlayerStat(playerId)) {
       if (hasReferee) return "심판 입력";
-      if (sideName && isMatchStatRecorder(match, app.currentUser.id, sideName)) return "후보 기록";
-      return submitted ? "득점 수정" : "내 득점";
+      return submitted ? "내 기록 수정" : "내 기록";
     }
     if (submitted) return "제출됨";
-    if (recorderName) return `후보 ${recorderName}`;
     return "미제출";
   };
   const permissionTitle = hasReferee
     ? `심판 ${referee?.name ?? "지정됨"}`
-    : currentRecorderSides.length
-      ? `후보 기록자 ${currentRecorderSides.map(getSideLabel).join(", ")}`
-      : hasSideRecorders
-        ? "후보 기록자 배정"
-        : "참가자 본인 득점";
+    : isSoloRecord
+      ? "내 기록"
+      : "팀 점수만 기록";
   const permissionDetail = hasReferee
     ? "심판만 전체 개인 활약 입력"
-    : currentRecorderSides.length
-      ? "내가 맡은 팀의 득점/리바운드/어시스트/스틸/블록 입력"
-      : hasSideRecorders
-        ? "후보가 있는 팀은 후보 기록자가 개인 활약 입력"
-        : "리바운드/어시스트/스틸/블록은 비활성";
+    : isSoloRecord
+      ? "작성자 본인의 개인 스탯 입력"
+      : match.rules?.gameClockEnabled === false
+        ? "방장이 양쪽 팀 점수 입력"
+        : "경기시계 담당자가 양쪽 팀 점수 입력";
   const nextAction = (() => {
     if (match.status === "contract") {
       if (currentUserSideName && !currentUserAgreementDone) {
@@ -698,7 +684,7 @@ export default function MatchRoom({ app }) {
   const statTrustSteps = [
     {
       id: "self",
-      label: hasSideRecorders ? "후보/본인 제출" : "전원 본인 제출",
+      label: hasReferee ? "심판 제출" : "본인 제출",
       detail: `${statSubmissionStatus.submitted}/${statSubmissionStatus.total}명 제출`,
       complete: statSubmissionStatus.complete,
     },
@@ -749,7 +735,7 @@ export default function MatchRoom({ app }) {
     ["만남 장소", getMeetingPointSummary(normalizedRules, match.timingType, match.mode)],
     ["공격권", match.rules?.attackRule ?? "득점 후 공격권 교대"],
     ["파울 룰", match.rules?.foulRule ?? "현장 합의"],
-    ["기록 권한", recorderSummary],
+    ["운영 권한", operationSummary],
     ["이의제기", `${normalizeDisputeWindowMinutes(match.disputeMinutes)}분`],
     ["티어 반영", isSoloRecord ? "개인 기록 · MMR 미반영" : match.ranked === false ? "친선 · 티어 자유" : `정규 · MMR ${Math.round((match.ratingScale ?? match.rules?.ratingScale ?? 1) * 100)}%`],
   ];
@@ -931,7 +917,7 @@ export default function MatchRoom({ app }) {
                 <div className="ui-empty-state-compact">경기가 종료되면 결과를 입력할 수 있습니다.</div>
               </Card>
             ) : null}
-            {hasReferee && shouldShowResultEntry ? (
+            {(hasReferee || isSoloRecord) && shouldShowResultEntry ? (
             <Card id="result-entry" className="section-card result-card">
             <div className="section-title-row">
               <div>
@@ -995,7 +981,7 @@ export default function MatchRoom({ app }) {
                   새로고침
                 </Button>
                 <Button type="submit" disabled={!canSubmitResult}>
-                  {canEditDisputeDraft ? "이의 수정안 저장" : canSubmitLiveResult ? "실시간 기록 저장" : hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "내 득점 다시 제출" : "내 득점 제출"}
+                  {canEditDisputeDraft ? "이의 수정안 저장" : canSubmitLiveResult ? "실시간 기록 저장" : hasReferee ? "심판 기록 제출" : currentUserSubmitted ? "내 기록 다시 제출" : "내 기록 제출"}
                 </Button>
               </div>
               {resultSaveFeedback ? <div className="stat-save-feedback">{resultSaveFeedback}</div> : null}
@@ -1006,7 +992,7 @@ export default function MatchRoom({ app }) {
                 <div className="stat-trust-head">
                   <div>
                     <strong>개인 기록 신뢰도</strong>
-                    <span>후보 선수와 본인의 제출 상태, 득점 합계, 양 팀 승인, 증거 첨부를 함께 확인합니다.</span>
+                    <span>{hasReferee ? "심판 제출 상태, 득점 합계, 양 팀 승인, 증거 첨부를 함께 확인합니다." : "본인 제출 상태와 득점 합계, 증거 첨부를 함께 확인합니다."}</span>
                   </div>
                   <Badge tone={statTrustPercent >= 75 ? "green" : statTrustPercent >= 50 ? "orange" : "neutral"}>{statTrustPercent}%</Badge>
                 </div>
@@ -1048,7 +1034,7 @@ export default function MatchRoom({ app }) {
             </form>
             </Card>
             ) : null}
-            {!hasReferee && match.endedAt && shouldShowResultEntry ? (
+            {!hasReferee && !isSoloRecord && match.endedAt && shouldShowResultEntry ? (
               <Card id="result-entry" className="section-card result-card">
                 <div className="section-title-row">
                   <div>
@@ -1287,7 +1273,7 @@ export default function MatchRoom({ app }) {
               </>
             ) : null}
           </Card>
-          {match.result && hasReferee ? (
+          {match.result && (hasReferee || isSoloRecord) ? (
             <Card className="section-card">
               <div className="section-title-row">
                 <div>
@@ -1313,7 +1299,7 @@ export default function MatchRoom({ app }) {
           </aside>
         </div>
       )}
-      {statEditorPlayer && hasReferee ? (
+      {statEditorPlayer && (hasReferee || isSoloRecord) ? (
         <div className="modal-backdrop stat-editor-backdrop" onClick={() => setStatEditorPlayerId(null)}>
           <div className="modal stat-editor-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">

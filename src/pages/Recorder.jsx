@@ -21,7 +21,6 @@ import {
   getRoomScheduleLabel,
   getRoomVisibilityLabel,
   getSafeMatchSide,
-  getStatRecorderSides,
   isEligibleReferee,
   isMatchInPlayMenu,
   isMatchPartyTeamParty,
@@ -49,15 +48,13 @@ function canAccessActiveMatch(match, user, state) {
     : null;
   const isHost = getMatchHostPlayerId(match, sourcePost) === user.id;
   const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin, state.settings?.refereeAppointments);
-  const isRecorder = !match.refereeId && getStatRecorderSides(match, user.id).length > 0;
   const isPlayer = getMatchPlayerIds(match).includes(user.id);
   const isReserve = MATCH_SIDES.some((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
-  return isHost || isReferee || isRecorder || isPlayer || isReserve;
+  return isHost || isReferee || isPlayer || isReserve;
 }
 
-function getRoleText(match, user, recorderSides) {
+function getRoleText(match, user) {
   if (isMatchReferee(match, user.id)) return "심판";
-  if (recorderSides.length) return `${recorderSides.map((sideName) => sideLabels[sideName]).join(", ")} 기록자`;
   const playerSide = getPlayerSideName(match, user.id);
   if (playerSide) return `${sideLabels[playerSide]} 선수`;
   const reserveSide = MATCH_SIDES.find((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
@@ -243,7 +240,6 @@ export default function Recorder({ app }) {
             {matches.map((match) => {
               const phase = getMatchRoomPhase(match);
               const status = statusMeta[match.status] ?? { label: phase.listLabel ?? phase.label ?? "상태 확인 중", tone: phase.tone ?? "blue" };
-              const recorderSides = getStatRecorderSides(match, user.id);
               const sourcePost = match.recruitingPostId ? app.state.recruitingPosts.find((post) => post.id === match.recruitingPostId) : null;
               const title = getRecorderCardTitle(match);
               const scoreA = getScore(match, "teamA");
@@ -275,7 +271,7 @@ export default function Recorder({ app }) {
                       center={summaryValue}
                       right={<TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>}
                       meta={meta}
-                      detail={`${getRoleText(match, user, recorderSides)} · ${getDeadlineLabel(match)}`}
+                      detail={`${getRoleText(match, user)} · ${getDeadlineLabel(match)}`}
                     />
                   )}
                   actionLabel={getActionLabel(match)}

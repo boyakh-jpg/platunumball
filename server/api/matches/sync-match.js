@@ -1474,17 +1474,15 @@ async function assertMatchTeamPlacementSide(context, operation = {}, matchId = "
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
-  if (operation.action === "setMatchDualScoreRecorderSide" && operation.matchId) {
-    const { data, error } = await context.supabase.rpc("rankball_match_scorekeeper_scope_action", {
-      p_actor_profile_id: context.profileId,
-      p_match_id: operation.matchId,
-      p_side: operation.sideName ?? operation.side ?? null,
-    });
-    if (error) {
-      if (isMissingSqlMatchReducer(error)) reject(503, "match_scorekeeper_scope_rpc_required");
-      throw error;
-    }
-    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  if ([
+    "setMatchDualScoreRecorderSide",
+    "requestMatchRecorderTakeover",
+    "approveMatchRecorderTakeover",
+    "rejectMatchRecorderTakeover",
+    "cancelMatchRecorderTakeover",
+    "handoffMatchRecorder",
+  ].includes(operation.action)) {
+    reject(409, "match_recorder_flow_retired");
   }
 
   if (operation.action === "incrementMatchScore" && operation.matchId) {
@@ -1498,32 +1496,6 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) reject(503, "match_score_increment_rpc_required");
-      throw error;
-    }
-    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
-  }
-
-  if ([
-    "requestMatchRecorderTakeover",
-    "approveMatchRecorderTakeover",
-    "rejectMatchRecorderTakeover",
-    "cancelMatchRecorderTakeover",
-  ].includes(operation.action) && operation.matchId) {
-    const takeoverAction = {
-      requestMatchRecorderTakeover: "request",
-      approveMatchRecorderTakeover: "approve",
-      rejectMatchRecorderTakeover: "reject",
-      cancelMatchRecorderTakeover: "cancel",
-    }[operation.action];
-    const { data, error } = await context.supabase.rpc("rankball_match_recorder_takeover_action", {
-      p_actor_profile_id: context.profileId,
-      p_action: takeoverAction,
-      p_match_id: operation.matchId,
-      p_side: operation.sideName ?? operation.side ?? "",
-      p_request_id: operation.requestId ?? null,
-    });
-    if (error) {
-      if (isMissingSqlMatchReducer(error)) reject(503, "match_recorder_takeover_rpc_required");
       throw error;
     }
     return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
@@ -1909,7 +1881,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     };
   }
 
-  if (["handoffMatchRecorder", "substituteMatchPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
+  if (operation.action === "substituteMatchPlayer" && (match?.id || operation.matchId)) {
     const { data, error } = await context.supabase.rpc("rankball_match_roster_transition_action", {
       p_actor_profile_id: context.profileId,
       p_action: operation.action,

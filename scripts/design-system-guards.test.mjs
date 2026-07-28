@@ -381,7 +381,7 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
   );
   assert.match(
     recruitingStyles,
-    /\.arena-lobby-modal \.arena-lobby-team-panel\.team-b \.arena-room-slot-row\s*\{[^}]*justify-content:\s*safe end;/,
+    /\.arena-lobby-modal \.arena-lobby-team-panel\.team-b \.arena-room-slot-row\s*\{[^}]*justify-content:\s*start;[^}]*direction:\s*rtl;/,
   );
   assert.match(
     recruitingStyles,
@@ -393,7 +393,15 @@ test("공용 방의 A/B 출전·후보 슬롯은 같은 간격과 반응형 정�
   );
   assert.match(
     recruitingStyles,
-    /@media \(max-width:\s*720px\)[\s\S]*?\.arena-lobby-modal \.arena-reserve-panel,\s*html\[data-theme="light"\] \.arena-lobby-modal \.arena-reserve-panel\s*\{[^}]*padding:\s*10px;/,
+    /\.arena-lobby-modal \.arena-reserve-panel > \.arena-reserve-line:nth-child\(2\) > \.arena-room-reserve-row\s*\{[^}]*justify-content:\s*start;[^}]*direction:\s*rtl;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /@media \(max-width:\s*1100px\)[\s\S]*?\.arena-lobby-modal \.arena-reserve-panel\s*\{[^}]*display:\s*none;[\s\S]*?\.arena-lobby-modal \.arena-side-inline-reserve\s*\{[^}]*display:\s*block;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /@media \(max-width:\s*720px\)[\s\S]*?\.arena-lobby-modal \.arena-side-inline-reserve \.arena-room-reserve-row,[\s\S]*?grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--room-slot-width\),\s*var\(--room-slot-width\)\)\);/,
   );
   assert.match(
     matchRoomStyles,
@@ -554,8 +562,8 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /출전·팀 배치를 자동 확정하지 않습니다/);
   assert.match(gettingStartedSource, /양쪽 실제 출전 선수의 과반 승인/);
   assert.match(gettingStartedSource, /경기시계/);
-  assert.match(gettingStartedSource, /심판·기록원·경기시계가 역할을 나눕니다/);
-  assert.match(gettingStartedSource, /점수판은 심판·기록원이 저장한 점수를 읽기만/);
+  assert.match(gettingStartedSource, /심판·경기시계 담당자·선수가 역할을 나눕니다/);
+  assert.match(gettingStartedSource, /지정된 담당자만 양쪽 점수와 경기시계·샷클락을 조작하고 출석 QR을 표시/);
   assert.match(gettingStartedSource, /A\/B 점수판과 30초 샷클락이 함께 열린/);
   assert.match(gettingStartedSource, /티어는 확정 기록에서 자동 계산됩니다/);
   assert.match(gettingStartedSource, /기기별 베타/);

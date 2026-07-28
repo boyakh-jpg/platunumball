@@ -3,8 +3,8 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import RefereeHoverCard from "../referee/RefereeHoverCard.jsx";
-import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_SIDES, normalizeDisputeWindowMinutes } from "../../lib/constants.js";
-import { getMatchReferee, normalizeStatRecorders } from "../../lib/matchUtils.js";
+import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, normalizeDisputeWindowMinutes } from "../../lib/constants.js";
+import { getMatchReferee, isPersonalRecordMatch } from "../../lib/matchUtils.js";
 import { getMatchBreakLabel, getMatchClockLabel, getMatchEndLabel, getMatchPeriodLabel, getMeetingPointSummary, normalizeMatchRules } from "../../lib/matchRules.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
@@ -33,13 +33,7 @@ export default function MatchContract({ match, users = [], teams = [], matches =
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
   const credibility = CREDIBILITY_LEVELS[getCredibilityLevel(match)] ?? CREDIBILITY_LEVELS.street_majority;
   const referee = getMatchReferee(match, users);
-  const statRecorders = normalizeStatRecorders(match.statRecorders ?? rules.statRecorders);
-  const recorderLabel = referee
-    ? ""
-    : MATCH_SIDES
-        .filter((sideName) => statRecorders[sideName])
-        .map((sideName) => `${sideName === "teamA" ? "A사이드" : "B사이드"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
-        .join(" · ");
+  const personalRecord = isPersonalRecordMatch(match);
   const renderRoster = (side) => (
     <div className="roster">
       {side.players.map((id) => {
@@ -132,8 +126,12 @@ export default function MatchContract({ match, users = [], teams = [], matches =
           </strong>
         </div>
         <div>
-          <span>{referee ? "개인 스탯 기록" : "점수 기록자"}</span>
-          <strong>{referee ? "배정 심판" : recorderLabel || "방장 양쪽 기록"}</strong>
+          <span>개인 스탯 기록</span>
+          <strong>{referee ? "배정 심판" : personalRecord ? "작성자 본인" : "미기록"}</strong>
+        </div>
+        <div>
+          <span>점수·경기시계</span>
+          <strong>{personalRecord ? "작성자 입력" : rules.gameClockEnabled === false ? (referee ? "배정 심판" : "방장 · 양쪽 점수") : "지정 경기시계 담당자"}</strong>
         </div>
         <div>
           <span>공격권</span>

@@ -297,6 +297,18 @@
   line-height: 1.5;
 }
 
+.arena-attendance-scan-modal {
+  width: min(420px, 100%);
+  min-height: 0;
+  align-content: start;
+}
+
+.arena-attendance-scan-modal .arena-room-title {
+  margin: 0;
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  line-height: 1.08;
+}
+
 .arena-compose-drawer {
   width: min(760px, 100%);
   max-height: min(820px, calc(100vh - 36px));
@@ -5482,7 +5494,12 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
 }
 
 .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-room-slot-row {
-  justify-content: safe end;
+  justify-content: start;
+  direction: rtl;
+}
+
+.arena-lobby-modal .arena-lobby-team-panel.team-b .arena-room-slot-row > * {
+  direction: ltr;
 }
 
 .arena-lobby-modal .arena-room-player-slot,
@@ -5536,6 +5553,19 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
   overflow: visible;
 }
 
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row {
+  justify-content: start;
+  direction: rtl;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row > * {
+  direction: ltr;
+}
+
+.arena-side-inline-reserve {
+  display: none;
+}
+
 .arena-lobby-modal .arena-lobby-team-panel,
 .arena-lobby-modal .arena-reserve-panel,
 html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel,
@@ -5570,6 +5600,35 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
   .arena-lobby-modal .arena-lobby-versus-stage {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .arena-lobby-modal .arena-reserve-panel {
+    display: none;
+  }
+
+  .arena-lobby-modal .arena-side-inline-reserve {
+    display: block;
+    min-width: 0;
+    margin-top: 10px;
+  }
+
+  .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-reserve-line > strong {
+    text-align: right;
+  }
+
+  .arena-lobby-modal .arena-side-inline-reserve .arena-room-reserve-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-side-inline-reserve .arena-room-reserve-row {
+    justify-content: start;
+  }
+
+  .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-room-reserve-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-room-reserve-row {
+    justify-content: start;
+    direction: rtl;
+  }
+
+  .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-room-reserve-row > * {
+    direction: ltr;
+  }
 }
 
 @media (max-width: 720px) {
@@ -5577,32 +5636,9 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
     grid-auto-columns: minmax(var(--room-slot-width), var(--room-slot-width));
   }
 
-  .arena-lobby-modal .arena-reserve-panel,
-  html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-    padding: 10px;
-  }
-
-  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:first-child,
-  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) {
-    grid-column: 1;
-  }
-
-  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > strong,
-  html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > strong {
-    text-align: left;
-  }
-
-  .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
-  html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  .arena-lobby-modal .arena-side-inline-reserve .arena-room-reserve-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-side-inline-reserve .arena-room-reserve-row {
     grid-template-columns: repeat(auto-fit, minmax(var(--room-slot-width), var(--room-slot-width)));
-    justify-content: start;
-  }
-
-  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row,
-  html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row {
-    justify-content: safe end;
   }
 }
 

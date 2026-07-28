@@ -152,6 +152,25 @@ function RoomModalLoadingView({ onClose }) {
   );
 }
 
+function AttendanceScanResultView({ state, onClose }) {
+  const scanState = state ?? { pending: true, tone: "blue", message: "QR 출석 확인 중" };
+  return (
+    <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="arena-room-modal arena-attendance-scan-modal" role="dialog" aria-modal="true" aria-label="QR 출석 결과" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="arena-modal-status-row">
+          <Badge tone={scanState.tone ?? "blue"}>{scanState.pending ? "출석 확인 중" : "출석 결과"}</Badge>
+        </div>
+        <h2 className="arena-room-title">{scanState.pending ? "QR 출석 확인 중" : scanState.message}</h2>
+        {!scanState.pending ? (
+          <div className="arena-modal-close-row">
+            <Button type="button" size="lg" onClick={onClose}>일정으로 돌아가기</Button>
+          </div>
+        ) : <BasketballLoader label="출석 대상 확인 중" />}
+      </aside>
+    </div>
+  );
+}
+
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const tournamentFormatLabels = {
   league: "리그",
@@ -983,6 +1002,7 @@ export default function Matches({ app }) {
   const [attendanceScanState, setAttendanceScanState] = useState(null);
   const queryMatchId = searchParams.get("match");
   const attendanceQrToken = String(searchParams.get("attendanceQr") || "").trim();
+  const attendanceQrFlow = Boolean(attendanceQrToken || attendanceScanState);
   const activeSelectedMatchId = selectedMatchId ?? queryMatchId;
   const todayValue = getLocalDateInputValue();
   const maxScheduleDate = addDateDays(todayValue, 365);
@@ -1089,7 +1109,7 @@ export default function Matches({ app }) {
     setDateFilter((current) => current === nextDateFilter ? current : nextDateFilter);
     setCalendarMonth((current) => current === nextCalendarMonth ? current : nextCalendarMonth);
   }, [searchParams]);
-  useBodyScrollLock(Boolean(selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedMatchDetailFailed || selectedRecruitingPostDetailLoading));
+  useBodyScrollLock(Boolean(attendanceQrFlow || selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedMatchDetailFailed || selectedRecruitingPostDetailLoading));
   const closeSelectedMatch = () => {
     if (activeSelectedMatchId) requestedMatchDetailsRef.current.delete(activeSelectedMatchId);
     attendanceScanTokenRef.current = "";
@@ -1630,7 +1650,11 @@ export default function Matches({ app }) {
         </div>
       </section> : null}
 
-      {selectedMatchDetailFailed ? (
+      {attendanceQrFlow ? (
+        <AttendanceScanResultView state={attendanceScanState} onClose={closeSelectedMatch} />
+      ) : null}
+
+      {!attendanceQrFlow && selectedMatchDetailFailed ? (
         <RoomModalErrorView
           error={new Error("경기를 찾을 수 없거나 열람 권한이 없습니다.")}
           onClose={closeSelectedMatch}
@@ -1638,13 +1662,13 @@ export default function Matches({ app }) {
         />
       ) : null}
 
-      {!selectedMatchDetailLoading && !selectedMatchDetailFailed && selectedMatch && selectedMatchRoomError ? (
+      {!attendanceQrFlow && !selectedMatchDetailLoading && !selectedMatchDetailFailed && selectedMatch && selectedMatchRoomError ? (
         <RoomModalErrorView error={selectedMatchRoomError} onClose={closeSelectedMatch} />
       ) : null}
 
-      {selectedMatchDetailLoading && !selectedMatchDetailFailed ? (
+      {!attendanceQrFlow && selectedMatchDetailLoading && !selectedMatchDetailFailed ? (
         <RoomModalLoadingView onClose={closeSelectedMatch} />
-      ) : !selectedMatchDetailFailed && selectedMatch && selectedMatchRoomPost ? (
+      ) : !attendanceQrFlow && !selectedMatchDetailFailed && selectedMatch && selectedMatchRoomPost ? (
         <RoomModalErrorBoundary key={selectedMatch.id} onClose={closeSelectedMatch}>
           <RecruitingRoomModal
             app={app}

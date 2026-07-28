@@ -1229,7 +1229,12 @@ assertFlow(
 );
 state = withUser(state, "u1", (scoped) => detachRecruitingPartyPlayer(scoped, partyPostId, partyEntry.id, "u1", { side: "teamA", reserve: false }));
 partyLobby = getRecruitingLobby(getPost(state, partyPostId), state);
-assertFlow(partyLobby.entries.some((entry) => entry.kind === "player" && entry.playerId === "u1"), "파티 나가기 후 개인 참여 전환", {});
+assertFlow(
+  partyLobby.entries.some((entry) => entry.kind === "team" && (entry.players ?? []).includes("u1"))
+    && !partyLobby.entries.some((entry) => entry.kind === "player" && entry.playerId === "u1"),
+  "팀전: 파티 나가기 차단",
+  {},
+);
 state = withUser(state, "u5", (scoped) => cancelRecruitingParticipation(scoped, partyPostId));
 partyLobby = getRecruitingLobby(getPost(state, partyPostId), state);
 assertFlow(!partyLobby.entries.some((entry) => (entry.reserves ?? []).includes("u5") || (entry.players ?? []).includes("u5")), "참여 취소 시 슬롯 비움", {});

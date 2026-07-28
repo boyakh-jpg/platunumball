@@ -294,9 +294,9 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
   });
   assert.match(playerDetailSource, /recordedStatHistory\.length/);
   assert.match(profileRecordsSource, /recordedStatRecords\.length/);
-  assert.match(matchRoomSource, /\{hasReferee && shouldShowResultEntry \? \(/);
-  assert.match(matchRoomSource, /\{match\.result && hasReferee \? \(/);
-  assert.match(matchRoomSource, /\{statEditorPlayer && hasReferee \? \(/);
+  assert.match(matchRoomSource, /\{\(hasReferee \|\| isSoloRecord\) && shouldShowResultEntry \? \(/);
+  assert.match(matchRoomSource, /\{match\.result && \(hasReferee \|\| isSoloRecord\) \? \(/);
+  assert.match(matchRoomSource, /\{statEditorPlayer && \(hasReferee \|\| isSoloRecord\) \? \(/);
   assert.match(recruitingSource, /matchRoom && Boolean\(sourceMatch\?\.refereeId\) &&/);
   assert.match(recruitingSource, /Boolean\(sourceMatch\.refereeId\).*SourceMatchDisputeEditor/s);
   assert.doesNotMatch(recruitingSource, /경기 종료 전까지 개인활약을 입력합니다/);
@@ -306,7 +306,8 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
   [logicSource, designSource].forEach((source) => {
     assert.match(source, /score-only/);
   });
-  assert.match(logicSource, /takeover/);
+  assert.match(logicSource, /경기시계 담당자·교체 단순화/);
+  assert.match(logicSource, /신규 UI와 서버 action에서 사용하지 않는다/);
   assert.match(logicSource, /self-sub/);
   assert.match(logicSource, /stat_match_count/);
   assert.match(designSource, /0 PTS/);
