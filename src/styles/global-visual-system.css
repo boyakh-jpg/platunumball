@@ -2132,18 +2132,38 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 }
 
 .card.court-detail-hero {
-  background:
-    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
-    var(--card-bg-strong);
+  position: relative;
+  isolation: isolate;
+  background: var(--card-bg-strong);
+}
+
+.card.court-detail-hero::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
+  content: "";
+  pointer-events: none;
+}
+
+.card.court-detail-hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .court-hover-card :is(em, i) {
   font-style: normal;
 }
 
-.court-hover-card :is(.court-hover-address, .court-hover-note, .court-hover-stats > span) {
+.court-hover-card :is(.court-hover-address, .court-hover-note) {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.court-hover-card .court-hover-stats > span {
   border-color: var(--ui-card-border);
-  background: var(--ui-control-group-bg);
+  background: var(--ui-control-bg);
 }
 
 .segmented-control,
