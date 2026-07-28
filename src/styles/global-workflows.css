@@ -3263,8 +3263,6 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 }
 
 .rulebook-asset {
-  display: grid;
-  gap: var(--space-3);
   margin: 0;
   min-width: 0;
 }
@@ -3273,17 +3271,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius);
-  background: #08111f;
   object-fit: contain;
-}
-
-.rulebook-asset figcaption {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 900;
-  text-transform: uppercase;
 }
 
 .referee-rulebook-checklist {

@@ -86,7 +86,6 @@ function RulebookIllustration({ scene, theme = "dark" }) {
           event.currentTarget.src = fallbackSrc;
         }}
       />
-      <figcaption>{title}</figcaption>
     </figure>
   );
 }
