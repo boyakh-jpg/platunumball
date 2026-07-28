@@ -606,6 +606,40 @@ html[data-theme="light"] .court-map-picker-state {
   line-height: 1.35;
 }
 
+.match-intent-preset-grid > button.has-icon {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-5);
+  padding: 12px;
+}
+
+.match-intent-preset-grid > button.has-icon > svg {
+  color: var(--muted);
+}
+
+.match-intent-preset-grid > button.has-icon > span {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.match-intent-preset-grid > button.has-icon strong {
+  color: var(--text);
+  font-size: var(--control-font-size);
+}
+
+.match-intent-preset-grid > button.has-icon em {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.match-intent-preset-grid > button.has-icon.active > svg {
+  color: var(--rb-orange);
+}
+
 .match-intent-preset-grid > button.active {
   border-color: var(--rb-orange);
   background: color-mix(in srgb, var(--rb-orange) 10%, var(--ui-control-bg));

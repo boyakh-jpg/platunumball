@@ -783,7 +783,11 @@ input[type="color"] {
 }
 
 .create-mode-grid button > svg {
-  color: var(--rb-orange);
+  color: var(--muted);
+}
+
+.create-mode-grid button.active > svg {
+  color: #fff;
 }
 
 .create-mode-grid span,

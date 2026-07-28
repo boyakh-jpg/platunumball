@@ -1995,23 +1995,27 @@ export default function CreateMatch({
                   type="button"
                   role="radio"
                   aria-checked={draft.visibility !== "public"}
-                  className={draft.visibility !== "public" ? "active" : ""}
+                  className={`has-icon${draft.visibility !== "public" ? " active" : ""}`}
                   onClick={() => update({ visibility: "private" })}
                 >
-                  <Lock size={18} />
-                  <strong>비공개</strong>
-                  <span>나만 프로필에서 확인합니다.</span>
+                  <Lock size={19} />
+                  <span>
+                    <strong>비공개</strong>
+                    <em>나만 프로필에서 확인합니다.</em>
+                  </span>
                 </button>
                 <button
                   type="button"
                   role="radio"
                   aria-checked={draft.visibility === "public"}
-                  className={draft.visibility === "public" ? "active" : ""}
+                  className={`has-icon${draft.visibility === "public" ? " active" : ""}`}
                   onClick={() => update({ visibility: "public" })}
                 >
-                  <Globe2 size={18} />
-                  <strong>공개</strong>
-                  <span>다른 사용자가 내 프로필 기록에서 볼 수 있습니다.</span>
+                  <Globe2 size={19} />
+                  <span>
+                    <strong>공개</strong>
+                    <em>다른 사용자가 내 프로필 기록에서 볼 수 있습니다.</em>
+                  </span>
                 </button>
               </div>
               <p className="form-helper">공개 기록도 모집·일정 목록에는 노출되지 않으며 MMR과 공식 통계에 반영되지 않습니다.</p>
