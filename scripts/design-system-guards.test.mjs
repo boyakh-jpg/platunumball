@@ -92,9 +92,11 @@ test("player and team details share one entity profile hero", () => {
   assert.doesNotMatch(pageSources.playerDetail, /<section className="profile-hero/);
   assert.doesNotMatch(teamDetailSource, /<section className="team-detail-hero/);
   assert.match(globalAdminStyles, /\.entity-profile-hero-copy,/);
-  assert.doesNotMatch(pageSources.playerDetail, /leading=\{<ProfileEmblem|<TierBadge|rank-tier-statement|<MessageCircle/);
+  assert.doesNotMatch(pageSources.playerDetail, /leading=\{<ProfileEmblem|<TierBadge|rank-tier-statement/);
   assert.match(pageSources.playerDetail, /className="player-tier-hero"/);
   assert.match(pageSources.playerDetail, /className="ui-liquid-glass"/);
+  assert.match(pageSources.playerDetail, /<MessageCircle size=\{14\} aria-hidden="true" \/>/);
+  assert.match(globalWorkflowStyles, /\.team-tier-hero \.tier-emblem figcaption strong,\s*\.player-tier-hero \.tier-emblem figcaption strong\s*\{[^}]*color:\s*var\(--rb-yellow\);/);
 });
 
 test("프로필 공유 action은 엠블럼 열을 침범하지 않는다", () => {

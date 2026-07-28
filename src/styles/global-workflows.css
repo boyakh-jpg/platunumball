@@ -2118,7 +2118,8 @@ input[type="color"] {
   white-space: nowrap;
 }
 
-.team-tier-hero {
+.team-tier-hero,
+.player-tier-hero {
   position: relative;
   z-index: 1;
   display: grid;
@@ -2126,16 +2127,19 @@ input[type="color"] {
   align-content: center;
 }
 
-.team-tier-hero .tier-emblem figcaption {
+.team-tier-hero .tier-emblem figcaption,
+.player-tier-hero .tier-emblem figcaption {
   gap: var(--space-1);
 }
 
-.team-tier-hero .tier-emblem figcaption strong {
+.team-tier-hero .tier-emblem figcaption strong,
+.player-tier-hero .tier-emblem figcaption strong {
   color: var(--rb-yellow);
   font-size: 1rem;
 }
 
-.team-tier-hero .tier-emblem figcaption span {
+.team-tier-hero .tier-emblem figcaption span,
+.player-tier-hero .tier-emblem figcaption span {
   color: var(--rb-cream);
   font-size: 0.75rem;
 }

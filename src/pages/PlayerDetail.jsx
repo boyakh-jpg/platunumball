@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
@@ -170,6 +171,7 @@ export default function PlayerDetail({ app }) {
                   target="_blank"
                   rel="noreferrer"
                 >
+                  <MessageCircle size={14} aria-hidden="true" />
                   {discordDisplayName}
                 </a>
               ) : null}
