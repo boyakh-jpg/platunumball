@@ -537,11 +537,11 @@
 # 2026-06-28 referee rulebook images
 
 1. 룰북 일러스트는 `public/assets/referee-rulebook-rendered/{dark|light}/{scene}.webp`를 사용한다. 바닥은 코트선이 없는 단색 면으로 유지하며 장면 의미에 필요한 물웅덩이·소품·그림자는 보존한다.
-2. The app theme chooses the dark or light path. All 19 scenes are exactly `1672×941`. Every pair keeps the same subject, pose, framing, prop placement, thin rounded border thickness, corner radius, figure scale, and outer margin; only background, outline glow, and theme palette change.
+2. The app theme may keep the existing dark or light path, but both paths use the same transparent master. All 19 scenes are exactly `1672×941` and keep the same subject, pose, framing, prop placement, figure scale, and outer margin. The raster itself must not contain a theme-colored background, rounded frame, or card surface.
 3. All 19 scenes use one clean faceless colored 3D toy style. Existing PNG material and gloss do not need pixel-level preservation, but the complete set must share the same rendering quality, anatomy, lighting language, prop design, and apparent subject size. Do not mix old and new compositions, flat vectors, photorealistic people, text, logos, or unrelated rendering styles.
 4. The illustration must explain its section at thumbnail size. Do not reuse one composition for unrelated sections: clock shows timing, technical shows non-contact behavior, authority shows neutral control, dispute shows record review, and safety shows a court hazard.
 5. Basketballs use a recognizable standard seam layout without an air valve. Hands, limbs, rim, and backboard geometry must be checked before upload.
-6. Keep every subject inside a 16:9 safe area with enough outer margin. The card uses `object-fit: contain`; no important body part or prop may look cropped by the frame.
+6. Keep every subject inside a 16:9 safe area with enough outer margin. The card uses `object-fit: contain`; no important body part or prop may look cropped. Subject glow, necessary motion lines, hazard shapes, and close contact shadows may use partial alpha, but background pixels and corners must be fully transparent.
 7. Existing `assets/referee-rulebook/{scene}.svg` files remain as load-failure fallback only.
 8. Profile icons `221~225` reuse the same referee character language as full-body transparent cutouts. They remain fully inside the circular safe area, stay readable at small size, and gain clearer referee equipment and premium sports accessories by tier without duplicate props or cropped limbs.
 9. Light theme rulebook hero copy uses the normal light-theme text and muted colors without the image-hero white text shadow, so the pale panel keeps readable contrast.
@@ -2098,4 +2098,5 @@ UI 수정 전:
 ## 2026-07-28 룰북 이미지 표시
 
 1. 룰북 본문 일러스트는 별도 테두리, 배경, 둥근 모서리 없이 원본 이미지만 표시한다.
-2. 일러스트 아래에는 장면명 캡션을 반복해서 표시하지 않는다. 이미지 대체 텍스트는 접근성을 위해 유지한다.
+2. 룰북 원본 WebP도 카드 배경색과 내부 테두리를 포함하지 않는다. 다크·라이트 경로는 같은 투명 자산을 사용해 웹 표면 색상이 바뀌어도 경계가 생기지 않게 한다.
+3. 일러스트 아래에는 장면명 캡션을 반복해서 표시하지 않는다. 이미지 대체 텍스트는 접근성을 위해 유지한다.
