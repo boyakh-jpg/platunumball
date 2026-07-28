@@ -29,7 +29,7 @@ import {
   validatePickupRecruitingShape,
   validatePickupRecruitingUpdate,
 } from "../server/api/recruiting/sync-post.js";
-import { getRecordCreationWindowStatus } from "../src/lib/matchUtils.js";
+import { getRecordCreationWindowStatus, isEligibleReferee } from "../src/lib/matchUtils.js";
 import {
   MATCH_CLOCK_FORCE_END_MINUTES,
   MATCH_MAX_REGULATION_MINUTES,
@@ -1136,4 +1136,17 @@ test("원격 심판 검색에서 선택한 프로필은 일반 경기 후보에 
     /const selectReferee = \(user\) => \{[\s\S]*setSelectedTournamentRefereeProfiles[\s\S]*if \(isTournamentRoom\)/,
   );
   assert.match(source, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);
+});
+
+test("알파 테스트 심판은 운영 신뢰도와 무관하게 심판 검색 자격을 유지한다", () => {
+  assert.equal(isEligibleReferee({
+    id: "test-referee",
+    testLoginId: "rankball-011",
+    trustScore: 82,
+  }), true);
+  assert.equal(isEligibleReferee({
+    id: "regular-player",
+    testLoginId: "rankball-012",
+    trustScore: 82,
+  }), false);
 });

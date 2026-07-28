@@ -375,7 +375,6 @@ async function searchReferees(supabase, query, limit, searchContext = {}) {
     .from("profiles")
     .select(`${PROFILE_COLUMNS},test_login_id`)
     .in("test_login_id", TEST_REFEREE_LOGIN_IDS)
-    .gte("trust_score", 90)
     .limit(TEST_REFEREE_LOGIN_IDS.length);
   if (query) testProfileQuery = testProfileQuery.or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
   const [appointmentResult, testProfileResult] = await Promise.all([
@@ -415,7 +414,7 @@ async function searchReferees(supabase, query, limit, searchContext = {}) {
     ...qualifiedProfileRows,
     ...(testProfileRows ?? []),
   ].map((profile) => [profile.id, profile])).values()]
-    .filter((profile) => Number(profile.trust_score ?? 0) >= 90)
+    .filter((profile) => Number(profile.trust_score ?? 0) >= 90 || testProfileIdSet.has(profile.id))
     .sort((a, b) => Number(b.trust_score ?? 0) - Number(a.trust_score ?? 0) || String(a.name ?? "").localeCompare(String(b.name ?? "")));
   return profileRows
     .filter((profile) => appointmentByUserId.has(profile.id) || testProfileIdSet.has(profile.id))

@@ -180,6 +180,12 @@ test("referee search supports qualified discovery on focus only", async () => {
     refereeSearchSource.indexOf('.from("referee_appointments")') < refereeSearchSource.indexOf('.from("public_profiles")'),
   );
   assert.match(refereeSearchSource, /\.from\("profiles"\)[\s\S]*?\.in\("test_login_id", TEST_REFEREE_LOGIN_IDS\)/);
+  const testProfileQuerySource = refereeSearchSource.slice(
+    refereeSearchSource.indexOf("let testProfileQuery"),
+    refereeSearchSource.indexOf("if (query) testProfileQuery"),
+  );
+  assert.doesNotMatch(testProfileQuerySource, /\.gte\("trust_score", 90\)/);
+  assert.match(refereeSearchSource, /Number\(profile\.trust_score \?\? 0\) >= 90 \|\| testProfileIdSet\.has\(profile\.id\)/);
   assert.match(refereeSearchSource, /\.in\("id", appointmentProfileIds\)/);
   assert.match(pickerSource, /const canRemoteSearch = canSearch \|\| \(remoteSearchOnFocus && focused\);/);
   assert.match(createMatchSource, /remoteSearchOnFocus=\{remoteDirectoryEnabled\}/);
