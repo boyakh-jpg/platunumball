@@ -140,8 +140,7 @@
 
 .home-search-results a,
 .home-search-results .team-hover-trigger,
-.search-picker-result-row,
-.connection-list a {
+.search-picker-result-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -339,9 +338,16 @@ html[data-theme="light"] .search-picker-result-row.selected {
   overflow-wrap: anywhere;
 }
 
-.home-search-results em,
-.connection-list em {
+.home-search-results em {
   grid-column: 2;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.connection-list .ui-profile-identity-inline em {
+  margin-left: auto;
   color: var(--muted);
   font-size: 0.78rem;
   font-style: normal;
@@ -939,6 +945,14 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: var(--space-1);
 }
 
+.connection-list .ui-profile-identity-inline {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
 .recent-match-copy {
   display: grid;
   min-width: 0;
@@ -976,32 +990,8 @@ html[data-theme="light"] .search-picker-result-row.selected {
   color: var(--muted);
 }
 
-.profile-record-badges {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.recent-match-row .profile-record-badges {
-  display: inline-flex;
-  flex: none;
-  flex-wrap: nowrap;
-  width: fit-content;
-  max-width: 100%;
-  grid-auto-flow: column;
-  white-space: nowrap;
-}
-
-.recent-match-row .profile-record-badges .ui-badge {
-  display: inline-flex;
-  width: fit-content;
-  white-space: nowrap;
-}
-
 .match-record-meta,
-.recent-match-row .match-record-meta,
-.history-item .match-record-meta {
+.recent-match-row .match-record-meta {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -1024,8 +1014,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .match-record-meta__labels,
-.recent-match-row .match-record-meta__labels,
-.history-item .match-record-meta__labels {
+.recent-match-row .match-record-meta__labels {
   display: inline-flex;
   flex: none;
   flex-wrap: nowrap;
@@ -1061,26 +1050,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
   flex: 0 1 auto;
 }
 
-.personal-record-profile-card .history-list,
+.personal-record-profile-card .personal-record-history-list,
 .personal-record-profile-card .personal-record-archive-list {
   margin-top: var(--space-5);
-}
-
-.personal-record-open-button {
-  display: inline-flex;
-  max-width: 100%;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  padding: 0;
-  text-align: left;
-}
-
-.personal-record-open-button:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 3px;
 }
 
 .recent-match-row strong {

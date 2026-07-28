@@ -1597,54 +1597,6 @@
   font-weight: 850;
 }
 
-.history-list {
-  display: grid;
-  gap: var(--space-5);
-}
-
-.history-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-5);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
-  padding: 12px;
-}
-
-.history-item > div:first-child,
-.history-item p {
-  min-width: 0;
-}
-
-.history-item span,
-.history-item p {
-  color: var(--muted);
-  font-size: 0.84rem;
-}
-
-.history-score {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.history-score strong {
-  font-size: 1.2rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.history-teams {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-}
-
-.history-teams a {
-  color: var(--green);
-  font-weight: 850;
-}
-
 .stat-entry-grid {
   display: grid;
   grid-column: 1 / -1;
@@ -2233,8 +2185,7 @@ html[data-theme="light"] .season-rule-board span,
 html[data-theme="light"] .stat-player-button,
 html[data-theme="light"] .approval-voter-list button,
 html[data-theme="light"] .stat-stepper-row,
-html[data-theme="light"] .settings-toggle-grid label,
-html[data-theme="light"] .history-item {
+html[data-theme="light"] .settings-toggle-grid label {
   border-color: rgba(32, 56, 68, 0.14);
   background: rgba(255, 255, 255, 0.58);
 }
@@ -2394,7 +2345,6 @@ html[data-theme="light"] .team-search-popover button.selected {
     grid-template-columns: 1fr;
   }
 
-  .history-item,
   .approval-side-header,
   .member-control-row,
   .team-danger-zone,

@@ -90,6 +90,14 @@ test("player and team details share one entity profile hero", () => {
   assert.match(globalAdminStyles, /\.entity-profile-hero-copy,/);
 });
 
+test("player detail uses shared record rows and one support rail", () => {
+  assert.match(pageSources.playerDetail, /RecentMatchRow/);
+  assert.doesNotMatch(pageSources.playerDetail, /history-item|personal-record-open-button|content-grid wide-left/);
+  assert.equal(count(pageSources.playerDetail, "<aside"), 1);
+  assert.match(pageSources.playerDetail, /className="ui-profile-identity-inline"/);
+  assert.doesNotMatch(globalSearchStyles, /\.connection-list a\s*\{[^}]*gap:\s*9px;/);
+});
+
 test("win loss draw record borders keep semantic colors in every theme", () => {
   assert.match(tokenStyles, /--ui-result-win-border:\s*var\(--blue\);/);
   assert.match(tokenStyles, /--ui-result-loss-border:\s*var\(--danger\);/);
@@ -173,11 +181,11 @@ test("record result cards share matchup and date mode court metadata", () => {
   assert.doesNotMatch(matchRecordMetaSource, /afterMode|ui-badge/);
   assert.match(
     globalSearchStyles,
-    /\.recent-match-row \.match-record-meta,[\s\S]*?\.history-item \.match-record-meta\s*\{[^}]*display:\s*flex;[^}]*white-space:\s*nowrap;/,
+    /\.match-record-meta,[\s\S]*?\.recent-match-row \.match-record-meta\s*\{[^}]*display:\s*flex;[^}]*white-space:\s*nowrap;/,
   );
   assert.match(
     globalSearchStyles,
-    /\.recent-match-row \.match-record-meta__labels,[\s\S]*?\.history-item \.match-record-meta__labels\s*\{[^}]*display:\s*inline-flex;[^}]*flex-wrap:\s*nowrap;/,
+    /\.match-record-meta__labels,[\s\S]*?\.recent-match-row \.match-record-meta__labels\s*\{[^}]*display:\s*inline-flex;[^}]*flex-wrap:\s*nowrap;/,
   );
   assert.match(
     globalSearchStyles,

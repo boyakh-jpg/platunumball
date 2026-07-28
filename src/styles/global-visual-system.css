@@ -3463,9 +3463,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .broadcast-score span,
   .broadcast-score strong,
   .broadcast-score i,
-  .recent-match-row i,
-  .history-teams a,
-  .history-score strong) {
+  .recent-match-row i) {
   font-family: var(--sports-display-font);
   letter-spacing: 0;
   transform: var(--sports-display-condense);
@@ -3499,9 +3497,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .broadcast-score span,
   .broadcast-score strong,
   .broadcast-score i,
-  .recent-match-row i,
-  .history-teams a,
-  .history-score strong) {
+  .recent-match-row i) {
   transform-origin: center;
 }
 
@@ -3570,8 +3566,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 }
 
 :where(
-  .rank-home .rank-spotlight-main strong,
-  .history-teams a) {
+  .rank-home .rank-spotlight-main strong) {
   display: inline-block;
   max-width: 100%;
 }

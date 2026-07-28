@@ -4,7 +4,8 @@ import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
-import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
+import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
+import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
@@ -16,7 +17,7 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import { getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getTeamRoleLabel, PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { compareMatchRecency, formatStatLine, getMatchSideScore as getSideScore, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { compareMatchRecency, getMatchSideScore as getSideScore, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { getRepresentativeTeam, getUserProfileTeams } from "../lib/profileSetup.js";
 import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -80,7 +81,6 @@ export default function PlayerDetail({ app }) {
   const canViewTeamHistory = isOwnProfile || player.privacy?.teamHistory === true || (!isSupabaseConfigured && player.privacy?.teamHistory !== false);
   const canViewStatSummary = isOwnProfile || player.privacy?.statSummary === true || (!isSupabaseConfigured && player.privacy?.statSummary !== false);
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
-  const teamMap = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
   const playerTeams = getUserProfileTeams(player.id, app.state.teams);
   const representativeTeam = getRepresentativeTeam(player.id, app.state.teams, player.representativeTeamId);
   const orderedPlayerTeams = [...playerTeams].sort((teamA, teamB) => (
@@ -145,7 +145,7 @@ export default function PlayerDetail({ app }) {
           const user = userMap[id];
           if (!user) return null;
           return (
-            <PlayerHoverCard key={id} user={user} teams={app.state.teams}>
+            <PlayerHoverCard key={id} user={user} teams={app.state.teams} className="ui-profile-identity-inline">
               <ProfileEmblem user={user} className="small" />
               <strong>{user.name}</strong>
               <em>{count}경기</em>
@@ -197,10 +197,10 @@ export default function PlayerDetail({ app }) {
         </nav>
       ) : null}
 
-      <div className={`rank-profile-body-grid${canViewTeamHistory ? " has-team-rail" : ""}${canViewStatSummary ? " has-summary" : ""}`}>
-        {canViewTeamHistory ? (
+      <div className={`rank-profile-body-grid${canViewStatSummary || canViewTeamHistory ? " has-team-rail" : ""}${canViewStatSummary ? " has-summary" : ""}`}>
+        {canViewStatSummary || canViewTeamHistory ? (
           <aside className="page-stack player-profile-left-rail">
-            <Card className="section-card player-profile-teams-card" id="teams">
+            {canViewTeamHistory ? <Card className="section-card player-profile-teams-card" id="teams">
               <div className="section-title-row">
                 <div>
                   <p className="eyebrow">Teams</p>
@@ -231,7 +231,14 @@ export default function PlayerDetail({ app }) {
               ) : (
                 <p className="player-profile-team-empty">소속 팀 없음</p>
               )}
-            </Card>
+            </Card> : null}
+            {canViewStatSummary ? <ProgressionChecklist user={player} matches={app.state.matches} /> : null}
+            {canViewTeamHistory ? (
+              <div id="links" className="page-stack">
+                {renderRelationship("같이 뛴 사람", teammateCounts)}
+                {renderRelationship("상대한 사람", opponentCounts)}
+              </div>
+            ) : null}
           </aside>
         ) : null}
 
@@ -283,8 +290,7 @@ export default function PlayerDetail({ app }) {
         </section>
         ) : null}
 
-        <div className={`${canViewStatSummary || canViewTeamHistory ? "content-grid wide-left" : "page-stack"} player-profile-detail-content`}>
-        <div className="page-stack">
+        <div className="page-stack player-profile-detail-content">
           <section className="mode-grid">
             <RatingCard title="통합" mmr={player.ratings.integrated} ratings={player.ratings} />
             {placementComplete ? Object.entries(player.ratings.modes).map(([mode, mmr]) => (
@@ -311,23 +317,25 @@ export default function PlayerDetail({ app }) {
               ) : null}
               <p className="form-helper">직접 작성한 기록입니다. 공식 통계·업적·MMR과 분리됩니다.</p>
               {personalRecordHistory.length ? (
-                <div className="history-list personal-record-history-list">
+                <div className="recent-match-list personal-record-history-list">
                   {personalRecordHistory.map((match) => {
+                    const sideName = getPlayerSide(match, player.id) ?? "teamA";
+                    const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
                     const outcome = getPlayerOutcome(match, player.id);
                     return (
-                      <article key={match.id} className={"history-item rank-match-item " + (outcome ? "rank-match-" + outcome : "")}>
-                        <div>
-                          <button type="button" className="personal-record-open-button" onClick={() => setSelectedMatchId(match.id)}>
-                            <strong>{match.title}</strong>
-                          </button>
-                          <MatchRecordMeta
-                            record={match}
-                            afterCourt={<PersonalRecordMetaLabels visibility={match.visibility} />}
-                          />
-                        </div>
-                        <div className="history-score"><strong>{getSideScore(match, "teamA")}:{getSideScore(match, "teamB")}</strong></div>
-                        {match.result?.playerStats?.[player.id] ? <p>{formatStatLine(match.result.playerStats[player.id])}</p> : null}
-                      </article>
+                      <RecentMatchRow
+                        key={match.id}
+                        record={match}
+                        result={outcome ?? "D"}
+                        side={match[sideName]}
+                        opponent={match[oppositeSide]}
+                        score={getSideScore(match, sideName)}
+                        opponentScore={getSideScore(match, oppositeSide)}
+                        teams={app.state.teams}
+                        to={`/app/matches?match=${match.id}`}
+                        onOpen={() => setSelectedMatchId(match.id)}
+                        afterCourt={<PersonalRecordMetaLabels visibility={match.visibility} />}
+                      />
                     );
                   })}
                 </div>
@@ -335,17 +343,16 @@ export default function PlayerDetail({ app }) {
               {personalArchivedRecords.length ? (
                 <div className="recent-match-list profile-records-list personal-record-archive-list">
                   {personalArchivedRecords.map((record) => (
-                    <div key={record.matchId} className={"recent-match-row profile-record-row record-archive-row result-" + String(record.result ?? "D").toLowerCase()}>
-                      <b>{record.result}</b>
-                      <span>
-                        <strong>{record.teamName} vs {record.opponentTeamName}</strong>
-                        <MatchRecordMeta
-                          record={record}
-                          afterCourt={<PersonalRecordMetaLabels visibility={record.visibility} />}
-                        />
-                      </span>
-                      <i>{record.score}:{record.opponentScore}</i>
-                    </div>
+                    <RecentMatchRow
+                      key={record.matchId}
+                      record={record}
+                      result={record.result}
+                      side={{ name: record.teamName }}
+                      opponent={{ name: record.opponentTeamName }}
+                      score={record.score}
+                      opponentScore={record.opponentScore}
+                      afterCourt={<PersonalRecordMetaLabels visibility={record.visibility} />}
+                    />
                   ))}
                 </div>
               ) : null}
@@ -361,77 +368,36 @@ export default function PlayerDetail({ app }) {
                 </div>
                 <Badge tone="green">{history.length}경기</Badge>
               </div>
-              <div className="history-list">
+              <div className="recent-match-list">
                 {history.map((match) => {
                   const sideName = getPlayerSide(match, player.id);
                   const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
                   const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", teamId: "" };
                   const opponent = match[oppositeSide] ?? { name: oppositeSide === "teamA" ? "A" : "B", teamId: "" };
-                  const stats = match.result?.playerStats?.[player.id];
                   const outcome = getPlayerOutcome(match, player.id);
                   return (
-                    <article key={match.id} className={`history-item rank-match-item ${outcome ? `rank-match-${outcome}` : ""}`}>
-                      <div>
-                        <Link
-                          to={`/app/matches?match=${match.id}`}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            setSelectedMatchId(match.id);
-                          }}
-                        >
-                          <strong>{match.title}</strong>
-                        </Link>
-                        <MatchRecordMeta record={match} />
-                      </div>
-                      <div className="history-score">
-                        <Badge tone={outcome === null ? "blue" : outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>
-                          {outcome === null ? historyStatusLabel[match.status] ?? "상태 확인 중" : outcome === "win" ? "승" : outcome === "loss" ? "패" : "무"}
-                        </Badge>
-                        <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
-                      </div>
-                      <div className="history-teams">
-                        {side.teamId ? <Link to={`/app/teams/${side.teamId}`}>{teamMap[side.teamId]?.name ?? side.name}</Link> : <span>{side.name}</span>}
-                        <span>vs</span>
-                        {opponent.teamId ? <Link to={`/app/teams/${opponent.teamId}`}>{teamMap[opponent.teamId]?.name ?? opponent.name}</Link> : <span>{opponent.name}</span>}
-                      </div>
-                      {canViewStatSummary && stats ? <p>{formatStatLine(stats)}</p> : null}
-                    </article>
+                    <RecentMatchRow
+                      key={match.id}
+                      record={match}
+                      result={outcome ?? "D"}
+                      side={side}
+                      opponent={opponent}
+                      score={getSideScore(match, sideName)}
+                      opponentScore={getSideScore(match, oppositeSide)}
+                      teams={app.state.teams}
+                      to={`/app/matches?match=${match.id}`}
+                      onOpen={() => setSelectedMatchId(match.id)}
+                      afterCourt={outcome === null ? (
+                        <span className="match-record-meta__label match-record-meta__label--private">
+                          · {historyStatusLabel[match.status] ?? "상태 확인 중"}
+                        </span>
+                      ) : null}
+                    />
                   );
                 })}
               </div>
             </Card>
           ) : null}
-        </div>
-
-        {canViewStatSummary || canViewTeamHistory ? (
-          <aside className="page-stack">
-            {canViewStatSummary ? <ProgressionChecklist user={player} matches={app.state.matches} /> : null}
-            {canViewStatSummary && recordedStatHistory.length ? (
-              <Card className="section-card">
-                <div className="section-title-row">
-                  <div>
-                    <p className="eyebrow">Career Totals</p>
-                    <h2>누적 경기 스탯</h2>
-                  </div>
-                </div>
-                <div className="contract-grid single">
-                  {PLAYER_STAT_FIELDS.map((field) => (
-                    <div key={field.id}>
-                      <span>{field.label}</span>
-                      <strong>{totals[field.id]}</strong>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ) : null}
-            {canViewTeamHistory ? (
-              <div id="links" className="page-stack">
-                {renderRelationship("같이 뛴 사람", teammateCounts)}
-                {renderRelationship("상대한 사람", opponentCounts)}
-              </div>
-            ) : null}
-          </aside>
-        ) : null}
         </div>
       </div>
       <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="player-history" onClose={() => setSelectedMatchId("")} />
