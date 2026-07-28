@@ -218,9 +218,24 @@ export default function Teams({ app }) {
         </div>
         {representativeTeam ? (
           <div className="team-hub-board ui-liquid-glass">
-            <span>대표팀</span>
-            <TeamHoverCard team={representativeTeam} as="span"><strong>{representativeTeam.name}</strong></TeamHoverCard>
-            <em>{representativeTeam.mmr} MMR · {representativeTeam.wins}승 {representativeTeam.losses}패</em>
+            <div className="team-hub-board-head">
+              <span>대표팀</span>
+              <b>#{representativeTeam.rank}</b>
+            </div>
+            <div className="team-hub-board-identity">
+              <TeamEmblem team={representativeTeam} size="lg" className="team-hub-board-emblem" />
+              <div>
+                <TeamHoverCard team={representativeTeam} as="span" className="team-hub-board-name">
+                  <strong>{representativeTeam.name}</strong>
+                </TeamHoverCard>
+                <em>{representativeTeam.region} · {representativeTeam.homeCourt}</em>
+              </div>
+            </div>
+            <div className="team-hub-board-stats">
+              <span><b>{representativeTeam.mmr}</b><em>MMR</em></span>
+              <span><b>{representativeTeam.wins}승 {representativeTeam.losses}패</b><em>전적</em></span>
+              <span><b>{representativeTeam.members.length}명</b><em>팀원</em></span>
+            </div>
           </div>
         ) : null}
       </section>

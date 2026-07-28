@@ -2032,23 +2032,81 @@ span.referee-hover-card {
 }
 
 .tier-emblem-placement {
-  --tier-color: var(--muted);
-  min-height: 68px;
+  --tier-color: color-mix(in srgb, var(--muted) 82%, var(--text));
 }
 
 .tier-emblem-placement::before {
-  border: 1px dashed color-mix(in srgb, var(--muted) 42%, transparent);
-  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  border: 0;
+  background: radial-gradient(
+    ellipse 48% 52% at 50% 50%,
+    color-mix(in srgb, var(--muted) 24%, transparent) 0%,
+    color-mix(in srgb, var(--muted) 10%, transparent) 52%,
+    transparent 82%
+  );
 }
 
-.tier-emblem-placement > span {
-  position: relative;
-  z-index: 1;
-  color: var(--muted);
-  font-family: var(--sports-display-font);
-  font-size: clamp(1.45rem, 45%, 3.2rem);
-  font-weight: 950;
-  line-height: 1;
+.tier-emblem-placement-mark {
+  aspect-ratio: 1;
+}
+
+.tier-emblem-placement-shadow {
+  fill: rgba(0, 0, 0, 0.3);
+}
+
+.tier-emblem-placement-frame {
+  fill: color-mix(in srgb, var(--surface-3) 78%, var(--text));
+  stroke: color-mix(in srgb, var(--muted) 70%, var(--text));
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.tier-emblem-placement-inner {
+  fill: color-mix(in srgb, var(--surface-2) 92%, black);
+  stroke: color-mix(in srgb, var(--muted) 46%, transparent);
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.tier-emblem-placement-ridge {
+  fill: none;
+  opacity: 0.55;
+  stroke: color-mix(in srgb, var(--muted) 64%, transparent);
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.tier-emblem-placement-question {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text) 86%, var(--gold));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 9;
+}
+
+.tier-emblem-placement-question-dot {
+  fill: var(--gold);
+  stroke: color-mix(in srgb, var(--gold) 52%, white);
+  stroke-width: 1.5;
+}
+
+.tier-emblem-placement-progress circle {
+  fill: transparent;
+  stroke: color-mix(in srgb, var(--muted) 72%, transparent);
+  stroke-width: 1.5;
+}
+
+.tier-emblem-placement-progress circle.is-complete {
+  fill: var(--gold);
+  stroke: color-mix(in srgb, var(--gold) 62%, white);
+}
+
+html[data-theme="light"] .tier-emblem-placement-frame {
+  fill: color-mix(in srgb, var(--surface-3) 88%, #6f7680);
+  stroke: color-mix(in srgb, var(--muted) 74%, #3d4249);
+}
+
+html[data-theme="light"] .tier-emblem-placement-inner {
+  fill: color-mix(in srgb, var(--surface-2) 92%, #c7cbd0);
 }
 
 .tier-emblem figcaption {

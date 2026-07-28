@@ -592,7 +592,15 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명�
   );
   assert.match(
     read("src/styles/global-surfaces.css"),
-    /\.team-hub-board\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*min\(100%,\s*560px\);/,
+    /\.team-hub-board\s*\{[^}]*width:\s*min\(100%,\s*720px\);[^}]*max-width:\s*none;/,
+  );
+  assert.match(
+    pageSources.teams,
+    /team-hub-board-identity[\s\S]*TeamEmblem[\s\S]*team-hub-board-stats/,
+  );
+  assert.match(
+    read("src/styles/global-surfaces.css"),
+    /\.team-hub-board\s*\{[^}]*gap:\s*var\(--space-8\);[^}]*padding:\s*clamp\(24px,\s*3vw,\s*32px\);/,
   );
   assert.doesNotMatch(
     visualSystemStyles,
