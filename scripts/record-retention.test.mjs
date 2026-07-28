@@ -9,7 +9,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../src/lib/constants.js";
 import { getReadableMatchStatRows } from "../src/data/matchMappers.js";
-import { getMatchPlayedDate, getPlayerRecentRecordMatches, getProfileRecordCategory } from "../src/lib/matchUtils.js";
+import { getMatchPlayedDate, getPlayerRecentRecordMatches, getProfileRecordCategory, hasVerifiedPlayerStats } from "../src/lib/matchUtils.js";
 import { getRecordWindowDates, isRecordDetailDate } from "../src/lib/recordRetention.js";
 
 const root = new URL("../", import.meta.url);
@@ -33,6 +33,13 @@ test("profile record categories are exclusive and keep personal records out of c
   assert.equal(getProfileRecordCategory({ tournamentId: "tournament-1", ranked: true }), "tournament");
   assert.equal(getProfileRecordCategory({ ranked: true, rules: { matchPurpose: "competitive" } }), "competitive");
   assert.equal(getProfileRecordCategory({ ranked: false, rules: { matchPurpose: "friendly" } }), "friendly");
+});
+
+test("verified tournament player stats remain readable from thin profile rows", () => {
+  const playerStats = { player: { points: 12 } };
+  assert.equal(hasVerifiedPlayerStats({ refereeId: "referee", result: { playerStats } }, "player"), true);
+  assert.equal(hasVerifiedPlayerStats({ tournamentId: "tournament-1", result: { playerStats } }, "player"), true);
+  assert.equal(hasVerifiedPlayerStats({ result: { playerStats } }, "player"), false);
 });
 
 test("profile preview is the first six rows of the recent record detail list", () => {
@@ -209,6 +216,7 @@ test("profile and team records use the dedicated archive-backed API", async () =
   assert.match(profileSource, /MODE_FILTERS/);
   assert.match(profileSource, /matchesModeFilter/);
   assert.match(profileSource, /getPersonalSummaryByVisibility/);
+  assert.doesNotMatch(profileSource, /날짜별 기록 수|const dateRows/);
   assert.match(apiSource, /publicSummary/);
   assert.match(profileSource, /if \(archiveState\.error\) return/);
   assert.match(teamSource, /loadTeamRecords\(team\.id\)/);

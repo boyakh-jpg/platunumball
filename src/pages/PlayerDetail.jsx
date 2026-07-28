@@ -17,7 +17,7 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import { getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getTeamRoleLabel, PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { compareMatchRecency, getMatchSideScore as getSideScore, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { compareMatchRecency, getMatchSideScore as getSideScore, hasVerifiedPlayerStats, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { getRepresentativeTeam, getUserProfileTeams } from "../lib/profileSetup.js";
 import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -43,11 +43,6 @@ function getPlayerOutcome(match, playerId) {
 function addCount(map, userId) {
   map.set(userId, (map.get(userId) ?? 0) + 1);
 }
-function hasPlayerStats(match, playerId) {
-  return Boolean(match.refereeId) && Object.prototype.hasOwnProperty.call(match.result?.playerStats ?? {}, playerId);
-}
-
-
 const historyStatusLabel = {
   contract: "동의 대기",
   agreed: "예정",
@@ -115,7 +110,7 @@ export default function PlayerDetail({ app }) {
     (match[oppositeSide]?.players ?? []).forEach((id) => addCount(opponentCounts, id));
   }
   const confirmedHistory = history.filter((match) => match.status === "confirmed" && match.result);
-  const recordedStatHistory = confirmedHistory.filter((match) => hasPlayerStats(match, player.id));
+  const recordedStatHistory = confirmedHistory.filter((match) => hasVerifiedPlayerStats(match, player.id));
   recordedStatHistory.forEach((match) => {
     const stats = match.result.playerStats[player.id];
     PLAYER_STAT_FIELDS.forEach((field) => { totals[field.id] += Number(stats[field.id] ?? 0); });

@@ -165,6 +165,12 @@ export function getProfileRecordCategory(match = {}) {
   return match.ranked === false || match.rules?.matchPurpose === "friendly" ? "friendly" : "competitive";
 }
 
+export function hasVerifiedPlayerStats(match = {}, playerId = "") {
+  const hasStats = Boolean(playerId)
+    && Object.prototype.hasOwnProperty.call(match.result?.playerStats ?? {}, playerId);
+  return hasStats && Boolean(match.refereeId || match.tournamentId);
+}
+
 export function getMatchParticipationType(match = {}) {
   if (isPersonalRecordMatch(match)) return "personal";
   if (isMatchRecordMatch(match) && match?.rules?.recordComposition) {

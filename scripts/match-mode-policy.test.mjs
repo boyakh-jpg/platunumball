@@ -290,7 +290,7 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
   assert.match(profileApiSource, /stat_match_count/);
   assert.match(profileApiSource, /averageFouls: statMatchCount \? fouls \/ statMatchCount : 0/);
   [playerDetailSource, profileRecordsSource].forEach((source) => {
-    assert.match(source, /Boolean\(match\.refereeId\).*hasOwnProperty/);
+    assert.match(source, /hasVerifiedPlayerStats/);
   });
   assert.match(playerDetailSource, /recordedStatHistory\.length/);
   assert.match(profileRecordsSource, /recordedStatRecords\.length/);
