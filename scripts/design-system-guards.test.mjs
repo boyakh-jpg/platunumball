@@ -643,10 +643,8 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명�
     read("src/styles/global-surfaces.css"),
     /\.team-hub-board\s*\{[^}]*width:\s*min\(100%,\s*720px\);[^}]*max-width:\s*none;/,
   );
-  assert.match(
-    pageSources.teams,
-    /team-hub-board-identity[\s\S]*TeamEmblem[\s\S]*team-hub-board-stats/,
-  );
+  assert.doesNotMatch(pageSources.teams, /team-hub-board-emblem/);
+  assert.doesNotMatch(read("src/styles/global-surfaces.css"), /\.team-hub-board-emblem/);
   assert.match(
     read("src/styles/global-surfaces.css"),
     /\.team-hub-board\s*\{[^}]*gap:\s*var\(--space-8\);[^}]*padding:\s*clamp\(24px,\s*3vw,\s*32px\);/,
@@ -654,6 +652,24 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명�
   assert.doesNotMatch(
     visualSystemStyles,
     /\.team-hub-board strong[^}]*background(?:-image)?:\s*(?:linear|radial)-gradient/,
+  );
+});
+
+test("team heroes keep emblems focused and use the shared liquid-glass primitive", () => {
+  assert.doesNotMatch(
+    teamDetailSource,
+    /<TeamEmblem team=\{team\} size="lg" className="hero-emblem" \/>/,
+  );
+  assert.match(teamDetailSource, /<TierEmblem mmr=\{team\.mmr\} size="hero" showLabel \/>/);
+  assert.equal(count(teamDetailSource, "<TierBadge mmr={team.mmr}"), 1);
+  assert.match(
+    teamDetailSource,
+    /favorite-toggle-button ui-liquid-glass/,
+  );
+  assert.equal(count(teamDetailSource, 'className="ui-liquid-glass"'), 2);
+  assert.doesNotMatch(
+    visualSystemStyles,
+    /\.rank-team-hero \.favorite-toggle-button|\.team-detail-hero \.badge-row \.ui-badge/,
   );
 });
 
