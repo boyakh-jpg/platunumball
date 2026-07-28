@@ -12,7 +12,7 @@ const emblemByTier = {
   Master: "/assets/tier-emblems/tier-master-v5.webp",
   Legend: "/assets/tier-emblems/tier-legend-v5.webp",
 };
-const placementEmblem = "/assets/tier-emblems/tier-placement-v1.svg";
+const placementEmblem = "/assets/tier-emblems/tier-placement-v2.webp";
 
 export function getTierEmblemSrc(mmr, ratings = null) {
   if (ratings && !isPlacementComplete(ratings)) return assetUrl(placementEmblem);
