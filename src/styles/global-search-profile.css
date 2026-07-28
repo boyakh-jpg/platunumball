@@ -786,10 +786,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: var(--space-7);
 }
 
-.rank-record-card .form-pill-row {
-  justify-content: flex-start;
-}
-
 .rank-match-item {
   border-left: 4px solid var(--line);
 }
@@ -2815,23 +2811,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .home-upcoming-more {
   width: 100%;
   text-decoration: none;
-}
-
-.form-pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.form-pill {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 50%;
-  color: #07110f;
-  font-size: 0.78rem;
-  font-weight: 950;
 }
 
 .form-warning,

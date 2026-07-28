@@ -259,9 +259,9 @@ export default function PlayerDetail({ app }) {
                 <span>{wins}승 {losses}패 · 승률 {winRate}%</span>
               </div>
             </div>
-            <div className="form-pill-row">
+            <div className="recent-result-strip" aria-label="최근 경기 결과">
               {recentOutcomes.map((outcome, index) => (
-                <span key={`${outcome}-${index}`} className={`form-pill form-pill-${outcome === "win" ? "w" : outcome === "loss" ? "l" : "d"}`}>
+                <span key={`${outcome}-${index}`} className={`recent-result-pill result-${outcome === "win" ? "w" : outcome === "loss" ? "l" : "d"}`}>
                   {outcome === "win" ? "W" : outcome === "loss" ? "L" : "D"}
                 </span>
               ))}

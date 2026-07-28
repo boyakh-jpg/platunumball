@@ -96,6 +96,10 @@ test("player detail uses shared record rows and one support rail", () => {
   assert.equal(count(pageSources.playerDetail, "<aside"), 1);
   assert.match(pageSources.playerDetail, /className="ui-profile-identity-inline"/);
   assert.doesNotMatch(globalSearchStyles, /\.connection-list a\s*\{[^}]*gap:\s*9px;/);
+  assert.match(pageSources.playerDetail, /className="recent-result-strip"/);
+  assert.doesNotMatch(pageSources.playerDetail, /form-pill/);
+  assert.doesNotMatch(globalSearchStyles, /\.form-pill(?:-row)?\s*\{/);
+  assert.match(globalSurfaceStyles, /\.profile-detail-page \.profile-hero\s*\{[^}]*--page-hero-bg:\s*var\(--bg-profile\);/);
 });
 
 test("win loss draw record borders keep semantic colors in every theme", () => {

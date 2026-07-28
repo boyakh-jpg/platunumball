@@ -17,6 +17,8 @@
 1. 경기·개인 기록 목록은 공통 `RecentMatchRow`와 `MatchRecordMeta`를 사용한다.
 2. 선수 상세는 소속 팀·성장 조건·관계 선수를 하나의 보조 레일에 배치하고 본문 안에 두 번째 레일을 만들지 않는다.
 3. 관계 선수 행은 공통 `.ui-profile-identity-inline` 간격을 사용하며 페이지 전용 숫자 간격을 선언하지 않는다.
+4. 최근 경기 결과 요약은 홈과 동일한 `.recent-result-strip`·`.recent-result-pill`을 사용한다.
+5. 선수 상세 히어로는 공통 프로필 배경 `--bg-profile`을 사용한다.
 
 ## 현재 유효한 경기 운영 UI (2026-07-28)
 
