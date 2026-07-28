@@ -1485,7 +1485,12 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(rulebookText, /1m 안에서 밀착 수비/);
   assert.match(rulebookText, /비접촉 테크니컬/);
   assert.match(rulebookText, /10분·15분·20분/);
-  assert.match(rulebookText, /방장이 항목별로 판정/);
+  assert.match(rulebookText, /심판 경기는 배정 심판, 무심판 경기는 방장이 판정/);
+  assert.match(rulebookText, /사용 안 함·24초·30초·60초/);
+  assert.match(rulebookText, /자동 공격권 판정과 14초 자동 재설정은 지원하지 않습니다/);
+  assert.match(rulebookText, /무심판 경기에는 개인활약 입력과 빈 0 스탯을 만들지 않습니다/);
+  assert.match(rulebookText, /기록 확정 뒤 24시간 추천·신고 안내/);
+  assert.doesNotMatch(rulebookText, /따봉/);
   assert.doesNotMatch(rulebookText, /30분 또는 60분|새 과반 승인/);
   assert.match(rulebookText, /손에서 떠나기 전이어도 블록/);
   assert.match(page, /FIBA 경기규칙 2024/);

@@ -32,7 +32,7 @@ const RULEBOOK_CHAPTERS = [
   },
   {
     eyebrow: "BOXTIER flow",
-    title: "기록·이의·후기",
+    title: "기록·이의·추천",
     description: "경기 기록이 입력되고 확인되는 순서와 역할별 권한입니다.",
     sections: REFEREE_RULEBOOK_SECTIONS.slice(7, 11),
   },
@@ -146,8 +146,8 @@ export default function RefereeRulebook({ theme = "dark" }) {
           <ShieldCheck size={22} />
         </div>
         <p>
-          개인활약은 심판이나 기록자가 확실히 확인한 장면만 기록됩니다. 숫자를 예쁘게 만드는 것보다
-          양쪽 기록이 같은 것이 먼저입니다.
+          일반 경기의 개인활약은 배정 심판이 확인한 장면만 기록됩니다. 숫자를 예쁘게 만드는 것보다
+          팀 점수와 판정 근거를 정확히 남기는 것이 먼저입니다.
         </p>
         <div className="referee-stat-guide-grid">
           {REFEREE_STAT_GUIDELINES.map((stat) => (
