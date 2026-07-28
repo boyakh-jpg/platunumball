@@ -114,7 +114,6 @@ const REQUIRED_COLUMNS = {
     "team_b_id",
     "score_a",
     "score_b",
-    "result_revision",
     "rules",
     "dispute_minutes",
     "created_by",
