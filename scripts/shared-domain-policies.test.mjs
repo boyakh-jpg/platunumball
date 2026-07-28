@@ -1800,6 +1800,12 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(rulebookText, /사용 안 함·24초·30초·60초/);
   assert.match(rulebookText, /자동 공격권 판정과 14초 자동 재설정은 지원하지 않습니다/);
   assert.match(rulebookText, /무심판 경기에는 개인활약 입력과 빈 0 스탯을 만들지 않습니다/);
+  assert.match(rulebookText, /지각 QR만 찍고 실제 교체하지 않은 선수는 실제 출전 기록·개인 전적·MMR 대상이 아닙니다/);
+  assert.match(rulebookText, /마지막 요청을 판정해도 자동 확정하지 않고 별도 최종 승인을 기다립니다/);
+  assert.match(rulebookText, /모든 실제 출전선수는 개인기록 입력 또는 심판의 0 기록 확인이 필요합니다/);
+  assert.match(rulebookText, /통합은 실제 출전한 공식 개인전과 팀전의 합계/);
+  assert.match(rulebookText, /팀 MMR은 주장·정규멤버 중 통합 MMR 상위 최대 5명 평균/);
+  assert.doesNotMatch(rulebookText, /마지막 요청을 판정하면 별도 재승인 없이 결과가 확정/);
   assert.match(rulebookText, /기록 확정 뒤 24시간 추천·신고 안내/);
   assert.doesNotMatch(rulebookText, /따봉/);
   assert.doesNotMatch(rulebookText, /30분 또는 60분|새 과반 승인/);

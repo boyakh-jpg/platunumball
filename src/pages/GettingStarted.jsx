@@ -2,18 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Bell,
   BookOpenCheck,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
   FlaskConical,
   Gauge,
+  MapPin,
   Play,
+  Settings,
   ShieldCheck,
   Swords,
   Trophy,
   UserRoundCheck,
   Users,
+  UsersRound,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
@@ -28,25 +32,30 @@ const GUIDE_CHAPTERS = [
     navLabel: "시작",
     eyebrow: "01 · START",
     title: "BOXTIER는 농구 기록 웹입니다.",
-    lead: "방을 만들고 사람을 초대해 경기를 진행한 뒤, 점수와 개인 기록을 확정해 내 이력과 티어를 관리합니다.",
+    lead: "홈에서 할 일을 확인하고, 방을 만들거나 참가해 경기를 진행한 뒤 내 전적·팀·티어를 관리합니다.",
     image: "/assets/guide/start-home.jpg",
     imageAlt: "홈 화면의 매칭 만들기와 경기 기록하기 버튼",
     caption: "홈에서 예정 경기는 매칭으로, 끝난 경기는 기록으로 시작합니다.",
     steps: [
       {
         title: "방을 만들고 초대합니다",
-        body: "예정 경기는 매칭방을 만들고 선수·팀·심판을 초대합니다. 초대받은 사람은 홈 알림이나 방에서 수락합니다.",
+        body: "예정 경기는 매칭방을 만들고 선수·팀·심판을 초대합니다. 끝난 경기는 경기 기록 또는 내 기록으로 남길 수 있습니다.",
         Icon: Swords,
       },
       {
-        title: "역할에 따라 진행합니다",
-        body: "심판 경기는 배정 심판이 양쪽 점수·개인 스탯·최종 승인을 맡습니다. 무심판 시계 경기는 경기시계 담당자가 양쪽 점수와 시계·샷클락·QR을 맡습니다.",
-        Icon: ClipboardCheck,
+        title: "홈에서 할 일을 확인합니다",
+        body: "받은 초대, 출석, 참가 확인, 이의 처리처럼 지금 해야 할 일이 홈 액션 큐에 먼저 표시됩니다. 예정 경기와 최근 실제 출전 기록도 함께 확인합니다.",
+        Icon: Bell,
       },
       {
-        title: "기록을 확인하고 확정합니다",
-        body: "일반 경기는 심판 또는 방장이 열린 이의를 처리한 뒤 직접 최종 승인합니다. 조건을 충족한 경쟁전만 티어·MMR에 반영됩니다.",
+        title: "역할에 맞게 경기와 기록을 끝냅니다",
+        body: "심판·방장·경기시계 담당자·선수의 권한은 분리됩니다. 열린 이의를 처리하고 별도 최종 승인을 마친 확정 경기만 공식 전적이 됩니다.",
         Icon: Trophy,
+      },
+      {
+        title: "내 기록과 팀 이력을 나눠 봅니다",
+        body: "홈과 나 메뉴는 내가 실제 출전한 개인전·팀전을 보여줍니다. 팀 히스토리는 내가 뛰지 않은 소속팀 경기까지 포함할 수 있습니다.",
+        Icon: ClipboardCheck,
       },
     ],
     callout: {
@@ -75,7 +84,7 @@ const GUIDE_CHAPTERS = [
     steps: [
       {
         title: "방 설정",
-        body: "공개 범위, 친선·경쟁, 경기 전 구성·현장 픽업, 일정과 정원을 정합니다.",
+        body: "공개·비공개, 친선·경쟁, 경기 전 구성·현장 픽업, 즉시·예약, 1v1·2v2·3v3·5v5, 출전·후보 정원과 MMR 범위를 정합니다.",
         Icon: Users,
       },
       {
@@ -85,7 +94,7 @@ const GUIDE_CHAPTERS = [
       },
       {
         title: "심판 초대",
-        body: "방장은 자격 심판을 초대할 수 있습니다. 공개방은 조건을 충족한 심판이 직접 참여할 수도 있습니다.",
+        body: "방장은 자격 심판을 초대할 수 있습니다. 공개방은 조건을 충족한 심판이 직접 참여할 수 있고, 비공개방은 초대된 대상만 들어옵니다.",
         Icon: Swords,
       },
       {
@@ -101,6 +110,7 @@ const GUIDE_CHAPTERS = [
         "초대 수락은 출석이 아닙니다. 현장에서 출석한 선수만 경기 명단에 배치합니다.",
         "QR 토큰은 5분마다 바뀌며 경기 10분 전부터 로그인한 사전 등록 선수의 출석만 확인합니다.",
         "시작 후 QR은 경기 전에 등록됐지만 미출석 처리된 선수를 원래 사이드 후보로 등록할 뿐, 출전·팀 배치를 자동 확정하지 않습니다.",
+        "픽업방은 모집 중 A/B를 정하지 않습니다. 체크인 뒤 참석자만 직접·랜덤·MMR 균형 방식으로 나누고 배정 확정 후 시작합니다.",
       ],
       Icon: CheckCircle2,
     },
@@ -131,7 +141,7 @@ const GUIDE_CHAPTERS = [
       },
       {
         title: "후보 교체",
-        body: "후보는 같은 사이드 출전 선수와 본인 교체할 수 있습니다. 배정 심판도 양쪽 교체를 처리할 수 있습니다.",
+        body: "후보는 같은 사이드 출전 선수와 본인 교체할 수 있습니다. 배정 심판도 양쪽 교체를 처리할 수 있지만 무심판 방장·파티장·다른 선수는 타인을 교체할 수 없습니다.",
         Icon: Clock3,
       },
       {
@@ -145,6 +155,8 @@ const GUIDE_CHAPTERS = [
       body: "경기 시작 처리 후 5분 안에 시계를 시작하고, 정규 예상시간의 70% 이상 실제 진행한 뒤 시계 종료를 남겨야 정상 사용 후보가 됩니다.",
       details: [
         "샷클락은 사용 안 함·24초·30초·60초 중 고르는 선택 기능이며 MMR 검증 기준은 경기시계입니다.",
+        "담당자는 출전 선수·후보·배정 심판 중 현장에서 정하고 넘길 수 있습니다. 넘긴 뒤 이전 담당자 화면은 읽기 전용이 됩니다.",
+        "지각 QR만 찍고 후보에서 실제 교체하지 않은 선수는 개인 전적과 MMR 출전자로 계산하지 않습니다.",
         "구간 시간이 0이어도 바로 끝내지 않아 연장할 수 있습니다. 실제 시계 시작 90분 뒤에는 사후 기록 단계로 전환됩니다.",
         "전체화면·화면 유지·미디어 부저는 기기별 베타이며 브라우저 제한이 적용될 수 있습니다.",
       ],
@@ -159,30 +171,30 @@ const GUIDE_CHAPTERS = [
     id: "records",
     navLabel: "기록",
     eyebrow: "04 · RECORDS",
-    title: "점수와 개인 기록을 입력하고 함께 확인합니다.",
-    lead: "일반 경기는 팀 점수만, 심판 경기와 내 기록은 개인 스탯까지 입력합니다.",
+    title: "기록 유형과 확인 절차를 구분합니다.",
+    lead: "일반 live 경기, 함께 만든 사후 경기기록, 본인이 작성한 내 기록은 권한·확정·MMR 규칙이 서로 다릅니다.",
     image: "/assets/guide/records-create.jpg",
     imageAlt: "경기 기록과 내 기록을 선택하는 기록 만들기 화면",
     caption: "함께한 경기 기록과 개인용 내 기록을 목적에 맞게 나눠 시작합니다.",
     steps: [
       {
-        title: "기록 담당",
-        body: "심판 경기의 개인 스탯은 배정 심판이 입력합니다. 내 기록은 작성자 본인의 개인 스탯만 입력합니다.",
+        title: "일반 live 경기",
+        body: "심판 경기는 심판이 점수·개인 스탯·이의·최종 승인을 맡습니다. 무심판 경기는 팀 점수만 저장하고 방장이 이의와 최종 승인을 맡습니다.",
         Icon: ClipboardCheck,
       },
       {
-        title: "점수와 개인 기록",
-        body: "심판 없는 일반 경기는 팀 점수만 남깁니다. 개인 스탯은 심판 경기 또는 내 기록에서만 남깁니다.",
+        title: "사후 경기기록",
+        body: "함께한 경기를 나중에 만들며 개인 스탯은 생성하지 않습니다. 실제 참가자 2/3 이상이 24시간 안에 내 참가 확인을 해야 확정 조건을 충족합니다.",
         Icon: Users,
       },
       {
-        title: "출전 선수 확인",
-        body: "사후 경기기록은 실제 참가자가 내 참가 확인으로 참가 사실과 결과를 확인합니다. 본인 기록이 다르면 이의를 신청할 수 있습니다.",
+        title: "내 기록",
+        body: "작성자가 자기 점수와 개인 스탯을 저장합니다. 공개·비공개를 고를 수 있지만 공식 전적·업적·MMR과는 별도로 집계됩니다.",
         Icon: ShieldCheck,
       },
       {
-        title: "이의와 확정",
-        body: "심판 경기는 배정 심판, 무심판 경기는 방장이 열린 이의를 사유와 함께 처리합니다. 마지막 판정 뒤에도 별도 최종 승인을 해야 합니다.",
+        title: "내 기록 메뉴",
+        body: "통합은 실제 출전한 개인전과 팀전의 합계입니다. 개인전·팀전·내 기록 필터로 통계, 날짜별 기록, 최근 6개월과 장기 보관 기록을 같은 기준으로 나눕니다.",
         Icon: CheckCircle2,
       },
     ],
@@ -190,8 +202,10 @@ const GUIDE_CHAPTERS = [
       title: "경기 기록과 내 기록",
       body: "경기 기록은 함께한 참가자 확인을 거치는 사후 기록방입니다. 내 기록은 승인 없이 빠르게 남기는 개인용 기록입니다.",
       details: [
-        "사후 경기 기록은 확인한 참가자의 개인 MMR만 경기 방식에 따라 10~50% 반영하고 팀 MMR은 반영하지 않습니다. 내 기록은 MMR에 반영되지 않습니다.",
+        "사후 경기 기록은 확인한 참가자의 개인 MMR만 1v1 10%·2v2 20%·3v3 35%·5v5 50% 반영하고 팀 MMR은 반영하지 않습니다. 내 기록은 MMR에 반영되지 않습니다.",
         "사후 경기 기록은 참가자 2/3 이상이 내 참가 확인을 해야 하며, 24시간 뒤 기준 충족과 열린 신고 없음이 확인되면 자동 확정됩니다.",
+        "실제 시간이 겹치는 다른 공식 경기가 있으면 live 시작·결과 확정·MMR 반영 또는 사후 기록 확정을 막습니다.",
+        "최종 승인 뒤에는 새 이의신청을 받지 않습니다. 이후 문제는 경기 신고로 접수합니다.",
         "일반 경쟁전은 별도 방 흐름에서 결과 확정 조건을 충족해야 MMR 반영 대상이 됩니다.",
       ],
       Icon: BookOpenCheck,
@@ -213,7 +227,7 @@ const GUIDE_CHAPTERS = [
     steps: [
       {
         title: "자동 계산",
-        body: "저장된 MMR에서 티어가 계산됩니다. 사용자가 직접 올리거나 등급을 선택할 수 없습니다.",
+        body: "저장된 MMR에서 티어가 계산됩니다. 첫 확정 경쟁전 5경기 동안은 배정 전으로 표시하고, 승패·상대·같은 팀 구성을 반영해 브론즈부터 다이아몬드 사이에 배치합니다.",
         Icon: Trophy,
       },
       {
@@ -227,8 +241,8 @@ const GUIDE_CHAPTERS = [
         Icon: Clock3,
       },
       {
-        title: "미사용 계수",
-        body: "시계를 끄거나 조건을 못 채우면 기존 경기 품질 계수에 1v1 50%·2v2 65%·3v3 80%·5v5 90%를 곱합니다.",
+        title: "개인·팀 MMR",
+        body: "개인은 통합과 1v1·2v2·3v3·5v5 MMR을 나눠 봅니다. 팀 MMR은 주장·정규멤버 상위 5명 평균과 팀 성과 보정으로 계산하며 용병은 기준 평균에서 제외합니다.",
         Icon: Gauge,
       },
     ],
@@ -238,6 +252,7 @@ const GUIDE_CHAPTERS = [
       details: [
         "경기시계 도입 전에 시작된 경기에는 시계 감산을 소급 적용하지 않습니다.",
         "통합 MMR과 모드별 MMR은 프로필에서 따로 확인할 수 있습니다.",
+        "랭크보드는 내 지역 개인·팀 순위와 전국 순위를 나누고, 시즌 허브는 개인 승격권·팀 승격권·라이벌 매치업을 보여줍니다.",
       ],
       Icon: ShieldCheck,
     },
@@ -247,9 +262,205 @@ const GUIDE_CHAPTERS = [
     ],
   },
   {
+    id: "teams",
+    navLabel: "팀",
+    eyebrow: "06 · TEAMS",
+    title: "팀 소속과 경기 역할은 구분됩니다.",
+    lead: "팀장은 팀 자체를 관리하고, 실제 경기에서는 방장과 사이드장이 방의 명단과 진행 역할을 맡습니다.",
+    previewItems: [
+      { label: "MY TEAM", title: "내 팀 관리" },
+      { label: "ROSTER", title: "주장·정규·용병" },
+      { label: "DISCOVER", title: "주변·라이벌·소속" },
+      { label: "HISTORY", title: "팀 경기 이력" },
+    ],
+    steps: [
+      {
+        title: "내 팀과 대표팀",
+        body: "여러 팀에 소속될 수 있고 대표팀을 따로 정할 수 있습니다. 팀장은 가입·역할·팀 정보·엠블럼·홈코트를 관리합니다.",
+        Icon: UsersRound,
+      },
+      {
+        title: "팀전 만들기",
+        body: "팀전은 팀장만 만드는 기능이 아닙니다. 일반 팀원도 소속팀을 선택해 방을 만들 수 있고, 경기에서는 각 사이드장이 출전·후보 명단을 운영합니다.",
+        Icon: Swords,
+      },
+      {
+        title: "팀 찾기",
+        body: "내 팀을 먼저 보여주고 주변 팀, 비슷한 연령대·MMR의 라이벌 팀, 같은 소속 팀을 각각 최대 5개 추천합니다. 전체 팀은 검색할 때만 조회합니다.",
+        Icon: Gauge,
+      },
+      {
+        title: "팀 전적과 개인 전적",
+        body: "팀 히스토리는 팀이 출전한 경기를 기준으로 합니다. 내가 후보로만 남았거나 뛰지 않은 경기는 팀 이력에는 보여도 홈·나 메뉴 개인 전적에는 포함되지 않습니다.",
+        Icon: Trophy,
+      },
+    ],
+    callout: {
+      title: "팀 파티와 개인 픽업을 섞지 않습니다",
+      body: "사전 구성 팀전은 선택한 팀의 한 묶음으로 참가합니다. 픽업방은 모든 참가자를 개인으로 받고 체크인 뒤 A/B를 정합니다.",
+      details: [
+        "팀전 엔트리는 경기방에서 파티 나가기로 분리하지 않습니다.",
+        "팀 MMR 변동은 실제 MMR 반영 출전자 중 주장·정규멤버 비율만큼 적용합니다.",
+        "전원이 용병이면 개인 경기 결과는 남아도 팀 성과 보정은 0%입니다.",
+      ],
+      Icon: ShieldCheck,
+    },
+    actions: [
+      { to: "/app/teams", label: "내 팀 보기", Icon: UsersRound, primary: true },
+      { to: "/app/create", label: "팀전 만들기", Icon: ArrowRight },
+    ],
+  },
+  {
+    id: "courts",
+    navLabel: "구장",
+    eyebrow: "07 · COURTS",
+    title: "승인 구장을 찾고 현장 정보를 보완합니다.",
+    lead: "구장 프로필에서 위치·시설·리뷰를 확인하고, 새 구장이나 잘못된 정보를 구조화해 제보할 수 있습니다.",
+    previewItems: [
+      { label: "SEARCH", title: "승인 구장 찾기" },
+      { label: "PROFILE", title: "시설·지도·리뷰" },
+      { label: "REQUEST", title: "새 구장 신청" },
+      { label: "REPORT", title: "정보 수정 신고" },
+    ],
+    steps: [
+      {
+        title: "구장 검색과 즐겨찾기",
+        body: "팀 홈코트와 경기 구장은 같은 승인 구장 검색기를 사용합니다. 관심 구장은 즐겨찾기에 넣어 홈과 설정에서 빠르게 확인합니다.",
+        Icon: MapPin,
+      },
+      {
+        title: "구장 프로필",
+        body: "공식 주소·지도 위치, 코트 형태, 바닥, 조명, 유료 여부와 경기 참가자 리뷰를 확인합니다. 저장 좌표가 있으면 지도는 그 위치를 우선합니다.",
+        Icon: Gauge,
+      },
+      {
+        title: "새 구장 신청",
+        body: "주소를 검색한 뒤 실제 시설명과 세부 위치·시설 정보를 입력합니다. 주변 승인·대기 구장을 먼저 비교해 중복 신청을 줄입니다.",
+        Icon: ClipboardCheck,
+      },
+      {
+        title: "수정·중복 신고",
+        body: "승인 구장의 위치 오류·운영 상태·중복·기타 문제를 구장 프로필이나 설정에서 신고합니다. 같은 미처리 대상의 중복 신고는 기존 접수로 연결됩니다.",
+        Icon: ShieldCheck,
+      },
+    ],
+    callout: {
+      title: "구장 정보와 경기 예약은 다릅니다",
+      body: "서비스의 승인 구장 정보는 시설 탐색용입니다. 실제 사용 가능 시간, 예약, 비용과 현장 규칙은 방 메모와 시설 운영자 안내를 다시 확인해야 합니다.",
+      details: [
+        "유료 구장은 방 생성 시 비용 근거와 정산 방식을 명확히 입력합니다.",
+        "위험하거나 폐쇄된 시설은 리뷰보다 구장 상태 신고를 먼저 사용합니다.",
+        "관리자는 실제 중복 구장 두 개를 모두 유효하게 두지 않고 하나를 정정·무효 처리합니다.",
+      ],
+      Icon: ShieldCheck,
+    },
+    actions: [
+      { to: "/app/settings/courts", label: "구장 신청", Icon: MapPin, primary: true },
+      { to: "/app/settings/favorites", label: "즐겨찾기 보기", Icon: ArrowRight },
+    ],
+  },
+  {
+    id: "tournaments",
+    navLabel: "대회",
+    eyebrow: "08 · TOURNAMENTS",
+    title: "대회는 일반 경기보다 엄격하게 운영됩니다.",
+    lead: "팀 초대, 참가 명단, 일정, 중립 심판, 대진과 경기 결과를 대회 단위로 잠그고 관리합니다.",
+    previewItems: [
+      { label: "TEAMS", title: "참가팀 초대" },
+      { label: "SCHEDULE", title: "일정·구장" },
+      { label: "REFEREE", title: "중립 심판" },
+      { label: "BRACKET", title: "대진·결과" },
+    ],
+    steps: [
+      {
+        title: "대회 생성과 승인",
+        body: "토너먼트·리그 형식, 기간, 구장과 참가팀을 정합니다. 운영 대회는 지역 승인과 필수 심판 조건을 충족해야 개최할 수 있습니다.",
+        Icon: Trophy,
+      },
+      {
+        title: "팀 초대와 명단",
+        body: "팀 초대는 알림에서 확인하고, 참가팀은 경기별 출전 명단을 제출합니다. 명단 제출 뒤에는 해당 경기 일정과 로스터가 잠깁니다.",
+        Icon: UsersRound,
+      },
+      {
+        title: "일정과 중립 심판",
+        body: "경기 일정은 명단 제출 전 한 번만 수정할 수 있습니다. 필요한 수의 승인 심판을 배정하고 소속·동시간대 중복을 검사합니다.",
+        Icon: Clock3,
+      },
+      {
+        title: "대회 경기 권한",
+        body: "배정 심판만 점수·개인 스탯·본인 스탯 이의 판정·최종 승인을 수행합니다. 대회 방장이나 팀장은 심판 권한을 대신하지 않습니다.",
+        Icon: ShieldCheck,
+      },
+    ],
+    callout: {
+      title: "대회는 무심판 경기로 전환하지 않습니다",
+      body: "배정 심판이 불참하거나 자격·중립성·일정 조건을 잃으면 경기를 그대로 진행하지 않고 운영자가 심판 배정을 해결해야 합니다.",
+      details: [
+        "대회 참가자는 자기 개인 스탯에 대해서만 이의를 제출합니다.",
+        "배정 심판만 대회 이의를 처리하고 결과를 최종 승인합니다.",
+        "공식 대회·학교·협회 규정이 있으면 BOXTIER 일반 룰보다 해당 규정이 우선합니다.",
+      ],
+      Icon: ShieldCheck,
+    },
+    actions: [
+      { to: "/app/matches?panel=tournament", label: "대회 보기", Icon: Trophy, primary: true },
+      { to: "/app/referee-rulebook", label: "심판 룰북", Icon: ArrowRight },
+    ],
+  },
+  {
+    id: "account",
+    navLabel: "설정",
+    eyebrow: "09 · ACCOUNT",
+    title: "프로필·알림·공개 범위를 직접 관리합니다.",
+    lead: "나 메뉴와 설정에서 프로필, 기록 공개, 즐겨찾기, 알림, 차단, 신고와 화면 표시를 관리합니다.",
+    previewItems: [
+      { label: "PROFILE", title: "아이콘·소속·포지션" },
+      { label: "RECORDS", title: "통합·개인·팀·내 기록" },
+      { label: "NOTICE", title: "앱·Discord 알림" },
+      { label: "SAFETY", title: "차단·신고·공개 범위" },
+    ],
+    steps: [
+      {
+        title: "프로필과 업적",
+        body: "포지션·지역·소속과 프로필 아이콘을 관리하고, 달성한 업적 아이콘을 선택합니다. 공개 프로필 링크와 공유 카드는 핵심 정보만 보여줍니다.",
+        Icon: UserRoundCheck,
+      },
+      {
+        title: "기록과 공개 범위",
+        body: "나 메뉴에서 실제 출전 공식 기록과 본인이 만든 내 기록을 분리해 봅니다. 지역 랭킹·팀 이력·통계 요약과 내 기록 공개 여부를 설정할 수 있습니다.",
+        Icon: ClipboardCheck,
+      },
+      {
+        title: "알림과 Discord",
+        body: "받은 경기·팀 초대, 출석·참가 확인·이의·확정 알림을 앱에서 처리합니다. Discord를 연결하면 선택한 경기 알림을 같은 원본으로 받을 수 있습니다.",
+        Icon: Bell,
+      },
+      {
+        title: "차단과 신고",
+        body: "사용자를 숨기거나 선수·경기·팀·구장 문제를 실제 관계와 사유에 맞게 검색해 신고합니다. 처리 전 같은 대상 중복 신고는 한 건으로 유지됩니다.",
+        Icon: Settings,
+      },
+    ],
+    callout: {
+      title: "검색 결과와 실제 제출 대상을 함께 확인합니다",
+      body: "신고 검색어를 바꾸면 이전에 선택한 대상은 초기화됩니다. 화면에 보이는 이름과 서버에 제출되는 대상이 달라지지 않게 다시 선택해야 합니다.",
+      details: [
+        "최종 승인 전 결과 문제는 이의신청, 승인 뒤 문제는 경기 신고를 사용합니다.",
+        "구장 위치 오류·운영 위험·중복은 각각 다른 구조화 신고로 접수합니다.",
+        "테마와 홈 안내 카드 표시 설정은 계정 설정에 저장됩니다.",
+      ],
+      Icon: ShieldCheck,
+    },
+    actions: [
+      { to: "/app/profile", label: "나 메뉴 보기", Icon: UserRoundCheck, primary: true },
+      { to: "/app/settings", label: "설정 보기", Icon: ArrowRight },
+    ],
+  },
+  {
     id: "practice",
     navLabel: "연습",
-    eyebrow: "06 · PRACTICE",
+    eyebrow: "10 · PRACTICE",
     title: "초대부터 기록 확정까지 직접 해봅니다.",
     lead: "실제 공용 방에서 연습 선수를 초대하고, 심판·경기시계 담당자·선수 화면을 바꿔 전체 흐름을 시험합니다.",
     practicePreview: true,
@@ -387,16 +598,22 @@ export default function GettingStarted({ app }) {
           </div>
         </header>
 
-        {chapter.practicePreview ? (
+        {chapter.practicePreview || chapter.previewItems ? (
           <div className="getting-started-practice-preview ui-panel">
             <Badge tone="orange">현재 서비스 화면</Badge>
             <ol>
-              <li><strong>CREATE</strong><span>경기 만들기</span></li>
-              <li><strong>INVITE</strong><span>초대·출석</span></li>
-              <li><strong>PLAY</strong><span>시계·진행</span></li>
-              <li><strong>RECORD</strong><span>기록·승인</span></li>
+              {(chapter.previewItems ?? [
+                { label: "CREATE", title: "경기 만들기" },
+                { label: "INVITE", title: "초대·출석" },
+                { label: "PLAY", title: "시계·진행" },
+                { label: "RECORD", title: "기록·승인" },
+              ]).map((item) => (
+                <li key={item.label}><strong>{item.label}</strong><span>{item.title}</span></li>
+              ))}
             </ol>
-            <p>실제 경기 만들기와 공용 방 모달을 사용하고 저장 통로만 이 페이지의 연습 상태로 분리합니다.</p>
+            <p>{chapter.practicePreview
+              ? "실제 경기 만들기와 공용 방 모달을 사용하고 저장 통로만 이 페이지의 연습 상태로 분리합니다."
+              : `${chapter.navLabel} 메뉴에서 위 기능을 현재 계정 권한에 맞게 확인할 수 있습니다.`}</p>
           </div>
         ) : (
           <figure className="getting-started-shot">

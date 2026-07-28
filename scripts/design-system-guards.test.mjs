@@ -588,14 +588,14 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(appSource, /path="\/app\/guide\/practice" element=\{<PracticeMatch app=\{app\} \/>\}/);
   assert.equal(count(pageSources.home, 'to="/app/guide"'), 1);
   assert.match(pageSources.home, /처음 사용하시나요\?/);
-  assert.match(pageSources.home, /6단계 안내/);
+  assert.match(pageSources.home, /10단계 안내/);
   assert.match(pageSources.home, /isHomeGuideCardVisible\(app\.state\.settings\)/);
   assert.match(gettingStartedSource, /useSearchParams/);
   assert.match(gettingStartedSource, /aria-label="사용 설명 목차"/);
   assert.match(gettingStartedSource, /aria-current=\{item\.id === chapter\.id \? "page" : undefined\}/);
   assert.match(gettingStartedSource, /chapterTitleRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(gettingStartedSource, /ref=\{chapterTitleRef\} tabIndex=\{-1\}/);
-  for (const chapterId of ["start", "matching", "live", "records", "tier", "practice"]) {
+  for (const chapterId of ["start", "matching", "live", "records", "tier", "teams", "courts", "tournaments", "account", "practice"]) {
     assert.match(gettingStartedSource, new RegExp(`id: "${chapterId}"`));
   }
   for (const image of [
@@ -617,12 +617,18 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /QR 토큰은 5분마다 바뀌며 경기 10분 전부터 로그인한 사전 등록 선수/);
   assert.match(gettingStartedSource, /출전·팀 배치를 자동 확정하지 않습니다/);
   assert.doesNotMatch(gettingStartedSource, /양쪽 실제 출전 선수의 과반 승인/);
-  assert.match(gettingStartedSource, /심판 또는 방장이 열린 이의를 처리한 뒤 직접 최종 승인/);
+  assert.match(gettingStartedSource, /열린 이의를 처리하고 별도 최종 승인/);
   assert.match(gettingStartedSource, /경기시계/);
   assert.match(gettingStartedSource, /심판·경기시계 담당자·선수가 역할을 나눕니다/);
   assert.match(gettingStartedSource, /양쪽 점수는 심판 경기에서는 배정 심판, 무심판 경기에서는 시계 담당자가 조작/);
   assert.match(gettingStartedSource, /A\/B 점수판과 30초 샷클락이 함께 열린/);
   assert.match(gettingStartedSource, /티어는 확정 기록에서 자동 계산됩니다/);
+  assert.match(gettingStartedSource, /팀전은 팀장만 만드는 기능이 아닙니다/);
+  assert.match(gettingStartedSource, /주변 팀, 비슷한 연령대·MMR의 라이벌 팀, 같은 소속 팀/);
+  assert.match(gettingStartedSource, /구장 정보와 경기 예약은 다릅니다/);
+  assert.match(gettingStartedSource, /대회는 무심판 경기로 전환하지 않습니다/);
+  assert.match(gettingStartedSource, /통합·개인·팀·내 기록/);
+  assert.match(gettingStartedSource, /지각 QR만 찍고 후보에서 실제 교체하지 않은 선수/);
   assert.match(gettingStartedSource, /기기별 베타/);
   assert.match(gettingStartedSource, /to: "\/app\/guide\/practice"/);
   assert.match(gettingStartedSource, /isHomeGuideCardVisible\(app\.state\.settings\)/);

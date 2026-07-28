@@ -28,19 +28,19 @@ const RULEBOOK_CHAPTERS = [
     eyebrow: "Game rules",
     title: "경기 중 판정",
     description: "경기 전 확인부터 득점과 재개까지 실제 코트에서 먼저 찾는 기준입니다.",
-    sections: REFEREE_RULEBOOK_SECTIONS.slice(0, 6),
+    sections: [...REFEREE_RULEBOOK_SECTIONS.slice(0, 6), REFEREE_RULEBOOK_SECTIONS[7]],
   },
   {
     eyebrow: "BOXTIER flow",
-    title: "기록·이의·추천",
-    description: "경기 기록이 입력되고 확인되는 순서와 역할별 권한입니다.",
-    sections: REFEREE_RULEBOOK_SECTIONS.slice(7, 11),
+    title: "운영·기록·이의·MMR",
+    description: "출석과 교체부터 기록 분류, 이의 처리, 최종 승인과 MMR까지 역할별 기준입니다.",
+    sections: REFEREE_RULEBOOK_SECTIONS.slice(8, 14),
   },
   {
     eyebrow: "Safety",
     title: "안전·심판 윤리",
     description: "판정보다 먼저 적용할 경기 중단 기준과 심판의 중립성 원칙입니다.",
-    sections: REFEREE_RULEBOOK_SECTIONS.slice(11),
+    sections: REFEREE_RULEBOOK_SECTIONS.slice(14),
   },
 ];
 
@@ -107,7 +107,7 @@ export default function RefereeRulebook({ theme = "dark" }) {
         <div>
           <Badge tone="blue">FIBA 2024 · BOXTIER 운영 기준</Badge>
           <h2>판정과 기록 기준</h2>
-          <p>경기 전 확인, 코트 판정, 개인활약 기록, 결과 확인과 이의 처리 순서입니다.</p>
+          <p>경기 전 확인, 코트 판정, 출석·교체, 개인활약, 결과 확인·이의·확정과 MMR 기준입니다.</p>
         </div>
         <RulebookIllustration scene="standard" theme={theme} />
       </Card>
