@@ -274,6 +274,7 @@ const REQUIRED_COLUMNS = {
     "score_a",
     "score_b",
     "submitted_by",
+    "result_revision",
     "stat_submissions",
     "score_revision_a",
     "score_revision_b",
@@ -944,6 +945,8 @@ async function checkRpcGrants(client, scoreOperationPolicyCheck) {
       [
         "rpc_grant:rankball_recruiting_stat_recorder_action",
         "authoritative_rpc_grant:rankball_recruiting_stat_recorder_action",
+        "rpc_grant:rankball_match_late_player_action",
+        "authoritative_rpc_grant:rankball_match_finalize_locked",
       ].includes(check.check_name)
       && check.detail?.exists === true
       && check.detail?.anonExecute === false

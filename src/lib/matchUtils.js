@@ -1578,9 +1578,12 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
 }
 
 export function getMatchFinalizationWindow(match = {}, now = Date.now()) {
+  const sourceMatch = match ?? {};
   const nowMs = typeof now === "number" ? now : new Date(now).getTime();
-  const submittedAtMs = new Date(match.result?.submittedAt ?? "").getTime();
-  const endedAtMs = new Date(match.endedAt ?? "").getTime();
+  const submittedAtMs = new Date(
+    sourceMatch.result?.submittedAt ?? sourceMatch.result?.submitted_at ?? "",
+  ).getTime();
+  const endedAtMs = new Date(sourceMatch.endedAt ?? sourceMatch.ended_at ?? "").getTime();
   const baseMs = Math.max(
     Number.isFinite(submittedAtMs) ? submittedAtMs : 0,
     Number.isFinite(endedAtMs) ? endedAtMs : 0,

@@ -359,7 +359,7 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
     { label: "구성 방식", value: draft.recordComposition === "team" ? "팀 구성" : "개인 구성" },
     { label: "경기 방식", value: draft.mode || "5v5" },
     { label: "구장", value: draft.court || "구장 미정" },
-    { label: "종료 일시", value: [draft.scheduledDate, draft.scheduledTime].filter(Boolean).join(" ") || "일시 미정" },
+    { label: "시작 일시", value: [draft.scheduledDate, draft.scheduledTime].filter(Boolean).join(" ") || "일시 미정" },
   ];
   const tournamentRows = [
     { label: "대회 방식", value: draft.tournamentFormat === "tournament" ? "토너먼트" : "리그" },

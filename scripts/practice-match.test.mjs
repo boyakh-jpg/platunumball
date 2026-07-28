@@ -18,7 +18,7 @@ import {
   runPracticeReducer,
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
-import { getMatchReservePlayerIds } from "../src/lib/matchUtils.js";
+import { getMatchFinalizationWindow, getMatchReservePlayerIds } from "../src/lib/matchUtils.js";
 import { getRegisteredCourts } from "../src/lib/courts.js";
 import { getRecruitingLobby } from "../src/lib/recruiting.js";
 import {
@@ -52,6 +52,13 @@ function createStartedPracticeMatch(rules = {}, options = {}) {
   state = runPracticeReducer(state, "startMatch", [confirmed.matchId], managerId).state;
   return { state, matchId: confirmed.matchId, referee };
 }
+
+test("공용 방 모달은 경기 snapshot이 아직 없어도 최종 승인 상태를 안전하게 계산한다", () => {
+  assert.deepEqual(getMatchFinalizationWindow(null), {
+    availableAt: null,
+    ready: false,
+  });
+});
 
 test("홈 사용 설명 카드는 기본 표시이며 false 설정을 서버 mapper가 보존한다", () => {
   assert.equal(DEFAULT_SETTINGS.showHomeGuideCard, true);
