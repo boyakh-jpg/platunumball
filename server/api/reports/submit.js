@@ -15,6 +15,17 @@ const COURT_CORRECTION_FIELDS = new Map([
   ["duplicate", "중복 구장"],
   ["other", "기타"],
 ]);
+const COURT_CORRECTION_ATTRIBUTES = new Map([
+  ["publicAccess", { field: "access", label: "공개 범위", values: new Set(["public", "private", "unknown"]) }],
+  ["accessType", { field: "access", label: "이용 방식", values: new Set(["walk_in", "reservation", "restricted", "unknown"]) }],
+  ["paid", { field: "access", label: "이용료", values: new Set(["true", "false", "null"]) }],
+  ["operationalStatus", { field: "operation", label: "운영 상태", values: new Set(["active", "pending", "closed", "unknown"]) }],
+  ["indoorOutdoor", { field: "court", label: "실내외", values: new Set(["outdoor", "indoor", "mixed", "unknown"]) }],
+  ["courtKind", { field: "court", label: "구장 유형", values: new Set(["official", "street_hoop", "unknown"]) }],
+  ["surfaceType", { field: "court", label: "바닥", values: new Set(["asphalt", "urethane", "dirt", "indoor_wood", "indoor_synthetic", "unknown"]) }],
+  ["courtLayout", { field: "court", label: "코트 형태", values: new Set(["full", "half", "single_hoop", "unknown"]) }],
+  ["lighting", { field: "court", label: "조명", values: new Set(["true", "false", "null"]) }],
+]);
 
 function uniqueStrings(values) {
   return Array.from(new Set(toArray(values).map((value) => String(value).trim()).filter(Boolean)));
@@ -228,9 +239,18 @@ async function assertCanSubmitPlayerReport(context, targetId, sourceMatchId) {
 
 export function normalizeCourtCorrection(value = {}) {
   const field = String(value?.field || "").trim();
+  const attribute = String(value?.attribute || "").trim();
   const proposedValue = String(value?.proposedValue || "").trim();
+  const note = String(value?.note || "").trim();
   const evidenceUrl = String(value?.evidenceUrl || "").trim();
-  if (!COURT_CORRECTION_FIELDS.has(field) || proposedValue.length < 4 || proposedValue.length > 500) {
+  const structuredAttribute = COURT_CORRECTION_ATTRIBUTES.get(attribute);
+  const structuredValid = Boolean(
+    structuredAttribute
+    && structuredAttribute.field === field
+    && structuredAttribute.values.has(proposedValue),
+  );
+  const freeTextValid = !attribute && proposedValue.length >= 4 && proposedValue.length <= 500;
+  if (!COURT_CORRECTION_FIELDS.has(field) || (!structuredValid && !freeTextValid) || note.length > 500) {
     const error = new Error("invalid_court_correction");
     error.statusCode = 400;
     throw error;
@@ -245,7 +265,13 @@ export function normalizeCourtCorrection(value = {}) {
       throw error;
     }
   }
-  return { field, proposedValue, evidenceUrl: evidenceUrl || null };
+  return {
+    field,
+    attribute: structuredValid ? attribute : null,
+    proposedValue,
+    note: note || null,
+    evidenceUrl: evidenceUrl || null,
+  };
 }
 
 async function assertCanSubmitCourtReport(context, targetId, rawCorrection) {
@@ -279,7 +305,7 @@ async function assertCanSubmitCourtReport(context, targetId, rawCorrection) {
   }
   return {
     reportedUserIds: requestedBy && requestedBy !== context.profileId ? [requestedBy] : [],
-    verifiedReason: `${COURT_CORRECTION_FIELDS.get(correction.field)} 수정 요청: ${correction.proposedValue}`.slice(0, 500),
+    verifiedReason: `${correction.attribute ? COURT_CORRECTION_ATTRIBUTES.get(correction.attribute).label : COURT_CORRECTION_FIELDS.get(correction.field)} 수정 요청: ${correction.proposedValue}${correction.note ? ` · ${correction.note}` : ""}`.slice(0, 500),
     verifiedPayload: {
       courtCorrection: {
         ...correction,

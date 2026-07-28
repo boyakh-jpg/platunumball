@@ -25,7 +25,10 @@ import {
 import { ADMIN_USER_OPERATION_ACTIONS } from "../lib/adminUserOperations.js";
 import {
   getCourtAccessLabel,
+  getCourtCorrectionAttributeLabel,
   getCourtCorrectionFieldLabel,
+  getCourtCorrectionPatch,
+  getCourtCorrectionProposedLabel,
   getCourtFacilityBaseName,
   getCourtKindLabel,
   getCourtLayoutLabel,
@@ -476,6 +479,12 @@ export default function Admin({ app }) {
     if (selectedReport?.type === "court" && selectedReport.courtCorrection?.field === "duplicate") {
       const ids = adminLevel >= 50
         ? ["markCourtDuplicate", "dismissReport", "hideCourt", "maliciousReporter"]
+        : ["dismissReport"];
+      return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
+    }
+    if (selectedReport?.type === "court" && getCourtCorrectionPatch(selectedReport.courtCorrection)) {
+      const ids = adminLevel >= 50
+        ? ["applyCourtCorrection", "dismissReport", "hideCourt", "maliciousReporter"]
         : ["dismissReport"];
       return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
     }
@@ -1118,7 +1127,9 @@ export default function Admin({ app }) {
                   {selectedReport.courtCorrection ? (
                     <div className="admin-court-correction">
                       <span><b>수정 항목</b>{getCourtCorrectionFieldLabel(selectedReport.courtCorrection.field)}</span>
-                      <span><b>수정 제안</b>{selectedReport.courtCorrection.proposedValue}</span>
+                      {selectedReport.courtCorrection.attribute ? <span><b>세부 항목</b>{getCourtCorrectionAttributeLabel(selectedReport.courtCorrection)}</span> : null}
+                      <span><b>수정 제안</b>{getCourtCorrectionProposedLabel(selectedReport.courtCorrection)}</span>
+                      {selectedReport.courtCorrection.note ? <span><b>추가 설명</b>{selectedReport.courtCorrection.note}</span> : null}
                       {selectedReport.courtCorrection.evidenceUrl ? <a href={selectedReport.courtCorrection.evidenceUrl} target="_blank" rel="noreferrer">근거 링크 열기 <ExternalLink size={13} /></a> : null}
                     </div>
                   ) : null}
@@ -1225,9 +1236,10 @@ export default function Admin({ app }) {
                 </label>
                 {!visibleActionOptions.length ? <small>현재 권한으로 실행할 수 있는 처리가 없습니다.</small> : null}
                 {actionDraft.actionType === "markCourtDuplicate" ? <small className="form-warning">대상 구장은 비활성화되고 중복 판정과 관리자 감사 기록이 남습니다.</small> : null}
+                {actionDraft.actionType === "applyCourtCorrection" ? <small className="form-warning">표시된 제안값을 구장 DB에 반영하고 신고를 처리합니다.</small> : null}
                 {reviewActionConfirming ? (
                   <div className="admin-review-confirm" role="alert">
-                    <span><strong>{ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label}</strong><small>{actionDraft.actionType === "markCourtDuplicate" ? "대상 구장을 중복으로 확정하고 서비스 노출에서 제외합니다." : "대상과 기간, 처리 사유를 다시 확인해 주세요. 실행 후 처리 기록이 남습니다."}</small></span>
+                    <span><strong>{ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.label}</strong><small>{actionDraft.actionType === "markCourtDuplicate" ? "대상 구장을 중복으로 확정하고 서비스 노출에서 제외합니다." : actionDraft.actionType === "applyCourtCorrection" ? "구조화된 제안값을 구장 DB에 반영하고 변경·신고 처리 기록을 남깁니다." : "대상과 기간, 처리 사유를 다시 확인해 주세요. 실행 후 처리 기록이 남습니다."}</small></span>
                     <Button type="button" variant="secondary" disabled={reviewActionPending} onClick={() => setReviewActionConfirming(false)}>취소</Button>
                     <Button type="button" variant="secondary" disabled={reviewActionPending || reviewActionInvalid} onClick={commitSelectedAction}>{reviewActionPending ? "처리 중" : "확정 실행"}</Button>
                   </div>

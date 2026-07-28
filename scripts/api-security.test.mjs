@@ -331,12 +331,38 @@ test("court correction reports accept bounded public data only", () => {
     evidenceUrl: "https://example.com/court",
   }), {
     field: "name",
+    attribute: null,
     proposedValue: "새 시설명 농구장",
+    note: null,
     evidenceUrl: "https://example.com/court",
+  });
+  assert.deepEqual(normalizeCourtCorrection({
+    field: "access",
+    attribute: "publicAccess",
+    proposedValue: "public",
+    note: "현장 안내판 확인",
+  }), {
+    field: "access",
+    attribute: "publicAccess",
+    proposedValue: "public",
+    note: "현장 안내판 확인",
+    evidenceUrl: null,
   });
   assert.throws(() => normalizeCourtCorrection({ field: "unknown", proposedValue: "수정 내용" }), /invalid_court_correction/);
   assert.throws(() => normalizeCourtCorrection({ field: "name", proposedValue: "짧음" }), /invalid_court_correction/);
+  assert.throws(() => normalizeCourtCorrection({ field: "court", attribute: "publicAccess", proposedValue: "public" }), /invalid_court_correction/);
+  assert.throws(() => normalizeCourtCorrection({ field: "access", attribute: "publicAccess", proposedValue: "yes" }), /invalid_court_correction/);
   assert.throws(() => normalizeCourtCorrection({ field: "name", proposedValue: "정상 수정 내용", evidenceUrl: "javascript:alert(1)" }), /invalid_court_correction_url/);
+});
+
+test("structured court corrections use an atomic admin commit", async () => {
+  const reviewSource = await readSource("server/api/admin/review-action.js");
+  const migration = await readSource("supabase/migrations/20260728160000_apply_structured_court_correction.sql");
+  assert.match(reviewSource, /rpc\("rankball_apply_court_correction_report"/);
+  assert.match(migration, /from public\.reports[\s\S]*for update;/);
+  assert.match(migration, /public\.rankball_admin_update_court_with_auto_unit\(/);
+  assert.match(migration, /public\.rankball_commit_admin_review_action\(/);
+  assert.doesNotMatch(migration, /\bdelete\s+from\b|\btruncate\b|\bdrop\s+table\b/i);
 });
 
 test("future public database objects are deny-by-default", async () => {

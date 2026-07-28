@@ -48,6 +48,7 @@ import {
   courtIdByName,
   findCourtDuplicate,
   getCourtCanonicalName,
+  getCourtCorrectionPatch,
   getCourtDuplicateMessage,
   getCourtFacilityBaseName,
   getCourtHoopCount,
@@ -6302,6 +6303,21 @@ export function commitAdminReviewAction(state, draft = {}) {
       notifications: [getAdminActionNotification("경기관리자 이상만 중복 구장을 확정할 수 있습니다."), ...state.notifications],
     };
   }
+  const courtCorrectionPatch = actionType === "applyCourtCorrection"
+    ? getCourtCorrectionPatch(report.courtCorrection)
+    : null;
+  if (actionType === "applyCourtCorrection" && (report.type !== "court" || !courtCorrectionPatch)) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("구조화된 구장 정보 수정 신고만 바로 반영할 수 있습니다."), ...state.notifications],
+    };
+  }
+  if (actionType === "applyCourtCorrection" && getAdminAuthorityLevel(state) < 50) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("경기관리자 이상만 구장 정보를 바로 반영할 수 있습니다."), ...state.notifications],
+    };
+  }
 
   if (report.matchReviewType === "void_restore") {
     return commitVoidMatchReviewAction(state, report, draft);
@@ -6376,10 +6392,12 @@ export function commitAdminReviewAction(state, draft = {}) {
     createdAt: now,
     createdBy: state.currentUserId,
   };
-  const nextApprovedCourts = ["hideCourt", "markCourtDuplicate"].includes(actionType)
+  const nextApprovedCourts = ["hideCourt", "markCourtDuplicate", "applyCourtCorrection"].includes(actionType)
     ? (state.settings?.approvedCourts ?? []).map((court) => (
       court.id === report.targetId
-        ? actionType === "markCourtDuplicate"
+        ? actionType === "applyCourtCorrection"
+          ? { ...court, ...courtCorrectionPatch, updatedAt: now }
+          : actionType === "markCourtDuplicate"
           ? {
             ...court,
             status: "disabled",
