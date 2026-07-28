@@ -305,8 +305,7 @@ test("알림 보기와 읽음은 같은 네모 버튼 규격을 사용한다", (
 });
 
 test("guide screenshots ship with the app and the shot clock has one separated outline", () => {
-  assert.match(gettingStartedSource, /src=\{chapter\.image\}/);
-  assert.doesNotMatch(gettingStartedSource, /assetUrl\(chapter\.image\)/);
+  assert.match(gettingStartedSource, /src=\{assetUrl\(chapter\.image\)\}/);
   assert.match(
     matchClockStyles,
     /\.ui-match-clock-display-grid\s*\{[^}]*--match-clock-display-gap:[^;]+;[^}]*gap:\s*var\(--match-clock-display-gap\);/,
@@ -630,7 +629,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
     assert.match(gettingStartedSource, new RegExp(`id: "${chapterId}"`));
   }
   for (const image of [
-    "start-home.jpg",
+    "start-home-v2.jpg",
     "matching-create.jpg",
     "attendance-qr.png",
     "live-clock.jpg",
