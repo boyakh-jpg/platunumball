@@ -258,6 +258,12 @@ export default function PracticeMatch({ app }) {
         : ["postgame", "dispute"].includes(progress.phase) && match?.result
           ? "연습 결과 최종 확정"
           : "";
+  const canSwitchToClockController = Boolean(
+    progress.phase === "live"
+    && match?.rules?.gameClockEnabled !== false
+    && clockControllerId
+    && practiceActorId !== clockControllerId,
+  );
 
   const contextPanel = (
     <section className="practice-room-guide" aria-label="연습 진행 안내">
@@ -283,6 +289,11 @@ export default function PracticeMatch({ app }) {
             ))}
           </select>
         </label>
+      ) : null}
+      {canSwitchToClockController ? (
+        <Button type="button" size="sm" onClick={() => selectPracticeActor(clockControllerId)}>
+          경기시계 담당 화면으로 전환
+        </Button>
       ) : null}
       {helperLabel ? <Button type="button" size="sm" onClick={runHelper}>{helperLabel}</Button> : null}
     </section>
