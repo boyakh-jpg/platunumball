@@ -2720,31 +2720,18 @@ async function runOneOnOneScenario({
 
   let latePlayerSqlReducers = null;
   if (includeLatePlayer && !refereeWanted) {
-    const latePlayerName = "Backend Anonymous";
-    const addLateResult = await step(`${ids.label}:addMatchLatePlayer:anonymous`, () => syncMatchAs(operatorLogin, {
+    await expectRejected(`${ids.label}:addMatchLatePlayer:retired`, () => syncMatchAs(operatorLogin, {
       action: "addMatchLatePlayer",
       matchId: ids.matchId,
       draft: {
         sideName: "teamA",
-        name: latePlayerName,
+        name: "Backend Anonymous",
       },
-    }));
-    match = await getMatchAfterResult(addLateResult, operatorLogin, `${ids.label}:loadAfterLatePlayerAdd`);
-    const latePlayerId = addLateResult?.playerId || Object.entries(match?.anonymousPlayers ?? {}).find(([, player]) => player?.name === latePlayerName)?.[0] || "";
-    assertFlow(Boolean(latePlayerId && match?.anonymousPlayers?.[latePlayerId]), "anonymous late player not persisted", { latePlayerId, match });
-    assertFlow((match?.playedPlayerIds?.teamA ?? []).includes(latePlayerId), "anonymous late player not in played ids", { latePlayerId, match });
-
-    const removeLateResult = await step(`${ids.label}:removeMatchLatePlayer:anonymous`, () => syncMatchAs(operatorLogin, {
-      action: "removeMatchLatePlayer",
-      matchId: ids.matchId,
-      playerId: latePlayerId,
-    }));
-    match = await getMatchAfterResult(removeLateResult, operatorLogin, `${ids.label}:loadAfterLatePlayerRemove`);
-    assertFlow(!match?.anonymousPlayers?.[latePlayerId], "anonymous late player remove not persisted", { latePlayerId, match });
-    assertFlow(!(match?.playedPlayerIds?.teamA ?? []).includes(latePlayerId), "anonymous late player still in played ids", { latePlayerId, match });
+    }), ["unsupported_match_operation"]);
     latePlayerSqlReducers = {
-      add: Boolean(addLateResult?.sqlReducer),
-      remove: Boolean(removeLateResult?.sqlReducer),
+      add: false,
+      remove: false,
+      retired: true,
     };
   }
 
@@ -4837,9 +4824,14 @@ async function runDisputeResumeThumbsScenario({
     action: "disputeMatch",
     matchId: ids.matchId,
     reason: {
-      kind: "team_score",
-      side: "teamB",
-      requestedScore: 1000,
+      kind: "team_scores",
+      requestedScoreA: 3,
+      requestedScoreB: 1000,
+      baseRevision: Math.max(
+        Number(match?.result?.revision ?? 0),
+        Number(match?.result?.scoreRevisionA ?? 0),
+        Number(match?.result?.scoreRevisionB ?? 0),
+      ),
       reason: "Backend simulation invalid dispute score",
     },
   }), ["match_score_dispute_request_invalid"]);
@@ -4848,9 +4840,14 @@ async function runDisputeResumeThumbsScenario({
     action: "disputeMatch",
     matchId: ids.matchId,
     reason: {
-      kind: "team_score",
-      side: "teamB",
-      requestedScore: 15,
+      kind: "team_scores",
+      requestedScoreA: 3,
+      requestedScoreB: 15,
+      baseRevision: Math.max(
+        Number(match?.result?.revision ?? 0),
+        Number(match?.result?.scoreRevisionA ?? 0),
+        Number(match?.result?.scoreRevisionB ?? 0),
+      ),
       reason: "Backend simulation dispute",
     },
   }));
@@ -4859,9 +4856,9 @@ async function runDisputeResumeThumbsScenario({
   const openedDispute = (match?.disputes ?? []).find((item) => item.by === opponentId && item.status === "open");
   assertFlow(match?.status === "disputed" && openedDispute, "dispute not persisted", match);
   assertFlow(
-    openedDispute?.request?.kind === "team_score"
-      && openedDispute?.request?.side === "teamB"
-      && Number(openedDispute?.request?.requestedScore) === 15
+    openedDispute?.request?.kind === "team_scores"
+      && Number(openedDispute?.request?.requestedScoreA) === 3
+      && Number(openedDispute?.request?.requestedScoreB) === 15
       && match?.disputeDraftResult?.scoreB === 12,
     "open dispute mutated the draft before the host ruling",
     { openedDispute, disputeDraftResult: match?.disputeDraftResult },

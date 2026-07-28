@@ -493,7 +493,6 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
     createSource,
     recruitingSource,
     matchClockPanelSource,
-    postgameRosterSource,
     settingsSyncSource,
     recruitingSyncSource,
     matchSyncSource,
@@ -506,7 +505,6 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
     readFile(new URL("../src/pages/CreateMatch.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/match/MatchClockPanel.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/components/match/MatchPostgameRosterPanel.jsx", import.meta.url), "utf8"),
     readFile(new URL("../server/api/settings/sync.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/recruiting/sync-post.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8"),
@@ -550,7 +548,6 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.doesNotMatch(pageSource, /actorId === statRecorders\.teamA \? "A 기록원"/);
   assert.doesNotMatch(pageSource, /actorId === statRecorders\.teamB \? "B 기록원"/);
   assert.match(pageSource, /key=\{`\$\{matchId\}:\$\{practiceActorId\}`\}/);
-  assert.match(postgameRosterSource, /remoteSearchType=\{remoteSearchEnabled \? "profile" : ""\}/);
   assert.match(matchClockPanelSource, /regulationEnded && \(!scoreboardEnabled \|\| tied\)/);
   assert.match(matchClockPanelSource, /regulationEnded && \(!scoreboardEnabled \|\| !tied\)/);
   assert.match(settingsSyncSource, /typeof source\.showHomeGuideCard === "boolean"/);

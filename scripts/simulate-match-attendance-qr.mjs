@@ -527,39 +527,31 @@ async function main() {
     p_player_id: extraRegistered.id,
     p_side: "teamA",
     p_anonymous_name: "",
-  }, /42501|match_late_player_permission_denied/u);
-  await rpc("rankball_match_postgame_roster_action", {
+  }, /42501|permission denied|function .* does not exist/u);
+  await expectRpcError("rankball_match_postgame_roster_action", {
     p_actor_profile_id: host.id,
     p_action: "addMatchLatePlayer",
     p_match_id: primaryMatch.id,
     p_player_id: extraRegistered.id,
     p_side: "teamA",
     p_anonymous_name: "",
-  });
-  const anonymous = await rpc("rankball_match_postgame_roster_action", {
+  }, /42501|permission denied|function .* does not exist/u);
+  await expectRpcError("rankball_match_postgame_roster_action", {
     p_actor_profile_id: referee.id,
     p_action: "addMatchLatePlayer",
     p_match_id: primaryMatch.id,
     p_player_id: "",
     p_side: "teamB",
     p_anonymous_name: "현장 선수",
-  });
-  match = await loadMatch(primaryMatch.id);
-  assert.ok(match.rules.postgameAddedPlayerIds.includes(extraRegistered.id));
-  assert.ok(match.rules.postgameAddedPlayerIds.includes(anonymous.playerId));
-  assert.ok(match.mmr_excluded_player_ids.includes(extraRegistered.id));
-  assert.ok(match.mmr_excluded_player_ids.includes(anonymous.playerId));
-  await rpc("rankball_match_postgame_roster_action", {
+  }, /42501|permission denied|function .* does not exist/u);
+  await expectRpcError("rankball_match_postgame_roster_action", {
     p_actor_profile_id: referee.id,
     p_action: "removeMatchLatePlayer",
     p_match_id: primaryMatch.id,
     p_player_id: extraRegistered.id,
     p_side: "",
     p_anonymous_name: "",
-  });
-  match = await loadMatch(primaryMatch.id);
-  assert.ok(!match.rules.postgameAddedPlayerIds.includes(extraRegistered.id));
-  assert.ok(match.rules.postgameAddedPlayerIds.includes(anonymous.playerId));
+  }, /42501|permission denied|function .* does not exist/u);
 
   const noRefMatch = makeMatch({
     id: matchIds[1],

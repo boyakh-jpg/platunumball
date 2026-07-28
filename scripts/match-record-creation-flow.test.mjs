@@ -13,9 +13,14 @@ import {
 } from "../src/data/repository.js";
 import { getMatchBenchPolicyError, validateMatchCreateCourt } from "../server/api/matches/sync-match.js";
 import {
+  doMatchTimeRangesOverlap,
+  getActualMatchPlayerIds,
   getMatchCancelCopy,
+  getMatchOverlapConflict,
   getMatchRecordCompositionLabel,
+  getMatchRecordEndedAt,
   getMatchRecordSetupStatus,
+  normalizeActualMatchTimeRange,
 } from "../src/lib/matchUtils.js";
 
 const matchListSource = readFileSync(new URL("../server/api/matches/list.js", import.meta.url), "utf8");
@@ -453,4 +458,114 @@ test("play list keeps match_record participants without reviving recorder author
     /fetchPlayMatchPage[\s\S]*fetchCurrentUserMatchCandidateIds\([\s\S]*true[\s\S]*\["agreed", "approval", "disputed"\]/u,
   );
   assert.doesNotMatch(matchListSource, /rankball_recorder_match_list/u);
+});
+
+test("match_record 시간은 시작 기준 30분이며 자정 경계를 다음 날로 넘긴다", () => {
+  const startedAt = "2026-07-28T14:50:00.000Z";
+  assert.equal(getMatchRecordEndedAt(startedAt)?.toISOString(), "2026-07-28T15:20:00.000Z");
+  assert.deepEqual(
+    normalizeActualMatchTimeRange({
+      rules: { recordType: "match_record" },
+      startedAt,
+      endedAt: "2026-07-28T23:59:59.000Z",
+    }),
+    {
+      startedAt: new Date(startedAt),
+      endedAt: new Date("2026-07-28T15:20:00.000Z"),
+    },
+  );
+  assert.equal(
+    getMatchRecordEndedAt("2026-07-28T14:50:00.000Z")?.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }),
+    "2026-07-29",
+  );
+});
+
+test("과거 match_record의 시작 누락은 조회와 중복 검사에서만 종료 30분 전으로 추정한다", () => {
+  const legacy = {
+    rules: { recordType: "match_record" },
+    endedAt: "2026-07-28T12:30:00.000Z",
+  };
+  const range = normalizeActualMatchTimeRange(legacy);
+  assert.equal(range?.startedAt.toISOString(), "2026-07-28T12:00:00.000Z");
+  assert.equal(range?.endedAt.toISOString(), "2026-07-28T12:30:00.000Z");
+  assert.equal(legacy.startedAt, undefined);
+});
+
+test("선수별 구간 중복은 엄격한 반개구간으로 판정한다", () => {
+  const base = {
+    id: "base",
+    status: "confirmed",
+    startedAt: "2026-07-28T10:00:00.000Z",
+    endedAt: "2026-07-28T10:30:00.000Z",
+    teamA: { players: ["u1"] },
+    teamB: { players: ["u2"] },
+    reservePlayers: { teamA: ["u3"], teamB: [] },
+  };
+  const touching = {
+    ...base,
+    id: "touching",
+    startedAt: "2026-07-28T10:30:00.000Z",
+    endedAt: "2026-07-28T11:00:00.000Z",
+  };
+  const overlapping = {
+    ...base,
+    id: "overlapping",
+    startedAt: "2026-07-28T10:29:59.000Z",
+    endedAt: "2026-07-28T11:00:00.000Z",
+  };
+  assert.equal(doMatchTimeRangesOverlap(base, touching), false);
+  assert.equal(doMatchTimeRangesOverlap(base, overlapping), true);
+  assert.deepEqual(getActualMatchPlayerIds(base), ["u1", "u2"]);
+  assert.equal(getMatchOverlapConflict(touching, [base]), null);
+  assert.equal(getMatchOverlapConflict(overlapping, [base])?.id, "base");
+});
+
+test("다른 출전선수·후보 전용·취소·무효·personal_record는 공식 중복을 만들지 않는다", () => {
+  const candidate = {
+    id: "candidate",
+    status: "agreed",
+    startedAt: "2026-07-28T10:00:00.000Z",
+    endedAt: "2026-07-28T10:30:00.000Z",
+    teamA: { players: ["u1"] },
+    teamB: { players: ["u2"] },
+  };
+  const sameTime = {
+    ...candidate,
+    id: "other",
+    teamA: { players: ["u4"] },
+    teamB: { players: ["u5"] },
+  };
+  const reserveOnly = {
+    ...sameTime,
+    id: "reserve-only",
+    teamA: { players: ["u4"] },
+    reservePlayers: { teamA: ["u1"], teamB: [] },
+  };
+  const cancelled = { ...candidate, id: "cancelled", status: "cancelled" };
+  const voided = { ...candidate, id: "voided", status: "void" };
+  const personal = { ...candidate, id: "personal", rules: { recordType: "solo" } };
+  assert.equal(getMatchOverlapConflict(candidate, [sameTime, reserveOnly, cancelled, voided, personal]), null);
+});
+
+test("live 경기와 match_record의 동일 실제 출전선수 중복만 차단한다", () => {
+  const live = {
+    id: "live",
+    status: "confirmed",
+    startedAt: "2026-07-28T10:10:00.000Z",
+    endedAt: "2026-07-28T10:40:00.000Z",
+    playedPlayerIds: { teamA: ["u1"], teamB: ["u2"] },
+    teamA: { players: [] },
+    teamB: { players: [] },
+  };
+  const record = {
+    id: "record",
+    status: "agreed",
+    rules: { recordType: "match_record" },
+    startedAt: "2026-07-28T10:00:00.000Z",
+    endedAt: "2026-07-28T10:30:00.000Z",
+    playedPlayerIds: { teamA: ["u1"], teamB: ["u3"] },
+    teamA: { players: [] },
+    teamB: { players: [] },
+  };
+  assert.equal(getMatchOverlapConflict(record, [live])?.id, "live");
 });

@@ -33,7 +33,13 @@ import {
   updateMatchRoomRules,
   updateRecruitingRoomRules,
 } from "../src/data/repository.js";
-import { getMatchPlayerIds, getMatchReservePlayerIds, getMatchRoomPhase, getMatchSideLeaderId } from "../src/lib/matchUtils.js";
+import {
+  buildMatchDisputeRequest,
+  getMatchPlayerIds,
+  getMatchReservePlayerIds,
+  getMatchRoomPhase,
+  getMatchSideLeaderId,
+} from "../src/lib/matchUtils.js";
 import { getRecruitingApplicantKey, getRecruitingLobby } from "../src/lib/recruiting.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -111,18 +117,6 @@ function getPost(state, postId) {
 
 function getMatch(state, matchId) {
   return state.matches.find((match) => match.id === matchId);
-}
-
-function ageMatchFinalizationWindow(state, matchId, minutes = 4) {
-  const elapsedAt = new Date(Date.now() - (minutes * 60 * 1000)).toISOString();
-  return {
-    ...state,
-    matches: state.matches.map((match) => match.id === matchId ? {
-      ...match,
-      endedAt: elapsedAt,
-      result: match.result ? { ...match.result, submittedAt: elapsedAt } : match.result,
-    } : match),
-  };
 }
 
 const COURT_ROTATION = [
@@ -935,7 +929,16 @@ assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "dispu
   status: getMatch(state, lifecycleMatchId).status,
 });
 
-state = withUser(state, "u6", (scoped) => disputeMatch(scoped, lifecycleMatchId, "점수 재확인 요청"));
+state = withUser(state, "u6", (scoped) => {
+  const targetMatch = getMatch(scoped, lifecycleMatchId);
+  const currentStats = targetMatch.result?.playerStats?.u6 ?? {};
+  return disputeMatch(scoped, lifecycleMatchId, buildMatchDisputeRequest({
+    match: targetMatch,
+    playerId: "u6",
+    requestedStats: { ...currentStats, points: Number(currentStats.points ?? 0) + 1 },
+    reason: "개인기록 오기록",
+  }));
+});
 assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "참가자 이의신청 접수", {
   disputes: getMatch(state, lifecycleMatchId).disputes?.length,
 });
@@ -978,13 +981,18 @@ assertFlow(getMatch(state, lifecycleMatchId).status === "approval", "심판 이�
   status: getMatch(state, lifecycleMatchId).status,
 });
 
-state = withUser(state, "u1", (scoped) => finalizeMatchByAuthority(scoped, lifecycleMatchId));
+state = withUser(state, "u1", (scoped) => finalizeMatchByAuthority(scoped, lifecycleMatchId, {
+  disputesAcknowledged: true,
+  now: new Date(Date.parse(getMatch(scoped, lifecycleMatchId).result.submittedAt) + (3 * 60 * 1000) + 1).toISOString(),
+}));
 assertFlow(getMatch(state, lifecycleMatchId).status === "approval", "심판 경기 방장은 최종 확정 불가", {
   status: getMatch(state, lifecycleMatchId).status,
 });
 
-state = ageMatchFinalizationWindow(state, lifecycleMatchId);
-state = withUser(state, "u11", (scoped) => finalizeMatchByAuthority(scoped, lifecycleMatchId));
+state = withUser(state, "u11", (scoped) => finalizeMatchByAuthority(scoped, lifecycleMatchId, {
+  disputesAcknowledged: true,
+  now: new Date(Date.parse(getMatch(scoped, lifecycleMatchId).result.submittedAt) + (3 * 60 * 1000) + 1).toISOString(),
+}));
 assertFlow(getMatch(state, lifecycleMatchId).status === "confirmed", "심판 경기 심판 최종 확정", {
   status: getMatch(state, lifecycleMatchId).status,
 });

@@ -59,19 +59,23 @@ function getHostPlayerCount(row = {}, capacity = 5) {
   return row.player_id ? 1 : 0;
 }
 
-function isDueApprovalRow(row = {}, nowMs = Date.now()) {
-  const endedAtMs = row.ended_at ? new Date(row.ended_at).getTime() : NaN;
-  if (!Number.isFinite(endedAtMs)) return false;
+function isDueApprovalRow(row = {}, nowMs = Date.now(), resultSubmittedAt = null) {
+  const recordType = String(row.rules?.recordType ?? "").trim().toLowerCase();
+  if (recordType === "match_record") {
+    const createdAtMs = row.created_at ? new Date(row.created_at).getTime() : NaN;
+    return Number.isFinite(createdAtMs) && nowMs >= createdAtMs + 24 * 60 * MINUTE_MS;
+  }
+  const submittedAtMs = resultSubmittedAt ? new Date(resultSubmittedAt).getTime() : NaN;
+  if (!Number.isFinite(submittedAtMs)) return false;
   const disputeMinutes = normalizeDisputeWindowMinutes(row.dispute_minutes);
-  return nowMs > endedAtMs + disputeMinutes * MINUTE_MS;
+  return nowMs >= submittedAtMs + disputeMinutes * MINUTE_MS;
 }
 
 async function getCandidateMatchIds(client, limit, nowMs) {
   const { data: rows, error } = await client
     .from("matches")
-    .select("id, ended_at, dispute_minutes, dispute_draft_result")
-    .eq("status", "approval")
-    .not("ended_at", "is", null)
+    .select("id, created_at, ended_at, dispute_minutes, dispute_draft_result, rules")
+    .in("status", ["agreed", "approval"])
     .is("confirmed_at", null)
     .is("rating_result", null)
     .is("dispute_draft_result", null)
@@ -79,20 +83,21 @@ async function getCandidateMatchIds(client, limit, nowMs) {
     .limit(limit * 4);
   if (error) throw error;
 
-  const dueIds = (rows ?? [])
-    .filter((row) => isDueApprovalRow(row, nowMs))
-    .map((row) => row.id)
-    .filter(Boolean);
-  if (!dueIds.length) return [];
-
   const { data: resultRows, error: resultError } = await client
     .from("match_results")
-    .select("match_id")
-    .in("match_id", dueIds);
+    .select("match_id, submitted_at")
+    .in("match_id", (rows ?? []).map((row) => row.id).filter(Boolean));
   if (resultError) throw resultError;
 
-  const resultIds = new Set((resultRows ?? []).map((row) => row.match_id).filter(Boolean));
-  return dueIds.filter((id) => resultIds.has(id)).slice(0, limit);
+  const submittedAtByMatchId = new Map(
+    (resultRows ?? []).map((row) => [row.match_id, row.submitted_at]),
+  );
+  return (rows ?? [])
+    .filter((row) => submittedAtByMatchId.has(row.id))
+    .filter((row) => isDueApprovalRow(row, nowMs, submittedAtByMatchId.get(row.id)))
+    .map((row) => row.id)
+    .filter(Boolean)
+    .slice(0, limit);
 }
 
 async function processMatch(client, matchId, now) {

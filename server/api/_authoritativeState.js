@@ -1,6 +1,5 @@
 import {
   acceptRecruitingInvitation,
-  addMatchLatePlayer,
   agreeMatch,
   approveMatch,
   cancelMatch,
@@ -24,7 +23,6 @@ import {
   joinRecruitingSideParty,
   kickRecruitingApplicant,
   loadNormalizedRemoteStateFromClient,
-  removeMatchLatePlayer,
   removeMatchRoomPlayer,
   removeRecruitingPartyPlayer,
   requestMatchRefereeAbsence,
@@ -412,12 +410,6 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       break;
     case "endMatch":
       next = endMatch(state, operation.matchId);
-      break;
-    case "addMatchLatePlayer":
-      next = addMatchLatePlayer(state, operation.matchId, operation.draft ?? {});
-      break;
-    case "removeMatchLatePlayer":
-      next = removeMatchLatePlayer(state, operation.matchId, operation.playerId);
       break;
     case "updateMatchRoomRules":
       next = updateMatchRoomRules(state, operation.matchId, operation.patch ?? {});

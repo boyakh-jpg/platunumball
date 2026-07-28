@@ -30,6 +30,10 @@ const autoFinalizeNormalizationMigration = readFileSync(
   join(dirname(scriptPath), "../supabase/migrations/20260725020500_restore_auto_finalize_dispute_normalization.sql"),
   "utf8",
 );
+const unifiedFinalizationMigration = readFileSync(
+  join(dirname(scriptPath), "../supabase/migrations/20260728150000_unified_match_finalization_policy.sql"),
+  "utf8",
+);
 const courtRequestQuarantineMigration = readFileSync(
   join(dirname(scriptPath), "../supabase/migrations/20260727143000_preserve_approved_court_requests_in_quarantine.sql"),
   "utf8",
@@ -194,8 +198,10 @@ test("no-referee dispute simulation remains score-only", () => {
 
   assert.ok(scenarioStart >= 0 && scenarioEnd > scenarioStart);
   assert.match(scenarioSource, /setMatchScoreByIncrements/);
-  assert.match(scenarioSource, /kind: "team_score"/);
-  assert.match(scenarioSource, /requestedScore: 15/);
+  assert.match(scenarioSource, /kind: "team_scores"/);
+  assert.match(scenarioSource, /requestedScoreA: 3/);
+  assert.match(scenarioSource, /requestedScoreB: 15/);
+  assert.match(scenarioSource, /baseRevision: Math\.max/);
   assert.match(scenarioSource, /decision: "accepted"/);
   assert.match(scenarioSource, /Object\.keys\(match\?\.result\?\.playerStats \?\? \{\}\)\.length === 0/);
   assert.doesNotMatch(scenarioSource, /makePointsOnlyResult/);
@@ -206,9 +212,9 @@ test("one-on-one simulation records no-referee scores before ending the match", 
   const scenarioStart = scriptSource.indexOf("async function runOneOnOneScenario");
   const scenarioEnd = scriptSource.indexOf("async function runMatchReminderCancelScenario", scenarioStart);
   const scenarioSource = scriptSource.slice(scenarioStart, scenarioEnd);
-  const liveScoreIndex = scenarioSource.indexOf("if (!refereeWanted) {\n    scoreWrite = await setMatchScoreByIncrements");
+  const liveScoreIndex = scenarioSource.search(/if \(!refereeWanted\) \{\r?\n\s+scoreWrite = await setMatchScoreByIncrements/);
   const endMatchIndex = scenarioSource.indexOf("action: \"endMatch\"");
-  const refereePostgameIndex = scenarioSource.indexOf("if (refereeWanted) {\n    scoreWrite = await setMatchScoreByIncrements");
+  const refereePostgameIndex = scenarioSource.search(/if \(refereeWanted\) \{\r?\n\s+scoreWrite = await setMatchScoreByIncrements/);
 
   assert.ok(scenarioStart >= 0 && scenarioEnd > scenarioStart);
   assert.ok(liveScoreIndex >= 0 && liveScoreIndex < endMatchIndex);
@@ -244,13 +250,16 @@ test("maintenance quarantine preserves terminal court-request decisions", () => 
   assert.doesNotMatch(courtRequestQuarantineMigration, /drop\s+table|truncate\s+table|delete\s+from/i);
 });
 
-test("maintenance auto-finalization fills only missing active-player stats", () => {
+test("legacy auto-finalization stat fill is superseded by explicit referee completeness", () => {
   assert.match(autoFinalizeMigration, /'auto_finalize'/);
   assert.match(autoFinalizeMigration, /on conflict \(match_id, user_id\) do nothing/);
   assert.match(autoFinalizeMigration, /current_match\.reserve_players/);
   assert.match(autoFinalizeMigration, /rankball_match_finalize_locked\(operator_id, safe_match_id, 'autoConfirmMatch'\)/);
   assert.doesNotMatch(autoFinalizeMigration, /update public\.player_match_stats/i);
   assert.match(autoFinalizeNormalizationMigration, /rankball_normalize_dispute_minutes\(current_match\.dispute_minutes\)/);
+  assert.match(unifiedFinalizationMigration, /match_approval_stats_incomplete/);
+  assert.match(unifiedFinalizationMigration, /stat\.record_source in \('referee', 'dispute_operator'\)/);
+  assert.doesNotMatch(unifiedFinalizationMigration, /insert into public\.player_match_stats/i);
 });
 
 test("production simulation verifies one-representative public team joins", () => {

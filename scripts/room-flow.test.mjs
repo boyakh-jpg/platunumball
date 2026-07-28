@@ -361,22 +361,22 @@ test("픽업 방장 또는 심판은 출석 후 두 참가자의 A/B·출전·�
   assert.ok(started.matches[0].startedAt);
 });
 
-test("사후 기록은 이의시간 전에는 부분 확인, 만료 뒤에는 자동 승인한다", () => {
+test("사후 기록은 2/3 확인 전에는 부분 상태이고 24시간 뒤 미달이면 확인 부족이다", () => {
   const record = {
     teamA: { players: ["a", "b"] },
     teamB: { players: ["c", "d"] },
     result: { submittedAt: "2026-07-26T00:00:00.000Z" },
-    rules: { participantAcceptedIds: ["a", "b", "c"] },
-    approvals: { teamA: ["a", "b"], teamB: ["c"] },
+    rules: { participantAcceptedIds: ["a", "b"] },
+    approvals: { teamA: ["a", "b"], teamB: [] },
   };
   const status = getPostgameRecordVerification(record, { now: "2026-07-26T00:10:00.000Z" });
   assert.equal(status.verificationStatus, "partial");
   assert.equal(status.canConfirmFully, false);
-  assert.deepEqual(status.unconfirmedIds, ["d"]);
-  const expired = getPostgameRecordVerification(record, { now: "2026-07-26T00:15:00.000Z" });
-  assert.equal(expired.verificationStatus, "confirmed");
-  assert.equal(expired.canAutoApprove, true);
-  assert.deepEqual(expired.unconfirmedIds, []);
+  assert.deepEqual(status.unconfirmedIds, ["c", "d"]);
+  const expired = getPostgameRecordVerification(record, { now: "2026-07-27T00:00:00.000Z" });
+  assert.equal(expired.verificationStatus, "insufficient");
+  assert.equal(expired.canAutoFinalize, false);
+  assert.deepEqual(expired.unconfirmedIds, ["c", "d"]);
 });
 
 test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형 grid를 사용한다", () => {

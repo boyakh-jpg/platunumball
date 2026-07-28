@@ -240,6 +240,7 @@ export function fromRemoteMatch(row, context) {
         assists: stat.assists ?? 0,
         steals: stat.steals ?? 0,
         blocks: stat.blocks ?? 0,
+        turnovers: stat.turnovers ?? 0,
         fouls: stat.fouls ?? 0,
       },
     ]),
@@ -353,6 +354,7 @@ export function fromRemoteMatch(row, context) {
       ? {
           scoreA: resultRow.score_a,
           scoreB: resultRow.score_b,
+          revision: Number(resultRow.result_revision ?? 0),
           scoreRevisionA: Number(resultRow.score_revision_a ?? 0),
           scoreRevisionB: Number(resultRow.score_revision_b ?? 0),
           scoreSubmissions: resultRow.score_submissions ?? {},

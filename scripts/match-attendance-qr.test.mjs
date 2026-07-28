@@ -302,7 +302,7 @@ test("예정 경기방도 시작 10분 전부터 체크인 단계와 QR 운영�
   assert.equal(getMatchRoomPhase(match, new Date("2026-07-28T10:50:00.000Z")).phase, "checkin");
 });
 
-test("실시간 점수만 있는 경기는 종료 후 누락 출전자를 보완할 수 있다", () => {
+test("일반 live 경기는 종료 후 누락 출전자를 추가할 수 없다", () => {
   const match = {
     id: "score-only-postgame-roster",
     createdBy: "host",
@@ -328,7 +328,8 @@ test("실시간 점수만 있는 경기는 종료 후 누락 출전자를 보완
   assert.ok(ended.matches[0].endedAt);
 
   const corrected = addMatchLatePlayer(ended, match.id, { sideName: "teamA", name: "현장 참가자" });
-  assert.equal(Object.keys(corrected.matches[0].anonymousPlayers ?? {}).length, 1);
+  assert.equal(Object.keys(corrected.matches[0].anonymousPlayers ?? {}).length, 0);
+  assert.equal(corrected.notifications[0]?.title, "명단 변경 불가");
 });
 
 test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", async () => {

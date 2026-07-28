@@ -278,6 +278,7 @@ export const PLAYER_STAT_FIELDS = [
   { id: "assists", label: "어시스트", shortLabel: "AST", weight: 0.055 },
   { id: "steals", label: "스틸", shortLabel: "STL", weight: 0.08 },
   { id: "blocks", label: "블록", shortLabel: "BLK", weight: 0.08 },
+  { id: "turnovers", label: "턴오버", shortLabel: "TO", weight: 0 },
   { id: "fouls", label: "파울", shortLabel: "F", weight: 0 },
 ];
 export const PLAYER_STAT_FIELD_IDS = Object.freeze(PLAYER_STAT_FIELDS.map((field) => field.id));

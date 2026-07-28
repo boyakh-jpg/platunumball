@@ -33,10 +33,11 @@ import {
   getAgreementStatus,
   getMatchHostPlayerId,
   getMatchCancelCopy,
-  getMatchPlayerDisputePoints,
   getOpenMatchDisputes,
   getMatchFinalizationWindow,
   getMatchRecordWindow,
+  getMatchResultRevision,
+  getMatchManualFinalizationStatus,
   getMatchReferee,
   getMatchRecordPlayerIds,
   getMatchReviewParticipantIds,
@@ -240,9 +241,9 @@ export default function MatchRoom({ app }) {
   const matchPlayerKey = match ? getMatchPlayerIds(match).join("|") : "";
   const [disputeReason, setDisputeReason] = useState(MATCH_DISPUTE_REASON_OPTIONS[0]);
   const [disputeCustomReason, setDisputeCustomReason] = useState("");
-  const [disputeRequestedPoints, setDisputeRequestedPoints] = useState("");
-  const [disputeRequestedSide, setDisputeRequestedSide] = useState("teamA");
-  const [disputeRequestedScore, setDisputeRequestedScore] = useState("");
+  const [disputeRequestedStats, setDisputeRequestedStats] = useState({});
+  const [disputeRequestedScoreA, setDisputeRequestedScoreA] = useState("");
+  const [disputeRequestedScoreB, setDisputeRequestedScoreB] = useState("");
   const [reportReason, setReportReason] = useState(DEFAULT_REPORT_REASON);
   const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
   const [reviewControlsOpen, setReviewControlsOpen] = useState(false);
@@ -316,9 +317,12 @@ export default function MatchRoom({ app }) {
     if (!match) return;
     setDisputeReason(MATCH_DISPUTE_REASON_OPTIONS[0]);
     setDisputeCustomReason("");
-    setDisputeRequestedPoints(String(getMatchPlayerDisputePoints(match, app.currentUser.id)));
-    setDisputeRequestedSide("teamA");
-    setDisputeRequestedScore(String(match.result?.scoreA ?? match.teamA?.score ?? 0));
+    setDisputeRequestedStats(Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
+      id,
+      String(match.result?.playerStats?.[app.currentUser.id]?.[id] ?? 0),
+    ])));
+    setDisputeRequestedScoreA(String(match.result?.scoreA ?? match.teamA?.score ?? 0));
+    setDisputeRequestedScoreB(String(match.result?.scoreB ?? match.teamB?.score ?? 0));
   }, [app.currentUser.id, match?.id, match?.result?.updatedAt]);
 
   const attendanceQrToken = String(searchParams.get("attendanceQr") || "").trim();
@@ -387,10 +391,12 @@ export default function MatchRoom({ app }) {
   const canSubmitLiveResult = resultEntryPermission.canSubmitLive;
   const canSubmitResult = resultEntryPermission.canSubmit;
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
+  const manualFinalizationStatus = getMatchManualFinalizationStatus(match);
   const canFinalizeMatch = Boolean(
     !isSharedRecord &&
     match.endedAt &&
-    (hasReferee ? match.result : true) &&
+    match.result &&
+    manualFinalizationStatus.ready &&
     !match.confirmedAt &&
     match.status !== "disputed" &&
     finalizationWindow.ready &&
@@ -415,11 +421,11 @@ export default function MatchRoom({ app }) {
     }
     setFinalizeDialogOpen(true);
   };
-  const submitFinalizeMatch = async () => {
+  const submitFinalizeMatch = async (options = {}) => {
     if (finalizeActionPending) return;
     setFinalizeActionPending(true);
     try {
-      const result = await app.actions.finalizeMatch?.(match.id);
+      const result = await app.actions.finalizeMatch?.(match.id, options);
       if (result?.ok !== false) setFinalizeDialogOpen(false);
     } finally {
       setFinalizeActionPending(false);
@@ -445,7 +451,6 @@ export default function MatchRoom({ app }) {
   const teamAMmr = teamA?.mmr ?? getTeamMmr(app.state.teams, teamASide.teamId);
   const teamBMmr = teamB?.mmr ?? getTeamMmr(app.state.teams, teamBSide.teamId);
   const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? teamASide.name : teamBSide.name;
-  const currentUserDisputePoints = getMatchPlayerDisputePoints(match, app.currentUser.id);
   const matchKind = isSoloRecord ? "개인 기록" : isSharedRecord ? "경기 기록" : match.ranked === false ? "친선전" : "정규전";
   const recordLockReason = recordWindow.beforeStart
     ? "경기 시작 전"
@@ -572,9 +577,10 @@ export default function MatchRoom({ app }) {
   const submitDispute = () => {
     if (canRequestScoreDispute) {
       app.actions.disputeMatch(match.id, {
-        kind: "team_score",
-        side: disputeRequestedSide,
-        requestedScore: Number(disputeRequestedScore),
+        kind: "team_scores",
+        requestedScoreA: Number(disputeRequestedScoreA),
+        requestedScoreB: Number(disputeRequestedScoreB),
+        baseRevision: getMatchResultRevision(match),
         reason: disputeCustomReason.trim() || disputeReason,
       });
       return;
@@ -583,8 +589,10 @@ export default function MatchRoom({ app }) {
     app.actions.disputeMatch(match.id, buildMatchDisputeRequest({
       match,
       playerId: app.currentUser.id,
-      playerName: app.currentUser.name,
-      requestedPoints: disputeRequestedPoints,
+      requestedStats: Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
+        id,
+        Number(disputeRequestedStats[id]),
+      ])),
       reason: disputeReason,
       customReason: disputeCustomReason,
     }));
@@ -1250,37 +1258,37 @@ export default function MatchRoom({ app }) {
                     <span>점수판</span>
                     <strong>{scoreA} : {scoreB}</strong>
                   </div>
-                  {hasReferee ? <label>
-                    내 득점
-                    <input
-                      type="number"
-                      min="0"
-                      disabled={!canRequestOwnPointDispute}
-                      value={disputeRequestedPoints}
-                      onChange={(event) => setDisputeRequestedPoints(event.target.value)}
-                    />
-                    <em>현재 {currentUserDisputePoints}점</em>
-                  </label> : <>
-                    <label>
-                      이의 대상
-                      <select
-                        disabled={!canRequestScoreDispute}
-                        value={disputeRequestedSide}
-                        onChange={(event) => {
-                          const nextSide = event.target.value;
-                          setDisputeRequestedSide(nextSide);
-                          setDisputeRequestedScore(String(nextSide === "teamA" ? scoreA : scoreB));
-                        }}
-                      >
-                        <option value="teamA">{teamASide.name}</option>
-                        <option value="teamB">{teamBSide.name}</option>
-                      </select>
-                    </label>
-                    <label>
-                      요청 점수
-                      <input type="number" min="0" max="999" disabled={!canRequestScoreDispute} value={disputeRequestedScore} onChange={(event) => setDisputeRequestedScore(event.target.value)} />
-                    </label>
-                  </>}
+                  {hasReferee ? (
+                    <div className="arena-dispute-score-row arena-dispute-stat-grid">
+                      {PLAYER_STAT_FIELDS.map((field) => (
+                        <label key={field.id}>
+                          {field.label} · 현재 {match.result?.playerStats?.[app.currentUser.id]?.[field.id] ?? 0}
+                          <input
+                            type="number"
+                            min="0"
+                            max="999"
+                            disabled={!canRequestOwnPointDispute}
+                            value={disputeRequestedStats[field.id] ?? "0"}
+                            onChange={(event) => setDisputeRequestedStats((current) => ({
+                              ...current,
+                              [field.id]: event.target.value,
+                            }))}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="arena-dispute-score-row arena-dispute-team-score-grid">
+                      <label>
+                        {teamASide.name} · 현재 {scoreA}
+                        <input type="number" min="0" max="999" disabled={!canRequestScoreDispute} value={disputeRequestedScoreA} onChange={(event) => setDisputeRequestedScoreA(event.target.value)} />
+                      </label>
+                      <label>
+                        {teamBSide.name} · 현재 {scoreB}
+                        <input type="number" min="0" max="999" disabled={!canRequestScoreDispute} value={disputeRequestedScoreB} onChange={(event) => setDisputeRequestedScoreB(event.target.value)} />
+                      </label>
+                    </div>
+                  )}
                 </div>
                 <label className="memo-label">
                   이의제기 사유

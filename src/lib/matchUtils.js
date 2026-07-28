@@ -19,6 +19,7 @@ import {
   normalizeDisputeWindowMinutes,
 } from "./constants.js";
 import { isTerminalMatchStatus } from "./notifications.js";
+import { getPostgameRecordVerification } from "./postgameRecordVerification.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
@@ -28,6 +29,8 @@ const PUBLIC_ROOM_CONFIRM_OPEN_HOURS = 24;
 const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
 const MATCH_CLOSED_NOTICE_GRACE_MINUTES = INSTANT_ROOM_EXPIRE_MINUTES;
 export const MATCH_FINALIZATION_MINIMUM_MINUTES = 3;
+export const MATCH_MANUAL_FINALIZATION_DELAY_MINUTES = 3;
+export const MATCH_RECORD_DURATION_MINUTES = 30;
 export { INSTANT_ROOM_EXPIRE_MINUTES };
 export const MATCH_DISPUTE_REASON_OPTIONS = [
   "최종 점수 오기록",
@@ -249,16 +252,18 @@ export function evaluateRecordVerification(match = {}, options = {}) {
   const teamARoster = getRecordSideRosterStatus(match, "teamA");
   const teamBRoster = getRecordSideRosterStatus(match, "teamB");
   const teamRosterConfirmed = isTeamRecord && teamARoster.rosterConfirmed && teamBRoster.rosterConfirmed;
-  const confirmationStatus = getMatchRecordConfirmationStatus(match);
-  const sideApprovalsComplete = confirmationStatus.thresholdMet;
+  const postgameVerification = isMatchRecordMatch(match)
+    ? getPostgameRecordVerification(match, options)
+    : null;
+  const sideApprovalsComplete = postgameVerification?.thresholdMet === true;
   const anonymousIds = new Set(Object.keys(match.anonymousPlayers ?? {}));
   const excludedIds = new Set([...(match.mmrExcludedPlayerIds ?? []), ...(match.rules?.mmrExcludedPlayerIds ?? [])]);
   const playerIds = getMatchRecordPlayerIds(match);
-  const confirmedIds = new Set(confirmationStatus.confirmedIds);
+  const verifiedIds = new Set(postgameVerification?.verifiedPlayerIds ?? playerIds);
   const mmrEligiblePlayerIds = playerIds.filter((playerId) => (
-    !anonymousIds.has(playerId)
+    verifiedIds.has(playerId)
+    && !anonymousIds.has(playerId)
     && !excludedIds.has(playerId)
-    && (!isMatchRecordMatch(match) || confirmedIds.has(playerId))
   ));
   const hasMmrBlockedPlayer = playerIds.some((playerId) => anonymousIds.has(playerId) || excludedIds.has(playerId));
   const blockingReasons = [];
@@ -266,13 +271,11 @@ export function evaluateRecordVerification(match = {}, options = {}) {
   if (isPersonalRecordMatch(match)) blockingReasons.push("내 기록은 검증/MMR 대상이 아님");
   if (!hasResult) blockingReasons.push("결과 없음");
   if (disputed) blockingReasons.push("이의 처리 필요");
-  if (isMatchRecordMatch(match) && !sideApprovalsComplete) blockingReasons.push("참가자 2/3 확인 필요");
-  if (isTeamRecord && !teamRosterConfirmed) blockingReasons.push("팀 출전 명단 확정 필요");
-  if (isTeamRecord && hasMmrBlockedPlayer) blockingReasons.push("팀 MMR 제외 선수가 있음");
-  if (!isTeamRecord && getMatchRecordType(match) === RECORD_TYPES.matchRecord) blockingReasons.push("팀 MMR 대상 아님");
+  if (isMatchRecordMatch(match) && !sideApprovalsComplete) blockingReasons.push("전체 참가자 2/3 확인 필요");
+  if (isMatchRecordMatch(match)) blockingReasons.push("사후 경기기록방은 팀 MMR 대상 아님");
 
   const recordRoomConfirmed = !isMatchRecordMatch(match) || sideApprovalsComplete;
-  const recordRosterConfirmed = !isMatchRecordMatch(match) || !isTeamRecord || teamRosterConfirmed;
+  const recordRosterConfirmed = !isMatchRecordMatch(match) || match.rules?.recordSetupReady === true;
   const canVerify = !isPersonalRecordMatch(match) && hasResult && !disputed && recordRoomConfirmed;
   return {
     recordType,
@@ -280,11 +283,16 @@ export function evaluateRecordVerification(match = {}, options = {}) {
     canSave: true,
     canConfirm: isMatchRecordMatch(match) && hasResult,
     canVerify,
-    canApplyPersonalMmr: canVerify && ranked && recordRosterConfirmed && mmrEligiblePlayerIds.length > 0,
-    canApplyTeamMmr: canVerify && ranked && !isMatchRecordMatch(match) && recordRosterConfirmed && isTeamRecord && !hasMmrBlockedPlayer,
+    canApplyPersonalMmr: isMatchRecordMatch(match)
+      ? canVerify && recordRosterConfirmed && postgameVerification.canApplyPersonalMmr && mmrEligiblePlayerIds.length > 0
+      : canVerify && ranked && recordRosterConfirmed && mmrEligiblePlayerIds.length > 0,
+    canApplyTeamMmr: !isMatchRecordMatch(match) && canVerify && ranked && recordRosterConfirmed && isTeamRecord && !hasMmrBlockedPlayer,
     isTeamRecord,
     teamRosterConfirmed,
     mmrEligiblePlayerIds,
+    mmrScale: postgameVerification?.mmrScale ?? 1,
+    approvalThreshold: postgameVerification?.approvalThreshold ?? 0,
+    approvalCount: postgameVerification?.approvalCount ?? 0,
     blockingReasons,
   };
 }
@@ -294,22 +302,80 @@ export function getMatchPlayerDisputePoints(match = {}, playerId = "") {
   return Number(match.result?.playerStats?.[playerId]?.points ?? 0);
 }
 
-export function buildMatchDisputeRequest({ match = {}, playerId = "", playerName = "", requestedPoints = "", reason = "", customReason = "" } = {}) {
-  const scoreA = getMatchDisputeScore(match, "teamA");
-  const scoreB = getMatchDisputeScore(match, "teamB");
-  const currentPoints = getMatchPlayerDisputePoints(match, playerId);
-  const nextPoints = Number(requestedPoints);
-  const pointText = playerId && Number.isFinite(nextPoints)
-    ? `${playerName || "본인"} 득점 ${currentPoints}->${Math.max(0, nextPoints)}`
-    : "본인 득점 확인 요청";
+export function getMatchResultRevision(match = {}) {
+  return Math.max(
+    0,
+    Number(match.result?.revision ?? 0),
+    Number(match.result?.scoreRevisionA ?? 0),
+    Number(match.result?.scoreRevisionB ?? 0),
+  );
+}
+
+function normalizeWholeStatLine(stats = {}) {
+  return Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => {
+    const value = Number(stats?.[id] ?? 0);
+    return [id, Number.isInteger(value) && value >= 0 && value <= 999 ? value : 0];
+  }));
+}
+
+export function normalizeTeamScoresDisputeRequest({ match = {}, requestedScoreA, requestedScoreB, baseRevision, reason = "" } = {}) {
+  const scoreA = Number(requestedScoreA);
+  const scoreB = Number(requestedScoreB);
+  const revision = Number(baseRevision);
+  if (![scoreA, scoreB, revision].every(Number.isInteger)) return null;
+  if (scoreA < 0 || scoreA > 999 || scoreB < 0 || scoreB > 999 || revision < 0) return null;
+  return {
+    kind: "team_scores",
+    requestedScoreA: scoreA,
+    requestedScoreB: scoreB,
+    baseRevision: revision,
+    reason: String(reason ?? "").trim(),
+  };
+}
+
+export function normalizePlayerStatsDisputeRequest({ match = {}, playerId = "", requestedStats = {}, baseRevision, reason = "" } = {}) {
+  const safePlayerId = String(playerId ?? "").trim();
+  const revision = Number(baseRevision);
+  if (!safePlayerId || !Number.isInteger(revision) || revision < 0) return null;
+  const allowedIds = new Set(PLAYER_STAT_FIELDS.map(({ id }) => id));
+  if (
+    !requestedStats
+    || typeof requestedStats !== "object"
+    || Array.isArray(requestedStats)
+    || Object.keys(requestedStats).some((id) => !allowedIds.has(id))
+  ) return null;
+  const stats = Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => {
+    const value = Number(requestedStats[id] ?? 0);
+    return [id, value];
+  }));
+  if (Object.values(stats).some((value) => !Number.isInteger(value) || value < 0 || value > 999)) return null;
+  return {
+    kind: "player_stats",
+    playerId: safePlayerId,
+    requestedStats: stats,
+    baseRevision: revision,
+    reason: String(reason ?? "").trim(),
+  };
+}
+
+export function buildMatchDisputeRequest({
+  match = {},
+  playerId = "",
+  requestedStats = {},
+  reason = "",
+  customReason = "",
+} = {}) {
+  const currentStats = normalizeWholeStatLine(match.result?.playerStats?.[playerId] ?? {});
   const reasonText = reason === OTHER_MATCH_DISPUTE_REASON
     ? String(customReason || OTHER_MATCH_DISPUTE_REASON).trim()
     : String(reason || MATCH_DISPUTE_REASON_OPTIONS[0]).trim();
-  return {
-    reason: `점수판 ${scoreA}:${scoreB} / ${pointText} / 사유: ${reasonText}`,
+  return normalizePlayerStatsDisputeRequest({
+    match,
     playerId,
-    requestedPoints: playerId && Number.isFinite(nextPoints) ? Math.min(999, Math.max(0, nextPoints)) : null,
-  };
+    requestedStats: { ...currentStats, ...requestedStats },
+    baseRevision: getMatchResultRevision(match),
+    reason: reasonText,
+  });
 }
 
 export function normalizeDisputeRequest(disputeInput = "") {
@@ -609,16 +675,14 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
       ? match.rules.recordApproverIds[sideName]
       : getMatchSidePlayerIds(match, sideName),
   ).filter((playerId) => !match.anonymousPlayers?.[playerId]);
-  const submittedApprovals = uniquePlayerIds(match.approvals?.[sideName] ?? [])
+  const approvals = uniquePlayerIds(match.approvals?.[sideName] ?? [])
     .filter((playerId) => requiredIds.includes(playerId));
-  const confirmationStatus = getMatchRecordConfirmationStatus(match);
-  const confirmedSet = new Set(confirmationStatus.confirmedIds);
-  const approvals = submittedApprovals.filter((playerId) => confirmedSet.has(playerId));
-  const approved = confirmationStatus.thresholdMet;
+  const approved = requiredIds.length > 0
+    && requiredIds.every((playerId) => approvals.includes(playerId));
   return {
     approvals,
     total: requiredIds.length,
-    majority: confirmationStatus.threshold,
+    majority: requiredIds.length,
     requiredIds,
     approvalMode: "participant_confirmation",
     approvalLabel: "내 참가 확인",
@@ -627,43 +691,6 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
     captainApproved: approved,
     majorityApproved: approved,
     approved,
-  };
-}
-
-export function getMatchRecordConfirmationStatus(match = {}) {
-  if (!isMatchRecordMatch(match)) {
-    return {
-      requiredIds: [],
-      confirmedIds: [],
-      requiredCount: 0,
-      confirmedCount: 0,
-      threshold: 0,
-      thresholdMet: false,
-    };
-  }
-  const requiredIds = uniquePlayerIds(MATCH_SIDES.flatMap((sideName) => (
-    match.rules?.recordApproverIds?.[sideName]?.length
-      ? match.rules.recordApproverIds[sideName]
-      : getMatchSidePlayerIds(match, sideName)
-  ))).filter((playerId) => !match.anonymousPlayers?.[playerId]);
-  const requiredSet = new Set(requiredIds);
-  const acceptedSet = new Set(uniquePlayerIds(match.rules?.participantAcceptedIds ?? []));
-  const approvalSet = new Set(uniquePlayerIds(
-    MATCH_SIDES.flatMap((sideName) => match.approvals?.[sideName] ?? []),
-  ));
-  const confirmedIds = requiredIds.filter((playerId) => (
-    requiredSet.has(playerId)
-    && approvalSet.has(playerId)
-    && acceptedSet.has(playerId)
-  ));
-  const threshold = requiredIds.length ? Math.ceil(requiredIds.length * 2 / 3) : 0;
-  return {
-    requiredIds,
-    confirmedIds,
-    requiredCount: requiredIds.length,
-    confirmedCount: confirmedIds.length,
-    threshold,
-    thresholdMet: threshold > 0 && confirmedIds.length >= threshold,
   };
 }
 
@@ -678,6 +705,55 @@ export function getMatchReviewParticipantIds(match = {}) {
     ...(playedPlayerIds.teamB ?? []),
   ]);
   return actualPlayerIds.length ? actualPlayerIds : getMatchPlayerIds(match);
+}
+
+export function getActualMatchPlayerIds(match = {}) {
+  if (isPersonalRecordMatch(match)) return [];
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const played = uniquePlayerIds(MATCH_SIDES.flatMap((sideName) => playedPlayerIds?.[sideName] ?? []));
+  if (played.length) return played.filter((playerId) => !match.anonymousPlayers?.[playerId]);
+  const reserves = new Set(MATCH_SIDES.flatMap((sideName) => getMatchReservePlayerIds(match, sideName)));
+  return getMatchPlayerIds(match).filter((playerId) => !reserves.has(playerId) && !match.anonymousPlayers?.[playerId]);
+}
+
+export function getMatchRecordEndedAt(startedAt) {
+  const start = startedAt instanceof Date ? startedAt : new Date(startedAt);
+  if (!Number.isFinite(start.getTime())) return null;
+  return new Date(start.getTime() + MATCH_RECORD_DURATION_MINUTES * MINUTE_MS);
+}
+
+export function normalizeActualMatchTimeRange(match = {}) {
+  const sourceMatch = match ?? {};
+  const recordType = getMatchRecordType(sourceMatch);
+  let start = new Date(sourceMatch.startedAt ?? sourceMatch.started_at ?? "");
+  let end = new Date(sourceMatch.endedAt ?? sourceMatch.ended_at ?? "");
+  if (!Number.isFinite(start.getTime()) && recordType === RECORD_TYPES.matchRecord && Number.isFinite(end.getTime())) {
+    start = new Date(end.getTime() - MATCH_RECORD_DURATION_MINUTES * MINUTE_MS);
+  }
+  if (recordType === RECORD_TYPES.matchRecord && Number.isFinite(start.getTime())) {
+    end = getMatchRecordEndedAt(start);
+  }
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end?.getTime()) || end <= start) return null;
+  return { startedAt: start, endedAt: end };
+}
+
+export function doMatchTimeRangesOverlap(first, second) {
+  const firstRange = first?.startedAt instanceof Date ? first : normalizeActualMatchTimeRange(first);
+  const secondRange = second?.startedAt instanceof Date ? second : normalizeActualMatchTimeRange(second);
+  if (!firstRange || !secondRange) return false;
+  return firstRange.startedAt < secondRange.endedAt && secondRange.startedAt < firstRange.endedAt;
+}
+
+export function getMatchOverlapConflict(candidate = {}, matches = []) {
+  if (isPersonalRecordMatch(candidate) || ["cancelled", "void"].includes(candidate.status)) return null;
+  const candidateRange = normalizeActualMatchTimeRange(candidate);
+  const candidatePlayers = new Set(getActualMatchPlayerIds(candidate));
+  if (!candidateRange || !candidatePlayers.size) return null;
+  return matches.find((existing) => {
+    if (!existing?.id || existing.id === candidate.id || isPersonalRecordMatch(existing) || ["cancelled", "void"].includes(existing.status)) return false;
+    if (!doMatchTimeRangesOverlap(candidateRange, normalizeActualMatchTimeRange(existing))) return false;
+    return getActualMatchPlayerIds(existing).some((playerId) => candidatePlayers.has(playerId));
+  }) ?? null;
 }
 
 export function getReportableMatchTimeMs(match = {}) {
@@ -1594,6 +1670,24 @@ export function getMatchFinalizationWindow(match = {}, now = Date.now()) {
   return {
     availableAt: availableAtMs ? new Date(availableAtMs) : null,
     ready: availableAtMs > 0 && nowMs >= availableAtMs,
+  };
+}
+
+export function getMatchManualFinalizationStatus(match = {}, now = Date.now()) {
+  const sourceMatch = match ?? {};
+  const submittedAt = sourceMatch.result?.submittedAt ?? sourceMatch.result?.submitted_at ?? null;
+  const submittedAtMs = submittedAt ? new Date(submittedAt).getTime() : NaN;
+  const nowMs = typeof now === "number" ? now : new Date(now).getTime();
+  const readyAtMs = Number.isFinite(submittedAtMs)
+    ? submittedAtMs + MATCH_MANUAL_FINALIZATION_DELAY_MINUTES * MINUTE_MS
+    : NaN;
+  return {
+    submittedAt,
+    ready: Number.isFinite(nowMs) && Number.isFinite(readyAtMs) && nowMs >= readyAtMs,
+    readyAt: Number.isFinite(readyAtMs) ? new Date(readyAtMs) : null,
+    remainingMs: Number.isFinite(nowMs) && Number.isFinite(readyAtMs)
+      ? Math.max(0, readyAtMs - nowMs)
+      : null,
   };
 }
 

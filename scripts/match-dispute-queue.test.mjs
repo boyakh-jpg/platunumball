@@ -56,8 +56,8 @@ function makeState(currentUserId = "host") {
         scoreA: 5,
         scoreB: 7,
         playerStats: {
-          host: { points: 5, rebounds: 0, assists: 0, steals: 0, blocks: 0, fouls: 0 },
-          guest: { points: 7, rebounds: 0, assists: 0, steals: 0, blocks: 0, fouls: 0 },
+          host: { points: 5, rebounds: 0, assists: 0, steals: 0, blocks: 0, turnovers: 0, fouls: 0 },
+          guest: { points: 7, rebounds: 0, assists: 0, steals: 0, blocks: 0, turnovers: 0, fouls: 0 },
         },
         statSubmissions: {},
         submittedBy: "host",
@@ -73,12 +73,13 @@ function makeState(currentUserId = "host") {
 
 function requestFor(state, playerId, requestedPoints) {
   const match = state.matches[0];
-  const player = state.users.find((user) => user.id === playerId);
   return buildMatchDisputeRequest({
     match,
     playerId,
-    playerName: player?.name,
-    requestedPoints,
+    requestedStats: {
+      ...(match.result?.playerStats?.[playerId] ?? {}),
+      points: requestedPoints,
+    },
     reason: "득점 기록이 다름",
   });
 }
@@ -171,11 +172,12 @@ test("여러 참가자의 이의를 병렬 접수하고 심판이 건별 처리�
   assert.deepEqual(resolved.matches[0].approvals, { teamA: [], teamB: [] });
   assert.match(resolved.notifications[0].body, /심판이 최종 승인/);
 
-  const participantAttempt = finalizeMatchByAuthority({ ...resolved, currentUserId: "guest" }, "match-queue");
+  const finalizeOptions = { disputesAcknowledged: true, now: Date.now() + (4 * 60_000) };
+  const participantAttempt = finalizeMatchByAuthority({ ...resolved, currentUserId: "guest" }, "match-queue", finalizeOptions);
   assert.equal(participantAttempt.matches[0].status, "approval");
-  const hostFinalizeAttempt = finalizeMatchByAuthority({ ...resolved, currentUserId: "host" }, "match-queue");
+  const hostFinalizeAttempt = finalizeMatchByAuthority({ ...resolved, currentUserId: "host" }, "match-queue", finalizeOptions);
   assert.equal(hostFinalizeAttempt.matches[0].status, "approval");
-  const finished = finalizeMatchByAuthority({ ...resolved, currentUserId: "referee" }, "match-queue");
+  const finished = finalizeMatchByAuthority({ ...resolved, currentUserId: "referee" }, "match-queue", finalizeOptions);
   assert.equal(finished.matches[0].status, "confirmed");
 });
 
@@ -186,24 +188,14 @@ test("일반 경기 참가자 승인 경로는 폐기되고 경기 권한자의 
   assert.equal(approved.matches[0].status, "approval");
 });
 
-test("기존 사유형 이의제기도 가결할 수 있다", () => {
+test("기존 사유형 이의제기는 신규 접수 경로에서 거부한다", () => {
   const start = makeState("guest");
   const disputed = disputeMatch(start, "match-queue", "기존 기록을 다시 확인해 주세요.");
-  const openDispute = getOpenMatchDisputes(disputed.matches[0])[0];
-  const finished = resolveMatchDispute(
-    { ...disputed, currentUserId: "referee" },
-    "match-queue",
-    openDispute.id,
-    "accepted",
-    "기존 이의 사유를 현장에서 확인함",
-  );
-
-  assert.equal(getOpenMatchDisputes(finished.matches[0]).length, 0);
-  assert.equal(finished.matches[0].status, "approval");
-  assert.deepEqual(finished.matches[0].result, start.matches[0].result);
+  assert.equal(getOpenMatchDisputes(disputed.matches[0]).length, 0);
+  assert.equal(disputed.matches[0].status, "approval");
 });
 
-test("무심판 점수 이의 수락은 요청한 사이드 점수만 바꾸고 개인 스탯을 만들지 않는다", () => {
+test("무심판 점수 이의 수락은 A/B 점수를 함께 바꾸고 개인 스탯을 만들지 않는다", () => {
   const start = makeState("guest");
   const noRefereeMatch = {
     ...start.matches[0],
@@ -216,9 +208,10 @@ test("무심판 점수 이의 수락은 요청한 사이드 점수만 바꾸고 
   };
   const noRefereeState = { ...start, matches: [noRefereeMatch] };
   const disputed = disputeMatch(noRefereeState, "match-queue", {
-    kind: "team_score",
-    side: "teamB",
-    requestedScore: 10,
+    kind: "team_scores",
+    requestedScoreA: 6,
+    requestedScoreB: 10,
+    baseRevision: 0,
     reason: "B 점수 정정",
   });
   const openDispute = getOpenMatchDisputes(disputed.matches[0])[0];
@@ -231,10 +224,14 @@ test("무심판 점수 이의 수락은 요청한 사이드 점수만 바꾸고 
   );
 
   assert.equal(finished.matches[0].status, "approval");
-  assert.equal(finished.matches[0].result.scoreA, 5);
+  assert.equal(finished.matches[0].result.scoreA, 6);
   assert.equal(finished.matches[0].result.scoreB, 10);
   assert.deepEqual(finished.matches[0].result.playerStats, {});
-  const confirmed = finalizeMatchByAuthority({ ...finished, currentUserId: "host" }, "match-queue");
+  const confirmed = finalizeMatchByAuthority(
+    { ...finished, currentUserId: "host" },
+    "match-queue",
+    { disputesAcknowledged: true, now: Date.now() + (4 * 60_000) },
+  );
   assert.equal(confirmed.matches[0].status, "confirmed");
 });
 

@@ -191,18 +191,19 @@ function getTournamentFactor(match = {}) {
 }
 
 function getRatingScaleFactor(match = {}) {
+  const minimumScale = isMatchRecordMatch(match) ? 0.1 : 0.2;
   const rangeScale = Number(match.rules?.mmrRangeRatingScale);
   const assignmentScale = Number(match.rules?.pickupAssignmentRatingScale);
   if (Number.isFinite(rangeScale) || Number.isFinite(assignmentScale)) {
     return clamp(
       (Number.isFinite(rangeScale) ? rangeScale : 1)
         * (Number.isFinite(assignmentScale) ? assignmentScale : 1),
-      0.2,
+      minimumScale,
       1.5,
     );
   }
   const scale = Number(match.ratingScale ?? match.rules?.ratingScale ?? 1);
-  return Number.isFinite(scale) ? clamp(scale, 0.2, 1.5) : 1;
+  return Number.isFinite(scale) ? clamp(scale, minimumScale, 1.5) : 1;
 }
 
 function getQualityFactor(match = {}, trustScore = 80, history = []) {
@@ -291,10 +292,13 @@ export function getMatchSideTeamGroups(state, match, sideName) {
 }
 
 export function getFinalizationRatingContext(match, teams = []) {
-  if (match?.ranked === false) {
+  if (isPersonalRecordMatch(match)) {
     return { matchForRating: match, canApplyPersonalMmr: false, canApplyTeamMmr: false };
   }
-  if (!isMatchRecordMatch(match) && !isPersonalRecordMatch(match)) {
+  if (!isMatchRecordMatch(match) && match?.ranked === false) {
+    return { matchForRating: match, canApplyPersonalMmr: false, canApplyTeamMmr: false };
+  }
+  if (!isMatchRecordMatch(match)) {
     return { matchForRating: match, canApplyPersonalMmr: true, canApplyTeamMmr: true };
   }
   const verification = evaluateRecordVerification(match, { teams });
@@ -307,12 +311,10 @@ export function getFinalizationRatingContext(match, teams = []) {
   return {
     matchForRating: {
       ...match,
+      ranked: true,
+      ratingScale: verification.mmrScale,
       mmrExcludedPlayerIds,
-      rules: {
-        ...(match.rules ?? {}),
-        mmrExcludedPlayerIds,
-        ...(isMatchRecordMatch(match) ? { ratingScale: 0.2, teamRatingDisabled: true } : {}),
-      },
+      rules: { ...(match.rules ?? {}), ratingScale: verification.mmrScale, mmrExcludedPlayerIds },
     },
     canApplyPersonalMmr: verification.canApplyPersonalMmr,
     canApplyTeamMmr: verification.canApplyTeamMmr,
