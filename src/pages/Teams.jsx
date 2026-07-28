@@ -223,7 +223,6 @@ export default function Teams({ app }) {
               <b>#{representativeTeam.rank}</b>
             </div>
             <div className="team-hub-board-identity">
-              <TeamEmblem team={representativeTeam} size="lg" className="team-hub-board-emblem" />
               <div>
                 <TeamHoverCard team={representativeTeam} as="span" className="team-hub-board-name">
                   <strong>{representativeTeam.name}</strong>

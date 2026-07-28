@@ -2122,13 +2122,6 @@ input[type="color"] {
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: var(--space-6);
-}
-
-.team-tier-hero .team-emblem-lg {
-  width: var(--team-emblem-size);
-  height: var(--team-emblem-size);
-  font-size: 1.7rem;
 }
 
 .team-emblem-report-control {

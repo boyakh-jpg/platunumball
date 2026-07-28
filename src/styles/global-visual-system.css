@@ -3925,11 +3925,9 @@ html[data-theme] .app-main :is(.om-match-copy, .arena-hero-copy) > :is(.om-kicke
 }
 
 html[data-theme] .app-main :is(
-  .rank-team-hero .favorite-toggle-button,
   .season-hero-copy > .ui-badge,
   .season-meta-row > span,
   .profile-hero .badge-row .ui-badge,
-  .team-detail-hero .badge-row .ui-badge,
   .tournament-hero-badges .ui-badge,
   .gm-room-topline .ui-badge,
   .gm-team-panel,
@@ -4069,14 +4067,6 @@ html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) > .ui-but
   .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
     gap: var(--space-6);
     padding: 18px;
-  }
-
-  .team-hub-board-identity {
-    gap: var(--space-5);
-  }
-
-  .team-hub-board-emblem {
-    --team-emblem-size: 64px;
   }
 
   .team-hub-board-stats > span {

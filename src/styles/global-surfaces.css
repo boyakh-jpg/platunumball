@@ -914,19 +914,14 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
 .team-hub-board-identity {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-7);
 }
 
 .team-hub-board-identity > div {
   display: grid;
   min-width: 0;
   gap: var(--space-3);
-}
-
-.team-hub-board-emblem {
-  --team-emblem-size: clamp(76px, 8vw, 92px);
 }
 
 .team-hub-board-name {

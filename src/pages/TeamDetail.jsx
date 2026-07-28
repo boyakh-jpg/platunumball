@@ -367,7 +367,7 @@ export default function TeamDetail({ app }) {
             <Button
               type="button"
               variant={isFavoriteTeam ? "primary" : "secondary"}
-              className={isFavoriteTeam ? "favorite-toggle-button active" : "favorite-toggle-button"}
+              className={isFavoriteTeam ? "favorite-toggle-button ui-liquid-glass active" : "favorite-toggle-button ui-liquid-glass"}
               onClick={() => app.actions.toggleFavoriteTeam(team.id)}
             >
               <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
@@ -377,14 +377,12 @@ export default function TeamDetail({ app }) {
           <h1>{team.name}</h1>
           <p>{team.region} · {team.homeCourt}</p>
           <div className="badge-row">
-            <Badge tone="green">{team.mmr} 팀 MMR</Badge>
-            <TierBadge mmr={team.mmr} />
-            <Badge tone="gold">팀장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
+            <Badge tone="green" className="ui-liquid-glass">{team.mmr} 팀 MMR</Badge>
+            <Badge tone="gold" className="ui-liquid-glass">팀장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
           </div>
         </div>
         <div className="team-tier-hero">
-          <TierEmblem mmr={team.mmr} size="md" showLabel />
-          <TeamEmblem team={team} size="lg" className="hero-emblem" />
+          <TierEmblem mmr={team.mmr} size="hero" showLabel />
         </div>
       </section>
 
