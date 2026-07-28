@@ -636,6 +636,12 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
     "live-clock.jpg",
     "records-create.jpg",
     "tier-profile.jpg",
+    "teams.jpg",
+    "courts.jpg",
+    "tournaments.jpg",
+    "profile.jpg",
+    "settings.jpg",
+    "terms.jpg",
   ]) {
     assert.match(gettingStartedSource, new RegExp(`/assets/guide/${image.replace(".", "\\.")}`));
   }
@@ -671,7 +677,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /주변 팀, 비슷한 연령대·MMR의 라이벌 팀, 같은 소속 팀/);
   assert.match(gettingStartedSource, /구장 정보와 경기 예약은 다릅니다/);
   assert.match(gettingStartedSource, /대회는 무심판 경기로 전환하지 않습니다/);
-  assert.match(gettingStartedSource, /통합·개인·팀·내 기록/);
+  assert.match(gettingStartedSource, /통합·개인전·팀전·내 기록/);
   assert.match(gettingStartedSource, /지각 QR만 찍고 후보에서 실제 교체하지 않은 선수/);
   assert.match(gettingStartedSource, /기기별 베타/);
   assert.match(gettingStartedSource, /to: "\/app\/guide\/practice"/);
