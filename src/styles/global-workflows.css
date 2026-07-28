@@ -3286,6 +3286,16 @@ input[type="color"] {
   line-height: 1.55;
 }
 
+.rulebook-level-switch {
+  width: min(100%, 420px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rulebook-level-switch button {
+  min-width: 0;
+  white-space: nowrap;
+}
+
 html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   color: var(--text);
   text-shadow: none;

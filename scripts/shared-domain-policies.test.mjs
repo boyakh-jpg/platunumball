@@ -148,6 +148,7 @@ import { IMAGE_CONTEXT_MENU_ALLOW_ATTRIBUTE, getProtectedImageTarget } from "../
 import { REFEREE_EXAM_VERSION } from "../src/lib/refereeExamBank.js";
 import {
   REFEREE_RULEBOOK_CHECKLIST,
+  REFEREE_RULEBOOK_EASY_SECTIONS,
   REFEREE_RULEBOOK_NOTICE,
   REFEREE_RULEBOOK_SECTIONS,
   REFEREE_STAT_GUIDELINES,
@@ -1784,6 +1785,7 @@ test("team discovery uses canonical regions and bounded deduplicated groups", ()
 
 test("referee rulebook matches current FIBA and BOXTIER operating rules", async () => {
   const rulebookText = JSON.stringify({
+    easy: REFEREE_RULEBOOK_EASY_SECTIONS,
     sections: REFEREE_RULEBOOK_SECTIONS,
     stats: REFEREE_STAT_GUIDELINES,
     checklist: REFEREE_RULEBOOK_CHECKLIST,
@@ -1792,6 +1794,9 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   const page = await readSource("src/pages/RefereeRulebook.jsx");
 
   assert.equal(REFEREE_EXAM_VERSION, "rankball-referee-2026-07");
+  assert.equal(REFEREE_RULEBOOK_EASY_SECTIONS.length, 6);
+  assert.match(rulebookText, /QR 출석과 실제 출전은 다름/);
+  assert.match(rulebookText, /개인기록은 심판 경기만/);
   assert.doesNotMatch(rulebookText, /림 위 원통|4번 드리블|낮은 가중치/);
   assert.match(rulebookText, /1m 안에서 밀착 수비/);
   assert.match(rulebookText, /비접촉 테크니컬/);
@@ -1817,4 +1822,7 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(page, /FIBA 경기규칙 2024/);
   assert.match(page, /FIBA 통계 매뉴얼 2024/);
   assert.match(page, /RULEBOOK_ASSET_VERSION/);
+  assert.match(page, /쉬운 규칙/);
+  assert.match(page, /상세 규칙/);
+  assert.match(page, /searchParams\.get\("level"\) === "detail"/);
 });

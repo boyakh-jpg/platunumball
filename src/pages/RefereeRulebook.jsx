@@ -1,17 +1,18 @@
 import { ArrowLeft, BookOpen, ClipboardCheck, ShieldCheck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { assetUrl } from "../lib/assets.js";
 import {
   REFEREE_RULEBOOK_CHECKLIST,
+  REFEREE_RULEBOOK_EASY_SECTIONS,
   REFEREE_RULEBOOK_NOTICE,
   REFEREE_RULEBOOK_SECTIONS,
   REFEREE_STAT_GUIDELINES,
 } from "../lib/refereeRulebook.js";
 
-const RULEBOOK_ASSET_VERSION = "20260728-2";
+const RULEBOOK_ASSET_VERSION = "20260728-3";
 const RULEBOOK_SOURCES = [
   {
     label: "FIBA 경기규칙 2024",
@@ -91,12 +92,23 @@ function RulebookIllustration({ scene, theme = "dark" }) {
 }
 
 export default function RefereeRulebook({ theme = "dark" }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rulebookLevel = searchParams.get("level") === "detail" ? "detail" : "easy";
+  const isEasyRulebook = rulebookLevel === "easy";
+
+  const selectRulebookLevel = (nextLevel) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextLevel === "detail") nextParams.set("level", "detail");
+    else nextParams.delete("level");
+    setSearchParams(nextParams, { replace: true });
+  };
+
   return (
     <div className="page-stack referee-rulebook-page">
       <header className="page-header">
         <div>
           <p className="eyebrow">Study guide</p>
-          <h1>커뮤니티 심판 룰북</h1>
+          <h1>농구 룰북</h1>
         </div>
         <Button as={Link} variant="secondary" to="/app/settings">
           <ArrowLeft size={16} /> 설정
@@ -105,17 +117,60 @@ export default function RefereeRulebook({ theme = "dark" }) {
 
       <Card className="referee-rulebook-intro">
         <div>
-          <Badge tone="blue">FIBA 2024 · BOXTIER 운영 기준</Badge>
-          <h2>판정과 기록 기준</h2>
-          <p>경기 전 확인, 코트 판정, 출석·교체, 개인활약, 결과 확인·이의·확정과 MMR 기준입니다.</p>
+          <Badge tone={isEasyRulebook ? "green" : "blue"}>
+            {isEasyRulebook ? "처음 보는 사람용" : "FIBA 2024 · BOXTIER 운영 기준"}
+          </Badge>
+          <h2>{isEasyRulebook ? "경기에서 바로 쓰는 쉬운 규칙" : "판정과 기록 상세 기준"}</h2>
+          <p>
+            {isEasyRulebook
+              ? "처음 한 경기를 운영할 때 꼭 필요한 내용만 6단계로 줄였습니다."
+              : "경기 전 확인, 코트 판정, 출석·교체, 개인활약, 결과 확인·이의·확정과 MMR 기준입니다."}
+          </p>
         </div>
         <RulebookIllustration scene="standard" theme={theme} />
       </Card>
 
-      <div className="referee-rulebook-notice">
-        {REFEREE_RULEBOOK_NOTICE.map((notice) => <span key={notice}>{notice}</span>)}
+      <div className="segmented-control compact-segments rulebook-level-switch" aria-label="룰북 난이도">
+        <button
+          type="button"
+          className={isEasyRulebook ? "active" : ""}
+          aria-pressed={isEasyRulebook}
+          onClick={() => selectRulebookLevel("easy")}
+        >
+          쉬운 규칙
+        </button>
+        <button
+          type="button"
+          className={!isEasyRulebook ? "active" : ""}
+          aria-pressed={!isEasyRulebook}
+          onClick={() => selectRulebookLevel("detail")}
+        >
+          상세 규칙
+        </button>
       </div>
 
+      <div className="referee-rulebook-notice">
+        {(isEasyRulebook
+          ? [
+            "공식 대회·학교·협회 경기는 해당 대회 규칙이 먼저입니다.",
+            "세부 판정과 개인활약 기록 기준은 상세 규칙에서 확인합니다.",
+          ]
+          : REFEREE_RULEBOOK_NOTICE
+        ).map((notice) => <span key={notice}>{notice}</span>)}
+      </div>
+
+      {isEasyRulebook ? (
+        <RulebookChapter
+          chapter={{
+            eyebrow: "Easy rulebook",
+            title: "처음 한 경기, 이것만 확인",
+            description: "더 정확한 판정 기준과 개인활약 세부 기준은 상세 규칙에서 확인합니다.",
+            sections: REFEREE_RULEBOOK_EASY_SECTIONS,
+          }}
+          theme={theme}
+        />
+      ) : (
+        <>
       <section className="referee-rulebook-checklist">
         <div className="section-title-row">
           <div>
@@ -178,6 +233,8 @@ export default function RefereeRulebook({ theme = "dark" }) {
       {RULEBOOK_CHAPTERS.slice(1).map((chapter) => (
         <RulebookChapter key={chapter.title} chapter={chapter} theme={theme} />
       ))}
+        </>
+      )}
 
       <Card className="referee-rulebook-footer">
         <BookOpen size={20} />
