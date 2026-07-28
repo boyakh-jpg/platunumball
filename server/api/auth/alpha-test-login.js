@@ -8,6 +8,8 @@ import { normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../../../src/lib/const
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
+// TEMPORARY ALPHA EXCEPTION: remove before beta and restore the all-admin block.
+const TEMPORARY_ADMIN_TEST_LOGIN_IDS = new Set(["rankball-001"]);
 const requestWindows = new Map();
 
 function createAlphaLoginError(code, statusCode) {
@@ -64,6 +66,10 @@ export function normalizeAlphaTestLoginId(value = "") {
   return normalized;
 }
 
+export function isTemporaryAdminTestLoginAllowed(testLoginId = "") {
+  return TEMPORARY_ADMIN_TEST_LOGIN_IDS.has(normalizeTestLoginId(testLoginId));
+}
+
 export async function assertNonAdminTestProfile(client, testLoginId, email) {
   const { data: profile, error: profileError } = await client
     .from("profiles")
@@ -87,7 +93,10 @@ export async function assertNonAdminTestProfile(client, testLoginId, email) {
     .eq("user_id", profile.id)
     .eq("role", "admin");
   if (appointmentError) throw appointmentError;
-  if ((appointments ?? []).some((appointment) => isActiveAdminAppointment(appointment))) {
+  if (
+    !isTemporaryAdminTestLoginAllowed(testLoginId)
+    && (appointments ?? []).some((appointment) => isActiveAdminAppointment(appointment))
+  ) {
     throw createAlphaLoginError("alpha_test_admin_login_forbidden", 403);
   }
 }

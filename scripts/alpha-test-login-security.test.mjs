@@ -3,6 +3,7 @@ import test from "node:test";
 import handler, {
   assertNonAdminTestProfile,
   isAlphaTestLoginEnabled,
+  isTemporaryAdminTestLoginAllowed,
   normalizeAlphaTestLoginId,
 } from "../server/api/auth/alpha-test-login.js";
 
@@ -25,12 +26,12 @@ function createResponse() {
   };
 }
 
-function createProfileClient(appointments = []) {
+function createProfileClient(appointments = [], testLoginId = "rankball-006") {
   return {
     auth: {
       admin: {
         async getUserById() {
-          return { data: { user: { email: "rankball-006@rankball.test" } }, error: null };
+          return { data: { user: { email: `${testLoginId}@rankball.test` } }, error: null };
         },
       },
     },
@@ -48,7 +49,7 @@ function createProfileClient(appointments = []) {
               data: {
                 id: "profile-6",
                 auth_user_id: "auth-6",
-                test_login_id: "rankball-006",
+                test_login_id: testLoginId,
               },
               error: null,
             };
@@ -123,4 +124,14 @@ test("active administrator test profiles cannot receive an alpha login token", a
     ),
     (error) => error?.message === "alpha_test_admin_login_forbidden" && error?.statusCode === 403,
   );
+});
+
+test("rankball-001 alone temporarily bypasses the active administrator block", async () => {
+  assert.equal(isTemporaryAdminTestLoginAllowed("rankball-001"), true);
+  assert.equal(isTemporaryAdminTestLoginAllowed("rankball-002"), false);
+  await assert.doesNotReject(() => assertNonAdminTestProfile(
+    createProfileClient([{ role: "admin", status: "active" }], "rankball-001"),
+    "rankball-001",
+    "rankball-001@rankball.test",
+  ));
 });

@@ -3489,3 +3489,9 @@ flowchart TD
 2. 예약 경기의 실제 시작일이 예약일과 달라도 기록은 실제 시작일에 포함한다. 자정을 넘긴 경기는 시작한 날짜에 포함한다.
 3. 사후 경기기록과 개인 기록은 생성 화면에서 입력한 실제 시행일을 사용한다. 보관 인덱스의 `record_date`와 `occurred_at`도 같은 기준으로 갱신한다.
 4. 과거 기록은 `recordDate/occurredAt → playedAt → startedAt → endedAt → confirmedAt → 예약일 → createdAt` 순서로만 보완하며 `즉시` 문자열을 날짜로 표시하지 않는다.
+
+## 2026-07-28 알파 테스트 관리자 로그인 임시 예외
+
+1. 알파 테스트 로그인이 활성화된 동안 `rankball-001`만 활성 관리자 임명이 있어도 테스트 로그인을 허용한다.
+2. 다른 활성 관리자 테스트 계정은 계속 `alpha_test_admin_login_forbidden`으로 차단한다.
+3. 베타 전환 전 이 예외와 `TEMPORARY_ADMIN_TEST_LOGIN_IDS`를 제거하고 전체 관리자 차단을 복원한다.
