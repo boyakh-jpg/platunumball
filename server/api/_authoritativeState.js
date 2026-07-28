@@ -6,6 +6,7 @@ import {
   cancelRecruitingParticipation,
   checkInMatchPlayer,
   closeRecruitingPost,
+  configureServerRatingAuthority,
   confirmMatchRefereeAbsence,
   confirmRecruitingMatch,
   createMatch,
@@ -50,6 +51,9 @@ import {
   voidMatch,
 } from "../../src/data/repository.js";
 import { DEFAULT_RATING } from "../../src/lib/constants.js";
+import { SERVER_RATING_AUTHORITY } from "../lib/ratingAuthority.js";
+
+configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
 function reject(statusCode, message, details = {}) {
   const error = new Error(message);

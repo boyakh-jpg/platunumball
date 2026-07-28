@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
-  TOURNAMENT_COMMUNITY_RATING_SCALE,
   getAcceptedTournamentRefereeIds,
   getRequiredTournamentRefereeCount,
   getTournamentRefereePoolValidation,
@@ -20,7 +19,11 @@ import {
   rejectTournamentRegion,
   requestMatchRefereeAbsence,
   updateTournamentMatchSchedule,
+  configureServerRatingAuthority,
 } from "../src/data/repository.js";
+import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
+
+configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -73,7 +76,7 @@ test("공식·지역 비승인 모두 승인된 중립 심판 풀을 요구한�
   assert.equal(validation.allowed, true);
   assert.deepEqual(getAcceptedTournamentRefereeIds(tournament), ["referee-a", "referee-b"]);
   assert.deepEqual(getTournamentUncoveredTeamPairs(tournament, teams), []);
-  assert.equal(TOURNAMENT_COMMUNITY_RATING_SCALE, 0.8);
+  assert.equal(SERVER_RATING_AUTHORITY.getTournamentRatingScale(false), 0.8);
   assert.equal(getTournamentSanctionLabel({ sanctionStatus: "community" }), "지역 비승인 대회");
 });
 

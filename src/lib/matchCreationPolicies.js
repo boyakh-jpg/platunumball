@@ -72,12 +72,6 @@ export const PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS = Object.freeze([
   },
 ]);
 
-export const PICKUP_TEAM_ASSIGNMENT_RATING_SCALES = Object.freeze({
-  manual: 0.9,
-  random: 1,
-  mmr_balanced: 1.1,
-});
-
 export const PAYMENT_POLICY_OPTIONS = Object.freeze([
   { id: "equal_all_confirmed", label: "확정 인원 전원 균등" },
   { id: "team_fixed_share", label: "팀별 균등" },
@@ -226,11 +220,6 @@ export function getPickupTeamAssignmentModeOption(source = {}) {
   const mode = typeof source === "string" ? source : getPickupTeamAssignmentMode(source);
   return PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS.find((option) => option.id === mode)
     ?? PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS[0];
-}
-
-export function getPickupTeamAssignmentRatingScale(source = {}) {
-  const mode = typeof source === "string" ? source : getPickupTeamAssignmentMode(source);
-  return PICKUP_TEAM_ASSIGNMENT_RATING_SCALES[mode] ?? PICKUP_TEAM_ASSIGNMENT_RATING_SCALES.manual;
 }
 
 export function getModeClockPreset(mode = "5v5", presetId = "community") {

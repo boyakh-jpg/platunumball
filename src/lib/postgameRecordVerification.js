@@ -4,13 +4,6 @@ const HOUR_MS = 60 * MINUTE_MS;
 export const POSTGAME_RECORD_AUTO_FINALIZE_HOURS = 24;
 export const POSTGAME_RECORD_AUTO_APPROVAL_MINUTES = POSTGAME_RECORD_AUTO_FINALIZE_HOURS * 60;
 export const POSTGAME_RECORD_REMINDER_MINUTES = Object.freeze([0, 60, 12 * 60]);
-export const POSTGAME_RECORD_MMR_SCALE_BY_MODE = Object.freeze({
-  "1v1": 0.1,
-  "2v2": 0.2,
-  "3v3": 0.35,
-  "5v5": 0.5,
-});
-
 function uniqueIds(values = []) {
   return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))];
 }
@@ -64,10 +57,6 @@ export function getPostgameRecordRequiredParticipantIds(match = {}) {
 export function getPostgameRecordApprovalThreshold(participantCount = 0) {
   const count = Math.max(0, Math.floor(Number(participantCount) || 0));
   return count > 0 ? Math.ceil(count * 2 / 3) : 0;
-}
-
-export function getPostgameRecordMmrScale(match = {}) {
-  return POSTGAME_RECORD_MMR_SCALE_BY_MODE[match.mode] ?? 0;
 }
 
 export function getPostgameRecordDecisionEligibility(match = {}, actorId = "") {
@@ -149,8 +138,6 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
       : expired
         ? "insufficient"
       : "partial";
-  const mmrScale = getPostgameRecordMmrScale(match);
-
   return {
     verificationStatus,
     requiredParticipantIds,
@@ -180,9 +167,8 @@ export function getPostgameRecordVerification(match = {}, options = {}) {
     canAutoApprove: false,
     canAutoFinalize: autoFinalizable,
     ranked: true,
-    mmrScale,
     mmrPolicy: "verified_participants_partial",
-    canApplyPersonalMmr: thresholdMet && !explicitlyDisputed && mmrScale > 0,
+    canApplyPersonalMmr: thresholdMet && !explicitlyDisputed,
     canApplyTeamMmr: false,
   };
 }

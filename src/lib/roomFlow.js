@@ -7,7 +7,6 @@ import {
 import {
   getPickupTeamAssignmentMode,
   getPickupTeamAssignmentModeOption,
-  getPickupTeamAssignmentRatingScale,
 } from "./matchCreationPolicies.js";
 
 export const ROOM_BODY_MODES = Object.freeze({
@@ -53,7 +52,6 @@ export function getPickupTeamAssignmentPolicy(room = {}) {
       description: "출석자끼리 현장 직접, 완전 랜덤, MMR 균형 중 하나를 정합니다.",
       automatic: false,
       decided: false,
-      ratingScale: 1,
     };
   }
   const mode = getPickupTeamAssignmentMode(room);
@@ -64,7 +62,6 @@ export function getPickupTeamAssignmentPolicy(room = {}) {
     description: option.description,
     automatic: mode !== "manual",
     decided: true,
-    ratingScale: getPickupTeamAssignmentRatingScale(mode),
   };
 }
 

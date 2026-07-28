@@ -1,4 +1,5 @@
 import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
+import { RATING_POLICY_GROUPS } from "../../lib/ratingPolicy.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST") {
@@ -19,7 +20,7 @@ export default async function handler(request, response) {
         p_actor_admin_level: adminLevel,
       });
       if (error) throw error;
-      sendJson(response, 200, data ?? { ok: true });
+      sendJson(response, 200, { ...(data ?? { ok: true }), schema: RATING_POLICY_GROUPS });
       return;
     }
 
@@ -46,7 +47,7 @@ export default async function handler(request, response) {
       p_reason: reason,
     });
     if (error) throw error;
-    sendJson(response, 200, data ?? { ok: true });
+    sendJson(response, 200, { ...(data ?? { ok: true }), schema: RATING_POLICY_GROUPS });
   } catch (error) {
     console.error("Admin rating policy failed.", error);
     const statusCode = error.code === "40001" || /stale_version/i.test(error.message ?? "") ? 409 : error.statusCode || 500;

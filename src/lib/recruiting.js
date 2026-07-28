@@ -61,9 +61,9 @@ export const RECRUITING_JOIN_MODES = {
 };
 
 export const MMR_RANGE_POLICIES = {
-  narrow: { label: "좁게", detail: "비슷한 실력만", gap: 120, ratingScale: 1.1 },
-  normal: { label: "보통", detail: "적당한 범위", gap: 220, ratingScale: 1 },
-  wide: { label: "넓게", detail: "대기 풀 우선", gap: 360, ratingScale: 0.8 },
+  narrow: { label: "좁게", detail: "비슷한 실력만", gap: 120 },
+  normal: { label: "보통", detail: "적당한 범위", gap: 220 },
+  wide: { label: "넓게", detail: "대기 풀 우선", gap: 360 },
 };
 
 const RESERVE_ROLES = new Set();
@@ -322,12 +322,6 @@ function uniqueCandidates(candidates = []) {
 export function normalizeRecruitingMmrRangeMode(mode = "narrow") {
   if (mode === "standard") return "normal";
   return MMR_RANGE_POLICIES[mode] ? mode : "narrow";
-}
-
-export function getRecruitingRatingScale(post = {}) {
-  if (post.ranked === false) return 1;
-  const mode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
-  return MMR_RANGE_POLICIES[mode].ratingScale;
 }
 
 function getRecruitingTypeMeta(type = "need_player") {
@@ -776,7 +770,6 @@ export function normalizeRecruitingPost(post = {}) {
     ...post,
     type,
     mmrRangeMode,
-    ratingScale: post.ratingScale ?? getRecruitingRatingScale({ ...post, mmrRangeMode, roomState }),
     hostJoinMode,
     hostSide: VALID_SIDES.has(post.hostSide) ? post.hostSide : "teamA",
     hostReady: true,
@@ -828,7 +821,6 @@ export function getRecruitingTierRange(targetMmr = DEFAULT_RATING, ranked = true
     mode,
     min,
     max,
-    ratingScale: policy.ratingScale,
   };
 }
 
@@ -1243,18 +1235,4 @@ export function getRecruitingListCardCounts(post = {}, lobby = {}, options = {})
 export function getRecruitingBestSide(post = {}, state = {}) {
   const lobby = getRecruitingLobby(post, state);
   return lobby.sides.teamA.projectedFilled <= lobby.sides.teamB.projectedFilled ? "teamA" : "teamB";
-}
-
-export function getMercenaryTeamWeight(memberMmr = DEFAULT_RATING, teamMmr = DEFAULT_RATING, role = "regular") {
-  if (!isMercenaryTeamRole(role)) return 1;
-  if (memberMmr <= teamMmr - 140) return 0.65;
-  if (memberMmr >= teamMmr + 140) return 0.22;
-  return 0.4;
-}
-
-export function getMercenaryPlayerFactor(memberMmr = DEFAULT_RATING, teamMmr = DEFAULT_RATING, role = "regular") {
-  if (!isMercenaryTeamRole(role)) return 1;
-  if (memberMmr >= teamMmr + 140) return 0.62;
-  if (memberMmr <= teamMmr - 140) return 0.96;
-  return 0.82;
 }

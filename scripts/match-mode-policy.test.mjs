@@ -24,8 +24,8 @@ import {
   calculateTeamRosterMmr,
   getTeamPerformanceAdjustment,
   teamRegularRatio,
-} from "../src/lib/rating.js";
-import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../src/lib/ratingPolicy.js";
+} from "../server/lib/ratingEngine.js";
+import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../server/lib/ratingPolicy.js";
 
 function makeMatch(mode, recordType = RECORD_TYPES.match) {
   return {
@@ -274,7 +274,7 @@ test("개인 스탯과 기록 출처는 로컬 MMR 변화에 영향을 주지 �
 
 test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정한다", async () => {
   const [ratingSource, profileApiSource, playerDetailSource, profileRecordsSource, matchRoomSource, recruitingSource, matchContractSource, logicSource, designSource] = await Promise.all([
-    readFile(new URL("../src/lib/rating.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/lib/ratingEngine.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/profile/me.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/PlayerDetail.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/ProfileRecords.jsx", import.meta.url), "utf8"),
@@ -312,6 +312,24 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
   assert.match(logicSource, /self-sub/);
   assert.match(logicSource, /stat_match_count/);
   assert.match(designSource, /0 PTS/);
+});
+
+test("MMR 계산식과 정책 기본값은 서버 전용 모듈에만 남는다", async () => {
+  const [publicRating, publicPolicy, publicConstants, publicRepository, serverRating, serverPolicy] = await Promise.all([
+    readFile(new URL("../src/lib/rating.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/ratingPolicy.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/constants.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/data/repository.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/lib/ratingEngine.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/lib/ratingPolicy.js", import.meta.url), "utf8"),
+  ]);
+  const publicSource = [publicRating, publicPolicy, publicConstants, publicRepository].join("\n");
+
+  assert.doesNotMatch(publicSource, /function expectedScore|function getKFactor|ratingWeight|integratedWeight|modeCap|integratedCap|PLACEMENT_PRIOR_WEIGHT|TEAM_PERFORMANCE_ADJUSTMENT_LIMIT/);
+  assert.doesNotMatch(publicRepository, /applyMatchRating|calculateTeamDelta|getFinalizationRatingContext/);
+  assert.match(serverRating, /function expectedScore/);
+  assert.match(serverRating, /export function applyMatchRating/);
+  assert.match(serverPolicy, /export const DEFAULT_RATING_POLICY/);
 });
 
 test("score policy health owns intentional legacy RPC and auto-finalize exceptions", async () => {

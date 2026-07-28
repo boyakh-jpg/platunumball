@@ -138,26 +138,9 @@ import {
   updateMatchPartiesForPlayer,
 } from "../lib/matchUtils.js";
 import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
-import {
-  getMatchCreationPolicyPayload,
-  getPickupTeamAssignmentRatingScale,
-} from "../lib/matchCreationPolicies.js";
+import { getMatchCreationPolicyPayload } from "../lib/matchCreationPolicies.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
-import {
-  applyMatchRating,
-  averageTeamMmr,
-  calculateRosterBasedTeamMmr,
-  calculateTeamDelta,
-  getAveragePlayerMmr,
-  getFinalizationRatingContext,
-  getMatchSideTeamGroups,
-  TEAM_PERFORMANCE_ADJUSTMENT_LIMIT,
-  teamRegularRatio,
-} from "../lib/rating.js";
-import {
-  getPostgameRecordMmrScale,
-  getPostgameRecordVerification,
-} from "../lib/postgameRecordVerification.js";
+import { getPostgameRecordVerification } from "../lib/postgameRecordVerification.js";
 import {
   currentUserCanRefereeRecruitingRoom,
   inferRecruitingInvitationTeamId,
@@ -176,7 +159,6 @@ import {
   getLobbySidePlayerTeamIds,
   getLobbyTeamEntry,
   getRecruitingLobby,
-  getRecruitingRatingScale,
   getRecruitingHostEditReady,
   getRecruitingRoomParticipantIds,
   getRecruitingRoomOwnerId,
@@ -241,7 +223,6 @@ import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
 import { getBlockedUserIds, isNotificationDue, isNotificationFromBlockedUser } from "../lib/notifications.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
 import {
-  TOURNAMENT_COMMUNITY_RATING_SCALE,
   TOURNAMENT_SANCTION_STATUS,
   getAcceptedTournamentRefereeIds,
   getRequiredTournamentRefereeCount,
@@ -254,6 +235,25 @@ import {
 import {
   getScheduledStartMs,
 } from "./matchLifecycleUtils.js";
+
+let serverRatingAuthority = null;
+
+export function configureServerRatingAuthority(authority = null) {
+  serverRatingAuthority = authority;
+}
+
+function getServerRatingValue(method, ...args) {
+  return serverRatingAuthority?.[method]?.(...args);
+}
+
+function getAveragePlayerMmr(state = {}, playerIds = [], fallback = DEFAULT_RATING) {
+  const values = [...new Set(playerIds.filter(Boolean))]
+    .map((playerId) => Number(state.users?.find((user) => user.id === playerId)?.ratings?.integrated))
+    .filter(Number.isFinite);
+  return values.length
+    ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+    : fallback;
+}
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
 import {
   ensureTeamPartyLeader,
@@ -396,7 +396,7 @@ import {
   isScheduleDateInAllowedWindow,
   normalizeRecruitingSchedules,
 } from "./scheduleUtils.js";
-import { adjustUserTrust, clampTrustScore, getFoulTrustPenalty } from "./trustUtils.js";
+import { adjustUserTrust, clampTrustScore } from "./trustUtils.js";
 import { getUnsafeUserTextReason } from "../lib/inputSecurity.js";
 import { isPracticeEntity } from "../lib/practiceMode.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
@@ -2158,110 +2158,20 @@ function finalizeMatch(state, targetMatch) {
       matches: state.matches.map((match) => (match.id === targetMatch.id ? confirmedMatch : match)),
     };
   }
-  const ratingContext = getFinalizationRatingContext(targetMatch, state.teams);
-  const ratingMatch = ratingContext.matchForRating;
-  const ratings = Object.fromEntries(state.users.map((user) => [user.id, clone(user.ratings)]));
-  const ratingResult = ratingContext.canApplyPersonalMmr
-    ? applyMatchRating(ratingMatch, state.users, ratings, state.matches, state.teams)
-    : { ratings: {}, changes: [] };
-  const scoreA = Number(targetMatch.result.scoreA);
-  const scoreB = Number(targetMatch.result.scoreB);
-  const actualA = scoreA === scoreB ? 0.5 : scoreA > scoreB ? 1 : 0;
-  const actualB = 1 - actualA;
-  const teamAGroups = ratingContext.canApplyTeamMmr ? getMatchSideTeamGroups(state, ratingMatch, "teamA") : [];
-  const teamBGroups = ratingContext.canApplyTeamMmr ? getMatchSideTeamGroups(state, ratingMatch, "teamB") : [];
-  const teamAMmr = averageTeamMmr(teamAGroups);
-  const teamBMmr = averageTeamMmr(teamBGroups);
-  const teamDeltaEntries = [
-    ...teamAGroups.map((group) => ({
-      teamId: group.team.id,
-      side: "teamA",
-      actual: actualA,
-      delta: calculateTeamDelta({
-        teamMmr: group.team.mmr,
-        opponentTeamMmr: teamBMmr,
-        actual: actualA,
-        match: ratingMatch,
-        regularRatio: teamRegularRatio(group.team, group.playerIds, state.users),
-      }),
-    })),
-    ...teamBGroups.map((group) => ({
-      teamId: group.team.id,
-      side: "teamB",
-      actual: actualB,
-      delta: calculateTeamDelta({
-        teamMmr: group.team.mmr,
-        opponentTeamMmr: teamAMmr,
-        actual: actualB,
-        match: ratingMatch,
-        regularRatio: teamRegularRatio(group.team, group.playerIds, state.users),
-      }),
-    })),
-  ];
-  const teamDeltaById = teamDeltaEntries.reduce((acc, entry) => {
-    acc[entry.teamId] = entry;
-    return acc;
-  }, {});
-  const teamADelta = teamDeltaEntries
-    .filter((entry) => entry.side === "teamA")
-    .reduce((sum, entry) => sum + entry.delta, 0);
-  const teamBDelta = teamDeltaEntries
-    .filter((entry) => entry.side === "teamB")
-    .reduce((sum, entry) => sum + entry.delta, 0);
-  const trustRewards = new Map();
-  if (targetMatch.refereeId) {
-    trustRewards.set(targetMatch.refereeId, (trustRewards.get(targetMatch.refereeId) ?? 0) + 1);
-  }
-
-  const users = state.users.map((user) => {
-    const nextRatings = ratingResult.ratings[user.id];
-    const trustReward = trustRewards.get(user.id) ?? 0;
-    if (!nextRatings && !trustReward) return user;
-    const change = ratingResult.changes.find((item) => item.playerId === user.id);
-    const foulPenalty = getFoulTrustPenalty(targetMatch.result?.playerStats?.[user.id]);
-    return {
-      ...user,
-      trustScore: clampTrustScore((user.trustScore ?? 80) + (nextRatings ? 1 : 0) + trustReward + foulPenalty),
-      streak: nextRatings
-        ? change?.result === "win"
-          ? Math.max(1, user.streak + 1)
-          : change?.result === "loss"
-            ? Math.min(-1, user.streak - 1)
-            : user.streak
-        : user.streak,
-      ratings: nextRatings ?? user.ratings,
-    };
-  });
-
-  const teams = state.teams.map((team) => {
-    const teamDelta = teamDeltaById[team.id];
-    const base = calculateRosterBasedTeamMmr(team, users);
-    if (teamDelta) {
-      const performanceAdjustment = Math.max(
-        -TEAM_PERFORMANCE_ADJUSTMENT_LIMIT,
-        Math.min(TEAM_PERFORMANCE_ADJUSTMENT_LIMIT, base.performanceAdjustment + teamDelta.delta),
-      );
-      return {
-        ...team,
-        rosterMmr: base.rosterMmr,
-        performanceAdjustment,
-        mmr: Math.round(base.rosterMmr + performanceAdjustment),
-        wins: team.wins + (teamDelta.actual === 1 ? 1 : 0),
-        losses: team.losses + (teamDelta.actual === 0 ? 1 : 0),
-      };
-    }
-    return { ...team, ...base };
-  });
+  const ratingResult = getServerRatingValue("calculateFinalizationRating", state, targetMatch) ?? {
+    users: state.users,
+    teams: state.teams,
+    changes: [],
+    teamRatingResult: null,
+  };
+  const users = ratingResult.users;
+  const teams = ratingResult.teams;
 
   const confirmedMatch = {
     ...targetMatch,
     status: "confirmed",
     ratingResult: ratingResult.changes,
-    teamRatingResult: {
-      teamA: teamADelta,
-      teamB: teamBDelta,
-      teams: Object.fromEntries(teamDeltaEntries.map((entry) => [entry.teamId, entry.delta])),
-    },
+    teamRatingResult: ratingResult.teamRatingResult,
     confirmedAt: new Date().toISOString(),
   };
   const nextState = {
@@ -2273,10 +2183,10 @@ function finalizeMatch(state, targetMatch) {
       {
         id: makeId("n"),
         title: "경기 확정",
-        body: ratingResult.changes.length || teamDeltaEntries.length
+        body: ratingResult.changes.length || ratingResult.teamRatingResult
           ? `${targetMatch.title} 결과가 티어와 랭킹에 반영됐습니다.`
           : `${targetMatch.title} 결과가 공식 기록으로 확정됐습니다.`,
-        tone: ratingResult.changes.length || teamDeltaEntries.length ? "tier" : "match",
+        tone: ratingResult.changes.length || ratingResult.teamRatingResult ? "tier" : "match",
         matchId: targetMatch.id,
       },
       ...state.notifications,
@@ -2328,7 +2238,7 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
         mmrExcludedPlayerIds: verification.unconfirmedIds,
         rules: {
           ...(current.rules ?? {}),
-          ratingScale: verification.mmrScale,
+          ratingScale: getServerRatingValue("getPostgameRecordMmrScale", current),
           mmrExcludedPlayerIds: verification.unconfirmedIds,
           teamRatingDisabled: true,
           matchRecordVerificationStatus: "confirmed",
@@ -2804,8 +2714,8 @@ export function createMatch(state, draft) {
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(effectiveDraft.mmrRangeMode);
   const ranked = isMatchRecord ? false : effectiveDraft.ranked !== false;
   const ratingScale = isMatchRecord
-    ? getPostgameRecordMmrScale({ mode })
-    : ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 0;
+    ? getServerRatingValue("getPostgameRecordMmrScale", { mode })
+    : ranked ? getServerRatingValue("getRecruitingRatingScale", { ranked, mmrRangeMode }) : 0;
   const disputeMinutes = DISPUTE_WINDOW_MINUTES;
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === effectiveDraft.court || court.id === getCourtId(effectiveDraft)) ?? null;
   const creator = state.users.find((user) => user.id === state.currentUserId);
@@ -3816,7 +3726,7 @@ export function activateTournamentSanction(state, tournamentId, sanctionStatus, 
   const readiness = getLocalTournamentReadiness(state, tournament);
   if (!readiness.ready) return state;
   const official = sanctionStatus === TOURNAMENT_SANCTION_STATUS.approved;
-  const ratingScale = official ? 1 : TOURNAMENT_COMMUNITY_RATING_SCALE;
+  const ratingScale = getServerRatingValue("getTournamentRatingScale", official);
   const now = new Date().toISOString();
   const approvedTournament = {
     ...tournament,
@@ -4864,7 +4774,7 @@ export function generatePickupSideAssignment(state, matchId, assignmentMode = ""
       ?? match.rules?.ratingScale
       ?? 1,
   );
-  const pickupAssignmentRatingScale = getPickupTeamAssignmentRatingScale(safeMode);
+  const pickupAssignmentRatingScale = getServerRatingValue("getPickupTeamAssignmentRatingScale", safeMode);
   const ratingScale = match.ranked === false
     ? 0
     : mmrRangeRatingScale * pickupAssignmentRatingScale;
@@ -6218,7 +6128,7 @@ function commitVoidMatchReviewAction(state, report, draft = {}) {
     };
   }
 
-  const ratingFactor = actionType === "restoreMatchHalf" ? 0.5 : 1;
+  const ratingFactor = getServerRatingValue("getAdminRestoreRatingFactor", actionType);
   const snapshotResult = match.voidSnapshot?.result ?? match.result;
   if (!snapshotResult) return state;
   const restoredMatch = {
@@ -7029,7 +6939,9 @@ export function createRecruitingPost(state, draft) {
   if (visibility === "public" && !timingStatus.canCreate) {
     return { ...state, notifications: [getInvalidPublicScheduleNotification(timingStatus.detail), ...state.notifications] };
   }
-  const ratingScale = creationPolicy.ranked === false ? 1 : getRecruitingRatingScale({ ranked: creationPolicy.ranked, mmrRangeMode });
+  const ratingScale = creationPolicy.ranked === false
+    ? 0
+    : getServerRatingValue("getRecruitingRatingScale", { ranked: creationPolicy.ranked, mmrRangeMode });
   const createdAt = new Date().toISOString();
   const partyReserves = {};
   if (hostReservePlayerIds.length) partyReserves.host = hostReservePlayerIds;
@@ -8150,7 +8062,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     scheduledTime: scheduleNeedsApproval ? post.scheduledTime : scheduleTarget.scheduledTime,
     scheduledAt: scheduleNeedsApproval ? post.scheduledAt : scheduleTarget.scheduledAt,
     mmrRangeMode: nextMmrRangeMode,
-    ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
+    ratingScale: post.ranked === false ? 0 : getServerRatingValue("getRecruitingRatingScale", { ...post, mmrRangeMode: nextMmrRangeMode }),
     rules: {
       ...(post.rules ?? {}),
       ...nextRules,
@@ -8164,7 +8076,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
         waitingPlayerCapacity: benchCapacity * 2,
       } : {}),
       mmrRangeMode: nextMmrRangeMode,
-      ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
+      ratingScale: post.ranked === false ? 0 : getServerRatingValue("getRecruitingRatingScale", { ...post, mmrRangeMode: nextMmrRangeMode }),
     },
     memo: roomPatch.memo === undefined ? post.memo : String(roomPatch.memo ?? "").slice(0, 500),
     stakes: roomPatch.stakes === undefined ? post.stakes : String(roomPatch.stakes ?? "").slice(0, 500),
@@ -11012,7 +10924,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
   const promotedRoomState = normalizeRecruitingRoomState(promotedPost.roomState ?? {});
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(promotedPost.mmrRangeMode ?? promotedPost.roomState?.mmrRangeMode);
   const ranked = promotedPost.ranked !== false;
-  const ratingScale = getRecruitingRatingScale({ ranked, mmrRangeMode });
+  const ratingScale = getServerRatingValue("getRecruitingRatingScale", { ranked, mmrRangeMode });
   const defaultRules = getDefaultMatchRules(promotedPost.mode);
   const disputeMinutes = normalizeDisputeWindowMinutes(promotedPost.disputeMinutes);
   const match = {

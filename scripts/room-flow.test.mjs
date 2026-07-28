@@ -3,10 +3,12 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   confirmPickupSideAssignment,
+  configureServerRatingAuthority,
   generatePickupSideAssignment,
   startMatch,
   swapPickupMatchPlayers,
 } from "../src/data/repository.js";
+import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 import {
   buildPickupTeamAssignment,
   getPickupOpenSlotPlacements,
@@ -22,6 +24,8 @@ import {
 import { getMatchSideLeaderId } from "../src/lib/matchUtils.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
 import { getRecruitingLobby } from "../src/lib/recruiting.js";
+
+configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
 test("cancelled instant rooms stay visible for their calendar date", async () => {
   const { createServer } = await import("vite");

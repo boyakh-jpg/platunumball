@@ -1,8 +1,6 @@
 import { REFEREE_TRUST_MIN } from "./constants.js";
 import { isEligibleReferee } from "./matchUtils.js";
 
-export const TOURNAMENT_COMMUNITY_RATING_SCALE = 0.8;
-
 export const TOURNAMENT_SANCTION_STATUS = Object.freeze({
   pending: "pending",
   regionalPending: "regional_pending",

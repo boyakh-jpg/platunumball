@@ -18,6 +18,7 @@ import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
 import {
   finalizeMatchByAuthority,
+  configureServerRatingAuthority,
   incrementMatchScore,
   markAllNotificationsRead,
   resolveMatchDispute,
@@ -25,6 +26,9 @@ import {
   updateTournamentMatchSchedule,
   voidMatch as applyMatchVoid,
 } from "../src/data/repository.js";
+import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
+
+configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 import { getTeamDiscoveryGroups } from "../src/data/teamMappers.js";
 import { getTournamentRosterTeam } from "../src/data/tournamentMappers.js";
 import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
@@ -97,7 +101,7 @@ import {
   isMatchWithinRecordDetailWindow,
   isTournamentMatchLineupEditable,
 } from "../src/lib/matchUtils.js";
-import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../src/lib/ratingPolicy.js";
+import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../server/lib/ratingPolicy.js";
 import {
   COURT_DUPLICATE_REPORT_REASON,
   REPORT_TARGET_TYPES,
@@ -1109,7 +1113,8 @@ test("empty home upcoming card does not keep the desktop match minimum height", 
 
 test("team menu starts from curated recommendations", async () => {
   const teams = await readSource("src/pages/Teams.jsx");
-  assert.match(teams, /const \[region, setRegion\] = useState\(TEAM_DISCOVERY_VIEW\);/);
+  assert.match(teams, /const \[regionSido, setRegionSido\] = useState\(TEAM_DISCOVERY_VIEW\);/);
+  assert.match(teams, /const \[regionDistrict, setRegionDistrict\] = useState\(defaultRegionSelection\.district\);/);
   assert.match(teams, /const TEAM_DISCOVERY_VIEW = "추천";/);
   assert.match(teams, /TEAM_SEARCH_RESULT_LIMIT = 15/);
   assert.doesNotMatch(teams, /loadMoreDirectory/);

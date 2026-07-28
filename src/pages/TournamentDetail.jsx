@@ -15,7 +15,6 @@ import { getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getMatchRoomPhase, getTournamentScheduleEditPolicy, isEligibleReferee } from "../lib/matchUtils.js";
 import { REFEREE_TRUST_MIN } from "../lib/constants.js";
 import {
-  TOURNAMENT_COMMUNITY_RATING_SCALE,
   TOURNAMENT_SANCTION_STATUS,
   getActiveTournamentTeamIds,
   getAcceptedTournamentRefereeIds,
@@ -727,8 +726,8 @@ export default function TournamentDetail({ app }) {
           <strong>{mmrPolicyLabels[tournament.mmrPolicy] ?? "MMR 조건 확인"}</strong>
           <em>
             {tournament.sanctionStatus === TOURNAMENT_SANCTION_STATUS.community
-              ? `지역 비승인 계수 ${TOURNAMENT_COMMUNITY_RATING_SCALE}`
-              : tournament.format === "tournament" ? "토너먼트 보너스 1.18" : "리그 보너스 1.12"}
+              ? "지역 비승인 · 서버 정책 적용"
+              : "서버 검증 후 반영"}
           </em>
         </div>
       </section>

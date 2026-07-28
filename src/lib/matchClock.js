@@ -8,13 +8,6 @@ export const SHOT_CLOCK_OPTIONS = Object.freeze([
   { value: 60, label: "1분" },
 ]);
 
-export const MATCH_CLOCK_FALLBACK_FACTORS = Object.freeze({
-  "1v1": 0.5,
-  "2v2": 0.65,
-  "3v3": 0.8,
-  "5v5": 0.9,
-});
-
 export function requestMatchClock(matchId, action = "read", payload = {}) {
   if (isPracticeId(matchId)) {
     const error = new Error(PRACTICE_LOCAL_ONLY_ERROR);

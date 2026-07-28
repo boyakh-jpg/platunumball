@@ -43,17 +43,21 @@ import {
 import {
   acceptRecruitingInvitation,
   confirmRecruitingMatch,
+  configureServerRatingAuthority,
   createRecruitingPost,
   interestRecruitingPost,
   inviteRecruitingPlayers,
   setRecruitingRoomTeam,
 } from "../src/data/repository.js";
+import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 import {
   MMR_RANGE_POLICIES,
   getRecruitingLobby,
   isIndividualOnlyRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
 } from "../src/lib/recruiting.js";
+
+configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pickupRefereeMigrationSource = fs.readFileSync(
@@ -757,7 +761,7 @@ test("room operations keep only the clock, ball, and mode-relevant vest choices"
 
 test("general prearranged matches keep only three MMR ranges and force the limit mode", () => {
   assert.deepEqual(Object.keys(MMR_RANGE_POLICIES), ["narrow", "normal", "wide"]);
-  assert.deepEqual(Object.values(MMR_RANGE_POLICIES).map((policy) => policy.ratingScale), [1.1, 1, 0.8]);
+  assert.ok(Object.values(MMR_RANGE_POLICIES).every((policy) => !Object.hasOwn(policy, "ratingScale")));
   assert.equal(normalizeRecruitingMmrRangeMode("standard"), "normal");
 
   const state = {

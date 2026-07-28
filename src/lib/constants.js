@@ -1,8 +1,8 @@
 export const MATCH_MODES = [
-  { id: "1v1", label: "1v1", size: 1, ratingWeight: 0.78, integratedWeight: 0.25, modeCap: 25, integratedCap: 8 },
-  { id: "2v2", label: "2v2", size: 2, ratingWeight: 0.9, integratedWeight: 0.45, modeCap: 28, integratedCap: 14 },
-  { id: "3v3", label: "3v3", size: 3, ratingWeight: 1, integratedWeight: 0.85, modeCap: 32, integratedCap: 25 },
-  { id: "5v5", label: "5v5", size: 5, ratingWeight: 1.12, integratedWeight: 1.35, modeCap: 40, integratedCap: 45, officialModeCap: 50, officialIntegratedCap: 55 },
+  { id: "1v1", label: "1v1", size: 1 },
+  { id: "2v2", label: "2v2", size: 2 },
+  { id: "3v3", label: "3v3", size: 3 },
+  { id: "5v5", label: "5v5", size: 5 },
 ];
 
 export const MATCH_MODE_IDS = Object.freeze(MATCH_MODES.map((mode) => mode.id));
@@ -245,7 +245,7 @@ export const AFFILIATION_TYPES = {
 };
 
 export const EVIDENCE_OPTIONS = [
-  { id: "court_reservation", label: "구장 예약내역", factor: 0.2 },
+  { id: "court_reservation", label: "구장 예약내역" },
 ];
 
 export const MATCH_SIDES = Object.freeze(["teamA", "teamB"]);
@@ -259,28 +259,27 @@ export const DEFAULT_PLAYER_RATINGS = Object.freeze({
     completed: false,
     completedAt: null,
     evidenceWeight: 0,
-    weightedTotal: DEFAULT_RATING * 2.5,
     modeCounts: Object.freeze({}),
   }),
 });
 
 export const CREDIBILITY_LEVELS = {
-  self_record: { label: "친선 기록", factor: 0.18 },
-  street_majority: { label: "길농 과반 승인", factor: 0.7 },
-  pre_registered: { label: "사전등록", factor: 1 },
-  evidence_verified: { label: "증빙 확인", factor: 1.15 },
-  official: { label: "공식경기", factor: 1.35 },
-  official_with_evidence: { label: "공식+증빙", factor: 1.5 },
+  self_record: { label: "친선 기록" },
+  street_majority: { label: "길농 과반 승인" },
+  pre_registered: { label: "사전등록" },
+  evidence_verified: { label: "증빙 확인" },
+  official: { label: "공식경기" },
+  official_with_evidence: { label: "공식+증빙" },
 };
 
 export const PLAYER_STAT_FIELDS = [
-  { id: "points", label: "득점", shortLabel: "PTS", weight: 0.035 },
-  { id: "rebounds", label: "리바운드", shortLabel: "REB", weight: 0.055 },
-  { id: "assists", label: "어시스트", shortLabel: "AST", weight: 0.055 },
-  { id: "steals", label: "스틸", shortLabel: "STL", weight: 0.08 },
-  { id: "blocks", label: "블록", shortLabel: "BLK", weight: 0.08 },
-  { id: "turnovers", label: "턴오버", shortLabel: "TO", weight: 0 },
-  { id: "fouls", label: "파울", shortLabel: "F", weight: 0 },
+  { id: "points", label: "득점", shortLabel: "PTS" },
+  { id: "rebounds", label: "리바운드", shortLabel: "REB" },
+  { id: "assists", label: "어시스트", shortLabel: "AST" },
+  { id: "steals", label: "스틸", shortLabel: "STL" },
+  { id: "blocks", label: "블록", shortLabel: "BLK" },
+  { id: "turnovers", label: "턴오버", shortLabel: "TO" },
+  { id: "fouls", label: "파울", shortLabel: "F" },
 ];
 export const PLAYER_STAT_FIELD_IDS = Object.freeze(PLAYER_STAT_FIELDS.map((field) => field.id));
 

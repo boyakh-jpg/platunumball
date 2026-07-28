@@ -6,6 +6,7 @@ import {
   getPostgameRecordDecisionEligibility,
   getPostgameRecordVerification,
 } from "../src/lib/postgameRecordVerification.js";
+import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 
 const submittedAt = "2026-07-23T00:00:00.000Z";
 const players = Array.from({ length: 14 }, (_item, index) => `player-${index + 1}`);
@@ -63,7 +64,8 @@ test("1v1·2v2·3v3·5v5 확인 기준과 개인 MMR 배율을 고정한다", ()
       approvals: { teamA: approved.slice(0, teamSize), teamB: approved.slice(teamSize) },
     }));
     assert.equal(status.approvalThreshold, threshold);
-    assert.equal(status.mmrScale, scale);
+    assert.equal(status.mmrScale, undefined);
+    assert.equal(SERVER_RATING_AUTHORITY.getPostgameRecordMmrScale({ mode }), scale);
     assert.equal(status.canApplyPersonalMmr, true);
     assert.equal(status.canApplyTeamMmr, false);
   }
@@ -118,7 +120,8 @@ test("사후 기록은 확인자 개인 MMR만 모드별 비율로 반영하고 
   const status = getPostgameRecordVerification(makeRecord());
   assert.equal(status.verificationStatus, "confirmed");
   assert.equal(status.ranked, true);
-  assert.equal(status.mmrScale, 0.5);
+  assert.equal(status.mmrScale, undefined);
+  assert.equal(SERVER_RATING_AUTHORITY.getPostgameRecordMmrScale({ mode: "5v5" }), 0.5);
   assert.equal(status.mmrPolicy, "verified_participants_partial");
   assert.equal(status.canApplyPersonalMmr, true);
   assert.equal(status.canApplyTeamMmr, false);

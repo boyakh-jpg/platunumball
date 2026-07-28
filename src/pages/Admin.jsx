@@ -137,6 +137,7 @@ function RatingPolicyPanel({ app }) {
   const [draft, setDraft] = useState(() => cloneRatingPolicy(DEFAULT_RATING_POLICY));
   const [savedPolicy, setSavedPolicy] = useState(() => cloneRatingPolicy(DEFAULT_RATING_POLICY));
   const [defaultPolicy, setDefaultPolicy] = useState(() => cloneRatingPolicy(DEFAULT_RATING_POLICY));
+  const [policyGroups, setPolicyGroups] = useState(RATING_POLICY_GROUPS);
   const [version, setVersion] = useState(1);
   const [reason, setReason] = useState("");
   const [history, setHistory] = useState([]);
@@ -146,8 +147,11 @@ function RatingPolicyPanel({ app }) {
   const [status, setStatus] = useState("");
 
   const applyResult = (result = {}) => {
-    const policy = normalizeRatingPolicy(result.policy ?? DEFAULT_RATING_POLICY);
-    const defaults = normalizeRatingPolicy(result.defaults ?? DEFAULT_RATING_POLICY);
+    const groups = Array.isArray(result.schema) ? result.schema : RATING_POLICY_GROUPS;
+    const defaultsSource = result.defaults ?? DEFAULT_RATING_POLICY;
+    const policy = normalizeRatingPolicy(result.policy ?? defaultsSource, groups, defaultsSource);
+    const defaults = normalizeRatingPolicy(defaultsSource, groups, defaultsSource);
+    setPolicyGroups(groups);
     setDraft(policy);
     setSavedPolicy(policy);
     setDefaultPolicy(defaults);
@@ -198,7 +202,7 @@ function RatingPolicyPanel({ app }) {
     try {
       const result = await app.actions.updateRatingPolicy?.({
         expectedVersion: version,
-        policy: normalizeRatingPolicy(draft),
+        policy: normalizeRatingPolicy(draft, policyGroups, defaultPolicy),
         reason: reason.trim(),
       });
       if (!result || result.ok === false) {
@@ -230,7 +234,7 @@ function RatingPolicyPanel({ app }) {
       {loading ? <div className="ui-empty-state-compact">정책 불러오는 중</div> : (
         <>
           <div className="admin-rating-groups">
-            {RATING_POLICY_GROUPS.map((group) => (
+            {policyGroups.map((group) => (
               <section key={group.id} className="admin-rating-group">
                 <div>
                   <h3>{group.label}</h3>
