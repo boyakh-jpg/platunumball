@@ -1720,7 +1720,7 @@ export default function CreateMatch({
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Room visibility</p>
-              <h2>{isRecordCreateIntent ? "기록 방식" : "공개 범위"}</h2>
+              <h2 className="create-choice-heading">{isRecordCreateIntent ? "기록 방식" : "공개 범위"}</h2>
             </div>
             <Badge tone={isTournamentRoom ? "gold" : isPublicRoom ? "green" : "neutral"}>{getRoomKindLabel(currentRoomKind)}</Badge>
           </div>
@@ -1934,7 +1934,7 @@ export default function CreateMatch({
           ) : null}
           {isMatchRecordRoom ? (
             <div className="match-intent-preset-section">
-              <span className="field-label">구성 방식</span>
+              <span className="field-label create-choice-heading">구성 방식</span>
               <div className="match-intent-preset-grid" role="radiogroup" aria-label="경기 기록 구성 방식">
                 {RECORD_COMPOSITION_OPTIONS.map((option) => (
                   <button
@@ -1969,7 +1969,7 @@ export default function CreateMatch({
           ) : null}
           {isSoloRecord ? (
             <div className="match-intent-preset-section">
-              <span className="field-label">입력 방식</span>
+              <span className="field-label create-choice-heading">입력 방식</span>
               <div className="match-intent-preset-grid" role="radiogroup" aria-label="내 기록 입력 방식">
                 {RECORD_ENTRY_MODE_OPTIONS.map((option) => (
                   <button
@@ -1989,7 +1989,7 @@ export default function CreateMatch({
           ) : null}
           {isSoloRecord ? (
             <div className="match-intent-preset-section">
-              <span className="field-label">공개 범위</span>
+              <span className="field-label create-choice-heading">공개 범위</span>
               <div className="match-intent-preset-grid" role="radiogroup" aria-label="내 기록 공개 범위">
                 <button
                   type="button"

@@ -90,7 +90,7 @@ export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurpo
   return (
     <div className="match-intent-axis-grid">
       <div className="match-intent-axis">
-        <span className="field-label">경기 목적</span>
+        <span className="field-label create-choice-heading">경기 목적</span>
         <div className="match-intent-preset-grid" role="radiogroup" aria-label="경기 목적">
           {MATCH_PURPOSE_OPTIONS.map((option) => (
             <button
@@ -111,7 +111,7 @@ export function MatchIntentPresetSelector({ matchPurpose, formationMode, onPurpo
         </div>
       </div>
       <div className="match-intent-axis">
-        <span className="field-label">팀 구성</span>
+        <span className="field-label create-choice-heading">팀 구성</span>
         <div className="match-intent-preset-grid" role="radiogroup" aria-label="팀 구성 방식">
           {MATCH_FORMATION_OPTIONS.map((option) => {
             const active = pickup ? option.id === "pickup" : option.id === "prearranged";

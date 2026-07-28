@@ -579,6 +579,19 @@ html[data-theme="light"] .court-map-picker-state {
   gap: var(--space-3);
 }
 
+.create-match-page {
+  --create-choice-heading-font-size: 1.25rem;
+  --create-choice-option-title-font-size: 0.9rem;
+  --create-choice-option-copy-font-size: 0.8rem;
+}
+
+.create-match-page .create-choice-heading {
+  color: var(--text);
+  font-size: var(--create-choice-heading-font-size);
+  font-weight: 900;
+  line-height: 1.15;
+}
+
 .match-intent-preset-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -596,6 +609,7 @@ html[data-theme="light"] .court-map-picker-state {
   background: var(--ui-control-bg);
   color: var(--text);
   cursor: pointer;
+  font: inherit;
   padding: 10px 12px;
   text-align: left;
 }
@@ -632,6 +646,20 @@ html[data-theme="light"] .court-map-picker-state {
   color: var(--muted);
   font-size: 0.8rem;
   font-style: normal;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.create-match-page :is(.create-mode-grid, .match-intent-preset-grid) button strong {
+  font-size: var(--create-choice-option-title-font-size);
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.create-match-page .create-mode-grid button em,
+.create-match-page .match-intent-preset-grid > button:not(.has-icon) > span,
+.create-match-page .match-intent-preset-grid > button.has-icon em {
+  font-size: var(--create-choice-option-copy-font-size);
   font-weight: 850;
   line-height: 1.45;
 }
