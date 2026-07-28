@@ -108,9 +108,11 @@
 }
 
 .ui-match-clock-display-grid {
+  --match-clock-display-gap: clamp(var(--space-5), 1.6cqi, var(--space-8));
+
   display: grid;
   grid-template-columns: minmax(0, 1.72fr) minmax(144px, 0.28fr);
-  gap: var(--page-section-gap);
+  gap: var(--match-clock-display-gap);
   align-items: stretch;
   min-width: 0;
 }
@@ -331,11 +333,9 @@
   font: inherit;
   cursor: pointer;
   background: color-mix(in srgb, var(--rb-orange) 20%, var(--scoreboard));
-  border: 2px solid color-mix(in srgb, var(--rb-orange) 76%, var(--rb-line));
+  border: 1px solid color-mix(in srgb, var(--rb-orange) 76%, var(--rb-line));
   border-radius: var(--ui-panel-radius);
-  box-shadow:
-    0 5px 0 color-mix(in srgb, var(--rb-orange-pressed) 72%, var(--rb-line)),
-    0 12px 24px color-mix(in srgb, var(--rb-orange) 16%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--rb-orange) 16%, transparent);
   touch-action: manipulation;
   transition:
     transform 120ms ease,
@@ -351,7 +351,7 @@
 .ui-match-shot-clock:disabled {
   cursor: default;
   opacity: 0.72;
-  box-shadow: 0 2px 0 color-mix(in srgb, var(--rb-orange-pressed) 48%, var(--rb-line));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--rb-orange) 10%, transparent);
 }
 
 .ui-match-shot-clock-label {
@@ -599,7 +599,7 @@
 
 .ui-match-clock-panel-focus .ui-match-clock-display-grid {
   grid-template-columns: minmax(0, 4.3fr) minmax(124px, 0.7fr);
-  gap: var(--match-clock-focus-gap);
+  gap: clamp(10px, 1.4vmin, 18px);
   height: 100%;
   min-height: 0;
 }
@@ -940,8 +940,6 @@
 }
 
 .ui-match-shot-clock:active:not(:disabled) {
-  transform: translateY(3px);
-  box-shadow:
-    0 2px 0 color-mix(in srgb, var(--rb-orange-pressed) 72%, var(--rb-line)),
-    0 7px 14px color-mix(in srgb, var(--rb-orange) 13%, transparent);
+  transform: translateY(1px);
+  box-shadow: 0 7px 14px color-mix(in srgb, var(--rb-orange) 13%, transparent);
 }

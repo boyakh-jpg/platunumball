@@ -37,6 +37,7 @@ const globalSurfaceStyles = read("src/styles/global-surfaces.css");
 const recruitingStyles = read("src/styles/recruiting-arena.css");
 const matchesStyles = read("src/styles/matches-arena.css");
 const gettingStartedStyles = read("src/styles/getting-started.css");
+const matchClockStyles = read("src/styles/match-clock.css");
 const matchRoomStyles = read("src/styles/matchroom-arena.css");
 const appSource = read("src/App.jsx");
 const gettingStartedSource = read("src/pages/GettingStarted.jsx");
@@ -299,6 +300,23 @@ test("알림 보기와 읽음은 같은 네모 버튼 규격을 사용한다", (
   assert.doesNotMatch(
     foundationStyles,
     /\.notification-terminal-state\s*\{[^}]*border-radius:\s*999px/,
+  );
+});
+
+test("guide screenshots ship with the app and the shot clock has one separated outline", () => {
+  assert.match(gettingStartedSource, /src=\{chapter\.image\}/);
+  assert.doesNotMatch(gettingStartedSource, /assetUrl\(chapter\.image\)/);
+  assert.match(
+    matchClockStyles,
+    /\.ui-match-clock-display-grid\s*\{[^}]*--match-clock-display-gap:[^;]+;[^}]*gap:\s*var\(--match-clock-display-gap\);/,
+  );
+  assert.match(
+    matchClockStyles,
+    /\.ui-match-shot-clock\s*\{[^}]*border:\s*1px solid[^;]+;[^}]*box-shadow:\s*0 12px 24px[^;]+;/,
+  );
+  assert.doesNotMatch(
+    matchClockStyles,
+    /\.ui-match-shot-clock(?::[^{]+)?\s*\{[^}]*box-shadow:[^}]*(?:0 5px 0|0 2px 0)/,
   );
 });
 

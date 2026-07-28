@@ -25,7 +25,6 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
-import { assetUrl } from "../lib/assets.js";
 
 const GUIDE_CHAPTERS = [
   {
@@ -34,7 +33,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "01 · START",
     title: "BOXTIER는 농구 기록 웹입니다.",
     lead: "홈에서 할 일을 확인하고, 방을 만들거나 참가해 경기를 진행한 뒤 내 전적·팀·티어를 관리합니다.",
-    image: "/assets/guide/start-home.jpg",
+    image: "/assets/guide/start-home.jpg?v=20260728-guide-r2",
     imageAlt: "홈 화면의 매칭 만들기와 경기 기록하기 버튼",
     caption: "홈에서 예정 경기는 매칭으로, 끝난 경기는 기록으로 시작합니다.",
     steps: [
@@ -79,7 +78,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "02 · MATCHING",
     title: "방을 만들고 사람을 초대합니다.",
     lead: "경기 방식과 정원을 정한 뒤 선수·팀·심판을 초대하고, 수락 상태와 자리를 확인합니다.",
-    image: "/assets/guide/matching-create.jpg",
+    image: "/assets/guide/matching-create.jpg?v=20260728-guide-r2",
     imageAlt: "방 만들기 기본 설정의 공개 범위와 경기 방식 선택 화면",
     caption: "공개 범위, 경기 목적, 팀 구성, 일정과 인원을 한 화면에서 정합니다.",
     steps: [
@@ -173,7 +172,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "04 · LIVE",
     title: "심판·경기시계 담당자·선수가 역할을 나눕니다.",
     lead: "심판 유무와 경기시계 사용 여부에 따라 점수·기록·최종 승인 권한이 분리됩니다.",
-    image: "/assets/guide/live-clock.jpg?v=20260725-clock-hierarchy-r2",
+    image: "/assets/guide/live-clock.jpg?v=20260728-guide-r2",
     imageAlt: "A/B 점수판과 30초 샷클락이 함께 열린 가로형 BOXTIER 경기시계",
     caption: "지정된 담당자 화면에서 A/B 점수와 경기시간을 조작하고 샷클락을 초기화합니다.",
     steps: [
@@ -223,7 +222,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "05 · RECORDS",
     title: "기록 유형과 확인 절차를 구분합니다.",
     lead: "일반 live 경기, 함께 만든 사후 경기기록, 본인이 작성한 내 기록은 권한·확정·MMR 규칙이 서로 다릅니다.",
-    image: "/assets/guide/records-create.jpg",
+    image: "/assets/guide/records-create.jpg?v=20260728-guide-r2",
     imageAlt: "경기 기록과 내 기록을 선택하는 기록 만들기 화면",
     caption: "함께한 경기 기록과 개인용 내 기록을 목적에 맞게 나눠 시작합니다.",
     steps: [
@@ -271,7 +270,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "06 · TIER",
     title: "티어는 확정 기록에서 자동 계산됩니다.",
     lead: "티어를 직접 고르지 않습니다. 조건을 충족한 경쟁전 결과가 모드별 MMR과 통합 MMR에 쌓입니다.",
-    image: "/assets/guide/tier-profile.jpg",
+    image: "/assets/guide/tier-profile.jpg?v=20260728-guide-r2",
     imageAlt: "프로필의 통합 MMR과 모드별 MMR 카드",
     caption: "프로필에서 통합 티어와 1v1·2v2·3v3·5v5 모드별 MMR을 확인합니다.",
     steps: [
@@ -766,7 +765,7 @@ export default function GettingStarted({ app }) {
         ) : (
           <figure className="getting-started-shot">
             <img
-              src={assetUrl(chapter.image)}
+              src={chapter.image}
               alt={chapter.imageAlt}
               loading="eager"
               decoding="async"
