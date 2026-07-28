@@ -43,6 +43,7 @@ const gettingStartedSource = read("src/pages/GettingStarted.jsx");
 const practiceMatchSource = read("src/pages/PracticeMatch.jsx");
 const termsSource = read("src/pages/Terms.jsx");
 const tierEmblemSource = read("src/components/rating/TierEmblem.jsx");
+const shareCardSource = read("src/components/share/ShareCard.jsx");
 const teamDetailSource = read("src/pages/TeamDetail.jsx");
 const courtDetailSource = read("src/pages/CourtDetail.jsx");
 const entityProfileHeroSource = read("src/components/profile/EntityProfileHero.jsx");
@@ -89,6 +90,15 @@ test("player and team details share one entity profile hero", () => {
   assert.doesNotMatch(pageSources.playerDetail, /<section className="profile-hero/);
   assert.doesNotMatch(teamDetailSource, /<section className="team-detail-hero/);
   assert.match(globalAdminStyles, /\.entity-profile-hero-copy,/);
+});
+
+test("프로필 공유 action은 엠블럼 열을 침범하지 않는다", () => {
+  assert.match(shareCardSource, /className="share-card-action"/);
+  assert.match(
+    globalWorkflowStyles,
+    /\.share-card-action\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*min-width:\s*0;[^}]*overflow:\s*hidden;/,
+  );
+  assert.doesNotMatch(globalWorkflowStyles, /\.share-card-action\s*\{[^}]*width:\s*max-content;/);
 });
 
 test("player detail uses shared record rows and one support rail", () => {

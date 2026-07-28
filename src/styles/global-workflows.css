@@ -1370,18 +1370,29 @@ input[type="color"] {
 }
 
 .share-card-action {
+  box-sizing: border-box;
   display: inline-flex;
-  width: max-content;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   align-items: center;
+  justify-content: center;
   gap: 7px;
+  overflow: hidden;
   border: 1px solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
   cursor: pointer;
+  font-size: clamp(0.72rem, 1.6vw, 0.86rem);
   font-weight: 900;
   min-height: var(--ui-button-height);
-  padding: 0 11px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.share-card-action svg {
+  flex: 0 0 auto;
 }
 
 @media (max-width: 520px) {
