@@ -165,6 +165,18 @@ test("report review actions keep sanctions behind verified targets and level 50"
   assert.match(simulationSource, /sourceMatchId,\s+reason: `simulation shared match report/);
 });
 
+test("referee search supports qualified discovery on focus only", async () => {
+  const [searchSource, pickerSource, createMatchSource] = await Promise.all([
+    readSource("server/api/search.js"),
+    readSource("src/components/common/SearchPicker.jsx"),
+    readSource("src/pages/CreateMatch.jsx"),
+  ]);
+  assert.match(searchSource, /const refereeDiscovery = forceSearch && queryLength === 0 && types\.length === 1 && types\[0\] === "referee";/);
+  assert.match(searchSource, /if \(query\) profileQuery = profileQuery\.or\(/);
+  assert.match(pickerSource, /const canRemoteSearch = canSearch \|\| \(remoteSearchOnFocus && focused\);/);
+  assert.match(createMatchSource, /remoteSearchOnFocus=\{remoteDirectoryEnabled\}/);
+});
+
 test("report insert conflicts and admin review input fail safely", async () => {
   assert.equal(isActiveReportInsertConflict({ code: "23505", message: "duplicate key" }), true);
   assert.equal(isActiveReportInsertConflict({ code: "PGRST000", message: "active_report_duplicate" }), true);

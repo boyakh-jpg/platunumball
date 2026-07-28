@@ -92,6 +92,7 @@ export default function SearchPicker({
   getSearchText = getDefaultSearchText,
   remoteSearchType = "",
   remoteSearchContext = null,
+  remoteSearchOnFocus = false,
   mapRemoteItem = (item) => item,
   showIdleOnFocus = false,
   floating = false,
@@ -130,9 +131,10 @@ export default function SearchPicker({
   const dynamicMinSearchLength = getQueryMinSearchLength(query, minSearchLength);
   const forceSearch = Boolean(query && submittedQuery === query);
   const canSearch = forceSearch || getSearchLengthText(query).length >= dynamicMinSearchLength;
+  const canRemoteSearch = canSearch || (remoteSearchOnFocus && focused);
   const mappedRemoteItems = useMemo(() => remoteItems.map(mapRemoteItem).filter(Boolean), [mapRemoteItem, remoteItems]);
   const activeItems = useMemo(() => {
-    if (!canSearch) return idleItems;
+    if (!canSearch) return mergeSearchItems(idleItems, mappedRemoteItems);
     const localItems = (items ?? [])
       .map((item, index) => ({
         item,
@@ -160,7 +162,7 @@ export default function SearchPicker({
   };
 
   useEffect(() => {
-    if (!remoteSearchKey || !canSearch) {
+    if (!remoteSearchKey || !canRemoteSearch) {
       remoteRequestIdRef.current += 1;
       setRemoteItems([]);
       setRemoteLoading(false);
@@ -178,7 +180,7 @@ export default function SearchPicker({
           type: remoteSearchType,
           limit: Math.max(baseLimit, Number(remoteLimit) || baseLimit),
           context: remoteSearchContext,
-          force: forceSearch,
+          force: forceSearch || (remoteSearchOnFocus && !query),
         });
         if (remoteRequestIdRef.current !== requestId) return;
         setRemoteItems(Array.isArray(result?.items) ? result.items : []);
@@ -190,7 +192,7 @@ export default function SearchPicker({
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [baseLimit, canSearch, forceSearch, query, remoteLimit, remoteSearchContextKey, remoteSearchKey]);
+  }, [baseLimit, canRemoteSearch, forceSearch, query, remoteLimit, remoteSearchContextKey, remoteSearchKey, remoteSearchOnFocus]);
 
   useEffect(() => {
     setExpanded(false);

@@ -367,13 +367,14 @@ async function searchCourtReviews(supabase, profileId, query, limit) {
 async function searchReferees(supabase, query, limit, searchContext = {}) {
   const throughText = String(searchContext.refereeThroughDate ?? "").slice(0, 10);
   const throughMs = throughText ? new Date(`${throughText}T23:59:59.999Z`).getTime() : Date.now();
-  const { data, error } = await supabase
+  let profileQuery = supabase
     .from("public_profiles")
     .select(PROFILE_COLUMNS)
     .gte("trust_score", 90)
-    .or(searchFilter(["name", "hashtag", "handle", "region", "position"], query))
     .order("trust_score", { ascending: false })
     .limit(limit * 3);
+  if (query) profileQuery = profileQuery.or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
+  const { data, error } = await profileQuery;
   if (error) throw error;
   const profileRows = data ?? [];
   const profileIds = profileRows.map((profile) => profile.id).filter(Boolean);
@@ -438,12 +439,13 @@ export default async function handler(request, response) {
     const minLength = getQueryMinLength(query);
     const forceSearch = body.force === true;
     const queryLength = query.replace(/\s+/g, "").length;
-    if ((!forceSearch && queryLength < minLength) || (forceSearch && queryLength < 1)) {
+    const types = getRequestedTypes(body.type ?? body.types ?? "all");
+    const refereeDiscovery = forceSearch && queryLength === 0 && types.length === 1 && types[0] === "referee";
+    if ((!forceSearch && queryLength < minLength) || (forceSearch && queryLength < 1 && !refereeDiscovery)) {
       sendJson(response, 200, { ok: true, items: [] });
       return;
     }
 
-    const types = getRequestedTypes(body.type ?? body.types ?? "all");
     const searchContext = body.context && typeof body.context === "object" ? body.context : {};
     const courtMapSearch = types.length === 1 && types[0] === "court" && searchContext.purpose === COURT_MAP_SEARCH_PURPOSE;
     const limit = clampLimit(body.limit, courtMapSearch ? COURT_MAP_SEARCH_LIMIT : 25);
