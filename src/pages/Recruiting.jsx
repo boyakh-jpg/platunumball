@@ -608,19 +608,22 @@ function RoomSlotAvatar({ user, mmr = DEFAULT_RATING, position = null }) {
   }
 
   return (
-    <span className="avatar arena-position-avatar" data-position={normalizedPosition} style={{ "--avatar": user?.avatarColor }}>
-      {isPlacementComplete(user?.ratings) ? (
-        <img
-          className="arena-position-avatar-tier"
-          src={getTierEmblemSrc(user?.ratings?.integrated ?? mmr)}
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          onError={(event) => {
-            event.currentTarget.hidden = true;
-          }}
-        />
-      ) : null}
+    <span
+      className="avatar arena-position-avatar"
+      data-position={normalizedPosition}
+      data-tier-state={isPlacementComplete(user?.ratings) ? "placed" : "placement"}
+      style={{ "--avatar": user?.avatarColor }}
+    >
+      <img
+        className="arena-position-avatar-tier"
+        src={getTierEmblemSrc(user?.ratings?.integrated ?? mmr, user?.ratings)}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        onError={(event) => {
+          event.currentTarget.hidden = true;
+        }}
+      />
       <img
         className="arena-position-avatar-player"
         src={avatarSrc}

@@ -40,6 +40,8 @@ const appSource = read("src/App.jsx");
 const gettingStartedSource = read("src/pages/GettingStarted.jsx");
 const practiceMatchSource = read("src/pages/PracticeMatch.jsx");
 const termsSource = read("src/pages/Terms.jsx");
+const tierEmblemSource = read("src/components/rating/TierEmblem.jsx");
+const placementEmblemSource = read("public/assets/tier-emblems/tier-placement-v1.svg");
 const hoverSurfaceStyles = [
   read("src/styles/global-foundation.css"),
   read("src/styles/global-admin-layout.css"),
@@ -664,4 +666,15 @@ test("tier emblem halo stays inside the shared emblem paint box", () => {
   assert.match(foundationStyles, /\.tier-emblem::before\s*\{[\s\S]*?aspect-ratio:\s*1;[\s\S]*?radial-gradient\([\s\S]*?at 50% 50%,[\s\S]*?transparent 82%/);
   assert.match(foundationStyles, /\.tier-emblem img,\s*\.tier-emblem svg\s*\{[\s\S]*?filter:\s*none;/);
   assert.doesNotMatch(foundationStyles, /\.tier-emblem img,\s*\.tier-emblem svg\s*\{[\s\S]*?drop-shadow/);
+});
+
+test("배정 전 엠블럼은 공용 자산이며 방 슬롯 아바타 뒤에도 표시된다", () => {
+  assert.match(tierEmblemSource, /getTierEmblemSrc\(mmr,\s*ratings = null\)/);
+  assert.match(tierEmblemSource, /tier-placement-v1\.svg/);
+  assert.doesNotMatch(placementEmblemSource, /question|\?/i);
+  assert.match(placementEmblemSource, /placement-core/);
+  assert.match(
+    pageSources.recruiting,
+    /className="arena-position-avatar-tier"[\s\S]*?getTierEmblemSrc\(user\?\.ratings\?\.integrated \?\? mmr,\s*user\?\.ratings\)/,
+  );
 });

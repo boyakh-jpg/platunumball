@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="배정 전 티어 엠블럼">
+  <defs>
+    <linearGradient id="placement-frame" x1="30" y1="18" x2="126" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F2F5F8"/>
+      <stop offset=".28" stop-color="#8995A4"/>
+      <stop offset=".58" stop-color="#3D4653"/>
+      <stop offset="1" stop-color="#B7C0CA"/>
+    </linearGradient>
+    <linearGradient id="placement-face" x1="50" y1="35" x2="108" y2="125" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#26303C"/>
+      <stop offset=".55" stop-color="#111720"/>
+      <stop offset="1" stop-color="#080C12"/>
+    </linearGradient>
+    <radialGradient id="placement-core" cx="0" cy="0" r="1" gradientTransform="translate(68 58) rotate(51) scale(52)">
+      <stop stop-color="#FFE9A3"/>
+      <stop offset=".32" stop-color="#F5B83D"/>
+      <stop offset=".72" stop-color="#C66A18"/>
+      <stop offset="1" stop-color="#6A2E0B"/>
+    </radialGradient>
+  </defs>
+  <path fill="#05080D" opacity=".42" d="M80 7 132 27l10 53-22 51-40 22-40-22L18 80l10-53z"/>
+  <path fill="url(#placement-frame)" d="M80 4 134 24l11 56-23 54-42 23-42-23-23-54 11-56z"/>
+  <path fill="#131A23" d="m80 13 45 17 9 49-19 47-35 20-35-20-19-47 9-49z"/>
+  <path fill="url(#placement-face)" stroke="#D7DEE6" stroke-opacity=".38" stroke-width="2" d="m80 24 35 13 7 41-15 39-27 16-27-16-15-39 7-41z"/>
+  <path fill="none" stroke="#F4F7FA" stroke-opacity=".52" stroke-linecap="round" stroke-width="2" d="m47 40 33-12 33 12M43 107l37 22 37-22"/>
+  <circle cx="80" cy="76" r="30" fill="#070B11" stroke="#F4F7FA" stroke-opacity=".42" stroke-width="3"/>
+  <circle cx="80" cy="76" r="23" fill="url(#placement-core)" stroke="#FFE3A0" stroke-width="2"/>
+  <path fill="none" stroke="#4C220C" stroke-linecap="round" stroke-width="3" d="M57 76h46M80 53v46M64 57c10 8 14 17 14 42M96 57c-10 8-14 17-14 42"/>
+  <path fill="#E7EDF3" d="m80 108 7 7-7 7-7-7z"/>
+  <g fill="#AEB8C4">
+    <circle cx="58" cy="124" r="3"/>
+    <circle cx="69" cy="130" r="3"/>
+    <circle cx="91" cy="130" r="3"/>
+    <circle cx="102" cy="124" r="3"/>
+  </g>
+</svg>
