@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Building2, CalendarDays, Clock3, ExternalLink, Flag, Lightbulb, MapPin, Phone, Star, Trophy } from "lucide-react";
+import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
@@ -289,12 +290,12 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           <h1>{court.name}</h1>
           <p><MapPin size={16} /> {getCourtAddress(court)}</p>
           <div className="court-detail-tags">
-            <span>{getCourtHashtag(court)}</span>
-            <span>{court.region || "지역 미정"}</span>
-            <span>실내외 · {court.type || court.indoorOutdoor || "확인 필요"}</span>
-            <span>바닥 · {getCourtSurfaceLabel(court)}</span>
-            <span>코트 형태 · {getCourtLayoutLabel(court)}</span>
-            {typeof court.paid === "boolean" ? <span>이용료 · {court.paid ? "유료" : "무료"}</span> : null}
+            <Badge>{getCourtHashtag(court)}</Badge>
+            <Badge>{court.region || "지역 미정"}</Badge>
+            <Badge>실내외 · {court.type || court.indoorOutdoor || "확인 필요"}</Badge>
+            <Badge>바닥 · {getCourtSurfaceLabel(court)}</Badge>
+            <Badge>코트 형태 · {getCourtLayoutLabel(court)}</Badge>
+            {typeof court.paid === "boolean" ? <Badge>이용료 · {court.paid ? "유료" : "무료"}</Badge> : null}
           </div>
         </div>
         <div className="court-detail-actions">

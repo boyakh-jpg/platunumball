@@ -71,6 +71,15 @@ const legacyStyleSources = [
   read("src/styles/recruiting-arena.css"),
 ].join("\n");
 
+test("court detail hero tags use shared glass badges", () => {
+  assert.match(courtDetailSource, /import Badge from "\.\.\/components\/common\/Badge\.jsx";/);
+  const courtHeroTags = courtDetailSource.match(/<div className="court-detail-tags">([\s\S]*?)<\/div>/)?.[1] ?? "";
+  assert.match(courtHeroTags, /<Badge>/);
+  assert.doesNotMatch(courtHeroTags, /<span>/);
+  assert.match(visualSystemStyles, /\.court-detail-tags \.ui-badge,/);
+  assert.doesNotMatch(globalWorkflowStyles, /\.court-detail-tags span/);
+});
+
 test("win loss draw record borders keep semantic colors in every theme", () => {
   assert.match(tokenStyles, /--ui-result-win-border:\s*var\(--blue\);/);
   assert.match(tokenStyles, /--ui-result-loss-border:\s*var\(--danger\);/);

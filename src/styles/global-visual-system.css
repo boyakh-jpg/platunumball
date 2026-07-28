@@ -3963,6 +3963,7 @@ html[data-theme] .app-main :is(
   .season-hero-copy > .ui-badge,
   .season-meta-row > span,
   .profile-hero .badge-row .ui-badge,
+  .court-detail-tags .ui-badge,
   .tournament-hero-badges .ui-badge,
   .gm-room-topline .ui-badge,
   .gm-team-panel,

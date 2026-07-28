@@ -2697,7 +2697,6 @@ input[type="color"] {
   margin-top: 12px;
 }
 
-.court-detail-tags span,
 .court-review-tags span {
   padding: 5px 8px;
   border: 1px solid var(--ui-control-border);
