@@ -4450,7 +4450,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
 
 @media (max-width: 720px) {
   .arena-lobby-modal .arena-lobby-arena {
-    --room-slot-width: min(74px, calc((100dvw - 128px) / 4));
+    --room-slot-width: min(72px, calc((100dvw - 128px) / var(--room-side-slot-count, 4)));
   }
 
   .arena-lobby-modal .arena-room-slot-row,
@@ -4486,10 +4486,6 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
 }
 
 @media (max-width: 380px) {
-  .arena-lobby-modal .arena-lobby-arena {
-    --room-slot-width: 74px;
-  }
-
   .arena-lobby-modal .arena-reserve-panel,
   html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
     grid-template-columns: minmax(0, 1fr);
@@ -5717,6 +5713,9 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
 html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
   --pickup-slot-width: 72px;
   display: grid;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   grid-template-columns: repeat(auto-fit, var(--pickup-slot-width));
   grid-auto-flow: row;
   justify-content: start;
@@ -5775,8 +5774,12 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
 @media (max-width: 720px) {
   .arena-lobby-modal .pickup-room-slot-grid,
   html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
-    column-gap: 3px;
-    margin-inline: 0;
+    --room-slot-inline-bleed: var(--space-2);
+    inline-size: calc(100% + (2 * var(--room-slot-inline-bleed)));
+    max-inline-size: none;
+    justify-content: space-between;
+    column-gap: 0;
+    margin-inline: calc(-1 * var(--room-slot-inline-bleed));
     padding-inline: 0;
   }
 

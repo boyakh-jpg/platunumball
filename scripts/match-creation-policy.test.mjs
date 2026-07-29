@@ -1041,11 +1041,25 @@ test("pickup participant slots keep a fixed width and use available desktop colu
   assert.doesNotMatch(componentSource, /Math\.min\(8,\s*Math\.max\(1,\s*safeCapacity\)\)/);
   assert.doesNotMatch(componentSource, /--pickup-slot-columns/);
   assert.match(cssSource, /--pickup-slot-width:\s*72px/);
+  assert.match(cssSource, /\.arena-lobby-modal \.pickup-room-slot-grid,[\s\S]*?inline-size:\s*100%;[\s\S]*?min-inline-size:\s*0;[\s\S]*?max-inline-size:\s*100%;/);
   assert.match(cssSource, /grid-template-columns:\s*repeat\(auto-fit,\s*var\(--pickup-slot-width\)\)/);
   assert.match(cssSource, /\.pickup-room-slot-grid \.arena-room-player-slot[\s\S]*width:\s*var\(--pickup-slot-width\)/);
   assert.doesNotMatch(cssSource, /\.arena-lobby-modal \.pickup-room-slot-grid[^{]*\{[^}]*grid-template-columns:\s*repeat\(4/);
-  assert.match(cssSource, /@media \(max-width: 720px\)[\s\S]*\.pickup-room-slot-grid[\s\S]*margin-inline:\s*0/);
+  assert.match(cssSource, /@media \(max-width: 720px\)[\s\S]*\.pickup-room-slot-grid[\s\S]*--room-slot-inline-bleed:\s*var\(--space-2\)/);
+  assert.match(cssSource, /@media \(max-width: 720px\)[\s\S]*\.pickup-room-slot-grid[\s\S]*inline-size:\s*calc\(100% \+ \(2 \* var\(--room-slot-inline-bleed\)\)\)/);
+  assert.match(cssSource, /@media \(max-width: 720px\)[\s\S]*\.pickup-room-slot-grid[\s\S]*justify-content:\s*space-between/);
+  assert.match(cssSource, /@media \(max-width: 720px\)[\s\S]*\.pickup-room-slot-grid[\s\S]*margin-inline:\s*calc\(-1 \* var\(--room-slot-inline-bleed\)\)/);
   assert.match(cssSource, /@media \(max-width: 720px\)[\s\S]*\.pickup-room-slot-grid[\s\S]*padding-inline:\s*0/);
+});
+
+test("mobile active and reserve slots share the side-capacity width token", () => {
+  const recruitingSource = fs.readFileSync(path.join(root, "src/pages/Recruiting.jsx"), "utf8");
+  const cssSource = fs.readFileSync(path.join(root, "src/styles/recruiting-arena.css"), "utf8");
+  assert.match(recruitingSource, /--room-side-slot-count/);
+  assert.match(cssSource, /--room-slot-width:\s*min\(72px,\s*calc\(\(100dvw - 128px\) \/ var\(--room-side-slot-count,\s*4\)\)\)/);
+  assert.doesNotMatch(cssSource, /@media \(max-width: 380px\)[\s\S]*?--room-slot-width:\s*74px/);
+  assert.match(cssSource, /\.arena-lobby-modal \.arena-room-slot-row[\s\S]*?grid-auto-columns:\s*minmax\(var\(--room-slot-width\),\s*var\(--room-slot-width\)\)/);
+  assert.match(cssSource, /\.arena-lobby-modal \.arena-side-inline-reserve \.arena-room-reserve-row,[\s\S]*?grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(var\(--room-slot-width\),\s*var\(--room-slot-width\)\)\)/);
 });
 
 test("CreateMatch persists bench capacity at top level and inside rules", () => {

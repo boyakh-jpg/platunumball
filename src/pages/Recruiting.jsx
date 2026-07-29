@@ -4723,7 +4723,10 @@ function RecruitingRoomModalReady({
                 aria-label="아래로 당겨 방 닫기"
               />
               <div className="arena-lobby-modal-scroll">
-              <div className="arena-lobby-arena">
+              <div
+                className="arena-lobby-arena"
+                style={{ "--room-side-slot-count": Math.max(1, getRecruitingSideCapacity(selectedPost)) }}
+              >
                 <div className="arena-lobby-topline">
                   <div className="badge-row">
                     <Badge tone={roomPhaseBadge?.tone ?? "neutral"}>{roomPhaseBadge?.label ?? "대기방"}</Badge>
