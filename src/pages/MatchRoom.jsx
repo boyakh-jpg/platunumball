@@ -862,7 +862,7 @@ export default function MatchRoom({ app }) {
             <p>삭제하면 내 기록 목록에서 사라집니다. MMR은 변하지 않습니다.</p>
             <div className="app-confirm-actions">
               <Button type="button" variant="secondary" onClick={() => setSoloRecordDeleteOpen(false)}>취소</Button>
-              <Button type="button" variant="primary" className="danger-button" onClick={confirmDeleteSoloRecord}>삭제하기</Button>
+              <Button type="button" variant="danger" onClick={confirmDeleteSoloRecord}>삭제하기</Button>
             </div>
           </div>
         </div>
@@ -913,9 +913,9 @@ export default function MatchRoom({ app }) {
             <Badge tone={canCancel || canDeleteSoloRecord ? "orange" : "neutral"}>{canDeleteSoloRecord ? "삭제 가능" : canCancel ? "취소 가능" : "잠김"}</Badge>
           </div>
           <p className="muted">{canDeleteSoloRecord ? "이 개인 기록은 내 기록에서 삭제할 수 있습니다." : canCancel ? `현재 운영 권한으로 ${cancelCopy.actionLabel}가 가능합니다.` : `현재 단계에서는 ${cancelCopy.actionLabel}가 잠겼습니다.`}</p>
-          <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={requestCancelMatch}>{cancelActionLabel}</Button>
+          <Button type="button" variant="danger" disabled={!canCancel} onClick={requestCancelMatch}>{cancelActionLabel}</Button>
           {canDeleteSoloRecord ? (
-            <Button type="button" variant="secondary" className="danger-button" onClick={deleteSoloRecord}>개인 기록 삭제</Button>
+            <Button type="button" variant="danger" onClick={deleteSoloRecord}>개인 기록 삭제</Button>
           ) : null}
         </Card>
       ) : null}
@@ -1334,8 +1334,8 @@ export default function MatchRoom({ app }) {
                 </label>
                 <div className="match-action-row">
                   <Button type="button" variant="secondary" disabled={!canRequestMatchDispute} onClick={submitDispute}>{hasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
-                  <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={requestCancelMatch}>{cancelActionLabel}</Button>
-                  <Button type="button" variant="secondary" className="danger-button" disabled={!canVoid} onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button>
+                  <Button type="button" variant="danger" disabled={!canCancel} onClick={requestCancelMatch}>{cancelActionLabel}</Button>
+                  <Button type="button" variant="danger" disabled={!canVoid} onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button>
                   <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, reportReason)}>신고 접수</Button>
                 </div>
               </>

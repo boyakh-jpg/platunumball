@@ -139,6 +139,20 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   background: var(--ui-button-bg-pressed);
 }
 
+.ui-button.ui-button-danger,
+.ui-button.danger-button {
+  color: var(--ui-button-color-active);
+  background: var(--danger);
+  border-color: transparent;
+}
+
+.ui-button.ui-button-danger:hover:not(:disabled),
+.ui-button.danger-button:hover:not(:disabled) {
+  color: var(--ui-button-color-active);
+  background: color-mix(in srgb, var(--danger) 84%, #000);
+  border-color: transparent;
+}
+
 .ui-button:disabled {
   cursor: not-allowed;
   opacity: 0.58;
