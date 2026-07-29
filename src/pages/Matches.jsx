@@ -811,6 +811,7 @@ export function getMatchRoomPost(match, state) {
   const baseRoomState = {
     ...(sourcePost?.roomState ?? {}),
     ruleRevision: sourcePost?.roomState?.ruleRevision ?? 1,
+    matchRosterProjection: true,
     hostReserve,
     partyReserves,
     pinnedReservePlayers: {

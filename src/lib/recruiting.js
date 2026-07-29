@@ -861,18 +861,22 @@ function getRecruitingHostEntry(post = {}, state = {}) {
   const team = post.teamId ? state.teams?.find((item) => item.id === post.teamId) ?? null : null;
   const capacity = getRecruitingSideCapacity(post);
   const benchCapacity = getRecruitingBenchCapacity(post);
-  const exactTournamentRoster = Boolean(post.tournamentId);
+  const exactStoredRoster = Boolean(post.tournamentId || roomState.matchRosterProjection);
   const joinMode = post.hostJoinMode === "team" ? "team" : "player";
   const waitingForHostTeam = joinMode === "team" && !post.teamId && !post.playerIds?.length;
   if (waitingForHostTeam) return null;
   const players = joinMode === "team"
-    ? (exactTournamentRoster ? unique(post.playerIds ?? []).slice(0, capacity) : getTeamEntryPlayerIds(team, capacity, post.playerIds, post.playerId))
+    ? (exactStoredRoster ? unique(post.playerIds ?? []).slice(0, capacity) : getTeamEntryPlayerIds(team, capacity, post.playerIds, post.playerId))
     : [post.playerId].filter(Boolean);
   const explicitReserves = joinMode === "team"
-    ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves.host ?? []) : unique(roomState.partyReserves.host ?? []))
+    ? (exactStoredRoster
+        ? unique(roomState.partyReserves.host ?? [])
+        : team
+          ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves.host ?? [])
+          : unique(roomState.partyReserves.host ?? []))
     : [];
   const reserves = joinMode === "team"
-    ? unique([...(exactTournamentRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves])
+    ? unique([...(exactStoredRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves])
         .filter((playerId) => !players.includes(playerId))
         .slice(0, benchCapacity)
     : [];
@@ -884,7 +888,7 @@ function getRecruitingHostEntry(post = {}, state = {}) {
     joinMode,
     side: post.hostSide ?? "teamA",
     status: post.hostReady ? "ready" : "waiting",
-    reserve: roomState.hostReserve,
+    reserve: exactStoredRoster && joinMode === "team" ? false : roomState.hostReserve,
     playerId: post.playerId,
     teamId: team?.id ?? post.teamId ?? null,
     user,
@@ -918,15 +922,19 @@ function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {}) {
   const user = normalizedEntry.playerId ? state.users?.find((item) => item.id === normalizedEntry.playerId) ?? null : null;
   const displayTeamId = normalizedEntry.kind === "team" ? normalizedEntry.teamId : normalizedEntry.sourceTeamId;
   const team = displayTeamId ? state.teams?.find((item) => item.id === displayTeamId) ?? null : null;
-  const exactTournamentRoster = Boolean(post.tournamentId);
+  const exactStoredRoster = Boolean(post.tournamentId || roomState.matchRosterProjection);
   const players = normalizedEntry.kind === "team"
-    ? (exactTournamentRoster ? unique(normalizedEntry.playerIds ?? []).slice(0, capacity) : getTeamEntryPlayerIds(team, capacity, normalizedEntry.playerIds, normalizedEntry.playerId))
+    ? (exactStoredRoster ? unique(normalizedEntry.playerIds ?? []).slice(0, capacity) : getTeamEntryPlayerIds(team, capacity, normalizedEntry.playerIds, normalizedEntry.playerId))
     : [normalizedEntry.playerId].filter(Boolean);
   const explicitReserves = normalizedEntry.kind === "team"
-    ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []) : unique(roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []))
+    ? (exactStoredRoster
+        ? unique(roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? [])
+        : team
+          ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? [])
+          : unique(roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []))
     : [];
   const reserves = normalizedEntry.kind === "team"
-    ? unique([...(exactTournamentRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves])
+    ? unique([...(exactStoredRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves])
         .filter((playerId) => !players.includes(playerId))
         .slice(0, benchCapacity)
     : [];

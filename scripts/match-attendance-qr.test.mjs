@@ -47,7 +47,7 @@ const {
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
 
-test("QR 출석 기본값은 공개 경쟁전과 대회에서 켜진다", () => {
+test("QR 출석 기본값은 공개·비공개 경쟁전과 대회에서 켜진다", () => {
   assert.equal(normalizeMatchRules({
     visibility: "public",
     matchPurpose: "competitive",
@@ -71,6 +71,16 @@ test("QR 출석 기본값은 공개 경쟁전과 대회에서 켜진다", () => 
   assert.equal(normalizeMatchRules({
     visibility: "private",
     matchPurpose: "competitive",
+    qrAttendanceEnabled: true,
+  }).qrAttendanceEnabled, true);
+  assert.equal(normalizeMatchRules({
+    visibility: "private",
+    matchPurpose: "competitive",
+  }).qrAttendanceEnabled, true);
+  assert.equal(normalizeMatchRules({
+    visibility: "private",
+    matchPurpose: "competitive",
+    recordType: "match_record",
     qrAttendanceEnabled: true,
   }).qrAttendanceEnabled, false);
   assert.equal(normalizeMatchRules({

@@ -707,6 +707,39 @@ test("확정 픽업 방모달은 실제 A/B 출전·후보 명단을 그대로 �
       reserveLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "host"),
       true,
     );
+
+    const teamHostMatch = {
+      ...match,
+      formationMode: "prearranged",
+      matchIntent: "standard_competitive",
+      teamA: { players: ["a1", "a2", "a3"], teamId: "team-a" },
+      teamB: { players: ["b1", "b2", "b3"], teamId: "team-b" },
+      reservePlayers: { teamA: ["host"], teamB: ["rb"] },
+      parties: [],
+      rules: {
+        ...match.rules,
+        formationMode: "prearranged",
+        matchIntent: "standard_competitive",
+        sideAssignmentStatus: "confirmed",
+      },
+    };
+    const teamHostState = {
+      ...state,
+      matches: [teamHostMatch],
+      teams: [
+        { id: "team-a", members: ["a1", "a2", "a3"].map((userId) => ({ userId, role: "member" })) },
+        { id: "team-b", members: ["b1", "b2", "b3", "rb"].map((userId) => ({ userId, role: "member" })) },
+      ],
+    };
+    const teamHostRoomPost = getMatchRoomPost(teamHostMatch, teamHostState);
+    const teamHostLobby = getRecruitingLobby(teamHostRoomPost, teamHostState);
+    assert.equal(teamHostRoomPost.roomState.matchRosterProjection, true);
+    assert.equal(teamHostRoomPost.roomState.hostReserve, true);
+    assert.deepEqual([...teamHostLobby.sides.teamA.projectedPlayers].sort(), ["a1", "a2", "a3"]);
+    assert.equal(
+      teamHostLobby.sides.teamA.reserveCandidates.some((candidate) => candidate.playerId === "host"),
+      true,
+    );
   } finally {
     await vite.close();
   }
