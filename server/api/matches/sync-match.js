@@ -510,10 +510,13 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
 
   if (action === "cancelMatch") {
     const cancelCopy = getMatchCancelCopy(match);
+    const cancellationReason = String(match.rules?.cancellationReason ?? "").trim();
     addRows(participantIds, profiles, {
       idPrefix: "match-cancelled",
       title: cancelCopy.notificationTitle,
-      intro: cancelCopy.discordIntro,
+      intro: cancellationReason
+        ? `${cancelCopy.discordIntro}\n취소 사유: ${cancellationReason}`
+        : cancelCopy.discordIntro,
       type: "match_cancelled",
       actionRequired: false,
     });

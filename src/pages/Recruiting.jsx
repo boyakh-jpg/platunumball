@@ -156,7 +156,6 @@ import {
   getPostgameRecordVerification,
   getRecruitingRuleAcknowledgement,
   getRoomCancellationActionLabel,
-  getRoomCancellationConfirmMessage,
   getRoomCancellationPolicy,
   getRoomEditAvailability,
   getRoomPhaseViewModel,
@@ -2018,6 +2017,7 @@ function RoomChat({
   messages,
   userById,
   teams,
+  currentUserId = "",
   value,
   canChat,
   readOnly = false,
@@ -2071,7 +2071,10 @@ function RoomChat({
         {messages.length ? messages.map((message) => {
           const user = userById[message.userId];
           return (
-            <div key={message.id || `${message.userId}-${message.createdAt}`} className="arena-chat-message">
+            <div
+              key={message.id || `${message.userId}-${message.createdAt}`}
+              className={`arena-chat-message${message.userId === currentUserId ? " is-mine" : ""}`}
+            >
               <PlayerHoverCard user={user} teams={teams} as="span">
                 <ProfileEmblem user={user} className="small" />
               </PlayerHoverCard>
@@ -2927,6 +2930,8 @@ function RecruitingRoomModalReady({
   const [soloRecordDeleteTarget, setSoloRecordDeleteTarget] = useState(null);
   const [finalizeMatchTarget, setFinalizeMatchTarget] = useState(null);
   const [finalizeMatchPending, setFinalizeMatchPending] = useState(false);
+  const [roomCancellationTarget, setRoomCancellationTarget] = useState(null);
+  const [roomCancellationPending, setRoomCancellationPending] = useState(false);
   const [sourceMatchReviewRefreshing, setSourceMatchReviewRefreshing] = useState(false);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [sheetDragSettling, setSheetDragSettling] = useState(false);
@@ -4321,15 +4326,55 @@ function RecruitingRoomModalReady({
           roomCancellationPolicy,
         );
         const requestSourceMatchCancellation = () => {
-          const message = getRoomCancellationConfirmMessage(sourceMatchCancelCopy.actionLabel, roomCancellationPolicy);
-          if (typeof window !== "undefined" && !window.confirm(message)) return;
-          void app.actions.cancelMatch(sourceMatch.id);
+          setRoomCancellationTarget({
+            kind: "match",
+            id: sourceMatch.id,
+            label: sourceMatchCancelCopy.actionLabel,
+            reason: "",
+            error: "",
+          });
         };
         const requestRecruitingCancellation = () => {
-          const message = getRoomCancellationConfirmMessage("경기 취소", roomCancellationPolicy);
-          if (typeof window !== "undefined" && !window.confirm(message)) return;
-          void app.actions.closeRecruitingPost(selectedPost.id);
+          setRoomCancellationTarget({
+            kind: "recruiting",
+            id: selectedPost.id,
+            label: "경기 취소",
+            reason: "",
+            error: "",
+          });
         };
+        const submitRoomCancellation = async (event) => {
+          event.preventDefault();
+          if (!roomCancellationTarget || roomCancellationPending) return;
+          const reason = String(roomCancellationTarget.reason ?? "").trim();
+          if (reason.length < 5) {
+            setRoomCancellationTarget((current) => ({ ...current, error: "취소 사유를 5자 이상 입력해 주세요." }));
+            return;
+          }
+          setRoomCancellationPending(true);
+          try {
+            const result = roomCancellationTarget.kind === "match"
+              ? await app.actions.cancelMatch(roomCancellationTarget.id, reason)
+              : await app.actions.closeRecruitingPost(roomCancellationTarget.id, reason);
+            if (result?.ok === false) {
+              setRoomCancellationTarget((current) => ({ ...current, error: "취소하지 못했습니다. 잠시 후 다시 시도해 주세요." }));
+              return;
+            }
+            setRoomCancellationTarget(null);
+          } catch (error) {
+            setRoomCancellationTarget((current) => ({
+              ...current,
+              error: error?.message || "취소하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            }));
+          } finally {
+            setRoomCancellationPending(false);
+          }
+        };
+        const cancellationReasonText = String(
+          sourceMatch?.rules?.cancellationReason
+          ?? roomState.cancellationReasonText
+          ?? "",
+        ).trim();
         const canRemakeRoom = mine && (
           Boolean(recruitingRoomTerminalStatus) ||
           sourceMatch?.status === "cancelled"
@@ -5426,6 +5471,7 @@ function RecruitingRoomModalReady({
                 messages={chatMessages}
                 userById={userById}
                 teams={app.state.teams}
+                currentUserId={app.currentUser.id}
                 value={getChatDraft(selectedPost)}
                 canChat={canUseChat}
                 readOnly={sourceRoomReadOnly}
@@ -5485,6 +5531,9 @@ function RecruitingRoomModalReady({
                   <div className="arena-owner-panel">
                     <strong>{sourceMatchAction.label}</strong>
                     <span>{sourceMatchAction.detail}</span>
+                    {cancellationReasonText ? (
+                      <span className="arena-cancellation-reason"><b>취소 사유</b>{cancellationReasonText}</span>
+                    ) : null}
                     {canRemakeRoom ? (
                       <Button type="button" variant="secondary" onClick={remakeRoom}>
                         <RotateCcw size={17} /> 같은 설정으로 다시 만들기
@@ -5661,6 +5710,9 @@ function RecruitingRoomModalReady({
                   <div className="arena-owner-panel">
                     <strong>{recruitingRoomTerminalStatus.label}</strong>
                     <span>{recruitingRoomTerminalStatus.detail}</span>
+                    {cancellationReasonText ? (
+                      <span className="arena-cancellation-reason"><b>취소 사유</b>{cancellationReasonText}</span>
+                    ) : null}
                     {canRemakeRoom ? (
                       <Button type="button" variant="secondary" onClick={remakeRoom}>
                         <RotateCcw size={17} /> 같은 설정으로 다시 만들기
@@ -5973,6 +6025,59 @@ function RecruitingRoomModalReady({
                       <Button type="button" variant="primary" className="danger-button" onClick={confirmDeleteSourceSoloRecord}>삭제하기</Button>
                     </div>
                   </div>
+                </div>,
+                document.body,
+              ) : null}
+              {roomCancellationTarget && typeof document !== "undefined" ? createPortal(
+                <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !roomCancellationPending && setRoomCancellationTarget(null)}>
+                  <form
+                    className="app-confirm-dialog room-cancellation-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`${roomCancellationTarget.label} 사유 입력`}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onSubmit={submitRoomCancellation}
+                  >
+                    <strong>{roomCancellationTarget.label}</strong>
+                    <p>
+                      {roomCancellationPolicy.penalty > 0
+                        ? `취소하면 신뢰도 ${roomCancellationPolicy.penalty}점이 감소합니다.`
+                        : roomCancellationPolicy.waived
+                          ? "이번 취소는 신뢰도 차감이 면제됩니다."
+                          : "취소한 방은 복구할 수 없습니다."}
+                    </p>
+                    <label>
+                      취소 사유
+                      <textarea
+                        autoFocus
+                        required
+                        minLength={5}
+                        maxLength={200}
+                        disabled={roomCancellationPending}
+                        value={roomCancellationTarget.reason}
+                        onChange={(event) => setRoomCancellationTarget((current) => ({
+                          ...current,
+                          reason: event.target.value,
+                          error: "",
+                        }))}
+                        placeholder="참가자에게 보여줄 취소 사유를 입력해 주세요."
+                      />
+                    </label>
+                    <small className={roomCancellationTarget.error ? "error" : ""}>
+                      {roomCancellationTarget.error || `${roomCancellationTarget.reason.length}/200`}
+                    </small>
+                    <div className="app-confirm-actions">
+                      <Button type="button" variant="secondary" disabled={roomCancellationPending} onClick={() => setRoomCancellationTarget(null)}>돌아가기</Button>
+                      <Button
+                        type="submit"
+                        variant="secondary"
+                        className="danger-button"
+                        disabled={roomCancellationPending || roomCancellationTarget.reason.trim().length < 5}
+                      >
+                        {roomCancellationPending ? "취소 처리 중" : roomCancellationTarget.label}
+                      </Button>
+                    </div>
+                  </form>
                 </div>,
                 document.body,
               ) : null}

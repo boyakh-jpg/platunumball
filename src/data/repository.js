@@ -4586,9 +4586,11 @@ export function removeMatchLatePlayer(state, matchId, playerId) {
   return addMatchLatePlayer(state, matchId);
 }
 
-export function cancelMatch(state, matchId) {
+export function cancelMatch(state, matchId, reason = "") {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status)) return state;
+  const cancellationReason = String(reason).trim();
+  if (cancellationReason.length < 5 || cancellationReason.length > 200) return state;
   const afterStart = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(getMatchRoomPhase(match).phase));
   if (afterStart ? !currentUserCanOperateStartedMatch(state, match) : !currentUserIsMatchHost(state, match)) return state;
   const cancellationPolicy = isMatchRecordMatch(match)
@@ -4617,6 +4619,8 @@ export function cancelMatch(state, matchId) {
             cancelledAt,
             rules: {
               ...(item.rules ?? {}),
+              cancellationReason,
+              cancelledBy: state.currentUserId,
               cancelPenalty: cancellationPolicy.penalty,
               cancelPenaltyWaived: cancellationPolicy.waived,
               cancelWaiverReason: cancellationPolicy.waiverReason,
@@ -7112,7 +7116,7 @@ export function createRecruitingPost(state, draft) {
   };
 }
 
-export function setRecruitingRoomTeam(state, postId, side, teamId) {
+export function setRecruitingRoomTeam(state, postId, side, teamId, contextMessage = "") {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   const safeSide = side === "teamA" || side === "teamB" ? side : "";
   const team = state.teams?.find((item) => item.id === teamId);
@@ -7204,6 +7208,7 @@ export function setRecruitingRoomTeam(state, postId, side, teamId) {
     createdAt,
     updatedAt: createdAt,
   };
+  const invitationContext = String(contextMessage ?? "").trim();
   return {
     ...state,
     recruitingPosts: state.recruitingPosts.map((item) => item.id === postId ? {
@@ -7222,7 +7227,10 @@ export function setRecruitingRoomTeam(state, postId, side, teamId) {
     notifications: [{
       id: makeId("n"),
       title: "\uB9E4\uCE58\uBC29 \uCD08\uB300",
-      body: `${post.title} B\uC0AC\uC774\uB4DC \uD300 \uCD08\uB300\uAC00 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4.`,
+      body: [
+        `${post.title} B\uC0AC\uC774\uB4DC \uD300 \uCD08\uB300\uAC00 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4.`,
+        invitationContext,
+      ].filter(Boolean).join("\n"),
       tone: "match",
       targetUserId: captainId,
       recruitingPostId: postId,
@@ -9291,6 +9299,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
     : invite.joinMode === "player" ? "player" : (invite.joinMode === "team" || invite.teamId ? "team" : "");
   const invitationSide = pickupRoom ? null : side;
   const invitationReserve = pickupRoom ? false : reserve;
+  const invitationContext = String(invite.contextMessage ?? "").trim();
   const newInvitations = targetUserIds.map((targetUserId) => ({
     id: makeId("inv"),
     role: "player",
@@ -9316,8 +9325,11 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
         id: makeId("n"),
         title: "매치방 초대",
         body: pickupRoom
-          ? `${post.title} 통합 참가 초대장이 도착했습니다.`
-          : `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "빈 슬롯"} 초대장이 도착했습니다.`,
+          ? [`${post.title} 통합 참가 초대장이 도착했습니다.`, invitationContext].filter(Boolean).join("\n")
+          : [
+              `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "빈 슬롯"} 초대장이 도착했습니다.`,
+              invitationContext,
+            ].filter(Boolean).join("\n"),
         tone: "match",
         targetUserId: invitation.targetUserId,
         recruitingPostId: postId,
@@ -11041,9 +11053,11 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
   };
 }
 
-export function closeRecruitingPost(state, postId) {
+export function closeRecruitingPost(state, postId, reason = "") {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || !isRecruitingRoomOwner(post, state.currentUserId)) return state;
+  const cancellationReason = String(reason).trim();
+  if (cancellationReason.length < 5 || cancellationReason.length > 200) return state;
   const cancellationPolicy = getRoomCancellationPolicy(post);
   if (!cancellationPolicy.allowed) {
     return {
@@ -11076,6 +11090,8 @@ export function closeRecruitingPost(state, postId) {
               cancelPenalty: penalty,
               cancelPenaltyWaived: cancellationPolicy.waived,
               cancelWaiverReason: cancellationPolicy.waiverReason,
+              cancellationReasonText: cancellationReason,
+              cancelledBy: state.currentUserId,
               cancelledAt: now,
             },
           }

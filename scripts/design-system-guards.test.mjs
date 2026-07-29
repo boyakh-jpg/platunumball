@@ -1210,3 +1210,13 @@ test("업적 프로필 아이콘은 공용 투명 배경 규칙을 사용한다"
     /draft\.avatarSource === "initial"[\s\S]*?avatarBackgroundEnabled[\s\S]*?배경색 사용/,
   );
 });
+
+test("방 채팅은 아이콘 안전 여백과 말풍선 stream을 사용한다", () => {
+  assert.match(pageSources.recruiting, /className=\{`arena-chat-message\$\{message\.userId === currentUserId \? " is-mine" : ""\}`\}/);
+  assert.match(recruitingStyles, /\.arena-chat-list\s*\{[\s\S]*?padding:\s*10px 12px;/);
+  assert.match(recruitingStyles, /\.arena-chat-message\s*\{[\s\S]*?grid-template-columns:\s*34px minmax\(0, 1fr\);/);
+  assert.match(recruitingStyles, /\.arena-chat-message\.is-mine > span:last-child\s*\{[\s\S]*?var\(--rb-orange\)/);
+  assert.match(recruitingStyles, /\.arena-lobby-modal \.arena-room-chat,[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/);
+  assert.match(recruitingStyles, /\.arena-chat-form input,[\s\S]*?min-height:\s*36px;[\s\S]*?height:\s*36px;/);
+  assert.doesNotMatch(useAppDataSource, /supabase\s*\.\s*channel\s*\(/);
+});

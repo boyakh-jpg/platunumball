@@ -294,10 +294,12 @@ function getCanonicalHostJoinMode(post = {}) {
 }
 
 function getRoomCancelledPayload(post = {}) {
+  const cancellationReason = String(post.roomState?.cancellationReasonText ?? "").trim();
   return {
     title: "방 취소",
     body: [
       `${post.title || "매칭방"} 방이 취소되었습니다.`,
+      ...(cancellationReason ? [`취소 사유: ${cancellationReason}`] : []),
       `구장: ${post.court || "구장 미정"}`,
       `방식: ${post.mode || "5v5"}`,
     ].join("\n"),
@@ -1143,6 +1145,56 @@ async function loadSyncedRecruitingState(context, postId = "") {
   };
 }
 
+async function appendRemakeInvitationContext(supabase, post = {}, operation = {}) {
+  const contextMessage = String(
+    operation.contextMessage
+      ?? operation.invite?.contextMessage
+      ?? "",
+  ).trim().slice(0, 500);
+  if (!contextMessage || !post?.id) return 0;
+
+  const requestedTargetIds = new Set(
+    (operation.invite?.playerIds ?? [operation.invite?.playerId])
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean),
+  );
+  const invitationIds = toArray(post.roomState?.invitations)
+    .filter((invitation) => {
+      if (!isPendingInvitation(invitation)) return false;
+      if (operation.action === "setRecruitingRoomTeam") {
+        return invitation.teamId === operation.teamId && invitation.side === operation.side;
+      }
+      return requestedTargetIds.has(String(invitation.targetUserId ?? ""));
+    })
+    .map((invitation) => String(invitation.id ?? "").trim())
+    .filter(Boolean);
+  if (!invitationIds.length) return 0;
+
+  const { data: notifications, error } = await supabase
+    .from("notifications")
+    .select("id,body,payload")
+    .eq("recruiting_post_id", post.id)
+    .in("invitation_id", invitationIds);
+  if (error) throw error;
+
+  await Promise.all((notifications ?? []).map(async (notification) => {
+    const body = String(notification.body ?? "");
+    const { error: updateError } = await supabase
+      .from("notifications")
+      .update({
+        body: body.includes(contextMessage) ? body : [body, contextMessage].filter(Boolean).join("\n"),
+        payload: {
+          ...(notification.payload && typeof notification.payload === "object" ? notification.payload : {}),
+          contextMessage,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", notification.id);
+    if (updateError) throw updateError;
+  }));
+  return notifications?.length ?? 0;
+}
+
 function getRequestedRecruitingRoster(operation = {}) {
   const activeIds = toArray(operation.roster?.playerIds).map((id) => String(id ?? "").trim()).filter(Boolean);
   const reserveIds = toArray(operation.roster?.reservePlayerIds).map((id) => String(id ?? "").trim()).filter(Boolean);
@@ -1382,9 +1434,10 @@ async function applySqlRecruitingAction(context, operation = {}) {
   }
 
   if (operation.action === "closeRecruitingPost") {
-    const { data, error } = await context.supabase.rpc("rankball_recruiting_close_action", {
+    const { data, error } = await context.supabase.rpc("rankball_recruiting_close_with_reason_action", {
       p_actor_profile_id: context.profileId,
       p_post_id: operation.postId,
+      p_reason: operation.reason ?? "",
     });
     if (error) {
       if (isMissingSqlReducer(error)) return null;
@@ -1875,6 +1928,22 @@ export default async function handler(request, response) {
         let synced = await timing.track("loadSyncedAfterSql", () => loadSyncedRecruitingState(context, sqlResult.postId ?? operation.postId));
         let discordDeliveryCount = 0;
         let discordDeliveryError = null;
+        let invitationContextCount = 0;
+        let invitationContextError = null;
+        if (["inviteRecruitingPlayers", "setRecruitingRoomTeam"].includes(operation.action) && synced.post) {
+          try {
+            invitationContextCount = await timing.track(
+              "appendRemakeInvitationContext",
+              () => appendRemakeInvitationContext(context.supabase, synced.post, operation),
+            );
+            if (invitationContextCount) {
+              synced = await timing.track("reloadAfterInviteContext", () => loadSyncedRecruitingState(context, synced.post.id));
+            }
+          } catch (contextError) {
+            invitationContextError = contextError.message || "recruiting_invitation_context_failed";
+            console.error("Recruiting invitation context update failed.", contextError);
+          }
+        }
         if (operation.action === "closeRecruitingPost" && synced.post) {
           try {
             discordDeliveryCount = await timing.track("discordQueue", () => queueRecruitingRoomCancelledDeliveries(context.supabase, synced.post, operation.action));
@@ -1888,6 +1957,8 @@ export default async function handler(request, response) {
           ...sqlResult,
           discordDeliveryCount,
           discordDeliveryError,
+          invitationContextCount,
+          invitationContextError,
           ...(synced.post ? { post: synced.post } : {}),
           ...(synced.state ? { state: synced.state } : {}),
         }, timing, debugTiming);

@@ -1632,6 +1632,12 @@ export default function CreateMatch({
     }
     const creationPolicyPayload = getMatchCreationPolicyPayload(draft);
     const createAsTeam = creationPolicyPayload.hostJoinMode === "team" && creationPolicyPayload.teamOnly;
+    const remakeInvitationContext = remakeDraft
+      ? [
+          "취소된 방을 같은 설정으로 다시 만들었습니다.",
+          draft.remakeCancellationReason ? `이전 방 취소 사유: ${draft.remakeCancellationReason}` : "",
+        ].filter(Boolean).join("\n")
+      : "";
     const postId = await app.actions.createRecruitingPost({
       ...creationPolicyPayload,
       ...(remakeDraft ? { remakeSourceId, remakeSourceMatchId } : {}),
@@ -1682,11 +1688,30 @@ export default function CreateMatch({
       courtFee: creationPolicyPayload.venueFee ? String(creationPolicyPayload.venueFee) : "",
       memo: [
         creationPolicyPayload.venuePaymentType === "paid_reserved" ? `구장 예약: ${creationPolicyPayload.venueFee ? `${creationPolicyPayload.venueFee}원` : "예약 있음"}` : "",
+        remakeDraft && draft.remakeCancellationReason ? `이전 방 취소 사유: ${draft.remakeCancellationReason}` : "",
         draft.memo,
         isPublicRoom ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
       ].filter(Boolean).join("\n"),
     });
     if (typeof postId === "string" && postId) {
+      if (remakeDraft && createAsTeam && draft.remakeTeamAId) {
+        await app.actions.setRecruitingRoomTeam(postId, "teamA", draft.remakeTeamAId);
+      }
+      if (remakeDraft && draft.remakeReinvite) {
+        if (createAsTeam && draft.remakeTeamBId) {
+          await app.actions.setRecruitingRoomTeam(postId, "teamB", draft.remakeTeamBId, remakeInvitationContext);
+        } else if (!createAsTeam) {
+          for (const group of draft.remakeInvitationGroups ?? []) {
+            await app.actions.inviteRecruitingPlayers(postId, {
+              side: group.side,
+              reserve: group.reserve,
+              playerIds: group.playerIds,
+              joinMode: "player",
+              contextMessage: remakeInvitationContext,
+            });
+          }
+        }
+      }
       if (onRecruitingCreated) onRecruitingCreated(postId);
       else navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
     }
@@ -1709,6 +1734,23 @@ export default function CreateMatch({
           <h1>{isRecordCreateIntent ? "기록하기" : "경기/대회 만들기"}</h1>
           {remakeDraft ? <Badge tone="orange">취소된 방 설정을 불러왔습니다. 새 일정을 확인해 주세요.</Badge> : null}
           {remakeDraft ? <p className="form-warning">{getRoomRemakeWarningCopy(remakeDraft.remakeExpectedCount)}</p> : null}
+          {remakeDraft?.remakeInviteCount ? (
+            <label className="room-remake-reinvite">
+              <input
+                type="checkbox"
+                checked={Boolean(draft.remakeReinvite)}
+                onChange={(event) => setDraft((current) => ({ ...current, remakeReinvite: event.target.checked }))}
+              />
+              <span>
+                <strong>
+                  {remakeDraft.remakeTeamBId
+                    ? "이전 상대 팀에 새 초대장 보내기"
+                    : `이전 참가자 ${remakeDraft.remakeInviteCount}명 다시 초대`}
+                </strong>
+                <small>기존 참가 상태는 복사하지 않으며 새 방에서 다시 수락해야 합니다.</small>
+              </span>
+            </label>
+          ) : null}
         </div>
       </header> : null}
 

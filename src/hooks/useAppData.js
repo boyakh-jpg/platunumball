@@ -3819,7 +3819,11 @@ export function useAppData(authUser = null, appLocation = null) {
       toggleMatchStar: (matchId, targetUserId) => applyMatchMutation(matchId, (prev) => toggleMatchStar({ ...prev, currentUserId }, matchId, targetUserId), { action: "toggleMatchStar", targetUserId }),
       submitMatchThumbs: (matchId, targetUserIds) => applyMatchMutation(matchId, (prev) => submitMatchThumbs({ ...prev, currentUserId }, matchId, targetUserIds), { action: "submitMatchThumbs", targetUserIds }),
       disputeMatch: (matchId, reason) => applyMatchMutation(matchId, (prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason), { action: "disputeMatch", reason }),
-      cancelMatch: (matchId) => applyMatchMutation(matchId, (prev) => cancelMatch({ ...prev, currentUserId }, matchId), { action: "cancelMatch" }),
+      cancelMatch: (matchId, reason = "") => applyMatchMutation(
+        matchId,
+        (prev) => cancelMatch({ ...prev, currentUserId }, matchId, reason),
+        { action: "cancelMatch", reason },
+      ),
       deleteSoloRecord: (matchId) => applyMatchMutation(matchId, (prev) => deleteSoloRecord({ ...prev, currentUserId }, matchId), { action: "deleteSoloRecord" }),
       voidMatch: (matchId, reason) => applyMatchMutation(matchId, (prev) => voidMatch({ ...prev, currentUserId }, matchId, reason), { action: "voidMatch", reason }),
       resolveMatchDispute: (matchId, disputeId, decision, resolutionReason) => applyMatchMutation(
@@ -4589,10 +4593,10 @@ export function useAppData(authUser = null, appLocation = null) {
           return result?.post?.id ?? result?.postId ?? createdPost.id;
         });
       },
-      setRecruitingRoomTeam: (postId, side, teamId) => applyRecruitingPostMutation(
+      setRecruitingRoomTeam: (postId, side, teamId, contextMessage = "") => applyRecruitingPostMutation(
         postId,
-        (prev) => setRecruitingRoomTeam({ ...prev, currentUserId }, postId, side, teamId),
-        { action: "setRecruitingRoomTeam", side, teamId },
+        (prev) => setRecruitingRoomTeam({ ...prev, currentUserId }, postId, side, teamId, contextMessage),
+        { action: "setRecruitingRoomTeam", side, teamId, contextMessage },
       ),
       interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),
@@ -4713,7 +4717,11 @@ export function useAppData(authUser = null, appLocation = null) {
           { action: "confirmRecruitingMatch", postId },
         ).then((result) => (result?.ok === false ? null : result?.matchId ?? result?.createdMatch?.id ?? result?.match?.id ?? null));
       },
-      closeRecruitingPost: (postId) => applyRecruitingPostMutation(postId, (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId), { action: "closeRecruitingPost" }),
+      closeRecruitingPost: (postId, reason = "") => applyRecruitingPostMutation(
+        postId,
+        (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId, reason),
+        { action: "closeRecruitingPost", reason },
+      ),
       inviteTeamMember: (teamId, targetUserId, role = "regular") => applyTeamInvitationMutation(
         "팀 초대",
         (prev) => inviteTeamMember({ ...prev, currentUserId }, teamId, targetUserId, role),

@@ -1918,23 +1918,49 @@ button.arena-room-player-slot {
   max-height: 240px;
   overflow: auto;
   overscroll-behavior: contain;
-  padding-right: 2px;
+  padding: 10px 12px;
 }
 
 .arena-chat-message {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 34px minmax(0, 1fr);
   gap: 8px;
   align-items: start;
 }
 
+.arena-chat-message > .player-hover-trigger {
+  margin-top: 4px;
+}
+
 .arena-chat-message > span:last-child {
   display: grid;
+  width: fit-content;
   min-width: 0;
+  max-width: min(78%, 560px);
+  justify-self: start;
   gap: 3px;
-  border-radius: var(--radius-xs);
-  background: rgba(0, 0, 0, 0.16);
-  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--green) 32%, transparent);
+  border-radius: 4px 14px 14px 14px;
+  background: color-mix(in srgb, var(--green) 13%, transparent);
+  padding: 8px 10px;
+}
+
+.arena-chat-message.is-mine {
+  grid-template-columns: minmax(0, 1fr) 34px;
+}
+
+.arena-chat-message.is-mine > .player-hover-trigger {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.arena-chat-message.is-mine > span:last-child {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+  border-color: color-mix(in srgb, var(--rb-orange) 38%, transparent);
+  border-radius: 14px 4px 14px 14px;
+  background: color-mix(in srgb, var(--rb-orange) 14%, transparent);
 }
 
 .arena-chat-message strong {
@@ -1965,6 +1991,20 @@ button.arena-room-player-slot {
   gap: 8px;
 }
 
+.arena-chat-form input,
+.arena-chat-form .button {
+  min-height: 36px;
+  height: 36px;
+}
+
+.arena-chat-form input {
+  padding-block: 0;
+}
+
+.arena-chat-form .button {
+  padding-block: 0;
+}
+
 .arena-chat-helper {
   grid-column: 1 / -1;
   color: var(--muted);
@@ -1976,6 +2016,47 @@ button.arena-room-player-slot {
 
 .arena-chat-helper.error {
   color: var(--danger);
+}
+
+.room-cancellation-dialog label {
+  display: grid;
+  gap: 7px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.room-cancellation-dialog textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.room-cancellation-dialog > small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-align: right;
+}
+
+.room-cancellation-dialog > small.error {
+  color: var(--danger);
+  text-align: left;
+}
+
+.arena-cancellation-reason {
+  display: grid;
+  gap: 3px;
+  margin-top: 6px;
+  border-left: 3px solid var(--danger);
+  padding: 7px 10px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  overflow-wrap: anywhere;
+}
+
+.arena-cancellation-reason b {
+  color: var(--danger);
+  font-size: 0.72rem;
 }
 
 .arena-join-panel {
@@ -5856,4 +5937,19 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
   .arena-lobby-modal .arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions > .arena-player-swap-button {
     grid-column: auto;
   }
+}
+
+/* Room chat is a message stream, not another gray room panel. */
+.arena-lobby-modal .arena-room-chat,
+html[data-theme="light"] .arena-lobby-modal .arena-room-chat {
+  border: 0;
+  border-top: 1px solid var(--ui-room-panel-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 12px 0 0;
+}
+
+.arena-lobby-modal .arena-chat-list {
+  padding-inline: 12px;
 }

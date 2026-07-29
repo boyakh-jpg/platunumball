@@ -358,7 +358,7 @@ test("team match record selects teams first, then each captain fixes an exact ro
 test("match-record cancellation uses record terminology while scheduled matches keep match terminology", () => {
   const created = createMatch(makeState(), makeRecordDraft("individual"));
   const match = created.matches[0];
-  const cancelled = cancelMatch(created, match.id);
+  const cancelled = cancelMatch(created, match.id, "잘못 만든 기록이라 취소합니다.");
 
   assert.equal(cancelled.matches[0].status, "cancelled");
   assert.equal(cancelled.notifications[0].title, "기록 취소");

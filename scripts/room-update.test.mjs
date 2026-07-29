@@ -398,9 +398,10 @@ test("room edit can be accepted only once for recruiting and confirmed match roo
 test("room cancellation locks at two hours and waives trust after a rejected edit", () => {
   const threeHours = getKstScheduleHoursFromNow(3);
   const penalizedPost = { ...makeRecruitingPost("public-player"), ...threeHours };
-  const penalized = closeRecruitingPost(makeRecruitingState(penalizedPost), penalizedPost.id);
+  const penalized = closeRecruitingPost(makeRecruitingState(penalizedPost), penalizedPost.id, "참가 인원이 부족해 취소합니다.");
   assert.equal(penalized.recruitingPosts[0].status, "closed");
   assert.equal(penalized.users.find((user) => user.id === "host").trustScore, 95);
+  assert.equal(penalized.recruitingPosts[0].roomState.cancellationReasonText, "참가 인원이 부족해 취소합니다.");
 
   const waivedPost = {
     ...makeRecruitingPost("public-player"),
@@ -411,12 +412,12 @@ test("room cancellation locks at two hours and waives trust after a rejected edi
       scheduleProposal: { id: "schedule-rejected", status: "rejected" },
     },
   };
-  const waived = closeRecruitingPost(makeRecruitingState(waivedPost), waivedPost.id);
+  const waived = closeRecruitingPost(makeRecruitingState(waivedPost), waivedPost.id, "변경안 반려로 취소합니다.");
   assert.equal(waived.recruitingPosts[0].status, "closed");
   assert.equal(waived.users.find((user) => user.id === "host").trustScore, 100);
 
   const lockedMatch = { ...makeMatch(), ...getKstScheduleHoursFromNow(1) };
-  const locked = cancelMatch(makeMatchState(lockedMatch), lockedMatch.id);
+  const locked = cancelMatch(makeMatchState(lockedMatch), lockedMatch.id, "일정 변경이 어려워 취소합니다.");
   assert.equal(locked.matches[0].status, "agreed");
   assert.match(locked.notifications[0].body, /2시간 전/);
 });
@@ -465,6 +466,10 @@ test("cancelled room remake copies configuration but clears lifecycle and partic
   assert.equal("roomState" in remake, false);
   assert.equal("applicants" in remake, false);
   assert.equal(remake.remakeExpectedCount, 2);
+  assert.equal(remake.remakeInviteCount, 1);
+  assert.equal(remake.remakeTeamAId, "team-a");
+  assert.equal(remake.remakeTeamBId, "team-b");
+  assert.equal(remake.remakeReinvite, true);
   assert.match(getRoomRemakeWarningCopy(remake.remakeExpectedCount), /연속 2회/);
   assert.match(getRoomRemakeWarningCopy(3), /신뢰도가 조정될 수 있습니다/);
 
@@ -473,6 +478,11 @@ test("cancelled room remake copies configuration but clears lifecycle and partic
   assert.equal(pickupRemake.hostJoinMode, "player");
   assert.equal(pickupRemake.teamAId, undefined);
   assert.equal(pickupRemake.teamBId, undefined);
+  assert.equal(pickupRemake.remakeInviteCount, 7);
+  assert.deepEqual(
+    pickupRemake.remakeInvitationGroups.flatMap((group) => group.playerIds).sort(),
+    ["a2", "a3", "b1", "b2", "b3", "ra", "rb"],
+  );
 });
 
 test("match rule acknowledgement records only the current revision", () => {
@@ -513,6 +523,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   const roomChangeDeadlineMigration = readFileSync(new URL("../supabase/migrations/20260724161000_room_change_deadlines.sql", import.meta.url), "utf8");
   const roomCancelPolicyMigration = readFileSync(new URL("../supabase/migrations/20260724162000_room_cancel_policy.sql", import.meta.url), "utf8");
   const roomCancelTimezoneMigration = readFileSync(new URL("../supabase/migrations/20260729120000_fix_cancel_timezone_and_early_start.sql", import.meta.url), "utf8");
+  const roomCancellationReasonMigration = readFileSync(new URL("../supabase/migrations/20260729130000_room_cancellation_reason.sql", import.meta.url), "utf8");
   const cancelledScheduleMigration = readFileSync(new URL("../supabase/migrations/20260724163000_cancelled_room_schedule_feed.sql", import.meta.url), "utf8");
   const scheduledAtTypeFixMigration = readFileSync(new URL("../supabase/migrations/20260724164000_fix_room_policy_scheduled_at_types.sql", import.meta.url), "utf8");
   const roomRemakeMigration = readFileSync(new URL("../supabase/migrations/20260724170000_room_remake_tracking.sql", import.meta.url), "utf8");
@@ -579,6 +590,10 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(roomCancelTimezoneMigration, /rankball_match_start_action_pre_server_time/);
   assert.match(roomCancelTimezoneMigration, /interval ''10 minutes''/);
   assert.doesNotMatch(roomCancelTimezoneMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
+  assert.match(roomCancellationReasonMigration, /room_cancellation_reason_required/);
+  assert.match(roomCancellationReasonMigration, /cancellationReasonText/);
+  assert.match(roomCancellationReasonMigration, /match_cancellation_reason_required/);
+  assert.doesNotMatch(roomCancellationReasonMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
   assert.match(cancelledScheduleMigration, /user_room_feed_inactive_profile_status_idx/);
   assert.match(scheduledAtTypeFixMigration, /pg_get_functiondef/);
   assert.match(scheduledAtTypeFixMigration, /nullif\(current_post\.scheduled_at/);
@@ -591,10 +606,11 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(roomRemakeGrantMigration, /grant select on table public\.room_remake_events[\s\S]*to service_role/);
   assert.match(recruitingPage, /참가자가 있으면 규칙 변경은 각 참가자의 확인이 필요합니다/);
   assert.match(recruitingPage, /같은 설정으로 다시 만들기/);
-  assert.match(recruitingPage, /getRoomCancellationConfirmMessage/);
+  assert.match(recruitingPage, /취소 사유를 5자 이상 입력해 주세요/);
   assert.match(recruitingPage, /remakeSourceMatchId/);
   assert.match(createMatchPage, /getRoomRemakeWarningCopy/);
   assert.match(createMatchPage, /remakeSourceId, remakeSourceMatchId/);
+  assert.match(createMatchPage, /이전 참가자.*다시 초대/);
   assert.match(adminUserPanel, /반복 다시 만들기 경고문 채우기/);
   assert.match(recruitingPage, /scheduleChangePending/);
   assert.match(recruitingPage, /getRoomEditDraft\(roomPost, sourceMatch\)/);
