@@ -14,6 +14,10 @@ const sourceFiles = fs.readdirSync("src", { recursive: true })
   .filter((file) => /\.(?:js|jsx|ts|tsx)$/.test(file))
   .map((file) => `src/${file.replaceAll("\\", "/")}`);
 const allStyleSources = styleFiles.map((file) => read(file)).join("\n");
+const nonTokenStyleSources = styleFiles
+  .filter((file) => file !== "src/styles/tokens.css")
+  .map((file) => read(file))
+  .join("\n");
 
 const componentSource = read("src/components/match/MatchListCard.jsx");
 const matchCreationWizardSource = read("src/components/match/MatchCreationWizard.jsx");
@@ -92,6 +96,7 @@ const legacyStyleSources = [
 
 test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모만 두 CSS를 전환한다", () => {
   const designLeaks = styleFiles
+    .filter((file) => file !== "src/styles/tokens.css")
     .filter((file) => !file.endsWith("design-classic.css") && !file.endsWith("design-editorial.css"))
     .filter((file) => /\[data-design=/.test(read(file)));
   const editorialAppStyles = editorialDesignStyles.split("/* Full application contract.")[1] ?? "";
@@ -142,7 +147,7 @@ assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]
     /\.ui-design-category-surface\.ui-design-surface\s*\{[\s\S]*?border-width:\s*1px 0 0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
   );
   assert.match(editorialAppStyles, /\.ui-design-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);/);
-  assert.match(editorialAppStyles, /--ui-card-border-width:\s*0px;[\s\S]*?--ui-button-border-width:\s*0px;[\s\S]*?--ui-control-group-border-width:\s*0px;[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;[\s\S]*?--ui-hero-border-width:\s*0px;/);
+  assert.match(tokenStyles, /\[data-design="editorial"\] \.ui-design-app\s*\{[\s\S]*?--ui-card-border-width:\s*0px;[\s\S]*?--ui-button-border-width:\s*0px;[\s\S]*?--ui-control-group-border-width:\s*0px;[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;[\s\S]*?--ui-hero-border-width:\s*0px;[\s\S]*?\}/);
   assert.match(editorialAppStyles, /--ui-design-section-rule-space:\s*calc\(var\(--card-padding\) \* 2\);/);
   assert.match(editorialAppStyles, /--ui-design-soft-surface-bg:\s*color-mix\(in srgb,\s*var\(--rb-bg-2\) 86%,\s*var\(--rb-bg\)\);/);
   assert.match(editorialAppStyles, /--ui-design-record-surface-bg:\s*color-mix/);
@@ -361,9 +366,11 @@ test("표면 선 두께는 공통 토큰을 사용하고 방 모달은 뱃지를
   assert.match(tokenStyles, /--ui-room-modal-border-width:\s*1px;/);
   assert.match(primitiveStyles, /\.ui-card\s*\{[\s\S]*?border:\s*var\(--ui-card-border-width\) solid var\(--ui-card-border\);/);
   assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?border:\s*var\(--ui-button-border-width\) solid var\(--ui-button-border\);/);
-  assert.match(recruitingStyles, /\.ui-room-borderless-scope\s*\{[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;/);
-  assert.doesNotMatch(recruitingStyles, /\.ui-room-borderless-scope[\s\S]*?!important/);
-  assert.doesNotMatch(recruitingStyles, /\.ui-room-borderless-scope[\s\S]*?\.ui-badge/);
+  assert.match(tokenStyles, /\.ui-room-borderless-scope\s*\{[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;[\s\S]*?\}/);
+  assert.doesNotMatch(
+    nonTokenStyleSources,
+    /--ui-(?:card|button|control-group|hero|room-modal|room-panel)-border-width\s*:/,
+  );
   assert.equal(count(pageSources.recruiting, "ui-room-borderless-scope"), 3);
   assert.equal(count(pageSources.matches, "ui-room-borderless-scope"), 3);
 });

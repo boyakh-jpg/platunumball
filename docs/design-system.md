@@ -41,6 +41,9 @@
 11. 위 panel과 확인창은 공용 surface·button·focus token을 사용한다. desktop/mobile에서 control이 겹치거나 화면 밖으로 나가지 않아야 하고 dark/light에서 같은 정보 순서와 대비를 유지한다.
 12. 샷클락 타일은 한 겹의 주황 외곽선과 부드러운 그림자만 사용한다. 돌출형 하단선으로 이중 테두리를 만들지 않는다. `QR | 점수판 | 샷클락`은 일반 화면과 집중 화면 모두 독립된 공용 간격을 유지하며 점수판 경계에 붙지 않는다.
 13. 경기시계 panel은 현재 담당자에게 `경기시계 종료`, 실제 종료 권한이 있는 방장 또는 배정 심판에게 `경기 종료`를 구분해 표시한다. 두 action은 공용 button과 action row를 사용하며 모바일에서도 점수 control을 가리지 않는다.
+14. 사후 팀기록 명단은 출전과 후보를 같은 공용 roster row에서 선택한다. 후보는 사이드당 최대 3명이며 desktop/mobile에서 버튼 높이와 간격을 바꾸지 않는다.
+15. 사후 기록 점수 입력은 공용 card·control-group·button token을 사용한다. 실시간 증감 버튼 대신 A/B 숫자 입력과 `점수 입력 완료` 한 개를 표시한다.
+16. 참가 확인 panel의 사이드 surface, 참가자 행, 안내 surface는 공용 `--ui-card-*`, `--ui-button-*`, `--ui-control-group-*` token만 사용한다. 화면 전용 `1px` 테두리나 별도 반투명 배경을 만들지 않는다.
 
 ### 폐기된 UI 규칙
 
@@ -2339,9 +2342,9 @@ UI 수정 전:
 2. 약속·벌칙과 경기 메모는 방 카드 표면색을 사용하며 라이트 모드에 다크 전용 검정 오버레이를 적용하지 않는다.
 3. 경기정보 팀명은 방 제목·점수·`VS`와 함께 KBO 스포츠 표시 글꼴을 사용한다.
 
-32. 카드·버튼·선택 그룹·히어로·방 모달 표면의 선 두께는 각각 `--ui-card-border-width`, `--ui-button-border-width`, `--ui-control-group-border-width`, `--ui-hero-border-width`, `--ui-room-*-border-width`가 소유한다. 기능 CSS는 `1px`를 다시 선언하지 않고 해당 폭 토큰을 참조한다.
-33. `editorial`은 위 표면 폭 토큰을 `0px`로 설정한다. 후순위 전체 선택자나 `!important`로 `button`·카드의 `border`를 덮지 않는다. 입력·드롭다운과 `.ui-badge`는 별도 제어·뱃지 토큰을 사용하므로 영향을 받지 않는다.
-34. 방 모달 루트는 `.ui-room-borderless-scope`를 사용해 방 표면 폭 토큰만 `0px`로 설정한다. 방 내부 간격·구분선 배치는 바꾸지 않는다.
+32. 카드·버튼·선택 그룹·히어로·방 모달 표면의 선 두께는 각각 `--ui-card-border-width`, `--ui-button-border-width`, `--ui-control-group-border-width`, `--ui-hero-border-width`, `--ui-room-*-border-width`가 소유한다. 기본값과 문맥별 값은 `tokens.css`에서만 선언하고 기능 CSS는 해당 폭 토큰을 참조한다.
+33. `tokens.css`의 `[data-design="editorial"] .ui-design-app`은 위 표면 폭 토큰을 `0px`로 설정한다. 후순위 전체 선택자나 `!important`로 `button`·카드의 `border`를 덮지 않는다. 입력·드롭다운과 `.ui-badge`는 별도 제어·뱃지 토큰을 사용하므로 영향을 받지 않는다.
+34. 방 모달 루트는 `tokens.css`의 `.ui-room-borderless-scope`를 사용해 방 표면 폭 토큰만 `0px`로 설정한다. 방 내부 간격·구분선 배치는 바꾸지 않는다.
 35. 분류 구분선의 색과 굵기는 유지하고, 선 위 바깥 여백과 선 아래 안쪽 여백은 기존 값의 2배를 공통 토큰으로 적용한다.
 36. 최근 전적 레일 간격은 `.recent-match-list`의 `--recent-match-list-gap: calc(var(--space-6) * 2)`만 사용한다.
 37. 랭킹 행·배치 진행·심판 설정·튜토리얼·매칭 생성 최종 확인도 `.ui-design-info-surface`, `.ui-design-borderless-list`, `.ui-design-borderless-surface` 중 하나를 사용하며 기능별 테두리를 만들지 않는다.

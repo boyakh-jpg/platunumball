@@ -255,6 +255,23 @@
   --hero-bg-position-ball: var(--hero-crop-ball);
 }
 
+[data-design="editorial"] .ui-design-app {
+  --ui-card-border-width: 0px;
+  --ui-button-border-width: 0px;
+  --ui-control-group-border-width: 0px;
+  --ui-room-modal-border-width: 0px;
+  --ui-room-panel-border-width: 0px;
+  --ui-hero-border-width: 0px;
+}
+
+.ui-room-borderless-scope {
+  --ui-card-border-width: 0px;
+  --ui-button-border-width: 0px;
+  --ui-control-group-border-width: 0px;
+  --ui-room-modal-border-width: 0px;
+  --ui-room-panel-border-width: 0px;
+}
+
 html[data-theme="light"] {
   color-scheme: light;
   --bg: #f5f1e8;
