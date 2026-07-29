@@ -1087,6 +1087,10 @@ html[data-theme="light"] .scroll-to-top-button {
   overflow: hidden;
 }
 
+.avatar.image-avatar.icon-avatar {
+  background: transparent;
+}
+
 .avatar.no-avatar-background:not(.image-avatar) {
   color: var(--text);
 }

@@ -1196,3 +1196,17 @@ test("팀원 초대는 해시태그와 공용 선수 hover 및 네모 상태 표
     /\.member-control-state,[\s\S]*?\.member-control-row button\s*\{[^}]*min-height:\s*38px;[^}]*border-radius:\s*var\(--ui-button-radius\);[^}]*font-size:\s*var\(--ui-button-font-size\);/,
   );
 });
+
+test("업적 프로필 아이콘은 공용 투명 배경 규칙을 사용한다", () => {
+  const profileEmblemSource = read("src/components/profile/ProfileEmblem.jsx");
+  const profileIconDialogSource = read("src/components/profile/ProfileIconDialog.jsx");
+  assert.match(profileEmblemSource, /hasTransparentIcon[\s\S]*?"icon-avatar"/);
+  assert.match(
+    foundationStyles,
+    /\.avatar\.image-avatar\.icon-avatar\s*\{[^}]*background:\s*transparent;/,
+  );
+  assert.match(
+    profileIconDialogSource,
+    /draft\.avatarSource === "initial"[\s\S]*?avatarBackgroundEnabled[\s\S]*?배경색 사용/,
+  );
+});

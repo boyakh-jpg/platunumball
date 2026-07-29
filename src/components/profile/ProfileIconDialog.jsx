@@ -230,14 +230,18 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
 
         {draft.avatarSource !== "discord" ? (
           <div className="emblem-style-controls profile-icon-color-controls">
-            <label className="emblem-border-toggle">
-              <input type="checkbox" checked={draft.avatarBackgroundEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarBackgroundEnabled: event.target.checked }))} />
-              배경색 사용
-            </label>
-            <label>
-              배경색
-              <input type="color" value={draft.avatarColor} disabled={!draft.avatarBackgroundEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarColor: event.target.value }))} />
-            </label>
+            {draft.avatarSource === "initial" ? (
+              <>
+                <label className="emblem-border-toggle">
+                  <input type="checkbox" checked={draft.avatarBackgroundEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarBackgroundEnabled: event.target.checked }))} />
+                  배경색 사용
+                </label>
+                <label>
+                  배경색
+                  <input type="color" value={draft.avatarColor} disabled={!draft.avatarBackgroundEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarColor: event.target.value }))} />
+                </label>
+              </>
+            ) : null}
             <label className="emblem-border-toggle">
               <input type="checkbox" checked={draft.avatarBorderEnabled} onChange={(event) => setDraft((current) => ({ ...current, avatarBorderEnabled: event.target.checked }))} />
               테두리 사용

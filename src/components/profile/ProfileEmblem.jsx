@@ -16,6 +16,8 @@ export default function ProfileEmblem({ user, className = "", initial, anonymous
   const [imageFailed, setImageFailed] = useState(false);
   const imageUrl = anonymous ? "" : getProfileEmblemUrl(user);
   const imageSource = user?.avatarSource === "icon" ? "icon" : "photo";
+  const hasImage = Boolean(imageUrl && !imageFailed);
+  const hasTransparentIcon = hasImage && imageSource === "icon";
   const label = anonymous ? "?" : initial ?? user?.name?.slice(0, 1) ?? "?";
   const backgroundEnabled = anonymous || user?.avatarSource === "discord" || user?.avatarBackgroundEnabled !== false;
   const borderEnabled = !anonymous && user?.avatarBorderEnabled === true;
@@ -27,14 +29,14 @@ export default function ProfileEmblem({ user, className = "", initial, anonymous
   return (
     <span
       aria-hidden="true"
-      className={`avatar ${imageUrl && !imageFailed ? "image-avatar" : ""} ${backgroundEnabled ? "" : "no-avatar-background"} ${borderEnabled ? "has-emblem-border" : ""} ${anonymous ? "anonymous" : ""} ${className}`.trim()}
+      className={`avatar ${hasImage ? "image-avatar" : ""} ${hasTransparentIcon ? "icon-avatar" : ""} ${backgroundEnabled ? "" : "no-avatar-background"} ${borderEnabled ? "has-emblem-border" : ""} ${anonymous ? "anonymous" : ""} ${className}`.trim()}
       style={{
         "--avatar": backgroundEnabled ? avatarColor : "transparent",
         "--avatar-border": borderColor,
       }}
     >
       {label}
-      {imageUrl && !imageFailed ? <img className={`profile-emblem-image ${imageSource}`} src={imageUrl} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : null}
+      {hasImage ? <img className={`profile-emblem-image ${imageSource}`} src={imageUrl} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : null}
     </span>
   );
 }
