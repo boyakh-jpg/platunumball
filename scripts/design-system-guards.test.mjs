@@ -42,6 +42,7 @@ const appShellSource = read("src/components/layout/AppShell.jsx");
 const cardSource = read("src/components/common/Card.jsx");
 const sidebarSource = read("src/components/layout/Sidebar.jsx");
 const loginSource = read("src/pages/Login.jsx");
+const notificationsSource = read("src/pages/Notifications.jsx");
 const settingsSource = read("src/pages/Settings.jsx");
 const teamsSource = read("src/pages/Teams.jsx");
 const recruitingListApiSource = read("server/api/recruiting/list.js");
@@ -268,7 +269,16 @@ test("inline profile identities share one icon text gap", () => {
     primitiveStyles,
     /\.ui-profile-identity-inline\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*gap:\s*var\(--ui-profile-identity-gap\);/,
   );
-  assert.equal(countClassToken(pageSources.teamDetail, "ui-profile-identity-inline"), 1);
+  assert.equal(countClassToken(pageSources.teamDetail, "ui-profile-identity-inline"), 2);
+});
+
+test("받은 팀 초대와 팀 상세 로스터는 무테두리 목록과 inline 역할 뱃지를 사용한다", () => {
+  assert.match(notificationsSource, /className="home-invitation-list ui-design-borderless-list"/);
+  assert.match(teamDetailSource, /className="member-list ui-design-borderless-list"/);
+  assert.match(
+    teamDetailSource,
+    /className="member-name-line ui-profile-identity-inline"[\s\S]*?<strong>\{user\.name\}<\/strong>[\s\S]*?<MemberTypeBadge role=\{member\.role\} \/>/,
+  );
 });
 
 test("team emblem text controls keep one height at every form factor", () => {

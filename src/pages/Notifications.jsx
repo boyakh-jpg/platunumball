@@ -145,7 +145,7 @@ export default function Notifications({ app }) {
             </div>
             <Badge tone="green">{pendingTeamInvitations.length}개</Badge>
           </div>
-          <div className="home-invitation-list">
+          <div className="home-invitation-list ui-design-borderless-list">
             {pendingTeamInvitations.map((invitation) => {
               const team = app.state.teams.find((item) => item.id === invitation.teamId);
               const sender = app.state.users.find((user) => user.id === invitation.fromUserId);

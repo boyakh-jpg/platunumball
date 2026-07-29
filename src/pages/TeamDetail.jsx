@@ -198,7 +198,7 @@ export default function TeamDetail({ app }) {
         </div>
         <Badge tone="blue">{members.length}명</Badge>
       </div>
-      <div className="member-list">
+      <div className="member-list ui-design-borderless-list">
         {members.map((member) => {
           const user = userMap[member.userId];
           if (!user) return null;
@@ -206,11 +206,13 @@ export default function TeamDetail({ app }) {
             <PlayerHoverCard className="member-row" key={`${team.id}-${member.userId}-${member.role}`} user={user} teams={app.state.teams}>
               <ProfileEmblem user={user} className="small" />
               <div className="member-main">
-                <strong>{user.name}</strong>
+                <span className="member-name-line ui-profile-identity-inline">
+                  <strong>{user.name}</strong>
+                  <MemberTypeBadge role={member.role} />
+                </span>
                 <span>{user.position} · {user.region}</span>
               </div>
               <TierBadge mmr={user.ratings.integrated} ratings={user.ratings} compact />
-              <MemberTypeBadge role={member.role} />
             </PlayerHoverCard>
           );
         })}
