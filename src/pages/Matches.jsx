@@ -1,4 +1,4 @@
-import { Component, useEffect, useMemo, useRef, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, RotateCcw, ShieldAlert, Swords, Trophy, UserRound, UsersRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -95,6 +95,7 @@ const SCHEDULE_BRANCH_FILTERS = [
   { id: "team", label: "팀전" },
 ];
 const BRANCH_FILTER_IDS = new Set(SCHEDULE_BRANCH_FILTERS.map((option) => option.id));
+const SCHEDULE_REFRESH_MIN_INTERVAL_MS = 1_000;
 const AUTO_ROOM_TITLE_PREFIX_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)\s*·\s*/;
 const GENERIC_ROOM_TITLE_PATTERN = /^(경기|경기방|매치 큐|정규전|친선전|동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|확정 준비\s*\d*|모집 중\s*\d*|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)$/;
 
@@ -1012,7 +1013,10 @@ export default function Matches({ app }) {
   const requestedMatchDetailsRef = useRef(new Set());
   const attendanceScanTokenRef = useRef("");
   const loadMatchDetail = app.actions.loadMatchDetail;
-  const scheduleLoadRequestedRef = useRef("");
+  const loadMatchRecruitingSchedule = app.actions.loadMatchRecruitingSchedule;
+  const loadMatchTeamSchedule = app.actions.loadMatchTeamSchedule;
+  const scheduleLoadRequestedRef = useRef(new Set());
+  const lastScheduleRefreshAtRef = useRef(0);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtById = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.id, court])), [registeredCourts]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
@@ -1303,30 +1307,63 @@ export default function Matches({ app }) {
     teamScheduleLoading: false,
     teamScheduleError: "",
   };
+  const refreshScheduleFromServer = useCallback(async ({ force = false } = {}) => {
+    if (!app.remoteReady || !app.currentUser.id) return false;
+    const now = Date.now();
+    if (!force && now - lastScheduleRefreshAtRef.current < SCHEDULE_REFRESH_MIN_INTERVAL_MS) return false;
+
+    const requests = [];
+    if (typeof loadMatchRecruitingSchedule === "function") {
+      requests.push(loadMatchRecruitingSchedule({ force: true }));
+    }
+    if (panelMode === "team" && typeof loadMatchTeamSchedule === "function") {
+      requests.push(loadMatchTeamSchedule({ force: true }));
+    }
+    if (!requests.length) return false;
+
+    lastScheduleRefreshAtRef.current = now;
+    try {
+      const results = await Promise.all(requests);
+      if (results.some((result) => result === false)) {
+        lastScheduleRefreshAtRef.current = 0;
+        return false;
+      }
+      return true;
+    } catch {
+      lastScheduleRefreshAtRef.current = 0;
+      return false;
+    }
+  }, [app.currentUser.id, app.remoteReady, loadMatchRecruitingSchedule, loadMatchTeamSchedule, panelMode]);
+
   useEffect(() => {
-    if (panelMode !== "team" || !app.remoteReady || !app.currentUser.id) return;
-    if (matchPagination.teamScheduleChecked || matchPagination.teamScheduleLoading) return;
-    app.actions.loadMatchTeamSchedule?.();
-  }, [app.actions, app.currentUser.id, app.remoteReady, matchPagination.teamScheduleChecked, matchPagination.teamScheduleLoading, panelMode]);
-  useEffect(() => {
-    scheduleLoadRequestedRef.current = "";
+    scheduleLoadRequestedRef.current = new Set();
+    lastScheduleRefreshAtRef.current = 0;
   }, [app.currentUser.id]);
+
   useEffect(() => {
     if (!app.remoteReady || !app.currentUser.id) return;
-    if (matchPagination.recruitingScheduleChecked || matchPagination.recruitingScheduleLoading) return;
-    if (scheduleLoadRequestedRef.current === app.currentUser.id) return;
-    scheduleLoadRequestedRef.current = app.currentUser.id;
-    const request = app.actions.loadMatchRecruitingSchedule?.();
-    if (!request?.then) {
-      if (!request) scheduleLoadRequestedRef.current = "";
-      return;
-    }
-    request.then((count) => {
-      if (count === false) scheduleLoadRequestedRef.current = "";
-    }).catch(() => {
-      scheduleLoadRequestedRef.current = "";
+    const requestKey = `${app.currentUser.id}:${panelMode}`;
+    if (scheduleLoadRequestedRef.current.has(requestKey)) return;
+    scheduleLoadRequestedRef.current.add(requestKey);
+    refreshScheduleFromServer({ force: true }).then((success) => {
+      if (!success) scheduleLoadRequestedRef.current.delete(requestKey);
     });
-  }, [app.actions, app.currentUser.id, app.remoteReady, matchPagination.recruitingScheduleChecked, matchPagination.recruitingScheduleLoading]);
+  }, [app.currentUser.id, app.remoteReady, panelMode, refreshScheduleFromServer]);
+
+  useEffect(() => {
+    if (!app.remoteReady || !app.currentUser.id) return undefined;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void refreshScheduleFromServer();
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [app.currentUser.id, app.remoteReady, refreshScheduleFromServer]);
+
   const matchPageRecruitingPosts = useMemo(() => {
     if (!matchPagination.recruitingScheduleChecked) return [];
     const scheduleIds = new Set(matchPagination.recruitingSchedulePostIds ?? []);

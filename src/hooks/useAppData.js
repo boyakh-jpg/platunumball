@@ -2420,7 +2420,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const loadMatchRecruitingSchedule = useCallback(async (options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
     const force = options?.force === true;
-    if (matchRecruitingSchedulePromiseRef.current && !force) return matchRecruitingSchedulePromiseRef.current;
+    if (matchRecruitingSchedulePromiseRef.current) return matchRecruitingSchedulePromiseRef.current;
     if (matchPagination.recruitingScheduleLoading && !force) return false;
     const promise = (async () => {
       setMatchPagination((prev) => ({ ...prev, recruitingScheduleLoading: true, error: "" }));
@@ -2468,7 +2468,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const loadMatchTeamSchedule = useCallback(async (options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
     const force = options?.force === true;
-    if (matchTeamSchedulePromiseRef.current && !force) return matchTeamSchedulePromiseRef.current;
+    if (matchTeamSchedulePromiseRef.current) return matchTeamSchedulePromiseRef.current;
     if ((matchPagination.teamScheduleChecked || matchPagination.teamScheduleLoading) && !force) return true;
     const promise = (async () => {
       setMatchPagination((prev) => ({ ...prev, teamScheduleLoading: true, teamScheduleError: "" }));

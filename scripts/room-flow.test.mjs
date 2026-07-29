@@ -59,6 +59,17 @@ test("cancelled instant rooms stay visible for their calendar date", async () =>
   }
 });
 
+test("schedule refreshes server data on entry and browser foreground", () => {
+  const matchesSource = readFileSync(new URL("../src/pages/Matches.jsx", import.meta.url), "utf8");
+  const appDataSource = readFileSync(new URL("../src/hooks/useAppData.js", import.meta.url), "utf8");
+
+  assert.match(matchesSource, /loadMatchRecruitingSchedule\(\{ force: true \}\)/);
+  assert.match(matchesSource, /window\.addEventListener\("focus", refreshWhenVisible\)/);
+  assert.match(matchesSource, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
+  assert.match(appDataSource, /if \(matchRecruitingSchedulePromiseRef\.current\) return matchRecruitingSchedulePromiseRef\.current;/);
+  assert.match(appDataSource, /if \(matchTeamSchedulePromiseRef\.current\) return matchTeamSchedulePromiseRef\.current;/);
+});
+
 test("경기 목적과 팀 구성은 독립 필드이고 레거시 matchIntent만 호환용으로 만든다", () => {
   const competitive = getMatchConfigurationChangePatch({}, { matchPurpose: "competitive", formationMode: "prearranged" });
   assert.equal(competitive.matchPurpose, "competitive");
