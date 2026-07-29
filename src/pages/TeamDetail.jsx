@@ -27,6 +27,7 @@ import {
   normalizeTeamEmblemAbbreviation,
 } from "../lib/teamEmblem.js";
 import { formatEmblemDate, getEmblemUploadWarning, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
+import { getUserHashtag } from "../lib/handles.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function getTeamSide(match, teamId) {
@@ -245,9 +246,12 @@ export default function TeamDetail({ app }) {
           setSelectedInviteProfile(user);
         }}
       >
-        <span>
-          <strong>{user.name}</strong>
-        </span>
+        <PlayerHoverCard as="span" user={user} teams={app.state.teams} className="search-picker-player-identity">
+          <span>
+            <strong>{user.name}</strong>
+            <small>{getUserHashtag(user)}</small>
+          </span>
+        </PlayerHoverCard>
         <span>{user.region} · {user.position} · {count}/{MAX_TEAM_MEMBERSHIPS}팀</span>
         <em>{blocked ? "초대 불가" : "초대 대상"}</em>
       </button>
@@ -563,7 +567,12 @@ export default function TeamDetail({ app }) {
                       {inviteRoleOptions.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                     </select>
                   </label>
-                  {selectedInviteUser ? <span className="form-chip">선택: {selectedInviteUser.name} · {selectedCount}/{MAX_TEAM_MEMBERSHIPS}팀</span> : null}
+                  {selectedInviteUser ? (
+                    <PlayerHoverCard user={selectedInviteUser} teams={app.state.teams} className="form-chip member-invite-selection">
+                      <span>선택: <strong>{selectedInviteUser.name}</strong></span>
+                      <small>{getUserHashtag(selectedInviteUser)} · {selectedCount}/{MAX_TEAM_MEMBERSHIPS}팀</small>
+                    </PlayerHoverCard>
+                  ) : null}
                   <Button type="submit" disabled={!canAddMember}>초대 발송</Button>
                   {teamFull ? <span className="form-warning">팀원은 최대 {MAX_TEAM_MEMBERS}명까지 등록할 수 있습니다.</span> : null}
                   {!teamFull && !canAddMember ? <span className="form-warning">선수 팀 한도 {MAX_TEAM_MEMBERSHIPS}/{MAX_TEAM_MEMBERSHIPS}</span> : null}
@@ -574,12 +583,17 @@ export default function TeamDetail({ app }) {
                       const user = userMap[invitation.targetUserId];
                       return (
                         <div key={invitation.id} className="member-control-row">
-                          <span>
-                            <strong>{user?.name ?? "초대 대상"}</strong>
-                            <small>초대 대기 · {getTeamRoleLabel(invitation.role)}</small>
-                          </span>
-                          <Badge tone="orange">pending</Badge>
-                          <button type="button" onClick={() => app.actions.cancelTeamInvitation(invitation.id)}>취소</button>
+                          <PlayerHoverCard className="member-control-identity" user={user} teams={app.state.teams}>
+                            <span className="member-control-copy">
+                              <strong>{user?.name ?? "초대 대상"}</strong>
+                              <small>
+                                {user ? <span>{getUserHashtag(user)}</span> : null}
+                                <span>{getTeamRoleLabel(invitation.role)}</span>
+                              </small>
+                            </span>
+                          </PlayerHoverCard>
+                          <span className="member-control-state">초대 대기</span>
+                          <Button type="button" size="sm" variant="secondary" className="danger-button" onClick={() => app.actions.cancelTeamInvitation(invitation.id)}>취소</Button>
                         </div>
                       );
                     })}

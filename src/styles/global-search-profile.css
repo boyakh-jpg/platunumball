@@ -218,6 +218,19 @@
   min-width: 0;
 }
 
+.search-picker-player-identity > span {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.search-picker-player-identity small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--font-size-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .search-picker-result-row > span,
 .search-picker-result-row > .team-hover-trigger,
 .search-picker-result-row > .player-hover-trigger {
@@ -2820,22 +2833,66 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: minmax(0, 1fr) minmax(120px, 0.5fr) auto;
 }
 
-.member-control-row a {
+.member-control-row a,
+.member-control-identity {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: var(--space-4);
 }
 
+.member-control-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.member-control-copy small {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  color: var(--muted);
+}
+
+.member-invite-selection {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.member-invite-selection small {
+  color: var(--muted);
+}
+
+.member-control-state,
 .member-control-row button {
+  display: inline-flex;
   min-height: 38px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  align-items: center;
+  justify-content: center;
+  border: var(--ui-button-border-width) solid var(--line);
+  border-radius: var(--ui-button-radius);
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.member-control-state {
+  justify-self: start;
+  background: color-mix(in srgb, var(--gold) 12%, var(--ui-button-bg));
+  color: var(--gold);
+}
+
+.member-control-row button {
   background: rgba(255, 93, 108, 0.1);
   color: var(--danger);
   cursor: pointer;
-  font-weight: 850;
-  padding: 0 10px;
 }
 
 .member-control-row button:disabled {

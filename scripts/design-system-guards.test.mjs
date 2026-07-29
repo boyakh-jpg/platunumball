@@ -1182,3 +1182,17 @@ test("방모달 참가자 상태와 관리 action은 선수 오른쪽 열과 공
     /--room-participant-row-divider:\s*var\(--ui-liquid-glass-divider\);/,
   );
 });
+
+test("팀원 초대는 해시태그와 공용 선수 hover 및 네모 상태 표면을 사용한다", () => {
+  const teamDetailSource = read("src/pages/TeamDetail.jsx");
+  assert.match(teamDetailSource, /getUserHashtag/);
+  assert.match(teamDetailSource, /search-picker-player-identity/);
+  assert.match(teamDetailSource, /member-invite-selection/);
+  assert.match(teamDetailSource, /member-control-identity/);
+  assert.match(teamDetailSource, /member-control-state">초대 대기</);
+  assert.doesNotMatch(teamDetailSource, /<Badge tone="orange">pending<\/Badge>/);
+  assert.match(
+    globalSearchStyles,
+    /\.member-control-state,[\s\S]*?\.member-control-row button\s*\{[^}]*min-height:\s*38px;[^}]*border-radius:\s*var\(--ui-button-radius\);[^}]*font-size:\s*var\(--ui-button-font-size\);/,
+  );
+});

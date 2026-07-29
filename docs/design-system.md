@@ -2338,6 +2338,7 @@ UI 수정 전:
 36. 최근 전적 레일 간격은 `.recent-match-list`의 `--recent-match-list-gap: calc(var(--space-6) * 2)`만 사용한다.
 37. 랭킹 행·배치 진행·심판 설정·튜토리얼·매칭 생성 최종 확인도 `.ui-design-info-surface`, `.ui-design-borderless-list`, `.ui-design-borderless-surface` 중 하나를 사용하며 기능별 테두리를 만들지 않는다.
 38. 설정의 상태 요약은 `.ui-support-grid`, 이력·빈 상태는 `.ui-support-list`와 `.ui-support-copy`를 사용한다. 보조 정보는 `--font-size-body-sm`을 공유하고 카드 선은 `--ui-card-border-width`만 따른다.
+39. 팀원 초대 검색·선택·대기 행은 `PlayerHoverCard`와 `getUserHashtag()`를 공유한다. 초대 상태는 영문 뱃지를 사용하지 않고 취소 조작과 같은 버튼 높이·모서리 토큰의 네모 상태 표면으로 표시하며, 이름·해시태그·역할은 공통 간격 토큰으로 분리한다.
 
 ## 현재 유효: 경기 기록·픽업 운영 타이포그래피
 
