@@ -20,6 +20,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   font-family: var(--font-body);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-body);
   word-break: keep-all;
   overflow-wrap: break-word;
@@ -68,17 +69,17 @@ p {
 }
 
 h1 {
-  font-size: 3.6rem;
+  font-size: var(--font-size-title-xl);
   line-height: 1.02;
 }
 
 h2 {
-  font-size: 1.25rem;
+  font-size: var(--font-size-title-md);
   line-height: 1.15;
 }
 
 h3 {
-  font-size: 1.05rem;
+  font-size: var(--font-size-title-sm);
   line-height: 1.2;
 }
 
@@ -87,8 +88,8 @@ h3 {
 }
 
 .eyebrow {
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--font-size-badge);
+  font-weight: var(--font-weight-body);
   text-transform: uppercase;
 }
 

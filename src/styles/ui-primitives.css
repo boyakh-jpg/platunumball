@@ -10,7 +10,7 @@
 .ui-tier-label {
   font-family: var(--sports-display-font);
   font-style: normal;
-  font-weight: 950;
+  font-weight: var(--font-weight-sports);
 }
 
 html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button) {
@@ -161,8 +161,8 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   width: max-content;
   padding: var(--ui-badge-padding);
   color: var(--ui-badge-color);
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--ui-badge-font-size);
+  font-weight: var(--ui-badge-font-weight);
   white-space: nowrap;
   background: var(--ui-badge-bg);
   border: 1px solid var(--ui-badge-border);
@@ -209,14 +209,14 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
 
 .ui-panel-title {
   color: var(--rb-text);
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   line-height: 1.25;
 }
 
 .ui-panel-copy {
   color: var(--rb-muted);
-  font-size: 0.82rem;
-  font-weight: 850;
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-body);
   line-height: 1.45;
 }
 

@@ -975,8 +975,7 @@ button:not(:focus-visible) {
 }
 
 .rank-home .rank-summary-grid .home-rank-board-head h1,
-.page-header h1,
-.auth-card h1 {
+.page-header h1 {
   font-family: var(--sports-display-font);
   letter-spacing: 0;
   text-transform: uppercase;

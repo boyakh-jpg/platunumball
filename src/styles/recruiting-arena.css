@@ -3530,8 +3530,9 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 .arena-owner-panel strong,
 .arena-invite-panel header strong,
 .arena-room-chat header span {
-  font-family: var(--sports-display-font);
-  font-size: 24px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-title);
   line-height: 1;
   letter-spacing: 0;
   text-transform: uppercase;

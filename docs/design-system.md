@@ -444,10 +444,14 @@
 4. 데스크톱은 명시 닫기 버튼과 backdrop 닫기만 유지한다.
 5. 모바일 손잡이 터치 허용영역은 실제 바보다 넓은 56px 높이로 두고 flex 축소를 막아 모달 안쪽에 전부 노출한다. 음수 상단 여백으로 잘리거나 상단 버튼과 겹치게 만들지 않는다.
 
-## 2026-07-04 KBO Dia Gothic 스포츠 표시체
-1. 스포츠 표시 텍스트 토큰 `--sports-display-font`는 `KBO Dia Gothic` Bold 웹폰트를 우선 사용한다.
-2. 경기 카드, 모집 카드, 방 모달 팀명/VS/점수, 히어로 제목처럼 경기·점수 강조 영역만 이 토큰을 쓴다.
-3. 음수 `letter-spacing`은 쓰지 않는다. 좁은 스포츠 느낌은 `--sports-display-condense`의 `scaleX(0.92)`로 처리한다.
+## 2026-07-29 전역 글꼴 역할과 크기
+1. `KBO Dia Gothic`은 경기 표시용이다. 페이지 hero 제목, 경기 카드 대진명, 방 모달 팀명·VS·점수, 경기시계·샷클락, 티어·디비전·순위처럼 짧은 스포츠 결과에만 `--sports-display-font`를 사용한다.
+2. `Pretendard Variable`은 읽기·조작용이다. 본문, 설명, 버튼, badge, tab, input, select, 표, 알림, 채팅, 규칙·방장·초대 같은 기능 패널 제목과 로그인 문구에는 `--font-body`를 사용한다.
+3. 선수·팀 이름도 경기 대진·점수판처럼 표시되는 경우만 KBO를 쓰고, 프로필·검색·목록·입력에서는 Pretendard를 쓴다. 문장 전체나 두 줄 이상 설명에는 KBO를 쓰지 않는다.
+4. Pretendard 크기는 `caption 0.72rem`, `badge 0.75rem`, `control 0.78rem`, `meta 0.82rem`, `body-sm 0.875rem`, `body 1rem`, `title-sm 1.05rem`, `title-md 1.25rem`, `section-title 1.5rem` 토큰을 사용한다. 페이지별 임의의 근접값을 새로 만들지 않는다.
+5. 굵기는 `support 700`, `body 800`, `control 900`, `title 900`을 기본으로 한다. `600`은 장문 보조 설명의 최저선일 뿐 기본값으로 사용하지 않으며, 모든 사용자 표시 텍스트는 `600` 미만을 금지한다.
+6. KBO 웹폰트는 Bold 단일 굵기이므로 `--font-weight-sports: 700`을 사용한다. 굵기 차이 대신 크기와 색상으로 위계를 만든다.
+7. 음수 `letter-spacing`은 쓰지 않는다. 좁은 스포츠 느낌은 `--sports-display-condense`의 `scaleX(0.92)`로 처리한다.
 
 ## 2026-07-04 전역 로더 표시
 1. `BasketballLoader` 전역 오버레이는 초기 원격 hydrate, auth 확인, lazy page load, 명시적 blocking 호출에서만 보인다.

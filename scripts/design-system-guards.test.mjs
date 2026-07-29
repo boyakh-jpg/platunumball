@@ -173,7 +173,7 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(courtDetailSource, /court-map-link ui-liquid-glass/);
   assert.match(courtDetailSource, /court-detail-hero ui-design-app-hero/);
   assert.match(courtDetailSource, /court-profile-information ui-design-content-surface/);
-  assert.match(primitiveStyles, /\.ui-tier-label\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-style:\s*normal;[^}]*font-weight:\s*950;/);
+  assert.match(primitiveStyles, /\.ui-tier-label\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-style:\s*normal;[^}]*font-weight:\s*(?:950|var\(--font-weight-sports\));/);
   assert.match(read("src/components/rating/RatingCard.jsx"), /className="ui-tier-label"/);
   assert.match(read("src/components/rating/TierEmblem.jsx"), /className="ui-tier-label"/);
   assert.doesNotMatch(
@@ -404,6 +404,34 @@ test("알림 보기와 읽음은 같은 네모 버튼 규격을 사용한다", (
     foundationStyles,
     /\.notification-actions \.notification-action-control\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height\);[^}]*min-height:\s*var\(--ui-button-height\);[^}]*border-radius:\s*var\(--ui-button-radius\);/,
   );
+test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다", () => {
+  assert.match(tokenStyles, /--font-weight-min:\s*600;/);
+  assert.match(tokenStyles, /--font-weight-support:\s*700;/);
+  assert.match(tokenStyles, /--font-weight-body:\s*800;/);
+  assert.match(tokenStyles, /--font-weight-control:\s*900;/);
+  assert.match(tokenStyles, /--font-weight-title:\s*900;/);
+  assert.match(tokenStyles, /--font-weight-sports:\s*700;/);
+  assert.match(tokenStyles, /--font-size-caption:\s*0\.72rem;/);
+  assert.match(tokenStyles, /--font-size-control:\s*0\.78rem;/);
+  assert.match(tokenStyles, /--font-size-meta:\s*0\.82rem;/);
+  assert.match(tokenStyles, /--font-size-body:\s*1rem;/);
+  assert.match(tokenStyles, /--font-size-section-title:\s*1\.5rem;/);
+  assert.match(
+    foundationStyles,
+    /body\s*\{[^}]*font-family:\s*var\(--font-body\);[^}]*font-size:\s*var\(--font-size-body\);[^}]*font-weight:\s*var\(--font-weight-body\);/,
+  );
+  assert.match(
+    primitiveStyles,
+    /\.ui-badge\s*\{[^}]*font-size:\s*var\(--ui-badge-font-size\);[^}]*font-weight:\s*var\(--ui-badge-font-weight\);/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-room-rule-panel strong,[\s\S]*?\.arena-room-chat header span\s*\{[^}]*font-family:\s*var\(--font-body\);[^}]*font-size:\s*var\(--font-size-section-title\);[^}]*font-weight:\s*var\(--font-weight-title\);/,
+  );
+  assert.doesNotMatch(visualSystemStyles, /\.page-header h1,\s*\.auth-card h1/);
+  assert.doesNotMatch(globalSearchStyles, /\.approval-teaser-card \.compact-list a > span\s*\{[^}]*var\(--sports-display-font\)/);
+});
+
   assert.match(
     foundationStyles,
     /\.notification-actions \.notification-read-button\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height\);/,

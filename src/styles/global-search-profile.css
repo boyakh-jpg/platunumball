@@ -887,9 +887,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .approval-teaser-card .compact-list a > span {
   color: var(--rb-orange);
-  font-family: var(--sports-display-font);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-control);
   letter-spacing: 0;
-  transform: var(--sports-display-condense);
+  transform: none;
   transform-origin: left center;
 }
 

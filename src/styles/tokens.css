@@ -18,7 +18,22 @@
   color-scheme: dark;
   --font-body:
     "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-weight-min: 600;
+  --font-weight-support: 700;
   --font-weight-body: 800;
+  --font-weight-control: 900;
+  --font-weight-title: 900;
+  --font-weight-sports: 700;
+  --font-size-caption: 0.72rem;
+  --font-size-badge: 0.75rem;
+  --font-size-control: 0.78rem;
+  --font-size-meta: 0.82rem;
+  --font-size-body-sm: 0.875rem;
+  --font-size-body: 1rem;
+  --font-size-title-sm: 1.05rem;
+  --font-size-title-md: 1.25rem;
+  --font-size-section-title: 1.5rem;
+  --font-size-title-xl: 3.6rem;
   --sports-display-font: "KBO Dia Gothic", "Arial Narrow", "Roboto Condensed", sans-serif;
   --sports-display-condense: scaleX(0.92);
   --bg: #303132;
@@ -106,7 +121,7 @@
   --control-group-padding: 6px;
   --control-group-gap: 6px;
   --control-padding-x: 14px;
-  --control-font-size: 0.78rem;
+  --control-font-size: var(--font-size-control);
   --control-border: var(--rb-line);
   --button-primary-bg: var(--rb-orange);
   --button-primary-hover-bg: var(--rb-orange-2);
@@ -144,7 +159,7 @@
   --ui-button-padding-x: var(--control-padding-x);
   --ui-button-padding-x-sm: 11px;
   --ui-button-font-size: var(--control-font-size);
-  --ui-button-font-weight: 900;
+  --ui-button-font-weight: var(--font-weight-control);
   --ui-button-bg: var(--button-secondary-bg);
   --ui-button-bg-active: var(--button-primary-bg);
   --ui-button-bg-hover: var(--button-primary-hover-bg);
@@ -156,6 +171,8 @@
   --ui-badge-padding: 5px 10px;
   --ui-badge-bg: var(--button-secondary-bg);
   --ui-badge-border: var(--control-border);
+  --ui-badge-font-size: var(--font-size-badge);
+  --ui-badge-font-weight: var(--font-weight-body);
   --ui-badge-color: var(--rb-muted);
   --ui-badge-green-bg: color-mix(in srgb, var(--rb-green) 10%, transparent);
   --ui-badge-green-border: color-mix(in srgb, var(--rb-green) 36%, transparent);
