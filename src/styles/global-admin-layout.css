@@ -2566,7 +2566,8 @@ html[data-theme="light"] .team-search-popover button.selected {
     width: 100%;
     min-width: 0;
     align-items: flex-start;
-    overflow-wrap: anywhere;
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
 
   .season-section-actions {
@@ -2587,15 +2588,15 @@ html[data-theme="light"] .team-search-popover button.selected {
   .season-race-list > a,
   .season-race-list > .player-hover-trigger,
   .team-race-list a {
-    grid-template-columns: 26px auto minmax(0, 1fr);
-    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-4);
   }
 
-  .season-race-list > a > .tier-badge,
-  .season-race-list > a > .badge,
-  .season-race-list > .player-hover-trigger > .tier-badge,
-  .season-race-list > .player-hover-trigger > .badge {
+  .season-race-list > a > :is(.tier-badge, .badge),
+  .season-race-list > .player-hover-trigger > :is(.tier-badge, .badge) {
     grid-column: 3;
+    grid-row: 1;
     width: max-content;
     max-width: 100%;
   }
@@ -2608,9 +2609,8 @@ html[data-theme="light"] .team-search-popover button.selected {
     justify-self: start;
   }
 
-  .rivalry-challenge-link {
-    width: 100%;
-    justify-content: space-between;
+  .rivalry-challenge-actions {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .content-grid,

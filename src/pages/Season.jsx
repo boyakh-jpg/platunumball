@@ -131,19 +131,26 @@ export default function Season({ app }) {
                 <Button as={Link} to="/app/rankings" variant="secondary">전체 순위</Button>
               </div>
             </div>
-            <div className="season-race-list">
+            <div className="season-race-list ranking-table ui-design-borderless-list">
               {nationalPlayerRows.slice(0, 5).map((user, index) => (
-                <PlayerHoverCard key={user.id} user={user} teams={app.state.teams} className={user.id === app.currentUser.id ? "mine" : ""}>
-                  <strong>{index + 1}</strong>
-                  <ProfileEmblem user={user} className="small" />
-                  <div>
-                    <b>{user.name}</b>
-                    <em>
-                      {user.seasonWins}승 {user.seasonLosses}패 · {user.seasonDelta >= 0 ? "+" : ""}{user.seasonDelta}
-                      {" · "}
-                      {user.seasonStats.points}P/{user.seasonStats.rebounds}R/{user.seasonStats.assists}A
-                    </em>
-                  </div>
+                <PlayerHoverCard
+                  key={user.id}
+                  user={user}
+                  teams={app.state.teams}
+                  className={`ranking-row ui-design-soft-surface${user.id === app.currentUser.id ? " active" : ""}`}
+                >
+                  <span className={`rank rank-${index + 1}`}>{index + 1}</span>
+                  <span className="ranking-name">
+                    <ProfileEmblem user={user} className="small" />
+                    <span className="season-ranking-copy">
+                      <b>{user.name}</b>
+                      <em>
+                        {user.seasonWins}승 {user.seasonLosses}패 · {user.seasonDelta >= 0 ? "+" : ""}{user.seasonDelta}
+                        {" · "}
+                        {user.seasonStats.points}P/{user.seasonStats.rebounds}R/{user.seasonStats.assists}A
+                      </em>
+                    </span>
+                  </span>
                   <TierBadge mmr={user.ratings.integrated} ratings={user.ratings} compact />
                 </PlayerHoverCard>
               ))}
@@ -157,15 +164,17 @@ export default function Season({ app }) {
                 <h2>전국 팀 승격권</h2>
               </div>
             </div>
-            <div className="season-race-list team-race-list">
+            <div className="season-race-list team-race-list ranking-table ui-design-borderless-list">
               {nationalTeamRows.slice(0, 5).map((team, index) => (
-                <Link key={team.id} to={`/app/teams/${team.id}`}>
-                  <strong>{index + 1}</strong>
-                  <TeamEmblem team={team} size="xs" />
-                  <div>
-                    <b>{team.name}</b>
-                    <em>{team.seasonWins}승 {team.seasonLosses}패 · {team.seasonDelta >= 0 ? "+" : ""}{team.seasonDelta} · {team.mmr} MMR</em>
-                  </div>
+                <Link className="ranking-row ui-design-soft-surface" key={team.id} to={`/app/teams/${team.id}`}>
+                  <span className={`rank rank-${index + 1}`}>{index + 1}</span>
+                  <span className="ranking-name">
+                    <TeamEmblem team={team} size="xs" />
+                    <span className="season-ranking-copy">
+                      <b>{team.name}</b>
+                      <em>{team.seasonWins}승 {team.seasonLosses}패 · {team.seasonDelta >= 0 ? "+" : ""}{team.seasonDelta} · {team.mmr} MMR</em>
+                    </span>
+                  </span>
                   <Badge tone={index < (season.promotionLine ?? 4) ? "gold" : "neutral"}>{index < (season.promotionLine ?? 4) ? "승격권" : "추격"}</Badge>
                 </Link>
               ))}
@@ -179,15 +188,22 @@ export default function Season({ app }) {
               </div>
               <Badge tone="blue">{region}</Badge>
             </div>
-            <div className="season-race-list season-candidate-list">
+            <div className={`season-race-list season-candidate-list ranking-table${nationalCandidates.length ? " ui-design-borderless-list" : ""}`}>
               {nationalCandidates.length ? nationalCandidates.map((user, index) => (
-                <PlayerHoverCard key={user.id} user={user} teams={app.state.teams} className={user.id === app.currentUser.id ? "mine" : ""}>
-                  <strong>{nationalRankByPlayerId.get(user.id) ?? "-"}</strong>
-                  <ProfileEmblem user={user} className="small" />
-                  <div>
-                    <b>{user.name}</b>
-                    <em>지역 {index + 1}위 · 전국 {nationalRankByPlayerId.get(user.id) ?? "-"}위</em>
-                  </div>
+                <PlayerHoverCard
+                  key={user.id}
+                  user={user}
+                  teams={app.state.teams}
+                  className={`ranking-row ui-design-soft-surface${user.id === app.currentUser.id ? " active" : ""}`}
+                >
+                  <span className="rank">{nationalRankByPlayerId.get(user.id) ?? "-"}</span>
+                  <span className="ranking-name">
+                    <ProfileEmblem user={user} className="small" />
+                    <span className="season-ranking-copy">
+                      <b>{user.name}</b>
+                      <em>지역 {index + 1}위 · 전국 {nationalRankByPlayerId.get(user.id) ?? "-"}위</em>
+                    </span>
+                  </span>
                   <TierBadge mmr={user.ratings.integrated} ratings={user.ratings} compact />
                 </PlayerHoverCard>
               )) : <div className="ui-empty-state-compact">지역 시즌 기록이 없습니다.</div>}
@@ -225,7 +241,7 @@ export default function Season({ app }) {
         </div>
         <div className="rivalry-grid">
           {rivalries.length ? rivalries.map((pair) => (
-            <article key={pair.id} className="rivalry-matchup">
+            <article key={pair.id} className="rivalry-matchup ui-design-info-surface">
               <div>
                 <Link to={`/app/teams/${pair.teamA.id}`}>{pair.teamA.name}</Link>
                 <strong>{pair.teamA.mmr}</strong>
@@ -237,12 +253,12 @@ export default function Season({ app }) {
               </div>
               <p>{pair.headToHead.length}전 · MMR 차이 {pair.mmrGap}</p>
               <div className="rivalry-challenge-actions">
-                <Link to="/app/create" className="rivalry-challenge-link">
+                <Button as={Link} to="/app/create" variant="secondary" size="sm">
                   매칭 만들기 <ArrowRight size={16} />
-                </Link>
-                <Link to="/app/create?intent=record" className="rivalry-challenge-link">
+                </Button>
+                <Button as={Link} to="/app/create?intent=record" variant="secondary" size="sm">
                   경기 기록하기 <ClipboardCheck size={16} />
-                </Link>
+                </Button>
               </div>
             </article>
           )) : (
@@ -251,9 +267,9 @@ export default function Season({ app }) {
                 <strong>라이벌 후보 없음</strong>
                 <p>같은 지역 팀이 더 등록되면 MMR 차이와 맞대결 기록으로 자동 추천됩니다.</p>
               </div>
-              <Link to="/app/teams" className="rivalry-challenge-link">
+              <Button as={Link} to="/app/teams" variant="secondary" size="sm">
                 지역 팀 보기 <ArrowRight size={16} />
-              </Link>
+              </Button>
             </article>
           )}
         </div>

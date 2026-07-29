@@ -1345,38 +1345,27 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .season-race-list {
   display: grid;
-  gap: 9px;
+  gap: var(--space-4);
 }
 
 .season-race-list > a,
 .season-race-list > .player-hover-trigger {
-  display: grid;
-  grid-template-columns: 32px auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-5);
-  border: 1px solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  padding: 10px;
 }
 
-.season-race-list > a.mine,
-.season-race-list > .player-hover-trigger.mine {
-  border-color: rgba(70, 224, 182, 0.42);
-  background: rgba(70, 224, 182, 0.075);
-}
-
-.season-race-list > a > strong,
-.season-race-list > .player-hover-trigger > strong {
-  color: var(--gold);
-  font-size: 0.95rem;
-}
-
-.season-race-list b,
-.season-race-list em {
-  display: block;
+.season-ranking-copy {
+  display: grid;
   min-width: 0;
-  overflow-wrap: anywhere;
+  gap: var(--space-1);
+}
+
+.season-ranking-copy b,
+.season-ranking-copy em {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .season-race-list em {
@@ -1384,10 +1373,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 800;
-}
-
-.team-race-list a {
-  grid-template-columns: 32px auto minmax(0, 1fr) auto;
 }
 
 .season-play-report > a {
@@ -1416,9 +1401,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: var(--space-5);
   align-items: center;
-  border: 1px solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
   padding: 14px;
 }
 
@@ -1433,8 +1416,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
   min-width: 0;
 }
 
-.rivalry-matchup a {
-  overflow-wrap: anywhere;
+.rivalry-matchup a:not(.button) {
+  word-break: keep-all;
+  overflow-wrap: break-word;
   font-weight: 900;
 }
 
@@ -1443,8 +1427,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-size: 0.82rem;
 }
 
-.rivalry-matchup p,
-.rivalry-challenge-link {
+.rivalry-matchup p {
   grid-column: 1 / -1;
 }
 
@@ -1471,17 +1454,8 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: var(--space-4);
 }
 
-.rivalry-challenge-link {
-  display: inline-flex;
+.rivalry-challenge-actions .button {
   width: 100%;
-  max-width: 100%;
-  min-height: var(--ui-button-height-sm);
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  color: var(--rb-orange);
-  font-size: 0.82rem;
-  font-weight: 900;
 }
 
 .tier-range-note span,
