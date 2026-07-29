@@ -14,6 +14,7 @@ import {
   isRefereeGrade,
 } from "../src/lib/constants.js";
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
+import { getRoomScheduleLabel } from "../src/lib/matchUtils.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
 import {
@@ -953,6 +954,27 @@ test("schedule policy normalizes client and database field names", () => {
   });
 });
 
+test("room schedule labels stay canonical across all recruiting surfaces", async () => {
+  assert.equal(getRoomScheduleLabel({
+    scheduledDate: "2026-07-22",
+    scheduledTime: "19:30",
+  }), "2026-07-22 19:30");
+  assert.equal(getRoomScheduleLabel({
+    timingType: "instant",
+    createdAt: "2026-07-22T10:00:00",
+  }), "즉시 · 12:00 종료");
+  assert.equal(getRoomScheduleLabel({}), "일정 미정");
+
+  const [home, recruiting, notifications] = await Promise.all([
+    readSource("src/pages/Home.jsx"),
+    readSource("src/pages/Recruiting.jsx"),
+    readSource("src/pages/Notifications.jsx"),
+  ]);
+  const scheduleConsumers = `${home}\n${recruiting}\n${notifications}`;
+  assert.doesNotMatch(scheduleConsumers, /function\s+getRecruitingSchedule\s*\(/);
+  [home, recruiting, notifications].forEach((source) => assert.match(source, /getRoomScheduleLabel/));
+});
+
 test("room chat limits and row mapping stay shared", () => {
   assert.equal(ROOM_CHAT_MESSAGE_MAX_LENGTH, 60);
   assert.equal(ROOM_CHAT_HISTORY_LIMIT, 30);
@@ -1122,7 +1144,7 @@ test("empty home upcoming card does not keep the desktop match minimum height", 
     readSource("src/pages/Home.jsx"),
     readGlobalStyles(),
   ]);
-  assert.match(home, /home-upcoming-card\$\{upcomingItems\.length \? "" : " is-empty"\}/);
+  assert.match(home, /home-upcoming-card[^`]*\$\{upcomingItems\.length \? "" : " is-empty"\}/);
   assert.match(styles, /\.rank-home \.home-upcoming-card\.is-empty\s*\{\s*min-height:\s*auto;/);
 });
 

@@ -4,17 +4,12 @@ import { Bell, Trash2 } from "lucide-react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
-import { isInstantRoom } from "../lib/matchUtils.js";
+import { getRoomScheduleLabel } from "../lib/matchUtils.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName } from "../lib/recruiting.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
-
-function getRecruitingSchedule(post) {
-  if (isInstantRoom(post)) return "즉시";
-  return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
-}
 
 function formatNotificationTime(value) {
   const date = new Date(value ?? "");
@@ -115,7 +110,7 @@ export default function Notifications({ app }) {
                 <div key={`${post.id}-${invitation.id}`} className="home-invitation-row">
                   <span className="home-action-main">
                     <strong>{post.title}</strong>
-                    <em>{getRecruitingSchedule(post)} · {post.court} · {senderName}님이 초대</em>
+                    <em>{getRoomScheduleLabel(post)} · {post.court} · {senderName}님이 초대</em>
                   </span>
                   <span className="home-invitation-actions">
                     <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>

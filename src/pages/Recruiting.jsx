@@ -308,10 +308,6 @@ function useDebouncedValue(value, delayMs) {
   return debouncedValue;
 }
 
-function getRecruitingSchedule(post) {
-  return getRoomScheduleLabel(post);
-}
-
 function getRoomShareUrl(roomId = "") {
   const path = roomId ? `/app/recruiting?post=${encodeURIComponent(roomId)}` : "/app/recruiting";
   const configuredBase = import.meta.env.VITE_PUBLIC_APP_URL;
@@ -3100,7 +3096,7 @@ function RecruitingRoomModalReady({
 
   const shareRoom = useCallback(async () => {
     const title = getRecruitingDisplayTitle(selectedPost, `${BRAND_NAME} 매치방`);
-    const text = [title, selectedPost?.court, selectedPost ? getRecruitingSchedule(selectedPost) : ""].filter(Boolean).join(" · ");
+    const text = [title, selectedPost?.court, selectedPost ? getRoomScheduleLabel(selectedPost) : ""].filter(Boolean).join(" · ");
     if (navigator.share) {
       try {
         await navigator.share({ title, text, url: roomShareUrl });
@@ -4881,7 +4877,7 @@ function RecruitingRoomModalReady({
 
                 <div className="arena-lobby-title">
                   <h2 className={roomTitleSizeClass}>{roomDisplayTitle}</h2>
-                  <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
+                  <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRoomScheduleLabel(selectedPost)}</p>
                 </div>
 
                 {contextPanel}
@@ -5097,7 +5093,7 @@ function RecruitingRoomModalReady({
                 </div> : null}
 
                 <div className="arena-lobby-actions">
-                  <div><Clock3 size={17} /><span>{getRecruitingSchedule(selectedPost)}</span></div>
+                  <div><Clock3 size={17} /><span>{getRoomScheduleLabel(selectedPost)}</span></div>
                   <div><UsersRound size={17} /><span>{roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool
                     ? `참가 ${getPickupParticipantIds(lobby).length}/${(getRecruitingSideCapacity(selectedPost) + benchCapacity) * 2}`
                     : `${getRecruitingSideCapacity(selectedPost)} vs ${getRecruitingSideCapacity(selectedPost)}`}</span></div>
@@ -6630,7 +6626,7 @@ function RecruitingReady({ app }) {
               meta={(
                 <>
                   <CalendarDays size={15} />
-                  {getRecruitingSchedule(post)} · <CourtHoverCard court={postCourt} courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
+                  {getRoomScheduleLabel(post)} · <CourtHoverCard court={postCourt} courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
                   {hostTeam ? (
                     <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard>
                   ) : post.teamId && hostTeamName ? (

@@ -99,17 +99,13 @@ function userOperatesCheckin(match, userId) {
   return match.refereeId ? match.refereeId === userId : match.createdBy === userId;
 }
 
-function getRecruitingSchedule(post) {
-  return getRoomScheduleLabel(post);
-}
-
 function getHomeRecruitingMeta(post = {}) {
-  return `${getRecruitingSchedule(post)} · ${post.court || "구장 미정"}`;
+  return `${getRoomScheduleLabel(post)} · ${post.court || "구장 미정"}`;
 }
 
 function getHomeMatchMeta(match = {}) {
   const prefix = isPersonalRecordMatch(match) ? "개인 기록 · " : "";
-  return `${prefix}${match.scheduledAt || getRoomScheduleLabel(match)} · ${match.court || "구장 미정"}`;
+  return `${prefix}${getRoomScheduleLabel(match)} · ${match.court || "구장 미정"}`;
 }
 
 function getNotificationPreviewBody(notification = {}) {
