@@ -20,18 +20,18 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!url || !serviceRoleKey) {
   console.error("SUPABASE_URL/VITE_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
-  process.exit(1);
+  process.exitCode = 1;
+} else {
+  const supabase = createClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data, error } = await supabase.rpc("rankball_operational_data_health");
+  if (error) {
+    console.error(JSON.stringify({ ok: false, error: error.message, code: error.code ?? "" }, null, 2));
+    process.exitCode = 1;
+  } else {
+    console.log(JSON.stringify(data, null, 2));
+    if (data?.ok !== true) process.exitCode = 1;
+  }
 }
-
-const supabase = createClient(url, serviceRoleKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
-
-const { data, error } = await supabase.rpc("rankball_operational_data_health");
-if (error) {
-  console.error(JSON.stringify({ ok: false, error: error.message, code: error.code ?? "" }, null, 2));
-  process.exit(1);
-}
-
-console.log(JSON.stringify(data, null, 2));
-if (data?.ok !== true) process.exit(1);

@@ -715,10 +715,10 @@ const REQUIRED_RPCS = [
   },
   {
     name: "rankball_match_terminal_action",
-    args: { p_actor_profile_id: "", p_action: "", p_match_id: "" },
+    args: { p_actor_profile_id: "", p_action: "", p_match_id: "", p_reason: "" },
   },
   {
-    name: "rankball_match_roster_move_action",
+    name: "rankball_match_roster_transition_action",
     args: {
       p_actor_profile_id: "",
       p_action: "substituteMatchPlayer",
@@ -727,6 +727,7 @@ const REQUIRED_RPCS = [
       p_active_player_id: "",
       p_reserve_player_id: "",
       p_next_recorder_id: "",
+      p_reason: "operator",
     },
   },
   {
@@ -909,7 +910,7 @@ async function checkRlsPolicies(client) {
   };
 }
 
-async function checkRpcGrants(client, scoreOperationPolicyCheck) {
+async function checkRpcGrants(client) {
   const results = await Promise.all([
     client.rpc("rankball_rpc_grant_health"),
     client.rpc("rankball_authoritative_rpc_grant_health"),
@@ -925,27 +926,7 @@ async function checkRpcGrants(client, scoreOperationPolicyCheck) {
   }
 
   const checks = results.flatMap((result) => Array.isArray(result.data) ? result.data : []);
-  const failed = checks.filter((check) => {
-    if (check.ok) return false;
-    if (
-      [
-        "rpc_grant:rankball_recruiting_stat_recorder_action",
-        "authoritative_rpc_grant:rankball_recruiting_stat_recorder_action",
-        "rpc_grant:rankball_match_late_player_action",
-        "authoritative_rpc_grant:rankball_match_finalize_locked",
-      ].includes(check.check_name)
-      && check.detail?.exists === true
-      && check.detail?.anonExecute === false
-      && check.detail?.authenticatedExecute === false
-      && check.detail?.serviceRoleExecute === false
-    ) {
-      return false;
-    }
-    return !(
-      scoreOperationPolicyCheck?.checks?.legacyRosterMoveServiceRevoked === true
-      && check.check_name === "rpc_grant:rankball_match_roster_move_action"
-    );
-  });
+  const failed = checks.filter((check) => !check.ok);
   return {
     ok: failed.length === 0,
     error: null,
@@ -1183,7 +1164,7 @@ export default async function handler(request, response) {
     const feedTriggerCheck = await checkFeedTriggers(client);
     const rlsPolicyCheck = await checkRlsPolicies(client);
     const scoreOperationPolicyCheck = await checkScoreOperationPolicy(client);
-    const rpcGrantCheck = await checkRpcGrants(client, scoreOperationPolicyCheck);
+    const rpcGrantCheck = await checkRpcGrants(client);
     const disputeWindowCheck = await checkDisputeWindowPolicy(client, scoreOperationPolicyCheck);
     const profileIdentityCheck = await checkProfileIdentity(client);
     const tournamentInvitationCheck = await checkTournamentInvitations(client);

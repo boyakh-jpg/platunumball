@@ -3144,10 +3144,10 @@ flowchart TD
 1. 운영 DB의 원본 행은 현재 server action과 authoritative RPC가 생성하는 컬럼, 상태, 참조 규칙을 표준으로 한다. 화면용 mock 객체를 원본 테이블에 직접 저장하지 않는다.
 2. 프로필, 팀, 모집방, 경기, 기록, 대회는 유효한 원본 ID와 이력을 유지한다. 실제 근거 없이 이름, 점수, MMR, 신뢰도, 출전 기록을 추정하거나 다시 만들지 않는다.
 3. `user_room_feed`와 `room_feed_cards`는 원본이 아닌 파생 캐시다. 원본 없는 행과 명시적인 시뮬레이션 행은 비활성화한 뒤 7일 보존 정책으로 정리한다.
-4. 중단된 backend simulation의 팀, 초대, 모집방, 미결 구장 신청, 심판 시험·신청·임명, 관리자 임명·징계, 알림은 ID prefix와 JSON 표식을 함께 확인해 격리한다. 승인·반려가 끝난 구장 신청과 사용자 데이터·참조가 있는 구장은 자동 격리하지 않는다.
+4. 중단된 backend simulation의 팀, 초대, 모집방, 경기(`sim_m_*` 포함), 미결 구장 신청, 심판 시험·신청·임명, 관리자 임명·징계, 알림은 ID prefix와 JSON 표식을 함께 확인해 격리한다. 대회에 속하지 않은 `sim_m_*` 경기만 활성 상태(`agreed/live/approval/disputed`)로 24시간 이상 갱신되지 않은 경우 취소 격리하며 확정 경기와 대회 경기는 건드리지 않는다. 승인·반려가 끝난 구장 신청과 사용자 데이터·참조가 있는 구장은 자동 격리하지 않는다.
 5. maintenance는 `rankball_quarantine_simulation_artifacts`를 먼저 실행한다. 시뮬레이션 종료 처리가 누락돼도 다음 정기 실행에서 운영 목록과 권한 계산에서 제외한다.
-6. `rankball_operational_data_health`는 프로필/Auth, 팀 명단, 승인 구장 좌표, 모집방 만료·피드, 경기·대회 참조, 시뮬레이션 잔존을 검사한다. `npm run audit:production-data`가 critical 항목이 남으면 실패한다.
-7. 기본 구장 `c1..c12`와 격리된 simulation 구장은 승인 구장 목록에서 제거한다. 과거 경기·모집·대회 참조가 있는 `c1..c12` legacy row는 기록 무결성용 호환 shell로만 남기며 공개 승인 구장 목록이나 관리자 구장 DB에는 노출하지 않는다.
+6. `rankball_operational_data_health`는 프로필/Auth, 팀 명단, 승인 구장 좌표, 모집방 만료·피드, 경기·대회 참조, 시뮬레이션 잔존을 검사한다. 삭제된 가짜 구장 ID `c1..c12`는 `approved_courts`, `courts`, 경기·모집방·대회·리뷰 참조 어디에도 남지 않아야 하며 `deletedBuiltInCourtResidue`로 검사한다. `npm run audit:production-data`가 critical 항목이 남으면 실패한다.
+7. `c1..c12`는 기본 구장이나 legacy shell이 아니라 삭제된 가짜 데이터다. 실제 과거 구장의 `courts` fallback 정책과 구분하며 복원하거나 공개 승인 구장 목록에 다시 넣지 않는다.
 8. 구장 이름 snapshot은 `court_id`가 가리키는 현재 표준 이름으로 맞춘다. 같은 시설의 복수 코트는 사용자 승인 흐름의 `courtUnit`으로 구분하고 ID를 합치지 않는다.
 9. 개인 기록의 익명 상대 득점과 대회 몰수 `1:0`은 선수 PTS 합계 예외다. 일반 경기 점수만 실제 출전자 PTS 합계를 단일 원본으로 사용한다.
 10. 예약 시작 시각이 지났는데 연결 경기가 없는 열린 모집방은 정원이 찼더라도 `scheduled_unconfirmed`로 취소한다. 참가자에게 취소 알림을 만들고 기존 초대·Discord delivery·방 링크·피드는 종료한다.
@@ -3593,6 +3593,13 @@ flowchart TD
 2. 내부 `match_record`, `record` phase, 기존 데이터의 레거시 제목 판별은 호환을 위해 유지한다.
 3. `경기 기록`은 경기 뒤 참가자 또는 팀을 구성하고 결과를 확인하는 사후 공동 기록이며 `내 기록`과 구분한다.
 
+## 현재 유효: 서버 RPC 실행권한 계약
+
+1. 신규 서버 RPC는 `rankball_rpc_contract_registry`에 현재 signature와 `active/retired` 상태를 증분 등록한다. grant health 함수에 전체 RPC 목록을 다시 복사하지 않는다.
+2. `active` RPC는 `service_role`만 실행할 수 있고 `anon/authenticated` 실행권한은 없다. 현재 선수 교체는 `rankball_match_roster_transition_action(text,text,text,text,text,text,text,text)`, 수동 최종 확정은 `rankball_match_finalize_locked(text,text,text,boolean)`이 권위 경로다.
+3. `rankball_match_late_player_action`, `rankball_match_roster_move_action`, `rankball_recruiting_stat_recorder_action`, 3인자 `rankball_match_finalize_locked`, 4인자 `rankball_match_resolve_dispute_action`, 3인자 `rankball_match_terminal_action`, 3인자 `rankball_match_list`는 폐기 계약이다. 과거 데이터 호환용 함수가 남아 있어도 `service_role`을 포함한 런타임 역할에 실행권한을 주지 않는다.
+4. `/api/system/schema-health`는 registry 기반 active·retired 계약을 그대로 판정한다. 서버 코드에서 특정 실패 row를 예외로 숨기지 않는다.
+5. `server/**/*.js`의 literal `rankball_*` RPC 호출은 모두 service-only registry에 등록한다. 브라우저 RLS와 서버 Discord 채팅 검증이 함께 사용하는 `rankball_can_access_recruiting_room_chat(text,text)`만 의도적인 browser RPC 예외이며 registry에서 제외한다.
 ## 2026-07-29 확정 경기 명단과 비공개 경쟁전 QR
 
 1. 확정 경기방의 출전·후보 명단은 팀의 현재 로스터가 아니라 경기의 `teamA/teamB.players`와 `reservePlayers`를 원본으로 표시한다. 방장이 후보와 교체되어도 `createdBy`와 후보 슬롯은 유지한다.
