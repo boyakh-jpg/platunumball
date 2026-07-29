@@ -373,6 +373,10 @@
   color: var(--text);
 }
 
+[data-design="editorial"] .ui-design-spotlight__stats > div {
+  color: var(--text);
+}
+
 [data-design="editorial"] .ui-design-spotlight__stats dt {
   color: var(--muted);
   font-size: 0.72rem;
