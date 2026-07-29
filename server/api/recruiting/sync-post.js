@@ -734,6 +734,8 @@ export function normalizePickupRecruitingOperation(existingPost = {}, operation 
         ...(operation.invite && typeof operation.invite === "object" ? operation.invite : {}),
         joinMode: "player",
         teamId: "",
+        side: "",
+        reserve: false,
       },
     };
   }

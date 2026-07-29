@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  acceptRecruitingInvitation,
   confirmPickupSideAssignment,
   configureServerRatingAuthority,
   generatePickupSideAssignment,
+  inviteRecruitingPlayers,
   startMatch,
   swapPickupMatchPlayers,
 } from "../src/data/repository.js";
@@ -101,6 +103,88 @@ test("픽업 모집은 A/B 대신 통합 참가자 풀을 표시한다", () => {
     { side: "teamA", reserve: true },
     { side: "teamB", reserve: true },
   ]);
+});
+
+test("5v5 픽업 초대는 수락 시 양쪽 임시 정원을 균형 사용하고 총 16명에서 마감한다", () => {
+  const invitedPlayerIds = Array.from({ length: 18 }, (_, index) => `player-${index + 1}`);
+  let state = {
+    currentUserId: "host",
+    users: ["host", ...invitedPlayerIds].map((id) => ({
+      id,
+      name: id,
+      position: "G",
+      ratings: { integrated: 1200 },
+    })),
+    teams: [],
+    matches: [],
+    notifications: [],
+    settings: {},
+    recruitingPosts: [{
+      id: "pickup-invite-room",
+      title: "5v5 픽업",
+      status: "open",
+      visibility: "private",
+      playerId: "host",
+      hostJoinMode: "player",
+      hostSide: "teamA",
+      formationMode: "pickup",
+      matchIntent: "pickup",
+      mode: "5v5",
+      sideCapacity: 5,
+      benchCapacity: 3,
+      applicants: [],
+      roomState: {
+        ownerId: "host",
+        invitations: [],
+        partyReserves: {},
+        pinnedReservePlayers: {},
+        mmrLimitMode: "off",
+      },
+      rules: {
+        formationMode: "pickup",
+        matchIntent: "pickup",
+        sideCapacity: 5,
+        benchCapacity: 3,
+      },
+    }],
+  };
+
+  state = inviteRecruitingPlayers(state, "pickup-invite-room", {
+    playerIds: invitedPlayerIds,
+    side: "teamB",
+    reserve: true,
+  });
+  const createdInvitations = state.recruitingPosts[0].roomState.invitations;
+  assert.equal(createdInvitations.length, 18);
+  assert.equal(createdInvitations.every((invitation) => invitation.side === null && invitation.reserve === false), true);
+
+  state = {
+    ...state,
+    recruitingPosts: [{
+      ...state.recruitingPosts[0],
+      roomState: {
+        ...state.recruitingPosts[0].roomState,
+        invitations: createdInvitations.map((invitation) => ({ ...invitation, side: "teamB" })),
+      },
+    }],
+  };
+  for (const playerId of invitedPlayerIds.slice(0, 15)) {
+    const invitation = state.recruitingPosts[0].roomState.invitations.find((item) => (
+      item.targetUserId === playerId && item.status === "pending"
+    ));
+    state = acceptRecruitingInvitation({ ...state, currentUserId: playerId }, "pickup-invite-room", invitation.id);
+  }
+
+  const filledPost = state.recruitingPosts[0];
+  const lobby = getRecruitingLobby(filledPost, state);
+  const occupied = (side) => lobby.sides[side].filled + lobby.sides[side].reserveCandidates.length;
+  assert.equal(occupied("teamA"), 8);
+  assert.equal(occupied("teamB"), 8);
+  assert.equal(
+    filledPost.roomState.invitations.filter((invitation) => invitation.status === "expired").length,
+    3,
+  );
+  assert.ok(filledPost.roomState.playerCapacityFilledAt);
 });
 
 test("픽업 체크인은 배정 확정 전 A/B 작업대를 표시한다", () => {

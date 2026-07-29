@@ -9177,6 +9177,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
   const playerOnlyRoom = isIndividualOnlyRecruitingRoom(post);
+  const pickupRoom = isPickupRecruitingRoom(post);
   const teamOnly = isTeamOnlyRecruitingRoom({ ...post, roomState });
   const sideTeamId = getLobbyPrimaryTeamId(lobby, side);
   const requestedTargetIds = Array.from(new Set(invite.playerIds ?? [invite.playerId])).filter(Boolean);
@@ -9272,7 +9273,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
     }
   }
 
-  if (reserve) {
+  if (reserve && !pickupRoom) {
     const benchCapacity = getRecruitingBenchCapacity(post);
     const reserveCount = lobby.sides[side]?.reserveCandidates?.length ?? 0;
     const pendingReserveCount = getPendingReserveInvitationCount(roomState, side);
@@ -9288,6 +9289,8 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   const inviteJoinMode = playerOnlyRoom
     ? "player"
     : invite.joinMode === "player" ? "player" : (invite.joinMode === "team" || invite.teamId ? "team" : "");
+  const invitationSide = pickupRoom ? null : side;
+  const invitationReserve = pickupRoom ? false : reserve;
   const newInvitations = targetUserIds.map((targetUserId) => ({
     id: makeId("inv"),
     role: "player",
@@ -9295,8 +9298,8 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
     fromUserId: state.currentUserId,
     teamId: inviteJoinMode === "player" ? null : invite.teamId || inferSidePartyTeamIdForUser(post, state, side, targetUserId),
     joinMode: inviteJoinMode,
-    side,
-    reserve,
+    side: invitationSide,
+    reserve: invitationReserve,
     status: "pending",
     createdAt: now,
     updatedAt: now,
@@ -9312,7 +9315,9 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
       ...newInvitations.map((invitation) => ({
         id: makeId("n"),
         title: "매치방 초대",
-        body: `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "빈 슬롯"} 초대장이 도착했습니다.`,
+        body: pickupRoom
+          ? `${post.title} 통합 참가 초대장이 도착했습니다.`
+          : `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "빈 슬롯"} 초대장이 도착했습니다.`,
         tone: "match",
         targetUserId: invitation.targetUserId,
         recruitingPostId: postId,
@@ -9322,7 +9327,9 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
       {
         id: makeId("n"),
         title: "초대장 발송",
-        body: `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "빈 슬롯"}에 ${targetUserIds.length}명 초대장을 보냈습니다.`,
+        body: pickupRoom
+          ? `${post.title} 통합 참가에 ${targetUserIds.length}명 초대장을 보냈습니다.`
+          : `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "빈 슬롯"}에 ${targetUserIds.length}명 초대장을 보냈습니다.`,
         tone: "match",
       },
       ...state.notifications,
@@ -9644,7 +9651,9 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   }
 
   const lobby = getRecruitingLobby(post, state);
-  const side = MATCH_SIDES.includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
+  const side = isPickupRecruitingRoom(post)
+    ? getRecruitingBestSide(post, state)
+    : MATCH_SIDES.includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
   const benchCapacity = getRecruitingBenchCapacity(post);
   let reserve = Boolean(invitation.reserve);
   const invitedTeamCapacity = getRecruitingSideCapacity(post);

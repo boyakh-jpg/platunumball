@@ -1234,5 +1234,13 @@ export function getRecruitingListCardCounts(post = {}, lobby = {}, options = {})
 
 export function getRecruitingBestSide(post = {}, state = {}) {
   const lobby = getRecruitingLobby(post, state);
-  return lobby.sides.teamA.projectedFilled <= lobby.sides.teamB.projectedFilled ? "teamA" : "teamB";
+  const benchCapacity = getRecruitingBenchCapacity(post);
+  const occupancy = (side) => (
+    (lobby.sides[side]?.filled ?? 0)
+    + (lobby.sides[side]?.reserveCandidates?.length ?? 0)
+  );
+  const hasCapacity = (side) => occupancy(side) < (lobby.sides[side]?.capacity ?? 0) + benchCapacity;
+  if (hasCapacity("teamA") && !hasCapacity("teamB")) return "teamA";
+  if (!hasCapacity("teamA") && hasCapacity("teamB")) return "teamB";
+  return occupancy("teamA") <= occupancy("teamB") ? "teamA" : "teamB";
 }

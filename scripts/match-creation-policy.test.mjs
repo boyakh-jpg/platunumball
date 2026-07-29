@@ -323,6 +323,7 @@ test("pickup invitations and joins stay individual even when a team id is submit
   const invitation = invitedState.recruitingPosts[0].roomState.invitations[0];
   assert.equal(invitation.joinMode, "player");
   assert.equal(invitation.teamId, null);
+  assert.equal(invitation.side, null);
 
   const acceptedState = acceptRecruitingInvitation(
     { ...invitedState, currentUserId: "invitee" },
@@ -332,7 +333,7 @@ test("pickup invitations and joins stay individual even when a team id is submit
   const applicant = acceptedState.recruitingPosts[0].applicants[0];
   assert.equal(applicant.kind, "player");
   assert.equal(applicant.teamId, null);
-  assert.equal(applicant.side, "teamA");
+  assert.equal(applicant.side, "teamB");
 });
 
 test("filling every player slot expires remaining player invitations but keeps referee invitations", () => {
