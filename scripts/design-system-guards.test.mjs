@@ -40,6 +40,10 @@ const visualDirectionDemoSource = read("src/pages/VisualDirectionDemo.jsx");
 const globalStyleManifest = read("src/styles/globals.css");
 const appShellSource = read("src/components/layout/AppShell.jsx");
 const cardSource = read("src/components/common/Card.jsx");
+const sidebarSource = read("src/components/layout/Sidebar.jsx");
+const loginSource = read("src/pages/Login.jsx");
+const settingsSource = read("src/pages/Settings.jsx");
+const teamsSource = read("src/pages/Teams.jsx");
 const recruitingListApiSource = read("server/api/recruiting/list.js");
 const useAppDataSource = read("src/hooks/useAppData.js");
 const recruitingStyles = read("src/styles/recruiting-arena.css");
@@ -123,6 +127,13 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(pageSources.landing, /Season ranking/);
   assert.match(pageSources.landing, /Recent games/);
   assert.doesNotMatch(pageSources.landing, /ui-design-preference-list|화면 설정/);
+  assert.doesNotMatch(pageSources.landing, /ui-design-main-brand|brand-logo-frame|brand-letter-wrap/);
+  assert.match(pageSources.landing, /to="\/app"[\s\S]*?>\s*홈\s*</);
+  for (const source of [sidebarSource, loginSource, visualDirectionDemoSource]) {
+    assert.match(source, /BOXTIER_LETTER_DARK_URL/);
+    assert.match(source, /BOXTIER_LETTER_LIGHT_URL/);
+    assert.match(source, /brand-letter-fallback/);
+  }
   assert.doesNotMatch(pageSources.home, /STANDARD_HOME_LAYOUT|ui-design-home-page|ui-design-main-hero/);
   assert.match(
     editorialAppStyles,
@@ -131,10 +142,16 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(editorialAppStyles, /\.ui-design-surface\s*\{[\s\S]*?border:\s*0;/);
   assert.match(editorialAppStyles, /--card-border:\s*transparent;[\s\S]*?--ui-card-border:\s*transparent;/);
   assert.match(editorialAppStyles, /--ui-design-soft-surface-bg:\s*color-mix\(in srgb,\s*var\(--rb-bg-2\) 86%,\s*var\(--rb-bg\)\);/);
-  assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border:\s*0;[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
+  assert.match(editorialAppStyles, /--ui-design-record-surface-bg:\s*color-mix/);
+  assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border:\s*0;[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
   assert.match(editorialAppStyles, /\.ui-design-info-surface\.ui-design-info-accent\s*\{[\s\S]*?border-inline-start:\s*4px solid var\(--ui-info-accent, transparent\);/);
-  assert.match(editorialAppStyles, /\.ui-design-soft-surface\s*\{[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
-  assert.match(editorialAppStyles, /\.ui-design-borderless-surface:not\(\.tier-range-note-warning\),[\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-color:\s*transparent;/);
+  assert.match(editorialAppStyles, /\.ui-design-record-surface\.ui-design-info-surface\s*\{[\s\S]*?background:\s*color-mix/);
+  assert.match(editorialAppStyles, /html\[data-theme\][\s\S]*?\.ui-design-soft-surface\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
+  assert.match(editorialAppStyles, /\.ui-design-borderless-surface:not\(\.tier-range-note-warning\),[\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border:\s*0;/);
+  assert.match(editorialAppStyles, /\.ui-design-choice-list > \*\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*var\(--ui-design-choice-bg\);/);
+  assert.match(editorialAppStyles, /:is\(button, \.ui-button\)\s*\{[\s\S]*?border:\s*0;/);
+  assert.match(editorialAppStyles, /\.ui-design-app-hero\s*\{[\s\S]*?border:\s*0;[\s\S]*?border-radius:\s*0;/);
+  assert.match(editorialAppStyles, /\.profile-rating-primary\.rating-card-pending\s*\{[\s\S]*?min-height:\s*140px;/);
   assert.match(editorialAppStyles, /\.ui-design-filter-tile\s*\{[\s\S]*?min-height:\s*60px;[\s\S]*?padding-block:\s*7px;/);
   assert.match(editorialAppStyles, /\.segmented-control\s*\{[\s\S]*?border:\s*0;[\s\S]*?padding:\s*0;[\s\S]*?background:\s*transparent;/);
   assert.match(editorialAppStyles, /\.segmented-control button\s*\{[\s\S]*?background:\s*var\(--ui-design-choice-bg\);/);
@@ -148,7 +165,10 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   assert.match(read("src/pages/CreateMatch.jsx"), /create-eligibility-control ui-design-borderless-surface/);
   assert.match(read("src/pages/CreateMatch.jsx"), /create-public-note ui-design-borderless-surface/);
   assert.match(pageSources.settings, /favorite-type-grid ui-design-borderless-list ui-design-borderless-surface/);
+  assert.equal(count(settingsSource, "ui-design-choice-list"), 4);
   assert.match(pageSources.teams, /my-team-list ui-design-borderless-list/);
+  assert.match(teamsSource, /favorite-search-label ui-field-span-all/);
+  assert.match(primitiveStyles, /\.ui-field-span-all\s*\{[^}]*grid-column:\s*1 \/ -1;[^}]*width:\s*100%;/);
   assert.match(pageSources.profile, /contract-grid single ui-design-borderless-list/);
   assert.match(courtDetailSource, /court-map-link ui-liquid-glass/);
   assert.match(courtDetailSource, /court-detail-hero ui-design-app-hero/);
@@ -160,6 +180,7 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
     editorialAppStyles,
     /\.(?:recent-match-row|my-team-row|match-list-card|ranking-row|rank-row|home-action-row|ui-entity-row)\b/,
   );
+  assert.match(recentMatchRowSource, /ui-design-record-surface/);
   assert.deepEqual(designLeaks, []);
 });
 
@@ -309,7 +330,7 @@ test("record result cards share matchup and date mode court metadata", () => {
   for (const page of ["home", "profile", "profileRecords", "teamDetail"]) {
     assert.match(pageSources[page], /RecentMatchRow/);
   }
-  assert.match(globalSearchStyles, /\.recent-match-list\s*\{[^}]*--recent-match-list-gap:\s*var\(--space-4\);[^}]*gap:\s*var\(--recent-match-list-gap\);/);
+  assert.match(globalSearchStyles, /\.recent-match-list\s*\{[^}]*--recent-match-list-gap:\s*var\(--space-6\);[^}]*gap:\s*var\(--recent-match-list-gap\);/);
   assert.doesNotMatch(courtControlStyles, /\.home-recent-card \.recent-match-(?:copy|matchup|vs)/);
 });
 

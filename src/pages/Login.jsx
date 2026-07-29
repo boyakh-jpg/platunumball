@@ -3,7 +3,12 @@ import { ArrowRight, Copy, ExternalLink, LogOut, ShieldCheck } from "lucide-reac
 import { useState } from "react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
-import { BOXTIER_LOGO_URL } from "../lib/assets.js";
+import {
+  BOXTIER_LETTER_DARK_URL,
+  BOXTIER_LETTER_LIGHT_URL,
+  BOXTIER_LOGO_URL,
+  showBrandLetterFallback,
+} from "../lib/assets.js";
 import { BRAND_NAME } from "../lib/brand.js";
 import { getTestAccountDisplayLabel } from "../lib/constants.js";
 import { getAppRedirectFromLocation } from "../lib/profileSetup.js";
@@ -62,7 +67,10 @@ export default function Login({ auth, app }) {
               <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
             </span>
             <span className="brand-letter-wrap" aria-hidden="true">
-              <span className="brand-letter-text">{BRAND_NAME}</span>
+              <img className="brand-letter-img brand-letter-dark" src={BOXTIER_LETTER_DARK_URL} alt="" onError={showBrandLetterFallback} />
+              <span className="brand-letter-fallback brand-letter-fallback-dark" hidden>{BRAND_NAME}</span>
+              <img className="brand-letter-img brand-letter-light" src={BOXTIER_LETTER_LIGHT_URL} alt="" onError={showBrandLetterFallback} />
+              <span className="brand-letter-fallback brand-letter-fallback-light" hidden>{BRAND_NAME}</span>
             </span>
           </Link>
           <Badge tone={auth.session ? "green" : "blue"}>{auth.session ? "로그인됨" : auth.configured ? "로그인 가능" : "체험 모드"}</Badge>

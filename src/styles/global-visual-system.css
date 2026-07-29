@@ -3567,15 +3567,42 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 }
 
 .brand-letter-wrap {
-  display: block;
+  display: grid;
   flex: 0 1 252px;
   width: 252px;
   max-width: 252px;
   min-width: 0;
+  align-items: center;
   line-height: 0;
 }
 
-.brand-letter-text {
+.brand-letter-wrap > * {
+  grid-area: 1 / 1;
+}
+
+.brand-letter-img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.brand-letter-light,
+html[data-theme="light"] .brand-letter-dark,
+html:not([data-theme="light"]) .brand-letter-fallback-light {
+  display: none;
+}
+
+html[data-theme="light"] .brand-letter-light {
+  display: block;
+}
+
+html[data-theme="light"] .brand-letter-fallback-dark {
+  display: none;
+}
+
+.brand-letter-fallback {
   display: block;
   color: var(--text);
   font-family: var(--sports-display-font);
@@ -3583,6 +3610,10 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   font-weight: 700;
   line-height: 0.86;
   letter-spacing: -0.075em;
+}
+
+.brand-letter-fallback[hidden] {
+  display: none;
 }
 
 html[data-theme="light"] .brand-logo-frame {
@@ -3594,7 +3625,7 @@ html[data-theme="light"] .brand-logo-frame {
   max-width: 297px;
 }
 
-.auth-brand .brand-letter-text {
+.auth-brand .brand-letter-fallback {
   font-size: clamp(2.5rem, 7vw, 4rem);
 }
 

@@ -343,7 +343,7 @@ export default function Teams({ app }) {
                 {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
               </select>
             </label>
-            <div className="favorite-search-label">
+            <div className="favorite-search-label ui-field-span-all">
               <span>팀 검색</span>
               <SearchPicker
                 value={query}

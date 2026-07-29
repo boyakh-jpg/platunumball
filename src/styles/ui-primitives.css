@@ -311,6 +311,17 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   border-color: var(--rb-line-strong);
 }
 
+.ui-field-span-all {
+  grid-column: 1 / -1;
+  min-width: 0;
+  width: 100%;
+}
+
+.ui-field-span-all > * {
+  min-width: 0;
+  width: 100%;
+}
+
 input[type="checkbox"] {
   /* stylelint-disable-next-line property-no-vendor-prefix */
   -webkit-appearance: none;

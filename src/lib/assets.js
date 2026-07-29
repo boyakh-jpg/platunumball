@@ -20,6 +20,12 @@ export const BOXTIER_LOGO_URL = assetUrl("/assets/boxtier_logo.png");
 export const BOXTIER_LETTER_DARK_URL = assetUrl("/assets/boxtier_letter_dark.png");
 export const BOXTIER_LETTER_LIGHT_URL = assetUrl("/assets/boxtier_letter_light.png");
 
+export function showBrandLetterFallback(event) {
+  const image = event.currentTarget;
+  image.hidden = true;
+  image.nextElementSibling?.removeAttribute("hidden");
+}
+
 function cssUrl(path) {
   return `url("${assetUrl(path).replace(/"/g, '\\"')}")`;
 }

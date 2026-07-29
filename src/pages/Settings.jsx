@@ -1366,7 +1366,7 @@ export default function Settings({ app, section = "main" }) {
               </div>
               <ShieldCheck size={22} />
             </div>
-            <div className="settings-nav-grid">
+            <div className="settings-nav-grid ui-design-choice-list">
               <Link to="/app/settings/favorites"><strong>즐겨찾기</strong><span>프로필/팀/구장/심판</span></Link>
               <Link to="/app/settings/courts"><strong>구장 신청</strong><span>주소 검색/등록 요청</span></Link>
               <Link to="/app/settings/referee"><strong>심판</strong><span>룰북/시험/등록 요청</span></Link>
@@ -1522,7 +1522,7 @@ export default function Settings({ app, section = "main" }) {
               ) : null}
             </div>
             {discordLinkError ? <p className="form-warning">{discordLinkError}</p> : null}
-            <div className="settings-toggle-grid">
+            <div className="settings-toggle-grid ui-design-choice-list">
               <label>
                 <input
                   type="checkbox"
@@ -1590,7 +1590,7 @@ export default function Settings({ app, section = "main" }) {
                 <strong>홈 안내 카드</strong>
                 <span>홈의 ‘처음 사용하시나요?’ 카드만 숨깁니다. 사용 설명과 연습 경기는 계속 이용할 수 있습니다.</span>
               </div>
-              <div className="settings-toggle-grid">
+              <div className="settings-toggle-grid ui-design-choice-list">
                 <label>
                   <input
                     type="checkbox"
@@ -1611,7 +1611,7 @@ export default function Settings({ app, section = "main" }) {
                 <strong>프로필 표시</strong>
                 <span>다른 사용자에게 보여줄 프로필 정보를 선택합니다.</span>
               </div>
-              <div className="settings-toggle-grid">
+              <div className="settings-toggle-grid ui-design-choice-list">
                 <label>
                   <input
                     type="checkbox"

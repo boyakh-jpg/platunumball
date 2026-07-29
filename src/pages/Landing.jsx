@@ -2,6 +2,7 @@ import {
   ArrowRight,
   CalendarDays,
   ChevronRight,
+  House,
   LogIn,
   MapPin,
   Trophy,
@@ -11,7 +12,6 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
-import { BOXTIER_LOGO_URL } from "../lib/assets.js";
 import { BRAND_NAME } from "../lib/brand.js";
 import { MATCH_SIDE_FALLBACK_NAMES } from "../lib/constants.js";
 import { isPlacementComplete } from "../lib/rating.js";
@@ -56,14 +56,6 @@ export default function Landing({ state }) {
             }}
           >
             <div className="ui-design-hero__copy">
-              <div className="ui-design-main-brand" aria-label={BRAND_NAME}>
-                <span className="brand-logo-frame" aria-hidden="true">
-                  <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
-                </span>
-                <span className="brand-letter-wrap" aria-hidden="true">
-                  <span className="brand-letter-text">{BRAND_NAME}</span>
-                </span>
-              </div>
               <Badge tone="green">Season Zero</Badge>
               <h1>오늘,<br />농구할 사람?</h1>
               <p>가까운 경기를 찾고, 팀과 기록을 한곳에서 관리하세요.</p>
@@ -73,6 +65,9 @@ export default function Landing({ state }) {
                 </Button>
                 <Button as={Link} to="/login" variant="secondary">
                   로그인 <LogIn size={18} />
+                </Button>
+                <Button as={Link} to="/app" variant="secondary">
+                  홈 <House size={18} />
                 </Button>
               </div>
             </div>

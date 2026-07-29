@@ -11,8 +11,11 @@ import { useState } from "react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import {
+  BOXTIER_LETTER_DARK_URL,
+  BOXTIER_LETTER_LIGHT_URL,
   BOXTIER_LOGO_URL,
   assetUrl,
+  showBrandLetterFallback,
 } from "../lib/assets.js";
 
 const UPCOMING = [
@@ -56,7 +59,10 @@ function ClassicLandingPreview() {
               <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
             </span>
             <span className="brand-letter-wrap" aria-hidden="true">
-              <span className="brand-letter-text">BOXTIER</span>
+              <img className="brand-letter-img brand-letter-dark" src={BOXTIER_LETTER_DARK_URL} alt="" onError={showBrandLetterFallback} />
+              <span className="brand-letter-fallback brand-letter-fallback-dark" hidden>BOXTIER</span>
+              <img className="brand-letter-img brand-letter-light" src={BOXTIER_LETTER_LIGHT_URL} alt="" onError={showBrandLetterFallback} />
+              <span className="brand-letter-fallback brand-letter-fallback-light" hidden>BOXTIER</span>
             </span>
           </div>
           <Badge tone="green">Season Zero</Badge>
