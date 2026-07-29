@@ -23,11 +23,26 @@ import {
   isMatchPregameSlotManagementOpen,
   isMatchRecordParticipantSetupOpen,
 } from "../src/lib/roomFlow.js";
-import { getMatchSideLeaderId } from "../src/lib/matchUtils.js";
+import { getAuthoritativeScheduleMatches, getMatchSideLeaderId } from "../src/lib/matchUtils.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
 import { getRecruitingInvitationSenderName, getRecruitingLobby } from "../src/lib/recruiting.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("schedule counts use only the last authoritative server result", () => {
+  const matches = [
+    { id: "current-team-match" },
+    { id: "stale-match-from-another-screen" },
+  ];
+
+  assert.deepEqual(
+    getAuthoritativeScheduleMatches(matches, ["current-team-match"], true).map((match) => match.id),
+    ["current-team-match"],
+  );
+  assert.deepEqual(getAuthoritativeScheduleMatches(matches, [], true), []);
+  assert.equal(getAuthoritativeScheduleMatches(matches, [], false), matches);
+  assert.deepEqual(getAuthoritativeScheduleMatches(null, [], false), []);
+});
 
 test("cancelled instant rooms stay visible for their calendar date", async () => {
   const { createServer } = await import("vite");
@@ -79,6 +94,11 @@ test("schedule, recruiting, and play lists refresh server data on entry and brow
   assert.match(appDataSource, /if \(matchTeamSchedulePromiseRef\.current\) return matchTeamSchedulePromiseRef\.current;/);
   assert.match(appDataSource, /if \(playMatchesPromiseRef\.current\) return playMatchesPromiseRef\.current;/);
   assert.match(matchesSource, /panelMode:\s*"team",[\s\S]*?branchFilter:\s*"all",[\s\S]*?relationFilter:\s*"all",[\s\S]*?dateFilter:\s*""/);
+  assert.match(appDataSource, /scheduleMatchIds:\s*getStateMatchIds\(remoteState\)/);
+  assert.match(appDataSource, /teamScheduleMatchIds:\s*\(remoteState\.matches \?\? \[\]\)/);
+  assert.match(matchesSource, /getAuthoritativeScheduleMatches\([\s\S]*?matchPagination\.scheduleMatchIds/);
+  assert.match(matchesSource, /getAuthoritativeScheduleMatches\([\s\S]*?matchPagination\.teamScheduleMatchIds/);
+  assert.doesNotMatch(matchesSource, /if \(!success\) scheduleLoadRequestedRef\.current\.delete\(requestKey\)/);
 });
 
 test("team room hides completed selection and labels active and reserve slots once", () => {

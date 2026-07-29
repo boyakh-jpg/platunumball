@@ -688,6 +688,10 @@ function getStateRecruitingPostIds(state = {}) {
   return (state.recruitingPosts ?? []).map((post) => post?.id).filter(Boolean);
 }
 
+function getStateMatchIds(state = {}) {
+  return (state.matches ?? []).map((match) => match?.id).filter(Boolean);
+}
+
 function getRecruitingRegionRequest(page = {}) {
   const regionScope = page.regionScope === "region" ? "region" : "local";
   const regionKey = regionScope === "region" ? String(page.regionKey ?? "").trim() : "";
@@ -1521,7 +1525,7 @@ export function useAppData(authUser = null, appLocation = null) {
   }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
-  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
+  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], scheduleMatchIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "", teamScheduleMatchIds: [] });
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "", page: null, cacheKey: "" });
   const [adminState, setAdminState] = useState(null);
@@ -1704,7 +1708,7 @@ export function useAppData(authUser = null, appLocation = null) {
       recentMatchMutationTimesRef.current = new Map();
       syncedDiscordDeliveryIdsRef.current = new Set();
       setRemoteReady(!isSupabaseConfigured);
-      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
+      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], scheduleMatchIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "", teamScheduleMatchIds: [] });
       setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "", page: null, cacheKey: "" });
       setAdminState(null);
@@ -1792,9 +1796,11 @@ export function useAppData(authUser = null, appLocation = null) {
             recruitingScheduleChecked,
             recruitingScheduleLoading: false,
             recruitingSchedulePostIds: recruitingScheduleChecked ? getStateRecruitingPostIds(maintainedState) : [],
+            scheduleMatchIds: recruitingScheduleChecked ? getStateMatchIds(maintainedState) : [],
             teamScheduleChecked: false,
             teamScheduleLoading: false,
             teamScheduleError: "",
+            teamScheduleMatchIds: [],
           });
           setRecruitingPagination({
             loading: false,
@@ -1824,7 +1830,7 @@ export function useAppData(authUser = null, appLocation = null) {
         if (!mounted) return;
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
-        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "" });
+        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], scheduleMatchIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "", teamScheduleMatchIds: [] });
         setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
@@ -1870,6 +1876,7 @@ export function useAppData(authUser = null, appLocation = null) {
           recruitingScheduleChecked: prev.recruitingScheduleChecked || Boolean(remoteMeta.matchPage?.recruitingScheduleChecked),
           recruitingScheduleLoading: false,
           recruitingSchedulePostIds: remoteMeta.matchPage?.recruitingScheduleChecked ? getStateRecruitingPostIds(maintainedState) : prev.recruitingSchedulePostIds,
+          scheduleMatchIds: remoteMeta.matchPage?.recruitingScheduleChecked ? getStateMatchIds(maintainedState) : prev.scheduleMatchIds,
         }));
         setRecruitingPagination((prev) => ({
           ...prev,
@@ -2450,6 +2457,7 @@ export function useAppData(authUser = null, appLocation = null) {
           error: "",
           recruitingScheduleChecked: true,
           recruitingSchedulePostIds: getStateRecruitingPostIds(remoteState),
+          scheduleMatchIds: getStateMatchIds(remoteState),
           cursor: prev.cursor || result?.page?.cursor || getMatchPaginationCursor(remoteState.matches ?? []),
         }));
         return remoteState.recruitingPosts?.length ?? 0;
@@ -2498,6 +2506,9 @@ export function useAppData(authUser = null, appLocation = null) {
           teamScheduleChecked: true,
           error: "",
           teamScheduleError: "",
+          teamScheduleMatchIds: (remoteState.matches ?? [])
+            .filter((match) => match.__feedRelations?.includes("team"))
+            .map((match) => match.id),
           cursor: prev.cursor || result?.page?.cursor || getMatchPaginationCursor(remoteState.matches ?? []),
         }));
         return (remoteState.matches ?? []).filter((match) => match.__feedRelations?.includes("team")).length;

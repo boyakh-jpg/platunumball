@@ -25,6 +25,7 @@ import {
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
+  getAuthoritativeScheduleMatches,
   getTournamentMatchDisplayTitle,
   getSafeMatchSide as getSafeMatchSideBase,
   isMatchRecordMatch,
@@ -1257,8 +1258,37 @@ export default function Matches({ app }) {
     setSearchParams(next, { state: { ...(location.state ?? {}), matchModalFromList: true } });
   };
 
+  const matchPagination = app.matchPagination ?? {
+    loading: false,
+    exhausted: true,
+    error: "",
+    recruitingScheduleChecked: false,
+    recruitingScheduleLoading: false,
+    recruitingSchedulePostIds: [],
+    scheduleMatchIds: [],
+    teamScheduleChecked: false,
+    teamScheduleLoading: false,
+    teamScheduleError: "",
+    teamScheduleMatchIds: [],
+  };
+  const authoritativePersonalMatches = useMemo(
+    () => getAuthoritativeScheduleMatches(
+      app.state.matches,
+      matchPagination.scheduleMatchIds,
+      matchPagination.recruitingScheduleChecked,
+    ),
+    [app.state.matches, matchPagination.recruitingScheduleChecked, matchPagination.scheduleMatchIds],
+  );
+  const authoritativeTeamMatches = useMemo(
+    () => getAuthoritativeScheduleMatches(
+      app.state.matches,
+      matchPagination.teamScheduleMatchIds,
+      matchPagination.teamScheduleChecked,
+    ),
+    [app.state.matches, matchPagination.teamScheduleChecked, matchPagination.teamScheduleMatchIds],
+  );
   const personalBaseFilteredMatches = useMemo(() => {
-    return [...app.state.matches]
+    return [...authoritativePersonalMatches]
       .filter((match) => Boolean(getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds)))
       .filter((match) => {
         if (match.status === "cancelled") return true;
@@ -1272,10 +1302,10 @@ export default function Matches({ app }) {
         getMatchScheduleRelation(match, app.currentUser.id, captainTeamIds, myTeamIds),
         relationFilter,
       ));
-  }, [app.currentUser.id, app.state.matches, branchFilter, captainTeamIds, dateFilter, maxScheduleDate, myTeamIds, relationFilter, todayValue]);
+  }, [app.currentUser.id, authoritativePersonalMatches, branchFilter, captainTeamIds, dateFilter, maxScheduleDate, myTeamIds, relationFilter, todayValue]);
 
   const teamBaseFilteredMatches = useMemo(() => {
-    return [...app.state.matches]
+    return [...authoritativeTeamMatches]
       .filter((match) => getMatchTeamScheduleRelation(match, myTeamIds) === "team")
       .filter((match) => hasAssignedTeamSchedule(match))
       .filter((match) => {
@@ -1284,7 +1314,7 @@ export default function Matches({ app }) {
         return shouldIncludeScheduleWindow(match, todayValue, maxScheduleDate);
       })
       .filter((match) => matchesScheduleBranch(match, "match", "team"));
-  }, [app.state.matches, maxScheduleDate, myTeamIds, todayValue]);
+  }, [authoritativeTeamMatches, maxScheduleDate, myTeamIds, todayValue]);
 
   const baseFilteredMatches = panelMode === "team" ? teamBaseFilteredMatches : personalBaseFilteredMatches;
 
@@ -1295,17 +1325,6 @@ export default function Matches({ app }) {
     return personalBaseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
   }, [dateFilter, personalBaseFilteredMatches]);
 
-  const matchPagination = app.matchPagination ?? {
-    loading: false,
-    exhausted: true,
-    error: "",
-    recruitingScheduleChecked: false,
-    recruitingScheduleLoading: false,
-    recruitingSchedulePostIds: [],
-    teamScheduleChecked: false,
-    teamScheduleLoading: false,
-    teamScheduleError: "",
-  };
   const refreshScheduleFromServer = useCallback(async ({ force = false } = {}) => {
     if (!app.remoteReady || !app.currentUser.id) return false;
     const now = Date.now();
@@ -1344,9 +1363,7 @@ export default function Matches({ app }) {
     const requestKey = `${app.currentUser.id}:${panelMode}`;
     if (scheduleLoadRequestedRef.current.has(requestKey)) return;
     scheduleLoadRequestedRef.current.add(requestKey);
-    refreshScheduleFromServer({ force: true }).then((success) => {
-      if (!success) scheduleLoadRequestedRef.current.delete(requestKey);
-    });
+    void refreshScheduleFromServer({ force: true });
   }, [app.currentUser.id, app.remoteReady, panelMode, refreshScheduleFromServer]);
 
   useEffect(() => {

@@ -1131,6 +1131,12 @@ export function isMatchRelatedToUser(match = {}, userId = "") {
   );
 }
 
+export function getAuthoritativeScheduleMatches(matches = [], matchIds = [], checked = false) {
+  if (!checked) return matches ?? [];
+  const authoritativeIds = new Set((Array.isArray(matchIds) ? matchIds : []).filter(Boolean));
+  return (matches ?? []).filter((match) => authoritativeIds.has(match?.id));
+}
+
 export function isTournamentMatchInUserSchedule(match = {}, userId = "") {
   const hasSchedule = Boolean(
     String(match.scheduledDate ?? "").match(/^\d{4}-\d{2}-\d{2}$/) ||
