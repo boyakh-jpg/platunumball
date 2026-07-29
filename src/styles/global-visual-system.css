@@ -2469,14 +2469,14 @@ button:disabled,
 
 @media (max-width: 1079px) {
   .app-main {
-    --app-main-pad-top: var(--page-gutter);
+    --app-main-pad-top: 18px;
     --app-main-pad-x: var(--page-gutter);
   }
 }
 
 @media (max-width: 1020px) {
   .app-main {
-    --app-main-pad-top: var(--page-gutter);
+    --app-main-pad-top: 18px;
     --app-main-pad-x: 16px;
   }
 }
@@ -3575,28 +3575,18 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   line-height: 0;
 }
 
-.brand-letter-img {
+.brand-letter-text {
   display: block;
-  width: 100%;
-  max-width: 252px;
-  height: auto;
-  object-fit: contain;
+  color: var(--text);
+  font-family: var(--sports-display-font);
+  font-size: clamp(2rem, 3vw, 3.4rem);
+  font-weight: 700;
+  line-height: 0.86;
+  letter-spacing: -0.075em;
 }
 
 html[data-theme="light"] .brand-logo-frame {
   background: transparent;
-}
-
-.brand-letter-light {
-  display: none;
-}
-
-html[data-theme="light"] .brand-letter-dark {
-  display: none;
-}
-
-html[data-theme="light"] .brand-letter-light {
-  display: block;
 }
 
 .auth-brand .brand-letter-wrap {
@@ -3604,9 +3594,8 @@ html[data-theme="light"] .brand-letter-light {
   max-width: 297px;
 }
 
-.auth-brand .brand-letter-img {
-  width: 297px;
-  max-width: min(58vw, 297px);
+.auth-brand .brand-letter-text {
+  font-size: clamp(2.5rem, 7vw, 4rem);
 }
 
 .landing-brand-lockup {
@@ -3636,13 +3625,6 @@ html[data-theme="light"] .brand-letter-light {
   flex: 0 1 var(--landing-brand-letter-width);
   width: var(--landing-brand-letter-width);
   max-width: var(--landing-brand-letter-width);
-}
-
-.landing-brand-lockup .brand-letter-img {
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  max-height: none;
 }
 
 @media (max-width: 720px) {

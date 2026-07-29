@@ -915,8 +915,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .recent-match-list {
+  --recent-match-list-gap: var(--space-4);
   display: grid;
-  gap: var(--space-4);
+  gap: var(--recent-match-list-gap);
 }
 
 .recent-match-row {
@@ -1134,7 +1135,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .profile-records-list {
-  gap: var(--space-5);
+  gap: var(--recent-match-list-gap);
 }
 
 .profile-record-row {

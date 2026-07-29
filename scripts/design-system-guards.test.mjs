@@ -69,6 +69,7 @@ const pageSources = {
   landing: read("src/pages/Landing.jsx"),
   home: read("src/pages/Home.jsx"),
   profile: read("src/pages/Profile.jsx"),
+  profileRecords: read("src/pages/ProfileRecords.jsx"),
   matches: read("src/pages/Matches.jsx"),
   recruiting: read("src/pages/Recruiting.jsx"),
   season: read("src/pages/Season.jsx"),
@@ -115,15 +116,21 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
     pageSources.settings,
   ].forEach((source) => assert.match(source, /ui-design-app-hero/));
   assert.doesNotMatch(pageSources.settings, /화면 구성|분류 박스 없음 사용 중|selectDesignMode/);
-  assert.match(pageSources.home, /STANDARD_HOME_LAYOUT = "editorial"/);
-  assert.match(pageSources.home, /className="ui-design-page ui-design-home-page"/);
-  assert.doesNotMatch(pageSources.home, /ui-design-preference-list/);
+  assert.match(pageSources.landing, /className="ui-design-host ui-design-public-main" data-design="editorial"/);
+  assert.match(pageSources.landing, /className="ui-design-hero ui-design-main-hero"/);
+  assert.match(pageSources.landing, /지금 열려 있는 경기/);
+  assert.match(pageSources.landing, /Team basketball/);
+  assert.match(pageSources.landing, /Season ranking/);
+  assert.match(pageSources.landing, /Recent games/);
+  assert.doesNotMatch(pageSources.landing, /ui-design-preference-list|화면 설정/);
+  assert.doesNotMatch(pageSources.home, /STANDARD_HOME_LAYOUT|ui-design-home-page|ui-design-main-hero/);
   assert.match(
     editorialAppStyles,
     /\.ui-design-category-surface\.ui-design-surface\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
   );
   assert.match(editorialAppStyles, /\.ui-design-surface\s*\{[\s\S]*?border:\s*0;/);
   assert.match(editorialAppStyles, /--card-border:\s*transparent;[\s\S]*?--ui-card-border:\s*transparent;/);
+  assert.match(editorialAppStyles, /--ui-design-soft-surface-bg:\s*color-mix\(in srgb,\s*var\(--rb-bg-2\) 86%,\s*var\(--rb-bg\)\);/);
   assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border:\s*0;[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
   assert.match(editorialAppStyles, /\.ui-design-info-surface\.ui-design-info-accent\s*\{[\s\S]*?border-inline-start:\s*4px solid var\(--ui-info-accent, transparent\);/);
   assert.match(editorialAppStyles, /\.ui-design-soft-surface\s*\{[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
@@ -299,9 +306,10 @@ test("record result cards share matchup and date mode court metadata", () => {
     globalSearchStyles,
     /\.match-record-meta__label--personal\s*\{[^}]*color:\s*var\(--gold\);[\s\S]*?\.match-record-meta__label--public\s*\{[^}]*color:\s*var\(--green\);[\s\S]*?\.match-record-meta__label--private\s*\{[^}]*color:\s*var\(--blue\);/,
   );
-  for (const page of ["home", "profile", "teamDetail"]) {
+  for (const page of ["home", "profile", "profileRecords", "teamDetail"]) {
     assert.match(pageSources[page], /RecentMatchRow/);
   }
+  assert.match(globalSearchStyles, /\.recent-match-list\s*\{[^}]*--recent-match-list-gap:\s*var\(--space-4\);[^}]*gap:\s*var\(--recent-match-list-gap\);/);
   assert.doesNotMatch(courtControlStyles, /\.home-recent-card \.recent-match-(?:copy|matchup|vs)/);
 });
 
@@ -714,7 +722,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
     assert.match(gettingStartedSource, new RegExp(`id: "${chapterId}"`));
   }
   for (const image of [
-    "start-home-v2.jpg",
+    "start-home.jpg",
     "matching-create.jpg",
     "attendance-qr.png",
     "live-clock.jpg",
@@ -859,13 +867,13 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명�
   );
 });
 
-test("team heroes keep emblems focused and use the shared liquid-glass primitive", () => {
+test("team heroes keep one tier emblem and use the shared liquid-glass primitive", () => {
   assert.doesNotMatch(
     teamDetailSource,
     /<TeamEmblem team=\{team\} size="lg" className="hero-emblem" \/>/,
   );
   assert.match(teamDetailSource, /<TierEmblem mmr=\{team\.mmr\} size="hero" showLabel \/>/);
-  assert.equal(count(teamDetailSource, "<TierBadge mmr={team.mmr}"), 1);
+  assert.equal(count(teamDetailSource, "<TierBadge mmr={team.mmr}"), 0);
   assert.match(
     teamDetailSource,
     /favorite-toggle-button ui-liquid-glass/,

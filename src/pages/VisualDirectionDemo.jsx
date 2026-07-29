@@ -10,7 +10,10 @@ import {
 import { useState } from "react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
-import { assetUrl } from "../lib/assets.js";
+import {
+  BOXTIER_LOGO_URL,
+  assetUrl,
+} from "../lib/assets.js";
 
 const UPCOMING = [
   {
@@ -41,6 +44,51 @@ const RECENT = [
   { result: "패배", matchup: "강남 픽앤롤 vs 마포 러너스", score: "18 : 21" },
   { result: "승리", matchup: "강남 픽앤롤 vs 성수 크루", score: "21 : 14" },
 ];
+
+function ClassicLandingPreview() {
+  return (
+    <main className="landing">
+      <section className="landing-hero">
+        <div className="landing-backdrop" aria-hidden="true" />
+        <div className="landing-copy">
+          <div className="landing-brand-lockup" aria-label="BOXTIER">
+            <span className="brand-logo-frame" aria-hidden="true">
+              <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
+            </span>
+            <span className="brand-letter-wrap" aria-hidden="true">
+              <span className="brand-letter-text">BOXTIER</span>
+            </span>
+          </div>
+          <Badge tone="green">Season Zero</Badge>
+          <div className="landing-actions">
+            <div className="landing-primary-actions">
+              <Button type="button" className="landing-create-action">매칭 만들기</Button>
+              <Button type="button" className="landing-create-action">경기 기록하기</Button>
+            </div>
+          </div>
+          <div className="landing-stat-grid">
+            <span><strong>14</strong>matches</span>
+            <span><strong>3</strong>teams</span>
+            <span><strong>1217</strong>top MMR</span>
+          </div>
+        </div>
+        <div className="broadcast-panel">
+          <div className="broadcast-glass">
+            <span className="live-dot">TODAY</span>
+            <h2>5v5 Match</h2>
+            <div className="broadcast-score">
+              <span>Team A</span><strong>21</strong><i>VS</i><strong>17</strong><span>Team B</span>
+            </div>
+            <div className="broadcast-list">
+              <span>승인 대기 <b>2</b></span>
+              <span>열린 매칭 <b>3</b></span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
 
 export default function VisualDirectionDemo() {
   const [designMode, setDesignMode] = useState("editorial");
@@ -78,7 +126,7 @@ export default function VisualDirectionDemo() {
           </div>
         </header>
 
-        <main className="ui-design-flow">
+        {designMode === "classic" ? <ClassicLandingPreview /> : <main className="ui-design-flow">
         <section
           className="ui-design-hero"
           style={{
@@ -216,7 +264,7 @@ export default function VisualDirectionDemo() {
             </label>
           </div>
         </section>
-        </main>
+        </main>}
       </div>
     </div>
   );

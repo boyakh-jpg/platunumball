@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import MatchRecordMeta, { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
+import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
+import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine, getActualMatchPlayerSideName, getMatchSideResult, getMatchSideScore as getSideScore, getPlayerRecentRecordMatches, getProfileRecordCategory, hasVerifiedPlayerStats, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -272,26 +273,21 @@ export default function ProfileRecords({ app }) {
               const line = getRecordLine(match, user.id);
               const stats = hasVerifiedPlayerStats(match, user.id) ? match.result.playerStats[user.id] : null;
               return (
-                <Link
+                <RecentMatchRow
                   key={match.id}
+                  record={match}
+                  result={line.result}
+                  side={line.side}
+                  opponent={line.opponent}
+                  score={line.score}
+                  opponentScore={line.opponentScore}
+                  teams={app.state.teams}
                   to={`/app/matches?match=${match.id}`}
-                  className={`recent-match-row profile-record-row result-${line.result.toLowerCase()}`}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    setSelectedRecordMatchId(match.id);
-                  }}
-                >
-                  <b>{line.result}</b>
-                  <span>
-                    <strong>{line.side.name} vs {line.opponent.name}</strong>
-                    <MatchRecordMeta
-                      record={match}
-                      afterCourt={isPersonalRecordMatch(match) ? <PersonalRecordMetaLabels visibility={match.visibility} /> : null}
-                    />
-                    {stats ? <small>{formatStatLine(stats)}</small> : null}
-                  </span>
-                  <i>{line.score}:{line.opponentScore}</i>
-                </Link>
+                  onOpen={() => setSelectedRecordMatchId(match.id)}
+                  afterCourt={isPersonalRecordMatch(match) ? <PersonalRecordMetaLabels visibility={match.visibility} /> : null}
+                  detail={stats ? formatStatLine(stats) : null}
+                  className="profile-record-row"
+                />
               );
             })}
           </div>
@@ -323,18 +319,18 @@ export default function ProfileRecords({ app }) {
           </div>
           <div className="recent-match-list profile-records-list">
             {visibleArchivedRecords.map((record) => (
-                <div key={record.matchId} className={`recent-match-row profile-record-row record-archive-row result-${String(record.result ?? "D").toLowerCase()}`}>
-                  <b>{record.result}</b>
-                  <span>
-                    <strong>{record.teamName} vs {record.opponentTeamName}</strong>
-                    <MatchRecordMeta
-                      record={record}
-                      afterCourt={isPersonalArchiveRecord(record) ? <PersonalRecordMetaLabels visibility={record.visibility} /> : null}
-                    />
-                    <small>6개월이 지난 기록은 목록으로 보관합니다.</small>
-                  </span>
-                  <i>{record.score}:{record.opponentScore}</i>
-                </div>
+              <RecentMatchRow
+                key={record.matchId}
+                record={record}
+                result={record.result}
+                side={{ name: record.teamName }}
+                opponent={{ name: record.opponentTeamName }}
+                score={record.score}
+                opponentScore={record.opponentScore}
+                afterCourt={isPersonalArchiveRecord(record) ? <PersonalRecordMetaLabels visibility={record.visibility} /> : null}
+                detail="6개월이 지난 기록은 목록으로 보관합니다."
+                className="profile-record-row record-archive-row"
+              />
               ))}
           </div>
           {archiveState.page?.archiveExhausted === false ? (

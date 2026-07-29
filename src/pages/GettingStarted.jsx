@@ -35,7 +35,7 @@ const GUIDE_CHAPTERS = [
     eyebrow: "01 · START",
     title: "BOXTIER는 농구 기록 웹입니다.",
     lead: "홈에서 할 일을 확인하고, 방을 만들거나 참가해 경기를 진행한 뒤 내 전적·팀·티어를 관리합니다.",
-    image: "/assets/guide/start-home-v2.jpg?v=20260728-guide-r2",
+    image: "/assets/guide/start-home.jpg?v=20260729-guide-r3",
     imageAlt: "홈 화면의 매칭 만들기와 경기 기록하기 버튼",
     caption: "홈에서 예정 경기는 매칭으로, 끝난 경기는 기록으로 시작합니다.",
     steps: [

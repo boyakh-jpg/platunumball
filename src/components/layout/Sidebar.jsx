@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
-import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../../lib/assets.js";
+import { BOXTIER_LOGO_URL } from "../../lib/assets.js";
 import { BRAND_NAME } from "../../lib/brand.js";
 import { getUserHashtag } from "../../lib/handles.js";
 import { DEFAULT_RATING, getTestAccountDisplayLabel } from "../../lib/constants.js";
@@ -32,8 +32,7 @@ export default function Sidebar({ user, teams = [], auth }) {
           <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
         </span>
         <span className="brand-letter-wrap" aria-hidden="true">
-          <img className="brand-letter-img brand-letter-dark" src={BOXTIER_LETTER_DARK_URL} alt="" />
-          <img className="brand-letter-img brand-letter-light" src={BOXTIER_LETTER_LIGHT_URL} alt="" />
+          <span className="brand-letter-text">{BRAND_NAME}</span>
         </span>
       </NavLink>
       <nav className="sidebar-nav" aria-label="주요 메뉴">

@@ -395,10 +395,6 @@ export default function TeamDetail({ app }) {
               <p className="eyebrow">Team Ranked</p>
               <h2>팀 전적</h2>
             </div>
-            <div className="badge-row">
-              <Badge tone="gold">{team.mmr} MMR</Badge>
-              <TierBadge mmr={team.mmr} compact />
-            </div>
           </div>
           <div className="rank-stat-grid">
             <span><strong>{wins}승</strong>승리</span>
@@ -434,7 +430,7 @@ export default function TeamDetail({ app }) {
               </div>
               <Badge tone="green">{historyCount}경기 · {wins}승</Badge>
             </div>
-            <div className="history-list">
+            <div className="recent-match-list">
               {detailHistory.map((match) => {
                 const sideName = getTeamSide(match, team.id);
                 const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";

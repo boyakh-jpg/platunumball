@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, Bell, BookOpenCheck, CalendarDays, ChevronRight, ClipboardCheck, Handshake, MapPin, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus, Users } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, BookOpenCheck, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -11,7 +11,7 @@ import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
-import TierEmblem, { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
+import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { DEFAULT_RATING, HOME_RIVAL_TEAM_LIMIT, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
@@ -135,7 +135,6 @@ function getUserMatchLine(match, userId) {
 
 const SEARCH_PREVIEW_LIMIT = 5;
 const SEARCH_DETAIL_LIMIT = 20;
-const STANDARD_HOME_LAYOUT = "editorial";
 
 export default function Home({ app }) {
   const user = app.currentUser;
@@ -155,8 +154,6 @@ export default function Home({ app }) {
     ))
     .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === user.id)?.role ?? "regular" }))
     .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr), [app.state.teams, homeOwnTeamIds, user.id]);
-  const representativeTeamId = app.state.settings?.representativeTeamId ?? "";
-  const representativeTeam = myTeams.find((team) => team.id === representativeTeamId) ?? myTeams[0] ?? null;
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const todayValue = getLocalDateInputValue();
@@ -651,155 +648,6 @@ export default function Home({ app }) {
       ) : null}
     </>
   );
-
-  if (STANDARD_HOME_LAYOUT === "editorial") {
-    const recentWinRate = recentFiveMatches.length
-      ? Math.round((recentFiveWins / recentFiveMatches.length) * 100)
-      : 0;
-    return (
-      <div className="ui-design-page ui-design-home-page">
-        <main className="ui-design-flow ui-design-home-flow">
-          <section
-            className="ui-design-hero ui-design-app-hero"
-            style={{
-              "--ui-design-media": "var(--bg-court)",
-              "--ui-design-media-position": "center 46%",
-              "--ui-design-media-position-mobile": "62% center",
-            }}
-          >
-            <div className="ui-design-hero__copy">
-              <Badge tone={upcomingItems.length ? "green" : "neutral"}>
-                {upcomingItems.length ? `${upcomingItems.length}경기 예정` : "새 경기 찾는 중"}
-              </Badge>
-              <h1>{user.name}의<br />코트 현황</h1>
-              <p>{user.region} · {user.position} · 통합 {getPlayerRatingSummary(user)}</p>
-              <div className="ui-design-actions">
-                <Button as={Link} to="/app/recruiting">
-                  경기 찾기 <ArrowRight size={18} />
-                </Button>
-                <Button as={Link} to="/app/create" variant="secondary">
-                  직접 만들기
-                </Button>
-              </div>
-            </div>
-            <div className="ui-design-stat-strip ui-design-hero__stats" aria-label="내 활동 요약">
-              <span><b>{upcomingItems.length}</b>예정 경기</span>
-              <span><b>{recentFiveMatches.length}</b>최근 경기</span>
-              <span><b>{recentWinRate}%</b>승률</span>
-            </div>
-          </section>
-
-          <section className="ui-design-section">
-            <div className="ui-design-section-heading">
-              <div>
-                <p className="eyebrow">Play next</p>
-                <h2>가까운 경기</h2>
-              </div>
-              <Link to="/app/matches" className="ui-design-text-action">
-                전체 일정 <ChevronRight size={17} />
-              </Link>
-            </div>
-            <div className="ui-design-list ui-design-schedule">
-              {upcomingItems.length ? upcomingItems.slice(0, 3).map(({ id, item: match }) => (
-                <button
-                  type="button"
-                  key={id}
-                  className="ui-design-row ui-design-schedule-row"
-                  onClick={() => openMatchRoom(match.id)}
-                >
-                  <time>
-                    <b>{getRoomScheduleLabel(match)}</b>
-                    <span>{getScheduleDate(match)}</span>
-                  </time>
-                  <span className="ui-design-schedule-copy">
-                    <strong>{getTournamentMatchDisplayTitle(match, match.title)}</strong>
-                    <small><MapPin size={14} /> {match.court || "구장 미정"}</small>
-                  </span>
-                  <span className="ui-design-availability">참가 확정</span>
-                  <ChevronRight size={18} />
-                </button>
-              )) : (
-                <Link to="/app/recruiting" className="ui-design-row ui-design-schedule-row ui-design-schedule-empty">
-                  <time><b>COURT OPEN</b><span>일정 없음</span></time>
-                  <span className="ui-design-schedule-copy">
-                    <strong>새 경기를 찾아보세요.</strong>
-                    <small><MapPin size={14} /> 내 지역 매칭</small>
-                  </span>
-                  <span className="ui-design-availability">경기 찾기</span>
-                  <ChevronRight size={18} />
-                </Link>
-              )}
-            </div>
-          </section>
-
-          {representativeTeam ? (
-            <section
-              className="ui-design-image-feature"
-              style={{
-                "--ui-design-media": "var(--bg-teams)",
-                "--ui-design-media-position": "center",
-                "--ui-design-media-position-mobile": "64% center",
-              }}
-            >
-              <div className="ui-design-image-feature__copy">
-                <p className="eyebrow">My team</p>
-                <h2>{representativeTeam.name}</h2>
-                <p>{representativeTeam.region} · {representativeTeam.homeCourt}</p>
-                <div className="ui-design-inline-meta">
-                  <span><Users size={17} /> 팀원 {representativeTeam.members.length}명</span>
-                  <span><Trophy size={17} /> {representativeTeam.wins ?? 0}승 {representativeTeam.losses ?? 0}패</span>
-                  <span>{representativeTeam.mmr} MMR</span>
-                </div>
-                <Link to={`/app/teams/${representativeTeam.id}`} className="ui-design-text-action ui-design-text-action--inverse">
-                  팀 보기 <ArrowRight size={18} />
-                </Link>
-              </div>
-            </section>
-          ) : null}
-
-          <section className="ui-design-spotlight">
-            <div className="ui-design-spotlight__intro">
-              <img src={getTierEmblemSrc(user.ratings.integrated, user.ratings)} alt={`${rankSpotlightLabel} 티어 엠블럼`} />
-              <div>
-                <p className="eyebrow">My season</p>
-                <h2 className="ui-tier-label">{rankSpotlightLabel}</h2>
-                <p>{Math.round(user.ratings.integrated)} MMR · {mySeasonIndex >= 0 ? `지역 ${mySeasonIndex + 1}위` : "순위 대기"}</p>
-              </div>
-            </div>
-            <dl className="ui-design-stat-strip ui-design-spotlight__stats">
-              <div><dt>경기</dt><dd>{mySeasonRow?.seasonPlayed ?? 0}</dd></div>
-              <div><dt>승리</dt><dd>{mySeasonRow?.seasonWins ?? 0}</dd></div>
-              <div><dt>패배</dt><dd>{mySeasonRow?.seasonLosses ?? 0}</dd></div>
-            </dl>
-          </section>
-
-          <section className="ui-design-section">
-            <div className="ui-design-section-heading">
-              <div>
-                <p className="eyebrow">Recent games</p>
-                <h2>최근 경기</h2>
-              </div>
-            </div>
-            <div className="ui-design-list ui-design-result-list">
-              {latestMyMatches.length ? latestMyMatches.map((match) => {
-                const line = getUserMatchLine(match, user.id);
-                return (
-                  <button type="button" className="ui-design-result-row" key={match.id} onClick={() => openMatchRoom(match.id)}>
-                    <span className={line.result === "W" ? "is-win" : "is-loss"}>{line.result === "W" ? "승리" : line.result === "L" ? "패배" : "무승부"}</span>
-                    <strong>{line.side.name} vs {line.opponent.name}</strong>
-                    <b>{line.score} : {line.opponentScore}</b>
-                  </button>
-                );
-              }) : (
-                <div className="ui-empty-state-compact">아직 확정된 경기 기록이 없습니다.</div>
-              )}
-            </div>
-          </section>
-        </main>
-        {homeRoomOverlays}
-      </div>
-    );
-  }
 
   return (
     <div className="page-stack rank-home">

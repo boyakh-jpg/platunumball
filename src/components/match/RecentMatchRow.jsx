@@ -39,6 +39,7 @@ export default function RecentMatchRow({
   to = "",
   onOpen = null,
   afterCourt = null,
+  detail = null,
   className = "",
 }) {
   const resultToken = RESULT_TOKEN[String(result).trim().toLowerCase()] ?? "d";
@@ -55,6 +56,7 @@ export default function RecentMatchRow({
           <MatchTeamName side={opponent} team={opponentTeam} />
         </span>
         <MatchRecordMeta record={record} afterCourt={afterCourt} />
+        {detail ? <small>{detail}</small> : null}
       </span>
       <i>{score}:{opponentScore}</i>
     </>
