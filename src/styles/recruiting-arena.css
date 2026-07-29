@@ -3166,8 +3166,10 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
     appearance: none;
     display: block;
     width: min(100%, 320px);
-    height: 80px;
-    margin: -30px auto -26px;
+    height: 56px;
+    min-height: 56px;
+    flex: 0 0 56px;
+    margin: 0 auto;
     border: 0;
     border-radius: 999px;
     background: transparent;
@@ -3181,7 +3183,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
     display: block;
     width: 46px;
     height: 4px;
-    margin: 38px auto;
+    margin: 20px auto 0;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.28);
   }

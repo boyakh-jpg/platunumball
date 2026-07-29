@@ -999,3 +999,21 @@ test("구장 팝업 프로필은 공용 표면과 정자체를 사용한다", ()
   );
   assert.match(visualSystemStyles, /\.court-hover-card \.court-hover-stats > span\s*\{[^}]*background:\s*var\(--ui-control-bg\);/);
 });
+
+test("모바일 방모달 손잡이와 준비물 요약은 찾기 쉬운 위치를 유지한다", () => {
+  const mobileHandleRule = recruitingStyles.match(
+    /@media \(max-width:\s*720px\)[\s\S]*?\.arena-lobby-drag-handle\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
+  assert.match(mobileHandleRule, /height:\s*56px;/);
+  assert.match(mobileHandleRule, /min-height:\s*56px;/);
+  assert.match(mobileHandleRule, /flex:\s*0 0 56px;/);
+  assert.match(mobileHandleRule, /margin:\s*0 auto;/);
+  assert.match(
+    pageSources.recruiting,
+    /className="arena-room-rule-summary arena-room-equipment-summary"[\s\S]*?selectedRoomOperationRows\.map/,
+  );
+  assert.doesNotMatch(
+    pageSources.recruiting,
+    /\[\.\.\.selectedMatchRuleRows,\s*\.\.\.selectedRoomOperationRows\]/,
+  );
+});

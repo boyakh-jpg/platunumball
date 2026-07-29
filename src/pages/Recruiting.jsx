@@ -4757,6 +4757,12 @@ function RecruitingRoomModalReady({
                   <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
 
+                <div className="arena-room-rule-summary arena-room-equipment-summary" aria-label="경기 준비물">
+                  {selectedRoomOperationRows.map((row) => (
+                    <span key={row.label}>{row.label} · {row.value}</span>
+                  ))}
+                </div>
+
                 {contextPanel}
 
                 {attendanceScanState ? (
@@ -5169,7 +5175,7 @@ function RecruitingRoomModalReady({
                   {selectedPost.ranked !== false ? <span>{selectedRange.label}</span> : <span>친선 · 티어 자유</span>}
                 </div>
                 <dl className="arena-room-rule-detail-grid">
-                  {[...selectedMatchRuleRows, ...selectedRoomOperationRows].map((row) => (
+                  {selectedMatchRuleRows.map((row) => (
                     <div key={row.label}>
                       <dt>{row.label}</dt>
                       <dd>{row.value}</dd>
