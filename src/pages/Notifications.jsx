@@ -6,7 +6,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import { isInstantRoom } from "../lib/matchUtils.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
-import { getPendingRecruitingInvitations } from "../lib/recruiting.js";
+import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName } from "../lib/recruiting.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
@@ -109,30 +109,33 @@ export default function Notifications({ app }) {
             <Badge tone="orange">{pendingInvitations.length}개</Badge>
           </div>
           <div className="home-invitation-list">
-            {pendingInvitations.map(({ post, invitation }) => (
-              <div key={`${post.id}-${invitation.id}`} className="home-invitation-row">
-                <span className="home-action-main">
-                  <strong>{post.title}</strong>
-                  <em>{getRecruitingSchedule(post)} · {post.court}</em>
-                </span>
-                <span className="home-invitation-actions">
-                  <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
-                  <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
-                  <Button
-                    as={Link}
-                    variant="secondary"
-                    size="sm"
-                    to={`/app/recruiting?filter=invited&post=${post.id}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      openRecruitingRoom(post.id);
-                    }}
-                  >
-                    방 보기
-                  </Button>
-                </span>
-              </div>
-            ))}
+            {pendingInvitations.map(({ post, invitation }) => {
+              const senderName = getRecruitingInvitationSenderName(app.state, invitation);
+              return (
+                <div key={`${post.id}-${invitation.id}`} className="home-invitation-row">
+                  <span className="home-action-main">
+                    <strong>{post.title}</strong>
+                    <em>{getRecruitingSchedule(post)} · {post.court} · {senderName}님이 초대</em>
+                  </span>
+                  <span className="home-invitation-actions">
+                    <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
+                    <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
+                    <Button
+                      as={Link}
+                      variant="secondary"
+                      size="sm"
+                      to={`/app/recruiting?filter=invited&post=${post.id}`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        openRecruitingRoom(post.id);
+                      }}
+                    >
+                      방 보기
+                    </Button>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </Card>
       ) : null}

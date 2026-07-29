@@ -447,8 +447,8 @@ function isRecruitingScheduleRelatedToUser(post = {}, state = {}, userId = "", m
   return Boolean(getRecruitingScheduleRelation(post, state, userId, myTeamIds));
 }
 
-function matchesScheduleRelation(relation = "", relationFilter = "all") {
-  if (relationFilter === "all") return ["created", "joined"].includes(relation);
+export function matchesScheduleRelation(relation = "", relationFilter = "all") {
+  if (relationFilter === "all") return ["created", "joined", "invited"].includes(relation);
   return relation === relationFilter;
 }
 

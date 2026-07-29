@@ -1271,9 +1271,24 @@ async function applyRecruitingManagementAction(context, operation = {}) {
     if (isMissingSqlReducer(error)) reject(503, "recruiting_management_rpc_unavailable");
     throw error;
   }
+  const invitationExpired = data?.invitationExpired === true;
+  const capacityReason = data?.reason === "recruiting_player_capacity_full"
+    ? "recruiting_player_capacity_full"
+    : data?.reason === "recruiting_reserve_full"
+      ? "recruiting_reserve_full"
+      : "";
   return {
-    ok: true,
+    ok: invitationExpired ? false : true,
     ...(data && typeof data === "object" ? data : {}),
+    ...(invitationExpired ? {
+      ok: false,
+      error: capacityReason || "recruiting_invitation_expired",
+      message: data?.message || (
+        capacityReason === "recruiting_reserve_full"
+          ? "해당 후보 자리가 이미 찼습니다."
+          : "방이 마감됐습니다. 먼저 수락한 선수만 참가합니다."
+      ),
+    } : {}),
     postId: data?.postId ?? operation.postId ?? operation.preferredPostId ?? operation.draft?.id,
   };
 }

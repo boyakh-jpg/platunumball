@@ -2157,7 +2157,18 @@ export function useAppData(authUser = null, appLocation = null) {
     };
     const payload = operation ? { operation } : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then(async (result) => {
-      if (result?.message && (result?.postId || pendingPostId)) {
+      if (result?.invitationExpired) {
+        pushLocalWarning(
+          result?.reason === "recruiting_reserve_full" ? "후보 자리가 마감됐습니다" : "방이 마감됐습니다",
+          result?.message || "먼저 수락한 선수만 참가합니다.",
+          {
+            recruitingPostId: result?.postId || pendingPostId,
+            invitationId: operation?.invitationId,
+            payload: { reason: result?.reason || result?.error || "recruiting_invitation_expired" },
+          },
+        );
+      }
+      if (result?.message && operation?.action === "sendRecruitingChat" && (result?.postId || pendingPostId)) {
         setState((prev) => mergeRecruitingChatMessage(prev, result.postId ?? pendingPostId, result.message));
       }
       if (result?.post || result?.createdMatch) {
@@ -2183,7 +2194,7 @@ export function useAppData(authUser = null, appLocation = null) {
     }).finally(() => {
       clearPendingRecruitingPost();
     });
-  }, [runServerAction, setState]);
+  }, [pushLocalWarning, runServerAction, setState]);
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
     const operation = getServerOperation(meta);
     if (!match?.id && !operation) return Promise.resolve(false);

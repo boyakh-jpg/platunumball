@@ -25,7 +25,7 @@ import {
 } from "../src/lib/roomFlow.js";
 import { getMatchSideLeaderId } from "../src/lib/matchUtils.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
-import { getRecruitingLobby } from "../src/lib/recruiting.js";
+import { getRecruitingInvitationSenderName, getRecruitingLobby } from "../src/lib/recruiting.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
@@ -38,7 +38,7 @@ test("cancelled instant rooms stay visible for their calendar date", async () =>
   });
 
   try {
-    const { matchesRecruitingScheduleDate } = await vite.ssrLoadModule("/src/pages/Matches.jsx");
+    const { matchesRecruitingScheduleDate, matchesScheduleRelation } = await vite.ssrLoadModule("/src/pages/Matches.jsx");
     const cancelledInstant = {
       status: "cancelled",
       timingType: "instant",
@@ -51,6 +51,9 @@ test("cancelled instant rooms stay visible for their calendar date", async () =>
     assert.equal(matchesRecruitingScheduleDate(cancelledInstant, "2026-07-27"), false);
     assert.equal(matchesRecruitingScheduleDate(openInstant, "2026-07-28"), false);
     assert.equal(matchesRecruitingScheduleDate(openInstant, ""), true);
+    assert.equal(matchesScheduleRelation("invited", "all"), true);
+    assert.equal(matchesScheduleRelation("invited", "invited"), true);
+    assert.equal(matchesScheduleRelation("invited", "joined"), false);
   } finally {
     await vite.close();
   }
@@ -196,6 +199,34 @@ test("운영 API의 공용 management RPC도 픽업 초대와 수락에서 저�
   assert.match(migrationSource, /safe_side := null;[\s\S]*?reserve := false;/);
   assert.match(migrationSource, /rankball_recruiting_pickup_best_side\(safe_post_id\)/);
   assert.match(migrationSource, /formationMode[\s\S]*?matchIntent[\s\S]*?pickup/);
+});
+
+test("정원 마감은 남은 선수 초대를 원자적으로 만료하고 즉시 안내한다", () => {
+  const migrationSource = readFileSync(
+    new URL("../supabase/migrations/20260729110000_close_full_recruiting_invitations.sql", import.meta.url),
+    "utf8",
+  );
+  const appDataSource = readFileSync(new URL("../src/hooks/useAppData.js", import.meta.url), "utf8");
+  const serverSource = readFileSync(new URL("../server/api/recruiting/sync-post.js", import.meta.url), "utf8");
+
+  assert.match(migrationSource, /rankball_recruiting_expire_player_invitations_if_full/);
+  assert.match(migrationSource, /\(invitation\.value::jsonb\)->>'role' <> 'referee'/);
+  assert.match(migrationSource, /'status', 'expired'/);
+  assert.match(migrationSource, /recruiting_player_capacity_full/);
+  assert.match(migrationSource, /'ok', false/);
+  assert.match(appDataSource, /result\?\.invitationExpired[\s\S]*?방이 마감됐습니다/);
+  assert.match(serverSource, /invitationExpired \? false : true/);
+});
+
+test("초대 처리 항목은 초대한 참가자 이름을 표시한다", () => {
+  const state = { users: [{ id: "inviter", name: "초대한 사람" }] };
+  assert.equal(getRecruitingInvitationSenderName(state, { fromUserId: "inviter" }), "초대한 사람");
+  assert.equal(getRecruitingInvitationSenderName(state, { fromUserId: "missing" }), "방 참가자");
+
+  const homeSource = readFileSync(new URL("../src/pages/Home.jsx", import.meta.url), "utf8");
+  const notificationSource = readFileSync(new URL("../src/pages/Notifications.jsx", import.meta.url), "utf8");
+  assert.match(homeSource, /senderName}님이 초대/);
+  assert.match(notificationSource, /senderName}님이 초대/);
 });
 
 test("픽업 체크인은 배정 확정 전 A/B 작업대를 표시한다", () => {

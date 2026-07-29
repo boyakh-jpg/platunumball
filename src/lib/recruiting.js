@@ -651,6 +651,12 @@ export function getPendingRecruitingInvitations(state = {}, userId) {
       .map((invitation) => ({ post, invitation })));
 }
 
+export function getRecruitingInvitationSenderName(state = {}, invitation = {}) {
+  const senderId = String(invitation.fromUserId ?? "").trim();
+  const sender = (state.users ?? []).find((user) => user.id === senderId);
+  return sender?.name || invitation.fromUserName || "방 참가자";
+}
+
 export function hasPendingRecruitingInvitation(post = {}, userId) {
   if (!userId || post.status !== "open") return false;
   const hasInvitationSnapshot = post.__invitationsPartial === true || Object.prototype.hasOwnProperty.call(post.roomState ?? {}, "invitations");

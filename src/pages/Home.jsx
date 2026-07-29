@@ -19,7 +19,7 @@ import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
 import { addDateDays, canUserResolveMatchDispute, getActualMatchPlayerSideName, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideResult, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getOpenMatchDisputes, getPlayerRecentRecordMatches, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
-import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
+import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
@@ -379,19 +379,22 @@ export default function Home({ app }) {
         icon: Swords,
       }));
 
-    const invitationItems = pendingInvitations.map(({ post, invitation }) => ({
-      id: `invite-${post.id}-${invitation.id}`,
-      recruitingPostId: post.id,
-      priority: 0,
-      actionType: "recruiting-invite",
-      postId: post.id,
-      invitationId: invitation.id,
-      label: invitation.role === "referee" ? "심판 초대" : "방 초대",
-      title: post.title,
-      meta: getHomeRecruitingMeta(post),
-      href: `/app/recruiting?filter=invited&post=${post.id}`,
-      icon: UserPlus,
-    }));
+    const invitationItems = pendingInvitations.map(({ post, invitation }) => {
+      const senderName = getRecruitingInvitationSenderName(app.state, invitation);
+      return {
+        id: `invite-${post.id}-${invitation.id}`,
+        recruitingPostId: post.id,
+        priority: 0,
+        actionType: "recruiting-invite",
+        postId: post.id,
+        invitationId: invitation.id,
+        label: invitation.role === "referee" ? "심판 초대" : "방 초대",
+        title: post.title,
+        meta: `${getHomeRecruitingMeta(post)} · ${senderName}님이 초대`,
+        href: `/app/recruiting?filter=invited&post=${post.id}`,
+        icon: UserPlus,
+      };
+    });
     const teamInvitationItems = pendingTeamInvitations.map((invitation) => {
       const team = teamById[invitation.teamId];
       return {
