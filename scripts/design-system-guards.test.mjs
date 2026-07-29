@@ -1153,3 +1153,22 @@ test("경기 기록 팀명과 픽업 운영 행은 공용 스포츠·버튼 타�
   );
   assert.doesNotMatch(pageSources.recruiting, />기록방</);
 });
+
+test("방모달 참가자 상태와 관리 action은 선수 오른쪽 열과 공용 구분선을 사용한다", () => {
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-invitation-list > div\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) max-content;[^}]*gap:\s*var\(--room-participant-row-gap\);/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-modal \.arena-host-kick-row \+ \.arena-host-kick-row,[\s\S]*?border-top:\s*1px solid var\(--room-participant-row-divider\);/,
+  );
+  assert.match(
+    recruitingStyles,
+    /@media \(max-width:\s*560px\)[\s\S]*?\.arena-lobby-modal \.arena-host-kick-row,[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(96px,\s*38%\);/,
+  );
+  assert.match(
+    recruitingStyles,
+    /--room-participant-row-divider:\s*var\(--ui-liquid-glass-divider\);/,
+  );
+});

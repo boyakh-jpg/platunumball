@@ -5809,3 +5809,61 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
     grid-column: auto;
   }
 }
+
+/* Room participant rows keep identity and status/actions on one readable line. */
+.arena-lobby-modal {
+  --room-participant-row-gap: var(--space-6);
+  --room-participant-row-padding-block: var(--space-5);
+  --room-participant-row-divider: var(--ui-liquid-glass-divider);
+}
+
+.arena-lobby-modal .arena-host-kick-list,
+.arena-lobby-modal .arena-invitation-list {
+  row-gap: 0;
+}
+
+.arena-lobby-modal .arena-host-kick-row {
+  gap: var(--room-participant-row-gap);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--room-participant-row-padding-block) 0;
+}
+
+.arena-lobby-modal .arena-invitation-list > div {
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: var(--room-participant-row-gap);
+  padding-block: var(--room-participant-row-padding-block);
+}
+
+.arena-lobby-modal .arena-host-kick-row + .arena-host-kick-row,
+.arena-lobby-modal .arena-invitation-list > div + div {
+  border-top: 1px solid var(--room-participant-row-divider);
+}
+
+@media (max-width: 560px) {
+  .arena-lobby-modal .arena-host-kick-row,
+  .arena-lobby-modal .arena-host-kick-panel.is-pickup-assignment .arena-host-kick-row {
+    grid-template-columns: minmax(0, 1fr) minmax(96px, 38%);
+    align-items: center;
+  }
+
+  .arena-lobby-modal .arena-host-kick-actions,
+  .arena-lobby-modal .arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+
+  .arena-lobby-modal .arena-host-kick-actions > :is(.button, .form-chip),
+  .arena-lobby-modal .arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions > :is(.button, .form-chip) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .arena-lobby-modal .arena-host-kick-actions > .arena-player-swap-button,
+  .arena-lobby-modal .arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions > .arena-player-swap-button {
+    grid-column: auto;
+  }
+}
