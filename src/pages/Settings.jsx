@@ -1347,7 +1347,7 @@ export default function Settings({ app, section = "main" }) {
 
   return (
     <div className={`page-stack settings-page settings-section-${settingsSection}`}>
-      <header className="page-header">
+      <header className="page-header ui-design-app-hero">
         <div>
           <p className="eyebrow">{sectionMeta.eyebrow}</p>
           <h1>{sectionMeta.title}</h1>
@@ -1426,7 +1426,7 @@ export default function Settings({ app, section = "main" }) {
               fieldClassName="favorite-search-row"
               renderItem={renderFavoriteSearchItem}
             />
-            <div className="favorite-type-grid">
+            <div className="favorite-type-grid ui-design-borderless-list ui-design-borderless-surface">
               {Object.entries(favoriteListConfig).map(([type, config]) => (
                 <button
                   key={type}

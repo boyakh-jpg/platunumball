@@ -1421,7 +1421,7 @@ export default function Matches({ app }) {
   }, [app.currentUser.id, matchPagination.teamScheduleChecked, teamBaseFilteredMatches]);
   return (
     <div className="page-stack om-match-page">
-      <section className="om-match-hero">
+      <section className="om-match-hero ui-design-app-hero">
         <div className="om-match-copy">
           <span className="om-kicker">MATCH QUEUE</span>
           <h1>일정</h1>
@@ -1448,7 +1448,7 @@ export default function Matches({ app }) {
             <button
               key={view.id}
               type="button"
-              className={active ? "om-view-card active" : "om-view-card"}
+              className={active ? "om-view-card ui-design-soft-surface ui-design-filter-tile active" : "om-view-card ui-design-soft-surface ui-design-filter-tile"}
               onClick={() => {
                 applyFilterState({
                   panelMode: "schedule",
@@ -1469,7 +1469,7 @@ export default function Matches({ app }) {
         })}
         <button
           type="button"
-          className={panelMode === "team" ? "om-view-card active" : "om-view-card"}
+          className={panelMode === "team" ? "om-view-card ui-design-soft-surface ui-design-filter-tile active" : "om-view-card ui-design-soft-surface ui-design-filter-tile"}
           onClick={() => {
             applyFilterState({ panelMode: "team", viewId: "active" });
           }}
@@ -1484,7 +1484,7 @@ export default function Matches({ app }) {
         </button>
         <button
           type="button"
-          className={panelMode === "tournament" ? "om-view-card active" : "om-view-card"}
+          className={panelMode === "tournament" ? "om-view-card ui-design-soft-surface ui-design-filter-tile active" : "om-view-card ui-design-soft-surface ui-design-filter-tile"}
           onClick={() => applyFilterState({ panelMode: "tournament" })}
         >
           <span className="om-view-icon"><Trophy size={22} /></span>
@@ -1499,7 +1499,7 @@ export default function Matches({ app }) {
 
       {panelMode !== "tournament" ? (
       <section className="om-calendar-panel" aria-label="경기 일정 캘린더">
-        <div className="om-calendar-summary">
+        <div className="om-calendar-summary ui-design-soft-surface">
           <div className="om-calendar-heading">
             <span className="om-view-icon"><CalendarDays size={22} /></span>
             <div>
@@ -1536,7 +1536,7 @@ export default function Matches({ app }) {
           </section>
         </div>
 
-        <div className="om-calendar-box">
+        <div className="om-calendar-box ui-design-soft-surface">
           <div className="om-calendar-toolbar">
             <button type="button" aria-label="이전 달" onClick={() => applyFilterState({ calendarMonth: addMonths(calendarMonth, -1) })}>
               <ChevronLeft size={18} />

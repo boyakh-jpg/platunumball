@@ -6275,7 +6275,7 @@ function RecruitingReady({ app }) {
 
   return (
     <div className="page-stack arena-recruit-page">
-      <section className="arena-recruit-hero">
+      <section className="arena-recruit-hero ui-design-app-hero">
         <div className="arena-hero-copy">
           <span className="arena-kicker">MATCH QUEUE</span>
           <h1>대기 매칭</h1>
@@ -6298,7 +6298,7 @@ function RecruitingReady({ app }) {
         </div>
       </section>
 
-      <section className={queueControlsOpen ? "arena-queue-controls" : "arena-queue-controls collapsed"}>
+      <section className={queueControlsOpen ? "arena-queue-controls ui-design-soft-surface" : "arena-queue-controls ui-design-soft-surface collapsed"}>
         <div className="arena-queue-controls-head">
           <div>
             <span className="arena-kicker">QUEUE FILTER</span>

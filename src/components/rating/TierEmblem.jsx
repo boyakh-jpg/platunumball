@@ -32,7 +32,7 @@ export default function TierEmblem({ mmr, ratings = null, size = "md", showLabel
         <img src={assetUrl(placementEmblem)} alt="" loading="lazy" />
         {showLabel ? (
           <figcaption>
-            <strong>배정 전</strong>
+            <strong className="ui-tier-label">배정 전</strong>
             <span>{placementLabel.replace("배정 전 · ", "")}</span>
           </figcaption>
         ) : null}
@@ -48,7 +48,7 @@ export default function TierEmblem({ mmr, ratings = null, size = "md", showLabel
       <img src={src} alt={`${division} 티어 문장`} loading="lazy" />
       {showLabel ? (
         <figcaption>
-          <strong>{division}</strong>
+          <strong className="ui-tier-label">{division}</strong>
           <span>{Math.round(mmr)} MMR</span>
         </figcaption>
       ) : null}

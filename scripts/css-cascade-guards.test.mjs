@@ -184,7 +184,7 @@ test("home team summaries use one shared entity primitive", () => {
   const primitiveSource = fs.readFileSync(primitiveCssFile, "utf8");
   const legacySelectors = /(?:rivalry-card|home-my-teams-card|home-team-list|home-team-row|home-team-empty)/;
 
-  assert.match(homeSource, /className="ui-entity-list"/);
+  assert.match(homeSource, /className="ui-entity-list(?:\s[^"]*)?"/);
   assert.match(homeSource, /className="ui-control ui-entity-row"/);
   assert.match(homeSource, /className="ui-entity-empty"/);
   assert.match(primitiveSource, /\.ui-entity-row\s*\{/);

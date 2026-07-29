@@ -44,7 +44,7 @@ export default function RecentMatchRow({
   const resultToken = RESULT_TOKEN[String(result).trim().toLowerCase()] ?? "d";
   const sideTeam = teams.find((team) => team.id === side.teamId) ?? null;
   const opponentTeam = teams.find((team) => team.id === opponent.teamId) ?? null;
-  const rootClassName = ["recent-match-row", `result-${resultToken}`, className].filter(Boolean).join(" ");
+  const rootClassName = ["recent-match-row", "ui-design-info-surface", "ui-design-info-accent", `result-${resultToken}`, className].filter(Boolean).join(" ");
   const content = (
     <>
       <b>{RESULT_LABEL[resultToken]}</b>

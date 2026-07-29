@@ -199,7 +199,7 @@ export default function Recorder({ app }) {
   return (
     <>
       <div className="page-stack recorder-page">
-        <header className="page-header recorder-header">
+        <header className="page-header recorder-header ui-design-app-hero">
           <div>
             <span className="eyebrow">PLAY</span>
             <h1>플레이</h1>

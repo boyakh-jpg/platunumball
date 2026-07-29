@@ -7,6 +7,12 @@
   box-shadow: var(--ui-card-shadow);
 }
 
+.ui-tier-label {
+  font-family: var(--sports-display-font);
+  font-style: normal;
+  font-weight: 950;
+}
+
 html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button) {
   position: relative;
   isolation: isolate;
@@ -64,14 +70,17 @@ html[data-theme] .app-main .ui-liquid-glass-segments > * + * {
 }
 
 html[data-theme] .app-main :is(.recent-match-row.result-w, .rank-match-win) {
+  --ui-info-accent: var(--ui-result-win-border);
   border-left-color: var(--ui-result-win-border);
 }
 
 html[data-theme] .app-main :is(.recent-match-row.result-l, .rank-match-loss) {
+  --ui-info-accent: var(--ui-result-loss-border);
   border-left-color: var(--ui-result-loss-border);
 }
 
 html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
+  --ui-info-accent: var(--ui-result-draw-border);
   border-left-color: var(--ui-result-draw-border);
 }
 

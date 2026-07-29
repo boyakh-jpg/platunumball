@@ -17,9 +17,9 @@ export default function AppShell({ app, auth }) {
   }, [remoteLoading]);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell ui-design-host" data-design="editorial">
       <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} />
-      <main className="app-main" aria-busy={remoteLoading || serverLoading}>
+      <main className="app-main ui-design-app" aria-busy={remoteLoading || serverLoading}>
         {remoteLoading ? null : <Outlet />}
         {remoteLoading ? null : <DataAttribution />}
       </main>

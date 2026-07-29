@@ -3018,15 +3018,15 @@ html[data-theme="light"] .om-calendar-filter-bar {
 }
 
 .om-calendar-filter-row .om-branch-filter-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .om-calendar-filter-row .om-branch-filter-grid > button {
-  grid-column: span 2;
+  grid-column: auto;
 }
 
-.om-calendar-filter-row .om-branch-filter-grid > button:nth-last-child(-n + 2) {
-  grid-column: span 3;
+.om-calendar-filter-row .om-branch-filter-grid > button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 
 .om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
@@ -3090,21 +3090,6 @@ html[data-theme="light"] .om-calendar-filter-bar {
     height: var(--ui-button-height);
     padding-inline: 6px;
     font-size: 0.72rem;
-  }
-}
-
-@media (max-width: 359px) {
-  .om-calendar-filter-row .om-branch-filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .om-calendar-filter-row .om-branch-filter-grid > button,
-  .om-calendar-filter-row .om-branch-filter-grid > button:nth-last-child(-n + 2) {
-    grid-column: auto;
-  }
-
-  .om-calendar-filter-row .om-branch-filter-grid > button:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
   }
 }
 

@@ -2280,3 +2280,30 @@ UI 수정 전:
 2. 모바일 Safari는 `viewport-fit=cover`를 사용하고 `html`, `body`, `#root`가 현재 앱 테마 배경을 안전영역까지 채운다.
 3. `theme-color`는 저장된 라이트·다크 테마로 첫 화면 전에 설정하고 React 테마 변경 때 같은 값으로 갱신한다.
 4. 모바일 앱 본문·랜딩·하단 내비게이션은 `safe-area-inset-*`를 포함해 노치와 Safari 툴바 영역에서 콘텐츠가 잘리지 않게 한다.
+
+# 2026-07-29 분류 박스 없는 표준 화면 구성
+
+1. 인증 앱의 표준 화면 구성은 `editorial` 하나다. `AppShell`은 항상 `data-design="editorial"`을 사용한다.
+2. 설정에 화면 구성 선택을 노출하지 않는다. `classic`은 `/demo/visual-direction` 비교 데모에서만 사용할 수 있다.
+3. 디자인 적용 대상은 의미만 표현하는 중립 `.ui-design-*` DOM 계약을 사용한다. JSX에 `classic`, `editorial`, `poster` 같은 시각 이름을 넣지 않는다.
+4. `design-classic.css`와 `design-editorial.css`는 비교 데모의 같은 중립 DOM 계약을 각각 완전히 렌더링한다. 실제 앱은 `design-editorial.css`만 적용한다.
+5. 기능별 CSS는 화면 구성 상태를 읽지 않는다. 표준 표현은 `data-design="editorial"`과 중립 클래스만 사용한다.
+6. 이미지 주소와 초점은 중립 변수 `--ui-design-media`, `--ui-design-media-position`, `--ui-design-media-position-mobile`로 전달한다.
+7. 분류 역할의 `.ui-design-category-surface.ui-design-surface`는 바깥 배경·외곽 테두리·그림자·가로 패딩을 제거하고 위쪽 구분선만 남긴다.
+8. 실제 입력창과 드롭다운은 경계를 유지한다. 선택 버튼 그룹은 바깥 테두리·배경·패딩을 제거하고 비활성 버튼은 `--ui-design-choice-bg`, 활성 버튼은 표준 주황색 배경으로 구분한다.
+9. 표준 디자인은 데스크톱·모바일과 라이트·다크를 모두 같은 중립 클래스와 토큰으로 처리한다.
+10. 과거 저장된 `designMode` 값은 화면 구성에 영향을 주지 않으며 새 설정으로 저장하지 않는다.
+11. 모든 인증 앱 화면은 `AppShell`의 `.ui-design-app` 아래에 렌더링하고 공용 `Card`는 `.ui-design-surface`를 자동으로 가진다.
+12. 홈·일정·매칭·플레이·팀·랭크보드·나·설정의 첫 히어로는 `.ui-design-app-hero`를 공유한다.
+13. 기능별 CSS는 디자인 모드 값을 직접 참조하지 않는다. `design-editorial.css`만 공용 표면·목록·히어로·폼의 표준 표현을 소유한다.
+14. 설정 API·프로필 캐시·부분 데이터 응답은 `designMode`를 새로 병합하거나 저장하지 않는다.
+15. 검색·입력 필드는 실제 경계를 유지한다. 경기·팀·알림·프로필 수치·구장 정보 같은 정보 표면은 `.ui-design-info-surface` 또는 부모 `.ui-design-borderless-list`를 사용해 동일한 배경과 무테두리를 상속한다.
+16. 공통 테두리 정책은 페이지별 선택자를 추가하지 않고 `--card-border`, `--ui-card-border`, `.ui-design-info-surface`, `.ui-design-borderless-list`, `--ui-design-soft-surface-bg`에서만 변경한다.
+17. 공용 `Card`의 `section-card`는 자동으로 `.ui-design-category-surface`가 된다. 전용 분류 카드는 같은 중립 클래스를 명시해 페이지별 클래스명 때문에 박스 제거가 누락되지 않게 한다.
+18. 일정 상태·달력·매칭 필터처럼 기능 경계는 필요하지만 페이지 배경과 강한 대비가 불필요한 표면은 `.ui-design-soft-surface`를 사용한다. 라이트·다크 모두 같은 `--ui-design-soft-surface-bg` 계열을 사용하고 외곽선은 제거한다.
+19. 일정의 유형 필터는 가용 너비와 관계없이 두 열을 기본으로 사용하고 홀수 마지막 항목은 전체 너비를 사용한다. 단어를 잘라 한 줄에 억지로 밀어 넣지 않는다.
+20. `.ui-design-info-surface`는 단일 정보 표면, `.ui-design-borderless-list`는 바로 아래 정보 행 전체에 공통 무테두리와 카드 배경을 적용한다. 경고 상태의 의미 있는 경계와 승·패·무의 왼쪽 의미색은 유지한다.
+21. 일정 상단 상태 필터는 `.ui-design-filter-tile`을 사용한다. `editorial`에서는 전 너비에서 최소 높이 `60px`과 세로 패딩 `7px`을 사용해 기본 카드 높이의 약 70%로 줄인다.
+22. 티어·디비전·`배정 전` 제목은 `.ui-tier-label`을 사용해 `--sports-display-font`인 KBO Dia Gothic Bold를 적용한다. MMR·설명·버튼은 본문 글꼴을 유지한다.
+23. 표준 홈은 데모의 히어로·가까운 경기·대표팀·시즌·최근 경기 구성을 실제 데이터와 방 모달에 연결한다. 데모의 화면 설정 섹션은 홈에 포함하지 않는다.
+24. 모바일·태블릿의 첫 히어로는 앱 본문 패딩을 상쇄해 상단과 좌우를 채우며 라운드를 사용하지 않는다.

@@ -223,7 +223,7 @@ export default function Teams({ app }) {
   return (
     <div className="page-stack teams-page">
       {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : null}
-      <section className="team-hub-hero">
+      <section className="team-hub-hero ui-design-app-hero">
         <div>
           <p className="eyebrow">Team Hub</p>
           <h1>팀</h1>
@@ -260,7 +260,7 @@ export default function Teams({ app }) {
             </div>
             <Badge tone={myTeamCountTone}>{myTeamCountLabel}</Badge>
           </div>
-          <div className="my-team-list">
+          <div className="my-team-list ui-design-borderless-list">
             {myTeams.length ? myTeams.map((team) => {
               const winRate = team.played ? Math.round((team.wins / team.played) * 100) : 0;
               const isCaptain = team.myRole === "captain";
@@ -275,7 +275,7 @@ export default function Teams({ app }) {
                     <em>{getTeamRoleLabel(team.myRole)} · {team.mmr} MMR · {winRate}%</em>
                   </span>
                   <span className="my-team-actions">
-                    <span className="my-team-tier">
+                    <span className="my-team-tier ui-tier-label">
                       <img src={getTierEmblemSrc(team.mmr)} alt={`${getTierDivision(team.mmr)} emblem`} loading="lazy" />
                       <span>{getTierDivision(team.mmr)}</span>
                     </span>

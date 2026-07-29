@@ -1961,7 +1961,7 @@ export default function CreateMatch({
                   </button>
                 ))}
               </div>
-              <div className="create-public-note">
+              <div className="create-public-note ui-design-borderless-surface">
                 <ClipboardList size={17} />
                 <span>생성 단계에서는 아무도 초대하지 않습니다. 방에서 {recordComposition === "team" ? "두 팀과 실제 출전 명단을" : "A/B 실제 참가자를"} 구성합니다.</span>
               </div>
@@ -2512,7 +2512,7 @@ export default function CreateMatch({
           {!isSoloRecord && !isMatchRecordRoom ? (
             <div className="create-eligibility-grid">
               {draft.ranked ? (
-                <div className={teamTierBlocked ? "mmr-range-mode-control create-eligibility-control tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control"}>
+                <div className={teamTierBlocked ? "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface"}>
                   <div className="mmr-range-summary-row">
                     <div>
                       <span>경쟁전 허용구간</span>
@@ -2535,7 +2535,7 @@ export default function CreateMatch({
                   </div>
                 </div>
               ) : null}
-              <div className={ageRestrictionBlocked ? "mmr-range-mode-control create-eligibility-control tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control"}>
+              <div className={ageRestrictionBlocked ? "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface"}>
                 <div className="mmr-range-summary-row">
                   <div>
                     <span>연령 제한</span>
@@ -2672,13 +2672,13 @@ export default function CreateMatch({
                   ))}
                 </div>
               </div>
-              <div className="create-public-note">
+              <div className="create-public-note ui-design-borderless-surface">
                 <ShieldCheck size={17} />
                 <span>팀장과 필수 심판이 모두 승인한 뒤 지역관리자가 승인하면 공식 대회가 열립니다. 지역 비승인 대회도 같은 심판 조건을 충족해야 합니다.</span>
               </div>
             </>
           ) : isMatchRecordRoom ? (
-            <div className="create-public-note create-match-record-setup-note">
+            <div className="create-public-note create-match-record-setup-note ui-design-borderless-surface">
               <ClipboardList size={17} />
               <span>
                 {recordComposition === "team"
@@ -2687,7 +2687,7 @@ export default function CreateMatch({
               </span>
             </div>
           ) : isTeamRoom ? (
-            <div className="create-public-note">
+            <div className="create-public-note ui-design-borderless-surface">
               <UsersRound size={17} />
               <span>
                 {isPublicRoom
@@ -2697,13 +2697,13 @@ export default function CreateMatch({
             </div>
           ) : null}
           {!isSoloRecord && !isMatchRecordRoom && !isTournamentRoom && !isTeamRoom ? (
-            <div className="create-public-note">
+            <div className="create-public-note ui-design-borderless-surface">
               <Globe2 size={17} />
               <span>{isPublicRoom ? "개인전은 개인 참여만 받습니다. 팀전은 별도 팀전 분기로 만듭니다." : "비공개 개인전은 방을 만든 뒤 방모달의 빈 슬롯에서 선수를 초대합니다."}</span>
             </div>
           ) : null}
           {isPublicRoom ? (
-            <div className="create-public-note">
+            <div className="create-public-note ui-design-borderless-surface">
               <Globe2 size={17} />
               <span>{isTeamRoom ? "공개 팀방은 A팀 선택 후 상대 팀 주장이 B사이드로 참가합니다." : "공개방은 매칭 목록에 표시됩니다. 상대 사이드는 방 안의 빈 슬롯을 공개 모집합니다."}</span>
             </div>

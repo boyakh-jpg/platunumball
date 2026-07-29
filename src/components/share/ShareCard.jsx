@@ -26,10 +26,10 @@ export default function ShareCard({ user }) {
   };
 
   return (
-    <div className="share-card">
+    <div className="share-card ui-design-info-surface">
       <div className="share-card-copy">
         <strong>{user.name}</strong>
-        <span className="share-card-tier-copy">
+        <span className="share-card-tier-copy ui-tier-label">
           {placementComplete ? `${getTierDivision(mmr)} · ${Math.round(mmr)} MMR` : getPlacementLabel(user.ratings)}
         </span>
         <button className="share-card-action" type="button" onClick={copyLink}>

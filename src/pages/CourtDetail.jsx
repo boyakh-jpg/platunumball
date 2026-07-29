@@ -284,7 +284,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           <Button type="button" variant="secondary" size="sm" onClick={() => refreshDetail()}>다시 시도</Button>
         </div>
       ) : null}
-      <Card className="court-detail-hero">
+      <Card className="court-detail-hero ui-design-app-hero">
         <div className="court-detail-heading">
           <p className="eyebrow">Court Profile</p>
           <h1>{court.name}</h1>
@@ -299,10 +299,10 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           </div>
         </div>
         <div className="court-detail-actions">
-          <Button as="a" variant="secondary" size="sm" className="court-map-link" href={mapUrl} target="_blank" rel="noreferrer">
+          <Button as="a" variant="secondary" size="sm" className="court-map-link ui-liquid-glass" href={mapUrl} target="_blank" rel="noreferrer">
             지도 보기 <ExternalLink size={15} />
           </Button>
-          <Button type="button" variant="secondary" size="sm" onClick={() => setCorrectionOpen((open) => !open)} aria-expanded={correctionOpen}>
+          <Button type="button" variant="secondary" size="sm" className="ui-liquid-glass" onClick={() => setCorrectionOpen((open) => !open)} aria-expanded={correctionOpen}>
             <Flag size={15} /> 정보 수정 신고
           </Button>
         </div>
@@ -365,7 +365,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
         </Card>
       ) : null}
 
-      <section className="court-detail-metrics" aria-label="구장 지표">
+      <section className="court-detail-metrics ui-design-borderless-list" aria-label="구장 지표">
         <div>
           <Star size={19} />
           <span>보정 평점</span>
@@ -383,14 +383,14 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
         </div>
       </section>
 
-      <Card className="section-card court-profile-information">
+      <Card className="section-card court-profile-information ui-design-content-surface">
         <div className="section-title-row">
           <div>
             <p className="eyebrow">Court Information</p>
             <h2>구장 이용 정보</h2>
           </div>
         </div>
-        <div className="court-profile-information-grid">
+        <div className="court-profile-information-grid ui-design-borderless-list">
           <section>
             <h3><Building2 size={17} /> 시설</h3>
             <dl>

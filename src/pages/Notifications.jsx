@@ -196,7 +196,7 @@ export default function Notifications({ app }) {
             <Badge tone={unreadCount ? "orange" : "green"}>{unreadCount ? "확인 필요" : "정리됨"}</Badge>
           </div>
         </div>
-        <div className="home-action-list notifications-list" role="tabpanel">
+        <div className="home-action-list notifications-list ui-design-borderless-list" role="tabpanel">
           {displayedNotifications.length ? displayedNotifications.map((notification) => (
             <article key={notification.id} className={`home-action-row notification-row ${notification.readAt ? "notification-read" : "notification-unread"} ${notification.targetUnavailable ? "notification-terminal-row" : ""}`}>
               <span className="home-action-icon"><Bell size={18} aria-hidden="true" /></span>

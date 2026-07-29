@@ -34,6 +34,14 @@ const courtControlStyles = read("src/styles/global-court-controls.css");
 const globalAdminStyles = read("src/styles/global-admin-layout.css");
 const globalWorkflowStyles = read("src/styles/global-workflows.css");
 const globalSurfaceStyles = read("src/styles/global-surfaces.css");
+const classicDesignStyles = read("src/styles/design-classic.css");
+const editorialDesignStyles = read("src/styles/design-editorial.css");
+const visualDirectionDemoSource = read("src/pages/VisualDirectionDemo.jsx");
+const globalStyleManifest = read("src/styles/globals.css");
+const appShellSource = read("src/components/layout/AppShell.jsx");
+const cardSource = read("src/components/common/Card.jsx");
+const recruitingListApiSource = read("server/api/recruiting/list.js");
+const useAppDataSource = read("src/hooks/useAppData.js");
 const recruitingStyles = read("src/styles/recruiting-arena.css");
 const matchesStyles = read("src/styles/matches-arena.css");
 const gettingStartedStyles = read("src/styles/getting-started.css");
@@ -75,6 +83,78 @@ const legacyStyleSources = [
   read("src/styles/matches-arena.css"),
   read("src/styles/recruiting-arena.css"),
 ].join("\n");
+
+test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모만 두 CSS를 전환한다", () => {
+  const designLeaks = styleFiles
+    .filter((file) => !file.endsWith("design-classic.css") && !file.endsWith("design-editorial.css"))
+    .filter((file) => /\[data-design=/.test(read(file)));
+  const editorialAppStyles = editorialDesignStyles.split("/* Full application contract.")[1] ?? "";
+
+  assert.match(globalStyleManifest, /@import "\.\/design-classic\.css";\s*@import "\.\/design-editorial\.css";/);
+  assert.match(classicDesignStyles, /\[data-design="classic"\] \.ui-design-page/);
+  assert.match(editorialDesignStyles, /\[data-design="editorial"\] \.ui-design-page/);
+  assert.match(classicDesignStyles, /\[data-design="classic"\] \.ui-design-app/);
+  assert.match(editorialDesignStyles, /\[data-design="editorial"\] \.ui-design-app/);
+  assert.doesNotMatch(classicDesignStyles, /\[data-design="editorial"\]/);
+  assert.doesNotMatch(editorialDesignStyles, /\[data-design="classic"\]/);
+  assert.match(visualDirectionDemoSource, /className="ui-design-host" data-design=\{designMode\}/);
+  assert.match(visualDirectionDemoSource, /"--ui-design-media"/);
+  assert.doesNotMatch(visualDirectionDemoSource, /ui-(?:classic|editorial|poster)/);
+  assert.match(appShellSource, /className="app-shell ui-design-host" data-design="editorial"/);
+  assert.match(appShellSource, /className="app-main ui-design-app"/);
+  assert.match(cardSource, /\["card", "ui-card", "ui-design-surface", "ui-design-info-surface"/);
+  assert.match(cardSource, /includes\("section-card"\)[\s\S]*?"ui-design-category-surface"/);
+  [
+    pageSources.home,
+    pageSources.matches,
+    pageSources.recruiting,
+    read("src/pages/Recorder.jsx"),
+    pageSources.teams,
+    pageSources.rankings,
+    pageSources.profile,
+    pageSources.settings,
+  ].forEach((source) => assert.match(source, /ui-design-app-hero/));
+  assert.doesNotMatch(pageSources.settings, /화면 구성|분류 박스 없음 사용 중|selectDesignMode/);
+  assert.match(pageSources.home, /STANDARD_HOME_LAYOUT = "editorial"/);
+  assert.match(pageSources.home, /className="ui-design-page ui-design-home-page"/);
+  assert.doesNotMatch(pageSources.home, /ui-design-preference-list/);
+  assert.match(
+    editorialAppStyles,
+    /\.ui-design-category-surface\.ui-design-surface\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
+  );
+  assert.match(editorialAppStyles, /\.ui-design-surface\s*\{[\s\S]*?border:\s*0;/);
+  assert.match(editorialAppStyles, /--card-border:\s*transparent;[\s\S]*?--ui-card-border:\s*transparent;/);
+  assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border:\s*0;[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
+  assert.match(editorialAppStyles, /\.ui-design-info-surface\.ui-design-info-accent\s*\{[\s\S]*?border-inline-start:\s*4px solid var\(--ui-info-accent, transparent\);/);
+  assert.match(editorialAppStyles, /\.ui-design-soft-surface\s*\{[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
+  assert.match(editorialAppStyles, /\.ui-design-borderless-surface:not\(\.tier-range-note-warning\),[\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-color:\s*transparent;/);
+  assert.match(editorialAppStyles, /\.ui-design-filter-tile\s*\{[\s\S]*?min-height:\s*60px;[\s\S]*?padding-block:\s*7px;/);
+  assert.match(editorialAppStyles, /\.segmented-control\s*\{[\s\S]*?border:\s*0;[\s\S]*?padding:\s*0;[\s\S]*?background:\s*transparent;/);
+  assert.match(editorialAppStyles, /\.segmented-control button\s*\{[\s\S]*?background:\s*var\(--ui-design-choice-bg\);/);
+  assert.match(pageSources.home, /home-upcoming-card ui-design-category-surface/);
+  assert.match(pageSources.home, /ui-design-borderless-list/);
+  assert.match(pageSources.home, /ui-button-block ui-design-borderless-surface/);
+  assert.match(pageSources.matches, /om-view-card ui-design-soft-surface/);
+  assert.match(pageSources.matches, /ui-design-filter-tile/);
+  assert.match(pageSources.matches, /om-calendar-summary ui-design-soft-surface/);
+  assert.match(pageSources.recruiting, /arena-queue-controls ui-design-soft-surface/);
+  assert.match(read("src/pages/CreateMatch.jsx"), /create-eligibility-control ui-design-borderless-surface/);
+  assert.match(read("src/pages/CreateMatch.jsx"), /create-public-note ui-design-borderless-surface/);
+  assert.match(pageSources.settings, /favorite-type-grid ui-design-borderless-list ui-design-borderless-surface/);
+  assert.match(pageSources.teams, /my-team-list ui-design-borderless-list/);
+  assert.match(pageSources.profile, /contract-grid single ui-design-borderless-list/);
+  assert.match(courtDetailSource, /court-map-link ui-liquid-glass/);
+  assert.match(courtDetailSource, /court-detail-hero ui-design-app-hero/);
+  assert.match(courtDetailSource, /court-profile-information ui-design-content-surface/);
+  assert.match(primitiveStyles, /\.ui-tier-label\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-style:\s*normal;[^}]*font-weight:\s*950;/);
+  assert.match(read("src/components/rating/RatingCard.jsx"), /className="ui-tier-label"/);
+  assert.match(read("src/components/rating/TierEmblem.jsx"), /className="ui-tier-label"/);
+  assert.doesNotMatch(
+    editorialAppStyles,
+    /\.(?:recent-match-row|my-team-row|match-list-card|ranking-row|rank-row|home-action-row|ui-entity-row)\b/,
+  );
+  assert.deepEqual(designLeaks, []);
+});
 
 test("court detail hero tags use shared glass badges", () => {
   assert.match(courtDetailSource, /import Badge from "\.\.\/components\/common\/Badge\.jsx";/);

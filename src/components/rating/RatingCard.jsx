@@ -15,7 +15,7 @@ export default function RatingCard({ title, mmr, ratings = null, mode = "", clas
       <div className="rating-card-top">
         <div>
           <p className="eyebrow">{title}</p>
-          <strong>{label}</strong>
+          <strong className="ui-tier-label">{label}</strong>
           <span className="rating-mmr">{detail}</span>
         </div>
         {modeMissing ? <span className="rating-card-empty-mark" aria-hidden="true">—</span> : <TierEmblem mmr={mmr} ratings={ratings} size="sm" />}

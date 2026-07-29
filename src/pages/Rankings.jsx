@@ -64,7 +64,7 @@ export default function Rankings({ app }) {
 
   return (
     <div className="page-stack rankings-page">
-      <header className="page-header">
+      <header className="page-header ui-design-app-hero">
         <div>
           <p className="eyebrow">Rankings</p>
           <h1>랭크보드</h1>

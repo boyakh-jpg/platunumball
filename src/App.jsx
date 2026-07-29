@@ -33,6 +33,7 @@ const PracticeMatch = lazy(() => import("./pages/PracticeMatch.jsx"));
 const Rankings = lazy(() => import("./pages/Rankings.jsx"));
 const Recorder = lazy(() => import("./pages/Recorder.jsx"));
 const RefereeRulebook = lazy(() => import("./pages/RefereeRulebook.jsx"));
+const VisualDirectionDemo = lazy(() => import("./pages/VisualDirectionDemo.jsx"));
 const Recruiting = lazy(() => import("./pages/Recruiting.jsx"));
 const Season = lazy(() => import("./pages/Season.jsx"));
 const Settings = lazy(() => import("./pages/Settings.jsx"));
@@ -163,6 +164,7 @@ export default function App() {
           <Route path="/data-sources" element={<DataSources />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/demo/visual-direction" element={<VisualDirectionDemo />} />
         </Route>
         <Route element={<RequireAuth auth={auth} />}>
           <Route path="/app/admin/court-map" element={<RequireAdmin app={app}><AdminCourtMapPopup /></RequireAdmin>} />

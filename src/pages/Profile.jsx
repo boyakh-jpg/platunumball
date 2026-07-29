@@ -155,7 +155,7 @@ export default function Profile({ app }) {
   const recordsPending = (!app.actions.profileRecordsLoaded || recordsLoading) && !myRecords.length;
   return (
     <div className="page-stack profile-page">
-      <header className="page-header">
+      <header className="page-header ui-design-app-hero">
         <div>
           <p className="eyebrow">Profile</p>
           <h1>프로필</h1>
@@ -227,7 +227,7 @@ export default function Profile({ app }) {
           <ProgressionChecklist user={user} matches={app.state.matches} />
           <ShareCard user={user} />
           <Card className="section-card">
-            <div className="contract-grid single">
+            <div className="contract-grid single ui-design-borderless-list">
               <div>
                 <span>신뢰도</span>
                 <strong>{user.trustScore}</strong>

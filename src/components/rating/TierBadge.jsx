@@ -6,7 +6,7 @@ export default function TierBadge({ mmr, ratings = null, compact = false }) {
   if (ratings && !isPlacementComplete(ratings)) {
     return (
       <span className={`tier-badge tier-badge-placement ${compact ? "tier-badge-compact" : ""}`}>
-        <span>{getPlacementLabel(ratings)}</span>
+        <span className="ui-tier-label">{getPlacementLabel(ratings)}</span>
       </span>
     );
   }
@@ -15,7 +15,7 @@ export default function TierBadge({ mmr, ratings = null, compact = false }) {
   return (
     <span className={`tier-badge ${compact ? "tier-badge-compact" : ""}`} style={{ "--tier-color": tier.color }}>
       <img src={getTierEmblemSrc(mmr)} alt={`${division} emblem`} loading="lazy" />
-      <span>{division}</span>
+      <span className="ui-tier-label">{division}</span>
     </span>
   );
 }
