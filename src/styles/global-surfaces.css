@@ -6,7 +6,7 @@
   isolation: isolate;
   overflow: hidden;
   min-height: 214px;
-  border: 1px solid rgba(70, 224, 182, 0.22);
+  border: var(--ui-hero-border-width) solid rgba(70, 224, 182, 0.22);
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.97), rgba(5, 7, 10, 0.76) 54%, rgba(5, 7, 10, 0.48)),
@@ -886,7 +886,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   align-content: start;
   justify-self: start;
   gap: var(--space-8);
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);

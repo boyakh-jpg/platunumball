@@ -275,7 +275,7 @@ function getStartDateFilterOptions() {
 function RecruitingRoomLoadingView({ onClose }) {
   return (
     <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
+      <aside className="arena-room-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label="방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
         <div className="arena-modal-status-row">
           <Badge tone="orange">ROOM LOAD</Badge>
           <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={18} /></button>
@@ -2827,7 +2827,7 @@ export function RecruitingRoomModal(props) {
 function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
   return (
     <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="방 불러오기 실패" onMouseDown={(event) => event.stopPropagation()}>
+      <aside className="arena-room-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label="방 불러오기 실패" onMouseDown={(event) => event.stopPropagation()}>
         <div className="arena-modal-status-row">
           <Badge tone="orange">ROOM LOAD</Badge>
           <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={18} /></button>
@@ -4705,7 +4705,7 @@ function RecruitingRoomModalReady({
           >
             <aside
               ref={lobbyModalRef}
-              className={`arena-lobby-modal ui-modal-shell${sheetDragSettling ? " is-sheet-settling" : ""}${sheetDragOffset > 0 ? " is-sheet-dragging" : ""}`}
+              className={`arena-lobby-modal ui-modal-shell ui-room-borderless-scope${sheetDragSettling ? " is-sheet-settling" : ""}${sheetDragOffset > 0 ? " is-sheet-dragging" : ""}`}
               role="dialog"
               aria-modal="true"
               aria-label="매치방"

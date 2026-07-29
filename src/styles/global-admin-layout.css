@@ -1286,7 +1286,7 @@
 .arena-dispute-editor {
   display: grid;
   gap: var(--space-6);
-  border: 1px solid var(--ui-room-panel-border, var(--card-border, var(--line)));
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border, var(--card-border, var(--line)));
   border-radius: var(--ui-card-radius, var(--radius));
   background: var(--ui-room-panel-bg, var(--ui-card-bg, rgba(255, 255, 255, 0.05)));
   box-shadow: var(--ui-card-shadow, none);
@@ -1399,7 +1399,7 @@
 }
 
 .arena-dispute-player {
-  border: 1px solid var(--ui-room-panel-border, var(--line));
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border, var(--line));
   border-radius: var(--ui-card-radius, var(--radius-xs));
   background: var(--ui-card-bg, rgba(5, 7, 10, 0.34));
   padding: 8px;
@@ -1484,7 +1484,7 @@
   overflow: hidden;
   display: grid;
   gap: var(--space-9);
-  border: 1px solid rgba(70, 224, 182, 0.24);
+  border: var(--ui-hero-border-width) solid rgba(70, 224, 182, 0.24);
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.95), rgba(5, 7, 10, 0.66), rgba(5, 7, 10, 0.92)),

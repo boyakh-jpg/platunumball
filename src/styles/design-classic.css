@@ -89,7 +89,7 @@
   min-height: 430px;
   align-content: end;
   overflow: hidden;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background:
     linear-gradient(90deg, rgba(8, 15, 20, 0.86), rgba(8, 15, 20, 0.28)),
@@ -167,7 +167,7 @@
 [data-design="classic"] .ui-design-section {
   display: grid;
   gap: var(--space-10);
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
@@ -191,7 +191,7 @@
   min-height: var(--ui-button-height-sm);
   align-items: center;
   gap: var(--space-3);
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--text);
@@ -215,7 +215,7 @@
 
 [data-design="classic"] .ui-design-row {
   width: 100%;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--radius-sm);
   background: var(--ui-control-bg);
   color: var(--text);
@@ -269,7 +269,7 @@
   min-height: 420px;
   align-items: end;
   overflow: hidden;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background:
     linear-gradient(0deg, rgba(4, 12, 16, 0.88), rgba(4, 12, 16, 0.2)),
@@ -314,7 +314,7 @@
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
   align-items: center;
   gap: var(--space-16);
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
@@ -372,7 +372,7 @@
   grid-template-columns: 66px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-7);
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--radius-sm);
   background: var(--ui-control-bg);
   padding: var(--space-7);
@@ -413,7 +413,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--radius-sm);
   background: var(--ui-control-bg);
   cursor: pointer;
@@ -550,7 +550,7 @@
 }
 
 [data-design="classic"] .ui-design-app .ui-design-surface {
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
@@ -582,7 +582,7 @@
 
 [data-design="classic"] .ui-design-app .segmented-control {
   gap: var(--ui-control-group-gap);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   padding: var(--ui-control-group-padding);
   background: var(--ui-control-group-bg);
 }

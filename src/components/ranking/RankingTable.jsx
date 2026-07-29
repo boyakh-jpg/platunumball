@@ -8,7 +8,7 @@ import { AFFILIATION_TYPES } from "../../lib/constants.js";
 
 export default function RankingTable({ rows, type = "players", mode = "integrated", teams = [] }) {
   return (
-    <div className="ranking-table">
+    <div className="ranking-table ui-design-borderless-list">
       {rows.map((row, index) => {
         const rank = index + 1;
         const key = row.id ?? `${type}-${index}`;

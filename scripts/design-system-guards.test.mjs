@@ -138,23 +138,25 @@ assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]
   assert.doesNotMatch(pageSources.home, /STANDARD_HOME_LAYOUT|ui-design-home-page|ui-design-main-hero/);
   assert.match(
     editorialAppStyles,
-    /\.ui-design-category-surface\.ui-design-surface\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
+    /\.ui-design-category-surface\.ui-design-surface\s*\{[\s\S]*?border-width:\s*1px 0 0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
   );
-  assert.match(editorialAppStyles, /\.ui-design-surface\s*\{[\s\S]*?border:\s*0;/);
-  assert.match(editorialAppStyles, /--card-border:\s*transparent;[\s\S]*?--ui-card-border:\s*transparent;/);
+  assert.match(editorialAppStyles, /\.ui-design-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);/);
+  assert.match(editorialAppStyles, /--ui-card-border-width:\s*0px;[\s\S]*?--ui-button-border-width:\s*0px;[\s\S]*?--ui-control-group-border-width:\s*0px;[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;[\s\S]*?--ui-hero-border-width:\s*0px;/);
+  assert.match(editorialAppStyles, /--ui-design-section-rule-space:\s*calc\(var\(--card-padding\) \* 2\);/);
   assert.match(editorialAppStyles, /--ui-design-soft-surface-bg:\s*color-mix\(in srgb,\s*var\(--rb-bg-2\) 86%,\s*var\(--rb-bg\)\);/);
   assert.match(editorialAppStyles, /--ui-design-record-surface-bg:\s*color-mix/);
-  assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border:\s*0;[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
+  assert.match(editorialAppStyles, /\.ui-design-info-surface,[\s\S]*?html\[data-theme\][\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);[\s\S]*?background-color:\s*var\(--ui-design-soft-surface-bg\);/);
   assert.match(editorialAppStyles, /\.ui-design-info-surface\.ui-design-info-accent\s*\{[\s\S]*?border-inline-start:\s*4px solid var\(--ui-info-accent, transparent\);/);
   assert.match(editorialAppStyles, /\.ui-design-record-surface\.ui-design-info-surface\s*\{[\s\S]*?background:\s*color-mix/);
-  assert.match(editorialAppStyles, /html\[data-theme\][\s\S]*?\.ui-design-soft-surface\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
-  assert.match(editorialAppStyles, /\.ui-design-borderless-surface:not\(\.tier-range-note-warning\),[\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border:\s*0;/);
-  assert.match(editorialAppStyles, /\.ui-design-choice-list > \*\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*var\(--ui-design-choice-bg\);/);
-  assert.match(editorialAppStyles, /:is\(button, \.ui-button\)\s*\{[\s\S]*?border:\s*0;/);
-  assert.match(editorialAppStyles, /\.ui-design-app-hero\s*\{[\s\S]*?border:\s*0;[\s\S]*?border-radius:\s*0;/);
+  assert.match(editorialAppStyles, /html\[data-theme\][\s\S]*?\.ui-design-soft-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);[\s\S]*?background:\s*var\(--ui-design-soft-surface-bg\);/);
+  assert.match(editorialAppStyles, /\.ui-design-borderless-surface,[\s\S]*?\.ui-design-borderless-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-design-surface-border-width\);/);
+  assert.match(editorialAppStyles, /\.ui-design-choice-list > \*\s*\{[\s\S]*?border-width:\s*var\(--ui-button-border-width\);[\s\S]*?background:\s*var\(--ui-design-choice-bg\);/);
+  assert.doesNotMatch(editorialAppStyles, /:is\(button, \.ui-button\)\s*\{/);
+  assert.match(editorialAppStyles, /\.ui-design-app-hero\s*\{[\s\S]*?border:\s*var\(--ui-hero-border-width\) solid var\(--ui-card-border\);[\s\S]*?border-radius:\s*0;/);
+  assert.doesNotMatch(editorialAppStyles, /!important/);
   assert.match(editorialAppStyles, /\.profile-rating-primary\.rating-card-pending\s*\{[\s\S]*?min-height:\s*140px;/);
   assert.match(editorialAppStyles, /\.ui-design-filter-tile\s*\{[\s\S]*?min-height:\s*60px;[\s\S]*?padding-block:\s*7px;/);
-  assert.match(editorialAppStyles, /\.segmented-control\s*\{[\s\S]*?border:\s*0;[\s\S]*?padding:\s*0;[\s\S]*?background:\s*transparent;/);
+  assert.match(editorialAppStyles, /\.segmented-control\s*\{[\s\S]*?border-width:\s*var\(--ui-control-group-border-width\);[\s\S]*?padding:\s*0;[\s\S]*?background:\s*transparent;/);
   assert.match(editorialAppStyles, /\.segmented-control button\s*\{[\s\S]*?background:\s*var\(--ui-design-choice-bg\);/);
   assert.match(pageSources.home, /home-upcoming-card ui-design-category-surface/);
   assert.match(pageSources.home, /ui-design-borderless-list/);
@@ -165,12 +167,20 @@ assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]
   assert.match(pageSources.recruiting, /arena-queue-controls ui-design-soft-surface/);
   assert.match(read("src/pages/CreateMatch.jsx"), /create-eligibility-control ui-design-borderless-surface/);
   assert.match(read("src/pages/CreateMatch.jsx"), /create-public-note ui-design-borderless-surface/);
+  assert.match(matchCreationWizardSource, /match-creation-summary-grid ui-design-borderless-list/);
+  assert.match(matchCreationWizardSource, /match-creation-validation-list is-error ui-design-borderless-surface/);
   assert.match(pageSources.settings, /favorite-type-grid ui-design-borderless-list ui-design-borderless-surface/);
   assert.equal(count(settingsSource, "ui-design-choice-list"), 4);
   assert.match(pageSources.teams, /my-team-list ui-design-borderless-list/);
   assert.match(teamsSource, /favorite-search-label ui-field-span-all/);
   assert.match(primitiveStyles, /\.ui-field-span-all\s*\{[^}]*grid-column:\s*1 \/ -1;[^}]*width:\s*100%;/);
   assert.match(pageSources.profile, /contract-grid single ui-design-borderless-list/);
+  assert.match(read("src/components/ranking/RankingTable.jsx"), /ranking-table ui-design-borderless-list/);
+  assert.equal(count(read("src/components/rating/ProgressionChecklist.jsx"), "progression-list ui-design-borderless-list"), 2);
+  assert.match(settingsSource, /referee-rulebook-panel compact ui-design-info-surface/);
+  assert.match(settingsSource, /referee-exam-list ui-design-borderless-list/);
+  assert.match(gettingStartedSource, /getting-started-chapter-nav ui-panel ui-design-info-surface/);
+  assert.match(gettingStartedSource, /getting-started-steps ui-design-borderless-list/);
   assert.match(courtDetailSource, /court-map-link ui-liquid-glass/);
   assert.match(courtDetailSource, /court-detail-hero ui-design-app-hero/);
   assert.match(courtDetailSource, /court-profile-information ui-design-content-surface/);
@@ -331,8 +341,43 @@ test("record result cards share matchup and date mode court metadata", () => {
   for (const page of ["home", "profile", "profileRecords", "teamDetail"]) {
     assert.match(pageSources[page], /RecentMatchRow/);
   }
-  assert.match(globalSearchStyles, /\.recent-match-list\s*\{[^}]*--recent-match-list-gap:\s*var\(--space-6\);[^}]*gap:\s*var\(--recent-match-list-gap\);/);
+  assert.match(globalSearchStyles, /\.recent-match-list\s*\{[^}]*--recent-match-list-gap:\s*calc\(var\(--space-6\) \* 2\);[^}]*gap:\s*var\(--recent-match-list-gap\);/);
   assert.doesNotMatch(courtControlStyles, /\.home-recent-card \.recent-match-(?:copy|matchup|vs)/);
+});
+
+test("표면 선 두께는 공통 토큰을 사용하고 방 모달은 뱃지를 건드리지 않는다", () => {
+  assert.match(tokenStyles, /--ui-card-border-width:\s*1px;/);
+  assert.match(tokenStyles, /--ui-button-border-width:\s*1px;/);
+  assert.match(tokenStyles, /--ui-room-modal-border-width:\s*1px;/);
+  assert.match(primitiveStyles, /\.ui-card\s*\{[\s\S]*?border:\s*var\(--ui-card-border-width\) solid var\(--ui-card-border\);/);
+  assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?border:\s*var\(--ui-button-border-width\) solid var\(--ui-button-border\);/);
+  assert.match(recruitingStyles, /\.ui-room-borderless-scope\s*\{[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;/);
+  assert.doesNotMatch(recruitingStyles, /\.ui-room-borderless-scope[\s\S]*?!important/);
+  assert.doesNotMatch(recruitingStyles, /\.ui-room-borderless-scope[\s\S]*?\.ui-badge/);
+  assert.equal(count(pageSources.recruiting, "ui-room-borderless-scope"), 3);
+  assert.equal(count(pageSources.matches, "ui-room-borderless-scope"), 3);
+});
+
+test("페이지 CSS는 공통 표면 토큰을 다시 1px로 덮지 않는다", () => {
+  assert.doesNotMatch(
+    allStyleSources,
+    /border:\s*1px solid var\(--ui-(?:card|button|control-group|room-modal|room-panel)-border/,
+  );
+  assert.match(globalSurfaceStyles, /\.page-header\s*\{[\s\S]*?border:\s*var\(--ui-hero-border-width\)/);
+  assert.match(globalWorkflowStyles, /\.team-hub-hero\s*\{[\s\S]*?border:\s*var\(--ui-hero-border-width\)/);
+  assert.match(globalWorkflowStyles, /\.contract-grid div\s*\{[\s\S]*?border:\s*var\(--ui-card-border-width\)/);
+  assert.match(foundationStyles, /\.compact-list a,[\s\S]*?border:\s*var\(--ui-card-border-width\) solid var\(--ui-card-border\);/);
+  assert.match(matchRoomStyles, /\.gm-room-hero\s*\{[\s\S]*?border:\s*var\(--ui-hero-border-width\)/);
+});
+
+test("설정 보조 정보는 같은 작은 글자 규격을 사용한다", () => {
+  assert.equal(count(settingsSource, "contract-grid single ui-support-grid"), 2);
+  assert.equal(count(settingsSource, "compact-list ui-support-list"), 4);
+  assert.match(settingsSource, /ui-empty-state-compact ui-support-copy/);
+  assert.match(
+    primitiveStyles,
+    /\.ui-support-grid > \* > :is\(strong, em\),[\s\S]*?\.ui-support-copy\s*\{[\s\S]*?font-size:\s*var\(--font-size-body-sm\);/,
+  );
 });
 
 function getRuleBody(source, selector) {
@@ -381,30 +426,6 @@ test("모든 페이지 기본 본문은 800이며 명시형 굵기는 600 이상
   assert.deepEqual(forbiddenWeights, []);
 });
 
-test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
-  assert.equal(countClassToken(pageSources.home, "ui-button-block"), 5);
-  assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 2);
-  assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
-  assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
-  assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
-});
-
-test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
-  assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?white-space:\s*nowrap;/);
-  assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
-  assert.match(primitiveStyles, /\.ui-action-row > \*\s*\{\s*flex:\s*0 0 auto;\s*\}/);
-  assert.doesNotMatch(hoverSurfaceStyles, /(?:^|\n)\s*\.button\s*\{[^{}]*white-space:\s*normal;/);
-});
-
-test("알림 보기와 읽음은 같은 네모 버튼 규격을 사용한다", () => {
-  const notificationSource = read("src/pages/Notifications.jsx");
-  assert.match(notificationSource, /notification-action-control notification-terminal-state/);
-  assert.match(notificationSource, /notification-action-control notification-row-open/);
-  assert.match(notificationSource, /notification-action-control notification-read-button/);
-  assert.match(
-    foundationStyles,
-    /\.notification-actions \.notification-action-control\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height\);[^}]*min-height:\s*var\(--ui-button-height\);[^}]*border-radius:\s*var\(--ui-button-radius\);/,
-  );
 test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다", () => {
   assert.match(tokenStyles, /--font-weight-min:\s*600;/);
   assert.match(tokenStyles, /--font-weight-support:\s*700;/);
@@ -433,6 +454,30 @@ test("KBO는 스포츠 표시, Pretendard는 읽기와 조작 UI에 사용한다
   assert.doesNotMatch(globalSearchStyles, /\.approval-teaser-card \.compact-list a > span\s*\{[^}]*var\(--sports-display-font\)/);
 });
 
+test("공용 CTA는 ui-button-block 하나로 너비만 확장한다", () => {
+  assert.equal(countClassToken(pageSources.home, "ui-button-block"), 5);
+  assert.equal(countClassToken(pageSources.matches, "ui-button-block"), 2);
+  assert.equal(countClassToken(pageSources.recruiting, "ui-button-block"), 2);
+  assert.equal(countClassToken(pageSources.season, "ui-button-block"), 1);
+  assert.match(primitiveStyles, /\.ui-button-block\s*\{\s*width:\s*100%;\s*\}/);
+});
+
+test("공용 버튼과 badge 라벨은 한 줄을 유지한다", () => {
+  assert.match(primitiveStyles, /\.ui-button\s*\{[\s\S]*?white-space:\s*nowrap;/);
+  assert.match(primitiveStyles, /\.ui-badge\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap;/);
+  assert.match(primitiveStyles, /\.ui-action-row > \*\s*\{\s*flex:\s*0 0 auto;\s*\}/);
+  assert.doesNotMatch(hoverSurfaceStyles, /(?:^|\n)\s*\.button\s*\{[^{}]*white-space:\s*normal;/);
+});
+
+test("알림 보기와 읽음은 같은 네모 버튼 규격을 사용한다", () => {
+  const notificationSource = read("src/pages/Notifications.jsx");
+  assert.match(notificationSource, /notification-action-control notification-terminal-state/);
+  assert.match(notificationSource, /notification-action-control notification-row-open/);
+  assert.match(notificationSource, /notification-action-control notification-read-button/);
+  assert.match(
+    foundationStyles,
+    /\.notification-actions \.notification-action-control\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height\);[^}]*min-height:\s*var\(--ui-button-height\);[^}]*border-radius:\s*var\(--ui-button-radius\);/,
+  );
   assert.match(
     foundationStyles,
     /\.notification-actions \.notification-read-button\s*\{[^}]*min-width:\s*calc\(var\(--ui-button-height\) \+ var\(--space-6\)\);[^}]*height:\s*var\(--ui-button-height\);/,

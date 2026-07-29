@@ -413,7 +413,7 @@
   gap: var(--page-column-gap);
   align-items: end;
   overflow: hidden;
-  border: 1px solid rgba(255, 211, 108, 0.2);
+  border: var(--ui-hero-border-width) solid rgba(255, 211, 108, 0.2);
   border-radius: var(--radius-lg);
   background:
     linear-gradient(105deg, rgba(8, 11, 16, 0.92), rgba(8, 11, 16, 0.66)),
@@ -1152,7 +1152,7 @@
 .league-table-scroll {
   min-width: 0;
   overflow-x: auto;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
 }
@@ -1399,7 +1399,7 @@ html[data-theme="light"] .tournament-referee-actions button.secondary {
   grid-template-columns: minmax(0, 1fr) 76px;
   min-width: 0;
   gap: 10px;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   padding: 10px;
@@ -1541,7 +1541,7 @@ html[data-theme="light"] .tournament-referee-actions button.secondary {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   font: inherit;
   font-size: 0.7rem;
@@ -1620,7 +1620,7 @@ html[data-theme="light"] .tournament-referee-actions button.secondary {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
@@ -2161,7 +2161,7 @@ html[data-theme="light"] .om-calendar-grid button.active {
 }
 
 .om-match-hero {
-  border: 1px solid var(--rb-line);
+  border: var(--ui-hero-border-width) solid var(--rb-line);
   border-radius: var(--radius-lg);
   box-shadow: none;
 }
@@ -2416,7 +2416,7 @@ html[data-theme="light"] .om-match-hero {
 .om-view-card,
 .om-calendar-filter-bar,
 .om-match-panel {
-  border: 1px solid var(--card-border);
+  border: var(--ui-card-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
@@ -2474,7 +2474,7 @@ html[data-theme="light"] .om-match-panel {
 .om-tournament-card,
 .tournament-hero-badges,
 .tournament-schedule-list {
-  border: 1px solid var(--card-border);
+  border: var(--ui-card-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
@@ -2543,7 +2543,7 @@ html[data-theme="light"] .tournament-schedule-list {
 .om-calendar-box,
 .om-tournament-card,
 .tournament-hero-badges {
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
@@ -2553,7 +2553,7 @@ html[data-theme="light"] .tournament-schedule-list {
 .om-tournament-actions {
   gap: var(--ui-control-group-gap);
   align-items: stretch;
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
   background: var(--ui-control-group-bg);
   box-shadow: none;
@@ -2570,7 +2570,7 @@ html[data-theme="light"] .tournament-schedule-list {
 .tournament-schedule-list button,
 .tournament-back-link {
   min-height: var(--ui-button-height);
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
@@ -2747,7 +2747,7 @@ html[data-theme="light"] .tournament-hero h1 {
   align-self: end;
   gap: 12px;
   padding: 16px;
-  border: 1px solid var(--card-border);
+  border: var(--ui-card-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
@@ -2768,7 +2768,7 @@ html[data-theme="light"] .om-match-panel {
   min-height: 60px;
   align-content: center;
   gap: 3px;
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--radius-xs);
   background: var(--ui-control-group-bg);
   color: var(--muted);
@@ -2988,7 +2988,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
   min-height: 34px;
   height: 34px;
   flex: 0 0 auto;
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--ui-button-color);

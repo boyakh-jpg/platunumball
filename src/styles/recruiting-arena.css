@@ -42,7 +42,7 @@
 .arena-hero-panel {
   display: grid;
   gap: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.15);
   padding: 16px;
 }
 
@@ -55,7 +55,7 @@
 .arena-hero-stats span {
   display: grid;
   gap: 3px;
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--radius-xs);
   background: var(--ui-control-group-bg);
   color: var(--muted);
@@ -129,14 +129,7 @@
 
 .arena-filter-bar button {
   flex: 0 1 auto;
-  min-height: 42px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.055);
-  color: var(--muted);
   cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 900;
   padding: 0 12px;
 }
 
@@ -151,10 +144,6 @@
 }
 
 .arena-filter-select select {
-  min-height: 42px;
-  border-radius: var(--radius-xs);
-  font-size: 0.82rem;
-  font-weight: 900;
   padding: 0 8px;
 }
 
@@ -276,7 +265,7 @@
   max-height: calc(100dvh - 36px);
   gap: 12px;
   overflow: auto;
-  border: 1px solid var(--ui-room-modal-border);
+  border: var(--ui-room-modal-border-width) solid var(--ui-room-modal-border);
   border-radius: var(--ui-room-modal-radius);
   background: var(--ui-room-modal-bg);
   box-shadow: var(--ui-room-modal-shadow);
@@ -1277,7 +1266,7 @@ button.arena-room-player-slot {
 .arena-room-rule-panel,
 .arena-reserve-panel,
 .arena-join-panel {
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
 }
@@ -1317,7 +1306,7 @@ button.arena-room-player-slot {
   min-width: 0;
   gap: 8px 12px;
   margin: 0;
-  border-top: 1px solid var(--ui-card-border);
+  border-top: var(--ui-card-border-width) solid var(--ui-card-border);
   padding-top: 8px;
 }
 
@@ -1347,7 +1336,7 @@ button.arena-room-player-slot {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   padding: 8px 9px;
@@ -1376,7 +1365,7 @@ button.arena-room-player-slot {
 .arena-room-rule-panel .arena-details-memo {
   display: grid;
   gap: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--radius-xs);
   background: var(--ui-card-bg);
   padding: 9px;
@@ -1396,7 +1385,7 @@ button.arena-room-player-slot {
 .arena-room-edit-panel {
   display: grid;
   gap: 10px;
-  border: 1px solid rgba(70, 224, 182, 0.22);
+  border: var(--ui-card-border-width) solid rgba(70, 224, 182, 0.22);
   border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.07);
   padding: 10px;
@@ -1477,7 +1466,7 @@ button.arena-room-player-slot {
 .arena-host-kick-panel {
   display: grid;
   gap: 10px;
-  border: 1px solid rgba(255, 95, 115, 0.18);
+  border: var(--ui-card-border-width) solid rgba(255, 95, 115, 0.18);
   border-radius: var(--radius);
   background: rgba(255, 95, 115, 0.055);
   padding: 12px;
@@ -1511,7 +1500,7 @@ button.arena-room-player-slot {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.09);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.04);
   padding: 8px;
@@ -1612,7 +1601,7 @@ button.arena-room-player-slot {
   display: grid;
   width: min(360px, 100%);
   gap: 12px;
-  border: 1px solid var(--card-border);
+  border: var(--ui-card-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
@@ -1645,7 +1634,7 @@ button.arena-room-player-slot {
   display: grid;
   gap: 10px;
   margin-top: 12px;
-  border: 1px solid rgba(70, 224, 182, 0.24);
+  border: var(--ui-card-border-width) solid rgba(70, 224, 182, 0.24);
   border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.075);
   padding: 12px;
@@ -1890,7 +1879,7 @@ button.arena-room-player-slot {
   display: grid;
   gap: 10px;
   margin-top: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 12px;
@@ -2031,7 +2020,7 @@ button.arena-room-player-slot {
 .arena-match-source-record-board {
   display: grid;
   gap: 12px;
-  border: 1px solid var(--ui-room-panel-border, var(--line));
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border, var(--line));
   border-radius: var(--ui-card-radius, var(--radius));
   background: var(--ui-room-panel-bg, rgba(255, 255, 255, 0.05));
   box-shadow: var(--ui-card-shadow, none);
@@ -2042,7 +2031,7 @@ button.arena-room-player-slot {
   display: grid;
   gap: 10px;
   margin-top: 8px;
-  border: 1px solid rgba(70, 224, 182, 0.18);
+  border: var(--ui-card-border-width) solid rgba(70, 224, 182, 0.18);
   border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.06);
   padding: 10px;
@@ -2542,7 +2531,7 @@ html[data-theme="light"] .arena-compose-drawer {
   max-width: 100%;
   flex-wrap: wrap;
   gap: var(--ui-control-group-gap);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   padding: var(--ui-control-group-padding);
   border-radius: var(--ui-control-group-radius);
   background: var(--ui-control-group-bg);
@@ -2550,7 +2539,7 @@ html[data-theme="light"] .arena-compose-drawer {
 }
 
 .arena-filter-bar .segmented-control {
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   padding: var(--ui-control-group-padding);
   border-radius: var(--ui-control-group-radius);
   background: var(--ui-control-group-bg);
@@ -2558,7 +2547,7 @@ html[data-theme="light"] .arena-compose-drawer {
 }
 
 .arena-filter-bar .segmented-control button {
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   background: var(--ui-button-bg);
 }
 
@@ -2609,7 +2598,7 @@ html[data-theme="light"] .arena-filter-bar {
 }
 
 html[data-theme="light"] .arena-filter-bar .segmented-control button {
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   background: var(--ui-button-bg);
 }
 
@@ -3212,7 +3201,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 }
 
 .arena-recruit-hero {
-  border: 1px solid var(--rb-line);
+  border: var(--ui-hero-border-width) solid var(--rb-line);
   border-radius: var(--radius-lg);
   box-shadow: none;
 }
@@ -3236,20 +3225,28 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 
 .arena-filter-bar,
 .arena-queue-controls {
-  border: 1px solid var(--rb-line);
+  border: var(--ui-card-border-width) solid var(--rb-line);
   border-radius: var(--radius-md);
   background: var(--rb-surface);
   box-shadow: none;
   padding: 10px;
 }
 
-.arena-filter-bar button,
+.arena-filter-bar button {
+  min-height: 38px;
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .arena-filter-select select {
   min-height: 38px;
   border: 1px solid var(--rb-line);
   border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--rb-text);
   box-shadow: none;
   font-size: 12px;
   font-weight: 900;
@@ -4208,7 +4205,7 @@ html[data-theme="light"] .arena-lobby-arena::before {
 .arena-join-panel,
 .arena-invite-panel,
 .arena-room-chat {
-  border: 1px solid var(--card-border);
+  border: var(--ui-room-panel-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
@@ -4226,12 +4223,11 @@ html[data-theme="light"] .arena-room-chat {
 }
 
 .arena-filter-bar button,
-.arena-filter-select select,
 .arena-filter-bar .segmented-control button,
 .arena-filter-bar .arena-start-date-filter button,
 .arena-slot-command-popover .arena-invite-team-picker > .button {
   min-height: var(--control-height);
-  border: 1px solid var(--control-border);
+  border: var(--ui-button-border-width) solid var(--control-border);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
   color: var(--rb-text);
@@ -4293,7 +4289,7 @@ html[data-theme="light"] .arena-room-chat {
 .arena-referee-invite-panel,
 .arena-host-kick-panel,
 .arena-party-member-card {
-  border: 1px solid var(--card-border);
+  border: var(--ui-card-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
@@ -4365,7 +4361,7 @@ html[data-theme="light"] .arena-party-member-card {
 .arena-join-panel,
 .arena-invite-panel,
 .arena-room-chat {
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
@@ -4382,7 +4378,7 @@ html[data-theme="light"] .arena-party-member-card {
   opacity: var(--sheet-modal-opacity, 1);
   transform: translateY(var(--sheet-drag-y, 0px));
   will-change: opacity, transform;
-  border: 1px solid var(--ui-room-modal-border);
+  border: var(--ui-room-modal-border-width) solid var(--ui-room-modal-border);
   border-radius: var(--ui-room-modal-radius);
   background: var(--ui-room-modal-bg);
   background-clip: padding-box;
@@ -4525,7 +4521,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-
 .arena-slot-command-popover .arena-invite-actions {
   gap: var(--ui-control-group-gap);
   align-items: stretch;
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
   background: var(--ui-control-group-bg);
   box-shadow: none;
@@ -4534,7 +4530,6 @@ html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-
 }
 
 .arena-filter-bar button,
-.arena-filter-select select,
 .arena-filter-bar .segmented-control button,
 .arena-filter-bar .arena-start-date-filter button,
 .arena-icon-button,
@@ -4546,7 +4541,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-
 .arena-invite-member-grid button,
 .arena-slot-command-popover .arena-invite-team-picker > .button {
   min-height: var(--ui-button-height);
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
@@ -4658,7 +4653,7 @@ html[data-theme="light"] .arena-slot-command-popover {
 .arena-filter-bar .segmented-control button,
 .arena-filter-bar .arena-start-date-filter button {
   box-sizing: border-box;
-  border-width: 1px;
+  border-width: var(--ui-button-border-width);
   border-style: solid;
   border-color: var(--ui-button-border);
 }
@@ -4667,7 +4662,7 @@ html[data-theme="light"] .arena-slot-command-popover {
 .arena-filter-bar .arena-start-date-filter button.active,
 .arena-filter-bar .arena-start-date-filter button.sat.active,
 .arena-filter-bar .arena-start-date-filter button.sun.active {
-  border-width: 1px;
+  border-width: var(--ui-button-border-width);
   border-style: solid;
   border-color: transparent;
 }
@@ -4888,7 +4883,7 @@ html[data-theme="light"] .arena-lobby-arena {
   display: grid;
   min-width: 0;
   gap: 10px;
-  border: 1px solid var(--ui-room-panel-border);
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-room-panel-bg);
   padding: 12px;
@@ -4952,7 +4947,7 @@ html[data-theme="light"] .arena-lobby-arena {
   min-width: 0;
   min-height: var(--ui-button-height);
   gap: 7px;
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--text);
@@ -4974,7 +4969,7 @@ html[data-theme="light"] .arena-lobby-arena {
 
 .arena-record-team-selected {
   justify-content: flex-start;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-button-radius);
   padding: 7px 9px;
 }
@@ -4997,7 +4992,7 @@ html[data-theme="light"] .arena-lobby-arena {
 .arena-record-roster-panel {
   display: grid;
   gap: 10px;
-  border: 1px solid var(--ui-room-panel-border);
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-room-panel-bg);
   padding: 12px;
@@ -5030,7 +5025,7 @@ html[data-theme="light"] .arena-lobby-arena {
   grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--ui-card-bg) 86%, transparent);
   padding: 8px;
@@ -5463,7 +5458,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-rule-summary > span {
 
 /* Keep one filter surface in both themes; the inner filter is only layout. */
 .arena-recruit-page.page-stack > .arena-queue-controls {
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
@@ -5638,6 +5633,16 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
   html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel.team-b .arena-side-inline-reserve .arena-room-reserve-row {
     justify-content: end;
   }
+}
+
+/* Room modal surface contract.
+   Badges and form controls retain their own borders. */
+.ui-room-borderless-scope {
+  --ui-card-border-width: 0px;
+  --ui-button-border-width: 0px;
+  --ui-control-group-border-width: 0px;
+  --ui-room-modal-border-width: 0px;
+  --ui-room-panel-border-width: 0px;
 }
 
 @media (max-width: 720px) {

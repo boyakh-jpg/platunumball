@@ -9,7 +9,7 @@
   overflow: hidden;
   display: grid;
   min-height: min(540px, calc(100vh - 150px));
-  border: 1px solid rgba(118, 169, 255, 0.28);
+  border: var(--ui-hero-border-width) solid rgba(118, 169, 255, 0.28);
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(3, 6, 12, 0.98), rgba(4, 8, 15, 0.78) 42%, rgba(4, 8, 15, 0.5)),
@@ -548,7 +548,7 @@ html[data-theme="light"] .gm-player-slot em {
 .gm-reserve-line,
 .gm-next-action-card,
 .gm-room-actions > div {
-  border: 1px solid var(--card-border);
+  border: var(--ui-room-panel-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);

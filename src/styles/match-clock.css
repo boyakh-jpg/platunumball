@@ -53,7 +53,7 @@
 .ui-match-clock-controller-status {
   padding: var(--control-padding-x);
   background: var(--ui-control-group-bg);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
 }
 
@@ -425,7 +425,7 @@
   padding: 8px 10px;
   color: var(--rb-text);
   background: var(--ui-control-group-bg);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
 }
 
@@ -448,14 +448,14 @@
   padding: 10px 12px;
   text-align: center;
   background: var(--ui-control-group-bg);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
 }
 
 .ui-match-clock-transfer {
   padding: 10px 12px;
   background: var(--ui-control-group-bg);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
 }
 

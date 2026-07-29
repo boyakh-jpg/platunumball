@@ -382,7 +382,7 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
         : summary.sentence;
   return (
     <div className="match-creation-final-summary">
-      <div className="match-creation-summary-grid">
+      <div className="match-creation-summary-grid ui-design-borderless-list">
         {rows.map((row) => (
           <div key={row.label}>
             <span>{row.label}</span>
@@ -392,18 +392,18 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
       </div>
       <p>{sentence}</p>
       {errors.length ? (
-        <div className="match-creation-validation-list is-error">
+        <div className="match-creation-validation-list is-error ui-design-borderless-surface">
           <strong>생성 전 확인 필요</strong>
           {errors.map((message) => <span key={message}>{message}</span>)}
         </div>
       ) : null}
       {warnings.length ? (
-        <div className="match-creation-validation-list is-warning">
+        <div className="match-creation-validation-list is-warning ui-design-borderless-surface">
           <strong>운영 주의</strong>
           {warnings.map((message) => <span key={message}>{message}</span>)}
         </div>
       ) : null}
-      {!errors.length ? <div className="match-creation-ready"><Check size={17} /> 생성 가능한 설정입니다.</div> : null}
+      {!errors.length ? <div className="match-creation-ready ui-design-borderless-surface"><Check size={17} /> 생성 가능한 설정입니다.</div> : null}
     </div>
   );
 }

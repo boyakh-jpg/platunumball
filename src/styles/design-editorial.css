@@ -585,16 +585,22 @@
    Editorial intentionally preserves the classic layout and removes only
    category-level section surfaces so the two options can be compared cleanly. */
 [data-design="editorial"] .ui-design-app {
-  --card-border: transparent;
-  --ui-card-border: transparent;
   --ui-design-app-page-gap: var(--page-section-gap);
   --ui-design-app-inner-gap: var(--page-section-gap-mobile);
   --ui-design-app-heading-size: clamp(1.35rem, 2.4vw, 2rem);
   --ui-design-app-section-rule: color-mix(in srgb, var(--text) 18%, transparent);
+  --ui-card-border-width: 0px;
+  --ui-button-border-width: 0px;
+  --ui-control-group-border-width: 0px;
+  --ui-room-modal-border-width: 0px;
+  --ui-room-panel-border-width: 0px;
+  --ui-hero-border-width: 0px;
+  --ui-design-surface-border-width: var(--ui-card-border-width);
+  --ui-design-section-rule-space: calc(var(--card-padding) * 2);
+  --ui-design-section-rule-outer-space: var(--page-section-gap);
   --ui-design-soft-surface-bg: color-mix(in srgb, var(--rb-bg-2) 86%, var(--rb-bg));
   --ui-design-record-surface-bg: color-mix(in srgb, var(--ui-design-soft-surface-bg) 90%, #fff 10%);
   --ui-design-choice-bg: color-mix(in srgb, var(--rb-bg-2) 92%, var(--text) 8%);
-  --ui-button-border: transparent;
 }
 
 [data-design="editorial"] .ui-design-app > .page-stack {
@@ -606,7 +612,9 @@
 }
 
 [data-design="editorial"] .ui-design-app .ui-design-surface {
-  border: 0;
+  border-width: var(--ui-card-border-width);
+  border-style: solid;
+  border-color: var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
@@ -614,13 +622,17 @@
 
 [data-design="editorial"] .ui-design-app .ui-design-info-surface,
 html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-borderless-list > * {
-  border: 0;
+  border-width: var(--ui-design-surface-border-width);
+  border-style: solid;
+  border-color: var(--ui-card-border);
   background-color: var(--ui-design-soft-surface-bg);
   box-shadow: none;
 }
 
 [data-design="editorial"] .ui-design-app :is(.rank-stat-grid, .stat-strip) > span {
-  border: 0;
+  border-width: var(--ui-card-border-width);
+  border-style: solid;
+  border-color: var(--ui-card-border);
   background: var(--ui-design-soft-surface-bg);
   box-shadow: none;
 }
@@ -635,17 +647,21 @@ html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-record-surf
 }
 
 [data-design="editorial"] .ui-design-app .ui-design-content-surface.ui-design-info-surface {
-  border: 0;
+  border-width: var(--ui-card-border-width);
+  border-style: solid;
+  border-color: var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   padding: var(--ui-card-padding, var(--card-padding));
   background: var(--ui-design-soft-surface-bg);
 }
 
 [data-design="editorial"] .ui-design-app .ui-design-category-surface.ui-design-surface {
-  border: 0;
-  border-block-start: 1px solid var(--ui-design-app-section-rule);
+  border-width: 1px 0 0;
+  border-style: solid;
+  border-color: var(--ui-design-app-section-rule) transparent transparent;
   border-radius: 0;
-  padding: var(--ui-card-padding, var(--card-padding)) 0 0;
+  margin-block-start: var(--ui-design-section-rule-outer-space);
+  padding: var(--ui-design-section-rule-space) 0 0;
   background: transparent;
   box-shadow: none;
   -webkit-backdrop-filter: none;
@@ -653,33 +669,31 @@ html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-record-surf
 }
 
 html[data-theme] .ui-design-host[data-design="editorial"] .ui-design-app .ui-design-soft-surface {
-  border: 0;
+  border-width: var(--ui-card-border-width);
+  border-style: solid;
+  border-color: var(--ui-card-border);
   background: var(--ui-design-soft-surface-bg);
   box-shadow: none;
 }
 
 html[data-theme] .ui-design-host[data-design="editorial"] .ui-design-app .ui-design-soft-surface.active {
-  border: 0;
+  border-width: var(--ui-card-border-width);
   background: color-mix(in srgb, var(--rb-orange) 8%, var(--ui-design-soft-surface-bg));
 }
 
-html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-borderless-surface:not(.tier-range-note-warning),
+html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-borderless-surface,
 html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-borderless-list > * {
-  border: 0;
+  border-width: var(--ui-design-surface-border-width);
+  border-style: solid;
+  border-color: var(--ui-card-border);
 }
 
 html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-choice-list > * {
-  border: 0;
+  border-width: var(--ui-button-border-width);
+  border-style: solid;
+  border-color: var(--ui-button-border);
   background: var(--ui-design-choice-bg);
   box-shadow: none;
-}
-
-html[data-theme] [data-design="editorial"] .ui-design-app :is(button, .ui-button) {
-  border: 0;
-}
-
-html[data-theme] [data-design="editorial"] .ui-design-app :is(button, .ui-button):hover:not(:disabled) {
-  border-color: transparent;
 }
 
 [data-design="editorial"] .ui-design-app .ui-design-filter-tile {
@@ -709,13 +723,17 @@ html[data-theme] [data-design="editorial"] .ui-design-app :is(button, .ui-button
 
 [data-design="editorial"] .ui-design-app .segmented-control {
   gap: var(--ui-control-group-gap);
-  border: 0;
+  border-width: var(--ui-control-group-border-width);
+  border-style: solid;
+  border-color: var(--ui-control-group-border);
   padding: 0;
   background: transparent;
 }
 
 [data-design="editorial"] .ui-design-app .segmented-control button {
-  border: 0;
+  border-width: var(--ui-button-border-width);
+  border-style: solid;
+  border-color: var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-design-choice-bg);
 }
@@ -725,7 +743,7 @@ html[data-theme] [data-design="editorial"] .ui-design-app :is(button, .ui-button
 }
 
 html[data-theme] .ui-design-host[data-design="editorial"] .ui-design-app .ui-design-app-hero {
-  border: 0;
+  border: var(--ui-hero-border-width) solid var(--ui-card-border);
   border-radius: 0;
 }
 
@@ -748,6 +766,10 @@ html[data-theme] .ui-design-host[data-design="editorial"] .ui-design-app .ui-des
 }
 
 @media (max-width: 1079px) {
+  [data-design="editorial"] .ui-design-app {
+    --ui-design-section-rule-outer-space: var(--page-section-gap-mobile);
+  }
+
   [data-design="editorial"] .ui-design-app .ui-design-app-hero {
     width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;

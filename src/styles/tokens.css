@@ -134,6 +134,7 @@
   --ui-card-bg: var(--card-bg);
   --ui-card-bg-strong: var(--card-bg-strong);
   --ui-card-border: var(--card-border);
+  --ui-card-border-width: 1px;
   --ui-card-shadow: var(--card-shadow);
   --ui-profile-popup-bg: color-mix(in srgb, var(--surface) 82%, transparent);
   --ui-profile-popup-shadow: var(--shadow-strong);
@@ -167,6 +168,7 @@
   --ui-button-color: var(--rb-text);
   --ui-button-color-active: #ffffff;
   --ui-button-border: var(--control-border);
+  --ui-button-border-width: 1px;
   --ui-badge-radius: 999px;
   --ui-badge-padding: 5px 10px;
   --ui-badge-bg: var(--button-secondary-bg);
@@ -196,6 +198,7 @@
   --ui-segmented-field-height: calc(var(--ui-button-height) + var(--ui-control-group-padding) + var(--ui-control-group-padding) + 2px);
   --ui-control-group-bg: color-mix(in srgb, var(--rb-surface) 76%, transparent);
   --ui-control-group-border: var(--control-border);
+  --ui-control-group-border-width: 1px;
   --ui-selectable-hover-bg: color-mix(in srgb, var(--rb-green) 8%, var(--ui-control-bg));
   --ui-selectable-hover-border: color-mix(in srgb, var(--rb-green) 28%, var(--ui-control-border));
   --ui-selectable-selected-bg: color-mix(in srgb, var(--rb-green) 12%, var(--ui-control-bg));
@@ -204,10 +207,13 @@
   --ui-icon-button-size: 34px;
   --ui-room-modal-radius: var(--radius-lg);
   --ui-room-modal-border: var(--card-border);
+  --ui-room-modal-border-width: 1px;
   --ui-room-modal-shadow: none;
   --ui-room-modal-bg: color-mix(in srgb, var(--rb-bg-2) 92%, transparent);
   --ui-room-panel-bg: color-mix(in srgb, var(--rb-bg-2) 78%, transparent);
   --ui-room-panel-border: var(--card-border);
+  --ui-room-panel-border-width: 1px;
+  --ui-hero-border-width: 1px;
   --hero-title-font: var(--sports-display-font);
   --hero-title-size: clamp(2.9rem, 5.6vw, 4.8rem);
   --hero-title-size-mobile: clamp(2.8rem, 14vw, 4.35rem);

@@ -2310,7 +2310,7 @@ UI 수정 전:
 17. 공용 `Card`의 `section-card`는 자동으로 `.ui-design-category-surface`가 된다. 전용 분류 카드는 같은 중립 클래스를 명시해 페이지별 클래스명 때문에 박스 제거가 누락되지 않게 한다.
 18. 일정 상태·달력·매칭 필터처럼 기능 경계는 필요하지만 페이지 배경과 강한 대비가 불필요한 표면은 `.ui-design-soft-surface`를 사용한다. 라이트·다크 모두 같은 `--ui-design-soft-surface-bg` 계열을 사용하고 외곽선은 제거한다.
 19. 일정의 유형 필터는 가용 너비와 관계없이 두 열을 기본으로 사용하고 홀수 마지막 항목은 전체 너비를 사용한다. 단어를 잘라 한 줄에 억지로 밀어 넣지 않는다.
-20. `.ui-design-info-surface`는 단일 정보 표면, `.ui-design-borderless-list`는 바로 아래 정보 행 전체에 공통 무테두리와 카드 배경을 적용한다. 경고 상태의 의미 있는 경계와 승·패·무의 왼쪽 의미색은 유지한다.
+20. `.ui-design-info-surface`는 단일 정보 표면, `.ui-design-borderless-list`는 바로 아래 정보 행 전체에 공통 무테두리와 카드 배경을 적용한다. 경고는 배경·문자색으로 구분하고 승·패·무의 왼쪽 의미색만 유지한다.
 21. 일정 상단 상태 필터는 `.ui-design-filter-tile`을 사용한다. `editorial`에서는 전 너비에서 최소 높이 `60px`과 세로 패딩 `7px`을 사용해 기본 카드 높이의 약 70%로 줄인다.
 22. 티어·디비전·`배정 전` 제목은 `.ui-tier-label`을 사용해 `--sports-display-font`인 KBO Dia Gothic Bold를 적용한다. MMR·설명·버튼은 본문 글꼴을 유지한다.
 23. 공개 메인 페이지(`/`)는 데모의 히어로·가까운 경기·대표팀·시즌·최근 경기 구성을 실제 공개 데이터에 연결한다. 데모의 화면 설정 섹션은 공개 메인에 포함하지 않는다.
@@ -2320,7 +2320,7 @@ UI 수정 전:
 26. 테두리를 제거한 정보 표면은 페이지 배경에 묻히면 안 된다. 라이트·다크 모두 공통 `--ui-design-soft-surface-bg`를 페이지 배경과 명확히 다른 값으로 사용하고 외곽선 없이 면의 명도 차이로 구분한다.
 27. 공개 메인 페이지는 로고와 레터를 표시하지 않고 `/app`으로 이동하는 `홈` CTA를 제공한다. 사이드바·로그인·비교 데모는 공식 라이트·다크 레터 이미지를 사용하며 이미지 로드 실패 때만 텍스트 대체물을 표시한다.
 28. `editorial` 앱의 모든 native `button`과 `.ui-button`은 외곽 테두리를 사용하지 않는다. 버튼형 링크와 선택 항목 묶음은 `.ui-design-choice-list`를 사용해 비활성 배경과 활성 주황색 배경으로 구분한다. 페이지별 버튼 테두리 예외를 만들지 않는다.
-29. `.ui-design-app-hero`, `.ui-design-soft-surface`, `.ui-design-borderless-list`는 라이트·다크 공통 무테두리 규칙을 높은 우선순위로 적용한다. 입력창·드롭다운·경고 상태·승패 레일의 왼쪽 의미색은 이 규칙에서 제외한다.
+29. `.ui-design-app-hero`, `.ui-design-soft-surface`, `.ui-design-borderless-list`는 라이트·다크 공통 무테두리 규칙을 적용한다. 입력창·드롭다운·뱃지·승패 레일의 왼쪽 의미색만 경계를 유지한다.
 30. 배정 전 통합 티어 카드는 `.profile-rating-primary.rating-card-pending` 공통 규격으로 높이와 엠블럼을 줄여 빈 세로 공간을 만들지 않는다.
 31. 폼의 특정 필드가 현재 grid 전체 너비를 써야 하면 `.ui-field-span-all`을 사용한다. 페이지별 고정 폭으로 데스크탑·모바일 너비를 따로 맞추지 않는다.
 
@@ -2329,6 +2329,14 @@ UI 수정 전:
 1. 공용 방 모달의 상태·규칙 뱃지는 `Badge`와 `.ui-badge`의 글자 크기·굵기·행간·수직 중앙정렬을 공유한다.
 2. 약속·벌칙과 경기 메모는 방 카드 표면색을 사용하며 라이트 모드에 다크 전용 검정 오버레이를 적용하지 않는다.
 3. 경기정보 팀명은 방 제목·점수·`VS`와 함께 KBO 스포츠 표시 글꼴을 사용한다.
+
+32. 카드·버튼·선택 그룹·히어로·방 모달 표면의 선 두께는 각각 `--ui-card-border-width`, `--ui-button-border-width`, `--ui-control-group-border-width`, `--ui-hero-border-width`, `--ui-room-*-border-width`가 소유한다. 기능 CSS는 `1px`를 다시 선언하지 않고 해당 폭 토큰을 참조한다.
+33. `editorial`은 위 표면 폭 토큰을 `0px`로 설정한다. 후순위 전체 선택자나 `!important`로 `button`·카드의 `border`를 덮지 않는다. 입력·드롭다운과 `.ui-badge`는 별도 제어·뱃지 토큰을 사용하므로 영향을 받지 않는다.
+34. 방 모달 루트는 `.ui-room-borderless-scope`를 사용해 방 표면 폭 토큰만 `0px`로 설정한다. 방 내부 간격·구분선 배치는 바꾸지 않는다.
+35. 분류 구분선의 색과 굵기는 유지하고, 선 위 바깥 여백과 선 아래 안쪽 여백은 기존 값의 2배를 공통 토큰으로 적용한다.
+36. 최근 전적 레일 간격은 `.recent-match-list`의 `--recent-match-list-gap: calc(var(--space-6) * 2)`만 사용한다.
+37. 랭킹 행·배치 진행·심판 설정·튜토리얼·매칭 생성 최종 확인도 `.ui-design-info-surface`, `.ui-design-borderless-list`, `.ui-design-borderless-surface` 중 하나를 사용하며 기능별 테두리를 만들지 않는다.
+38. 설정의 상태 요약은 `.ui-support-grid`, 이력·빈 상태는 `.ui-support-list`와 `.ui-support-copy`를 사용한다. 보조 정보는 `--font-size-body-sm`을 공유하고 카드 선은 `--ui-card-border-width`만 따른다.
 
 ## 현재 유효: 경기 기록·픽업 운영 타이포그래피
 

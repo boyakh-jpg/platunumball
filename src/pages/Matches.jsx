@@ -118,7 +118,7 @@ class RoomModalErrorBoundary extends Component {
 function RoomModalErrorView({ error, onClose, onRetry = null }) {
   return (
     <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="경기방 오류" onMouseDown={(event) => event.stopPropagation()}>
+      <aside className="arena-room-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label="경기방 오류" onMouseDown={(event) => event.stopPropagation()}>
         <div className="arena-modal-status-row">
           <Badge tone="orange">경기방 오류</Badge>
         </div>
@@ -142,7 +142,7 @@ function RoomModalErrorView({ error, onClose, onRetry = null }) {
 function RoomModalLoadingView({ onClose }) {
   return (
     <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="경기방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
+      <aside className="arena-room-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label="경기방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
         <BasketballLoader label="방 불러오는 중" />
         <div className="arena-modal-close-row">
           <Button type="button" variant="secondary" size="lg" onClick={onClose}>방 닫기</Button>
@@ -156,7 +156,7 @@ function AttendanceScanResultView({ state, onClose }) {
   const scanState = state ?? { pending: true, tone: "blue", message: "QR 출석 확인 중" };
   return (
     <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="arena-room-modal arena-attendance-scan-modal" role="dialog" aria-modal="true" aria-label="QR 출석 결과" onMouseDown={(event) => event.stopPropagation()}>
+      <aside className="arena-room-modal arena-attendance-scan-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label="QR 출석 결과" onMouseDown={(event) => event.stopPropagation()}>
         <div className="arena-modal-status-row">
           <Badge tone={scanState.tone ?? "blue"}>{scanState.pending ? "출석 확인 중" : "출석 결과"}</Badge>
         </div>

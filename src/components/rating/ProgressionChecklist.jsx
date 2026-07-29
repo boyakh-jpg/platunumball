@@ -22,7 +22,7 @@ export default function ProgressionChecklist({ user, matches }) {
           </div>
           <Badge tone="neutral">{getPlacementLabel(user.ratings)}</Badge>
         </div>
-        <div className="progression-list">
+        <div className="progression-list ui-design-borderless-list">
           <div>
             <span>·</span>
             <strong>경쟁전 5경기 완료</strong>
@@ -64,7 +64,7 @@ export default function ProgressionChecklist({ user, matches }) {
         </div>
         <Badge tone="gold">{currentTier.name}</Badge>
       </div>
-      <div className="progression-list">
+      <div className="progression-list ui-design-borderless-list">
         {checks.map((check) => (
           <div key={check.label} className={check.done ? "done" : ""}>
             <span>{check.done ? "✓" : "·"}</span>

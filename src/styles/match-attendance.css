@@ -75,7 +75,7 @@
   gap: 3px 8px;
   padding: 9px 10px;
   background: var(--ui-control-group-bg);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
 }
 
@@ -120,7 +120,7 @@
   gap: 4px;
   padding: 4px;
   background: var(--ui-control-group-bg);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
 }
 
@@ -153,7 +153,7 @@
   min-width: 0;
   padding: 10px;
   background: var(--ui-control-group-bg);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
 }
 
@@ -192,7 +192,7 @@
 .ui-match-postgame-added-list > div {
   padding: 8px 10px;
   background: var(--ui-control-group-bg);
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
 }
 

@@ -1497,7 +1497,7 @@ export default function Settings({ app, section = "main" }) {
                 <MessageCircle size={20} />
               )}
             </div>
-            <div className="contract-grid single">
+            <div className="contract-grid single ui-support-grid">
               {discordLinked ? (
                 <div className="discord-profile-line">
                   <span className={getDiscordAvatarClassName(app.currentUser, "avatar small")} style={getDiscordAvatarStyle(app.currentUser)}>
@@ -1654,7 +1654,7 @@ export default function Settings({ app, section = "main" }) {
                 </div>
                 <ShieldCheck size={22} />
               </div>
-              <div className="contract-grid single">
+              <div className="contract-grid single ui-support-grid">
                 <div>
                   <span>정렬 기준</span>
                   <strong>구장 · 플레이어 · 경기</strong>
@@ -1698,7 +1698,7 @@ export default function Settings({ app, section = "main" }) {
               />
               <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
             </form>
-            <div className="compact-list">
+            <div className="compact-list ui-support-list">
               {blockedUserIds.length ? blockedUserIds.map((userId) => (
                 <div key={userId}>
                   <span>{userMap[userId]?.name ?? "플레이어"}</span>
@@ -1946,7 +1946,7 @@ export default function Settings({ app, section = "main" }) {
                 </Button>
               </form>
             ) : null}
-            <div className="compact-list">
+            <div className="compact-list ui-support-list">
               {courtRequests.slice(0, 4).map((request) => {
                 const requester = userMap[request.requestedBy];
                 const alreadyReported = app.state.reports?.some((report) => (
@@ -2042,7 +2042,7 @@ export default function Settings({ app, section = "main" }) {
                   </small>
                 </div>
               ) : (
-                <div className="ui-empty-state-compact">신고 사유를 먼저 선택해 주세요.</div>
+                <div className="ui-empty-state-compact ui-support-copy">신고 사유를 먼저 선택해 주세요.</div>
               )}
               {selectedReportCourt ? (
                 <div className="arena-mini-note">
@@ -2129,7 +2129,7 @@ export default function Settings({ app, section = "main" }) {
               <Button type="submit" variant="secondary" disabled={!canSubmitReport || reportSubmitPending}>{reportSubmitPending ? "저장 중" : "신고 접수"}</Button>
               {reportSubmitStatus ? <small role="status">{reportSubmitStatus}</small> : null}
             </form>
-            <div className="compact-list">
+            <div className="compact-list ui-support-list">
               {app.state.reports?.slice(0, 4).map((report) => (
                 <div key={report.id}>
                   <span>{
@@ -2164,7 +2164,7 @@ export default function Settings({ app, section = "main" }) {
               </div>
               <ShieldCheck size={22} />
             </div>
-            <div className="referee-rulebook-panel compact">
+            <div className="referee-rulebook-panel compact ui-design-info-surface">
               <div className="referee-rulebook-head">
                 <div>
                   <span className="eyebrow">Study guide</span>
@@ -2179,7 +2179,7 @@ export default function Settings({ app, section = "main" }) {
             </div>
             {canOpenRefereeRequestForm ? (
               <>
-                <div className="referee-exam-panel">
+                <div className="referee-exam-panel ui-design-info-surface">
                   <div className="referee-exam-summary">
                     <span><strong>{REFEREE_EXAM_BANK_SIZE}</strong>문제은행</span>
                     <span><strong>{REFEREE_EXAM_SIZE}</strong>문항</span>
@@ -2204,7 +2204,7 @@ export default function Settings({ app, section = "main" }) {
                     )}
                   </div>
                   {refereeExamOpen ? (
-                    <div className="referee-exam-list">
+                    <div className="referee-exam-list ui-design-borderless-list">
                       {refereeExamQuestions.map((question) => (
                         <div key={question.id} className="referee-exam-question">
                           <strong>{question.number}. {question.stem}</strong>
@@ -2257,7 +2257,7 @@ export default function Settings({ app, section = "main" }) {
                   </Button>
                   {refereeExamRequired && !refereeExamPassed ? <small>커뮤니티 심판은 시험 통과 후 등록요청할 수 있습니다.</small> : null}
                 </form>
-                <div className="compact-list">
+                <div className="compact-list ui-support-list">
                   {refereeRequests.slice(0, 4).map((request) => (
                     <div key={request.id}>
                       <span>
@@ -2271,7 +2271,7 @@ export default function Settings({ app, section = "main" }) {
                 </div>
               </>
             ) : (
-              <div className="tier-range-note tier-range-note-warning">
+              <div className="tier-range-note tier-range-note-warning ui-design-borderless-surface">
                 <div>
                   <span>시험 제한</span>
                   <strong>신뢰도 {REFEREE_TRUST_MIN}점 이상 필요</strong>

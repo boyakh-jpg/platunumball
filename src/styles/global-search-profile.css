@@ -916,7 +916,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .recent-match-list {
-  --recent-match-list-gap: var(--space-6);
+  --recent-match-list-gap: calc(var(--space-6) * 2);
   display: grid;
   gap: var(--recent-match-list-gap);
 }
@@ -1484,7 +1484,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-6);
-  border: 1px solid rgba(255, 211, 108, 0.18);
+  border: var(--ui-card-border-width) solid rgba(255, 211, 108, 0.18);
   border-radius: var(--radius);
   background: rgba(255, 211, 108, 0.055);
   padding: 12px;
@@ -1604,7 +1604,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   min-width: 0;
   min-height: 74px;
   gap: var(--space-5);
-  border: 1px solid var(--card-border);
+  border: var(--ui-button-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   color: var(--text);
@@ -3157,7 +3157,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   min-height: var(--ui-button-height-sm);
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
@@ -3188,7 +3188,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   padding: 8px;
@@ -3378,7 +3378,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   display: grid;
   min-width: 0;
   gap: var(--space-6);
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);

@@ -2346,7 +2346,7 @@ span.referee-hover-card {
   justify-content: space-between;
   width: 100%;
   gap: var(--space-6);
-  border: 1px solid var(--line);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--radius);
   background: var(--surface-2);
   padding: 12px;

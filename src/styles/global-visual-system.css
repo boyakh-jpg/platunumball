@@ -1318,7 +1318,7 @@ html[data-theme="light"] .app-main {
     margin-top: -18px;
     margin-inline: calc(-1 * var(--app-main-pad-x));
     overflow: hidden;
-    border: 1px solid var(--rb-line);
+    border: var(--ui-hero-border-width) solid var(--rb-line);
     border-radius: 0;
     background:
       linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.3) 48%, rgba(0, 0, 0, 0.82)),
@@ -1564,7 +1564,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:n
   gap: var(--space-5);
   min-width: 0;
   overflow: visible;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   padding: 10px;
@@ -1592,7 +1592,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill {
   width: 100%;
   box-sizing: border-box;
   overflow: visible;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
@@ -1658,7 +1658,7 @@ html[data-theme="light"] .rank-home .rank-mode-card {
 .om-view-card,
 .arena-filter-bar,
 .om-calendar-filter-bar {
-  border: 1px solid var(--card-border);
+  border: var(--ui-card-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
@@ -1735,7 +1735,7 @@ html[data-theme="light"] .om-calendar-filter-bar {
 .referee-exam-choice-grid button,
 .arena-filter-bar button,
 .arena-start-date-filter button {
-  border: 1px solid var(--control-border);
+  border: var(--ui-button-border-width) solid var(--control-border);
   background: var(--button-secondary-bg);
   color: var(--rb-text);
 }
@@ -1876,7 +1876,7 @@ html[data-theme="light"] .bottom-nav {
 .trust-star-card,
 .court-review-card,
 .review-controls-card {
-  border: 1px solid var(--card-border);
+  border: var(--ui-card-border-width) solid var(--card-border);
   border-radius: var(--card-radius);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
@@ -1918,7 +1918,7 @@ html[data-theme="light"] .review-controls-card {
 .settings-page .section-card button:not(.button):not(.favorite-toggle-button),
 .tournament-back-link {
   min-height: var(--control-height);
-  border: 1px solid var(--control-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
   color: var(--rb-text);
@@ -2081,7 +2081,7 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
@@ -2113,14 +2113,14 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .om-view-card,
 .arena-filter-bar,
 .om-calendar-filter-bar {
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);
 }
 
 .hover-portal-card {
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-profile-popup-bg);
   box-shadow: var(--ui-profile-popup-shadow);
@@ -2173,7 +2173,7 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .referee-exam-choice-grid {
   gap: var(--ui-control-group-gap);
   align-items: stretch;
-  border: 1px solid var(--ui-control-group-border);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
   border-radius: var(--ui-control-group-radius);
   background: var(--ui-control-group-bg);
   box-shadow: none;
@@ -2206,7 +2206,7 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
 .arena-start-date-filter button,
 .om-calendar-toolbar button {
   min-height: var(--ui-button-height);
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
@@ -2239,7 +2239,7 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   height: var(--ui-icon-button-size);
   min-height: var(--ui-icon-button-size);
   flex: 0 0 var(--ui-icon-button-size);
-  border: 1px solid var(--ui-button-border);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-button-bg);
   color: var(--muted);
@@ -3846,7 +3846,7 @@ html[data-theme] .app-main :is(.om-match-copy, .arena-hero-copy) > :is(.om-kicke
   align-content: start;
   justify-self: start;
   overflow: hidden;
-  border: 1px solid var(--ui-card-border);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
   box-shadow: var(--ui-card-shadow);

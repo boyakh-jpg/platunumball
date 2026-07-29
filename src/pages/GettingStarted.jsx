@@ -694,7 +694,7 @@ export default function GettingStarted({ app }) {
       </div>
 
       <nav
-        className={`getting-started-chapter-nav ui-panel${chapterMenuOpen ? " is-open" : ""}`}
+        className={`getting-started-chapter-nav ui-panel ui-design-info-surface${chapterMenuOpen ? " is-open" : ""}`}
         aria-label="사용 설명 목차"
       >
         <button
@@ -750,7 +750,7 @@ export default function GettingStarted({ app }) {
         </header>
 
         {chapter.practicePreview || chapter.previewItems ? (
-          <div className="getting-started-practice-preview ui-panel">
+          <div className="getting-started-practice-preview ui-panel ui-design-info-surface">
             <Badge tone="orange">현재 서비스 화면</Badge>
             <ol>
               {(chapter.previewItems ?? [
@@ -767,7 +767,7 @@ export default function GettingStarted({ app }) {
               : `${chapter.navLabel} 메뉴에서 위 기능을 현재 계정 권한에 맞게 확인할 수 있습니다.`}</p>
           </div>
         ) : (
-          <figure className="getting-started-shot">
+          <figure className="getting-started-shot ui-design-borderless-surface">
             <img
               src={assetUrl(chapter.image)}
               alt={chapter.imageAlt}
@@ -787,7 +787,7 @@ export default function GettingStarted({ app }) {
           </div>
           <span>{activeIndex + 1} / {GUIDE_CHAPTERS.length}</span>
         </div>
-        <ol className="getting-started-steps">
+        <ol className="getting-started-steps ui-design-borderless-list">
           {chapter.steps.map(({ title, body, Icon }, index) => (
             <li className="getting-started-step ui-panel" key={title}>
               <div>
@@ -817,7 +817,7 @@ export default function GettingStarted({ app }) {
       </Card>
 
       {chapter.id === "practice" ? (
-        <section className="getting-started-home-guide-setting ui-panel" aria-labelledby="home-guide-setting-title">
+        <section className="getting-started-home-guide-setting ui-panel ui-design-info-surface" aria-labelledby="home-guide-setting-title">
           <div>
             <p className="eyebrow">HOME GUIDE</p>
             <h2 id="home-guide-setting-title">홈 안내 카드</h2>
