@@ -215,8 +215,8 @@
 - Discord interaction 버튼 수락/거절 처리는 `/api/discord/interactions`가 담당한다. 방 채팅 동기화는 `room_discord_links`와 `/api/discord/room-chat` bridge를 사용한다.
 - 수동 테스트 DM은 `/api/discord/dm-worker` `POST`에서만 Discord username을 받을 수 있다. 서버는 봇이 들어간 Discord 서버 멤버 검색으로 숫자 `discord_user_id`를 찾은 뒤 발송한다. 자동 발송 큐와 프로필 저장 원본은 계속 숫자 `discord_user_id`다. username 테스트에는 봇이 같은 서버에 있어야 하고 Discord Bot의 Server Members Intent가 필요할 수 있다.
 - `/api/discord/dm-worker` `POST`에 `botCheck: true`를 보내면 Bot token 설정, 봇 계정, 참여 서버 수를 토큰 노출 없이 점검한다.
-- Match server action은 디코 연동된 경기 참가자/심판에게 시작 24시간 전, 2시간 전, 1시간 전, 방관리자 10분 전·5분 전, 경기 종료, 설정된 이의신청 마감 5분 전 안내 delivery row를 만든다. 이의신청 안내 시각은 10분·15분·20분 창에 맞춰 종료 5분·10분·15분 뒤로 계산한다. 5분 전 시작 준비 알림은 예정 시작 시각 이후 발송하지 않는다.
-- Match server action은 방관리자에게 시작 10분 전 참여자 도착 여부 확인 안내와 5분 전 시작 처리 준비 안내를 만든다. 5분 전 안내는 예정 시작 시각을 만료 시각으로 저장한다. 일정/roster/방관리자가 바뀌면 미발송 시작 전 리마인더와 방관리자 안내 row를 현재 대상자 기준으로 재생성하고, 조기 시작 시 해당 row를 삭제한다.
+- Match server action은 앱 웹 알림을 원본으로 시작 1시간 전 참가자·심판 안내, 시작 20분·10분 전 미출석 선수 QR 안내, 시작 10분 전 현재 방관리자 출석 현황, 경기 종료, 설정된 이의신청 마감 5분 전 안내를 만든다. Discord 연결·수신 설정을 통과한 대상에게만 같은 알림 ID의 delivery row를 추가하며 경기 전 delivery는 예약시각에서 90초 이상 늦으면 취소한다. worker는 발송 직전 현재 Discord 연결 ID도 다시 확인해 연결 해제·변경 뒤 예전 ID로 보내지 않는다. 이의신청 안내 시각은 10분·15분·20분 창에 맞춰 종료 5분·10분·15분 뒤로 계산한다.
+- 일정·실제 참여 명단·방관리자가 바뀌면 미발송 경기 전 웹 알림과 Discord delivery를 현재 대상자 기준으로 재생성한다. 전원 출석 시 방관리자 웹 알림은 고유 ID로 한 번만 만들고, 경기 시작·취소·무효 시 남은 경기 전 예약 row를 정리한다.
 - 같은 경기 안내는 Discord 연결 여부와 무관하게 `notifications` row도 만든다. 홈은 `payload.sendAt`이 지난 unread 알림만 별도 `알림` 카드에 보여주고, 서버가 만든 예약 알림은 `skipDiscordSync`로 클라이언트 중복 Discord delivery 생성을 막는다.
 - 경기 종료, 점수 제출, 이의신청, 승인 처리, 이의 판정이 일어나면 미발송 시작 전 리마인더, 방관리자 안내, 경기 종료 점수 입력 안내, 설정된 마감 5분 전 이의신청 안내 row는 삭제한다.
 - 경기 취소 또는 무효 처리 시 해당 경기의 미발송 Discord delivery row를 삭제한다.

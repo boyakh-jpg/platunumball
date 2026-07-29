@@ -41,6 +41,20 @@
   font-weight: 700;
 }
 
+.ui-match-attendance-start-status {
+  align-items: flex-start;
+  gap: var(--control-gap);
+}
+
+.ui-match-attendance-start-status > span {
+  flex: 0 0 auto;
+}
+
+.ui-match-attendance-start-status > strong {
+  min-width: 0;
+  text-align: right;
+}
+
 .ui-match-attendance-spin {
   animation: ui-match-attendance-spin 800ms linear infinite;
 }
@@ -202,6 +216,14 @@
 }
 
 @media (max-width: 640px) {
+  .ui-match-attendance-start-status {
+    display: grid;
+  }
+
+  .ui-match-attendance-start-status > strong {
+    text-align: left;
+  }
+
   .ui-match-attendance-body {
     grid-template-columns: 120px minmax(0, 1fr);
   }

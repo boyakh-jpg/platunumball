@@ -1708,7 +1708,9 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
     if (
       scheduledAt
       && Number.isFinite(nowMs)
-      && nowMs >= scheduledAt.getTime() - (10 * MINUTE_MS)
+      && nowMs >= scheduledAt.getTime() - (
+        match.rules?.qrAttendanceEnabled === true ? 20 : 10
+      ) * MINUTE_MS
     ) return ROOM_PHASE_META.checkin;
     return ROOM_PHASE_META.locked;
   }

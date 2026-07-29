@@ -1,21 +1,30 @@
 export const CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES = Object.freeze([
+  "match-reminder-1h",
+  "match-attendance-20m",
+  "match-attendance-10m",
+  "match-manager-attendance-10m",
+]);
+export const LEGACY_MATCH_SCHEDULED_NOTICE_PREFIXES = Object.freeze([
   "match-reminder-24h",
   "match-reminder-2h",
-  "match-reminder-1h",
   "match-manager-checkin-10m",
   "match-manager-start-5m",
+  "match-manager-start-now",
+  "match-reminder-2m",
+  "match-started",
 ]);
 export const MATCH_SCHEDULED_NOTICE_PREFIXES = Object.freeze([
   ...CURRENT_MATCH_SCHEDULED_NOTICE_PREFIXES,
-  "match-manager-start-now",
+  ...LEGACY_MATCH_SCHEDULED_NOTICE_PREFIXES,
 ]);
+export const MATCH_ATTENDANCE_READY_NOTICE_PREFIX = "match-attendance-ready";
 export const MATCH_POSTGAME_NOTICE_PREFIXES = Object.freeze([
   "match-ended-score",
   "match-dispute-check",
 ]);
 export const MATCH_CANCEL_NOTICE_PREFIXES = Object.freeze([
   ...MATCH_SCHEDULED_NOTICE_PREFIXES,
-  "match-started",
+  MATCH_ATTENDANCE_READY_NOTICE_PREFIX,
   ...MATCH_POSTGAME_NOTICE_PREFIXES,
 ]);
 

@@ -4383,7 +4383,10 @@ export function confirmMatchRefereeAbsence(state, matchId) {
 
 export function startMatch(state, matchId) {
   const rawMatch = state.matches.find((item) => item.id === matchId);
-  const match = applyOperatorAttendance(rawMatch, state.currentUserId);
+  const qrAttendanceEnabled = rawMatch?.rules?.qrAttendanceEnabled === true;
+  const match = qrAttendanceEnabled
+    ? rawMatch
+    : applyOperatorAttendance(rawMatch, state.currentUserId);
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   const actualPlayerIds = getActualMatchPlayerIds(match);
   const activeConflict = state.matches.find((item) => (
@@ -4486,7 +4489,10 @@ export function startMatch(state, matchId) {
     };
   }
   const missingAttendance = getMissingMatchAttendance(match);
-  if (missingAttendance.length) {
+  const scheduledAt = getMatchScheduledDate(match);
+  const scheduledStartReached = match.rules?.timingType === "instant"
+    || (scheduledAt && Date.now() >= scheduledAt.getTime());
+  if (missingAttendance.length && (!qrAttendanceEnabled || !scheduledStartReached)) {
     return {
       ...state,
       notifications: [
@@ -4515,10 +4521,7 @@ export function startMatch(state, matchId) {
   return {
     ...state,
     matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
-    notifications: [
-      { id: makeId("n"), title: "경기 시작", body: `${match.title} 경기가 시작됐습니다.`, tone: "match", matchId },
-      ...state.notifications,
-    ],
+    notifications: state.notifications,
   };
 }
 

@@ -1,5 +1,9 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { createMatchAttendanceQr, verifyMatchAttendanceQr } from "./_attendanceQr.js";
+import {
+  queueMatchDiscordDeliveries,
+  reconcileMatchAttendanceNotifications,
+} from "./sync-match.js";
 
 const MATCH_SIDES = ["teamA", "teamB"];
 const SUPPORTED_SIDE_SIZES = [5, 3, 2, 1];
@@ -57,7 +61,7 @@ export function isAttendanceCheckinOpen(match = {}, nowMs = Date.now()) {
   if (match.started_at || match.rules?.timingType === "instant") return true;
   if (!match.scheduled_date || !match.scheduled_time) return false;
   const scheduledAtMs = Date.parse(`${match.scheduled_date}T${match.scheduled_time}+09:00`);
-  return Number.isFinite(scheduledAtMs) && nowMs >= scheduledAtMs - (10 * 60 * 1000);
+  return Number.isFinite(scheduledAtMs) && nowMs >= scheduledAtMs - (20 * 60 * 1000);
 }
 
 function getAttendanceSummary(entries = [], currentMode = "") {
@@ -121,13 +125,17 @@ async function syncAttendanceEntries(context, match) {
     .order("side")
     .order("updated_at");
   if (entryError) throw entryError;
-  return entries || [];
+  const currentRosterIds = new Set(uniqueRoster.map((entry) => entry.playerId));
+  return {
+    entries: (entries || []).filter((entry) => currentRosterIds.has(entry.player_id)),
+    roster: uniqueRoster,
+  };
 }
 
 async function loadMatch(context, matchId) {
   const { data: match, error } = await context.supabase
     .from("matches")
-    .select("id,mode,visibility,status,created_by,referee_id,rules,reserve_players,attendance,scheduled_date,scheduled_time,started_at,ended_at,tournament_id")
+    .select("id,title,mode,court_name,visibility,status,created_by,referee_id,rules,reserve_players,attendance,scheduled_date,scheduled_time,started_at,ended_at,cancelled_at,voided_at,tournament_id")
     .eq("id", matchId)
     .maybeSingle();
   if (error) throw error;
@@ -144,7 +152,12 @@ function assertQrMatch(match) {
   ) {
     throw new Error("match_attendance_qr_disabled");
   }
-  if (match.ended_at || ["approval", "confirmed", "cancelled", "void"].includes(match.status)) {
+  if (
+    match.ended_at
+    || match.cancelled_at
+    || match.voided_at
+    || ["approval", "confirmed", "cancelled", "void"].includes(match.status)
+  ) {
     throw new Error("match_attendance_qr_locked");
   }
 }
@@ -158,6 +171,65 @@ function assertOperator(match, profileId) {
     error.code = "42501";
     throw error;
   }
+}
+
+function toNotificationMatch(match = {}, roster = []) {
+  return {
+    id: match.id,
+    title: match.title,
+    mode: match.mode,
+    court: match.court_name,
+    status: match.status,
+    createdBy: match.created_by,
+    refereeId: match.referee_id,
+    scheduledAt: match.rules?.timingType === "instant"
+      ? "즉시"
+      : [match.scheduled_date, String(match.scheduled_time || "").slice(0, 5)].filter(Boolean).join(" "),
+    startedAt: match.started_at,
+    endedAt: match.ended_at,
+    rules: match.rules ?? {},
+    reservePlayers: match.reserve_players ?? {},
+    attendance: match.attendance ?? {},
+    teamA: { players: roster.filter((entry) => entry.side === "teamA" && entry.role === "active").map((entry) => entry.playerId) },
+    teamB: { players: roster.filter((entry) => entry.side === "teamB" && entry.role === "active").map((entry) => entry.playerId) },
+  };
+}
+
+export function getStartStatus(match = {}, entries = [], nowMs = Date.now()) {
+  const requiredEntries = entries.filter((entry) => entry.player_id !== match.referee_id);
+  const checkedInCount = requiredEntries.filter((entry) => ["on_time", "late"].includes(entry.status)).length;
+  const requiredCount = requiredEntries.length;
+  const missingCount = Math.max(0, requiredCount - checkedInCount);
+  const checkinOpen = isAttendanceCheckinOpen(match, nowMs);
+  const scheduledAtMs = match.rules?.timingType === "instant"
+    ? nowMs
+    : Date.parse(`${match.scheduled_date}T${match.scheduled_time}+09:00`);
+  const serverTimeAvailable = match.rules?.timingType === "instant" || Number.isFinite(scheduledAtMs);
+  const scheduledStartReached = serverTimeAvailable && nowMs >= scheduledAtMs;
+  const allCheckedIn = requiredCount > 0 && missingCount === 0;
+  const canStartEarly = checkinOpen && !scheduledStartReached && allCheckedIn;
+  const canStart = scheduledStartReached || canStartEarly;
+  const blockReason = canStart
+    ? ""
+    : !serverTimeAvailable
+      ? "server_time_unavailable"
+      : !checkinOpen
+        ? "attendance_not_open"
+        : missingCount > 0
+          ? "attendance_pending"
+          : "match_state_mismatch";
+  return {
+    serverNow: new Date(nowMs).toISOString(),
+    checkinOpen,
+    scheduledStartReached,
+    allCheckedIn,
+    canStartEarly,
+    canStart,
+    blockReason,
+    requiredCount,
+    checkedInCount,
+    missingCount,
+  };
 }
 
 export default async function handler(request, response) {
@@ -184,7 +256,31 @@ export default async function handler(request, response) {
         p_match_id: matchId,
       });
       if (error) throw error;
-      sendJson(response, 200, { ok: true, ...data, matchId });
+      const updatedMatch = await loadMatch(context, matchId);
+      const attendanceState = await syncAttendanceEntries(context, updatedMatch);
+      const notificationMatch = toNotificationMatch(updatedMatch, attendanceState.roster);
+      let notificationState = null;
+      try {
+        notificationState = await reconcileMatchAttendanceNotifications(
+          context.supabase,
+          notificationMatch,
+          context.profileId,
+        );
+        await queueMatchDiscordDeliveries(
+          context.supabase,
+          notificationMatch,
+          "attendanceRefresh",
+        );
+      } catch (notificationError) {
+        console.error("QR attendance notification reconciliation failed.", notificationError);
+      }
+      sendJson(response, 200, {
+        ok: true,
+        ...data,
+        matchId,
+        startStatus: getStartStatus(updatedMatch, attendanceState.entries),
+        notificationState,
+      });
       return;
     }
 
@@ -196,26 +292,52 @@ export default async function handler(request, response) {
         p_match_id: matchId,
       });
       if (error) throw error;
+      const updatedMatch = await loadMatch(context, matchId);
+      const attendanceState = await syncAttendanceEntries(context, updatedMatch);
+      try {
+        await queueMatchDiscordDeliveries(
+          context.supabase,
+          toNotificationMatch(updatedMatch, attendanceState.roster),
+          "sync",
+        );
+      } catch (notificationError) {
+        console.error("Attendance resize notification reconciliation failed.", notificationError);
+      }
       sendJson(response, 200, { ok: true, ...data, matchId });
       return;
     }
 
-    const entries = await syncAttendanceEntries(context, match);
-    const summary = getAttendanceSummary(entries, match.mode);
+    const attendanceState = await syncAttendanceEntries(context, match);
+    const summary = getAttendanceSummary(attendanceState.entries, match.mode);
     const requiresCleanup = MATCH_SIDES.some((side) => (
       Number(summary.bySide?.[side]?.pending || 0) > 0
     ));
-    const checkinOpen = isAttendanceCheckinOpen(match);
+    const startStatus = getStartStatus(match, attendanceState.entries);
+    try {
+      const notificationMatch = toNotificationMatch(match, attendanceState.roster);
+      await reconcileMatchAttendanceNotifications(
+        context.supabase,
+        notificationMatch,
+      );
+      await queueMatchDiscordDeliveries(
+        context.supabase,
+        notificationMatch,
+        "attendanceRefresh",
+      );
+    } catch (notificationError) {
+      console.error("QR attendance notification reconciliation failed.", notificationError);
+    }
     sendJson(response, 200, {
       ok: true,
       matchId,
-      qr: createMatchAttendanceQr(matchId, request),
+      qr: startStatus.checkinOpen ? createMatchAttendanceQr(matchId, request) : null,
       summary,
       requiresCleanup,
-      checkinOpen,
+      checkinOpen: startStatus.checkinOpen,
+      startStatus,
       canResize: !match.started_at
         && !isTournamentMatch(match)
-        && checkinOpen
+        && startStatus.checkinOpen
         && Boolean(summary.recommendedMode)
         && (summary.recommendedMode !== match.mode || requiresCleanup),
     });

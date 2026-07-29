@@ -9,7 +9,7 @@ const ERROR_LABELS = Object.freeze({
   match_attendance_qr_disabled: "이 방은 QR 출석을 사용하지 않습니다.",
   match_attendance_qr_locked: "QR 출석 운영 시간이 끝났습니다.",
   match_attendance_qr_permission_denied: "이 경기의 QR 운영 권한이 없습니다. 대회 경기는 배정 심판만 운영합니다.",
-  match_attendance_not_checkin_time: "출석 정리는 경기 10분 전부터 가능합니다.",
+  match_attendance_not_checkin_time: "출석 정리는 경기 20분 전부터 가능합니다.",
   match_attendance_resize_unbalanced: "양쪽 출석 인원 차이가 커서 지원 경기 방식으로 줄일 수 없습니다.",
   match_attendance_resize_locked: "경기 시작 전에만 출석 인원 기준으로 방 크기를 바꿀 수 있습니다.",
   match_attendance_resize_tournament_locked: "대회 경기는 출석 인원에 맞춰 경기 방식이나 확정 명단을 자동 변경하지 않습니다.",
@@ -24,7 +24,7 @@ function getSideLabel(side = "teamA") {
   return side === "teamA" ? "A사이드" : "B사이드";
 }
 
-export default function MatchAttendanceQrPanel({ match, onChanged }) {
+export default function MatchAttendanceQrPanel({ match, onChanged, onStatusChange }) {
   const [response, setResponse] = useState(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -59,6 +59,12 @@ export default function MatchAttendanceQrPanel({ match, onChanged }) {
     return () => window.clearInterval(tickId);
   }, []);
 
+  useEffect(() => {
+    onStatusChange?.(response?.startStatus
+      ? { ...response.startStatus, matchId: response.matchId }
+      : null);
+  }, [onStatusChange, response?.matchId, response?.startStatus]);
+
   const resize = async () => {
     if (!response?.canResize || pending) return;
     const nextMode = response.summary?.recommendedMode;
@@ -80,6 +86,16 @@ export default function MatchAttendanceQrPanel({ match, onChanged }) {
   const expiresAtMs = Date.parse(response?.qr?.expiresAt || "") || 0;
   const remainingSeconds = Math.max(0, Math.ceil((expiresAtMs - nowMs) / 1000));
   const summary = response?.summary;
+  const startStatus = response?.startStatus;
+  const attendanceStatusCopy = !startStatus
+    ? "서버시간과 출석 상태를 확인하고 있습니다."
+    : !startStatus.checkinOpen
+      ? "출석 시작 전 · QR 출석은 경기 20분 전부터 시작합니다."
+      : startStatus.scheduledStartReached
+        ? "예정 시작시간이 되어 경기를 시작할 수 있습니다. 시작하면 남은 미출석 선수는 미출석 처리됩니다."
+        : startStatus.allCheckedIn
+          ? "전원 출석 완료 · 지금 경기 시작 가능"
+          : "전원 출석이 완료되면 예정시간 전에도 경기를 시작할 수 있습니다.";
   const updatedSecondsAgo = lastUpdatedAt ? Math.max(0, Math.floor((nowMs - lastUpdatedAt) / 1000)) : 0;
   const refreshStatus = pending
     ? "출석 현황 갱신 중"
@@ -99,6 +115,10 @@ export default function MatchAttendanceQrPanel({ match, onChanged }) {
         </Button>
       </header>
       {refreshStatus ? <small className="ui-match-attendance-refresh-status" role="status" aria-live="polite">{refreshStatus}</small> : null}
+      <div className="ui-status-strip ui-match-attendance-start-status" role="status" aria-live="polite">
+        <span>출석 완료 {startStatus?.checkedInCount ?? 0}/{startStatus?.requiredCount ?? 0}</span>
+        <strong>{attendanceStatusCopy}</strong>
+      </div>
       {response?.qr?.value ? (
         <div className="ui-match-attendance-body">
           <QrCode value={response.qr.value} className="ui-match-attendance-qr" label="경기 출석 QR 코드" expandable />
@@ -108,7 +128,9 @@ export default function MatchAttendanceQrPanel({ match, onChanged }) {
             <small>시작 전 스캔은 정상 출석, 시작 후 스캔은 지각·같은 사이드 후보 등록입니다.</small>
           </div>
         </div>
-      ) : pending ? <span>QR 만드는 중</span> : null}
+      ) : pending ? <span>QR 만드는 중</span> : startStatus && !startStatus.checkinOpen ? (
+        <small>출석 시작 전에는 QR을 표시하지 않습니다.</small>
+      ) : null}
       {summary ? (
         <div className="ui-match-attendance-summary">
           {["teamA", "teamB"].map((side) => {

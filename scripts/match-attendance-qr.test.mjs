@@ -2,9 +2,23 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  getStartStatus,
   getRecommendedSideSize,
   isAttendanceCheckinOpen,
 } from "../server/api/matches/attendance-qr.js";
+import {
+  getMatchPregameNotificationPlan,
+  getUpsertableDiscordDeliveryRows,
+  getMissingMatchAttendanceIds,
+  getRequiredMatchAttendanceIds,
+  hasScheduledNotificationRevisionChanged,
+  toDiscordDeliveryRows,
+} from "../server/api/matches/sync-match.js";
+import {
+  getPregameDeliveryInvalidReason,
+  isCurrentDiscordDeliveryTarget,
+  isDiscordDeliveryExpired,
+} from "../server/api/discord/dm-worker.js";
 import {
   addMatchLatePlayer,
   checkInMatchPlayer,
@@ -126,16 +140,222 @@ test("출석 기준 경기 방식은 현재 크기보다 커지지 않는다", (
   assert.equal(getRecommendedSideSize(entries.slice(0, 3).concat(entries.slice(5, 8)), "5v5").recommendedMode, "3v3");
 });
 
-test("출석 정리는 경기 10분 전부터 열린다", () => {
+test("QR 출석은 경기 20분 전부터 열리고 5분 토큰 회전과 분리된다", () => {
   const match = {
     scheduled_date: "2026-07-24",
     scheduled_time: "20:00:00",
     rules: { timingType: "scheduled" },
   };
-  assert.equal(isAttendanceCheckinOpen(match, Date.parse("2026-07-24T19:49:59+09:00")), false);
-  assert.equal(isAttendanceCheckinOpen(match, Date.parse("2026-07-24T19:50:00+09:00")), true);
+  assert.equal(isAttendanceCheckinOpen(match, Date.parse("2026-07-24T19:39:00+09:00")), false);
+  assert.equal(isAttendanceCheckinOpen(match, Date.parse("2026-07-24T19:40:00+09:00")), true);
+  assert.equal(isAttendanceCheckinOpen(match, Date.parse("2026-07-24T19:45:00+09:00")), true);
+  assert.equal(ATTENDANCE_QR_ROTATION_MS, 5 * 60 * 1000);
   assert.equal(isAttendanceCheckinOpen({ ...match, rules: { timingType: "instant" } }, 0), true);
   assert.equal(isAttendanceCheckinOpen({ ...match, started_at: "2026-07-24T11:00:00Z" }, 0), true);
+});
+
+test("서버 시작 상태는 예정시간 전 전원 출석만 허용하고 예정시간 뒤 미출석을 허용한다", () => {
+  const match = {
+    id: "start-status",
+    scheduled_date: "2026-07-24",
+    scheduled_time: "20:00",
+    referee_id: "referee",
+    rules: { timingType: "scheduled", qrAttendanceEnabled: true },
+  };
+  const readyEntries = [
+    { player_id: "host-player", status: "on_time" },
+    { player_id: "reserve-a", status: "on_time" },
+    { player_id: "referee", status: "pending" },
+  ];
+  const exactlyTwentyMinutesBefore = getStartStatus(
+    match,
+    readyEntries,
+    Date.parse("2026-07-24T19:40:00+09:00"),
+  );
+  assert.equal(exactlyTwentyMinutesBefore.requiredCount, 2);
+  assert.equal(exactlyTwentyMinutesBefore.allCheckedIn, true);
+  assert.equal(exactlyTwentyMinutesBefore.canStartEarly, true);
+
+  const missingEntries = readyEntries.map((entry) => (
+    entry.player_id === "reserve-a" ? { ...entry, status: "pending" } : entry
+  ));
+  assert.equal(getStartStatus(
+    match,
+    missingEntries,
+    Date.parse("2026-07-24T19:39:00+09:00"),
+  ).blockReason, "attendance_not_open");
+  assert.equal(getStartStatus(
+    match,
+    missingEntries,
+    Date.parse("2026-07-24T19:50:00+09:00"),
+  ).blockReason, "attendance_pending");
+  const scheduledStart = getStartStatus(
+    match,
+    missingEntries,
+    Date.parse("2026-07-24T20:00:00+09:00"),
+  );
+  assert.equal(scheduledStart.canStart, true);
+  assert.equal(scheduledStart.scheduledStartReached, true);
+});
+
+test("QR 전원 출석 계산은 선수 방장과 후보를 포함하고 비선수 방장과 심판을 제외한다", () => {
+  const match = {
+    createdBy: "host-player",
+    refereeId: "referee",
+    teamA: { players: ["host-player", "a2"] },
+    teamB: { players: ["b1", "referee"] },
+    reservePlayers: { teamA: ["reserve-a"], teamB: ["reserve-b"] },
+    attendance: { teamA: ["a2", "reserve-a"], teamB: ["b1"] },
+  };
+  assert.deepEqual(
+    getRequiredMatchAttendanceIds(match),
+    ["host-player", "a2", "b1", "reserve-a", "reserve-b"],
+  );
+  assert.deepEqual(getMissingMatchAttendanceIds(match), ["host-player", "reserve-b"]);
+
+  const nonPlayerHost = { ...match, createdBy: "host-operator" };
+  assert.equal(getRequiredMatchAttendanceIds(nonPlayerHost).includes("host-operator"), false);
+});
+
+test("경기 전 Discord 알림은 90초 뒤 만료되고 출석·운영자 변경을 발송 직전에 거른다", () => {
+  const sendAt = Date.parse("2026-07-24T10:00:00.000Z");
+  const baseDelivery = {
+    id: "discord-match-attendance-20m-match-1-player-a",
+    target_user_id: "player-a",
+    send_at: new Date(sendAt).toISOString(),
+    payload: {
+      noticePrefix: "match-attendance-20m",
+      matchId: "match-1",
+      targetUserId: "player-a",
+      sendAt: new Date(sendAt).toISOString(),
+    },
+  };
+  assert.equal(isDiscordDeliveryExpired(baseDelivery, sendAt + 89_999), false);
+  assert.equal(isDiscordDeliveryExpired(baseDelivery, sendAt + 90_000), true);
+
+  const match = {
+    id: "match-1",
+    status: "agreed",
+    created_by: "host",
+    referee_id: "referee",
+    rules: { qrAttendanceEnabled: true },
+    reserve_players: { teamA: ["reserve-a"], teamB: [] },
+    attendance: { teamA: ["player-a"], teamB: [] },
+    scheduled_date: "2026-07-24",
+    scheduled_time: "20:00:00",
+  };
+  const playerRows = [{ match_id: "match-1", user_id: "player-a", side: "teamA" }];
+  assert.equal(
+    getPregameDeliveryInvalidReason(baseDelivery, match, playerRows),
+    "discord_notification_attendance_complete",
+  );
+  assert.equal(
+    getPregameDeliveryInvalidReason({
+      ...baseDelivery,
+      id: "discord-match-manager-attendance-10m-match-1-host",
+      target_user_id: "host",
+      payload: { ...baseDelivery.payload, noticePrefix: "match-manager-attendance-10m", targetUserId: "host" },
+    }, match, playerRows),
+    "discord_notification_manager_changed",
+  );
+  assert.equal(
+    getPregameDeliveryInvalidReason(baseDelivery, { ...match, started_at: "2026-07-24T10:00:00Z" }, playerRows),
+    "discord_notification_match_inactive",
+  );
+  assert.equal(
+    getPregameDeliveryInvalidReason({
+      ...baseDelivery,
+      payload: { ...baseDelivery.payload, scheduledAt: "2026-07-24 19:00" },
+    }, match, playerRows),
+    "discord_notification_schedule_changed",
+  );
+  assert.equal(isCurrentDiscordDeliveryTarget(
+    { discord_user_id: "123456789012345678" },
+    { discord_user_id: "123456789012345678" },
+  ), true);
+  assert.equal(isCurrentDiscordDeliveryTarget(
+    { discord_user_id: "123456789012345678" },
+    { discord_user_id: null },
+  ), false);
+});
+
+test("경기 전 알림은 1시간·20분·10분만 만들고 현재 출석·운영자를 반영한다", () => {
+  const scheduledAt = "2026-07-24 20:00";
+  const match = {
+    id: "notification-plan",
+    title: "알림 테스트",
+    status: "agreed",
+    scheduledAt,
+    createdBy: "host",
+    refereeId: "referee",
+    teamA: { players: ["player-a"] },
+    teamB: { players: ["player-b"] },
+    reservePlayers: { teamA: ["reserve-a"], teamB: [] },
+    attendance: { teamA: ["player-a"], teamB: [] },
+    rules: { qrAttendanceEnabled: true },
+  };
+  const plan = getMatchPregameNotificationPlan(
+    match,
+    Date.parse("2026-07-24T18:00:00+09:00"),
+  );
+  assert.deepEqual(
+    plan.map((notice) => notice.idPrefix),
+    [
+      "match-reminder-1h",
+      "match-attendance-20m",
+      "match-attendance-10m",
+      "match-manager-attendance-10m",
+    ],
+  );
+  assert.deepEqual(plan[0].targetIds, ["player-a", "player-b", "reserve-a", "referee"]);
+  assert.deepEqual(plan[1].targetIds, ["player-b", "reserve-a"]);
+  assert.deepEqual(plan[2].targetIds, ["player-b", "reserve-a"]);
+  assert.deepEqual(plan[3].targetIds, ["referee"]);
+  assert.match(plan[3].intro, /출석 완료 1명 · 미출석 2명/u);
+
+  const insideTwentyMinutes = getMatchPregameNotificationPlan(
+    { ...match, refereeId: "" },
+    Date.parse("2026-07-24T19:45:00+09:00"),
+  );
+  assert.deepEqual(
+    insideTwentyMinutes.map((notice) => notice.idPrefix),
+    ["match-attendance-20m", "match-manager-attendance-10m"],
+  );
+  assert.deepEqual(insideTwentyMinutes[1].targetIds, ["host"]);
+
+  const scheduledRow = { payload: { scheduledAt: "2026-07-24 20:00" } };
+  assert.equal(hasScheduledNotificationRevisionChanged(
+    scheduledRow,
+    { payload: { scheduledAt: "2026-07-24 20:00" } },
+  ), false);
+  assert.equal(hasScheduledNotificationRevisionChanged(
+    scheduledRow,
+    { payload: { scheduledAt: "2026-07-24 21:00" } },
+  ), true);
+
+  const [deliveryRow] = toDiscordDeliveryRows(match, [{
+    id: "player-a",
+    discord_user_id: "123456789012345678",
+  }], {
+    idPrefix: "match-reminder-1h",
+    title: "경기 1시간 전",
+    intro: "경기 일정과 구장을 확인해 주세요.",
+  });
+  assert.equal(deliveryRow.payload.fromUserId, "host");
+  assert.deepEqual(getUpsertableDiscordDeliveryRows([deliveryRow], [{
+    ...deliveryRow,
+    status: "cancelled",
+    sent_at: null,
+  }]), []);
+  assert.equal(getUpsertableDiscordDeliveryRows([{
+    ...deliveryRow,
+    send_at: "2026-07-24T11:00:00.000Z",
+  }], [{
+    ...deliveryRow,
+    status: "queued",
+    attempt_count: 1,
+    send_at: "2026-07-24T10:01:00.000Z",
+  }])[0].send_at, "2026-07-24T10:01:00.000Z");
 });
 
 test("배정 심판과 후보 본인만 출전·후보를 교체할 수 있다", () => {
@@ -296,15 +516,19 @@ test("출석 운영자는 자기 출석도 같은 중앙 action으로 저장한�
   assert.deepEqual(checkedIn.matches[0].attendance.teamA, ["host"]);
 });
 
-test("예정 경기방도 시작 10분 전부터 체크인 단계와 QR 운영을 연다", () => {
-  const match = {
+test("QR 경기방은 20분 전, 비QR 경기방은 기존 10분 전부터 체크인 단계로 전환한다", () => {
+  const qrMatch = {
     status: "agreed",
     timingType: "scheduled",
     scheduledDate: "2026-07-28",
     scheduledTime: "20:00",
+    rules: { qrAttendanceEnabled: true },
   };
-  assert.equal(getMatchRoomPhase(match, new Date("2026-07-28T10:49:59.000Z")).phase, "locked");
-  assert.equal(getMatchRoomPhase(match, new Date("2026-07-28T10:50:00.000Z")).phase, "checkin");
+  assert.equal(getMatchRoomPhase(qrMatch, new Date("2026-07-28T10:39:59.000Z")).phase, "locked");
+  assert.equal(getMatchRoomPhase(qrMatch, new Date("2026-07-28T10:40:00.000Z")).phase, "checkin");
+  const nonQrMatch = { ...qrMatch, rules: { qrAttendanceEnabled: false } };
+  assert.equal(getMatchRoomPhase(nonQrMatch, new Date("2026-07-28T10:49:59.000Z")).phase, "locked");
+  assert.equal(getMatchRoomPhase(nonQrMatch, new Date("2026-07-28T10:50:00.000Z")).phase, "checkin");
 });
 
 test("일반 live 경기는 종료 후 누락 출전자를 추가할 수 없다", () => {
@@ -500,6 +724,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const unifiedRosterSql = await readSource("supabase/migrations/20260727110000_unified_match_roster_transition.sql");
   const simplifiedLiveMatchSql = await readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql");
   const tournamentQrSql = await readSource("supabase/migrations/20260729121000_enable_tournament_qr_attendance.sql");
+  const unifiedQrStartSql = await readSource("supabase/migrations/20260729150000_unify_match_qr_start_policy.sql");
   const hostFinalizationSql = await readSource("supabase/migrations/20260728130000_general_match_host_finalization.sql");
   const liveAuthoritySql = await readSource("supabase/migrations/20260728143000_referee_live_match_authority.sql");
   const scoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727144000_allow_score_only_postgame_roster.sql");
@@ -507,7 +732,11 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const syncMatchSource = await readSource("server/api/matches/sync-match.js");
   const attendanceApiSource = await readSource("server/api/matches/attendance-qr.js");
   const recruitingSource = await readSource("src/pages/Recruiting.jsx");
-  assert.match(sql, /interval '10 minutes'/u);
+  assert.match(unifiedQrStartSql, /interval '20 minutes'/u);
+  assert.match(unifiedQrStartSql, /now_at < scheduled_at_kst[\s\S]*missing_count > 0/u);
+  assert.match(unifiedQrStartSql, /match_attendance_entries[\s\S]*coalesce\(entry\.status, 'pending'\) not in \('on_time', 'late'\)/u);
+  assert.match(unifiedQrStartSql, /pg_advisory_xact_lock/u);
+  assert.doesNotMatch(unifiedQrStartSql, /drop\s+table|truncate\s+table|delete\s+from/iu);
   assert.match(sql, /candidate_size <= current_side_size/u);
   assert.match(sql, /'attendanceStatus', 'late'/u);
   assert.match(sql, /'reserveRegistered', true/u);
@@ -522,6 +751,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(attendanceApiSource, /const qrEligible = match\.visibility === "public" \|\| isTournamentMatch\(match\)/u);
   assert.match(attendanceApiSource, /isTournamentMatch\(match\)[\s\S]*?\[match\.referee_id\]/u);
   assert.match(attendanceApiSource, /canResize: !match\.started_at[\s\S]*?!isTournamentMatch\(match\)/u);
+  assert.match(attendanceApiSource, /queueMatchDiscordDeliveries\([\s\S]*?notificationMatch,[\s\S]*?"attendanceRefresh"/u);
   assert.match(recruitingSource, /selectedMatchRules\.qrAttendanceEnabled/u);
   assert.match(clockAccuracySql, /rankball_match_clock_effective_elapsed_ms/u);
   assert.match(clockAccuracySql, /started_active_elapsed_ms/u);

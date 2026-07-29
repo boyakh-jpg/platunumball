@@ -2928,6 +2928,7 @@ function RecruitingRoomModalReady({
   const [joiningPostId, setJoiningPostId] = useState("");
   const [roomShareStatus, setRoomShareStatus] = useState("");
   const [soloRecordDeleteTarget, setSoloRecordDeleteTarget] = useState(null);
+  const [attendanceStartStatus, setAttendanceStartStatus] = useState(null);
   const [finalizeMatchTarget, setFinalizeMatchTarget] = useState(null);
   const [finalizeMatchPending, setFinalizeMatchPending] = useState(false);
   const [roomCancellationTarget, setRoomCancellationTarget] = useState(null);
@@ -4082,9 +4083,40 @@ function RecruitingRoomModalReady({
               ...getMatchReservePlayerIds(sourceMatch, sideName).map((playerId) => [playerId, { side: sideName, reserve: true }]),
             ]))
           : null;
-        const canManageMatchCheckin = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
-        const canShowStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
-        const sourceMatchMissingStartAttendanceIds = canShowStartSourceMatch ? getMissingStartAttendanceIds(sourceMatch, app.currentUser.id) : [];
+        const sourceMatchUsesQrAttendance = selectedMatchRules.qrAttendanceEnabled === true;
+        const sourceMatchServerStartStatus = attendanceStartStatus?.matchId === sourceMatch?.id
+          ? attendanceStartStatus
+          : null;
+        const canInspectMatchAttendance = Boolean(
+          matchRoom
+          && sourceMatchUsesQrAttendance
+          && currentUserCanStartSourceMatch
+          && !sourceMatch?.startedAt
+          && !sourceMatch?.endedAt
+          && !sourceMatch?.result,
+        );
+        const canManageMatchCheckin = Boolean(
+          matchRoom
+          && currentUserCanStartSourceMatch
+          && !sourceMatch?.startedAt
+          && !sourceMatch?.endedAt
+          && !sourceMatch?.result
+          && (
+            sourceMatchUsesQrAttendance
+              ? sourceMatchServerStartStatus?.checkinOpen === true
+              : sourceMatchPhase?.phase === "checkin"
+          ),
+        );
+        const canShowStartSourceMatch = Boolean(
+          matchRoom
+          && currentUserCanStartSourceMatch
+          && !sourceMatch?.result
+          && !sourceMatch?.endedAt
+          && (sourceMatchUsesQrAttendance || sourceMatchPhase?.phase === "checkin"),
+        );
+        const sourceMatchMissingStartAttendanceIds = canShowStartSourceMatch
+          ? getMissingStartAttendanceIds(sourceMatch, sourceMatchUsesQrAttendance ? "" : app.currentUser.id)
+          : [];
         const pickupAssignmentSideCapacity = sourceMatch ? getRecruitingSideCapacity(sourceMatch) : 0;
         const pickupAssignmentBenchCapacity = sourceMatch ? getRecruitingBenchCapacity(sourceMatch) : 0;
         const pickupAssignmentAttendanceReady = sourceMatchCheckedInIds.length >= pickupAssignmentSideCapacity * 2
@@ -4106,7 +4138,11 @@ function RecruitingRoomModalReady({
         const canStartSourceMatch = canShowStartSourceMatch
           && !scheduleChangePending
           && !ruleAcknowledgementPending
-          && sourceMatchMissingStartAttendanceIds.length === 0
+          && (
+            sourceMatchUsesQrAttendance
+              ? sourceMatchServerStartStatus?.canStart === true
+              : sourceMatchMissingStartAttendanceIds.length === 0
+          )
           && (roomPhaseViewModel.mode !== ROOM_BODY_MODES.pickupAssignment || roomPhaseViewModel.assignmentConfirmed);
         const sourceMatchStartButtonLabel = canStartSourceMatch
           ? "경기 시작"
@@ -4114,8 +4150,16 @@ function RecruitingRoomModalReady({
             ? "일정 승인 대기"
             : ruleAcknowledgementPending
               ? "변경 확인 대기"
+          : sourceMatchUsesQrAttendance && !sourceMatchServerStartStatus
+            ? "서버시간 확인 중"
+          : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "attendance_not_open"
+            ? "출석 시작 전"
+          : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "attendance_pending"
+            ? `참가자 ${sourceMatchServerStartStatus.missingCount}명 출석 필요`
           : sourceMatchMissingStartAttendanceIds.length > 0
             ? `참가자 ${sourceMatchMissingStartAttendanceIds.length}명 출석 필요`
+            : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "match_state_mismatch"
+              ? "경기 상태 확인 필요"
             : "팀 배정 확정 필요";
         const sourceMatchStartButtonTitle = canStartSourceMatch
           ? ""
@@ -4123,8 +4167,16 @@ function RecruitingRoomModalReady({
             ? "일정 또는 구장 변경안을 전원이 승인해야 합니다."
             : ruleAcknowledgementPending
               ? "현재 참가자 전원이 최신 규칙을 확인해야 합니다."
+          : sourceMatchUsesQrAttendance && !sourceMatchServerStartStatus
+            ? "서버시간과 최신 출석 상태를 확인한 뒤 시작할 수 있습니다."
+          : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "attendance_not_open"
+            ? "QR 출석은 경기 20분 전부터 시작합니다."
+          : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "attendance_pending"
+            ? "출전선수와 후보선수 전원이 출석해야 예정시간 전에 시작할 수 있습니다."
           : sourceMatchMissingStartAttendanceIds.length > 0
-            ? "방장 본인은 시작 처리로 확인하며, 나머지 참가자의 출석을 확인해야 경기 시작이 가능합니다."
+            ? "출전선수와 후보선수 전원이 출석해야 예정시간 전에 시작할 수 있습니다."
+            : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "server_time_unavailable"
+              ? "서버시간을 확인하지 못했습니다. 새로고침 후 다시 시도해 주세요."
             : "A/B 팀 배정과 교대 기준을 확정해야 경기 시작이 가능합니다.";
         const canRequestRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canConfirmRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
@@ -5140,11 +5192,12 @@ function RecruitingRoomModalReady({
 
               {!sourceRoomReadOnly
                 && matchRoom
-                && canManageMatchCheckin
+                && canInspectMatchAttendance
                 && selectedMatchRules.qrAttendanceEnabled ? (
                   <MatchAttendanceQrPanel
                     match={sourceMatch}
                     onChanged={() => app.actions.loadMatchDetail?.(sourceMatch.id)}
+                    onStatusChange={setAttendanceStartStatus}
                   />
                 ) : null}
 
