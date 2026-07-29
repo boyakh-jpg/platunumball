@@ -220,13 +220,49 @@
   line-height: 1;
 }
 
+.ui-match-clock-score-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--control-group-gap);
+  min-width: 0;
+}
+
+.ui-match-clock-score-control-side {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--control-group-gap);
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+  background: var(--ui-control-group-bg);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+}
+
+.ui-match-clock-score-control-side:only-child {
+  grid-column: 1 / -1;
+}
+
+.ui-match-clock-score-control-side > strong {
+  font-family: var(--sports-display-font);
+  font-size: 0.82rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ui-match-clock-score-control-side-a > strong {
+  color: var(--team-home);
+}
+
+.ui-match-clock-score-control-side-b > strong {
+  color: var(--team-away);
+}
 
 .ui-match-clock-score-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(40px, 1fr));
   gap: 8px;
-  width: min(100%, 224px);
-  margin: 10px auto 0;
+  min-width: 0;
 }
 
 .ui-match-clock-score-actions .ui-button {
@@ -614,7 +650,7 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-live {
-  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-rows: minmax(0, 1fr) repeat(3, auto);
   gap: var(--match-clock-focus-gap);
   overflow: hidden;
 }
@@ -708,6 +744,29 @@
   min-height: 0;
   margin: 0;
   white-space: nowrap;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-controls {
+  gap: var(--match-clock-focus-gap);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-control-side {
+  gap: var(--match-clock-focus-gap);
+  padding: 4px 6px;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-control-side > strong {
+  font-size: 0.72rem;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-actions {
+  grid-template-columns: repeat(4, minmax(34px, 1fr));
+  gap: var(--match-clock-focus-gap);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-actions .ui-button {
+  min-height: 34px;
+  padding-inline: 4px;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-actions {
@@ -880,6 +939,16 @@
 @container (width <= 680px) {
   .ui-match-clock-panel:not(.ui-match-clock-panel-focus) .ui-match-clock-display-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (width <= 520px) {
+  .ui-match-clock-panel:not(.ui-match-clock-panel-focus) .ui-match-clock-score-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-match-clock-panel:not(.ui-match-clock-panel-focus) .ui-match-clock-score-actions {
+    grid-template-columns: repeat(4, minmax(40px, 1fr));
   }
 }
 

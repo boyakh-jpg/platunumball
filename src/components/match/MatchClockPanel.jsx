@@ -874,15 +874,6 @@ export default function MatchClockPanel({
                 <div className="ui-match-clock-team ui-match-clock-team-a">
                   <span className="ui-match-clock-team-label">A 점수</span>
                   <strong className="ui-match-clock-team-score">{score.a}</strong>
-                  {directScoreControlsEnabled && clockEditableScoreSides.includes("teamA") && !isEnded ? (
-                    <div className="ui-match-clock-score-actions" aria-label="A 점수 조정">
-                      {[-1, 1, 2, 3].map((delta) => (
-                        <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamA", delta)}>
-                          {delta > 0 ? `+${delta}` : delta}
-                        </Button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
               ) : null}
               <div className="ui-match-clock-main-time">
@@ -895,15 +886,6 @@ export default function MatchClockPanel({
                 <div className="ui-match-clock-team ui-match-clock-team-b">
                   <span className="ui-match-clock-team-label">B 점수</span>
                   <strong className="ui-match-clock-team-score">{score.b}</strong>
-                  {directScoreControlsEnabled && clockEditableScoreSides.includes("teamB") && !isEnded ? (
-                    <div className="ui-match-clock-score-actions" aria-label="B 점수 조정">
-                      {[-1, 1, 2, 3].map((delta) => (
-                        <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamB", delta)}>
-                          {delta > 0 ? `+${delta}` : delta}
-                        </Button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -929,6 +911,35 @@ export default function MatchClockPanel({
               </button>
             ) : null}
           </div>
+
+          {directScoreControlsEnabled && !isEnded && clockEditableScoreSides.length ? (
+            <div className="ui-match-clock-score-controls" aria-label="점수 조정">
+              {clockEditableScoreSides.includes("teamA") ? (
+                <div className="ui-match-clock-score-control-side ui-match-clock-score-control-side-a">
+                  <strong>A 점수 {score.a}</strong>
+                  <div className="ui-match-clock-score-actions" aria-label="A 점수 조정">
+                    {[-1, 1, 2, 3].map((delta) => (
+                      <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamA", delta)}>
+                        {delta > 0 ? `+${delta}` : delta}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {clockEditableScoreSides.includes("teamB") ? (
+                <div className="ui-match-clock-score-control-side ui-match-clock-score-control-side-b">
+                  <strong>B 점수 {score.b}</strong>
+                  <div className="ui-match-clock-score-actions" aria-label="B 점수 조정">
+                    {[-1, 1, 2, 3].map((delta) => (
+                      <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamB", delta)}>
+                        {delta > 0 ? `+${delta}` : delta}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {isBreak ? (
             <div className={`ui-match-clock-break${breakOvertimeMs > 0 ? " ui-match-clock-break-over" : ""}`} role="timer">

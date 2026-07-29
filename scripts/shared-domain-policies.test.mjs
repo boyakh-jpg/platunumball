@@ -628,13 +628,19 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /matchRules\.halftimeMinutes/);
   assert.match(panelSource, /directScoreControlsEnabled = scoreboardEnabled/);
   assert.match(panelSource, /export function MatchScoreControls/);
-  assert.match(panelSource, /directScoreControlsEnabled && clockEditableScoreSides\.includes\("teamA"\)/);
-  assert.match(panelSource, /directScoreControlsEnabled && clockEditableScoreSides\.includes\("teamB"\)/);
+  assert.match(panelSource, /directScoreControlsEnabled && !isEnded && clockEditableScoreSides\.length/);
+  assert.match(panelSource, /clockEditableScoreSides\.includes\("teamA"\)/);
+  assert.match(panelSource, /clockEditableScoreSides\.includes\("teamB"\)/);
   assert.match(panelSource, /breakLimitMs > 0/);
   assert.match(panelSource, /liveClock\?\.matchEndedAt/);
   assert.match(panelSource, /closeFocusMode\(\)/);
   assert.match(panelSource, /ui-match-clock-scoreboard-label">점수판/);
   assert.match(panelSource, /ui-match-clock-main-time-label">경기시계/);
+  assert.match(panelSource, /ui-match-clock-score-controls/);
+  assert.match(
+    panelSource,
+    /<\/div>\s*\{directScoreControlsEnabled && !isEnded && clockEditableScoreSides\.length \? \(\s*<div className="ui-match-clock-score-controls"/,
+  );
   assert.match(panelSource, /ui-match-shot-clock-action/);
   assert.match(panelSource, /<RotateCcw size=\{15\}/);
   assert.match(panelSource, /navigator\.mediaSession\.setActionHandler\("play", resetFromMediaControl\)/);
@@ -657,6 +663,15 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-display-grid-with-attendance \{[^}]*grid-template-columns: minmax\(124px, 0\.7fr\) minmax\(0, 4\.3fr\) minmax\(124px, 0\.7fr\);/);
   assert.match(clockStyles, /@media \(width >= 721px\)[\s\S]*?height: min\(64dvh, 34dvw, 720px\);[\s\S]*?min-height: 360px;/);
   assert.match(clockStyles, /\.ui-match-clock-score-actions \.ui-button \{[^}]*min-height: 44px;/);
+  assert.match(clockStyles, /\.ui-match-clock-score-controls \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(
+    clockStyles,
+    /@container \(width <= 520px\)[\s\S]*?\.ui-match-clock-panel:not\(\.ui-match-clock-panel-focus\) \.ui-match-clock-score-controls \{[^}]*grid-template-columns: minmax\(0, 1fr\);/,
+  );
+  assert.match(
+    clockStyles,
+    /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \{[^}]*grid-template-columns: repeat\(4, minmax\(34px, 1fr\)\);/,
+  );
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-main-time time \{[^}]*font-size: clamp\(4\.75rem, 14cqi, 10rem\);/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-shot-clock-value \{[^}]*font-size: clamp\(3rem, 8cqi, 5\.5rem\);/);
   assert.match(clockStyles, /\.ui-match-shot-clock-action \{[^}]*background: var\(--rb-orange\);/);
