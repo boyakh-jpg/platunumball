@@ -1906,7 +1906,7 @@ export function getMatchResultEntryPermission(match = {}, userId = "", options =
         ? "no_ref_host"
         : "none",
     canEditDisputeDraft,
-    canSubmit: canEditDisputeDraft || canSubmitLive || canSubmitPostgame,
+    canSubmit: canEditDisputeDraft || canSubmitLive || canSubmitPostgame || canEnterSharedRecordScore,
     canSubmitLive,
     canSubmitPostgame,
     canSubmitMissingPostgameResult,

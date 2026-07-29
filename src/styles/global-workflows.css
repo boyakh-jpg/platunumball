@@ -1293,10 +1293,10 @@ input[type="color"] {
 .approval-grid > div {
   display: grid;
   gap: var(--space-5);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  padding: 14px;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  padding: var(--card-padding);
 }
 
 .approval-grid span {

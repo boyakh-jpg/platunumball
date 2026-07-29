@@ -278,8 +278,8 @@
   padding: 16px;
   color: var(--rb-text);
   background: var(--ui-card-bg);
-  border: 1px solid var(--rb-line);
-  border-radius: var(--radius-lg);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
 }
 
 .ui-match-score-control-panel > header {
@@ -322,15 +322,24 @@
   min-width: 0;
   padding: 14px;
   text-align: center;
-  background: var(--scoreboard);
-  border: 1px solid var(--rb-line);
-  border-radius: var(--radius-md);
+  background: var(--ui-control-group-bg);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
 }
 
-.ui-match-score-control-side > strong {
+.ui-match-score-control-side > :is(strong, input) {
   font-family: var(--sports-display-font);
   font-size: clamp(2.2rem, 7vw, 4rem);
   line-height: 1;
+}
+
+.ui-match-score-control-side > input {
+  width: 100%;
+  min-width: 0;
+  min-height: 72px;
+  padding: 0 8px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .ui-match-score-control-error {

@@ -3090,14 +3090,15 @@ export function useAppData(authUser = null, appLocation = null) {
     const force = forceOrOptions === true || options.force === true;
     const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
     const teamDetailMatch = pathname.match(/^\/app\/teams\/([^/]+)$/);
-    const endpoint = teamDetailMatch ? "/api/teams/detail" : "/api/directory/load";
+    const requestedTeamId = String(options.teamId ?? "").trim();
+    const endpoint = teamDetailMatch || requestedTeamId ? "/api/teams/detail" : "/api/directory/load";
     const playerDetailMatch = pathname.match(/^\/app\/players\/([^/]+)$/);
     const kind = options.kind ?? (playerDetailMatch ? "players" : pathname === "/app/teams" ? "teams" : "self");
     const { limit, offset } = getDirectoryPageRequest(options, { kind });
     const filter = String(options.filter ?? options.query ?? "").trim();
     const region = String(options.region ?? "").trim();
     const profileId = String(options.profileId ?? (playerDetailMatch ? decodeURIComponent(playerDetailMatch[1]) : "")).trim();
-    const teamId = teamDetailMatch ? decodeURIComponent(teamDetailMatch[1]) : "";
+    const teamId = requestedTeamId || (teamDetailMatch ? decodeURIComponent(teamDetailMatch[1]) : "");
     const includeTeamMemberProfiles = options.includeTeamMemberProfiles === true;
     const placementCompleteOnly = options.placementCompleteOnly === true;
     const cacheKey = [endpoint, kind, limit, offset, filter, region, profileId, teamId, includeTeamMemberProfiles, placementCompleteOnly].join(":");
@@ -3118,7 +3119,7 @@ export function useAppData(authUser = null, appLocation = null) {
     setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "", cacheKey }));
     const promise = trackedPostServerAction(
       endpoint,
-      teamDetailMatch
+      endpoint === "/api/teams/detail"
         ? { authUserId, authEmail, teamId }
         : { authUserId, authEmail, scope: "directory", kind, limit, offset, filter, region, profileId, includeTeamMemberProfiles, placementCompleteOnly },
       { allowWhenDisabled: true },

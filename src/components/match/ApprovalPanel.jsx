@@ -8,8 +8,9 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
   const recordRoom = isMatchRecordMatch(match);
   if (!recordRoom) return null;
   const confirmed = match.status === "confirmed";
+  const waitingForScore = !match.result;
   const verification = getPostgameRecordVerification(match);
-  const locked = !match.result
+  const locked = waitingForScore
     || verification.expired
     || ["confirmed", "disputed", "void", "cancelled"].includes(match.status);
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
@@ -49,7 +50,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
                     : !isRequiredApprover
                       ? "확인 대상 아님"
                       : isCurrentUser
-                        ? "내 참가 확인"
+                        ? waitingForScore ? "점수 입력 대기" : "내 참가 확인"
                         : "본인 확인 대기"}
                 </em>
               </button>
@@ -84,7 +85,15 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
       </div>
       {!confirmed ? (
         <div className={!locked && currentUserRequired && !currentUserConfirmed ? "approval-guard-note ready" : "approval-guard-note"}>
-          <strong>{currentUserConfirmed ? "내 참가 확인 완료" : currentUserRequired ? "내 참가 확인 필요" : "참가자 확인 대기"}</strong>
+          <strong>
+            {waitingForScore
+              ? "점수 입력 대기"
+              : currentUserConfirmed
+                ? "내 참가 확인 완료"
+                : currentUserRequired
+                  ? "내 참가 확인 필요"
+                  : "참가자 확인 대기"}
+          </strong>
           <span>
             {locked
               ? verification.verificationStatus === "insufficient"

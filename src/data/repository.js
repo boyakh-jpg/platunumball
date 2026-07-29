@@ -10,6 +10,7 @@ import {
   MAX_TEAM_MEMBERS,
   MAX_TEAM_MEMBERSHIPS,
   MAX_TEAM_NAME_LENGTH,
+  MAX_BENCH_CAPACITY,
   MATCH_SIDES,
   MODE_SIZES,
   PLAYER_POSITIONS,
@@ -140,7 +141,10 @@ import {
 import { getDefaultMatchRules, getMatchRulesPayload } from "../lib/matchRules.js";
 import { getMatchCreationPolicyPayload } from "../lib/matchCreationPolicies.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
-import { getPostgameRecordVerification } from "../lib/postgameRecordVerification.js";
+import {
+  getPostgameRecordRequiredParticipantIds,
+  getPostgameRecordVerification,
+} from "../lib/postgameRecordVerification.js";
 import {
   currentUserCanRefereeRecruitingRoom,
   inferRecruitingInvitationTeamId,
@@ -3387,7 +3391,9 @@ export function submitMatchResult(state, matchId, result) {
     refereeEligible: currentUserIsEligibleReferee,
   });
   const currentUserCanDisputeDraft = resultEntryPermission.canEditDisputeDraft;
-  const currentUserCanRecord = currentUserCanDisputeDraft || resultEntryPermission.editablePlayerIds.length > 0;
+  const currentUserCanRecord = currentUserCanDisputeDraft
+    || resultEntryPermission.editablePlayerIds.length > 0
+    || (isMatchRecordMatch(match) && resultEntryPermission.canSubmit);
 
   if (hasReferee && !currentUserIsEligibleReferee) {
     return {
@@ -3493,13 +3499,14 @@ export function submitMatchResult(state, matchId, result) {
   const now = new Date().toISOString();
   const draftEntry = currentUserCanDisputeDraft;
   const liveEntry = !draftEntry && liveRecordAllowed;
+  const matchRecordRoom = isMatchRecordMatch(match);
   const recordPlayerIds = getMatchRecordPlayerIds(match);
   const existingStats = normalizePlayerStats((draftEntry ? match.disputeDraftResult : match.result)?.playerStats ?? match.result?.playerStats ?? {}, recordPlayerIds);
   const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
   const targetPlayerIds = resultEntryPermission.editablePlayerIds;
   const submittedStatPatch = getSubmittedStatPatch(result.playerStats ?? {}, targetPlayerIds);
   const touchedPlayerIds = Object.keys(submittedStatPatch);
-  const nextPlayerStats = { ...existingStats };
+  const nextPlayerStats = matchRecordRoom ? {} : { ...existingStats };
   touchedPlayerIds.forEach((playerId) => {
     const allowedFieldIds = new Set(
       resultEntryPermission.getEditableStatFields(playerId).map((field) => field.id),
@@ -3525,8 +3532,12 @@ export function submitMatchResult(state, matchId, result) {
     })),
   };
   const currentResult = draftEntry ? match.disputeDraftResult ?? match.result : match.result;
-  const nextScoreA = Number(currentResult?.scoreA ?? match.teamA?.score ?? 0);
-  const nextScoreB = Number(currentResult?.scoreB ?? match.teamB?.score ?? 0);
+  const nextScoreA = Number(matchRecordRoom ? result.scoreA : currentResult?.scoreA ?? match.teamA?.score ?? 0);
+  const nextScoreB = Number(matchRecordRoom ? result.scoreB : currentResult?.scoreB ?? match.teamB?.score ?? 0);
+  if (
+    !Number.isInteger(nextScoreA) || nextScoreA < 0 || nextScoreA > 999
+    || !Number.isInteger(nextScoreB) || nextScoreB < 0 || nextScoreB > 999
+  ) return state;
   const nextResult = {
     scoreA: nextScoreA,
     scoreB: nextScoreB,
@@ -3562,10 +3573,12 @@ export function submitMatchResult(state, matchId, result) {
     notifications: [
       {
         id: makeId("n"),
-        title: draftEntry ? "이의 수정안 저장" : "심판 기록 제출",
+        title: matchRecordRoom ? "참가 확인 요청" : draftEntry ? "이의 수정안 저장" : "심판 기록 제출",
         body: draftEntry
           ? `${match.title} 이의 수정안이 임시 저장됐습니다. ${match.refereeId ? "배정 심판" : "방장"}이 최종 승인해야 확정됩니다.`
-          : `${match.title} 스코어와 전체 개인 활약이 저장됐습니다.`,
+          : matchRecordRoom
+            ? `${match.title} 점수가 저장됐습니다. 참가자 ${getPostgameRecordRequiredParticipantIds(match).length}명에게 내 참가 확인을 요청합니다.`
+            : `${match.title} 스코어와 전체 개인 활약이 저장됐습니다.`,
         tone: "match",
         matchId,
       },
@@ -8730,7 +8743,9 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
   if (!team) return state;
 
   const sideCapacity = getRecruitingSideCapacity(match);
-  const benchCapacity = getRecruitingBenchCapacity(match);
+  const benchCapacity = isMatchRecordMatch(match)
+    ? MAX_BENCH_CAPACITY
+    : getRecruitingBenchCapacity(match);
   const eligibility = getTeamEventEligibility(team, state.users, {
     capacity: sideCapacity,
     ranked: match.ranked,
@@ -8759,7 +8774,6 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
     : getMatchSideLeaderId(match, state.teams, sideName);
   const matchRecordRoom = isMatchRecordMatch(match);
   if ((tournamentPregame || matchRecordRoom) && nextActiveIds.length !== sideCapacity) return state;
-  if (matchRecordRoom && nextReserveIds.length) return state;
   if (!tournamentPregame && leaderId && ![...nextActiveIds, ...nextReserveIds].includes(leaderId)) return state;
 
   const previousRosterIds = uniquePlayerIds([

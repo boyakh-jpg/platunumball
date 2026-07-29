@@ -2872,6 +2872,10 @@ function RecruitingRoomModalReady({
   const remoteDirectoryEnabled = app.capabilities?.remoteDirectory !== false;
   const roomShareEnabled = app.capabilities?.roomShare !== false;
   const shouldLoadTeamDirectory = !sourceMatch && isTeamOnlyRoom(selectedPost);
+  const sourceMatchTeamIds = useMemo(
+    () => [...new Set([sourceMatch?.teamA?.teamId, sourceMatch?.teamB?.teamId].filter(Boolean))],
+    [sourceMatch?.teamA?.teamId, sourceMatch?.teamB?.teamId],
+  );
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
@@ -2880,6 +2884,11 @@ function RecruitingRoomModalReady({
     if (!shouldLoadTeamDirectory) return;
     loadDirectory?.({ kind: "teams", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true });
   }, [loadDirectory, shouldLoadTeamDirectory]);
+  useEffect(() => {
+    sourceMatchTeamIds.forEach((teamId) => {
+      void loadDirectory?.({ kind: "teams", teamId, includeTeamMemberProfiles: true });
+    });
+  }, [loadDirectory, sourceMatchTeamIds]);
 
   const userById = useMemo(
     () => Object.fromEntries([...app.state.users, ...Object.values(sourceMatch?.anonymousPlayers ?? {})].map((user) => [user.id, user])),
@@ -4681,7 +4690,7 @@ function RecruitingRoomModalReady({
                     sideLeaderId={sourceMatchSideLeaderIds[sideName]}
                     capacity={getRecruitingSideCapacity(sourceMatch)}
                     tournamentRoster={sourceMatchIsTournamentPregame}
-                    reserveCapacity={sourceMatchIsRecordRoom ? 0 : benchCapacity}
+                    reserveCapacity={sourceMatchIsRecordRoom ? MAX_RESERVE_PLAYERS_PER_SIDE : benchCapacity}
                     eligiblePlayerIds={sourceMatchIsTournamentPregame ? getTeamEventEligibility(sourceMatchRecordTeams[sideName], app.state.users, {
                       capacity: getRecruitingSideCapacity(sourceMatch),
                       ranked: sourceMatch.ranked,
@@ -5566,12 +5575,15 @@ function RecruitingRoomModalReady({
                   match={sourceMatch}
                   label={sourceMatchIsRecordRoom ? "사후 기록 팀 점수" : sourceMatch.endedAt ? "최종 팀 점수" : "실시간 팀 점수"}
                   editableScoreSides={sourceMatchResultEntryPermission.editableScoreSides}
-                  onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
-                    sourceMatch.id,
-                    sideName === "teamA" ? delta : 0,
-                    sideName === "teamB" ? delta : 0,
-                    revisions,
-                  )}
+                  onIncrementScore={sourceMatchIsRecordRoom ? null : (sideName, delta, revisions) => app.actions.incrementMatchScore?.(
+                      sourceMatch.id,
+                      sideName === "teamA" ? delta : 0,
+                      sideName === "teamB" ? delta : 0,
+                      revisions,
+                    )}
+                  onSubmitScore={sourceMatchIsRecordRoom
+                    ? (result) => app.actions.submitMatchResult(sourceMatch.id, result)
+                    : null}
                 />
               ) : null}
 

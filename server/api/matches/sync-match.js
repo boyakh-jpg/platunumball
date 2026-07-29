@@ -19,7 +19,10 @@ import {
   normalizeDisputeWindowMinutes,
 } from "../../../src/lib/constants.js";
 import { getMatchCancelCopy } from "../../../src/lib/matchUtils.js";
-import { POSTGAME_RECORD_REMINDER_MINUTES } from "../../../src/lib/postgameRecordVerification.js";
+import {
+  POSTGAME_RECORD_REMINDER_MINUTES,
+  getPostgameRecordVerification,
+} from "../../../src/lib/postgameRecordVerification.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeam } from "../../../src/data/teamMappers.js";
@@ -92,8 +95,8 @@ export function getMatchBenchPolicyError(error = {}) {
   if (errorText.includes("match_reserve_exceeds_bench_capacity")) {
     return { statusCode: 409, message: "match_reserve_exceeds_bench_capacity" };
   }
-  if (errorText.includes("match_record_reserve_not_allowed")) {
-    return { statusCode: 400, message: "match_record_reserve_not_allowed" };
+  if (errorText.includes("match_record_reserve_capacity_exceeded")) {
+    return { statusCode: 400, message: "match_record_reserve_capacity_exceeded" };
   }
   if (errorText.includes("match_record_roster_exact_capacity_required") || errorText.includes("match_side_leader_required")) {
     return { statusCode: 400, message: "match_record_roster_invalid" };
@@ -738,6 +741,33 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     });
   }
 
+  if (
+    ["submitMatchResult", "approveMatch"].includes(action)
+    && match.rules?.recordType === RECORD_TYPES.matchRecord
+    && match.result?.submittedAt
+  ) {
+    const verification = getPostgameRecordVerification(match);
+    const submittedAtMs = new Date(match.result.submittedAt).getTime();
+    if (!verification.expired && verification.unconfirmedIds.length && Number.isFinite(submittedAtMs)) {
+      POSTGAME_RECORD_REMINDER_MINUTES.forEach((afterMinutes) => {
+        addRows(
+          verification.unconfirmedIds,
+          discordProfilesFor(verification.unconfirmedIds),
+          {
+            idPrefix: `match-record-approval-${afterMinutes}m`,
+            title: afterMinutes === 0 ? "내 참가 확인 필요" : "내 참가 확인 알림",
+            intro: "사후 경기 점수가 입력되었습니다. 본인 참가 사실과 경기 결과를 확인해 주세요.",
+            type: afterMinutes === 0
+              ? "postgame_record_approval_requested"
+              : "postgame_record_approval_reminder",
+            actionRequired: true,
+            homeAction: true,
+            sendAt: new Date(submittedAtMs + afterMinutes * MINUTE_MS).toISOString(),
+          },
+        );
+      });
+    }
+  }
 
   await upsertMatchNotificationRows(supabase, notificationRows);
   return upsertDiscordDeliveryRows(supabase, rows);

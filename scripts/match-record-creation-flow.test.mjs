@@ -6,10 +6,10 @@ import {
   cancelMatch,
   createMatch,
   finalizeMatchByAuthority,
-  incrementMatchScore,
   runAutomaticStateMaintenance,
   setMatchRecordParticipants,
   setMatchRecordTeamRoster,
+  submitMatchResult,
 } from "../src/data/repository.js";
 import { getMatchBenchPolicyError, validateMatchCreateCourt } from "../server/api/matches/sync-match.js";
 import {
@@ -24,6 +24,10 @@ import {
 } from "../src/lib/matchUtils.js";
 
 const matchListSource = readFileSync(new URL("../server/api/matches/list.js", import.meta.url), "utf8");
+const batchScoreAndReserveMigration = readFileSync(
+  new URL("../supabase/migrations/20260729170000_match_record_batch_score_and_reserves.sql", import.meta.url),
+  "utf8",
+);
 
 const recordDate = new Date(Date.now() - 60_000);
 const recordParts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
@@ -107,25 +111,11 @@ function makeRecordDraft(composition) {
 }
 
 function setPostgameScore(state, matchId, targetScoreA, targetScoreB) {
-  let nextState = state;
-  while (true) {
-    const match = nextState.matches.find((item) => item.id === matchId);
-    const scoreA = Number(match?.result?.scoreA ?? match?.teamA?.score ?? 0);
-    const scoreB = Number(match?.result?.scoreB ?? match?.teamB?.score ?? 0);
-    if (scoreA === targetScoreA && scoreB === targetScoreB) return nextState;
-    const deltaA = Math.min(3, targetScoreA - scoreA);
-    const deltaB = Math.min(3, targetScoreB - scoreB);
-    nextState = incrementMatchScore(
-      { ...nextState, currentUserId: "u1" },
-      matchId,
-      deltaA,
-      deltaB,
-      {
-        expectedRevisionA: Number(match?.result?.scoreRevisionA ?? 0),
-        expectedRevisionB: Number(match?.result?.scoreRevisionB ?? 0),
-      },
-    );
-  }
+  return submitMatchResult(
+    { ...state, currentUserId: "u1" },
+    matchId,
+    { scoreA: targetScoreA, scoreB: targetScoreB, playerStats: {} },
+  );
 }
 
 function approveAllMatchRecordParticipants(state, matchId, excludedIds = []) {
@@ -153,9 +143,9 @@ test("postgame records allow an unknown court while normal matches still require
 });
 
 test("match-record roster policy errors return client-safe status codes", () => {
-  assert.deepEqual(getMatchBenchPolicyError({ message: "match_record_reserve_not_allowed" }), {
+  assert.deepEqual(getMatchBenchPolicyError({ message: "match_record_reserve_capacity_exceeded" }), {
     statusCode: 400,
-    message: "match_record_reserve_not_allowed",
+    message: "match_record_reserve_capacity_exceeded",
   });
   assert.deepEqual(getMatchBenchPolicyError({ message: "match_record_roster_exact_capacity_required" }), {
     statusCode: 400,
@@ -311,7 +301,7 @@ test("team match record selects teams first, then each captain fixes an exact ro
   assert.deepEqual(getMatchRecordSetupStatus(configured), { stage: "complete", label: "명단 확정 완료", tone: "green" });
 
   const scoreState = setPostgameScore(afterB, match.id, 21, 12);
-  assert.equal(scoreState.matches[0].status, "agreed");
+  assert.equal(scoreState.matches[0].status, "approval");
   assert.deepEqual(scoreState.matches[0].result.playerStats, {});
 
   const proxyAttempt = approveMatch(
@@ -336,7 +326,7 @@ test("team match record selects teams first, then each captain fixes an exact ro
   assert.deepEqual(participantApproval.matches[0].rules.participantAcceptedIds, ["u4"]);
 
   const thresholdState = approveAllMatchRecordParticipants(participantApproval, match.id, ["u4", "u5", "u6"]);
-  assert.equal(thresholdState.matches[0].status, "agreed");
+  assert.equal(thresholdState.matches[0].status, "approval");
   assert.deepEqual(
     [...thresholdState.matches[0].rules.participantAcceptedIds].sort(),
     ["u1", "u2", "u3", "u4"],
@@ -353,6 +343,49 @@ test("team match record selects teams first, then each captain fixes an exact ro
   );
   assert.deepEqual(confirmedState.matches[0].mmrExcludedPlayerIds.sort(), ["u5", "u6"]);
   assert.equal(confirmedState.matches[0].rules.teamRatingDisabled, true);
+});
+
+test("team match record keeps reserves outside approval and MMR participants", () => {
+  const reserveUser = {
+    id: "u7",
+    name: "후보선수",
+    anonymous: false,
+    trustScore: 100,
+    ratings: { integrated: 1200, "3v3": 1200 },
+  };
+  const reserveState = {
+    ...makeState(),
+    users: [...users, reserveUser],
+    teams: teams.map((team) => (
+      team.id === "team-a"
+        ? { ...team, members: [...team.members, { userId: reserveUser.id, role: "member" }] }
+        : team
+    )),
+  };
+  const created = createMatch(reserveState, makeRecordDraft("team"));
+  const matchId = created.matches[0].id;
+  const selected = setMatchRecordParticipants(created, matchId, {
+    composition: "team",
+    teamAId: "team-a",
+    teamBId: "team-b",
+  });
+  const configured = setMatchRecordTeamRoster(selected, matchId, "teamA", {
+    playerIds: ["u1", "u2", "u3"],
+    reservePlayerIds: ["u7"],
+  });
+  const match = configured.matches[0];
+
+  assert.deepEqual(match.reservePlayers.teamA, ["u7"]);
+  assert.deepEqual(match.rules.recordApproverIds.teamA, ["u1", "u2", "u3"]);
+  assert.ok(!getActualMatchPlayerIds(match).includes("u7"));
+  assert.match(batchScoreAndReserveMigration, /requested_reserve_count > 3/);
+  assert.match(batchScoreAndReserveMigration, /jsonb_build_object\(safe_side, requested_active\)/);
+  assert.match(batchScoreAndReserveMigration, /jsonb_build_object\(safe_side, requested_reserve\)/);
+  assert.match(batchScoreAndReserveMigration, /match_record_host_required/);
+  assert.doesNotMatch(
+    batchScoreAndReserveMigration,
+    /drop\s+table|truncate\s+table|delete\s+from\s+public\.(?:matches|match_approvals)/i,
+  );
 });
 
 test("match-record cancellation uses record terminology while scheduled matches keep match terminology", () => {
@@ -378,7 +411,7 @@ test("individual match record requires each actual participant to confirm their 
   state = setPostgameScore(state, matchId, 21, 12);
 
   const submitted = state.matches.find((match) => match.id === matchId);
-  assert.equal(submitted.status, "agreed");
+  assert.equal(submitted.status, "approval");
   assert.deepEqual(submitted.result.playerStats, {});
 
   const nonHostAttempt = finalizeMatchByAuthority({ ...state, currentUserId: "u2" }, matchId);
@@ -396,7 +429,7 @@ test("individual match record requires each actual participant to confirm their 
   assert.equal(proxyAttempt.matches[0], state.matches[0]);
 
   state = approveAllMatchRecordParticipants(state, matchId, ["u5", "u6"]);
-  assert.equal(state.matches.find((match) => match.id === matchId).status, "agreed");
+  assert.equal(state.matches.find((match) => match.id === matchId).status, "approval");
   const submittedAtMs = Date.parse(state.matches.find((match) => match.id === matchId).result.submittedAt);
   state = runAutomaticStateMaintenance(state, new Date(submittedAtMs + 24 * 60 * 60 * 1000));
   const confirmed = state.matches.find((match) => match.id === matchId);

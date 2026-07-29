@@ -27,8 +27,8 @@ function getRecordSubmittedAt(match = {}) {
 }
 
 function getRecordConfirmationOpenedAt(match = {}) {
-  return match.createdAt
-    ?? match.created_at
+  return match.result?.submittedAt
+    ?? match.rules?.recordResultSubmittedAt
     ?? getRecordSubmittedAt(match);
 }
 

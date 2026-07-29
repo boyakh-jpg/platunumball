@@ -71,14 +71,15 @@ test("1v1·2v2·3v3·5v5 확인 기준과 개인 MMR 배율을 고정한다", ()
   }
 });
 
-test("사후 기록 24시간은 결과 제출이 아니라 기록방 생성 시각부터 계산한다", () => {
+test("사후 기록 24시간은 결과 제출 시각부터 계산한다", () => {
   const status = getPostgameRecordVerification(makeRecord({
     createdAt: "2026-07-22T23:00:00.000Z",
     result: { scoreA: 21, scoreB: 18, submittedAt: "2026-07-23T12:00:00.000Z" },
     approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 9) },
   }), { now: "2026-07-23T23:00:00.000Z" });
-  assert.equal(status.expired, true);
-  assert.equal(status.verificationStatus, "insufficient");
+  assert.equal(status.expired, false);
+  assert.equal(status.verificationStatus, "partial");
+  assert.equal(status.confirmationOpenedAt, "2026-07-23T12:00:00.000Z");
 });
 
 test("24시간 뒤 2/3 미달이면 확인 부족으로 남기고 무응답자를 승인하지 않는다", () => {
@@ -163,8 +164,8 @@ test("별도 참가 확인 경로 없이 본인 승인 한 번으로 참가와 �
   assert.doesNotMatch(serverSource, /rankball_match_record_participation_action/);
   assert.doesNotMatch(clientSource, /confirmMatchRecordParticipation/);
   assert.match(serverSource, /MATCH_RECORD_APPROVAL_NOTICE_PREFIXES/);
-  assert.doesNotMatch(serverSource, /getPostgameRecordVerification/);
-  assert.doesNotMatch(serverSource, /POSTGAME_RECORD_REMINDER_MINUTES\.forEach/);
+  assert.match(serverSource, /getPostgameRecordVerification/);
+  assert.match(serverSource, /POSTGAME_RECORD_REMINDER_MINUTES\.forEach/);
   assert.match(serverSource, /\["submitMatchResult", "approveMatch", "finalizeMatch"\]/);
   assert.match(serverSource, /\["submitMatchResult", "approveMatch", "finalizeMatch", "resolveMatchDispute", "forfeitTournamentMatch"\]\.includes\(operation\.action\)/);
   assert.match(singleApprovalMigration, /match_record_participation_required/);
@@ -209,8 +210,8 @@ test("referee stat submissions preserve the authoritative team score", async () 
   const repository = await readFile(new URL("../src/data/repository.js", import.meta.url), "utf8");
   const matchUtils = await readFile(new URL("../src/lib/matchUtils.js", import.meta.url), "utf8");
 
-  assert.match(repository, /const nextScoreA = Number\(currentResult\?\.scoreA/);
-  assert.match(repository, /const nextScoreB = Number\(currentResult\?\.scoreB/);
+  assert.match(repository, /matchRecordRoom \? result\.scoreA : currentResult\?\.scoreA/);
+  assert.match(repository, /matchRecordRoom \? result\.scoreB : currentResult\?\.scoreB/);
   assert.doesNotMatch(repository, /const nextScoreA = getMergedResultScore/);
   assert.match(matchUtils, /const canEnterSharedRecordScore = Boolean/);
   assert.match(matchUtils, /match\.rules\?\.recordSetupReady === true/);

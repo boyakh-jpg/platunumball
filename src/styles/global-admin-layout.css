@@ -1871,9 +1871,9 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
   color: var(--text);
   cursor: pointer;
   min-height: 44px;
@@ -1882,7 +1882,7 @@
 }
 
 .approval-voter-list button.approved {
-  border-color: rgba(88, 210, 192, 0.46);
+  border-color: var(--ui-button-border);
   background: rgba(88, 210, 192, 0.11);
 }
 
@@ -1902,8 +1902,8 @@
   display: grid;
   gap: var(--space-2);
   margin-top: 12px;
-  border: 1px solid rgba(255, 211, 108, 0.22);
-  border-radius: var(--radius);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
   background: rgba(255, 211, 108, 0.075);
   padding: 10px;
 }
