@@ -106,6 +106,19 @@ test("API routes use deny-by-default method and credential policies", async () =
   internalSources.forEach((source) => assert.match(source, /bearerTokenMatches\(request,/));
 });
 
+test("Discord delivery cron uses Vault and stays separate from system maintenance", async () => {
+  const workerSource = await readSource("server/api/discord/dm-worker.js");
+  const cronSource = await readSource("supabase/migrations/20260729140000_supabase_discord_dm_cron.sql");
+
+  assert.doesNotMatch(workerSource, /runSystemMaintenance/);
+  assert.match(cronSource, /rankball-discord-dm-worker/);
+  assert.match(cronSource, /'\* \* \* \* \*'/);
+  assert.match(cronSource, /vault\.decrypted_secrets/);
+  assert.match(cronSource, /rankball_cron_secret/);
+  assert.match(cronSource, /Authorization/);
+  assert.doesNotMatch(cronSource, /CRON_SECRET=/);
+});
+
 test("credentials are rejected from every URL query", async () => {
   [
     "access_token",

@@ -1,5 +1,4 @@
 import { attachNotificationActors, bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { runSystemMaintenance } from "../system/maintenance.js";
 import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
 import { getBlockedUserIds, getNotificationActorId } from "../../../src/lib/notifications.js";
 import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
@@ -291,14 +290,6 @@ export default async function handler(request, response) {
     const limit = getBatchLimit(body.limit);
     const supabase = getSupabaseAdminClient();
     const now = new Date().toISOString();
-    const maintenance = await runSystemMaintenance(supabase, {
-      limit: body.maintenanceLimit,
-      includeRecruitingCapacityCleanup: false,
-    });
-    if (!maintenance.ok) {
-      sendJson(response, 503, { ok: false, processed: 0, sent: 0, failed: 0, maintenance });
-      return;
-    }
 
     const { data: queuedRows, error: queueError } = await supabase
       .from("discord_notification_deliveries")
@@ -312,7 +303,7 @@ export default async function handler(request, response) {
 
     if (queueError) throw queueError;
     if (!queuedRows?.length) {
-      sendJson(response, 200, { ok: true, processed: 0, sent: 0, failed: 0, maintenance });
+      sendJson(response, 200, { ok: true, processed: 0, sent: 0, failed: 0 });
       return;
     }
 
@@ -448,7 +439,6 @@ export default async function handler(request, response) {
       failed: failed.length,
       cancelled: optedOutRows.length + expiredRows.length,
       expired: expiredRows.length,
-      maintenance,
       sentIds: sent,
       failedRows: failed,
     });

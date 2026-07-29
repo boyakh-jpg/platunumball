@@ -1915,7 +1915,7 @@ flowchart TD
 16. OAuth 승인 직후 아직 원격 저장 전인 로컬 `discordConnection`은 Supabase hydration/subscription이 예전 state를 내려도 지우지 않는다. 단, 원격 state에 같은 Discord ID를 가진 다른 프로필이 있으면 보존하지 않는다.
 17. Discord DM 큐는 DB `discordNotificationDeliveries`에 저장하고 `/api/discord/dm-worker`가 처리한다. 버튼 수락/거절 커밋은 `/api/discord/interactions`가 Discord signature 검증 후 초대 서버 action으로 처리한다.
 18. `/api/discord/dm-worker`는 외부 스케줄러용 `GET`과 수동 점검용 `POST`를 모두 허용한다. 둘 다 `Authorization: Bearer <CRON_SECRET>` 검증을 통과해야 한다.
-19. Vercel Hobby Cron은 알림 worker에 쓰지 않는다. 알파 테스트에서는 cron-job.org가 5분마다 `/api/discord/dm-worker`를 호출한다.
+19. Vercel Hobby Cron은 알림 worker에 쓰지 않는다. Supabase Cron이 Vault의 `rankball_app_base_url`, `rankball_cron_secret`을 사용해 1분마다 `/api/discord/dm-worker`를 호출한다. 외부 `cron-job.org`는 사용하지 않는다.
 20. 수동 테스트 DM은 username을 받을 수 있지만 서버가 봇이 들어간 Discord 서버 멤버 검색으로 숫자 `discord_user_id`를 찾은 뒤 보낸다. 자동 발송 큐와 프로필 연동 원본은 username이 아니라 숫자 `discord_user_id`다.
 21. 경기 Discord 자동 알림은 match server action이 `discord_notification_deliveries`에 직접 저장한다. 예정 경기는 시작 24시간 전, 2시간 전, 1시간 전 리마인더와 방관리자 10분 전·5분 전 안내를 만들고, 경기 종료는 즉시 발송 큐로 넣는다.
 22. 경기 종료 알림은 점수 입력을 요청한다. 결과 제출 뒤에는 경기별 이의신청 제한시간 5분 전에 결과 확인과 이의신청 안내를 다시 보낸다.
@@ -2535,7 +2535,7 @@ flowchart TD
 3. 첫 유지보수 범위는 `status = 'approval'`, 결과 row 있음, dispute draft 없음, rating commit 없음, 이의제기 시간이 만료된 경기로 제한한다.
 4. 유지보수는 경기를 1개씩 DB lock으로 확정한다. 누락 승인 row와 실제 출전자 중 기록이 없는 선수의 0 통계 row만 보충한 뒤 수동 확정과 같은 DB MMR 함수를 한 번 호출한다. 기존 선수 기록은 덮어쓰지 않는다.
 5. 제출된 결과가 없는 postgame 경기는 자동 확정하지 않고, 허용된 기록자/운영자가 결과를 제출할 때까지 postgame에 남긴다.
-6. 기존 외부 스케줄러가 `/api/discord/dm-worker`를 호출할 때도 같은 유지보수를 함께 실행한다.
+6. `/api/discord/dm-worker`는 Discord delivery만 처리한다. 경기 유지보수는 `/api/system/maintenance`의 매일 1회 Cron과 분리한다.
 
 ## 2026-06-28 팀 관리 안정화
 
