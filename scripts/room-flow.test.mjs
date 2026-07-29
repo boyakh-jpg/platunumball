@@ -187,6 +187,17 @@ test("5v5 픽업 초대는 수락 시 양쪽 임시 정원을 균형 사용하�
   assert.ok(filledPost.roomState.playerCapacityFilledAt);
 });
 
+test("운영 API의 공용 management RPC도 픽업 초대와 수락에서 저장된 사이드를 무시한다", () => {
+  const migrationSource = readFileSync(
+    new URL("../supabase/migrations/20260729103000_balance_pickup_management_acceptance.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migrationSource, /rankball_recruiting_management_action_unguarded\(text,jsonb\)/);
+  assert.match(migrationSource, /safe_side := null;[\s\S]*?reserve := false;/);
+  assert.match(migrationSource, /rankball_recruiting_pickup_best_side\(safe_post_id\)/);
+  assert.match(migrationSource, /formationMode[\s\S]*?matchIntent[\s\S]*?pickup/);
+});
+
 test("픽업 체크인은 배정 확정 전 A/B 작업대를 표시한다", () => {
   const match = { status: "agreed", timingType: "instant", formationMode: "pickup", rules: {} };
   const view = getRoomPhaseViewModel({ match });
