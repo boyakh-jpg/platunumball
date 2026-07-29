@@ -13,21 +13,29 @@ import {
   toDateTime,
   uniqueStringIds as uniqueIds,
 } from "../_supabaseAdmin.js";
+import { compactClientUser } from "../../lib/clientProjection.js";
+import {
+  attachRoomFeedCardJson,
+  collectUniqueRoomFeedCards,
+  mergeFeedRelations,
+  mergeRoomFeedCards as mergeFeedCards,
+  readRoomFeedCard,
+} from "../../lib/roomFeedCards.js";
 import {
   normalizeState,
-} from "../../../src/data/repository.js";
+} from "../../../shared/lib/stateNormalizer.js";
 import {
   fromRemoteRecruitingApplication,
   fromRemoteRecruitingPost,
   toClientRecruitingTeam,
-} from "../../../src/data/recruitingMappers.js";
-import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
-import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
+} from "../../../shared/lib/recruitingMappers.js";
+import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
+import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
 import {
   REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
   normalizeBenchCapacity,
-} from "../../../src/lib/constants.js";
+} from "../../../shared/lib/constants.js";
 import {
   COURT_COLUMNS,
   PROFILE_CARD_COLUMNS as PROFILE_PUBLIC_COLUMNS,
@@ -36,16 +44,16 @@ import {
   RECRUITING_POST_COLUMNS,
   TEAM_COLUMNS,
   TEAM_MEMBER_COLUMNS,
-} from "../../../src/data/repositoryColumns.js";
-import { getRecruitingLobby, isPickupRecruitingRoom, isPublicTeamRecruitingRoom } from "../../../src/lib/recruiting.js";
+} from "../../../shared/lib/repositoryColumns.js";
+import { getRecruitingLobby, isPickupRecruitingRoom, isPublicTeamRecruitingRoom } from "../../../shared/lib/recruiting.js";
 import {
   ROOM_CHAT_HISTORY_LIMIT,
   ROOM_CHAT_MESSAGE_COLUMNS,
   clampRoomChatHistoryLimit,
   fromRoomChatMessageRow,
-} from "../../../src/lib/roomChat.js";
+} from "../../../shared/lib/roomChat.js";
+import { mapClientTeamEmblem } from "../../../shared/lib/teamEmblem.js";
 
-let currentUserRecruitingRpcAvailable = true;
 let userRoomFeedAvailable = true;
 let userRoomFeedScopeAvailable = true;
 let userRoomFeedTimingColumnsAvailable = true;
@@ -284,11 +292,10 @@ function getCappedLimit(value) {
   return Math.max(1, Math.min(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, Math.floor(number)));
 }
 
-function normalizeFeedCard(row = {}) {
-  const card = row?.card_json ?? row?.cardJson ?? null;
-  if (!card || typeof card !== "object" || Array.isArray(card) || !Object.keys(card).length) return null;
-  const id = card.id ?? row.entity_id ?? row.entityId;
-  if (!id) return null;
+function normalizeRecruitingFeedCard(row = {}) {
+  const candidate = readRoomFeedCard(row);
+  if (!candidate || !Object.keys(candidate.card).length) return null;
+  const { card, id } = candidate;
   const roomState = card.roomState && typeof card.roomState === "object" && !Array.isArray(card.roomState) ? card.roomState : {};
   const ownerId = card.ownerId ?? roomState.ownerId ?? card.createdBy ?? card.playerId ?? "";
   const playerId = card.playerId ?? ownerId;
@@ -413,61 +420,26 @@ function attachFreshRecruitingListCounts(cards = [], countsByPost = new Map()) {
 }
 
 function uniqueFeedCards(rows = [], ids = []) {
-  const idSet = new Set(ids);
-  const cards = new Map();
-  (rows ?? []).forEach((row) => {
-    const id = row?.entity_id ?? row?.entityId;
-    if (!id || !idSet.has(id)) return;
-    const relation = String(row?.relation ?? "").trim();
-    if (cards.has(id)) {
-      if (relation) {
-        const existing = cards.get(id);
-        existing.__feedRelations = [...new Set([...(existing.__feedRelations ?? []), relation])];
-      }
-      return;
-    }
-    const card = normalizeFeedCard(row);
-    if (card) cards.set(id, relation ? { ...card, __feedRelations: [relation] } : card);
+  return collectUniqueRoomFeedCards(rows, ids, {
+    normalizeCard: (row) => {
+      const card = normalizeRecruitingFeedCard(row);
+      const relation = String(row?.relation ?? "").trim();
+      return card && relation ? { ...card, __feedRelations: [relation] } : card;
+    },
+    mergeDuplicate: (existing, row) => {
+      const relation = String(row?.relation ?? "").trim();
+      if (relation) existing.__feedRelations = mergeFeedRelations(existing.__feedRelations, [relation]);
+      return existing;
+    },
   });
-  return ids.map((id) => cards.get(id)).filter(Boolean);
 }
 
 async function attachRoomFeedCards(client, rows = [], entityType = "recruiting") {
-  const ids = uniqueIds(rows.map((row) => row?.entity_id));
-  if (!ids.length) return rows;
-  const { data, error } = await client
-    .from("room_feed_cards")
-    .select("entity_id,card_json")
-    .eq("entity_type", entityType)
-    .in("entity_id", ids);
-  if (error) {
-    if (isMissingRoomFeedCards(error)) return rows;
-    throw error;
-  }
-  const cardById = new Map((data ?? []).map((row) => [row.entity_id, row.card_json]));
-  return rows.map((row) => ({
-    ...row,
-    card_json: cardById.get(row?.entity_id) ?? row?.card_json ?? {},
-  }));
-}
-
-function mergeFeedCards(...cardGroups) {
-  const cards = new Map();
-  cardGroups.flat().forEach((card) => {
-    const id = card?.id;
-    if (!id) return;
-    if (cards.has(id)) {
-      const existing = cards.get(id);
-      const feedRelations = [...new Set([...(existing.__feedRelations ?? []), ...(card.__feedRelations ?? [])])];
-      const existingTime = Number(new Date(existing.updatedAt ?? existing.updated_at ?? existing.createdAt ?? existing.created_at ?? 0).getTime()) || 0;
-      const cardTime = Number(new Date(card.updatedAt ?? card.updated_at ?? card.createdAt ?? card.created_at ?? 0).getTime()) || 0;
-      if (cardTime > existingTime) cards.set(id, { ...card, __feedRelations: feedRelations });
-      else existing.__feedRelations = feedRelations;
-      return;
-    }
-    cards.set(id, card);
+  return attachRoomFeedCardJson(client, rows, {
+    entityType,
+    uniqueIds,
+    isMissingTableError: isMissingRoomFeedCards,
   });
-  return [...cards.values()];
 }
 
 function hasPendingInvitationForProfile(card = {}, profileId = "") {
@@ -542,53 +514,6 @@ async function attachPendingInvitationsToFeedCards(client, cards = [], profileId
     .filter(Boolean);
 }
 
-function compactUser(user = {}, profileId = "") {
-  const compact = {
-    id: user.id,
-    name: user.name,
-    handle: user.handle,
-    hashtag: user.hashtag,
-    position: user.position,
-    region: user.region,
-    avatarColor: user.avatarColor,
-    avatarKey: user.avatarKey ?? null,
-    avatarSource: user.avatarSource ?? "initial",
-    avatarIconKey: user.avatarIconKey ?? null,
-    avatarUpdatedAt: user.avatarUpdatedAt ?? null,
-    avatarBackgroundEnabled: user.avatarBackgroundEnabled !== false,
-    avatarBorderEnabled: user.avatarBorderEnabled === true,
-    avatarBorderColor: user.avatarBorderColor ?? user.avatarColor,
-    discordAvatarUrl: user.discordAvatarUrl ?? null,
-    trustScore: user.trustScore,
-    ratings: Number.isFinite(Number(user.ratings?.integrated))
-      ? { integrated: user.ratings.integrated, placement: user.ratings?.placement }
-      : undefined,
-    ageGroup: user.ageGroup,
-  };
-  if (user.id !== profileId) return compact;
-  return {
-    ...compact,
-    regionSido: user.regionSido,
-    regionDistrict: user.regionDistrict,
-    school: user.school,
-    company: user.company,
-    club: user.club,
-    streak: user.streak,
-    ratings: user.ratings,
-    authUserId: user.authUserId,
-    testLoginId: user.testLoginId,
-    birthYear: user.birthYear,
-    ageGroupCheckedSeason: user.ageGroupCheckedSeason,
-    onboardingComplete: user.onboardingComplete,
-    profileVersion: user.profileVersion,
-    handleLockedAt: user.handleLockedAt,
-    birthYearLockedAt: user.birthYearLockedAt,
-    nameUpdatedAt: user.nameUpdatedAt,
-    discordConnection: user.discordConnection,
-    discordUserId: user.discordUserId,
-  };
-}
-
 function compactTeam(team = {}) {
   return {
     id: team.id,
@@ -599,17 +524,7 @@ function compactTeam(team = {}) {
     wins: team.wins,
     losses: team.losses,
     accent: team.accent,
-    emblemKey: team.emblemKey ?? null,
-    emblemSource: team.emblemSource ?? (team.emblemKey ? "upload" : "initial"),
-    emblemUpdatedAt: team.emblemUpdatedAt ?? null,
-    emblemUploadedAt: team.emblemUploadedAt ?? null,
-    emblemUploadCount: Number(team.emblemUploadCount ?? 0),
-    emblemColor: team.emblemColor ?? team.accent ?? null,
-    emblemBorderEnabled: team.emblemBorderEnabled !== false,
-    emblemBorderColor: team.emblemBorderColor ?? team.accent ?? null,
-    emblemTextMode: new Set(["name", "abbreviation"]).has(team.emblemTextMode) ? team.emblemTextMode : "initial",
-    emblemAbbreviation: team.emblemAbbreviation ?? "",
-    emblemFont: team.emblemFont ?? "sport",
+    ...mapClientTeamEmblem(team),
     membersPartial: true,
     members: team.members ?? [],
   };
@@ -800,7 +715,7 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
 function compactRecruitingListState(state = {}, profileId = "", options = {}) {
   return {
     ...state,
-    users: (state.users ?? []).map((user) => compactUser(user, profileId)),
+    users: (state.users ?? []).map((user) => compactClientUser(user, profileId)),
     teams: (state.teams ?? []).map(compactTeam),
     recruitingPosts: (state.recruitingPosts ?? []).map((post) => compactRecruitingPost(post, profileId, options)),
     matches: [],
@@ -1175,36 +1090,6 @@ function getRecruitingMineRelations(scope = "") {
   if (scope === "joined") return ["participant", "referee"];
   if (scope === "invited") return ["invited"];
   return ["owner", "participant", "invited", "referee"];
-}
-
-export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "", allowLegacyFallback = false) {
-  if (!profileId) return [];
-  const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
-  const relations = getRecruitingMineRelations(roomScope);
-  const feedPostIds = await fetchRecruitingFeedPostIds(client, {
-    profileId,
-    relations,
-    limit: cappedLimit,
-  });
-  if (feedPostIds) {
-    return uniqueIds(feedPostIds).slice(0, cappedLimit);
-  }
-  if (!roomScope && currentUserRecruitingRpcAvailable) {
-    const { data: rpcRows, error: rpcError } = await client.rpc("rankball_current_recruiting_post_ids", {
-      p_profile_id: profileId,
-      p_limit: cappedLimit,
-    });
-    if (!rpcError) {
-      const rpcPostIds = uniqueIds((rpcRows ?? []).map((row) => row?.post_id ?? row?.id ?? row)).slice(0, cappedLimit);
-      if (rpcPostIds.length) return rpcPostIds;
-      console.warn("Current user recruiting RPC returned no rows; checking fallback.");
-    } else {
-      currentUserRecruitingRpcAvailable = false;
-      console.warn("Current user recruiting RPC skipped.", rpcError.message);
-    }
-  }
-  if (!allowLegacyFallback) return [];
-  return fetchCurrentUserRecruitingFallbackPostIds(client, profileId, cappedLimit, roomScope);
 }
 
 function isLegacyListFallbackAllowed(body = {}) {
@@ -1859,35 +1744,6 @@ export async function loadCurrentUserRecruitingFeedList(context, {
     includeMine: true,
     mineOnly: true,
     limit,
-  });
-}
-
-export async function loadLocalRecruitingFeedList(context, {
-  adminLevel = 0,
-  limit = REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
-} = {}) {
-  const regionKey = getProfileRegionKey(context.profile);
-  const pageResult = await fetchRecruitingFeedPage(context.supabase, {
-    profileId: LEGACY_PUBLIC_RECRUITING_FEED_PROFILE_ID,
-    feedScope: PUBLIC_RECRUITING_FEED_SCOPE,
-    relations: ["region_public"],
-    regionKey,
-    limit,
-    includeCards: true,
-  });
-  if (!pageResult) {
-    return loadCompactRecruitingList(context, { adminLevel, limit });
-  }
-  return loadCompactRecruitingList(context, {
-    adminLevel,
-    pagePostIds: pageResult.ids ?? [],
-    pageCards: pageResult.cards ?? [],
-    pageSource: pageResult.source ?? "feed",
-    pageExhausted: pageResult.exhausted,
-    pageNextOffset: pageResult.nextOffset,
-    limit,
-    regionScope: regionKey ? "region" : "local",
-    regionKey,
   });
 }
 

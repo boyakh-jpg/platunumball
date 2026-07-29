@@ -11,7 +11,6 @@ import {
   confirmRecruitingMatch,
   createMatch,
   createRecruitingPost,
-  createTournament,
   deleteSoloRecord,
   declineRecruitingInvitation,
   detachRecruitingPartyPlayer,
@@ -29,7 +28,6 @@ import {
   requestMatchRefereeAbsence,
   resolveMatchDispute,
   sendRecruitingChat,
-  approveTournamentTeam,
   setMatchRecordParticipants,
   setMatchRecordTeamRoster,
   setMatchRoomPlayerPlacement,
@@ -49,8 +47,8 @@ import {
   updateRecruitingRoomRules,
   updateTournamentMatchSchedule,
   voidMatch,
-} from "../../src/data/repository.js";
-import { DEFAULT_RATING } from "../../src/lib/constants.js";
+} from "../lib/repositoryAdapter.js";
+import { DEFAULT_RATING } from "../../shared/lib/matchConstants.js";
 import { SERVER_RATING_AUTHORITY } from "../lib/ratingAuthority.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
@@ -210,6 +208,12 @@ function getAuthoritativeLoadScope(operation = {}) {
       ...(Array.isArray(operation.roster?.reservePlayerIds) ? operation.roster.reservePlayerIds : []),
       ...(Array.isArray(operation.setup?.teamAPlayerIds) ? operation.setup.teamAPlayerIds : []),
       ...(Array.isArray(operation.setup?.teamBPlayerIds) ? operation.setup.teamBPlayerIds : []),
+      ...(Array.isArray(operation.draft?.soloTeamAPlayerRefs)
+        ? operation.draft.soloTeamAPlayerRefs.map((ref) => ref?.profileId)
+        : []),
+      ...(Array.isArray(operation.draft?.soloTeamBPlayerRefs)
+        ? operation.draft.soloTeamBPlayerRefs.map((ref) => ref?.profileId)
+        : []),
     ].filter(Boolean),
     recruitingPostIds: [
       operation.postId,
@@ -460,41 +464,4 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
     ratingCommit: getMatchRatingCommit(state, next, match, action),
     trustCommit: getMatchTrustCommit(state, next, match, action),
   };
-}
-
-export function applyAuthoritativeTournamentOperation(state, operation = {}) {
-  const action = String(operation.action || "");
-  const beforeTournaments = state.tournaments ?? [];
-  const beforeMatches = state.matches ?? [];
-  let next = state;
-
-  switch (action) {
-    case "createTournament":
-      next = createTournament(state, {
-        ...(operation.draft ?? {}),
-        id: operation.preferredTournamentId || operation.tournamentId || operation.draft?.id,
-        preferredMatchIds: operation.preferredMatchIds ?? operation.draft?.preferredMatchIds,
-      });
-      break;
-    case "approveTournamentTeam":
-      next = approveTournamentTeam(state, operation.tournamentId, operation.teamId, {
-        preferredMatchIds: operation.preferredMatchIds,
-      });
-      break;
-    default:
-      reject(400, "unsupported_tournament_operation");
-  }
-
-  const tournament = operation.tournamentId || operation.preferredTournamentId
-    ? (next.tournaments ?? []).find((item) => item.id === (operation.tournamentId || operation.preferredTournamentId)) ?? null
-    : getCreatedItem(beforeTournaments, next.tournaments ?? []);
-  if (!tournament || next === state) reject(409, "tournament_operation_noop");
-
-  const createdMatches = getNewItems(beforeMatches, next.matches ?? [], (match) => match.tournamentId === tournament.id);
-  const notifications = getNewItems(state.notifications ?? [], next.notifications ?? [], (notification) => (
-    (!notification.matchId && (notification.type === "tournament" || notification.tone === "match" || !notification.targetUserId)) ||
-    (notification.matchId && createdMatches.some((match) => match.id === notification.matchId))
-  ));
-
-  return { nextState: next, tournament, createdMatches, notifications };
 }

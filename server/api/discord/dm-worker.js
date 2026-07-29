@@ -1,35 +1,24 @@
 import { attachNotificationActors, bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
-import { getBlockedUserIds, getNotificationActorId } from "../../../src/lib/notifications.js";
-import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
-import { NOTIFICATION_COLUMNS } from "../../../src/data/repositoryColumns.js";
+import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
+import { isDiscordNotificationEnabled } from "../../../shared/lib/settingsMappers.js";
+import {
+  MATCH_SCHEDULED_NOTICE_PREFIXES,
+  getBlockedUserIds,
+  getNotificationActorId,
+} from "../../../shared/lib/notifications.js";
+import { fromRemoteNotification } from "../../../shared/lib/remotePayloadMappers.js";
+import { NOTIFICATION_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
 import {
   DISCORD_API_BASE_URL,
   DISCORD_NOTIFICATION_BODY_MAX_LENGTH,
   DISCORD_NOTIFICATION_URL_MAX_LENGTH,
   isDiscordSnowflake,
-} from "../../../src/lib/discordProtocol.js";
-import { MINUTE_MS } from "../../../src/lib/constants.js";
-import { BRAND_NAME } from "../../../src/lib/brand.js";
+} from "../../../shared/lib/discordProtocol.js";
+import { BRAND_NAME } from "../../../shared/lib/brand.js";
 
 const MAX_BATCH_SIZE = 25;
 const PREGAME_DELIVERY_GRACE_MS = 90 * 1000;
-const PREGAME_NOTICE_PREFIXES = Object.freeze([
-  "match-reminder-1h",
-  "match-attendance-20m",
-  "match-attendance-10m",
-  "match-manager-attendance-10m",
-]);
-const LEGACY_PREGAME_NOTICE_PREFIXES = Object.freeze([
-  "match-reminder-24h",
-  "match-reminder-2h",
-  "match-manager-checkin-10m",
-  "match-manager-start-5m",
-  "match-manager-start-now",
-  "match-reminder-2m",
-  "match-started",
-]);
 
 function getWorkerSecret() {
   return process.env.CRON_SECRET || "";
@@ -278,7 +267,7 @@ export function isDiscordDeliveryExpired(delivery = {}, nowMs = Date.now()) {
   if (Number.isFinite(expiresAtMs)) return expiresAtMs <= nowMs;
 
   const noticePrefix = getDiscordDeliveryNoticePrefix(delivery);
-  if (![...PREGAME_NOTICE_PREFIXES, ...LEGACY_PREGAME_NOTICE_PREFIXES].includes(noticePrefix)) return false;
+  if (!MATCH_SCHEDULED_NOTICE_PREFIXES.includes(noticePrefix)) return false;
   const sendAtMs = new Date(delivery.send_at ?? delivery.payload?.sendAt ?? "").getTime();
   return Number.isFinite(sendAtMs) && sendAtMs + PREGAME_DELIVERY_GRACE_MS <= nowMs;
 }
@@ -287,7 +276,7 @@ export function getDiscordDeliveryNoticePrefix(delivery = {}) {
   const explicitPrefix = String(delivery.payload?.noticePrefix ?? "").trim();
   if (explicitPrefix) return explicitPrefix;
   const deliveryId = String(delivery.id ?? "");
-  return [...PREGAME_NOTICE_PREFIXES, ...LEGACY_PREGAME_NOTICE_PREFIXES]
+  return MATCH_SCHEDULED_NOTICE_PREFIXES
     .find((prefix) => deliveryId.startsWith(`discord-${prefix}-`)) ?? "";
 }
 
@@ -316,7 +305,7 @@ function normalizeMatchScheduleRevision(value = "") {
 
 export function getPregameDeliveryInvalidReason(delivery = {}, match = null, playerRows = []) {
   const noticePrefix = getDiscordDeliveryNoticePrefix(delivery);
-  if (![...PREGAME_NOTICE_PREFIXES, ...LEGACY_PREGAME_NOTICE_PREFIXES].includes(noticePrefix)) return "";
+  if (!MATCH_SCHEDULED_NOTICE_PREFIXES.includes(noticePrefix)) return "";
   if (!match) return "discord_notification_match_missing";
   if (
     match.started_at

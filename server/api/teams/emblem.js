@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { isEmblemHexColor } from "../../../src/lib/emblemPolicy.js";
+import { isEmblemHexColor } from "../../../shared/lib/emblemPolicy.js";
 import {
   TEAM_EMBLEM_MAX_DIMENSION,
   TEAM_EMBLEM_UPLOAD_MAX_BYTES,
@@ -8,7 +8,7 @@ import {
   isTeamEmblemFont,
   isTeamEmblemTextMode,
   normalizeTeamEmblemAbbreviation,
-} from "../../../src/lib/teamEmblem.js";
+} from "../../../shared/lib/teamEmblem.js";
 import {
   decodeBase64Image,
   deleteR2Object,

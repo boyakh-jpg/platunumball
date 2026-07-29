@@ -18,8 +18,9 @@ import { getMatchBenchPolicyError, validateMatchShape } from "../server/api/matc
 
 const migrationSource = readFileSync(new URL("../supabase/migrations/20260722225500_bench_capacity_policy.sql", import.meta.url), "utf8");
 const capacityThreeMigrationSource = readFileSync(new URL("../supabase/migrations/20260722225700_bench_capacity_three.sql", import.meta.url), "utf8");
+const safeReserveBooleanMigrationSource = readFileSync(new URL("../supabase/migrations/20260729172000_safe_recruiting_reserve_boolean.sql", import.meta.url), "utf8");
 const schemaSource = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8");
-const matchMapperSource = readFileSync(new URL("../src/data/matchMappers.js", import.meta.url), "utf8");
+const matchMapperSource = readFileSync(new URL("../shared/lib/matchMappers.js", import.meta.url), "utf8");
 
 function assertPolicyError(run, message, statusCode) {
   assert.throws(run, (error) => {
@@ -184,6 +185,15 @@ test("database policy uses safe booleans, private trigger helpers and dynamic RP
     assert.match(source, />= current_post\.bench_capacity/);
     assert.match(source, /> current_post\.bench_capacity/);
   }
+});
+
+test("current recruiting management RPC migration replaces unsafe reserve boolean casts", () => {
+  assert.match(safeReserveBooleanMigrationSource, /unsafe_payload_cast text := '\(payload->>''reserve''\)::' \|\| 'boolean';/);
+  assert.match(safeReserveBooleanMigrationSource, /unsafe_invitation_cast text := '\(invitation->>''reserve''\)::' \|\| 'boolean';/);
+  assert.match(safeReserveBooleanMigrationSource, /lower\(coalesce\(payload->>''reserve'', ''false''\)\) in/);
+  assert.match(safeReserveBooleanMigrationSource, /lower\(coalesce\(invitation->>''reserve'', ''false''\)\) in/);
+  assert.match(safeReserveBooleanMigrationSource, /recruiting_reserve_boolean_cast_remains/);
+  assert.doesNotMatch(schemaSource, /\((?:payload|invitation)->>'reserve'\)::boolean/);
 });
 
 test("schema snapshot and both slim feed branches preserve bench capacity", () => {

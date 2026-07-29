@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
-import { CalendarDays, ChevronDown, ChevronUp, Crown, MapPin, RotateCcw, ShieldCheck, Star, Trophy, UsersRound, X } from "lucide-react";
+import { CalendarDays, Crown, MapPin, RotateCcw, ShieldCheck, Star, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchClockPanel, { MatchScoreControls } from "../components/match/MatchClockPanel.jsx";
@@ -12,6 +12,7 @@ import MatchVoidDialog, { MatchFinalizeDialog } from "../components/match/MatchV
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import NumericStepper from "../components/common/NumericStepper.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import MmrChange from "../components/rating/MmrChange.jsx";
@@ -22,7 +23,7 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeBenchCapacity, normalizeDisputeWindowMinutes } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS, REPORT_TARGET_TYPES, VOID_MATCH_RESTORE_REPORT_REASON, getReportTargetType } from "../lib/reportReasons.js";
 import {
-  formatKoreanDateTime,
+  formatMatchWindowTime,
   formatStatLine,
   MATCH_DISPUTE_REASON_OPTIONS,
   OTHER_MATCH_DISPUTE_REASON,
@@ -60,6 +61,7 @@ import {
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
+import { getLinkedPersonalRecordDisplayUser } from "../lib/personalRecordRoster.js";
 import {
   getRoomCancellationActionLabel,
   getRoomCancellationConfirmMessage,
@@ -143,16 +145,6 @@ function getPointAudit(match, score, sideName) {
   };
 }
 
-function formatWindowTime(value) {
-  if (!value) return "일정 없음";
-  return formatKoreanDateTime(value, {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 const COURT_REVIEW_FIELDS = [
   { id: "surfaceRating", label: "바닥" },
   { id: "rimRating", label: "림/골대" },
@@ -172,36 +164,6 @@ function getCourtReviewDraft(review = {}) {
     locationAccuracy: source.locationAccuracy ?? "",
     memo: source.memo ?? "",
   };
-}
-
-function getNonNegativeNumber(value) {
-  const numericValue = Number(value ?? 0);
-  return Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0;
-}
-
-function NumericStepper({ value, disabled = false, onChange, label, className = "" }) {
-  const numericValue = getNonNegativeNumber(value);
-  const setNextValue = (nextValue) => onChange(getNonNegativeNumber(nextValue));
-  return (
-    <div className={["numeric-stepper", className].filter(Boolean).join(" ")}>
-      <button type="button" disabled={disabled} onClick={() => setNextValue(numericValue + 1)} aria-label={`${label} 1 증가`} title="1 증가">
-        <ChevronUp size={18} strokeWidth={3} />
-      </button>
-      <input
-        type="number"
-        min="0"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        disabled={disabled}
-        value={numericValue}
-        onChange={(event) => setNextValue(event.target.value)}
-        aria-label={label}
-      />
-      <button type="button" disabled={disabled} onClick={() => setNextValue(numericValue - 1)} aria-label={`${label} 1 감소`} title="1 감소">
-        <ChevronDown size={18} strokeWidth={3} />
-      </button>
-    </div>
-  );
 }
 
 function CourtReviewRating({ label, value, onChange, disabled = false }) {
@@ -329,6 +291,18 @@ export default function MatchRoom({ app }) {
     setDisputeRequestedScoreB(String(match.result?.scoreB ?? match.teamB?.score ?? 0));
   }, [app.currentUser.id, match?.id, match?.result?.updatedAt]);
 
+  const linkedProfileIds = useMemo(
+    () => [...new Set(Object.values(match?.anonymousPlayers ?? {})
+      .map((player) => player?.linkedProfileId)
+      .filter(Boolean))],
+    [match?.anonymousPlayers],
+  );
+  useEffect(() => {
+    linkedProfileIds.forEach((profileId) => {
+      void app.actions.loadDirectory?.({ kind: "players", profileId });
+    });
+  }, [app.actions.loadDirectory, linkedProfileIds]);
+
   const attendanceQrToken = String(searchParams.get("attendanceQr") || "").trim();
   if (attendanceQrToken && matchId) {
     return <Navigate to={`/app/matches?match=${encodeURIComponent(matchId)}&attendanceQr=${encodeURIComponent(attendanceQrToken)}`} replace />;
@@ -339,7 +313,14 @@ export default function MatchRoom({ app }) {
     return <BasketballLoader overlay label="경기방 불러오는 중" />;
   }
 
-  const userMap = Object.fromEntries([...app.state.users, ...Object.values(match.anonymousPlayers ?? {})].map((user) => [user.id, user]));
+  const profileById = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
+  const userMap = {
+    ...profileById,
+    ...Object.fromEntries(Object.values(match.anonymousPlayers ?? {}).map((user) => [
+      user.id,
+      getLinkedPersonalRecordDisplayUser(user, profileById),
+    ])),
+  };
   const statEditorPlayer = statEditorPlayerId ? userMap[statEditorPlayerId] : null;
   const isSharedRecord = isMatchRecordMatch(match);
   const status = match.status === "cancelled" && isSharedRecord
@@ -1002,12 +983,12 @@ export default function MatchRoom({ app }) {
               </div>
               <div>
                 <span>개인 기록 마감</span>
-                <strong>{formatWindowTime(recordWindow.statClosesAt)}</strong>
+                <strong>{formatMatchWindowTime(recordWindow.statClosesAt)}</strong>
                 <em>경기 종료 후 {match.statEntryMinutes ?? 60}분</em>
               </div>
               <div>
                 <span>이의제기 마감</span>
-                <strong>{formatWindowTime(recordWindow.disputeClosesAt)}</strong>
+                <strong>{formatMatchWindowTime(recordWindow.disputeClosesAt)}</strong>
                 <em>경기 종료 후 {normalizeDisputeWindowMinutes(match.disputeMinutes)}분</em>
               </div>
             </div>
@@ -1268,7 +1249,7 @@ export default function MatchRoom({ app }) {
                 ) : null}
               </div>
             ) : null}
-            <p className="muted">이의제기 마감: {formatWindowTime(recordWindow.disputeClosesAt)}</p>
+            <p className="muted">이의제기 마감: {formatMatchWindowTime(recordWindow.disputeClosesAt)}</p>
             <Button type="button" variant="secondary" onClick={() => setReviewControlsOpen((current) => !current)}>
               {reviewControlsOpen ? "보조 메뉴 닫기" : "취소/이의/신고 열기"}
             </Button>
@@ -1390,7 +1371,9 @@ export default function MatchRoom({ app }) {
                   <NumericStepper
                     className="stat-numeric-stepper"
                     disabled={!canEditPlayerStat(statEditorPlayerId)}
+                    integer={false}
                     label={field.label}
+                    max={Number.MAX_SAFE_INTEGER}
                     value={score.playerStats[statEditorPlayerId]?.[field.id] ?? 0}
                     onChange={(value) => updatePlayerStat(statEditorPlayerId, field.id, value)}
                   />

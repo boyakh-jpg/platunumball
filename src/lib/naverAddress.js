@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from "./supabase.js";
+import { normalizeNaverAddress } from "../../shared/lib/naverAddress.js";
 
 const NAVER_MAP_SCRIPT_ID = "naver-map-sdk-script";
 const NAVER_PANORAMA_SCRIPT_ID = "naver-map-panorama-script";
@@ -103,33 +104,6 @@ export async function loadNaverPanoramaSdk(clientId = getNaverMapClientId()) {
     if (Date.now() - startedAt >= 8000) throw new Error("거리뷰 모듈을 불러오지 못했습니다.");
     await new Promise((resolve) => window.setTimeout(resolve, 50));
   }
-}
-
-function getAddressElement(address = {}, type = "") {
-  return address.addressElements?.find((element) => element.types?.includes(type))?.longName ?? "";
-}
-
-function normalizeNaverAddress(address = {}, index = 0) {
-  const lat = Number(address.y);
-  const lng = Number(address.x);
-  const roadAddress = String(address.roadAddress ?? "").trim();
-  const jibunAddress = String(address.jibunAddress ?? "").trim();
-  const addressText = roadAddress || jibunAddress || String(address.englishAddress ?? "").trim();
-
-  return {
-    id: `naver:${address.x ?? ""}:${address.y ?? ""}:${index}`,
-    addressText,
-    roadAddress,
-    jibunAddress,
-    buildingName: getAddressElement(address, "BUILDING_NAME"),
-    bname: getAddressElement(address, "DONGMYUN") || getAddressElement(address, "RI"),
-    hname: getAddressElement(address, "DONGMYUN"),
-    sido: getAddressElement(address, "SIDO"),
-    sigungu: getAddressElement(address, "SIGUGUN"),
-    zonecode: address.postalCode ?? getAddressElement(address, "POSTAL_CODE"),
-    lat: Number.isFinite(lat) ? lat : "",
-    lng: Number.isFinite(lng) ? lng : "",
-  };
 }
 
 function getNaverAddressErrorMessage(errorCode = "") {

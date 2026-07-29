@@ -13,7 +13,7 @@ import { getTeamDiscoveryGroups } from "../data/teamMappers.js";
 import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, getTeamRoleLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, mergeCourtSearchCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
-import { getRepresentativeTeam, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { getProfileRegionSelection, getRepresentativeTeam, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { DIRECTORY_TEAM_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -47,11 +47,7 @@ export default function Teams({ app }) {
   );
   const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
   const defaultRegionSelection = useMemo(
-    () => inferRegionSelection([
-      app.currentUser.regionSido,
-      app.currentUser.regionDistrict,
-      app.currentUser.region,
-    ].filter(Boolean).join(" ")),
+    () => getProfileRegionSelection(app.currentUser),
     [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
   );
   const defaultTeamRegion = `${defaultRegionSelection.sido} ${defaultRegionSelection.district}`;

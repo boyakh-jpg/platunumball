@@ -4,8 +4,8 @@ import {
   normalizeAdminUserOperationAction,
   normalizeAdminUserOperationDuration,
   validateAdminUserOperationDraft,
-} from "../../../src/lib/adminUserOperations.js";
-import { normalizeDirectoryFilter } from "../../../src/lib/queryPolicy.js";
+} from "../../../shared/lib/adminUserOperations.js";
+import { normalizeDirectoryFilter } from "../../../shared/lib/queryPolicy.js";
 
 const ADMIN_USER_PAGE_LIMIT = 30;
 const ADMIN_USER_MAX_PAGE_LIMIT = 60;

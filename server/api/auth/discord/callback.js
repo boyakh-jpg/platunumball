@@ -2,7 +2,7 @@ import {
   DISCORD_CURRENT_USER_URL,
   DISCORD_TOKEN_URL,
   isDiscordOAuthState,
-} from "../../../../src/lib/discordProtocol.js";
+} from "../../../../shared/lib/discordProtocol.js";
 import { getPublicAppUrl } from "../../_publicAppUrl.js";
 import { setApiSecurityHeaders } from "../../_requestSecurity.js";
 import {

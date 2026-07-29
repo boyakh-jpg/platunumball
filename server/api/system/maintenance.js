@@ -1,9 +1,12 @@
 import { bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
-import { MINUTE_MS, normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
-import { RECRUITING_APPLICATION_STATUSES } from "../../../src/lib/recruiting.js";
+import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
+import { normalizeDisputeWindowMinutes } from "../../../shared/lib/constants.js";
+import { RECRUITING_APPLICATION_STATUSES } from "../../../shared/lib/recruiting.js";
+import { fetchRoomFeedSourceMap } from "../../lib/roomFeedSources.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
 const FEED_REPAIR_ROW_FACTOR = 8;
+const FEED_REPAIR_SOURCE_COLUMNS = "id,status,updated_at";
 const ROOM_FEED_RETENTION_DAYS = 7;
 const NOTIFICATION_RETENTION_DAYS = 7;
 
@@ -280,7 +283,6 @@ async function fetchFeedRepairCandidates(client, limit) {
   const recruitingIds = entities.filter((row) => row.entity_type === "recruiting").map((row) => row.entity_id);
   const matchIds = entities.filter((row) => row.entity_type === "match").map((row) => row.entity_id);
   const cardMap = new Map();
-  const sourceMap = new Map();
 
   for (const entityType of ["recruiting", "match"]) {
     const ids = entityType === "recruiting" ? recruitingIds : matchIds;
@@ -294,23 +296,12 @@ async function fetchFeedRepairCandidates(client, limit) {
     (data ?? []).forEach((row) => cardMap.set(`${row.entity_type}:${row.entity_id}`, row));
   }
 
-  if (recruitingIds.length) {
-    const { data, error } = await client
-      .from("recruiting_posts")
-      .select("id,status,updated_at")
-      .in("id", recruitingIds);
-    if (error) throw error;
-    (data ?? []).forEach((row) => sourceMap.set(`recruiting:${row.id}`, row));
-  }
-
-  if (matchIds.length) {
-    const { data, error } = await client
-      .from("matches")
-      .select("id,status,updated_at")
-      .in("id", matchIds);
-    if (error) throw error;
-    (data ?? []).forEach((row) => sourceMap.set(`match:${row.id}`, row));
-  }
+  const sourceMap = await fetchRoomFeedSourceMap(client, entities, {
+    columnsByType: {
+      recruiting: FEED_REPAIR_SOURCE_COLUMNS,
+      match: FEED_REPAIR_SOURCE_COLUMNS,
+    },
+  });
 
   const candidates = entities
     .map((row) => {

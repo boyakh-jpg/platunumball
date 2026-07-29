@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { getDbScheduleParts, toDbTime } from "../../../src/data/scheduleUtils.js";
+import { DEFAULT_RATING, getModeSize, isSupportedMatchMode } from "../../../shared/lib/matchConstants.js";
+import { getDbScheduleParts, toDbTime } from "../../../shared/lib/matchPersistence.js";
 import { getAuthenticatedContext, nullableText, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
-import { DEFAULT_RATING, MATCH_SIDES, getModeSize, isSupportedMatchMode, isValidBenchCapacity, normalizeDisputeWindowMinutes } from "../../../src/lib/constants.js";
+import { MATCH_SIDES, isValidBenchCapacity, normalizeDisputeWindowMinutes } from "../../../shared/lib/constants.js";
 import {
   ROOM_CHAT_MESSAGE_COLUMNS,
   ROOM_CHAT_MESSAGE_MAX_LENGTH,
   fromRoomChatMessageRow,
   normalizeRoomChatBody,
-} from "../../../src/lib/roomChat.js";
+} from "../../../shared/lib/roomChat.js";
 import {
   applyAuthoritativeRecruitingOperation,
   getOperation,
@@ -16,10 +17,11 @@ import {
 import { syncRoomChatMessageToDiscord } from "../discord/_roomChatBridge.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } from "../matches/sync-match.js";
+import { toQueuedDiscordDeliveryRow } from "../../lib/discordDeliveryRows.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
-import { getRecruitingBenchCapacity, normalizeRecruitingApplicationStatus, normalizeRecruitingMmrRangeMode } from "../../../src/lib/recruiting.js";
-import { assertSafeUserText } from "../../../src/lib/inputSecurity.js";
-import { hasPracticeMutationPayload, PRACTICE_LOCAL_ONLY_ERROR } from "../../../src/lib/practiceMode.js";
+import { getRecruitingBenchCapacity, normalizeRecruitingApplicationStatus, normalizeRecruitingMmrRangeMode } from "../../../shared/lib/recruiting.js";
+import { assertSafeUserText } from "../../../shared/lib/inputSecurity.js";
+import { hasPracticeMutationPayload, PRACTICE_LOCAL_ONLY_ERROR } from "../../../shared/lib/practiceMode.js";
 
 function isTrue(value) {
   return value === true || value === "true";
@@ -343,13 +345,11 @@ function toRoomCancelledDiscordRows(post = {}, profiles = []) {
   const fromUserId = post.ownerId ?? post.roomState?.ownerId ?? post.playerId ?? "";
   return profiles.map((profile) => {
     const id = `discord-room-cancelled-${post.id}-${profile.id}`;
-    return {
+    return toQueuedDiscordDeliveryRow({
       id,
-      notification_id: id,
-      target_user_id: profile.id,
-      discord_user_id: profile.discord_user_id,
-      event: "match",
-      status: "queued",
+      notificationId: id,
+      targetUserId: profile.id,
+      discordUserId: profile.discord_user_id,
       payload: {
         ...payload,
         id,
@@ -362,14 +362,9 @@ function toRoomCancelledDiscordRows(post = {}, profiles = []) {
         queuedAt: now,
         sendAt: now,
       },
-      queued_at: now,
-      send_at: now,
-      sent_at: null,
-      failed_at: null,
-      last_error: null,
-      created_at: now,
-      updated_at: now,
-    };
+      queuedAt: now,
+      sendAt: now,
+    });
   });
 }
 

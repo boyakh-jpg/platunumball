@@ -5,7 +5,10 @@ import {
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
 import { persistMatchSnapshot } from "../matches/sync-match.js";
-import { DEFAULT_TOURNAMENT_MMR_GAP, MMR_LIMIT_MODES as MMR_LIMIT_MODE_IDS, isSupportedMatchMode } from "../../../src/lib/constants.js";
+import { isSupportedMatchMode } from "../../../shared/lib/matchConstants.js";
+import { DEFAULT_TOURNAMENT_MMR_GAP, MMR_LIMIT_MODES as MMR_LIMIT_MODE_IDS } from "../../../shared/lib/constants.js";
+import { sortPlainObject } from "../../../shared/lib/plainObject.js";
+import { projectTournamentDbIdentity } from "../../lib/tournamentPersistence.js";
 
 const FORMATS = new Set(["league", "tournament"]);
 const VISIBILITIES = new Set(["private", "public"]);
@@ -62,12 +65,6 @@ function getTeamIds(tournament = {}) {
 
 function sameJson(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function sortPlainObject(value) {
-  if (Array.isArray(value)) return value.map(sortPlainObject);
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortPlainObject(value[key])]));
 }
 
 function getTournamentCoreSnapshot(tournament = {}, teamRows = []) {
@@ -176,15 +173,9 @@ function validateTournamentCreateCourt(tournament = {}) {
 
 function toTournamentRow(tournament = {}) {
   return {
-    id: tournament.id,
-    title: tournament.title,
-    format: tournament.format,
-    visibility: tournament.visibility,
-    status: tournament.status,
-    region: tournament.region,
-    court_id: tournament.courtId ?? null,
-    court_name: tournament.court,
-    mode: tournament.mode,
+    ...projectTournamentDbIdentity(tournament, {
+      courtId: tournament.courtId ?? null,
+    }),
     ranked: tournament.ranked,
     official: tournament.official,
     start_date: tournament.startDate,

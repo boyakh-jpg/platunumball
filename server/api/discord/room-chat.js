@@ -1,12 +1,12 @@
 import { bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { ROOM_CHAT_MESSAGE_COLUMNS } from "../../../src/lib/roomChat.js";
+import { ROOM_CHAT_MESSAGE_COLUMNS } from "../../../shared/lib/roomChat.js";
 import {
   fromRoomChatMessageRow,
   getRoomDiscordLinkByTarget,
   isDiscordSnowflake,
   sanitizeRoomChatBody,
 } from "./_roomChatBridge.js";
-import { assertSafeUserText } from "../../../src/lib/inputSecurity.js";
+import { assertSafeUserText } from "../../../shared/lib/inputSecurity.js";
 
 function reject(statusCode, message) {
   const error = new Error(message);

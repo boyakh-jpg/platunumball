@@ -4,10 +4,12 @@ import { ClipboardList, Globe2, Lock, Map as MapIcon, MapPin, ShieldCheck, Star,
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import NumericStepper from "../components/common/NumericStepper.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtDetailModal from "../components/court/CourtDetailModal.jsx";
 import CourtMapPicker from "../components/court/CourtMapPicker.jsx";
 import MeetingPointFields from "../components/match/MeetingPointFields.jsx";
+import MmrRangeSelector from "../components/match/MmrRangeSelector.jsx";
 import {
   MatchCostPolicyFields,
   MatchCreationFinalSummary,
@@ -25,6 +27,16 @@ import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtPl
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, getRecordCreationWindowStatus, getSeoulTimeInputValue, isEligibleReferee } from "../lib/matchUtils.js";
 import { getMatchRulesPayload } from "../lib/matchRules.js";
+import {
+  getSoloRecordPlayerRef,
+  getSoloRecordRosterError,
+  getSoloRecordRosterLines,
+  getSoloRecordSelectedIdentitySet,
+  getSoloRecordUserIdentity,
+  getSoloRecordUserLine,
+  getSoloRecordUserSearchText,
+  normalizeSoloRecordRosterInput,
+} from "../lib/personalRecordRoster.js";
 import { getNextQueueSchedule } from "../data/scheduleUtils.js";
 import {
   RECORD_COMPOSITION_OPTIONS,
@@ -48,6 +60,11 @@ import { AGE_GROUPS, REGION_TREE, getAgeGroupForUser, getRepresentativeTeam, inf
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE, DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange, normalizeRecruitingMmrRangeMode } from "../lib/recruiting.js";
 import { postServerAction } from "../lib/serverActions.js";
+import {
+  getCreateDefaultTeamPlayerIds as getDefaultTeamPlayerIds,
+  getCreatePartyPlayerIds as getPartyPlayerIds,
+  getCreatePartyReserveIds as getPartyReserveIds,
+} from "../lib/teamPartyRoster.js";
 import {
   getRequiredTournamentRefereeCount,
   getTournamentRefereePoolValidation,
@@ -76,59 +93,6 @@ const SOLO_RECORD_MODES = Array.from(SOLO_RECORD_MODE_IDS, (id) => ({ id, label:
 const MATCH_MODE_IDS = new Set(MATCH_MODES.map((mode) => mode.id));
 
 const makeEmptySoloStats = () => Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, 0]));
-
-function getSoloRecordUserLine(user = {}) {
-  const position = PLAYER_POSITIONS.includes(user.position) && user.position !== "상관없음" ? user.position : "";
-  return [user.name, getUserHashtag(user), position].filter(Boolean).join(" ");
-}
-
-function getSoloRecordUserSearchText(user = {}) {
-  return [user.name, getUserHashtag(user), user.position, user.region, `신뢰도 ${user.trustScore ?? ""}`].filter(Boolean).join(" ");
-}
-
-function getSoloRecordRosterLines(value = "") {
-  return String(value ?? "")
-    .split(/[\n,]+/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
-}
-
-function getSoloRecordRosterIdentity(line = "") {
-  const text = String(line ?? "").replace(/\s+/g, " ").trim();
-  const hashtag = text.match(/#[^\s#]+/);
-  if (hashtag?.[0]) return hashtag[0].toLowerCase();
-  const parts = text.split(" ");
-  const maybePosition = parts.at(-1)?.toUpperCase() ?? "";
-  const nameText = PLAYER_POSITIONS.includes(maybePosition) ? parts.slice(0, -1).join(" ") : text;
-  return nameText.trim().toLowerCase();
-}
-
-function getSoloRecordUserIdentity(user = {}) {
-  return getUserHashtag(user).toLowerCase();
-}
-
-function getSoloRecordSelectedIdentitySet(teamAText = "", teamBText = "") {
-  return new Set([...getSoloRecordRosterLines(teamAText), ...getSoloRecordRosterLines(teamBText)]
-    .map(getSoloRecordRosterIdentity)
-    .filter(Boolean));
-}
-
-function getSoloRecordRosterError(mode = "1v1", teamAText = "", teamBText = "") {
-  const sideSize = getModeSize(mode, 1);
-  const teamALines = getSoloRecordRosterLines(teamAText);
-  const teamBLines = getSoloRecordRosterLines(teamBText);
-  const teamALimit = Math.max(0, sideSize - 1);
-  if (teamALines.length > teamALimit) return `우리 사이드는 본인 제외 ${teamALimit}명까지만 추가할 수 있습니다.`;
-  if (teamBLines.length > sideSize) return `상대 사이드는 ${sideSize}명까지만 추가할 수 있습니다.`;
-  const seen = new Map();
-  for (const line of [...teamALines, ...teamBLines]) {
-    const identity = getSoloRecordRosterIdentity(line);
-    if (!identity) continue;
-    if (seen.has(identity)) return "같은 선수를 우리/상대 또는 같은 사이드에 중복으로 넣을 수 없습니다.";
-    seen.set(identity, line);
-  }
-  return "";
-}
 
 const ageRestrictionOptions = [
   { id: "any", label: "연령 무관", desc: "모든 연령 참여", allowedGroups: AGE_GROUPS.map((group) => group.id) },
@@ -276,30 +240,8 @@ function getMmrSpread(teams) {
   return mmrs.length ? Math.max(...mmrs) - Math.min(...mmrs) : 0;
 }
 
-function getDefaultTeamPlayerIds(team, capacity, excludedIds = [], preferredPlayerId = "") {
-  if (!team) return [];
-  const availableIds = getAvailableTeamPlayerIds(team, excludedIds);
-  if (!preferredPlayerId || !availableIds.includes(preferredPlayerId)) return availableIds.slice(0, capacity);
-  return [preferredPlayerId, ...availableIds.filter((playerId) => playerId !== preferredPlayerId)].slice(0, capacity);
-}
-
 function getRepresentativePlayerIds(userId = "") {
   return userId ? [userId] : [];
-}
-
-function getPartyPlayerIds(team, playerIds, capacity, excludedIds = []) {
-  if (!team) return [];
-  if (!Array.isArray(playerIds)) return getDefaultTeamPlayerIds(team, capacity, excludedIds);
-  const selectableIds = new Set(getSelectableTeamPlayerIds(team));
-  const excluded = new Set(excludedIds);
-  return Array.from(new Set(playerIds.filter((playerId) => selectableIds.has(playerId) && !excluded.has(playerId)))).slice(0, capacity);
-}
-
-function getPartyReserveIds(team, reserveIds, activeIds = [], capacity = MAX_PARTY_RESERVES, excludedIds = []) {
-  if (!team || !Array.isArray(reserveIds)) return [];
-  const teamPlayerIds = new Set((team.members ?? []).map((member) => member.userId));
-  const activeSet = new Set([...activeIds, ...excludedIds]);
-  return Array.from(new Set(reserveIds.filter((playerId) => teamPlayerIds.has(playerId) && !activeSet.has(playerId)))).slice(0, capacity);
 }
 
 function getDefaultCreateMode(team) {
@@ -494,6 +436,8 @@ export default function CreateMatch({
     soloTeamBName: "상대팀",
     soloTeamAPlayersText: "",
     soloTeamBPlayersText: "",
+    soloTeamAPlayerRefs: [],
+    soloTeamBPlayerRefs: [],
     soloScoreFor: "",
     soloScoreAgainst: "",
     soloStats: makeEmptySoloStats(),
@@ -622,12 +566,34 @@ export default function CreateMatch({
   const recordEntryMode = getRecordEntryMode(draft);
   const recordComposition = getRecordComposition(draft);
   const soloRosterError = useMemo(
-    () => getSoloRecordRosterError(draft.mode, draft.soloTeamAPlayersText, draft.soloTeamBPlayersText),
-    [draft.mode, draft.soloTeamAPlayersText, draft.soloTeamBPlayersText],
+    () => getSoloRecordRosterError(
+      draft.mode,
+      draft.soloTeamAPlayersText,
+      draft.soloTeamBPlayersText,
+      draft.soloTeamAPlayerRefs,
+      draft.soloTeamBPlayerRefs,
+    ),
+    [
+      draft.mode,
+      draft.soloTeamAPlayerRefs,
+      draft.soloTeamAPlayersText,
+      draft.soloTeamBPlayerRefs,
+      draft.soloTeamBPlayersText,
+    ],
   );
   const soloRecordSelectedIdentitySet = useMemo(
-    () => getSoloRecordSelectedIdentitySet(draft.soloTeamAPlayersText, draft.soloTeamBPlayersText),
-    [draft.soloTeamAPlayersText, draft.soloTeamBPlayersText],
+    () => getSoloRecordSelectedIdentitySet(
+      draft.soloTeamAPlayersText,
+      draft.soloTeamBPlayersText,
+      draft.soloTeamAPlayerRefs,
+      draft.soloTeamBPlayerRefs,
+    ),
+    [
+      draft.soloTeamAPlayerRefs,
+      draft.soloTeamAPlayersText,
+      draft.soloTeamBPlayerRefs,
+      draft.soloTeamBPlayersText,
+    ],
   );
   const isPublicRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "public";
   const isTournamentRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "tournament";
@@ -1028,7 +994,6 @@ export default function CreateMatch({
           ? `${ineligibleTournamentTeams[0].name}: ${tournamentEligibilityById.get(ineligibleTournamentTeams[0].id)?.reason}`
         : "";
   const soloStatsInvalid = PLAYER_STAT_FIELDS.some((field) => {
-    if (field.id === "points") return false;
     const value = Number((draft.soloStats ?? {})[field.id] ?? 0);
     return !Number.isFinite(value) || value < 0 || value > 999;
   });
@@ -1142,20 +1107,35 @@ export default function CreateMatch({
     });
   };
   const updateSoloStat = (fieldId, value) => {
-    const nextValue = Math.max(0, Math.min(999, Number(value) || 0));
+    const nextValue = value === "" ? "" : Math.max(0, Math.min(999, Number(value) || 0));
     update({ soloStats: { ...(draft.soloStats ?? {}), [fieldId]: nextValue } });
   };
-  const clearZeroSoloScore = (fieldId) => {
-    setDraft((current) => (String(current[fieldId]) === "0" ? { ...current, [fieldId]: "" } : current));
+  const normalizeSoloRosterSide = (sideName) => {
+    const fieldId = sideName === "teamA" ? "soloTeamAPlayersText" : "soloTeamBPlayersText";
+    const refFieldId = sideName === "teamA" ? "soloTeamAPlayerRefs" : "soloTeamBPlayerRefs";
+    setDraft((current) => {
+      const normalized = normalizeSoloRecordRosterInput(
+        current[fieldId],
+        current[refFieldId],
+        app.state.users,
+      );
+      return {
+        ...current,
+        [fieldId]: normalized.text,
+        [refFieldId]: normalized.refs,
+      };
+    });
   };
   const appendSoloRecordUser = (sideName, user) => {
     const fieldId = sideName === "teamA" ? "soloTeamAPlayersText" : "soloTeamBPlayersText";
+    const refFieldId = sideName === "teamA" ? "soloTeamAPlayerRefs" : "soloTeamBPlayerRefs";
     const line = getSoloRecordUserLine(user);
-    if (!line) return;
+    const playerRef = getSoloRecordPlayerRef(user);
+    if (!line || !playerRef) return;
     const sideSize = getModeSize(draft.mode, 1);
     const targetLimit = sideName === "teamA" ? Math.max(0, sideSize - 1) : sideSize;
     const targetLines = getSoloRecordRosterLines(draft[fieldId]);
-    const identity = getSoloRecordRosterIdentity(line);
+    const identity = getSoloRecordUserIdentity(user);
     if (targetLines.length >= targetLimit) {
       setSubmitFeedback(sideName === "teamA" ? `우리 사이드는 본인 제외 ${targetLimit}명까지만 추가할 수 있습니다.` : `상대 사이드는 ${targetLimit}명까지만 추가할 수 있습니다.`);
       return;
@@ -1168,7 +1148,11 @@ export default function CreateMatch({
     setDraft((current) => {
       const lines = String(current[fieldId] ?? "").split("\n").map((item) => item.trim()).filter(Boolean);
       if (lines.includes(line)) return current;
-      return { ...current, [fieldId]: [...lines, line].join("\n") };
+      return {
+        ...current,
+        [fieldId]: [...lines, line].join("\n"),
+        [refFieldId]: [...(current[refFieldId] ?? []), playerRef],
+      };
     });
     if (sideName === "teamA") setSoloTeamAUserQuery("");
     else setSoloTeamBUserQuery("");
@@ -1505,7 +1489,7 @@ export default function CreateMatch({
       <button type="button" className="search-picker-result-main" onClick={() => appendSoloRecordUser(sideName, user)}>
         <strong>{user.name}</strong>
         <span>{getUserHashtag(user)} · {user.position} · {user.region}</span>
-        <em>텍스트만 추가 · 유저 연결 없음</em>
+        <em>실제 선수 연결 · 기록에는 해시태그 숨김</em>
       </button>
     </div>
   );
@@ -1529,7 +1513,23 @@ export default function CreateMatch({
     setSubmitting(true);
     try {
     if (isSoloRecord) {
-      const personalRecordDraft = getPersonalRecordDraftPayload(draft);
+      const normalizedTeamA = normalizeSoloRecordRosterInput(
+        draft.soloTeamAPlayersText,
+        draft.soloTeamAPlayerRefs,
+        app.state.users,
+      );
+      const normalizedTeamB = normalizeSoloRecordRosterInput(
+        draft.soloTeamBPlayersText,
+        draft.soloTeamBPlayerRefs,
+        app.state.users,
+      );
+      const personalRecordDraft = getPersonalRecordDraftPayload({
+        ...draft,
+        soloTeamAPlayersText: normalizedTeamA.text,
+        soloTeamBPlayersText: normalizedTeamB.text,
+        soloTeamAPlayerRefs: normalizedTeamA.refs,
+        soloTeamBPlayerRefs: normalizedTeamB.refs,
+      });
       const matchId = await app.actions.createMatch({
         ...personalRecordDraft,
         recordType: RECORD_TYPES.personalRecord,
@@ -2215,13 +2215,25 @@ export default function CreateMatch({
             ) : null}
             {isSoloRecord ? (
               <>
-                <label>
-                  내 점수
-                  <input type="number" min="0" max="999" value={draft.soloScoreFor} onFocus={() => clearZeroSoloScore("soloScoreFor")} onChange={(event) => update({ soloScoreFor: event.target.value })} />
+                <label className="personal-record-score-field">
+                  우리팀 점수
+                  <NumericStepper
+                    value={draft.soloScoreFor}
+                    max={999}
+                    label="우리팀 점수"
+                    clearZeroOnFocus
+                    onChange={(value) => update({ soloScoreFor: value })}
+                  />
                 </label>
-                <label>
+                <label className="personal-record-score-field">
                   상대 점수
-                  <input type="number" min="0" max="999" value={draft.soloScoreAgainst} onFocus={() => clearZeroSoloScore("soloScoreAgainst")} onChange={(event) => update({ soloScoreAgainst: event.target.value })} />
+                  <NumericStepper
+                    value={draft.soloScoreAgainst}
+                    max={999}
+                    label="상대 점수"
+                    clearZeroOnFocus
+                    onChange={(value) => update({ soloScoreAgainst: value })}
+                  />
                 </label>
                 {recordEntryMode === "named" ? (
                   <>
@@ -2275,11 +2287,21 @@ export default function CreateMatch({
                 </label>
                 <label className="memo-label solo-record-roster-field">
                   우리팀 선수
-                  <textarea value={draft.soloTeamAPlayersText} placeholder="한 줄에 한 명. 예: 김민준 #rb001pg PG" onChange={(event) => update({ soloTeamAPlayersText: event.target.value })} />
+                  <textarea
+                    value={draft.soloTeamAPlayersText}
+                    placeholder="한 줄에 한 명. 예: 김민준 #rb001pg PG"
+                    onChange={(event) => update({ soloTeamAPlayersText: event.target.value })}
+                    onBlur={() => normalizeSoloRosterSide("teamA")}
+                  />
                 </label>
                 <label className="memo-label solo-record-roster-field">
                   상대 선수
-                  <textarea value={draft.soloTeamBPlayersText} placeholder="한 줄에 한 명. 예: 이서연 #rb002c C" onChange={(event) => update({ soloTeamBPlayersText: event.target.value })} />
+                  <textarea
+                    value={draft.soloTeamBPlayersText}
+                    placeholder="한 줄에 한 명. 예: 이서연 #rb002c C"
+                    onChange={(event) => update({ soloTeamBPlayersText: event.target.value })}
+                    onBlur={() => normalizeSoloRosterSide("teamB")}
+                  />
                 </label>
                   </>
                 ) : null}
@@ -2524,18 +2546,25 @@ export default function CreateMatch({
             <>
               <div className="create-public-note">
                 <ClipboardList size={17} />
-                <span>내 점수는 PTS로 저장합니다. 아래 스탯은 기록 히스토리에만 남고 MMR에는 반영하지 않습니다.</span>
+                <span>우리팀 점수와 내 득점은 따로 입력합니다. 개인 스탯은 기록 히스토리에만 남고 MMR에는 반영하지 않습니다.</span>
               </div>
-              <div className="form-grid two">
-                {PLAYER_STAT_FIELDS.filter((field) => field.id !== "points").map((field) => (
+              <Card className="personal-record-owner-row">
+                <div>
+                  <strong>{app.currentUser.name}</strong>
+                  <span>{app.currentUser.position || "포지션 미설정"} · 본인 개인 스탯</span>
+                </div>
+                <Badge tone="green">본인</Badge>
+              </Card>
+              <div className="form-grid two personal-record-stat-grid">
+                {PLAYER_STAT_FIELDS.map((field) => (
                   <label key={field.id}>
-                    {field.label}
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
+                    {field.id === "points" ? "내 득점 (PTS)" : field.label}
+                    <NumericStepper
                       value={(draft.soloStats ?? {})[field.id] ?? 0}
-                      onChange={(event) => updateSoloStat(field.id, event.target.value)}
+                      max={999}
+                      label={field.id === "points" ? "내 득점" : field.label}
+                      clearZeroOnFocus
+                      onChange={(value) => updateSoloStat(field.id, value)}
                     />
                   </label>
                 ))}
@@ -2564,18 +2593,7 @@ export default function CreateMatch({
                     </div>
                     <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
                   </div>
-                  <div className="segmented-control compact-segments">
-                    {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        className={draft.mmrRangeMode === mode ? "active" : ""}
-                        onClick={() => update({ mmrRangeMode: mode })}
-                      >
-                        {policy.label}
-                      </button>
-                    ))}
-                  </div>
+                  <MmrRangeSelector value={draft.mmrRangeMode} onChange={(mmrRangeMode) => update({ mmrRangeMode })} />
                 </div>
               ) : null}
               <div className={ageRestrictionBlocked ? "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface tier-range-note-warning" : "mmr-range-mode-control create-eligibility-control ui-design-borderless-surface"}>

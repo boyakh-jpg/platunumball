@@ -1,5 +1,5 @@
 import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
-import { buildCourtAddressNameUpdates } from "../../../src/lib/courts.js";
+import { buildCourtAddressNameUpdates } from "../../../shared/lib/courts.js";
 
 const PAGE_SIZE = 100;
 const MAX_PAGE = 10_000;

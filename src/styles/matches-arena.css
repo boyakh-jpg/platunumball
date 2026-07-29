@@ -969,11 +969,6 @@
   display: none;
 }
 
-.bracket-lanes {
-  display: grid;
-  gap: 14px;
-}
-
 .tournament-round article.bracket-match-card {
   position: relative;
   display: grid;
@@ -2528,13 +2523,6 @@ html[data-theme="light"] .tournament-schedule-list {
   color: var(--rb-orange);
 }
 
-@media (max-width: 720px) {
-  .om-match-copy h1,
-  .tournament-hero h1 {
-    font-size: var(--hero-title-size-mobile);
-  }
-}
-
 /* 2026-07-01 final matches UI module.
    Matches chunk loads after globals.css, so filters/buttons/cards use --ui-* tokens here too. */
 .om-view-card,
@@ -2608,24 +2596,6 @@ html[data-theme="light"] .tournament-schedule-list {
   background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-card-bg));
 }
 
-/* 2026-07-02 remove extra match hero overlay layer. */
-.om-match-hero::after {
-  content: none;
-  background: none;
-  opacity: 0;
-}
-
-/* 2026-07-02 canonical matches hero image rule: no wash, grid, or pseudo overlay. */
-
-.om-match-hero::before,
-.om-match-hero::after,
-html[data-theme="light"] .om-match-hero::before,
-html[data-theme="light"] .om-match-hero::after {
-  content: none;
-  background: none;
-  opacity: 0;
-}
-
 .om-match-copy .eyebrow,
 .om-match-copy h1,
 .om-match-copy p,
@@ -2643,14 +2613,6 @@ html[data-theme="light"] .om-match-copy p {
 
 html[data-theme="light"] .om-match-copy h1 {
   color: var(--rb-cream);
-}
-
-/* 2026-07-02 include tournament in page-level hero rules. */
-.tournament-hero::before,
-.tournament-hero::after {
-  content: none;
-  background: none;
-  opacity: 0;
 }
 
 html[data-theme="light"] .tournament-hero h1 {

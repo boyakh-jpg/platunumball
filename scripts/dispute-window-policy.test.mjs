@@ -47,7 +47,7 @@ test("schema and schema health expose the same dispute window invariant", async 
   assert.match(schema, /recruiting_posts_dispute_minutes_range/);
   assert.match(schema, /rankball_dispute_window_health/);
 
-  assert.match(schemaHealth, /name: "rankball_dispute_window_health"/);
+  assert.match(schemaHealth, /client\.rpc\("rankball_dispute_window_health"\)/);
   assert.match(schemaHealth, /checkDisputeWindowPolicy/);
   assert.match(schemaHealth, /failedDisputeWindowCount/);
   assert.match(schemaHealth, /disputeWindowCheck\.ok/);

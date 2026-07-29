@@ -1,8 +1,8 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
-import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
-import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
-import { getBlockedUserIds, getNotificationActorId, getNotificationTargetPath } from "../../../src/lib/notifications.js";
+import { fromRemoteNotification } from "../../../shared/lib/remotePayloadMappers.js";
+import { isDiscordNotificationEnabled } from "../../../shared/lib/settingsMappers.js";
+import { getBlockedUserIds, getNotificationActorId, getNotificationTargetPath } from "../../../shared/lib/notifications.js";
 import {
   DISCORD_NOTIFICATION_BODY_MAX_LENGTH,
   DISCORD_NOTIFICATION_ID_MAX_LENGTH,
@@ -10,7 +10,7 @@ import {
   DISCORD_NOTIFICATION_URL_MAX_LENGTH,
   DISCORD_PROFILE_ID_MAX_LENGTH,
   getDiscordInviteCustomId,
-} from "../../../src/lib/discordProtocol.js";
+} from "../../../shared/lib/discordProtocol.js";
 
 const MAX_DELIVERIES = 100;
 const ALLOWED_EVENTS = new Set(["match", "approval", "report"]);

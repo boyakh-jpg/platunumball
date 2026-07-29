@@ -1,4 +1,4 @@
-import { MATCH_MODES } from "../../src/lib/constants.js";
+import { MATCH_MODES } from "../../shared/lib/matchConstants.js";
 
 export const RATING_POLICY_MODE_IDS = Object.freeze(MATCH_MODES.map((mode) => mode.id));
 
@@ -19,10 +19,6 @@ export const DEFAULT_RATING_POLICY = Object.freeze({
     foulGrace: 2,
     foulPenaltyPer: 1,
     maxFoulPenalty: 4,
-    // LEGACY POLICY FIELD:
-    // 과거 정책 snapshot 해석 전용.
-    // 신규 경기 보상 계산과 관리자 설정 UI에서 사용하지 않는다.
-    candidateRecorderReward: 2,
     refereeReward: 1,
     thumbsDelta: 1,
     refereeAbsencePenalty: 4,
@@ -108,39 +104,3 @@ export const RATING_POLICY_GROUPS = Object.freeze([
     ],
   },
 ]);
-
-export const RATING_POLICY_FIELDS = Object.freeze(RATING_POLICY_GROUPS.flatMap((group) => group.fields));
-
-export function cloneRatingPolicy(policy = DEFAULT_RATING_POLICY) {
-  return JSON.parse(JSON.stringify(policy));
-}
-
-export function getRatingPolicyValue(policy, path) {
-  return path.reduce((value, key) => value?.[key], policy);
-}
-
-export function setRatingPolicyValue(policy, path, value) {
-  const next = cloneRatingPolicy(policy);
-  let cursor = next;
-  path.slice(0, -1).forEach((key) => {
-    cursor = cursor[key];
-  });
-  cursor[path.at(-1)] = value;
-  return next;
-}
-
-export function normalizeRatingPolicy(policy = {}) {
-  let normalized = cloneRatingPolicy(DEFAULT_RATING_POLICY);
-  RATING_POLICY_FIELDS.forEach((field) => {
-    const raw = Number(getRatingPolicyValue(policy, field.path));
-    const fallback = getRatingPolicyValue(DEFAULT_RATING_POLICY, field.path);
-    const value = Number.isFinite(raw) ? raw : fallback;
-    const stepped = field.step >= 1 ? Math.round(value) : value;
-    normalized = setRatingPolicyValue(normalized, field.path, Math.max(field.min, Math.min(field.max, stepped)));
-  });
-  const legacyCandidateRecorderReward = Number(policy?.trust?.candidateRecorderReward);
-  if (Number.isFinite(legacyCandidateRecorderReward)) {
-    normalized.trust.candidateRecorderReward = legacyCandidateRecorderReward;
-  }
-  return normalized;
-}

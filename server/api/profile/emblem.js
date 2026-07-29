@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { getProfileIcon } from "../../../src/lib/profileIcons.js";
-import { isEmblemHexColor } from "../../../src/lib/emblemPolicy.js";
+import { getProfileIcon } from "../../../shared/lib/profileIcons.js";
+import { isEmblemHexColor } from "../../../shared/lib/emblemPolicy.js";
 import { refreshProfileIconAchievements } from "../_profileIconAchievements.js";
 import {
   decodeBase64Image,

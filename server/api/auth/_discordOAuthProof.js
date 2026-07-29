@@ -4,7 +4,7 @@ import {
   DISCORD_OAUTH_STATE_TTL_MS,
   isDiscordOAuthState,
   isDiscordSnowflake,
-} from "../../../src/lib/discordProtocol.js";
+} from "../../../shared/lib/discordProtocol.js";
 
 const CLOCK_SKEW_MS = 30_000;
 const MAX_SIGNED_TOKEN_LENGTH = 4_096;

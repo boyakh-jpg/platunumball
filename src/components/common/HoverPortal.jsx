@@ -36,6 +36,59 @@ function isSamePosition(a, b) {
     Math.round(a.maxHeight) === Math.round(b.maxHeight);
 }
 
+export function HoverCardTrigger({
+  anchorRef,
+  children,
+  className,
+  onActivate,
+  onClick,
+  onDismiss,
+  role = "button",
+  tabIndex = 0,
+  triggerProps = {},
+}) {
+  return (
+    <span
+      ref={anchorRef}
+      className={className}
+      onClick={onClick ?? ((event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onActivate?.(event);
+      })}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") onDismiss?.(event);
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          onActivate?.(event);
+        }
+      }}
+      {...triggerProps}
+      {...(role ? { role, tabIndex } : {})}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function HoverCardCloseButton({ onClose }) {
+  return (
+    <button
+      type="button"
+      className="hover-card-close"
+      aria-label="닫기"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }}
+    >
+      X
+    </button>
+  );
+}
+
 export default function HoverPortal({
   anchorRef,
   open,

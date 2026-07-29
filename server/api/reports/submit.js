@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
+import {
+  flattenPlayerIdValues,
+  projectPersistedMatchReportParticipantIds,
+} from "../../../shared/lib/playerIds.js";
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
-import { getMatchScheduledDate } from "../../../src/lib/matchUtils.js";
-import { REPORT_MATCH_WINDOW_MS } from "../../../src/lib/constants.js";
-import { VOID_MATCH_RESTORE_REPORT_REASON } from "../../../src/lib/reportReasons.js";
+import { getMatchScheduledDate } from "../../../shared/lib/matchUtils.js";
+import { REPORT_MATCH_WINDOW_MS } from "../../../shared/lib/constants.js";
+import { VOID_MATCH_RESTORE_REPORT_REASON } from "../../../shared/lib/reportReasons.js";
 
 const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review", "team_emblem", "team_name", "affiliation_name"]);
 const COURT_CORRECTION_FIELDS = new Map([
@@ -106,7 +110,7 @@ async function assertCanSubmitMatchReport(context, targetId, reportedUserIds, re
     match.created_by,
     match.referee_id,
     match.former_referee_id,
-    ...flattenProfileValues(match.stat_recorders),
+    ...flattenPlayerIdValues(match.stat_recorders),
     ...(players ?? []).map((player) => player.user_id),
   ].filter(Boolean));
   const actorInJson = includesProfile(match.reserve_players, context.profileId)
@@ -137,7 +141,7 @@ async function assertCanSubmitMatchReport(context, targetId, reportedUserIds, re
 
   const allowedReportedIds = new Set([...participantIds]);
   for (const value of [match.stat_recorders, match.reserve_players, match.played_player_ids, match.attendance]) {
-    uniqueStrings(flattenProfileValues(value)).forEach((profileId) => allowedReportedIds.add(profileId));
+    uniqueStrings(flattenPlayerIdValues(value)).forEach((profileId) => allowedReportedIds.add(profileId));
   }
   if (isVoidRestoreRequest) {
     const voidedBy = String(match.voided_by || match.created_by || "").trim();
@@ -168,23 +172,6 @@ async function assertCanSubmitMatchReport(context, targetId, reportedUserIds, re
   };
 }
 
-function flattenProfileValues(value) {
-  if (value == null) return [];
-  if (Array.isArray(value)) return value.flatMap(flattenProfileValues);
-  if (typeof value === "object") return Object.values(value).flatMap(flattenProfileValues);
-  return [String(value)];
-}
-
-function getMatchPlayerIds(match = {}, playerRows = []) {
-  return new Set(uniqueStrings([
-    ...playerRows.map((player) => player.user_id),
-    ...flattenProfileValues(match.reserve_players),
-    ...flattenProfileValues(match.played_player_ids),
-    ...flattenProfileValues(match.rules?.reservePlayers),
-    ...flattenProfileValues(match.rules?.playedPlayerIds),
-  ]));
-}
-
 async function hasRecentSharedPlayerMatch(context, targetId, sourceMatchId) {
   const requestedMatchId = String(sourceMatchId ?? "").trim();
   if (!requestedMatchId) return false;
@@ -204,7 +191,7 @@ async function hasRecentSharedPlayerMatch(context, targetId, sourceMatchId) {
     .in("user_id", [context.profileId, targetId]);
   if (playerError) throw playerError;
 
-  const playerIds = getMatchPlayerIds(match, players ?? []);
+  const playerIds = new Set(projectPersistedMatchReportParticipantIds(match, players ?? []));
   return playerIds.has(context.profileId) && playerIds.has(targetId) ? match.id : false;
 }
 

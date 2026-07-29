@@ -1,4 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "./_supabaseAdmin.js";
+import { projectTeamRow } from "../../shared/lib/teamRowProjection.js";
 import {
   AFFILIATION_COLUMNS,
   COURT_REVIEW_COLUMNS,
@@ -7,10 +8,11 @@ import {
   SEARCH_COURT_COLUMNS as COURT_COLUMNS,
   TEAM_COLUMNS,
   TEAM_MEMBER_COLUMNS,
-} from "../../src/data/repositoryColumns.js";
-import { DEFAULT_RATING, TEST_REFEREE_LOGIN_IDS, isRefereeGrade } from "../../src/lib/constants.js";
-import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../../src/lib/queryPolicy.js";
-import { fromRemoteApprovedCourt } from "../../src/data/remotePayloadMappers.js";
+} from "../../shared/lib/repositoryColumns.js";
+import { TEST_REFEREE_LOGIN_IDS, isRefereeGrade } from "../../shared/lib/constants.js";
+import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../../shared/lib/queryPolicy.js";
+import { fromRemoteApprovedCourt } from "../../shared/lib/remotePayloadMappers.js";
+import { isWithinOneEdit } from "../../shared/lib/fuzzyText.js";
 
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
 const REFEREE_QUALIFICATION_SEARCH_LIMIT = 500;
@@ -76,31 +78,6 @@ function normalizeFuzzyText(value = "") {
   return normalizeSearchQuery(value)
     .toLowerCase()
     .replace(/[^\p{L}\p{N}#]+/gu, "");
-}
-
-function isWithinOneEdit(source = "", target = "") {
-  if (source === target) return true;
-  if (!source || !target || Math.abs(source.length - target.length) > 1) return false;
-
-  let sourceIndex = 0;
-  let targetIndex = 0;
-  let edits = 0;
-  while (sourceIndex < source.length && targetIndex < target.length) {
-    if (source[sourceIndex] === target[targetIndex]) {
-      sourceIndex += 1;
-      targetIndex += 1;
-      continue;
-    }
-    edits += 1;
-    if (edits > 1) return false;
-    if (source.length > target.length) sourceIndex += 1;
-    else if (target.length > source.length) targetIndex += 1;
-    else {
-      sourceIndex += 1;
-      targetIndex += 1;
-    }
-  }
-  return edits + Number(sourceIndex < source.length || targetIndex < target.length) <= 1;
 }
 
 export function isCourtFuzzyMatch(row = {}, query = "") {
@@ -178,30 +155,10 @@ function toProfile(row = {}, kind = "profile", extra = {}) {
   };
 }
 
-function toTeam(row = {}, memberRows = []) {
+export function toTeam(row = {}, memberRows = []) {
   return {
     kind: "team",
-    id: row.id,
-    name: row.name,
-    homeCourt: row.home_court,
-    region: row.region,
-    mmr: row.mmr ?? DEFAULT_RATING,
-    wins: row.wins ?? 0,
-    losses: row.losses ?? 0,
-    accent: row.accent,
-    emblemKey: row.emblem_key ?? null,
-    emblemSource: row.emblem_source ?? (row.emblem_key ? "upload" : "initial"),
-    emblemUpdatedAt: row.emblem_updated_at ?? null,
-    emblemUploadedAt: row.emblem_uploaded_at ?? null,
-    emblemUploadCount: Number(row.emblem_upload_count ?? 0),
-    emblemColor: row.emblem_color ?? row.accent ?? null,
-    emblemBorderEnabled: row.emblem_border_enabled !== false,
-    emblemBorderColor: row.emblem_border_color ?? row.accent ?? null,
-    emblemTextMode: new Set(["name", "abbreviation"]).has(row.emblem_text_mode) ? row.emblem_text_mode : "initial",
-    emblemAbbreviation: row.emblem_abbreviation ?? "",
-    emblemFont: row.emblem_font ?? "sport",
-    createdAt: row.created_at ?? null,
-    updatedAt: row.updated_at ?? row.created_at ?? null,
+    ...projectTeamRow(row),
     members: memberRows.map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),
     searchText: [row.name, row.region, row.home_court, row.id].filter(Boolean).join(" "),
   };

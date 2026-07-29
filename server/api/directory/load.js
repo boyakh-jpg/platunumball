@@ -8,17 +8,17 @@ import {
   sendJson,
   uniqueValues,
 } from "../_supabaseAdmin.js";
-import { fromRemoteMatch } from "../../../src/data/matchMappers.js";
-import { fromRemoteAffiliation } from "../../../src/data/affiliationMappers.js";
-import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
+import { fromRemoteMatch } from "../../../shared/lib/matchMappers.js";
+import { fromRemoteAffiliation } from "../../../shared/lib/affiliationMappers.js";
+import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
 import {
   fromRemoteApprovedCourt,
   fromRemoteCourtRequest,
   fromRemoteCourtReview,
   fromRemotePayloadRow,
   fromRemoteReport,
-} from "../../../src/data/remotePayloadMappers.js";
-import { normalizeState } from "../../../src/data/repository.js";
+} from "../../../shared/lib/remotePayloadMappers.js";
+import { normalizeState } from "../../../shared/lib/stateNormalizer.js";
 import {
   ADMIN_DISCIPLINARY_COLUMNS,
   AFFILIATION_COLUMNS,
@@ -37,9 +37,9 @@ import {
   TEAM_COLUMNS,
   TEAM_INVITATION_COLUMNS,
   TEAM_MEMBER_COLUMNS,
-} from "../../../src/data/repositoryColumns.js";
-import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
-import { fromRemoteTeam, fromRemoteTeamInvitation } from "../../../src/data/teamMappers.js";
+} from "../../../shared/lib/repositoryColumns.js";
+import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
+import { fromRemoteTeam, fromRemoteTeamInvitation } from "../../../shared/lib/teamMappers.js";
 import {
   DIRECTORY_ID_BATCH_SIZE,
   getDirectoryPageRequest,
@@ -47,7 +47,7 @@ import {
   normalizeAdminSection,
   normalizeDirectoryFilter,
   normalizeDirectoryKind,
-} from "../../../src/lib/queryPolicy.js";
+} from "../../../shared/lib/queryPolicy.js";
 
 const PROFILE_PRIVACY_KEYS = ["regionRanking", "teamHistory", "statSummary"];
 const ADMIN_REPORT_TYPES = {

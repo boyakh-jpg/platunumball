@@ -15,12 +15,22 @@ import {
   timeStep,
   uniqueValues as unique,
 } from "../_supabaseAdmin.js";
+import { HOUR_MS } from "../../../shared/lib/matchConstants.js";
+import { projectMatchDisputeRows, projectMatchTimestamps } from "../../../shared/lib/matchReadProjection.js";
+import { projectMatchActivePlayerIds } from "../../../shared/lib/playerIds.js";
+import { projectTeamRow } from "../../../shared/lib/teamRowProjection.js";
+import { compactClientUser } from "../../lib/clientProjection.js";
+import {
+  attachRoomFeedCardJson,
+  collectUniqueRoomFeedCards,
+  readRoomFeedCard,
+} from "../../lib/roomFeedCards.js";
 import {
   normalizeState,
-} from "../../../src/data/repository.js";
-import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
-import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
-import { getReadableMatchStatRows, getReadableMatchStatSubmissions, getRemoteMatchActivePlayerIds } from "../../../src/data/matchMappers.js";
+} from "../../../shared/lib/stateNormalizer.js";
+import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
+import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
+import { getReadableMatchStatRows, getReadableMatchStatSubmissions, getRemoteMatchActivePlayerIds } from "../../../shared/lib/matchMappers.js";
 import {
   COURT_COLUMNS,
   MATCH_DISPUTE_COLUMNS,
@@ -31,20 +41,18 @@ import {
   PROFILE_CARD_COLUMNS,
   PROFILE_ME_COLUMNS,
   TEAM_COLUMNS,
-} from "../../../src/data/repositoryColumns.js";
+} from "../../../shared/lib/repositoryColumns.js";
 import {
-  DEFAULT_RATING,
-  HOUR_MS,
   MATCH_SIDES,
   MATCH_SIDE_FALLBACK_NAMES,
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
   normalizeDisputeWindowMinutes,
-} from "../../../src/lib/constants.js";
+} from "../../../shared/lib/constants.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
-import { getMatchRoomPhase, isMatchClosedNotice, isMatchInPlayMenu, isMatchInScheduleMenu, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
-import { TERMINAL_MATCH_STATUS_VALUES } from "../../../src/lib/notifications.js";
+import { getMatchRoomPhase, isMatchClosedNotice, isMatchInPlayMenu, isMatchInScheduleMenu, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../shared/lib/matchUtils.js";
+import { TERMINAL_MATCH_STATUS_VALUES } from "../../../shared/lib/notifications.js";
 
 let userRoomFeedAvailable = true;
 let relatedActiveMatchListAvailable = true;
@@ -127,15 +135,15 @@ function isLegacyListFallbackAllowed(body = {}) {
   return body.allowLegacyFallback === true || process.env.RANKBALL_ALLOW_LEGACY_LIST_FALLBACK === "true";
 }
 
-function normalizeFeedCard(row = {}) {
-  const card = row?.card_json ?? row?.cardJson ?? row?.card ?? null;
-  if (!card || typeof card !== "object" || Array.isArray(card)) return null;
-  const id = card.id ?? row.entity_id ?? row.entityId;
+function normalizeMatchFeedCard(row = {}) {
+  const candidate = readRoomFeedCard(row, { allowCardAlias: true });
+  if (!candidate) return null;
+  const { card, id } = candidate;
   const feedStatus = String(row?.status ?? "").trim();
   const relations = Array.isArray(row?.relations)
     ? row.relations
     : [row?.relation].filter(Boolean);
-  const nextCard = id ? { ...card, id } : null;
+  const nextCard = { ...card, id };
   if (!nextCard?.teamA || typeof nextCard.teamA !== "object") return null;
   if (!nextCard?.teamB || typeof nextCard.teamB !== "object") return null;
   const recordType = String(nextCard.recordType ?? nextCard.rules?.recordType ?? "").trim();
@@ -163,34 +171,17 @@ function normalizeFeedCard(row = {}) {
 }
 
 function uniqueFeedCards(rows = [], ids = []) {
-  const idSet = new Set(ids);
-  const cards = new Map();
-  (rows ?? []).forEach((row) => {
-    const id = row?.entity_id ?? row?.entityId;
-    if (!id || !idSet.has(id) || cards.has(id)) return;
-    const card = normalizeFeedCard(row);
-    if (card) cards.set(id, card);
+  return collectUniqueRoomFeedCards(rows, ids, {
+    normalizeCard: normalizeMatchFeedCard,
   });
-  return ids.map((id) => cards.get(id)).filter(Boolean);
 }
 
 async function attachRoomFeedCards(client, rows = [], entityType = "match") {
-  const ids = unique(rows.map((row) => row?.entity_id));
-  if (!ids.length) return rows;
-  const { data, error } = await client
-    .from("room_feed_cards")
-    .select("entity_id,card_json")
-    .eq("entity_type", entityType)
-    .in("entity_id", ids);
-  if (error) {
-    if (isMissingRoomFeedCards(error)) return rows;
-    throw error;
-  }
-  const cardById = new Map((data ?? []).map((row) => [row.entity_id, row.card_json]));
-  return rows.map((row) => ({
-    ...row,
-    card_json: cardById.get(row?.entity_id) ?? row?.card_json ?? {},
-  }));
+  return attachRoomFeedCardJson(client, rows, {
+    entityType,
+    uniqueIds: unique,
+    isMissingTableError: isMissingRoomFeedCards,
+  });
 }
 
 function collectMissingMatchCardReferences(cards = []) {
@@ -268,19 +259,7 @@ async function attachOpenDisputeQueues(client, matches = [], debugTiming = null)
   return (matches ?? []).map((match) => match?.status === "disputed"
     ? {
         ...match,
-        disputes: (disputesByMatch.get(match.id) ?? []).map((dispute) => ({
-          id: dispute.id,
-          by: dispute.user_id,
-          reason: dispute.reason,
-          request: dispute.request_payload ?? {},
-          status: dispute.status ?? "open",
-          resolvedAt: dispute.resolved_at ?? null,
-          resolvedBy: dispute.resolved_by ?? "",
-          resolution: dispute.resolution ?? "",
-          resolutionReason: dispute.resolution_reason ?? "",
-          resolutionAudit: dispute.resolution_audit ?? {},
-          createdAt: dispute.created_at,
-        })),
+        disputes: projectMatchDisputeRows(disputesByMatch.get(match.id)),
       }
     : match);
 }
@@ -839,13 +818,6 @@ function getMatchUserIds(match = {}) {
   ]);
 }
 
-function getMatchPlayerIds(match = {}) {
-  return unique([
-    ...(match.teamA?.players ?? []),
-    ...(match.teamB?.players ?? []),
-  ]);
-}
-
 function isPlayableMatch(match = {}, profileId = "", isAdmin = false) {
   if (!["agreed", "approval", "disputed"].includes(match.status)) return false;
   if (isAdmin) return true;
@@ -878,76 +850,9 @@ function canReadMatchRow(row = {}, players = [], profileId = "", isAdmin = false
   return getMatchRowActorIds(row, players).includes(profileId);
 }
 
-function compactUser(user = {}, profileId = "") {
-  const compact = {
-    id: user.id,
-    name: user.name,
-    handle: user.handle,
-    hashtag: user.hashtag,
-    position: user.position,
-    region: user.region,
-    avatarColor: user.avatarColor,
-    avatarKey: user.avatarKey ?? null,
-    avatarSource: user.avatarSource ?? "initial",
-    avatarIconKey: user.avatarIconKey ?? null,
-    avatarUpdatedAt: user.avatarUpdatedAt ?? null,
-    avatarBackgroundEnabled: user.avatarBackgroundEnabled !== false,
-    avatarBorderEnabled: user.avatarBorderEnabled === true,
-    avatarBorderColor: user.avatarBorderColor ?? user.avatarColor,
-    discordAvatarUrl: user.discordAvatarUrl ?? null,
-    trustScore: user.trustScore,
-    ratings: Number.isFinite(Number(user.ratings?.integrated))
-      ? { integrated: user.ratings.integrated, placement: user.ratings?.placement }
-      : undefined,
-    ageGroup: user.ageGroup,
-  };
-  if (user.id !== profileId) return compact;
+export function toClientTeam(row = {}) {
   return {
-    ...compact,
-    regionSido: user.regionSido,
-    regionDistrict: user.regionDistrict,
-    school: user.school,
-    company: user.company,
-    club: user.club,
-    streak: user.streak,
-    ratings: user.ratings,
-    authUserId: user.authUserId,
-    testLoginId: user.testLoginId,
-    birthYear: user.birthYear,
-    ageGroupCheckedSeason: user.ageGroupCheckedSeason,
-    onboardingComplete: user.onboardingComplete,
-    profileVersion: user.profileVersion,
-    handleLockedAt: user.handleLockedAt,
-    birthYearLockedAt: user.birthYearLockedAt,
-    nameUpdatedAt: user.nameUpdatedAt,
-    discordConnection: user.discordConnection,
-    discordUserId: user.discordUserId,
-  };
-}
-
-function toClientTeam(row = {}) {
-  return {
-    id: row.id,
-    name: row.name,
-    homeCourt: row.home_court,
-    region: row.region,
-    mmr: row.mmr ?? DEFAULT_RATING,
-    wins: row.wins ?? 0,
-    losses: row.losses ?? 0,
-    accent: row.accent,
-    emblemKey: row.emblem_key ?? null,
-    emblemSource: row.emblem_source ?? (row.emblem_key ? "upload" : "initial"),
-    emblemUpdatedAt: row.emblem_updated_at ?? null,
-    emblemUploadedAt: row.emblem_uploaded_at ?? null,
-    emblemUploadCount: Number(row.emblem_upload_count ?? 0),
-    emblemColor: row.emblem_color ?? row.accent ?? null,
-    emblemBorderEnabled: row.emblem_border_enabled !== false,
-    emblemBorderColor: row.emblem_border_color ?? row.accent ?? null,
-    emblemTextMode: new Set(["name", "abbreviation"]).has(row.emblem_text_mode) ? row.emblem_text_mode : "initial",
-    emblemAbbreviation: row.emblem_abbreviation ?? "",
-    emblemFont: row.emblem_font ?? "sport",
-    createdAt: row.created_at ?? null,
-    updatedAt: row.updated_at ?? row.created_at ?? null,
+    ...projectTeamRow(row),
     membersPartial: true,
     members: [],
   };
@@ -1066,14 +971,7 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
     statRecorders,
     statEntryMinutes: row.stat_entry_minutes ?? 60,
     disputeMinutes: normalizeDisputeWindowMinutes(row.dispute_minutes),
-    createdAt: row.created_at,
-    agreedAt: row.agreed_at,
-    startedAt: row.started_at,
-    endedAt: row.ended_at,
-    confirmedAt: row.confirmed_at,
-    cancelledAt: row.cancelled_at,
-    voidedAt: row.voided_at,
-    updatedAt: row.updated_at ?? row.created_at,
+    ...projectMatchTimestamps(row),
   };
 }
 
@@ -1124,7 +1022,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     if (playOnly) filtered = filtered.filter((match) => isMatchInPlayMenu(match) && isPlayableMatch(match, context.profileId, adminLevel >= 30));
     if (completedOnly) filtered = filtered.filter((match) => (
       match.status === "confirmed" &&
-      (getMatchPlayerIds(match).includes(context.profileId) || match.__feedRelations?.includes("participant"))
+      (projectMatchActivePlayerIds(match).includes(context.profileId) || match.__feedRelations?.includes("participant"))
     ));
     return filtered;
   };
@@ -1249,7 +1147,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     const referencedMatches = queuedMatches.map((match) => attachMatchCardReferences(match, teamById, courtById));
     const state = normalizeState({
       currentUserId: currentUser.id,
-      users: [compactUser(currentUser, currentUser.id)],
+      users: [compactClientUser(currentUser, currentUser.id)],
       teams,
       matches: referencedMatches,
       settings,
@@ -1261,7 +1159,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       ...state,
       users: mergeById(
         mergeById(mergeById(state.users, relatedTournamentState.users), recruitingState.users),
-        [compactUser(currentUser, currentUser.id)],
+        [compactClientUser(currentUser, currentUser.id)],
       ),
       teams: mergeById(mergeById(state.teams, relatedTournamentState.teams), recruitingState.teams),
       recruitingPosts: recruitingState.recruitingPosts ?? [],
@@ -1361,7 +1259,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     return [user.id, user];
   }));
   userById.set(currentUser.id, { ...(userById.get(currentUser.id) ?? {}), ...currentUser });
-  const users = [...userById.values()].map((user) => compactUser(user, currentUser.id));
+  const users = [...userById.values()].map((user) => compactClientUser(user, currentUser.id));
 
   const teams = (teamRows ?? []).map(toClientTeam);
   const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
@@ -1398,7 +1296,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     ...state,
     users: mergeById(
       mergeById(mergeById(state.users, relatedTournamentState.users), recruitingState.users),
-      [compactUser(currentUser, currentUser.id)],
+      [compactClientUser(currentUser, currentUser.id)],
     ),
     teams: mergeById(mergeById(state.teams, relatedTournamentState.teams), recruitingState.teams),
     recruitingPosts: recruitingState.recruitingPosts ?? [],

@@ -1405,8 +1405,8 @@
   padding: 8px;
 }
 
-.arena-dispute-score-row .numeric-stepper,
-.arena-dispute-player .numeric-stepper {
+.arena-dispute-score-row .ui-numeric-stepper,
+.arena-dispute-player .ui-numeric-stepper {
   gap: var(--space-2);
 }
 
@@ -1527,14 +1527,6 @@
   align-items: end;
 }
 
-.profile-identity {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: var(--space-9);
-}
-
-.profile-identity > div:last-child,
 .team-detail-hero > div:first-child,
 .profile-hero h1,
 .team-detail-hero h1 {
@@ -2202,7 +2194,6 @@ html[data-theme="light"] .rank-record-card {
     rgba(255, 255, 255, 0.9);
 }
 
-html[data-theme="light"] .favorite-toggle.active,
 html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   border-color: rgba(184, 118, 19, 0.56);
   background:
@@ -2245,7 +2236,6 @@ html[data-theme="light"] textarea {
 html[data-theme="light"] .button-secondary,
 html[data-theme="light"] .sidebar-signout,
 html[data-theme="light"] .badge,
-html[data-theme="light"] .favorite-toggle,
 html[data-theme="light"] .favorite-toggle-button,
 html[data-theme="light"] .segmented-control,
 html[data-theme="light"] .nav-item:hover,
@@ -2292,11 +2282,6 @@ html[data-theme="light"] .team-search-popover button.selected {
 }
 
 @media (max-width: 720px) {
-  .profile-identity {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
   .entity-profile-hero-visual {
     width: 100%;
     justify-content: center;

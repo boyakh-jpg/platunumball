@@ -397,380 +397,6 @@ const REQUIRED_COLUMNS = {
   ],
 };
 
-const REQUIRED_RPCS = [
-  {
-    name: "rankball_admin_user_operations",
-    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_limit: 1, p_offset: 0, p_search: "", p_risk_only: true },
-  },
-  {
-    name: "rankball_admin_room_remake_stats",
-    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_search: "", p_limit: 1 },
-  },
-  {
-    name: "rankball_commit_admin_manual_user_action",
-    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_target_user_id: "", p_action_type: "warning", p_duration_days: 3, p_reason: "", p_message: "" },
-  },
-  {
-    name: "rankball_resolve_duplicate_court_report",
-    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_report_id: "", p_reason: "", p_feedback: "" },
-  },
-  {
-    name: "rankball_apply_court_correction_report",
-    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_report_id: "", p_reason: "", p_feedback: "" },
-  },
-  {
-    name: "rankball_get_rating_policy",
-    args: { p_actor_profile_id: "", p_actor_admin_level: 0 },
-  },
-  {
-    name: "rankball_update_rating_policy",
-    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_expected_version: 0, p_policy: {}, p_reason: "" },
-  },
-  {
-    name: "rankball_confirm_recruiting_match_action",
-    args: {
-      p_actor_profile_id: "",
-      p_post_action: "confirmRecruitingMatch",
-      p_post_row: {},
-      p_application_rows: [],
-      p_recruiting_notification_rows: [],
-      p_expected_updated_at: null,
-      p_match_action: "confirmRecruitingMatch",
-      p_match_row: {},
-      p_player_rows: [],
-      p_result_row: null,
-      p_stat_rows: [],
-      p_agreement_rows: [],
-      p_approval_rows: [],
-      p_dispute_rows: [],
-      p_match_notification_rows: [],
-      p_replace_result: false,
-    },
-  },
-  {
-    name: "rankball_current_recruiting_post_ids",
-    args: { p_profile_id: "", p_limit: 1 },
-  },
-  {
-    name: "rankball_recruiting_feed_counts",
-    args: { p_profile_id: "" },
-  },
-  {
-    name: "rankball_recruiting_slot_position_action",
-    args: { p_actor_profile_id: "", p_post_id: "", p_player_id: "", p_position: "" },
-  },
-  {
-    name: "rankball_recruiting_cancel_participation_action",
-    args: { p_actor_profile_id: "", p_post_id: "" },
-  },
-  {
-    name: "rankball_recruiting_interest_player_action",
-    args: { p_actor_profile_id: "", p_post_id: "", p_join_mode: "", p_team_id: "", p_side: "", p_reserve: false, p_position: "" },
-  },
-  {
-    name: "rankball_recruiting_applicant_placement_action",
-    args: { p_actor_profile_id: "", p_post_id: "", p_player_id: "", p_side: "", p_reserve: false },
-  },
-  {
-    name: "rankball_recruiting_invitation_decision_action",
-    args: { p_actor_profile_id: "", p_post_id: "", p_invitation_id: "", p_action: "" },
-  },
-  {
-    name: "rankball_recruiting_invite_players_action",
-    args: { p_actor_profile_id: "", p_post_id: "", p_target_user_ids: [], p_side: "", p_reserve: false, p_join_mode: "", p_team_id: "" },
-  },
-  {
-    name: "rankball_recruiting_ready_action",
-    args: { p_actor_profile_id: "", p_post_id: "", p_ready: true },
-  },
-  {
-    name: "rankball_recruiting_close_action",
-    args: { p_actor_profile_id: "", p_post_id: "" },
-  },
-  {
-    name: "rankball_recruiting_management_action",
-    args: { p_actor_profile_id: "", p_operation: {} },
-  },
-  {
-    name: "rankball_match_result_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_result: {} },
-  },
-  {
-    name: "rankball_match_score_increment_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_delta_a: 0, p_delta_b: 0, p_expected_revision_a: null, p_expected_revision_b: null },
-  },
-  {
-    name: "rankball_match_finalize_locked",
-    args: {
-      p_actor_profile_id: "",
-      p_match_id: "",
-      p_action: "finalizeMatch",
-      p_disputes_acknowledged: true,
-    },
-  },
-  {
-    name: "rankball_match_referee_absence_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_action: "" },
-  },
-  {
-    name: "rankball_match_room_action",
-    args: { p_actor_profile_id: "", p_action: "", p_match_id: "", p_payload: {} },
-  },
-  {
-    name: "rankball_tournament_operation_action",
-    args: { p_actor_profile_id: "", p_operation: {} },
-  },
-  {
-    name: "rankball_profile_representative_team_id",
-    args: { p_profile_id: "" },
-  },
-  {
-    name: "rankball_update_team_emblem",
-    args: { p_actor_profile_id: "", p_team_id: "", p_emblem_key: null, p_expected_emblem_key: null },
-  },
-  {
-    name: "rankball_update_team_emblem_style",
-    args: { p_actor_profile_id: "", p_team_id: "", p_emblem_color: "#f05a46", p_border_enabled: true, p_border_color: "#f05a46" },
-  },
-  {
-    name: "rankball_update_team_emblem_source",
-    args: { p_actor_profile_id: "", p_team_id: "", p_emblem_source: "initial" },
-  },
-  {
-    name: "rankball_restore_team_emblem",
-    args: { p_actor_profile_id: "", p_team_id: "", p_expected_emblem_key: null, p_expected_previous_emblem_key: null },
-  },
-  {
-    name: "rankball_update_profile_emblem",
-    args: { p_actor_profile_id: "", p_action: "style", p_avatar_key: null, p_avatar_source: "initial", p_avatar_color: "#58d2c0", p_border_enabled: false, p_border_color: "#58d2c0", p_expected_avatar_key: null },
-  },
-  {
-    name: "rankball_select_profile_icon",
-    args: { p_actor_profile_id: "", p_icon_key: "01-first-bucket" },
-  },
-  {
-    name: "rankball_profile_icon_metrics",
-    args: { p_profile_id: "" },
-  },
-  {
-    name: "rankball_profile_icon_verified_metrics",
-    args: { p_profile_id: "" },
-  },
-  {
-    name: "rankball_save_profile_icon_settings",
-    args: { p_actor_profile_id: "", p_avatar_source: "initial", p_avatar_icon_key: "01-first-bucket", p_avatar_color: "#58d2c0", p_background_enabled: true, p_border_enabled: false, p_border_color: "#58d2c0" },
-  },
-  {
-    name: "rankball_moderate_team_emblem",
-    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_report_id: "", p_reason: "", p_feedback: "" },
-  },
-  {
-    name: "rankball_moderate_team_emblem_guarded",
-    args: { p_actor_profile_id: "", p_actor_admin_level: 0, p_report_id: "", p_reason: "", p_feedback: "" },
-  },
-  {
-    name: "rankball_tournament_team_roster_snapshot",
-    args: { p_team_id: "", p_capacity: 1, p_ranked: false, p_mmr_limit_mode: "warn", p_mmr_range_mode: "normal", p_allowed_age_groups: [] },
-  },
-  {
-    name: "rankball_assert_tournament_team_snapshot_eligible",
-    args: { p_team_id: "", p_capacity: 1, p_ranked: false, p_mmr_limit_mode: "warn", p_mmr_range_mode: "normal", p_allowed_age_groups: [] },
-  },
-  {
-    name: "rankball_create_tournament_match_locked",
-    args: { p_tournament_id: "", p_team_a_id: "", p_team_b_id: "", p_round: 1, p_fixture: 1, p_preferred_match_id: "" },
-  },
-  {
-    name: "rankball_tournament_match_roster_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_payload: {} },
-  },
-  {
-    name: "rankball_tournament_match_lineup_deadline_action",
-    args: { p_match_id: "", p_now: new Date(0).toISOString() },
-  },
-  {
-    name: "rankball_tournament_match_schedule_action",
-    args: { p_actor_profile_id: "", p_tournament_id: "", p_match_id: "", p_schedule: {} },
-  },
-  {
-    name: "rankball_league_finalize_locked",
-    args: { p_tournament_id: "" },
-  },
-  {
-    name: "rankball_tournament_invitation_health",
-    args: {},
-  },
-  {
-    name: "rankball_tournament_start_delivery_health",
-    args: {},
-  },
-  {
-    name: "rankball_rls_policy_health",
-    args: {},
-  },
-  {
-    name: "rankball_referee_rls_policy_health",
-    args: {},
-  },
-  {
-    name: "rankball_rpc_grant_health",
-    args: {},
-  },
-  {
-    name: "rankball_authoritative_rpc_grant_health",
-    args: {},
-  },
-  {
-    name: "rankball_profile_identity_health",
-    args: {},
-  },
-  {
-    name: "rankball_recruiting_action",
-    args: { p_actor_profile_id: "", p_action: "", p_post_row: {}, p_application_rows: [], p_notification_rows: [], p_expected_updated_at: null },
-  },
-  {
-    name: "rankball_match_action",
-    args: {
-      p_actor_profile_id: "",
-      p_action: "",
-      p_match_row: {},
-      p_player_rows: [],
-      p_result_row: null,
-      p_stat_rows: [],
-      p_agreement_rows: [],
-      p_approval_rows: [],
-      p_dispute_rows: [],
-      p_notification_rows: [],
-      p_replace_result: false,
-    },
-  },
-  {
-    name: "rankball_match_action_with_rating",
-    args: {
-      p_actor_profile_id: "",
-      p_action: "",
-      p_match_row: {},
-      p_player_rows: [],
-      p_result_row: null,
-      p_stat_rows: [],
-      p_agreement_rows: [],
-      p_approval_rows: [],
-      p_dispute_rows: [],
-      p_notification_rows: [],
-      p_replace_result: false,
-      p_rating_result: [],
-      p_team_rating_result: {},
-      p_profile_updates: [],
-      p_team_updates: [],
-      p_confirmed_at: new Date(0).toISOString(),
-    },
-  },
-  {
-    name: "rankball_apply_profile_trust_deltas",
-    args: { p_actor_profile_id: "", p_match_id: "", p_deltas: [] },
-  },
-  {
-    name: "rankball_match_list",
-    args: { p_profile_id: "", p_limit: 1, p_cursor: "", p_active_only: true },
-  },
-  {
-    name: "rankball_cleanup_room_feed",
-    args: { p_now: new Date(0).toISOString() },
-  },
-  {
-    name: "rankball_cleanup_read_notifications",
-    args: { p_now: new Date(0).toISOString() },
-  },
-  {
-    name: "rankball_cleanup_simulation_artifacts_exact",
-    args: { p_match_ids: [], p_tournament_ids: [] },
-  },
-  {
-    name: "rankball_mark_notifications_read_action",
-    args: { p_profile_id: "", p_notification_id: "", p_all: false, p_read_at: new Date(0).toISOString() },
-  },
-  {
-    name: "rankball_archive_and_cleanup_completed_records",
-    args: { p_batch_size: 1, p_reference: new Date(0).toISOString() },
-  },
-  {
-    name: "rankball_match_end_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_started_at: "", p_ended_at: "" },
-  },
-  {
-    name: "rankball_match_auto_finalize_action",
-    args: { p_match_id: "", p_now: new Date(0).toISOString() },
-  },
-  {
-    name: "rankball_match_dispute_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_dispute_request: {} },
-  },
-  {
-    name: "rankball_dispute_window_health",
-    args: {},
-  },
-  {
-    name: "rankball_match_resolve_dispute_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_dispute_id: "", p_decision: "rejected", p_resolution_reason: "" },
-  },
-  {
-    name: "rankball_match_terminal_action",
-    args: { p_actor_profile_id: "", p_action: "", p_match_id: "", p_reason: "" },
-  },
-  {
-    name: "rankball_match_roster_transition_action",
-    args: {
-      p_actor_profile_id: "",
-      p_action: "substituteMatchPlayer",
-      p_match_id: "",
-      p_side: "",
-      p_active_player_id: "",
-      p_reserve_player_id: "",
-      p_next_recorder_id: "",
-      p_reason: "operator",
-    },
-  },
-  {
-    name: "rankball_match_score_operation_policy_health",
-    args: {},
-  },
-  {
-    name: "rankball_match_attendance_qr_action",
-    args: { p_actor_profile_id: "", p_match_id: "" },
-  },
-  {
-    name: "rankball_match_attendance_resize_action",
-    args: { p_actor_profile_id: "", p_match_id: "" },
-  },
-  {
-    name: "rankball_match_substitute_action",
-    args: {
-      p_actor_profile_id: "",
-      p_match_id: "",
-      p_side: "",
-      p_active_player_id: "",
-      p_reserve_player_id: "",
-      p_reason: "operator",
-    },
-  },
-  {
-    name: "rankball_match_overlap_policy_health",
-    args: {},
-  },
-  {
-    name: "rankball_match_approval_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_side: "", p_player_id: "" },
-  },
-  {
-    name: "rankball_match_thumbs_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_target_user_ids: [] },
-  },
-  {
-    name: "rankball_match_star_toggle_action",
-    args: { p_actor_profile_id: "", p_match_id: "", p_target_user_id: "" },
-  },
-];
-
 const REQUIRED_FEED_TRIGGERS = [
   "rankball_recruiting_posts_feed_refresh",
   "rankball_recruiting_applications_feed_refresh",
@@ -817,16 +443,41 @@ async function checkTable(client, table, columns) {
   };
 }
 
-async function checkRpc(client, name, args) {
-  const { error } = await client.rpc(name, args);
-  const message = error?.message ?? "";
-  const missing = error?.code === "PGRST202" || /could not find|not found|does not exist/i.test(message);
-  return {
-    rpc: name,
-    ok: !missing,
-    error: missing ? message : null,
-    probeError: !missing ? message || null : null,
-  };
+export function projectActiveRpcContractChecks(rpcGrantCheck) {
+  const projectedByRpc = new Map();
+  const contractChecks = Array.isArray(rpcGrantCheck?.checks) ? rpcGrantCheck.checks : [];
+
+  contractChecks.forEach((check) => {
+    const detail = check?.detail ?? {};
+    const rpc = String(detail.function ?? "").trim();
+    if (!rpc || detail.lifecycle !== "active") return;
+
+    const projected = projectedByRpc.get(rpc) ?? {
+      rpc,
+      ok: true,
+      error: null,
+      probeError: null,
+      contractChecks: [],
+    };
+    projected.ok = projected.ok && check?.ok === true;
+    projected.contractChecks.push(check?.check_name ?? rpc);
+    if (check?.ok !== true) {
+      projected.error = `${check?.check_name ?? rpc}: ${JSON.stringify(detail)}`;
+    }
+    projectedByRpc.set(rpc, projected);
+  });
+
+  if (projectedByRpc.size === 0 && rpcGrantCheck?.error) {
+    return [{
+      rpc: "rankball_rpc_contract_registry",
+      ok: false,
+      error: rpcGrantCheck.error,
+      probeError: null,
+      contractChecks: [],
+    }];
+  }
+
+  return [...projectedByRpc.values()].sort((left, right) => left.rpc.localeCompare(right.rpc));
 }
 
 async function checkScoreOperationPolicy(client) {
@@ -836,6 +487,16 @@ async function checkScoreOperationPolicy(client) {
     ok: !error && result?.ok === true,
     error: error?.message ?? (!result ? "score_operation_policy_health_empty" : null),
     checks: result?.checks ?? {},
+  };
+}
+
+async function checkMatchOverlapPolicy(client) {
+  const { data, error } = await client.rpc("rankball_match_overlap_policy_health");
+  const result = Array.isArray(data) ? data[0] : data;
+  return {
+    ok: !error && result?.ok === true,
+    error: error?.message ?? (!result ? "match_overlap_policy_health_empty" : null),
+    checks: result ?? {},
   };
 }
 
@@ -926,10 +587,29 @@ async function checkRpcGrants(client) {
   }
 
   const checks = results.flatMap((result) => Array.isArray(result.data) ? result.data : []);
+  const registryAclCheck = checks.find(
+    (check) => check?.check_name === "rpc_grant:rankball_rpc_contract_registry_acl",
+  );
+  const registryContractChecks = checks.filter((check) => (
+    ["active", "retired"].includes(check?.detail?.lifecycle)
+    && Boolean(check?.detail?.function)
+    && Boolean(check?.detail?.signature)
+  ));
+  const registryBacked = registryAclCheck?.ok === true && registryContractChecks.length > 0;
   const failed = checks.filter((check) => !check.ok);
+  if (!registryBacked) {
+    failed.push({
+      check_name: "rpc_grant:rankball_rpc_contract_registry_health",
+      ok: false,
+      detail: {
+        registryAclPresent: Boolean(registryAclCheck),
+        contractCheckCount: registryContractChecks.length,
+      },
+    });
+  }
   return {
-    ok: failed.length === 0,
-    error: null,
+    ok: registryBacked && failed.length === 0,
+    error: registryBacked ? null : "rpc_contract_registry_health_missing",
     failed,
     checks,
   };
@@ -1160,11 +840,12 @@ export default async function handler(request, response) {
     const checks = await Promise.all(
       Object.entries(REQUIRED_COLUMNS).map(([table, columns]) => checkTable(client, table, columns)),
     );
-    const rpcChecks = await Promise.all(REQUIRED_RPCS.map((rpc) => checkRpc(client, rpc.name, rpc.args)));
     const feedTriggerCheck = await checkFeedTriggers(client);
     const rlsPolicyCheck = await checkRlsPolicies(client);
     const scoreOperationPolicyCheck = await checkScoreOperationPolicy(client);
     const rpcGrantCheck = await checkRpcGrants(client);
+    const rpcChecks = projectActiveRpcContractChecks(rpcGrantCheck);
+    const matchOverlapPolicyCheck = await checkMatchOverlapPolicy(client);
     const disputeWindowCheck = await checkDisputeWindowPolicy(client, scoreOperationPolicyCheck);
     const profileIdentityCheck = await checkProfileIdentity(client);
     const tournamentInvitationCheck = await checkTournamentInvitations(client);
@@ -1180,12 +861,13 @@ export default async function handler(request, response) {
       ? await ensureCourtAdminAppointments(client)
       : null;
     sendJson(response, 200, {
-      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && scoreOperationPolicyCheck.ok && rpcGrantCheck.ok && disputeWindowCheck.ok && profileIdentityCheck.ok && tournamentInvitationCheck.ok && tournamentStartDeliveryCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
+      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && scoreOperationPolicyCheck.ok && rpcGrantCheck.ok && matchOverlapPolicyCheck.ok && disputeWindowCheck.ok && profileIdentityCheck.ok && tournamentInvitationCheck.ok && tournamentStartDeliveryCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
       failedCount: failed.length,
       failedRpcCount: failedRpcs.length,
       failedFeedTriggerCount: feedTriggerCheck.missing.length,
       failedRlsPolicyCount: rlsPolicyCheck.failed.length,
       failedRpcGrantCount: rpcGrantCheck.failed.length,
+      failedMatchOverlapPolicyCount: matchOverlapPolicyCheck.ok ? 0 : 1,
       failedDisputeWindowCount: disputeWindowCheck.failed.length,
       failedProfileIdentityCount: profileIdentityCheck.failed.length,
       failedTournamentInvitationCount: tournamentInvitationCheck.failed.length,
@@ -1196,6 +878,7 @@ export default async function handler(request, response) {
       rlsPolicyCheck,
       scoreOperationPolicyCheck,
       rpcGrantCheck,
+      matchOverlapPolicyCheck,
       disputeWindowCheck,
       profileIdentityCheck,
       tournamentInvitationCheck,

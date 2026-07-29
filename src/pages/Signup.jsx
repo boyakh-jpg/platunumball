@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import ProfileBasicsFields from "../components/profile/ProfileBasicsFields.jsx";
 import { BASKETBALL_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag, makeRandomDigitSuffix, makeSuggestedHashtagBody, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
 import {
@@ -16,12 +17,10 @@ import {
   getAppRedirectFromLocation,
   getNextNameChangeDate,
   inferRegionSelection,
-  REGION_TREE,
+  getRegionDistrictOptions,
   shouldRecheckAgeGroup,
   shouldSetupProfile,
 } from "../lib/profileSetup.js";
-
-const POSITION_OPTIONS = BASKETBALL_POSITIONS;
 
 function formatDate(date) {
   if (!date) return "";
@@ -45,13 +44,12 @@ export default function Signup({ app, auth }) {
     name: user.name ?? "",
     handle: getInitialHandleBody(user, suggestionSuffix),
     birthYear: user.birthYear ?? "",
-    position: POSITION_OPTIONS.includes(user.position) ? user.position : "PG",
+    position: BASKETBALL_POSITIONS.includes(user.position) ? user.position : "PG",
     sido: user.regionSido ?? inferredRegion.sido,
     district: user.regionDistrict ?? inferredRegion.district,
   }));
   const [formError, setFormError] = useState("");
   const [redirectAfterSave, setRedirectAfterSave] = useState(false);
-  const selectedRegion = REGION_TREE.find((item) => item.sido === draft.sido) ?? REGION_TREE[0];
   const ageGroup = getAgeGroupByBirthYear(draft.birthYear) ?? user.ageGroup ?? "open";
   const ageGroupLabel = getAgeGroupLabel(ageGroup);
   const ageGroupSeason = getAgeGroupSeasonForDate();
@@ -65,7 +63,7 @@ export default function Signup({ app, auth }) {
   const normalizedHandle = handleBody ? toHashtag(handleBody) : "";
   const handleDuplicate = !handleLocked && Boolean(normalizedHandle) && app.state.users.some((item) => item.id !== user.id && sameHashtag(normalizedHandle, getUserHashtag(item)));
 
-  const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
+  const districtOptions = getRegionDistrictOptions(draft.sido);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
   useEffect(() => {
@@ -166,24 +164,13 @@ export default function Signup({ app, auth }) {
               <input required value={birthYearLocked ? user.birthYear : draft.birthYear} inputMode="numeric" maxLength={4} minLength={4} placeholder="2008" disabled={birthYearLocked} onChange={(event) => update({ birthYear: event.target.value.replace(/\D/g, "").slice(0, 4) })} />
               {birthYearLocked ? <span className="muted">출생연도는 최초 등록 후 수정할 수 없습니다.</span> : null}
             </label>
-            <label>
-              주 포지션
-              <select value={draft.position} onChange={(event) => update({ position: event.target.value })}>
-                {POSITION_OPTIONS.map((position) => <option key={position} value={position}>{position}</option>)}
-              </select>
-            </label>
-            <label>
-              시도
-              <select value={draft.sido} onChange={(event) => update({ sido: event.target.value, district: REGION_TREE.find((item) => item.sido === event.target.value)?.districts[0] ?? "" })}>
-                {REGION_TREE.map((region) => <option key={region.sido} value={region.sido}>{region.sido}</option>)}
-              </select>
-            </label>
-            <label>
-              시군구
-              <select value={districtOptions.includes(draft.district) ? draft.district : districtOptions[0]} onChange={(event) => update({ district: event.target.value })}>
-                {districtOptions.map((district) => <option key={district} value={district}>{district}</option>)}
-              </select>
-            </label>
+            <ProfileBasicsFields
+              position={draft.position}
+              regionSido={draft.sido}
+              regionDistrict={draft.district}
+              onPositionChange={(position) => update({ position })}
+              onRegionChange={(sido, district) => update({ sido, district })}
+            />
             {formError ? <p className="form-warning">{formError}</p> : null}
             <div className="create-submit-row signup-submit-row">
               <span className="create-submit-warning">소속은 가입 후 나 메뉴에서 선택할 수 있습니다. 가입 단계에서는 지역과 연령부만 설정합니다.</span>

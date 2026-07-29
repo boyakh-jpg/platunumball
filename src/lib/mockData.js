@@ -1,5 +1,4 @@
 import {
-  COURTS,
   DISPUTE_WINDOW_MINUTES,
   MATCH_MODES,
   MODE_SIZES,
@@ -16,6 +15,13 @@ const DEMO_TODAY = "2026-06-18";
 const DEMO_NOW = "2026-06-18T12:00:00";
 const DEMO_QUEUE_START = "2026-06-18";
 const DEMO_QUEUE_TIMES = ["18:00", "19:30", "21:00"];
+const DEMO_PRACTICE_COURT = Object.freeze({
+  id: "practice-court",
+  name: "연습 경기 구장",
+});
+const DELETED_SYNTHETIC_COURT_IDS = new Set(
+  Array.from({ length: 12 }, (_item, index) => `c${index + 1}`),
+);
 
 function getDemoQueueSlot(slotIndex) {
   const date = new Date(`${DEMO_QUEUE_START}T00:00:00`);
@@ -786,7 +792,7 @@ const baseState = {
     blockedUserIds: [],
     favoritePlayerIds: ["u2", "u3", "u4"],
     favoriteTeamIds: ["t1", "t2", "t5"],
-    favoriteCourtIds: ["c1", "c2", "c3"],
+    favoriteCourtIds: [],
     favoriteRefereeIds: ["u11"],
   },
   reports: [],
@@ -863,7 +869,7 @@ function makeDemoTeam(index, users) {
     role: memberIndex === 0 ? "captain" : memberIndex === 4 && index % 3 === 0 ? "mercenary" : memberIndex === 3 && index % 4 === 0 ? "candidate" : "regular",
   }));
   const region = members[0] ? users.find((user) => user.id === members[0].userId)?.region : cycle(REGIONS, index);
-  const court = COURTS.find((item) => item.region === region) ?? COURTS[index % COURTS.length];
+  const court = DEMO_PRACTICE_COURT;
 
   return {
     id: `td${padNumber(index + 1, 2)}`,
@@ -948,7 +954,7 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
   const startedAt = makeDemoTimestamp(scheduledDate, scheduledTime);
   const endedAt = makeDemoTimestamp(scheduledDate, scheduledTime, 12);
   const submittedAt = makeDemoTimestamp(scheduledDate, scheduledTime, 22);
-  const court = COURTS.find((item) => item.region === teamA.region)?.name ?? teamA.homeCourt;
+  const court = teamA.homeCourt ?? DEMO_PRACTICE_COURT.name;
 
   return {
     id: `md${padNumber(matchIndex + 1, 4)}`,
@@ -1165,7 +1171,7 @@ function makeRecruitingPost(index, teams, users) {
   const team = teams.filter((item) => item.id.startsWith("td"))[index % 20];
   const player = users[(index * 7 + 11) % users.length];
   const region = type === "find_team" ? player.region : team.region;
-  const court = COURTS.find((item) => item.region === region)?.name ?? cycle(COURTS, index).name;
+  const court = team.homeCourt ?? DEMO_PRACTICE_COURT.name;
   const ranked = index % 4 !== 0;
   const applicantTeam = teams.filter((item) => item.id.startsWith("td"))[(index * 5 + 3) % 20];
   const applicantUser = users[(index * 9 + 17) % users.length];
@@ -1382,7 +1388,7 @@ function makeRecruitingRoomPost(index, teams, users) {
     ? users.find((user) => user.id === hostPlayerIds[0]) ?? users[0]
     : users[(index * 11 + 5) % users.length];
   const region = hostJoinMode === "team" ? hostTeam.region : owner.region;
-  const court = COURTS.find((item) => item.region === region)?.name ?? hostTeam.homeCourt ?? cycle(COURTS, index).name;
+  const court = hostTeam.homeCourt ?? DEMO_PRACTICE_COURT.name;
   const applicants = [];
   const partyReserves = {};
   if (hostReserveIds.length) partyReserves.host = hostReserveIds;
@@ -1568,6 +1574,27 @@ function withCanonicalUserHashtags(state) {
   };
 }
 
+function withoutDeletedSyntheticCourts(state) {
+  const clearDeletedCourtId = (item = {}) => (
+    DELETED_SYNTHETIC_COURT_IDS.has(item.courtId)
+      ? { ...item, courtId: null }
+      : item
+  );
+  return {
+    ...state,
+    matches: (state.matches ?? []).map(clearDeletedCourtId),
+    recruitingPosts: (state.recruitingPosts ?? []).map(clearDeletedCourtId),
+    tournaments: (state.tournaments ?? []).map(clearDeletedCourtId),
+    settings: {
+      ...(state.settings ?? {}),
+      favoriteCourtIds: (state.settings?.favoriteCourtIds ?? [])
+        .filter((courtId) => !DELETED_SYNTHETIC_COURT_IDS.has(courtId)),
+      approvedCourts: (state.settings?.approvedCourts ?? [])
+        .filter((court) => !DELETED_SYNTHETIC_COURT_IDS.has(court?.id)),
+    },
+  };
+}
+
 function withDemoLeague(state) {
   const users = buildDemoUsers(state.users);
   const teams = buildDemoTeams(state.teams, users);
@@ -1590,7 +1617,8 @@ function withDemoLeague(state) {
     settings: {
       ...state.settings,
       favoriteTeamIds: [...new Set([...(state.settings?.favoriteTeamIds ?? []), "td01", "td02", "td03", "td04"])],
-      favoriteCourtIds: [...new Set(state.settings?.favoriteCourtIds ?? [])],
+      favoriteCourtIds: [...new Set(state.settings?.favoriteCourtIds ?? [])]
+        .filter((courtId) => !DELETED_SYNTHETIC_COURT_IDS.has(courtId)),
     },
   };
 }
@@ -1648,5 +1676,9 @@ function withDemoRefereeQualifications(state) {
   };
 }
 
-export const sourceDemoState = withCanonicalUserHashtags(withDemoRefereeQualifications(withDemoLeague(baseState)));
-export const initialState = withCanonicalUserHashtags(withDemoRefereeQualifications(demoFlowState ?? sourceDemoState));
+export const sourceDemoState = withoutDeletedSyntheticCourts(
+  withCanonicalUserHashtags(withDemoRefereeQualifications(withDemoLeague(baseState))),
+);
+export const initialState = withoutDeletedSyntheticCourts(
+  withCanonicalUserHashtags(withDemoRefereeQualifications(demoFlowState ?? sourceDemoState)),
+);

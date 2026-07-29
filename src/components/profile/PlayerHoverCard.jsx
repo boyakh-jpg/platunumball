@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
-import HoverPortal from "../common/HoverPortal.jsx";
+import HoverPortal, { HoverCardCloseButton, HoverCardTrigger } from "../common/HoverPortal.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import TeamEmblem from "../team/TeamEmblem.jsx";
-import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
+import useHoverCardInteraction from "../../hooks/useHoverCardInteraction.js";
 import { getDiscordDisplayName, getDiscordProfileUrl } from "../../lib/discord.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
-import { canUseHoverPreview, clearPinnedHoverPreview, getPinnedHoverPreviewKey, isTouchPreviewEvent, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
+import { isTouchPreviewEvent } from "../../lib/hoverPreviewPin.js";
 import { getAgeGroupForUser, getAgeGroupLabel, getRepresentativeTeam, getUserProfileTeams } from "../../lib/profileSetup.js";
 import { getPlacementLabel, hasModeRating, isPlacementComplete } from "../../lib/rating.js";
 import { getTierDivision } from "../../lib/tier.js";
@@ -32,57 +31,18 @@ function roleLabel(role) {
 }
 
 export default function PlayerHoverCard({ user, teams = [], children, className = "", as = "link", to }) {
-  const [hoverOpen, setHoverOpen] = useState(false);
-  const [touchOpen, setTouchOpen] = useState(false);
-  const [pinnedHoverKey, setPinnedHoverKey] = useState(getPinnedHoverPreviewKey);
-  const anchorRef = useRef(null);
-  const cardRef = useRef(null);
-  const longPressTimerRef = useRef(null);
-  const longPressOpenedRef = useRef(false);
   const cardKey = user?.id ? `player:${user.id}` : "";
-  useBodyScrollLock(touchOpen);
-
-  const openPinned = () => {
-    setHoverOpen(false);
-    pinHoverPreview(cardKey);
-    setTouchOpen(true);
-  };
-  const closeTouch = () => {
-    setTouchOpen(false);
-    clearPinnedHoverPreview(cardKey);
-  };
-
-  useEffect(() => subscribePinnedHoverPreview(setPinnedHoverKey), []);
-
-  useEffect(() => {
-    if (touchOpen && pinnedHoverKey && pinnedHoverKey !== cardKey) setTouchOpen(false);
-  }, [cardKey, pinnedHoverKey, touchOpen]);
-
-  useEffect(() => () => {
-    if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
-    clearPinnedHoverPreview(cardKey);
-  }, [cardKey]);
-
-  useEffect(() => {
-    if (!touchOpen) return undefined;
-
-    const closeOutside = (event) => {
-      const target = event.target;
-      if (anchorRef.current?.contains(target) || cardRef.current?.contains(target)) return;
-      closeTouch();
-    };
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") closeTouch();
-    };
-
-    document.addEventListener("pointerdown", closeOutside, true);
-    document.addEventListener("keydown", closeOnEscape);
-
-    return () => {
-      document.removeEventListener("pointerdown", closeOutside, true);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [cardKey, touchOpen]);
+  const {
+    anchorRef,
+    cardRef,
+    closePinned,
+    consumeLongPressOpen,
+    hideHover,
+    open,
+    openPinned,
+    pinnedOpen,
+    triggerProps,
+  } = useHoverCardInteraction({ cardKey, longPress: true });
 
   if (!user) return children ?? null;
 
@@ -99,87 +59,41 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
       ]
     : [{ label: "통합", mode: "", mmr: user.ratings?.integrated }];
   const profilePath = to ?? `/app/players/${user.id}`;
-  const props = as === "span" ? {} : { role: "button", tabIndex: 0 };
-  const showHover = () => {
-    if (canUseHoverPreview() && !pinnedHoverKey) setHoverOpen(true);
-  };
-  const hideHover = () => setHoverOpen(false);
-  const clearLongPress = () => {
-    if (!longPressTimerRef.current) return;
-    window.clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = null;
-  };
-  const handlePointerDown = (event) => {
-    if (!isTouchPreviewEvent(event)) return;
-    clearLongPress();
-    setHoverOpen(false);
-    longPressOpenedRef.current = false;
-    longPressTimerRef.current = window.setTimeout(() => {
-      longPressOpenedRef.current = true;
-      openPinned();
-    }, 420);
-  };
   const handleTriggerClick = (event) => {
     if (as === "span" && !isTouchPreviewEvent(event)) return;
     event.preventDefault();
     event.stopPropagation();
-    if (longPressOpenedRef.current) {
-      longPressOpenedRef.current = false;
-      return;
-    }
-    if (touchOpen) {
-      closeTouch();
+    if (consumeLongPressOpen()) return;
+    if (pinnedOpen) {
+      closePinned();
       return;
     }
     openPinned();
   };
-  const open = touchOpen || (!pinnedHoverKey && canUseHoverPreview() && hoverOpen);
 
   return (
-    <span
-      ref={anchorRef}
+    <HoverCardTrigger
+      anchorRef={anchorRef}
       className={`player-hover-trigger ${className}`}
-      onBlur={hideHover}
       onClick={handleTriggerClick}
-      onContextMenu={(event) => {
-        if (isTouchPreviewEvent(event)) event.preventDefault();
+      onActivate={openPinned}
+      onDismiss={() => {
+        hideHover();
+        closePinned();
       }}
-      onFocus={showHover}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          hideHover();
-          closeTouch();
-        }
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          event.stopPropagation();
-          openPinned();
-        }
-      }}
-      onMouseEnter={showHover}
-      onMouseLeave={hideHover}
-      onPointerCancel={clearLongPress}
-      onPointerDown={handlePointerDown}
-      onPointerLeave={clearLongPress}
-      onPointerUp={clearLongPress}
-      onDragStart={(event) => {
-        if (isTouchPreviewEvent(event)) event.preventDefault();
-      }}
-      {...props}
+      role={as === "span" ? null : "button"}
+      tabIndex={as === "span" ? null : 0}
+      triggerProps={triggerProps}
     >
       {children}
       <HoverPortal
         anchorRef={anchorRef}
-        className={`player-hover-card hover-portal-card ${touchOpen ? "touch-open" : ""}`}
+        className={`player-hover-card hover-portal-card ${pinnedOpen ? "touch-open" : ""}`}
         estimatedHeight={360}
         open={open}
         portalRef={cardRef}
       >
-        <button type="button" className="hover-card-close" aria-label="닫기" onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          closeTouch();
-        }}>X</button>
+        <HoverCardCloseButton onClose={closePinned} />
         <span className="player-hover-head">
           <ProfileEmblem user={user} anonymous={anonymousUser} />
           <span>
@@ -230,9 +144,9 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
         </span>
         <Link className="hover-card-action" to={profilePath} state={{ playerPreview: user }} onClick={(event) => {
           event.stopPropagation();
-          closeTouch();
+          closePinned();
         }}>프로필 보기</Link>
       </HoverPortal>
-    </span>
+    </HoverCardTrigger>
   );
 }

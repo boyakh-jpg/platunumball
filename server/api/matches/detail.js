@@ -1,5 +1,5 @@
 import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { loadNormalizedMatchDetailFromClient } from "../../../src/data/repository.js";
+import { loadNormalizedMatchDetailFromClient } from "../../lib/repositoryAdapter.js";
 import { filterStateForProfile } from "../state/load.js";
 
 export default async function handler(request, response) {

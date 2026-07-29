@@ -2,12 +2,12 @@ import { getAuthenticatedContext, mergeById, readJsonBody, sendJson, toClientTea
 import { loadCompactMatchList } from "../matches/list.js";
 import {
   normalizeState,
-} from "../../../src/data/repository.js";
-import { createProfileShell, fromRemoteProfile, fromTeamMemberProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
-import { fromRemoteTeamInvitation } from "../../../src/data/teamMappers.js";
-import { fromRemoteAffiliation } from "../../../src/data/affiliationMappers.js";
-import { fromRemoteApprovedCourt } from "../../../src/data/remotePayloadMappers.js";
-import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
+} from "../../../shared/lib/stateNormalizer.js";
+import { createProfileShell, fromRemoteProfile, fromTeamMemberProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
+import { fromRemoteTeamInvitation } from "../../../shared/lib/teamMappers.js";
+import { fromRemoteAffiliation } from "../../../shared/lib/affiliationMappers.js";
+import { fromRemoteApprovedCourt } from "../../../shared/lib/remotePayloadMappers.js";
+import { projectProfileSettings } from "../../../shared/lib/settingsMappers.js";
 import {
   APPROVED_COURT_COLUMNS,
   AFFILIATION_COLUMNS,
@@ -16,8 +16,8 @@ import {
   TEAM_COLUMNS,
   TEAM_INVITATION_COLUMNS,
   TEAM_MEMBER_COLUMNS,
-} from "../../../src/data/repositoryColumns.js";
-import { REMOTE_CLIENT_RECORD_MONTHS } from "../../../src/lib/constants.js";
+} from "../../../shared/lib/repositoryColumns.js";
+import { REMOTE_CLIENT_RECORD_MONTHS } from "../../../shared/lib/constants.js";
 
 export { PROFILE_ME_COLUMNS };
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,avatar_key,avatar_source,avatar_icon_key,avatar_updated_at,avatar_background_enabled,avatar_border_enabled,avatar_border_color,discord_avatar_url,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
@@ -209,10 +209,15 @@ export async function loadCurrentProfileState(context, options = {}) {
   if (ownMembershipsResult.error) throw ownMembershipsResult.error;
   if (affiliationResult.error && !["42P01", "42703", "PGRST205"].includes(affiliationResult.error.code)) throw affiliationResult.error;
   const currentAffiliation = affiliationResult.data ? fromRemoteAffiliation(affiliationResult.data) : null;
-  const favoritePlayerIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id) : (remoteAppSettings.favoritePlayerIds ?? []);
-  const favoriteTeamIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id) : (remoteAppSettings.favoriteTeamIds ?? []);
-  const favoriteCourtIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id) : (remoteAppSettings.favoriteCourtIds ?? []);
-  const favoriteRefereeIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id) : (remoteAppSettings.favoriteRefereeIds ?? []);
+  const profileSettings = projectProfileSettings(remoteAppSettings, favoriteRows, {
+    favoriteRowsAuthoritative: includeFavorites,
+  });
+  const {
+    favoritePlayerIds,
+    favoriteTeamIds,
+    favoriteCourtIds,
+    favoriteRefereeIds,
+  } = profileSettings;
   const user = profile
     ? { ...fromRemoteProfile({ ...profile, affiliation: affiliationResult.data }), matchSummary }
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
@@ -259,12 +264,7 @@ export async function loadCurrentProfileState(context, options = {}) {
   userById.set(user.id, user);
   if (favoriteCourtError) throw favoriteCourtError;
   const settings = {
-    ...DEFAULT_SETTINGS,
-    ...remoteAppSettings,
-    favoritePlayerIds,
-    favoriteTeamIds,
-    favoriteCourtIds,
-    favoriteRefereeIds,
+    ...profileSettings,
     approvedCourts: unique([
       ...(remoteAppSettings.approvedCourts ?? []),
       ...(favoriteCourtRows ?? []).map(fromRemoteApprovedCourt),

@@ -8,33 +8,17 @@ import {
   TEAM_PERFORMANCE_ADJUSTMENT_LIMIT,
   teamRegularRatio,
 } from "./ratingEngine.js";
-import { clampTrustScore, getFoulTrustPenalty } from "../../src/data/trustUtils.js";
-
-const RECRUITING_RANGE_SCALES = Object.freeze({
-  narrow: 1.1,
-  normal: 1,
-  wide: 0.8,
-});
-const PICKUP_ASSIGNMENT_SCALES = Object.freeze({
-  manual: 0.9,
-  random: 1,
-  balanced: 1.1,
-});
-const POSTGAME_RECORD_SCALES = Object.freeze({
-  "1v1": 0.1,
-  "2v2": 0.2,
-  "3v3": 0.35,
-  "5v5": 0.5,
-});
-const TOURNAMENT_COMMUNITY_SCALE = 0.8;
+import { clampTrustScore, getFoulTrustPenalty } from "../../shared/lib/trustUtils.js";
+import {
+  getAdminRestoreRatingFactor,
+  getPickupTeamAssignmentRatingScale,
+  getPostgameRecordMmrScale,
+  getRecruitingRatingScale,
+  getTournamentRatingScale,
+} from "../../shared/lib/ratingAuthority.js";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
-}
-
-function getRecruitingRatingScale({ ranked = true, mmrRangeMode = "normal" } = {}) {
-  if (ranked === false) return 0;
-  return RECRUITING_RANGE_SCALES[mmrRangeMode] ?? RECRUITING_RANGE_SCALES.normal;
 }
 
 function calculateFinalizationRating(state, targetMatch) {
@@ -133,9 +117,9 @@ function calculateFinalizationRating(state, targetMatch) {
 
 export const SERVER_RATING_AUTHORITY = Object.freeze({
   calculateFinalizationRating,
-  getAdminRestoreRatingFactor: (actionType) => actionType === "restoreMatchHalf" ? 0.5 : 1,
-  getPickupTeamAssignmentRatingScale: (mode) => PICKUP_ASSIGNMENT_SCALES[mode] ?? PICKUP_ASSIGNMENT_SCALES.balanced,
-  getPostgameRecordMmrScale: (match = {}) => POSTGAME_RECORD_SCALES[match.mode] ?? 0,
+  getAdminRestoreRatingFactor,
+  getPickupTeamAssignmentRatingScale,
+  getPostgameRecordMmrScale,
   getRecruitingRatingScale,
-  getTournamentRatingScale: (official) => official ? 1 : TOURNAMENT_COMMUNITY_SCALE,
+  getTournamentRatingScale,
 });

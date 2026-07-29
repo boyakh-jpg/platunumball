@@ -1,22 +1,8 @@
 import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 import { deleteObject, getR2Config } from "../teams/emblem.js";
+import { HIGH_IMPACT_ADMIN_REVIEW_ACTIONS } from "../../../shared/lib/adminReview.js";
 
-const HIGH_IMPACT_ACTIONS = new Set([
-  "applyCourtCorrection",
-  "markCourtDuplicate",
-  "maliciousReporter",
-  "suspendTarget",
-  "refereeDiscipline",
-  "hideCourt",
-  "hideCourtReview",
-  "resetTeamEmblem",
-  "renameTeam",
-  "renameAffiliation",
-  "mergeAffiliation",
-  "keepMatchVoid",
-  "restoreMatchHalf",
-  "restoreMatchFull",
-]);
+const HIGH_IMPACT_ACTIONS = new Set(HIGH_IMPACT_ADMIN_REVIEW_ACTIONS);
 const ALLOWED_ACTIONS = new Set([
   "validReport",
   "dismissReport",

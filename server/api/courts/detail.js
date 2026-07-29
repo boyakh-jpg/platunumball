@@ -1,24 +1,20 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { fromRemoteApprovedCourt } from "../../../src/data/remotePayloadMappers.js";
-import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
+import { fromRemoteApprovedCourt } from "../../../shared/lib/remotePayloadMappers.js";
+import { fromRemoteProfile } from "../../../shared/lib/profileMappers.js";
 import {
   APPROVED_COURT_COLUMNS,
   PUBLIC_PROFILE_COLUMNS,
-} from "../../../src/data/repositoryColumns.js";
-import { COURTS } from "../../../src/lib/constants.js";
+} from "../../../shared/lib/repositoryColumns.js";
 
 const LEGACY_COURT_DETAIL_COLUMNS = "id,name,region,type,region_key,address_text,road_address,jibun_address,lat,lng,raw_rating,adjusted_rating,review_count,completed_match_count,recommendation_score,recent_reviews,metrics_updated_at,payload,created_at";
 const COURT_FACILITY_INFO_COLUMNS = "court_id,operator_name,contact_phone,official_url,reservation_url,opening_hours_text,application_method,access_note,detail_address,location_note,facility_area_sqm,facility_area_scope,updated_at";
 
-function fromLegacyCourt(row = {}, builtInCourt = null) {
-  const payload = {
-    ...(builtInCourt ?? {}),
-    ...(row.payload ?? {}),
-  };
+function fromLegacyCourt(row = {}) {
+  const payload = row.payload ?? {};
   return {
     ...payload,
-    id: row.id ?? builtInCourt?.id,
-    name: row.name ?? builtInCourt?.name ?? payload.name,
+    id: row.id,
+    name: row.name ?? payload.name,
     region: row.region ?? payload.region,
     regionKey: row.region_key ?? payload.regionKey ?? row.region ?? payload.region,
     type: row.type ?? payload.type ?? "확인 필요",
@@ -143,7 +139,6 @@ export default async function handler(request, response) {
       : { data: null, error: null };
     if (facilityInfoError) throw facilityInfoError;
 
-    const builtInCourt = COURTS.find((item) => item.id === courtId) ?? null;
     const { data: legacyCourtRow, error: legacyCourtError } = approvedCourtRow
       ? { data: null, error: null }
       : await context.supabase
@@ -152,14 +147,14 @@ export default async function handler(request, response) {
         .eq("id", courtId)
         .maybeSingle();
     if (legacyCourtError) throw legacyCourtError;
-    if (!approvedCourtRow && !legacyCourtRow && !builtInCourt) {
+    if (!approvedCourtRow && !legacyCourtRow) {
       sendJson(response, 404, { error: "court_not_found" });
       return;
     }
 
     const court = approvedCourtRow
       ? { ...fromRemoteApprovedCourt(approvedCourtRow), ...fromCourtFacilityInfo(facilityInfoRow) }
-      : fromLegacyCourt(legacyCourtRow ?? {}, builtInCourt);
+      : fromLegacyCourt(legacyCourtRow);
     const { data: reviewRows, error: reviewError } = await context.supabase.rpc(
       "rankball_court_detail_review_rows",
       { p_court_id: court.id, p_court_name: court.name, p_limit: 100 },

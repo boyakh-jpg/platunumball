@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
+import ProfileBasicsFields from "../components/profile/ProfileBasicsFields.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import ProfileIconDialog from "../components/profile/ProfileIconDialog.jsx";
 import AffiliationEditor from "../components/profile/AffiliationEditor.jsx";
@@ -14,11 +15,9 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import { BASKETBALL_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
-import { canChangeProfileName, getNextNameChangeDate, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { canChangeProfileName, getNextNameChangeDate, getRegionDistrictOptions, inferRegionSelection } from "../lib/profileSetup.js";
 import { isPlacementComplete } from "../lib/rating.js";
 import { MatchRoomModal } from "./Matches.jsx";
-
-const POSITION_OPTIONS = BASKETBALL_POSITIONS;
 
 function getUserRecordLine(match, userId) {
   const sideName = getPlayerSideName(match, userId) ?? "teamA";
@@ -95,7 +94,7 @@ export default function Profile({ app }) {
   const inferredRegion = inferRegionSelection([user.regionSido, user.regionDistrict, user.region].filter(Boolean).join(" "));
   const [draft, setDraft] = useState({
     name: user.name ?? "",
-    position: POSITION_OPTIONS.includes(user.position) ? user.position : "PG",
+    position: BASKETBALL_POSITIONS.includes(user.position) ? user.position : "PG",
     regionSido: inferredRegion.sido,
     regionDistrict: inferredRegion.district,
   });
@@ -105,8 +104,7 @@ export default function Profile({ app }) {
   const [emblemFeedback, setEmblemFeedback] = useState("");
   const [iconDialogOpen, setIconDialogOpen] = useState(false);
   const recordsLoadKeyRef = useRef("");
-  const selectedRegion = REGION_TREE.find((item) => item.sido === draft.regionSido) ?? REGION_TREE[0];
-  const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
+  const districtOptions = getRegionDistrictOptions(draft.regionSido);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
   const submit = async (event) => {
@@ -192,24 +190,13 @@ export default function Profile({ app }) {
                 닉네임
                 <input value={draft.name} onChange={(event) => update({ name: event.target.value })} />
               </label>
-              <label>
-                주 포지션
-                <select value={draft.position} onChange={(event) => update({ position: event.target.value })}>
-                  {POSITION_OPTIONS.map((position) => <option key={position} value={position}>{position}</option>)}
-                </select>
-              </label>
-              <label>
-                시도
-                <select value={draft.regionSido} onChange={(event) => update({ regionSido: event.target.value, regionDistrict: REGION_TREE.find((item) => item.sido === event.target.value)?.districts[0] ?? "" })}>
-                  {REGION_TREE.map((region) => <option key={region.sido} value={region.sido}>{region.sido}</option>)}
-                </select>
-              </label>
-              <label>
-                시군구
-                <select value={districtOptions.includes(draft.regionDistrict) ? draft.regionDistrict : districtOptions[0]} onChange={(event) => update({ regionDistrict: event.target.value })}>
-                  {districtOptions.map((district) => <option key={district} value={district}>{district}</option>)}
-                </select>
-              </label>
+              <ProfileBasicsFields
+                position={draft.position}
+                regionSido={draft.regionSido}
+                regionDistrict={draft.regionDistrict}
+                onPositionChange={(position) => update({ position })}
+                onRegionChange={(regionSido, regionDistrict) => update({ regionSido, regionDistrict })}
+              />
               {profileError ? <p className="form-warning">{profileError}</p> : null}
               <Button type="submit">저장</Button>
             </form>

@@ -20,7 +20,6 @@ import {
   isDiscordDeliveryExpired,
 } from "../server/api/discord/dm-worker.js";
 import {
-  addMatchLatePlayer,
   checkInMatchPlayer,
   endMatch,
   substituteMatchPlayer,
@@ -541,36 +540,6 @@ test("QR 경기방은 20분 전, 비QR 경기방은 기존 10분 전부터 체�
   assert.equal(getMatchRoomPhase(nonQrMatch, new Date("2026-07-28T10:50:00.000Z")).phase, "checkin");
 });
 
-test("일반 live 경기는 종료 후 누락 출전자를 추가할 수 없다", () => {
-  const match = {
-    id: "score-only-postgame-roster",
-    createdBy: "host",
-    refereeId: "",
-    status: "agreed",
-    startedAt: new Date().toISOString(),
-    teamA: { players: ["host"] },
-    teamB: { players: ["guest"] },
-    reservePlayers: { teamA: [], teamB: [] },
-    playedPlayerIds: { teamA: ["host"], teamB: ["guest"] },
-    result: { scoreA: 3, scoreB: 2, playerStats: {} },
-    rules: {},
-  };
-  const state = {
-    currentUserId: "host",
-    matches: [match],
-    users: [{ id: "host", name: "방장" }, { id: "guest", name: "상대" }],
-    notifications: [],
-  };
-
-  const ended = endMatch(state, match.id);
-  assert.equal(ended.matches[0].status, "agreed");
-  assert.ok(ended.matches[0].endedAt);
-
-  const corrected = addMatchLatePlayer(ended, match.id, { sideName: "teamA", name: "현장 참가자" });
-  assert.equal(Object.keys(corrected.matches[0].anonymousPlayers ?? {}).length, 0);
-  assert.equal(corrected.notifications[0]?.title, "명단 변경 불가");
-});
-
 test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", async () => {
   const runningClock = {
     status: "running",
@@ -665,7 +634,8 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
   assert.doesNotMatch(recruitingSource, /<Badge[^>]*>본인 교체<\/Badge>/u);
   assert.match(matchesSource, /function AttendanceScanResultView/u);
   assert.match(matchesSource, /!attendanceQrFlow && selectedMatchDetailLoading/u);
-  assert.match(syncMatchSource, /match_recorder_flow_retired/u);
+  assert.doesNotMatch(syncMatchSource, /RETIRED_RECORDER_MATCH_ACTIONS|match_recorder_flow_retired/u);
+  assert.match(syncMatchSource, /unsupported_match_operation/u);
   assert.doesNotMatch(appDataSource, /requestMatchRecorderTakeover|approveMatchRecorderTakeover|handoffMatchRecorder/u);
   assert.doesNotMatch(appDataSource, /setRecruitingStatRecorder/u);
   assert.doesNotMatch(recruitingApiSource, /setRecruitingStatRecorder|rankball_recruiting_stat_recorder_action/u);
@@ -834,7 +804,8 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.doesNotMatch(enforcedScoreOnlyPostgameRosterSql, /has_result|case when has_result/u);
   assert.doesNotMatch(enforcedScoreOnlyPostgameRosterSql, /drop\s+table|truncate\s+table|delete\s+from/iu);
   assert.match(syncMatchSource, /rpc\("rankball_match_substitute_action"/u);
-  assert.match(syncMatchSource, /match_recorder_flow_retired/u);
+  assert.doesNotMatch(syncMatchSource, /RETIRED_RECORDER_MATCH_ACTIONS|match_recorder_flow_retired/u);
+  assert.match(syncMatchSource, /unsupported_match_operation/u);
   assert.doesNotMatch(recruitingSource, /function MatchRecorderHandoffPanel/u);
   assert.doesNotMatch(recruitingSource, /<option value="injury">/u);
   assert.doesNotMatch(recruitingSource, /recorderSides=\{sourceMatchRecorderSides\}/u);

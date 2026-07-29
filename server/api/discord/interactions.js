@@ -1,12 +1,13 @@
 import crypto from "node:crypto";
+import { asArray } from "../../../shared/lib/arrayValues.js";
 import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
 import { loadAuthoritativeState } from "../_authoritativeState.js";
 import {
   DISCORD_INVITE_ACTION_PREFIX as INVITE_PREFIX,
   DISCORD_TOURNAMENT_ACTION_PREFIX as TOURNAMENT_PREFIX,
-} from "../../../src/lib/discordProtocol.js";
+} from "../../../shared/lib/discordProtocol.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
-import { BRAND_NAME } from "../../../src/lib/brand.js";
+import { BRAND_NAME } from "../../../shared/lib/brand.js";
 
 const INTERACTION_PING = 1;
 const INTERACTION_COMPONENT = 3;
@@ -74,10 +75,6 @@ function sendInteractionMessage(response, content) {
   });
 }
 
-function toArray(value) {
-  return Array.isArray(value) ? value : [];
-}
-
 function safeDecodeId(value = "", label = "id") {
   const raw = String(value || "").trim();
   if (!raw || raw.length > COMPONENT_CUSTOM_ID_MAX) reject(400, `invalid_${label}`);
@@ -142,11 +139,11 @@ function getRoomState(post = {}) {
 }
 
 function getInviteDecisionState(state = {}, operation = {}, profileId = "") {
-  const post = toArray(state.recruitingPosts).find((item) => item?.id === operation.postId) ?? null;
+  const post = asArray(state.recruitingPosts).find((item) => item?.id === operation.postId) ?? null;
   if (!post) return { stale: true, reason: "missing_post" };
   if (post.status && post.status !== "open") return { post, stale: true, reason: "closed_post" };
 
-  const invitation = toArray(getRoomState(post).invitations).find((item) => item?.id === operation.invitationId) ?? null;
+  const invitation = asArray(getRoomState(post).invitations).find((item) => item?.id === operation.invitationId) ?? null;
   if (!invitation) return { post, stale: true, reason: "missing_invitation" };
   if (invitation.targetUserId !== profileId) reject(403, "discord_invite_not_for_user");
   if (String(invitation.status ?? "pending") !== "pending") {

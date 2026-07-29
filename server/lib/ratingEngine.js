@@ -1,4 +1,5 @@
-import { DEFAULT_RATING, MINUTE_MS, isSupportedMatchMode } from "../../src/lib/constants.js";
+import { uniquePlayerIds } from "../../shared/lib/playerIds.js";
+import { DEFAULT_RATING, MINUTE_MS, isSupportedMatchMode } from "../../shared/lib/matchConstants.js";
 import {
   evaluateRecordVerification,
   getMatchScheduledDate,
@@ -6,9 +7,9 @@ import {
   getMatchSidePlayerIds,
   isMatchRecordMatch,
   isPersonalRecordMatch,
-} from "../../src/lib/matchUtils.js";
-import { getTier, getTierDisplay, getTierDivision, getTierLabel } from "../../src/lib/tier.js";
-import { getCredibilityLevel } from "../../src/lib/rating.js";
+} from "../../shared/lib/matchUtils.js";
+import { getTier, getTierDisplay, getTierDivision, getTierLabel } from "../../shared/lib/tier.js";
+import { getCredibilityLevel } from "../../shared/lib/rating.js";
 
 const MATCH_MODES = Object.freeze([
   { id: "1v1", ratingWeight: 0.78, integratedWeight: 0.25, modeCap: 25, integratedCap: 8 },
@@ -34,7 +35,6 @@ const POSTGAME_RECORD_MMR_SCALE_BY_MODE = Object.freeze({
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
-const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean))];
 export const PLACEMENT_MATCH_TARGET = 5;
 export const PLACEMENT_MIN_MMR = 800;
 export const PLACEMENT_MAX_MMR = 1799;

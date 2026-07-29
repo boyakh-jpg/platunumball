@@ -1,4 +1,4 @@
-import { getDiscordCdnAvatarUrl, isDiscordOAuthState } from "../../../../src/lib/discordProtocol.js";
+import { getDiscordCdnAvatarUrl, isDiscordOAuthState } from "../../../../shared/lib/discordProtocol.js";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../../_supabaseAdmin.js";
 import {
   DISCORD_OAUTH_PROOF_COOKIE,

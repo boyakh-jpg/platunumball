@@ -23,6 +23,9 @@ const componentSource = read("src/components/match/MatchListCard.jsx");
 const matchCreationWizardSource = read("src/components/match/MatchCreationWizard.jsx");
 const matchRecordMetaSource = read("src/components/match/MatchRecordMeta.jsx");
 const recentMatchRowSource = read("src/components/match/RecentMatchRow.jsx");
+const mmrRangeSelectorSource = read("src/components/match/MmrRangeSelector.jsx");
+const profileBasicsFieldsSource = read("src/components/profile/ProfileBasicsFields.jsx");
+const signupSource = read("src/pages/Signup.jsx");
 const matchOperationsFieldsSource = matchCreationWizardSource.slice(
   matchCreationWizardSource.indexOf("export function MatchOperationsPolicyFields"),
   matchCreationWizardSource.indexOf("export function MatchCreationFinalSummary"),
@@ -44,6 +47,7 @@ const visualDirectionDemoSource = read("src/pages/VisualDirectionDemo.jsx");
 const globalStyleManifest = read("src/styles/globals.css");
 const appShellSource = read("src/components/layout/AppShell.jsx");
 const cardSource = read("src/components/common/Card.jsx");
+const brandLockupSource = read("src/components/common/BrandLockup.jsx");
 const sidebarSource = read("src/components/layout/Sidebar.jsx");
 const loginSource = read("src/pages/Login.jsx");
 const notificationsSource = read("src/pages/Notifications.jsx");
@@ -136,10 +140,12 @@ assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]
   assert.doesNotMatch(pageSources.landing, /ui-design-preference-list|화면 설정/);
   assert.doesNotMatch(pageSources.landing, /ui-design-main-brand|brand-logo-frame|brand-letter-wrap/);
   assert.match(pageSources.landing, /to="\/app"[\s\S]*?>\s*홈\s*</);
+  assert.match(brandLockupSource, /BOXTIER_LETTER_DARK_URL/);
+  assert.match(brandLockupSource, /BOXTIER_LETTER_LIGHT_URL/);
+  assert.match(brandLockupSource, /brand-letter-fallback/);
   for (const source of [sidebarSource, loginSource, visualDirectionDemoSource]) {
-    assert.match(source, /BOXTIER_LETTER_DARK_URL/);
-    assert.match(source, /BOXTIER_LETTER_LIGHT_URL/);
-    assert.match(source, /brand-letter-fallback/);
+    assert.match(source, /<BrandLockup\s*\/>/);
+    assert.doesNotMatch(source, /BOXTIER_LETTER_DARK_URL|BOXTIER_LETTER_LIGHT_URL|brand-letter-fallback/);
   }
   assert.doesNotMatch(pageSources.home, /STANDARD_HOME_LAYOUT|ui-design-home-page|ui-design-main-hero/);
   assert.match(
@@ -1227,4 +1233,24 @@ test("방 채팅은 아이콘 안전 여백과 말풍선 stream을 사용한다"
   assert.match(recruitingStyles, /\.arena-lobby-modal \.arena-room-chat,[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/);
   assert.match(recruitingStyles, /\.arena-chat-form input,[\s\S]*?min-height:\s*36px;[\s\S]*?height:\s*36px;/);
   assert.doesNotMatch(useAppDataSource, /supabase\s*\.\s*channel\s*\(/);
+});
+
+test("MMR 허용구간과 프로필 기본 입력은 공용 컴포넌트를 사용한다", () => {
+  assert.match(mmrRangeSelectorSource, /Object\.entries\(MMR_RANGE_POLICIES\)\.map/);
+  assert.match(mmrRangeSelectorSource, /role="radiogroup"/);
+  assert.match(pageSources.recruiting, /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
+  assert.match(read("src/pages/CreateMatch.jsx"), /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
+  assert.doesNotMatch(
+    [pageSources.recruiting, read("src/pages/CreateMatch.jsx")].join("\n"),
+    /Object\.entries\(MMR_RANGE_POLICIES\)\.map\(\(\[mode, policy\]\) => \(\s*<button/,
+  );
+
+  assert.match(profileBasicsFieldsSource, /BASKETBALL_POSITIONS\.map/);
+  assert.match(profileBasicsFieldsSource, /REGION_TREE\.map/);
+  assert.match(profileBasicsFieldsSource, /getRegionDistrictOptions\(nextSido\)/);
+  assert.match(pageSources.profile, /<ProfileBasicsFields/);
+  assert.match(signupSource, /<ProfileBasicsFields/);
+  for (const source of [pageSources.profile, signupSource]) {
+    assert.doesNotMatch(source, /POSITION_OPTIONS\.map|REGION_TREE\.map/);
+  }
 });

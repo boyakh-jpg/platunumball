@@ -2,12 +2,12 @@ import { attachNotificationActors, attachNotificationTargetState, getAdminLevel,
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
-import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
-import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
-import { NOTIFICATION_COLUMNS, PUBLIC_PROFILE_COLUMNS, TEAM_COLUMNS } from "../../../src/data/repositoryColumns.js";
-import { compareNotificationsNewestFirst, dedupeNotifications, isNotificationDisplayable, isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
+import { DEFAULT_RATING } from "../../../shared/lib/matchConstants.js";
+import { fromRemoteProfile } from "../../../shared/lib/profileMappers.js";
+import { fromRemoteNotification } from "../../../shared/lib/remotePayloadMappers.js";
+import { NOTIFICATION_COLUMNS, PUBLIC_PROFILE_COLUMNS, TEAM_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
+import { compareNotificationsNewestFirst, dedupeNotifications, isNotificationDisplayable, isNotificationVisibleToUser } from "../../../shared/lib/notifications.js";
 import {
-  DEFAULT_RATING,
   FAVORITE_LIMIT,
   HOME_REGION_PLAYER_LIMIT,
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
@@ -16,7 +16,7 @@ import {
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
-} from "../../../src/lib/constants.js";
+} from "../../../shared/lib/constants.js";
 
 const HOME_RECENT_COMPLETED_HOURS = 24 * 31 * REMOTE_CLIENT_RECORD_MONTHS;
 const HOME_NOTIFICATION_QUERY_LIMIT = 80;

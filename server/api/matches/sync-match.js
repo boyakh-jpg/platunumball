@@ -1,32 +1,43 @@
 import { randomUUID } from "node:crypto";
-import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
-import { getDbScheduleParts } from "../../../src/data/scheduleUtils.js";
+import {
+  HOUR_MS,
+  MINUTE_MS,
+  getModeSize,
+  isSupportedMatchMode,
+} from "../../../shared/lib/matchConstants.js";
+import {
+  getDbScheduleParts,
+  projectMatchDbFields,
+  projectMatchPersistenceParts,
+  projectPlayerStatRows,
+} from "../../../shared/lib/matchPersistence.js";
+import { collectMatchActivePlayerIds } from "../../../shared/lib/playerIds.js";
+import { isDiscordNotificationEnabled } from "../../../shared/lib/settingsMappers.js";
 import { getAuthenticatedContext, nullableText, readJsonBody, sendJson, toArray, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
 import {
   BASKETBALL_POSITIONS,
   DEFAULT_TOURNAMENT_MMR_GAP,
-  HOUR_MS,
-  MINUTE_MS,
   MATCH_SIDES,
   PLAYER_STAT_FIELD_IDS as PLAYER_STAT_FIELDS,
   RECORD_TYPES,
-  getModeSize,
-  isSupportedMatchMode,
   isSupportedSoloRecordMode,
   isValidBenchCapacity,
   isRefereeGrade,
   normalizeBenchCapacity,
   normalizeDisputeWindowMinutes,
-} from "../../../src/lib/constants.js";
-import { getMatchCancelCopy } from "../../../src/lib/matchUtils.js";
+} from "../../../shared/lib/constants.js";
+import { getMatchCancelCopy } from "../../../shared/lib/matchUtils.js";
 import {
   POSTGAME_RECORD_REMINDER_MINUTES,
   getPostgameRecordVerification,
-} from "../../../src/lib/postgameRecordVerification.js";
-import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
-import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
-import { fromRemoteTeam } from "../../../src/data/teamMappers.js";
-import { hasPracticeMutationPayload, PRACTICE_LOCAL_ONLY_ERROR } from "../../../src/lib/practiceMode.js";
+} from "../../../shared/lib/postgameRecordVerification.js";
+import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
+import { fromRemoteProfile } from "../../../shared/lib/profileMappers.js";
+import { fromRemoteTeam } from "../../../shared/lib/teamMappers.js";
+import { hasPracticeMutationPayload, PRACTICE_LOCAL_ONLY_ERROR } from "../../../shared/lib/practiceMode.js";
+import { sortPlainObject } from "../../../shared/lib/plainObject.js";
+import { toQueuedDiscordDeliveryRow } from "../../lib/discordDeliveryRows.js";
+import { projectTournamentDbIdentity } from "../../lib/tournamentPersistence.js";
 import {
   applyAuthoritativeMatchOperation,
   getOperation,
@@ -39,7 +50,7 @@ import {
   MATCH_CANCEL_NOTICE_PREFIXES,
   MATCH_POSTGAME_NOTICE_PREFIXES,
   MATCH_SCHEDULED_NOTICE_PREFIXES,
-} from "../../../src/lib/notifications.js";
+} from "../../../shared/lib/notifications.js";
 
 const ACHIEVEMENT_POSITIONS = new Set(BASKETBALL_POSITIONS);
 const configuredDiscordQueueTimeoutMs = Number(process.env.DISCORD_QUEUE_TIMEOUT_MS || 2500);
@@ -176,7 +187,7 @@ function getMatchCapacity(match = {}) {
 
 function getMatchSummaryLines(match = {}) {
   const scheduledAt = parseMatchScheduleDate(match.scheduledAt);
-  const playerCount = getMatchPlayerIds(match).length;
+  const playerCount = collectMatchActivePlayerIds(match).length;
   const reserveCount = getMatchReserveIds(match).length;
   const capacity = getMatchCapacity(match);
   return [
@@ -284,13 +295,11 @@ export function toDiscordDeliveryRows(match = {}, profiles = [], notification = 
   return profiles.map((profile) => {
     const id = `discord-${notification.idPrefix}-${match.id}-${profile.id}`;
     const notificationId = getMatchNotificationId(match.id, notification.idPrefix, profile.id);
-    return {
+    return toQueuedDiscordDeliveryRow({
       id,
-      notification_id: notificationId,
-      target_user_id: profile.id,
-      discord_user_id: profile.discord_user_id,
-      event: "match",
-      status: "queued",
+      notificationId,
+      targetUserId: profile.id,
+      discordUserId: profile.discord_user_id,
       payload: {
         ...payload,
         id,
@@ -305,14 +314,9 @@ export function toDiscordDeliveryRows(match = {}, profiles = [], notification = 
         sendAt,
         ...(notification.expiresAt ? { expiresAt: notification.expiresAt } : {}),
       },
-      queued_at: now,
-      send_at: sendAt,
-      sent_at: null,
-      failed_at: null,
-      last_error: null,
-      created_at: now,
-      updated_at: now,
-    };
+      queuedAt: now,
+      sendAt,
+    });
   });
 }
 
@@ -773,13 +777,6 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
   return upsertDiscordDeliveryRows(supabase, rows);
 }
 
-function getMatchPlayerIds(match = {}) {
-  return [
-    ...(match.teamA?.players ?? []),
-    ...(match.teamB?.players ?? []),
-  ].filter(Boolean);
-}
-
 function getMatchReserveIds(match = {}) {
   return Object.values(match.reservePlayers ?? match.rules?.reservePlayers ?? {}).flatMap(toArray);
 }
@@ -819,7 +816,7 @@ export function validateMatchShape(match = {}) {
   if (toArray((match.reservePlayers ?? match.rules?.reservePlayers ?? {}).teamA).length > benchCapacity) reject(400, "team_a_exceeds_bench_capacity");
   if (toArray((match.reservePlayers ?? match.rules?.reservePlayers ?? {}).teamB).length > benchCapacity) reject(400, "team_b_exceeds_bench_capacity");
 
-  const allPlayerIds = [...getMatchPlayerIds(match), ...getMatchReserveIds(match)];
+  const allPlayerIds = [...collectMatchActivePlayerIds(match), ...getMatchReserveIds(match)];
   const duplicate = allPlayerIds.find((playerId, index) => allPlayerIds.indexOf(playerId) !== index);
   if (duplicate) reject(400, "duplicate_match_player");
   if (match.refereeId && allPlayerIds.includes(match.refereeId)) reject(400, "referee_cannot_be_player");
@@ -842,12 +839,19 @@ function getSideScopedIds(match = {}, sideName) {
 async function validateMatchRosterEligibility(supabase, match = {}) {
   const anonymousPlayerIds = getAnonymousPlayerIds(match);
   const realProfileIds = (ids = []) => ids.filter((userId) => !anonymousPlayerIds.has(userId));
+  const linkedProfileIds = Object.values(match.anonymousPlayers ?? {})
+    .map((player) => nullableText(player?.linkedProfileId))
+    .filter(Boolean);
   const rosterIds = [
-    ...getMatchPlayerIds(match),
+    ...collectMatchActivePlayerIds(match),
     ...getMatchReserveIds(match),
     ...getMatchPlayedIds(match),
   ];
-  await assertProfilesExist(supabase, realProfileIds(rosterIds), "match_player_not_found");
+  await assertProfilesExist(
+    supabase,
+    uniqueIds([...realProfileIds(rosterIds), ...linkedProfileIds]),
+    "match_player_not_found",
+  );
 
   const rostersByTeam = new Map();
   MATCH_SIDES.forEach((sideName) => {
@@ -866,7 +870,7 @@ function validateResultShape(match = {}, action = "sync") {
   if (scoreA < 0 || scoreA > 999 || scoreB < 0 || scoreB > 999) reject(400, "invalid_match_score");
 
   const recordableIds = new Set([
-    ...getMatchPlayerIds(match),
+    ...collectMatchActivePlayerIds(match),
     ...getMatchPlayedIds(match),
   ].filter(Boolean));
   const invalidPlayerId = Object.keys(match.result.playerStats ?? {}).find((userId) => !recordableIds.has(userId));
@@ -885,6 +889,10 @@ function validateSoloRecordSnapshot(match = {}, actorProfileId = "") {
   if (!isSoloRecordMatch(match)) return;
   const teamAPlayers = toArray(match.teamA?.players);
   const teamBPlayers = toArray(match.teamB?.players);
+  const anonymousPlayers = Object.values(match.anonymousPlayers ?? {});
+  const linkedProfileIds = anonymousPlayers
+    .map((player) => nullableText(player?.linkedProfileId))
+    .filter(Boolean);
   if (match.createdBy && match.createdBy !== actorProfileId) reject(403, "solo_record_owner_mismatch");
   if (!["public", "private"].includes(match.visibility)) reject(400, "solo_record_visibility_invalid");
   if (match.status !== "confirmed" && match.status !== "cancelled") reject(400, "solo_record_status_invalid");
@@ -892,15 +900,23 @@ function validateSoloRecordSnapshot(match = {}, actorProfileId = "") {
   if (teamAPlayers.length !== 1 || teamAPlayers[0] !== actorProfileId || teamBPlayers.length) {
     reject(400, "solo_record_roster_invalid");
   }
+  if (linkedProfileIds.includes(actorProfileId) || new Set(linkedProfileIds).size !== linkedProfileIds.length) {
+    reject(400, "solo_record_linked_roster_invalid");
+  }
+  if (anonymousPlayers.some((player) => String(player?.name ?? "").includes("#"))) {
+    reject(400, "solo_record_hashtag_not_allowed");
+  }
   if (match.refereeId) reject(400, "solo_record_referee_invalid");
 }
 
-function toMatchRow(match = {}, actorProfileId = "") {
-  const rules = { ...(match.rules ?? {}) };
-  delete rules.statRecorders;
-  delete rules.dualScoreRecorderSide;
-  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
-  const mmrExcludedPlayerIds = match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [];
+export function toAuthoritativeMatchRow(match = {}, actorProfileId = "") {
+  const {
+    rules,
+    playedPlayerIds,
+    reservePlayers,
+    mmrExcludedPlayerIds,
+    anonymousPlayers,
+  } = projectMatchPersistenceParts(match);
   const recruitingPostId = nullableText(match.recruitingPostId ?? match.rules?.recruitingPostId);
   const courtId = match.courtId ?? match.court_id ?? match.approvedCourtId ?? match.registeredCourtId ?? null;
   const schedule = getDbScheduleParts(match);
@@ -920,41 +936,18 @@ function toMatchRow(match = {}, actorProfileId = "") {
     mode: match.mode ?? "5v5",
     court_id: courtId,
     court_name: match.court ?? match.courtName ?? "미정",
-    visibility: match.visibility ?? match.rules?.visibility ?? "private",
-    status: match.status ?? "contract",
-    ranked: match.ranked !== false,
-    mmr_limit_mode: match.mmrLimitMode ?? "block",
-    trust_feedback: match.trustFeedback ?? {},
-    referee_id: match.refereeId || null,
-    former_referee_id: match.formerRefereeId || null,
-    referee_trust_min: Number(match.refereeTrustMin ?? 90),
-    stat_entry_minutes: Number(match.statEntryMinutes ?? 60),
-    dispute_minutes: normalizeDisputeWindowMinutes(match.disputeMinutes),
-    stat_recorders: {},
-    played_player_ids: playedPlayerIds,
-    reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
-    promoted_reserve_ids: match.promotedReserveIds ?? {},
-    attendance: match.attendance ?? { teamA: [], teamB: [] },
-    referee_absence_request: match.refereeAbsenceRequest ?? null,
-    dispute_draft_result: match.disputeDraftResult ?? null,
-    dispute_draft_updated_at: match.disputeDraftUpdatedAt ?? null,
-    dispute_resolved_at: match.disputeResolvedAt ?? null,
-    mmr_excluded_player_ids: mmrExcludedPlayerIds,
-    anonymous_players: match.anonymousPlayers ?? {},
-    tournament_id: match.tournamentId ?? null,
-    tournament_format: match.tournamentFormat ?? null,
-    tournament_round: match.tournamentRound ?? null,
-    tournament_fixture: match.tournamentFixture ?? null,
-    tournament_mmr_policy: match.tournamentMmrPolicy ?? null,
-    official: Boolean(match.official),
-    pre_registered: Boolean(match.preRegistered),
-    scheduled_at: schedule.scheduledAt,
-    scheduled_date: schedule.scheduledDate,
-    scheduled_time: schedule.scheduledTime,
+    ...projectMatchDbFields(match, {
+      schedule,
+      persistence: {
+        rules,
+        playedPlayerIds,
+        reservePlayers,
+        mmrExcludedPlayerIds,
+        anonymousPlayers,
+      },
+    }),
     team_a_id: nullableText(match.teamA?.teamId),
     team_b_id: nullableText(match.teamB?.teamId),
-    score_a: Number(match.result?.scoreA ?? 0),
-    score_b: Number(match.result?.scoreB ?? 0),
     rules: {
       ...rules,
       timingType: schedule.timingType,
@@ -967,7 +960,6 @@ function toMatchRow(match = {}, actorProfileId = "") {
     memo: match.memo ?? "",
     stakes: match.stakes ?? "",
     objection_window: match.objectionWindow ?? null,
-    evidence: match.evidence ?? [],
     created_by: match.createdBy ?? match.teamA?.players?.[0] ?? actorProfileId,
     created_at: match.createdAt ?? new Date().toISOString(),
     agreed_at: match.agreedAt ?? null,
@@ -976,23 +968,16 @@ function toMatchRow(match = {}, actorProfileId = "") {
     confirmed_at: match.confirmedAt ?? null,
     cancelled_at: match.cancelledAt ?? null,
     voided_at: match.voidedAt ?? null,
-    rating_result: match.ratingResult ?? null,
-    team_rating_result: match.teamRatingResult ?? null,
     updated_at: new Date().toISOString(),
   };
 }
 
 function toTournamentRow(tournament = {}) {
   return {
-    id: tournament.id,
-    title: tournament.title,
-    format: tournament.format,
-    visibility: tournament.visibility,
-    status: tournament.status,
-    region: tournament.region,
-    court_id: tournament.courtId ?? tournament.court_id ?? null,
-    court_name: tournament.court ?? tournament.courtName ?? tournament.court_name ?? null,
-    mode: tournament.mode,
+    ...projectTournamentDbIdentity(tournament, {
+      courtId: tournament.courtId ?? tournament.court_id ?? null,
+      courtName: tournament.court ?? tournament.courtName ?? tournament.court_name ?? null,
+    }),
     ranked: tournament.ranked !== false,
     official: Boolean(tournament.official),
     start_date: tournament.startDate || tournament.start_date || null,
@@ -1059,21 +1044,8 @@ function toResultRow(match = {}, actorProfileId = "") {
   };
 }
 
-function toStatRows(match = {}) {
-  return Object.entries(match.result?.playerStats ?? {}).map(([userId, stat]) => ({
-    match_id: match.id,
-    user_id: userId,
-    recorded_by: match.result?.statSubmissions?.[userId]?.by ?? null,
-    record_source: match.result?.statSubmissions?.[userId]?.source ?? "player",
-    points: Number(stat.points ?? 0),
-    rebounds: Number(stat.rebounds ?? 0),
-    assists: Number(stat.assists ?? 0),
-    steals: Number(stat.steals ?? 0),
-    blocks: Number(stat.blocks ?? 0),
-    turnovers: Number(stat.turnovers ?? 0),
-    fouls: Number(stat.fouls ?? 0),
-    updated_at: new Date().toISOString(),
-  }));
+export function toAuthoritativePlayerStatRows(match = {}) {
+  return projectPlayerStatRows(match);
 }
 
 function toAgreementRows(match = {}) {
@@ -1176,12 +1148,6 @@ function canSyncMatchRecordTeamRoster(profileId, existingMatch, existingPlayers,
   const existingLeaderId = getExistingSidePlayerIds(existingPlayers, sideName)[0] ?? "";
   const nextLeaderId = toArray(nextMatch?.[sideName]?.players)[0] ?? "";
   return profileId === existingLeaderId && profileId === nextLeaderId;
-}
-
-function sortPlainObject(value) {
-  if (Array.isArray(value)) return value.map(sortPlainObject);
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortPlainObject(value[key])]));
 }
 
 function normalizePlayerStats(stats = {}) {
@@ -1475,16 +1441,6 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
   return ["approveMatch", "resolveMatchDispute"].includes(action) && Boolean(existingResult) && nextMatch?.status === "confirmed";
 }
 
-// LEGACY REJECT-ONLY: 과거 감사 데이터는 보존하되 신규 호출은 모두 차단한다.
-const RETIRED_RECORDER_MATCH_ACTIONS = new Set([
-  "approveMatchRecorderTakeover",
-  "cancelMatchRecorderTakeover",
-  "rejectMatchRecorderTakeover",
-  "requestMatchRecorderTakeover",
-  "setMatchDualScoreRecorderSide",
-  "handoffMatchRecorder",
-]);
-
 const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "finalizeMatch",
   "incrementMatchScore",
@@ -1543,12 +1499,8 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_result_action") ||
     message.includes("rankball_match_room_update_action") ||
     message.includes("rankball_match_room_action") ||
-    message.includes("rankball_match_roster_move_action") ||
     message.includes("rankball_match_score_increment_action") ||
-    message.includes("rankball_match_scorekeeper_scope_action") ||
-    message.includes("rankball_match_recorder_takeover_action") ||
     message.includes("rankball_match_substitute_action") ||
-    message.includes("rankball_match_substitution_action") ||
     message.includes("rankball_match_roster_transition_action") ||
     message.includes("rankball_match_star_toggle_action") ||
     message.includes("rankball_match_thumbs_action") ||
@@ -2214,20 +2166,6 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
   };
 }
 
-export async function commitMatchRating(context, ratingCommit = {}) {
-  const { data, error } = await context.supabase.rpc("rankball_commit_match_rating", {
-    p_match_id: ratingCommit.matchId,
-    p_actor_profile_id: context.profileId,
-    p_rating_result: ratingCommit.ratingResult ?? [],
-    p_team_rating_result: ratingCommit.teamRatingResult ?? {},
-    p_profile_updates: ratingCommit.profileUpdates ?? [],
-    p_team_updates: ratingCommit.teamUpdates ?? [],
-    p_confirmed_at: ratingCommit.confirmedAt ?? new Date().toISOString(),
-  });
-  if (error) throw error;
-  return data ?? { ok: true };
-}
-
 function getRatingCommitProfileIds(ratingCommit = {}) {
   return uniqueIds([
     ...(ratingCommit.ratingResult ?? []).map((item) => item?.playerId),
@@ -2342,7 +2280,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   await validateRefereeEligibility(context.supabase, existingMatch, match, action, context.profileId);
   await validateMatchRosterEligibility(context.supabase, match);
 
-  const matchRow = toMatchRow(match, context.profileId);
+  const matchRow = toAuthoritativeMatchRow(match, context.profileId);
   if (expectedUpdatedAt) matchRow.__expectedUpdatedAt = expectedUpdatedAt;
   const playerRows = getSidePlayerRows(match);
   const shouldCommitRating = canCommitRatingResult(action, existingResult, match);
@@ -2371,7 +2309,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     }
   }
   const resultRow = shouldReplaceResult ? toResultRow(match, context.profileId) : null;
-  const statRows = shouldReplaceResult ? toStatRows(match) : [];
+  const statRows = shouldReplaceResult ? toAuthoritativePlayerStatRows(match) : [];
   const agreementRows = toAgreementRows(match);
   const approvalRows = toApprovalRows(match);
   const disputeRows = toDisputeRows(match);
@@ -2483,9 +2421,6 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const operation = getOperation(body, body.action ? String(body.action) : "sync");
     if (!operation) reject(400, "match_operation_required");
-    if (RETIRED_RECORDER_MATCH_ACTIONS.has(operation.action)) {
-      reject(409, "match_recorder_flow_retired");
-    }
     if (!isSupportedMatchAction(operation.action) && operation.action !== "createMatch") {
       reject(400, "unsupported_match_operation");
     }

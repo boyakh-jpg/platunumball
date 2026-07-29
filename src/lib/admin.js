@@ -1,5 +1,8 @@
 import { getMatchPlayerIds } from "./matchUtils.js";
 import { DAY_MS } from "./constants.js";
+import { isHighImpactAdminReviewAction } from "../../shared/lib/adminReview.js";
+
+export { isHighImpactAdminReviewAction };
 
 export const ADMIN_PERMISSION_NOTICE = "관리자 권한이 있는 계정만 이 메뉴를 사용할 수 있습니다.";
 
@@ -96,29 +99,8 @@ export const ADMIN_REPORT_TYPE_META = {
   affiliation_name: { label: "소속명", section: "teams" },
 };
 
-const HIGH_IMPACT_REVIEW_ACTIONS = new Set([
-  "applyCourtCorrection",
-  "markCourtDuplicate",
-  "maliciousReporter",
-  "suspendTarget",
-  "refereeDiscipline",
-  "hideCourt",
-  "hideCourtReview",
-  "resetTeamEmblem",
-  "renameTeam",
-  "renameAffiliation",
-  "mergeAffiliation",
-  "keepMatchVoid",
-  "restoreMatchHalf",
-  "restoreMatchFull",
-]);
-
 export function getAdminReportTypeLabel(type = "") {
   return ADMIN_REPORT_TYPE_META[type]?.label ?? "기타 신고";
-}
-
-export function isHighImpactAdminReviewAction(actionType = "") {
-  return HIGH_IMPACT_REVIEW_ACTIONS.has(actionType);
 }
 
 export function getAdminActionTargetUserIds(report = {}, actionType = "", match = {}) {

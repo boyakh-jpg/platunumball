@@ -27,6 +27,7 @@ import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
+import NumericStepper from "../components/common/NumericStepper.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
@@ -35,6 +36,7 @@ import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
 import MatchClockPanel, { MatchScoreControls } from "../components/match/MatchClockPanel.jsx";
 import MatchAttendanceQrPanel from "../components/match/MatchAttendanceQrPanel.jsx";
 import { MatchOperationsPolicyFields } from "../components/match/MatchCreationWizard.jsx";
+import MmrRangeSelector from "../components/match/MmrRangeSelector.jsx";
 import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
 import PickupParticipantPool from "../components/match/PickupParticipantPool.jsx";
 import RoomPhaseRenderer from "../components/match/RoomPhaseRenderer.jsx";
@@ -48,11 +50,11 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { ensureTeamPartyLeader, getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
+import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { getTournamentRosterTeam } from "../data/tournamentMappers.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { DEFAULT_RATING, MATCH_MODES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, MINUTE_MS, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, REMOTE_LIST_REFRESH_MIN_INTERVAL_MS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
-import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { getProfileRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { isPlacementComplete } from "../lib/rating.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import {
@@ -85,6 +87,15 @@ import {
   isPickupRecruitingRoom,
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
+import { getLinkedPersonalRecordDisplayUser } from "../lib/personalRecordRoster.js";
+import { normalizeRegionText } from "../lib/regionText.js";
+import {
+  getRecruitingDefaultTeamPlayerIds as getDefaultTeamPlayerIds,
+  getRecruitingDefaultTeamReserveIds as getDefaultTeamReserveIds,
+  getRecruitingPartyPlayerIds as getPartyPlayerIds,
+  getRecruitingPartyReserveIds as getPartyReserveIds,
+  getRecruitingTeamRepresentativePlayerIds as getTeamRepresentativePlayerIds,
+} from "../lib/teamPartyRoster.js";
 import { isTournamentGovernanceEnabled } from "../lib/tournamentGovernance.js";
 import { assetUrl } from "../lib/assets.js";
 import { BRAND_NAME } from "../lib/brand.js";
@@ -203,31 +214,6 @@ function getNonNegativeNumber(value) {
   return Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0;
 }
 
-function NumericStepper({ value, disabled = false, onChange, label, className = "" }) {
-  const numericValue = getNonNegativeNumber(value);
-  const setNextValue = (nextValue) => onChange(getNonNegativeNumber(nextValue));
-  return (
-    <div className={["numeric-stepper", className].filter(Boolean).join(" ")}>
-      <button type="button" disabled={disabled} onClick={() => setNextValue(numericValue + 1)} aria-label={`${label} 1 증가`} title="1 증가">
-        <ChevronUp size={18} strokeWidth={3} />
-      </button>
-      <input
-        type="number"
-        min="0"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        disabled={disabled}
-        value={numericValue}
-        onChange={(event) => setNextValue(event.target.value)}
-        aria-label={label}
-      />
-      <button type="button" disabled={disabled} onClick={() => setNextValue(numericValue - 1)} aria-label={`${label} 1 감소`} title="1 감소">
-        <ChevronDown size={18} strokeWidth={3} />
-      </button>
-    </div>
-  );
-}
-
 function getDefaultTitle(draft) {
   return `${draft.ranked ? "정규전" : "친선전"} ${draft.mode} 매치 큐`;
 }
@@ -342,37 +328,6 @@ async function copyTextToClipboard(text) {
 
 function getDefaultApplyTeamId(post, teams) {
   return teams.find((team) => isSameRegion(team.region, post.region))?.id ?? teams[0]?.id ?? "";
-}
-
-function getDefaultTeamPlayerIds(team, capacity, requiredPlayerId = "") {
-  if (!team) return [];
-  return ensureTeamPartyLeader(team, getSelectableTeamPlayerIds(team), requiredPlayerId, capacity);
-}
-
-function getTeamRepresentativePlayerIds(team, userId = "") {
-  return ensureTeamPartyLeader(team, userId ? [userId] : [], userId, 1);
-}
-
-function getPartyPlayerIds(team, playerIds, capacity, requiredPlayerId = "") {
-  if (!team) return [];
-  const selectedIds = Array.isArray(playerIds) ? playerIds : getSelectableTeamPlayerIds(team);
-  return ensureTeamPartyLeader(team, selectedIds, requiredPlayerId, capacity);
-}
-
-function getPartyReserveIds(team, reserveIds, activeIds = [], capacity = MAX_RESERVE_PLAYERS_PER_SIDE) {
-  if (!team || !Array.isArray(reserveIds)) return [];
-  const activeSet = new Set(activeIds);
-  const selectableIds = new Set(getSelectableTeamPlayerIds(team));
-  return Array.from(new Set(reserveIds.filter((playerId) => selectableIds.has(playerId) && !activeSet.has(playerId))))
-    .slice(0, capacity);
-}
-
-function getDefaultTeamReserveIds(team, activeIds = [], capacity = MAX_RESERVE_PLAYERS_PER_SIDE) {
-  if (!team) return [];
-  const activeSet = new Set(activeIds);
-  return getSelectableTeamPlayerIds(team)
-    .filter((playerId) => !activeSet.has(playerId))
-    .slice(0, capacity);
 }
 
 function getJoinActiveCapacity(post, lobby, sideName, reserve = false) {
@@ -2553,10 +2508,6 @@ function canShowRecruitingQueuePost(post, { targetPostId }) {
   return false;
 }
 
-function normalizeRegionText(value = "") {
-  return String(value || "").replace(/\s+/g, "").toLowerCase();
-}
-
 function stripRegionSuffix(value = "") {
   return normalizeRegionText(value).replace(/[시군구]$/u, "");
 }
@@ -2760,7 +2711,9 @@ function SourceMatchDisputeEditor({
                         <NumericStepper
                           className="arena-stat-stepper"
                           disabled={!editableFieldIds.has(field.id)}
+                          integer={false}
                           label={`${getPlayerName(sideName, playerId, index)} ${field.label}`}
+                          max={Number.MAX_SAFE_INTEGER}
                           value={Number(playerStats[field.id] ?? 0)}
                           onChange={(value) => updatePlayerStat(playerId, field.id, value)}
                         />
@@ -2876,6 +2829,12 @@ function RecruitingRoomModalReady({
     () => [...new Set([sourceMatch?.teamA?.teamId, sourceMatch?.teamB?.teamId].filter(Boolean))],
     [sourceMatch?.teamA?.teamId, sourceMatch?.teamB?.teamId],
   );
+  const sourceMatchLinkedProfileIds = useMemo(
+    () => [...new Set(Object.values(sourceMatch?.anonymousPlayers ?? {})
+      .map((player) => player?.linkedProfileId)
+      .filter(Boolean))],
+    [sourceMatch?.anonymousPlayers],
+  );
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
@@ -2889,9 +2848,24 @@ function RecruitingRoomModalReady({
       void loadDirectory?.({ kind: "teams", teamId, includeTeamMemberProfiles: true });
     });
   }, [loadDirectory, sourceMatchTeamIds]);
+  useEffect(() => {
+    sourceMatchLinkedProfileIds.forEach((profileId) => {
+      void loadDirectory?.({ kind: "players", profileId });
+    });
+  }, [loadDirectory, sourceMatchLinkedProfileIds]);
 
   const userById = useMemo(
-    () => Object.fromEntries([...app.state.users, ...Object.values(sourceMatch?.anonymousPlayers ?? {})].map((user) => [user.id, user])),
+    () => {
+      const profileById = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
+      const anonymousEntries = Object.values(sourceMatch?.anonymousPlayers ?? {}).map((user) => [
+        user.id,
+        getLinkedPersonalRecordDisplayUser(user, profileById),
+      ]);
+      return {
+        ...profileById,
+        ...Object.fromEntries(anonymousEntries),
+      };
+    },
     [app.state.users, sourceMatch?.anonymousPlayers],
   );
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -6184,11 +6158,7 @@ function RecruitingReady({ app }) {
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const currentRegion = getCanonicalRegion(app.currentUser.regionDistrict || app.currentUser.region);
   const defaultRegionSelection = useMemo(
-    () => inferRegionSelection([
-      app.currentUser.regionSido,
-      app.currentUser.regionDistrict,
-      app.currentUser.region,
-    ].filter(Boolean).join(" ")),
+    () => getProfileRegionSelection(app.currentUser),
     [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
   );
   const [queue, setQueue] = useState("all");
@@ -6747,18 +6717,7 @@ function RecruitingReady({ app }) {
                     <strong>{draftRange.label}</strong>
                     <em>{draftRange.detail}</em>
                   </div>
-                  <div className="segmented-control compact-segments">
-                    {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        className={draft.mmrRangeMode === mode ? "active" : ""}
-                        onClick={() => update({ mmrRangeMode: mode })}
-                      >
-                        {policy.label}
-                      </button>
-                    ))}
-                  </div>
+                  <MmrRangeSelector value={draft.mmrRangeMode} onChange={(mmrRangeMode) => update({ mmrRangeMode })} />
                   <small>{draftRangePolicy.detail} · 확정 경기만 서버 검증 후 반영</small>
                 </div>
               ) : null}

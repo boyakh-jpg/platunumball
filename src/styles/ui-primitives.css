@@ -168,6 +168,54 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   border-color: var(--rb-line-strong);
 }
 
+.ui-numeric-stepper {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: var(--ui-button-height-sm) var(--ui-button-height) var(--ui-button-height-sm);
+  gap: var(--space-2);
+}
+
+.ui-numeric-stepper > :is(button, input) {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  border: var(--ui-button-border-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  font: inherit;
+  font-weight: var(--font-weight-control);
+}
+
+.ui-numeric-stepper > button {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ui-numeric-stepper > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.ui-numeric-stepper > button:hover:not(:disabled) {
+  border-color: var(--ui-selectable-hover-border);
+  background: var(--ui-selectable-hover-bg);
+  color: var(--rb-orange);
+}
+
+.ui-numeric-stepper > :is(button, input):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
+}
+
+.ui-numeric-stepper > input {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+}
+
 .ui-badge {
   display: inline-flex;
   flex: 0 0 auto;

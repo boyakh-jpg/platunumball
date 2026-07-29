@@ -521,22 +521,6 @@ html[data-theme="light"] .gm-player-slot em {
 }
 
 /* 2026-07-01 standard UI cleanup: match room follows shared primitives. */
-.gm-room-title h1 {
-  color: var(--hero-title-color);
-  font-family: var(--hero-title-font);
-  font-size: var(--hero-title-size);
-  font-weight: 950;
-  line-height: var(--hero-title-line-height);
-  letter-spacing: var(--hero-title-letter-spacing);
-  text-shadow: var(--hero-title-shadow);
-  text-transform: uppercase;
-}
-
-.gm-room-title p {
-  color: var(--hero-copy-color);
-  text-shadow: var(--hero-copy-shadow);
-}
-
 .gm-room-topline > span,
 .gm-room-title > span,
 .gm-team-head span {
@@ -577,12 +561,6 @@ html[data-theme="light"] .gm-room-actions > div {
   background: var(--button-primary-hover-bg);
   color: #fff;
   filter: none;
-}
-
-@media (max-width: 720px) {
-  .gm-room-title h1 {
-    font-size: var(--hero-title-size-mobile);
-  }
 }
 
 /* 2026-07-02 include match room in page-level hero rules. */
@@ -629,10 +607,6 @@ html[data-theme="light"] .gm-room-title h1 {
 }
 
 /* 2026-07-14 compact match-room content while preserving hero and slot dimensions. */
-.match-room {
-  gap: var(--page-section-gap);
-}
-
 .gm-room-hero {
   gap: var(--page-section-gap);
   padding: var(--card-padding);

@@ -1,0 +1,23 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { clampNumericStepperValue } from "../src/lib/numericStepper.js";
+
+test("공용 숫자 스테퍼가 범위와 정수 정책을 적용한다", () => {
+  assert.equal(clampNumericStepperValue(-1, 0, 10), 0);
+  assert.equal(clampNumericStepperValue(12, 0, 10), 10);
+  assert.equal(clampNumericStepperValue(3.8, 0, 10), 3);
+  assert.equal(clampNumericStepperValue(3.8, 0, 10, false), 3.8);
+});
+
+test("기록 화면은 공용 NumericStepper만 사용한다", async () => {
+  const [matchRoomSource, recruitingSource] = await Promise.all([
+    readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(matchRoomSource, /components\/common\/NumericStepper\.jsx/);
+  assert.match(recruitingSource, /components\/common\/NumericStepper\.jsx/);
+  assert.doesNotMatch(matchRoomSource, /function NumericStepper\s*\(/);
+  assert.doesNotMatch(recruitingSource, /function NumericStepper\s*\(/);
+});

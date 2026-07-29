@@ -1,4 +1,5 @@
 import { bearerTokenMatches, getSupabaseAdminClient, isMissingTable, readJsonBody, sendJson, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
+import { fetchRoomFeedSourceMap } from "../../lib/roomFeedSources.js";
 
 const FEED_COLUMNS = "profile_id,entity_type,entity_id,relation,feed_scope,region_key,status,timing_type,scheduled_date,card_json,sort_at,is_active";
 const CARD_COLUMNS = "entity_type,entity_id,card_json,updated_at";
@@ -16,10 +17,6 @@ function reject(statusCode, message) {
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";
   if (!bearerTokenMatches(request, secret)) reject(401, "invalid_feed_audit_secret");
-}
-
-function toArray(value) {
-  return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
 function getCappedLimit(value) {
@@ -91,32 +88,6 @@ async function fetchCardsByType(client, rows = []) {
     });
   }
   return cardMap;
-}
-
-async function fetchSourcesByType(client, rows = []) {
-  const recruitingIds = uniqueIds(rows.filter((row) => row.entity_type === "recruiting").map((row) => row.entity_id));
-  const matchIds = uniqueIds(rows.filter((row) => row.entity_type === "match").map((row) => row.entity_id));
-  const sourceMap = new Map();
-
-  if (recruitingIds.length) {
-    const { data, error } = await client
-      .from("recruiting_posts")
-      .select(RECRUITING_SOURCE_COLUMNS)
-      .in("id", recruitingIds);
-    if (error) throw error;
-    (data ?? []).forEach((row) => sourceMap.set(`recruiting:${row.id}`, row));
-  }
-
-  if (matchIds.length) {
-    const { data, error } = await client
-      .from("matches")
-      .select(MATCH_SOURCE_COLUMNS)
-      .in("id", matchIds);
-    if (error) throw error;
-    (data ?? []).forEach((row) => sourceMap.set(`match:${row.id}`, row));
-  }
-
-  return sourceMap;
 }
 
 function getCardJson(cardRow = {}) {
@@ -252,7 +223,12 @@ export default async function handler(request, response) {
     });
     const [cardMap, sourceMap, feedTriggerCheck] = await Promise.all([
       fetchCardsByType(client, feedRows),
-      fetchSourcesByType(client, feedRows),
+      fetchRoomFeedSourceMap(client, feedRows, {
+        columnsByType: {
+          recruiting: RECRUITING_SOURCE_COLUMNS,
+          match: MATCH_SOURCE_COLUMNS,
+        },
+      }),
       checkFeedTriggers(client),
     ]);
     const audit = auditRows(feedRows, cardMap, sourceMap);

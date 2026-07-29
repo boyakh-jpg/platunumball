@@ -42,6 +42,13 @@ const schemaHealthSource = readFileSync(
   join(dirname(scriptPath), "../server/api/system/schema-health.js"),
   "utf8",
 );
+const rpcContractRegistryMigration = readFileSync(
+  join(
+    dirname(scriptPath),
+    "../supabase/migrations/20260729162000_align_rpc_grant_health_with_current_policy.sql",
+  ),
+  "utf8",
+);
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "rankball-sim-safety-"));
 
 function childEnvironment(projectRef, url = `https://${projectRef}.supabase.co`) {
@@ -241,7 +248,11 @@ test("simulation cleanup is exact, bounded, and guarded from user matches", () =
   assert.match(exactCleanupIdempotentMigration, /rankball_refresh_court_metrics/);
   assert.match(exactCleanupIdempotentMigration, /'derivedRefreshCompleted', true/);
   assert.match(scriptSource, /if \(!derivedRefreshCompleted\)/);
-  assert.match(schemaHealthSource, /name: "rankball_cleanup_simulation_artifacts_exact"/);
+  assert.match(schemaHealthSource, /projectActiveRpcContractChecks/);
+  assert.match(
+    rpcContractRegistryMigration,
+    /'rankball_cleanup_simulation_artifacts_exact'[\s\S]*'active', true/,
+  );
 });
 
 test("maintenance quarantine preserves terminal court-request decisions", () => {

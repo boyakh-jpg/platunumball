@@ -7,7 +7,7 @@ import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import { MATCH_SIDES } from "../../lib/constants.js";
 import {
-  formatKoreanDateTime,
+  formatMatchWindowTime,
   getMatchPlayerIds,
   getMatchReservePlayerIds,
   getMatchTrustFeedbackClosesAt,
@@ -23,16 +23,6 @@ function getRecommendationRole(match, playerId) {
   if (getMatchPlayerIds(match).includes(playerId)) roles.push("선수");
   if (MATCH_SIDES.some((sideName) => getMatchReservePlayerIds(match, sideName).includes(playerId))) roles.push("후보");
   return roles.length ? roles.join(" · ") : "관계자";
-}
-
-function formatCloseTime(value) {
-  if (!value) return "일정 없음";
-  return formatKoreanDateTime(value, {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 export default function MatchRecommendationPanel({ match, currentUserId, users = [], teams = [], onSubmit, className = "" }) {
@@ -123,7 +113,7 @@ export default function MatchRecommendationPanel({ match, currentUserId, users =
         <ThumbsUp size={16} /> {saving ? "저장 중" : "추천 저장"}
       </Button>
       {status ? <p className="muted" role="status">{status}</p> : null}
-      {!canSubmit ? <p className="muted">추천 시간이 지났거나 아직 기록이 확정되지 않았습니다. 마감: {formatCloseTime(getMatchTrustFeedbackClosesAt(match))}</p> : null}
+      {!canSubmit ? <p className="muted">추천 시간이 지났거나 아직 기록이 확정되지 않았습니다. 마감: {formatMatchWindowTime(getMatchTrustFeedbackClosesAt(match))}</p> : null}
     </Card>
   );
 }

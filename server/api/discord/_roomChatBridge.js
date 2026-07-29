@@ -1,9 +1,9 @@
-import { DISCORD_API_BASE_URL, isDiscordSnowflake } from "../../../src/lib/discordProtocol.js";
-import { BRAND_NAME } from "../../../src/lib/brand.js";
+import { DISCORD_API_BASE_URL, isDiscordSnowflake } from "../../../shared/lib/discordProtocol.js";
+import { BRAND_NAME } from "../../../shared/lib/brand.js";
 import {
   fromRoomChatMessageRow as mapRoomChatMessageRow,
   sanitizeRoomChatBody,
-} from "../../../src/lib/roomChat.js";
+} from "../../../shared/lib/roomChat.js";
 
 const DISCORD_CHAT_TIMEOUT_MS = Math.max(500, Math.min(10000, Number(process.env.DISCORD_CHAT_SYNC_TIMEOUT_MS || 2500)));
 

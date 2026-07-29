@@ -120,11 +120,12 @@ test("원터치 검수는 단순 판정, 영구 지역순번, 감사 로그를 �
 });
 
 test("중복 구장 신고 확정은 중앙 구장 검수와 신고 해결을 한 transaction으로 묶는다", async () => {
-  const [migration, adminPage, logic, schemaHealth] = await Promise.all([
+  const [migration, adminPage, logic, schemaHealth, rpcRegistry] = await Promise.all([
     readSource("supabase/migrations/20260727100000_resolve_duplicate_court_reports.sql"),
     readSource("src/pages/Admin.jsx"),
     readSource("docs/logic-and-terminology.md"),
     readSource("server/api/system/schema-health.js"),
+    readSource("supabase/migrations/20260729162000_align_rpc_grant_health_with_current_policy.sql"),
   ]);
   assert.match(migration, /create or replace function public\.rankball_resolve_duplicate_court_report/);
   assert.match(migration, /rankball_admin_review_court_with_auto_unit\([\s\S]*?'duplicate'/);
@@ -136,7 +137,11 @@ test("중복 구장 신고 확정은 중앙 구장 검수와 신고 해결을 �
   assert.match(adminPage, /reason: ADMIN_REVIEW_ACTIONS\[nextActionType\]\?\.reason \?\? ""/);
   assert.match(adminPage, /대상 구장은 비활성화되고 중복 판정과 관리자 감사 기록이 남습니다/);
   assert.match(logic, /courtCorrection\.field=duplicate/);
-  assert.match(schemaHealth, /name: "rankball_resolve_duplicate_court_report"/);
+  assert.match(schemaHealth, /projectActiveRpcContractChecks/);
+  assert.match(
+    rpcRegistry,
+    /'rankball_resolve_duplicate_court_report'[\s\S]*'public\.rankball_resolve_duplicate_court_report\(text,integer,text,text,text\)'[\s\S]*'active', true/,
+  );
 });
 
 test("OSM 명칭 근거는 30m 자동·80m 검수 경계와 수동 보호를 강제한다", async () => {

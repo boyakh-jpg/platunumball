@@ -4,7 +4,7 @@ import {
   readJsonBody,
   sendJson,
 } from "../_supabaseAdmin.js";
-import { normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../../../src/lib/constants.js";
+import { normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../../../shared/lib/constants.js";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 10;

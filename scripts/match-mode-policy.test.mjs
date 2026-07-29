@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { validateMatchShape } from "../server/api/matches/sync-match.js";
 import { validateRecruitingPostShape } from "../server/api/recruiting/sync-post.js";
+import { projectActiveRpcContractChecks } from "../server/api/system/schema-health.js";
 import { getSupportedTournamentMode } from "../server/api/tournaments/sync-tournament.js";
 import {
   MATCH_MODE_IDS,
@@ -374,6 +375,7 @@ test("RPC grant health distinguishes current entry points from retired signature
       "utf8",
     ),
   ]);
+  const normalizedMigrationSource = migrationSource.replace(/\r\n?/g, "\n");
   const readHealthContracts = (source, functionName) => {
     const start = source.indexOf(`create or replace function public.${functionName}()`);
     const end = source.indexOf(`revoke all on function public.${functionName}()`, start);
@@ -418,14 +420,6 @@ test("RPC grant health distinguishes current entry points from retired signature
   );
   const generalNames = registryNames("general");
   const authoritativeNames = registryNames("authoritative");
-  const requiredRpcStart = schemaHealthSource.indexOf("const REQUIRED_RPCS = [");
-  const requiredRpcEnd = schemaHealthSource.indexOf("];", requiredRpcStart);
-  assert.notEqual(requiredRpcStart, -1);
-  assert.notEqual(requiredRpcEnd, -1);
-  const requiredRpcNames = new Set(
-    [...schemaHealthSource.slice(requiredRpcStart, requiredRpcEnd).matchAll(/name: "(rankball_[^"]+)"/g)]
-      .map((match) => match[1]),
-  );
   const activeRegistryFunctionNames = new Set(
     registryRows
       .filter((row) => row.lifecycle === "active")
@@ -497,13 +491,13 @@ public.rankball_update_team_emblem_design(text,text,text,boolean,text,text,text,
     }));
   };
   await scanServerRpcNames(new URL("../server/", import.meta.url));
-  const legacyRevokeStart = migrationSource.indexOf("foreach legacy_signature");
-  const legacyRevokeEnd = migrationSource.indexOf("]\n  loop", legacyRevokeStart);
+  const legacyRevokeStart = normalizedMigrationSource.indexOf("foreach legacy_signature");
+  const legacyRevokeEnd = normalizedMigrationSource.indexOf("]\n  loop", legacyRevokeStart);
   assert.notEqual(legacyRevokeStart, -1);
   assert.notEqual(legacyRevokeEnd, -1);
-  const legacyRevokeSource = migrationSource.slice(legacyRevokeStart, legacyRevokeEnd);
-  const healthWrapperSource = migrationSource.slice(
-    migrationSource.indexOf("create or replace function public.rankball_rpc_grant_health()"),
+  const legacyRevokeSource = normalizedMigrationSource.slice(legacyRevokeStart, legacyRevokeEnd);
+  const healthWrapperSource = normalizedMigrationSource.slice(
+    normalizedMigrationSource.indexOf("create or replace function public.rankball_rpc_grant_health()"),
   );
   const replacedGeneralContracts = new Set([
     "rankball_match_late_player_action",
@@ -580,23 +574,28 @@ public.rankball_update_team_emblem_design(text,text,text,boolean,text,text,text,
       .sort(),
     [],
   );
-  assert.ok(requiredRpcNames.size >= 70);
-  requiredRpcNames.forEach((functionName) => {
-    assert.ok(
-      activeRegistryFunctionNames.has(functionName),
-      `required RPC missing from active registry: ${functionName}`,
-    );
-  });
   assert.equal(
     registryRows.filter((row) => row.functionName === "rankball_save_profile_icon_settings").length,
     2,
   );
-  assert.match(schemaHealthSource, /name: "rankball_match_roster_transition_action"/);
+  assert.doesNotMatch(schemaHealthSource, /const REQUIRED_RPCS = \[/);
+  assert.doesNotMatch(schemaHealthSource, /async function checkRpc\(/);
+  assert.doesNotMatch(schemaHealthSource, /p_actor_profile_id:\s*""/);
+  assert.match(schemaHealthSource, /projectActiveRpcContractChecks/);
   assert.match(
     schemaHealthSource,
-    /name: "rankball_match_terminal_action"[\s\S]*p_reason: ""/,
+    /const rpcChecks = projectActiveRpcContractChecks\(rpcGrantCheck\)/,
   );
-  assert.doesNotMatch(schemaHealthSource, /name: "rankball_match_roster_move_action"/);
+  assert.match(schemaHealthSource, /rpc_contract_registry_health_missing/);
+  assert.match(
+    schemaHealthSource,
+    /rpc_grant:rankball_rpc_contract_registry_acl/,
+  );
+  assert.match(schemaHealthSource, /checkMatchOverlapPolicy/);
+  assert.match(
+    schemaHealthSource,
+    /client\.rpc\("rankball_match_overlap_policy_health"\)/,
+  );
   assert.doesNotMatch(schemaHealthSource, /legacyRosterMoveServiceRevoked/);
   assert.match(migrationSource, /create table if not exists public\.rankball_rpc_contract_registry/);
   assert.match(migrationSource, /alter table public\.rankball_rpc_contract_registry enable row level security/);
@@ -654,6 +653,72 @@ public.rankball_update_team_emblem_design(text,text,text,boolean,text,text,text,
   assert.doesNotMatch(
     migrationSource,
     /grant execute on function public\.rankball_match_finalize_locked\(\s*text,\s*text,\s*text\s*\)/,
+  );
+});
+
+test("schema health projects active registry contracts into the legacy rpcChecks shape", () => {
+  const rpcChecks = projectActiveRpcContractChecks({
+    ok: false,
+    error: null,
+    checks: [
+      {
+        check_name: "rpc_grant:rankball_example_action",
+        ok: true,
+        detail: {
+          function: "rankball_example_action",
+          lifecycle: "active",
+          signature: "public.rankball_example_action(text)",
+        },
+      },
+      {
+        check_name: "authoritative_rpc_grant:rankball_example_action",
+        ok: false,
+        detail: {
+          function: "rankball_example_action",
+          lifecycle: "active",
+          signature: "public.rankball_example_action(text)",
+        },
+      },
+      {
+        check_name: "rpc_grant:rankball_retired_action",
+        ok: true,
+        detail: {
+          function: "rankball_retired_action",
+          lifecycle: "retired",
+          signature: "public.rankball_retired_action(text)",
+        },
+      },
+      {
+        check_name: "rpc_grant:rankball_rpc_contract_registry_acl",
+        ok: true,
+        detail: { table: "rankball_rpc_contract_registry" },
+      },
+    ],
+  });
+
+  assert.equal(rpcChecks.length, 1);
+  assert.equal(rpcChecks[0].rpc, "rankball_example_action");
+  assert.equal(rpcChecks[0].ok, false);
+  assert.equal(rpcChecks[0].probeError, null);
+  assert.deepEqual(rpcChecks[0].contractChecks, [
+    "rpc_grant:rankball_example_action",
+    "authoritative_rpc_grant:rankball_example_action",
+  ]);
+  assert.match(rpcChecks[0].error, /authoritative_rpc_grant:rankball_example_action/);
+
+  assert.deepEqual(
+    projectActiveRpcContractChecks({
+      ok: false,
+      error: "rpc_grant_health_failed",
+      checks: [],
+    }),
+    [{
+      rpc: "rankball_rpc_contract_registry",
+      ok: false,
+      error: "rpc_grant_health_failed",
+      probeError: null,
+      contractChecks: [],
+    }],
   );
 });
 

@@ -1,7 +1,7 @@
 import { attachNotificationActors, attachNotificationTargetState, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
-import { NOTIFICATION_COLUMNS, PROFILE_ME_COLUMNS } from "../../../src/data/repositoryColumns.js";
-import { compareNotificationsNewestFirst, dedupeNotifications, isNotificationDisplayable, isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
+import { fromRemoteNotification } from "../../../shared/lib/remotePayloadMappers.js";
+import { NOTIFICATION_COLUMNS, PROFILE_ME_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
+import { compareNotificationsNewestFirst, dedupeNotifications, isNotificationDisplayable, isNotificationVisibleToUser } from "../../../shared/lib/notifications.js";
 
 const DEFAULT_NOTIFICATION_LIMIT = 80;
 const MAX_NOTIFICATION_LIMIT = 100;

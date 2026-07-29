@@ -1,6 +1,6 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { createMatchAttendanceQr } from "./_attendanceQr.js";
-import { isPracticeId, PRACTICE_LOCAL_ONLY_ERROR } from "../../../src/lib/practiceMode.js";
+import { isPracticeId, PRACTICE_LOCAL_ONLY_ERROR } from "../../../shared/lib/practiceMode.js";
 
 const ALLOWED_ACTIONS = new Set([
   "read",

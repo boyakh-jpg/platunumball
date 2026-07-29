@@ -9,9 +9,11 @@ import {
   DEFAULT_RATING,
   MATCH_MODES,
   MATCH_SIDES,
+  MAX_RECRUITING_RESERVES_PER_SIDE,
   getTestAccountDisplayLabel,
   getModeSize,
   isRefereeGrade,
+  normalizeBenchCapacity,
 } from "../src/lib/constants.js";
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
 import { getRoomScheduleLabel } from "../src/lib/matchUtils.js";
@@ -32,7 +34,7 @@ import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 import { getTeamDiscoveryGroups } from "../src/data/teamMappers.js";
 import { getTournamentRosterTeam } from "../src/data/tournamentMappers.js";
-import { REGION_TREE, inferRegionSelection } from "../src/lib/profileSetup.js";
+import { REGION_TREE, getRegionDistrictOptions, inferRegionSelection } from "../src/lib/profileSetup.js";
 import {
   AFFILIATION_CHANGE_COOLDOWN_DAYS,
   AFFILIATION_TYPE,
@@ -64,6 +66,8 @@ import {
   isTeamEmblemAbbreviationDraftWithinLimits,
   isTeamEmblemFont,
   isTeamEmblemTextMode,
+  mapClientTeamEmblem,
+  mapRemoteTeamEmblem,
   normalizeTeamEmblemAbbreviation,
   normalizeTeamEmblemTextMode,
 } from "../src/lib/teamEmblem.js";
@@ -145,6 +149,7 @@ import {
   validateWebpImage,
 } from "../server/api/_r2ImageStorage.js";
 import { readJsonBody } from "../server/api/_supabaseAdmin.js";
+import { compactClientUser } from "../server/lib/clientProjection.js";
 import { getRecruitingListCardCounts, getRecruitingListCardLobby, isPaidRecruitingCourt } from "../src/lib/recruiting.js";
 import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
 import { getPlayerSeasonActivity } from "../src/lib/season.js";
@@ -356,7 +361,6 @@ test("tournament schedule guard is enforced in UI, CSS, and DB", async () => {
   assert.match(detailSource, /출전 명단 제출 후 잠금/);
   assert.match(recruitingSource, /getTournamentRosterTeam/);
   assert.match(recruitingSource, /isTournamentMatchLineupEditable/);
-  assert.match(recruitingSource, /reserveCapacity=\{sourceMatchIsRecordRoom \? 0 : benchCapacity\}/);
   assert.match(roomFlowSource, /\["recordSetup", "versus", "recordBoard"\]/);
   assert.match(styles, /\.tournament-schedule-list input:is\(\[type="date"\], \[type="time"\]\)[\s\S]*min-inline-size: 0;/);
   assert.match(styles, /@media \(max-width: 720px\)[\s\S]*\.tournament-schedule-list form[\s\S]*grid-template-columns: minmax\(0, 1fr\);/);
@@ -364,6 +368,29 @@ test("tournament schedule guard is enforced in UI, CSS, and DB", async () => {
   assert.match(migration, /tournament_schedule_revision_limit/);
   assert.match(migration, /if not schedule_changed then/);
   assert.match(migration, /rankball_tournament_match_schedule_action_unrestricted/);
+});
+
+test("match_record keeps three reserves without overriding live or tournament bench capacity", async () => {
+  const [recruitingSource, repositorySource, migration, logicPolicy] = await Promise.all([
+    readSource("src/pages/Recruiting.jsx"),
+    readSource("src/data/repository.js"),
+    readSource("supabase/migrations/20260729170000_match_record_batch_score_and_reserves.sql"),
+    readSource("docs/logic-and-terminology.md"),
+  ]);
+
+  assert.equal(MAX_RECRUITING_RESERVES_PER_SIDE, 3);
+  assert.equal(normalizeBenchCapacity(0), 0);
+  assert.equal(normalizeBenchCapacity(2), 2);
+  assert.match(
+    recruitingSource,
+    /reserveCapacity=\{sourceMatchIsRecordRoom \? MAX_RESERVE_PLAYERS_PER_SIDE : benchCapacity\}/,
+  );
+  assert.match(
+    repositorySource,
+    /const benchCapacity = isMatchRecordMatch\(match\)\s*\?\s*MAX_BENCH_CAPACITY\s*:\s*getRecruitingBenchCapacity\(match\);/,
+  );
+  assert.match(migration, /if requested_reserve_count > 3 then/);
+  assert.match(logicPolicy, /경기 기록은 사이드당 최대 3명의 후보를 보존하는 사후 명단/);
 });
 
 test("match clock scoreboard requires a referee or an identified host", () => {
@@ -921,6 +948,8 @@ test("region selectors preserve the current government code order", () => {
   ]);
   assert.deepEqual(REGION_TREE[0].districts.slice(0, 5), ["종로구", "중구", "용산구", "성동구", "광진구"]);
   assert.deepEqual(REGION_TREE[4].districts, ["제물포구", "영종구", "미추홀구", "연수구", "남동구", "부평구", "계양구", "서해구", "검단구", "강화군", "옹진군"]);
+  assert.equal(getRegionDistrictOptions("서울특별시")[0], "종로구");
+  assert.equal(getRegionDistrictOptions("존재하지 않는 지역")[0], "종로구");
   assert.deepEqual(inferRegionSelection("광주광역시 광산구"), { sido: "전남광주통합특별시", district: "광산구" });
 });
 
@@ -1033,6 +1062,141 @@ test("emblem validators share frontend and server allowlists", () => {
   );
 });
 
+test("team emblem row mapping preserves response fallbacks and null handling", () => {
+  assert.deepEqual(mapRemoteTeamEmblem({
+    accent: "#123456",
+    emblem_key: "teams/example.webp",
+    emblem_upload_count: "3",
+    emblem_border_enabled: false,
+    emblem_text_mode: "name",
+  }), {
+    emblemKey: "teams/example.webp",
+    emblemSource: "upload",
+    emblemUpdatedAt: null,
+    emblemUploadedAt: null,
+    emblemUploadCount: 3,
+    emblemColor: "#123456",
+    emblemBorderEnabled: false,
+    emblemBorderColor: "#123456",
+    emblemTextMode: "name",
+    emblemAbbreviation: "",
+    emblemFont: "sport",
+  });
+  assert.deepEqual(mapRemoteTeamEmblem({
+    accent: null,
+    emblem_key: null,
+    emblem_source: "",
+    emblem_color: "",
+    emblem_border_color: "",
+    emblem_text_mode: "unsupported",
+    emblem_abbreviation: null,
+    emblem_font: "custom",
+  }), {
+    emblemKey: null,
+    emblemSource: "",
+    emblemUpdatedAt: null,
+    emblemUploadedAt: null,
+    emblemUploadCount: 0,
+    emblemColor: "",
+    emblemBorderEnabled: true,
+    emblemBorderColor: "",
+    emblemTextMode: "initial",
+    emblemAbbreviation: "",
+    emblemFont: "custom",
+  });
+  assert.deepEqual(mapClientTeamEmblem({
+    accent: "#abcdef",
+    emblemKey: "teams/client.webp",
+    emblemUploadCount: "2",
+    emblemBorderEnabled: false,
+    emblemTextMode: "abbreviation",
+  }), {
+    emblemKey: "teams/client.webp",
+    emblemSource: "upload",
+    emblemUpdatedAt: null,
+    emblemUploadedAt: null,
+    emblemUploadCount: 2,
+    emblemColor: "#abcdef",
+    emblemBorderEnabled: false,
+    emblemBorderColor: "#abcdef",
+    emblemTextMode: "abbreviation",
+    emblemAbbreviation: "",
+    emblemFont: "sport",
+  });
+});
+
+test("compact API user mapping keeps public cards small and self details intact", () => {
+  const ratings = {
+    integrated: 1234,
+    modes: { "3v3": 1240 },
+    placement: { matchCount: 4 },
+  };
+  const user = {
+    id: "profile-1",
+    name: "Player",
+    handle: "#player",
+    hashtag: "#player",
+    position: "PG",
+    region: "서울",
+    avatarColor: "#58d2c0",
+    avatarBorderColor: null,
+    trustScore: 81,
+    ratings,
+    ageGroup: "open",
+    school: "School",
+    discordConnection: { username: "player" },
+  };
+  assert.deepEqual(compactClientUser(user, "viewer"), {
+    id: "profile-1",
+    name: "Player",
+    handle: "#player",
+    hashtag: "#player",
+    position: "PG",
+    region: "서울",
+    avatarColor: "#58d2c0",
+    avatarKey: null,
+    avatarSource: "initial",
+    avatarIconKey: null,
+    avatarUpdatedAt: null,
+    avatarBackgroundEnabled: true,
+    avatarBorderEnabled: false,
+    avatarBorderColor: "#58d2c0",
+    discordAvatarUrl: null,
+    trustScore: 81,
+    ratings: { integrated: 1234, placement: ratings.placement },
+    ageGroup: "open",
+  });
+  const self = compactClientUser(user, "profile-1");
+  assert.equal(self.ratings, ratings);
+  assert.equal(self.school, "School");
+  assert.equal(self.discordConnection, user.discordConnection);
+});
+
+test("team and compact user API projections stay on shared mappers", async () => {
+  const [
+    teamMappers,
+    recruitingMappers,
+    matchList,
+    recruitingList,
+    search,
+    supabaseAdmin,
+  ] = await Promise.all([
+    readSource("shared/lib/teamMappers.js"),
+    readSource("shared/lib/recruitingMappers.js"),
+    readSource("server/api/matches/list.js"),
+    readSource("server/api/recruiting/list.js"),
+    readSource("server/api/search.js"),
+    readSource("server/api/_supabaseAdmin.js"),
+  ]);
+  for (const source of [teamMappers, recruitingMappers, matchList, search, supabaseAdmin]) {
+    assert.match(source, /projectTeamRow\(/);
+  }
+  assert.match(recruitingList, /compactClientUser\(/);
+  assert.match(matchList, /compactClientUser\(/);
+  assert.doesNotMatch(recruitingList, /function compactUser\(/);
+  assert.doesNotMatch(matchList, /function compactUser\(/);
+});
+
 test("profile icon background choice and image preview stay persistent and separate", async () => {
   assert.equal(fromRemoteProfile({ id: "profile-1", name: "선수", avatar_background_enabled: false }).avatarBackgroundEnabled, false);
   assert.equal(fromRemoteProfile({ id: "profile-2", name: "선수" }).avatarBackgroundEnabled, true);
@@ -1041,7 +1205,7 @@ test("profile icon background choice and image preview stay persistent and separ
     readSource("src/components/profile/ProfileIconDialog.jsx"),
     readSource("src/components/profile/ProfileEmblem.jsx"),
     readSource("server/api/profile/emblem.js"),
-    readSource("src/data/repositoryColumns.js"),
+    readSource("shared/lib/repositoryColumns.js"),
     readSource("supabase/migrations/20260721190000_profile_icon_background_toggle.sql"),
     readGlobalStyles(),
   ]);
@@ -1756,7 +1920,7 @@ test("match dispute rejection, void reasons, restoration and scoped penalties st
 test("core consumers do not restore duplicated policy literals", async () => {
   const [repository, matchUtils, recruitingPage, matchSync, recruitingSync, profileEmblem, teamEmblem, discordBridge] = await Promise.all([
     readSource("src/data/repository.js"),
-    readSource("src/lib/matchUtils.js"),
+    readSource("shared/lib/matchUtils.js"),
     readSource("src/pages/Recruiting.jsx"),
     readSource("server/api/matches/sync-match.js"),
     readSource("server/api/recruiting/sync-post.js"),

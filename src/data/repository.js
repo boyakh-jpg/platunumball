@@ -224,6 +224,7 @@ import { clearState, readState, writeState } from "../lib/storage.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNotificationDeliveries } from "../lib/discord.js";
 import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
+import { getSoloRecordLinkedRosterEntries } from "../lib/personalRecordRoster.js";
 import { getBlockedUserIds, isNotificationDue, isNotificationFromBlockedUser } from "../lib/notifications.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
 import {
@@ -258,7 +259,7 @@ function getAveragePlayerMmr(state = {}, playerIds = [], fallback = DEFAULT_RATI
     ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
     : fallback;
 }
-import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
+import { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 import {
   ensureTeamPartyLeader,
   fromRemoteTeam,
@@ -273,7 +274,6 @@ import {
   buildTournamentPairings,
   fromRemoteTournament,
   getTournamentTeamStatuses,
-  normalizeTournament,
 } from "./tournamentMappers.js";
 import {
   fromRemoteApprovedCourt,
@@ -297,9 +297,7 @@ import {
   getSoloRecordSideSize,
   makeSoloRecordAnonymousSide,
   makeSoloRecordStats,
-  normalizeMatch,
   normalizeSoloRecordMode,
-  parseSoloRecordRosterText,
   toSoloRecordNumber,
 } from "./matchMappers.js";
 import {
@@ -388,24 +386,36 @@ import {
 } from "./remoteWriteUtils.js";
 import {
   createEmptyState,
-  mergeDemoDefaultsById,
-  normalizeTeam,
-  normalizeUser,
 } from "./stateMappers.js";
-import { normalizeSettings as normalizeSettingsCore } from "./settingsMappers.js";
+import { projectProfileSettings } from "./settingsMappers.js";
+import {
+  getDemoInitialState,
+  hasDemoInitialState,
+  normalizeState,
+  normalizeStateSettings as normalizeSettings,
+  setDemoInitialState,
+} from "./stateNormalizer.js";
 import {
   getDbScheduleParts,
   getNextQueueSchedule,
   getScheduleText,
   isScheduleDateInAllowedWindow,
-  normalizeRecruitingSchedules,
 } from "./scheduleUtils.js";
 import { adjustUserTrust, clampTrustScore } from "./trustUtils.js";
 import { getUnsafeUserTextReason } from "../lib/inputSecurity.js";
 import { isPracticeEntity } from "../lib/practiceMode.js";
+import {
+  projectMatchDbFields,
+  projectPlayerStatRows,
+} from "../../shared/lib/matchPersistence.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 export { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "./profileMappers.js";
 export { fromRemoteTeamInvitation } from "./teamMappers.js";
+export {
+  hasDemoInitialState,
+  normalizeState,
+  setDemoInitialState,
+} from "./stateNormalizer.js";
 export {
   FAVORITE_LIMIT,
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
@@ -417,17 +427,6 @@ export {
   REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../lib/constants.js";
-
-let demoInitialState = null;
-export function setDemoInitialState(state = null) {
-  demoInitialState = state && typeof state === "object" ? state : null;
-}
-export function hasDemoInitialState() {
-  return Boolean(demoInitialState);
-}
-function getDemoInitialState() {
-  return demoInitialState ?? EMPTY_STATE;
-}
 
 function getHostTrustBlockNotification(state, draft = {}) {
   const ranked = draft.ranked !== false;
@@ -482,13 +481,6 @@ function getInvalidPublicScheduleNotification(detail = "공개 예약방은 5일
   };
 }
 
-function normalizeSettings(settings = {}, options = {}) {
-  const includeDemo = options.includeDemo !== false;
-  const demoState = includeDemo ? getDemoInitialState() : EMPTY_STATE;
-  const fallbackSettings = includeDemo ? demoState.settings ?? {} : {};
-  return normalizeSettingsCore(settings, { fallbackSettings });
-}
-
 function getPublicRoomDisciplineBlockedState(state, post, actionLabel = "공개방 참가") {
   if ((post?.visibility ?? "public") !== "public") return null;
   const discipline = getActivePublicRoomDiscipline(state.settings, state.currentUserId);
@@ -502,60 +494,6 @@ function getPublicRoomDisciplineBlockedState(state, post, actionLabel = "공개�
       body: `${actionLabel}은 ${until}까지 제한됩니다. 사유: ${discipline.reason || "관리자 제재"}`,
       tone: "orange",
     }, ...state.notifications],
-  };
-}
-
-export function normalizeState(state, options = {}) {
-  const includeDemo = options.includeDemo !== false;
-  const preserveAuthoritativeMatches = options.preserveAuthoritativeMatches ?? !includeDemo;
-  const demoState = includeDemo ? getDemoInitialState() : EMPTY_STATE;
-  const baseState = includeDemo ? clone(demoState) : clone(EMPTY_STATE);
-  const notifications = state?.notifications?.length ? state.notifications : includeDemo ? demoState.notifications : [];
-  const deletedTeamIds = new Set(state?.deletedTeamIds ?? []);
-  const recruitingPosts = normalizeRecruitingSchedules(
-    includeDemo ? mergeDemoDefaultsById(state?.recruitingPosts, demoState.recruitingPosts ?? []) : state?.recruitingPosts ?? [],
-  );
-  const currentUserId = state?.currentUserId ?? baseState.currentUserId ?? "";
-  const settings = normalizeSettings(state?.settings ?? (includeDemo ? demoState.settings : DEFAULT_SETTINGS), { includeDemo });
-  const blockedUserIds = getBlockedUserIds(settings);
-  const blockedUserIdSet = new Set(blockedUserIds);
-  const isBlockedIncomingInvitation = (invitation = {}) => (
-    invitation.targetUserId === currentUserId && blockedUserIdSet.has(invitation.fromUserId)
-  );
-  const visibleRecruitingPosts = recruitingPosts.map(normalizeRecruitingPost).map((post) => {
-    const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-    const invitations = roomState.invitations.filter((invitation) => !isBlockedIncomingInvitation(invitation));
-    return invitations.length === roomState.invitations.length
-      ? post
-      : { ...post, roomState: { ...roomState, invitations } };
-  });
-
-  return {
-    ...baseState,
-    ...state,
-    deletedTeamIds: Array.from(deletedTeamIds),
-    users: (includeDemo ? mergeDemoDefaultsById(state?.users, demoState.users) : state?.users ?? []).map(normalizeUser),
-    teams: (includeDemo ? mergeDemoDefaultsById(state?.teams, demoState.teams) : state?.teams ?? [])
-      .filter((team) => team && typeof team === "object" && !deletedTeamIds.has(team.id))
-      .map(normalizeTeam),
-    teamInvitations: (state?.teamInvitations ?? (includeDemo ? demoState.teamInvitations ?? [] : []))
-      .filter((invitation) => !isBlockedIncomingInvitation(invitation)),
-    affiliations: (includeDemo ? mergeDemoDefaultsById(state?.affiliations, demoState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
-    seasons: includeDemo ? mergeDemoDefaultsById(state?.seasons, demoState.seasons ?? []) : state?.seasons ?? [],
-    matches: (includeDemo ? mergeDemoDefaultsById(state?.matches, demoState.matches) : state?.matches ?? [])
-      .map((match) => normalizeMatch(match, { preserveAuthoritativeLifecycle: preserveAuthoritativeMatches })),
-    tournaments: (includeDemo ? mergeDemoDefaultsById(state?.tournaments, demoState.tournaments ?? []) : state?.tournaments ?? []).map(normalizeTournament),
-    notifications: notifications
-      .map((notification) => ({ readAt: null, ...notification }))
-      .filter((notification) => !(
-        notification.targetUserId === currentUserId && isNotificationFromBlockedUser(notification, blockedUserIds)
-      )),
-    discordNotificationDeliveries: state?.discordNotificationDeliveries ?? (includeDemo ? demoState.discordNotificationDeliveries ?? [] : []),
-    discordNotificationSeenKeys: state?.discordNotificationSeenKeys ?? (includeDemo ? demoState.discordNotificationSeenKeys ?? [] : []),
-    discordNotificationSeenUsers: state?.discordNotificationSeenUsers ?? (includeDemo ? demoState.discordNotificationSeenUsers ?? [] : []),
-    settings,
-    reports: state?.reports ?? (includeDemo ? demoState.reports ?? [] : []),
-    recruitingPosts: visibleRecruitingPosts,
   };
 }
 
@@ -816,24 +754,20 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
       .filter((affiliation) => affiliation.type !== "club")
       .map(fromRemoteAffiliation),
     reports: reports.map(fromRemoteReport),
-    settings: {
-      ...DEFAULT_SETTINGS,
-      ...remoteAppSettings,
-      favoritePlayerIds: favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
-      favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
-      favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
-      favoriteRefereeIds: favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id),
-      courtMetrics: legacyCourtMetrics.map(fromRemoteCourtMetric),
-      approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
-      courtRequests: courtRequests.map(fromRemoteCourtRequest),
-      courtReviews: courtReviews.map(fromRemoteCourtReview),
-      refereeRequests: refereeRequests.map(fromRemotePayloadRow),
-      refereeExamAttempts: refereeExamAttempts.map(fromRemotePayloadRow),
-      adminAppointments: adminAppointments.map(fromRemotePayloadRow),
-      refereeAppointments: refereeAppointments.map(fromRemotePayloadRow),
-      adminAuditLog: adminAuditLog.map(fromRemotePayloadRow),
-      adminDisciplinaryActions: adminDisciplinaryActions.map(fromRemotePayloadRow),
-    },
+    settings: projectProfileSettings(remoteAppSettings, favoriteRows, {
+      overrides: {
+        courtMetrics: legacyCourtMetrics.map(fromRemoteCourtMetric),
+        approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
+        courtRequests: courtRequests.map(fromRemoteCourtRequest),
+        courtReviews: courtReviews.map(fromRemoteCourtReview),
+        refereeRequests: refereeRequests.map(fromRemotePayloadRow),
+        refereeExamAttempts: refereeExamAttempts.map(fromRemotePayloadRow),
+        adminAppointments: adminAppointments.map(fromRemotePayloadRow),
+        refereeAppointments: refereeAppointments.map(fromRemotePayloadRow),
+        adminAuditLog: adminAuditLog.map(fromRemotePayloadRow),
+        adminDisciplinaryActions: adminDisciplinaryActions.map(fromRemotePayloadRow),
+      },
+    }),
   }, { includeDemo: false });
 
   return {
@@ -1317,24 +1251,20 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       tournamentTeamsByTournament,
       courtById: context.courtById,
     })),
-    settings: {
-      ...DEFAULT_SETTINGS,
-      ...remoteAppSettings,
-      favoritePlayerIds: favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
-      favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
-      favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
-      favoriteRefereeIds: favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id),
-      courtMetrics: legacyCourtMetrics.map(fromRemoteCourtMetric),
-      approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
-      courtRequests: courtRequests.map(fromRemoteCourtRequest),
-      courtReviews: courtReviews.map(fromRemoteCourtReview),
-      refereeRequests: refereeRequests.map(fromRemotePayloadRow),
-      refereeExamAttempts: refereeExamAttempts.map(fromRemotePayloadRow),
-      adminAppointments: adminAppointments.map(fromRemotePayloadRow),
-      refereeAppointments: refereeAppointments.map(fromRemotePayloadRow),
-      adminAuditLog: adminAuditLog.map(fromRemotePayloadRow),
-      adminDisciplinaryActions: adminDisciplinaryActions.map(fromRemotePayloadRow),
-    },
+    settings: projectProfileSettings(remoteAppSettings, favoriteRows, {
+      overrides: {
+        courtMetrics: legacyCourtMetrics.map(fromRemoteCourtMetric),
+        approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
+        courtRequests: courtRequests.map(fromRemoteCourtRequest),
+        courtReviews: courtReviews.map(fromRemoteCourtReview),
+        refereeRequests: refereeRequests.map(fromRemotePayloadRow),
+        refereeExamAttempts: refereeExamAttempts.map(fromRemotePayloadRow),
+        adminAppointments: adminAppointments.map(fromRemotePayloadRow),
+        refereeAppointments: refereeAppointments.map(fromRemotePayloadRow),
+        adminAuditLog: adminAuditLog.map(fromRemotePayloadRow),
+        adminDisciplinaryActions: adminDisciplinaryActions.map(fromRemotePayloadRow),
+      },
+    }),
   }, { includeDemo: false });
   return {
     state: normalizedState,
@@ -1369,6 +1299,40 @@ export async function loadRemoteState(authUserId = "", authEmail = "", options =
     console.warn("Supabase normalized state load failed. Remote state remains empty.", error.message);
     return null;
   }
+}
+
+export function toSeedMatchRow(match = {}, currentUserId = "") {
+  const schedule = getDbScheduleParts(match);
+  return {
+    id: match.id,
+    title: match.title,
+    mode: match.mode,
+    court_id: getCourtId(match),
+    court_name: match.court,
+    ...projectMatchDbFields(match, { schedule }),
+    team_a_id: match.teamA?.teamId || null,
+    team_b_id: match.teamB?.teamId || null,
+    memo: match.memo,
+    stakes: match.stakes,
+    objection_window: match.objectionWindow,
+    created_by: match.teamA?.players?.[0] ?? currentUserId,
+    created_at: match.createdAt,
+    agreed_at: match.agreedAt,
+    started_at: match.startedAt ?? null,
+    ended_at: match.endedAt ?? null,
+    confirmed_at: match.confirmedAt,
+    cancelled_at: match.cancelledAt,
+    voided_at: match.voidedAt,
+    void_reason: match.voidReason ?? null,
+    voided_by: match.voidedBy ?? null,
+    void_snapshot: match.voidSnapshot ?? {},
+    void_review: match.voidReview ?? {},
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export function toSeedPlayerStatRows(match = {}) {
+  return projectPlayerStatRows(match);
 }
 
 export async function saveNormalizedRemoteState(state, options = {}) {
@@ -1431,82 +1395,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       role: member.role ?? "regular",
     })),
   );
-  const matchRows = state.matches.map((match) => {
-    const schedule = getDbScheduleParts(match);
-    const {
-      statRecorders: legacyStatRecorders,
-      dualScoreRecorderSide: legacyDualScoreRecorderSide,
-      ...persistedRules
-    } = match.rules ?? {};
-    void legacyStatRecorders;
-    void legacyDualScoreRecorderSide;
-    return {
-      id: match.id,
-      title: match.title,
-      mode: match.mode,
-      court_id: getCourtId(match),
-      court_name: match.court,
-      visibility: match.visibility ?? match.rules?.visibility ?? "private",
-      status: match.status ?? "contract",
-      ranked: match.ranked !== false,
-      mmr_limit_mode: match.mmrLimitMode ?? "block",
-      trust_feedback: match.trustFeedback ?? {},
-      referee_id: match.refereeId || null,
-      former_referee_id: match.formerRefereeId || null,
-      referee_trust_min: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
-      stat_entry_minutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
-      dispute_minutes: normalizeDisputeWindowMinutes(match.disputeMinutes),
-      stat_recorders: {},
-      played_player_ids: match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {},
-      reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
-      promoted_reserve_ids: match.promotedReserveIds ?? {},
-      attendance: match.attendance ?? { teamA: [], teamB: [] },
-      referee_absence_request: match.refereeAbsenceRequest ?? null,
-      dispute_draft_result: match.disputeDraftResult ?? null,
-      dispute_draft_updated_at: match.disputeDraftUpdatedAt ?? null,
-      dispute_resolved_at: match.disputeResolvedAt ?? null,
-      mmr_excluded_player_ids: match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [],
-      anonymous_players: match.anonymousPlayers ?? {},
-      tournament_id: match.tournamentId ?? null,
-      tournament_format: match.tournamentFormat ?? null,
-      tournament_round: match.tournamentRound ?? null,
-      tournament_fixture: match.tournamentFixture ?? null,
-      tournament_mmr_policy: match.tournamentMmrPolicy ?? null,
-      official: Boolean(match.official),
-      pre_registered: Boolean(match.preRegistered),
-      scheduled_at: schedule.scheduledAt,
-      scheduled_date: schedule.scheduledDate,
-      scheduled_time: schedule.scheduledTime,
-      team_a_id: match.teamA?.teamId || null,
-      team_b_id: match.teamB?.teamId || null,
-      score_a: Number(match.result?.scoreA ?? 0),
-      score_b: Number(match.result?.scoreB ?? 0),
-      rules: {
-        ...persistedRules,
-        timingType: schedule.timingType,
-        visibility: match.visibility ?? match.rules?.visibility ?? "private",
-      },
-      memo: match.memo,
-      stakes: match.stakes,
-      objection_window: match.objectionWindow,
-      evidence: match.evidence ?? [],
-      created_by: match.teamA?.players?.[0] ?? currentUserId,
-      created_at: match.createdAt,
-      agreed_at: match.agreedAt,
-      started_at: match.startedAt ?? null,
-      ended_at: match.endedAt ?? null,
-      confirmed_at: match.confirmedAt,
-      cancelled_at: match.cancelledAt,
-      voided_at: match.voidedAt,
-      void_reason: match.voidReason ?? null,
-      voided_by: match.voidedBy ?? null,
-      void_snapshot: match.voidSnapshot ?? {},
-      void_review: match.voidReview ?? {},
-      rating_result: match.ratingResult ?? null,
-      team_rating_result: match.teamRatingResult ?? null,
-      updated_at: new Date().toISOString(),
-    };
-  });
+  const matchRows = state.matches.map((match) => toSeedMatchRow(match, currentUserId));
   const matchPlayerRows = state.matches.flatMap((match) => [
     ...(match.teamA?.players ?? []).map((userId, index) => ({
       match_id: match.id,
@@ -1536,21 +1425,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       stat_submissions: match.result.statSubmissions ?? {},
       submitted_at: match.result.submittedAt,
     }));
-  const statRows = state.matches.flatMap((match) =>
-    Object.entries(match.result?.playerStats ?? {}).map(([userId, stat]) => ({
-      match_id: match.id,
-      user_id: userId,
-      recorded_by: match.result?.statSubmissions?.[userId]?.by ?? null,
-      record_source: match.result?.statSubmissions?.[userId]?.source ?? "player",
-      points: Number(stat.points ?? 0),
-      rebounds: Number(stat.rebounds ?? 0),
-      assists: Number(stat.assists ?? 0),
-      steals: Number(stat.steals ?? 0),
-      blocks: Number(stat.blocks ?? 0),
-      fouls: Number(stat.fouls ?? 0),
-      updated_at: new Date().toISOString(),
-    })),
-  );
+  const statRows = state.matches.flatMap(toSeedPlayerStatRows);
   const agreementRows = state.matches.flatMap((match) => [
     ...(match.agreements?.teamA ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamA" })),
     ...(match.agreements?.teamB ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamB" })),
@@ -2521,8 +2396,14 @@ function createSoloRecordMatch(state, draft = {}) {
   const visibility = draft.visibility === "public" ? "public" : "private";
   const teamAName = String(draft.soloTeamAName ?? "").trim() || "우리팀";
   const teamBName = String(draft.soloTeamBName ?? draft.soloOpponentName ?? "").trim() || "상대팀";
-  const teamAEntries = recordEntryMode === "named" ? parseSoloRecordRosterText(draft.soloTeamAPlayersText) : [];
-  const teamBEntries = recordEntryMode === "named" ? parseSoloRecordRosterText(draft.soloTeamBPlayersText) : [];
+  const teamARoster = recordEntryMode === "named"
+    ? getSoloRecordLinkedRosterEntries(draft.soloTeamAPlayersText, draft.soloTeamAPlayerRefs, state.users)
+    : { entries: [], refs: [] };
+  const teamBRoster = recordEntryMode === "named"
+    ? getSoloRecordLinkedRosterEntries(draft.soloTeamBPlayersText, draft.soloTeamBPlayerRefs, state.users)
+    : { entries: [], refs: [] };
+  const teamAEntries = teamARoster.entries;
+  const teamBEntries = teamBRoster.entries;
   if (recordEntryMode === "named" && !teamBEntries.length && String(draft.soloOpponentName ?? "").trim()) {
     teamBEntries.push({ name: String(draft.soloOpponentName).trim(), position: SOLO_RECORD_ANONYMOUS_POSITION });
   }
@@ -2539,7 +2420,10 @@ function createSoloRecordMatch(state, draft = {}) {
   const anonymousPlayers = Object.fromEntries(
     [...teamAAnonymous, ...teamBAnonymous].map((entry) => [
       entry.id,
-      makeAnonymousMatchPlayer(entry.id, entry.name, entry.position),
+      {
+        ...makeAnonymousMatchPlayer(entry.id, entry.name, entry.position),
+        ...(entry.linkedProfileId ? { linkedProfileId: entry.linkedProfileId } : {}),
+      },
     ]),
   );
   const playedPlayerIds = {
@@ -2554,7 +2438,7 @@ function createSoloRecordMatch(state, draft = {}) {
     scoreA,
     scoreB,
     playerStats: {
-      [playerId]: makeSoloRecordStats(scoreA, draft.soloStats),
+      [playerId]: makeSoloRecordStats(draft.soloStats),
     },
     statSubmissions,
     submittedBy: playerId,
@@ -2577,6 +2461,26 @@ function createSoloRecordMatch(state, draft = {}) {
       teamBName,
       teamAPlayers: [player.name || "나", ...teamAAnonymous.map((entry) => entry.name)],
       teamBPlayers: teamBAnonymous.map((entry) => entry.name),
+      teamAPlayerRefs: teamAAnonymous.flatMap((entry) => (
+        entry.linkedProfileId
+          ? [{
+              slotId: entry.id,
+              linkedProfileId: entry.linkedProfileId,
+              name: entry.name,
+              position: entry.position,
+            }]
+          : []
+      )),
+      teamBPlayerRefs: teamBAnonymous.flatMap((entry) => (
+        entry.linkedProfileId
+          ? [{
+              slotId: entry.id,
+              linkedProfileId: entry.linkedProfileId,
+              name: entry.name,
+              position: entry.position,
+            }]
+          : []
+      )),
     },
   };
   const match = {
@@ -4581,25 +4485,6 @@ export function deleteSoloRecord(state, matchId) {
       ...state.notifications,
     ],
   };
-}
-
-export function addMatchLatePlayer(state, matchId, draft = {}) {
-  void draft;
-  return {
-    ...state,
-    notifications: [{
-      id: makeId("n"),
-      title: "명단 변경 불가",
-      body: "일반 경기는 종료 후 출전 명단을 변경할 수 없습니다.",
-      tone: "orange",
-      matchId,
-    }, ...state.notifications],
-  };
-}
-
-export function removeMatchLatePlayer(state, matchId, playerId) {
-  void playerId;
-  return addMatchLatePlayer(state, matchId);
 }
 
 export function cancelMatch(state, matchId, reason = "") {

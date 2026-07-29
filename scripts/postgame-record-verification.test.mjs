@@ -208,7 +208,7 @@ test("개인 기록 공개 범위와 별도 통계는 공식 통계·업적에�
 
 test("referee stat submissions preserve the authoritative team score", async () => {
   const repository = await readFile(new URL("../src/data/repository.js", import.meta.url), "utf8");
-  const matchUtils = await readFile(new URL("../src/lib/matchUtils.js", import.meta.url), "utf8");
+  const matchUtils = await readFile(new URL("../shared/lib/matchUtils.js", import.meta.url), "utf8");
 
   assert.match(repository, /matchRecordRoom \? result\.scoreA : currentResult\?\.scoreA/);
   assert.match(repository, /matchRecordRoom \? result\.scoreB : currentResult\?\.scoreB/);

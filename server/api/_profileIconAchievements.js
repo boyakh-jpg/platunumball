@@ -1,4 +1,4 @@
-import { getProfileIconAchievementState, PROFILE_ICON_CATALOG } from "../../src/lib/profileIcons.js";
+import { getProfileIconAchievementState, PROFILE_ICON_CATALOG } from "../../shared/lib/profileIcons.js";
 
 const PROFILE_ICON_ID_SET = new Set(PROFILE_ICON_CATALOG.map((icon) => icon.id));
 

@@ -5,14 +5,46 @@ import test from "node:test";
 const readSource = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 test("synthetic c1..c12 courts stay deleted from current data", async () => {
-  const [directoryCleanup, logic] = await Promise.all([
+  const [directoryCleanup, logic, dataModel, constantsSource, courtDetail, mockDataSource, practiceSource] = await Promise.all([
     readSource("supabase/migrations/20260722210000_court_database_admin_and_canonical_names.sql"),
     readSource("docs/logic-and-terminology.md"),
+    readSource("docs/data-storage-model.md"),
+    readSource("shared/lib/constants.js"),
+    readSource("server/api/courts/detail.js"),
+    readSource("src/lib/mockData.js"),
+    readSource("src/lib/practiceMatch.js"),
   ]);
 
   assert.match(directoryCleanup, /where id in \('c1','c2','c3','c4','c5','c6','c7','c8','c9','c10','c11','c12'\)/i);
   assert.match(directoryCleanup, /delete from public\.approved_courts[\s\S]*rankball_removed_demo_courts/i);
   assert.match(logic, /`c1\.\.c12`[\s\S]*`deletedBuiltInCourtResidue`/);
+  assert.match(dataModel, /`c1\.\.c12`는 canonical 구장 ID가 아니다/);
+  assert.match(constantsSource, /export const COURTS = Object\.freeze\(\[\]\)/);
+  assert.doesNotMatch(constantsSource, /\bid:\s*["']c(?:[1-9]|1[0-2])["']/);
+  assert.doesNotMatch(courtDetail, /\bCOURTS\b|builtInCourt/);
+  assert.match(courtDetail, /!approvedCourtRow && !legacyCourtRow/);
+  assert.match(mockDataSource, /id:\s*"practice-court"/);
+  assert.match(mockDataSource, /DELETED_SYNTHETIC_COURT_IDS/);
+  assert.match(practiceSource, /id:\s*`\$\{PRACTICE_ID_PREFIX\}court`/);
+});
+
+test("demo runtime strips deleted synthetic court references", async () => {
+  const [{ COURTS }, { initialState, sourceDemoState }] = await Promise.all([
+    import("../src/lib/constants.js"),
+    import("../src/lib/mockData.js"),
+  ]);
+  const isDeletedSyntheticCourtId = (value) => /^c(?:[1-9]|1[0-2])$/.test(String(value ?? ""));
+  const collectCourtIds = (state) => [
+    ...(state.settings?.favoriteCourtIds ?? []),
+    ...(state.settings?.approvedCourts ?? []).map((court) => court.id),
+    ...(state.matches ?? []).map((match) => match.courtId),
+    ...(state.recruitingPosts ?? []).map((post) => post.courtId),
+    ...(state.tournaments ?? []).map((tournament) => tournament.courtId),
+  ];
+
+  assert.deepEqual(COURTS, []);
+  assert.equal(collectCourtIds(sourceDemoState).some(isDeletedSyntheticCourtId), false);
+  assert.equal(collectCourtIds(initialState).some(isDeletedSyntheticCourtId), false);
 });
 
 test("operational health rejects deleted synthetic court rows and references", async () => {

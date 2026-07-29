@@ -1,8 +1,23 @@
-export const AGE_GROUPS = [
-  { id: "junior", label: "Junior", rangeLabel: "U-13", minAge: 0, maxAge: 12 },
-  { id: "rising", label: "Rising", rangeLabel: "U-20", minAge: 13, maxAge: 19 },
-  { id: "open", label: "Open", rangeLabel: "Open", minAge: 20, maxAge: 120 },
-];
+import { normalizeRegionText } from "./regionText.js";
+import {
+  AGE_GROUPS,
+  getAgeGroupByBirthYear,
+  getAgeGroupForUser,
+  getAgeGroupLabel,
+  getAgeGroupSeasonForDate,
+  getAgeGroupSeasonLabel,
+  shouldRecheckAgeGroup,
+} from "../../shared/lib/profileSetup.js";
+
+export {
+  AGE_GROUPS,
+  getAgeGroupByBirthYear,
+  getAgeGroupForUser,
+  getAgeGroupLabel,
+  getAgeGroupSeasonForDate,
+  getAgeGroupSeasonLabel,
+  shouldRecheckAgeGroup,
+};
 
 export const REGION_TREE = [
   { sido: "서울특별시", districts: ["종로구", "중구", "용산구", "성동구", "광진구", "동대문구", "중랑구", "성북구", "강북구", "도봉구", "노원구", "은평구", "서대문구", "마포구", "양천구", "강서구", "구로구", "금천구", "영등포구", "동작구", "관악구", "서초구", "강남구", "송파구", "강동구"] },
@@ -31,36 +46,6 @@ const REGION_SIDO_ALIASES = new Map([
   ["광주전남특별통합시", "전남광주통합특별시"],
   ["광주특별시", "전남광주통합특별시"],
 ]);
-
-export function getAgeGroupByBirthYear(birthYear, now = new Date()) {
-  const year = Number(birthYear);
-  if (!Number.isInteger(year) || year < 1900) return null;
-  if (year > now.getFullYear()) return null;
-  const age = now.getFullYear() - year;
-  return AGE_GROUPS.find((group) => age >= group.minAge && age <= group.maxAge)?.id ?? "open";
-}
-
-export function getAgeGroupSeasonForDate(now = new Date()) {
-  const date = now instanceof Date ? now : new Date(now);
-  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
-  const year = safeDate.getFullYear();
-  const isFirstHalf = safeDate.getMonth() < 6;
-  return {
-    id: `${year}-${isFirstHalf ? "h1" : "h2"}`,
-    label: `${year} ${isFirstHalf ? "1" : "2"}시즌`,
-    startsAt: `${year}-${isFirstHalf ? "01-01" : "07-01"}`,
-    endsAt: `${year}-${isFirstHalf ? "06-30" : "12-31"}`,
-  };
-}
-
-export function getAgeGroupSeasonLabel(now = new Date()) {
-  const season = getAgeGroupSeasonForDate(now);
-  return `${season.label} · ${season.startsAt.slice(5).replace("-", ".")}~${season.endsAt.slice(5).replace("-", ".")}`;
-}
-
-export function shouldRecheckAgeGroup(user, now = new Date()) {
-  return Boolean(user?.birthYear && user?.onboardingComplete && user?.ageGroupCheckedSeason !== getAgeGroupSeasonForDate(now).id);
-}
 
 export function shouldSetupProfile(user = {}) {
   const hasLockedBirthYear = Boolean(user?.birthYearLockedAt && user?.birthYear);
@@ -110,16 +95,6 @@ export function getAppRedirectFromLocation(location, fallback = "/app") {
   return getSafeAppRedirect(fallback, "/app");
 }
 
-export function getAgeGroupLabel(ageGroupId) {
-  const group = AGE_GROUPS.find((item) => item.id === ageGroupId) ?? AGE_GROUPS[2];
-  if (String(group.label).toLowerCase() === String(group.rangeLabel).toLowerCase()) return group.label;
-  return `${group.label} · ${group.rangeLabel}`;
-}
-
-export function getAgeGroupForUser(user, now = new Date()) {
-  return getAgeGroupByBirthYear(user?.birthYear, now) ?? user?.ageGroup ?? "open";
-}
-
 const teamRolePriority = {
   captain: 0,
   regular: 1,
@@ -157,10 +132,6 @@ export function getRepresentativeTeam(userId = "", teams = [], representativeTea
   return userTeams.find((team) => team.id === representativeTeamId) ?? userTeams[0];
 }
 
-function normalizeRegionText(value = "") {
-  return String(value ?? "").replace(/\s/g, "");
-}
-
 function findDistrictForGroup(group, normalized) {
   return group.districts.find((item) => {
     const shortName = item.replace(/[시군구]$/u, "");
@@ -170,6 +141,10 @@ function findDistrictForGroup(group, normalized) {
 
 function getDistrictForGroup(group, normalized) {
   return findDistrictForGroup(group, normalized) ?? group.districts[0];
+}
+
+export function getRegionDistrictOptions(sido = "") {
+  return (REGION_TREE.find((group) => group.sido === sido) ?? REGION_TREE[0])?.districts ?? [];
 }
 
 export function inferRegionSelection(region = "") {
@@ -187,4 +162,12 @@ export function inferRegionSelection(region = "") {
     if (district) return { sido: group.sido, district };
   }
   return { sido: REGION_TREE[0].sido, district: "마포구" };
+}
+
+export function getProfileRegionSelection(user = {}) {
+  return inferRegionSelection([
+    user?.regionSido,
+    user?.regionDistrict,
+    user?.region,
+  ].filter(Boolean).join(" "));
 }

@@ -66,6 +66,8 @@
 13. 일반 경기의 수동 승인이 없으면 전체 `disputeMinutes`가 지난 뒤 유효한 결과, 열린 이의 0건, 심판 경기의 실제 출전자 개인 스탯 완성을 확인해 `system`이 자동 확정할 수 있다. 자동 확정은 0 개인기록을 보충하지 않으며 수동 확정과 같은 lock·멱등 MMR transaction을 사용한다.
 14. 프로필 통계는 서버가 검증 출처로 읽어 준 대회 개인 스탯을 집계한다. 대회 row가 축약되어 클라이언트에 심판 ID가 없더라도 `tournamentId`와 확정 스탯이 있으면 통계에서 누락하지 않는다.
 15. 타인 선수 프로필의 기록 API는 대상 선수가 참가한 공개 경기와 대상 선수가 작성한 공개 `personal_record`를 함께 제공한다. 비공개 기록은 제외하고, 프로필의 `teamHistory`·`statSummary` 공개 설정은 기존대로 각 섹션 노출에 적용한다. `statSummary`가 켜져 있을 때만 대상 선수의 심판 검증 스탯과 공개 개인기록 통계를 반환하며, 꺼져 있으면 서버 응답에서도 통계값을 제거한다. 공개 개인 기록은 공식 통계·업적·MMR과 합산하지 않는다.
+16. `personal_record` 이름 기록의 다른 선수는 실제 경기 참가자로 등록하지 않는다. 유효한 선수 해시태그를 선택하거나 입력하면 익명 슬롯에 `linkedProfileId`와 서버가 정규화한 이름·포지션만 연결한다. 이 참조는 프로필 열람 보조이며 일정·알림·승패·MMR·출전 통계의 참가 관계를 만들지 않는다. 저장 표시명에는 해시태그를 남기지 않는다.
+17. `personal_record`의 우리팀 점수와 작성자 본인의 PTS는 서로 다른 값이다. 팀 점수는 경기 결과에, PTS와 나머지 개인 스탯은 작성자 본인의 단일 `playerStats` row에 저장한다.
 
 ### 대체된 규칙
 
@@ -1454,7 +1456,7 @@ flowchart TD
 9. 추천과 심판 미출석처럼 경기 확정 전후에 따로 생기는 신뢰도 변경은 각 전용 DB RPC에서 `profiles.trust_score`를 0~100 범위로 커밋한다.
 10. 심판 미출석이 양측 확인으로 확정되면 `formerRefereeId` 대상 심판 신뢰도는 활성 운영 정책의 `refereeAbsencePenalty`만큼 감소한다.
 11. 방장/심판 강퇴는 실행 전 확인 팝업에서 신뢰도 하락 가능성을 경고해야 한다.
-12. 운영 신뢰도 증감값은 `rating_policy`의 활성 버전을 원본으로 쓴다. 최고관리자만 전용 server action/RPC로 변경하며 경기 확정, 파울, 심판, 추천, 심판 불참, 방 닫기, 반복 강퇴, 허위 구장 등록에 적용한다. `candidateRecorderReward`는 과거 snapshot 해석 전용이다.
+12. 운영 신뢰도 증감값은 `rating_policy`의 활성 버전을 원본으로 쓴다. 최고관리자만 전용 server action/RPC로 변경하며 경기 확정, 파울, 심판, 추천, 심판 불참, 방 닫기, 반복 강퇴, 허위 구장 등록에 적용한다.
 13. 정책 변경은 이미 확정된 경기와 이미 발생한 이벤트를 재계산하지 않는다. 저장 이후 새로 커밋되는 이벤트부터 적용한다.
 14. 추천 지급과 취소는 하나의 `thumbsDelta`를 대칭으로 사용한다. 지급값과 취소값을 따로 설정해 반복 토글로 신뢰도를 생성할 수 없게 한다.
 
@@ -1560,7 +1562,7 @@ flowchart TD
 27. 승인 구장의 canonical 상세 경로는 `/app/courts/:courtId`다. 홈 검색과 즐겨찾기 검색의 구장 결과는 방 생성 화면이 아니라 이 상세 경로로 이동한다.
 28. 구장 상세 리뷰 목록은 active 리뷰만 구장별 최대 100개 조회하며, 공개 별점은 `rankball_court_rating_rows()`의 평가자 성향 보정 점수를 사용한다.
 29. 구장 상세의 리뷰 작성 후보는 DB가 `match_players` 실제 참가, 종료 상태, 무효/취소 제외, 동일 구장을 다시 검증해 반환한다. 저장은 기존 `rankball_submit_court_review()`만 사용하며 `match_id + reviewer_id` 수정 규칙을 유지한다.
-30. 기본 구장 `c1`~`c12`도 운영 DB `courts`에 보존한다. 구장 상세 API는 `approved_courts`와 기본 `courts`를 모두 조회하며 로컬 상수만 있는 경우에도 같은 ID로 상세를 복구한다.
+30. 대체됨. `c1`~`c12`는 삭제된 가짜 구장이므로 운영 DB나 로컬 상수에서 복구하지 않는다. 현재 유효 규칙은 아래 운영 데이터 정합성 6~7항(`deletedBuiltInCourtResidue`, 복원 금지)을 따른다.
 31. 구장 리뷰 참가자 판정은 `played_player_ids`가 있으면 실제 출전 명단만 사용한다. 구형 경기처럼 실제 출전 명단이 비어 있을 때만 `match_players`를 fallback으로 사용하며, 경기방 UI·후보 조회 RPC·저장 RPC가 이 기준을 공유한다.
 32. 리뷰 저장 구장 ID는 경기 snapshot의 ID·이름을 `rankball_resolve_approved_court_id()`로 먼저 정규화한다. 구형 경기의 `court_id`가 비어 있어도 같은 기본·승인 구장 리뷰를 해시 ID로 분리하지 않는다.
 33. 방 만들기 내부 지도는 활성 등록 구장 중 저장 좌표가 유효한 구장만 표시한다. 줌 단계별 클러스터는 탐색 표시일 뿐이고 최종 선택은 단일 구장의 canonical `court_id`로 저장한다. 이름 검색으로 지도 위치를 추정하지 않는다.
@@ -2417,13 +2419,13 @@ flowchart TD
 20. `agreeMatch` may use `rankball_match_agree_action()` as a SQL reducer only for active-player personal-side agreement that does not complete the whole match agreement. When `matchId`, `sideName`, and `playerId` are present, the server can call this RPC without a client match snapshot. Team, party, completion, and unsupported states must fall back to the existing authoritative match action path so status transition and notifications stay consistent.
 21. `checkInMatchPlayer`는 `matchId`, `sideName`, `playerId`가 있으면 `rankball_match_checkin_action()`을 중앙 SQL reducer로 호출한다. RPC가 방장·배정 심판 권한, 현재 출석 단계, 명단 포함 여부를 검증하며 출석 운영자의 self-check도 같은 경로로 처리한다.
 22. `startMatch` may use `rankball_match_start_action()` as a SQL reducer only for no-referee host-operated matches with active-player attendance complete. When `matchId` is present, the server can call this RPC without a client match snapshot, use DB `matches.attendance` as the attendance source, and auto-include the host actor's active-side attendance. Referee, reserve, party, future scheduled, and unsupported states must fall back to the existing authoritative match action path.
-23. `addMatchLatePlayer`/`removeMatchLatePlayer` may use `rankball_match_late_player_action()` as a SQL reducer only for no-referee host-operated postgame matches inside the stat entry window. When `matchId` is present, the server can call this RPC without a client match snapshot by deriving the anonymous add/remove delta from the current DB row. The SQL path only accepts a single anonymous late-player add or a single excluded late-player remove; registered late-player add and unsupported states fall back to the existing authoritative match action path.
+23. 과거 이력(폐기): `addMatchLatePlayer`/`removeMatchLatePlayer`는 `rankball_match_late_player_action()`을 SQL reducer로 사용했다. 해당 action과 RPC는 현재 신규 UI·서버 실행 경로에서 제거됐으며 아래 설명은 과거 데이터 해석용이다.
 23-1. `rankball_match_action()` keeps the per-match transaction lock when a branch SQL reducer returns `fallback=true`, then persists the provided authoritative snapshot instead of returning the fallback payload as success.
-23-2. `handoffMatchRecorder`/`substituteMatchPlayer` may use `rankball_match_roster_move_action()` as a SQL reducer for same-side active/reserve roster moves. The RPC updates `match_players`, `matches.reserve_players`, `matches.played_player_ids`, and `matches.stat_recorders` in one transaction. Referee handoff, non-live substitution, invalid roster targets, and unsupported states fall back to the existing authoritative match action path.
+23-2. 과거 이력(폐기): `handoffMatchRecorder`/`substituteMatchPlayer`는 `rankball_match_roster_move_action()`을 사용했다. 기록자 인계와 해당 RPC는 현재 제거됐고, 선수 교체는 `rankball_match_roster_transition_action()`만 사용한다.
 23-3. `approveMatch` may use `rankball_match_approval_action()` as a SQL reducer only when the approval does not complete both sides. The RPC validates the active player, complete stat rows, and point-score consistency before inserting `match_approvals`; final confirmation calculation still uses server reducer replay, then match confirmation and MMR commit atomically through `rankball_match_action_with_rating()`.
 23-4. `submitMatchThumbs` may use `rankball_match_thumbs_action()` as a SQL reducer for confirmed matches inside the 24-hour trust feedback window. The RPC validates feedback participants, caps target count by match trust-feedback limit, updates `matches.trust_feedback`, and commits profile trust deltas in the same transaction. Unsupported states fall back to the existing authoritative match action path.
 23-5. `toggleMatchStar` may use `rankball_match_star_toggle_action()` as a SQL reducer for single-target trust feedback toggles. The RPC keeps the same trust-feedback participant and limit rules as `submitMatchThumbs`; if a new star would exceed the limit, it falls back to the authoritative replay path so the existing limit notification is preserved.
-23-6. Completed match lifecycle/roster/result/trust mutations are sent from the frontend as operation-only, including `agreeMatch`, `addMatchLatePlayer`, `approveMatch`, `checkInMatchPlayer`, `handoffMatchRecorder`, `removeMatchLatePlayer`, `substituteMatchPlayer`, `requestMatchRefereeAbsence`, `confirmMatchRefereeAbsence`, `startMatch`, `endMatch`, `cancelMatch`, `deleteSoloRecord`, `voidMatch`, `submitMatchResult`, `disputeMatch`, `resolveMatchDispute`, `submitMatchThumbs`, `toggleMatchStar`, `updateMatchRoomRules`, `setMatchRoomPlayerPlacement`, `setMatchRecordTeamRoster`, and `removeMatchRoomPlayer`. The server must use the SQL reducer when supported or reload authoritative match state and run the central reducer before persisting attendance, roster, lifecycle, room rules, record-room roster, postgame late-player changes, result rows, dispute rows, draft results, approvals, rating commits, and trust commits; client match snapshots are not accepted as the source of truth for these actions.
+23-6. 현재 경기 lifecycle/roster/result/trust mutation은 operation-only로 보낸다. `addMatchLatePlayer`, `removeMatchLatePlayer`, `handoffMatchRecorder`는 이 현재 목록에서 제외된 폐기 action이다. 서버는 현재 action의 SQL reducer 또는 중앙 authoritative replay만 사용하며 client match snapshot을 원본으로 받지 않는다.
 23-7. If `endedAt` already exists, `submitMatchResult` is a postgame result submission even when DB/server clock skew makes `endedAt` a few milliseconds later than the app server's current time.
 23-8. `setMatchRecordTeamRoster` uses server authoritative replay before snapshot persistence. Each side captain can edit only their own team roster in a `match_record` room, and the server validates the changed side with the existing DB roster before committing.
 24. `/api/matches/list` default reads use `rankball_match_list()` / `room_feed_cards.card_json` current-profile match cards first. It must not load `matches`, `match_players`, `public_profiles`, teams, or courts for the default card list when `card_json` is present. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
@@ -2441,9 +2443,9 @@ flowchart TD
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 30-1. `recorderOnly` match loads must include fallback candidate ids from `matches.stat_recorders`, `matches.reserve_players`, and `matches.played_player_ids` so candidate/reserve stat recorders can enter `/app/recorder` even when their `user_room_feed` card is stale or missing.
 30-1-1. `recorderOnly` match loads use the recorder candidate path directly and do not also load the normal match feed or closed notice feed. The client tracks `recorderMatchesLoaded` so direct `/app/recorder` entry does not immediately repeat the same request when the result is empty.
-30-2. 직접 `handoffMatchRecorder` 호출은 최신 takeover 정책에서 폐기한다. 클라이언트 reducer는 no-op이고 DB reducer는 `match_recorder_takeover_request_required`로 거부한다. 기록권한 변경은 요청·승인 action만 사용한다.
-30-2-1. 방 모달은 직접 기록자 인계 패널을 표시하지 않는다. 같은 사이드 후보가 takeover를 요청하고 현재 기록자 또는 방장이 승인·거절하며, 승인 시 서버가 현재 기록자 CAS와 match lock 안에서 권한을 변경한다.
-30-3. 심판 없는 경기에서 `statRecorders`가 비었거나 출전/후보 이동으로 stale이면 현재 후보 슬롯을 기준으로 effective recorder를 계산한다. 후보가 있으면 후보를 우선하고, 슬롯 이동/강퇴/교체/기록 저장 시 `matches.stat_recorders`와 `rules.statRecorders`를 같은 값으로 저장한다.
+30-2. 과거 이력(폐기): 직접 `handoffMatchRecorder`와 takeover 요청·승인 체계는 모두 신규 실행 경로에서 제거됐다.
+30-2-1. 과거 이력(폐기): 방 모달의 기록자 인계·takeover 패널과 기록자 CAS 변경 규칙은 더 이상 사용하지 않는다.
+30-3. 과거 이력(폐기): 후보 슬롯에서 effective recorder를 계산하거나 `statRecorders`를 자동 보정하던 규칙은 더 이상 사용하지 않는다.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 31-1. `/api/matches/list` with `completedOnly:true` loads current-profile participant confirmed match ids from `user_room_feed` first, then loads result/stat rows only for those ids and returns compact state. If the feed is unavailable, it falls back to `match_players` candidate ids before reading match rows. Home may load only recent 6-month completed feed cards for the `내 최근 전적` list, but must not pre-load confirmed record room detail rows; `/app/profile/records` loads them once on entry.
 31-2. `/api/records/list`는 개인(`scope=profile`)과 팀(`scope=team`) 기록을 전용으로 읽는다. KST 날짜 기준 최근 6개월 당일까지는 상세 archive snapshot을 읽고, 6개월 초과부터 최근 5년까지는 개인/팀 fact index의 텍스트 목록만 페이지 단위로 읽는다. 경기 메뉴의 broad match/result/stat hydration을 기록 조회에 재사용하지 않는다.
@@ -2500,7 +2502,7 @@ flowchart TD
 3. 공개방 전환은 사용자가 이미 고른 개인전/팀방 방식을 임의로 `team`으로 덮어쓰지 않는다.
 4. `/api/recruiting/list`는 `postId`/`recruitingPostIds` 단일 로드와 `scope: "mine"` 로드를 지원한다.
 5. Recruiting 화면은 최초 5개 목록 밖에 있는 내 생성/참여 open 방을 배경에서 보강 로드하지 않는다. 사용자가 `내가 만든 방`/`내 참여방`/`초대받음`을 누를 때만 `scope: "mine"`로 로드한다.
-6. `scope: "mine"`은 `user_room_feed`를 우선 사용해 open owned/joined/invited/referee recruiting post id를 읽고, feed가 없을 때만 `rankball_current_recruiting_post_ids()` RPC와 기존 PostREST id 조회 fallback을 사용한다.
+6. `scope: "mine"`은 `user_room_feed`를 우선 사용해 open owned/joined/invited/referee recruiting post id를 읽고, feed가 없거나 실패했을 때만 제한된 기존 PostREST id 조회 fallback을 사용한다. 폐기된 `rankball_current_recruiting_post_ids()` RPC는 호출하지 않는다.
 7. Recruiting mutation이 진행 중이거나 직후인 post는 목록 보강 로드가 오래된 row로 덮어쓰지 않는다.
 8. 서버 core lock 검증은 구버전 DB row의 빈 `host_join_mode`, `age_restriction` 값을 앱 normalization 기본값과 같은 기준으로 비교한다.
 9. 서버 reducer가 참여를 차단하면 `recruiting_sync_permission_denied`로 뭉개지 말고 reducer notification의 실제 차단 사유를 반환한다.
@@ -2509,7 +2511,7 @@ flowchart TD
 12. Recruiting 단일 방 상세 로드는 최신 서버 row가 기준이다. 목록 보강 로드의 최근 mutation 보호막으로 단일 상세 row를 버리면 안 된다.
 13. Supabase auth 사용자가 바뀌면 이전 계정의 room/list state를 화면에 남기지 않고 shell state로 비운 뒤 새 서버 state를 로드한다.
 
-14. `interestRecruitingPost`, `setRecruitingSlotPosition`, `setRecruitingApplicantPlacement`, `setRecruitingReady`, `cancelRecruitingParticipation`은 전용 SQL reducer 또는 `rankball_recruiting_management_action()` DB reducer가 처리한다. `cancelRecruitingParticipation` wrapper는 방별 advisory lock을 먼저 획득한다.
+14. `interestRecruitingPost`, `setRecruitingSlotPosition`, `setRecruitingApplicantPlacement`, `cancelRecruitingParticipation`은 전용 SQL reducer 또는 `rankball_recruiting_management_action()` DB reducer가 처리한다. `cancelRecruitingParticipation` wrapper는 방별 advisory lock을 먼저 획득한다.
 15. Recruiting 화면의 user-triggered `scope: "mine"` 로드는 요청이 성공했을 때만 완료 처리한다. 초기 auth/token 타이밍 실패가 나면 재시도하고, 실패한 1회 요청 때문에 `내가 만든 방`/`내 참여방` 카운트를 초기 목록 상태로 고정하지 않는다.
 16. Supabase remote state는 서버/DB가 source of truth다. 클라이언트 자동관리 함수는 원격 모집방/경기 상태를 로컬에서 임의로 취소/종료 처리하지 않는다. 만료, 자동취소, 자동확정 같은 lifecycle 변경은 server action/RPC로 저장된 뒤에만 화면 source of truth로 취급한다.
 
@@ -2520,13 +2522,13 @@ flowchart TD
 21. Supabase 테스트 로그인은 Google auth 계정처럼 서버 프로필에 고정된 세션이다. Settings에서 임의 계정 전환 대상으로 취급하지 않는다.
 22. Settings 저장 UI는 서버 저장 결과를 기다린 뒤 성공/실패를 표시한다. Privacy/Discord 설정은 실패했는데도 `저장됨`으로 표시하면 안 된다.
 
-23. `setRecruitingReady`의 단순 active host/direct player는 전용 SQL reducer가 처리하고 팀·파티·후보 복합 READY는 `rankball_recruiting_management_action()` DB reducer가 처리한다.
+23. 구형 `setRecruitingReady` 전용 RPC는 현재 운영 action 집합에서 제외한다. 과거 demo seed의 로컬 reducer만 호환용으로 유지한다.
 24. Recruiting server action replay must load the acting profile's current teams, explicit draft/application team ids, and their team members. Team-hosted room creation, private opponent team creation, and team-party participation cannot rely only on teams already related to the target recruiting post.
 25. Recruiting replay scope must also include explicit invite targets, referee invite targets, and team ids stored on pending room invitations. Expired, declined, or cancelled invitations are not active eligibility targets and must not block age/team roster validation.
 26. Recruiting snapshot persist must pass the replay base `updated_at` into `rankball_recruiting_action`. The DB function locks the row and rejects stale writes with `recruiting_stale_snapshot` instead of overwriting a newer room state.
 27. `setRecruitingApplicantPlacement`는 방장 자기 슬롯 이동으로도 `hostSide`를 변경하지 않는다. 방장은 생성 사이드를 유지하고, 다른 참가자 배치 변경도 방 core field를 바꾸면 안 된다.
-28. `rankball_recruiting_applicant_placement_action()`은 self player applicant의 선출/후보/사이드 배치를 처리하고 방장·팀·파티·복합 참가는 management DB reducer가 처리한다. 후보/대기 이동 시 stale 기록권한을 함께 제거한다.
-29. `interestRecruitingPost`, `inviteRecruitingReferee`, `inviteRecruitingPlayers`, `acceptRecruitingInvitation`, `declineRecruitingInvitation`, `cancelRecruitingParticipation`, `updateRecruitingRoomRules`, `setRecruitingApplicantReserve`, `setRecruitingApplicantPlacement`, `joinRecruitingSideParty`, `setRecruitingSlotPosition`, `setRecruitingPartyPlayerReserve`, `setRecruitingPartyPlayerPlacement`, `setRecruitingTeamPartyRoster`, `detachRecruitingPartyPlayer`, `removeRecruitingPartyPlayer`, `setRecruitingStatRecorder`, `kickRecruitingApplicant`, `confirmRecruitingMatch`, `closeRecruitingPost`는 frontend에서 operation-only로 보낸다. mutation은 DB reducer가 커밋하고 `confirmRecruitingMatch`만 서버가 authoritative 조합을 검증한 뒤 단일 transaction RPC로 모집 종료와 경기 생성을 함께 커밋한다. client snapshot은 원본으로 받지 않는다.
+28. `rankball_recruiting_applicant_placement_action()`은 self player applicant의 선출/후보/사이드 배치를 처리하고 방장·팀·파티·복합 참가는 management DB reducer가 처리한다. 과거 stale 기록권한 제거 분기는 폐기된 기록자 데이터 호환용으로만 해석한다.
+29. 모집 mutation은 frontend에서 operation-only로 보낸다. `setRecruitingStatRecorder`는 현재 목록에서 제외된 폐기 action이다. DB reducer가 현재 mutation을 커밋하고 `confirmRecruitingMatch`만 서버가 authoritative 조합을 검증한 뒤 단일 transaction RPC로 모집 종료와 경기 생성을 함께 커밋한다. client snapshot은 원본으로 받지 않는다.
 
 ## 2026-06-28 public feed access
 
@@ -2918,8 +2920,8 @@ flowchart TD
 > 신규 UI·API·권한 판정에서 사용하지 않는다.
 > 과거 데이터 해석 목적으로만 남긴다.
 
-1. `setRecruitingStatRecorder`는 방장만 실행하며, 심판 없는 열린 방의 같은 사이드 준비된 후보만 기록자로 지정한다.
-2. 개인·팀·파티·pinned 후보와 후보 상태의 방장은 `rankball_recruiting_stat_recorder_action()`에서 row lock으로 지정/해제한다.
+1. 과거에는 `setRecruitingStatRecorder`를 방장만 실행하고 심판 없는 열린 방의 같은 사이드 준비된 후보를 기록자로 지정했다. 현재는 폐기됐다.
+2. 과거에는 개인·팀·파티·pinned 후보와 후보 상태의 방장을 `rankball_recruiting_stat_recorder_action()`에서 row lock으로 지정·해제했다. 해당 RPC 외부 진입점은 현재 제거됐다.
 3. `closeRecruitingPost`는 `rankball_recruiting_close_action()`에서 방 종료, 초대 정리, 신뢰 점수 페널티, 페널티 알림, Discord 링크 비활성화를 한 transaction으로 처리한다.
 4. 같은 종료 요청 재시도는 `alreadyClosed=true`로 멱등 처리하고 페널티를 중복 적용하지 않는다.
 ## 2026-07-13 mutable profile cache policy
@@ -3151,6 +3153,7 @@ flowchart TD
 5. maintenance는 `rankball_quarantine_simulation_artifacts`를 먼저 실행한다. 시뮬레이션 종료 처리가 누락돼도 다음 정기 실행에서 운영 목록과 권한 계산에서 제외한다.
 6. `rankball_operational_data_health`는 프로필/Auth, 팀 명단, 승인 구장 좌표, 모집방 만료·피드, 경기·대회 참조, 시뮬레이션 잔존을 검사한다. 삭제된 가짜 구장 ID `c1..c12`는 `approved_courts`, `courts`, 경기·모집방·대회·리뷰 참조 어디에도 남지 않아야 하며 `deletedBuiltInCourtResidue`로 검사한다. `npm run audit:production-data`가 critical 항목이 남으면 실패한다.
 7. `c1..c12`는 기본 구장이나 legacy shell이 아니라 삭제된 가짜 데이터다. 실제 과거 구장의 `courts` fallback 정책과 구분하며 복원하거나 공개 승인 구장 목록에 다시 넣지 않는다.
+8. 브라우저의 `COURTS` 상수와 구장 상세 API는 `c1..c12`를 복구하지 않는다. 구장 상세는 활성 `approved_courts`를 우선 사용하고 실제 `courts` row가 존재할 때만 legacy fallback을 허용한다. `practice-court`는 저장되지 않는 연습 경기 상태에서만 유지한다.
 8. 구장 이름 snapshot은 `court_id`가 가리키는 현재 표준 이름으로 맞춘다. 같은 시설의 복수 코트는 사용자 승인 흐름의 `courtUnit`으로 구분하고 ID를 합치지 않는다.
 9. 개인 기록의 익명 상대 득점과 대회 몰수 `1:0`은 선수 PTS 합계 예외다. 일반 경기 점수만 실제 출전자 PTS 합계를 단일 원본으로 사용한다.
 10. 예약 시작 시각이 지났는데 연결 경기가 없는 열린 모집방은 정원이 찼더라도 `scheduled_unconfirmed`로 취소한다. 참가자에게 취소 알림을 만들고 기존 초대·Discord delivery·방 링크·피드는 종료한다.
@@ -3195,7 +3198,7 @@ flowchart TD
 2. 경기 결과·최근 기록 정렬·기록 상세 기간·경기방 채팅 잠금은 `src/lib/matchUtils.js`에서 계산한다. 화면은 자체 결과 판정이나 6개월 기준을 다시 만들지 않는다.
 3. 모집방 일정의 camelCase·snake_case 변환은 `src/data/scheduleUtils.js`, 모집방 채팅 길이·속도·polling·cache·DB row 변환은 `src/lib/roomChat.js`를 사용한다.
 4. Discord API URL, snowflake 검증, OAuth TTL, action custom ID, avatar URL, delivery 길이 제한은 `src/lib/discordProtocol.js`를 사용한다. 앱 공개 URL 조립은 서버의 `server/api/_publicAppUrl.js`를 사용한다.
-5. 프로필·팀 엠블럼의 R2 설정, Base64 검증, WebP 크기 검증, 업로드·삭제는 `server/api/_r2ImageStorage.js`를 사용한다. 색상과 팀 글자·폰트 allowlist는 각각 `src/lib/emblemPolicy.js`, `src/lib/teamEmblem.js`를 사용한다.
+5. 프로필·팀 엠블럼의 R2 설정, Base64 검증, WebP 크기 검증, 업로드·삭제는 `server/api/_r2ImageStorage.js`를 사용한다. 색상 allowlist는 `src/lib/emblemPolicy.js`, 팀 글자·폰트 allowlist와 원격 팀 row의 공통 엠블럼 매핑은 `shared/lib/teamEmblem.js`를 사용한다. 기존 `src/lib/teamEmblem.js`는 브라우저 import 호환용 re-export만 유지한다.
 6. 경기 알림 취소 prefix와 종료 상태 판정은 `src/lib/notifications.js`, 모집 신청 상태는 `src/lib/recruiting.js`, 팀 주장 조회는 `src/data/teamMappers.js`, 구장 표시 주소는 `src/lib/courts.js`를 단일 원본으로 사용한다.
 7. 단일 화면 문구, 디자인 token으로 관리되는 CSS 수치, 테스트 fixture 데이터, 이미 적용된 migration snapshot은 공용 업무 정책으로 오인해 추상화하지 않는다.
 
@@ -3600,9 +3603,14 @@ flowchart TD
 
 1. 신규 서버 RPC는 `rankball_rpc_contract_registry`에 현재 signature와 `active/retired` 상태를 증분 등록한다. grant health 함수에 전체 RPC 목록을 다시 복사하지 않는다.
 2. `active` RPC는 `service_role`만 실행할 수 있고 `anon/authenticated` 실행권한은 없다. 현재 선수 교체는 `rankball_match_roster_transition_action(text,text,text,text,text,text,text,text)`, 수동 최종 확정은 `rankball_match_finalize_locked(text,text,text,boolean)`이 권위 경로다.
-3. `rankball_match_late_player_action`, `rankball_match_roster_move_action`, `rankball_recruiting_stat_recorder_action`, 3인자 `rankball_match_finalize_locked`, 4인자 `rankball_match_resolve_dispute_action`, 3인자 `rankball_match_terminal_action`, 3인자 `rankball_match_list`는 폐기 계약이다. 과거 데이터 호환용 함수가 남아 있어도 `service_role`을 포함한 런타임 역할에 실행권한을 주지 않는다.
+3. `rankball_match_late_player_action`, `rankball_match_roster_move_action`, `rankball_recruiting_stat_recorder_action`, 4인자 `rankball_match_resolve_dispute_action`, 3인자 `rankball_match_terminal_action`, 3인자 `rankball_match_list`, 구형 scorekeeper/takeover/substitution 외부 진입점은 폐기되어 exact signature로 제거한다. 3인자 `rankball_match_finalize_locked`만 현재 4인자 wrapper의 내부 의존 때문에 남기되 모든 런타임 역할의 실행권한을 막는다.
 4. `/api/system/schema-health`는 registry 기반 active·retired 계약을 그대로 판정한다. 서버 코드에서 특정 실패 row를 예외로 숨기지 않는다.
 5. `server/**/*.js`의 literal `rankball_*` RPC 호출은 모두 service-only registry에 등록한다. 브라우저 RLS와 서버 Discord 채팅 검증이 함께 사용하는 `rankball_can_access_recruiting_room_chat(text,text)`만 의도적인 browser RPC 예외이며 registry에서 제외한다.
+6. `20260729171000_remove_retired_match_rpc_entrypoints.sql`은 폐기된 late-player, roster-move, stat-recorder, 4인자 이의 처리, 3인자 종료, 3인자 목록, scorekeeper, recorder takeover, 구형 substitution 외부 진입점을 exact signature로 제거한다. registry의 retired tombstone과 takeover 요청 감사 테이블·기존 행은 유지한다.
+7. 3인자 `rankball_match_finalize_locked`는 4인자 최종 승인 함수의 내부 의존이 남아 있으므로 제거하지 않는다. 모든 런타임 역할의 실행권한을 막은 상태로 유지하고, 내부 dispatch 분리 migration 뒤에만 제거한다.
+8. 대회 명단의 `rankball_tournament_match_roster_action()`과 내부 `rankball_tournament_match_roster_action_legacy()`는 현재 wrapper 의존이 있으므로 이번 은퇴 RPC 정리 대상이 아니다.
+9. `20260729170500_retire_match_action_roster_move_branch.sql`은 `rankball_match_action()`에 남은 폐기 `handoffMatchRecorder`/구형 `substituteMatchPlayer` 분기만 exact function-body fragment로 제거한다. 함수 shape가 다르면 롤백하며 다른 action 분기는 유지한다.
+10. `20260730010000_remove_unused_legacy_rpc_entrypoints.sql`은 현재 호출자가 없는 `rankball_current_recruiting_post_ids`, `rankball_recruiting_ready_action`, `rankball_update_team_emblem_style`을 exact signature로 제거한다. 현재 경로는 각각 `user_room_feed`/제한된 PostREST fallback, 통합 recruiting management action, `rankball_update_team_emblem_design`이다.
 ## 2026-07-29 확정 경기 명단과 비공개 경쟁전 QR
 
 1. 확정 경기방의 출전·후보 명단은 팀의 현재 로스터가 아니라 경기의 `teamA/teamB.players`와 `reservePlayers`를 원본으로 표시한다. 방장이 후보와 교체되어도 `createdBy`와 후보 슬롯은 유지한다.

@@ -9,6 +9,11 @@ import MatchListCard, { MatchListSummary } from "../components/match/MatchListCa
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getRegisteredCourts } from "../lib/courts.js";
 import {
+  getMatchListRoomTypeLabel,
+  getPlayMatchRosterProjection,
+  isMatchupTitleDuplicate,
+} from "../lib/matchListProjection.js";
+import {
   cleanRoomTitle,
   getMatchHostPlayerId,
   getMatchListScope,
@@ -24,9 +29,7 @@ import {
   getSafeMatchSide,
   isEligibleReferee,
   isMatchInPlayMenu,
-  isMatchPartyTeamParty,
   isMatchReferee,
-  isMatchSideTeamParty,
   isMatchListInitialLoading,
   MATCH_LIST_SCOPES,
   selectMatchListMatches,
@@ -66,38 +69,14 @@ function getRoleText(match, user) {
   return "경기 관계자";
 }
 
-function normalizeMatchupText(value = "") {
-  return String(value)
-    .replace(/\s+/g, " ")
-    .replace(/\s+vs\s+/i, " vs ")
-    .trim()
-    .toLowerCase();
-}
-
 function getRecorderCardTitle(match) {
   const title = cleanRoomTitle(match.title, "")
     .replace(/^(정규전|친선전)\s+(1v1|2v2|3v3|5v5)\s*/i, "")
     .replace(/\s+(1v1|2v2|3v3|5v5)$/i, "")
     .trim();
-  const matchupTitle = [match.teamA?.name, match.teamB?.name].filter(Boolean).join(" vs ");
-  if (matchupTitle && normalizeMatchupText(title) === normalizeMatchupText(matchupTitle)) return "";
+  if (isMatchupTitleDuplicate(title, match)) return "";
   if (GENERIC_ROOM_TITLE_PATTERN.test(title)) return "";
   return title;
-}
-
-function getRoomTypeLabel(match = {}) {
-  const matchTeamCount = MATCH_SIDES.filter((sideName) => Boolean(match?.[sideName]?.teamId) || isMatchSideTeamParty(match, sideName)).length;
-  const matchPartyCount = (match.parties ?? []).filter((party) => isMatchPartyTeamParty(party)).length;
-  if (matchTeamCount >= 2) return "팀전";
-  if (matchTeamCount > 0 || matchPartyCount > 0) return "팀 파티 포함";
-  return "개인 매칭";
-}
-
-function getMatchSideCount(match, sideName) {
-  return new Set([
-    ...(match[sideName]?.players ?? []),
-    ...getMatchReservePlayerIds(match, sideName),
-  ].filter(Boolean)).size;
 }
 
 function getScore(match, sideName) {
@@ -267,8 +246,7 @@ export default function Recorder({ app }) {
               const title = getRecorderCardTitle(match);
               const scoreA = getScore(match, "teamA");
               const scoreB = getScore(match, "teamB");
-              const reserveCount = getMatchReservePlayerIds(match, "teamA").length + getMatchReservePlayerIds(match, "teamB").length;
-              const meta = `참여 ${getMatchPlayerIds(match).length}명 · A ${getMatchSideCount(match, "teamA")} / B ${getMatchSideCount(match, "teamB")}${reserveCount ? ` · 후보 ${reserveCount}` : ""}`;
+              const roster = getPlayMatchRosterProjection(match);
               const hasScore = shouldShowScore(match);
               const summaryValue = hasScore ? `${scoreA} : ${scoreB}` : "vs";
 
@@ -278,7 +256,7 @@ export default function Recorder({ app }) {
                   status={status}
                   mode={match.mode}
                   visibility={getRoomVisibilityLabel(match, sourcePost)}
-                  roomType={getRoomTypeLabel(match)}
+                  roomType={getMatchListRoomTypeLabel(match)}
                   competition={getRoomCompetitionLabel(match)}
                   referee={getRoomRefereeLabel(match)}
                   title={title}
@@ -293,7 +271,7 @@ export default function Recorder({ app }) {
                       left={<TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>}
                       center={summaryValue}
                       right={<TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>}
-                      meta={meta}
+                      meta={roster.meta}
                       detail={`${getRoleText(match, user)} · ${getDeadlineLabel(match)}`}
                     />
                   )}

@@ -1,20 +1,28 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { fromRemoteProfile } from "../../src/data/profileMappers.js";
+import { compactArray } from "../../shared/lib/arrayValues.js";
+import {
+  getDatePart,
+  getTimePart,
+  toDateTime as toSharedDateTime,
+  toDbTime,
+} from "../../shared/lib/matchPersistence.js";
+import { flattenPlayerIdValues } from "../../shared/lib/playerIds.js";
+import { projectTeamRow } from "../../shared/lib/teamRowProjection.js";
+import { fromRemoteProfile } from "../../shared/lib/profileMappers.js";
 import {
   PROFILE_CARD_COLUMNS,
   TEAM_COLUMNS,
   TEAM_MEMBER_COLUMNS,
   TOURNAMENT_COLUMNS,
   TOURNAMENT_TEAM_COLUMNS,
-} from "../../src/data/repositoryColumns.js";
-import { fromRemoteTournament } from "../../src/data/tournamentMappers.js";
-import { getNotificationActorId, isTerminalMatchStatus, isTerminalRecruitingStatus } from "../../src/lib/notifications.js";
-import { DEFAULT_RATING } from "../../src/lib/constants.js";
-import { assertSafeInputPayload } from "../../src/lib/inputSecurity.js";
+} from "../../shared/lib/repositoryColumns.js";
+import { fromRemoteTournament } from "../../shared/lib/tournamentMappers.js";
+import { getNotificationActorId, isTerminalMatchStatus, isTerminalRecruitingStatus } from "../../shared/lib/notifications.js";
+import { assertSafeInputPayload } from "../../shared/lib/inputSecurity.js";
 import { getStrictBearerToken, setApiSecurityHeaders } from "./_requestSecurity.js";
 
-export { getDatePart, getTimePart, toDbTime } from "../../src/data/scheduleUtils.js";
+export { getDatePart, getTimePart, toDbTime };
 
 const IMMEDIATE_NOTIFICATION_DUE_AT = "1970-01-01T00:00:00.000Z";
 const MAX_API_JSON_BODY_BYTES = 1_000_000;
@@ -217,9 +225,7 @@ export function uniqueStringIds(ids = []) {
 }
 
 export function flattenIdValues(value) {
-  if (Array.isArray(value)) return value.flatMap(flattenIdValues);
-  if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
-  return value ? [String(value)] : [];
+  return flattenPlayerIdValues(value);
 }
 
 export function groupRowsBy(rows = [], key = "id") {
@@ -254,9 +260,7 @@ export async function timeStep(timing, key, callback) {
 }
 
 export function toDateTime(date, time, fallback) {
-  if (date && time) return `${date} ${String(time).slice(0, 5)}`;
-  if (date) return date;
-  return fallback ?? "\uBBF8\uC815";
+  return toSharedDateTime(date, time, fallback, "\uBBF8\uC815");
 }
 
 export function nullableText(value) {
@@ -266,27 +270,7 @@ export function nullableText(value) {
 
 export function toClientTeamWithMembers(team = {}, memberRows = []) {
   return {
-    id: team.id,
-    name: team.name,
-    homeCourt: team.home_court,
-    region: team.region,
-    mmr: team.mmr ?? DEFAULT_RATING,
-    wins: team.wins ?? 0,
-    losses: team.losses ?? 0,
-    accent: team.accent,
-    emblemKey: team.emblem_key ?? null,
-    emblemSource: team.emblem_source ?? (team.emblem_key ? "upload" : "initial"),
-    emblemUpdatedAt: team.emblem_updated_at ?? null,
-    emblemUploadedAt: team.emblem_uploaded_at ?? null,
-    emblemUploadCount: Number(team.emblem_upload_count ?? 0),
-    emblemColor: team.emblem_color ?? team.accent ?? null,
-    emblemBorderEnabled: team.emblem_border_enabled !== false,
-    emblemBorderColor: team.emblem_border_color ?? team.accent ?? null,
-    emblemTextMode: new Set(["name", "abbreviation"]).has(team.emblem_text_mode) ? team.emblem_text_mode : "initial",
-    emblemAbbreviation: team.emblem_abbreviation ?? "",
-    emblemFont: team.emblem_font ?? "sport",
-    createdAt: team.created_at ?? null,
-    updatedAt: team.updated_at ?? team.created_at ?? null,
+    ...projectTeamRow(team),
     members: [...memberRows]
       .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.user_id).localeCompare(String(b.user_id)))
       .map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),
@@ -386,9 +370,7 @@ export async function loadCurrentUserTournamentIndex(client, profileId = "") {
   };
 }
 
-export function toArray(value) {
-  return Array.isArray(value) ? value.filter(Boolean) : [];
-}
+export const toArray = compactArray;
 
 export async function attachNotificationActors(supabase, notifications = []) {
   const rows = toArray(notifications);

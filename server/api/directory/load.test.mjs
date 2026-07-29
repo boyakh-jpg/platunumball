@@ -18,7 +18,7 @@ import {
   DIRECTORY_CACHE_TTL_MS,
   DIRECTORY_PICKER_PAGE_LIMIT,
   DIRECTORY_TEAM_PAGE_LIMIT,
-} from "../../../src/lib/queryPolicy.js";
+} from "../../../shared/lib/queryPolicy.js";
 
 test("directory/admin page limits stay bounded", () => {
   assert.deepEqual(getPageRequest({}), { limit: 100, offset: 0 });

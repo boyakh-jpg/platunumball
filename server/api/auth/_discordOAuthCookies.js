@@ -1,4 +1,4 @@
-import { DISCORD_OAUTH_PROOF_TTL_MS, DISCORD_OAUTH_STATE_TTL_MS } from "../../../src/lib/discordProtocol.js";
+import { DISCORD_OAUTH_PROOF_TTL_MS, DISCORD_OAUTH_STATE_TTL_MS } from "../../../shared/lib/discordProtocol.js";
 
 export const DISCORD_OAUTH_STATE_COOKIE = "rankball_discord_oauth_state";
 export const DISCORD_OAUTH_PROOF_COOKIE = "rankball_discord_oauth_proof";

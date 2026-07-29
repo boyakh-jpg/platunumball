@@ -633,7 +633,6 @@ html[data-theme="light"] input[type="radio"] {
 
 html[data-theme="light"] .badge,
 html[data-theme="light"] .tier-badge,
-html[data-theme="light"] .chip,
 html[data-theme="light"] .tag {
   border-color: var(--rb-line);
 }
@@ -1290,16 +1289,6 @@ html[data-theme="light"] .app-main {
   }
 }
 
-/* 2026-07-01 mobile hero board: full image first, details after search. */
-@media (max-width: 1079px) {
-  .rank-home > .rank-summary-grid {
-    width: calc(100% + (2 * var(--page-gutter)));
-    max-width: none;
-    margin-inline: calc(-1 * var(--page-gutter));
-    border-radius: 0;
-  }
-}
-
 @media (max-width: 759px) {
   .rank-home > .rank-summary-grid {
     display: contents;
@@ -1794,28 +1783,7 @@ textarea::placeholder,
   color: var(--rb-soft);
 }
 
-.button:focus-visible,
-.provider-button:focus-visible,
-.auth-browser-actions button:focus-visible,
-.auth-browser-actions a:focus-visible,
-.auth-session-line button:focus-visible,
-.segmented-control button:focus-visible,
-.team-picker:focus-visible,
-.court-search-popover button:focus-visible,
-.report-player-picker button:focus-visible,
-.referee-exam-choice-grid button:focus-visible,
-.arena-filter-bar button:focus-visible,
-.arena-start-date-filter button:focus-visible,
-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
-  outline-offset: 2px;
-  box-shadow: var(--focus-ring);
-}
-
 .badge,
-.chip,
 .form-chip {
   border: 1px solid var(--control-border);
   border-radius: 999px;
@@ -2895,26 +2863,7 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
 }
 
 /* 2026-07-02 remove extra non-home hero overlay layers. */
-.landing-hero::after,
-.match-hero::before,
-.team-hub-hero::before,
-.team-hub-hero::after,
-.page-header::after {
-  content: none;
-  background: none;
-  opacity: 0;
-}
-
 /* 2026-07-02 canonical home hero image rule: no wash, grid, or pseudo overlay. */
-
-.rank-home .rank-summary-grid::before,
-.rank-home .rank-summary-grid::after,
-html[data-theme="light"] .rank-home .rank-summary-grid::before,
-html[data-theme="light"] .rank-home .rank-summary-grid::after {
-  content: none;
-  background: none;
-  opacity: 0;
-}
 
 .rank-home .rank-summary-grid .home-rank-board-head h1,
 .rank-home .rank-summary-grid .home-rank-board-head p,
@@ -2929,10 +2878,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head .ey
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
   color: var(--rb-orange-2);
-}
-
-html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
-  color: var(--rb-cream);
 }
 
 /* 2026-07-02 rank spotlight cleanup: no inherited accent stripe or framed links. */
@@ -2994,23 +2939,6 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
 }
 
 /* 2026-07-02 canonical page-level hero scope guard. */
-.landing-hero::before,
-.landing-hero::after,
-.match-hero::before,
-.match-hero::after,
-.team-hub-hero::before,
-.team-hub-hero::after,
-.page-header::before,
-.page-header::after,
-.profile-hero::before,
-.profile-hero::after,
-.team-detail-hero::before,
-.team-detail-hero::after {
-  content: none;
-  background: none;
-  opacity: 0;
-}
-
 html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1,
 html[data-theme="light"] .page-header h1,
 html[data-theme="light"] .landing-hero h1,

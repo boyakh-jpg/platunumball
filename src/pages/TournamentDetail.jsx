@@ -10,9 +10,11 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
+import { getTournamentTeamStatus } from "../data/tournamentMappers.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getMatchRoomPhase, getTournamentScheduleEditPolicy, isEligibleReferee } from "../lib/matchUtils.js";
+import { getTournamentMatches } from "../lib/tournamentMatches.js";
 import { REFEREE_TRUST_MIN } from "../lib/constants.js";
 import {
   TOURNAMENT_SANCTION_STATUS,
@@ -46,10 +48,6 @@ const mmrPolicyLabels = {
   event_only: "대회 점수만",
 };
 
-function getTournamentTeamStatus(tournament, teamId) {
-  return tournament.teamStatuses?.[teamId] ?? "invited";
-}
-
 function formatWindow(tournament) {
   return [tournament.startDate, tournament.endDate].filter(Boolean).join(" ~ ") || "일정 미정";
 }
@@ -82,13 +80,6 @@ function getTournamentSchedulePolicyMessage(match) {
   if (policy.reason === "lineup_submitted") return "한 팀이라도 출전 명단을 제출한 뒤에는 경기 일정을 변경할 수 없습니다.";
   if (policy.reason === "revision_limit") return "경기 일정은 최초 지정 후 한 번만 변경할 수 있습니다.";
   return "이미 시작·종료·취소·무효 처리된 경기의 일정은 변경할 수 없습니다.";
-}
-
-function getTournamentMatches(tournament, matchesById, matches = []) {
-  const fromIds = (tournament.matchIds ?? []).map((matchId) => matchesById[matchId]).filter(Boolean);
-  const tournamentMatches = matches.filter((match) => match.tournamentId === tournament.id);
-  const source = [...new Map([...fromIds, ...tournamentMatches].map((match) => [match.id, match])).values()];
-  return [...source].sort((a, b) => (a.tournamentRound ?? 0) - (b.tournamentRound ?? 0) || (a.tournamentFixture ?? 0) - (b.tournamentFixture ?? 0));
 }
 
 function getMatchFinalScore(match) {

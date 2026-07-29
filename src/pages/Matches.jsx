@@ -1,6 +1,7 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, RotateCcw, ShieldAlert, Swords, Trophy, UserRound, UsersRound } from "lucide-react";
+import { uniquePlayerIds } from "../../shared/lib/playerIds.js";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -12,6 +13,12 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
+import {
+  getMatchListRoomTypeLabel,
+  getScheduleMatchRosterProjection,
+  isMatchupTitleDuplicate,
+} from "../lib/matchListProjection.js";
+import { getTournamentMatches } from "../lib/tournamentMatches.js";
 import {
   addDateDays,
   cleanRoomTitle,
@@ -51,8 +58,9 @@ import {
   getMatchAttendanceScanSuccessMessage,
   scanMatchAttendanceQr,
 } from "../lib/matchAttendance.js";
-import { getRecruitingEntryForUser, getRecruitingListCardCounts, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingPostTerminalState, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isPaidRecruitingCourt, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
+import { getRecruitingEntryForUser, getRecruitingListCardCounts, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingPostTerminalState, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isPaidRecruitingCourt, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
+import { getTournamentTeamIds, getTournamentTeamStatus } from "../data/tournamentMappers.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -311,17 +319,6 @@ function shouldShowScoreBox(match) {
   return ["postgame", "dispute", "record", "void"].includes(phase.phase);
 }
 
-function getMatchSideCount(match, sideName) {
-  const count = Number(match?.[sideName]?.count);
-  if (Number.isFinite(count)) return Math.max(0, count);
-  const players = match?.[sideName]?.players;
-  return Array.isArray(players) ? players.length : 0;
-}
-
-function getMatchPlayerCount(match) {
-  return getMatchSideCount(match, "teamA") + getMatchSideCount(match, "teamB");
-}
-
 function formatMatchRules(match = {}) {
   const rulesSource = match.rules ?? {};
   const targetScore = Number(rulesSource.targetScore ?? 21);
@@ -335,14 +332,6 @@ function formatMatchRules(match = {}) {
   return rules.join(" · ");
 }
 
-function normalizeMatchupText(value = "") {
-  return String(value)
-    .replace(/\s+/g, " ")
-    .replace(/\s+vs\s+/i, " vs ")
-    .trim()
-    .toLowerCase();
-}
-
 function getRoomCardTitle(room, fallback = "") {
   if (room.tournamentId) return getTournamentMatchDisplayTitle(room, fallback || room.title);
   const title = cleanRoomTitle(room.title, "")
@@ -350,20 +339,9 @@ function getRoomCardTitle(room, fallback = "") {
     .replace(/^(정규전|친선전)\s+(1v1|2v2|3v3|5v5)\s*/i, "")
     .replace(/\s+(1v1|2v2|3v3|5v5)$/i, "")
     .trim();
-  const matchupTitle = [room.teamA?.name, room.teamB?.name].filter(Boolean).join(" vs ");
-
-  if (matchupTitle && normalizeMatchupText(title) === normalizeMatchupText(matchupTitle)) return "";
+  if (isMatchupTitleDuplicate(title, room)) return "";
   if (GENERIC_ROOM_TITLE_PATTERN.test(title)) return "";
   return title || fallback;
-}
-
-function getRoomTypeLabel(room = {}, lobby = null) {
-  const matchTeamCount = MATCH_SIDES.filter((sideName) => Boolean(room?.[sideName]?.teamId) || isMatchSideTeamParty(room, sideName)).length;
-  const matchPartyCount = (room.parties ?? []).filter((party) => isMatchPartyTeamParty(party)).length;
-  const lobbyTeamCount = lobby?.entries?.filter((entry) => isRecruitingTeamEntry(entry)).length ?? 0;
-  if (matchTeamCount >= 2 || lobbyTeamCount >= 2) return "팀전";
-  if (matchTeamCount > 0 || matchPartyCount > 0 || lobbyTeamCount > 0) return "팀 파티 포함";
-  return "개인 매칭";
 }
 
 function getWinner(match) {
@@ -518,24 +496,6 @@ function getScheduleItemsForView(matches = [], recruitingPosts = [], view, userI
   return items.sort((a, b) => compareSchedule(a.item, b.item));
 }
 
-function getTournamentTeamStatus(tournament, teamId) {
-  return tournament.teamStatuses?.[teamId] ?? "invited";
-}
-
-function getTournamentTeamIds(tournament) {
-  return [...new Set([
-    ...(tournament.teamIds ?? []),
-    ...Object.keys(tournament.teamStatuses ?? {}),
-  ].filter(Boolean))];
-}
-
-function getTournamentMatches(tournament, matchesById, matches = []) {
-  const fromIds = (tournament.matchIds ?? []).map((matchId) => matchesById[matchId]).filter(Boolean);
-  const tournamentMatches = matches.filter((match) => match.tournamentId === tournament.id);
-  const source = [...new Map([...fromIds, ...tournamentMatches].map((match) => [match.id, match])).values()];
-  return [...source].sort((a, b) => (a.tournamentRound ?? 0) - (b.tournamentRound ?? 0) || (a.tournamentFixture ?? 0) - (b.tournamentFixture ?? 0));
-}
-
 function getTournamentTeamRows(tournament, teamById, userById, currentUserId) {
   return getTournamentTeamIds(tournament)
     .map((teamId) => {
@@ -561,10 +521,6 @@ function getRoomCapacity(match = {}) {
   const fromMode = Number(String(sourceMatch.mode ?? "").match(/(\d+)\s*v/i)?.[1]);
   if (Number.isFinite(fromMode) && fromMode > 0) return fromMode;
   return Math.max(sourceMatch.teamA?.players?.length ?? 0, sourceMatch.teamB?.players?.length ?? 0, 5);
-}
-
-function uniquePlayerIds(ids = []) {
-  return Array.from(new Set(ids.filter(Boolean)));
 }
 
 function getSideAgreementReady(match = {}, sideName) {
@@ -1825,7 +1781,7 @@ export default function Matches({ app }) {
                 status={roomStatus}
                 mode={post.mode}
                 visibility={getRoomVisibilityLabel(post)}
-                roomType={getRoomTypeLabel(post, lobby)}
+                roomType={getMatchListRoomTypeLabel(post, lobby)}
                 competition={getRoomCompetitionLabel(post)}
                 referee={getRoomRefereeLabel(post)}
                 extraBadges={isPaidRecruitingCourt(post, postCourt) ? [{ kind: "cost", tone: "orange", label: "유료 구장" }] : []}
@@ -1859,6 +1815,7 @@ export default function Matches({ app }) {
           const sourcePost = match.recruitingPostId ? app.state.recruitingPosts.find((post) => post.id === match.recruitingPostId) : null;
           const visibilityLabel = getRoomVisibilityLabel(match, sourcePost);
           const matchTitle = getRoomCardTitle(match);
+          const roster = getScheduleMatchRosterProjection(match);
 
           return (
             <MatchListCard
@@ -1866,7 +1823,7 @@ export default function Matches({ app }) {
               status={status}
               mode={match.mode}
               visibility={visibilityLabel}
-              roomType={getRoomTypeLabel(match)}
+              roomType={getMatchListRoomTypeLabel(match)}
               competition={getRoomCompetitionLabel(match)}
               referee={getRoomRefereeLabel(match)}
               title={matchTitle}
@@ -1881,7 +1838,7 @@ export default function Matches({ app }) {
                   left={<TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>}
                   center={showScoreBox ? `${scoreA} : ${scoreB}` : "vs"}
                   right={<TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>}
-                  meta={showScoreBox ? null : `참여 ${getMatchPlayerCount(match)}명 · A ${getMatchSideCount(match, "teamA")} / B ${getMatchSideCount(match, "teamB")}`}
+                  meta={showScoreBox ? null : `참여 ${roster.participantCount}명 · A ${roster.teamACount} / B ${roster.teamBCount}`}
                   detail={showScoreBox && winner ? `${winner} 우세` : formatMatchRules(match)}
                   variant={showScoreBox ? "score" : "matchup"}
                 />

@@ -11,16 +11,16 @@ import {
 } from "../_supabaseAdmin.js";
 import {
   normalizeState,
-} from "../../../src/data/repository.js";
-import { createProfileShell, fromRemoteProfile, fromTeamMemberProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
-import { fromRemoteTeamInvitation } from "../../../src/data/teamMappers.js";
-import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
+} from "../../../shared/lib/stateNormalizer.js";
+import { createProfileShell, fromRemoteProfile, fromTeamMemberProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
+import { fromRemoteTeamInvitation } from "../../../shared/lib/teamMappers.js";
+import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
 import {
   PROFILE_ME_COLUMNS,
   TEAM_COLUMNS,
   TEAM_INVITATION_COLUMNS,
   TEAM_MEMBER_COLUMNS,
-} from "../../../src/data/repositoryColumns.js";
+} from "../../../shared/lib/repositoryColumns.js";
 
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
 

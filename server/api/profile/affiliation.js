@@ -1,5 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { normalizeAffiliationName } from "../../../src/lib/affiliations.js";
+import { normalizeAffiliationName } from "../../../shared/lib/affiliations.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
 
 function mapAffiliationError(error = {}) {

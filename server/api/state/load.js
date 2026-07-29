@@ -1,6 +1,6 @@
 import { flattenIdValues as toArray, getAuthenticatedContext, readJsonBody, requireAdminContext, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
-import { loadNormalizedDirectoryStateFromClient } from "../../../src/data/repository.js";
+import { loadNormalizedDirectoryStateFromClient } from "../../lib/repositoryAdapter.js";
 
 function getMatchActorIds(match = {}) {
   // LEGACY READ-ONLY:

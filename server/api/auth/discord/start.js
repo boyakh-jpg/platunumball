@@ -1,4 +1,4 @@
-import { DISCORD_AUTHORIZE_URL, isDiscordSnowflake } from "../../../../src/lib/discordProtocol.js";
+import { DISCORD_AUTHORIZE_URL, isDiscordSnowflake } from "../../../../shared/lib/discordProtocol.js";
 import { getAuthenticatedContext, sendJson } from "../../_supabaseAdmin.js";
 import { setDiscordOAuthStateCookie } from "../_discordOAuthCookies.js";
 import { createDiscordOAuthStateTicket } from "../_discordOAuthProof.js";

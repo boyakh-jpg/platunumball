@@ -1,12 +1,16 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { COURT_REQUEST_TRUST_MIN, MINUTE_MS } from "../../../src/lib/constants.js";
+import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
+import { assertCourtRequestAccess } from "../../lib/courtRequestAccess.js";
+import { createFixedWindowRateLimiter } from "../../lib/fixedWindowRateLimit.js";
 
 const MAX_CANDIDATE_DISTANCE_METERS = 500;
 const MAX_NEARBY_COURTS = 5;
 const MAX_NEARBY_QUERY_ROWS = 20;
-const RATE_LIMIT_WINDOW_MS = MINUTE_MS;
-const RATE_LIMIT_MAX = 8;
-const rateLimitBuckets = new Map();
+const assertRateLimit = createFixedWindowRateLimiter({
+  windowMs: MINUTE_MS,
+  max: 8,
+  errorCode: "nearby_search_rate_limited",
+});
 function normalizeText(value = "") {
   return String(value ?? "").normalize("NFKC").trim().replace(/\s+/g, " ");
 }
@@ -96,33 +100,6 @@ export function selectNearbyCourtCandidates(candidates = [], input = {}) {
       || String(a.court.name).localeCompare(String(b.court.name))
     ))
     .slice(0, MAX_NEARBY_COURTS);
-}
-
-function assertRateLimit(profileId) {
-  const now = Date.now();
-  const bucket = rateLimitBuckets.get(profileId) ?? { startedAt: now, count: 0 };
-  const nextBucket = now - bucket.startedAt > RATE_LIMIT_WINDOW_MS ? { startedAt: now, count: 1 } : { ...bucket, count: bucket.count + 1 };
-  rateLimitBuckets.set(profileId, nextBucket);
-  if (nextBucket.count > RATE_LIMIT_MAX) {
-    const error = new Error("nearby_search_rate_limited");
-    error.statusCode = 429;
-    throw error;
-  }
-}
-
-async function assertCourtRequestAccess(context) {
-  const { data, error } = await context.supabase
-    .from("profiles")
-    .select("trust_score")
-    .eq("id", context.profileId)
-    .maybeSingle();
-
-  if (error) throw error;
-  if (Number(data?.trust_score ?? 0) < COURT_REQUEST_TRUST_MIN) {
-    const accessError = new Error("court_request_trust_required");
-    accessError.statusCode = 403;
-    throw accessError;
-  }
 }
 
 async function getNearbyCourts(context, input) {

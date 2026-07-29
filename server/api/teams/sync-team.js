@@ -1,6 +1,6 @@
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
-import { isTeamInviteRole, MAX_TEAM_MEMBERS, MAX_TEAM_NAME_LENGTH, normalizeTeamRole } from "../../../src/lib/constants.js";
+import { isTeamInviteRole, MAX_TEAM_MEMBERS, MAX_TEAM_NAME_LENGTH, normalizeTeamRole } from "../../../shared/lib/constants.js";
 
 function uniqueMembers(members = []) {
   const seen = new Set();

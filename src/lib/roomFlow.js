@@ -186,7 +186,6 @@ export function getRoomScheduleProposal(room = {}) {
 
 export const ROOM_EDIT_LIMIT = 1;
 export const ROOM_EDIT_MIN_LEAD_HOURS = 12;
-export const ROOM_CHANGE_CONSENT_LEAD_HOURS = 6;
 export const ROOM_CANCEL_LOCK_HOURS = 2;
 
 export function getRoomEditCount(room = {}) {

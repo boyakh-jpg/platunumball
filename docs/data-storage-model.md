@@ -402,7 +402,8 @@ Done:
 - Supabase schema/RLS hardening: `profiles.auth_user_id` uuid FK, duplicate hard failure, client write guard, admin/report/court/referee policy hardening.
 - RLS read hardening: recruiting permissive read policies are dropped, profile directory reads use `public_profiles`, and match tables read through `matches.visibility` plus participant/admin checks.
 - `/api/system/schema-health` includes `rankball_rls_policy_health()` so deployment checks fail on permissive raw read policy regressions for reports, court, matches, recruiting, feed, admin tables, direct browser grants on `room_feed_cards`, missing admin read policies, admin anon read grants, and browser write grants/policies on admin/reports/court/matches/recruiting raw tables.
-- `/api/system/schema-health` also includes `rankball_rpc_grant_health()` so service-role-only RPCs fail health checks if `anon` or `authenticated` regains `EXECUTE`.
+- `/api/system/schema-health`는 `rankball_rpc_grant_health()`와 `rankball_authoritative_rpc_grant_health()`가 읽는 `rankball_rpc_contract_registry`를 RPC 존재·signature·lifecycle·실행권한의 단일 원본으로 사용한다. 호환 응답 `rpcChecks`도 active registry 결과에서 투영하며, 존재 확인을 위해 mutation RPC에 빈 인자를 보내지 않는다.
+- 스키마 상태 API가 직접 호출하는 RPC는 점수 권한, 경기 중복, 이의 시간, RLS, 피드 트리거, 프로필 identity, 대회 초대·시작 알림처럼 반환값 자체를 판정해야 하는 무상태 health probe로 제한한다.
 - `/api/system/schema-health` includes `rankball_profile_identity_health()` so profile auth/Discord/hashtag identity constraints, lock columns, client `auth_user_id` write guards, and `public_profiles` private-column hiding stay enforced.
 - `/api/system/schema-health` checks `room_chat_messages` Discord sync columns and `room_discord_links` so room chat bridge schema drift fails deployment health checks.
 - Vercel Hobby API consolidation: one `api/index.js` function dispatches the server routes.
@@ -417,7 +418,7 @@ Done:
 - Tournament snapshot persistence now goes through `rankball_persist_tournament_snapshot_locked()`, which takes a per-tournament advisory transaction lock before calling the existing snapshot RPC.
 - Recruiting and match action persistence now takes a per-room/per-match advisory transaction lock inside `rankball_recruiting_action()` / `rankball_match_action()` before branch reducers or snapshot persistence run.
 - Missing or unsupported production SQL reducers do not fall back to JS snapshot replay. Mutation APIs return `503` for missing RPCs and `409` for rejected reducer fallbacks.
-- `rankball_match_roster_move_action()` commits safe match recorder handoff and active/reserve substitution in one DB transaction by updating `match_players`, `matches.reserve_players`, `matches.played_player_ids`, and `matches.stat_recorders`.
+- Historical/retired: `rankball_match_roster_move_action()` once committed recorder handoff and active/reserve substitution. Its external entry point is now removed; current roster changes use `rankball_match_roster_transition_action()`.
 - `rankball_match_approval_action()` calculates non-final and final participant approvals in the locked DB transaction; final match and MMR changes commit atomically.
 - `rankball_match_thumbs_action()` commits match thumbs and affected profile trust deltas in one DB transaction.
 - `rankball_match_star_toggle_action()` wraps the thumbs RPC for single-target star toggles and enforces trust-feedback limits in DB.
@@ -428,7 +429,7 @@ Done:
 - Match rating commit responses now reload affected profiles/teams from DB and return them in `state.users` / `state.teams`, so MMR UI merges DB-authoritative values after approve/auto-confirm.
 - Final match confirmation and profile/team MMR changes now commit in one `rankball_match_action_with_rating()` transaction.
 - Recruiting confirmation now commits the closed recruiting room and created match in one `rankball_confirm_recruiting_match_action()` transaction.
-- Host, individual, team, party, and pinned-reserve recorder assignment uses `rankball_recruiting_stat_recorder_action()`; room close commits host trust penalty and disables the Discord room link.
+- Historical/retired: host, individual, team, party, and pinned-reserve recorder assignment used `rankball_recruiting_stat_recorder_action()`. Its external entry point is now removed.
 - Mutable profile rows are not retained in the 30-second auth context cache. Auth user verification remains cached while trust/rating/profile reads reload the current DB row.
 - Room, match, and tournament frontend callers send `{ operation }` only and merge the returned authoritative row without running the production local reducer first.
 - The frontend sends completed match lifecycle/roster/result/trust mutations as operation-only. The server routes them to authoritative SQL reducers and reloads the committed match before responding.
@@ -437,7 +438,7 @@ Done:
 - Backend flow simulation includes `home_alert_notifications`, which seeds due/future unread app notifications and verifies `/api/home/load` includes due alerts while hiding future alerts.
 - Backend flow simulation now runs `/api/system/schema-health` in local handler mode too when `CRON_SECRET` is available, so RLS/RPC grant/profile identity checks are part of normal full verification without requiring a remote base URL.
 - Backend referee exam simulation clears only stale `sim_rea_%` cooldown rows for the selected test profile before starting, so interrupted simulations can be rerun without weakening real referee exam cooldowns.
-- Recruiting create, invite/decision, rules, applicant/reserve placement, team/party roster, detach/remove/kick, recorder, confirmation, and close mutations are operation-only. Management branches commit through locked recruiting SQL reducers. Legacy READY RPCs remain compatibility-only; the current recruiting flow has no separate READY step.
+- Recruiting create, invite/decision, rules, applicant/reserve placement, team/party roster, detach/remove/kick, confirmation, and close mutations are operation-only. Recorder assignment is a retired historical branch. Management branches commit through locked recruiting SQL reducers. Legacy READY RPCs remain compatibility-only; the current recruiting flow has no separate READY step.
 - Recruiting confirmation and match creation composition commits through one DB transaction RPC; normal room/match/tournament changes do not accept client snapshots.
 - Remote normalization preserves DB-authoritative match lifecycle/result values even when a scheduled time is in the future. Future-state repair remains local/demo-only.
 - Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
@@ -523,7 +524,7 @@ Remaining:
 | `match_results` | `match_id`, `score_a`, `score_b`, `stat_submissions`, `submitted_by` | match sync, maintenance, feed trigger | 유지 |
 | `match_approvals` | `match_id`, `user_id`, `side`, `approved_at` | match sync, maintenance, feed trigger | 유지 |
 | `match_disputes` | `id`, `match_id`, `user_id`, `reason`, `created_at` | match sync, feed trigger | 유지 |
-| `player_match_stats` | `match_id`, `user_id`, `points`, `rebounds`, `assists`, `steals`, `blocks`, `fouls` | match sync/detail, feed trigger | 유지 |
+| `player_match_stats` | `match_id`, `user_id`, `points`, `rebounds`, `assists`, `steals`, `blocks`, `turnovers`, `fouls` | match sync/detail, feed trigger | 유지 |
 | `match_record_archives` | `match_id`, `record_date`, `occurred_at`, `archive_version`, `payload` | `/api/records/list`, archive refresh trigger | service-only 유지 |
 | `match_record_participants` | `match_id`, `profile_id`, 개인 기록 compact columns, `stats` | 개인 5년 기록 목록 | 유지 |
 | `match_record_teams` | `match_id`, `team_id`, 팀 기록 compact columns | 팀 5년 기록 목록 | 유지 |
@@ -552,8 +553,8 @@ Remaining:
 - Maintenance backfill may continue to call `rankball_commit_match_rating()` for already-persisted matches.
 ## 2026-07-13 recruiting room control RPC
 
-- Simple individual reserve recorder assignment uses `rankball_recruiting_stat_recorder_action()` with the recruiting room advisory lock and row lock.
-- Team/party reserve recorder assignment is handled by the locked recruiting recorder RPC using DB roster and party-reserve state.
+- Historical/retired: simple individual reserve recorder assignment used `rankball_recruiting_stat_recorder_action()` with recruiting room locks.
+- Historical/retired: team/party reserve recorder assignment used the locked recruiting recorder RPC. Neither path is available to current runtime callers.
 - Room closing uses `rankball_recruiting_close_action()` so status, invitations, host trust penalty, notification, and Discord room-link disable commit atomically.
 - Repeated close requests are idempotent and do not apply the host penalty twice.
 ## 2026-07-13 auth context cache split
@@ -625,6 +626,37 @@ Remaining:
 - The table has RLS enabled and no runtime table grants. Only the service-role health RPC wrappers expose its computed checks.
 - New RPC migrations upsert one registry row instead of replacing a copied full function list.
 - Active signatures require service-role-only execution. Retired signatures are healthy only when absent or denied to `service_role`, `anon`, and `authenticated`.
-- Current replacements are `rankball_match_roster_transition_action(text,text,text,text,text,text,text,text)` and `rankball_match_finalize_locked(text,text,text,boolean)`. The former late-player, roster-move, stat-recorder, and three-argument finalizer signatures stay deny-only.
-- Dispute resolution, terminal match actions, and match-list reads use their current five-, four-, and four-argument signatures. Their former four-, three-, and three-argument overloads stay deny-only.
+- Current replacements are `rankball_match_roster_transition_action(text,text,text,text,text,text,text,text)` and `rankball_match_finalize_locked(text,text,text,boolean)`. Former late-player, roster-move, and stat-recorder entry points are absent. Only the three-argument finalizer stays deny-only because the current wrapper still calls it internally.
+- Dispute resolution, terminal match actions, and match-list reads use their current five-, four-, and four-argument signatures. Their former four-, three-, and three-argument overloads are absent.
 - Literal `server/**/*.js` RPC calls must resolve to an active service-only registry signature. `rankball_can_access_recruiting_room_chat(text,text)` is the single browser-RPC exception because authenticated room-chat RLS also calls it.
+- `20260729171000_remove_retired_match_rpc_entrypoints.sql` physically removes the retired late-player, roster-move, stat-recorder, dispute, terminal, match-list, scorekeeper, takeover, and substitution external entry points while preserving registry tombstones and the takeover request audit table. It never deletes a table or row and intentionally omits `CASCADE`.
+- The three-argument finalizer remains denied, not dropped: the current four-argument acknowledgement wrapper still calls it as an internal dependency. It can be renamed to an internal dispatch function only after that dependency is extracted and verified in a separate migration.
+- Tournament roster `rankball_tournament_match_roster_action()` and its internal `rankball_tournament_match_roster_action_legacy()` dependency remain intact and are outside this retired external-entry-point cleanup.
+- `20260729170500_retire_match_action_roster_move_branch.sql` removes only the obsolete recorder-handoff/old-substitution dispatch from `rankball_match_action()` before the roster-move entry point is dropped. It aborts on an unexpected function shape.
+- `20260730010000_remove_unused_legacy_rpc_entrypoints.sql` removes the uncalled `rankball_current_recruiting_post_ids`, `rankball_recruiting_ready_action`, and `rankball_update_team_emblem_style` exact signatures. Their replacements are `user_room_feed` with a bounded PostREST fallback, the current recruiting management action set, and `rankball_update_team_emblem_design`.
+
+## 2026-07-29 삭제된 가짜 구장 경계
+
+- `c1..c12`는 canonical 구장 ID가 아니다. 운영 데이터, 로컬 상수, demo 즐겨찾기, 구장 상세 fallback에서 복원하지 않는다.
+- 운영 구장 목록은 활성 `approved_courts`가 원본이다. 구장 상세의 `courts` fallback은 실제 legacy row가 존재할 때만 허용한다.
+- `practice-court`는 연습 경기의 비저장 fixture다. 운영 승인 구장이나 삭제된 가짜 구장의 대체 row로 저장하지 않는다.
+## 2026-07-29 브라우저·서버 공용 경기 상수 경계
+
+1. 경기 모드, 모드 인원, 기본 MMR, 분·시간·일 단위는 `shared/lib/matchConstants.js`가 원본이다.
+2. `src/lib/constants.js`는 기존 클라이언트 API 호환을 위해 같은 binding을 재노출한다.
+3. 서버 rating·권위 상태·프로필 생성은 프런트 `src/lib/constants.js` 대신 shared 모듈을 직접 읽는다.
+
+## 2026-07-30 잔여 조회·설정 projection 경계
+
+1. `server/lib/roomFeedSources.js`는 `user_room_feed`의 모집·경기 ID를 타입별 원본 테이블 row로 조회해 `entityType:entityId` Map으로 만드는 작업만 담당한다. 감사의 invalid/orphan 판정과 maintenance의 stale/repair 판정은 서로 의미가 달라 각 API에 유지한다.
+2. `shared/lib/settingsMappers.js`의 `projectProfileSettings()`는 기본 설정, 허용된 `app_settings`, 관계형 즐겨찾기, 호출자별 추가 설정의 덮어쓰기 순서를 소유한다. 즐겨찾기 row를 요청하지 않은 profile partial load만 기존 설정 fallback을 사용한다.
+3. 경기방과 추천 패널의 마감 시각은 `formatMatchWindowTime()`, 모집과 팀 화면의 사용자 기본 지역은 `getProfileRegionSelection()`을 사용한다. 팀 row 자체의 지역 판독은 별도 입력이므로 `inferRegionSelection(team.region)`을 유지한다.
+
+## 2026-07-29 경기 저장 직렬화 경계
+
+1. 운영 경기 mutation의 권위 저장 경로는 `server/api/matches/sync-match.js`다. `src/data/repository.js`의 `saveNormalizedRemoteState()`는 demo seed/import 전용이며 운영 actor·권한 판정을 대신하지 않는다.
+2. 두 경로에서 의미가 완전히 같은 일정 DB shape, 폐기된 `statRecorders`·`dualScoreRecorderSide` 제거, 출전·후보·MMR 제외·익명 선수 snapshot, 공통 개인 stat DB 필드만 `shared/lib/matchPersistence.js`를 사용한다.
+3. `anonymous_players[].linkedProfileId`는 유효 프로필 참조 메타데이터로 보존한다. `played_player_ids`에는 실제 프로필 ID가 아니라 사후 개인기록의 익명 slot ID를 유지한다.
+4. 운영 서버는 `match_record`의 입력 시작시각을 법정 시작시각으로 확정하고 종료시각을 30분 뒤로 계산한다. seed/import 경로는 입력된 `startedAt`·`endedAt`을 그대로 보존한다.
+5. 운영 서버는 `createdBy`, canonical `rules.playedPlayerIds`·`rules.mmrExcludedPlayerIds`, actor/roster/stat 검증을 적용한다. seed/import 경로의 최초 팀원 actor fallback과 원본 rules snapshot은 호환 경계로 유지하며 억지로 통합하지 않는다.
+6. `recorded_by`, `record_source`, `turnovers`를 포함한 개인 stat row의 순수 필드 투영은 두 경로가 동일하지만, 해당 기록자가 실제로 쓸 수 있는지는 운영 서버와 DB 권한 검증이 최종 판단한다.

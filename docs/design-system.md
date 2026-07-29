@@ -498,6 +498,8 @@
 2-1. 개인 기록 선수 입력에는 해시태그 검색 보조를 둘 수 있다. 선택 결과는 textarea에 텍스트로만 붙이고 선택 후 검색창은 닫는다.
 2-2. 개인 기록 점수 입력은 0 기본값을 강제하지 않고, 0 값에 포커스하면 바로 비워져 새 점수를 입력할 수 있어야 한다.
 2-3. 개인 기록 선수 검색은 선택 후 바로 다시 타이핑할 수 있어야 하며, 방식 정원 초과/중복 선수는 저장 전에 막는다.
+2-3-1. 유효한 선수 해시태그를 고르면 저장 표시명에는 실제 닉네임·포지션만 남기고 해시태그는 제거한다. 연결 선수는 공용 선수 hover 카드와 프로필 이동을 제공하되 실제 경기 참가 슬롯처럼 권한·승패 관계를 만들지 않는다.
+2-3-2. 개인 기록의 우리팀 점수와 본인 득점(PTS)은 별도 control로 표시한다. 본인 카드 아래에 PTS를 포함한 전체 개인 스탯을 공용 `NumericStepper`로 입력하고, desktop/mobile 및 dark/light에서 같은 primitive·token을 사용한다.
 2-4. 비공개 개인전 생성에는 개인 초대 `SearchPicker`, 추천 선수, 선택 chip을 두지 않는다. 방 생성 후 공용 방모달의 빈 슬롯에서 선수를 초대한다.
 2-5. 비공개/공개 경기방 안의 개인전/팀전 선택은 사용자 화면에서 `경기 형식`으로 표시한다. 내부 상태명 `hostJoinMode`와 공개/비공개/대회/개인기록의 큰 분기는 그대로 유지한다.
 3. 개인 기록과 경기기록방은 KST 종료 일시를 날짜·시간으로 받고 현재부터 과거 24시간 이내만 저장 가능하게 한다. 미래 시각과 24시간 초과 시각은 생성 전에 이유를 표시한다.
@@ -2069,6 +2071,11 @@ UI 수정 전:
 3. `Card`, `Button`, 목록 카드의 공용 표면은 primitive stylesheet가 담당한다. 기능별 stylesheet는 해당 화면의 배치와 상태 표현만 추가한다.
 4. `npm run build`와 `npm run test:design`은 미사용 selector와 완전 shadow 선언 검사를 함께 실행한다.
 5. CSS 정리는 동작과 배치를 바꾸지 않는 범위에서만 수행하고 desktop/mobile, dark/light의 computed style과 가로 overflow를 비교한다.
+6. cascade guard는 19개 stylesheet 전체를 `tokens → global manifest 모듈 → ui-primitives → idle preload feature → route feature`의 실제 로드 순서로 검사한다.
+7. class 사용 여부는 문자열·template literal의 정확한 class token으로 판정한다. 지도 SDK와 런타임 동적 prefix만 별도 허용하며, 확인된 미사용 class는 characterization 목록으로 먼저 고정하고 삭제는 별도 검증 작업으로 진행한다.
+8. global과 feature의 같은 at-rule·selector branch·property 충돌은 현재 기준값인 동일 값 111건, 다른 값 46건을 넘기지 않는다. 기준값 감소는 허용하고 새 다른 값 충돌과 동작을 바꾸는 완전 shadow 규칙은 실패 처리한다.
+9. 동일 값 충돌은 feature 선언을 제거해도 그 앞의 다른 값, grouped selector의 다른 branch, shorthand·longhand, custom property, `!important`, 연속 fallback이 되살아나지 않는 경우에만 정리한다. 2026-07-29 안전 정리에서는 120건 중 단일 selector·단일 property로 증명된 9건만 제거하고 나머지 111건은 보존했다.
+10. 같은 stylesheet와 같은 at-rule 문맥에서 모든 selector branch·property·값·`!important` 상태를 뒤 규칙이 동일하게 재선언하는 앞 규칙은 완전 중복으로 본다. 2026-07-30 정리에서 35개를 제거했으며 `css-cascade-guards.test.mjs`가 재유입을 막는다. 일부 property만 중복인 규칙은 화면별 computed style 검증 전까지 보존한다.
 
 ## 2026-07-24 전역 stylesheet 모듈 경계
 
@@ -2381,3 +2388,14 @@ UI 수정 전:
 3. 좁은 일반 화면에서는 A/B 조작대를 한 열로 쌓고 각 사이드의 네 버튼을 한 줄로 유지한다.
 4. 전체화면에서는 짧은 가로 높이를 우선해 조작대를 압축하되 버튼이 점수·경기시간·기기 도구를 침범하지 않아야 한다.
 5. iPhone 세로에서 가로형 전체화면으로 회전한 경우에도 원래 세로 viewport용 줄바꿈이 점수 조작대에 적용되지 않아야 한다.
+## 2026-07-29 브랜드 lockup 공용화
+
+1. 로고 심볼, 라이트·다크 워드마크, 이미지 오류 fallback은 공용 `BrandLockup`만 소유한다.
+2. 로그인, 사이드바, 디자인 데모는 링크·배치 wrapper만 각 화면에서 정하고 내부 브랜드 마크업을 복사하지 않는다.
+
+## 2026-07-30 공용 React 표현 경계
+
+1. 정규전 MMR 허용구간 버튼은 `MmrRangeSelector`가 `MMR_RANGE_POLICIES` 순서, 활성 상태와 radiogroup 접근성을 소유한다. 생성·모집 화면은 선택값과 변경 callback만 전달한다.
+2. 가입과 프로필 수정의 포지션·시도·시군구 입력은 `ProfileBasicsFields`를 사용한다. 닉네임·해시태그·출생연도처럼 잠금과 검증이 다른 입력은 각 화면에 유지한다.
+3. 프로필 지역의 시군구 목록과 시도 변경 시 첫 시군구 계산은 `getRegionDistrictOptions()`를 사용한다.
+4. 선수·팀·심판·구장 hover card는 `HoverCardTrigger`와 `HoverCardCloseButton`으로 동일한 키보드 활성화·닫기 마크업을 공유한다. long press, 직접 이동, tap toggle 같은 entity별 정책은 `useHoverCardInteraction`과 각 entity handler에 유지한다.

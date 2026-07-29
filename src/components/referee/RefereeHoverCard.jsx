@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BadgeCheck, ClipboardCheck, ShieldCheck, Star, Trophy } from "lucide-react";
-import HoverPortal from "../common/HoverPortal.jsx";
-import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
+import HoverPortal, { HoverCardCloseButton, HoverCardTrigger } from "../common/HoverPortal.jsx";
+import useHoverCardInteraction from "../../hooks/useHoverCardInteraction.js";
 import { DAY_MS, REFEREE_TRUST_MIN } from "../../lib/constants.js";
 import { getUserHashtag } from "../../lib/handles.js";
-import { canUseHoverPreview, clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 
 const COMPLETED_STATUSES = new Set(["approval", "disputed", "confirmed"]);
 
@@ -61,49 +59,17 @@ function getRefereeTier(user = {}, stats = {}, minTrust = REFEREE_TRUST_MIN) {
 }
 
 export default function RefereeHoverCard({ user, matches = [], minTrust = REFEREE_TRUST_MIN, children, className = "", to }) {
-  const [hoverOpen, setHoverOpen] = useState(false);
-  const [pinnedOpen, setPinnedOpen] = useState(false);
-  const [pinnedHoverKey, setPinnedHoverKey] = useState(getPinnedHoverPreviewKey);
-  const anchorRef = useRef(null);
-  const cardRef = useRef(null);
   const cardKey = user?.id ? `referee:${user.id}` : "";
-  useBodyScrollLock(pinnedOpen);
-
-  const closePinned = () => {
-    setPinnedOpen(false);
-    clearPinnedHoverPreview(cardKey);
-  };
-  const openPinned = () => {
-    setHoverOpen(false);
-    pinHoverPreview(cardKey);
-    setPinnedOpen(true);
-  };
-
-  useEffect(() => subscribePinnedHoverPreview(setPinnedHoverKey), []);
-
-  useEffect(() => {
-    if (pinnedOpen && pinnedHoverKey && pinnedHoverKey !== cardKey) setPinnedOpen(false);
-  }, [cardKey, pinnedHoverKey, pinnedOpen]);
-
-  useEffect(() => () => clearPinnedHoverPreview(cardKey), [cardKey]);
-
-  useEffect(() => {
-    if (!pinnedOpen) return undefined;
-    const closeOutside = (event) => {
-      const target = event.target;
-      if (anchorRef.current?.contains(target) || cardRef.current?.contains(target)) return;
-      closePinned();
-    };
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") closePinned();
-    };
-    document.addEventListener("pointerdown", closeOutside, true);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOutside, true);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [cardKey, pinnedOpen]);
+  const {
+    anchorRef,
+    cardRef,
+    closePinned,
+    hideHover,
+    open,
+    pinnedOpen,
+    togglePinned,
+    triggerProps,
+  } = useHoverCardInteraction({ cardKey });
 
   if (!user) return children ?? null;
 
@@ -111,40 +77,16 @@ export default function RefereeHoverCard({ user, matches = [], minTrust = REFERE
   const tier = getRefereeTier(user, stats, minTrust);
   const qualification = getRefereeQualification(user);
   const profilePath = to ?? `/app/players/${user.id}`;
-  const showHover = () => {
-    if (canUseHoverPreview() && !pinnedHoverKey) setHoverOpen(true);
-  };
-  const hideHover = () => setHoverOpen(false);
-  const open = pinnedOpen || (!pinnedHoverKey && canUseHoverPreview() && hoverOpen);
-
   return (
-    <span
-      ref={anchorRef}
+    <HoverCardTrigger
+      anchorRef={anchorRef}
       className={`referee-hover-trigger ${className}`}
-      role="button"
-      tabIndex={0}
-      onBlur={hideHover}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (pinnedOpen) closePinned();
-        else openPinned();
+      onActivate={togglePinned}
+      onDismiss={() => {
+        hideHover();
+        closePinned();
       }}
-      onFocus={showHover}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          hideHover();
-          closePinned();
-        }
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          event.stopPropagation();
-          if (pinnedOpen) closePinned();
-          else openPinned();
-        }
-      }}
-      onMouseEnter={showHover}
-      onMouseLeave={hideHover}
+      triggerProps={triggerProps}
     >
       {children ?? user.name}
       <HoverPortal
@@ -154,11 +96,7 @@ export default function RefereeHoverCard({ user, matches = [], minTrust = REFERE
         open={open}
         portalRef={cardRef}
       >
-        <button type="button" className="hover-card-close" aria-label="닫기" onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          closePinned();
-        }}>X</button>
+        <HoverCardCloseButton onClose={closePinned} />
         <span className="referee-hover-head">
           <span className={`referee-hover-grade ${tier.tone}`}>{tier.grade}</span>
           <span>
@@ -190,6 +128,6 @@ export default function RefereeHoverCard({ user, matches = [], minTrust = REFERE
           closePinned();
         }}>선수 프로필 보기</Link>
       </HoverPortal>
-    </span>
+    </HoverCardTrigger>
   );
 }

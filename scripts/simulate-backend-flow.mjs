@@ -596,6 +596,7 @@ async function assertSchemaHealth() {
       ["feedTriggers", payload?.feedTriggerCheck],
       ["rlsPolicies", payload?.rlsPolicyCheck],
       ["rpcGrants", payload?.rpcGrantCheck],
+      ["matchOverlapPolicy", payload?.matchOverlapPolicyCheck],
       ["disputeWindow", payload?.disputeWindowCheck],
       ["profileIdentity", payload?.profileIdentityCheck],
       ["tournamentInvitations", payload?.tournamentInvitationCheck],

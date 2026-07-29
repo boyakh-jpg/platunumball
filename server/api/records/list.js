@@ -7,22 +7,24 @@ import {
   toClientTeamWithMembers as toClientTeam,
   uniqueValues as unique,
 } from "../_supabaseAdmin.js";
-import { normalizeState } from "../../../src/data/repository.js";
-import { fromRemoteMatch } from "../../../src/data/matchMappers.js";
-import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
-import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
+import { normalizeState } from "../../../shared/lib/stateNormalizer.js";
+import { fromRemoteMatch } from "../../../shared/lib/matchMappers.js";
+import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
+import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
 import { filterStateForProfile } from "../state/load.js";
 import {
   PROFILE_CARD_COLUMNS,
   PROFILE_ME_COLUMNS,
-} from "../../../src/data/repositoryColumns.js";
+} from "../../../shared/lib/repositoryColumns.js";
+import { asArray } from "../../../shared/lib/arrayValues.js";
+
 import {
   REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT,
   REMOTE_CLIENT_RECORD_LIST_YEARS,
   REMOTE_CLIENT_RECORD_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
-} from "../../../src/lib/constants.js";
-import { getRecordWindowDates } from "../../../src/lib/recordRetention.js";
+} from "../../../shared/lib/constants.js";
+import { getRecordWindowDates } from "../../../shared/lib/recordRetention.js";
 import { toPublicProfilePrivacy } from "../directory/load.js";
 
 const RECORD_SCOPE_PROFILE = "profile";
@@ -65,10 +67,6 @@ function normalizeOffset(value) {
 
 function normalizeBoolean(value, fallback = true) {
   return value === undefined ? fallback : value !== false;
-}
-
-function toArray(value) {
-  return Array.isArray(value) ? value : [];
 }
 
 function mapCompactRecord(row = {}) {
@@ -129,15 +127,15 @@ function buildArchiveMatchState(context, archiveRows = [], profileRows = [], vie
     const matchRow = payload.match;
     if (!matchRow?.id) return;
     rawMatches.push(matchRow);
-    appendRows(playersByMatch, toArray(payload.players));
-    appendRows(statsByMatch, toArray(payload.stats));
-    appendRows(agreementsByMatch, toArray(payload.agreements));
-    appendRows(approvalsByMatch, toArray(payload.approvals));
-    appendRows(disputesByMatch, toArray(payload.disputes));
+    appendRows(playersByMatch, asArray(payload.players));
+    appendRows(statsByMatch, asArray(payload.stats));
+    appendRows(agreementsByMatch, asArray(payload.agreements));
+    appendRows(approvalsByMatch, asArray(payload.approvals));
+    appendRows(disputesByMatch, asArray(payload.disputes));
     if (payload.result && typeof payload.result === "object" && Object.keys(payload.result).length) {
       resultsByMatch[matchRow.id] = payload.result;
     }
-    toArray(payload.teams).forEach((teamRow) => {
+    asArray(payload.teams).forEach((teamRow) => {
       if (teamRow?.id) teamById[teamRow.id] = teamRow;
     });
     if (payload.court?.id) courtById[payload.court.id] = payload.court;
@@ -310,7 +308,7 @@ export function canReadTeamRecord(row = {}, profileId = "", viewerTeamIds = new 
   if (isAdmin) return true;
   if ((row.visibility ?? "public") !== "private") return true;
   if (viewerTeamIds.has(row.team_id) || viewerTeamIds.has(row.opponent_team_id)) return true;
-  return toArray(row.reader_ids).includes(profileId);
+  return asArray(row.reader_ids).includes(profileId);
 }
 
 export function buildRecordPage(options = {}) {
@@ -366,11 +364,11 @@ async function loadProfileRows(client, archiveRows = []) {
       resultRow.submitted_by,
       ...flattenIdValues(matchRow.stat_recorders),
       ...flattenIdValues(matchRow.rules?.statRecorders),
-      ...toArray(payload.players).map((row) => row?.user_id),
-      ...toArray(payload.stats).flatMap((row) => [row?.user_id, row?.recorded_by]),
-      ...toArray(payload.agreements).map((row) => row?.user_id),
-      ...toArray(payload.approvals).map((row) => row?.user_id),
-      ...toArray(payload.disputes).flatMap((row) => [row?.user_id, row?.resolved_by]),
+      ...asArray(payload.players).map((row) => row?.user_id),
+      ...asArray(payload.stats).flatMap((row) => [row?.user_id, row?.recorded_by]),
+      ...asArray(payload.agreements).map((row) => row?.user_id),
+      ...asArray(payload.approvals).map((row) => row?.user_id),
+      ...asArray(payload.disputes).flatMap((row) => [row?.user_id, row?.resolved_by]),
     ];
   }));
   if (!profileIds.length) return [];

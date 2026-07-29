@@ -1,11 +1,16 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { COURT_REQUEST_TRUST_MIN, MINUTE_MS } from "../../../src/lib/constants.js";
+import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
+import { normalizeNaverAddress } from "../../../shared/lib/naverAddress.js";
+import { assertCourtRequestAccess } from "../../lib/courtRequestAccess.js";
+import { createFixedWindowRateLimiter } from "../../lib/fixedWindowRateLimit.js";
 
 const NAVER_GEOCODE_URL = "https://maps.apigw.ntruss.com/map-geocode/v2/geocode";
 const MAX_RESULTS = 10;
-const RATE_LIMIT_WINDOW_MS = MINUTE_MS;
-const RATE_LIMIT_MAX = 12;
-const rateLimitBuckets = new Map();
+const assertRateLimit = createFixedWindowRateLimiter({
+  windowMs: MINUTE_MS,
+  max: 12,
+  errorCode: "address_search_rate_limited",
+});
 
 function getNaverClientId() {
   return (
@@ -28,59 +33,6 @@ function getNaverClientSecret() {
 
 function getQuery(body = {}) {
   return String(body.q || body.query || "").trim();
-}
-
-function assertRateLimit(profileId) {
-  const now = Date.now();
-  const bucket = rateLimitBuckets.get(profileId) ?? { startedAt: now, count: 0 };
-  const nextBucket = now - bucket.startedAt > RATE_LIMIT_WINDOW_MS ? { startedAt: now, count: 1 } : { ...bucket, count: bucket.count + 1 };
-  rateLimitBuckets.set(profileId, nextBucket);
-  if (nextBucket.count > RATE_LIMIT_MAX) {
-    const error = new Error("address_search_rate_limited");
-    error.statusCode = 429;
-    throw error;
-  }
-}
-
-function normalizeNaverAddress(address = {}, index = 0) {
-  const elements = address.addressElements ?? [];
-  const getElement = (type) => elements.find((element) => element.types?.includes(type))?.longName ?? "";
-  const lat = Number(address.y);
-  const lng = Number(address.x);
-  const roadAddress = String(address.roadAddress ?? "").trim();
-  const jibunAddress = String(address.jibunAddress ?? "").trim();
-  const addressText = roadAddress || jibunAddress || String(address.englishAddress ?? "").trim();
-
-  return {
-    id: `naver:${address.x ?? ""}:${address.y ?? ""}:${index}`,
-    addressText,
-    roadAddress,
-    jibunAddress,
-    buildingName: getElement("BUILDING_NAME"),
-    bname: getElement("DONGMYUN") || getElement("RI"),
-    hname: getElement("DONGMYUN"),
-    sido: getElement("SIDO"),
-    sigungu: getElement("SIGUGUN"),
-    zonecode: address.postalCode ?? getElement("POSTAL_CODE"),
-    lat: Number.isFinite(lat) ? lat : "",
-    lng: Number.isFinite(lng) ? lng : "",
-  };
-}
-
-async function assertCourtRequestAccess(context) {
-  const { data, error } = await context.supabase
-    .from("profiles")
-    .select("trust_score")
-    .eq("id", context.profileId)
-    .maybeSingle();
-
-  if (error) throw error;
-  const trustScore = Number(data?.trust_score ?? 0);
-  if (trustScore < COURT_REQUEST_TRUST_MIN) {
-    const accessError = new Error("court_request_trust_required");
-    accessError.statusCode = 403;
-    throw accessError;
-  }
 }
 
 async function searchNaver(query) {

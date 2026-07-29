@@ -1,1 +1,1 @@
-export const BRAND_NAME = "BOXTIER";
+export * from "../../shared/lib/brand.js";
