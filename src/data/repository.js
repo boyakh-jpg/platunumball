@@ -1795,11 +1795,11 @@ function getMatchRecordComposition(draft = {}) {
 }
 
 function getMatchRecordDraftInvalidReason(state, draft = {}, mode = "") {
-  if (draft.visibility && draft.visibility !== "private") return "경기 기록방은 비공개로만 만들 수 있습니다.";
+  if (draft.visibility && draft.visibility !== "private") return "경기 기록은 비공개로만 만들 수 있습니다.";
   if (!isSupportedMatchMode(mode)) return "지원하지 않는 경기 인원입니다.";
   const requestedComposition = draft.recordComposition ?? getMatchRecordComposition(draft);
   if (!["individual", "team"].includes(requestedComposition)) return "경기 기록 구성 방식을 확인해 주세요.";
-  if (!state.currentUserId || !state.users.some((user) => user.id === state.currentUserId && !user.anonymous)) return "기록방 생성자를 확인할 수 없습니다.";
+  if (!state.currentUserId || !state.users.some((user) => user.id === state.currentUserId && !user.anonymous)) return "경기 기록 생성자를 확인할 수 없습니다.";
   return "";
 }
 
@@ -2683,8 +2683,8 @@ export function createMatch(state, draft) {
           id: makeId("n"),
           title: "경기 기록 시간 확인",
           body: recordWindow.reason === "future"
-            ? "경기가 끝난 뒤에만 경기 기록방을 만들 수 있습니다."
-            : "경기 기록방은 경기 종료 후 24시간 이내에만 만들 수 있습니다.",
+            ? "경기가 끝난 뒤에만 경기 기록을 만들 수 있습니다."
+            : "경기 기록은 경기 종료 후 24시간 이내에만 만들 수 있습니다.",
           tone: "match",
         },
         ...state.notifications,
@@ -2702,7 +2702,7 @@ export function createMatch(state, draft) {
     return {
       ...state,
       notifications: [
-        { id: makeId("n"), title: "경기 기록방 생성 불가", body: matchRecordInvalidReason, tone: "orange" },
+        { id: makeId("n"), title: "경기 기록 생성 불가", body: matchRecordInvalidReason, tone: "orange" },
         ...state.notifications,
       ],
     };
@@ -2793,7 +2793,7 @@ export function createMatch(state, draft) {
     ...state,
     matches: [match, ...state.matches],
     notifications: [
-      { id: makeId("n"), title: "경기 기록방", body: `${match.title} 빈 기록방이 만들어졌습니다. 방에서 ${recordComposition === "team" ? "두 팀" : "A/B 선수"}을 구성해 주세요.`, tone: "match", matchId: match.id },
+      { id: makeId("n"), title: "경기 기록", body: `${match.title} 빈 경기 기록이 만들어졌습니다. ${recordComposition === "team" ? "두 팀" : "A/B 선수"}을 구성해 주세요.`, tone: "match", matchId: match.id },
       ...state.notifications,
     ],
   };
@@ -8648,8 +8648,8 @@ export function setMatchRecordParticipants(state, matchId, setup = {}) {
 
   const notificationTitle = composition === "team" ? "팀 경기 기록 확인" : "경기 기록 확인 요청";
   const notificationBody = composition === "team"
-    ? `${match.title} 기록방의 팀 명단을 확인해 주세요.`
-    : `${match.title} 기록방에 참가자로 등록됐습니다. 기록 입력 후 최종 확인이 필요합니다.`;
+    ? `${match.title} 경기 기록의 팀 명단을 확인해 주세요.`
+    : `${match.title} 경기 기록에 참가자로 등록됐습니다. 기록 입력 후 최종 확인이 필요합니다.`;
   const notifications = targetIds
     .filter((playerId) => playerId && playerId !== state.currentUserId)
     .map((playerId) => ({

@@ -355,7 +355,7 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
       : new Set();
   const scopedRows = summary.rows.filter((row) => !hiddenLabels.has(row.label));
   const matchRecordRows = [
-    { label: "기록 유형", value: "경기 기록방" },
+    { label: "기록 유형", value: "경기 기록" },
     { label: "구성 방식", value: draft.recordComposition === "team" ? "팀 구성" : "개인 구성" },
     { label: "경기 방식", value: draft.mode || "5v5" },
     { label: "구장", value: draft.court || "구장 미정" },
@@ -376,7 +376,7 @@ export function MatchCreationFinalSummary({ draft, summaryType = "match", errors
   const sentence = summaryType === "personal_record"
     ? "입력한 경기 결과와 개인 스탯을 내 기록으로 저장합니다."
     : summaryType === "match_record"
-      ? "빈 기록방을 만든 뒤 참가자 또는 팀을 구성합니다. 정해진 확인 기간 안에 참가를 확인한 선수만 서버 정책에 따라 개인 MMR 반영 대상이 되며 팀 MMR은 반영하지 않습니다."
+      ? "빈 경기 기록을 만든 뒤 참가자 또는 팀을 구성합니다. 정해진 확인 기간 안에 참가를 확인한 선수만 서버 정책에 따라 개인 MMR 반영 대상이 되며 팀 MMR은 반영하지 않습니다."
       : summaryType === "tournament"
         ? "선택한 참가팀·명단·규칙·구장 운영값으로 대회를 만듭니다."
         : summary.sentence;

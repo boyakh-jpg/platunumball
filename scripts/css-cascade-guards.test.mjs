@@ -357,7 +357,7 @@ test("default and functional panel typography use shared body tokens", () => {
   );
   assert.match(
     recruitingSource,
-    /<span className="ui-panel-copy">기록방은 점수와 선수 기록을 먼저 확인합니다\.<\/span>/,
+    /<span className="ui-panel-copy">경기 기록에서는 점수와 선수 기록을 먼저 확인합니다\.<\/span>/,
   );
 });
 

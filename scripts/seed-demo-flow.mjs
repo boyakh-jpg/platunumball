@@ -219,7 +219,7 @@ function addPastMatch(state, index, teamAId, teamBId, daysAgo) {
     const submittedAt = isoFor(pastDate, scheduledTime, 25);
     return {
       ...historicalMatch,
-      title: `기록방 데모 ${index} · ${historicalMatch.teamA.name} vs ${historicalMatch.teamB.name}`,
+      title: `경기 기록 데모 ${index} · ${historicalMatch.teamA.name} vs ${historicalMatch.teamB.name}`,
       scheduledDate: pastDate,
       scheduledTime,
       scheduledAt: `${pastDate} ${scheduledTime}`,

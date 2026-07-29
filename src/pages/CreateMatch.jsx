@@ -992,7 +992,7 @@ export default function CreateMatch({
   const publicTeamInvalidReason = publicTeamInvalid ? "팀전을 만들려면 먼저 팀에 가입해야 합니다." : "";
   const privateTeamInvalidReason = privateTeamInvalid ? "팀전을 만들려면 먼저 팀에 가입해야 합니다." : "";
   const matchRecordInvalidReason = !draft.title.trim()
-    ? "기록방 제목을 입력해 주세요."
+    ? "경기 기록 제목을 입력해 주세요."
     : !recordCreationWindow.valid
       ? recordCreationWindow.reason === "future"
         ? "경기가 끝난 뒤의 시각만 선택할 수 있습니다."
@@ -1071,9 +1071,9 @@ export default function CreateMatch({
     : isSoloRecord && soloRecordInvalid
     ? (recordEntryMode === "named" ? soloRosterError : "") || "제목, 종료 시각, 점수를 확인해 주세요. 내 기록은 경기 종료 후 24시간 이내에만 저장할 수 있습니다."
     : isMatchRecordRoom && matchRecordInvalid
-      ? (matchRecordInvalidReason || "경기 기록방 정보를 확인해 주세요.")
+      ? (matchRecordInvalidReason || "경기 기록 정보를 확인해 주세요.")
     : !scheduleAllowed
-    ? isMatchRecordRoom ? "경기 기록방은 경기 종료 후 24시간 이내에만 만들 수 있으며 미래 시각은 선택할 수 없습니다." : "일정 조건이 맞지 않습니다. 즉시는 바로 생성 가능하고, 예약 일정은 허용 기간 안에서만 가능합니다."
+    ? isMatchRecordRoom ? "경기 기록은 경기 종료 후 24시간 이내에만 만들 수 있으며 미래 시각은 선택할 수 없습니다." : "일정 조건이 맞지 않습니다. 즉시는 바로 생성 가능하고, 예약 일정은 허용 기간 안에서만 가능합니다."
     : !tournamentEndAllowed
       ? "대회 종료일이 허용 기간을 벗어났습니다."
       : teamTierBlocked
@@ -1590,7 +1590,7 @@ export default function CreateMatch({
       });
       if (typeof matchId === "string" && matchId) navigate(`/app/recorder?match=${encodeURIComponent(matchId)}`);
       else {
-        setSubmitFeedback(formatCreateSaveError(matchId, "경기 기록방을 만들지 못했습니다."));
+        setSubmitFeedback(formatCreateSaveError(matchId, "경기 기록을 만들지 못했습니다."));
       }
       return;
     }
@@ -1861,7 +1861,7 @@ export default function CreateMatch({
                   <ClipboardList size={19} />
                   <span>
                     <strong>경기 기록</strong>
-                    <em>빈 기록방을 만든 뒤 실제 참가자를 등록하고 2/3 이상의 내 참가 확인을 받습니다.</em>
+                    <em>빈 경기 기록을 만든 뒤 실제 참가자를 등록하고 2/3 이상의 내 참가 확인을 받습니다.</em>
                   </span>
                 </button>
                 <button
@@ -2682,8 +2682,8 @@ export default function CreateMatch({
               <ClipboardList size={17} />
               <span>
                 {recordComposition === "team"
-                  ? "빈 기록방 생성 후 방장이 두 팀을 선택합니다. 각 팀장이 실제 출전 명단을 확정하고 24시간 동안 참가자 2/3 이상의 내 참가 확인과 문제 신고를 받습니다."
-                  : "빈 기록방 생성 후 방장이 A/B 참가자를 계정으로 채웁니다. 24시간 동안 실제 참가자 2/3 이상의 내 참가 확인과 문제 신고를 받습니다."}
+                  ? "빈 경기 기록 생성 후 방장이 두 팀을 선택합니다. 각 팀장이 실제 출전 명단을 확정하고 24시간 동안 참가자 2/3 이상의 내 참가 확인과 문제 신고를 받습니다."
+                  : "빈 경기 기록 생성 후 방장이 A/B 참가자를 계정으로 채웁니다. 24시간 동안 실제 참가자 2/3 이상의 내 참가 확인과 문제 신고를 받습니다."}
               </span>
             </div>
           ) : isTeamRoom ? (
@@ -2883,7 +2883,7 @@ export default function CreateMatch({
           ? isSoloRecord
             ? "기록 저장"
             : isMatchRecordRoom
-              ? "기록방 만들기"
+              ? "경기 기록 만들기"
               : isTournamentRoom
                 ? "대회 생성"
                 : "경기 생성"

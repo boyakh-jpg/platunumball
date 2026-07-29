@@ -302,7 +302,7 @@ export function evaluateRecordVerification(match = {}, options = {}) {
   if (!hasResult) blockingReasons.push("결과 없음");
   if (disputed) blockingReasons.push("이의 처리 필요");
   if (isMatchRecordMatch(match) && !sideApprovalsComplete) blockingReasons.push("전체 참가자 2/3 확인 필요");
-  if (isMatchRecordMatch(match)) blockingReasons.push("사후 경기기록방은 팀 MMR 대상 아님");
+  if (isMatchRecordMatch(match)) blockingReasons.push("사후 경기 기록은 팀 MMR 대상 아님");
 
   const recordRoomConfirmed = !isMatchRecordMatch(match) || sideApprovalsComplete;
   const recordRosterConfirmed = !isMatchRecordMatch(match) || match.rules?.recordSetupReady === true;
@@ -1551,7 +1551,7 @@ const ROOM_PHASE_META = {
   live: { phase: "live", label: "경기시작", listLabel: "경기 진행", tone: "blue", actionLabel: "기록" },
   postgame: { phase: "postgame", label: "경기종료", listLabel: "경기 종료", tone: "orange", actionLabel: "기록완료" },
   dispute: { phase: "dispute", label: "이의신청방", listLabel: "이의신청", tone: "orange", actionLabel: "처리" },
-  record: { phase: "record", label: "기록방", listLabel: "기록방", tone: "green", actionLabel: "보기" },
+  record: { phase: "record", label: "경기 기록", listLabel: "경기 기록", tone: "green", actionLabel: "보기" },
   cancelled: { phase: "cancelled", label: "취소", listLabel: "취소", tone: "neutral", actionLabel: "보기" },
   void: { phase: "void", label: "무효", listLabel: "무효", tone: "neutral", actionLabel: "보기" },
 };

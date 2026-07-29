@@ -1088,3 +1088,23 @@ test("방모달 뱃지와 메모 및 팀명은 공용 타이포그래피를 사�
     /\.arena-lobby-team-head strong\s*\{[^}]*font-family:\s*var\(--sports-display-font\);/,
   );
 });
+
+test("경기 기록 팀명과 픽업 운영 행은 공용 스포츠·버튼 타이포그래피를 사용한다", () => {
+  assert.match(
+    matchClockStyles,
+    /\.ui-match-score-control-side > span\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-size:\s*clamp\(1\.15rem,\s*2\.4vw,\s*1\.5rem\);[^}]*font-weight:\s*950;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-source-record-score span\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-size:\s*clamp\(1\.15rem,\s*2\.4vw,\s*1\.5rem\);[^}]*font-weight:\s*950;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-record-team-selected > strong\s*\{[^}]*font-family:\s*var\(--sports-display-font\);[^}]*font-size:\s*1\.15rem;[^}]*font-weight:\s*950;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.pickup-rotation-panel \.ui-status-strip\s*\{[^}]*font-size:\s*var\(--ui-button-font-size\);[^}]*font-weight:\s*var\(--ui-button-font-weight\);[^}]*line-height:\s*1\.2;/,
+  );
+  assert.doesNotMatch(pageSources.recruiting, />기록방</);
+});

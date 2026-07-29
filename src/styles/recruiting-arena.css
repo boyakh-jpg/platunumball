@@ -2058,6 +2058,11 @@ button.arena-room-player-slot {
 .arena-source-record-score span {
   min-width: 0;
   overflow: hidden;
+  color: var(--text);
+  font-family: var(--sports-display-font);
+  font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+  font-weight: 950;
+  line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2085,7 +2090,10 @@ button.arena-room-player-slot {
 
 .arena-source-record-side > strong {
   color: var(--text);
-  font-size: 0.82rem;
+  font-family: var(--sports-display-font);
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1;
 }
 
 .arena-source-record-side > div {
@@ -4971,6 +4979,13 @@ html[data-theme="light"] .arena-lobby-arena {
   padding: 7px 9px;
 }
 
+.arena-record-team-selected > strong {
+  font-family: var(--sports-display-font);
+  font-size: 1.15rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
 .arena-record-team-selected .team-emblem {
   --team-emblem-size: 32px;
 }
@@ -5728,6 +5743,9 @@ html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
   min-height: var(--ui-button-height);
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  line-height: 1.2;
 }
 
 .pickup-rotation-panel .ui-status-strip strong {

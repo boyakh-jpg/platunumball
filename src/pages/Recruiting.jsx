@@ -2530,7 +2530,7 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   }
   if (phase.phase === "dispute") return { label: "결과 확인", detail: "이의신청 시간 안에 기록을 확인합니다." };
   if (phase.phase === "record") return {
-    label: "기록방",
+    label: "경기 기록",
     detail: match.refereeId
       ? "확정된 팀 점수와 개인 스탯을 열람합니다."
       : "확정된 팀 점수를 열람합니다.",
@@ -4181,7 +4181,7 @@ function RecruitingRoomModalReady({
           return (
             <div className="arena-match-source-actions arena-match-source-record-board">
               <strong className="ui-panel-title">경기 기록판</strong>
-              <span className="ui-panel-copy">기록방은 점수와 선수 기록을 먼저 확인합니다.</span>
+              <span className="ui-panel-copy">경기 기록에서는 점수와 선수 기록을 먼저 확인합니다.</span>
               {showSourceMatchRecordSummary ? (
                 <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
               ) : null}

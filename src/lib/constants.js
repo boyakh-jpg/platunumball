@@ -45,7 +45,7 @@ export const ROOM_KINDS = Object.freeze({
 const ROOM_KIND_LABELS = Object.freeze({
   [ROOM_KINDS.publicRecruiting]: "공개 모집방",
   [ROOM_KINDS.privateInvite]: "비공개 초대방",
-  [ROOM_KINDS.matchRecord]: "경기 기록방",
+  [ROOM_KINDS.matchRecord]: "경기 기록",
   [ROOM_KINDS.personalRecord]: "내 기록",
   [ROOM_KINDS.tournament]: "대회방",
 });
