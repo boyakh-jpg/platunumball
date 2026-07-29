@@ -1024,7 +1024,6 @@ button.arena-room-player-slot {
 
 .arena-room-player-slot strong,
 .arena-room-player-slot > span:not(.avatar),
-.arena-room-player-slot b,
 .arena-room-player-slot small,
 .arena-room-player-slot em {
   max-width: 100%;
@@ -1037,17 +1036,10 @@ button.arena-room-player-slot {
   grid-row: 2;
 }
 
-.arena-room-player-slot small,
-.arena-room-player-slot b {
+.arena-room-player-slot small {
   display: inline-flex;
-  min-height: 18px;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: rgba(116, 169, 255, 0.14);
-  color: var(--blue);
-  font-size: 0.58rem;
-  font-weight: 950;
   padding: 2px 6px;
 }
 
@@ -1055,8 +1047,18 @@ button.arena-room-player-slot {
   grid-row: 3;
 }
 
-.arena-room-player-slot b {
+.arena-room-player-slot > span.arena-room-slot-detail {
   grid-row: 4;
+  max-width: 100%;
+  color: var(--rb-soft);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.12;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-align: center;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .arena-room-player-slot em {
@@ -3391,7 +3393,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 }
 
 .arena-room-player-slot {
-  grid-template-rows: 44px 16px 18px 18px 16px;
+  grid-template-rows: 44px 16px 18px minmax(18px, auto) 16px;
   min-height: 136px;
   border: 1px solid var(--rb-line);
   border-radius: var(--radius-md);
@@ -3467,12 +3469,6 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   color: var(--rb-blue);
   font-size: 9.5px;
   font-weight: 950;
-}
-
-.arena-room-player-slot b {
-  background: transparent;
-  color: var(--rb-soft);
-  font-size: 10px;
 }
 
 .arena-room-player-slot em {
@@ -3607,7 +3603,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   }
 
   .arena-room-player-slot {
-    grid-template-rows: 36px 16px 18px 18px 16px;
+    grid-template-rows: 36px 16px 18px minmax(18px, auto) 16px;
     min-height: 118px;
     border-radius: var(--radius-md);
     padding: 8px 4px;
@@ -3624,7 +3620,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   }
 
   .arena-room-player-slot small,
-  .arena-room-player-slot b,
+  .arena-room-slot-detail,
   .arena-room-player-slot em {
     font-size: 9.5px;
   }
@@ -3952,7 +3948,7 @@ html[data-theme="light"] .arena-room-party-group::after {
 
 .arena-room-player-slot strong,
 .arena-room-player-slot small,
-.arena-room-player-slot b,
+.arena-room-slot-detail,
 .arena-room-player-slot em {
   position: relative;
   z-index: 3;
@@ -5477,9 +5473,7 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
   inline-size: 72px;
   min-inline-size: 72px;
   max-inline-size: 72px;
-  block-size: var(--room-slot-height);
   min-block-size: var(--room-slot-height);
-  max-block-size: var(--room-slot-height);
 }
 
 .arena-lobby-modal .arena-room-player-slot {
@@ -5487,10 +5481,8 @@ html[data-theme="light"] .arena-recruit-page > .arena-queue-controls > .arena-fi
   inline-size: 72px;
   min-inline-size: 72px;
   max-inline-size: 72px;
-  height: var(--room-slot-height);
-  block-size: var(--room-slot-height);
+  height: auto;
   min-block-size: var(--room-slot-height);
-  max-block-size: var(--room-slot-height);
 }
 
 .arena-lobby-modal .arena-room-slot-row {
@@ -5540,14 +5532,12 @@ html[data-theme="light"] .arena-lobby-modal .arena-room-player-slot-wrap > .aren
 
   .arena-lobby-modal .arena-room-slot-row,
   .arena-lobby-modal .arena-room-reserve-row {
-    grid-auto-rows: var(--room-slot-height);
+    grid-auto-rows: minmax(var(--room-slot-height), auto);
     align-items: stretch;
   }
 
   .arena-lobby-modal .arena-room-party-group {
-    block-size: var(--room-slot-height);
     min-block-size: var(--room-slot-height);
-    max-block-size: var(--room-slot-height);
     align-items: stretch;
   }
 }

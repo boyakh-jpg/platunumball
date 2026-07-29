@@ -51,7 +51,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { ensureTeamPartyLeader, getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { getTournamentRosterTeam } from "../data/tournamentMappers.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { DEFAULT_RATING, MATCH_MODES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, MINUTE_MS, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
+import { DEFAULT_RATING, MATCH_MODES, MATCH_SIDES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, MINUTE_MS, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, REMOTE_LIST_REFRESH_MIN_INTERVAL_MS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { isPlacementComplete } from "../lib/rating.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
@@ -746,6 +746,13 @@ function getLobbyPrimaryTeamId(lobby, sideName) {
   return getEntryTeamGroupId(teamEntry);
 }
 
+function getRoomSlotTeamName(entry, teams = []) {
+  const teamId = getEntryTeamGroupId(entry);
+  return entry?.team?.name
+    ?? teams.find((team) => team.id === teamId)?.name
+    ?? "개인 참여";
+}
+
 function getVisualPartyKey(entry, sideName = "") {
   const teamId = getEntryTeamGroupId(entry);
   if (!teamId) return "";
@@ -814,7 +821,7 @@ function PlayerRoomSlot({
       <RoomSlotAvatar user={user} mmr={mmr} position={displayPosition} />
       <strong>{user?.name ?? "플레이어"}</strong>
       <small>{displayPosition}</small>
-      {detail ? <b>{detail}</b> : null}
+      {detail ? <span className="arena-room-slot-detail">{detail}</span> : null}
       <em>{title}</em>
     </>
   );
@@ -1032,10 +1039,11 @@ function QueueRoomBoard({ post, lobby }) {
   );
 }
 
-function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, roomState = {}, sideLeaderId = "", readyText = "참가", slotPositions = {}, canManageEntry = null, onSelfAction }) {
+function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, roomState = {}, sideLeaderId = "", readyText = "출전", slotPositions = {}, canManageEntry = null, onSelfAction }) {
   const user = candidate ? userById[candidate.playerId] : null;
-  const readyLabel = candidate?.status === "ready" ? "참가" : "대기";
+  const readyLabel = candidate?.status === "ready" ? "출전" : "대기";
   const entry = candidate ? (lobby.entries ?? []).find((item) => item.id === candidate.entryId) : null;
+  const teamName = getRoomSlotTeamName(entry, teams);
   const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: !candidate?.reserve, sideLeaderId });
   const isSelfSlot = candidate?.playerId === currentUserId;
   const canOpenAction = isSelfSlot || Boolean(entry && canManageEntry?.(entry));
@@ -1065,7 +1073,7 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
           <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? DEFAULT_RATING} position={displayPosition} />
           <strong>{user.name}</strong>
           <small>{displayPosition}</small>
-          <b>{candidate.sourceLabel}</b>
+          <span className="arena-room-slot-detail">{teamName}</span>
           <em>{candidate.status === "ready" ? readyText : readyLabel}</em>
         </button>
       ) : (
@@ -1078,7 +1086,7 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
         <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? DEFAULT_RATING} position={displayPosition} />
         <strong>{user.name}</strong>
         <small>{displayPosition}</small>
-        <b>{candidate.sourceLabel}</b>
+        <span className="arena-room-slot-detail">{teamName}</span>
         <em>{candidate.status === "ready" ? readyText : readyLabel}</em>
       </PlayerHoverCard>
       )}
@@ -1279,8 +1287,7 @@ function SideRoster({
     || (side.fillSlots ?? []).some(({ playerId }) => playerId === hostPlayerId)
   ) ? "" : sideLeaderId;
   const renderActiveSlot = ({ entry, playerId, user }) => {
-    const partyEntry = isPartyEntry(entry);
-    const partyLabel = isRecruitingTeamEntry(entry) && entry.team ? entry.team.name : "개인 참여";
+    const teamName = getRoomSlotTeamName(entry, teams);
     const isSelfSlot = playerId === currentUserId;
     const canOpenAction = Boolean(onSelfSlotAction) && (isSelfSlot || Boolean(canManageEntry?.(entry)));
     const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, playerId, entry);
@@ -1290,8 +1297,8 @@ function SideRoster({
         user={user}
         teams={teams}
         status={entry.status}
-        title={entry.status === "ready" ? "참가" : "대기"}
-        detail={partyLabel}
+        title={entry.status === "ready" ? "출전" : "대기"}
+        detail={teamName}
         mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
         position={displayPosition}
         badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge, roomState, { sideLeaderId: displayedSideLeaderId })}
@@ -1411,7 +1418,7 @@ function ReserveLine({
         teams={teams}
         status={candidate.status}
         title="후보"
-        detail={candidate.sourceLabel}
+        detail={getRoomSlotTeamName(entry, teams)}
         mmr={user.ratings?.integrated ?? DEFAULT_RATING}
         position={displayPosition}
         badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: false, sideLeaderId: displayedSideLeaderId })}
@@ -3706,7 +3713,11 @@ function RecruitingRoomModalReady({
             ? canJoinReferee
             : joinTierAllowed && (!pickupPoolMode || pickupOpenSlotPlacements.length > 0) && (joinDraft.joinMode === "player" || teamJoinValid)
         );
-        const roomTeamSelectionOpen = teamOnlyRoom && !sourceMatch && selectedPost.status === "open" && !recruitingRoomConfirmed;
+        const roomTeamSelectionOpen = teamOnlyRoom
+          && !sourceMatch
+          && selectedPost.status === "open"
+          && !recruitingRoomConfirmed
+          && (!selectedRoomTeamAId || !selectedRoomTeamBId);
         const getRoomTeamSelectionEligibility = (team, sideName) => {
           const eligibility = getTeamEventEligibility(team, app.state.users, {
             capacity: getRecruitingSideCapacity(selectedPost),
@@ -4798,11 +4809,7 @@ function RecruitingRoomModalReady({
                 {roomTeamSelectionOpen ? (
                   <section className="arena-record-setup-panel ui-modal-section">
                     <header>
-                      <div>
-                        <strong>팀 선택</strong>
-                        <span>팀 선택과 명단 관리는 이 공용 방 모달에서만 진행합니다.</span>
-                      </div>
-                      <Badge tone="blue">ROOM ONLY</Badge>
+                      <strong>팀 선택</strong>
                     </header>
                     <div className="arena-record-setup-grid">
                       <section>
@@ -6031,6 +6038,7 @@ function RecruitingReady({ app }) {
   const targetPostLoadRef = useRef("");
   const selectedPostRefreshRef = useRef("");
   const regionLoadRef = useRef("");
+  const lastRecruitingRefreshAtRef = useRef(0);
   const defaultDraftCourt = registeredCourts.find((court) => isSameRegion(court.region, currentRegion)) ?? registeredCourts[0] ?? null;
   const [draft, setDraft] = useState(() => ({
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
@@ -6094,36 +6102,58 @@ function RecruitingReady({ app }) {
     setModeFilter("all");
   }, [targetPostId]);
 
-  useEffect(() => {
-    if (!app.remoteReady || !app.currentUser.id) return;
-    if (targetPostId) return;
-    if (!filterRequestSettled) return;
-    const regionKey = selectedRegionKey;
-    const currentScope = app.recruitingPagination?.regionScope ?? "local";
-    const currentKey = app.recruitingPagination?.regionKey ?? "";
-    const currentPageMatchesRegion = currentScope === "region" && currentKey === regionKey;
-    const targetStartFilter = startFilter;
-    const currentStartFilter = app.recruitingPagination?.startFilter ?? "all";
-    const needsFilteredPage = startFilter !== "all"
-      && currentStartFilter !== startFilter;
-    const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
-    const shouldIncludeFeedCounts = false;
-    if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage && !shouldIncludeFeedCounts) return;
-    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}:${shouldIncludeFeedCounts ? "counts" : "plain"}`;
-    if (regionLoadRef.current === loadKey) return;
+  const refreshRecruitingFromServer = useCallback(async ({ force = false } = {}) => {
+    if (!app.remoteReady || !app.currentUser.id || targetPostId || !filterRequestSettled) return false;
+    const loadRecruitingRegion = app.actions.loadRecruitingRegion;
+    if (!loadRecruitingRegion) return false;
+    const now = Date.now();
+    if (!force && now - lastRecruitingRefreshAtRef.current < REMOTE_LIST_REFRESH_MIN_INTERVAL_MS) return false;
+    const loadKey = `${app.currentUser.id}:${selectedRegionKey}:${startFilter}`;
+    if (regionLoadRef.current === loadKey) return false;
     regionLoadRef.current = loadKey;
-    Promise.resolve(app.actions.loadRecruitingRegion?.({
-      regionScope: "region",
-      regionKey,
-      limit: needsFilteredPage ? RECRUITING_FILTER_PAGE_LIMIT : undefined,
-      startFilter: targetStartFilter,
-      includeFeedCounts: shouldIncludeFeedCounts,
-    })).then((count) => {
-      if (count !== false) regionLoadRef.current = "";
-    }).catch(() => {
-      // Keep the key on failure so the effect does not retry in a tight loop.
-    });
-  }, [app.actions, app.currentUser.id, app.remoteReady, app.recruitingPagination, filterRequestSettled, regionFilter, selectedRegionKey, startFilter, targetPostId]);
+    lastRecruitingRefreshAtRef.current = now;
+    try {
+      const count = await loadRecruitingRegion({
+        regionScope: "region",
+        regionKey: selectedRegionKey,
+        limit: startFilter !== "all" ? RECRUITING_FILTER_PAGE_LIMIT : undefined,
+        startFilter,
+        includeFeedCounts: false,
+      });
+      if (count === false) {
+        lastRecruitingRefreshAtRef.current = 0;
+        return false;
+      }
+      return true;
+    } catch {
+      lastRecruitingRefreshAtRef.current = 0;
+      return false;
+    } finally {
+      if (regionLoadRef.current === loadKey) regionLoadRef.current = "";
+    }
+  }, [app.actions.loadRecruitingRegion, app.currentUser.id, app.remoteReady, filterRequestSettled, selectedRegionKey, startFilter, targetPostId]);
+
+  useEffect(() => {
+    lastRecruitingRefreshAtRef.current = 0;
+  }, [app.currentUser.id]);
+
+  useEffect(() => {
+    void refreshRecruitingFromServer({ force: true });
+  }, [refreshRecruitingFromServer]);
+
+  useEffect(() => {
+    if (!app.remoteReady || !app.currentUser.id || targetPostId) return undefined;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void refreshRecruitingFromServer();
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [app.currentUser.id, app.remoteReady, refreshRecruitingFromServer, targetPostId]);
 
   useEffect(() => {
     if (!hostNeedsTeam) return;

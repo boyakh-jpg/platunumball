@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays } from "lucide-react";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -27,7 +27,7 @@ import {
   isMatchReferee,
   isMatchSideTeamParty,
 } from "../lib/matchUtils.js";
-import { MATCH_SIDES, SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
+import { MATCH_SIDES, REMOTE_LIST_REFRESH_MIN_INTERVAL_MS, SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -127,8 +127,8 @@ export default function Recorder({ app }) {
   const [selectedMatchId, setSelectedMatchId] = useState(queryMatchId);
   const [recorderLoading, setRecorderLoading] = useState(false);
   const [recorderLoadError, setRecorderLoadError] = useState("");
-  const [recorderLoadAttempt, setRecorderLoadAttempt] = useState(0);
   const recorderLoadRef = useRef("");
+  const lastRecorderRefreshAtRef = useRef(0);
 
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
@@ -145,34 +145,61 @@ export default function Recorder({ app }) {
     setSelectedMatchId(queryMatchId);
   }, [queryMatchId]);
 
-  useEffect(() => {
-    if (!app.remoteReady || !user.id || app.playMatchesLoaded) return;
+  const refreshPlayMatchesFromServer = useCallback(async ({ force = false } = {}) => {
+    if (!app.remoteReady || !user.id) return false;
     const loadPlayMatches = app.actions.loadPlayMatches;
-    if (!loadPlayMatches) return;
-    if (recorderLoadRef.current === user.id) return;
-    recorderLoadRef.current = user.id;
+    if (!loadPlayMatches) return false;
+    const now = Date.now();
+    if (!force && now - lastRecorderRefreshAtRef.current < REMOTE_LIST_REFRESH_MIN_INTERVAL_MS) return false;
+    const requestKey = user.id;
+    if (recorderLoadRef.current === requestKey) return false;
+    recorderLoadRef.current = requestKey;
+    lastRecorderRefreshAtRef.current = now;
     setRecorderLoading(true);
     setRecorderLoadError("");
-    Promise.resolve(loadPlayMatches())
-      .then((result) => {
-        if (result === false) {
-          recorderLoadRef.current = "";
-          setRecorderLoadError("진행 경기 목록을 불러오지 못했습니다.");
-        }
-      })
-      .catch(() => {
-        recorderLoadRef.current = "";
+    try {
+      const result = await loadPlayMatches();
+      if (result === false) {
+        lastRecorderRefreshAtRef.current = 0;
         setRecorderLoadError("진행 경기 목록을 불러오지 못했습니다.");
-      })
-      .finally(() => {
-        setRecorderLoading(false);
-      });
-  }, [app.actions.loadPlayMatches, app.playMatchesLoaded, app.remoteReady, recorderLoadAttempt, user.id]);
+        return false;
+      }
+      return true;
+    } catch {
+      lastRecorderRefreshAtRef.current = 0;
+      setRecorderLoadError("진행 경기 목록을 불러오지 못했습니다.");
+      return false;
+    } finally {
+      if (recorderLoadRef.current === requestKey) recorderLoadRef.current = "";
+      setRecorderLoading(false);
+    }
+  }, [app.actions.loadPlayMatches, app.remoteReady, user.id]);
+
+  useEffect(() => {
+    lastRecorderRefreshAtRef.current = 0;
+  }, [user.id]);
+
+  useEffect(() => {
+    void refreshPlayMatchesFromServer({ force: true });
+  }, [refreshPlayMatchesFromServer]);
+
+  useEffect(() => {
+    if (!app.remoteReady || !user.id) return undefined;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void refreshPlayMatchesFromServer();
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [app.remoteReady, refreshPlayMatchesFromServer, user.id]);
 
   const retryRecorderLoad = () => {
-    recorderLoadRef.current = "";
     setRecorderLoadError("");
-    setRecorderLoadAttempt((attempt) => attempt + 1);
+    void refreshPlayMatchesFromServer({ force: true });
   };
 
   const openMatch = (matchId) => {

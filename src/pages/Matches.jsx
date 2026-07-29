@@ -40,7 +40,7 @@ import {
   isTournamentMatchInUserSchedule,
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
-import { MATCH_SIDES, ROOM_KINDS } from "../lib/constants.js";
+import { MATCH_SIDES, REMOTE_LIST_REFRESH_MIN_INTERVAL_MS, ROOM_KINDS } from "../lib/constants.js";
 import {
   getMatchAttendanceScanErrorMessage,
   getMatchAttendanceScanSuccessMessage,
@@ -95,7 +95,6 @@ const SCHEDULE_BRANCH_FILTERS = [
   { id: "team", label: "팀전" },
 ];
 const BRANCH_FILTER_IDS = new Set(SCHEDULE_BRANCH_FILTERS.map((option) => option.id));
-const SCHEDULE_REFRESH_MIN_INTERVAL_MS = 1_000;
 const AUTO_ROOM_TITLE_PREFIX_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)\s*·\s*/;
 const GENERIC_ROOM_TITLE_PATTERN = /^(경기|경기방|매치 큐|정규전|친선전|동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|확정 준비\s*\d*|모집 중\s*\d*|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)$/;
 
@@ -1310,7 +1309,7 @@ export default function Matches({ app }) {
   const refreshScheduleFromServer = useCallback(async ({ force = false } = {}) => {
     if (!app.remoteReady || !app.currentUser.id) return false;
     const now = Date.now();
-    if (!force && now - lastScheduleRefreshAtRef.current < SCHEDULE_REFRESH_MIN_INTERVAL_MS) return false;
+    if (!force && now - lastScheduleRefreshAtRef.current < REMOTE_LIST_REFRESH_MIN_INTERVAL_MS) return false;
 
     const requests = [];
     if (typeof loadMatchRecruitingSchedule === "function") {
@@ -1446,8 +1445,8 @@ export default function Matches({ app }) {
   const scheduleLoading = personalScheduleLoading || (panelMode === "team" && matchPagination.teamScheduleLoading);
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
-    ? "내 일정 확인 중"
-    : `내 일정 ${visibleScheduleItems.length}개 중 ${displayScheduleItems.length}개 표시`;
+    ? `${panelMode === "team" ? "내 팀 일정" : "내 일정"} 확인 중`
+    : `${panelMode === "team" ? "내 팀 일정" : "내 일정"} ${visibleScheduleItems.length}개 중 ${displayScheduleItems.length}개 표시`;
   const displayActiveCount = personalScheduleLoading ? "..." : activeCount;
   const displayTodoCount = personalScheduleLoading ? "..." : todoCount;
   const displayScheduledCount = personalScheduleLoading ? "..." : scheduledCount;
@@ -1508,7 +1507,14 @@ export default function Matches({ app }) {
           type="button"
           className={panelMode === "team" ? "om-view-card ui-design-soft-surface ui-design-filter-tile active" : "om-view-card ui-design-soft-surface ui-design-filter-tile"}
           onClick={() => {
-            applyFilterState({ panelMode: "team", viewId: "active" });
+            applyFilterState({
+              panelMode: "team",
+              viewId: "active",
+              branchFilter: "all",
+              relationFilter: "all",
+              dateFilter: "",
+              calendarMonth: getMonthKey(),
+            });
           }}
         >
           <span className="om-view-icon"><UsersRound size={22} /></span>
@@ -1542,7 +1548,13 @@ export default function Matches({ app }) {
             <div>
               <span className="om-kicker">SCHEDULE</span>
               <h2>{panelMode === "team" ? "내 팀 일정" : "내 경기 일정"}</h2>
-              <p>{dateFilter ? `${formatDateLabel(dateFilter)} 내 경기만 표시` : "내가 참가한 시작 전 경기만 날짜별로 표시합니다."}</p>
+              <p>
+                {dateFilter
+                  ? `${formatDateLabel(dateFilter)} ${panelMode === "team" ? "내 팀 경기" : "내 경기"}만 표시`
+                  : panelMode === "team"
+                    ? "소속 팀의 시작 전 경기를 날짜별로 표시합니다."
+                    : "내가 참가한 시작 전 경기만 날짜별로 표시합니다."}
+              </p>
             </div>
           </div>
           <section className="om-calendar-filter-bar" aria-label="경기 필터">

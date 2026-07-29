@@ -175,6 +175,7 @@ export const REMOTE_CLIENT_RECORD_ARCHIVE_LIMIT = 100;
 export const REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT = 3;
 export const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
 export const REMOTE_CLIENT_MAX_LIMIT = 500;
+export const REMOTE_LIST_REFRESH_MIN_INTERVAL_MS = 1_000;
 export const FAVORITE_LIMIT = 10;
 export const SOLO_RECORD_MODE_IDS = new Set(["1v1", "2v2", "3v3", "4v4", "5v5"]);
 export function isSupportedSoloRecordMode(mode = "") {

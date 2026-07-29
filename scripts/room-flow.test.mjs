@@ -59,15 +59,38 @@ test("cancelled instant rooms stay visible for their calendar date", async () =>
   }
 });
 
-test("schedule refreshes server data on entry and browser foreground", () => {
+test("schedule, recruiting, and play lists refresh server data on entry and browser foreground", () => {
   const matchesSource = readFileSync(new URL("../src/pages/Matches.jsx", import.meta.url), "utf8");
+  const recruitingSource = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
+  const recorderSource = readFileSync(new URL("../src/pages/Recorder.jsx", import.meta.url), "utf8");
   const appDataSource = readFileSync(new URL("../src/hooks/useAppData.js", import.meta.url), "utf8");
 
   assert.match(matchesSource, /loadMatchRecruitingSchedule\(\{ force: true \}\)/);
   assert.match(matchesSource, /window\.addEventListener\("focus", refreshWhenVisible\)/);
   assert.match(matchesSource, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
+  assert.match(recruitingSource, /refreshRecruitingFromServer\(\{ force: true \}\)/);
+  assert.match(recruitingSource, /window\.addEventListener\("focus", refreshWhenVisible\)/);
+  assert.match(recruitingSource, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
+  assert.match(recorderSource, /refreshPlayMatchesFromServer\(\{ force: true \}\)/);
+  assert.match(recorderSource, /window\.addEventListener\("focus", refreshWhenVisible\)/);
+  assert.match(recorderSource, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
+  assert.doesNotMatch(recorderSource, /if \(!app\.remoteReady \|\| !user\.id \|\| app\.playMatchesLoaded\) return/);
   assert.match(appDataSource, /if \(matchRecruitingSchedulePromiseRef\.current\) return matchRecruitingSchedulePromiseRef\.current;/);
   assert.match(appDataSource, /if \(matchTeamSchedulePromiseRef\.current\) return matchTeamSchedulePromiseRef\.current;/);
+  assert.match(appDataSource, /if \(playMatchesPromiseRef\.current\) return playMatchesPromiseRef\.current;/);
+  assert.match(matchesSource, /panelMode:\s*"team",[\s\S]*?branchFilter:\s*"all",[\s\S]*?relationFilter:\s*"all",[\s\S]*?dateFilter:\s*""/);
+});
+
+test("team room hides completed selection and labels active and reserve slots once", () => {
+  const recruitingSource = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
+  const recruitingStyles = readFileSync(new URL("../src/styles/recruiting-arena.css", import.meta.url), "utf8");
+
+  assert.match(recruitingSource, /&& \(!selectedRoomTeamAId \|\| !selectedRoomTeamBId\)/);
+  assert.doesNotMatch(recruitingSource, /ROOM ONLY/);
+  assert.doesNotMatch(recruitingSource, /팀 선택과 명단 관리는 이 공용 방 모달에서만 진행합니다/);
+  assert.match(recruitingSource, /title=\{entry\.status === "ready" \? "출전" : "대기"\}/);
+  assert.match(recruitingSource, /title="후보"\s+detail=\{getRoomSlotTeamName\(entry, teams\)\}/);
+  assert.match(recruitingStyles, /\.arena-room-player-slot > span\.arena-room-slot-detail\s*\{[^}]*overflow-wrap:\s*anywhere;[^}]*white-space:\s*normal;/s);
 });
 
 test("경기 목적과 팀 구성은 독립 필드이고 레거시 matchIntent만 호환용으로 만든다", () => {
