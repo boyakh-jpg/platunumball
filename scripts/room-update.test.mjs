@@ -11,6 +11,11 @@ import {
   updateRecruitingRoomRules,
 } from "../src/data/repository.js";
 import { getRoomRemakeDraft, getRoomRemakeWarningCopy } from "../src/lib/matchCreationPolicies.js";
+import {
+  getRoomCancellationActionLabel,
+  getRoomCancellationConfirmMessage,
+  getRoomCancellationPolicy,
+} from "../src/lib/roomFlow.js";
 
 const COURT = {
   id: "court-room-update",
@@ -416,6 +421,22 @@ test("room cancellation locks at two hours and waives trust after a rejected edi
   assert.match(locked.notifications[0].body, /2시간 전/);
 });
 
+test("room cancellation interprets a naive schedule as KST and warns before applying trust penalty", () => {
+  const room = {
+    timingType: "scheduled",
+    scheduledDate: "2026-07-29",
+    scheduledTime: "19:00",
+    scheduledAt: "2026-07-29 19:00",
+  };
+  const policy = getRoomCancellationPolicy(room, new Date("2026-07-29T05:30:00.000Z"));
+
+  assert.equal(policy.allowed, true);
+  assert.equal(policy.penalty, 5);
+  assert.equal(getRoomCancellationActionLabel("경기 취소", policy), "경기 취소 · 신뢰도 -5");
+  assert.match(getRoomCancellationConfirmMessage("경기 취소", policy), /신뢰도 5점이 차감/);
+  assert.match(getRoomCancellationConfirmMessage("경기 취소", policy), /같은 설정으로 다시 만들기/);
+});
+
 test("cancelled room remake copies configuration but clears lifecycle and participant state", () => {
   const source = {
     ...makeRecruitingPost("private-team"),
@@ -491,6 +512,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   const roomEditOnceMigration = readFileSync(new URL("../supabase/migrations/20260724155000_room_edit_once.sql", import.meta.url), "utf8");
   const roomChangeDeadlineMigration = readFileSync(new URL("../supabase/migrations/20260724161000_room_change_deadlines.sql", import.meta.url), "utf8");
   const roomCancelPolicyMigration = readFileSync(new URL("../supabase/migrations/20260724162000_room_cancel_policy.sql", import.meta.url), "utf8");
+  const roomCancelTimezoneMigration = readFileSync(new URL("../supabase/migrations/20260729120000_fix_cancel_timezone_and_early_start.sql", import.meta.url), "utf8");
   const cancelledScheduleMigration = readFileSync(new URL("../supabase/migrations/20260724163000_cancelled_room_schedule_feed.sql", import.meta.url), "utf8");
   const scheduledAtTypeFixMigration = readFileSync(new URL("../supabase/migrations/20260724164000_fix_room_policy_scheduled_at_types.sql", import.meta.url), "utf8");
   const roomRemakeMigration = readFileSync(new URL("../supabase/migrations/20260724170000_room_remake_tracking.sql", import.meta.url), "utf8");
@@ -552,6 +574,11 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(roomCancelPolicyMigration, /cancelPenaltyWaived/);
   assert.match(roomCancelPolicyMigration, /nullif\(current_post\.scheduled_at, ''\)::timestamptz/);
   assert.match(roomCancelPolicyMigration, /nullif\(current_match\.scheduled_at, ''\)::timestamptz/);
+  assert.match(roomCancelTimezoneMigration, /rankball_scheduled_at_kst/);
+  assert.match(roomCancelTimezoneMigration, /at time zone 'Asia\/Seoul'/);
+  assert.match(roomCancelTimezoneMigration, /rankball_match_start_action_pre_server_time/);
+  assert.match(roomCancelTimezoneMigration, /interval ''10 minutes''/);
+  assert.doesNotMatch(roomCancelTimezoneMigration, /delete\s+from|drop\s+table|truncate\s+table/i);
   assert.match(cancelledScheduleMigration, /user_room_feed_inactive_profile_status_idx/);
   assert.match(scheduledAtTypeFixMigration, /pg_get_functiondef/);
   assert.match(scheduledAtTypeFixMigration, /nullif\(current_post\.scheduled_at/);
@@ -564,6 +591,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   assert.match(roomRemakeGrantMigration, /grant select on table public\.room_remake_events[\s\S]*to service_role/);
   assert.match(recruitingPage, /참가자가 있으면 규칙 변경은 각 참가자의 확인이 필요합니다/);
   assert.match(recruitingPage, /같은 설정으로 다시 만들기/);
+  assert.match(recruitingPage, /getRoomCancellationConfirmMessage/);
   assert.match(recruitingPage, /remakeSourceMatchId/);
   assert.match(createMatchPage, /getRoomRemakeWarningCopy/);
   assert.match(createMatchPage, /remakeSourceId, remakeSourceMatchId/);

@@ -8,10 +8,11 @@ import "../../styles/match-attendance.css";
 const ERROR_LABELS = Object.freeze({
   match_attendance_qr_disabled: "이 방은 QR 출석을 사용하지 않습니다.",
   match_attendance_qr_locked: "QR 출석 운영 시간이 끝났습니다.",
-  match_attendance_qr_permission_denied: "방장 또는 배정 심판만 QR을 표시할 수 있습니다.",
+  match_attendance_qr_permission_denied: "이 경기의 QR 운영 권한이 없습니다. 대회 경기는 배정 심판만 운영합니다.",
   match_attendance_not_checkin_time: "출석 정리는 경기 10분 전부터 가능합니다.",
   match_attendance_resize_unbalanced: "양쪽 출석 인원 차이가 커서 지원 경기 방식으로 줄일 수 없습니다.",
   match_attendance_resize_locked: "경기 시작 전에만 출석 인원 기준으로 방 크기를 바꿀 수 있습니다.",
+  match_attendance_resize_tournament_locked: "대회 경기는 출석 인원에 맞춰 경기 방식이나 확정 명단을 자동 변경하지 않습니다.",
 });
 
 function getErrorLabel(error) {

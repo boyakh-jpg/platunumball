@@ -23,6 +23,10 @@ function isTrue(value) {
   return value === true || String(value).toLowerCase() === "true";
 }
 
+function isTournamentMatch(match = {}) {
+  return Boolean(match.tournament_id) || match.visibility === "tournament";
+}
+
 function getSideSize(mode = "") {
   const size = Number.parseInt(String(mode), 10);
   return SUPPORTED_SIDE_SIZES.includes(size) ? size : 5;
@@ -132,9 +136,9 @@ async function loadMatch(context, matchId) {
 }
 
 function assertQrMatch(match) {
+  const qrEligible = match.visibility === "public" || isTournamentMatch(match);
   if (
-    match.visibility !== "public"
-    || match.tournament_id
+    !qrEligible
     || !["", "match"].includes(String(match.rules?.recordType || ""))
     || !isTrue(match.rules?.qrAttendanceEnabled)
   ) {
@@ -146,7 +150,10 @@ function assertQrMatch(match) {
 }
 
 function assertOperator(match, profileId) {
-  if (![match.created_by, match.referee_id].filter(Boolean).includes(profileId)) {
+  const operatorIds = isTournamentMatch(match)
+    ? [match.referee_id].filter(Boolean)
+    : [match.created_by, match.referee_id].filter(Boolean);
+  if (!operatorIds.includes(profileId)) {
     const error = new Error("match_attendance_qr_permission_denied");
     error.code = "42501";
     throw error;
@@ -183,6 +190,7 @@ export default async function handler(request, response) {
 
     assertOperator(match, context.profileId);
     if (action === "resize") {
+      if (isTournamentMatch(match)) throw new Error("match_attendance_resize_tournament_locked");
       const { data, error } = await context.supabase.rpc("rankball_match_attendance_resize_action", {
         p_actor_profile_id: context.profileId,
         p_match_id: matchId,
@@ -206,6 +214,7 @@ export default async function handler(request, response) {
       requiresCleanup,
       checkinOpen,
       canResize: !match.started_at
+        && !isTournamentMatch(match)
         && checkinOpen
         && Boolean(summary.recommendedMode)
         && (summary.recommendedMode !== match.mode || requiresCleanup),

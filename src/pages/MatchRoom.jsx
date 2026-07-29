@@ -60,6 +60,11 @@ import {
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
+import {
+  getRoomCancellationActionLabel,
+  getRoomCancellationConfirmMessage,
+  getRoomCancellationPolicy,
+} from "../lib/roomFlow.js";
 import "../styles/matchroom-arena.css";
 
 const statusMeta = {
@@ -343,6 +348,10 @@ export default function MatchRoom({ app }) {
       ? { label: "참가 확인 대기", tone: "orange" }
       : statusMeta[match.status] ?? { label: "상태 확인 중", tone: "blue" };
   const cancelCopy = getMatchCancelCopy(match);
+  const cancellationPolicy = isSharedRecord
+    ? { allowed: true, penalty: 0, waived: false, waiverReason: "" }
+    : getRoomCancellationPolicy(match);
+  const cancelActionLabel = getRoomCancellationActionLabel(cancelCopy.actionLabel, cancellationPolicy);
   const teamAAgreement = getAgreementStatus(match, app.state.teams, "teamA");
   const teamBAgreement = getAgreementStatus(match, app.state.teams, "teamB");
   const currentUserSideName = getPlayerSideName(match, app.currentUser.id);
@@ -393,7 +402,15 @@ export default function MatchRoom({ app }) {
   const currentUserCanSubmit = canEditDisputeDraft || currentUserEditablePlayerIds.length > 0;
   const canSubmitLiveResult = resultEntryPermission.canSubmitLive;
   const canSubmitResult = resultEntryPermission.canSubmit;
-  const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
+  const canCancel = ["contract", "agreed"].includes(match.status)
+    && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost)
+    && cancellationPolicy.allowed;
+  const requestCancelMatch = () => {
+    if (!canCancel) return;
+    const message = getRoomCancellationConfirmMessage(cancelCopy.actionLabel, cancellationPolicy);
+    if (typeof window !== "undefined" && !window.confirm(message)) return;
+    void app.actions.cancelMatch(match.id);
+  };
   const manualFinalizationStatus = getMatchManualFinalizationStatus(match);
   const canFinalizeMatch = Boolean(
     !isSharedRecord &&
@@ -896,7 +913,7 @@ export default function MatchRoom({ app }) {
             <Badge tone={canCancel || canDeleteSoloRecord ? "orange" : "neutral"}>{canDeleteSoloRecord ? "삭제 가능" : canCancel ? "취소 가능" : "잠김"}</Badge>
           </div>
           <p className="muted">{canDeleteSoloRecord ? "이 개인 기록은 내 기록에서 삭제할 수 있습니다." : canCancel ? `현재 운영 권한으로 ${cancelCopy.actionLabel}가 가능합니다.` : `현재 단계에서는 ${cancelCopy.actionLabel}가 잠겼습니다.`}</p>
-          <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>{cancelCopy.actionLabel}</Button>
+          <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={requestCancelMatch}>{cancelActionLabel}</Button>
           {canDeleteSoloRecord ? (
             <Button type="button" variant="secondary" className="danger-button" onClick={deleteSoloRecord}>개인 기록 삭제</Button>
           ) : null}
@@ -1317,7 +1334,7 @@ export default function MatchRoom({ app }) {
                 </label>
                 <div className="match-action-row">
                   <Button type="button" variant="secondary" disabled={!canRequestMatchDispute} onClick={submitDispute}>{hasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
-                  <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>{cancelCopy.actionLabel}</Button>
+                  <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={requestCancelMatch}>{cancelActionLabel}</Button>
                   <Button type="button" variant="secondary" className="danger-button" disabled={!canVoid} onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button>
                   <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, reportReason)}>신고 접수</Button>
                 </div>

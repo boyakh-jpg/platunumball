@@ -14688,3 +14688,141 @@ end
 $$;
 
 select pg_notify('pgrst', 'reload schema');
+
+create or replace function public.rankball_scheduled_at_kst(p_value text)
+returns timestamptz
+language plpgsql
+immutable
+set search_path = public
+as $$
+declare
+  safe_value text := nullif(btrim(p_value), '');
+begin
+  if safe_value is null then
+    return null;
+  end if;
+  if safe_value ~* '(z|[+-][0-9]{2}:?[0-9]{2})$' then
+    return safe_value::timestamptz;
+  end if;
+  return safe_value::timestamp at time zone 'Asia/Seoul';
+exception
+  when others then
+    return null;
+end;
+$$;
+
+revoke all on function public.rankball_scheduled_at_kst(text)
+from public, anon, authenticated, service_role;
+
+do $patch$
+declare
+  target record;
+  function_def text;
+begin
+  for target in
+    select *
+    from (values
+      (
+        'public.rankball_recruiting_close_action(text,text)',
+        'nullif(current_post.scheduled_at, '''')::timestamptz',
+        'public.rankball_scheduled_at_kst(current_post.scheduled_at)'
+      ),
+      (
+        'public.rankball_match_terminal_action(text,text,text,text)',
+        'nullif(current_match.scheduled_at, '''')::timestamptz',
+        'public.rankball_scheduled_at_kst(current_match.scheduled_at)'
+      )
+    ) values_table(signature, old_fragment, new_fragment)
+  loop
+    if to_regprocedure(target.signature) is null then
+      raise exception 'room_cancel_policy_function_missing: %', target.signature;
+    end if;
+    function_def := pg_get_functiondef(to_regprocedure(target.signature));
+    if strpos(function_def, target.new_fragment) > 0 then
+      continue;
+    end if;
+    if strpos(function_def, target.old_fragment) = 0 then
+      raise exception 'room_cancel_policy_schedule_shape_changed: %', target.signature;
+    end if;
+    execute replace(function_def, target.old_fragment, target.new_fragment);
+  end loop;
+end;
+$patch$;
+
+do $patch$
+declare
+  signature text;
+  start_signature text;
+  function_def text;
+  old_fragment text := 'if now() < scheduled_at_kst then';
+  new_fragment text := 'if now() < scheduled_at_kst - interval ''10 minutes'' then';
+begin
+  start_signature := case
+    when to_regprocedure(
+      'public.rankball_match_start_action_pre_server_time(text,text,text,text,jsonb)'
+    ) is not null
+      then 'public.rankball_match_start_action_pre_server_time(text,text,text,text,jsonb)'
+    else 'public.rankball_match_start_action(text,text,text,text,jsonb)'
+  end;
+  foreach signature in array array[
+    'public.rankball_match_checkin_action(text,text,text,text)',
+    start_signature
+  ]
+  loop
+    if to_regprocedure(signature) is null then
+      raise exception 'match_checkin_window_function_missing: %', signature;
+    end if;
+    function_def := pg_get_functiondef(to_regprocedure(signature));
+    if strpos(function_def, new_fragment) > 0 then
+      continue;
+    end if;
+    if strpos(function_def, old_fragment) = 0 then
+      raise exception 'match_checkin_window_shape_changed: %', signature;
+    end if;
+    execute replace(function_def, old_fragment, new_fragment);
+  end loop;
+end;
+$patch$;
+
+select pg_notify('pgrst', 'reload schema');
+
+do $patch$
+declare
+  function_signature text := 'public.rankball_match_attendance_qr_action(text,text)';
+  function_def text;
+  patched_def text;
+begin
+  if to_regprocedure(function_signature) is null then
+    raise exception 'match_attendance_qr_function_missing' using errcode = '42883';
+  end if;
+  function_def := pg_get_functiondef(to_regprocedure(function_signature));
+  if strpos(
+    function_def,
+    'if (current_match.visibility <> ''public'' and current_match.tournament_id is null)'
+  ) = 0 then
+    patched_def := regexp_replace(
+      function_def,
+      'if current_match\.visibility <> ''public''[[:space:]]+or current_match\.tournament_id is not null',
+      'if (current_match.visibility <> ''public'' and current_match.tournament_id is null)'
+    );
+    if patched_def = function_def then
+      raise exception 'match_attendance_qr_eligibility_shape_changed' using errcode = '23514';
+    end if;
+    execute patched_def;
+  end if;
+end;
+$patch$;
+
+update public.matches
+set rules = jsonb_set(coalesce(rules, '{}'::jsonb), '{qrAttendanceEnabled}', 'true'::jsonb, true),
+    updated_at = clock_timestamp()
+where tournament_id is not null
+  and status in ('contract', 'agreed')
+  and ended_at is null
+  and cancelled_at is null
+  and voided_at is null
+  and coalesce(nullif(rules->>'recordType', ''), 'match') = 'match'
+  and lower(coalesce(rules->>'gameClockEnabled', 'true')) = 'true'
+  and lower(coalesce(rules->>'qrAttendanceEnabled', 'false')) <> 'true';
+
+select pg_notify('pgrst', 'reload schema');

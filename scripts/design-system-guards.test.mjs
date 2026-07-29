@@ -848,7 +848,7 @@ test("알파 온보딩은 기록 중심 무료 핵심 흐름을 안내한다", (
   assert.match(gettingStartedSource, /필수 웹 기능은 평생 무료/);
   assert.match(gettingStartedSource, /선수·팀 초대/);
   assert.match(gettingStartedSource, /초대 수락은 출석이 아닙니다/);
-  assert.match(gettingStartedSource, /QR 출석은 경기시계를 사용하는 일반 공개 매칭방에서만 선택/);
+  assert.match(gettingStartedSource, /QR 출석은 경기시계를 사용하는 일반 공개 매칭과 대회 경기에서 사용/);
   assert.match(gettingStartedSource, /QR 토큰은 5분마다 바뀌며 경기 10분 전부터 로그인한 사전 등록 선수/);
   assert.match(gettingStartedSource, /QR 출석과 실제 출전은 다릅니다/);
   assert.match(gettingStartedSource, /체크인 참가자 표는 3초, 경기 전 QR 패널은 15초, 경기시계와 지각 QR은 3초/);

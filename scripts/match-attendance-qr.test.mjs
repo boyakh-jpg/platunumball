@@ -33,9 +33,14 @@ const {
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
 
-test("QR 출석 기본값은 공개 경쟁전만 켜진다", () => {
+test("QR 출석 기본값은 공개 경쟁전과 대회에서 켜진다", () => {
   assert.equal(normalizeMatchRules({
     visibility: "public",
+    matchPurpose: "competitive",
+    formationMode: "prearranged",
+  }).qrAttendanceEnabled, true);
+  assert.equal(normalizeMatchRules({
+    visibility: "tournament",
     matchPurpose: "competitive",
     formationMode: "prearranged",
   }).qrAttendanceEnabled, true);
@@ -494,11 +499,13 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const placementAndTeamMmrSql = await readSource("supabase/migrations/20260728110000_player_placement_and_roster_team_mmr.sql");
   const unifiedRosterSql = await readSource("supabase/migrations/20260727110000_unified_match_roster_transition.sql");
   const simplifiedLiveMatchSql = await readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql");
+  const tournamentQrSql = await readSource("supabase/migrations/20260729121000_enable_tournament_qr_attendance.sql");
   const hostFinalizationSql = await readSource("supabase/migrations/20260728130000_general_match_host_finalization.sql");
   const liveAuthoritySql = await readSource("supabase/migrations/20260728143000_referee_live_match_authority.sql");
   const scoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727144000_allow_score_only_postgame_roster.sql");
   const enforcedScoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727145000_enforce_score_only_postgame_roster.sql");
   const syncMatchSource = await readSource("server/api/matches/sync-match.js");
+  const attendanceApiSource = await readSource("server/api/matches/attendance-qr.js");
   const recruitingSource = await readSource("src/pages/Recruiting.jsx");
   assert.match(sql, /interval '10 minutes'/u);
   assert.match(sql, /candidate_size <= current_side_size/u);
@@ -510,6 +517,12 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(sql, /postgameAddedPlayerIds/u);
   assert.match(sql, /'mmrExcluded', safe_action = 'addMatchLatePlayer'/u);
   assert.match(sql, /grant execute on function public\.rankball_match_attendance_qr_action/u);
+  assert.match(tournamentQrSql, /current_match\.tournament_id is null/u);
+  assert.doesNotMatch(tournamentQrSql, /delete\s+from|drop\s+table|truncate\s+table/iu);
+  assert.match(attendanceApiSource, /const qrEligible = match\.visibility === "public" \|\| isTournamentMatch\(match\)/u);
+  assert.match(attendanceApiSource, /isTournamentMatch\(match\)[\s\S]*?\[match\.referee_id\]/u);
+  assert.match(attendanceApiSource, /canResize: !match\.started_at[\s\S]*?!isTournamentMatch\(match\)/u);
+  assert.match(recruitingSource, /selectedMatchRules\.qrAttendanceEnabled/u);
   assert.match(clockAccuracySql, /rankball_match_clock_effective_elapsed_ms/u);
   assert.match(clockAccuracySql, /started_active_elapsed_ms/u);
   assert.match(clockAccuracySql, /ended_active_elapsed_ms/u);

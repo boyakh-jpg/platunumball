@@ -155,6 +155,8 @@ import {
   getPickupTeamAssignmentPolicy,
   getPostgameRecordVerification,
   getRecruitingRuleAcknowledgement,
+  getRoomCancellationActionLabel,
+  getRoomCancellationConfirmMessage,
   getRoomCancellationPolicy,
   getRoomEditAvailability,
   getRoomPhaseViewModel,
@@ -4303,6 +4305,20 @@ function RecruitingRoomModalReady({
               ? "팀 파티 포함"
               : "개인 매칭");
         const sourceMatchCancelCopy = getMatchCancelCopy(sourceMatch);
+        const sourceMatchCancelActionLabel = getRoomCancellationActionLabel(
+          sourceMatchCancelCopy.actionLabel,
+          roomCancellationPolicy,
+        );
+        const requestSourceMatchCancellation = () => {
+          const message = getRoomCancellationConfirmMessage(sourceMatchCancelCopy.actionLabel, roomCancellationPolicy);
+          if (typeof window !== "undefined" && !window.confirm(message)) return;
+          void app.actions.cancelMatch(sourceMatch.id);
+        };
+        const requestRecruitingCancellation = () => {
+          const message = getRoomCancellationConfirmMessage("경기 취소", roomCancellationPolicy);
+          if (typeof window !== "undefined" && !window.confirm(message)) return;
+          void app.actions.closeRecruitingPost(selectedPost.id);
+        };
         const canRemakeRoom = mine && (
           Boolean(recruitingRoomTerminalStatus) ||
           sourceMatch?.status === "cancelled"
@@ -5623,9 +5639,9 @@ function RecruitingRoomModalReady({
                         className="danger-button"
                         disabled={!roomCancellationPolicy.allowed}
                         title={!roomCancellationPolicy.allowed ? "경기 시작 2시간 전부터는 취소할 수 없습니다." : ""}
-                        onClick={() => app.actions.cancelMatch(sourceMatch.id)}
+                        onClick={requestSourceMatchCancellation}
                       >
-                        {sourceMatchCancelCopy.actionLabel}
+                        {sourceMatchCancelActionLabel}
                       </Button>
                     ) : null}
                     {canDeleteSourceSoloRecord ? (
@@ -5911,9 +5927,9 @@ function RecruitingRoomModalReady({
                     className="danger-button"
                     disabled={!roomCancellationPolicy.allowed}
                     title={!roomCancellationPolicy.allowed ? "경기 시작 2시간 전부터는 취소할 수 없습니다." : ""}
-                    onClick={() => app.actions.closeRecruitingPost(selectedPost.id)}
+                    onClick={requestRecruitingCancellation}
                   >
-                    {roomCancellationPolicy.penalty > 0 ? `경기 취소 · 신뢰도 -${roomCancellationPolicy.penalty}` : "경기 취소"}
+                    {getRoomCancellationActionLabel("경기 취소", roomCancellationPolicy)}
                   </Button>
                 ) : null}
               </div>

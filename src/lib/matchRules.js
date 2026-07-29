@@ -176,11 +176,12 @@ export function normalizeMatchRules(source = {}, { mode = "3v3" } = {}) {
     || source.qrAttendanceEnabled === false
     || source.qrAttendanceEnabled === "true"
     || source.qrAttendanceEnabled === "false";
-  const qrAttendanceDefault = source.visibility === "public"
-    && source.matchPurpose === "competitive";
+  const qrAttendanceEligible = source.visibility === "public"
+    || source.visibility === "tournament";
+  const qrAttendanceDefault = source.visibility === "tournament"
+    || (source.visibility === "public" && source.matchPurpose === "competitive");
   const qrAttendanceEnabled = gameClockEnabled
-    && source.visibility !== "private"
-    && source.visibility !== "tournament"
+    && qrAttendanceEligible
     && (qrAttendanceExplicit
       ? source.qrAttendanceEnabled === true || source.qrAttendanceEnabled === "true"
       : qrAttendanceDefault);

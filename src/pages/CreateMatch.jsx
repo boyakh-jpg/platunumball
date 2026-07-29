@@ -1804,6 +1804,7 @@ export default function CreateMatch({
                     ...getMatchModeChangePatch(draft, mode),
                     recordType: RECORD_TYPES.match,
                     visibility: "tournament",
+                    qrAttendanceEnabled: undefined,
                     timingType: "scheduled",
                     hostJoinMode: "team",
                     teamOnly: true,
