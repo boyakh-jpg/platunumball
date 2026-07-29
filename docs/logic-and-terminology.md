@@ -3048,6 +3048,9 @@ flowchart TD
 4. `내 팀 경기`로 전환할 때 이전 개인 일정의 날짜·관계·유형 필터를 초기화한다. 팀 경기 권한과 데이터 범위는 소속 팀 관계만 사용한다.
 5. 개인 일정과 `내 팀 경기`는 각각 마지막으로 성공한 서버 응답의 경기 ID 집합을 표시 원본으로 사용한다. 전역 앱 state에 다른 화면이나 이전 요청이 병합한 경기 row가 남아 있어도 일정 숫자와 목록에 추가하지 않는다. 서버가 빈 배열을 반환하면 권위 있는 `0건`으로 처리한다.
 6. 일정 화면의 자동 조회가 실패해도 같은 화면 수명 안에서 즉시 반복 요청하지 않는다. 오류 상태와 명시적 `다시 시도`, 이후 브라우저 재활성화 조회만 허용한다.
+7. 경기 entity는 `matchEntities[matchId]`로 조회하고, 화면별 목록은 `matchLists.personal`, `matchLists.team`, `matchLists.play`의 서버 응답 ID 순서만 사용한다. 기존 `state.matches` 배열은 mutation·레거시 helper 호환용이며 일정·플레이 화면의 목록 원본으로 직접 필터링하지 않는다.
+8. 각 `matchLists` scope는 `ids`, `status(idle/loading/ready/error)`, `error`를 한 상태로 관리한다. 개인 일정 scope만 모집방 ID도 함께 보관한다. 페이지별 `loaded/loading/error` boolean을 중복 생성하지 않는다.
+9. scope 조회 성공은 기존 ID에 누적하지 않고 이번 서버 응답 ID로 교체한다. entity 병합과 목록 범위 교체는 별도 동작이며 목록·숫자·달력은 공용 scope selector 결과에서만 계산한다.
 
 ## 2026-07-18 기록 권한과 점수 원본 DB 강제
 

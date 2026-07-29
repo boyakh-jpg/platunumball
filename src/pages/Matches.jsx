@@ -23,9 +23,13 @@ import {
   getRoomKindFromMatch,
   getPublicRoomTimingStatus,
   getMatchHostPlayerId,
+  getMatchListScope,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
-  getAuthoritativeScheduleMatches,
+  isMatchListInitialLoading,
+  MATCH_LIST_SCOPES,
+  MATCH_LIST_STATUSES,
+  selectMatchListMatches,
   getTournamentMatchDisplayTitle,
   getSafeMatchSide as getSafeMatchSideBase,
   isMatchRecordMatch,
@@ -908,7 +912,7 @@ export function MatchRoomModal({
   const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
   const [openedMatchId, setOpenedMatchId] = useState("");
   const requestedMatchDetailsRef = useRef(new Set());
-  const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
+  const matchesById = app.matchEntities ?? Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
   const selectedMatch = matchId ? matchesById[matchId] ?? null : null;
   const selectedMatchRoom = useMemo(() => {
     if (!selectedMatch) return { post: null, error: null };
@@ -1262,30 +1266,16 @@ export default function Matches({ app }) {
     loading: false,
     exhausted: true,
     error: "",
-    recruitingScheduleChecked: false,
-    recruitingScheduleLoading: false,
-    recruitingSchedulePostIds: [],
-    scheduleMatchIds: [],
-    teamScheduleChecked: false,
-    teamScheduleLoading: false,
-    teamScheduleError: "",
-    teamScheduleMatchIds: [],
   };
+  const personalMatchList = getMatchListScope(app.matchLists, MATCH_LIST_SCOPES.PERSONAL);
+  const teamMatchList = getMatchListScope(app.matchLists, MATCH_LIST_SCOPES.TEAM);
   const authoritativePersonalMatches = useMemo(
-    () => getAuthoritativeScheduleMatches(
-      app.state.matches,
-      matchPagination.scheduleMatchIds,
-      matchPagination.recruitingScheduleChecked,
-    ),
-    [app.state.matches, matchPagination.recruitingScheduleChecked, matchPagination.scheduleMatchIds],
+    () => selectMatchListMatches(matchesById, app.matchLists, MATCH_LIST_SCOPES.PERSONAL),
+    [app.matchLists, matchesById],
   );
   const authoritativeTeamMatches = useMemo(
-    () => getAuthoritativeScheduleMatches(
-      app.state.matches,
-      matchPagination.teamScheduleMatchIds,
-      matchPagination.teamScheduleChecked,
-    ),
-    [app.state.matches, matchPagination.teamScheduleChecked, matchPagination.teamScheduleMatchIds],
+    () => selectMatchListMatches(matchesById, app.matchLists, MATCH_LIST_SCOPES.TEAM),
+    [app.matchLists, matchesById],
   );
   const personalBaseFilteredMatches = useMemo(() => {
     return [...authoritativePersonalMatches]
@@ -1381,11 +1371,10 @@ export default function Matches({ app }) {
   }, [app.currentUser.id, app.remoteReady, refreshScheduleFromServer]);
 
   const matchPageRecruitingPosts = useMemo(() => {
-    if (!matchPagination.recruitingScheduleChecked) return [];
-    const scheduleIds = new Set(matchPagination.recruitingSchedulePostIds ?? []);
+    const scheduleIds = new Set(personalMatchList.recruitingPostIds);
     if (!scheduleIds.size) return [];
     return (app.state.recruitingPosts ?? []).filter((post) => scheduleIds.has(post.id));
-  }, [app.state.recruitingPosts, matchPagination.recruitingScheduleChecked, matchPagination.recruitingSchedulePostIds]);
+  }, [app.state.recruitingPosts, personalMatchList.recruitingPostIds]);
 
   const calendarMatches = useMemo(() => {
     const recruitingRooms = [...matchPageRecruitingPosts]
@@ -1458,8 +1447,10 @@ export default function Matches({ app }) {
   const todoCount = viewButtonCounts.todo ?? 0;
   const scheduledCount = viewButtonCounts.scheduled ?? 0;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
-  const personalScheduleLoading = app.remoteReady === false || matchPagination.loading;
-  const scheduleLoading = personalScheduleLoading || (panelMode === "team" && matchPagination.teamScheduleLoading);
+  const activeMatchList = panelMode === "team" ? teamMatchList : personalMatchList;
+  const personalScheduleLoading = app.remoteReady === false || isMatchListInitialLoading(personalMatchList);
+  const scheduleLoading = app.remoteReady === false || isMatchListInitialLoading(activeMatchList);
+  const scheduleError = activeMatchList.error;
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
     ? `${panelMode === "team" ? "내 팀 일정" : "내 일정"} 확인 중`
@@ -1469,9 +1460,9 @@ export default function Matches({ app }) {
   const displayScheduledCount = personalScheduleLoading ? "..." : scheduledCount;
   const getDisplayViewButtonCount = (view) => (personalScheduleLoading ? "..." : getViewButtonCount(view));
   const teamScheduleCount = useMemo(() => {
-    if (!matchPagination.teamScheduleChecked) return "";
+    if (teamMatchList.status === MATCH_LIST_STATUSES.IDLE) return "";
     return getScheduleItemsForView(teamBaseFilteredMatches, [], VIEWS[0], app.currentUser.id, false).length;
-  }, [app.currentUser.id, matchPagination.teamScheduleChecked, teamBaseFilteredMatches]);
+  }, [app.currentUser.id, teamBaseFilteredMatches, teamMatchList.status]);
   return (
     <div className="page-stack om-match-page">
       <section className="om-match-hero ui-design-app-hero">
@@ -1540,7 +1531,7 @@ export default function Matches({ app }) {
             <strong>내 팀 경기</strong>
             <em>소속 팀 진행·예정</em>
           </span>
-          <b>{matchPagination.teamScheduleLoading ? "..." : teamScheduleCount}</b>
+          <b>{teamMatchList.status === MATCH_LIST_STATUSES.LOADING ? "..." : teamScheduleCount}</b>
         </button>
         <button
           type="button"
@@ -1795,13 +1786,21 @@ export default function Matches({ app }) {
           <span>{scheduleCountLabel}</span>
         </div>
 
-        {panelMode === "team" && matchPagination.teamScheduleError ? (
+        {scheduleError && !displayScheduleItems.length ? (
           <EmptyState
             tone="error"
-            title="내 팀 경기 조회 실패"
+            title={panelMode === "team" ? "내 팀 경기 조회 실패" : "내 일정 조회 실패"}
             description="경기 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
             action={(
-              <Button variant="secondary" size="sm" onClick={() => app.actions.loadMatchTeamSchedule?.({ force: true })}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => (
+                  panelMode === "team"
+                    ? app.actions.loadMatchTeamSchedule?.({ force: true })
+                    : app.actions.loadMatchRecruitingSchedule?.({ force: true })
+                )}
+              >
                 다시 시도
               </Button>
             )}
@@ -1891,7 +1890,7 @@ export default function Matches({ app }) {
             />
           );
         })}
-        {matchPagination.error ? <div className="om-load-more"><span>경기 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</span></div> : null}
+        {scheduleError || matchPagination.error ? <div className="om-load-more"><span>최신 경기 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</span></div> : null}
           </>
         ) : scheduleLoading ? null : (
           <EmptyState

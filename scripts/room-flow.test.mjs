@@ -23,25 +23,60 @@ import {
   isMatchPregameSlotManagementOpen,
   isMatchRecordParticipantSetupOpen,
 } from "../src/lib/roomFlow.js";
-import { getAuthoritativeScheduleMatches, getMatchSideLeaderId } from "../src/lib/matchUtils.js";
+import {
+  createMatchListStore,
+  getMatchEntityMap,
+  getMatchListScope,
+  getMatchSideLeaderId,
+  isMatchListInitialLoading,
+  MATCH_LIST_SCOPES,
+  MATCH_LIST_STATUSES,
+  selectMatchListMatches,
+  updateMatchListScope,
+} from "../src/lib/matchUtils.js";
 import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from "../src/lib/matchCreationPolicies.js";
 import { getRecruitingInvitationSenderName, getRecruitingLobby } from "../src/lib/recruiting.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
-test("schedule counts use only the last authoritative server result", () => {
+test("match list scopes replace server result IDs without leaking other feeds", () => {
   const matches = [
     { id: "current-team-match" },
     { id: "stale-match-from-another-screen" },
   ];
+  const entities = getMatchEntityMap(matches);
+  const initialStore = createMatchListStore();
+  const loadingStore = updateMatchListScope(initialStore, MATCH_LIST_SCOPES.TEAM, {
+    status: MATCH_LIST_STATUSES.LOADING,
+  });
+  const readyStore = updateMatchListScope(loadingStore, MATCH_LIST_SCOPES.TEAM, {
+    ids: ["current-team-match", "current-team-match"],
+    status: MATCH_LIST_STATUSES.READY,
+  });
+  const refreshingStore = updateMatchListScope(readyStore, MATCH_LIST_SCOPES.TEAM, {
+    status: MATCH_LIST_STATUSES.LOADING,
+  });
+  const failedStore = updateMatchListScope(refreshingStore, MATCH_LIST_SCOPES.TEAM, {
+    status: MATCH_LIST_STATUSES.ERROR,
+    error: "network_failed",
+  });
+  const emptyStore = updateMatchListScope(failedStore, MATCH_LIST_SCOPES.TEAM, {
+    ids: [],
+    status: MATCH_LIST_STATUSES.READY,
+    error: "",
+  });
 
   assert.deepEqual(
-    getAuthoritativeScheduleMatches(matches, ["current-team-match"], true).map((match) => match.id),
+    selectMatchListMatches(entities, readyStore, MATCH_LIST_SCOPES.TEAM).map((match) => match.id),
     ["current-team-match"],
   );
-  assert.deepEqual(getAuthoritativeScheduleMatches(matches, [], true), []);
-  assert.equal(getAuthoritativeScheduleMatches(matches, [], false), matches);
-  assert.deepEqual(getAuthoritativeScheduleMatches(null, [], false), []);
+  assert.equal(getMatchListScope(readyStore, MATCH_LIST_SCOPES.TEAM).status, MATCH_LIST_STATUSES.READY);
+  assert.equal(isMatchListInitialLoading(getMatchListScope(loadingStore, MATCH_LIST_SCOPES.TEAM)), true);
+  assert.equal(isMatchListInitialLoading(getMatchListScope(refreshingStore, MATCH_LIST_SCOPES.TEAM)), false);
+  assert.deepEqual(selectMatchListMatches(entities, failedStore, MATCH_LIST_SCOPES.TEAM).map((match) => match.id), ["current-team-match"]);
+  assert.deepEqual(selectMatchListMatches(entities, emptyStore, MATCH_LIST_SCOPES.TEAM), []);
+  assert.deepEqual(selectMatchListMatches(entities, initialStore, MATCH_LIST_SCOPES.TEAM), []);
+  assert.deepEqual(selectMatchListMatches({}, readyStore, MATCH_LIST_SCOPES.TEAM), []);
 });
 
 test("cancelled instant rooms stay visible for their calendar date", async () => {
@@ -89,15 +124,19 @@ test("schedule, recruiting, and play lists refresh server data on entry and brow
   assert.match(recorderSource, /refreshPlayMatchesFromServer\(\{ force: true \}\)/);
   assert.match(recorderSource, /window\.addEventListener\("focus", refreshWhenVisible\)/);
   assert.match(recorderSource, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
-  assert.doesNotMatch(recorderSource, /if \(!app\.remoteReady \|\| !user\.id \|\| app\.playMatchesLoaded\) return/);
+  assert.doesNotMatch(recorderSource, /app\.playMatchesLoaded/);
   assert.match(appDataSource, /if \(matchRecruitingSchedulePromiseRef\.current\) return matchRecruitingSchedulePromiseRef\.current;/);
   assert.match(appDataSource, /if \(matchTeamSchedulePromiseRef\.current\) return matchTeamSchedulePromiseRef\.current;/);
   assert.match(appDataSource, /if \(playMatchesPromiseRef\.current\) return playMatchesPromiseRef\.current;/);
   assert.match(matchesSource, /panelMode:\s*"team",[\s\S]*?branchFilter:\s*"all",[\s\S]*?relationFilter:\s*"all",[\s\S]*?dateFilter:\s*""/);
-  assert.match(appDataSource, /scheduleMatchIds:\s*getStateMatchIds\(remoteState\)/);
-  assert.match(appDataSource, /teamScheduleMatchIds:\s*\(remoteState\.matches \?\? \[\]\)/);
-  assert.match(matchesSource, /getAuthoritativeScheduleMatches\([\s\S]*?matchPagination\.scheduleMatchIds/);
-  assert.match(matchesSource, /getAuthoritativeScheduleMatches\([\s\S]*?matchPagination\.teamScheduleMatchIds/);
+  assert.match(appDataSource, /updateMatchListScope\(prev,\s*MATCH_LIST_SCOPES\.PERSONAL/);
+  assert.match(appDataSource, /updateMatchListScope\(prev,\s*MATCH_LIST_SCOPES\.TEAM/);
+  assert.match(appDataSource, /updateMatchListScope\(prev,\s*MATCH_LIST_SCOPES\.PLAY/);
+  assert.match(matchesSource, /selectMatchListMatches\(matchesById,\s*app\.matchLists,\s*MATCH_LIST_SCOPES\.PERSONAL\)/);
+  assert.match(matchesSource, /selectMatchListMatches\(matchesById,\s*app\.matchLists,\s*MATCH_LIST_SCOPES\.TEAM\)/);
+  assert.match(recorderSource, /selectMatchListMatches\(app\.matchEntities,\s*app\.matchLists,\s*MATCH_LIST_SCOPES\.PLAY\)/);
+  assert.doesNotMatch(matchesSource, /matchPagination\.(scheduleMatchIds|teamScheduleMatchIds|teamScheduleLoading)/);
+  assert.doesNotMatch(recorderSource, /app\.state\.matches\s*\.filter/);
   assert.doesNotMatch(matchesSource, /if \(!success\) scheduleLoadRequestedRef\.current\.delete\(requestKey\)/);
 });
 

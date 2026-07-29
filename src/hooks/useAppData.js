@@ -128,6 +128,13 @@ import { clearDemoStorage, readProfileBindings, readProfileCache, writeProfileBi
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
 import { isNotificationFromBlockedUser } from "../lib/notifications.js";
 import {
+  createMatchListStore,
+  getMatchEntityMap,
+  MATCH_LIST_SCOPES,
+  MATCH_LIST_STATUSES,
+  updateMatchListScope,
+} from "../lib/matchUtils.js";
+import {
   ADMIN_DEFAULT_PAGE_LIMIT,
   DEFAULT_ADMIN_QUEUE_MODE,
   DEFAULT_ADMIN_SECTION,
@@ -689,7 +696,23 @@ function getStateRecruitingPostIds(state = {}) {
 }
 
 function getStateMatchIds(state = {}) {
-  return (state.matches ?? []).map((match) => match?.id).filter(Boolean);
+  return (state?.matches ?? []).map((match) => match?.id).filter(Boolean);
+}
+
+function createInitialMatchListStore(state = {}) {
+  if (isSupabaseConfigured) return createMatchListStore();
+  const localScope = {
+    ids: getStateMatchIds(state),
+    status: MATCH_LIST_STATUSES.READY,
+  };
+  return createMatchListStore({
+    [MATCH_LIST_SCOPES.PERSONAL]: {
+      ...localScope,
+      recruitingPostIds: getStateRecruitingPostIds(state),
+    },
+    [MATCH_LIST_SCOPES.TEAM]: localScope,
+    [MATCH_LIST_SCOPES.PLAY]: localScope,
+  });
 }
 
 function getRecruitingRegionRequest(page = {}) {
@@ -1397,7 +1420,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, playMatchesLoaded: true });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, playMatchListReady: true });
     }
     if (options.endpoint === "profileRecords") {
       const result = await postServerAction(
@@ -1525,7 +1548,8 @@ export function useAppData(authUser = null, appLocation = null) {
   }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
-  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], scheduleMatchIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "", teamScheduleMatchIds: [] });
+  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "" });
+  const [matchLists, setMatchLists] = useState(() => createInitialMatchListStore(state));
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "", page: null, cacheKey: "" });
   const [adminState, setAdminState] = useState(null);
@@ -1534,7 +1558,6 @@ export function useAppData(authUser = null, appLocation = null) {
   const [profileRecordArchive, setProfileRecordArchive] = useState(EMPTY_RECORD_ARCHIVE);
   const [publicProfileRecordArchives, setPublicProfileRecordArchives] = useState({});
   const [teamRecordArchives, setTeamRecordArchives] = useState({});
-  const [playMatchesLoaded, setPlayMatchesLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const [serverActionPendingCount, setServerActionPendingCount] = useState(0);
   const homeRouteLoadKey = useMemo(() => getHomeRouteLoadKey(appLocation), [appLocation?.pathname]);
@@ -1708,7 +1731,8 @@ export function useAppData(authUser = null, appLocation = null) {
       recentMatchMutationTimesRef.current = new Map();
       syncedDiscordDeliveryIdsRef.current = new Set();
       setRemoteReady(!isSupabaseConfigured);
-      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], scheduleMatchIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "", teamScheduleMatchIds: [] });
+      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "" });
+      setMatchLists(createInitialMatchListStore(stateRef.current));
       setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "", page: null, cacheKey: "" });
       setAdminState(null);
@@ -1717,7 +1741,6 @@ export function useAppData(authUser = null, appLocation = null) {
       setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
       setPublicProfileRecordArchives({});
       setTeamRecordArchives({});
-      setPlayMatchesLoaded(false);
       return undefined;
     }
 
@@ -1765,7 +1788,6 @@ export function useAppData(authUser = null, appLocation = null) {
     setProfileRecordArchive(EMPTY_RECORD_ARCHIVE);
     setPublicProfileRecordArchives({});
     setTeamRecordArchives({});
-    setPlayMatchesLoaded(false);
     const initialLoadOptions = getInitialStateLoadOptions(appLocation);
     homeRouteLoadKeyRef.current = initialLoadOptions.endpoint === "homeLoad" ? "homeLoad" : getHomeRouteLoadKey(appLocation);
     const initialLoad = initialLoadOptions.profileOnly
@@ -1793,15 +1815,18 @@ export function useAppData(authUser = null, appLocation = null) {
             exhausted: initialMatchLimit <= 0 || (matchPageHasExhausted ? remoteMeta.matchPage.exhausted : (maintainedState.matches?.length ?? 0) < initialMatchLimit),
             error: remoteMeta.matchPage?.error ?? "",
             cursor: remoteMeta.matchPage?.cursor ?? getMatchPaginationCursor(maintainedState.matches),
-            recruitingScheduleChecked,
-            recruitingScheduleLoading: false,
-            recruitingSchedulePostIds: recruitingScheduleChecked ? getStateRecruitingPostIds(maintainedState) : [],
-            scheduleMatchIds: recruitingScheduleChecked ? getStateMatchIds(maintainedState) : [],
-            teamScheduleChecked: false,
-            teamScheduleLoading: false,
-            teamScheduleError: "",
-            teamScheduleMatchIds: [],
           });
+          setMatchLists(createMatchListStore({
+            [MATCH_LIST_SCOPES.PERSONAL]: recruitingScheduleChecked ? {
+              ids: getStateMatchIds(maintainedState),
+              recruitingPostIds: getStateRecruitingPostIds(maintainedState),
+              status: MATCH_LIST_STATUSES.READY,
+            } : undefined,
+            [MATCH_LIST_SCOPES.PLAY]: remoteMeta.playMatchListReady === true ? {
+              ids: getStateMatchIds(maintainedState),
+              status: MATCH_LIST_STATUSES.READY,
+            } : undefined,
+          }));
           setRecruitingPagination({
             loading: false,
             exhausted: initialRecruitingLimit <= 0 || (recruitingPageHasExhausted ? remoteMeta.recruitingPage.exhausted : (maintainedState.recruitingPosts?.length ?? 0) < initialRecruitingLimit),
@@ -1821,7 +1846,6 @@ export function useAppData(authUser = null, appLocation = null) {
             profileRecordArchiveRef.current = remoteMeta.profileRecordArchive;
             setProfileRecordArchive(remoteMeta.profileRecordArchive);
           }
-          setPlayMatchesLoaded(remoteMeta.playMatchesLoaded === true);
         }
         remoteReadyRef.current = true;
         setRemoteReady(true);
@@ -1830,7 +1854,18 @@ export function useAppData(authUser = null, appLocation = null) {
         if (!mounted) return;
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
-        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [], scheduleMatchIds: [], teamScheduleChecked: false, teamScheduleLoading: false, teamScheduleError: "", teamScheduleMatchIds: [] });
+        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "" });
+        const failedScope = initialLoadOptions.endpoint === "playMatches"
+          ? MATCH_LIST_SCOPES.PLAY
+          : ["matchesList", "homeLoad"].includes(initialLoadOptions.endpoint)
+            ? MATCH_LIST_SCOPES.PERSONAL
+            : "";
+        setMatchLists(failedScope
+          ? updateMatchListScope(createMatchListStore(), failedScope, {
+            status: MATCH_LIST_STATUSES.ERROR,
+            error: error.message ?? "state_load_failed",
+          })
+          : createMatchListStore());
         setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
@@ -1873,11 +1908,15 @@ export function useAppData(authUser = null, appLocation = null) {
           exhausted: remoteMeta.matchPage?.exhausted ?? prev.exhausted,
           error: remoteMeta.matchPage?.error ?? "",
           cursor: remoteMeta.matchPage?.cursor ?? prev.cursor,
-          recruitingScheduleChecked: prev.recruitingScheduleChecked || Boolean(remoteMeta.matchPage?.recruitingScheduleChecked),
-          recruitingScheduleLoading: false,
-          recruitingSchedulePostIds: remoteMeta.matchPage?.recruitingScheduleChecked ? getStateRecruitingPostIds(maintainedState) : prev.recruitingSchedulePostIds,
-          scheduleMatchIds: remoteMeta.matchPage?.recruitingScheduleChecked ? getStateMatchIds(maintainedState) : prev.scheduleMatchIds,
         }));
+        if (remoteMeta.matchPage?.recruitingScheduleChecked) {
+          setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PERSONAL, {
+            ids: getStateMatchIds(maintainedState),
+            recruitingPostIds: getStateRecruitingPostIds(maintainedState),
+            status: MATCH_LIST_STATUSES.READY,
+            error: "",
+          }));
+        }
         setRecruitingPagination((prev) => ({
           ...prev,
           exhausted: remoteMeta.recruitingPage?.exhausted ?? prev.exhausted,
@@ -1892,6 +1931,10 @@ export function useAppData(authUser = null, appLocation = null) {
         homeRouteLoadKeyRef.current = "";
         if (mounted) {
           setMatchPagination((prev) => ({ ...prev, loading: false, error: error.message ?? "home_route_load_failed" }));
+          setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PERSONAL, {
+            status: MATCH_LIST_STATUSES.ERROR,
+            error: error.message ?? "home_route_load_failed",
+          }));
         }
       });
     return () => {
@@ -2181,12 +2224,18 @@ export function useAppData(authUser = null, appLocation = null) {
       if (result?.post || result?.createdMatch) {
         setState((prev) => mergeServerRoomResult(prev, result));
         const changedPostId = result?.post?.id;
-        if (changedPostId) {
-          setMatchPagination((prev) => {
-            const ids = Array.isArray(prev.recruitingSchedulePostIds) ? prev.recruitingSchedulePostIds : [];
-            return ids.includes(changedPostId)
-              ? prev
-              : { ...prev, recruitingSchedulePostIds: [...ids, changedPostId] };
+        const changedMatchId = result?.createdMatch?.id;
+        if (changedPostId || changedMatchId) {
+          setMatchLists((prev) => {
+            const scope = prev[MATCH_LIST_SCOPES.PERSONAL];
+            return updateMatchListScope(prev, MATCH_LIST_SCOPES.PERSONAL, {
+              ids: changedMatchId && !scope.ids.includes(changedMatchId)
+                ? [...scope.ids, changedMatchId]
+                : scope.ids,
+              recruitingPostIds: changedPostId && !scope.recruitingPostIds.includes(changedPostId)
+                ? [...scope.recruitingPostIds, changedPostId]
+                : scope.recruitingPostIds,
+            });
           });
         }
       }
@@ -2408,8 +2457,6 @@ export function useAppData(authUser = null, appLocation = null) {
           exhausted: pageHasExhausted ? result.page.exhausted : rawMatchCount < pageLimit,
           error: "",
           cursor: result?.page?.cursor ?? cursor,
-          recruitingScheduleChecked: prev.recruitingScheduleChecked || Boolean(result?.page?.recruitingScheduleChecked),
-          recruitingScheduleLoading: prev.recruitingScheduleLoading,
         }));
         return nextMatches.length;
       } catch (error) {
@@ -2426,11 +2473,12 @@ export function useAppData(authUser = null, appLocation = null) {
 
   const loadMatchRecruitingSchedule = useCallback(async (options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
-    const force = options?.force === true;
     if (matchRecruitingSchedulePromiseRef.current) return matchRecruitingSchedulePromiseRef.current;
-    if (matchPagination.recruitingScheduleLoading && !force) return false;
     const promise = (async () => {
-      setMatchPagination((prev) => ({ ...prev, recruitingScheduleLoading: true, error: "" }));
+      setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PERSONAL, {
+        status: MATCH_LIST_STATUSES.LOADING,
+        error: "",
+      }));
       try {
         const result = await trackedPostServerAction(
           "/api/matches/list",
@@ -2451,19 +2499,24 @@ export function useAppData(authUser = null, appLocation = null) {
         );
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         setState((prev) => mergeRemoteMatchPage(prev, remoteState, { forceRecruitingPostIds: new Set(getStateRecruitingPostIds(remoteState)) }));
+        setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PERSONAL, {
+          ids: getStateMatchIds(remoteState),
+          recruitingPostIds: getStateRecruitingPostIds(remoteState),
+          status: MATCH_LIST_STATUSES.READY,
+          error: "",
+        }));
         setMatchPagination((prev) => ({
           ...prev,
-          recruitingScheduleLoading: false,
           error: "",
-          recruitingScheduleChecked: true,
-          recruitingSchedulePostIds: getStateRecruitingPostIds(remoteState),
-          scheduleMatchIds: getStateMatchIds(remoteState),
           cursor: prev.cursor || result?.page?.cursor || getMatchPaginationCursor(remoteState.matches ?? []),
         }));
         return remoteState.recruitingPosts?.length ?? 0;
       } catch (error) {
         console.warn("Match recruiting schedule load failed.", error.message);
-        setMatchPagination((prev) => ({ ...prev, recruitingScheduleLoading: false, recruitingScheduleChecked: true, error: error.message ?? "match_recruiting_schedule_load_failed" }));
+        setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PERSONAL, {
+          status: MATCH_LIST_STATUSES.ERROR,
+          error: error.message ?? "match_recruiting_schedule_load_failed",
+        }));
         return false;
       }
     })().finally(() => {
@@ -2471,15 +2524,16 @@ export function useAppData(authUser = null, appLocation = null) {
     });
     matchRecruitingSchedulePromiseRef.current = promise;
     return promise;
-  }, [authEmail, authUserId, matchPagination.recruitingScheduleLoading, setState, trackedPostServerAction]);
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadMatchTeamSchedule = useCallback(async (options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
-    const force = options?.force === true;
     if (matchTeamSchedulePromiseRef.current) return matchTeamSchedulePromiseRef.current;
-    if ((matchPagination.teamScheduleChecked || matchPagination.teamScheduleLoading) && !force) return true;
     const promise = (async () => {
-      setMatchPagination((prev) => ({ ...prev, teamScheduleLoading: true, teamScheduleError: "" }));
+      setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.TEAM, {
+        status: MATCH_LIST_STATUSES.LOADING,
+        error: "",
+      }));
       try {
         const result = await trackedPostServerAction(
           "/api/matches/list",
@@ -2500,25 +2554,25 @@ export function useAppData(authUser = null, appLocation = null) {
         );
         const remoteState = normalizeServerState(result?.state ?? {});
         setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        const teamMatchIds = (remoteState.matches ?? [])
+          .filter((match) => match.__feedRelations?.includes("team"))
+          .map((match) => match.id);
+        setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.TEAM, {
+          ids: teamMatchIds,
+          status: MATCH_LIST_STATUSES.READY,
+          error: "",
+        }));
         setMatchPagination((prev) => ({
           ...prev,
-          teamScheduleLoading: false,
-          teamScheduleChecked: true,
           error: "",
-          teamScheduleError: "",
-          teamScheduleMatchIds: (remoteState.matches ?? [])
-            .filter((match) => match.__feedRelations?.includes("team"))
-            .map((match) => match.id),
           cursor: prev.cursor || result?.page?.cursor || getMatchPaginationCursor(remoteState.matches ?? []),
         }));
-        return (remoteState.matches ?? []).filter((match) => match.__feedRelations?.includes("team")).length;
+        return teamMatchIds.length;
       } catch (error) {
         console.warn("Match team schedule load failed.", error.message);
-        setMatchPagination((prev) => ({
-          ...prev,
-          teamScheduleLoading: false,
-          teamScheduleChecked: true,
-          teamScheduleError: error.message ?? "match_team_schedule_load_failed",
+        setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.TEAM, {
+          status: MATCH_LIST_STATUSES.ERROR,
+          error: error.message ?? "match_team_schedule_load_failed",
         }));
         return false;
       }
@@ -2527,7 +2581,7 @@ export function useAppData(authUser = null, appLocation = null) {
     });
     matchTeamSchedulePromiseRef.current = promise;
     return promise;
-  }, [authEmail, authUserId, matchPagination.teamScheduleChecked, matchPagination.teamScheduleLoading, setState, trackedPostServerAction]);
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadMatchDetail = useCallback(async (matchId) => {
     if (!isSupabaseConfigured || !authUserId || !matchId) return false;
@@ -2564,6 +2618,10 @@ export function useAppData(authUser = null, appLocation = null) {
     if (!isSupabaseConfigured || !authUserId) return false;
     if (playMatchesPromiseRef.current) return playMatchesPromiseRef.current;
     const promise = (async () => {
+      setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PLAY, {
+        status: MATCH_LIST_STATUSES.LOADING,
+        error: "",
+      }));
       try {
         const result = await trackedPostServerAction(
           "/api/matches/list",
@@ -2580,10 +2638,18 @@ export function useAppData(authUser = null, appLocation = null) {
         const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
         const nextMatches = remoteState.matches ?? [];
         setState((prev) => mergeRemoteMatchPage(prev, remoteState));
-        setPlayMatchesLoaded(true);
+        setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PLAY, {
+          ids: getStateMatchIds(remoteState),
+          status: MATCH_LIST_STATUSES.READY,
+          error: "",
+        }));
         return nextMatches.length;
       } catch (error) {
         console.warn("Play match load failed.", error.message);
+        setMatchLists((prev) => updateMatchListScope(prev, MATCH_LIST_SCOPES.PLAY, {
+          status: MATCH_LIST_STATUSES.ERROR,
+          error: error.message ?? "play_match_load_failed",
+        }));
         return false;
       }
     })().finally(() => {
@@ -4759,7 +4825,11 @@ export function useAppData(authUser = null, appLocation = null) {
       ),
       updateTeamMemberRole: (teamId, userId, role) => applyTeamMutation(teamId, (prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),
       removeTeamMember: (teamId, userId) => applyTeamMutation(teamId, (prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
-      reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
+      reset: () => {
+        const nextState = resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail });
+        setState(nextState);
+        setMatchLists(createInitialMatchListStore(nextState));
+      },
       });
     },
     [applyFavoriteToggle, authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadAdminSection, loadCourtDetail, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMatchTeamSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadPlayMatches, loadReportableMatches, loadProfileRecords, loadPublicProfileRecords, loadTeamRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitCourtDetailReview, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
@@ -4769,15 +4839,17 @@ export function useAppData(authUser = null, appLocation = null) {
   const safeCurrentUser = currentUser
     ? { ...currentUser, representativeTeamId: state.settings?.representativeTeamId ?? currentUser.representativeTeamId ?? "" }
     : createProfileShell(authUserId ?? safeCurrentUserId, authEmail);
+  const matchEntities = useMemo(() => getMatchEntityMap(state.matches), [state.matches]);
   return {
     state: { ...state, currentUserId: safeCurrentUserId || safeCurrentUser.id },
+    matchEntities,
+    matchLists,
     currentUser: safeCurrentUser,
     currentUserId: safeCurrentUserId || safeCurrentUser.id,
     profileBound: true,
     profileLocked,
     remoteReady,
     serverBusy: serverActionPendingCount > 0,
-    playMatchesLoaded,
     adminContext,
     adminState,
     adminStatus,

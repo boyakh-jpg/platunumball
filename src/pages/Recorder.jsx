@@ -11,6 +11,7 @@ import { getRegisteredCourts } from "../lib/courts.js";
 import {
   cleanRoomTitle,
   getMatchHostPlayerId,
+  getMatchListScope,
   getMatchPlayerIds,
   getMatchRecordWindow,
   getMatchReservePlayerIds,
@@ -26,6 +27,9 @@ import {
   isMatchPartyTeamParty,
   isMatchReferee,
   isMatchSideTeamParty,
+  isMatchListInitialLoading,
+  MATCH_LIST_SCOPES,
+  selectMatchListMatches,
 } from "../lib/matchUtils.js";
 import { MATCH_SIDES, REMOTE_LIST_REFRESH_MIN_INTERVAL_MS, SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
 import { MatchRoomModal } from "./Matches.jsx";
@@ -125,20 +129,22 @@ export default function Recorder({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryMatchId = searchParams.get("match") ?? "";
   const [selectedMatchId, setSelectedMatchId] = useState(queryMatchId);
-  const [recorderLoading, setRecorderLoading] = useState(false);
-  const [recorderLoadError, setRecorderLoadError] = useState("");
-  const recorderLoadRef = useRef("");
   const lastRecorderRefreshAtRef = useRef(0);
 
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
+  const playMatchList = getMatchListScope(app.matchLists, MATCH_LIST_SCOPES.PLAY);
+  const scopedPlayMatches = useMemo(
+    () => selectMatchListMatches(app.matchEntities, app.matchLists, MATCH_LIST_SCOPES.PLAY),
+    [app.matchEntities, app.matchLists],
+  );
   const matches = useMemo(
     () =>
-      app.state.matches
+      scopedPlayMatches
         .filter((match) => canAccessActiveMatch(match, user, app.state))
         .sort((a, b) => String(a.scheduledAt ?? a.createdAt ?? "").localeCompare(String(b.scheduledAt ?? b.createdAt ?? ""))),
-    [app.state, user],
+    [app.state, scopedPlayMatches, user],
   );
 
   useEffect(() => {
@@ -151,27 +157,17 @@ export default function Recorder({ app }) {
     if (!loadPlayMatches) return false;
     const now = Date.now();
     if (!force && now - lastRecorderRefreshAtRef.current < REMOTE_LIST_REFRESH_MIN_INTERVAL_MS) return false;
-    const requestKey = user.id;
-    if (recorderLoadRef.current === requestKey) return false;
-    recorderLoadRef.current = requestKey;
     lastRecorderRefreshAtRef.current = now;
-    setRecorderLoading(true);
-    setRecorderLoadError("");
     try {
       const result = await loadPlayMatches();
       if (result === false) {
         lastRecorderRefreshAtRef.current = 0;
-        setRecorderLoadError("진행 경기 목록을 불러오지 못했습니다.");
         return false;
       }
       return true;
     } catch {
       lastRecorderRefreshAtRef.current = 0;
-      setRecorderLoadError("진행 경기 목록을 불러오지 못했습니다.");
       return false;
-    } finally {
-      if (recorderLoadRef.current === requestKey) recorderLoadRef.current = "";
-      setRecorderLoading(false);
     }
   }, [app.actions.loadPlayMatches, app.remoteReady, user.id]);
 
@@ -198,7 +194,6 @@ export default function Recorder({ app }) {
   }, [app.remoteReady, refreshPlayMatchesFromServer, user.id]);
 
   const retryRecorderLoad = () => {
-    setRecorderLoadError("");
     void refreshPlayMatchesFromServer({ force: true });
   };
 
@@ -221,7 +216,8 @@ export default function Recorder({ app }) {
     }, { replace: true });
   };
 
-  const recorderPending = !matches.length && !recorderLoadError && (!app.playMatchesLoaded || recorderLoading);
+  const recorderPending = !matches.length && (app.remoteReady === false || isMatchListInitialLoading(playMatchList));
+  const recorderLoadError = playMatchList.error ? "진행 경기 목록을 불러오지 못했습니다." : "";
 
   return (
     <>
