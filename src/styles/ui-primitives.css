@@ -158,11 +158,14 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: center;
   width: max-content;
+  min-height: calc(var(--ui-badge-font-size) + 12px);
   padding: var(--ui-badge-padding);
   color: var(--ui-badge-color);
   font-size: var(--ui-badge-font-size);
   font-weight: var(--ui-badge-font-weight);
+  line-height: 1;
   white-space: nowrap;
   background: var(--ui-badge-bg);
   border: 1px solid var(--ui-badge-border);

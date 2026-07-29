@@ -5164,11 +5164,17 @@ function RecruitingRoomModalReady({
                   ) : null}
                 </div>
                 <div className="arena-room-rule-summary">
-                  {selectedRoomPolicyRows.map((row) => <span key={row.label}>{row.value}</span>)}
-                  <span>{getMeetingPointSummary(selectedMatchRules, selectedRoomPolicySource.timingType, selectedRoomPolicySource.mode)}</span>
-                  {selectedPost.ranked !== false ? <span>{selectedRange.label}</span> : <span>친선 · 티어 자유</span>}
+                  {selectedRoomPolicyRows.map((row) => (
+                    <Badge key={row.label} tone="neutral" className="arena-room-rule-badge">{row.value}</Badge>
+                  ))}
+                  <Badge tone="neutral" className="arena-room-rule-badge">
+                    {getMeetingPointSummary(selectedMatchRules, selectedRoomPolicySource.timingType, selectedRoomPolicySource.mode)}
+                  </Badge>
+                  <Badge tone="neutral" className="arena-room-rule-badge">
+                    {selectedPost.ranked !== false ? selectedRange.label : "친선 · 티어 자유"}
+                  </Badge>
                   {selectedRoomOperationRows.map((row) => (
-                    <span key={row.label}>{row.label} · {row.value}</span>
+                    <Badge key={row.label} tone="neutral" className="arena-room-rule-badge">{row.label} · {row.value}</Badge>
                   ))}
                 </div>
                 <dl className="arena-room-rule-detail-grid">
@@ -5180,8 +5186,8 @@ function RecruitingRoomModalReady({
                   ))}
                 </dl>
                 <div className="arena-room-rule-summary detail">
-                  <span>공격권: {selectedMatchRules.attackRule}</span>
-                  <span>파울: {selectedMatchRules.foulRule}</span>
+                  <Badge tone="neutral" className="arena-room-rule-badge">공격권: {selectedMatchRules.attackRule}</Badge>
+                  <Badge tone="neutral" className="arena-room-rule-badge">파울: {selectedMatchRules.foulRule}</Badge>
                 </div>
                 <div className="arena-room-referee-line">
                   <strong>심판</strong>

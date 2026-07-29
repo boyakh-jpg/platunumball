@@ -1068,3 +1068,23 @@ test("모바일 방모달 손잡이와 규칙 준비물 뱃지는 표준 위치�
     /\[\.\.\.selectedMatchRuleRows,\s*\.\.\.selectedRoomOperationRows\]/,
   );
 });
+
+test("방모달 뱃지와 메모 및 팀명은 공용 타이포그래피를 사용한다", () => {
+  assert.match(
+    primitiveStyles,
+    /\.ui-badge\s*\{[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*min-height:\s*calc\(var\(--ui-badge-font-size\) \+ 12px\);[^}]*font-size:\s*var\(--ui-badge-font-size\);[^}]*line-height:\s*1;/,
+  );
+  assert.equal(count(pageSources.recruiting, 'className="arena-room-rule-badge"'), 6);
+  assert.match(
+    recruitingStyles,
+    /\.arena-room-rule-panel \.arena-room-rule-badge\s*\{[^}]*font-size:\s*var\(--ui-badge-font-size\);[^}]*font-weight:\s*var\(--ui-badge-font-weight\);[^}]*line-height:\s*1;/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-room-rule-panel \.arena-details-memo\s*\{[^}]*background:\s*var\(--ui-card-bg\);/,
+  );
+  assert.match(
+    recruitingStyles,
+    /\.arena-lobby-team-head strong\s*\{[^}]*font-family:\s*var\(--sports-display-font\);/,
+  );
+});
