@@ -166,10 +166,16 @@ export default function Season({ app }) {
             </div>
             <div className="season-race-list team-race-list ranking-table ui-design-borderless-list">
               {nationalTeamRows.slice(0, 5).map((team, index) => (
-                <Link className="ranking-row ui-design-soft-surface" key={team.id} to={`/app/teams/${team.id}`}>
+                <Link
+                  aria-label={`${team.name} 팀 상세 보기`}
+                  className="ranking-row ui-design-soft-surface"
+                  key={team.id}
+                  state={{ teamPreview: team }}
+                  to={`/app/teams/${team.id}`}
+                >
                   <span className={`rank rank-${index + 1}`}>{index + 1}</span>
                   <span className="ranking-name">
-                    <TeamEmblem team={team} size="xs" />
+                    <TeamEmblem team={team} size="md" />
                     <span className="season-ranking-copy">
                       <b>{team.name}</b>
                       <em>{team.seasonWins}승 {team.seasonLosses}패 · {team.seasonDelta >= 0 ? "+" : ""}{team.seasonDelta} · {team.mmr} MMR</em>

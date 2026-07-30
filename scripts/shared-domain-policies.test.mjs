@@ -1402,10 +1402,22 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.match(seasonPage, /getPlayerSeasonRows\(app\.state\.users, app\.state\.matches, season, "전체"\)/);
   assert.match(seasonPage, /전국 개인 승격권/);
   assert.match(seasonPage, /이번 시즌 플레이/);
+  assert.match(seasonPage, /state=\{\{ teamPreview: team \}\}/);
+  assert.match(seasonPage, /<TeamEmblem team=\{team\} size="md" \/>/);
   assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
   assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
   assert.match(rankingsPage, /useState\("integrated"\)/);
   assert.match(styles, /\.season-race-list > \.player-hover-trigger/);
+});
+
+test("team detail keeps navigation preview and fetches missing authoritative team data", async () => {
+  const teamDetailPage = await readSource("src/pages/TeamDetail.jsx");
+  assert.match(teamDetailPage, /location\.state\?\.teamPreview\?\.id === teamId/);
+  assert.match(teamDetailPage, /const authoritativeTeam = app\.state\.teams\.find/);
+  assert.match(teamDetailPage, /const team = authoritativeTeam \?\? previewTeam/);
+  assert.match(teamDetailPage, /loadDirectory\?\.\(\{ force: true, teamId \}\)/);
+  assert.match(teamDetailPage, /if \(!authoritativeTeam \|\| authoritativeTeam\.membersPartial === true\) refreshTeam\(\);/);
+  assert.match(teamDetailPage, /!team && app\.remoteReady !== false && Boolean\(loadDirectory\)/);
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {

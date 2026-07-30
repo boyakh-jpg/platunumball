@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
@@ -36,10 +36,15 @@ const inviteRoleOptions = managedTeamRoleOptions;
 
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
+  const location = useLocation();
   const loadDirectory = app.actions.loadDirectory;
   const loadTeamRecords = app.actions.loadTeamRecords;
   const loadTeamEmblemStatus = app.actions.loadTeamEmblemStatus;
-  const team = app.state.teams.find((item) => item.id === teamId);
+  const previewTeam = location.state?.teamPreview?.id === teamId
+    ? location.state.teamPreview
+    : null;
+  const authoritativeTeam = app.state.teams.find((item) => item.id === teamId);
+  const team = authoritativeTeam ?? previewTeam;
   const teamRecordArchive = app.recordArchives?.teams?.[teamId] ?? { rows: [], page: {}, loaded: false, loading: false, error: "" };
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
   const [memberQuery, setMemberQuery] = useState("");
@@ -89,8 +94,8 @@ export default function TeamDetail({ app }) {
 
   useEffect(() => {
     if (app.remoteReady === false || !teamId) return undefined;
-    const refreshTeam = () => loadDirectory?.({ force: true });
-    if (team?.membersPartial === true) refreshTeam();
+    const refreshTeam = () => loadDirectory?.({ force: true, teamId });
+    if (!authoritativeTeam || authoritativeTeam.membersPartial === true) refreshTeam();
     window.addEventListener("focus", refreshTeam);
     const handleVisibilityChange = () => {
       if (!document.hidden) refreshTeam();
@@ -100,7 +105,7 @@ export default function TeamDetail({ app }) {
       window.removeEventListener("focus", refreshTeam);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [app.remoteReady, loadDirectory, team?.membersPartial, teamId]);
+  }, [app.remoteReady, authoritativeTeam?.membersPartial, loadDirectory, teamId]);
 
   useEffect(() => {
     if (app.remoteReady === false || !team?.id || !loadTeamRecords || teamRecordArchive.loaded || teamRecordArchive.loading || teamRecordArchive.error) return;
@@ -109,7 +114,8 @@ export default function TeamDetail({ app }) {
 
   const directoryPending = app.remoteReady === false
     || app.directoryStatus?.loading
-    || (app.directoryStatus?.loaded === false && !app.directoryStatus?.error);
+    || (app.directoryStatus?.loaded === false && !app.directoryStatus?.error)
+    || (!team && app.remoteReady !== false && Boolean(loadDirectory) && !app.directoryStatus?.error);
   if (!team && directoryPending) return <BasketballLoader overlay label="팀 불러오는 중" />;
   if (!team) return <Navigate to="/app/teams" replace />;
 
