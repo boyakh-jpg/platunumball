@@ -481,7 +481,7 @@ export function approvePracticeDummyPlayers(state, matchId) {
     operatorId,
     repository.finalizeMatchByAuthority,
     matchId,
-    { disputesAcknowledged: true },
+    { disputesAcknowledged: true, now: Date.now() + 4 * 60 * 1000 },
   );
 }
 

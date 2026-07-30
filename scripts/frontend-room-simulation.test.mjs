@@ -6,6 +6,7 @@ import {
   PRACTICE_SELF_ID,
   PRACTICE_TEAM_A_ID,
   PRACTICE_TEAM_B_ID,
+  approvePracticeDummyPlayers,
   completePracticeAttendance,
   confirmPracticeRecruitingRoom,
   createPracticeMatchRecord,
@@ -80,6 +81,7 @@ function runIndividualRoom({ mode, benchCapacity, referee }) {
   const managerId = refereeId || PRACTICE_SELF_ID;
   state = apply(state, "startMatch", [confirmed.matchId], managerId, "경기 시작");
   state = submitPracticeSampleResult(state, confirmed.matchId);
+  state = approvePracticeDummyPlayers(state, confirmed.matchId);
   const match = state.matches.find((item) => item.id === confirmed.matchId);
   assert.ok(match.endedAt);
   assert.equal(match.teamA.players.length, MODE_CAPACITY[mode]);
@@ -87,6 +89,7 @@ function runIndividualRoom({ mode, benchCapacity, referee }) {
   assert.equal(match.reservePlayers.teamA.length, benchCapacity);
   assert.equal(match.reservePlayers.teamB.length, benchCapacity);
   assert.equal(match.refereeId || "", refereeId || "");
+  assert.equal(match.status, "confirmed");
 }
 
 function getTeamMemberIds(state, teamId) {
@@ -95,13 +98,18 @@ function getTeamMemberIds(state, teamId) {
     ?.members.map((member) => member.userId) ?? [];
 }
 
-function runTeamRoom({ mode, benchCapacity }) {
+function runTeamRoom({ mode, benchCapacity, referee }) {
   let state = createPracticeState({}, { name: "프론트 시뮬 방장" });
+  const refereeId = referee
+    ? state.users.find((user) => user.officialReferee === true)?.id
+    : "";
   const created = createPracticeRecruitingRoom(state, {
-    title: `${mode} 팀전 후보 ${benchCapacity}`,
+    title: `${mode} 팀전 후보 ${benchCapacity} 심판 ${referee ? "있음" : "없음"}`,
     mode,
     sideCapacity: MODE_CAPACITY[mode],
     benchCapacity,
+    refereeWanted: referee,
+    refereeId,
     hostJoinMode: "team",
     formationMode: "prearranged",
     rules: { formationMode: "prearranged", matchPurpose: "friendly", gameClockEnabled: false },
@@ -149,13 +157,99 @@ function runTeamRoom({ mode, benchCapacity }) {
   ], teamBIds[0], "B팀장 명단 확정");
 
   const confirmed = confirmRoom(state, created.postId);
-  const match = confirmed.state.matches.find((item) => item.id === confirmed.matchId);
+  state = completePracticeAttendance(confirmed.state, confirmed.matchId);
+  const managerId = refereeId || PRACTICE_SELF_ID;
+  state = apply(state, "startMatch", [confirmed.matchId], managerId, "팀전 경기 시작");
+  state = submitPracticeSampleResult(state, confirmed.matchId);
+  state = approvePracticeDummyPlayers(state, confirmed.matchId);
+  const match = state.matches.find((item) => item.id === confirmed.matchId);
   assert.equal(match.teamA.teamId, PRACTICE_TEAM_A_ID);
   assert.equal(match.teamB.teamId, PRACTICE_TEAM_B_ID);
   assert.equal(match.teamA.players.length, capacity);
   assert.equal(match.teamB.players.length, capacity);
   assert.equal(match.reservePlayers.teamA.length, benchCapacity);
   assert.equal(match.reservePlayers.teamB.length, benchCapacity);
+  assert.equal(match.refereeId || "", refereeId || "");
+  assert.ok(match.endedAt);
+  assert.equal(match.status, "confirmed");
+}
+
+function runPickupRoom({
+  mode,
+  benchCapacity,
+  referee,
+  assignmentMode,
+  rotationMode,
+}) {
+  let state = createPracticeState({}, { name: "프론트 시뮬 방장" });
+  const refereeId = referee
+    ? state.users.find((user) => user.officialReferee === true)?.id
+    : "";
+  const created = createPracticeRecruitingRoom(state, {
+    title: `${mode} 픽업 후보 ${benchCapacity}`,
+    mode,
+    sideCapacity: MODE_CAPACITY[mode],
+    benchCapacity,
+    refereeWanted: referee,
+    refereeId,
+    formationMode: "pickup",
+    matchIntent: "pickup",
+    rules: {
+      formationMode: "pickup",
+      matchIntent: "pickup",
+      matchPurpose: "friendly",
+      gameClockEnabled: false,
+      benchCapacity,
+    },
+  });
+  assert.ok(created.postId);
+  state = acceptPendingInvitations(created.state, created.postId);
+  const confirmed = confirmRoom(state, created.postId);
+  state = completePracticeAttendance(confirmed.state, confirmed.matchId);
+  const managerId = refereeId || PRACTICE_SELF_ID;
+  state = apply(
+    state,
+    "generatePickupSideAssignment",
+    [confirmed.matchId, assignmentMode],
+    managerId,
+    `${assignmentMode} 픽업 배정`,
+  );
+
+  const draftMatch = state.matches.find((item) => item.id === confirmed.matchId);
+  const firstPlayerId = draftMatch.teamA.players[0];
+  const secondPlayerId = draftMatch.teamB.players[0];
+  state = apply(
+    state,
+    "swapPickupMatchPlayers",
+    [confirmed.matchId, firstPlayerId, secondPlayerId],
+    managerId,
+    "픽업 A/B 교환",
+  );
+  state = apply(
+    state,
+    "confirmPickupSideAssignment",
+    [confirmed.matchId, {
+      rotationMode,
+      rotationIntervalMinutes: rotationMode === "interval" ? 3 : undefined,
+    }],
+    managerId,
+    `${rotationMode} 교대 확정`,
+  );
+  state = apply(state, "startMatch", [confirmed.matchId], managerId, "픽업 경기 시작");
+  state = submitPracticeSampleResult(state, confirmed.matchId);
+  state = approvePracticeDummyPlayers(state, confirmed.matchId);
+
+  const match = state.matches.find((item) => item.id === confirmed.matchId);
+  assert.equal(match.rules.pickupTeamAssignmentMode, assignmentMode);
+  assert.equal(match.rules.sideAssignmentStatus, "confirmed");
+  assert.equal(match.rules.rotationMode, rotationMode);
+  assert.equal(match.teamA.players.length, MODE_CAPACITY[mode]);
+  assert.equal(match.teamB.players.length, MODE_CAPACITY[mode]);
+  assert.equal(match.reservePlayers.teamA.length, benchCapacity);
+  assert.equal(match.reservePlayers.teamB.length, benchCapacity);
+  assert.equal(match.refereeId || "", refereeId || "");
+  assert.ok(match.endedAt);
+  assert.equal(match.status, "confirmed");
 }
 
 function getPastKstSchedule() {
@@ -188,12 +282,13 @@ function approveRecordParticipants(state, matchId) {
   return next;
 }
 
-function runMatchRecord(composition) {
+function runMatchRecord(composition, mode) {
   let state = createPracticeState({}, { name: "프론트 시뮬 방장" });
+  const sideCapacity = MODE_CAPACITY[mode];
   const created = createPracticeMatchRecord(state, {
-    title: `${composition} 사후 경기기록`,
-    mode: "3v3",
-    sideCapacity: 3,
+    title: `${mode} ${composition} 사후 경기기록`,
+    mode,
+    sideCapacity,
     recordComposition: composition,
     ...getPastKstSchedule(),
   });
@@ -204,11 +299,11 @@ function runMatchRecord(composition) {
     const playerIds = state.users
       .filter((user) => user.officialReferee !== true)
       .map((user) => user.id)
-      .slice(0, 6);
+      .slice(0, sideCapacity * 2);
     state = apply(state, "setMatchRecordParticipants", [created.matchId, {
       composition,
-      teamAPlayerIds: playerIds.slice(0, 3),
-      teamBPlayerIds: playerIds.slice(3, 6),
+      teamAPlayerIds: playerIds.slice(0, sideCapacity),
+      teamBPlayerIds: playerIds.slice(sideCapacity, sideCapacity * 2),
     }], PRACTICE_SELF_ID, "개인 구성 참가자 확정");
   } else {
     state = apply(state, "setMatchRecordParticipants", [created.matchId, {
@@ -221,12 +316,18 @@ function runMatchRecord(composition) {
     state = apply(state, "setMatchRecordTeamRoster", [
       created.matchId,
       "teamA",
-      { playerIds: teamAIds.slice(0, 3), reservePlayerIds: teamAIds.slice(3, 6) },
+      {
+        playerIds: teamAIds.slice(0, sideCapacity),
+        reservePlayerIds: teamAIds.slice(sideCapacity, sideCapacity + 3),
+      },
     ], teamAIds[0], "A팀 사후 명단 확정");
     state = apply(state, "setMatchRecordTeamRoster", [
       created.matchId,
       "teamB",
-      { playerIds: teamBIds.slice(0, 3), reservePlayerIds: teamBIds.slice(3, 6) },
+      {
+        playerIds: teamBIds.slice(0, sideCapacity),
+        reservePlayerIds: teamBIds.slice(sideCapacity, sideCapacity + 3),
+      },
     ], teamBIds[0], "B팀 사후 명단 확정");
   }
 
@@ -261,25 +362,57 @@ test("프론트 연습방은 인원·후보·심판 조합을 실제 초대 대�
 
 test("프론트 팀전 연습방은 양 팀 선택·팀장 초대·출전/후보 명단을 실제 ID로 확정한다", () => {
   for (const mode of Object.keys(MODE_CAPACITY)) {
-    for (const benchCapacity of [0, 3]) {
-      runTeamRoom({ mode, benchCapacity });
+    for (let benchCapacity = 0; benchCapacity <= 3; benchCapacity += 1) {
+      for (const referee of [false, true]) {
+        runTeamRoom({ mode, benchCapacity, referee });
+      }
     }
   }
 });
 
-test("프론트 사후 경기기록은 개인 구성과 팀 구성·후보 3명·전원 자기 승인을 진행한다", () => {
-  runMatchRecord("individual");
-  runMatchRecord("team");
+test("프론트 픽업 연습방은 모든 인원·후보·심판·배정·교대 조합을 직렬 진행한다", () => {
+  for (const mode of Object.keys(MODE_CAPACITY)) {
+    for (let benchCapacity = 0; benchCapacity <= 3; benchCapacity += 1) {
+      for (const referee of [false, true]) {
+        for (const assignmentMode of ["manual", "random", "mmr_balanced"]) {
+          for (const rotationMode of ["manual", "period", "interval"]) {
+            runPickupRoom({
+              mode,
+              benchCapacity,
+              referee,
+              assignmentMode,
+              rotationMode,
+            });
+          }
+        }
+      }
+    }
+  }
 });
 
-test("팀 초대 수락 뒤 자기 슬롯 패널은 공용 파티 helper를 명시적으로 가져온다", async () => {
-  const [source, pickerSource] = await Promise.all([
+test("프론트 사후 경기기록은 모든 인원의 개인·팀 구성과 후보 3명·전원 자기 승인을 진행한다", () => {
+  for (const mode of Object.keys(MODE_CAPACITY)) {
+    runMatchRecord("individual", mode);
+    runMatchRecord("team", mode);
+  }
+});
+
+test("분리된 방 렌더 모듈은 런타임 의존성을 명시적으로 전달한다", async () => {
+  const [source, pickerSource, dependenciesSource, managementSource] = await Promise.all([
     readFile(
       new URL("../src/components/recruiting/RecruitingRoomCommandPanels.jsx", import.meta.url),
       "utf8",
     ),
     readFile(
       new URL("../src/components/recruiting/RecruitingRoomPickerCore.jsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../src/components/recruiting/RecruitingRoomDependencies.js", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../src/components/recruiting/RecruitingRoomManagementSection.jsx", import.meta.url),
       "utf8",
     ),
   ]);
@@ -290,5 +423,17 @@ test("팀 초대 수락 뒤 자기 슬롯 패널은 공용 파티 helper를 명�
   assert.match(
     pickerSource,
     /import \{[\s\S]*getPlayerPosition,[\s\S]*\} from "\.\/RecruitingRoomSlotCore\.jsx";/,
+  );
+  assert.match(
+    dependenciesSource,
+    /import MatchClockPanel, \{[\s\S]*MatchScoreControls,[\s\S]*\} from "\.\.\/match\/MatchClockPanel\.jsx";/,
+  );
+  assert.match(
+    dependenciesSource,
+    /RECRUITING_ROOM_DEPENDENCIES = \{[\s\S]*MatchClockPanel, MatchScoreControls,/,
+  );
+  assert.match(
+    managementSource,
+    /MatchClockPanel, MatchScoreControls,/,
   );
 });

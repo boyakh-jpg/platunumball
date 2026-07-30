@@ -35,7 +35,7 @@ import SearchPicker from "../common/SearchPicker.jsx";
 import CourtHoverCard from "../court/CourtHoverCard.jsx";
 import ApprovalPanel from "../match/ApprovalPanel.jsx";
 import MatchDisputeQueue from "../match/MatchDisputeQueue.jsx";
-import {
+import MatchClockPanel, {
   MatchScoreControls,
 } from "../match/MatchClockPanel.jsx";
 import MatchAttendanceQrPanel from "../match/MatchAttendanceQrPanel.jsx";
@@ -258,7 +258,7 @@ export const RECRUITING_ROOM_DEPENDENCIES = {
   useNavigate, Clock3, Copy, Crown, MapPin, RefreshCw,
   RotateCcw, Share2, ShieldCheck, Swords, UserRound, UsersRound,
   X, XCircle, Badge, BasketballLoader, Button, EmptyState,
-  NumericStepper, SearchPicker, CourtHoverCard, ApprovalPanel, MatchDisputeQueue, MatchScoreControls,
+  NumericStepper, SearchPicker, CourtHoverCard, ApprovalPanel, MatchDisputeQueue, MatchClockPanel, MatchScoreControls,
   MatchAttendanceQrPanel, MatchOperationsPolicyFields, MmrRangeSelector, MatchRecommendationPanel, PickupParticipantPool, RoomPhaseRenderer,
   MatchFinalizeDialog, MeetingPointFields, RuleSelector, PlayerHoverCard, ProfileEmblem, RefereeHoverCard,
   MatchRecordRosterPanel, MatchSubstitutionPanel, RoomKickPanel, MatchRecordParticipantSetupPanel, TierBadge, TeamEmblem,

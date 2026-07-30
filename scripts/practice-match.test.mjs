@@ -201,17 +201,6 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   assert.ok(state.matches[0].endedAt);
   assert.equal(state.matches[0].status, "agreed");
   state = approvePracticeDummyPlayers(state, confirmed.matchId);
-  assert.equal(state.matches[0].status, "agreed");
-  const finalizableAt = new Date(Date.now() - 4 * 60_000).toISOString();
-  state = {
-    ...state,
-    matches: state.matches.map((match) => match.id === confirmed.matchId ? {
-      ...match,
-      endedAt: finalizableAt,
-      result: { ...match.result, submittedAt: finalizableAt },
-    } : match),
-  };
-  state = approvePracticeDummyPlayers(state, confirmed.matchId);
   assert.equal(state.matches[0].status, "confirmed");
   assert.deepEqual(state.notifications, []);
   assert.deepEqual(state.discordNotificationDeliveries, []);
