@@ -72,6 +72,8 @@ test("match-record team selection avoids PL/pgSQL team id shadowing", () => {
   assert.match(repairMigrationSource, /pg_get_functiondef\(function_signature\)/u);
   assert.match(repairMigrationSource, /selected_team_a_id/u);
   assert.match(repairMigrationSource, /selected_team_b_id/u);
+  assert.match(repairMigrationSource, /\[\[:space:\]\]\*team_a_id text;/u);
+  assert.match(repairMigrationSource, /\[\[:space:\]\]\*selected_team_a_id text;/u);
   assert.match(repairMigrationSource, /match_record_participant_team_id_repair_incomplete/u);
   assert.doesNotMatch(repairMigrationSource, /\b(?:drop table|truncate|delete from)\b/iu);
 

@@ -12,8 +12,15 @@ begin
   select pg_get_functiondef(function_signature)
   into function_definition;
 
-  if position('team_a_id text;' in function_definition) = 0
-     or position('team_b_id text;' in function_definition) = 0 then
+  if function_definition ~ E'(^|\\n)[[:space:]]*selected_team_a_id text;'
+     and function_definition ~ E'(^|\\n)[[:space:]]*selected_team_b_id text;'
+     and function_definition !~ E'(^|\\n)[[:space:]]*team_a_id text;'
+     and function_definition !~ E'(^|\\n)[[:space:]]*team_b_id text;' then
+    return;
+  end if;
+
+  if function_definition !~ E'(^|\\n)[[:space:]]*team_a_id text;'
+     or function_definition !~ E'(^|\\n)[[:space:]]*team_b_id text;' then
     raise exception 'match_record_participant_team_id_repair_source_missing'
       using errcode = 'P0001';
   end if;
@@ -34,8 +41,8 @@ begin
   function_definition := replace(function_definition, 'then team_a_id', 'then selected_team_a_id');
   function_definition := replace(function_definition, 'then team_b_id', 'then selected_team_b_id');
 
-  if position('team_a_id text;' in function_definition) > 0
-     or position('team_b_id text;' in function_definition) > 0
+  if function_definition ~ E'(^|\\n)[[:space:]]*team_a_id text;'
+     or function_definition ~ E'(^|\\n)[[:space:]]*team_b_id text;'
      or position('then team_a_id' in function_definition) > 0
      or position('then team_b_id' in function_definition) > 0 then
     raise exception 'match_record_participant_team_id_repair_incomplete'
