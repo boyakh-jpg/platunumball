@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { APP_DATA_ORCHESTRATOR_SOURCE_PATHS, readSourceGroup } from "./management-source-groups.mjs";
 import { API_ROUTES } from "../api/index.js";
 import {
   buildRecordPage,
@@ -218,7 +219,7 @@ test("profile and team records use the dedicated archive-backed API", async () =
 
   const [apiSource, hookSource, profileSource, teamSource, maintenanceSource, schemaHealthSource, migrationSource, simulationGuardSource] = await Promise.all([
     readSource("server/api/records/list.js"),
-    readSource("src/hooks/useAppData.js"),
+    readSourceGroup(readSource, APP_DATA_ORCHESTRATOR_SOURCE_PATHS),
     readSource("src/pages/ProfileRecords.jsx"),
     readSource("src/pages/TeamDetail.jsx"),
     readSource("server/api/system/maintenance.js"),

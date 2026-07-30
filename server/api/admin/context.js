@@ -1,4 +1,4 @@
-import { requireAdminContext, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 
 function getAdminGradeFromLevel(level = 0) {
   if (level >= 100) return "owner";
@@ -10,11 +10,7 @@ function getAdminGradeFromLevel(level = 0) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const context = await requireAdminContext(request);

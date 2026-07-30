@@ -123,8 +123,8 @@ test("team row wrappers preserve their existing screen-specific shapes", () => {
 test("server team projections do not import the client team emblem module", async () => {
   const paths = [
     "server/api/_supabaseAdmin.js",
-    "server/api/matches/list.js",
-    "server/api/recruiting/list.js",
+    "server/api/matches/_listProjection.js",
+    "server/api/recruiting/_listProjection.js",
     "server/api/search.js",
     "server/api/teams/emblem.js",
   ];

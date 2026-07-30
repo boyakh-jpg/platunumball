@@ -2399,3 +2399,14 @@ UI 수정 전:
 2. 가입과 프로필 수정의 포지션·시도·시군구 입력은 `ProfileBasicsFields`를 사용한다. 닉네임·해시태그·출생연도처럼 잠금과 검증이 다른 입력은 각 화면에 유지한다.
 3. 프로필 지역의 시군구 목록과 시도 변경 시 첫 시군구 계산은 `getRegionDistrictOptions()`를 사용한다.
 4. 선수·팀·심판·구장 hover card는 `HoverCardTrigger`와 `HoverCardCloseButton`으로 동일한 키보드 활성화·닫기 마크업을 공유한다. long press, 직접 이동, tap toggle 같은 entity별 정책은 `useHoverCardInteraction`과 각 entity handler에 유지한다.
+
+## 2026-07-30 CSS 소유권과 로드 순서
+
+1. 전역 로드 순서는 `tokens.css` → `globals.css`의 공용 manifest → `ui-primitives.css` → 화면별 feature manifest 순서로 고정한다. 뒤 파일에 같은 선택자를 덧붙여 앞 선언을 무효화하지 않는다.
+2. `global-visual-system.css`, `global-search-profile.css`, `global-workflows.css`, `matches-arena.css`, `recruiting-arena.css`는 선언을 직접 소유하지 않는 import-only manifest다. 분리 전 선언 순서가 동작 계약이므로 manifest의 import 순서를 임의로 바꾸지 않는다.
+3. leaf CSS는 `primitives/`, `layout/`, `features/`, `themes/`, `responsive/` 책임으로 분리한다. 공용 상호작용은 primitive, 배치는 layout, 기능 화면은 feature, 시각 변형은 theme, media query 중심 보정은 responsive가 소유한다.
+4. `.arena-*`, `.om-*`, `.gm-*`, `.tournament-*` 선택자는 해당 feature CSS만 소유한다. 공용 CSS에서 같은 속성을 다시 선언하지 않는다.
+5. 전역 scope의 custom property 기본값은 `tokens.css`만 선언한다. 컴포넌트 scope의 지역 custom property는 해당 소유 모듈에 둘 수 있다.
+6. 일반 선 두께는 `--ui-stroke-width`, 강조 선 두께는 `--ui-stroke-width-strong`을 사용한다. CSS의 `border`, `border-width`, `border-inline-*`, `border-block-*`에 `1px` 또는 `2px`를 직접 쓰지 않는다.
+7. `!important`는 JS inline 위치를 덮어야 하는 hover card 좌표와 Naver 지도 inline footer 정렬에만 허용한다. 일반 cascade 충돌 해결에 사용하지 않는다.
+8. 중복 제거 기준선은 같은 파일 부분 중복 `89개`, feature/global 같은 값 중복 `111개`, 다른 값 충돌 `46개`, 전체 로드 순서 같은 값 중복 `20개`, `!important` `27개`, literal 선 두께 `336개`였다. 정리 후 각각 `0개`, `0개`, `0개`, `0개`, `7개`, `0개`이며 `scripts/css-cascade-guards.test.mjs`와 `scripts/css-refactor-metrics.mjs`가 회귀를 감시한다.

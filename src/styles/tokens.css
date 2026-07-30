@@ -130,6 +130,8 @@
   --input-bg: rgba(255, 255, 255, 0.06);
   --input-border: var(--rb-line);
   --focus-ring: 0 0 0 3px rgba(255, 118, 88, 0.2);
+  --ui-stroke-width: 1px;
+  --ui-stroke-width-strong: 2px;
   --ui-card-radius: var(--card-radius);
   --ui-card-bg: var(--card-bg);
   --ui-card-bg-strong: var(--card-bg-strong);

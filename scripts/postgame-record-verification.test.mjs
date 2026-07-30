@@ -2,6 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  APP_DATA_ACTION_SOURCE_PATHS,
+  MATCH_SYNC_SOURCE_PATHS,
+  REPOSITORY_MATCHES_SOURCE_PATHS,
+  SHARED_MATCH_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
+import {
   getDuePostgameRecordNotifications,
   getPostgameRecordDecisionEligibility,
   getPostgameRecordVerification,
@@ -155,18 +162,25 @@ test("24시간 만료 후에는 확인 독촉 알림을 더 만들지 않는다"
 });
 
 test("별도 참가 확인 경로 없이 본인 승인 한 번으로 참가와 결과를 함께 확인한다", async () => {
-  const [serverSource, clientSource, singleApprovalMigration, consistencyMigration] = await Promise.all([
-    readFile(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8"),
-    readFile(new URL("../src/hooks/useAppData.js", import.meta.url), "utf8"),
+  const [serverSource, notificationSource, clientSource, singleApprovalMigration, consistencyMigration] = await Promise.all([
+    readSourceGroup(
+      (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),
+      MATCH_SYNC_SOURCE_PATHS,
+    ),
+    readFile(new URL("../server/lib/matchNotifications.js", import.meta.url), "utf8"),
+    readSourceGroup(
+      (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),
+      APP_DATA_ACTION_SOURCE_PATHS,
+    ),
     readFile(new URL("../supabase/migrations/20260723114000_match_record_single_final_approval.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260726090000_match_policy_consistency.sql", import.meta.url), "utf8"),
   ]);
   assert.doesNotMatch(serverSource, /rankball_match_record_participation_action/);
   assert.doesNotMatch(clientSource, /confirmMatchRecordParticipation/);
-  assert.match(serverSource, /MATCH_RECORD_APPROVAL_NOTICE_PREFIXES/);
-  assert.match(serverSource, /getPostgameRecordVerification/);
-  assert.match(serverSource, /POSTGAME_RECORD_REMINDER_MINUTES\.forEach/);
-  assert.match(serverSource, /\["submitMatchResult", "approveMatch", "finalizeMatch"\]/);
+  assert.match(notificationSource, /MATCH_RECORD_APPROVAL_NOTICE_PREFIXES/);
+  assert.match(notificationSource, /getPostgameRecordVerification/);
+  assert.match(notificationSource, /POSTGAME_RECORD_REMINDER_MINUTES\.forEach/);
+  assert.match(notificationSource, /\["submitMatchResult", "approveMatch", "finalizeMatch"\]/);
   assert.match(serverSource, /\["submitMatchResult", "approveMatch", "finalizeMatch", "resolveMatchDispute", "forfeitTournamentMatch"\]\.includes\(operation\.action\)/);
   assert.match(singleApprovalMigration, /match_record_participation_required/);
   assert.match(singleApprovalMigration, /execute replace/);
@@ -207,8 +221,14 @@ test("개인 기록 공개 범위와 별도 통계는 공식 통계·업적에�
 });
 
 test("referee stat submissions preserve the authoritative team score", async () => {
-  const repository = await readFile(new URL("../src/data/repository.js", import.meta.url), "utf8");
-  const matchUtils = await readFile(new URL("../shared/lib/matchUtils.js", import.meta.url), "utf8");
+  const repository = await readSourceGroup(
+    (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),
+    REPOSITORY_MATCHES_SOURCE_PATHS,
+  );
+  const matchUtils = await readSourceGroup(
+    (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),
+    SHARED_MATCH_SOURCE_PATHS,
+  );
 
   assert.match(repository, /matchRecordRoom \? result\.scoreA : currentResult\?\.scoreA/);
   assert.match(repository, /matchRecordRoom \? result\.scoreB : currentResult\?\.scoreB/);

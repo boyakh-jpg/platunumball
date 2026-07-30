@@ -268,8 +268,15 @@ test("피드 그룹 병합은 최초 순서, 최신 카드 내용, 모든 relati
 
 test("경기·모집 목록은 공통 피드 결합을 쓰고 전용 검증은 각 API에 남긴다", async () => {
   const [matchSource, recruitingSource] = await Promise.all([
-    readFile(new URL("../server/api/matches/list.js", import.meta.url), "utf8"),
-    readFile(new URL("../server/api/recruiting/list.js", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../server/api/matches/_listProjection.js", import.meta.url), "utf8"),
+      readFile(new URL("../server/api/matches/_listEnrichment.js", import.meta.url), "utf8"),
+      readFile(new URL("../server/api/matches/_listQueries.js", import.meta.url), "utf8"),
+    ]).then((sources) => sources.join("\n")),
+    Promise.all([
+      readFile(new URL("../server/api/recruiting/_listProjection.js", import.meta.url), "utf8"),
+      readFile(new URL("../server/api/recruiting/_listQueries.js", import.meta.url), "utf8"),
+    ]).then((sources) => sources.join("\n")),
   ]);
 
   [matchSource, recruitingSource].forEach((source) => {

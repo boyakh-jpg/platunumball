@@ -6,7 +6,8 @@ import {
   QUEUE_SCHEDULE_TIMES,
   SCHEDULE_MAX_DAYS,
 } from "./constants.js";
-import { addDateDays, getLocalDateInputValue, getMatchScheduledDate, isInstantRoom } from "./matchUtils.js";
+import { getMatchScheduledDate } from "./matchScheduleTime.js";
+import { addDateDays, getLocalDateInputValue, isInstantRoom } from "./matchTimeUtils.js";
 import { normalizeRecruitingPost } from "./recruiting.js";
 import {
   getDatePart,

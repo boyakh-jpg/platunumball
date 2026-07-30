@@ -1,0 +1,1467 @@
+/* 2026-07-01 premium sports UI pass: shared shell, surfaces, login, home. */
+html,
+body {
+  overflow-x: hidden;
+}
+.app-main {
+  padding: var(--page-gutter);
+}
+.card,
+.section-card,
+.modal,
+.selector-panel,
+.team-card,
+.rating-card,
+.profile-records-summary,
+.home-search-panel,
+.home-action-card,
+.match-focus-card,
+.home-recent-card,
+.rank-leaderboard-card,
+.season-mini-card,
+.settings-page .section-card {
+  box-shadow: var(--shadow);
+}
+.card {
+  background: rgba(10, 14, 21, 0.92);
+  background-image: none;
+}
+.button,
+input,
+select,
+textarea,
+.segmented-control,
+.contract-grid div,
+.two-column > div,
+.search-picker-results.is-floating {
+  border-radius: var(--radius-md);
+}
+.button,
+.provider-button,
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+.button,
+.provider-button,
+.bottom-nav a,
+.nav-item,
+.segmented-control button {
+  min-height: 44px;
+}
+.auth-shell {
+  align-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+}
+.auth-card {
+  width: min(520px, 100%);
+  border-radius: var(--radius-lg);
+  background: rgba(9, 13, 20, 0.92);
+  background-image: none;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+}
+.auth-form h1 {
+  font-size: clamp(2.05rem, 7vw, 2.8rem);
+  line-height: 1;
+}
+.provider-button {
+  border-radius: var(--radius-md);
+  transition: transform 0.14s ease, border-color 0.14s ease, background-color 0.14s ease;
+}
+.provider-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(70, 224, 182, 0.34);
+}
+.provider-button:active {
+  transform: translateY(0);
+}
+.auth-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-5);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  height: 1px;
+  background: var(--line);
+}
+.auth-test-login {
+  border-radius: var(--radius-md);
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  font-size: clamp(2rem, 5vw, 4.2rem);
+  line-height: 0.98;
+}
+.rank-home .rank-profile-card {
+  border-radius: var(--radius-lg);
+}
+.rank-home .rank-mode-card {
+  border-radius: var(--radius-lg);
+}
+.home-search-panel {
+  border-radius: var(--radius-lg);
+  background: rgba(10, 14, 21, 0.9);
+}
+.home-search-box {
+  border-radius: var(--radius-md);
+}
+.home-action-row {
+  border-left: 3px solid rgba(70, 224, 182, 0.55);
+  border-radius: var(--radius-md);
+}
+.home-action-main,
+.home-action-main strong,
+.home-action-main em,
+.compact-list a span,
+.compact-list > div span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rank-summary-grid,
+.home-dashboard-grid,
+.rank-dashboard-grid,
+.home-primary-stack,
+.home-side-stack {
+  min-width: 0;
+}
+html[data-theme="light"] .card,
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .season-mini-card,
+html[data-theme="light"] .settings-page .section-card {
+  border-color: rgba(32, 56, 68, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}
+html[data-theme="light"] .auth-card {
+  border-color: rgba(32, 56, 68, 0.14);
+  background: rgba(255, 255, 255, 0.94);
+}
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background: rgba(238, 244, 240, 0.94);
+}
+@media (max-width: 1020px) {
+  .app-main {
+    padding:
+      max(18px, env(safe-area-inset-top, 0px))
+      max(16px, env(safe-area-inset-right, 0px))
+      calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 28px)
+      max(16px, env(safe-area-inset-left, 0px));
+  }
+
+  .rank-home .rank-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .bottom-nav {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    gap: var(--space-1);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.28);
+  }
+
+  .bottom-nav a {
+    flex-direction: column;
+    min-height: 44px;
+    border-radius: var(--radius-sm);
+    padding: 6px 1px;
+  }
+}
+@media (max-width: 430px) {
+  .app-main {
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-top: max(18px, env(safe-area-inset-top, 0px));
+  }
+
+  .page-stack,
+  .rank-home,
+  .home-primary-stack,
+  .home-side-stack {
+    gap: var(--space-6);
+  }
+
+  .card,
+  .section-card {
+    padding: 14px;
+  }
+
+  .home-action-row {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: var(--space-4);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    font-size: clamp(2rem, 8vw, 2.8rem);
+  }
+
+  .home-search-box {
+    padding: 8px 10px;
+  }
+}
+@media (max-width: 360px) {
+  .bottom-nav a span {
+    display: none;
+  }
+
+  .bottom-nav a.active span {
+    display: block;
+  }
+}
+/* 2026-07-01 visible basketball identity pass: court floor, scoreboard slabs, active states. */
+.app-main,
+html[data-theme="light"] .app-main {
+  background: transparent;
+}
+.nav-item {
+  border-left: 0;
+}
+.nav-item.active,
+.nav-item:hover {
+  background: color-mix(in srgb, var(--rb-orange) 12%, transparent);
+  box-shadow: none;
+}
+.card,
+.section-card,
+.home-search-panel,
+.home-action-card {
+  border-color: var(--card-border);
+  background-color: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+.button-primary,
+.provider-test {
+  background: var(--button-primary-bg);
+}
+.rank-home .rank-summary-grid {
+  border: var(--ui-stroke-width) solid rgba(242, 184, 75, 0.22);
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  font-variant-numeric: tabular-nums;
+}
+.rank-home .rank-profile-card {
+  border-color: rgba(242, 184, 75, 0.28);
+  background:
+    linear-gradient(180deg, rgba(242, 184, 75, 0.1), transparent 46%),
+    var(--scoreboard-2);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+.rank-home .rank-mode-pill,
+.home-action-row,
+.home-search-box {
+  border: var(--ui-stroke-width) solid rgba(199, 223, 232, 0.16);
+  background: rgba(255, 255, 255, 0.052);
+}
+.rank-home .rank-mode-pill {
+  box-shadow: none;
+}
+.home-action-row {
+  border-left-color: rgba(199, 223, 232, 0.16);
+}
+.bottom-nav a.active {
+  background: rgba(65, 215, 176, 0.16);
+  color: var(--team-home);
+  box-shadow: none;
+}
+html[data-theme="light"] .rank-home .rank-summary-grid {
+  border-color: rgba(184, 118, 19, 0.2);
+}
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
+  text-shadow: none;
+}
+html[data-theme="light"] .rank-home .rank-mode-pill,
+html[data-theme="light"] .home-action-row,
+html[data-theme="light"] .home-search-box {
+  border-color: rgba(33, 78, 91, 0.14);
+  background: rgba(255, 255, 255, 0.76);
+}
+.approval-teaser-card {
+  border-radius: var(--radius-lg);
+}
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px 12px;
+}
+html[data-theme="light"] .home-side-stack .compact-list a,
+html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
+  border-color: rgba(32, 56, 68, 0.12);
+  background: rgba(238, 244, 240, 0.64);
+}
+/* 2026-07-01 imweb fitness tone pass: charcoal surface, orange CTA, condensed heroes. */
+.card,
+.section-card,
+.modal,
+.selector-panel,
+.team-card,
+.rating-card,
+.profile-records-summary,
+.home-search-panel,
+.home-action-card,
+.match-focus-card,
+.home-recent-card,
+.rank-leaderboard-card,
+.season-mini-card,
+.settings-page .section-card {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+}
+.button {
+  min-height: 38px;
+  border-radius: var(--radius-xs);
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.button-primary,
+.provider-test,
+.rank-home .home-rank-board-head .button {
+  background: var(--rb-orange);
+  color: #fff;
+}
+.button-secondary {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+.button-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.07);
+}
+.button:disabled,
+button:disabled,
+.search-picker-result-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+.button:focus-visible,
+.provider-button:focus-visible,
+.bottom-nav a:focus-visible,
+.nav-item:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(255, 118, 88, 0.72);
+  outline-offset: 2px;
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+.arena-lobby-title h2 {
+  font-family: var(--sports-display-font);
+  font-size: clamp(46px, 5.5vw, 72px);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  line-height: 0.92;
+}
+.auth-test-login {
+  border-color: rgba(101, 217, 159, 0.3);
+  background: rgba(101, 217, 159, 0.08);
+}
+.auth-test-login select,
+.auth-test-login .provider-button {
+  min-height: 44px;
+}
+.auth-test-login .provider-button {
+  width: 100%;
+}
+@media (max-width: 1020px) {
+  .bottom-nav {
+    min-height: calc(74px + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-top: var(--ui-stroke-width) solid var(--rb-line);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    background: rgba(29, 30, 31, 0.94);
+    backdrop-filter: blur(18px);
+    padding: 8px 8px max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-nav a {
+    position: relative;
+    gap: var(--space-2);
+    color: rgba(255, 255, 255, 0.54);
+    font-size: 10px;
+    font-weight: 850;
+  }
+
+  .bottom-nav a::before {
+    content: "";
+    display: block;
+    width: 22px;
+    height: 4px;
+    border-radius: 999px;
+    background: transparent;
+  }
+
+  .bottom-nav a.active {
+    background: transparent;
+    color: #fff;
+    box-shadow: none;
+  }
+
+  .bottom-nav a.active::before {
+    background: var(--rb-orange);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1,
+  .om-match-copy h1,
+  .arena-hero-copy h1 {
+    font-size: clamp(46px, 12vw, 50px);
+  }
+}
+@media (max-width: 390px) {
+  .bottom-nav a span {
+    font-size: 9.5px;
+  }
+
+  .bottom-nav a::before {
+    width: 20px;
+  }
+}
+html[data-theme="light"] body {
+  background:
+    linear-gradient(rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
+    var(--rb-bg);
+}
+html[data-theme="light"] .card,
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card {
+  background-color: var(--rb-surface);
+}
+/* 2026-07-01 warm cream light mode and shared app controls. */
+input,
+select,
+textarea,
+.auth-card select {
+  border-color: var(--rb-line);
+  border-radius: var(--radius-md);
+}
+.button:hover,
+.provider-button:hover {
+  filter: brightness(0.96);
+}
+html[data-theme="light"] .app-main {
+  background:
+    linear-gradient(rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 42px 42px,
+    linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 42px 42px,
+    var(--rb-bg);
+}
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .auth-card,
+html[data-theme="light"] .modal,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-card,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .profile-records-summary,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .season-mini-card,
+html[data-theme="light"] .settings-page .section-card {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea,
+html[data-theme="light"] .auth-card select {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--rb-text);
+}
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: var(--rb-soft);
+}
+html[data-theme="light"] input:focus-visible,
+html[data-theme="light"] select:focus-visible,
+html[data-theme="light"] textarea:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(229, 85, 63, 0.16);
+}
+html[data-theme="light"] .button-primary,
+html[data-theme="light"] .provider-test,
+html[data-theme="light"] .rank-home .home-rank-board-head .button,
+html[data-theme="light"] .auth-test-login .provider-button {
+  border: 0;
+  background: var(--rb-orange);
+  color: #fff;
+}
+html[data-theme="light"] .button-primary:hover,
+html[data-theme="light"] .provider-test:hover,
+html[data-theme="light"] .auth-test-login .provider-button:hover {
+  background: var(--rb-orange-pressed);
+  filter: none;
+}
+html[data-theme="light"] .button-secondary,
+html[data-theme="light"] .provider-button,
+html[data-theme="light"] .button-icon,
+html[data-theme="light"] .arena-icon-button {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rb-text);
+}
+html[data-theme="light"] input[type="radio"] {
+  accent-color: var(--rb-orange);
+}
+html[data-theme="light"] .badge,
+html[data-theme="light"] .tier-badge,
+html[data-theme="light"] .tag {
+  border-color: var(--rb-line);
+}
+html[data-theme="light"] .badge.orange,
+html[data-theme="light"] .tag.orange {
+  background: rgba(229, 85, 63, 0.12);
+  color: #c94732;
+}
+html[data-theme="light"] .my-team-row b {
+  background: var(--ui-selectable-selected-bg);
+  color: var(--ui-selectable-selected-color);
+}
+html[data-theme="light"] .badge.green,
+html[data-theme="light"] .tag.green {
+  background: rgba(33, 138, 95, 0.1);
+  color: #1e7653;
+}
+html[data-theme="light"] .badge.blue,
+html[data-theme="light"] .tag.blue {
+  background: rgba(51, 111, 184, 0.1);
+  color: #285c9e;
+}
+html[data-theme="light"] .badge.gold,
+html[data-theme="light"] .tag.gold {
+  background: rgba(168, 108, 20, 0.1);
+  color: #8a590f;
+}
+@media (max-width: 1020px) {
+  html[data-theme="light"] .bottom-nav {
+    border-top: var(--ui-stroke-width) solid var(--rb-line);
+    background: rgba(255, 250, 241, 0.94);
+    backdrop-filter: blur(18px);
+  }
+
+  html[data-theme="light"] .bottom-nav a {
+    color: var(--rb-soft);
+  }
+
+  html[data-theme="light"] .bottom-nav a.active {
+    background: var(--ui-selectable-selected-bg);
+    color: var(--rb-text);
+    box-shadow: none;
+  }
+
+  html[data-theme="light"] .bottom-nav a.active::before {
+    background: var(--rb-orange);
+  }
+}
+/* 2026-07-01 home composition pass: court hero plus right rail. */
+@media (min-width: 1080px) {
+
+  .rank-home .rank-summary-grid {
+    align-items: stretch;
+  }
+
+  .rank-home .rank-summary-grid .rank-hero-top {
+    min-height: 100%;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+    max-width: 520px;
+    font-size: 14px;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head .button {
+    width: min(260px, 100%);
+    min-height: 48px;
+  }
+
+  .rank-home .rank-mode-card {
+    align-self: end;
+    gap: var(--space-5);
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block .tier-emblem {
+    max-width: 100%;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block span {
+    font-size: 0.82rem;
+  }
+
+  .rank-home .rank-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rank-home .rank-stat-grid span {
+    min-height: 54px;
+    padding: 8px 10px;
+  }
+
+  .rank-home .rank-profile-tabs a,
+  .rank-home .rank-quick-links a {
+    min-height: 32px;
+  }
+
+  .rank-home .rank-mode-pill {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+  }
+
+  .rank-home .rank-mode-pill .tier-emblem-sm {
+    position: absolute;
+  }
+
+  .rank-home .rank-mode-pill > div {
+    min-width: 0;
+  }
+
+  .rank-home .rank-mode-pill strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rank-home .home-search-panel,
+  .rank-home .home-action-card {
+    position: relative;
+    z-index: 1;
+  }
+
+.rank-home .home-search-panel {
+  min-height: 190px;
+}
+
+  .rank-home .home-action-card {
+    min-height: 230px;
+    padding: 18px;
+  }
+
+  .rank-home .home-dashboard-grid {
+    display: grid;
+    gap: var(--space-10);
+    align-items: start;
+  }
+
+  .rank-home .home-primary-stack {
+    gap: var(--space-10);
+  }
+
+  .rank-home .home-side-stack {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-7);
+  }
+
+  .rank-home .home-side-stack > .home-side-wide-card {
+    grid-column: 1 / -1;
+  }
+
+  .rank-home .match-focus-card {
+    min-height: 320px;
+  }
+}
+@media (min-width: 1440px) {
+  .rank-home {
+    grid-template-columns: minmax(0, 1.78fr) minmax(360px, 0.66fr);
+  }
+
+  .rank-home .rank-summary-grid {
+    min-height: clamp(540px, 58vh, 700px);
+  }
+}
+@media (max-width: 1079px) {
+  .rank-home {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
+  .rank-home > .home-search-panel {
+    grid-area: auto;
+    order: 1;
+  }
+
+  .rank-home > .home-action-card {
+    grid-area: auto;
+    order: 2;
+  }
+
+  .rank-home > .rank-summary-grid {
+    grid-area: auto;
+    order: 3;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    grid-area: auto;
+  }
+}
+/* 2026-07-01 full internal preview pass: stronger composition and flat sports UI. */
+body {
+  color: var(--rb-text);
+}
+.sidebar {
+  border-right: var(--ui-stroke-width) solid var(--rb-line);
+  background: rgba(24, 25, 26, 0.94);
+  box-shadow: none;
+  backdrop-filter: blur(18px);
+}
+.sidebar-nav a {
+  min-height: 44px;
+  border: var(--ui-stroke-width) solid transparent;
+  border-radius: var(--radius-xs);
+  color: var(--rb-muted);
+}
+.sidebar-nav a.active {
+  border-color: rgba(240, 90, 70, 0.35);
+  background: rgba(240, 90, 70, 0.14);
+  color: var(--rb-text);
+  box-shadow: none;
+}
+.sidebar-profile,
+.sidebar-signout {
+  border-radius: var(--radius-md);
+  border-color: var(--rb-line);
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: none;
+}
+.card,
+.section-card,
+.modal,
+.selector-panel,
+.team-card,
+.rating-card,
+.profile-records-summary,
+.match-focus-card,
+.home-search-panel,
+.home-action-card,
+.home-recent-card,
+.rank-profile-card,
+.rank-mode-card,
+.rank-leaderboard-card,
+.rank-record-card,
+.season-mini-card,
+.settings-page .section-card {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.home-search-box,
+.home-search-results a,
+.home-search-results .team-hover-trigger,
+.home-action-row,
+.home-invitation-row,
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger,
+.team-card .member-row,
+.segmented-control button,
+.favorite-type-grid button {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: none;
+}
+.button:not(:focus-visible),
+.provider-button:not(:focus-visible),
+button:not(:focus-visible) {
+  box-shadow: none;
+}
+.button-primary,
+.rank-home .home-rank-board-head .button,
+.auth-test-login .provider-button {
+  border: 0;
+  background: var(--rb-orange);
+  color: #fff;
+}
+.button-primary:hover,
+.rank-home .home-rank-board-head .button:hover,
+.auth-test-login .provider-button:hover {
+  background: var(--rb-orange-2);
+  filter: none;
+}
+.button-primary:active,
+.rank-home .home-rank-board-head .button:active,
+.auth-test-login .provider-button:active {
+  background: var(--rb-orange-pressed);
+}
+.button-secondary,
+.provider-button,
+.button-icon,
+.arena-icon-button {
+  border-color: var(--rb-line);
+}
+.button-secondary,
+.provider-button,
+.button-icon {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--rb-text);
+}
+.rank-home {
+  width: min(100%, var(--page-content-max));
+  margin: 0 auto;
+  gap: var(--page-section-gap);
+}
+.rank-home .rank-summary-grid {
+  position: relative;
+  border-radius: var(--radius-lg);
+  border-color: var(--rb-line);
+  background:
+    linear-gradient(90deg, rgba(16, 16, 16, 0.98), rgba(48, 49, 50, 0.74) 62%, rgba(24, 25, 26, 0.92)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+.rank-home .rank-summary-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.82;
+}
+.rank-home .rank-summary-grid > * {
+  position: relative;
+  z-index: 1;
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+.page-header h1 {
+  font-family: var(--sports-display-font);
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  color: #fff;
+  word-break: keep-all;
+  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
+}
+.rank-home .rank-summary-grid .rank-hero-top > div {
+  width: 100%;
+  justify-self: stretch;
+}
+.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+  color: rgba(255, 255, 255, 0.72);
+}
+.rank-home .rank-profile-card,
+.rank-home .rank-mode-card {
+  background: rgba(24, 25, 26, 0.78);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.rank-home .rank-profile-card .rank-tier-block,
+.rank-home .rank-mode-pill,
+.home-action-row,
+.home-invitation-row {
+  background: rgba(0, 0, 0, 0.18);
+}
+.rank-home .rank-mode-pill {
+  border-color: var(--rb-line);
+  border-radius: var(--radius-sm);
+}
+.rank-home .rank-mode-pill::before,
+.rank-home .rank-mode-pill::after,
+.team-card::before,
+.elite-team-card::before {
+  display: none;
+}
+.home-search-panel,
+.home-action-card {
+  min-width: 0;
+}
+.home-search-box {
+  min-height: 52px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.home-search-box input {
+  font-size: 16px;
+}
+.home-action-row {
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  min-height: 66px;
+  padding: 10px 12px;
+}
+.home-action-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: rgba(240, 90, 70, 0.14);
+  color: var(--rb-orange-2);
+}
+.home-action-main strong,
+.home-side-stack .compact-list strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (min-width: 1080px) {
+  .rank-home {
+    display: grid;
+  }
+
+  .rank-home .rank-summary-grid {
+    display: grid;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    display: flex;
+    align-items: flex-end;
+    min-height: 100%;
+    padding: clamp(10px, 2vw, 24px);
+  }
+
+  .rank-home .rank-summary-grid .rank-hero-top {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    width: min(680px, 100%);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    max-width: min(720px, 100%);
+    line-height: 0.9;
+  }
+
+  .rank-home .rank-profile-card {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .rank-home .rank-mode-card {
+    grid-column: 2;
+    grid-row: 2;
+    padding: 14px;
+  }
+}
+@media (min-width: 1180px) {
+  .rank-home {
+    grid-template-columns: minmax(0, 1.62fr) minmax(340px, 0.68fr);
+  }
+
+  .rank-home .home-dashboard-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  }
+}
+@media (max-width: 759px) {
+
+  .rank-home .rank-summary-grid {
+    min-height: 520px;
+    padding: 14px;
+  }
+
+  .home-action-row {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .home-action-row b,
+  .home-action-buttons {
+    justify-self: start;
+    grid-column: 2;
+  }
+
+  .landing-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+}
+.rank-home .home-action-main strong {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+@media (max-width: 390px) {
+  .landing-actions .landing-primary-actions .landing-create-action {
+    gap: var(--space-2);
+    padding-inline: 6px;
+    font-size: 0.75rem;
+  }
+
+  .landing-primary-actions .button svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+  }
+}
+html[data-theme="light"] body,
+html[data-theme="light"] .app-main {
+  color: var(--rb-text);
+}
+html[data-theme="light"] .sidebar {
+  background: rgba(255, 250, 241, 0.94);
+  border-right-color: var(--rb-line);
+}
+html[data-theme="light"] .sidebar-nav a {
+  color: var(--rb-muted);
+}
+html[data-theme="light"] .sidebar-nav a.active {
+  border-color: rgba(229, 85, 63, 0.28);
+  background: rgba(229, 85, 63, 0.1);
+  color: var(--rb-text);
+}
+html[data-theme="light"] .card,
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .modal,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-card,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .profile-records-summary,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .rank-profile-card,
+html[data-theme="light"] .rank-mode-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .rank-record-card,
+html[data-theme="light"] .season-mini-card,
+html[data-theme="light"] .settings-page .section-card {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+html[data-theme="light"] .rank-home .rank-summary-grid {
+  background:
+    linear-gradient(90deg, rgba(20, 20, 20, 0.58), rgba(70, 58, 46, 0.36)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-3);
+}
+html[data-theme="light"] .rank-home .rank-profile-card,
+html[data-theme="light"] .rank-home .rank-mode-card {
+  background: rgba(255, 250, 241, 0.88);
+  border-color: var(--rb-line);
+}
+html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block,
+html[data-theme="light"] .rank-home .rank-mode-pill,
+html[data-theme="light"] .home-action-row,
+html[data-theme="light"] .home-invitation-row,
+html[data-theme="light"] .home-search-box {
+  background: rgba(255, 255, 255, 0.64);
+}
+/* 2026-07-01 subdued app floor: remove the far-back grid. */
+body {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.018), transparent 18rem),
+    var(--bg);
+}
+html[data-theme="light"] body,
+html[data-theme="light"] .app-main {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 250, 241, 0.26), transparent 18rem),
+    var(--rb-bg);
+}
+/* 2026-07-01 home search placement: desktop top bar, mobile below hero. */
+@media (min-width: 1080px) {
+
+  .rank-home > .rank-summary-grid {
+    grid-area: hero;
+  }
+
+  .rank-home > .home-action-card {
+    grid-area: action;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    grid-area: dashboard;
+  }
+
+.rank-home .home-search-panel.rank-search-card {
+  display: flex;
+  min-height: 0;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+  .rank-home .home-search-panel.rank-search-card > .search-picker {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box {
+    min-height: 44px;
+    padding-block: 0;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box input {
+    min-height: 42px;
+    font-size: 14px;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-create {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+}
+@media (max-width: 759px) {
+  .rank-home > .rank-summary-grid {
+    order: 1;
+  }
+}
+@media (max-width: 759px) {
+  .rank-home > .rank-summary-grid {
+    display: contents;
+  }
+
+  /* Home hero is display: contents here, so the visible hero must cancel app-main padding itself.
+     Do not switch this back to --page-gutter without rechecking 390/430/501px. */
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    position: relative;
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-self: start;
+    min-height: clamp(500px, 132vw, 570px);
+    width: calc(100% + (2 * var(--app-main-pad-x)));
+    max-width: none;
+    margin-top: -18px;
+    margin-inline: calc(-1 * var(--app-main-pad-x));
+    overflow: hidden;
+    border: var(--ui-hero-border-width) solid var(--rb-line);
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.3) 48%, rgba(0, 0, 0, 0.82)),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.16) 58%, rgba(0, 0, 0, 0.08)),
+      var(--bg-court) center 46% / cover no-repeat,
+      var(--rb-bg-2);
+    padding: 18px;
+    box-shadow: none;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {
+    min-height: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: var(--space-7);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    max-width: 8.6ch;
+    color: #fff;
+    font-size: clamp(46px, 15vw, 68px);
+    line-height: 0.84;
+    text-shadow: 0 14px 32px rgba(0, 0, 0, 0.52);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+    max-width: 30ch;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1.35;
+    text-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head .button {
+    min-height: 42px;
+    width: auto;
+    padding-inline: 14px;
+  }
+
+  .rank-home .rank-profile-card {
+    order: 3;
+  }
+
+  .rank-home .rank-mode-card {
+    order: 4;
+  }
+
+  html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+    background:
+      linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.2) 48%, rgba(30, 24, 18, 0.68)),
+      linear-gradient(90deg, rgba(30, 24, 18, 0.5), rgba(30, 24, 18, 0.12) 58%, rgba(30, 24, 18, 0.04)),
+      var(--bg-court) center 46% / cover no-repeat,
+      var(--rb-bg-3);
+  }
+}
+.eyebrow {
+  color: var(--rb-orange-2);
+}
+html[data-theme="light"] .eyebrow {
+  color: var(--rb-orange);
+}
+.rank-home .home-panel-empty {
+  display: grid;
+  min-height: 66px;
+  place-items: center;
+  color: var(--rb-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-align: center;
+}
+/* 2026-07-01 desktop home compaction: lift lower panels beside the hero. */
+@media (min-width: 1080px) {
+  .rank-home {
+    gap: var(--space-8);
+  }
+
+  .rank-home > .rank-summary-grid {
+    align-self: start;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    display: contents;
+  }
+
+  .rank-home .home-dashboard-grid .home-primary-stack {
+    grid-area: primary;
+    min-width: 0;
+  }
+
+  .rank-home .home-dashboard-grid .home-side-stack {
+    grid-area: side;
+    min-width: 0;
+    align-self: start;
+  }
+
+  .rank-home .home-dashboard-grid .home-side-stack {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .rank-home .rank-summary-grid {
+    gap: var(--space-6);
+    padding: 18px;
+  }
+
+  .rank-home .rank-summary-grid .rank-hero-top {
+    gap: var(--space-7);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    font-size: clamp(42px, 4.1vw, 62px);
+  }
+
+  .rank-home .rank-mode-card,
+  html[data-theme="light"] .rank-home .rank-mode-card {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .rank-home .rank-mode-grid {
+    height: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .rank-home .rank-profile-card {
+    align-self: start;
+    min-height: 0;
+    align-content: start;
+    gap: 7px;
+    padding: 12px;
+  }
+
+  .rank-home .rank-profile-card::before {
+    padding: 5px 9px;
+    font-size: 0.64rem;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: var(--space-4);
+    padding: 8px;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block .tier-emblem {
+    width: 58px;
+    height: 58px;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block strong {
+    font-size: clamp(1.38rem, 1.8vw, 1.75rem);
+    line-height: 0.95;
+  }
+
+  .rank-home .rank-tier-meta-line {
+    gap: var(--space-3);
+  }
+
+  .rank-home .rank-tier-meta-line .badge {
+    min-height: 24px;
+    padding: 4px 8px;
+  }
+
+  .rank-home .rank-tier-copy,
+  .rank-home .rank-tier-note {
+    font-size: 11px;
+    line-height: 1.28;
+    margin: 0;
+  }
+
+  .rank-home .rank-mode-pill {
+    min-height: 50px;
+    padding: 7px;
+  }
+
+  .rank-home .rank-mode-pill .tier-emblem-sm {
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    opacity: 0.72;
+  }
+
+  .rank-home .rank-mode-pill > div {
+    padding-right: 16px;
+  }
+
+  .rank-home .rank-mode-pill strong {
+    font-size: 0.9rem;
+  }
+
+  .rank-home .rank-mode-pill em {
+    font-size: 0.68rem;
+  }
+
+  html[data-theme="light"] .rank-home .rank-profile-card,
+  html[data-theme="light"] .rank-home .rank-mode-card {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+/* 2026-07-01 home rail alignment and no-grid cleanup. */
+body,
+.app-main,
+html[data-theme="light"] body,
+html[data-theme="light"] .app-main {
+  background: var(--rb-bg);
+}
+.landing-hero::after,
+.team-hub-hero::after,
+.match-hero::before,
+.page-header::after,
+.team-hub-hero::before {
+  background: linear-gradient(90deg, rgba(240, 90, 70, 0.14), transparent 28%, transparent 76%, rgba(255, 211, 108, 0.08));
+}
+.rank-home .rank-summary-grid::before {
+  background: radial-gradient(ellipse at 38% 70%, rgba(240, 90, 70, 0.16), transparent 22rem);
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
+  color: var(--rb-cream);
+  letter-spacing: 0;
+  text-shadow: 0 14px 34px rgba(0, 0, 0, 0.58);
+}
+.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.48);
+}
+.rank-home .rank-tier-rail {
+  display: grid;
+  gap: var(--space-5);
+  overflow: visible;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  padding: 10px;
+}
+.rank-home .rank-tier-rail > .rank-profile-card,
+.rank-home .rank-tier-rail > .rank-mode-card,
+html[data-theme="light"] .rank-home .rank-tier-rail > .rank-profile-card,
+html[data-theme="light"] .rank-home .rank-tier-rail > .rank-mode-card {
+  grid-column: auto;
+  grid-row: auto;
+  align-self: stretch;
+}
+html[data-theme="light"] .rank-home .rank-tier-rail {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+.rank-home .rank-profile-card .rank-tier-block,
+.rank-home .rank-mode-pill,
+html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block,
+html[data-theme="light"] .rank-home .rank-mode-pill {
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+.rank-home .rank-mode-card,
+html[data-theme="light"] .rank-home .rank-mode-card {
+  overflow: visible;
+}
+@media (min-width: 1080px) {
+
+  .rank-home .rank-summary-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 250px);
+    grid-template-rows: minmax(220px, 1fr);
+    min-height: clamp(340px, 38vh, 440px);
+  }
+
+  .rank-home .rank-tier-rail {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: stretch;
+  }
+
+  .rank-home .rank-profile-card,
+  .rank-home .rank-mode-card {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+@media (max-width: 759px) {
+  .rank-home > .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    order: 1;
+  }
+
+  .rank-home .rank-tier-rail {
+    order: 3;
+    margin-inline: 0;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    order: 5;
+  }
+}
+@media (min-width: 1080px) {
+  .rank-home .home-dashboard-grid .home-side-stack {
+    gap: var(--space-5);
+  }
+}

@@ -1,4 +1,10 @@
-import { bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getSupabaseAdminClient } from "../_supabaseAdmin.js";
+import {
+  allowSystemReadRequest,
+  assertSystemSecretAccess,
+  readSystemRequestBody,
+  sendJson,
+} from "./_systemRequest.js";
 
 const REQUIRED_COLUMNS = {
   profiles: [
@@ -421,15 +427,6 @@ function canEnsureSimulationTestActors() {
   return true;
 }
 
-function assertAccess(request) {
-  const secret = process.env.CRON_SECRET || "";
-  if (!bearerTokenMatches(request, secret)) {
-    const error = new Error("invalid_schema_health_secret");
-    error.statusCode = 401;
-    throw error;
-  }
-}
-
 async function checkTable(client, table, columns) {
   const { error } = await client
     .from(table)
@@ -616,11 +613,19 @@ async function checkRpcGrants(client) {
 }
 
 async function checkProfileIdentity(client) {
-  const { data, error } = await client.rpc("rankball_profile_identity_health");
+  return checkSingleRpcHealth(
+    client,
+    "rankball_profile_identity_health",
+    "profile_identity_health_failed",
+  );
+}
+
+async function checkSingleRpcHealth(client, rpcName, fallbackError) {
+  const { data, error } = await client.rpc(rpcName);
   if (error) {
     return {
       ok: false,
-      error: error.message || "profile_identity_health_failed",
+      error: error.message || fallbackError,
       failed: [],
       checks: [],
     };
@@ -637,45 +642,19 @@ async function checkProfileIdentity(client) {
 }
 
 async function checkTournamentInvitations(client) {
-  const { data, error } = await client.rpc("rankball_tournament_invitation_health");
-  if (error) {
-    return {
-      ok: false,
-      error: error.message || "tournament_invitation_health_failed",
-      failed: [],
-      checks: [],
-    };
-  }
-
-  const checks = Array.isArray(data) ? data : [];
-  const failed = checks.filter((check) => !check.ok);
-  return {
-    ok: failed.length === 0,
-    error: null,
-    failed,
-    checks,
-  };
+  return checkSingleRpcHealth(
+    client,
+    "rankball_tournament_invitation_health",
+    "tournament_invitation_health_failed",
+  );
 }
 
 async function checkTournamentStartDeliveries(client) {
-  const { data, error } = await client.rpc("rankball_tournament_start_delivery_health");
-  if (error) {
-    return {
-      ok: false,
-      error: error.message || "tournament_start_delivery_health_failed",
-      failed: [],
-      checks: [],
-    };
-  }
-
-  const checks = Array.isArray(data) ? data : [];
-  const failed = checks.filter((check) => !check.ok);
-  return {
-    ok: failed.length === 0,
-    error: null,
-    failed,
-    checks,
-  };
+  return checkSingleRpcHealth(
+    client,
+    "rankball_tournament_start_delivery_health",
+    "tournament_start_delivery_health_failed",
+  );
 }
 
 async function ensureSimulationTestActors(client) {
@@ -827,15 +806,11 @@ async function ensureCourtAdminAppointments(client) {
 }
 
 export default async function handler(request, response) {
-  if (!["GET", "POST"].includes(request.method)) {
-    response.setHeader("Allow", "GET, POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowSystemReadRequest(request, response)) return;
 
   try {
-    assertAccess(request);
-    const body = request.method === "POST" ? await readJsonBody(request) : {};
+    assertSystemSecretAccess(request, "invalid_schema_health_secret");
+    const body = await readSystemRequestBody(request);
     const client = getSupabaseAdminClient();
     const checks = await Promise.all(
       Object.entries(REQUIRED_COLUMNS).map(([table, columns]) => checkTable(client, table, columns)),

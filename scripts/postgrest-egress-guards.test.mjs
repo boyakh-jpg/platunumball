@@ -1,17 +1,31 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import {
+  APP_DATA_ACTION_SOURCE_PATHS,
+  APP_DATA_ORCHESTRATOR_SOURCE_PATHS,
+  HOME_PAGE_SOURCE_PATHS,
+  MATCHES_PAGE_SOURCE_PATHS,
+  MATCH_ROOM_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  TOURNAMENT_DETAIL_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
 import { isMatchRoomChatLocked } from "../src/lib/matchUtils.js";
 import { isSyntheticMatchRoomId } from "../src/lib/recruiting.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
+const readSources = (...paths) => Promise.all(paths.map(readSource)).then((sources) => sources.join("\n"));
 
 test("recruiting detail is initial-only and synthetic rooms never reach its API", async () => {
   const [recruitingSource, matchesSource, hookSource] = await Promise.all([
-    readSource("src/pages/Recruiting.jsx"),
-    readSource("src/pages/Matches.jsx"),
-    readSource("src/hooks/useAppData.js"),
+    readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS),
+    readSourceGroup(readSource, MATCHES_PAGE_SOURCE_PATHS),
+    Promise.all([
+      readSourceGroup(readSource, APP_DATA_ORCHESTRATOR_SOURCE_PATHS),
+      readSourceGroup(readSource, APP_DATA_ACTION_SOURCE_PATHS),
+    ]).then((sources) => sources.join("\n")),
   ]);
   assert.doesNotMatch(recruitingSource, /RECRUITING_ROOM_REFRESH_INTERVAL_MS/);
   assert.doesNotMatch(matchesSource, /RECRUITING_ROOM_REFRESH_INTERVAL_MS/);
@@ -30,8 +44,14 @@ test("recruiting detail is initial-only and synthetic rooms never reach its API"
 
 test("admin bootstraps profile-only and loads one bounded section", async () => {
   const [adminSource, hookSource] = await Promise.all([
-    readSource("src/pages/Admin.jsx"),
-    readSource("src/hooks/useAppData.js"),
+    readSources(
+      "src/pages/Admin.jsx",
+      "src/pages/adminPageModel.js",
+      "src/pages/AdminPageParts.jsx",
+      "src/pages/useAdminPageController.jsx",
+      "src/pages/AdminPageView.jsx",
+    ),
+    readSource("src/hooks/appData/bootstrap.js"),
   ]);
   assert.doesNotMatch(adminSource, /loadAdminContext/);
   assert.doesNotMatch(adminSource, /loadDirectory/);
@@ -42,7 +62,10 @@ test("admin bootstraps profile-only and loads one bounded section", async () => 
 
 test("match rows and child tables stay behind bounded related IDs", async () => {
   const [listSource, migrationSource] = await Promise.all([
-    readSource("server/api/matches/list.js"),
+    readSources(
+      "server/api/matches/_listQueries.js",
+      "server/api/matches/_listLoader.js",
+    ),
     readSource("supabase/migrations/20260721123000_postgrest_match_candidate_scope.sql"),
   ]);
   assert.doesNotMatch(listSource, /MATCH_CANDIDATE_MAX_LIMIT|MATCH_CANDIDATE_LIMIT_FACTOR/);
@@ -74,8 +97,11 @@ test("home team bootstrap is route-independent and remains bounded", async () =>
   const [homeSource, profileSource, hookSource, homePageSource, hoverSource, adminSource] = await Promise.all([
     readSource("server/api/home/load.js"),
     readSource("server/api/profile/me.js"),
-    readSource("src/hooks/useAppData.js"),
-    readSource("src/pages/Home.jsx"),
+    readSources(
+      "src/hooks/appData/remoteMerge.js",
+      "src/hooks/appData/bootstrap.js",
+    ),
+    readSourceGroup(readSource, HOME_PAGE_SOURCE_PATHS),
     readSource("src/components/team/TeamHoverCard.jsx"),
     readSource("server/api/_supabaseAdmin.js"),
   ]);
@@ -109,15 +135,15 @@ test("home team bootstrap is route-independent and remains bounded", async () =>
 
 test("direct detail routes request their own authoritative payload", async () => {
   const [hookSource, playerSource, teamSource, courtSource, matchRoomSource, tournamentSource, notificationSource, matchesSource, recruitingSource] = await Promise.all([
-    readSource("src/hooks/useAppData.js"),
+    readSource("src/hooks/appData/bootstrap.js"),
     readSource("src/pages/PlayerDetail.jsx"),
     readSource("src/pages/TeamDetail.jsx"),
     readSource("src/pages/CourtDetail.jsx"),
-    readSource("src/pages/MatchRoom.jsx"),
-    readSource("src/pages/TournamentDetail.jsx"),
+    readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS),
+    readSourceGroup(readSource, TOURNAMENT_DETAIL_SOURCE_PATHS),
     readSource("src/pages/Notifications.jsx"),
-    readSource("src/pages/Matches.jsx"),
-    readSource("src/pages/Recruiting.jsx"),
+    readSourceGroup(readSource, MATCHES_PAGE_SOURCE_PATHS),
+    readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS),
   ]);
 
   assert.match(hookSource, /teamDetailMatch[\s\S]{0,220}endpoint: "teamDetail"/);

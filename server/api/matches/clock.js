@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { createMatchAttendanceQr } from "./_attendanceQr.js";
 import { isPracticeId, PRACTICE_LOCAL_ONLY_ERROR } from "../../../shared/lib/practiceMode.js";
 
@@ -26,10 +26,7 @@ function getStatusCode(error = {}) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

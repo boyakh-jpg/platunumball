@@ -1,5 +1,5 @@
 import { DISCORD_AUTHORIZE_URL, isDiscordSnowflake } from "../../../../shared/lib/discordProtocol.js";
-import { getAuthenticatedContext, sendJson } from "../../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, sendJson } from "../../_supabaseAdmin.js";
 import { setDiscordOAuthStateCookie } from "../_discordOAuthCookies.js";
 import { createDiscordOAuthStateTicket } from "../_discordOAuthProof.js";
 
@@ -15,11 +15,7 @@ function getDiscordRedirectUri() {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const clientId = String(process.env.DISCORD_CLIENT_ID || "").trim();

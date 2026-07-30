@@ -130,8 +130,8 @@ test("server read APIs import the shared state normalizer without loading reposi
     "server/api/profile/me.js",
     "server/api/directory/load.js",
     "server/api/records/list.js",
-    "server/api/matches/list.js",
-    "server/api/recruiting/list.js",
+    "server/api/matches/_listLoader.js",
+    "server/api/recruiting/_listLoader.js",
     "server/api/teams/list.js",
   ];
 

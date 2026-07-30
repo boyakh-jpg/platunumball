@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { verifyDiscordOAuthProof } from "../auth/_discordOAuthProof.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
 import { DEFAULT_PLAYER_RATINGS } from "../../../shared/lib/matchConstants.js";
@@ -199,11 +199,7 @@ async function buildProfileRow({ existing, profile, authUser, authUserId }) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });

@@ -1,4 +1,5 @@
 import {
+  allowRequestMethod,
   getAdminLevel,
   getAuthenticatedContext,
   getRowsMaxUpdatedAt,
@@ -656,10 +657,7 @@ async function loadDirectoryPage(context, body = {}) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

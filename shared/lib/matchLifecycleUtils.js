@@ -3,7 +3,8 @@ import {
   POST_MATCH_TITLE_PATTERN,
   normalizeDisputeWindowMinutes,
 } from "./constants.js";
-import { getMatchScheduledDate, isInstantRoom } from "./matchUtils.js";
+import { getMatchScheduledDate } from "./matchScheduleTime.js";
+import { isInstantRoom } from "./matchTimeUtils.js";
 
 export function getScheduledStartMs(match = {}) {
   if (isInstantRoom(match)) return null;

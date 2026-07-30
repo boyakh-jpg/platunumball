@@ -7,6 +7,7 @@ import Button from "../components/common/Button.jsx";
 import { getRoomScheduleLabel } from "../lib/matchUtils.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName } from "../lib/recruiting.js";
+import { useRoomModalNavigation } from "../lib/roomModalNavigation.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
@@ -26,8 +27,16 @@ export default function Notifications({ app }) {
   const navigate = useNavigate();
   const [notificationView, setNotificationView] = useState("unread");
   const [deletingNotificationId, setDeletingNotificationId] = useState("");
-  const [selectedMatchId, setSelectedMatchId] = useState("");
-  const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState("");
+  const {
+    selectedMatchId,
+    setSelectedMatchId,
+    selectedRecruitingPostId,
+    setSelectedRecruitingPostId,
+    openMatchRoom,
+    openRecruitingRoom,
+  } = useRoomModalNavigation({
+    loadRecruitingPost: app.actions.loadRecruitingPost,
+  });
   const loadNotifications = app.actions.loadNotifications;
   useEffect(() => {
     loadNotifications?.();
@@ -57,17 +66,6 @@ export default function Notifications({ app }) {
       setSelectedMatchId("");
       setSelectedRecruitingPostId(postId);
     }
-  };
-  const openMatchRoom = (matchId) => {
-    if (!matchId) return;
-    setSelectedRecruitingPostId("");
-    setSelectedMatchId(matchId);
-  };
-  const openRecruitingRoom = (postId) => {
-    if (!postId) return;
-    setSelectedMatchId("");
-    setSelectedRecruitingPostId(postId);
-    app.actions.loadRecruitingPost?.(postId);
   };
   const acceptTeamInvite = async (invitation) => {
     await app.actions.acceptTeamInvitation(invitation.id);

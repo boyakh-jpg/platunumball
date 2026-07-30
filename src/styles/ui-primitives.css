@@ -53,7 +53,7 @@ html[data-theme] .app-main :is(.ui-liquid-glass, .page-header > .ui-button)::bef
 html[data-theme] .app-main .ui-liquid-glass-segments {
   gap: 0;
   overflow: hidden;
-  border: 1px solid var(--ui-liquid-glass-divider);
+  border: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
   border-radius: var(--ui-control-radius);
 }
 
@@ -66,7 +66,7 @@ html[data-theme] .app-main .ui-liquid-glass-segments > * {
 }
 
 html[data-theme] .app-main .ui-liquid-glass-segments > * + * {
-  border-left: 1px solid var(--ui-liquid-glass-divider);
+  border-left: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
 }
 
 html[data-theme] .app-main :is(.recent-match-row.result-w, .rank-match-win) {
@@ -230,7 +230,7 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   line-height: 1;
   white-space: nowrap;
   background: var(--ui-badge-bg);
-  border: 1px solid var(--ui-badge-border);
+  border: var(--ui-stroke-width) solid var(--ui-badge-border);
   border-radius: var(--ui-badge-radius);
   box-shadow: none;
 }
@@ -352,7 +352,7 @@ html[data-theme] .app-main :is(.recent-match-row.result-d, .rank-match-draw) {
   color: var(--rb-text);
   font: inherit;
   background: var(--ui-control-bg);
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   transition:
     border-color 140ms ease,
@@ -400,7 +400,7 @@ input[type="checkbox"] {
   margin: 0;
   padding: 0;
   place-content: center;
-  border: 2px solid var(--ui-control-border);
+  border: var(--ui-stroke-width-strong) solid var(--ui-control-border);
   border-radius: var(--radius-xs);
   background-color: var(--ui-control-bg);
   background-position: center;

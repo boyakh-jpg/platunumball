@@ -4,6 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  CREATE_MATCH_PAGE_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  readSourceGroupSync,
+} from "./management-source-groups.mjs";
+import {
   MATCH_FORMATION_OPTIONS,
   MATCH_INTENT_OPTIONS,
   MATCH_PURPOSE_OPTIONS,
@@ -60,6 +65,21 @@ import {
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const readPageSourceGroup = (paths) => readSourceGroupSync(
+  (file) => fs.readFileSync(path.join(root, file), "utf8"),
+  paths,
+);
+const readCssTreeSync = (file, visited = new Set()) => {
+  const absolutePath = path.resolve(root, file);
+  if (visited.has(absolutePath)) return "";
+  visited.add(absolutePath);
+  const source = fs.readFileSync(absolutePath, "utf8");
+  const imports = [...source.matchAll(/@import\s+["']([^"']+\.css)["'];/g)];
+  return [
+    source,
+    ...imports.map((match) => readCssTreeSync(path.join(path.dirname(file), match[1]), visited)),
+  ].join("\n");
+};
 const pickupRefereeMigrationSource = fs.readFileSync(
   path.join(root, "supabase/migrations/20260725011000_preserve_pickup_referee_interest.sql"),
   "utf8",
@@ -886,7 +906,10 @@ test("empty team rooms select teams only through the central reducer", () => {
 });
 
 test("team selection is routed through the server and DB authority", () => {
-  const serverSource = fs.readFileSync(path.join(root, "server/api/recruiting/sync-post.js"), "utf8");
+  const serverSource = [
+    fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostPolicy.js"), "utf8"),
+    fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostActions.js"), "utf8"),
+  ].join("\n");
   const authoritativeSource = fs.readFileSync(path.join(root, "server/api/_authoritativeState.js"), "utf8");
   assert.match(serverSource, /team_room_must_start_without_team_selection/);
   assert.match(serverSource, /operation\.action === "setRecruitingRoomTeam"/);
@@ -924,7 +947,7 @@ test("team selection is routed through the server and DB authority", () => {
 });
 
 test("public team joins persist only the applying team member as side leader", () => {
-  const recruitingSource = fs.readFileSync(path.join(root, "src/pages/Recruiting.jsx"), "utf8");
+  const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   const users = [
     { id: "host", name: "방장", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
     { id: "captain", name: "상대 팀장", trustScore: 100, ageGroup: "open", ratings: { integrated: 1200 } },
@@ -1037,7 +1060,7 @@ test("public team joins persist only the applying team member as side leader", (
 
 test("pickup participant slots keep a fixed width and use available desktop columns", () => {
   const componentSource = fs.readFileSync(path.join(root, "src/components/match/PickupParticipantPool.jsx"), "utf8");
-  const cssSource = fs.readFileSync(path.join(root, "src/styles/recruiting-arena.css"), "utf8");
+  const cssSource = readCssTreeSync("src/styles/recruiting-arena.css");
   assert.doesNotMatch(componentSource, /Math\.min\(8,\s*Math\.max\(1,\s*safeCapacity\)\)/);
   assert.doesNotMatch(componentSource, /--pickup-slot-columns/);
   assert.match(cssSource, /--pickup-slot-width:\s*72px/);
@@ -1053,8 +1076,8 @@ test("pickup participant slots keep a fixed width and use available desktop colu
 });
 
 test("mobile active and reserve slots share the side-capacity width token", () => {
-  const recruitingSource = fs.readFileSync(path.join(root, "src/pages/Recruiting.jsx"), "utf8");
-  const cssSource = fs.readFileSync(path.join(root, "src/styles/recruiting-arena.css"), "utf8");
+  const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
+  const cssSource = readCssTreeSync("src/styles/recruiting-arena.css");
   assert.match(recruitingSource, /--room-side-slot-count/);
   assert.match(cssSource, /--room-slot-width:\s*min\(72px,\s*calc\(\(100dvw - 128px\) \/ var\(--room-side-slot-count,\s*4\)\)\)/);
   assert.doesNotMatch(cssSource, /@media \(max-width: 380px\)[\s\S]*?--room-slot-width:\s*74px/);
@@ -1063,7 +1086,7 @@ test("mobile active and reserve slots share the side-capacity width token", () =
 });
 
 test("CreateMatch persists bench capacity at top level and inside rules", () => {
-  const source = fs.readFileSync(path.join(root, "src/pages/CreateMatch.jsx"), "utf8");
+  const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
   assert.match(source, /benchCapacity: creationPolicyPayload\.benchCapacity/);
   assert.match(source, /rules:\s*\{[\s\S]*\.\.\.creationPolicyPayload/);
   assert.match(source, /MatchCreationWizardNav/);
@@ -1093,7 +1116,10 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(source, /getDefaultCreateTitle\(draft\.mode, patch\.matchIntent\)/);
   assert.match(source, /getMatchCreationWizardType\(draft, \{ recordIntent: isRecordCreateIntent \}\)/);
   assert.match(wizardSource, /step\.id === 4 \? \{ \.\.\.step, label: "구장" \}/);
-  const serverSource = fs.readFileSync(path.join(root, "server/api/recruiting/sync-post.js"), "utf8");
+  const serverSource = [
+    fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostHandler.js"), "utf8"),
+    fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostProjection.js"), "utf8"),
+  ].join("\n");
   assert.match(serverSource, /validatePickupRecruitingOperation\(context, operation\)/);
   assert.match(serverSource, /rules: \{ \.\.\.\(post\.rules \?\? \{\}\), benchCapacity \}/);
   const schemaSource = fs.readFileSync(path.join(root, "supabase/schema.sql"), "utf8");
@@ -1102,7 +1128,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.doesNotMatch(cssSource, /\.match-creation-wizard-nav ol\s*\{[^}]*min-width:\s*720px/);
   assert.doesNotMatch(cssSource, /\.create-match-page input\[type="checkbox"\][\s\S]*accent-color:/);
   assert.match(cssSource, /@media \(max-width: 420px\)[\s\S]*\.match-creation-wizard-actions/);
-  const recruitingSource = fs.readFileSync(path.join(root, "src/pages/Recruiting.jsx"), "utf8");
+  const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   assert.match(recruitingSource, /참가 상태[\s\S]*?joinDraft\.reserve \? "reserve" : "starter"/);
   assert.match(recruitingSource, /const reserve = event\.target\.value === "reserve"/);
   assert.doesNotMatch(recruitingSource, /arena-check-row/);
@@ -1117,7 +1143,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(recruitingSource, /<span>대표 1명 참가<\/span>/);
   assert.match(recruitingSource, /참가 후 방 안에서 사이드장이 출전·후보 명단을 확정합니다\./);
   assert.match(recruitingSource, /const sourceMatchRecordBoardFirst = Boolean\([\s\S]*Boolean\(sourceMatch\?\.refereeId\)/);
-  const compactSource = fs.readFileSync(path.join(root, "server/api/recruiting/list.js"), "utf8");
+  const compactSource = fs.readFileSync(path.join(root, "server/api/recruiting/_listProjection.js"), "utf8");
   assert.match(compactSource, /lastPeriodStopMinutes: rules\.lastPeriodStopMinutes/);
   assert.match(compactSource, /gameClockEnabled: rules\.gameClockEnabled/);
   assert.doesNotMatch(compactSource, /scoreboardAvailable: rules\.scoreboardAvailable|shotClockAvailable: rules\.shotClockAvailable|statRecorderAvailable: rules\.statRecorderAvailable/);
@@ -1140,13 +1166,13 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
 });
 
 test("무심판 생성 안내는 개인 기록이 아니라 팀 점수 전용 정책을 표시한다", () => {
-  const source = fs.readFileSync(path.join(root, "src/pages/CreateMatch.jsx"), "utf8");
+  const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
   assert.doesNotMatch(source, /심판 없으면 개인 기록은 득점 중심/);
   assert.match(source, /심판 초대 안 함 · 무심판 경기는 팀 점수만 기록/);
 });
 
 test("원격 심판 검색에서 선택한 프로필은 일반 경기 후보에 유지한다", () => {
-  const source = fs.readFileSync(path.join(root, "src/pages/CreateMatch.jsx"), "utf8");
+  const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
   assert.match(
     source,
     /const refereeCandidates = useMemo\([\s\S]*\[\.\.\.app\.state\.users, \.\.\.selectedTournamentRefereeProfiles\]/,

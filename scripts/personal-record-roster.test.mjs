@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import {
+  CREATE_MATCH_PAGE_SOURCE_PATHS,
+  readSourceGroupSync,
+} from "./management-source-groups.mjs";
 import { createMatch } from "../src/data/repository.js";
 import {
   getLinkedPersonalRecordDisplayUser,
@@ -133,12 +137,15 @@ test("personal_record는 팀 점수와 본인 PTS를 분리하고 연결 선수�
 
 test("서버와 생성 UI가 연결 profile scope·공용 stepper·해시태그 제거 계약을 유지한다", () => {
   const authoritativeSource = readFileSync(new URL("../server/api/_authoritativeState.js", import.meta.url), "utf8");
-  const syncSource = readFileSync(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8");
-  const createSource = readFileSync(new URL("../src/pages/CreateMatch.jsx", import.meta.url), "utf8");
+  const validationSource = readFileSync(new URL("../server/lib/matchSnapshotValidation.js", import.meta.url), "utf8");
+  const createSource = readSourceGroupSync(
+    (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8"),
+    CREATE_MATCH_PAGE_SOURCE_PATHS,
+  );
 
   assert.match(authoritativeSource, /soloTeamAPlayerRefs[\s\S]*?ref\?\.profileId/);
-  assert.match(syncSource, /linkedProfileIds[\s\S]*?assertProfilesExist/);
-  assert.match(syncSource, /solo_record_hashtag_not_allowed/);
+  assert.match(validationSource, /linkedProfileIds[\s\S]*?assertProfilesExist/);
+  assert.match(validationSource, /solo_record_hashtag_not_allowed/);
   assert.match(createSource, /<NumericStepper/);
   assert.match(createSource, /soloStats[\s\S]*?points/);
   assert.doesNotMatch(createSource, /텍스트만 추가 · 유저 연결 없음/);

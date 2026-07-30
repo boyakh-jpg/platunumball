@@ -1,4 +1,4 @@
-import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 import { deleteObject, getR2Config } from "../teams/emblem.js";
 import { HIGH_IMPACT_ADMIN_REVIEW_ACTIONS } from "../../../shared/lib/adminReview.js";
 
@@ -47,11 +47,7 @@ function mapAdminReviewError(error, fallback) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const context = await requireAdminContext(request);

@@ -1,4 +1,4 @@
-import { attachNotificationActors, attachNotificationTargetState, getAdminLevel, getAuthenticatedContext, getRowsMaxUpdatedAt, mergeById, readJsonBody, sendJson, timeStep, toClientTeamWithMembers } from "../_supabaseAdmin.js";
+import { allowRequestMethod, attachNotificationActors, attachNotificationTargetState, getAdminLevel, getAuthenticatedContext, getRowsMaxUpdatedAt, mergeById, readJsonBody, sendJson, timeStep, toClientTeamWithMembers } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
@@ -257,11 +257,7 @@ async function loadCurrentUserHomeNotifications(supabase, profileId = "", blocke
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const startedAt = Date.now();

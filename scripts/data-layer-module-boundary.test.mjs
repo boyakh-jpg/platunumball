@@ -1,0 +1,167 @@
+import assert from "node:assert/strict";
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
+import test from "node:test";
+
+const ROOT = path.resolve(import.meta.dirname, "..");
+const REPOSITORY_DIR = path.join(ROOT, "src/data/repository");
+const APP_DATA_DIR = path.join(ROOT, "src/hooks/appData");
+const DATA_MODULE_MAX_LINES = 900;
+
+async function readModuleDirectory(directory, relativeDirectory = "") {
+  const entries = await readdir(path.join(directory, relativeDirectory), { withFileTypes: true });
+  const names = (await Promise.all(entries.map(async (entry) => {
+    const relativePath = path.posix.join(relativeDirectory.replaceAll("\\", "/"), entry.name);
+    if (entry.isDirectory()) return (await readModuleDirectory(directory, relativePath)).names;
+    return entry.isFile() && entry.name.endsWith(".js") ? [relativePath] : [];
+  }))).flat().sort();
+  const sources = new Map(await Promise.all(names.map(async (name) => [
+    name,
+    await readFile(path.join(directory, name), "utf8"),
+  ])));
+  return { names, sources };
+}
+
+function getLocalModuleEdges(sources) {
+  const edges = new Map([...sources.keys()].map((name) => [name, new Set()]));
+  for (const [name, source] of sources) {
+    for (const match of source.matchAll(/from\s+["'](\.[^"']+\.js)["']/gu)) {
+      const dependency = path.posix.normalize(path.posix.join(path.posix.dirname(name), match[1]));
+      if (sources.has(dependency)) edges.get(name).add(dependency);
+    }
+  }
+  return edges;
+}
+
+function getCycles(edges) {
+  const visiting = new Set();
+  const visited = new Set();
+  const cycles = [];
+  const visit = (name, stack = []) => {
+    if (visiting.has(name)) {
+      cycles.push([...stack, name]);
+      return;
+    }
+    if (visited.has(name)) return;
+    visiting.add(name);
+    for (const dependency of edges.get(name) ?? []) visit(dependency, [...stack, name]);
+    visiting.delete(name);
+    visited.add(name);
+  };
+  for (const name of edges.keys()) visit(name);
+  return cycles;
+}
+
+test("repository와 useAppData 호환 배럴은 공개 export만 유지한다", async () => {
+  const [repositorySource, appDataSource, repository, appData] = await Promise.all([
+    readFile(path.join(ROOT, "src/data/repository.js"), "utf8"),
+    readFile(path.join(ROOT, "src/hooks/useAppData.js"), "utf8"),
+    import("../src/data/repository.js"),
+    import("../src/hooks/useAppData.js"),
+  ]);
+
+  assert.ok(repositorySource.split(/\r?\n/u).length <= 220);
+  assert.ok(appDataSource.split(/\r?\n/u).length <= 30);
+  assert.doesNotMatch(repositorySource, /\b(?:function|class)\s+[A-Za-z_$]/u);
+  assert.doesNotMatch(appDataSource, /\b(?:function|class)\s+[A-Za-z_$]/u);
+  assert.equal(Object.keys(repository).length, 129);
+  assert.equal(Object.keys(appData).length, 3);
+  for (const name of [
+    "createMatch",
+    "createRecruitingPost",
+    "loadRemoteState",
+    "normalizeState",
+    "runAutomaticStateMaintenance",
+  ]) {
+    assert.equal(typeof repository[name], "function", `${name} compatibility export`);
+  }
+  assert.deepEqual(Object.keys(appData).sort(), [
+    "mergeMatchesById",
+    "mergeRecruitingPostsById",
+    "useAppData",
+  ]);
+});
+
+test("데이터 계층 책임 모듈은 순환과 브라우저-서버 역참조가 없다", async () => {
+  const [repository, appData] = await Promise.all([
+    readModuleDirectory(REPOSITORY_DIR),
+    readModuleDirectory(APP_DATA_DIR),
+  ]);
+
+  assert.deepEqual(repository.names.filter((name) => !name.includes("/")), [
+    "account.js",
+    "admin.js",
+    "courts.js",
+    "guards.js",
+    "lifecycle.js",
+    "localState.js",
+    "matchAccess.js",
+    "matchCreation.js",
+    "matches.js",
+    "recruiting.js",
+    "remote.js",
+    "reports.js",
+    "roomRules.js",
+    "runtime.js",
+    "settings.js",
+    "tournaments.js",
+  ]);
+  assert.deepEqual(appData.names.filter((name) => !name.includes("/")), [
+    "actions.js",
+    "bootstrap.js",
+    "metadata.js",
+    "recordArchive.js",
+    "remoteMerge.js",
+    "serverOperations.js",
+    "stateNormalization.js",
+    "useAppDataOrchestrator.js",
+  ]);
+  assert.deepEqual(getCycles(getLocalModuleEdges(repository.sources)), []);
+  assert.deepEqual(getCycles(getLocalModuleEdges(appData.sources)), []);
+  assert.deepEqual(repository.names.filter((name) => name.startsWith("matches/")), [
+    "matches/feedback.js",
+    "matches/lifecycle.js",
+    "matches/pickup.js",
+    "matches/result.js",
+    "matches/roster.js",
+  ]);
+  assert.deepEqual(repository.names.filter((name) => name.startsWith("recruiting/")), [
+    "recruiting/confirmation.js",
+    "recruiting/creation.js",
+    "recruiting/invitations.js",
+    "recruiting/participation.js",
+    "recruiting/party.js",
+    "recruiting/partyManagement.js",
+  ]);
+  assert.deepEqual(repository.names.filter((name) => name.startsWith("remote/")), [
+    "remote/loaders.js",
+    "remote/seed.js",
+    "remote/state.js",
+  ]);
+  assert.deepEqual(appData.names.filter((name) => name.startsWith("actions/")), [
+    "actions/loaderActions.js",
+    "actions/matchActions.js",
+    "actions/profileTeamActions.js",
+    "actions/recruitingActions.js",
+    "actions/settingsActions.js",
+    "actions/teamMembershipActions.js",
+  ]);
+  assert.deepEqual(appData.names.filter((name) => name.startsWith("orchestrator/")), [
+    "orchestrator/admin.js",
+    "orchestrator/loaders.js",
+    "orchestrator/runtime.js",
+    "orchestrator/serverActions.js",
+  ]);
+
+  for (const [name, source] of [...repository.sources, ...appData.sources]) {
+    assert.doesNotMatch(source, /(?:\.\.\/)+server\/|src\/server\//u, `${name} browser-to-server import`);
+    const lineCount = source.split(/\r?\n/u).length;
+    assert.ok(lineCount <= DATA_MODULE_MAX_LINES, `${name} ${lineCount}/${DATA_MODULE_MAX_LINES} lines`);
+  }
+});
+
+test("서버는 repositoryAdapter 하나를 통해서만 클라이언트 호환 배럴을 읽는다", async () => {
+  const adapterSource = await readFile(path.join(ROOT, "server/lib/repositoryAdapter.js"), "utf8");
+  assert.match(adapterSource, /from "\.\.\/\.\.\/src\/data\/repository\.js"/u);
+  assert.doesNotMatch(adapterSource, /src\/data\/repository\//u);
+});

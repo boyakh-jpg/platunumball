@@ -47,6 +47,14 @@ export function sendJson(response, statusCode, payload) {
   response.status(statusCode).json(payload);
 }
 
+export function allowRequestMethod(request, response, allowedMethods = ["POST"]) {
+  const methods = Array.isArray(allowedMethods) ? allowedMethods : [allowedMethods];
+  if (methods.includes(request.method)) return true;
+  response.setHeader("Allow", methods.join(", "));
+  sendJson(response, 405, { error: "method_not_allowed" });
+  return false;
+}
+
 function getSupabaseUrl() {
   return process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 }

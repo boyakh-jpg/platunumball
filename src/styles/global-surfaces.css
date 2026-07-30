@@ -162,7 +162,7 @@ html[data-theme="light"] .page-header p:not(.eyebrow) {
 }
 
 .home-rank-board-head {
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius);
   padding: 18px;
   background: var(--surface);
@@ -241,7 +241,7 @@ html[data-theme="light"] .page-header p:not(.eyebrow) {
   content: "RANK PROFILE";
   justify-self: start;
   width: max-content;
-  border: 1px solid rgba(70, 224, 182, 0.34);
+  border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.34);
   border-radius: 999px;
   background: rgba(70, 224, 182, 0.12);
   color: var(--green);
@@ -311,7 +311,6 @@ html[data-theme="light"] .page-header p:not(.eyebrow) {
 .rank-home .rank-mode-card {
   border: 0;
   background: transparent;
-  box-shadow: none;
   padding: 0;
 }
 
@@ -371,7 +370,6 @@ html[data-theme="light"] .page-header p:not(.eyebrow) {
 .home-action-row b,
 .rank-search-results small {
   background: rgba(116, 169, 255, 0.1);
-  color: var(--blue);
 }
 
 .home-side-stack .section-title-row,
@@ -488,7 +486,6 @@ html[data-theme="light"] .recent-match-row {
 .rank-stat-grid,
 .stat-strip {
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
-  gap: var(--space-4);
 }
 
 .rank-stat-grid span,
@@ -527,7 +524,6 @@ html[data-theme="light"] .recent-match-row {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @media (max-width: 640px) {
@@ -558,7 +554,7 @@ html[data-theme="light"] .recent-match-row {
 }
 
 .ranking-filter-card {
-  border: 1px solid rgba(163, 185, 208, 0.16);
+  border: var(--ui-stroke-width) solid rgba(163, 185, 208, 0.16);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 12px;
@@ -899,7 +895,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding-top: var(--space-6);
-  border-top: 1px solid var(--ui-liquid-glass-divider);
+  border-top: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
 }
 
 .team-hub-board-stats > span {
@@ -914,7 +910,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 }
 
 .team-hub-board-stats > span + span {
-  border-left: 1px solid var(--ui-liquid-glass-divider);
+  border-left: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
 }
 
 .team-hub-board-stats b {

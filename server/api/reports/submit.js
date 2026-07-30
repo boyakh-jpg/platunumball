@@ -3,7 +3,7 @@ import {
   flattenPlayerIdValues,
   projectPersistedMatchReportParticipantIds,
 } from "../../../shared/lib/playerIds.js";
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { getMatchScheduledDate } from "../../../shared/lib/matchUtils.js";
 import { REPORT_MATCH_WINDOW_MS } from "../../../shared/lib/constants.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../../../shared/lib/reportReasons.js";
@@ -342,11 +342,11 @@ async function assertCanSubmitCourtReviewReport(context, targetId) {
   return [review.reviewer_id].filter(Boolean);
 }
 
-async function assertCanSubmitTeamEmblemReport(context, targetId) {
+async function loadReportableTeam(context, targetId, teamColumns, { captainRequired = false } = {}) {
   const [{ data: team, error: teamError }, { data: captain, error: captainError }] = await Promise.all([
     context.supabase
       .from("teams")
-      .select("id,name,emblem_key,emblem_source,emblem_updated_at,deleted_at")
+      .select(teamColumns)
       .eq("id", targetId)
       .is("deleted_at", null)
       .maybeSingle(),
@@ -365,12 +365,22 @@ async function assertCanSubmitTeamEmblemReport(context, targetId) {
     error.statusCode = 404;
     throw error;
   }
-  if (!captain?.user_id) {
+  if (captainRequired && !captain?.user_id) {
     const error = new Error("team_captain_not_found");
     error.statusCode = 404;
     throw error;
   }
-  if (captain.user_id === context.profileId) {
+  return { team, captainId: captain?.user_id ?? null };
+}
+
+async function assertCanSubmitTeamEmblemReport(context, targetId) {
+  const { team, captainId } = await loadReportableTeam(
+    context,
+    targetId,
+    "id,name,emblem_key,emblem_source,emblem_updated_at,deleted_at",
+    { captainRequired: true },
+  );
+  if (captainId === context.profileId) {
     const error = new Error("cannot_report_own_team_emblem");
     error.statusCode = 400;
     throw error;
@@ -381,10 +391,10 @@ async function assertCanSubmitTeamEmblemReport(context, targetId) {
     throw error;
   }
   return {
-    reportedUserIds: [captain.user_id],
+    reportedUserIds: [captainId],
     verifiedPayload: {
       teamName: team.name,
-      captainId: captain.user_id,
+      captainId,
       emblemKey: team.emblem_key,
       emblemSource: team.emblem_source,
       emblemUpdatedAt: team.emblem_updated_at,
@@ -393,36 +403,19 @@ async function assertCanSubmitTeamEmblemReport(context, targetId) {
 }
 
 async function assertCanSubmitTeamNameReport(context, targetId) {
-  const [{ data: team, error: teamError }, { data: captain, error: captainError }] = await Promise.all([
-    context.supabase
-      .from("teams")
-      .select("id,name,deleted_at")
-      .eq("id", targetId)
-      .is("deleted_at", null)
-      .maybeSingle(),
-    context.supabase
-      .from("team_members")
-      .select("user_id")
-      .eq("team_id", targetId)
-      .eq("role", "captain")
-      .limit(1)
-      .maybeSingle(),
-  ]);
-  if (teamError) throw teamError;
-  if (captainError) throw captainError;
-  if (!team?.id) {
-    const error = new Error("team_not_found");
-    error.statusCode = 404;
-    throw error;
-  }
-  if (captain?.user_id === context.profileId) {
+  const { team, captainId } = await loadReportableTeam(
+    context,
+    targetId,
+    "id,name,deleted_at",
+  );
+  if (captainId === context.profileId) {
     const error = new Error("cannot_report_own_team_name");
     error.statusCode = 400;
     throw error;
   }
   return {
-    reportedUserIds: captain?.user_id ? [captain.user_id] : [],
-    verifiedPayload: { teamName: team.name, captainId: captain?.user_id ?? null },
+    reportedUserIds: captainId ? [captainId] : [],
+    verifiedPayload: { teamName: team.name, captainId },
   };
 }
 
@@ -553,11 +546,7 @@ async function getActiveReport(context, reportRow) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

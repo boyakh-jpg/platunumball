@@ -1,4 +1,4 @@
-import { bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
+import { allowRequestMethod, bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
 import { normalizeDisputeWindowMinutes } from "../../../shared/lib/constants.js";
 import { RECRUITING_APPLICATION_STATUSES } from "../../../shared/lib/recruiting.js";
@@ -465,11 +465,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
 }
 
 export default async function handler(request, response) {
-  if (!["GET", "POST"].includes(request.method)) {
-    response.setHeader("Allow", "GET, POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response, ["GET", "POST"])) return;
 
   try {
     assertAccess(request);

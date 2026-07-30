@@ -1,4 +1,4 @@
-import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 import { buildCourtAddressNameUpdates } from "../../../shared/lib/courts.js";
 
 const PAGE_SIZE = 100;
@@ -263,6 +263,18 @@ function applyHistoryFilters(query, rawFilters) {
   return applyTextFilter(next, "reason", filters.reason);
 }
 
+async function loadPage(query, { sortColumn, ascending, offset }) {
+  const { data, error, count } = await query
+    .order(sortColumn, { ascending, nullsFirst: false })
+    .order("id", { ascending: true })
+    .range(offset, offset + PAGE_SIZE - 1);
+  if (error) throw error;
+  return {
+    rows: data ?? [],
+    total: Number(count ?? 0),
+  };
+}
+
 async function loadCourtRows(context, body) {
   const page = safePage(body.page);
   const offset = (page - 1) * PAGE_SIZE;
@@ -270,15 +282,10 @@ async function loadCourtRows(context, body) {
   const ascending = body.sortDirection !== "desc";
   let query = context.supabase.from("rankball_admin_court_database").select(COURT_COLUMNS, { count: "exact" });
   query = applyCourtFilters(query, body.filters);
-  const { data, error, count } = await query
-    .order(sortColumn, { ascending, nullsFirst: false })
-    .order("id", { ascending: true })
-    .range(offset, offset + PAGE_SIZE - 1);
-  if (error) throw error;
-  const total = Number(count ?? 0);
+  const { rows, total } = await loadPage(query, { sortColumn, ascending, offset });
   return {
     ok: true,
-    rows: data ?? [],
+    rows,
     page: { page, pageSize: PAGE_SIZE, total, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) },
     capabilities: { reasonOptional: isTemporaryReasonOptional(context.profileId) },
   };
@@ -291,26 +298,21 @@ async function loadHistoryRows(context, body) {
   const ascending = body.sortDirection === "asc";
   let query = context.supabase.from("rankball_admin_court_change_history").select(HISTORY_COLUMNS, { count: "exact" });
   query = applyHistoryFilters(query, body.filters);
-  const { data, error, count } = await query
-    .order(sortColumn, { ascending, nullsFirst: false })
-    .order("id", { ascending: true })
-    .range(offset, offset + PAGE_SIZE - 1);
-  if (error) throw error;
-  const total = Number(count ?? 0);
+  const { rows, total } = await loadPage(query, { sortColumn, ascending, offset });
   return {
     ok: true,
-    rows: data ?? [],
+    rows,
     page: { page, pageSize: PAGE_SIZE, total, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) },
   };
 }
 
-async function loadAllCourtAddressRows(context) {
+async function loadAllRows(context, table, columns) {
   const rows = [];
   const batchSize = 1_000;
   for (let offset = 0; ; offset += batchSize) {
     const { data, error } = await context.supabase
-      .from("rankball_admin_court_database")
-      .select(ADDRESS_NAME_COLUMNS)
+      .from(table)
+      .select(columns)
       .order("id", { ascending: true })
       .range(offset, offset + batchSize - 1);
     if (error) throw error;
@@ -320,20 +322,12 @@ async function loadAllCourtAddressRows(context) {
   return rows;
 }
 
-async function loadAllCourtDuplicateRows(context) {
-  const rows = [];
-  const batchSize = 1_000;
-  for (let offset = 0; ; offset += batchSize) {
-    const { data, error } = await context.supabase
-      .from("approved_courts")
-      .select(DUPLICATE_GROUP_COLUMNS)
-      .order("id", { ascending: true })
-      .range(offset, offset + batchSize - 1);
-    if (error) throw error;
-    rows.push(...(data ?? []));
-    if ((data?.length ?? 0) < batchSize) break;
-  }
-  return rows;
+function loadAllCourtAddressRows(context) {
+  return loadAllRows(context, "rankball_admin_court_database", ADDRESS_NAME_COLUMNS);
+}
+
+function loadAllCourtDuplicateRows(context) {
+  return loadAllRows(context, "approved_courts", DUPLICATE_GROUP_COLUMNS);
 }
 
 export function getAdminCourtErrorStatus(error) {
@@ -349,11 +343,7 @@ export function getAdminCourtErrorStatus(error) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const context = await requireAdminContext(request, { minimumLevel: 50 });

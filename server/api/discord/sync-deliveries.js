@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
 import { fromRemoteNotification } from "../../../shared/lib/remotePayloadMappers.js";
 import { isDiscordNotificationEnabled } from "../../../shared/lib/settingsMappers.js";
@@ -106,11 +106,7 @@ function toDeliveryRow(notification, profileId, discordUserId, queuedAt) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const context = await getAuthenticatedContext(request);

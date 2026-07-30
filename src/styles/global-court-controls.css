@@ -32,7 +32,7 @@
   min-height: 34px;
   align-items: center;
   gap: 7px;
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-control-bg);
   color: var(--text);
@@ -108,7 +108,7 @@
   align-items: center;
   gap: var(--space-7);
   min-width: 0;
-  border-block: 1px solid var(--ui-control-border, var(--line));
+  border-block: var(--ui-stroke-width) solid var(--ui-control-border, var(--line));
   padding-block: 12px;
 }
 
@@ -249,7 +249,7 @@
   position: relative;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--ui-control-border, var(--line));
+  border: var(--ui-stroke-width) solid var(--ui-control-border, var(--line));
   border-radius: var(--radius-xs);
   background: var(--surface-2);
 }
@@ -294,7 +294,7 @@
   align-items: center;
   justify-content: center;
   transform: translate(-50%, -50%);
-  border: 2px solid #fff;
+  border: var(--ui-stroke-width-strong) solid #fff;
   border-radius: 50%;
   background: #151918;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.34);
@@ -332,7 +332,7 @@
   align-items: center;
   gap: var(--space-5);
   min-width: 0;
-  border-block: 1px solid var(--ui-control-border, var(--line));
+  border-block: var(--ui-stroke-width) solid var(--ui-control-border, var(--line));
   padding-block: 10px;
 }
 
@@ -355,7 +355,7 @@
   display: grid;
   min-width: 0;
   gap: 3px;
-  border: 1px solid var(--ui-control-border, var(--line));
+  border: var(--ui-stroke-width) solid var(--ui-control-border, var(--line));
   border-radius: var(--radius-xs);
   background: var(--ui-control-bg, var(--surface-2));
   color: var(--text);
@@ -578,7 +578,7 @@ html[data-theme="light"] .court-map-picker-state {
   height: 24px;
   flex: 0 0 24px;
   place-items: center;
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: 50%;
   font-weight: 900;
 }
@@ -678,7 +678,7 @@ html[data-theme="light"] .court-map-picker-state {
   min-height: 74px;
   align-content: center;
   gap: 5px;
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   color: var(--text);
@@ -840,7 +840,7 @@ html[data-theme="light"] .court-map-picker-state {
   display: flex;
   align-items: flex-start;
   gap: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--rb-orange) 48%, var(--line));
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--rb-orange) 48%, var(--line));
   border-radius: var(--ui-control-radius);
   background: color-mix(in srgb, var(--rb-orange) 8%, var(--surface-2));
   padding: 10px 12px;
@@ -860,7 +860,7 @@ html[data-theme="light"] .court-map-picker-state {
   display: grid;
   min-width: 0;
   gap: var(--space-2);
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   padding: 11px 12px;
@@ -890,7 +890,7 @@ html[data-theme="light"] .court-map-picker-state {
 
 .match-creation-validation-list,
 .match-creation-ready {
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   padding: 10px 12px;
 }
@@ -1254,7 +1254,7 @@ html[data-theme="light"] .court-map-picker-state {
   .home-side-stack .compact-list > .team-hover-trigger,
   .season-mini-card .contract-grid > div
 ) {
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   box-shadow: none;
@@ -1292,7 +1292,7 @@ html[data-theme="light"] .court-map-picker-state {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   color: var(--rb-text);
@@ -1529,7 +1529,7 @@ html[data-theme="light"] .court-map-picker-state {
 .admin-name-moderation-detail {
   display: grid;
   gap: var(--space-2);
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   padding: 12px;
@@ -1816,7 +1816,7 @@ html[data-theme="light"] .court-map-picker-state {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-5);
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   padding: 9px 10px;
@@ -1967,8 +1967,8 @@ html[data-theme="light"] .court-map-picker-state {
   min-width: 172px;
 }
 
-.settings-court-empty {
-  justify-content: flex-start !important;
+.compact-list > .settings-court-empty {
+  justify-content: flex-start;
   font-family: inherit;
   font-size: var(--ui-button-font-size);
   font-weight: var(--ui-button-font-weight);
@@ -2062,8 +2062,8 @@ html[data-theme="light"] .court-map-picker-state {
   height: 31px;
   padding: 4px 7px;
   overflow: hidden;
-  border-right: 1px solid var(--card-border);
-  border-bottom: 1px solid var(--card-border);
+  border-right: var(--ui-stroke-width) solid var(--card-border);
+  border-bottom: var(--ui-stroke-width) solid var(--card-border);
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2115,7 +2115,7 @@ html[data-theme="light"] .court-map-picker-state {
   min-width: 0;
   height: 25px;
   padding: 2px 6px;
-  border: 1px solid var(--input-border);
+  border: var(--ui-stroke-width) solid var(--input-border);
   border-radius: var(--radius-xs);
   background: var(--input-bg);
   color: var(--text);
@@ -2177,10 +2177,10 @@ html[data-theme="light"] .court-map-picker-state {
   font-weight: 800;
 }
 
-.court-db-empty {
-  height: 70px !important;
+.court-db-modal .court-db-table td.court-db-empty {
+  height: 70px;
   color: var(--muted);
-  text-align: center !important;
+  text-align: center;
 }
 
 @media (max-width: 720px) {

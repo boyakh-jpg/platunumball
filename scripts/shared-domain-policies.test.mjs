@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import {
+  APP_DATA_ACTION_SOURCE_PATHS,
+  APP_DATA_ORCHESTRATOR_SOURCE_PATHS,
+  CREATE_MATCH_PAGE_SOURCE_PATHS,
+  HOME_PAGE_SOURCE_PATHS,
+  MATCHES_PAGE_SOURCE_PATHS,
+  MATCH_ROOM_SOURCE_PATHS,
+  MATCH_SYNC_SOURCE_PATHS,
+  REPOSITORY_MATCHES_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  TOURNAMENT_DETAIL_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
 import { BRAND_NAME } from "../src/lib/brand.js";
 import { getAdminStatusLabel } from "../src/lib/admin.js";
 import {
@@ -166,6 +179,9 @@ import {
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
+const readRecruitingPageSource = () => readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS);
+const readHomePageSource = () => readSourceGroup(readSource, HOME_PAGE_SOURCE_PATHS);
+const readCreateMatchPageSource = () => readSourceGroup(readSource, CREATE_MATCH_PAGE_SOURCE_PATHS);
 
 async function readGlobalStyles() {
   const manifestPath = "src/styles/globals.css";
@@ -180,7 +196,7 @@ const PUBLIC_COPY_SOURCE_PATHS = Object.freeze([
   "index.html",
   "src/lib/brand.js",
   "src/components/layout/Sidebar.jsx",
-  "src/pages/Recruiting.jsx",
+  ...RECRUITING_PAGE_SOURCE_PATHS,
   "server/api/discord/interactions.js",
   "server/api/discord/dm-worker.js",
   "server/api/discord/_roomChatBridge.js",
@@ -350,10 +366,10 @@ test("tournament roster snapshot restores a captain omitted from the current dir
 
 test("tournament schedule guard is enforced in UI, CSS, and DB", async () => {
   const [detailSource, recruitingSource, roomFlowSource, styles, migration] = await Promise.all([
-    readSource("src/pages/TournamentDetail.jsx"),
-    readSource("src/pages/Recruiting.jsx"),
+    readSourceGroup(readSource, TOURNAMENT_DETAIL_SOURCE_PATHS),
+    readRecruitingPageSource(),
     readSource("src/lib/roomFlow.js"),
-    readSource("src/styles/matches-arena.css"),
+    readSource("src/styles/responsive/matches-arena-responsive.css"),
     readSource("supabase/migrations/20260725017000_tournament_schedule_revision_lock.sql"),
   ]);
 
@@ -372,8 +388,8 @@ test("tournament schedule guard is enforced in UI, CSS, and DB", async () => {
 
 test("match_record keeps three reserves without overriding live or tournament bench capacity", async () => {
   const [recruitingSource, repositorySource, migration, logicPolicy] = await Promise.all([
-    readSource("src/pages/Recruiting.jsx"),
-    readSource("src/data/repository.js"),
+    readRecruitingPageSource(),
+    readSourceGroup(readSource, REPOSITORY_MATCHES_SOURCE_PATHS),
     readSource("supabase/migrations/20260729170000_match_record_batch_score_and_reserves.sql"),
     readSource("docs/logic-and-terminology.md"),
   ]);
@@ -639,8 +655,8 @@ test("무심판 경기의 최종 확정은 방장만 수행한다", () => {
 test("match clock keeps shot settings stable and fullscreen compact", async () => {
   const panelSource = await readSource("src/components/match/MatchClockPanel.jsx");
   const clockStyles = await readSource("src/styles/match-clock.css");
-  const recruitingSource = await readSource("src/pages/Recruiting.jsx");
-  const matchRoomSource = await readSource("src/pages/MatchRoom.jsx");
+  const recruitingSource = await readRecruitingPageSource();
+  const matchRoomSource = await readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS);
   const forceEndMigration = [
     await readSource("supabase/migrations/20260724230000_match_clock_one_hour_force_end.sql"),
     await readSource("supabase/migrations/20260725012000_match_duration_and_clock_limits.sql"),
@@ -655,7 +671,7 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(panelSource, /matchRules\.periodBreakMinutes/);
   assert.match(panelSource, /matchRules\.halftimeMinutes/);
   assert.match(panelSource, /directScoreControlsEnabled = scoreboardEnabled/);
-  assert.match(panelSource, /export function MatchScoreControls/);
+  assert.match(panelSource, /export \{ default as MatchScoreControls \} from "\.\/MatchScoreControls\.jsx";/);
   assert.match(panelSource, /directScoreControlsEnabled && !isEnded && clockEditableScoreSides\.length/);
   assert.match(panelSource, /clockEditableScoreSides\.includes\("teamA"\)/);
   assert.match(panelSource, /clockEditableScoreSides\.includes\("teamB"\)/);
@@ -722,10 +738,12 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
 });
 
 test("match recommendations finish from the SQL result without a full match reload", async () => {
-  const [appDataSource, matchServerSource] = await Promise.all([
-    readSource("src/hooks/useAppData.js"),
-    readSource("server/api/matches/sync-match.js"),
+  const [appDataMergeSource, appDataOrchestratorSource, matchServerSource] = await Promise.all([
+    readSource("src/hooks/appData/remoteMerge.js"),
+    readSourceGroup(readSource, APP_DATA_ORCHESTRATOR_SOURCE_PATHS),
+    readSourceGroup(readSource, MATCH_SYNC_SOURCE_PATHS),
   ]);
+  const appDataSource = `${appDataMergeSource}\n${appDataOrchestratorSource}`;
 
   assert.match(appDataSource, /function mergeMatchThumbsResult\(/);
   assert.match(appDataSource, /operation\?\.action === "submitMatchThumbs"/);
@@ -764,7 +782,8 @@ test("public product copy uses the BOXTIER brand and production tone", async () 
 
   const refinedUiSource = await Promise.all([
     "src/hooks/useAuthSession.js",
-    "src/hooks/useAppData.js",
+    ...APP_DATA_ORCHESTRATOR_SOURCE_PATHS,
+    ...APP_DATA_ACTION_SOURCE_PATHS,
     "src/lib/handles.js",
     "src/lib/admin.js",
     "src/lib/mockData.js",
@@ -775,21 +794,44 @@ test("public product copy uses the BOXTIER brand and production tone", async () 
     "src/components/match/MatchCard.jsx",
     "src/components/ranking/RankingTable.jsx",
     "src/pages/Admin.jsx",
-    "src/pages/Recruiting.jsx",
+    "src/pages/adminPageModel.js",
+    "src/pages/AdminPageParts.jsx",
+    "src/pages/useAdminPageController.jsx",
+    "src/pages/AdminPageView.jsx",
+    ...RECRUITING_PAGE_SOURCE_PATHS,
     "src/pages/Matches.jsx",
+    "src/pages/matchesPageSelectors.js",
+    "src/pages/MatchesPagePanels.jsx",
+    "src/pages/useMatchesPageController.jsx",
+    "src/pages/MatchesPageView.jsx",
     "src/pages/MatchRoom.jsx",
-    "src/pages/CreateMatch.jsx",
+    "src/pages/matchRoomModel.js",
+    "src/pages/MatchRoomParts.jsx",
+    "src/pages/MatchRoomView.jsx",
+    ...CREATE_MATCH_PAGE_SOURCE_PATHS,
     "src/pages/Login.jsx",
     "src/pages/PlayerDetail.jsx",
     "src/pages/Recorder.jsx",
     "src/pages/Settings.jsx",
+    "src/pages/settingsPageModel.js",
+    "src/pages/useSettingsPageController.jsx",
+    "src/pages/useSettingsReportController.jsx",
+    "src/pages/SettingsPageView.jsx",
+    "src/pages/SettingsPrimaryColumn.jsx",
+    "src/pages/SettingsSideColumn.jsx",
+    "src/pages/SettingsRefereeSection.jsx",
     "src/pages/Signup.jsx",
     "src/pages/TeamDetail.jsx",
     "src/pages/Teams.jsx",
     "src/pages/TournamentDetail.jsx",
+    "src/pages/tournamentDetailModel.jsx",
+    "src/pages/TournamentDetailView.jsx",
     "src/lib/constants.js",
     "server/api/matches/sync-match.js",
-    "server/api/recruiting/sync-post.js",
+    "server/api/recruiting/_syncPostHandler.js",
+    "server/api/recruiting/_syncPostPolicy.js",
+    "server/api/recruiting/_syncPostActions.js",
+    "server/api/recruiting/_syncPostPersistence.js",
   ].map(readSource)).then((items) => items.join("\n"));
 
   [
@@ -995,8 +1037,8 @@ test("room schedule labels stay canonical across all recruiting surfaces", async
   assert.equal(getRoomScheduleLabel({}), "일정 미정");
 
   const [home, recruiting, notifications] = await Promise.all([
-    readSource("src/pages/Home.jsx"),
-    readSource("src/pages/Recruiting.jsx"),
+    readHomePageSource(),
+    readRecruitingPageSource(),
     readSource("src/pages/Notifications.jsx"),
   ]);
   const scheduleConsumers = `${home}\n${recruiting}\n${notifications}`;
@@ -1183,8 +1225,11 @@ test("team and compact user API projections stay on shared mappers", async () =>
   ] = await Promise.all([
     readSource("shared/lib/teamMappers.js"),
     readSource("shared/lib/recruitingMappers.js"),
-    readSource("server/api/matches/list.js"),
-    readSource("server/api/recruiting/list.js"),
+    Promise.all([
+      readSource("server/api/matches/_listProjection.js"),
+      readSource("server/api/matches/_listLoader.js"),
+    ]).then((sources) => sources.join("\n")),
+    readSource("server/api/recruiting/_listProjection.js"),
     readSource("server/api/search.js"),
     readSource("server/api/_supabaseAdmin.js"),
   ]);
@@ -1207,7 +1252,7 @@ test("profile icon background choice and image preview stay persistent and separ
     readSource("server/api/profile/emblem.js"),
     readSource("shared/lib/repositoryColumns.js"),
     readSource("supabase/migrations/20260721190000_profile_icon_background_toggle.sql"),
-    readGlobalStyles(),
+    readSource("src/styles/features/profile-emblems.css"),
   ]);
   assert.match(dialog, /avatarBackgroundEnabled/);
   assert.match(dialog, /profile-icon-preview-dialog/);
@@ -1226,7 +1271,7 @@ test("profile icon picker lists owned icons only and locked achievements conceal
     readSource("src/components/profile/ProfileIconDialog.jsx"),
     readSource("src/pages/ProfileAchievements.jsx"),
     readSource("server/api/_profileIconAchievements.js"),
-    readGlobalStyles(),
+    readSource("src/styles/features/profile-emblems.css"),
   ]);
   assert.match(dialog, /group\.icons\.filter\(\(icon\) => unlockedSet\.has\(icon\.id\)\)/);
   assert.match(dialog, /unlockedGroups\.map\(\(group\) =>/);
@@ -1294,8 +1339,8 @@ test("team emblem border controls stay common to initial and uploaded sources", 
 test("primary match pages share one empty state component", async () => {
   const [emptyState, recruiting, matches, recorder] = await Promise.all([
     readSource("src/components/common/EmptyState.jsx"),
-    readSource("src/pages/Recruiting.jsx"),
-    readSource("src/pages/Matches.jsx"),
+    readRecruitingPageSource(),
+    readSourceGroup(readSource, MATCHES_PAGE_SOURCE_PATHS),
     readSource("src/pages/Recorder.jsx"),
   ]);
   assert.match(emptyState, /export default function EmptyState/);
@@ -1305,7 +1350,7 @@ test("primary match pages share one empty state component", async () => {
 
 test("empty home upcoming card does not keep the desktop match minimum height", async () => {
   const [home, styles] = await Promise.all([
-    readSource("src/pages/Home.jsx"),
+    readHomePageSource(),
     readGlobalStyles(),
   ]);
   assert.match(home, /home-upcoming-card[^`]*\$\{upcomingItems\.length \? "" : " is-empty"\}/);
@@ -1396,7 +1441,7 @@ test("server and browser keep untrusted text out of executable sinks", async () 
     readSource("api/index.js"),
     readSource("server/api/_supabaseAdmin.js"),
     readSource("src/lib/serverActions.js"),
-    readSource("src/pages/Recruiting.jsx"),
+    readRecruitingPageSource(),
     readSource("vercel.json"),
     readSourceTree("src"),
   ]);
@@ -1614,7 +1659,7 @@ test("profile records use actual participation and split individual, team, and p
 });
 
 test("home recent records hydrate authoritative played and reserve fields", async () => {
-  const source = await readSource("server/api/matches/list.js");
+  const source = await readSource("server/api/matches/_listLoader.js");
   assert.match(source, /const recentCompletedIds = new Set\(recentCompletedPage\?\.ids \?\? \[\]\)/);
   assert.match(source, /!feedCardIds\.has\(id\) \|\| recentCompletedIds\.has\(id\)/);
 });
@@ -1670,12 +1715,15 @@ test("court request attributes preserve unknown values instead of inventing fact
 
 test("court identity and paid-room UI stay shared across list surfaces", async () => {
   const [homeSource, hoverSource, recruitingSource, matchesSource, matchListSource, recruitingListSource] = await Promise.all([
-    readSource("src/pages/Home.jsx"),
+    readHomePageSource(),
     readSource("src/components/court/CourtHoverCard.jsx"),
-    readSource("src/pages/Recruiting.jsx"),
-    readSource("src/pages/Matches.jsx"),
+    readRecruitingPageSource(),
+    readSourceGroup(readSource, MATCHES_PAGE_SOURCE_PATHS),
     readSource("src/components/match/MatchListCard.jsx"),
-    readSource("server/api/recruiting/list.js"),
+    Promise.all([
+      readSource("server/api/recruiting/_listLoader.js"),
+      readSource("server/api/recruiting/_listProjection.js"),
+    ]).then((sources) => sources.join("\n")),
   ]);
 
   assert.match(homeSource, /<CourtIdentityIcon compact \/>/);
@@ -1793,7 +1841,7 @@ test("team and room court pickers share one single-selection search policy", asy
 
   const [teams, createMatch] = await Promise.all([
     readSource("src/pages/Teams.jsx"),
-    readSource("src/pages/CreateMatch.jsx"),
+    readCreateMatchPageSource(),
   ]);
   [teams, createMatch].forEach((source) => {
     assert.match(source, /getCourtPickerResults/);
@@ -1889,9 +1937,9 @@ test("match dispute rejection, void reasons, restoration and scoped penalties st
   assert.match(rejectedState.notifications[0].body, /방장이 최종 승인/);
 
   const [matchRoom, recruiting, matchSync, reportSubmit, adminReview, migration, cleanupMigration, disputeBoundMigration, disputeNormalizationMigration] = await Promise.all([
-    readSource("src/pages/MatchRoom.jsx"),
-    readSource("src/pages/Recruiting.jsx"),
-    readSource("server/api/matches/sync-match.js"),
+    readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS),
+    readRecruitingPageSource(),
+    readSourceGroup(readSource, MATCH_SYNC_SOURCE_PATHS),
     readSource("server/api/reports/submit.js"),
     readSource("server/api/admin/review-action.js"),
     readSource("supabase/migrations/20260721210000_match_void_review_and_dispute_rejection.sql"),
@@ -1919,11 +1967,20 @@ test("match dispute rejection, void reasons, restoration and scoped penalties st
 
 test("core consumers do not restore duplicated policy literals", async () => {
   const [repository, matchUtils, recruitingPage, matchSync, recruitingSync, profileEmblem, teamEmblem, discordBridge] = await Promise.all([
-    readSource("src/data/repository.js"),
+    readSourceTree("src/data/repository"),
     readSource("shared/lib/matchUtils.js"),
-    readSource("src/pages/Recruiting.jsx"),
+    readRecruitingPageSource(),
     readSource("server/api/matches/sync-match.js"),
-    readSource("server/api/recruiting/sync-post.js"),
+    Promise.all([
+      readSource("server/api/recruiting/_syncPostCommon.js"),
+      readSource("server/api/recruiting/_syncPostProjection.js"),
+      readSource("server/api/recruiting/_syncPostPolicy.js"),
+      readSource("server/api/recruiting/_syncPostActions.js"),
+      readSource("server/api/recruiting/_syncPostResponse.js"),
+      readSource("server/api/recruiting/_syncPostChat.js"),
+      readSource("server/api/recruiting/_syncPostPersistence.js"),
+      readSource("server/api/recruiting/_syncPostHandler.js"),
+    ]).then((sources) => sources.join("\n")),
     readSource("server/api/profile/emblem.js"),
     readSource("server/api/teams/emblem.js"),
     readSource("server/api/discord/_roomChatBridge.js"),
@@ -1938,7 +1995,7 @@ test("core consumers do not restore duplicated policy literals", async () => {
 });
 
 test("pickup player invitation keeps multi-select enabled", async () => {
-  const recruitingPage = await readSource("src/pages/Recruiting.jsx");
+  const recruitingPage = await readRecruitingPageSource();
   assert.doesNotMatch(recruitingPage, /toggleSingleInvitePlayer/);
   assert.ok((recruitingPage.match(/onTogglePlayer=\{toggleInvitePlayer\}/g) ?? []).length >= 2);
 });
@@ -1999,8 +2056,8 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   });
   const page = await readSource("src/pages/RefereeRulebook.jsx");
   const tutorial = await readSource("src/pages/GettingStarted.jsx");
-  const recruiting = await readSource("src/pages/Recruiting.jsx");
-  const matchRoom = await readSource("src/pages/MatchRoom.jsx");
+  const recruiting = await readRecruitingPageSource();
+  const matchRoom = await readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS);
   const matchClockPanel = await readSource("src/components/match/MatchClockPanel.jsx");
 
   assert.equal(REFEREE_EXAM_VERSION, "rankball-referee-2026-07");

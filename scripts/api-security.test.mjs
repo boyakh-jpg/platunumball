@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import {
+  APP_DATA_ACTION_SOURCE_PATHS,
+  CREATE_MATCH_PAGE_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
 import apiHandler, { API_ROUTES } from "../api/index.js";
 import {
+  allowRequestMethod,
   bearerTokenMatches,
 } from "../server/api/_supabaseAdmin.js";
 import {
@@ -28,6 +34,7 @@ import {
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
+const readSources = (...paths) => Promise.all(paths.map(readSource)).then((sources) => sources.join("\n"));
 
 async function readSourceTree(relativeDirectory) {
   const sources = [];
@@ -74,6 +81,22 @@ async function invokeApi({ path = "search", method = "POST", query = {}, headers
   return response;
 }
 
+test("공용 method guard는 route별 허용 method와 405 응답을 보존한다", () => {
+  const postOnlyResponse = createResponse();
+  assert.equal(allowRequestMethod({ method: "GET" }, postOnlyResponse), false);
+  assert.equal(postOnlyResponse.headers.allow, "POST");
+  assert.equal(postOnlyResponse.statusCode, 405);
+  assert.deepEqual(postOnlyResponse.payload, { error: "method_not_allowed" });
+
+  const multiMethodResponse = createResponse();
+  assert.equal(allowRequestMethod({ method: "PATCH" }, multiMethodResponse, ["GET", "POST"]), false);
+  assert.equal(multiMethodResponse.headers.allow, "GET, POST");
+
+  const acceptedResponse = createResponse();
+  assert.equal(allowRequestMethod({ method: "POST" }, acceptedResponse), true);
+  assert.equal(acceptedResponse.statusCode, 200);
+});
+
 test("API routes use deny-by-default method and credential policies", async () => {
   const validAuthModes = new Set(["user", "admin", "internal", "signedWebhook", "oauthCallback", "alphaTest"]);
   assert.ok(API_ROUTES.size > 40);
@@ -87,7 +110,12 @@ test("API routes use deny-by-default method and credential policies", async () =
     const handlerSource = route.handler.toString();
     if (route.auth === "user") assert.match(handlerSource, /getAuthenticatedContext/);
     if (route.auth === "admin") assert.match(handlerSource, /requireAdminContext/);
-    if (route.auth === "internal") assert.match(handlerSource, /assert(?:WorkerAccess|BridgeAccess|Access)\(request\)/);
+    if (route.auth === "internal") {
+      assert.match(
+        handlerSource,
+        /assert(?:WorkerAccess|BridgeAccess|Access|SystemSecretAccess)\(request(?:,|\))/,
+      );
+    }
     if (route.auth === "signedWebhook") assert.match(handlerSource, /verifyDiscordSignature/);
     if (route.auth === "alphaTest") assert.match(handlerSource, /assertAlphaTestLoginEnabled/);
   }
@@ -95,6 +123,7 @@ test("API routes use deny-by-default method and credential policies", async () =
     [...API_ROUTES].filter(([, route]) => route.auth === "oauthCallback").map(([path]) => path),
     ["/auth/discord/callback"],
   );
+  const systemRequestSource = await readSource("server/api/system/_systemRequest.js");
   const internalSources = await Promise.all([
     "server/api/discord/dm-worker.js",
     "server/api/discord/room-chat.js",
@@ -102,7 +131,13 @@ test("API routes use deny-by-default method and credential policies", async () =
     "server/api/system/feed-audit.js",
     "server/api/system/maintenance.js",
     "server/api/system/schema-health.js",
-  ].map(readSource));
+  ].map(async (sourcePath) => {
+    const source = await readSource(sourcePath);
+    return sourcePath === "server/api/system/feed-audit.js"
+      || sourcePath === "server/api/system/schema-health.js"
+      ? `${source}\n${systemRequestSource}`
+      : source;
+  }));
   internalSources.forEach((source) => assert.match(source, /bearerTokenMatches\(request,/));
 });
 
@@ -146,8 +181,17 @@ test("report review actions keep sanctions behind verified targets and level 50"
   const [reviewSource, submitSource, settingsSource, hookSource, searchSource, simulationSource] = await Promise.all([
     readSource("server/api/admin/review-action.js"),
     readSource("server/api/reports/submit.js"),
-    readSource("src/pages/Settings.jsx"),
-    readSource("src/hooks/useAppData.js"),
+    readSources(
+      "src/pages/Settings.jsx",
+      "src/pages/settingsPageModel.js",
+      "src/pages/useSettingsPageController.jsx",
+      "src/pages/useSettingsReportController.jsx",
+      "src/pages/SettingsPageView.jsx",
+      "src/pages/SettingsPrimaryColumn.jsx",
+      "src/pages/SettingsSideColumn.jsx",
+      "src/pages/SettingsRefereeSection.jsx",
+    ),
+    readSourceGroup(readSource, APP_DATA_ACTION_SOURCE_PATHS),
     readSource("server/api/search.js"),
     readSource("scripts/simulate-backend-flow.mjs"),
   ]);
@@ -182,7 +226,7 @@ test("referee search supports qualified discovery on focus only", async () => {
   const [searchSource, pickerSource, createMatchSource] = await Promise.all([
     readSource("server/api/search.js"),
     readSource("src/components/common/SearchPicker.jsx"),
-    readSource("src/pages/CreateMatch.jsx"),
+    readSourceGroup(readSource, CREATE_MATCH_PAGE_SOURCE_PATHS),
   ]);
   assert.match(searchSource, /const refereeDiscovery = forceSearch && queryLength === 0 && types\.length === 1 && types\[0\] === "referee";/);
   const refereeSearchSource = searchSource.slice(
@@ -345,10 +389,11 @@ test("public app redirects reject untrusted Host values and external paths", () 
 });
 
 test("authenticated court lookups use POST JSON instead of URL query", async () => {
-  const [clientSource, addressServerSource, placeServerSource] = await Promise.all([
+  const [clientSource, addressServerSource, placeServerSource, requestGuardSource] = await Promise.all([
     readSource("src/lib/naverAddress.js"),
     readSource("server/api/courts/address-search.js"),
     readSource("server/api/courts/place-search.js"),
+    readSource("server/api/_supabaseAdmin.js"),
   ]);
   assert.match(clientSource, /fetch\("\/api\/courts\/address-search", \{[\s\S]{0,180}method: "POST"/);
   assert.match(clientSource, /body: JSON\.stringify\(\{ q: searchQuery \}\)/);
@@ -356,9 +401,10 @@ test("authenticated court lookups use POST JSON instead of URL query", async () 
   assert.match(clientSource, /fetch\("\/api\/courts\/place-search", \{[\s\S]{0,180}method: "POST"/);
   assert.doesNotMatch(clientSource, /place-search\?/);
   [addressServerSource, placeServerSource].forEach((serverSource) => {
-    assert.match(serverSource, /request\.method !== "POST"/);
+    assert.match(serverSource, /allowRequestMethod\(request, response\)/);
     assert.doesNotMatch(serverSource, /request\.headers\.host|searchParams\.get\("q"\)/);
   });
+  assert.match(requestGuardSource, /allowRequestMethod\(request, response, allowedMethods = \["POST"\]\)/);
   assert.match(placeServerSource, /from\("approved_courts"\)/);
   assert.match(placeServerSource, /from\("court_requests"\)/);
   assert.doesNotMatch(placeServerSource, /openapi\.naver\.com\/v1\/search\/local|NAVER_SEARCH_CLIENT_ID|NAVER_SEARCH_CLIENT_SECRET/);

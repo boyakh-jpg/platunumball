@@ -1,0 +1,835 @@
+
+
+/* 2026-07-01 final mobile hero bleed standard.
+   The app shell owns page padding, so first-screen heroes must cancel it on mobile. */
+.app-main {
+  --app-main-pad-top: var(--page-gutter);
+  --app-main-pad-x: var(--page-gutter);
+}
+@media (max-width: 1079px) {
+  .app-main {
+    --app-main-pad-top: 18px;
+    --app-main-pad-x: var(--page-gutter);
+  }
+}
+@media (max-width: 1020px) {
+  .app-main {
+    --app-main-pad-top: 18px;
+    --app-main-pad-x: 16px;
+  }
+}
+@media (max-width: 430px) {
+  .app-main {
+    --app-main-pad-x: 12px;
+  }
+}
+@media (max-width: 1079px) {
+  :is(
+    .arena-recruit-hero,
+    .gm-room-hero,
+    .om-match-hero,
+    .tournament-hero
+  ) {
+    width: calc(100% + (2 * var(--app-main-pad-x, var(--page-gutter))));
+    max-width: none;
+    margin-inline: calc(-1 * var(--app-main-pad-x, var(--page-gutter)));
+    margin-block-start: calc(-1 * var(--app-main-pad-top, 18px));
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .tournament-detail-page > .tournament-hero {
+    margin-block-start: 0;
+  }
+
+  .app-main > .page-stack > :is(
+    .page-header,
+    .landing-hero,
+    .match-hero,
+    .team-hub-hero,
+    .profile-hero,
+    .team-detail-hero
+  ):first-child,
+  .app-main > .rank-home > .rank-summary-grid {
+    width: calc(100% + (2 * var(--app-main-pad-x)));
+    max-width: none;
+    margin-inline: calc(-1 * var(--app-main-pad-x));
+    margin-block-start: calc(-1 * var(--app-main-pad-top));
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .app-main > .rank-home > .rank-summary-grid {
+    order: 1;
+  }
+
+  .app-main > .rank-home > .home-search-panel {
+    order: 2;
+  }
+
+  .app-main > .rank-home > .home-action-card {
+    order: 3;
+  }
+
+  .app-main > .rank-home > .home-dashboard-grid {
+    order: 4;
+  }
+
+  .app-main > .page-stack > .team-hub-hero:first-child {
+    grid-template-columns: 1fr;
+    align-items: end;
+    min-height: 174px;
+    padding: 18px;
+  }
+
+  .app-main > .page-stack > .team-hub-hero:first-child > div:first-child {
+    min-height: 0;
+  }
+
+  .app-main > .page-stack > .team-hub-hero:first-child .team-hub-board {
+    display: none;
+  }
+}
+@media (max-width: 480px) {
+  .app-main > .page-stack > .team-hub-hero:first-child,
+  .app-main > .page-stack > .page-header:first-child {
+    min-height: 158px;
+    padding: 16px;
+  }
+}
+/* 2026-07-02 home responsive rail balance. */
+.rank-home .rank-summary-grid {
+  grid-template-columns: 1fr;
+  gap: var(--page-section-gap);
+  align-items: stretch;
+  overflow: hidden;
+}
+.rank-home .home-rank-board-head,
+.rank-home .rank-tier-rail,
+.rank-home .home-dashboard-grid,
+.rank-home .home-primary-stack,
+.rank-home .home-side-stack {
+  min-width: 0;
+}
+.rank-home .rank-summary-grid .rank-hero-top {
+  min-height: clamp(260px, 29vw, 420px);
+  overflow: hidden;
+}
+.rank-home .rank-summary-grid .rank-hero-top > div {
+  min-width: 0;
+  max-width: min(680px, 100%);
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.rank-home .rank-tier-rail {
+  grid-column: auto;
+  grid-row: auto;
+  grid-template-columns: 1fr;
+  align-content: start;
+  justify-self: stretch;
+  width: 100%;
+  max-width: none;
+}
+.rank-home .home-side-stack > .rank-tier-rail {
+  order: -1;
+  grid-column: 1 / -1;
+}
+.rank-home .rank-mode-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 1080px) {
+  .rank-home .home-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  }
+}
+@media (max-width: 1240px) {
+  .rank-home .rank-summary-grid {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .rank-home .rank-tier-rail {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .rank-home .rank-tier-rail {
+    grid-template-columns: 1fr;
+  }
+}
+/* 2026-07-02 home rank spotlight card. */
+.rank-home .rank-spotlight-card,
+html[data-theme="light"] .rank-home .rank-spotlight-card {
+  position: relative;
+  display: flex;
+  min-height: 210px;
+  align-items: flex-end;
+  overflow: hidden;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--card-radius);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.78)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.76), rgba(0, 0, 0, 0.14) 64%),
+    var(--bg-ball) center 48% / cover no-repeat,
+    var(--rb-bg-2);
+  color: #fff;
+  padding: 18px;
+}
+.rank-home .rank-spotlight-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 26% 72%, rgba(120, 170, 255, 0.2), transparent 42%),
+    linear-gradient(180deg, transparent 0 58%, rgba(24, 25, 26, 0.7));
+}
+.rank-home .rank-spotlight-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: var(--space-6);
+}
+.rank-home .rank-spotlight-content .eyebrow {
+  color: var(--rb-orange-2);
+  font-size: 0.72rem;
+  text-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+.rank-home .rank-spotlight-main {
+  display: grid;
+  grid-template-columns: clamp(58px, 16vw, 74px) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-6);
+}
+.rank-home .rank-spotlight-main .tier-emblem {
+  width: clamp(58px, 16vw, 74px);
+  height: clamp(58px, 16vw, 74px);
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.46));
+}
+.rank-home .rank-spotlight-main > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.rank-home .rank-spotlight-main strong {
+  font-weight: 950;
+  text-shadow: 0 12px 24px rgba(0, 0, 0, 0.52);
+  text-transform: uppercase;
+}
+.rank-home .rank-spotlight-main span {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.8rem;
+  font-weight: 950;
+  line-height: 1.25;
+  text-shadow: 0 8px 18px rgba(0, 0, 0, 0.48);
+}
+.rank-home .rank-spotlight-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.rank-home .rank-spotlight-links a {
+  min-height: 28px;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.72rem;
+}
+/* Image cards should not contain small framed cards inside them.
+   Keep secondary links as text actions unless the user explicitly asks for boxed controls. */
+.rank-home .rank-spotlight-card .rank-spotlight-links {
+  gap: var(--space-6);
+}
+.rank-home .rank-spotlight-card .rank-spotlight-links a,
+.rank-home .rank-spotlight-card .rank-spotlight-links a:first-child,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:first-child {
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1;
+}
+.rank-home .rank-spotlight-card .rank-spotlight-links a:hover,
+.rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+html[data-theme="light"] .rank-home .rank-spotlight-card {
+  border-color: rgba(30, 24, 18, 0.16);
+  background:
+    linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.62)),
+    linear-gradient(90deg, rgba(30, 24, 18, 0.54), rgba(30, 24, 18, 0.08) 64%),
+    var(--bg-ball) center 48% / cover no-repeat,
+    var(--rb-bg-2);
+}
+/* 2026-07-02 home top rail rank fix. */
+.rank-home > .home-top-rail {
+  gap: var(--space-7);
+  min-width: 0;
+  align-self: start;
+}
+.rank-home .home-top-rail .rank-tier-rail {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  order: 0;
+  padding: 0;
+}
+.rank-home .home-top-rail > .home-action-card {
+  order: 1;
+}
+.rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card,
+html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card {
+  display: flex;
+  min-height: 210px;
+  align-items: flex-end;
+  overflow: hidden;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--card-radius);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.78)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.14) 66%),
+    var(--bg-ball) center 48% / cover no-repeat,
+    var(--rb-bg-2);
+  color: #fff;
+  padding: 18px;
+}
+html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card {
+  border-color: rgba(30, 24, 18, 0.14);
+  background:
+    linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.64)),
+    linear-gradient(90deg, rgba(30, 24, 18, 0.58), rgba(30, 24, 18, 0.08) 66%),
+    var(--bg-ball) center 48% / cover no-repeat,
+    var(--rb-bg-2);
+}
+.rank-home .home-top-rail .rank-spotlight-card::before {
+  background:
+    radial-gradient(ellipse at 26% 72%, rgba(120, 170, 255, 0.18), transparent 42%),
+    linear-gradient(180deg, transparent 0 58%, rgba(24, 25, 26, 0.68));
+}
+@media (min-width: 1080px) {
+  .rank-home > .home-top-rail {
+    grid-area: action;
+  }
+
+  .rank-home .home-dashboard-grid .home-side-stack {
+    transform: none;
+    margin-bottom: 0;
+  }
+}
+@media (max-width: 759px) {
+  .rank-home > .home-top-rail {
+    order: 3;
+  }
+
+  .rank-home > .home-action-card {
+    order: initial;
+  }
+}
+/* 2026-07-02 home hero bleed regression fix. */
+.rank-home .rank-spotlight-main strong {
+  font-family: var(--hero-title-font);
+  line-height: var(--hero-title-line-height);
+}
+@media (max-width: 1079px) {
+  .rank-home > .home-top-rail {
+    order: 3;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    order: 4;
+  }
+}
+@media (min-width: 760px) and (max-width: 1079px) {
+  .app-main > .rank-home {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
+  .app-main > .rank-home > .rank-summary-grid {
+    grid-area: auto;
+    order: 1;
+    padding: 0;
+  }
+
+  .app-main > .rank-home > .home-search-panel {
+    grid-area: auto;
+    order: 2;
+  }
+
+  .app-main > .rank-home > .home-top-rail {
+    grid-area: auto;
+    order: 3;
+  }
+
+  .app-main > .rank-home > .home-dashboard-grid {
+    grid-area: auto;
+    order: 4;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    width: 100%;
+    margin: 0;
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    padding-inline: clamp(22px, 4vw, 44px);
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box {
+    gap: var(--space-7);
+    padding-inline: clamp(16px, 2.4vw, 24px);
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box input {
+    padding-inline-start: 4px;
+  }
+}
+/* 2026-07-02 remove extra non-home hero overlay layers. */
+/* 2026-07-02 canonical home hero image rule: no wash, grid, or pseudo overlay. */
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+.rank-home .rank-summary-grid .home-rank-board-head p,
+.rank-home .rank-summary-grid .home-rank-board-head .eyebrow,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head .eyebrow {
+  color: var(--rb-orange);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
+}
+.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+  color: var(--rb-orange-2);
+}
+/* 2026-07-02 rank spotlight cleanup: no inherited accent stripe or framed links. */
+.rank-home .rank-spotlight-card::before,
+.rank-home .home-top-rail .rank-spotlight-card::before,
+html[data-theme="light"] .rank-home .rank-spotlight-card::before,
+html[data-theme="light"] .rank-home .home-top-rail .rank-spotlight-card::before {
+  content: none;
+  display: none;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  opacity: 0;
+}
+.rank-home .rank-spotlight-card .rank-spotlight-links a,
+.rank-home .rank-spotlight-card .rank-spotlight-links a:first-child,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:first-child {
+  min-height: auto;
+  border: 0;
+  border-bottom: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.92);
+  padding: 0;
+  text-decoration: none;
+}
+.rank-home .rank-spotlight-card .rank-spotlight-links a:hover,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:hover {
+  border: 0;
+  border-bottom: 0;
+  box-shadow: none;
+  text-decoration: none;
+}
+.rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible {
+  border-radius: var(--ui-control-radius);
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 3px;
+  box-shadow: var(--focus-ring);
+}
+/* 2026-07-02 image-led home cards should not show partial frame lines. */
+.rank-home .rank-summary-grid,
+.rank-home .rank-summary-grid .home-rank-board-head,
+.rank-home .rank-spotlight-card,
+.rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card,
+html[data-theme="light"] .rank-home .rank-summary-grid,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head,
+html[data-theme="light"] .rank-home .rank-spotlight-card,
+html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+}
+/* 2026-07-02 canonical page-level hero scope guard. */
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1,
+html[data-theme="light"] .page-header h1,
+html[data-theme="light"] .landing-hero h1,
+html[data-theme="light"] .match-hero h1,
+html[data-theme="light"] .team-hub-hero h1,
+html[data-theme="light"] .profile-hero h1,
+html[data-theme="light"] .team-detail-hero h1 {
+  color: var(--rb-cream);
+}
+/* 2026-07-02 final hero guard: no image wash/blur and one title font. */
+.rank-home .rank-summary-grid,
+html[data-theme="light"] .rank-home .rank-summary-grid {
+  background:
+    var(--bg-home-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+.landing-hero,
+html[data-theme="light"] .landing-hero {
+  background:
+    var(--bg-action) var(--landing-hero-position, var(--hero-bg-position-action)) / var(--landing-hero-size, var(--hero-bg-size)) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+.landing-backdrop,
+html[data-theme="light"] .landing-backdrop {
+  background: none;
+}
+.match-hero,
+html[data-theme="light"] .match-hero {
+  background:
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+.team-hub-hero,
+html[data-theme="light"] .team-hub-hero {
+  background:
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+@media (max-width: 1079px) {
+  .landing-hero,
+  html[data-theme="light"] .landing-hero {
+    --landing-hero-position: 68% 32%;
+  }
+}
+.page-header,
+.profile-hero,
+.team-detail-hero,
+html[data-theme="light"] .page-header,
+html[data-theme="light"] .profile-hero,
+html[data-theme="light"] .team-detail-hero {
+  background:
+    var(--page-hero-bg, var(--bg-court)) var(--page-hero-bg-position, var(--hero-bg-position-court)) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+.create-match-hero.is-match {
+  --page-hero-bg: var(--bg-create);
+  --page-hero-bg-position: var(--hero-bg-position-action);
+}
+.create-match-hero.is-record {
+  --page-hero-bg: var(--bg-record-create);
+  --page-hero-bg-position: var(--hero-bg-position-hoop);
+}
+.room-remake-reinvite {
+  display: inline-grid;
+  width: min(100%, 560px);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+  border: var(--ui-card-border-width) solid color-mix(in srgb, var(--rb-orange) 30%, transparent);
+  border-radius: var(--ui-card-radius);
+  background: color-mix(in srgb, var(--rb-orange) 9%, transparent);
+  padding: var(--space-5) var(--space-6);
+}
+.room-remake-reinvite input {
+  margin-top: var(--space-1);
+}
+.room-remake-reinvite span {
+  display: grid;
+  gap: var(--space-1);
+}
+.room-remake-reinvite strong {
+  color: var(--text);
+  font-size: var(--font-size-body);
+}
+.room-remake-reinvite small {
+  color: var(--muted);
+  font-size: var(--font-size-caption);
+  line-height: 1.45;
+}
+.rank-home .rank-summary-grid::before,
+.rank-home .rank-summary-grid::after,
+.landing-hero::before,
+.landing-hero::after,
+.match-hero::before,
+.match-hero::after,
+.team-hub-hero::before,
+.team-hub-hero::after,
+.page-header::before,
+.page-header::after,
+.profile-hero::before,
+.profile-hero::after,
+.team-detail-hero::before,
+.team-detail-hero::after,
+html[data-theme="light"] .rank-home .rank-summary-grid::before,
+html[data-theme="light"] .rank-home .rank-summary-grid::after,
+html[data-theme="light"] .landing-hero::before,
+html[data-theme="light"] .landing-hero::after,
+html[data-theme="light"] .match-hero::before,
+html[data-theme="light"] .match-hero::after,
+html[data-theme="light"] .team-hub-hero::before,
+html[data-theme="light"] .team-hub-hero::after,
+html[data-theme="light"] .page-header::before,
+html[data-theme="light"] .page-header::after,
+html[data-theme="light"] .profile-hero::before,
+html[data-theme="light"] .profile-hero::after,
+html[data-theme="light"] .team-detail-hero::before,
+html[data-theme="light"] .team-detail-hero::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+@media (max-width: 720px) {
+  .rank-home .rank-summary-grid .home-rank-board-head h1,
+  .page-header h1,
+  .landing-hero h1,
+  .match-hero h1,
+  .team-hub-hero h1,
+  .profile-hero h1,
+  .team-detail-hero h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}
+/* Team hub is the tall ranked-team exception at every responsive breakpoint. */
+@media (min-width: 760px) and (max-width: 1079px) {
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+    align-items: end;
+    justify-items: start;
+    gap: var(--space-12);
+    min-height: clamp(430px, 46vw, 620px);
+    padding: clamp(22px, 3.4vw, 34px);
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
+    display: grid;
+    width: min(100%, 720px);
+    max-width: none;
+    justify-self: start;
+  }
+}
+@media (max-width: 759px) {
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
+    min-height: clamp(620px, 87vw, 660px);
+    align-content: end;
+    gap: var(--space-9);
+    padding: 18px;
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
+    display: grid;
+    width: 100%;
+    max-width: none;
+    gap: var(--space-7);
+    padding: 22px;
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board strong {
+    font-size: clamp(1.8rem, 8vw, 2.5rem);
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board em {
+    font-size: 0.85rem;
+  }
+}
+/* 2026-07-02 home hero single image layer.
+   Desktop uses the grid background; mobile uses the visible child because the grid is display: contents. */
+.rank-home .rank-summary-grid .home-rank-board-head,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+  background: transparent;
+}
+.rank-home .home-search-panel.rank-search-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.rank-home .home-search-panel.rank-search-card > .search-picker {
+  min-width: 0;
+}
+.rank-home .home-search-results.home-global-search-results.is-floating {
+  width: 100%;
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr);
+  max-height: min(320px, var(--search-picker-max-height, 320px));
+  overscroll-behavior: contain;
+}
+.rank-home .home-search-panel.rank-search-card .home-search-box input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: 0;
+}
+.rank-home .home-search-panel.rank-search-card .home-search-box:focus-within {
+  border-color: color-mix(in srgb, var(--rb-orange-2) 58%, var(--rb-line));
+  box-shadow: var(--focus-ring);
+}
+.rank-home .home-search-create {
+  display: inline-flex;
+  width: 100%;
+  max-width: 100%;
+  text-decoration: none;
+}
+.rank-home .home-search-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.rank-home .home-top-rail > .home-action-card {
+  height: auto;
+  min-height: 0;
+  align-content: start;
+  align-self: start;
+  overflow: hidden;
+}
+.rank-home .home-top-rail > .home-action-card .home-action-list {
+  min-height: 0;
+}
+@media (min-width: 760px) {
+  .rank-home .home-top-rail > .home-action-card .home-action-list {
+    max-height: min(42vh, 420px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+}
+@media (min-width: 1080px) {
+  .rank-home .home-right-rail .home-action-row:has(.home-action-buttons) {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .rank-home .home-right-rail .home-action-row:has(.home-action-buttons) .home-action-buttons {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    white-space: normal;
+  }
+
+  .rank-home .home-right-rail .home-action-row:has(.home-action-buttons) .home-action-buttons .button {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+/* 2026-07-04 desktop home split rails. */
+.rank-home .home-left-rail,
+.rank-home .home-right-rail,
+.rank-home .home-right-rail > .home-top-rail,
+.rank-home .home-right-rail > .home-side-stack {
+  min-width: 0;
+  gap: var(--page-section-gap);
+}
+@media (min-width: 1080px) {
+  .rank-home {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+    grid-template-areas:
+      "search search"
+      "left right";
+    align-items: start;
+    column-gap: var(--page-column-gap);
+    row-gap: var(--page-section-gap);
+  }
+
+  .rank-home > .home-search-panel {
+    grid-area: search;
+  }
+
+  .rank-home > .home-left-rail {
+    grid-area: left;
+  }
+
+  .rank-home > .home-right-rail {
+    grid-area: right;
+    align-self: start;
+  }
+
+  .rank-home .home-left-rail > .home-dashboard-grid {
+    display: block;
+  }
+
+  .rank-home .home-right-rail > .home-side-stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin: 0;
+    transform: none;
+  }
+}
+@media (max-width: 1079px) {
+  .rank-home > .home-left-rail,
+  .rank-home > .home-right-rail {
+    display: contents;
+  }
+
+  .rank-home .rank-summary-grid {
+    order: 1;
+  }
+
+  .rank-home .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home .home-top-rail {
+    order: 3;
+  }
+
+  .rank-home .home-left-rail > .home-dashboard-grid {
+    display: block;
+    order: 4;
+  }
+
+  .rank-home .home-side-stack {
+    order: 5;
+  }
+}
+@media (max-width: 759px) {
+  .rank-home .home-search-panel.rank-search-card {
+    grid-template-columns: 1fr;
+  }
+
+  .rank-home .home-search-results.home-global-search-results.is-floating {
+    max-height: min(380px, var(--search-picker-max-height, 380px));
+  }
+
+  .rank-home .home-search-create,
+  .rank-home .home-search-actions {
+    width: 100%;
+  }
+
+  .rivalry-challenge-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .rank-home .rank-summary-grid,
+  html[data-theme="light"] .rank-home .rank-summary-grid {
+    background: none;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head,
+  html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+    background:
+      var(--bg-home-court) center 46% / cover no-repeat,
+      var(--rb-bg-2);
+  }
+}

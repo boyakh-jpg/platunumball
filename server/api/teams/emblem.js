@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { isEmblemHexColor } from "../../../shared/lib/emblemPolicy.js";
 import {
   TEAM_EMBLEM_MAX_DIMENSION,
@@ -128,11 +128,7 @@ function getPublicEmblemResult(result = {}) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const contentLength = Number(request.headers["content-length"] || 0);

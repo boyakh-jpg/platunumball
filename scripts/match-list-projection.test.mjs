@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { MATCHES_PAGE_SOURCE_PATHS, readSourceGroup } from "./management-source-groups.mjs";
 
 import {
   getMatchListRoomComposition,
@@ -120,7 +121,7 @@ test("플레이 목록 인원은 기존처럼 출전·후보를 구분해 표시
 
 test("일정과 플레이 페이지는 카드 표시 계산을 공용 projection에서 읽는다", async () => {
   const [matchesSource, recorderSource] = await Promise.all([
-    readFile(new URL("../src/pages/Matches.jsx", import.meta.url), "utf8"),
+    readSourceGroup((file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"), MATCHES_PAGE_SOURCE_PATHS),
     readFile(new URL("../src/pages/Recorder.jsx", import.meta.url), "utf8"),
   ]);
 

@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import {
+  MATCH_ROOM_SOURCE_PATHS,
+  REPOSITORY_REMOTE_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
 import * as sharedAdminUserOperations from "../shared/lib/adminUserOperations.js";
 import * as sharedAffiliations from "../shared/lib/affiliations.js";
 import * as sharedEmblemPolicy from "../shared/lib/emblemPolicy.js";
@@ -138,7 +143,8 @@ test("경기 마감 시각은 경기방과 추천 패널이 같은 표시 helper
   }));
 
   const [matchRoomSource, recommendationSource] = await Promise.all([
-    readFile(path.join(ROOT, "src/pages/MatchRoom.jsx"), "utf8"),
+    Promise.all(MATCH_ROOM_SOURCE_PATHS.map((file) => readFile(path.join(ROOT, file), "utf8")))
+      .then((sources) => sources.join("\n")),
     readFile(path.join(ROOT, "src/components/match/MatchRecommendationPanel.jsx"), "utf8"),
   ]);
   [matchRoomSource, recommendationSource].forEach((source) => {
@@ -182,7 +188,10 @@ test("프로필 설정 projection은 관계형 즐겨찾기 권위와 partial fa
   assert.deepEqual(partial.favoriteRefereeIds, []);
 
   const [repositorySource, profileMeSource] = await Promise.all([
-    readFile(path.join(ROOT, "src/data/repository.js"), "utf8"),
+    readSourceGroup(
+      (relativePath) => readFile(path.join(ROOT, relativePath), "utf8"),
+      REPOSITORY_REMOTE_SOURCE_PATHS,
+    ),
     readFile(path.join(ROOT, "server/api/profile/me.js"), "utf8"),
   ]);
   assert.match(repositorySource, /projectProfileSettings\(remoteAppSettings, favoriteRows/u);

@@ -1,4 +1,4 @@
-import { bearerTokenMatches, getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, bearerTokenMatches, getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
 
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";
@@ -10,11 +10,7 @@ function assertAccess(request) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     assertAccess(request);

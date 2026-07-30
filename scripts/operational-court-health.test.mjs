@@ -11,7 +11,11 @@ test("synthetic c1..c12 courts stay deleted from current data", async () => {
     readSource("docs/data-storage-model.md"),
     readSource("shared/lib/constants.js"),
     readSource("server/api/courts/detail.js"),
-    readSource("src/lib/mockData.js"),
+    Promise.all([
+      readSource("src/lib/mockData.js"),
+      readSource("src/lib/mockData/baseState.js"),
+      readSource("src/lib/mockData/stateFinalizers.js"),
+    ]).then((sources) => sources.join("\n")),
     readSource("src/lib/practiceMatch.js"),
   ]);
 

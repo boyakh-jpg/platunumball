@@ -1,0 +1,366 @@
+
+
+/* 2026-07-02 page width guard: recruiting follows the shared app container. */
+.arena-recruit-page {
+  width: min(100%, var(--page-content-max));
+  max-width: var(--page-content-max);
+  margin-inline: auto;
+}
+/* 2026-07-02 recruiting owns its hero image instead of sharing the generic ball hero. */
+.arena-recruit-hero,
+html[data-theme="light"] .arena-recruit-hero {
+  background:
+    var(--bg-recruiting) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+/* 2026-07-02 room compose drawer uses a neutral panel, not the hero image. */
+.arena-compose-drawer,
+html[data-theme="light"] .arena-compose-drawer,
+.arena-lobby-arena,
+html[data-theme="light"] .arena-lobby-arena {
+  background: var(--ui-card-bg);
+}
+.arena-lobby-arena::before,
+.arena-lobby-arena::after {
+  content: none;
+  display: none;
+}
+/* 2026-07-09 room modal shell keeps its border/radius; only the inner layer scrolls. */
+.arena-lobby-modal-scroll {
+  width: 100%;
+  min-height: 0;
+  max-height: inherit;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+}
+.arena-lobby-modal-scroll > .arena-lobby-arena,
+.arena-lobby-modal .arena-lobby-arena > *,
+.arena-lobby-modal .arena-lobby-title,
+.arena-lobby-modal .arena-match-source-record-board,
+.arena-lobby-modal .arena-dispute-editor,
+.arena-lobby-modal .arena-source-record-summary,
+.arena-lobby-modal .arena-dispute-side,
+.arena-lobby-modal .arena-dispute-player {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.arena-lobby-modal .arena-lobby-title h2,
+.arena-lobby-modal .arena-lobby-title p {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.arena-lobby-modal .arena-lobby-title p,
+.arena-lobby-modal .badge-row,
+.arena-lobby-modal .arena-room-share-actions {
+  flex-wrap: wrap;
+}
+.arena-lobby-modal .arena-lobby-title p {
+  text-shadow: none;
+}
+.arena-lobby-modal .arena-dispute-player label {
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .arena-lobby-modal {
+    width: min(100%, calc(100dvw - 20px));
+    max-width: calc(100dvw - 20px);
+  }
+
+  .arena-lobby-modal-scroll {
+    scrollbar-gutter: auto;
+  }
+}
+@media (max-width: 380px) {
+  .arena-lobby-modal-scroll {
+    padding: 10px;
+  }
+
+  .arena-lobby-modal .arena-lobby-arena {
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .arena-lobby-modal .arena-match-source-record-board,
+  .arena-lobby-modal .arena-dispute-editor {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .arena-lobby-modal .arena-dispute-player > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 340px) {
+  .arena-lobby-modal .arena-dispute-player > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-lobby-modal .arena-stat-stepper {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
+}
+.arena-room-chat,
+.arena-owner-panel {
+  min-height: 92px;
+  background: var(--ui-card-bg);
+}
+.arena-record-roster-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 10px;
+}
+.arena-record-setup-panel {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-room-panel-bg);
+  padding: 12px;
+}
+.arena-record-setup-panel > header,
+.arena-record-setup-actions,
+.arena-record-team-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 10px;
+}
+.arena-record-setup-panel > header > span,
+.arena-record-setup-panel > header em {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.arena-record-setup-panel > header em,
+.arena-record-setup-actions > span,
+.arena-record-setup-selected em {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 800;
+}
+.arena-record-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.arena-record-setup-grid > section,
+.arena-record-setup-grid > label {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+}
+.arena-record-setup-grid em {
+  font-style: normal;
+  font-weight: 800;
+}
+.arena-record-setup-selected {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 6px;
+}
+.arena-record-setup-selected > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  min-height: var(--ui-button-height);
+  gap: 7px;
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--text);
+  padding: 6px 8px;
+  text-align: left;
+}
+.arena-record-setup-selected > button > span {
+  display: grid;
+  min-width: 0;
+}
+.arena-record-setup-selected strong,
+.arena-record-setup-selected em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arena-record-team-selected {
+  justify-content: flex-start;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-button-radius);
+  padding: 7px 9px;
+}
+.arena-record-team-selected > strong {
+  font-family: var(--sports-display-font);
+  font-size: 1.15rem;
+  font-weight: 950;
+  line-height: 1;
+}
+.arena-record-team-selected .team-emblem {
+  --team-emblem-size: 32px;
+}
+.arena-record-team-selected button {
+  margin-left: auto;
+}
+.arena-record-roster-panel {
+  display: grid;
+  gap: 10px;
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-room-panel-bg);
+  padding: 12px;
+}
+.arena-record-roster-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.arena-record-roster-panel header strong {
+  color: var(--text);
+}
+.arena-record-roster-panel header span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+.arena-record-roster-list {
+  display: grid;
+  gap: 8px;
+}
+.arena-record-roster-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--ui-card-bg) 86%, transparent);
+  padding: 8px;
+}
+.arena-record-roster-row.selected {
+  border-color: color-mix(in srgb, var(--rb-orange) 44%, var(--ui-card-border));
+  background: color-mix(in srgb, var(--rb-orange) 10%, var(--ui-card-bg));
+}
+.arena-record-roster-row > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+.arena-record-roster-row > span:first-child > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.arena-record-roster-row strong,
+.arena-record-roster-row em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arena-record-roster-row em {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 850;
+}
+@media (max-width: 720px) {
+  .arena-record-setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-record-setup-panel > header,
+  .arena-record-setup-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .arena-record-setup-actions .button {
+    width: 100%;
+  }
+
+  .arena-record-roster-panel header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .arena-record-roster-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .arena-record-roster-row .button {
+    width: 100%;
+  }
+}
+.arena-chat-form input {
+  height: 48px;
+  min-height: 48px;
+}
+.arena-modal-close-row {
+  margin-top: 14px;
+}
+.arena-modal-close-button {
+  min-height: var(--ui-button-height);
+}
+.arena-filter-bar .segmented-control button {
+  min-width: max-content;
+  max-width: none;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+.arena-filter-bar .arena-region-sido-filter {
+  flex: 0 1 190px;
+  max-width: 220px;
+}
+.arena-filter-bar .arena-region-district-filter {
+  flex: 0 1 150px;
+  max-width: 180px;
+}
+.arena-filter-bar .arena-mode-filter {
+  flex: 0 1 132px;
+  max-width: 150px;
+}
+@media (min-width: 1080px) {
+  .arena-filter-bar .arena-start-date-filter {
+    flex: 1 1 520px;
+    width: auto;
+    max-width: none;
+  }
+}
+@media (max-width: 720px) {
+  .arena-filter-bar .arena-region-sido-filter,
+  .arena-filter-bar .arena-region-district-filter,
+  .arena-filter-bar .arena-mode-filter {
+    width: 100%;
+    max-width: none;
+    flex: 1 1 100%;
+  }
+
+}
+/* 2026-07-04 KBO Dia Gothic display, scoped to sports emphasis only. */
+:where(
+  .arena-hero-copy h1,
+  .arena-lobby-title h2,
+  .arena-lobby-team-head strong,
+  .arena-lobby-score-core strong,
+  .arena-lobby-score-core i) {
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
+  transform: var(--sports-display-condense);
+}
+:where(.arena-hero-copy h1, .arena-lobby-title h2, .arena-lobby-team-head strong) {
+  transform-origin: left center;
+}
+:where(
+  .arena-lobby-score-core strong,
+  .arena-lobby-score-core i) {
+  transform-origin: center;
+}

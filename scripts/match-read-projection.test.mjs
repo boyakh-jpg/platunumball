@@ -108,7 +108,10 @@ test("client mapper와 match list API는 shared dispute projection만 사용한�
   const [clientMapper, sharedMapper, matchListApi] = await Promise.all([
     readFile(new URL("../src/data/matchMappers.js", import.meta.url), "utf8"),
     readFile(new URL("../shared/lib/matchMappers.js", import.meta.url), "utf8"),
-    readFile(new URL("../server/api/matches/list.js", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../server/api/matches/_listProjection.js", import.meta.url), "utf8"),
+      readFile(new URL("../server/api/matches/_listEnrichment.js", import.meta.url), "utf8"),
+    ]).then((sources) => sources.join("\n")),
   ]);
 
   assert.equal(clientMapper.trim(), 'export * from "../../shared/lib/matchMappers.js";');

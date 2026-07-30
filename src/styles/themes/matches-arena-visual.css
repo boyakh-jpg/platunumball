@@ -1,0 +1,850 @@
+
+
+/* Unified app hero sizing */
+
+@media (max-width: 720px) {
+  .om-match-hero {
+    align-items: end;
+  }
+
+  .om-match-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .om-match-hero {
+    min-height: 158px;
+    padding: 16px;
+  }
+
+  .om-match-copy h1 {
+    font-size: 2.6rem;
+  }
+}
+
+/* Unified match page surfaces */
+
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.om-view-card:hover,
+.om-view-card.active {
+  border-color: color-mix(in srgb, var(--rb-orange) 46%, transparent);
+}
+
+.om-view-card small,
+.om-view-card b {
+  color: var(--gold);
+}
+
+/* Match list/filter convergence */
+
+.om-calendar-filter-bar {
+  grid-column: 1 / -1;
+  align-self: end;
+}
+
+.om-calendar-filter-bar label {
+  flex: 1 1 220px;
+  max-width: none;
+  min-width: 0;
+}
+
+.om-calendar-filter-bar select {
+  width: 100%;
+  min-width: 0;
+}
+
+.om-calendar-toolbar button,
+.om-calendar-grid button {
+  border-color: rgba(163, 185, 208, 0.14);
+}
+
+/* Flat inner status panels shared by match and queue list cards. */
+
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-view-card {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+}
+
+/* Final CSS cleanup: shared match/queue list cards, calendar stability. */
+
+.om-calendar-grid {
+  grid-auto-rows: 44px;
+}
+
+.om-calendar-grid button,
+.om-calendar-grid > span {
+  min-height: 44px;
+  height: 44px;
+}
+
+.om-calendar-grid button:has(span) {
+  align-items: flex-start;
+  padding-top: 4px;
+  padding-bottom: 20px;
+}
+
+.om-calendar-grid button span {
+  bottom: 4px;
+}
+
+@media (max-width: 760px) {
+
+  .om-calendar-grid {
+    grid-auto-rows: 44px;
+  }
+
+  .om-calendar-grid button,
+  .om-calendar-grid > span {
+    min-height: 44px;
+    height: 44px;
+  }
+}
+
+/* Flat list/filter surface standard. */
+
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  background-image: none;
+}
+
+.om-list-head,
+.om-calendar-summary,
+.om-calendar-box,
+.om-view-card {
+  background-color: rgba(10, 14, 21, 0.9);
+}
+
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-view-card {
+  background-color: var(--ui-card-bg);
+}
+
+.om-calendar-filter-bar,
+html[data-theme="light"] .om-calendar-filter-bar {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* Shared match/recruiting list readability standard. */
+
+.arena-filter-select select,
+.arena-filter-bar button {
+  min-height: 42px;
+  height: 42px;
+}
+
+/* 2026-07-01 premium sports UI pass: match schedule and scoreboard. */
+
+.om-match-hero,
+.om-match-panel,
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head,
+.om-tournament-card {
+  border-radius: var(--radius-lg);
+}
+
+.om-match-panel,
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.om-view-icon {
+  border-radius: var(--radius-sm);
+}
+
+.om-tournament-meta span,
+.om-tournament-meta strong {
+  border-radius: var(--radius-sm);
+}
+
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-list-head {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}
+
+@media (max-width: 720px) {
+  .om-match-hero {
+    border-radius: var(--radius-lg);
+  }
+
+  .om-view-grid {
+    gap: 10px;
+  }
+
+  .om-calendar-panel,
+  .om-match-page {
+    gap: 12px;
+  }
+}
+
+/* 2026-07-01 visible basketball identity pass: broadcast scoreboard hierarchy. */
+
+.om-match-copy h1 {
+  font-variant-numeric: tabular-nums;
+}
+
+.om-match-panel {
+  border-color: rgba(242, 184, 75, 0.28);
+}
+
+.om-match-stats span,
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  background-color: rgba(7, 11, 17, 0.94);
+}
+
+.om-match-stats strong,
+.om-view-card b {
+  font-variant-numeric: tabular-nums;
+}
+
+.om-view-card {
+  border-color: rgba(199, 223, 232, 0.16);
+}
+
+.om-view-card.active {
+  background-color: rgba(10, 24, 23, 0.94);
+  box-shadow: inset 0 3px 0 var(--team-home), 0 14px 34px rgba(0, 0, 0, 0.24);
+}
+
+html[data-theme="light"] .om-match-hero {
+  border-color: rgba(53, 119, 212, 0.22);
+}
+
+html[data-theme="light"] .om-match-panel,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-list-head {
+  background-color: rgba(255, 255, 255, 0.94);
+}
+
+/* 2026-07-01 imweb fitness tone pass: match list only, no room-slot simplification. */
+
+.om-match-hero {
+  border-color: var(--rb-line);
+}
+
+.om-match-panel,
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+}
+
+.om-view-card.active,
+.om-calendar-grid button.active {
+  border-color: rgba(255, 118, 88, 0.42);
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+html[data-theme="light"] .om-match-hero,
+html[data-theme="light"] .om-match-panel,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-list-head {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+}
+
+/* 2026-07-01 warm cream sports light mode for match list. */
+
+html[data-theme="light"] .om-match-copy h1 {
+  text-shadow: 0 3px 16px rgba(30, 24, 18, 0.48);
+}
+
+html[data-theme="light"] .om-match-copy p,
+html[data-theme="light"] .om-match-copy .eyebrow {
+  color: rgba(255, 250, 241, 0.82);
+}
+
+html[data-theme="light"] .om-match-panel,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-list-head {
+  background: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] .om-view-card.active,
+html[data-theme="light"] .om-calendar-grid button.active {
+  border-color: transparent;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+/* 2026-07-01 full internal preview pass: matches screen. */
+
+.om-match-page {
+  margin: 0 auto;
+}
+
+.om-match-hero {
+  border: var(--ui-hero-border-width) solid var(--rb-line);
+  box-shadow: none;
+}
+
+.om-match-copy h1 {
+  color: #fff;
+}
+
+.om-match-copy p {
+  font-size: 14px;
+}
+
+.om-view-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (min-width: 1121px) and (max-width: 1400px) {
+  .om-view-grid {
+    gap: 8px;
+  }
+
+  .om-view-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .om-view-card .om-view-icon,
+  .om-view-card em {
+    display: none;
+  }
+
+  .om-view-card strong {
+    overflow: hidden;
+    font-size: 0.9rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.om-view-card {
+  min-height: 76px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.om-view-card b,
+.om-match-stats strong {
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
+}
+
+.om-calendar-panel {
+  gap: 12px;
+}
+
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.om-calendar-toolbar button,
+.om-calendar-grid button {
+  min-height: 38px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--rb-text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.om-match-list {
+  gap: 12px;
+}
+
+@media (max-width: 1020px) {
+  .om-match-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .om-match-panel {
+    width: 100%;
+  }
+
+  .om-view-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .om-match-page {
+    gap: 12px;
+  }
+
+  .om-match-hero {
+    min-height: 300px;
+    padding: 16px;
+  }
+
+  .om-match-copy h1 {
+    font-size: clamp(46px, 13vw, 56px);
+  }
+
+  .om-view-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
+  }
+
+  .om-view-card {
+    min-width: 0;
+    min-height: 86px;
+  }
+}
+
+html[data-theme="light"] .om-view-card.active {
+  border-color: rgba(229, 85, 63, 0.3);
+  background: rgba(229, 85, 63, 0.1);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .om-calendar-toolbar button,
+html[data-theme="light"] .om-calendar-grid button {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rb-text);
+}
+
+/* 2026-07-01 final fuller hero board: image-led matches header. */
+
+.om-match-hero {
+  align-items: end;
+  overflow: hidden;
+}
+
+.om-match-copy {
+  align-self: end;
+  max-width: 690px;
+}
+
+.om-match-copy h1 {
+  max-width: 12ch;
+  font-size: clamp(64px, 8vw, 112px);
+  line-height: 0.84;
+  text-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
+}
+
+.om-match-copy p {
+  max-width: 600px;
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 850;
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.42);
+}
+
+@media (max-width: 1020px) {
+  .om-match-hero {
+    width: calc(100% + (2 * var(--page-gutter)));
+    margin-inline: calc(-1 * var(--page-gutter));
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .om-match-hero {
+    margin-top: -18px;
+    background-position:
+      center,
+      center,
+      center 50%,
+      center;
+  }
+
+  .om-match-copy h1 {
+    font-size: clamp(52px, 15vw, 70px);
+  }
+
+  .om-match-copy p {
+    font-size: 13px;
+  }
+}
+
+/* 2026-07-01 remove court grid overlays. */
+
+.om-match-hero {
+  background:
+    linear-gradient(90deg, rgba(5, 8, 12, 0.98), rgba(5, 8, 12, 0.74) 56%, rgba(22, 17, 10, 0.74)),
+    radial-gradient(circle at 78% 22%, rgba(240, 90, 70, 0.18), transparent 12rem),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--scoreboard);
+}
+
+html[data-theme="light"] .om-match-hero {
+  background:
+    linear-gradient(90deg, rgba(255, 250, 241, 0.82), rgba(255, 250, 241, 0.58) 56%, rgba(245, 241, 232, 0.78)),
+    radial-gradient(circle at 78% 22%, rgba(229, 85, 63, 0.12), transparent 12rem),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+/* 2026-07-01 shared primitive alignment for matches chunk. */
+
+.om-view-card,
+.om-calendar-filter-bar,
+.om-match-panel {
+  border: var(--ui-card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-filter-bar,
+html[data-theme="light"] .om-match-panel {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.om-calendar-filter-bar select {
+  min-height: var(--control-height);
+  border: var(--ui-stroke-width) solid var(--control-border);
+  border-radius: var(--control-radius);
+  font-size: var(--control-font-size);
+  font-weight: 900;
+}
+
+/* 2026-07-01 standard UI cleanup: matches controls follow shared primitives. */
+
+.om-match-copy h1,
+.tournament-hero h1 {
+  color: var(--hero-title-color);
+  text-shadow: var(--hero-title-shadow);
+}
+
+.om-match-copy p,
+.tournament-hero p {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+.om-match-copy .eyebrow,
+.tournament-hero .eyebrow,
+.tournament-card-kicker {
+  color: var(--rb-orange);
+}
+
+.om-calendar-panel,
+.om-tournament-panel,
+.om-tournament-card,
+.tournament-hero-badges,
+.tournament-schedule-list {
+  border: var(--ui-card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .om-calendar-panel,
+html[data-theme="light"] .om-tournament-panel,
+html[data-theme="light"] .om-tournament-card,
+html[data-theme="light"] .tournament-hero-badges,
+html[data-theme="light"] .tournament-schedule-list {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.om-calendar-toolbar button,
+.om-calendar-grid button,
+.om-tournament-head-actions button,
+.om-tournament-actions button,
+.tournament-team-list button,
+.tournament-schedule-list button,
+.tournament-back-link {
+  min-height: var(--control-height);
+  border: var(--ui-stroke-width) solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  font-size: var(--control-font-size);
+  font-weight: 900;
+}
+
+.om-calendar-grid button.active,
+.om-tournament-head-actions button.active,
+.om-tournament-actions button.active,
+.tournament-team-list button.active,
+.tournament-schedule-list button.active {
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
+.om-view-card.active {
+  color: var(--rb-text);
+}
+
+.om-view-icon {
+  background: color-mix(in srgb, var(--rb-orange) 16%, transparent);
+  color: var(--rb-orange);
+}
+
+/* 2026-07-01 final matches UI module.
+   Matches chunk loads after globals.css, so filters/buttons/cards use --ui-* tokens here too. */
+
+.om-view-card,
+.om-calendar-filter-bar,
+.om-match-panel,
+.om-calendar-box,
+.om-tournament-card,
+.tournament-hero-badges {
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.om-calendar-toolbar,
+.om-tournament-actions {
+  gap: var(--ui-control-group-gap);
+  align-items: stretch;
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  box-shadow: none;
+  padding: var(--ui-control-group-padding);
+  overflow: visible;
+}
+
+.om-calendar-filter-bar select,
+.om-calendar-toolbar button,
+.om-calendar-grid button,
+.om-tournament-head-actions button,
+.om-tournament-actions button,
+.tournament-team-list button,
+.tournament-schedule-list button,
+.tournament-back-link {
+  min-height: var(--ui-button-height);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  box-shadow: none;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+}
+
+.om-calendar-filter-bar select {
+  border-color: var(--ui-control-border);
+  background: var(--ui-control-bg);
+}
+
+.om-calendar-toolbar button.active,
+.om-calendar-grid button.active,
+.om-tournament-head-actions button.active,
+.om-tournament-actions button.active,
+.tournament-team-list button.active,
+.tournament-schedule-list button.active {
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+  box-shadow: none;
+}
+
+.om-view-card:hover,
+.om-view-card.active {
+  transform: none;
+  box-shadow: none;
+}
+
+.om-view-card.active {
+  border-color: color-mix(in srgb, var(--rb-orange) 46%, transparent);
+  background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-card-bg));
+}
+
+.om-match-copy .eyebrow,
+.om-match-copy h1,
+.om-match-copy p,
+html[data-theme="light"] .om-match-copy .eyebrow,
+html[data-theme="light"] .om-match-copy h1,
+html[data-theme="light"] .om-match-copy p {
+  color: var(--rb-orange);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
+}
+
+.om-match-copy p,
+html[data-theme="light"] .om-match-copy p {
+  color: var(--rb-orange-2);
+}
+
+html[data-theme="light"] .om-match-copy h1 {
+  color: var(--rb-cream);
+}
+
+html[data-theme="light"] .tournament-hero h1 {
+  color: var(--rb-cream);
+}
+
+/* 2026-07-02 final matches hero guard: no wash/blur and shared title font. */
+
+.om-match-hero,
+html[data-theme="light"] .om-match-hero {
+  background:
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.tournament-hero,
+html[data-theme="light"] .tournament-hero {
+  background:
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.om-match-hero::before,
+.om-match-hero::after,
+.tournament-hero::before,
+.tournament-hero::after,
+html[data-theme="light"] .om-match-hero::before,
+html[data-theme="light"] .om-match-hero::after,
+html[data-theme="light"] .tournament-hero::before,
+html[data-theme="light"] .tournament-hero::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+
+.om-match-copy h1,
+.tournament-hero h1,
+html[data-theme="light"] .om-match-copy h1,
+html[data-theme="light"] .tournament-hero h1 {
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .om-match-copy h1,
+  .tournament-hero h1,
+  html[data-theme="light"] .om-match-copy h1,
+  html[data-theme="light"] .tournament-hero h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}
+
+/* 2026-07-02 page width guard: matches follows the shared app container. */
+
+.om-match-page {
+  width: min(100%, var(--page-content-max));
+  max-width: var(--page-content-max);
+  margin-inline: auto;
+}
+
+/* 2026-07-04 KBO Dia Gothic display, scoped to sports emphasis only. */
+
+:where(
+  .om-match-copy h1,
+  .tournament-hero h1,
+  .bracket-midline
+) {
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
+  transform: var(--sports-display-condense);
+}
+
+:where(.om-match-copy h1, .tournament-hero h1) {
+  transform-origin: left center;
+}
+
+:where(
+  .bracket-midline
+) {
+  transform-origin: center;
+}
+
+/* 2026-07-09 recorder list cards follow the same compact row rhythm as recruiting cards. */
+
+/* 2026-07-09 matches hero situation board follows the recruiting hero panel. */
+
+.om-match-panel {
+  width: min(285px, 100%);
+  align-self: end;
+  gap: 12px;
+  padding: 16px;
+  border: var(--ui-card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: none;
+}
+
+.om-match-stats {
+  gap: 8px;
+}
+
+.om-match-stats span {
+  min-height: 60px;
+  align-content: center;
+  gap: 3px;
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--radius-xs);
+  background: var(--ui-control-group-bg);
+  color: var(--muted);
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+html[data-theme="light"] .om-match-stats span {
+  border-color: var(--ui-control-group-border);
+  background: var(--ui-control-group-bg);
+}
+
+.om-match-stats strong {
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1;
+}

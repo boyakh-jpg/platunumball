@@ -111,7 +111,7 @@ test("date-time join has one shared implementation and server no longer reaches 
     readFile(new URL("../shared/lib/recruitingMappers.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/_supabaseAdmin.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8"),
-    readFile(new URL("../server/api/recruiting/sync-post.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/recruiting/_syncPostProjection.js", import.meta.url), "utf8"),
   ]);
 
   assert.doesNotMatch(rowUtilsSource, /function toDateTime\(/);

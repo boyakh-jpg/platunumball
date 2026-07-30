@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import {
+  CREATE_MATCH_PAGE_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  readSourceGroupSync,
+} from "./management-source-groups.mjs";
+import {
   getCreateDefaultTeamPlayerIds,
   getCreatePartyPlayerIds,
   getCreatePartyReserveIds,
@@ -114,13 +119,14 @@ test("recruiting host, regular, and reserve paths retain their current contracts
 });
 
 test("CreateMatch and Recruiting consume the central roster contracts", () => {
-  const createSource = fs.readFileSync(new URL("../src/pages/CreateMatch.jsx", import.meta.url), "utf8");
-  const recruitingSource = fs.readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
+  const readPageSource = (file) => fs.readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+  const createSource = readSourceGroupSync(readPageSource, CREATE_MATCH_PAGE_SOURCE_PATHS);
+  const recruitingSource = readSourceGroupSync(readPageSource, RECRUITING_PAGE_SOURCE_PATHS);
 
-  assert.match(createSource, /from "\.\.\/lib\/teamPartyRoster\.js"/);
+  assert.match(createSource, /from "(?:\.\.\/)+lib\/teamPartyRoster\.js"/);
   assert.doesNotMatch(createSource, /function get(?:DefaultTeam|Party)PlayerIds/);
   assert.doesNotMatch(createSource, /function getPartyReserveIds/);
-  assert.match(recruitingSource, /from "\.\.\/lib\/teamPartyRoster\.js"/);
+  assert.match(recruitingSource, /from "(?:\.\.\/)+lib\/teamPartyRoster\.js"/);
   assert.doesNotMatch(recruitingSource, /function get(?:DefaultTeam|Party)PlayerIds/);
   assert.doesNotMatch(recruitingSource, /function getPartyReserveIds/);
   assert.match(recruitingSource, /roomPhaseViewModel\.mode === ROOM_BODY_MODES\.pickupPool/);

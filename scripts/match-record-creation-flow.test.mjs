@@ -23,7 +23,7 @@ import {
   normalizeActualMatchTimeRange,
 } from "../src/lib/matchUtils.js";
 
-const matchListSource = readFileSync(new URL("../server/api/matches/list.js", import.meta.url), "utf8");
+const matchListSource = readFileSync(new URL("../server/api/matches/_listQueries.js", import.meta.url), "utf8");
 const batchScoreAndReserveMigration = readFileSync(
   new URL("../supabase/migrations/20260729170000_match_record_batch_score_and_reserves.sql", import.meta.url),
   "utf8",

@@ -1,4 +1,5 @@
 import {
+  allowRequestMethod,
   getAuthenticatedContext,
   getRowsMaxUpdatedAt as getMaxUpdatedAt,
   groupRowsBy as groupBy,
@@ -41,11 +42,7 @@ async function loadTeamInvitations(supabase, profileId = "", teamId = "") {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const startedAt = Date.now();

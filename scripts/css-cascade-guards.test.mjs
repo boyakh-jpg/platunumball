@@ -4,9 +4,13 @@ import path from "node:path";
 import test from "node:test";
 import postcss from "postcss";
 import selectorParser from "postcss-selector-parser";
+import {
+  RECRUITING_PAGE_SOURCE_PATHS,
+  readSourceGroupSync,
+} from "./management-source-groups.mjs";
 
 const globalManifest = "src/styles/globals.css";
-const featureCssFiles = [
+const featureCssManifests = [
   "src/styles/match-clock.css",
   "src/styles/match-attendance.css",
   "src/styles/recruiting-arena.css",
@@ -14,9 +18,8 @@ const featureCssFiles = [
   "src/styles/match-list-card.css",
   "src/styles/matchroom-arena.css",
 ];
-const idlePreloadFeatureCssFiles = featureCssFiles.filter((file) => file !== "src/styles/matchroom-arena.css");
 const globalModuleMaxLines = 4500;
-const crossStackSameValueBaseline = 111;
+const crossStackSameValueBaseline = 0;
 
 const runtimeRoots = ["src", "public"];
 const runtimeFiles = ["index.html", "privacy.html", "terms.html"];
@@ -28,56 +31,7 @@ const sharedBranchUnusedClassTokens = new Set([
   "winner",
 ]);
 
-const crossStackDifferentValueBaseline = new Set([
-  [".arena-icon-button", "border-radius", "var(--radius-xs)", "var(--ui-button-radius)"],
-  [".arena-icon-button", "background", "rgba(255, 255, 255, 0.06)", "var(--ui-button-bg)"],
-  [".om-match-copy h1", "font-family", "var(--sports-display-font)", "var(--hero-title-font)"],
-  [".om-match-copy h1", "font-size", "clamp(46px, 5.5vw, 72px)", "var(--hero-title-size)"],
-  [".om-match-copy h1", "line-height", "0.92", "var(--hero-title-line-height)"],
-  [".om-match-copy h1", "letter-spacing", "0", "var(--hero-title-letter-spacing)"],
-  [".arena-hero-copy h1", "font-family", "var(--sports-display-font)", "var(--hero-title-font)"],
-  [".arena-hero-copy h1", "font-size", "clamp(46px, 5.5vw, 72px)", "var(--hero-title-size)"],
-  [".arena-hero-copy h1", "line-height", "0.92", "var(--hero-title-line-height)"],
-  [".arena-hero-copy h1", "letter-spacing", "0", "var(--hero-title-letter-spacing)"],
-  [".arena-lobby-title h2", "line-height", "0.92", "0.9"],
-  [".arena-icon-button", "color", "var(--rb-text)", "var(--ui-button-color)"],
-  [".om-calendar-filter-bar", "border", "var(--ui-card-border-width) solid var(--ui-card-border)", "0"],
-  [".om-calendar-filter-bar", "border-radius", "var(--ui-card-radius)", "0"],
-  [".om-calendar-filter-bar", "background", "var(--ui-card-bg)", "transparent"],
-  [".om-calendar-filter-bar", "box-shadow", "var(--ui-card-shadow)", "none"],
-  ['html[data-theme="light"] .om-calendar-filter-bar', "background", "var(--card-bg)", "transparent"],
-  ['html[data-theme="light"] .om-calendar-filter-bar', "box-shadow", "var(--card-shadow)", "none"],
-  [".arena-filter-bar button", "min-height", "var(--ui-button-height)", "42px"],
-  [".arena-start-date-filter button", "min-height", "var(--ui-button-height)", "42px"],
-  [".gm-next-action-card", "border", "var(--ui-card-border-width) solid var(--ui-card-border)", "var(--ui-room-panel-border-width) solid var(--card-border)"],
-  [".gm-next-action-card", "border-radius", "var(--ui-card-radius)", "var(--card-radius)"],
-  [".gm-next-action-card", "background", "var(--ui-card-bg)", "var(--card-bg)"],
-  [".gm-next-action-card", "box-shadow", "var(--ui-card-shadow)", "var(--card-shadow)"],
-  [".gm-next-action-card .button:not(.button-secondary)", "background", "var(--ui-button-bg-active)", "var(--button-primary-bg)"],
-  [".gm-next-action-card .button:not(.button-secondary)", "color", "var(--ui-button-color-active)", "#fff"],
-  [".gm-next-action-card .button:not(.button-secondary):hover", "background", "var(--ui-button-bg-hover)", "var(--button-primary-hover-bg)"],
-  [".gm-next-action-card .button:not(.button-secondary):hover", "color", "var(--ui-button-color-active)", "#fff"],
-  [".arena-filter-bar .segmented-control", "border", "var(--ui-control-group-border-width) solid var(--ui-control-group-border)", "0"],
-  [".arena-filter-bar .segmented-control", "border-radius", "var(--ui-control-group-radius)", "0"],
-  [".arena-filter-bar .segmented-control", "background", "var(--ui-control-group-bg)", "transparent"],
-  [".arena-filter-bar .segmented-control", "padding", "var(--ui-control-group-padding)", "0"],
-  [".arena-start-date-filter", "gap", "var(--ui-control-group-gap)", "clamp(5px, 0.8vw, 10px)"],
-  [".arena-start-date-filter", "border-radius", "var(--ui-control-group-radius)", "var(--control-group-radius, var(--radius-md))"],
-  [".arena-start-date-filter", "padding", "var(--ui-control-group-padding)", "var(--control-group-padding, 6px)"],
-  [".arena-modal-close-button", "width", "var(--ui-icon-button-size)", "100%"],
-  [".arena-modal-close-button", "min-width", "var(--ui-icon-button-size)", "132px"],
-  [".arena-modal-close-button", "height", "var(--ui-icon-button-size)", "auto"],
-  [".arena-modal-close-button", "min-height", "var(--ui-icon-button-size)", "var(--ui-button-height)"],
-  [".arena-modal-close-button", "display", "inline-grid", "inline-flex"],
-  [".arena-filter-select select", "min-height", "var(--ui-button-height)", "42px"],
-  [".arena-filter-select select", "font-size", "max(0.9rem, 16px)", "12px"],
-  [".om-calendar-filter-bar select", "border", "1px solid var(--ui-control-border)", "var(--ui-button-border-width) solid var(--ui-button-border)"],
-  [".om-calendar-filter-bar select", "border-radius", "var(--ui-control-radius)", "var(--ui-button-radius)"],
-  [".om-calendar-filter-bar select", "color", "var(--rb-text)", "var(--ui-button-color)"],
-  [".om-calendar-filter-bar select", "font-size", "max(0.9rem, 16px)", "var(--ui-button-font-size)"],
-].map(([selector, property, globalValue, featureValue]) => (
-  `||${selector}||${property}||${globalValue}=>${featureValue}`
-)));
+const crossStackDifferentValueBaseline = new Set();
 
 function listFiles(directory, result = []) {
   if (!fs.existsSync(directory)) return result;
@@ -207,6 +161,10 @@ function resolveLocalCssImports(file, result = [], visiting = new Set()) {
 }
 
 const globalCssFiles = resolveLocalCssImports(globalManifest);
+const featureCssFiles = featureCssManifests.flatMap((file) => resolveLocalCssImports(file));
+const idlePreloadFeatureCssFiles = featureCssFiles.filter(
+  (file) => file !== "src/styles/matchroom-arena.css",
+);
 const baseCssLoadStack = [
   "src/styles/tokens.css",
   ...globalCssFiles,
@@ -218,9 +176,9 @@ const productionCssLoadStack = [
   "src/styles/matchroom-arena.css",
 ];
 const cssFiles = [...new Set(productionCssLoadStack)];
-const styleDirectoryCssFiles = fs.readdirSync("src/styles")
+const styleDirectoryCssFiles = listFiles("src/styles")
   .filter((file) => file.endsWith(".css"))
-  .map((file) => `src/styles/${file}`)
+  .map((file) => file.replaceAll("\\", "/"))
   .sort();
 const primitiveCssFile = "src/styles/ui-primitives.css";
 
@@ -235,10 +193,14 @@ function getAtRuleContext(rule) {
 }
 
 function normalizeSelector(selector) {
+  const compactSelector = String(selector || "").replace(/\s+/g, " ").trim();
   try {
-    return selectorParser().processSync(selector, { lossless: false });
+    return selectorParser()
+      .processSync(compactSelector, { lossless: false })
+      .replace(/\s+/g, " ")
+      .trim();
   } catch {
-    return selector.replace(/\s+/g, " ").trim();
+    return compactSelector;
   }
 }
 
@@ -251,6 +213,33 @@ for (const { source } of runtimeSources) {
       if (/^[A-Za-z_][A-Za-z0-9_-]*$/.test(token)) runtimeClassTokens.add(token);
     }
   }
+}
+
+function normalizeDeclarationValue(value) {
+  return String(value || "").replace(/\r\n?/g, "\n");
+}
+
+function collectLocalCssImportGraph(file, result = new Set(), visiting = new Set()) {
+  const normalizedFile = path.normalize(file);
+  if (visiting.has(normalizedFile)) {
+    throw new Error(`Circular CSS import: ${normalizedFile}`);
+  }
+  visiting.add(normalizedFile);
+  result.add(path.relative(".", normalizedFile).replaceAll("\\", "/"));
+  const root = parseCss(normalizedFile);
+  for (const importRule of root.nodes.filter(
+    (node) => node.type === "atrule" && node.name === "import",
+  )) {
+    const match = importRule.params.match(/^(?:url\()?["']([^"']+\.css)["']\)?$/);
+    if (!match) throw new Error(`Unsupported CSS import in ${normalizedFile}: ${importRule.params}`);
+    collectLocalCssImportGraph(
+      path.resolve(path.dirname(normalizedFile), match[1]),
+      result,
+      visiting,
+    );
+  }
+  visiting.delete(normalizedFile);
+  return result;
 }
 for (const match of runtimeSource.matchAll(/([A-Za-z_][A-Za-z0-9_-]*-)\$\{/g)) {
   runtimeClassPrefixes.add(match[1]);
@@ -278,14 +267,18 @@ function collectUnusedSelectors(container, file, line, result) {
   }
 }
 
-test("all 19 production stylesheets are covered by the real load stack", () => {
+test("all production stylesheets are covered by the real load stack", () => {
   const mainSource = fs.readFileSync("src/main.jsx", "utf8");
   const appSource = fs.readFileSync("src/App.jsx", "utf8");
   const mainCssImports = [...mainSource.matchAll(/import\s+["'](\.\/styles\/[^"']+\.css)["'];/g)]
     .map((match) => `src/${match[1].replace("./", "")}`);
-  const coveredCssFiles = [...new Set([globalManifest, ...productionCssLoadStack])].sort();
+  const coveredCssFiles = [...new Set([
+    "src/styles/tokens.css",
+    "src/styles/ui-primitives.css",
+    ...collectLocalCssImportGraph(globalManifest),
+    ...featureCssManifests.flatMap((file) => [...collectLocalCssImportGraph(file)]),
+  ])].sort();
 
-  assert.equal(styleDirectoryCssFiles.length, 19);
   assert.deepEqual(coveredCssFiles, styleDirectoryCssFiles);
   assert.deepEqual(mainCssImports, [
     "src/styles/tokens.css",
@@ -342,7 +335,7 @@ function collectLastDeclarations(files) {
             file,
             important: declaration.important,
             line: declaration.source.start.line,
-            value: declaration.value,
+            value: normalizeDeclarationValue(declaration.value),
           });
         });
       }
@@ -386,6 +379,32 @@ test("global and feature selector ownership conflicts stay within the characteri
   assert.deepEqual(unexpectedConflicts, []);
 });
 
+test("the production load order has no redundant same-value declaration", () => {
+  const redundantDeclarations = [];
+  const seen = new Map();
+
+  for (const file of productionCssLoadStack) {
+    const root = parseCss(file);
+    root.walkRules((rule) => {
+      const selectors = (rule.selectors ?? [rule.selector]).map(normalizeSelector);
+      for (const declaration of (rule.nodes ?? []).filter((node) => node.type === "decl")) {
+        const value = `${normalizeDeclarationValue(declaration.value)}||important:${declaration.important}`;
+        const keys = selectors.map(
+          (selector) => `${getAtRuleContext(rule)}||${selector}||${declaration.prop}`,
+        );
+        if (keys.length && keys.every((key) => seen.get(key) === value)) {
+          redundantDeclarations.push(
+            `${file}:${declaration.source.start.line} ${rule.selector} ${declaration.prop}`,
+          );
+        }
+        keys.forEach((key) => seen.set(key, value));
+      }
+    });
+  }
+
+  assert.deepEqual(redundantDeclarations, []);
+});
+
 test("the combined production cascade has no behavior-changing fully shadowed rule", () => {
   const shadowedDeclarations = [];
   const ruleGroups = new Map();
@@ -412,7 +431,7 @@ test("the combined production cascade has no behavior-changing fully shadowed ru
       const fullyShadowed = earlierDeclarations.length > 0 && earlierDeclarations.every((declaration) => (
         laterDeclarations.some((later) => (
           later.prop === declaration.prop
-          && later.value !== declaration.value
+          && normalizeDeclarationValue(later.value) !== normalizeDeclarationValue(declaration.value)
           && (!declaration.important || later.important)
         ))
       ));
@@ -442,7 +461,7 @@ test("individual stylesheets have no fully same-value shadowed rule", () => {
 
       for (let declarationIndex = declarations.length - 1; declarationIndex >= 0; declarationIndex -= 1) {
         const declaration = declarations[declarationIndex];
-        const value = `${declaration.value}||important:${declaration.important}`;
+        const value = `${normalizeDeclarationValue(declaration.value)}||important:${declaration.important}`;
         const keys = selectors.map((selector) => (
           `${getAtRuleContext(rule)}||${selector}||${declaration.prop}`
         ));
@@ -462,8 +481,45 @@ test("individual stylesheets have no fully same-value shadowed rule", () => {
   assert.deepEqual(shadowedRules, []);
 });
 
+test("individual stylesheets have no partial same-value shadowed declaration", () => {
+  const shadowedDeclarations = [];
+
+  for (const file of styleDirectoryCssFiles) {
+    const rules = [];
+    parseCss(file).walkRules((rule) => rules.push(rule));
+    const laterDeclarations = new Map();
+
+    for (let ruleIndex = rules.length - 1; ruleIndex >= 0; ruleIndex -= 1) {
+      const rule = rules[ruleIndex];
+      const selectors = (rule.selectors ?? [rule.selector]).map(normalizeSelector);
+      const declarations = (rule.nodes ?? []).filter((node) => node.type === "decl");
+
+      for (let declarationIndex = declarations.length - 1; declarationIndex >= 0; declarationIndex -= 1) {
+        const declaration = declarations[declarationIndex];
+        const value = `${normalizeDeclarationValue(declaration.value)}||important:${declaration.important}`;
+        const keys = selectors.map((selector) => (
+          `${getAtRuleContext(rule)}||${selector}||${declaration.prop}`
+        ));
+        if (keys.length && keys.every((key) => laterDeclarations.get(key) === value)) {
+          shadowedDeclarations.push(
+            `${file}:${declaration.source.start.line} ${rule.selector} ${declaration.prop}`,
+          );
+        }
+        for (const key of keys) {
+          if (!laterDeclarations.has(key)) laterDeclarations.set(key, value);
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(shadowedDeclarations, []);
+});
+
 test("home team summaries use one shared entity primitive", () => {
-  const homeSource = fs.readFileSync("src/pages/Home.jsx", "utf8");
+  const homeSource = [
+    fs.readFileSync("src/pages/Home.jsx", "utf8"),
+    fs.readFileSync("src/components/home/HomeRightRail.jsx", "utf8"),
+  ].join("\n");
   const primitiveSource = fs.readFileSync(primitiveCssFile, "utf8");
   const legacySelectors = /(?:rivalry-card|home-my-teams-card|home-team-list|home-team-row|home-team-empty)/;
 
@@ -485,6 +541,7 @@ test("navigation actions use the shared polymorphic button without nested contro
     "src/pages/Home.jsx",
     "src/pages/Landing.jsx",
     "src/pages/Matches.jsx",
+    "src/pages/MatchesPageView.jsx",
     "src/pages/Recruiting.jsx",
     "src/pages/Season.jsx",
   ];
@@ -539,7 +596,7 @@ test("critical interactive branches keep a visible focus indicator", () => {
       selector: ".rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible",
     },
     {
-      files: ["src/styles/recruiting-arena.css"],
+      files: resolveLocalCssImports("src/styles/recruiting-arena.css"),
       selector: ".arena-room-player-slot.self-action:focus-visible",
     },
   ];
@@ -567,7 +624,9 @@ test("critical interactive branches keep a visible focus indicator", () => {
     assert.doesNotMatch(source, /outline:\s*var\(--focus-ring\)/, file);
   }
   assert.doesNotMatch(
-    fs.readFileSync("src/styles/global-visual-system.css", "utf8"),
+    resolveLocalCssImports("src/styles/global-visual-system.css")
+      .map((file) => fs.readFileSync(file, "utf8"))
+      .join("\n"),
     /box-shadow:\s*none\s*!important/,
   );
 });
@@ -591,6 +650,140 @@ test("globals.css is an import-only manifest with bounded modules", () => {
   }
 });
 
+test("large CSS entrypoints are ordered manifests over responsibility modules", () => {
+  const expectedImports = new Map([
+    ["src/styles/global-visual-system.css", [
+      "./themes/global-sports-visual.css",
+      "./primitives/global-interactions.css",
+      "./responsive/global-home-responsive.css",
+      "./features/global-profile-brand.css",
+      "./layout/global-page-layout.css",
+    ]],
+    ["src/styles/global-search-profile.css", [
+      "./features/search-profile.css",
+      "./features/admin-profile.css",
+      "./features/profile-emblems.css",
+    ]],
+    ["src/styles/global-workflows.css", [
+      "./features/match-create-workflows.css",
+      "./themes/landing-team-visual.css",
+      "./features/settings-court-workflows.css",
+      "./features/referee-report-workflows.css",
+    ]],
+    ["src/styles/matches-arena.css", [
+      "./features/matches-tournament.css",
+      "./themes/matches-arena-visual.css",
+      "./responsive/matches-arena-responsive.css",
+    ]],
+    ["src/styles/recruiting-arena.css", [
+      "./features/recruiting-room.css",
+      "./themes/recruiting-arena-visual.css",
+      "./layout/recruiting-arena-layout.css",
+      "./responsive/recruiting-arena-responsive.css",
+      "./themes/recruiting-slot-theme.css",
+    ]],
+  ]);
+
+  for (const [manifest, expected] of expectedImports) {
+    const root = parseCss(manifest);
+    const imports = root.nodes
+      .filter((node) => node.type === "atrule" && node.name === "import")
+      .map((node) => node.params.replace(/^["']|["']$/g, ""));
+    const nonManifestNodes = root.nodes.filter((node) => (
+      node.type !== "comment"
+      && !(node.type === "atrule" && node.name === "import")
+    ));
+    assert.deepEqual(imports, expected, manifest);
+    assert.deepEqual(nonManifestNodes, [], manifest);
+  }
+
+  for (const directory of ["features", "layout", "primitives", "responsive", "themes"]) {
+    const files = listFiles(`src/styles/${directory}`).filter((file) => file.endsWith(".css"));
+    assert.ok(files.length > 0, `${directory} responsibility directory must own CSS`);
+  }
+
+  for (const file of [...globalCssFiles, ...featureCssFiles]) {
+    const lineCount = fs.readFileSync(file, "utf8").split(/\r?\n/).length;
+    assert.ok(lineCount <= 2800, `${file} exceeds the 2800-line module boundary`);
+  }
+});
+
+test("tokens.css exclusively owns global custom properties and border widths", () => {
+  const violations = [];
+  const literalBorders = [];
+
+  for (const file of styleDirectoryCssFiles) {
+    const root = parseCss(file);
+    if (file !== "src/styles/tokens.css") {
+      root.walkRules((rule) => {
+        const globalScope = (rule.selectors ?? [rule.selector]).some((selector) => (
+          /^(?::root|html(?:\[[^\]]+\])?|body(?:\[[^\]]+\])?)$/.test(normalizeSelector(selector))
+        ));
+        if (!globalScope) return;
+        rule.walkDecls(/^--/, (declaration) => {
+          violations.push(`${file}:${declaration.source.start.line} ${declaration.prop}`);
+        });
+      });
+    }
+
+    root.walkDecls(
+      /^border(?:-(?:top|right|bottom|left|inline|block))?(?:-(?:width|style|color))?$/,
+      (declaration) => {
+        if (/(?:^|\s)(?:1px|2px)(?:\s|$)/.test(declaration.value)) {
+          literalBorders.push(`${file}:${declaration.source.start.line} ${declaration.toString()}`);
+        }
+      },
+    );
+  }
+
+  const tokenSource = fs.readFileSync("src/styles/tokens.css", "utf8");
+  assert.match(tokenSource, /--ui-stroke-width:\s*1px;/);
+  assert.match(tokenSource, /--ui-stroke-width-strong:\s*2px;/);
+  assert.deepEqual(violations, []);
+  assert.deepEqual(literalBorders, []);
+});
+
+test("important is limited to inline-position and inline-layout overrides", () => {
+  const violations = [];
+  let declarationCount = 0;
+
+  for (const file of styleDirectoryCssFiles) {
+    parseCss(file).walkDecls((declaration) => {
+      if (!declaration.important) return;
+      declarationCount += 1;
+      const rule = declaration.parent;
+      const context = getAtRuleContext(rule);
+      const selector = normalizeSelector(rule.selector);
+      const allowedHoverPosition = (
+        file === "src/styles/global-foundation.css"
+        && context === "@media (hover: none), (pointer: coarse)"
+        && selector.includes("span.player-hover-card.touch-open")
+        && ["top", "left", "max-height"].includes(declaration.prop)
+      );
+      const allowedMobilePortal = (
+        file === "src/styles/global-court-controls.css"
+        && context === "@media (max-width: 1079px)"
+        && selector === ".hover-portal-card.touch-open"
+        && ["top", "bottom", "max-height"].includes(declaration.prop)
+      );
+      const allowedInlineFooter = (
+        file === "src/styles/global-court-controls.css"
+        && context === "@media (max-width: 520px)"
+        && selector === ".naver-pin-picker-footer"
+        && declaration.prop === "align-items"
+      );
+      if (!allowedHoverPosition && !allowedMobilePortal && !allowedInlineFooter) {
+        violations.push(
+          `${file}:${declaration.source.start.line} ${context} ${selector} ${declaration.prop}`,
+        );
+      }
+    });
+  }
+
+  assert.equal(declarationCount, 7);
+  assert.deepEqual(violations, []);
+});
+
 test("global modules use spacing tokens for canonical gaps", () => {
   const rawGaps = [];
   const canonicalGapPattern = /(?<![\w.-])(?:2|4|6|8|10|12|14|16|18|20|22|24|28|32|48)px(?![\w-])/;
@@ -610,7 +803,10 @@ test("default and functional panel typography use shared body tokens", () => {
   const tokenRoot = parseCss("src/styles/tokens.css");
   const foundationRoot = parseCss("src/styles/global-foundation.css");
   const primitiveRoot = parseCss("src/styles/ui-primitives.css");
-  const recruitingSource = fs.readFileSync("src/pages/Recruiting.jsx", "utf8");
+  const recruitingSource = readSourceGroupSync(
+    (file) => fs.readFileSync(file, "utf8"),
+    RECRUITING_PAGE_SOURCE_PATHS,
+  );
   const declarations = new Map();
 
   for (const [name, root] of [
@@ -670,7 +866,9 @@ test("mobile Safari first paint uses the app theme and never flashes the static 
   const indexSource = fs.readFileSync("index.html", "utf8");
   const appSource = fs.readFileSync("src/App.jsx", "utf8");
   const foundationSource = fs.readFileSync("src/styles/global-foundation.css", "utf8");
-  const visualSource = fs.readFileSync("src/styles/global-visual-system.css", "utf8");
+  const visualSource = resolveLocalCssImports("src/styles/global-visual-system.css")
+    .map((file) => fs.readFileSync(file, "utf8"))
+    .join("\n");
 
   assert.match(indexSource, /viewport-fit=cover/);
   assert.match(indexSource, /id="app-theme-color"/);

@@ -4,6 +4,7 @@ import {
   isDiscordOAuthState,
 } from "../../../../shared/lib/discordProtocol.js";
 import { getPublicAppUrl } from "../../_publicAppUrl.js";
+import { allowRequestMethod } from "../../_supabaseAdmin.js";
 import { setApiSecurityHeaders } from "../../_requestSecurity.js";
 import {
   DISCORD_OAUTH_STATE_COOKIE,
@@ -60,11 +61,7 @@ async function fetchDiscordUser(accessToken) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "GET") {
-    response.setHeader("Allow", "GET");
-    response.status(405).json({ error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response, ["GET"])) return;
 
   const code = typeof request.query.code === "string" ? request.query.code : "";
   const state = typeof request.query.state === "string" ? request.query.state : "";

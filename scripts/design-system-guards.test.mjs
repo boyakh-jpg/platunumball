@@ -1,15 +1,48 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import {
+  APP_DATA_ORCHESTRATOR_SOURCE_PATHS,
+  CREATE_MATCH_PAGE_SOURCE_PATHS,
+  HOME_PAGE_SOURCE_PATHS,
+  MATCHES_PAGE_SOURCE_PATHS,
+  MATCH_ROOM_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  SETTINGS_PAGE_SOURCE_PATHS,
+  readSourceGroupSync,
+} from "./management-source-groups.mjs";
 
 const read = (file) => fs.readFileSync(file, "utf8");
+const readCssTree = (file, visiting = new Set()) => {
+  const normalizedFile = path.normalize(file);
+  if (visiting.has(normalizedFile)) throw new Error(`Circular CSS import: ${normalizedFile}`);
+  visiting.add(normalizedFile);
+  const source = read(normalizedFile);
+  const imports = [...source.matchAll(/@import\s+["']([^"']+\.css)["'];/g)];
+  if (!imports.length) {
+    visiting.delete(normalizedFile);
+    return source;
+  }
+  const result = imports.map((match) => (
+    readCssTree(path.resolve(path.dirname(normalizedFile), match[1]), visiting)
+  )).join("\n");
+  visiting.delete(normalizedFile);
+  return result;
+};
+const listStyleFiles = (directory, result = []) => {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) listStyleFiles(entryPath, result);
+    else if (entry.name.endsWith(".css")) result.push(entryPath.replaceAll("\\", "/"));
+  }
+  return result;
+};
 const count = (source, value) => source.split(value).length - 1;
 const countClassToken = (source, token) => [...source.matchAll(/className="([^"]*)"/g)]
   .filter(([, className]) => className.split(/\s+/).includes(token))
   .length;
-const styleFiles = fs.readdirSync("src/styles")
-  .filter((file) => file.endsWith(".css"))
-  .map((file) => `src/styles/${file}`);
+const styleFiles = listStyleFiles("src/styles");
 const sourceFiles = fs.readdirSync("src", { recursive: true })
   .filter((file) => /\.(?:js|jsx|ts|tsx)$/.test(file))
   .map((file) => `src/${file.replaceAll("\\", "/")}`);
@@ -35,11 +68,11 @@ const matchListStyles = read("src/styles/match-list-card.css");
 const primitiveStyles = read("src/styles/ui-primitives.css");
 const tokenStyles = read("src/styles/tokens.css");
 const foundationStyles = read("src/styles/global-foundation.css");
-const globalSearchStyles = read("src/styles/global-search-profile.css");
-const visualSystemStyles = read("src/styles/global-visual-system.css");
+const globalSearchStyles = readCssTree("src/styles/global-search-profile.css");
+const visualSystemStyles = readCssTree("src/styles/global-visual-system.css");
 const courtControlStyles = read("src/styles/global-court-controls.css");
 const globalAdminStyles = read("src/styles/global-admin-layout.css");
-const globalWorkflowStyles = read("src/styles/global-workflows.css");
+const globalWorkflowStyles = readCssTree("src/styles/global-workflows.css");
 const globalSurfaceStyles = read("src/styles/global-surfaces.css");
 const classicDesignStyles = read("src/styles/design-classic.css");
 const editorialDesignStyles = read("src/styles/design-editorial.css");
@@ -51,12 +84,17 @@ const brandLockupSource = read("src/components/common/BrandLockup.jsx");
 const sidebarSource = read("src/components/layout/Sidebar.jsx");
 const loginSource = read("src/pages/Login.jsx");
 const notificationsSource = read("src/pages/Notifications.jsx");
-const settingsSource = read("src/pages/Settings.jsx");
+const settingsSource = readSourceGroupSync(read, SETTINGS_PAGE_SOURCE_PATHS);
+const matchesPageSource = readSourceGroupSync(read, MATCHES_PAGE_SOURCE_PATHS);
+const matchRoomPageSource = readSourceGroupSync(read, MATCH_ROOM_SOURCE_PATHS);
+const homePageSource = readSourceGroupSync(read, HOME_PAGE_SOURCE_PATHS);
+const recruitingPageSource = readSourceGroupSync(read, RECRUITING_PAGE_SOURCE_PATHS);
+const createMatchPageSource = readSourceGroupSync(read, CREATE_MATCH_PAGE_SOURCE_PATHS);
 const teamsSource = read("src/pages/Teams.jsx");
-const recruitingListApiSource = read("server/api/recruiting/list.js");
-const useAppDataSource = read("src/hooks/useAppData.js");
-const recruitingStyles = read("src/styles/recruiting-arena.css");
-const matchesStyles = read("src/styles/matches-arena.css");
+const recruitingListApiSource = read("server/api/recruiting/_listProjection.js");
+const useAppDataSource = readSourceGroupSync(read, APP_DATA_ORCHESTRATOR_SOURCE_PATHS);
+const recruitingStyles = readCssTree("src/styles/recruiting-arena.css");
+const matchesStyles = readCssTree("src/styles/matches-arena.css");
 const gettingStartedStyles = read("src/styles/getting-started.css");
 const matchClockStyles = read("src/styles/match-clock.css");
 const matchClockSource = read("src/components/match/MatchClockPanel.jsx");
@@ -80,22 +118,22 @@ const hoverSurfaceStyles = [
 ].join("\n");
 const pageSources = {
   landing: read("src/pages/Landing.jsx"),
-  home: read("src/pages/Home.jsx"),
+  home: homePageSource,
   profile: read("src/pages/Profile.jsx"),
   profileRecords: read("src/pages/ProfileRecords.jsx"),
-  matches: read("src/pages/Matches.jsx"),
-  recruiting: read("src/pages/Recruiting.jsx"),
+  matches: matchesPageSource,
+  recruiting: recruitingPageSource,
   season: read("src/pages/Season.jsx"),
   teams: read("src/pages/Teams.jsx"),
   teamDetail: read("src/pages/TeamDetail.jsx"),
   playerDetail: read("src/pages/PlayerDetail.jsx"),
   rankings: read("src/pages/Rankings.jsx"),
-  settings: read("src/pages/Settings.jsx"),
+  settings: settingsSource,
 };
 const legacyStyleSources = [
   read("src/styles/globals.css"),
-  read("src/styles/matches-arena.css"),
-  read("src/styles/recruiting-arena.css"),
+  readCssTree("src/styles/matches-arena.css"),
+  readCssTree("src/styles/recruiting-arena.css"),
 ].join("\n");
 
 test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모만 두 CSS를 전환한다", () => {
@@ -150,7 +188,7 @@ assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]
   assert.doesNotMatch(pageSources.home, /STANDARD_HOME_LAYOUT|ui-design-home-page|ui-design-main-hero/);
   assert.match(
     editorialAppStyles,
-    /\.ui-design-category-surface\.ui-design-surface\s*\{[\s\S]*?border-width:\s*1px 0 0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
+    /\.ui-design-category-surface\.ui-design-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-stroke-width\) 0 0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
   );
   assert.match(editorialAppStyles, /\.ui-design-surface\s*\{[\s\S]*?border-width:\s*var\(--ui-card-border-width\);/);
   assert.match(tokenStyles, /\[data-design="editorial"\] \.ui-design-app\s*\{[\s\S]*?--ui-card-border-width:\s*0px;[\s\S]*?--ui-button-border-width:\s*0px;[\s\S]*?--ui-control-group-border-width:\s*0px;[\s\S]*?--ui-room-modal-border-width:\s*0px;[\s\S]*?--ui-room-panel-border-width:\s*0px;[\s\S]*?--ui-hero-border-width:\s*0px;[\s\S]*?\}/);
@@ -177,8 +215,8 @@ assert.match(editorialDesignStyles, /\.ui-design-spotlight__stats > div\s*\{[^}]
   assert.match(pageSources.matches, /ui-design-filter-tile/);
   assert.match(pageSources.matches, /om-calendar-summary ui-design-soft-surface/);
   assert.match(pageSources.recruiting, /arena-queue-controls ui-design-soft-surface/);
-  assert.match(read("src/pages/CreateMatch.jsx"), /create-eligibility-control ui-design-borderless-surface/);
-  assert.match(read("src/pages/CreateMatch.jsx"), /create-public-note ui-design-borderless-surface/);
+  assert.match(createMatchPageSource, /create-eligibility-control ui-design-borderless-surface/);
+  assert.match(createMatchPageSource, /create-public-note ui-design-borderless-surface/);
   assert.match(matchCreationWizardSource, /match-creation-summary-grid ui-design-borderless-list/);
   assert.match(matchCreationWizardSource, /match-creation-validation-list is-error ui-design-borderless-surface/);
   assert.match(pageSources.settings, /favorite-type-grid ui-design-borderless-list ui-design-borderless-surface/);
@@ -523,7 +561,7 @@ test("guide screenshots ship with the app and the shot clock has one separated o
   );
   assert.match(
     matchClockStyles,
-    /\.ui-match-shot-clock\s*\{[^}]*border:\s*1px solid[^;]+;[^}]*box-shadow:\s*0 12px 24px[^;]+;/,
+    /\.ui-match-shot-clock\s*\{[^}]*border:\s*var\(--ui-stroke-width\) solid[^;]+;[^}]*box-shadow:\s*0 12px 24px[^;]+;/,
   );
   assert.doesNotMatch(
     matchClockStyles,
@@ -544,7 +582,7 @@ test("공용 체크박스는 iOS native 외형을 사용하지 않는다", () =>
   assert.match(checkboxRule, /width:\s*18px;/);
   assert.match(checkboxRule, /height:\s*18px;/);
   assert.match(checkboxRule, /min-height:\s*18px;/);
-  assert.match(checkboxRule, /border:\s*2px solid var\(--ui-control-border\);/);
+  assert.match(checkboxRule, /border:\s*var\(--ui-stroke-width-strong\) solid var\(--ui-control-border\);/);
   assert.match(checkboxRule, /background-color:\s*var\(--ui-control-bg\);/);
   assert.match(checkedRule, /background-color:\s*var\(--rb-orange\);/);
   assert.match(checkedRule, /background-image:\s*url\(/);
@@ -934,8 +972,8 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(primitiveStyles, /html\[data-theme\] \.app-main :is\(\.ui-liquid-glass,\s*\.page-header > \.ui-button\)::before\s*\{/);
   assert.match(primitiveStyles, /padding:\s*var\(--ui-liquid-glass-edge-width\);/);
   assert.match(primitiveStyles, /backdrop-filter:\s*var\(--ui-liquid-glass-refraction\);/);
-  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments\s*\{[^}]*border:\s*1px solid var\(--ui-liquid-glass-divider\);/);
-  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \* \+ \*\s*\{[^}]*border-left:\s*1px solid var\(--ui-liquid-glass-divider\);/);
+  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments\s*\{[^}]*border:\s*var\(--ui-stroke-width\) solid var\(--ui-liquid-glass-divider\);/);
+  assert.match(primitiveStyles, /\.app-main \.ui-liquid-glass-segments > \* \+ \*\s*\{[^}]*border-left:\s*var\(--ui-stroke-width\) solid var\(--ui-liquid-glass-divider\);/);
   assert.match(pageSources.home, /home-hero-board ui-liquid-glass/);
   assert.match(pageSources.teams, /team-hub-board ui-liquid-glass/);
   assert.match(pageSources.matches, /om-match-panel ui-liquid-glass[\s\S]*om-match-stats ui-liquid-glass-segments/);
@@ -1072,8 +1110,8 @@ test("팀 경기 히스토리는 공용 최근 경기 행을 사용한다", () =
 
 test("일반 경기 최종 승인은 공용 확인창을 거친다", () => {
   const dialogSource = read("src/components/match/MatchVoidDialog.jsx");
-  const matchRoomSource = read("src/pages/MatchRoom.jsx");
-  const recruitingSource = read("src/pages/Recruiting.jsx");
+  const matchRoomSource = matchRoomPageSource;
+  const recruitingSource = recruitingPageSource;
 
   assert.match(dialogSource, /더 이상 이의가 없음을 확인하셨나요\?/);
   assert.match(dialogSource, /열린 이의신청 \$\{openDisputeCount\}건을 먼저 처리/);
@@ -1185,7 +1223,7 @@ test("방모달 참가자 상태와 관리 action은 선수 오른쪽 열과 공
   );
   assert.match(
     recruitingStyles,
-    /\.arena-lobby-modal \.arena-host-kick-row \+ \.arena-host-kick-row,[\s\S]*?border-top:\s*1px solid var\(--room-participant-row-divider\);/,
+    /\.arena-lobby-modal \.arena-host-kick-row \+ \.arena-host-kick-row,[\s\S]*?border-top:\s*var\(--ui-stroke-width\) solid var\(--room-participant-row-divider\);/,
   );
   assert.match(
     recruitingStyles,
@@ -1239,9 +1277,9 @@ test("MMR 허용구간과 프로필 기본 입력은 공용 컴포넌트를 사�
   assert.match(mmrRangeSelectorSource, /Object\.entries\(MMR_RANGE_POLICIES\)\.map/);
   assert.match(mmrRangeSelectorSource, /role="radiogroup"/);
   assert.match(pageSources.recruiting, /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
-  assert.match(read("src/pages/CreateMatch.jsx"), /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
+  assert.match(createMatchPageSource, /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
   assert.doesNotMatch(
-    [pageSources.recruiting, read("src/pages/CreateMatch.jsx")].join("\n"),
+    [pageSources.recruiting, createMatchPageSource].join("\n"),
     /Object\.entries\(MMR_RANGE_POLICIES\)\.map\(\(\[mode, policy\]\) => \(\s*<button/,
   );
 

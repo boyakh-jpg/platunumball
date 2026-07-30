@@ -1,21 +1,19 @@
-import { DISCORD_API_BASE_URL, isDiscordSnowflake } from "../../../shared/lib/discordProtocol.js";
+import { isDiscordSnowflake } from "../../../shared/lib/discordProtocol.js";
 import { BRAND_NAME } from "../../../shared/lib/brand.js";
 import {
   fromRoomChatMessageRow as mapRoomChatMessageRow,
   sanitizeRoomChatBody,
 } from "../../../shared/lib/roomChat.js";
+import {
+  fetchDiscordApi,
+  getDiscordBotAuthorization,
+} from "../../lib/discordHttp.js";
 
 const DISCORD_CHAT_TIMEOUT_MS = Math.max(500, Math.min(10000, Number(process.env.DISCORD_CHAT_SYNC_TIMEOUT_MS || 2500)));
 
 function isMissingTable(error = {}, table = "") {
   const message = String(error?.message ?? "");
   return error?.code === "PGRST205" || error?.code === "42P01" || (table && message.includes(table));
-}
-
-function getDiscordBotToken() {
-  const token = String(process.env.DISCORD_BOT_TOKEN || "").trim();
-  if (!token) return "";
-  return /^Bot\s+/i.test(token) ? token : `Bot ${token}`;
 }
 
 function getDiscordChatDryRun(path = "") {
@@ -38,35 +36,17 @@ async function discordFetch(path, options = {}) {
   const dryRun = getDiscordChatDryRun(path);
   if (dryRun) return dryRun;
 
-  const authorization = getDiscordBotToken();
+  const authorization = getDiscordBotAuthorization();
   if (!authorization) return { skipped: "discord_bot_token_not_configured" };
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DISCORD_CHAT_TIMEOUT_MS);
   try {
-    const response = await fetch(`${DISCORD_API_BASE_URL}${path}`, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        Authorization: authorization,
-        "Content-Type": "application/json",
-        ...(options.headers ?? {}),
-      },
-    });
-    const text = await response.text();
-    let body = null;
-    try {
-      body = text ? JSON.parse(text) : null;
-    } catch {
-      body = null;
-    }
-    if (!response.ok) {
-      const message = body?.message || text || `discord_api_failed:${response.status}`;
-      const error = new Error(`discord_api_failed:${response.status}:${path}:${message}`.slice(0, 300));
-      error.statusCode = 502;
-      throw error;
-    }
-    return body ?? {};
+    return await fetchDiscordApi(
+      path,
+      { ...options, signal: controller.signal },
+      { authorization, emptyBody: {} },
+    );
   } finally {
     clearTimeout(timeoutId);
   }

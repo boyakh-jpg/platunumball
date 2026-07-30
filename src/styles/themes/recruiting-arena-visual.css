@@ -1,0 +1,2088 @@
+
+
+/* Unified app hero sizing */
+
+@media (max-width: 720px) {
+  .arena-recruit-hero {
+    align-items: end;
+  }
+}
+
+@media (max-width: 480px) {
+  .arena-recruit-hero {
+    min-height: 158px;
+    padding: 16px;
+  }
+
+  .arena-hero-copy h1 {
+    font-size: 2.6rem;
+  }
+}
+
+/* Final CSS cleanup: mobile record readability. */
+
+.arena-source-record-summary {
+  overflow: hidden;
+}
+
+.arena-source-record-grid {
+  align-items: start;
+}
+
+.arena-source-record-side > div {
+  grid-template-columns: minmax(58px, 0.58fr) minmax(0, 1.42fr);
+}
+
+.arena-source-record-side span,
+.arena-source-record-side em {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+@media (max-width: 520px) {
+  .arena-source-record-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .arena-source-record-side > div {
+    grid-template-columns: minmax(64px, 0.6fr) minmax(0, 1.4fr);
+    gap: 8px;
+    padding: 7px 8px;
+  }
+
+  .arena-source-record-side span {
+    font-size: 0.76rem;
+  }
+
+  .arena-source-record-side em {
+    font-size: 0.74rem;
+    line-height: 1.25;
+  }
+}
+
+/* Unified queue page surfaces */
+
+/* Queue list/filter convergence */
+
+.arena-queue-controls,
+.arena-filter-bar {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+}
+
+.arena-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+.arena-filter-bar button.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.arena-filter-select {
+  display: block;
+  flex: 1 1 220px;
+  max-width: none;
+}
+
+.arena-filter-segment {
+  width: auto;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: var(--ui-control-group-gap);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  padding: var(--ui-control-group-padding);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  overflow: visible;
+}
+
+.arena-filter-bar .arena-start-date-filter button {
+  min-height: 42px;
+  max-width: 72px;
+  padding: 3px 2px;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sat {
+  border-color: rgba(80, 150, 255, 0.38);
+  color: #8fbaff;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sun {
+  border-color: rgba(255, 101, 121, 0.42);
+  color: #ff9aa8;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.arena-filter-bar .arena-start-date-filter button.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.arena-filter-select select {
+  width: 100%;
+  min-width: 0;
+}
+
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-filter-bar {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+}
+
+html[data-theme="light"] .arena-filter-bar .segmented-control button {
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  background: var(--ui-button-bg);
+}
+
+html[data-theme="light"] .arena-filter-bar .segmented-control button.active {
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+}
+
+html[data-theme="light"] .arena-filter-bar button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sat.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sun.active {
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+}
+
+@media (max-width: 720px) {
+
+  .arena-filter-select {
+    max-width: none;
+  }
+}
+
+/* Queue card density and readable room action */
+
+/* Final CSS cleanup: actual queue list cards use the same surface as Matches. */
+
+/* Flat queue surfaces, aligned with Matches list cards. */
+
+.arena-filter-bar,
+.arena-queue-controls {
+  background-image: none;
+}
+
+.arena-filter-bar,
+.arena-queue-controls {
+  background-color: rgba(10, 14, 21, 0.9);
+}
+
+.arena-filter-bar {
+  background-color: transparent;
+}
+
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-queue-controls {
+  background-color: rgba(250, 254, 252, 0.92);
+  background-image: none;
+}
+
+html[data-theme="light"] .arena-filter-bar {
+  background-color: transparent;
+}
+
+html[data-theme="light"] .arena-lobby-team-panel,
+html[data-theme="light"] .arena-lobby-score-core,
+html[data-theme="light"] .arena-lobby-actions > div,
+html[data-theme="light"] .arena-side-roster,
+html[data-theme="light"] .arena-owner-panel,
+html[data-theme="light"] .arena-room-rule-panel,
+html[data-theme="light"] .arena-room-chat,
+html[data-theme="light"] .arena-reserve-panel,
+html[data-theme="light"] .arena-join-panel,
+html[data-theme="light"] .arena-invite-panel,
+html[data-theme="light"] .arena-invitation-list,
+html[data-theme="light"] .arena-slot-command-popover,
+html[data-theme="light"] .arena-party-picker {
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 14px 34px rgba(35, 50, 59, 0.08);
+}
+
+html[data-theme="light"] .arena-room-player-slot.empty.invite {
+  background: rgba(255, 247, 224, 0.48);
+}
+
+/* 2026-07-01 premium sports UI pass: queue, room sheet, slots. */
+
+.arena-recruit-hero,
+.arena-queue-controls,
+.arena-compose-drawer,
+.arena-lobby-modal,
+.arena-lobby-arena,
+.arena-slot-command-popover,
+.arena-invite-panel,
+.arena-party-picker {
+  border-radius: var(--radius-lg);
+}
+
+.arena-queue-controls {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.arena-filter-bar {
+  gap: 8px 10px;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active,
+.arena-filter-bar .arena-start-date-filter button.active {
+  background: rgba(70, 224, 182, 0.14);
+}
+
+.arena-room-party-group::before {
+  border-color: rgba(70, 224, 182, 0.18);
+}
+
+.arena-room-player-slot small,
+.arena-room-player-slot b,
+.arena-room-player-slot em {
+  font-size: max(0.64rem, 10px);
+}
+
+.arena-compose-drawer {
+  background-color: rgba(10, 14, 21, 0.97);
+  background-image: none;
+}
+
+.arena-submit-row {
+  border-radius: var(--radius-md);
+}
+
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-compose-drawer {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 720px) {
+  .arena-recruit-hero {
+    border-radius: var(--radius-lg);
+  }
+
+  .arena-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-filter-segment,
+  .arena-filter-bar .segmented-control {
+    display: flex;
+  }
+
+  .arena-filter-bar .segmented-control button {
+    flex: 0 0 auto;
+  }
+
+  .arena-start-date-filter {
+    display: grid;
+    grid-auto-columns: minmax(58px, 72px);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    justify-content: start;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .arena-start-date-filter::-webkit-scrollbar {
+    display: block;
+    height: 4px;
+  }
+
+  .arena-start-date-filter button,
+  .arena-filter-bar .arena-start-date-filter button {
+    min-height: 44px;
+    max-width: none;
+  }
+
+  .arena-filter-count {
+    justify-self: end;
+  }
+
+  .arena-compose-backdrop {
+    align-items: end;
+    padding: 20px 0 0;
+  }
+
+  .arena-compose-drawer {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: 16px;
+  }
+
+  .arena-submit-row {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: rgba(10, 14, 21, 0.96);
+    padding-top: 10px;
+  }
+
+  .arena-room-slot-row,
+  .arena-room-reserve-row {
+    grid-auto-flow: column;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .arena-room-slot-row::-webkit-scrollbar,
+  .arena-room-reserve-row::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 2026-07-01 visible basketball identity pass: queue board and locker-room cards. */
+
+.arena-hero-copy h1 {
+  font-variant-numeric: tabular-nums;
+}
+
+.arena-hero-panel,
+.arena-queue-controls {
+  border-color: rgba(199, 223, 232, 0.16);
+  background-color: rgba(7, 11, 17, 0.94);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+
+.arena-hero-panel {
+  border-color: rgba(242, 184, 75, 0.28);
+}
+
+.arena-filter-bar {
+  border: var(--ui-stroke-width) solid rgba(199, 223, 232, 0.12);
+  background: rgba(7, 11, 17, 0.52);
+}
+
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-filter-bar {
+  background-color: rgba(255, 255, 255, 0.94);
+}
+
+/* 2026-07-01 imweb fitness tone pass: preserve room slots and party lines. */
+
+.arena-recruit-hero {
+  border-color: var(--rb-line);
+}
+
+.arena-hero-panel,
+.arena-queue-controls,
+.arena-filter-bar {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.arena-filter-bar {
+  border-radius: var(--radius-md);
+  padding: 8px;
+}
+
+.arena-filter-bar button,
+.arena-filter-select select {
+  border-color: var(--rb-line);
+}
+
+.arena-compose-backdrop {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.arena-lobby-arena {
+  border-color: var(--rb-line);
+}
+
+.arena-lobby-team-panel,
+.arena-lobby-score-core,
+.arena-lobby-actions > div {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.arena-room-player-slot {
+  border-color: var(--rb-line);
+}
+
+.arena-room-player-slot.ready {
+  border-color: rgba(101, 217, 159, 0.3);
+  background: rgba(101, 217, 159, 0.075);
+}
+
+.arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: rgba(255, 211, 108, 0.24);
+  background: rgba(255, 211, 108, 0.06);
+}
+
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+.arena-room-reserve-row .arena-room-player-slot:not(.empty),
+.arena-side-roster .arena-room-player-slot:not(.empty) {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-room-chat,
+.arena-reserve-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-slot-command-popover,
+.arena-party-picker {
+  border-color: var(--rb-line);
+}
+
+html[data-theme="light"] .arena-recruit-hero {
+  border-color: var(--rb-line);
+}
+
+html[data-theme="light"] .arena-hero-copy h1 {
+  color: #fffaf1;
+  text-shadow: 0 3px 16px rgba(30, 24, 18, 0.48);
+}
+
+html[data-theme="light"] .arena-hero-copy p,
+html[data-theme="light"] .arena-hero-copy .eyebrow {
+  color: rgba(255, 250, 241, 0.82);
+}
+
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-filter-bar {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] .arena-lobby-arena::before {
+  background:
+    linear-gradient(rgba(30, 24, 18, 0.045) 1px, transparent 1px) 0 0 / 100% 9px,
+    radial-gradient(ellipse at 50% 48%, rgba(229, 85, 63, 0.08), transparent 20rem);
+}
+
+html[data-theme="light"] .arena-lobby-score-core,
+html[data-theme="light"] .arena-lobby-actions > div {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] .arena-lobby-score-core i {
+  color: #d94c37;
+}
+
+html[data-theme="light"] .arena-room-player-slot {
+  box-shadow: none;
+}
+
+html[data-theme="light"] .arena-room-player-slot.ready {
+  border-color: rgba(33, 138, 95, 0.25);
+  background: rgba(33, 138, 95, 0.08);
+}
+
+html[data-theme="light"] .arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: rgba(168, 108, 20, 0.24);
+  background: rgba(168, 108, 20, 0.08);
+}
+
+html[data-theme="light"] .arena-room-player-slot.empty {
+  border-style: dashed;
+}
+
+html[data-theme="light"] .arena-room-player-slot strong,
+html[data-theme="light"] .arena-lobby-team-head strong,
+html[data-theme="light"] .arena-lobby-score-core strong {
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .arena-room-player-slot b {
+  color: var(--rb-soft);
+}
+
+html[data-theme="light"] .arena-room-player-slot em {
+  color: var(--rb-gold);
+}
+
+/* 2026-07-01 final room slot override: transparent avatar, no slot border, live party line. */
+
+.arena-room-player-slot.self-action:hover,
+html[data-theme="light"] .arena-room-player-slot.self-action:hover {
+  border-color: transparent;
+}
+
+.arena-room-player-slot.self-action:focus-visible,
+html[data-theme="light"] .arena-room-player-slot.self-action:focus-visible {
+  border-color: transparent;
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
+}
+
+/* 2026-07-01 room slot restore: keep avatar cutout and party line from the slot layer. */
+
+.arena-room-player-slot .arena-position-avatar[data-position="C"] .arena-position-avatar-player {
+  object-position: center top;
+}
+
+.arena-room-party-group {
+  --party-link-y: 30px;
+}
+
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+html[data-theme="light"] .arena-room-player-slot {
+  background: rgba(255, 255, 255, 0.36);
+  box-shadow:
+    inset 0 0 18px rgba(229, 85, 63, 0.045),
+    0 0 18px rgba(229, 85, 63, 0.08);
+}
+
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-player-slot.ready {
+  box-shadow:
+    inset 0 0 18px rgba(33, 138, 95, 0.07),
+    0 0 18px rgba(33, 138, 95, 0.1);
+}
+
+@media (max-width: 720px) {
+  .arena-room-party-group {
+    --party-link-y: 25px;
+  }
+}
+
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot:not(.empty),
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) {
+  border-color: rgba(30, 24, 18, 0.13);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-drag-handle {
+    appearance: none;
+    display: block;
+    width: min(100%, 320px);
+    height: 56px;
+    min-height: 56px;
+    flex: 0 0 56px;
+    margin: 0 auto;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    padding: 0;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .arena-lobby-drag-handle::before {
+    content: "";
+    display: block;
+    width: 46px;
+    height: 4px;
+    margin: 20px auto 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  html[data-theme="light"] .arena-lobby-drag-handle::before {
+    background: rgba(30, 24, 18, 0.22);
+  }
+
+  html[data-theme="light"] .arena-lobby-modal::before {
+    background: rgba(30, 24, 18, 0.18);
+  }
+}
+
+/* 2026-07-01 full internal preview pass: recruiting screen and preserved room modal. */
+
+.arena-recruit-page {
+  margin: 0 auto;
+}
+
+.arena-recruit-hero {
+  border: var(--ui-hero-border-width) solid var(--rb-line);
+  box-shadow: none;
+}
+
+.arena-hero-copy h1 {
+  color: #fff;
+}
+
+.arena-hero-copy p {
+  font-size: 14px;
+}
+
+.arena-hero-panel {
+  width: min(340px, 100%);
+  border-radius: var(--radius-md);
+  backdrop-filter: none;
+}
+
+.arena-filter-bar,
+.arena-queue-controls {
+  border: var(--ui-card-border-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+  padding: 10px;
+}
+
+.arena-filter-bar button {
+  min-height: 38px;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--rb-text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.arena-filter-select select {
+  min-height: 38px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.arena-filter-bar .arena-start-date-filter {
+  gap: 8px;
+}
+
+.arena-filter-count {
+  color: var(--rb-gold);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.arena-compose-backdrop {
+  align-items: flex-end;
+  background: rgba(0, 0, 0, var(--sheet-backdrop-opacity, 0.42));
+  padding: 10px 10px max(10px, env(safe-area-inset-bottom, 0px));
+}
+
+.arena-compose-drawer {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  background: rgba(36, 37, 38, 0.97);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
+}
+
+.arena-lobby-arena {
+  --room-slot-width: clamp(78px, 7vw, 96px);
+  --room-slot-gap: 8px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  background:
+    linear-gradient(90deg, rgba(24, 25, 26, 0.98), rgba(48, 49, 50, 0.82) 52%, rgba(24, 25, 26, 0.74)),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  box-shadow: none;
+  padding: 16px;
+}
+
+.arena-lobby-arena::before {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 100% 9px,
+    radial-gradient(ellipse at 50% 48%, rgba(240, 90, 70, 0.16), transparent 20rem);
+  opacity: 0.68;
+}
+
+.arena-lobby-arena::after {
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.34), transparent);
+}
+
+.arena-lobby-title h2 {
+  color: var(--rb-orange);
+  line-height: 0.9;
+  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
+}
+
+.arena-lobby-title > span,
+.arena-lobby-team-head span {
+  color: var(--rb-orange-2);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.arena-lobby-title p {
+  color: var(--rb-muted);
+  font-size: 13px;
+}
+
+.arena-lobby-versus-stage {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.arena-lobby-team-panel,
+.arena-lobby-score-core,
+.arena-lobby-actions > div {
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.16);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.arena-lobby-team-panel {
+  padding: 12px;
+}
+
+.arena-lobby-team-head strong {
+  color: var(--rb-text);
+  font-family: var(--sports-display-font);
+  font-size: clamp(28px, 2.8vw, 38px);
+  line-height: 0.96;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.arena-lobby-team-head em {
+  color: var(--rb-muted);
+}
+
+.arena-lobby-score-core {
+  min-height: 92px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.arena-lobby-score-core strong {
+  color: var(--rb-text);
+  font-family: var(--sports-display-font);
+  font-size: clamp(42px, 5vw, 70px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.arena-lobby-score-core i {
+  color: var(--rb-orange-2);
+}
+
+.arena-lobby-score-core span,
+.arena-lobby-actions svg {
+  color: var(--rb-green);
+}
+
+.arena-room-slot-row,
+.arena-room-reserve-row {
+  grid-template-columns: repeat(var(--slot-count, 5), minmax(var(--room-slot-width), 1fr));
+  gap: var(--room-slot-gap);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.arena-room-slot-row::-webkit-scrollbar,
+.arena-room-reserve-row::-webkit-scrollbar {
+  display: none;
+}
+
+.arena-room-player-slot {
+  grid-template-rows: 44px 16px 18px minmax(18px, auto) 16px;
+  min-height: 136px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+  padding: 10px 6px;
+  gap: 6px;
+}
+
+.arena-side-roster .arena-room-player-slot.ready,
+.arena-room-reserve-row .arena-room-player-slot.ready,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+.arena-room-player-slot.ready {
+  border-color: rgba(101, 217, 159, 0.3);
+  background: rgba(101, 217, 159, 0.075);
+}
+
+.arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: rgba(255, 211, 108, 0.24);
+  background: rgba(255, 211, 108, 0.06);
+}
+
+.arena-room-player-slot.empty {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--rb-soft);
+}
+
+.arena-room-player-slot.empty.invite {
+  color: var(--rb-gold);
+}
+
+.arena-room-player-slot .avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--rb-cream);
+  color: #111;
+  box-shadow: 0 9px 18px rgba(0, 0, 0, 0.18);
+}
+
+.arena-room-player-slot .arena-position-avatar {
+  border-radius: 50%;
+  background: var(--rb-cream);
+}
+
+.arena-room-slot-crown,
+.arena-room-slot-crown.host,
+.arena-room-slot-crown.captain {
+  top: 7px;
+  right: 7px;
+  width: 20px;
+  height: 20px;
+  border-color: transparent;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+.arena-room-player-slot strong {
+  color: var(--rb-text);
+  font-size: 12px;
+  line-height: 1.05;
+}
+
+.arena-room-player-slot small {
+  min-height: 18px;
+  border-radius: 999px;
+  background: rgba(116, 169, 255, 0.16);
+  color: var(--rb-blue);
+  font-size: 9.5px;
+  font-weight: 950;
+}
+
+.arena-room-player-slot em {
+  color: var(--rb-gold);
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.arena-room-party-group {
+  isolation: isolate;
+  gap: 8px;
+  border-radius: var(--radius-lg);
+  padding: 0;
+}
+
+.arena-room-party-group::before {
+  inset: -7px;
+  border: var(--ui-stroke-width) solid rgba(255, 118, 88, 0.42);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(240, 90, 70, 0.18), transparent 66%),
+    rgba(240, 90, 70, 0.055);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 22px rgba(240, 90, 70, 0.12);
+}
+
+.arena-room-party-group::after {
+  top: auto;
+  bottom: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 118, 88, 0.1), rgba(255, 118, 88, 0.9), rgba(255, 118, 88, 0.1));
+  box-shadow: 0 0 13px rgba(255, 118, 88, 0.38);
+}
+
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-room-chat,
+.arena-reserve-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-slot-command-popover,
+.arena-party-picker {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-lg);
+  background: rgba(36, 37, 38, 0.78);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.arena-reserve-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.arena-room-rule-panel strong,
+.arena-owner-panel strong,
+.arena-invite-panel header strong,
+.arena-room-chat header span {
+  font-family: var(--font-body);
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-title);
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.arena-room-rule-panel span,
+.arena-owner-panel span,
+.arena-invite-panel header span,
+.arena-room-chat p {
+  color: var(--rb-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+
+  .arena-filter-segment,
+  .arena-filter-bar .segmented-control,
+  .arena-filter-bar .arena-start-date-filter {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .arena-filter-segment::-webkit-scrollbar,
+  .arena-filter-bar .segmented-control::-webkit-scrollbar,
+  .arena-filter-bar .arena-start-date-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .arena-compose-drawer,
+  .arena-lobby-modal {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    border-radius: var(--radius-xl);
+    padding: 14px;
+  }
+
+  .arena-lobby-modal::before {
+    content: none;
+    display: none;
+  }
+
+  .arena-lobby-arena {
+    --room-slot-width: 74px;
+    --room-slot-gap: 8px;
+    padding: 10px;
+  }
+
+  .arena-lobby-title h2 {
+    font-size: clamp(34px, 10vw, 38px);
+  }
+
+  .arena-lobby-versus-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-lobby-score-core {
+    min-height: 70px;
+  }
+
+  .arena-room-slot-row,
+  .arena-room-reserve-row {
+    grid-auto-columns: minmax(74px, 74px);
+    grid-template-columns: none;
+  }
+
+  .arena-room-player-slot {
+    grid-template-rows: 36px 16px 18px minmax(18px, auto) 16px;
+    min-height: 118px;
+    border-radius: var(--radius-md);
+    padding: 8px 4px;
+    gap: 4px;
+  }
+
+  .arena-room-player-slot .avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .arena-room-player-slot strong {
+    font-size: 11px;
+  }
+
+  .arena-room-player-slot small,
+  .arena-room-slot-detail,
+  .arena-room-player-slot em {
+    font-size: 9.5px;
+  }
+
+  .arena-reserve-panel {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+  }
+}
+
+html[data-theme="light"] .arena-filter-bar button,
+html[data-theme="light"] .arena-filter-select select {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .arena-filter-bar button.active,
+html[data-theme="light"] .arena-filter-bar .segmented-control button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sat.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-color: transparent;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+html[data-theme="light"] .arena-lobby-arena {
+  border-color: var(--rb-line);
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(229, 85, 63, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(255, 250, 241, 0.76), rgba(245, 241, 232, 0.9)),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+html[data-theme="light"] .arena-lobby-team-panel,
+html[data-theme="light"] .arena-lobby-score-core,
+html[data-theme="light"] .arena-lobby-actions > div,
+html[data-theme="light"] .arena-owner-panel,
+html[data-theme="light"] .arena-room-rule-panel,
+html[data-theme="light"] .arena-room-chat,
+html[data-theme="light"] .arena-reserve-panel,
+html[data-theme="light"] .arena-join-panel,
+html[data-theme="light"] .arena-invite-panel,
+html[data-theme="light"] .arena-slot-command-popover,
+html[data-theme="light"] .arena-party-picker {
+  border-color: var(--rb-line);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] .arena-room-player-slot {
+  border-color: rgba(30, 24, 18, 0.13);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-player-slot.ready {
+  border-color: rgba(33, 138, 95, 0.25);
+  background: rgba(33, 138, 95, 0.08);
+}
+
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: rgba(168, 108, 20, 0.24);
+  background: rgba(168, 108, 20, 0.08);
+}
+
+html[data-theme="light"] .arena-room-player-slot.empty {
+  background: rgba(30, 24, 18, 0.035);
+  color: var(--rb-soft);
+}
+
+html[data-theme="light"] .arena-room-player-slot .avatar,
+html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+  background: #151515;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(55, 44, 31, 0.12);
+}
+
+html[data-theme="light"] .arena-room-party-group::before {
+  border: var(--ui-stroke-width) solid rgba(229, 85, 63, 0.36);
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(229, 85, 63, 0.12), transparent 66%),
+    rgba(229, 85, 63, 0.045);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.62),
+    0 0 18px rgba(229, 85, 63, 0.1);
+}
+
+html[data-theme="light"] .arena-room-party-group::after {
+  background: linear-gradient(90deg, rgba(229, 85, 63, 0.08), rgba(229, 85, 63, 0.8), rgba(229, 85, 63, 0.08));
+  box-shadow: 0 0 10px rgba(229, 85, 63, 0.25);
+}
+
+/* 2026-07-01 absolute final room slot lock. */
+
+.arena-room-player-slot .avatar.arena-position-avatar,
+.arena-room-player-slot .arena-position-avatar,
+html[data-theme="light"] .arena-room-player-slot .avatar.arena-position-avatar,
+html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+  width: 48px;
+  height: 48px;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: transparent;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.arena-room-player-slot .arena-position-avatar-tier {
+  object-fit: contain;
+  opacity: 0.95;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.34));
+}
+
+.arena-room-player-slot .arena-position-avatar-player {
+  left: 50%;
+  object-fit: cover;
+  object-position: center top;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.42));
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.arena-side-roster .arena-room-player-slot,
+.arena-room-reserve-row .arena-room-player-slot,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+.arena-room-player-slot,
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+html[data-theme="light"] .arena-room-player-slot {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.028);
+}
+
+.arena-side-roster .arena-room-player-slot.ready,
+.arena-room-reserve-row .arena-room-player-slot.ready,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+.arena-room-player-slot.ready,
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-player-slot.ready {
+  border-color: transparent;
+  background: rgba(101, 217, 159, 0.048);
+}
+
+.arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: transparent;
+  background: rgba(255, 211, 108, 0.035);
+}
+
+.arena-room-player-slot.empty,
+html[data-theme="light"] .arena-room-player-slot.empty {
+  border-color: rgba(255, 211, 108, 0.18);
+  background: rgba(255, 255, 255, 0.014);
+  box-shadow: none;
+}
+
+.arena-room-party-group::before,
+html[data-theme="light"] .arena-room-party-group::before {
+  border: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(240, 90, 70, 0.16), transparent 66%),
+    rgba(240, 90, 70, 0.026);
+  box-shadow: 0 0 24px rgba(240, 90, 70, 0.16);
+}
+
+.arena-room-party-group::after,
+html[data-theme="light"] .arena-room-party-group::after {
+  bottom: auto;
+  left: calc(var(--room-slot-width) / 2);
+  right: calc(var(--room-slot-width) / 2);
+  z-index: 1;
+}
+
+@media (max-width: 720px) {
+  .arena-room-player-slot .avatar.arena-position-avatar,
+  .arena-room-player-slot .arena-position-avatar,
+  html[data-theme="light"] .arena-room-player-slot .avatar.arena-position-avatar,
+  html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* 2026-07-01 final EOF fuller hero board: image-led recruiting header. */
+
+.arena-recruit-hero {
+  align-items: end;
+  overflow: hidden;
+}
+
+.arena-hero-copy {
+  align-self: end;
+  max-width: 690px;
+}
+
+.arena-hero-copy h1 {
+  max-width: 12ch;
+  font-size: clamp(64px, 8vw, 112px);
+  line-height: 0.84;
+  text-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
+}
+
+.arena-hero-copy p {
+  max-width: 600px;
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 850;
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.42);
+}
+
+.arena-hero-panel {
+  align-self: end;
+  background: rgba(24, 25, 26, 0.9);
+}
+
+html[data-theme="light"] .arena-hero-panel {
+  background: rgba(255, 250, 241, 0.9);
+}
+
+@media (max-width: 720px) {
+  .arena-recruit-hero {
+    background-position:
+      center,
+      center,
+      center 50%,
+      center;
+  }
+
+  .arena-hero-copy h1 {
+    font-size: clamp(52px, 15vw, 70px);
+  }
+
+  .arena-hero-copy p {
+    font-size: 13px;
+  }
+}
+
+/* 2026-07-01 final party line and avatar crop tuning. */
+
+.arena-room-party-group,
+html[data-theme="light"] .arena-room-party-group {
+  --party-link-y: 41px;
+}
+
+.arena-room-party-group::after,
+html[data-theme="light"] .arena-room-party-group::after {
+  top: var(--party-link-y);
+  height: 5px;
+  background:
+    linear-gradient(90deg, rgba(255, 118, 88, 0.04), rgba(255, 118, 88, 0.95), rgba(255, 118, 88, 0.04)),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 214, 156, 0.55), transparent 68%);
+  box-shadow:
+    0 0 12px rgba(255, 118, 88, 0.62),
+    0 0 28px rgba(255, 118, 88, 0.34),
+    0 0 44px rgba(255, 214, 156, 0.16);
+}
+
+.arena-room-player-slot .arena-position-avatar-tier {
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+}
+
+.arena-room-player-slot .arena-position-avatar-player {
+  top: -3px;
+  width: 136%;
+  height: 145%;
+  -webkit-mask-image:
+    linear-gradient(180deg, #000 0 68%, rgba(0, 0, 0, 0.86) 76%, rgba(0, 0, 0, 0.26) 86%, rgba(0, 0, 0, 0) 93%),
+    radial-gradient(ellipse 82% 86% at 50% 38%, #000 0 68%, rgba(0, 0, 0, 0.9) 78%, rgba(0, 0, 0, 0.28) 89%, rgba(0, 0, 0, 0) 96%);
+  mask-image:
+    linear-gradient(180deg, #000 0 68%, rgba(0, 0, 0, 0.86) 76%, rgba(0, 0, 0, 0.26) 86%, rgba(0, 0, 0, 0) 93%),
+    radial-gradient(ellipse 82% 86% at 50% 38%, #000 0 68%, rgba(0, 0, 0, 0.9) 78%, rgba(0, 0, 0, 0.28) 89%, rgba(0, 0, 0, 0) 96%);
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="C"] .arena-position-avatar-player {
+  top: -2px;
+  width: 108%;
+  height: 130%;
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="PG"] .arena-position-avatar-player,
+.arena-room-player-slot .arena-position-avatar[data-position="PF"] .arena-position-avatar-player {
+  width: 124%;
+  height: 138%;
+}
+
+.arena-room-player-slot strong,
+.arena-room-player-slot small,
+.arena-room-slot-detail,
+.arena-room-player-slot em {
+  position: relative;
+  z-index: 3;
+}
+
+.arena-room-player-slot strong {
+  transform: translateY(2px);
+}
+
+.arena-room-player-slot small {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 720px) {
+  .arena-room-party-group,
+  html[data-theme="light"] .arena-room-party-group {
+    --party-link-y: 34px;
+  }
+}
+
+.arena-room-slot-crown,
+.arena-room-slot-crown.host,
+.arena-room-slot-crown.captain,
+html[data-theme="light"] .arena-room-slot-crown,
+html[data-theme="light"] .arena-room-slot-crown.host,
+html[data-theme="light"] .arena-room-slot-crown.captain {
+  top: 3px;
+  right: calc(50% - 36px);
+  z-index: 4;
+  width: 15px;
+  height: 15px;
+  border-width: var(--ui-stroke-width);
+  font-size: 8px;
+}
+
+.arena-room-slot-crown svg {
+  width: 9px;
+  height: 9px;
+}
+
+.arena-room-slot-crown.captain,
+html[data-theme="light"] .arena-room-slot-crown.captain {
+  border-color: rgba(118, 169, 255, 0.55);
+  background: rgba(118, 169, 255, 0.26);
+  color: var(--rb-blue);
+}
+
+/* 2026-07-01 reserve row and restrained palette pass. */
+
+.arena-reserve-panel,
+html[data-theme="light"] .arena-reserve-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+}
+
+.arena-reserve-line,
+html[data-theme="light"] .arena-reserve-line {
+  min-width: 0;
+  padding-inline: 0;
+}
+
+.arena-reserve-line > strong,
+html[data-theme="light"] .arena-reserve-line > strong {
+  color: var(--rb-gold);
+}
+
+.arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-reserve-line > .arena-room-reserve-row {
+  grid-auto-columns: minmax(74px, 74px);
+  grid-template-columns: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.arena-reserve-line > .arena-room-reserve-row::-webkit-scrollbar {
+  display: none;
+}
+
+.arena-lobby-score-core span,
+.arena-lobby-actions svg,
+html[data-theme="light"] .arena-lobby-score-core span,
+html[data-theme="light"] .arena-lobby-actions svg {
+  color: var(--rb-gold);
+}
+
+.arena-room-player-slot.ready em,
+.arena-room-player-slot.ready [title="참가"],
+html[data-theme="light"] .arena-room-player-slot.ready em,
+html[data-theme="light"] .arena-room-player-slot.ready [title="참가"] {
+  color: var(--rb-green);
+}
+
+@media (max-width: 720px) {
+  .arena-reserve-panel,
+  html[data-theme="light"] .arena-reserve-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .arena-reserve-line > strong,
+  html[data-theme="light"] .arena-reserve-line > strong {
+    font-size: 0.72rem;
+  }
+}
+
+/* 2026-07-01 room slot fit: avoid cramped mode chips and reserve stack. */
+
+.arena-lobby-modal .badge-row .badge {
+  font-family: inherit;
+  letter-spacing: 0.01em;
+}
+
+.arena-lobby-modal .arena-room-slot-row,
+.arena-lobby-modal .arena-room-reserve-row {
+  max-width: 100%;
+}
+
+.arena-lobby-modal .arena-room-slot-row {
+  overflow-x: hidden;
+}
+
+.arena-lobby-modal .arena-room-party-group {
+  grid-template-columns: repeat(var(--party-slot-count, 2), minmax(0, 1fr));
+}
+
+.arena-lobby-modal .arena-room-party-group,
+html[data-theme="light"] .arena-lobby-modal .arena-room-party-group {
+  --party-line-inset: calc((100% / var(--party-slot-count, 2)) / 2);
+}
+
+.arena-lobby-modal .arena-room-party-group::after,
+html[data-theme="light"] .arena-lobby-modal .arena-room-party-group::after {
+  left: var(--party-line-inset);
+  right: var(--party-line-inset);
+  transform: none;
+  width: auto;
+}
+
+.arena-lobby-modal .arena-reserve-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.arena-lobby-modal .arena-reserve-panel {
+  gap: 8px;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:first-child {
+  grid-column: 1;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) {
+  grid-column: 2;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > strong,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > strong {
+  text-align: right;
+}
+
+.arena-lobby-modal .arena-reserve-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.arena-lobby-modal .arena-reserve-line > strong {
+  min-width: 0;
+  padding-top: 0;
+  white-space: nowrap;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  justify-content: start;
+  scrollbar-width: none;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row {
+  justify-content: end;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal .arena-room-slot-row {
+    grid-template-columns: repeat(var(--slot-count, 5), minmax(0, 1fr));
+  }
+
+  .arena-lobby-modal .arena-room-player-slot {
+    min-width: 0;
+  }
+
+  .arena-lobby-modal .arena-reserve-line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 2026-07-01 remove court grid overlays. */
+
+.arena-recruit-hero {
+  background:
+    linear-gradient(90deg, rgba(5, 8, 12, 0.98), rgba(5, 8, 12, 0.74) 56%, rgba(24, 16, 8, 0.78)),
+    radial-gradient(circle at 80% 20%, rgba(240, 90, 70, 0.18), transparent 12rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--scoreboard);
+}
+
+html[data-theme="light"] .arena-recruit-hero {
+  background:
+    linear-gradient(90deg, rgba(255, 250, 241, 0.82), rgba(255, 250, 241, 0.58) 56%, rgba(245, 241, 232, 0.78)),
+    radial-gradient(circle at 80% 20%, rgba(229, 85, 63, 0.12), transparent 12rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+.arena-lobby-arena::before,
+html[data-theme="light"] .arena-lobby-arena::before {
+  background: radial-gradient(ellipse at 50% 48%, rgba(240, 90, 70, 0.14), transparent 20rem);
+}
+
+/* 2026-07-01 shared primitive alignment for recruiting chunk. */
+
+.arena-filter-bar,
+.arena-queue-controls,
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-room-chat {
+  border: var(--ui-room-panel-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-owner-panel,
+html[data-theme="light"] .arena-room-rule-panel,
+html[data-theme="light"] .arena-join-panel,
+html[data-theme="light"] .arena-invite-panel,
+html[data-theme="light"] .arena-room-chat {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.arena-filter-bar button,
+.arena-filter-bar .segmented-control button,
+.arena-filter-bar .arena-start-date-filter button,
+.arena-slot-command-popover .arena-invite-team-picker > .button {
+  min-height: var(--control-height);
+  border: var(--ui-button-border-width) solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  font-size: var(--control-font-size);
+  font-weight: 900;
+}
+
+.arena-filter-select select {
+  background: var(--input-bg);
+}
+
+.arena-filter-bar button.active,
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
+/* 2026-07-01 standard UI cleanup: recruiting controls follow shared primitives. */
+
+.arena-hero-copy h1,
+.arena-lobby-title h1 {
+  color: var(--hero-title-color);
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-shadow: var(--hero-title-shadow);
+  text-transform: uppercase;
+}
+
+.arena-hero-copy p,
+.arena-lobby-title p {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+.arena-hero-copy .eyebrow,
+.arena-lobby-title .eyebrow,
+.arena-owner-panel .eyebrow,
+.arena-room-rule-panel .eyebrow,
+.arena-join-panel .eyebrow,
+.arena-invite-panel .eyebrow {
+  color: var(--rb-orange);
+}
+
+.arena-hero-panel,
+.arena-compose-drawer,
+.arena-slot-command-popover,
+.arena-lobby-team-panel,
+.arena-reserve-panel,
+.arena-room-edit-panel,
+.arena-referee-invite-panel,
+.arena-host-kick-panel,
+.arena-party-member-card {
+  border: var(--ui-card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-compose-drawer,
+html[data-theme="light"] .arena-slot-command-popover,
+html[data-theme="light"] .arena-lobby-team-panel,
+html[data-theme="light"] .arena-reserve-panel,
+html[data-theme="light"] .arena-room-edit-panel,
+html[data-theme="light"] .arena-referee-invite-panel,
+html[data-theme="light"] .arena-host-kick-panel,
+html[data-theme="light"] .arena-party-member-card {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.arena-icon-button,
+.arena-modal-close-button,
+.arena-team-choice-grid button,
+.arena-party-picker-grid > button,
+.arena-party-role-buttons button,
+.arena-invite-team-head > button,
+.arena-invite-member-grid button {
+  min-height: var(--control-height);
+  border: var(--ui-stroke-width) solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  font-size: var(--control-font-size);
+  font-weight: 900;
+}
+
+.arena-team-choice-grid button.selected,
+.arena-party-picker-grid > button.selected,
+.arena-party-role-buttons button.active,
+.arena-invite-team-head > button.active,
+.arena-invite-member-grid button.selected {
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
+@media (max-width: 720px) {
+  .arena-hero-copy h1,
+  .arena-lobby-title h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}
+
+/* 2026-07-01 final recruiting UI module.
+   This chunk loads after globals.css, so local controls must point back to --ui-* tokens. */
+
+.arena-filter-bar,
+.arena-hero-panel,
+.arena-compose-drawer,
+.arena-lobby-team-panel,
+.arena-reserve-panel,
+.arena-room-edit-panel,
+.arena-referee-invite-panel,
+.arena-host-kick-panel,
+.arena-party-member-card,
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-room-chat {
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.arena-lobby-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, calc(100dvw - 32px));
+  max-width: calc(100dvw - 32px);
+  max-height: calc(100dvh - 36px);
+  overflow: hidden;
+  padding: 0;
+  opacity: var(--sheet-modal-opacity, 1);
+  transform: translateY(var(--sheet-drag-y, 0px));
+  will-change: opacity, transform;
+  border: var(--ui-room-modal-border-width) solid var(--ui-room-modal-border);
+  border-radius: var(--ui-room-modal-radius);
+  background: var(--ui-room-modal-bg);
+  background-clip: padding-box;
+  box-shadow: var(--ui-room-modal-shadow);
+}
+
+.arena-side-roster,
+.arena-lobby-versus-stage,
+.arena-lobby-team-panel,
+.arena-reserve-panel,
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-room-chat {
+  border-color: var(--ui-room-panel-border);
+  background: var(--ui-room-panel-bg);
+}
+
+.arena-lobby-modal .arena-lobby-versus-stage,
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-versus-stage {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.arena-lobby-modal .arena-lobby-team-panel {
+  border-color: var(--ui-room-panel-border);
+  background: var(--ui-room-panel-bg);
+  overflow: visible;
+}
+
+.arena-lobby-modal .arena-room-slot-row {
+  padding: 18px;
+  margin: -18px;
+  overflow: visible;
+}
+
+.arena-lobby-modal .arena-reserve-panel,
+.arena-lobby-modal .arena-reserve-line,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line {
+  overflow: visible;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  padding: 18px;
+  margin: -18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.arena-lobby-modal .arena-reserve-line,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line {
+  inline-size: 100%;
+  min-inline-size: 0;
+  justify-self: stretch;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  box-sizing: border-box;
+  inline-size: calc(100% + 36px);
+  min-inline-size: 0;
+  max-width: none;
+  justify-self: stretch;
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal .arena-lobby-arena {
+    --room-slot-width: min(72px, calc((100dvw - 128px) / var(--room-side-slot-count, 4)));
+  }
+
+  .arena-lobby-modal .arena-room-slot-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-room-slot-row {
+    grid-auto-columns: minmax(var(--room-slot-width), var(--room-slot-width));
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    justify-content: start;
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+  }
+
+  .arena-lobby-modal .arena-room-slot-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .arena-lobby-modal .arena-reserve-line,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-line {
+    padding-inline: 0;
+  }
+
+  .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    inline-size: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: visible;
+  }
+}
+
+@media (max-width: 380px) {
+  .arena-lobby-modal .arena-reserve-panel,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:first-child,
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) {
+    grid-column: 1;
+  }
+}
+
+.arena-lobby-modal .arena-lobby-team-panel .arena-side-roster,
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-roster {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.arena-filter-bar .segmented-control,
+.arena-filter-bar .arena-start-date-filter,
+.arena-team-choice-grid,
+.arena-party-picker-grid,
+.arena-party-role-buttons,
+.arena-invite-member-grid,
+.arena-invite-team-picker,
+.arena-slot-command-popover .arena-invite-actions {
+  gap: var(--ui-control-group-gap);
+  align-items: stretch;
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  box-shadow: none;
+  padding: var(--ui-control-group-padding);
+  overflow: visible;
+}
+
+.arena-filter-bar button,
+.arena-filter-bar .segmented-control button,
+.arena-filter-bar .arena-start-date-filter button,
+.arena-icon-button,
+.arena-modal-close-button,
+.arena-team-choice-grid button,
+.arena-party-picker-grid > button,
+.arena-party-role-buttons button,
+.arena-invite-team-head > button,
+.arena-invite-member-grid button,
+.arena-slot-command-popover .arena-invite-team-picker > .button {
+  min-height: var(--ui-button-height);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  box-shadow: none;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+}
+
+.arena-icon-button,
+.arena-modal-close-button {
+  width: var(--ui-icon-button-size);
+  height: var(--ui-icon-button-size);
+  min-height: var(--ui-icon-button-size);
+  display: inline-grid;
+}
+
+.arena-modal-close-button {
+  display: inline-flex;
+  width: 100%;
+  min-width: 132px;
+  height: auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 16px;
+  white-space: nowrap;
+}
+
+.arena-filter-bar button.active,
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active,
+.arena-team-choice-grid button.selected,
+.arena-party-picker-grid > button.selected,
+.arena-party-role-buttons button.active,
+.arena-invite-team-head > button.active,
+.arena-invite-member-grid button.selected {
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+  box-shadow: none;
+}
+
+.arena-team-choice-grid button.selected:hover,
+.arena-party-picker-grid > button.selected:hover,
+.arena-party-role-buttons button.active:hover,
+.arena-invite-team-head > button.active:hover {
+  background: var(--ui-button-bg-hover);
+  color: var(--ui-button-color-active);
+  filter: none;
+}
+
+.arena-filter-select select,
+.arena-compose-drawer input:not([type="checkbox"]):not([type="radio"]),
+.arena-compose-drawer select,
+.arena-compose-drawer textarea,
+.arena-slot-command-popover input:not([type="checkbox"]):not([type="radio"]),
+.arena-slot-command-popover select,
+.arena-slot-command-popover textarea {
+  min-height: var(--ui-button-height);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+}
+
+.arena-slot-command-popover {
+  border-color: var(--rb-line-strong);
+  background:
+    linear-gradient(180deg, rgba(36, 37, 38, 0.98), rgba(24, 25, 26, 0.96)),
+    var(--rb-bg-2);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+}
+
+html[data-theme="light"] .arena-slot-command-popover {
+  border-color: var(--rb-line-strong);
+  background:
+    linear-gradient(180deg, rgba(255, 250, 241, 0.98), rgba(245, 241, 232, 0.96)),
+    var(--rb-cream);
+  box-shadow: 0 18px 44px rgba(55, 44, 31, 0.16);
+}
+
+.arena-lobby-modal .badge-row .badge {
+  border-color: var(--ui-button-border);
+  background: var(--ui-button-bg);
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+}
+
+/* 2026-07-01 clip-safe filter groups. */
+
+.arena-filter-bar .segmented-control,
+.arena-filter-bar .arena-start-date-filter {
+  box-sizing: border-box;
+  padding: 7px;
+  scroll-padding-inline: 7px;
+}
+
+.arena-filter-bar .segmented-control button,
+.arena-filter-bar .arena-start-date-filter button {
+  box-sizing: border-box;
+  border-width: var(--ui-button-border-width);
+  border-style: solid;
+  border-color: var(--ui-button-border);
+}
+
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-width: var(--ui-button-border-width);
+  border-style: solid;
+}
+
+.arena-filter-bar .arena-start-date-filter {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.arena-filter-bar .arena-start-date-filter::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .arena-filter-bar .segmented-control {
+    overflow-y: hidden;
+  }
+}
+
+/* 2026-07-02 canonical recruiting hero image rule: no wash, grid, or pseudo overlay. */
+
+.arena-recruit-hero .eyebrow,
+.arena-recruit-hero h1,
+.arena-recruit-hero p,
+html[data-theme="light"] .arena-recruit-hero .eyebrow,
+html[data-theme="light"] .arena-recruit-hero h1,
+html[data-theme="light"] .arena-recruit-hero p {
+  color: var(--rb-orange);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
+}
+
+.arena-recruit-hero p,
+html[data-theme="light"] .arena-recruit-hero p {
+  color: var(--rb-orange-2);
+}
+
+html[data-theme="light"] .arena-recruit-hero h1 {
+  color: var(--rb-cream);
+}
+
+/* 2026-07-02 final recruiting hero guard: no wash/blur and shared title font. */
+
+.arena-recruit-hero,
+html[data-theme="light"] .arena-recruit-hero {
+  backdrop-filter: none;
+  filter: none;
+}
+
+.arena-recruit-hero::before,
+.arena-recruit-hero::after,
+html[data-theme="light"] .arena-recruit-hero::before,
+html[data-theme="light"] .arena-recruit-hero::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+
+.arena-hero-copy h1,
+html[data-theme="light"] .arena-hero-copy h1 {
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .arena-hero-copy h1,
+  html[data-theme="light"] .arena-hero-copy h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}

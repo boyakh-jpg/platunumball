@@ -124,7 +124,12 @@ test("unused authoritative wrappers stay removed", async () => {
   const [authoritativeSource, syncMatchSource, recruitingListSource] = await Promise.all([
     readFile(new URL("../server/api/_authoritativeState.js", import.meta.url), "utf8"),
     readFile(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8"),
-    readFile(new URL("../server/api/recruiting/list.js", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../server/api/recruiting/_listProjection.js", import.meta.url), "utf8"),
+      readFile(new URL("../server/api/recruiting/_listQueries.js", import.meta.url), "utf8"),
+      readFile(new URL("../server/api/recruiting/_listLoader.js", import.meta.url), "utf8"),
+      readFile(new URL("../server/api/recruiting/_listHandler.js", import.meta.url), "utf8"),
+    ]).then((sources) => sources.join("\n")),
   ]);
 
   assert.doesNotMatch(authoritativeSource, /\bapplyAuthoritativeTournamentOperation\b/u);

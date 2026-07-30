@@ -1,5 +1,11 @@
-import { bearerTokenMatches, getSupabaseAdminClient, isMissingTable, readJsonBody, sendJson, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
+import { getSupabaseAdminClient, isMissingTable, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
 import { fetchRoomFeedSourceMap } from "../../lib/roomFeedSources.js";
+import {
+  allowSystemReadRequest,
+  assertSystemSecretAccess,
+  readSystemRequestBody,
+  sendJson,
+} from "./_systemRequest.js";
 
 const FEED_COLUMNS = "profile_id,entity_type,entity_id,relation,feed_scope,region_key,status,timing_type,scheduled_date,card_json,sort_at,is_active";
 const CARD_COLUMNS = "entity_type,entity_id,card_json,updated_at";
@@ -12,11 +18,6 @@ function reject(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   throw error;
-}
-
-function assertAccess(request) {
-  const secret = process.env.CRON_SECRET || "";
-  if (!bearerTokenMatches(request, secret)) reject(401, "invalid_feed_audit_secret");
 }
 
 function getCappedLimit(value) {
@@ -200,15 +201,11 @@ function auditRows(rows = [], cardMap = new Map(), sourceMap = new Map()) {
 }
 
 export default async function handler(request, response) {
-  if (!["GET", "POST"].includes(request.method)) {
-    response.setHeader("Allow", "GET, POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowSystemReadRequest(request, response)) return;
 
   try {
-    assertAccess(request);
-    const body = request.method === "POST" ? await readJsonBody(request) : {};
+    assertSystemSecretAccess(request, "invalid_feed_audit_secret");
+    const body = await readSystemRequestBody(request);
     if (body.repair === true || body.cleanup === true) reject(400, "feed_audit_is_read_only");
     const client = getSupabaseAdminClient();
     const limit = getCappedLimit(getRequestValue(request, body, "limit", 200));

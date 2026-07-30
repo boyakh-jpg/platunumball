@@ -77,7 +77,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
   padding: var(--space-2);
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface) 74%, transparent);
 }
@@ -120,7 +120,7 @@
   bottom: -48%;
   width: 58%;
   aspect-ratio: 1;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: var(--ui-stroke-width-strong) solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   content: "";
   pointer-events: none;
@@ -176,7 +176,7 @@
   display: grid;
   min-width: 110px;
   gap: var(--space-2);
-  border-left: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-left: var(--ui-stroke-width) solid color-mix(in srgb, currentColor 28%, transparent);
   color: var(--ui-design-image-muted);
   font-size: 0.72rem;
   font-weight: 850;
@@ -226,13 +226,13 @@
 }
 
 [data-design="editorial"] .ui-design-list {
-  border-top: 1px solid var(--line);
+  border-top: var(--ui-stroke-width) solid var(--line);
 }
 
 [data-design="editorial"] .ui-design-row {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--ui-stroke-width) solid var(--line);
   background: transparent;
   color: var(--text);
 }
@@ -388,7 +388,7 @@
   grid-template-columns: 80px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-8);
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--ui-stroke-width) solid var(--line);
   padding: var(--space-10) var(--space-2);
 }
 
@@ -423,7 +423,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--ui-stroke-width) solid var(--line);
   cursor: pointer;
   padding: var(--space-8) var(--space-2);
 }
@@ -650,7 +650,7 @@ html[data-theme] [data-design="editorial"] .ui-design-app .ui-design-record-surf
 }
 
 [data-design="editorial"] .ui-design-app .ui-design-category-surface.ui-design-surface {
-  border-width: 1px 0 0;
+  border-width: var(--ui-stroke-width) 0 0;
   border-style: solid;
   border-color: var(--ui-design-app-section-rule) transparent transparent;
   border-radius: 0;

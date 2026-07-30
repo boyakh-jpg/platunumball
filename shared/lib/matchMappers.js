@@ -11,7 +11,7 @@ import {
   normalizeDisputeWindowMinutes,
   normalizeBenchCapacity,
 } from "./constants.js";
-import { normalizeStatRecorders } from "./matchUtils.js";
+import { normalizeStatRecorders } from "./matchLegacyCompatibility.js";
 import { projectMatchDisputeRows, projectMatchTimestamps } from "./matchReadProjection.js";
 import {
   clearFuturePregameStartState,

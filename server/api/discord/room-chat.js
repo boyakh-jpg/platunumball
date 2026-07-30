@@ -1,4 +1,4 @@
-import { bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { ROOM_CHAT_MESSAGE_COLUMNS } from "../../../shared/lib/roomChat.js";
 import {
   fromRoomChatMessageRow,
@@ -110,11 +110,7 @@ async function persistDiscordChatMessage(supabase, link = {}, profile = {}, body
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     assertBridgeAccess(request);

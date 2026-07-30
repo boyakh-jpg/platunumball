@@ -1,5 +1,5 @@
 import { getDiscordCdnAvatarUrl, isDiscordOAuthState } from "../../../../shared/lib/discordProtocol.js";
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../../_supabaseAdmin.js";
 import {
   DISCORD_OAUTH_PROOF_COOKIE,
   clearDiscordOAuthProofCookie,
@@ -8,11 +8,7 @@ import {
 import { verifyDiscordOAuthProof } from "../_discordOAuthProof.js";
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const context = await getAuthenticatedContext(request);

@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
 import { normalizeNaverAddress } from "../../../shared/lib/naverAddress.js";
 import { assertCourtRequestAccess } from "../../lib/courtRequestAccess.js";
@@ -72,11 +72,7 @@ async function searchNaver(query) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

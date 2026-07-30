@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { createMatchAttendanceQr, verifyMatchAttendanceQr } from "./_attendanceQr.js";
 import {
   queueMatchDiscordDeliveries,
@@ -233,10 +233,7 @@ export function getStartStatus(match = {}, entries = [], nowMs = Date.now()) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

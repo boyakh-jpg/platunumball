@@ -1,4 +1,4 @@
-import { attachNotificationActors, bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, attachNotificationActors, bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
 import { isDiscordNotificationEnabled } from "../../../shared/lib/settingsMappers.js";
 import {
@@ -10,12 +10,12 @@ import { fromRemoteNotification } from "../../../shared/lib/remotePayloadMappers
 import { NOTIFICATION_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
 import {
-  DISCORD_API_BASE_URL,
   DISCORD_NOTIFICATION_BODY_MAX_LENGTH,
   DISCORD_NOTIFICATION_URL_MAX_LENGTH,
   isDiscordSnowflake,
 } from "../../../shared/lib/discordProtocol.js";
 import { BRAND_NAME } from "../../../shared/lib/brand.js";
+import { fetchDiscordApi as discordFetch } from "../../lib/discordHttp.js";
 
 const MAX_BATCH_SIZE = 25;
 const PREGAME_DELIVERY_GRACE_MS = 90 * 1000;
@@ -43,37 +43,6 @@ function httpError(message, statusCode = 400) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
-}
-
-async function discordFetch(path, options = {}) {
-  const token = String(process.env.DISCORD_BOT_TOKEN || "").trim();
-  if (!token) {
-    throw new Error("discord_bot_token_not_configured");
-  }
-  const authorization = /^Bot\s+/i.test(token) ? token : `Bot ${token}`;
-
-  const response = await fetch(`${DISCORD_API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      Authorization: authorization,
-      "Content-Type": "application/json",
-      ...(options.headers ?? {}),
-    },
-  });
-  const text = await response.text();
-  let body = null;
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    body = null;
-  }
-  if (!response.ok) {
-    const message = body?.message || text || `discord_api_failed:${response.status}`;
-    const error = new Error(`discord_api_failed:${response.status}:${path}:${message}`.slice(0, 300));
-    error.statusCode = 502;
-    throw error;
-  }
-  return body;
 }
 
 async function getDiscordBotStatus() {
@@ -385,11 +354,7 @@ async function loadPregameDeliveryMatchState(supabase, deliveries = []) {
 }
 
 export default async function handler(request, response) {
-  if (!["GET", "POST"].includes(request.method)) {
-    response.setHeader("Allow", "GET, POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response, ["GET", "POST"])) return;
 
   try {
     await assertWorkerAccess(request);

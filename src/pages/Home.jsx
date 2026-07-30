@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, Bell, BookOpenCheck, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpenCheck, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -8,19 +8,20 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard, { CourtIdentityIcon } from "../components/court/CourtHoverCard.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
+import HomeRightRail from "../components/home/HomeRightRail.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
-import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { DEFAULT_RATING, HOME_RIVAL_TEAM_LIMIT, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
+import { DEFAULT_RATING, HOME_RIVAL_TEAM_LIMIT } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
 import { addDateDays, canUserResolveMatchDispute, getActualMatchPlayerSideName, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideResult, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getOpenMatchDisputes, getPlayerRecentRecordMatches, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
+import { useRoomModalNavigation } from "../lib/roomModalNavigation.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
@@ -108,13 +109,6 @@ function getHomeMatchMeta(match = {}) {
   return `${prefix}${getRoomScheduleLabel(match)} · ${match.court || "구장 미정"}`;
 }
 
-function getNotificationPreviewBody(notification = {}) {
-  return String(notification.body ?? "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find(Boolean) || "알림 확인 필요";
-}
-
 const getSafeMatchSide = (match = {}, sideName = "teamA") => getSafeMatchSideBase(match, sideName, { includeScore: true });
 
 function getUserMatchLine(match, userId) {
@@ -136,8 +130,16 @@ export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const [processingInviteId, setProcessingInviteId] = useState("");
-  const [selectedMatchId, setSelectedMatchId] = useState("");
-  const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState("");
+  const {
+    selectedMatchId,
+    setSelectedMatchId,
+    selectedRecruitingPostId,
+    setSelectedRecruitingPostId,
+    openMatchRoom,
+    openRecruitingRoom,
+  } = useRoomModalNavigation({
+    loadRecruitingPost: app.actions.loadRecruitingPost,
+  });
   const searchText = query.trim().toLowerCase();
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -220,17 +222,6 @@ export default function Home({ app }) {
     } finally {
       setProcessingInviteId("");
     }
-  };
-  const openMatchRoom = (matchId) => {
-    if (!matchId) return;
-    setSelectedRecruitingPostId("");
-    setSelectedMatchId(matchId);
-  };
-  const openRecruitingRoom = (postId) => {
-    if (!postId) return;
-    setSelectedMatchId("");
-    setSelectedRecruitingPostId(postId);
-    app.actions.loadRecruitingPost?.(postId);
   };
   const openActionRoom = (event, item = {}) => {
     if (isNotificationTargetUnavailable(item, app.state)) return;
@@ -816,249 +807,28 @@ export default function Home({ app }) {
         </div>
       </div>
 
-      <aside className="page-stack home-right-rail">
-        <aside className="page-stack home-top-rail">
-          <div className="rank-tier-rail">
-            <Card className="section-card rank-profile-card rank-spotlight-card">
-              <div className="rank-spotlight-content">
-                <p className="eyebrow">My Rank</p>
-                <div className="rank-spotlight-main">
-                  <TierEmblem mmr={user.ratings.integrated} ratings={user.ratings} size="md" />
-                  <div>
-                    <strong>{rankSpotlightLabel}</strong>
-                    <span>{placementComplete ? `${Math.round(user.ratings.integrated)} MMR` : getPlacementLabel(user.ratings)} · 최근 5경기 {recentFiveWins}승</span>
-                  </div>
-                </div>
-                <div className="rank-profile-tabs rank-spotlight-links">
-                  <Link to={`/app/players/${user.id}`}>프로필</Link>
-                  <Link to="/app/season">시즌</Link>
-                  <Link to="/app/settings">설정</Link>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <Card className="section-card home-action-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Action Queue</p>
-                <h2>내가 처리할 일</h2>
-              </div>
-              <Badge tone={actionItems.length ? "orange" : "neutral"}>{actionItems.length}개</Badge>
-            </div>
-            <div className="home-action-list ui-design-borderless-list">
-              {actionItems.length ? (
-                <>
-                {priorityItems.map((item) => {
-                  const Icon = item.icon;
-                  if (item.actionType === "recruiting-invite") {
-                    const isProcessing = processingInviteId === `${item.postId}:${item.invitationId}`;
-                    return (
-                      <div key={item.id} className={`home-action-row priority-${item.priority}`}>
-                        <span className="home-action-icon"><Icon size={18} /></span>
-                        <span className="home-action-main">
-                          <strong>{item.title}</strong>
-                          <em>{item.meta}</em>
-                        </span>
-                        <span className="home-action-buttons">
-                          <Button size="sm" type="button" disabled={isProcessing} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "수락 중" : "수락"}</Button>
-                          <Button size="sm" type="button" variant="secondary" disabled={isProcessing} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "처리 중" : "거절"}</Button>
-                          <Button as={Link} variant="secondary" size="sm" to={item.href} onClick={(event) => openActionRoom(event, item)}>보기</Button>
-                        </span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <Link key={item.id} to={item.href} className={`home-action-row priority-${item.priority}`} onClick={(event) => openActionRoom(event, item)}>
-                      <span className="home-action-icon"><Icon size={18} /></span>
-                      <span className="home-action-main">
-                        <strong>{item.title}</strong>
-                        <em>{item.meta}</em>
-                      </span>
-                      <b>{item.label}</b>
-                    </Link>
-                  );
-                })}
-                {actionItems.length > priorityItems.length ? (
-                  <Link
-                    to={actionItems[priorityItems.length]?.href ?? "/app/matches"}
-                    className="home-action-row priority-5"
-                    onClick={(event) => openActionRoom(event, actionItems[priorityItems.length])}
-                  >
-                    <span className="home-action-icon"><ClipboardCheck size={18} /></span>
-                    <span className="home-action-main">
-                      <strong>더 처리할 항목 있음</strong>
-                      <em>{actionItems.length - priorityItems.length}개 더 있음</em>
-                    </span>
-                    <b>더보기</b>
-                  </Link>
-                ) : null}
-                </>
-              ) : (
-                <div className="home-action-row priority-5">
-                  <span className="home-action-icon"><ClipboardCheck size={18} /></span>
-                  <span className="home-action-main">
-                    <strong>처리할 일 없음</strong>
-                    <em>초대, 승인, 기록 입력 같은 작업이 여기에 표시됩니다.</em>
-                  </span>
-                  <b>OK</b>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          <Card className="section-card home-alert-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Alerts</p>
-                <h2>알림</h2>
-              </div>
-              <div className="home-alert-heading-actions">
-                <Button as={Link} to="/app/notifications" variant="secondary" size="sm">지난 알림</Button>
-                <Badge tone={homeNoticeItems.length ? "orange" : "neutral"}>{homeNoticeItems.length}개</Badge>
-              </div>
-            </div>
-            <div className="home-action-list ui-design-borderless-list">
-              {priorityNoticeItems.length ? (
-                <>
-                  {priorityNoticeItems.map((notification) => {
-                    const content = (
-                      <>
-                        <span className="home-action-icon"><Bell size={18} /></span>
-                        <span className="home-action-main">
-                          <strong>{notification.title}</strong>
-                          <em>{getNotificationPreviewBody(notification)}</em>
-                        </span>
-                        <b>{notification.targetUnavailable ? "종료됨" : "보기"}</b>
-                      </>
-                    );
-                    return notification.targetUnavailable ? (
-                      <div key={notification.id} className="home-action-row priority-5 notification-terminal-row">
-                        {content}
-                      </div>
-                    ) : (
-                      <Link
-                        key={notification.id}
-                        to={getNotificationHref(notification)}
-                        className="home-action-row priority-5"
-                        onClick={(event) => openActionRoom(event, notification)}
-                      >
-                        {content}
-                      </Link>
-                    );
-                  })}
-                  {homeNoticeItems.length > priorityNoticeItems.length ? (
-                    <Link to="/app/notifications" className="home-action-row priority-5">
-                      <span className="home-action-icon"><Bell size={18} /></span>
-                      <span className="home-action-main">
-                        <strong>더 많은 알림</strong>
-                        <em>{homeNoticeItems.length - priorityNoticeItems.length}개 더 있음</em>
-                      </span>
-                      <b>전체</b>
-                    </Link>
-                  ) : null}
-                </>
-              ) : (
-                <div className="home-action-row priority-5">
-                  <span className="home-action-icon"><Bell size={18} /></span>
-                  <span className="home-action-main">
-                    <strong>새 알림 없음</strong>
-                    <em>경기 안내와 방 변경 알림이 여기에 표시됩니다.</em>
-                  </span>
-                  <b>OK</b>
-                </div>
-              )}
-            </div>
-          </Card>
-        </aside>
-
-        <aside className="page-stack home-side-stack">
-          <Card className="section-card rank-leaderboard-card home-side-wide-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Local Ranking</p>
-                <h2>{user.region} 랭킹</h2>
-              </div>
-            </div>
-            <div className="rank-list ui-design-borderless-list">
-              {topRankers.map((row, index) => (
-                <PlayerHoverCard className="rank-row" key={row.id} user={row} teams={app.state.teams}>
-                  <b>{index + 1}</b>
-                  <ProfileEmblem user={row} className="small" />
-                  <strong>{row.name}</strong>
-                  <em>{Math.round(row.seasonScore)}점</em>
-                </PlayerHoverCard>
-              ))}
-            </div>
-            <Button as={Link} to="/app/rankings" variant="secondary" className="ui-button-block ui-design-borderless-surface"><Trophy size={17} /> 전체 랭크보드</Button>
-          </Card>
-
-          <Card className="section-card season-mini-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Season Race</p>
-                <h2>{user.region} 시즌 레이스</h2>
-              </div>
-            </div>
-            <div className="season-progress">
-              <span style={{ width: `${seasonProgress}%` }} />
-            </div>
-            <div className="contract-grid single ui-design-borderless-list">
-              <div>
-                <span>내 지역 순위</span>
-                <strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "대기"}</strong>
-              </div>
-              <div>
-                <span>시즌 전적</span>
-                <strong>{mySeasonRow ? `${mySeasonRow.seasonWins}승 ${mySeasonRow.seasonLosses}패` : "0승 0패"}</strong>
-              </div>
-            </div>
-            <Button as={Link} to="/app/season" variant="secondary" className="ui-button-block ui-design-borderless-surface"><Trophy size={17} /> 시즌 허브</Button>
-          </Card>
-          <Card className="section-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Local Rivalry</p>
-                <h2>{user.region} 라이벌</h2>
-              </div>
-            </div>
-            <div className="ui-entity-list ui-design-borderless-list">
-              {localRivals.length ? localRivals.map((team) => (
-                <TeamHoverCard className="ui-control ui-entity-row" key={team.id} team={team}>
-                  <TeamEmblem team={team} size="xs" />
-                  <span className="ui-entity-copy">
-                    <strong>{team.name}</strong>
-                    <em>MMR 차이 {team.gap > 0 ? `+${team.gap}` : team.gap}</em>
-                  </span>
-                  <b>{team.mmr} MMR</b>
-                </TeamHoverCard>
-              )) : <div className="ui-entity-empty"><span>지역 라이벌 없음</span><strong>대기</strong></div>}
-            </div>
-          </Card>
-          <Card className="section-card home-side-wide-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">My Teams</p>
-                <h2>내 소속 팀</h2>
-              </div>
-              <Badge tone={myTeamCount > MAX_TEAM_MEMBERSHIPS ? "orange" : myTeamCount ? "green" : "neutral"}>{myTeamCount}/{MAX_TEAM_MEMBERSHIPS}</Badge>
-            </div>
-            <div className="ui-entity-list ui-design-borderless-list">
-              {myTeams.length ? myTeams.slice(0, 5).map((team) => (
-                <TeamHoverCard className="ui-control ui-entity-row" key={team.id} team={team}>
-                  <TeamEmblem team={team} size="xs" />
-                  <span className="ui-entity-copy">
-                    <strong>{team.name}</strong>
-                    <em>{getTeamRoleLabel(team.myRole)}</em>
-                  </span>
-                  <b>{team.mmr} MMR</b>
-                </TeamHoverCard>
-              )) : <div className="ui-entity-empty"><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
-            </div>
-            <Button as={Link} to="/app/teams" variant="secondary" className="ui-button-block ui-design-borderless-surface">팀 전체 보기</Button>
-          </Card>
-        </aside>
-      </aside>
+      <HomeRightRail
+        acceptHomeRecruitingInvitation={acceptHomeRecruitingInvitation}
+        actionItems={actionItems}
+        app={app}
+        declineHomeRecruitingInvitation={declineHomeRecruitingInvitation}
+        homeNoticeItems={homeNoticeItems}
+        localRivals={localRivals}
+        mySeasonIndex={mySeasonIndex}
+        mySeasonRow={mySeasonRow}
+        myTeamCount={myTeamCount}
+        myTeams={myTeams}
+        openActionRoom={openActionRoom}
+        placementComplete={placementComplete}
+        priorityItems={priorityItems}
+        priorityNoticeItems={priorityNoticeItems}
+        processingInviteId={processingInviteId}
+        rankSpotlightLabel={rankSpotlightLabel}
+        recentFiveWins={recentFiveWins}
+        seasonProgress={seasonProgress}
+        topRankers={topRankers}
+        user={user}
+      />
 
       {homeRoomOverlays}
 

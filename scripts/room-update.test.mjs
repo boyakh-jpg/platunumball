@@ -2,6 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  CREATE_MATCH_PAGE_SOURCE_PATHS,
+  MATCH_SYNC_SOURCE_PATHS,
+  MATCHES_PAGE_SOURCE_PATHS,
+  RECRUITING_LIST_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  readSourceGroupSync,
+} from "./management-source-groups.mjs";
+import {
   acknowledgeMatchRoomRules,
   acknowledgeRecruitingRoomRules,
   cancelMatch,
@@ -506,8 +514,11 @@ test("room edit permission allows the host before check-in and blocks other part
 });
 
 test("server routes room edits to dedicated authoritative RPCs", () => {
-  const recruitingServer = readFileSync(new URL("../server/api/recruiting/sync-post.js", import.meta.url), "utf8");
-  const matchServer = readFileSync(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8");
+  const recruitingServer = readFileSync(new URL("../server/api/recruiting/_syncPostActions.js", import.meta.url), "utf8");
+  const matchServer = readSourceGroupSync(
+    (relativePath) => readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8"),
+    MATCH_SYNC_SOURCE_PATHS,
+  );
   const migration = readFileSync(new URL("../supabase/migrations/20260724090000_room_update_authority.sql", import.meta.url), "utf8");
   const pickupResizeMigration = readFileSync(new URL("../supabase/migrations/20260724132500_pickup_room_resize.sql", import.meta.url), "utf8");
   const pickupCapacityRuleMigration = readFileSync(new URL("../supabase/migrations/20260724141500_sync_pickup_capacity_rules.sql", import.meta.url), "utf8");
@@ -528,12 +539,16 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   const scheduledAtTypeFixMigration = readFileSync(new URL("../supabase/migrations/20260724164000_fix_room_policy_scheduled_at_types.sql", import.meta.url), "utf8");
   const roomRemakeMigration = readFileSync(new URL("../supabase/migrations/20260724170000_room_remake_tracking.sql", import.meta.url), "utf8");
   const roomRemakeGrantMigration = readFileSync(new URL("../supabase/migrations/20260725010500_fix_room_remake_service_role_grant.sql", import.meta.url), "utf8");
-  const createMatchPage = readFileSync(new URL("../src/pages/CreateMatch.jsx", import.meta.url), "utf8");
+  const readPageSource = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+  const createMatchPage = readSourceGroupSync(readPageSource, CREATE_MATCH_PAGE_SOURCE_PATHS);
   const adminUserPanel = readFileSync(new URL("../src/components/admin/UserOperationsPanel.jsx", import.meta.url), "utf8");
-  const recruitingPage = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
-  const matchesPage = readFileSync(new URL("../src/pages/Matches.jsx", import.meta.url), "utf8");
-  const matchListServer = readFileSync(new URL("../server/api/matches/list.js", import.meta.url), "utf8");
-  const recruitingListServer = readFileSync(new URL("../server/api/recruiting/list.js", import.meta.url), "utf8");
+  const recruitingPage = readSourceGroupSync(readPageSource, RECRUITING_PAGE_SOURCE_PATHS);
+  const matchesPage = readSourceGroupSync(readPageSource, MATCHES_PAGE_SOURCE_PATHS);
+  const matchListServer = [
+    readFileSync(new URL("../server/api/matches/_listProjection.js", import.meta.url), "utf8"),
+    readFileSync(new URL("../server/api/matches/_listQueries.js", import.meta.url), "utf8"),
+  ].join("\n");
+  const recruitingListServer = readSourceGroupSync(readPageSource, RECRUITING_LIST_SOURCE_PATHS);
 
   assert.match(recruitingServer, /rankball_recruiting_room_update_action/);
   assert.match(matchServer, /rankball_match_room_update_action/);

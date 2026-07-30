@@ -1,0 +1,611 @@
+
+
+.referee-rulebook-panel {
+  display: grid;
+  gap: var(--space-6);
+  border: var(--ui-stroke-width) solid rgba(90, 168, 255, 0.24);
+  border-radius: var(--radius);
+  background: rgba(90, 168, 255, 0.06);
+  padding: 12px;
+}
+
+.referee-rulebook-panel.compact .button {
+  justify-content: center;
+  width: 100%;
+}
+
+.referee-rulebook-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.referee-rulebook-head > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.referee-rulebook-head strong {
+  color: var(--text);
+  font-size: 1.04rem;
+}
+
+.referee-rulebook-head p,
+.referee-rulebook-section-body p,
+.referee-stat-guide > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.referee-rulebook-notice {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.referee-rulebook-notice span {
+  border-left: 3px solid rgba(255, 211, 108, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+  padding-left: 8px;
+}
+
+.referee-rulebook-page {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.referee-rulebook-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  align-items: stretch;
+  gap: var(--page-section-gap);
+}
+
+.referee-rulebook-intro > div:first-child {
+  display: grid;
+  align-content: center;
+  gap: var(--space-6);
+}
+
+.referee-rulebook-intro h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.6rem, 3vw, 2.35rem);
+  line-height: 1.05;
+}
+
+.referee-rulebook-intro p,
+.referee-rulebook-footer p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.rulebook-level-switch {
+  width: min(100%, 420px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rulebook-level-switch button {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
+  color: var(--text);
+  text-shadow: none;
+}
+
+.rulebook-asset {
+  margin: 0;
+  min-width: 0;
+}
+
+.court-profile-information {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.court-profile-information-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--page-column-gap);
+}
+
+.court-profile-information-grid > section {
+  min-width: 0;
+  padding: 16px;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+}
+
+.court-profile-information-grid h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+  color: var(--rb-text);
+  font-size: 0.9rem;
+}
+
+.court-profile-information-grid h3 svg {
+  color: var(--rb-orange);
+}
+
+.court-profile-information-grid dl {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.court-profile-information-grid dl > div {
+  display: grid;
+  grid-template-columns: minmax(86px, 0.35fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  padding-block: 9px;
+  border-top: var(--ui-stroke-width) solid color-mix(in srgb, var(--ui-control-border) 65%, transparent);
+}
+
+.court-profile-information-grid dt,
+.court-profile-information-grid dd {
+  margin: 0;
+}
+
+.court-profile-information-grid dt {
+  color: var(--rb-muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.court-profile-information-grid dd {
+  color: var(--rb-text);
+  font-size: 0.78rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.court-profile-information-grid dd a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--rb-orange);
+}
+
+.court-profile-information-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--rb-muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.rulebook-asset img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+
+.referee-rulebook-checklist {
+  display: grid;
+  gap: var(--space-6);
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+}
+
+.referee-rulebook-checklist > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.referee-rulebook-checklist span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.35;
+  padding: 8px;
+}
+
+.referee-rulebook-checklist b {
+  color: var(--green);
+  font-size: 0.76rem;
+}
+
+.referee-rulebook-section-grid,
+.referee-stat-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.referee-rulebook-section-card,
+.referee-stat-guide-card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-6);
+}
+
+.referee-rulebook-section-body {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.referee-rulebook-section-body > strong,
+.referee-stat-guide-card strong {
+  color: var(--text);
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.referee-rulebook-section-body > ul,
+.referee-rulebook-detail-grid ul,
+.referee-stat-columns ul,
+.referee-stat-examples ul {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding-left: 18px;
+}
+
+.referee-rulebook-section-body li,
+.referee-rulebook-detail-grid li,
+.referee-stat-columns li,
+.referee-stat-examples li {
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
+.referee-rulebook-detail-grid,
+.referee-stat-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.referee-rulebook-detail-grid > div,
+.referee-stat-columns > div,
+.referee-stat-examples {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  padding-block-start: 10px;
+  border-block-start: 1px solid var(--ui-card-border);
+}
+
+.referee-rulebook-detail-grid span,
+.referee-stat-columns span,
+.referee-stat-examples span {
+  color: var(--green);
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.referee-stat-guide {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.referee-stat-guide-card > div:nth-child(2) {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.referee-rulebook-footer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+
+.referee-rulebook-footer svg {
+  flex: 0 0 auto;
+  color: var(--green);
+}
+
+.referee-rulebook-chapter {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.referee-rulebook-chapter .section-title-row > div {
+  display: grid;
+  gap: 5px;
+}
+
+.referee-rulebook-chapter .section-title-row p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
+.referee-rulebook-footer > div {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.referee-rulebook-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-7);
+}
+
+.referee-rulebook-sources a {
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.referee-exam-panel {
+  display: grid;
+  gap: var(--space-5);
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.055);
+  padding: 12px;
+}
+
+.referee-exam-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.referee-exam-summary span {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.16);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 8px;
+}
+
+.referee-exam-summary strong {
+  color: var(--text);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.referee-exam-lock {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.referee-exam-lock.locked {
+  color: var(--gold);
+}
+
+.referee-exam-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.referee-exam-list {
+  display: grid;
+  max-height: min(520px, 70vh);
+  overflow: auto;
+  gap: var(--space-5);
+  padding-right: 4px;
+}
+
+.referee-exam-question {
+  display: grid;
+  gap: var(--space-4);
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.referee-exam-question > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
+.referee-exam-question small {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.referee-exam-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.referee-exam-choice-grid button {
+  min-width: 0;
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 850;
+  padding: 9px;
+  text-align: left;
+}
+
+.referee-exam-choice-grid button.selected {
+  border-color: rgba(70, 224, 182, 0.68);
+  background: rgba(70, 224, 182, 0.13);
+}
+
+.referee-exam-choice-grid button.correct {
+  border-color: rgba(70, 224, 182, 0.85);
+  background: rgba(70, 224, 182, 0.18);
+}
+
+.referee-exam-choice-grid button.wrong {
+  border-color: rgba(255, 108, 117, 0.85);
+  background: rgba(255, 108, 117, 0.14);
+}
+
+.report-player-picker {
+  display: grid;
+  gap: 9px;
+}
+
+.report-player-picker > span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.report-player-picker > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-4);
+}
+
+.report-player-picker button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+}
+
+.report-player-info {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.report-player-picker button.selected {
+  border-color: rgba(255, 107, 107, 0.58);
+  background: rgba(255, 107, 107, 0.12);
+}
+
+.report-player-picker button strong,
+.report-player-picker button em,
+.report-player-picker button small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-player-picker button em {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.report-player-picker button small {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.report-player-picker small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.theme-choice-card .segmented-control button {
+  flex: 1 1 0;
+}
+
+.settings-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-top: 12px;
+}
+
+.settings-save-row small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+@media (max-width: 1020px) {
+  .landing-hero,
+  .team-hub-hero,
+  .team-overview-grid,
+  .home-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-copy h1 {
+    font-size: 4rem;
+  }
+
+  .broadcast-panel {
+    min-height: 420px;
+  }
+
+  .team-create-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .court-profile-information-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .court-profile-information-grid dl > div {
+    grid-template-columns: minmax(80px, 0.35fr) minmax(0, 1fr);
+  }
+
+  h1,
+  .landing-copy h1 {
+    font-size: 2.55rem;
+  }
+
+  .landing-stat-grid,
+  .broadcast-score {
+    grid-template-columns: 1fr;
+  }
+
+  .team-hub-hero,
+  .landing-hero {
+    padding-inline: 14px;
+  }
+}

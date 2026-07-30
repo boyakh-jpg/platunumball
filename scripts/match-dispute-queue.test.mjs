@@ -278,7 +278,7 @@ test("심판 개인기록이 미완성이면 disputeMinutes 뒤에도 보험성 
 
 test("DB와 목록 API가 병렬 큐를 새로고침 가능한 형태로 조회한다", async () => {
   const migration = await readSource("supabase/migrations/20260722120000_parallel_match_dispute_queue.sql");
-  const listApi = await readSource("server/api/matches/list.js");
+  const listApi = await readSource("server/api/matches/_listEnrichment.js");
   assert.match(migration, /match_disputes_one_open_per_user_idx/);
   assert.match(migration, /rankball_match_resolve_dispute_action/);
   assert.match(migration, /safe_decision not in \('accepted', 'rejected'\)/);

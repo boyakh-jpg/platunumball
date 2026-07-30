@@ -3611,6 +3611,8 @@ flowchart TD
 8. 대회 명단의 `rankball_tournament_match_roster_action()`과 내부 `rankball_tournament_match_roster_action_legacy()`는 현재 wrapper 의존이 있으므로 이번 은퇴 RPC 정리 대상이 아니다.
 9. `20260729170500_retire_match_action_roster_move_branch.sql`은 `rankball_match_action()`에 남은 폐기 `handoffMatchRecorder`/구형 `substituteMatchPlayer` 분기만 exact function-body fragment로 제거한다. 함수 shape가 다르면 롤백하며 다른 action 분기는 유지한다.
 10. `20260730010000_remove_unused_legacy_rpc_entrypoints.sql`은 현재 호출자가 없는 `rankball_current_recruiting_post_ids`, `rankball_recruiting_ready_action`, `rankball_update_team_emblem_style`을 exact signature로 제거한다. 현재 경로는 각각 `user_room_feed`/제한된 PostREST fallback, 통합 recruiting management action, `rankball_update_team_emblem_design`이다.
+11. `20260730013000_remove_remaining_unused_rpc_overloads.sql`은 현재 서버가 쓰는 4/5/7인자 shape를 남기고 3인자 `rankball_approve_court_request`, 4인자 `rankball_invite_team_member`, 6인자 `rankball_save_profile_icon_settings`, 3인자 `rankball_match_terminal_action_pre_cancel_policy`를 exact signature로 제거한다. 3인자 `rankball_match_finalize_locked`는 내부 의존 때문에 제거 대상이 아니다.
+12. `rankball_match_room_update_action_pre_change_deadline`와 `rankball_recruiting_room_update_action_pre_change_deadline`는 현행 room-update wrapper의 내부 helper다. owner 내부 호출만 허용하고 `public/anon/authenticated/service_role`의 직접 `EXECUTE`는 금지하며 `rankball_rpc_grant_health()`가 이 권한을 검사한다.
 ## 2026-07-29 확정 경기 명단과 비공개 경쟁전 QR
 
 1. 확정 경기방의 출전·후보 명단은 팀의 현재 로스터가 아니라 경기의 `teamA/teamB.players`와 `reservePlayers`를 원본으로 표시한다. 방장이 후보와 교체되어도 `createdBy`와 후보 슬롯은 유지한다.
@@ -3621,3 +3623,12 @@ flowchart TD
 
 1. 예약방은 `YYYY-MM-DD HH:mm`, 즉시방은 만료시각이 있으면 `즉시 · HH:mm 종료`, 일정 정보가 없으면 `일정 미정`으로 표시한다.
 2. 홈, 매칭 목록·방 모달, 알림 초대는 모두 `getRoomScheduleLabel`을 사용한다. 화면별 일정 표시 wrapper나 별도 계산을 만들지 않는다.
+
+## 현재 유효: 방·경기 구현 책임 경계
+
+1. `Recruiting.jsx`는 매칭과 일정에서 함께 쓰는 공용 방 모달의 조립과 화면 상태만 소유한다. 선수 교체, 강퇴, 사후 경기 명단처럼 독립적인 패널은 `components/recruiting`에서 렌더링하되 중앙 phase·명단·권한 helper를 사용한다.
+2. `CreateMatch.jsx`는 생성 단계 상태와 제출 흐름을 조립한다. 생성 기본값·제목·일정·팀 선택 같은 순수 계산은 `lib/createMatchPage.js`, 상태를 소유하지 않는 단계 화면은 `components/match`가 소유한다.
+3. 페이지에서 슬롯, phase, 파티, 실제 참가자, 권한 규칙을 새로 계산하지 않는다. 공용 `shared/lib`, `src/lib/recruiting.js`, `src/lib/teamPartyRoster.js`, `src/lib/matchCreationPolicies.js`의 중앙 helper를 사용한다.
+4. `server/api/matches/sync-match.js`는 요청 action의 인증·순서·DB 호출을 조립한다. 알림 계획은 `server/lib/matchNotifications.js`, 저장 row projection은 `server/lib/matchSnapshotRows.js`, 입력 검증은 `server/lib/matchSnapshotValidation.js`가 소유한다.
+5. 서버 모듈 분리는 DB RPC의 권한·transaction·revision 정책을 대체하지 않는다. UI와 서버 helper는 표시·입력 검증을 담당하고 최종 권위는 등록된 active RPC와 DB 제약에 둔다.
+6. 폐기 action의 에러 guard와 과거 데이터 해석 helper는 호출 가능 기능으로 복원하지 않는다. 실제 호출자와 DB 의존이 모두 없다는 계약 테스트가 있을 때만 별도 정리 migration에서 제거한다.

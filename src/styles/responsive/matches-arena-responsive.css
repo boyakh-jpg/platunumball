@@ -1,0 +1,413 @@
+
+
+/* 2026-07-14 cross-page hero and mobile card rhythm. */
+.om-match-page {
+  gap: var(--page-section-gap);
+}
+.om-match-hero {
+  min-height: 214px;
+  padding: 24px;
+}
+@media (min-width: 721px) {
+  .om-match-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 285px);
+  }
+}
+@media (max-width: 720px) {
+  .om-match-page {
+    gap: var(--page-section-gap-mobile);
+  }
+
+  .om-match-hero {
+    min-height: 174px;
+    padding: 16px;
+  }
+}
+/* Structural wrappers and section headings never create a second card surface. */
+.om-calendar-panel,
+.om-tournament-panel,
+.tournament-schedule-list,
+.om-list-head,
+.om-calendar-summary > .om-calendar-filter-bar,
+html[data-theme="light"] .om-calendar-panel,
+html[data-theme="light"] .om-tournament-panel,
+html[data-theme="light"] .tournament-schedule-list,
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-calendar-summary > .om-calendar-filter-bar,
+html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-list-head {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.tournament-team-list article {
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px 12px;
+}
+.tournament-schedule-list form {
+  grid-template-columns: minmax(180px, 1fr) 62px 140px 105px minmax(150px, 0.8fr) 82px 82px;
+}
+.om-tournament-actions {
+  grid-area: action;
+  grid-template-columns: 1fr;
+  align-self: stretch;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+@media (max-width: 1220px) {
+  .tournament-schedule-list form {
+    grid-template-columns: minmax(0, 1fr) minmax(130px, 0.8fr) 105px;
+  }
+}
+@media (max-width: 720px) {
+  .league-fixture-grid,
+  .league-fixture-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .league-table {
+    min-width: 360px;
+  }
+
+  .league-table th,
+  .league-table td {
+    padding: 0 6px;
+  }
+
+  .league-fixture-summary {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .league-fixture-actions {
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-auto-rows: 44px;
+  }
+
+  .tournament-inline-schedule {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .tournament-team-list article {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .tournament-inline-schedule,
+  .tournament-schedule-list form,
+  .tournament-forfeit-actions,
+  .tournament-match-referee-list form,
+  .tournament-sanction-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tournament-referee-list article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tournament-referee-actions > button,
+  .tournament-sanction-actions > button,
+  .tournament-match-referee-list button {
+    flex: 1 1 120px;
+  }
+}
+/* 2026-07-16 compact schedule filters. */
+.om-calendar-summary {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-self: start;
+  padding: 14px;
+}
+.om-calendar-heading {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+.om-calendar-filter-bar,
+html[data-theme="light"] .om-calendar-filter-bar {
+  display: grid;
+  gap: 6px;
+  align-self: start;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.om-calendar-filter-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+.om-calendar-filter-label {
+  color: var(--rb-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+.om-calendar-filter-row .segmented-control {
+  display: flex;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.om-calendar-filter-row .segmented-control button {
+  width: auto;
+  min-width: 0;
+  min-height: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  box-shadow: none;
+  padding: 0 8px;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.om-calendar-filter-row .segmented-control button.active {
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+}
+.om-calendar-filter-row .om-relation-filter-grid,
+.om-calendar-filter-row .om-branch-filter-grid {
+  display: grid;
+  width: 100%;
+}
+.om-calendar-filter-row .om-relation-filter-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.om-calendar-filter-row .om-branch-filter-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.om-calendar-filter-row .om-branch-filter-grid > button {
+  grid-column: auto;
+}
+.om-calendar-filter-row .om-branch-filter-grid > button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.om-calendar-filter-row :is(.om-relation-filter-grid, .om-branch-filter-grid) > button {
+  width: 100%;
+}
+@media (max-width: 1120px) {
+  .om-view-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .om-view-grid > .om-view-card {
+    grid-column: span 2;
+  }
+
+}
+@media (max-width: 640px) {
+  .om-view-grid > .om-view-card {
+    grid-column: span 3;
+  }
+}
+@media (min-width: 721px) {
+  .om-calendar-filter-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .om-calendar-summary {
+    padding: 12px;
+  }
+}
+@media (max-width: 720px) {
+  .om-calendar-filter-row .segmented-control button {
+    min-height: 42px;
+    height: 42px;
+  }
+}
+@media (max-width: 480px) {
+  .om-calendar-summary {
+    padding: 10px;
+  }
+
+  .om-calendar-heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .om-calendar-filter-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .om-calendar-filter-row .segmented-control {
+    width: 100%;
+  }
+
+  .om-calendar-filter-row .segmented-control button {
+    min-height: var(--ui-button-height);
+    height: var(--ui-button-height);
+    padding-inline: 6px;
+    font-size: 0.72rem;
+  }
+}
+html[data-theme="light"] .om-calendar-summary {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+  box-shadow: none;
+}
+/* 2026-07-16 responsive clipping guard for match list cards. */
+/* Match-like lists use one outer card surface; summaries do not add gray panels. */
+.league-fixture-matchup > strong {
+  display: -webkit-box;
+  font-family: var(--sports-display-font);
+  font-size: clamp(1rem, 1.4vw, 1.25rem);
+  line-height: 1;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: keep-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.league-fixture-matchup > b {
+  font-family: var(--sports-display-font);
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
+  line-height: 1;
+}
+/* Private-event cards share the match-list card contract. */
+.om-tournament-card {
+  position: relative;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) 92px;
+  grid-template-areas:
+    "copy meta action"
+    "copy state action";
+  align-items: stretch;
+  gap: 8px 12px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+  padding: 14px 14px 14px 18px;
+}
+.om-tournament-card::before {
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--rb-orange);
+  content: "";
+}
+.om-tournament-card h3 {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--rb-text);
+  font-family: var(--sports-display-font);
+  font-size: clamp(22px, 1.9vw, 30px);
+  line-height: 0.98;
+  letter-spacing: 0;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.om-tournament-meta,
+.om-tournament-state,
+html[data-theme="light"] .om-tournament-meta,
+html[data-theme="light"] .om-tournament-state {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 2px 0;
+}
+.om-tournament-detail-link {
+  min-height: 100%;
+  border-radius: var(--ui-button-radius);
+  background: var(--rb-orange);
+  color: #fff;
+}
+.om-tournament-card .court-hover-trigger,
+.om-tournament-card .player-hover-trigger {
+  color: inherit;
+  font: inherit;
+}
+@container (min-width: 761px) and (max-width: 1180px) {
+  .om-tournament-card {
+    grid-template-columns: minmax(0, 1fr) 92px;
+    grid-template-areas:
+      "copy action"
+      "meta meta"
+      "state state";
+  }
+}
+@container (max-width: 760px) {
+  .om-tournament-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "copy"
+      "meta"
+      "state"
+      "action";
+  }
+
+  .om-tournament-detail-link {
+    min-height: 48px;
+  }
+}
+/* Badges own their surface; their layout wrapper stays transparent. */
+.page-stack.tournament-detail-page .tournament-hero-badges,
+html[data-theme="light"] .page-stack.tournament-detail-page .tournament-hero-badges {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+/* Tournament schedule controls keep their native picker without contributing intrinsic overflow. */
+.tournament-inline-schedule,
+.tournament-schedule-list form {
+  min-width: 0;
+  max-width: 100%;
+  contain: inline-size;
+}
+.tournament-inline-schedule input:is([type="date"], [type="time"]),
+.tournament-schedule-list input:is([type="date"], [type="time"]) {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  width: 100%;
+  min-inline-size: 0;
+  min-width: 0;
+  max-inline-size: 100%;
+  max-width: 100%;
+  justify-self: stretch;
+}
+.tournament-schedule-policy {
+  color: var(--muted);
+  cursor: default;
+}
+@media (max-width: 720px) {
+  .tournament-inline-schedule,
+  .tournament-schedule-list form {
+    width: 100%;
+  }
+}

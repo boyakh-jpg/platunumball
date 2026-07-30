@@ -79,7 +79,7 @@
 .gm-team-panel,
 .gm-score-core,
 .gm-room-actions > div {
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.13);
   background: rgba(5, 10, 18, 0.68);
   backdrop-filter: blur(16px);
 }
@@ -135,7 +135,7 @@
   align-content: start;
   justify-items: center;
   gap: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.055);
   color: var(--muted);
@@ -157,7 +157,7 @@
   width: 18px;
   height: 18px;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.22);
   border-radius: 999px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.26);
   pointer-events: none;
@@ -223,7 +223,7 @@
 .gm-reserve-line {
   display: grid;
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-xs);
   background: rgba(5, 10, 18, 0.46);
 }
@@ -313,7 +313,6 @@
   align-items: center;
   gap: 12px;
   border-color: var(--card-border);
-  background: var(--card-bg);
   padding: 12px 14px;
 }
 
@@ -416,20 +415,6 @@ html[data-theme="light"] .gm-player-slot em {
 
   .gm-next-action-card .button {
     width: 100%;
-  }
-}
-
-/* 2026-07-01 mobile match-room page hero: full bleed outside room modal internals. */
-@media (max-width: 1079px) {
-  .gm-room-hero {
-    width: calc(100% + (2 * var(--app-main-pad-x, var(--page-gutter))));
-    max-width: none;
-    margin-inline: calc(-1 * var(--app-main-pad-x, var(--page-gutter)));
-    margin-block-start: calc(-1 * var(--app-main-pad-top, 18px));
-    border-top: 0;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
   }
 }
 
@@ -695,7 +680,7 @@ html[data-theme="light"] .gm-room-title h1 {
   min-width: 0;
   min-height: 74px;
   place-items: center;
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   color: var(--text);

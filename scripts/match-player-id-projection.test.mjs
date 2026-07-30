@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { MATCHES_PAGE_SOURCE_PATHS } from "./management-source-groups.mjs";
 import {
   collectMatchActivePlayerIds,
   flattenPlayerIdValues,
@@ -143,17 +144,22 @@ test("report participant projection includes DB players, reserves, and played sn
 });
 
 test("each caller uses the projection matching its established semantics", () => {
-  const matchUtilsSource = fs.readFileSync(path.join(root, "shared/lib/matchUtils.js"), "utf8");
-  const matchesPageSource = fs.readFileSync(path.join(root, "src/pages/Matches.jsx"), "utf8");
+  const matchParticipationSource = fs.readFileSync(
+    path.join(root, "shared/lib/matchParticipation.js"),
+    "utf8",
+  );
+  const matchesPageSource = MATCHES_PAGE_SOURCE_PATHS
+    .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
+    .join("\n");
   const ratingSource = fs.readFileSync(path.join(root, "server/lib/ratingEngine.js"), "utf8");
-  const listSource = fs.readFileSync(path.join(root, "server/api/matches/list.js"), "utf8");
-  const syncSource = fs.readFileSync(path.join(root, "server/api/matches/sync-match.js"), "utf8");
+  const listSource = fs.readFileSync(path.join(root, "server/api/matches/_listLoader.js"), "utf8");
+  const notificationSource = fs.readFileSync(path.join(root, "server/lib/matchNotifications.js"), "utf8");
   const reportSource = fs.readFileSync(path.join(root, "server/api/reports/submit.js"), "utf8");
 
-  assert.match(matchUtilsSource, /projectMatchParticipationIds\(match\)/);
+  assert.match(matchParticipationSource, /projectMatchParticipationIds\(match\)/);
   assert.match(matchesPageSource, /shared\/lib\/playerIds\.js/);
   assert.match(ratingSource, /shared\/lib\/playerIds\.js/);
   assert.match(listSource, /projectMatchActivePlayerIds\(match\)/);
-  assert.match(syncSource, /collectMatchActivePlayerIds\(match\)/);
+  assert.match(notificationSource, /collectMatchActivePlayerIds\(match\)/);
   assert.match(reportSource, /projectPersistedMatchReportParticipantIds\(match, players \?\? \[\]\)/);
 });

@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { isTeamInviteRole, MAX_TEAM_MEMBERS, MAX_TEAM_NAME_LENGTH, normalizeTeamRole } from "../../../shared/lib/constants.js";
 
@@ -159,11 +159,7 @@ async function withCurrentProfileState(context, result = {}) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

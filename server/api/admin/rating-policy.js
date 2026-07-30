@@ -1,12 +1,8 @@
-import { readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
 import { RATING_POLICY_GROUPS } from "../../lib/ratingPolicy.js";
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const context = await requireAdminContext(request, { minimumLevel: 100 });

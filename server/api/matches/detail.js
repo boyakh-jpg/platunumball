@@ -1,12 +1,9 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadNormalizedMatchDetailFromClient } from "../../lib/repositoryAdapter.js";
 import { filterStateForProfile } from "../state/load.js";
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

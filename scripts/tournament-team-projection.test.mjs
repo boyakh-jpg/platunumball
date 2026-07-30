@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  MATCHES_PAGE_SOURCE_PATHS,
+  TOURNAMENT_DETAIL_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
+import {
   getTournamentTeamIds,
   getTournamentTeamStatus,
 } from "../src/data/tournamentMappers.js";
@@ -23,8 +28,8 @@ test("대회 팀 ID와 상태는 명시 목록·상태 snapshot을 함께 사용
 
 test("대회 목록과 상세는 공용 팀 projection을 사용한다", async () => {
   const [matchesSource, detailSource] = await Promise.all([
-    readFile(new URL("../src/pages/Matches.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/pages/TournamentDetail.jsx", import.meta.url), "utf8"),
+    readSourceGroup((file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"), MATCHES_PAGE_SOURCE_PATHS),
+    readSourceGroup((file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"), TOURNAMENT_DETAIL_SOURCE_PATHS),
   ]);
 
   assert.match(matchesSource, /getTournamentTeamIds, getTournamentTeamStatus/);

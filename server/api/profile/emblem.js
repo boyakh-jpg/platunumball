@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { getProfileIcon } from "../../../shared/lib/profileIcons.js";
 import { isEmblemHexColor } from "../../../shared/lib/emblemPolicy.js";
 import { refreshProfileIconAchievements } from "../_profileIconAchievements.js";
@@ -83,11 +83,7 @@ async function commitProfileIconSettings(context, payload) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const contentLength = Number(request.headers["content-length"] || 0);

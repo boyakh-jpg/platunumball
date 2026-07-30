@@ -4,6 +4,7 @@ import test from "node:test";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
+const readSources = (...paths) => Promise.all(paths.map(read)).then((sources) => sources.join("\n"));
 
 test("30m 근접 구장은 자동 그룹화하고 실제 코트 수로 초과 행을 비활성화한다", async () => {
   const migration = await read("supabase/migrations/20260722234500_court_proximity_grouping.sql");
@@ -33,7 +34,13 @@ test("관리 API는 근접 검사와 숫자 검증을 별도 operation으로 제
 });
 
 test("검수 카드는 예 아니오 대신 상한 없는 숫자 입력과 초과 예고를 표시한다", async () => {
-  const panel = await read("src/components/admin/CourtDatabasePanel.jsx");
+  const panel = await readSources(
+    "src/components/admin/CourtDatabasePanel.jsx",
+    "src/components/admin/courtDatabaseModel.js",
+    "src/components/admin/CourtDatabaseControls.jsx",
+    "src/components/admin/useCourtDatabasePanelController.js",
+    "src/components/admin/CourtDatabasePanelView.jsx",
+  );
 
   assert.match(panel, /이 장소에는 실제 코트가 몇 개 있나요\?/);
   assert.match(panel, /type="number"/);

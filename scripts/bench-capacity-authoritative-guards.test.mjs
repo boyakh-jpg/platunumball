@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import {
+  RECRUITING_PAGE_SOURCE_PATHS,
+  readSourceGroupSync,
+} from "./management-source-groups.mjs";
 import { createRecruitingPost } from "../src/data/repository.js";
 
 const migrationSource = readFileSync(new URL("../supabase/migrations/20260722225600_bench_capacity_authoritative_guards.sql", import.meta.url), "utf8");
 const schemaSource = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8");
-const repositorySource = readFileSync(new URL("../src/data/repository.js", import.meta.url), "utf8");
-const recruitingSource = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
+const repositorySource = readFileSync(new URL("../src/data/repository/roomRules.js", import.meta.url), "utf8");
+const recruitingSource = readSourceGroupSync(
+  (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8"),
+  RECRUITING_PAGE_SOURCE_PATHS,
+);
 
 test("authoritative reducers use shape-guard patches and dynamic bench capacity", () => {
   for (const signature of [

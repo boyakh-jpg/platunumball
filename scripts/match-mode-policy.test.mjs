@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
+import {
+  MATCH_ROOM_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
 
 import { validateMatchShape } from "../server/api/matches/sync-match.js";
 import { validateRecruitingPostShape } from "../server/api/recruiting/sync-post.js";
@@ -27,6 +32,13 @@ import {
   teamRegularRatio,
 } from "../server/lib/ratingEngine.js";
 import { DEFAULT_RATING_POLICY, RATING_POLICY_MODE_IDS } from "../server/lib/ratingPolicy.js";
+
+async function readJavaScriptDirectory(directoryUrl) {
+  const names = (await readdir(directoryUrl))
+    .filter((name) => name.endsWith(".js"))
+    .sort();
+  return (await Promise.all(names.map((name) => readFile(new URL(name, directoryUrl), "utf8")))).join("\n");
+}
 
 function makeMatch(mode, recordType = RECORD_TYPES.match) {
   return {
@@ -279,8 +291,11 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
     readFile(new URL("../server/api/profile/me.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/PlayerDetail.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/ProfileRecords.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8"),
+    readSourceGroup((file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"), MATCH_ROOM_SOURCE_PATHS),
+    readSourceGroup(
+      (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+      RECRUITING_PAGE_SOURCE_PATHS,
+    ),
     readFile(new URL("../src/components/match/MatchContract.jsx", import.meta.url), "utf8"),
     readFile(new URL("../docs/logic-and-terminology.md", import.meta.url), "utf8"),
     readFile(new URL("../docs/design-system.md", import.meta.url), "utf8"),
@@ -320,7 +335,7 @@ test("MMR 계산식과 정책 기본값은 서버 전용 모듈에만 남는다"
     readFile(new URL("../src/lib/rating.js", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/ratingPolicy.js", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/constants.js", import.meta.url), "utf8"),
-    readFile(new URL("../src/data/repository.js", import.meta.url), "utf8"),
+    readJavaScriptDirectory(new URL("../src/data/repository/", import.meta.url)),
     readFile(new URL("../server/lib/ratingEngine.js", import.meta.url), "utf8"),
     readFile(new URL("../server/lib/ratingPolicy.js", import.meta.url), "utf8"),
   ]);

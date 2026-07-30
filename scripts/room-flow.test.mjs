@@ -2,6 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  APP_DATA_ORCHESTRATOR_SOURCE_PATHS,
+  HOME_PAGE_SOURCE_PATHS,
+  MATCHES_PAGE_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  RECRUITING_STYLE_SOURCE_PATHS,
+  readSourceGroupSync,
+} from "./management-source-groups.mjs";
+import {
   acceptRecruitingInvitation,
   confirmPickupSideAssignment,
   configureServerRatingAuthority,
@@ -23,6 +31,11 @@ import {
   isMatchPregameSlotManagementOpen,
   isMatchRecordParticipantSetupOpen,
 } from "../src/lib/roomFlow.js";
+
+const readPageSourceGroup = (paths) => readSourceGroupSync(
+  (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8"),
+  paths,
+);
 import {
   createMatchListStore,
   getMatchEntityMap,
@@ -110,10 +123,15 @@ test("cancelled instant rooms stay visible for their calendar date", async () =>
 });
 
 test("schedule, recruiting, and play lists refresh server data on entry and browser foreground", () => {
-  const matchesSource = readFileSync(new URL("../src/pages/Matches.jsx", import.meta.url), "utf8");
-  const recruitingSource = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
+  const matchesSource = MATCHES_PAGE_SOURCE_PATHS
+    .map((file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8"))
+    .join("\n");
+  const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   const recorderSource = readFileSync(new URL("../src/pages/Recorder.jsx", import.meta.url), "utf8");
-  const appDataSource = readFileSync(new URL("../src/hooks/useAppData.js", import.meta.url), "utf8");
+  const appDataSource = readSourceGroupSync(
+    (relativePath) => readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8"),
+    APP_DATA_ORCHESTRATOR_SOURCE_PATHS,
+  );
 
   assert.match(matchesSource, /loadMatchRecruitingSchedule\(\{ force: true \}\)/);
   assert.match(matchesSource, /window\.addEventListener\("focus", refreshWhenVisible\)/);
@@ -141,8 +159,8 @@ test("schedule, recruiting, and play lists refresh server data on entry and brow
 });
 
 test("team room hides completed selection and labels active and reserve slots once", () => {
-  const recruitingSource = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
-  const recruitingStyles = readFileSync(new URL("../src/styles/recruiting-arena.css", import.meta.url), "utf8");
+  const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
+  const recruitingStyles = readPageSourceGroup(RECRUITING_STYLE_SOURCE_PATHS);
 
   assert.match(recruitingSource, /&& \(!selectedRoomTeamAId \|\| !selectedRoomTeamBId\)/);
   assert.doesNotMatch(recruitingSource, /ROOM ONLY/);
@@ -299,8 +317,11 @@ test("정원 마감은 남은 선수 초대를 원자적으로 만료하고 즉�
     new URL("../supabase/migrations/20260729110000_close_full_recruiting_invitations.sql", import.meta.url),
     "utf8",
   );
-  const appDataSource = readFileSync(new URL("../src/hooks/useAppData.js", import.meta.url), "utf8");
-  const serverSource = readFileSync(new URL("../server/api/recruiting/sync-post.js", import.meta.url), "utf8");
+  const appDataSource = readSourceGroupSync(
+    (relativePath) => readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8"),
+    APP_DATA_ORCHESTRATOR_SOURCE_PATHS,
+  );
+  const serverSource = readFileSync(new URL("../server/api/recruiting/_syncPostActions.js", import.meta.url), "utf8");
 
   assert.match(migrationSource, /rankball_recruiting_expire_player_invitations_if_full/);
   assert.match(migrationSource, /\(invitation\.value::jsonb\)->>'role' <> 'referee'/);
@@ -316,7 +337,7 @@ test("초대 처리 항목은 초대한 참가자 이름을 표시한다", () =>
   assert.equal(getRecruitingInvitationSenderName(state, { fromUserId: "inviter" }), "초대한 사람");
   assert.equal(getRecruitingInvitationSenderName(state, { fromUserId: "missing" }), "방 참가자");
 
-  const homeSource = readFileSync(new URL("../src/pages/Home.jsx", import.meta.url), "utf8");
+  const homeSource = readPageSourceGroup(HOME_PAGE_SOURCE_PATHS);
   const notificationSource = readFileSync(new URL("../src/pages/Notifications.jsx", import.meta.url), "utf8");
   assert.match(homeSource, /senderName}님이 초대/);
   assert.match(notificationSource, /senderName}님이 초대/);
@@ -603,10 +624,11 @@ test("사후 기록은 2/3 확인 전에는 부분 상태이고 24시간 뒤 미
 });
 
 test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형 grid를 사용한다", () => {
-  const recruitingSource = readFileSync(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8");
-  const recruitingStyles = readFileSync(new URL("../src/styles/recruiting-arena.css", import.meta.url), "utf8");
+  const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
+  const roomManagementSource = readFileSync(new URL("../src/components/recruiting/RoomManagementPanels.jsx", import.meta.url), "utf8");
+  const recruitingStyles = readPageSourceGroup(RECRUITING_STYLE_SOURCE_PATHS);
 
-  assert.match(recruitingSource, /arena-host-kick-panel\$\{pickupAssignmentMode \? " is-pickup-assignment" : ""\}/);
+  assert.match(roomManagementSource, /arena-host-kick-panel\$\{pickupAssignmentMode \? " is-pickup-assignment" : ""\}/);
   assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-list\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
   assert.match(recruitingStyles, /\.pickup-rotation-panel \.ui-status-strip\s*\{[^}]*min-height:\s*var\(--ui-button-height\);/s);
   assert.match(recruitingStyles, /\.pickup-rotation-panel \.arena-room-edit-actions > \.button\s*\{[^}]*min-height:\s*var\(--ui-button-height\);/s);
@@ -616,7 +638,7 @@ test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형
   assert.match(recruitingSource, /sideLeader:\s*\{\s*tone:\s*"captain",\s*label:\s*"사이드장"\s*\}/);
   assert.match(recruitingSource, /const slotTrackCount = Math\.max\(1,\s*Number\(side\.capacity\) \|\| activeSlots\.length \|\| 1\)/);
   assert.match(recruitingSource, /displayedSideLeaderId = \([\s\S]*playerId === hostPlayerId[\s\S]*\) \? "" : sideLeaderId/);
-  assert.match(recruitingSource, /showCaptainBadge=\{!sourceMatch && showCaptainBadge\}/);
+  assert.match(recruitingSource, /showCaptainBadge:\s*!sourceMatch && showCaptainBadge/);
   assert.equal(getMatchSideLeaderId({
     createdBy: "host",
     teamA: { players: ["other", "host"] },

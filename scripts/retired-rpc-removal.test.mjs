@@ -23,6 +23,24 @@ const unusedLegacyMigrationSource = await readFile(
   ),
   "utf8",
 );
+const remainingOverloadMigrationSource = await readFile(
+  path.join(
+    rootDir,
+    "supabase",
+    "migrations",
+    "20260730013000_remove_remaining_unused_rpc_overloads.sql",
+  ),
+  "utf8",
+);
+const internalHelperGrantMigrationSource = await readFile(
+  path.join(
+    rootDir,
+    "supabase",
+    "migrations",
+    "20260730014000_harden_internal_room_update_helpers.sql",
+  ),
+  "utf8",
+);
 const branchRetirementSource = await readFile(
   path.join(
     rootDir,
@@ -54,6 +72,13 @@ const schemaSource = await readFile(
   "utf8",
 );
 
+function normalizeExecutableSql(source) {
+  return source
+    .replace(/--[^\r\n]*/gu, "")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
 const removedSignatures = [
   ["rankball_match_late_player_action", "text, text, text, text, jsonb, jsonb, jsonb, jsonb"],
   ["rankball_match_roster_move_action", "text, text, text, text, text, text, text"],
@@ -69,6 +94,12 @@ const removedUnusedLegacySignatures = [
   ["rankball_current_recruiting_post_ids", "text, integer"],
   ["rankball_recruiting_ready_action", "text, text, boolean"],
   ["rankball_update_team_emblem_style", "text, text, text, boolean, text"],
+];
+const removedUnusedOverloadSignatures = [
+  ["rankball_approve_court_request", "text, integer, text"],
+  ["rankball_invite_team_member", "text, text, text, text"],
+  ["rankball_save_profile_icon_settings", "text, text, text, text, boolean, text"],
+  ["rankball_match_terminal_action_pre_cancel_policy", "text, text, text"],
 ];
 const retiredOnlyFunctionNames = [
   "rankball_match_late_player_action",
@@ -145,6 +176,93 @@ test("unused legacy RPC entry points are retired by exact signature", () => {
   assert.doesNotMatch(executableSql, /\b(?:delete\s+from|truncate|drop\s+table)\b/iu);
   assert.match(unusedLegacyMigrationSource, /pg_get_functiondef\(proc\.oid\)/u);
   assert.match(unusedLegacyMigrationSource, /unused_legacy_rpc_internal_dependency/u);
+});
+
+test("remaining unused overloads are dependency-checked and retired by exact signature", () => {
+  removedUnusedOverloadSignatures.forEach(([functionName, signature]) => {
+    const escapedSignature = signature
+      .split(", ")
+      .map((typeName) => typeName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"))
+      .join("\\s*,\\s*");
+    assert.match(
+      remainingOverloadMigrationSource,
+      new RegExp(
+        `drop function if exists public\\.${functionName}\\(\\s*${escapedSignature}\\s*\\)`,
+        "u",
+      ),
+    );
+  });
+
+  [
+    "rankball_approve_court_request_legacy_3arg",
+    "rankball_invite_team_member_4",
+    "rankball_save_profile_icon_settings_6",
+    "rankball_match_terminal_action_pre_cancel_policy_legacy_3arg",
+  ].forEach((contractName) => {
+    assert.match(
+      remainingOverloadMigrationSource,
+      new RegExp(`${contractName}[\\s\\S]*?'retired',\\s*false`, "u"),
+    );
+  });
+  assert.match(
+    remainingOverloadMigrationSource,
+    /'rankball_approve_court_request'[\s\S]*?text,integer,text,jsonb\)'[\s\S]*?'active',\s*true/u,
+  );
+  assert.match(remainingOverloadMigrationSource, /from pg_depend dependency/u);
+  assert.match(remainingOverloadMigrationSource, /pg_get_functiondef\(proc\.oid\)/u);
+  assert.match(
+    remainingOverloadMigrationSource,
+    /current_profile\.avatar_background_enabled/u,
+  );
+  assert.match(
+    remainingOverloadMigrationSource,
+    /rankball_match_terminal_action_pre_cancel_reason\(text,text,text,text\)/u,
+  );
+
+  const executableSql = remainingOverloadMigrationSource.replace(/--[^\r\n]*/gu, "");
+  assert.doesNotMatch(executableSql, /\bcascade\b/iu);
+  assert.doesNotMatch(
+    executableSql,
+    /\b(?:delete\s+from|truncate|drop\s+table)\b/iu,
+  );
+  assert.doesNotMatch(
+    remainingOverloadMigrationSource,
+    /drop function if exists public\.rankball_match_finalize_locked\(\s*text\s*,\s*text\s*,\s*text\s*\)/u,
+  );
+});
+
+test("current room-update wrappers own deny-only internal helpers", () => {
+  [
+    "rankball_match_room_update_action_pre_change_deadline",
+    "rankball_recruiting_room_update_action_pre_change_deadline",
+  ].forEach((functionName) => {
+    assert.match(
+      internalHelperGrantMigrationSource,
+      new RegExp(
+        `revoke all on function public\\.${functionName}\\(\\s*text\\s*,\\s*text\\s*,\\s*jsonb\\s*\\)\\s*from public, anon, authenticated, service_role`,
+        "u",
+      ),
+    );
+    assert.match(
+      internalHelperGrantMigrationSource,
+      new RegExp(`'rpc_grant:internal_helper:' \\|\\| helper\\.name`, "u"),
+    );
+  });
+  assert.match(
+    internalHelperGrantMigrationSource,
+    /pg_get_functiondef\(recruiting_wrapper\)/u,
+  );
+  assert.match(
+    internalHelperGrantMigrationSource,
+    /pg_get_functiondef\(match_wrapper\)/u,
+  );
+
+  const executableSql = internalHelperGrantMigrationSource.replace(/--[^\r\n]*/gu, "");
+  assert.doesNotMatch(executableSql, /\bcascade\b/iu);
+  assert.doesNotMatch(
+    executableSql,
+    /\b(?:delete\s+from|truncate|drop\s+(?:table|function))\b/iu,
+  );
 });
 
 test("obsolete match action dispatch is removed before the roster-move entry point", () => {
@@ -306,6 +424,27 @@ test("schema snapshot tail owns the final retired RPC state", () => {
     );
   });
 
+  removedUnusedOverloadSignatures.forEach(([functionName, signature]) => {
+    const escapedSignature = signature
+      .split(", ")
+      .map((typeName) => typeName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"))
+      .join("\\s*,\\s*");
+    const dropPattern = new RegExp(
+      `drop function if exists public\\.${functionName}\\(\\s*${escapedSignature}\\s*\\)`,
+      "gu",
+    );
+    const dropMatches = [...schemaSource.matchAll(dropPattern)];
+    assert.ok(dropMatches.length > 0, `schema drop missing: ${functionName}`);
+    const finalDropIndex = dropMatches.at(-1).index;
+    const finalCreateIndex = schemaSource.lastIndexOf(
+      `create or replace function public.${functionName}(`,
+    );
+    assert.ok(
+      finalDropIndex > finalCreateIndex,
+      `unused overload is recreated after final drop: ${functionName}`,
+    );
+  });
+
   [
     "latePlayerRpcRetired",
     "legacyRosterMoveRpcRetired",
@@ -331,6 +470,34 @@ test("schema snapshot tail owns the final retired RPC state", () => {
   assert.match(correctionSource, /select pg_notify\('pgrst', 'reload schema'\);\s*commit;\s*$/u);
 });
 
+test("schema snapshot final tail matches the remaining-overload migration", () => {
+  const tailMarker = "-- Final remaining unused RPC overload retirement.";
+  const tailIndex = schemaSource.lastIndexOf(tailMarker);
+  assert.notEqual(tailIndex, -1);
+  const nextTailMarker = "-- Final internal room-update helper grant hardening.";
+  const nextTailIndex = schemaSource.indexOf(nextTailMarker, tailIndex);
+  assert.notEqual(nextTailIndex, -1);
+  const snapshotTail = schemaSource.slice(
+    tailIndex + tailMarker.length,
+    nextTailIndex,
+  );
+  assert.equal(
+    normalizeExecutableSql(snapshotTail),
+    normalizeExecutableSql(remainingOverloadMigrationSource),
+  );
+});
+
+test("schema snapshot final tail matches internal helper grant hardening", () => {
+  const tailMarker = "-- Final internal room-update helper grant hardening.";
+  const tailIndex = schemaSource.lastIndexOf(tailMarker);
+  assert.notEqual(tailIndex, -1);
+  const snapshotTail = schemaSource.slice(tailIndex + tailMarker.length);
+  assert.equal(
+    normalizeExecutableSql(snapshotTail),
+    normalizeExecutableSql(internalHelperGrantMigrationSource),
+  );
+});
+
 test("runtime JavaScript has no literal call to removed RPC names", async () => {
   const serverFiles = await collectJavaScriptFiles(path.join(rootDir, "server"));
   const sources = await Promise.all(serverFiles.map((filePath) => readFile(filePath, "utf8")));
@@ -354,6 +521,22 @@ test("runtime JavaScript has no literal call to removed RPC names", async () => 
   assert.match(
     serverSource,
     /\.rpc\(\s*["']rankball_match_list["'][^]*?p_active_only:/u,
+  );
+  assert.match(
+    serverSource,
+    /\.rpc\(\s*["']rankball_approve_court_request["'][^]*?approval_payload:/u,
+  );
+  assert.match(
+    serverSource,
+    /\.rpc\(\s*["']rankball_invite_team_member["'][^]*?p_role:/u,
+  );
+  assert.match(
+    serverSource,
+    /\.rpc\(\s*["']rankball_save_profile_icon_settings["'][^]*?p_background_enabled:/u,
+  );
+  assert.doesNotMatch(
+    serverSource,
+    /\.rpc\(\s*["']rankball_(?:match|recruiting)_room_update_action_pre_change_deadline["']/u,
   );
 });
 

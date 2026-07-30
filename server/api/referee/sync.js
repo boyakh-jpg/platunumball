@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson, toNotificationRows } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson, toNotificationRows } from "../_supabaseAdmin.js";
 import { REFEREE_EXAM_COOLDOWN_MS, REFEREE_TRUST_MIN } from "../../../shared/lib/constants.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
@@ -254,11 +254,7 @@ async function syncRefereeRequest(context, request = {}, notifications = []) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

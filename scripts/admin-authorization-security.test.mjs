@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import {
+  MATCH_ROOM_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
 import apiHandler, { API_ROUTES } from "../api/index.js";
 import {
   assertAdminLevel,
@@ -19,6 +24,7 @@ import { hasAdminAccess } from "../src/lib/admin.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
+const readSources = (...paths) => Promise.all(paths.map(readSource)).then((sources) => sources.join("\n"));
 
 async function readSourceTree(relativeDirectory) {
   const sources = [];
@@ -186,10 +192,25 @@ test("admin page and menu authority use server context, not cached appointments"
   const [appSource, guardSource, adminSource, settingsSource, recruitingSource, matchRoomSource] = await Promise.all([
     readSource("src/App.jsx"),
     readSource("src/components/auth/RequireAdmin.jsx"),
-    readSource("src/pages/Admin.jsx"),
-    readSource("src/pages/Settings.jsx"),
-    readSource("src/pages/Recruiting.jsx"),
-    readSource("src/pages/MatchRoom.jsx"),
+    readSources(
+      "src/pages/Admin.jsx",
+      "src/pages/adminPageModel.js",
+      "src/pages/AdminPageParts.jsx",
+      "src/pages/useAdminPageController.jsx",
+      "src/pages/AdminPageView.jsx",
+    ),
+    readSources(
+      "src/pages/Settings.jsx",
+      "src/pages/settingsPageModel.js",
+      "src/pages/useSettingsPageController.jsx",
+      "src/pages/useSettingsReportController.jsx",
+      "src/pages/SettingsPageView.jsx",
+      "src/pages/SettingsPrimaryColumn.jsx",
+      "src/pages/SettingsSideColumn.jsx",
+      "src/pages/SettingsRefereeSection.jsx",
+    ),
+    readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS),
+    readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS),
   ]);
   assert.match(appSource, /path="\/app\/admin" element=\{<RequireAdmin/);
   assert.match(appSource, /path="\/app\/admin\/court-map" element=\{<RequireAdmin/);

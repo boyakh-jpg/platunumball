@@ -484,6 +484,15 @@ export function buildAdminReviewModel(state = {}) {
   const playerMap = new Map();
   const matchReviewMap = new Map();
   const teamReviewMap = new Map();
+  const addPlayerReport = (playerId, report) => {
+    const player = userMap[playerId];
+    const playerRow = pushGrouped(playerMap, playerId, {
+      title: player?.name ?? "알 수 없음",
+      subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
+      player,
+    });
+    addReport(playerRow, report);
+  };
 
   matches.forEach((match) => {
     const courtName = match.court || "미정 구장";
@@ -541,15 +550,7 @@ export function buildAdminReviewModel(state = {}) {
   reports.forEach((report) => {
     if (report.type === "player") {
       const targetPlayerIds = [...new Set([report.targetId, ...(report.reportedUserIds ?? [])].filter(Boolean))];
-      targetPlayerIds.forEach((playerId) => {
-        const player = userMap[playerId];
-        const playerRow = pushGrouped(playerMap, playerId, {
-          title: player?.name ?? "알 수 없음",
-          subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
-          player,
-        });
-        addReport(playerRow, report);
-      });
+      targetPlayerIds.forEach((playerId) => addPlayerReport(playerId, report));
       return;
     }
 
@@ -596,15 +597,7 @@ export function buildAdminReviewModel(state = {}) {
       addReport(courtRow, report);
 
       const targetPlayerIds = report.reportedUserIds?.length ? report.reportedUserIds : getMatchPlayerIds(match);
-      targetPlayerIds.forEach((playerId) => {
-        const player = userMap[playerId];
-        const playerRow = pushGrouped(playerMap, playerId, {
-          title: player?.name ?? "알 수 없음",
-          subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
-          player,
-        });
-        addReport(playerRow, report);
-      });
+      targetPlayerIds.forEach((playerId) => addPlayerReport(playerId, report));
       return;
     }
 
@@ -616,15 +609,9 @@ export function buildAdminReviewModel(state = {}) {
       });
       addReport(courtRow, report);
 
-      (report.reportedUserIds ?? [request?.requestedBy]).filter(Boolean).forEach((playerId) => {
-        const player = userMap[playerId];
-        const playerRow = pushGrouped(playerMap, playerId, {
-          title: player?.name ?? "알 수 없음",
-          subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
-          player,
-        });
-        addReport(playerRow, report);
-      });
+      (report.reportedUserIds ?? [request?.requestedBy])
+        .filter(Boolean)
+        .forEach((playerId) => addPlayerReport(playerId, report));
       return;
     }
 
@@ -636,15 +623,9 @@ export function buildAdminReviewModel(state = {}) {
       });
       addReport(courtRow, report);
 
-      (report.reportedUserIds ?? []).filter(Boolean).forEach((playerId) => {
-        const player = userMap[playerId];
-        const playerRow = pushGrouped(playerMap, playerId, {
-          title: player?.name ?? "알 수 없음",
-          subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
-          player,
-        });
-        addReport(playerRow, report);
-      });
+      (report.reportedUserIds ?? [])
+        .filter(Boolean)
+        .forEach((playerId) => addPlayerReport(playerId, report));
       return;
     }
 
@@ -668,15 +649,9 @@ export function buildAdminReviewModel(state = {}) {
         addReport(matchRow, report);
       }
 
-      (report.reportedUserIds ?? [review?.reviewerId]).filter(Boolean).forEach((playerId) => {
-        const player = userMap[playerId];
-        const playerRow = pushGrouped(playerMap, playerId, {
-          title: player?.name ?? "알 수 없음",
-          subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
-          player,
-        });
-        addReport(playerRow, report);
-      });
+      (report.reportedUserIds ?? [review?.reviewerId])
+        .filter(Boolean)
+        .forEach((playerId) => addPlayerReport(playerId, report));
     }
   });
 

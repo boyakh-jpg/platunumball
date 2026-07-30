@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { buildCourtAddressNameUpdates, getAdminCourtStreetViewUrl, getCourtAddressFacilityName, getCourtFacilityBaseName, getCourtMapUrl, getCourtNaverMapAppUrl } from "../src/lib/courts.js";
+import { APP_DATA_ACTION_SOURCE_PATHS, readSourceGroup } from "./management-source-groups.mjs";
 
 const readSource = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
+const readSources = (...relativePaths) => Promise.all(relativePaths.map(readSource)).then((sources) => sources.join("\n"));
 
 test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사용한다", async () => {
   const server = await readSource("server/api/admin/courts.js");
@@ -34,7 +36,13 @@ test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사�
 
 test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을 제공한다", async () => {
   const [component, adminStyles, courtStyles] = await Promise.all([
-    readSource("src/components/admin/CourtDatabasePanel.jsx"),
+    readSources(
+      "src/components/admin/CourtDatabasePanel.jsx",
+      "src/components/admin/courtDatabaseModel.js",
+      "src/components/admin/CourtDatabaseControls.jsx",
+      "src/components/admin/useCourtDatabasePanelController.js",
+      "src/components/admin/CourtDatabasePanelView.jsx",
+    ),
     readSource("src/styles/global-admin-layout.css"),
     readSource("src/styles/global-court-controls.css"),
   ]);
@@ -99,7 +107,7 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
 test("원터치 검수는 단순 판정, 영구 지역순번, 감사 로그를 원자적으로 저장한다", async () => {
   const [migration, hook] = await Promise.all([
     readSource("supabase/migrations/20260722232500_admin_court_review_workflow.sql"),
-    readSource("src/hooks/useAppData.js"),
+    readSourceGroup(readSource, APP_DATA_ACTION_SOURCE_PATHS),
   ]);
   assert.match(migration, /add column if not exists regional_alias_no integer/);
   assert.match(migration, /add column if not exists admin_review_count integer not null default 0/);
@@ -122,7 +130,13 @@ test("원터치 검수는 단순 판정, 영구 지역순번, 감사 로그를 �
 test("중복 구장 신고 확정은 중앙 구장 검수와 신고 해결을 한 transaction으로 묶는다", async () => {
   const [migration, adminPage, logic, schemaHealth, rpcRegistry] = await Promise.all([
     readSource("supabase/migrations/20260727100000_resolve_duplicate_court_reports.sql"),
-    readSource("src/pages/Admin.jsx"),
+    readSources(
+      "src/pages/Admin.jsx",
+      "src/pages/adminPageModel.js",
+      "src/pages/AdminPageParts.jsx",
+      "src/pages/useAdminPageController.jsx",
+      "src/pages/AdminPageView.jsx",
+    ),
     readSource("docs/logic-and-terminology.md"),
     readSource("server/api/system/schema-health.js"),
     readSource("supabase/migrations/20260729162000_align_rpc_grant_health_with_current_policy.sql"),

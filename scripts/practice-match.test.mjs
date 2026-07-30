@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import {
+  CREATE_MATCH_PAGE_SOURCE_PATHS,
+  MATCH_SYNC_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  RECRUITING_SYNC_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
 import { getRemoteAppSettings } from "../src/data/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../src/data/repositoryDefaults.js";
 import { isHomeGuideCardVisible } from "../src/data/settingsMappers.js";
@@ -516,12 +523,24 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   ] = await Promise.all([
     readFile(new URL("../src/lib/practiceMatch.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/PracticeMatch.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/pages/CreateMatch.jsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8"),
+    readSourceGroup(
+      (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+      CREATE_MATCH_PAGE_SOURCE_PATHS,
+    ),
+    readSourceGroup(
+      (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+      RECRUITING_PAGE_SOURCE_PATHS,
+    ),
     readFile(new URL("../src/components/match/MatchClockPanel.jsx", import.meta.url), "utf8"),
     readFile(new URL("../server/api/settings/sync.js", import.meta.url), "utf8"),
-    readFile(new URL("../server/api/recruiting/sync-post.js", import.meta.url), "utf8"),
-    readFile(new URL("../server/api/matches/sync-match.js", import.meta.url), "utf8"),
+    readSourceGroup(
+      (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+      RECRUITING_SYNC_SOURCE_PATHS,
+    ),
+    readSourceGroup(
+      (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+      MATCH_SYNC_SOURCE_PATHS,
+    ),
     readFile(new URL("../server/api/matches/clock.js", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260725024000_match_clock_explicit_end_and_scoreless_overtime.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260728124000_simplify_live_match_operations.sql", import.meta.url), "utf8"),

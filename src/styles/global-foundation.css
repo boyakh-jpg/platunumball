@@ -6,7 +6,6 @@ html {
   min-width: 0;
   min-height: 100%;
   background: var(--bg);
-  --bottom-nav-height: 58px;
 }
 
 @media (min-width: 1080px) {
@@ -249,7 +248,7 @@ body.rankball-scroll-locked .app-main {
 
 .sidebar-profile {
   margin-top: auto;
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius);
   padding: 12px;
   background: var(--surface);
@@ -282,7 +281,7 @@ body.rankball-scroll-locked .app-main {
   height: 36px;
   margin-left: auto;
   place-items: center;
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.055);
   color: var(--muted);
@@ -303,7 +302,7 @@ body.rankball-scroll-locked .app-main {
 .auth-card {
   display: grid;
   gap: var(--space-11);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.14);
   padding: 22px;
   backdrop-filter: blur(18px);
 }
@@ -325,7 +324,7 @@ body.rankball-scroll-locked .app-main {
 }
 
 .auth-message {
-  border: 1px solid rgba(70, 224, 182, 0.22);
+  border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.22);
   border-radius: var(--radius);
   background: rgba(70, 224, 182, 0.065);
   padding: 10px;
@@ -334,7 +333,7 @@ body.rankball-scroll-locked .app-main {
 .auth-browser-warning {
   display: grid;
   gap: var(--space-5);
-  border: 1px solid rgba(255, 205, 96, 0.28);
+  border: var(--ui-stroke-width) solid rgba(255, 205, 96, 0.28);
   border-radius: var(--radius);
   background: rgba(255, 205, 96, 0.08);
   padding: 12px;
@@ -366,7 +365,7 @@ body.rankball-scroll-locked .app-main {
   justify-content: center;
   gap: var(--space-3);
   min-height: 38px;
-  border: 1px solid rgba(255, 205, 96, 0.28);
+  border: var(--ui-stroke-width) solid rgba(255, 205, 96, 0.28);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.07);
   color: var(--text);
@@ -380,7 +379,7 @@ body.rankball-scroll-locked .app-main {
   min-width: 0;
   align-items: center;
   gap: var(--space-5);
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 10px;
@@ -399,7 +398,7 @@ body.rankball-scroll-locked .app-main {
   align-items: center;
   gap: var(--space-3);
   margin-left: auto;
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.055);
   color: var(--text);
@@ -419,7 +418,7 @@ body.rankball-scroll-locked .app-main {
   justify-content: center;
   gap: var(--space-5);
   min-height: 52px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   cursor: pointer;
@@ -453,7 +452,7 @@ body.rankball-scroll-locked .app-main {
 .auth-test-login {
   display: grid;
   gap: var(--space-5);
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   padding: 10px;
 }
 
@@ -495,7 +494,7 @@ body.rankball-scroll-locked .app-main {
   width: 44px;
   height: 44px;
   place-items: center;
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: 50%;
   background: var(--ui-card-bg);
   box-shadow: var(--shadow-strong);
@@ -571,7 +570,7 @@ html[data-theme="light"] .scroll-to-top-button {
   flex-wrap: wrap;
   gap: var(--space-2);
   margin: clamp(24px, 4vw, 48px) auto 0;
-  border-top: 1px solid var(--rb-line);
+  border-top: var(--ui-stroke-width) solid var(--rb-line);
   color: var(--rb-muted);
   padding: 16px 8px max(4px, env(safe-area-inset-bottom));
   font-size: 0.72rem;
@@ -647,7 +646,7 @@ html[data-theme="light"] .scroll-to-top-button {
   min-width: 0;
   min-height: var(--control-height);
   align-items: center;
-  border: 1px solid var(--rb-line);
+  border: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
   color: var(--rb-text);
@@ -758,7 +757,7 @@ html[data-theme="light"] .scroll-to-top-button {
 
 .legal-document-nav a {
   min-height: 34px;
-  border: 1px solid var(--rb-line);
+  border: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
   color: var(--rb-muted);
@@ -807,7 +806,7 @@ html[data-theme="light"] .scroll-to-top-button {
   display: grid;
   min-width: 0;
   gap: var(--space-2);
-  border: 1px solid var(--rb-line);
+  border: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
   padding: 11px 13px;
@@ -922,7 +921,7 @@ html[data-theme="light"] .scroll-to-top-button {
 .legal-table-wrap {
   max-width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--rb-line);
+  border: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: var(--control-radius);
   scrollbar-gutter: stable;
 }
@@ -940,8 +939,8 @@ html[data-theme="light"] .scroll-to-top-button {
 .legal-table-wrap th,
 .legal-table-wrap td {
   min-width: 120px;
-  border-right: 1px solid var(--rb-line);
-  border-bottom: 1px solid var(--rb-line);
+  border-right: var(--ui-stroke-width) solid var(--rb-line);
+  border-bottom: var(--ui-stroke-width) solid var(--rb-line);
   padding: 11px 12px;
   text-align: left;
   vertical-align: top;
@@ -981,7 +980,7 @@ html[data-theme="light"] .scroll-to-top-button {
   display: grid;
   min-width: 0;
   gap: var(--space-6);
-  border: 1px solid var(--rb-line);
+  border: var(--ui-stroke-width) solid var(--rb-line);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
   padding: 15px;
@@ -1022,7 +1021,7 @@ html[data-theme="light"] .scroll-to-top-button {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-4) var(--space-9);
-  border-top: 1px solid var(--rb-line);
+  border-top: var(--ui-stroke-width) solid var(--rb-line);
   padding-top: 18px;
 }
 
@@ -1120,7 +1119,7 @@ html[data-theme="light"] .scroll-to-top-button {
   width: fit-content;
   align-items: center;
   gap: 5px;
-  border: 1px solid rgba(88, 101, 242, 0.38);
+  border: var(--ui-stroke-width) solid rgba(88, 101, 242, 0.38);
   border-radius: 999px;
   background: rgba(88, 101, 242, 0.13);
   color: var(--text);
@@ -1213,7 +1212,7 @@ html[data-theme="light"] .scroll-to-top-button {
 }
 
 .card {
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius);
   padding: var(--card-padding);
   backdrop-filter: blur(16px);
@@ -1276,7 +1275,7 @@ html[data-theme="light"] .scroll-to-top-button {
   display: inline-flex;
   align-items: center;
   width: max-content;
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: 999px;
   padding: 5px 10px;
   color: var(--muted);
@@ -1472,7 +1471,7 @@ span.referee-hover-card {
 .hover-age-group {
   display: inline-flex;
   width: fit-content;
-  border: 1px solid rgba(255, 211, 108, 0.28);
+  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.28);
   border-radius: 999px;
   background: rgba(255, 211, 108, 0.1);
   color: var(--gold);
@@ -1507,7 +1506,7 @@ span.referee-hover-card {
   align-items: center;
   min-width: 0;
   gap: var(--space-4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
 }
@@ -1538,15 +1537,14 @@ span.referee-hover-card {
 
 .player-hover-team > span {
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 8px;
 }
 
 .team-hover-tier {
-  align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 8px;
@@ -1561,7 +1559,7 @@ span.referee-hover-card {
 .team-hover-stats > span {
   display: grid;
   gap: var(--space-1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 8px;
@@ -1579,7 +1577,7 @@ span.referee-hover-card {
   height: 48px;
   place-items: center;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--rb-orange) 58%, var(--card-border));
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--rb-orange) 58%, var(--card-border));
   border-radius: var(--radius-md);
   background:
     linear-gradient(90deg, transparent 49%, rgba(255, 255, 255, 0.2) 49% 51%, transparent 51%),
@@ -1607,7 +1605,7 @@ span.referee-hover-card {
 .court-hover-note {
   display: grid;
   gap: var(--space-2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 8px;
@@ -1634,7 +1632,7 @@ span.referee-hover-card {
 .court-hover-stats > span {
   display: grid;
   gap: var(--space-1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 8px;
@@ -1660,7 +1658,7 @@ span.referee-hover-card {
   width: 54px;
   height: 54px;
   place-items: center;
-  border: 1px solid rgba(70, 224, 182, 0.28);
+  border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.28);
   border-radius: var(--radius-md);
   background: rgba(70, 224, 182, 0.12);
   color: var(--green);
@@ -1691,7 +1689,7 @@ span.referee-hover-card {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-5);
-  border: 1px solid rgba(70, 224, 182, 0.16);
+  border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.16);
   border-radius: var(--radius-xs);
   background: rgba(70, 224, 182, 0.07);
   color: var(--green);
@@ -1714,7 +1712,7 @@ span.referee-hover-card {
 .referee-hover-stats > span {
   display: grid;
   gap: var(--space-1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   padding: 8px;
@@ -1737,7 +1735,7 @@ span.referee-hover-card {
 
 .referee-hover-note {
   display: block;
-  border: 1px solid rgba(255, 211, 108, 0.18);
+  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.18);
   border-radius: var(--radius-xs);
   background: rgba(255, 211, 108, 0.06);
   padding: 8px;
@@ -1753,7 +1751,7 @@ span.referee-hover-card {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-4);
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.04);
   padding: 9px 10px;
@@ -1782,7 +1780,7 @@ span.referee-hover-card {
   display: grid;
   min-width: 0;
   gap: var(--space-1);
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
@@ -1818,7 +1816,7 @@ span.referee-hover-card {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-4);
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius-xs);
   padding: 8px;
 }
@@ -1860,7 +1858,7 @@ span.referee-hover-card {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: var(--space-4);
-  border-top: 1px solid var(--ui-card-border);
+  border-top: var(--ui-stroke-width) solid var(--ui-card-border);
   padding-top: 6px;
 }
 
@@ -1904,7 +1902,7 @@ span.referee-hover-card {
 }
 
 .favorite-mini-chip {
-  border: 1px solid var(--line);
+  border: var(--ui-stroke-width) solid var(--line);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.04);
   padding: 8px;
@@ -1949,7 +1947,7 @@ span.referee-hover-card {
   .hover-card-close {
     display: inline-grid;
     justify-self: end;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.08);
     color: var(--muted);

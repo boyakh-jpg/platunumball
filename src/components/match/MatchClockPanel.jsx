@@ -14,6 +14,7 @@ import {
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import QrCode from "../common/QrCode.jsx";
+import MatchScoreControls from "./MatchScoreControls.jsx";
 import {
   SHOT_CLOCK_OPTIONS,
   deriveMatchClock,
@@ -24,111 +25,15 @@ import {
 } from "../../lib/matchClock.js";
 import { MATCH_SIDES } from "../../lib/constants.js";
 import { normalizeMatchRules } from "../../lib/matchRules.js";
+import {
+  activateMatchClockMediaSession,
+  deactivateMatchClockMediaSession,
+  getBuzzerMediaElement,
+  getMatchClockErrorLabel,
+  playMatchClockBuzzer,
+} from "../../lib/matchClockAudio.js";
 import { hasMatchScoreboardOperators } from "../../lib/matchUtils.js";
 import "../../styles/match-clock.css";
-
-const ERROR_LABELS = Object.freeze({
-  match_clock_forbidden: "이 경기의 시계를 볼 권한이 없습니다.",
-  match_clock_controller_must_be_active: "현재 출전·후보 선수 또는 심판만 시계를 받을 수 있습니다.",
-  match_clock_start_forbidden: "지정된 시계 담당 선수만 시작할 수 있습니다.",
-  match_clock_resume_forbidden: "남은 경기시간이 없습니다. 쿼터 종료를 눌러주세요.",
-  match_clock_transfer_forbidden: "시계 담당자 또는 경기 관리자만 넘길 수 있습니다.",
-  match_clock_overtime_requires_tie: "동점일 때만 연장을 시작할 수 있습니다.",
-  match_clock_disabled: "이 경기는 BOXTIER 경기시계를 사용하지 않습니다.",
-  server_actions_disabled: "서버 기능이 꺼져 있어 경기시계를 사용할 수 없습니다.",
-});
-
-let buzzerMediaElement = null;
-let matchClockControlMediaElement = null;
-const buzzerMediaUrls = new Map();
-
-const BUZZER_PATTERNS = Object.freeze({
-  control: Object.freeze([
-    { durationMs: 1000, frequency: 20, gain: 0.0001 },
-  ]),
-  shot: Object.freeze([
-    { durationMs: 260, frequency: 980 },
-  ]),
-  period: Object.freeze([
-    { durationMs: 1500, frequency: 780 },
-  ]),
-  warning: Object.freeze([
-    { durationMs: 170, frequency: 900 },
-    { durationMs: 130, frequency: 0 },
-    { durationMs: 170, frequency: 900 },
-  ]),
-});
-
-function getErrorLabel(error) {
-  const code = String(error?.code || error?.message || "");
-  return ERROR_LABELS[code] || "경기시계 처리에 실패했습니다.";
-}
-
-function writeWavText(view, offset, value) {
-  for (let index = 0; index < value.length; index += 1) {
-    view.setUint8(offset + index, value.charCodeAt(index));
-  }
-}
-
-function getBuzzerMediaUrl(patternName) {
-  if (buzzerMediaUrls.has(patternName)) return buzzerMediaUrls.get(patternName);
-  const pattern = BUZZER_PATTERNS[patternName] || BUZZER_PATTERNS.period;
-  const sampleRate = 22050;
-  const totalSamples = pattern.reduce(
-    (total, segment) => total + Math.round((segment.durationMs / 1000) * sampleRate),
-    0,
-  );
-  const buffer = new ArrayBuffer(44 + totalSamples * 2);
-  const view = new DataView(buffer);
-  writeWavText(view, 0, "RIFF");
-  view.setUint32(4, 36 + totalSamples * 2, true);
-  writeWavText(view, 8, "WAVE");
-  writeWavText(view, 12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeWavText(view, 36, "data");
-  view.setUint32(40, totalSamples * 2, true);
-
-  let sampleOffset = 0;
-  pattern.forEach((segment) => {
-    const segmentSamples = Math.round((segment.durationMs / 1000) * sampleRate);
-    for (let index = 0; index < segmentSamples; index += 1) {
-      const edgeFade = Math.min(1, index / 80, (segmentSamples - index - 1) / 160);
-      const wave = segment.frequency > 0
-        ? Math.sign(Math.sin((2 * Math.PI * segment.frequency * index) / sampleRate))
-        : 0;
-      view.setInt16(
-        44 + sampleOffset * 2,
-        Math.round(wave * edgeFade * 30000 * Number(segment.gain ?? 1)),
-        true,
-      );
-      sampleOffset += 1;
-    }
-  });
-
-  const url = URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
-  buzzerMediaUrls.set(patternName, url);
-  return url;
-}
-
-function getBuzzerMediaElement() {
-  if (buzzerMediaElement) return buzzerMediaElement;
-  buzzerMediaElement = new Audio();
-  buzzerMediaElement.preload = "auto";
-  buzzerMediaElement.setAttribute("playsinline", "");
-  buzzerMediaElement.setAttribute("webkit-playsinline", "");
-  buzzerMediaElement.setAttribute("aria-hidden", "true");
-  buzzerMediaElement.hidden = true;
-  buzzerMediaElement.src = getBuzzerMediaUrl("period");
-  document.body.appendChild(buzzerMediaElement);
-  buzzerMediaElement.load();
-  return buzzerMediaElement;
-}
 
 function getClockControllerLabel(player = {}) {
   const roleLabel = player.role === "referee"
@@ -139,216 +44,7 @@ function getClockControllerLabel(player = {}) {
   return `${player.name} · ${roleLabel}`;
 }
 
-function getMatchClockControlMediaElement() {
-  if (matchClockControlMediaElement) return matchClockControlMediaElement;
-  matchClockControlMediaElement = new Audio();
-  matchClockControlMediaElement.preload = "auto";
-  matchClockControlMediaElement.loop = true;
-  matchClockControlMediaElement.setAttribute("playsinline", "");
-  matchClockControlMediaElement.setAttribute("webkit-playsinline", "");
-  matchClockControlMediaElement.setAttribute("aria-hidden", "true");
-  matchClockControlMediaElement.hidden = true;
-  matchClockControlMediaElement.src = getBuzzerMediaUrl("control");
-  document.body.appendChild(matchClockControlMediaElement);
-  matchClockControlMediaElement.load();
-  return matchClockControlMediaElement;
-}
-
-function setMatchClockMediaPlaybackState(state) {
-  if (!("mediaSession" in navigator)) return;
-  try {
-    navigator.mediaSession.playbackState = state;
-  } catch {
-    // Unsupported media-session state must not block the game clock.
-  }
-}
-
-async function activateMatchClockMediaSession() {
-  try {
-    const mediaElement = getMatchClockControlMediaElement();
-    if ("mediaSession" in navigator && "MediaMetadata" in window) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: "BOXTIER 경기시계",
-        artist: "재생·일시정지로 샷클락 초기화",
-      });
-    }
-    if (mediaElement.paused) await mediaElement.play();
-    setMatchClockMediaPlaybackState("playing");
-    return true;
-  } catch {
-    setMatchClockMediaPlaybackState("none");
-    return false;
-  }
-}
-
-function deactivateMatchClockMediaSession() {
-  if (matchClockControlMediaElement) {
-    matchClockControlMediaElement.pause();
-    matchClockControlMediaElement.currentTime = 0;
-  }
-  setMatchClockMediaPlaybackState("none");
-}
-
-async function playBuzzer(patternName = "period", volume = 1) {
-  if (volume <= 0) return false;
-  try {
-    const mediaElement = getBuzzerMediaElement();
-    const nextSource = getBuzzerMediaUrl(patternName);
-    mediaElement.pause();
-    if (mediaElement.src !== nextSource) {
-      mediaElement.src = nextSource;
-      mediaElement.load();
-    }
-    mediaElement.currentTime = 0;
-    mediaElement.muted = false;
-    mediaElement.volume = Math.min(1, Math.max(0, volume));
-    await mediaElement.play();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function getMatchScoreState(match = {}) {
-  return {
-    scoreA: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
-    scoreB: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
-    revisionA: Number(match.result?.scoreRevisionA ?? 0),
-    revisionB: Number(match.result?.scoreRevisionB ?? 0),
-  };
-}
-
-export function MatchScoreControls({
-  match,
-  editableScoreSides = [],
-  onIncrementScore = null,
-  onSubmitScore = null,
-  label = "실시간 팀 점수",
-}) {
-  const [score, setScore] = useState(() => getMatchScoreState(match));
-  const [pendingSide, setPendingSide] = useState("");
-  const [scoreError, setScoreError] = useState("");
-  const submissionMode = typeof onSubmitScore === "function";
-
-  useEffect(() => {
-    setScore(getMatchScoreState(match));
-  }, [
-    match.id,
-    match.result?.scoreA,
-    match.result?.scoreB,
-    match.result?.scoreRevisionA,
-    match.result?.scoreRevisionB,
-    match.teamA?.score,
-    match.teamB?.score,
-  ]);
-
-  const incrementScore = async (sideName, delta) => {
-    if (!onIncrementScore || pendingSide || !editableScoreSides.includes(sideName)) return;
-    setPendingSide(sideName);
-    setScoreError("");
-    try {
-      const response = await onIncrementScore(sideName, delta, {
-        expectedRevisionA: score.revisionA,
-        expectedRevisionB: score.revisionB,
-      });
-      if (response?.ok === false) throw new Error(response.error || response.message || "score_update_failed");
-      const responseScore = response?.match ? getMatchScoreState(response.match) : null;
-      setScore((current) => ({
-        scoreA: Number(response?.scoreA ?? responseScore?.scoreA ?? current.scoreA + (sideName === "teamA" ? delta : 0)),
-        scoreB: Number(response?.scoreB ?? responseScore?.scoreB ?? current.scoreB + (sideName === "teamB" ? delta : 0)),
-        revisionA: Number(response?.scoreRevisionA ?? responseScore?.revisionA ?? current.revisionA + (sideName === "teamA" ? 1 : 0)),
-        revisionB: Number(response?.scoreRevisionB ?? responseScore?.revisionB ?? current.revisionB + (sideName === "teamB" ? 1 : 0)),
-      }));
-    } catch (error) {
-      setScoreError(String(error?.message || error?.code || "점수를 갱신하지 못했습니다."));
-    } finally {
-      setPendingSide("");
-    }
-  };
-
-  const submitScore = async (event) => {
-    event.preventDefault();
-    if (!submissionMode || pendingSide) return;
-    const scoreA = Number(score.scoreA);
-    const scoreB = Number(score.scoreB);
-    if (
-      !Number.isInteger(scoreA) || scoreA < 0 || scoreA > 999
-      || !Number.isInteger(scoreB) || scoreB < 0 || scoreB > 999
-    ) {
-      setScoreError("양 팀 점수를 0~999 정수로 입력해 주세요.");
-      return;
-    }
-    setPendingSide("submit");
-    setScoreError("");
-    try {
-      const response = await onSubmitScore({ scoreA, scoreB, playerStats: {} });
-      if (response?.ok === false) throw new Error(response.error || response.message || "score_submit_failed");
-    } catch (error) {
-      setScoreError(String(error?.message || error?.code || "점수를 저장하지 못했습니다."));
-    } finally {
-      setPendingSide("");
-    }
-  };
-
-  return (
-    <form className="ui-match-score-control-panel" aria-label={label} onSubmit={submitScore}>
-      <header>
-        <div>
-          <strong>{label}</strong>
-          <span>{submissionMode ? "점수 입력 완료 후 참가자에게 확인 알림을 보냅니다." : "팀 점수만 저장합니다."}</span>
-        </div>
-        <Badge tone="neutral">개인 스탯 미기록</Badge>
-      </header>
-      <div className="ui-match-score-control-grid">
-        {[
-          { sideName: "teamA", name: match.teamA?.name ?? "A", value: score.scoreA },
-          { sideName: "teamB", name: match.teamB?.name ?? "B", value: score.scoreB },
-        ].map((side) => (
-          <div key={side.sideName} className="ui-match-score-control-side">
-            <span>{side.name}</span>
-            {submissionMode && editableScoreSides.includes(side.sideName) ? (
-              <input
-                type="number"
-                min="0"
-                max="999"
-                inputMode="numeric"
-                aria-label={`${side.name} 점수`}
-                disabled={Boolean(pendingSide)}
-                value={side.value}
-                onChange={(event) => setScore((current) => ({
-                  ...current,
-                  [side.sideName === "teamA" ? "scoreA" : "scoreB"]: event.target.value,
-                }))}
-              />
-            ) : <strong>{side.value}</strong>}
-            {!submissionMode && editableScoreSides.includes(side.sideName) ? (
-              <div className="ui-match-clock-score-actions" aria-label={`${side.name} 점수 조정`}>
-                {[-1, 1, 2, 3].map((delta) => (
-                  <Button
-                    key={delta}
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    disabled={Boolean(pendingSide)}
-                    onClick={() => void incrementScore(side.sideName, delta)}
-                  >
-                    {delta > 0 ? `+${delta}` : delta}
-                  </Button>
-                ))}
-              </div>
-            ) : !editableScoreSides.includes(side.sideName) ? <small>읽기 전용</small> : null}
-          </div>
-        ))}
-      </div>
-      {submissionMode ? (
-        <Button type="submit" disabled={Boolean(pendingSide)}>
-          {pendingSide === "submit" ? "저장 중" : "점수 입력 완료"}
-        </Button>
-      ) : null}
-      {scoreError ? <p className="ui-match-score-control-error">{scoreError}</p> : null}
-    </form>
-  );
-}
+export { default as MatchScoreControls } from "./MatchScoreControls.jsx";
 
 export default function MatchClockPanel({
   match,
@@ -425,7 +121,7 @@ export default function MatchClockPanel({
       applyResponse(response);
       return true;
     } catch (actionError) {
-      setError(getErrorLabel(actionError));
+      setError(getMatchClockErrorLabel(actionError));
       return false;
     } finally {
       setPendingAction("");
@@ -484,7 +180,7 @@ export default function MatchClockPanel({
           applyResponse(response);
         }
       } catch (loadError) {
-        if (!cancelled) setError(getErrorLabel(loadError));
+        if (!cancelled) setError(getMatchClockErrorLabel(loadError));
       }
     };
     void load();
@@ -632,10 +328,10 @@ export default function MatchClockPanel({
       soundedRef.current.break = false;
       if (liveClock.periodRemainingMs <= 0 && !soundedRef.current.period) {
         soundedRef.current.period = true;
-        void playBuzzer("period", volume / 100);
+        void playMatchClockBuzzer("period", volume / 100);
       } else if (liveClock.shotClockSeconds > 0 && liveClock.shotRemainingMs <= 0 && !soundedRef.current.shot) {
         soundedRef.current.shot = true;
-        void playBuzzer("shot", volume / 100);
+        void playMatchClockBuzzer("shot", volume / 100);
       }
       if (liveClock.shotRemainingMs > 0) soundedRef.current.shot = false;
       return;
@@ -644,7 +340,7 @@ export default function MatchClockPanel({
     soundedRef.current.shot = false;
     if (isBreak && breakLimitMs > 0 && breakElapsedMs >= breakLimitMs && !soundedRef.current.break) {
       soundedRef.current.break = true;
-      void playBuzzer("warning", volume / 100);
+      void playMatchClockBuzzer("warning", volume / 100);
     } else if (!isBreak) {
       soundedRef.current.break = false;
     }
@@ -756,7 +452,7 @@ export default function MatchClockPanel({
 
   const testBuzzer = async () => {
     setDeviceNotice("");
-    const played = await playBuzzer("period", volume / 100);
+    const played = await playMatchClockBuzzer("period", volume / 100);
     if (!played) {
       setDeviceNotice(volume <= 0
         ? "부저 음량이 0%입니다."
@@ -799,7 +495,7 @@ export default function MatchClockPanel({
         && !soundedRef.current.period
       ) {
         soundedRef.current.period = true;
-        void playBuzzer("period", volume / 100);
+        void playMatchClockBuzzer("period", volume / 100);
       }
     });
   };
@@ -959,30 +655,25 @@ export default function MatchClockPanel({
 
           {directScoreControlsEnabled && !isEnded && clockEditableScoreSides.length ? (
             <div className="ui-match-clock-score-controls" aria-label="점수 조정">
-              {clockEditableScoreSides.includes("teamA") ? (
-                <div className="ui-match-clock-score-control-side ui-match-clock-score-control-side-a">
-                  <strong>A 점수 {score.a}</strong>
-                  <div className="ui-match-clock-score-actions" aria-label="A 점수 조정">
+              {[
+                clockEditableScoreSides.includes("teamA")
+                  ? { side: "teamA", label: "A", value: score.a }
+                  : null,
+                clockEditableScoreSides.includes("teamB")
+                  ? { side: "teamB", label: "B", value: score.b }
+                  : null,
+              ].filter(Boolean).map(({ side, label, value }) => (
+                <div key={side} className={`ui-match-clock-score-control-side ui-match-clock-score-control-side-${label.toLowerCase()}`}>
+                  <strong>{label} 점수 {value}</strong>
+                  <div className="ui-match-clock-score-actions" aria-label={`${label} 점수 조정`}>
                     {[-1, 1, 2, 3].map((delta) => (
-                      <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamA", delta)}>
+                      <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore(side, delta)}>
                         {delta > 0 ? `+${delta}` : delta}
                       </Button>
                     ))}
                   </div>
                 </div>
-              ) : null}
-              {clockEditableScoreSides.includes("teamB") ? (
-                <div className="ui-match-clock-score-control-side ui-match-clock-score-control-side-b">
-                  <strong>B 점수 {score.b}</strong>
-                  <div className="ui-match-clock-score-actions" aria-label="B 점수 조정">
-                    {[-1, 1, 2, 3].map((delta) => (
-                      <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore("teamB", delta)}>
-                        {delta > 0 ? `+${delta}` : delta}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+              ))}
             </div>
           ) : null}
 

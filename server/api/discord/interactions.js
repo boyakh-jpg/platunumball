@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { asArray } from "../../../shared/lib/arrayValues.js";
-import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
 import { loadAuthoritativeState } from "../_authoritativeState.js";
 import {
   DISCORD_INVITE_ACTION_PREFIX as INVITE_PREFIX,
@@ -198,11 +198,7 @@ async function handleInviteAction(interaction) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const rawBody = await readRawBody(request);

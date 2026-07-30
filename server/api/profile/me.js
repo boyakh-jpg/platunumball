@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, mergeById, readJsonBody, sendJson, toClientTeamWithMembers as toClientTeam, uniqueValues as unique } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, mergeById, readJsonBody, sendJson, toClientTeamWithMembers as toClientTeam, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import {
   normalizeState,
@@ -294,11 +294,7 @@ export async function loadCurrentProfileState(context, options = {}) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const startedAt = Date.now();

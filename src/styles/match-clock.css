@@ -137,7 +137,7 @@
   align-items: stretch;
   color: var(--rb-text);
   background: var(--scoreboard);
-  border: 2px solid var(--rb-line-strong);
+  border: var(--ui-stroke-width-strong) solid var(--rb-line-strong);
   border-radius: var(--ui-panel-radius);
   min-height: var(--match-clock-display-height, auto);
   overflow: hidden;
@@ -169,7 +169,7 @@
   padding: 12px;
   color: black;
   background: white;
-  border: 2px solid var(--rb-line-strong);
+  border: var(--ui-stroke-width-strong) solid var(--rb-line-strong);
   border-radius: var(--ui-panel-radius);
   overflow: hidden;
 }
@@ -352,7 +352,7 @@
   gap: clamp(6px, 0.8cqi, 12px);
   color: var(--rb-text);
   background: var(--scoreboard-2);
-  border-inline: 1px solid var(--rb-line);
+  border-inline: var(--ui-stroke-width) solid var(--rb-line);
 }
 
 .ui-match-clock-main-time-label {
@@ -400,7 +400,7 @@
   font: inherit;
   cursor: pointer;
   background: color-mix(in srgb, var(--rb-orange) 20%, var(--scoreboard));
-  border: 1px solid color-mix(in srgb, var(--rb-orange) 76%, var(--rb-line));
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--rb-orange) 76%, var(--rb-line));
   border-radius: var(--ui-panel-radius);
   box-shadow: 0 12px 24px color-mix(in srgb, var(--rb-orange) 16%, transparent);
   touch-action: manipulation;
@@ -515,7 +515,6 @@
 }
 
 .ui-match-clock-device-tools {
-  display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -826,7 +825,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   background: var(--ui-control-bg);
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
 }
 
@@ -843,7 +842,7 @@
   white-space: nowrap;
   pointer-events: none;
   background: var(--ui-control-bg);
-  border: 1px solid var(--ui-control-border);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
 }
 

@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
 import { assertCourtRequestAccess } from "../../lib/courtRequestAccess.js";
 import { createFixedWindowRateLimiter } from "../../lib/fixedWindowRateLimit.js";
@@ -135,11 +135,7 @@ async function getNearbyCourts(context, input) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const input = getNearbyInput(await readJsonBody(request));

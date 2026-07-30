@@ -121,11 +121,13 @@ test("directory loader does not call the legacy broad repository loader", async 
 });
 
 test("court map loads bounded active coordinate rows for the current district", async () => {
-  const [searchSource, createSource, pickerSource] = await Promise.all([
+  const [searchSource, createControllerSource, createCourtSectionSource, pickerSource] = await Promise.all([
     readFile(new URL("../search.js", import.meta.url), "utf8"),
-    readFile(new URL("../../../src/pages/CreateMatch.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../../../src/components/match/useCreateMatchBaseController.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../src/components/match/CreateMatchCourtRosterSection.jsx", import.meta.url), "utf8"),
     readFile(new URL("../../../src/components/court/CourtMapPicker.jsx", import.meta.url), "utf8"),
   ]);
+  const createSource = `${createControllerSource}\n${createCourtSectionSource}`;
   assert.match(searchSource, /courtMapSearch \? COURT_MAP_SEARCH_LIMIT : 25/);
   assert.match(searchSource, /request\.not\("lat", "is", null\)\.not\("lng", "is", null\)/);
   assert.match(createSource, /wizardStep !== 4 && !courtMapOpen/);
@@ -157,9 +159,31 @@ test("court region matching falls back to address fields when labels are incompl
 });
 
 test("admin route bootstraps profile only and owns a separate state cache", async () => {
-  const hookSource = await readFile(new URL("../../../src/hooks/useAppData.js", import.meta.url), "utf8");
-  const adminSource = await readFile(new URL("../../../src/pages/Admin.jsx", import.meta.url), "utf8");
-  const settingsSource = await readFile(new URL("../../../src/pages/Settings.jsx", import.meta.url), "utf8");
+  const hookSource = (await Promise.all([
+    "bootstrap.js",
+    "remoteMerge.js",
+    "useAppDataOrchestrator.js",
+    "orchestrator/runtime.js",
+    "orchestrator/loaders.js",
+    "orchestrator/admin.js",
+    "actions/settingsActions.js",
+  ].map((relativePath) => (
+    readFile(new URL(`../../../src/hooks/appData/${relativePath}`, import.meta.url), "utf8")
+  )))).join("\n");
+  const adminSource = (await Promise.all([
+    "Admin.jsx",
+    "AdminPageView.jsx",
+    "useAdminPageController.jsx",
+  ].map((relativePath) => (
+    readFile(new URL(`../../../src/pages/${relativePath}`, import.meta.url), "utf8")
+  )))).join("\n");
+  const settingsSource = (await Promise.all([
+    "Settings.jsx",
+    "useSettingsPageController.jsx",
+    "useSettingsReportController.jsx",
+  ].map((relativePath) => (
+    readFile(new URL(`../../../src/pages/${relativePath}`, import.meta.url), "utf8")
+  )))).join("\n");
   assert.match(hookSource, /pathname === "\/app\/admin"[\s\S]{0,160}profileOnly: true/);
   assert.match(hookSource, /const \[adminState, setAdminState\] = useState\(null\)/);
   assert.match(hookSource, /if \(!state \|\| options\.append !== true\) return remoteState/);

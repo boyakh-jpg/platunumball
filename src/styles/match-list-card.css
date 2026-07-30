@@ -56,7 +56,7 @@
   justify-content: center;
   min-height: 22px;
   max-width: 100%;
-  border: 1px solid color-mix(in srgb, var(--match-list-badge-color) 30%, transparent);
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--match-list-badge-color) 30%, transparent);
   border-radius: 999px;
   background: color-mix(in srgb, var(--match-list-badge-color) 14%, transparent);
   color: var(--match-list-badge-color);

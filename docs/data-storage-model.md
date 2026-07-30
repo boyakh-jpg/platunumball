@@ -660,3 +660,28 @@ Remaining:
 4. 운영 서버는 `match_record`의 입력 시작시각을 법정 시작시각으로 확정하고 종료시각을 30분 뒤로 계산한다. seed/import 경로는 입력된 `startedAt`·`endedAt`을 그대로 보존한다.
 5. 운영 서버는 `createdBy`, canonical `rules.playedPlayerIds`·`rules.mmrExcludedPlayerIds`, actor/roster/stat 검증을 적용한다. seed/import 경로의 최초 팀원 actor fallback과 원본 rules snapshot은 호환 경계로 유지하며 억지로 통합하지 않는다.
 6. `recorded_by`, `record_source`, `turnovers`를 포함한 개인 stat row의 순수 필드 투영은 두 경로가 동일하지만, 해당 기록자가 실제로 쓸 수 있는지는 운영 서버와 DB 권한 검증이 최종 판단한다.
+
+## 2026-07-30 프런트 데이터 계층 물리 경계
+
+1. `src/data/repository.js`는 기존 129개 공개 export를 유지하는 호환 배럴이다. 구현은 `src/data/repository/` 아래 원격 조회·직렬화, 로컬 저장소, 수명주기, 경기, 모집, 대회, 구장, 신고, 설정, 계정 도메인으로 분리한다. 경기·모집·원격 상태는 다시 결과·명단·참여·초대·조회·저장 같은 하위 책임 모듈을 사용한다.
+2. 운영 mutation 권위는 계속 서버 action과 DB RPC에 있다. `repository/`의 reducer는 로컬·demo 호환 경계이며 이번 분리는 저장 형식, 권한, 상태 전이, DB schema를 바꾸지 않는다.
+3. `src/hooks/useAppData.js`는 `mergeMatchesById`, `mergeRecruitingPostsById`, `useAppData`만 노출하는 호환 배럴이다.
+4. `src/hooks/appData/`는 record archive 상태, 서버 operation 판독, 원격 병합, 원격 메타데이터, 서버 상태 정규화, 초기 bootstrap/cache, mutation action 조립, React query 오케스트레이션을 각각 소유한다. action은 조회·경기·설정·프로필·모집·팀 단위 빌더, 오케스트레이터는 runtime·관리자·서버 action·loader 훅으로 나눈다.
+5. `server/lib/repositoryAdapter.js`만 서버에서 클라이언트 repository 호환 배럴을 읽는다. 브라우저 데이터 모듈은 `server/`를 역참조하지 않으며 두 모듈 그래프는 순환 의존을 허용하지 않는다.
+6. `scripts/data-layer-module-boundary.test.mjs`가 호환 export 수, 배럴 크기, 재귀 책임 모듈 목록, 모든 구현 파일 900줄 상한, 순환 의존, 브라우저→서버 역참조, 서버 adapter 경계를 고정한다.
+
+## 2026-07-30 경기 공용 도메인 물리 경계
+
+1. `shared/lib/matchUtils.js`는 기존 공개 API 144개만 유지하는 호환 배럴이다.
+2. 참가자 투영, 명단, 일정 시간, 방 단계, 권한, 결과 입력, 사후 기록 검증, 이의 요청, 판정 상태를 `shared/lib/match*.js` 책임 모듈로 분리한다.
+3. 책임 모듈은 `matchUtils.js`를 역참조하지 않는다. 내부 구현은 소유 모듈을 직접 import하고 화면·서버의 기존 import는 호환 배럴을 계속 사용할 수 있다.
+4. `scripts/shared-match-module-boundary.test.mjs`가 공개 export 수, 배럴 크기, 책임 모듈 최대 크기와 순환 의존을 감시한다.
+
+## 2026-07-30 서버 목록·모집 저장 물리 경계
+
+1. `server/api/recruiting/sync-post.js`, `server/api/recruiting/list.js`, `server/api/matches/list.js`는 기존 공개 export와 기본 handler만 유지하는 호환 진입점이다.
+2. 모집 저장은 공통 오류, row projection, 정책 검증, SQL action, 응답 timing, 채팅, snapshot 저장, handler 모듈로 분리한다.
+3. 모집 목록은 projection, bounded query, 응답 loader, handler 모듈로 분리한다. 경기 목록은 여기에 feed 보강 모듈을 별도로 둔다.
+4. 쿼리 순서, 권한 판정, fallback 조건, 응답 shape는 진입점 분리 전과 동일하다. DB와 RPC가 계속 권위 원본이다.
+5. 브라우저 코드는 `server/`를 import하지 않고, 서버 모듈은 `src/`를 import하지 않는다. 공통 도메인은 `shared/`만 사용한다.
+6. `scripts/server-list-module-boundary.test.mjs`가 공개 export, 얇은 진입점, 모듈 크기, 파일 목록, 순환 참조, 브라우저·서버 역참조를 고정한다.

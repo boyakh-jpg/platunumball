@@ -1,0 +1,367 @@
+
+
+/* 2026-07-14 shared page rhythm and rail breakpoints. */
+.profile-side-grid,
+.settings-page .page-stack {
+  gap: var(--page-section-gap);
+}
+.settings-page .section-card {
+  padding: var(--card-padding);
+}
+@media (max-width: 1180px) {
+  .content-grid:not(.home-dashboard-grid),
+  .team-overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .team-create-panel {
+    position: static;
+  }
+}
+@media (max-width: 1079px) {
+  .app-main > .page-stack,
+  .content-grid,
+  .team-overview-grid,
+  .profile-side-grid,
+  .settings-page .page-stack {
+    gap: var(--page-section-gap-mobile);
+  }
+
+  .settings-page .content-grid {
+    gap: var(--page-section-gap-mobile);
+  }
+}
+@media (max-width: 720px) {
+  .settings-page .section-card {
+    padding: 14px;
+  }
+}
+@container (max-width: 999px) {
+  .app-main > .rank-home {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
+  .rank-home > .home-search-panel,
+  .rank-home > .home-left-rail,
+  .rank-home > .home-right-rail,
+  .rank-home .home-left-rail > .home-dashboard-grid {
+    grid-area: auto;
+  }
+
+  .rank-home > .home-left-rail,
+  .rank-home > .home-right-rail {
+    display: contents;
+  }
+
+  .rank-home .rank-summary-grid {
+    order: 1;
+  }
+
+  .rank-home .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home .home-top-rail {
+    order: 3;
+  }
+
+  .rank-home .home-left-rail > .home-dashboard-grid {
+    display: block;
+    order: 4;
+  }
+
+  .rank-home .home-side-stack {
+    order: 5;
+  }
+}
+@media (max-width: 390px) {
+  .profile-rating-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-rating-primary {
+    grid-column: 1 / -1;
+  }
+
+}
+html[data-theme] .app-main :is(
+  .page-header,
+  .landing-hero,
+  .match-hero,
+  .team-hub-hero,
+  .profile-hero,
+  .team-detail-hero,
+  .om-match-hero,
+  .arena-recruit-hero,
+  .gm-room-hero
+) p:not(.eyebrow),
+html[data-theme="light"] .app-main :is(
+  .page-header,
+  .landing-hero,
+  .match-hero,
+  .team-hub-hero,
+  .profile-hero,
+  .team-detail-hero,
+  .om-match-hero,
+  .arena-recruit-hero,
+  .gm-room-hero
+) p:not(.eyebrow) {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+html[data-theme] .app-main :is(
+  .page-header,
+  .landing-hero,
+  .match-hero,
+  .team-hub-hero,
+  .profile-hero,
+  .team-detail-hero,
+  .om-match-hero,
+  .arena-recruit-hero,
+  .gm-room-hero,
+  .home-rank-board-head
+) .eyebrow,
+html[data-theme] .app-main :is(.om-match-copy, .arena-hero-copy) > :is(.om-kicker, .arena-kicker) {
+  color: var(--rb-orange-2);
+  text-shadow: var(--hero-copy-shadow);
+}
+/* Home hero keeps the next-match board below the rank copy on the left. */
+.rank-home .rank-summary-grid .home-rank-board-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: end;
+  align-items: end;
+  justify-items: start;
+  gap: var(--space-10);
+}
+.rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {
+  min-width: 0;
+}
+.home-hero-board {
+  display: grid;
+  width: min(100%, 720px);
+  max-width: 720px;
+  min-width: 0;
+  align-content: start;
+  justify-self: start;
+  overflow: hidden;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+.home-hero-next {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  padding: 16px 42px 15px 16px;
+  color: var(--text);
+  text-decoration: none;
+}
+.home-hero-next > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--rb-orange);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+.home-hero-next > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--sports-display-font);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  line-height: 1.05;
+}
+.home-hero-next > em {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.home-hero-next > svg:last-child {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: var(--muted);
+}
+.home-hero-next:hover > svg:last-child,
+.home-hero-next:focus-visible > svg:last-child {
+  color: var(--rb-orange);
+}
+.home-hero-next:focus-visible {
+  outline: 2px solid var(--rb-orange);
+  outline-offset: -2px;
+  box-shadow: var(--focus-ring);
+}
+.home-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: var(--ui-stroke-width) solid var(--ui-card-border);
+}
+.home-hero-stats > span {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 3px;
+  padding: 11px 7px 12px;
+  text-align: center;
+}
+.home-hero-stats > span + span {
+  border-left: var(--ui-stroke-width) solid var(--ui-card-border);
+}
+.home-hero-stats strong {
+  color: var(--text);
+  font-family: var(--sports-display-font);
+  font-size: 1.18rem;
+  line-height: 1;
+}
+.home-hero-stats em {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+html[data-theme] .app-main :is(
+  .profile-hero .badge-row .ui-badge,
+  .court-detail-tags .ui-badge,
+  .tournament-hero-badges .ui-badge,
+  .gm-room-topline .ui-badge,
+  .gm-team-panel,
+  .gm-score-core,
+  .gm-reserve-panel,
+  .gm-room-actions > div
+) {
+  border-color: transparent;
+  background: var(--ui-liquid-glass-bg);
+  box-shadow: var(--ui-liquid-glass-shadow);
+  -webkit-backdrop-filter: var(--ui-liquid-glass-filter);
+  backdrop-filter: var(--ui-liquid-glass-filter);
+}
+html[data-theme] .app-main :is(.home-hero-next > span, .team-hub-board-head > span) {
+  color: var(--rb-orange-2);
+}
+html[data-theme] .app-main :is(
+  .home-hero-next > strong,
+  .home-hero-stats strong,
+  .om-match-stats strong,
+  .arena-hero-stats strong
+) {
+  color: var(--hero-title-color);
+}
+html[data-theme] .app-main .team-hub-board strong {
+  color: var(--rb-yellow);
+}
+html[data-theme] .app-main :is(
+  .home-hero-next > em,
+  .home-hero-stats em,
+  .team-hub-board em,
+  .home-hero-next > svg:last-child,
+  .om-match-stats > span,
+  .arena-hero-stats > span,
+  .gm-reserve-panel,
+  .gm-room-actions > div
+) {
+  color: var(--hero-copy-color);
+}
+html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--ui-hero-status-width));
+  gap: var(--space-11);
+}
+html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+  display: grid;
+  width: min(100%, var(--ui-hero-status-width));
+  align-self: end;
+  justify-self: end;
+  grid-template-rows: minmax(var(--ui-hero-metric-min-height), auto) auto;
+  gap: var(--space-6);
+  padding: var(--space-8);
+}
+html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+html[data-theme] .app-main :is(.om-match-stats, .arena-hero-stats) > span {
+  min-height: var(--ui-hero-metric-min-height);
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-1);
+  padding: var(--space-5);
+}
+html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+html[data-theme] .app-main :is(.om-match-actions, .arena-hero-actions) > .ui-button {
+  width: 100%;
+  min-height: var(--ui-button-height);
+  height: var(--ui-button-height);
+}
+@media (max-width: 1020px) {
+  html[data-theme] .app-main :is(.om-match-hero, .arena-recruit-hero) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+    justify-self: center;
+  }
+}
+@media (max-width: 720px) {
+  html[data-theme] .app-main :is(.om-match-panel, .arena-hero-panel) {
+    width: 100%;
+  }
+}
+@media (max-width: 759px) {
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+    align-items: end;
+    gap: var(--space-8);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {
+    width: 100%;
+  }
+
+  .home-hero-board {
+    max-width: none;
+    justify-self: stretch;
+  }
+}
+@media (max-width: 390px) {
+  .home-hero-next {
+    padding-inline-start: 14px;
+  }
+
+  .home-hero-stats > span {
+    padding-inline: 4px;
+  }
+
+  .home-hero-stats em {
+    font-size: 0.66rem;
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
+    gap: var(--space-6);
+    padding: 18px;
+  }
+
+  .team-hub-board-stats > span {
+    padding-inline: var(--space-3);
+  }
+
+  .team-hub-board-stats b {
+    font-size: 0.92rem;
+  }
+
+  .team-hub-board-stats em {
+    font-size: 0.68rem;
+  }
+}

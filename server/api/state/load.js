@@ -1,4 +1,4 @@
-import { flattenIdValues as toArray, getAuthenticatedContext, readJsonBody, requireAdminContext, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
+import { allowRequestMethod, flattenIdValues as toArray, getAuthenticatedContext, readJsonBody, requireAdminContext, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadNormalizedDirectoryStateFromClient } from "../../lib/repositoryAdapter.js";
 
@@ -149,10 +149,7 @@ export function filterStateForProfile(state = {}, profileId = "", isAdmin = fals
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    sendJson(response, 405, { error: "method_not_allowed" });
-    return;
-  }
+  if (!allowRequestMethod(request, response)) return;
 
   try {
     const body = await readJsonBody(request);

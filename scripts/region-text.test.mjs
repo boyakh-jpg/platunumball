@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import {
+  RECRUITING_PAGE_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
 import { getCanonicalRegion, isSameRegion } from "../src/lib/constants.js";
 import { getProfileRegionSelection } from "../src/lib/profileSetup.js";
 import { normalizeRegionText } from "../src/lib/regionText.js";
@@ -32,7 +36,10 @@ test("사용자 기본 지역 선택은 시도·시군구·통합 지역을 한 
 
 test("모집과 팀 화면은 같은 사용자 기본 지역 helper를 사용한다", async () => {
   const [recruitingSource, teamsSource] = await Promise.all([
-    readFile(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8"),
+    readSourceGroup(
+      (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+      RECRUITING_PAGE_SOURCE_PATHS,
+    ),
     readFile(new URL("../src/pages/Teams.jsx", import.meta.url), "utf8"),
   ]);
   [recruitingSource, teamsSource].forEach((source) => {

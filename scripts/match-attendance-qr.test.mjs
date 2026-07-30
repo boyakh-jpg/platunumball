@@ -2,6 +2,15 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  APP_DATA_ACTION_SOURCE_PATHS,
+  MATCHES_PAGE_SOURCE_PATHS,
+  MATCH_ROOM_SOURCE_PATHS,
+  MATCH_SYNC_SOURCE_PATHS,
+  REPOSITORY_RECRUITING_SOURCE_PATHS,
+  RECRUITING_PAGE_SOURCE_PATHS,
+  readSourceGroup,
+} from "./management-source-groups.mjs";
+import {
   getStartStatus,
   getRecommendedSideSize,
   isAttendanceCheckinOpen,
@@ -566,8 +575,8 @@ test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", 
   const panelSource = await readSource("src/components/match/MatchClockPanel.jsx");
   const clockApiSource = await readSource("server/api/matches/clock.js");
   const authoritativeStateSource = await readSource("server/api/_authoritativeState.js");
-  const recruitingSource = await readSource("src/pages/Recruiting.jsx");
-  const matchRoomSource = await readSource("src/pages/MatchRoom.jsx");
+  const recruitingSource = await readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS);
+  const matchRoomSource = await readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS);
   const disputeQueueSource = await readSource("src/components/match/MatchDisputeQueue.jsx");
   assert.match(panelSource, /window\.setInterval\(load, 3000\)/u);
   assert.match(panelSource, /점수 3초 자동 갱신/u);
@@ -591,6 +600,7 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
     clockApiSource,
     syncMatchSource,
     recruitingSource,
+    roomManagementSource,
     matchesSource,
     clockStyles,
     repositorySource,
@@ -603,16 +613,17 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
   ] = await Promise.all([
     readSource("src/components/match/MatchClockPanel.jsx"),
     readSource("server/api/matches/clock.js"),
-    readSource("server/api/matches/sync-match.js"),
-    readSource("src/pages/Recruiting.jsx"),
-    readSource("src/pages/Matches.jsx"),
+    readSourceGroup(readSource, MATCH_SYNC_SOURCE_PATHS),
+    readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS),
+    readSource("src/components/recruiting/RoomManagementPanels.jsx"),
+    readSourceGroup(readSource, MATCHES_PAGE_SOURCE_PATHS),
     readSource("src/styles/match-clock.css"),
-    readSource("src/data/repository.js"),
-    readSource("server/api/recruiting/sync-post.js"),
+    readSourceGroup(readSource, REPOSITORY_RECRUITING_SOURCE_PATHS),
+    readSource("server/api/recruiting/_syncPostActions.js"),
     readSource("supabase/migrations/20260728123000_block_team_room_party_detach.sql"),
-    readSource("src/hooks/useAppData.js"),
+    readSourceGroup(readSource, APP_DATA_ACTION_SOURCE_PATHS),
     readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql"),
-    readSource("server/api/matches/list.js"),
+    readSource("server/api/matches/_listProjection.js"),
     readSource("server/api/_authoritativeState.js"),
   ]);
 
@@ -628,8 +639,8 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
   assert.match(panelSource, /getClockControllerLabel/u);
   assert.match(clockStyles, /\.ui-match-clock-display-grid-with-attendance\s*\{[^}]*grid-template-columns:\s*minmax\(144px, 0\.28fr\) minmax\(0, 1\.44fr\) minmax\(144px, 0\.28fr\);/u);
   assert.match(recruitingSource, /window\.setInterval\(refreshAttendance, 3000\)/u);
-  assert.match(recruitingSource, /setPendingKick\(\{[\s\S]*?playerId,[\s\S]*?playerName/u);
-  assert.doesNotMatch(recruitingSource, /playerId:\s*partyEntry \? playerId : entry\.playerId/u);
+  assert.match(roomManagementSource, /setPendingKick\(\{[\s\S]*?playerId,[\s\S]*?playerName/u);
+  assert.doesNotMatch(roomManagementSource, /playerId:\s*partyEntry \? playerId : entry\.playerId/u);
   assert.doesNotMatch(recruitingSource, /자동 기록자|기록 후보/u);
   assert.doesNotMatch(recruitingSource, /<Badge[^>]*>본인 교체<\/Badge>/u);
   assert.match(matchesSource, /function AttendanceScanResultView/u);
@@ -686,7 +697,7 @@ test("일정 목록 카드는 이미 연 경기방의 출석 규칙과 상세 �
 
 test("공용 API 디스패처가 QR 출석 핸들러를 노출한다", async () => {
   const apiIndex = await readSource("api/index.js");
-  const matchListApi = await readSource("server/api/matches/list.js");
+  const matchListApi = await readSource("server/api/matches/_listProjection.js");
   assert.match(apiIndex, /import matchAttendanceQr from "\.\.\/server\/api\/matches\/attendance-qr\.js";/u);
   assert.match(apiIndex, /\["\/matches\/attendance-qr", route\(matchAttendanceQr, \["POST"\], "user"\)\]/u);
   assert.match(matchListApi, /matchListOnly: true/u);
@@ -709,9 +720,9 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const liveAuthoritySql = await readSource("supabase/migrations/20260728143000_referee_live_match_authority.sql");
   const scoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727144000_allow_score_only_postgame_roster.sql");
   const enforcedScoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727145000_enforce_score_only_postgame_roster.sql");
-  const syncMatchSource = await readSource("server/api/matches/sync-match.js");
+  const syncMatchSource = await readSourceGroup(readSource, MATCH_SYNC_SOURCE_PATHS);
   const attendanceApiSource = await readSource("server/api/matches/attendance-qr.js");
-  const recruitingSource = await readSource("src/pages/Recruiting.jsx");
+  const recruitingSource = await readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS);
   assert.match(unifiedQrStartSql, /interval '20 minutes'/u);
   assert.match(unifiedQrStartSql, /now_at < scheduled_at_kst[\s\S]*missing_count > 0/u);
   assert.match(unifiedQrStartSql, /match_attendance_entries[\s\S]*coalesce\(entry\.status, 'pending'\) not in \('on_time', 'late'\)/u);
@@ -812,7 +823,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
 });
 
 test("local/demo 경기 방장 권한은 방장 식별자가 비어 있으면 허용하지 않는다", async () => {
-  const repositorySource = await readSource("src/data/repository.js");
+  const repositorySource = await readSource("src/data/repository/matchAccess.js");
   const guardStart = repositorySource.indexOf("function currentUserIsMatchHost");
   const guardEnd = repositorySource.indexOf("function currentUserIsEligibleMatchReferee", guardStart);
   const hostGuardSource = repositorySource.slice(guardStart, guardEnd);

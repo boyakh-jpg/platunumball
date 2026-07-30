@@ -146,13 +146,7 @@ export function fromRemoteApprovedCourt(row = {}) {
     hiddenAt: row.hidden_at ?? null,
     hiddenBy: row.hidden_by ?? null,
     hiddenReason: row.hidden_reason ?? null,
-    rawRating: row.raw_rating ?? null,
-    adjustedRating: row.adjusted_rating ?? null,
-    reviewCount: Number(row.review_count ?? 0),
-    completedMatchCount: Number(row.completed_match_count ?? 0),
-    recommendationScore: row.recommendation_score ?? null,
-    recentReviews: row.recent_reviews ?? [],
-    metricsUpdatedAt: row.metrics_updated_at ?? null,
+    ...projectRemoteCourtMetrics(row),
     favorite: false,
     approvedAt: row.approved_at ?? null,
     createdAt: row.created_at ?? null,
@@ -160,10 +154,8 @@ export function fromRemoteApprovedCourt(row = {}) {
   };
 }
 
-export function fromRemoteCourtMetric(row = {}) {
+function projectRemoteCourtMetrics(row = {}) {
   return {
-    id: row.id,
-    name: row.name,
     rawRating: row.raw_rating ?? null,
     adjustedRating: row.adjusted_rating ?? null,
     reviewCount: Number(row.review_count ?? 0),
@@ -171,6 +163,14 @@ export function fromRemoteCourtMetric(row = {}) {
     recommendationScore: row.recommendation_score ?? null,
     recentReviews: row.recent_reviews ?? [],
     metricsUpdatedAt: row.metrics_updated_at ?? null,
+  };
+}
+
+export function fromRemoteCourtMetric(row = {}) {
+  return {
+    id: row.id,
+    name: row.name,
+    ...projectRemoteCourtMetrics(row),
   };
 }
 
