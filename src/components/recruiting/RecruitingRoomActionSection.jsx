@@ -22,12 +22,12 @@ export function RecruitingRoomActionSection({ context }) {
     sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
     teamOnlyRoom, teamRoomHasJoinableSide, updateJoinDraft, userById,
   } = context;
-
   return (
     <>
 <div className="arena-join-panel">
                 {matchRoom ? (
-                  <div className="arena-owner-panel">
+                  sourceMatchIsRecordRoom && sourceMatch?.status === "confirmed" ? null : (
+                    <div className="arena-owner-panel">
                     <strong>{sourceMatchAction.label}</strong>
                     <span>{sourceMatchAction.detail}</span>
                     {cancellationReasonText ? (
@@ -204,7 +204,8 @@ export function RecruitingRoomActionSection({ context }) {
                         개인 기록 삭제
                       </Button>
                     ) : null}
-                  </div>
+                    </div>
+                  )
                 ) : recruitingRoomTerminalStatus ? (
                   <div className="arena-owner-panel">
                     <strong>{recruitingRoomTerminalStatus.label}</strong>

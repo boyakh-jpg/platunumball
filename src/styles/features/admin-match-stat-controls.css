@@ -403,51 +403,61 @@
   gap: var(--space-4);
 }
 
-.approval-voter-list button {
+.approval-voter-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
+  width: 100%;
   align-items: center;
-  gap: 9px;
-  border: var(--ui-button-border-width) solid var(--ui-button-border);
-  border-radius: var(--ui-button-radius);
-  background: var(--ui-button-bg);
+  gap: var(--ui-profile-identity-gap);
+  border: 0;
+  background: transparent;
   color: var(--text);
-  cursor: pointer;
-  min-height: 44px;
-  padding: 8px;
+  min-height: var(--ui-button-height);
+  padding: var(--space-4);
   text-align: left;
 }
 
-.approval-voter-list button.approved {
-  border-color: var(--ui-button-border);
-  background: rgba(88, 210, 192, 0.11);
+.approval-voter-row + .approval-voter-row {
+  border-block-start: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
 }
 
-.approval-voter-list button:disabled {
-  cursor: default;
-  opacity: 0.72;
+.approval-voter-row.is-actionable {
+  border-radius: var(--ui-button-radius);
+  cursor: pointer;
 }
 
-.approval-voter-list em {
+.approval-voter-row.is-actionable:hover {
+  background: var(--ui-button-bg);
+}
+
+.approval-voter-row.approved em {
+  color: var(--green);
+}
+
+.approval-voter-row > strong {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-body);
+  line-height: 1.35;
+}
+
+.approval-voter-row em {
   color: var(--gold);
-  font-size: 0.72rem;
+  font-size: var(--font-size-caption);
   font-style: normal;
-  font-weight: 950;
+  font-weight: var(--font-weight-control);
 }
 
 .approval-guard-note {
   display: grid;
   gap: var(--space-2);
-  margin-top: 12px;
-  border: var(--ui-card-border-width) solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  background: rgba(255, 211, 108, 0.075);
-  padding: 10px;
+  margin-top: var(--space-6);
+  background: var(--ui-badge-gold-bg);
+  padding: var(--space-5);
 }
 
 .approval-guard-note.ready {
-  border-color: rgba(70, 224, 182, 0.28);
-  background: rgba(70, 224, 182, 0.075);
+  background: var(--ui-badge-green-bg);
 }
 
 .approval-guard-note strong {
@@ -456,8 +466,8 @@
 
 .approval-guard-note span {
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 850;
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-body);
   line-height: 1.45;
 }
 

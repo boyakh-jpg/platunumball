@@ -42,6 +42,24 @@ export function getAcceptedTournamentRefereeIds(tournament = {}) {
   );
 }
 
+export function isTournamentRefereeEligible(
+  tournament = {},
+  refereeId = "",
+  users = [],
+  refereeAppointments = [],
+) {
+  if (!refereeId) return false;
+  if (Array.isArray(tournament.eligibleRefereeIds)) {
+    return tournament.eligibleRefereeIds.includes(refereeId);
+  }
+  return isEligibleReferee(
+    (users ?? []).find((user) => user.id === refereeId),
+    REFEREE_TRUST_MIN,
+    refereeAppointments,
+    tournament.endDate,
+  );
+}
+
 function getSnapshotMemberIds(tournament = {}, teamId = "") {
   const snapshot = tournament.rules?.teamRosterSnapshot?.teams?.[teamId];
   if (!snapshot || typeof snapshot !== "object") return [];
@@ -98,19 +116,22 @@ export function getTournamentRefereePoolValidation({
     ? getAcceptedTournamentRefereeIds(tournament)
     : [...new Set(tournament.refereeIds ?? [])].filter(Boolean);
   const requiredCount = getRequiredTournamentRefereeCount(getActiveTournamentTeamIds(tournament).length);
-  const userById = new Map((users ?? []).map((user) => [user.id, user]));
-  const ineligibleRefereeId = refereeIds.find((refereeId) => (
-    !isEligibleReferee(
-      userById.get(refereeId),
-      REFEREE_TRUST_MIN,
+  const eligibleRefereeIds = refereeIds.filter((refereeId) => (
+    isTournamentRefereeEligible(
+      tournament,
+      refereeId,
+      users,
       refereeAppointments,
-      tournament.endDate,
     )
   ));
-  const uncoveredPairs = getTournamentUncoveredTeamPairs(tournament, teams, refereeIds);
+  const ineligibleRefereeId = refereeIds.find((refereeId) => !eligibleRefereeIds.includes(refereeId));
+  const uncoveredPairs = getTournamentUncoveredTeamPairs(tournament, teams, eligibleRefereeIds);
   return {
-    allowed: refereeIds.length >= requiredCount && !ineligibleRefereeId && uncoveredPairs.length === 0,
+    allowed: eligibleRefereeIds.length >= requiredCount
+      && (requireAccepted || !ineligibleRefereeId)
+      && uncoveredPairs.length === 0,
     refereeIds,
+    eligibleRefereeIds,
     requiredCount,
     ineligibleRefereeId: ineligibleRefereeId ?? "",
     uncoveredPairs,

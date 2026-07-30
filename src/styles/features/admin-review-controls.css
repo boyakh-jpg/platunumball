@@ -49,9 +49,16 @@
 }
 
 .trust-star-card .muted {
-  font-size: 0.84rem;
-  font-weight: 800;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-body);
   line-height: 1.45;
+}
+
+.trust-star-summary {
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-control);
+  white-space: nowrap;
 }
 
 .trust-star-grid {
@@ -106,9 +113,9 @@
 
 .trust-star-button em {
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--font-size-caption);
   font-style: normal;
-  font-weight: 850;
+  font-weight: var(--font-weight-body);
 }
 
 .court-review-card .muted {
@@ -201,9 +208,7 @@ html[data-theme="light"] .broadcast-list span,
 html[data-theme="light"] .rating-card,
 html[data-theme="light"] .contract-grid div,
 html[data-theme="light"] .memo-box,
-html[data-theme="light"] .approval-grid > div,
 html[data-theme="light"] .stat-player-button,
-html[data-theme="light"] .approval-voter-list button,
 html[data-theme="light"] .stat-stepper-row,
 html[data-theme="light"] .settings-toggle-grid label {
   border-color: rgba(32, 56, 68, 0.14);

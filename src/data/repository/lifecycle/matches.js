@@ -12,6 +12,7 @@ import { isEligibleReferee } from "../../../lib/matchUtils.js";
 import { isPracticeEntity } from "../../../lib/practiceMode.js";
 import { isSupportedMatchMode } from "../../../lib/constants.js";
 import { isTournamentRefereeNeutral } from "../../../lib/tournamentGovernance.js";
+import { isTournamentRefereeEligible } from "../../../lib/tournamentGovernance.js";
 import { makeId } from "../../rowUtils.js";
 import { normalizeDisputeWindowMinutes } from "../../../lib/constants.js";
 import { getServerRatingValue } from "../runtime.js";
@@ -40,11 +41,11 @@ function getLocalTournamentMatchRefereeId(state, tournament, teamAId, teamBId) {
     }
   });
   return getAcceptedTournamentRefereeIds(tournament)
-    .filter((refereeId) => isEligibleReferee(
-      state.users.find((user) => user.id === refereeId),
-      REFEREE_TRUST_MIN,
+    .filter((refereeId) => isTournamentRefereeEligible(
+      tournament,
+      refereeId,
+      state.users,
       state.settings?.refereeAppointments,
-      tournament.endDate,
     ))
     .filter((refereeId) => isTournamentRefereeNeutral(tournament, refereeId, teamAId, teamBId, state.teams))
     .sort((left, right) => (

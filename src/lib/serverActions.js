@@ -109,6 +109,12 @@ export async function postServerAction(path, payload = {}, options = {}) {
   }
 
   let response = await requestServerAction(path, payload, accessToken);
+  if (response.status === 401) {
+    const refreshedAccessToken = await getSupabaseActionAccessToken({ forceRefresh: true });
+    if (refreshedAccessToken) {
+      response = await requestServerAction(path, payload, refreshedAccessToken);
+    }
+  }
 
   if (!response.ok) {
     const error = await readServerActionError(response);

@@ -43,7 +43,11 @@ function loadExternalScript(id, src) {
       script.dataset.loading = "false";
       resolve();
     }, { once: true });
-    script.addEventListener("error", () => reject(new Error("지도 기능을 불러오지 못했습니다.")), { once: true });
+    script.addEventListener("error", () => {
+      script.dataset.loading = "false";
+      script.remove();
+      reject(new Error("지도 기능을 불러오지 못했습니다."));
+    }, { once: true });
     document.head.appendChild(script);
   });
 }

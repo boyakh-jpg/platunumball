@@ -19,7 +19,7 @@
   .ui-match-clock-panel-focus .ui-match-clock-volume {
     height: 30px;
     min-height: 30px;
-    font-size: 0.66rem;
+    font-size: var(--font-size-caption);
   }
 
   .ui-match-clock-panel-focus .ui-match-clock-volume {
@@ -53,10 +53,6 @@
     font-size: clamp(2.15rem, 14vw, 3.5rem);
   }
 
-  .ui-match-shot-clock {
-    min-height: var(--match-clock-display-height, 136px);
-  }
-
   .ui-match-clock-score-actions {
     grid-template-columns: repeat(2, minmax(28px, 1fr));
   }
@@ -74,8 +70,7 @@
     padding: 6px;
   }
 
-  .ui-match-clock-panel-focus .ui-match-clock-scoreboard,
-  .ui-match-clock-panel-focus .ui-match-shot-clock {
+  .ui-match-clock-panel-focus .ui-match-clock-scoreboard {
     min-height: 0;
   }
 }

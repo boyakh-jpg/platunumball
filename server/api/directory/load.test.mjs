@@ -106,7 +106,10 @@ test("approved court reports remain visible in the scoped admin model", () => {
 });
 
 test("directory loader does not call the legacy broad repository loader", async () => {
-  const source = await readFile(new URL("./load.js", import.meta.url), "utf8");
+  const source = (await Promise.all([
+    readFile(new URL("./load.js", import.meta.url), "utf8"),
+    readFile(new URL("./loadAdminSection.js", import.meta.url), "utf8"),
+  ])).join("\n");
   assert.doesNotMatch(source, /loadNormalizedDirectoryStateFromClient/);
   assert.match(source, /\.range\(offset, offset \+ limit\)/);
   assert.match(source, /DIRECTORY_ID_BATCH_SIZE/);
@@ -121,11 +124,13 @@ test("directory loader does not call the legacy broad repository loader", async 
 });
 
 test("court map loads bounded active coordinate rows for the current district", async () => {
-  const [searchSource, createControllerSource, createCourtSectionSource, pickerSource] = await Promise.all([
+  const [searchSource, createControllerSource, createCourtSectionSource, pickerSource, serverActionsSource, naverAddressSource] = await Promise.all([
     readFile(new URL("../search.js", import.meta.url), "utf8"),
     readFile(new URL("../../../src/components/match/useCreateMatchBaseController.js", import.meta.url), "utf8"),
     readFile(new URL("../../../src/components/match/CreateMatchCourtRosterSection.jsx", import.meta.url), "utf8"),
     readFile(new URL("../../../src/components/court/CourtMapPicker.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../../../src/lib/serverActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../../../src/lib/naverAddress.js", import.meta.url), "utf8"),
   ]);
   const createSource = `${createControllerSource}\n${createCourtSectionSource}`;
   assert.match(searchSource, /courtMapSearch \? COURT_MAP_SEARCH_LIMIT : 25/);
@@ -136,12 +141,17 @@ test("court map loads bounded active coordinate rows for the current district", 
   assert.match(createSource, /query: courtMapRegion/);
   assert.match(createSource, /loadedCourtMapRegionsRef\.current\.has\(loadKey\)/);
   assert.match(createSource, /loadedCourtMapRegionsRef\.current\.delete\(`\$\{courtMapRegion\}:map`\)/);
+  assert.match(createSource, /setCourtMapReloadVersion\(\(value\) => value \+ 1\)/);
   assert.match(createSource, /REGION_TREE\.map\(\(region\)/);
   assert.match(createSource, /const regionValue = `\$\{region\.sido\} \$\{district\}`/);
   assert.match(searchSource, /courtMapSearch \? MAP_COURT_COLUMNS : COURT_COLUMNS/);
   assert.match(pickerSource, /isCourtInRegion\(court, currentRegion\)/);
   assert.match(pickerSource, /const focusCourts = selectedCoordinate \? \[selectedCourt\] : regionalCourts\.length \? regionalCourts : courts/);
   assert.match(pickerSource, /setStatus\(loading \? "loading" : loadError \? "error" : "empty"\)/);
+  assert.match(createSource, /onRetry=\{retryCourtMapDirectory\}/);
+  assert.match(pickerSource, />\s*다시 시도\s*<\/Button>/);
+  assert.match(serverActionsSource, /response\.status === 401[\s\S]*?forceRefresh: true[\s\S]*?requestServerAction/);
+  assert.match(naverAddressSource, /script\.dataset\.loading = "false";[\s\S]*?script\.remove\(\);[\s\S]*?지도 기능을 불러오지 못했습니다/);
   assert.match(pickerSource, /element\.textContent = isCluster \? String\(group\.items\.length\) : "1"/);
   assert.doesNotMatch(pickerSource, /courtNumberById/);
   assert.doesNotMatch(pickerSource, /element\.textContent = .*court\?\.name/);
@@ -162,10 +172,13 @@ test("admin route bootstraps profile only and owns a separate state cache", asyn
   const hookSource = (await Promise.all([
     "bootstrap.js",
     "remoteMerge.js",
+    "remoteMerge/state.js",
     "useAppDataOrchestrator.js",
     "orchestrator/runtime.js",
     "orchestrator/loaders.js",
+    "orchestrator/directoryLoaders.js",
     "orchestrator/admin.js",
+    "actions/recruitingActions.js",
     "actions/settingsActions.js",
   ].map((relativePath) => (
     readFile(new URL(`../../../src/hooks/appData/${relativePath}`, import.meta.url), "utf8")

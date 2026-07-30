@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { ThumbsUp } from "lucide-react";
-import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import Card from "../common/Card.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
@@ -14,7 +13,9 @@ import {
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
   isMatchTrustFeedbackOpen,
+  isMatchRecordMatch,
 } from "../../lib/matchUtils.js";
+import { getPostgameRecordVerification } from "../../lib/postgameRecordVerification.js";
 
 function getRecommendationRole(match, playerId) {
   const roles = [];
@@ -35,13 +36,21 @@ export default function MatchRecommendationPanel({ match, currentUserId, users =
   const [selectedIds, setSelectedIds] = useState(() => existingTargetIds.filter((playerId) => participantIds.includes(playerId)));
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+  const recordVerification = useMemo(
+    () => isMatchRecordMatch(match) ? getPostgameRecordVerification(match) : null,
+    [match],
+  );
 
   useEffect(() => {
     setSelectedIds(existingTargetIds.filter((playerId) => participantIds.includes(playerId)));
     setStatus("");
   }, [currentUserId, match?.id, match?.trustFeedback, participantIds]);
 
-  if (match?.status !== "confirmed" || !participantIds.includes(currentUserId)) return null;
+  if (
+    match?.status !== "confirmed"
+    || !participantIds.includes(currentUserId)
+    || (recordVerification && !recordVerification.thresholdMet)
+  ) return null;
 
   const limit = getMatchTrustFeedbackLimit(match);
   const canSubmit = isMatchTrustFeedbackOpen(match) && !saving;
@@ -78,10 +87,10 @@ export default function MatchRecommendationPanel({ match, currentUserId, users =
     <Card className={["section-card", "trust-star-card", className].filter(Boolean).join(" ")}>
       <div className="section-title-row">
         <div>
-          <p className="eyebrow">Recommendation</p>
+          <p className="eyebrow">추천</p>
           <h2>함께한 사람 추천</h2>
         </div>
-        <Badge tone={canSubmit ? "gold" : "neutral"}>{selectedIds.length}/{limit}</Badge>
+        <span className="trust-star-summary">{selectedIds.length}/{limit}</span>
       </div>
       <p className="muted">기록 확정 후 24시간 안에 함께한 사람을 추천할 수 있습니다. 선수·후보·방장·심판의 추천은 같은 신뢰 평가로 반영됩니다.</p>
       <div className="trust-star-grid">

@@ -105,11 +105,10 @@
 .tournament-referee-list,
 .tournament-match-referee-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .tournament-referee-list article,
-.tournament-match-referee-list form,
 .tournament-sanction-panel {
   border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
@@ -128,6 +127,11 @@
 .tournament-referee-list article.accepted {
   border-color: rgba(70, 224, 182, 0.24);
   background: rgba(70, 224, 182, 0.07);
+}
+
+.tournament-referee-list article.needs-replacement {
+  border-color: color-mix(in srgb, var(--rb-danger) 38%, var(--ui-card-border));
+  background: color-mix(in srgb, var(--rb-danger) 8%, var(--ui-card-bg));
 }
 
 .tournament-referee-list article > div:first-child {
@@ -152,34 +156,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.tournament-referee-actions button,
-.tournament-match-referee-list button {
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 0;
-  border-radius: var(--radius-xs);
-  background: var(--gold);
-  color: #17130a;
-  font-size: 0.76rem;
-  font-weight: 950;
-  padding: 0 12px;
-  cursor: pointer;
-}
-
-.tournament-referee-actions button.secondary {
-  background: rgba(255, 255, 255, 0.09);
-  color: var(--text);
-}
-
-.tournament-referee-actions button:disabled,
-.tournament-match-referee-list button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .tournament-referee-invite {
@@ -212,22 +188,56 @@
   font-size: 0.82rem;
 }
 
-.tournament-match-referee-list form {
+.tournament-match-referee-list {
+  gap: 0;
+}
+
+.tournament-match-referee-row {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(160px, 240px) auto;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--space-5);
+  border-block-start: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
+  background: transparent;
+  padding: var(--space-6) 0;
+}
+
+.tournament-match-referee-row:first-child {
+  border-block-start: 0;
+}
+
+.tournament-match-referee-row > strong {
+  min-width: 0;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-title);
+}
+
+.tournament-match-referee-row > span,
+.tournament-match-referee-row > em {
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  font-style: normal;
+  font-weight: var(--font-weight-body);
 }
 
 .tournament-match-referee-list select {
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
-  min-height: 38px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.06);
+  height: var(--ui-button-height-sm);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--text);
-  padding: 0 10px;
+  font: inherit;
+  font-size: var(--font-size-control);
+  font-weight: var(--font-weight-control);
+  padding: 0 var(--ui-button-padding-x-sm);
+}
+
+.tournament-match-referee-row > .tournament-match-referee-note {
+  grid-column: 2 / -1;
+  color: var(--rb-danger);
 }
 
 .tournament-schedule-list .tournament-match-open {

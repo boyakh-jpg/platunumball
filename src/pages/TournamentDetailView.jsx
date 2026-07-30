@@ -7,8 +7,6 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getUserHashtag } from "../lib/handles.js";
-import { isEligibleReferee } from "../lib/matchUtils.js";
-import { REFEREE_TRUST_MIN } from "../lib/constants.js";
 import { TOURNAMENT_SANCTION_STATUS, getTournamentSanctionLabel, isTournamentRefereeNeutral } from "../lib/tournamentGovernance.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import {
@@ -24,7 +22,7 @@ import {
 
 import { TournamentCompetitionSection } from "./TournamentCompetitionSection.jsx";
 export default function TournamentDetailView({ controller }) {
-  const { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo } = controller;
+  const { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, matchRefereeSelections, setMatchRefereeSelections, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, eligibleAcceptedRefereeIds, isAcceptedTournamentRefereeEligible, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo } = controller;
 return (
     <div className="page-stack tournament-detail-page">
       <Button as={Link} variant="secondary" className="tournament-back-link" to={matchesReturnTo}><ChevronLeft size={17} /> 경기로</Button>
@@ -122,39 +120,48 @@ return (
             <span className="om-kicker">REFEREE APPROVAL</span>
             <h2>대회 심판</h2>
           </div>
-          <span>최소 {requiredRefereeCount}명 · 승인 {acceptedRefereeIds.length}명</span>
+          <span>최소 {requiredRefereeCount}명 · 승인·자격 {eligibleAcceptedRefereeIds.length}명</span>
         </div>
         <div className="tournament-referee-list">
           {refereeRows.map((row) => (
-            <article key={row.refereeId} className={row.status === "accepted" ? "accepted" : ""}>
+            <article
+              key={row.refereeId}
+              className={row.status === "accepted" ? row.eligible ? "accepted" : "needs-replacement" : ""}
+            >
               <div>
                 <strong>{row.referee?.name ?? row.refereeId}</strong>
                 <span>{row.referee ? `${getUserHashtag(row.referee)} · 신뢰도 ${row.referee.trustScore}` : "심판 정보 확인 중"}</span>
               </div>
               {row.canApprove ? (
                 <div className="tournament-referee-actions">
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
                     disabled={Boolean(governanceAction)}
                     onClick={() => runGovernanceAction(
                       `approve-referee:${row.refereeId}`,
                       () => app.actions.approveTournamentReferee(tournament.id),
                       "대회 심판 참여를 승인했습니다.",
                     )}
-                  ><ShieldCheck size={15} /> 승인</button>
-                  <button
+                  ><ShieldCheck size={15} /> 승인</Button>
+                  <Button
                     type="button"
-                    className="secondary"
+                    size="sm"
+                    variant="secondary"
                     disabled={Boolean(governanceAction)}
                     onClick={() => runGovernanceAction(
                       `decline-referee:${row.refereeId}`,
                       () => app.actions.declineTournamentReferee(tournament.id),
                       "대회 심판 초대를 거절했습니다.",
                     )}
-                  >거절</button>
+                  >거절</Button>
                 </div>
               ) : (
-                <b>{row.status === "accepted" ? "승인 완료" : row.status === "declined" ? "거절" : "승인 대기"}</b>
+                <b>
+                  {row.status === "accepted"
+                    ? row.eligible ? "승인·자격 유효" : "교체 필요"
+                    : row.status === "declined" ? "거절" : "승인 대기"}
+                </b>
               )}
             </article>
           ))}
@@ -248,35 +255,68 @@ return (
               const teamAId = match.teamA?.teamId ?? match.teamAId;
               const teamBId = match.teamB?.teamId ?? match.teamBId;
               const neutralRefereeIds = acceptedRefereeIds.filter((refereeId) => (
-                isEligibleReferee(
-                  userById[refereeId],
-                  REFEREE_TRUST_MIN,
-                  app.state.settings?.refereeAppointments,
-                  tournament.endDate,
-                )
+                isAcceptedTournamentRefereeEligible(refereeId)
                 && isTournamentRefereeNeutral(tournament, refereeId, teamAId, teamBId, app.state.teams)
               ));
+              const matchLocked = Boolean(
+                match.startedAt
+                || match.endedAt
+                || ["confirmed", "cancelled", "void", "voided", "closed"].includes(match.status),
+              );
+              const selectedRefereeId = matchRefereeSelections[match.id] ?? match.refereeId ?? "";
+              const assignedRefereeIsAvailable = Boolean(match.refereeId && neutralRefereeIds.includes(match.refereeId));
+              const selectedRefereeIsAvailable = Boolean(selectedRefereeId && neutralRefereeIds.includes(selectedRefereeId));
+              const assignmentNeedsReplacement = Boolean(match.refereeId && !assignedRefereeIsAvailable);
+              const assigning = governanceAction === `assign:${match.id}`;
+              if (!canManageSchedule || matchLocked) {
+                return (
+                  <div key={match.id} className="tournament-match-referee-row is-readonly">
+                    <strong>{match.teamA?.name ?? "A"} vs {match.teamB?.name ?? "B"}</strong>
+                    <span>{userById[match.refereeId]?.name ?? "미배정"}</span>
+                    <em>{matchLocked ? "경기 종료" : "배정 현황"}</em>
+                  </div>
+                );
+              }
               return (
-                <form key={`${match.id}:${match.refereeId ?? ""}`} onSubmit={(event) => saveMatchReferee(event, match)}>
+                <form key={match.id} className="tournament-match-referee-row" onSubmit={(event) => saveMatchReferee(event, match)}>
                   <strong>{match.teamA?.name ?? "A"} vs {match.teamB?.name ?? "B"}</strong>
                   <select
                     name="refereeId"
-                    defaultValue={match.refereeId ?? ""}
-                    disabled={!canManageSchedule || Boolean(match.startedAt || match.endedAt)}
+                    value={selectedRefereeId}
+                    onChange={(event) => setMatchRefereeSelections((current) => ({
+                      ...current,
+                      [match.id]: event.target.value,
+                    }))}
                     aria-label={`${match.teamA?.name ?? "A"} 대 ${match.teamB?.name ?? "B"} 심판`}
                   >
-                    <option value="">심판 선택</option>
+                    <option value="">{neutralRefereeIds.length ? "심판 선택" : "배정 가능한 중립 심판 없음"}</option>
+                    {assignmentNeedsReplacement ? (
+                      <option value={match.refereeId} disabled>
+                        {userById[match.refereeId]?.name ?? match.refereeId} · 교체 필요
+                      </option>
+                    ) : null}
                     {neutralRefereeIds.map((refereeId) => (
                       <option key={refereeId} value={refereeId}>{userById[refereeId]?.name ?? refereeId}</option>
                     ))}
                   </select>
-                  {canManageSchedule ? (
-                    <button type="submit" disabled={Boolean(governanceAction || match.startedAt || match.endedAt || !neutralRefereeIds.length)}>
-                      <ShieldCheck size={14} /> 배정
-                    </button>
-                  ) : (
-                    <span>{userById[match.refereeId]?.name ?? "미배정"}</span>
-                  )}
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={Boolean(
+                      governanceAction
+                      || !selectedRefereeIsAvailable
+                      || selectedRefereeId === match.refereeId,
+                    )}
+                  >
+                    <ShieldCheck size={14} /> {assigning ? "배정 중" : "배정"}
+                  </Button>
+                  {assignmentNeedsReplacement || !neutralRefereeIds.length ? (
+                    <span className="tournament-match-referee-note">
+                      {assignmentNeedsReplacement
+                        ? "현재 배정 심판의 자격 또는 중립 조건이 유효하지 않습니다. 교체 심판을 선택해 주세요."
+                        : "자격이 유효하고 양 팀에 속하지 않은 심판을 추가한 뒤 참여 승인을 받아야 합니다."}
+                    </span>
+                  ) : null}
                 </form>
               );
             })}

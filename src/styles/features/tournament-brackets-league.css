@@ -344,7 +344,6 @@ html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
 html[data-theme="light"] .tournament-referee-list article,
-html[data-theme="light"] .tournament-match-referee-list form,
 html[data-theme="light"] .tournament-sanction-panel,
 html[data-theme="light"] .tournament-cup-bracket,
 html[data-theme="light"] .tournament-vertical-bracket,
@@ -361,12 +360,6 @@ html[data-theme="light"] .tournament-empty {
 
 html[data-theme="light"] .tournament-schedule-list input {
   background: rgba(255, 255, 255, 0.9);
-}
-
-html[data-theme="light"] .tournament-match-referee-list select,
-html[data-theme="light"] .tournament-referee-actions button.secondary {
-  border-color: rgba(16, 20, 28, 0.12);
-  background: rgba(16, 20, 28, 0.06);
 }
 
 @media (max-width: 1120px) {

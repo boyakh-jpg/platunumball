@@ -11,7 +11,7 @@ import { getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, isEligibleReferee } from "../lib/matchUtils.js";
 import { getTournamentMatches } from "../lib/tournamentMatches.js";
 import { REFEREE_TRUST_MIN } from "../lib/constants.js";
-import { TOURNAMENT_SANCTION_STATUS, getActiveTournamentTeamIds, getAcceptedTournamentRefereeIds, getRequiredTournamentRefereeCount, getTournamentRefereeStatus, isTournamentGovernanceEnabled } from "../lib/tournamentGovernance.js";
+import { TOURNAMENT_SANCTION_STATUS, getActiveTournamentTeamIds, getAcceptedTournamentRefereeIds, getRequiredTournamentRefereeCount, getTournamentRefereeStatus, isTournamentGovernanceEnabled, isTournamentRefereeEligible } from "../lib/tournamentGovernance.js";
 import "../styles/matches-arena.css";
 import {
   isTournamentScheduleEditable,
@@ -38,6 +38,7 @@ const location = useLocation();
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [editingScheduleId, setEditingScheduleId] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
+  const [matchRefereeSelections, setMatchRefereeSelections] = useState({});
   const [governanceAction, setGovernanceAction] = useState("");
   const [governanceFeedback, setGovernanceFeedback] = useState("");
   useBodyScrollLock(Boolean(scheduleDialog || forfeitDialog));
@@ -106,10 +107,18 @@ const location = useLocation();
   const governanceEnabled = isTournamentGovernanceEnabled(tournament);
   const requiredRefereeCount = getRequiredTournamentRefereeCount(getActiveTournamentTeamIds(tournament).length);
   const acceptedRefereeIds = getAcceptedTournamentRefereeIds(tournament);
+  const isAcceptedTournamentRefereeEligible = (refereeId) => isTournamentRefereeEligible(
+    tournament,
+    refereeId,
+    app.state.users,
+    app.state.settings?.refereeAppointments,
+  );
+  const eligibleAcceptedRefereeIds = acceptedRefereeIds.filter(isAcceptedTournamentRefereeEligible);
   const refereeRows = (tournament.refereeIds ?? []).map((refereeId) => ({
     refereeId,
     referee: userById[refereeId] ?? (refereeId === app.currentUser.id ? app.currentUser : null),
     status: getTournamentRefereeStatus(tournament, refereeId),
+    eligible: isAcceptedTournamentRefereeEligible(refereeId),
     canApprove: governanceEnabled
       && ["draft", "active"].includes(tournament.status)
       && refereeId === app.currentUser.id
@@ -236,6 +245,7 @@ const location = useLocation();
     if (message.includes("tournament_region_manager_required")) return "해당 지역관리자 이상만 처리할 수 있습니다.";
     if (message.includes("tournament_referee_not_neutral")) return "양 팀 어느 쪽에도 속하지 않은 중립 심판만 배정할 수 있습니다.";
     if (message.includes("tournament_referee_schedule_conflict")) return "같은 심판이 겹치는 시간대의 다른 경기에 배정되어 있습니다.";
+    if (message.includes("tournament_match_referee_locked")) return "이미 시작했거나 종료된 경기의 심판은 변경할 수 없습니다.";
     return "대회 승인·심판 작업을 완료하지 못했습니다.";
   };
   const runGovernanceAction = async (key, action, successMessage) => {
@@ -290,6 +300,6 @@ const location = useLocation();
   const matchesReturnTo = typeof location.state?.from === "string" && location.state.from.startsWith("/app/matches")
     ? location.state.from
     : "/app/matches?panel=tournament";
-  const controller = { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo };
+  const controller = { app, tournament, scheduleDialog, setScheduleDialog, savingScheduleId, forfeitDialog, setForfeitDialog, savingForfeitId, selectedMatchId, setSelectedMatchId, editingScheduleId, setEditingScheduleId, refereeQuery, setRefereeQuery, matchRefereeSelections, setMatchRefereeSelections, governanceAction, governanceFeedback, teamById, userById, matchesById, tournamentMatches, teamRows, acceptedCount, hasPendingTeamApprovals, governanceEnabled, requiredRefereeCount, acceptedRefereeIds, eligibleAcceptedRefereeIds, isAcceptedTournamentRefereeEligible, refereeRows, eligibleRefereeCandidates, canInviteReferee, canReviewRegion, canStartCommunity, verticalBracket, championTeam, canManageSchedule, todayValue, maxScheduleDate, leagueFixtures, leagueMatchesByFixture, leagueStandings, tournamentCourts, saveSchedule, confirmSchedule, confirmForfeit, runGovernanceAction, saveMatchReferee, renderRefereeInviteItem, organizer, dialogMatch, forfeitMatch, matchesReturnTo };
   return <TournamentDetailView controller={controller} />;
 }

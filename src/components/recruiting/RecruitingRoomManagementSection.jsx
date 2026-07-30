@@ -1,7 +1,7 @@
 export function RecruitingRoomManagementSection({ context }) {
   const {
     Badge, Button, MATCH_MODES, MAX_RESERVE_PLAYERS_PER_SIDE, MMR_RANGE_POLICIES, MatchOperationsPolicyFields,
-    MatchScoreControls, MeetingPointFields, ProfileEmblem, RefereeHoverCard, RefereeInvitePanel, RoomChat,
+    MatchClockPanel, MatchScoreControls, MeetingPointFields, ProfileEmblem, RefereeHoverCard, RefereeInvitePanel, RoomChat,
     RuleSelector, app, canEndSourceMatch, canInviteRefereeFromRoom, canJoinReferee, canOperateSourceRoomRules,
     canUseChat, chatCooldownUntilByPost, chatErrorByPost, chatMessages, chatSendingPostId, clockClient,
     closeRoomEdit, currentRuleRevision, currentUserCanRespondSchedule, currentUserNeedsRuleAcknowledgement, disabledRefereeIds, favoriteRefereeIds,

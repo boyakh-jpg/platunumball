@@ -62,21 +62,49 @@
   display: grid;
   gap: var(--space-4);
 }
+.approval-panel {
+  display: grid;
+  gap: var(--space-6);
+}
+.approval-panel .section-title-row h2,
+.trust-star-card .section-title-row h2 {
+  font-family: var(--font-body);
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-title);
+  line-height: 1.15;
+}
+.approval-summary {
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-control);
+  white-space: nowrap;
+}
 .approval-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-6);
 }
-.approval-grid > div {
+.approval-side {
   display: grid;
   gap: var(--space-5);
-  border: var(--ui-card-border-width) solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  background: var(--ui-card-bg);
-  padding: var(--card-padding);
+  min-width: 0;
+}
+.approval-side + .approval-side {
+  border-inline-start: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
+  padding-inline-start: var(--space-6);
 }
 .approval-grid span {
   color: var(--muted);
+}
+.approval-side-header > strong {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title-md);
+  font-weight: var(--font-weight-title);
+  line-height: 1.2;
+}
+.approval-side-header > span {
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-body);
 }
 .approval-status-strip {
   display: grid;

@@ -161,6 +161,19 @@ test("24시간 만료 후에는 확인 독촉 알림을 더 만들지 않는다"
   assert.deepEqual(notifications, []);
 });
 
+test("확정된 사후 기록은 참가 확인 대기와 기준 미달 추천을 다시 노출하지 않는다", async () => {
+  const [approvalPanelSource, recommendationPanelSource, actionSectionSource] = await Promise.all([
+    readFile(new URL("../src/components/match/ApprovalPanel.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/MatchRecommendationPanel.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomActionSection.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(approvalPanelSource, /\["confirmed", "cancelled", "void", "voided"\]\.includes\(match\.status\)/);
+  assert.match(recommendationPanelSource, /recordVerification && !recordVerification\.thresholdMet/);
+  assert.match(recommendationPanelSource, /<p className="eyebrow">추천<\/p>/);
+  assert.doesNotMatch(recommendationPanelSource, />Recommendation</);
+  assert.match(actionSectionSource, /sourceMatchIsRecordRoom && sourceMatch\?\.status === "confirmed" \? null/);
+});
+
 test("별도 참가 확인 경로 없이 본인 승인 한 번으로 참가와 결과를 함께 확인한다", async () => {
   const [serverSource, notificationSource, clientSource, singleApprovalMigration, consistencyMigration] = await Promise.all([
     readSourceGroup(

@@ -6,7 +6,8 @@ import {
 } from "../_authoritativeState.js";
 import { persistMatchSnapshot } from "../matches/sync-match.js";
 import { isSupportedMatchMode } from "../../../shared/lib/matchConstants.js";
-import { DEFAULT_TOURNAMENT_MMR_GAP, MMR_LIMIT_MODES as MMR_LIMIT_MODE_IDS } from "../../../shared/lib/constants.js";
+import { DEFAULT_TOURNAMENT_MMR_GAP, MMR_LIMIT_MODES as MMR_LIMIT_MODE_IDS, REFEREE_TRUST_MIN } from "../../../shared/lib/constants.js";
+import { isEligibleReferee } from "../../../shared/lib/refereeEligibility.js";
 import { sortPlainObject } from "../../../shared/lib/plainObject.js";
 import { projectTournamentDbIdentity } from "../../lib/tournamentPersistence.js";
 import { FORMATS, VISIBILITIES, STATUSES, MMR_LIMIT_MODES, MMR_POLICIES, TEAM_STATUSES, reject, getSupportedTournamentMode, pickAllowed, toDbDate, getTeamIds, sameJson, getTournamentCoreSnapshot, normalizeTournament, validateTournamentCreateCourt, toTournamentRow, toTournamentTeamRows, assertTeamsExist, persistTournamentCourtId, isTeamCaptain, getTournamentScopedState } from "./syncTournamentModel.js";
@@ -113,6 +114,42 @@ async function assertCanLoadTournament(context, tournamentId) {
   if (!memberships?.length) reject(403, "tournament_read_permission_denied");
 }
 
+async function getEligibleTournamentRefereeIds(context, tournament) {
+  const refereeIds = toArray(tournament?.refereeIds).filter(Boolean);
+  if (!refereeIds.length) return [];
+  const [profileResult, appointmentResult] = await Promise.all([
+    context.supabase
+      .from("profiles")
+      .select("id,trust_score,test_login_id")
+      .in("id", refereeIds),
+    context.supabase
+      .from("referee_appointments")
+      .select("user_id,role,grade,status,starts_at,ends_at")
+      .in("user_id", refereeIds),
+  ]);
+  if (profileResult.error) throw profileResult.error;
+  if (appointmentResult.error) throw appointmentResult.error;
+  const appointments = toArray(appointmentResult.data).map((appointment) => ({
+    userId: appointment.user_id,
+    role: appointment.role,
+    grade: appointment.grade,
+    status: appointment.status,
+    startsAt: appointment.starts_at,
+    endsAt: appointment.ends_at,
+  }));
+  const userById = new Map(toArray(profileResult.data).map((profile) => [profile.id, {
+    id: profile.id,
+    trustScore: profile.trust_score,
+    testLoginId: profile.test_login_id,
+  }]));
+  return refereeIds.filter((refereeId) => isEligibleReferee(
+    userById.get(refereeId),
+    REFEREE_TRUST_MIN,
+    appointments,
+    tournament.endDate,
+  ));
+}
+
 async function loadTournamentOperation(context, operation = {}) {
   const tournamentId = String(operation.tournamentId ?? "").trim();
   if (!tournamentId) reject(400, "missing_tournament_id");
@@ -123,8 +160,10 @@ async function loadTournamentOperation(context, operation = {}) {
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId) ?? null;
   if (!tournament) reject(404, "tournament_not_found");
   const adminLevel = await getAdminLevel(context);
+  const eligibleRefereeIds = await getEligibleTournamentRefereeIds(context, tournament);
   const scopedState = getTournamentScopedState(state, {
     ...tournament,
+    eligibleRefereeIds,
     viewerCanReviewRegion: adminLevel >= 60,
   });
   const listMatches = scopedState.matches.map(toTournamentListMatch);
@@ -292,8 +331,12 @@ async function applySqlTournamentOperation(context, operation = {}) {
   });
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId) ?? null;
   const adminLevel = await getAdminLevel(context);
+  const eligibleRefereeIds = tournament
+    ? await getEligibleTournamentRefereeIds(context, tournament)
+    : [];
   const scopedTournament = tournament ? {
     ...tournament,
+    eligibleRefereeIds,
     viewerCanReviewRegion: adminLevel >= 60,
   } : null;
   const scopedState = getTournamentScopedState(state, scopedTournament);

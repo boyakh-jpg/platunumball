@@ -45,3 +45,23 @@ test("match clock panel delegates score controls and audio without growing back"
     /from ["'][^"']*MatchClockPanel\.jsx["']/u,
   );
 });
+
+test("recruiting room receives the match clock panel through shared dependencies", async () => {
+  const [dependencies, managementSection] = await Promise.all([
+    readFile(path.join(ROOT, "src/components/recruiting/RecruitingRoomDependencies.js"), "utf8"),
+    readFile(path.join(ROOT, "src/components/recruiting/RecruitingRoomManagementSection.jsx"), "utf8"),
+  ]);
+
+  assert.match(
+    dependencies,
+    /import MatchClockPanel, \{\s*MatchScoreControls,\s*\} from "\.\.\/match\/MatchClockPanel\.jsx";/u,
+  );
+  assert.match(
+    dependencies,
+    /MatchDisputeQueue, MatchClockPanel, MatchScoreControls,/u,
+  );
+  assert.match(
+    managementSection,
+    /MatchClockPanel, MatchScoreControls, MeetingPointFields,/u,
+  );
+});

@@ -568,7 +568,7 @@ test("guide screenshots ship with the app and the shot clock has one separated o
   );
   assert.match(
     matchClockStyles,
-    /\.ui-match-shot-clock\s*\{[^}]*border:\s*var\(--ui-stroke-width\) solid[^;]+;[^}]*box-shadow:\s*0 12px 24px[^;]+;/,
+    /\.ui-match-shot-clock\s*\{[^}]*background:\s*var\(--scoreboard\);[^}]*border:\s*var\(--ui-stroke-width\) solid var\(--rb-orange\);[^}]*box-shadow:\s*0 8px 18px[^;]+;/,
   );
   assert.doesNotMatch(
     matchClockStyles,

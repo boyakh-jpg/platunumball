@@ -7,9 +7,9 @@ export function CreateMatchCourtRosterSection({ context }) {
     courtMapOpen, courtMapRegion, courtPlayWarning, courtQuery, courtRegion, courtSummary, draft,
     favoriteCourts, favoriteReferees, favoriteTeams, getCourtAddress, getCourtLayoutLabel, getCourtSearchText, getCourtSurfaceLabel,
     getTournamentTeamEligibility, isMatchRecordRoom, isPublicRoom, isSoloRecord, isStandardCreateWizard, isTeamRoom, isTournamentRoom,
-    loadedCourtMapRegionsRef, mmrLimitOptions, mmrRangePolicy, recordComposition, refereeQuery, refereeSearchResults, registeredCourts,
+    mmrLimitOptions, mmrRangePolicy, recordComposition, refereeQuery, refereeSearchResults, registeredCourts,
     remoteDirectoryEnabled, removeTournamentCourt, removeTournamentReferee, renderCourtSearchItem, renderCreateTeamSearchItem, renderRefereeSearchItem, representativeTournamentTeam,
-    requiredTournamentRefereeCount, roomTierRange, selectCourt, selectedCourt, selectedTournamentCourts, selectedTournamentReferees, setCourtDetailCourtId,
+    requiredTournamentRefereeCount, retryCourtMapDirectory, roomTierRange, selectCourt, selectedCourt, selectedTournamentCourts, selectedTournamentReferees, setCourtDetailCourtId,
     setCourtMapOpen, setCourtQuery, setCourtRegion, setRefereeQuery, setTeamQuery, setTeamRegion, sortedCourts,
     sortedTeams, teamOptions, teamQuery, teamRegion, teamSelectableRegions, teamTierBlocked, teamTierWarned,
     toggleAgeRestriction, toggleTournamentTeam, tournamentMmrBlocked, tournamentMmrPolicyOptions, tournamentMmrSpread, tournamentRefereeCandidates, tournamentTeams,
@@ -47,7 +47,7 @@ export function CreateMatchCourtRosterSection({ context }) {
                 type="button"
                 variant="secondary"
                 onClick={() => {
-                  loadedCourtMapRegionsRef.current.delete(`${courtMapRegion}:map`);
+                  retryCourtMapDirectory();
                   setCourtMapOpen(true);
                 }}
               >
@@ -161,6 +161,7 @@ export function CreateMatchCourtRosterSection({ context }) {
           currentRegion={courtMapRegion}
           loading={courtMapDirectoryStatus.loading}
           loadError={courtMapDirectoryStatus.error}
+          onRetry={retryCourtMapDirectory}
           onClose={() => setCourtMapOpen(false)}
           onSelect={(court) => {
             selectCourt(court);

@@ -173,10 +173,10 @@
   --ui-button-border-width: 1px;
   --ui-badge-radius: 999px;
   --ui-badge-padding: 5px 10px;
-  --ui-badge-bg: var(--button-secondary-bg);
-  --ui-badge-border: var(--control-border);
   --ui-badge-font-size: var(--font-size-badge);
   --ui-badge-font-weight: var(--font-weight-body);
+  --ui-badge-bg: var(--button-secondary-bg);
+  --ui-badge-border: var(--control-border);
   --ui-badge-color: var(--rb-muted);
   --ui-badge-green-bg: color-mix(in srgb, var(--rb-green) 10%, transparent);
   --ui-badge-green-border: color-mix(in srgb, var(--rb-green) 36%, transparent);

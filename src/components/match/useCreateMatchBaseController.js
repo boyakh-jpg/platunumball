@@ -111,6 +111,7 @@ const navigate = useNavigate();
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
   const [courtMapOpen, setCourtMapOpen] = useState(false);
+  const [courtMapReloadVersion, setCourtMapReloadVersion] = useState(0);
   const [courtDetailCourtId, setCourtDetailCourtId] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
   const [selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles] = useState([]);
@@ -120,6 +121,11 @@ const navigate = useNavigate();
   const [courtRegion, setCourtRegion] = useState(currentCourtRegion);
   const teamSelectableRegions = useMemo(() => ["전체", ...new Set([currentRegion, ...REGIONS].filter(Boolean))], [currentRegion]);
   const courtMapRegion = courtRegion;
+  const retryCourtMapDirectory = () => {
+    loadedCourtMapRegionsRef.current.delete(`${courtMapRegion}:map`);
+    setCourtMapDirectoryStatus({ loading: true, error: "" });
+    setCourtMapReloadVersion((value) => value + 1);
+  };
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
@@ -256,13 +262,13 @@ const navigate = useNavigate();
       setCourtMapDirectoryStatus({ loading: false, error: "" });
     }).catch(() => {
       if (courtMapRequestIdRef.current !== requestId) return;
-      setCourtMapDirectoryStatus({ loading: false, error: "등록 구장을 불러오지 못했습니다. 다시 열어 주세요." });
+      setCourtMapDirectoryStatus({ loading: false, error: "등록 구장을 불러오지 못했습니다. 다시 시도해 주세요." });
     });
 
     return () => {
       if (courtMapRequestIdRef.current === requestId) courtMapRequestIdRef.current += 1;
     };
-  }, [app.remoteReady, courtMapOpen, courtMapRegion, remoteDirectoryEnabled, wizardStep]);
+  }, [app.remoteReady, courtMapOpen, courtMapRegion, courtMapReloadVersion, remoteDirectoryEnabled, wizardStep]);
 
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
@@ -441,7 +447,7 @@ const navigate = useNavigate();
     defaultCapacity, defaultTournamentCapacity, currentRegion, currentCourtRegionSelection, currentCourtRegion, favoriteCourtIds, defaultTeamAPlayerIds,
     defaultTeamB, defaultTournamentTeamB, defaultTeamBPlayerIds, defaultMmrLimitMode, directoryCourts, discoveredCourts, setDiscoveredCourts,
     courtMapDirectoryStatus, setCourtMapDirectoryStatus, registeredCourts, defaultCourt, teamQuery, setTeamQuery, opponentTeamQuery,
-    setOpponentTeamQuery, courtQuery, setCourtQuery, courtMapOpen, setCourtMapOpen, courtDetailCourtId, setCourtDetailCourtId,
+    setOpponentTeamQuery, courtQuery, setCourtQuery, courtMapOpen, setCourtMapOpen, retryCourtMapDirectory, courtDetailCourtId, setCourtDetailCourtId,
     refereeQuery, setRefereeQuery, selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles, soloTeamAUserQuery, setSoloTeamAUserQuery, soloTeamBUserQuery,
     setSoloTeamBUserQuery, teamRegion, setTeamRegion, courtRegion, setCourtRegion, teamSelectableRegions, courtMapRegion,
     defaultAgeRestriction, favoriteTeamIds, favoriteRefereeIds, isFavoriteTeam, isFavoriteCourt, defaultSchedule, draft,

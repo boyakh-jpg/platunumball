@@ -109,29 +109,49 @@
 
 .ui-match-clock-display-grid {
   --match-clock-display-gap: clamp(var(--space-5), 1.6cqi, var(--space-8));
+  --match-clock-secondary-panel-height: clamp(156px, 20cqi, 200px);
 
   display: grid;
-  grid-template-columns: minmax(0, 1.72fr) minmax(144px, 0.28fr);
+  grid-template-areas:
+    "score"
+    "shot";
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--match-clock-display-gap);
   align-items: stretch;
   min-width: 0;
 }
 
 .ui-match-clock-display-grid-single {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "score";
 }
 
-.ui-match-clock-display-grid-with-attendance {
-  grid-template-columns: minmax(144px, 0.28fr) minmax(0, 1.44fr) minmax(144px, 0.28fr);
+.ui-match-clock-display-grid-with-attendance:not(.ui-match-clock-display-grid-single) {
+  grid-template-areas:
+    "score score"
+    "attendance shot";
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .ui-match-clock-display-grid-single.ui-match-clock-display-grid-with-attendance {
-  grid-template-columns: minmax(144px, 0.28fr) minmax(0, 1.72fr);
+  grid-template-areas:
+    "score"
+    "attendance";
+}
+
+.ui-match-clock-attendance-qr,
+.ui-match-shot-clock {
+  box-sizing: border-box;
+  align-self: center;
+  width: 100%;
+  height: var(--match-clock-secondary-panel-height);
+  min-height: 0;
+  max-height: none;
 }
 
 .ui-match-clock-scoreboard {
   position: relative;
   display: grid;
+  grid-area: score;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 1.25fr) minmax(0, 1fr);
   gap: var(--control-group-gap);
   align-items: stretch;
@@ -159,13 +179,8 @@
 
 .ui-match-clock-attendance-qr {
   display: grid;
+  grid-area: attendance;
   place-items: center;
-  align-self: center;
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  min-height: var(--match-clock-display-height, 156px);
-  max-height: 240px;
   padding: 12px;
   color: black;
   background: white;
@@ -176,7 +191,7 @@
 
 .ui-match-clock-attendance-qr svg {
   display: block;
-  width: min(100%, 152px);
+  width: min(100%, calc(var(--match-clock-secondary-panel-height) - 48px));
   aspect-ratio: 1;
 }
 
@@ -387,22 +402,17 @@
 }
 
 .ui-match-shot-clock {
-  box-sizing: border-box;
   display: grid;
+  grid-area: shot;
   place-items: center;
-  align-self: center;
-  width: 100%;
-  height: 100%;
-  min-height: var(--match-clock-display-height, 156px);
-  max-height: 240px;
   padding: 12px 8px;
   color: var(--rb-text);
   font: inherit;
   cursor: pointer;
-  background: color-mix(in srgb, var(--rb-orange) 20%, var(--scoreboard));
-  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--rb-orange) 76%, var(--rb-line));
+  background: var(--scoreboard);
+  border: var(--ui-stroke-width) solid var(--rb-orange);
   border-radius: var(--ui-panel-radius);
-  box-shadow: 0 12px 24px color-mix(in srgb, var(--rb-orange) 16%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--rb-orange) 10%, transparent);
   touch-action: manipulation;
   transition:
     transform 120ms ease,

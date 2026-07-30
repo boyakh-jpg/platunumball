@@ -416,10 +416,13 @@ export default function MatchClockPanel({
       if (event.key === "Escape") void closeFocusMode();
     };
     window.addEventListener("keydown", handleKeyDown);
+    const previousRootOverflow = document.documentElement.style.overflow;
     const previousOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      document.documentElement.style.overflow = previousRootOverflow;
       document.body.style.overflow = previousOverflow;
     };
   }, [closeFocusMode, focusMode]);

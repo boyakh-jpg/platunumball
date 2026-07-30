@@ -101,7 +101,7 @@ html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-lis
   .tournament-inline-schedule,
   .tournament-schedule-list form,
   .tournament-forfeit-actions,
-  .tournament-match-referee-list form,
+  .tournament-match-referee-row,
   .tournament-sanction-panel {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -112,9 +112,16 @@ html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-lis
   }
 
   .tournament-referee-actions > button,
-  .tournament-sanction-actions > button,
-  .tournament-match-referee-list button {
+  .tournament-sanction-actions > button {
     flex: 1 1 120px;
+  }
+
+  .tournament-match-referee-row .button {
+    width: 100%;
+  }
+
+  .tournament-match-referee-row > .tournament-match-referee-note {
+    grid-column: 1;
   }
 }
 /* 2026-07-16 compact schedule filters. */

@@ -606,6 +606,7 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
     roomManagementSource,
     matchesSource,
     clockStyles,
+    qrStyles,
     repositorySource,
     recruitingApiSource,
     teamPartyGuardSql,
@@ -621,6 +622,7 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
     readSource("src/components/recruiting/RoomManagementPanels.jsx"),
     readSourceGroup(readSource, MATCHES_PAGE_SOURCE_PATHS),
     readCssTree("src/styles/match-clock.css"),
+    readSource("src/styles/primitives/ui-entity-feedback.css"),
     readSourceGroup(readSource, REPOSITORY_RECRUITING_SOURCE_PATHS),
     readSourceGroup(readSource, RECRUITING_SYNC_SOURCE_PATHS),
     readSource("supabase/migrations/20260728123000_block_team_room_party_detach.sql"),
@@ -640,7 +642,8 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
   assert.match(panelSource, /clockEditableScoreSides = liveControllerCanEditScores \? MATCH_SIDES : editableScoreSides/u);
   assert.match(panelSource, /showAttendanceQr = Boolean\(attendanceQr\?\.value && liveClock\?\.canControl\)/u);
   assert.match(panelSource, /getClockControllerLabel/u);
-  assert.match(clockStyles, /\.ui-match-clock-display-grid-with-attendance\s*\{[^}]*grid-template-columns:\s*minmax\(144px, 0\.28fr\) minmax\(0, 1\.44fr\) minmax\(144px, 0\.28fr\);/u);
+  assert.match(clockStyles, /\.ui-match-clock-display-grid-with-attendance:not\(\.ui-match-clock-display-grid-single\)\s*\{[^}]*grid-template-areas:\s*"score score"\s*"attendance shot";[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/u);
+  assert.match(qrStyles, /\.ui-qr-expand-backdrop\s*\{[^}]*z-index:\s*4000;/u);
   assert.match(recruitingSource, /window\.setInterval\(refreshAttendance, 3000\)/u);
   assert.match(roomManagementSource, /setPendingKick\(\{[\s\S]*?playerId,[\s\S]*?playerName/u);
   assert.doesNotMatch(roomManagementSource, /playerId:\s*partyEntry \? playerId : entry\.playerId/u);

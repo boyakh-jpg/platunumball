@@ -21,6 +21,7 @@ import {
   updateTournamentMatchSchedule,
   configureServerRatingAuthority,
 } from "../src/data/repository.js";
+import { advanceTournamentAfterMatch } from "../src/data/repository/lifecycle.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
@@ -96,6 +97,28 @@ test("양 팀 소속 심판만 남으면 해당 대진을 중립 커버리지 �
   assert.deepEqual(getTournamentUncoveredTeamPairs(tournament, affiliatedTeams), [
     { teamAId: "team-a", teamBId: "team-b" },
   ]);
+});
+
+test("자격이 회수된 승인 심판은 교체 뒤 유효 심판 수에서 제외한다", () => {
+  const tournament = {
+    teamIds: ["team-a", "team-b"],
+    refereeIds: ["referee-a", "referee-b", "referee-revoked"],
+    refereeStatuses: {
+      "referee-a": "accepted",
+      "referee-b": "accepted",
+      "referee-revoked": "accepted",
+    },
+    eligibleRefereeIds: ["referee-a", "referee-b"],
+  };
+  const validation = getTournamentRefereePoolValidation({
+    tournament,
+    teams,
+    users: [...users, { id: "referee-revoked", trustScore: 0 }],
+    requireAccepted: true,
+  });
+  assert.equal(validation.allowed, true);
+  assert.deepEqual(validation.eligibleRefereeIds, ["referee-a", "referee-b"]);
+  assert.equal(validation.ineligibleRefereeId, "referee-revoked");
 });
 
 function makeGovernedTournamentState() {
@@ -394,4 +417,84 @@ test("DB 권위 흐름은 비승인 대회에도 심판과 중립성·일정 충
   assert.match(scopedVariableFixMigration, /safe_referee_ids jsonb/);
   assert.match(scopedVariableFixMigration, /referee_statuses = safe_referee_statuses/);
   assert.match(scopedVariableFixMigration, /replace\(function_definition, '#variable_conflict use_variable', ''\)/);
+});
+
+test("다음 라운드도 서버 자격 스냅샷으로 중립 심판을 자동 배정한다", () => {
+  const state = makeGovernedTournamentState();
+  const tournament = {
+    ...state.tournaments[0],
+    status: "active",
+    format: "tournament",
+    teamIds: ["team-a", "team-b", "team-c", "team-d"],
+    eligibleRefereeIds: ["referee-a", "referee-b"],
+    matchIds: ["semi-1", "semi-2"],
+    bracket: {
+      bracketSize: 4,
+      firstRound: [],
+      rounds: [],
+    },
+  };
+  const teamsWithFinalists = [
+    ...state.teams,
+    { id: "team-c", name: "C", members: [{ userId: "player-c", role: "captain" }] },
+    { id: "team-d", name: "D", members: [{ userId: "player-d", role: "captain" }] },
+  ];
+  const matches = [
+    {
+      id: "semi-1",
+      status: "confirmed",
+      tournamentId: tournament.id,
+      tournamentFormat: "tournament",
+      tournamentRound: 1,
+      tournamentFixture: 1,
+      teamA: { teamId: "team-a", score: 21 },
+      teamB: { teamId: "team-b", score: 18 },
+      result: { scoreA: 21, scoreB: 18 },
+    },
+    {
+      id: "semi-2",
+      status: "confirmed",
+      tournamentId: tournament.id,
+      tournamentFormat: "tournament",
+      tournamentRound: 1,
+      tournamentFixture: 2,
+      teamA: { teamId: "team-c", score: 17 },
+      teamB: { teamId: "team-d", score: 21 },
+      result: { scoreA: 17, scoreB: 21 },
+    },
+  ];
+  const advanced = advanceTournamentAfterMatch({
+    ...state,
+    teams: teamsWithFinalists,
+    tournaments: [tournament],
+    matches,
+    settings: { ...state.settings, refereeAppointments: [] },
+  }, matches[1]);
+  const finalMatch = advanced.matches.find((match) => Number(match.tournamentRound) === 2);
+  assert.ok(finalMatch);
+  assert.ok(tournament.eligibleRefereeIds.includes(finalMatch.refereeId));
+});
+
+test("대회 상세 심판 자격과 배정 UI는 서버 스냅샷과 공용 토큰을 사용한다", async () => {
+  const [server, detail, view, styles, migration] = await Promise.all([
+    readSource("server/api/tournaments/sync-tournament.js"),
+    readSource("src/pages/TournamentDetail.jsx"),
+    readSource("src/pages/TournamentDetailView.jsx"),
+    readSource("src/styles/features/tournament-participants.css"),
+    readSource("supabase/migrations/20260730171000_align_tournament_referee_eligibility.sql"),
+  ]);
+  assert.match(server, /\.from\("profiles"\)[\s\S]*?\.select\("id,trust_score,test_login_id"\)/);
+  assert.match(server, /\.from\("referee_appointments"\)[\s\S]*?eligibleRefereeIds/);
+  assert.match(detail, /isTournamentRefereeEligible\(/);
+  assert.match(detail, /eligibleAcceptedRefereeIds/);
+  assert.match(view, /selectedRefereeIsAvailable/);
+  assert.match(view, /교체 필요/);
+  assert.match(view, /<Button[\s\S]*?type="submit"[\s\S]*?size="sm"/);
+  assert.match(styles, /height: var\(--ui-button-height-sm\)/);
+  assert.match(styles, /font-size: var\(--font-size-control\)/);
+  assert.doesNotMatch(styles, /background:\s*var\(--gold\)/);
+  assert.match(migration, /test_login_id in \('rankball-001', 'rankball-011'\)/);
+  assert.match(migration, /coalesce\(profile_row\.trust_score, 0\) >= 90/);
+  assert.match(migration, /greatest\([\s\S]*?at time zone 'UTC'[\s\S]*?interval '1 millisecond'/);
+  assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
