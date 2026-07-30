@@ -186,6 +186,35 @@ export default function PracticeMatch({ app }) {
   const instruction = getPracticeInstruction(progress, match);
   const pendingInvitationCount = progress.phase === "recruiting" ? Number(progress.pendingCount || 0) : 0;
   const practiceActorOptions = useMemo(() => {
+    const post = postId
+      ? practiceState.recruitingPosts.find((item) => item.id === postId)
+      : null;
+    if (post) {
+      const invitationTargetIds = (post.roomState?.invitations ?? [])
+        .map((invitation) => invitation.targetUserId);
+      const applicantPlayerIds = (post.applicants ?? [])
+        .flatMap((applicant) => [applicant.playerId, ...(applicant.playerIds ?? [])]);
+      const actorIds = [...new Set([
+        post.ownerId,
+        post.playerId,
+        post.refereeId,
+        ...(post.playerIds ?? []),
+        ...invitationTargetIds,
+        ...applicantPlayerIds,
+      ].filter(Boolean))];
+      return actorIds.map((actorId) => {
+        const user = practiceState.users.find((candidate) => candidate.id === actorId);
+        const invitation = (post.roomState?.invitations ?? [])
+          .find((item) => item.targetUserId === actorId && item.status === "pending");
+        const roles = [
+          actorId === post.ownerId ? "방장" : "",
+          invitation?.role === "referee" ? "초대 심판" : "",
+          invitation?.joinMode === "team" ? "초대 팀장" : "",
+          invitation?.joinMode === "player" ? "초대 선수" : "",
+        ].filter(Boolean);
+        return { id: actorId, label: `${user?.name || "연습 선수"} · ${roles.join("·")}` };
+      });
+    }
     if (!match) return [];
     const activePlayerIds = [...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])];
     const reservePlayerIds = [
@@ -209,7 +238,7 @@ export default function PracticeMatch({ app }) {
       ].filter(Boolean);
       return { id: actorId, label: `${user?.name || "연습 선수"} · ${roles.join("·")}` };
     });
-  }, [clockControllerId, match, practiceState.users]);
+  }, [clockControllerId, match, postId, practiceState.recruitingPosts, practiceState.users]);
 
   const runHelper = () => {
     if (progress.phase === "recruiting" && pendingInvitationCount > 0) {

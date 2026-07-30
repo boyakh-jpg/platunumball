@@ -102,7 +102,7 @@ export function getLobbySideMeta(lobby, sideName, userById, { useSideName = fals
   };
 }
 
-function getPlayerPosition(user) {
+export function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
 

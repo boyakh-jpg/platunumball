@@ -167,7 +167,7 @@ export default function MatchRecordParticipantSetupPanel({
   };
 
   return (
-    <div className="arena-record-setup-panel">
+    <div className="arena-record-setup-panel ui-panel">
       <header>
         <span>
           <strong>경기 기록 참가자 구성</strong>
@@ -239,7 +239,9 @@ export default function MatchRecordParticipantSetupPanel({
               <span className="arena-record-team-selected">
                 <TeamEmblem team={teamBSnapshot} />
                 <strong>{teamBSnapshot.name}</strong>
-                <button type="button" onClick={() => setTeamBSnapshot(null)}>해제</button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setTeamBSnapshot(null)}>
+                  해제
+                </Button>
               </span>
             ) : null}
           </label>

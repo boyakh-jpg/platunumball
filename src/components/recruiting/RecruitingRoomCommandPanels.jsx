@@ -11,6 +11,11 @@ import {
   PLAYER_POSITIONS,
   SIDE_LABEL_TEXT as SIDE_LABELS,
 } from "../../lib/constants.js";
+import {
+  getPartyOptionKey,
+  getPartyOptionLabel,
+  isPartyEntry,
+} from "./RecruitingRoomSlotCore.jsx";
 
 
 

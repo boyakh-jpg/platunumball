@@ -30,7 +30,12 @@ import {
   getMatchRuleSummary,
 } from "../../lib/matchRules.js";
 
-import { getRoomSlotDisplayPosition, getRoomSlotBadge, getRoomSlotTeamName } from "./RecruitingRoomSlotCore.jsx";
+import {
+  getPlayerPosition,
+  getRoomSlotBadge,
+  getRoomSlotDisplayPosition,
+  getRoomSlotTeamName,
+} from "./RecruitingRoomSlotCore.jsx";
 
 export function TeamMemberPicker({
   team,

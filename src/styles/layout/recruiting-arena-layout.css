@@ -117,10 +117,6 @@ html[data-theme="light"] .arena-lobby-arena {
   display: grid;
   min-width: 0;
   gap: 10px;
-  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border);
-  border-radius: var(--ui-card-radius);
-  background: var(--ui-room-panel-bg);
-  padding: 12px;
 }
 .arena-record-setup-panel > header,
 .arena-record-setup-actions,
