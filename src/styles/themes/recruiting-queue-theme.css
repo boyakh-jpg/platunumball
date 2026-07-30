@@ -31,12 +31,11 @@
   grid-template-columns: minmax(58px, 0.58fr) minmax(0, 1.42fr);
 }
 
-.arena-source-record-side span,
+.arena-source-record-side > div > span,
 .arena-source-record-side em {
   min-width: 0;
   overflow: visible;
   text-overflow: clip;
-  white-space: normal;
 }
 
 @media (max-width: 520px) {
@@ -47,10 +46,10 @@
   .arena-source-record-side > div {
     grid-template-columns: minmax(64px, 0.6fr) minmax(0, 1.4fr);
     gap: 8px;
-    padding: 7px 8px;
+    padding: 7px 0;
   }
 
-  .arena-source-record-side span {
+  .arena-source-record-side > div > span {
     font-size: 0.76rem;
   }
 

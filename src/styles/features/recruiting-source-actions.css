@@ -138,21 +138,21 @@
 .arena-match-source-record-board {
   display: grid;
   gap: 12px;
-  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border, var(--line));
-  border-radius: var(--ui-card-radius, var(--radius));
-  background: var(--ui-room-panel-bg, rgba(255, 255, 255, 0.05));
-  box-shadow: var(--ui-card-shadow, none);
-  padding: 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .arena-source-record-summary {
   display: grid;
   gap: 10px;
   margin-top: 8px;
-  border: var(--ui-card-border-width) solid rgba(70, 224, 182, 0.18);
-  border-radius: var(--radius-xs);
-  background: rgba(70, 224, 182, 0.06);
-  padding: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .arena-source-record-score {
@@ -207,12 +207,13 @@
   display: grid;
   gap: 8px;
   align-items: center;
-  border-radius: var(--radius-xs);
-  background: rgba(0, 0, 0, 0.18);
-  padding: 6px 8px;
+  border-top: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
+  border-radius: 0;
+  background: transparent;
+  padding: 7px 0;
 }
 
-.arena-source-record-side span {
+.arena-source-record-side > div > span {
   overflow: hidden;
   color: var(--text);
   font-weight: 900;
@@ -221,10 +222,21 @@
 }
 
 .arena-source-record-side em {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0;
   color: var(--text);
   font-style: normal;
   line-height: 1.25;
-  overflow-wrap: anywhere;
+}
+
+.arena-source-record-stat {
+  white-space: nowrap;
+}
+
+.arena-source-record-stat:not(:last-child)::after {
+  content: " · ";
+  white-space: pre;
 }
 
 .arena-participation-fields {
@@ -356,16 +368,6 @@ html[data-theme="light"] .arena-party-member-card.selected {
 
 html[data-theme="light"] .arena-party-member-card.reserve {
   background: rgba(196, 143, 28, 0.1);
-}
-
-html[data-theme="light"] .arena-source-record-summary {
-  border-color: var(--ui-card-border);
-  background: var(--ui-card-bg);
-}
-
-html[data-theme="light"] .arena-source-record-side > div {
-  background: var(--ui-control-group-bg);
-  box-shadow: inset 0 0 0 1px var(--ui-control-group-border);
 }
 
 html[data-theme="light"] .arena-source-record-side em {

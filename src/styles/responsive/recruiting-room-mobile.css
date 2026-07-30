@@ -107,7 +107,7 @@
   }
 
   .arena-source-record-summary {
-    padding: 8px;
+    padding: 0;
   }
 
   .arena-source-record-grid {
@@ -122,10 +122,10 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
     align-items: start;
-    padding: 6px;
+    padding: 6px 0;
   }
 
-  .arena-source-record-side span {
+  .arena-source-record-side > div > span {
     font-size: 0.72rem;
   }
 

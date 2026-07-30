@@ -218,7 +218,11 @@ export function SourceMatchRecordSummary({ match, userById }) {
       {sidePlayerIds.map((playerId, index) => (
           <div key={playerId}>
             <span>{getSourceMatchPlayerName(match, userById, sideName, playerId, index, "플레이어")}</span>
-            <em>{formatStatLine(playerStats[playerId])}</em>
+            <em>
+              {formatStatLine(playerStats[playerId]).split(" · ").map((stat) => (
+                <span className="arena-source-record-stat" key={stat}>{stat}</span>
+              ))}
+            </em>
           </div>
       ))}
     </div>
