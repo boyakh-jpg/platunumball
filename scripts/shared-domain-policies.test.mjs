@@ -769,6 +769,15 @@ test("room modes and administrator MMR policy use the same mode keys", () => {
   }
 });
 
+test("a stale deployed route chunk reloads once without entering a refresh loop", async () => {
+  const mainSource = await readSource("src/main.jsx");
+  assert.match(mainSource, /window\.addEventListener\("vite:preloadError"/);
+  assert.match(mainSource, /event\.preventDefault\(\)/);
+  assert.match(mainSource, /window\.location\.reload\(\)/);
+  assert.match(mainSource, /Date\.now\(\) - lastRecoveryAt < PRELOAD_RECOVERY_WINDOW_MS/);
+  assert.match(mainSource, /window\.sessionStorage\.removeItem\(PRELOAD_RECOVERY_KEY\)/);
+});
+
 test("public product copy uses the BOXTIER brand and production tone", async () => {
   assert.equal(BRAND_NAME, "BOXTIER");
   assert.equal(getTestAccountDisplayLabel("rankball-006"), "6번 계정");
