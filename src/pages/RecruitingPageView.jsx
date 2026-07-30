@@ -3,6 +3,7 @@ import { CalendarDays, ChevronDown, ChevronUp, ClipboardCheck, Clock3, PlusCircl
 import Button from "../components/common/Button.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
+import MatchListCard from "../components/match/MatchListCard.jsx";
 import MmrRangeSelector from "../components/match/MmrRangeSelector.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
@@ -11,7 +12,7 @@ import { REGION_TREE } from "../lib/profileSetup.js";
 import { getRecruitingListCardLobby, getRecruitingRoomOwnerId, hasPendingRecruitingInvitation, isRecruitingPostForUser, isNationalRecruitingPost, isPaidRecruitingCourt } from "../lib/recruiting.js";
 import { getRecruitingTeamRepresentativePlayerIds as getTeamRepresentativePlayerIds } from "../lib/teamPartyRoster.js";
 import { getRoomCompetitionLabel, getRoomRefereeLabel, getRoomVisibilityLabel, getRoomScheduleLabel } from "../lib/matchUtils.js";
-import { getDefaultRecruitingTitle as getDefaultTitle } from "../lib/recruitingPage.js";
+import { getDefaultRecruitingTitle as getDefaultTitle, getRecruitingCardTitle } from "../lib/recruitingPage.js";
 import { QueueRoomBoard, RecruitingRoomLoadFailedView, RecruitingRoomLoadingView, RecruitingRoomModal, getRecruitingRoomListStatus, getRecruitingRoomTypeLabel } from "../components/recruiting/RecruitingRoomModal.jsx";
 
 export default function RecruitingPageView({

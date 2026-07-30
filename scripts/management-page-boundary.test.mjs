@@ -159,3 +159,14 @@ test("방 슬롯 위치 아바타 상수는 실제 렌더 모듈이 소유한다
   assert.match(slotSource, /ROOM_SLOT_POSITION_AVATARS\[normalizedPosition\]/);
   assert.doesNotMatch(recruitingPageSource, /ROOM_SLOT_POSITION_AVATARS/);
 });
+
+test("recruiting split view imports its card render dependencies", async () => {
+  const recruitingViewSource = await read("src/pages/RecruitingPageView.jsx");
+  const recruitingPageSource = await read("src/lib/recruitingPage.js");
+
+  assert.match(recruitingViewSource, /import MatchListCard from "\.\.\/components\/match\/MatchListCard\.jsx"/);
+  assert.match(recruitingViewSource, /getRecruitingCardTitle\s*\} from "\.\.\/lib\/recruitingPage\.js"/);
+  assert.match(recruitingViewSource, /const roomTitle = getRecruitingCardTitle\(post\)/);
+  assert.match(recruitingViewSource, /<MatchListCard/);
+  assert.match(recruitingPageSource, /export function getRecruitingCardTitle\(post\)/);
+});

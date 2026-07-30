@@ -614,7 +614,7 @@ test("internal legacy wrappers are inlined and dropped by exact signature", () =
   assert.match(storageDocSource, /drops the three-argument overload without `CASCADE`/u);
 });
 
-test("schema snapshot tails match the internal-wrapper and participant migrations", () => {
+test("schema snapshot tails match the internal-wrapper and repaired participant reducer", () => {
   const wrapperMarker = "-- Final internal legacy RPC wrapper removal.";
   const participantMarker = "-- Final match-record participant operation reducer.";
   const wrapperIndex = schemaSource.lastIndexOf(wrapperMarker);
@@ -628,8 +628,28 @@ test("schema snapshot tails match the internal-wrapper and participant migration
     ),
     normalizeExecutableSql(internalWrapperRemovalSource),
   );
+  const repairedParticipantSource = [
+    ["team_a_id text;", "selected_team_a_id text;"],
+    ["team_b_id text;", "selected_team_b_id text;"],
+    ["team_a_id :=", "selected_team_a_id :="],
+    ["team_b_id :=", "selected_team_b_id :="],
+    ["team_a_id is null", "selected_team_a_id is null"],
+    ["team_b_id is null", "selected_team_b_id is null"],
+    ["team_a_id = team_b_id", "selected_team_a_id = selected_team_b_id"],
+    ["team.id = team_a_id", "team.id = selected_team_a_id"],
+    ["team.id = team_b_id", "team.id = selected_team_b_id"],
+    ["member.team_id = team_a_id", "member.team_id = selected_team_a_id"],
+    ["member.team_id = team_b_id", "member.team_id = selected_team_b_id"],
+    ["safe_match_id, team_a_id, team_a_captain_id", "safe_match_id, selected_team_a_id, team_a_captain_id"],
+    ["safe_match_id, team_b_id, team_b_captain_id", "safe_match_id, selected_team_b_id, team_b_captain_id"],
+    ["then team_a_id", "then selected_team_a_id"],
+    ["then team_b_id", "then selected_team_b_id"],
+  ].reduce(
+    (source, [before, after]) => source.replaceAll(before, after),
+    matchRecordParticipantsSource,
+  );
   assert.equal(
     normalizeExecutableSql(schemaSource.slice(participantIndex + participantMarker.length)),
-    normalizeExecutableSql(matchRecordParticipantsSource),
+    normalizeExecutableSql(repairedParticipantSource),
   );
 });

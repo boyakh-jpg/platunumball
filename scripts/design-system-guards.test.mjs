@@ -77,6 +77,7 @@ const courtControlStyles = readCssTree("src/styles/global-court-controls.css");
 const globalAdminStyles = readCssTree("src/styles/global-admin-layout.css");
 const globalWorkflowStyles = readCssTree("src/styles/global-workflows.css");
 const globalSurfaceStyles = readCssTree("src/styles/global-surfaces.css");
+const landingScoreThemeStyles = read("src/styles/themes/landing-score-theme.css");
 const classicDesignStyles = readCssTree("src/styles/design-classic.css");
 const editorialDesignStyles = readCssTree("src/styles/design-editorial.css");
 const visualDirectionDemoSource = read("src/pages/VisualDirectionDemo.jsx");
@@ -1252,8 +1253,8 @@ test("경기 기록 참가 확인은 공용 surface token과 모달 밀도를 �
     /\.arena-lobby-modal \.record-approval-panel\.approval-panel > \.section-title-row h2\s*\{[^}]*font-size:\s*var\(--font-size-title-md\);/,
   );
   assert.match(
-    globalWorkflowStyles,
-    /@media \(max-width:\s*720px\)[\s\S]*?\.approval-panel \.approval-grid,[\s\S]*?grid-template-columns:\s*1fr;/,
+    landingScoreThemeStyles,
+    /@media \(max-width:\s*640px\)[\s\S]*?\.approval-panel \.approval-grid,[\s\S]*?grid-template-columns:\s*1fr;/,
   );
   assert.doesNotMatch(globalAdminStyles, /\.approval-panel \.approval-(?:voter-list|guard-note)[^}]*rgba\(/);
   assert.doesNotMatch(globalAdminStyles, /html\[data-theme="light"\] \.approval-(?:grid|voter-list)/);

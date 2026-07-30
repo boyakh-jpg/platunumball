@@ -17847,8 +17847,8 @@ declare
   team_a_player_ids jsonb := '[]'::jsonb;
   team_b_player_ids jsonb := '[]'::jsonb;
   target_ids jsonb := '[]'::jsonb;
-  team_a_id text;
-  team_b_id text;
+  selected_team_a_id text;
+  selected_team_b_id text;
   team_a_captain_id text;
   team_b_captain_id text;
   setup_ready boolean := false;
@@ -17996,21 +17996,21 @@ begin
     from jsonb_array_elements_text(team_b_player_ids)
       with ordinality player(player_id, ordinality);
   else
-    team_a_id := nullif(btrim(p_payload->>'teamAId'), '');
-    team_b_id := nullif(btrim(p_payload->>'teamBId'), '');
-    if team_a_id is null
-       or team_b_id is null
-       or team_a_id = team_b_id
+    selected_team_a_id := nullif(btrim(p_payload->>'teamAId'), '');
+    selected_team_b_id := nullif(btrim(p_payload->>'teamBId'), '');
+    if selected_team_a_id is null
+       or selected_team_b_id is null
+       or selected_team_a_id = selected_team_b_id
        or not exists (
          select 1
          from public.teams team
-         where team.id = team_a_id
+         where team.id = selected_team_a_id
            and team.deleted_at is null
        )
        or not exists (
          select 1
          from public.teams team
-         where team.id = team_b_id
+         where team.id = selected_team_b_id
            and team.deleted_at is null
        ) then
       raise exception 'match_record_team_invalid' using errcode = '23514';
@@ -18018,7 +18018,7 @@ begin
     if not exists (
       select 1
       from public.team_members member
-      where member.team_id = team_a_id
+      where member.team_id = selected_team_a_id
         and member.user_id = safe_actor_id
     ) then
       raise exception 'match_record_team_member_required' using errcode = '42501';
@@ -18027,14 +18027,14 @@ begin
     select member.user_id
     into team_a_captain_id
     from public.team_members member
-    where member.team_id = team_a_id
+    where member.team_id = selected_team_a_id
       and member.role = 'captain'
     order by member.user_id
     limit 1;
     select member.user_id
     into team_b_captain_id
     from public.team_members member
-    where member.team_id = team_b_id
+    where member.team_id = selected_team_b_id
       and member.role = 'captain'
     order by member.user_id
     limit 1;
@@ -18058,8 +18058,8 @@ begin
       slot_order
     )
     values
-      (safe_match_id, team_a_id, team_a_captain_id, 'teamA', 0),
-      (safe_match_id, team_b_id, team_b_captain_id, 'teamB', 0);
+      (safe_match_id, selected_team_a_id, team_a_captain_id, 'teamA', 0),
+      (safe_match_id, selected_team_b_id, team_b_captain_id, 'teamB', 0);
   end if;
 
   delete from public.match_agreements
@@ -18076,11 +18076,11 @@ begin
 
   update public.matches match_row
   set team_a_id = case
-        when current_composition = 'team' then team_a_id
+        when current_composition = 'team' then selected_team_a_id
         else null
       end,
       team_b_id = case
-        when current_composition = 'team' then team_b_id
+        when current_composition = 'team' then selected_team_b_id
         else null
       end,
       played_player_ids = case
