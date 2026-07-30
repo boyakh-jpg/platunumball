@@ -65,6 +65,7 @@ export default function TeamDetail({ app }) {
   }));
   const emblemInputRef = useRef(null);
   const emblemStatusRequestRef = useRef("");
+  const detailRequestRef = useRef("");
   const emblemAbbreviationCharacterCount = getTeamEmblemAbbreviationCharacterCount(emblemStyleDraft.emblemAbbreviation);
   const captain = team?.members.find((member) => member.role === "captain");
   const canManage = captain?.userId === app.currentUser.id;
@@ -95,7 +96,10 @@ export default function TeamDetail({ app }) {
   useEffect(() => {
     if (app.remoteReady === false || !teamId) return undefined;
     const refreshTeam = () => loadDirectory?.({ force: true, teamId });
-    if (!authoritativeTeam || authoritativeTeam.membersPartial === true) refreshTeam();
+    if (detailRequestRef.current !== teamId) {
+      detailRequestRef.current = teamId;
+      refreshTeam();
+    }
     window.addEventListener("focus", refreshTeam);
     const handleVisibilityChange = () => {
       if (!document.hidden) refreshTeam();
@@ -105,7 +109,7 @@ export default function TeamDetail({ app }) {
       window.removeEventListener("focus", refreshTeam);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [app.remoteReady, authoritativeTeam?.membersPartial, loadDirectory, teamId]);
+  }, [app.remoteReady, loadDirectory, teamId]);
 
   useEffect(() => {
     if (app.remoteReady === false || !team?.id || !loadTeamRecords || teamRecordArchive.loaded || teamRecordArchive.loading || teamRecordArchive.error) return;

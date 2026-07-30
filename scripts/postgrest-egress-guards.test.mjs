@@ -150,7 +150,7 @@ test("direct detail routes request their own authoritative payload", async () =>
 
   assert.match(hookSource, /teamDetailMatch[\s\S]{0,220}endpoint: "teamDetail"/);
   assert.match(playerSource, /loadDirectory\?\.\(\)/);
-  assert.match(teamSource, /loadDirectory\?\.\(\{ force: true \}\)/);
+  assert.match(teamSource, /loadDirectory\?\.\(\{ force: true, teamId \}\)/);
   assert.match(courtSource, /loadCourtDetail\?\.\(courtId\)/);
   assert.match(matchRoomSource, /loadMatchDetail\?\.\(matchId\)/);
   assert.match(tournamentSource, /loadTournament\?\.\(tournamentId\)/);

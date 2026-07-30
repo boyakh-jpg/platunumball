@@ -12,6 +12,7 @@ import {
   submitMatchResult,
 } from "../src/data/repository.js";
 import { getMatchBenchPolicyError, validateMatchCreateCourt } from "../server/api/matches/sync-match.js";
+import { getSqlMatchReloadPredicate } from "../server/lib/matchSqlActions.js";
 import {
   doMatchTimeRangesOverlap,
   getActualMatchPlayerIds,
@@ -41,6 +42,27 @@ const recordParts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
 }).formatToParts(recordDate).map((part) => [part.type, part.value]));
 const scheduledDate = `${recordParts.year}-${recordParts.month}-${recordParts.day}`;
 const scheduledTime = `${recordParts.hour}:${recordParts.minute}`;
+
+test("match record roster reload waits for the exact saved active and reserve roster", () => {
+  const predicate = getSqlMatchReloadPredicate({
+    action: "setMatchRecordTeamRoster",
+    sideName: "teamA",
+    roster: {
+      playerIds: ["u1", "u2", "u3"],
+      reservePlayerIds: ["u4"],
+    },
+  });
+  assert.equal(predicate({
+    teamA: { players: ["u1", "u2", "u3"] },
+    reservePlayers: { teamA: ["u4"] },
+    rules: { rosterReady: { teamA: true } },
+  }), true);
+  assert.equal(predicate({
+    teamA: { players: ["u1", "u2", "u3"] },
+    reservePlayers: { teamA: ["u4", "u5"] },
+    rules: { rosterReady: { teamA: true } },
+  }), false);
+});
 
 function getKstScheduleAt(date) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {

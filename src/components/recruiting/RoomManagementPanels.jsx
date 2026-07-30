@@ -327,6 +327,7 @@ export function MatchRecordRosterPanel({
   };
   const sourceRoster = normalizeLeaderRoster(sourceActiveIds, sourceReserveIds);
   const [draftRoster, setDraftRoster] = useState(sourceRoster);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setDraftRoster(normalizeLeaderRoster(sourceActiveIds, sourceReserveIds));
@@ -352,11 +353,15 @@ export function MatchRecordRosterPanel({
   if (!memberIds.length) return null;
 
   const commitRoster = () => {
+    if (saving || activeIds.length !== capacity) return;
     const nextRoster = normalizeLeaderRoster(activeIds, reserveIds);
-    onChange(sideName, {
-      playerIds: nextRoster.activeIds,
-      reservePlayerIds: nextRoster.reserveIds,
-    });
+    setSaving(true);
+    Promise.resolve()
+      .then(() => onChange(sideName, {
+        playerIds: nextRoster.activeIds,
+        reservePlayerIds: nextRoster.reserveIds,
+      }))
+      .finally(() => setSaving(false));
   };
   const setPlayerState = (playerId, state) => {
     if (!tournamentRoster && playerId === sideLeaderId && state !== "active") return;
@@ -441,10 +446,10 @@ export function MatchRecordRosterPanel({
       <Button
         type="button"
         size="sm"
-        disabled={!rosterChanged || (tournamentRoster ? activeIds.length !== capacity : !activeIds.length)}
+        disabled={saving || !rosterChanged || activeIds.length !== capacity}
         onClick={commitRoster}
       >
-        선수 확정
+        {saving ? "저장 중" : "선수 확정"}
       </Button>
     </div>
   );

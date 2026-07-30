@@ -36,6 +36,7 @@ import {
 } from "../src/lib/constants.js";
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
 import { getRoomScheduleLabel } from "../src/lib/matchUtils.js";
+import { matchesReportSearchQuery } from "../src/pages/settingsPageModel.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
 import {
@@ -51,6 +52,12 @@ import {
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("selected report target text keeps matching punctuation-separated metadata", () => {
+  const haystack = "강민준 #rb001pg PG Team A 출전 오늘의 2v2 경쟁전 #m7 연북중학교";
+  assert.equal(matchesReportSearchQuery(haystack, "강민준 #rb001pg · #m7"), true);
+  assert.equal(matchesReportSearchQuery(haystack, "강민준 #rb001pg · #missing"), false);
+});
 import { getTeamDiscoveryGroups } from "../src/data/teamMappers.js";
 import { getTournamentRosterTeam } from "../src/data/tournamentMappers.js";
 import { REGION_TREE, getRegionDistrictOptions, inferRegionSelection } from "../src/lib/profileSetup.js";
@@ -1403,20 +1410,21 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.match(seasonPage, /전국 개인 승격권/);
   assert.match(seasonPage, /이번 시즌 플레이/);
   assert.match(seasonPage, /state=\{\{ teamPreview: team \}\}/);
-  assert.match(seasonPage, /<TeamEmblem team=\{team\} size="md" \/>/);
+  assert.match(seasonPage, /<TeamEmblem team=\{team\} size="sm" \/>/);
   assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
   assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
   assert.match(rankingsPage, /useState\("integrated"\)/);
   assert.match(styles, /\.season-race-list > \.player-hover-trigger/);
 });
 
-test("team detail keeps navigation preview and fetches missing authoritative team data", async () => {
+test("team detail keeps navigation preview and always refreshes authoritative team data once", async () => {
   const teamDetailPage = await readSource("src/pages/TeamDetail.jsx");
   assert.match(teamDetailPage, /location\.state\?\.teamPreview\?\.id === teamId/);
   assert.match(teamDetailPage, /const authoritativeTeam = app\.state\.teams\.find/);
   assert.match(teamDetailPage, /const team = authoritativeTeam \?\? previewTeam/);
   assert.match(teamDetailPage, /loadDirectory\?\.\(\{ force: true, teamId \}\)/);
-  assert.match(teamDetailPage, /if \(!authoritativeTeam \|\| authoritativeTeam\.membersPartial === true\) refreshTeam\(\);/);
+  assert.match(teamDetailPage, /if \(detailRequestRef\.current !== teamId\)/);
+  assert.match(teamDetailPage, /detailRequestRef\.current = teamId;\s+refreshTeam\(\);/);
   assert.match(teamDetailPage, /!team && app\.remoteReady !== false && Boolean\(loadDirectory\)/);
 });
 

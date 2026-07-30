@@ -156,6 +156,17 @@ export function getReportTargetEmptyText(targetType) {
   return "신고 가능한 대상 없음";
 }
 
+export function matchesReportSearchQuery(haystack = "", query = "") {
+  const normalize = (value) => String(value ?? "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}#]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  const normalizedHaystack = normalize(haystack);
+  const queryTokens = normalize(query).split(" ").filter(Boolean);
+  return !queryTokens.length || queryTokens.every((token) => normalizedHaystack.includes(token));
+}
+
 export function formatCourtDistance(distanceMeters) {
   const distance = Number(distanceMeters);
   if (!Number.isFinite(distance)) return "거리 미확인";

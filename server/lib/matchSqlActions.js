@@ -38,6 +38,20 @@ export function getSqlMatchReloadPredicate(operation = {}) {
   }
   if (action === "startMatch") return (match) => Boolean(match?.startedAt);
   if (action === "endMatch") return (match) => Boolean(match?.endedAt);
+  if (action === "setMatchRecordTeamRoster") {
+    const sideName = operation.sideName;
+    const requestedPlayerIds = [...new Set(operation.roster?.playerIds ?? [])].filter(Boolean);
+    const requestedReserveIds = [...new Set(operation.roster?.reservePlayerIds ?? [])].filter(Boolean);
+    const hasSameIds = (actualIds = [], requestedIds = []) => (
+      actualIds.length === requestedIds.length
+      && requestedIds.every((playerId) => actualIds.includes(playerId))
+    );
+    return (match) => (
+      match?.rules?.rosterReady?.[sideName] === true
+      && hasSameIds(match?.[sideName]?.players ?? [], requestedPlayerIds)
+      && hasSameIds(match?.reservePlayers?.[sideName] ?? [], requestedReserveIds)
+    );
+  }
   if (action === "checkInMatchPlayer") {
     return (match) => (match?.attendance?.[operation.sideName] ?? []).includes(operation.playerId);
   }

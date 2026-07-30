@@ -54,7 +54,7 @@ export function useRecruitingRoomController({
   }, [loadDirectory, shouldLoadTeamDirectory]);
   useEffect(() => {
     sourceMatchTeamIds.forEach((teamId) => {
-      void loadDirectory?.({ kind: "teams", teamId, includeTeamMemberProfiles: true });
+      void loadDirectory?.({ force: true, kind: "teams", teamId, includeTeamMemberProfiles: true });
 
     });
   }, [loadDirectory, sourceMatchTeamIds]);
@@ -167,6 +167,7 @@ export function useRecruitingRoomController({
     ? isMatchRoomChatLocked(sourceMatch)
     : Boolean(selectedPost?.confirmedAt || getRecruitingPostTerminalState(selectedPost));
   const modalPostDetailLoadRef = useRef("");
+  const sourceMatchDetailLoadRef = useRef("");
   const pollRecruitingChatRef = useRef(app.actions.pollRecruitingChat);
   const loadMatchDetailRef = useRef(app.actions.loadMatchDetail);
   const chatSendLogRef = useRef({});
@@ -215,6 +216,26 @@ export function useRecruitingRoomController({
   useEffect(() => {
     loadMatchDetailRef.current = app.actions.loadMatchDetail;
   }, [app.actions.loadMatchDetail]);
+
+  useEffect(() => {
+    if (!sourceMatch?.id) {
+      sourceMatchDetailLoadRef.current = "";
+      return;
+    }
+    if (!app.remoteReady || !app.currentUser.id) return;
+    const refreshKey = `${sourceMatch.id}:${app.currentUser.id}`;
+    if (sourceMatchDetailLoadRef.current === refreshKey) return;
+    sourceMatchDetailLoadRef.current = refreshKey;
+    Promise.resolve(loadMatchDetailRef.current?.(sourceMatch.id)).then((count) => {
+      if (!count && sourceMatchDetailLoadRef.current === refreshKey) {
+        sourceMatchDetailLoadRef.current = "";
+      }
+    }).catch(() => {
+      if (sourceMatchDetailLoadRef.current === refreshKey) {
+        sourceMatchDetailLoadRef.current = "";
+      }
+    });
+  }, [app.currentUser.id, app.remoteReady, sourceMatch?.id]);
 
   useEffect(() => {
     if (!sourceMatch?.id || getMatchRoomPhase(sourceMatch).phase !== "checkin") return undefined;

@@ -175,7 +175,7 @@ export default function Season({ app }) {
                 >
                   <span className={`rank rank-${index + 1}`}>{index + 1}</span>
                   <span className="ranking-name">
-                    <TeamEmblem team={team} size="md" />
+                    <TeamEmblem team={team} size="sm" />
                     <span className="season-ranking-copy">
                       <b>{team.name}</b>
                       <em>{team.seasonWins}승 {team.seasonLosses}패 · {team.seasonDelta >= 0 ? "+" : ""}{team.seasonDelta} · {team.mmr} MMR</em>

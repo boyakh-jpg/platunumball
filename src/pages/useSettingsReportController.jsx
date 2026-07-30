@@ -4,7 +4,7 @@ import { canRequestVoidMatchRestore, getReportableMatchTimeMs } from "../lib/mat
 import { REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
-import { getReportParticipantRows, getMatchReportTitle } from "./settingsPageModel.js";
+import { getReportParticipantRows, getMatchReportTitle, matchesReportSearchQuery } from "./settingsPageModel.js";
 
 export default function useSettingsReportController({ app, userMap, matchMap, courtRequests, approvedCourts, courtReviews }) {
 const [reportMatchId, setReportMatchId] = useState("");
@@ -125,7 +125,6 @@ const reportParticipantIds = useMemo(
 const selectedReportedUserIds = reportedUserIds.filter((userId) => reportParticipantIds.includes(userId));
 const reportTargetSearchItems = useMemo(() => {
     if (!reportReason) return [];
-    const keyword = reportTargetQuery.trim().toLowerCase();
     const includePlayers = reportTargetType === REPORT_TARGET_TYPES.player || reportTargetType === REPORT_TARGET_TYPES.mixed;
     const includeMatches = reportTargetType === REPORT_TARGET_TYPES.match || reportTargetType === REPORT_TARGET_TYPES.mixed;
     const includeCourtRequests = reportTargetType === REPORT_TARGET_TYPES.courtRequest || reportTargetType === REPORT_TARGET_TYPES.mixed;
@@ -232,7 +231,7 @@ const reportTargetSearchItems = useMemo(() => {
       });
     }
 
-    return items.filter((item) => (keyword ? item.haystack.includes(keyword) : true));
+    return items.filter((item) => matchesReportSearchQuery(item.haystack, reportTargetQuery));
   }, [app.currentUserId, matchMap, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, reportableCourtReviews, reportableCourts, reportableMatchCandidates, reportableTeams, userMap]);
 const reportRemoteSearchTypes = reportTargetType === REPORT_TARGET_TYPES.courtReview
     ? ["court_review"]

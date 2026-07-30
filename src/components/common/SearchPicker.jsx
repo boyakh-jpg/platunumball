@@ -28,6 +28,7 @@ function getDefaultSearchText(item = {}) {
     item.name,
     item.handle,
     item.hashtag,
+    item.meta,
     item.region,
     item.position,
     item.homeCourt,

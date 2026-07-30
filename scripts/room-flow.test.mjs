@@ -631,6 +631,15 @@ test("사후 기록은 2/3 확인 전에는 부분 상태이고 24시간 뒤 미
   assert.deepEqual(expired.unconfirmedIds, ["c", "d"]);
 });
 
+test("경기방은 축약 목록 캐시를 버리고 상세 경기와 정확한 정원 명단을 사용한다", () => {
+  const controllerSource = readFileSync(new URL("../src/components/recruiting/useRecruitingRoomController.js", import.meta.url), "utf8");
+  const roomManagementSource = readFileSync(new URL("../src/components/recruiting/RoomManagementPanels.jsx", import.meta.url), "utf8");
+
+  assert.match(controllerSource, /loadDirectory\?\.\(\{ force: true, kind: "teams", teamId, includeTeamMemberProfiles: true \}\)/);
+  assert.match(controllerSource, /loadMatchDetailRef\.current\?\.\(sourceMatch\.id\)/);
+  assert.match(roomManagementSource, /disabled=\{saving \|\| !rosterChanged \|\| activeIds\.length !== capacity\}/);
+});
+
 test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형 grid를 사용한다", () => {
   const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   const roomManagementSource = readFileSync(new URL("../src/components/recruiting/RoomManagementPanels.jsx", import.meta.url), "utf8");
