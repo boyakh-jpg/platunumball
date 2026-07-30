@@ -97,6 +97,7 @@ export function MatchRoomModal({
 }) {
   const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
   const [openedMatchId, setOpenedMatchId] = useState("");
+  const [detailRequestVersion, setDetailRequestVersion] = useState(0);
   const requestedMatchDetailsRef = useRef(new Set());
   const matchesById = app.matchEntities ?? Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
   const selectedMatch = matchId ? matchesById[matchId] ?? null : null;
@@ -126,13 +127,28 @@ export function MatchRoomModal({
         setSelectedMatchDetailLoadingId((currentId) => currentId === matchId ? null : currentId);
       },
     });
-  }, [app.actions, app.currentUser.id, app.remoteReady, matchId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, detailRequestVersion, matchId]);
+
+  const retryMatchDetail = () => {
+    requestedMatchDetailsRef.current.delete(matchId);
+    setOpenedMatchId("");
+    setSelectedMatchDetailLoadingId(matchId);
+    setDetailRequestVersion((version) => version + 1);
+  };
 
   if (!matchId) return null;
   if (selectedMatchDetailLoading) return <RoomModalLoadingView onClose={onClose} />;
-  if (selectedMatchRoom.error) return <RoomModalErrorView error={selectedMatchRoom.error} onClose={onClose} />;
+  if (selectedMatchRoom.error) {
+    return <RoomModalErrorView error={selectedMatchRoom.error} onClose={onClose} onRetry={retryMatchDetail} />;
+  }
   if (!selectedMatch || !selectedMatchRoom.post) {
-    return <RoomModalErrorView error={new Error("경기 기록을 불러오지 못했습니다.")} onClose={onClose} />;
+    return (
+      <RoomModalErrorView
+        error={new Error("경기 기록을 불러오지 못했습니다.")}
+        onClose={onClose}
+        onRetry={retryMatchDetail}
+      />
+    );
   }
   return (
     <RoomModalErrorBoundary key={selectedMatch.id} onClose={onClose}>

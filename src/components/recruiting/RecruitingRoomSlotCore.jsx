@@ -24,6 +24,9 @@ import {
 import {
   isPlacementComplete,
 } from "../../lib/rating.js";
+import {
+  assetUrl,
+} from "../../lib/assets.js";
 
 import {
   getRecruitingBenchCapacity,
@@ -102,6 +105,14 @@ export function getLobbySideMeta(lobby, sideName, userById, { useSideName = fals
 function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
+
+const ROOM_SLOT_POSITION_AVATARS = {
+  PG: assetUrl("/assets/position-avatars/PG.webp"),
+  SG: assetUrl("/assets/position-avatars/SG.webp"),
+  SF: assetUrl("/assets/position-avatars/SF.webp"),
+  PF: assetUrl("/assets/position-avatars/PF.webp"),
+  C: assetUrl("/assets/position-avatars/C.webp"),
+};
 
 function getRoomSlotPositionAvatarSrc(position) {
   const normalizedPosition = String(position ?? "").trim().toUpperCase();

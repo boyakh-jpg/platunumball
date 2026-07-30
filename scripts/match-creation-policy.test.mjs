@@ -728,6 +728,12 @@ test("record and tournament payloads keep only relevant creation policy", () => 
   assert.equal(recordPolicy.waitlistCapacity, 0);
   assert.equal("venueFee" in recordPolicy, false);
   assert.equal("paymentPolicy" in recordPolicy, false);
+  const teamRecordPolicy = getScopedMatchCreationPolicyPayload({
+    ...draft,
+    recordComposition: "team",
+  }, "match_record");
+  assert.equal(teamRecordPolicy.benchCapacity, 3);
+  assert.equal(teamRecordPolicy.teamCapacity, 6);
   const tournamentPolicy = getScopedMatchCreationPolicyPayload(draft, "tournament");
   assert.equal(tournamentPolicy.benchCapacity, 2);
   assert.equal(tournamentPolicy.ballProvider, "venue");

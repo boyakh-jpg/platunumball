@@ -150,3 +150,12 @@ test("공용 방 모달 이동과 경기 상세 로더는 상태 전환을 한�
   assert.equal(unavailableCount, 1);
   assert.equal(settledCount, 1);
 });
+
+test("방 슬롯 위치 아바타 상수는 실제 렌더 모듈이 소유한다", async () => {
+  const slotSource = await read("src/components/recruiting/RecruitingRoomSlotCore.jsx");
+  const recruitingPageSource = await read("src/pages/Recruiting.jsx");
+
+  assert.match(slotSource, /const ROOM_SLOT_POSITION_AVATARS = \{/);
+  assert.match(slotSource, /ROOM_SLOT_POSITION_AVATARS\[normalizedPosition\]/);
+  assert.doesNotMatch(recruitingPageSource, /ROOM_SLOT_POSITION_AVATARS/);
+});

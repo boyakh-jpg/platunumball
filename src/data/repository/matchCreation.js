@@ -1,5 +1,6 @@
 import { DISPUTE_WINDOW_MINUTES } from "../../lib/constants.js";
 import { MODE_SIZES } from "../../lib/constants.js";
+import { MAX_BENCH_CAPACITY } from "../../lib/constants.js";
 import { RECORD_TYPES } from "../../lib/constants.js";
 import { REFEREE_TRUST_MIN } from "../../lib/constants.js";
 import { ROOM_SCHEDULE_MAX_DAYS } from "../../lib/constants.js";
@@ -309,6 +310,7 @@ export function createMatch(state, draft) {
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === effectiveDraft.court || court.id === getCourtId(effectiveDraft)) ?? null;
   const creator = state.users.find((user) => user.id === state.currentUserId);
   const recordComposition = getMatchRecordComposition(effectiveDraft);
+  const recordBenchCapacity = recordComposition === "team" ? MAX_BENCH_CAPACITY : 0;
   const creationPolicy = getMatchCreationPolicyPayload(effectiveDraft);
   const match = {
     id: effectiveDraft.id || makeId("m"),
@@ -346,8 +348,8 @@ export function createMatch(state, draft) {
       sideCapacity: size,
       onCourtCount: size,
       starterCount: size,
-      teamCapacity: size,
-      benchCapacity: 0,
+      teamCapacity: size + recordBenchCapacity,
+      benchCapacity: recordBenchCapacity,
       waitlistCapacity: 0,
       mmrRangeMode: "off",
       ratingScale,

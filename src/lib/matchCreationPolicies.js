@@ -356,11 +356,12 @@ export function getScopedMatchCreationPolicyPayload(source = {}, scope = "match"
     lastPeriodStopMinutes: policy.lastPeriodStopMinutes,
   };
   if (scope === "match_record") {
+    const benchCapacity = source.recordComposition === "team" ? MAX_BENCH_CAPACITY : 0;
     return {
       onCourtCount: policy.onCourtCount,
       starterCount: policy.onCourtCount,
-      benchCapacity: 0,
-      teamCapacity: policy.onCourtCount,
+      benchCapacity,
+      teamCapacity: policy.onCourtCount + benchCapacity,
       waitlistCapacity: 0,
     };
   }

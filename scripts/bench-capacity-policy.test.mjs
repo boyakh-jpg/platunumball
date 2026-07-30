@@ -19,6 +19,7 @@ import { getMatchBenchPolicyError, validateMatchShape } from "../server/api/matc
 const migrationSource = readFileSync(new URL("../supabase/migrations/20260722225500_bench_capacity_policy.sql", import.meta.url), "utf8");
 const capacityThreeMigrationSource = readFileSync(new URL("../supabase/migrations/20260722225700_bench_capacity_three.sql", import.meta.url), "utf8");
 const safeReserveBooleanMigrationSource = readFileSync(new URL("../supabase/migrations/20260729172000_safe_recruiting_reserve_boolean.sql", import.meta.url), "utf8");
+const matchRecordBenchMigrationSource = readFileSync(new URL("../supabase/migrations/20260730170000_match_record_bench_capacity_alignment.sql", import.meta.url), "utf8");
 const schemaSource = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8");
 const matchMapperSource = readFileSync(new URL("../shared/lib/matchMappers.js", import.meta.url), "utf8");
 
@@ -226,4 +227,12 @@ test("follow-up migration expands every active validator from 0..2 to 0..3", () 
     const escapedSignature = signature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     assert.match(capacityThreeMigrationSource, new RegExp(`'public\\.${escapedSignature}', ${expectedCount}\\)`));
   }
+});
+
+test("team match records keep three reserve slots in legacy and new rooms", () => {
+  for (const source of [matchRecordBenchMigrationSource, schemaSource]) {
+    assert.match(source, /is_team_match_record := coalesce\(new\.rules->>'recordType', ''\) = 'match_record'/);
+    assert.match(source, /if is_team_match_record then\s+safe_capacity := 3;/);
+  }
+  assert.match(matchRecordBenchMigrationSource, /update public\.matches[\s\S]*?'recordComposition'[\s\S]*?'team'/);
 });

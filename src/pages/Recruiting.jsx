@@ -35,9 +35,6 @@ import {
   getRecruitingTeamRepresentativePlayerIds as getTeamRepresentativePlayerIds,
 } from "../lib/teamPartyRoster.js";
 import {
-  assetUrl,
-} from "../lib/assets.js";
-import {
   getLocalDateInputValue,
   getPublicRoomTimingStatus,
   isInstantRoom,
@@ -66,14 +63,6 @@ import {
 import RecruitingPageView from "./RecruitingPageView.jsx";
 
 export { RecruitingRoomModal, getRecruitingRoomListStatus };
-
-const ROOM_SLOT_POSITION_AVATARS = {
-  PG: assetUrl("/assets/position-avatars/PG.webp"),
-  SG: assetUrl("/assets/position-avatars/SG.webp"),
-  SF: assetUrl("/assets/position-avatars/SF.webp"),
-  PF: assetUrl("/assets/position-avatars/PF.webp"),
-  C: assetUrl("/assets/position-avatars/C.webp"),
-};
 
 function RecruitingReady({ app }) {
   const location = useLocation();
