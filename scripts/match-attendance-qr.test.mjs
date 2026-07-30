@@ -555,6 +555,17 @@ test("출석 운영자는 자기 출석도 같은 중앙 action으로 저장한�
   assert.deepEqual(checkedIn.matches[0].attendance.teamA, ["host"]);
 });
 
+test("선수 방장의 자기 출석은 UI에서 막지 않고 QR 시작 상태를 즉시 갱신한다", async () => {
+  const [roomManagementSource, attendancePanelSource] = await Promise.all([
+    readSource("src/components/recruiting/RoomManagementPanels.jsx"),
+    readSource("src/components/match/MatchAttendanceQrPanel.jsx"),
+  ]);
+  assert.doesNotMatch(roomManagementSource, /operatorAttendanceOptional|방장 확인 생략|확인 생략/u);
+  assert.match(roomManagementSource, /disabled=\{checkedIn\}[\s\S]*?onClick=\{\(\) => onCheckInPlayer\(side, playerId\)\}/u);
+  assert.match(attendancePanelSource, /const attendanceRevision = \["teamA", "teamB"\]/u);
+  assert.match(attendancePanelSource, /\}, \[attendanceRevision, load\]\);/u);
+});
+
 test("QR 경기방은 20분 전, 비QR 경기방은 기존 10분 전부터 체크인 단계로 전환한다", () => {
   const qrMatch = {
     status: "agreed",
@@ -662,6 +673,9 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
   assert.match(recruitingSource, /window\.setInterval\(refreshAttendance, 3000\)/u);
   assert.match(roomManagementSource, /setPendingKick\(\{[\s\S]*?playerId,[\s\S]*?playerName/u);
   assert.doesNotMatch(roomManagementSource, /playerId:\s*partyEntry \? playerId : entry\.playerId/u);
+  assert.doesNotMatch(roomManagementSource, /operatorAttendanceOptional|방장 확인 생략|확인 생략/u);
+  assert.match(roomManagementSource, /disabled=\{checkedIn\}[\s\S]*?onClick=\{\(\) => onCheckInPlayer\(side, playerId\)\}/u);
+  assert.match(recruitingSource, /<MatchAttendanceQrPanel[\s\S]*?match=\{sourceMatch\}/u);
   assert.doesNotMatch(recruitingSource, /자동 기록자|기록 후보/u);
   assert.doesNotMatch(recruitingSource, /<Badge[^>]*>본인 교체<\/Badge>/u);
   assert.match(matchesSource, /function AttendanceScanResultView/u);

@@ -96,7 +96,6 @@ export function RoomKickPanel({
           const placementAllowed = !placementPlayerIdSet || placementPlayerIdSet.has(playerId);
           const selfRow = playerId === currentUserId;
           const hostRow = playerId === hostPlayerId;
-          const operatorAttendanceOptional = requireMissingAttendance && selfRow;
           const kickDisabled = selfRow || (requireMissingAttendance && checkedIn);
           return (
             <div key={`${entry.id}-${playerId}`} className="arena-host-kick-row">
@@ -105,7 +104,7 @@ export function RoomKickPanel({
                 <span>
                   <strong>{user.name}</strong>
                   <em>{poolMode ? "개인 참가" : `${SIDE_LABELS[side]} · ${reserve ? "후보" : "출전"} · ${entry.team?.name ?? "개인"}`}</em>
-                  {attendanceBySide ? <i>{checkedIn ? "출석 완료" : operatorAttendanceOptional ? "방장 확인 생략" : "미출석"}</i> : null}
+                  {attendanceBySide ? <i>{checkedIn ? "출석 완료" : "미출석"}</i> : null}
                 </span>
               </PlayerHoverCard>
               <div className="arena-host-kick-actions">
@@ -114,10 +113,10 @@ export function RoomKickPanel({
                     type="button"
                     size="sm"
                     variant={checkedIn ? "secondary" : "primary"}
-                    disabled={checkedIn || operatorAttendanceOptional}
+                    disabled={checkedIn}
                     onClick={() => onCheckInPlayer(side, playerId)}
                   >
-                    {checkedIn ? "출석 완료" : operatorAttendanceOptional ? "확인 생략" : "출석"}
+                    {checkedIn ? "출석 완료" : "출석"}
                   </Button>
                 ) : null}
                 <Button

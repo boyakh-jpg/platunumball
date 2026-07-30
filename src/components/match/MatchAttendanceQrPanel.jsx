@@ -31,6 +31,9 @@ export default function MatchAttendanceQrPanel({ match, onChanged, onStatusChang
   const [nowMs, setNowMs] = useState(Date.now());
   const [lastUpdatedAt, setLastUpdatedAt] = useState(0);
   const [lastUpdateKind, setLastUpdateKind] = useState("initial");
+  const attendanceRevision = ["teamA", "teamB"]
+    .map((side) => [...(match?.attendance?.[side] ?? [])].sort().join(","))
+    .join("|");
 
   const load = useCallback(async ({ quiet = false, reason = "manual" } = {}) => {
     if (!match?.id) return;
@@ -52,7 +55,7 @@ export default function MatchAttendanceQrPanel({ match, onChanged, onStatusChang
     void load({ reason: "initial" });
     const pollId = window.setInterval(() => void load({ quiet: true, reason: "auto" }), 15000);
     return () => window.clearInterval(pollId);
-  }, [load]);
+  }, [attendanceRevision, load]);
 
   useEffect(() => {
     const tickId = window.setInterval(() => setNowMs(Date.now()), 1000);
