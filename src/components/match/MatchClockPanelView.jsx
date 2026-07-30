@@ -81,7 +81,7 @@ export default function MatchClockPanelView({ context }) {
                 <select
                   className="ui-control"
                   value={selectedControllerId}
-                  disabled={pendingAction === "configure"}
+                  disabled={Boolean(pendingAction)}
                   onChange={(event) => selectController(event.target.value)}
                 >
                   {activePlayers.map((player) => (
@@ -99,7 +99,7 @@ export default function MatchClockPanelView({ context }) {
                       size="sm"
                       variant={shotClockSeconds === option.value ? "primary" : "secondary"}
                       aria-pressed={shotClockSeconds === option.value}
-                      disabled={pendingAction === "configure" || !selectedControllerId}
+                      disabled={Boolean(pendingAction) || !selectedControllerId}
                       onClick={() => selectShotClock(option.value)}
                     >
                       {option.label}

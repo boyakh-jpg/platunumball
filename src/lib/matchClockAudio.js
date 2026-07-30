@@ -1,4 +1,6 @@
 const ERROR_LABELS = Object.freeze({
+  invalid_shot_clock_seconds: "샷클락은 사용 안 함, 24초, 30초, 1분 중에서 선택해 주세요.",
+  match_clock_configure_forbidden: "경기시계 시작 전 방장 또는 배정 심판만 담당자와 샷클락을 변경할 수 있습니다.",
   match_clock_forbidden: "이 경기의 시계를 볼 권한이 없습니다.",
   match_clock_controller_must_be_active: "현재 출전·후보 선수 또는 심판만 시계를 받을 수 있습니다.",
   match_clock_start_forbidden: "지정된 시계 담당 선수만 시작할 수 있습니다.",

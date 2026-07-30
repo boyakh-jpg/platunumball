@@ -45,3 +45,21 @@ test("match clock panel delegates score controls and audio without growing back"
     /from ["'][^"']*MatchClockPanel\.jsx["']/u,
   );
 });
+
+test("24초 샷클락 옵션은 UI와 DB constraint 및 RPC에서 동일하게 허용한다", async () => {
+  const [clockSource, viewSource, audioSource, migrationSource, schemaSource] = await Promise.all([
+    readFile(path.join(ROOT, "src/lib/matchClock.js"), "utf8"),
+    readFile(path.join(ROOT, "src/components/match/MatchClockPanelView.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/lib/matchClockAudio.js"), "utf8"),
+    readFile(path.join(ROOT, "supabase/migrations/20260730224000_align_match_clock_24_second_option.sql"), "utf8"),
+    readFile(path.join(ROOT, "supabase/schema.sql"), "utf8"),
+  ]);
+
+  assert.match(clockSource, /value:\s*24,\s*label:\s*"24/u);
+  assert.match(migrationSource, /where shot_clock_seconds = 35/u);
+  assert.match(migrationSource, /check \(shot_clock_seconds in \(0, 24, 30, 60\)\)/u);
+  assert.match(migrationSource, /next_shot_seconds not in \(0, 24, 30, 60\)/u);
+  assert.match(schemaSource, /align the live match clock with the 24-second UI option/u);
+  assert.match(viewSource, /disabled=\{Boolean\(pendingAction\) \|\| !selectedControllerId\}/u);
+  assert.match(audioSource, /invalid_shot_clock_seconds:[^\n]*24초/u);
+});
