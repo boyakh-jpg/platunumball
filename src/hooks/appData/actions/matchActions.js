@@ -26,7 +26,6 @@ export function buildMatchActions(context) {
     generatePickupSideAssignment,
     getActionActorDebug,
     getNewItems,
-    getNewMatchNotifications,
     getNewTournamentNotifications,
     incrementMatchScore,
     inviteTournamentReferee,
@@ -45,6 +44,7 @@ export function buildMatchActions(context) {
     setProfileRecordsLoaded,
     setPublicProfileRecordArchives,
     setState,
+    stateRef,
     setTeamRecordArchives,
     startMatch,
     submitMatchResult,
@@ -88,45 +88,22 @@ switchUser: (userId) => {
         return result?.matchId ?? result?.match?.id ?? null;
       });
     }
-    let rollbackState = null;
-    let createdId = null;
-    let createdMatch = null;
-    let syncedNotifications = [];
-    let localBlockNotification = null;
-    let localBlockDebug = {};
-    setState((prev) => {
-      rollbackState = prev;
-      const existingIds = new Set((prev.matches ?? []).map((match) => match.id));
-      const next = createMatch({ ...prev, currentUserId }, draft);
-      createdMatch = (next.matches ?? []).find((match) => !existingIds.has(match.id)) ?? null;
-      createdId = createdMatch?.id ?? null;
-      syncedNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
-      localBlockNotification = createdMatch ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
-      localBlockDebug = createdMatch ? {} : getActionActorDebug(prev, currentUserId);
-      return !createdMatch && isSupabaseConfigured ? prev : next;
-    });
+    const previousState = stateRef.current;
+    const existingIds = new Set((previousState.matches ?? []).map((match) => match.id));
+    const next = createMatch({ ...previousState, currentUserId }, draft);
+    const createdMatch = (next.matches ?? []).find((match) => !existingIds.has(match.id)) ?? null;
+    stateRef.current = next;
+    setState(next);
     if (!createdMatch) {
-      if (isSupabaseConfigured) {
-        return rollbackIfServerFailed(
-          syncMatchServer(null, [], { action: "createMatch", draft }),
-          rollbackState,
-          "경기 생성",
-          { action: "createMatch", details: localBlockDebug },
-        ).then((result) => (result?.ok === false ? result : result?.matchId ?? result?.match?.id ?? null));
-      }
+      const localBlockNotification = getNewItems(previousState.notifications ?? [], next.notifications ?? [])[0] ?? null;
       return Promise.resolve({
         ok: false,
         error: "local_reducer_blocked",
-        details: localBlockDebug,
+        details: getActionActorDebug(previousState, currentUserId),
         message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "경기 생성 조건을 통과하지 못했습니다.",
       });
     }
-    return rollbackIfServerFailed(
-      syncMatchServer(createdMatch, syncedNotifications, { action: "createMatch", draft, preferredMatchId: createdMatch.id }),
-      rollbackState,
-      "경기 생성",
-      { action: "createMatch", matchId: createdMatch.id },
-    ).then((result) => (result?.ok === false ? result : createdId));
+    return createdMatch.id;
   },
   createTournament: async (draft) => {
     const serverReady = await ensureServerActionAvailable("/api/tournaments/sync-tournament", "토너먼트 생성");

@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { runAutomaticStateMaintenance } from "../src/data/repository.js";
+import {
+  blockUser,
+  createRecruitingPost,
+  reportPlayer,
+  runAutomaticStateMaintenance,
+} from "../src/data/repository.js";
+import { demoFlowState } from "../src/lib/demoFlowState.js";
 import {
   PRACTICE_SELF_ID,
   PRACTICE_TEAM_A_ID,
@@ -16,6 +22,7 @@ import {
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
 import { getRecruitingLobby } from "../src/lib/recruiting.js";
+import { getLocalRivalries } from "../src/lib/season.js";
 
 const MODE_CAPACITY = Object.freeze({
   "1v1": 1,
@@ -395,6 +402,87 @@ test("프론트 사후 경기기록은 모든 인원의 개인·팀 구성과 �
     runMatchRecord("individual", mode);
     runMatchRecord("team", mode);
   }
+});
+
+test("시즌 라이벌은 내 팀이 포함된 지역 매치업만 반환한다", () => {
+  const teams = [
+    { id: PRACTICE_TEAM_A_ID, name: "내 팀", region: "마포", mmr: 1200, wins: 1 },
+    { id: PRACTICE_TEAM_B_ID, name: "상대 팀", region: "마포", mmr: 1250, wins: 1 },
+    { id: "practice-team-c", name: "다른 팀", region: "광진", mmr: 1300, wins: 1 },
+  ];
+  const rivalries = getLocalRivalries(teams, [], "광진", 10, [PRACTICE_TEAM_A_ID]);
+  assert.ok(rivalries.length);
+  assert.ok(rivalries.every((pair) => (
+    pair.teamA.id === PRACTICE_TEAM_A_ID || pair.teamB.id === PRACTICE_TEAM_A_ID
+  )));
+  assert.ok(rivalries.every((pair) => pair.teamA.region === pair.teamB.region));
+});
+
+test("실제 매칭방은 공개·비공개와 개인·팀 구성을 모두 생성하고 초대·신고·차단을 처리한다", () => {
+  const initial = structuredClone(demoFlowState);
+  const hostId = initial.currentUserId;
+  const targetId = initial.users.find((user) => user.id !== hostId && !user.anonymous)?.id;
+  let state = {
+    ...initial,
+    notifications: [],
+    reports: [],
+    recruitingPosts: [],
+    settings: { ...(initial.settings ?? {}), blockedUserIds: [] },
+  };
+  const variants = [
+    { visibility: "public", hostJoinMode: "player" },
+    { visibility: "private", hostJoinMode: "player", invitePlayerIds: [targetId] },
+    { visibility: "public", hostJoinMode: "team", teamOnly: true },
+    { visibility: "private", hostJoinMode: "team", teamOnly: true },
+  ];
+
+  variants.forEach((variant, index) => {
+    state = createRecruitingPost(state, {
+      ...variant,
+      title: `actual-room-${index}`,
+      mode: "2v2",
+      sideCapacity: 2,
+      benchCapacity: 1,
+      timingType: "instant",
+      ranked: false,
+      formationMode: "prearranged",
+      matchPurpose: "friendly",
+      gameClockEnabled: false,
+      court: "한강 노을코트",
+      meetingPoint: "1번 코트 입구",
+    });
+  });
+
+  assert.equal(state.recruitingPosts.length, 4);
+  variants.forEach((variant, index) => {
+    const room = state.recruitingPosts.find((post) => post.title === `actual-room-${index}`);
+    assert.equal(room.visibility, variant.visibility);
+    assert.equal(room.hostJoinMode, variant.hostJoinMode);
+    assert.equal(room.teamOnly, variant.hostJoinMode === "team");
+  });
+
+  const privatePlayerRoom = state.recruitingPosts.find((post) => post.title === "actual-room-1");
+  assert.ok(privatePlayerRoom.roomState.invitations.some((invitation) => invitation.targetUserId === targetId));
+  state = blockUser({ ...state, currentUserId: targetId }, hostId);
+  assert.equal(
+    state.recruitingPosts.find((post) => post.id === privatePlayerRoom.id)
+      .roomState.invitations.some((invitation) => invitation.targetUserId === targetId),
+    false,
+  );
+
+  const reportMatchId = "actual-room-report-match";
+  state = reportPlayer({
+    ...state,
+    matches: [{
+      id: reportMatchId,
+      title: "실제 경기방 신고 확인",
+      createdBy: hostId,
+      endedAt: new Date().toISOString(),
+      teamA: { players: [hostId] },
+      teamB: { players: [targetId] },
+    }],
+  }, hostId, reportMatchId, "프론트 신고 확인");
+  assert.ok(state.reports.some((report) => report.type === "player" && report.targetId === hostId && report.by === targetId));
 });
 
 test("분리된 방 렌더 모듈은 런타임 의존성을 명시적으로 전달한다", async () => {

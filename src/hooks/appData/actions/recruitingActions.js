@@ -25,7 +25,6 @@ export function buildRecruitingActions(context) {
     ensureServerActionAvailable,
     getActionActorDebug,
     getNewItems,
-    getNewRecruitingNotifications,
     interestRecruitingPost,
     inviteRecruitingPlayers,
     inviteRecruitingReferee,
@@ -68,46 +67,22 @@ createRecruitingPost: async (draft) => {
         return result?.post?.id ?? result?.postId ?? null;
       });
     }
-    let rollbackState = null;
-    let createdPost = null;
-    let syncedNotifications = [];
-    let localBlockNotification = null;
-    let localBlockDebug = {};
-    setState((prev) => {
-      rollbackState = prev;
-      const existingIds = new Set((prev.recruitingPosts ?? []).map((post) => post.id));
-      const next = createRecruitingPost({ ...prev, currentUserId }, draft);
-      createdPost = (next.recruitingPosts ?? []).find((post) => !existingIds.has(post.id)) ?? null;
-      syncedNotifications = createdPost ? getNewRecruitingNotifications(prev, next, createdPost.id) : [];
-      localBlockNotification = createdPost ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
-      localBlockDebug = createdPost ? {} : getActionActorDebug(prev, currentUserId);
-      return !createdPost && isSupabaseConfigured ? prev : next;
-    });
+    const previousState = stateRef.current;
+    const existingIds = new Set((previousState.recruitingPosts ?? []).map((post) => post.id));
+    const next = createRecruitingPost({ ...previousState, currentUserId }, draft);
+    const createdPost = (next.recruitingPosts ?? []).find((post) => !existingIds.has(post.id)) ?? null;
+    stateRef.current = next;
+    setState(next);
     if (!createdPost) {
-      if (isSupabaseConfigured) {
-        return rollbackIfServerFailed(
-          syncRecruitingPostServer(null, [], { action: "createRecruitingPost", draft }),
-          rollbackState,
-          "방 생성",
-          { action: "createRecruitingPost", details: localBlockDebug },
-        ).then((result) => (result?.ok === false ? result : result?.postId ?? result?.post?.id ?? null));
-      }
+      const localBlockNotification = getNewItems(previousState.notifications ?? [], next.notifications ?? [])[0] ?? null;
       return Promise.resolve({
         ok: false,
         error: "local_reducer_blocked",
-        details: localBlockDebug,
+        details: getActionActorDebug(previousState, currentUserId),
         message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "방 생성 조건을 통과하지 못했습니다.",
       });
     }
-    return rollbackIfServerFailed(
-      syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost", draft, preferredPostId: createdPost.id }),
-      rollbackState,
-      "방 생성",
-      { action: "createRecruitingPost", postId: createdPost.id },
-    ).then((result) => {
-      if (!result || result?.ok === false) return result;
-      return result?.post?.id ?? result?.postId ?? createdPost.id;
-    });
+    return createdPost.id;
   },
   setRecruitingRoomTeam: (postId, side, teamId, contextMessage = "") => applyRecruitingPostMutation(
     postId,

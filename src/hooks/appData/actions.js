@@ -226,6 +226,12 @@ export function createAppActions({
     return queuedMutation;
   };
   const applyRecruitingPostMutation = async (postId, reducer, meta = {}) => {
+    if (!isSupabaseConfigured) {
+      const next = reducer(stateRef.current);
+      stateRef.current = next;
+      setState(next);
+      return true;
+    }
     const operation = getServerOperation({ ...meta, postId });
     const optimisticBeforeServerCheck = meta.optimisticBeforeServerCheck === true;
     let rollbackState = null;
@@ -261,6 +267,12 @@ export function createAppActions({
     return true;
   };
   const applyMatchMutation = async (matchId, reducer, meta = {}) => {
+    if (!isSupabaseConfigured) {
+      const next = reducer(stateRef.current);
+      stateRef.current = next;
+      setState(next);
+      return true;
+    }
     const serverReady = await ensureServerActionAvailable("/api/matches/sync-match", "경기 변경");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("경기 변경")) return;

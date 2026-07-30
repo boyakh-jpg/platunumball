@@ -32,6 +32,9 @@ const navigate = useNavigate();
   }, [location.state?.remakeDraft]);
   const remakeSourceId = remakeDraft ? String(location.state?.remakeSourceId ?? "").trim() : "";
   const remakeSourceMatchId = remakeDraft ? String(location.state?.remakeSourceMatchId ?? "").trim() : "";
+  const challengeTeamAId = String(location.state?.challengeTeamAId ?? "").trim();
+  const challengeTeamBId = String(location.state?.challengeTeamBId ?? "").trim();
+  const hasTeamChallenge = Boolean(challengeTeamAId && challengeTeamBId && challengeTeamAId !== challengeTeamBId);
   const today = getLocalDateInputValue();
   const minSoloRecordDate = addDateDays(today, -1);
   const nextWeek = addDateDays(today, 7);
@@ -45,7 +48,7 @@ const navigate = useNavigate();
   const loadDirectory = app.actions.loadDirectory;
   const remoteDirectoryEnabled = app.capabilities?.remoteDirectory !== false;
   const requestedTournamentDirectoryRef = useRef(false);
-  const modeManuallyChangedRef = useRef(Boolean(remakeDraft));
+  const modeManuallyChangedRef = useRef(Boolean(remakeDraft || hasTeamChallenge));
   const loadedCourtMapRegionsRef = useRef(new Set());
   const courtMapRequestIdRef = useRef(0);
   useEffect(() => {
@@ -184,6 +187,13 @@ const navigate = useNavigate();
     tournamentMmrPolicy: "gap_adjusted",
     tournamentMaxMmrGap: DEFAULT_TOURNAMENT_MMR_GAP,
     ...(remakeDraft ?? {}),
+    ...(hasTeamChallenge ? {
+      visibility: "private",
+      hostJoinMode: "team",
+      teamOnly: true,
+      teamAId: challengeTeamAId,
+      teamBId: challengeTeamBId,
+    } : {}),
     ...(initialDraft ?? {}),
   });
   const [submitting, setSubmitting] = useState(false);
@@ -434,7 +444,7 @@ const navigate = useNavigate();
   return {
     ...CREATE_MATCH_DEPENDENCIES,
     app, initialDraft, onRecruitingCreated, onCancel, embedded, practiceMode, syncStepToUrl,
-    navigate, location, remakeDraft, remakeSourceId, remakeSourceMatchId, today, minSoloRecordDate,
+    navigate, location, remakeDraft, remakeSourceId, remakeSourceMatchId, challengeTeamAId, challengeTeamBId, hasTeamChallenge, today, minSoloRecordDate,
     nextWeek, maxScheduleDate, maxPrivateScheduleDate, maxPublicScheduleDate, isRecordCreateIntent, loadDirectory, remoteDirectoryEnabled,
     requestedTournamentDirectoryRef, modeManuallyChangedRef, loadedCourtMapRegionsRef, courtMapRequestIdRef, myTeams, captainTeams, representativeTeamId,
     currentRepresentativeTeam, representativeTournamentTeam, canCreateTeamRoom, defaultTeamA, defaultTournamentTeamA, defaultMode, defaultHostJoinMode,

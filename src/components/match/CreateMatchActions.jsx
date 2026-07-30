@@ -1,6 +1,6 @@
 export function createCreateMatchActions(context) {
   const {
-    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, currentRegion, draft,
+    RECORD_TYPES, Star, ageRestrictionOption, app, appendSoloRecordUser, challengeTeamAId, challengeTeamBId, currentRegion, draft,
     favoriteRefereeIds, favoriteTeamIds, formatCreateSaveError, getAvailableTeamPlayerIds, getCourtAddress, getCourtHashtag, getCourtLayoutLabel,
     getCourtSurfaceLabel, getMatchCreationPolicyPayload, getMatchRulesPayload, getOpponentTeam, getPersonalRecordDraftPayload, getRepresentativePlayerIds, getScopedMatchCreationPolicyPayload,
     getTeamEligibility, getTeamHashtag, getTournamentTeamEligibility, getUserHashtag, isFavoriteCourt, isInstantRoom, isMatchRecordRoom,
@@ -431,12 +431,14 @@ const selectTeamA = (teamAId) => {
       ].filter(Boolean).join("\n"),
     });
     if (typeof postId === "string" && postId) {
-      if (remakeDraft && createAsTeam && draft.remakeTeamAId) {
-        await app.actions.setRecruitingRoomTeam(postId, "teamA", draft.remakeTeamAId);
+      const presetTeamAId = remakeDraft ? draft.remakeTeamAId : challengeTeamAId;
+      const presetTeamBId = remakeDraft ? draft.remakeTeamBId : challengeTeamBId;
+      if (createAsTeam && presetTeamAId) {
+        await app.actions.setRecruitingRoomTeam(postId, "teamA", presetTeamAId);
       }
       if (remakeDraft && draft.remakeReinvite) {
-        if (createAsTeam && draft.remakeTeamBId) {
-          await app.actions.setRecruitingRoomTeam(postId, "teamB", draft.remakeTeamBId, remakeInvitationContext);
+        if (createAsTeam && presetTeamBId) {
+          await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, remakeInvitationContext);
         } else if (!createAsTeam) {
           for (const group of draft.remakeInvitationGroups ?? []) {
             await app.actions.inviteRecruitingPlayers(postId, {
@@ -448,6 +450,8 @@ const selectTeamA = (teamAId) => {
             });
           }
         }
+      } else if (!remakeDraft && createAsTeam && presetTeamBId) {
+        await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다.");
       }
       if (onRecruitingCreated) onRecruitingCreated(postId);
       else navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);

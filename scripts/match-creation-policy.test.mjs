@@ -1097,6 +1097,9 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
   assert.match(source, /benchCapacity: creationPolicyPayload\.benchCapacity/);
   assert.match(source, /rules:\s*\{[\s\S]*\.\.\.creationPolicyPayload/);
+  assert.match(source, /teamId:\s*""[\s\S]*opponentTeamId:\s*""/);
+  assert.match(source, /presetTeamAId[\s\S]*setRecruitingRoomTeam\(postId, "teamA"/);
+  assert.match(source, /presetTeamBId[\s\S]*setRecruitingRoomTeam\(postId, "teamB"/);
   assert.match(source, /MatchCreationWizardNav/);
   assert.match(source, /wizardStep === finalWizardStep/);
   assert.doesNotMatch(source, /official:\s*true/);
@@ -1263,4 +1266,13 @@ test("경기 시작 뒤 신뢰도 자동 회수된 기존 배정 심판만 경�
     refereeId: referee.id,
     status: "agreed",
   }, [autoRevokedAppointment]), false);
+});
+
+test("DB 미연결 생성 액션은 현재 state snapshot으로 결과를 판정한다", () => {
+  const appActionsSource = fs.readFileSync(new URL("../src/hooks/appData/actions.js", import.meta.url), "utf8");
+  const matchActionsSource = fs.readFileSync(new URL("../src/hooks/appData/actions/matchActions.js", import.meta.url), "utf8");
+  const recruitingActionsSource = fs.readFileSync(new URL("../src/hooks/appData/actions/recruitingActions.js", import.meta.url), "utf8");
+  assert.match(appActionsSource, /applyRecruitingPostMutation[\s\S]*if \(!isSupabaseConfigured\)[\s\S]*stateRef\.current = next;[\s\S]*applyMatchMutation[\s\S]*if \(!isSupabaseConfigured\)[\s\S]*stateRef\.current = next;/);
+  assert.match(matchActionsSource, /previousState = stateRef\.current;[\s\S]*stateRef\.current = next;[\s\S]*return createdMatch\.id;/);
+  assert.match(recruitingActionsSource, /previousState = stateRef\.current;[\s\S]*stateRef\.current = next;[\s\S]*return createdPost\.id;/);
 });
