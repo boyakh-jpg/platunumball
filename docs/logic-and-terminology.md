@@ -897,6 +897,7 @@
 
 - `/login` auth 직후와 `/app` 첫 remote load는 `/api/home/load`를 사용한다. 폐기된 broad `/api/state/load`로 물러나지 않는다.
 - `/api/home/load`는 current-profile profile/team bootstrap과 `/api/matches/list` feed 기반 active match/recruiting schedule을 한 번에 합친다.
+- 홈 hydration은 현재 인증 사용자의 `authUserId`와 `authEmail`을 초기 로더에 반드시 전달하며, 인증 사용자가 있으면 `/api/home/load` 완료 후 `remoteReady`를 종료한다.
 - `/api/home/load`는 active match feed와 current-user recruiting schedule만 병합한다. confirmed 기록방과 result/stat child rows는 홈에서 미리 읽지 않고 기록 화면 진입 시 읽는다.
 - `/api/home/load`는 홈 지역 모집 teaser용 공개 모집 카드를 병합하지 않는다. 지역/공개 모집 목록은 `/app/recruiting`이 읽고, 홈 첫 로드는 current-user feed만 유지한다.
 - 화면별 thin endpoint 실패 fallback은 `/api/profile/me`의 profile-only 응답으로 제한한다. 홈/경기/모집/기록 첫 로드 실패가 direct full state read로 번지면 안 된다.

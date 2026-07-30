@@ -94,13 +94,14 @@ test("match rows and child tables stay behind bounded related IDs", async () => 
 });
 
 test("home team bootstrap is route-independent and remains bounded", async () => {
-  const [homeSource, profileSource, hookSource, homePageSource, hoverSource, adminSource] = await Promise.all([
+  const [homeSource, profileSource, hookSource, runtimeSource, homePageSource, hoverSource, adminSource] = await Promise.all([
     readSource("server/api/home/load.js"),
     readSource("server/api/profile/me.js"),
     Promise.all([
       readSourceGroup(readSource, APP_DATA_REMOTE_MERGE_SOURCE_PATHS),
       readSource("src/hooks/appData/bootstrap.js"),
     ]).then((sources) => sources.join("\n")),
+    readSource("src/hooks/appData/orchestrator/runtime.js"),
     readSourceGroup(readSource, HOME_PAGE_SOURCE_PATHS),
     readSource("src/components/team/TeamHoverCard.jsx"),
     readSource("server/api/_supabaseAdmin.js"),
@@ -124,6 +125,7 @@ test("home team bootstrap is route-independent and remains bounded", async () =>
   assert.match(hookSource, /getHomeLoadFailureCount\(retryResult\) < getHomeLoadFailureCount\(firstResult\)/);
   assert.match(hookSource, /includeFavorites: options\.endpoint === "homeLoad"/);
   assert.match(hookSource, /includeTeams: options\.endpoint === "homeLoad"/);
+  assert.match(runtimeSource, /useAppDataRuntimeHydration\(\{[\s\S]{0,120}authEmail,[\s\S]{0,80}authUserId,/);
   assert.match(homePageSource, /homeSummary\?\.ownTeamIds/);
   assert.match(homePageSource, /homeSummary\?\.regionalPlayerIds/);
   assert.match(homePageSource, /!myTeamIds\.includes\(team\.id\)/);

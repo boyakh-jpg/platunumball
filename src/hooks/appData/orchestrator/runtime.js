@@ -204,7 +204,11 @@ const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? nul
     blockedSettingsCommittedIdsRef.current = getBlockedUserIdsFromState(state);
   }, [state.settings?.blockedUserIds]);
 
-  useAppDataRuntimeHydration(context, {
+  useAppDataRuntimeHydration({
+    ...context,
+    authEmail,
+    authUserId,
+  }, {
     adminCacheRef, adminContextLoadedAuthRef, adminContextPromiseRef, adminContextRef, adminPromiseRef,
     blockedSettingsCommittedIdsRef, blockedSettingsPendingCountRef, blockedSettingsSyncRef,
     directoryCacheRef, directoryPromiseRef, homeRouteLoadKeyRef, latestAdminRequestRef,
