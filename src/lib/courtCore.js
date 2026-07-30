@@ -395,6 +395,14 @@ export function mergeCourtSearchCourts(directoryCourts = [], discoveredCourts = 
   });
   return [...byId.values()];
 }
+export function getCourtRecommendationScore(court = {}) {
+  const rating = Number(court.adjustedRating ?? court.reviewSummary?.adjustedRating ?? court.rating ?? 3.5);
+  const completedMatchCount = Math.max(0, Number(court.completedMatchCount ?? 0));
+  if (court.recommendationScore !== null && court.recommendationScore !== undefined && Number.isFinite(Number(court.recommendationScore))) {
+    return Number(court.recommendationScore);
+  }
+  return rating + Math.min(0.8, Math.log1p(completedMatchCount) * 0.2);
+}
 export function getCourtPickerResults(courts = [], options = {}) {
   const query = String(options.query ?? "").trim();
   const region = String(options.region ?? "").trim();

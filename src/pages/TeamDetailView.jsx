@@ -12,6 +12,7 @@ import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
+import { getSideResult, getTeamSide } from "../lib/season.js";
 import {
   TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS,
   TEAM_EMBLEM_FONT_OPTIONS,
@@ -107,7 +108,7 @@ export default function TeamDetailView({ controller }) {
               {detailHistory.map((match) => {
                 const sideName = getTeamSide(match, team.id);
                 const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
-                const outcome = getTeamOutcome(match, team.id);
+                const outcome = getSideResult(match, sideName);
                 return (
                   <RecentMatchRow
                     key={match.id}

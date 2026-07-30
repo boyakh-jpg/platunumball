@@ -44,7 +44,7 @@ function getOppositeSide(sideName) {
   return sideName === "teamA" ? "teamB" : "teamA";
 }
 
-function getSideResult(match, sideName) {
+export function getSideResult(match, sideName) {
   const otherSide = getOppositeSide(sideName);
   const sideScore = getSideScore(match, sideName);
   const otherScore = getSideScore(match, otherSide);

@@ -1821,6 +1821,7 @@ test("team and room court pickers share one single-selection search policy", asy
     { id: "court-mapo", name: "망원한강공원 농구장", hashtag: "#10001", region: "마포", addressText: "서울특별시 마포구 마포나루길 467", type: "야외" },
     { id: "court-yeonbuk", name: "연북중학교 체육관 1F", hashtag: "#34264", region: "서대문", roadAddress: "서울특별시 서대문구 연희로 80", type: "실내" },
   ];
+  courts.push({ ...courts[0], id: "court-mapo-rated", recommendationScore: 5 });
 
   assert.match(getCourtSearchText(courts[1]), /연희로 80/);
   assert.deepEqual(
@@ -1833,9 +1834,9 @@ test("team and room court pickers share one single-selection search policy", asy
   );
   assert.deepEqual(
     getCourtPickerResults(courts, { query: "", region: "마포", currentRegion: "마포" }).map((court) => court.id),
-    ["court-mapo"],
+    ["court-mapo-rated", "court-mapo"],
   );
-  assert.equal(mergeCourtSearchCourts(courts, [courts[1], { id: "court-remote", name: "원격 구장" }]).length, 3);
+  assert.equal(mergeCourtSearchCourts(courts, [courts[1], { id: "court-remote", name: "원격 구장" }]).length, 4);
 
   const [teams, createMatch] = await Promise.all([
     readSource("src/pages/Teams.jsx"),

@@ -1,4 +1,4 @@
-import { getCourtLocationNote, getFallbackLayout, normalizeCourtLayout, getCourtRequestName, getCourtStandardName } from "./courtCore.js";
+import { getCourtLocationNote, getCourtRecommendationScore, getFallbackLayout, normalizeCourtLayout, getCourtRequestName, getCourtStandardName } from "./courtCore.js";
 import { normalizeCourtIdentityText } from "../../shared/lib/courts.js";
 
 function getCourtCanonicalBaseName(court = {}) {
@@ -259,15 +259,6 @@ function getCourtReviewSummary(court = {}, reviews = [], calibration = buildCour
     locationAccuracy: getRatingAverage(relatedReviews, "locationAccuracy"),
     recentReviews,
   };
-}
-
-export function getCourtRecommendationScore(court = {}) {
-  const rating = Number(court.adjustedRating ?? court.reviewSummary?.adjustedRating ?? court.rating ?? COURT_RATING_DEFAULT_MEAN);
-  const completedMatchCount = Math.max(0, Number(court.completedMatchCount ?? 0));
-  if (court.recommendationScore !== null && court.recommendationScore !== undefined && Number.isFinite(Number(court.recommendationScore))) {
-    return Number(court.recommendationScore);
-  }
-  return rating + Math.min(0.8, Math.log1p(completedMatchCount) * 0.2);
 }
 
 export function getRegisteredCourts(stateOrSettings = {}) {
