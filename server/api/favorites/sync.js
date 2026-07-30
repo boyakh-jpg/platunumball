@@ -12,13 +12,6 @@ function isActiveAppointment(appointment = {}, nowMs = Date.now()) {
 
 async function assertTargetExists(context, targetType, targetId) {
   if (targetType === "court") {
-    const { data: court, error: courtError } = await context.supabase
-      .from("courts")
-      .select("id")
-      .eq("id", targetId)
-      .maybeSingle();
-    if (!courtError && court?.id) return;
-
     const { data: approvedCourt, error: approvedCourtError } = await context.supabase
       .from("approved_courts")
       .select("id")

@@ -7,9 +7,11 @@ import {
   CREATE_MATCH_PAGE_SOURCE_PATHS,
   HOME_PAGE_SOURCE_PATHS,
   MATCHES_PAGE_SOURCE_PATHS,
+  MATCH_CLOCK_PANEL_SOURCE_PATHS,
   MATCH_ROOM_SOURCE_PATHS,
   RECRUITING_PAGE_SOURCE_PATHS,
   SETTINGS_PAGE_SOURCE_PATHS,
+  TEAM_DETAIL_SOURCE_PATHS,
   readSourceGroupSync,
 } from "./management-source-groups.mjs";
 
@@ -97,15 +99,19 @@ const recruitingStyles = readCssTree("src/styles/recruiting-arena.css");
 const matchesStyles = readCssTree("src/styles/matches-arena.css");
 const gettingStartedStyles = read("src/styles/getting-started.css");
 const matchClockStyles = read("src/styles/match-clock.css");
-const matchClockSource = read("src/components/match/MatchClockPanel.jsx");
+const matchClockSource = readSourceGroupSync(read, MATCH_CLOCK_PANEL_SOURCE_PATHS);
 const matchRoomStyles = read("src/styles/matchroom-arena.css");
 const appSource = read("src/App.jsx");
-const gettingStartedSource = read("src/pages/GettingStarted.jsx");
+const gettingStartedSource = [
+  read("src/pages/GettingStarted.jsx"),
+  read("src/pages/gettingStartedGuidePrimary.jsx"),
+  read("src/pages/gettingStartedGuideSecondary.jsx"),
+].join("\n");
 const practiceMatchSource = read("src/pages/PracticeMatch.jsx");
 const termsSource = read("src/pages/Terms.jsx");
 const tierEmblemSource = read("src/components/rating/TierEmblem.jsx");
 const shareCardSource = read("src/components/share/ShareCard.jsx");
-const teamDetailSource = read("src/pages/TeamDetail.jsx");
+const teamDetailSource = readSourceGroupSync(read, TEAM_DETAIL_SOURCE_PATHS);
 const courtDetailSource = read("src/pages/CourtDetail.jsx");
 const entityProfileHeroSource = read("src/components/profile/EntityProfileHero.jsx");
 const placementEmblemPath = "public/assets/tier-emblems/tier-placement-v2.webp";
@@ -125,7 +131,7 @@ const pageSources = {
   recruiting: recruitingPageSource,
   season: read("src/pages/Season.jsx"),
   teams: read("src/pages/Teams.jsx"),
-  teamDetail: read("src/pages/TeamDetail.jsx"),
+  teamDetail: teamDetailSource,
   playerDetail: read("src/pages/PlayerDetail.jsx"),
   rankings: read("src/pages/Rankings.jsx"),
   settings: settingsSource,
@@ -1236,7 +1242,7 @@ test("방모달 참가자 상태와 관리 action은 선수 오른쪽 열과 공
 });
 
 test("팀원 초대는 해시태그와 공용 선수 hover 및 네모 상태 표면을 사용한다", () => {
-  const teamDetailSource = read("src/pages/TeamDetail.jsx");
+  const teamDetailSource = readSourceGroupSync(read, TEAM_DETAIL_SOURCE_PATHS);
   assert.match(teamDetailSource, /getUserHashtag/);
   assert.match(teamDetailSource, /search-picker-player-identity/);
   assert.match(teamDetailSource, /member-invite-selection/);

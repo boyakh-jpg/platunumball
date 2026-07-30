@@ -1,138 +1,20 @@
-import { ADMIN_DEFAULT_PAGE_LIMIT } from "../../lib/queryPolicy.js";
-import { DEFAULT_ADMIN_QUEUE_MODE } from "../../lib/queryPolicy.js";
-import { DEFAULT_ADMIN_SECTION } from "../../lib/queryPolicy.js";
-import { DEFAULT_RATING_POLICY } from "../../lib/ratingPolicy.js";
-import { DIRECTORY_DEFAULT_PAGE_LIMIT } from "../../lib/queryPolicy.js";
-import { EMPTY_RECORD_ARCHIVE } from "./recordArchive.js";
-import { MATCH_OPERATION_ONLY_ACTIONS } from "./serverOperations.js";
-import { RECRUITING_OPERATION_ONLY_ACTIONS } from "./serverOperations.js";
-import { ROOM_CHAT_HISTORY_LIMIT } from "../../lib/roomChat.js";
-import { ROOM_CHAT_MESSAGE_COLUMNS } from "../../lib/roomChat.js";
-import { ROOM_CHAT_POLL_BATCH_LIMIT } from "../../lib/roomChat.js";
-import { ROOM_CHAT_POLL_INTERVAL_MS } from "../../lib/roomChat.js";
-import { acceptRecruitingInvitation } from "../../data/repository.js";
-import { acceptTeamInvitation } from "../../data/repository.js";
-import { acknowledgeMatchRoomRules } from "../../data/repository.js";
-import { acknowledgeRecruitingRoomRules } from "../../data/repository.js";
-import { activateTournamentSanction } from "../../data/repository.js";
-import { agreeMatch } from "../../data/repository.js";
-import { approveCourtRequest } from "../../data/repository.js";
-import { approveMatch } from "../../data/repository.js";
-import { approveTournamentReferee } from "../../data/repository.js";
-import { approveTournamentTeam } from "../../data/repository.js";
-import { assignTournamentMatchReferee } from "../../data/repository.js";
-import { blockUser } from "../../data/repository.js";
-import { cacheCurrentProfileState } from "./bootstrap.js";
-import { cancelMatch } from "../../data/repository.js";
-import { cancelRecruitingParticipation } from "../../data/repository.js";
-import { cancelTeamInvitation } from "../../data/repository.js";
-import { checkInMatchPlayer } from "../../data/repository.js";
-import { cloneRatingPolicy } from "../../lib/ratingPolicy.js";
-import { closeRecruitingPost } from "../../data/repository.js";
-import { commitAdminAppointmentAction } from "../../data/repository.js";
-import { commitAdminReviewAction } from "../../data/repository.js";
-import { confirmMatchRefereeAbsence } from "../../data/repository.js";
-import { confirmPickupSideAssignment } from "../../data/repository.js";
-import { createInitialMatchListStore } from "./remoteMerge.js";
-import { createMatch } from "../../data/repository.js";
-import { createRecruitingPost } from "../../data/repository.js";
-import { createTeam } from "../../data/repository.js";
-import { createTournament } from "../../data/repository.js";
-import { declineRecruitingInvitation } from "../../data/repository.js";
-import { declineTeamInvitation } from "../../data/repository.js";
-import { declineTournamentReferee } from "../../data/repository.js";
-import { deleteNotification } from "../../data/repository.js";
-import { deleteSoloRecord } from "../../data/repository.js";
-import { deleteTeam } from "../../data/repository.js";
-import { detachRecruitingPartyPlayer } from "../../data/repository.js";
-import { disputeMatch } from "../../data/repository.js";
-import { endMatch } from "../../data/repository.js";
-import { finalizeMatchByAuthority } from "../../data/repository.js";
-import { finishRefereeExamAttempt } from "../../data/repository.js";
-import { forfeitTournamentMatch } from "../../data/repository.js";
-import { generatePickupSideAssignment } from "../../data/repository.js";
-import { getActionActorDebug } from "./serverOperations.js";
-import { getAffiliationNormalizedKey } from "../../lib/affiliations.js";
-import { getNewItems } from "./serverOperations.js";
-import { getRecruitingChatLastSeq } from "./remoteMerge.js";
-import { getServerActionErrorText } from "./serverOperations.js";
-import { getServerOperation } from "./serverOperations.js";
-import { incrementMatchScore } from "../../data/repository.js";
-import { interestRecruitingPost } from "../../data/repository.js";
-import { inviteRecruitingPlayers } from "../../data/repository.js";
-import { inviteRecruitingReferee } from "../../data/repository.js";
-import { inviteTeamMember } from "../../data/repository.js";
-import { inviteTournamentReferee } from "../../data/repository.js";
-import { isSupabaseConfigured } from "../../lib/supabase.js";
-import { isSyntheticMatchRoomId } from "../../lib/recruiting.js";
-import { joinRecruitingSideParty } from "../../data/repository.js";
-import { kickRecruitingApplicant } from "../../data/repository.js";
-import { makeClientNotificationId } from "./serverOperations.js";
-import { markAllNotificationsRead } from "../../data/repository.js";
-import { markNotificationRead } from "../../data/repository.js";
-import { mergeCourtApprovalResult } from "./remoteMerge.js";
-import { mergeRecruitingChatMessageBatch } from "./remoteMerge.js";
-import { mergeRemoteProfileState } from "./remoteMerge.js";
-import { normalizeAffiliationName } from "../../lib/affiliations.js";
-import { normalizeServerState } from "./stateNormalization.js";
-import { prepareTeamEmblemUpload } from "../../lib/teamEmblem.js";
-import { rejectTournamentRegion } from "../../data/repository.js";
-import { removeMatchRoomPlayer } from "../../data/repository.js";
-import { removeRecruitingPartyPlayer } from "../../data/repository.js";
-import { removeTeamMember } from "../../data/repository.js";
-import { reportCourt } from "../../data/repository.js";
-import { reportCourtRequest } from "../../data/repository.js";
-import { reportCourtReview } from "../../data/repository.js";
-import { reportMatch } from "../../data/repository.js";
-import { reportPlayer } from "../../data/repository.js";
-import { reportTeamEmblem } from "../../data/repository.js";
-import { requestMatchRefereeAbsence } from "../../data/repository.js";
-import { resetState } from "../../data/repository.js";
-import { resolveMatchDispute } from "../../data/repository.js";
-import { respondMatchScheduleProposal } from "../../data/repository.js";
-import { respondRecruitingScheduleProposal } from "../../data/repository.js";
-import { sendRecruitingChat } from "../../data/repository.js";
-import { setMatchRecordParticipants } from "../../data/repository.js";
-import { setMatchRecordTeamRoster } from "../../data/repository.js";
-import { setMatchRoomPlayerPlacement } from "../../data/repository.js";
-import { setRecruitingApplicantPlacement } from "../../data/repository.js";
-import { setRecruitingApplicantReserve } from "../../data/repository.js";
-import { setRecruitingPartyPlayerPlacement } from "../../data/repository.js";
-import { setRecruitingPartyPlayerReserve } from "../../data/repository.js";
-import { setRecruitingRoomTeam } from "../../data/repository.js";
-import { setRecruitingSlotPosition } from "../../data/repository.js";
-import { setRecruitingTeamPartyRoster } from "../../data/repository.js";
-import { startMatch } from "../../data/repository.js";
-import { startRefereeExamAttempt } from "../../data/repository.js";
-import { submitCourtRequest } from "../../data/repository.js";
-import { submitCourtReview } from "../../data/repository.js";
-import { submitMatchResult } from "../../data/repository.js";
-import { submitMatchThumbs } from "../../data/repository.js";
-import { submitRefereeRequest } from "../../data/repository.js";
-import { substituteMatchPlayer } from "../../data/repository.js";
-import { supabase } from "../../lib/supabase.js";
-import { swapPickupMatchPlayers } from "../../data/repository.js";
-import { toggleFavoriteCourt } from "../../data/repository.js";
-import { toggleFavoritePlayer } from "../../data/repository.js";
-import { toggleFavoriteReferee } from "../../data/repository.js";
-import { toggleFavoriteTeam } from "../../data/repository.js";
-import { toggleMatchStar } from "../../data/repository.js";
-import { unblockUser } from "../../data/repository.js";
-import { updateMatchRoomRules } from "../../data/repository.js";
-import { updatePrivacySettings } from "../../data/repository.js";
-import { updateProfile } from "../../data/repository.js";
-import { updateRecruitingRoomRules } from "../../data/repository.js";
-import { updateSettings } from "../../data/repository.js";
-import { updateTeamMemberRole } from "../../data/repository.js";
-import { updateTournamentMatchSchedule } from "../../data/repository.js";
-import { voidMatch } from "../../data/repository.js";
-import { writeProfileBindings } from "../../lib/storage.js";
+import { APP_ACTION_DEPENDENCIES } from "./actions/dependencies.js";
 import { buildLoaderActions } from "./actions/loaderActions.js";
 import { buildMatchActions } from "./actions/matchActions.js";
 import { buildProfileTeamActions } from "./actions/profileTeamActions.js";
 import { buildRecruitingActions } from "./actions/recruitingActions.js";
 import { buildSettingsActions } from "./actions/settingsActions.js";
 import { buildTeamMembershipActions } from "./actions/teamMembershipActions.js";
+
+const {
+  MATCH_OPERATION_ONLY_ACTIONS,
+  RECRUITING_OPERATION_ONLY_ACTIONS,
+  blockUser,
+  getServerOperation,
+  isSupabaseConfigured,
+  makeClientNotificationId,
+  unblockUser,
+} = APP_ACTION_DEPENDENCIES;
 
 export function createAppActions({
   adminStatusRef,
@@ -453,91 +335,27 @@ export function createAppActions({
   };
 
   const actionContext = {
-    ADMIN_DEFAULT_PAGE_LIMIT,
-    DEFAULT_ADMIN_QUEUE_MODE,
-    DEFAULT_ADMIN_SECTION,
-    DEFAULT_RATING_POLICY,
-    DIRECTORY_DEFAULT_PAGE_LIMIT,
-    EMPTY_RECORD_ARCHIVE,
-    ROOM_CHAT_HISTORY_LIMIT,
-    ROOM_CHAT_MESSAGE_COLUMNS,
-    ROOM_CHAT_POLL_BATCH_LIMIT,
-    ROOM_CHAT_POLL_INTERVAL_MS,
-    acceptRecruitingInvitation,
-    acceptTeamInvitation,
-    acknowledgeMatchRoomRules,
-    acknowledgeRecruitingRoomRules,
-    activateTournamentSanction,
+    ...APP_ACTION_DEPENDENCIES,
     adminStatusRef,
-    agreeMatch,
     applyBlockedUserMutation,
     applyFavoriteToggle,
     applyMatchMutation,
     applyRecruitingPostMutation,
     applyTeamInvitationMutation,
     applyTeamMutation,
-    approveCourtRequest,
-    approveMatch,
-    approveTournamentReferee,
-    approveTournamentTeam,
-    assignTournamentMatchReferee,
     authEmail,
     authUserId,
-    cacheCurrentProfileState,
-    cancelMatch,
-    cancelRecruitingParticipation,
-    cancelTeamInvitation,
-    checkInMatchPlayer,
-    cloneRatingPolicy,
-    closeRecruitingPost,
-    commitAdminAppointmentAction,
-    commitAdminReviewAction,
-    confirmMatchRefereeAbsence,
-    confirmPickupSideAssignment,
-    createInitialMatchListStore,
-    createMatch,
-    createRecruitingPost,
-    createTeam,
-    createTournament,
     currentUserId,
-    declineRecruitingInvitation,
-    declineTeamInvitation,
-    declineTournamentReferee,
-    deleteNotification,
-    deleteSoloRecord,
-    deleteTeam,
     deleteTeamServer,
-    detachRecruitingPartyPlayer,
     directoryStatusRef,
-    disputeMatch,
-    endMatch,
     ensureRemoteReady,
     ensureServerActionAvailable,
-    finalizeMatchByAuthority,
-    finishRefereeExamAttempt,
-    forfeitTournamentMatch,
-    generatePickupSideAssignment,
-    getActionActorDebug,
-    getAffiliationNormalizedKey,
-    getNewItems,
     getNewMatchNotifications,
     getNewRecruitingNotifications,
     getNewRefereeNotifications,
     getNewReportNotifications,
     getNewTeamNotifications,
     getNewTournamentNotifications,
-    getRecruitingChatLastSeq,
-    getServerActionErrorText,
-    incrementMatchScore,
-    interestRecruitingPost,
-    inviteRecruitingPlayers,
-    inviteRecruitingReferee,
-    inviteTeamMember,
-    inviteTournamentReferee,
-    isSupabaseConfigured,
-    isSyntheticMatchRoomId,
-    joinRecruitingSideParty,
-    kickRecruitingApplicant,
     loadAdminContext,
     loadAdminSection,
     loadCourtDetail,
@@ -555,16 +373,8 @@ export function createAppActions({
     loadRecruitingRegion,
     loadReportableMatches,
     loadTeamRecords,
-    markAllNotificationsRead,
-    markNotificationRead,
     markNotificationReadServer,
-    mergeCourtApprovalResult,
-    mergeRecruitingChatMessageBatch,
-    mergeRemoteProfileState,
-    normalizeAffiliationName,
-    normalizeServerState,
     persistProfileServer,
-    prepareTeamEmblemUpload,
     profileKey,
     profileLocked,
     profileRecordArchiveRef,
@@ -574,83 +384,34 @@ export function createAppActions({
     refreshAdminState,
     refreshCurrentProfile,
     refreshRecruitingRelations,
-    rejectTournamentRegion,
-    removeMatchRoomPlayer,
-    removeRecruitingPartyPlayer,
-    removeTeamMember,
-    reportCourt,
-    reportCourtRequest,
-    reportCourtReview,
-    reportMatch,
-    reportPlayer,
-    reportTeamEmblem,
-    requestMatchRefereeAbsence,
-    resetState,
-    resolveMatchDispute,
-    respondMatchScheduleProposal,
-    respondRecruitingScheduleProposal,
     rollbackIfServerFailed,
     rollbackServerMutation,
     runServerAction,
-    sendRecruitingChat,
     serverProfileBound,
     setAdminState,
     setMatchLists,
-    setMatchRecordParticipants,
-    setMatchRecordTeamRoster,
-    setMatchRoomPlayerPlacement,
     setProfileBindings,
     setProfileRecordArchive,
     setProfileRecordsLoaded,
     setPublicProfileRecordArchives,
-    setRecruitingApplicantPlacement,
-    setRecruitingApplicantReserve,
-    setRecruitingPartyPlayerPlacement,
-    setRecruitingPartyPlayerReserve,
-    setRecruitingRoomTeam,
-    setRecruitingSlotPosition,
-    setRecruitingTeamPartyRoster,
     setState,
     setTeamRecordArchives,
     settingsAuthUserIdRef,
-    startMatch,
-    startRefereeExamAttempt,
     stateRef,
     submitCourtDetailReview,
-    submitCourtRequest,
-    submitCourtReview,
-    submitMatchResult,
-    submitMatchThumbs,
     submitNameReport,
-    submitRefereeRequest,
     submitReportServer,
-    substituteMatchPlayer,
-    supabase,
-    swapPickupMatchPlayers,
     syncMatchServer,
     syncRecruitingPostServer,
     syncRefereeServer,
     syncSettingsServer,
+    syncTeamInvitationServer,
     syncTeamServer,
     syncTournamentServer,
     teamRecordArchivesRef,
     themeCommittedValueRef,
     themeMutationVersionRef,
-    toggleFavoriteCourt,
-    toggleFavoritePlayer,
-    toggleFavoriteReferee,
-    toggleFavoriteTeam,
-    toggleMatchStar,
-    updateMatchRoomRules,
-    updatePrivacySettings,
-    updateProfile,
-    updateRecruitingRoomRules,
-    updateSettings,
-    updateTeamMemberRole,
-    updateTournamentMatchSchedule,
     upsertRefereeExamAttempt,
-    voidMatch,
-    writeProfileBindings,
   };
 
   return ({

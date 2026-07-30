@@ -908,7 +908,9 @@ test("empty team rooms select teams only through the central reducer", () => {
 test("team selection is routed through the server and DB authority", () => {
   const serverSource = [
     fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostPolicy.js"), "utf8"),
+    fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostPickupPolicy.js"), "utf8"),
     fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostActions.js"), "utf8"),
+    fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostManagementActions.js"), "utf8"),
   ].join("\n");
   const authoritativeSource = fs.readFileSync(path.join(root, "server/api/_authoritativeState.js"), "utf8");
   assert.match(serverSource, /team_room_must_start_without_team_selection/);
@@ -1143,7 +1145,10 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(recruitingSource, /<span>대표 1명 참가<\/span>/);
   assert.match(recruitingSource, /참가 후 방 안에서 사이드장이 출전·후보 명단을 확정합니다\./);
   assert.match(recruitingSource, /const sourceMatchRecordBoardFirst = Boolean\([\s\S]*Boolean\(sourceMatch\?\.refereeId\)/);
-  const compactSource = fs.readFileSync(path.join(root, "server/api/recruiting/_listProjection.js"), "utf8");
+  const compactSource = [
+    fs.readFileSync(path.join(root, "server/api/recruiting/_listProjection.js"), "utf8"),
+    fs.readFileSync(path.join(root, "server/api/recruiting/_listProjectionCompact.js"), "utf8"),
+  ].join("\n");
   assert.match(compactSource, /lastPeriodStopMinutes: rules\.lastPeriodStopMinutes/);
   assert.match(compactSource, /gameClockEnabled: rules\.gameClockEnabled/);
   assert.doesNotMatch(compactSource, /scoreboardAvailable: rules\.scoreboardAvailable|shotClockAvailable: rules\.shotClockAvailable|statRecorderAvailable: rules\.statRecorderAvailable/);

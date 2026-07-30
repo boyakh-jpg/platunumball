@@ -495,7 +495,7 @@
 - 각 사이드장은 자기 사이드 로스터만 저장할 수 있다.
 - 서버 action은 `setMatchRecordTeamRoster`로 분리한다.
 - 기존 `setMatchRoomPlayerPlacement` 권한을 빌려 쓰지 않는다.
-- 저장은 기존 match snapshot/RPC 경로를 사용하고 별도 DB 테이블을 추가하지 않는다.
+- 저장은 operation-only match RPC 경로를 사용하고 별도 DB 테이블을 추가하지 않는다.
 
 ## 2026-07-07 홈 확정 경기 표시 기준
 
@@ -2380,7 +2380,7 @@ flowchart TD
 12. `user_room_feed` is the DB-maintained index for recruiting owner/participant/invited/referee and local public rows. SQL triggers/reducers update it; the frontend must not create or trust this feed.
 12-0. If `user_room_feed` responds successfully, it is the source of truth for current-user room and invitation lists. An empty feed result is valid and must not be filled with stale fallback rows; fallback is only for missing or failed feed table/RPC paths.
 12-1. `user_room_feed` is the relation/sort/filter index. Entity list cards are stored once per room/match in `room_feed_cards(entity_type, entity_id)`.
-12-2. `room_feed_cards.card_json` is refreshed by DB triggers on `recruiting_posts`, `recruiting_applications`, `matches`, `match_players`, `team_members`, `match_results`, `player_match_stats`, and display-name dependencies from `profiles`, `teams`, `approved_courts`, and legacy `courts`.
+12-2. `room_feed_cards.card_json` is refreshed by DB triggers on `recruiting_posts`, `recruiting_applications`, `matches`, `match_players`, `team_members`, `match_results`, `player_match_stats`, and display-name dependencies from `profiles`, `teams`, and `approved_courts`. Legacy `courts`는 feed dependency가 아니다.
 12-3. `room_feed_cards.card_json` is not an authoritative detail record. It is `jsonb` and stores only list-visible projection fields: ids, schedule, status, region key, `courtId`, team ids, score/count, and small rule labels shown on cards. Rosters, applicants, invitations, agreements, approvals, disputes, parties, chat, result stats, and full rules belong to source tables or explicit detail endpoints.
 12-3-1. Recruiting `room_feed_cards.card_json.listCounts` may be stored as compact keys: `a`/`b` arrays `[filled, projectedFilled, confirmationProjectedFilled, capacity]`, plus `f`, `p`, `c`, `pc`. Server and client readers must accept both compact keys and legacy `teamA`/`teamB` object keys.
 12-4. Recruiting `room_feed_cards.card_json.regionKey` is the canonical district key for client display filtering. `card_json.region` remains display text or compatibility cache.
@@ -3151,9 +3151,11 @@ flowchart TD
 3. `user_room_feed`와 `room_feed_cards`는 원본이 아닌 파생 캐시다. 원본 없는 행과 명시적인 시뮬레이션 행은 비활성화한 뒤 7일 보존 정책으로 정리한다.
 4. 중단된 backend simulation의 팀, 초대, 모집방, 경기(`sim_m_*` 포함), 미결 구장 신청, 심판 시험·신청·임명, 관리자 임명·징계, 알림은 ID prefix와 JSON 표식을 함께 확인해 격리한다. 대회에 속하지 않은 `sim_m_*` 경기만 활성 상태(`agreed/live/approval/disputed`)로 24시간 이상 갱신되지 않은 경우 취소 격리하며 확정 경기와 대회 경기는 건드리지 않는다. 승인·반려가 끝난 구장 신청과 사용자 데이터·참조가 있는 구장은 자동 격리하지 않는다.
 5. maintenance는 `rankball_quarantine_simulation_artifacts`를 먼저 실행한다. 시뮬레이션 종료 처리가 누락돼도 다음 정기 실행에서 운영 목록과 권한 계산에서 제외한다.
-6. `rankball_operational_data_health`는 프로필/Auth, 팀 명단, 승인 구장 좌표, 모집방 만료·피드, 경기·대회 참조, 시뮬레이션 잔존을 검사한다. 삭제된 가짜 구장 ID `c1..c12`는 `approved_courts`, `courts`, 경기·모집방·대회·리뷰 참조 어디에도 남지 않아야 하며 `deletedBuiltInCourtResidue`로 검사한다. `npm run audit:production-data`가 critical 항목이 남으면 실패한다.
-7. `c1..c12`는 기본 구장이나 legacy shell이 아니라 삭제된 가짜 데이터다. 실제 과거 구장의 `courts` fallback 정책과 구분하며 복원하거나 공개 승인 구장 목록에 다시 넣지 않는다.
-8. 브라우저의 `COURTS` 상수와 구장 상세 API는 `c1..c12`를 복구하지 않는다. 구장 상세는 활성 `approved_courts`를 우선 사용하고 실제 `courts` row가 존재할 때만 legacy fallback을 허용한다. `practice-court`는 저장되지 않는 연습 경기 상태에서만 유지한다.
+6. `rankball_operational_data_health`는 프로필/Auth, 팀 명단, 승인 구장 좌표, 모집방 만료·피드, 경기·대회 참조, 시뮬레이션 잔존을 검사한다. 삭제된 가짜 구장 ID `c1..c12`는 `approved_courts`, 경기·모집방·대회·리뷰 참조 어디에도 남지 않아야 하며 `deletedBuiltInCourtResidue`로 검사한다. read-only archive인 `courts`의 잔존 여부는 canonical 전환 migration preflight가 별도로 차단한다. `npm run audit:production-data`가 critical 항목이 남으면 실패한다.
+7. `c1..c12`는 기본 구장이나 legacy shell이 아니라 삭제된 가짜 데이터다. `courts` archive에도 복원하지 않고 공개 승인 구장 목록에 다시 넣지 않는다.
+8. 브라우저의 `COURTS` 상수와 구장 상세 API는 `c1..c12`를 복구하지 않는다. 구장 상세, 검색, 즐겨찾기, 경기·모집·대회 구장 검증, feed dependency는 활성 `approved_courts`만 사용한다. `courts`는 service-role 감사용 read-only archive이며 runtime fallback, FK, trigger, live RPC 의존성을 두지 않는다. `practice-court`는 저장되지 않는 연습 경기 상태에서만 유지한다.
+8-1. `matches.court_id`와 `recruiting_posts.court_id` FK는 `approved_courts(id)`를 참조한다. legacy archive 값으로 승인 구장 canonical 값을 덮어쓰지 않는다.
+8-2. 비활성 feed와 quarantine 카드는 7일 삭제 조건을 충족한 경우에만 운영 health warning으로 센다. 7일 미만 보존 대기 row는 정상 상태다.
 8. 구장 이름 snapshot은 `court_id`가 가리키는 현재 표준 이름으로 맞춘다. 같은 시설의 복수 코트는 사용자 승인 흐름의 `courtUnit`으로 구분하고 ID를 합치지 않는다.
 9. 개인 기록의 익명 상대 득점과 대회 몰수 `1:0`은 선수 PTS 합계 예외다. 일반 경기 점수만 실제 출전자 PTS 합계를 단일 원본으로 사용한다.
 10. 예약 시작 시각이 지났는데 연결 경기가 없는 열린 모집방은 정원이 찼더라도 `scheduled_unconfirmed`로 취소한다. 참가자에게 취소 알림을 만들고 기존 초대·Discord delivery·방 링크·피드는 종료한다.
@@ -3603,16 +3605,19 @@ flowchart TD
 
 1. 신규 서버 RPC는 `rankball_rpc_contract_registry`에 현재 signature와 `active/retired` 상태를 증분 등록한다. grant health 함수에 전체 RPC 목록을 다시 복사하지 않는다.
 2. `active` RPC는 `service_role`만 실행할 수 있고 `anon/authenticated` 실행권한은 없다. 현재 선수 교체는 `rankball_match_roster_transition_action(text,text,text,text,text,text,text,text)`, 수동 최종 확정은 `rankball_match_finalize_locked(text,text,text,boolean)`이 권위 경로다.
-3. `rankball_match_late_player_action`, `rankball_match_roster_move_action`, `rankball_recruiting_stat_recorder_action`, 4인자 `rankball_match_resolve_dispute_action`, 3인자 `rankball_match_terminal_action`, 3인자 `rankball_match_list`, 구형 scorekeeper/takeover/substitution 외부 진입점은 폐기되어 exact signature로 제거한다. 3인자 `rankball_match_finalize_locked`만 현재 4인자 wrapper의 내부 의존 때문에 남기되 모든 런타임 역할의 실행권한을 막는다.
+3. `rankball_match_late_player_action`, `rankball_match_roster_move_action`, `rankball_recruiting_stat_recorder_action`, 4인자 `rankball_match_resolve_dispute_action`, 3인자 `rankball_match_terminal_action`, 3인자 `rankball_match_list`, 3인자 `rankball_match_finalize_locked`, 구형 scorekeeper/takeover/substitution 외부 진입점은 폐기되어 exact signature로 제거한다.
 4. `/api/system/schema-health`는 registry 기반 active·retired 계약을 그대로 판정한다. 서버 코드에서 특정 실패 row를 예외로 숨기지 않는다.
 5. `server/**/*.js`의 literal `rankball_*` RPC 호출은 모두 service-only registry에 등록한다. 브라우저 RLS와 서버 Discord 채팅 검증이 함께 사용하는 `rankball_can_access_recruiting_room_chat(text,text)`만 의도적인 browser RPC 예외이며 registry에서 제외한다.
 6. `20260729171000_remove_retired_match_rpc_entrypoints.sql`은 폐기된 late-player, roster-move, stat-recorder, 4인자 이의 처리, 3인자 종료, 3인자 목록, scorekeeper, recorder takeover, 구형 substitution 외부 진입점을 exact signature로 제거한다. registry의 retired tombstone과 takeover 요청 감사 테이블·기존 행은 유지한다.
-7. 3인자 `rankball_match_finalize_locked`는 4인자 최종 승인 함수의 내부 의존이 남아 있으므로 제거하지 않는다. 모든 런타임 역할의 실행권한을 막은 상태로 유지하고, 내부 dispatch 분리 migration 뒤에만 제거한다.
-8. 대회 명단의 `rankball_tournament_match_roster_action()`과 내부 `rankball_tournament_match_roster_action_legacy()`는 현재 wrapper 의존이 있으므로 이번 은퇴 RPC 정리 대상이 아니다.
+7. `20260730016000_remove_internal_legacy_rpc_wrappers.sql`은 4인자 최종 승인 함수와 남은 자동 확정·이의 처리·관리자 무효 복구 내부 호출자가 owner-only `rankball_match_live_finalize_action()`을 직접 호출하게 바꾼 뒤 3인자 `rankball_match_finalize_locked`를 exact signature로 제거한다. 사후 경기기록 확정은 수동 확인 wrapper가 아니라 기존 threshold finalization 정책 함수를 계속 사용한다.
+8. 같은 migration은 대회 명단의 현행 host-side, lineup deadline, 대표팀 snapshot, bench 0~3 검증을 `rankball_tournament_match_roster_action(text,text,jsonb)`에 통합하고 내부 `rankball_tournament_match_roster_action_legacy(text,text,jsonb)`를 제거한다.
 9. `20260729170500_retire_match_action_roster_move_branch.sql`은 `rankball_match_action()`에 남은 폐기 `handoffMatchRecorder`/구형 `substituteMatchPlayer` 분기만 exact function-body fragment로 제거한다. 함수 shape가 다르면 롤백하며 다른 action 분기는 유지한다.
 10. `20260730010000_remove_unused_legacy_rpc_entrypoints.sql`은 현재 호출자가 없는 `rankball_current_recruiting_post_ids`, `rankball_recruiting_ready_action`, `rankball_update_team_emblem_style`을 exact signature로 제거한다. 현재 경로는 각각 `user_room_feed`/제한된 PostREST fallback, 통합 recruiting management action, `rankball_update_team_emblem_design`이다.
-11. `20260730013000_remove_remaining_unused_rpc_overloads.sql`은 현재 서버가 쓰는 4/5/7인자 shape를 남기고 3인자 `rankball_approve_court_request`, 4인자 `rankball_invite_team_member`, 6인자 `rankball_save_profile_icon_settings`, 3인자 `rankball_match_terminal_action_pre_cancel_policy`를 exact signature로 제거한다. 3인자 `rankball_match_finalize_locked`는 내부 의존 때문에 제거 대상이 아니다.
+11. `20260730013000_remove_remaining_unused_rpc_overloads.sql`은 현재 서버가 쓰는 4/5/7인자 shape를 남기고 3인자 `rankball_approve_court_request`, 4인자 `rankball_invite_team_member`, 6인자 `rankball_save_profile_icon_settings`, 3인자 `rankball_match_terminal_action_pre_cancel_policy`를 exact signature로 제거한다.
 12. `rankball_match_room_update_action_pre_change_deadline`와 `rankball_recruiting_room_update_action_pre_change_deadline`는 현행 room-update wrapper의 내부 helper다. owner 내부 호출만 허용하고 `public/anon/authenticated/service_role`의 직접 `EXECUTE`는 금지하며 `rankball_rpc_grant_health()`가 이 권한을 검사한다.
+13. `setMatchRecordParticipants`는 브라우저에서 `{ operation }`만 보내고 `rankball_match_record_participants_action(text,text,jsonb)`이 방장·구성 방식·정원·팀/선수·중복·잠금 상태를 검증한 뒤 match, player, agreement, approval, 알림을 한 transaction에서 갱신한다.
+14. 서버는 `setMatchRecordParticipants`에 대해 authoritative state를 JS reducer로 재실행하거나 `persistMatchSnapshot()`으로 전체 경기 snapshot을 덮어쓰지 않는다. RPC가 없으면 `503`을 반환하며 snapshot fallback하지 않는다.
+15. 클라이언트 optimistic reducer는 UI 응답성을 위해 유지한다. `teamRosterSnapshot`, `match_player_competitive_snapshots`, `match_record_archives`, 서버가 operation draft로 새 경기를 생성할 때의 trusted persistence는 역사·평가·생성 원본이므로 이 제거 대상이 아니다.
 ## 2026-07-29 확정 경기 명단과 비공개 경쟁전 QR
 
 1. 확정 경기방의 출전·후보 명단은 팀의 현재 로스터가 아니라 경기의 `teamA/teamB.players`와 `reservePlayers`를 원본으로 표시한다. 방장이 후보와 교체되어도 `createdBy`와 후보 슬롯은 유지한다.

@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
-const SERVER_MODULE_MAX_LINES = 900;
+const SERVER_MODULE_MAX_LINES = 500;
 const ENTRY_MAX_LINES = 50;
 
 const domains = [
@@ -16,7 +16,9 @@ const domains = [
       "_syncPostChat.js",
       "_syncPostCommon.js",
       "_syncPostHandler.js",
+      "_syncPostManagementActions.js",
       "_syncPostPersistence.js",
+      "_syncPostPickupPolicy.js",
       "_syncPostPolicy.js",
       "_syncPostProjection.js",
       "_syncPostResponse.js",
@@ -39,7 +41,9 @@ const domains = [
     modules: [
       "_listHandler.js",
       "_listLoader.js",
+      "_listLoaderHelpers.js",
       "_listProjection.js",
+      "_listProjectionCompact.js",
       "_listQueries.js",
     ],
     exports: [
@@ -53,6 +57,7 @@ const domains = [
     entry: "list.js",
     modules: [
       "_listEnrichment.js",
+      "_listFeedQueries.js",
       "_listHandler.js",
       "_listLoader.js",
       "_listProjection.js",
@@ -70,7 +75,10 @@ const matchSyncPaths = [
   "server/api/matches/sync-match.js",
   "server/lib/matchSyncDependencies.js",
   "server/lib/matchSyncHandler.js",
+  "server/lib/matchSqlActions.js",
+  "server/lib/matchSqlCoreActions.js",
   "server/lib/matchSyncPolicy.js",
+  "server/lib/matchSyncPolicyData.js",
 ];
 
 const readSource = (relativePath) => readFile(path.join(ROOT, relativePath), "utf8");

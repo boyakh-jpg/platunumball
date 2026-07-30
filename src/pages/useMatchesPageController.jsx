@@ -4,7 +4,6 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { addDateDays, getLocalDateInputValue, getMatchListScope, isMatchListInitialLoading, MATCH_LIST_SCOPES, MATCH_LIST_STATUSES, selectMatchListMatches, isMatchInPlayMenu } from "../lib/matchUtils.js";
 import { REMOTE_LIST_REFRESH_MIN_INTERVAL_MS } from "../lib/constants.js";
-import { getMatchAttendanceScanErrorMessage, getMatchAttendanceScanSuccessMessage, scanMatchAttendanceQr } from "../lib/matchAttendance.js";
 import { getRecruitingLobby, getRecruitingPostTerminalState } from "../lib/recruiting.js";
 import { getTournamentTeamIds } from "../data/tournamentMappers.js";
 import {
@@ -33,6 +32,7 @@ import {
   getRecruitingRoomsForView,
   getScheduleItemsForView,
 } from "./matchesPageSelectors.js";
+import useMatchAttendanceQrScan from "./useMatchAttendanceQrScan.js";
 import {
   requestMatchDetailOnce,
   useSelectedMatchRoom,
@@ -234,53 +234,15 @@ const location = useLocation();
     requestMatchDetail(queryMatchId);
   }, [app.actions, app.currentUser.id, app.remoteReady, queryMatchId]);
 
-  useEffect(() => {
-    attendanceScanTokenRef.current = "";
-    setAttendanceScanState(null);
-  }, [app.currentUser.id, queryMatchId]);
-
-  useEffect(() => {
-    if (!attendanceQrToken || !queryMatchId || !app.currentUser.id || attendanceScanTokenRef.current === attendanceQrToken) return undefined;
-    attendanceScanTokenRef.current = attendanceQrToken;
-    let cancelled = false;
-    setAttendanceScanState({ pending: true, tone: "blue", message: "QR 출석 확인 중" });
-
-    const clearAttendanceToken = () => {
-      setSearchParams((current) => {
-        if (current.get("attendanceQr") !== attendanceQrToken) return current;
-        const next = new URLSearchParams(current);
-        next.delete("attendanceQr");
-        return next;
-      }, { replace: true });
-    };
-
-    const scan = async () => {
-      try {
-        const result = await scanMatchAttendanceQr(queryMatchId, attendanceQrToken);
-        if (cancelled) return;
-        setAttendanceScanState({
-          pending: false,
-          tone: result?.attendanceStatus === "late" ? "orange" : "green",
-          message: getMatchAttendanceScanSuccessMessage(result),
-        });
-        await loadMatchDetail?.(queryMatchId);
-      } catch (error) {
-        if (cancelled) return;
-        setAttendanceScanState({
-          pending: false,
-          tone: "orange",
-          message: getMatchAttendanceScanErrorMessage(error),
-        });
-      } finally {
-        if (!cancelled) clearAttendanceToken();
-      }
-    };
-
-    void scan();
-    return () => {
-      cancelled = true;
-    };
-  }, [app.currentUser.id, attendanceQrToken, loadMatchDetail, queryMatchId, setSearchParams]);
+  useMatchAttendanceQrScan({
+    attendanceQrToken,
+    attendanceScanTokenRef,
+    currentUserId: app.currentUser.id,
+    loadMatchDetail,
+    queryMatchId,
+    setAttendanceScanState,
+    setSearchParams,
+  });
 
   useEffect(() => {
     if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;

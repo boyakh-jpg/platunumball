@@ -41,6 +41,24 @@ const internalHelperGrantMigrationSource = await readFile(
   ),
   "utf8",
 );
+const internalWrapperRemovalSource = await readFile(
+  path.join(
+    rootDir,
+    "supabase",
+    "migrations",
+    "20260730016000_remove_internal_legacy_rpc_wrappers.sql",
+  ),
+  "utf8",
+);
+const matchRecordParticipantsSource = await readFile(
+  path.join(
+    rootDir,
+    "supabase",
+    "migrations",
+    "20260730017000_match_record_participants_operation.sql",
+  ),
+  "utf8",
+);
 const branchRetirementSource = await readFile(
   path.join(
     rootDir,
@@ -330,7 +348,16 @@ test("schema snapshot tail owns the final retired RPC state", () => {
   const correctionMarker = "-- Current RPC contract snapshot correction.";
   const correctionIndex = schemaSource.lastIndexOf(correctionMarker);
   assert.notEqual(correctionIndex, -1);
-  const correctionSource = schemaSource.slice(correctionIndex);
+  const nextCorrectionMarker = "-- approved_courts is the only live court source.";
+  const nextCorrectionIndex = schemaSource.indexOf(
+    nextCorrectionMarker,
+    correctionIndex,
+  );
+  assert.notEqual(nextCorrectionIndex, -1);
+  const correctionSource = schemaSource.slice(
+    correctionIndex,
+    nextCorrectionIndex,
+  );
   const executableCorrection = correctionSource.replace(/--[^\r\n]*/gu, "");
 
   assert.match(
@@ -491,7 +518,13 @@ test("schema snapshot final tail matches internal helper grant hardening", () =>
   const tailMarker = "-- Final internal room-update helper grant hardening.";
   const tailIndex = schemaSource.lastIndexOf(tailMarker);
   assert.notEqual(tailIndex, -1);
-  const snapshotTail = schemaSource.slice(tailIndex + tailMarker.length);
+  const nextTailMarker = "-- approved_courts is the only live court source.";
+  const nextTailIndex = schemaSource.indexOf(nextTailMarker, tailIndex);
+  assert.notEqual(nextTailIndex, -1);
+  const snapshotTail = schemaSource.slice(
+    tailIndex + tailMarker.length,
+    nextTailIndex,
+  );
   assert.equal(
     normalizeExecutableSql(snapshotTail),
     normalizeExecutableSql(internalHelperGrantMigrationSource),
@@ -540,11 +573,63 @@ test("runtime JavaScript has no literal call to removed RPC names", async () => 
   );
 });
 
-test("three-argument finalizer stays deny-only until its internal caller is extracted", () => {
+test("internal legacy wrappers are inlined and dropped by exact signature", () => {
   assert.match(
-    finalizationSource,
-    /return public\.rankball_match_finalize_locked\(\s*p_actor_profile_id,\s*safe_match_id,\s*coalesce\(/u,
+    internalWrapperRemovalSource,
+    /return public\.rankball_match_live_finalize_action\(\s*p_actor_profile_id,\s*safe_match_id,\s*coalesce\(/u,
   );
-  assert.match(logicDocSource, /3인자 `rankball_match_finalize_locked`[^]*내부 의존/u);
-  assert.match(storageDocSource, /three-argument finalizer[^]*internal dependency/u);
+  [
+    "rankball_match_auto_finalize_action_pre_record_window",
+    "rankball_match_resolve_dispute_action_pre_score_policy",
+    "rankball_review_void_match_report",
+  ].forEach((functionName) => {
+    assert.match(
+      internalWrapperRemovalSource,
+      new RegExp(
+        `${functionName}[^]*?replace\\(function_definition, legacy_call, live_call\\)`,
+        "u",
+      ),
+    );
+  });
+  assert.match(
+    internalWrapperRemovalSource,
+    /internal_finalizer_legacy_call_remains/u,
+  );
+  assert.match(
+    internalWrapperRemovalSource,
+    /drop function if exists public\.rankball_match_finalize_locked\(\s*text,\s*text,\s*text\s*\)/u,
+  );
+  assert.match(
+    internalWrapperRemovalSource,
+    /drop function if exists public\.rankball_tournament_match_roster_action_legacy\(\s*text,\s*text,\s*jsonb\s*\)/u,
+  );
+  assert.match(internalWrapperRemovalSource, /bench_capacity[\s\S]*'\^\[0-3\]\$'/u);
+  assert.match(internalWrapperRemovalSource, /teamRosterSnapshot/u);
+  assert.match(internalWrapperRemovalSource, /internal_legacy_rpc_dependency/u);
+  assert.doesNotMatch(
+    internalWrapperRemovalSource.replace(/--[^\r\n]*/gu, ""),
+    /\bcascade\b/iu,
+  );
+  assert.match(logicDocSource, /3인자 `rankball_match_finalize_locked`[^]*exact signature로 제거/u);
+  assert.match(storageDocSource, /drops the three-argument overload without `CASCADE`/u);
+});
+
+test("schema snapshot tails match the internal-wrapper and participant migrations", () => {
+  const wrapperMarker = "-- Final internal legacy RPC wrapper removal.";
+  const participantMarker = "-- Final match-record participant operation reducer.";
+  const wrapperIndex = schemaSource.lastIndexOf(wrapperMarker);
+  const participantIndex = schemaSource.lastIndexOf(participantMarker);
+  assert.notEqual(wrapperIndex, -1);
+  assert.notEqual(participantIndex, -1);
+  assert.ok(wrapperIndex < participantIndex);
+  assert.equal(
+    normalizeExecutableSql(
+      schemaSource.slice(wrapperIndex + wrapperMarker.length, participantIndex),
+    ),
+    normalizeExecutableSql(internalWrapperRemovalSource),
+  );
+  assert.equal(
+    normalizeExecutableSql(schemaSource.slice(participantIndex + participantMarker.length)),
+    normalizeExecutableSql(matchRecordParticipantsSource),
+  );
 });

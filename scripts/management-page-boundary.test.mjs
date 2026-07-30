@@ -15,32 +15,46 @@ const managementModules = [
   "src/pages/settingsPageModel.js",
   "src/pages/useSettingsPageController.jsx",
   "src/pages/useSettingsReportController.jsx",
+  "src/pages/useSettingsCourtRequestController.js",
+  "src/pages/useSettingsFavorites.jsx",
+  "src/pages/useSettingsRefereeController.js",
   "src/pages/SettingsPageView.jsx",
   "src/pages/SettingsPrimaryColumn.jsx",
   "src/pages/SettingsSideColumn.jsx",
   "src/pages/SettingsRefereeSection.jsx",
+  "src/pages/SettingsReportCard.jsx",
   "src/pages/Admin.jsx",
   "src/pages/adminPageModel.js",
   "src/pages/AdminPageParts.jsx",
+  "src/pages/AdminAppointmentSection.jsx",
+  "src/pages/AdminDetailPanel.jsx",
   "src/pages/useAdminPageController.jsx",
   "src/pages/AdminPageView.jsx",
   "src/components/admin/CourtDatabasePanel.jsx",
   "src/components/admin/courtDatabaseModel.js",
   "src/components/admin/CourtDatabaseControls.jsx",
+  "src/components/admin/CourtDatabaseDuplicateReview.jsx",
+  "src/components/admin/useCourtDatabasePanelActions.js",
   "src/components/admin/useCourtDatabasePanelController.js",
   "src/components/admin/CourtDatabasePanelView.jsx",
   "src/pages/Matches.jsx",
   "src/pages/matchesPageSelectors.js",
+  "src/pages/matchesPageBaseSelectors.js",
   "src/pages/matchesPageModel.js",
   "src/pages/MatchesPagePanels.jsx",
   "src/pages/useMatchesPageController.jsx",
+  "src/pages/useMatchAttendanceQrScan.js",
   "src/pages/MatchesPageView.jsx",
   "src/pages/MatchRoom.jsx",
   "src/pages/matchRoomModel.js",
+  "src/pages/matchRoomControllerParts.jsx",
   "src/pages/MatchRoomParts.jsx",
+  "src/pages/MatchRoomReviewPanels.jsx",
+  "src/pages/MatchRoomStatEditor.jsx",
   "src/pages/MatchRoomView.jsx",
   "src/pages/TournamentDetail.jsx",
   "src/pages/tournamentDetailModel.jsx",
+  "src/pages/TournamentCompetitionSection.jsx",
   "src/pages/TournamentDetailView.jsx",
 ];
 
@@ -70,7 +84,7 @@ test("대형 관리 화면 진입 파일은 controller와 view 조합만 소유�
 test("관리 화면 분리 모듈은 공개 export와 단방향 의존을 유지한다", async () => {
   const sources = Object.fromEntries(await Promise.all(managementModules.map(async (file) => [file, await read(file)])));
   for (const [file, source] of Object.entries(sources)) {
-    assert.ok(source.split(/\r?\n/).length <= 900, `${file}는 900줄 이하여야 합니다.`);
+    assert.ok(source.split(/\r?\n/).length <= 500, `${file}는 500줄 이하여야 합니다.`);
   }
   assert.match(sources["src/pages/settingsPageModel.js"], /export const SETTINGS_SECTIONS/);
   assert.match(sources["src/pages/useSettingsPageController.jsx"], /export default function useSettingsPageController/);

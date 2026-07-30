@@ -1,33 +1,19 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, BookOpenCheck, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
-import Badge from "../components/common/Badge.jsx";
-import Button from "../components/common/Button.jsx";
-import Card from "../components/common/Card.jsx";
-import SearchPicker from "../components/common/SearchPicker.jsx";
-import CourtHoverCard, { CourtIdentityIcon } from "../components/court/CourtHoverCard.jsx";
-import MatchCard from "../components/match/MatchCard.jsx";
-import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
-import HomeRightRail from "../components/home/HomeRightRail.jsx";
-import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
-import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
-import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
-import TeamEmblem from "../components/team/TeamEmblem.jsx";
-import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import { CalendarDays, ClipboardCheck, Handshake, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import { DEFAULT_RATING, HOME_RIVAL_TEAM_LIMIT } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
-import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { isHomeGuideCardVisible } from "../data/settingsMappers.js";
 import { addDateDays, canUserResolveMatchDispute, getActualMatchPlayerSideName, getAllowedStatFields, getLocalDateInputValue, getMatchRecordWindow, getMatchRoomPhase, getMatchSideResult, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getOpenMatchDisputes, getPlayerRecentRecordMatches, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, getSafeMatchSide as getSafeMatchSideBase, getTournamentMatchDisplayTitle, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, isTournamentMatchInUserSchedule, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName, getRecruitingLobby, getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import { getPlacementLabel, isPlacementComplete } from "../lib/rating.js";
 import { useRoomModalNavigation } from "../lib/roomModalNavigation.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
-import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
+import { getTierDivision } from "../lib/tier.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
+import { useHomeSearchModel } from "./useHomeSearchModel.jsx";
+import HomePageView from "./HomePageView.jsx";
 
 function getScheduleDate(item = {}) {
   if (item.scheduledDate) return String(item.scheduledDate).slice(0, 10);
@@ -408,218 +394,16 @@ export default function Home({ app }) {
     .sort(compareNotificationsNewestFirst), [app.state, app.state.notifications, blockedUserIds, user.id]);
   const priorityNoticeItems = homeNoticeItems.slice(0, 4);
 
-  const searchResults = useMemo(() => {
-    if (!searchText) return [];
-
-    const players = app.state.users
-      .filter((item) => !blockedUserIds.includes(item.id))
-      .map((item) => {
-        const hashtag = getUserHashtag(item);
-        return {
-          id: `player-${item.id}`,
-          entityId: item.id,
-          label: item.name,
-          kind: "PLAYER",
-          meta: `${item.region} · ${item.position} · ${getPlayerRatingSummary(item)}`,
-          href: `/app/players/${item.id}`,
-          score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(favoritePlayerIds.includes(item.id) || favoriteRefereeIds.includes(item.id)) * 20000 + Number(item.region === user.region) * 10000 + item.ratings.integrated,
-          haystack: `${item.name} ${hashtag} ${item.region} ${item.position} ${item.club}`,
-          avatar: item.avatarColor,
-          user: item,
-          hashtag,
-        };
-      });
-    const teams = app.state.teams.map((team) => {
-      const hashtag = getTeamHashtag(team);
-      return {
-        id: `team-${team.id}`,
-        entityId: team.id,
-        label: team.name,
-        kind: "TEAM",
-        meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
-        href: `/app/teams/${team.id}`,
-        score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(favoriteTeamIds.includes(team.id)) * 20000 + Number(team.region === user.region) * 10000 + team.mmr,
-        haystack: `${team.name} ${hashtag} ${team.region} ${team.homeCourt}`,
-        team,
-        hashtag,
-      };
-    });
-    const courts = registeredCourts.map((court) => {
-      const hashtag = getCourtHashtag(court);
-      return {
-        id: `court-${court.id}`,
-        entityId: court.id,
-        label: court.name,
-        kind: "COURT",
-        meta: `${court.region} · ${court.type}`,
-        href: `/app/courts/${encodeURIComponent(court.id)}`,
-        score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(favoriteCourtIds.includes(court.id)) * 20000 + Number(court.region === user.region) * 10000,
-        haystack: `${court.name} ${hashtag} ${court.region} ${court.type}`,
-        court,
-        hashtag,
-      };
-    });
-
-    return [...players, ...teams, ...courts]
-      .filter((item) => {
-        const itemHashtag = item.hashtag.toLowerCase();
-        if (/^#\d+$/.test(searchText)) return itemHashtag === searchText;
-        if (searchText.startsWith("#")) return itemHashtag.includes(searchText);
-        return item.haystack.toLowerCase().includes(searchText);
-      })
-      .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
-  }, [app.state.teams, app.state.users, blockedUserIds, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts, searchText, user.region]);
-  const homeFavoriteSearchItems = useMemo(() => {
-    const favoritePlayers = favoritePlayerIds
-      .map((playerId) => app.state.users.find((item) => item.id === playerId))
-      .filter(Boolean)
-      .map((item) => {
-        const hashtag = getUserHashtag(item);
-        return {
-          id: `favorite-player-${item.id}`,
-          label: item.name,
-          kind: "PLAYER",
-          meta: `${item.region} · ${item.position} · ${getPlayerRatingSummary(item)}`,
-          href: `/app/players/${item.id}`,
-          haystack: `${item.name} ${hashtag} ${item.region} ${item.position} ${item.club}`,
-          avatar: item.avatarColor,
-          user: item,
-          hashtag,
-        };
-      });
-    const favoriteTeams = favoriteTeamIds
-      .map((teamId) => app.state.teams.find((team) => team.id === teamId))
-      .filter(Boolean)
-      .map((team) => {
-        const hashtag = getTeamHashtag(team);
-        return {
-          id: `favorite-team-${team.id}`,
-          label: team.name,
-          kind: "TEAM",
-          meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
-          href: `/app/teams/${team.id}`,
-          haystack: `${team.name} ${hashtag} ${team.region} ${team.homeCourt}`,
-          team,
-          hashtag,
-        };
-      });
-    const favoriteCourts = favoriteCourtIds
-      .map((courtId) => registeredCourts.find((court) => court.id === courtId))
-      .filter(Boolean)
-      .map((court) => {
-        const hashtag = getCourtHashtag(court);
-        return {
-          id: `favorite-court-${court.id}`,
-          label: court.name,
-          kind: "COURT",
-          meta: `${court.region} · ${court.type}`,
-          href: `/app/courts/${encodeURIComponent(court.id)}`,
-          haystack: `${court.name} ${hashtag} ${court.region} ${court.type}`,
-          court,
-          hashtag,
-        };
-      });
-    const favoriteReferees = favoriteRefereeIds
-      .map((refereeId) => app.state.users.find((item) => item.id === refereeId))
-      .filter(Boolean)
-      .map((item) => {
-        const hashtag = getUserHashtag(item);
-        return {
-          id: `favorite-referee-${item.id}`,
-          label: item.name,
-          kind: "REFEREE",
-          meta: `${item.region} · ${item.position} · ${item.trustScore}`,
-          href: `/app/players/${item.id}`,
-          haystack: `${item.name} ${hashtag} ${item.region} ${item.position}`,
-          avatar: item.avatarColor,
-          user: item,
-          hashtag,
-        };
-      });
-    return [...favoritePlayers, ...favoriteTeams, ...favoriteCourts, ...favoriteReferees].slice(0, SEARCH_DETAIL_LIMIT);
-  }, [app.state.teams, app.state.users, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts]);
-  const topRankers = seasonRows.slice(0, 5);
-  const recentFiveMatches = myCompletedMatches.slice(0, 5);
-  const recentFiveWins = recentFiveMatches.filter((match) => getUserResult(match, user.id) === "W").length;
-  const latestMyMatches = recentFiveMatches;
-  const nextUpcomingMatch = upcomingItems[0]?.item ?? null;
-  const nextUpcomingLine = nextUpcomingMatch ? getUserMatchLine(nextUpcomingMatch, user.id) : null;
-  const placementComplete = isPlacementComplete(user.ratings);
-  const rankSpotlightTier = placementComplete ? getTier(user.ratings.integrated) : null;
-  const rankSpotlightDivision = placementComplete ? getTierDivisionNumber(user.ratings.integrated) : null;
-  const rankSpotlightLabel = placementComplete
-    ? (rankSpotlightDivision ? `${rankSpotlightTier.name} ${rankSpotlightDivision}` : rankSpotlightTier.name)
-    : "배정 전";
-  const renderHomeSearchItem = (item) => {
-    const content = (
-      <>
-      {item.avatar ? <ProfileEmblem user={item.user} className="small" initial={item.label.slice(0, 1)} /> : null}
-      {item.team ? <TeamEmblem team={item.team} size="xs" /> : null}
-      {item.court ? <CourtIdentityIcon compact /> : null}
-      <span className="rank-result-main">
-        <strong>{item.label}</strong>
-        <em>{item.meta}</em>
-      </span>
-      <small>{item.kind} · {item.hashtag}</small>
-      </>
-    );
-    if (item.kind === "COURT") {
-      return <CourtHoverCard key={item.id} court={item.court} className="home-search-entity-trigger">{content}</CourtHoverCard>;
-    }
-    if (item.kind === "TEAM") {
-      return <TeamHoverCard key={item.id} team={item.team} className="home-search-entity-trigger">{content}</TeamHoverCard>;
-    }
-    if (item.kind === "REFEREE") {
-      return <RefereeHoverCard key={item.id} user={item.user} matches={app.state.matches} className="home-search-entity-trigger">{content}</RefereeHoverCard>;
-    }
-    if (item.user) {
-      return <PlayerHoverCard key={item.id} user={item.user} teams={app.state.teams} className="home-search-entity-trigger">{content}</PlayerHoverCard>;
-    }
-    return <Link key={item.id} to={item.href}>{content}</Link>;
-  };
-  const mapRemoteHomeSearchItem = (item) => {
-    if (item.kind === "team") {
-      const hashtag = getTeamHashtag(item);
-      return {
-        id: `remote-team-${item.id}`,
-        entityId: item.id,
-        label: item.name,
-        kind: "TEAM",
-        meta: `${item.region ?? "지역 미정"} · ${item.homeCourt ?? "홈코트 미정"} · ${item.mmr ?? DEFAULT_RATING}`,
-        href: `/app/teams/${item.id}`,
-        team: item,
-        hashtag,
-        searchText: item.searchText,
-      };
-    }
-    if (item.kind === "court") {
-      const hashtag = getCourtHashtag(item);
-      return {
-        id: `remote-court-${item.id}`,
-        entityId: item.id,
-        label: item.name,
-        kind: "COURT",
-        meta: `${item.region ?? "지역 미정"} · ${item.type ?? "구장"}`,
-        href: `/app/courts/${encodeURIComponent(item.id)}`,
-        court: item,
-        hashtag,
-        searchText: item.searchText,
-      };
-    }
-    const hashtag = getUserHashtag(item);
-    return {
-      id: `remote-${item.kind}-${item.id}`,
-      entityId: item.id,
-      label: item.name,
-      kind: item.kind === "referee" ? "REFEREE" : "PLAYER",
-      meta: `${item.region ?? "지역 미정"} · ${item.position ?? "포지션"} · ${getPlayerRatingSummary(item)}`,
-      href: `/app/players/${item.id}`,
-      avatar: item.avatarColor,
-      user: item,
-      hashtag,
-      searchText: item.searchText,
-    };
-  };
+  const {
+    searchResults, homeFavoriteSearchItems, topRankers, recentFiveMatches, recentFiveWins,
+    latestMyMatches, nextUpcomingMatch, nextUpcomingLine, placementComplete, rankSpotlightTier,
+    rankSpotlightDivision, rankSpotlightLabel, renderHomeSearchItem, mapRemoteHomeSearchItem,
+  } = useHomeSearchModel({
+    searchText, app, blockedUserIds, getPlayerRatingSummary, favoritePlayerIds,
+    favoriteRefereeIds, user, favoriteTeamIds, registeredCourts, favoriteCourtIds,
+    SEARCH_DETAIL_LIMIT, seasonRows, myCompletedMatches, getUserResult, upcomingItems,
+    getUserMatchLine,
+  });
 
   const homeRoomOverlays = (
     <>
@@ -639,199 +423,14 @@ export default function Home({ app }) {
     </>
   );
 
-  return (
-    <div className="page-stack rank-home">
-      <Card className="home-search-panel rank-search-card">
-        <SearchPicker
-          value={query}
-          onChange={setQuery}
-          placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
-          items={searchResults}
-          remoteSearchType="all"
-          mapRemoteItem={mapRemoteHomeSearchItem}
-          idleItems={homeFavoriteSearchItems}
-          idleTitle="즐겨찾기"
-          showIdleOnFocus
-          floating
-          floatingHeightLimit={380}
-          preferAboveOnMobile
-          renderItem={renderHomeSearchItem}
-          limit={SEARCH_PREVIEW_LIMIT}
-          detailLimit={SEARCH_DETAIL_LIMIT}
-          fieldClassName="home-search-box"
-          resultsClassName="home-global-search-results"
-        />
-        <div className="home-search-actions">
-          <Button as={Link} to="/app/create" className="home-search-create ui-button-block"><PlusCircle size={18} /> 매칭 만들기</Button>
-          <Button as={Link} to="/app/create?intent=record" className="home-search-create ui-button-block"><ClipboardCheck size={18} /> 경기 기록하기</Button>
-        </div>
-      </Card>
-
-      <div className="page-stack home-left-rail">
-        <section className="rank-summary-grid ui-design-app-hero">
-          <div className="home-rank-board-head">
-            <div className="rank-hero-top">
-              <div>
-                <p className="eyebrow">내 랭크 보드</p>
-                <h1>{user.name}님의 오늘 코트 현황</h1>
-                <p>{user.region} · {user.position} · 통합 {getPlayerRatingSummary(user)}</p>
-              </div>
-            </div>
-            <aside className="home-hero-board ui-liquid-glass" aria-label="내 코트 요약">
-              <Link
-                className="home-hero-next"
-                to={nextUpcomingMatch ? `/app/matches?match=${nextUpcomingMatch.id}` : "/app/recruiting"}
-                onClick={nextUpcomingMatch ? (event) => {
-                  event.preventDefault();
-                  openMatchRoom(nextUpcomingMatch.id);
-                } : undefined}
-              >
-                <span><CalendarDays size={16} /> {nextUpcomingMatch ? "NEXT MATCH" : "COURT OPEN"}</span>
-                <strong>{nextUpcomingLine ? `${nextUpcomingLine.side.name} vs ${nextUpcomingLine.opponent.name}` : "예정된 경기 없음"}</strong>
-                <em>{nextUpcomingMatch ? `${getRoomScheduleLabel(nextUpcomingMatch)} · ${nextUpcomingMatch.court || "구장 미정"}` : "새 매칭을 찾아 다음 경기를 잡으세요."}</em>
-                <ArrowUpRight size={18} aria-hidden="true" />
-              </Link>
-              <div className="home-hero-stats">
-                <span><strong>{upcomingItems.length}</strong><em>확정 경기</em></span>
-                <span><strong>{recentFiveWins}승</strong><em>최근 5경기</em></span>
-                <span><strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "대기"}</strong><em>지역 순위</em></span>
-              </div>
-            </aside>
-          </div>
-        </section>
-
-        {isHomeGuideCardVisible(app.state.settings) ? (
-          <Card
-            as={Link}
-            to="/app/guide"
-            className="home-guide-card"
-            aria-label="BOXTIER 처음 사용 설명 보기"
-          >
-            <span className="home-guide-card__icon">
-              <BookOpenCheck size={24} aria-hidden="true" />
-            </span>
-            <span className="home-guide-card__copy">
-              <small>FIRST STEP · 13단계 안내</small>
-              <strong>처음 사용하시나요?</strong>
-              <span>QR 출석부터 경기·기록·팀·구장·대회·용어·설정까지 확인하세요.</span>
-            </span>
-            <span className="home-guide-card__path" aria-hidden="true">
-              <b>PLAY</b>
-              <i>→</i>
-              <b>RECORD</b>
-              <i>→</i>
-              <b>TIER</b>
-            </span>
-            <span className="home-guide-card__link">
-              사용 설명
-              <ArrowRight size={18} aria-hidden="true" />
-            </span>
-          </Card>
-        ) : null}
-
-        <div className="content-grid home-dashboard-grid rank-dashboard-grid">
-          <div className="page-stack home-primary-stack">
-            <Card className={`match-focus-card home-upcoming-card ui-design-category-surface${upcomingItems.length ? "" : " is-empty"}`}>
-              <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Upcoming</p>
-                  <h2>내 확정 경기</h2>
-                </div>
-                <Badge tone={upcomingItems.length ? "orange" : "neutral"}>{upcomingItems.length}개</Badge>
-              </div>
-              {upcomingItems.length ? (
-                <div className="match-stack">
-                  {upcomingItems.slice(0, 3).map((entry) => {
-                    return <MatchCard key={entry.id} match={entry.item} teams={app.state.teams} courts={registeredCourts} onOpen={openMatchRoom} />;
-                  })}
-                  {upcomingItems.length > 3 ? (
-                    <Button as={Link} to="/app/matches" variant="secondary" size="sm" className="home-upcoming-more">전체 보기</Button>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="ui-empty-state-compact">확정 경기 없음</div>
-              )}
-            </Card>
-
-            <Card className="section-card home-recent-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Recent Matches</p>
-                  <h2>내 최근 전적</h2>
-                </div>
-                <Badge tone={myCompletedMatches.length ? "green" : "neutral"}>{myCompletedMatches.length}경기</Badge>
-              </div>
-              {myCompletedMatches.length ? (
-                <>
-                  <div className="recent-result-strip">
-                    {myCompletedMatches.slice(0, 8).map((match) => {
-                      const result = getUserResult(match, user.id);
-                      return (
-                        <Link
-                          key={match.id}
-                          to={`/app/matches?match=${match.id}`}
-                          className={`recent-result-pill result-${result.toLowerCase()}`}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            openMatchRoom(match.id);
-                          }}
-                        >
-                          {result}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                  <div className="recent-match-list">
-                    {latestMyMatches.map((match) => {
-                      const line = getUserMatchLine(match, user.id);
-                      return (
-                        <RecentMatchRow
-                          key={match.id}
-                          record={match}
-                          result={line.result}
-                          side={line.side}
-                          opponent={line.opponent}
-                          score={line.score}
-                          opponentScore={line.opponentScore}
-                          teams={app.state.teams}
-                          to={`/app/matches?match=${match.id}`}
-                          onOpen={() => openMatchRoom(match.id)}
-                        />
-                      );
-                    })}
-                  </div>
-                </>
-              ) : <div className="home-panel-empty">최근 확정 경기 없음</div>}
-            </Card>
-          </div>
-        </div>
-      </div>
-
-      <HomeRightRail
-        acceptHomeRecruitingInvitation={acceptHomeRecruitingInvitation}
-        actionItems={actionItems}
-        app={app}
-        declineHomeRecruitingInvitation={declineHomeRecruitingInvitation}
-        homeNoticeItems={homeNoticeItems}
-        localRivals={localRivals}
-        mySeasonIndex={mySeasonIndex}
-        mySeasonRow={mySeasonRow}
-        myTeamCount={myTeamCount}
-        myTeams={myTeams}
-        openActionRoom={openActionRoom}
-        placementComplete={placementComplete}
-        priorityItems={priorityItems}
-        priorityNoticeItems={priorityNoticeItems}
-        processingInviteId={processingInviteId}
-        rankSpotlightLabel={rankSpotlightLabel}
-        recentFiveWins={recentFiveWins}
-        seasonProgress={seasonProgress}
-        topRankers={topRankers}
-        user={user}
-      />
-
-      {homeRoomOverlays}
-
-    </div>
-  );
+  return <HomePageView {...{
+    query, setQuery, searchResults, mapRemoteHomeSearchItem, homeFavoriteSearchItems,
+    renderHomeSearchItem, SEARCH_PREVIEW_LIMIT, SEARCH_DETAIL_LIMIT, user, getPlayerRatingSummary,
+    nextUpcomingMatch, openMatchRoom, nextUpcomingLine, upcomingItems, recentFiveWins,
+    mySeasonIndex, app, registeredCourts, myCompletedMatches, getUserResult,
+    latestMyMatches, getUserMatchLine, acceptHomeRecruitingInvitation, actionItems, declineHomeRecruitingInvitation,
+    homeNoticeItems, localRivals, mySeasonRow, myTeamCount, myTeams,
+    openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId,
+    rankSpotlightLabel, seasonProgress, topRankers, homeRoomOverlays,
+  }} />;
 }

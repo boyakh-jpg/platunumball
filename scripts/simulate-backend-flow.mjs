@@ -270,8 +270,10 @@ let simulationCourtId = "";
 
 async function resolveSimulationCourtId() {
   const { data, error } = await supabase
-    .from("courts")
+    .from("approved_courts")
     .select("id")
+    .or("status.is.null,status.eq.active")
+    .is("hidden_at", null)
     .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -1115,7 +1117,6 @@ async function cleanupRegressionSimulationRows() {
   await deleteRows("admin_disciplinary_actions", "id", adminDisciplinaryIds);
   await deleteRows("referee_appointments", "id", adminAppointmentIds);
   await deleteRows("admin_appointments", "id", adminAppointmentIds);
-  await deleteRows("courts", "id", approvedCourtIds);
   await deleteRows("court_facility_info", "court_id", approvedCourtIds);
   await deleteRows("court_source_records", "court_id", approvedCourtIds);
   await deleteRows("approved_courts", "id", approvedCourtIds);
@@ -6536,6 +6537,11 @@ async function runMatchRecordRosterScenario({
       teamBId: teamBFixture.team.id,
     },
   }));
+  assertFlow(
+    setupResult?.sqlReducer === true && setupResult?.advisoryLocked === true,
+    "team match record participant setup SQL reducer not used",
+    setupResult,
+  );
   match = await getMatchAfterResult(setupResult, teamAFixture.captainLogin, `${ids.label}:loadAfterParticipantSetup`);
   assertFlow(match.teamA?.teamId === teamAFixture.team.id && match.teamB?.teamId === teamBFixture.team.id, "match record team setup missing", match);
   assertFlow((match.teamA?.players ?? [])[0] === teamAFixture.captainId && (match.teamB?.players ?? [])[0] === teamBFixture.captainId, "match record captain setup mismatch", match);
@@ -6665,6 +6671,11 @@ async function runOneOnOneMatchRecordScenario({
       teamBPlayerIds: [opponentId],
     },
   }));
+  assertFlow(
+    setupResult?.sqlReducer === true && setupResult?.advisoryLocked === true,
+    "individual match record participant setup SQL reducer not used",
+    setupResult,
+  );
   match = await getMatchAfterResult(setupResult, hostLogin, `${ids.label}:loadAfterParticipantSetup1v1`);
   assertFlow((match?.teamB?.players ?? []).length === 1 && match.teamB.players[0] === opponentId, "1v1 match record opponent setup mismatch", match);
   assertFlow(match?.rules?.recordSetupReady === true, "1v1 match record setup not marked ready", match);

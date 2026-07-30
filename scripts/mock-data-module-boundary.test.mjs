@@ -7,6 +7,11 @@ const ROOT = path.resolve(new URL("..", import.meta.url).pathname.replace(/^\/([
 const MODULE_PATHS = [
   "src/lib/mockData.js",
   "src/lib/mockData/baseState.js",
+  "src/lib/mockData/baseStateHelpers.js",
+  "src/lib/mockData/baseDirectoryFixtures.js",
+  "src/lib/mockData/baseActivityFixtures.js",
+  "src/lib/mockData/matchGenerators.js",
+  "src/lib/mockData/recruitingGenerators.js",
   "src/lib/mockData/stateFinalizers.js",
 ];
 
@@ -19,7 +24,7 @@ test("demo state keeps seed, generator, and finalizer modules bounded", async ()
 
   for (const [relativePath, source] of Object.entries(sources)) {
     const lineCount = source.split(/\r?\n/u).length;
-    assert.ok(lineCount <= 900, `${relativePath}: ${lineCount}/900 lines`);
+    assert.ok(lineCount <= 500, `${relativePath}: ${lineCount}/500 lines`);
   }
   assert.doesNotMatch(
     sources["src/lib/mockData/baseState.js"],

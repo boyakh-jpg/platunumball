@@ -312,7 +312,7 @@ test("심판 stats 전용 프로필 표시와 score-only 정책 계약을 고정
   assert.match(profileRecordsSource, /recordedStatRecords\.length/);
   assert.match(matchRoomSource, /\{\(hasReferee \|\| isSoloRecord\) && shouldShowResultEntry \? \(/);
   assert.match(matchRoomSource, /\{match\.result && \(hasReferee \|\| isSoloRecord\) \? \(/);
-  assert.match(matchRoomSource, /\{statEditorPlayer && \(hasReferee \|\| isSoloRecord\) \? \(/);
+  assert.match(matchRoomSource, /(?:\{|return \()statEditorPlayer && \(hasReferee \|\| isSoloRecord\) \? \(/);
   assert.match(recruitingSource, /matchRoom && Boolean\(sourceMatch\?\.refereeId\) &&/);
   assert.match(recruitingSource, /Boolean\(sourceMatch\.refereeId\).*SourceMatchDisputeEditor/s);
   assert.doesNotMatch(recruitingSource, /경기 종료 전까지 개인활약을 입력합니다/);
@@ -364,6 +364,7 @@ test("RPC grant health distinguishes current entry points from retired signature
   const [
     schemaHealthSource,
     migrationSource,
+    registryDeltaSource,
     previousGeneralHealthSource,
     previousAuthoritativeHealthSource,
   ] = await Promise.all([
@@ -371,6 +372,13 @@ test("RPC grant health distinguishes current entry points from retired signature
     readFile(
       new URL(
         "../supabase/migrations/20260729162000_align_rpc_grant_health_with_current_policy.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../supabase/migrations/20260730017000_match_record_participants_operation.sql",
         import.meta.url,
       ),
       "utf8",
@@ -402,7 +410,7 @@ test("RPC grant health distinguishes current entry points from retired signature
     );
   };
   const registryRows = [
-    ...migrationSource.matchAll(
+    ...`${migrationSource}\n${registryDeltaSource}`.matchAll(
       /\('(general|authoritative)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'(active|retired)',\s*(true|false)\)/g,
     ),
   ].map((match) => ({
@@ -465,6 +473,7 @@ public.rankball_extend_admin_appointment_action(text,integer,text,integer,text)
 public.rankball_match_clock_action(text,text,text,jsonb)
 public.rankball_match_confirm_pickup_assignment(text,text,text,integer)
 public.rankball_match_generate_pickup_assignment(text,text,text)
+public.rankball_match_record_participants_action(text,text,jsonb)
 public.rankball_match_room_update_action(text,text,jsonb)
 public.rankball_match_rule_ack_action(text,text,integer)
 public.rankball_match_schedule_response_action(text,text,text,text)
@@ -564,8 +573,8 @@ public.rankball_update_team_emblem_design(text,text,text,boolean,text,text,text,
     "public.rankball_match_list(text,integer,text)",
     "retired",
   );
-  assert.equal(reviewedServiceOnlySignatures.length, 42);
-  assert.equal(new Set(reviewedServiceOnlySignatures).size, 42);
+  assert.equal(reviewedServiceOnlySignatures.length, 43);
+  assert.equal(new Set(reviewedServiceOnlySignatures).size, 43);
   reviewedServiceOnlySignatures.forEach((signature) => {
     assert.ok(
       activeRegistrySignatures.has(signature),
@@ -642,6 +651,10 @@ public.rankball_update_team_emblem_design(text,text,text,boolean,text,text,text,
   });
   assert.match(migrationSource, /'rankball_match_roster_transition_action'[\s\S]*'active', true/);
   assert.match(migrationSource, /'rankball_match_finalize_locked'[\s\S]*text,text,text,boolean[\s\S]*'active', true/);
+  assert.match(
+    registryDeltaSource,
+    /'rankball_match_record_participants_action'[\s\S]*text,text,jsonb[\s\S]*'active'[\s\S]*true/,
+  );
   assert.match(migrationSource, /rankball_match_late_player_action_legacy[\s\S]*'retired', false/);
   assert.match(migrationSource, /rankball_match_roster_move_action_legacy[\s\S]*'retired', false/);
   assert.match(migrationSource, /rankball_recruiting_stat_recorder_action_legacy[\s\S]*'retired', false/);

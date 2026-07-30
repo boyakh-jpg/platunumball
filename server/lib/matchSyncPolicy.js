@@ -1,27 +1,12 @@
 import { MATCH_SYNC_DEPENDENCIES } from "./matchSyncDependencies.js";
-
-
-
-const {
-
-  DEFAULT_TOURNAMENT_MMR_GAP, MATCH_SIDES, PLAYER_STAT_FIELDS, RECORD_TYPES, getMatchPlayedIdMap, getParticipantIds, isRefereeGrade,
-
-  projectTournamentDbIdentity, sortPlainObject, toArray, toNotificationRows, uniqueIds,
-
-} = MATCH_SYNC_DEPENDENCIES;
-
-
+import { DEFAULT_TOURNAMENT_MMR_GAP, MATCH_SIDES, PLAYER_STAT_FIELDS, RECORD_TYPES, getMatchPlayedIdMap, getParticipantIds, isRefereeGrade, projectTournamentDbIdentity, sortPlainObject, toArray, toNotificationRows, uniqueIds, toFiniteNumber, toTournamentRow, toTournamentTeamRows, persistTournamentSnapshot, normalizePlayerStats, normalizeStatRows, normalizeResultSnapshot, isActiveReferee } from "./matchSyncPolicyData.js";
+export { toFiniteNumber, toTournamentRow, toTournamentTeamRows, persistTournamentSnapshot, normalizePlayerStats, normalizeStatRows, normalizeResultSnapshot, isActiveReferee } from "./matchSyncPolicyData.js";
 
 export const configuredDiscordQueueTimeoutMs = Number(process.env.DISCORD_QUEUE_TIMEOUT_MS || 2500);
 
 export const DISCORD_QUEUE_TIMEOUT_MS = Number.isFinite(configuredDiscordQueueTimeoutMs) && configuredDiscordQueueTimeoutMs > 0
   ? configuredDiscordQueueTimeoutMs
   : 2500;
-
-export function toFiniteNumber(value, fallback = 0) {
-  const number = Number(value ?? fallback);
-  return Number.isFinite(number) ? number : fallback;
-}
 
 export function reject(statusCode, message) {
   const error = new Error(message);
@@ -82,65 +67,6 @@ export function getTimestamp(item = {}) {
 
 export function uniqueItemsById(items = []) {
   return [...new Map((items ?? []).filter((item) => item?.id).map((item) => [item.id, item])).values()];
-}
-
-export function toTournamentRow(tournament = {}) {
-  return {
-    ...projectTournamentDbIdentity(tournament, {
-      courtId: tournament.courtId ?? tournament.court_id ?? null,
-      courtName: tournament.court ?? tournament.courtName ?? tournament.court_name ?? null,
-    }),
-    ranked: tournament.ranked !== false,
-    official: Boolean(tournament.official),
-    start_date: tournament.startDate || tournament.start_date || null,
-    end_date: tournament.endDate || tournament.end_date || null,
-    schedule_policy: tournament.schedulePolicy ?? tournament.schedule_policy ?? "weekly",
-    schedule_note: tournament.scheduleNote ?? tournament.schedule_note ?? "",
-    mmr_limit_mode: tournament.mmrLimitMode ?? tournament.mmr_limit_mode ?? "warn",
-    max_mmr_gap: Number(tournament.maxMmrGap ?? tournament.max_mmr_gap ?? DEFAULT_TOURNAMENT_MMR_GAP),
-    mmr_policy: tournament.mmrPolicy ?? tournament.mmr_policy ?? "gap_adjusted",
-    rules: tournament.rules ?? {},
-    memo: tournament.memo ?? "",
-    created_by: tournament.createdBy ?? tournament.created_by ?? null,
-    created_at: tournament.createdAt ?? tournament.created_at ?? new Date().toISOString(),
-    started_at: tournament.startedAt ?? tournament.started_at ?? null,
-    match_ids: toArray(tournament.matchIds ?? tournament.match_ids),
-    team_statuses: tournament.teamStatuses ?? tournament.team_statuses ?? {},
-    team_approvals: tournament.teamApprovals ?? tournament.team_approvals ?? {},
-    bracket: tournament.bracket ?? {},
-    updated_at: new Date().toISOString(),
-  };
-}
-
-export function toTournamentTeamRows(tournament = {}) {
-  return toArray(tournament.teamIds ?? tournament.team_ids).map((teamId, index) => {
-    const approval = tournament.teamApprovals?.[teamId] ?? {};
-    return {
-      tournament_id: tournament.id,
-      team_id: teamId,
-      seed_order: index + 1,
-      status: tournament.teamStatuses?.[teamId] ?? "invited",
-      approved_by: approval.by || approval.approvedBy || null,
-      approved_at: approval.approvedAt || approval.approved_at || null,
-    };
-  });
-}
-
-export async function persistTournamentSnapshot(context, tournament = {}, notifications = []) {
-  if (!tournament?.id) return null;
-  const notificationRows = toNotificationRows(notifications, context.profileId, {
-    defaultTitle: "대회 변경",
-    defaultTone: "match",
-    defaultType: "tournament",
-    filterToProfile: true,
-  });
-  const { data, error } = await context.supabase.rpc("rankball_persist_tournament_snapshot_locked", {
-    p_tournament_row: toTournamentRow(tournament),
-    p_team_rows: toTournamentTeamRows(tournament),
-    p_notification_rows: notificationRows,
-  });
-  if (error) throw error;
-  return data ?? { ok: true };
 }
 
 export function existingParticipantIds(existingMatch, existingPlayers = []) {
@@ -214,60 +140,6 @@ export function canSyncMatchRecordTeamRoster(profileId, existingMatch, existingP
   return profileId === existingLeaderId && profileId === nextLeaderId;
 }
 
-export function normalizePlayerStats(stats = {}) {
-  return Object.fromEntries(Object.entries(stats ?? {})
-    .filter(([userId]) => Boolean(userId))
-    .map(([userId, stat]) => [
-      userId,
-      Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field, toFiniteNumber(stat?.[field])])),
-    ]));
-}
-
-export function normalizeStatRows(rows = []) {
-  return Object.fromEntries(toArray(rows)
-    .filter((row) => Boolean(row.user_id))
-    .map((row) => [
-      row.user_id,
-      Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field, toFiniteNumber(row[field])])),
-    ]));
-}
-
-export function normalizeResultSnapshot(result = null, statRows = []) {
-  if (!result) return null;
-  return sortPlainObject({
-    scoreA: toFiniteNumber(result.score_a ?? result.scoreA),
-    scoreB: toFiniteNumber(result.score_b ?? result.scoreB),
-    playerStats: result.playerStats ? normalizePlayerStats(result.playerStats) : normalizeStatRows(statRows),
-  });
-}
-
-export async function isActiveReferee(supabase, userId, minTrust = 90) {
-  if (!userId) return false;
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("trust_score")
-    .eq("id", userId)
-    .maybeSingle();
-  if (profileError) throw profileError;
-  if (Number(profile?.trust_score ?? 0) < Number(minTrust ?? 90)) return false;
-
-  const { data, error } = await supabase
-    .from("referee_appointments")
-    .select("id, role, grade, status, starts_at, ends_at")
-    .eq("user_id", userId)
-    .eq("role", "referee")
-    .eq("status", "active");
-  if (error) throw error;
-
-  const now = Date.now();
-  return toArray(data).some((row) => {
-    const startsAt = row.starts_at ? Date.parse(row.starts_at) : 0;
-    const endsAt = row.ends_at ? Date.parse(row.ends_at) : 0;
-    return isRefereeGrade(row.grade) && (!startsAt || startsAt <= now) && (!endsAt || endsAt > now);
-  });
-}
-
 export function isMatchOperator(profileId, existingMatch, nextMatch) {
   return Boolean(profileId && [
     existingMatch?.created_by,
@@ -303,8 +175,6 @@ export const OPERATOR_MATCH_ACTIONS = new Set([
 ]);
 
 export const MATCH_RECORD_ROSTER_ACTION = "setMatchRecordTeamRoster";
-
-export const MATCH_RECORD_SETUP_ACTION = "setMatchRecordParticipants";
 
 export const PARTICIPANT_MATCH_ACTIONS = new Set([
   "acknowledgeMatchRoomRules",
@@ -344,7 +214,6 @@ export function shouldReplaceMatchResult(action, match = {}) {
 
 export function shouldReplayMatchOperation(operation = null, match = null) {
   if (!operation) return false;
-  if (operation.action === MATCH_RECORD_SETUP_ACTION) return true;
   return operation.action === "createMatch" && (!match || !isSoloRecordMatch(match));
 }
 
@@ -417,14 +286,6 @@ export function canSyncMatchAction(profileId, existingMatch, existingPlayers, ne
     return profileId === authorityId;
   }
   if (action === MATCH_RECORD_ROSTER_ACTION) return canSyncMatchRecordTeamRoster(profileId, existingMatch, existingPlayers, nextMatch);
-  if (action === MATCH_RECORD_SETUP_ACTION) {
-    return Boolean(
-      existingMatch?.created_by === profileId &&
-      existingMatch?.rules?.recordType === RECORD_TYPES.matchRecord &&
-      !existingMatch?.confirmed_at &&
-      !existingMatch?.result
-    );
-  }
   if (action === "generatePickupSideAssignment") {
     return isMatchOperator(profileId, existingMatch, nextMatch)
       || existingParticipants.has(profileId)
@@ -524,6 +385,7 @@ export const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "removeMatchRoomPlayer",
   "requestMatchRefereeAbsence",
   "confirmMatchRefereeAbsence",
+  "setMatchRecordParticipants",
   "setMatchRecordTeamRoster",
   "setMatchRoomPlayerPlacement",
   "swapPickupMatchPlayers",
@@ -538,10 +400,8 @@ export const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "voidMatch",
 ]);
 
-export const REPLAY_ONLY_MATCH_ACTIONS = new Set([MATCH_RECORD_SETUP_ACTION]);
-
 export function isSupportedMatchAction(action = "") {
-  return SQL_REDUCER_MATCH_ACTIONS.has(action) || REPLAY_ONLY_MATCH_ACTIONS.has(action);
+  return SQL_REDUCER_MATCH_ACTIONS.has(action);
 }
 
 export function isMissingSqlMatchReducer(error = {}) {
@@ -561,6 +421,7 @@ export function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_end_action") ||
     message.includes("rankball_tournament_match_forfeit_action") ||
     message.includes("rankball_match_referee_absence_action") ||
+    message.includes("rankball_match_record_participants_action") ||
     message.includes("rankball_match_result_action") ||
     message.includes("rankball_match_room_update_action") ||
     message.includes("rankball_match_room_action") ||
@@ -605,6 +466,7 @@ export function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "removeMatchRoomPlayer",
     "requestMatchRefereeAbsence",
     "confirmMatchRefereeAbsence",
+    "setMatchRecordParticipants",
     "setMatchRecordTeamRoster",
     "setMatchRoomPlayerPlacement",
     "swapPickupMatchPlayers",

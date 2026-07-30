@@ -518,6 +518,7 @@ test("individual stylesheets have no partial same-value shadowed declaration", (
 test("home team summaries use one shared entity primitive", () => {
   const homeSource = [
     fs.readFileSync("src/pages/Home.jsx", "utf8"),
+    fs.readFileSync("src/pages/HomePageView.jsx", "utf8"),
     fs.readFileSync("src/components/home/HomeRightRail.jsx", "utf8"),
   ].join("\n");
   const primitiveSource = fs.readFileSync(primitiveCssFile, "utf8");
@@ -539,10 +540,12 @@ test("navigation actions use the shared polymorphic button without nested contro
   const buttonSource = fs.readFileSync("src/components/common/Button.jsx", "utf8");
   const navigationPages = [
     "src/pages/Home.jsx",
+    "src/pages/HomePageView.jsx",
     "src/pages/Landing.jsx",
     "src/pages/Matches.jsx",
     "src/pages/MatchesPageView.jsx",
     "src/pages/Recruiting.jsx",
+    "src/pages/RecruitingPageView.jsx",
     "src/pages/Season.jsx",
   ];
 

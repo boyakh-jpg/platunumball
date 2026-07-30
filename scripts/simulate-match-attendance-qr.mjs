@@ -326,8 +326,10 @@ async function main() {
     noRefOpponent,
   ] = playerProfiles;
   const { data: courtRows, error: courtError } = await admin
-    .from("courts")
+    .from("approved_courts")
     .select("id,name")
+    .or("status.is.null,status.eq.active")
+    .is("hidden_at", null)
     .limit(1);
   if (courtError) throw courtError;
   const court = courtRows?.[0];

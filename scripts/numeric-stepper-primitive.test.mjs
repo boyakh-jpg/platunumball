@@ -25,7 +25,10 @@ test("기록 화면은 공용 NumericStepper만 사용한다", async () => {
   ]);
 
   assert.match(matchRoomSource, /components\/common\/NumericStepper\.jsx/);
-  assert.match(recruitingSource, /components\/common\/NumericStepper\.jsx/);
+  assert.match(
+    recruitingSource,
+    /(?:components\/common|\.\.\/common)\/NumericStepper\.jsx/,
+  );
   assert.doesNotMatch(matchRoomSource, /function NumericStepper\s*\(/);
   assert.doesNotMatch(recruitingSource, /function NumericStepper\s*\(/);
 });

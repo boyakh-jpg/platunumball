@@ -271,6 +271,7 @@ test("경기·모집 목록은 공통 피드 결합을 쓰고 전용 검증은 �
     Promise.all([
       readFile(new URL("../server/api/matches/_listProjection.js", import.meta.url), "utf8"),
       readFile(new URL("../server/api/matches/_listEnrichment.js", import.meta.url), "utf8"),
+      readFile(new URL("../server/api/matches/_listFeedQueries.js", import.meta.url), "utf8"),
       readFile(new URL("../server/api/matches/_listQueries.js", import.meta.url), "utf8"),
     ]).then((sources) => sources.join("\n")),
     Promise.all([

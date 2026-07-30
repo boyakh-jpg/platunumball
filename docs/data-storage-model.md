@@ -423,6 +423,7 @@ Done:
 - `rankball_match_thumbs_action()` commits match thumbs and affected profile trust deltas in one DB transaction.
 - `rankball_match_star_toggle_action()` wraps the thumbs RPC for single-target star toggles and enforces trust-feedback limits in DB.
 - `agreeMatch` and `checkInMatchPlayer` now use direct operation-only SQL reducer calls when `matchId`, `sideName`, and `playerId` are present, without sending a client match snapshot.
+- `setMatchRecordParticipants` uses `rankball_match_record_participants_action(text,text,jsonb)` to commit participant/team setup, agreements, approval reset, and setup notifications atomically. The server no longer replays this mutation in JS or writes a full match snapshot.
 - Supabase frontend `createMatch` calls send operation-only draft payloads; the server replays `createMatch` and returns the persisted match as the source of truth.
 - `startMatch`, `endMatch`, referee-absence, attendance, room-rule, roster, removal, result, dispute, dispute-item resolution, and approval flows use operation-only locked SQL reducers.
 - Backend flow simulation seeds pending app/Discord match notice rows and verifies stale cleanup for `startMatch`, `cancelMatch`, `approveMatch`, and `voidMatch`.
@@ -538,12 +539,13 @@ Remaining:
 | `favorites` | `user_id`, `target_type`, `target_id` | settings/search/favorites sync | 유지 |
 | `notifications` | `id`, `user_id`, `target_user_id`, `type`, `payload`, `read_at` | home/invite/action notices, Discord queue source | 유지 |
 | `discord_notification_deliveries` | `id`, `notification_id`, `target_user_id`, `discord_user_id`, `status`, `send_at` | Discord DM worker | 유지 |
-| `approved_courts` | `id`, `name`, 주소·지역·시설·접근·유료·검증 칼럼, `status`; `payload`는 import/simulation 호환 메타만 유지 | court search/favorites/feed fallback | 유지 |
-| `courts` | `id`, `name`, `address`, `region` | legacy court fallback | 보류 |
+| `approved_courts` | `id`, `name`, 주소·지역·시설·접근·유료·검증 칼럼, `status`; `payload`는 import/simulation 호환 메타만 유지 | court search/favorites/feed/경기·모집 참조의 단일 원본 | 유지 |
+| `courts` | 과거 `id`, `name`, `address`, `region` snapshot | service-role 감사용 read-only legacy archive; runtime/FK/fallback 금지 | archive 보존 |
 | `rankball_state` | legacy snapshot | production DB에 없음 | 제거 완료 |
 
 - `user_room_feed.is_active=false` row는 비활성 전환 후 7일 보존하고 maintenance RPC가 삭제한다.
 - `room_feed_cards`는 7일 이상 갱신되지 않았고 활성 feed가 없으며 같은 entity의 최근 feed도 7일이 지난 경우에만 삭제한다. 원본 모집방·경기 row는 보존한다.
+- 운영 health의 retention 경고도 위 삭제 조건을 모두 충족한 overdue row만 센다. 7일 보존 중인 row는 경고가 아니다.
 
 ## 2026-07-13 atomic match confirmation and rating commit
 
@@ -626,12 +628,13 @@ Remaining:
 - The table has RLS enabled and no runtime table grants. Only the service-role health RPC wrappers expose its computed checks.
 - New RPC migrations upsert one registry row instead of replacing a copied full function list.
 - Active signatures require service-role-only execution. Retired signatures are healthy only when absent or denied to `service_role`, `anon`, and `authenticated`.
-- Current replacements are `rankball_match_roster_transition_action(text,text,text,text,text,text,text,text)` and `rankball_match_finalize_locked(text,text,text,boolean)`. Former late-player, roster-move, and stat-recorder entry points are absent. Only the three-argument finalizer stays deny-only because the current wrapper still calls it internally.
+- Current replacements are `rankball_match_roster_transition_action(text,text,text,text,text,text,text,text)` and `rankball_match_finalize_locked(text,text,text,boolean)`. Former late-player, roster-move, stat-recorder, and three-argument finalizer entry points are absent.
 - Dispute resolution, terminal match actions, and match-list reads use their current five-, four-, and four-argument signatures. Their former four-, three-, and three-argument overloads are absent.
 - Literal `server/**/*.js` RPC calls must resolve to an active service-only registry signature. `rankball_can_access_recruiting_room_chat(text,text)` is the single browser-RPC exception because authenticated room-chat RLS also calls it.
 - `20260729171000_remove_retired_match_rpc_entrypoints.sql` physically removes the retired late-player, roster-move, stat-recorder, dispute, terminal, match-list, scorekeeper, takeover, and substitution external entry points while preserving registry tombstones and the takeover request audit table. It never deletes a table or row and intentionally omits `CASCADE`.
-- The three-argument finalizer remains denied, not dropped: the current four-argument acknowledgement wrapper still calls it as an internal dependency. It can be renamed to an internal dispatch function only after that dependency is extracted and verified in a separate migration.
-- Tournament roster `rankball_tournament_match_roster_action()` and its internal `rankball_tournament_match_roster_action_legacy()` dependency remain intact and are outside this retired external-entry-point cleanup.
+- `20260730016000_remove_internal_legacy_rpc_wrappers.sql` changes the four-argument manual finalizer and the remaining automatic-finalization, dispute-resolution, and admin void-restoration internal callers to call the owner-only live finalizer directly, verifies catalog dependencies, and drops the three-argument overload without `CASCADE`. Match-record finalization keeps its distinct threshold policy path.
+- The same migration folds the current host-side, lineup-deadline, representative-roster-snapshot, and 0..3 bench policy into `rankball_tournament_match_roster_action(text,text,jsonb)`, then removes `rankball_tournament_match_roster_action_legacy(text,text,jsonb)`.
+- `20260730017000_match_record_participants_operation.sql` registers `rankball_match_record_participants_action(text,text,jsonb)` as an active service-role-only RPC. Tournament eligibility snapshots, competitive MMR snapshots, immutable record archives, and trusted server-created match persistence remain separate storage concepts.
 - `20260729170500_retire_match_action_roster_move_branch.sql` removes only the obsolete recorder-handoff/old-substitution dispatch from `rankball_match_action()` before the roster-move entry point is dropped. It aborts on an unexpected function shape.
 - `20260730010000_remove_unused_legacy_rpc_entrypoints.sql` removes the uncalled `rankball_current_recruiting_post_ids`, `rankball_recruiting_ready_action`, and `rankball_update_team_emblem_style` exact signatures. Their replacements are `user_room_feed` with a bounded PostREST fallback, the current recruiting management action set, and `rankball_update_team_emblem_design`.
 
@@ -668,7 +671,7 @@ Remaining:
 3. `src/hooks/useAppData.js`는 `mergeMatchesById`, `mergeRecruitingPostsById`, `useAppData`만 노출하는 호환 배럴이다.
 4. `src/hooks/appData/`는 record archive 상태, 서버 operation 판독, 원격 병합, 원격 메타데이터, 서버 상태 정규화, 초기 bootstrap/cache, mutation action 조립, React query 오케스트레이션을 각각 소유한다. action은 조회·경기·설정·프로필·모집·팀 단위 빌더, 오케스트레이터는 runtime·관리자·서버 action·loader 훅으로 나눈다.
 5. `server/lib/repositoryAdapter.js`만 서버에서 클라이언트 repository 호환 배럴을 읽는다. 브라우저 데이터 모듈은 `server/`를 역참조하지 않으며 두 모듈 그래프는 순환 의존을 허용하지 않는다.
-6. `scripts/data-layer-module-boundary.test.mjs`가 호환 export 수, 배럴 크기, 재귀 책임 모듈 목록, 모든 구현 파일 900줄 상한, 순환 의존, 브라우저→서버 역참조, 서버 adapter 경계를 고정한다.
+6. `scripts/data-layer-module-boundary.test.mjs`가 호환 export 수, 배럴 크기, 재귀 책임 모듈 목록, 모든 구현 파일 500줄 상한, 순환 의존, 브라우저→서버 역참조, 서버 adapter 경계를 고정한다.
 
 ## 2026-07-30 경기 공용 도메인 물리 경계
 

@@ -6,6 +6,7 @@ import {
   HOME_PAGE_SOURCE_PATHS,
   MATCHES_PAGE_SOURCE_PATHS,
   RECRUITING_PAGE_SOURCE_PATHS,
+  RECRUITING_SYNC_SOURCE_PATHS,
   RECRUITING_STYLE_SOURCE_PATHS,
   readSourceGroupSync,
 } from "./management-source-groups.mjs";
@@ -321,7 +322,10 @@ test("정원 마감은 남은 선수 초대를 원자적으로 만료하고 즉�
     (relativePath) => readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8"),
     APP_DATA_ORCHESTRATOR_SOURCE_PATHS,
   );
-  const serverSource = readFileSync(new URL("../server/api/recruiting/_syncPostActions.js", import.meta.url), "utf8");
+  const serverSource = readSourceGroupSync(
+    (relativePath) => readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8"),
+    RECRUITING_SYNC_SOURCE_PATHS,
+  );
 
   assert.match(migrationSource, /rankball_recruiting_expire_player_invitations_if_full/);
   assert.match(migrationSource, /\(invitation\.value::jsonb\)->>'role' <> 'referee'/);

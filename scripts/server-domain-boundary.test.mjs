@@ -151,7 +151,7 @@ test("small cross-runtime utilities keep one shared implementation", async () =>
     ["server/api/discord/dm-worker.js", "shared/lib/notifications.js"],
     ["server/lib/matchSyncDependencies.js", "shared/lib/plainObject.js"],
     ["server/api/tournaments/sync-tournament.js", "shared/lib/plainObject.js"],
-    ["src/lib/courts.js", "shared/lib/fuzzyText.js"],
+    ["src/lib/courtCore.js", "shared/lib/fuzzyText.js"],
     ["server/api/search.js", "shared/lib/fuzzyText.js"],
     ["src/lib/naverAddress.js", "shared/lib/naverAddress.js"],
     ["server/api/courts/address-search.js", "shared/lib/naverAddress.js"],

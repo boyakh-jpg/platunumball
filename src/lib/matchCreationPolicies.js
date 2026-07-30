@@ -1,143 +1,23 @@
-import { DEFAULT_BENCH_CAPACITY, MAX_BENCH_CAPACITY, RECORD_TYPES, getModeSize } from "./constants.js";
+import { DEFAULT_BENCH_CAPACITY, MAX_BENCH_CAPACITY, getModeSize } from "./constants.js";
 import {
   getDefaultMatchRules,
   getMatchRuleInputValidation,
   getMatchRuleSummary,
   getMatchRulesPayload,
 } from "./matchRules.js";
-
-export const MATCH_INTENT_OPTIONS = Object.freeze([
-  {
-    id: "friendly",
-    label: "친선전",
-    description: "MMR을 반영하지 않습니다.",
-  },
-  {
-    id: "standard_competitive",
-    label: "경쟁전",
-    description: "MMR을 반영합니다.",
-  },
-  {
-    id: "pickup",
-    label: "픽업",
-    description: "개인으로 참가하고 현장에서 팀과 교대 순서를 정합니다.",
-  },
-]);
-
-export const MATCH_PURPOSE_OPTIONS = Object.freeze([
-  { id: "friendly", label: "친선전", description: "MMR을 반영하지 않습니다." },
-  { id: "competitive", label: "경쟁전", description: "MMR을 반영합니다." },
-]);
-
-export const MATCH_FORMATION_OPTIONS = Object.freeze([
-  {
-    id: "prearranged",
-    label: "경기 전 구성",
-    description: "경기 전에 A/B사이드와 출전·후보를 정합니다.",
-  },
-  {
-    id: "pickup",
-    label: "현장 픽업",
-    description: "개인으로 참가해 현장에서 팀과 교대 순서를 정합니다.",
-  },
-]);
-
-export const PLAYING_TIME_POLICY_OPTIONS = Object.freeze([
-  { id: "appearance_guaranteed", label: "최소 1회 출전" },
-  { id: "equal_rotation", label: "균등 순환" },
-  { id: "none", label: "출전 보장 없음" },
-]);
-
-export const PICKUP_ROTATION_MODE_OPTIONS = Object.freeze([
-  { id: "period", label: "쿼터·하프 종료마다" },
-  { id: "interval", label: "시간 간격으로" },
-  { id: "manual", label: "직접 교대" },
-]);
-
-export const PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS = Object.freeze([
-  {
-    id: "manual",
-    label: "현장 직접 배치",
-    description: "체크인한 참가자를 방장 또는 심판이 직접 나눕니다.",
-  },
-  {
-    id: "random",
-    label: "완전 랜덤 배치",
-    description: "체크인한 참가자를 무작위로 나눈 뒤 방장 또는 심판이 확정합니다.",
-  },
-  {
-    id: "mmr_balanced",
-    label: "MMR 균형 배치",
-    description: "체크인한 참가자의 MMR 합이 비슷하도록 나눈 뒤 방장 또는 심판이 확정합니다.",
-  },
-]);
-
-export const PAYMENT_POLICY_OPTIONS = Object.freeze([
-  { id: "equal_all_confirmed", label: "확정 인원 전원 균등" },
-  { id: "team_fixed_share", label: "팀별 균등" },
-  { id: "host_pays", label: "방장 부담" },
-  { id: "free", label: "참가비 없음" },
-]);
-
-export const VENUE_PAYMENT_TYPE_OPTIONS = Object.freeze([
-  { id: "free_public", label: "무료 공공구장" },
-  { id: "first_come_public", label: "무료·현장 선점" },
-  { id: "paid_reserved", label: "유료·예약 완료" },
-  { id: "paid_not_reserved", label: "유료·예약 전" },
-  { id: "private", label: "사설·별도 협의" },
-]);
-
-export const VENUE_SECURED_OPTIONS = Object.freeze([
-  { id: "confirmed", label: "확보 완료" },
-  { id: "first_come", label: "현장 선점" },
-  { id: "unconfirmed", label: "미확정" },
-]);
-
-export const RECORD_ENTRY_MODE_OPTIONS = Object.freeze([
-  {
-    id: "quick",
-    label: "빠른 기록",
-    description: "상대 정보 없이 날짜·방식·점수와 내 활약만 남깁니다.",
-  },
-  {
-    id: "named",
-    label: "이름 기록",
-    description: "선수 이름을 자유롭게 적고 승인 없이 내 기록으로 저장합니다.",
-  },
-]);
-
-export const RECORD_COMPOSITION_OPTIONS = Object.freeze([
-  {
-    id: "individual",
-    label: "개인 구성",
-    description: "A/B 선수를 계정으로 직접 채웁니다.",
-  },
-  {
-    id: "team",
-    label: "팀 구성",
-    description: "등록된 두 팀의 팀장이 실제 출전 명단을 확인합니다.",
-  },
-]);
-
-const RECORD_ENTRY_MODE_IDS = new Set(RECORD_ENTRY_MODE_OPTIONS.map((option) => option.id));
-const RECORD_COMPOSITION_IDS = new Set(RECORD_COMPOSITION_OPTIONS.map((option) => option.id));
-
-export function getRecordEntryMode(source = {}) {
-  if (RECORD_ENTRY_MODE_IDS.has(source.recordEntryMode)) return source.recordEntryMode;
-  return "quick";
-}
-
-export function getRecordComposition(source = {}) {
-  if (RECORD_COMPOSITION_IDS.has(source.recordComposition)) return source.recordComposition;
-  return source.hostJoinMode === "team" || source.teamOnly === true ? "team" : "individual";
-}
-
-export function getMatchCreationWizardType(source = {}, { recordIntent = false } = {}) {
-  if (source.recordType === RECORD_TYPES.personalRecord) return "personal_record";
-  if (source.recordType === RECORD_TYPES.matchRecord || recordIntent) return "match_record";
-  if (source.visibility === "tournament") return "tournament";
-  return "match";
-}
+import {
+  MATCH_FORMATION_OPTIONS,
+  MATCH_INTENT_OPTIONS,
+  MATCH_PURPOSE_OPTIONS,
+  PAYMENT_POLICY_OPTIONS,
+  PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS,
+  PLAYING_TIME_POLICY_OPTIONS,
+  VENUE_PAYMENT_TYPE_OPTIONS,
+  VENUE_SECURED_OPTIONS,
+} from "./matchCreationPolicyOptions.js";
+import { buildRoomRemakeDraft } from "./matchCreationRemake.js";
+export * from "./matchCreationPolicyOptions.js";
+export { getRoomRemakeWarningCopy } from "./matchCreationRemake.js";
 
 const MATCH_INTENT_IDS = new Set(MATCH_INTENT_OPTIONS.map((option) => option.id));
 const MATCH_PURPOSE_IDS = new Set(MATCH_PURPOSE_OPTIONS.map((option) => option.id));
@@ -363,167 +243,11 @@ export function getDefaultMatchCreationPolicy(mode = "5v5") {
   };
 }
 
-const ROOM_REMAKE_ACCEPTED_STATUSES = new Set(["waiting", "ready", "accepted", "confirmed"]);
-
-function getRoomRemakePlayerId(value) {
-  if (typeof value === "string") return value.trim();
-  return String(value?.id ?? value?.userId ?? value?.playerId ?? "").trim();
-}
-
-function getRoomRemakeInvitationGroups(source = {}, { pickup = false, teamRoom = false } = {}) {
-  if (teamRoom) return [];
-  if (Array.isArray(source.remakeInvitationGroups)) {
-    return source.remakeInvitationGroups
-      .map((group) => ({
-        side: group.side === "teamA" ? "teamA" : "teamB",
-        reserve: Boolean(group.reserve),
-        playerIds: [...new Set((group.playerIds ?? []).map(getRoomRemakePlayerId).filter(Boolean))],
-      }))
-      .filter((group) => group.playerIds.length);
-  }
-
-  const hostId = getRoomRemakePlayerId(source.playerId ?? source.ownerId ?? source.createdBy ?? source.created_by);
-  const refereeId = getRoomRemakePlayerId(source.refereeId ?? source.referee_id);
-  const excludedIds = new Set([hostId, refereeId].filter(Boolean));
-  const seenIds = new Set(excludedIds);
-  const groups = new Map();
-  const addPlayers = (values, side = "teamB", reserve = false) => {
-    const key = pickup ? "pickup" : `${side === "teamA" ? "teamA" : "teamB"}:${reserve ? "reserve" : "active"}`;
-    const playerIds = groups.get(key)?.playerIds ?? [];
-    for (const value of values ?? []) {
-      const playerId = getRoomRemakePlayerId(value);
-      if (!playerId || seenIds.has(playerId)) continue;
-      seenIds.add(playerId);
-      playerIds.push(playerId);
-    }
-    if (playerIds.length) {
-      groups.set(key, {
-        side: pickup ? "teamB" : (side === "teamA" ? "teamA" : "teamB"),
-        reserve: pickup ? false : Boolean(reserve),
-        playerIds,
-      });
-    }
-  };
-
-  addPlayers(source.teamA?.players ?? source.playerIds, "teamA", false);
-  addPlayers(source.teamB?.players ?? source.opponentPlayerIds, "teamB", false);
-  addPlayers(source.reservePlayers?.teamA ?? source.reservePlayerIds, "teamA", true);
-  addPlayers(source.reservePlayers?.teamB ?? source.opponentReservePlayerIds, "teamB", true);
-
-  for (const applicant of source.applicants ?? []) {
-    if (applicant?.role === "referee" || applicant?.joinMode === "referee") continue;
-    const status = String(applicant?.status ?? "waiting").toLowerCase();
-    if (!ROOM_REMAKE_ACCEPTED_STATUSES.has(status)) continue;
-    addPlayers(
-      Array.isArray(applicant?.playerIds) && applicant.playerIds.length
-        ? applicant.playerIds
-        : [applicant?.playerId],
-      applicant?.side,
-      applicant?.reserve,
-    );
-  }
-
-  const pinnedReserves = source.roomState?.pinnedReservePlayers ?? {};
-  addPlayers(pinnedReserves.teamA, "teamA", true);
-  addPlayers(pinnedReserves.teamB, "teamB", true);
-  return [...groups.values()];
-}
-
 export function getRoomRemakeDraft(source = {}) {
-  const sourceRules = source?.rules && typeof source.rules === "object" ? source.rules : {};
-  const sourceRoomState = source?.roomState && typeof source.roomState === "object" ? source.roomState : {};
-  const normalizedSource = {
-    ...sourceRules,
-    ...source,
-    rules: sourceRules,
-  };
-  const explicitExpectedCount = Number(normalizedSource.remakeExpectedCount);
-  const sourceSequence = Number(
-    sourceRoomState.remakeSequence
-      ?? sourceRules.remakeSequence
-      ?? normalizedSource.remakeSequence
-      ?? 0,
-  );
-  const remakeExpectedCount = Number.isInteger(explicitExpectedCount) && explicitExpectedCount > 0
-    ? explicitExpectedCount
-    : Math.max(1, Number.isInteger(sourceSequence) && sourceSequence > 0 ? sourceSequence + 1 : 1);
-  const mode = String(normalizedSource.mode || "5v5");
-  const policy = getMatchCreationPolicyPayload(normalizedSource);
-  const rules = getMatchRulesPayload(normalizedSource, { mode });
-  const visibility = normalizedSource.visibility === "public" ? "public" : "private";
-  const pickup = policy.formationMode === "pickup";
-  const teamRoom = !pickup && policy.hostJoinMode === "team";
-  const teamAId = teamRoom
-    ? normalizedSource.teamId ?? normalizedSource.teamAId ?? normalizedSource.teamA?.teamId
-    : undefined;
-  const teamBId = teamRoom && visibility === "private"
-    ? normalizedSource.targetTeamId ?? normalizedSource.opponentTeamId ?? normalizedSource.teamBId ?? normalizedSource.teamB?.teamId
-    : undefined;
-  const remakeInvitationGroups = getRoomRemakeInvitationGroups(normalizedSource, { pickup, teamRoom });
-  const remakeCancellationReason = String(
-    normalizedSource.remakeCancellationReason
-      ?? sourceRules.cancellationReason
-      ?? sourceRoomState.cancellationReasonText
-      ?? "",
-  ).trim();
-  const remakeInviteCount = teamRoom
-    ? Number(Boolean(teamBId))
-    : remakeInvitationGroups.reduce((sum, group) => sum + group.playerIds.length, 0);
-  const memo = String(normalizedSource.memo ?? "")
-    .split(/\r?\n/)
-    .filter((line) => !/^(구장 예약|공개방|비공개방):/.test(line.trim()))
-    .join("\n")
-    .trim();
-
-  return {
-    recordType: RECORD_TYPES.match,
-    visibility,
-    timingType: normalizedSource.timingType === "instant" ? "instant" : "scheduled",
-    scheduledDate: "",
-    scheduledTime: "",
-    title: String(normalizedSource.title || `${mode} 경기`).trim(),
-    mode,
-    ...rules,
-    ...policy,
-    courtId: normalizedSource.courtId ?? normalizedSource.court_id ?? "",
-    court: String(normalizedSource.court ?? normalizedSource.courtName ?? "").trim(),
-    teamAId,
-    teamBId,
-    playerIds: [],
-    reservePlayerIds: [],
-    opponentPlayerIds: [],
-    opponentReservePlayerIds: [],
-    opponentLeaderId: "",
-    approvalModeA: normalizedSource.approvalModeA ?? "leader",
-    approvalModeB: normalizedSource.approvalModeB ?? "leader",
-    mmrRangeMode: normalizedSource.mmrRangeMode ?? "narrow",
-    ageRestriction: normalizedSource.ageRestriction ?? "any",
-    refereeWanted: Boolean(normalizedSource.refereeWanted || normalizedSource.refereeId),
-    refereeId: "",
-    preRegistered: normalizedSource.preRegistered !== false,
-    objectionWindow: normalizedSource.objectionWindow ?? `${Number(normalizedSource.disputeMinutes) || 15}분`,
-    evidence: [],
-    memo,
-    stakes: String(normalizedSource.stakes ?? ""),
-    remakeExpectedCount,
-    remakeCancellationReason,
-    remakeInvitationGroups,
-    remakeTeamAId: teamAId,
-    remakeTeamBId: teamBId,
-    remakeInviteCount,
-    remakeReinvite: normalizedSource.remakeReinvite !== false && remakeInviteCount > 0,
-  };
-}
-
-export function getRoomRemakeWarningCopy(count = 1) {
-  const safeCount = Math.max(1, Math.floor(Number(count) || 1));
-  if (safeCount >= 3) {
-    return `같은 설정으로 방을 연속 ${safeCount}회 다시 만드는 단계입니다. 반복 취소·재생성은 운영 검토 후 신뢰도가 조정될 수 있습니다.`;
-  }
-  if (safeCount === 2) {
-    return "같은 설정으로 방을 연속 2회 다시 만드는 단계입니다. 3회 이상 반복하면 운영 검토 후 신뢰도가 조정될 수 있습니다.";
-  }
-  return "같은 설정으로 다시 만들기를 반복하면 2회부터 경고가 표시되며, 3회 이상은 운영 검토 후 신뢰도가 조정될 수 있습니다.";
+  return buildRoomRemakeDraft(source, {
+    getMatchCreationPolicyPayload,
+    getMatchRulesPayload,
+  });
 }
 
 export function getMatchCreationPolicyPayload(source = {}) {

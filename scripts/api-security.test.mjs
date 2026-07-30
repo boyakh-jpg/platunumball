@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   APP_DATA_ACTION_SOURCE_PATHS,
   CREATE_MATCH_PAGE_SOURCE_PATHS,
+  SETTINGS_PAGE_SOURCE_PATHS,
   readSourceGroup,
 } from "./management-source-groups.mjs";
 import apiHandler, { API_ROUTES } from "../api/index.js";
@@ -132,7 +133,9 @@ test("API routes use deny-by-default method and credential policies", async () =
     "server/api/system/maintenance.js",
     "server/api/system/schema-health.js",
   ].map(async (sourcePath) => {
-    const source = await readSource(sourcePath);
+    const source = sourcePath === "server/api/discord/dm-worker.js"
+      ? await readSources(sourcePath, "server/api/discord/dmWorkerDiscord.js")
+      : await readSource(sourcePath);
     return sourcePath === "server/api/system/feed-audit.js"
       || sourcePath === "server/api/system/schema-health.js"
       ? `${source}\n${systemRequestSource}`
@@ -142,7 +145,10 @@ test("API routes use deny-by-default method and credential policies", async () =
 });
 
 test("Discord delivery cron uses Vault and stays separate from system maintenance", async () => {
-  const workerSource = await readSource("server/api/discord/dm-worker.js");
+  const workerSource = await readSources(
+    "server/api/discord/dm-worker.js",
+    "server/api/discord/dmWorkerDiscord.js",
+  );
   const cronSource = await readSource("supabase/migrations/20260729140000_supabase_discord_dm_cron.sql");
 
   assert.doesNotMatch(workerSource, /runSystemMaintenance/);
@@ -180,17 +186,11 @@ test("credentials are rejected from every URL query", async () => {
 test("report review actions keep sanctions behind verified targets and level 50", async () => {
   const [reviewSource, submitSource, settingsSource, hookSource, searchSource, simulationSource] = await Promise.all([
     readSource("server/api/admin/review-action.js"),
-    readSource("server/api/reports/submit.js"),
     readSources(
-      "src/pages/Settings.jsx",
-      "src/pages/settingsPageModel.js",
-      "src/pages/useSettingsPageController.jsx",
-      "src/pages/useSettingsReportController.jsx",
-      "src/pages/SettingsPageView.jsx",
-      "src/pages/SettingsPrimaryColumn.jsx",
-      "src/pages/SettingsSideColumn.jsx",
-      "src/pages/SettingsRefereeSection.jsx",
+      "server/api/reports/submit.js",
+      "server/api/reports/submitCourtTeamPolicy.js",
     ),
+    readSourceGroup(readSource, SETTINGS_PAGE_SOURCE_PATHS),
     readSourceGroup(readSource, APP_DATA_ACTION_SOURCE_PATHS),
     readSource("server/api/search.js"),
     readSource("scripts/simulate-backend-flow.mjs"),
@@ -283,7 +283,10 @@ test("report insert conflicts and admin review input fail safely", async () => {
   assert.equal(getAdminReviewErrorStatus({ code: "P0002" }), 404);
   assert.equal(getAdminReviewErrorStatus({ code: "XX000" }), 500);
 
-  const submitSource = await readSource("server/api/reports/submit.js");
+  const submitSource = await readSources(
+    "server/api/reports/submit.js",
+    "server/api/reports/submitCourtTeamPolicy.js",
+  );
   const reviewSource = await readSource("server/api/admin/review-action.js");
   assert.match(reviewSource, /rankball_resolve_duplicate_court_report/);
   assert.match(submitSource, /\.from\("notifications"\)[\s\S]{0,80}\.insert\(notificationRows\)/);
@@ -348,7 +351,10 @@ test("OAuth proof and service-role credentials never enter client URLs or source
     readSource("server/api/auth/discord/callback.js"),
     readSource("src/lib/discord.js"),
     readSource("server/api/profile/upsert.js"),
-    readSource("server/api/_supabaseAdmin.js"),
+    readSources(
+      "server/api/_supabaseAdmin.js",
+      "server/api/_supabaseAuth.js",
+    ),
     readSourceTree("src"),
   ]);
   assert.doesNotMatch(callbackSource, /discordConnection|encodeBase64UrlJson/);
@@ -393,7 +399,10 @@ test("authenticated court lookups use POST JSON instead of URL query", async () 
     readSource("src/lib/naverAddress.js"),
     readSource("server/api/courts/address-search.js"),
     readSource("server/api/courts/place-search.js"),
-    readSource("server/api/_supabaseAdmin.js"),
+    readSources(
+      "server/api/_supabaseAdmin.js",
+      "server/api/_supabaseAuth.js",
+    ),
   ]);
   assert.match(clientSource, /fetch\("\/api\/courts\/address-search", \{[\s\S]{0,180}method: "POST"/);
   assert.match(clientSource, /body: JSON\.stringify\(\{ q: searchQuery \}\)/);

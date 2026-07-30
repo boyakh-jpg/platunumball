@@ -4,10 +4,13 @@ import test from "node:test";
 import {
   APP_DATA_ACTION_SOURCE_PATHS,
   APP_DATA_ORCHESTRATOR_SOURCE_PATHS,
+  APP_DATA_REMOTE_MERGE_SOURCE_PATHS,
   HOME_PAGE_SOURCE_PATHS,
   MATCHES_PAGE_SOURCE_PATHS,
+  MATCH_LIST_SOURCE_PATHS,
   MATCH_ROOM_SOURCE_PATHS,
   RECRUITING_PAGE_SOURCE_PATHS,
+  TEAM_DETAIL_SOURCE_PATHS,
   TOURNAMENT_DETAIL_SOURCE_PATHS,
   readSourceGroup,
 } from "./management-source-groups.mjs";
@@ -62,10 +65,7 @@ test("admin bootstraps profile-only and loads one bounded section", async () => 
 
 test("match rows and child tables stay behind bounded related IDs", async () => {
   const [listSource, migrationSource] = await Promise.all([
-    readSources(
-      "server/api/matches/_listQueries.js",
-      "server/api/matches/_listLoader.js",
-    ),
+    readSourceGroup(readSource, MATCH_LIST_SOURCE_PATHS),
     readSource("supabase/migrations/20260721123000_postgrest_match_candidate_scope.sql"),
   ]);
   assert.doesNotMatch(listSource, /MATCH_CANDIDATE_MAX_LIMIT|MATCH_CANDIDATE_LIMIT_FACTOR/);
@@ -97,10 +97,10 @@ test("home team bootstrap is route-independent and remains bounded", async () =>
   const [homeSource, profileSource, hookSource, homePageSource, hoverSource, adminSource] = await Promise.all([
     readSource("server/api/home/load.js"),
     readSource("server/api/profile/me.js"),
-    readSources(
-      "src/hooks/appData/remoteMerge.js",
-      "src/hooks/appData/bootstrap.js",
-    ),
+    Promise.all([
+      readSourceGroup(readSource, APP_DATA_REMOTE_MERGE_SOURCE_PATHS),
+      readSource("src/hooks/appData/bootstrap.js"),
+    ]).then((sources) => sources.join("\n")),
     readSourceGroup(readSource, HOME_PAGE_SOURCE_PATHS),
     readSource("src/components/team/TeamHoverCard.jsx"),
     readSource("server/api/_supabaseAdmin.js"),
@@ -137,7 +137,7 @@ test("direct detail routes request their own authoritative payload", async () =>
   const [hookSource, playerSource, teamSource, courtSource, matchRoomSource, tournamentSource, notificationSource, matchesSource, recruitingSource] = await Promise.all([
     readSource("src/hooks/appData/bootstrap.js"),
     readSource("src/pages/PlayerDetail.jsx"),
-    readSource("src/pages/TeamDetail.jsx"),
+    readSourceGroup(readSource, TEAM_DETAIL_SOURCE_PATHS),
     readSource("src/pages/CourtDetail.jsx"),
     readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS),
     readSourceGroup(readSource, TOURNAMENT_DETAIL_SOURCE_PATHS),

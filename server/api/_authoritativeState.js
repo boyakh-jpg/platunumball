@@ -28,7 +28,6 @@ import {
   requestMatchRefereeAbsence,
   resolveMatchDispute,
   sendRecruitingChat,
-  setMatchRecordParticipants,
   setMatchRecordTeamRoster,
   setMatchRoomPlayerPlacement,
   setRecruitingApplicantPlacement,
@@ -427,9 +426,6 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       break;
     case "setMatchRecordTeamRoster":
       next = setMatchRecordTeamRoster(state, operation.matchId, operation.sideName, operation.roster ?? {});
-      break;
-    case "setMatchRecordParticipants":
-      next = setMatchRecordParticipants(state, operation.matchId, operation.setup ?? {});
       break;
     case "removeMatchRoomPlayer":
       next = removeMatchRoomPlayer(state, operation.matchId, operation.playerId);

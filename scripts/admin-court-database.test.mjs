@@ -8,7 +8,10 @@ const readSource = (relativePath) => readFile(new URL(`../${relativePath}`, impo
 const readSources = (...relativePaths) => Promise.all(relativePaths.map(readSource)).then((sources) => sources.join("\n"));
 
 test("관리자 구장 DB는 전체 DB 서버 필터와 100행 페이지를 사용한다", async () => {
-  const server = await readSource("server/api/admin/courts.js");
+  const server = await readSources(
+    "server/api/admin/courts.js",
+    "server/api/admin/courtAdminQueries.js",
+  );
   assert.match(server, /const PAGE_SIZE = 100;/);
   assert.match(server, /const NORMALIZATION_BATCH_SIZE = 10;/);
   assert.match(server, /from\("rankball_admin_court_database"\)/);
@@ -41,7 +44,9 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
       "src/components/admin/courtDatabaseModel.js",
       "src/components/admin/CourtDatabaseControls.jsx",
       "src/components/admin/useCourtDatabasePanelController.js",
+      "src/components/admin/useCourtDatabasePanelActions.js",
       "src/components/admin/CourtDatabasePanelView.jsx",
+      "src/components/admin/CourtDatabaseDuplicateReview.jsx",
     ),
     readSource("src/styles/global-admin-layout.css"),
     readSource("src/styles/global-court-controls.css"),
@@ -136,9 +141,14 @@ test("중복 구장 신고 확정은 중앙 구장 검수와 신고 해결을 �
       "src/pages/AdminPageParts.jsx",
       "src/pages/useAdminPageController.jsx",
       "src/pages/AdminPageView.jsx",
+      "src/pages/AdminAppointmentSection.jsx",
+      "src/pages/AdminDetailPanel.jsx",
     ),
     readSource("docs/logic-and-terminology.md"),
-    readSource("server/api/system/schema-health.js"),
+    readSources(
+      "server/api/system/schema-health.js",
+      "server/api/system/schemaHealthRequirements.js",
+    ),
     readSource("supabase/migrations/20260729162000_align_rpc_grant_health_with_current_policy.sql"),
   ]);
   assert.match(migration, /create or replace function public\.rankball_resolve_duplicate_court_report/);

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   CREATE_MATCH_PAGE_SOURCE_PATHS,
+  MATCH_LIST_SOURCE_PATHS,
   MATCH_SYNC_SOURCE_PATHS,
   MATCHES_PAGE_SOURCE_PATHS,
   RECRUITING_LIST_SOURCE_PATHS,
@@ -544,10 +545,7 @@ test("server routes room edits to dedicated authoritative RPCs", () => {
   const adminUserPanel = readFileSync(new URL("../src/components/admin/UserOperationsPanel.jsx", import.meta.url), "utf8");
   const recruitingPage = readSourceGroupSync(readPageSource, RECRUITING_PAGE_SOURCE_PATHS);
   const matchesPage = readSourceGroupSync(readPageSource, MATCHES_PAGE_SOURCE_PATHS);
-  const matchListServer = [
-    readFileSync(new URL("../server/api/matches/_listProjection.js", import.meta.url), "utf8"),
-    readFileSync(new URL("../server/api/matches/_listQueries.js", import.meta.url), "utf8"),
-  ].join("\n");
+  const matchListServer = readSourceGroupSync(readPageSource, MATCH_LIST_SOURCE_PATHS);
   const recruitingListServer = readSourceGroupSync(readPageSource, RECRUITING_LIST_SOURCE_PATHS);
 
   assert.match(recruitingServer, /rankball_recruiting_room_update_action/);

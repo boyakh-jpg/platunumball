@@ -34,7 +34,7 @@ const MATCH_SYNC_HANDLER_DEPENDENCIES = {
   ...MATCH_SQL_ACTIONS,
 };
 const {
-  CREATE_MATCH_ACTIONS, DISCORD_QUEUE_TIMEOUT_MS, MATCH_RECORD_SETUP_ACTION, MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS, PRACTICE_LOCAL_ONLY_ERROR, PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS,
+  CREATE_MATCH_ACTIONS, DISCORD_QUEUE_TIMEOUT_MS, MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS, PRACTICE_LOCAL_ONLY_ERROR, PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS,
   TEAM_COLUMNS, TEAM_MEMBER_COLUMNS, applyAuthoritativeMatchOperation, applySqlMatchAction, canCommitRatingResult, canSyncMatchAction, canUseSqlMatchActionWithoutSnapshot,
   allowRequestMethod, fromRemoteProfile, fromRemoteTeam, getAuthenticatedContext, getMatchBenchPolicyError, getOperation, getSidePlayerRows, getSqlMatchReloadPredicate,
   getTimestamp, hasPracticeMutationPayload, isMissingSqlMatchReducer, isSoloRecordMatch, isSupportedMatchAction, loadAuthoritativeState, loadSyncedMatchAfterWrite,
@@ -364,13 +364,6 @@ export default async function handler(request, response) {
 
     if (shouldReplayMatchOperation(operation, match)) {
       const state = await loadAuthoritativeState(context, { operation });
-      const existingMatch = (state.matches ?? []).find((item) => item.id === operation.matchId);
-      if (
-        operation.action === MATCH_RECORD_SETUP_ACTION
-        && existingMatch?.rules?.recordSetupReady === true
-      ) {
-        reject(409, "match_record_roster_locked");
-      }
       const result = applyAuthoritativeMatchOperation(state, operation);
       match = result.match;
       notifications = result.notifications;

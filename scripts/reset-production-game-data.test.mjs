@@ -48,7 +48,6 @@ test("public table policy has no duplicates and keeps all categories separate", 
   assert.deepEqual([...RATING_RESET_TABLES], [
     "affiliations",
     "approved_courts",
-    "courts",
     "profiles",
     "teams",
   ]);
@@ -63,6 +62,7 @@ test("public table policy has no duplicates and keeps all categories separate", 
     "court_requests",
     "court_reviews",
     "court_source_records",
+    "courts",
     "favorites",
     "profile_icon_unlocks",
     "rating_policy",
@@ -135,13 +135,11 @@ test("reset SQL backs up first, resets canonical ratings, and never touches auth
   assert.match(sql, /set mmr = 1200,[\s\S]+wins = 0,[\s\S]+losses = 0/);
   assert.match(sql, /update public\.affiliations[\s\S]+score = 0,[\s\S]+wins = 0,[\s\S]+losses = 0/);
   assert.match(sql, /update public\.approved_courts[\s\S]+completed_match_count = 0,[\s\S]+recommendation_score = round\(adjusted_rating::numeric, 3\)/);
-  assert.match(sql, /update public\.courts[\s\S]+completed_match_count = 0,[\s\S]+recommendation_score = round\(adjusted_rating::numeric, 3\)/);
   assert.match(sql, /update public\.affiliations[\s\S]+where score is distinct from 0/);
   assert.match(sql, /update public\.approved_courts[\s\S]+where completed_match_count is distinct from 0/);
-  assert.match(sql, /update public\.courts[\s\S]+where completed_match_count is distinct from 0/);
   assert.match(sql, /affiliations_match_snapshot/);
   assert.match(sql, /approved_courts_match_snapshot/);
-  assert.match(sql, /courts_match_snapshot/);
+  assert.doesNotMatch(sql, /update public\.courts|create table [^\n]+\.courts_match_snapshot/);
   assert.match(sql, /rankball_reset_preserved_count_changed/);
   assert.match(sql, /rankball_reset_identity_count_changed/);
   assert.doesNotMatch(sql, /auth\.users/i);

@@ -27,10 +27,13 @@ import {
 } from "../../../shared/lib/constants.js";
 import { getRecordWindowDates } from "../../../shared/lib/recordRetention.js";
 import { toPublicProfilePrivacy } from "../directory/load.js";
+import { RECORD_SCOPE_PROFILE, RECORD_SCOPE_TEAM, RECORD_SCOPES, VERIFIED_PUBLIC_STAT_SOURCES, normalizeLimit, normalizeOffset, normalizeBoolean, mapCompactRecord, canReadProfileRecord, mapPersonalRecordMetrics, limitPublicProfileStats, limitPublicPersonalSummary, mapPersonalRecordSummary, canReadTeamRecord, buildRecordPage } from "./listPolicy.js";
+export { canReadProfileRecord, limitPublicProfileStats, limitPublicPersonalSummary, canReadTeamRecord, buildRecordPage } from "./listPolicy.js";
 
-const RECORD_SCOPE_PROFILE = "profile";
-const RECORD_SCOPE_TEAM = "team";
-const RECORD_SCOPES = new Set([RECORD_SCOPE_PROFILE, RECORD_SCOPE_TEAM]);
+
+
+
+
 const RECORD_INDEX_COLUMNS = [
   "match_id",
   "record_date",
@@ -53,55 +56,15 @@ const RECORD_INDEX_COLUMNS = [
 const PROFILE_RECORD_INDEX_COLUMNS = `${RECORD_INDEX_COLUMNS},profile_id,position,stats,record_type,visibility,owner_profile_id`;
 const TEAM_RECORD_INDEX_COLUMNS = `${RECORD_INDEX_COLUMNS},visibility,reader_ids`;
 const PROFILE_QUERY_CHUNK_SIZE = 100;
-const VERIFIED_PUBLIC_STAT_SOURCES = new Set(["referee", "dispute_operator"]);
 
-function normalizeLimit(value, fallback, maximum) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return Math.max(1, Math.min(maximum, Math.floor(parsed)));
-}
 
-function normalizeOffset(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
-}
 
-function normalizeBoolean(value, fallback = true) {
-  return value === undefined ? fallback : value !== false;
-}
 
-function mapCompactRecord(row = {}) {
-  const isTeamB = row.side === "teamB";
-  const recordType = String(row.record_type ?? "match").trim().toLowerCase();
-  const personalRecord = ["solo", "personal_record"].includes(recordType);
-  const rawStats = row.stats && typeof row.stats === "object" ? row.stats : {};
-  const statsSource = String(rawStats.record_source ?? rawStats.recordSource ?? "").trim().toLowerCase();
-  const stats = personalRecord || VERIFIED_PUBLIC_STAT_SOURCES.has(statsSource) ? rawStats : {};
-  return {
-    matchId: row.match_id ?? "",
-    recordDate: row.record_date ?? "",
-    occurredAt: row.occurred_at ?? null,
-    side: row.side ?? "teamA",
-    title: row.title ?? "경기 기록",
-    mode: row.mode ?? "",
-    courtId: row.court_id ?? "",
-    court: row.court_name ?? "미정",
-    teamId: row.team_id ?? "",
-    teamName: row.team_name ?? (isTeamB ? "B사이드" : "A사이드"),
-    opponentTeamId: row.opponent_team_id ?? "",
-    opponentTeamName: row.opponent_team_name ?? (isTeamB ? "A사이드" : "B사이드"),
-    score: Number(row.score_for ?? 0),
-    opponentScore: Number(row.score_against ?? 0),
-    result: row.outcome === "win" ? "W" : row.outcome === "loss" ? "L" : "D",
-    ranked: row.ranked !== false,
-    tournamentId: row.tournament_id ?? "",
-    position: row.position ?? "",
-    stats,
-    recordType,
-    visibility: row.visibility ?? "private",
-    ownerProfileId: row.owner_profile_id ?? "",
-  };
-}
+
+
+
+
+
 
 function appendRows(map, rows = []) {
   rows.forEach((row) => {
@@ -229,72 +192,15 @@ async function loadViewerTeamIds(client, profileId = "", enabled = false) {
   return new Set((data ?? []).map((row) => row.team_id).filter(Boolean));
 }
 
-export function canReadProfileRecord(row = {}, viewerProfileId = "", subjectId = "") {
-  const personalRecord = ["solo", "personal_record"].includes(String(row.record_type ?? "").trim().toLowerCase());
-  const ownsProfile = Boolean(viewerProfileId && viewerProfileId === subjectId);
-  if (personalRecord && row.owner_profile_id !== subjectId) return false;
-  return ownsProfile || (row.visibility ?? "private") === "public";
-}
 
-function mapPersonalRecordMetrics(row = {}, prefix = "") {
-  const number = (field) => Number(row[`${prefix}${field}`] ?? 0);
-  return {
-    recordCount: number("record_count"), winCount: number("win_count"), lossCount: number("loss_count"),
-    drawCount: number("draw_count"), statCount: number("stat_count"), points: number("points"),
-    rebounds: number("rebounds"), assists: number("assists"), steals: number("steals"),
-    blocks: number("blocks"), fouls: number("fouls"),
-  };
-}
 
-export function limitPublicProfileStats(state = {}, subjectId = "", allowStats = false) {
-  return {
-    ...state,
-    matches: (state.matches ?? []).map((match) => {
-      if (!match.result) return match;
-      const targetStats = match.result.playerStats?.[subjectId];
-      const targetSubmission = match.result.statSubmissions?.[subjectId];
-      return {
-        ...match,
-        result: {
-          ...match.result,
-          playerStats: allowStats && targetStats ? { [subjectId]: targetStats } : {},
-          statSubmissions: allowStats && targetSubmission ? { [subjectId]: targetSubmission } : {},
-        },
-      };
-    }),
-  };
-}
 
-export function limitPublicPersonalSummary(summary = null, allowStats = false) {
-  if (!summary || allowStats) return summary;
-  return {
-    ...summary,
-    statCount: 0,
-    points: 0,
-    rebounds: 0,
-    assists: 0,
-    steals: 0,
-    blocks: 0,
-    fouls: 0,
-  };
-}
 
-function mapPersonalRecordSummary(row = {}, publicOnly = false) {
-  const publicSummary = {
-    ...mapPersonalRecordMetrics(row, "public_"),
-    visibilityScope: "public",
-  };
-  if (publicOnly) return {
-    ...publicSummary,
-    publicRecordCount: publicSummary.recordCount,
-  };
-  return {
-    ...mapPersonalRecordMetrics(row),
-    publicRecordCount: publicSummary.recordCount,
-    publicSummary,
-    visibilityScope: "all",
-  };
-}
+
+
+
+
+
 
 async function loadPersonalRecordSummary(client, profileId = "", publicOnly = false) {
   const { data, error } = await client
@@ -305,32 +211,9 @@ async function loadPersonalRecordSummary(client, profileId = "", publicOnly = fa
   return mapPersonalRecordSummary(data ?? {}, publicOnly);
 }
 
-export function canReadTeamRecord(row = {}, profileId = "", viewerTeamIds = new Set(), isAdmin = false) {
-  if (isAdmin) return true;
-  if ((row.visibility ?? "public") !== "private") return true;
-  if (viewerTeamIds.has(row.team_id) || viewerTeamIds.has(row.opponent_team_id)) return true;
-  return asArray(row.reader_ids).includes(profileId);
-}
 
-export function buildRecordPage(options = {}) {
-  return {
-    detailIncluded: options.includeDetail,
-    detailNextOffset: options.includeDetail && options.detailHasMore
-      ? options.detailOffset + options.detailLimit
-      : null,
-    detailExhausted: !options.includeDetail ? null : !options.detailHasMore,
-    detailLimit: options.detailLimit,
-    detailOffset: options.detailOffset,
-    detailCount: options.detailCount,
-    archiveIncluded: options.includeArchive,
-    archiveLimit: options.archiveLimit,
-    archiveOffset: options.archiveOffset,
-    archiveNextOffset: options.includeArchive && options.archiveHasMore
-      ? options.archiveOffset + options.archiveLimit
-      : null,
-    archiveExhausted: !options.includeArchive ? null : !options.archiveHasMore,
-  };
-}
+
+
 
 async function loadArchivePayloads(client, matchIds = []) {
   if (!matchIds.length) return [];

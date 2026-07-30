@@ -14,6 +14,7 @@ test("synthetic c1..c12 courts stay deleted from current data", async () => {
     Promise.all([
       readSource("src/lib/mockData.js"),
       readSource("src/lib/mockData/baseState.js"),
+      readSource("src/lib/mockData/baseStateHelpers.js"),
       readSource("src/lib/mockData/stateFinalizers.js"),
     ]).then((sources) => sources.join("\n")),
     readSource("src/lib/practiceMatch.js"),
@@ -26,10 +27,36 @@ test("synthetic c1..c12 courts stay deleted from current data", async () => {
   assert.match(constantsSource, /export const COURTS = Object\.freeze\(\[\]\)/);
   assert.doesNotMatch(constantsSource, /\bid:\s*["']c(?:[1-9]|1[0-2])["']/);
   assert.doesNotMatch(courtDetail, /\bCOURTS\b|builtInCourt/);
-  assert.match(courtDetail, /!approvedCourtRow && !legacyCourtRow/);
+  assert.match(courtDetail, /if \(!approvedCourtRow\)/);
+  assert.doesNotMatch(courtDetail, /\.from\(["']courts["']\)|fromLegacyCourt/);
   assert.match(mockDataSource, /id:\s*"practice-court"/);
   assert.match(mockDataSource, /DELETED_SYNTHETIC_COURT_IDS/);
   assert.match(practiceSource, /id:\s*`\$\{PRACTICE_ID_PREFIX\}court`/);
+});
+
+test("legacy courts is a read-only archive and approved_courts is the live source", async () => {
+  const [migration, adminSource, loadersSource, favoritesSource, schemaHealthSource] = await Promise.all([
+    readSource("supabase/migrations/20260730015000_archive_legacy_courts_source.sql"),
+    readSource("server/api/_supabaseAdmin.js"),
+    readSource("src/data/repository/remote/loaders.js"),
+    readSource("server/api/favorites/sync.js"),
+    readSource("server/api/system/schema-health.js"),
+  ]);
+
+  assert.match(migration, /legacy_court_without_approved_row/);
+  assert.match(migration, /references public\.approved_courts\(id\)[\s\S]*on delete set null not valid/i);
+  assert.match(migration, /drop trigger if exists rankball_courts_feed_dependency_refresh on public\.courts/i);
+  assert.match(migration, /Read-only legacy court archive/);
+  assert.match(migration, /live_function_still_reads_legacy_courts/);
+  assert.doesNotMatch(migration, /\b(?:delete\s+from|truncate\s+table|drop\s+table)\s+public\.courts\b/i);
+  assert.doesNotMatch(
+    migration,
+    /insert\s+into\s+public\.approved_courts[\s\S]{0,300}select[\s\S]{0,300}from\s+public\.courts/i,
+  );
+  assert.doesNotMatch(adminSource, /\.from\(["']courts["']\)/);
+  assert.doesNotMatch(loadersSource, /fetchRowsByIds\(["']courts["']|fetchOptionalRows\(["']courts["']/);
+  assert.doesNotMatch(favoritesSource, /\.from\(["']courts["']\)/);
+  assert.doesNotMatch(schemaHealthSource, /rankball_courts_feed_dependency_refresh/);
 });
 
 test("demo runtime strips deleted synthetic court references", async () => {

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   CREATE_MATCH_PAGE_SOURCE_PATHS,
+  MATCH_CLOCK_PANEL_SOURCE_PATHS,
   MATCH_SYNC_SOURCE_PATHS,
   RECRUITING_PAGE_SOURCE_PATHS,
   RECRUITING_SYNC_SOURCE_PATHS,
@@ -521,7 +522,11 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
     clockPolicyMigrationSource,
     simplifiedLiveOperationsSource,
   ] = await Promise.all([
-    readFile(new URL("../src/lib/practiceMatch.js", import.meta.url), "utf8"),
+    Promise.all([
+      readFile(new URL("../src/lib/practiceMatch.js", import.meta.url), "utf8"),
+      readFile(new URL("../src/lib/practiceMatchClock.js", import.meta.url), "utf8"),
+      readFile(new URL("../src/lib/practiceMatchProgress.js", import.meta.url), "utf8"),
+    ]).then((sources) => sources.join("\n")),
     readFile(new URL("../src/pages/PracticeMatch.jsx", import.meta.url), "utf8"),
     readSourceGroup(
       (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
@@ -531,7 +536,10 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
       (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
       RECRUITING_PAGE_SOURCE_PATHS,
     ),
-    readFile(new URL("../src/components/match/MatchClockPanel.jsx", import.meta.url), "utf8"),
+    readSourceGroup(
+      (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+      MATCH_CLOCK_PANEL_SOURCE_PATHS,
+    ),
     readFile(new URL("../server/api/settings/sync.js", import.meta.url), "utf8"),
     readSourceGroup(
       (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),

@@ -4,10 +4,12 @@ import test from "node:test";
 import {
   APP_DATA_ACTION_SOURCE_PATHS,
   MATCHES_PAGE_SOURCE_PATHS,
+  MATCH_CLOCK_PANEL_SOURCE_PATHS,
   MATCH_ROOM_SOURCE_PATHS,
   MATCH_SYNC_SOURCE_PATHS,
   REPOSITORY_RECRUITING_SOURCE_PATHS,
   RECRUITING_PAGE_SOURCE_PATHS,
+  RECRUITING_SYNC_SOURCE_PATHS,
   readSourceGroup,
 } from "./management-source-groups.mjs";
 import {
@@ -572,7 +574,7 @@ test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", 
   );
   assert.equal(afterExpiry.shotRemainingMs, 0);
 
-  const panelSource = await readSource("src/components/match/MatchClockPanel.jsx");
+  const panelSource = await readSourceGroup(readSource, MATCH_CLOCK_PANEL_SOURCE_PATHS);
   const clockApiSource = await readSource("server/api/matches/clock.js");
   const authoritativeStateSource = await readSource("server/api/_authoritativeState.js");
   const recruitingSource = await readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS);
@@ -611,7 +613,7 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
     matchListApiSource,
     authoritativeStateSource,
   ] = await Promise.all([
-    readSource("src/components/match/MatchClockPanel.jsx"),
+    readSourceGroup(readSource, MATCH_CLOCK_PANEL_SOURCE_PATHS),
     readSource("server/api/matches/clock.js"),
     readSourceGroup(readSource, MATCH_SYNC_SOURCE_PATHS),
     readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS),
@@ -619,7 +621,7 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
     readSourceGroup(readSource, MATCHES_PAGE_SOURCE_PATHS),
     readSource("src/styles/match-clock.css"),
     readSourceGroup(readSource, REPOSITORY_RECRUITING_SOURCE_PATHS),
-    readSource("server/api/recruiting/_syncPostActions.js"),
+    readSourceGroup(readSource, RECRUITING_SYNC_SOURCE_PATHS),
     readSource("supabase/migrations/20260728123000_block_team_room_party_detach.sql"),
     readSourceGroup(readSource, APP_DATA_ACTION_SOURCE_PATHS),
     readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql"),

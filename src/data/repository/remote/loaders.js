@@ -4,7 +4,6 @@ import { AFFILIATION_COLUMNS } from "../../repositoryColumns.js";
 import { APPOINTMENT_COLUMNS } from "../../repositoryColumns.js";
 import { APPROVED_COURT_COLUMNS } from "../../repositoryColumns.js";
 import { COURT_COLUMNS } from "../../repositoryColumns.js";
-import { COURT_METRIC_COLUMNS } from "../../repositoryColumns.js";
 import { COURT_REQUEST_COLUMNS } from "../../repositoryColumns.js";
 import { COURT_REVIEW_COLUMNS } from "../../repositoryColumns.js";
 import { DEFAULT_RATING } from "../../../lib/constants.js";
@@ -117,13 +116,7 @@ export async function fetchCourtRows(client = supabase, ids = []) {
     const activeQuery = query.or("status.is.null,status.eq.active");
     return scopedIds.length ? applyIdScope(activeQuery, "id", scopedIds) : activeQuery;
   };
-  const [legacyRows, approvedRows] = await Promise.all([
-    scopedIds.length
-      ? fetchRowsByIds("courts", COURT_COLUMNS, "id", scopedIds, "id", client, true)
-      : fetchOptionalRows("courts", COURT_COLUMNS, "id", client),
-    fetchOptionalFilteredRows("approved_courts", COURT_COLUMNS, "id", client, approvedFilter),
-  ]);
-  return uniqueRowsById([...legacyRows, ...approvedRows]);
+  return fetchOptionalFilteredRows("approved_courts", COURT_COLUMNS, "id", client, approvedFilter);
 }
 
 export async function fetchCurrentUserReports(currentUserId = "", client = supabase) {
@@ -292,7 +285,6 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
     teamInvitations,
     reports,
     courtRequests,
-    legacyCourtMetrics,
     approvedCourts,
     courtReviews,
     refereeRequests,
@@ -310,7 +302,6 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
         ? fetchOptionalRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client, currentUserFilter("requested_by"))
       : [],
-    fetchOptionalRows("courts", COURT_METRIC_COLUMNS, "id", client),
     fetchOptionalFilteredRows("approved_courts", APPROVED_COURT_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
     fetchOptionalFilteredRows("court_reviews", COURT_REVIEW_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
     currentUserId
@@ -355,7 +346,7 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
     reports: reports.map(fromRemoteReport),
     settings: projectProfileSettings(remoteAppSettings, favoriteRows, {
       overrides: {
-        courtMetrics: legacyCourtMetrics.map(fromRemoteCourtMetric),
+        courtMetrics: approvedCourts.map(fromRemoteCourtMetric),
         approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
         courtRequests: courtRequests.map(fromRemoteCourtRequest),
         courtReviews: courtReviews.map(fromRemoteCourtReview),
@@ -382,7 +373,6 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
       getMaxUpdatedAt(profiles),
       getMaxUpdatedAt(teams),
       getMaxUpdatedAt(teamMembers),
-      getMaxUpdatedAt(legacyCourtMetrics),
       getMaxUpdatedAt(approvedCourts),
       getMaxUpdatedAt(courtRequests),
       getMaxUpdatedAt(courtReviews),

@@ -153,8 +153,14 @@ test("each caller uses the projection matching its established semantics", () =>
     .join("\n");
   const ratingSource = fs.readFileSync(path.join(root, "server/lib/ratingEngine.js"), "utf8");
   const listSource = fs.readFileSync(path.join(root, "server/api/matches/_listLoader.js"), "utf8");
-  const notificationSource = fs.readFileSync(path.join(root, "server/lib/matchNotifications.js"), "utf8");
-  const reportSource = fs.readFileSync(path.join(root, "server/api/reports/submit.js"), "utf8");
+  const notificationSource = [
+    fs.readFileSync(path.join(root, "server/lib/matchNotifications.js"), "utf8"),
+    fs.readFileSync(path.join(root, "server/lib/matchNotificationRows.js"), "utf8"),
+  ].join("\n");
+  const reportSource = [
+    fs.readFileSync(path.join(root, "server/api/reports/submit.js"), "utf8"),
+    fs.readFileSync(path.join(root, "server/api/reports/submitCourtTeamPolicy.js"), "utf8"),
+  ].join("\n");
 
   assert.match(matchParticipationSource, /projectMatchParticipationIds\(match\)/);
   assert.match(matchesPageSource, /shared\/lib\/playerIds\.js/);

@@ -10,6 +10,10 @@ const retentionSource = readFileSync(
   new URL("../supabase/migrations/20260718142500_room_feed_retention_7_days.sql", import.meta.url),
   "utf8",
 );
+const canonicalCourtSource = readFileSync(
+  new URL("../supabase/migrations/20260730015000_archive_legacy_courts_source.sql", import.meta.url),
+  "utf8",
+);
 const softQuarantineSource = readFileSync(
   new URL("../supabase/migrations/20260729164000_soft_quarantine_active_simulation_matches.sql", import.meta.url),
   "utf8",
@@ -117,15 +121,17 @@ test("simulation quarantine keeps terminal court request decisions protected", (
   );
 });
 
-test("inactive feed and quarantined cards remain seven-day retention warnings", () => {
+test("retention health warns only after rows are eligible for seven-day cleanup", () => {
   assert.match(
-    operationalHealthSource,
-    /select 'inactiveFeedSourceMissing' check_name/,
+    canonicalCourtSource,
+    /select 'inactiveFeedSourceMissing' check_name[\s\S]*?feed\.updated_at < now\(\) - interval '7 days'/,
   );
   assert.match(
-    operationalHealthSource,
-    /select 'quarantinedCardAwaitingRetention', count\(\*\)/,
+    canonicalCourtSource,
+    /select 'quarantinedCardAwaitingRetention', count\(\*\)[\s\S]*?card\.updated_at < now\(\) - interval '7 days'/,
   );
+  assert.match(canonicalCourtSource, /coalesce\(\([\s\S]*?select max\(feed\.updated_at\)[\s\S]*?< now\(\) - interval '7 days'/);
+  assert.match(canonicalCourtSource, /select public\.rankball_cleanup_room_feed\(now\(\)\)/);
   assert.match(retentionSource, /interval '7 days'/);
   assert.match(
     retentionSource,

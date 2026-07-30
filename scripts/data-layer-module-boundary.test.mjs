@@ -6,7 +6,7 @@ import test from "node:test";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const REPOSITORY_DIR = path.join(ROOT, "src/data/repository");
 const APP_DATA_DIR = path.join(ROOT, "src/hooks/appData");
-const DATA_MODULE_MAX_LINES = 900;
+const DATA_MODULE_MAX_LINES = 500;
 
 async function readModuleDirectory(directory, relativeDirectory = "") {
   const entries = await readdir(path.join(directory, relativeDirectory), { withFileTypes: true });
@@ -122,23 +122,59 @@ test("데이터 계층 책임 모듈은 순환과 브라우저-서버 역참조�
     "matches/feedback.js",
     "matches/lifecycle.js",
     "matches/pickup.js",
+    "matches/recordParticipants.js",
     "matches/result.js",
+    "matches/resultDisputes.js",
+    "matches/resultOperations.js",
+    "matches/resultSubmission.js",
     "matches/roster.js",
   ]);
   assert.deepEqual(repository.names.filter((name) => name.startsWith("recruiting/")), [
     "recruiting/confirmation.js",
     "recruiting/creation.js",
+    "recruiting/invitationPlayers.js",
+    "recruiting/invitationReferee.js",
+    "recruiting/invitationResponses.js",
     "recruiting/invitations.js",
     "recruiting/participation.js",
+    "recruiting/participationInterest.js",
+    "recruiting/participationRoster.js",
+    "recruiting/participationStatus.js",
     "recruiting/party.js",
+    "recruiting/partyJoin.js",
     "recruiting/partyManagement.js",
+    "recruiting/partyPlacement.js",
+    "recruiting/partyRoster.js",
+  ]);
+  assert.deepEqual(repository.names.filter((name) => name.startsWith("admin/")), [
+    "admin/appointment.js",
+    "admin/courtApproval.js",
+    "admin/review.js",
+  ]);
+  assert.deepEqual(repository.names.filter((name) => name.startsWith("lifecycle/")), [
+    "lifecycle/automatic.js",
+    "lifecycle/matches.js",
+  ]);
+  assert.deepEqual(repository.names.filter((name) => name.startsWith("roomRules/")), [
+    "roomRules/helpers.js",
+    "roomRules/match.js",
+    "roomRules/proposals.js",
+    "roomRules/recruiting.js",
+  ]);
+  assert.deepEqual(repository.names.filter((name) => name.startsWith("tournaments/")), [
+    "tournaments/creation.js",
+    "tournaments/governance.js",
+    "tournaments/schedule.js",
   ]);
   assert.deepEqual(repository.names.filter((name) => name.startsWith("remote/")), [
     "remote/loaders.js",
     "remote/seed.js",
     "remote/state.js",
+    "remote/stateLoader.js",
+    "remote/stateScope.js",
   ]);
   assert.deepEqual(appData.names.filter((name) => name.startsWith("actions/")), [
+    "actions/dependencies.js",
     "actions/loaderActions.js",
     "actions/matchActions.js",
     "actions/profileTeamActions.js",
@@ -148,9 +184,20 @@ test("데이터 계층 책임 모듈은 순환과 브라우저-서버 역참조�
   ]);
   assert.deepEqual(appData.names.filter((name) => name.startsWith("orchestrator/")), [
     "orchestrator/admin.js",
+    "orchestrator/dependencySet.js",
+    "orchestrator/directoryLoaders.js",
     "orchestrator/loaders.js",
+    "orchestrator/matchLoaders.js",
+    "orchestrator/recordLoaders.js",
     "orchestrator/runtime.js",
+    "orchestrator/runtimeHydration.js",
     "orchestrator/serverActions.js",
+  ]);
+  assert.deepEqual(appData.names.filter((name) => name.startsWith("remoteMerge/")), [
+    "remoteMerge/entities.js",
+    "remoteMerge/pages.js",
+    "remoteMerge/results.js",
+    "remoteMerge/state.js",
   ]);
 
   for (const [name, source] of [...repository.sources, ...appData.sources]) {

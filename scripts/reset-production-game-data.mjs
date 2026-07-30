@@ -44,7 +44,6 @@ export const DELETE_TABLES = Object.freeze([
 export const RATING_RESET_TABLES = Object.freeze([
   "affiliations",
   "approved_courts",
-  "courts",
   "profiles",
   "teams",
 ]);
@@ -60,6 +59,7 @@ export const PRESERVE_TABLES = Object.freeze([
   "court_requests",
   "court_reviews",
   "court_source_records",
+  "courts",
   "favorites",
   "profile_icon_unlocks",
   "rating_policy",
@@ -239,10 +239,6 @@ create table ${quoteIdentifier(backupSchema)}.approved_courts_match_snapshot as
   select id, completed_match_count, recommendation_score, metrics_updated_at, updated_at
   from public.approved_courts;
 
-create table ${quoteIdentifier(backupSchema)}.courts_match_snapshot as
-  select id, completed_match_count, recommendation_score, metrics_updated_at
-  from public.courts;
-
 create table ${quoteIdentifier(backupSchema)}.profiles_rating_snapshot as
   select id, ratings, placement_match_count, placement_evidence_weight,
     placement_weighted_sum, placement_completed_at, trust_score, streak, updated_at
@@ -259,10 +255,6 @@ where table_name = 'affiliations';
 update ${quoteIdentifier(backupSchema)}.reset_manifest
 set backup_count = (select count(*)::bigint from ${quoteIdentifier(backupSchema)}.approved_courts_match_snapshot)
 where table_name = 'approved_courts';
-
-update ${quoteIdentifier(backupSchema)}.reset_manifest
-set backup_count = (select count(*)::bigint from ${quoteIdentifier(backupSchema)}.courts_match_snapshot)
-where table_name = 'courts';
 
 update ${quoteIdentifier(backupSchema)}.reset_manifest
 set backup_count = (select count(*)::bigint from ${quoteIdentifier(backupSchema)}.profiles_rating_snapshot)
@@ -374,13 +366,6 @@ set completed_match_count = 0,
 where completed_match_count is distinct from 0
    or recommendation_score is distinct from round(adjusted_rating::numeric, 3);
 
-update public.courts
-set completed_match_count = 0,
-    recommendation_score = round(adjusted_rating::numeric, 3),
-    metrics_updated_at = now()
-where completed_match_count is distinct from 0
-   or recommendation_score is distinct from round(adjusted_rating::numeric, 3);
-
 update public.profiles
 set ratings = '{"integrated":1200,"modes":{"1v1":1200,"2v2":1200,"3v3":1200,"5v5":1200},"placement":{"matchCount":0,"target":5,"completed":false,"completedAt":null,"evidenceWeight":0,"weightedTotal":3000,"modeCounts":{}}}'::jsonb,
     placement_match_count = 0,
@@ -409,7 +394,6 @@ declare
   changed_reset_counts text[];
   invalid_affiliations bigint;
   invalid_approved_courts bigint;
-  invalid_courts bigint;
   invalid_profiles bigint;
   invalid_teams bigint;
 begin
@@ -448,11 +432,6 @@ begin
   where completed_match_count is distinct from 0
      or recommendation_score is distinct from round(adjusted_rating::numeric, 3);
 
-  select count(*)::bigint into invalid_courts
-  from public.courts
-  where completed_match_count is distinct from 0
-     or recommendation_score is distinct from round(adjusted_rating::numeric, 3);
-
   select count(*)::bigint into invalid_profiles
   from public.profiles
   where ratings is distinct from '{"integrated":1200,"modes":{"1v1":1200,"2v2":1200,"3v3":1200,"5v5":1200},"placement":{"matchCount":0,"target":5,"completed":false,"completedAt":null,"evidenceWeight":0,"weightedTotal":3000,"modeCounts":{}}}'::jsonb
@@ -483,11 +462,10 @@ begin
   if cardinality(changed_reset_counts) > 0 then
     raise exception 'rankball_reset_identity_count_changed tables=%', changed_reset_counts;
   end if;
-  if invalid_affiliations > 0 or invalid_approved_courts > 0 or invalid_courts > 0 or invalid_profiles > 0 or invalid_teams > 0 then
-    raise exception 'rankball_reset_rating_verification_failed affiliations=% approved_courts=% courts=% profiles=% teams=%',
+  if invalid_affiliations > 0 or invalid_approved_courts > 0 or invalid_profiles > 0 or invalid_teams > 0 then
+    raise exception 'rankball_reset_rating_verification_failed affiliations=% approved_courts=% profiles=% teams=%',
       invalid_affiliations,
       invalid_approved_courts,
-      invalid_courts,
       invalid_profiles,
       invalid_teams;
   end if;

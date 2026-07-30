@@ -35,7 +35,6 @@ export {
   requestMatchRefereeAbsence,
   resolveMatchDispute,
   sendRecruitingChat,
-  setMatchRecordParticipants,
   setMatchRecordTeamRoster,
   setMatchRoomPlayerPlacement,
   setRecruitingApplicantPlacement,
