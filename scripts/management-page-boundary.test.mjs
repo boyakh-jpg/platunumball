@@ -178,8 +178,15 @@ test("recruiting chat polling imports its canonical merge helpers directly", asy
     recruitingActionsSource,
     /import\s*\{\s*getRecruitingChatLastSeq,\s*mergeRecruitingChatMessageBatch,\s*\}\s*from "\.\.\/remoteMerge\.js"/,
   );
+  assert.match(
+    recruitingActionsSource,
+    /import\s*\{\s*isSyntheticMatchRoomId\s*\}\s*from "\.\.\/\.\.\/\.\.\/lib\/recruiting\.js"/,
+  );
   const contextStart = recruitingActionsSource.indexOf("const {");
   const contextEnd = recruitingActionsSource.indexOf("} = context;", contextStart);
   const contextSource = recruitingActionsSource.slice(contextStart, contextEnd);
-  assert.doesNotMatch(contextSource, /getRecruitingChatLastSeq|mergeRecruitingChatMessageBatch/);
+  assert.doesNotMatch(
+    contextSource,
+    /getRecruitingChatLastSeq|mergeRecruitingChatMessageBatch|isSyntheticMatchRoomId/,
+  );
 });

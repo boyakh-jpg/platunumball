@@ -2,6 +2,7 @@ import {
   getRecruitingChatLastSeq,
   mergeRecruitingChatMessageBatch,
 } from "../remoteMerge.js";
+import { isSyntheticMatchRoomId } from "../../../lib/recruiting.js";
 
 export function buildRecruitingActions(context) {
   const {
@@ -29,7 +30,6 @@ export function buildRecruitingActions(context) {
     inviteRecruitingPlayers,
     inviteRecruitingReferee,
     isSupabaseConfigured,
-    isSyntheticMatchRoomId,
     joinRecruitingSideParty,
     kickRecruitingApplicant,
     removeMatchRoomPlayer,
