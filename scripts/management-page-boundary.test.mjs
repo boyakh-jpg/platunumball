@@ -170,3 +170,16 @@ test("recruiting split view imports its card render dependencies", async () => {
   assert.match(recruitingViewSource, /<MatchListCard/);
   assert.match(recruitingPageSource, /export function getRecruitingCardTitle\(post\)/);
 });
+
+test("recruiting chat polling imports its canonical merge helpers directly", async () => {
+  const recruitingActionsSource = await read("src/hooks/appData/actions/recruitingActions.js");
+
+  assert.match(
+    recruitingActionsSource,
+    /import\s*\{\s*getRecruitingChatLastSeq,\s*mergeRecruitingChatMessageBatch,\s*\}\s*from "\.\.\/remoteMerge\.js"/,
+  );
+  const contextStart = recruitingActionsSource.indexOf("const {");
+  const contextEnd = recruitingActionsSource.indexOf("} = context;", contextStart);
+  const contextSource = recruitingActionsSource.slice(contextStart, contextEnd);
+  assert.doesNotMatch(contextSource, /getRecruitingChatLastSeq|mergeRecruitingChatMessageBatch/);
+});

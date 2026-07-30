@@ -1,3 +1,8 @@
+import {
+  getRecruitingChatLastSeq,
+  mergeRecruitingChatMessageBatch,
+} from "../remoteMerge.js";
+
 export function buildRecruitingActions(context) {
   const {
     ROOM_CHAT_HISTORY_LIMIT,
@@ -20,7 +25,6 @@ export function buildRecruitingActions(context) {
     getActionActorDebug,
     getNewItems,
     getNewRecruitingNotifications,
-    getRecruitingChatLastSeq,
     interestRecruitingPost,
     inviteRecruitingPlayers,
     inviteRecruitingReferee,
@@ -28,7 +32,6 @@ export function buildRecruitingActions(context) {
     isSyntheticMatchRoomId,
     joinRecruitingSideParty,
     kickRecruitingApplicant,
-    mergeRecruitingChatMessageBatch,
     removeMatchRoomPlayer,
     removeRecruitingPartyPlayer,
     respondMatchScheduleProposal,
