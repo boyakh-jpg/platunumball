@@ -43,6 +43,10 @@ export class RoomModalErrorBoundary extends Component {
     return { error };
   }
 
+  componentDidCatch(error, info) {
+    console.error("boxtier room render failed.", error, info);
+  }
+
   render() {
     if (!this.state.error) return this.props.children;
 

@@ -23,6 +23,7 @@ import {
   getMatchRecordSetupStatus,
   normalizeActualMatchTimeRange,
 } from "../src/lib/matchUtils.js";
+import { isMatchRecordParticipantSetupRequired } from "../src/lib/roomFlow.js";
 
 const matchListSource = readFileSync(new URL("../server/api/matches/_listQueries.js", import.meta.url), "utf8");
 const batchScoreAndReserveMigration = readFileSync(
@@ -270,12 +271,14 @@ test("match record rejects mixed composition at creation and setup", () => {
 test("team match record selects teams first, then each captain fixes an exact roster", () => {
   const created = createMatch(makeState(), makeRecordDraft("team"));
   const match = created.matches[0];
+  assert.equal(isMatchRecordParticipantSetupRequired(match), true);
   const selected = setMatchRecordParticipants(created, match.id, {
     composition: "team",
     teamAId: "team-a",
     teamBId: "team-b",
   });
   let configured = selected.matches[0];
+  assert.equal(isMatchRecordParticipantSetupRequired(configured), false);
   assert.deepEqual(configured.teamA.players, ["u1"]);
   assert.deepEqual(configured.teamB.players, ["u4"]);
   assert.deepEqual(configured.rules.recordApproverIds, { teamA: [], teamB: [] });

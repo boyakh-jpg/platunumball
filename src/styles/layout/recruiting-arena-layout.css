@@ -230,6 +230,12 @@ html[data-theme="light"] .arena-lobby-arena {
   font-size: 0.82rem;
   font-weight: 850;
 }
+.arena-record-roster-feedback {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-body);
+}
 .arena-record-roster-list {
   display: grid;
   gap: 8px;

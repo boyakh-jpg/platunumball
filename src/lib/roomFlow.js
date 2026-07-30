@@ -270,6 +270,12 @@ export function isMatchRecordParticipantSetupOpen(match = null) {
   );
 }
 
+export function isMatchRecordParticipantSetupRequired(match = null) {
+  if (!isMatchRecordParticipantSetupOpen(match)) return false;
+  if (match?.rules?.recordComposition !== "team") return true;
+  return Boolean(!match?.teamA?.teamId || !match?.teamB?.teamId);
+}
+
 export function getRoomPhaseViewModel({ post = {}, match = null } = {}) {
   const source = match ?? post;
   const phase = match ? getMatchRoomPhase(match).phase : "waiting";

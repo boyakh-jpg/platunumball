@@ -31,6 +31,8 @@ export function useRecruitingRoomController({
   const navigate = useNavigate();
   const selectedPost = post;
   const loadDirectory = app.actions.loadDirectory;
+  const loadDirectoryRef = useRef(loadDirectory);
+  loadDirectoryRef.current = loadDirectory;
   const remoteDirectoryEnabled = app.capabilities?.remoteDirectory !== false;
   const roomShareEnabled = app.capabilities?.roomShare !== false;
   const shouldLoadTeamDirectory = !sourceMatch && isTeamOnlyRoom(selectedPost);
@@ -50,19 +52,19 @@ export function useRecruitingRoomController({
   );
   useEffect(() => {
     if (!shouldLoadTeamDirectory) return;
-    loadDirectory?.({ kind: "teams", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true });
-  }, [loadDirectory, shouldLoadTeamDirectory]);
+    loadDirectoryRef.current?.({ kind: "teams", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true });
+  }, [shouldLoadTeamDirectory]);
   useEffect(() => {
     sourceMatchTeamIds.forEach((teamId) => {
-      void loadDirectory?.({ force: true, kind: "teams", teamId, includeTeamMemberProfiles: true });
+      void loadDirectoryRef.current?.({ force: true, kind: "teams", teamId, includeTeamMemberProfiles: true });
 
     });
-  }, [loadDirectory, sourceMatchTeamIds]);
+  }, [sourceMatchTeamIds]);
   useEffect(() => {
     sourceMatchLinkedProfileIds.forEach((profileId) => {
-      void loadDirectory?.({ kind: "players", profileId });
+      void loadDirectoryRef.current?.({ kind: "players", profileId });
     });
-  }, [loadDirectory, sourceMatchLinkedProfileIds]);
+  }, [sourceMatchLinkedProfileIds]);
 
   const userById = useMemo(
     () => {

@@ -635,9 +635,11 @@ test("경기방은 축약 목록 캐시를 버리고 상세 경기와 정확한 
   const controllerSource = readFileSync(new URL("../src/components/recruiting/useRecruitingRoomController.js", import.meta.url), "utf8");
   const roomManagementSource = readFileSync(new URL("../src/components/recruiting/RoomManagementPanels.jsx", import.meta.url), "utf8");
 
-  assert.match(controllerSource, /loadDirectory\?\.\(\{ force: true, kind: "teams", teamId, includeTeamMemberProfiles: true \}\)/);
+  assert.match(controllerSource, /loadDirectoryRef\.current\?\.\(\{ force: true, kind: "teams", teamId, includeTeamMemberProfiles: true \}\)/);
+  assert.doesNotMatch(controllerSource, /\}, \[loadDirectory, sourceMatchTeamIds\]\)/);
   assert.match(controllerSource, /loadMatchDetailRef\.current\?\.\(sourceMatch\.id\)/);
   assert.match(roomManagementSource, /disabled=\{saving \|\| !rosterChanged \|\| activeIds\.length !== capacity\}/);
+  assert.match(roomManagementSource, /선수 명단을 저장하지 못했습니다\. 다시 시도해 주세요\./);
 });
 
 test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형 grid를 사용한다", () => {

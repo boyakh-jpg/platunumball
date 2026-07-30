@@ -181,6 +181,7 @@ import {
   getRoomScheduleProposalProgress,
   isMatchPregameSlotManagementOpen,
   isMatchRecordParticipantSetupOpen,
+  isMatchRecordParticipantSetupRequired,
   isRoomScheduleChangePending,
 } from "../../lib/roomFlow.js";
 import {
@@ -275,7 +276,7 @@ export const RECRUITING_ROOM_DEPENDENCIES = {
   isTournamentMatchLineupEditable, getMatchRuleDetailRows, getMatchRuleInputValidation, getMatchRuleSummary, getMeetingPointSummary, normalizeMatchRules,
   PICKUP_TEAM_ASSIGNMENT_MODE_OPTIONS, getMatchCreationSummary, getRoomRemakeDraft, ROOM_BODY_MODES, getPickupOpenSlotPlacements, getPickupParticipantIds,
   getPickupRerollState, getPickupResizeValidation, getPickupTeamAssignmentPolicy, getPostgameRecordVerification, getRecruitingRuleAcknowledgement, getRoomCancellationActionLabel,
-  getRoomCancellationPolicy, getRoomEditAvailability, getRoomPhaseViewModel, getRoomScheduleProposalProgress, isMatchPregameSlotManagementOpen, isMatchRecordParticipantSetupOpen,
+  getRoomCancellationPolicy, getRoomEditAvailability, getRoomPhaseViewModel, getRoomScheduleProposalProgress, isMatchPregameSlotManagementOpen, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired,
   isRoomScheduleChangePending, DIRECTORY_PICKER_PAGE_LIMIT, getUnsafeUserTextReason, UNSAFE_INPUT_MESSAGE, CHAT_MESSAGE_MAX_LENGTH, CHAT_RATE_LIMIT,
   CHAT_RATE_WINDOW_MS, CHAT_REPEAT_BLOCK_MS, CHAT_SEND_COOLDOWN_MS, copyTextToClipboard, getDefaultApplyTeamId, getDefaultJoinDraft,
   getDefaultJoinRoster, getJoinActiveCapacity, getJoinReserveCapacity, getPlayerMmrAverage, getRecruitingDisplayTitle, getRoomEditDraft,

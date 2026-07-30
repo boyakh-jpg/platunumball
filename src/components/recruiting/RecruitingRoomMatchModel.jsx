@@ -5,7 +5,7 @@ export function buildRecruitingRoomMatchModel(context) {
     getMatchRecordWindow, getMatchReservePlayerIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchSideLeaderId, getMatchSidePlayerIds,
     getMissingStartAttendanceIds, getOpenMatchDisputes, getPickupRerollState, getPostgameRecordVerification, getRecruitingBenchCapacity, getRecruitingPostTerminalState,
     getRecruitingRoomStatus, getRecruitingSideCapacity, getRecruitingSideLeaderId, getTeamCaptainId, getTournamentRosterTeam, individualOnlyRoom,
-    isEligibleReferee, isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchReferee, isPersonalRecordMatch,
+    isEligibleReferee, isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired, isMatchReferee, isPersonalRecordMatch,
     isTournamentGovernanceEnabled, isTournamentMatchLineupEditable, lobby, matchRoom, mine, myEntry,
     pickupAssignmentPolicy, roomChatLocked, roomOwnerId, roomPhaseViewModel, roomState, ruleAcknowledgementPending,
     scheduleChangePending, selectedMatchRules, selectedPost, sourceMatch, sourceMatchSideName, sourceMatchStatus,
@@ -31,7 +31,10 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
         const sourceMatchIsTournamentPregame = isTournamentMatchLineupEditable(sourceMatch);
         const sourceMatchRecordEditable = Boolean(sourceMatchIsRecordRoom && !sourceMatch?.result && !sourceMatch?.confirmedAt);
         const sourceMatchRecordSetupOpen = isMatchRecordParticipantSetupOpen(sourceMatch);
-        const canManageMatchRecordParticipants = Boolean(sourceMatchRecordSetupOpen && sourceMatch?.createdBy === app.currentUser.id);
+        const canManageMatchRecordParticipants = Boolean(
+          isMatchRecordParticipantSetupRequired(sourceMatch)
+          && sourceMatch?.createdBy === app.currentUser.id,
+        );
         const sourceRoomReadOnly = Boolean(
           recruitingRoomTerminalStatus ||
           (matchRoom && (

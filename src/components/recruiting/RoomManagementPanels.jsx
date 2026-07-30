@@ -328,9 +328,11 @@ export function MatchRecordRosterPanel({
   const sourceRoster = normalizeLeaderRoster(sourceActiveIds, sourceReserveIds);
   const [draftRoster, setDraftRoster] = useState(sourceRoster);
   const [saving, setSaving] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState("");
 
   useEffect(() => {
     setDraftRoster(normalizeLeaderRoster(sourceActiveIds, sourceReserveIds));
+    setSaveFeedback("");
   }, [
     match?.id,
     sideName,
@@ -352,16 +354,26 @@ export function MatchRecordRosterPanel({
     .filter((playerId) => userById[playerId]);
   if (!memberIds.length) return null;
 
-  const commitRoster = () => {
+  const commitRoster = async () => {
     if (saving || activeIds.length !== capacity) return;
     const nextRoster = normalizeLeaderRoster(activeIds, reserveIds);
     setSaving(true);
-    Promise.resolve()
-      .then(() => onChange(sideName, {
+    setSaveFeedback("");
+    try {
+      const result = await onChange(sideName, {
         playerIds: nextRoster.activeIds,
         reservePlayerIds: nextRoster.reserveIds,
-      }))
-      .finally(() => setSaving(false));
+      });
+      if (!result || result?.ok === false) {
+        setSaveFeedback("선수 명단을 저장하지 못했습니다. 다시 시도해 주세요.");
+        return;
+      }
+      setSaveFeedback("선수 명단을 확정했습니다.");
+    } catch {
+      setSaveFeedback("선수 명단을 저장하지 못했습니다. 다시 시도해 주세요.");
+    } finally {
+      setSaving(false);
+    }
   };
   const setPlayerState = (playerId, state) => {
     if (!tournamentRoster && playerId === sideLeaderId && state !== "active") return;
@@ -451,6 +463,9 @@ export function MatchRecordRosterPanel({
       >
         {saving ? "저장 중" : "선수 확정"}
       </Button>
+      {saveFeedback ? (
+        <span className="arena-record-roster-feedback" role="status">{saveFeedback}</span>
+      ) : null}
     </div>
   );
 }
