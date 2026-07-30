@@ -163,6 +163,10 @@ export default function Season({ app }) {
                 <p className="eyebrow">Squad Race</p>
                 <h2>전국 팀 승격권</h2>
               </div>
+              <div className="season-section-actions">
+                <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
+                <Button as={Link} to="/app/rankings?tab=teams" variant="secondary">전체 팀 순위</Button>
+              </div>
             </div>
             <div className="season-race-list team-race-list ranking-table ui-design-borderless-list">
               {nationalTeamRows.slice(0, 5).map((team, index) => (

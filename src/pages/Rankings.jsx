@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -17,6 +18,7 @@ const tabs = [
   { id: "teams", label: "팀" },
   { id: "affiliations", label: "소속" },
 ];
+const tabIds = new Set(tabs.map((item) => item.id));
 
 const rankingTitles = {
   integrated: "전국 통합 MMR",
@@ -28,7 +30,16 @@ const rankingTitles = {
 };
 
 export default function Rankings({ app }) {
-  const [tab, setTab] = useState("integrated");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const tab = tabIds.has(requestedTab) ? requestedTab : "integrated";
+  const setTab = (nextTab) => {
+    if (!tabIds.has(nextTab)) return;
+    const nextSearchParams = new URLSearchParams(searchParams);
+    if (nextTab === "integrated") nextSearchParams.delete("tab");
+    else nextSearchParams.set("tab", nextTab);
+    setSearchParams(nextSearchParams, { replace: true });
+  };
   const myRegion = app.currentUser.region;
   const loadDirectory = app.actions.loadDirectory;
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";

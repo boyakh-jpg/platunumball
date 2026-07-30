@@ -1420,9 +1420,11 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.match(seasonPage, /이번 시즌 플레이/);
   assert.match(seasonPage, /state=\{\{ teamPreview: team \}\}/);
   assert.match(seasonPage, /<TeamEmblem team=\{team\} size="sm" \/>/);
+  assert.match(seasonPage, /to="\/app\/rankings\?tab=teams"[\s\S]*?>전체 팀 순위<\/Button>/);
   assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
   assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
-  assert.match(rankingsPage, /useState\("integrated"\)/);
+  assert.match(rankingsPage, /const tab = tabIds\.has\(requestedTab\) \? requestedTab : "integrated"/);
+  assert.match(rankingsPage, /nextSearchParams\.set\("tab", nextTab\)/);
   assert.match(styles, /\.season-race-list > \.player-hover-trigger/);
 });
 
