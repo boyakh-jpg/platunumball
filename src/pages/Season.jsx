@@ -128,7 +128,7 @@ export default function Season({ app }) {
               </div>
               <div className="season-section-actions">
                 <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
-                <Button as={Link} to="/app/rankings" variant="secondary">전체 순위</Button>
+                <Button as={Link} to="/app/rankings?view=promotion" variant="secondary">전체 순위</Button>
               </div>
             </div>
             <div className="season-race-list ranking-table ui-design-borderless-list">
@@ -165,7 +165,7 @@ export default function Season({ app }) {
               </div>
               <div className="season-section-actions">
                 <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
-                <Button as={Link} to="/app/rankings?tab=teams" variant="secondary">전체 팀 순위</Button>
+                <Button as={Link} to="/app/rankings?view=promotion&tab=teams" variant="secondary">전체 팀 순위</Button>
               </div>
             </div>
             <div className="season-race-list team-race-list ranking-table ui-design-borderless-list">

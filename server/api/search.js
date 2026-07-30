@@ -10,7 +10,6 @@ import {
   TEAM_MEMBER_COLUMNS,
 } from "../../shared/lib/repositoryColumns.js";
 import {
-  REFEREE_ACTIVE_TRUST_MIN,
   TEST_REFEREE_LOGIN_IDS,
   isRefereeGrade,
 } from "../../shared/lib/constants.js";
@@ -358,7 +357,6 @@ async function searchReferees(supabase, query, limit, searchContext = {}) {
       .from("public_profiles")
       .select(PROFILE_COLUMNS)
       .in("id", appointmentProfileIds)
-      .gte("trust_score", REFEREE_ACTIVE_TRUST_MIN)
       .order("trust_score", { ascending: false })
       .limit(Math.max(limit * 3, limit));
     if (query) profileQuery = profileQuery.or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
@@ -371,10 +369,6 @@ async function searchReferees(supabase, query, limit, searchContext = {}) {
     ...qualifiedProfileRows,
     ...(testProfileRows ?? []),
   ].map((profile) => [profile.id, profile])).values()]
-    .filter((profile) => (
-      Number(profile.trust_score ?? 0) >= REFEREE_ACTIVE_TRUST_MIN
-      || testProfileIdSet.has(profile.id)
-    ))
     .sort((a, b) => Number(b.trust_score ?? 0) - Number(a.trust_score ?? 0) || String(a.name ?? "").localeCompare(String(b.name ?? "")));
   return profileRows
     .filter((profile) => appointmentByUserId.has(profile.id) || testProfileIdSet.has(profile.id))

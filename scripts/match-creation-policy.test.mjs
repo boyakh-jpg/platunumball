@@ -1208,7 +1208,7 @@ test("알파 테스트 심판은 운영 신뢰도와 무관하게 심판 검색 
   }), false);
 });
 
-test("심판 신규 자격 90과 활동 유지 70을 분리한다", () => {
+test("심판 초대는 활성 자격만 보고 신뢰도를 다시 평가하지 않는다", () => {
   const appointment = {
     userId: "active-referee",
     role: "referee",
@@ -1222,7 +1222,11 @@ test("심판 신규 자격 90과 활동 유지 70을 분리한다", () => {
   assert.equal(isEligibleReferee({
     id: "active-referee",
     trustScore: 69,
-  }, 90, [appointment]), false);
+  }, 90, [appointment]), true);
+  assert.equal(isEligibleReferee({
+    id: "active-referee",
+    trustScore: 100,
+  }, 90, [{ ...appointment, status: "revoked" }]), false);
 });
 
 test("경기 시작 뒤 신뢰도 자동 회수된 기존 배정 심판만 경기 완료 권한을 유지한다", () => {

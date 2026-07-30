@@ -102,10 +102,7 @@ export function isEligibleReferee(
     ).getTime()
     : Date.now();
   if (TEST_REFEREE_LOGIN_ID_SET.has(String(user?.testLoginId ?? "").toLowerCase())) return true;
-  return (
-    Number(user?.trustScore ?? 0) >= REFEREE_ACTIVE_TRUST_MIN
-    && hasRefereeQualification(user, refereeAppointments, Date.now(), parsedThroughMs)
-  );
+  return hasRefereeQualification(user, refereeAppointments, Date.now(), parsedThroughMs);
 }
 
 export function isMatchReferee(match = {}, userId) {

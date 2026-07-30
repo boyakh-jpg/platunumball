@@ -60,8 +60,9 @@ export function getMatchClockPeriodLabel(clock) {
 export function getMatchClockRecognition(clock) {
   if (!clock) return { ratio: 0, recognized: false };
   const minimumMs = Number(clock.minimumActiveMs || 0);
-  const expectedMs = minimumMs > 0 ? minimumMs / 0.7 : 0;
-  const ratio = expectedMs > 0 ? Math.min(1, Number(clock.activeElapsedMs || 0) / expectedMs) : 0;
+  const ratio = minimumMs > 0
+    ? Math.min(1, Number(clock.activeElapsedMs || 0) / minimumMs)
+    : 0;
   return {
     ratio,
     recognized: Boolean(clock.clockUsed),

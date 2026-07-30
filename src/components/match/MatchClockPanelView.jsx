@@ -39,6 +39,14 @@ export default function MatchClockPanelView({ context }) {
       </section>
     );
   }
+  const expectedPeriodCount = Number(liveClock.expectedPeriodCount || 1);
+  const singlePeriod = expectedPeriodCount === 1;
+  const periodEndLabel = singlePeriod
+    ? "정규 구간 종료"
+    : expectedPeriodCount === 2
+      ? "하프 종료"
+      : "쿼터 종료";
+  const nextPeriodLabel = expectedPeriodCount === 2 ? "후반 시작" : "다음 쿼터 시작";
 
   const clockPanel = (
     <section
@@ -56,8 +64,10 @@ export default function MatchClockPanelView({ context }) {
             <Badge tone={isRunning ? "green" : isEnded ? "neutral" : "gold"}>
               {isRunning ? "진행 중" : isEnded ? "시계 종료" : isPending ? "시작 대기" : isBreak ? "휴식" : "일시정지"}
             </Badge>
-            <Badge tone={recognition.recognized ? "green" : "neutral"}>
-              인정 시간 {Math.round(recognition.ratio * 100)}%
+            <Badge tone={isEnded && recognition.recognized ? "green" : "neutral"}>
+              {isEnded
+                ? recognition.recognized ? "정상 사용" : "미사용 처리"
+                : `인정 기준 진행 ${Math.round(recognition.ratio * 100)}%`}
             </Badge>
           </div>
           {focusMode ? (
@@ -210,13 +220,22 @@ export default function MatchClockPanelView({ context }) {
 
           {isBreak ? (
             <div className={`ui-match-clock-break${breakOvertimeMs > 0 ? " ui-match-clock-break-over" : ""}`} role="timer">
-              <span>{isHalftimeBreak ? "하프타임" : "쿼터 휴식"}</span>
-              <strong>
-                {breakOvertimeMs > 0
-                  ? `${formatClockTime(breakOvertimeMs)} 초과`
-                  : `${formatClockTime(breakRemainingMs)} 남음`}
-              </strong>
-              <small>권장 휴식 {breakLimitMinutes}분 · 다음 구간 시작은 언제든 가능</small>
+              <span>{regulationEnded ? "정규 구간 종료" : isHalftimeBreak ? "하프타임" : "쿼터 휴식"}</span>
+              {regulationEnded ? (
+                <>
+                  <strong>연장 또는 시계 종료 선택</strong>
+                  <small>{singlePeriod ? "단일 경기에는 다음 쿼터가 없습니다." : "설정한 정규 구간을 모두 마쳤습니다."}</small>
+                </>
+              ) : (
+                <>
+                  <strong>
+                    {breakOvertimeMs > 0
+                      ? `${formatClockTime(breakOvertimeMs)} 초과`
+                      : `${formatClockTime(breakRemainingMs)} 남음`}
+                  </strong>
+                  <small>권장 휴식 {breakLimitMinutes}분 · 다음 구간 시작은 언제든 가능</small>
+                </>
+              )}
             </div>
           ) : null}
 
@@ -238,16 +257,16 @@ export default function MatchClockPanelView({ context }) {
                   variant="secondary"
                   onClick={() => confirmAction(`${getMatchClockPeriodLabel(liveClock)}를 종료할까요?`, "endPeriod")}
                 >
-                  쿼터 종료
+                  {periodEndLabel}
                 </Button>
               ) : null}
               {isBreak && !regulationEnded && liveClock.overtimeCount === 0 ? (
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => confirmAction(`${liveClock.currentPeriod + 1}쿼터를 시작할까요?`, "startPeriod")}
+                  onClick={() => confirmAction(`${nextPeriodLabel}할까요?`, "startPeriod")}
                 >
-                  다음 쿼터 시작
+                  {nextPeriodLabel}
                 </Button>
               ) : null}
               {isBreak && regulationEnded && (!scoreboardEnabled || tied) ? (
@@ -265,7 +284,7 @@ export default function MatchClockPanelView({ context }) {
                 variant="secondary"
                 onClick={() => confirmAction("경기시계 운용을 종료할까요?", "endClock")}
               >
-                경기시계 종료
+                시계 종료 · 인정 판정
               </Button>
             </div>
           ) : null}
@@ -304,7 +323,7 @@ export default function MatchClockPanelView({ context }) {
             disabled={Boolean(pendingAction)}
             onClick={() => void requestMatchEnd()}
           >
-            경기 종료
+            경기 종료 · 기록으로
           </Button>
         </div>
       ) : null}

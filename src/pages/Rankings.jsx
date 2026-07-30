@@ -5,8 +5,10 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import RankingTable from "../components/ranking/RankingTable.jsx";
 import RankingTabs from "../components/ranking/RankingTabs.jsx";
+import SeasonPromotionTable from "../components/ranking/SeasonPromotionTable.jsx";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { hasModeRating, isPlacementComplete } from "../lib/rating.js";
+import { getCurrentSeason, getPlayerSeasonRows, getTeamSeasonRows } from "../lib/season.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 const tabs = [
@@ -31,8 +33,11 @@ const rankingTitles = {
 
 export default function Rankings({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const promotionView = searchParams.get("view") === "promotion";
   const requestedTab = searchParams.get("tab");
-  const tab = tabIds.has(requestedTab) ? requestedTab : "integrated";
+  const tab = promotionView
+    ? requestedTab === "teams" ? "teams" : "integrated"
+    : tabIds.has(requestedTab) ? requestedTab : "integrated";
   const setTab = (nextTab) => {
     if (!tabIds.has(nextTab)) return;
     const nextSearchParams = new URLSearchParams(searchParams);
@@ -41,6 +46,7 @@ export default function Rankings({ app }) {
     setSearchParams(nextSearchParams, { replace: true });
   };
   const myRegion = app.currentUser.region;
+  const season = getCurrentSeason(app.state);
   const loadDirectory = app.actions.loadDirectory;
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";
   const directoryRegion = tab === "region" ? myRegion : "";
@@ -72,20 +78,45 @@ export default function Rankings({ app }) {
           : tab === "region"
             ? regionalPlayers
             : visibleModePlayers;
+  const promotionRows = tab === "teams"
+    ? getTeamSeasonRows(app.rankings.teams, app.state.matches, season, "전체")
+    : getPlayerSeasonRows(visiblePlayers, app.state.matches, season, "전체");
+  const promotionTabs = [
+    { id: "integrated", label: "개인" },
+    { id: "teams", label: "팀" },
+  ];
 
   return (
     <div className="page-stack rankings-page">
       <header className="page-header ui-design-app-hero">
         <div>
-          <p className="eyebrow">Rankings</p>
-          <h1>랭크보드</h1>
+          <p className="eyebrow">{promotionView ? "Promotion Race" : "Rankings"}</p>
+          <h1>{promotionView ? "시즌 승격권" : "랭크보드"}</h1>
         </div>
-        <Badge tone={tab === "region" ? "blue" : "gold"}>{tab === "region" ? myRegion : "전국 기준"}</Badge>
+        <Badge tone={tab === "region" ? "blue" : "gold"}>
+          {promotionView ? season.name : tab === "region" ? myRegion : "전국 기준"}
+        </Badge>
       </header>
       <Card className="section-card ranking-filter-card">
-        <RankingTabs value={tab} options={tabs} onChange={setTab} />
+        <RankingTabs value={tab} options={promotionView ? promotionTabs : tabs} onChange={setTab} />
       </Card>
-      {tab === "region" ? (
+      {promotionView ? (
+        <Card className="section-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">National Season Ranking</p>
+              <h2>전국 {tab === "teams" ? "팀" : "개인"} 승격 경쟁</h2>
+            </div>
+            <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
+          </div>
+          <SeasonPromotionTable
+            rows={promotionRows}
+            type={tab === "teams" ? "teams" : "players"}
+            teams={app.state.teams}
+            promotionLine={season.promotionLine ?? 4}
+          />
+        </Card>
+      ) : tab === "region" ? (
         <div className="content-grid">
           <Card className="section-card">
             <div className="section-title-row">
@@ -107,7 +138,7 @@ export default function Rankings({ app }) {
           </Card>
         </div>
       ) : null}
-      {tab !== "region" ? (
+      {!promotionView && tab !== "region" ? (
         <Card className="section-card">
           <div className="section-title-row">
             <div>

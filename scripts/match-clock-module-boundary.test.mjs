@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { getMatchClockRecognition } from "../src/lib/matchClock.js";
 
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/u, "$1"));
 const MODULE_LIMITS = new Map([
@@ -62,4 +63,25 @@ test("24초 샷클락 옵션은 UI와 DB constraint 및 RPC에서 동일하게 �
   assert.match(schemaSource, /align the live match clock with the 24-second UI option/u);
   assert.match(viewSource, /disabled=\{Boolean\(pendingAction\) \|\| !selectedControllerId\}/u);
   assert.match(audioSource, /invalid_shot_clock_seconds:[^\n]*24초/u);
+});
+
+test("경기시계 인정 진행률은 전체 시간이 아니라 최소 인정시간을 기준으로 계산한다", async () => {
+  assert.deepEqual(
+    getMatchClockRecognition({
+      activeElapsedMs: 210000,
+      minimumActiveMs: 420000,
+      clockUsed: false,
+      startedWithinWindow: true,
+    }),
+    { ratio: 0.5, recognized: false, startedInWindow: true },
+  );
+
+  const viewSource = await readFile(
+    path.join(ROOT, "src/components/match/MatchClockPanelView.jsx"),
+    "utf8",
+  );
+  assert.match(viewSource, /인정 기준 진행/u);
+  assert.match(viewSource, /단일 경기에는 다음 쿼터가 없습니다/u);
+  assert.match(viewSource, /시계 종료 · 인정 판정/u);
+  assert.match(viewSource, /경기 종료 · 기록으로/u);
 });

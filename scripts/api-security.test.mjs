@@ -32,6 +32,7 @@ import {
   getAdminReviewErrorStatus,
   normalizeAdminReviewInput,
 } from "../server/api/admin/review-action.js";
+import { isActiveReferee } from "../server/lib/refereeEligibilityPolicy.js";
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
@@ -66,6 +67,31 @@ function createResponse() {
     json(payload) {
       this.payload = payload;
       return this;
+    },
+  };
+}
+
+function createRefereeEligibilitySupabase({ profile = null, appointments = [] } = {}) {
+  return {
+    from(table) {
+      const result = table === "profiles"
+        ? { data: profile, error: null }
+        : { data: appointments, error: null };
+      const builder = {
+        select() {
+          return builder;
+        },
+        eq() {
+          return builder;
+        },
+        maybeSingle() {
+          return Promise.resolve(result);
+        },
+        then(resolve, reject) {
+          return Promise.resolve(result).then(resolve, reject);
+        },
+      };
+      return builder;
     },
   };
 }
@@ -242,7 +268,8 @@ test("referee search supports qualified discovery on focus only", async () => {
     refereeSearchSource.indexOf("if (query) testProfileQuery"),
   );
   assert.doesNotMatch(testProfileQuerySource, /\.gte\("trust_score", 90\)/);
-  assert.match(refereeSearchSource, /Number\(profile\.trust_score \?\? 0\) >= REFEREE_ACTIVE_TRUST_MIN/);
+  assert.doesNotMatch(refereeSearchSource, /\.gte\("trust_score", REFEREE_ACTIVE_TRUST_MIN\)/);
+  assert.doesNotMatch(refereeSearchSource, /Number\(profile\.trust_score \?\? 0\) >= REFEREE_ACTIVE_TRUST_MIN/);
   assert.match(refereeSearchSource, /\.in\("id", appointmentProfileIds\)/);
   assert.match(pickerSource, /const canRemoteSearch = canSearch \|\| \(remoteSearchOnFocus && focused\);/);
   assert.match(createMatchSource, /remoteSearchOnFocus=\{remoteDirectoryEnabled\}/);
@@ -250,10 +277,11 @@ test("referee search supports qualified discovery on focus only", async () => {
 });
 
 test("referee entry trust and active trust stay separated", async () => {
-  const [appointmentSource, localAppointmentSource, migrationSource] = await Promise.all([
+  const [appointmentSource, localAppointmentSource, migrationSource, eligibilityMigrationSource] = await Promise.all([
     readSource("server/api/admin/appointment-action.js"),
     readSource("src/data/repository/admin/appointment.js"),
     readSource("supabase/migrations/20260730213000_referee_trust_lifecycle.sql"),
+    readSource("supabase/migrations/20260730230000_align_alpha_referee_creation_eligibility.sql"),
   ]);
   assert.match(appointmentSource, /actionType === "appointReferee"/);
   assert.match(appointmentSource, /trust_score \?\? 0\) < REFEREE_TRUST_MIN/);
@@ -268,6 +296,48 @@ test("referee entry trust and active trust stay separated", async () => {
   assert.match(migrationSource, /recruiting_referee_fixed_trust_shape_changed/);
   assert.match(migrationSource, /recruiting_referee_stored_trust_shape_changed/);
   assert.doesNotMatch(migrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
+  assert.match(eligibilityMigrationSource, /rankball_referee_assignment_eligible/);
+  assert.match(eligibilityMigrationSource, /test_login_id[\s\S]*?'rankball-001', 'rankball-011'/);
+  assert.match(eligibilityMigrationSource, /appointment\.grade in \('candidate', 'silver', 'gold', 'platinum', 'official'\)/);
+  assert.match(eligibilityMigrationSource, /recruiting_referee_trust_shape_changed/);
+  assert.match(eligibilityMigrationSource, /alphaTestException/);
+  assert.doesNotMatch(eligibilityMigrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
+});
+
+test("server referee eligibility matches alpha discovery and active appointment rules", async () => {
+  assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
+    profile: { id: "alpha-referee", trust_score: 10, test_login_id: "rankball-001" },
+  }), "alpha-referee"), true);
+  assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
+    profile: { id: "regular-referee", trust_score: 70, test_login_id: null },
+    appointments: [{
+      user_id: "regular-referee",
+      role: "referee",
+      grade: "candidate",
+      status: "active",
+      starts_at: "2026-01-01T00:00:00.000Z",
+      ends_at: "2099-01-01T00:00:00.000Z",
+    }],
+  }), "regular-referee"), true);
+  assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
+    profile: { id: "low-trust-referee", trust_score: 69, test_login_id: null },
+    appointments: [{
+      user_id: "low-trust-referee",
+      role: "referee",
+      grade: "candidate",
+      status: "active",
+    }],
+  }), "low-trust-referee"), true);
+  assert.equal(await isActiveReferee(createRefereeEligibilitySupabase({
+    profile: { id: "expired-referee", trust_score: 90, test_login_id: null },
+    appointments: [{
+      user_id: "expired-referee",
+      role: "referee",
+      grade: "candidate",
+      status: "active",
+      ends_at: "2026-01-01T00:00:00.000Z",
+    }],
+  }), "expired-referee"), false);
 });
 
 test("report insert conflicts and admin review input fail safely", async () => {
