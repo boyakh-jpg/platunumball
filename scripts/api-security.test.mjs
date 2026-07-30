@@ -242,11 +242,32 @@ test("referee search supports qualified discovery on focus only", async () => {
     refereeSearchSource.indexOf("if (query) testProfileQuery"),
   );
   assert.doesNotMatch(testProfileQuerySource, /\.gte\("trust_score", 90\)/);
-  assert.match(refereeSearchSource, /Number\(profile\.trust_score \?\? 0\) >= 90 \|\| testProfileIdSet\.has\(profile\.id\)/);
+  assert.match(refereeSearchSource, /Number\(profile\.trust_score \?\? 0\) >= REFEREE_ACTIVE_TRUST_MIN/);
   assert.match(refereeSearchSource, /\.in\("id", appointmentProfileIds\)/);
   assert.match(pickerSource, /const canRemoteSearch = canSearch \|\| \(remoteSearchOnFocus && focused\);/);
   assert.match(createMatchSource, /remoteSearchOnFocus=\{remoteDirectoryEnabled\}/);
   assert.match(createMatchSource, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);
+});
+
+test("referee entry trust and active trust stay separated", async () => {
+  const [appointmentSource, localAppointmentSource, migrationSource] = await Promise.all([
+    readSource("server/api/admin/appointment-action.js"),
+    readSource("src/data/repository/admin/appointment.js"),
+    readSource("supabase/migrations/20260730213000_referee_trust_lifecycle.sql"),
+  ]);
+  assert.match(appointmentSource, /actionType === "appointReferee"/);
+  assert.match(appointmentSource, /trust_score \?\? 0\) < REFEREE_TRUST_MIN/);
+  assert.match(localAppointmentSource, /targetUser\.trustScore \?\? 0\) < REFEREE_TRUST_MIN/);
+  assert.match(migrationSource, /coalesce\(profile\.trust_score, 0\) >= 70/);
+  assert.match(migrationSource, /referee_entry_trust_too_low/);
+  assert.match(migrationSource, /rankball_referee_active_trust_guard/);
+  assert.match(migrationSource, /referee_trust_below_70/);
+  assert.match(migrationSource, /rankball_tournament_referee_authorized/);
+  assert.match(migrationSource, /test_login_id[\s\S]*?'rankball-001', 'rankball-011'/);
+  assert.match(migrationSource, /payload->>'autoRevoked' = 'true'/);
+  assert.match(migrationSource, /recruiting_referee_fixed_trust_shape_changed/);
+  assert.match(migrationSource, /recruiting_referee_stored_trust_shape_changed/);
+  assert.doesNotMatch(migrationSource, /delete\s+from|truncate\s+table|drop\s+table/i);
 });
 
 test("report insert conflicts and admin review input fail safely", async () => {

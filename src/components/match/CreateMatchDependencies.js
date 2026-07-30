@@ -24,7 +24,7 @@ import {
   MatchCreationRulePanel,
 } from "./MatchCreationStepPanels.jsx";
 import TeamHoverCard from "../team/TeamHoverCard.jsx";
-import { DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, DISPUTE_WINDOW_MINUTES, MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS, getCanonicalRegion, getHostTrustRequirement, getModeSize, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../../lib/constants.js";
+import { DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, DISPUTE_WINDOW_MINUTES, MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_ACTIVE_TRUST_MIN, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS, getCanonicalRegion, getHostTrustRequirement, getModeSize, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../../lib/constants.js";
 import { getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtPlayWarning, getCourtRecommendationScore, getCourtSearchText, getCourtSurfaceLabel, getRegisteredCourts, isCourtInRegion, mergeCourtSearchCourts } from "../../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, getRecordCreationWindowStatus, getSeoulTimeInputValue, isEligibleReferee } from "../../lib/matchUtils.js";
@@ -110,7 +110,7 @@ export const CREATE_MATCH_DEPENDENCIES = {
   MeetingPointFields, MmrRangeSelector, MatchCostPolicyFields, MatchCreationWizardActions, MatchCreationWizardNav, MatchIntentPresetSelector,
   MatchOperationsPolicyFields, MatchRosterPolicyFields, getMatchCreationSteps, MatchCreationReviewPanel, MatchCreationRulePanel, TeamHoverCard,
   DEFAULT_RATING, DEFAULT_TOURNAMENT_MMR_GAP, DISPUTE_WINDOW_MINUTES, MATCH_MODES, MAX_PARTY_RESERVES, PLAYER_STAT_FIELDS,
-  RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS,
+  RECORD_TYPES, REFEREE_ACTIVE_TRUST_MIN, REFEREE_TRUST_MIN, REGIONS, ROOM_SCHEDULE_MAX_DAYS, SCHEDULE_MAX_DAYS, SOLO_RECORD_MODE_IDS,
   getCanonicalRegion, getHostTrustRequirement, getModeSize, getRoomKindFromDraft, getRoomKindLabel, isSameRegion,
   getCourtAddress, getCourtLayoutLabel, getCourtPickerResults, getCourtPlayWarning, getCourtRecommendationScore, getCourtSearchText,
   getCourtSurfaceLabel, getRegisteredCourts, isCourtInRegion, mergeCourtSearchCourts, getCourtHashtag, getTeamHashtag,

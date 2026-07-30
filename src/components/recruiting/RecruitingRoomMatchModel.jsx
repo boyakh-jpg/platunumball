@@ -1,11 +1,11 @@
 export function buildRecruitingRoomMatchModel(context) {
   const {
     MATCH_SIDES, ROOM_BODY_MODES, activeInviteDraftRaw, activeSelfSlotDraftRaw, app, attendanceStartStatus,
-    canChat, canUserResolveMatchDispute, currentUserIsAdmin, entryPoint, getMatchManualFinalizationStatus, getMatchRecordPlayerIds,
+    canChat, canOperateAssignedMatchReferee, canUserResolveMatchDispute, currentUserIsAdmin, entryPoint, getMatchManualFinalizationStatus, getMatchRecordPlayerIds,
     getMatchRecordWindow, getMatchReservePlayerIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchSideLeaderId, getMatchSidePlayerIds,
     getMissingStartAttendanceIds, getOpenMatchDisputes, getPickupRerollState, getPostgameRecordVerification, getRecruitingBenchCapacity, getRecruitingPostTerminalState,
     getRecruitingRoomStatus, getRecruitingSideCapacity, getRecruitingSideLeaderId, getTeamCaptainId, getTournamentRosterTeam, individualOnlyRoom,
-    isEligibleReferee, isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired, isMatchReferee, isPersonalRecordMatch,
+    isMatchPregameSlotManagementOpen, isMatchRecordMatch, isMatchRecordParticipantSetupOpen, isMatchRecordParticipantSetupRequired, isMatchReferee, isPersonalRecordMatch,
     isTournamentGovernanceEnabled, isTournamentMatchLineupEditable, lobby, matchRoom, mine, myEntry,
     pickupAssignmentPolicy, roomChatLocked, roomOwnerId, roomPhaseViewModel, roomState, ruleAcknowledgementPending,
     scheduleChangePending, selectedMatchRules, selectedPost, sourceMatch, sourceMatchSideName, sourceMatchStatus,
@@ -51,7 +51,15 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
         const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
         const activeSelfSlotDraft = sourceMatchSlotManagementOpen ? activeSelfSlotDraftRaw : null;
         const canUseChat = canChat && !sourceRoomReadOnly && !roomChatLocked;
-        const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin, app.state.settings?.refereeAppointments));
+        const currentUserIsSourceReferee = Boolean(
+          sourceMatch
+          && isMatchReferee(sourceMatch, app.currentUser.id)
+          && canOperateAssignedMatchReferee(
+            app.currentUser,
+            sourceMatch,
+            app.state.settings?.refereeAppointments,
+          ),
+        );
         const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const currentUserCanStartSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const canResolveSourceMatchDispute = Boolean(

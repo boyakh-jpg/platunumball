@@ -1,4 +1,7 @@
 import { MATCH_SYNC_DEPENDENCIES } from "./matchSyncDependencies.js";
+import { REFEREE_ACTIVE_TRUST_MIN, TEST_REFEREE_LOGIN_IDS } from "../../shared/lib/constants.js";
+
+const TEST_REFEREE_LOGIN_ID_SET = new Set(TEST_REFEREE_LOGIN_IDS);
 
 export const {
 
@@ -99,16 +102,19 @@ export function normalizeResultSnapshot(result = null, statRows = []) {
   });
 }
 
-export async function isActiveReferee(supabase, userId, minTrust = 90) {
+export async function isActiveReferee(supabase, userId, _minTrust = 90) {
   if (!userId) return false;
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("trust_score")
+    .select("trust_score, test_login_id")
     .eq("id", userId)
     .maybeSingle();
   if (profileError) throw profileError;
-  if (Number(profile?.trust_score ?? 0) < Number(minTrust ?? 90)) return false;
+  if (
+    Number(profile?.trust_score ?? 0) < REFEREE_ACTIVE_TRUST_MIN
+    && !TEST_REFEREE_LOGIN_ID_SET.has(String(profile?.test_login_id ?? "").toLowerCase())
+  ) return false;
 
   const { data, error } = await supabase
     .from("referee_appointments")

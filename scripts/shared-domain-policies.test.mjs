@@ -1050,7 +1050,7 @@ test("room schedule labels stay canonical across all recruiting surfaces", async
   assert.equal(getRoomScheduleLabel({
     timingType: "instant",
     createdAt: "2026-07-22T10:00:00",
-  }), "즉시 · 12:00 종료");
+  }), "즉시");
   assert.equal(getRoomScheduleLabel({}), "일정 미정");
 
   const [home, recruiting, notifications] = await Promise.all([

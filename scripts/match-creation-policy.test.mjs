@@ -34,7 +34,11 @@ import {
   validatePickupRecruitingShape,
   validatePickupRecruitingUpdate,
 } from "../server/api/recruiting/sync-post.js";
-import { getRecordCreationWindowStatus, isEligibleReferee } from "../src/lib/matchUtils.js";
+import {
+  canOperateAssignedMatchReferee,
+  getRecordCreationWindowStatus,
+  isEligibleReferee,
+} from "../src/lib/matchUtils.js";
 import {
   MATCH_CLOCK_FORCE_END_MINUTES,
   MATCH_MAX_REGULATION_MINUTES,
@@ -1202,4 +1206,57 @@ test("알파 테스트 심판은 운영 신뢰도와 무관하게 심판 검색 
     testLoginId: "rankball-012",
     trustScore: 82,
   }), false);
+});
+
+test("심판 신규 자격 90과 활동 유지 70을 분리한다", () => {
+  const appointment = {
+    userId: "active-referee",
+    role: "referee",
+    grade: "candidate",
+    status: "active",
+  };
+  assert.equal(isEligibleReferee({
+    id: "active-referee",
+    trustScore: 70,
+  }, 90, [appointment]), true);
+  assert.equal(isEligibleReferee({
+    id: "active-referee",
+    trustScore: 69,
+  }, 90, [appointment]), false);
+});
+
+test("경기 시작 뒤 신뢰도 자동 회수된 기존 배정 심판만 경기 완료 권한을 유지한다", () => {
+  const referee = { id: "active-referee", trustScore: 69 };
+  const autoRevokedAppointment = {
+    userId: referee.id,
+    role: "referee",
+    grade: "candidate",
+    status: "revoked",
+    autoRevoked: true,
+    revokeReason: "referee_trust_below_70",
+    revokedAt: "2026-07-30T12:05:00.000Z",
+  };
+  assert.equal(canOperateAssignedMatchReferee(referee, {
+    id: "ongoing-match",
+    refereeId: referee.id,
+    startedAt: "2026-07-30T12:00:00.000Z",
+    status: "agreed",
+  }, [autoRevokedAppointment]), true);
+  assert.equal(canOperateAssignedMatchReferee(referee, {
+    id: "ongoing-match",
+    refereeId: referee.id,
+    startedAt: "2026-07-30T12:00:00.000Z",
+    status: "agreed",
+  }, [{ ...autoRevokedAppointment, autoRevoked: false, revokeReason: "manual_revoke" }]), false);
+  assert.equal(canOperateAssignedMatchReferee(referee, {
+    id: "late-started-match",
+    refereeId: referee.id,
+    startedAt: "2026-07-30T12:10:00.000Z",
+    status: "agreed",
+  }, [autoRevokedAppointment]), false);
+  assert.equal(canOperateAssignedMatchReferee(referee, {
+    id: "future-match",
+    refereeId: referee.id,
+    status: "agreed",
+  }, [autoRevokedAppointment]), false);
 });

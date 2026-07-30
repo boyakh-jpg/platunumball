@@ -1,5 +1,4 @@
 import { MATCH_SIDES } from "../../../lib/constants.js";
-import { REFEREE_TRUST_MIN } from "../../../lib/constants.js";
 import { ROOM_SCHEDULE_MAX_DAYS } from "../../../lib/constants.js";
 import { SCHEDULE_MAX_DAYS } from "../../../lib/constants.js";
 import { doTournamentMatchSchedulesOverlap } from "../../../lib/tournamentGovernance.js";
@@ -9,10 +8,9 @@ import { getScheduleText } from "../../scheduleUtils.js";
 import { getTeamCaptainId } from "../../../lib/matchUtils.js";
 import { getTournamentRefereeStatus } from "../../../lib/tournamentGovernance.js";
 import { getTournamentScheduleEditPolicy } from "../../../lib/matchUtils.js";
-import { isEligibleReferee } from "../../../lib/matchUtils.js";
 import { isScheduleDateInAllowedWindow } from "../../scheduleUtils.js";
 import { isTournamentGovernanceEnabled } from "../../../lib/tournamentGovernance.js";
-import { isTournamentRefereeNeutral } from "../../../lib/tournamentGovernance.js";
+import { isTournamentRefereeAuthorized, isTournamentRefereeNeutral } from "../../../lib/tournamentGovernance.js";
 import { makeId } from "../../rowUtils.js";
 import { getInvalidScheduleNotification } from "../guards.js";
 import { advanceTournamentAfterMatch } from "../lifecycle.js";
@@ -92,11 +90,10 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
     const teamBId = match.teamB?.teamId ?? match.teamBId;
     const refereeAccepted = Boolean(match.refereeId)
       && getTournamentRefereeStatus(tournament, match.refereeId) === "accepted";
-    const refereeEligible = refereeAccepted && isEligibleReferee(
+    const refereeEligible = refereeAccepted && isTournamentRefereeAuthorized(
+      tournament,
       referee,
-      REFEREE_TRUST_MIN,
       state.settings?.refereeAppointments,
-      tournament.endDate,
     );
     const refereeNeutral = refereeEligible
       && isTournamentRefereeNeutral(tournament, match.refereeId, teamAId, teamBId, state.teams);
@@ -196,11 +193,10 @@ export function assignTournamentMatchReferee(state, tournamentId, matchId, refer
   const match = (state.matches ?? []).find((item) => item.id === matchId && item.tournamentId === tournamentId);
   if (!tournament || !match || tournament.createdBy !== state.currentUserId || match.startedAt || match.endedAt) return state;
   if (getTournamentRefereeStatus(tournament, refereeId) !== "accepted") return state;
-  if (!isEligibleReferee(
+  if (!isTournamentRefereeAuthorized(
+    tournament,
     state.users.find((user) => user.id === refereeId),
-    REFEREE_TRUST_MIN,
     state.settings?.refereeAppointments,
-    tournament.endDate,
   )) return state;
   const teamAId = match.teamA?.teamId ?? match.teamAId;
   const teamBId = match.teamB?.teamId ?? match.teamBId;

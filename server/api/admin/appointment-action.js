@@ -1,4 +1,5 @@
 import { allowRequestMethod, readJsonBody, requireAdminContext, sendJson } from "../_supabaseAdmin.js";
+import { REFEREE_TRUST_MIN } from "../../../shared/lib/constants.js";
 
 export default async function handler(request, response) {
   if (!allowRequestMethod(request, response)) return;
@@ -18,6 +19,26 @@ export default async function handler(request, response) {
     if (!["revokeAppointment", "extendAppointment"].includes(actionType) && !targetUserId) {
       sendJson(response, 400, { error: "missing_target_user_id" });
       return;
+    }
+
+    if (actionType === "appointReferee") {
+      const { data: targetProfile, error: profileError } = await context.supabase
+        .from("profiles")
+        .select("id, trust_score")
+        .eq("id", targetUserId)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      if (!targetProfile) {
+        sendJson(response, 404, { error: "profile_not_found" });
+        return;
+      }
+      if (Number(targetProfile.trust_score ?? 0) < REFEREE_TRUST_MIN) {
+        sendJson(response, 400, {
+          error: "referee_entry_trust_too_low",
+          requiredTrust: REFEREE_TRUST_MIN,
+        });
+        return;
+      }
     }
 
     if (actionType === "extendAppointment") {

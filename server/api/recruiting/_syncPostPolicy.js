@@ -1,6 +1,6 @@
 import { isSupportedMatchMode } from "../../../shared/lib/matchConstants.js";
 import { nullableText, toArray } from "../_supabaseAdmin.js";
-import { isValidBenchCapacity } from "../../../shared/lib/constants.js";
+import { REFEREE_ACTIVE_TRUST_MIN, TEST_REFEREE_LOGIN_IDS, isValidBenchCapacity } from "../../../shared/lib/constants.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { normalizeRecruitingMmrRangeMode } from "../../../shared/lib/recruiting.js";
 import { getAgeGroupByBirthYear } from "../../../shared/lib/profileSetup.js";
@@ -452,7 +452,7 @@ export function validateLockedRecruitingCore(profileId, existingPost, nextPost, 
   if (!sameJson(existingCore, nextCore)) reject(403, "recruiting_core_locked");
 }
 
-async function isActiveReferee(supabase, userId, minTrust = 0) {
+async function isActiveReferee(supabase, userId, _minTrust = 0) {
   if (!userId) return false;
   const [{ data, error }, { data: profile, error: profileError }] = await Promise.all([
     supabase
@@ -462,13 +462,13 @@ async function isActiveReferee(supabase, userId, minTrust = 0) {
       .eq("status", "active"),
     supabase
       .from("profiles")
-      .select("id, trust_score")
+      .select("id, trust_score, test_login_id")
       .eq("id", userId)
       .maybeSingle(),
   ]);
   if (error) throw error;
   if (profileError) throw profileError;
-  if (Number(profile?.trust_score ?? 0) < Number(minTrust || 0)) return false;
+  if (Number(profile?.trust_score ?? 0) < REFEREE_ACTIVE_TRUST_MIN && !TEST_REFEREE_LOGIN_IDS.includes(String(profile?.test_login_id ?? "").toLowerCase())) return false;
   const now = Date.now();
   return toArray(data).some((row) => !row.ends_at || Date.parse(row.ends_at) > now);
 }

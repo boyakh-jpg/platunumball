@@ -7,9 +7,7 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getUserHashtag } from "../lib/handles.js";
-import { isEligibleReferee } from "../lib/matchUtils.js";
-import { REFEREE_TRUST_MIN } from "../lib/constants.js";
-import { TOURNAMENT_SANCTION_STATUS, getTournamentSanctionLabel, isTournamentRefereeNeutral } from "../lib/tournamentGovernance.js";
+import { TOURNAMENT_SANCTION_STATUS, getTournamentSanctionLabel, isTournamentRefereeAuthorized, isTournamentRefereeNeutral } from "../lib/tournamentGovernance.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import {
   formatLabels,
@@ -248,11 +246,10 @@ return (
               const teamAId = match.teamA?.teamId ?? match.teamAId;
               const teamBId = match.teamB?.teamId ?? match.teamBId;
               const neutralRefereeIds = acceptedRefereeIds.filter((refereeId) => (
-                isEligibleReferee(
+                isTournamentRefereeAuthorized(
+                  tournament,
                   userById[refereeId],
-                  REFEREE_TRUST_MIN,
                   app.state.settings?.refereeAppointments,
-                  tournament.endDate,
                 )
                 && isTournamentRefereeNeutral(tournament, refereeId, teamAId, teamBId, app.state.teams)
               ));

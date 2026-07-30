@@ -1,5 +1,5 @@
 import { ADMIN_GRADE_META } from "../../../lib/admin.js";
-import { DAY_MS } from "../../../lib/constants.js";
+import { DAY_MS, REFEREE_TRUST_MIN } from "../../../lib/constants.js";
 import { REFEREE_GRADE_META } from "../../../lib/admin.js";
 import { canManageAppointmentRole } from "../../../lib/admin.js";
 import { getAdminAuthorityLevel } from "../../../lib/admin.js";
@@ -105,10 +105,17 @@ export function commitAdminAppointmentAction(state, draft = {}) {
     };
   }
   const userId = String(draft.userId ?? "");
-  if (!state.users.some((user) => user.id === userId)) {
+  const targetUser = state.users.find((user) => user.id === userId);
+  if (!targetUser) {
     return {
       ...state,
       notifications: [getAdminActionNotification("임명할 플레이어를 찾을 수 없습니다."), ...state.notifications],
+    };
+  }
+  if (role === "referee" && Number(targetUser.trustScore ?? 0) < REFEREE_TRUST_MIN) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification(`신규 심판 임명은 신뢰도 ${REFEREE_TRUST_MIN} 이상이어야 합니다.`), ...state.notifications],
     };
   }
   const grade = role === "admin"

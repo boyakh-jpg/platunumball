@@ -10,6 +10,7 @@ import {
   getTournamentUncoveredTeamPairs,
   doTournamentMatchSchedulesOverlap,
   isTournamentGovernanceEnabled,
+  isTournamentRefereeAuthorized,
   isTournamentRefereeNeutral,
 } from "../src/lib/tournamentGovernance.js";
 import {
@@ -57,6 +58,43 @@ test("팀 수에 따라 필수 심판 수가 2·3·4명으로 증가한다", () 
   assert.equal(isTournamentGovernanceEnabled({ rules: { governanceVersion: 2 } }), true);
   assert.equal(isTournamentGovernanceEnabled({ rules: {} }), false);
   assert.equal(isTournamentGovernanceEnabled(null), false);
+});
+
+test("활성 대회에서 승인된 기존 심판은 신뢰도 자동 회수 뒤에만 대회를 완료한다", () => {
+  const referee = { id: "referee-low", trustScore: 69 };
+  const autoRevokedAppointment = {
+    userId: referee.id,
+    role: "referee",
+    grade: "candidate",
+    status: "revoked",
+    autoRevoked: true,
+    revokeReason: "referee_trust_below_70",
+    revokedAt: "2026-07-30T12:05:00.000Z",
+  };
+  assert.equal(isTournamentRefereeAuthorized({
+    status: "active",
+    startedAt: "2026-07-30T12:00:00.000Z",
+    refereeIds: [referee.id],
+    refereeStatuses: { [referee.id]: "accepted" },
+  }, referee, [autoRevokedAppointment]), true);
+  assert.equal(isTournamentRefereeAuthorized({
+    status: "active",
+    startedAt: "2026-07-30T12:00:00.000Z",
+    refereeIds: [referee.id],
+    refereeStatuses: { [referee.id]: "accepted" },
+  }, referee, [{ ...autoRevokedAppointment, autoRevoked: false, revokeReason: "manual_revoke" }]), false);
+  assert.equal(isTournamentRefereeAuthorized({
+    status: "active",
+    startedAt: "2026-07-30T12:10:00.000Z",
+    refereeIds: [referee.id],
+    refereeStatuses: { [referee.id]: "accepted" },
+  }, referee, [autoRevokedAppointment]), false);
+  assert.equal(isTournamentRefereeAuthorized({
+    status: "draft",
+    startedAt: "2026-07-30T12:00:00.000Z",
+    refereeIds: [referee.id],
+    refereeStatuses: { [referee.id]: "accepted" },
+  }, referee, [autoRevokedAppointment]), false);
 });
 
 test("공식·지역 비승인 모두 승인된 중립 심판 풀을 요구한다", () => {

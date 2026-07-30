@@ -1540,9 +1540,10 @@ UI 수정 전:
 3. If the current user's team rows are already present, `/app/teams` shows the actual `n/3` team count even while the broader team directory load is pending. Only missing team rows use the pending `...` badge.
 3. Profile and signup form rows use fixed one-line control height from `--ui-button-height` and reserve enough label row height so inputs/selects align across the two-column grid.
 4. Recruiting room join submit locks the button with `참여 중` while the server action is pending. Success or direct `?post=` entry must leave the room detail selected, or show only the shared basketball loader until detail arrives.
-5. 즉시 모집방 일정 문구는 Home, Matches, Recruiting 목록, 방 모달에서 `즉시 · HH:mm 종료` 형식으로 종료 시각을 같이 보여준다.
+5. 즉시 모집방 일정 문구는 Home, Matches, Recruiting 목록, 방 모달에서 `즉시`만 보여준다. 내부 만료시각을 경기 종료시각처럼 노출하지 않는다.
 6. 팀 메뉴의 내 팀 관리 행은 대표팀 상태/설정 버튼을 같은 행 오른쪽에 둔다. 현재 대표팀은 orange primary 버튼으로 표시하고, 다른 팀은 secondary `대표 설정` 버튼을 쓴다.
 7. 팀 메뉴의 내 팀 관리 행은 클릭하면 해당 팀 상세로 이동한다. 팀장은 `#team-control` 관리 구역으로 이동하며, 대표팀 상태/설정 버튼은 행 이동을 실행하지 않고 기존 설정 동작만 수행한다.
+8. 심판 검색·초대 UI는 `신규 자격 기준 90`과 `활성 심판 초대 기준 70 이상`을 구분한다. 심판 hover card는 신뢰도 70 미만이면 공식 자격 보유 여부와 무관하게 `활동 정지`를 먼저 표시한다.
 
 ## 2026-07-06 recruiting ready removal UI
 

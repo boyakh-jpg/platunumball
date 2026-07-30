@@ -6,6 +6,7 @@ import { EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalize
 import { DEFAULT_REPORT_REASON } from "../lib/reportReasons.js";
 import {
   MATCH_DISPUTE_REASON_OPTIONS,
+  canOperateAssignedMatchReferee,
   canUserResolveMatchDispute,
   canRequestVoidMatchRestore,
   getAgreementStatus,
@@ -26,7 +27,6 @@ import {
   getPlayerSideName,
   getPlayerStatSubmitted,
   getStatSubmissionStatus,
-  isEligibleReferee,
   isMatchReferee,
   isMatchRecordMatch,
   isPersonalRecordMatch,
@@ -200,7 +200,11 @@ const { matchId } = useParams();
   const hasReferee = Boolean(match.refereeId);
   const isSoloRecord = isPersonalRecordMatch(match);
   const currentUserIsReferee = isMatchReferee(match, app.currentUser.id);
-  const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(app.currentUser, match.refereeTrustMin, app.state.settings?.refereeAppointments);
+  const currentUserIsEligibleReferee = currentUserIsReferee && canOperateAssignedMatchReferee(
+    app.currentUser,
+    match,
+    app.state.settings?.refereeAppointments,
+  );
   const operationSummary = isSoloRecord
     ? "작성자 · 내 기록"
     : referee

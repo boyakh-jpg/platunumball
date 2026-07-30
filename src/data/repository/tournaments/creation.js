@@ -1,6 +1,6 @@
 import { DEFAULT_RATING } from "../../../lib/constants.js";
 import { DEFAULT_TOURNAMENT_MMR_GAP } from "../../../lib/constants.js";
-import { REFEREE_TRUST_MIN } from "../../../lib/constants.js";
+import { REFEREE_ACTIVE_TRUST_MIN, REFEREE_TRUST_MIN } from "../../../lib/constants.js";
 import { TOURNAMENT_SANCTION_STATUS } from "../../../lib/tournamentGovernance.js";
 import { getCourtId } from "../../../lib/courts.js";
 import { getMatchRulesPayload } from "../../../lib/matchRules.js";
@@ -127,7 +127,7 @@ export function createTournament(state, draft) {
       notifications: [{
         id: makeId("n"),
         title: "심판 자격 필요",
-        body: `대회 주최자는 신뢰도 ${REFEREE_TRUST_MIN} 이상인 자격심판이어야 합니다.`,
+        body: `대회 주최자는 신뢰도 ${REFEREE_ACTIVE_TRUST_MIN} 이상인 활성 자격심판이어야 합니다.`,
         tone: "match",
       }, ...state.notifications],
     };
