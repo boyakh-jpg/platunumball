@@ -65,7 +65,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
   };
 
   return (
-    <Card className="approval-panel">
+    <Card className="approval-panel record-approval-panel">
       <div className="section-title-row">
         <div>
           <p className="eyebrow">참가 확인</p>

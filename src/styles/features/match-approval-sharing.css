@@ -62,12 +62,12 @@
   display: grid;
   gap: var(--space-4);
 }
-.approval-grid {
+.approval-panel .approval-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-6);
 }
-.approval-grid > div {
+.approval-panel .approval-grid > div {
   display: grid;
   gap: var(--space-5);
   border: var(--ui-card-border-width) solid var(--ui-card-border);
@@ -75,8 +75,69 @@
   background: var(--ui-card-bg);
   padding: var(--card-padding);
 }
-.approval-grid span {
+.approval-panel .approval-grid span {
   color: var(--muted);
+}
+.record-approval-panel.approval-panel {
+  display: grid;
+  gap: var(--space-6);
+}
+.arena-match-source-record-board > .record-approval-panel.approval-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.arena-lobby-modal .record-approval-panel.approval-panel {
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+.arena-lobby-modal .arena-match-source-record-board > .record-approval-panel.approval-panel {
+  padding: 0;
+}
+.arena-lobby-modal .record-approval-panel.approval-panel > .section-title-row h2 {
+  font-size: var(--font-size-title-md);
+  line-height: 1.2;
+}
+.arena-lobby-modal .record-approval-panel .approval-grid {
+  gap: var(--ui-control-group-gap);
+}
+.arena-lobby-modal .record-approval-panel .approval-grid > div {
+  gap: var(--ui-control-group-gap);
+  padding: var(--space-5);
+}
+.arena-lobby-modal .record-approval-panel .approval-side-header {
+  flex-wrap: wrap;
+  gap: var(--ui-control-group-gap);
+}
+.arena-lobby-modal .record-approval-panel .approval-side-header > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-title-sm);
+  line-height: 1.2;
+}
+.arena-lobby-modal .record-approval-panel .approval-side-header > span {
+  margin-left: auto;
+  font-size: var(--font-size-meta);
+  text-align: right;
+}
+.arena-lobby-modal .record-approval-panel .approval-voter-list {
+  gap: var(--ui-control-group-gap);
+}
+.arena-lobby-modal .record-approval-panel .approval-voter-list button {
+  gap: var(--ui-control-group-gap);
+  min-height: var(--ui-button-height);
+  padding: var(--ui-control-group-padding);
+}
+.arena-lobby-modal .record-approval-panel .approval-voter-list button > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-body-sm);
+  line-height: 1.25;
+}
+.arena-lobby-modal .record-approval-panel .approval-guard-note {
+  margin-top: 0;
 }
 .approval-status-strip {
   display: grid;

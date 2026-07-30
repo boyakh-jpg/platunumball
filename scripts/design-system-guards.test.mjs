@@ -59,6 +59,7 @@ const matchCreationWizardSource = read("src/components/match/MatchCreationWizard
 const matchRecordMetaSource = read("src/components/match/MatchRecordMeta.jsx");
 const recentMatchRowSource = read("src/components/match/RecentMatchRow.jsx");
 const mmrRangeSelectorSource = read("src/components/match/MmrRangeSelector.jsx");
+const approvalPanelSource = read("src/components/match/ApprovalPanel.jsx");
 const profileBasicsFieldsSource = read("src/components/profile/ProfileBasicsFields.jsx");
 const signupSource = read("src/pages/Signup.jsx");
 const matchOperationsFieldsSource = matchCreationWizardSource.slice(
@@ -1222,6 +1223,40 @@ test("경기 기록 팀명과 픽업 운영 행은 공용 스포츠·버튼 타�
     /\.pickup-rotation-panel \.ui-status-strip\s*\{[^}]*font-size:\s*var\(--ui-button-font-size\);[^}]*font-weight:\s*var\(--ui-button-font-weight\);[^}]*line-height:\s*1\.2;/,
   );
   assert.doesNotMatch(pageSources.recruiting, />기록방</);
+});
+
+test("경기 기록 참가 확인은 공용 surface token과 모달 밀도를 사용한다", () => {
+  assert.match(approvalPanelSource, /className="approval-panel record-approval-panel"/);
+  assert.match(
+    globalWorkflowStyles,
+    /\.approval-panel \.approval-grid > div\s*\{[^}]*border:\s*var\(--ui-card-border-width\) solid var\(--ui-card-border\);[^}]*background:\s*var\(--ui-card-bg\);/,
+  );
+  assert.match(
+    globalAdminStyles,
+    /\.approval-panel \.approval-voter-list button\s*\{[^}]*border:\s*var\(--ui-button-border-width\) solid var\(--ui-button-border\);[^}]*background:\s*var\(--ui-button-bg\);/,
+  );
+  assert.match(
+    globalAdminStyles,
+    /\.approval-panel \.approval-guard-note\s*\{[^}]*border:\s*var\(--ui-control-group-border-width\) solid var\(--ui-control-group-border\);[^}]*background:\s*var\(--ui-control-group-bg\);/,
+  );
+  assert.match(
+    globalWorkflowStyles,
+    /\.record-approval-panel\.approval-panel\s*\{[^}]*display:\s*grid;[^}]*gap:\s*var\(--space-6\);/,
+  );
+  assert.match(
+    globalWorkflowStyles,
+    /\.arena-match-source-record-board > \.record-approval-panel\.approval-panel\s*\{[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;[^}]*padding:\s*0;/,
+  );
+  assert.match(
+    globalWorkflowStyles,
+    /\.arena-lobby-modal \.record-approval-panel\.approval-panel > \.section-title-row h2\s*\{[^}]*font-size:\s*var\(--font-size-title-md\);/,
+  );
+  assert.match(
+    globalWorkflowStyles,
+    /@media \(max-width:\s*720px\)[\s\S]*?\.approval-panel \.approval-grid,[\s\S]*?grid-template-columns:\s*1fr;/,
+  );
+  assert.doesNotMatch(globalAdminStyles, /\.approval-panel \.approval-(?:voter-list|guard-note)[^}]*rgba\(/);
+  assert.doesNotMatch(globalAdminStyles, /html\[data-theme="light"\] \.approval-(?:grid|voter-list)/);
 });
 
 test("방모달 참가자 상태와 관리 action은 선수 오른쪽 열과 공용 구분선을 사용한다", () => {

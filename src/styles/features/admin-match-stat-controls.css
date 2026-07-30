@@ -391,19 +391,19 @@
   white-space: normal;
 }
 
-.approval-side-header {
+.approval-panel .approval-side-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
 }
 
-.approval-voter-list {
+.approval-panel .approval-voter-list {
   display: grid;
   gap: var(--space-4);
 }
 
-.approval-voter-list button {
+.approval-panel .approval-voter-list button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -418,43 +418,33 @@
   text-align: left;
 }
 
-.approval-voter-list button.approved {
-  border-color: var(--ui-button-border);
-  background: rgba(88, 210, 192, 0.11);
-}
-
-.approval-voter-list button:disabled {
+.approval-panel .approval-voter-list button:disabled {
   cursor: default;
   opacity: 0.72;
 }
 
-.approval-voter-list em {
+.approval-panel .approval-voter-list em {
   color: var(--gold);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;
 }
 
-.approval-guard-note {
+.approval-panel .approval-guard-note {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--ui-control-group-gap);
   margin-top: 12px;
-  border: var(--ui-card-border-width) solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  background: rgba(255, 211, 108, 0.075);
-  padding: 10px;
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  padding: var(--ui-control-group-padding);
 }
 
-.approval-guard-note.ready {
-  border-color: rgba(70, 224, 182, 0.28);
-  background: rgba(70, 224, 182, 0.075);
-}
-
-.approval-guard-note strong {
+.approval-panel .approval-guard-note strong {
   color: var(--text);
 }
 
-.approval-guard-note span {
+.approval-panel .approval-guard-note span {
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 850;

@@ -266,7 +266,7 @@
   .court-reservation-row,
   .search-controls,
   .two-column,
-  .approval-grid,
+  .approval-panel .approval-grid,
   .score-form {
     grid-template-columns: 1fr;
   }

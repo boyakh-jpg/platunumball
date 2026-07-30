@@ -201,9 +201,7 @@ html[data-theme="light"] .broadcast-list span,
 html[data-theme="light"] .rating-card,
 html[data-theme="light"] .contract-grid div,
 html[data-theme="light"] .memo-box,
-html[data-theme="light"] .approval-grid > div,
 html[data-theme="light"] .stat-player-button,
-html[data-theme="light"] .approval-voter-list button,
 html[data-theme="light"] .stat-stepper-row,
 html[data-theme="light"] .settings-toggle-grid label {
   border-color: rgba(32, 56, 68, 0.14);
@@ -351,7 +349,7 @@ html[data-theme="light"] .team-search-popover button.selected {
     margin-inline: auto;
   }
 
-  .approval-side-header,
+  .approval-panel .approval-side-header,
   .member-control-row,
   .team-danger-zone,
   .match-action-row,
