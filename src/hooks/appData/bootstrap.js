@@ -321,12 +321,6 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         includeTeams: options.endpoint === "homeLoad",
       }), getEndpointFallbackMeta(options));
     }
-    const result = await postServerAction(
-      "/api/state/load",
-      { authUserId, authEmail, ...loadOptions },
-      { allowWhenDisabled: true },
-    );
-    if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { recruitingPage: result.page ?? null });
   } catch (error) {
     console.warn("Server state load failed. Falling back to profile-only state.", error.message);
     fallbackErrorMessage = error.message ?? "state_load_failed";

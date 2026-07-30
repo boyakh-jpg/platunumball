@@ -18,7 +18,6 @@ import {
   getRecruitingApplicantKey,
   normalizeRecruitingPost,
   getRecruitingTargetMmr,
-  getRecruitingRoomOwnerId,
   isRecruitingRoomOwner,
   isRecruitingPostForUser,
   getRecruitingEntryForUser,

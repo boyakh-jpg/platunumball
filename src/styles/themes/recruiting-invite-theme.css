@@ -1,0 +1,486 @@
+@media (max-width: 720px) {
+  .arena-reserve-panel,
+  html[data-theme="light"] .arena-reserve-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .arena-reserve-line > strong,
+  html[data-theme="light"] .arena-reserve-line > strong {
+    font-size: 0.72rem;
+  }
+}
+
+/* 2026-07-01 room slot fit: avoid cramped mode chips and reserve stack. */
+
+.arena-lobby-modal .badge-row .badge {
+  font-family: inherit;
+  letter-spacing: 0.01em;
+}
+
+.arena-lobby-modal .arena-room-slot-row,
+.arena-lobby-modal .arena-room-reserve-row {
+  max-width: 100%;
+}
+
+.arena-lobby-modal .arena-room-slot-row {
+  overflow-x: hidden;
+}
+
+.arena-lobby-modal .arena-room-party-group {
+  grid-template-columns: repeat(var(--party-slot-count, 2), minmax(0, 1fr));
+}
+
+.arena-lobby-modal .arena-room-party-group,
+html[data-theme="light"] .arena-lobby-modal .arena-room-party-group {
+  --party-line-inset: calc((100% / var(--party-slot-count, 2)) / 2);
+}
+
+.arena-lobby-modal .arena-room-party-group::after,
+html[data-theme="light"] .arena-lobby-modal .arena-room-party-group::after {
+  left: var(--party-line-inset);
+  right: var(--party-line-inset);
+  transform: none;
+  width: auto;
+}
+
+.arena-lobby-modal .arena-reserve-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.arena-lobby-modal .arena-reserve-panel {
+  gap: 8px;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:first-child {
+  grid-column: 1;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) {
+  grid-column: 2;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > strong,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > strong {
+  text-align: right;
+}
+
+.arena-lobby-modal .arena-reserve-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.arena-lobby-modal .arena-reserve-line > strong {
+  min-width: 0;
+  padding-top: 0;
+  white-space: nowrap;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  justify-content: start;
+  scrollbar-width: none;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) > .arena-room-reserve-row {
+  justify-content: end;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal .arena-room-slot-row {
+    grid-template-columns: repeat(var(--slot-count, 5), minmax(0, 1fr));
+  }
+
+  .arena-lobby-modal .arena-room-player-slot {
+    min-width: 0;
+  }
+
+  .arena-lobby-modal .arena-reserve-line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 2026-07-01 remove court grid overlays. */
+
+.arena-recruit-hero {
+  background:
+    linear-gradient(90deg, rgba(5, 8, 12, 0.98), rgba(5, 8, 12, 0.74) 56%, rgba(24, 16, 8, 0.78)),
+    radial-gradient(circle at 80% 20%, rgba(240, 90, 70, 0.18), transparent 12rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--scoreboard);
+}
+
+html[data-theme="light"] .arena-recruit-hero {
+  background:
+    linear-gradient(90deg, rgba(255, 250, 241, 0.82), rgba(255, 250, 241, 0.58) 56%, rgba(245, 241, 232, 0.78)),
+    radial-gradient(circle at 80% 20%, rgba(229, 85, 63, 0.12), transparent 12rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+.arena-lobby-arena::before,
+html[data-theme="light"] .arena-lobby-arena::before {
+  background: radial-gradient(ellipse at 50% 48%, rgba(240, 90, 70, 0.14), transparent 20rem);
+}
+
+/* 2026-07-01 shared primitive alignment for recruiting chunk. */
+
+.arena-filter-bar,
+.arena-queue-controls,
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-room-chat {
+  border: var(--ui-room-panel-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-owner-panel,
+html[data-theme="light"] .arena-room-rule-panel,
+html[data-theme="light"] .arena-join-panel,
+html[data-theme="light"] .arena-invite-panel,
+html[data-theme="light"] .arena-room-chat {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.arena-filter-bar button,
+.arena-filter-bar .segmented-control button,
+.arena-filter-bar .arena-start-date-filter button,
+.arena-slot-command-popover .arena-invite-team-picker > .button {
+  min-height: var(--control-height);
+  border: var(--ui-button-border-width) solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  font-size: var(--control-font-size);
+  font-weight: 900;
+}
+
+.arena-filter-select select {
+  background: var(--input-bg);
+}
+
+.arena-filter-bar button.active,
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
+/* 2026-07-01 standard UI cleanup: recruiting controls follow shared primitives. */
+
+.arena-hero-copy h1,
+.arena-lobby-title h1 {
+  color: var(--hero-title-color);
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-shadow: var(--hero-title-shadow);
+  text-transform: uppercase;
+}
+
+.arena-hero-copy p,
+.arena-lobby-title p {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+.arena-hero-copy .eyebrow,
+.arena-lobby-title .eyebrow,
+.arena-owner-panel .eyebrow,
+.arena-room-rule-panel .eyebrow,
+.arena-join-panel .eyebrow,
+.arena-invite-panel .eyebrow {
+  color: var(--rb-orange);
+}
+
+.arena-hero-panel,
+.arena-compose-drawer,
+.arena-slot-command-popover,
+.arena-lobby-team-panel,
+.arena-reserve-panel,
+.arena-room-edit-panel,
+.arena-referee-invite-panel,
+.arena-host-kick-panel,
+.arena-party-member-card {
+  border: var(--ui-card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-compose-drawer,
+html[data-theme="light"] .arena-slot-command-popover,
+html[data-theme="light"] .arena-lobby-team-panel,
+html[data-theme="light"] .arena-reserve-panel,
+html[data-theme="light"] .arena-room-edit-panel,
+html[data-theme="light"] .arena-referee-invite-panel,
+html[data-theme="light"] .arena-host-kick-panel,
+html[data-theme="light"] .arena-party-member-card {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.arena-icon-button,
+.arena-modal-close-button,
+.arena-team-choice-grid button,
+.arena-party-picker-grid > button,
+.arena-party-role-buttons button,
+.arena-invite-team-head > button,
+.arena-invite-member-grid button {
+  min-height: var(--control-height);
+  border: var(--ui-stroke-width) solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  font-size: var(--control-font-size);
+  font-weight: 900;
+}
+
+.arena-team-choice-grid button.selected,
+.arena-party-picker-grid > button.selected,
+.arena-party-role-buttons button.active,
+.arena-invite-team-head > button.active,
+.arena-invite-member-grid button.selected {
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
+@media (max-width: 720px) {
+  .arena-hero-copy h1,
+  .arena-lobby-title h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}
+
+/* 2026-07-01 final recruiting UI module.
+   This chunk loads after globals.css, so local controls must point back to --ui-* tokens. */
+
+.arena-filter-bar,
+.arena-hero-panel,
+.arena-compose-drawer,
+.arena-lobby-team-panel,
+.arena-reserve-panel,
+.arena-room-edit-panel,
+.arena-referee-invite-panel,
+.arena-host-kick-panel,
+.arena-party-member-card,
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-room-chat {
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.arena-lobby-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, calc(100dvw - 32px));
+  max-width: calc(100dvw - 32px);
+  max-height: calc(100dvh - 36px);
+  overflow: hidden;
+  padding: 0;
+  opacity: var(--sheet-modal-opacity, 1);
+  transform: translateY(var(--sheet-drag-y, 0px));
+  will-change: opacity, transform;
+  border: var(--ui-room-modal-border-width) solid var(--ui-room-modal-border);
+  border-radius: var(--ui-room-modal-radius);
+  background: var(--ui-room-modal-bg);
+  background-clip: padding-box;
+  box-shadow: var(--ui-room-modal-shadow);
+}
+
+.arena-side-roster,
+.arena-lobby-versus-stage,
+.arena-lobby-team-panel,
+.arena-reserve-panel,
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-room-chat {
+  border-color: var(--ui-room-panel-border);
+  background: var(--ui-room-panel-bg);
+}
+
+.arena-lobby-modal .arena-lobby-versus-stage,
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-versus-stage {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.arena-lobby-modal .arena-lobby-team-panel {
+  border-color: var(--ui-room-panel-border);
+  background: var(--ui-room-panel-bg);
+  overflow: visible;
+}
+
+.arena-lobby-modal .arena-room-slot-row {
+  padding: 18px;
+  margin: -18px;
+  overflow: visible;
+}
+
+.arena-lobby-modal .arena-reserve-panel,
+.arena-lobby-modal .arena-reserve-line,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line {
+  overflow: visible;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  padding: 18px;
+  margin: -18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.arena-lobby-modal .arena-reserve-line,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line {
+  inline-size: 100%;
+  min-inline-size: 0;
+  justify-self: stretch;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  box-sizing: border-box;
+  inline-size: calc(100% + 36px);
+  min-inline-size: 0;
+  max-width: none;
+  justify-self: stretch;
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal .arena-lobby-arena {
+    --room-slot-width: min(72px, calc((100dvw - 128px) / var(--room-side-slot-count, 4)));
+  }
+
+  .arena-lobby-modal .arena-room-slot-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-room-slot-row {
+    grid-auto-columns: minmax(var(--room-slot-width), var(--room-slot-width));
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    justify-content: start;
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+  }
+
+  .arena-lobby-modal .arena-room-slot-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .arena-lobby-modal .arena-reserve-line,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-line {
+    padding-inline: 0;
+  }
+
+  .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    inline-size: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: visible;
+  }
+}
+
+@media (max-width: 380px) {
+  .arena-lobby-modal .arena-reserve-panel,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:first-child,
+  .arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) {
+    grid-column: 1;
+  }
+}
+
+.arena-lobby-modal .arena-lobby-team-panel .arena-side-roster,
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-roster {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.arena-filter-bar .segmented-control,
+.arena-filter-bar .arena-start-date-filter,
+.arena-team-choice-grid,
+.arena-party-picker-grid,
+.arena-party-role-buttons,
+.arena-invite-member-grid,
+.arena-invite-team-picker,
+.arena-slot-command-popover .arena-invite-actions {
+  gap: var(--ui-control-group-gap);
+  align-items: stretch;
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  box-shadow: none;
+  padding: var(--ui-control-group-padding);
+  overflow: visible;
+}
+
+.arena-filter-bar button,
+.arena-filter-bar .segmented-control button,
+.arena-filter-bar .arena-start-date-filter button,
+.arena-icon-button,
+.arena-modal-close-button,
+.arena-team-choice-grid button,
+.arena-party-picker-grid > button,
+.arena-party-role-buttons button,
+.arena-invite-team-head > button,
+.arena-invite-member-grid button,
+.arena-slot-command-popover .arena-invite-team-picker > .button {
+  min-height: var(--ui-button-height);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  box-shadow: none;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+}
+
+.arena-icon-button,
+.arena-modal-close-button {
+  width: var(--ui-icon-button-size);
+  height: var(--ui-icon-button-size);
+  min-height: var(--ui-icon-button-size);
+  display: inline-grid;
+}

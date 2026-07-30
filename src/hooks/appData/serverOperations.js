@@ -1,3 +1,5 @@
+import { getProfileShellId as getClientProfileShellId } from "../../../shared/lib/profileMappers.js";
+
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
 }
@@ -17,11 +19,6 @@ function getServerActionErrorText(error = {}) {
 function getNewItems(before = [], after = []) {
   const beforeIds = new Set((before ?? []).map((item) => item?.id).filter(Boolean));
   return (after ?? []).filter((item) => item?.id && !beforeIds.has(item.id));
-}
-
-function getClientProfileShellId(authUserId = "") {
-  const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
-  return `p_${safeId}`;
 }
 
 function isPersistentProfileId(userId = "") {

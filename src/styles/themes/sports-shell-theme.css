@@ -1,0 +1,481 @@
+/* 2026-07-01 premium sports UI pass: shared shell, surfaces, login, home. */
+html,
+body {
+  overflow-x: hidden;
+}
+.app-main {
+  padding: var(--page-gutter);
+}
+.card,
+.section-card,
+.modal,
+.selector-panel,
+.team-card,
+.rating-card,
+.profile-records-summary,
+.home-search-panel,
+.home-action-card,
+.match-focus-card,
+.home-recent-card,
+.rank-leaderboard-card,
+.season-mini-card,
+.settings-page .section-card {
+  box-shadow: var(--shadow);
+}
+.card {
+  background: rgba(10, 14, 21, 0.92);
+  background-image: none;
+}
+.button,
+input,
+select,
+textarea,
+.segmented-control,
+.contract-grid div,
+.two-column > div,
+.search-picker-results.is-floating {
+  border-radius: var(--radius-md);
+}
+.button,
+.provider-button,
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+.button,
+.provider-button,
+.bottom-nav a,
+.nav-item,
+.segmented-control button {
+  min-height: 44px;
+}
+.auth-shell {
+  align-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+}
+.auth-card {
+  width: min(520px, 100%);
+  border-radius: var(--radius-lg);
+  background: rgba(9, 13, 20, 0.92);
+  background-image: none;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+}
+.auth-form h1 {
+  font-size: clamp(2.05rem, 7vw, 2.8rem);
+  line-height: 1;
+}
+.provider-button {
+  border-radius: var(--radius-md);
+  transition: transform 0.14s ease, border-color 0.14s ease, background-color 0.14s ease;
+}
+.provider-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(70, 224, 182, 0.34);
+}
+.provider-button:active {
+  transform: translateY(0);
+}
+.auth-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-5);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  height: 1px;
+  background: var(--line);
+}
+.auth-test-login {
+  border-radius: var(--radius-md);
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  font-size: clamp(2rem, 5vw, 4.2rem);
+  line-height: 0.98;
+}
+.rank-home .rank-profile-card {
+  border-radius: var(--radius-lg);
+}
+.rank-home .rank-mode-card {
+  border-radius: var(--radius-lg);
+}
+.home-search-panel {
+  border-radius: var(--radius-lg);
+  background: rgba(10, 14, 21, 0.9);
+}
+.home-search-box {
+  border-radius: var(--radius-md);
+}
+.home-action-row {
+  border-left: 3px solid rgba(70, 224, 182, 0.55);
+  border-radius: var(--radius-md);
+}
+.home-action-main,
+.home-action-main strong,
+.home-action-main em,
+.compact-list a span,
+.compact-list > div span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rank-summary-grid,
+.home-dashboard-grid,
+.rank-dashboard-grid,
+.home-primary-stack,
+.home-side-stack {
+  min-width: 0;
+}
+html[data-theme="light"] .card,
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .season-mini-card,
+html[data-theme="light"] .settings-page .section-card {
+  border-color: rgba(32, 56, 68, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}
+html[data-theme="light"] .auth-card {
+  border-color: rgba(32, 56, 68, 0.14);
+  background: rgba(255, 255, 255, 0.94);
+}
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background: rgba(238, 244, 240, 0.94);
+}
+@media (max-width: 1020px) {
+  .app-main {
+    padding:
+      max(18px, env(safe-area-inset-top, 0px))
+      max(16px, env(safe-area-inset-right, 0px))
+      calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 28px)
+      max(16px, env(safe-area-inset-left, 0px));
+  }
+
+  .rank-home .rank-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .bottom-nav {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    gap: var(--space-1);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.28);
+  }
+
+  .bottom-nav a {
+    flex-direction: column;
+    min-height: 44px;
+    border-radius: var(--radius-sm);
+    padding: 6px 1px;
+  }
+}
+@media (max-width: 430px) {
+  .app-main {
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-top: max(18px, env(safe-area-inset-top, 0px));
+  }
+
+  .page-stack,
+  .rank-home,
+  .home-primary-stack,
+  .home-side-stack {
+    gap: var(--space-6);
+  }
+
+  .card,
+  .section-card {
+    padding: 14px;
+  }
+
+  .home-action-row {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: var(--space-4);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    font-size: clamp(2rem, 8vw, 2.8rem);
+  }
+
+  .home-search-box {
+    padding: 8px 10px;
+  }
+}
+@media (max-width: 360px) {
+  .bottom-nav a span {
+    display: none;
+  }
+
+  .bottom-nav a.active span {
+    display: block;
+  }
+}
+/* 2026-07-01 visible basketball identity pass: court floor, scoreboard slabs, active states. */
+.app-main,
+html[data-theme="light"] .app-main {
+  background: transparent;
+}
+.nav-item {
+  border-left: 0;
+}
+.nav-item.active,
+.nav-item:hover {
+  background: color-mix(in srgb, var(--rb-orange) 12%, transparent);
+  box-shadow: none;
+}
+.card,
+.section-card,
+.home-search-panel,
+.home-action-card {
+  border-color: var(--card-border);
+  background-color: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+.button-primary,
+.provider-test {
+  background: var(--button-primary-bg);
+}
+.rank-home .rank-summary-grid {
+  border: var(--ui-stroke-width) solid rgba(242, 184, 75, 0.22);
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  font-variant-numeric: tabular-nums;
+}
+.rank-home .rank-profile-card {
+  border-color: rgba(242, 184, 75, 0.28);
+  background:
+    linear-gradient(180deg, rgba(242, 184, 75, 0.1), transparent 46%),
+    var(--scoreboard-2);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+.rank-home .rank-mode-pill,
+.home-action-row,
+.home-search-box {
+  border: var(--ui-stroke-width) solid rgba(199, 223, 232, 0.16);
+  background: rgba(255, 255, 255, 0.052);
+}
+.rank-home .rank-mode-pill {
+  box-shadow: none;
+}
+.home-action-row {
+  border-left-color: rgba(199, 223, 232, 0.16);
+}
+.bottom-nav a.active {
+  background: rgba(65, 215, 176, 0.16);
+  color: var(--team-home);
+  box-shadow: none;
+}
+html[data-theme="light"] .rank-home .rank-summary-grid {
+  border-color: rgba(184, 118, 19, 0.2);
+}
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
+  text-shadow: none;
+}
+html[data-theme="light"] .rank-home .rank-mode-pill,
+html[data-theme="light"] .home-action-row,
+html[data-theme="light"] .home-search-box {
+  border-color: rgba(33, 78, 91, 0.14);
+  background: rgba(255, 255, 255, 0.76);
+}
+.approval-teaser-card {
+  border-radius: var(--radius-lg);
+}
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px 12px;
+}
+html[data-theme="light"] .home-side-stack .compact-list a,
+html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
+  border-color: rgba(32, 56, 68, 0.12);
+  background: rgba(238, 244, 240, 0.64);
+}
+/* 2026-07-01 imweb fitness tone pass: charcoal surface, orange CTA, condensed heroes. */
+.card,
+.section-card,
+.modal,
+.selector-panel,
+.team-card,
+.rating-card,
+.profile-records-summary,
+.home-search-panel,
+.home-action-card,
+.match-focus-card,
+.home-recent-card,
+.rank-leaderboard-card,
+.season-mini-card,
+.settings-page .section-card {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+}
+.button {
+  min-height: 38px;
+  border-radius: var(--radius-xs);
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.button-primary,
+.provider-test,
+.rank-home .home-rank-board-head .button {
+  background: var(--rb-orange);
+  color: #fff;
+}
+.button-secondary {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+.button-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.07);
+}
+.button:disabled,
+button:disabled,
+.search-picker-result-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+.button:focus-visible,
+.provider-button:focus-visible,
+.bottom-nav a:focus-visible,
+.nav-item:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(255, 118, 88, 0.72);
+  outline-offset: 2px;
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+.arena-lobby-title h2 {
+  font-family: var(--sports-display-font);
+  font-size: clamp(46px, 5.5vw, 72px);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  line-height: 0.92;
+}
+.auth-test-login {
+  border-color: rgba(101, 217, 159, 0.3);
+  background: rgba(101, 217, 159, 0.08);
+}
+.auth-test-login select,
+.auth-test-login .provider-button {
+  min-height: 44px;
+}
+.auth-test-login .provider-button {
+  width: 100%;
+}
+@media (max-width: 1020px) {
+  .bottom-nav {
+    min-height: calc(74px + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-top: var(--ui-stroke-width) solid var(--rb-line);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    background: rgba(29, 30, 31, 0.94);
+    backdrop-filter: blur(18px);
+    padding: 8px 8px max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-nav a {
+    position: relative;
+    gap: var(--space-2);
+    color: rgba(255, 255, 255, 0.54);
+    font-size: 10px;
+    font-weight: 850;
+  }
+
+  .bottom-nav a::before {
+    content: "";
+    display: block;
+    width: 22px;
+    height: 4px;
+    border-radius: 999px;
+    background: transparent;
+  }
+
+  .bottom-nav a.active {
+    background: transparent;
+    color: #fff;
+    box-shadow: none;
+  }
+
+  .bottom-nav a.active::before {
+    background: var(--rb-orange);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1,
+  .om-match-copy h1,
+  .arena-hero-copy h1 {
+    font-size: clamp(46px, 12vw, 50px);
+  }
+}
+@media (max-width: 390px) {
+  .bottom-nav a span {
+    font-size: 9.5px;
+  }
+
+  .bottom-nav a::before {
+    width: 20px;
+  }
+}
+html[data-theme="light"] body {
+  background:
+    linear-gradient(rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
+    var(--rb-bg);
+}
+html[data-theme="light"] .card,
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card {
+  background-color: var(--rb-surface);
+}
+/* 2026-07-01 warm cream light mode and shared app controls. */
+input,
+select,
+textarea,
+.auth-card select {
+  border-color: var(--rb-line);
+  border-radius: var(--radius-md);
+}
+.button:hover,
+.provider-button:hover {
+  filter: brightness(0.96);
+}
+html[data-theme="light"] .app-main {
+  background:
+    linear-gradient(rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 42px 42px,
+    linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 42px 42px,
+    var(--rb-bg);
+}

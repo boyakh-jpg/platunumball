@@ -1,8 +1,4 @@
 export {
-  loadNormalizedDirectoryStateFromClient,
-  loadNormalizedMatchDetailFromClient,
-} from "./remote/loaders.js";
-export {
   loadNormalizedRemoteStateFromClient,
   loadRemoteState,
 } from "./remote/state.js";

@@ -1,0 +1,474 @@
+.ui-match-clock-break-over strong {
+  color: var(--rb-danger);
+}
+
+.ui-match-clock-readonly {
+  padding: 10px 12px;
+  text-align: center;
+  background: var(--ui-control-group-bg);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+}
+
+.ui-match-clock-transfer {
+  padding: 10px 12px;
+  background: var(--ui-control-group-bg);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+}
+
+.ui-match-clock-transfer summary {
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.ui-match-clock-player-grid {
+  margin-top: var(--control-group-gap);
+}
+
+.ui-match-clock-device-tools {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ui-match-clock-volume {
+  box-sizing: border-box;
+  flex: 0 1 240px;
+  width: min(240px, 100%);
+  min-width: 0;
+  height: var(--ui-button-height-sm);
+  min-height: var(--control-height-sm);
+  padding-inline: 0;
+  color: var(--rb-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.ui-match-clock-volume-label {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.ui-match-clock-panel .ui-match-clock-volume > input[type="range"] {
+  flex: 1 1 auto;
+  appearance: none;
+  width: 100%;
+  min-width: 90px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ui-match-clock-volume input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    var(--rb-orange) 0 var(--match-clock-volume-progress),
+    var(--ui-control-border) var(--match-clock-volume-progress) 100%
+  );
+  border-radius: 999px;
+}
+
+.ui-match-clock-volume input[type="range"]::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  appearance: none;
+  background: var(--rb-orange);
+  border: 0;
+  border-radius: 50%;
+}
+
+.ui-match-clock-volume input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--ui-control-border);
+  border-radius: 999px;
+}
+
+.ui-match-clock-volume input[type="range"]::-moz-range-progress {
+  height: 4px;
+  background: var(--rb-orange);
+  border-radius: 999px;
+}
+
+.ui-match-clock-volume input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--rb-orange);
+  border: 0;
+  border-radius: 50%;
+}
+
+.ui-match-clock-result {
+  justify-content: space-between;
+}
+
+.ui-match-clock-error {
+  color: var(--rb-danger);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.ui-match-clock-device-notice {
+  margin: 0;
+  color: var(--rb-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.ui-match-clock-focus-backdrop {
+  --match-clock-focus-gap: clamp(4px, 0.8vmin, 10px);
+
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  box-sizing: border-box;
+  width: 100dvw;
+  height: 100dvh;
+  padding: max(var(--match-clock-focus-gap), env(safe-area-inset-top))
+    max(var(--match-clock-focus-gap), env(safe-area-inset-right))
+    max(var(--match-clock-focus-gap), env(safe-area-inset-bottom))
+    max(var(--match-clock-focus-gap), env(safe-area-inset-left));
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--rb-bg);
+}
+
+.ui-match-clock-panel-focus {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  padding: var(--match-clock-focus-gap);
+  gap: var(--match-clock-focus-gap);
+  overflow: hidden;
+}
+
+.ui-match-clock-panel-focus:not(.ui-match-clock-panel-pending) {
+  grid-template-rows: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-header,
+.ui-match-clock-panel-focus .ui-match-clock-transfer {
+  display: none;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-attendance-qr {
+  min-height: 132px;
+  max-height: 280px;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-live {
+  grid-template-rows: minmax(0, 1fr) repeat(3, auto);
+  gap: var(--match-clock-focus-gap);
+  overflow: hidden;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-display-grid {
+  grid-template-columns: minmax(0, 4.3fr) minmax(124px, 0.7fr);
+  gap: clamp(10px, 1.4vmin, 18px);
+  height: 100%;
+  min-height: 0;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-display-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-display-grid-with-attendance {
+  grid-template-columns: minmax(124px, 0.7fr) minmax(0, 4.3fr) minmax(124px, 0.7fr);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-display-grid-single.ui-match-clock-display-grid-with-attendance {
+  grid-template-columns: minmax(124px, 0.7fr) minmax(0, 4.3fr);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-scoreboard {
+  height: 100%;
+  min-height: 0;
+}
+
+.ui-match-clock-panel-focus .ui-match-shot-clock {
+  align-self: center;
+  height: min(72%, 280px);
+  min-height: 132px;
+  max-height: 280px;
+}
+
+.ui-match-clock-panel-focus
+  .ui-match-clock-scoreboard:not(.ui-match-clock-scoreboard-time-only) {
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.56fr) minmax(0, 0.72fr);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-scoreboard > div {
+  min-height: 0;
+  padding: 4px;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-team-score {
+  font-size: clamp(3rem, 8cqi, 6rem);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-main-time time {
+  font-size: clamp(4.75rem, 14cqi, 10rem);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-period {
+  font-size: clamp(1.5rem, 3cqi, 2.5rem);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-scoreboard-time-only .ui-match-clock-main-time time {
+  font-size: clamp(5.5rem, 18cqi, 12rem);
+}
+
+.ui-match-clock-panel-focus .ui-match-shot-clock {
+  padding: 8px 6px;
+}
+
+.ui-match-clock-panel-focus .ui-match-shot-clock-value {
+  font-size: clamp(3rem, 8cqi, 5.5rem);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-main-time small,
+.ui-match-clock-panel-focus .ui-match-clock-break small {
+  display: none;
+}
+
+.ui-match-clock-panel-focus .ui-match-shot-clock-action {
+  min-height: 26px;
+  padding: 4px 6px;
+  font-size: 0.62rem;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-break {
+  grid-template-columns: max-content max-content;
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 8px;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-actions,
+.ui-match-clock-panel-focus .ui-match-clock-readonly {
+  min-height: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-controls {
+  gap: var(--match-clock-focus-gap);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-control-side {
+  gap: var(--match-clock-focus-gap);
+  padding: 4px 6px;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-control-side > strong {
+  font-size: 0.72rem;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-actions {
+  grid-template-columns: repeat(4, minmax(34px, 1fr));
+  gap: var(--match-clock-focus-gap);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-score-actions .ui-button {
+  min-height: 34px;
+  padding-inline: 4px;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-actions {
+  flex-wrap: nowrap;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-actions .ui-button {
+  min-width: 0;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-device-tools {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--match-clock-focus-gap);
+  justify-content: flex-end;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-device-tools .ui-button,
+.ui-match-clock-panel-focus .ui-match-clock-volume {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  height: 34px;
+  min-height: 34px;
+  padding-inline: 6px;
+  white-space: nowrap;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-device-tools .ui-button {
+  overflow: hidden;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-volume {
+  flex: 0 1 clamp(160px, 22vw, 240px);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-result,
+.ui-match-clock-panel-focus .ui-match-clock-error {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5px 8px;
+  margin: 0;
+  overflow: hidden;
+  color: var(--rb-text);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--ui-control-bg);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-device-notice {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 24px;
+  padding: 4px 8px;
+  overflow: hidden;
+  color: var(--rb-text);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  background: var(--ui-control-bg);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+}
+
+.ui-match-clock-panel-focus.ui-match-clock-panel-pending {
+  align-content: start;
+}
+
+.ui-match-clock-panel-focus.ui-match-clock-panel-pending .ui-match-clock-setup {
+  min-height: 0;
+  overflow: auto;
+}
+
+@media (width >= 721px) {
+  .ui-match-clock-panel-focus:not(.ui-match-clock-panel-pending) {
+    grid-template-rows: max-content;
+    align-content: center;
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-live {
+    grid-template-rows: max-content auto auto;
+    align-content: center;
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-display-grid {
+    height: min(64dvh, 34dvw, 720px);
+    min-height: 360px;
+  }
+}
+
+@media (width <= 720px) {
+  .ui-match-clock-header {
+    align-items: flex-start;
+  }
+
+  .ui-match-clock-badges {
+    max-width: 54%;
+  }
+
+  .ui-match-clock-header-tools {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .ui-match-clock-scoreboard:not(.ui-match-clock-scoreboard-time-only) {
+    grid-template-columns: minmax(0, 0.8fr) minmax(132px, 1.4fr) minmax(0, 0.8fr);
+  }
+
+  .ui-match-clock-scoreboard > div {
+    min-height: 106px;
+    padding: 8px 4px;
+  }
+
+  .ui-match-clock-scoreboard-label {
+    top: 7px;
+    left: 8px;
+    font-size: 0.6rem;
+  }
+
+  .ui-match-clock-panel:not(.ui-match-clock-panel-focus) .ui-match-clock-attendance-qr {
+    width: min(100%, 180px);
+    height: auto;
+    min-height: 0;
+    justify-self: center;
+  }
+
+  .ui-match-clock-main-time time {
+    font-size: clamp(1.85rem, 10vw, 3.2rem);
+  }
+
+  .ui-match-clock-period {
+    font-size: clamp(1.1rem, 5vw, 1.5rem);
+  }
+
+  .ui-match-shot-clock {
+    height: auto;
+    min-height: var(--match-clock-display-height, 144px);
+    max-height: none;
+  }
+
+  .ui-match-clock-option-grid,
+  .ui-match-clock-player-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ui-match-clock-device-tools {
+    justify-content: flex-start;
+  }
+
+  .ui-match-clock-volume {
+    flex: 1 1 180px;
+  }
+
+  .ui-match-clock-break {
+    grid-template-columns: max-content 1fr;
+  }
+
+  .ui-match-clock-break small {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (width <= 680px) {
+  .ui-match-clock-panel:not(.ui-match-clock-panel-focus) .ui-match-clock-display-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (width <= 520px) {
+  .ui-match-clock-panel:not(.ui-match-clock-panel-focus) .ui-match-clock-score-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-match-clock-panel:not(.ui-match-clock-panel-focus) .ui-match-clock-score-actions {
+    grid-template-columns: repeat(4, minmax(40px, 1fr));
+  }
+}

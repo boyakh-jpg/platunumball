@@ -1,0 +1,259 @@
+.naver-pin-picker-close {
+  flex: 0 0 var(--ui-icon-button-size);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 1.28rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.naver-pin-picker-close:hover {
+  border-color: color-mix(in srgb, var(--rb-orange) 42%, var(--ui-button-border));
+  background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-button-bg));
+  color: var(--rb-orange);
+}
+
+.naver-pin-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-left: auto;
+}
+
+.naver-pin-picker-actions .button-primary {
+  min-width: 172px;
+}
+
+.compact-list > .settings-court-empty {
+  justify-content: flex-start;
+  font-family: inherit;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+}
+
+@media (max-width: 520px) {
+  .naver-pin-picker-footer {
+    align-items: stretch !important;
+  }
+
+  .naver-pin-picker-status {
+    width: 100%;
+  }
+
+  .naver-pin-picker-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.6fr);
+    margin-left: 0;
+  }
+
+  .naver-pin-picker-actions .button,
+  .naver-pin-picker-actions .button-primary {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Admin court database */
+.court-db-card {
+  min-width: 0;
+  gap: var(--space-6);
+}
+
+.court-db-count {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.court-db-tabs {
+  width: fit-content;
+}
+
+.court-db-toolbar,
+.court-db-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.court-db-toolbar > small,
+.court-db-pagination > span,
+.court-db-status {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.court-db-toolbar > div,
+.court-db-pagination > div {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.court-db-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: var(--ui-card-border-width) solid var(--card-border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  scrollbar-gutter: stable;
+}
+
+.court-db-table {
+  width: 3290px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  color: var(--text);
+  font-size: 0.73rem;
+}
+
+.court-db-table-history {
+  width: 1390px;
+}
+
+.court-db-table th,
+.court-db-table td {
+  height: 31px;
+  padding: 4px 7px;
+  overflow: hidden;
+  border-right: var(--ui-stroke-width) solid var(--card-border);
+  border-bottom: var(--ui-stroke-width) solid var(--card-border);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.court-db-table th:last-child,
+.court-db-table td:last-child {
+  border-right: 0;
+}
+
+.court-db-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.court-db-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--card-bg-strong);
+  font-weight: 900;
+}
+
+.court-db-table thead .court-db-filter-row th {
+  top: 31px;
+  z-index: 3;
+  padding: 3px;
+}
+
+.court-db-sort {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+}
+
+.court-db-filter-row input,
+.court-db-filter-row select,
+.court-db-edit-cell input,
+.court-db-edit-row input {
+  width: 100%;
+  min-width: 0;
+  height: 25px;
+  padding: 2px 6px;
+  border: var(--ui-stroke-width) solid var(--input-border);
+  border-radius: var(--radius-xs);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 0.7rem;
+}
+
+.court-db-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--rb-orange) 5%, var(--card-bg));
+}
+
+.court-db-table .court-db-cell-dirty,
+.court-db-table tr:hover .court-db-cell-dirty,
+.court-db-table .court-db-cell-dirty input,
+.court-db-table .court-db-cell-dirty select {
+  background: color-mix(in srgb, var(--danger) 20%, var(--input-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 60%, transparent);
+}
+
+.court-db-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.court-db-actions a,
+.court-db-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rb-orange);
+  font-size: 0.7rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.court-db-edit-row td {
+  height: auto;
+  padding: 7px;
+  background: color-mix(in srgb, var(--danger) 7%, var(--card-bg));
+}
+
+.court-db-edit-row td,
+.court-db-edit-row label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.court-db-edit-row label {
+  min-width: 380px;
+  font-weight: 850;
+}
+
+.court-db-edit-row small {
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.court-db-modal .court-db-table td.court-db-empty {
+  height: 70px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .court-db-toolbar,
+  .court-db-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .court-db-toolbar > div,
+  .court-db-pagination > div {
+    justify-content: flex-end;
+  }
+
+  .court-db-table-wrap {
+    margin-inline: -4px;
+    width: calc(100% + 8px);
+  }
+}

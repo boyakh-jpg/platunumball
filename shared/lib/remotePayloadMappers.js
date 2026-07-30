@@ -1,4 +1,4 @@
-function getRemotePayload(row = {}) {
+export function getRemotePayload(row = {}) {
   return row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
 }
 

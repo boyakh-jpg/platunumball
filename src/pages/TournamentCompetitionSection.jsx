@@ -1,21 +1,7 @@
-import { Link } from "react-router-dom";
-import { CalendarDays, ChevronLeft, ChevronRight, Flag, MapPin, Save, ShieldCheck, Trophy, UserRound } from "lucide-react";
+import { CalendarDays, ChevronRight, Flag, MapPin, Save, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
-import Button from "../components/common/Button.jsx";
-import SearchPicker from "../components/common/SearchPicker.jsx";
-import TierBadge from "../components/rating/TierBadge.jsx";
-import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { getUserHashtag } from "../lib/handles.js";
-import { isEligibleReferee } from "../lib/matchUtils.js";
-import { REFEREE_TRUST_MIN } from "../lib/constants.js";
-import { TOURNAMENT_SANCTION_STATUS, getTournamentSanctionLabel, isTournamentRefereeNeutral } from "../lib/tournamentGovernance.js";
-import { MatchRoomModal } from "./Matches.jsx";
 import {
-  formatLabels,
-  statusLabels,
-  mmrPolicyLabels,
-  formatWindow,
   getMatchTime,
   isTournamentForfeitAvailable,
   isTournamentScheduleEditable,

@@ -1,0 +1,110 @@
+.notification-terminal-state,
+.notification-terminal-row > b {
+  background: color-mix(in srgb, var(--rb-muted) 14%, transparent);
+  color: var(--rb-muted);
+}
+
+.notification-inbox-controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-5);
+}
+
+.home-alert-heading-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.notification-view-tabs {
+  display: flex;
+  min-width: 0;
+}
+
+.notification-view-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.notification-view-tabs button span {
+  min-width: 20px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.notifications-list time {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.notification-actions .notification-delete-button,
+.notification-actions .notification-read-button {
+  display: inline-flex;
+  height: var(--ui-icon-button-size);
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.notification-actions .notification-delete-button {
+  width: var(--ui-icon-button-size);
+  min-width: var(--ui-icon-button-size);
+  padding: 0;
+}
+
+.notification-actions .notification-read-button {
+  min-width: calc(var(--ui-button-height) + var(--space-6));
+  height: var(--ui-button-height);
+}
+
+.notification-actions .notification-delete-button:hover,
+.notification-actions .notification-delete-button:focus-visible,
+.notification-actions .notification-read-button:hover,
+.notification-actions .notification-read-button:focus-visible {
+  border-color: color-mix(in srgb, var(--rb-orange) 56%, var(--ui-control-border));
+  color: var(--rb-orange);
+}
+
+@media (max-width: 760px) {
+  .notification-row-open {
+    min-height: 42px;
+  }
+
+  .home-alert-heading-actions {
+    flex-wrap: wrap;
+  }
+
+  .notification-inbox-controls {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .notification-view-tabs,
+  .notification-view-tabs button {
+    flex: 1 1 0;
+  }
+
+  .notifications-list .notification-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .notification-actions {
+    width: auto;
+    max-width: 100%;
+    grid-column: auto;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}

@@ -13,6 +13,11 @@ export function getAgeGroupByBirthYear(birthYear, now = new Date()) {
   return AGE_GROUPS.find((group) => age >= group.minAge && age <= group.maxAge)?.id ?? "open";
 }
 
+export function formatProfileDate(date) {
+  if (!date) return "";
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export function getAgeGroupSeasonForDate(now = new Date()) {
   const date = now instanceof Date ? now : new Date(now);
   const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;

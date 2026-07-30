@@ -12,6 +12,7 @@ import {
   RECRUITING_SYNC_SOURCE_PATHS,
   readSourceGroup,
 } from "./management-source-groups.mjs";
+import { readCssTree } from "./css-source-tree.mjs";
 import {
   getStartStatus,
   getRecommendedSideSize,
@@ -584,7 +585,7 @@ test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", 
   assert.match(panelSource, /점수 3초 자동 갱신/u);
   assert.match(panelSource, /눌러서 \$\{liveClock\.shotClockSeconds\}초로 초기화/u);
   assert.match(clockApiSource, /\.from\("match_results"\)[\s\S]*\.select\("score_a,score_b,score_revision_a,score_revision_b,submitted_at"\)/u);
-  assert.match(authoritativeStateSource, /substituteMatchPlayer\(state,[\s\S]*operation\.reason\)/u);
+  assert.doesNotMatch(authoritativeStateSource, /substituteMatchPlayer/u);
   assert.match(recruitingSource, /finalizeMatch/u);
   assert.match(recruitingSource, /canFinalizeSourceMatch/u);
   assert.match(recruitingSource, /mine \|\| currentUserIsSourceReferee \|\| currentUserIsAdmin/u);
@@ -619,7 +620,7 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
     readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS),
     readSource("src/components/recruiting/RoomManagementPanels.jsx"),
     readSourceGroup(readSource, MATCHES_PAGE_SOURCE_PATHS),
-    readSource("src/styles/match-clock.css"),
+    readCssTree("src/styles/match-clock.css"),
     readSourceGroup(readSource, REPOSITORY_RECRUITING_SOURCE_PATHS),
     readSourceGroup(readSource, RECRUITING_SYNC_SOURCE_PATHS),
     readSource("supabase/migrations/20260728123000_block_team_room_party_detach.sql"),

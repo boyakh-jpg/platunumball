@@ -1,0 +1,173 @@
+.arena-modal-close-button {
+  display: inline-flex;
+  width: 100%;
+  min-width: 132px;
+  height: auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 16px;
+  white-space: nowrap;
+}
+
+.arena-filter-bar button.active,
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active,
+.arena-team-choice-grid button.selected,
+.arena-party-picker-grid > button.selected,
+.arena-party-role-buttons button.active,
+.arena-invite-team-head > button.active,
+.arena-invite-member-grid button.selected {
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+  box-shadow: none;
+}
+
+.arena-team-choice-grid button.selected:hover,
+.arena-party-picker-grid > button.selected:hover,
+.arena-party-role-buttons button.active:hover,
+.arena-invite-team-head > button.active:hover {
+  background: var(--ui-button-bg-hover);
+  color: var(--ui-button-color-active);
+  filter: none;
+}
+
+.arena-filter-select select,
+.arena-compose-drawer input:not([type="checkbox"]):not([type="radio"]),
+.arena-compose-drawer select,
+.arena-compose-drawer textarea,
+.arena-slot-command-popover input:not([type="checkbox"]):not([type="radio"]),
+.arena-slot-command-popover select,
+.arena-slot-command-popover textarea {
+  min-height: var(--ui-button-height);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+}
+
+.arena-slot-command-popover {
+  border-color: var(--rb-line-strong);
+  background:
+    linear-gradient(180deg, rgba(36, 37, 38, 0.98), rgba(24, 25, 26, 0.96)),
+    var(--rb-bg-2);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+}
+
+html[data-theme="light"] .arena-slot-command-popover {
+  border-color: var(--rb-line-strong);
+  background:
+    linear-gradient(180deg, rgba(255, 250, 241, 0.98), rgba(245, 241, 232, 0.96)),
+    var(--rb-cream);
+  box-shadow: 0 18px 44px rgba(55, 44, 31, 0.16);
+}
+
+.arena-lobby-modal .badge-row .badge {
+  border-color: var(--ui-button-border);
+  background: var(--ui-button-bg);
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+}
+
+/* 2026-07-01 clip-safe filter groups. */
+
+.arena-filter-bar .segmented-control,
+.arena-filter-bar .arena-start-date-filter {
+  box-sizing: border-box;
+  padding: 7px;
+  scroll-padding-inline: 7px;
+}
+
+.arena-filter-bar .segmented-control button,
+.arena-filter-bar .arena-start-date-filter button {
+  box-sizing: border-box;
+  border-width: var(--ui-button-border-width);
+  border-style: solid;
+  border-color: var(--ui-button-border);
+}
+
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-width: var(--ui-button-border-width);
+  border-style: solid;
+}
+
+.arena-filter-bar .arena-start-date-filter {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.arena-filter-bar .arena-start-date-filter::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .arena-filter-bar .segmented-control {
+    overflow-y: hidden;
+  }
+}
+
+/* 2026-07-02 canonical recruiting hero image rule: no wash, grid, or pseudo overlay. */
+
+.arena-recruit-hero .eyebrow,
+.arena-recruit-hero h1,
+.arena-recruit-hero p,
+html[data-theme="light"] .arena-recruit-hero .eyebrow,
+html[data-theme="light"] .arena-recruit-hero h1,
+html[data-theme="light"] .arena-recruit-hero p {
+  color: var(--rb-orange);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
+}
+
+.arena-recruit-hero p,
+html[data-theme="light"] .arena-recruit-hero p {
+  color: var(--rb-orange-2);
+}
+
+html[data-theme="light"] .arena-recruit-hero h1 {
+  color: var(--rb-cream);
+}
+
+/* 2026-07-02 final recruiting hero guard: no wash/blur and shared title font. */
+
+.arena-recruit-hero,
+html[data-theme="light"] .arena-recruit-hero {
+  backdrop-filter: none;
+  filter: none;
+}
+
+.arena-recruit-hero::before,
+.arena-recruit-hero::after,
+html[data-theme="light"] .arena-recruit-hero::before,
+html[data-theme="light"] .arena-recruit-hero::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+
+.arena-hero-copy h1,
+html[data-theme="light"] .arena-hero-copy h1 {
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .arena-hero-copy h1,
+  html[data-theme="light"] .arena-hero-copy h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}

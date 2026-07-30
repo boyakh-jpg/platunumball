@@ -1,6 +1,5 @@
 import {
   allowRequestMethod,
-  getAdminLevel,
   getAuthenticatedContext,
   getRowsMaxUpdatedAt,
   groupRowsBy,
@@ -9,9 +8,8 @@ import {
   sendJson,
   uniqueValues,
 } from "../_supabaseAdmin.js";
-import { fromRemoteMatch } from "../../../shared/lib/matchMappers.js";
 import { fromRemoteAffiliation } from "../../../shared/lib/affiliationMappers.js";
-import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
+import { fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
 import {
   fromRemoteApprovedCourt,
   fromRemoteCourtRequest,
@@ -28,8 +26,6 @@ import {
   COURT_REQUEST_COLUMNS,
   COURT_REVIEW_COLUMNS,
   FAVORITE_COLUMNS,
-  MATCH_LIST_COLUMNS,
-  MATCH_PLAYER_COLUMNS,
   PROFILE_ME_COLUMNS,
   PUBLIC_PROFILE_COLUMNS,
   REFEREE_EXAM_ATTEMPT_COLUMNS,
@@ -42,14 +38,19 @@ import {
 import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
 import { fromRemoteTeam, fromRemoteTeamInvitation } from "../../../shared/lib/teamMappers.js";
 import {
-  DIRECTORY_ID_BATCH_SIZE,
-  getDirectoryPageRequest,
-  normalizeAdminQueueMode,
-  normalizeAdminSection,
-  normalizeDirectoryFilter,
   normalizeDirectoryKind,
 } from "../../../shared/lib/queryPolicy.js";
-import { ADMIN_REPORT_TYPES, getPageRequest, normalizeFilter, uniqueRows, readRows, readPage, readRowsByIds, getCurrentUser, getAdminSection, getQueueMode, collectReportProfileIds, toAdminMatchState, loadAdminSection, applyDirectoryTextFilter } from "./loadAdminSection.js";
+import {
+  getPageRequest,
+  normalizeFilter,
+  uniqueRows,
+  readRows,
+  readPage,
+  readRowsByIds,
+  getCurrentUser,
+  loadAdminSection,
+  applyDirectoryTextFilter,
+} from "./loadAdminSection.js";
 export { getPageRequest, normalizeFilter, getAdminSection, getQueueMode } from "./loadAdminSection.js";
 
 

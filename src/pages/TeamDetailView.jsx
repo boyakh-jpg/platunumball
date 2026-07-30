@@ -1,32 +1,23 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
 import { ImageUp, RotateCcw, Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
-import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
 import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
-import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
-import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
-import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
-import { getMatchSideScore as getSideScore, isMatchWithinRecordDetailWindow } from "../lib/matchUtils.js";
+import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, normalizeTeamRole } from "../lib/constants.js";
+import { getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
 import {
   TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS,
   TEAM_EMBLEM_FONT_OPTIONS,
-  getTeamEmblemAbbreviationCharacterCount,
-  getTeamEmblemErrorMessage,
-  isTeamEmblemAbbreviation,
   isTeamEmblemAbbreviationDraftWithinLimits,
-  normalizeTeamEmblemAbbreviation,
 } from "../lib/teamEmblem.js";
-import { formatEmblemDate, getEmblemUploadWarning, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
+import { formatEmblemDate, getEmblemUploadWarning } from "../lib/emblemPolicy.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { MatchRoomModal } from "./Matches.jsx";
 

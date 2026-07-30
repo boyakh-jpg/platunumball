@@ -1,7 +1,6 @@
 import {
   MATCH_SIDE_FALLBACK_NAMES,
   POST_MATCH_STATUSES,
-  PLAYER_POSITIONS,
   PLAYER_STAT_FIELDS,
   REFEREE_TRUST_MIN,
   SOLO_RECORD_ANONYMOUS_POSITION,
@@ -31,6 +30,13 @@ function normalizeMatchParties(parties) {
 
 function normalizeMatchIdList(value) {
   return Array.isArray(value) ? uniquePlayerIds(value) : [];
+}
+
+export function getRecordSummaryNames(match = {}, sideName = "teamA") {
+  const names = sideName === "teamA"
+    ? match.rules?.recordSummary?.teamAPlayers
+    : match.rules?.recordSummary?.teamBPlayers;
+  return Array.isArray(names) ? names.map((name) => String(name ?? "").trim()) : [];
 }
 
 function normalizeMatchSide(side = {}, fallbackName = "") {

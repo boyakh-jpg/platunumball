@@ -161,12 +161,8 @@ test("admin routes require the shared server guard before reading a mutation bod
     if (bodyIndex >= 0) assert.ok(guardIndex >= 0 && guardIndex < bodyIndex, `${path} must authorize before body parsing`);
   }
 
-  const [directorySource, stateSource] = await Promise.all([
-    readSource("server/api/directory/load.js"),
-    readSource("server/api/state/load.js"),
-  ]);
+  const directorySource = await readSource("server/api/directory/load.js");
   assert.match(directorySource, /body\.scope === "admin"[\s\S]*requireAdminContext\(request/);
-  assert.match(stateSource, /requestedScope === "admin"[\s\S]*requireAdminContext\(request/);
 });
 
 test("admin URL flags do not authorize a request", async () => {

@@ -12,7 +12,7 @@ import { normalizeState } from "../../../shared/lib/stateNormalizer.js";
 import { fromRemoteMatch } from "../../../shared/lib/matchMappers.js";
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
-import { filterStateForProfile } from "../state/load.js";
+import { filterStateForProfile } from "../../lib/stateVisibility.js";
 import {
   PROFILE_CARD_COLUMNS,
   PROFILE_ME_COLUMNS,

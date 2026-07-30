@@ -1,6 +1,6 @@
 import { allowRequestMethod, getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { loadNormalizedMatchDetailFromClient } from "../../lib/repositoryAdapter.js";
-import { filterStateForProfile } from "../state/load.js";
+import { loadAuthoritativeState } from "../_authoritativeState.js";
+import { filterStateForProfile } from "../../lib/stateVisibility.js";
 
 export default async function handler(request, response) {
   if (!allowRequestMethod(request, response)) return;
@@ -15,17 +15,11 @@ export default async function handler(request, response) {
 
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
     const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
-    const normalized = await loadNormalizedMatchDetailFromClient(
-      context.supabase,
-      context.authUserId,
-      context.authUser?.email ?? "",
-      {
-        isAdmin: adminLevel >= 30,
-        matchId,
-      },
-    );
-    const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
-    const state = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
+    const rawState = await loadAuthoritativeState(context, {
+      operation: { action: "loadMatch", matchId },
+    });
+    const profileId = context.profileId ?? rawState?.currentUserId ?? "";
+    const state = filterStateForProfile(rawState ?? {}, profileId, adminLevel >= 30);
     const match = (state.matches ?? []).find((item) => item.id === matchId) ?? null;
     if (!match) {
       sendJson(response, 404, { error: "match_not_found", matchId });
@@ -40,7 +34,7 @@ export default async function handler(request, response) {
         recruitingPosts: [],
         tournaments: [],
       },
-      updatedAt: normalized?.updatedAt ?? 0,
+      updatedAt: match.updatedAt ?? 0,
     });
   } catch (error) {
     sendJson(response, error.statusCode || 500, { error: error.message || "matches_detail_failed" });

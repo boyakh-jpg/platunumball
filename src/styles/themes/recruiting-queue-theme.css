@@ -1,0 +1,486 @@
+/* Unified app hero sizing */
+
+@media (max-width: 720px) {
+  .arena-recruit-hero {
+    align-items: end;
+  }
+}
+
+@media (max-width: 480px) {
+  .arena-recruit-hero {
+    min-height: 158px;
+    padding: 16px;
+  }
+
+  .arena-hero-copy h1 {
+    font-size: 2.6rem;
+  }
+}
+
+/* Final CSS cleanup: mobile record readability. */
+
+.arena-source-record-summary {
+  overflow: hidden;
+}
+
+.arena-source-record-grid {
+  align-items: start;
+}
+
+.arena-source-record-side > div {
+  grid-template-columns: minmax(58px, 0.58fr) minmax(0, 1.42fr);
+}
+
+.arena-source-record-side span,
+.arena-source-record-side em {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+@media (max-width: 520px) {
+  .arena-source-record-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .arena-source-record-side > div {
+    grid-template-columns: minmax(64px, 0.6fr) minmax(0, 1.4fr);
+    gap: 8px;
+    padding: 7px 8px;
+  }
+
+  .arena-source-record-side span {
+    font-size: 0.76rem;
+  }
+
+  .arena-source-record-side em {
+    font-size: 0.74rem;
+    line-height: 1.25;
+  }
+}
+
+/* Unified queue page surfaces */
+
+/* Queue list/filter convergence */
+
+.arena-queue-controls,
+.arena-filter-bar {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+}
+
+.arena-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+.arena-filter-bar button.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.arena-filter-select {
+  display: block;
+  flex: 1 1 220px;
+  max-width: none;
+}
+
+.arena-filter-segment {
+  width: auto;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: var(--ui-control-group-gap);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  padding: var(--ui-control-group-padding);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  overflow: visible;
+}
+
+.arena-filter-bar .arena-start-date-filter button {
+  min-height: 42px;
+  max-width: 72px;
+  padding: 3px 2px;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sat {
+  border-color: rgba(80, 150, 255, 0.38);
+  color: #8fbaff;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sun {
+  border-color: rgba(255, 101, 121, 0.42);
+  color: #ff9aa8;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.arena-filter-bar .arena-start-date-filter button.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.arena-filter-select select {
+  width: 100%;
+  min-width: 0;
+}
+
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-filter-bar {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+}
+
+html[data-theme="light"] .arena-filter-bar .segmented-control button {
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  background: var(--ui-button-bg);
+}
+
+html[data-theme="light"] .arena-filter-bar .segmented-control button.active {
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+}
+
+html[data-theme="light"] .arena-filter-bar button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sat.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sun.active {
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+}
+
+@media (max-width: 720px) {
+
+  .arena-filter-select {
+    max-width: none;
+  }
+}
+
+/* Queue card density and readable room action */
+
+/* Final CSS cleanup: actual queue list cards use the same surface as Matches. */
+
+/* Flat queue surfaces, aligned with Matches list cards. */
+
+.arena-filter-bar,
+.arena-queue-controls {
+  background-image: none;
+}
+
+.arena-filter-bar,
+.arena-queue-controls {
+  background-color: rgba(10, 14, 21, 0.9);
+}
+
+.arena-filter-bar {
+  background-color: transparent;
+}
+
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-queue-controls {
+  background-color: rgba(250, 254, 252, 0.92);
+  background-image: none;
+}
+
+html[data-theme="light"] .arena-filter-bar {
+  background-color: transparent;
+}
+
+html[data-theme="light"] .arena-lobby-team-panel,
+html[data-theme="light"] .arena-lobby-score-core,
+html[data-theme="light"] .arena-lobby-actions > div,
+html[data-theme="light"] .arena-side-roster,
+html[data-theme="light"] .arena-owner-panel,
+html[data-theme="light"] .arena-room-rule-panel,
+html[data-theme="light"] .arena-room-chat,
+html[data-theme="light"] .arena-reserve-panel,
+html[data-theme="light"] .arena-join-panel,
+html[data-theme="light"] .arena-invite-panel,
+html[data-theme="light"] .arena-invitation-list,
+html[data-theme="light"] .arena-slot-command-popover,
+html[data-theme="light"] .arena-party-picker {
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 14px 34px rgba(35, 50, 59, 0.08);
+}
+
+html[data-theme="light"] .arena-room-player-slot.empty.invite {
+  background: rgba(255, 247, 224, 0.48);
+}
+
+/* 2026-07-01 premium sports UI pass: queue, room sheet, slots. */
+
+.arena-recruit-hero,
+.arena-queue-controls,
+.arena-compose-drawer,
+.arena-lobby-modal,
+.arena-lobby-arena,
+.arena-slot-command-popover,
+.arena-invite-panel,
+.arena-party-picker {
+  border-radius: var(--radius-lg);
+}
+
+.arena-queue-controls {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.arena-filter-bar {
+  gap: 8px 10px;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active,
+.arena-filter-bar .arena-start-date-filter button.active {
+  background: rgba(70, 224, 182, 0.14);
+}
+
+.arena-room-party-group::before {
+  border-color: rgba(70, 224, 182, 0.18);
+}
+
+.arena-room-player-slot small,
+.arena-room-player-slot b,
+.arena-room-player-slot em {
+  font-size: max(0.64rem, 10px);
+}
+
+.arena-compose-drawer {
+  background-color: rgba(10, 14, 21, 0.97);
+  background-image: none;
+}
+
+.arena-submit-row {
+  border-radius: var(--radius-md);
+}
+
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-compose-drawer {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 720px) {
+  .arena-recruit-hero {
+    border-radius: var(--radius-lg);
+  }
+
+  .arena-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-filter-segment,
+  .arena-filter-bar .segmented-control {
+    display: flex;
+  }
+
+  .arena-filter-bar .segmented-control button {
+    flex: 0 0 auto;
+  }
+
+  .arena-start-date-filter {
+    display: grid;
+    grid-auto-columns: minmax(58px, 72px);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    justify-content: start;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .arena-start-date-filter::-webkit-scrollbar {
+    display: block;
+    height: 4px;
+  }
+
+  .arena-start-date-filter button,
+  .arena-filter-bar .arena-start-date-filter button {
+    min-height: 44px;
+    max-width: none;
+  }
+
+  .arena-filter-count {
+    justify-self: end;
+  }
+
+  .arena-compose-backdrop {
+    align-items: end;
+    padding: 20px 0 0;
+  }
+
+  .arena-compose-drawer {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: 16px;
+  }
+
+  .arena-submit-row {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: rgba(10, 14, 21, 0.96);
+    padding-top: 10px;
+  }
+
+  .arena-room-slot-row,
+  .arena-room-reserve-row {
+    grid-auto-flow: column;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .arena-room-slot-row::-webkit-scrollbar,
+  .arena-room-reserve-row::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 2026-07-01 visible basketball identity pass: queue board and locker-room cards. */
+
+.arena-hero-copy h1 {
+  font-variant-numeric: tabular-nums;
+}
+
+.arena-hero-panel,
+.arena-queue-controls {
+  border-color: rgba(199, 223, 232, 0.16);
+  background-color: rgba(7, 11, 17, 0.94);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+
+.arena-hero-panel {
+  border-color: rgba(242, 184, 75, 0.28);
+}
+
+.arena-filter-bar {
+  border: var(--ui-stroke-width) solid rgba(199, 223, 232, 0.12);
+  background: rgba(7, 11, 17, 0.52);
+}
+
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-filter-bar {
+  background-color: rgba(255, 255, 255, 0.94);
+}
+
+/* 2026-07-01 imweb fitness tone pass: preserve room slots and party lines. */
+
+.arena-recruit-hero {
+  border-color: var(--rb-line);
+}
+
+.arena-hero-panel,
+.arena-queue-controls,
+.arena-filter-bar {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.arena-filter-bar {
+  border-radius: var(--radius-md);
+  padding: 8px;
+}
+
+.arena-filter-bar button,
+.arena-filter-select select {
+  border-color: var(--rb-line);
+}
+
+.arena-compose-backdrop {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.arena-lobby-arena {
+  border-color: var(--rb-line);
+}
+
+.arena-lobby-team-panel,
+.arena-lobby-score-core,
+.arena-lobby-actions > div {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.arena-room-player-slot {
+  border-color: var(--rb-line);
+}
+
+.arena-room-player-slot.ready {
+  border-color: rgba(101, 217, 159, 0.3);
+  background: rgba(101, 217, 159, 0.075);
+}
+
+.arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: rgba(255, 211, 108, 0.24);
+  background: rgba(255, 211, 108, 0.06);
+}
+
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+.arena-room-reserve-row .arena-room-player-slot:not(.empty),
+.arena-side-roster .arena-room-player-slot:not(.empty) {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-room-chat,
+.arena-reserve-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-slot-command-popover,
+.arena-party-picker {
+  border-color: var(--rb-line);
+}
+
+html[data-theme="light"] .arena-recruit-hero {
+  border-color: var(--rb-line);
+}
+
+html[data-theme="light"] .arena-hero-copy h1 {
+  color: #fffaf1;
+  text-shadow: 0 3px 16px rgba(30, 24, 18, 0.48);
+}
+
+html[data-theme="light"] .arena-hero-copy p,
+html[data-theme="light"] .arena-hero-copy .eyebrow {
+  color: rgba(255, 250, 241, 0.82);
+}
+
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-filter-bar {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] .arena-lobby-arena::before {
+  background:
+    linear-gradient(rgba(30, 24, 18, 0.045) 1px, transparent 1px) 0 0 / 100% 9px,
+    radial-gradient(ellipse at 50% 48%, rgba(229, 85, 63, 0.08), transparent 20rem);
+}
+
+html[data-theme="light"] .arena-lobby-score-core,
+html[data-theme="light"] .arena-lobby-actions > div {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] .arena-lobby-score-core i {
+  color: #d94c37;
+}

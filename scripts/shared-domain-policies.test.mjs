@@ -19,6 +19,7 @@ import {
   TEAM_DETAIL_SOURCE_PATHS,
   readSourceGroup,
 } from "./management-source-groups.mjs";
+import { readCssTree } from "./css-source-tree.mjs";
 import { BRAND_NAME } from "../src/lib/brand.js";
 import { getAdminStatusLabel } from "../src/lib/admin.js";
 import {
@@ -189,12 +190,7 @@ const readHomePageSource = () => readSourceGroup(readSource, HOME_PAGE_SOURCE_PA
 const readCreateMatchPageSource = () => readSourceGroup(readSource, CREATE_MATCH_PAGE_SOURCE_PATHS);
 
 async function readGlobalStyles() {
-  const manifestPath = "src/styles/globals.css";
-  const manifestUrl = new URL(manifestPath, root);
-  const manifest = await readFile(manifestUrl, "utf8");
-  const imports = [...manifest.matchAll(/@import\s+["']([^"']+)["'];/g)].map((match) => match[1]);
-  const modules = await Promise.all(imports.map((relativePath) => readFile(new URL(relativePath, manifestUrl), "utf8")));
-  return [manifest, ...modules].join("\n");
+  return readCssTree("src/styles/globals.css");
 }
 
 const PUBLIC_COPY_SOURCE_PATHS = Object.freeze([
@@ -659,7 +655,7 @@ test("무심판 경기의 최종 확정은 방장만 수행한다", () => {
 
 test("match clock keeps shot settings stable and fullscreen compact", async () => {
   const panelSource = await readSourceGroup(readSource, MATCH_CLOCK_PANEL_SOURCE_PATHS);
-  const clockStyles = await readSource("src/styles/match-clock.css");
+  const clockStyles = await readCssTree("src/styles/match-clock.css");
   const recruitingSource = await readRecruitingPageSource();
   const matchRoomSource = await readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS);
   const forceEndMigration = [
@@ -1257,7 +1253,7 @@ test("profile icon background choice and image preview stay persistent and separ
     readSource("server/api/profile/emblem.js"),
     readSource("shared/lib/repositoryColumns.js"),
     readSource("supabase/migrations/20260721190000_profile_icon_background_toggle.sql"),
-    readSource("src/styles/features/profile-emblems.css"),
+    readCssTree("src/styles/features/profile-emblems.css"),
   ]);
   assert.match(dialog, /avatarBackgroundEnabled/);
   assert.match(dialog, /profile-icon-preview-dialog/);
@@ -1276,7 +1272,7 @@ test("profile icon picker lists owned icons only and locked achievements conceal
     readSource("src/components/profile/ProfileIconDialog.jsx"),
     readSource("src/pages/ProfileAchievements.jsx"),
     readSource("server/api/_profileIconAchievements.js"),
-    readSource("src/styles/features/profile-emblems.css"),
+    readCssTree("src/styles/features/profile-emblems.css"),
   ]);
   assert.match(dialog, /group\.icons\.filter\(\(icon\) => unlockedSet\.has\(icon\.id\)\)/);
   assert.match(dialog, /unlockedGroups\.map\(\(group\) =>/);

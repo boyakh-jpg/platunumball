@@ -1,0 +1,486 @@
+/* Admin court database full-screen editor */
+.court-db-launcher small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.court-db-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  display: grid;
+  width: 100%;
+  height: 100dvh;
+  place-items: center;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(4px);
+  overscroll-behavior: contain;
+}
+
+.court-db-modal {
+  display: flex;
+  width: calc(100vw - 16px);
+  height: calc(100dvh - 16px);
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: var(--ui-stroke-width) solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.58);
+  color: var(--text);
+}
+
+.court-db-modal-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-7);
+  min-height: 68px;
+  border-bottom: var(--ui-stroke-width) solid var(--card-border);
+  background: var(--card-bg-strong);
+  padding: 10px 14px;
+}
+
+.court-db-modal-header h2,
+.court-db-modal-header p {
+  margin: 0;
+}
+
+.court-db-modal-header small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.court-db-modal-header > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.court-db-modal-body {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 10px;
+}
+
+.court-db-modal .court-db-tabs,
+.court-db-modal .court-db-toolbar,
+.court-db-modal .court-db-edit-toolbar,
+.court-db-modal .court-db-review-controls,
+.court-db-modal .court-db-status,
+.court-db-modal .court-db-pagination {
+  flex: 0 0 auto;
+}
+
+.court-db-modal .court-db-table-wrap {
+  width: 100%;
+  min-width: 0;
+  min-height: 180px;
+  flex: 1 1 auto;
+  overflow: scroll;
+  border-radius: var(--radius-sm);
+  scrollbar-color: color-mix(in srgb, var(--rb-orange) 68%, var(--muted)) var(--card-bg-strong);
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: auto;
+  overscroll-behavior: contain;
+}
+
+.court-db-modal .court-db-table-wrap::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+.court-db-modal .court-db-table-wrap::-webkit-scrollbar-track {
+  background: var(--card-bg-strong);
+}
+
+.court-db-modal .court-db-table-wrap::-webkit-scrollbar-thumb {
+  border: 3px solid var(--card-bg-strong);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-orange) 68%, var(--muted));
+}
+
+.court-db-modal .court-db-table {
+  min-width: 100%;
+}
+
+.court-db-modal .court-db-table th,
+.court-db-modal .court-db-table td {
+  height: 32px;
+}
+
+.court-db-modal .court-db-table thead tr:first-child th {
+  height: 25px;
+  padding: 1px 5px;
+}
+
+.court-db-modal .court-db-table thead .court-db-filter-row th {
+  top: 25px;
+  height: 21px;
+  padding: 1px 2px;
+}
+
+.court-db-modal .court-db-sort {
+  height: 21px;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.court-db-modal .court-db-sort span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.court-db-modal .court-db-sort svg {
+  flex: 0 0 auto;
+}
+
+.court-db-modal .court-db-filter-row input,
+.court-db-modal .court-db-filter-row select {
+  height: 18px;
+  border-radius: var(--radius-xs);
+  font-size: 0.62rem;
+  line-height: 1;
+  padding: 0 3px;
+}
+
+.court-db-modal .court-db-table tbody td input,
+.court-db-modal .court-db-table tbody td select,
+.court-db-edit-toolbar input {
+  width: 100%;
+  min-width: 0;
+  height: 25px;
+  border: var(--ui-stroke-width) solid var(--input-border);
+  border-radius: var(--radius-xs);
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  padding: 2px 6px;
+}
+
+.court-db-modal .court-db-table .court-db-sticky-actions {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  border-right: var(--ui-stroke-width-strong) solid color-mix(in srgb, var(--rb-orange) 42%, var(--card-border));
+  background: var(--card-bg-strong);
+  box-shadow: 5px 0 12px rgba(0, 0, 0, 0.12);
+}
+
+.court-db-modal .court-db-table thead tr:first-child .court-db-sticky-actions {
+  top: 0;
+  z-index: 9;
+}
+
+.court-db-modal .court-db-table thead .court-db-filter-row .court-db-sticky-actions {
+  top: 25px;
+  z-index: 10;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.court-db-modal .court-db-table td.court-db-actions {
+  display: table-cell;
+  padding: 4px 7px;
+  vertical-align: middle;
+}
+
+.court-db-modal .court-db-actions > a,
+.court-db-modal .court-db-actions > button {
+  display: inline-flex;
+  width: auto;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  min-height: 21px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.court-db-modal .court-db-actions > :last-child {
+  margin-right: 0;
+}
+
+.court-db-modal .court-db-actions > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.court-db-modal .court-db-row-editing .court-db-sticky-actions {
+  background: color-mix(in srgb, var(--rb-orange) 9%, var(--card-bg-strong));
+}
+
+.court-db-modal .court-db-row-active td {
+  box-shadow: inset 0 1px color-mix(in srgb, var(--rb-blue) 35%, transparent), inset 0 -1px color-mix(in srgb, var(--rb-blue) 35%, transparent);
+}
+
+.court-db-modal .court-db-editable-cell {
+  cursor: text;
+}
+
+.court-db-modal .court-db-editable-cell:focus-visible,
+.court-db-modal .court-db-cell-active {
+  outline: 2px solid color-mix(in srgb, var(--rb-blue) 72%, transparent);
+  outline-offset: -2px;
+}
+
+.court-db-row-dirty-count {
+  color: var(--danger);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.court-db-edit-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(280px, 1.2fr) auto minmax(180px, 1fr);
+  align-items: center;
+  gap: 9px;
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--danger) 36%, var(--card-border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 7%, var(--card-bg));
+  padding: 7px 9px;
+}
+
+.court-db-edit-toolbar > div:first-child {
+  min-width: 0;
+}
+
+.court-db-edit-toolbar strong,
+.court-db-edit-toolbar span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.court-db-edit-toolbar span,
+.court-db-edit-toolbar small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.court-db-edit-toolbar label {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 1fr);
+  align-items: center;
+  gap: 7px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.court-db-quick-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.court-db-quick-status button {
+  min-height: 27px;
+  border: var(--ui-stroke-width) solid var(--card-border);
+  border-radius: var(--radius-xs);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 850;
+  cursor: pointer;
+  padding: 3px 7px;
+}
+
+.court-db-quick-status button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.court-db-batch-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.court-db-review-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--rb-blue) 38%, var(--card-border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--rb-blue) 7%, var(--card-bg));
+  padding: 7px 9px;
+}
+
+.court-db-review-progress {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.court-db-review-progress strong {
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.court-db-review-progress span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.court-db-review-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.court-db-review-workspace {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(240px, 0.62fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  overflow: hidden;
+}
+
+.court-db-review-summary,
+.court-db-review-editor {
+  min-width: 0;
+  min-height: 0;
+  border: var(--ui-stroke-width) solid var(--card-border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  overflow: auto;
+}
+
+.court-db-review-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: 12px;
+}
+
+.court-db-review-summary h3,
+.court-db-review-summary p,
+.court-db-review-summary dl {
+  margin: 0;
+}
+
+.court-db-review-summary h3 {
+  margin-top: 3px;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.court-db-review-summary p,
+.court-db-review-summary small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.court-db-review-summary dl {
+  display: grid;
+  gap: 7px;
+}
+
+.court-db-review-summary dl > div {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: var(--space-4);
+  border-bottom: var(--ui-stroke-width) solid color-mix(in srgb, var(--card-border) 72%, transparent);
+  padding-bottom: 7px;
+}
+
+.court-db-review-summary dt,
+.court-db-review-summary dd {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.court-db-review-summary dt {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.court-db-review-summary dd {
+  overflow-wrap: anywhere;
+  font-weight: 850;
+}
+
+.court-db-review-links {
+  display: flex;
+  margin-top: auto;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.court-db-review-links a {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: var(--ui-stroke-width) solid var(--card-border);
+  border-radius: var(--radius-xs);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-decoration: none;
+  padding: 6px 10px;
+}
+
+.court-db-review-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: 12px;
+}
+
+.court-db-review-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.court-db-review-section-head > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.court-db-review-section-head strong {
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.court-db-review-section-head small,
+.court-db-review-section-head > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}

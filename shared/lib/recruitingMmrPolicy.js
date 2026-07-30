@@ -1,8 +1,5 @@
-import { DEFAULT_RATING, DISPUTE_WINDOW_MINUTES, MATCH_SIDES, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole, normalizeBenchCapacity } from "./constants.js";
-import { normalizeCourtOptionalBoolean } from "./courtPolicy.js";
-import { isEligibleReferee, isInstantRoom } from "./matchUtils.js";
-import { getAgeGroupForUser } from "./profileSetup.js";
-import { TIERS, getTierDivision } from "./tier.js";
+import { DEFAULT_RATING } from "./constants.js";
+import { getTierDivision } from "./tier.js";
 
 export const MMR_RANGE_POLICIES = {
   narrow: { label: "좁게", detail: "비슷한 실력만", gap: 120 },

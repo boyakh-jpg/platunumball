@@ -5,17 +5,11 @@ import {
   normalizeAdminUserOperationDuration,
   validateAdminUserOperationDraft,
 } from "../../../shared/lib/adminUserOperations.js";
-import { normalizeDirectoryFilter } from "../../../shared/lib/queryPolicy.js";
+import { clampQueryInteger, normalizeDirectoryFilter } from "../../../shared/lib/queryPolicy.js";
 
 const ADMIN_USER_PAGE_LIMIT = 30;
 const ADMIN_USER_MAX_PAGE_LIMIT = 60;
 const ADMIN_USER_MAX_OFFSET = 10_000;
-
-function clampInteger(value, fallback, min, max) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(max, Math.max(min, Math.floor(parsed)));
-}
 
 function getEnvIdSet(name) {
   return new Set(String(process.env[name] ?? "")
@@ -57,8 +51,8 @@ export default async function handler(request, response) {
 
     const operation = String(body.operation ?? body.action ?? "load").trim();
     if (operation === "load") {
-      const limit = clampInteger(body.limit, ADMIN_USER_PAGE_LIMIT, 1, ADMIN_USER_MAX_PAGE_LIMIT);
-      const offset = clampInteger(body.offset, 0, 0, ADMIN_USER_MAX_OFFSET);
+      const limit = clampQueryInteger(body.limit, ADMIN_USER_PAGE_LIMIT, 1, ADMIN_USER_MAX_PAGE_LIMIT);
+      const offset = clampQueryInteger(body.offset, 0, 0, ADMIN_USER_MAX_OFFSET);
       const search = normalizeDirectoryFilter(body.search ?? body.filter ?? "");
       const riskOnly = body.riskOnly !== false;
       const [{ data, error }, { data: remakeData, error: remakeError }] = await Promise.all([

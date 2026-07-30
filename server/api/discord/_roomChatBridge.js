@@ -8,13 +8,9 @@ import {
   fetchDiscordApi,
   getDiscordBotAuthorization,
 } from "../../lib/discordHttp.js";
+import { isMissingTable } from "../_supabaseAdmin.js";
 
 const DISCORD_CHAT_TIMEOUT_MS = Math.max(500, Math.min(10000, Number(process.env.DISCORD_CHAT_SYNC_TIMEOUT_MS || 2500)));
-
-function isMissingTable(error = {}, table = "") {
-  const message = String(error?.message ?? "");
-  return error?.code === "PGRST205" || error?.code === "42P01" || (table && message.includes(table));
-}
 
 function getDiscordChatDryRun(path = "") {
   if (process.env.DISCORD_CHAT_SYNC_DRY_RUN !== "1") return null;

@@ -11,6 +11,11 @@ export function flattenPlayerIdValues(value) {
   return value ? [String(value)] : [];
 }
 
+export function flattenMatchReservePlayerIds(match = {}) {
+  return Object.values(match.reservePlayers ?? match.rules?.reservePlayers ?? {})
+    .flatMap((value) => (Array.isArray(value) ? value.filter(Boolean) : []));
+}
+
 // Shape validation needs duplicates intact so it can reject the original payload.
 export function collectMatchActivePlayerIds(match = {}) {
   return MATCH_SIDES.flatMap((sideName) => match?.[sideName]?.players ?? []).filter(Boolean);

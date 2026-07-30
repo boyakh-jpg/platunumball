@@ -1,5 +1,12 @@
 import { MATCH_SIDES, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { getMatchRecordPlayerIds, getMatchSideRecordPlayerIds, getMergedResultScore } from "../lib/matchUtils.js";
+import { getRecordSummaryNames } from "../../shared/lib/matchMappers.js";
+import {
+  getProfileAvatarInitial as getAvatarInitial,
+  isAnonymousDisplayUser,
+} from "../../shared/lib/profileMappers.js";
+
+export { getRecordSummaryNames, getAvatarInitial, isAnonymousDisplayUser };
 
 export const statusMeta = {
   contract: { label: "대기", tone: "blue" },
@@ -34,26 +41,11 @@ export function getDisplayScore(match, sideName) {
   return sourceResult?.[resultKey] ?? match[sideName]?.score ?? 0;
 }
 
-export function getRecordSummaryNames(match = {}, sideName = "teamA") {
-  const names = sideName === "teamA"
-    ? match.rules?.recordSummary?.teamAPlayers
-    : match.rules?.recordSummary?.teamBPlayers;
-  return Array.isArray(names) ? names.map((name) => String(name ?? "").trim()) : [];
-}
-
 export function getRecordPlayerDisplayName(match = {}, sideName = "teamA", playerId = "", index = 0, user = null) {
   return user?.name
     || match.anonymousPlayers?.[playerId]?.name
     || getRecordSummaryNames(match, sideName)[index]
     || "플레이어";
-}
-
-export function isAnonymousDisplayUser(user = null) {
-  return Boolean(user?.anonymous || user?.participationLabel === "개인참여");
-}
-
-export function getAvatarInitial(user = null, fallback = "P") {
-  return isAnonymousDisplayUser(user) ? "?" : (user?.name?.slice(0, 1) ?? fallback);
 }
 
 export function getPlayerMetaLabel(user = null) {

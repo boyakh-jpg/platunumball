@@ -11,9 +11,7 @@ import { addDateDays, getLocalDateInputValue, isInstantRoom } from "./matchTimeU
 import { normalizeRecruitingPost } from "./recruiting.js";
 import {
   getDatePart,
-  getDbScheduleParts,
   getTimePart,
-  toDbTime,
 } from "./matchPersistence.js";
 
 export {
@@ -37,6 +35,10 @@ export function isScheduleDateInAllowedWindow(dateValue, now = new Date(), maxDa
 
 export function getScheduleText(date, time) {
   return [date, time].filter(Boolean).join(" ") || "일정 미정";
+}
+
+export function formatTournamentWindow(tournament = {}) {
+  return [tournament.startDate, tournament.endDate].filter(Boolean).join(" ~ ") || "일정 미정";
 }
 
 function getQueueScheduleStartDate(now = new Date()) {

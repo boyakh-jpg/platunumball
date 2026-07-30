@@ -11,7 +11,7 @@ import {
 } from "../../shared/lib/repositoryColumns.js";
 import { TEST_REFEREE_LOGIN_IDS, isRefereeGrade } from "../../shared/lib/constants.js";
 import { COURT_MAP_SEARCH_LIMIT, COURT_MAP_SEARCH_PURPOSE } from "../../shared/lib/queryPolicy.js";
-import { fromRemoteApprovedCourt } from "../../shared/lib/remotePayloadMappers.js";
+import { fromRemoteApprovedCourt, getRemotePayload } from "../../shared/lib/remotePayloadMappers.js";
 import { isWithinOneEdit } from "../../shared/lib/fuzzyText.js";
 
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
@@ -125,10 +125,6 @@ function isActiveRefereeAppointment(row = {}, throughMs = Date.now()) {
     && (!Number.isFinite(throughMs) || endsAt >= throughMs);
 }
 
-function getPayload(row = {}) {
-  return row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
-}
-
 function toProfile(row = {}, kind = "profile", extra = {}) {
   return {
     kind,
@@ -191,7 +187,7 @@ function toCourtRequest(row = {}) {
 }
 
 function toCourtReview(row = {}) {
-  const payload = getPayload(row);
+  const payload = getRemotePayload(row);
   return {
     ...payload,
     kind: "court_review",

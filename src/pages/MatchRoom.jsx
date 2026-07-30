@@ -1,13 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
-import { Crown, UsersRound } from "lucide-react";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
-import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
-import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeBenchCapacity, normalizeDisputeWindowMinutes } from "../lib/constants.js";
-import { DEFAULT_REPORT_REASON, VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
-import { MATCH_DISPUTE_REASON_OPTIONS, buildMatchResultSubmission, buildMatchDisputeRequest, canUserResolveMatchDispute, canRequestVoidMatchRestore, getAgreementStatus, getMatchHostPlayerId, getMatchCancelCopy, getOpenMatchDisputes, getMatchRecordWindow, getMatchResultRevision, getMatchManualFinalizationStatus, getMatchReferee, getMatchRecordPlayerIds, getMatchReviewParticipantIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchPlayerIds, getReportableMatchTimeMs, getReportableMatchUserIds, getVoidMatchRestoreTargetUserId, getMatchReservePlayerIds, getSafeMatchSide, getMatchSideLeaderId, getPlayerSideName, getPlayerStatSubmitted, getStatSubmissionStatus, isEligibleReferee, isMatchReferee, isMatchRecordMatch, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { DEFAULT_REPORT_REASON } from "../lib/reportReasons.js";
+import {
+  MATCH_DISPUTE_REASON_OPTIONS,
+  canUserResolveMatchDispute,
+  canRequestVoidMatchRestore,
+  getAgreementStatus,
+  getMatchHostPlayerId,
+  getMatchCancelCopy,
+  getOpenMatchDisputes,
+  getMatchRecordWindow,
+  getMatchManualFinalizationStatus,
+  getMatchReferee,
+  getMatchRecordPlayerIds,
+  getMatchReviewParticipantIds,
+  getMatchResultEntryPermission,
+  getMatchRoomPhase,
+  getMatchPlayerIds,
+  getReportableMatchTimeMs,
+  getReportableMatchUserIds,
+  getSafeMatchSide,
+  getPlayerSideName,
+  getPlayerStatSubmitted,
+  getStatSubmissionStatus,
+  isEligibleReferee,
+  isMatchReferee,
+  isMatchRecordMatch,
+  isPersonalRecordMatch,
+} from "../lib/matchUtils.js";
 import { getMatchRuleDetailRows, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
 import { getLinkedPersonalRecordDisplayUser } from "../lib/personalRecordRoster.js";
 import { getRoomCancellationActionLabel, getRoomCancellationConfirmMessage, getRoomCancellationPolicy } from "../lib/roomFlow.js";
@@ -17,9 +40,6 @@ import {
   makeInitialStats,
   getTeamMmr,
   getDisplayScore,
-  isAnonymousDisplayUser,
-  getAvatarInitial,
-  getPlayerMetaLabel,
   getPointAudit,
   getCourtReviewDraft,
 } from "./matchRoomModel.js";

@@ -67,17 +67,17 @@ const matchOperationsFieldsSource = matchCreationWizardSource.slice(
 );
 const ruleSelectorSource = read("src/components/match/RuleSelector.jsx");
 const matchListStyles = read("src/styles/match-list-card.css");
-const primitiveStyles = read("src/styles/ui-primitives.css");
+const primitiveStyles = readCssTree("src/styles/ui-primitives.css");
 const tokenStyles = read("src/styles/tokens.css");
-const foundationStyles = read("src/styles/global-foundation.css");
+const foundationStyles = readCssTree("src/styles/global-foundation.css");
 const globalSearchStyles = readCssTree("src/styles/global-search-profile.css");
 const visualSystemStyles = readCssTree("src/styles/global-visual-system.css");
-const courtControlStyles = read("src/styles/global-court-controls.css");
-const globalAdminStyles = read("src/styles/global-admin-layout.css");
+const courtControlStyles = readCssTree("src/styles/global-court-controls.css");
+const globalAdminStyles = readCssTree("src/styles/global-admin-layout.css");
 const globalWorkflowStyles = readCssTree("src/styles/global-workflows.css");
-const globalSurfaceStyles = read("src/styles/global-surfaces.css");
-const classicDesignStyles = read("src/styles/design-classic.css");
-const editorialDesignStyles = read("src/styles/design-editorial.css");
+const globalSurfaceStyles = readCssTree("src/styles/global-surfaces.css");
+const classicDesignStyles = readCssTree("src/styles/design-classic.css");
+const editorialDesignStyles = readCssTree("src/styles/design-editorial.css");
 const visualDirectionDemoSource = read("src/pages/VisualDirectionDemo.jsx");
 const globalStyleManifest = read("src/styles/globals.css");
 const appShellSource = read("src/components/layout/AppShell.jsx");
@@ -97,10 +97,10 @@ const recruitingListApiSource = read("server/api/recruiting/_listProjection.js")
 const useAppDataSource = readSourceGroupSync(read, APP_DATA_ORCHESTRATOR_SOURCE_PATHS);
 const recruitingStyles = readCssTree("src/styles/recruiting-arena.css");
 const matchesStyles = readCssTree("src/styles/matches-arena.css");
-const gettingStartedStyles = read("src/styles/getting-started.css");
-const matchClockStyles = read("src/styles/match-clock.css");
+const gettingStartedStyles = readCssTree("src/styles/getting-started.css");
+const matchClockStyles = readCssTree("src/styles/match-clock.css");
 const matchClockSource = readSourceGroupSync(read, MATCH_CLOCK_PANEL_SOURCE_PATHS);
-const matchRoomStyles = read("src/styles/matchroom-arena.css");
+const matchRoomStyles = readCssTree("src/styles/matchroom-arena.css");
 const appSource = read("src/App.jsx");
 const gettingStartedSource = [
   read("src/pages/GettingStarted.jsx"),
@@ -116,9 +116,9 @@ const courtDetailSource = read("src/pages/CourtDetail.jsx");
 const entityProfileHeroSource = read("src/components/profile/EntityProfileHero.jsx");
 const placementEmblemPath = "public/assets/tier-emblems/tier-placement-v2.webp";
 const hoverSurfaceStyles = [
-  read("src/styles/global-foundation.css"),
-  read("src/styles/global-admin-layout.css"),
-  read("src/styles/global-surfaces.css"),
+  readCssTree("src/styles/global-foundation.css"),
+  readCssTree("src/styles/global-admin-layout.css"),
+  readCssTree("src/styles/global-surfaces.css"),
   visualSystemStyles,
   courtControlStyles,
 ].join("\n");
@@ -146,6 +146,7 @@ test("앱은 분류 박스 없는 표준 디자인을 사용하고 비교 데모
   const designLeaks = styleFiles
     .filter((file) => file !== "src/styles/tokens.css")
     .filter((file) => !file.endsWith("design-classic.css") && !file.endsWith("design-editorial.css"))
+    .filter((file) => !/\/themes\/design-(?:classic|editorial)-/.test(file))
     .filter((file) => /\[data-design=/.test(read(file)));
   const editorialAppStyles = editorialDesignStyles.split("/* Full application contract.")[1] ?? "";
 
@@ -349,7 +350,7 @@ test("team emblem text controls keep one height at every form factor", () => {
 });
 
 test("general UI copy wraps at spaces without splitting words", () => {
-  const foundationStyles = read("src/styles/global-foundation.css");
+  const foundationStyles = readCssTree("src/styles/global-foundation.css");
   const bodyRule = getRuleBody(foundationStyles, "body");
 
   assert.match(bodyRule, /word-break:\s*keep-all;/);
@@ -455,7 +456,7 @@ function getRuleBody(source, selector) {
 }
 
 test("모든 페이지 기본 본문은 800이며 명시형 굵기는 600 이상을 유지한다", () => {
-  const foundationStyles = read("src/styles/global-foundation.css");
+  const foundationStyles = readCssTree("src/styles/global-foundation.css");
   const bodyRule = getRuleBody(foundationStyles, "body");
   const forbiddenWeights = [];
 
@@ -791,7 +792,7 @@ test("화면별 점수 입력 layout은 feature CSS만 소유한다", () => {
     /@media \(max-width:\s*640px\)\s*\{[^{}]*\.match-room \.score-form\s*\{/,
   );
   assert.match(recruitingStyles, /\.arena-dispute-score-row \.arena-derived-score/);
-  assert.match(read("src/styles/matchroom-arena.css"), /\.match-room \.match-derived-score/);
+  assert.match(readCssTree("src/styles/matchroom-arena.css"), /\.match-room \.match-derived-score/);
 });
 
 test("목록 카드는 Card, Button, ui-panel primitive를 사용한다", () => {
@@ -1015,13 +1016,13 @@ test("팀 허브 대표팀 보드는 팀 전용 너비와 고정 노랑 팀명�
     /\.team-hub-board strong\s*\{[^}]*color:\s*var\(--rb-yellow\);/,
   );
   assert.match(
-    read("src/styles/global-surfaces.css"),
+    readCssTree("src/styles/global-surfaces.css"),
     /\.team-hub-board\s*\{[^}]*width:\s*min\(100%,\s*720px\);[^}]*max-width:\s*none;/,
   );
   assert.doesNotMatch(pageSources.teams, /team-hub-board-emblem/);
-  assert.doesNotMatch(read("src/styles/global-surfaces.css"), /\.team-hub-board-emblem/);
+  assert.doesNotMatch(readCssTree("src/styles/global-surfaces.css"), /\.team-hub-board-emblem/);
   assert.match(
-    read("src/styles/global-surfaces.css"),
+    readCssTree("src/styles/global-surfaces.css"),
     /\.team-hub-board\s*\{[^}]*gap:\s*var\(--space-8\);[^}]*padding:\s*clamp\(24px,\s*3vw,\s*32px\);/,
   );
   assert.doesNotMatch(
@@ -1088,7 +1089,7 @@ test("지역 랭크보드는 지역 선수와 팀만 표시하고 소속은 별�
 });
 
 test("tier emblem halo stays inside the shared emblem paint box", () => {
-  const foundationStyles = read("src/styles/global-foundation.css");
+  const foundationStyles = readCssTree("src/styles/global-foundation.css");
 
   assert.match(foundationStyles, /\.tier-emblem::before\s*\{[\s\S]*?aspect-ratio:\s*1;[\s\S]*?radial-gradient\([\s\S]*?at 50% 50%,[\s\S]*?transparent 82%/);
   assert.match(foundationStyles, /\.tier-emblem img,\s*\.tier-emblem svg\s*\{[\s\S]*?filter:\s*none;/);

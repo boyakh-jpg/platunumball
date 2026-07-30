@@ -1,0 +1,484 @@
+.arena-host-kick-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.arena-host-kick-panel header strong {
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.arena-host-kick-panel header span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.arena-host-kick-list {
+  display: grid;
+  gap: 7px;
+}
+
+.arena-host-kick-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 8px;
+}
+
+.arena-host-kick-row > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.arena-host-kick-row > span > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.arena-host-kick-row strong,
+.arena-host-kick-row em,
+.arena-host-kick-row i {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-host-kick-row em {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.arena-host-kick-row i {
+  color: var(--green);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.arena-host-kick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.arena-host-kick-actions > :is(.button, .form-chip) {
+  flex: 0 0 auto;
+}
+
+.arena-host-kick-panel.is-pickup-assignment header {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: start;
+}
+
+.arena-host-kick-panel.is-pickup-assignment header span {
+  text-align: right;
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-row {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-content: stretch;
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions > :is(.button, .form-chip) {
+  width: 100%;
+  min-width: 0;
+}
+
+.arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions > .arena-player-swap-button {
+  grid-column: 1 / -1;
+}
+
+.arena-kick-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.46);
+}
+
+.arena-kick-confirm-dialog {
+  display: grid;
+  width: min(360px, 100%);
+  gap: 12px;
+  border: var(--ui-card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  padding: 18px;
+  color: var(--rb-text);
+}
+
+.arena-kick-confirm-dialog strong {
+  color: var(--rb-text);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.arena-kick-confirm-dialog p {
+  margin: 0;
+  color: var(--rb-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.arena-kick-confirm-dialog > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.arena-invite-panel,
+.arena-invitation-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: var(--ui-card-border-width) solid rgba(70, 224, 182, 0.24);
+  border-radius: var(--radius-xs);
+  background: rgba(70, 224, 182, 0.075);
+  padding: 12px;
+}
+
+.arena-invite-panel header,
+.arena-invite-team-head,
+.arena-invitation-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.arena-invite-panel header > div,
+.arena-invite-team-head .team-hover-trigger,
+.arena-invitation-list .player-hover-trigger {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.arena-invite-panel header strong,
+.arena-invitation-list > strong {
+  color: var(--text);
+  font-weight: 950;
+}
+
+.arena-invite-panel header span,
+.arena-invite-empty {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.arena-invite-empty.error {
+  color: var(--danger);
+}
+
+.arena-invite-search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 9px 10px;
+}
+
+.arena-invite-search input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+
+.arena-referee-invite-panel {
+  margin-top: 10px;
+}
+
+.arena-referee-pending-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.arena-referee-pending-list span {
+  border-radius: 999px;
+  background: rgba(255, 211, 106, 0.14);
+  color: var(--text);
+  padding: 6px 9px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.arena-invite-team-head .team-hover-trigger,
+.arena-invitation-list .player-hover-trigger {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.arena-invite-team-head .team-hover-trigger > span:last-child,
+.arena-invitation-list .player-hover-trigger > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.arena-invite-team-head strong,
+.arena-invitation-list b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-invite-team-head em,
+.arena-invitation-list em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-invite-team-head > button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.arena-invite-team-head > button.active {
+  border-color: rgba(255, 211, 108, 0.42);
+  color: var(--gold);
+}
+
+.arena-invite-team-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.arena-slot-command-popover .arena-invite-team-picker > .button,
+.arena-slot-command-popover .arena-invite-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  border-top: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.16);
+  background: linear-gradient(180deg, rgba(9, 14, 23, 0.62), rgba(9, 14, 23, 0.96));
+  padding-top: 8px;
+}
+
+.arena-invite-member-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+.arena-invite-member-grid button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  padding: 8px;
+  text-align: left;
+}
+
+.arena-invite-member-grid button.selected {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.13);
+}
+
+.arena-invite-member-grid button:disabled {
+  opacity: 0.48;
+}
+
+.arena-invite-member-grid button > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.arena-invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.arena-invitation-list > div.mine {
+  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.3);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 211, 108, 0.08);
+  padding: 8px;
+}
+
+.arena-reserve-panel {
+  margin-top: 12px;
+}
+
+.arena-reserve-panel > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.arena-reserve-line {
+  display: grid;
+  gap: 7px;
+  padding-inline: 14px;
+}
+
+.arena-reserve-line strong {
+  color: var(--gold);
+  font-size: 0.8rem;
+}
+
+.arena-reserve-line > .arena-room-reserve-row {
+  display: grid;
+  grid-template-columns: repeat(var(--slot-count, 2), minmax(0, var(--room-slot-width)));
+  justify-content: start;
+  gap: var(--room-slot-gap);
+}
+
+.arena-room-rule-panel {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.arena-room-rule-panel strong {
+  color: var(--text);
+}
+
+.arena-room-rule-panel span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.arena-room-chat {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.arena-chat-empty {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.arena-room-chat header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.arena-room-chat header span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.arena-chat-list {
+  display: grid;
+  gap: 8px;
+}
+
+.arena-chat-list {
+  max-height: 240px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 10px 12px;
+}
+
+.arena-chat-message {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.arena-chat-message > .player-hover-trigger {
+  margin-top: 4px;
+}
+
+.arena-chat-message > span:last-child {
+  display: grid;
+  width: fit-content;
+  min-width: 0;
+  max-width: min(78%, 560px);
+  justify-self: start;
+  gap: 3px;
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--green) 32%, transparent);
+  border-radius: 4px 14px 14px 14px;
+  background: color-mix(in srgb, var(--green) 13%, transparent);
+  padding: 8px 10px;
+}
+
+.arena-chat-message.is-mine {
+  grid-template-columns: minmax(0, 1fr) 34px;
+}
+
+.arena-chat-message.is-mine > .player-hover-trigger {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.arena-chat-message.is-mine > span:last-child {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+  border-color: color-mix(in srgb, var(--rb-orange) 38%, transparent);
+  border-radius: 14px 4px 14px 14px;
+  background: color-mix(in srgb, var(--rb-orange) 14%, transparent);
+}

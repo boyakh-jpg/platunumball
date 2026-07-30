@@ -1,35 +1,19 @@
 import {
   DISPUTE_WINDOW_MINUTES,
-  MATCH_MODES,
   PLAYER_POSITIONS,
   REFEREE_TRUST_MIN,
   REGIONS,
   STAT_ENTRY_WINDOW_MINUTES,
 } from "../constants.js";
-import { demoFlowState } from "../demoFlowState.js";
 import {
   DEMO_NOW,
   DEMO_PRACTICE_COURT,
-  DEMO_QUEUE_TIMES,
   DEMO_TODAY,
-  DELETED_SYNTHETIC_COURT_IDS,
-  baseState,
-  getDemoModeSize,
-  getDemoQueueSlot,
-  getTeamDemoPlayerIds,
-  makeDefaultRoomState,
-  makeDemoApplicant,
   makeDemoStatSubmissions,
   makeDemoTimestamp,
   makeRelativeDemoDateTime,
   makeTrustFeedback,
 } from "./baseState.js";
-import {
-  uniqueById,
-  withCanonicalUserHashtags,
-  withDemoRefereeQualifications,
-  withoutDeletedSyntheticCourts,
-} from "./stateFinalizers.js";
 
 // P-DEMO-CLEANUP: seed/local-dev only. Production app must not import this module.
 const demoSurnames = ["강", "김", "박", "이", "최", "정", "한", "오", "문", "서", "윤", "장", "배", "권", "노", "신"];

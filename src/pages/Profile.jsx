@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { PersonalRecordMetaLabels } from "../components/match/MatchRecordMeta.jsx";
@@ -15,7 +14,7 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import { BASKETBALL_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
-import { canChangeProfileName, getNextNameChangeDate, getRegionDistrictOptions, inferRegionSelection } from "../lib/profileSetup.js";
+import { canChangeProfileName, formatProfileDate, getNextNameChangeDate, getRegionDistrictOptions, inferRegionSelection } from "../lib/profileSetup.js";
 import { isPlacementComplete } from "../lib/rating.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
@@ -42,11 +41,6 @@ function getProfileAverageFouls(user = {}, matches = []) {
   const summaryAverage = Number(user.matchSummary?.averageFouls);
   if (user.matchSummary && Number.isFinite(summaryAverage)) return summaryAverage;
   return getAverageFouls(matches, user.id);
-}
-
-function formatDate(date) {
-  if (!date) return "";
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function RecentRecordCard({ records, userId, teams, onOpenRecord, loading = false }) {
@@ -110,7 +104,7 @@ export default function Profile({ app }) {
   const submit = async (event) => {
     event.preventDefault();
     if (draft.name !== user.name && !canChangeProfileName(user)) {
-      setProfileError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatDate(getNextNameChangeDate(user))}`);
+      setProfileError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(getNextNameChangeDate(user))}`);
       return;
     }
     setProfileError("");

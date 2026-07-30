@@ -1,0 +1,104 @@
+@media (max-width: 720px) {
+  .team-emblem-editor-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-emblem-editor-actions > small {
+    grid-column: 1 / -1;
+  }
+
+  .team-emblem-editor-actions .button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .team-emblem-editor-actions .button:only-of-type {
+    grid-column: 1 / -1;
+  }
+
+  .emblem-source-grid,
+  .emblem-source-grid.two-options,
+  .emblem-style-controls,
+  .team-emblem-text-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .emblem-style-controls .button {
+    width: 100%;
+  }
+
+  .profile-icon-source-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .profile-icon-group-tabs button,
+  .profile-emblem-card .emblem-style-controls .button {
+    min-height: var(--ui-button-height);
+  }
+
+  .profile-icon-catalog {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-icon-catalog-item {
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 7px;
+  }
+
+  .profile-icon-catalog img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .profile-icon-catalog-image {
+    width: 40px;
+    height: 40px;
+  }
+
+  .profile-icon-dialog-backdrop {
+    place-items: end center;
+    padding: 10px;
+  }
+
+  .app-confirm-dialog.profile-icon-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+  }
+
+  .profile-icon-color-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-icon-preview-backdrop {
+    place-items: end center;
+    padding: 10px;
+  }
+
+  .app-confirm-dialog.profile-icon-preview-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+  }
+
+  .profile-icon-preview-stage {
+    min-height: min(62dvh, 300px);
+  }
+
+  .profile-achievement-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .team-emblem-font-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .emblem-crop-backdrop {
+    place-items: end center;
+    padding: 10px;
+  }
+
+  .emblem-crop-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+  }
+}

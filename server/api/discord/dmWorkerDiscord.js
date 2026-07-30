@@ -1,13 +1,3 @@
-import { allowRequestMethod, attachNotificationActors, bearerTokenMatches, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { MINUTE_MS } from "../../../shared/lib/matchConstants.js";
-import { isDiscordNotificationEnabled } from "../../../shared/lib/settingsMappers.js";
-import {
-  MATCH_SCHEDULED_NOTICE_PREFIXES,
-  getBlockedUserIds,
-  getNotificationActorId,
-} from "../../../shared/lib/notifications.js";
-import { fromRemoteNotification } from "../../../shared/lib/remotePayloadMappers.js";
-import { NOTIFICATION_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
 import { getPublicAppWebUrl } from "../_publicAppUrl.js";
 import {
   DISCORD_NOTIFICATION_BODY_MAX_LENGTH,

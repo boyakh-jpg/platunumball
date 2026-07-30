@@ -1,8 +1,5 @@
 import {
-  DISPUTE_WINDOW_MINUTES,
   MODE_SIZES,
-  REFEREE_TRUST_MIN,
-  STAT_ENTRY_WINDOW_MINUTES,
 } from "../constants.js";
 
 // P-DEMO-CLEANUP: seed/local-dev only. Production app must not import this module.

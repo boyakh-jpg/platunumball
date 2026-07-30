@@ -1,18 +1,11 @@
-import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   Bell,
   BookOpenCheck,
-  CheckCircle2,
   ClipboardCheck,
   Clock3,
-  ChevronDown,
-  FlaskConical,
   Gauge,
-  MapPin,
   Play,
-  QrCode,
   Settings,
   ShieldCheck,
   Swords,

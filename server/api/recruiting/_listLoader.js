@@ -1,15 +1,39 @@
-import { fetchCourtRowsByIds, firstRowBy as firstBy, groupRowsBy as groupBy, isMissingTable, toDateTime, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
+import { firstRowBy as firstBy, groupRowsBy as groupBy, toDateTime, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
 import { normalizeState } from "../../../shared/lib/stateNormalizer.js";
 import { fromRemoteRecruitingPost, toClientRecruitingTeam } from "../../../shared/lib/recruitingMappers.js";
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../shared/lib/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
 import { REMOTE_CLIENT_RECRUITING_LIMIT } from "../../../shared/lib/constants.js";
-import { COURT_COLUMNS, PROFILE_CARD_COLUMNS as PROFILE_PUBLIC_COLUMNS, RECRUITING_APPLICATION_COLUMNS, RECRUITING_POST_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
-import { ROOM_CHAT_HISTORY_LIMIT, ROOM_CHAT_MESSAGE_COLUMNS, clampRoomChatHistoryLimit, fromRoomChatMessageRow } from "../../../shared/lib/roomChat.js";
 
-import { RECRUITING_COUNT_POST_COLUMNS, fetchCurrentUserRecruitingFallbackPostIds, fetchRecruitingFeedCounts, fetchRecruitingFeedPage, getRecruitingMineRelations, mergeRecruitingFeedPages } from "./_listQueries.js";
-import { appendMissingTeamMemberProfiles, attachFreshRecruitingListCounts, attachPendingInvitationsToFeedCards, attachRecruitingCardReferences, canReadRecruitingPostDetail, canUseFeedCardForProfile, collectRecruitingCardScope, collectRecruitingScope, compactRecruitingListState, getRecruitingFeedCardRejectReason, getRecruitingListCountsFromPost, hasThinRecruitingListCounts, normalizeRegionKey, toRecruitingCountPost, uniqueFeedCards } from "./_listProjection.js";
-import { RECRUITING_APPROVED_COURT_COLUMNS, fetchRoomChatMessagesByPostIds, fetchRecruitingListCountsByPostId, fetchRecruitingRowsByIds, fetchReadableRecruitingRows, fetchRecruitingReferenceRows, createRecruitingUserMap, buildCompactRecruitingResult } from "./_listLoaderHelpers.js";
+import {
+  fetchCurrentUserRecruitingFallbackPostIds,
+  fetchRecruitingFeedCounts,
+  fetchRecruitingFeedPage,
+  getRecruitingMineRelations,
+  mergeRecruitingFeedPages,
+} from "./_listQueries.js";
+import {
+  appendMissingTeamMemberProfiles,
+  attachFreshRecruitingListCounts,
+  attachPendingInvitationsToFeedCards,
+  attachRecruitingCardReferences,
+  canUseFeedCardForProfile,
+  collectRecruitingCardScope,
+  collectRecruitingScope,
+  compactRecruitingListState,
+  getRecruitingFeedCardRejectReason,
+  hasThinRecruitingListCounts,
+  normalizeRegionKey,
+  uniqueFeedCards,
+} from "./_listProjection.js";
+import {
+  fetchRoomChatMessagesByPostIds,
+  fetchRecruitingListCountsByPostId,
+  fetchReadableRecruitingRows,
+  fetchRecruitingReferenceRows,
+  createRecruitingUserMap,
+  buildCompactRecruitingResult,
+} from "./_listLoaderHelpers.js";
 
 
 

@@ -1,0 +1,107 @@
+.pickup-rotation-panel .arena-room-edit-actions > .button {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ui-button-height);
+}
+@media (max-width: 720px) {
+  .arena-lobby-modal .pickup-room-slot-grid,
+  html[data-theme="light"] .arena-lobby-modal .pickup-room-slot-grid {
+    --room-slot-inline-bleed: var(--space-2);
+    inline-size: calc(100% + (2 * var(--room-slot-inline-bleed)));
+    max-inline-size: none;
+    justify-content: space-between;
+    column-gap: 0;
+    margin-inline: calc(-1 * var(--room-slot-inline-bleed));
+    padding-inline: 0;
+  }
+
+  .arena-host-kick-panel.is-pickup-assignment header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-host-kick-panel.is-pickup-assignment header span {
+    text-align: left;
+  }
+
+  .pickup-rotation-panel .arena-room-edit-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pickup-rotation-panel .arena-room-edit-actions > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 380px) {
+  .pickup-rotation-panel .arena-room-edit-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pickup-rotation-panel .arena-room-edit-actions > :last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+}
+/* Room participant rows keep identity and status/actions on one readable line. */
+.arena-lobby-modal {
+  --room-participant-row-gap: var(--space-6);
+  --room-participant-row-padding-block: var(--space-5);
+  --room-participant-row-divider: var(--ui-liquid-glass-divider);
+}
+.arena-lobby-modal .arena-host-kick-list,
+.arena-lobby-modal .arena-invitation-list {
+  row-gap: 0;
+}
+.arena-lobby-modal .arena-host-kick-row {
+  gap: var(--room-participant-row-gap);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--room-participant-row-padding-block) 0;
+}
+.arena-lobby-modal .arena-invitation-list > div {
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: var(--room-participant-row-gap);
+  padding-block: var(--room-participant-row-padding-block);
+}
+.arena-lobby-modal .arena-host-kick-row + .arena-host-kick-row,
+.arena-lobby-modal .arena-invitation-list > div + div {
+  border-top: var(--ui-stroke-width) solid var(--room-participant-row-divider);
+}
+@media (max-width: 560px) {
+  .arena-lobby-modal .arena-host-kick-row,
+  .arena-lobby-modal .arena-host-kick-panel.is-pickup-assignment .arena-host-kick-row {
+    grid-template-columns: minmax(0, 1fr) minmax(96px, 38%);
+    align-items: center;
+  }
+
+  .arena-lobby-modal .arena-host-kick-actions,
+  .arena-lobby-modal .arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+
+  .arena-lobby-modal .arena-host-kick-actions > :is(.button, .form-chip),
+  .arena-lobby-modal .arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions > :is(.button, .form-chip) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .arena-lobby-modal .arena-host-kick-actions > .arena-player-swap-button,
+  .arena-lobby-modal .arena-host-kick-panel.is-pickup-assignment .arena-host-kick-actions > .arena-player-swap-button {
+    grid-column: auto;
+  }
+}
+/* Room chat is a message stream, not another gray room panel. */
+.arena-lobby-modal .arena-room-chat,
+html[data-theme="light"] .arena-lobby-modal .arena-room-chat {
+  border: 0;
+  border-top: var(--ui-stroke-width) solid var(--ui-room-panel-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 12px 0 0;
+}
+.arena-lobby-modal .arena-chat-list {
+  padding-inline: 12px;
+}

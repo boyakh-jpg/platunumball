@@ -1,0 +1,483 @@
+.affiliation-policy-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--control-font-size);
+  line-height: 1.55;
+}
+
+.affiliation-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-control-group-gap);
+}
+
+.affiliation-search-result > span {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.affiliation-search-result strong,
+.affiliation-search-result small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.affiliation-search-result small {
+  color: var(--muted);
+}
+
+.affiliation-search-result > b {
+  color: var(--gold);
+  font-size: var(--control-font-size);
+}
+
+.affiliation-report-control,
+.team-name-report-control,
+.name-report-form {
+  display: grid;
+  min-width: 0;
+  gap: var(--ui-control-group-gap);
+}
+
+.affiliation-report-control {
+  margin-top: var(--ui-control-group-gap);
+}
+
+.team-name-report-control {
+  justify-items: start;
+  margin-top: 10px;
+  max-width: min(100%, 420px);
+}
+
+.name-report-form {
+  width: min(100%, 420px);
+}
+
+.name-report-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-control-group-gap);
+}
+
+.name-report-form select,
+.name-report-actions > .button {
+  min-width: 0;
+  width: 100%;
+}
+
+.admin-name-moderation-detail {
+  display: grid;
+  gap: var(--space-2);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: 12px;
+}
+
+.admin-name-moderation-detail span,
+.admin-name-moderation-detail small {
+  color: var(--muted);
+}
+
+.profile-emblem-card > .section-title-row {
+  align-items: center;
+}
+
+.profile-icon-card-tools {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-5);
+}
+
+.profile-icon-card-tools .profile-icon-card-actions {
+  flex-wrap: nowrap;
+}
+
+@media (min-width: 600px) {
+  .settings-privacy-card .settings-toggle-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settings-privacy-card .settings-toggle-grid > :last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .create-match-page .create-rules-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .create-match-page .create-rules-grid.has-schedule-note {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 600px) and (max-width: 899px) {
+  .create-match-page .create-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .create-match-page .create-mode-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 900px) {
+  .create-match-page .create-mode-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .create-match-page .create-mode-grid:has(> button:nth-child(2):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .affiliation-editor-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .affiliation-editor-actions > .button:only-child {
+    grid-column: 1 / -1;
+  }
+
+  .profile-icon-group-tabs {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .profile-icon-group-tabs > button {
+    width: 100%;
+    min-width: 0;
+    grid-column: span 6;
+    justify-content: center;
+  }
+
+  .profile-icon-group-tabs > button:nth-child(-n + 3) {
+    grid-column: span 4;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 719px) {
+  .profile-icon-group-tabs {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .profile-icon-group-tabs > button {
+    width: 100%;
+    min-width: 0;
+    grid-column: span 3;
+    justify-content: center;
+  }
+
+  .profile-icon-group-tabs > button:nth-last-child(-n + 3) {
+    grid-column: span 4;
+  }
+}
+
+@media (max-width: 520px) {
+  :where(.rank-team-page, .rank-profile-page) .rank-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-emblem-card > .section-title-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-icon-card-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .ranking-filter-card .segmented-control {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .ranking-filter-card .segmented-control button {
+    width: 100%;
+    min-width: 0;
+    grid-column: span 3;
+  }
+
+  .ranking-filter-card .segmented-control button:nth-last-child(-n + 3) {
+    grid-column: span 4;
+  }
+}
+
+@media (max-width: 359px) {
+  .settings-nav-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-nav-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .ranking-filter-card .segmented-control {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .ranking-filter-card .segmented-control button,
+  .ranking-filter-card .segmented-control button:nth-last-child(-n + 3) {
+    grid-column: span 3;
+  }
+
+  .ranking-filter-card .segmented-control button:nth-child(-n + 3) {
+    grid-column: span 2;
+  }
+
+  .profile-icon-group-tabs > button {
+    padding-inline: 6px;
+  }
+}
+
+@media (max-width: 719px) {
+  .profile-icon-group-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-block-end: 3px;
+    scrollbar-width: thin;
+  }
+
+  .profile-icon-group-tabs > button,
+  .profile-icon-group-tabs > button:nth-child(-n + 3),
+  .profile-icon-group-tabs > button:nth-last-child(-n + 3) {
+    width: auto;
+    min-width: max-content;
+    flex: 0 0 auto;
+    grid-column: auto;
+  }
+}
+
+/* 2026-07-21 compact team actions and separated team controls. */
+.team-detail-heading-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.rank-team-hero .team-detail-heading-row .favorite-toggle-button {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.my-team-row {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+
+.my-team-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.my-team-row .my-team-copy > strong,
+.my-team-row .my-team-copy > em {
+  min-width: 0;
+  grid-column: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-team-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.my-team-row .my-team-tier {
+  width: max-content;
+  max-width: 100%;
+  grid-column: auto;
+}
+
+.member-add-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.member-add-form > label:first-child,
+.member-add-form > .form-chip,
+.member-add-form > .form-warning {
+  grid-column: 1 / -1;
+}
+
+.member-add-form > .button {
+  width: auto;
+  min-width: max-content;
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.rank-profile-body-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--page-column-gap);
+  align-items: start;
+}
+
+.rank-profile-body-grid.has-team-rail {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.player-profile-left-rail {
+  min-width: 0;
+}
+
+.player-profile-main-column,
+.player-profile-detail-content {
+  min-width: 0;
+}
+
+.player-profile-team-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.player-profile-team-row {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 62px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-5);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  padding: 9px 10px;
+}
+
+.player-profile-team-row.is-representative {
+  border-color: color-mix(in srgb, var(--rb-gold) 46%, var(--ui-control-border));
+  background: color-mix(in srgb, var(--rb-gold) 9%, var(--ui-control-bg));
+}
+
+.player-profile-team-row > span {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.player-profile-team-row small {
+  color: var(--rb-orange-2);
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.player-profile-team-row:not(.is-representative) small {
+  color: var(--rb-muted);
+}
+
+.player-profile-team-row strong,
+.player-profile-team-row em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-profile-team-row strong {
+  color: var(--rb-text);
+  font-size: 0.9rem;
+}
+
+.player-profile-team-row em,
+.player-profile-team-empty {
+  color: var(--rb-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.player-profile-team-empty {
+  padding: 8px 0 2px;
+}
+
+@container (min-width: 900px) {
+  .rank-profile-body-grid.has-team-rail {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .emblem-source-grid.two-options,
+  .emblem-style-controls,
+  .team-emblem-text-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-emblem-style-controls.has-emblem-color {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-emblem-style-controls.is-upload .button {
+    grid-column: 1 / -1;
+  }
+
+  .rank-team-page .member-control-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .rank-team-page .member-control-row > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .rank-team-page .member-control-row > select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 720px) {
+  .rank-team-page .member-control-row {
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 0.5fr) auto;
+  }
+
+  .rank-team-page .member-control-row > :first-child {
+    grid-column: auto;
+  }
+
+  .rank-team-page .team-danger-zone {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .my-team-row {
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+
+  .my-team-actions {
+    width: 100%;
+    grid-column: 1 / -1;
+  }
+}
+
+/* Court pin picker */
+.naver-pin-picker-dialog,
+.naver-pin-picker-dialog button {
+  font-family: inherit;
+}
+
+.naver-pin-picker-title {
+  color: var(--text);
+  font-size: 0.98rem;
+  font-weight: 950;
+  letter-spacing: -0.01em;
+}

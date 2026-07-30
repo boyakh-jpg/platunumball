@@ -1,0 +1,153 @@
+@media (max-width: 760px) {
+  [data-design="classic"] .ui-design-page {
+    --ui-design-page-padding-top: 12px;
+    --ui-design-flow-gap: var(--space-12);
+  }
+
+  [data-design="classic"] .ui-design-toolbar {
+    align-items: flex-start;
+  }
+
+  [data-design="classic"] .ui-design-toolbar__copy > span {
+    display: none;
+  }
+
+  [data-design="classic"] .ui-design-toolbar__actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  [data-design="classic"] .ui-design-hero {
+    min-height: 540px;
+    background:
+      linear-gradient(0deg, rgba(8, 15, 20, 0.94), rgba(8, 15, 20, 0.18)),
+      var(--ui-design-media) var(--ui-design-media-position-mobile, center) / cover;
+    padding: var(--space-12) var(--space-10);
+  }
+
+  [data-design="classic"] .ui-design-hero h1 {
+    font-size: clamp(3rem, 15vw, 4.4rem);
+  }
+
+  [data-design="classic"] .ui-design-hero__stats {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    margin-top: var(--space-12);
+  }
+
+  [data-design="classic"] .ui-design-stat-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  [data-design="classic"] .ui-design-stat-strip > :is(span, div) {
+    min-width: 0;
+  }
+
+  [data-design="classic"] .ui-design-schedule-row {
+    grid-template-columns: 66px minmax(0, 1fr) 18px;
+    gap: var(--space-5);
+  }
+
+  [data-design="classic"] .ui-design-availability {
+    display: none;
+  }
+
+  [data-design="classic"] .ui-design-image-feature {
+    min-height: 520px;
+    background:
+      linear-gradient(0deg, rgba(4, 12, 16, 0.9), rgba(4, 12, 16, 0.14)),
+      var(--ui-design-media) var(--ui-design-media-position-mobile, center) / cover;
+    padding: var(--space-12) var(--space-10);
+  }
+
+  [data-design="classic"] .ui-design-inline-meta {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  [data-design="classic"] :is(
+    .ui-design-spotlight,
+    .ui-design-spotlight__intro
+  ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-design="classic"] .ui-design-spotlight__intro {
+    justify-items: center;
+    text-align: center;
+  }
+
+  [data-design="classic"] .ui-design-result-row {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  [data-design="classic"] .ui-design-result-row b {
+    grid-column: 2;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+}
+
+/* Full application contract. */
+[data-design="classic"] .ui-design-app {
+  --ui-design-app-page-gap: var(--page-section-gap);
+  --ui-design-app-inner-gap: var(--page-section-gap-mobile);
+  --ui-design-app-heading-size: clamp(1.35rem, 2.4vw, 2rem);
+}
+
+[data-design="classic"] .ui-design-app > .page-stack {
+  gap: var(--ui-design-app-page-gap);
+}
+
+[data-design="classic"] .ui-design-app .page-stack .page-stack {
+  gap: var(--ui-design-app-inner-gap);
+}
+
+[data-design="classic"] .ui-design-app .ui-design-surface {
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+[data-design="classic"] .ui-design-app .section-card.ui-design-surface {
+  padding: var(--ui-card-padding, var(--card-padding));
+}
+
+[data-design="classic"] .ui-design-app .section-title-row {
+  align-items: flex-start;
+  border: 0;
+  padding: 0;
+}
+
+[data-design="classic"] .ui-design-app .section-title-row h2 {
+  font-size: var(--ui-design-app-heading-size);
+}
+
+[data-design="classic"] .ui-design-app :is(
+  .segmented-control,
+  .ui-button,
+  input,
+  select,
+  textarea
+) {
+  border-radius: var(--ui-control-radius);
+}
+
+[data-design="classic"] .ui-design-app .segmented-control {
+  gap: var(--ui-control-group-gap);
+  border: var(--ui-control-group-border-width) solid var(--ui-control-group-border);
+  padding: var(--ui-control-group-padding);
+  background: var(--ui-control-group-bg);
+}
+
+[data-design="classic"] .ui-design-app .segmented-control button {
+  border: 0;
+  border-radius: var(--ui-button-radius);
+}
+
+html[data-theme] .ui-design-host[data-design="classic"] .ui-design-app > .page-stack > .ui-design-app-hero:first-child {
+  border-radius: var(--ui-card-radius);
+}

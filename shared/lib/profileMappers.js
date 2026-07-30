@@ -50,7 +50,15 @@ export const getProfileRegionSnapshot = (regionSido, regionDistrict, fallbackReg
 
 export const getUserIdentityHashtag = (user = {}) => getUserHashtag(user);
 
-function getProfileShellId(authUserId = "") {
+export function isAnonymousDisplayUser(user = null) {
+  return Boolean(user?.anonymous || user?.participationLabel === "개인참여");
+}
+
+export function getProfileAvatarInitial(user = null, fallback = "P") {
+  return isAnonymousDisplayUser(user) ? "?" : (user?.name?.slice(0, 1) ?? fallback);
+}
+
+export function getProfileShellId(authUserId = "") {
   const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
   return `p_${safeId}`;
 }

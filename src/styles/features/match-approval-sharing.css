@@ -1,0 +1,252 @@
+.create-match-page .form-grid.two > .stat-integrity-note {
+  align-self: end;
+  min-height: var(--ui-button-height);
+  padding: 10px 12px;
+}
+.favorite-toggle-button {
+  width: max-content;
+  min-height: 30px;
+  gap: var(--space-2);
+  border-radius: var(--radius-xs);
+  font-size: 0.72rem;
+  padding: 0 9px;
+}
+.favorite-toggle-button.active.button-secondary {
+  border-color: rgba(255, 211, 108, 0.68);
+  background: linear-gradient(180deg, rgba(255, 211, 108, 0.24), rgba(255, 211, 108, 0.1));
+  color: var(--gold);
+  box-shadow: none;
+}
+.team-picker {
+  padding: 0;
+  color: inherit;
+  text-align: left;
+}
+.team-picker > .badge {
+  margin: 10px 10px 0;
+}
+.team-picker .card {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.score-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: var(--space-6);
+  align-items: end;
+}
+.score-form .stat-integrity-note {
+  grid-column: 1 / -1;
+}
+.score-form .stat-entry-actions,
+.score-form .stat-save-feedback {
+  grid-column: 1 / -1;
+}
+.score-form .stat-save-feedback {
+  color: var(--green);
+  font-size: 0.88rem;
+  font-weight: 900;
+  margin: 0;
+}
+.score-form .stat-trust-panel {
+  grid-column: 1 / -1;
+}
+.score-form > span {
+  align-self: center;
+  color: var(--muted);
+  font-size: 2rem;
+  font-weight: 900;
+}
+.score-form label {
+  display: grid;
+  gap: var(--space-4);
+}
+.approval-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+.approval-grid > div {
+  display: grid;
+  gap: var(--space-5);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  padding: var(--card-padding);
+}
+.approval-grid span {
+  color: var(--muted);
+}
+.approval-status-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.approval-status-strip span {
+  border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.24);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.08);
+  color: var(--text);
+  padding: 9px 10px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+.delta-list {
+  display: grid;
+  gap: var(--space-4);
+}
+.delta-row {
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+.share-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(132px, 36%, 168px);
+  align-items: center;
+  gap: var(--space-8);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  padding: var(--card-padding);
+  box-shadow: var(--ui-card-shadow);
+}
+.share-card-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+.share-card strong {
+  font-size: 2rem;
+  line-height: 1.06;
+}
+.share-card-tier-copy {
+  color: var(--gold);
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+.share-card-emblem {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  justify-self: end;
+  margin-right: -6px;
+}
+.share-card-emblem .tier-emblem {
+  width: 100%;
+  max-width: 168px;
+}
+.share-card-action {
+  box-sizing: border-box;
+  display: inline-flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  overflow: hidden;
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  cursor: pointer;
+  font-size: clamp(0.72rem, 1.6vw, 0.86rem);
+  font-weight: 900;
+  min-height: var(--ui-button-height);
+  padding: 0 8px;
+  white-space: nowrap;
+}
+.share-card-action svg {
+  flex: 0 0 auto;
+}
+@media (max-width: 520px) {
+  .share-card {
+    grid-template-columns: minmax(0, 1fr) clamp(76px, 24vw, 96px);
+    gap: var(--space-5);
+  }
+
+  .share-card strong {
+    font-size: 1.62rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .share-card-emblem {
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+  }
+
+  .share-card-emblem .tier-emblem {
+    width: 100%;
+    max-width: 96px;
+  }
+}
+.landing {
+  min-height: 100vh;
+}
+.oauth-static-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: #080b10;
+  color: #f6f8fb;
+  padding: 24px;
+}
+.oauth-static-card {
+  display: grid;
+  width: min(720px, 100%);
+  gap: var(--space-7);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-md);
+  background: rgba(16, 20, 27, 0.96);
+  padding: clamp(22px, 5vw, 44px);
+}
+.oauth-static-card h1,
+.oauth-static-card h2,
+.oauth-static-card p {
+  margin: 0;
+}
+.oauth-static-card h1 {
+  font-size: clamp(1.9rem, 5vw, 3rem);
+  line-height: 1.12;
+}
+.oauth-static-card h2 {
+  font-size: 1.1rem;
+}
+.oauth-static-card p {
+  color: #cbd3df;
+  line-height: 1.65;
+}
+.oauth-static-card section,
+.oauth-static-card nav {
+  display: grid;
+  gap: var(--space-4);
+}
+.oauth-static-card nav {
+  grid-template-columns: repeat(3, minmax(0, max-content));
+  margin-top: 8px;
+}
+.oauth-static-card a,
+.oauth-static-brand {
+  color: #f05a46;
+  font-weight: 900;
+}
+.oauth-static-brand {
+  letter-spacing: 0.08em;
+}
+@media (max-width: 520px) {
+  .oauth-static-shell {
+    place-items: start center;
+    padding: 14px;
+  }
+
+  .oauth-static-card nav {
+    grid-template-columns: 1fr;
+  }
+}

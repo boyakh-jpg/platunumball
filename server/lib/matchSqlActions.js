@@ -1,23 +1,19 @@
 import { MATCH_SYNC_DEPENDENCIES } from "./matchSyncDependencies.js";
 
 import * as MATCH_SYNC_POLICY from "./matchSyncPolicy.js";
-import { applySqlMatchCoreAction } from "./matchSqlCoreActions.js";
+import { applySqlMatchCoreAction, loadSyncedMatch } from "./matchSqlCoreActions.js";
+
+export { loadSyncedMatch };
 
 const MATCH_SQL_ACTION_DEPENDENCIES = { ...MATCH_SYNC_DEPENDENCIES, ...MATCH_SYNC_POLICY };
 
 const {
 
-  DISCORD_QUEUE_TIMEOUT_MS, MATCH_SIDES, RECORD_TYPES, isMatchRecordMatch, isMissingSqlMatchReducer, loadAuthoritativeState, queueMatchDiscordDeliveries,
+  DISCORD_QUEUE_TIMEOUT_MS, MATCH_SIDES, RECORD_TYPES, isMatchRecordMatch, isMissingSqlMatchReducer, queueMatchDiscordDeliveries,
 
   reject, rejectSqlMatchFallback, toArray, withTimeout,
 
 } = MATCH_SQL_ACTION_DEPENDENCIES;
-
-export async function loadSyncedMatch(context, matchId = "") {
-  if (!matchId) return null;
-  const state = await loadAuthoritativeState(context, { operation: { matchId } });
-  return (state.matches ?? []).find((item) => item.id === matchId) ?? null;
-}
 
 export function getSqlMatchReloadPredicate(operation = {}) {
   const action = String(operation.action || "");

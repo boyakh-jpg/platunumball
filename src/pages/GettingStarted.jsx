@@ -2,24 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Bell,
-  BookOpenCheck,
-  CheckCircle2,
-  ClipboardCheck,
-  Clock3,
   ChevronDown,
-  FlaskConical,
-  Gauge,
-  MapPin,
-  Play,
-  QrCode,
-  Settings,
-  ShieldCheck,
-  Swords,
-  Trophy,
-  UserRoundCheck,
-  Users,
-  UsersRound,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";

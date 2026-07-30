@@ -1,53 +1,9 @@
 import {
-  acceptRecruitingInvitation,
-  agreeMatch,
-  approveMatch,
-  cancelMatch,
-  cancelRecruitingParticipation,
-  checkInMatchPlayer,
-  closeRecruitingPost,
   configureServerRatingAuthority,
-  confirmMatchRefereeAbsence,
   confirmRecruitingMatch,
   createMatch,
-  createRecruitingPost,
-  deleteSoloRecord,
-  declineRecruitingInvitation,
-  detachRecruitingPartyPlayer,
-  disputeMatch,
-  endMatch,
-  forfeitTournamentMatch,
-  interestRecruitingPost,
-  inviteRecruitingPlayers,
-  inviteRecruitingReferee,
-  joinRecruitingSideParty,
-  kickRecruitingApplicant,
   loadNormalizedRemoteStateFromClient,
-  removeMatchRoomPlayer,
-  removeRecruitingPartyPlayer,
-  requestMatchRefereeAbsence,
-  resolveMatchDispute,
-  sendRecruitingChat,
-  setMatchRecordTeamRoster,
-  setMatchRoomPlayerPlacement,
-  setRecruitingApplicantPlacement,
-  setRecruitingApplicantReserve,
-  setRecruitingPartyPlayerPlacement,
-  setRecruitingPartyPlayerReserve,
-  setRecruitingTeamPartyRoster,
-  setRecruitingSlotPosition,
-  setRecruitingRoomTeam,
-  startMatch,
-  substituteMatchPlayer,
-  submitMatchResult,
-  submitMatchThumbs,
-  toggleMatchStar,
-  updateMatchRoomRules,
-  updateRecruitingRoomRules,
-  updateTournamentMatchSchedule,
-  voidMatch,
 } from "../lib/repositoryAdapter.js";
-import { DEFAULT_RATING } from "../../shared/lib/matchConstants.js";
 import { SERVER_RATING_AUTHORITY } from "../lib/ratingAuthority.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
@@ -67,74 +23,6 @@ function getNewItems(beforeItems = [], afterItems = [], predicate = () => true) 
 function getCreatedItem(beforeItems = [], afterItems = []) {
   const beforeIds = new Set(beforeItems.map((item) => item.id).filter(Boolean));
   return afterItems.find((item) => item?.id && !beforeIds.has(item.id)) ?? null;
-}
-
-export function getMatchRatingCommit(beforeState = {}, afterState = {}, match = null, action = "") {
-  if (!["approveMatch", "autoConfirmMatch", "resolveMatchDispute"].includes(action) || match?.status !== "confirmed" || !match?.ratingResult) return null;
-  const beforeUsersById = new Map((beforeState.users ?? []).map((user) => [user.id, user]));
-  const beforeTeamsById = new Map((beforeState.teams ?? []).map((team) => [team.id, team]));
-  const ratingChangeByPlayerId = new Map((match.ratingResult ?? []).map((change) => [change.playerId, change]));
-  const profileUpdates = (afterState.users ?? [])
-    .filter((user) => {
-      const before = beforeUsersById.get(user.id);
-      const ratingChange = ratingChangeByPlayerId.get(user.id);
-      return before && (
-        ratingChange ||
-        Number(before.trustScore ?? 80) !== Number(user.trustScore ?? 80)
-      );
-    })
-    .map((user) => ({
-      id: user.id,
-      trustDelta: Number(user.trustScore ?? 80) - Number(beforeUsersById.get(user.id)?.trustScore ?? 80),
-      streakResult: ratingChangeByPlayerId.get(user.id)?.result ?? null,
-    }));
-  const teamUpdates = (afterState.teams ?? [])
-    .filter((team) => {
-      const before = beforeTeamsById.get(team.id);
-      return before && (
-        Number(before.mmr ?? DEFAULT_RATING) !== Number(team.mmr ?? DEFAULT_RATING) ||
-        Number(before.wins ?? 0) !== Number(team.wins ?? 0) ||
-        Number(before.losses ?? 0) !== Number(team.losses ?? 0)
-      );
-    })
-    .map((team) => ({
-      id: team.id,
-      mmrDelta: Number(team.mmr ?? DEFAULT_RATING) - Number(beforeTeamsById.get(team.id)?.mmr ?? DEFAULT_RATING),
-      winDelta: Number(team.wins ?? 0) - Number(beforeTeamsById.get(team.id)?.wins ?? 0),
-      lossDelta: Number(team.losses ?? 0) - Number(beforeTeamsById.get(team.id)?.losses ?? 0),
-    }));
-  return {
-    matchId: match.id,
-    ratingResult: match.ratingResult,
-    teamRatingResult: match.teamRatingResult ?? {},
-    confirmedAt: match.confirmedAt ?? new Date().toISOString(),
-    profileUpdates,
-    teamUpdates,
-  };
-}
-
-const MATCH_TRUST_COMMIT_ACTIONS = new Set([
-  "toggleMatchStar",
-  "submitMatchThumbs",
-  "confirmMatchRefereeAbsence",
-]);
-
-export function getMatchTrustCommit(beforeState = {}, afterState = {}, match = null, action = "") {
-  if (!MATCH_TRUST_COMMIT_ACTIONS.has(action) || !match?.id) return null;
-  const beforeUsersById = new Map((beforeState.users ?? []).map((user) => [user.id, user]));
-  const profileUpdates = (afterState.users ?? [])
-    .map((user) => {
-      const before = beforeUsersById.get(user.id);
-      if (!before) return null;
-      const trustDelta = Number(user.trustScore ?? 80) - Number(before.trustScore ?? 80);
-      return trustDelta ? { id: user.id, trustDelta } : null;
-    })
-    .filter(Boolean);
-  if (!profileUpdates.length) return null;
-  return {
-    matchId: match.id,
-    profileUpdates,
-  };
 }
 
 export function getOperation(body = {}, fallbackAction = "sync") {
@@ -242,83 +130,14 @@ export async function loadAuthoritativeState(context, options = {}) {
 
 export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
   const action = String(operation.action || "");
+  if (action !== "confirmRecruitingMatch") reject(400, "unsupported_recruiting_operation");
   const beforePosts = state.recruitingPosts ?? [];
   const beforeMatches = state.matches ?? [];
-  let next = state;
-
-  switch (action) {
-    case "createRecruitingPost":
-      next = createRecruitingPost(state, {
-        ...(operation.draft ?? {}),
-        id: operation.preferredPostId || operation.postId || operation.draft?.id,
-      });
-      break;
-    case "interestRecruitingPost":
-      next = interestRecruitingPost(state, operation.postId, operation.application ?? {});
-      break;
-    case "inviteRecruitingReferee":
-      next = inviteRecruitingReferee(state, operation.postId, operation.refereeId);
-      break;
-    case "inviteRecruitingPlayers":
-      next = inviteRecruitingPlayers(state, operation.postId, operation.invite ?? {});
-      break;
-    case "acceptRecruitingInvitation":
-      next = acceptRecruitingInvitation(state, operation.postId, operation.invitationId);
-      break;
-    case "declineRecruitingInvitation":
-      next = declineRecruitingInvitation(state, operation.postId, operation.invitationId);
-      break;
-    case "cancelRecruitingParticipation":
-      next = cancelRecruitingParticipation(state, operation.postId);
-      break;
-    case "updateRecruitingRoomRules":
-      next = updateRecruitingRoomRules(state, operation.postId, operation.patch ?? {});
-      break;
-    case "sendRecruitingChat":
-      next = sendRecruitingChat(state, operation.postId, operation.body);
-      break;
-    case "setRecruitingRoomTeam":
-      next = setRecruitingRoomTeam(state, operation.postId, operation.side, operation.teamId);
-      break;
-    case "setRecruitingApplicantReserve":
-      next = setRecruitingApplicantReserve(state, operation.postId, operation.playerId, operation.reserve);
-      break;
-    case "setRecruitingApplicantPlacement":
-      next = setRecruitingApplicantPlacement(state, operation.postId, operation.playerId, operation.placement);
-      break;
-    case "joinRecruitingSideParty":
-      next = joinRecruitingSideParty(state, operation.postId, operation.teamId, operation.sideName, operation.entryId);
-      break;
-    case "setRecruitingSlotPosition":
-      next = setRecruitingSlotPosition(state, operation.postId, operation.playerId, operation.position);
-      break;
-    case "setRecruitingPartyPlayerReserve":
-      next = setRecruitingPartyPlayerReserve(state, operation.postId, operation.entryId, operation.playerId, operation.reserve);
-      break;
-    case "setRecruitingPartyPlayerPlacement":
-      next = setRecruitingPartyPlayerPlacement(state, operation.postId, operation.entryId, operation.playerId, operation.placement);
-      break;
-    case "setRecruitingTeamPartyRoster":
-      next = setRecruitingTeamPartyRoster(state, operation.postId, operation.entryId, operation.roster ?? {});
-      break;
-    case "detachRecruitingPartyPlayer":
-      next = detachRecruitingPartyPlayer(state, operation.postId, operation.entryId, operation.playerId, operation.placement);
-      break;
-    case "removeRecruitingPartyPlayer":
-      next = removeRecruitingPartyPlayer(state, operation.postId, operation.entryId, operation.playerId);
-      break;
-    case "kickRecruitingApplicant":
-      next = kickRecruitingApplicant(state, operation.postId, operation.playerId);
-      break;
-    case "confirmRecruitingMatch":
-      next = confirmRecruitingMatch(state, operation.postId, { matchId: operation.preferredMatchId || operation.matchId });
-      break;
-    case "closeRecruitingPost":
-      next = closeRecruitingPost(state, operation.postId);
-      break;
-    default:
-      reject(400, "unsupported_recruiting_operation");
-  }
+  const next = confirmRecruitingMatch(
+    state,
+    operation.postId,
+    { matchId: operation.preferredMatchId || operation.matchId },
+  );
 
   const post = operation.postId || operation.preferredPostId
     ? (next.recruitingPosts ?? []).find((item) => item.id === (operation.postId || operation.preferredPostId)) ?? null
@@ -347,92 +166,12 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
 
 export function applyAuthoritativeMatchOperation(state, operation = {}) {
   const action = String(operation.action || "");
+  if (action !== "createMatch") reject(400, "unsupported_match_operation");
   const beforeMatches = state.matches ?? [];
-  const beforeTournaments = state.tournaments ?? [];
-  let next = state;
-
-  switch (action) {
-    case "createMatch":
-      next = createMatch(state, {
-        ...(operation.draft ?? {}),
-        id: operation.preferredMatchId || operation.matchId || operation.draft?.id,
-      });
-      break;
-    case "updateTournamentMatchSchedule":
-      next = updateTournamentMatchSchedule(state, operation.tournamentId, operation.matchId, operation.schedule ?? {});
-      break;
-    case "forfeitTournamentMatch":
-      next = forfeitTournamentMatch(state, operation.tournamentId, operation.matchId, operation.losingSide, operation.reason);
-      break;
-    case "agreeMatch":
-      next = agreeMatch(state, operation.matchId, operation.sideName, operation.playerId);
-      break;
-    case "submitMatchResult":
-      next = submitMatchResult(state, operation.matchId, operation.result ?? {});
-      break;
-    case "substituteMatchPlayer":
-      next = substituteMatchPlayer(state, operation.matchId, operation.sideName, operation.activePlayerId, operation.reservePlayerId, operation.reason);
-      break;
-    case "approveMatch":
-      next = approveMatch(state, operation.matchId, operation.sideName, operation.playerId);
-      break;
-    case "checkInMatchPlayer":
-      next = checkInMatchPlayer(state, operation.matchId, operation.sideName, operation.playerId);
-      break;
-    case "requestMatchRefereeAbsence":
-      next = requestMatchRefereeAbsence(state, operation.matchId);
-      break;
-    case "confirmMatchRefereeAbsence":
-      next = confirmMatchRefereeAbsence(state, operation.matchId);
-      break;
-    case "toggleMatchStar":
-      next = toggleMatchStar(state, operation.matchId, operation.targetUserId);
-      break;
-    case "submitMatchThumbs":
-      next = submitMatchThumbs(state, operation.matchId, operation.targetUserIds ?? []);
-      break;
-    case "disputeMatch":
-      next = disputeMatch(state, operation.matchId, operation.reason);
-      break;
-    case "cancelMatch":
-      next = cancelMatch(state, operation.matchId);
-      break;
-    case "deleteSoloRecord":
-      next = deleteSoloRecord(state, operation.matchId);
-      break;
-    case "voidMatch":
-      next = voidMatch(state, operation.matchId, operation.reason);
-      break;
-    case "resolveMatchDispute":
-      next = resolveMatchDispute(
-        state,
-        operation.matchId,
-        operation.disputeId,
-        operation.decision,
-        operation.resolutionReason,
-      );
-      break;
-    case "startMatch":
-      next = startMatch(state, operation.matchId);
-      break;
-    case "endMatch":
-      next = endMatch(state, operation.matchId);
-      break;
-    case "updateMatchRoomRules":
-      next = updateMatchRoomRules(state, operation.matchId, operation.patch ?? {});
-      break;
-    case "setMatchRoomPlayerPlacement":
-      next = setMatchRoomPlayerPlacement(state, operation.matchId, operation.playerId, operation.placement);
-      break;
-    case "setMatchRecordTeamRoster":
-      next = setMatchRecordTeamRoster(state, operation.matchId, operation.sideName, operation.roster ?? {});
-      break;
-    case "removeMatchRoomPlayer":
-      next = removeMatchRoomPlayer(state, operation.matchId, operation.playerId);
-      break;
-    default:
-      reject(400, "unsupported_match_operation");
-  }
+  const next = createMatch(state, {
+    ...(operation.draft ?? {}),
+    id: operation.preferredMatchId || operation.matchId || operation.draft?.id,
+  });
 
   const match = operation.matchId || operation.preferredMatchId
     ? (next.matches ?? []).find((item) => item.id === (operation.matchId || operation.preferredMatchId)) ?? null
@@ -440,24 +179,15 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
   if (!match || next === state) reject(409, "match_operation_noop");
 
   const allNewNotifications = getNewItems(state.notifications ?? [], next.notifications ?? []);
-  const createdTournamentMatches = getNewItems(beforeMatches, next.matches ?? [], (item) => item.tournamentId && item.id !== match.id);
-  const changedTournament = (next.tournaments ?? []).find((tournament) => {
-    const beforeTournament = beforeTournaments.find((item) => item.id === tournament.id);
-    return beforeTournament && JSON.stringify(beforeTournament) !== JSON.stringify(tournament);
-  }) ?? null;
   const notifications = allNewNotifications.filter((notification) => notification.matchId === match.id);
-  const tournamentNotifications = allNewNotifications.filter((notification) => (
-    (!notification.matchId && changedTournament && (notification.type === "tournament" || notification.tone === "match" || !notification.targetUserId)) ||
-    (notification.matchId && createdTournamentMatches.some((item) => item.id === notification.matchId))
-  ));
   return {
     nextState: next,
     match,
     notifications,
-    tournament: changedTournament,
-    createdTournamentMatches,
-    tournamentNotifications,
-    ratingCommit: getMatchRatingCommit(state, next, match, action),
-    trustCommit: getMatchTrustCommit(state, next, match, action),
+    tournament: null,
+    createdTournamentMatches: [],
+    tournamentNotifications: [],
+    ratingCommit: null,
+    trustCommit: null,
   };
 }

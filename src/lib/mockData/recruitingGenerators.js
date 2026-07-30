@@ -1,35 +1,17 @@
 import {
   DISPUTE_WINDOW_MINUTES,
-  MATCH_MODES,
-  PLAYER_POSITIONS,
   REFEREE_TRUST_MIN,
-  REGIONS,
   STAT_ENTRY_WINDOW_MINUTES,
 } from "../constants.js";
-import { demoFlowState } from "../demoFlowState.js";
 import {
-  DEMO_NOW,
   DEMO_PRACTICE_COURT,
   DEMO_QUEUE_TIMES,
   DEMO_TODAY,
-  DELETED_SYNTHETIC_COURT_IDS,
-  baseState,
   getDemoModeSize,
-  getDemoQueueSlot,
-  getTeamDemoPlayerIds,
   makeDefaultRoomState,
   makeDemoApplicant,
-  makeDemoStatSubmissions,
   makeDemoTimestamp,
-  makeRelativeDemoDateTime,
-  makeTrustFeedback,
 } from "./baseState.js";
-import {
-  uniqueById,
-  withCanonicalUserHashtags,
-  withDemoRefereeQualifications,
-  withoutDeletedSyntheticCourts,
-} from "./stateFinalizers.js";
 
 // P-DEMO-CLEANUP: seed/local-dev only. Production app must not import this module.
 const demoSurnames = ["강", "김", "박", "이", "최", "정", "한", "오", "문", "서", "윤", "장", "배", "권", "노", "신"];
@@ -47,92 +29,6 @@ const demoTeamNames = [
 
 import { cycle, padNumber } from "./matchGenerators.js";
 
-function makeRecruitingPost(index, teams, users) {
-  const type = cycle(["need_player", "find_team", "need_team"], index);
-  const team = teams.filter((item) => item.id.startsWith("td"))[index % 20];
-  const player = users[(index * 7 + 11) % users.length];
-  const region = type === "find_team" ? player.region : team.region;
-  const court = team.homeCourt ?? DEMO_PRACTICE_COURT.name;
-  const ranked = index % 4 !== 0;
-  const applicantTeam = teams.filter((item) => item.id.startsWith("td"))[(index * 5 + 3) % 20];
-  const applicantUser = users[(index * 9 + 17) % users.length];
-  const schedule = getDemoQueueSlot(index + 4);
-  const mode = cycle(MATCH_MODES, index).id;
-  const sideCapacity = getDemoModeSize(mode);
-  const hostJoinMode = type === "find_team" ? "player" : "team";
-  const hostPlayerIds = hostJoinMode === "team" ? getTeamDemoPlayerIds(team, sideCapacity) : [];
-  const hostSize = hostJoinMode === "team" ? hostPlayerIds.length : 1;
-  const createdAt = `2026-06-${String(15 + Math.floor(index / 8)).padStart(2, "0")}T${String(9 + (index % 10)).padStart(2, "0")}:00:00.000Z`;
-  const applicantCreatedAt = `2026-06-${String(15 + Math.floor(index / 8)).padStart(2, "0")}T${String(10 + (index % 9)).padStart(2, "0")}:10:00.000Z`;
-  const applicantStatus = index % 3 === 0 ? "ready" : "waiting";
-  const applicant = type === "need_player"
-    ? makeDemoApplicant({
-        kind: "player",
-        playerId: applicantUser.id,
-        side: "teamB",
-        status: applicantStatus,
-        reserve: index % 7 === 0,
-        position: applicantUser.position,
-        createdAt: applicantCreatedAt,
-      })
-    : makeDemoApplicant({
-        kind: "team",
-        teamId: applicantTeam.id,
-        playerId: applicantTeam.members[0].userId,
-        side: "teamB",
-        status: applicantStatus,
-        reserve: index % 7 === 0,
-        playerIds: getTeamDemoPlayerIds(applicantTeam, sideCapacity),
-        createdAt: applicantCreatedAt,
-      });
-  const title = type === "need_player"
-    ? `${team.name} ${ranked ? "정규전" : "친선전"} 팀원 구해요`
-    : type === "find_team"
-      ? `${player.name} ${region} ${ranked ? "정규전" : "친선전"} 팀 구해요`
-      : `${team.name} 상대팀 구해요`;
-
-  return {
-    id: `qd${padNumber(index + 1, 3)}`,
-    type,
-    title,
-    region,
-    court,
-    mode,
-    ...schedule,
-    timingType,
-    ranked,
-    spots: Math.max(1, sideCapacity * 2 - hostSize),
-    teamId: type === "find_team" ? null : team.id,
-    targetTeamId: null,
-    refereeId: "",
-    refereeTrustMin: REFEREE_TRUST_MIN,
-    statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
-    disputeMinutes: DISPUTE_WINDOW_MINUTES,
-    hostJoinMode,
-    hostSide: "teamA",
-    hostReady: index % 4 === 0,
-    sideCapacity,
-    playerIds: hostPlayerIds,
-    position: type === "need_team" ? "상관없음" : cycle(PLAYER_POSITIONS, index),
-    playerId: type === "find_team" ? player.id : hostPlayerIds[0] ?? team.members[0].userId,
-    memo: type === "need_player"
-      ? "포지션이 맞으면 경기방으로 초대합니다. 과반 동의 후 진행합니다."
-      : type === "find_team"
-        ? "혼자 참여 가능합니다. 빠르게 뛸 팀 찾습니다."
-        : "비슷한 MMR 팀이면 바로 매치 잡습니다.",
-    status: index % 11 === 0 ? "closed" : "open",
-    applicants: [applicant],
-    roomState: makeDefaultRoomState([
-      {
-        id: `chat-qd${padNumber(index + 1, 3)}-1`,
-        userId: type === "find_team" ? player.id : team.members[0].userId,
-        body: "모집방을 열었습니다. 참여 전에 경기 조건을 확인해 주세요.",
-        createdAt,
-      },
-    ]),
-    createdAt,
-  };
-}
 
 function getDemoRoomTeams(teams = []) {
   return teams.filter((team) => (team.members?.length ?? 0) >= 3);

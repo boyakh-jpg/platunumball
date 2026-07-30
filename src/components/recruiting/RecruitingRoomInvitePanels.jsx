@@ -1,14 +1,6 @@
-import {
-  Fragment,
-  useEffect,
-  useRef,
-} from "react";
 
 import {
-  MessageSquare,
-  Send,
   ShieldCheck,
-  UserRound,
   X,
 } from "lucide-react";
 import Badge from "../common/Badge.jsx";
@@ -18,8 +10,6 @@ import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TeamEmblem from "../team/TeamEmblem.jsx";
 import {
-  DEFAULT_RATING,
-  MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE,
   ROOM_RELATION_TERMS,
   SIDE_LABEL_TEXT as SIDE_LABELS,
 } from "../../lib/constants.js";
@@ -33,22 +23,6 @@ import {
   getUserHashtag,
 } from "../../lib/handles.js";
 
-import {
-  ROOM_CHAT_MESSAGE_MAX_LENGTH as CHAT_MESSAGE_MAX_LENGTH,
-} from "../../lib/roomChat.js";
-import {
-  formatRecruitingMessageTime as formatWhen,
-} from "../../lib/recruitingPage.js";
-import {
-  getEntryMmr,
-  getRoomSlotDisplayPosition,
-  getRoomSlotBadge,
-  getRoomSlotTeamName,
-  getVisualPartyKey,
-  groupPartySlots,
-  PlayerRoomSlot,
-  FillSlot,
-} from "./RecruitingRoomCore.jsx";
 
 export function InvitePanel({
   sideName,

@@ -1,10 +1,3 @@
-import { getSupabaseAdminClient } from "../_supabaseAdmin.js";
-import {
-  allowSystemReadRequest,
-  assertSystemSecretAccess,
-  readSystemRequestBody,
-  sendJson,
-} from "./_systemRequest.js";
 
 export const REQUIRED_COLUMNS = {
   profiles: [

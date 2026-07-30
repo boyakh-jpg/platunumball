@@ -1,23 +1,8 @@
-import { MATCH_LIST_SCOPES } from "../../../lib/matchUtils.js";
-import { MATCH_LIST_STATUSES } from "../../../lib/matchUtils.js";
-import { ROOM_CHAT_CLIENT_CACHE_LIMIT } from "../../../lib/roomChat.js";
-import { ROOM_CHAT_OPTIMISTIC_MATCH_WINDOW_MS } from "../../../lib/roomChat.js";
-import { createMatchListStore } from "../../../lib/matchUtils.js";
-import { fromRoomChatMessageRow } from "../../../lib/roomChat.js";
-import { getCourtHoopCount } from "../../../lib/courts.js";
-import { isNotificationFromBlockedUser } from "../../../lib/notifications.js";
-import { isSupabaseConfigured } from "../../../lib/supabase.js";
-import { normalizeCourtOptionalBoolean } from "../../../lib/courts.js";
-import { makeClientNotificationId } from "../serverOperations.js";
-import { normalizeServerState } from "../stateNormalization.js";
 
-export function mergeRemoteById(current = [], incoming = []) {
-  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
-  (incoming ?? []).forEach((item) => {
-    if (item?.id) merged.set(item.id, item);
-  });
-  return [...merged.values()];
-}
+import { mergeRemoteById } from "../../../../shared/lib/arrayValues.js";
+
+export { mergeRemoteById };
+
 export function mergeTeamsById(current = [], incoming = []) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {

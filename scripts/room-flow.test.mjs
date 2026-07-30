@@ -10,6 +10,7 @@ import {
   RECRUITING_STYLE_SOURCE_PATHS,
   readSourceGroupSync,
 } from "./management-source-groups.mjs";
+import { readCssTreeSync } from "./css-source-tree.mjs";
 import {
   acceptRecruitingInvitation,
   confirmPickupSideAssignment,
@@ -37,6 +38,9 @@ const readPageSourceGroup = (paths) => readSourceGroupSync(
   (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8"),
   paths,
 );
+const readStyleSourceGroup = (paths) => paths
+  .map((file) => readCssTreeSync(file))
+  .join("\n");
 import {
   createMatchListStore,
   getMatchEntityMap,
@@ -161,7 +165,7 @@ test("schedule, recruiting, and play lists refresh server data on entry and brow
 
 test("team room hides completed selection and labels active and reserve slots once", () => {
   const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
-  const recruitingStyles = readPageSourceGroup(RECRUITING_STYLE_SOURCE_PATHS);
+  const recruitingStyles = readStyleSourceGroup(RECRUITING_STYLE_SOURCE_PATHS);
 
   assert.match(recruitingSource, /&& \(!selectedRoomTeamAId \|\| !selectedRoomTeamBId\)/);
   assert.doesNotMatch(recruitingSource, /ROOM ONLY/);
@@ -630,7 +634,7 @@ test("사후 기록은 2/3 확인 전에는 부분 상태이고 24시간 뒤 미
 test("픽업 팀 나누기 작업판은 공용 모달 안에서 전용 반응형 grid를 사용한다", () => {
   const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   const roomManagementSource = readFileSync(new URL("../src/components/recruiting/RoomManagementPanels.jsx", import.meta.url), "utf8");
-  const recruitingStyles = readPageSourceGroup(RECRUITING_STYLE_SOURCE_PATHS);
+  const recruitingStyles = readStyleSourceGroup(RECRUITING_STYLE_SOURCE_PATHS);
 
   assert.match(roomManagementSource, /arena-host-kick-panel\$\{pickupAssignmentMode \? " is-pickup-assignment" : ""\}/);
   assert.match(recruitingStyles, /\.arena-host-kick-panel\.is-pickup-assignment \.arena-host-kick-list\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);

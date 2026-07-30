@@ -1,9 +1,39 @@
 import { CalendarDays, RotateCcw, ShieldAlert, Swords } from "lucide-react";
-import { uniquePlayerIds } from "../../shared/lib/playerIds.js";
 import { isMatchupTitleDuplicate } from "../lib/matchListProjection.js";
-import { cleanRoomTitle, getLocalDateInputValue, getRoomScheduleLabel, getRoomKindFromMatch, getPublicRoomTimingStatus, getMatchHostPlayerId, getMatchReservePlayerIds, getMatchRoomPhase, getTournamentMatchDisplayTitle, getSafeMatchSide as getSafeMatchSideBase, isMatchRecordMatch, isMatchClosedNotice, isMatchPartyTeamParty, isMatchInScheduleMenu, isMatchRelatedToUser, isMatchSideTeamParty, isPersonalRecordMatch, isInstantRoom, isTournamentMatchSideRosterReady, isTournamentMatchInUserSchedule, userNeedsMatchAction } from "../lib/matchUtils.js";
-import { MATCH_SIDES, ROOM_KINDS } from "../lib/constants.js";
-import { getRecruitingLobby, getRecruitingPostTerminalState, getRecruitingRoomOwnerId, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
+import {
+  cleanRoomTitle,
+  getLocalDateInputValue,
+  getRoomScheduleLabel,
+  getRoomKindFromMatch,
+  getPublicRoomTimingStatus,
+  getMatchHostPlayerId,
+  getMatchRoomPhase,
+  getTournamentMatchDisplayTitle,
+  getSafeMatchSide as getSafeMatchSideBase,
+  isMatchRecordMatch,
+  isMatchClosedNotice,
+  isMatchPartyTeamParty,
+  isMatchInScheduleMenu,
+  isMatchRelatedToUser,
+  isMatchSideTeamParty,
+  isPersonalRecordMatch,
+  isInstantRoom,
+  isTournamentMatchSideRosterReady,
+  isTournamentMatchInUserSchedule,
+  userNeedsMatchAction,
+} from "../lib/matchUtils.js";
+import { ROOM_KINDS } from "../lib/constants.js";
+import { formatTournamentWindow } from "../../shared/lib/scheduleUtils.js";
+
+export { formatTournamentWindow };
+import {
+  getRecruitingPostTerminalState,
+  getRecruitingRoomOwnerId,
+  getRoomKindFromRecruitingPost,
+  hasPendingRecruitingInvitation,
+  isRecruitingRoomInUserSchedule,
+  isTeamRecruitingRoom,
+} from "../lib/recruiting.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
 import { getTournamentTeamIds, getTournamentTeamStatus } from "../data/tournamentMappers.js";
 
@@ -170,10 +200,6 @@ export function formatDateLabel(dateValue) {
   if (!dateValue) return "날짜 전체";
   const [, month, day] = dateValue.split("-");
   return `${month}.${day}`;
-}
-
-export function formatTournamentWindow(tournament) {
-  return [tournament.startDate, tournament.endDate].filter(Boolean).join(" ~ ") || "일정 미정";
 }
 
 export function compareSchedule(a, b) {

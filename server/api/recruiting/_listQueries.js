@@ -80,27 +80,6 @@ async function fetchRoomStateParticipantPostIds(client, profileId = "", limit = 
     .filter(Boolean);
 }
 
-async function fetchRecruitingFeedPostIds(client, {
-  profileId = "",
-  feedScope = "",
-  relations = [],
-  status = "open",
-  regionKey = "",
-  limit = REMOTE_CLIENT_RECRUITING_LIMIT,
-  offset = 0,
-} = {}) {
-  const page = await fetchRecruitingFeedPage(client, {
-    profileId,
-    feedScope,
-    relations,
-    status,
-    regionKey,
-    limit,
-    offset,
-    includeCards: false,
-  });
-  return page?.ids ?? page;
-}
 
 async function queryRecruitingFeedPage(client, {
   profileId = "",

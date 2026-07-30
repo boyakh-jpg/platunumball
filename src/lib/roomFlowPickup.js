@@ -1,10 +1,4 @@
 import {
-  getMatchRoomPhase,
-  getMatchScheduledDate,
-  isMatchRecordMatch,
-  isTournamentMatchLineupEditable,
-} from "./matchUtils.js";
-import {
   getPickupTeamAssignmentMode,
   getPickupTeamAssignmentModeOption,
 } from "./matchCreationPolicies.js";

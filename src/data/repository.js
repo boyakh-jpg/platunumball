@@ -123,8 +123,6 @@ export {
 } from "./repository/recruiting.js";
 
 export {
-  loadNormalizedDirectoryStateFromClient,
-  loadNormalizedMatchDetailFromClient,
   loadNormalizedRemoteStateFromClient,
   loadRemoteState,
   saveNormalizedRemoteState,

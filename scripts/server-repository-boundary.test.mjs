@@ -6,17 +6,19 @@ import test from "node:test";
 const ROOT = resolve(import.meta.dirname, "..");
 const SERVER_FILES = [
   "server/api/_authoritativeState.js",
-  "server/api/matches/detail.js",
-  "server/api/state/load.js",
 ];
 
-test("서버의 레거시 repository 의존은 단일 명시적 adapter만 소유한다", async () => {
+test("서버의 repository bridge는 호환 배럴 대신 소유 모듈만 직접 읽는다", async () => {
   const [adapterSource, ...consumerSources] = await Promise.all([
     readFile(resolve(ROOT, "server/lib/repositoryAdapter.js"), "utf8"),
     ...SERVER_FILES.map((file) => readFile(resolve(ROOT, file), "utf8")),
   ]);
 
-  assert.match(adapterSource, /from "\.\.\/\.\.\/src\/data\/repository\.js"/u);
+  assert.doesNotMatch(adapterSource, /src\/data\/repository\.js/u);
+  assert.match(adapterSource, /src\/data\/repository\/runtime\.js/u);
+  assert.match(adapterSource, /src\/data\/repository\/recruiting\/confirmation\.js/u);
+  assert.match(adapterSource, /src\/data\/repository\/matchCreation\.js/u);
+  assert.match(adapterSource, /src\/data\/repository\/remote\/stateLoader\.js/u);
   consumerSources.forEach((source) => {
     assert.match(source, /server\/lib\/repositoryAdapter|lib\/repositoryAdapter/u);
     assert.doesNotMatch(source, /src\/data\/repository\.js/u);

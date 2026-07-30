@@ -749,7 +749,7 @@
 - `/api/matches/detail`는 방 1개 row와 그 child row만 읽는 단건 loader를 쓴다. 방 보기 클릭이 전체 state hydrate로 번지면 안 된다.
 - `/api/directory/load`는 디렉터리 전용 데이터만 읽는다. 경기/모집/토너먼트 row를 같이 싣지 않는다.
 - `/api/directory/load`의 팀 멤버는 현재 조회한 팀 id 범위 안에서만 읽고, `team_members` 전체를 broad scan하지 않는다.
-- `/api/state/load`와 클라이언트 direct fallback은 profile-only fallback 전용이다. 경기/모집/토너먼트/디렉터리 scope 요청은 화면별 endpoint로 보내야 한다.
+- `/api/state/load`와 클라이언트 direct full-state fallback은 폐기했다. 프로필 fallback은 `/api/profile/me`, 경기/모집/토너먼트/디렉터리는 화면별 endpoint만 사용한다.
 - server action authoritative replay도 matchId가 있는 일반 경기 action은 `scope:"matches"`로 단건 범위를 잡는다. `createMatch`, `approveMatch`, tournament 생성처럼 전체 팀/레이팅 history가 필요한 경로만 더 넓게 읽을 수 있다.
 
 ## 2026-06-30 프로필/모집 legacy 기본값 기준
@@ -895,11 +895,11 @@
 
 ## 2026-06-29 홈 feed 초기 로드
 
-- `/login` auth 직후와 `/app` 첫 remote load는 broad `/api/state/load`가 아니라 `/api/home/load`를 사용한다.
+- `/login` auth 직후와 `/app` 첫 remote load는 `/api/home/load`를 사용한다. 폐기된 broad `/api/state/load`로 물러나지 않는다.
 - `/api/home/load`는 current-profile profile/team bootstrap과 `/api/matches/list` feed 기반 active match/recruiting schedule을 한 번에 합친다.
 - `/api/home/load`는 active match feed와 current-user recruiting schedule만 병합한다. confirmed 기록방과 result/stat child rows는 홈에서 미리 읽지 않고 기록 화면 진입 시 읽는다.
 - `/api/home/load`는 홈 지역 모집 teaser용 공개 모집 카드를 병합하지 않는다. 지역/공개 모집 목록은 `/app/recruiting`이 읽고, 홈 첫 로드는 current-user feed만 유지한다.
-- 화면별 thin endpoint 실패 fallback은 profile-only로 제한한다. 홈/경기/모집/기록 첫 로드 실패가 broad `/api/state/load`나 direct full state read로 번지면 안 된다.
+- 화면별 thin endpoint 실패 fallback은 `/api/profile/me`의 profile-only 응답으로 제한한다. 홈/경기/모집/기록 첫 로드 실패가 direct full state read로 번지면 안 된다.
 - `/api/home/load`에서 current-user 모집 일정 확인과 profile bootstrap이 끝났으면 홈 진입 effect가 같은 데이터를 `profile/me`, `scope=mine`/schedule 호출로 즉시 다시 읽지 않는다.
 
 ## 2026-06-28 목록 응답 속도 원칙
@@ -2263,7 +2263,7 @@ flowchart TD
 
 ## 2026-06-26 서버 상태 열람 규칙
 
-1. Supabase 설정 환경의 초기 상태 로드는 화면별 thin endpoint를 우선 사용한다. `/api/state/load`는 profile-only fallback이다.
+1. Supabase 설정 환경의 초기 상태 로드는 화면별 thin endpoint만 사용한다. profile-only fallback은 `/api/profile/me`이며 `/api/state/load`는 라우트와 구현을 제거했다.
 2. 실제 Google 계정과 테스트 계정은 Supabase Auth token으로 서버에서 현재 `profiles.id`를 확정한다.
 3. 서버 상태 로드는 공개 경기/모집방/토너먼트는 모든 로그인 사용자에게 내려주고, 비공개 항목은 현재 프로필이 참여자, 초대자, 심판, 관련 팀원, 또는 관리자일 때만 내려준다.
 4. 테스트 계정은 Google과 같은 JWT/RLS 경로를 따른다. 로컬 demo session은 권한 판단 기준이 아니다.
@@ -2295,7 +2295,7 @@ flowchart TD
 1. Supabase 모드에서 화면 테마는 `profiles.app_settings.theme`에 저장한다.
 2. 밝기 UI는 선택과 저장을 분리하고, 저장 실패 시 로컬 변경을 롤백한다.
 3. 관리자 메뉴 노출은 `POST /api/admin/context`의 `adminLevel >= 30` 또는 활성 admin appointment 기준이다. `u1` frontend seed fallback은 쓰지 않는다.
-3-1. `/app/admin` 초기 로드는 `/api/state/load`의 `scope:"admin"`만 예외적으로 사용한다. 서버가 `adminLevel >= 30`을 확인한 뒤 신고, 구장 요청, 임명, 징계 큐를 내려준다.
+3-1. `/app/admin` 초기 로드는 profile-only bootstrap 뒤 현재 section의 bounded 관리자 endpoint만 호출한다. 서버가 `adminLevel >= 30`을 확인한 뒤 해당 신고, 구장 요청, 임명, 징계 큐만 내려준다.
 3-2. `/api/directory/load`가 내려준 구장 요청, 승인 구장, 신고, 관리자 큐 배열은 명시적 directory merge에서만 클라이언트 state에 반영한다. `profile/me` 기본 빈 settings 배열은 기존 큐를 지우지 않는다.
 4. 구장 등록요청 제출은 server action 성공 후에만 폼을 초기화한다.
 5. 프로필/팀/구장 즐겨찾기는 타입별 최대 10개만 저장한다. 클라이언트 reducer와 `/api/favorites/sync`가 같은 제한을 적용한다.
@@ -2403,8 +2403,8 @@ flowchart TD
 4. Match scope state loads must fetch only related profiles, teams, team members, courts, and match child rows for loaded matches.
 5. `/api/matches/list` is list-only and skips match result/stat/agreement/approval/dispute child rows.
 6. Match room/detail open uses `/api/matches/detail` to load one full match before modal actions need record or approval data.
-7. Initial client hydrate must not use broad `/api/state/load` for match lists. Match detail rows are fetched lazily through `/api/matches/detail`.
-8. `/api/state/load` returns profile-only state. Related match/recruiting/directory data must come from screen-specific endpoints.
+7. Initial client hydrate must not use a broad full-state loader for match lists. Match detail rows are fetched lazily through `/api/matches/detail`.
+8. `/api/state/load` is retired. Profile fallback uses `/api/profile/me`; related match/recruiting/directory data comes from screen-specific endpoints.
 9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
 10. Initial client hydrate uses the current screen endpoint only. Unknown routes start profile-only; additional list pages use 50 rows.
 11. `/app/recruiting` first hydrate does not load match rows; direct `?post=` entry also skips recruiting list rows. Recruiting list screens add more rows only through `더 보기` or targeted detail loads.
@@ -2429,7 +2429,7 @@ flowchart TD
 23-7. If `endedAt` already exists, `submitMatchResult` is a postgame result submission even when DB/server clock skew makes `endedAt` a few milliseconds later than the app server's current time.
 23-8. `setMatchRecordTeamRoster` uses server authoritative replay before snapshot persistence. Each side captain can edit only their own team roster in a `match_record` room, and the server validates the changed side with the existing DB roster before committing.
 24. `/api/matches/list` default reads use `rankball_match_list()` / `room_feed_cards.card_json` current-profile match cards first. It must not load `matches`, `match_players`, `public_profiles`, teams, or courts for the default card list when `card_json` is present. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
-25. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, `/api/recruiting/list`, and `/api/state/load` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
+25. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, and `/api/recruiting/list` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
 25-1. 클라이언트 정규화는 목록/방 컴포넌트 렌더 전에 `teams.members`를 배열로, `matches.teamA/teamB.players`를 기본 사이드 객체의 배열로 유지해야 한다.
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
 27. Matches 화면은 idle `scope: "mine"` 모집 context load를 실행하지 않는다. 경기 메뉴 첫 화면은 current-profile match feed와 current-user open recruiting schedule만 명시적으로 로드한다.
@@ -3188,7 +3188,7 @@ flowchart TD
 2. backend simulation의 전체 flow는 process당 정확히 1회만 실행한다. mutation 요청은 자동 재시도하지 않고 cleanup만 최대 1회 재시도한다. test 전용 project는 직접 ref와 원격 API ref가 일치할 때 production 확인 없이 사용할 수 있다.
 3. 모집방 상세는 최초 성공 뒤 자동 반복 조회하지 않는다. 초기 상세의 최신 채팅 `messageSeq`를 보존하고 이후 채팅은 그 sequence보다 큰 row만 증분 polling한다. `match-room-*` synthetic ID와 확정·취소·만료·종료 방은 모집방 상세·채팅 API 대상이 아니다.
 4. `recruiting_posts`, `recruiting_applications`, `room_chat_messages` Realtime publication은 현재 비활성 원칙을 유지한다. Realtime을 다시 켜려면 채널 수, RLS, reconnect backfill, 중복 방지 기준을 별도 검증한다.
-5. `/app/admin` 초기 bootstrap은 profile-only다. 관리자 화면은 현재 section과 대기/이력 mode를 가진 bounded endpoint만 호출하며 `/api/state/load scope=admin`과 광역 `/api/directory/load`를 함께 호출하지 않는다.
+5. `/app/admin` 초기 bootstrap은 profile-only다. 관리자 화면은 현재 section과 대기/이력 mode를 가진 bounded endpoint만 호출하며 폐기된 broad state loader와 광역 `/api/directory/load`를 호출하지 않는다.
 6. directory는 화면별 `players`, `teams`, `self`, `admin section` 범위와 DB filter/pagination을 사용한다. 팀·통합 page는 최대 50개, 선수 page는 최대 100개이며 팀 목록은 주장·현재 사용자 외 전체 팀원 프로필을 기본 수화하지 않는다. 경기 생성처럼 roster가 필요한 화면만 `includeTeamMemberProfiles`를 명시한다. 같은 query key는 30초 동안 재사용하고 핵심 조회 실패를 빈 배열 성공으로 병합하지 않으며 최신 검색·탭 요청만 page 상태를 갱신한다.
 7. 기본 경기 목록은 `rankball_match_list()` feed card를 우선한다. 누락 보강은 `rankball_related_active_match_list()`가 DB에서 현재 사용자 관계와 활성 상태를 먼저 판정한 뒤 최대 80개 ID만 반환한다.
 8. 경기 row는 feed card에 없는 선택 ID만 읽는다. `match_players`, `match_results`, `player_match_stats`, 팀, 구장, 프로필은 최종 선택된 경기 ID에서만 수화하며 최대 500개 경기 선조회 경로를 두지 않는다.

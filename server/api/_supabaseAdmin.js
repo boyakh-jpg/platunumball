@@ -1,6 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
-import { compactArray } from "../../shared/lib/arrayValues.js";
+import { compactArray, mergeRemoteById as mergeById } from "../../shared/lib/arrayValues.js";
 import {
   getDatePart,
   getTimePart,
@@ -21,7 +20,7 @@ import { fromRemoteTournament } from "../../shared/lib/tournamentMappers.js";
 import { getNotificationActorId, isTerminalMatchStatus, isTerminalRecruitingStatus } from "../../shared/lib/notifications.js";
 import { assertSafeInputPayload } from "../../shared/lib/inputSecurity.js";
 import { getStrictBearerToken, setApiSecurityHeaders } from "./_requestSecurity.js";
-import { adminClient, authUserCache, authContextCache, AUTH_CONTEXT_CACHE_TTL_MS, getSupabaseUrl, getSupabaseAdminClient, getBearerToken, getJwtExpiresAt, getTokenCacheKey, getAuthContextCacheKey, canCacheProfileContext, readAuthUserCache, writeAuthUserCache, readAuthContextCache, writeAuthContextCache, getAuthenticatedContext } from "./_supabaseAuth.js";
+import { getAuthenticatedContext } from "./_supabaseAuth.js";
 export { getSupabaseAdminClient, getBearerToken, getAuthenticatedContext } from "./_supabaseAuth.js";
 
 export { getDatePart, getTimePart, toDbTime };
@@ -100,13 +99,7 @@ export function bearerTokenMatches(request, expectedToken = "") {
   return timingSafeEqual(tokenDigest, expectedDigest);
 }
 
-export function mergeById(current = [], incoming = []) {
-  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
-  (incoming ?? []).forEach((item) => {
-    if (item?.id) merged.set(item.id, item);
-  });
-  return [...merged.values()];
-}
+export { mergeById };
 
 export function isMissingTable(error = {}, table = "") {
   const message = String(error?.message ?? "");

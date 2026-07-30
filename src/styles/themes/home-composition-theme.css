@@ -1,0 +1,477 @@
+@media (min-width: 1180px) {
+  .rank-home {
+    grid-template-columns: minmax(0, 1.62fr) minmax(340px, 0.68fr);
+  }
+
+  .rank-home .home-dashboard-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  }
+}
+@media (max-width: 759px) {
+
+  .rank-home .rank-summary-grid {
+    min-height: 520px;
+    padding: 14px;
+  }
+
+  .home-action-row {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .home-action-row b,
+  .home-action-buttons {
+    justify-self: start;
+    grid-column: 2;
+  }
+
+  .landing-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+}
+.rank-home .home-action-main strong {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+@media (max-width: 390px) {
+  .landing-actions .landing-primary-actions .landing-create-action {
+    gap: var(--space-2);
+    padding-inline: 6px;
+    font-size: 0.75rem;
+  }
+
+  .landing-primary-actions .button svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+  }
+}
+html[data-theme="light"] body,
+html[data-theme="light"] .app-main {
+  color: var(--rb-text);
+}
+html[data-theme="light"] .sidebar {
+  background: rgba(255, 250, 241, 0.94);
+  border-right-color: var(--rb-line);
+}
+html[data-theme="light"] .sidebar-nav a {
+  color: var(--rb-muted);
+}
+html[data-theme="light"] .sidebar-nav a.active {
+  border-color: rgba(229, 85, 63, 0.28);
+  background: rgba(229, 85, 63, 0.1);
+  color: var(--rb-text);
+}
+html[data-theme="light"] .card,
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .modal,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-card,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .profile-records-summary,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .rank-profile-card,
+html[data-theme="light"] .rank-mode-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .rank-record-card,
+html[data-theme="light"] .season-mini-card,
+html[data-theme="light"] .settings-page .section-card {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+html[data-theme="light"] .rank-home .rank-summary-grid {
+  background:
+    linear-gradient(90deg, rgba(20, 20, 20, 0.58), rgba(70, 58, 46, 0.36)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-3);
+}
+html[data-theme="light"] .rank-home .rank-profile-card,
+html[data-theme="light"] .rank-home .rank-mode-card {
+  background: rgba(255, 250, 241, 0.88);
+  border-color: var(--rb-line);
+}
+html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block,
+html[data-theme="light"] .rank-home .rank-mode-pill,
+html[data-theme="light"] .home-action-row,
+html[data-theme="light"] .home-invitation-row,
+html[data-theme="light"] .home-search-box {
+  background: rgba(255, 255, 255, 0.64);
+}
+/* 2026-07-01 subdued app floor: remove the far-back grid. */
+body {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.018), transparent 18rem),
+    var(--bg);
+}
+html[data-theme="light"] body,
+html[data-theme="light"] .app-main {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 250, 241, 0.26), transparent 18rem),
+    var(--rb-bg);
+}
+/* 2026-07-01 home search placement: desktop top bar, mobile below hero. */
+@media (min-width: 1080px) {
+
+  .rank-home > .rank-summary-grid {
+    grid-area: hero;
+  }
+
+  .rank-home > .home-action-card {
+    grid-area: action;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    grid-area: dashboard;
+  }
+
+.rank-home .home-search-panel.rank-search-card {
+  display: flex;
+  min-height: 0;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+  .rank-home .home-search-panel.rank-search-card > .search-picker {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box {
+    min-height: 44px;
+    padding-block: 0;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box input {
+    min-height: 42px;
+    font-size: 14px;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-create {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+}
+@media (max-width: 759px) {
+  .rank-home > .rank-summary-grid {
+    order: 1;
+  }
+}
+@media (max-width: 759px) {
+  .rank-home > .rank-summary-grid {
+    display: contents;
+  }
+
+  /* Home hero is display: contents here, so the visible hero must cancel app-main padding itself.
+     Do not switch this back to --page-gutter without rechecking 390/430/501px. */
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    position: relative;
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-self: start;
+    min-height: clamp(500px, 132vw, 570px);
+    width: calc(100% + (2 * var(--app-main-pad-x)));
+    max-width: none;
+    margin-top: -18px;
+    margin-inline: calc(-1 * var(--app-main-pad-x));
+    overflow: hidden;
+    border: var(--ui-hero-border-width) solid var(--rb-line);
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.3) 48%, rgba(0, 0, 0, 0.82)),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.16) 58%, rgba(0, 0, 0, 0.08)),
+      var(--bg-court) center 46% / cover no-repeat,
+      var(--rb-bg-2);
+    padding: 18px;
+    box-shadow: none;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {
+    min-height: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: var(--space-7);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    max-width: 8.6ch;
+    color: #fff;
+    font-size: clamp(46px, 15vw, 68px);
+    line-height: 0.84;
+    text-shadow: 0 14px 32px rgba(0, 0, 0, 0.52);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+    max-width: 30ch;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1.35;
+    text-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head .button {
+    min-height: 42px;
+    width: auto;
+    padding-inline: 14px;
+  }
+
+  .rank-home .rank-profile-card {
+    order: 3;
+  }
+
+  .rank-home .rank-mode-card {
+    order: 4;
+  }
+
+  html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+    background:
+      linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.2) 48%, rgba(30, 24, 18, 0.68)),
+      linear-gradient(90deg, rgba(30, 24, 18, 0.5), rgba(30, 24, 18, 0.12) 58%, rgba(30, 24, 18, 0.04)),
+      var(--bg-court) center 46% / cover no-repeat,
+      var(--rb-bg-3);
+  }
+}
+.eyebrow {
+  color: var(--rb-orange-2);
+}
+html[data-theme="light"] .eyebrow {
+  color: var(--rb-orange);
+}
+.rank-home .home-panel-empty {
+  display: grid;
+  min-height: 66px;
+  place-items: center;
+  color: var(--rb-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-align: center;
+}
+/* 2026-07-01 desktop home compaction: lift lower panels beside the hero. */
+@media (min-width: 1080px) {
+  .rank-home {
+    gap: var(--space-8);
+  }
+
+  .rank-home > .rank-summary-grid {
+    align-self: start;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    display: contents;
+  }
+
+  .rank-home .home-dashboard-grid .home-primary-stack {
+    grid-area: primary;
+    min-width: 0;
+  }
+
+  .rank-home .home-dashboard-grid .home-side-stack {
+    grid-area: side;
+    min-width: 0;
+    align-self: start;
+  }
+
+  .rank-home .home-dashboard-grid .home-side-stack {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .rank-home .rank-summary-grid {
+    gap: var(--space-6);
+    padding: 18px;
+  }
+
+  .rank-home .rank-summary-grid .rank-hero-top {
+    gap: var(--space-7);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    font-size: clamp(42px, 4.1vw, 62px);
+  }
+
+  .rank-home .rank-mode-card,
+  html[data-theme="light"] .rank-home .rank-mode-card {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .rank-home .rank-mode-grid {
+    height: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .rank-home .rank-profile-card {
+    align-self: start;
+    min-height: 0;
+    align-content: start;
+    gap: 7px;
+    padding: 12px;
+  }
+
+  .rank-home .rank-profile-card::before {
+    padding: 5px 9px;
+    font-size: 0.64rem;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: var(--space-4);
+    padding: 8px;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block .tier-emblem {
+    width: 58px;
+    height: 58px;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block strong {
+    font-size: clamp(1.38rem, 1.8vw, 1.75rem);
+    line-height: 0.95;
+  }
+
+  .rank-home .rank-tier-meta-line {
+    gap: var(--space-3);
+  }
+
+  .rank-home .rank-tier-meta-line .badge {
+    min-height: 24px;
+    padding: 4px 8px;
+  }
+
+  .rank-home .rank-tier-copy,
+  .rank-home .rank-tier-note {
+    font-size: 11px;
+    line-height: 1.28;
+    margin: 0;
+  }
+
+  .rank-home .rank-mode-pill {
+    min-height: 50px;
+    padding: 7px;
+  }
+
+  .rank-home .rank-mode-pill .tier-emblem-sm {
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    opacity: 0.72;
+  }
+
+  .rank-home .rank-mode-pill > div {
+    padding-right: 16px;
+  }
+
+  .rank-home .rank-mode-pill strong {
+    font-size: 0.9rem;
+  }
+
+  .rank-home .rank-mode-pill em {
+    font-size: 0.68rem;
+  }
+
+  html[data-theme="light"] .rank-home .rank-profile-card,
+  html[data-theme="light"] .rank-home .rank-mode-card {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+/* 2026-07-01 home rail alignment and no-grid cleanup. */
+body,
+.app-main,
+html[data-theme="light"] body,
+html[data-theme="light"] .app-main {
+  background: var(--rb-bg);
+}
+.landing-hero::after,
+.team-hub-hero::after,
+.match-hero::before,
+.page-header::after,
+.team-hub-hero::before {
+  background: linear-gradient(90deg, rgba(240, 90, 70, 0.14), transparent 28%, transparent 76%, rgba(255, 211, 108, 0.08));
+}
+.rank-home .rank-summary-grid::before {
+  background: radial-gradient(ellipse at 38% 70%, rgba(240, 90, 70, 0.16), transparent 22rem);
+}
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
+  color: var(--rb-cream);
+  letter-spacing: 0;
+  text-shadow: 0 14px 34px rgba(0, 0, 0, 0.58);
+}
+.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.48);
+}
+.rank-home .rank-tier-rail {
+  display: grid;
+  gap: var(--space-5);
+  overflow: visible;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  padding: 10px;
+}
+.rank-home .rank-tier-rail > .rank-profile-card,
+.rank-home .rank-tier-rail > .rank-mode-card,
+html[data-theme="light"] .rank-home .rank-tier-rail > .rank-profile-card,
+html[data-theme="light"] .rank-home .rank-tier-rail > .rank-mode-card {
+  grid-column: auto;
+  grid-row: auto;
+  align-self: stretch;
+}
+html[data-theme="light"] .rank-home .rank-tier-rail {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+.rank-home .rank-profile-card .rank-tier-block,
+.rank-home .rank-mode-pill,
+html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block,
+html[data-theme="light"] .rank-home .rank-mode-pill {
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+.rank-home .rank-mode-card,
+html[data-theme="light"] .rank-home .rank-mode-card {
+  overflow: visible;
+}
+@media (min-width: 1080px) {
+
+  .rank-home .rank-summary-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 250px);
+    grid-template-rows: minmax(220px, 1fr);
+    min-height: clamp(340px, 38vh, 440px);
+  }
+
+  .rank-home .rank-tier-rail {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: stretch;
+  }
+
+  .rank-home .rank-profile-card,
+  .rank-home .rank-mode-card {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}

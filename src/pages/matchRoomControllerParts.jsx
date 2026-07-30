@@ -1,29 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { Crown, UsersRound } from "lucide-react";
-import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
-import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS, REPORT_MATCH_WINDOW_MS, normalizeBenchCapacity, normalizeDisputeWindowMinutes } from "../lib/constants.js";
-import { DEFAULT_REPORT_REASON, VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
-import { MATCH_DISPUTE_REASON_OPTIONS, buildMatchResultSubmission, buildMatchDisputeRequest, canUserResolveMatchDispute, canRequestVoidMatchRestore, getAgreementStatus, getMatchHostPlayerId, getMatchCancelCopy, getOpenMatchDisputes, getMatchRecordWindow, getMatchResultRevision, getMatchManualFinalizationStatus, getMatchReferee, getMatchRecordPlayerIds, getMatchReviewParticipantIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchPlayerIds, getReportableMatchTimeMs, getReportableMatchUserIds, getVoidMatchRestoreTargetUserId, getMatchReservePlayerIds, getSafeMatchSide, getMatchSideLeaderId, getPlayerSideName, getPlayerStatSubmitted, getStatSubmissionStatus, isEligibleReferee, isMatchReferee, isMatchRecordMatch, isPersonalRecordMatch } from "../lib/matchUtils.js";
-import { getMatchRuleDetailRows, getMeetingPointSummary, normalizeMatchRules } from "../lib/matchRules.js";
-import { getLinkedPersonalRecordDisplayUser } from "../lib/personalRecordRoster.js";
-import { getRoomCancellationActionLabel, getRoomCancellationConfirmMessage, getRoomCancellationPolicy } from "../lib/roomFlow.js";
+import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
+import { VOID_MATCH_RESTORE_REPORT_REASON } from "../lib/reportReasons.js";
+import {
+  buildMatchResultSubmission,
+  buildMatchDisputeRequest,
+  getMatchResultRevision,
+  getVoidMatchRestoreTargetUserId,
+  getMatchReservePlayerIds,
+  getSafeMatchSide,
+  getMatchSideLeaderId,
+} from "../lib/matchUtils.js";
 import "../styles/matchroom-arena.css";
 import {
-  statusMeta,
-  makeInitialStats,
-  getTeamMmr,
-  getDisplayScore,
   isAnonymousDisplayUser,
   getAvatarInitial,
   getPlayerMetaLabel,
-  getPointAudit,
-  getCourtReviewDraft,
 } from "./matchRoomModel.js";
-import MatchRoomView from "./MatchRoomView.jsx";
 
 export function createMatchRoomHeroRenderers(context) {
   const { activeEvidenceCount, activeEvidenceIds, app, attendanceQrToken, benchCapacity, canCancel, canDeleteSoloRecord, canDispute, canEditDisputeDraft, canFinalizeMatch, canReport, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canRequestVoidRestore, canSubmitLiveResult, canSubmitResult, canVoid, cancelActionLabel, cancelCopy, cancellationPolicy, courtReviewDraft, courtReviewSaveFeedback, courtReviewSaving, currentUserAgreementDone, currentUserCanEndMatch, currentUserCanFileDispute, currentUserCanOperateStartedMatch, currentUserCanRefreshReview, currentUserCanResolveDispute, currentUserCanSubmit, currentUserCanSubmitMissingPostgameResult, currentUserEditablePlayerIds, currentUserIsAdmin, currentUserIsEligibleReferee, currentUserIsReferee, currentUserSideName, currentUserSubmitted, disputeCustomReason, disputeReason, disputeRequestedScoreA, disputeRequestedScoreB, disputeRequestedStats, draftScoreA, draftScoreB, existingCourtReview, finalAuthorityLabel, finalizeActionPending, finalizeDialogOpen, hasOwnOpenDispute, hasReferee, isContractStage, isMatchHost, isSharedRecord, isSoloRecord, linkedProfileIds, manualFinalizationStatus, match, matchApprovalOpen, matchDetailMissing, matchDetailRefreshing, matchDetailRequestSequenceRef, matchHostPlayerId, matchId, matchKind, matchPhase, matchPlayerKey, openDisputes, operationSummary, profileById, recordLockReason, recordWindow, referee, reportReason, reportTime, requestCancelMatch, requestFinalizeMatch, requestedMatchIdRef, resultEntryPermission, resultSaveFeedback, reviewControlsOpen, score, scoreA, scoreB, searchParams, setCourtReviewDraft, setCourtReviewSaveFeedback, setCourtReviewSaving, setDisputeCustomReason, setDisputeReason, setDisputeRequestedScoreA, setDisputeRequestedScoreB, setDisputeRequestedStats, setFinalizeActionPending, setFinalizeDialogOpen, setMatchDetailMissing, setMatchDetailRefreshing, setReportReason, setResultSaveFeedback, setReviewControlsOpen, setScore, setSoloRecordDeleteOpen, setStatEditorPlayerId, setVoidActionPending, setVoidDialogOpen, setVoidRestoreDetail, setVoidRestoreStatus, shouldShowResultEntry, shouldShowWaitingPanel, soloRecordDeleteOpen, sourceRecruitingPost, startedAuthorityPhase, statEditorPlayer, statEditorPlayerId, statSubmissionStatus, status, submitFinalizeMatch, teamA, teamAAgreement, teamAMmr, teamASide, teamB, teamBAgreement, teamBMmr, teamBSide, userMap, voidActionPending, voidDialogOpen, voidRestoreDetail, voidRestoreStatus, winnerName } = context;

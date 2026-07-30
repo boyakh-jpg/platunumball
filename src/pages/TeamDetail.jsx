@@ -1,70 +1,38 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
-import { ImageUp, RotateCcw, Star, Trash2 } from "lucide-react";
+import { Navigate, useParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
-import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import EmblemCropEditor from "../components/common/EmblemCropEditor.jsx";
-import SearchPicker from "../components/common/SearchPicker.jsx";
-import RecentMatchRow from "../components/match/RecentMatchRow.jsx";
-import EntityProfileHero from "../components/profile/EntityProfileHero.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
-import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
-import TierEmblem from "../components/rating/TierEmblem.jsx";
-import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
+import {
+  MAX_TEAM_MEMBERS,
+  MAX_TEAM_MEMBERSHIPS,
+  TEAM_INVITE_ROLES,
+  getTeamRoleLabel,
+  isMercenaryTeamRole,
+} from "../lib/constants.js";
 import { getMatchSideScore as getSideScore, isMatchWithinRecordDetailWindow } from "../lib/matchUtils.js";
 import {
-  TEAM_EMBLEM_ABBREVIATION_MAX_CHARACTERS,
-  TEAM_EMBLEM_FONT_OPTIONS,
   getTeamEmblemAbbreviationCharacterCount,
   getTeamEmblemErrorMessage,
   isTeamEmblemAbbreviation,
-  isTeamEmblemAbbreviationDraftWithinLimits,
   normalizeTeamEmblemAbbreviation,
 } from "../lib/teamEmblem.js";
-import { formatEmblemDate, getEmblemUploadWarning, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
+import { formatEmblemDate, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { MatchRoomModal } from "./Matches.jsx";
+import { getTeamSide } from "../lib/season.js";
 import TeamDetailView from "./TeamDetailView.jsx";
-
-function getTeamSide(match, teamId) {
-  if (match.teamA?.teamId === teamId) return "teamA";
-  if (match.teamB?.teamId === teamId) return "teamB";
-  return null;
-}
 
 function isHistoryInDetailWindow(match) {
   return isMatchWithinRecordDetailWindow(match);
 }
 
-function getTeamOutcome(match, teamId) {
-  const sideName = getTeamSide(match, teamId);
-  if (!sideName) return null;
-  const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
-  const score = getSideScore(match, sideName);
-  const opponentScore = getSideScore(match, oppositeSide);
-  if (score === opponentScore) return "draw";
-  return score > opponentScore ? "win" : "loss";
-}
-
-function getScoreOutcome(score, opponentScore) {
-  const normalizedScore = Number(score ?? 0);
-  const normalizedOpponentScore = Number(opponentScore ?? 0);
-  if (normalizedScore === normalizedOpponentScore) return "draw";
-  return normalizedScore > normalizedOpponentScore ? "win" : "loss";
-}
-
 const managedTeamRoleOptions = TEAM_INVITE_ROLES.map((role) => [role, getTeamRoleLabel(role)]);
 const inviteRoleOptions = managedTeamRoleOptions;
 
-function getManagedRoleOptions(member, captainId) {
-  if (member.userId === captainId) return [["captain", getTeamRoleLabel("captain")]];
-  return managedTeamRoleOptions;
-}
 
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
@@ -362,8 +330,4 @@ export default function TeamDetail({ app }) {
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
 
   return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, team, teamFull, teamId, teamRecordArchive, uploadEmblem, userMap, winRate, wins }} />;
-}
-
-function myTeamCountLabel(canManage) {
-  return canManage ? "관리" : "조회";
 }

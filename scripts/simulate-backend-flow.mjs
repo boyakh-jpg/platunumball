@@ -2,7 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
 import homeLoadHandler from "../server/api/home/load.js";
 import notificationListHandler from "../server/api/notifications/list.js";
-import loadStateHandler from "../server/api/state/load.js";
 import syncRecruitingPostHandler from "../server/api/recruiting/sync-post.js";
 import recruitingListHandler from "../server/api/recruiting/list.js";
 import discordRoomChatHandler from "../server/api/discord/room-chat.js";
@@ -690,7 +689,7 @@ async function getTestLoginForProfileId(profileId = "") {
 async function getProfileIdForLogin(testLoginId) {
   const seededProfileId = getSeededProfileId(testLoginId);
   const normalizedLoginId = String(testLoginId || "").trim().toLowerCase();
-  const state = await loadStateAs(testLoginId);
+  const { state } = await loadProfileMeAs(testLoginId);
   const profileId = getProfileId(state, testLoginId) || seededProfileId;
   if (profileId && normalizedLoginId) testLoginsByProfileId.set(profileId, normalizedLoginId);
   return profileId;
@@ -1334,12 +1333,6 @@ async function cleanupSimulationRecruitingPosts() {
   };
 }
 
-async function loadStateAs(testLoginId) {
-  const payload = await callHandler("/api/state/load", loadStateHandler, await getAuthToken(testLoginId));
-  assertFlow(payload?.ok && payload?.state, `state load failed for ${testLoginId}`, payload);
-  return payload.state;
-}
-
 async function loadProfileMeAs(testLoginId) {
   const payload = await callHandler("/api/profile/me", profileMeHandler, await getAuthToken(testLoginId), {
     includeFavorites: false,
@@ -1651,7 +1644,7 @@ async function assertTournamentInviteNotificationsResolved({
 }
 
 async function getCurrentProfileTrustScore(testLoginId, expectedProfileId = "") {
-  const state = await loadStateAs(testLoginId);
+  const { state } = await loadProfileMeAs(testLoginId);
   const user = (state.users ?? []).find((item) => item.id === (expectedProfileId || state.currentUserId));
   assertFlow(Boolean(user), `profile trust score missing for ${testLoginId}`, {
     expectedProfileId,

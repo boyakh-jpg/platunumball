@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CalendarDays, ChevronLeft, ChevronRight, Flag, MapPin, Save, ShieldCheck, Trophy, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, Flag, Save, ShieldCheck, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
@@ -16,13 +16,10 @@ import {
   statusLabels,
   mmrPolicyLabels,
   formatWindow,
-  getMatchTime,
   isTournamentForfeitAvailable,
   isTournamentScheduleEditable,
   getTournamentSchedulePolicyLabel,
-  getLeagueMatchResult,
   getLeagueFixtureState,
-  renderBracketNode,
 } from "./tournamentDetailModel.jsx";
 
 import { TournamentCompetitionSection } from "./TournamentCompetitionSection.jsx";

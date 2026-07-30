@@ -1,11 +1,9 @@
-import { allowRequestMethod, flattenIdValues as toArray, getAuthenticatedContext, readJsonBody, requireAdminContext, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
-import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
-import { loadNormalizedDirectoryStateFromClient } from "../../lib/repositoryAdapter.js";
+import {
+  flattenIdValues as toArray,
+  uniqueValues as unique,
+} from "../api/_supabaseAdmin.js";
 
 function getMatchActorIds(match = {}) {
-  // LEGACY READ-ONLY:
-  // 과거 경기 데이터 해석 전용.
-  // 신규 권한 판정 및 저장에 사용하지 않는다.
   return unique([
     ...(match.teamA?.players ?? []),
     ...(match.teamB?.players ?? []),
@@ -31,13 +29,17 @@ function isUserTeamMatch(match = {}, userTeamIds = []) {
 function canReadMatch(match = {}, profileId = "", isAdmin = false, userTeamIds = []) {
   if (isAdmin) return true;
   if ((match.visibility ?? "public") !== "private") return true;
-  if (["solo", "personal_record"].includes(String(match.rules?.recordType ?? "").trim().toLowerCase())) return match.createdBy === profileId;
+  if (["solo", "personal_record"].includes(String(match.rules?.recordType ?? "").trim().toLowerCase())) {
+    return match.createdBy === profileId;
+  }
   if (isUserTeamMatch(match, userTeamIds)) return true;
   return getMatchActorIds(match).includes(profileId);
 }
 
 function sanitizeMatch(match = {}, profileId = "", isAdmin = false, userTeamIds = []) {
-  if (isAdmin || isUserTeamMatch(match, userTeamIds) || getMatchActorIds(match).includes(profileId)) return match;
+  if (isAdmin || isUserTeamMatch(match, userTeamIds) || getMatchActorIds(match).includes(profileId)) {
+    return match;
+  }
   return {
     ...match,
     disputes: [],
@@ -107,16 +109,22 @@ export function filterStateForProfile(state = {}, profileId = "", isAdmin = fals
     matches: (state.matches ?? [])
       .filter((match) => canReadMatch(match, profileId, isAdmin, userTeamIds))
       .map((match) => sanitizeMatch(match, profileId, isAdmin, userTeamIds)),
-    recruitingPosts: (state.recruitingPosts ?? []).filter((post) => canReadRecruitingPost(post, profileId, isAdmin)),
-    tournaments: (state.tournaments ?? []).filter((tournament) => canReadTournament(tournament, profileId, userTeamIds, isAdmin)),
+    recruitingPosts: (state.recruitingPosts ?? []).filter((post) => (
+      canReadRecruitingPost(post, profileId, isAdmin)
+    )),
+    tournaments: (state.tournaments ?? []).filter((tournament) => (
+      canReadTournament(tournament, profileId, userTeamIds, isAdmin)
+    )),
     reports: isAdmin
       ? state.reports ?? []
       : (state.reports ?? []).filter((report) => (
-        report.by === profileId ||
-        report.targetId === profileId ||
-        (report.reportedUserIds ?? []).includes(profileId)
+        report.by === profileId
+        || report.targetId === profileId
+        || (report.reportedUserIds ?? []).includes(profileId)
       )),
-    discordNotificationDeliveries: (state.discordNotificationDeliveries ?? []).filter((delivery) => delivery.targetUserId === profileId),
+    discordNotificationDeliveries: (state.discordNotificationDeliveries ?? []).filter((delivery) => (
+      delivery.targetUserId === profileId
+    )),
     settings: {
       ...(state.settings ?? {}),
       courtRequests: isAdmin
@@ -130,7 +138,9 @@ export function filterStateForProfile(state = {}, profileId = "", isAdmin = fals
         : (state.settings?.approvedCourts ?? []).filter((court) => (court.status ?? "active") === "active"),
       refereeRequests: isAdmin
         ? state.settings?.refereeRequests ?? []
-        : (state.settings?.refereeRequests ?? []).filter((request) => request.requestedBy === profileId || request.userId === profileId),
+        : (state.settings?.refereeRequests ?? []).filter((request) => (
+          request.requestedBy === profileId || request.userId === profileId
+        )),
       refereeExamAttempts: isAdmin
         ? state.settings?.refereeExamAttempts ?? []
         : (state.settings?.refereeExamAttempts ?? []).filter((attempt) => attempt.userId === profileId),
@@ -143,39 +153,9 @@ export function filterStateForProfile(state = {}, profileId = "", isAdmin = fals
       adminAuditLog: isAdmin ? state.settings?.adminAuditLog ?? [] : [],
       adminDisciplinaryActions: isAdmin
         ? state.settings?.adminDisciplinaryActions ?? []
-        : (state.settings?.adminDisciplinaryActions ?? []).filter((action) => action.userId === profileId || action.targetUserId === profileId),
+        : (state.settings?.adminDisciplinaryActions ?? []).filter((action) => (
+          action.userId === profileId || action.targetUserId === profileId
+        )),
     },
   };
-}
-
-export default async function handler(request, response) {
-  if (!allowRequestMethod(request, response)) return;
-
-  try {
-    const body = await readJsonBody(request);
-    const requestedScope = String(body.scope ?? body.pagination?.scope ?? "").trim();
-    if (requestedScope && !["profile", "admin"].includes(requestedScope)) {
-      sendJson(response, 410, {
-        error: "state_scope_deprecated",
-        message: "Use screen-specific endpoints instead of broad /api/state/load scope.",
-      });
-      return;
-    }
-    if (requestedScope === "admin") {
-      const context = await requireAdminContext(request, { profileSelect: PROFILE_ME_COLUMNS });
-      const result = await loadNormalizedDirectoryStateFromClient(
-        context.supabase,
-        context.authUserId,
-        context.authUser?.email ?? "",
-        { isAdmin: true },
-      );
-      sendJson(response, 200, { ok: true, state: result.state, updatedAt: result.updatedAt ?? 0 });
-      return;
-    }
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
-    const result = await loadCurrentProfileState(context, { includeTeamMemberProfiles: false });
-    sendJson(response, 200, { ok: true, state: result.state, updatedAt: result.updatedAt ?? 0 });
-  } catch (error) {
-    sendJson(response, error.statusCode || 500, { error: error.message || "state_load_failed" });
-  }
 }

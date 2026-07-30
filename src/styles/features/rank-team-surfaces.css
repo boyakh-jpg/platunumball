@@ -1,0 +1,487 @@
+.rank-stat-grid,
+.stat-strip {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+
+.rank-stat-grid span,
+.stat-strip span {
+  min-height: 62px;
+  align-content: center;
+  padding: 10px 12px;
+}
+
+.recent-match-row,
+.profile-record-row,
+.home-action-row,
+.home-invitation-row,
+.my-team-row,
+.rank-list .rank-row {
+  min-width: 0;
+  min-height: 48px;
+}
+
+.recent-match-row {
+  grid-template-columns: 34px minmax(0, 1fr) minmax(54px, auto);
+}
+
+.recent-match-row > span,
+.profile-record-row > span {
+  min-width: 0;
+}
+
+.recent-match-row strong,
+.recent-match-row em,
+.recent-match-row small,
+.my-team-row strong,
+.my-team-row em,
+.rank-list .rank-row > strong,
+.rank-list .rank-row > em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .my-team-row strong,
+  .my-team-row em {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+.profile-rating-mode,
+.rank-mode-pill {
+  min-height: 132px;
+}
+
+.team-card .team-card-top {
+  min-width: 0;
+}
+
+.team-card .stat-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.team-card .member-row .tier-badge {
+  max-width: 84px;
+}
+
+.ranking-filter-card {
+  border: var(--ui-stroke-width) solid rgba(163, 185, 208, 0.16);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.selector-panel .search-controls {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .team-card,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .profile-records-summary,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-create-panel,
+html[data-theme="light"] .my-team-management-card,
+html[data-theme="light"] .team-search-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .rank-profile-card,
+html[data-theme="light"] .rank-mode-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .rank-record-card,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .season-mini-card {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg-strong);
+  box-shadow: var(--ui-card-shadow);
+}
+
+html[data-theme="light"] .rank-stat-grid span,
+html[data-theme="light"] .stat-strip span,
+html[data-theme="light"] .rank-tier-block,
+html[data-theme="light"] .rank-record-main,
+html[data-theme="light"] .rank-mode-pill,
+html[data-theme="light"] .team-hub-board,
+html[data-theme="light"] .team-card .member-row,
+html[data-theme="light"] .member-row,
+html[data-theme="light"] .ranking-row,
+html[data-theme="light"] .delta-row,
+html[data-theme="light"] .recent-match-row,
+html[data-theme="light"] .home-action-row,
+html[data-theme="light"] .home-invitation-row,
+html[data-theme="light"] .home-search-box,
+html[data-theme="light"] .home-search-results a,
+html[data-theme="light"] .home-search-results .team-hover-trigger,
+html[data-theme="light"] .rank-quick-links a,
+html[data-theme="light"] .rank-profile-tabs a,
+html[data-theme="light"] .rank-list .rank-row,
+html[data-theme="light"] .home-side-stack .compact-list a,
+html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
+html[data-theme="light"] .favorite-result-row,
+html[data-theme="light"] .favorite-mini-chip,
+html[data-theme="light"] .ranking-filter-card {
+  border-color: var(--ui-control-group-border);
+  background: var(--ui-control-group-bg);
+}
+
+.rank-profile-card .rank-tier-block {
+  position: relative;
+  overflow: hidden;
+  min-height: 128px;
+  border-color: rgba(255, 211, 108, 0.28);
+  background:
+    linear-gradient(90deg, rgba(5, 7, 10, 0.96), rgba(5, 7, 10, 0.78) 54%, rgba(5, 7, 10, 0.42)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(255, 211, 108, 0.08);
+}
+
+.rank-profile-card .rank-tier-block .tier-emblem {
+  position: relative;
+  z-index: 1;
+}
+
+.rank-profile-card .rank-tier-block > div {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-theme="light"] .rank-profile-card .rank-tier-block {
+  border-color: rgba(184, 118, 19, 0.24);
+  background:
+    linear-gradient(90deg, rgba(255, 250, 241, 0.96), rgba(242, 234, 223, 0.86) 58%, rgba(242, 234, 223, 0.56)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(184, 118, 19, 0.08), 0 12px 26px rgba(55, 44, 31, 0.1);
+}
+
+.rank-home .rank-profile-card .rank-tier-block,
+html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block {
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+  color: #41535d;
+}
+
+html[data-theme="light"] .rank-home .rank-profile-card {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+html[data-theme="light"] .rank-home .rank-tier-block strong {
+  color: #152024;
+  text-shadow: none;
+}
+
+html[data-theme="light"] .rank-home .rank-tier-block span,
+html[data-theme="light"] .rank-tier-copy,
+html[data-theme="light"] .rank-tier-note {
+  color: #344952;
+}
+
+html[data-theme="light"] .rank-home .rank-mode-pill {
+  border-color: var(--ui-control-group-border);
+  background: var(--ui-control-group-bg);
+  box-shadow: none;
+}
+
+html[data-theme="light"] .rank-home .rank-mode-pill strong {
+  color: #172126;
+}
+
+html[data-theme="light"] .rank-home .rank-mode-pill em {
+  color: #344952;
+}
+
+@media (max-width: 760px) {
+  .home-rank-board-head {
+    padding: 16px;
+  }
+
+  .home-rank-board-head .rank-hero-top {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .home-rank-board-head .button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rank-home .rank-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .rank-home .rank-summary-grid .rank-hero-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    font-size: 2.4rem;
+  }
+
+  .rank-home .rank-profile-card {
+    min-height: 0;
+    padding: 18px;
+    gap: var(--space-6);
+  }
+
+  .rank-home .rank-tier-block {
+    grid-template-columns: minmax(118px, 0.9fr) minmax(0, 1.1fr);
+    gap: var(--space-9);
+  }
+
+  .rank-home .rank-tier-block .tier-emblem {
+    width: 124px;
+    height: 124px;
+  }
+
+  .rank-home .rank-tier-block strong {
+    font-size: 2.25rem;
+  }
+
+  .rank-home .rank-tier-meta-line,
+  .rank-home .rank-tier-copy,
+  .rank-home .rank-tier-note {
+    display: none;
+  }
+
+  .rank-home .rank-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: auto;
+  }
+
+  .rank-home .rank-mode-pill {
+    grid-template-columns: minmax(0, 1fr) 70px;
+    min-height: 108px;
+    padding: 14px 12px;
+  }
+
+  .rank-home .rank-mode-pill .tier-emblem-sm {
+    width: 70px;
+  }
+
+  .rank-home .rank-mode-pill strong {
+    font-size: 1.18rem;
+  }
+
+  .recent-match-row,
+  .profile-record-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .rank-mode-grid {
+    gap: var(--space-4);
+  }
+
+  .profile-rating-mode,
+  .rank-mode-pill {
+    min-height: 112px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 430px) {
+  .rank-list .rank-row {
+    grid-template-columns: 22px 28px minmax(0, 1fr);
+  }
+
+  .rank-list .rank-row > em {
+    grid-column: 3;
+  }
+
+  .team-card .stat-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .team-card .stat-strip span {
+    padding: 8px;
+  }
+}
+
+/* Team hub keeps the ranked-team hero layout instead of the generic page hero. */
+.team-hub-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: end;
+  justify-items: start;
+  gap: var(--space-12);
+  min-height: clamp(430px, 46vw, 620px);
+  padding: clamp(22px, 3.4vw, 34px);
+  border-color: rgba(255, 211, 108, 0.2);
+  background:
+    linear-gradient(180deg, rgba(5, 7, 10, 0.2), rgba(5, 7, 10, 0.72) 54%, rgba(5, 7, 10, 0.94)),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
+}
+
+.team-hub-hero > div:first-child {
+  min-height: 0;
+  max-width: 720px;
+  gap: var(--space-6);
+}
+
+.team-hub-hero h1 {
+  font-size: clamp(3.2rem, 6.6vw, 5.6rem);
+  color: #f7fbff;
+}
+
+.team-hub-board {
+  display: grid;
+  width: min(100%, 720px);
+  max-width: none;
+  align-content: start;
+  justify-self: start;
+  gap: var(--space-8);
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+  backdrop-filter: none;
+  padding: clamp(24px, 3vw, 32px);
+}
+
+.profile-detail-page .profile-hero {
+  --page-hero-bg: var(--bg-profile);
+  --page-hero-bg-position: var(--hero-bg-position-profile);
+}
+
+.team-hub-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.team-hub-board-head > span {
+  color: var(--gold);
+  font-size: 0.84rem;
+}
+
+.team-hub-board-head > b {
+  color: var(--hero-copy-color);
+  font-family: var(--sports-display-font);
+  font-size: 1rem;
+}
+
+.team-hub-board-identity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+}
+
+.team-hub-board-identity > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+}
+
+.team-hub-board-name {
+  display: block;
+  min-width: 0;
+}
+
+.team-hub-board-name strong {
+  color: var(--gold);
+  font-size: clamp(2.1rem, 4.4vw, 3.7rem);
+  line-height: 0.96;
+}
+
+.team-hub-board-identity em {
+  color: rgba(226, 233, 242, 0.82);
+  font-size: clamp(0.95rem, 1.8vw, 1.15rem);
+}
+
+.team-hub-board-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-top: var(--space-6);
+  border-top: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
+}
+
+.team-hub-board-stats > span {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+  padding-inline: var(--space-6);
+}
+
+.team-hub-board-stats > span:first-child {
+  padding-inline-start: 0;
+}
+
+.team-hub-board-stats > span + span {
+  border-left: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider);
+}
+
+.team-hub-board-stats b {
+  color: var(--hero-title-color);
+  font-family: var(--sports-display-font);
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+}
+
+.team-hub-board-stats em {
+  color: var(--hero-copy-color);
+  font-size: 0.78rem;
+}
+
+html[data-theme="light"] .team-hub-hero {
+  border-color: rgba(184, 118, 19, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.66) 54%, rgba(255, 255, 255, 0.92)),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
+}
+
+html[data-theme="light"] .team-hub-hero h1 {
+  color: #142129;
+}
+
+html[data-theme="light"] .team-hub-board {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+html[data-theme="light"] .team-hub-board-identity em {
+  color: #50626b;
+}
+
+@media (max-width: 720px) {
+  .team-hub-hero {
+    min-height: 660px;
+    padding: 20px;
+  }
+
+  .team-hub-hero h1 {
+    font-size: 3.3rem;
+  }
+
+  .team-hub-board {
+    display: grid;
+  }
+}
+
+@media (max-width: 480px) {
+  .team-hub-hero {
+    min-height: 620px;
+    padding: 18px;
+  }
+
+  .team-hub-hero h1 {
+    font-size: 2.8rem;
+  }
+}

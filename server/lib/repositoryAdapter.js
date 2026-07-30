@@ -1,56 +1,7 @@
-// Transitional boundary for the legacy browser/demo repository.
-// Server routes must import repository actions through this single adapter
-// until the pure state reducers and remote loaders are physically separated.
-export {
-  acceptRecruitingInvitation,
-  agreeMatch,
-  approveMatch,
-  approveTournamentTeam,
-  cancelMatch,
-  cancelRecruitingParticipation,
-  checkInMatchPlayer,
-  closeRecruitingPost,
-  configureServerRatingAuthority,
-  confirmMatchRefereeAbsence,
-  confirmRecruitingMatch,
-  createMatch,
-  createRecruitingPost,
-  createTournament,
-  declineRecruitingInvitation,
-  deleteSoloRecord,
-  detachRecruitingPartyPlayer,
-  disputeMatch,
-  endMatch,
-  forfeitTournamentMatch,
-  interestRecruitingPost,
-  inviteRecruitingPlayers,
-  inviteRecruitingReferee,
-  joinRecruitingSideParty,
-  kickRecruitingApplicant,
-  loadNormalizedDirectoryStateFromClient,
-  loadNormalizedMatchDetailFromClient,
-  loadNormalizedRemoteStateFromClient,
-  removeMatchRoomPlayer,
-  removeRecruitingPartyPlayer,
-  requestMatchRefereeAbsence,
-  resolveMatchDispute,
-  sendRecruitingChat,
-  setMatchRecordTeamRoster,
-  setMatchRoomPlayerPlacement,
-  setRecruitingApplicantPlacement,
-  setRecruitingApplicantReserve,
-  setRecruitingPartyPlayerPlacement,
-  setRecruitingPartyPlayerReserve,
-  setRecruitingRoomTeam,
-  setRecruitingSlotPosition,
-  setRecruitingTeamPartyRoster,
-  startMatch,
-  submitMatchResult,
-  submitMatchThumbs,
-  substituteMatchPlayer,
-  toggleMatchStar,
-  updateMatchRoomRules,
-  updateRecruitingRoomRules,
-  updateTournamentMatchSchedule,
-  voidMatch,
-} from "../../src/data/repository.js";
+// Temporary bridge for the two server-side creation reducers and scoped loader.
+// It imports their owning modules directly so the compatibility barrel is never
+// part of the server graph.
+export { configureServerRatingAuthority } from "../../src/data/repository/runtime.js";
+export { confirmRecruitingMatch } from "../../src/data/repository/recruiting/confirmation.js";
+export { createMatch } from "../../src/data/repository/matchCreation.js";
+export { loadNormalizedRemoteStateFromClient } from "../../src/data/repository/remote/stateLoader.js";

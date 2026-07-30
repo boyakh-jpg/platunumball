@@ -1,6 +1,4 @@
 import { MATCH_SIDES } from "../../../lib/constants.js";
-import { PLAYER_POSITIONS } from "../../../lib/constants.js";
-import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { getRecruitingApplicantKey } from "../../../lib/recruiting.js";
 import { getRecruitingBenchCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingEntryPlayerIds } from "../../../lib/recruiting.js";
@@ -9,23 +7,18 @@ import { getRecruitingLobby } from "../../../lib/recruiting.js";
 import { getRecruitingSideCapacity } from "../../../lib/recruiting.js";
 import { getRecruitingSlotEditStatus } from "../../../lib/recruiting.js";
 import { getSelectableTeamPlayerIds } from "../../../lib/recruiting.js";
-import { getSelectedTeamPlayerIds } from "../../../lib/recruiting.js";
 import { hasRecruitingTeamMemberOnOtherSide } from "../../../lib/recruiting.js";
 import { isIndividualOnlyRecruitingRoom } from "../../../lib/recruiting.js";
 import { isMutableRecruitingRoom } from "../../../lib/recruiting.js";
 import { isRecruitingEntryMember } from "../../../lib/recruiting.js";
 import { isRecruitingPartyEntry } from "../../../lib/recruiting.js";
 import { isRecruitingReserveLimitExceeded } from "../../../lib/recruiting.js";
-import { isRecruitingTeamSideLocked } from "../../../lib/recruiting.js";
-import { isRoomScheduleChangePending } from "../../../lib/roomFlow.js";
-import { makeId } from "../../rowUtils.js";
 import { normalizeRecruitingApplicants } from "../../../lib/recruiting.js";
 import { normalizeRecruitingRoomState } from "../../../lib/recruiting.js";
 import { uniquePlayerIds } from "../../rowUtils.js";
 import { updateManyPinnedReservePlayers } from "../../../lib/recruiting.js";
 import { updatePinnedReservePlayers } from "../../../lib/recruiting.js";
-import { getDisciplineBlockedState, getPublicRoomDisciplineBlockedState, getRecruitingReserveLimitNotification } from "../guards.js";
-import { getPendingScheduleChangeNotification } from "../roomRules.js";
+import { getDisciplineBlockedState, getRecruitingReserveLimitNotification } from "../guards.js";
 import { withRecruitingPartySideConflictNotification } from "./partyPlacement.js";
 
 export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}) {

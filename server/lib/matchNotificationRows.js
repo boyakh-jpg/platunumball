@@ -1,26 +1,13 @@
 import {
-  HOUR_MS,
-  MINUTE_MS,
   getModeSize,
 } from "../../shared/lib/matchConstants.js";
 import { compactArray } from "../../shared/lib/arrayValues.js";
 import { collectMatchActivePlayerIds } from "../../shared/lib/playerIds.js";
+import { flattenMatchReservePlayerIds as getMatchReserveIds } from "../../shared/lib/playerIds.js";
 import { isDiscordNotificationEnabled } from "../../shared/lib/settingsMappers.js";
 import {
-  RECORD_TYPES,
   normalizeDisputeWindowMinutes,
 } from "../../shared/lib/constants.js";
-import { getMatchCancelCopy } from "../../shared/lib/matchUtils.js";
-import {
-  POSTGAME_RECORD_REMINDER_MINUTES,
-  getPostgameRecordVerification,
-} from "../../shared/lib/postgameRecordVerification.js";
-import {
-  MATCH_ATTENDANCE_READY_NOTICE_PREFIX,
-  MATCH_CANCEL_NOTICE_PREFIXES,
-  MATCH_POSTGAME_NOTICE_PREFIXES,
-  MATCH_SCHEDULED_NOTICE_PREFIXES,
-} from "../../shared/lib/notifications.js";
 import { getPublicAppWebUrl } from "../api/_publicAppUrl.js";
 import { toQueuedDiscordDeliveryRow } from "./discordDeliveryRows.js";
 
@@ -52,10 +39,7 @@ export function formatKstDateTime(date) {
   }).format(date);
 }
 
-export function getMatchReserveIds(match = {}) {
-  return Object.values(match.reservePlayers ?? match.rules?.reservePlayers ?? {})
-    .flatMap(compactArray);
-}
+export { getMatchReserveIds };
 
 export function getMatchSummaryLines(match = {}) {
   const scheduledAt = parseMatchScheduleDate(match.scheduledAt);

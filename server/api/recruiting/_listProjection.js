@@ -1,12 +1,9 @@
 import { flattenIdValues, isMissingRoomFeedCards, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
-import { compactClientUser } from "../../lib/clientProjection.js";
 import { attachRoomFeedCardJson, collectUniqueRoomFeedCards, mergeFeedRelations, readRoomFeedCard } from "../../lib/roomFeedCards.js";
 import { fromRemoteRecruitingApplication } from "../../../shared/lib/recruitingMappers.js";
 import { normalizeBenchCapacity } from "../../../shared/lib/constants.js";
 import { PROFILE_CARD_COLUMNS as PROFILE_PUBLIC_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
 import { getRecruitingLobby, isPickupRecruitingRoom, isPublicTeamRecruitingRoom } from "../../../shared/lib/recruiting.js";
-import { mapClientTeamEmblem } from "../../../shared/lib/teamEmblem.js";
-import { compactTeam, compactRecruitingApplication, compactRecruitingRoomState, compactRecruitingPost, compactRecruitingListState } from "./_listProjectionCompact.js";
 export { compactRecruitingListState } from "./_listProjectionCompact.js";
 
 
@@ -249,15 +246,6 @@ function hasPendingInvitationForProfile(card = {}, profileId = "") {
   ));
 }
 
-function hasUsableRecruitingFeedCard(card = {}) {
-  if (!card?.playerId && !card?.ownerId && !card?.roomState?.ownerId) return false;
-  if (!card.updatedAt && !card.updated_at) return false;
-  const hasListCounts = hasThinRecruitingListCounts(card);
-  if (!hasListCounts && !Array.isArray(card.playerIds)) return false;
-  if (!hasListCounts && !Array.isArray(card.applicants)) return false;
-  if (card.hostJoinMode === "team" && !card.teamId) return false;
-  return true;
-}
 
 export function getRecruitingFeedCardRejectReason(card = {}, profileId = "") {
   if (!card) return "missing_card";

@@ -18,7 +18,7 @@ const featureCssManifests = [
   "src/styles/match-list-card.css",
   "src/styles/matchroom-arena.css",
 ];
-const globalModuleMaxLines = 4500;
+const cssModuleMaxLines = 500;
 const crossStackSameValueBaseline = 0;
 
 const runtimeRoots = ["src", "public"];
@@ -162,25 +162,28 @@ function resolveLocalCssImports(file, result = [], visiting = new Set()) {
 
 const globalCssFiles = resolveLocalCssImports(globalManifest);
 const featureCssFiles = featureCssManifests.flatMap((file) => resolveLocalCssImports(file));
+const matchroomCssFiles = resolveLocalCssImports("src/styles/matchroom-arena.css");
+const matchroomCssFileSet = new Set(matchroomCssFiles);
 const idlePreloadFeatureCssFiles = featureCssFiles.filter(
-  (file) => file !== "src/styles/matchroom-arena.css",
+  (file) => !matchroomCssFileSet.has(file),
 );
+const primitiveCssFile = "src/styles/ui-primitives.css";
+const primitiveCssFiles = resolveLocalCssImports(primitiveCssFile);
 const baseCssLoadStack = [
   "src/styles/tokens.css",
   ...globalCssFiles,
-  "src/styles/ui-primitives.css",
+  ...primitiveCssFiles,
 ];
 const productionCssLoadStack = [
   ...baseCssLoadStack,
   ...idlePreloadFeatureCssFiles,
-  "src/styles/matchroom-arena.css",
+  ...matchroomCssFiles,
 ];
 const cssFiles = [...new Set(productionCssLoadStack)];
 const styleDirectoryCssFiles = listFiles("src/styles")
   .filter((file) => file.endsWith(".css"))
   .map((file) => file.replaceAll("\\", "/"))
   .sort();
-const primitiveCssFile = "src/styles/ui-primitives.css";
 
 function getAtRuleContext(rule) {
   const context = [];
@@ -274,7 +277,7 @@ test("all production stylesheets are covered by the real load stack", () => {
     .map((match) => `src/${match[1].replace("./", "")}`);
   const coveredCssFiles = [...new Set([
     "src/styles/tokens.css",
-    "src/styles/ui-primitives.css",
+    ...collectLocalCssImportGraph("src/styles/ui-primitives.css"),
     ...collectLocalCssImportGraph(globalManifest),
     ...featureCssManifests.flatMap((file) => [...collectLocalCssImportGraph(file)]),
   ])].sort();
@@ -521,7 +524,9 @@ test("home team summaries use one shared entity primitive", () => {
     fs.readFileSync("src/pages/HomePageView.jsx", "utf8"),
     fs.readFileSync("src/components/home/HomeRightRail.jsx", "utf8"),
   ].join("\n");
-  const primitiveSource = fs.readFileSync(primitiveCssFile, "utf8");
+  const primitiveSource = primitiveCssFiles
+    .map((file) => fs.readFileSync(file, "utf8"))
+    .join("\n");
   const legacySelectors = /(?:rivalry-card|home-my-teams-card|home-team-list|home-team-row|home-team-empty)/;
 
   assert.match(homeSource, /className="ui-entity-list(?:\s[^"]*)?"/);
@@ -568,7 +573,9 @@ test("navigation actions use the shared polymorphic button without nested contro
 });
 
 test("shared empty-state surfaces have one primitive owner", () => {
-  const primitiveSource = fs.readFileSync(primitiveCssFile, "utf8");
+  const primitiveSource = primitiveCssFiles
+    .map((file) => fs.readFileSync(file, "utf8"))
+    .join("\n");
   const duplicateOwners = [];
   const protectedBranches = new Set([
     ".ui-empty-state",
@@ -578,7 +585,7 @@ test("shared empty-state surfaces have one primitive owner", () => {
   assert.match(primitiveSource, /\.ui-empty-state-compact\s*\{/);
   assert.match(primitiveSource, /\.ui-empty-state\s*\{/);
 
-  for (const file of cssFiles.filter((file) => file !== primitiveCssFile)) {
+  for (const file of cssFiles.filter((file) => !primitiveCssFiles.includes(file))) {
     const root = parseCss(file);
     root.walkRules((rule) => {
       for (const selector of rule.selectors ?? [rule.selector]) {
@@ -647,8 +654,8 @@ test("globals.css is an import-only manifest with bounded modules", () => {
   for (const file of globalCssFiles) {
     const lineCount = fs.readFileSync(file, "utf8").split(/\r?\n/).length;
     assert.ok(
-      lineCount <= globalModuleMaxLines,
-      `${file} exceeds ${globalModuleMaxLines} lines (${lineCount})`,
+      lineCount <= cssModuleMaxLines,
+      `${file} exceeds ${cssModuleMaxLines} lines (${lineCount})`,
     );
   }
 });
@@ -707,7 +714,20 @@ test("large CSS entrypoints are ordered manifests over responsibility modules", 
 
   for (const file of [...globalCssFiles, ...featureCssFiles]) {
     const lineCount = fs.readFileSync(file, "utf8").split(/\r?\n/).length;
-    assert.ok(lineCount <= 2800, `${file} exceeds the 2800-line module boundary`);
+    assert.ok(
+      lineCount <= cssModuleMaxLines,
+      `${file} exceeds the ${cssModuleMaxLines}-line module boundary`,
+    );
+  }
+});
+
+test("every production stylesheet stays within the 500-line boundary", () => {
+  for (const file of styleDirectoryCssFiles) {
+    const lineCount = fs.readFileSync(file, "utf8").split(/\r?\n/).length;
+    assert.ok(
+      lineCount <= cssModuleMaxLines,
+      `${file} exceeds the ${cssModuleMaxLines}-line module boundary (${lineCount})`,
+    );
   }
 });
 
@@ -758,19 +778,19 @@ test("important is limited to inline-position and inline-layout overrides", () =
       const context = getAtRuleContext(rule);
       const selector = normalizeSelector(rule.selector);
       const allowedHoverPosition = (
-        file === "src/styles/global-foundation.css"
+        file === "src/styles/features/rating-notifications.css"
         && context === "@media (hover: none), (pointer: coarse)"
         && selector.includes("span.player-hover-card.touch-open")
         && ["top", "left", "max-height"].includes(declaration.prop)
       );
       const allowedMobilePortal = (
-        file === "src/styles/global-court-controls.css"
+        file === "src/styles/features/match-create-responsive.css"
         && context === "@media (max-width: 1079px)"
         && selector === ".hover-portal-card.touch-open"
         && ["top", "bottom", "max-height"].includes(declaration.prop)
       );
       const allowedInlineFooter = (
-        file === "src/styles/global-court-controls.css"
+        file === "src/styles/features/admin-court-controls.css"
         && context === "@media (max-width: 520px)"
         && selector === ".naver-pin-picker-footer"
         && declaration.prop === "align-items"
@@ -804,8 +824,14 @@ test("global modules use spacing tokens for canonical gaps", () => {
 
 test("default and functional panel typography use shared body tokens", () => {
   const tokenRoot = parseCss("src/styles/tokens.css");
-  const foundationRoot = parseCss("src/styles/global-foundation.css");
-  const primitiveRoot = parseCss("src/styles/ui-primitives.css");
+  const foundationRoot = postcss.parse(
+    resolveLocalCssImports("src/styles/global-foundation.css")
+      .map((file) => fs.readFileSync(file, "utf8"))
+      .join("\n"),
+  );
+  const primitiveRoot = postcss.parse(
+    primitiveCssFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n"),
+  );
   const recruitingSource = readSourceGroupSync(
     (file) => fs.readFileSync(file, "utf8"),
     RECRUITING_PAGE_SOURCE_PATHS,
@@ -868,7 +894,9 @@ test("light theme reserves green for semantic status only", () => {
 test("mobile Safari first paint uses the app theme and never flashes the static OAuth copy", () => {
   const indexSource = fs.readFileSync("index.html", "utf8");
   const appSource = fs.readFileSync("src/App.jsx", "utf8");
-  const foundationSource = fs.readFileSync("src/styles/global-foundation.css", "utf8");
+  const foundationSource = resolveLocalCssImports("src/styles/global-foundation.css")
+    .map((file) => fs.readFileSync(file, "utf8"))
+    .join("\n");
   const visualSource = resolveLocalCssImports("src/styles/global-visual-system.css")
     .map((file) => fs.readFileSync(file, "utf8"))
     .join("\n");

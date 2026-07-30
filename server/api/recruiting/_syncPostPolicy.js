@@ -3,22 +3,23 @@ import { nullableText, toArray } from "../_supabaseAdmin.js";
 import { isValidBenchCapacity } from "../../../shared/lib/constants.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { normalizeRecruitingMmrRangeMode } from "../../../shared/lib/recruiting.js";
+import { getAgeGroupByBirthYear } from "../../../shared/lib/profileSetup.js";
 
-import { getCanonicalBenchCapacity, getCanonicalHostJoinMode, getCanonicalSideCapacity, getExplicitBenchCapacity, getRecruitingBenchIdsBySide, getRecruitingCoreSnapshot, normalizeRoomState, participantIdsFromPost, rosterIdsFromPost, sameJson } from "./_syncPostProjection.js";
+import {
+  getCanonicalBenchCapacity, getCanonicalHostJoinMode, getExplicitBenchCapacity,
+  getRecruitingBenchIdsBySide, getRecruitingCoreSnapshot, normalizeRoomState,
+  participantIdsFromPost, rosterIdsFromPost, sameJson,
+} from "./_syncPostProjection.js";
 import { isTrue, reject } from "./_syncPostCommon.js";
-import { getSideCapacity, isSoloIndividualRoom, isPickupRoom, isIndividualOnlyRoom, getEntryActivePlayerIds, getRecruitingSideCounts, validatePickupRecruitingShape, validatePickupRecruitingUpdate, PICKUP_PARTY_ACTIONS, PICKUP_POLICY_OPERATION_ACTIONS, normalizePickupRecruitingOperation, validatePickupRecruitingOperation } from "./_syncPostPickupPolicy.js";
+import {
+  getSideCapacity,
+  isIndividualOnlyRoom,
+  getRecruitingSideCounts,
+  validatePickupRecruitingShape,
+} from "./_syncPostPickupPolicy.js";
 export { validatePickupRecruitingShape, validatePickupRecruitingUpdate, normalizePickupRecruitingOperation, validatePickupRecruitingOperation } from "./_syncPostPickupPolicy.js";
 
 const AGE_GROUP_IDS = ["junior", "rising", "open"];
-
-function getAgeGroupByBirthYear(birthYear, now = new Date()) {
-  const year = Number(birthYear);
-  if (!Number.isInteger(year) || year < 1900 || year > now.getFullYear()) return null;
-  const age = now.getFullYear() - year;
-  if (age <= 12) return "junior";
-  if (age <= 19) return "rising";
-  return "open";
-}
 
 export function normalizeAllowedAgeGroups(post = {}) {
   const explicitGroups = toArray(post.allowedAgeGroups ?? post.allowed_age_groups)

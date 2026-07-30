@@ -7,7 +7,14 @@ import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson, to
 import { getMatchScheduledDate } from "../../../shared/lib/matchUtils.js";
 import { REPORT_MATCH_WINDOW_MS } from "../../../shared/lib/constants.js";
 import { VOID_MATCH_RESTORE_REPORT_REASON } from "../../../shared/lib/reportReasons.js";
-import { COURT_CORRECTION_FIELDS, COURT_CORRECTION_ATTRIBUTES, uniqueStrings, normalizeCourtCorrection, assertCanSubmitCourtReport, assertCanSubmitCourtReviewReport, loadReportableTeam, assertCanSubmitTeamEmblemReport, assertCanSubmitTeamNameReport, assertCanSubmitAffiliationNameReport } from "./submitCourtTeamPolicy.js";
+import {
+  uniqueStrings,
+  assertCanSubmitCourtReport,
+  assertCanSubmitCourtReviewReport,
+  assertCanSubmitTeamEmblemReport,
+  assertCanSubmitTeamNameReport,
+  assertCanSubmitAffiliationNameReport,
+} from "./submitCourtTeamPolicy.js";
 export { normalizeCourtCorrection } from "./submitCourtTeamPolicy.js";
 
 

@@ -4,13 +4,9 @@ import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
 import { DEFAULT_PLAYER_RATINGS } from "../../../shared/lib/matchConstants.js";
 import { getAgeGroupByBirthYear } from "../../../shared/lib/profileSetup.js";
 import { getDiscordCdnAvatarUrl } from "../../../shared/lib/discordProtocol.js";
+import { getProfileShellId as makeProfileId } from "../../../shared/lib/profileMappers.js";
 
 const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,avatar_source,avatar_updated_at,trust_score,ratings,school,company,club,streak,discord_connection,discord_user_id,discord_avatar_url,test_login_id";
-
-function makeProfileId(authUserId = "") {
-  const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
-  return `p_${safeId}`;
-}
 
 function normalizeHashtag(value = "", fallback = "") {
   const raw = String(value || fallback || "")

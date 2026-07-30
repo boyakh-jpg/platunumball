@@ -2,17 +2,11 @@ import {
   useEffect,
   useState,
 } from "react";
-import {
-  createPortal,
-} from "react-dom";
 
 import {
   Crown,
   UserRound,
-  X,
 } from "lucide-react";
-import Badge from "../common/Badge.jsx";
-import BasketballLoader from "../common/BasketballLoader.jsx";
 import Button from "../common/Button.jsx";
 import {
   MatchListSummary,
@@ -21,41 +15,22 @@ import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import {
-  getTierEmblemSrc,
-} from "../rating/TierEmblem.jsx";
-import {
   DEFAULT_RATING,
-  MATCH_SIDES,
   MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE,
-  PLAYER_POSITIONS,
-  SIDE_LABEL_TEXT as SIDE_LABELS,
 } from "../../lib/constants.js";
-import {
-  isPlacementComplete,
-} from "../../lib/rating.js";
 
 import {
-  getRecruitingBenchCapacity,
-  getRecruitingEntryLeaderId,
   getRecruitingListCardCounts,
-  getRecruitingRoomOwnerId,
-  getRecruitingPostTerminalState,
   getSelectableTeamPlayerIds,
-  isRecruitingPartyEntry,
   isRecruitingTeamEntry,
   isTeamRecruitingRoom,
 } from "../../lib/recruiting.js";
 
 import {
-  getMatchReservePlayerIds,
-  getMatchSidePlayerIds,
-  getPublicRoomTimingStatus,
-} from "../../lib/matchUtils.js";
-import {
   getMatchRuleSummary,
 } from "../../lib/matchRules.js";
 
-import { RecruitingRoomLoadingView, RECRUITING_FILTER_PAGE_LIMIT, RECRUITING_FILTER_DEBOUNCE_MS, useDebouncedValue, getEntryMmr, getLobbySideMeta, getRoomSlotDisplayPosition, getPartyOptionLabel, getPartyOptionKey, getEntryPartyLeaderId, getRecruitingSideLeaderId, getRoomSlotBadge, getMissingStartAttendanceIds, canMovePlayerTo, getEntryPlayerReserveState, getSameSidePartyOptions, getJoinableSidePartyOptions, isPartyEntry, getLobbyPrimaryTeamId, getRoomSlotTeamName, getVisualPartyKey, groupPartySlots, PlayerRoomSlot, isCurrentUserRoomParticipant, getRecruitingRoomStatus, getRecruitingRoomListStatus } from "./RecruitingRoomSlotCore.jsx";
+import { getRoomSlotDisplayPosition, getRoomSlotBadge, getRoomSlotTeamName } from "./RecruitingRoomSlotCore.jsx";
 
 export function TeamMemberPicker({
   team,

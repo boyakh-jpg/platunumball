@@ -1,0 +1,122 @@
+.report-player-picker > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-4);
+}
+
+.report-player-picker button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+}
+
+.report-player-info {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.report-player-picker button.selected {
+  border-color: rgba(255, 107, 107, 0.58);
+  background: rgba(255, 107, 107, 0.12);
+}
+
+.report-player-picker button strong,
+.report-player-picker button em,
+.report-player-picker button small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-player-picker button em {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.report-player-picker button small {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.report-player-picker small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.theme-choice-card .segmented-control button {
+  flex: 1 1 0;
+}
+
+.settings-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-top: 12px;
+}
+
+.settings-save-row small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+@media (max-width: 1020px) {
+  .landing-hero,
+  .team-hub-hero,
+  .team-overview-grid,
+  .home-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-copy h1 {
+    font-size: 4rem;
+  }
+
+  .broadcast-panel {
+    min-height: 420px;
+  }
+
+  .team-create-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .court-profile-information-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .court-profile-information-grid dl > div {
+    grid-template-columns: minmax(80px, 0.35fr) minmax(0, 1fr);
+  }
+
+  h1,
+  .landing-copy h1 {
+    font-size: 2.55rem;
+  }
+
+  .landing-stat-grid,
+  .broadcast-score {
+    grid-template-columns: 1fr;
+  }
+
+  .team-hub-hero,
+  .landing-hero {
+    padding-inline: 14px;
+  }
+}

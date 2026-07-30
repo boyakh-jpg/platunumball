@@ -1,10 +1,6 @@
-import { flattenIdValues, isMissingRoomFeedCards, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
 import { compactClientUser } from "../../lib/clientProjection.js";
-import { attachRoomFeedCardJson, collectUniqueRoomFeedCards, mergeFeedRelations, readRoomFeedCard } from "../../lib/roomFeedCards.js";
-import { fromRemoteRecruitingApplication } from "../../../shared/lib/recruitingMappers.js";
 import { normalizeBenchCapacity } from "../../../shared/lib/constants.js";
-import { PROFILE_CARD_COLUMNS as PROFILE_PUBLIC_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
-import { getRecruitingLobby, isPickupRecruitingRoom, isPublicTeamRecruitingRoom } from "../../../shared/lib/recruiting.js";
+import { isPublicTeamRecruitingRoom } from "../../../shared/lib/recruiting.js";
 import { mapClientTeamEmblem } from "../../../shared/lib/teamEmblem.js";
 
 export function compactTeam(team = {}) {

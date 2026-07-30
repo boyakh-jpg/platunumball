@@ -1,0 +1,215 @@
+@media (max-width: 420px) {
+  .gm-player-slot .avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .gm-player-slot {
+    grid-template-rows: 34px 15px 17px 15px;
+    padding: 6px 4px;
+  }
+}
+
+/* 2026-07-01 remove court grid overlays. */
+.gm-room-hero::before {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(240, 90, 70, 0.16), transparent 20rem),
+    linear-gradient(90deg, rgba(240, 90, 70, 0.1), transparent 32%, transparent 68%, rgba(255, 211, 108, 0.1));
+}
+
+/* 2026-07-01 standard UI cleanup: match room follows shared primitives. */
+.gm-room-topline > span,
+.gm-room-title > span,
+.gm-team-head span {
+  color: var(--rb-orange);
+}
+
+.gm-team-panel,
+.gm-score-core,
+.gm-reserve-line,
+.gm-next-action-card,
+.gm-room-actions > div {
+  border: var(--ui-room-panel-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .gm-team-panel,
+html[data-theme="light"] .gm-score-core,
+html[data-theme="light"] .gm-reserve-line,
+html[data-theme="light"] .gm-next-action-card,
+html[data-theme="light"] .gm-room-actions > div {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.gm-next-action-card .button:not(.button-secondary),
+.gm-room-actions .button:not(.button-secondary) {
+  border-color: transparent;
+  background: var(--button-primary-bg);
+  color: #fff;
+  box-shadow: none;
+}
+
+.gm-next-action-card .button:not(.button-secondary):hover,
+.gm-room-actions .button:not(.button-secondary):hover {
+  background: var(--button-primary-hover-bg);
+  color: #fff;
+  filter: none;
+}
+
+/* 2026-07-02 include match room in page-level hero rules. */
+
+html[data-theme="light"] .gm-room-title h1 {
+  color: var(--rb-cream);
+}
+
+/* 2026-07-02 final match room hero guard: no wash/blur and shared title font. */
+.gm-room-hero,
+html[data-theme="light"] .gm-room-hero {
+  background:
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.gm-room-hero::before,
+.gm-room-hero::after,
+html[data-theme="light"] .gm-room-hero::before,
+html[data-theme="light"] .gm-room-hero::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+
+.gm-room-title h1,
+html[data-theme="light"] .gm-room-title h1 {
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .gm-room-title h1,
+  html[data-theme="light"] .gm-room-title h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}
+
+/* 2026-07-14 compact match-room content while preserving hero and slot dimensions. */
+.gm-room-hero {
+  gap: var(--page-section-gap);
+  padding: var(--card-padding);
+}
+
+.gm-versus-stage {
+  gap: var(--page-column-gap);
+}
+
+.gm-team-panel {
+  min-height: 0;
+  gap: 10px;
+  padding: var(--card-padding);
+}
+
+.gm-score-core {
+  gap: var(--ui-control-group-gap);
+  padding: 12px;
+}
+
+.gm-reserve-panel {
+  gap: var(--page-section-gap-mobile);
+}
+
+.gm-reserve-line {
+  gap: var(--ui-control-group-gap);
+  padding: 8px;
+}
+
+.gm-room-actions {
+  gap: var(--ui-control-group-gap);
+}
+
+.gm-room-actions > div {
+  gap: var(--ui-control-group-gap);
+  padding: 8px 10px;
+}
+
+.gm-room-hero + .content-grid {
+  margin-top: 0;
+}
+
+.gm-next-action-card > div {
+  gap: 2px;
+}
+
+.match-room .contract-grid div {
+  padding: 10px;
+}
+
+@media (max-width: 1079px) {
+  .match-room {
+    gap: var(--page-section-gap-mobile);
+  }
+}
+
+@media (max-width: 720px) {
+  .gm-room-hero {
+    gap: var(--page-section-gap-mobile);
+    padding: var(--card-padding);
+  }
+
+  .gm-team-panel {
+    padding: 12px;
+  }
+}
+
+/* 2026-07-04 KBO Dia Gothic display, scoped to room title, team names, and score core. */
+:where(.gm-room-title h1, .gm-team-head a, .gm-score-core strong, .gm-score-core i) {
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
+  transform: var(--sports-display-condense);
+}
+
+:where(.gm-room-title h1, .gm-team-head a) {
+  transform-origin: left center;
+}
+
+:where(.gm-score-core strong, .gm-score-core i) {
+  transform-origin: center;
+}
+
+.match-room .match-derived-score {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 74px;
+  place-items: center;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--text);
+  font-family: var(--sports-display-font);
+  font-size: 2.5rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 950;
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .match-room .score-form {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  .match-room .match-derived-score {
+    min-height: 60px;
+    font-size: 2rem;
+  }
+}

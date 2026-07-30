@@ -1,0 +1,483 @@
+.create-referee-row .settings-checkbox {
+  display: flex;
+  min-height: var(--ui-button-height);
+  align-items: center;
+  gap: var(--space-4);
+  white-space: nowrap;
+}
+
+.create-referee-search,
+.create-referee-search .search-picker {
+  min-width: 0;
+}
+
+.create-referee-note {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.create-referee-note > span {
+  min-width: 0;
+}
+
+.create-eligibility-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.create-eligibility-grid > :only-child {
+  grid-column: 1 / -1;
+}
+
+.create-eligibility-control {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.create-eligibility-control > .mmr-range-summary-row {
+  min-width: 0;
+}
+
+.create-eligibility-control > .segmented-control {
+  width: max-content;
+  max-width: 100%;
+}
+
+@media (max-width: 1280px) {
+  .create-eligibility-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .create-eligibility-grid > :only-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .match-intent-axis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-cost-components-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .create-match-info-grid.is-standard-room {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .create-match-info-grid.is-standard-room > .create-title-field,
+  .create-match-info-grid.is-standard-room > .create-format-field,
+  .create-match-info-grid.is-standard-room > .create-timing-field,
+  .create-match-info-grid.is-standard-room > .create-date-field,
+  .create-match-info-grid.is-standard-room > .create-time-field,
+  .create-match-info-grid.is-standard-room > .create-capacity-field {
+    grid-row: auto;
+  }
+
+  .create-match-info-grid.is-standard-room > :is(.create-title-field, .create-format-field) {
+    grid-row: 1;
+  }
+
+  .create-match-info-grid.is-standard-room > :is(.create-capacity-field, .create-timing-field) {
+    grid-row: 2;
+  }
+
+  .create-match-info-grid.is-standard-room > :is(.create-date-field, .create-time-field) {
+    grid-row: 3;
+  }
+
+  .create-match-info-grid.is-standard-room > .create-title-field,
+  .create-match-info-grid.is-standard-room > .create-capacity-field,
+  .create-match-info-grid.is-standard-room > .create-date-field {
+    grid-column: 1;
+  }
+
+  .create-match-info-grid.is-standard-room > .create-format-field,
+  .create-match-info-grid.is-standard-room > .create-timing-field,
+  .create-match-info-grid.is-standard-room > .create-time-field {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .create-match-info-grid.is-standard-room,
+  .create-referee-row,
+  .create-eligibility-control {
+    grid-template-columns: 1fr;
+  }
+
+  .create-match-info-grid.is-standard-room > .create-title-field,
+  .create-match-info-grid.is-standard-room > .create-format-field,
+  .create-match-info-grid.is-standard-room > .create-timing-field,
+  .create-match-info-grid.is-standard-room > .create-date-field,
+  .create-match-info-grid.is-standard-room > .create-time-field,
+  .create-match-info-grid.is-standard-room > .create-capacity-field {
+    grid-row: auto;
+    grid-column: 1;
+  }
+
+  .create-referee-row .settings-checkbox {
+    min-height: 28px;
+  }
+
+  .create-eligibility-control > .segmented-control {
+    width: 100%;
+  }
+
+  .match-roster-policy-fields,
+  .match-creation-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-intent-preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .match-cost-components-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .match-clock-preset-row {
+    grid-template-columns: 1fr;
+  }
+
+  .match-clock-preset-row .segmented-control {
+    width: 100%;
+  }
+
+  .match-cost-summary {
+    flex-wrap: wrap;
+  }
+
+  .match-cost-summary em {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .match-creation-wizard-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .match-creation-wizard-secondary-actions,
+  .match-creation-wizard-primary-actions {
+    display: contents;
+  }
+
+  .match-creation-wizard-actions .button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .match-creation-wizard-primary-actions .create-submit-warning {
+    grid-column: 1 / -1;
+    max-width: none;
+    text-align: right;
+  }
+}
+
+@media (max-width: 420px) {
+  .match-intent-preset-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-creation-wizard-nav {
+    padding: 6px;
+  }
+
+  .match-creation-wizard-nav ol {
+    gap: var(--space-2);
+  }
+
+  .match-creation-wizard-nav button {
+    min-height: 58px;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: 5px 2px;
+    text-align: center;
+  }
+
+  .match-creation-wizard-nav button > span {
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
+    font-size: 0.72rem;
+  }
+
+  .match-creation-wizard-nav button > strong {
+    font-size: 0.72rem;
+    line-height: 1.15;
+  }
+
+  .match-creation-wizard-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .match-creation-wizard-actions:not(.is-edge-step) .match-creation-wizard-secondary-actions > :first-child,
+  .match-creation-wizard-actions.is-last-step .match-creation-wizard-secondary-actions > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .match-creation-wizard-primary-actions .create-submit-warning {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 2026-07-17 external page surface convergence.
+   Room and match list cards plus room modal internals keep their own modules. */
+.rank-home :is(
+  .home-recent-card,
+  .home-action-card,
+  .home-alert-card,
+  .rank-leaderboard-card,
+  .season-mini-card
+) {
+  padding: var(--card-padding);
+}
+
+.rank-home :is(
+  .home-recent-card,
+  .home-action-card,
+  .home-alert-card,
+  .rank-leaderboard-card,
+  .season-mini-card
+) > .section-title-row {
+  min-width: 0;
+  min-height: var(--ui-button-height);
+  align-items: flex-start;
+}
+
+.rank-home :is(
+  .home-recent-card,
+  .home-action-card,
+  .home-alert-card,
+  .rank-leaderboard-card,
+  .season-mini-card
+) > .section-title-row h2 {
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.rank-home .home-top-rail > .home-alert-card {
+  order: 2;
+}
+
+.rank-home :is(
+  .home-action-row,
+  .rank-list .rank-row,
+  .home-side-stack .compact-list a,
+  .home-side-stack .compact-list > div,
+  .home-side-stack .compact-list > .team-hover-trigger,
+  .season-mini-card .contract-grid > div
+) {
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  box-shadow: none;
+}
+
+.rank-home .home-action-row:is(.priority-1, .priority-2, .priority-3, .priority-4, .priority-5) {
+  border-color: var(--ui-control-border);
+  background: var(--ui-control-bg);
+  box-shadow: none;
+}
+
+@media (min-width: 1080px) {
+  .rank-home .home-upcoming-card.is-empty {
+    min-height: auto;
+  }
+}
+
+.settings-page .content-grid.settings-section-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1079px) {
+  .hover-portal-card.touch-open {
+    top: auto !important;
+    bottom: calc(var(--bottom-nav-height) + 22px + env(safe-area-inset-bottom, 0px)) !important;
+    max-height: min(62dvh, calc(100dvh - var(--bottom-nav-height) - 32px), 560px) !important;
+  }
+}
+
+/* 2026-07-19 court search previews and non-destructive court detail modal. */
+.rank-home .home-global-search-results > .home-search-entity-trigger {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  cursor: pointer;
+  padding: 10px;
+  text-align: left;
+}
+
+.rank-home .home-global-search-results > .home-search-entity-trigger:hover {
+  border-color: color-mix(in srgb, var(--rb-orange) 46%, var(--ui-control-border));
+}
+
+.rank-home .home-global-search-results > .home-search-entity-trigger:focus-visible {
+  border-color: var(--rb-orange);
+  outline: 2px solid var(--rb-orange);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+.rank-home .home-global-search-results > .home-search-entity-trigger > small {
+  align-self: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-blue) 12%, transparent);
+  color: var(--rb-blue);
+  font-size: 0.68rem;
+  font-weight: 950;
+  padding: 4px 7px;
+}
+
+.rank-home .home-global-search-results .rank-result-main > strong {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 759px) {
+  .rank-home .home-global-search-results > .home-search-entity-trigger {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .rank-home .home-global-search-results > .home-search-entity-trigger > small {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+.court-detail-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: grid;
+  width: 100%;
+  height: 100dvh;
+  place-items: center;
+  padding: clamp(10px, 2vw, 24px);
+  background: rgba(0, 0, 0, 0.82);
+  overscroll-behavior: contain;
+}
+
+.court-detail-modal-shell {
+  position: relative;
+  width: min(1180px, 100%);
+  height: min(92dvh, 940px);
+  max-height: calc(100dvh - 20px);
+  min-width: 0;
+  overflow: hidden;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--surface);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
+}
+
+.court-detail-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+}
+
+.court-detail-modal-scroll {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 56px 18px 24px;
+  scrollbar-gutter: stable;
+}
+
+.court-detail-page.is-embedded {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+@media (max-width: 620px) {
+  .court-detail-modal-backdrop {
+    padding: 8px;
+  }
+
+  .court-detail-modal-shell {
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: var(--radius-md);
+  }
+
+  .court-detail-modal-scroll {
+    padding: 52px 10px 16px;
+    scrollbar-gutter: auto;
+  }
+}
+
+/* 2026-07-20 efficient nested control and information layouts.
+   Room modals, repeated list cards, and page heroes keep their own structure. */
+.team-overview-grid {
+  align-items: start;
+}
+
+.profile-achievement-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.profile-achievement-metrics > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+:where(.rank-team-page, .rank-profile-page) .rank-stat-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settings-nav-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.discord-link-card .settings-toggle-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-privacy-card .settings-toggle-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-privacy-card .settings-home-guide-group .settings-toggle-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-privacy-card .settings-toggle-grid > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.profile-form-grid > .button {
+  grid-column: 1 / -1;
+}
+
+.affiliation-editor-form {
+  gap: var(--page-section-gap-mobile);
+}
+
+.affiliation-editor-form > label,
+.affiliation-editor-form .search-picker {
+  min-width: 0;
+}

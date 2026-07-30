@@ -1,30 +1,7 @@
-import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Database, ListChecks, RotateCcw, Save, ScanLine, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ScanLine, X } from "lucide-react";
 import Button from "../common/Button.jsx";
-import Card from "../common/Card.jsx";
 import {
-  ACTION_COLUMN_WIDTH,
-  COURT_COLUMNS,
-  HISTORY_COLUMNS,
-  REVIEW_SCENARIOS,
-  REVIEW_CHIP_GROUPS,
-  COURT_UNIT_CHIPS,
-  REVIEW_PRIORITY_LABELS,
-  FIELD_LABELS,
-  formatValue,
-  buildRowDraft,
-  buildPatch,
-  isColumnEditable,
-  getDraftCourtName,
-} from "./courtDatabaseModel.js";
-import {
-  SortIcon,
-  FilterControl,
-  CellEditor,
-  ReviewChipGroup,
   CourtMapLinks,
-  Pagination,
-  ChangeSummary,
 } from "./CourtDatabaseControls.jsx";
 
 export function CourtDatabaseDuplicateReview({ controller }) {

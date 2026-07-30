@@ -34,7 +34,7 @@ function getPlayerSide(match, userId) {
   return null;
 }
 
-function getTeamSide(match, teamId) {
+export function getTeamSide(match, teamId) {
   if (match.teamA?.teamId === teamId) return "teamA";
   if (match.teamB?.teamId === teamId) return "teamB";
   return null;

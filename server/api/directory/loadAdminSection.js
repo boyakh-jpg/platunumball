@@ -1,12 +1,7 @@
 import {
-  allowRequestMethod,
   getAdminLevel,
-  getAuthenticatedContext,
   getRowsMaxUpdatedAt,
   groupRowsBy,
-  readJsonBody,
-  requireAdminContext,
-  sendJson,
   uniqueValues,
 } from "../_supabaseAdmin.js";
 import { fromRemoteMatch } from "../../../shared/lib/matchMappers.js";
@@ -27,27 +22,21 @@ import {
   APPROVED_COURT_COLUMNS,
   COURT_REQUEST_COLUMNS,
   COURT_REVIEW_COLUMNS,
-  FAVORITE_COLUMNS,
   MATCH_LIST_COLUMNS,
   MATCH_PLAYER_COLUMNS,
-  PROFILE_ME_COLUMNS,
   PUBLIC_PROFILE_COLUMNS,
-  REFEREE_EXAM_ATTEMPT_COLUMNS,
   REFEREE_REQUEST_COLUMNS,
   REPORT_COLUMNS,
   TEAM_COLUMNS,
-  TEAM_INVITATION_COLUMNS,
-  TEAM_MEMBER_COLUMNS,
 } from "../../../shared/lib/repositoryColumns.js";
 import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
-import { fromRemoteTeam, fromRemoteTeamInvitation } from "../../../shared/lib/teamMappers.js";
+import { fromRemoteTeam } from "../../../shared/lib/teamMappers.js";
 import {
   DIRECTORY_ID_BATCH_SIZE,
   getDirectoryPageRequest,
   normalizeAdminQueueMode,
   normalizeAdminSection,
   normalizeDirectoryFilter,
-  normalizeDirectoryKind,
 } from "../../../shared/lib/queryPolicy.js";
 
 export const ADMIN_REPORT_TYPES = {

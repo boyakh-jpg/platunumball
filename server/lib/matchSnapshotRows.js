@@ -13,14 +13,12 @@ import {
   normalizeBenchCapacity,
 } from "../../shared/lib/constants.js";
 import { nullableText } from "../../shared/lib/rowUtils.js";
+import { flattenMatchReservePlayerIds as getMatchReserveIds } from "../../shared/lib/playerIds.js";
 import { parseMatchScheduleDate } from "./matchNotifications.js";
 
 const ACHIEVEMENT_POSITIONS = new Set(BASKETBALL_POSITIONS);
 
-export function getMatchReserveIds(match = {}) {
-  return Object.values(match.reservePlayers ?? match.rules?.reservePlayers ?? {})
-    .flatMap(compactArray);
-}
+export { getMatchReserveIds };
 
 export function getMatchBenchCapacity(match = {}) {
   return normalizeBenchCapacity(match.benchCapacity ?? match.rules?.benchCapacity);

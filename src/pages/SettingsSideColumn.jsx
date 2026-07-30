@@ -1,17 +1,12 @@
-import { Database, MapPin, Send } from "lucide-react";
+import { MapPin, Send } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
-import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
-import TeamEmblem from "../components/team/TeamEmblem.jsx";
-import { REPORT_REASONS, REPORT_TARGET_TYPES } from "../lib/reportReasons.js";
-import { formatStatLine } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN } from "../lib/constants.js";
 import { COURT_ACCESS_OPTIONS, COURT_KIND_OPTIONS, COURT_LAYOUT_OPTIONS, COURT_PUBLIC_ACCESS_OPTIONS, COURT_SOURCE_URL_MAX_LENGTH, COURT_SURFACE_OPTIONS, COURT_TYPE_OPTIONS, getCourtAccessLabel, getCourtKindLabel, getCourtLayoutLabel, getCourtPaidLabel, getCourtPublicAccessLabel, getCourtSurfaceLabel, normalizeCourtFacilityName } from "../lib/courts.js";
-import { getMatchHashtag } from "../lib/handles.js";
 import { getAdminStatusLabel } from "../lib/admin.js";
-import { COURT_COST_OPTIONS, COURT_LIGHTING_OPTIONS, getMatchReportTitle, getReportTargetLabel, getReportTargetPlaceholder, getReportTargetEmptyText, formatCourtDistance } from "./settingsPageModel.js";
+import { COURT_COST_OPTIONS, COURT_LIGHTING_OPTIONS, formatCourtDistance } from "./settingsPageModel.js";
 
 import { SettingsReportCard } from "./SettingsReportCard.jsx";
 export default function SettingsSideColumn({ controller }) {

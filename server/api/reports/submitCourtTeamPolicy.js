@@ -1,12 +1,4 @@
-import { randomUUID } from "node:crypto";
-import {
-  flattenPlayerIdValues,
-  projectPersistedMatchReportParticipantIds,
-} from "../../../shared/lib/playerIds.js";
-import { allowRequestMethod, getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
-import { getMatchScheduledDate } from "../../../shared/lib/matchUtils.js";
-import { REPORT_MATCH_WINDOW_MS } from "../../../shared/lib/constants.js";
-import { VOID_MATCH_RESTORE_REPORT_REASON } from "../../../shared/lib/reportReasons.js";
+import { toArray } from "../_supabaseAdmin.js";
 
 export const COURT_CORRECTION_FIELDS = new Map([
   ["name", "시설명"],

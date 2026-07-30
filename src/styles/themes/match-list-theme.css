@@ -1,0 +1,482 @@
+/* Unified app hero sizing */
+
+@media (max-width: 720px) {
+  .om-match-hero {
+    align-items: end;
+  }
+
+  .om-match-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .om-match-hero {
+    min-height: 158px;
+    padding: 16px;
+  }
+
+  .om-match-copy h1 {
+    font-size: 2.6rem;
+  }
+}
+
+/* Unified match page surfaces */
+
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.om-view-card:hover,
+.om-view-card.active {
+  border-color: color-mix(in srgb, var(--rb-orange) 46%, transparent);
+}
+
+.om-view-card small,
+.om-view-card b {
+  color: var(--gold);
+}
+
+/* Match list/filter convergence */
+
+.om-calendar-filter-bar {
+  grid-column: 1 / -1;
+  align-self: end;
+}
+
+.om-calendar-filter-bar label {
+  flex: 1 1 220px;
+  max-width: none;
+  min-width: 0;
+}
+
+.om-calendar-filter-bar select {
+  width: 100%;
+  min-width: 0;
+}
+
+.om-calendar-toolbar button,
+.om-calendar-grid button {
+  border-color: rgba(163, 185, 208, 0.14);
+}
+
+/* Flat inner status panels shared by match and queue list cards. */
+
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-view-card {
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+}
+
+/* Final CSS cleanup: shared match/queue list cards, calendar stability. */
+
+.om-calendar-grid {
+  grid-auto-rows: 44px;
+}
+
+.om-calendar-grid button,
+.om-calendar-grid > span {
+  min-height: 44px;
+  height: 44px;
+}
+
+.om-calendar-grid button:has(span) {
+  align-items: flex-start;
+  padding-top: 4px;
+  padding-bottom: 20px;
+}
+
+.om-calendar-grid button span {
+  bottom: 4px;
+}
+
+@media (max-width: 760px) {
+
+  .om-calendar-grid {
+    grid-auto-rows: 44px;
+  }
+
+  .om-calendar-grid button,
+  .om-calendar-grid > span {
+    min-height: 44px;
+    height: 44px;
+  }
+}
+
+/* Flat list/filter surface standard. */
+
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  background-image: none;
+}
+
+.om-list-head,
+.om-calendar-summary,
+.om-calendar-box,
+.om-view-card {
+  background-color: rgba(10, 14, 21, 0.9);
+}
+
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-view-card {
+  background-color: var(--ui-card-bg);
+}
+
+.om-calendar-filter-bar,
+html[data-theme="light"] .om-calendar-filter-bar {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* Shared match/recruiting list readability standard. */
+
+.arena-filter-select select,
+.arena-filter-bar button {
+  min-height: 42px;
+  height: 42px;
+}
+
+/* 2026-07-01 premium sports UI pass: match schedule and scoreboard. */
+
+.om-match-hero,
+.om-match-panel,
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head,
+.om-tournament-card {
+  border-radius: var(--radius-lg);
+}
+
+.om-match-panel,
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.om-view-icon {
+  border-radius: var(--radius-sm);
+}
+
+.om-tournament-meta span,
+.om-tournament-meta strong {
+  border-radius: var(--radius-sm);
+}
+
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-list-head {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}
+
+@media (max-width: 720px) {
+  .om-match-hero {
+    border-radius: var(--radius-lg);
+  }
+
+  .om-view-grid {
+    gap: 10px;
+  }
+
+  .om-calendar-panel,
+  .om-match-page {
+    gap: 12px;
+  }
+}
+
+/* 2026-07-01 visible basketball identity pass: broadcast scoreboard hierarchy. */
+
+.om-match-copy h1 {
+  font-variant-numeric: tabular-nums;
+}
+
+.om-match-panel {
+  border-color: rgba(242, 184, 75, 0.28);
+}
+
+.om-match-stats span,
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  background-color: rgba(7, 11, 17, 0.94);
+}
+
+.om-match-stats strong,
+.om-view-card b {
+  font-variant-numeric: tabular-nums;
+}
+
+.om-view-card {
+  border-color: rgba(199, 223, 232, 0.16);
+}
+
+.om-view-card.active {
+  background-color: rgba(10, 24, 23, 0.94);
+  box-shadow: inset 0 3px 0 var(--team-home), 0 14px 34px rgba(0, 0, 0, 0.24);
+}
+
+html[data-theme="light"] .om-match-hero {
+  border-color: rgba(53, 119, 212, 0.22);
+}
+
+html[data-theme="light"] .om-match-panel,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-list-head {
+  background-color: rgba(255, 255, 255, 0.94);
+}
+
+/* 2026-07-01 imweb fitness tone pass: match list only, no room-slot simplification. */
+
+.om-match-hero {
+  border-color: var(--rb-line);
+}
+
+.om-match-panel,
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+}
+
+.om-view-card.active,
+.om-calendar-grid button.active {
+  border-color: rgba(255, 118, 88, 0.42);
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+html[data-theme="light"] .om-match-hero,
+html[data-theme="light"] .om-match-panel,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-list-head {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+}
+
+/* 2026-07-01 warm cream sports light mode for match list. */
+
+html[data-theme="light"] .om-match-copy h1 {
+  text-shadow: 0 3px 16px rgba(30, 24, 18, 0.48);
+}
+
+html[data-theme="light"] .om-match-copy p,
+html[data-theme="light"] .om-match-copy .eyebrow {
+  color: rgba(255, 250, 241, 0.82);
+}
+
+html[data-theme="light"] .om-match-panel,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-list-head {
+  background: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] .om-view-card.active,
+html[data-theme="light"] .om-calendar-grid button.active {
+  border-color: transparent;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+/* 2026-07-01 full internal preview pass: matches screen. */
+
+.om-match-page {
+  margin: 0 auto;
+}
+
+.om-match-hero {
+  border: var(--ui-hero-border-width) solid var(--rb-line);
+  box-shadow: none;
+}
+
+.om-match-copy h1 {
+  color: #fff;
+}
+
+.om-match-copy p {
+  font-size: 14px;
+}
+
+.om-view-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (min-width: 1121px) and (max-width: 1400px) {
+  .om-view-grid {
+    gap: 8px;
+  }
+
+  .om-view-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .om-view-card .om-view-icon,
+  .om-view-card em {
+    display: none;
+  }
+
+  .om-view-card strong {
+    overflow: hidden;
+    font-size: 0.9rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.om-view-card {
+  min-height: 76px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.om-view-card b,
+.om-match-stats strong {
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
+}
+
+.om-calendar-panel {
+  gap: 12px;
+}
+
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.om-calendar-toolbar button,
+.om-calendar-grid button {
+  min-height: 38px;
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--rb-text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.om-match-list {
+  gap: 12px;
+}
+
+@media (max-width: 1020px) {
+  .om-match-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .om-match-panel {
+    width: 100%;
+  }
+
+  .om-view-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .om-match-page {
+    gap: 12px;
+  }
+
+  .om-match-hero {
+    min-height: 300px;
+    padding: 16px;
+  }
+
+  .om-match-copy h1 {
+    font-size: clamp(46px, 13vw, 56px);
+  }
+
+  .om-view-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
+  }
+
+  .om-view-card {
+    min-width: 0;
+    min-height: 86px;
+  }
+}
+
+html[data-theme="light"] .om-view-card.active {
+  border-color: rgba(229, 85, 63, 0.3);
+  background: rgba(229, 85, 63, 0.1);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .om-calendar-toolbar button,
+html[data-theme="light"] .om-calendar-grid button {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rb-text);
+}
+
+/* 2026-07-01 final fuller hero board: image-led matches header. */
+
+.om-match-hero {
+  align-items: end;
+  overflow: hidden;
+}
+
+.om-match-copy {
+  align-self: end;
+  max-width: 690px;
+}
+
+.om-match-copy h1 {
+  max-width: 12ch;
+  font-size: clamp(64px, 8vw, 112px);
+  line-height: 0.84;
+  text-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
+}
+
+.om-match-copy p {
+  max-width: 600px;
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 850;
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.42);
+}
+
+@media (max-width: 1020px) {
+  .om-match-hero {
+    width: calc(100% + (2 * var(--page-gutter)));
+    margin-inline: calc(-1 * var(--page-gutter));
+    border-radius: 0;
+  }
+}

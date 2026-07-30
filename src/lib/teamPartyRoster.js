@@ -1,9 +1,6 @@
 import { MAX_RECRUITING_RESERVES_PER_SIDE } from "./constants.js";
 import { getSelectableTeamPlayerIds } from "./recruiting.js";
-
-function uniquePlayerIds(playerIds = []) {
-  return Array.from(new Set(playerIds.filter(Boolean)));
-}
+import { uniquePlayerIds } from "../../shared/lib/playerIds.js";
 
 export function selectPartyPlayerIds({
   eligiblePlayerIds = [],

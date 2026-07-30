@@ -1,0 +1,23 @@
+@media (max-width: 759px) {
+  .rank-home > .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    order: 1;
+  }
+
+  .rank-home .rank-tier-rail {
+    order: 3;
+    margin-inline: 0;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    order: 5;
+  }
+}
+@media (min-width: 1080px) {
+  .rank-home .home-dashboard-grid .home-side-stack {
+    gap: var(--space-5);
+  }
+}

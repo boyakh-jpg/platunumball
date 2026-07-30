@@ -1,0 +1,201 @@
+.admin-rating-input em {
+  min-width: 32px;
+  padding-right: 8px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-style: normal;
+  text-align: right;
+}
+
+.admin-rating-save {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-5);
+  border-top: var(--ui-stroke-width) solid var(--line);
+  padding-top: 14px;
+}
+
+.admin-rating-save > label {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.admin-rating-save > div {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.admin-rating-save .button {
+  justify-content: center;
+}
+
+.admin-rating-status {
+  grid-column: 1 / -1;
+  color: var(--rb-gold);
+  font-size: 0.78rem;
+}
+
+.admin-rating-history {
+  border-top: var(--ui-stroke-width) solid var(--line);
+  padding-top: 14px;
+}
+
+.admin-rating-history > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  gap: var(--space-5);
+  border-bottom: var(--ui-stroke-width) solid var(--line);
+  padding: 8px 0;
+}
+
+.admin-rating-history span {
+  display: flex;
+  min-width: 0;
+  gap: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+.admin-rating-history b {
+  flex: 0 0 auto;
+  color: var(--rb-gold);
+}
+
+@media (max-width: 860px) {
+  .admin-section-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-summary-grid,
+  .admin-workbench,
+  .admin-user-ops-workbench,
+  .admin-grade-strip,
+  .admin-referee-grade-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-court-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-rating-group {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-rating-field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-user-ops-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-user-ops-mode {
+    grid-column: auto;
+  }
+
+  .admin-user-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-court-verification-head,
+  .admin-court-location-matches > span {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-court-map-link {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-section-tabs {
+    gap: var(--space-4);
+  }
+
+  .admin-section-tabs > button {
+    min-height: 62px;
+    gap: var(--space-4);
+    padding: 10px;
+  }
+
+  .admin-section-tabs em {
+    display: none;
+  }
+
+  .admin-section-tab-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .admin-rating-field-grid,
+  .admin-rating-save {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-rating-save > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-rating-history > div {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-user-ops-search {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-user-ops-search > label {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .admin-user-ops-search .button,
+  .admin-user-ops-mode {
+    width: 100%;
+  }
+
+  .admin-user-signal-panel > div:first-child,
+  .admin-user-action-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .admin-user-signal-panel small {
+    flex-basis: 100%;
+    margin-left: 25px;
+  }
+
+  .admin-user-action-confirm {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .admin-user-action-confirm .button {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .admin-queue-state,
+  .admin-selected-report > span,
+  .admin-review-confirm {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-queue-state,
+  .admin-selected-report > span {
+    flex-direction: column;
+  }
+}

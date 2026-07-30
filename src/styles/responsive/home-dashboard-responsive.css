@@ -1,0 +1,350 @@
+.landing-hero,
+html[data-theme="light"] .landing-hero {
+  background:
+    var(--bg-action) var(--landing-hero-position, var(--hero-bg-position-action)) / var(--landing-hero-size, var(--hero-bg-size)) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+.landing-backdrop,
+html[data-theme="light"] .landing-backdrop {
+  background: none;
+}
+.match-hero,
+html[data-theme="light"] .match-hero {
+  background:
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+.team-hub-hero,
+html[data-theme="light"] .team-hub-hero {
+  background:
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+@media (max-width: 1079px) {
+  .landing-hero,
+  html[data-theme="light"] .landing-hero {
+    --landing-hero-position: 68% 32%;
+  }
+}
+.page-header,
+.profile-hero,
+.team-detail-hero,
+html[data-theme="light"] .page-header,
+html[data-theme="light"] .profile-hero,
+html[data-theme="light"] .team-detail-hero {
+  background:
+    var(--page-hero-bg, var(--bg-court)) var(--page-hero-bg-position, var(--hero-bg-position-court)) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+.create-match-hero.is-match {
+  --page-hero-bg: var(--bg-create);
+  --page-hero-bg-position: var(--hero-bg-position-action);
+}
+.create-match-hero.is-record {
+  --page-hero-bg: var(--bg-record-create);
+  --page-hero-bg-position: var(--hero-bg-position-hoop);
+}
+.room-remake-reinvite {
+  display: inline-grid;
+  width: min(100%, 560px);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+  border: var(--ui-card-border-width) solid color-mix(in srgb, var(--rb-orange) 30%, transparent);
+  border-radius: var(--ui-card-radius);
+  background: color-mix(in srgb, var(--rb-orange) 9%, transparent);
+  padding: var(--space-5) var(--space-6);
+}
+.room-remake-reinvite input {
+  margin-top: var(--space-1);
+}
+.room-remake-reinvite span {
+  display: grid;
+  gap: var(--space-1);
+}
+.room-remake-reinvite strong {
+  color: var(--text);
+  font-size: var(--font-size-body);
+}
+.room-remake-reinvite small {
+  color: var(--muted);
+  font-size: var(--font-size-caption);
+  line-height: 1.45;
+}
+.rank-home .rank-summary-grid::before,
+.rank-home .rank-summary-grid::after,
+.landing-hero::before,
+.landing-hero::after,
+.match-hero::before,
+.match-hero::after,
+.team-hub-hero::before,
+.team-hub-hero::after,
+.page-header::before,
+.page-header::after,
+.profile-hero::before,
+.profile-hero::after,
+.team-detail-hero::before,
+.team-detail-hero::after,
+html[data-theme="light"] .rank-home .rank-summary-grid::before,
+html[data-theme="light"] .rank-home .rank-summary-grid::after,
+html[data-theme="light"] .landing-hero::before,
+html[data-theme="light"] .landing-hero::after,
+html[data-theme="light"] .match-hero::before,
+html[data-theme="light"] .match-hero::after,
+html[data-theme="light"] .team-hub-hero::before,
+html[data-theme="light"] .team-hub-hero::after,
+html[data-theme="light"] .page-header::before,
+html[data-theme="light"] .page-header::after,
+html[data-theme="light"] .profile-hero::before,
+html[data-theme="light"] .profile-hero::after,
+html[data-theme="light"] .team-detail-hero::before,
+html[data-theme="light"] .team-detail-hero::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+@media (max-width: 720px) {
+  .rank-home .rank-summary-grid .home-rank-board-head h1,
+  .page-header h1,
+  .landing-hero h1,
+  .match-hero h1,
+  .team-hub-hero h1,
+  .profile-hero h1,
+  .team-detail-hero h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}
+/* Team hub is the tall ranked-team exception at every responsive breakpoint. */
+@media (min-width: 760px) and (max-width: 1079px) {
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+    align-items: end;
+    justify-items: start;
+    gap: var(--space-12);
+    min-height: clamp(430px, 46vw, 620px);
+    padding: clamp(22px, 3.4vw, 34px);
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
+    display: grid;
+    width: min(100%, 720px);
+    max-width: none;
+    justify-self: start;
+  }
+}
+@media (max-width: 759px) {
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
+    min-height: clamp(620px, 87vw, 660px);
+    align-content: end;
+    gap: var(--space-9);
+    padding: 18px;
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
+    display: grid;
+    width: 100%;
+    max-width: none;
+    gap: var(--space-7);
+    padding: 22px;
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board strong {
+    font-size: clamp(1.8rem, 8vw, 2.5rem);
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board em {
+    font-size: 0.85rem;
+  }
+}
+/* 2026-07-02 home hero single image layer.
+   Desktop uses the grid background; mobile uses the visible child because the grid is display: contents. */
+.rank-home .rank-summary-grid .home-rank-board-head,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+  background: transparent;
+}
+.rank-home .home-search-panel.rank-search-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.rank-home .home-search-panel.rank-search-card > .search-picker {
+  min-width: 0;
+}
+.rank-home .home-search-results.home-global-search-results.is-floating {
+  width: 100%;
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr);
+  max-height: min(320px, var(--search-picker-max-height, 320px));
+  overscroll-behavior: contain;
+}
+.rank-home .home-search-panel.rank-search-card .home-search-box input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: 0;
+}
+.rank-home .home-search-panel.rank-search-card .home-search-box:focus-within {
+  border-color: color-mix(in srgb, var(--rb-orange-2) 58%, var(--rb-line));
+  box-shadow: var(--focus-ring);
+}
+.rank-home .home-search-create {
+  display: inline-flex;
+  width: 100%;
+  max-width: 100%;
+  text-decoration: none;
+}
+.rank-home .home-search-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.rank-home .home-top-rail > .home-action-card {
+  height: auto;
+  min-height: 0;
+  align-content: start;
+  align-self: start;
+  overflow: hidden;
+}
+.rank-home .home-top-rail > .home-action-card .home-action-list {
+  min-height: 0;
+}
+@media (min-width: 760px) {
+  .rank-home .home-top-rail > .home-action-card .home-action-list {
+    max-height: min(42vh, 420px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+}
+@media (min-width: 1080px) {
+  .rank-home .home-right-rail .home-action-row:has(.home-action-buttons) {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .rank-home .home-right-rail .home-action-row:has(.home-action-buttons) .home-action-buttons {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    white-space: normal;
+  }
+
+  .rank-home .home-right-rail .home-action-row:has(.home-action-buttons) .home-action-buttons .button {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+/* 2026-07-04 desktop home split rails. */
+.rank-home .home-left-rail,
+.rank-home .home-right-rail,
+.rank-home .home-right-rail > .home-top-rail,
+.rank-home .home-right-rail > .home-side-stack {
+  min-width: 0;
+  gap: var(--page-section-gap);
+}
+@media (min-width: 1080px) {
+  .rank-home {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+    grid-template-areas:
+      "search search"
+      "left right";
+    align-items: start;
+    column-gap: var(--page-column-gap);
+    row-gap: var(--page-section-gap);
+  }
+
+  .rank-home > .home-search-panel {
+    grid-area: search;
+  }
+
+  .rank-home > .home-left-rail {
+    grid-area: left;
+  }
+
+  .rank-home > .home-right-rail {
+    grid-area: right;
+    align-self: start;
+  }
+
+  .rank-home .home-left-rail > .home-dashboard-grid {
+    display: block;
+  }
+
+  .rank-home .home-right-rail > .home-side-stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin: 0;
+    transform: none;
+  }
+}
+@media (max-width: 1079px) {
+  .rank-home > .home-left-rail,
+  .rank-home > .home-right-rail {
+    display: contents;
+  }
+
+  .rank-home .rank-summary-grid {
+    order: 1;
+  }
+
+  .rank-home .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home .home-top-rail {
+    order: 3;
+  }
+
+  .rank-home .home-left-rail > .home-dashboard-grid {
+    display: block;
+    order: 4;
+  }
+
+  .rank-home .home-side-stack {
+    order: 5;
+  }
+}
+@media (max-width: 759px) {
+  .rank-home .home-search-panel.rank-search-card {
+    grid-template-columns: 1fr;
+  }
+
+  .rank-home .home-search-results.home-global-search-results.is-floating {
+    max-height: min(380px, var(--search-picker-max-height, 380px));
+  }
+
+  .rank-home .home-search-create,
+  .rank-home .home-search-actions {
+    width: 100%;
+  }
+
+  .rivalry-challenge-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .rank-home .rank-summary-grid,
+  html[data-theme="light"] .rank-home .rank-summary-grid {
+    background: none;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head,
+  html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+    background:
+      var(--bg-home-court) center 46% / cover no-repeat,
+      var(--rb-bg-2);
+  }
+}

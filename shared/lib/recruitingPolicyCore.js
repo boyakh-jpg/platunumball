@@ -1,8 +1,6 @@
-import { DEFAULT_RATING, DISPUTE_WINDOW_MINUTES, MATCH_SIDES, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole, normalizeBenchCapacity } from "./constants.js";
+import { DEFAULT_RATING, MATCH_SIDES, MODE_SIZES, ROOM_KINDS, normalizeBenchCapacity } from "./constants.js";
 import { normalizeCourtOptionalBoolean } from "./courtPolicy.js";
-import { isEligibleReferee, isInstantRoom } from "./matchUtils.js";
 import { getAgeGroupForUser } from "./profileSetup.js";
-import { TIERS, getTierDivision } from "./tier.js";
 import { isMmrInRecruitingRange, normalizeRecruitingMmrRangeMode } from "./recruitingMmrPolicy.js";
 
 export const SYNTHETIC_MATCH_ROOM_PREFIX = "match-room-";

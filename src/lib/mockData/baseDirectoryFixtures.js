@@ -1,5 +1,3 @@
-import { DISPUTE_WINDOW_MINUTES, MODE_SIZES, REFEREE_TRUST_MIN, STAT_ENTRY_WINDOW_MINUTES } from "../constants.js";
-import { DEMO_TODAY, DEMO_NOW, DEMO_QUEUE_START, DEMO_QUEUE_TIMES, DEMO_PRACTICE_COURT, DELETED_SYNTHETIC_COURT_IDS, getDemoQueueSlot, makeDemoTimestamp, makeRelativeDemoDateTime, getDemoModeSize, getTeamDemoPlayerIds, makeTrustFeedback, makeDefaultRoomState, makeDemoStatSubmissions, makeDemoApplicant } from "./baseStateHelpers.js";
 
 export const baseUsers = [
     {

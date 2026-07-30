@@ -1,25 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { flushSync } from "react-dom";
 import {
-  BellRing,
-  Maximize2,
-  Minimize2,
-  Pause,
-  Play,
-  Power,
-  RotateCcw,
-  Volume2,
-  VolumeX,
-} from "lucide-react";
-import Badge from "../common/Badge.jsx";
-import Button from "../common/Button.jsx";
-import QrCode from "../common/QrCode.jsx";
-import MatchScoreControls from "./MatchScoreControls.jsx";
-import {
-  SHOT_CLOCK_OPTIONS,
   deriveMatchClock,
-  formatClockTime,
-  getMatchClockPeriodLabel,
   getMatchClockRecognition,
   requestMatchClock,
 } from "../../lib/matchClock.js";

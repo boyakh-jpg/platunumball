@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { createPortal } from "react-dom";
 import {
   BellRing,
   Maximize2,
@@ -14,25 +13,11 @@ import {
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import QrCode from "../common/QrCode.jsx";
-import MatchScoreControls from "./MatchScoreControls.jsx";
 import {
   SHOT_CLOCK_OPTIONS,
-  deriveMatchClock,
   formatClockTime,
   getMatchClockPeriodLabel,
-  getMatchClockRecognition,
-  requestMatchClock,
 } from "../../lib/matchClock.js";
-import { MATCH_SIDES } from "../../lib/constants.js";
-import { normalizeMatchRules } from "../../lib/matchRules.js";
-import {
-  activateMatchClockMediaSession,
-  deactivateMatchClockMediaSession,
-  getBuzzerMediaElement,
-  getMatchClockErrorLabel,
-  playMatchClockBuzzer,
-} from "../../lib/matchClockAudio.js";
-import { hasMatchScoreboardOperators } from "../../lib/matchUtils.js";
 import "../../styles/match-clock.css";
 
 function getClockControllerLabel(player = {}) {

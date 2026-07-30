@@ -8,15 +8,7 @@ import {
 } from "../../../shared/lib/notifications.js";
 import { fromRemoteNotification } from "../../../shared/lib/remotePayloadMappers.js";
 import { NOTIFICATION_COLUMNS } from "../../../shared/lib/repositoryColumns.js";
-import { getPublicAppWebUrl } from "../_publicAppUrl.js";
-import {
-  DISCORD_NOTIFICATION_BODY_MAX_LENGTH,
-  DISCORD_NOTIFICATION_URL_MAX_LENGTH,
-  isDiscordSnowflake,
-} from "../../../shared/lib/discordProtocol.js";
-import { BRAND_NAME } from "../../../shared/lib/brand.js";
-import { fetchDiscordApi as discordFetch } from "../../lib/discordHttp.js";
-import { httpError, getDiscordBotStatus, trimDiscordText, normalizeDiscordUsername, getConfiguredGuildIds, getBotGuildIds, isExactDiscordUsernameMatch, resolveDiscordUserIdByUsername, getDiscordComponents, getDiscordWebUrl, getDiscordMessage, sendDiscordDm, sendTestDiscordDm } from "./dmWorkerDiscord.js";
+import { getDiscordBotStatus, sendDiscordDm, sendTestDiscordDm } from "./dmWorkerDiscord.js";
 
 
 const MAX_BATCH_SIZE = 25;

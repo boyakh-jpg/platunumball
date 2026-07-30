@@ -1,0 +1,487 @@
+.match-action-row,
+.settings-toggle-grid {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.match-action-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.settings-toggle-grid label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.settings-page .settings-toggle-grid input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+}
+
+.settings-preference-card .settings-preference-group {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.settings-preference-card .settings-preference-group + .settings-preference-group {
+  padding-top: var(--space-6);
+  border-top: var(--ui-stroke-width) solid var(--ui-control-border);
+}
+
+.settings-preference-heading {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-preference-heading strong {
+  color: var(--rb-text);
+  font-size: 0.94rem;
+}
+
+.settings-preference-heading span {
+  color: var(--rb-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.settings-section-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-nav-grid {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.settings-nav-grid a {
+  display: grid;
+  gap: var(--space-2);
+  min-height: 72px;
+  align-content: center;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  padding: 12px;
+  text-decoration: none;
+}
+
+.settings-nav-grid a span {
+  color: var(--rb-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.settings-section-main .favorite-management-card,
+.settings-section-main .settings-court-card,
+.settings-page:not(.settings-section-referee) .settings-referee-card,
+.settings-page:not(.settings-section-main) .settings-nav-card,
+.settings-section-favorites .settings-main-column > .section-card:not(.favorite-management-card),
+.settings-section-courts .settings-main-column,
+.settings-section-referee .content-grid,
+.settings-section-favorites .settings-side-column,
+.settings-section-referee .settings-side-column {
+  display: none;
+}
+
+.settings-section-main .theme-choice-card {
+  order: 10;
+}
+
+.settings-section-main .discord-link-card {
+  order: 11;
+}
+
+.settings-section-main .settings-privacy-card {
+  order: 12;
+}
+
+.settings-section-main .admin-menu-card,
+.settings-section-main .settings-block-card {
+  order: 30;
+}
+
+.settings-section-courts .settings-side-column > .section-card:not(.settings-court-card) {
+  display: none;
+}
+
+.settings-address-search {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.settings-address-search,
+.settings-address-search > label,
+.settings-address-results,
+.settings-address-results button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-address-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.settings-address-search small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.settings-address-results {
+  display: grid;
+  gap: var(--space-4);
+  max-height: none;
+  overflow: visible;
+}
+
+.settings-address-results button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  align-content: start;
+  height: auto;
+  min-height: 70px;
+  gap: 5px var(--space-5);
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.settings-address-results button > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.settings-address-results strong,
+.settings-address-results span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.28;
+}
+
+.settings-address-results strong {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 0.92rem;
+}
+
+.settings-address-results em {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  border: var(--ui-stroke-width) solid rgba(70, 229, 197, 0.35);
+  border-radius: 999px;
+  color: var(--green);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+
+.settings-address-results span {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.settings-place-name-actions,
+.settings-nearby-courts-head,
+.settings-nearby-court-list > div,
+.settings-nearby-confirm {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.settings-nearby-courts-head > div,
+.settings-nearby-court-list > div > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.settings-place-name-actions small,
+.settings-nearby-courts > small,
+.settings-nearby-court-list small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.settings-place-name-actions {
+  align-items: flex-start;
+}
+
+.settings-place-name-actions .button {
+  flex: 0 0 auto;
+}
+
+.arena-mini-note.settings-nearby-courts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--space-5);
+}
+
+.settings-nearby-courts > * {
+  grid-column: 1;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.settings-nearby-courts-head svg {
+  flex: 0 0 auto;
+  color: var(--orange);
+}
+
+.settings-nearby-court-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.settings-nearby-court-list > div {
+  align-items: flex-start;
+  border-top: var(--ui-stroke-width) solid color-mix(in srgb, var(--line) 72%, transparent);
+  padding-top: 7px;
+}
+
+.settings-nearby-court-list b {
+  color: var(--text);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.settings-nearby-court-list em {
+  flex: 0 0 auto;
+  color: var(--orange);
+  white-space: nowrap;
+}
+
+.settings-nearby-confirm {
+  justify-content: flex-start;
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--orange) 34%, var(--line));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--orange) 7%, var(--surface));
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 850;
+  padding: 9px 10px;
+}
+
+@media (max-width: 560px) {
+  .settings-address-results button {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .settings-address-results strong,
+  .settings-address-results span,
+  .settings-address-results em {
+    grid-column: 1;
+  }
+
+  .settings-address-results strong {
+    grid-row: 1;
+  }
+
+  .settings-address-results span {
+    grid-row: 2;
+  }
+
+  .settings-address-results em {
+    grid-row: 3;
+    justify-self: start;
+  }
+
+  .settings-place-name-actions,
+  .settings-nearby-court-list > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-place-name-actions .button,
+  .settings-nearby-court-list em {
+    align-self: flex-start;
+  }
+}
+
+.court-detail-page {
+  width: min(100%, var(--page-content-max));
+  margin-inline: auto;
+}
+
+.court-detail-hero {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: 24px;
+  overflow: hidden;
+  background:
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--card-bg-strong);
+}
+
+.court-detail-heading {
+  min-width: 0;
+}
+
+.court-detail-heading h1 {
+  margin-top: 5px;
+  color: var(--rb-orange);
+  font-family: var(--sports-display-font);
+  font-size: 2.8rem;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.court-detail-heading > p:not(.eyebrow) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  color: var(--rb-muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.court-detail-heading > p svg {
+  flex: 0 0 auto;
+  color: var(--rb-gold);
+}
+
+.court-detail-tags,
+.court-review-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: 12px;
+}
+
+.court-review-tags span {
+  padding: 5px 8px;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.court-map-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.court-detail-actions,
+.court-correction-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.court-detail-actions .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.court-correction-card {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.court-correction-card .section-title-row small {
+  display: block;
+  margin-top: 5px;
+  color: var(--rb-muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.court-correction-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.court-correction-form label {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+}
+
+.court-correction-form label > span {
+  color: var(--rb-muted);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.court-correction-form select,
+.court-correction-form input,
+.court-correction-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+}
+
+.court-correction-form select,
+.court-correction-form input {
+  height: var(--ui-button-height);
+  padding-inline: var(--control-padding-x);
+}
+
+.court-correction-form textarea {
+  min-height: 82px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.court-correction-form label > small {
+  color: var(--rb-soft);
+  font-size: 0.7rem;
+  font-weight: 750;
+  text-align: right;
+}

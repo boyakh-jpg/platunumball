@@ -37,6 +37,7 @@ import {
 import {
   getNonNegativeNumber,
 } from "../../lib/recruitingPage.js";
+import { getRecordSummaryNames } from "../../../shared/lib/matchMappers.js";
 
 function getSourceMatchUserSideName(match, userId) {
   if (!match || !userId) return null;
@@ -194,13 +195,6 @@ export function isRegionRecruitingPost(post = {}, regionKey = "", user = {}) {
 
 export function isExpiredInstantRecruitingPost(post = {}) {
   return isInstantRoom(post) && getPublicRoomTimingStatus(post).expired;
-}
-
-function getRecordSummaryNames(match, sideName) {
-  const names = sideName === "teamA"
-    ? match.rules?.recordSummary?.teamAPlayers
-    : match.rules?.recordSummary?.teamBPlayers;
-  return Array.isArray(names) ? names.map((name) => String(name ?? "").trim()) : [];
 }
 
 function getSourceMatchPlayerName(match, userById, sideName, playerId, index, fallback) {

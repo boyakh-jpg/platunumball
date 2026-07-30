@@ -189,6 +189,7 @@ function collectRedundantDeclarationsInLoadOrder(files, allowedFiles) {
 const allFiles = listCssFiles(styleDirectory).sort();
 const globalFiles = resolveImports(globalManifest);
 const featureFiles = featureManifests.flatMap((file) => resolveImports(file));
+const primitiveFiles = resolveImports(`${styleDirectory}/ui-primitives.css`);
 const globalLast = collectLastDeclarations(globalFiles);
 const featureLast = collectLastDeclarations(featureFiles);
 const sameValueCrossStack = [];
@@ -239,7 +240,7 @@ const literalBorders = countLiteralBorders(allFiles);
 const productionLoadOrder = [
   `${styleDirectory}/tokens.css`,
   ...globalFiles,
-  `${styleDirectory}/ui-primitives.css`,
+  ...primitiveFiles,
   ...featureFiles,
 ];
 const loadOrderFeatureDuplicates = collectRedundantDeclarationsInLoadOrder(

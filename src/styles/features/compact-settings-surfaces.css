@@ -1,0 +1,488 @@
+/* Final CSS cleanup: non-hero layout stability. */
+.team-card,
+.rating-card,
+.home-action-card,
+.rank-leaderboard-card,
+.rank-mode-card,
+.profile-records-summary {
+  overflow: hidden;
+}
+
+.team-card-title,
+.team-card-title .team-hover-trigger,
+.team-card-title h3,
+.rank-list .rank-row > span,
+.rank-list .rank-row > strong,
+.rank-list .rank-row > em,
+.profile-record-row strong,
+.profile-record-row span {
+  min-width: 0;
+}
+
+.team-card-title h3,
+.team-card-title .team-hover-trigger {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.team-card-actions {
+  flex: 0 1 auto;
+}
+
+.team-card .stat-strip span,
+.rank-stat-grid span {
+  min-width: 0;
+}
+
+.team-card .member-row,
+.member-row {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: var(--ui-profile-identity-gap);
+}
+
+.team-card .member-row .tier-badge,
+.member-row .tier-badge {
+  max-width: 96px;
+}
+
+.rank-list .rank-row {
+  grid-template-columns: 24px 34px minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.rank-mode-grid,
+.profile-rating-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.profile-rating-primary {
+  grid-column: span 2;
+}
+
+html[data-theme="light"] .team-card,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .rank-mode-card,
+html[data-theme="light"] .profile-records-summary {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+@media (max-width: 1020px) {
+
+  .bottom-nav a svg {
+    width: 22px;
+    height: 22px;
+  }
+
+}
+
+@media (max-width: 720px) {
+  .team-card .member-row,
+  .member-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .team-card .member-row .tier-badge,
+  .member-row .tier-badge {
+    max-width: 84px;
+  }
+
+  .rank-list .rank-row {
+    grid-template-columns: 22px 30px minmax(0, 1fr);
+  }
+
+  .rank-list .rank-row > em {
+    grid-column: 3;
+  }
+
+  .rank-mode-grid {
+    gap: var(--space-4);
+  }
+}
+
+/* Flat card surface standard: no gradients inside content boxes. */
+.section-card,
+.team-card,
+.elite-team-card,
+.rating-card,
+.profile-records-summary,
+.selector-panel,
+.team-create-panel,
+.my-team-management-card,
+.team-search-card,
+.home-search-panel,
+.home-action-card,
+.rank-profile-card,
+.rank-mode-card,
+.rank-leaderboard-card,
+.rank-record-card,
+.match-focus-card,
+.home-recent-card,
+.season-mini-card {
+  background-color: rgba(10, 14, 21, 0.9);
+  background-image: none;
+}
+
+.rank-stat-grid span,
+.stat-strip span,
+.rank-record-main,
+.rank-mode-pill,
+.team-card .member-row,
+.member-row,
+.ranking-row,
+.delta-row,
+.recent-match-row,
+.home-action-row,
+.home-invitation-row,
+.home-search-box,
+.home-search-results a,
+.home-search-results .team-hover-trigger,
+.rank-quick-links a,
+.rank-profile-tabs a,
+.rank-list .rank-row,
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger,
+.favorite-result-row,
+.favorite-mini-chip,
+.ranking-filter-card {
+  background-color: rgba(255, 255, 255, 0.045);
+  background-image: none;
+}
+
+.elite-team-card::before {
+  display: none;
+}
+
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .team-card,
+html[data-theme="light"] .elite-team-card,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .profile-records-summary,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-create-panel,
+html[data-theme="light"] .my-team-management-card,
+html[data-theme="light"] .team-search-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .rank-profile-card,
+html[data-theme="light"] .rank-mode-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .rank-record-card,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .season-mini-card {
+  background-color: rgba(255, 255, 255, 0.9);
+  background-image: none;
+}
+
+html[data-theme="light"] .rank-stat-grid span,
+html[data-theme="light"] .stat-strip span,
+html[data-theme="light"] .rank-record-main,
+html[data-theme="light"] .rank-mode-pill,
+html[data-theme="light"] .team-card .member-row,
+html[data-theme="light"] .member-row,
+html[data-theme="light"] .ranking-row,
+html[data-theme="light"] .delta-row,
+html[data-theme="light"] .recent-match-row,
+html[data-theme="light"] .home-action-row,
+html[data-theme="light"] .home-invitation-row,
+html[data-theme="light"] .home-search-box,
+html[data-theme="light"] .home-search-results a,
+html[data-theme="light"] .home-search-results .team-hover-trigger,
+html[data-theme="light"] .rank-quick-links a,
+html[data-theme="light"] .rank-profile-tabs a,
+html[data-theme="light"] .rank-list .rank-row,
+html[data-theme="light"] .home-side-stack .compact-list a,
+html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
+html[data-theme="light"] .favorite-result-row,
+html[data-theme="light"] .favorite-mini-chip,
+html[data-theme="light"] .ranking-filter-card {
+  background-color: var(--ui-control-group-bg);
+  background-image: none;
+}
+
+.player-hover-tier-grid > span,
+.player-hover-team > span,
+.team-hover-tier,
+.team-hover-stats > span,
+.court-hover-address,
+.court-hover-note,
+.referee-hover-tier > span {
+  background-color: rgba(255, 255, 255, 0.045);
+  background-image: none;
+}
+
+.player-hover-tier-grid > span {
+  grid-template-columns: 68px minmax(0, 1fr);
+  min-height: 74px;
+  padding: 8px 10px;
+}
+
+.player-hover-tier-grid > .player-hover-tier-row.is-integrated {
+  grid-template-columns: 78px minmax(0, 1fr);
+  min-height: 86px;
+}
+
+.player-hover-card .tier-emblem-sm {
+  width: 62px;
+  max-width: 100%;
+}
+
+.player-hover-card .player-hover-tier-row.is-integrated .tier-emblem-sm {
+  width: 72px;
+}
+
+.hover-tier-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 950;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-hover-team > span {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-4);
+}
+
+.player-hover-team > span > em {
+  grid-column: 2;
+}
+
+.hover-team-tier {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: flex;
+  max-width: 108px;
+  align-items: center;
+  gap: 5px;
+  justify-self: end;
+  min-width: 0;
+}
+
+.hover-team-tier .tier-emblem-sm {
+  width: 38px;
+  flex: 0 0 auto;
+}
+
+.team-hover-tier {
+  grid-template-columns: 112px minmax(0, 1fr);
+  min-height: 104px;
+}
+
+.team-hover-card .tier-emblem-md {
+  width: 104px;
+  max-width: 100%;
+}
+
+.team-hover-tier .tier-emblem figcaption {
+  display: none;
+}
+
+.home-side-stack {
+  gap: var(--space-7);
+}
+
+.home-action-card {
+  gap: var(--space-6);
+  padding: 14px;
+}
+
+.home-side-stack .section-title-row,
+.home-action-card .section-title-row {
+  min-height: 0;
+  align-items: start;
+}
+
+.home-side-stack .section-title-row h2,
+.home-action-card .section-title-row h2 {
+  font-size: clamp(1.18rem, 2.2vw, 1.42rem);
+  line-height: 1.08;
+}
+
+.home-side-stack .compact-list {
+  gap: var(--space-4);
+}
+
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger {
+  color: var(--text);
+}
+
+.team-card {
+  gap: var(--space-6);
+  padding: 16px;
+}
+
+.team-card .team-card-top {
+  grid-template-columns: minmax(0, 1fr) minmax(118px, 132px);
+  gap: var(--space-5);
+}
+
+.team-card h3 {
+  font-size: clamp(1.45rem, 1.7rem, 1.9rem);
+}
+
+.team-card-actions {
+  justify-content: end;
+  min-width: 118px;
+}
+
+.team-card-actions .tier-emblem {
+  flex: 0 0 78px;
+  width: 78px;
+  max-width: 100%;
+}
+
+.team-card .stat-strip {
+  gap: var(--space-4);
+}
+
+.team-card .stat-strip span {
+  min-height: 54px;
+  padding: 10px 12px;
+}
+
+.team-card .member-list {
+  gap: var(--space-4);
+}
+
+.team-card .member-row {
+  min-height: 42px;
+  padding: 8px 10px;
+}
+
+.team-card > .badge {
+  width: fit-content;
+}
+
+.settings-page .content-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--page-column-gap);
+}
+
+.settings-page .page-stack {
+  gap: var(--space-7);
+}
+
+.settings-page .section-card {
+  gap: var(--space-6);
+}
+
+.settings-page .contract-grid.single {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.settings-page .contract-grid.single > div {
+  min-height: 58px;
+  padding: 10px 12px;
+}
+
+.settings-page .form-stack {
+  gap: var(--space-5);
+}
+
+.settings-page label {
+  gap: var(--space-3);
+}
+
+.settings-page input,
+.settings-page select {
+  min-height: 42px;
+}
+
+.settings-page textarea {
+  min-height: 72px;
+}
+
+.settings-page .compact-list {
+  gap: var(--space-4);
+}
+
+.settings-page .compact-list a,
+.settings-page .compact-list > div {
+  min-height: 42px;
+  padding: 9px 12px;
+}
+
+.settings-page .report-player-picker > div {
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.settings-page .report-player-picker button {
+  padding: 8px 10px;
+}
+
+.settings-page .report-player-picker button {
+  min-height: 50px;
+}
+
+.settings-page .settings-toggle-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
+.settings-page .settings-referee-card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.settings-page .settings-referee-card > .section-title-row,
+.settings-page .settings-referee-card > .compact-list {
+  grid-column: 1 / -1;
+}
+
+.settings-page .referee-exam-list {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.match-card {
+  background-color: rgba(10, 14, 21, 0.9);
+  background-image: none;
+}
+
+.rank-home .rank-profile-card {
+  background-color: rgba(10, 14, 21, 0.9);
+  background-image: none;
+}
+
+html[data-theme="light"] .player-hover-tier-grid > span,
+html[data-theme="light"] .player-hover-team > span,
+html[data-theme="light"] .team-hover-tier,
+html[data-theme="light"] .team-hover-stats > span,
+html[data-theme="light"] .court-hover-address,
+html[data-theme="light"] .court-hover-note,
+html[data-theme="light"] .referee-hover-tier > span {
+  background-color: var(--ui-control-group-bg);
+  background-image: none;
+}
+
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .settings-page .section-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}
+
+html[data-theme="light"] .match-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}
+
+html[data-theme="light"] .rank-home .rank-profile-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}

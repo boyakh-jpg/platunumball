@@ -19,7 +19,6 @@ import {
   getCourtPublicAccessLabel,
   getCourtKindLabel,
   getCourtSurfaceLabel,
-  getRegisteredCourts,
 } from "../lib/courts.js";
 import { getCourtHashtag } from "../lib/handles.js";
 

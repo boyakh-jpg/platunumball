@@ -1,27 +1,14 @@
-import { Clock3, ExternalLink, ShieldCheck } from "lucide-react";
+import { Clock3 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
-import TeamEmblem from "../components/team/TeamEmblem.jsx";
-import UserOperationsPanel from "../components/admin/UserOperationsPanel.jsx";
-import CourtDatabasePanel from "../components/admin/CourtDatabasePanel.jsx";
-import { ADMIN_PERMISSION_NOTICE, APPOINTMENT_TERM_OPTIONS, ADMIN_REVIEW_ACTIONS, REFEREE_GRADE_META, SUSPENSION_TIERS, getAdminReportTypeLabel, getAdminStatusLabel } from "../lib/admin.js";
-import { ADMIN_USER_OPERATION_ACTIONS } from "../lib/adminUserOperations.js";
-import { getCourtAccessLabel, getCourtCorrectionAttributeLabel, getCourtCorrectionFieldLabel, getCourtCorrectionProposedLabel, getCourtKindLabel, getCourtLayoutLabel, getCourtLightingLabel, getCourtPaidLabel, getCourtPublicAccessLabel, getCourtSurfaceLabel } from "../lib/courts.js";
-import { getMatchHashtag } from "../lib/handles.js";
-import { ADMIN_DEFAULT_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import { ADMIN_PERMISSION_NOTICE, APPOINTMENT_TERM_OPTIONS, REFEREE_GRADE_META } from "../lib/admin.js";
 import {
   APPOINTMENT_ACTION_OPTIONS,
-  REVIEW_QUEUE_FILTER_PLACEHOLDERS,
-  isPendingCourtRequest,
   formatDate,
   appointmentStatusLabel,
 } from "./adminPageModel.js";
-import {
-  DetailList,
-  RatingPolicyPanel,
-} from "./AdminPageParts.jsx";
 
 export function AdminAppointmentSection({ controller }) {
   const {

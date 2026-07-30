@@ -1,0 +1,479 @@
+.admin-court-map-popup-grid strong {
+  display: flex;
+  align-items: center;
+  padding-inline: 10px;
+  font-size: 0.76rem;
+}
+
+.admin-court-map-canvas,
+.admin-court-panorama-canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 380px;
+}
+
+.admin-court-map-popup-empty {
+  display: grid;
+  min-height: 60dvh;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-6);
+  border: var(--ui-stroke-width) solid var(--card-border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .court-db-modal-backdrop {
+    padding: 4px;
+  }
+
+  .court-db-modal {
+    width: calc(100vw - 8px);
+    height: calc(100dvh - 8px);
+    border-radius: var(--radius-sm);
+  }
+
+  .court-db-modal-header {
+    min-height: 58px;
+    padding: 7px 9px;
+  }
+
+  .court-db-modal-header small {
+    display: none;
+  }
+
+  .court-db-modal-body {
+    padding: 7px;
+  }
+
+  .court-db-edit-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .court-db-edit-toolbar label {
+    grid-template-columns: 82px minmax(0, 1fr);
+  }
+
+  .court-db-quick-status {
+    flex-wrap: wrap;
+  }
+
+  .court-db-review-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .court-db-review-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .court-db-review-workspace {
+    align-content: start;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+
+  .court-db-review-summary,
+  .court-db-review-editor {
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .court-db-review-links {
+    margin-top: 0;
+  }
+
+  .court-db-review-scenarios {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .court-db-review-primary-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .court-db-review-unit-chips {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .admin-court-map-popup-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, minmax(420px, 1fr));
+  }
+
+  .admin-court-map-popup-grid.is-panorama-only {
+    grid-template-rows: minmax(420px, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .court-db-launcher .section-title-row,
+  .court-db-modal-header,
+  .admin-court-map-popup > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .court-db-modal-header > div:last-child,
+  .admin-court-map-popup-actions {
+    justify-content: space-between;
+  }
+
+  .court-db-modal .court-db-toolbar,
+  .court-db-modal .court-db-pagination {
+    gap: var(--space-3);
+  }
+
+  .admin-court-map-popup-actions {
+    flex-wrap: wrap;
+  }
+
+  .court-db-review-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .court-db-review-primary-fields,
+  .court-db-review-chip-grid,
+  .court-db-proximity-answer,
+  .court-db-duplicate-answer,
+  .court-db-duplicate-courts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .court-db-proximity-answer > div,
+  .court-db-duplicate-answer > div,
+  .court-db-duplicate-header,
+  .court-db-duplicate-navigation {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .court-db-proximity-answer button,
+  .court-db-duplicate-answer button,
+  .court-db-duplicate-navigation button {
+    min-height: 44px;
+  }
+
+  .court-db-duplicate-header > div:last-child {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .court-db-review-unit-chips {
+    grid-column: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .court-db-review-scenarios button,
+  .court-db-review-unit-chips button,
+  .court-db-review-chip-group button {
+    min-height: 44px;
+  }
+
+  .court-db-review-reason {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .court-db-review-actions > button {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 359px) {
+
+  .profile-icon-catalog {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-achievement-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-achievement-summary p {
+    text-align: left;
+  }
+}
+
+.team-danger-zone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-6);
+  border: var(--ui-stroke-width) solid rgba(255, 91, 91, 0.24);
+  border-radius: var(--radius);
+  background: rgba(255, 91, 91, 0.07);
+  padding: 12px;
+}
+
+.team-danger-zone > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.team-danger-zone strong {
+  color: var(--text);
+}
+
+.team-danger-zone span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.danger-button {
+  border-color: rgba(255, 91, 91, 0.42);
+  color: var(--danger);
+}
+
+.app-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.app-confirm-dialog {
+  display: grid;
+  width: min(360px, 100%);
+  gap: var(--space-6);
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--card-border) 80%, var(--text) 20%);
+  border-radius: var(--card-radius);
+  background: color-mix(in srgb, var(--card-bg-strong) 16%, var(--bg) 84%);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
+  padding: 18px;
+  color: var(--text);
+}
+
+.app-confirm-dialog strong {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.app-confirm-dialog p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.app-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.match-void-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.match-void-dialog textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.match-void-acknowledgement {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.match-void-acknowledgement input {
+  margin-top: 3px;
+}
+
+.match-void-summary {
+  display: grid;
+  gap: var(--space-5);
+  padding: 12px;
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.match-void-summary p {
+  margin: 0;
+}
+
+.arena-dispute-editor {
+  display: grid;
+  gap: var(--space-6);
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border, var(--card-border, var(--line)));
+  border-radius: var(--ui-card-radius, var(--radius));
+  background: var(--ui-room-panel-bg, var(--ui-card-bg, rgba(255, 255, 255, 0.05)));
+  box-shadow: var(--ui-card-shadow, none);
+  padding: 12px;
+}
+
+.dispute-score-request {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.9fr);
+  gap: var(--space-5);
+  align-items: end;
+}
+
+.dispute-score-request > div,
+.dispute-score-request label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.dispute-score-request strong {
+  color: var(--gold);
+  font-size: 1.22rem;
+  line-height: 1.1;
+}
+
+.dispute-score-request input {
+  width: 100%;
+  min-width: 0;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  font: inherit;
+  font-weight: 950;
+  padding: 8px;
+}
+
+.dispute-score-request em {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 0.72rem;
+}
+
+.arena-dispute-score-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-5);
+}
+
+.arena-dispute-score-row.arena-dispute-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+@media (max-width: 640px) {
+  .arena-dispute-score-row.arena-dispute-team-score-grid,
+  .arena-dispute-score-row.arena-dispute-stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.arena-dispute-score-row label,
+.arena-dispute-player label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.arena-dispute-score-row input,
+.arena-dispute-player input {
+  width: 100%;
+  min-width: 0;
+  border: var(--ui-stroke-width) solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, var(--radius-xs));
+  background: var(--ui-control-bg, rgba(5, 7, 10, 0.48));
+  color: var(--text);
+  font: inherit;
+  font-weight: 950;
+  padding: 8px;
+}
+
+.arena-dispute-score-row strong {
+  color: var(--gold);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding-bottom: 9px;
+}
+
+.arena-dispute-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.arena-dispute-side,
+.arena-dispute-player {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.arena-dispute-side > strong {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 950;
+}
+
+.arena-dispute-player {
+  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border, var(--line));
+  border-radius: var(--ui-card-radius, var(--radius-xs));
+  background: var(--ui-card-bg, rgba(5, 7, 10, 0.34));
+  padding: 8px;
+}
+
+.arena-dispute-score-row .ui-numeric-stepper,
+.arena-dispute-player .ui-numeric-stepper {
+  gap: var(--space-2);
+}
+
+.arena-stat-stepper {
+  grid-template-areas: "down value up";
+  grid-template-columns: 30px minmax(34px, 1fr) 30px;
+  grid-template-rows: 38px;
+}
+
+.arena-stat-stepper button {
+  min-height: 38px;
+  border-radius: var(--radius-xs);
+}
+
+.arena-stat-stepper button:first-of-type {
+  grid-area: up;
+}
+
+.arena-stat-stepper button:last-of-type {
+  grid-area: down;
+}
+
+.arena-stat-stepper button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.arena-stat-stepper input {
+  grid-area: value;
+  min-height: 38px;
+  padding: 6px 4px;
+  text-align: center;
+}
+
+.arena-dispute-player > span {
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.arena-dispute-player > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}

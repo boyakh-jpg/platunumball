@@ -4,12 +4,14 @@ import {
   isMatchRecordMatch,
   isTournamentMatchLineupEditable,
 } from "./matchUtils.js";
-import {
-  getPickupTeamAssignmentMode,
-  getPickupTeamAssignmentModeOption,
-} from "./matchCreationPolicies.js";
 
-import { ROOM_BODY_MODES, isPickupRoomFlow, getPickupRotationPolicy, getPickupTeamAssignmentPolicy, getPickupRerollState, buildPickupTeamAssignment, getPickupParticipants, getPickupParticipantIds, getPickupParticipantCapacity } from "./roomFlowPickup.js";
+import {
+  ROOM_BODY_MODES,
+  isPickupRoomFlow,
+  getPickupRotationPolicy,
+  getPickupParticipantIds,
+  getPickupParticipantCapacity,
+} from "./roomFlowPickup.js";
 export { ROOM_BODY_MODES, isPickupRoomFlow, getPickupRotationPolicy, getPickupTeamAssignmentPolicy, getPickupRerollState, buildPickupTeamAssignment, getPickupParticipants, getPickupParticipantIds, getPickupParticipantCapacity } from "./roomFlowPickup.js";
 
 export function getRoomScheduleProposal(room = {}) {

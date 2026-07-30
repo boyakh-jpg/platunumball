@@ -2,9 +2,6 @@ import {
   useEffect,
   useState,
 } from "react";
-import {
-  createPortal,
-} from "react-dom";
 
 import {
   Crown,
@@ -14,19 +11,13 @@ import {
 import Badge from "../common/Badge.jsx";
 import BasketballLoader from "../common/BasketballLoader.jsx";
 import Button from "../common/Button.jsx";
-import {
-  MatchListSummary,
-} from "../match/MatchListCard.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
-import ProfileEmblem from "../profile/ProfileEmblem.jsx";
-import TierBadge from "../rating/TierBadge.jsx";
 import {
   getTierEmblemSrc,
 } from "../rating/TierEmblem.jsx";
 import {
   DEFAULT_RATING,
   MATCH_SIDES,
-  MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE,
   PLAYER_POSITIONS,
   SIDE_LABEL_TEXT as SIDE_LABELS,
 } from "../../lib/constants.js";
@@ -37,13 +28,10 @@ import {
 import {
   getRecruitingBenchCapacity,
   getRecruitingEntryLeaderId,
-  getRecruitingListCardCounts,
   getRecruitingRoomOwnerId,
   getRecruitingPostTerminalState,
-  getSelectableTeamPlayerIds,
   isRecruitingPartyEntry,
   isRecruitingTeamEntry,
-  isTeamRecruitingRoom,
 } from "../../lib/recruiting.js";
 
 import {
@@ -52,8 +40,9 @@ import {
   getPublicRoomTimingStatus,
 } from "../../lib/matchUtils.js";
 import {
-  getMatchRuleSummary,
-} from "../../lib/matchRules.js";
+  getProfileAvatarInitial,
+  isAnonymousDisplayUser,
+} from "../../../shared/lib/profileMappers.js";
 
 export function RecruitingRoomLoadingView({ onClose }) {
   return (
@@ -114,14 +103,6 @@ function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
 
-function isAnonymousDisplayUser(user = null) {
-  return Boolean(user?.anonymous || user?.participationLabel === "개인참여");
-}
-
-function getAvatarInitial(user = null, fallback = "?") {
-  return isAnonymousDisplayUser(user) ? "?" : (user?.name?.slice(0, 1) ?? fallback);
-}
-
 function getRoomSlotPositionAvatarSrc(position) {
   const normalizedPosition = String(position ?? "").trim().toUpperCase();
   return ROOM_SLOT_POSITION_AVATARS[normalizedPosition] ?? null;
@@ -146,7 +127,7 @@ function RoomSlotAvatar({ user, mmr = DEFAULT_RATING, position = null }) {
   const normalizedPosition = String(position ?? user?.position ?? "").trim().toUpperCase();
   const avatarSrc = getRoomSlotPositionAvatarSrc(normalizedPosition);
 
-  const initial = getAvatarInitial(user);
+  const initial = getProfileAvatarInitial(user, "?");
 
   if (isAnonymousDisplayUser(user)) {
     return <span className="avatar anonymous" style={{ "--avatar": user?.avatarColor }}>{initial}</span>;

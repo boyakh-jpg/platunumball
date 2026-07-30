@@ -1,13 +1,6 @@
-import * as repository from "../data/repository.js";
-import { createProfileShell } from "../data/profileMappers.js";
-import { DEFAULT_SETTINGS, EMPTY_STATE } from "../data/repositoryDefaults.js";
-import { normalizeMatchRules } from "./matchRules.js";
 import {
-  applyOperatorAttendance,
-  getMatchReservePlayerIds,
   getMatchRoomPhase,
 } from "./matchUtils.js";
-import { PRACTICE_ID_PREFIX, isPracticeEntity } from "./practiceMode.js";
 import {
   getRecruitingBenchCapacity,
   getRecruitingLobby,

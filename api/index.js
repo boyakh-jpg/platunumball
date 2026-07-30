@@ -43,7 +43,6 @@ import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
 import reportSubmit from "../server/api/reports/submit.js";
 import settingsSync from "../server/api/settings/sync.js";
 import search from "../server/api/search.js";
-import stateLoad from "../server/api/state/load.js";
 import systemCleanupSim from "../server/api/system/cleanup-sim.js";
 import systemFeedAudit from "../server/api/system/feed-audit.js";
 import systemMaintenance from "../server/api/system/maintenance.js";
@@ -105,7 +104,6 @@ export const API_ROUTES = new Map([
   ["/reports/submit", route(reportSubmit, ["POST"], "user")],
   ["/settings/sync", route(settingsSync, ["POST"], "user")],
   ["/search", route(search, ["POST"], "user")],
-  ["/state/load", route(stateLoad, ["POST"], "user")],
   ["/system/cleanup-sim", route(systemCleanupSim, ["POST"], "internal")],
   ["/system/feed-audit", route(systemFeedAudit, ["GET", "POST"], "internal")],
   ["/system/maintenance", route(systemMaintenance, ["GET", "POST"], "internal")],

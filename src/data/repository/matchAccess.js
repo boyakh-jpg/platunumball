@@ -23,17 +23,14 @@ function currentUserIsEligibleMatchReferee(state, match) {
   return Boolean(isMatchReferee(match, state.currentUserId) && isEligibleReferee(currentUser, match?.refereeTrustMin, state.settings?.refereeAppointments));
 }
 
-function currentUserCanOperateStartedMatch(state, match) {
+function currentUserCanOperateMatch(state, match) {
   if (!match) return false;
   if (match.refereeId) return currentUserIsEligibleMatchReferee(state, match);
   return currentUserIsMatchHost(state, match);
 }
 
-function currentUserCanResolveMatchDispute(state, match) {
-  if (!match) return false;
-  if (match.refereeId) return currentUserIsEligibleMatchReferee(state, match);
-  return currentUserIsMatchHost(state, match);
-}
+const currentUserCanOperateStartedMatch = currentUserCanOperateMatch;
+const currentUserCanResolveMatchDispute = currentUserCanOperateMatch;
 
 function currentUserCanOperateMatchPreparation(state, match) {
   if (!match) return false;
@@ -43,11 +40,7 @@ function currentUserCanOperateMatchPreparation(state, match) {
   return currentUserIsMatchHost(state, match);
 }
 
-function currentUserCanStartMatch(state, match) {
-  if (!match) return false;
-  if (match.refereeId) return currentUserIsEligibleMatchReferee(state, match);
-  return currentUserIsMatchHost(state, match);
-}
+const currentUserCanStartMatch = currentUserCanOperateMatch;
 
 function getMatchRefereeAbsenceOpponentLeaderId(state, match) {
   const hostId = getMatchHostPlayerId(state, match);

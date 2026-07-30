@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { buildCourtAddressNameUpdates, getAdminCourtStreetViewUrl, getCourtAddressFacilityName, getCourtFacilityBaseName, getCourtMapUrl, getCourtNaverMapAppUrl } from "../src/lib/courts.js";
 import { APP_DATA_ACTION_SOURCE_PATHS, readSourceGroup } from "./management-source-groups.mjs";
+import { readCssTree } from "./css-source-tree.mjs";
 
 const readSource = (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 const readSources = (...relativePaths) => Promise.all(relativePaths.map(readSource)).then((sources) => sources.join("\n"));
@@ -48,8 +49,8 @@ test("구장 편집은 즉시 셀 편집, 일괄 저장, 셀 복구, dropdown을
       "src/components/admin/CourtDatabasePanelView.jsx",
       "src/components/admin/CourtDatabaseDuplicateReview.jsx",
     ),
-    readSource("src/styles/global-admin-layout.css"),
-    readSource("src/styles/global-court-controls.css"),
+    readCssTree("src/styles/global-admin-layout.css"),
+    readCssTree("src/styles/global-court-controls.css"),
   ]);
   const styles = `${adminStyles}\n${courtStyles}`;
   assert.match(component, /주소·수동명 우선/);

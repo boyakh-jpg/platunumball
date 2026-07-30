@@ -34,7 +34,6 @@ test("서버 rating 도메인은 프런트 constants에 의존하지 않는다",
   const directConsumers = await Promise.all([
     "server/lib/ratingPolicy.js",
     "server/lib/ratingEngine.js",
-    "server/api/_authoritativeState.js",
   ].map((file) => readFile(new URL(`../${file}`, import.meta.url), "utf8")));
 
   directConsumers.forEach((source) => {

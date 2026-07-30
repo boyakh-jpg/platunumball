@@ -64,7 +64,9 @@ test("repository와 useAppData 호환 배럴은 공개 export만 유지한다", 
   assert.ok(appDataSource.split(/\r?\n/u).length <= 30);
   assert.doesNotMatch(repositorySource, /\b(?:function|class)\s+[A-Za-z_$]/u);
   assert.doesNotMatch(appDataSource, /\b(?:function|class)\s+[A-Za-z_$]/u);
-  assert.equal(Object.keys(repository).length, 129);
+  assert.equal(Object.keys(repository).length, 127);
+  assert.equal("loadNormalizedDirectoryStateFromClient" in repository, false);
+  assert.equal("loadNormalizedMatchDetailFromClient" in repository, false);
   assert.equal(Object.keys(appData).length, 3);
   for (const name of [
     "createMatch",
@@ -207,8 +209,11 @@ test("데이터 계층 책임 모듈은 순환과 브라우저-서버 역참조�
   }
 });
 
-test("서버는 repositoryAdapter 하나를 통해서만 클라이언트 호환 배럴을 읽는다", async () => {
+test("서버 repositoryAdapter는 호환 배럴 없이 소유 모듈만 직접 읽는다", async () => {
   const adapterSource = await readFile(path.join(ROOT, "server/lib/repositoryAdapter.js"), "utf8");
-  assert.match(adapterSource, /from "\.\.\/\.\.\/src\/data\/repository\.js"/u);
-  assert.doesNotMatch(adapterSource, /src\/data\/repository\//u);
+  assert.doesNotMatch(adapterSource, /src\/data\/repository\.js/u);
+  assert.match(adapterSource, /src\/data\/repository\/runtime\.js/u);
+  assert.match(adapterSource, /src\/data\/repository\/recruiting\/confirmation\.js/u);
+  assert.match(adapterSource, /src\/data\/repository\/matchCreation\.js/u);
+  assert.match(adapterSource, /src\/data\/repository\/remote\/stateLoader\.js/u);
 });

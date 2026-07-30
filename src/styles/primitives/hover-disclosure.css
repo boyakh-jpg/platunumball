@@ -1,0 +1,245 @@
+.button,
+.provider-button,
+.auth-browser-actions button,
+.auth-browser-actions a,
+.auth-session-line button,
+.segmented-control button,
+.favorite-type-grid button,
+.create-mode-grid button,
+.notification-actions button,
+.team-picker,
+.court-search-popover button,
+.court-address-results button,
+.report-player-picker button,
+.referee-exam-choice-grid button,
+.favorite-toggle-button,
+.hover-card-close,
+.hover-card-action,
+.search-picker-more,
+.home-search-more,
+.settings-page .section-card button:not(.button):not(.favorite-toggle-button),
+.arena-start-date-filter button {
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  box-shadow: none;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+}
+.button-sm {
+  min-height: var(--ui-button-height-sm);
+}
+.button-icon,
+.hover-card-close,
+.arena-icon-button,
+.arena-modal-close-button {
+  place-items: center;
+  padding: 0;
+}
+.button-icon,
+.hover-card-close {
+  width: var(--ui-icon-button-size);
+  height: var(--ui-icon-button-size);
+  min-height: var(--ui-icon-button-size);
+  display: inline-grid;
+}
+.button-icon,
+.hover-card-close,
+.arena-icon-button {
+  min-width: var(--ui-icon-button-size);
+}
+.button.button-icon.section-disclosure-button {
+  width: var(--ui-icon-button-size);
+  min-width: var(--ui-icon-button-size);
+  height: var(--ui-icon-button-size);
+  min-height: var(--ui-icon-button-size);
+  flex: 0 0 var(--ui-icon-button-size);
+  border: var(--ui-button-border-width) solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--muted);
+  box-shadow: none;
+  padding: 0;
+}
+.button.button-icon.section-disclosure-button:hover,
+.button.button-icon.section-disclosure-button[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--rb-orange) 42%, var(--ui-button-border));
+  background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-button-bg));
+  color: var(--rb-orange);
+  filter: none;
+}
+.button.button-icon.section-disclosure-button:active {
+  background: color-mix(in srgb, var(--rb-orange) 20%, var(--ui-button-bg));
+}
+.button.button-icon.section-disclosure-button svg {
+  pointer-events: none;
+}
+.hover-portal-card:not(.touch-open) .hover-card-close {
+  display: none;
+}
+.hover-portal-card.touch-open .hover-card-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 2;
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+}
+.hover-portal-card.touch-open .player-hover-head,
+.hover-portal-card.touch-open .team-hover-head,
+.hover-portal-card.touch-open .court-hover-head,
+.hover-portal-card.touch-open .referee-hover-head {
+  padding-right: calc(var(--ui-icon-button-size) + 14px);
+}
+.hover-portal-card.touch-open {
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.hover-portal-card.touch-open .hover-card-action {
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+.court-hover-actions {
+  display: none;
+}
+.court-hover-card.touch-open .court-hover-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--ui-control-group-gap);
+}
+.court-hover-card.touch-open .court-hover-actions .hover-card-action {
+  min-width: 0;
+  padding-inline: 8px;
+  white-space: nowrap;
+}
+.court-hover-card.touch-open .court-hover-actions .hover-card-action-secondary {
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+}
+.button-primary,
+.rank-home .home-rank-board-head .button,
+.provider-test,
+.create-submit-row .button:not(.button-secondary),
+.segmented-control button.active,
+.favorite-type-grid button.active,
+.create-mode-grid button.active,
+.team-picker.selected,
+.court-search-popover button.selected,
+.report-player-picker button.selected,
+.referee-exam-choice-grid button.selected,
+.settings-page .section-card button.active:not(.favorite-toggle-button) {
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+  box-shadow: none;
+}
+.button-primary:hover,
+.rank-home .home-rank-board-head .button:hover,
+.provider-test:hover,
+.create-submit-row .button:not(.button-secondary):hover {
+  background: var(--ui-button-bg-hover);
+  color: var(--ui-button-color-active);
+  filter: none;
+}
+.button-primary:active,
+.rank-home .home-rank-board-head .button:active,
+.provider-test:active {
+  background: var(--ui-button-bg-pressed);
+}
+.button-secondary,
+.button-icon {
+  border-color: var(--ui-button-border);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+select,
+.auth-card select,
+.home-search-box input {
+  min-height: var(--ui-button-height);
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: max(0.9rem, 16px);
+}
+textarea {
+  min-height: 112px;
+  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: max(0.9rem, 16px);
+}
+.button:focus-visible,
+.provider-button:focus-visible,
+.auth-browser-actions button:focus-visible,
+.auth-browser-actions a:focus-visible,
+.auth-session-line button:focus-visible,
+.segmented-control button:focus-visible,
+.favorite-type-grid button:focus-visible,
+.create-mode-grid button:focus-visible,
+.team-picker:focus-visible,
+.court-search-popover button:focus-visible,
+.court-address-results button:focus-visible,
+.report-player-picker button:focus-visible,
+.referee-exam-choice-grid button:focus-visible,
+.arena-filter-bar button:focus-visible,
+.arena-start-date-filter button:focus-visible,
+.om-calendar-toolbar button:focus-visible,
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+/* Composite fields have one visual border owner: the outer icon/prefix shell. */
+:is(
+  .prefixed-input,
+  .favorite-search-row,
+  .admin-account-search,
+  .arena-invite-search,
+  .home-search-box
+) > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+:is(
+  .prefixed-input,
+  .favorite-search-row,
+  .admin-account-search,
+  .arena-invite-search,
+  .home-search-box
+) > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus,
+:is(
+  .prefixed-input,
+  .favorite-search-row,
+  .admin-account-search,
+  .arena-invite-search,
+  .home-search-box
+) > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus-visible {
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:is(
+  .prefixed-input,
+  .favorite-search-row,
+  .admin-account-search,
+  .arena-invite-search,
+  .home-search-box
+):focus-within {
+  border-color: color-mix(in srgb, var(--rb-orange-2) 58%, var(--rb-line));
+  box-shadow: var(--focus-ring);
+}
+button:disabled,
+.button:disabled,
+.button[aria-disabled="true"] {
+  opacity: 0.58;
+  cursor: not-allowed;
+}

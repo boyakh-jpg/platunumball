@@ -1,9 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { DEFAULT_RATING } from "../../../shared/lib/matchConstants.js";
 import { toArray } from "../_supabaseAdmin.js";
 import { MATCH_SIDES } from "../../../shared/lib/constants.js";
-import { loadAuthoritativeState } from "../_authoritativeState.js";
-import { PUBLIC_ROOM_PARTICIPATION_ACTIONS, isPendingInvitation, normalizeAllowedAgeGroups } from "./_syncPostPolicy.js";
+import { isPendingInvitation, normalizeAllowedAgeGroups } from "./_syncPostPolicy.js";
 import { isTrue, reject } from "./_syncPostCommon.js";
 import { getCanonicalBenchCapacity, normalizeRoomState } from "./_syncPostProjection.js";
 

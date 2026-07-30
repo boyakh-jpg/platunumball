@@ -10,6 +10,7 @@ import { getUserHashtag, makeRandomDigitSuffix, makeSuggestedHashtagBody, sameHa
 import {
   AGE_GROUPS,
   canChangeProfileName,
+  formatProfileDate,
   getAgeGroupByBirthYear,
   getAgeGroupLabel,
   getAgeGroupSeasonForDate,
@@ -21,11 +22,6 @@ import {
   shouldRecheckAgeGroup,
   shouldSetupProfile,
 } from "../lib/profileSetup.js";
-
-function formatDate(date) {
-  if (!date) return "";
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
-}
 
 function getInitialHandleBody(user = {}, suffix = "") {
   if (user.handleLockedAt || user.hashtagLockedAt) return stripHandle(getUserHashtag(user));
@@ -82,7 +78,7 @@ export default function Signup({ app, auth }) {
     event.preventDefault();
     const name = draft.name.trim() || user.name;
     if (user.onboardingComplete && name !== user.name && !nameChangeAllowed) {
-      setFormError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatDate(nextNameChangeDate)}`);
+      setFormError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(nextNameChangeDate)}`);
       return;
     }
     if (handleDuplicate) {
@@ -145,7 +141,7 @@ export default function Signup({ app, auth }) {
             <label>
               닉네임
               <input required value={draft.name} maxLength={20} onChange={(event) => update({ name: event.target.value })} />
-              {user.onboardingComplete && !nameChangeAllowed ? <span className="form-warning">다음 변경 가능일: {formatDate(nextNameChangeDate)}</span> : null}
+              {user.onboardingComplete && !nameChangeAllowed ? <span className="form-warning">다음 변경 가능일: {formatProfileDate(nextNameChangeDate)}</span> : null}
             </label>
             <label>
               해시태그

@@ -1,6 +1,7 @@
 import { normalizeRegionText } from "./regionText.js";
 import {
   AGE_GROUPS,
+  formatProfileDate,
   getAgeGroupByBirthYear,
   getAgeGroupForUser,
   getAgeGroupLabel,
@@ -11,6 +12,7 @@ import {
 
 export {
   AGE_GROUPS,
+  formatProfileDate,
   getAgeGroupByBirthYear,
   getAgeGroupForUser,
   getAgeGroupLabel,

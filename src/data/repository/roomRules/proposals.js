@@ -1,36 +1,8 @@
-import { MATCH_SIDES } from "../../../lib/constants.js";
-import { RECORD_TYPES } from "../../../lib/constants.js";
-import { courtIdByName } from "../../../lib/courts.js";
-import { getCourtId } from "../../../lib/courts.js";
-import { getMatchCreationPolicyPayload } from "../../../lib/matchCreationPolicies.js";
-import { getMatchPlayerIds } from "../../../lib/matchUtils.js";
-import { getMatchReservePlayerIds } from "../../../lib/matchUtils.js";
-import { getMatchRulesPayload } from "../../../lib/matchRules.js";
-import { getMatchScheduledDate } from "../../../lib/matchUtils.js";
-import { getPickupCompatibilityPlacements } from "../../../lib/roomFlow.js";
-import { getPickupParticipantCapacity } from "../../../lib/roomFlow.js";
-import { getRecruitingBenchCapacity } from "../../../lib/recruiting.js";
-import { getRecruitingLobby } from "../../../lib/recruiting.js";
-import { getRecruitingRoomOwnerId } from "../../../lib/recruiting.js";
-import { getRecruitingRoomParticipantIds } from "../../../lib/recruiting.js";
 import { getRecruitingRuleAcknowledgement } from "../../../lib/roomFlow.js";
-import { getRecruitingSideCapacity } from "../../../lib/recruiting.js";
 import { getRegisteredCourts } from "../../../lib/courts.js";
-import { getRoomEditAvailability } from "../../../lib/roomFlow.js";
 import { getRoomScheduleProposalProgress } from "../../../lib/roomFlow.js";
-import { isPickupRecruitingRoom } from "../../../lib/recruiting.js";
-import { isRecruitingRoomOwner } from "../../../lib/recruiting.js";
-import { isRoomScheduleChangePending } from "../../../lib/roomFlow.js";
-import { isSupportedMatchMode } from "../../../lib/constants.js";
-import { isSupportedSoloRecordMode } from "../../../lib/constants.js";
 import { makeId } from "../../rowUtils.js";
-import { normalizeRecruitingApplicants } from "../../../lib/recruiting.js";
-import { normalizeRecruitingMmrRangeMode } from "../../../lib/recruiting.js";
-import { normalizeRecruitingRoomState } from "../../../lib/recruiting.js";
 import { uniquePlayerIds } from "../../rowUtils.js";
-import { getRecruitingReserveLimitNotification } from "../guards.js";
-import { currentUserCanOperateMatchPreparation } from "../matchAccess.js";
-import { getServerRatingValue } from "../runtime.js";
 
 export function acknowledgeRecruitingRoomRules(state, postId, revision = 0) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);

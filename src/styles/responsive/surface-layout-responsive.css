@@ -1,0 +1,54 @@
+.rank-home .rank-mode-card,
+html[data-theme="light"] .rank-home .rank-mode-card {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+}
+
+@media (max-width: 920px) {
+  .settings-page .content-grid,
+  .settings-page .settings-referee-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .player-hover-tier-grid > span {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .player-hover-card .tier-emblem-sm {
+    width: 56px;
+  }
+
+  .team-hover-tier {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .team-hover-card .tier-emblem-md {
+    width: 92px;
+  }
+
+  .team-card {
+    padding: 14px;
+  }
+
+  .team-card .team-card-top {
+    grid-template-columns: minmax(0, 1fr) minmax(96px, 104px);
+  }
+
+  .team-card-actions {
+    min-width: 0;
+    gap: var(--space-2);
+    justify-content: flex-end;
+  }
+
+  .team-card-actions .tier-emblem {
+    flex-basis: 64px;
+    width: 64px;
+  }
+
+  .settings-page .contract-grid.single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

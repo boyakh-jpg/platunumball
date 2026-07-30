@@ -1,31 +1,26 @@
 import { Link } from "react-router-dom";
-import { CalendarDays, MapPin, RotateCcw, ShieldCheck, Star, Trophy, UsersRound, X } from "lucide-react";
+import { CalendarDays, MapPin, RotateCcw, ShieldCheck, Star, Trophy, UsersRound } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchClockPanel, { MatchScoreControls } from "../components/match/MatchClockPanel.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
-import MatchDisputeQueue from "../components/match/MatchDisputeQueue.jsx";
 import MatchRecommendationPanel from "../components/match/MatchRecommendationPanel.jsx";
 import MatchVoidDialog, { MatchFinalizeDialog } from "../components/match/MatchVoidDialog.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import NumericStepper from "../components/common/NumericStepper.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import MmrChange from "../components/rating/MmrChange.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
-import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, PLAYER_STAT_FIELDS, normalizeDisputeWindowMinutes } from "../lib/constants.js";
-import { REPORT_REASONS, REPORT_TARGET_TYPES, VOID_MATCH_RESTORE_REPORT_REASON, getReportTargetType } from "../lib/reportReasons.js";
-import { formatMatchWindowTime, formatStatLine, MATCH_DISPUTE_REASON_OPTIONS, OTHER_MATCH_DISPUTE_REASON, getMatchSideRecordPlayerIds, getPlayerStatSubmitted } from "../lib/matchUtils.js";
+import { MATCH_SIDE_FALLBACK_NAMES, MATCH_SIDES, normalizeDisputeWindowMinutes } from "../lib/constants.js";
+import { formatMatchWindowTime, formatStatLine, getMatchSideRecordPlayerIds, getPlayerStatSubmitted } from "../lib/matchUtils.js";
 import {
   getRecordPlayerDisplayName,
   isAnonymousDisplayUser,
   getAvatarInitial,
   getPlayerMetaLabel,
-  getRecordPlayerEntries,
   COURT_REVIEW_FIELDS,
 } from "./matchRoomModel.js";
 import {

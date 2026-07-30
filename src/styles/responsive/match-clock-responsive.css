@@ -1,0 +1,90 @@
+@media (orientation: portrait) and (width <= 720px) {
+  .ui-match-clock-focus-backdrop {
+    inset: 0 auto auto 0;
+    width: 100dvh;
+    height: 100dvw;
+    padding: 6px;
+    transform: translateX(100dvw) rotate(90deg);
+    transform-origin: top left;
+  }
+
+  .ui-match-clock-panel-focus {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+@media (height <= 560px) {
+  .ui-match-clock-panel-focus .ui-match-clock-device-tools .ui-button,
+  .ui-match-clock-panel-focus .ui-match-clock-volume {
+    height: 30px;
+    min-height: 30px;
+    font-size: 0.66rem;
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-volume {
+    flex-basis: 150px;
+  }
+}
+
+@media (width <= 420px) {
+  .ui-match-clock-panel {
+    padding: 10px;
+  }
+
+  .ui-match-clock-header {
+    display: grid;
+  }
+
+  .ui-match-clock-header-tools {
+    align-items: flex-start;
+  }
+
+  .ui-match-clock-badges {
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .ui-match-clock-scoreboard:not(.ui-match-clock-scoreboard-time-only) {
+    grid-template-columns: minmax(0, 0.72fr) minmax(124px, 1.56fr) minmax(0, 0.72fr);
+  }
+
+  .ui-match-clock-team-score {
+    font-size: clamp(2.15rem, 14vw, 3.5rem);
+  }
+
+  .ui-match-shot-clock {
+    min-height: var(--match-clock-display-height, 136px);
+  }
+
+  .ui-match-clock-score-actions {
+    grid-template-columns: repeat(2, minmax(28px, 1fr));
+  }
+
+  .ui-match-score-control-panel > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ui-match-score-control-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-match-clock-panel-focus {
+    padding: 6px;
+  }
+
+  .ui-match-clock-panel-focus .ui-match-clock-scoreboard,
+  .ui-match-clock-panel-focus .ui-match-shot-clock {
+    min-height: 0;
+  }
+}
+
+.ui-match-shot-clock:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rb-orange) 27%, var(--scoreboard));
+}
+
+.ui-match-shot-clock:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 7px 14px color-mix(in srgb, var(--rb-orange) 13%, transparent);
+}

@@ -2,6 +2,9 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getMatchRoomPhase, getTournamentScheduleEditPolicy } from "../lib/matchUtils.js";
+import { formatTournamentWindow as formatWindow } from "../../shared/lib/scheduleUtils.js";
+
+export { formatWindow };
 
 export const formatLabels = {
   league: "리그",
@@ -21,10 +24,6 @@ export const mmrPolicyLabels = {
   standard: "일반 MMR",
   event_only: "대회 점수만",
 };
-
-export function formatWindow(tournament) {
-  return [tournament.startDate, tournament.endDate].filter(Boolean).join(" ~ ") || "일정 미정";
-}
 
 export function getMatchTime(match) {
   return [match.scheduledDate, match.scheduledTime].filter(Boolean).join(" ") || match.scheduledAt || "일정 미정";

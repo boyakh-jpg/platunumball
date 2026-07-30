@@ -24,7 +24,6 @@ import {
   cleanRoomTitle,
   getMatchRecordWindow,
 } from "./matchRoomLifecycle.js";
-import { getMatchSideScore } from "./matchSummary.js";
 import { isDateWithinPastMonths } from "./matchTimeUtils.js";
 
 export function getMatchCancelCopy(match = {}) {

@@ -110,11 +110,7 @@ const teamMemberPostGuardMigrationSource = fs.readFileSync(
 );
 
 function readCssManifest(relativePath) {
-  const manifestPath = path.join(root, relativePath);
-  const manifest = fs.readFileSync(manifestPath, "utf8");
-  const modules = [...manifest.matchAll(/@import\s+["']([^"']+)["'];/g)]
-    .map((match) => fs.readFileSync(path.resolve(path.dirname(manifestPath), match[1]), "utf8"));
-  return [manifest, ...modules].join("\n");
+  return readCssTreeSync(relativePath);
 }
 
 test("all supported modes keep mode-aware active capacity and presets", () => {
@@ -917,7 +913,7 @@ test("team selection is routed through the server and DB authority", () => {
   assert.match(serverSource, /operation\.action === "setRecruitingRoomTeam"/);
   assert.match(serverSource, /rankball_recruiting_set_room_team_action/);
   assert.match(serverSource, /recruiting_set_room_team_rpc_required/);
-  assert.match(authoritativeSource, /case "setRecruitingRoomTeam":[\s\S]*setRecruitingRoomTeam\(state, operation\.postId, operation\.side, operation\.teamId\)/);
+  assert.doesNotMatch(authoritativeSource, /setRecruitingRoomTeam/u);
 
   const migrationName = fs.readdirSync(path.join(root, "supabase/migrations"))
     .filter((name) => name.endsWith(".sql"))

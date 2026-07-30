@@ -1,9 +1,5 @@
-import { isSupportedMatchMode } from "../../../shared/lib/matchConstants.js";
 import { nullableText, toArray } from "../_supabaseAdmin.js";
-import { isValidBenchCapacity } from "../../../shared/lib/constants.js";
-import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
-import { normalizeRecruitingMmrRangeMode } from "../../../shared/lib/recruiting.js";
-import { getCanonicalBenchCapacity, getCanonicalHostJoinMode, getCanonicalSideCapacity, getExplicitBenchCapacity, getRecruitingBenchIdsBySide, getRecruitingCoreSnapshot, normalizeRoomState, participantIdsFromPost, rosterIdsFromPost, sameJson } from "./_syncPostProjection.js";
+import { getCanonicalHostJoinMode, getCanonicalSideCapacity, normalizeRoomState } from "./_syncPostProjection.js";
 import { isTrue, reject } from "./_syncPostCommon.js";
 
 export function getSideCapacity(post = {}) {

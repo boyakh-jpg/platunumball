@@ -125,10 +125,11 @@ for (const file of files) {
 
 const globalFiles = resolveImports(globalManifest, roots);
 const featureFiles = featureManifests.flatMap((file) => resolveImports(file, roots));
+const primitiveFiles = resolveImports(`${styleDirectory}/ui-primitives.css`, roots);
 const loadOrder = [
   `${styleDirectory}/tokens.css`,
   ...globalFiles,
-  `${styleDirectory}/ui-primitives.css`,
+  ...primitiveFiles,
   ...featureFiles,
 ].map(path.normalize);
 const featureFileSet = new Set(featureFiles.map(path.normalize));

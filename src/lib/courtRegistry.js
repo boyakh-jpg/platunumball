@@ -1,4 +1,4 @@
-import { courtIdByName, getCourtId, getCourtAddress, COURT_SURFACE_OPTIONS, COURT_LAYOUT_OPTIONS, COURT_TYPE_OPTIONS, COURT_KIND_OPTIONS, COURT_ACCESS_OPTIONS, COURT_PUBLIC_ACCESS_OPTIONS, COURT_CORRECTION_FIELD_OPTIONS, COURT_CORRECTION_ATTRIBUTE_OPTIONS, getCourtCorrectionFieldLabel, getCourtCorrectionAttributeOptions, getCourtCorrectionAttribute, getCourtCorrectionAttributeLabel, getCourtCorrectionProposedLabel, getCourtCorrectionPatch, COURT_SOURCE_URL_MAX_LENGTH, normalizeCourtType, normalizeCourtKind, normalizeCourtAccessType, normalizeCourtPublicAccess, normalizeCourtSourceUrl, getCourtKindLabel, getCourtAccessLabel, getCourtPublicAccessLabel, getCourtPaidLabel, getCourtLocationNote, getCourtLightingLabel, getCourtReservationValue, getCourtHoopCount, normalizeCourtSurfaceType, normalizeCourtLayout, normalizeCourtReviewRating, normalizeCourtHashtag, makeRandomCourtHashtag, getOptionalCourtCoordinate, getCourtCoordinate, getCourtMapUrl, getCourtNaverMapAppUrl, getAdminCourtStreetViewUrl, getCourtSurfaceLabel, getCourtLayoutLabel, getCourtSearchText, isCourtInRegion, mergeCourtSearchCourts, getCourtPickerResults, isCourtFuzzySearchMatch, buildCourtAddressNameUpdates, getCourtAddressFacilityName, getCourtAddressKey, getCourtFacilityBaseName, getCourtRequestName, getCourtStandardName, normalizeCourtFacilityName, normalizeCourtNamePart, normalizeCourtSigungu, normalizeCourtOptionalBoolean } from "./courtCore.js";
+import { getCourtLocationNote, getFallbackLayout, normalizeCourtLayout, getCourtRequestName, getCourtStandardName } from "./courtCore.js";
 import { normalizeCourtIdentityText } from "../../shared/lib/courts.js";
 
 function getCourtCanonicalBaseName(court = {}) {
@@ -6,13 +6,6 @@ function getCourtCanonicalBaseName(court = {}) {
   if (standardName) return standardName;
   const facilityName = court.buildingName || court.facilityName || court.baseName || court.name;
   return getCourtRequestName(facilityName, court.addressDong, court.courtUnit);
-}
-
-function getFallbackLayout(court = {}) {
-  if (court.courtLayout) return court.courtLayout;
-  if (court.hoopCount === 1) return "half";
-  if (court.courtKind === "official" || court.hoopCount === 2) return "full";
-  return "unknown";
 }
 
 function isSmallCourt(court = {}) {

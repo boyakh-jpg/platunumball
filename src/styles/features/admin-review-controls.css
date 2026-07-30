@@ -1,0 +1,412 @@
+.stat-stepper-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 138px;
+  align-items: center;
+  gap: var(--space-5);
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.stat-stepper-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.stat-stepper-row span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.stat-stepper-row .stat-numeric-stepper {
+  grid-template-areas: "down value up";
+  grid-template-columns: 40px 50px 40px;
+  grid-template-rows: 44px;
+  gap: var(--space-2);
+  width: 138px;
+}
+
+.stat-stepper-row .stat-numeric-stepper button {
+  min-height: 44px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.stat-stepper-row .stat-numeric-stepper button:first-of-type {
+  grid-area: up;
+}
+
+.stat-stepper-row .stat-numeric-stepper button:last-of-type {
+  grid-area: down;
+}
+
+.stat-stepper-row .stat-numeric-stepper input {
+  grid-area: value;
+  min-height: 44px;
+  padding-inline: 6px;
+  text-align: center;
+}
+
+.trust-star-card .muted {
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.trust-star-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.trust-star-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5);
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+}
+
+.trust-star-button.selected {
+  border-color: rgba(255, 211, 108, 0.58);
+  background: rgba(255, 211, 108, 0.12);
+  color: var(--gold);
+}
+
+.trust-star-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.trust-star-button .player-hover-trigger {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-4);
+  color: inherit;
+}
+
+.trust-star-button .player-hover-trigger > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.trust-star-button strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trust-star-button em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.court-review-card .muted {
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.court-review-rating-row {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding: 8px 0;
+}
+
+.court-review-rating-row > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.court-review-stars {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.court-review-star-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: var(--ui-stroke-width) solid var(--line);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.court-review-star-button.selected {
+  border-color: rgba(255, 211, 108, 0.62);
+  background: rgba(255, 211, 108, 0.12);
+  color: var(--gold);
+}
+
+.court-review-star-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.court-review-detail-grid {
+  display: grid;
+  gap: var(--space-1);
+  padding: 4px 0;
+}
+
+.recorder-header p {
+  max-width: 780px;
+  color: var(--muted);
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+html[data-theme="light"] .card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66)),
+    rgba(255, 255, 255, 0.76);
+}
+
+html[data-theme="light"] .landing-hero {
+  background: #eef4ee;
+}
+
+html[data-theme="light"] .landing-backdrop {
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.96) 0%, rgba(246, 248, 242, 0.72) 43%, rgba(246, 248, 242, 0.3) 100%),
+    linear-gradient(180deg, rgba(246, 248, 242, 0.18), rgba(246, 248, 242, 0.88)),
+    var(--bg-action) var(--hero-bg-position-action) / var(--hero-bg-size) no-repeat;
+}
+
+html[data-theme="light"] .broadcast-glass,
+html[data-theme="light"] .team-hub-board {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.64)),
+    rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="light"] .landing-stat-grid span,
+html[data-theme="light"] .broadcast-list span,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .contract-grid div,
+html[data-theme="light"] .memo-box,
+html[data-theme="light"] .approval-grid > div,
+html[data-theme="light"] .stat-player-button,
+html[data-theme="light"] .approval-voter-list button,
+html[data-theme="light"] .stat-stepper-row,
+html[data-theme="light"] .settings-toggle-grid label {
+  border-color: rgba(32, 56, 68, 0.14);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+html[data-theme="light"] .home-action-card {
+  background: var(--ui-card-bg);
+}
+
+html[data-theme="light"] .rank-search-card {
+  border-color: rgba(32, 56, 68, 0.13);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(249, 252, 249, 0.78)),
+    rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 42px rgba(35, 50, 59, 0.1);
+}
+
+html[data-theme="light"] .match-hero {
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.72), rgba(246, 248, 242, 0.92)),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
+}
+
+html[data-theme="light"] .profile-hero,
+html[data-theme="light"] .team-detail-hero {
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.72), rgba(246, 248, 242, 0.92)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
+}
+
+html[data-theme="light"] .landing-copy p {
+  color: var(--muted);
+}
+
+html[data-theme="light"] .button-primary,
+html[data-theme="light"] .segmented-control button.active {
+  color: #f7fffb;
+}
+
+html[data-theme="light"] .rank-profile-card,
+html[data-theme="light"] .rank-mode-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .rank-record-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 252, 248, 0.78)),
+    rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
+  border-color: rgba(184, 118, 19, 0.56);
+  background:
+    linear-gradient(180deg, rgba(255, 211, 108, 0.46), rgba(255, 246, 203, 0.74)),
+    rgba(255, 250, 224, 0.94);
+  color: #8a5b00;
+  box-shadow: none;
+}
+
+html[data-theme="light"] .auth-shell {
+  background:
+    linear-gradient(180deg, rgba(248, 252, 248, 0.76), rgba(242, 247, 244, 0.94)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    #f4f7f2;
+}
+
+html[data-theme="light"] .auth-card,
+html[data-theme="light"] .sidebar-profile,
+html[data-theme="light"] .provider-button,
+html[data-theme="light"] .theme-choice-card,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-search-selected,
+html[data-theme="light"] .team-search-popover,
+html[data-theme="light"] .tier-range-note,
+html[data-theme="light"] .mmr-range-mode-control {
+  border-color: rgba(32, 56, 68, 0.15);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 251, 248, 0.72)),
+    rgba(255, 255, 255, 0.86);
+  color: var(--text);
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  border-color: rgba(32, 56, 68, 0.17);
+  color: var(--text);
+}
+
+html[data-theme="light"] .button-secondary,
+html[data-theme="light"] .sidebar-signout,
+html[data-theme="light"] .badge,
+html[data-theme="light"] .favorite-toggle-button,
+html[data-theme="light"] .segmented-control,
+html[data-theme="light"] .nav-item:hover,
+html[data-theme="light"] .nav-item.active {
+  border-color: rgba(32, 56, 68, 0.15);
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--text);
+}
+
+html[data-theme="light"] .segmented-control button {
+  color: #4d5f67;
+}
+
+html[data-theme="light"] .segmented-control button.active,
+html[data-theme="light"] .button-primary {
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
+html[data-theme="light"] .team-search-popover button,
+html[data-theme="light"] .team-search-selected {
+  border-color: rgba(32, 56, 68, 0.13);
+}
+
+html[data-theme="light"] .team-search-popover button:hover {
+  border-color: var(--ui-selectable-hover-border);
+  background: var(--ui-selectable-hover-bg);
+}
+
+html[data-theme="light"] .team-search-popover button.selected {
+  border-color: var(--ui-selectable-selected-border);
+  background: var(--ui-selectable-selected-bg);
+  color: var(--ui-selectable-selected-color);
+}
+
+@media (max-width: 1020px) {
+  .home-search-results,
+  .profile-hero,
+  .team-detail-hero,
+  .stat-entry-grid {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+@media (max-width: 720px) {
+  .entity-profile-hero-visual {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rank-profile-page .player-tier-hero,
+  .rank-team-page .team-tier-hero {
+    margin-inline: auto;
+  }
+
+  .approval-side-header,
+  .member-control-row,
+  .team-danger-zone,
+  .match-action-row,
+  .stat-referee-panel,
+  .tier-range-note {
+    grid-template-columns: 1fr;
+  }
+
+  .team-emblem-editor {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .team-emblem-editor-actions {
+    grid-column: 1 / -1;
+  }
+
+  .team-emblem-editor-actions .button {
+    flex: 1 1 0;
+  }
+
+  .stat-editor-backdrop {
+    padding: 10px;
+  }
+
+  .stat-editor-modal {
+    max-height: calc(100vh - 20px);
+    overflow: auto;
+  }
+
+  .recorder-page {
+    gap: var(--space-5);
+  }
+
+  .recorder-header p {
+    display: none;
+  }
+
+  .stat-stepper-row {
+    grid-template-columns: minmax(0, 1fr) 120px;
+    gap: var(--space-3);
+    padding: 8px;
+  }
+
+  .stat-stepper-row .stat-numeric-stepper {
+    grid-template-columns: 36px 42px 36px;
+    grid-template-rows: 42px;
+    gap: 3px;
+    width: 120px;
+  }
+
+  .stat-stepper-row .stat-numeric-stepper button {
+    min-height: 42px;
+  }
+
+  .stat-stepper-row .stat-numeric-stepper input {
+    min-height: 42px;
+  }
+}

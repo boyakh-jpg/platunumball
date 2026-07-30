@@ -254,7 +254,7 @@ test("server infrastructure helpers preserve route-specific limits and queued de
     ["server/lib/matchSyncDependencies.js", "matchNotifications.js"],
     ["server/lib/matchSyncDependencies.js", "matchSnapshotRows.js"],
     ["server/lib/matchSyncDependencies.js", "matchSnapshotValidation.js"],
-    ["server/lib/matchNotifications.js", "discordDeliveryRows.js"],
+    ["server/lib/matchNotificationRows.js", "discordDeliveryRows.js"],
     ["server/lib/matchSnapshotValidation.js", "matchSnapshotRows.js"],
     ["server/api/recruiting/_syncPostProjection.js", "lib/discordDeliveryRows.js"],
     ["server/lib/matchSyncDependencies.js", "tournamentPersistence.js"],

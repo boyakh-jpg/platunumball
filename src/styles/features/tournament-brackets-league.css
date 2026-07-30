@@ -1,0 +1,484 @@
+.tournament-round article.bracket-match-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  padding: 10px 36px 10px 10px;
+}
+
+.bracket-node-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.bracket-node-head a,
+.bracket-node-head button,
+.bracket-node-head b {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 211, 108, 0.12);
+  color: var(--gold);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 950;
+  padding: 4px 7px;
+}
+
+.bracket-team-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 6px 8px;
+}
+
+.bracket-team-emblem {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--team-color, var(--rb-orange)) 48%, transparent);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--team-color, var(--rb-orange)) 18%, transparent);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.bracket-team-emblem.placeholder {
+  border-style: dashed;
+  border-color: var(--ui-card-border);
+  background: transparent;
+  color: var(--muted);
+}
+
+.bracket-team-row.ready,
+.bracket-team-row.winner {
+  border-color: rgba(70, 224, 182, 0.3);
+  background: rgba(70, 224, 182, 0.08);
+}
+
+.bracket-team-row.pending {
+  border-style: dashed;
+}
+
+.bracket-team-row.empty,
+.bracket-team-row.bye {
+  border-color: rgba(255, 211, 108, 0.18);
+  background: rgba(255, 211, 108, 0.055);
+}
+
+.bracket-slot-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.bracket-slot-copy strong,
+.bracket-team-row .team-hover-trigger {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.83rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bracket-slot-copy em {
+  grid-column: auto;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.bracket-tbd-pill {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 950;
+  padding: 4px 7px;
+}
+
+.bracket-midline {
+  justify-self: center;
+}
+
+.tournament-round article > .bracket-connector {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 22px;
+  height: 1px;
+  min-width: 22px;
+  overflow: visible;
+  background: rgba(255, 211, 108, 0.45);
+  color: transparent;
+}
+
+.tournament-round article > .bracket-connector::after {
+  content: "";
+  position: absolute;
+  top: -18px;
+  right: 0;
+  height: 36px;
+  border-right: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.38);
+}
+
+.bracket-status {
+  grid-column: 1 / -1;
+}
+
+.league-layout {
+  display: grid;
+  gap: var(--page-column-gap);
+  align-items: start;
+}
+
+.league-standings-panel,
+.league-fixtures-panel {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.league-panel-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.league-panel-head strong {
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.league-panel-head span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.league-table-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+}
+
+.league-table {
+  width: 100%;
+  min-width: 390px;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.league-table th,
+.league-table td {
+  height: 38px;
+  border-bottom: var(--ui-stroke-width) solid var(--ui-card-border);
+  padding: 0 9px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.league-table th {
+  height: 32px;
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.league-table th:nth-child(2),
+.league-table td:nth-child(2) {
+  min-width: 120px;
+  text-align: left;
+}
+
+.league-table td:nth-child(2) .team-hover-trigger {
+  color: var(--text);
+  font-weight: 950;
+}
+
+.league-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.league-table tr.leader td:first-child,
+.league-table tr.leader td:nth-child(2) .team-hover-trigger {
+  color: var(--gold);
+}
+
+.league-fixture-grid article {
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  cursor: pointer;
+}
+
+.league-fixture-grid article.completed {
+  border-color: rgba(70, 224, 182, 0.24);
+  background: rgba(70, 224, 182, 0.07);
+}
+
+.league-fixture-grid article > span {
+  grid-column: 1 / -1;
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.tournament-schedule-list form {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 16, 0.66);
+  padding: 10px;
+}
+
+.tournament-schedule-list input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: var(--ui-button-height);
+  min-height: var(--ui-button-height);
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 850;
+  padding: 0 9px;
+}
+
+.tournament-schedule-list form.locked {
+  opacity: 0.72;
+}
+
+.tournament-schedule-list input:disabled,
+.tournament-schedule-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.tournament-empty {
+  display: grid;
+  gap: 6px;
+  border: var(--ui-stroke-width) dashed rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 16, 0.5);
+  color: var(--muted);
+  padding: 18px;
+}
+
+.tournament-empty strong {
+  color: var(--text);
+}
+
+.om-match-list {
+  display: grid;
+}
+
+.om-list-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 16, 0.62);
+  padding: 14px;
+}
+
+.om-list-head h2 {
+  margin-top: 3px;
+  font-size: 1.55rem;
+}
+
+.om-list-head > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.om-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 0 2px;
+}
+
+.om-load-more span {
+  color: var(--danger);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+html[data-theme="light"] .om-match-copy p {
+  color: var(--muted);
+}
+
+html[data-theme="light"] .om-match-panel,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-tournament-card,
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .tournament-summary-grid > div,
+html[data-theme="light"] .tournament-team-list article,
+html[data-theme="light"] .tournament-referee-list article,
+html[data-theme="light"] .tournament-match-referee-list form,
+html[data-theme="light"] .tournament-sanction-panel,
+html[data-theme="light"] .tournament-cup-bracket,
+html[data-theme="light"] .tournament-vertical-bracket,
+html[data-theme="light"] .vertical-bracket-title,
+html[data-theme="light"] .vertical-bracket-trophy,
+html[data-theme="light"] .tournament-round,
+html[data-theme="light"] .vertical-bracket-node > .bracket-match-card,
+html[data-theme="light"] .bracket-team-row,
+html[data-theme="light"] .league-fixture-grid article,
+html[data-theme="light"] .tournament-schedule-list form,
+html[data-theme="light"] .tournament-empty {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme="light"] .tournament-schedule-list input {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .tournament-match-referee-list select,
+html[data-theme="light"] .tournament-referee-actions button.secondary {
+  border-color: rgba(16, 20, 28, 0.12);
+  background: rgba(16, 20, 28, 0.06);
+}
+
+@media (max-width: 1120px) {
+  .om-match-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-hero,
+  .tournament-schedule-list form {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-hero-badges {
+    justify-content: flex-start;
+  }
+
+  .league-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-cup-bracket {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .om-match-hero {
+    min-height: 0;
+    padding: 16px;
+  }
+
+  .om-match-copy p,
+  .om-calendar-summary p {
+    display: none;
+  }
+
+  .om-view-card {
+    min-height: 76px;
+    padding: 10px;
+  }
+
+  .om-view-card em {
+    display: none;
+  }
+}
+
+.league-fixture-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  min-width: 0;
+  gap: 10px;
+  border: var(--ui-card-border-width) solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  padding: 10px;
+}
+
+.league-layout {
+  grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1.3fr);
+}
+
+.league-fixture-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.league-fixture-card.completed {
+  border-color: color-mix(in srgb, var(--green) 36%, var(--ui-card-border));
+  background: color-mix(in srgb, var(--green) 8%, var(--ui-card-bg));
+}
+
+.league-fixture-card.openable:hover,
+.league-fixture-card.openable:focus-within {
+  border-color: color-mix(in srgb, var(--rb-orange) 42%, var(--ui-card-border));
+}
+
+.league-fixture-summary {
+  display: grid;
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: 0;
+  padding: 1px 0;
+  text-align: left;
+}
+
+.league-fixture-summary:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.league-fixture-summary:focus-visible {
+  border-radius: var(--ui-button-radius);
+  outline: 2px solid var(--rb-orange);
+  outline-offset: 3px;
+}
+
+.league-fixture-topline,
+.league-fixture-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.league-fixture-topline {
+  justify-content: space-between;
+  gap: 6px;
+}

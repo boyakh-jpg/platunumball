@@ -389,7 +389,7 @@ Backend gaps:
 ## 2026-06-26 server state hydration
 
 - Screen-specific endpoints are the preferred Supabase hydration path.
-- `POST /api/state/load` is profile-only fallback. Match, recruiting, tournament, and directory hydration must use their own endpoints.
+- `POST /api/state/load` is retired. Profile fallback uses `POST /api/profile/me`; match, recruiting, tournament, and directory hydration use their own endpoints.
 - The endpoint maps Supabase Auth users on the server.
 - It returns public rows plus private rows related to the current profile.
 - Direct `loadRemoteState()` Supabase reads are fallback only.
@@ -666,11 +666,11 @@ Remaining:
 
 ## 2026-07-30 프런트 데이터 계층 물리 경계
 
-1. `src/data/repository.js`는 기존 129개 공개 export를 유지하는 호환 배럴이다. 구현은 `src/data/repository/` 아래 원격 조회·직렬화, 로컬 저장소, 수명주기, 경기, 모집, 대회, 구장, 신고, 설정, 계정 도메인으로 분리한다. 경기·모집·원격 상태는 다시 결과·명단·참여·초대·조회·저장 같은 하위 책임 모듈을 사용한다.
+1. `src/data/repository.js`는 현재 127개 공개 export를 유지하는 호환 배럴이다. 사용자가 없는 broad directory/match-detail 원격 loader export는 제거했다. 구현은 `src/data/repository/` 아래 원격 조회·직렬화, 로컬 저장소, 수명주기, 경기, 모집, 대회, 구장, 신고, 설정, 계정 도메인으로 분리한다.
 2. 운영 mutation 권위는 계속 서버 action과 DB RPC에 있다. `repository/`의 reducer는 로컬·demo 호환 경계이며 이번 분리는 저장 형식, 권한, 상태 전이, DB schema를 바꾸지 않는다.
 3. `src/hooks/useAppData.js`는 `mergeMatchesById`, `mergeRecruitingPostsById`, `useAppData`만 노출하는 호환 배럴이다.
 4. `src/hooks/appData/`는 record archive 상태, 서버 operation 판독, 원격 병합, 원격 메타데이터, 서버 상태 정규화, 초기 bootstrap/cache, mutation action 조립, React query 오케스트레이션을 각각 소유한다. action은 조회·경기·설정·프로필·모집·팀 단위 빌더, 오케스트레이터는 runtime·관리자·서버 action·loader 훅으로 나눈다.
-5. `server/lib/repositoryAdapter.js`만 서버에서 클라이언트 repository 호환 배럴을 읽는다. 브라우저 데이터 모듈은 `server/`를 역참조하지 않으며 두 모듈 그래프는 순환 의존을 허용하지 않는다.
+5. `server/lib/repositoryAdapter.js`는 클라이언트 호환 배럴을 읽지 않는다. 서버 생성 replay에 필요한 2개 reducer, rating authority 설정, scoped loader의 소유 모듈 4개만 직접 재노출한다. 브라우저 데이터 모듈은 `server/`를 역참조하지 않으며 두 모듈 그래프는 순환 의존을 허용하지 않는다.
 6. `scripts/data-layer-module-boundary.test.mjs`가 호환 export 수, 배럴 크기, 재귀 책임 모듈 목록, 모든 구현 파일 500줄 상한, 순환 의존, 브라우저→서버 역참조, 서버 adapter 경계를 고정한다.
 
 ## 2026-07-30 경기 공용 도메인 물리 경계
@@ -679,6 +679,14 @@ Remaining:
 2. 참가자 투영, 명단, 일정 시간, 방 단계, 권한, 결과 입력, 사후 기록 검증, 이의 요청, 판정 상태를 `shared/lib/match*.js` 책임 모듈로 분리한다.
 3. 책임 모듈은 `matchUtils.js`를 역참조하지 않는다. 내부 구현은 소유 모듈을 직접 import하고 화면·서버의 기존 import는 호환 배럴을 계속 사용할 수 있다.
 4. `scripts/shared-match-module-boundary.test.mjs`가 공개 export 수, 배럴 크기, 책임 모듈 최대 크기와 순환 의존을 감시한다.
+
+## 2026-07-30 모집 종료 RPC canonical 정리
+
+1. `rankball_recruiting_close_action(text,text)`가 공개 service-role 진입점이며 pre-cancel policy helper는 owner-only 내부 함수다.
+2. helper는 public, anon, authenticated, service_role 모두 직접 실행할 수 없다.
+3. schema snapshot의 모집 종료 helper와 wrapper는 각각 하나의 최종 정의만 유지한다. 과거 migration 이력은 수정하거나 삭제하지 않는다.
+4. 취소 신뢰도 알림 문구는 UTF-8 한글, KST 일정 해석, 2시간 취소 lock, 변경안 거절·동의 만료 waiver를 현재 정책과 맞춘다.
+5. inactive feed와 quarantine card는 기존 7일 retention을 지난 row만 cleanup RPC로 정리한다.
 
 ## 2026-07-30 서버 목록·모집 저장 물리 경계
 

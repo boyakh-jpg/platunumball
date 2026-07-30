@@ -12,7 +12,6 @@ import {
   normalizeCourtFacilityName,
   normalizeCourtNamePart,
   normalizeCourtSigungu,
-  normalizeCourtIdentityText,
 } from "../../shared/lib/courts.js";
 export {
   buildCourtAddressNameUpdates,
@@ -259,12 +258,7 @@ export function normalizeCourtReviewRating(value, fallback = null) {
   if (!Number.isFinite(number)) return fallback;
   return Math.max(1, Math.min(5, Math.round(number)));
 }
-function getCourtCanonicalBaseName(court = {}) {
-  const standardName = getCourtStandardName(court);
-  if (standardName) return standardName;
-  const facilityName = court.buildingName || court.facilityName || court.baseName || court.name;
-  return getCourtRequestName(facilityName, court.addressDong, court.courtUnit);
-}
+
 export function normalizeCourtHashtag(value = "") {
   const raw = String(value ?? "").trim().replace(/^#+/, "");
   if (!raw) return "";
@@ -339,7 +333,7 @@ function getFallbackSurfaceType(court = {}) {
   if (String(court.type ?? "").includes("실내")) return "indoor_synthetic";
   return "unknown";
 }
-function getFallbackLayout(court = {}) {
+export function getFallbackLayout(court = {}) {
   if (court.courtLayout) return court.courtLayout;
   if (court.hoopCount === 1) return "half";
   if (court.courtKind === "official" || court.hoopCount === 2) return "full";
