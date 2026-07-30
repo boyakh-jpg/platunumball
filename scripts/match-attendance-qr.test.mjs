@@ -17,6 +17,7 @@ import {
   getStartStatus,
   getRecommendedSideSize,
   isAttendanceCheckinOpen,
+  isQrMatchEligible,
 } from "../server/api/matches/attendance-qr.js";
 import {
   getMatchPregameNotificationPlan,
@@ -58,7 +59,7 @@ const {
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
 
-test("QR 출석 기본값은 공개·비공개 경쟁전과 대회에서 켜진다", () => {
+test("QR 출석 기본값은 사후 경기기록을 제외한 경기시계 방에서 켜진다", () => {
   assert.equal(normalizeMatchRules({
     visibility: "public",
     matchPurpose: "competitive",
@@ -95,6 +96,11 @@ test("QR 출석 기본값은 공개·비공개 경쟁전과 대회에서 켜진�
     qrAttendanceEnabled: true,
   }).qrAttendanceEnabled, false);
   assert.equal(normalizeMatchRules({
+    visibility: "private",
+    recordType: "solo",
+    qrAttendanceEnabled: true,
+  }).qrAttendanceEnabled, true);
+  assert.equal(normalizeMatchRules({
     visibility: "public",
     matchPurpose: "friendly",
     qrAttendanceEnabled: true,
@@ -105,6 +111,18 @@ test("QR 출석 기본값은 공개·비공개 경쟁전과 대회에서 켜진�
     gameClockEnabled: false,
     qrAttendanceEnabled: true,
   }).qrAttendanceEnabled, false);
+  assert.equal(isQrMatchEligible({
+    visibility: "private",
+    rules: { qrAttendanceEnabled: true },
+  }), true);
+  assert.equal(isQrMatchEligible({
+    visibility: "public",
+    rules: { qrAttendanceEnabled: true, recordType: "solo" },
+  }), true);
+  assert.equal(isQrMatchEligible({
+    visibility: "private",
+    rules: { qrAttendanceEnabled: true, recordType: "match_record" },
+  }), false);
 });
 
 test("출석 QR은 5분 단위로 교체되고 경기와 서명에 묶인다", () => {
@@ -719,12 +737,14 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const simplifiedLiveMatchSql = await readSource("supabase/migrations/20260728124000_simplify_live_match_operations.sql");
   const tournamentQrSql = await readSource("supabase/migrations/20260729121000_enable_tournament_qr_attendance.sql");
   const unifiedQrStartSql = await readSource("supabase/migrations/20260729150000_unify_match_qr_start_policy.sql");
+  const privateQrSql = await readSource("supabase/migrations/20260730204500_align_match_qr_attendance_eligibility.sql");
   const hostFinalizationSql = await readSource("supabase/migrations/20260728130000_general_match_host_finalization.sql");
   const liveAuthoritySql = await readSource("supabase/migrations/20260728143000_referee_live_match_authority.sql");
   const scoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727144000_allow_score_only_postgame_roster.sql");
   const enforcedScoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727145000_enforce_score_only_postgame_roster.sql");
   const syncMatchSource = await readSourceGroup(readSource, MATCH_SYNC_SOURCE_PATHS);
   const attendanceApiSource = await readSource("server/api/matches/attendance-qr.js");
+  const clockApiSource = await readSource("server/api/matches/clock.js");
   const recruitingSource = await readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS);
   assert.match(unifiedQrStartSql, /interval '20 minutes'/u);
   assert.match(unifiedQrStartSql, /now_at < scheduled_at_kst[\s\S]*missing_count > 0/u);
@@ -742,10 +762,21 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(sql, /grant execute on function public\.rankball_match_attendance_qr_action/u);
   assert.match(tournamentQrSql, /current_match\.tournament_id is null/u);
   assert.doesNotMatch(tournamentQrSql, /delete\s+from|drop\s+table|truncate\s+table/iu);
-  assert.match(attendanceApiSource, /const qrEligible = match\.visibility === "public" \|\| isTournamentMatch\(match\)/u);
+  assert.match(attendanceApiSource, /export function isQrMatchEligible/u);
+  assert.match(attendanceApiSource, /\["public", "private"\]\.includes\(match\.visibility\) \|\| isTournamentMatch\(match\)/u);
+  assert.match(attendanceApiSource, /String\(match\.rules\?\.recordType \|\| ""\) !== "match_record"/u);
   assert.match(attendanceApiSource, /isTournamentMatch\(match\)[\s\S]*?\[match\.referee_id\]/u);
   assert.match(attendanceApiSource, /canResize: !match\.started_at[\s\S]*?!isTournamentMatch\(match\)/u);
   assert.match(attendanceApiSource, /queueMatchDiscordDeliveries\([\s\S]*?notificationMatch,[\s\S]*?"attendanceRefresh"/u);
+  assert.match(clockApiSource, /\["public", "private"\]\.includes\(matchRow\?\.visibility\)/u);
+  assert.match(clockApiSource, /String\(matchRow\?\.rules\?\.recordType \|\| ""\) !== "match_record"/u);
+  assert.match(privateQrSql, /rankball_match_attendance_qr_action\(text,text\)/u);
+  assert.match(privateQrSql, /rankball_match_attendance_resize_action\(text,text\)/u);
+  assert.match(privateQrSql, /visibility not in \(''public'', ''private''\)/u);
+  assert.match(privateQrSql, /old_resize_fragment[\s\S]*visibility <> ''public''/u);
+  assert.match(privateQrSql, /function_signature = 'public\.rankball_match_attendance_qr_action\(text,text\)'/u);
+  assert.match(privateQrSql, /recordType'', ''''\), ''match''\) = ''match_record''/u);
+  assert.doesNotMatch(privateQrSql, /delete\s+from|drop\s+table|truncate\s+table/iu);
   assert.match(recruitingSource, /selectedMatchRules\.qrAttendanceEnabled/u);
   assert.match(clockAccuracySql, /rankball_match_clock_effective_elapsed_ms/u);
   assert.match(clockAccuracySql, /started_active_elapsed_ms/u);

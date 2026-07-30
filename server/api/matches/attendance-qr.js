@@ -31,6 +31,14 @@ function isTournamentMatch(match = {}) {
   return Boolean(match.tournament_id) || match.visibility === "tournament";
 }
 
+export function isQrMatchEligible(match = {}) {
+  return (
+    (["public", "private"].includes(match.visibility) || isTournamentMatch(match))
+    && String(match.rules?.recordType || "") !== "match_record"
+    && isTrue(match.rules?.qrAttendanceEnabled)
+  );
+}
+
 function getSideSize(mode = "") {
   const size = Number.parseInt(String(mode), 10);
   return SUPPORTED_SIDE_SIZES.includes(size) ? size : 5;
@@ -144,12 +152,7 @@ async function loadMatch(context, matchId) {
 }
 
 function assertQrMatch(match) {
-  const qrEligible = match.visibility === "public" || isTournamentMatch(match);
-  if (
-    !qrEligible
-    || !["", "match"].includes(String(match.rules?.recordType || ""))
-    || !isTrue(match.rules?.qrAttendanceEnabled)
-  ) {
+  if (!isQrMatchEligible(match)) {
     throw new Error("match_attendance_qr_disabled");
   }
   if (
