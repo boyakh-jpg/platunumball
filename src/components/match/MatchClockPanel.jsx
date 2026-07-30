@@ -86,6 +86,16 @@ export default function MatchClockPanel({
     }
   }, [onRosterChanged]);
 
+  useEffect(() => {
+    const nextScoreA = Number(match?.result?.scoreA ?? match?.teamA?.score);
+    const nextScoreB = Number(match?.result?.scoreB ?? match?.teamB?.score);
+    if (!Number.isFinite(nextScoreA) || !Number.isFinite(nextScoreB)) return;
+    setScore((current) => {
+      if (current.a === nextScoreA && current.b === nextScoreB) return current;
+      return { ...current, a: nextScoreA, b: nextScoreB };
+    });
+  }, [match?.result?.scoreA, match?.result?.scoreB, match?.teamA?.score, match?.teamB?.score]);
+
   const runAction = useCallback(async (action, payload = {}) => {
     if (!match?.id || pendingAction) return false;
     setPendingAction(action);
@@ -223,9 +233,7 @@ export default function MatchClockPanel({
   );
   const requestMatchEnd = async () => {
     if (!canEndMatch || !onEndMatch || pendingAction) return;
-    const message = isEnded
-      ? "경기를 종료하고 사후 기록 단계로 이동할까요?"
-      : "경기시계를 먼저 종료하지 않으면 경기시계 미사용 처리됩니다. 그래도 경기를 종료할까요?";
+    const message = "경기와 경기시계를 함께 종료하고 사후 기록 단계로 이동할까요?";
     if (!window.confirm(message)) return;
     setPendingAction("endMatch");
     setError("");

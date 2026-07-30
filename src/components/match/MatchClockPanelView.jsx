@@ -278,14 +278,16 @@ export default function MatchClockPanelView({ context }) {
                   연장 {liveClock.overtimeCount + 1} 시작
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => confirmAction("경기시계 운용을 종료할까요?", "endClock")}
-              >
-                시계 종료 · 인정 판정
-              </Button>
+              {!match.refereeId ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => confirmAction("경기시계 운용을 종료할까요?", "endClock")}
+                >
+                  시계 종료 · 인정 판정
+                </Button>
+              ) : null}
             </div>
           ) : null}
 
@@ -323,7 +325,7 @@ export default function MatchClockPanelView({ context }) {
             disabled={Boolean(pendingAction)}
             onClick={() => void requestMatchEnd()}
           >
-            경기 종료 · 기록으로
+            경기·시계 종료
           </Button>
         </div>
       ) : null}

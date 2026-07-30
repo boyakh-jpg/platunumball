@@ -83,5 +83,24 @@ test("경기시계 인정 진행률은 전체 시간이 아니라 최소 인정�
   assert.match(viewSource, /인정 기준 진행/u);
   assert.match(viewSource, /단일 경기에는 다음 쿼터가 없습니다/u);
   assert.match(viewSource, /시계 종료 · 인정 판정/u);
-  assert.match(viewSource, /경기 종료 · 기록으로/u);
+  assert.match(viewSource, /경기·시계 종료/u);
+  assert.match(viewSource, /!match\.refereeId/u);
+});
+
+test("referee lifecycle owns clock start/end and result score synchronization", async () => {
+  const [migrationSource, panelSource, matchRoomSource, recruitingSource] = await Promise.all([
+    readFile(path.join(ROOT, "supabase/migrations/20260730233000_referee_clock_lifecycle_and_result_score.sql"), "utf8"),
+    readFile(path.join(ROOT, "src/components/match/MatchClockPanel.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/pages/MatchRoomView.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/components/recruiting/RecruitingRoomManagementSection.jsx"), "utf8"),
+  ]);
+
+  assert.match(migrationSource, /case when auto_start then 'running' else 'pending' end/u);
+  assert.match(migrationSource, /case when nullif\(btrim\(new\.referee_id\), ''\) is not null then 'endClock' else 'matchEnd' end/u);
+  assert.match(migrationSource, /'scoreSynced', true/u);
+  assert.match(migrationSource, /rankball_is_match_referee_eligible\(safe_actor_id, safe_match_id\)/u);
+  assert.doesNotMatch(migrationSource, /\b(?:delete|truncate|drop table)\b/iu);
+  assert.match(panelSource, /match\?\.result\?\.scoreA/u);
+  assert.match(matchRoomSource, /editableScoreSides=\{hasReferee \? \[\]/u);
+  assert.match(recruitingSource, /editableScoreSides=\{sourceMatch\.refereeId \? \[\]/u);
 });

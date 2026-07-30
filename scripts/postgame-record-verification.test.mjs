@@ -230,8 +230,8 @@ test("referee stat submissions preserve the authoritative team score", async () 
     SHARED_MATCH_SOURCE_PATHS,
   );
 
-  assert.match(repository, /matchRecordRoom \? result\.scoreA : currentResult\?\.scoreA/);
-  assert.match(repository, /matchRecordRoom \? result\.scoreB : currentResult\?\.scoreB/);
+  assert.match(repository, /matchRecordRoom \|\| refereeCanSubmitScores \? result\.scoreA : currentResult\?\.scoreA/);
+  assert.match(repository, /matchRecordRoom \|\| refereeCanSubmitScores \? result\.scoreB : currentResult\?\.scoreB/);
   assert.doesNotMatch(repository, /const nextScoreA = getMergedResultScore/);
   assert.match(matchUtils, /const canEnterSharedRecordScore = Boolean/);
   assert.match(matchUtils, /match\.rules\?\.recordSetupReady === true/);

@@ -362,7 +362,7 @@ export function RecruitingRoomManagementSection({ context }) {
                   onEndMatch={() => app.actions.endMatch(sourceMatch.id)}
                   clockClient={clockClient}
                   onRosterChanged={() => void app.actions.loadMatchDetail(sourceMatch.id)}
-                  editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
+                  editableScoreSides={sourceMatch.refereeId ? [] : sourceMatchResultEntryPermission?.editableScoreSides ?? []}
                   onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
                     sourceMatch.id,
                     sideName === "teamA" ? delta : 0,
@@ -376,11 +376,12 @@ export function RecruitingRoomManagementSection({ context }) {
                   sourceMatchPhase?.phase === "live"
                   && !sourceMatchIsRecordRoom
                   && !selectedMatchRules.gameClockEnabled
+                  && !sourceMatch.refereeId
                 )
                 || (
                   sourceMatch.endedAt
                   && sourceMatch.status !== "disputed"
-                  && (Boolean(sourceMatch.refereeId) || sourceMatchIsRecordRoom)
+                  && sourceMatchIsRecordRoom
                 )
               ) ? (
                 <MatchScoreControls

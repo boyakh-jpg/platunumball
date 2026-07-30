@@ -30,7 +30,7 @@ import {
 import { MatchRoomReviewPanels } from "./MatchRoomReviewPanels.jsx";
 import { MatchRoomStatEditor } from "./MatchRoomStatEditor.jsx";
 export default function MatchRoomView({ controller }) {
-  const { app, match, score, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
+  const { app, match, score, setScore, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
 return (
     <div className="page-stack match-room">
       <section className={match.ranked === false ? "gm-room-hero gm-friendly" : "gm-room-hero gm-ranked"}>
@@ -161,7 +161,7 @@ return (
           canEndMatch={currentUserCanEndMatch}
           onEndMatch={() => app.actions.endMatch(match.id)}
           onRosterChanged={() => void refreshMatchDetail()}
-          editableScoreSides={resultEntryPermission.editableScoreSides}
+          editableScoreSides={hasReferee ? [] : resultEntryPermission.editableScoreSides}
           onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
             match.id,
             sideName === "teamA" ? delta : 0,
@@ -170,7 +170,7 @@ return (
           )}
         />
       ) : null}
-      {matchPhase === "live" && normalizedRules.gameClockEnabled === false && resultEntryPermission.editableScoreSides.length ? (
+      {matchPhase === "live" && normalizedRules.gameClockEnabled === false && !hasReferee && resultEntryPermission.editableScoreSides.length ? (
         <MatchScoreControls
           match={match}
           editableScoreSides={resultEntryPermission.editableScoreSides}
@@ -245,7 +245,7 @@ return (
                 <em>경기 종료 후 {normalizeDisputeWindowMinutes(match.disputeMinutes)}분</em>
               </div>
             </div>
-            {match.endedAt && resultEntryPermission.editableScoreSides.length ? (
+            {match.endedAt && !hasReferee && resultEntryPermission.editableScoreSides.length ? (
               <MatchScoreControls
                 match={match}
                 label="최종 팀 점수"
@@ -261,12 +261,22 @@ return (
             <form className="score-form" onSubmit={submitResult}>
               <label>
                 {teamASide.name}
-                <input type="number" min="0" max="999" aria-label={`${teamASide.name} 팀 점수`} disabled value={draftScoreA} readOnly />
+                <input
+                  type="number" min="0" max="999"
+                  aria-label={`${teamASide.name} 팀 점수`}
+                  disabled={!resultEntryPermission.editableScoreSides.includes("teamA")}
+                  value={draftScoreA} onChange={(event) => setScore((current) => ({ ...current, scoreA: event.target.value }))}
+                />
               </label>
               <span>:</span>
               <label>
                 {teamBSide.name}
-                <input type="number" min="0" max="999" aria-label={`${teamBSide.name} 팀 점수`} disabled value={draftScoreB} readOnly />
+                <input
+                  type="number" min="0" max="999"
+                  aria-label={`${teamBSide.name} 팀 점수`}
+                  disabled={!resultEntryPermission.editableScoreSides.includes("teamB")}
+                  value={draftScoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))}
+                />
               </label>
               <div className="match-action-row stat-entry-actions">
                 <Button type="button" variant="secondary" disabled={matchDetailRefreshing} onClick={refreshMatchDetail}>

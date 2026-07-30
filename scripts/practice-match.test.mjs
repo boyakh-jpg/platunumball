@@ -200,6 +200,8 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   state = submitPracticeSampleResult(stateRef.current, confirmed.matchId);
   assert.ok(state.matches[0].endedAt);
   assert.equal(state.matches[0].status, "agreed");
+  assert.equal(state.matches[0].result.scoreA, 21);
+  assert.equal(state.matches[0].result.scoreB, 17);
   state = approvePracticeDummyPlayers(state, confirmed.matchId);
   assert.equal(state.matches[0].status, "confirmed");
   assert.deepEqual(state.notifications, []);
@@ -442,12 +444,10 @@ test("심판과 시계 담당 화면을 바꾸면 실제 권한처럼 시작과 
   );
   const managerClock = await clockClient(ready.matchId, "read");
   assert.equal(managerClock.clock.canManage, true);
-  assert.equal(managerClock.clock.canControl, false);
+  assert.equal(managerClock.clock.canControl, true);
+  assert.equal(managerClock.clock.status, "running");
+  assert.equal(managerClock.clock.startedWithinWindow, true);
   const controllerId = managerClock.clock.controllerId;
-  await clockClient(ready.matchId, "configure", { controllerId, shotClockSeconds: 30 });
-  actorId = controllerId;
-  assert.equal((await clockClient(ready.matchId, "read")).clock.canControl, true);
-  await clockClient(ready.matchId, "start");
   const nextControllerId = managerClock.activePlayers.find((player) => player.id !== controllerId).id;
   assert.equal((await clockClient(ready.matchId, "transfer", { controllerId: nextControllerId })).clock.canControl, false);
   await assert.rejects(clockClient(ready.matchId, "pause"), /match_clock_start_forbidden/);
@@ -581,7 +581,8 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.doesNotMatch(pageSource, /actorId === statRecorders\.teamB \? "B 기록원"/);
   assert.match(pageSource, /key=\{`\$\{matchId\}:\$\{practiceActorId\}`\}/);
   assert.match(matchClockPanelSource, /regulationEnded && \(!scoreboardEnabled \|\| tied\)/);
-  assert.match(matchClockPanelSource, /onClick=\{\(\) => confirmAction\("경기시계 운용을 종료할까요\?", "endClock"\)\}/);
+  assert.match(matchClockPanelSource, /!match\.refereeId/);
+  assert.match(matchClockPanelSource, /경기·시계 종료/);
   assert.match(matchClockPanelSource, /canEndMatch && onEndMatch && !match\.endedAt/);
   assert.match(recruitingSource, /canEndSourceMatch && !selectedMatchRules\.gameClockEnabled/);
   assert.match(settingsSyncSource, /typeof source\.showHomeGuideCard === "boolean"/);

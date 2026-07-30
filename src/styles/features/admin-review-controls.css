@@ -48,6 +48,25 @@
   text-align: center;
 }
 
+@media (min-width: 721px) {
+  .stat-editor-modal .stat-stepper-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .stat-editor-modal .stat-stepper-row {
+    grid-template-columns: minmax(0, 1fr) 120px;
+    gap: var(--space-3);
+    padding: 8px;
+  }
+
+  .stat-editor-modal .stat-numeric-stepper {
+    grid-template-columns: 36px 42px 36px;
+    width: 120px;
+    gap: 3px;
+  }
+}
+
 .trust-star-card .muted {
   font-size: 0.84rem;
   font-weight: 800;
@@ -375,8 +394,13 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .stat-editor-modal {
+    gap: var(--space-4);
     max-height: calc(100vh - 20px);
     overflow: auto;
+  }
+
+  .stat-editor-modal .stat-stepper-list {
+    gap: var(--space-2);
   }
 
   .recorder-page {
@@ -395,16 +419,16 @@ html[data-theme="light"] .team-search-popover button.selected {
 
   .stat-stepper-row .stat-numeric-stepper {
     grid-template-columns: 36px 42px 36px;
-    grid-template-rows: 42px;
+    grid-template-rows: 44px;
     gap: 3px;
     width: 120px;
   }
 
   .stat-stepper-row .stat-numeric-stepper button {
-    min-height: 42px;
+    min-height: 44px;
   }
 
   .stat-stepper-row .stat-numeric-stepper input {
-    min-height: 42px;
+    min-height: 44px;
   }
 }

@@ -13,7 +13,7 @@ export function createRecruitingRoomMatchRenderers(context) {
     roomState, selectedPost, setRoomCancellationPending, setRoomCancellationTarget, showCaptainBadge, showSourceMatchRecordSummary,
     slotPositions, sourceMatch, sourceMatchAction, sourceMatchIsPersonalRecord, sourceMatchIsRecordRoom, sourceMatchPhase,
     sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen,
-    sourceRoomReadOnly, teamOnlyRoom, userById,
+    sourceMatchResultEntryPermission, sourceRoomReadOnly, teamOnlyRoom, userById,
   } = context;
 
 const renderSourceMatchRecordBoard = () => {
@@ -50,6 +50,7 @@ const renderSourceMatchRecordBoard = () => {
                   userById={userById}
                   canReview={false}
                   getEditableStatFields={getEditableSourceMatchStatFields}
+                  editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
                   submitLabel={sourceMatchResultSubmitLabel}
                   onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                 />

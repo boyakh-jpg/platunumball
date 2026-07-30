@@ -19,7 +19,7 @@ export function RecruitingRoomActionSection({ context }) {
     selectedMatchRules, selectedPost, setPaidCourtJoinPrompt, setSourceDisputeDraft, showSourceMatchRecordSummary, sidePartyJoinOptions,
     sourceDisputeDraft, sourceFinalAuthorityLabel, sourceHasOwnOpenDispute, sourceMatch, sourceMatchAction, sourceMatchApprovalOpen,
     sourceMatchCancelActionLabel, sourceMatchIsRecordRoom, sourceMatchRecordBoardFirst, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideName,
-    sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
+    sourceMatchResultEntryPermission, sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
     teamOnlyRoom, teamRoomHasJoinableSide, updateJoinDraft, userById,
   } = context;
 
@@ -146,6 +146,7 @@ export function RecruitingRoomActionSection({ context }) {
                         userById={userById}
                         canReview={false}
                         getEditableStatFields={getEditableSourceMatchStatFields}
+                        editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
                         submitLabel={sourceMatchResultSubmitLabel}
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />

@@ -250,8 +250,11 @@ export function submitMatchResult(state, matchId, result) {
     })),
   };
   const currentResult = draftEntry ? match.disputeDraftResult ?? match.result : match.result;
-  const nextScoreA = Number(matchRecordRoom ? result.scoreA : currentResult?.scoreA ?? match.teamA?.score ?? 0);
-  const nextScoreB = Number(matchRecordRoom ? result.scoreB : currentResult?.scoreB ?? match.teamB?.score ?? 0);
+  const refereeCanSubmitScores = currentUserIsEligibleReferee
+    && resultEntryPermission.editableScoreSides.includes("teamA")
+    && resultEntryPermission.editableScoreSides.includes("teamB");
+  const nextScoreA = Number(matchRecordRoom || refereeCanSubmitScores ? result.scoreA : currentResult?.scoreA ?? match.teamA?.score ?? 0);
+  const nextScoreB = Number(matchRecordRoom || refereeCanSubmitScores ? result.scoreB : currentResult?.scoreB ?? match.teamB?.score ?? 0);
   if (
     !Number.isInteger(nextScoreA) || nextScoreA < 0 || nextScoreA > 999
     || !Number.isInteger(nextScoreB) || nextScoreB < 0 || nextScoreB > 999

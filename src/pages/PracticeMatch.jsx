@@ -46,7 +46,9 @@ function getPracticeInstruction(progress, match = null) {
   }
   if (progress.phase === "live") {
     return match?.rules?.gameClockEnabled
-      ? "경기시계를 시작해 일시정지·샷클락을 시험하고, 예시 점수 또는 점수판을 기록한 뒤 경기를 종료하세요."
+      ? match?.refereeId
+        ? "심판의 경기 시작과 함께 시계가 시작됐습니다. 일시정지·쿼터·연장을 시험하고 기록을 제출한 뒤 경기를 종료하세요."
+        : "경기시계를 시작해 일시정지·샷클락을 시험하고, 예시 점수 또는 점수판을 기록한 뒤 경기를 종료하세요."
       : "공용 방에서 경기 진행 상태를 확인한 뒤 경기 종료를 눌러 기록 단계로 이동하세요.";
   }
   if (progress.phase === "postgame") {

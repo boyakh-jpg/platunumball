@@ -258,6 +258,7 @@ export function SourceMatchDisputeEditor({
   canReview,
   onSave,
   getEditableStatFields = null,
+  editableScoreSides = [],
   submitLabel = "",
 }) {
   const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
@@ -277,13 +278,22 @@ export function SourceMatchDisputeEditor({
         : []
   );
   const getDerivedScore = (sideName) => getMergedResultScore(match, draft.playerStats, sideName, 0);
-  const getDerivedDraft = () => buildMatchResultSubmission(match, draft, getEditableFieldsForPlayer, { editableScoreSides: [] });
+  const getDerivedDraft = () => buildMatchResultSubmission(match, draft, getEditableFieldsForPlayer, { editableScoreSides });
   const canSaveDraft = (
     canReview ||
+    editableScoreSides.length > 0 ||
     sideNames
       .flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName))
       .some((playerId) => getEditableFieldsForPlayer(playerId).length > 0)
   );
+
+  const updateTeamScore = (sideName, value) => {
+    const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
+    setDraft((current) => ({
+      ...current,
+      [scoreKey]: getNonNegativeNumber(value),
+    }));
+  };
 
   const updatePlayerStat = (playerId, fieldId, value) => {
     setDraft((current) => ({
@@ -305,12 +315,30 @@ export function SourceMatchDisputeEditor({
       <div className="arena-dispute-score-row">
         <label>
           {match.teamA?.name ?? "A"}
-          <output className="arena-derived-score" aria-label={`${match.teamA?.name ?? "A"} 선수 득점 합계`}>{getDerivedScore("teamA")}</output>
+          <input
+            className="arena-derived-score"
+            type="number"
+            min="0"
+            max="999"
+            disabled={!editableScoreSides.includes("teamA")}
+            value={draft.scoreA}
+            onChange={(event) => updateTeamScore("teamA", event.target.value)}
+          />
+          <small>개인 PTS 합계 {getDerivedScore("teamA")}</small>
         </label>
         <strong>:</strong>
         <label>
           {match.teamB?.name ?? "B"}
-          <output className="arena-derived-score" aria-label={`${match.teamB?.name ?? "B"} 선수 득점 합계`}>{getDerivedScore("teamB")}</output>
+          <input
+            className="arena-derived-score"
+            type="number"
+            min="0"
+            max="999"
+            disabled={!editableScoreSides.includes("teamB")}
+            value={draft.scoreB}
+            onChange={(event) => updateTeamScore("teamB", event.target.value)}
+          />
+          <small>개인 PTS 합계 {getDerivedScore("teamB")}</small>
         </label>
       </div>
       <div className="arena-dispute-stat-grid">

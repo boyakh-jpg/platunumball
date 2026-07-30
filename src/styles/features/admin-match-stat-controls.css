@@ -4,22 +4,22 @@
   }
 
   .arena-dispute-player > div {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .arena-stat-stepper {
     width: 100%;
     min-width: 0;
     grid-template-columns: minmax(30px, 0.8fr) minmax(28px, 1fr) minmax(30px, 0.8fr);
-    grid-template-rows: 42px;
+    grid-template-rows: 44px;
   }
 
   .arena-stat-stepper button {
-    min-height: 42px;
+    min-height: 44px;
   }
 
   .arena-stat-stepper input {
-    min-height: 42px;
+    min-height: 44px;
   }
 }
 
@@ -126,6 +126,22 @@
 
 .compact-stat-entry .stat-entry-side {
   align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.match-room .compact-stat-entry {
+  gap: var(--space-4);
+}
+
+.match-room .compact-stat-entry .stat-player-button {
+  gap: var(--space-3);
+  min-height: 48px;
+  padding: 6px 8px;
+}
+
+.match-room .compact-stat-entry .stat-player-button > strong {
+  white-space: nowrap;
 }
 
 .stat-player-button {
@@ -351,20 +367,22 @@
   }
 
   .match-room .stat-player-button {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-3);
-    min-height: 0;
-    padding: 8px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding: 6px 8px;
   }
 
   .match-room .stat-player-button > strong {
-    justify-self: start;
+    justify-self: end;
+    white-space: nowrap;
   }
 
   .match-room .stat-player-button em {
-    overflow: visible;
+    overflow: hidden;
     line-height: 1.25;
-    white-space: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .match-room .compact-list > div {
