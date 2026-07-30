@@ -2,10 +2,23 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  acceptRecruitingInvitation,
   blockUser,
+  checkInMatchPlayer,
+  confirmRecruitingMatch,
   createRecruitingPost,
+  endMatch,
+  finalizeMatchByAuthority,
+  incrementMatchScore,
+  interestRecruitingPost,
+  inviteRecruitingPlayers,
+  inviteRecruitingReferee,
   reportPlayer,
   runAutomaticStateMaintenance,
+  setRecruitingRoomTeam,
+  setRecruitingTeamPartyRoster,
+  startMatch,
+  submitMatchResult,
 } from "../src/data/repository.js";
 import { demoFlowState } from "../src/lib/demoFlowState.js";
 import {
@@ -35,6 +48,189 @@ function apply(state, actionName, args, actorId, message = actionName) {
   const result = runPracticeReducer(state, actionName, args, actorId);
   assert.equal(result.applied, true, `${message}: ${result.error}`);
   return result.state;
+}
+
+function asActor(state, actorId) {
+  return { ...state, currentUserId: actorId };
+}
+
+function acceptActualInvitation(state, postId, targetUserId, role = "player") {
+  const invitation = state.recruitingPosts
+    .find((post) => post.id === postId)
+    ?.roomState?.invitations
+    ?.find((item) => item.targetUserId === targetUserId && item.role === role && item.status === "pending");
+  assert.ok(invitation, `${postId}: ${targetUserId} ${role} 초대`);
+  return acceptRecruitingInvitation(asActor(state, targetUserId), postId, invitation.id);
+}
+
+function runActualMatchLifecycle({ visibility, teamOnly, referee }) {
+  const hostId = "u1";
+  const refereeId = "u11";
+  const postId = `actual-${visibility}-${teamOnly ? "team" : "player"}-${referee ? "referee" : "no-referee"}`;
+  let state = {
+    ...structuredClone(demoFlowState),
+    currentUserId: hostId,
+    matches: [],
+    recruitingPosts: [],
+    notifications: [],
+    reports: [],
+    settings: { ...structuredClone(demoFlowState.settings), blockedUserIds: [] },
+  };
+  state = createRecruitingPost(state, {
+    id: postId,
+    title: postId,
+    visibility,
+    timingType: "instant",
+    hostJoinMode: teamOnly ? "team" : "player",
+    teamOnly,
+    mode: "2v2",
+    sideCapacity: 2,
+    benchCapacity: 0,
+    ranked: false,
+    formationMode: "prearranged",
+    matchPurpose: "friendly",
+    gameClockEnabled: true,
+    qrAttendanceEnabled: false,
+    periodCount: 2,
+    periodMinutes: 1,
+    overtimeMinutes: 1,
+    shotClockSeconds: 24,
+    refereeWanted: referee,
+    court: "실제 프론트 시뮬레이션 코트",
+    meetingPoint: "1번 코트 입구",
+  });
+
+  if (teamOnly) {
+    state = setRecruitingRoomTeam(asActor(state, hostId), postId, "teamA", "t1");
+    if (visibility === "private") {
+      state = setRecruitingRoomTeam(asActor(state, hostId), postId, "teamB", "t2", "상대 팀 초대");
+      state = acceptActualInvitation(state, postId, "u6");
+    } else {
+      state = interestRecruitingPost(asActor(state, "u6"), postId, {
+        joinMode: "team",
+        teamId: "t2",
+        side: "teamB",
+      });
+    }
+    for (const entry of getRecruitingLobby(
+      state.recruitingPosts.find((post) => post.id === postId),
+      state,
+    ).entries.filter((item) => item.kind === "team")) {
+      const teamA = entry.team.id === "t1";
+      state = setRecruitingTeamPartyRoster(
+        asActor(state, teamA ? hostId : "u6"),
+        postId,
+        entry.id,
+        { playerIds: teamA ? [hostId, "u2"] : ["u6", "u7"], reservePlayerIds: [] },
+      );
+    }
+  } else {
+    for (const [side, playerIds] of [["teamA", ["u2"]], ["teamB", ["u6", "u7"]]]) {
+      state = inviteRecruitingPlayers(asActor(state, hostId), postId, {
+        side,
+        playerIds,
+        joinMode: "player",
+      });
+      for (const playerId of playerIds) state = acceptActualInvitation(state, postId, playerId);
+    }
+  }
+
+  if (referee) {
+    state = inviteRecruitingReferee(asActor(state, hostId), postId, refereeId);
+    state = acceptActualInvitation(state, postId, refereeId, "referee");
+  }
+  state = confirmRecruitingMatch(asActor(state, hostId), postId);
+  let match = state.matches[0];
+  assert.ok(match?.id, `${postId}: 경기 확정`);
+  assert.equal(match.refereeId ?? "", referee ? refereeId : "", `${postId}: 심판 배정`);
+
+  const operatorId = referee ? refereeId : hostId;
+  const unauthorizedId = referee ? hostId : "u6";
+  for (const sideName of ["teamA", "teamB"]) {
+    for (const playerId of match[sideName].players) {
+      state = checkInMatchPlayer(asActor(state, operatorId), match.id, sideName, playerId);
+    }
+  }
+  match = state.matches[0];
+  assert.ok(match.attendance.teamA.includes(hostId), `${postId}: 방장 출석`);
+  state = startMatch(asActor(state, unauthorizedId), match.id);
+  assert.equal(state.matches[0].startedAt, undefined, `${postId}: 비운영자 시작 차단`);
+  state = startMatch(asActor(state, operatorId), match.id);
+  match = state.matches[0];
+  assert.ok(match.startedAt, `${postId}: 경기 시작`);
+
+  const scoreOptions = referee ? {} : { clockController: true };
+  state = incrementMatchScore(asActor(state, unauthorizedId), match.id, 1, 0, {
+    expectedRevisionA: 0,
+  });
+  assert.equal(state.matches[0].result, null, `${postId}: 비운영자 점수 차단`);
+  state = incrementMatchScore(asActor(state, operatorId), match.id, 2, 0, {
+    ...scoreOptions,
+    expectedRevisionA: 0,
+  });
+  state = incrementMatchScore(asActor(state, operatorId), match.id, 0, 2, {
+    ...scoreOptions,
+    expectedRevisionB: 0,
+  });
+  if (!referee) {
+    state = incrementMatchScore(asActor(state, operatorId), match.id, 1, 0, {
+      ...scoreOptions,
+      expectedRevisionA: 1,
+    });
+  }
+  state = endMatch(asActor(state, unauthorizedId), match.id);
+  assert.equal(state.matches[0].endedAt, undefined, `${postId}: 비운영자 종료 차단`);
+  state = endMatch(asActor(state, operatorId), match.id);
+  match = state.matches[0];
+  assert.ok(match.endedAt, `${postId}: 경기 종료`);
+
+  if (referee) {
+    const playerStats = Object.fromEntries(
+      [...match.teamA.players, ...match.teamB.players].map((playerId) => [
+        playerId,
+        {
+          points: playerId === hostId ? 3 : playerId === "u6" ? 2 : 0,
+          rebounds: 0,
+          assists: 0,
+          steals: 0,
+          blocks: 0,
+          turnovers: 0,
+          fouls: 0,
+        },
+      ]),
+    );
+    state = submitMatchResult(asActor(state, refereeId), match.id, {
+      scoreA: 3,
+      scoreB: 2,
+      playerStats,
+    });
+    match = state.matches[0];
+    assert.equal(match.status, "approval", `${postId}: 심판 기록 제출`);
+  }
+  const submittedBy = match.result.submittedBy;
+  state = submitMatchResult(asActor(state, unauthorizedId), match.id, {
+    scoreA: 9,
+    scoreB: 9,
+    playerStats: {},
+  });
+  match = state.matches[0];
+  assert.equal(match.result.submittedBy, submittedBy, `${postId}: 비운영자 기록 제출 차단`);
+  assert.deepEqual(
+    [match.teamA.score, match.teamB.score],
+    [3, 2],
+    `${postId}: 점수 반영`,
+  );
+
+  const finalizeOptions = {
+    disputesAcknowledged: true,
+    now: new Date(new Date(match.result.submittedAt).getTime() + (4 * 60 * 1000)).toISOString(),
+  };
+  state = finalizeMatchByAuthority(asActor(state, unauthorizedId), match.id, finalizeOptions);
+  assert.notEqual(state.matches[0].status, "confirmed", `${postId}: 비운영자 최종 확정 차단`);
+  state = finalizeMatchByAuthority(asActor(state, operatorId), match.id, finalizeOptions);
+  match = state.matches[0];
+  assert.equal(match.status, "confirmed", `${postId}: 최종 확정`);
+  assert.ok(match.confirmedAt, `${postId}: 확정 시각`);
 }
 
 function acceptPendingInvitations(state, postId) {
@@ -418,6 +614,57 @@ test("시즌 라이벌은 내 팀이 포함된 지역 매치업만 반환한다"
   assert.ok(rivalries.every((pair) => pair.teamA.region === pair.teamB.region));
 });
 
+test("시즌 라이벌 팀 선택은 빈 팀방 생성 뒤 비공개 B팀만 초대한다", () => {
+  const fixture = structuredClone(demoFlowState);
+  const hostId = fixture.currentUserId;
+  const ownTeam = fixture.teams.find((team) => team.members?.some((member) => member.userId === hostId));
+  const opponentTeam = fixture.teams.find((team) => team.id !== ownTeam?.id && team.region === ownTeam?.region);
+  assert.ok(ownTeam?.id);
+  assert.ok(opponentTeam?.id);
+
+  for (const visibility of ["private", "public"]) {
+    const postId = `demo-rival-${visibility}`;
+    let state = createRecruitingPost({
+      ...structuredClone(fixture),
+      currentUserId: hostId,
+      recruitingPosts: [],
+      notifications: [],
+    }, {
+      id: postId,
+      title: `라이벌 ${visibility}`,
+      visibility,
+      timingType: "instant",
+      hostJoinMode: "team",
+      teamOnly: true,
+      mode: "3v3",
+      sideCapacity: 3,
+      benchCapacity: 1,
+      ranked: false,
+      formationMode: "prearranged",
+      matchPurpose: "friendly",
+      gameClockEnabled: false,
+      court: "연습 코트",
+      meetingPoint: "1번 코트 입구",
+      teamId: "",
+      targetTeamId: "",
+      playerIds: [],
+    });
+    const emptyRoom = state.recruitingPosts.find((post) => post.id === postId);
+    assert.equal(emptyRoom.teamId, null);
+    assert.equal(emptyRoom.targetTeamId, null);
+
+    state = setRecruitingRoomTeam(state, postId, "teamA", ownTeam.id);
+    assert.equal(state.recruitingPosts.find((post) => post.id === postId).teamId, ownTeam.id);
+    const afterB = setRecruitingRoomTeam(state, postId, "teamB", opponentTeam.id, "시즌 라이벌 초대");
+    const room = afterB.recruitingPosts.find((post) => post.id === postId);
+    assert.equal(room.targetTeamId, visibility === "private" ? opponentTeam.id : null);
+    assert.equal(
+      room.roomState.invitations.some((invitation) => invitation.teamId === opponentTeam.id),
+      visibility === "private",
+    );
+  }
+});
+
 test("실제 매칭방은 공개·비공개와 개인·팀 구성을 모두 생성하고 초대·신고·차단을 처리한다", () => {
   const initial = structuredClone(demoFlowState);
   const hostId = initial.currentUserId;
@@ -483,6 +730,31 @@ test("실제 매칭방은 공개·비공개와 개인·팀 구성을 모두 생�
     }],
   }, hostId, reportMatchId, "프론트 신고 확인");
   assert.ok(state.reports.some((report) => report.type === "player" && report.targetId === hostId && report.by === targetId));
+});
+
+test("실제 경기방 8조합은 초대부터 출석·기록·최종 확정까지 완료된다", () => {
+  for (const visibility of ["public", "private"]) {
+    for (const teamOnly of [false, true]) {
+      for (const referee of [false, true]) {
+        runActualMatchLifecycle({ visibility, teamOnly, referee });
+      }
+    }
+  }
+});
+
+test("실제 경기시계 프론트는 샷클락·다음 쿼터·연장·통합 종료 액션을 유지한다", async () => {
+  const [panelSource, viewSource, serverSource] = await Promise.all([
+    readFile(new URL("../src/components/match/MatchClockPanel.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/MatchClockPanelView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/matches/clock.js", import.meta.url), "utf8"),
+  ]);
+  for (const action of ["start", "resetShot", "endPeriod", "startPeriod", "startOvertime", "endClock"]) {
+    assert.match(viewSource, new RegExp(`"${action}"`), `경기시계 ${action} UI`);
+    assert.match(serverSource, new RegExp(`"${action}"`), `경기시계 ${action} API 허용`);
+  }
+  assert.match(panelSource, /const requestMatchEnd = async/);
+  assert.match(panelSource, /const response = await onEndMatch\(\)/);
+  assert.match(viewSource, /경기·시계 종료/);
 });
 
 test("분리된 방 렌더 모듈은 런타임 의존성을 명시적으로 전달한다", async () => {

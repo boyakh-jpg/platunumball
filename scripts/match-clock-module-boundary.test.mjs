@@ -87,20 +87,60 @@ test("경기시계 인정 진행률은 전체 시간이 아니라 최소 인정�
   assert.match(viewSource, /!match\.refereeId/u);
 });
 
-test("referee lifecycle owns clock start/end and result score synchronization", async () => {
-  const [migrationSource, panelSource, matchRoomSource, recruitingSource] = await Promise.all([
+test("actual referee match keeps one clock lifecycle from start through overtime and result sync", async () => {
+  const [
+    migrationSource,
+    clockCoreSource,
+    overtimeSource,
+    controllerSource,
+    clockApiSource,
+    panelSource,
+    viewSource,
+    matchAccessSource,
+    matchRoomSource,
+    recruitingSource,
+  ] = await Promise.all([
     readFile(path.join(ROOT, "supabase/migrations/20260730233000_referee_clock_lifecycle_and_result_score.sql"), "utf8"),
+    readFile(path.join(ROOT, "supabase/migrations/20260724173000_match_clock_server_verification.sql"), "utf8"),
+    readFile(path.join(ROOT, "supabase/migrations/20260725024000_match_clock_explicit_end_and_scoreless_overtime.sql"), "utf8"),
+    readFile(path.join(ROOT, "supabase/migrations/20260728124000_simplify_live_match_operations.sql"), "utf8"),
+    readFile(path.join(ROOT, "server/api/matches/clock.js"), "utf8"),
     readFile(path.join(ROOT, "src/components/match/MatchClockPanel.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/components/match/MatchClockPanelView.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/data/repository/matchAccess.js"), "utf8"),
     readFile(path.join(ROOT, "src/pages/MatchRoomView.jsx"), "utf8"),
     readFile(path.join(ROOT, "src/components/recruiting/RecruitingRoomManagementSection.jsx"), "utf8"),
   ]);
 
+  assert.match(migrationSource, /auto_start := nullif\(btrim\(new\.referee_id\), ''\) is not null[\s\S]*rankball_is_match_referee_eligible/u);
+  assert.match(migrationSource, /initial_controller_id := nullif\(btrim\(new\.referee_id\), ''\)/u);
   assert.match(migrationSource, /case when auto_start then 'running' else 'pending' end/u);
+  assert.match(migrationSource, /case when auto_start then new\.started_at end/u);
+  assert.match(migrationSource, /initial_shot_seconds not in \(0, 24, 30, 60\)/u);
+  assert.match(clockCoreSource, /elsif safe_action = 'endPeriod'[\s\S]*session_row\.status := 'break'/u);
+  assert.match(clockCoreSource, /elsif safe_action = 'startPeriod'[\s\S]*session_row\.current_period := session_row\.current_period \+ 1/u);
+  assert.match(clockCoreSource, /elsif safe_action = 'startOvertime'[\s\S]*session_row\.overtime_count := session_row\.overtime_count \+ 1/u);
+  assert.match(clockCoreSource, /minimum_active_ms := ceil\(expected_period_seconds::numeric \* expected_period_count \* 1000 \* 0\.7\)/u);
+  assert.match(overtimeSource, /can_start_overtime := score_a = score_b[\s\S]*current_match\.referee_id[\s\S]*current_match\.stat_recorders/u);
+  assert.match(controllerSource, /rankball_match_clock_controller_eligible\(safe_match_id, target_controller_id\)/u);
+  assert.match(clockApiSource, /"resetShot",[\s\S]*"endPeriod",[\s\S]*"startPeriod",[\s\S]*"startOvertime"/u);
+  assert.match(clockApiSource, /\.from\("match_results"\)[\s\S]*\.select\("score_a,score_b,score_revision_a,score_revision_b,submitted_at"\)/u);
   assert.match(migrationSource, /case when nullif\(btrim\(new\.referee_id\), ''\) is not null then 'endClock' else 'matchEnd' end/u);
+  assert.match(migrationSource, /active_elapsed_ms = session_row\.active_elapsed_ms \+ applied_ms/u);
+  assert.match(migrationSource, /rankball_match_result_action_pre_referee_score_sync\([\s\S]*safe_result/u);
+  assert.match(migrationSource, /update public\.match_results[\s\S]*score_a = requested_score_a[\s\S]*score_b = requested_score_b/u);
+  assert.match(migrationSource, /update public\.matches[\s\S]*score_a = requested_score_a[\s\S]*score_b = requested_score_b/u);
   assert.match(migrationSource, /'scoreSynced', true/u);
   assert.match(migrationSource, /rankball_is_match_referee_eligible\(safe_actor_id, safe_match_id\)/u);
   assert.doesNotMatch(migrationSource, /\b(?:delete|truncate|drop table)\b/iu);
+  assert.match(matchAccessSource, /if \(match\.refereeId\) return currentUserIsEligibleMatchReferee\(state, match\)/u);
+  assert.match(matchAccessSource, /const currentUserCanStartMatch = currentUserCanOperateMatch/u);
   assert.match(panelSource, /match\?\.result\?\.scoreA/u);
+  assert.match(panelSource, /window\.setInterval\(load, 3000\)/u);
+  assert.match(viewSource, /runAction\("resetShot"\)/u);
+  assert.match(viewSource, /confirmAction\([\s\S]{0,200}"endPeriod"\)/u);
+  assert.match(viewSource, /confirmAction\([\s\S]{0,200}"startPeriod"\)/u);
+  assert.match(viewSource, /confirmAction\([\s\S]{0,200}"startOvertime"\)/u);
   assert.match(matchRoomSource, /editableScoreSides=\{hasReferee \? \[\]/u);
   assert.match(recruitingSource, /editableScoreSides=\{sourceMatch\.refereeId \? \[\]/u);
 });

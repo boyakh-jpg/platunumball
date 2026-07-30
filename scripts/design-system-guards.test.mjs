@@ -339,6 +339,15 @@ test("받은 팀 초대와 팀 상세 로스터는 무테두리 목록과 inline
   );
 });
 
+test("팀 목록 카드는 전체가 팀 상세 링크이고 공용 무테두리 폭을 따른다", () => {
+  const teamCardSource = read("src/components/team/TeamCard.jsx");
+
+  assert.match(teamCardSource, /import \{ Link \} from "react-router-dom";/);
+  assert.match(teamCardSource, /<Card[\s\S]*?as=\{linked \? Link : "section"\}[\s\S]*?to=\{linked \? `\/app\/teams\/\$\{team\.id\}` : undefined\}/);
+  assert.doesNotMatch(teamCardSource, /TeamHoverCard/);
+  assert.match(tokenStyles, /\[data-design="editorial"\] \.ui-design-app\s*\{[^}]*--ui-card-border-width:\s*0px;/);
+});
+
 test("team emblem text controls keep one height at every form factor", () => {
   assert.match(tokenStyles, /--ui-team-emblem-text-control-height:\s*64px;/);
   assert.match(

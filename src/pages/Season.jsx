@@ -41,7 +41,9 @@ export default function Season({ app }) {
   const myTeamIdSet = new Set(myTeamIds);
   const nationalRankByPlayerId = new Map(nationalPlayerRows.map((user, index) => [user.id, index + 1]));
   const nationalCandidates = regionalPlayerRows.slice(0, 5);
-  const rivalries = getLocalRivalries(app.state.teams, app.state.matches, region, 4, myTeamIds);
+  const rivalries = myTeamIds.length
+    ? getLocalRivalries(app.state.teams, app.state.matches, region, 4, myTeamIds)
+    : [];
   const activity = getPlayerSeasonActivity(app.state.matches, app.currentUser.id, season);
   const myNationalRankIndex = nationalPlayerRows.findIndex((user) => user.id === app.currentUser.id);
   const myRegionalRankIndex = regionalPlayerRows.findIndex((user) => user.id === app.currentUser.id);

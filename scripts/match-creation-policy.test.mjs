@@ -1099,7 +1099,8 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(source, /rules:\s*\{[\s\S]*\.\.\.creationPolicyPayload/);
   assert.match(source, /teamId:\s*""[\s\S]*opponentTeamId:\s*""/);
   assert.match(source, /presetTeamAId[\s\S]*setRecruitingRoomTeam\(postId, "teamA"/);
-  assert.match(source, /presetTeamBId[\s\S]*setRecruitingRoomTeam\(postId, "teamB"/);
+  assert.match(source, /presetTeamAReady = Boolean\(result\) && result\?\.ok !== false/);
+  assert.match(source, /else if \(!remakeDraft && createAsTeam && presetTeamAReady && draft\.visibility === "private" && presetTeamBId\)/);
   assert.match(source, /MatchCreationWizardNav/);
   assert.match(source, /wizardStep === finalWizardStep/);
   assert.doesNotMatch(source, /official:\s*true/);

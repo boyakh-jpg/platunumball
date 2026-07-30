@@ -433,11 +433,13 @@ const selectTeamA = (teamAId) => {
     if (typeof postId === "string" && postId) {
       const presetTeamAId = remakeDraft ? draft.remakeTeamAId : challengeTeamAId;
       const presetTeamBId = remakeDraft ? draft.remakeTeamBId : challengeTeamBId;
+      let presetTeamAReady = false;
       if (createAsTeam && presetTeamAId) {
-        await app.actions.setRecruitingRoomTeam(postId, "teamA", presetTeamAId);
+        const result = await app.actions.setRecruitingRoomTeam(postId, "teamA", presetTeamAId);
+        presetTeamAReady = Boolean(result) && result?.ok !== false;
       }
       if (remakeDraft && draft.remakeReinvite) {
-        if (createAsTeam && presetTeamBId) {
+        if (createAsTeam && presetTeamAReady && presetTeamBId) {
           await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, remakeInvitationContext);
         } else if (!createAsTeam) {
           for (const group of draft.remakeInvitationGroups ?? []) {
@@ -450,7 +452,7 @@ const selectTeamA = (teamAId) => {
             });
           }
         }
-      } else if (!remakeDraft && createAsTeam && presetTeamBId) {
+      } else if (!remakeDraft && createAsTeam && presetTeamAReady && draft.visibility === "private" && presetTeamBId) {
         await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다.");
       }
       if (onRecruitingCreated) onRecruitingCreated(postId);
