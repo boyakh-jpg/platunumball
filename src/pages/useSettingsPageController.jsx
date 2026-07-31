@@ -184,7 +184,9 @@ const loadDirectory = app.actions.loadDirectory;
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
     [app.currentUserId, app.state.users, blockedUserIds],
   );
-  const selectedBlockUserId = blockableUsers.some((user) => user.id === blockUserId) ? blockUserId : "";
+  const selectedBlockUserId = blockUserId && blockUserId !== app.currentUserId && !blockedUserIds.includes(blockUserId)
+    ? blockUserId
+    : "";
 
 
 
