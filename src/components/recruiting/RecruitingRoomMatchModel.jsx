@@ -1,7 +1,7 @@
 export function buildRecruitingRoomMatchModel(context) {
   const {
     MATCH_SIDES, ROOM_BODY_MODES, activeInviteDraftRaw, activeSelfSlotDraftRaw, app, attendanceStartStatus,
-    canChat, canOperateAssignedMatchReferee, canUserResolveMatchDispute, currentUserIsAdmin, entryPoint, getMatchManualFinalizationStatus, getMatchRecordPlayerIds,
+    canChat, canUserResolveMatchDispute, currentUserIsAdmin, entryPoint, getMatchManualFinalizationStatus, getMatchRecordPlayerIds,
     getMatchRecordWindow, getMatchReservePlayerIds, getMatchResultEntryPermission, getMatchRoomPhase, getMatchSideLeaderId, getMatchSidePlayerIds,
     getMissingStartAttendanceIds, getOpenMatchDisputes, getPickupRerollState, getPostgameRecordVerification, getRecruitingBenchCapacity, getRecruitingPostTerminalState,
     getRecruitingRoomStatus, getRecruitingSideCapacity, getRecruitingSideLeaderId, getTeamCaptainId, getTournamentRosterTeam, individualOnlyRoom,
@@ -38,11 +38,6 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
         const currentUserIsSourceReferee = Boolean(
           sourceMatch
           && isMatchReferee(sourceMatch, app.currentUser.id)
-          && canOperateAssignedMatchReferee(
-            app.currentUser,
-            sourceMatch,
-            app.state.settings?.refereeAppointments,
-          ),
         );
         const sourceRoomReadOnly = Boolean(
           recruitingRoomTerminalStatus ||

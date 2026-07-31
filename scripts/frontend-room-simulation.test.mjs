@@ -809,6 +809,15 @@ test("확정 경기방 슬롯 관리는 경기 액션과 운영 권한을 사용
   assert.doesNotMatch(rendererSource, /onPositionChange=\{targetIsCurrentUser \? \(position\)/);
 });
 
+test("배정 심판 UI 권한은 확정 경기의 심판 ID를 기준으로 복원한다", async () => {
+  const modelSource = await readFile(
+    new URL("../src/components/recruiting/RecruitingRoomMatchModel.jsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(modelSource, /currentUserIsSourceReferee = Boolean\(\s*sourceMatch\s*&& isMatchReferee\(sourceMatch, app\.currentUser\.id\)\s*,?\s*\)/);
+  assert.doesNotMatch(modelSource, /currentUserIsSourceReferee = Boolean\([\s\S]{0,240}canOperateAssignedMatchReferee/);
+});
+
 test("실제 경기시계 프론트는 샷클락·다음 쿼터·연장·통합 종료 액션을 유지한다", async () => {
   const [panelSource, viewSource, serverSource] = await Promise.all([
     readFile(new URL("../src/components/match/MatchClockPanel.jsx", import.meta.url), "utf8"),
