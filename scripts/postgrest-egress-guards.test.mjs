@@ -136,11 +136,12 @@ test("home team bootstrap is route-independent and remains bounded", async () =>
 });
 
 test("direct detail routes request their own authoritative payload", async () => {
-  const [hookSource, playerSource, teamSource, courtSource, matchRoomSource, tournamentSource, notificationSource, matchesSource, recruitingSource] = await Promise.all([
+  const [hookSource, playerSource, teamSource, courtSource, courtModelSource, matchRoomSource, tournamentSource, notificationSource, matchesSource, recruitingSource] = await Promise.all([
     readSource("src/hooks/appData/bootstrap.js"),
     readSource("src/pages/PlayerDetail.jsx"),
     readSourceGroup(readSource, TEAM_DETAIL_SOURCE_PATHS),
     readSource("src/pages/CourtDetail.jsx"),
+    readSource("src/pages/courtDetailModel.js"),
     readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS),
     readSourceGroup(readSource, TOURNAMENT_DETAIL_SOURCE_PATHS),
     readSource("src/pages/Notifications.jsx"),
@@ -152,6 +153,7 @@ test("direct detail routes request their own authoritative payload", async () =>
   assert.match(playerSource, /loadDirectory\?\.\(\)/);
   assert.match(teamSource, /loadDirectory\?\.\(\{ force: true, teamId \}\)/);
   assert.match(courtSource, /loadCourtDetail\?\.\(courtId\)/);
+  assert.match(courtModelSource, /import \{ getRegisteredCourts \} from "\.\.\/lib\/courts\.js";/);
   assert.match(matchRoomSource, /loadMatchDetail\?\.\(matchId\)/);
   assert.match(tournamentSource, /loadTournament\?\.\(tournamentId\)/);
   assert.match(notificationSource, /loadNotifications\?\.\(\)/);

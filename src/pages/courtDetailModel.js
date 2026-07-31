@@ -1,3 +1,5 @@
+import { getRegisteredCourts } from "../lib/courts.js";
+
 export function formatDate(value) {
   if (!value) return "날짜 미정";
   const date = new Date(value);
