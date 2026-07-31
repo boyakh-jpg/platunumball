@@ -142,7 +142,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
               {actions.map((action) => {
                 const active = targetEntry.side === action.side && targetReserve === action.reserve;
                 const movable = targetIsParty
-                  ? !active
+                  ? !active && canMovePlayerTo(selectedPost, lobby, targetPlayerId, action.side, action.reserve)
                   : targetIsCurrentUser && canMoveActiveUserToSlot(action.side, action.reserve);
                 return (
                   <Button
