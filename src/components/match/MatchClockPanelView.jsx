@@ -356,7 +356,7 @@ export default function MatchClockPanelView({ context }) {
           <Power size={16} />
           {wakeLockActive ? "유지 켜짐" : wakeLockRequested ? "유지 재연결" : "화면 유지"}
         </Button>
-        <Button type="button" size="sm" variant="primary" onClick={() => void testBuzzer()}>
+        <Button type="button" size="sm" variant="primary" onPointerDown={(event) => event.stopPropagation()} onClick={() => void testBuzzer()}>
           <BellRing size={16} /> 부저
         </Button>
         <label className="ui-match-clock-volume">

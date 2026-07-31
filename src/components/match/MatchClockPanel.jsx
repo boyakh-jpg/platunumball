@@ -10,7 +10,6 @@ import { normalizeMatchRules } from "../../lib/matchRules.js";
 import {
   activateMatchClockMediaSession,
   deactivateMatchClockMediaSession,
-  getBuzzerMediaElement,
   getMatchClockErrorLabel,
   playMatchClockBuzzer,
 } from "../../lib/matchClockAudio.js";
@@ -163,10 +162,6 @@ export default function MatchClockPanel({
     setPendingAction("");
     setScorePendingSide("");
   }, [match.id]);
-
-  useEffect(() => {
-    getBuzzerMediaElement();
-  }, []);
 
   useEffect(() => {
     const tickId = window.setInterval(() => setNowMs(Date.now()), 100);
@@ -431,9 +426,7 @@ export default function MatchClockPanel({
     if (!played) {
       setDeviceNotice(volume <= 0
         ? "부저 음량이 0%입니다."
-        : "미디어 부저 재생이 차단됐습니다. 부저 시험을 다시 눌러주세요.");
-    } else {
-      setDeviceNotice("미디어 부저가 재생됐습니다.");
+        : "부저 재생이 차단됐습니다. 부저 시험을 다시 눌러주세요.");
     }
   };
 

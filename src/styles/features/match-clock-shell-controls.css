@@ -260,12 +260,12 @@
 
 .ui-match-clock-score-control-side-a .ui-button {
   color: var(--team-home);
-  background: color-mix(in srgb, var(--team-home) 18%, var(--scoreboard));
+  background: color-mix(in srgb, var(--team-home) 36%, var(--scoreboard));
 }
 
 .ui-match-clock-score-control-side-b .ui-button {
   color: var(--team-away);
-  background: color-mix(in srgb, var(--team-away) 18%, var(--scoreboard));
+  background: color-mix(in srgb, var(--team-away) 36%, var(--scoreboard));
 }
 
 .ui-match-clock-score-actions {

@@ -43,6 +43,9 @@ test("match clock panel delegates score controls and audio without growing back"
     sources["src/components/match/MatchClockPanelView.jsx"],
     /from "\.\/MatchClockPanel\.jsx"/u,
   );
+  assert.match(sources["src/lib/matchClockAudio.js"], /window\.AudioContext \|\| window\.webkitAudioContext/u);
+  assert.doesNotMatch(sources["src/lib/matchClockAudio.js"], /buzzerMediaElement/u);
+  assert.match(sources["src/components/match/MatchClockPanelView.jsx"], /onPointerDown=\{\(event\) => event\.stopPropagation\(\)\}/u);
   assert.doesNotMatch(
     sources["src/lib/matchClockAudio.js"],
     /from ["'][^"']*MatchClockPanel\.jsx["']/u,
