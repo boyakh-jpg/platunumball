@@ -38,7 +38,7 @@ import {
   runPracticeReducer,
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
-import { getRecruitingLobby } from "../src/lib/recruiting.js";
+import { getRecruitingLobby, isIndividualOnlyRecruitingRoom } from "../src/lib/recruiting.js";
 import { buildMatchResultSubmission, getMatchManualFinalizationStatus } from "../src/lib/matchUtils.js";
 import { inferRegionSelection } from "../src/lib/profileSetup.js";
 import { getLocalRivalries } from "../src/lib/season.js";
@@ -593,6 +593,17 @@ test("프론트 연습방은 인원·후보·심판 조합을 실제 초대 대�
       }
     }
   }
+});
+
+test("1v1 팀방은 A팀 선택 전에도 개인방으로 오인하지 않는다", () => {
+  assert.equal(isIndividualOnlyRecruitingRoom({
+    visibility: "public",
+    hostJoinMode: "team",
+    teamOnly: true,
+    teamId: null,
+    mode: "1v1",
+    sideCapacity: 1,
+  }), false);
 });
 
 test("프론트 팀전 연습방은 양 팀 선택·팀장 초대·출전/후보 명단을 실제 ID로 확정한다", () => {

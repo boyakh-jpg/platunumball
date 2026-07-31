@@ -233,7 +233,7 @@ export function getRecruitingJoinMode(entry = {}) {
   return "player";
 }
 export function isSoloIndividualRecruitingRoom(post = {}) {
-  return getRecruitingSideCapacity(post) <= 1 && (post.hostJoinMode === "player" || !post.teamId);
+  return getRecruitingSideCapacity(post) <= 1 && !isTeamRecruitingRoom(post);
 }
 export function isPickupRecruitingRoom(post = {}) {
   return (post.formationMode ?? post.rules?.formationMode) === "pickup"
