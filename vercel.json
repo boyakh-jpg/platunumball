@@ -92,6 +92,10 @@
       "destination": "/terms.html"
     },
     {
+      "source": "/demo/:path*",
+      "destination": "/index.html"
+    },
+    {
       "source": "/app",
       "destination": "/index.html"
     },

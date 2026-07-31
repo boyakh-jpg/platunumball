@@ -430,6 +430,5 @@ const [open, setOpen] = useState(true);
     moveDuplicateReview,
     closeDuplicateReview,
     verifyDuplicateGroup,
-    modal,
   };
 }

@@ -2318,7 +2318,7 @@ UI 수정 전:
 # 2026-07-29 분류 박스 없는 표준 화면 구성
 
 1. 인증 앱의 표준 화면 구성은 `editorial` 하나다. `AppShell`은 항상 `data-design="editorial"`을 사용한다.
-2. 설정에 화면 구성 선택을 노출하지 않는다. `classic`은 `/demo/visual-direction` 비교 데모에서만 사용할 수 있다.
+2. 설정에 화면 구성 선택을 노출하지 않는다. `classic`은 `/demo/visual-direction` 비교 데모에서만 사용할 수 있다. 배포 환경은 `/demo/*` 직접 접근도 SPA 진입점으로 연결한다.
 3. 디자인 적용 대상은 의미만 표현하는 중립 `.ui-design-*` DOM 계약을 사용한다. JSX에 `classic`, `editorial`, `poster` 같은 시각 이름을 넣지 않는다.
 4. `design-classic.css`와 `design-editorial.css`는 비교 데모의 같은 중립 DOM 계약을 각각 완전히 렌더링한다. 실제 앱은 `design-editorial.css`만 적용한다.
 5. 기능별 CSS는 화면 구성 상태를 읽지 않는다. 표준 표현은 `data-design="editorial"`과 중립 클래스만 사용한다.
