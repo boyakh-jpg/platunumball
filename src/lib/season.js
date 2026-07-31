@@ -161,7 +161,7 @@ export function getLocalRivalries(teams = [], matches = [], region = "전체", l
     for (let j = i + 1; j < localTeams.length; j += 1) {
       const teamA = localTeams[i];
       const teamB = localTeams[j];
-      if (anchorTeamIdSet.size && !anchorTeamIdSet.has(teamA.id) && !anchorTeamIdSet.has(teamB.id)) continue;
+      if (anchorTeamIdSet.size && anchorTeamIdSet.has(teamA.id) === anchorTeamIdSet.has(teamB.id)) continue;
       if (anchorTeamIdSet.size && teamA.region !== teamB.region) continue;
       const headToHead = matches.filter((match) => {
         const aSide = getTeamSide(match, teamA.id);

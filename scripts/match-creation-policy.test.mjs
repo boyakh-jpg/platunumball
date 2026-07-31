@@ -54,6 +54,7 @@ import {
   confirmRecruitingMatch,
   configureServerRatingAuthority,
   createRecruitingPost,
+  declineRecruitingInvitation,
   interestRecruitingPost,
   inviteRecruitingPlayers,
   setRecruitingRoomTeam,
@@ -110,6 +111,10 @@ const teamMemberPublicJoinMigrationSource = fs.readFileSync(
 );
 const teamMemberPostGuardMigrationSource = fs.readFileSync(
   path.join(root, "supabase/migrations/20260728122000_team_member_room_post_guard.sql"),
+  "utf8",
+);
+const declinedTeamInvitationMigrationSource = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260731010000_release_declined_team_invitation.sql"),
   "utf8",
 );
 
@@ -909,6 +914,23 @@ test("empty team rooms select teams only through the central reducer", () => {
   );
   const duplicate = setRecruitingRoomTeam(withB, emptyPost.id, "teamB", "team-b");
   assert.equal(duplicate.recruitingPosts[0].roomState.invitations.length, 1);
+
+  const invitation = selectedPost.roomState.invitations[0];
+  const declined = declineRecruitingInvitation(
+    { ...withB, currentUserId: invitation.targetUserId },
+    emptyPost.id,
+    invitation.id,
+  );
+  assert.equal(declined.recruitingPosts[0].targetTeamId, null);
+  assert.equal(declined.recruitingPosts[0].roomState.invitations.length, 0);
+  const reinvited = setRecruitingRoomTeam(
+    { ...declined, currentUserId: "host" },
+    emptyPost.id,
+    "teamB",
+    "team-b",
+  );
+  assert.equal(reinvited.recruitingPosts[0].targetTeamId, "team-b");
+  assert.equal(reinvited.recruitingPosts[0].roomState.invitations.length, 1);
 });
 
 test("team selection is routed through the server and DB authority", () => {
@@ -919,11 +941,15 @@ test("team selection is routed through the server and DB authority", () => {
     fs.readFileSync(path.join(root, "server/api/recruiting/_syncPostManagementActions.js"), "utf8"),
   ].join("\n");
   const authoritativeSource = fs.readFileSync(path.join(root, "server/api/_authoritativeState.js"), "utf8");
+  const schemaSource = fs.readFileSync(path.join(root, "supabase/schema.sql"), "utf8");
   assert.match(serverSource, /team_room_must_start_without_team_selection/);
   assert.match(serverSource, /operation\.action === "setRecruitingRoomTeam"/);
   assert.match(serverSource, /rankball_recruiting_set_room_team_action/);
   assert.match(serverSource, /recruiting_set_room_team_rpc_required/);
   assert.doesNotMatch(authoritativeSource, /setRecruitingRoomTeam/u);
+  assert.match(schemaSource, /create or replace function public\.rankball_recruiting_set_room_team_action/);
+  assert.match(schemaSource, /recruiting_team_member_required/);
+  assert.match(schemaSource, /recruiting_team_representative_ineligible/);
 
   const migrationName = fs.readdirSync(path.join(root, "supabase/migrations"))
     .filter((name) => name.endsWith(".sql"))
@@ -952,6 +978,10 @@ test("team selection is routed through the server and DB authority", () => {
   assert.match(teamMemberPostGuardMigrationSource, /recruiting_team_representative_ineligible/);
   assert.match(teamMemberPostGuardMigrationSource, /host_result->'eligiblePlayerIds'/);
   assert.doesNotMatch(teamMemberPostGuardMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
+  assert.match(declinedTeamInvitationMigrationSource, /target_team_id = case/);
+  assert.match(declinedTeamInvitationMigrationSource, /invitation->>'joinMode'.*'team'/);
+  assert.match(declinedTeamInvitationMigrationSource, /invitation->>'side' = 'teamB'/);
+  assert.doesNotMatch(declinedTeamInvitationMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
 test("public team joins persist only the applying team member as side leader", () => {
@@ -1099,7 +1129,7 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(source, /rules:\s*\{[\s\S]*\.\.\.creationPolicyPayload/);
   assert.match(source, /teamId:\s*""[\s\S]*opponentTeamId:\s*""/);
   assert.match(source, /presetTeamAId[\s\S]*setRecruitingRoomTeam\(postId, "teamA"/);
-  assert.match(source, /presetTeamAReady = Boolean\(result\) && result\?\.ok !== false/);
+  assert.match(source, /if \(!result \|\| result\?\.ok === false\)[\s\S]*closeRecruitingPost\(postId, "A팀 선택 실패로 생성 취소"\)/);
   assert.match(source, /else if \(!remakeDraft && createAsTeam && presetTeamAReady && draft\.visibility === "private" && presetTeamBId\)/);
   assert.match(source, /MatchCreationWizardNav/);
   assert.match(source, /wizardStep === finalWizardStep/);

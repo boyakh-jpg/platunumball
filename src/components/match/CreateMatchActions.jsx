@@ -436,7 +436,12 @@ const selectTeamA = (teamAId) => {
       let presetTeamAReady = false;
       if (createAsTeam && presetTeamAId) {
         const result = await app.actions.setRecruitingRoomTeam(postId, "teamA", presetTeamAId);
-        presetTeamAReady = Boolean(result) && result?.ok !== false;
+        if (!result || result?.ok === false) {
+          await app.actions.closeRecruitingPost(postId, "A팀 선택 실패로 생성 취소");
+          setSubmitFeedback(formatCreateSaveError(result, "A팀을 선택하지 못해 생성한 방을 종료했습니다."));
+          return;
+        }
+        presetTeamAReady = true;
       }
       if (remakeDraft && draft.remakeReinvite) {
         if (createAsTeam && presetTeamAReady && presetTeamBId) {

@@ -4,6 +4,7 @@ import { canRequestVoidMatchRestore, getReportableMatchTimeMs } from "../lib/mat
 import { REPORT_MATCH_WINDOW_MS } from "../lib/constants.js";
 import { getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { DIRECTORY_SELF_PAGE_LIMIT } from "../lib/queryPolicy.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getReportParticipantRows, getMatchReportTitle, matchesReportSearchQuery } from "./settingsPageModel.js";
 
 export default function useSettingsReportController({ app, userMap, matchMap, courtRequests, approvedCourts, courtReviews }) {
@@ -46,6 +47,7 @@ const reportableMatchCandidates = useMemo(
 const reportNeedsMatchData = [REPORT_TARGET_TYPES.player, REPORT_TARGET_TYPES.match, REPORT_TARGET_TYPES.mixed].includes(reportTargetType);
 useEffect(() => {
     if (!reportNeedsMatchData || !app.currentUserId || reportMatchesLoadRef.current === app.currentUserId) return;
+    if (!isSupabaseConfigured) return;
     const loadReportableMatches = app.actions.loadReportableMatches;
     if (!loadReportableMatches) return;
     reportMatchesLoadRef.current = app.currentUserId;

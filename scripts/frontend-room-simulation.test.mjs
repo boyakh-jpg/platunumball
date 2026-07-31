@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   acceptRecruitingInvitation,
+  agreeMatch,
   blockUser,
   checkInMatchPlayer,
   confirmRecruitingMatch,
@@ -13,12 +14,15 @@ import {
   interestRecruitingPost,
   inviteRecruitingPlayers,
   inviteRecruitingReferee,
+  reportMatch,
   reportPlayer,
   runAutomaticStateMaintenance,
+  setMatchRoomPlayerPlacement,
   setRecruitingRoomTeam,
   setRecruitingTeamPartyRoster,
   startMatch,
   submitMatchResult,
+  unblockUser,
 } from "../src/data/repository.js";
 import { demoFlowState } from "../src/lib/demoFlowState.js";
 import {
@@ -35,6 +39,7 @@ import {
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
 import { getRecruitingLobby } from "../src/lib/recruiting.js";
+import { getMatchManualFinalizationStatus } from "../src/lib/matchUtils.js";
 import { getLocalRivalries } from "../src/lib/season.js";
 
 const MODE_CAPACITY = Object.freeze({
@@ -63,10 +68,10 @@ function acceptActualInvitation(state, postId, targetUserId, role = "player") {
   return acceptRecruitingInvitation(asActor(state, targetUserId), postId, invitation.id);
 }
 
-function runActualMatchLifecycle({ visibility, teamOnly, referee }) {
+function runActualMatchLifecycle({ visibility, teamOnly, referee, benchCapacity }) {
   const hostId = "u1";
   const refereeId = "u11";
-  const postId = `actual-${visibility}-${teamOnly ? "team" : "player"}-${referee ? "referee" : "no-referee"}`;
+  const postId = `actual-${visibility}-${teamOnly ? "team" : "player"}-${referee ? "referee" : "no-referee"}-bench-${benchCapacity}`;
   let state = {
     ...structuredClone(demoFlowState),
     currentUserId: hostId,
@@ -85,7 +90,7 @@ function runActualMatchLifecycle({ visibility, teamOnly, referee }) {
     teamOnly,
     mode: "2v2",
     sideCapacity: 2,
-    benchCapacity: 0,
+    benchCapacity,
     ranked: false,
     formationMode: "prearranged",
     matchPurpose: "friendly",
@@ -121,7 +126,10 @@ function runActualMatchLifecycle({ visibility, teamOnly, referee }) {
         asActor(state, teamA ? hostId : "u6"),
         postId,
         entry.id,
-        { playerIds: teamA ? [hostId, "u2"] : ["u6", "u7"], reservePlayerIds: [] },
+        {
+          playerIds: teamA ? [hostId, "u2"] : ["u6", "u7"],
+          reservePlayerIds: benchCapacity ? [teamA ? "u3" : "u8"] : [],
+        },
       );
     }
   } else {
@@ -133,6 +141,17 @@ function runActualMatchLifecycle({ visibility, teamOnly, referee }) {
       });
       for (const playerId of playerIds) state = acceptActualInvitation(state, postId, playerId);
     }
+    if (benchCapacity) {
+      for (const [side, playerId] of [["teamA", "u3"], ["teamB", "u8"]]) {
+        state = inviteRecruitingPlayers(asActor(state, hostId), postId, {
+          side,
+          reserve: true,
+          playerIds: [playerId],
+          joinMode: "player",
+        });
+        state = acceptActualInvitation(state, postId, playerId);
+      }
+    }
   }
 
   if (referee) {
@@ -143,11 +162,23 @@ function runActualMatchLifecycle({ visibility, teamOnly, referee }) {
   let match = state.matches[0];
   assert.ok(match?.id, `${postId}: 경기 확정`);
   assert.equal(match.refereeId ?? "", referee ? refereeId : "", `${postId}: 심판 배정`);
+  if (benchCapacity) {
+    const placementOperatorId = referee ? refereeId : hostId;
+    const placementUnauthorizedId = referee ? hostId : "u6";
+    state = setMatchRoomPlayerPlacement(asActor(state, placementUnauthorizedId), match.id, hostId, { side: "teamA", reserve: true });
+    assert.ok(state.matches[0].teamA.players.includes(hostId), `${postId}: 비운영자 슬롯 이동 차단`);
+    state = setMatchRoomPlayerPlacement(asActor(state, placementOperatorId), match.id, hostId, { side: "teamA", reserve: true });
+    assert.ok(state.matches[0].reservePlayers.teamA.includes(hostId), `${postId}: 방장 후보 이동`);
+    state = setMatchRoomPlayerPlacement(asActor(state, placementOperatorId), match.id, hostId, { side: "teamA", reserve: false });
+    assert.ok(state.matches[0].teamA.players.includes(hostId), `${postId}: 방장 출전 복귀`);
+    state = agreeMatch(asActor(state, hostId), match.id, "teamA", hostId);
+    match = state.matches[0];
+  }
 
   const operatorId = referee ? refereeId : hostId;
   const unauthorizedId = referee ? hostId : "u6";
   for (const sideName of ["teamA", "teamB"]) {
-    for (const playerId of match[sideName].players) {
+    for (const playerId of [...match[sideName].players, ...(match.reservePlayers?.[sideName] ?? [])]) {
       state = checkInMatchPlayer(asActor(state, operatorId), match.id, sideName, playerId);
     }
   }
@@ -603,15 +634,22 @@ test("프론트 사후 경기기록은 모든 인원의 개인·팀 구성과 �
 test("시즌 라이벌은 내 팀이 포함된 지역 매치업만 반환한다", () => {
   const teams = [
     { id: PRACTICE_TEAM_A_ID, name: "내 팀", region: "마포", mmr: 1200, wins: 1 },
+    { id: "practice-team-own-b", name: "내 다른 팀", region: "마포", mmr: 1210, wins: 1 },
     { id: PRACTICE_TEAM_B_ID, name: "상대 팀", region: "마포", mmr: 1250, wins: 1 },
     { id: "practice-team-c", name: "다른 팀", region: "광진", mmr: 1300, wins: 1 },
   ];
-  const rivalries = getLocalRivalries(teams, [], "광진", 10, [PRACTICE_TEAM_A_ID]);
+  const ownIds = [PRACTICE_TEAM_A_ID, "practice-team-own-b"];
+  const rivalries = getLocalRivalries(teams, [], "광진", 10, ownIds);
   assert.ok(rivalries.length);
   assert.ok(rivalries.every((pair) => (
-    pair.teamA.id === PRACTICE_TEAM_A_ID || pair.teamB.id === PRACTICE_TEAM_A_ID
+    ownIds.includes(pair.teamA.id) !== ownIds.includes(pair.teamB.id)
   )));
   assert.ok(rivalries.every((pair) => pair.teamA.region === pair.teamB.region));
+});
+
+test("시즌 directory 실패 응답은 같은 사용자 재시도를 열어 둔다", async () => {
+  const source = await readFile(new URL("../src/pages/Season.jsx", import.meta.url), "utf8");
+  assert.match(source, /request\.then\(\(result\) => \{[\s\S]*if \(result === false\) directoryLoadKeyRef\.current = ""/);
 });
 
 test("시즌 라이벌 팀 선택은 빈 팀방 생성 뒤 비공개 B팀만 초대한다", () => {
@@ -711,11 +749,14 @@ test("실제 매칭방은 공개·비공개와 개인·팀 구성을 모두 생�
   const privatePlayerRoom = state.recruitingPosts.find((post) => post.title === "actual-room-1");
   assert.ok(privatePlayerRoom.roomState.invitations.some((invitation) => invitation.targetUserId === targetId));
   state = blockUser({ ...state, currentUserId: targetId }, hostId);
+  assert.ok(state.settings.blockedUserIds.includes(hostId));
   assert.equal(
     state.recruitingPosts.find((post) => post.id === privatePlayerRoom.id)
       .roomState.invitations.some((invitation) => invitation.targetUserId === targetId),
     false,
   );
+  state = unblockUser(state, hostId);
+  assert.equal(state.settings.blockedUserIds.includes(hostId), false);
 
   const reportMatchId = "actual-room-report-match";
   state = reportPlayer({
@@ -730,16 +771,39 @@ test("실제 매칭방은 공개·비공개와 개인·팀 구성을 모두 생�
     }],
   }, hostId, reportMatchId, "프론트 신고 확인");
   assert.ok(state.reports.some((report) => report.type === "player" && report.targetId === hostId && report.by === targetId));
+  state = reportMatch(state, reportMatchId, "허위 경기 결과", [hostId]);
+  assert.ok(state.reports.some((report) => report.type === "match" && report.targetId === reportMatchId && report.by === targetId));
 });
 
-test("실제 경기방 8조합은 초대부터 출석·기록·최종 확정까지 완료된다", () => {
+test("실제 경기방 16조합은 후보 이동부터 출석·기록·최종 확정까지 완료된다", () => {
   for (const visibility of ["public", "private"]) {
     for (const teamOnly of [false, true]) {
       for (const referee of [false, true]) {
-        runActualMatchLifecycle({ visibility, teamOnly, referee });
+        for (const benchCapacity of [0, 1]) {
+          runActualMatchLifecycle({ visibility, teamOnly, referee, benchCapacity });
+        }
       }
     }
   }
+});
+
+test("최종 승인은 결과 제출과 경기 종료 중 늦은 시각부터 3분 뒤 열린다", () => {
+  const match = {
+    endedAt: "2026-07-31T12:10:00.000Z",
+    result: { submittedAt: "2026-07-31T12:00:00.000Z" },
+  };
+  assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:12:59.999Z").ready, false);
+  assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:13:00.000Z").ready, true);
+});
+
+test("확정 경기방 슬롯 관리는 경기 액션과 운영 권한을 사용한다", async () => {
+  const [modelSource, rendererSource] = await Promise.all([
+    readFile(new URL("../src/components/recruiting/RecruitingRoomMatchModel.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomSlotRenderers.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(modelSource, /sourceMatchPhase\?\.phase === "checkin" && sourceMatch\.refereeId[\s\S]*currentUserIsSourceReferee[\s\S]*: mine/);
+  assert.match(rendererSource, /if \(sourceMatch\) \{[\s\S]*setMatchRoomPlayerPlacement\(sourceMatch\.id/);
+  assert.doesNotMatch(rendererSource, /onPositionChange=\{targetIsCurrentUser \? \(position\)/);
 });
 
 test("실제 경기시계 프론트는 샷클락·다음 쿼터·연장·통합 종료 액션을 유지한다", async () => {

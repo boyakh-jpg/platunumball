@@ -206,6 +206,16 @@ test("개인 기록만 생성자 본인 스탯을 저장하고 무심판 일반 
   assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
+test("finalization waits three minutes after the later result or match end", async () => {
+  const migration = await readFile(
+    new URL("../supabase/migrations/20260731020000_harden_match_clock_finalization_boundaries.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /greatest\(submitted_at, current_match\.ended_at\) \+ interval '3 minutes'/);
+  assert.match(migration, /greatest\(result_row\.submitted_at, current_match\.ended_at\) \+ make_interval/);
+  assert.doesNotMatch(migration, /\b(?:delete|truncate|drop table)\b/iu);
+});
+
 test("개인 기록 공개 범위와 별도 통계는 공식 통계·업적에서 분리된다", async () => {
   const migration = await readFile(
     new URL("../supabase/migrations/20260727132000_personal_record_visibility_and_summary.sql", import.meta.url),

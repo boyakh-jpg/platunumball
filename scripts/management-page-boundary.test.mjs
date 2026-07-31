@@ -160,6 +160,11 @@ test("방 슬롯 위치 아바타 상수는 실제 렌더 모듈이 소유한다
   assert.doesNotMatch(recruitingPageSource, /ROOM_SLOT_POSITION_AVATARS/);
 });
 
+test("로컬 신고 흐름은 원격 경기 조회 실패로 로컬 경기 검색을 막지 않는다", async () => {
+  const source = await read("src/pages/useSettingsReportController.jsx");
+  assert.match(source, /if \(!isSupabaseConfigured\) return;/);
+});
+
 test("recruiting split view imports its card render dependencies", async () => {
   const recruitingViewSource = await read("src/pages/RecruitingPageView.jsx");
   const recruitingPageSource = await read("src/lib/recruitingPage.js");

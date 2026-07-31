@@ -1,6 +1,7 @@
 import { MATCH_SIDES } from "../../../lib/constants.js";
 import { SIDE_LABEL_TEXT } from "../../../lib/constants.js";
 import { getMatchOverlapConflict } from "../../../lib/matchUtils.js";
+import { getMatchFinalizationWindow } from "../../../lib/matchUtils.js";
 import { getMatchReservePlayerIds } from "../../../lib/matchUtils.js";
 import { getMatchRoomPhase } from "../../../lib/matchUtils.js";
 import { getMatchRosterSwapPatch } from "../../../lib/matchUtils.js";
@@ -138,9 +139,8 @@ export function finalizeMatchByAuthority(state, matchId, options = {}) {
   if (isMatchRecordMatch(match)) return state;
   if (!match?.endedAt || !match.result || match.confirmedAt || match.status === "disputed") return state;
   if (options.disputesAcknowledged !== true) return state;
-  const submittedAtMs = new Date(match.result?.submittedAt ?? match.endedAt).getTime();
   const nowMs = new Date(options.now ?? Date.now()).getTime();
-  if (!Number.isFinite(submittedAtMs) || !Number.isFinite(nowMs) || nowMs < submittedAtMs + (3 * 60 * 1000)) return state;
+  if (!getMatchFinalizationWindow(match, nowMs).ready) return state;
   const canFinalize = match.refereeId
     ? currentUserIsEligibleMatchReferee(state, match)
     : currentUserIsMatchHost(state, match);

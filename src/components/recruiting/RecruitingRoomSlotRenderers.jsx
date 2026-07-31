@@ -41,6 +41,12 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
         };
         const moveActiveUserToSlot = (sideName, reserve) => {
           if (!myEntry || !currentUserInEntry) return;
+          if (sourceMatch) {
+            app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, app.currentUser.id, { side: sideName, reserve });
+            setInviteDraft(null);
+            setSlotActionDraft(null);
+            return;
+          }
           if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) {
             app.actions.setRecruitingApplicantPlacement(selectedPost.id, app.currentUser.id, { side: sideName, reserve });
             setInviteDraft(null);
@@ -149,7 +155,11 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                     onClick={() => {
                       if (active) return;
                       if (targetIsParty) {
-                        app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, targetEntry.id, targetPlayerId, { side: targetEntry.side, reserve: action.reserve });
+                        if (sourceMatch) {
+                          app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, targetPlayerId, { side: targetEntry.side, reserve: action.reserve });
+                        } else {
+                          app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, targetEntry.id, targetPlayerId, { side: targetEntry.side, reserve: action.reserve });
+                        }
                         setSlotActionDraft(null);
                         return;
                       }
@@ -173,9 +183,9 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
           const canManageTarget = targetIsCurrentUser || canManageEntry(targetEntry);
           if (!canManageTarget) return null;
           const sourceTeam = targetIsCurrentUser && myEntry?.sourceTeamId ? teamById[myEntry.sourceTeamId] : null;
-          const targetPartyOptions = targetIsCurrentUser && !individualOnlyRoom ? getSameSidePartyOptions(lobby, myEntry, myTeams, activeSelfSlotDraft.sideName) : [];
+          const targetPartyOptions = targetIsCurrentUser && !sourceMatch && !individualOnlyRoom ? getSameSidePartyOptions(lobby, myEntry, myTeams, activeSelfSlotDraft.sideName) : [];
           const currentSlotPosition = getRoomSlotDisplayPosition(targetUser, slotPositions, targetPlayerId, targetEntry);
-          const canManageTeamRoster = !individualOnlyRoom && targetEntry.kind === "team" && targetEntry.team && getEntryPartyLeaderId(targetEntry) === app.currentUser.id;
+          const canManageTeamRoster = !sourceMatch && !individualOnlyRoom && targetEntry.kind === "team" && targetEntry.team && getEntryPartyLeaderId(targetEntry) === app.currentUser.id;
 
           const teamRosterCapacity = getRecruitingSideCapacity(selectedPost);
           const teamRosterActiveIds = canManageTeamRoster
@@ -192,10 +202,10 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
               sourceTeam={sourceTeam}
               anchor={activeSelfSlotDraft.anchor}
               heading={targetIsCurrentUser ? "내 슬롯 관리" : "파티원 관리"}
-              canLeaveParty={targetIsCurrentUser && currentUserInParty && !teamOnlyRoom}
+              canLeaveParty={targetIsCurrentUser && !sourceMatch && currentUserInParty && !teamOnlyRoom}
               partyJoinOptions={targetPartyOptions}
               currentPosition={currentSlotPosition}
-              onPositionChange={targetIsCurrentUser ? (position) => app.actions.setRecruitingSlotPosition(selectedPost.id, targetPlayerId, position) : null}
+              onPositionChange={targetIsCurrentUser && !sourceMatch ? (position) => app.actions.setRecruitingSlotPosition(selectedPost.id, targetPlayerId, position) : null}
               onLeaveParty={leaveCurrentParty}
               onJoinParty={(teamId, entryId) => {
                 void joinSideParty(selectedPost, {

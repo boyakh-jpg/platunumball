@@ -13551,7 +13551,15 @@ begin
     where candidate->>'id' <> safe_invitation_id;
 
     update public.recruiting_posts
-    set room_state = jsonb_set(current_room_state, '{invitations}', next_invitations, true), updated_at = now()
+    set target_team_id = case
+          when coalesce(invitation->>'joinMode', 'player') = 'team'
+            and invitation->>'side' = 'teamB'
+            and nullif(invitation->>'teamId', '') = current_post.target_team_id
+          then null
+          else current_post.target_team_id
+        end,
+        room_state = jsonb_set(current_room_state, '{invitations}', next_invitations, true),
+        updated_at = now()
     where id = safe_post_id;
 
     return jsonb_build_object('ok', true, 'action', safe_action, 'postId', safe_post_id, 'actorProfileId', safe_actor_id, 'sqlReducer', true);
@@ -15141,6 +15149,246 @@ begin
   end if;
 end;
 $migration$;
+
+create or replace function public.rankball_recruiting_set_room_team_action(
+  p_actor_profile_id text,
+  p_post_id text,
+  p_side text,
+  p_team_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_post_id text := nullif(btrim(p_post_id), '');
+  safe_side text := nullif(btrim(p_side), '');
+  safe_team_id text := nullif(btrim(p_team_id), '');
+  post_row public.recruiting_posts%rowtype;
+  team_row public.teams%rowtype;
+  host_team public.teams%rowtype;
+  eligibility jsonb;
+  captain_id text;
+  mmr_range_mode text;
+  mmr_limit_mode text;
+  safe_room_state jsonb;
+  invitations jsonb;
+  invitation jsonb;
+  invitation_id text;
+  now_at timestamptz := clock_timestamp();
+begin
+  if safe_actor_id is null then
+    raise exception 'auth_required' using errcode = '42501';
+  end if;
+  if safe_post_id is null then
+    raise exception 'missing_recruiting_post' using errcode = '22023';
+  end if;
+  if safe_team_id is null then
+    raise exception 'recruiting_team_required' using errcode = '22023';
+  end if;
+  if safe_side is null or safe_side not in ('teamA', 'teamB') then
+    raise exception 'invalid_recruiting_team_side' using errcode = '22023';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('rankball:recruiting'), hashtext(safe_post_id));
+  select post.* into post_row
+  from public.recruiting_posts post
+  where post.id = safe_post_id
+  for update;
+  if post_row.id is null then
+    raise exception 'recruiting_post_not_found' using errcode = 'P0002';
+  end if;
+  if post_row.status <> 'open' or post_row.confirmed_at is not null then
+    raise exception 'recruiting_room_not_open' using errcode = '23514';
+  end if;
+  if post_row.host_join_mode <> 'team'
+     or not coalesce((post_row.room_state->>'teamOnly')::boolean, false) then
+    raise exception 'recruiting_team_room_required' using errcode = '23514';
+  end if;
+  if coalesce(nullif(post_row.room_state->>'ownerId', ''), post_row.player_id) is distinct from safe_actor_id then
+    raise exception 'recruiting_owner_required' using errcode = '42501';
+  end if;
+
+  select team.* into team_row
+  from public.teams team
+  where team.id = safe_team_id and team.deleted_at is null;
+  if team_row.id is null then
+    raise exception 'recruiting_team_not_found' using errcode = 'P0002';
+  end if;
+
+  safe_room_state := coalesce(post_row.room_state, '{}'::jsonb);
+  mmr_range_mode := case
+    when coalesce(nullif(safe_room_state->>'mmrRangeMode', ''), nullif(post_row.rules->>'mmrRangeMode', '')) = 'standard' then 'normal'
+    when coalesce(nullif(safe_room_state->>'mmrRangeMode', ''), nullif(post_row.rules->>'mmrRangeMode', '')) in ('narrow', 'normal', 'wide')
+      then coalesce(nullif(safe_room_state->>'mmrRangeMode', ''), nullif(post_row.rules->>'mmrRangeMode', ''))
+    else 'normal'
+  end;
+  mmr_limit_mode := case when post_row.ranked then 'block' else 'off' end;
+
+  if safe_side = 'teamA' then
+    if post_row.team_id is not null then
+      raise exception 'recruiting_room_team_already_selected' using errcode = '23514';
+    end if;
+    if post_row.target_team_id = safe_team_id then
+      raise exception 'recruiting_team_duplicate' using errcode = '23514';
+    end if;
+    eligibility := public.rankball_assert_team_event_eligible(
+      safe_team_id,
+      post_row.side_capacity,
+      post_row.ranked,
+      mmr_limit_mode,
+      coalesce(team_row.mmr, 1200),
+      mmr_range_mode,
+      post_row.allowed_age_groups,
+      false
+    );
+    captain_id := eligibility->>'captainId';
+    if not exists (
+      select 1
+      from public.team_members member
+      where member.team_id = safe_team_id
+        and member.user_id = safe_actor_id
+    ) then
+      raise exception 'recruiting_team_member_required' using errcode = '42501';
+    end if;
+    if not (coalesce(eligibility->'eligiblePlayerIds', '[]'::jsonb) ? safe_actor_id) then
+      raise exception 'recruiting_team_representative_ineligible' using errcode = '42501';
+    end if;
+
+    update public.recruiting_posts
+    set team_id = safe_team_id,
+        player_ids = jsonb_build_array(safe_actor_id),
+        host_ready = false,
+        spots = greatest(0, side_capacity * 2 - 1),
+        rating_scale = case when ranked then
+          case when mmr_range_mode = 'narrow' then 1.1 when mmr_range_mode = 'wide' then 0.8 else 1 end
+          else 1 end,
+        room_state = safe_room_state || jsonb_build_object(
+          'mmrRangeMode', mmr_range_mode,
+          'mmrLimitMode', mmr_limit_mode,
+          'partyLeaders', coalesce(safe_room_state->'partyLeaders', '{}'::jsonb) || jsonb_build_object('host', safe_actor_id),
+          'partySides', coalesce(safe_room_state->'partySides', '{}'::jsonb) || jsonb_build_object('host', 'teamA')
+        ),
+        rules = coalesce(rules, '{}'::jsonb) || jsonb_build_object(
+          'mmrRangeMode', mmr_range_mode,
+          'mmrLimitMode', mmr_limit_mode
+        ),
+        updated_at = now_at
+    where id = safe_post_id;
+  else
+    if post_row.visibility <> 'private' then
+      raise exception 'public_team_room_side_b_direct_selection_not_allowed' using errcode = '23514';
+    end if;
+    if post_row.team_id is null then
+      raise exception 'recruiting_host_team_selection_required' using errcode = '23514';
+    end if;
+    if post_row.target_team_id is not null then
+      raise exception 'recruiting_room_team_already_selected' using errcode = '23514';
+    end if;
+    if post_row.team_id = safe_team_id then
+      raise exception 'recruiting_team_duplicate' using errcode = '23514';
+    end if;
+    select team.* into host_team
+    from public.teams team
+    where team.id = post_row.team_id and team.deleted_at is null;
+    if host_team.id is null then
+      raise exception 'recruiting_host_team_not_found' using errcode = 'P0002';
+    end if;
+    eligibility := public.rankball_assert_team_event_eligible(
+      safe_team_id,
+      post_row.side_capacity,
+      post_row.ranked,
+      mmr_limit_mode,
+      coalesce(host_team.mmr, 1200),
+      mmr_range_mode,
+      post_row.allowed_age_groups,
+      true
+    );
+    captain_id := eligibility->>'captainId';
+    if captain_id is null then
+      raise exception 'team_captain_required' using errcode = '42501';
+    end if;
+
+    invitation_id := 'inv_' || substr(md5(safe_post_id || ':teamB:' || safe_team_id || ':' || captain_id), 1, 24);
+    invitation := jsonb_build_object(
+      'id', invitation_id,
+      'role', 'player',
+      'targetUserId', captain_id,
+      'fromUserId', safe_actor_id,
+      'teamId', safe_team_id,
+      'joinMode', 'team',
+      'side', 'teamB',
+      'reserve', false,
+      'status', 'pending',
+      'createdAt', now_at,
+      'updatedAt', now_at
+    );
+    invitations := case when jsonb_typeof(safe_room_state->'invitations') = 'array'
+      then safe_room_state->'invitations' else '[]'::jsonb end;
+
+    update public.recruiting_posts
+    set target_team_id = safe_team_id,
+        room_state = safe_room_state || jsonb_build_object(
+          'mmrRangeMode', mmr_range_mode,
+          'mmrLimitMode', mmr_limit_mode,
+          'invitations', invitations || invitation
+        ),
+        rules = coalesce(rules, '{}'::jsonb) || jsonb_build_object(
+          'mmrRangeMode', mmr_range_mode,
+          'mmrLimitMode', mmr_limit_mode
+        ),
+        updated_at = now_at
+    where id = safe_post_id;
+
+    insert into public.notifications (
+      id, user_id, target_user_id, title, body, tone, type,
+      recruiting_post_id, invitation_id, payload, created_at, updated_at
+    ) values (
+      'notice-recruiting-team-selection-' || safe_post_id || '-' || substr(md5(safe_team_id), 1, 16),
+      captain_id,
+      captain_id,
+      U&'\B9E4\CE58\BC29 \CD08\B300',
+      post_row.title || U&' B\C0AC\C774\B4DC \D300 \CD08\B300\AC00 \B3C4\CC29\D588\C2B5\B2C8\B2E4.',
+      'match',
+      'recruiting_invitation',
+      safe_post_id,
+      invitation_id,
+      invitation || jsonb_build_object(
+        'targetUserId', captain_id,
+        'recruitingPostId', safe_post_id,
+        'invitationId', invitation_id,
+        'actionRequired', true
+      ),
+      now_at,
+      now_at
+    ) on conflict (id) do update set
+      target_user_id = excluded.target_user_id,
+      title = excluded.title,
+      body = excluded.body,
+      payload = excluded.payload,
+      updated_at = excluded.updated_at;
+  end if;
+
+  perform public.rankball_refresh_recruiting_feed_for_post(safe_post_id);
+  return jsonb_build_object(
+    'ok', true,
+    'action', 'setRecruitingRoomTeam',
+    'postId', safe_post_id,
+    'side', safe_side,
+    'teamId', safe_team_id,
+    'captainId', captain_id,
+    'sqlReducer', true,
+    'advisoryLocked', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_recruiting_set_room_team_action(text, text, text, text)
+from public, anon, authenticated;
+grant execute on function public.rankball_recruiting_set_room_team_action(text, text, text, text)
+to service_role;
 
 -- Grant health is registry-backed so new RPC migrations add one contract row
 -- instead of copying and replacing the complete health function.

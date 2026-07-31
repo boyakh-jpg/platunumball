@@ -63,7 +63,9 @@ export default function Season({ app }) {
       if (!request) directoryLoadKeyRef.current = "";
       return;
     }
-    request.catch(() => {
+    request.then((result) => {
+      if (result === false) directoryLoadKeyRef.current = "";
+    }).catch(() => {
       directoryLoadKeyRef.current = "";
     });
   }, [app.currentUser.id, app.remoteReady, loadDirectory]);

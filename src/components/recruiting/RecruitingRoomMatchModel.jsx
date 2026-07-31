@@ -35,6 +35,15 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
           isMatchRecordParticipantSetupRequired(sourceMatch)
           && sourceMatch?.createdBy === app.currentUser.id,
         );
+        const currentUserIsSourceReferee = Boolean(
+          sourceMatch
+          && isMatchReferee(sourceMatch, app.currentUser.id)
+          && canOperateAssignedMatchReferee(
+            app.currentUser,
+            sourceMatch,
+            app.state.settings?.refereeAppointments,
+          ),
+        );
         const sourceRoomReadOnly = Boolean(
           recruitingRoomTerminalStatus ||
           (matchRoom && (
@@ -46,20 +55,14 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
         const sourceMatchSlotManagementOpen = Boolean(
           !sourceRoomReadOnly
-          && (!matchRoom || isMatchPregameSlotManagementOpen(sourceMatch)),
+          && (!matchRoom || isMatchPregameSlotManagementOpen(sourceMatch))
+          && (!sourceMatch || (sourceMatchPhase?.phase === "checkin" && sourceMatch.refereeId
+            ? currentUserIsSourceReferee
+            : mine)),
         );
         const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
         const activeSelfSlotDraft = sourceMatchSlotManagementOpen ? activeSelfSlotDraftRaw : null;
         const canUseChat = canChat && !sourceRoomReadOnly && !roomChatLocked;
-        const currentUserIsSourceReferee = Boolean(
-          sourceMatch
-          && isMatchReferee(sourceMatch, app.currentUser.id)
-          && canOperateAssignedMatchReferee(
-            app.currentUser,
-            sourceMatch,
-            app.state.settings?.refereeAppointments,
-          ),
-        );
         const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const currentUserCanStartSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const canResolveSourceMatchDispute = Boolean(

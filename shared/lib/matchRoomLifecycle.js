@@ -17,7 +17,7 @@ import { isInstantRoom } from "./matchTimeUtils.js";
 
 const MATCH_CLOSED_NOTICE_GRACE_MINUTES = INSTANT_ROOM_EXPIRE_MINUTES;
 export const MATCH_FINALIZATION_MINIMUM_MINUTES = 3;
-export const MATCH_MANUAL_FINALIZATION_DELAY_MINUTES = 3;
+export const MATCH_MANUAL_FINALIZATION_DELAY_MINUTES = MATCH_FINALIZATION_MINIMUM_MINUTES;
 export { INSTANT_ROOM_EXPIRE_MINUTES };
 
 const ROOM_PHASE_META = {
@@ -210,15 +210,13 @@ export function getMatchFinalizationWindow(match = {}, now = Date.now()) {
 export function getMatchManualFinalizationStatus(match = {}, now = Date.now()) {
   const sourceMatch = match ?? {};
   const submittedAt = sourceMatch.result?.submittedAt ?? sourceMatch.result?.submitted_at ?? null;
-  const submittedAtMs = submittedAt ? new Date(submittedAt).getTime() : NaN;
   const nowMs = typeof now === "number" ? now : new Date(now).getTime();
-  const readyAtMs = Number.isFinite(submittedAtMs)
-    ? submittedAtMs + MATCH_MANUAL_FINALIZATION_DELAY_MINUTES * MINUTE_MS
-    : NaN;
+  const { availableAt, ready } = getMatchFinalizationWindow(sourceMatch, nowMs);
+  const readyAtMs = availableAt?.getTime() ?? NaN;
   return {
     submittedAt,
-    ready: Number.isFinite(nowMs) && Number.isFinite(readyAtMs) && nowMs >= readyAtMs,
-    readyAt: Number.isFinite(readyAtMs) ? new Date(readyAtMs) : null,
+    ready,
+    readyAt: availableAt,
     remainingMs: Number.isFinite(nowMs) && Number.isFinite(readyAtMs)
       ? Math.max(0, readyAtMs - nowMs)
       : null,

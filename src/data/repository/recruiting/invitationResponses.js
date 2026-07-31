@@ -438,12 +438,19 @@ export function declineRecruitingInvitation(state, postId, invitationId) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const invitation = roomState.invitations.find((item) => item.id === invitationId && item.targetUserId === state.currentUserId);
   if (!invitation) return state;
+  const clearsTargetTeam = invitation.joinMode === "team"
+    && invitation.side === "teamB"
+    && invitation.teamId === post.targetTeamId;
 
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
       item.id === postId
-        ? { ...item, roomState: { ...roomState, invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId) } }
+        ? {
+            ...item,
+            targetTeamId: clearsTargetTeam ? null : item.targetTeamId,
+            roomState: { ...roomState, invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId) },
+          }
         : item
     )),
   };

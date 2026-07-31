@@ -144,3 +144,14 @@ test("actual referee match keeps one clock lifecycle from start through overtime
   assert.match(matchRoomSource, /editableScoreSides=\{hasReferee \? \[\]/u);
   assert.match(recruitingSource, /editableScoreSides=\{sourceMatch\.refereeId \? \[\]/u);
 });
+
+test("unified match end and referee start eligibility stay server-enforced", async () => {
+  const migration = await readFile(
+    path.join(ROOT, "supabase/migrations/20260731020000_harden_match_clock_finalization_boundaries.sql"),
+    "utf8",
+  );
+  assert.match(migration, /event\.action in \('endClock', 'matchEnd'\)/u);
+  assert.match(migration, /rankball_is_match_referee_eligible\(safe_actor_id, safe_match_id\)/u);
+  assert.match(migration, /match_referee_qualification_required/u);
+  assert.doesNotMatch(migration, /\b(?:delete|truncate|drop table)\b/iu);
+});
