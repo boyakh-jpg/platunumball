@@ -943,7 +943,8 @@ test("실제 경기시계 프론트는 샷클락·다음 쿼터·연장·통합 
   }
   assert.match(panelSource, /const requestMatchEnd = async/);
   assert.match(panelSource, /const response = await onEndMatch\(\)/);
-  assert.match(viewSource, /경기·시계 종료/);
+  assert.match(viewSource, /시계 종료/);
+  assert.match(viewSource, /경기 종료/);
 });
 
 test("분리된 방 렌더 모듈은 런타임 의존성을 명시적으로 전달한다", async () => {

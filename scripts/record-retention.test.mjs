@@ -288,3 +288,14 @@ test("profile and team records use the dedicated archive-backed API", async () =
   assert.match(simulationGuardSource, /delete from public\.match_record_archives/);
   assert.doesNotMatch(profileSource, /records\.filter\(\(match\) => !isMatchWithinRecordDetailWindow/);
 });
+
+test("substituted actual players remain in the confirmed record index", async () => {
+  const migrationSource = await readSource("supabase/migrations/20260731234000_fix_substituted_match_record_participants.sql");
+  assert.match(migrationSource, /create or replace function public\.rankball_match_record_player_rows/u);
+  assert.match(migrationSource, /jsonb_array_elements_text\([\s\S]*played_player_ids->'teamA'/u);
+  assert.match(migrationSource, /jsonb_array_elements_text\([\s\S]*played_player_ids->'teamB'/u);
+  assert.match(migrationSource, /rankball_refresh_match_record_archive\(candidate\.id\)/u);
+  assert.match(migrationSource, /rankball_match_record_archive_is_complete\(candidate\.id\)/u);
+  assert.doesNotMatch(migrationSource, /m_ms90pywo_48e3l/u);
+  assert.doesNotMatch(migrationSource, /\b(?:drop table|truncate)\b/iu);
+});

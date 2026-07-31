@@ -734,7 +734,7 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   );
   assert.match(
     clockStyles,
-    /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \{[^}]*grid-template-columns: repeat\(4, minmax\(30px, 1fr\)\);/,
+    /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \{[^}]*grid-template-columns: repeat\(4, minmax\(34px, 1fr\)\);/,
   );
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-score-control-side \{[^}]*background: transparent;[^}]*border: 0;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-main-time time \{[^}]*font-size: clamp\(3rem, 16vmin, 8rem\);/);
