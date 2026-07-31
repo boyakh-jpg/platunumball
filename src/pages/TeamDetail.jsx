@@ -44,6 +44,8 @@ export default function TeamDetail({ app }) {
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
   const [memberQuery, setMemberQuery] = useState("");
   const [selectedInviteProfile, setSelectedInviteProfile] = useState(null);
+  const [teamInvitePending, setTeamInvitePending] = useState(false);
+  const [teamInviteError, setTeamInviteError] = useState("");
   const [selectedHistoryMatchId, setSelectedHistoryMatchId] = useState("");
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [emblemPending, setEmblemPending] = useState(false);
@@ -197,13 +199,24 @@ export default function TeamDetail({ app }) {
 
   const inviteMember = async (event) => {
     event.preventDefault();
-    if (!canAddMember) return;
-    const result = await app.actions.inviteTeamMember(team.id, addUserId, memberDraft.role);
-    if (result?.ok === false) return;
-    const nextUser = availableUsers.find((user) => user.id !== addUserId);
-    setMemberDraft({ userId: nextUser?.id ?? app.state.users[0]?.id, role: "regular" });
-    setMemberQuery("");
-    setSelectedInviteProfile(null);
+    if (!canAddMember || teamInvitePending) return;
+    setTeamInvitePending(true);
+    setTeamInviteError("");
+    try {
+      const result = await app.actions.inviteTeamMember(team.id, addUserId, memberDraft.role);
+      if (!result || result.ok === false) {
+        setTeamInviteError("팀 초대를 보내지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+      const nextUser = availableUsers.find((user) => user.id !== addUserId);
+      setMemberDraft({ userId: nextUser?.id ?? app.state.users[0]?.id, role: "regular" });
+      setMemberQuery("");
+      setSelectedInviteProfile(null);
+    } catch {
+      setTeamInviteError("팀 초대를 보내지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setTeamInvitePending(false);
+    }
   };
   const renderInviteSearchItem = (user) => {
     const count = membershipCounts.get(user.id) ?? 0;
@@ -216,6 +229,7 @@ export default function TeamDetail({ app }) {
         disabled={blocked}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => {
+          setTeamInviteError("");
           setMemberDraft((current) => ({ ...current, userId: user.id }));
           setMemberQuery(user.name ?? "");
           setSelectedInviteProfile(user);
@@ -335,5 +349,5 @@ export default function TeamDetail({ app }) {
   const emblemUploadLocked = moderationLocked || isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
 
-  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, team, teamFull, teamId, teamRecordArchive, uploadEmblem, userMap, winRate, wins }} />;
+  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamFull, teamId, teamInviteError, teamInvitePending, teamRecordArchive, uploadEmblem, userMap, winRate, wins }} />;
 }

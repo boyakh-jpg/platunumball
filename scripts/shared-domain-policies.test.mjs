@@ -36,7 +36,7 @@ import {
 } from "../src/lib/constants.js";
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
 import { getRoomScheduleLabel } from "../src/lib/matchUtils.js";
-import { matchesReportSearchQuery } from "../src/pages/settingsPageModel.js";
+import { getResumableRefereeExamAttempt, matchesReportSearchQuery } from "../src/pages/settingsPageModel.js";
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
 import {
@@ -181,7 +181,7 @@ import { mergeRecruitingPostsById } from "../src/hooks/useAppData.js";
 import { getPlayerSeasonActivity } from "../src/lib/season.js";
 import { fromRemoteProfile } from "../src/data/profileMappers.js";
 import { IMAGE_CONTEXT_MENU_ALLOW_ATTRIBUTE, getProtectedImageTarget } from "../src/hooks/useImageInteractionGuard.js";
-import { REFEREE_EXAM_VERSION } from "../src/lib/refereeExamBank.js";
+import { createRefereeExamSet, hasCompleteRefereeExamAnswers, REFEREE_EXAM_SIZE, REFEREE_EXAM_VERSION } from "../src/lib/refereeExamBank.js";
 import {
   REFEREE_RULEBOOK_CHECKLIST,
   REFEREE_RULEBOOK_EASY_SECTIONS,
@@ -1469,11 +1469,29 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamDetailPage, /detailRequestRef\.current = teamId;\s+refreshTeam\(\);/);
   assert.match(teamDetailPage, /!team && app\.remoteReady !== false && Boolean\(loadDirectory\)/);
   assert.match(teamDetailPage, /const result = await app\.actions\.inviteTeamMember/);
-  assert.match(teamDetailPage, /if \(result\?\.ok === false\) return;/);
+  assert.match(teamDetailPage, /if \(!result \|\| result\.ok === false\)/);
+  assert.match(teamDetailPage, /if \(!canAddMember \|\| teamInvitePending\) return;/);
+  assert.match(teamDetailView, /disabled=\{!canAddMember \|\| teamInvitePending\}/);
   assert.match(teamDetailView, /result=\{record\.result\}/u);
   assert.doesNotMatch(teamDetailView, /getScoreOutcome/u);
   assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/u);
   assert.match(teamDetailView, /function getManagedRoleOptions\(member, captainId\)/u);
+});
+
+test("team creation requires one active approved home court selection", async () => {
+  const [teamsPage, teamRepository, teamServer] = await Promise.all([
+    readSource("src/pages/Teams.jsx"),
+    readSource("src/data/repository/account.js"),
+    readSource("server/api/teams/sync-team.js"),
+  ]);
+  assert.match(teamsPage, /homeCourtId: ""/);
+  assert.match(teamsPage, /court\.id === draft\.homeCourtId && court\.name === draft\.homeCourt/);
+  assert.match(teamsPage, /homeCourt: court\.name, homeCourtId: court\.id/);
+  assert.match(teamsPage, /teamNameInvalid \|\| homeCourtInvalid/);
+  assert.match(teamRepository, /homeCourtId: teamDraft\.homeCourtId/);
+  assert.match(teamServer, /from\("approved_courts"\)[\s\S]*?\.eq\("id", team\.homeCourtId\)[\s\S]*?\.eq\("status", "active"\)/);
+  assert.match(teamServer, /new Error\("invalid_team_home_court"\)/);
+  assert.match(teamServer, /team\.homeCourt = approvedCourt\.name/);
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {
@@ -2171,4 +2189,32 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.match(page, /쉬운 규칙/);
   assert.match(page, /상세 규칙/);
   assert.match(page, /searchParams\.get\("level"\) === "detail"/);
+});
+
+test("심판 시험은 저장된 시작 attempt를 복구하고 정확한 전체 답안만 완료한다", async () => {
+  const { questionIds, questions } = createRefereeExamSet("referee-resume", REFEREE_EXAM_SIZE);
+  const startedAttempt = {
+    id: "rea_resume",
+    userId: "user-a",
+    status: "started",
+    startedAt: "2026-07-31T10:00:00.000Z",
+    questions,
+  };
+  const completedAttempt = { ...startedAttempt, id: "rea_done", status: "passed", startedAt: "2026-07-24T10:00:00.000Z", finishedAt: "2026-07-24T10:10:00.000Z" };
+  const answers = Object.fromEntries(questionIds.map((questionId) => [questionId, 0]));
+
+  assert.equal(getResumableRefereeExamAttempt([completedAttempt, startedAttempt], "user-a")?.id, startedAttempt.id);
+  assert.equal(getResumableRefereeExamAttempt([completedAttempt], "user-a"), null);
+  assert.equal(hasCompleteRefereeExamAnswers(questionIds, answers), true);
+  assert.equal(hasCompleteRefereeExamAnswers(questionIds, { ...answers, [questionIds[0]]: 4 }), false);
+  assert.equal(hasCompleteRefereeExamAnswers(questionIds, Object.fromEntries(Object.entries(answers).slice(1))), false);
+  assert.equal(hasCompleteRefereeExamAnswers(questionIds, { ...answers, extra: 0 }), false);
+  const refereeSyncSource = await readSource("server/api/referee/sync.js");
+  const refereeControllerSource = await readSource("src/pages/useSettingsRefereeController.js");
+  const refereeSectionSource = await readSource("src/pages/SettingsRefereeSection.jsx");
+  assert.match(refereeSyncSource, /hasCompleteRefereeExamAnswers\(questionIds, attempt\.answers\)/);
+  assert.match(refereeSyncSource, /incomplete_exam_answers/);
+  assert.match(refereeControllerSource, /getResumableRefereeExamAttempt/);
+  assert.match(refereeControllerSource, /refereeActionPendingRef\.current/);
+  assert.match(refereeSectionSource, /disabled=\{Boolean\(refereeActionPending\)/);
 });

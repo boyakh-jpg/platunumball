@@ -34,7 +34,7 @@ function getManagedRoleOptions(member, captainId) {
 }
 
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, team, teamFull, teamId, teamRecordArchive, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamFull, teamId, teamInviteError, teamInvitePending, teamRecordArchive, uploadEmblem, userMap, winRate, wins } = controller;
   return (
     <div className="page-stack team-detail-page rank-team-page">
       <EntityProfileHero
@@ -218,6 +218,7 @@ export default function TeamDetailView({ controller }) {
                     <SearchPicker
                       value={memberQuery}
                       onChange={(value) => {
+                        setTeamInviteError("");
                         setMemberQuery(value);
                         setMemberDraft((current) => ({ ...current, userId: "" }));
                         setSelectedInviteProfile(null);
@@ -247,9 +248,10 @@ export default function TeamDetailView({ controller }) {
                       <small>{getUserHashtag(selectedInviteUser)} · {selectedCount}/{MAX_TEAM_MEMBERSHIPS}팀</small>
                     </PlayerHoverCard>
                   ) : null}
-                  <Button type="submit" disabled={!canAddMember}>초대 발송</Button>
+                  <Button type="submit" disabled={!canAddMember || teamInvitePending}>{teamInvitePending ? "발송 중" : "초대 발송"}</Button>
+                  {teamInviteError ? <span className="form-warning">{teamInviteError}</span> : null}
                   {teamFull ? <span className="form-warning">팀원은 최대 {MAX_TEAM_MEMBERS}명까지 등록할 수 있습니다.</span> : null}
-                  {!teamFull && !canAddMember ? <span className="form-warning">선수 팀 한도 {MAX_TEAM_MEMBERSHIPS}/{MAX_TEAM_MEMBERSHIPS}</span> : null}
+                  {!teamFull && selectedInviteUser && !canAddMember ? <span className="form-warning">선수 팀 한도 {MAX_TEAM_MEMBERSHIPS}/{MAX_TEAM_MEMBERSHIPS}</span> : null}
                 </form>
                 {pendingTeamInvitations.length ? (
                   <div className="member-control-list">

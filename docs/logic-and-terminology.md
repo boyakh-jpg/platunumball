@@ -890,6 +890,8 @@
 
 ## 2026-06-29 방 초대 검색 선택
 
+- 원격 검색으로만 찾은 팀도 선택한 팀 snapshot과 ID를 초대 draft에 보존한다. 팀원 picker와 `joinMode: "team"` 초대는 로컬 팀 directory 선행 로드에 의존하지 않는다.
+
 - 방 초대 검색의 프로필 row는 선택 후 개인 초대로 보낸다. 새 초대에는 `joinMode: "player"`를 명시해 기존 팀 파티 자동 추론과 구분한다.
 - 팀 row 또는 팀 멤버 picker에서 보낸 초대만 `joinMode: "team"`과 `teamId`를 포함한다.
 - 기존 초대 데이터처럼 `joinMode`가 없는 초대는 하위 호환을 위해 같은 사이드 팀 파티 추론을 유지한다.
@@ -2131,6 +2133,9 @@ flowchart TD
 7. `referee_exam_attempts`, `referee_requests`는 브라우저 select self-read만 허용하고 insert/update/delete는 `/api/referee/sync` service-role 경로만 허용한다.
 8. Backend flow simulation verifies referee exam start/finish on `/api/referee/sync`, public-question-only response, server-side grading, cooldown rejection, and request submission requiring a passed attempt.
 9. 심판 임명/등급 부여는 기존 관리자 임명 server action에서 처리한다.
+10. 시작 상태로 저장된 최신 심판 시험은 새로고침 뒤 같은 attempt와 공개 문항을 복구해 이어서 응시한다. 이 attempt에는 주 1회 재응시 차단을 적용하되 이어하기 자체를 막지 않는다.
+11. 시험 종료는 저장된 정확히 30개 문항 모두에 `0~3` 정수 답이 있을 때만 채점한다. 누락·중복 문항 또는 추가 답안이 있으면 attempt를 종료하지 않는다.
+12. 시험 시작·채점·등록요청은 처리 중 같은 카드의 관련 단추를 비활성화해 연속 제출을 막는다.
 
 ## 2026-06-24 RLS hardening
 
@@ -3299,6 +3304,7 @@ flowchart TD
 ## 2026-07-21 팀 홈 코트 선택
 
 1. 새 팀의 홈 코트는 active 승인 구장 중 하나만 선택한다. 검색창에 입력한 문자열 자체는 선택값이 아니며 결과를 눌렀을 때만 `homeCourt`를 바꾼다.
+1-1. 새 팀 생성 payload는 선택한 `homeCourtId`를 함께 보내며 서버는 active `approved_courts` ID를 확인하고 저장 이름을 승인 구장의 canonical 이름으로 고정한다. 미선택·비활성·존재하지 않는 구장은 팀을 생성하지 않는다.
 2. 새 팀 만들기와 방 만들기는 같은 구장 검색 텍스트, 정확 검색, 한 글자 오타 보조 검색, 즐겨찾기·지역·추천 점수 정렬을 사용한다.
 3. 검색어가 있으면 지역 필터를 해제하고 이름·해시태그·지역·주소·바닥·형태 전체에서 찾는다. 검색어가 없을 때만 선택 지역 추천을 적용한다.
 4. 원격 검색으로 찾은 active 구장은 선택 즉시 현재 후보 목록에 ID 기준으로 한 번만 병합한다. 팀 홈 코트는 복수 선택으로 확장하지 않는다.

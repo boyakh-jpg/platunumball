@@ -36,6 +36,7 @@ export function InvitePanel({
   selectedPlayerIds,
   favoritePlayerIds,
   favoriteTeamIds,
+  selectedTeam = null,
   allowedTeamId = "",
   playerOnly = false,
   poolMode = false,
@@ -54,7 +55,7 @@ export function InvitePanel({
   const selectedSet = new Set(selectedPlayerIds);
   const disabledSet = new Set(disabledPlayerIds);
   const allowedTeam = allowedTeamId ? teams.find((team) => team.id === allowedTeamId) : null;
-  const rosterTeam = teamSummonMode ? allowedTeam : matchedTeam;
+  const rosterTeam = teamSummonMode ? allowedTeam : selectedTeam ?? matchedTeam;
   const allowedTeamMemberIds = new Set(allowedTeam ? getSelectableTeamPlayerIds(allowedTeam) : []);
   const isAllowedPlayer = (playerId, player = null) => (
     (!allowedTeamId || allowedTeamMemberIds.has(playerId) || (player?.teamIds ?? []).includes(allowedTeamId)) &&
@@ -104,7 +105,11 @@ export function InvitePanel({
           className="search-picker-result-row search-picker-result-row-actionable"
           onMouseDown={(event) => event.preventDefault()}
         >
-          <button type="button" className="search-picker-result-main" onClick={() => onQueryChange(getTeamHashtag(team))}>
+          <button
+            type="button"
+            className="search-picker-result-main"
+            onClick={() => onQueryChange(getTeamHashtag(team), { selectedTeam: team, selectedPlayerIds: [] })}
+          >
             <strong>{team.name}</strong>
             <span>{getTeamHashtag(team)} · {team.mmr} MMR</span>
             <em>팀</em>
@@ -158,7 +163,7 @@ export function InvitePanel({
       {!teamSummonMode ? (
         <SearchPicker
           value={query}
-          onChange={onQueryChange}
+          onChange={(nextQuery) => onQueryChange(nextQuery, { selectedTeam: null, selectedPlayerIds: [] })}
           placeholder={playerOnly ? "선수 검색" : "선수 또는 팀 검색"}
           items={inviteSearchItems}
           getSearchText={getInviteItemSearchText}
@@ -228,7 +233,6 @@ export function InvitePanel({
         </div>
       ) : null}
 
-      {!teamSummonMode && query.trim() && !inviteSearchItems.length && !matchedTeam ? <div className="arena-invite-empty">검색 결과 없음</div> : null}
     </div>
   );
 }

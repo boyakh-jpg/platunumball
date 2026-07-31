@@ -7,6 +7,7 @@ import {
   REFEREE_EXAM_VERSION,
   createRefereeExamSet,
   gradeRefereeExamByQuestionIds,
+  hasCompleteRefereeExamAnswers,
 } from "../../../shared/lib/refereeExamBank.js";
 
 function toPayloadRow(item = {}) {
@@ -154,6 +155,11 @@ async function syncExamAttempt(context, action, attempt = {}) {
   const questionIds = Array.isArray(existingAttempt?.payload?.questionIds) ? existingAttempt.payload.questionIds : [];
   if (questionIds.length !== REFEREE_EXAM_SIZE) {
     const error = new Error("invalid_exam_question_set");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!hasCompleteRefereeExamAnswers(questionIds, attempt.answers)) {
+    const error = new Error("incomplete_exam_answers");
     error.statusCode = 400;
     throw error;
   }

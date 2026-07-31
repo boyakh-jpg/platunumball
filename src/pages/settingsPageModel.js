@@ -1,5 +1,6 @@
 import { REPORT_TARGET_TYPES } from "../lib/reportReasons.js";
 import { getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
+import { REFEREE_EXAM_SIZE } from "../lib/refereeExamBank.js";
 
 export const DEFAULT_COURT_REQUEST = {
   name: "",
@@ -86,6 +87,16 @@ export function getLatestRefereeExamAttempt(attempts = [], userId) {
   return [...attempts]
     .filter((attempt) => attempt.userId === userId)
     .sort((a, b) => new Date(b.startedAt ?? 0).getTime() - new Date(a.startedAt ?? 0).getTime())[0] ?? null;
+}
+
+export function getResumableRefereeExamAttempt(attempts = [], userId) {
+  const latestAttempt = getLatestRefereeExamAttempt(attempts, userId);
+  return latestAttempt?.status === "started" &&
+    !latestAttempt.finishedAt &&
+    Array.isArray(latestAttempt.questions) &&
+    latestAttempt.questions.length === REFEREE_EXAM_SIZE
+    ? latestAttempt
+    : null;
 }
 
 export function getCourtAddressDong(source = {}) {

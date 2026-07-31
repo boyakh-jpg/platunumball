@@ -45,13 +45,12 @@ export default function Teams({ app }) {
     () => mergeCourtSearchCourts(directoryCourts, discoveredCourts),
     [directoryCourts, discoveredCourts],
   );
-  const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
   const defaultRegionSelection = useMemo(
     () => getProfileRegionSelection(app.currentUser),
     [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
   );
   const defaultTeamRegion = `${defaultRegionSelection.sido} ${defaultRegionSelection.district}`;
-  const [draft, setDraft] = useState({ name: "", region: defaultTeamRegion, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+  const [draft, setDraft] = useState({ name: "", region: defaultTeamRegion, homeCourt: "", homeCourtId: "", captainId: app.currentUser.id, accent: "#58d2c0" });
   const [teamCreatePending, setTeamCreatePending] = useState(false);
   const [teamCreateError, setTeamCreateError] = useState("");
   const [query, setQuery] = useState("");
@@ -83,6 +82,7 @@ export default function Teams({ app }) {
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const teamName = draft.name.trim().replace(/\s+/g, " ");
   const teamNameInvalid = !teamName || teamName.length > MAX_TEAM_NAME_LENGTH;
+  const homeCourtInvalid = !registeredCourts.some((court) => court.id === draft.homeCourtId && court.name === draft.homeCourt);
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -176,7 +176,7 @@ export default function Teams({ app }) {
     if (court?.id && !registeredCourts.some((item) => item.id === court.id)) {
       setDiscoveredCourts((current) => [...current.filter((item) => item.id !== court.id), court]);
     }
-    update({ homeCourt: court.name });
+    update({ homeCourt: court.name, homeCourtId: court.id });
     setCourtQuery("");
     setCourtRegion(court.region);
   };
@@ -197,7 +197,7 @@ export default function Teams({ app }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (teamNameInvalid) return;
+    if (teamNameInvalid || homeCourtInvalid) return;
     setTeamCreatePending(true);
     setTeamCreateError("");
     try {
@@ -206,7 +206,7 @@ export default function Teams({ app }) {
         setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
-      setDraft({ name: "", region: defaultTeamRegion, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+      setDraft({ name: "", region: defaultTeamRegion, homeCourt: "", homeCourtId: "", captainId: app.currentUser.id, accent: "#58d2c0" });
       setCourtQuery("");
       setCourtRegion(defaultTeamRegion);
     } catch (error) {
@@ -466,7 +466,7 @@ export default function Teams({ app }) {
                 closeOnResultClick
                 renderItem={renderCourtSearchItem}
               />
-              <span className="form-chip">{draft.homeCourt}</span>
+              <span className={homeCourtInvalid ? "form-warning" : "form-chip"}>{homeCourtInvalid ? "승인 구장을 선택해 주세요." : draft.homeCourt}</span>
             </label>
             <label>
               팀장
@@ -480,7 +480,7 @@ export default function Teams({ app }) {
               <input type="color" value={draft.accent} onChange={(event) => update({ accent: event.target.value })} />
             </label>
             {teamCreateError ? <span className="form-warning">{teamCreateError}</span> : null}
-            <Button type="submit" disabled={captainLimitReached || teamNameInvalid || teamCreatePending}><PlusCircle size={18} /> {teamCreatePending ? "저장 중" : "팀 만들기"}</Button>
+            <Button type="submit" disabled={captainLimitReached || teamNameInvalid || homeCourtInvalid || teamCreatePending}><PlusCircle size={18} /> {teamCreatePending ? "저장 중" : "팀 만들기"}</Button>
           </form>
         </Card>
       </div>

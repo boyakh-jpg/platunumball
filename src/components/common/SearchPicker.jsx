@@ -111,6 +111,7 @@ export default function SearchPicker({
   const [visibleLimit, setVisibleLimit] = useState(Math.max(1, Number(limit) || 10));
   const [remoteItems, setRemoteItems] = useState([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState(false);
   const [floatingPlacement, setFloatingPlacement] = useState("below");
   const [floatingMaxHeight, setFloatingMaxHeight] = useState(320);
   const pickerRef = useRef(null);
@@ -167,6 +168,7 @@ export default function SearchPicker({
       remoteRequestIdRef.current += 1;
       setRemoteItems([]);
       setRemoteLoading(false);
+      setRemoteError(false);
       return undefined;
     }
 
@@ -174,6 +176,7 @@ export default function SearchPicker({
     remoteRequestIdRef.current = requestId;
     setRemoteItems([]);
     setRemoteLoading(true);
+    setRemoteError(false);
     const timer = window.setTimeout(async () => {
       try {
         const result = await postServerAction("/api/search", {
@@ -186,7 +189,10 @@ export default function SearchPicker({
         if (remoteRequestIdRef.current !== requestId) return;
         setRemoteItems(Array.isArray(result?.items) ? result.items : []);
       } catch {
-        if (remoteRequestIdRef.current === requestId) setRemoteItems([]);
+        if (remoteRequestIdRef.current === requestId) {
+          setRemoteItems([]);
+          setRemoteError(true);
+        }
       } finally {
         if (remoteRequestIdRef.current === requestId) setRemoteLoading(false);
       }
@@ -297,7 +303,7 @@ export default function SearchPicker({
               ) : null}
             </>
           ) : null}
-          {visibleItems.length ? visibleItems.map(renderItem) : <div className="ui-empty-state-compact">{remoteLoading ? "검색 중..." : emptyText}</div>}
+          {visibleItems.length ? visibleItems.map(renderItem) : <div className="ui-empty-state-compact">{remoteLoading ? "검색 중..." : remoteError ? "검색 결과를 불러오지 못했습니다." : emptyText}</div>}
           {hasMore ? (
             <button
               type="button"

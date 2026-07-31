@@ -63,7 +63,7 @@ const loadDirectory = app.actions.loadDirectory;
   } = useSettingsCourtRequestController({ app, currentTrustScore });
   const {
     refereeDraft, refereeExamQuestions, refereeExamOpen, refereeExamAnswers, refereeExamResult,
-    refereeRequests, canOpenRefereeRequestForm, refereeExamNotice, answeredRefereeExamCount,
+    refereeRequests, canOpenRefereeRequestForm, refereeExamNotice, refereeActionPending, answeredRefereeExamCount,
     refereeExamRequired, refereeExamPassed, refereeExamLocked, refereeExamLockLabel,
     updateRefereeDraft, startRefereeExam, selectRefereeExamAnswer, submitRefereeExam,
     submitRefereeRequest,
@@ -437,6 +437,7 @@ const loadDirectory = app.actions.loadDirectory;
     canSubmitCourtRequest,
     canOpenRefereeRequestForm,
     refereeExamNotice,
+    refereeActionPending,
     blockableUsers,
     selectedBlockUserId,
     reportTargetType,

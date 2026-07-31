@@ -19,6 +19,7 @@ export default function SettingsRefereeSection({ controller }) {
     currentTrustScore,
     canOpenRefereeRequestForm,
     refereeExamNotice,
+    refereeActionPending,
     answeredRefereeExamCount,
     refereeExamRequired,
     refereeExamPassed,
@@ -67,8 +68,8 @@ export default function SettingsRefereeSection({ controller }) {
                   </p>
                   {refereeExamNotice ? <p className="referee-exam-lock locked">{refereeExamNotice}</p> : null}
                   <div className="referee-exam-actions">
-                    <Button type="button" variant="secondary" onClick={startRefereeExam} disabled={refereeExamLocked || (refereeExamOpen && !refereeExamResult)}>
-                      {refereeExamOpen && !refereeExamResult ? "시험 진행 중" : "심판 시험 시작"}
+                    <Button type="button" variant="secondary" onClick={startRefereeExam} disabled={Boolean(refereeActionPending) || refereeExamLocked || (refereeExamOpen && !refereeExamResult)}>
+                      {refereeActionPending === "start" ? "시험 불러오는 중" : refereeExamOpen && !refereeExamResult ? "시험 진행 중" : "심판 시험 시작"}
                     </Button>
                     {refereeExamResult ? (
                       <Badge tone={refereeExamResult.passed ? "green" : "orange"}>
@@ -95,6 +96,7 @@ export default function SettingsRefereeSection({ controller }) {
                                   key={choice}
                                   type="button"
                                   className={`${selected ? "selected" : ""} ${correct ? "correct" : ""} ${wrong ? "wrong" : ""}`}
+                                  disabled={Boolean(refereeActionPending) || Boolean(refereeExamResult)}
                                   onClick={() => selectRefereeExamAnswer(question.id, index)}
                                 >
                                   {choice}
@@ -105,8 +107,8 @@ export default function SettingsRefereeSection({ controller }) {
                           {refereeExamResult ? <small>{refereeExamResult.reviewedById?.[question.id]?.explanation}</small> : null}
                         </div>
                       ))}
-                      <Button type="button" onClick={submitRefereeExam} disabled={answeredRefereeExamCount < REFEREE_EXAM_SIZE || Boolean(refereeExamResult)}>
-                        채점하기
+                      <Button type="button" onClick={submitRefereeExam} disabled={Boolean(refereeActionPending) || answeredRefereeExamCount < REFEREE_EXAM_SIZE || Boolean(refereeExamResult)}>
+                        {refereeActionPending === "finish" ? "채점 중" : "채점하기"}
                       </Button>
                     </div>
                   ) : null}
@@ -127,8 +129,8 @@ export default function SettingsRefereeSection({ controller }) {
                     메모
                     <textarea value={refereeDraft.memo} placeholder="자격증, 활동 지역, 가능한 시간 등을 적어 주세요." onChange={(event) => updateRefereeDraft({ memo: event.target.value })} />
                   </label>
-                  <Button type="submit" variant="secondary" disabled={refereeExamRequired && !refereeExamPassed}>
-                    <Send size={16} /> 심판 등록요청
+                  <Button type="submit" variant="secondary" disabled={Boolean(refereeActionPending) || (refereeExamRequired && !refereeExamPassed)}>
+                    <Send size={16} /> {refereeActionPending === "request" ? "저장 중" : "심판 등록요청"}
                   </Button>
                   {refereeExamRequired && !refereeExamPassed ? <small>커뮤니티 심판은 시험 통과 후 등록요청할 수 있습니다.</small> : null}
                 </form>

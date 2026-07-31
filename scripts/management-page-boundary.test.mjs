@@ -203,6 +203,21 @@ test("recruiting chat polling imports its canonical merge helpers directly", asy
   );
 });
 
+test("remote team invite selection keeps its roster snapshot and one empty state", async () => {
+  const [panelSource, primarySource, slotSource] = await Promise.all([
+    read("src/components/recruiting/RecruitingRoomInvitePanels.jsx"),
+    read("src/components/recruiting/RecruitingRoomPrimarySection.jsx"),
+    read("src/components/recruiting/RecruitingRoomSlotRenderers.jsx"),
+  ]);
+
+  assert.match(panelSource, /const rosterTeam = teamSummonMode \? allowedTeam : selectedTeam \?\? matchedTeam/);
+  assert.match(panelSource, /selectedTeam: team, selectedPlayerIds: \[\]/);
+  assert.match(panelSource, /selectedTeam: null, selectedPlayerIds: \[\]/);
+  assert.doesNotMatch(panelSource, /arena-invite-empty">검색 결과 없음/);
+  assert.match(primarySource, /selectedTeam=\{activeInviteDraft\.selectedTeam \?\? null\}/);
+  assert.match(slotSource, /selectedTeam=\{activeSlotDraft\.selectedTeam \?\? null\}/);
+});
+
 test("legacy match paths redirect to the shared match modal query", async () => {
   const source = await read("src/App.jsx");
 

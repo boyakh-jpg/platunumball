@@ -274,7 +274,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                   sideName={activeInviteDraft.sideName}
                   reserve={Boolean(activeInviteDraft.reserve)}
                   query={activeInviteDraft.query}
-                  onQueryChange={(query) => updateInviteDraft({ query })}
+                  onQueryChange={(query, patch = {}) => updateInviteDraft({ query, ...patch })}
                   users={app.state.users}
                   teams={app.state.teams}
                   userById={userById}
@@ -282,6 +282,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                   selectedPlayerIds={activeInviteDraft.selectedPlayerIds ?? []}
                   favoritePlayerIds={favoritePlayerIds}
                   favoriteTeamIds={favoriteTeamIds}
+                  selectedTeam={activeInviteDraft.selectedTeam ?? null}
                   allowedTeamId={getInviteAllowedTeamId(activeInviteDraft.sideName)}
                   playerOnly={individualOnlyRoom}
                   poolMode={roomPhaseViewModel.mode === ROOM_BODY_MODES.pickupPool}

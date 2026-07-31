@@ -99,7 +99,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                 sideName={activeSlotDraft.sideName}
                 reserve={Boolean(activeSlotDraft.reserve)}
                 query={activeSlotDraft.query}
-                onQueryChange={(query) => updateInviteDraft({ query })}
+                onQueryChange={(query, patch = {}) => updateInviteDraft({ query, ...patch })}
                 users={app.state.users}
                 teams={app.state.teams}
                 userById={userById}
@@ -107,6 +107,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                 selectedPlayerIds={activeSlotDraft.selectedPlayerIds ?? []}
                 favoritePlayerIds={favoritePlayerIds}
                 favoriteTeamIds={favoriteTeamIds}
+                selectedTeam={activeSlotDraft.selectedTeam ?? null}
                 allowedTeamId={getInviteAllowedTeamId(activeSlotDraft.sideName)}
                 playerOnly={individualOnlyRoom}
                 poolMode={pickupPoolMode}

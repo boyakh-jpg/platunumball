@@ -159,6 +159,7 @@ export function createTeam(state, teamDraft) {
     id: makeId("t"),
     name: teamName,
     homeCourt: teamDraft.homeCourt,
+    homeCourtId: teamDraft.homeCourtId,
     region: teamDraft.region,
     mmr: DEFAULT_RATING,
     wins: 0,
