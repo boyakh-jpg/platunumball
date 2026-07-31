@@ -1457,6 +1457,8 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamDetailPage, /!team && app\.remoteReady !== false && Boolean\(loadDirectory\)/);
   assert.match(teamDetailView, /result=\{record\.result\}/u);
   assert.doesNotMatch(teamDetailView, /getScoreOutcome/u);
+  assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/u);
+  assert.match(teamDetailView, /function getManagedRoleOptions\(member, captainId\)/u);
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {

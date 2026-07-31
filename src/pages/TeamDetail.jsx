@@ -10,7 +10,6 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import {
   MAX_TEAM_MEMBERS,
   MAX_TEAM_MEMBERSHIPS,
-  TEAM_INVITE_ROLES,
   getTeamRoleLabel,
   isMercenaryTeamRole,
 } from "../lib/constants.js";
@@ -29,10 +28,6 @@ import TeamDetailView from "./TeamDetailView.jsx";
 function isHistoryInDetailWindow(match) {
   return isMatchWithinRecordDetailWindow(match);
 }
-
-const managedTeamRoleOptions = TEAM_INVITE_ROLES.map((role) => [role, getTeamRoleLabel(role)]);
-const inviteRoleOptions = managedTeamRoleOptions;
-
 
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();

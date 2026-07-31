@@ -10,7 +10,7 @@ import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
-import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, normalizeTeamRole } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_INVITE_ROLES, getTeamRoleLabel, normalizeTeamRole } from "../lib/constants.js";
 import { getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
 import { getSideResult, getTeamSide } from "../lib/season.js";
 import {
@@ -24,6 +24,13 @@ import { MatchRoomModal } from "./Matches.jsx";
 
 function myTeamCountLabel(canManage) {
   return canManage ? "관리" : "조회";
+}
+
+const inviteRoleOptions = TEAM_INVITE_ROLES.map((role) => [role, getTeamRoleLabel(role)]);
+
+function getManagedRoleOptions(member, captainId) {
+  if (member.userId === captainId) return [["captain", getTeamRoleLabel("captain")]];
+  return inviteRoleOptions;
 }
 
 export default function TeamDetailView({ controller }) {
