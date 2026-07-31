@@ -619,6 +619,12 @@ test("경기 종료 뒤 이의제기 점수 초깃값은 최신 팀 점수를 �
   assert.match(source, /requestedScoreB: String\(scoreB\)/);
 });
 
+test("비관리자의 관리자 컨텍스트 거절은 정상 권한 판정으로 캐시한다", async () => {
+  const source = await readFile(new URL("../src/hooks/appData/orchestrator/admin.js", import.meta.url), "utf8");
+  assert.match(source, /expectedNonAdmin = error\?\.code === "admin_required" \|\| error\?\.message === "admin_required"/);
+  assert.match(source, /if \(expectedNonAdmin\) adminContextLoadedAuthRef\.current = authUserId/);
+});
+
 test("프론트 팀전 연습방은 양 팀 선택·팀장 초대·출전/후보 명단을 실제 ID로 확정한다", () => {
   for (const mode of Object.keys(MODE_CAPACITY)) {
     for (let benchCapacity = 0; benchCapacity <= 3; benchCapacity += 1) {
