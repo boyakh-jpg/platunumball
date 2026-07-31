@@ -40,6 +40,7 @@ import {
 } from "../src/lib/practiceMatch.js";
 import { getRecruitingLobby } from "../src/lib/recruiting.js";
 import { buildMatchResultSubmission, getMatchManualFinalizationStatus } from "../src/lib/matchUtils.js";
+import { inferRegionSelection } from "../src/lib/profileSetup.js";
 import { getLocalRivalries } from "../src/lib/season.js";
 
 const MODE_CAPACITY = Object.freeze({
@@ -896,4 +897,17 @@ test("분리된 방 렌더 모듈은 런타임 의존성을 명시적으로 전�
     managementSource,
     /MatchClockPanel, MatchScoreControls,/,
   );
+});
+
+test("경기 만들기 구장 선택은 지역 필터 값을 시도·시군구 형식으로 정규화한다", async () => {
+  assert.deepEqual(inferRegionSelection("마포구"), {
+    sido: "서울특별시",
+    district: "마포구",
+  });
+  const source = await readFile(
+    new URL("../src/components/match/useCreateMatchValidationController.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /inferRegionSelection\(\[court\.sido, court\.sigungu, court\.region\]/);
+  assert.doesNotMatch(source, /setCourtRegion\(court\.region\)/);
 });

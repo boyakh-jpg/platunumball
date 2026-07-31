@@ -3693,3 +3693,8 @@ flowchart TD
 4. `server/api/matches/sync-match.js`는 요청 action의 인증·순서·DB 호출을 조립한다. 알림 계획은 `server/lib/matchNotifications.js`, 저장 row projection은 `server/lib/matchSnapshotRows.js`, 입력 검증은 `server/lib/matchSnapshotValidation.js`가 소유한다.
 5. 서버 모듈 분리는 DB RPC의 권한·transaction·revision 정책을 대체하지 않는다. UI와 서버 helper는 표시·입력 검증을 담당하고 최종 권위는 등록된 active RPC와 DB 제약에 둔다.
 6. 폐기 action의 에러 guard와 과거 데이터 해석 helper는 호출 가능 기능으로 복원하지 않는다. 실제 호출자와 DB 의존이 모두 없다는 계약 테스트가 있을 때만 별도 정리 migration에서 제거한다.
+
+## 2026-07-31 경기 만들기 구장 지역 동기화
+
+1. 경기 만들기에서 등록 구장을 선택하면 구장의 축약 지역값을 시도·시군구 표준값으로 정규화해 지역 필터에 반영한다.
+2. 선택 구장과 방 생성 payload의 지역은 같은 구장을 가리켜야 하며, 일치하지 않는 기본 지역으로 되돌아가지 않는다.

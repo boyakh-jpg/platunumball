@@ -9,7 +9,7 @@ export function useCreateMatchValidationController(context) {
     getMatchModeChangePatch, getMatchModeOrDefault, getMatchRecordMemo, getModeSize, getPublicRoomTimingStatus, getRecordCreationWindowStatus, getRecruitingTierRange,
     getRepresentativePlayerIds, getRequiredTournamentRefereeCount, getSelectableTeamPlayerIds, getSeoulTimeInputValue, getSoloRecordPlayerRef, getSoloRecordRosterLines, getSoloRecordUserIdentity,
     getSoloRecordUserLine, getTeamEligibility, getTeamHashtag, getTournamentRefereePoolValidation, getUserHashtag, includesQuery, ineligibleTournamentTeams,
-    isDefaultCreateTitle, isDefaultTournamentTitle, isEligibleReferee, isInstantRoom, isMatchRecordRoom, isMmrInRecruitingRange, isPickupMatch,
+    inferRegionSelection, isDefaultCreateTitle, isDefaultTournamentTitle, isEligibleReferee, isInstantRoom, isMatchRecordRoom, isMmrInRecruitingRange, isPickupMatch,
     isPublicRoom, isRecordCreateIntent, isSameRegion, isSoloRecord, isStandardCreateWizard, isTeamRoom, isTournamentRoom,
     matchCreationValidation, maxScheduleDate, minSoloRecordDate, myTeams, normalizeSoloRecordRosterInput, opponentTeamQuery, ownerReservePlayerIds,
     ownerSidePlayerIds, ownerSidePlayerKey, publicPartyPlayerIds, recordComposition, recordEntryMode, refereeQuery, registeredCourts,
@@ -319,7 +319,10 @@ export function useCreateMatchValidationController(context) {
         : {}),
     }));
     setCourtQuery(court.name);
-    if (court.region) setCourtRegion(court.region);
+    if (court.region) {
+      const region = inferRegionSelection([court.sido, court.sigungu, court.region].filter(Boolean).join(" "));
+      setCourtRegion(`${region.sido} ${region.district}`);
+    }
   };
   const clearSelectedCourt = () => {
     setSubmitFeedback("");
