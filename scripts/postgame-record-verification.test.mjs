@@ -13,6 +13,7 @@ import {
   getPostgameRecordDecisionEligibility,
   getPostgameRecordVerification,
 } from "../src/lib/postgameRecordVerification.js";
+import { getApprovalStatus } from "../src/lib/matchUtils.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
 
 const submittedAt = "2026-07-23T00:00:00.000Z";
@@ -204,6 +205,26 @@ test("개인 기록만 생성자 본인 스탯을 저장하고 무심판 일반 
   assert.match(migration, /new\.recorded_by/);
   assert.match(migration, /no_referee_personal_stats_forbidden/);
   assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
+});
+
+test("상세 응답이 확인 행을 생략해도 규칙의 본인 확인 ID로 참가 현황을 복원한다", () => {
+  const match = makeRecord({
+    approvals: { teamA: [], teamB: [] },
+    rules: {
+      recordType: "match_record",
+      recordApproverIds: {
+        teamA: players.slice(0, 7),
+        teamB: players.slice(7),
+      },
+      participantAcceptedIds: players.slice(0, 10),
+      matchRecordConfirmedParticipantIds: players.slice(0, 10),
+    },
+  });
+  const verification = getPostgameRecordVerification(match);
+  assert.equal(verification.approvalCount, 10);
+  assert.equal(verification.thresholdMet, true);
+  assert.deepEqual(getApprovalStatus(match, [], "teamA").approvals, players.slice(0, 7));
+  assert.deepEqual(getApprovalStatus(match, [], "teamB").approvals, players.slice(7, 10));
 });
 
 test("finalization waits three minutes after the later result or match end", async () => {

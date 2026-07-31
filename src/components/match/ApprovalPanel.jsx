@@ -20,6 +20,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
   };
   const currentUserRequired = Object.values(sideStatuses).some((status) => status.requiredIds.includes(currentUserId));
   const currentUserConfirmed = Object.values(sideStatuses).some((status) => status.approvals.includes(currentUserId));
+  const approvalCount = Object.values(sideStatuses).reduce((total, status) => total + status.approvals.length, 0);
   const renderSide = (sideName) => {
     const status = sideStatuses[sideName];
     const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", players: [] };
@@ -76,7 +77,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
             ? "확정"
             : verification.verificationStatus === "insufficient"
               ? "확인 부족"
-              : `${verification.approvalCount}/${verification.approvalThreshold} 확인`}
+              : `${approvalCount}/${verification.approvalThreshold} 확인`}
         </Badge>
       </div>
       <div className="approval-grid">
