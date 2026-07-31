@@ -2,7 +2,7 @@ import { flattenIdValues, toDateTime, uniqueValues as unique } from "../_supabas
 import { projectMatchTimestamps } from "../../../shared/lib/matchReadProjection.js";
 import { projectTeamRow } from "../../../shared/lib/teamRowProjection.js";
 import { collectUniqueRoomFeedCards, readRoomFeedCard } from "../../lib/roomFeedCards.js";
-import { getReadableMatchStatRows, getReadableMatchStatSubmissions, getRemoteMatchActivePlayerIds, getRemoteMatchPlayerTeams } from "../../../shared/lib/matchMappers.js";
+import { getReadableMatchStatRows, getReadableMatchStatSubmissions, getRemoteMatchActivePlayerIds, getRemoteMatchPlayerTeams, normalizeMatchParties } from "../../../shared/lib/matchMappers.js";
 import { MATCH_SIDE_FALLBACK_NAMES, normalizeDisputeWindowMinutes } from "../../../shared/lib/constants.js";
 import { getMatchRoomPhase, isMatchClosedNotice, isMatchInScheduleMenu, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../shared/lib/matchUtils.js";
 
@@ -302,7 +302,7 @@ export function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {
     reservePlayers,
     mmrExcludedPlayerIds,
     anonymousPlayers,
-    parties: row.rules?.parties ?? {},
+    parties: normalizeMatchParties(row.rules?.parties),
     result,
     rules: {
       ...(row.rules ?? {}),

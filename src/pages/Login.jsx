@@ -49,8 +49,12 @@ export default function Login({ auth, app }) {
       setCopyMessage("주소창의 URL을 복사해 Chrome 또는 Safari에서 열어 주세요.");
       return;
     }
-    await navigator.clipboard.writeText(browserOpenUrl);
-    setCopyMessage("링크를 복사했습니다. Chrome 또는 Safari 주소창에 붙여 넣어 주세요.");
+    try {
+      await navigator.clipboard.writeText(browserOpenUrl);
+      setCopyMessage("링크를 복사했습니다. Chrome 또는 Safari 주소창에 붙여 넣어 주세요.");
+    } catch {
+      setCopyMessage("링크를 복사하지 못했습니다. 주소창의 URL을 직접 복사해 주세요.");
+    }
   };
 
   return (

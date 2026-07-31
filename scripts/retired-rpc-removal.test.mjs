@@ -5,6 +5,24 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const canonicalFunctionLintSource = await readFile(
+  path.join(
+    rootDir,
+    "supabase",
+    "migrations",
+    "20260801003000_fix_canonical_function_lint.sql",
+  ),
+  "utf8",
+);
+const roomRuleVolatilitySource = await readFile(
+  path.join(
+    rootDir,
+    "supabase",
+    "migrations",
+    "20260801004000_fix_room_rule_patch_volatility.sql",
+  ),
+  "utf8",
+);
 const migrationSource = await readFile(
   path.join(
     rootDir,
@@ -651,5 +669,36 @@ test("schema snapshot tails match the internal-wrapper and repaired participant 
   assert.equal(
     normalizeExecutableSql(schemaSource.slice(participantIndex + participantMarker.length)),
     normalizeExecutableSql(repairedParticipantSource),
+  );
+});
+
+test("canonical DB functions keep executable dispute and tournament contracts", () => {
+  assert.match(
+    canonicalFunctionLintSource,
+    /count\(\*\) from jsonb_object_keys\(requested_stats\)/u,
+  );
+  assert.match(
+    canonicalFunctionLintSource,
+    /replace\(function_definition, old_fragment, new_fragment\)/u,
+  );
+  assert.match(
+    canonicalFunctionLintSource,
+    /tournament_row\.status = 'draft'[^]*tournament_row\.sanction_status/u,
+  );
+  [
+    "rankball_apply_room_rule_patch_pre_qr_attendance",
+    "rankball_apply_room_rule_patch_pre_room_equipment",
+    "rankball_apply_room_rule_patch_pre_duration_limit",
+    "rankball_import_safe_date",
+    "rankball_scheduled_at_kst",
+  ].forEach((functionName) => {
+    assert.match(
+      canonicalFunctionLintSource,
+      new RegExp(`alter function public\\.${functionName}\\([^;]+\\) stable`, "u"),
+    );
+  });
+  assert.match(
+    roomRuleVolatilitySource,
+    /alter function public\.rankball_apply_room_rule_patch\(jsonb, jsonb, text\) stable/u,
   );
 });

@@ -18,6 +18,7 @@ import { getSidePlayerRows } from "../server/lib/matchSnapshotRows.js";
 import { validateMatchRosterEligibility } from "../server/lib/matchSnapshotValidation.js";
 import { validateLockedMatchCore } from "../server/lib/matchSyncPolicy.js";
 import { fromRemoteMatch } from "../shared/lib/matchMappers.js";
+import { getMatchPlayerTeamId } from "../shared/lib/matchRoster.js";
 
 function makeRosterSupabase({ profileIds = [], memberships = [] } = {}) {
   return {
@@ -365,6 +366,46 @@ test("match list projection restores mixed player teams", () => {
     "party-b1": "team-b",
     "party-b2": "team-b",
   });
+  assert.deepEqual(match.parties, []);
+});
+
+test("match list projection always returns canonical party arrays", () => {
+  const row = {
+    id: "legacy-party-map-list-match",
+    title: "legacy party map",
+    mode: "3v3",
+    team_a_id: null,
+    team_b_id: null,
+    rules: {
+      parties: {
+        teamParty: {
+          kind: "team",
+          side: "teamB",
+          teamId: "team-b",
+          players: ["party-b1"],
+          reserves: ["party-b-reserve"],
+        },
+      },
+    },
+  };
+
+  const match = toClientMatch(row);
+  const remoteMatch = fromRemoteMatch(row, {
+    playersByMatch: new Map(),
+    resultsByMatch: {},
+    statsByMatch: new Map(),
+    disputesByMatch: new Map(),
+    agreementsByMatch: new Map(),
+    approvalsByMatch: new Map(),
+    teamById: {},
+    courtById: {},
+  });
+
+  assert.equal(Array.isArray(match.parties), true);
+  assert.equal(match.parties[0].teamId, "team-b");
+  assert.equal(getMatchPlayerTeamId(match, "teamB", "party-b-reserve"), "team-b");
+  assert.equal(Array.isArray(remoteMatch.parties), true);
+  assert.equal(getMatchPlayerTeamId(remoteMatch, "teamB", "party-b-reserve"), "team-b");
 });
 
 test("match list loader hydrates teams referenced only by player rows", async () => {

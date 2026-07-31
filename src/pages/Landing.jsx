@@ -41,13 +41,11 @@ export default function Landing({ state }) {
   const users = state?.users ?? [];
   const matches = state?.matches ?? [];
   const teams = state?.teams ?? [];
-  const openRecruiting = (state?.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed")
-    .slice(0, 3);
-  const completedMatches = matches
-    .filter((match) => match.status === "confirmed")
-    .slice(-3)
-    .reverse();
+  const openRecruitingPosts = (state?.recruitingPosts ?? [])
+    .filter((post) => post.status !== "closed");
+  const openRecruiting = openRecruitingPosts.slice(0, 3);
+  const confirmedMatches = matches.filter((match) => match.status === "confirmed");
+  const completedMatches = confirmedMatches.slice(-3).reverse();
   const topUser = users
     .filter((user) => isPlacementComplete(user.ratings))
     .sort((a, b) => (b.ratings?.integrated ?? 0) - (a.ratings?.integrated ?? 0))[0];
@@ -56,8 +54,8 @@ export default function Landing({ state }) {
   const topTier = topUser ? getTierDivision(topMmr) : "시즌 랭킹 준비 중";
 
   const landingStats = publicStats ?? {
-    openRecruiting: openRecruiting.length,
-    completedMatches: matches.length,
+    openRecruiting: openRecruitingPosts.length,
+    completedMatches: confirmedMatches.length,
     activeTeams: teams.length,
     players: users.length,
   };
@@ -126,7 +124,7 @@ export default function Landing({ state }) {
             <div className="ui-design-list ui-design-schedule">
               {openRecruiting.length ? openRecruiting.map((post) => (
                 <Link
-                  to="/app/recruiting"
+                  to={`/app/recruiting?post=${encodeURIComponent(post.id)}`}
                   key={post.id}
                   className="ui-design-row ui-design-schedule-row"
                 >
@@ -176,7 +174,7 @@ export default function Landing({ state }) {
                 <span><Trophy size={17} /> {featuredTeam?.wins ?? 0}승 {featuredTeam?.losses ?? 0}패</span>
                 <span>{featuredTeam?.mmr ?? 1200} MMR</span>
               </div>
-              <Link to="/app/teams" className="ui-design-text-action ui-design-text-action--inverse">
+              <Link to={featuredTeam ? `/app/teams/${encodeURIComponent(featuredTeam.id)}` : "/app/teams"} className="ui-design-text-action ui-design-text-action--inverse">
                 팀 둘러보기 <ArrowRight size={18} />
               </Link>
             </div>
@@ -213,10 +211,10 @@ export default function Landing({ state }) {
             </div>
             <div className="ui-design-list ui-design-result-list">
               {completedMatches.length ? completedMatches.map((match) => (
-                <Link to="/app/matches" className="ui-design-result-row" key={match.id}>
+                <Link to={`/app/matches?match=${encodeURIComponent(match.id)}`} className="ui-design-result-row" key={match.id}>
                   <span className="is-win">완료</span>
                   <strong>{getSideName(match, "teamA")} vs {getSideName(match, "teamB")}</strong>
-                  <b>{match.teamA?.score ?? 0} : {match.teamB?.score ?? 0}</b>
+                  <b>{match.result?.scoreA ?? match.teamA?.score ?? 0} : {match.result?.scoreB ?? match.teamB?.score ?? 0}</b>
                 </Link>
               )) : (
                 <div className="ui-empty-state-compact">아직 공개된 경기 기록이 없습니다.</div>

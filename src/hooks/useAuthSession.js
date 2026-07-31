@@ -26,8 +26,12 @@ function readTestSession() {
 
 function writeTestSession(session) {
   if (typeof window === "undefined") return;
-  if (session) window.localStorage.setItem(TEST_SESSION_KEY, JSON.stringify(session));
-  else window.localStorage.removeItem(TEST_SESSION_KEY);
+  try {
+    if (session) window.localStorage.setItem(TEST_SESSION_KEY, JSON.stringify(session));
+    else window.localStorage.removeItem(TEST_SESSION_KEY);
+  } catch {
+    // Storage can be unavailable in private or embedded browsers; keep the in-memory session usable.
+  }
 }
 
 // Local demo session only. Server auth uses Supabase Auth JWT.

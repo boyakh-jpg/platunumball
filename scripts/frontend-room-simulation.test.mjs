@@ -682,7 +682,11 @@ test("시즌 라이벌은 내 팀이 포함된 지역 매치업만 반환한다"
 
 test("시즌 directory 실패 응답은 같은 사용자 재시도를 열어 둔다", async () => {
   const source = await readFile(new URL("../src/pages/Season.jsx", import.meta.url), "utf8");
-  assert.match(source, /request\.then\(\(result\) => \{[\s\S]*if \(result === false\) directoryLoadKeyRef\.current = ""/);
+  assert.match(source, /const \[loadRetrySequence, setLoadRetrySequence\] = useState\(0\)/);
+  assert.match(source, /if \(result === false\) \{[\s\S]*directoryLoadKeyRef\.current = "";[\s\S]*setDirectoryLoadFailed\(true\)/);
+  assert.match(source, /setLoadRetrySequence\(\(current\) => current \+ 1\)/);
+  assert.match(source, /시즌 정보를 불러오지 못했습니다\./);
+  assert.match(source, />다시 시도<\/Button>/);
 });
 
 test("시즌 라이벌 팀 선택은 빈 팀방 생성 뒤 비공개 B팀만 초대한다", () => {

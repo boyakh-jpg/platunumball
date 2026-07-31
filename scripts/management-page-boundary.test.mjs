@@ -345,3 +345,29 @@ test("계정 데이터 로딩 실패는 같은 화면에서 재시도한다", as
   assert.match(notifications, /const refreshNotifications = useCallback\(async \(\) => \{[\s\S]*setNotificationsLoadError\("알림을 불러오지 못했습니다\."\)/u);
   assert.match(notifications, /onClick=\{refreshNotifications\}>다시 시도/u);
 });
+
+test("인증 저장소와 링크 복사 실패는 로그인 화면을 멈추지 않는다", async () => {
+  const [authSession, login] = await Promise.all([
+    read("src/hooks/useAuthSession.js"),
+    read("src/pages/Login.jsx"),
+  ]);
+
+  assert.match(authSession, /function writeTestSession[\s\S]{0,280}try \{[\s\S]{0,220}catch \{/u);
+  assert.match(login, /navigator\.clipboard\.writeText\(browserOpenUrl\)[\s\S]{0,220}catch \{[\s\S]{0,180}링크를 복사하지 못했습니다/u);
+});
+
+test("랜딩의 모집방·대표팀·최근 경기는 선택 대상을 유지한다", async () => {
+  const landing = await read("src/pages/Landing.jsx");
+  assert.match(landing, /`\/app\/recruiting\?post=\$\{encodeURIComponent\(post\.id\)\}`/u);
+  assert.match(landing, /`\/app\/teams\/\$\{encodeURIComponent\(featuredTeam\.id\)\}`/u);
+  assert.match(landing, /`\/app\/matches\?match=\$\{encodeURIComponent\(match\.id\)\}`/u);
+});
+
+test("랜딩의 통계와 최근 경기 점수는 표시 목록이 아닌 전체 확정 데이터로 계산한다", async () => {
+  const landing = await read("src/pages/Landing.jsx");
+  assert.match(landing, /const openRecruiting = openRecruitingPosts\.slice\(0, 3\)/u);
+  assert.match(landing, /openRecruiting: openRecruitingPosts\.length/u);
+  assert.match(landing, /completedMatches: confirmedMatches\.length/u);
+  assert.match(landing, /match\.result\?\.scoreA \?\? match\.teamA\?\.score \?\? 0/u);
+  assert.match(landing, /match\.result\?\.scoreB \?\? match\.teamB\?\.score \?\? 0/u);
+});

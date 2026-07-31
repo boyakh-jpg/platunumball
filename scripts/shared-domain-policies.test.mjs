@@ -2326,3 +2326,18 @@ test("랭킹·홈·선수 상세·소속 화면은 원격 페이지와 실패 �
   assert.match(affiliations, /typeRankById/);
   assert.match(affiliations, /#\{affiliation\.rank\}/);
 });
+
+test("이름 신고는 rejected 요청 뒤 pending을 풀고 실패 피드백을 남긴다", async () => {
+  const source = await readSource("src/components/common/NameReportForm.jsx");
+
+  assert.match(source, /try \{[\s\S]*await onSubmit\(reason\)/);
+  assert.match(source, /catch \{[\s\S]*신고를 접수하지 못했습니다\./);
+  assert.match(source, /finally \{[\s\S]*setPending\(false\)/);
+});
+
+test("팀 초대 검색 결과는 선택 표면 안에서 hover card를 열지 않는다", async () => {
+  const source = await readSource("src/pages/TeamDetail.jsx");
+
+  assert.match(source, /<span className="search-picker-player-identity">/);
+  assert.doesNotMatch(source, /<PlayerHoverCard as="span"[^>]*search-picker-player-identity/);
+});

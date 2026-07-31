@@ -761,6 +761,7 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   const privateQrSql = await readSource("supabase/migrations/20260730204500_align_match_qr_attendance_eligibility.sql");
   const hostFinalizationSql = await readSource("supabase/migrations/20260728130000_general_match_host_finalization.sql");
   const liveAuthoritySql = await readSource("supabase/migrations/20260728143000_referee_live_match_authority.sql");
+  const substituteTeamProvenanceSql = await readSource("supabase/migrations/20260801005000_preserve_substitute_team_provenance.sql");
   const scoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727144000_allow_score_only_postgame_roster.sql");
   const enforcedScoreOnlyPostgameRosterSql = await readSource("supabase/migrations/20260727145000_enforce_score_only_postgame_roster.sql");
   const syncMatchSource = await readSourceGroup(readSource, MATCH_SYNC_SOURCE_PATHS);
@@ -839,6 +840,17 @@ test("DB 마이그레이션은 지각 후보, 무수정 정리, 최소 출전, �
   assert.match(simplifiedLiveMatchSql, /match_row\.reserve_players->'teamA'/u);
   assert.match(simplifiedLiveMatchSql, /authority_a := 'clock_controller'/u);
   assert.match(simplifiedLiveMatchSql, /not game_clock_enabled[\s\S]*current_match\.created_by/u);
+  assert.match(substituteTeamProvenanceSql, /rankball_match_roster_move_action_pre_substitution_permission/u);
+  assert.match(substituteTeamProvenanceSql, /from public\.recruiting_applications application/u);
+  assert.match(substituteTeamProvenanceSql, /application\.kind = 'team'/u);
+  assert.match(substituteTeamProvenanceSql, /application\.side = safe_side/u);
+  assert.match(substituteTeamProvenanceSql, /application\.player_id = active_in_id[\s\S]*application\.player_ids \? active_in_id/u);
+  assert.match(substituteTeamProvenanceSql, /from public\.recruiting_posts post/u);
+  assert.match(substituteTeamProvenanceSql, /post\.host_join_mode = 'team'/u);
+  assert.match(substituteTeamProvenanceSql, /post\.host_side = safe_side/u);
+  assert.match(substituteTeamProvenanceSql, /partyReserves,host[\s\S]*pinnedReservePlayers/u);
+  assert.match(substituteTeamProvenanceSql, /current_match\.team_a_id[\s\S]*current_match\.team_b_id/u);
+  assert.doesNotMatch(substituteTeamProvenanceSql, /rules->'parties'|delete\s+from|drop\s+table|truncate\s+table/iu);
   assert.match(hostFinalizationSql, /match_finalize_host_required/u);
   assert.match(hostFinalizationSql, /match_dispute_host_required/u);
   assert.match(hostFinalizationSql, /check \(reason in \('self', 'late', 'ejection', 'operator'\)\) not valid/u);

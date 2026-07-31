@@ -50,3 +50,14 @@ test("대회 상세 심판 검색은 중복 초대를 숨기고 실패 시 검�
   assert.match(detailSource, /if \(invited\) setRefereeQuery\(""\)/);
   assert.doesNotMatch(detailSource, /\)\.then\(\(\) => setRefereeQuery\(""\)\)/);
 });
+
+test("대회 팀 승인은 공용 governance 처리와 중복 실행 잠금을 사용한다", async () => {
+  const detailSource = await readSourceGroup(
+    (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+    TOURNAMENT_DETAIL_SOURCE_PATHS,
+  );
+
+  assert.match(detailSource, /`approve-team:\$\{row\.teamId\}`/);
+  assert.match(detailSource, /\(\) => app\.actions\.approveTournamentTeam\(tournament\.id, row\.teamId\)/);
+  assert.match(detailSource, /disabled=\{Boolean\(governanceAction\)\}/);
+});

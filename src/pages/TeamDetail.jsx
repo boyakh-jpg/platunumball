@@ -316,12 +316,12 @@ export default function TeamDetail({ app }) {
           setSelectedInviteProfile(user);
         }}
       >
-        <PlayerHoverCard as="span" user={user} teams={app.state.teams} className="search-picker-player-identity">
+        <span className="search-picker-player-identity">
           <span>
             <strong>{user.name}</strong>
             <small>{getUserHashtag(user)}</small>
           </span>
-        </PlayerHoverCard>
+        </span>
         <span>{user.region} · {user.position} · {count}/{MAX_TEAM_MEMBERSHIPS}팀</span>
         <em>{blocked ? "초대 불가" : "초대 대상"}</em>
       </button>

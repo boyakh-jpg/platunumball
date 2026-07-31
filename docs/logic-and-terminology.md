@@ -5,6 +5,7 @@
 1. 신규 모집방은 개인 참가 또는 팀 전용 중 하나만 사용하고 개인·부분팀 혼합을 새로 만들지 않는다.
 2. 운영에 이미 남은 `teamOnly=false` 혼합 모집방을 확정할 때는 사이드 전체를 특정 팀으로 오인하지 않도록 `side.teamId=null`을 유지하고, 팀 파티 출전자만 `playerTeams`에 소속 팀 ID를 보존한다.
 3. `playerTeams` 출처는 기존 `match_players.team_id`로 저장·재조회한다. 별도 `parties` 저장이나 신규 스키마는 추가하지 않는다.
+4. 후보 교체의 `team_id`는 모집 신청·방장 모집글의 관계형 팀 원본을 먼저 확인하고, 없을 때만 해당 사이드 팀으로 보완한다. 결과는 `match_players.team_id`에 저장하며 `rules.parties`를 새로 영속화하지 않는다.
 
 ## 2026-07-31 홈 최근 전적 기준
 
@@ -209,6 +210,7 @@
 5. P4 스타일 정리: 전역 CSS는 현재 import manifest와 selector 사용처를 기준으로만 줄인다. desktop/mobile, dark/light computed style과 overflow 검증 없이 selector를 삭제하지 않는다.
 6. P5 DB 정리: 적용된 migration은 운영 이력이라 수정·삭제하지 않는다. 현재 스키마에서 참조 0인 함수만 새 migration으로 제거하고, 새 환경용 baseline은 운영 schema 검증 뒤 별도로 만든다.
 7. 각 단계는 역할별 흐름, 정책 테스트, build, 운영 schema health를 모두 통과해야 완료다. 파일 크기만으로 코드를 삭제하거나 서로 다른 권한 경로를 억지로 합치지 않는다.
+7-1. 운영 schema lint의 실행 오류는 P5 완료 조건에 포함한다. 이의신청 개인기록 필드 수는 PostgreSQL 기본 `jsonb_object_keys()`로 검증하고, 대회 심판 초대의 제재 상태 갱신은 잠근 대회 row 값을 명시해 PL/pgSQL 변수와 충돌하지 않게 한다. 시간대·날짜 변환을 포함한 함수는 `immutable`로 과장하지 않고 `stable`로 선언한다.
 8. 공개 팀전은 현재 소속 팀원 1명이 대표로 참가해 해당 사이드장이 된 뒤 출전·후보 명단을 직접 확정한다. 참가 시 정원 전체를 강제하거나 팀원별 pending 초대 row를 만드는 구형 경로는 사용하지 않는다.
 9. 데모 전체 흐름은 파일을 쓰지 않는 `npm run seed:demo-flow:check`로 정책 테스트마다 검증한다. 생성 snapshot이 현재 reducer를 통과한다는 사실과 실제 로컬 seed 파일 갱신을 분리한다.
 10. 공개 팀전 참가의 대표 1명 제한은 UI가 아니라 DB reducer가 원본이다. 현재 소속된 참가 가능 팀원은 상대 사이드 대표로 참가할 수 있고 요청에 다른 팀원·후보가 섞여도 신청자 1명으로 정규화한다. 같은 사이드를 다른 팀이 선점하거나 비소속·조건 불일치 사용자가 대표가 되는 요청은 거부한다.

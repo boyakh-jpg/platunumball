@@ -22,7 +22,7 @@ import {
 } from "./matchLifecycleUtils.js";
 import { makeId, toDateTime, uniquePlayerIds } from "./rowUtils.js";
 
-function normalizeMatchParties(parties) {
+export function normalizeMatchParties(parties) {
   if (Array.isArray(parties)) return parties;
   if (!parties || typeof parties !== "object") return [];
   return Object.values(parties).filter((party) => party && typeof party === "object");
@@ -310,6 +310,7 @@ export function fromRemoteMatch(row, context) {
     agreements,
     approvals,
     disputes,
+    parties: normalizeMatchParties(row.rules?.parties),
     playedPlayerIds,
     reservePlayers: row.reserve_players ?? row.rules?.reservePlayers ?? {},
     promotedReserveIds: row.promoted_reserve_ids ?? {},

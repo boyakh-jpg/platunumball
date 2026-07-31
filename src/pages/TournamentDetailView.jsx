@@ -100,7 +100,15 @@ return (
                 <div className="tournament-team-state">
                   <TierBadge mmr={row.team.mmr} compact />
                   {row.canApprove ? (
-                    <button type="button" onClick={() => app.actions.approveTournamentTeam(tournament.id, row.teamId)}>
+                    <button
+                      type="button"
+                      disabled={Boolean(governanceAction)}
+                      onClick={() => runGovernanceAction(
+                        `approve-team:${row.teamId}`,
+                        () => app.actions.approveTournamentTeam(tournament.id, row.teamId),
+                        `${row.team.name} 참가를 승인했습니다.`,
+                      )}
+                    >
                       <ShieldCheck size={15} /> 승인
                     </button>
                   ) : (

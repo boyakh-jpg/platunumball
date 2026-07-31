@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, CalendarClock, ClipboardCheck, MapPin, Swords, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
@@ -26,6 +26,9 @@ function formatDate(value) {
 export default function Season({ app }) {
   const directoryLoadKeyRef = useRef("");
   const recordLoadKeyRef = useRef("");
+  const [directoryLoadFailed, setDirectoryLoadFailed] = useState(false);
+  const [recordLoadFailed, setRecordLoadFailed] = useState(false);
+  const [loadRetrySequence, setLoadRetrySequence] = useState(0);
   const season = getCurrentSeason(app.state);
   const region = app.currentUser.region;
   const progress = getSeasonProgress(season);
@@ -61,33 +64,57 @@ export default function Season({ app }) {
     if (!app.remoteReady || !loadDirectory || !app.currentUser.id) return;
     if (directoryLoadKeyRef.current === app.currentUser.id) return;
     directoryLoadKeyRef.current = app.currentUser.id;
+    setDirectoryLoadFailed(false);
     const request = loadDirectory({ kind: "all", limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
     if (!request?.then) {
-      if (!request) directoryLoadKeyRef.current = "";
+      if (!request) {
+        directoryLoadKeyRef.current = "";
+        setDirectoryLoadFailed(true);
+      }
       return;
     }
     request.then((result) => {
-      if (result === false) directoryLoadKeyRef.current = "";
+      if (result === false) {
+        directoryLoadKeyRef.current = "";
+        setDirectoryLoadFailed(true);
+      }
     }).catch(() => {
       directoryLoadKeyRef.current = "";
+      setDirectoryLoadFailed(true);
     });
-  }, [app.currentUser.id, app.remoteReady, loadDirectory]);
+  }, [app.currentUser.id, app.remoteReady, loadDirectory, loadRetrySequence]);
 
   useEffect(() => {
     if (!app.remoteReady || !loadProfileRecords || profileRecordsLoaded || !app.currentUser.id) return;
     if (recordLoadKeyRef.current === app.currentUser.id) return;
     recordLoadKeyRef.current = app.currentUser.id;
+    setRecordLoadFailed(false);
     const request = loadProfileRecords();
     if (!request?.then) {
-      if (!request) recordLoadKeyRef.current = "";
+      if (!request) {
+        recordLoadKeyRef.current = "";
+        setRecordLoadFailed(true);
+      }
       return;
     }
     request.then((result) => {
-      if (result === false) recordLoadKeyRef.current = "";
+      if (result === false) {
+        recordLoadKeyRef.current = "";
+        setRecordLoadFailed(true);
+      }
     }).catch(() => {
       recordLoadKeyRef.current = "";
+      setRecordLoadFailed(true);
     });
-  }, [app.currentUser.id, app.remoteReady, loadProfileRecords, profileRecordsLoaded]);
+  }, [app.currentUser.id, app.remoteReady, loadProfileRecords, loadRetrySequence, profileRecordsLoaded]);
+
+  const retrySeasonLoads = () => {
+    directoryLoadKeyRef.current = "";
+    recordLoadKeyRef.current = "";
+    setDirectoryLoadFailed(false);
+    setRecordLoadFailed(false);
+    setLoadRetrySequence((current) => current + 1);
+  };
 
   return (
     <div className="page-stack season-page">
@@ -99,6 +126,18 @@ export default function Season({ app }) {
         </div>
         <Badge tone="gold">진행 중</Badge>
       </header>
+
+      {directoryLoadFailed || recordLoadFailed ? (
+        <Card className="section-card">
+          <div className="section-title-row">
+            <div>
+              <h2>시즌 정보를 불러오지 못했습니다.</h2>
+              <p>기존 정보는 유지됩니다. 다시 시도해 주세요.</p>
+            </div>
+            <Button type="button" variant="secondary" onClick={retrySeasonLoads}>다시 시도</Button>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="section-card season-overview-card">
         <div className="section-title-row">

@@ -11,13 +11,19 @@ export default function NameReportForm({ label = "이름", onSubmit, onCancel })
     event.preventDefault();
     if (pending) return;
     setPending(true);
-    const result = await onSubmit(reason);
-    setPending(false);
-    if (!result || result.ok === false) {
-      setFeedback(result?.error === "active_report_duplicate" ? "이미 신고한 이름입니다." : "신고를 접수하지 못했습니다.");
-      return;
+    setFeedback("");
+    try {
+      const result = await onSubmit(reason);
+      if (!result || result.ok === false) {
+        setFeedback(result?.error === "active_report_duplicate" ? "이미 신고한 이름입니다." : "신고를 접수하지 못했습니다.");
+        return;
+      }
+      setFeedback(result.duplicate ? `이미 신고한 ${label}입니다.` : `${label} 신고를 접수했습니다.`);
+    } catch {
+      setFeedback("신고를 접수하지 못했습니다.");
+    } finally {
+      setPending(false);
     }
-    setFeedback(result.duplicate ? `이미 신고한 ${label}입니다.` : `${label} 신고를 접수했습니다.`);
   };
 
   return (
