@@ -291,3 +291,9 @@ test("관리자 조치는 현재 선택 대상과 서버 전체 대기 건수를
   assert.equal((adminLoader.match(/select\("id", \{ count: "exact", head: true \}\)\.eq\("status", "pending"\)/g) ?? []).length, 2);
   assert.match(adminLoader, /refereeRequestPage\.total \+ pendingAppointmentCount/u);
 });
+
+test("관리자 업무 탭은 임명 처리 상태를 controller에서 받는다", async () => {
+  const source = await read("src/pages/AdminPageView.jsx");
+  assert.match(source, /reviewActionPending,\s*appointmentActionPending,/);
+  assert.match(source, /disabled=\{reviewActionPending \|\| appointmentActionPending\}/);
+});

@@ -42,6 +42,7 @@ export default function AdminPageView({ controller }) {
     courtApprovalStatus,
     reviewActionStatus,
     reviewActionPending,
+    appointmentActionPending,
     reviewActionConfirming,
     setReviewActionConfirming,
     canAdmin,
