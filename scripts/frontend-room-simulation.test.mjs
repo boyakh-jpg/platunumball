@@ -39,7 +39,7 @@ import {
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
 import { getRecruitingLobby } from "../src/lib/recruiting.js";
-import { getMatchManualFinalizationStatus } from "../src/lib/matchUtils.js";
+import { buildMatchResultSubmission, getMatchManualFinalizationStatus } from "../src/lib/matchUtils.js";
 import { getLocalRivalries } from "../src/lib/season.js";
 
 const MODE_CAPACITY = Object.freeze({
@@ -816,6 +816,21 @@ test("배정 심판 UI 권한은 확정 경기의 심판 ID를 기준으로 복�
   );
   assert.match(modelSource, /currentUserIsSourceReferee = Boolean\(\s*sourceMatch\s*&& isMatchReferee\(sourceMatch, app\.currentUser\.id\)\s*,?\s*\)/);
   assert.doesNotMatch(modelSource, /currentUserIsSourceReferee = Boolean\([\s\S]{0,240}canOperateAssignedMatchReferee/);
+});
+
+test("심판 개인 득점 제출은 읽기 전용 팀 점수에 합산된다", () => {
+  const match = {
+    teamA: { players: ["a"], score: 0 },
+    teamB: { players: ["b"], score: 0 },
+  };
+  const result = buildMatchResultSubmission(
+    match,
+    { playerStats: { a: { points: 2 }, b: { points: 1 } } },
+    () => [{ id: "points" }],
+    { editableScoreSides: [] },
+  );
+  assert.equal(result.scoreA, 2);
+  assert.equal(result.scoreB, 1);
 });
 
 test("실제 경기시계 프론트는 샷클락·다음 쿼터·연장·통합 종료 액션을 유지한다", async () => {
