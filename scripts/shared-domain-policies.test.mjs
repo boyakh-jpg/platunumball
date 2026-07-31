@@ -1447,6 +1447,7 @@ test("season hub is player-centered while regional MMR stays separate", async ()
 
 test("team detail keeps navigation preview and always refreshes authoritative team data once", async () => {
   const teamDetailPage = await readSource("src/pages/TeamDetail.jsx");
+  const teamDetailView = await readSource("src/pages/TeamDetailView.jsx");
   assert.match(teamDetailPage, /location\.state\?\.teamPreview\?\.id === teamId/);
   assert.match(teamDetailPage, /const authoritativeTeam = app\.state\.teams\.find/);
   assert.match(teamDetailPage, /const team = authoritativeTeam \?\? previewTeam/);
@@ -1454,6 +1455,8 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamDetailPage, /if \(detailRequestRef\.current !== teamId\)/);
   assert.match(teamDetailPage, /detailRequestRef\.current = teamId;\s+refreshTeam\(\);/);
   assert.match(teamDetailPage, /!team && app\.remoteReady !== false && Boolean\(loadDirectory\)/);
+  assert.match(teamDetailView, /result=\{record\.result\}/u);
+  assert.doesNotMatch(teamDetailView, /getScoreOutcome/u);
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {

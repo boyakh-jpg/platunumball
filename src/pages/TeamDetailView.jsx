@@ -138,12 +138,11 @@ export default function TeamDetailView({ controller }) {
                 </button>
               ) : null}
               {archivedHistory.map((record) => {
-                const outcome = getScoreOutcome(record.score, record.opponentScore);
                 return (
                   <RecentMatchRow
                     key={record.matchId}
                     record={record}
-                    result={outcome}
+                    result={record.result}
                     side={{ name: record.teamName, teamId: team.id }}
                     opponent={{ name: record.opponentTeamName }}
                     score={record.score}
