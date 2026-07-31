@@ -946,6 +946,7 @@ test("team selection is routed through the server and DB authority", () => {
   assert.match(serverSource, /operation\.action === "setRecruitingRoomTeam"/);
   assert.match(serverSource, /rankball_recruiting_set_room_team_action/);
   assert.match(serverSource, /recruiting_set_room_team_rpc_required/);
+  assert.match(serverSource, /data\?\.fallback\)\s+return applyRecruitingManagementAction\(context, operation\)/);
   assert.doesNotMatch(authoritativeSource, /setRecruitingRoomTeam/u);
   assert.match(schemaSource, /create or replace function public\.rankball_recruiting_set_room_team_action/);
   assert.match(schemaSource, /recruiting_team_member_required/);
