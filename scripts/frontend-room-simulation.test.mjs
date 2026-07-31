@@ -606,6 +606,19 @@ test("1v1 팀방은 A팀 선택 전에도 개인방으로 오인하지 않는다
   }), false);
 });
 
+test("대표 한 명만 참가한 팀도 내 슬롯에서 개인 참여로 표시하지 않는다", async () => {
+  const source = await readFile(new URL("../src/components/recruiting/RecruitingRoomCommandPanels.jsx", import.meta.url), "utf8");
+  assert.match(source, /entry\?\.kind === "team" && entry\?\.team/);
+  assert.match(source, /"팀 참여 중"/);
+});
+
+test("경기 종료 뒤 이의제기 점수 초깃값은 최신 팀 점수를 따라간다", async () => {
+  const source = await readFile(new URL("../src/components/recruiting/useRecruitingRoomController.js", import.meta.url), "utf8");
+  assert.match(source, /const resultKey = `\$\{sourceMatch\.result\?\.[^`]+:\$\{scoreA\}:\$\{scoreB\}`/);
+  assert.match(source, /requestedScoreA: String\(scoreA\)/);
+  assert.match(source, /requestedScoreB: String\(scoreB\)/);
+});
+
 test("프론트 팀전 연습방은 양 팀 선택·팀장 초대·출전/후보 명단을 실제 ID로 확정한다", () => {
   for (const mode of Object.keys(MODE_CAPACITY)) {
     for (let benchCapacity = 0; benchCapacity <= 3; benchCapacity += 1) {

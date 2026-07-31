@@ -258,7 +258,9 @@ export function useRecruitingRoomController({
 
   useEffect(() => {
     if (!sourceMatch?.id) return;
-    const resultKey = sourceMatch.result?.updatedAt ?? sourceMatch.result?.submittedAt ?? "";
+    const scoreA = sourceMatch.result?.scoreA ?? sourceMatch.teamA?.score ?? 0;
+    const scoreB = sourceMatch.result?.scoreB ?? sourceMatch.teamB?.score ?? 0;
+    const resultKey = `${sourceMatch.result?.updatedAt ?? sourceMatch.result?.submittedAt ?? ""}:${scoreA}:${scoreB}`;
     setSourceDisputeDraft((current) => (
       current.matchId === sourceMatch.id && current.resultKey === resultKey
         ? current
@@ -267,15 +269,15 @@ export function useRecruitingRoomController({
           resultKey,
           reason: MATCH_DISPUTE_REASON_OPTIONS[0],
           customReason: "",
-          requestedScoreA: String(sourceMatch.result?.scoreA ?? sourceMatch.teamA?.score ?? 0),
-          requestedScoreB: String(sourceMatch.result?.scoreB ?? sourceMatch.teamB?.score ?? 0),
+          requestedScoreA: String(scoreA),
+          requestedScoreB: String(scoreB),
           requestedStats: Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
             id,
             String(sourceMatch.result?.playerStats?.[app.currentUser.id]?.[id] ?? 0),
           ])),
         }
     ));
-  }, [app.currentUser.id, sourceMatch?.id, sourceMatch?.result?.updatedAt]);
+  }, [app.currentUser.id, sourceMatch?.id, sourceMatch?.result?.scoreA, sourceMatch?.result?.scoreB, sourceMatch?.result?.updatedAt, sourceMatch?.teamA?.score, sourceMatch?.teamB?.score]);
 
   const sourceFinalizationStatus = sourceMatch ? getMatchManualFinalizationStatus(sourceMatch) : null;
   useEffect(() => {

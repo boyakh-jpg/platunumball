@@ -128,8 +128,8 @@ export function SelfSlotCommandPanel({
 }) {
   const inParty = isPartyEntry(entry);
   const fromParty = Boolean(!inParty && sourceTeam);
-  const partyText = inParty && entry?.team
-    ? `${entry.team.name} 파티 연결됨`
+  const partyText = entry?.kind === "team" && entry?.team
+    ? `${entry.team.name} ${inParty ? "파티 연결됨" : "팀 참여 중"}`
     : fromParty
       ? `${sourceTeam.name} 파티에서 나와 개인 참여 중`
       : "개인 참여 중";
