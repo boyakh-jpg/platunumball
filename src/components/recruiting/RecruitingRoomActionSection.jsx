@@ -160,7 +160,7 @@ export function RecruitingRoomActionSection({ context }) {
                           sourceFinalAuthorityLabel,
                         )}
                       >
-                        최종 승인
+                        기록완료
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && sourceMatchAction.action === "agree" && sourceMatchSideName ? (

@@ -57,6 +57,7 @@ import {
   declineRecruitingInvitation,
   interestRecruitingPost,
   inviteRecruitingPlayers,
+  joinRecruitingSideParty,
   setRecruitingRoomTeam,
 } from "../src/data/repository.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
@@ -1110,6 +1111,54 @@ test("public team joins persist only the applying team member as side leader", (
   assert.doesNotMatch(teamMemberPublicJoinMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
   assert.match(recruitingSource, /상대 팀원이 B사이드장으로 참가할 때까지 기다립니다\./);
   assert.doesNotMatch(recruitingSource, /상대 팀 현재 주장이 B사이드로 참가/);
+});
+
+test("기존 후보의 팀 파티 합류는 후보 배치와 기존 파티장을 유지한다", () => {
+  const post = {
+    id: "mixed-party-room",
+    title: "혼합 팀 파티",
+    status: "open",
+    visibility: "public",
+    mode: "3v3",
+    sideCapacity: 3,
+    benchCapacity: 3,
+    hostJoinMode: "team",
+    teamOnly: false,
+    playerId: "host",
+    roomState: { ownerId: "host", partyLeaders: {}, partyReserves: {} },
+    rules: { teamOnly: false, mmrLimitMode: "off", allowedAgeGroups: [] },
+    applicants: [
+      { kind: "player", joinMode: "player", playerId: "leader", side: "teamB", status: "ready", reserve: false },
+      { kind: "player", joinMode: "player", playerId: "reserve", side: "teamB", status: "ready", reserve: true },
+    ],
+  };
+  const state = {
+    currentUserId: "reserve",
+    users: [
+      { id: "host", position: "PG", trustScore: 100, ratings: { integrated: 1200 } },
+      { id: "leader", position: "SG", trustScore: 100, ratings: { integrated: 1200 } },
+      { id: "reserve", position: "SF", trustScore: 100, ratings: { integrated: 1200 } },
+    ],
+    teams: [{
+      id: "team-b",
+      name: "B팀",
+      members: [
+        { userId: "leader", role: "captain" },
+        { userId: "reserve", role: "regular" },
+      ],
+    }],
+    recruitingPosts: [post],
+    notifications: [],
+    settings: {},
+  };
+
+  const joined = joinRecruitingSideParty(state, post.id, "team-b", "teamB", "leader");
+  const party = joined.recruitingPosts[0].applicants.find((entry) => entry.kind === "team");
+  assert.equal(party.playerId, "leader");
+  assert.deepEqual(party.playerIds, ["leader"]);
+  assert.deepEqual(joined.recruitingPosts[0].roomState.partyReserves["team:team-b"], ["reserve"]);
+  assert.equal(joined.recruitingPosts[0].roomState.partyLeaders["team:team-b"], "leader");
+  assert.strictEqual(joinRecruitingSideParty(joined, post.id, "team-b", "teamB", party.id), joined);
 });
 
 test("pickup participant slots keep a fixed width and use available desktop columns", () => {

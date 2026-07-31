@@ -5,7 +5,7 @@ export function useRecruitingRoomModalInteractions({
   app, soloRecordDeleteTarget, sheetDragTimerRef, setSheetDragSettling, setSheetDragOffset,
   inviteDraft, slotActionDraft, pendingRosterOpen, getRoomEditDraftByPost, lobbyModalRef,
   sheetDragRef, sheetDragOffset, sourceMatch, sourceDisputeDraft, getMatchResultRevision,
-  buildMatchDisputeRequest, PLAYER_STAT_FIELDS,
+  buildMatchDisputeRequest, PLAYER_STAT_FIELDS, refreshSourceMatchReview,
 }) {
   const showRoomShareStatus = useCallback((message) => {
     setRoomShareStatus(message);
@@ -131,11 +131,11 @@ export function useRecruitingRoomModalInteractions({
   const sheetDragProgress = sheetDragOffset ? Math.min(1, sheetDragOffset / getSheetDismissDistance()) : 0;
   const sheetBackdropOpacity = 0.82 - (sheetDragProgress * 0.34);
   const sheetModalOpacity = 1 - (sheetDragProgress * 0.34);
-  const submitSourceDispute = (event) => {
+  const submitSourceDispute = async (event) => {
     event.preventDefault();
     if (!sourceMatch?.id) return;
     if (!sourceMatch.refereeId) {
-      app.actions.disputeMatch(sourceMatch.id, {
+      const result = await app.actions.disputeMatch(sourceMatch.id, {
         kind: "team_scores",
         requestedScoreA: Number(sourceDisputeDraft.requestedScoreA),
         requestedScoreB: Number(sourceDisputeDraft.requestedScoreB),
@@ -143,9 +143,10 @@ export function useRecruitingRoomModalInteractions({
         reason: sourceDisputeDraft.customReason.trim() || sourceDisputeDraft.reason,
 
       });
+      if (result?.ok !== false) await refreshSourceMatchReview?.();
       return;
     }
-    app.actions.disputeMatch(sourceMatch.id, buildMatchDisputeRequest({
+    const result = await app.actions.disputeMatch(sourceMatch.id, buildMatchDisputeRequest({
       match: sourceMatch,
       playerId: app.currentUser.id,
       requestedStats: Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
@@ -155,6 +156,7 @@ export function useRecruitingRoomModalInteractions({
       reason: sourceDisputeDraft.reason,
       customReason: sourceDisputeDraft.customReason,
     }));
+    if (result?.ok !== false) await refreshSourceMatchReview?.();
   };
 
   return {

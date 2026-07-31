@@ -13,7 +13,6 @@ import { updateManyPinnedReservePlayers } from "../../../lib/recruiting.js";
 import { getDisciplineBlockedState, getPublicRoomDisciplineBlockedState, getRecruitingReserveLimitNotification } from "../guards.js";
 import { getPendingScheduleChangeNotification } from "../roomRules.js";
 import { buildRecruitingTeamAbsorbPost, withRecruitingPartySideConflictNotification } from "./partyPlacement.js";
-import { setRecruitingPartyPlayerReserve } from "./partyRoster.js";
 
 export function joinRecruitingSideParty(state, postId, teamId, sideName = "", entryId = "") {
   const disciplineBlock = getDisciplineBlockedState(state, "팀 파티 합류");
@@ -73,12 +72,12 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   const capacity = getRecruitingSideCapacity(post);
   const sideProjectedFilled = lobby.sides[side]?.projectedFilled ?? 0;
   const currentUserReserve = currentApplicant
-    ? Boolean(currentApplicant.reserve && sideProjectedFilled >= capacity)
+    ? Boolean(currentApplicant.reserve)
     : sideProjectedFilled >= capacity;
 
   if (partyEntry) {
     if ((partyEntry.reserves ?? []).includes(state.currentUserId)) {
-      return setRecruitingPartyPlayerReserve(state, postId, partyEntry.id, state.currentUserId, false);
+      return state;
     }
     const absorbedPost = buildRecruitingTeamAbsorbPost(
       post,
@@ -172,11 +171,23 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
     .filter((applicant) => applicant.reserve || !activePlayerIds.includes(applicant.playerId))
     .map((applicant) => applicant.playerId);
   const teamKey = `team:${teamId}`;
+  const partyLeaderId = [
+    targetEntry?.playerId,
+    ...sameTeamApplicants.map((applicant) => applicant.playerId),
+  ].find((playerId) => (
+    playerId &&
+    playerId !== state.currentUserId &&
+    activePlayerIds.includes(playerId)
+  )) ?? activePlayerIds[0];
   const nextPartyReserves = { ...roomState.partyReserves, [teamKey]: Array.from(new Set(reservePlayerIds)) };
   if (!nextPartyReserves[teamKey].length) delete nextPartyReserves[teamKey];
   const sameTeamPlayerSet = new Set(sameTeamApplicants.map((applicant) => applicant.playerId));
   const nextRoomState = updateManyPinnedReservePlayers(
-    updateManyPinnedReservePlayers({ ...roomState, partyReserves: nextPartyReserves }, side, activePlayerIds, false),
+    updateManyPinnedReservePlayers({
+      ...roomState,
+      partyLeaders: { ...roomState.partyLeaders, [teamKey]: partyLeaderId },
+      partyReserves: nextPartyReserves,
+    }, side, activePlayerIds, false),
     side,
     reservePlayerIds,
     true,
@@ -185,7 +196,7 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
     kind: "team",
     joinMode: "team",
     teamId,
-    playerId: activePlayerIds[0],
+    playerId: partyLeaderId,
     side,
     status: "ready",
     reserve: false,

@@ -53,6 +53,28 @@
     margin-top: 8px;
   }
 
+  .arena-self-slot-popover .arena-party-picker {
+    padding: 7px;
+  }
+
+  .arena-self-slot-popover .arena-party-picker-grid {
+    gap: 4px;
+  }
+
+  .arena-self-slot-popover .arena-party-member-card {
+    min-height: 0;
+    gap: 6px;
+    padding: 5px;
+  }
+
+  .arena-self-slot-popover .arena-party-role-buttons {
+    gap: 4px;
+  }
+
+  .arena-self-slot-popover .arena-party-role-buttons button {
+    min-height: 44px;
+  }
+
   .arena-lobby-arena {
     min-height: 0;
   }

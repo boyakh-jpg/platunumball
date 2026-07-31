@@ -297,16 +297,24 @@ export function SourceMatchDisputeEditor({
   };
 
   const updatePlayerStat = (playerId, fieldId, value) => {
-    setDraft((current) => ({
-      ...current,
-      playerStats: {
+    setDraft((current) => {
+      const playerStats = {
         ...current.playerStats,
         [playerId]: {
           ...(current.playerStats[playerId] ?? {}),
           [fieldId]: getNonNegativeNumber(value),
         },
-      },
-    }));
+      };
+      if (fieldId !== "points") return { ...current, playerStats };
+      const sideName = sideNames.find((side) => getMatchSideRecordPlayerIds(match, side).includes(playerId));
+      if (!sideName) return { ...current, playerStats };
+      const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
+      return {
+        ...current,
+        playerStats,
+        [scoreKey]: getMergedResultScore(match, playerStats, sideName, 0),
+      };
+    });
   };
   return (
     <form className="arena-dispute-editor" onSubmit={(event) => {

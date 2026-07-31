@@ -311,3 +311,21 @@ test("이의 상태 경기방은 무효 처리 대화상자를 import한 뒤 렌
   assert.match(sourceMatchPanels, /import MatchVoidDialog from "\.\.\/match\/MatchVoidDialog\.jsx";/);
   assert.match(sourceMatchPanels, /<MatchVoidDialog\b/);
 });
+
+test("사유만 있는 이의제기를 저장하고 제출·심판 화면을 즉시 갱신한다", async () => {
+  const migration = await readSource("supabase/migrations/20260731233000_allow_reason_only_match_disputes.sql");
+  const interactions = await readSource("src/components/recruiting/useRecruitingRoomModalInteractions.js");
+  const controller = await readSource("src/components/recruiting/useRecruitingRoomController.js");
+  assert.match(migration, /match_stat_dispute_no_change/);
+  assert.match(migration, /execute function_definition/);
+  assert.match(interactions, /await app\.actions\.disputeMatch/);
+  assert.match(interactions, /await refreshSourceMatchReview\?\.\(\)/);
+  assert.match(controller, /window\.setInterval\(refreshReview, 5000\)/);
+});
+
+test("기록완료 뒤 현재 사용자 기록 목록을 강제 갱신한다", async () => {
+  const controller = await readSource("src/components/recruiting/useRecruitingRoomController.js");
+  const actions = await readSource("src/components/recruiting/RecruitingRoomActionSection.jsx");
+  assert.match(controller, /loadProfileRecords\?\.\(\{ force: true \}\)/);
+  assert.match(actions, />\s*기록완료\s*</);
+});

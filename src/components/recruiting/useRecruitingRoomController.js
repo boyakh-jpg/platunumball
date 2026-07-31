@@ -145,7 +145,10 @@ export function useRecruitingRoomController({
       if (result?.ok !== false) {
         const finalizedMatchId = finalizeMatchTarget.matchId;
         setFinalizeMatchTarget(null);
-        await app.actions.loadMatchDetail?.(finalizedMatchId);
+        await Promise.all([
+          app.actions.loadMatchDetail?.(finalizedMatchId),
+          app.actions.loadProfileRecords?.({ force: true }),
+        ]);
       }
     } finally {
       setFinalizeMatchPending(false);
@@ -257,6 +260,22 @@ export function useRecruitingRoomController({
   }, [sourceMatch?.id, sourceMatch?.startedAt, sourceMatch?.endedAt, sourceMatch?.status]);
 
   useEffect(() => {
+    if (!sourceMatch?.id || !sourceMatch.endedAt || sourceMatch.confirmedAt) return undefined;
+    let refreshing = false;
+    const refreshReview = async () => {
+      if (document.hidden || refreshing) return;
+      refreshing = true;
+      try {
+        await loadMatchDetailRef.current?.(sourceMatch.id);
+      } finally {
+        refreshing = false;
+      }
+    };
+    const pollId = window.setInterval(refreshReview, 5000);
+    return () => window.clearInterval(pollId);
+  }, [sourceMatch?.id, sourceMatch?.endedAt, sourceMatch?.confirmedAt, sourceMatch?.status]);
+
+  useEffect(() => {
     if (!sourceMatch?.id) return;
     const scoreA = sourceMatch.result?.scoreA ?? sourceMatch.teamA?.score ?? 0;
     const scoreB = sourceMatch.result?.scoreB ?? sourceMatch.teamB?.score ?? 0;
@@ -328,7 +347,7 @@ export function useRecruitingRoomController({
     app, soloRecordDeleteTarget, sheetDragTimerRef, setSheetDragSettling, setSheetDragOffset,
     inviteDraft, slotActionDraft, pendingRosterOpen, getRoomEditDraftByPost, lobbyModalRef,
     sheetDragRef, sheetDragOffset, sourceMatch, sourceDisputeDraft, getMatchResultRevision,
-    buildMatchDisputeRequest, PLAYER_STAT_FIELDS,
+    buildMatchDisputeRequest, PLAYER_STAT_FIELDS, refreshSourceMatchReview,
   });
   const {
     getRefereeInviteQuery, updateRefereeInviteQuery, getJoinDraft, updateJoinDraft, submitJoin,

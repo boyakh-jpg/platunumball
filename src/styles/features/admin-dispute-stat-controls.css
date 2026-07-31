@@ -432,10 +432,8 @@
 .arena-dispute-player {
   grid-template-columns: minmax(88px, 0.22fr) minmax(0, 1fr);
   align-items: center;
-  border: var(--ui-room-panel-border-width) solid var(--ui-room-panel-border, var(--line));
-  border-radius: var(--ui-card-radius, var(--radius-xs));
-  background: var(--ui-card-bg, rgba(5, 7, 10, 0.34));
-  padding: 6px 8px;
+  border-bottom: var(--ui-stroke-width) solid var(--ui-liquid-glass-divider, var(--line));
+  padding: 6px 0 8px;
 }
 
 .arena-dispute-score-row .ui-numeric-stepper,
@@ -445,12 +443,12 @@
 
 .arena-stat-stepper {
   grid-template-areas: "down value up";
-  grid-template-columns: 30px minmax(34px, 1fr) 30px;
-  grid-template-rows: 38px;
+  grid-template-columns: 26px minmax(28px, 1fr) 26px;
+  grid-template-rows: 44px;
 }
 
 .arena-stat-stepper button {
-  min-height: 38px;
+  min-height: 44px;
   border-radius: var(--radius-xs);
 }
 
@@ -469,7 +467,7 @@
 
 .arena-stat-stepper input {
   grid-area: value;
-  min-height: 38px;
+  min-height: 44px;
   padding: 6px 4px;
   text-align: center;
 }
@@ -482,7 +480,7 @@
 
 .arena-dispute-player > div {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
