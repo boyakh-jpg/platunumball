@@ -47,10 +47,11 @@ export default function Notifications({ app }) {
   const refreshNotifications = useCallback(async () => {
     setNotificationsLoadError("");
     try {
-      const [, directoryLoaded] = await Promise.all([
+      const [notificationsLoaded, directoryLoaded] = await Promise.all([
         loadNotifications?.(),
         loadDirectory?.({ kind: "self", force: true }),
       ]);
+      if (notificationsLoaded === false) throw new Error("notification_load_failed");
       if (directoryLoaded === false && app.serverProfileBound) throw new Error("notification_directory_load_failed");
     } catch {
       setNotificationsLoadError("알림을 불러오지 못했습니다.");

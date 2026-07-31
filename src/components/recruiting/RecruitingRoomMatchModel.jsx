@@ -219,7 +219,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
             : sourceMatchUsesQrAttendance && sourceMatchServerStartStatus?.blockReason === "server_time_unavailable"
               ? "서버시간을 확인하지 못했습니다. 새로고침 후 다시 시도해 주세요."
             : "A/B 팀 배정과 교대 기준을 확정해야 경기 시작이 가능합니다.";
-        const canRequestRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
+        const canRequestRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && sourceMatch?.refereeAbsenceRequest?.status !== "pending" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canConfirmRefereeAbsence = Boolean(!sourceMatchRequiresTournamentReferee && matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
         const sourceManualFinalizationStatus = getMatchManualFinalizationStatus(sourceMatch);

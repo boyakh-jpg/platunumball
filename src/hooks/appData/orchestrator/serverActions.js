@@ -327,13 +327,12 @@ const currentUser = useMemo(() => {
   const loadNotifications = useCallback(() => {
     if (!isSupabaseConfigured) return Promise.resolve(stateRef.current.notifications ?? []);
     return runServerAction("/api/notifications/list", { limit: 80 }).then((result) => {
-      if (Array.isArray(result?.notifications)) {
-        setState((prev) => ({
-          ...prev,
-          notifications: filterBlockedIncomingNotifications(result.notifications, prev),
-        }));
-      }
-      return result?.notifications ?? [];
+      if (!result || result.ok === false || !Array.isArray(result.notifications)) return false;
+      setState((prev) => ({
+        ...prev,
+        notifications: filterBlockedIncomingNotifications(result.notifications, prev),
+      }));
+      return result.notifications;
     });
   }, [runServerAction, setState]);
   const syncSettingsServer = useCallback((settingsPatch = {}, options = {}) => {

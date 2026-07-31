@@ -60,6 +60,8 @@ export default function TeamDetail({ app }) {
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [emblemPending, setEmblemPending] = useState(false);
   const [emblemCanRestore, setEmblemCanRestore] = useState(false);
+  const [emblemStatusError, setEmblemStatusError] = useState("");
+  const [emblemStatusRetrySequence, setEmblemStatusRetrySequence] = useState(0);
   const [emblemFeedback, setEmblemFeedback] = useState("");
   const [emblemFile, setEmblemFile] = useState(null);
   const [emblemStyleDraft, setEmblemStyleDraft] = useState(() => ({
@@ -125,11 +127,28 @@ export default function TeamDetail({ app }) {
     let cancelled = false;
     emblemStatusRequestRef.current = team.id;
     setEmblemCanRestore(false);
+    setEmblemStatusError("");
     Promise.resolve(loadTeamEmblemStatus?.(team.id)).then((result) => {
-      if (!cancelled && result?.ok !== false && result?.teamId === team.id) setEmblemCanRestore(result.emblemCanRestore === true);
+      if (cancelled) return;
+      if (!result || result.ok === false || result.teamId !== team.id) {
+        emblemStatusRequestRef.current = "";
+        setEmblemStatusError("이전 엠블럼 상태를 확인하지 못했습니다.");
+        return;
+      }
+      setEmblemCanRestore(result.emblemCanRestore === true);
+    }).catch(() => {
+      if (cancelled) return;
+      emblemStatusRequestRef.current = "";
+      setEmblemStatusError("이전 엠블럼 상태를 확인하지 못했습니다.");
     });
     return () => { cancelled = true; };
-  }, [app.remoteReady, canManage, loadTeamEmblemStatus, team?.id]);
+  }, [app.remoteReady, canManage, emblemStatusRetrySequence, loadTeamEmblemStatus, team?.id]);
+
+  const retryTeamEmblemStatus = () => {
+    emblemStatusRequestRef.current = "";
+    setEmblemStatusError("");
+    setEmblemStatusRetrySequence((current) => current + 1);
+  };
 
   useEffect(() => {
     if (app.remoteReady === false || !teamId) return undefined;
@@ -431,5 +450,5 @@ export default function TeamDetail({ app }) {
   const emblemUploadLocked = moderationLocked || isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
 
-  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, uploadEmblem, userMap, winRate, wins }} />;
+  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, uploadEmblem, userMap, winRate, wins }} />;
 }

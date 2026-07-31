@@ -1,6 +1,7 @@
 import { normalizeRegionText } from "./regionText.js";
 import {
   AGE_GROUPS,
+  PROFILE_NAME_MAX_LENGTH,
   formatProfileDate,
   getAgeGroupByBirthYear,
   getAgeGroupForUser,
@@ -8,10 +9,12 @@ import {
   getAgeGroupSeasonForDate,
   getAgeGroupSeasonLabel,
   shouldRecheckAgeGroup,
+  normalizeProfileName,
 } from "../../shared/lib/profileSetup.js";
 
 export {
   AGE_GROUPS,
+  PROFILE_NAME_MAX_LENGTH,
   formatProfileDate,
   getAgeGroupByBirthYear,
   getAgeGroupForUser,
@@ -19,6 +22,7 @@ export {
   getAgeGroupSeasonForDate,
   getAgeGroupSeasonLabel,
   shouldRecheckAgeGroup,
+  normalizeProfileName,
 };
 
 export const REGION_TREE = [

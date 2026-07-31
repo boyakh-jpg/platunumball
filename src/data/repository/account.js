@@ -2,7 +2,7 @@ import { DEFAULT_RATING } from "../../lib/constants.js";
 import { MAX_TEAM_MEMBERS } from "../../lib/constants.js";
 import { MAX_TEAM_MEMBERSHIPS } from "../../lib/constants.js";
 import { MAX_TEAM_NAME_LENGTH } from "../../lib/constants.js";
-import { canChangeProfileName } from "../../lib/profileSetup.js";
+import { canChangeProfileName, normalizeProfileName } from "../../lib/profileSetup.js";
 import { findDiscordConnectionOwner } from "../../lib/discord.js";
 import { getDiscordConnectionUserId } from "../../lib/discord.js";
 import { getProfileRegionSnapshot } from "../profileMappers.js";
@@ -77,6 +77,11 @@ export function updateProfile(state, patch, targetUserId = state.currentUserId) 
     return state;
   }
   const profilePatch = { ...patch };
+  if (Object.prototype.hasOwnProperty.call(profilePatch, "name")) {
+    const name = normalizeProfileName(profilePatch.name);
+    if (!name) return state;
+    profilePatch.name = name;
+  }
   if (Object.prototype.hasOwnProperty.call(profilePatch, "discordConnection")) {
     profilePatch.discordUserId = getDiscordConnectionUserId(profilePatch.discordConnection) || null;
   }

@@ -19,7 +19,11 @@ function readTestSession() {
     const raw = window.localStorage.getItem(TEST_SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
-    window.localStorage.removeItem(TEST_SESSION_KEY);
+    try {
+      window.localStorage.removeItem(TEST_SESSION_KEY);
+    } catch {
+      // Storage can be unavailable in private or embedded browsers.
+    }
     return null;
   }
 }

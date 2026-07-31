@@ -1481,6 +1481,9 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
   assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
   assert.match(rankingsPage, /const promotionView = searchParams\.get\("view"\) === "promotion"/);
+  assert.match(rankingsPage, /if \(!promotionView \|\| !app\.remoteReady \|\| profileRecordsLoaded \|\| !loadProfileRecords\) return;/);
+  assert.match(rankingsPage, /result === false\) setPromotionLoadFailed\(true\)/);
+  assert.match(rankingsPage, /승격권 기록을 불러오지 못했습니다/);
   assert.match(rankingsPage, /<SeasonPromotionTable/);
   assert.match(rankingsPage, /nextSearchParams\.set\("tab", nextTab\)/);
   assert.match(styles, /\.season-race-list > \.player-hover-trigger/);
@@ -1539,6 +1542,7 @@ test("search keeps player and referee identities separate and remote blocking up
   const searchPicker = await readSource("src/components/common/SearchPicker.jsx");
   assert.match(searchPicker, /categoryKey = String\(category \|\| "entity"\)\.toLowerCase\(\) === "profile"/);
   assert.match(searchPicker, /`id:\$\{categoryKey\}:\$\{identity\}`/);
+  assert.match(searchPicker, /mergeSearchItems\(localItems, mappedRemoteItems, remoteSearchCategory\)/);
 
   const state = {
     currentUserId: "me",

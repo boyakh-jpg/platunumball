@@ -145,9 +145,14 @@ export function resolveMatchDispute(state, matchId, disputeId, decision, resolut
   const targetDispute = (match?.disputes ?? []).find((dispute) => dispute.id === disputeId && dispute.status === "open");
   if (!match?.result || match.status !== "disputed" || !targetDispute || !safeDecision || !safeResolutionReason) return state;
   if (!currentUserCanResolveMatchDispute(state, match)) return state;
+  const currentRevision = getMatchResultRevision({ result: match.disputeDraftResult ?? match.result });
+  const baseRevision = Number(targetDispute.request?.baseRevision);
   if (
     safeDecision === "accepted"
-    && Number(targetDispute.request?.baseRevision) !== getMatchResultRevision({ result: match.disputeDraftResult ?? match.result })
+    && (
+      baseRevision > currentRevision
+      || (targetDispute.request?.kind === "team_scores" && baseRevision !== currentRevision)
+    )
   ) return state;
 
   const resolvedAt = new Date().toISOString();

@@ -14,7 +14,7 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import { BASKETBALL_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getMatchSideScore as getSideScore, getPlayerMatchResult, getPlayerRecentRecordMatches, getPlayerSideName, isPersonalRecordMatch } from "../lib/matchUtils.js";
-import { canChangeProfileName, formatProfileDate, getNextNameChangeDate, getRegionDistrictOptions, inferRegionSelection } from "../lib/profileSetup.js";
+import { canChangeProfileName, formatProfileDate, getNextNameChangeDate, getRegionDistrictOptions, inferRegionSelection, normalizeProfileName, PROFILE_NAME_MAX_LENGTH } from "../lib/profileSetup.js";
 import { isPlacementComplete } from "../lib/rating.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
@@ -43,7 +43,7 @@ function getProfileAverageFouls(user = {}, matches = []) {
   return getAverageFouls(matches, user.id);
 }
 
-function RecentRecordCard({ records, userId, teams, onOpenRecord, loading = false }) {
+function RecentRecordCard({ records, userId, teams, onOpenRecord, loading = false, loadError = "", onRetry }) {
   return (
     <Card className="section-card profile-record-card">
       <div className="section-title-row">
@@ -55,6 +55,11 @@ function RecentRecordCard({ records, userId, teams, onOpenRecord, loading = fals
       </div>
       {loading ? (
         <div className="ui-empty-state-compact">기록 정리 중</div>
+      ) : loadError ? (
+        <div className="ui-empty-state-compact">
+          <span>경기 기록을 불러오지 못했습니다.</span>
+          <Button type="button" variant="secondary" size="sm" onClick={onRetry}>다시 시도</Button>
+        </div>
       ) : records.length ? (
         <div className="recent-match-list">
           {records.map((match) => {
@@ -107,7 +112,13 @@ export default function Profile({ app }) {
   const submit = async (event) => {
     event.preventDefault();
     if (profileSavePendingRef.current) return;
-    if (draft.name !== user.name && !canChangeProfileName(user)) {
+    const name = normalizeProfileName(draft.name);
+    if (!name) {
+      setProfileError("닉네임을 입력해 주세요.");
+      setProfileSaveStatus("");
+      return;
+    }
+    if (name !== user.name && !canChangeProfileName(user)) {
       setProfileError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(getNextNameChangeDate(user))}`);
       return;
     }
@@ -118,7 +129,7 @@ export default function Profile({ app }) {
     const district = districtOptions.includes(draft.regionDistrict) ? draft.regionDistrict : districtOptions[0];
     try {
       const result = await app.actions.updateProfile({
-        name: draft.name,
+        name,
         position: draft.position,
         region: `${draft.regionSido} ${district}`,
         regionSido: draft.regionSido,
@@ -161,7 +172,18 @@ export default function Profile({ app }) {
     });
   }, [app.actions, app.remoteReady, myRecords.length, user.id]);
   const averageFouls = getProfileAverageFouls(user, app.state.matches);
-  const recordsPending = (!app.actions.profileRecordsLoaded || recordsLoading) && !myRecords.length;
+  const recordsLoadError = !myRecords.length ? app.recordArchives?.profile?.error ?? "" : "";
+  const recordsPending = !recordsLoadError && (!app.actions.profileRecordsLoaded || recordsLoading) && !myRecords.length;
+  const retryRecords = async () => {
+    if (recordsLoading || !app.actions.loadProfileRecords) return;
+    recordsLoadKeyRef.current = "";
+    setRecordsLoading(true);
+    try {
+      await app.actions.loadProfileRecords({ force: true });
+    } finally {
+      setRecordsLoading(false);
+    }
+  };
   return (
     <div className="page-stack profile-page">
       <header className="page-header ui-design-app-hero">
@@ -199,7 +221,7 @@ export default function Profile({ app }) {
             <form className="form-grid profile-form-grid" onSubmit={submit}>
               <label>
                 닉네임
-                <input value={draft.name} onChange={(event) => update({ name: event.target.value })} />
+                <input required maxLength={PROFILE_NAME_MAX_LENGTH} value={draft.name} onChange={(event) => update({ name: event.target.value })} />
               </label>
               <ProfileBasicsFields
                 position={draft.position}
@@ -220,7 +242,7 @@ export default function Profile({ app }) {
               <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} ratings={user.ratings} mode={mode} />
             )) : null}
           </section>
-          <RecentRecordCard records={myRecords} userId={user.id} teams={app.state.teams} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} />
+          <RecentRecordCard records={myRecords} userId={user.id} teams={app.state.teams} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} loadError={recordsLoadError} onRetry={retryRecords} />
         </div>
         <aside className="page-stack profile-side-grid">
           <ProgressionChecklist user={user} matches={app.state.matches} />

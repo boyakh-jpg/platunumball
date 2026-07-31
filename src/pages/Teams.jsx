@@ -41,19 +41,15 @@ export default function Teams({ app }) {
   const loadDirectory = app.actions.loadDirectory;
   const directoryCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const [discoveredCourts, setDiscoveredCourts] = useState([]);
-  const registeredCourts = useMemo(
-    () => mergeCourtSearchCourts(directoryCourts, discoveredCourts),
-    [directoryCourts, discoveredCourts],
-  );
-  const defaultRegionSelection = useMemo(
-    () => getProfileRegionSelection(app.currentUser),
-    [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
-  );
+  const registeredCourts = useMemo(() => mergeCourtSearchCourts(directoryCourts, discoveredCourts), [directoryCourts, discoveredCourts]);
+  const defaultRegionSelection = useMemo(() => getProfileRegionSelection(app.currentUser), [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido]);
   const defaultTeamRegion = `${defaultRegionSelection.sido} ${defaultRegionSelection.district}`;
   const [draft, setDraft] = useState({ name: "", region: defaultTeamRegion, homeCourt: "", homeCourtId: "", captainId: app.currentUser.id, accent: "#58d2c0" });
   const [teamCreatePending, setTeamCreatePending] = useState(false);
   const teamCreatePendingRef = useRef(false);
   const [teamCreateError, setTeamCreateError] = useState("");
+  const [representativeSavePendingId, setRepresentativeSavePendingId] = useState("");
+  const [representativeSaveError, setRepresentativeSaveError] = useState("");
   const [query, setQuery] = useState("");
   const [selectedSearchTeam, setSelectedSearchTeam] = useState(null);
   const [regionSido, setRegionSido] = useState(TEAM_DISCOVERY_VIEW);
@@ -109,10 +105,7 @@ export default function Teams({ app }) {
       .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === app.currentUser.id)?.role ?? "regular" }))
       .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || a.rank - b.rank);
   }, [app.currentUser.id, rankingTeams]);
-  const representativeTeam = useMemo(
-    () => getRepresentativeTeam(app.currentUser.id, myTeams, representativeTeamId),
-    [app.currentUser.id, myTeams, representativeTeamId],
-  );
+  const representativeTeam = useMemo(() => getRepresentativeTeam(app.currentUser.id, myTeams, representativeTeamId), [app.currentUser.id, myTeams, representativeTeamId]);
   const teamDiscoveryGroups = useMemo(() => getTeamDiscoveryGroups({
     teams: rankingTeams,
     users: app.state.users,
@@ -224,6 +217,17 @@ export default function Teams({ app }) {
     }
   };
 
+  const setRepresentativeTeam = async (event, teamId) => {
+    event.preventDefault(); event.stopPropagation();
+    if (!teamId || representativeSavePendingId || representativeTeamId === teamId) return;
+    setRepresentativeSavePendingId(teamId); setRepresentativeSaveError("");
+    try {
+      const result = await app.actions.updateSettings({ representativeTeamId: teamId });
+      if (!result || result.ok === false) setRepresentativeSaveError("대표팀을 설정하지 못했습니다. 다시 시도해 주세요.");
+    } catch { setRepresentativeSaveError("대표팀을 설정하지 못했습니다. 다시 시도해 주세요.");
+    } finally { setRepresentativeSavePendingId(""); }
+  };
+
   return (
     <div className="page-stack teams-page">
       {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : null}
@@ -285,16 +289,12 @@ export default function Teams({ app }) {
                     </span>
                     <Button
                       className="my-team-representative-button"
-                      disabled={isExplicitRepresentative}
+                      disabled={isExplicitRepresentative || Boolean(representativeSavePendingId)}
                       size="sm"
                       variant={isRepresentative ? "primary" : "secondary"}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        if (!isExplicitRepresentative) app.actions.updateSettings({ representativeTeamId: team.id });
-                      }}
+                      onClick={(event) => { void setRepresentativeTeam(event, team.id); }}
                     >
-                      {isRepresentative ? "대표팀" : "대표 설정"}
+                      {representativeSavePendingId === team.id ? "저장 중" : isRepresentative ? "대표팀" : "대표 설정"}
                     </Button>
                     <b>{isCaptain ? "관리" : "상세"}</b>
                   </span>
@@ -308,6 +308,7 @@ export default function Teams({ app }) {
               <div className="ui-empty-state-compact">소속 팀이 없습니다. 새 팀을 만들거나 팀 모집에 지원해 주세요.</div>
             )}
           </div>
+          {representativeSaveError ? <small role="status" className="form-warning">{representativeSaveError}</small> : null}
         </Card>
 
         <Card className="section-card team-search-card">

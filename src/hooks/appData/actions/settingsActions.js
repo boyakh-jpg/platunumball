@@ -64,6 +64,18 @@ export function buildSettingsActions(context) {
     return result;
   };
 
+  const restoreNotificationsAfterReadFailure = async (previousNotifications) => {
+    let reloaded = false;
+    try {
+      reloaded = await loadNotifications();
+    } catch {
+      reloaded = false;
+    }
+    if (!Array.isArray(reloaded)) {
+      setState((current) => ({ ...current, notifications: previousNotifications }));
+    }
+  };
+
   return ({
 updateSettings: (patch) => {
     if (!isSupabaseConfigured) {
@@ -256,24 +268,26 @@ updateSettings: (patch) => {
     return result;
   },
   markNotificationRead: async (notificationId) => {
+    const previousNotifications = stateRef.current.notifications ?? [];
     setState((prev) => markNotificationRead(prev, notificationId));
     try {
       const result = await markNotificationReadServer({ notificationId });
-      if (!result || result.ok === false) await loadNotifications();
+      if (!result || result.ok === false) await restoreNotificationsAfterReadFailure(previousNotifications);
       return result;
     } catch (error) {
-      await loadNotifications();
+      await restoreNotificationsAfterReadFailure(previousNotifications);
       return { ok: false, error: error?.message ?? "notification_read_failed" };
     }
   },
   markAllNotificationsRead: async () => {
+    const previousNotifications = stateRef.current.notifications ?? [];
     setState((prev) => markAllNotificationsRead(prev));
     try {
       const result = await markNotificationReadServer({ all: true });
-      if (!result || result.ok === false) await loadNotifications();
+      if (!result || result.ok === false) await restoreNotificationsAfterReadFailure(previousNotifications);
       return result;
     } catch (error) {
-      await loadNotifications();
+      await restoreNotificationsAfterReadFailure(previousNotifications);
       return { ok: false, error: error?.message ?? "notification_read_failed" };
     }
   },

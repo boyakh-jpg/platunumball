@@ -52,9 +52,9 @@ function getSearchScore(text = "", query = "") {
   return -1;
 }
 
-function getItemKey(item = {}) {
+function getItemKey(item = {}, fallbackCategory = "") {
   const entity = item.player ?? item.team ?? item.court ?? item.referee ?? item;
-  const category = item.kind ?? entity.kind ?? item.type ?? entity.type;
+  const category = item.kind ?? entity.kind ?? item.type ?? entity.type ?? fallbackCategory;
   const identity = item.entityId ?? entity.entityId ?? item.id ?? entity.id ?? item.hashtag ?? entity.hashtag ?? item.handle ?? entity.handle;
   const categoryKey = String(category || "entity").toLowerCase() === "profile"
     ? "player"
@@ -67,10 +67,10 @@ function getItemKey(item = {}) {
   ].filter(Boolean).join(":");
 }
 
-function mergeSearchItems(localItems = [], remoteItems = []) {
+function mergeSearchItems(localItems = [], remoteItems = [], fallbackCategory = "") {
   const seen = new Set();
   return [...localItems, ...remoteItems].filter((item) => {
-    const key = getItemKey(item);
+    const key = getItemKey(item, fallbackCategory);
     if (!key) return true;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -125,6 +125,7 @@ export default function SearchPicker({
   const maxDetailLimit = Math.max(baseLimit, Number(detailLimit) || baseLimit);
   const detailStep = Math.max(0, Number(loadMoreStep) || 0);
   const remoteSearchKey = Array.isArray(remoteSearchType) ? remoteSearchType.join(",") : String(remoteSearchType || "");
+  const remoteSearchCategory = typeof remoteSearchType === "string" ? remoteSearchType : "";
   const remoteSearchContextKey = useMemo(() => {
     if (!remoteSearchContext) return "";
     try {
@@ -140,7 +141,7 @@ export default function SearchPicker({
   const canRemoteSearch = canSearch || (remoteSearchOnFocus && focused);
   const mappedRemoteItems = useMemo(() => remoteItems.map(mapRemoteItem).filter(Boolean), [mapRemoteItem, remoteItems]);
   const activeItems = useMemo(() => {
-    if (!canSearch) return mergeSearchItems(idleItems, mappedRemoteItems);
+    if (!canSearch) return mergeSearchItems(idleItems, mappedRemoteItems, remoteSearchCategory);
     const localItems = (items ?? [])
       .map((item, index) => ({
         item,
@@ -150,8 +151,8 @@ export default function SearchPicker({
       .filter((entry) => entry.score >= 0)
       .sort((a, b) => b.score - a.score || a.index - b.index)
       .map((entry) => entry.item);
-    return mergeSearchItems(localItems, mappedRemoteItems);
-  }, [canSearch, getSearchText, idleItems, items, mappedRemoteItems, query]);
+    return mergeSearchItems(localItems, mappedRemoteItems, remoteSearchCategory);
+  }, [canSearch, getSearchText, idleItems, items, mappedRemoteItems, query, remoteSearchCategory]);
   const canShow = floating
     ? focused && (canSearch || showIdleOnFocus)
     : canSearch || (showIdleOnFocus && focused);

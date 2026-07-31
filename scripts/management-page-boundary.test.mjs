@@ -6,7 +6,8 @@ import { createRoomModalOpeners } from "../src/lib/roomModalNavigation.js";
 import {
   requestMatchDetailOnce,
 } from "../src/pages/matchesPageModel.js";
-import { isProfileGateReady } from "../src/lib/profileSetup.js";
+import { updateProfile } from "../src/data/repository/account.js";
+import { isProfileGateReady, normalizeProfileName, PROFILE_NAME_MAX_LENGTH } from "../src/lib/profileSetup.js";
 
 const root = path.resolve(new URL("../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 const read = (relativePath) => readFile(path.join(root, relativePath), "utf8");
@@ -17,6 +18,32 @@ test("가입정보 guard는 현재 인증 사용자의 프로필 hydration 뒤�
   assert.equal(isProfileGateReady({ authUserId: "auth-1", profileAuthUserId: "auth-2", remoteReady: true, serverProfileBound: true }), false);
   assert.equal(isProfileGateReady({ authUserId: "auth-1", profileAuthUserId: "auth-1", remoteReady: true, serverProfileBound: true }), true);
   assert.equal(isProfileGateReady({ authUserId: "test-rankball-001", remoteReady: true, serverProfileBound: false }), true);
+});
+
+test("인증 저장소 예외와 빈 프로필 이름은 화면·로컬·서버 경계에서 막는다", async () => {
+  const [authSource, profileSource, actionSource, serverSource, affiliationSource, shareSource] = await Promise.all([
+    read("src/hooks/useAuthSession.js"),
+    read("src/pages/Profile.jsx"),
+    read("src/hooks/appData/actions/profileTeamActions.js"),
+    read("server/api/profile/upsert.js"),
+    read("src/components/profile/AffiliationEditor.jsx"),
+    read("src/components/share/ShareCard.jsx"),
+  ]);
+  const state = { currentUserId: "u1", users: [{ id: "u1", name: "기존 이름" }] };
+
+  assert.equal(normalizeProfileName("   "), "");
+  assert.equal(normalizeProfileName(` ${"가".repeat(30)} `).length, PROFILE_NAME_MAX_LENGTH);
+  assert.strictEqual(updateProfile(state, { name: "   " }), state);
+  assert.equal(updateProfile(state, { name: "  새 이름  " }).users[0].name, "새 이름");
+  assert.match(authSource, /catch \{[\s\S]{0,120}try \{[\s\S]{0,120}localStorage\.removeItem/);
+  assert.match(profileSource, /const name = normalizeProfileName\(draft\.name\)/);
+  assert.match(profileSource, /<input required maxLength=\{PROFILE_NAME_MAX_LENGTH\}/);
+  assert.match(actionSource, /invalid_profile_name/);
+  assert.match(serverSource, /if \(!requestedName\)[\s\S]{0,100}invalid_profile_name/);
+  assert.match(profileSource, /경기 기록을 불러오지 못했습니다/);
+  assert.match(profileSource, /loadProfileRecords\(\{ force: true \}\)/);
+  assert.match(affiliationSource, /finally \{\s*setPending\(false\)/);
+  assert.match(shareSource, /setCopyStatus\("복사 실패"\)/);
 });
 
 const managementModules = [

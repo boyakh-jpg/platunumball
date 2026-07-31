@@ -64,13 +64,18 @@ export default function AffiliationEditor({ user, affiliations = [], actions }) 
       return;
     }
     setPending(true);
-    const result = await actions.setProfileAffiliation({ affiliationId: selected?.id ?? "", name });
-    setPending(false);
-    if (!result || result.ok === false) {
-      setFeedback(getSaveErrorMessage(result?.error));
-      return;
+    try {
+      const result = await actions.setProfileAffiliation({ affiliationId: selected?.id ?? "", name });
+      if (!result || result.ok === false) {
+        setFeedback(getSaveErrorMessage(result?.error));
+        return;
+      }
+      setFeedback(name ? "소속을 저장했습니다." : "소속을 비웠습니다.");
+    } catch {
+      setFeedback(getSaveErrorMessage());
+    } finally {
+      setPending(false);
     }
-    setFeedback(name ? "소속을 저장했습니다." : "소속을 비웠습니다.");
   };
 
   return (

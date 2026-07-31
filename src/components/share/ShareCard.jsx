@@ -14,15 +14,23 @@ function getShareUrl(user) {
 }
 
 export default function ShareCard({ user }) {
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState("");
   const mmr = Number(user.ratings.integrated);
   const placementComplete = isPlacementComplete(user.ratings);
   const shareUrl = getShareUrl(user);
 
   const copyLink = async () => {
-    if (!await copyTextToClipboard(shareUrl)) return;
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1400);
+    setCopyStatus("");
+    try {
+      if (!await copyTextToClipboard(shareUrl)) {
+        setCopyStatus("복사 실패");
+        return;
+      }
+      setCopyStatus("복사됨");
+      window.setTimeout(() => setCopyStatus(""), 1400);
+    } catch {
+      setCopyStatus("복사 실패");
+    }
   };
 
   return (
@@ -34,8 +42,9 @@ export default function ShareCard({ user }) {
         </span>
         <button className="share-card-action" type="button" onClick={copyLink}>
           <Copy size={16} />
-          {copied ? "복사됨" : "프로필 링크 복사"}
+          {copyStatus || "프로필 링크 복사"}
         </button>
+        {copyStatus === "복사 실패" ? <small className="form-warning" role="status">링크를 복사하지 못했습니다.</small> : null}
       </div>
       <div className="share-card-emblem" aria-hidden="true">
         <TierEmblem mmr={mmr} ratings={user.ratings} size="hero" />

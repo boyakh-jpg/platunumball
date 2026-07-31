@@ -1,4 +1,10 @@
 // Shared age-group policy used by client profile flows and server validation.
+export const PROFILE_NAME_MAX_LENGTH = 20;
+
+export function normalizeProfileName(value) {
+  return String(value ?? "").trim().slice(0, PROFILE_NAME_MAX_LENGTH);
+}
+
 export const AGE_GROUPS = [
   { id: "junior", label: "Junior", rangeLabel: "U-13", minAge: 0, maxAge: 12 },
   { id: "rising", label: "Rising", rangeLabel: "U-20", minAge: 13, maxAge: 19 },

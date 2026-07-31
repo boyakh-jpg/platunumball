@@ -34,7 +34,9 @@ import {
 } from "../server/api/discord/dm-worker.js";
 import {
   checkInMatchPlayer,
+  confirmMatchRefereeAbsence,
   endMatch,
+  requestMatchRefereeAbsence,
   substituteMatchPlayer,
 } from "../src/data/repository.js";
 import { mergeMatchesById } from "../src/hooks/useAppData.js";
@@ -58,6 +60,91 @@ const {
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
+
+function makeRefereeAbsenceState(currentUserId = "host") {
+  return {
+    currentUserId,
+    users: [
+      { id: "host", trustScore: 80 },
+      { id: "opponent", trustScore: 80 },
+      { id: "referee", trustScore: 80, officialReferee: true },
+    ],
+    teams: [],
+    tournaments: [],
+    notifications: [],
+    settings: {},
+    matches: [{
+      id: "referee-absence",
+      title: "심판 미출석 회귀 검증",
+      mode: "1v1",
+      status: "agreed",
+      createdBy: "host",
+      refereeId: "referee",
+      timingType: "instant",
+      teamA: { players: ["host"] },
+      teamB: { players: ["opponent"] },
+      reservePlayers: { teamA: [], teamB: [] },
+      attendance: { teamA: [], teamB: [] },
+      rules: { timingType: "instant", qrAttendanceEnabled: false },
+    }],
+  };
+}
+
+test("심판 미출석은 상대 사이드장 확인 뒤 한 번만 차감한다", () => {
+  const initial = makeRefereeAbsenceState();
+  const requested = requestMatchRefereeAbsence(initial, "referee-absence");
+  const repeated = requestMatchRefereeAbsence(requested, "referee-absence");
+
+  assert.equal(requested.matches[0].refereeAbsenceRequest.status, "pending");
+  assert.equal(requested.users.find((user) => user.id === "referee").trustScore, 80);
+  assert.strictEqual(repeated, requested);
+
+  const confirmed = confirmMatchRefereeAbsence(
+    { ...repeated, currentUserId: "opponent" },
+    "referee-absence",
+  );
+  const repeatedConfirmation = confirmMatchRefereeAbsence(confirmed, "referee-absence");
+  assert.equal(confirmed.matches[0].refereeAbsenceRequest.status, "confirmed");
+  assert.equal(confirmed.matches[0].formerRefereeId, "referee");
+  assert.equal(confirmed.users.find((user) => user.id === "referee").trustScore, 76);
+  assert.strictEqual(repeatedConfirmation, confirmed);
+});
+
+test("시작하지 않은 경기는 로컬 종료 reducer가 종료하지 않는다", () => {
+  const initial = makeRefereeAbsenceState();
+  const noReferee = {
+    ...initial,
+    matches: [{ ...initial.matches[0], refereeId: "" }],
+  };
+  assert.strictEqual(endMatch(noReferee, "referee-absence"), noReferee);
+
+  const startedAt = new Date(Date.now() - 60_000).toISOString();
+  const started = {
+    ...noReferee,
+    matches: [{ ...noReferee.matches[0], startedAt }],
+  };
+  const ended = endMatch(started, "referee-absence");
+  assert.equal(ended.matches[0].startedAt, startedAt);
+  assert.ok(ended.matches[0].endedAt);
+});
+
+test("심판 미출석과 경기 종료의 서버·DB 계약이 로컬 경계와 일치한다", async () => {
+  const migration = await readSource("supabase/migrations/20260801006000_fix_match_dispute_and_referee_absence_edges.sql");
+  const serverAction = await readSource("server/lib/matchSqlCoreActions.js");
+  const matchModel = await readSource("src/components/recruiting/RecruitingRoomMatchModel.jsx");
+  const endMigration = await readSource("supabase/migrations/20260728145000_unified_match_dispute_overlap_policy.sql");
+  const requestBranchStart = migration.indexOf("if p_action = 'requestMatchRefereeAbsence' then");
+  const confirmBranchStart = migration.indexOf("\n  else\n    if current_match.referee_absence_request->>'status' <> 'pending'");
+  const trustUpdate = migration.indexOf("update public.profiles");
+
+  assert.match(serverAction, /rankball_match_referee_absence_action/);
+  assert.match(migration, /match_referee_absence_already_requested/);
+  assert.ok(requestBranchStart >= 0 && confirmBranchStart > requestBranchStart);
+  assert.doesNotMatch(migration.slice(requestBranchStart, confirmBranchStart), /update public\.profiles/);
+  assert.ok(trustUpdate > confirmBranchStart);
+  assert.match(matchModel, /refereeAbsenceRequest\?\.status !== "pending"/);
+  assert.match(endMigration, /current_match\.started_at is null/);
+});
 
 test("QR 출석 기본값은 사후 경기기록을 제외한 경기시계 방에서 켜진다", () => {
   assert.equal(normalizeMatchRules({

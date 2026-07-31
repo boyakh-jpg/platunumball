@@ -34,7 +34,7 @@ function getManagedRoleOptions(member, captainId) {
 }
 
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, uploadEmblem, userMap, winRate, wins } = controller;
   const teamControlPending = teamInvitePending || teamManagementPending;
   return (
     <div className="page-stack team-detail-page rank-team-page">
@@ -332,6 +332,12 @@ export default function TeamDetailView({ controller }) {
                   <h2>팀 엠블럼 관리</h2>
                 </div>
               </div>
+              {emblemStatusError ? (
+                <div className="settings-save-row">
+                  <small role="status" className="form-warning">{emblemStatusError}</small>
+                  <Button type="button" size="sm" variant="secondary" onClick={retryTeamEmblemStatus}>다시 시도</Button>
+                </div>
+              ) : null}
               <div className="team-emblem-editor">
                 <TeamEmblem team={{ ...team, ...emblemStyleDraft }} size="lg" />
                 <span>

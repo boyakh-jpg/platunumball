@@ -42,6 +42,7 @@ import { getRecruitingLobby, isIndividualOnlyRecruitingRoom } from "../src/lib/r
 import { buildMatchResultSubmission, getMatchManualFinalizationStatus } from "../src/lib/matchUtils.js";
 import { inferRegionSelection } from "../src/lib/profileSetup.js";
 import { getLocalRivalries } from "../src/lib/season.js";
+import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
 
 const MODE_CAPACITY = Object.freeze({
   "1v1": 1,
@@ -1015,4 +1016,62 @@ test("방 모달은 후보 자동충원 예상치를 출전 슬롯으로 표시�
   assert.doesNotMatch(rosterSource, /side\.fillSlots\.map/);
   assert.match(rendererSource, /\.\.\.lobby\.sides\[sideName\]\.fillSlots,[\s\S]*\.\.\.lobby\.sides\[sideName\]\.reserveCandidates/);
   assert.doesNotMatch(primarySource, /lobby\.sides\.team[AB]\.projectedFilled/);
+});
+
+test("서버 action 실패는 기존 화면 상태를 보존하고 같은 영역에서 재시도할 수 있다", async () => {
+  const [serverActionsSource, settingsActionsSource, notificationsSource, reviewSource, teamDetailSource, teamDetailViewSource, teamsSource] = await Promise.all([
+    readFile(new URL("../src/hooks/appData/orchestrator/serverActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/appData/actions/settingsActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Notifications.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/MatchRoomReviewPanels.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/TeamDetailView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Teams.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(serverActionsSource, /!result \|\| result\.ok === false \|\| !Array\.isArray\(result\.notifications\)\) return false/);
+  assert.match(settingsActionsSource, /restoreNotificationsAfterReadFailure/);
+  assert.match(settingsActionsSource, /notifications: previousNotifications/);
+  assert.match(notificationsSource, /if \(notificationsLoaded === false\) throw new Error\("notification_load_failed"\)/);
+  assert.match(reviewSource, /reportPending \? "접수 중" : "신고 접수"/);
+  assert.match(reviewSource, /신고를 접수하지 못했습니다\. 다시 시도해 주세요\./);
+  assert.match(teamDetailSource, /setEmblemStatusError\("이전 엠블럼 상태를 확인하지 못했습니다\."\)/);
+  assert.match(teamDetailSource, /const retryTeamEmblemStatus = \(\) =>/);
+  assert.match(teamDetailViewSource, /emblemStatusError[\s\S]*retryTeamEmblemStatus/);
+  assert.match(teamsSource, /representativeSavePendingId === team\.id \? "저장 중"/);
+  assert.match(teamsSource, /대표팀을 설정하지 못했습니다\. 다시 시도해 주세요\./);
+});
+
+test("알림 읽음 저장과 재조회가 모두 실패하면 낙관 상태를 되돌린다", async () => {
+  const originalNotifications = [
+    { id: "n1", readAt: null },
+    { id: "n2", readAt: null },
+  ];
+  const stateRef = { current: { notifications: originalNotifications } };
+  const setState = (update) => {
+    stateRef.current = typeof update === "function" ? update(stateRef.current) : update;
+  };
+  const actions = buildSettingsActions({
+    currentUserId: "u1",
+    isSupabaseConfigured: true,
+    loadNotifications: async () => false,
+    markAllNotificationsRead: (state) => ({
+      ...state,
+      notifications: state.notifications.map((notification) => ({ ...notification, readAt: "now" })),
+    }),
+    markNotificationRead: (state, notificationId) => ({
+      ...state,
+      notifications: state.notifications.map((notification) => (
+        notification.id === notificationId ? { ...notification, readAt: "now" } : notification
+      )),
+    }),
+    markNotificationReadServer: async () => ({ ok: false, error: "offline" }),
+    setState,
+    stateRef,
+  });
+
+  await actions.markNotificationRead("n1");
+  assert.deepEqual(stateRef.current.notifications, originalNotifications);
+  await actions.markAllNotificationsRead();
+  assert.deepEqual(stateRef.current.notifications, originalNotifications);
 });

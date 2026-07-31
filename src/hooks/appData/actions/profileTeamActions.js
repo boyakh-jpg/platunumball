@@ -1,3 +1,5 @@
+import { normalizeProfileName } from "../../../lib/profileSetup.js";
+
 export function buildProfileTeamActions(context) {
   const {
     authUserId,
@@ -115,6 +117,9 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     );
   },
   updateProfile: (patch, targetUserId = currentUserId) => {
+    if (Object.prototype.hasOwnProperty.call(patch ?? {}, "name") && !normalizeProfileName(patch.name)) {
+      return Promise.resolve({ ok: false, error: "invalid_profile_name" });
+    }
     const safeTargetUserId = serverProfileBound ? currentUserId : targetUserId;
     const safePatch = profileLocked ? { ...patch, authUserId } : patch;
     const rollbackState = stateRef.current;

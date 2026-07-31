@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -33,6 +33,8 @@ const rankingTitles = {
 
 export default function Rankings({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [promotionLoadFailed, setPromotionLoadFailed] = useState(false);
+  const [promotionRetrySequence, setPromotionRetrySequence] = useState(0);
   const promotionView = searchParams.get("view") === "promotion";
   const requestedTab = searchParams.get("tab");
   const tab = promotionView
@@ -48,6 +50,8 @@ export default function Rankings({ app }) {
   const myRegion = app.currentUser.region;
   const season = getCurrentSeason(app.state);
   const loadDirectory = app.actions.loadDirectory;
+  const loadProfileRecords = app.actions.loadProfileRecords;
+  const profileRecordsLoaded = app.actions.profileRecordsLoaded;
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";
   const directoryRegion = tab === "region" ? myRegion : "";
   const placementCompleteOnly = !["teams", "affiliations"].includes(tab);
@@ -57,6 +61,13 @@ export default function Rankings({ app }) {
   useEffect(() => {
     loadDirectory?.({ kind: directoryKind, region: directoryRegion, placementCompleteOnly, rankingSort, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
   }, [directoryKind, directoryRegion, loadDirectory, placementCompleteOnly, rankingSort]);
+  useEffect(() => {
+    if (!promotionView || !app.remoteReady || profileRecordsLoaded || !loadProfileRecords) return;
+    setPromotionLoadFailed(false);
+    Promise.resolve(loadProfileRecords())
+      .then((result) => { if (result === false) setPromotionLoadFailed(true); })
+      .catch(() => setPromotionLoadFailed(true));
+  }, [app.remoteReady, loadProfileRecords, profileRecordsLoaded, promotionRetrySequence, promotionView]);
   const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   const visiblePlayers = app.rankings.players.filter((user) => isPlacementComplete(user.ratings) && !hiddenUserIds.has(user.id));
   const visibleModePlayers = tab === "teams" || tab === "affiliations" || tab === "integrated" || tab === "region"
@@ -103,6 +114,14 @@ export default function Rankings({ app }) {
       <Card className="section-card ranking-filter-card">
         <RankingTabs value={tab} options={promotionView ? promotionTabs : tabs} onChange={setTab} />
       </Card>
+      {promotionLoadFailed ? (
+        <Card className="section-card">
+          <div className="section-title-row">
+            <span className="form-warning">승격권 기록을 불러오지 못했습니다.</span>
+            <Button type="button" variant="secondary" onClick={() => setPromotionRetrySequence((current) => current + 1)}>다시 시도</Button>
+          </div>
+        </Card>
+      ) : null}
       {promotionView ? (
         <Card className="section-card">
           <div className="section-title-row">
