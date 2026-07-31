@@ -321,7 +321,7 @@ export function SourceMatchDisputeEditor({
             min="0"
             max="999"
             disabled={!editableScoreSides.includes("teamA")}
-            value={draft.scoreA}
+            value={editableScoreSides.includes("teamA") ? draft.scoreA : getDerivedScore("teamA")}
             onChange={(event) => updateTeamScore("teamA", event.target.value)}
           />
           <small>개인 PTS 합계 {getDerivedScore("teamA")}</small>
@@ -335,7 +335,7 @@ export function SourceMatchDisputeEditor({
             min="0"
             max="999"
             disabled={!editableScoreSides.includes("teamB")}
-            value={draft.scoreB}
+            value={editableScoreSides.includes("teamB") ? draft.scoreB : getDerivedScore("teamB")}
             onChange={(event) => updateTeamScore("teamB", event.target.value)}
           />
           <small>개인 PTS 합계 {getDerivedScore("teamB")}</small>

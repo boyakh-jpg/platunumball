@@ -1063,6 +1063,19 @@ test("room schedule labels stay canonical across all recruiting surfaces", async
   [home, recruiting, notifications].forEach((source) => assert.match(source, /getRoomScheduleLabel/));
 });
 
+test("notification actions keep tournament links and failed team invites in place", async () => {
+  const notifications = await readSource("src/pages/Notifications.jsx");
+  assert.match(notifications, /getNotificationHref\(notification\)/u);
+  assert.match(notifications, /const result = await app\.actions\.acceptTeamInvitation\(invitation\.id\)/u);
+  assert.match(notifications, /if \(!result \|\| result\.ok === false\) return/u);
+});
+
+test("report success survives a synchronous directory refresh failure", async () => {
+  const settingsReport = await readSource("src/pages/useSettingsReportController.jsx");
+  assert.match(settingsReport, /Promise\.resolve\(\)\s*\.then\(\(\) => loadDirectory\(/u);
+  assert.doesNotMatch(settingsReport, /Promise\.resolve\(loadDirectory\(/u);
+});
+
 test("room chat limits and row mapping stay shared", () => {
   assert.equal(ROOM_CHAT_MESSAGE_MAX_LENGTH, 60);
   assert.equal(ROOM_CHAT_HISTORY_LIMIT, 30);

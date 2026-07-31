@@ -428,7 +428,9 @@ const submitReport = async (event) => {
         return;
       }
       if (loadDirectory) {
-        await Promise.resolve(loadDirectory({ kind: "self", limit: DIRECTORY_SELF_PAGE_LIMIT, offset: 0, force: true })).catch(() => false);
+        await Promise.resolve()
+          .then(() => loadDirectory({ kind: "self", limit: DIRECTORY_SELF_PAGE_LIMIT, offset: 0, force: true }))
+          .catch(() => false);
       }
       setReportSubmitStatus(result.duplicate ? "이미 접수된 신고입니다." : "신고가 접수됐습니다.");
       setReportReason("");

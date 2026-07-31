@@ -5,7 +5,7 @@ import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import { getRoomScheduleLabel } from "../lib/matchUtils.js";
-import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
+import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationDisplayAt, getNotificationHref, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName } from "../lib/recruiting.js";
 import { useRoomModalNavigation } from "../lib/roomModalNavigation.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
@@ -68,7 +68,8 @@ export default function Notifications({ app }) {
     }
   };
   const acceptTeamInvite = async (invitation) => {
-    await app.actions.acceptTeamInvitation(invitation.id);
+    const result = await app.actions.acceptTeamInvitation(invitation.id);
+    if (!result || result.ok === false) return;
     await app.actions.loadDirectory?.({ kind: "self", force: true });
     navigate(`/app/teams/${invitation.teamId}`);
   };
@@ -230,6 +231,17 @@ export default function Notifications({ app }) {
                     보기
                   </Link>
                 ) : null}
+                {!notification.targetUnavailable
+                  && !notification.matchId
+                  && !notification.recruitingPostId
+                  && getNotificationHref(notification) !== "/app/notifications" ? (
+                    <Link
+                      className="notification-action-control notification-row-open"
+                      to={getNotificationHref(notification)}
+                    >
+                      보기
+                    </Link>
+                  ) : null}
                 {notificationView === "past" ? (
                   <button
                     type="button"

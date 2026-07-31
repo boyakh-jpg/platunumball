@@ -155,3 +155,17 @@ test("unified match end and referee start eligibility stay server-enforced", asy
   assert.match(migration, /match_referee_qualification_required/u);
   assert.doesNotMatch(migration, /\b(?:delete|truncate|drop table)\b/iu);
 });
+
+test("referee stat submission syncs actual-player points to the clock score", async () => {
+  const migration = await readFile(
+    path.join(ROOT, "supabase/migrations/20260731140000_sync_referee_points_to_score.sql"),
+    "utf8",
+  );
+  assert.match(migration, /rankball_match_result_action_pre_referee_score_sync\(/u);
+  assert.match(migration, /rankball_match_actual_player_ids\(safe_match_id\)/u);
+  assert.match(migration, /sum\(coalesce\(stat\.points, 0\)\).*teamA/su);
+  assert.match(migration, /sum\(coalesce\(stat\.points, 0\)\).*teamB/su);
+  assert.match(migration, /score_a = next_score_a[\s\S]*score_b = next_score_b/u);
+  assert.match(migration, /'scoreSource', 'referee_points'/u);
+  assert.doesNotMatch(migration, /\b(?:delete|truncate|drop table)\b/iu);
+});
