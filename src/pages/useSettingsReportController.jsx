@@ -427,12 +427,12 @@ const submitReport = async (event) => {
         setReportSubmitStatus("신고를 접수하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
         return;
       }
+      setReportSubmitStatus(result.duplicate ? "이미 접수된 신고입니다." : "신고가 접수됐습니다.");
       if (loadDirectory) {
         await Promise.resolve()
           .then(() => loadDirectory({ kind: "self", limit: DIRECTORY_SELF_PAGE_LIMIT, offset: 0, force: true }))
           .catch(() => false);
       }
-      setReportSubmitStatus(result.duplicate ? "이미 접수된 신고입니다." : "신고가 접수됐습니다.");
       setReportReason("");
       setReportMatchId("");
       setReportedUserIds([]);
@@ -444,7 +444,11 @@ const submitReport = async (event) => {
       setReportTargetQuery("");
       setReportMemo("");
     } catch {
-      setReportSubmitStatus("신고를 접수하지 못했습니다. 입력 내용은 유지됩니다.");
+      setReportSubmitStatus((current) => (
+        current === "신고가 접수됐습니다." || current === "이미 접수된 신고입니다."
+          ? current
+          : "신고를 접수하지 못했습니다. 입력 내용은 유지됩니다."
+      ));
     } finally {
       setReportSubmitPending(false);
     }
