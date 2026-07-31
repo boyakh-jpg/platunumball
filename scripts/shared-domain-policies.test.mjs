@@ -1484,6 +1484,7 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.match(rankingsPage, /if \(!promotionView \|\| !app\.remoteReady \|\| profileRecordsLoaded \|\| !loadProfileRecords\) return;/);
   assert.match(rankingsPage, /result === false\) setPromotionLoadFailed\(true\)/);
   assert.match(rankingsPage, /승격권 기록을 불러오지 못했습니다/);
+  assert.match(rankingsPage, /promotionLoading \? <BasketballLoader label="승격권 기록 불러오는 중"/);
   assert.match(rankingsPage, /<SeasonPromotionTable/);
   assert.match(rankingsPage, /nextSearchParams\.set\("tab", nextTab\)/);
   assert.match(styles, /\.season-race-list > \.player-hover-trigger/);

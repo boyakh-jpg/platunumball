@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import RankingTable from "../components/ranking/RankingTable.jsx";
@@ -95,6 +96,7 @@ export default function Rankings({ app }) {
   const promotionRows = tab === "teams"
     ? getTeamSeasonRows(app.rankings.teams, app.state.matches, season, "전체")
     : getPlayerSeasonRows(visiblePlayers, app.state.matches, season, "전체");
+  const promotionLoading = promotionView && !profileRecordsLoaded && !promotionLoadFailed;
   const promotionTabs = [
     { id: "integrated", label: "개인" },
     { id: "teams", label: "팀" },
@@ -131,12 +133,14 @@ export default function Rankings({ app }) {
             </div>
             <Badge tone="gold">TOP {season.promotionLine ?? 4}</Badge>
           </div>
-          <SeasonPromotionTable
-            rows={promotionRows}
-            type={tab === "teams" ? "teams" : "players"}
-            teams={app.state.teams}
-            promotionLine={season.promotionLine ?? 4}
-          />
+          {promotionLoading ? <BasketballLoader label="승격권 기록 불러오는 중" /> : (
+            <SeasonPromotionTable
+              rows={promotionRows}
+              type={tab === "teams" ? "teams" : "players"}
+              teams={app.state.teams}
+              promotionLine={season.promotionLine ?? 4}
+            />
+          )}
         </Card>
       ) : tab === "region" ? (
         <div className="content-grid">
