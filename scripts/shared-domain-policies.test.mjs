@@ -719,6 +719,8 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-notice \{[^}]*pointer-events: none;/);
   assert.match(clockStyles, /\.ui-match-clock-display-grid-with-attendance:not\(\.ui-match-clock-display-grid-single\) \{[^}]*grid-template-areas:\s*"score score"\s*"attendance shot";[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-actions \{[^}]*grid-column: 3;[^}]*grid-row: 4;[^}]*width: 100%;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr \{[^}]*grid-template-rows: auto auto;[^}]*align-content: center;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr svg \{[^}]*margin-inline: auto;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*grid-column: 3;[^}]*grid-row: 5 \/ 7;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \.ui-button:nth-child\(3\) \{[^}]*grid-column: 1;[^}]*grid-row: 2;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume \{[^}]*grid-column: 2;[^}]*grid-row: 2;/);
@@ -732,7 +734,7 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   );
   assert.match(
     clockStyles,
-    /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \{[^}]*grid-template-columns: repeat\(4, minmax\(28px, 1fr\)\);/,
+    /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \{[^}]*grid-template-columns: repeat\(4, minmax\(30px, 1fr\)\);/,
   );
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-score-control-side \{[^}]*background: transparent;[^}]*border: 0;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-main-time time \{[^}]*font-size: clamp\(3rem, 16vmin, 8rem\);/);

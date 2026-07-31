@@ -193,13 +193,15 @@
 
 .ui-match-clock-panel-focus .ui-match-clock-attendance-qr {
   grid-column: 1;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-content: center;
   padding: 6px;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-attendance-qr svg {
   width: min(100%, 72px);
   max-height: 72px;
+  margin-inline: auto;
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock {
@@ -302,7 +304,7 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-score-actions {
-  grid-template-columns: repeat(4, minmax(28px, 1fr));
+  grid-template-columns: repeat(4, minmax(30px, 1fr));
   gap: var(--match-clock-focus-gap);
 }
 

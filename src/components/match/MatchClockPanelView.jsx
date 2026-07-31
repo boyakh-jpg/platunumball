@@ -207,7 +207,7 @@ export default function MatchClockPanelView({ context }) {
                   : null,
               ].filter(Boolean).map(({ side, label, value }) => (
                 <div key={side} className={`ui-match-clock-score-control-side ui-match-clock-score-control-side-${label.toLowerCase()}`}>
-                  <strong>{label} {value}</strong>
+                  <strong>{label}</strong>
                   <div className="ui-match-clock-score-actions" aria-label={`${label} 점수 조정`}>
                     {[-1, 1, 2, 3].map((delta) => (
                       <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore(side, delta)}>
@@ -285,7 +285,7 @@ export default function MatchClockPanelView({ context }) {
                       연장 {liveClock.overtimeCount + 1}
                     </Button>
                   ) : null}
-                  {!match.refereeId ? (
+                  {!match.refereeId && !focusMode ? (
                     <Button
                       type="button"
                       size="sm"
