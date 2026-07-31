@@ -1066,6 +1066,7 @@ test("room schedule labels stay canonical across all recruiting surfaces", async
 test("notification actions keep tournament links and failed team invites in place", async () => {
   const notifications = await readSource("src/pages/Notifications.jsx");
   assert.match(notifications, /getNotificationHref\(notification\)/u);
+  assert.match(notifications, /loadDirectory\?\.\(\{ kind: "self", force: true \}\)/u);
   assert.match(notifications, /const result = await app\.actions\.acceptTeamInvitation\(invitation\.id\)/u);
   assert.match(notifications, /if \(!result \|\| result\.ok === false\) return/u);
 });

@@ -38,9 +38,11 @@ export default function Notifications({ app }) {
     loadRecruitingPost: app.actions.loadRecruitingPost,
   });
   const loadNotifications = app.actions.loadNotifications;
+  const loadDirectory = app.actions.loadDirectory;
   useEffect(() => {
     loadNotifications?.();
-  }, [loadNotifications]);
+    loadDirectory?.({ kind: "self", force: true });
+  }, [loadDirectory, loadNotifications]);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const selectedRecruitingPost = (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId) ?? null;
   useBodyScrollLock(Boolean(selectedRecruitingPost));
