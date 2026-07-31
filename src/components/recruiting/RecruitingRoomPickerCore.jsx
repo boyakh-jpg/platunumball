@@ -35,6 +35,7 @@ import {
   getRoomSlotBadge,
   getRoomSlotDisplayPosition,
   getRoomSlotTeamName,
+  RoomSlotAvatar,
 } from "./RecruitingRoomSlotCore.jsx";
 
 export function TeamMemberPicker({

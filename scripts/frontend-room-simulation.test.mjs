@@ -882,7 +882,7 @@ test("분리된 방 렌더 모듈은 런타임 의존성을 명시적으로 전�
   );
   assert.match(
     pickerSource,
-    /import \{[\s\S]*getPlayerPosition,[\s\S]*\} from "\.\/RecruitingRoomSlotCore\.jsx";/,
+    /import \{[\s\S]*getPlayerPosition,[\s\S]*RoomSlotAvatar,[\s\S]*\} from "\.\/RecruitingRoomSlotCore\.jsx";/,
   );
   assert.match(
     dependenciesSource,
