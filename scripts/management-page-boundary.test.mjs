@@ -269,3 +269,25 @@ test("계정·설정 변경은 선택 대상과 저장 요청을 안전하게 �
   assert.match(notificationsPage, /pendingInvitationKeysRef\.current\.has\(key\)/u);
   assert.match(notificationsPage, /setNotificationDeleteError\(\{ id: notificationId/u);
 });
+
+test("관리자 조치는 현재 선택 대상과 서버 전체 대기 건수를 보존한다", async () => {
+  const [controller, pageView, detailPanel, appointmentSection, userOperations, adminLoader] = await Promise.all([
+    read("src/pages/useAdminPageController.jsx"),
+    read("src/pages/AdminPageView.jsx"),
+    read("src/pages/AdminDetailPanel.jsx"),
+    read("src/pages/AdminAppointmentSection.jsx"),
+    read("src/components/admin/UserOperationsPanel.jsx"),
+    read("server/api/directory/loadAdminSection.js"),
+  ]);
+
+  assert.match(controller, /activeAppointmentOptions\.some\(\(row\) => row\.id === appointmentDraft\.appointmentId\)/u);
+  assert.match(controller, /const appointmentId = [\s\S]{0,180}\? selectedActiveAppointmentId/u);
+  assert.match(appointmentSection, /select value=\{selectedActiveAppointmentId\} disabled=\{appointmentActionPending\}/u);
+  assert.match(controller, /const requestReportId = selectedReport\.id;[\s\S]{0,180}selectedReportIdRef\.current === requestReportId/u);
+  assert.match(pageView, /className=\{selectedRow\?\.id === row\.id[\s\S]{0,140}disabled=\{reviewActionPending\}/u);
+  assert.match(detailPanel, /disabled=\{reviewActionPending \|\| !reportOptions\.length\}/u);
+  assert.match(userOperations, /const requestTargetUserId = selected\.id;[\s\S]{0,180}selectedUserIdRef\.current === requestTargetUserId/u);
+  assert.match(userOperations, /className=\{selected\?\.id === user\.id[\s\S]{0,140}disabled=\{actionPending\}/u);
+  assert.equal((adminLoader.match(/select\("id", \{ count: "exact", head: true \}\)\.eq\("status", "pending"\)/g) ?? []).length, 2);
+  assert.match(adminLoader, /refereeRequestPage\.total \+ pendingAppointmentCount/u);
+});

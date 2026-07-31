@@ -31,6 +31,10 @@ export default function useSettingsFavorites({ app, registeredCourts }) {
     ...favoriteCourts.map((item) => ({ ...item, kind: "court" })),
     ...favoriteReferees.map((item) => ({ ...item, kind: "referee" })),
   ].slice(0, 10);
+  const toggleFavoriteSearchItem = async (toggleAction, item) => {
+    const result = await toggleAction(item.id, item);
+    if (result !== false && result?.ok !== false) setFavoriteQuery("");
+  };
   const renderFavoriteSearchItem = (item) => {
     if (item.kind === "team") {
       return (
@@ -42,7 +46,7 @@ export default function useSettingsFavorites({ app, registeredCourts }) {
               <em>{getTeamHashtag(item)}</em>
             </span>
           </span>
-          <Button type="button" size="sm" variant={favoriteTeamIds.includes(item.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteTeam(item.id); setFavoriteQuery(""); }}>
+          <Button type="button" size="sm" variant={favoriteTeamIds.includes(item.id) ? "primary" : "secondary"} onClick={() => toggleFavoriteSearchItem(app.actions.toggleFavoriteTeam, item)}>
             {favoriteTeamIds.includes(item.id) ? "해제" : "저장"}
           </Button>
         </div>
@@ -58,7 +62,7 @@ export default function useSettingsFavorites({ app, registeredCourts }) {
               <em>{getCourtHashtag(item)}</em>
             </span>
           </span>
-          <Button type="button" size="sm" variant={favoriteCourtIds.includes(item.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteCourt(item.id); setFavoriteQuery(""); }}>
+          <Button type="button" size="sm" variant={favoriteCourtIds.includes(item.id) ? "primary" : "secondary"} onClick={() => toggleFavoriteSearchItem(app.actions.toggleFavoriteCourt, item)}>
             {favoriteCourtIds.includes(item.id) ? "해제" : "저장"}
           </Button>
         </div>
@@ -74,7 +78,7 @@ export default function useSettingsFavorites({ app, registeredCourts }) {
               <em>{getUserHashtag(item)} · 신뢰도 {item.trustScore}</em>
             </span>
           </span>
-          <Button type="button" size="sm" variant={favoriteRefereeIds.includes(item.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteReferee(item.id); setFavoriteQuery(""); }}>
+          <Button type="button" size="sm" variant={favoriteRefereeIds.includes(item.id) ? "primary" : "secondary"} onClick={() => toggleFavoriteSearchItem(app.actions.toggleFavoriteReferee, item)}>
             {favoriteRefereeIds.includes(item.id) ? "해제" : "저장"}
           </Button>
         </div>
@@ -89,7 +93,7 @@ export default function useSettingsFavorites({ app, registeredCourts }) {
             <em>{getUserHashtag(item)}</em>
           </span>
         </span>
-        <Button type="button" size="sm" variant={favoritePlayerIds.includes(item.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoritePlayer(item.id); setFavoriteQuery(""); }}>
+        <Button type="button" size="sm" variant={favoritePlayerIds.includes(item.id) ? "primary" : "secondary"} onClick={() => toggleFavoriteSearchItem(app.actions.toggleFavoritePlayer, item)}>
           {favoritePlayerIds.includes(item.id) ? "해제" : "저장"}
         </Button>
       </div>

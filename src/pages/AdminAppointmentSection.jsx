@@ -44,6 +44,7 @@ export function AdminAppointmentSection({ controller }) {
     appointments,
     appointmentUsers,
     activeAppointmentOptions,
+    selectedActiveAppointmentId,
     activeRows,
     selectedRow,
     reportOptions,
@@ -187,7 +188,7 @@ export function AdminAppointmentSection({ controller }) {
             {["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType) ? (
               <label>
                 {appointmentDraft.actionType === "extendAppointment" ? "연장 대상" : "회수 대상"}
-                <select value={appointmentDraft.appointmentId || activeAppointmentOptions[0]?.id || ""} onChange={(event) => updateAppointmentDraft({ appointmentId: event.target.value })}>
+                <select value={selectedActiveAppointmentId} disabled={appointmentActionPending} onChange={(event) => updateAppointmentDraft({ appointmentId: event.target.value })}>
                   {!activeAppointmentOptions.length ? <option value="">활성 임명 없음</option> : null}
                   {activeAppointmentOptions.map((row) => <option key={row.id} value={row.id}>{row.userName} · {row.roleLabel} · {row.gradeLabel}</option>)}
                 </select>

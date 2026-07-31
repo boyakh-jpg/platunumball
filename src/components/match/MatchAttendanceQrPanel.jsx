@@ -39,7 +39,7 @@ export default function MatchAttendanceQrPanel({ match, onChanged, onStatusChang
     if (!match?.id) return;
     if (!quiet) setPending(true);
     try {
-      const next = await requestMatchAttendanceQr(match.id);
+      const next = await requestMatchAttendanceQr(match);
       setResponse(next);
       setError("");
       setLastUpdatedAt(Date.now());
@@ -49,7 +49,7 @@ export default function MatchAttendanceQrPanel({ match, onChanged, onStatusChang
     } finally {
       if (!quiet) setPending(false);
     }
-  }, [match?.id]);
+  }, [match]);
 
   useEffect(() => {
     void load({ reason: "initial" });

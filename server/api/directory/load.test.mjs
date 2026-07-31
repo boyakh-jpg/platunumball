@@ -18,6 +18,7 @@ import {
   DIRECTORY_CACHE_TTL_MS,
   DIRECTORY_PICKER_PAGE_LIMIT,
   DIRECTORY_TEAM_PAGE_LIMIT,
+  normalizeDirectoryRankingSort,
 } from "../../../shared/lib/queryPolicy.js";
 
 test("directory/admin page limits stay bounded", () => {
@@ -31,6 +32,12 @@ test("directory/admin page limits stay bounded", () => {
   assert.equal(COURT_MAP_SEARCH_LIMIT, 500);
   assert.equal(COURT_MAP_SEARCH_PURPOSE, "court_map");
   assert.equal(DIRECTORY_CACHE_TTL_MS, 30_000);
+});
+
+test("player ranking sort is allowlisted", () => {
+  assert.equal(normalizeDirectoryRankingSort("integrated"), "integrated");
+  assert.equal(normalizeDirectoryRankingSort("3v3"), "3v3");
+  assert.equal(normalizeDirectoryRankingSort("trust_score"), "");
 });
 
 test("admin scope and queue values are allowlisted", () => {
@@ -106,7 +113,10 @@ test("approved court reports remain visible in the scoped admin model", () => {
 });
 
 test("directory loader does not call the legacy broad repository loader", async () => {
-  const source = await readFile(new URL("./load.js", import.meta.url), "utf8");
+  const source = (await Promise.all([
+    readFile(new URL("./load.js", import.meta.url), "utf8"),
+    readFile(new URL("./loadAdminSection.js", import.meta.url), "utf8"),
+  ])).join("\n");
   assert.doesNotMatch(source, /loadNormalizedDirectoryStateFromClient/);
   assert.match(source, /\.range\(offset, offset \+ limit\)/);
   assert.match(source, /DIRECTORY_ID_BATCH_SIZE/);
@@ -117,6 +127,8 @@ test("directory loader does not call the legacy broad repository loader", async 
   assert.match(source, /approved_courts"\)\.select\(APPROVED_COURT_COLUMNS\)\.eq\("status", "active"\)/);
   assert.match(source, /court_reviews"\)\.select\(COURT_REVIEW_COLUMNS\)\.eq\("status", "active"\)/);
   assert.match(source, /includeTeamMemberProfiles \|\| row\.role === "captain"/);
+  assert.match(source, /normalizeDirectoryRankingSort\(body\.rankingSort\)/);
+  assert.match(source, /ratings->modes->\$\{rankingSort\}/);
   assert.doesNotMatch(source, /readOptional\(/);
 });
 
@@ -165,7 +177,10 @@ test("admin route bootstraps profile only and owns a separate state cache", asyn
     "useAppDataOrchestrator.js",
     "orchestrator/runtime.js",
     "orchestrator/loaders.js",
+    "orchestrator/directoryLoaders.js",
     "orchestrator/admin.js",
+    "remoteMerge/state.js",
+    "actions/recruitingActions.js",
     "actions/settingsActions.js",
   ].map((relativePath) => (
     readFile(new URL(`../../../src/hooks/appData/${relativePath}`, import.meta.url), "utf8")

@@ -8,7 +8,7 @@ export function createCreateMatchActions(context) {
     normalizeSoloRecordRosterInput, onRecruitingCreated, practiceMode, recordComposition, remakeDraft, remakeSourceId, remakeSourceMatchId,
     representativeTournamentTeam, selectCourt, selectedCourt, selectedTeamA, selectedTournamentCourts, setDraft, setOpponentTeamQuery,
     setRefereeQuery, setSelectedTournamentTeamProfiles, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
-    submitDisabledReason, submitting, update,
+    submitDisabledReason, submitting, submittingRef, update,
   } = context;
 
 const selectTeamA = (teamAId) => {
@@ -241,7 +241,7 @@ const selectTeamA = (teamAId) => {
   );
   const submit = async (event) => {
     event.preventDefault();
-    if (submitting) return;
+    if (submittingRef.current || submitting) return;
     if (practiceMode && (
       isSoloRecord
       || isMatchRecordRoom
@@ -256,6 +256,7 @@ const selectTeamA = (teamAId) => {
       return;
     }
     setSubmitFeedback("");
+    submittingRef.current = true;
     setSubmitting(true);
     try {
     if (isSoloRecord) {
@@ -454,16 +455,18 @@ const selectTeamA = (teamAId) => {
       }
       if (remakeDraft && draft.remakeReinvite) {
         if (createAsTeam && presetTeamAReady && presetTeamBId) {
-          await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, remakeInvitationContext);
+          const result = await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, remakeInvitationContext);
+          if (!result || result?.ok === false) { await app.actions.closeRecruitingPost(postId, "B팀 재초대 실패로 생성 취소"); setSubmitFeedback(formatCreateSaveError(result, "이전 상대 B팀을 다시 초대하지 못해 생성한 방을 종료했습니다.")); return; }
         } else if (!createAsTeam) {
           for (const group of draft.remakeInvitationGroups ?? []) {
-            await app.actions.inviteRecruitingPlayers(postId, {
+            const result = await app.actions.inviteRecruitingPlayers(postId, {
               side: group.side,
               reserve: group.reserve,
               playerIds: group.playerIds,
               joinMode: "player",
               contextMessage: remakeInvitationContext,
             });
+            if (!result || result?.ok === false) { await app.actions.closeRecruitingPost(postId, "선수 재초대 실패로 생성 취소"); setSubmitFeedback(formatCreateSaveError(result, "이전 참가자를 다시 초대하지 못해 생성한 방을 종료했습니다.")); return; }
           }
         }
       } else if (!remakeDraft && createAsTeam && presetTeamAReady && draft.visibility === "private" && presetTeamBId) {
@@ -484,6 +487,7 @@ const selectTeamA = (teamAId) => {
     } catch (error) {
       setSubmitFeedback(formatCreateSaveError(error, "경기를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

@@ -291,10 +291,10 @@ updateSettings: (patch) => {
     setState((prev) => deleteNotification(prev, safeNotificationId));
     return true;
   },
-  toggleFavoritePlayer: (userId) => applyFavoriteToggle("player", userId, "favoritePlayerIds", toggleFavoritePlayer),
-  toggleFavoriteTeam: (teamId) => applyFavoriteToggle("team", teamId, "favoriteTeamIds", toggleFavoriteTeam),
-  toggleFavoriteCourt: (courtId) => applyFavoriteToggle("court", courtId, "favoriteCourtIds", toggleFavoriteCourt),
-  toggleFavoriteReferee: (userId) => applyFavoriteToggle("referee", userId, "favoriteRefereeIds", toggleFavoriteReferee),
+  toggleFavoritePlayer: (userId, targetSnapshot) => applyFavoriteToggle("player", userId, "favoritePlayerIds", toggleFavoritePlayer, targetSnapshot),
+  toggleFavoriteTeam: (teamId, targetSnapshot) => applyFavoriteToggle("team", teamId, "favoriteTeamIds", toggleFavoriteTeam, targetSnapshot),
+  toggleFavoriteCourt: (courtId, targetSnapshot) => applyFavoriteToggle("court", courtId, "favoriteCourtIds", toggleFavoriteCourt, targetSnapshot),
+  toggleFavoriteReferee: (userId, targetSnapshot) => applyFavoriteToggle("referee", userId, "favoriteRefereeIds", toggleFavoriteReferee, targetSnapshot),
   submitCourtRequest: (draft) => {
     if (!ensureRemoteReady("구장 등록요청")) return Promise.resolve(null);
     let createdRequest = null;

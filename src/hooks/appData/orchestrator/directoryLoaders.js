@@ -20,6 +20,7 @@ export function useDirectoryLoaders(context) {
     latestRecruitingRegionRequestRef,
     mergeRemoteDirectory,
     mergeRemoteRecruitingPage,
+    normalizeDirectoryRankingSort,
     normalizeServerState,
     pendingRecruitingPostIdsRef,
     recentRecruitingMutationTimesRef,
@@ -210,7 +211,8 @@ export function useDirectoryLoaders(context) {
     const teamId = requestedTeamId || (teamDetailMatch ? decodeURIComponent(teamDetailMatch[1]) : "");
     const includeTeamMemberProfiles = options.includeTeamMemberProfiles === true;
     const placementCompleteOnly = options.placementCompleteOnly === true;
-    const cacheKey = [endpoint, kind, limit, offset, filter, region, profileId, teamId, includeTeamMemberProfiles, placementCompleteOnly].join(":");
+    const rankingSort = normalizeDirectoryRankingSort(options.rankingSort);
+    const cacheKey = [endpoint, kind, limit, offset, filter, region, profileId, teamId, includeTeamMemberProfiles, placementCompleteOnly, rankingSort].join(":");
     latestDirectoryRequestRef.current = cacheKey;
     const cached = directoryCacheRef.current.get(cacheKey);
     if (!force && cached?.expiresAt > Date.now()) {
@@ -230,7 +232,7 @@ export function useDirectoryLoaders(context) {
       endpoint,
       endpoint === "/api/teams/detail"
         ? { authUserId, authEmail, teamId }
-        : { authUserId, authEmail, scope: "directory", kind, limit, offset, filter, region, profileId, includeTeamMemberProfiles, placementCompleteOnly },
+        : { authUserId, authEmail, scope: "directory", kind, limit, offset, filter, region, profileId, includeTeamMemberProfiles, placementCompleteOnly, rankingSort },
       { allowWhenDisabled: true },
     ).then((result) => {
       const remoteState = result?.state ?? {};

@@ -1,35 +1,61 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import NameReportForm from "../components/common/NameReportForm.jsx";
 import { AFFILIATION_TYPES } from "../lib/constants.js";
 import { AFFILIATION_TYPE, getAffiliationMemberCount } from "../lib/affiliations.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 
 export default function Affiliations({ app }) {
   const [reportTargetId, setReportTargetId] = useState("");
-  const loadRef = useRef(false);
+  const [directoryLoadState, setDirectoryLoadState] = useState("idle");
+  const loadDirectory = app.actions.loadDirectory;
   const visibleAffiliations = app.rankings.affiliations.filter((affiliation) => (
     ["region", AFFILIATION_TYPE].includes(affiliation.type)
     && (affiliation.status ?? "active") === "active"
   ));
+  const typeRankById = new Map();
+  ["region", AFFILIATION_TYPE].forEach((type) => {
+    visibleAffiliations
+      .filter((affiliation) => affiliation.type === type)
+      .sort((a, b) => b.score - a.score)
+      .forEach((affiliation, index) => typeRankById.set(affiliation.id, index + 1));
+  });
+  const rankedAffiliations = visibleAffiliations.map((affiliation) => ({
+    ...affiliation,
+    rank: typeRankById.get(affiliation.id) ?? 0,
+  }));
   const userAffiliationIds = new Set([app.currentUser.affiliationId].filter(Boolean));
   const userAffiliationNames = new Set([app.currentUser.region].filter(Boolean));
-  const myAffiliations = visibleAffiliations
-    .map((affiliation, index) => ({ ...affiliation, rank: index + 1 }))
+  const myAffiliations = rankedAffiliations
     .filter((affiliation) => userAffiliationIds.has(affiliation.id) || userAffiliationNames.has(affiliation.name));
 
+  const refreshAffiliations = useCallback(async (force = false) => {
+    if (!isSupabaseConfigured) {
+      setDirectoryLoadState("loaded");
+      return true;
+    }
+    setDirectoryLoadState("loading");
+    try {
+      const result = await loadDirectory?.({ force, kind: "affiliations", limit: 100, offset: 0 });
+      setDirectoryLoadState(result === false ? "error" : "loaded");
+      return result !== false;
+    } catch {
+      setDirectoryLoadState("error");
+      return false;
+    }
+  }, [loadDirectory]);
+
   useEffect(() => {
-    if (!app.remoteReady || loadRef.current) return;
-    loadRef.current = true;
-    app.actions.loadDirectory?.({ kind: "affiliations", limit: 100, offset: 0 });
-  }, [app.actions, app.remoteReady]);
+    if (!app.remoteReady || directoryLoadState !== "idle") return;
+    void refreshAffiliations();
+  }, [app.remoteReady, directoryLoadState, refreshAffiliations]);
   const challengeRows = myAffiliations.map((affiliation) => {
-    const sameType = visibleAffiliations
-      .map((item, index) => ({ ...item, rank: index + 1 }))
+    const sameType = rankedAffiliations
       .filter((item) => item.type === affiliation.type)
       .sort((a, b) => b.score - a.score);
-    const typeRank = sameType.findIndex((item) => item.id === affiliation.id) + 1;
+    const typeRank = affiliation.rank;
     const target = typeRank > 1 ? sameType[typeRank - 2] : sameType[1];
     return {
       ...affiliation,
@@ -48,6 +74,13 @@ export default function Affiliations({ app }) {
           <h1>소속별 랭킹</h1>
         </div>
       </header>
+
+      {directoryLoadState === "error" ? (
+        <Card className="section-card">
+          <p>소속 랭킹을 불러오지 못했습니다.</p>
+          <Button type="button" variant="secondary" onClick={() => void refreshAffiliations(true)}>다시 시도</Button>
+        </Card>
+      ) : null}
 
       <section className="affiliation-challenge-grid">
         <Card className="section-card affiliation-focus-card">
@@ -100,11 +133,11 @@ export default function Affiliations({ app }) {
       </section>
 
       <section className="card-grid">
-        {visibleAffiliations.map((affiliation, index) => (
+        {rankedAffiliations.map((affiliation) => (
           <Card key={affiliation.id} className="affiliation-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">#{index + 1} {AFFILIATION_TYPES[affiliation.type]}</p>
+                <p className="eyebrow">#{affiliation.rank} {AFFILIATION_TYPES[affiliation.type]}</p>
                 <h2>{affiliation.name}</h2>
               </div>
               <Badge tone="blue">{Math.round(affiliation.score)}</Badge>

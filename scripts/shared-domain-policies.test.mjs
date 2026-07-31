@@ -1083,6 +1083,18 @@ test("season rival challenge closes the created room when the B-team invite fail
   assert.match(createActions, /if \(!result \|\| result\?\.ok === false\) \{[\s\S]{0,240}closeRecruitingPost\(postId, "B팀 초대 실패로 생성 취소"\)[\s\S]{0,240}return;/u);
 });
 
+test("remote favorite search hydrates the selected entity before optimistic toggle", async () => {
+  const favoriteSource = await readSource("src/pages/useSettingsFavorites.jsx");
+  const settingsActions = await readSource("src/hooks/appData/actions/settingsActions.js");
+  const serverActions = await readSource("src/hooks/appData/orchestrator/serverActions.js");
+  assert.match(favoriteSource, /await toggleAction\(item\.id, item\)/);
+  assert.match(favoriteSource, /result !== false && result\?\.ok !== false/);
+  assert.match(settingsActions, /toggleFavoritePlayer: \(userId, targetSnapshot\)[\s\S]*toggleFavoriteReferee: \(userId, targetSnapshot\)/);
+  assert.match(serverActions, /active && targetSnapshot\?\.id === safeTargetId/);
+  assert.match(serverActions, /mergeRemoteProfileState\(current, targetType === "team"/);
+  assert.match(serverActions, /approvedCourts: mergeCourtSearchCourts/);
+});
+
 test("report success survives a synchronous directory refresh failure", async () => {
   const settingsReport = await readSource("src/pages/useSettingsReportController.jsx");
   assert.match(settingsReport, /const loadDirectory = app\.actions\.loadDirectory/u);
@@ -1754,6 +1766,12 @@ test("home recent records hydrate authoritative played and reserve fields", asyn
   assert.match(source, /!feedCardIds\.has\(id\) \|\| recentCompletedIds\.has\(id\)/);
 });
 
+test("home loads the authoritative profile record page when bootstrap has no record detail", async () => {
+  const source = await readSource("src/pages/Home.jsx");
+  assert.match(source, /!app\.remoteReady \|\| app\.actions\.profileRecordsLoaded \|\| !app\.actions\.loadProfileRecords/);
+  assert.match(source, /app\.actions\.loadProfileRecords\(\)/);
+});
+
 test("court map URLs pin stored coordinates and fall back to address search", () => {
   assert.equal(getCourtCoordinate(null), null);
   assert.equal(getCourtCoordinate(undefined), null);
@@ -2240,4 +2258,28 @@ test("심판 시험은 저장된 시작 attempt를 복구하고 정확한 전체
   assert.match(refereeControllerSource, /getResumableRefereeExamAttempt/);
   assert.match(refereeControllerSource, /refereeActionPendingRef\.current/);
   assert.match(refereeSectionSource, /disabled=\{Boolean\(refereeActionPending\)/);
+});
+
+test("랭킹·홈·선수 상세·소속 화면은 원격 페이지와 실패 상태를 보존한다", async () => {
+  const [rankings, loaderActions, home, homeSearch, playerDetail, affiliations] = await Promise.all([
+    readSource("src/pages/Rankings.jsx"),
+    readSource("src/hooks/appData/actions/loaderActions.js"),
+    readSource("src/pages/Home.jsx"),
+    readSource("src/pages/useHomeSearchModel.jsx"),
+    readSource("src/pages/PlayerDetail.jsx"),
+    readSource("src/pages/Affiliations.jsx"),
+  ]);
+  assert.match(rankings, /rankingSort/);
+  assert.match(loaderActions, /rankingSort: current\.page\?\.rankingSort/);
+  assert.match(home, /!blockedUserIds\.includes\(item\.id\)/);
+  assert.match(homeSearch, /blockedUserIdSet\.has\(item\.id\)\) return null/);
+  assert.match(homeSearch, /favoritePlayerIds[\s\S]*blockedUserIdSet\.has\(playerId\)/);
+  assert.match(homeSearch, /favoriteRefereeIds[\s\S]*blockedUserIdSet\.has\(refereeId\)/);
+  assert.match(playerDetail, /profileId: playerId/);
+  assert.match(playerDetail, /선수 프로필을 불러오지 못했습니다/);
+  assert.match(playerDetail, /선수 프로필을 찾을 수 없습니다/);
+  assert.doesNotMatch(playerDetail, /<Navigate/);
+  assert.match(affiliations, /refreshAffiliations\(true\)/);
+  assert.match(affiliations, /typeRankById/);
+  assert.match(affiliations, /#\{affiliation\.rank\}/);
 });

@@ -14,6 +14,7 @@ import {
   getMatchStartDate,
 } from "./matchScheduleTime.js";
 import { isInstantRoom } from "./matchTimeUtils.js";
+import { isPracticeEntity } from "./practiceMode.js";
 
 const MATCH_CLOSED_NOTICE_GRACE_MINUTES = INSTANT_ROOM_EXPIRE_MINUTES;
 export const MATCH_FINALIZATION_MINIMUM_MINUTES = 3;
@@ -79,6 +80,7 @@ export function getRoomVisibilityLabel(room = {}, sourceRoom = null) {
 }
 
 export function getRoomCompetitionLabel(room = {}) {
+  if (isPracticeEntity(room)) return "연습경기";
   return room.ranked === false ? "친선전" : "정규전";
 }
 

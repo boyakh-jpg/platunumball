@@ -17,6 +17,7 @@ export function useHomeSearchModel({
   SEARCH_DETAIL_LIMIT, seasonRows, myCompletedMatches, getUserResult, upcomingItems,
   getUserMatchLine,
 }) {
+  const blockedUserIdSet = useMemo(() => new Set(blockedUserIds), [blockedUserIds]);
   const searchResults = useMemo(() => {
     if (!searchText) return [];
 
@@ -80,6 +81,7 @@ export function useHomeSearchModel({
   }, [app.state.teams, app.state.users, blockedUserIds, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts, searchText, user.region]);
   const homeFavoriteSearchItems = useMemo(() => {
     const favoritePlayers = favoritePlayerIds
+      .filter((playerId) => !blockedUserIdSet.has(playerId))
       .map((playerId) => app.state.users.find((item) => item.id === playerId))
       .filter(Boolean)
       .map((item) => {
@@ -129,6 +131,7 @@ export function useHomeSearchModel({
         };
       });
     const favoriteReferees = favoriteRefereeIds
+      .filter((refereeId) => !blockedUserIdSet.has(refereeId))
       .map((refereeId) => app.state.users.find((item) => item.id === refereeId))
       .filter(Boolean)
       .map((item) => {
@@ -146,7 +149,7 @@ export function useHomeSearchModel({
         };
       });
     return [...favoritePlayers, ...favoriteTeams, ...favoriteCourts, ...favoriteReferees].slice(0, SEARCH_DETAIL_LIMIT);
-  }, [app.state.teams, app.state.users, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts]);
+  }, [app.state.teams, app.state.users, blockedUserIdSet, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts]);
   const topRankers = seasonRows.slice(0, 5);
   const recentFiveMatches = myCompletedMatches.slice(0, 5);
   const recentFiveWins = recentFiveMatches.filter((match) => getUserResult(match, user.id) === "W").length;
@@ -187,6 +190,7 @@ export function useHomeSearchModel({
     return <Link key={item.id} to={item.href}>{content}</Link>;
   };
   const mapRemoteHomeSearchItem = (item) => {
+    if (["player", "referee"].includes(item.kind) && blockedUserIdSet.has(item.id)) return null;
     if (item.kind === "team") {
       const hashtag = getTeamHashtag(item);
       return {

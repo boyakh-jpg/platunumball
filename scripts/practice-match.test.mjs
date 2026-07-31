@@ -26,7 +26,12 @@ import {
   runPracticeReducer,
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
-import { getMatchFinalizationWindow, getMatchReservePlayerIds } from "../src/lib/matchUtils.js";
+import {
+  getMatchFinalizationWindow,
+  getMatchReservePlayerIds,
+  getRoomCompetitionLabel,
+} from "../src/lib/matchUtils.js";
+import { getPracticeMatchAttendanceQrResponse } from "../src/lib/matchAttendance.js";
 import { getRegisteredCourts } from "../src/lib/courts.js";
 import { getRecruitingLobby } from "../src/lib/recruiting.js";
 import {
@@ -66,6 +71,32 @@ test("공용 방 모달은 경기 snapshot이 아직 없어도 최종 승인 상
     availableAt: null,
     ready: false,
   });
+});
+
+test("연습 경기 출석은 운영 API 없이 격리 state로 시작 가능 여부를 계산한다", () => {
+  const match = {
+    id: "practice-match-attendance",
+    practiceMode: true,
+    ranked: false,
+    rules: { practiceMode: true },
+    teamA: { players: ["host"] },
+    teamB: { players: ["guest"] },
+    reservePlayers: { teamA: ["reserve-a"], teamB: [] },
+    attendance: { teamA: ["host"], teamB: [] },
+  };
+  const pending = getPracticeMatchAttendanceQrResponse(match);
+  assert.equal(pending.startStatus.checkedInCount, 1);
+  assert.equal(pending.startStatus.requiredCount, 3);
+  assert.equal(pending.startStatus.canStart, false);
+  assert.equal(pending.startStatus.blockReason, "attendance_pending");
+
+  const ready = getPracticeMatchAttendanceQrResponse({
+    ...match,
+    attendance: { teamA: ["host", "reserve-a"], teamB: ["guest"] },
+  });
+  assert.equal(ready.startStatus.canStart, true);
+  assert.equal(ready.startStatus.missingCount, 0);
+  assert.equal(getRoomCompetitionLabel(match), "연습경기");
 });
 
 test("홈 사용 설명 카드는 기본 표시이며 false 설정을 서버 mapper가 보존한다", () => {

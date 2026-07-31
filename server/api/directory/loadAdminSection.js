@@ -164,6 +164,7 @@ export async function loadAdminSection(context, body = {}) {
   let adminAppointmentPage = { rows: [], total: 0, hasMore: false };
   let refereeAppointmentPage = { rows: [], total: 0, hasMore: false };
   let refereeRequestPage = { rows: [], total: 0, hasMore: false };
+  let pendingAppointmentCount = 0;
 
   if (reportTypes.length) {
     let query = context.supabase
@@ -236,11 +237,25 @@ export async function loadAdminSection(context, body = {}) {
       .order("id", { ascending: false });
     if (queueMode === "pending") refereeRequestQuery = refereeRequestQuery.eq("status", "pending");
     refereeRequestQuery = applyDirectoryTextFilter(refereeRequestQuery, ["qualification", "status"], filter);
-    [adminAppointmentPage, refereeAppointmentPage, refereeRequestPage] = await Promise.all([
+    const [
+      nextAdminAppointmentPage,
+      nextRefereeAppointmentPage,
+      nextRefereeRequestPage,
+      adminPendingCount,
+      refereePendingCount,
+    ] = await Promise.all([
       readPage(appointmentQuery("admin_appointments"), sourcePageRequest, "admin_appointments"),
       readPage(appointmentQuery("referee_appointments"), sourcePageRequest, "referee_appointments"),
       readPage(refereeRequestQuery, sourcePageRequest, "referee_requests"),
+      context.supabase.from("admin_appointments").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      context.supabase.from("referee_appointments").select("id", { count: "exact", head: true }).eq("status", "pending"),
     ]);
+    if (adminPendingCount.error) throw adminPendingCount.error;
+    if (refereePendingCount.error) throw refereePendingCount.error;
+    adminAppointmentPage = nextAdminAppointmentPage;
+    refereeAppointmentPage = nextRefereeAppointmentPage;
+    refereeRequestPage = nextRefereeRequestPage;
+    pendingAppointmentCount = Number(adminPendingCount.count ?? 0) + Number(refereePendingCount.count ?? 0);
   }
 
   const reportRows = reportPage.rows;
@@ -341,7 +356,7 @@ export async function loadAdminSection(context, body = {}) {
   const total = sourcePages.reduce((sum, page) => sum + Number(page.total ?? 0), 0);
   const hasMore = sourcePages.some((page) => page.hasMore);
   const sectionCount = section === "appointments" && queueMode === "pending"
-    ? refereeRequestPage.total + [...adminAppointmentPage.rows, ...refereeAppointmentPage.rows].filter((row) => row.status === "pending").length
+    ? refereeRequestPage.total + pendingAppointmentCount
     : total;
 
   return {

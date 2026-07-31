@@ -14,6 +14,7 @@ export function useAppDataServerActions(context) {
     isSupabaseConfigured,
     loadProfileState,
     makeClientNotificationId,
+    mergeCourtSearchCourts,
     mergeMatchThumbsResult,
     mergeRecruitingChatMessage,
     mergeRemoteProfileState,
@@ -272,15 +273,34 @@ const currentUser = useMemo(() => {
     if (!targetType || !targetId) return Promise.resolve({ ok: false, error: "invalid_favorite_target" });
     return runServerAction("/api/favorites/sync", { targetType, targetId, active });
   }, [runServerAction]);
-  const applyFavoriteToggle = useCallback((targetType, targetId, settingsKey, toggleAction) => {
+  const applyFavoriteToggle = useCallback((targetType, targetId, settingsKey, toggleAction, targetSnapshot = null) => {
     const safeTargetId = String(targetId ?? "").trim();
     if (!safeTargetId) return Promise.resolve({ ok: false, error: "invalid_favorite_target" });
     const mutationKey = `${targetType}:${safeTargetId}`;
     const pendingMutation = pendingFavoriteMutationsRef.current.get(mutationKey);
     if (pendingMutation) return pendingMutation;
     const active = !(stateRef.current.settings?.[settingsKey] ?? []).includes(safeTargetId);
-    stateRef.current = toggleAction(stateRef.current, safeTargetId);
-    setState((prev) => toggleAction(prev, safeTargetId));
+    const applyOptimisticToggle = (current) => {
+      let hydrated = current;
+      if (active && targetSnapshot?.id === safeTargetId) {
+        if (targetType === "court") {
+          hydrated = {
+            ...current,
+            settings: {
+              ...current.settings,
+              approvedCourts: mergeCourtSearchCourts(current.settings?.approvedCourts ?? [], [targetSnapshot]),
+            },
+          };
+        } else {
+          hydrated = mergeRemoteProfileState(current, targetType === "team"
+            ? { teams: [targetSnapshot] }
+            : { users: [targetSnapshot] });
+        }
+      }
+      return toggleAction(hydrated, safeTargetId);
+    };
+    stateRef.current = applyOptimisticToggle(stateRef.current);
+    setState((prev) => applyOptimisticToggle(prev));
     const mutation = syncFavoriteServer(targetType, safeTargetId, active)
       .then((result) => {
         if (result?.ok !== false) return result;
@@ -299,7 +319,7 @@ const currentUser = useMemo(() => {
       });
     pendingFavoriteMutationsRef.current.set(mutationKey, mutation);
     return mutation;
-  }, [setState, syncFavoriteServer]);
+  }, [mergeCourtSearchCourts, mergeRemoteProfileState, setState, syncFavoriteServer]);
   const markNotificationReadServer = useCallback((payload = {}) => {
     if (!isSupabaseConfigured) return Promise.resolve({ ok: true, local: true });
     return runServerAction("/api/notifications/read", payload);

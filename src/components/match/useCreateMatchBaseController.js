@@ -198,6 +198,7 @@ const navigate = useNavigate();
     ...(initialDraft ?? {}),
   });
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [submitFeedback, setSubmitFeedback] = useState("");
   const [wizardStep, setWizardStep] = useState(1);
 
@@ -458,7 +459,7 @@ const navigate = useNavigate();
     refereeQuery, setRefereeQuery, selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles, selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles, soloTeamAUserQuery, setSoloTeamAUserQuery, soloTeamBUserQuery,
     setSoloTeamBUserQuery, teamRegion, setTeamRegion, courtRegion, setCourtRegion, teamSelectableRegions, courtMapRegion,
     defaultAgeRestriction, favoriteTeamIds, favoriteRefereeIds, isFavoriteTeam, isFavoriteCourt, defaultSchedule, draft,
-    setDraft, submitting, setSubmitting, submitFeedback, setSubmitFeedback, wizardStep, setWizardStep,
+    setDraft, submitting, setSubmitting, submittingRef, submitFeedback, setSubmitFeedback, wizardStep, setWizardStep,
     sortedTeams, sortedCourts, favoriteTeams, favoriteCourts, selectedTeamA, selectedTeamB, isSoloRecord,
     isMatchRecordRoom, recordEntryMode, recordComposition, soloRosterError, soloRecordSelectedIdentitySet, isPublicRoom, isTournamentRoom,
     isPickupMatch, isTeamRoom, isStandardCreateWizard, creationWizardType, creationWizardSteps, finalWizardStep, wizardStepIds,

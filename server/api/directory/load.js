@@ -39,6 +39,7 @@ import { DEFAULT_SETTINGS } from "../../../shared/lib/repositoryDefaults.js";
 import { fromRemoteTeam, fromRemoteTeamInvitation } from "../../../shared/lib/teamMappers.js";
 import {
   normalizeDirectoryKind,
+  normalizeDirectoryRankingSort,
 } from "../../../shared/lib/queryPolicy.js";
 import {
   getPageRequest,
@@ -128,6 +129,7 @@ async function loadDirectoryPage(context, body = {}) {
   const includeSelfDetails = kind === "self";
   const includeTeamMemberProfiles = body.includeTeamMemberProfiles === true;
   const placementCompleteOnly = body.placementCompleteOnly === true;
+  const rankingSort = normalizeDirectoryRankingSort(body.rankingSort);
   const currentUser = getCurrentUser(context);
   const currentProfileId = context.profileId ?? currentUser.id;
 
@@ -187,10 +189,15 @@ async function loadDirectoryPage(context, body = {}) {
 
   let profilePage = { rows: [], total: 0, hasMore: false };
   if (["all", "players"].includes(kind)) {
+    const rankingOrder = rankingSort === "integrated"
+      ? "ratings->integrated"
+      : rankingSort
+        ? `ratings->modes->${rankingSort}`
+        : "trust_score";
     let query = context.supabase
       .from("public_profiles")
       .select(PUBLIC_PROFILE_COLUMNS, { count: "exact" })
-      .order("trust_score", { ascending: false, nullsFirst: false })
+      .order(rankingOrder, { ascending: false, nullsFirst: false })
       .order("id", { ascending: true });
     if (profileId) query = query.eq("id", profileId);
     else {
@@ -327,6 +334,7 @@ async function loadDirectoryPage(context, body = {}) {
       profileId,
       includeTeamMemberProfiles,
       placementCompleteOnly,
+      rankingSort,
       limit: pageRequest.limit,
       offset: pageRequest.offset,
       nextOffset: hasMore ? pageRequest.offset + pageRequest.limit : null,

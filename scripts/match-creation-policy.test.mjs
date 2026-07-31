@@ -1147,6 +1147,10 @@ test("CreateMatch persists bench capacity at top level and inside rules", () => 
   assert.match(source, /presetTeamAId[\s\S]*setRecruitingRoomTeam\(postId, "teamA"/);
   assert.match(source, /if \(!result \|\| result\?\.ok === false\)[\s\S]*closeRecruitingPost\(postId, "A팀 선택 실패로 생성 취소"\)/);
   assert.match(source, /else if \(!remakeDraft && createAsTeam && presetTeamAReady && draft\.visibility === "private" && presetTeamBId\)/);
+  assert.match(source, /if \(submittingRef\.current \|\| submitting\) return/);
+  assert.match(source, /submittingRef\.current = true[\s\S]*finally \{[\s\S]*submittingRef\.current = false/);
+  assert.match(source, /remakeDraft && draft\.remakeReinvite[\s\S]*const result = await app\.actions\.setRecruitingRoomTeam\(postId, "teamB"[\s\S]*B팀 재초대 실패로 생성 취소/);
+  assert.match(source, /const result = await app\.actions\.inviteRecruitingPlayers\(postId[\s\S]*선수 재초대 실패로 생성 취소/);
   assert.match(source, /MatchCreationWizardNav/);
   assert.match(source, /wizardStep === finalWizardStep/);
   assert.doesNotMatch(source, /official:\s*true/);

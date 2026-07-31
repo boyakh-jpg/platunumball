@@ -51,9 +51,12 @@ export default function Rankings({ app }) {
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";
   const directoryRegion = tab === "region" ? myRegion : "";
   const placementCompleteOnly = !["teams", "affiliations"].includes(tab);
+  const rankingSort = ["integrated", "region", "1v1", "3v3", "5v5"].includes(tab)
+    ? tab === "region" ? "integrated" : tab
+    : "";
   useEffect(() => {
-    loadDirectory?.({ kind: directoryKind, region: directoryRegion, placementCompleteOnly, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
-  }, [directoryKind, directoryRegion, loadDirectory, placementCompleteOnly]);
+    loadDirectory?.({ kind: directoryKind, region: directoryRegion, placementCompleteOnly, rankingSort, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
+  }, [directoryKind, directoryRegion, loadDirectory, placementCompleteOnly, rankingSort]);
   const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   const visiblePlayers = app.rankings.players.filter((user) => isPlacementComplete(user.ratings) && !hiddenUserIds.has(user.id));
   const visibleModePlayers = tab === "teams" || tab === "affiliations" || tab === "integrated" || tab === "region"

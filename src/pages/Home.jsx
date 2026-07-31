@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ClipboardCheck, Handshake, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import { DEFAULT_RATING, HOME_RIVAL_TEAM_LIMIT } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
@@ -116,6 +116,10 @@ export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const [processingInviteId, setProcessingInviteId] = useState("");
+  useEffect(() => {
+    if (!app.remoteReady || app.actions.profileRecordsLoaded || !app.actions.loadProfileRecords) return;
+    app.actions.loadProfileRecords();
+  }, [app.actions.loadProfileRecords, app.actions.profileRecordsLoaded, app.remoteReady]);
   const {
     selectedMatchId,
     setSelectedMatchId,
@@ -174,9 +178,11 @@ export default function Home({ app }) {
     ? regionalPlayerIds
       .map((playerId) => app.state.users.find((item) => item.id === playerId))
       .filter(Boolean)
+      .filter((item) => !blockedUserIds.includes(item.id))
       .filter((item) => isPlacementComplete(item.ratings))
       .map((item) => ({ ...item, seasonScore: item.ratings.integrated }))
     : getPlayerSeasonRows(app.state.users, app.state.matches, season, user.region)
+      .filter((item) => !blockedUserIds.includes(item.id))
       .filter((item) => isPlacementComplete(item.ratings));
   const snapshotRegionalRank = Number(app.state.homeSummary?.regionalRank);
   const mySeasonIndex = isPlacementComplete(user.ratings) && Number.isInteger(snapshotRegionalRank) && snapshotRegionalRank > 0

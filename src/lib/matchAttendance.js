@@ -1,4 +1,6 @@
 import { postServerAction } from "./serverActions.js";
+import { getMatchReservePlayerIds, getMatchSidePlayerIds } from "./matchUtils.js";
+import { isPracticeEntity } from "./practiceMode.js";
 
 const MATCH_ATTENDANCE_SCAN_ERROR_LABELS = Object.freeze({
   match_attendance_qr_expired: "QR 유효시간이 끝났습니다. 경기시계의 최신 QR을 다시 스캔해 주세요.",
@@ -11,7 +13,48 @@ const MATCH_ATTENDANCE_SCAN_ERROR_LABELS = Object.freeze({
   match_late_reserve_full: "내 사이드의 후보 3명이 모두 차서 지각 후보로 등록할 수 없습니다. 현장 운영자에게 알려 주세요.",
 });
 
-export function requestMatchAttendanceQr(matchId) {
+export function getPracticeMatchAttendanceQrResponse(match = {}) {
+  const bySide = Object.fromEntries(["teamA", "teamB"].map((sideName) => {
+    const playerIds = [...new Set([
+      ...getMatchSidePlayerIds(match, sideName),
+      ...getMatchReservePlayerIds(match, sideName),
+    ])];
+    const checkedInIds = new Set(match.attendance?.[sideName] ?? []);
+    const checkedInCount = playerIds.filter((playerId) => checkedInIds.has(playerId)).length;
+    return [sideName, {
+      total: playerIds.length,
+      onTime: checkedInCount,
+      late: 0,
+      pending: playerIds.length - checkedInCount,
+    }];
+  }));
+  const requiredCount = bySide.teamA.total + bySide.teamB.total;
+  const checkedInCount = bySide.teamA.onTime + bySide.teamB.onTime;
+  const allCheckedIn = requiredCount > 0 && checkedInCount === requiredCount;
+  return {
+    ok: true,
+    matchId: match.id,
+    qr: null,
+    canResize: false,
+    summary: { bySide },
+    startStatus: {
+      checkinOpen: true,
+      scheduledStartReached: false,
+      allCheckedIn,
+      checkedInCount,
+      requiredCount,
+      missingCount: requiredCount - checkedInCount,
+      canStart: allCheckedIn,
+      blockReason: allCheckedIn ? "" : "attendance_pending",
+    },
+  };
+}
+
+export function requestMatchAttendanceQr(matchOrId) {
+  if (isPracticeEntity(matchOrId)) {
+    return Promise.resolve(getPracticeMatchAttendanceQrResponse(matchOrId));
+  }
+  const matchId = typeof matchOrId === "object" ? matchOrId?.id : matchOrId;
   return postServerAction("/api/matches/attendance-qr", { action: "issue", matchId });
 }
 
