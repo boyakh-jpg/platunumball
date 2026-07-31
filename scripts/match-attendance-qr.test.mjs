@@ -561,7 +561,7 @@ test("선수 방장의 자기 출석은 UI에서 막지 않고 QR 시작 상태�
     readSource("src/components/match/MatchAttendanceQrPanel.jsx"),
   ]);
   assert.doesNotMatch(roomManagementSource, /operatorAttendanceOptional|방장 확인 생략|확인 생략/u);
-  assert.match(roomManagementSource, /disabled=\{checkedIn\}[\s\S]*?onClick=\{\(\) => onCheckInPlayer\(side, playerId\)\}/u);
+  assert.match(roomManagementSource, /disabled=\{checkedIn \|\| Boolean\(pendingAction\)\}[\s\S]*?runAction\(`checkin:\$\{playerId\}`,[\s\S]*?onCheckInPlayer\(side, playerId\)/u);
   assert.match(attendancePanelSource, /const attendanceRevision = \["teamA", "teamB"\]/u);
   assert.match(attendancePanelSource, /const loadRequestIdRef = useRef\(0\)/u);
   assert.match(attendancePanelSource, /loadRequestIdRef\.current !== requestId/u);
@@ -678,7 +678,7 @@ test("경기시계 담당·출석·QR·교체 UI는 단순화 정책을 따른�
   assert.match(roomManagementSource, /setPendingKick\(\{[\s\S]*?playerId,[\s\S]*?playerName/u);
   assert.doesNotMatch(roomManagementSource, /playerId:\s*partyEntry \? playerId : entry\.playerId/u);
   assert.doesNotMatch(roomManagementSource, /operatorAttendanceOptional|방장 확인 생략|확인 생략/u);
-  assert.match(roomManagementSource, /disabled=\{checkedIn\}[\s\S]*?onClick=\{\(\) => onCheckInPlayer\(side, playerId\)\}/u);
+  assert.match(roomManagementSource, /disabled=\{checkedIn \|\| Boolean\(pendingAction\)\}[\s\S]*?runAction\(`checkin:\$\{playerId\}`,[\s\S]*?onCheckInPlayer\(side, playerId\)/u);
   assert.match(recruitingSource, /<MatchAttendanceQrPanel[\s\S]*?match=\{sourceMatch\}/u);
   assert.doesNotMatch(recruitingSource, /자동 기록자|기록 후보/u);
   assert.doesNotMatch(recruitingSource, /<Badge[^>]*>본인 교체<\/Badge>/u);
@@ -881,4 +881,16 @@ test("local/demo 경기 방장 권한은 방장 식별자가 비어 있으면 �
   const hostGuardSource = repositorySource.slice(guardStart, guardEnd);
   assert.match(hostGuardSource, /return Boolean\(hostPlayerId && hostPlayerId === state\.currentUserId\)/u);
   assert.doesNotMatch(hostGuardSource, /return !hostPlayerId \|\|/u);
+});
+
+test("방 참가자 관리 명령은 ref mutex와 실패 상태를 공유한다", async () => {
+  const panelSource = await readSource("src/components/recruiting/RoomManagementPanels.jsx");
+  assert.match(panelSource, /const pendingRef = useRef\(false\)/u);
+  assert.match(panelSource, /if \(pendingRef\.current\) return false/u);
+  assert.match(panelSource, /result === false \|\| result\?\.ok === false/u);
+  assert.match(panelSource, /runAction\(`checkin:/u);
+  assert.match(panelSource, /runAction\(`placement:/u);
+  assert.match(panelSource, /runAction\(`swap:/u);
+  assert.match(panelSource, /runAction\(`substitute:/u);
+  assert.match(panelSource, /role="alert"/u);
 });

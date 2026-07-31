@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RefreshCw } from "lucide-react";
 import Button from "../common/Button.jsx";
@@ -16,7 +16,30 @@ import {
   getMatchSubstitutionAccess,
   isMatchLateAttendancePlayer,
 } from "../../lib/matchUtils.js";
-
+const ROOM_PANEL_ACTION_ERROR = "요청을 처리하지 못했습니다. 다시 시도해 주세요.";
+function useRoomPanelAction() {
+  const pendingRef = useRef(false);
+  const [pendingAction, setPendingAction] = useState("");
+  const [actionError, setActionError] = useState("");
+  const runAction = async (actionKey, action) => {
+    if (pendingRef.current) return false;
+    pendingRef.current = true;
+    setPendingAction(actionKey);
+    setActionError("");
+    try {
+      const result = await action();
+      if (result === false || result?.ok === false) throw new Error("room_panel_action_failed");
+      return true;
+    } catch {
+      setActionError(ROOM_PANEL_ACTION_ERROR);
+      return false;
+    } finally {
+      pendingRef.current = false;
+      setPendingAction("");
+    }
+  };
+  return { actionError, pendingAction, runAction };
+}
 export function RoomKickPanel({
   lobby,
   userById,
@@ -39,6 +62,7 @@ export function RoomKickPanel({
 }) {
   const [pendingKick, setPendingKick] = useState(null);
   const [pendingSwap, setPendingSwap] = useState(null);
+  const { actionError, pendingAction, runAction } = useRoomPanelAction();
   const pickupAssignmentMode = Array.isArray(placementPlayerIds);
   const placementPlayerIdSet = Array.isArray(placementPlayerIds)
     ? new Set(placementPlayerIds.filter(Boolean))
@@ -66,15 +90,15 @@ export function RoomKickPanel({
       });
     });
   });
-
   if (!rows.length) return null;
-
-  const closeKickConfirm = () => setPendingKick(null);
-  const confirmKick = () => {
-    if (!pendingKick) return;
-    if (pendingKick.partyEntry) onRemovePartyPlayer(pendingKick.entryId, pendingKick.playerId);
-    else onKickApplicant(pendingKick.playerId);
-    closeKickConfirm();
+  const closeKickConfirm = () => !pendingAction && setPendingKick(null);
+  const confirmKick = async () => {
+    const target = pendingKick;
+    if (!target) return;
+    const kicked = await runAction(`kick:${target.playerId}`, () => (target.partyEntry
+      ? onRemovePartyPlayer(target.entryId, target.playerId)
+      : onKickApplicant(target.playerId)));
+    if (kicked) setPendingKick(null);
   };
 
   return (
@@ -85,8 +109,8 @@ export function RoomKickPanel({
           ? "첫 선수를 고른 뒤 반대 사이드 선수를 선택하면 A/B·출전·대기 자리가 서로 바뀝니다."
           : "방장은 참가자 상태와 퇴장을 관리합니다."}</span>
         {attendanceBySide && onRefresh ? (
-          <Button type="button" size="sm" variant="secondary" onClick={onRefresh}>
-            <RefreshCw size={15} /> 새로고침
+          <Button type="button" size="sm" variant="secondary" disabled={Boolean(pendingAction)} onClick={() => void runAction("refresh", onRefresh)}>
+            <RefreshCw size={15} /> {pendingAction === "refresh" ? "처리 중" : "새로고침"}
           </Button>
         ) : null}
       </header>
@@ -113,8 +137,8 @@ export function RoomKickPanel({
                     type="button"
                     size="sm"
                     variant={checkedIn ? "secondary" : "primary"}
-                    disabled={checkedIn}
-                    onClick={() => onCheckInPlayer(side, playerId)}
+                    disabled={checkedIn || Boolean(pendingAction)}
+                    onClick={() => void runAction(`checkin:${playerId}`, () => onCheckInPlayer(side, playerId))}
                   >
                     {checkedIn ? "출석 완료" : "출석"}
                   </Button>
@@ -124,7 +148,7 @@ export function RoomKickPanel({
                   size="sm"
                   variant="secondary"
                   className="danger-button"
-                  disabled={kickDisabled}
+                  disabled={kickDisabled || Boolean(pendingAction)}
                   onClick={() => setPendingKick({
                     entryId: entry.id,
                     partyEntry,
@@ -139,8 +163,8 @@ export function RoomKickPanel({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    disabled={!placementAllowed}
-                    onClick={() => onSetReserve({ ...entry, side }, playerId, !reserve)}
+                    disabled={!placementAllowed || Boolean(pendingAction)}
+                    onClick={() => void runAction(`placement:${playerId}`, () => onSetReserve({ ...entry, side }, playerId, !reserve))}
                   >
                     {reserve ? "출전" : "후보"}
                   </Button>
@@ -150,8 +174,8 @@ export function RoomKickPanel({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    disabled={!placementAllowed}
-                    onClick={() => onSetPlacement(playerId, { side: side === "teamA" ? "teamB" : "teamA", reserve })}
+                    disabled={!placementAllowed || Boolean(pendingAction)}
+                    onClick={() => void runAction(`placement:${playerId}`, () => onSetPlacement(playerId, { side: side === "teamA" ? "teamB" : "teamA", reserve }))}
                   >
                     {side === "teamA" ? "B" : "A"} 이동
                   </Button>
@@ -162,14 +186,17 @@ export function RoomKickPanel({
                     size="sm"
                     className="arena-player-swap-button"
                     variant={pendingSwap?.playerId === playerId ? "primary" : "secondary"}
-                    disabled={!placementAllowed || Boolean(pendingSwap && pendingSwap.side === side && pendingSwap.playerId !== playerId)}
+                    disabled={Boolean(pendingAction) || !placementAllowed || Boolean(pendingSwap && pendingSwap.side === side && pendingSwap.playerId !== playerId)}
                     onClick={() => {
                       if (!pendingSwap || pendingSwap.playerId === playerId) {
                         setPendingSwap(pendingSwap?.playerId === playerId ? null : { playerId, side });
                         return;
                       }
-                      onSwapPlacement(pendingSwap.playerId, playerId);
-                      setPendingSwap(null);
+                      const firstPlayerId = pendingSwap.playerId;
+                      void runAction(`swap:${firstPlayerId}:${playerId}`, () => onSwapPlacement(firstPlayerId, playerId))
+                        .then((swapped) => {
+                          if (swapped) setPendingSwap(null);
+                        });
                     }}
                   >
                     {pendingSwap?.playerId === playerId
@@ -184,20 +211,17 @@ export function RoomKickPanel({
           );
         })}
       </div>
+      {pendingAction ? <p className="form-warning" role="status">처리 중입니다.</p> : null}
+      {actionError && !pendingKick ? <p className="form-warning" role="alert">{actionError}</p> : null}
       {pendingKick && typeof document !== "undefined" ? createPortal(
         <div className="arena-kick-confirm-backdrop" role="presentation" onMouseDown={closeKickConfirm}>
-          <div
-            className="arena-kick-confirm-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label="강퇴 확인"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+          <div className="arena-kick-confirm-dialog" role="dialog" aria-modal="true" aria-label="강퇴 확인" onMouseDown={(event) => event.stopPropagation()}>
             <strong>{pendingKick.playerName} 강퇴</strong>
             <p>강퇴하면 즉시 방에서 제외됩니다. 반복 강퇴는 방장 신뢰도를 줄일 수 있습니다.</p>
+            {actionError ? <p className="form-warning" role="alert">{actionError}</p> : null}
             <div>
-              <Button type="button" variant="secondary" onClick={closeKickConfirm}>취소하기</Button>
-              <Button type="button" variant="primary" className="danger-button" onClick={confirmKick}>강퇴하기</Button>
+              <Button type="button" variant="secondary" disabled={Boolean(pendingAction)} onClick={closeKickConfirm}>취소하기</Button>
+              <Button type="button" variant="primary" className="danger-button" disabled={Boolean(pendingAction)} onClick={() => void confirmKick()}>{pendingAction ? "처리 중" : "강퇴하기"}</Button>
             </div>
           </div>
         </div>,
@@ -217,6 +241,7 @@ export function MatchSubstitutionPanel({
 }) {
   const [draftByReserveId, setDraftByReserveId] = useState({});
   const [reasonByReserveId, setReasonByReserveId] = useState({});
+  const { actionError, pendingAction, runAction } = useRoomPanelAction();
   if (!match) return null;
   const rows = MATCH_SIDES.flatMap((sideName) => {
     const access = getMatchSubstitutionAccess(match, currentUserId, sideName, {
@@ -255,6 +280,7 @@ export function MatchSubstitutionPanel({
                 </span>
               </PlayerHoverCard>
               <select
+                disabled={Boolean(pendingAction)}
                 value={activePlayerId}
                 onChange={(event) => setDraftByReserveId((current) => ({ ...current, [reservePlayerId]: event.target.value }))}
               >
@@ -265,6 +291,7 @@ export function MatchSubstitutionPanel({
               {canManage ? (
                 <select
                   aria-label={`${reserveUser?.name ?? "후보"} 교체 사유`}
+                  disabled={Boolean(pendingAction)}
                   value={reasonByReserveId[reservePlayerId] ?? "operator"}
                   onChange={(event) => setReasonByReserveId((current) => ({ ...current, [reservePlayerId]: event.target.value }))}
                 >
@@ -277,20 +304,21 @@ export function MatchSubstitutionPanel({
                 type="button"
                 size="sm"
                 variant="secondary"
-                disabled={!activePlayerId}
-                onClick={() => onSubstitute(
+                disabled={!activePlayerId || Boolean(pendingAction)}
+                onClick={() => void runAction(`substitute:${reservePlayerId}`, () => onSubstitute(
                   sideName,
                   activePlayerId,
                   reservePlayerId,
                   canManage ? reasonByReserveId[reservePlayerId] ?? "operator" : "self",
-                )}
+                ))}
               >
-                교체
+                {pendingAction === `substitute:${reservePlayerId}` ? "처리 중" : "교체"}
               </Button>
             </div>
           );
         })}
       </div>
+      {actionError ? <p className="form-warning" role="alert">{actionError}</p> : null}
     </div>
   );
 }
