@@ -9,6 +9,7 @@ const MODULE_LIMITS = new Map([
   ["src/components/match/MatchClockPanel.jsx", 500],
   ["src/components/match/MatchClockPanelView.jsx", 500],
   ["src/components/match/MatchScoreControls.jsx", 250],
+  ["src/components/match/useMatchClockRequests.js", 250],
   ["src/lib/matchClockAudio.js", 250],
 ]);
 
@@ -137,7 +138,13 @@ test("actual referee match keeps one clock lifecycle from start through overtime
   assert.match(matchAccessSource, /if \(match\.refereeId\) return currentUserIsEligibleMatchReferee\(state, match\)/u);
   assert.match(matchAccessSource, /const currentUserCanStartMatch = currentUserCanOperateMatch/u);
   assert.match(panelSource, /match\?\.result\?\.scoreA/u);
-  assert.match(panelSource, /window\.setInterval\(load, 3000\)/u);
+  const requestSource = await readFile(
+    path.join(ROOT, "src/components/match/useMatchClockRequests.js"),
+    "utf8",
+  );
+  assert.match(requestSource, /if \(requestRef\.current\.mutating\) return false/u);
+  assert.match(requestSource, /requestRef\.current\.sequence === requestId/u);
+  assert.match(requestSource, /window\.setInterval\(readLatest, 3000\)/u);
   assert.match(viewSource, /runAction\("resetShot"\)/u);
   assert.match(viewSource, /confirmAction\([\s\S]{0,200}"endPeriod"\)/u);
   assert.match(viewSource, /confirmAction\([\s\S]{0,200}"startPeriod"\)/u);

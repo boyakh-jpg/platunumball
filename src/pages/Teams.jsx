@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PlusCircle, Search } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -52,8 +52,10 @@ export default function Teams({ app }) {
   const defaultTeamRegion = `${defaultRegionSelection.sido} ${defaultRegionSelection.district}`;
   const [draft, setDraft] = useState({ name: "", region: defaultTeamRegion, homeCourt: "", homeCourtId: "", captainId: app.currentUser.id, accent: "#58d2c0" });
   const [teamCreatePending, setTeamCreatePending] = useState(false);
+  const teamCreatePendingRef = useRef(false);
   const [teamCreateError, setTeamCreateError] = useState("");
   const [query, setQuery] = useState("");
+  const [selectedSearchTeam, setSelectedSearchTeam] = useState(null);
   const [regionSido, setRegionSido] = useState(TEAM_DISCOVERY_VIEW);
   const [regionDistrict, setRegionDistrict] = useState(defaultRegionSelection.district);
   const [courtQuery, setCourtQuery] = useState("");
@@ -142,10 +144,13 @@ export default function Teams({ app }) {
   }, [app.currentUser.region, favoriteCourtIds, registeredCourts]);
   const visibleTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(query);
-    return rankingTeams
+    const candidates = selectedSearchTeam && !rankingTeams.some((team) => team.id === selectedSearchTeam.id)
+      ? [...rankingTeams, { ...selectedSearchTeam, ...getStoredTeamRecord(selectedSearchTeam) }]
+      : rankingTeams;
+    return candidates
       .filter((team) => hashtagSearch || !selectedRegion || isSameRegion(team.region, selectedRegion))
       .filter((team) => `${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`.toLowerCase().includes(query.trim().toLowerCase()));
-  }, [query, rankingTeams, selectedRegion]);
+  }, [query, rankingTeams, selectedRegion, selectedSearchTeam]);
   const searchViewActive = Boolean(query.trim()) || regionSido !== TEAM_DISCOVERY_VIEW;
   const searchResultTeams = visibleTeams.slice(0, TEAM_SEARCH_RESULT_LIMIT);
   const currentRegionLabel = defaultTeamRegion || "내 지역";
@@ -161,6 +166,7 @@ export default function Teams({ app }) {
       className="search-picker-result-row"
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => {
+        setSelectedSearchTeam(team);
         const nextRegion = inferRegionSelection(team.region);
         setRegionSido(nextRegion.sido);
         setRegionDistrict(nextRegion.district);
@@ -197,7 +203,8 @@ export default function Teams({ app }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (teamNameInvalid || homeCourtInvalid) return;
+    if (teamCreatePendingRef.current || teamCreatePending || teamNameInvalid || homeCourtInvalid) return;
+    teamCreatePendingRef.current = true;
     setTeamCreatePending(true);
     setTeamCreateError("");
     try {
@@ -212,6 +219,7 @@ export default function Teams({ app }) {
     } catch (error) {
       setTeamCreateError("팀을 만들지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
     } finally {
+      teamCreatePendingRef.current = false;
       setTeamCreatePending(false);
     }
   };

@@ -65,6 +65,8 @@ const [searchParams, setSearchParams] = useSearchParams();
     multipleCourtsVerified: false,
   });
   const [courtApprovalStatus, setCourtApprovalStatus] = useState("");
+  const courtApprovalPendingRef = useRef(false);
+  const selectedCourtRequestIdRef = useRef("");
   const [reviewActionStatus, setReviewActionStatus] = useState("");
   const [reviewActionPending, setReviewActionPending] = useState(false);
   const [reviewActionConfirming, setReviewActionConfirming] = useState(false);
@@ -122,6 +124,9 @@ const [searchParams, setSearchParams] = useSearchParams();
   const selectedCourtRequest = selectedRow?.courtRequests?.find(isPendingCourtRequest)
     ?? selectedRow?.courtRequests?.[0]
     ?? null;
+  useEffect(() => {
+    selectedCourtRequestIdRef.current = selectedCourtRequest?.id ?? "";
+  }, [selectedCourtRequest?.id]);
   const selectedCourtRequester = selectedCourtRequest ? userMap[selectedCourtRequest.requestedBy] : null;
   const courtLocationMatches = useMemo(
     () => selectedCourtRequest
@@ -326,10 +331,22 @@ const [searchParams, setSearchParams] = useSearchParams();
   };
   const updateCourtApprovalDraft = (patch) => setCourtApprovalDraft((current) => ({ ...current, ...patch }));
   const approveSelectedCourt = async () => {
-    if (!selectedCourtRequest) return;
+    if (!selectedCourtRequest || courtApprovalPendingRef.current) return;
+    const requestCourtId = selectedCourtRequest.id;
+    courtApprovalPendingRef.current = true;
     setCourtApprovalStatus("승인 중");
-    const result = await app.actions.approveCourtRequest(selectedCourtRequest.id, courtApprovalDraft);
-    setCourtApprovalStatus(result && result.ok !== false ? "승인되었습니다." : "승인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    try {
+      const result = await app.actions.approveCourtRequest(requestCourtId, courtApprovalDraft);
+      if (selectedCourtRequestIdRef.current === requestCourtId) {
+        setCourtApprovalStatus(result && result.ok !== false ? "승인되었습니다." : "승인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+    } catch {
+      if (selectedCourtRequestIdRef.current === requestCourtId) {
+        setCourtApprovalStatus("승인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+    } finally {
+      courtApprovalPendingRef.current = false;
+    }
   };
   const commitSelectedAction = async () => {
     if (!selectedReport || reviewActionPending) return;

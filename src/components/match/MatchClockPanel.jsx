@@ -17,6 +17,7 @@ import {
 import { hasMatchScoreboardOperators } from "../../lib/matchUtils.js";
 import "../../styles/match-clock.css";
 import MatchClockPanelView from "./MatchClockPanelView.jsx";
+import useMatchClockRequests from "./useMatchClockRequests.js";
 
 export { default as MatchScoreControls } from "./MatchScoreControls.jsx";
 
@@ -85,6 +86,7 @@ export default function MatchClockPanel({
       setShotClockSeconds(Number(nextClock.shotClockSeconds || 0));
     }
   }, [onRosterChanged]);
+  const clockRequests = useMatchClockRequests({ applyResponse, clockClient, matchId: match.id, setError });
 
   useEffect(() => {
     const nextScoreA = Number(match?.result?.scoreA ?? match?.teamA?.score);
@@ -98,23 +100,30 @@ export default function MatchClockPanel({
 
   const runAction = useCallback(async (action, payload = {}) => {
     if (!match?.id || pendingAction) return false;
+    const requestMatchId = match.id;
+    const requestId = clockRequests.startMutation();
+    if (!requestId) return false;
     setPendingAction(action);
     setError("");
     try {
       const response = await clockClient(match.id, action, payload);
+      if (!clockRequests.isCurrent(requestId, requestMatchId)) return false;
       applyResponse(response);
       return true;
     } catch (actionError) {
-      setError(getMatchClockErrorLabel(actionError));
+      if (clockRequests.isCurrent(requestId, requestMatchId)) setError(getMatchClockErrorLabel(actionError));
       return false;
     } finally {
-      setPendingAction("");
+      if (clockRequests.finishMutation(requestId)) setPendingAction("");
     }
   }, [applyResponse, clockClient, match?.id, pendingAction]);
 
   const controllerCanEditScores = Boolean(snapshot?.canControl && !match.refereeId);
   const incrementScore = useCallback(async (sideName, delta) => {
     if (!onIncrementScore || scorePendingSide || (!controllerCanEditScores && !editableScoreSides.includes(sideName))) return;
+    const requestMatchId = match.id;
+    const requestId = clockRequests.startMutation();
+    if (!requestId) return;
     setScorePendingSide(sideName);
     setScoreError("");
     try {
@@ -123,6 +132,7 @@ export default function MatchClockPanel({
         expectedRevisionB: score.revisionB,
         clockController: controllerCanEditScores,
       });
+      if (!clockRequests.isCurrent(requestId, requestMatchId)) return;
       if (response?.scoreA != null && response?.scoreB != null) {
         setScore((current) => ({
           ...current,
@@ -133,14 +143,16 @@ export default function MatchClockPanel({
         }));
       } else {
         const refreshed = await clockClient(match.id, "read").catch(() => null);
-        if (refreshed) applyResponse(refreshed);
+        if (refreshed && clockRequests.isCurrent(requestId, requestMatchId)) applyResponse(refreshed);
       }
     } catch (actionError) {
       const refreshed = await clockClient(match.id, "read").catch(() => null);
-      if (refreshed) applyResponse(refreshed);
-      setScoreError(String(actionError?.message || actionError?.code || "점수를 갱신하지 못했습니다."));
+      if (refreshed && clockRequests.isCurrent(requestId, requestMatchId)) applyResponse(refreshed);
+      if (clockRequests.isCurrent(requestId, requestMatchId)) {
+        setScoreError(String(actionError?.message || actionError?.code || "점수를 갱신하지 못했습니다."));
+      }
     } finally {
-      setScorePendingSide("");
+      if (clockRequests.finishMutation(requestId)) setScorePendingSide("");
     }
   }, [applyResponse, clockClient, controllerCanEditScores, editableScoreSides, match.id, onIncrementScore, score.revisionA, score.revisionB, scorePendingSide]);
 
@@ -148,32 +160,13 @@ export default function MatchClockPanel({
     configurationDirtyRef.current = false;
     matchEndedNotifiedRef.current = false;
     rosterRevisionRef.current = "";
+    setPendingAction("");
+    setScorePendingSide("");
   }, [match.id]);
 
   useEffect(() => {
     getBuzzerMediaElement();
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await clockClient(match.id, "read");
-        if (!cancelled) {
-          setError("");
-          applyResponse(response);
-        }
-      } catch (loadError) {
-        if (!cancelled) setError(getMatchClockErrorLabel(loadError));
-      }
-    };
-    void load();
-    const pollId = window.setInterval(load, 3000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(pollId);
-    };
-  }, [applyResponse, clockClient, match.id]);
 
   useEffect(() => {
     const tickId = window.setInterval(() => setNowMs(Date.now()), 100);
@@ -235,16 +228,19 @@ export default function MatchClockPanel({
     if (!canEndMatch || !onEndMatch || pendingAction) return;
     const message = "경기와 경기시계를 함께 종료하고 사후 기록 단계로 이동할까요?";
     if (!window.confirm(message)) return;
+    const requestMatchId = match.id;
+    const requestId = clockRequests.startMutation();
+    if (!requestId) return;
     setPendingAction("endMatch");
     setError("");
     try {
       const response = await onEndMatch();
       if (response?.ok === false || response === false) throw new Error("match_end_failed");
-      onMatchEnded?.();
+      if (clockRequests.isCurrent(requestId, requestMatchId)) onMatchEnded?.();
     } catch {
-      setError("경기 종료 처리에 실패했습니다.");
+      if (clockRequests.isCurrent(requestId, requestMatchId)) setError("경기 종료 처리에 실패했습니다.");
     } finally {
-      setPendingAction("");
+      if (clockRequests.finishMutation(requestId)) setPendingAction("");
     }
   };
 
@@ -453,8 +449,7 @@ export default function MatchClockPanel({
     });
     configurationDirtyRef.current = false;
     if (!succeeded) {
-      const response = await clockClient(match.id, "read").catch(() => null);
-      if (response) applyResponse(response);
+      await clockRequests.readLatest({ quiet: true });
     }
   };
 

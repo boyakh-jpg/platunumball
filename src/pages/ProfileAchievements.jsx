@@ -57,10 +57,12 @@ export default function ProfileAchievements({ app }) {
   const [data, setData] = useState({ metrics: {}, unlockedIconKeys: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setError("");
     Promise.resolve(app.actions.loadProfileIconAchievements?.())
       .then((result) => {
         if (!active) return;
@@ -82,7 +84,7 @@ export default function ProfileAchievements({ app }) {
     return () => {
       active = false;
     };
-  }, [app.actions]);
+  }, [app.actions, loadAttempt]);
 
   const unlockedSet = useMemo(() => new Set(data.unlockedIconKeys), [data.unlockedIconKeys]);
   const totalCount = PROFILE_ICON_GROUPS.reduce((sum, group) => sum + group.icons.length, 0);
@@ -106,7 +108,14 @@ export default function ProfileAchievements({ app }) {
       </Card>
 
       {loading ? <Card className="section-card"><div className="ui-empty-state-compact">업적 정리 중</div></Card> : null}
-      {error ? <Card className="section-card"><div className="ui-empty-state-compact">{error}</div></Card> : null}
+      {error ? (
+        <Card className="section-card">
+          <div className="ui-empty-state">
+            <strong>{error}</strong>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setLoadAttempt((current) => current + 1)}>다시 시도</Button>
+          </div>
+        </Card>
+      ) : null}
       {!loading && !error ? PROFILE_ICON_GROUPS.map((group) => (
         <section key={group.id} className="profile-achievement-group">
           <div className="section-title-row">

@@ -284,6 +284,8 @@ test("관리자 조치는 현재 선택 대상과 서버 전체 대기 건수를
   assert.match(controller, /const appointmentId = [\s\S]{0,180}\? selectedActiveAppointmentId/u);
   assert.match(appointmentSection, /select value=\{selectedActiveAppointmentId\} disabled=\{appointmentActionPending\}/u);
   assert.match(controller, /const requestReportId = selectedReport\.id;[\s\S]{0,180}selectedReportIdRef\.current === requestReportId/u);
+  assert.match(controller, /const requestCourtId = selectedCourtRequest\.id;[\s\S]{0,420}selectedCourtRequestIdRef\.current === requestCourtId/u);
+  assert.match(controller, /courtApprovalPendingRef\.current = false/u);
   assert.match(pageView, /className=\{selectedRow\?\.id === row\.id[\s\S]{0,140}disabled=\{reviewActionPending\}/u);
   assert.match(detailPanel, /disabled=\{reviewActionPending \|\| !reportOptions\.length\}/u);
   assert.match(userOperations, /const requestTargetUserId = selected\.id;[\s\S]{0,180}selectedUserIdRef\.current === requestTargetUserId/u);
@@ -296,4 +298,26 @@ test("관리자 업무 탭은 임명 처리 상태를 controller에서 받는다
   const source = await read("src/pages/AdminPageView.jsx");
   assert.match(source, /reviewActionPending,\s*appointmentActionPending,/);
   assert.match(source, /disabled=\{reviewActionPending \|\| appointmentActionPending\}/);
+});
+
+test("구장 상세 저장 실패는 버튼 잠금을 해제하고 재시도를 허용한다", async () => {
+  const [source, databaseController] = await Promise.all([
+    read("src/pages/CourtDetail.jsx"),
+    read("src/components/admin/useCourtDatabasePanelController.js"),
+  ]);
+
+  assert.match(source, /const submitReview = async[\s\S]*?try \{[\s\S]*?catch \{[\s\S]*?finally \{\s*setSaving\(false\);/u);
+  assert.match(source, /const submitCorrection = async[\s\S]*?try \{[\s\S]*?catch \{[\s\S]*?finally \{\s*setCorrectionSaving\(false\);/u);
+  assert.match(databaseController, /catch \{[\s\S]{0,240}필터 적용을 눌러 다시 시도해 주세요\.[\s\S]{0,180}finally \{[\s\S]{0,100}setLoading\(false\)/u);
+});
+
+test("계정 데이터 로딩 실패는 같은 화면에서 재시도한다", async () => {
+  const [achievements, notifications] = await Promise.all([
+    read("src/pages/ProfileAchievements.jsx"),
+    read("src/pages/Notifications.jsx"),
+  ]);
+
+  assert.match(achievements, /setError\(""\);[\s\S]*setLoadAttempt\(\(current\) => current \+ 1\)[\s\S]*다시 시도/u);
+  assert.match(notifications, /const refreshNotifications = useCallback\(async \(\) => \{[\s\S]*setNotificationsLoadError\("알림을 불러오지 못했습니다\."\)/u);
+  assert.match(notifications, /onClick=\{refreshNotifications\}>다시 시도/u);
 });

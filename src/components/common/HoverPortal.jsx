@@ -57,6 +57,7 @@ export function HoverCardTrigger({
         onActivate?.(event);
       })}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Escape") onDismiss?.(event);
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();

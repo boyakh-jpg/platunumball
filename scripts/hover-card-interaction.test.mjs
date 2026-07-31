@@ -33,6 +33,7 @@ test("entity hover cards use one shared interaction hook", async () => {
   });
   assert.match(hoverPortal, /export function HoverCardTrigger/);
   assert.match(hoverPortal, /export function HoverCardCloseButton/);
+  assert.match(hoverPortal, /if \(event\.target !== event\.currentTarget\) return;/);
   assert.match(hoverPortal, /event\.key === "Escape"/);
   assert.match(hoverPortal, /event\.key === "Enter" \|\| event\.key === " "/);
   assert.equal((hoverPortal.match(/className="hover-card-close"/g) ?? []).length, 1);

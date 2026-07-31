@@ -563,6 +563,9 @@ test("선수 방장의 자기 출석은 UI에서 막지 않고 QR 시작 상태�
   assert.doesNotMatch(roomManagementSource, /operatorAttendanceOptional|방장 확인 생략|확인 생략/u);
   assert.match(roomManagementSource, /disabled=\{checkedIn\}[\s\S]*?onClick=\{\(\) => onCheckInPlayer\(side, playerId\)\}/u);
   assert.match(attendancePanelSource, /const attendanceRevision = \["teamA", "teamB"\]/u);
+  assert.match(attendancePanelSource, /const loadRequestIdRef = useRef\(0\)/u);
+  assert.match(attendancePanelSource, /loadRequestIdRef\.current !== requestId/u);
+  assert.match(attendancePanelSource, /loadRequestIdRef\.current \+= 1/u);
   assert.match(attendancePanelSource, /\}, \[attendanceRevision, load\]\);/u);
 });
 
@@ -605,12 +608,13 @@ test("경기시계는 샷클락과 점수를 화면에서 자동 갱신한다", 
   assert.equal(afterExpiry.shotRemainingMs, 0);
 
   const panelSource = await readSourceGroup(readSource, MATCH_CLOCK_PANEL_SOURCE_PATHS);
+  const requestSource = await readSource("src/components/match/useMatchClockRequests.js");
   const clockApiSource = await readSource("server/api/matches/clock.js");
   const authoritativeStateSource = await readSource("server/api/_authoritativeState.js");
   const recruitingSource = await readSourceGroup(readSource, RECRUITING_PAGE_SOURCE_PATHS);
   const matchRoomSource = await readSourceGroup(readSource, MATCH_ROOM_SOURCE_PATHS);
   const disputeQueueSource = await readSource("src/components/match/MatchDisputeQueue.jsx");
-  assert.match(panelSource, /window\.setInterval\(load, 3000\)/u);
+  assert.match(requestSource, /window\.setInterval\(readLatest, 3000\)/u);
   assert.match(panelSource, /점수 3초 자동 갱신/u);
   assert.match(panelSource, /눌러서 \$\{liveClock\.shotClockSeconds\}초로 초기화/u);
   assert.match(clockApiSource, /\.from\("match_results"\)[\s\S]*\.select\("score_a,score_b,score_revision_a,score_revision_b,submitted_at"\)/u);

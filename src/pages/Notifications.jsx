@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, Trash2 } from "lucide-react";
 import Card from "../components/common/Card.jsx";
@@ -30,6 +30,7 @@ export default function Notifications({ app }) {
   const [pendingInvitationKeys, setPendingInvitationKeys] = useState([]);
   const [invitationActionErrors, setInvitationActionErrors] = useState({});
   const [notificationDeleteError, setNotificationDeleteError] = useState(null);
+  const [notificationsLoadError, setNotificationsLoadError] = useState("");
   const pendingInvitationKeysRef = useRef(new Set());
   const {
     selectedMatchId,
@@ -43,10 +44,20 @@ export default function Notifications({ app }) {
   });
   const loadNotifications = app.actions.loadNotifications;
   const loadDirectory = app.actions.loadDirectory;
-  useEffect(() => {
-    loadNotifications?.();
-    loadDirectory?.({ kind: "self", force: true });
+  const refreshNotifications = useCallback(async () => {
+    setNotificationsLoadError("");
+    try {
+      await Promise.all([
+        loadNotifications?.(),
+        loadDirectory?.({ kind: "self", force: true }),
+      ]);
+    } catch {
+      setNotificationsLoadError("알림을 불러오지 못했습니다.");
+    }
   }, [loadDirectory, loadNotifications]);
+  useEffect(() => {
+    void refreshNotifications();
+  }, [refreshNotifications]);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const selectedRecruitingPost = (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId) ?? null;
   useBodyScrollLock(Boolean(selectedRecruitingPost));
@@ -138,6 +149,14 @@ export default function Notifications({ app }) {
           모두 읽음
         </Button>
       </header>
+      {notificationsLoadError ? (
+        <Card className="section-card">
+          <div className="ui-empty-state">
+            <strong>{notificationsLoadError}</strong>
+            <Button type="button" variant="secondary" size="sm" onClick={refreshNotifications}>다시 시도</Button>
+          </div>
+        </Card>
+      ) : null}
       {pendingInvitations.length ? (
         <Card className="section-card notification-invitation-card">
           <div className="section-title-row">

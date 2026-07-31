@@ -32,7 +32,7 @@ export function updateSettings(state, patch) {
 }
 
 export function blockUser(state, userId) {
-  if (!state.users.some((user) => user.id === userId) || userId === state.currentUserId) return state;
+  if (!userId || userId === state.currentUserId) return state;
   const blockedUserIds = Array.from(new Set([...(state.settings?.blockedUserIds ?? []), userId]));
   const blockedUserIdSet = new Set(blockedUserIds);
   const blockedUser = state.users.find((user) => user.id === userId);

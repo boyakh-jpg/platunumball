@@ -40,6 +40,7 @@ import { getResumableRefereeExamAttempt, matchesReportSearchQuery } from "../src
 import { fromRemoteApprovedCourt } from "../src/data/remotePayloadMappers.js";
 import { toApprovedCourtRow } from "../src/data/remoteRowSerializers.js";
 import {
+  blockUser,
   finalizeMatchByAuthority,
   configureServerRatingAuthority,
   incrementMatchScore,
@@ -1476,6 +1477,7 @@ test("season hub is player-centered while regional MMR stays separate", async ()
 test("team detail keeps navigation preview and always refreshes authoritative team data once", async () => {
   const teamDetailPage = await readSource("src/pages/TeamDetail.jsx");
   const teamDetailView = await readSource("src/pages/TeamDetailView.jsx");
+  const teamHoverCard = await readSource("src/components/team/TeamHoverCard.jsx");
   assert.match(teamDetailPage, /location\.state\?\.teamPreview\?\.id === teamId/);
   assert.match(teamDetailPage, /const authoritativeTeam = app\.state\.teams\.find/);
   assert.match(teamDetailPage, /const team = authoritativeTeam \?\? previewTeam/);
@@ -1491,6 +1493,9 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.doesNotMatch(teamDetailView, /getScoreOutcome/u);
   assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/u);
   assert.match(teamDetailView, /function getManagedRoleOptions\(member, captainId\)/u);
+  assert.match(teamDetailView, /toggleFavoriteTeam\(team\.id, team\)/);
+  assert.match(teamHoverCard, /navigate\(teamPath, \{ state: \{ teamPreview: team \} \}\)/);
+  assert.match(teamHoverCard, /state=\{\{ teamPreview: team \}\}/);
 });
 
 test("team creation requires one active approved home court selection", async () => {
@@ -1503,10 +1508,31 @@ test("team creation requires one active approved home court selection", async ()
   assert.match(teamsPage, /court\.id === draft\.homeCourtId && court\.name === draft\.homeCourt/);
   assert.match(teamsPage, /homeCourt: court\.name, homeCourtId: court\.id/);
   assert.match(teamsPage, /teamNameInvalid \|\| homeCourtInvalid/);
+  assert.match(teamsPage, /teamCreatePendingRef\.current \|\| teamCreatePending/);
+  assert.match(teamsPage, /teamCreatePendingRef\.current = true[\s\S]*finally \{[\s\S]*teamCreatePendingRef\.current = false/);
+  assert.match(teamsPage, /setSelectedSearchTeam\(team\)/);
+  assert.match(teamsPage, /selectedSearchTeam && !rankingTeams\.some/);
   assert.match(teamRepository, /homeCourtId: teamDraft\.homeCourtId/);
   assert.match(teamServer, /from\("approved_courts"\)[\s\S]*?\.eq\("id", team\.homeCourtId\)[\s\S]*?\.eq\("status", "active"\)/);
   assert.match(teamServer, /new Error\("invalid_team_home_court"\)/);
   assert.match(teamServer, /team\.homeCourt = approvedCourt\.name/);
+});
+
+test("search keeps player and referee identities separate and remote blocking updates immediately", async () => {
+  const searchPicker = await readSource("src/components/common/SearchPicker.jsx");
+  assert.match(searchPicker, /categoryKey = String\(category \|\| "entity"\)\.toLowerCase\(\) === "profile"/);
+  assert.match(searchPicker, /`id:\$\{categoryKey\}:\$\{identity\}`/);
+
+  const state = {
+    currentUserId: "me",
+    users: [{ id: "me", name: "나" }],
+    settings: { blockedUserIds: [] },
+    teamInvitations: [],
+    recruitingPosts: [],
+    notifications: [],
+  };
+  const next = blockUser(state, "remote-user");
+  assert.deepEqual(next.settings.blockedUserIds, ["remote-user"]);
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {

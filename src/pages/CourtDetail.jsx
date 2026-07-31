@@ -21,7 +21,6 @@ import {
   getCourtSurfaceLabel,
 } from "../lib/courts.js";
 import { getCourtHashtag } from "../lib/handles.js";
-
 import { formatDate, getMatchDate, getLoadError, getLocalDetail } from "./courtDetailModel.js";
 
 export default function CourtDetail({ app, courtId: courtIdProp = "", embedded = false, onClose }) {
@@ -58,7 +57,6 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const correctionCanSubmit = correctionIsStructured
     ? Boolean(selectedCorrectionAttribute.options.some((option) => option.id === correctionValue))
     : correctionValue.trim().length >= 4;
-
   const changeCorrectionField = (field) => {
     const nextAttribute = getCourtCorrectionAttributeOptions(field)[0] ?? null;
     setCorrectionField(field);
@@ -67,14 +65,12 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     setCorrectionNote("");
     setCorrectionMessage("");
   };
-
   const changeCorrectionAttribute = (attribute) => {
     const nextAttribute = correctionAttributes.find((option) => option.id === attribute) ?? correctionAttributes[0];
     setCorrectionAttribute(nextAttribute?.id ?? "");
     setCorrectionValue(nextAttribute?.options[0]?.id ?? "");
     setCorrectionMessage("");
   };
-
   const refreshDetail = useCallback(async ({ silent = false } = {}) => {
     const requestId = detailRequestRef.current + 1;
     detailRequestRef.current = requestId;
@@ -115,7 +111,6 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
       detailRequestRef.current += 1;
     };
   }, [refreshDetail]);
-
   useEffect(() => {
     setCorrectionOpen(false);
     setCorrectionField("name");
@@ -125,7 +120,6 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     setCorrectionUrl("");
     setCorrectionMessage("");
   }, [courtId]);
-
   const reviewableMatches = detail?.reviewableMatches ?? [];
   useEffect(() => {
     setSelectedMatchId((current) => (
@@ -149,19 +143,23 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     if (!selectedMatchId || rating < 1 || saving) return;
     setSaving(true);
     setSaveMessage("");
-    const result = await app.actions?.submitCourtDetailReview?.(selectedMatchId, {
-      ...(selectedMatch?.existingReview ?? {}),
-      rating,
-      memo,
-    });
-    if (result?.ok === false || !result) {
+    try {
+      const result = await app.actions?.submitCourtDetailReview?.(selectedMatchId, {
+        ...(selectedMatch?.existingReview ?? {}),
+        rating,
+        memo,
+      });
+      if (result?.ok === false || !result) {
+        setSaveMessage("리뷰를 저장하지 못했습니다.");
+        return;
+      }
+      await refreshDetail({ silent: true });
+      setSaveMessage(selectedMatch?.existingReview ? "리뷰를 수정했습니다." : "리뷰를 등록했습니다.");
+    } catch {
       setSaveMessage("리뷰를 저장하지 못했습니다.");
+    } finally {
       setSaving(false);
-      return;
     }
-    await refreshDetail({ silent: true });
-    setSaveMessage(selectedMatch?.existingReview ? "리뷰를 수정했습니다." : "리뷰를 등록했습니다.");
-    setSaving(false);
   };
 
   const submitCorrection = async (event) => {
@@ -177,31 +175,36 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     setCorrectionSaving(true);
     setCorrectionMessage("");
     const fieldLabel = getCourtCorrectionFieldLabel(correctionField);
-    const result = await app.actions?.reportCourt?.(
-      courtId,
-      `${fieldLabel} 수정 요청: ${proposedValue}`,
-      {
-        field: correctionField,
-        attribute: selectedCorrectionAttribute?.id ?? "",
-        proposedValue,
-        note,
-        evidenceUrl,
-      },
-      detail?.court ?? null,
-    );
-    if (result?.duplicate) {
-      setCorrectionMessage("이미 검토 중인 정보 수정 신고가 있습니다.");
-    } else if (!result || result.ok === false) {
-      setCorrectionMessage(result?.error === "court_report_unavailable"
-        ? "이미 검토 중인 신고가 있거나 신고할 수 없는 구장입니다."
-        : "정보 수정 신고를 접수하지 못했습니다.");
-    } else {
-      if (!correctionIsStructured) setCorrectionValue("");
-      setCorrectionNote("");
-      setCorrectionUrl("");
-      setCorrectionMessage("접수했습니다. 관리자 확인 전까지 현재 정보는 유지됩니다.");
+    try {
+      const result = await app.actions?.reportCourt?.(
+        courtId,
+        `${fieldLabel} 수정 요청: ${proposedValue}`,
+        {
+          field: correctionField,
+          attribute: selectedCorrectionAttribute?.id ?? "",
+          proposedValue,
+          note,
+          evidenceUrl,
+        },
+        detail?.court ?? null,
+      );
+      if (result?.duplicate) {
+        setCorrectionMessage("이미 검토 중인 정보 수정 신고가 있습니다.");
+      } else if (!result || result.ok === false) {
+        setCorrectionMessage(result?.error === "court_report_unavailable"
+          ? "이미 검토 중인 신고가 있거나 신고할 수 없는 구장입니다."
+          : "정보 수정 신고를 접수하지 못했습니다.");
+      } else {
+        if (!correctionIsStructured) setCorrectionValue("");
+        setCorrectionNote("");
+        setCorrectionUrl("");
+        setCorrectionMessage("접수했습니다. 관리자 확인 전까지 현재 정보는 유지됩니다.");
+      }
+    } catch {
+      setCorrectionMessage("정보 수정 신고를 접수하지 못했습니다.");
+    } finally {
+      setCorrectionSaving(false);
     }
-    setCorrectionSaving(false);
   };
 
   if (loading && !detail) {

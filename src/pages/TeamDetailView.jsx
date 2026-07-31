@@ -49,7 +49,7 @@ export default function TeamDetailView({ controller }) {
               type="button"
               variant={isFavoriteTeam ? "primary" : "secondary"}
               className={isFavoriteTeam ? "favorite-toggle-button ui-liquid-glass active" : "favorite-toggle-button ui-liquid-glass"}
-              onClick={() => app.actions.toggleFavoriteTeam(team.id)}
+              onClick={() => app.actions.toggleFavoriteTeam(team.id, team)}
             >
               <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
               {isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
