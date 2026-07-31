@@ -232,6 +232,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
   const benchCapacity = getRecruitingBenchCapacity(promotedPost);
   const pickup = (promotedPost.formationMode ?? promotedPost.rules?.formationMode) === "pickup"
     || (promotedPost.matchIntent ?? promotedPost.rules?.matchIntent) === "pickup";
+  const teamOnly = isTeamOnlyRecruitingRoom(promotedPost);
   const teamAPlayers = lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity);
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
   const teamAReservePlayers = uniquePlayerIds(lobby.sides.teamA.reserveCandidates.map((candidate) => candidate.playerId))
@@ -289,14 +290,14 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
     evidence: [],
     teamA: {
       name: pickup ? SIDE_LABEL_TEXT.teamA : getLobbySideName(lobby, "teamA"),
-      teamId: pickup ? null : getLobbyPrimaryTeamId(lobby, "teamA"),
+      teamId: pickup || !teamOnly ? null : getLobbyPrimaryTeamId(lobby, "teamA"),
       playerTeams: teamAPlayerTeams,
       players: teamAPlayers,
       score: 0,
     },
     teamB: {
       name: pickup ? SIDE_LABEL_TEXT.teamB : getLobbySideName(lobby, "teamB"),
-      teamId: pickup ? null : getLobbyPrimaryTeamId(lobby, "teamB"),
+      teamId: pickup || !teamOnly ? null : getLobbyPrimaryTeamId(lobby, "teamB"),
       playerTeams: teamBPlayerTeams,
       players: teamBPlayers,
       score: 0,

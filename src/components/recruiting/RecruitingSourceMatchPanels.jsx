@@ -6,6 +6,7 @@ import {
 import Button from "../common/Button.jsx";
 import NumericStepper from "../common/NumericStepper.jsx";
 import MatchDisputeQueue from "../match/MatchDisputeQueue.jsx";
+import MatchVoidDialog from "../match/MatchVoidDialog.jsx";
 import {
   getTeamCaptainMemberId as getTeamCaptainId,
 } from "../../data/teamMappers.js";

@@ -400,19 +400,25 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     }
     return result;
   },
-  deleteTeam: (teamId) => {
-    let rollbackState = null;
-    let deleted = false;
-    let syncedNotifications = [];
-    setState((prev) => {
-      rollbackState = prev;
-      const hadTeam = (prev.teams ?? []).some((team) => team.id === teamId);
-      const next = deleteTeam({ ...prev, currentUserId }, teamId);
-      deleted = hadTeam && !(next.teams ?? []).some((team) => team.id === teamId);
-      syncedNotifications = deleted ? getNewTeamNotifications(prev, next) : [];
-      return next;
-    });
-    if (deleted) rollbackIfServerFailed(deleteTeamServer(teamId, syncedNotifications), rollbackState, "팀 삭제", { teamId });
+  deleteTeam: async (teamId) => {
+    const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", "팀 삭제");
+    if (serverReady !== true) return serverReady;
+    if (!ensureRemoteReady("팀 삭제")) return { ok: false, error: "remote_not_ready" };
+    const currentState = stateRef.current;
+    const hadTeam = (currentState.teams ?? []).some((team) => team.id === teamId);
+    const nextState = deleteTeam({ ...currentState, currentUserId }, teamId);
+    const deleted = hadTeam && !(nextState.teams ?? []).some((team) => team.id === teamId);
+    if (!deleted) return { ok: false, error: "team_delete_rejected" };
+    if (!isSupabaseConfigured) {
+      setState((prev) => deleteTeam({ ...prev, currentUserId }, teamId));
+      return { ok: true, teamId };
+    }
+    const syncedNotifications = getNewTeamNotifications(currentState, nextState);
+    const result = await deleteTeamServer(teamId, syncedNotifications);
+    if (result && result.ok !== false) {
+      setState((prev) => deleteTeam({ ...prev, currentUserId }, teamId));
+    }
+    return result;
   }
   });
 }

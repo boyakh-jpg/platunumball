@@ -181,6 +181,14 @@ export function getRemoteMatchActivePlayerIds(row = {}, sideName, playerRows = [
   );
 }
 
+export function getRemoteMatchPlayerTeams(sideName, sideTeamId, playerRows = []) {
+  return Object.fromEntries(
+    playerRows
+      .filter((player) => player.side === sideName && player.user_id && player.team_id && player.team_id !== sideTeamId)
+      .map((player) => [player.user_id, player.team_id]),
+  );
+}
+
 const VERIFIED_MATCH_STAT_SOURCES = new Set(["referee", "dispute_operator"]);
 
 export function getReadableMatchStatRows(row = {}, statRows = []) {
@@ -238,6 +246,8 @@ export function fromRemoteMatch(row, context) {
   };
   const teamA = context.teamById[row.team_a_id];
   const teamB = context.teamById[row.team_b_id];
+  const teamAPlayerTeams = getRemoteMatchPlayerTeams("teamA", row.team_a_id, matchPlayers);
+  const teamBPlayerTeams = getRemoteMatchPlayerTeams("teamB", row.team_b_id, matchPlayers);
   const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
   const legacyInstant = !row.rules?.timingType && rawScheduledAt === "즉시";
   const timingType = row.rules?.timingType === "instant" || legacyInstant ? "instant" : "scheduled";
@@ -295,8 +305,8 @@ export function fromRemoteMatch(row, context) {
     forfeitedBy: row.rules?.forfeit?.decidedBy ?? "",
     objectionWindow: row.objection_window,
     evidence: row.evidence ?? [],
-    teamA: { name: teamA?.name ?? recordTeamAName, teamId: row.team_a_id, players: teamAPlayers, score: scoreA },
-    teamB: { name: teamB?.name ?? recordTeamBName, teamId: row.team_b_id, players: teamBPlayers, score: scoreB },
+    teamA: { name: teamA?.name ?? recordTeamAName, teamId: row.team_a_id, playerTeams: teamAPlayerTeams, players: teamAPlayers, score: scoreA },
+    teamB: { name: teamB?.name ?? recordTeamBName, teamId: row.team_b_id, playerTeams: teamBPlayerTeams, players: teamBPlayers, score: scoreB },
     agreements,
     approvals,
     disputes,

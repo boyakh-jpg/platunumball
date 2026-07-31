@@ -129,6 +129,8 @@ export function useAuthSession() {
   const [loading, setLoading] = useState(() => isSupabaseConfigured);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [authActionPending, setAuthActionPending] = useState(false);
+  const authActionPendingRef = useRef(false);
   const [testLoginPending, setTestLoginPending] = useState(false);
   const testLoginPendingRef = useRef(false);
   const testLoginGenerationRef = useRef(0);
@@ -195,33 +197,47 @@ export function useAuthSession() {
 
   const actions = useMemo(() => ({
     signInWithProvider: async (provider, redirectPath = "/app") => {
+      if (authActionPendingRef.current) return null;
+      authActionPendingRef.current = true;
+      setAuthActionPending(true);
       testLoginGenerationRef.current += 1;
       testLoginPendingRef.current = false;
       setTestLoginPending(false);
       setError("");
       setMessage("");
-      if (isSupabaseConfigured) {
-        const redirectTo = `${window.location.origin}${getSafeAppRedirect(redirectPath)}`;
-        const { error: authError } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo,
-          },
-        });
-        if (authError) {
-          setError(formatAuthError(authError.message));
+      try {
+        if (isSupabaseConfigured) {
+          const redirectTo = `${window.location.origin}${getSafeAppRedirect(redirectPath)}`;
+          const { error: authError } = await supabase.auth.signInWithOAuth({
+            provider,
+            options: {
+              redirectTo,
+            },
+          });
+          if (authError) {
+            setError(formatAuthError(authError.message));
+            return null;
+          }
           return null;
         }
-        return null;
-      }
 
-      const nextSession = makeTestSession(provider);
-      writeTestSession(nextSession);
-      setClientActionSession(nextSession);
-      setSession(nextSession);
-      return nextSession;
+        const nextSession = makeTestSession(provider);
+        writeTestSession(nextSession);
+        setClientActionSession(nextSession);
+        setSession(nextSession);
+        return nextSession;
+      } catch (authError) {
+        setError(formatAuthError(authError?.message) || "로그인하지 못했습니다. 다시 시도해 주세요.");
+        return null;
+      } finally {
+        authActionPendingRef.current = false;
+        setAuthActionPending(false);
+      }
     },
     signOut: async () => {
+      if (authActionPendingRef.current) return false;
+      authActionPendingRef.current = true;
+      setAuthActionPending(true);
       testLoginGenerationRef.current += 1;
       testLoginPendingRef.current = false;
       setTestLoginPending(false);
@@ -231,13 +247,25 @@ export function useAuthSession() {
       setClientActionSession(null);
       setSession(null);
       setLoading(false);
-      if (isSupabaseConfigured) {
-        const { error: signOutError } = await supabase.auth.signOut();
-        if (signOutError) setError(formatAuthError(signOutError.message));
+      try {
+        if (isSupabaseConfigured) {
+          const { error: signOutError } = await supabase.auth.signOut();
+          if (signOutError) {
+            setError(formatAuthError(signOutError.message));
+            return false;
+          }
+        }
+        return true;
+      } catch (signOutError) {
+        setError(formatAuthError(signOutError?.message) || "로그아웃하지 못했습니다. 다시 시도해 주세요.");
+        return false;
+      } finally {
+        authActionPendingRef.current = false;
+        setAuthActionPending(false);
       }
     },
     signInWithTestAccount: async (testLoginId) => {
-      if (testLoginPendingRef.current) return null;
+      if (testLoginPendingRef.current || authActionPendingRef.current) return null;
 
       const loginGeneration = testLoginGenerationRef.current + 1;
       testLoginGenerationRef.current = loginGeneration;
@@ -297,6 +325,7 @@ export function useAuthSession() {
 
   return {
     configured: isSupabaseConfigured,
+    authActionPending,
     testAccounts: TEST_ACCOUNTS,
     testLoginAllowed: isDemoLoginAllowed(),
     testLoginPending,

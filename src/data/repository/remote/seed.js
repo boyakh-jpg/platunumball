@@ -209,14 +209,14 @@ export async function saveNormalizedRemoteState(state, options = {}) {
   const matchPlayerRows = state.matches.flatMap((match) => [
     ...(match.teamA?.players ?? []).map((userId, index) => ({
       match_id: match.id,
-      team_id: match.teamA.teamId,
+      team_id: match.teamA.playerTeams?.[userId] ?? match.teamA.teamId,
       user_id: userId,
       side: "teamA",
       slot_order: index,
     })),
     ...(match.teamB?.players ?? []).map((userId, index) => ({
       match_id: match.id,
-      team_id: match.teamB.teamId,
+      team_id: match.teamB.playerTeams?.[userId] ?? match.teamB.teamId,
       user_id: userId,
       side: "teamB",
       slot_order: index,

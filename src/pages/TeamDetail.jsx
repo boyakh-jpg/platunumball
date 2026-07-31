@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
+import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -23,6 +24,7 @@ import {
 import { formatEmblemDate, getNextEmblemUploadAt, isEmblemUploadLocked } from "../lib/emblemPolicy.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { getTeamSide } from "../lib/season.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 import TeamDetailView from "./TeamDetailView.jsx";
 
 function isHistoryInDetailWindow(match) {
@@ -39,7 +41,7 @@ export default function TeamDetail({ app }) {
     ? location.state.teamPreview
     : null;
   const authoritativeTeam = app.state.teams.find((item) => item.id === teamId);
-  const team = authoritativeTeam ?? previewTeam;
+  const displayTeam = authoritativeTeam ?? previewTeam;
   const teamRecordArchive = app.recordArchives?.teams?.[teamId] ?? { rows: [], page: {}, loaded: false, loading: false, error: "" };
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
   const [memberQuery, setMemberQuery] = useState("");
@@ -48,6 +50,12 @@ export default function TeamDetail({ app }) {
   const [teamInviteError, setTeamInviteError] = useState("");
   const [teamManagementPending, setTeamManagementPending] = useState(false);
   const [teamManagementError, setTeamManagementError] = useState("");
+  const [teamDetailLoad, setTeamDetailLoad] = useState(() => ({
+    teamId,
+    loading: false,
+    loaded: !isSupabaseConfigured,
+    error: "",
+  }));
   const [selectedHistoryMatchId, setSelectedHistoryMatchId] = useState("");
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [emblemPending, setEmblemPending] = useState(false);
@@ -55,20 +63,50 @@ export default function TeamDetail({ app }) {
   const [emblemFeedback, setEmblemFeedback] = useState("");
   const [emblemFile, setEmblemFile] = useState(null);
   const [emblemStyleDraft, setEmblemStyleDraft] = useState(() => ({
-    emblemColor: team?.emblemColor ?? team?.accent ?? "#f05a46",
-    emblemBorderEnabled: team?.emblemBorderEnabled !== false,
-    emblemBorderColor: team?.emblemBorderColor ?? team?.accent ?? "#f05a46",
-    emblemTextMode: new Set(["name", "abbreviation"]).has(team?.emblemTextMode) ? team.emblemTextMode : "initial",
-    emblemAbbreviation: team?.emblemAbbreviation ?? "",
-    emblemFont: team?.emblemFont ?? "sport",
+    emblemColor: displayTeam?.emblemColor ?? displayTeam?.accent ?? "#f05a46",
+    emblemBorderEnabled: displayTeam?.emblemBorderEnabled !== false,
+    emblemBorderColor: displayTeam?.emblemBorderColor ?? displayTeam?.accent ?? "#f05a46",
+    emblemTextMode: new Set(["name", "abbreviation"]).has(displayTeam?.emblemTextMode) ? displayTeam.emblemTextMode : "initial",
+    emblemAbbreviation: displayTeam?.emblemAbbreviation ?? "",
+    emblemFont: displayTeam?.emblemFont ?? "sport",
   }));
   const emblemInputRef = useRef(null);
   const emblemStatusRequestRef = useRef("");
   const detailRequestRef = useRef("");
   const teamManagementPendingRef = useRef(false);
+  const teamDetailReady = !isSupabaseConfigured || (teamDetailLoad.teamId === teamId && teamDetailLoad.loaded);
+  const teamDetailError = teamDetailLoad.teamId === teamId ? teamDetailLoad.error : "";
+  const team = authoritativeTeam ?? (!teamDetailReady ? previewTeam : null);
   const emblemAbbreviationCharacterCount = getTeamEmblemAbbreviationCharacterCount(emblemStyleDraft.emblemAbbreviation);
   const captain = team?.members.find((member) => member.role === "captain");
-  const canManage = captain?.userId === app.currentUser.id;
+  const authoritativeCaptain = authoritativeTeam?.members.find((member) => member.role === "captain");
+  const canManage = teamDetailReady
+    && authoritativeTeam?.membersPartial !== true
+    && authoritativeCaptain?.userId === app.currentUser.id;
+
+  const refreshTeamDetail = useCallback(async () => {
+    if (!teamId) return false;
+    if (!isSupabaseConfigured) {
+      setTeamDetailLoad({ teamId, loading: false, loaded: true, error: "" });
+      return true;
+    }
+    if (app.remoteReady === false || !loadDirectory) return false;
+    setTeamDetailLoad((current) => ({
+      teamId,
+      loading: true,
+      loaded: current.teamId === teamId && current.loaded,
+      error: "",
+    }));
+    const loaded = await loadDirectory({ force: true, teamId });
+    if (detailRequestRef.current !== teamId) return false;
+    setTeamDetailLoad((current) => ({
+      teamId,
+      loading: false,
+      loaded: loaded === true || (current.teamId === teamId && current.loaded),
+      error: loaded === true ? "" : "팀 정보를 불러오지 못했습니다.",
+    }));
+    return loaded === true;
+  }, [app.remoteReady, loadDirectory, teamId]);
 
   useEffect(() => {
     if (!team) return;
@@ -95,7 +133,7 @@ export default function TeamDetail({ app }) {
 
   useEffect(() => {
     if (app.remoteReady === false || !teamId) return undefined;
-    const refreshTeam = () => loadDirectory?.({ force: true, teamId });
+    const refreshTeam = () => { void refreshTeamDetail(); };
     if (detailRequestRef.current !== teamId) {
       detailRequestRef.current = teamId;
       refreshTeam();
@@ -109,7 +147,7 @@ export default function TeamDetail({ app }) {
       window.removeEventListener("focus", refreshTeam);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [app.remoteReady, loadDirectory, teamId]);
+  }, [app.remoteReady, refreshTeamDetail, teamId]);
 
   useEffect(() => {
     if (app.remoteReady === false || !team?.id || !loadTeamRecords || teamRecordArchive.loaded || teamRecordArchive.loading || teamRecordArchive.error) return;
@@ -117,10 +155,21 @@ export default function TeamDetail({ app }) {
   }, [app.remoteReady, loadTeamRecords, team?.id, teamRecordArchive.error, teamRecordArchive.loaded, teamRecordArchive.loading]);
 
   const directoryPending = app.remoteReady === false
-    || app.directoryStatus?.loading
+    || teamDetailLoad.loading
     || (app.directoryStatus?.loaded === false && !app.directoryStatus?.error)
-    || (!team && app.remoteReady !== false && Boolean(loadDirectory) && !app.directoryStatus?.error);
+    || (!team && app.remoteReady !== false && Boolean(loadDirectory) && !teamDetailError);
   if (!team && directoryPending) return <BasketballLoader overlay label="팀 불러오는 중" />;
+  if (!team && teamDetailError) {
+    return (
+      <main className="page-stack team-detail-page">
+        <Card className="section-card">
+          <h1>팀 정보를 불러오지 못했습니다</h1>
+          <p>연결 상태를 확인한 뒤 다시 시도해 주세요.</p>
+          <Button type="button" onClick={() => { void refreshTeamDetail(); }}>다시 시도</Button>
+        </Card>
+      </main>
+    );
+  }
   if (!team) return <Navigate to="/app/teams" replace />;
 
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
@@ -278,12 +327,13 @@ export default function TeamDetail({ app }) {
       </button>
     );
   };
-  const deleteTeam = () => {
+  const deleteTeam = async () => {
     if (!deleteArmed) {
       setDeleteArmed(true);
       return;
     }
-    app.actions.deleteTeam(team.id);
+    const deleted = await runTeamManagementMutation(() => app.actions.deleteTeam(team.id));
+    if (!deleted) setDeleteArmed(false);
   };
   const uploadEmblem = async (event) => {
     const file = event.target.files?.[0];
@@ -381,5 +431,5 @@ export default function TeamDetail({ app }) {
   const emblemUploadLocked = moderationLocked || isEmblemUploadLocked(team.emblemUploadCount, team.emblemUploadedAt);
   const emblemSource = team.emblemSource ?? (team.emblemKey ? "upload" : "initial");
 
-  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, uploadEmblem, userMap, winRate, wins }} />;
+  return <TeamDetailView controller={{ addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, uploadEmblem, userMap, winRate, wins }} />;
 }

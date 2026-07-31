@@ -250,6 +250,9 @@ test("계정·설정 변경은 선택 대상과 저장 요청을 안전하게 �
     settingsController,
     courtController,
     notificationsPage,
+    authSession,
+    loginPage,
+    sidebar,
   ] = await Promise.all([
     read("src/pages/useAdminPageController.jsx"),
     read("src/hooks/appData/orchestrator/serverActions.js"),
@@ -259,6 +262,9 @@ test("계정·설정 변경은 선택 대상과 저장 요청을 안전하게 �
     read("src/pages/useSettingsPageController.jsx"),
     read("src/pages/useSettingsCourtRequestController.js"),
     read("src/pages/Notifications.jsx"),
+    read("src/hooks/useAuthSession.js"),
+    read("src/pages/Login.jsx"),
+    read("src/components/layout/Sidebar.jsx"),
   ]);
 
   assert.match(adminController, /const changeAppointmentUserQuery = \(value\) => \{[\s\S]{0,420}setAppointmentUserSnapshot\(null\);[\s\S]{0,100}userId: ""/u);
@@ -266,6 +272,9 @@ test("계정·설정 변경은 선택 대상과 저장 요청을 안전하게 �
   assert.match(serverActions, /pendingFavoriteMutationsRef\.current\.get\(mutationKey\)/u);
   assert.match(serverActions, /pendingFavoriteMutationsRef\.current\.delete\(mutationKey\)/u);
   assert.match(profileActions, /if \(!result \|\| result\.ok === false\) \{[\s\S]{0,160}rollbackServerMutation\(rollbackState, "프로필 저장"/u);
+  assert.match(profileActions, /deleteTeam: async \(teamId\) => \{[\s\S]{0,1200}const result = await deleteTeamServer\(teamId, syncedNotifications\)/u);
+  assert.match(profileActions, /if \(result && result\.ok !== false\) \{[\s\S]{0,180}setState\(\(prev\) => deleteTeam/u);
+  assert.match(profileActions, /if \(!deleted\) return \{ ok: false, error: "team_delete_rejected" \}/u);
   assert.match(profilePage, /profileSavePendingRef\.current/u);
   assert.match(signupPage, /if \(!result \|\| result\.ok === false\)/u);
   assert.match(settingsController, /generalSettingsSavePendingRef\.current/u);
@@ -277,6 +286,12 @@ test("계정·설정 변경은 선택 대상과 저장 요청을 안전하게 �
   assert.match(courtController, /courtSubmitPendingRef\.current/u);
   assert.match(notificationsPage, /pendingInvitationKeysRef\.current\.has\(key\)/u);
   assert.match(notificationsPage, /setNotificationDeleteError\(\{ id: notificationId/u);
+  assert.match(notificationsPage, /directoryLoaded === false && app\.serverProfileBound/u);
+  assert.match(authSession, /authActionPendingRef\.current/u);
+  assert.match(authSession, /catch \(authError\)[\s\S]{0,180}finally/u);
+  assert.match(authSession, /catch \(signOutError\)[\s\S]{0,180}finally/u);
+  assert.match(loginPage, /disabled=\{auth\.authActionPending \|\| auth\.testLoginPending\}/u);
+  assert.match(sidebar, /disabled=\{auth\.authActionPending\}/u);
 });
 
 test("관리자 조치는 현재 선택 대상과 서버 전체 대기 건수를 보존한다", async () => {

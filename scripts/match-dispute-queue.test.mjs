@@ -305,3 +305,9 @@ test("DB와 목록 API가 병렬 큐를 새로고침 가능한 형태로 조회�
   assert.match(listApi, /attachOpenDisputeQueues/);
   assert.match(listApi, /\.eq\("status", "open"\)/);
 });
+
+test("이의 상태 경기방은 무효 처리 대화상자를 import한 뒤 렌더한다", async () => {
+  const sourceMatchPanels = await readSource("src/components/recruiting/RecruitingSourceMatchPanels.jsx");
+  assert.match(sourceMatchPanels, /import MatchVoidDialog from "\.\.\/match\/MatchVoidDialog\.jsx";/);
+  assert.match(sourceMatchPanels, /<MatchVoidDialog\b/);
+});

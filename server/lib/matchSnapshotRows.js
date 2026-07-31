@@ -51,7 +51,7 @@ export function getSidePlayerRows(match = {}) {
   return [
     ...(match.teamA?.players ?? []).map((userId, index) => ({
       match_id: match.id,
-      team_id: nullableText(match.teamA.teamId),
+      team_id: nullableText(match.teamA.playerTeams?.[userId] ?? match.teamA.teamId),
       user_id: userId,
       side: "teamA",
       slot_order: index,
@@ -59,7 +59,7 @@ export function getSidePlayerRows(match = {}) {
     })),
     ...(match.teamB?.players ?? []).map((userId, index) => ({
       match_id: match.id,
-      team_id: nullableText(match.teamB.teamId),
+      team_id: nullableText(match.teamB.playerTeams?.[userId] ?? match.teamB.teamId),
       user_id: userId,
       side: "teamB",
       slot_order: index,

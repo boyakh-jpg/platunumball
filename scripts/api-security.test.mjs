@@ -285,6 +285,8 @@ test("referee search supports qualified discovery on focus only", async () => {
   assert.doesNotMatch(refereeSearchSource, /Number\(profile\.trust_score \?\? 0\) >= REFEREE_ACTIVE_TRUST_MIN/);
   assert.match(refereeSearchSource, /\.in\("id", appointmentProfileIds\)/);
   assert.match(pickerSource, /const canRemoteSearch = canSearch \|\| \(remoteSearchOnFocus && focused\);/);
+  assert.match(pickerSource, /setRemoteRetrySequence\(\(current\) => current \+ 1\)/);
+  assert.match(pickerSource, /remoteRetrySequence, remoteSearchContextKey/);
   assert.match(pickerSource, /remoteError \? "검색 결과를 불러오지 못했습니다\." : emptyText/);
   assert.match(createMatchSource, /remoteSearchOnFocus=\{remoteDirectoryEnabled\}/);
   assert.match(createMatchSource, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);

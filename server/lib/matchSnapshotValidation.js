@@ -140,6 +140,13 @@ export async function validateMatchRosterEligibility(supabase, match = {}) {
 
   const rostersByTeam = new Map();
   MATCH_SIDES.forEach((sideName) => {
+    const sideRosterIds = new Set(getSideScopedIds(match, sideName));
+    Object.entries(match[sideName]?.playerTeams ?? {}).forEach(([userId, teamId]) => {
+      if (!sideRosterIds.has(userId)) reject(403, "match_player_team_outside_roster");
+      const mappedTeamId = nullableText(teamId);
+      if (!mappedTeamId) reject(403, "match_player_team_invalid");
+      addTeamRoster(rostersByTeam, mappedTeamId, [userId]);
+    });
     const teamId = match[sideName]?.teamId;
     if (!teamId) return;
     addTeamRoster(

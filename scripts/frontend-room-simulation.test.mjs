@@ -163,6 +163,8 @@ function runActualMatchLifecycle({ visibility, teamOnly, referee, benchCapacity 
   let match = state.matches[0];
   assert.ok(match?.id, `${postId}: 경기 확정`);
   assert.equal(match.refereeId ?? "", referee ? refereeId : "", `${postId}: 심판 배정`);
+  assert.equal(match.teamA.teamId, teamOnly ? "t1" : null, `${postId}: A사이드 팀 정체성`);
+  assert.equal(match.teamB.teamId, teamOnly ? "t2" : null, `${postId}: B사이드 팀 정체성`);
   if (benchCapacity) {
     const placementOperatorId = referee ? refereeId : hostId;
     const placementUnauthorizedId = referee ? hostId : "u6";
@@ -804,6 +806,61 @@ test("실제 매칭방은 공개·비공개와 개인·팀 구성을 모두 생�
   assert.ok(state.reports.some((report) => report.type === "player" && report.targetId === hostId && report.by === targetId));
   state = reportMatch(state, reportMatchId, "허위 경기 결과", [hostId]);
   assert.ok(state.reports.some((report) => report.type === "match" && report.targetId === reportMatchId && report.by === targetId));
+});
+
+test("개인 매칭방의 팀 파티는 사이드 전체 팀으로 확대하지 않는다", () => {
+  const postId = "actual-player-room-with-team-party";
+  let state = {
+    ...structuredClone(demoFlowState),
+    currentUserId: "u1",
+    matches: [],
+    recruitingPosts: [],
+    notifications: [],
+  };
+  state = createRecruitingPost(state, {
+    id: postId,
+    title: postId,
+    visibility: "public",
+    timingType: "instant",
+    hostJoinMode: "player",
+    teamOnly: false,
+    mode: "3v3",
+    sideCapacity: 3,
+    benchCapacity: 0,
+    ranked: false,
+    formationMode: "prearranged",
+    matchPurpose: "friendly",
+    court: "실제 야외 코트",
+  });
+  state = inviteRecruitingPlayers(asActor(state, "u1"), postId, {
+    side: "teamA",
+    playerIds: ["u2", "u3"],
+    joinMode: "player",
+  });
+  state = acceptActualInvitation(state, postId, "u2");
+  state = acceptActualInvitation(state, postId, "u3");
+  state = inviteRecruitingPlayers(asActor(state, "u1"), postId, {
+    side: "teamB",
+    playerIds: ["u5"],
+    joinMode: "player",
+  });
+  state = acceptActualInvitation(state, postId, "u5");
+  state = interestRecruitingPost(asActor(state, "u6"), postId, {
+    side: "teamB",
+    joinMode: "team",
+    teamId: "t2",
+    playerIds: ["u6", "u7"],
+  });
+
+  assert.equal(getRecruitingLobby(state.recruitingPosts[0], state).canConfirm, true);
+  state = confirmRecruitingMatch(asActor(state, "u1"), postId);
+  const match = state.matches[0];
+  assert.ok(match?.id);
+  assert.equal(match.teamA.teamId, null);
+  assert.equal(match.teamB.teamId, null);
+  assert.equal(match.teamB.playerTeams.u6, "t2");
+  assert.equal(match.teamB.playerTeams.u7, "t2");
+  assert.ok(match.parties.some((party) => party.teamId === "t2"));
 });
 
 test("실제 경기방 16조합은 후보 이동부터 출석·기록·최종 확정까지 완료된다", () => {

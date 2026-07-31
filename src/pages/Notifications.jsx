@@ -47,14 +47,15 @@ export default function Notifications({ app }) {
   const refreshNotifications = useCallback(async () => {
     setNotificationsLoadError("");
     try {
-      await Promise.all([
+      const [, directoryLoaded] = await Promise.all([
         loadNotifications?.(),
         loadDirectory?.({ kind: "self", force: true }),
       ]);
+      if (directoryLoaded === false && app.serverProfileBound) throw new Error("notification_directory_load_failed");
     } catch {
       setNotificationsLoadError("알림을 불러오지 못했습니다.");
     }
-  }, [loadDirectory, loadNotifications]);
+  }, [app.serverProfileBound, loadDirectory, loadNotifications]);
   useEffect(() => {
     void refreshNotifications();
   }, [refreshNotifications]);
@@ -116,7 +117,11 @@ export default function Notifications({ app }) {
       () => app.actions.acceptTeamInvitation(invitation.id),
     );
     if (!result || result.ok === false) return;
-    await app.actions.loadDirectory?.({ kind: "self", force: true });
+    const directoryLoaded = await app.actions.loadDirectory?.({ kind: "self", force: true });
+    if (directoryLoaded === false && app.serverProfileBound) {
+      setNotificationsLoadError("팀 정보를 불러오지 못했습니다. 다시 시도해 주세요.");
+      return;
+    }
     navigate(`/app/teams/${invitation.teamId}`);
   };
   const declineTeamInvite = (invitationId) => runInvitationAction(

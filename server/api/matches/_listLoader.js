@@ -295,7 +295,11 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const statRowsPromise = hydrationMatchIds.length
     ? timeStep(debugTiming, "matchStatsMs", () => context.supabase.from("player_match_stats").select(PLAYER_STAT_COLUMNS).in("match_id", hydrationMatchIds))
     : Promise.resolve({ data: [], error: null });
-  const teamIds = unique(hydrationRows.flatMap((row) => [row.team_a_id, row.team_b_id]));
+  const teamIds = unique(hydrationRows.flatMap((row) => [
+    row.team_a_id,
+    row.team_b_id,
+    ...(playersByMatch.get(row.id) ?? []).map((player) => player.team_id),
+  ]));
   const courtIds = unique(hydrationRows.map((row) => (row.court_name ? "" : row.court_id)));
   const profileIds = unique(hydrationRows.flatMap((row) => getMatchRowActorIds(row, playersByMatch.get(row.id) ?? [])));
   const profileIdsForLookup = profileIds.filter((profileId) => profileId !== currentUser.id);

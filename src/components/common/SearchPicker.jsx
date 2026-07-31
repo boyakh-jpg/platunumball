@@ -115,6 +115,7 @@ export default function SearchPicker({
   const [remoteItems, setRemoteItems] = useState([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [remoteError, setRemoteError] = useState(false);
+  const [remoteRetrySequence, setRemoteRetrySequence] = useState(0);
   const [floatingPlacement, setFloatingPlacement] = useState("below");
   const [floatingMaxHeight, setFloatingMaxHeight] = useState(320);
   const pickerRef = useRef(null);
@@ -202,7 +203,7 @@ export default function SearchPicker({
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [baseLimit, canRemoteSearch, forceSearch, query, remoteLimit, remoteSearchContextKey, remoteSearchKey, remoteSearchOnFocus]);
+  }, [baseLimit, canRemoteSearch, forceSearch, query, remoteLimit, remoteRetrySequence, remoteSearchContextKey, remoteSearchKey, remoteSearchOnFocus]);
 
   useEffect(() => {
     setExpanded(false);
@@ -261,6 +262,7 @@ export default function SearchPicker({
             if (event.key !== "Enter") return;
             event.preventDefault();
             setSubmittedQuery(value.trim());
+            setRemoteRetrySequence((current) => current + 1);
             setFocused(true);
             setExpanded(false);
             setShowIdlePanel(false);
