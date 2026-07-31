@@ -84,8 +84,9 @@ test("경기시계 인정 진행률은 전체 시간이 아니라 최소 인정�
   );
   assert.match(viewSource, /인정 기준 진행/u);
   assert.match(viewSource, /단일 경기에는 다음 쿼터가 없습니다/u);
-  assert.match(viewSource, /시계 종료 · 인정 판정/u);
-  assert.match(viewSource, /경기 종료 · 기록으로/u);
+  assert.match(viewSource, /시계 종료/u);
+  assert.match(viewSource, /경기 종료/u);
+  assert.doesNotMatch(viewSource, /시계 종료 · 인정 판정|경기 종료 · 기록으로/u);
   assert.match(viewSource, /!match\.refereeId/u);
   assert.match(viewSource, /`연장 \$\{liveClock\.overtimeCount\} 종료`/u);
 });

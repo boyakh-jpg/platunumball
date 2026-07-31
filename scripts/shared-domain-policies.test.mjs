@@ -718,9 +718,10 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(clockStyles, /@media \(width <= 720px\)[\s\S]*\.ui-match-score-control-grid[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-notice \{[^}]*pointer-events: none;/);
   assert.match(clockStyles, /\.ui-match-clock-display-grid-with-attendance:not\(\.ui-match-clock-display-grid-single\) \{[^}]*grid-template-areas:\s*"score score"\s*"attendance shot";[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-actions \{[^}]*grid-column: 2 \/ 5;[^}]*grid-row: 4;[^}]*width: 100%;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \.ui-button:nth-child\(3\) \{[^}]*grid-column: 2 \/ 4;[^}]*grid-row: 6;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume \{[^}]*grid-column: 4 \/ 6;[^}]*grid-row: 6;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-actions \{[^}]*grid-column: 3;[^}]*grid-row: 4;[^}]*width: 100%;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*grid-column: 3;[^}]*grid-row: 5 \/ 7;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \.ui-button:nth-child\(3\) \{[^}]*grid-column: 1;[^}]*grid-row: 2;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume \{[^}]*grid-column: 2;[^}]*grid-row: 2;/);
   assert.doesNotMatch(clockStyles, /@media \(width >= 721px\)[\s\S]*?\.ui-match-clock-panel-focus \.ui-match-clock-display-grid/);
   assert.match(qrStyles, /\.ui-qr-expand-backdrop\s*\{[^}]*z-index:\s*4000;/);
   assert.match(clockStyles, /\.ui-match-clock-score-actions \.ui-button \{[^}]*min-height: 44px;/);
@@ -731,8 +732,9 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   );
   assert.match(
     clockStyles,
-    /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \{[^}]*grid-template-columns: repeat\(4, minmax\(34px, 1fr\)\);/,
+    /\.ui-match-clock-panel-focus \.ui-match-clock-score-actions \{[^}]*grid-template-columns: repeat\(4, minmax\(28px, 1fr\)\);/,
   );
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-score-control-side \{[^}]*background: transparent;[^}]*border: 0;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-main-time time \{[^}]*font-size: clamp\(3rem, 16vmin, 8rem\);/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-shot-clock-value \{[^}]*font-size: clamp\(2rem, 8vmin, 3\.5rem\);/);
   assert.match(clockStyles, /\.ui-match-shot-clock-action \{[^}]*background: var\(--rb-orange\);/);
