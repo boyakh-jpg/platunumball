@@ -163,6 +163,7 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   assert.equal(post.roomState.invitations.length, 5);
   assert.equal(post.ranked, false);
   assert.equal(post.practiceMode, true);
+  assert.equal(post.rules.qrAttendanceEnabled, true);
 
   state = acceptPracticeInvitations(state, created.postId);
   const confirmed = confirmPracticeRecruitingRoom(state, created.postId);
@@ -170,6 +171,7 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   assert.ok(confirmed.matchId.startsWith("practice-"));
   assert.equal(state.matches[0].practiceMode, true);
   assert.equal(state.matches[0].ranked, false);
+  assert.equal(state.matches[0].rules.qrAttendanceEnabled, true);
 
   const blockedStart = runPracticeReducer(state, "startMatch", [confirmed.matchId]);
   assert.equal(blockedStart.applied, false);

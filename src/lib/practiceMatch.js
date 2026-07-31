@@ -1,6 +1,7 @@
 import * as repository from "../data/repository.js";
 import { createProfileShell } from "../data/profileMappers.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "../data/repositoryDefaults.js";
+import { getPracticeMatchAttendanceQrResponse } from "./matchAttendance.js";
 import {
   applyOperatorAttendance,
   getMatchReservePlayerIds,
@@ -205,6 +206,12 @@ export function runPracticeReducer(state, actionName, args = [], actorId = PRACT
   if (typeof reducer !== "function") {
     return { state, applied: false, error: "practice_action_unavailable" };
   }
+  if (actionName === "startMatch") {
+    const match = state.matches.find((item) => item.id === args[0]);
+    if (match?.rules?.qrAttendanceEnabled && !getPracticeMatchAttendanceQrResponse(match).startStatus.canStart) {
+      return { state, applied: false, error: "attendance_pending" };
+    }
+  }
   const baseline = markPracticeState({ ...state, currentUserId: PRACTICE_SELF_ID });
   const next = withPracticeActor(state, actorId, reducer, ...args);
   const applied = JSON.stringify(next) !== JSON.stringify(baseline);
@@ -243,6 +250,7 @@ export function createPracticeRecruitingRoom(state, draft = {}, { inviteTutorial
     rules: {
       ...(draft.rules ?? {}),
       practiceMode: true,
+      qrAttendanceEnabled: true,
       ranked: false,
       official: false,
       ratingScale: 0,
