@@ -89,6 +89,7 @@ test("연습 경기 출석은 운영 API 없이 격리 state로 시작 가능 �
   assert.equal(pending.startStatus.requiredCount, 3);
   assert.equal(pending.startStatus.canStart, false);
   assert.equal(pending.startStatus.blockReason, "attendance_pending");
+  assert.match(pending.qr.value, /\/app\/guide\/practice\?practiceMatch=practice-match-attendance$/);
 
   const ready = getPracticeMatchAttendanceQrResponse({
     ...match,
@@ -193,6 +194,7 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   const initialClock = await clockClient(confirmed.matchId, "read");
   assert.equal(initialClock.clock.status, "pending");
   assert.equal(initialClock.clock.canControl, true);
+  assert.ok(initialClock.attendanceQr?.value);
   await clockClient(confirmed.matchId, "configure", {
     controllerId: PRACTICE_SELF_ID,
     shotClockSeconds: 30,
@@ -215,6 +217,20 @@ test("연습 경기 전체 흐름은 더미 state 안에서만 진행되고 rati
   stateRef.current = scoreUpdated.state;
   assert.equal(stateRef.current.matches[0].result.scoreA, 1);
   assert.equal(stateRef.current.matches[0].result.scoreB, 2);
+  const refreshedScore = await clockClient(confirmed.matchId, "read");
+  const scoreUpdatedAgain = runPracticeReducer(stateRef.current, "incrementMatchScore", [
+    confirmed.matchId,
+    1,
+    0,
+    {
+      expectedRevisionA: refreshedScore.score.revisionA,
+      expectedRevisionB: refreshedScore.score.revisionB,
+      clockController: true,
+    },
+  ], PRACTICE_SELF_ID);
+  assert.equal(scoreUpdatedAgain.applied, true);
+  stateRef.current = scoreUpdatedAgain.state;
+  assert.equal(stateRef.current.matches[0].result.scoreA, 2);
   const nextControllerId = runningClock.activePlayers.find((player) => player.id !== PRACTICE_SELF_ID)?.id;
   const transferredClock = await clockClient(confirmed.matchId, "transfer", { controllerId: nextControllerId });
   assert.equal(transferredClock.clock.canControl, false);

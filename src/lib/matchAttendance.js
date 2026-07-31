@@ -14,6 +14,8 @@ const MATCH_ATTENDANCE_SCAN_ERROR_LABELS = Object.freeze({
 });
 
 export function getPracticeMatchAttendanceQrResponse(match = {}) {
+  const qrPath = `/app/guide/practice?practiceMatch=${encodeURIComponent(match.id || "")}`;
+  const qrBase = typeof window !== "undefined" ? window.location.origin : "";
   const bySide = Object.fromEntries(["teamA", "teamB"].map((sideName) => {
     const playerIds = [...new Set([
       ...getMatchSidePlayerIds(match, sideName),
@@ -34,7 +36,11 @@ export function getPracticeMatchAttendanceQrResponse(match = {}) {
   return {
     ok: true,
     matchId: match.id,
-    qr: null,
+    qr: {
+      token: `practice:${match.id || ""}`,
+      expiresAt: null,
+      value: `${qrBase}${qrPath}`,
+    },
     canResize: false,
     summary: { bySide },
     startStatus: {

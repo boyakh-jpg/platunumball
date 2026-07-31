@@ -244,7 +244,7 @@
 
 .ui-match-clock-score-control-side {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--control-group-gap);
   align-items: center;
   min-width: 0;
@@ -258,19 +258,14 @@
   grid-column: 1 / -1;
 }
 
-.ui-match-clock-score-control-side > strong {
-  font-family: var(--sports-display-font);
-  font-size: 0.82rem;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.ui-match-clock-score-control-side-a > strong {
+.ui-match-clock-score-control-side-a .ui-button {
   color: var(--team-home);
+  background: color-mix(in srgb, var(--team-home) 18%, var(--scoreboard));
 }
 
-.ui-match-clock-score-control-side-b > strong {
+.ui-match-clock-score-control-side-b .ui-button {
   color: var(--team-away);
+  background: color-mix(in srgb, var(--team-away) 18%, var(--scoreboard));
 }
 
 .ui-match-clock-score-actions {

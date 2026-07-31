@@ -1,4 +1,5 @@
 import { normalizeMatchRules } from "./matchRules.js";
+import { getPracticeMatchAttendanceQrResponse } from "./matchAttendance.js";
 import { PRACTICE_ID_PREFIX, isPracticeEntity } from "./practiceMode.js";
 import { getMatchReservePlayerIds } from "./matchUtils.js";
 
@@ -95,10 +96,12 @@ export function createPracticeClockClient(
       score: {
         a: Number(match?.result?.scoreA ?? match?.teamA?.score ?? 0),
         b: Number(match?.result?.scoreB ?? match?.teamB?.score ?? 0),
+        revisionA: Number(match?.result?.scoreRevisionA ?? 0),
+        revisionB: Number(match?.result?.scoreRevisionB ?? 0),
         updatedAt: match?.result?.submittedAt ?? null,
       },
       activePlayers: controllerCandidates,
-      attendanceQr: null,
+      attendanceQr: canControl ? getPracticeMatchAttendanceQrResponse(match).qr : null,
     };
   };
   const getClock = (matchId) => {

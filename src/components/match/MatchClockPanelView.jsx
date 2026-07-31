@@ -200,14 +200,13 @@ export default function MatchClockPanelView({ context }) {
             <div className="ui-match-clock-score-controls" aria-label="점수 조정">
               {[
                 clockEditableScoreSides.includes("teamA")
-                  ? { side: "teamA", label: "A", value: score.a }
+                  ? { side: "teamA", label: "A" }
                   : null,
                 clockEditableScoreSides.includes("teamB")
-                  ? { side: "teamB", label: "B", value: score.b }
+                  ? { side: "teamB", label: "B" }
                   : null,
-              ].filter(Boolean).map(({ side, label, value }) => (
+              ].filter(Boolean).map(({ side, label }) => (
                 <div key={side} className={`ui-match-clock-score-control-side ui-match-clock-score-control-side-${label.toLowerCase()}`}>
-                  <strong>{label}</strong>
                   <div className="ui-match-clock-score-actions" aria-label={`${label} 점수 조정`}>
                     {[-1, 1, 2, 3].map((delta) => (
                       <Button key={delta} type="button" size="sm" variant="secondary" disabled={Boolean(scorePendingSide)} onClick={() => void incrementScore(side, delta)}>
