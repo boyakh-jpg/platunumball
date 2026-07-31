@@ -1065,10 +1065,15 @@ test("room schedule labels stay canonical across all recruiting surfaces", async
 
 test("notification actions keep tournament links and failed team invites in place", async () => {
   const notifications = await readSource("src/pages/Notifications.jsx");
+  const bootstrap = await readSource("src/hooks/appData/bootstrap.js");
+  const runtimeHydration = await readSource("src/hooks/appData/orchestrator/runtimeHydration.js");
   assert.match(notifications, /getNotificationHref\(notification\)/u);
   assert.match(notifications, /loadDirectory\?\.\(\{ kind: "self", force: true \}\)/u);
   assert.match(notifications, /const result = await app\.actions\.acceptTeamInvitation\(invitation\.id\)/u);
   assert.match(notifications, /if \(!result \|\| result\.ok === false\) return/u);
+  assert.match(bootstrap, /pathname === "\/app\/notifications"[\s\S]{0,120}includeTeamInvitations: true/u);
+  assert.match(bootstrap, /includeExtraProfiles: includeFavorites \|\| includeTeamInvitations/u);
+  assert.match(runtimeHydration, /includeTeamInvitations: initialLoadOptions\.includeTeamInvitations === true/u);
 });
 
 test("report success survives a synchronous directory refresh failure", async () => {
