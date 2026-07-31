@@ -327,7 +327,7 @@ export default function MatchClockPanelView({ context }) {
             disabled={Boolean(pendingAction)}
             onClick={() => void requestMatchEnd()}
           >
-            경기·시계 종료
+            경기 종료 · 기록으로
           </Button>
         </div>
       ) : null}

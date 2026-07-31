@@ -385,14 +385,8 @@ export default function MatchClockPanel({
     const requestFullscreen = fullscreenTarget?.requestFullscreen
       || fullscreenTarget?.webkitRequestFullscreen;
     const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
-    try {
-      if (!fullscreenElement && requestFullscreen) {
-        await Promise.resolve(requestFullscreen.call(fullscreenTarget));
-      } else if (!requestFullscreen) {
-        setDeviceNotice("브라우저 전체화면 대신 화면 덮기 팝업으로 열었습니다.");
-      }
-    } catch {
-      setDeviceNotice("브라우저 전체화면을 허용하지 않아 시계 팝업으로 열었습니다.");
+    if (!fullscreenElement && requestFullscreen) {
+      await Promise.resolve(requestFullscreen.call(fullscreenTarget)).catch(() => {});
     }
   };
 

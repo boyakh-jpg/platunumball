@@ -613,7 +613,7 @@ test("연습 adapter와 화면은 브라우저 저장소나 실서버 호출을 
   assert.match(pageSource, /key=\{`\$\{matchId\}:\$\{practiceActorId\}`\}/);
   assert.match(matchClockPanelSource, /regulationEnded && \(!scoreboardEnabled \|\| tied\)/);
   assert.match(matchClockPanelSource, /!match\.refereeId/);
-  assert.match(matchClockPanelSource, /경기·시계 종료/);
+  assert.match(matchClockPanelSource, /경기 종료 · 기록으로/);
   assert.match(matchClockPanelSource, /canEndMatch && onEndMatch && !match\.endedAt/);
   assert.match(recruitingSource, /canEndSourceMatch && !selectedMatchRules\.gameClockEnabled/);
   assert.match(settingsSyncSource, /typeof source\.showHomeGuideCard === "boolean"/);
