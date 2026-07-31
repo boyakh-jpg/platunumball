@@ -458,7 +458,12 @@ const selectTeamA = (teamAId) => {
           }
         }
       } else if (!remakeDraft && createAsTeam && presetTeamAReady && draft.visibility === "private" && presetTeamBId) {
-        await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다.");
+        const result = await app.actions.setRecruitingRoomTeam(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다.");
+        if (!result || result?.ok === false) {
+          await app.actions.closeRecruitingPost(postId, "B팀 초대 실패로 생성 취소");
+          setSubmitFeedback(formatCreateSaveError(result, "상대 B팀을 초대하지 못해 생성한 방을 종료했습니다."));
+          return;
+        }
       }
       if (onRecruitingCreated) onRecruitingCreated(postId);
       else navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);

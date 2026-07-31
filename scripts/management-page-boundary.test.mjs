@@ -200,3 +200,16 @@ test("recruiting chat polling imports its canonical merge helpers directly", asy
     /getRecruitingChatLastSeq|mergeRecruitingChatMessageBatch|isSyntheticMatchRoomId/,
   );
 });
+
+test("legacy match paths redirect to the shared match modal query", async () => {
+  const source = await read("src/App.jsx");
+
+  assert.match(source, /function LegacyMatchRoomRedirect\(\)/);
+  assert.match(source, /new URLSearchParams\(location\.search\)/);
+  assert.match(source, /searchParams\.set\("match", matchId\)/);
+  assert.match(
+    source,
+    /<Route path="\/app\/matches\/:matchId" element=\{<LegacyMatchRoomRedirect \/>\} \/>/,
+  );
+  assert.doesNotMatch(source, /const MatchRoom = lazy/);
+});

@@ -1076,6 +1076,12 @@ test("notification actions keep tournament links and failed team invites in plac
   assert.match(runtimeHydration, /includeTeamInvitations: initialLoadOptions\.includeTeamInvitations === true/u);
 });
 
+test("season rival challenge closes the created room when the B-team invite fails", async () => {
+  const createActions = await readSource("src/components/match/CreateMatchActions.jsx");
+  assert.match(createActions, /const result = await app\.actions\.setRecruitingRoomTeam\(postId, "teamB", presetTeamBId, "시즌 라이벌 매치업에서 보낸 팀 초대입니다\."\)/u);
+  assert.match(createActions, /if \(!result \|\| result\?\.ok === false\) \{[\s\S]{0,240}closeRecruitingPost\(postId, "B팀 초대 실패로 생성 취소"\)[\s\S]{0,240}return;/u);
+});
+
 test("report success survives a synchronous directory refresh failure", async () => {
   const settingsReport = await readSource("src/pages/useSettingsReportController.jsx");
   assert.match(settingsReport, /setReportSubmitStatus\(result\.duplicate[\s\S]*if \(loadDirectory\)/u);

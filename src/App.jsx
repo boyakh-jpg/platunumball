@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, useEffect, useLayoutEffect } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import RequireAdmin from "./components/auth/RequireAdmin.jsx";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import BasketballLoader from "./components/common/BasketballLoader.jsx";
@@ -22,7 +22,6 @@ const Home = lazy(() => import("./pages/Home.jsx"));
 const Landing = lazy(() => import("./pages/Landing.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
 const Matches = lazy(() => import("./pages/Matches.jsx"));
-const MatchRoom = lazy(() => import("./pages/MatchRoom.jsx"));
 const Notifications = lazy(() => import("./pages/Notifications.jsx"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail.jsx"));
 const Privacy = lazy(() => import("./pages/Privacy.jsx"));
@@ -54,6 +53,23 @@ function preloadCoreAppRoutes() {
     import("./pages/Settings.jsx"),
     import("./pages/CreateMatch.jsx"),
   ]);
+}
+
+function LegacyMatchRoomRedirect() {
+  const { matchId = "" } = useParams();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  searchParams.set("match", matchId);
+  return (
+    <Navigate
+      to={{
+        pathname: "/app/matches",
+        search: `?${searchParams.toString()}`,
+        hash: location.hash,
+      }}
+      replace
+    />
+  );
 }
 
 class AppErrorBoundary extends Component {
@@ -174,7 +190,7 @@ export default function App() {
             <Route path="/app/guide/practice" element={<PracticeMatch app={app} />} />
             <Route path="/app/create" element={<CreateMatch app={app} />} />
             <Route path="/app/courts/:courtId" element={<CourtDetail app={app} />} />
-            <Route path="/app/matches/:matchId" element={<MatchRoom app={app} />} />
+            <Route path="/app/matches/:matchId" element={<LegacyMatchRoomRedirect />} />
             <Route path="/app/matches" element={<Matches app={app} />} />
             <Route path="/app/recorder" element={<Recorder app={app} />} />
             <Route path="/app/referee-rulebook" element={<RefereeRulebook theme={theme} />} />
