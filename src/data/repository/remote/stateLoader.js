@@ -39,6 +39,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const matchPageScope = scope === "matches";
   const recruitingPageScope = scope === "recruiting";
   const tournamentPageScope = scope === "tournaments";
+  const includeRefereeAppointments = includeUserScoped || matchPageScope || recruitingPageScope || tournamentPageScope;
   const recruitingListOnly = options.recruitingListOnly === true;
   const relatedDirectoryScope = scope === "full" && options.directoryScope === "related";
   const authUserIdText = String(authUserId || "");
@@ -196,7 +197,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       : isAdminStateLoad
         ? fetchOptionalRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client, (query) => query.eq("user_id", currentUserId)),
-    includeUserScoped ? fetchOptionalRows("referee_appointments", APPOINTMENT_COLUMNS, "created_at", client) : [],
+    includeRefereeAppointments ? fetchOptionalRows("referee_appointments", APPOINTMENT_COLUMNS, "created_at", client) : [],
     includeUserScoped && isAdminStateLoad ? fetchOptionalRows("admin_audit_log", ADMIN_AUDIT_COLUMNS, "created_at", client) : [],
     !includeUserScoped || !currentUserId
       ? []

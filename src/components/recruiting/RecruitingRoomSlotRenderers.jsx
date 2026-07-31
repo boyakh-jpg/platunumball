@@ -175,6 +175,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
         };
         const renderSelfSlotCommand = () => {
           if (!activeSelfSlotDraft) return null;
+          if (sourceMatch && !canManageMatchCheckin) return null;
           const targetEntry = lobby.entries.find((entry) => entry.id === activeSelfSlotDraft.entryId);
           const targetPlayerId = activeSelfSlotDraft.playerId;
           const targetUser = userById[targetPlayerId];

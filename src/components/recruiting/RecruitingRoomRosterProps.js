@@ -3,6 +3,7 @@ export function getRecruitingRoomRosterProps(context, sideName) {
     app,
     canInviteSideFromRoom,
     canManageEntry,
+    canManageMatchCheckin,
     lobby,
     mine,
     moveCandidate,
@@ -39,7 +40,7 @@ export function getRecruitingRoomRosterProps(context, sideName) {
     onInviteSlot: sourceRoomReadOnly
       ? null
       : (targetSide, reserve, slotKey, event) => openInviteSlot(selectedPost, targetSide, reserve, slotKey, event),
-    onSelfSlotAction: sourceMatchSlotManagementOpen
+    onSelfSlotAction: sourceMatchSlotManagementOpen && (!sourceMatch || canManageMatchCheckin)
       ? (targetSide, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, targetSide, reserve, playerId, entryId, event)
       : null,
     onMoveCandidate: moveCandidate,

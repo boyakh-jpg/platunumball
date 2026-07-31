@@ -797,12 +797,15 @@ test("최종 승인은 결과 제출과 경기 종료 중 늦은 시각부터 3�
 });
 
 test("확정 경기방 슬롯 관리는 경기 액션과 운영 권한을 사용한다", async () => {
-  const [modelSource, rendererSource] = await Promise.all([
+  const [modelSource, rendererSource, rosterPropsSource] = await Promise.all([
     readFile(new URL("../src/components/recruiting/RecruitingRoomMatchModel.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/recruiting/RecruitingRoomSlotRenderers.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomRosterProps.js", import.meta.url), "utf8"),
   ]);
   assert.match(modelSource, /sourceMatchPhase\?\.phase === "checkin" && sourceMatch\.refereeId[\s\S]*currentUserIsSourceReferee[\s\S]*: mine/);
   assert.match(rendererSource, /if \(sourceMatch\) \{[\s\S]*setMatchRoomPlayerPlacement\(sourceMatch\.id/);
+  assert.match(rendererSource, /if \(sourceMatch && !canManageMatchCheckin\) return null/);
+  assert.match(rosterPropsSource, /sourceMatchSlotManagementOpen && \(!sourceMatch \|\| canManageMatchCheckin\)/);
   assert.doesNotMatch(rendererSource, /onPositionChange=\{targetIsCurrentUser \? \(position\)/);
 });
 

@@ -985,6 +985,21 @@ test("team selection is routed through the server and DB authority", () => {
   assert.doesNotMatch(declinedTeamInvitationMigrationSource, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
+test("scoped recruiting confirmation loads active referee qualifications", () => {
+  const stateLoaderSource = fs.readFileSync(
+    path.join(root, "src/data/repository/remote/stateLoader.js"),
+    "utf8",
+  );
+  assert.match(
+    stateLoaderSource,
+    /includeRefereeAppointments = includeUserScoped \|\| matchPageScope \|\| recruitingPageScope \|\| tournamentPageScope/,
+  );
+  assert.match(
+    stateLoaderSource,
+    /includeRefereeAppointments \? fetchOptionalRows\("referee_appointments"/,
+  );
+});
+
 test("public team joins persist only the applying team member as side leader", () => {
   const recruitingSource = readPageSourceGroup(RECRUITING_PAGE_SOURCE_PATHS);
   const users = [
