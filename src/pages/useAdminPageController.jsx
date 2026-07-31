@@ -306,6 +306,17 @@ const [searchParams, setSearchParams] = useSearchParams();
     setAppointmentUserQuery(user.name ?? user.handle ?? user.hashtag ?? user.id);
     updateAppointmentDraft({ userId: user.id });
   };
+  const changeAppointmentUserQuery = (value) => {
+    setAppointmentUserQuery(value);
+    const selectedLabel = appointmentUserSnapshot?.name
+      ?? appointmentUserSnapshot?.handle
+      ?? appointmentUserSnapshot?.hashtag
+      ?? appointmentUserSnapshot?.id
+      ?? "";
+    if (value === selectedLabel) return;
+    setAppointmentUserSnapshot(null);
+    updateAppointmentDraft({ userId: "" });
+  };
   const updateCourtApprovalDraft = (patch) => setCourtApprovalDraft((current) => ({ ...current, ...patch }));
   const approveSelectedCourt = async () => {
     if (!selectedCourtRequest) return;
@@ -385,7 +396,7 @@ const [searchParams, setSearchParams] = useSearchParams();
     setMergeAffiliationQuery,
     appointmentDraft,
     appointmentUserQuery,
-    setAppointmentUserQuery,
+    setAppointmentUserQuery: changeAppointmentUserQuery,
     appointmentUserSnapshot,
     courtApprovalDraft,
     courtApprovalStatus,

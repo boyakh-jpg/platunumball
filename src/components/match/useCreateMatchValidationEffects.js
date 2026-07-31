@@ -32,6 +32,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
     ownerSidePlayerKey,
     publicPartyPlayerIds,
     representativeTournamentTeam,
+    selectedTournamentTeamProfiles,
     selectedTeamA,
     selectedTeamB,
     setDraft,
@@ -148,7 +149,10 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
     }
     if (!isTournamentRoom || !app.state.teams.length) return;
     setDraft((current) => {
-      const currentTournamentTeamIds = (current.tournamentTeamIds ?? []).filter((teamId) => app.state.teams.some((team) => team.id === teamId));
+      const availableTeamIds = new Set(
+        [...app.state.teams, ...selectedTournamentTeamProfiles].map((team) => team.id),
+      );
+      const currentTournamentTeamIds = (current.tournamentTeamIds ?? []).filter((teamId) => availableTeamIds.has(teamId));
       const tournamentTeamIds = currentTournamentTeamIds.filter((teamId) => (
         !myTeams.some((team) => team.id === teamId) || teamId === representativeTournamentTeam?.id
       ));
@@ -162,7 +166,7 @@ export function useCreateMatchValidationEffects(context, { refereeCandidates }) 
         && tournamentTeamIds.every((teamId, index) => teamId === current.tournamentTeamIds[index])) return current;
       return { ...current, tournamentTeamIds };
     });
-  }, [app.state.teams, defaultTournamentTeamB?.id, isTeamRoom, isTournamentRoom, myTeams, representativeTournamentTeam?.id]);
+  }, [app.state.teams, defaultTournamentTeamB?.id, isTeamRoom, isTournamentRoom, myTeams, representativeTournamentTeam?.id, selectedTournamentTeamProfiles]);
 
   useEffect(() => {
     if (!isPickupMatch) return;

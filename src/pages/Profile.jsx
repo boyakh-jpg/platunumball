@@ -93,6 +93,9 @@ export default function Profile({ app }) {
     regionDistrict: inferredRegion.district,
   });
   const [profileError, setProfileError] = useState("");
+  const [profileSavePending, setProfileSavePending] = useState(false);
+  const [profileSaveStatus, setProfileSaveStatus] = useState("");
+  const profileSavePendingRef = useRef(false);
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [emblemFeedback, setEmblemFeedback] = useState("");
@@ -103,22 +106,36 @@ export default function Profile({ app }) {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (profileSavePendingRef.current) return;
     if (draft.name !== user.name && !canChangeProfileName(user)) {
       setProfileError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(getNextNameChangeDate(user))}`);
       return;
     }
+    profileSavePendingRef.current = true;
+    setProfileSavePending(true);
     setProfileError("");
+    setProfileSaveStatus("저장 중");
     const district = districtOptions.includes(draft.regionDistrict) ? draft.regionDistrict : districtOptions[0];
     try {
-      await app.actions.updateProfile({
+      const result = await app.actions.updateProfile({
         name: draft.name,
         position: draft.position,
         region: `${draft.regionSido} ${district}`,
         regionSido: draft.regionSido,
         regionDistrict: district,
       });
+      if (!result || result.ok === false) {
+        setProfileError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+        setProfileSaveStatus("");
+        return;
+      }
+      setProfileSaveStatus("저장되었습니다.");
     } catch (error) {
       setProfileError("프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+      setProfileSaveStatus("");
+    } finally {
+      profileSavePendingRef.current = false;
+      setProfileSavePending(false);
     }
   };
   const myRecords = getPlayerRecentRecordMatches(app.state.matches, user.id, { limit: 6 });
@@ -192,7 +209,8 @@ export default function Profile({ app }) {
                 onRegionChange={(regionSido, regionDistrict) => update({ regionSido, regionDistrict })}
               />
               {profileError ? <p className="form-warning">{profileError}</p> : null}
-              <Button type="submit">저장</Button>
+              {profileSaveStatus ? <small role="status">{profileSaveStatus}</small> : null}
+              <Button type="submit" disabled={profileSavePending}>{profileSavePending ? "저장 중" : "저장"}</Button>
             </form>
           </Card>
           <AffiliationEditor user={user} affiliations={app.state.affiliations} actions={app.actions} />

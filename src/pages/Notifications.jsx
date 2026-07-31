@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, Trash2 } from "lucide-react";
 import Card from "../components/common/Card.jsx";
@@ -27,6 +27,10 @@ export default function Notifications({ app }) {
   const navigate = useNavigate();
   const [notificationView, setNotificationView] = useState("unread");
   const [deletingNotificationId, setDeletingNotificationId] = useState("");
+  const [pendingInvitationKeys, setPendingInvitationKeys] = useState([]);
+  const [invitationActionErrors, setInvitationActionErrors] = useState({});
+  const [notificationDeleteError, setNotificationDeleteError] = useState(null);
+  const pendingInvitationKeysRef = useRef(new Set());
   const {
     selectedMatchId,
     setSelectedMatchId,
@@ -62,23 +66,62 @@ export default function Notifications({ app }) {
     invitation.targetUserId === app.currentUser.id &&
     invitation.status === "pending"
   ));
+  const runInvitationAction = async (key, action) => {
+    if (pendingInvitationKeysRef.current.has(key)) return { ok: false, error: "invitation_action_pending" };
+    pendingInvitationKeysRef.current.add(key);
+    setPendingInvitationKeys(Array.from(pendingInvitationKeysRef.current));
+    setInvitationActionErrors((current) => ({ ...current, [key]: "" }));
+    try {
+      const result = await action();
+      if (!result || result.ok === false) {
+        setInvitationActionErrors((current) => ({ ...current, [key]: "초대를 처리하지 못했습니다. 다시 시도해 주세요." }));
+      }
+      return result;
+    } catch {
+      setInvitationActionErrors((current) => ({ ...current, [key]: "초대를 처리하지 못했습니다. 다시 시도해 주세요." }));
+      return { ok: false, error: "invitation_action_failed" };
+    } finally {
+      pendingInvitationKeysRef.current.delete(key);
+      setPendingInvitationKeys(Array.from(pendingInvitationKeysRef.current));
+    }
+  };
   const acceptInvitation = async (postId, invitationId) => {
-    const result = await app.actions.acceptRecruitingInvitation(postId, invitationId);
+    const result = await runInvitationAction(
+      `recruiting:${invitationId}`,
+      () => app.actions.acceptRecruitingInvitation(postId, invitationId),
+    );
     if (result && result.ok !== false) {
       setSelectedMatchId("");
       setSelectedRecruitingPostId(postId);
     }
   };
+  const declineInvitation = (postId, invitationId) => runInvitationAction(
+    `recruiting:${invitationId}`,
+    () => app.actions.declineRecruitingInvitation(postId, invitationId),
+  );
   const acceptTeamInvite = async (invitation) => {
-    const result = await app.actions.acceptTeamInvitation(invitation.id);
+    const result = await runInvitationAction(
+      `team:${invitation.id}`,
+      () => app.actions.acceptTeamInvitation(invitation.id),
+    );
     if (!result || result.ok === false) return;
     await app.actions.loadDirectory?.({ kind: "self", force: true });
     navigate(`/app/teams/${invitation.teamId}`);
   };
+  const declineTeamInvite = (invitationId) => runInvitationAction(
+    `team:${invitationId}`,
+    () => app.actions.declineTeamInvitation(invitationId),
+  );
   const deletePastNotification = async (notificationId) => {
     setDeletingNotificationId(notificationId);
+    setNotificationDeleteError(null);
     try {
-      await app.actions.deleteNotification(notificationId);
+      const result = await app.actions.deleteNotification(notificationId);
+      if (!result || result.ok === false) {
+        setNotificationDeleteError({ id: notificationId, message: "알림을 삭제하지 못했습니다. 다시 시도해 주세요." });
+      }
+    } catch {
+      setNotificationDeleteError({ id: notificationId, message: "알림을 삭제하지 못했습니다. 다시 시도해 주세요." });
     } finally {
       setDeletingNotificationId("");
     }
@@ -107,15 +150,18 @@ export default function Notifications({ app }) {
           <div className="home-invitation-list">
             {pendingInvitations.map(({ post, invitation }) => {
               const senderName = getRecruitingInvitationSenderName(app.state, invitation);
+              const actionKey = `recruiting:${invitation.id}`;
+              const actionPending = pendingInvitationKeys.includes(actionKey);
               return (
                 <div key={`${post.id}-${invitation.id}`} className="home-invitation-row">
                   <span className="home-action-main">
                     <strong>{post.title}</strong>
                     <em>{getRoomScheduleLabel(post)} · {post.court} · {senderName}님이 초대</em>
+                    {invitationActionErrors[actionKey] ? <small role="status" className="form-warning">{invitationActionErrors[actionKey]}</small> : null}
                   </span>
                   <span className="home-invitation-actions">
-                    <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
-                    <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
+                    <Button size="sm" type="button" disabled={actionPending} onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
+                    <Button size="sm" type="button" variant="secondary" disabled={actionPending} onClick={() => declineInvitation(post.id, invitation.id)}>거절</Button>
                     <Button
                       as={Link}
                       variant="secondary"
@@ -148,15 +194,18 @@ export default function Notifications({ app }) {
             {pendingTeamInvitations.map((invitation) => {
               const team = app.state.teams.find((item) => item.id === invitation.teamId);
               const sender = app.state.users.find((user) => user.id === invitation.fromUserId);
+              const actionKey = `team:${invitation.id}`;
+              const actionPending = pendingInvitationKeys.includes(actionKey);
               return (
                 <div key={invitation.id} className="home-invitation-row">
                   <span className="home-action-main">
                     <strong>{team?.name ?? "팀 초대"}</strong>
                     <em>{sender?.name ?? "주장"} · 팀 가입 초대</em>
+                    {invitationActionErrors[actionKey] ? <small role="status" className="form-warning">{invitationActionErrors[actionKey]}</small> : null}
                   </span>
                   <span className="home-invitation-actions">
-                    <Button size="sm" type="button" onClick={() => acceptTeamInvite(invitation)}>수락</Button>
-                    <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineTeamInvitation(invitation.id)}>거절</Button>
+                    <Button size="sm" type="button" disabled={actionPending} onClick={() => acceptTeamInvite(invitation)}>수락</Button>
+                    <Button size="sm" type="button" variant="secondary" disabled={actionPending} onClick={() => declineTeamInvite(invitation.id)}>거절</Button>
                     <Button as={Link} variant="secondary" size="sm" to={`/app/teams/${invitation.teamId}`}>팀 보기</Button>
                   </span>
                 </div>
@@ -205,6 +254,7 @@ export default function Notifications({ app }) {
                 {formatNotificationTime(getNotificationDisplayAt(notification)) ? (
                   <time dateTime={getNotificationDisplayAt(notification)}>{formatNotificationTime(getNotificationDisplayAt(notification))}</time>
                 ) : null}
+                {notificationDeleteError?.id === notification.id ? <small role="status" className="form-warning">{notificationDeleteError.message}</small> : null}
               </span>
               <span className="notification-actions">
                 {notification.targetUnavailable ? (

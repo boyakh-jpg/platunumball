@@ -7,7 +7,7 @@ export function createCreateMatchActions(context) {
     isMmrInRecruitingRange, isPublicRoom, isSoloRecord, isTeamRoom, isTournamentRoom, myTeams, navigate,
     normalizeSoloRecordRosterInput, onRecruitingCreated, practiceMode, recordComposition, remakeDraft, remakeSourceId, remakeSourceMatchId,
     representativeTournamentTeam, selectCourt, selectedCourt, selectedTeamA, selectedTournamentCourts, setDraft, setOpponentTeamQuery,
-    setRefereeQuery, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
+    setRefereeQuery, setSelectedTournamentTeamProfiles, setSelectedTournamentRefereeProfiles, setSubmitFeedback, setSubmitting, sideCapacity, sortedTeams, submitDisabled,
     submitDisabledReason, submitting, update,
   } = context;
 
@@ -71,9 +71,13 @@ const selectTeamA = (teamAId) => {
     if (side === "A") selectTeamA(teamId);
     if (side === "B") selectTeamB(teamId);
   };
-  const toggleTournamentTeam = (teamId) => {
+  const toggleTournamentTeam = (teamOrId) => {
+    const teamId = typeof teamOrId === "string" ? teamOrId : teamOrId?.id;
+    if (!teamId) return;
     const teamIds = draft.tournamentTeamIds ?? [];
-    const team = app.state.teams.find((item) => item.id === teamId);
+    const team = typeof teamOrId === "string"
+      ? app.state.teams.find((item) => item.id === teamId)
+      : teamOrId;
     if (teamIds.includes(teamId) && teamId === representativeTournamentTeam?.id) {
       setSubmitFeedback("내 대표팀은 대회 참가팀에서 해제할 수 없습니다.");
       return;
@@ -84,6 +88,11 @@ const selectTeamA = (teamAId) => {
         setSubmitFeedback(`${team?.name ?? "선택 팀"}: ${eligibility.reason}`);
         return;
       }
+      setSelectedTournamentTeamProfiles((current) => (
+        current.some((item) => item.id === teamId) ? current : [...current, team]
+      ));
+    } else {
+      setSelectedTournamentTeamProfiles((current) => current.filter((item) => item.id !== teamId));
     }
     setDraft((current) => {
       const currentTeamIds = current.tournamentTeamIds ?? [];
@@ -131,7 +140,7 @@ const selectTeamA = (teamAId) => {
         disabled={!eligibility.allowed && !invited}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => {
-          if (isTournamentRoom) toggleTournamentTeam(team.id);
+          if (isTournamentRoom) toggleTournamentTeam(team);
           else assignTeam(team.id, "A");
         }}
       >

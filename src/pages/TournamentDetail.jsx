@@ -5,7 +5,7 @@ import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { getTeamCaptainMemberId as getTeamCaptainId } from "../data/teamMappers.js";
-import { getTournamentTeamStatus } from "../data/tournamentMappers.js";
+import { getTournamentTeamIds, getTournamentTeamStatus } from "../data/tournamentMappers.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, isEligibleReferee } from "../lib/matchUtils.js";
@@ -77,9 +77,10 @@ const location = useLocation();
   }
 
   const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
+  const tournamentTeamIds = getTournamentTeamIds(tournament);
   const representativeTeamId = app.state.settings?.representativeTeamId ?? app.currentUser.representativeTeamId ?? "";
   const representativeTeam = teamById[representativeTeamId] ?? null;
-  const teamRows = (tournament.teamIds ?? [])
+  const teamRows = tournamentTeamIds
     .map((teamId) => {
       const team = teamById[teamId];
       const captainId = getTeamCaptainId(team);
@@ -101,7 +102,7 @@ const location = useLocation();
     })
     .filter((row) => row.team);
   const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
-  const hasPendingTeamApprovals = (tournament.teamIds ?? [])
+  const hasPendingTeamApprovals = tournamentTeamIds
     .some((teamId) => getTournamentTeamStatus(tournament, teamId) !== "accepted");
   const governanceEnabled = isTournamentGovernanceEnabled(tournament);
   const requiredRefereeCount = getRequiredTournamentRefereeCount(getActiveTournamentTeamIds(tournament).length);
@@ -239,7 +240,7 @@ const location = useLocation();
     return "대회 승인·심판 작업을 완료하지 못했습니다.";
   };
   const runGovernanceAction = async (key, action, successMessage) => {
-    if (governanceAction) return;
+    if (governanceAction) return false;
     setGovernanceAction(key);
     setGovernanceFeedback("");
     try {
@@ -247,17 +248,22 @@ const location = useLocation();
       if (!result || result?.ok === false) throw new Error(result?.error ?? "tournament_governance_failed");
       await app.actions.loadTournament?.(tournament.id);
       setGovernanceFeedback(successMessage);
+      return true;
     } catch (error) {
       setGovernanceFeedback(formatGovernanceError(error.message));
+      return false;
     } finally {
       setGovernanceAction("");
     }
   };
-  const inviteTournamentReferee = (referee) => runGovernanceAction(
-    `invite:${referee.id}`,
-    () => app.actions.inviteTournamentReferee(tournament.id, referee.id),
-    `${referee.name} 심판에게 초대했습니다.`,
-  ).then(() => setRefereeQuery(""));
+  const inviteTournamentReferee = async (referee) => {
+    const invited = await runGovernanceAction(
+      `invite:${referee.id}`,
+      () => app.actions.inviteTournamentReferee(tournament.id, referee.id),
+      `${referee.name} 심판에게 초대했습니다.`,
+    );
+    if (invited) setRefereeQuery("");
+  };
   const saveMatchReferee = (event, match) => {
     event.preventDefault();
     const refereeId = String(new FormData(event.currentTarget).get("refereeId") ?? "");

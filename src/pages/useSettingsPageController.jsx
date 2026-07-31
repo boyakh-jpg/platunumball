@@ -41,6 +41,7 @@ const loadDirectory = app.actions.loadDirectory;
   const [homeGuideCardDraft, setHomeGuideCardDraft] = useState(homeGuideCardVisible);
   const [homeGuideCardSavePending, setHomeGuideCardSavePending] = useState(false);
   const [homeGuideCardSaveStatus, setHomeGuideCardSaveStatus] = useState("");
+  const [generalSettingsSavePending, setGeneralSettingsSavePending] = useState(false); const generalSettingsSavePendingRef = useRef(false);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState("");
   const [blockUserQuery, setBlockUserQuery] = useState("");
@@ -55,7 +56,8 @@ const loadDirectory = app.actions.loadDirectory;
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
   const {
     courtAddressQuery, setCourtAddressQuery, naverAddressResults, setNaverAddressResults,
-    courtLookupStatus, courtPinConfirmed, courtNearbyConfirmed, setCourtNearbyConfirmed,
+    courtLookupStatus, courtAddressSearchPending, courtPinPending, courtSubmitPending,
+    courtPinConfirmed, courtNearbyConfirmed, setCourtNearbyConfirmed,
     courtDraft, naverMapKeyReady, courtAddressSelected, courtDisplayName, courtHasMapPin,
     courtNearbyCandidates, courtRequiresUnit, courtNearbyReviewRequired, courtDuplicate,
     courtDuplicateMessage, courtSourceUrlInvalid, canOpenCourtRequestForm, canSubmitCourtRequest,
@@ -156,9 +158,9 @@ const loadDirectory = app.actions.loadDirectory;
         setDiscordLinkError("");
         const result = await app.actions.updateProfile({ discordConnection: discordOAuthResult.connection }, targetUserId);
         if (!active) return;
-        if (result?.ok === false) throw new Error(result.error || "discord_profile_save_failed");
+        if (!result || result.ok === false) throw new Error(result?.error || "discord_profile_save_failed");
         if (targetUserId !== app.currentUserId) app.actions.switchUser(targetUserId);
-        await app.actions.updateSettings({
+        const settingsResult = await app.actions.updateSettings({
           notificationChannels: {
             ...(app.state.settings?.notificationChannels ?? {}),
             discord: {
@@ -167,6 +169,7 @@ const loadDirectory = app.actions.loadDirectory;
             },
           },
         });
+        if (!settingsResult || settingsResult.ok === false) throw new Error(settingsResult?.error || "discord_settings_save_failed");
         if (active) setDiscordSaveStatus("연동됨");
       } catch (error) {
         if (!active) return;
@@ -270,14 +273,16 @@ const loadDirectory = app.actions.loadDirectory;
     void saveTheme(nextTheme);
   };
   const saveHomeGuideCardVisibility = async () => {
-    if (!homeGuideCardDirty || homeGuideCardSavePending) return;
+    if (!homeGuideCardDirty) return true;
+    if (homeGuideCardSavePending) return false;
     setHomeGuideCardSavePending(true);
     setHomeGuideCardSaveStatus("저장 중");
     try {
       const saved = await app.actions.updateSettings({ showHomeGuideCard: homeGuideCardDraft });
-      setHomeGuideCardSaveStatus(saved && saved.ok !== false ? "저장되었습니다." : "표시 설정을 저장하지 못했습니다.");
+      const ok = Boolean(saved && saved.ok !== false); setHomeGuideCardSaveStatus(ok ? "저장되었습니다." : "표시 설정을 저장하지 못했습니다.");
+      return ok;
     } catch {
-      setHomeGuideCardSaveStatus("표시 설정을 저장하지 못했습니다.");
+      setHomeGuideCardSaveStatus("표시 설정을 저장하지 못했습니다."); return false;
     } finally {
       setHomeGuideCardSavePending(false);
     }
@@ -286,9 +291,10 @@ const loadDirectory = app.actions.loadDirectory;
     setPrivacySaveStatus("저장 중");
     try {
       const saved = await app.actions.updatePrivacySettings(privacyDraft);
-      setPrivacySaveStatus(saved && saved.ok !== false ? "저장되었습니다." : "공개 범위를 저장하지 못했습니다.");
+      const ok = Boolean(saved && saved.ok !== false); setPrivacySaveStatus(ok ? "저장되었습니다." : "공개 범위를 저장하지 못했습니다.");
+      return ok;
     } catch {
-      setPrivacySaveStatus("공개 범위를 저장하지 못했습니다.");
+      setPrivacySaveStatus("공개 범위를 저장하지 못했습니다."); return false;
     }
   };
   const connectDiscord = async () => {
@@ -304,7 +310,8 @@ const loadDirectory = app.actions.loadDirectory;
     setDiscordSaveStatus("저장 중");
     try {
       if (discordDraft.unlink) {
-        await app.actions.updateProfile({ discordConnection: null });
+        const profileResult = await app.actions.updateProfile({ discordConnection: null });
+        if (!profileResult || profileResult.ok === false) { setDiscordSaveStatus("Discord 연동 해제를 저장하지 못했습니다."); return false; }
       }
       const saved = await app.actions.updateSettings({
         notificationChannels: {
@@ -318,16 +325,21 @@ const loadDirectory = app.actions.loadDirectory;
           },
         },
       });
-      setDiscordSaveStatus(saved && saved.ok !== false ? "저장되었습니다." : "Discord 알림 설정을 저장하지 못했습니다.");
+      const ok = Boolean(saved && saved.ok !== false); setDiscordSaveStatus(ok ? "저장되었습니다." : "Discord 알림 설정을 저장하지 못했습니다.");
+      return ok;
     } catch {
-      setDiscordSaveStatus("Discord 알림 설정을 저장하지 못했습니다.");
+      setDiscordSaveStatus("Discord 알림 설정을 저장하지 못했습니다."); return false;
     }
   };
   const saveGeneralSettings = async () => {
-    if (!generalSettingsDirty) return;
-    if (homeGuideCardDirty) await saveHomeGuideCardVisibility();
-    if (privacyDirty) await savePrivacy();
-    if (discordDirty) await saveDiscordSettings();
+    if (!generalSettingsDirty || generalSettingsSavePendingRef.current) return;
+    generalSettingsSavePendingRef.current = true;
+    setGeneralSettingsSavePending(true);
+    try {
+      if (homeGuideCardDirty && !(await saveHomeGuideCardVisibility())) return;
+      if (privacyDirty && !(await savePrivacy())) return;
+      if (discordDirty) await saveDiscordSettings();
+    } finally { generalSettingsSavePendingRef.current = false; setGeneralSettingsSavePending(false); }
   };
   const reportCourtRequest = (request) => {
     setReportReason("허위 구장 등록");
@@ -354,6 +366,7 @@ const loadDirectory = app.actions.loadDirectory;
     homeGuideCardDraft,
     setHomeGuideCardDraft,
     homeGuideCardSavePending,
+    generalSettingsSavePending,
     setHomeGuideCardSaveStatus,
     blockedUserIds,
     setBlockUserId,
@@ -387,6 +400,7 @@ const loadDirectory = app.actions.loadDirectory;
     naverAddressResults,
     setNaverAddressResults,
     courtLookupStatus,
+    courtAddressSearchPending, courtPinPending, courtSubmitPending,
     courtPinConfirmed,
     courtNearbyConfirmed,
     setCourtNearbyConfirmed,

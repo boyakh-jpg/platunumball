@@ -124,6 +124,15 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     if (!serverProfileBound) return Promise.resolve({ ok: true });
     if (!nextProfile) return Promise.resolve({ ok: false, error: "profile_not_ready" });
     return persistProfileServer(nextProfile).then(async (result) => {
+      if (!result || result.ok === false) {
+        rollbackServerMutation(rollbackState, "프로필 저장", {
+          profileId: safeTargetUserId,
+          error: result?.error ?? "profile_save_failed",
+          statusCode: result?.statusCode ?? null,
+          details: result?.details ?? null,
+        });
+        return result ?? { ok: false, error: "profile_save_failed" };
+      }
       if (result?.state) {
         const remoteState = normalizeServerState(result.state);
         setState((prev) => {

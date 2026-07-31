@@ -24,6 +24,7 @@ export default function SettingsPrimaryColumn({ controller }) {
     homeGuideCardDraft,
     setHomeGuideCardDraft,
     homeGuideCardSavePending,
+    generalSettingsSavePending,
     setHomeGuideCardSaveStatus,
     favoriteQuery,
     setFavoriteQuery,
@@ -224,7 +225,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                 <input
                   type="checkbox"
                   checked={Boolean(discordLinked && !discordDraft.unlink && discordDraft.enabled)}
-                  disabled={!discordLinked || discordDraft.unlink}
+                  disabled={generalSettingsSavePending || !discordLinked || discordDraft.unlink}
                   onChange={(event) => setDiscordDraft((current) => ({ ...current, enabled: event.target.checked }))}
                 />
                 Discord DM
@@ -234,7 +235,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={Boolean(discordDraft.events?.[option.id])}
-                    disabled={!discordLinked || discordDraft.unlink || !discordDraft.enabled}
+                    disabled={generalSettingsSavePending || !discordLinked || discordDraft.unlink || !discordDraft.enabled}
                     onChange={() => setDiscordDraft((current) => ({
                       ...current,
                       events: {
@@ -253,6 +254,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   type="button"
                   variant="secondary"
                   size="sm"
+                  disabled={generalSettingsSavePending}
                   onClick={() => setDiscordDraft((current) => ({
                     ...current,
                     unlink: !current.unlink,
@@ -262,7 +264,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <Unlink2 size={15} /> {discordDraft.unlink ? "해제 취소" : "연동 해제"}
                 </Button>
               ) : (
-                <Button type="button" variant="secondary" size="sm" onClick={connectDiscord}>
+                <Button type="button" variant="secondary" size="sm" disabled={generalSettingsSavePending} onClick={connectDiscord}>
                   Discord 연동
                 </Button>
               )}
@@ -292,7 +294,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={homeGuideCardDraft}
-                    disabled={homeGuideCardSavePending}
+                    disabled={generalSettingsSavePending || homeGuideCardSavePending}
                     onChange={(event) => {
                       setHomeGuideCardDraft(event.target.checked);
                       setHomeGuideCardSaveStatus("");
@@ -313,6 +315,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={privacyDraft.regionRanking !== false}
+                    disabled={generalSettingsSavePending}
                     onChange={(event) => setPrivacyDraft((current) => ({ ...current, regionRanking: event.target.checked }))}
                   />
                   지역 랭킹에 표시
@@ -321,6 +324,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={privacyDraft.teamHistory !== false}
+                    disabled={generalSettingsSavePending}
                     onChange={(event) => setPrivacyDraft((current) => ({ ...current, teamHistory: event.target.checked }))}
                   />
                   소속팀 히스토리 표시
@@ -329,6 +333,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <input
                     type="checkbox"
                     checked={privacyDraft.statSummary !== false}
+                    disabled={generalSettingsSavePending}
                     onChange={(event) => setPrivacyDraft((current) => ({ ...current, statSummary: event.target.checked }))}
                   />
                   개인 통계 공개
@@ -338,7 +343,9 @@ export default function SettingsPrimaryColumn({ controller }) {
 
             <div className="settings-save-row">
               <small>{generalSettingsStatus}</small>
-              <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty || homeGuideCardSavePending}>저장</Button>
+              <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty || generalSettingsSavePending || homeGuideCardSavePending}>
+                {generalSettingsSavePending ? "저장 중" : "저장"}
+              </Button>
             </div>
           </Card>
 

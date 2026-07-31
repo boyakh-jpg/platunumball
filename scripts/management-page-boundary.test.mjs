@@ -230,3 +230,42 @@ test("legacy match paths redirect to the shared match modal query", async () => 
   );
   assert.doesNotMatch(source, /const MatchRoom = lazy/);
 });
+
+test("계정·설정 변경은 선택 대상과 저장 요청을 안전하게 직렬화한다", async () => {
+  const [
+    adminController,
+    serverActions,
+    profileActions,
+    profilePage,
+    signupPage,
+    settingsController,
+    courtController,
+    notificationsPage,
+  ] = await Promise.all([
+    read("src/pages/useAdminPageController.jsx"),
+    read("src/hooks/appData/orchestrator/serverActions.js"),
+    read("src/hooks/appData/actions/profileTeamActions.js"),
+    read("src/pages/Profile.jsx"),
+    read("src/pages/Signup.jsx"),
+    read("src/pages/useSettingsPageController.jsx"),
+    read("src/pages/useSettingsCourtRequestController.js"),
+    read("src/pages/Notifications.jsx"),
+  ]);
+
+  assert.match(adminController, /const changeAppointmentUserQuery = \(value\) => \{[\s\S]{0,420}setAppointmentUserSnapshot\(null\);[\s\S]{0,100}userId: ""/u);
+  assert.match(adminController, /setAppointmentUserQuery: changeAppointmentUserQuery/u);
+  assert.match(serverActions, /pendingFavoriteMutationsRef\.current\.get\(mutationKey\)/u);
+  assert.match(serverActions, /pendingFavoriteMutationsRef\.current\.delete\(mutationKey\)/u);
+  assert.match(profileActions, /if \(!result \|\| result\.ok === false\) \{[\s\S]{0,160}rollbackServerMutation\(rollbackState, "프로필 저장"/u);
+  assert.match(profilePage, /profileSavePendingRef\.current/u);
+  assert.match(signupPage, /if \(!result \|\| result\.ok === false\)/u);
+  assert.match(settingsController, /generalSettingsSavePendingRef\.current/u);
+  assert.match(settingsController, /if \(!result \|\| result\.ok === false\) throw new Error\(result\?\.error \|\| "discord_profile_save_failed"\)/u);
+  assert.match(settingsController, /if \(!settingsResult \|\| settingsResult\.ok === false\)/u);
+  assert.match(settingsController, /if \(!profileResult \|\| profileResult\.ok === false\)/u);
+  assert.match(courtController, /courtAddressSearchRef\.current !== requestId/u);
+  assert.match(courtController, /courtPinPendingRef\.current/u);
+  assert.match(courtController, /courtSubmitPendingRef\.current/u);
+  assert.match(notificationsPage, /pendingInvitationKeysRef\.current\.has\(key\)/u);
+  assert.match(notificationsPage, /setNotificationDeleteError\(\{ id: notificationId/u);
+});

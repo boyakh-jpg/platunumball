@@ -166,6 +166,7 @@ return (
               items={eligibleRefereeCandidates}
               remoteSearchType="referee"
               remoteSearchContext={{ refereeThroughDate: tournament.endDate }}
+              mapRemoteItem={(referee) => (tournament.refereeIds ?? []).includes(referee.id) ? null : referee}
               title="초대 가능한 심판"
               emptyText="초대 가능한 심판 없음"
               floating

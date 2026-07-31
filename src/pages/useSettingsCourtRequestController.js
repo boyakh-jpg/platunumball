@@ -22,12 +22,18 @@ import {
 } from "./settingsPageModel.js";
 
 export default function useSettingsCourtRequestController({ app, currentTrustScore }) {
-  const [courtAddressQuery, setCourtAddressQuery] = useState("");
+  const [courtAddressQuery, setCourtAddressQueryState] = useState("");
   const [naverAddressResults, setNaverAddressResults] = useState([]);
   const [courtLookupStatus, setCourtLookupStatus] = useState("");
+  const [courtAddressSearchPending, setCourtAddressSearchPending] = useState(false);
+  const [courtPinPending, setCourtPinPending] = useState(false);
+  const [courtSubmitPending, setCourtSubmitPending] = useState(false);
   const [courtPinConfirmed, setCourtPinConfirmed] = useState(false);
   const [courtServerNearbyCandidates, setCourtServerNearbyCandidates] = useState([]);
   const [courtNearbyConfirmed, setCourtNearbyConfirmed] = useState(false);
+  const courtAddressSearchRef = useRef(0);
+  const courtPinPendingRef = useRef(false);
+  const courtSubmitPendingRef = useRef(false);
   const courtNearbySearchRef = useRef(0);
   const [courtDraft, setCourtDraft] = useState(() => ({
     ...DEFAULT_COURT_REQUEST,
@@ -35,6 +41,11 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   }));
 
   const naverMapKeyReady = Boolean(getNaverMapClientId());
+  const setCourtAddressQuery = (value) => {
+    courtAddressSearchRef.current += 1;
+    setCourtAddressSearchPending(false);
+    setCourtAddressQueryState(value);
+  };
   const courtAddressSelected = Boolean(String(courtDraft.addressText ?? "").trim());
   const courtDisplayName = getCourtCanonicalName(courtDraft, app.state);
   const courtHasMapPin = Boolean(String(courtDraft.lat ?? "").trim() && String(courtDraft.lng ?? "").trim());
@@ -116,20 +127,30 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       setCourtLookupStatus(`구장 등록요청은 신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상부터 가능합니다.`);
       return;
     }
+    const requestId = courtAddressSearchRef.current + 1;
+    courtAddressSearchRef.current = requestId;
+    setCourtAddressSearchPending(true);
     setCourtLookupStatus("네이버 주소 검색 중");
     try {
       const results = await searchNaverAddresses(courtAddressQuery);
+      if (courtAddressSearchRef.current !== requestId) return;
       setNaverAddressResults(results);
       setCourtLookupStatus(results.length ? `${results.length}개 주소를 찾았습니다. 사용할 주소를 선택해 주세요.` : "주소 검색 결과가 없습니다.");
     } catch {
+      if (courtAddressSearchRef.current !== requestId) return;
       setCourtLookupStatus("주소를 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      if (courtAddressSearchRef.current === requestId) setCourtAddressSearchPending(false);
     }
   };
   const pickCourtMapPin = async () => {
+    if (courtPinPendingRef.current) return;
     if (!naverMapKeyReady) {
       setCourtLookupStatus("지도 기능을 준비 중입니다. 잠시 후 다시 이용해 주세요.");
       return;
     }
+    courtPinPendingRef.current = true;
+    setCourtPinPending(true);
     setCourtLookupStatus("실제 구장 위치 선택 중");
     try {
       const pin = await openNaverMapPinPicker(courtDraft);
@@ -158,6 +179,9 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       await loadCourtNearbyCandidates(pin);
     } catch {
       setCourtLookupStatus("구장 위치를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      courtPinPendingRef.current = false;
+      setCourtPinPending(false);
     }
   };
   const selectNaverAddress = (result) => {
@@ -187,6 +211,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   };
   const submitCourtRequest = async (event) => {
     event.preventDefault();
+    if (courtSubmitPendingRef.current) return;
     if (!courtPinConfirmed) {
       setCourtLookupStatus("지도 핀으로 실제 구장 위치를 확정해 주세요.");
       return;
@@ -204,21 +229,30 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       return;
     }
     if (!canSubmitCourtRequest) return;
-    const requestId = await app.actions.submitCourtRequest(courtDraft);
-    if (!requestId) {
+    courtSubmitPendingRef.current = true;
+    setCourtSubmitPending(true);
+    try {
+      const requestId = await app.actions.submitCourtRequest(courtDraft);
+      if (!requestId) {
+        setCourtLookupStatus("구장 등록 요청을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
+        return;
+      }
+      setCourtAddressQuery("");
+      setNaverAddressResults([]);
+      setCourtPinConfirmed(false);
+      resetCourtNearbyLookup();
+      setCourtNearbyConfirmed(false);
+      setCourtDraft({
+        ...DEFAULT_COURT_REQUEST,
+        region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
+      });
+      setCourtLookupStatus("구장 등록요청 저장됨");
+    } catch {
       setCourtLookupStatus("구장 등록 요청을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.");
-      return;
+    } finally {
+      courtSubmitPendingRef.current = false;
+      setCourtSubmitPending(false);
     }
-    setCourtAddressQuery("");
-    setNaverAddressResults([]);
-    setCourtPinConfirmed(false);
-    resetCourtNearbyLookup();
-    setCourtNearbyConfirmed(false);
-    setCourtDraft({
-      ...DEFAULT_COURT_REQUEST,
-      region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
-    });
-    setCourtLookupStatus("구장 등록요청 저장됨");
   };
 
   return {
@@ -227,6 +261,9 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     naverAddressResults,
     setNaverAddressResults,
     courtLookupStatus,
+    courtAddressSearchPending,
+    courtPinPending,
+    courtSubmitPending,
     courtPinConfirmed,
     courtNearbyConfirmed,
     setCourtNearbyConfirmed,

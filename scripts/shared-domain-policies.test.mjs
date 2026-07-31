@@ -1069,8 +1069,9 @@ test("notification actions keep tournament links and failed team invites in plac
   const runtimeHydration = await readSource("src/hooks/appData/orchestrator/runtimeHydration.js");
   assert.match(notifications, /getNotificationHref\(notification\)/u);
   assert.match(notifications, /loadDirectory\?\.\(\{ kind: "self", force: true \}\)/u);
-  assert.match(notifications, /const result = await app\.actions\.acceptTeamInvitation\(invitation\.id\)/u);
+  assert.match(notifications, /const result = await runInvitationAction\([\s\S]{0,160}app\.actions\.acceptTeamInvitation\(invitation\.id\)/u);
   assert.match(notifications, /if \(!result \|\| result\.ok === false\) return/u);
+  assert.match(notifications, /pendingInvitationKeysRef\.current\.has\(key\)/u);
   assert.match(bootstrap, /pathname === "\/app\/notifications"[\s\S]{0,120}includeTeamInvitations: true/u);
   assert.match(bootstrap, /includeExtraProfiles: includeFavorites \|\| includeTeamInvitations/u);
   assert.match(runtimeHydration, /includeTeamInvitations: initialLoadOptions\.includeTeamInvitations === true/u);
@@ -1444,6 +1445,8 @@ test("season hub is player-centered while regional MMR stays separate", async ()
     readGlobalStyles(),
   ]);
   assert.match(seasonPage, /getPlayerSeasonRows\(app\.state\.users, app\.state\.matches, season, "전체"\)/);
+  assert.match(seasonPage, /const blockedUserIds = new Set\(app\.state\.settings\?\.blockedUserIds \?\? \[\]\)/);
+  assert.equal((seasonPage.match(/\.filter\(\(user\) => !blockedUserIds\.has\(user\.id\)\)/g) ?? []).length, 2);
   assert.match(seasonPage, /전국 개인 승격권/);
   assert.match(seasonPage, /이번 시즌 플레이/);
   assert.match(seasonPage, /state=\{\{ teamPreview: team \}\}/);
@@ -1470,8 +1473,8 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamDetailPage, /!team && app\.remoteReady !== false && Boolean\(loadDirectory\)/);
   assert.match(teamDetailPage, /const result = await app\.actions\.inviteTeamMember/);
   assert.match(teamDetailPage, /if \(!result \|\| result\.ok === false\)/);
-  assert.match(teamDetailPage, /if \(!canAddMember \|\| teamInvitePending\) return;/);
-  assert.match(teamDetailView, /disabled=\{!canAddMember \|\| teamInvitePending\}/);
+  assert.match(teamDetailPage, /if \(!canAddMember \|\| teamInvitePending \|\| teamManagementPendingRef\.current\) return;/);
+  assert.match(teamDetailView, /disabled=\{!canAddMember \|\| teamControlPending\}/);
   assert.match(teamDetailView, /result=\{record\.result\}/u);
   assert.doesNotMatch(teamDetailView, /getScoreOutcome/u);
   assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/u);
@@ -2083,6 +2086,26 @@ test("pickup player invitation keeps multi-select enabled", async () => {
   const recruitingPage = await readRecruitingPageSource();
   assert.doesNotMatch(recruitingPage, /toggleSingleInvitePlayer/);
   assert.ok((recruitingPage.match(/onTogglePlayer=\{toggleInvitePlayer\}/g) ?? []).length >= 2);
+});
+
+test("team management mutations are serialized and participant setup stays recoverable", async () => {
+  const [teamDetail, teamDetailView, participantSetup] = await Promise.all([
+    readSource("src/pages/TeamDetail.jsx"),
+    readSource("src/pages/TeamDetailView.jsx"),
+    readSource("src/components/recruiting/MatchRecordParticipantSetupPanel.jsx"),
+  ]);
+
+  assert.match(teamDetail, /teamManagementPendingRef\.current/);
+  assert.match(teamDetail, /const runTeamManagementMutation = async/);
+  assert.match(teamDetail, /finally \{\s*teamManagementPendingRef\.current = false;\s*setTeamManagementPending\(false\);/);
+  assert.match(teamDetailView, /const teamControlPending = teamInvitePending \|\| teamManagementPending/);
+  assert.doesNotMatch(teamDetailView, /app\.actions\.(cancelTeamInvitation|updateTeamMemberRole|removeTeamMember)/);
+  assert.match(participantSetup, /getTeamCaptainMemberId\(team\)/);
+  assert.match(participantSetup, /if \(team\.id === teamAId\) return "A사이드와 같은 팀"/);
+  assert.match(participantSetup, /if \(captainId === selectedTeamACaptainId\) return "A사이드와 같은 팀장"/);
+  assert.match(participantSetup, /disabled=\{Boolean\(ineligibilityReason\)\}/);
+  assert.doesNotMatch(participantSetup, /match\?\.updatedAt/);
+  assert.match(participantSetup, /catch \{\s*setFeedback\("참가자 구성을 저장하지 못했습니다\. 잠시 후 다시 시도해 주세요\."\);\s*\} finally \{\s*setSaving\(false\);/);
 });
 
 test("team discovery uses canonical regions and bounded deduplicated groups", () => {

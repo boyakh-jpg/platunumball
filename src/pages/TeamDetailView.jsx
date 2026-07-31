@@ -34,7 +34,8 @@ function getManagedRoleOptions(member, captainId) {
 }
 
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, captain, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamFull, teamId, teamInviteError, teamInvitePending, teamRecordArchive, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, uploadEmblem, userMap, winRate, wins } = controller;
+  const teamControlPending = teamInvitePending || teamManagementPending;
   return (
     <div className="page-stack team-detail-page rank-team-page">
       <EntityProfileHero
@@ -248,7 +249,7 @@ export default function TeamDetailView({ controller }) {
                       <small>{getUserHashtag(selectedInviteUser)} · {selectedCount}/{MAX_TEAM_MEMBERSHIPS}팀</small>
                     </PlayerHoverCard>
                   ) : null}
-                  <Button type="submit" disabled={!canAddMember || teamInvitePending}>{teamInvitePending ? "발송 중" : "초대 발송"}</Button>
+                  <Button type="submit" disabled={!canAddMember || teamControlPending}>{teamInvitePending ? "발송 중" : "초대 발송"}</Button>
                   {teamInviteError ? <span className="form-warning">{teamInviteError}</span> : null}
                   {teamFull ? <span className="form-warning">팀원은 최대 {MAX_TEAM_MEMBERS}명까지 등록할 수 있습니다.</span> : null}
                   {!teamFull && selectedInviteUser && !canAddMember ? <span className="form-warning">선수 팀 한도 {MAX_TEAM_MEMBERSHIPS}/{MAX_TEAM_MEMBERSHIPS}</span> : null}
@@ -269,7 +270,7 @@ export default function TeamDetailView({ controller }) {
                             </span>
                           </PlayerHoverCard>
                           <span className="member-control-state">초대 대기</span>
-                          <Button type="button" size="sm" variant="secondary" className="danger-button" onClick={() => app.actions.cancelTeamInvitation(invitation.id)}>취소</Button>
+                          <Button type="button" size="sm" variant="secondary" className="danger-button" disabled={teamControlPending} onClick={() => { void cancelPendingTeamInvitation(invitation.id); }}>취소</Button>
                         </div>
                       );
                     })}
@@ -287,20 +288,21 @@ export default function TeamDetailView({ controller }) {
                           <ProfileEmblem user={user} className="small" />
                           <strong>{user.name}</strong>
                         </PlayerHoverCard>
-                        <select value={normalizeTeamRole(member.role)} disabled={isCaptainMember} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
+                        <select value={normalizeTeamRole(member.role)} disabled={isCaptainMember || teamControlPending} onChange={(event) => { void changeTeamMemberRole(member.userId, event.target.value); }}>
                           {roleOptions.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                         </select>
-                        <button type="button" disabled={isCaptainMember || team.members.length <= 1} onClick={() => app.actions.removeTeamMember(team.id, member.userId)}>제외</button>
+                        <button type="button" disabled={isCaptainMember || team.members.length <= 1 || teamControlPending} onClick={() => { void excludeTeamMember(member.userId); }}>제외</button>
                       </div>
                     );
                   })}
                 </div>
+                {teamManagementError ? <span className="form-warning">{teamManagementError}</span> : null}
                 <div className="team-danger-zone">
                   <div>
                     <strong>팀 삭제</strong>
                     <span>팀 프로필과 로스터를 삭제합니다. 기존 경기 기록은 유지됩니다.</span>
                   </div>
-                  <Button type="button" variant="secondary" className="danger-button" onClick={deleteTeam}>
+                  <Button type="button" variant="secondary" className="danger-button" disabled={teamControlPending} onClick={deleteTeam}>
                     <Trash2 size={16} />
                     {deleteArmed ? "한 번 더 눌러 삭제" : "팀 삭제"}
                   </Button>

@@ -29,10 +29,13 @@ export default function Season({ app }) {
   const season = getCurrentSeason(app.state);
   const region = app.currentUser.region;
   const progress = getSeasonProgress(season);
+  const blockedUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   const nationalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체")
+    .filter((user) => !blockedUserIds.has(user.id))
     .filter((user) => isPlacementComplete(user.ratings));
   const nationalTeamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, "전체");
   const regionalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, region)
+    .filter((user) => !blockedUserIds.has(user.id))
     .filter((user) => isPlacementComplete(user.ratings))
     .filter((user) => user.id === app.currentUser.id || user.privacy?.regionRanking !== false);
   const myTeamIds = app.state.teams

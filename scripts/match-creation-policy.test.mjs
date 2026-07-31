@@ -1245,6 +1245,22 @@ test("원격 심판 검색에서 선택한 프로필은 일반 경기 후보에 
   assert.match(source, /mapRemoteItem=\{\(user\) => activePlayerIds\.has\(user\.id\) \? null : user\}/);
 });
 
+test("대회 원격 팀 검색 선택은 로컬 directory 밖에서도 snapshot으로 유지한다", () => {
+  const source = readPageSourceGroup(CREATE_MATCH_PAGE_SOURCE_PATHS);
+  const validationEffectsSource = fs.readFileSync(
+    path.join(root, "src/components/match/useCreateMatchValidationEffects.js"),
+    "utf8",
+  );
+
+  assert.match(source, /const \[selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles\] = useState\(\[\]\)/);
+  assert.match(source, /\[\.\.\.selectedTournamentTeamProfiles, \.\.\.app\.state\.teams\]\.map\(\(team\) => \[team\.id, team\]\)/);
+  assert.match(source, /const toggleTournamentTeam = \(teamOrId\) => \{/);
+  assert.match(source, /setSelectedTournamentTeamProfiles\(\(current\) => \(/);
+  assert.match(source, /if \(isTournamentRoom\) toggleTournamentTeam\(team\)/);
+  assert.match(validationEffectsSource, /\[\.\.\.app\.state\.teams, \.\.\.selectedTournamentTeamProfiles\]\.map\(\(team\) => team\.id\)/);
+  assert.match(source, /teamIds: draft\.tournamentTeamIds/);
+});
+
 test("알파 테스트 심판은 운영 신뢰도와 무관하게 심판 검색 자격을 유지한다", () => {
   assert.equal(isEligibleReferee({
     id: "test-referee",

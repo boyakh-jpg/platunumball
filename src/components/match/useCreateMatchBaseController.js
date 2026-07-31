@@ -116,6 +116,7 @@ const navigate = useNavigate();
   const [courtMapOpen, setCourtMapOpen] = useState(false);
   const [courtDetailCourtId, setCourtDetailCourtId] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
+  const [selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles] = useState([]);
   const [selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles] = useState([]);
   const [soloTeamAUserQuery, setSoloTeamAUserQuery] = useState("");
   const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
@@ -401,10 +402,12 @@ const navigate = useNavigate();
   const opponentLeaderId = opponentInviteTargetIds.includes(draft.opponentLeaderId)
     ? draft.opponentLeaderId
     : opponentInviteTargetIds[0] ?? "";
-  const tournamentTeams = useMemo(
-    () => (draft.tournamentTeamIds ?? []).map((teamId) => app.state.teams.find((team) => team.id === teamId)).filter(Boolean),
-    [app.state.teams, draft.tournamentTeamIds],
-  );
+  const tournamentTeams = useMemo(() => {
+    const teamsById = new Map(
+      [...selectedTournamentTeamProfiles, ...app.state.teams].map((team) => [team.id, team]),
+    );
+    return (draft.tournamentTeamIds ?? []).map((teamId) => teamsById.get(teamId)).filter(Boolean);
+  }, [app.state.teams, draft.tournamentTeamIds, selectedTournamentTeamProfiles]);
   const getTournamentTeamEligibility = (team) => {
     const eligibility = getTeamEligibility(team, team?.mmr);
     const isMyTeam = myTeams.some((item) => item.id === team?.id);
@@ -452,7 +455,7 @@ const navigate = useNavigate();
     defaultTeamB, defaultTournamentTeamB, defaultTeamBPlayerIds, defaultMmrLimitMode, directoryCourts, discoveredCourts, setDiscoveredCourts,
     courtMapDirectoryStatus, setCourtMapDirectoryStatus, registeredCourts, defaultCourt, teamQuery, setTeamQuery, opponentTeamQuery,
     setOpponentTeamQuery, courtQuery, setCourtQuery, courtMapOpen, setCourtMapOpen, courtDetailCourtId, setCourtDetailCourtId,
-    refereeQuery, setRefereeQuery, selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles, soloTeamAUserQuery, setSoloTeamAUserQuery, soloTeamBUserQuery,
+    refereeQuery, setRefereeQuery, selectedTournamentTeamProfiles, setSelectedTournamentTeamProfiles, selectedTournamentRefereeProfiles, setSelectedTournamentRefereeProfiles, soloTeamAUserQuery, setSoloTeamAUserQuery, soloTeamBUserQuery,
     setSoloTeamBUserQuery, teamRegion, setTeamRegion, courtRegion, setCourtRegion, teamSelectableRegions, courtMapRegion,
     defaultAgeRestriction, favoriteTeamIds, favoriteRefereeIds, isFavoriteTeam, isFavoriteCourt, defaultSchedule, draft,
     setDraft, submitting, setSubmitting, submitFeedback, setSubmitFeedback, wizardStep, setWizardStep,

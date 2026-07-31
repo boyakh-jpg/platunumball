@@ -40,6 +40,9 @@ export default function SettingsSideColumn({ controller }) {
     naverAddressResults,
     setNaverAddressResults,
     courtLookupStatus,
+    courtAddressSearchPending,
+    courtPinPending,
+    courtSubmitPending,
     courtPinConfirmed,
     courtNearbyConfirmed,
     setCourtNearbyConfirmed,
@@ -170,9 +173,11 @@ export default function SettingsSideColumn({ controller }) {
                     />
                   </label>
                   <div className="settings-address-actions">
-                    <Button type="button" variant="secondary" onClick={searchCourtAddress}>근처 주소 찾기</Button>
-                    <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected || !naverMapKeyReady}>
-                      실제 위치 확정
+                    <Button type="button" variant="secondary" onClick={searchCourtAddress} disabled={courtAddressSearchPending || !courtAddressQuery.trim()}>
+                      {courtAddressSearchPending ? "주소 찾는 중" : "근처 주소 찾기"}
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={courtPinPending || courtSubmitPending || !courtAddressSelected || !naverMapKeyReady}>
+                      {courtPinPending ? "위치 확인 중" : "실제 위치 확정"}
                     </Button>
                   </div>
                   {naverAddressResults.length ? (
@@ -366,8 +371,8 @@ export default function SettingsSideColumn({ controller }) {
                   찾아가는 메모
                   <textarea value={courtDraft.locationNote} placeholder="예: 나들목 지나 오른쪽 두 번째 골대" onChange={(event) => updateCourtDraft({ locationNote: event.target.value })} />
                 </label>
-                <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected || !courtHasMapPin || !courtPinConfirmed}>
-                  <Send size={16} /> 등록요청
+                <Button type="submit" variant="secondary" disabled={courtSubmitPending || courtPinPending || !canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected || !courtHasMapPin || !courtPinConfirmed}>
+                  <Send size={16} /> {courtSubmitPending ? "저장 중" : "등록요청"}
                 </Button>
               </form>
             ) : null}
