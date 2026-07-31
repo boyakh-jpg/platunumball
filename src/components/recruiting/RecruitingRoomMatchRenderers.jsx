@@ -84,7 +84,10 @@ const renderSourceMatchRecordBoard = () => {
         const renderRoomReserveLine = (sideName) => (
           <ReserveLine
             sideName={sideName}
-            candidates={lobby.sides[sideName].reserveCandidates}
+            candidates={[
+              ...lobby.sides[sideName].fillSlots,
+              ...lobby.sides[sideName].reserveCandidates,
+            ]}
             playingIds={playingIds}
             {...getRecruitingRoomRosterProps(context, sideName)}
             capacity={benchCapacity}

@@ -233,9 +233,9 @@ export function RecruitingRoomPrimarySection({ context }) {
                   <RecruitingRoomVersusSide context={context} sideName="teamA" meta={teamAMeta} />
 
                   <div className="arena-lobby-score-core">
-                    <strong>{lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</strong>
+                    <strong>{lobby.sides.teamA.filled}/{lobby.sides.teamA.capacity}</strong>
                     <i>VS</i>
-                    <strong>{lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</strong>
+                    <strong>{lobby.sides.teamB.filled}/{lobby.sides.teamB.capacity}</strong>
                     <span>{roomReadyLabel}</span>
                   </div>
 

@@ -941,3 +941,15 @@ test("경기 만들기 구장 선택은 지역 필터 값을 시도·시군구 �
   assert.match(source, /inferRegionSelection\(\[court\.sido, court\.sigungu, court\.region\]/);
   assert.doesNotMatch(source, /setCourtRegion\(court\.region\)/);
 });
+
+test("방 모달은 후보 자동충원 예상치를 출전 슬롯으로 표시하지 않는다", async () => {
+  const [rosterSource, rendererSource, primarySource] = await Promise.all([
+    readFile(new URL("../src/components/recruiting/RecruitingRoomRosterPanels.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomMatchRenderers.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomPrimarySection.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(rosterSource, /side\.capacity - side\.filled/);
+  assert.doesNotMatch(rosterSource, /side\.fillSlots\.map/);
+  assert.match(rendererSource, /\.\.\.lobby\.sides\[sideName\]\.fillSlots,[\s\S]*\.\.\.lobby\.sides\[sideName\]\.reserveCandidates/);
+  assert.doesNotMatch(primarySource, /lobby\.sides\.team[AB]\.projectedFilled/);
+});

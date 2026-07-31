@@ -33,13 +33,11 @@ import {
   getVisualPartyKey,
   groupPartySlots,
   PlayerRoomSlot,
-  FillSlot,
 } from "./RecruitingRoomCore.jsx";
 
 export function SideRoster({
   sideName,
   side,
-  lobby,
   userById,
   teams,
   hostPlayerId = "",
@@ -69,7 +67,7 @@ export function SideRoster({
     });
   });
   const activeSlotGroups = groupPartySlots(activeSlots);
-  const openSlots = Math.max(0, side.capacity - side.projectedFilled);
+  const openSlots = Math.max(0, side.capacity - side.filled);
   const slotTrackCount = Math.max(1, Number(side.capacity) || activeSlots.length || 1);
   const displayedSideLeaderId = (
     activeSlots.some(({ playerId }) => playerId === hostPlayerId)
@@ -101,7 +99,7 @@ export function SideRoster({
       <header>
         <div>
           <span>{SIDE_LABELS[sideName]}</span>
-          <strong>{side.projectedFilled}/{side.capacity}</strong>
+          <strong>{side.filled}/{side.capacity}</strong>
         </div>
       </header>
       <div className="arena-room-slot-row" style={{ "--slot-count": slotTrackCount }}>
@@ -115,23 +113,6 @@ export function SideRoster({
               {group.slots.map(renderActiveSlot)}
             </div>
           ) : renderActiveSlot(group.slots[0])
-        ))}
-        {side.fillSlots.map((candidate) => (
-          <FillSlot
-            key={`${sideName}-fill-${candidate.playerId}`}
-            candidate={candidate}
-            lobby={lobby}
-            userById={userById}
-            teams={teams}
-            hostPlayerId={hostPlayerId}
-            currentUserId={currentUserId}
-            showCaptainBadge={showCaptainBadge}
-            roomState={roomState}
-            sideLeaderId={displayedSideLeaderId}
-            slotPositions={slotPositions}
-            canManageEntry={canManageEntry}
-            onSelfAction={(event) => onSelfSlotAction?.(sideName, false, candidate.playerId, candidate.entryId, event)}
-          />
         ))}
         {Array.from({ length: openSlots }).map((_item, index) => {
           const slotKey = `${sideName}-active-${index}`;
