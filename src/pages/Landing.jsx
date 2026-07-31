@@ -8,6 +8,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -25,7 +26,18 @@ function getSideName(match = {}, sideName) {
   return match?.[sideName]?.name || MATCH_SIDE_FALLBACK_NAMES[sideName];
 }
 
+function normalizeLandingStats(value = {}) {
+  const stats = Object.fromEntries(
+    ["openRecruiting", "completedMatches", "activeTeams", "players"]
+      .map((key) => [key, Number(value?.[key])]),
+  );
+  return Object.values(stats).every((count) => Number.isSafeInteger(count) && count >= 0)
+    ? stats
+    : null;
+}
+
 export default function Landing({ state }) {
+  const [publicStats, setPublicStats] = useState(null);
   const users = state?.users ?? [];
   const matches = state?.matches ?? [];
   const teams = state?.teams ?? [];
@@ -42,6 +54,29 @@ export default function Landing({ state }) {
   const featuredTeam = [...teams].sort((a, b) => (b.mmr ?? 0) - (a.mmr ?? 0))[0];
   const topMmr = Number(topUser?.ratings?.integrated ?? 0);
   const topTier = topUser ? getTierDivision(topMmr) : "시즌 랭킹 준비 중";
+
+  const landingStats = publicStats ?? {
+    openRecruiting: openRecruiting.length,
+    completedMatches: matches.length,
+    activeTeams: teams.length,
+    players: users.length,
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/landing/stats", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        const nextStats = normalizeLandingStats(payload?.stats);
+        if (nextStats) setPublicStats(nextStats);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   return (
     <main className="ui-design-host ui-design-public-main" data-design="editorial">
@@ -72,9 +107,9 @@ export default function Landing({ state }) {
               </div>
             </div>
             <div className="ui-design-stat-strip ui-design-hero__stats" aria-label={`${BRAND_NAME} 활동 요약`}>
-              <span><b>{openRecruiting.length}</b>열린 매칭</span>
-              <span><b>{matches.length}</b>경기 기록</span>
-              <span><b>{teams.length}</b>활동 팀</span>
+              <span><b>{landingStats.openRecruiting}</b>열린 매칭</span>
+              <span><b>{landingStats.completedMatches}</b>경기 기록</span>
+              <span><b>{landingStats.activeTeams}</b>활동 팀</span>
             </div>
           </section>
 
@@ -160,9 +195,9 @@ export default function Landing({ state }) {
               </div>
             </div>
             <dl className="ui-design-stat-strip ui-design-spotlight__stats">
-              <div><dt>경기</dt><dd>{matches.length}</dd></div>
-              <div><dt>팀</dt><dd>{teams.length}</dd></div>
-              <div><dt>선수</dt><dd>{users.length}</dd></div>
+              <div><dt>경기</dt><dd>{landingStats.completedMatches}</dd></div>
+              <div><dt>팀</dt><dd>{landingStats.activeTeams}</dd></div>
+              <div><dt>선수</dt><dd>{landingStats.players}</dd></div>
             </dl>
           </section>
 

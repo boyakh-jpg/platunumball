@@ -1092,6 +1092,13 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 11. 로컬 dev에서 API/env 미구성으로 만들어진 backend test shell profile은 가입정보 guard로 경기/매칭 메뉴 진입을 막지 않는다. server profile API 실패 시 direct Supabase fallback으로 가지 않고 shell state로 종료한다. 실제 Google profile에는 적용하지 않는다.
 12. `/api/profile/upsert`는 `handleLockedAt`, `birthYearLockedAt`, `nameUpdatedAt` 클라이언트 값을 신뢰하지 않고 서버 현재 시각으로만 기록한다.
 13. `onboardingComplete=true`가 저장된 프로필은 이후 요청으로 `false`로 되돌릴 수 없다. 잠긴 해시태그·출생연도와 이름 변경 cooldown도 기존 DB 값을 기준으로 판정한다.
+14. persistent auth의 가입정보 판정은 원격 hydration 완료뿐 아니라 hydrated 프로필의 `authUserId`가 현재 Supabase 사용자 ID와 일치한 뒤에만 실행한다. 계정 전환 중 이전 프로필로 `/app/signup`을 열면 안 된다.
+
+## 2026-07-31 공개 랜딩 통계 원칙
+
+1. 비로그인 랜딩 숫자는 클라이언트 bootstrap 배열 길이가 아니라 공개 집계 전용 API의 운영 DB exact count를 사용한다.
+2. 공개 집계는 공개 열린 모집, 공개 확정 경기, 미삭제 팀, 공개 프로필 수만 반환하며 row나 개인 정보는 반환하지 않는다.
+3. 집계 요청 실패 시 랜딩은 렌더를 중단하지 않고 현재 클라이언트 상태의 안전한 숫자를 표시한다.
 
 ## 데이터 축
 

@@ -9,7 +9,7 @@ import { useAuthSession } from "./hooks/useAuthSession.js";
 import { useAppData } from "./hooks/useAppData.js";
 import useImageInteractionGuard from "./hooks/useImageInteractionGuard.js";
 import { BRAND_NAME } from "./lib/brand.js";
-import { getSafeAppRedirect, shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
+import { getSafeAppRedirect, isProfileGateReady, shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
 
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const AdminCourtMapPopup = lazy(() => import("./pages/AdminCourtMapPopup.jsx"));
@@ -115,7 +115,12 @@ export default function App() {
   const app = useAppData(auth.user ?? null, location);
   useImageInteractionGuard();
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
-  const profileGateReady = Boolean(!auth.user || app.remoteReady);
+  const profileGateReady = isProfileGateReady({
+    authUserId: auth.user?.id,
+    profileAuthUserId: app.currentUser?.authUserId,
+    remoteReady: app.remoteReady,
+    serverProfileBound: app.serverProfileBound,
+  });
   const ageRecheckRequired = Boolean(
     auth.user &&
       profileGateReady &&

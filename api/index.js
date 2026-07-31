@@ -23,6 +23,7 @@ import discordRoomChat from "../server/api/discord/room-chat.js";
 import discordSyncDeliveries from "../server/api/discord/sync-deliveries.js";
 import favoriteSync from "../server/api/favorites/sync.js";
 import homeLoad from "../server/api/home/load.js";
+import landingStats from "../server/api/landing/stats.js";
 import matchAttendanceQr from "../server/api/matches/attendance-qr.js";
 import matchDetail from "../server/api/matches/detail.js";
 import matchClock from "../server/api/matches/clock.js";
@@ -84,6 +85,7 @@ export const API_ROUTES = new Map([
   ["/discord/sync-deliveries", route(discordSyncDeliveries, ["POST"], "user")],
   ["/favorites/sync", route(favoriteSync, ["POST"], "user")],
   ["/home/load", route(homeLoad, ["POST"], "user")],
+  ["/landing/stats", route(landingStats, ["GET"], "publicRead")],
   ["/matches/attendance-qr", route(matchAttendanceQr, ["POST"], "user")],
   ["/matches/detail", route(matchDetail, ["POST"], "user")],
   ["/matches/clock", route(matchClock, ["POST"], "user")],

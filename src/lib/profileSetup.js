@@ -54,6 +54,12 @@ export function shouldSetupProfile(user = {}) {
   return Boolean(!user?.onboardingComplete || !user?.handleLockedAt || !hasLockedBirthYear);
 }
 
+export function isProfileGateReady({ authUserId = "", profileAuthUserId = "", remoteReady = false, serverProfileBound = false } = {}) {
+  if (!authUserId) return true;
+  if (!remoteReady) return false;
+  return !serverProfileBound || profileAuthUserId === authUserId;
+}
+
 export function getNextNameChangeDate(user = {}) {
   if (!user?.nameUpdatedAt) return null;
   const date = new Date(user.nameUpdatedAt);

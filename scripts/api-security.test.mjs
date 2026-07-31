@@ -125,7 +125,7 @@ test("공용 method guard는 route별 허용 method와 405 응답을 보존한�
 });
 
 test("API routes use deny-by-default method and credential policies", async () => {
-  const validAuthModes = new Set(["user", "admin", "internal", "signedWebhook", "oauthCallback", "alphaTest"]);
+  const validAuthModes = new Set(["user", "admin", "internal", "signedWebhook", "oauthCallback", "alphaTest", "publicRead"]);
   assert.ok(API_ROUTES.size > 40);
   for (const [path, route] of API_ROUTES) {
     assert.match(path, /^\/[a-z0-9/-]+$/);
@@ -168,6 +168,19 @@ test("API routes use deny-by-default method and credential policies", async () =
       : source;
   }));
   internalSources.forEach((source) => assert.match(source, /bearerTokenMatches\(request,/));
+});
+
+test("public landing stats exposes aggregate counts only", async () => {
+  const route = API_ROUTES.get("/landing/stats");
+  const source = await readSource("server/api/landing/stats.js");
+
+  assert.equal(route?.auth, "publicRead");
+  assert.deepEqual(route?.methods, ["GET"]);
+  assert.match(source, /select\("id", \{ count: "exact", head: true \}\)/);
+  assert.match(source, /\.eq\("status", "open"\)[\s\S]*?\.eq\("visibility", "public"\)/);
+  assert.match(source, /\.eq\("status", "confirmed"\)[\s\S]*?\.eq\("visibility", "public"\)/);
+  assert.match(source, /\.is\("deleted_at", null\)/);
+  assert.doesNotMatch(source, /getAuthenticatedContext|select\("\*"\)/);
 });
 
 test("Discord delivery cron uses Vault and stays separate from system maintenance", async () => {

@@ -6,9 +6,18 @@ import { createRoomModalOpeners } from "../src/lib/roomModalNavigation.js";
 import {
   requestMatchDetailOnce,
 } from "../src/pages/matchesPageModel.js";
+import { isProfileGateReady } from "../src/lib/profileSetup.js";
 
 const root = path.resolve(new URL("../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 const read = (relativePath) => readFile(path.join(root, relativePath), "utf8");
+
+test("가입정보 guard는 현재 인증 사용자의 프로필 hydration 뒤에만 판정한다", () => {
+  assert.equal(isProfileGateReady({}), true);
+  assert.equal(isProfileGateReady({ authUserId: "auth-1", remoteReady: false, serverProfileBound: true }), false);
+  assert.equal(isProfileGateReady({ authUserId: "auth-1", profileAuthUserId: "auth-2", remoteReady: true, serverProfileBound: true }), false);
+  assert.equal(isProfileGateReady({ authUserId: "auth-1", profileAuthUserId: "auth-1", remoteReady: true, serverProfileBound: true }), true);
+  assert.equal(isProfileGateReady({ authUserId: "test-rankball-001", remoteReady: true, serverProfileBound: false }), true);
+});
 
 const managementModules = [
   "src/pages/Settings.jsx",
