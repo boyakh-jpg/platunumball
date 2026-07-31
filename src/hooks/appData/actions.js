@@ -323,7 +323,8 @@ export function createAppActions({
       syncedNotifications = syncedTeam ? getNewTeamNotifications(prev, next) : [];
       return next;
     });
-    if (syncedTeam) rollbackIfServerFailed(syncTeamServer(syncedTeam, syncedNotifications), rollbackState, "팀 변경", { teamId });
+    if (syncedTeam) return rollbackIfServerFailed(syncTeamServer(syncedTeam, syncedNotifications), rollbackState, "팀 변경", { teamId });
+    return true;
   };
   const applyTeamInvitationMutation = async (label, reducer, action, payloadFactory) => {
     const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", label);

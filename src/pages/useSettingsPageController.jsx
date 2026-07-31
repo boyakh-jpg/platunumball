@@ -45,6 +45,7 @@ const loadDirectory = app.actions.loadDirectory;
   const [blockUserId, setBlockUserId] = useState("");
   const [blockUserQuery, setBlockUserQuery] = useState("");
   const [blockSavePending, setBlockSavePending] = useState(false);
+  const [blockSaveStatus, setBlockSaveStatus] = useState("");
   const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const courtRequests = app.state.settings?.courtRequests ?? [];
@@ -187,43 +188,22 @@ const loadDirectory = app.actions.loadDirectory;
   const selectedBlockUserId = blockUserId && blockUserId !== app.currentUserId && !blockedUserIds.includes(blockUserId)
     ? blockUserId
     : "";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   const submitBlock = async (event) => {
     event.preventDefault();
     if (!selectedBlockUserId || blockSavePending) return;
     setBlockSavePending(true);
+    setBlockSaveStatus("");
     try {
-      await app.actions.blockUser(selectedBlockUserId);
+      const result = await app.actions.blockUser(selectedBlockUserId);
+      if (!result || result.ok === false) {
+        setBlockSaveStatus("차단을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
       setBlockUserId("");
       setBlockUserQuery("");
+      setBlockSaveStatus("차단했습니다.");
+    } catch {
+      setBlockSaveStatus("차단을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setBlockSavePending(false);
     }
@@ -254,8 +234,14 @@ const loadDirectory = app.actions.loadDirectory;
   const releaseBlock = async (userId) => {
     if (!userId || blockSavePending) return;
     setBlockSavePending(true);
+    setBlockSaveStatus("");
     try {
-      await app.actions.unblockUser(userId);
+      const result = await app.actions.unblockUser(userId);
+      setBlockSaveStatus(!result || result.ok === false
+        ? "차단 해제를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        : "차단을 해제했습니다.");
+    } catch {
+      setBlockSaveStatus("차단 해제를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setBlockSavePending(false);
     }
@@ -374,6 +360,7 @@ const loadDirectory = app.actions.loadDirectory;
     blockUserQuery,
     setBlockUserQuery,
     blockSavePending,
+    blockSaveStatus,
     setReportMatchId,
     reportReason,
     setReportReason,

@@ -83,9 +83,10 @@ export default function useSettingsRefereeController({ app, currentTrustScore })
     }
     setRefereeExamResult(result);
   };
-  const submitRefereeRequest = (event) => {
+  const submitRefereeRequest = async (event) => {
     event.preventDefault();
-    app.actions.submitRefereeRequest({
+    setRefereeExamNotice("심판 등록요청 저장 중입니다.");
+    const result = await app.actions.submitRefereeRequest({
       ...refereeDraft,
       examVersion: REFEREE_EXAM_VERSION,
       examScore: refereeExamResult?.score ?? 0,
@@ -93,12 +94,17 @@ export default function useSettingsRefereeController({ app, currentTrustScore })
       examPassed: refereeDraft.qualification === "official_license" ? false : refereeExamPassed,
       examAttemptId: currentRefereeExamAttemptId,
     });
+    if (!result || result.ok === false) {
+      setRefereeExamNotice("심판 등록요청을 저장하지 못했습니다. 입력 내용을 확인해 주세요.");
+      return;
+    }
     setRefereeDraft(DEFAULT_REFEREE_REQUEST);
     setCurrentRefereeExamAttemptId("");
     setRefereeExamQuestions([]);
     setRefereeExamAnswers({});
     setRefereeExamResult(null);
     setRefereeExamOpen(false);
+    setRefereeExamNotice("심판 등록요청이 접수됐습니다.");
   };
 
   return {

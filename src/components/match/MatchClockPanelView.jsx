@@ -41,11 +41,13 @@ export default function MatchClockPanelView({ context }) {
   }
   const expectedPeriodCount = Number(liveClock.expectedPeriodCount || 1);
   const singlePeriod = expectedPeriodCount === 1;
-  const periodEndLabel = singlePeriod
-    ? "정규 구간 종료"
-    : expectedPeriodCount === 2
-      ? "하프 종료"
-      : "쿼터 종료";
+  const periodEndLabel = Number(liveClock.overtimeCount || 0) > 0
+    ? `연장 ${liveClock.overtimeCount} 종료`
+    : singlePeriod
+      ? "정규 구간 종료"
+      : expectedPeriodCount === 2
+        ? "하프 종료"
+        : "쿼터 종료";
   const nextPeriodLabel = expectedPeriodCount === 2 ? "후반 시작" : "다음 쿼터 시작";
 
   const clockPanel = (
@@ -220,7 +222,7 @@ export default function MatchClockPanelView({ context }) {
 
           {isBreak ? (
             <div className={`ui-match-clock-break${breakOvertimeMs > 0 ? " ui-match-clock-break-over" : ""}`} role="timer">
-              <span>{regulationEnded ? "정규 구간 종료" : isHalftimeBreak ? "하프타임" : "쿼터 휴식"}</span>
+              <span>{regulationEnded ? periodEndLabel : isHalftimeBreak ? "하프타임" : "쿼터 휴식"}</span>
               {regulationEnded ? (
                 <>
                   <strong>연장 또는 시계 종료 선택</strong>

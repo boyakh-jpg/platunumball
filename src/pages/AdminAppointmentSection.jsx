@@ -37,6 +37,8 @@ export function AdminAppointmentSection({ controller }) {
     reviewActionPending,
     reviewActionConfirming,
     setReviewActionConfirming,
+    appointmentActionPending,
+    appointmentActionStatus,
     canAdmin,
     adminViewState,
     appointments,
@@ -252,13 +254,14 @@ export function AdminAppointmentSection({ controller }) {
           <Button
             type="button"
             variant="secondary"
-            disabled={["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType)
+            disabled={appointmentActionPending || (["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType)
               ? !activeAppointmentOptions.length
-              : !appointmentDraft.userId}
+              : !appointmentDraft.userId)}
             onClick={commitAppointmentAction}
           >
-            임명/연장/회수 적용
+            {appointmentActionPending ? "저장 중" : "임명/연장/회수 적용"}
           </Button>
+          {appointmentActionStatus ? <small role="status">{appointmentActionStatus}</small> : null}
         </div>
           <small>{ADMIN_PERMISSION_NOTICE}</small>
         </Card>

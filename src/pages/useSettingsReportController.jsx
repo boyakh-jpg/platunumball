@@ -8,6 +8,7 @@ import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getReportParticipantRows, getMatchReportTitle, matchesReportSearchQuery } from "./settingsPageModel.js";
 
 export default function useSettingsReportController({ app, userMap, matchMap, courtRequests, approvedCourts, courtReviews }) {
+const loadDirectory = app.actions.loadDirectory;
 const [reportMatchId, setReportMatchId] = useState("");
 const [reportReason, setReportReason] = useState("");
 const [reportTargetQuery, setReportTargetQuery] = useState("");

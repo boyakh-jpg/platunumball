@@ -95,15 +95,24 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
   },
   submitRefereeRequest: (draft) => {
     let createdRequest = null;
+    let rollbackState = null;
     let syncedNotifications = [];
     setState((prev) => {
+      rollbackState = prev;
       const existingIds = new Set((prev.settings?.refereeRequests ?? []).map((request) => request.id));
       const next = submitRefereeRequest({ ...prev, currentUserId }, draft);
       createdRequest = (next.settings?.refereeRequests ?? []).find((request) => !existingIds.has(request.id)) ?? null;
       syncedNotifications = createdRequest ? getNewRefereeNotifications(prev, next) : [];
       return next;
     });
-    if (createdRequest) syncRefereeServer("submitRequest", { request: createdRequest, notifications: syncedNotifications });
+    if (!createdRequest) return Promise.resolve({ ok: false, error: "referee_request_unavailable" });
+    if (!isSupabaseConfigured) return Promise.resolve({ ok: true, requestId: createdRequest.id });
+    return rollbackIfServerFailed(
+      syncRefereeServer("submitRequest", { request: createdRequest, notifications: syncedNotifications }),
+      rollbackState,
+      "심판 등록요청",
+      { requestId: createdRequest.id },
+    );
   },
   updateProfile: (patch, targetUserId = currentUserId) => {
     const safeTargetUserId = serverProfileBound ? currentUserId : targetUserId;

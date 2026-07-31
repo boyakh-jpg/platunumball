@@ -58,6 +58,7 @@ export default function Signup({ app, auth }) {
   const handleBody = handleLocked ? stripHandle(getUserHashtag(user)) : stripHandle(draft.handle);
   const normalizedHandle = handleBody ? toHashtag(handleBody) : "";
   const handleDuplicate = !handleLocked && Boolean(normalizedHandle) && app.state.users.some((item) => item.id !== user.id && sameHashtag(normalizedHandle, getUserHashtag(item)));
+  const setupRequired = shouldSetupProfile(user) || shouldRecheckAgeGroup(user);
 
   const districtOptions = getRegionDistrictOptions(draft.sido);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -124,7 +125,7 @@ export default function Signup({ app, auth }) {
           <p className="eyebrow">Signup</p>
           <h1>가입 정보 설정</h1>
         </div>
-        <Button as={Link} variant="secondary" to={redirectTo}><ArrowLeft size={17} /> 프로필로</Button>
+        {!setupRequired ? <Button as={Link} variant="secondary" to={redirectTo}><ArrowLeft size={17} /> 프로필로</Button> : null}
       </header>
 
       <div className="content-grid signup-setup-grid">

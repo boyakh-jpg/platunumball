@@ -99,6 +99,8 @@ test("관리 화면 분리 모듈은 공개 export와 단방향 의존을 유지
     /^\s*modal,\s*$/m,
   );
   assert.match(sources["src/pages/Matches.jsx"], /export \{ MatchRoomModal \} from "\.\/MatchesPagePanels\.jsx"/);
+  assert.match(sources["src/pages/MatchesPagePanels.jsx"], /onRetry=\{this\.handleRetry\}/);
+  assert.match(sources["src/pages/MatchesPagePanels.jsx"], /onRetry=\{retryMatchDetail\}/);
   assert.match(sources["src/pages/matchesPageSelectors.js"], /export function getMatchRoomPost/);
   assert.match(sources["src/pages/matchesPageModel.js"], /export function requestMatchDetailOnce/);
   assert.match(sources["src/pages/MatchRoom.jsx"], /<MatchRoomView controller=\{controller\}/);

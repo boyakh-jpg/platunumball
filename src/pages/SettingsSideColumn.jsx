@@ -17,6 +17,7 @@ export default function SettingsSideColumn({ controller }) {
     blockUserQuery,
     setBlockUserQuery,
     blockSavePending,
+    blockSaveStatus,
     setReportMatchId,
     reportReason,
     setReportReason,
@@ -120,6 +121,7 @@ export default function SettingsSideColumn({ controller }) {
                 renderItem={renderBlockUserSearchItem}
               />
               <Button type="submit" variant="secondary" disabled={!selectedBlockUserId || blockSavePending}>{blockSavePending ? "저장 중" : "차단"}</Button>
+              {blockSaveStatus ? <small role="status">{blockSaveStatus}</small> : null}
             </form>
             <div className="compact-list ui-support-list">
               {blockedUserIds.length ? blockedUserIds.map((userId) => (

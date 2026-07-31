@@ -3,6 +3,7 @@ import { Copy } from "lucide-react";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import { getPlacementLabel, isPlacementComplete } from "../../lib/rating.js";
 import { getTierDivision } from "../../lib/tier.js";
+import { copyTextToClipboard } from "../../lib/recruitingPage.js";
 
 function getShareUrl(user) {
   const path = user?.id ? `/app/players/${user.id}` : "/app/profile";
@@ -19,8 +20,7 @@ export default function ShareCard({ user }) {
   const shareUrl = getShareUrl(user);
 
   const copyLink = async () => {
-    if (!navigator.clipboard) return;
-    await navigator.clipboard.writeText(shareUrl);
+    if (!await copyTextToClipboard(shareUrl)) return;
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
   };

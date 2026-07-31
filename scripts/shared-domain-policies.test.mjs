@@ -1084,6 +1084,7 @@ test("season rival challenge closes the created room when the B-team invite fail
 
 test("report success survives a synchronous directory refresh failure", async () => {
   const settingsReport = await readSource("src/pages/useSettingsReportController.jsx");
+  assert.match(settingsReport, /const loadDirectory = app\.actions\.loadDirectory/u);
   assert.match(settingsReport, /setReportSubmitStatus\(result\.duplicate[\s\S]*if \(loadDirectory\)/u);
   assert.match(settingsReport, /Promise\.resolve\(\)\s*\.then\(\(\) => loadDirectory\(/u);
   assert.match(settingsReport, /current === "신고가 접수됐습니다\."/u);

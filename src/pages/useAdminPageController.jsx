@@ -68,6 +68,8 @@ const [searchParams, setSearchParams] = useSearchParams();
   const [reviewActionStatus, setReviewActionStatus] = useState("");
   const [reviewActionPending, setReviewActionPending] = useState(false);
   const [reviewActionConfirming, setReviewActionConfirming] = useState(false);
+  const [appointmentActionPending, setAppointmentActionPending] = useState(false);
+  const [appointmentActionStatus, setAppointmentActionStatus] = useState("");
   const canAdmin = adminLevel >= 30;
   const adminViewState = app.adminState ?? app.state;
   const model = useMemo(() => buildAdminReviewModel(adminViewState), [adminViewState]);
@@ -345,15 +347,25 @@ const [searchParams, setSearchParams] = useSearchParams();
       setReviewActionConfirming(false);
     }
   };
-  const commitAppointmentAction = () => {
+  const commitAppointmentAction = async () => {
+    if (appointmentActionPending) return;
     const appointmentId = ["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType)
       ? appointmentDraft.appointmentId || activeAppointmentOptions[0]?.id || ""
       : "";
-    app.actions.commitAdminAppointmentAction({
-      ...appointmentDraft,
-      userId: appointmentDraft.userId,
-      appointmentId,
-    });
+    setAppointmentActionPending(true);
+    setAppointmentActionStatus("저장 중");
+    try {
+      const result = await app.actions.commitAdminAppointmentAction({
+        ...appointmentDraft,
+        userId: appointmentDraft.userId,
+        appointmentId,
+      });
+      setAppointmentActionStatus(!result || result.ok === false ? "처리하지 못했습니다." : "처리했습니다.");
+    } catch {
+      setAppointmentActionStatus("처리하지 못했습니다.");
+    } finally {
+      setAppointmentActionPending(false);
+    }
   };
   return {
     app,
@@ -381,6 +393,8 @@ const [searchParams, setSearchParams] = useSearchParams();
     reviewActionPending,
     reviewActionConfirming,
     setReviewActionConfirming,
+    appointmentActionPending,
+    appointmentActionStatus,
     canAdmin,
     adminViewState,
     appointments,
