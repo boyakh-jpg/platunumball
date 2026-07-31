@@ -81,6 +81,7 @@ const { matchId } = useParams();
   const [voidActionPending, setVoidActionPending] = useState(false);
   const [finalizeDialogOpen, setFinalizeDialogOpen] = useState(false);
   const [finalizeActionPending, setFinalizeActionPending] = useState(false);
+  const [, setFinalizationTick] = useState(0);
   const [voidRestoreDetail, setVoidRestoreDetail] = useState("");
   const [voidRestoreStatus, setVoidRestoreStatus] = useState("");
   const existingCourtReview = useMemo(
@@ -256,6 +257,14 @@ const { matchId } = useParams();
     void app.actions.cancelMatch(match.id);
   };
   const manualFinalizationStatus = getMatchManualFinalizationStatus(match);
+  useEffect(() => {
+    if (manualFinalizationStatus.ready || manualFinalizationStatus.remainingMs <= 0) return undefined;
+    const timerId = window.setTimeout(
+      () => setFinalizationTick((current) => current + 1),
+      manualFinalizationStatus.remainingMs + 50,
+    );
+    return () => window.clearTimeout(timerId);
+  }, [manualFinalizationStatus.ready, manualFinalizationStatus.remainingMs]);
   const canFinalizeMatch = Boolean(
     !isSharedRecord &&
     match.endedAt &&

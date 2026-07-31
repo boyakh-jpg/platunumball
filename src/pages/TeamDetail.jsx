@@ -195,10 +195,11 @@ export default function TeamDetail({ app }) {
     </Card>
   );
 
-  const inviteMember = (event) => {
+  const inviteMember = async (event) => {
     event.preventDefault();
     if (!canAddMember) return;
-    app.actions.inviteTeamMember(team.id, addUserId, memberDraft.role);
+    const result = await app.actions.inviteTeamMember(team.id, addUserId, memberDraft.role);
+    if (result?.ok === false) return;
     const nextUser = availableUsers.find((user) => user.id !== addUserId);
     setMemberDraft({ userId: nextUser?.id ?? app.state.users[0]?.id, role: "regular" });
     setMemberQuery("");

@@ -796,6 +796,15 @@ test("최종 승인은 결과 제출과 경기 종료 중 늦은 시각부터 3�
   assert.equal(getMatchManualFinalizationStatus(match, "2026-07-31T12:13:00.000Z").ready, true);
 });
 
+test("최종 승인 버튼은 방에 머물러도 3분 경계에서 다시 계산된다", async () => {
+  const [matchRoomSource, recruitingControllerSource] = await Promise.all([
+    readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/useRecruitingRoomController.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(matchRoomSource, /manualFinalizationStatus\.remainingMs \+ 50/);
+  assert.match(recruitingControllerSource, /sourceFinalizationStatus\.remainingMs \+ 50/);
+});
+
 test("확정 경기방 슬롯 관리는 경기 액션과 운영 권한을 사용한다", async () => {
   const [modelSource, rendererSource, rosterPropsSource] = await Promise.all([
     readFile(new URL("../src/components/recruiting/RecruitingRoomMatchModel.jsx", import.meta.url), "utf8"),

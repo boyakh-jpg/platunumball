@@ -21,7 +21,7 @@ export function useRecruitingRoomController({
   const {
     BRAND_NAME, CHAT_MESSAGE_MAX_LENGTH, CHAT_RATE_LIMIT, CHAT_RATE_WINDOW_MS, CHAT_REPEAT_BLOCK_MS, CHAT_SEND_COOLDOWN_MS, DIRECTORY_PICKER_PAGE_LIMIT,
     MATCH_DISPUTE_REASON_OPTIONS, PLAYER_STAT_FIELDS, UNSAFE_INPUT_MESSAGE, buildMatchDisputeRequest, copyTextToClipboard, getDefaultJoinDraft, getJoinActiveCapacity,
-    getJoinReserveCapacity, getLinkedPersonalRecordDisplayUser, getMatchResultRevision, getMatchRoomPhase, getMatchRuleInputValidation, getPartyOptionKey, getPickupOpenSlotPlacements,
+    getJoinReserveCapacity, getLinkedPersonalRecordDisplayUser, getMatchManualFinalizationStatus, getMatchResultRevision, getMatchRoomPhase, getMatchRuleInputValidation, getPartyOptionKey, getPickupOpenSlotPlacements,
     getRecruitingBenchCapacity, getRecruitingDisplayTitle, getRecruitingLobby, getRecruitingPostTerminalState, getRecruitingSideCapacity, getRegisteredCourts, getRoomEditDraft,
     getRoomEditSaveError, getRoomScheduleLabel, getRoomShareUrl, getUnsafeUserTextReason, isCurrentUserRoomParticipant, isIndividualOnlyRecruitingRoom, isMatchRoomChatLocked,
     isPaidRecruitingCourt, isPersonalRecordMatch, isPickupRecruitingRoom, isSyntheticMatchRoomId, isTeamOnlyRoom, useCallback, useEffect,
@@ -122,6 +122,7 @@ export function useRecruitingRoomController({
   const [attendanceStartStatus, setAttendanceStartStatus] = useState(null);
   const [finalizeMatchTarget, setFinalizeMatchTarget] = useState(null);
   const [finalizeMatchPending, setFinalizeMatchPending] = useState(false);
+  const [, setFinalizationTick] = useState(0);
   const [roomCancellationTarget, setRoomCancellationTarget] = useState(null);
   const [roomCancellationPending, setRoomCancellationPending] = useState(false);
   const [sourceMatchReviewRefreshing, setSourceMatchReviewRefreshing] = useState(false);
@@ -275,6 +276,16 @@ export function useRecruitingRoomController({
         }
     ));
   }, [app.currentUser.id, sourceMatch?.id, sourceMatch?.result?.updatedAt]);
+
+  const sourceFinalizationStatus = sourceMatch ? getMatchManualFinalizationStatus(sourceMatch) : null;
+  useEffect(() => {
+    if (!sourceFinalizationStatus || sourceFinalizationStatus.ready || sourceFinalizationStatus.remainingMs <= 0) return undefined;
+    const timerId = window.setTimeout(
+      () => setFinalizationTick((current) => current + 1),
+      sourceFinalizationStatus.remainingMs + 50,
+    );
+    return () => window.clearTimeout(timerId);
+  }, [sourceFinalizationStatus?.ready, sourceFinalizationStatus?.remainingMs]);
 
   useEffect(() => {
     if (

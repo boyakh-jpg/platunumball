@@ -1455,6 +1455,8 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamDetailPage, /if \(detailRequestRef\.current !== teamId\)/);
   assert.match(teamDetailPage, /detailRequestRef\.current = teamId;\s+refreshTeam\(\);/);
   assert.match(teamDetailPage, /!team && app\.remoteReady !== false && Boolean\(loadDirectory\)/);
+  assert.match(teamDetailPage, /const result = await app\.actions\.inviteTeamMember/);
+  assert.match(teamDetailPage, /if \(result\?\.ok === false\) return;/);
   assert.match(teamDetailView, /result=\{record\.result\}/u);
   assert.doesNotMatch(teamDetailView, /getScoreOutcome/u);
   assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/u);
