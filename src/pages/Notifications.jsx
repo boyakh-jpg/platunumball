@@ -10,7 +10,7 @@ import { getPendingRecruitingInvitations, getRecruitingInvitationSenderName } fr
 import { useRoomModalNavigation } from "../lib/roomModalNavigation.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
-import { RecruitingRoomModal } from "./Recruiting.jsx";
+import { RecruitingRoomLoadFailedView, RecruitingRoomLoadingView, RecruitingRoomModal } from "./Recruiting.jsx";
 
 function formatNotificationTime(value) {
   const date = new Date(value ?? "");
@@ -39,6 +39,8 @@ export default function Notifications({ app }) {
     setSelectedRecruitingPostId,
     openMatchRoom,
     openRecruitingRoom,
+    recruitingRoomLoadState,
+    retryRecruitingRoom,
   } = useRoomModalNavigation({
     loadRecruitingPost: app.actions.loadRecruitingPost,
   });
@@ -62,7 +64,7 @@ export default function Notifications({ app }) {
   }, [refreshNotifications]);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const selectedRecruitingPost = (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId) ?? null;
-  useBodyScrollLock(Boolean(selectedRecruitingPost));
+  useBodyScrollLock(Boolean(selectedRecruitingPostId));
   const visibleNotifications = useMemo(() => dedupeNotifications((app.state.notifications ?? [])
     .filter((notification) => isNotificationVisibleToUser(notification, app.currentUser.id, { blockedUserIds }))
     .map((notification) => isNotificationTargetUnavailable(notification, app.state)
@@ -356,6 +358,10 @@ export default function Notifications({ app }) {
             openMatchRoom(matchId);
           }}
         />
+      ) : selectedRecruitingPostId && recruitingRoomLoadState === "error" ? (
+        <RecruitingRoomLoadFailedView onClose={() => setSelectedRecruitingPostId("")} onRetry={() => void retryRecruitingRoom()} />
+      ) : selectedRecruitingPostId ? (
+        <RecruitingRoomLoadingView onClose={() => setSelectedRecruitingPostId("")} />
       ) : null}
     </div>
   );

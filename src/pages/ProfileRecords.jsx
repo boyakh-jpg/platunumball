@@ -308,6 +308,14 @@ export default function ProfileRecords({ app }) {
           </button>
         ) : null}
       </Card>
+      {archiveState.error && (visibleRecentRecords.length || visibleArchivedRecords.length) ? (
+        <Card className="section-card">
+          <div className="ui-empty-state-compact">추가 기록을 불러오지 못했습니다. 기존 기록은 그대로 유지됩니다.</div>
+          <button type="button" className="button button-secondary button-md" onClick={() => loadProfileRecords?.({ force: true })}>
+            다시 시도
+          </button>
+        </Card>
+      ) : null}
       {visibleArchivedRecords.length ? (
         <Card className="section-card">
           <div className="section-title-row">

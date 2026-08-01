@@ -51,6 +51,8 @@ import "../styles/match-list-card.css";
 import {
   RECRUITING_FILTER_DEBOUNCE_MS,
   RECRUITING_FILTER_PAGE_LIMIT,
+  RecruitingRoomLoadFailedView,
+  RecruitingRoomLoadingView,
   RecruitingRoomModal,
   canShowRecruitingQueuePost,
   getRecruitingRoomListStatus,
@@ -62,7 +64,7 @@ import {
 } from "../components/recruiting/RecruitingRoomModal.jsx";
 import RecruitingPageView from "./RecruitingPageView.jsx";
 
-export { RecruitingRoomModal, getRecruitingRoomListStatus };
+export { RecruitingRoomLoadFailedView, RecruitingRoomLoadingView, RecruitingRoomModal, getRecruitingRoomListStatus };
 
 function RecruitingReady({ app }) {
   const location = useLocation();

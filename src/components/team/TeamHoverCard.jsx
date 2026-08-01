@@ -24,7 +24,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
   } = useHoverCardInteraction({ cardKey, longPress: true });
 
   if (!team) {
-    return <span className={className}>{children}</span>;
+    return to ? <Link className={className} to={to}>{children}</Link> : <span className={className}>{children}</span>;
   }
 
   const teamPath = to ?? `/app/teams/${team.id}`;

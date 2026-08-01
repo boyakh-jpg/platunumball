@@ -7,6 +7,7 @@ import TeamHoverCard from "../team/TeamHoverCard.jsx";
 import { AFFILIATION_TYPES } from "../../lib/constants.js";
 
 export default function RankingTable({ rows, type = "players", mode = "integrated", teams = [] }) {
+  if (!rows.length) return <div className="ui-empty-state-compact">표시할 순위가 없습니다.</div>;
   return (
     <div className="ranking-table ui-design-borderless-list">
       {rows.map((row, index) => {

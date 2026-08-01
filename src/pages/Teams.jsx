@@ -258,6 +258,7 @@ export default function Teams({ app }) {
           </div>
         ) : null}
       </section>
+      {teamDirectoryError ? <Card className="section-card"><div className="section-title-row"><span className="form-warning">팀 목록을 불러오지 못했습니다.</span><Button type="button" variant="secondary" onClick={() => void loadDirectory?.({ force: true, kind: "teams", filter: directoryFilter, region: directoryRegion, limit: DIRECTORY_TEAM_PAGE_LIMIT, offset: 0, includeTeamMemberProfiles: true })}>다시 시도</Button></div></Card> : null}
 
       <section className="team-overview-grid">
         <Card className="section-card my-team-management-card">

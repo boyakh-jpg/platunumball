@@ -55,6 +55,8 @@ export function TeamMemberPicker({
   submitLabel = "선수 확정",
 }) {
   const [draftRoster, setDraftRoster] = useState({ selectedIds, reserveIds });
+  const [commitPending, setCommitPending] = useState(false);
+  const [commitError, setCommitError] = useState("");
 
   useEffect(() => {
     setDraftRoster({ selectedIds, reserveIds });
@@ -75,10 +77,20 @@ export function TeamMemberPicker({
   const reserveSet = new Set(effectiveReserveIds);
   const eligibleSet = Array.isArray(eligiblePlayerIds) ? new Set(eligiblePlayerIds) : null;
   const canSelectReserves = Boolean(onRosterChange || onReserveChange);
-  const commitRoster = (nextSelectedIds, nextReserveIds) => {
-    onRosterChange?.({ selectedIds: nextSelectedIds, reserveIds: nextReserveIds });
-    onChange?.(nextSelectedIds);
-    onReserveChange?.(nextReserveIds);
+  const commitRoster = async (nextSelectedIds, nextReserveIds) => {
+    if (commitPending) return;
+    setCommitPending(true);
+    setCommitError("");
+    try {
+      const result = await onRosterChange?.({ selectedIds: nextSelectedIds, reserveIds: nextReserveIds });
+      if (result === false || result?.ok === false) throw new Error("roster_save_failed");
+      onChange?.(nextSelectedIds);
+      onReserveChange?.(nextReserveIds);
+    } catch {
+      setCommitError("선수 명단을 저장하지 못했습니다. 다시 시도해 주세요.");
+    } finally {
+      setCommitPending(false);
+    }
   };
   const emitRoster = (nextSelectedIds, nextReserveIds) => {
     if (deferCommit) {
@@ -149,20 +161,21 @@ export function TeamMemberPicker({
               </span>
               <TierBadge mmr={user?.ratings?.integrated ?? DEFAULT_RATING} ratings={user?.ratings} compact />
               <div className="arena-party-role-buttons">
-                <button type="button" className={selected ? "active" : ""} disabled={!eligible || activeLocked} onClick={() => setMemberRole(playerId, "active")}>출전</button>
+                <button type="button" className={selected ? "active" : ""} disabled={commitPending || !eligible || activeLocked} onClick={() => setMemberRole(playerId, "active")}>출전</button>
                 {canSelectReserves ? (
-                  <button type="button" className={reserve ? "active" : ""} disabled={!eligible || reserveLocked} onClick={() => setMemberRole(playerId, "reserve")}>후보</button>
+                  <button type="button" className={reserve ? "active" : ""} disabled={commitPending || !eligible || reserveLocked} onClick={() => setMemberRole(playerId, "reserve")}>후보</button>
                 ) : null}
-                <button type="button" disabled={required} onClick={() => setMemberRole(playerId, "none")}>해제</button>
+                <button type="button" disabled={commitPending || required} onClick={() => setMemberRole(playerId, "none")}>해제</button>
               </div>
             </div>
           );
         })}
       </div>
       {!effectiveSelectedIds.length ? <em>최소 1명 선택 필요</em> : null}
+      {commitError ? <p className="form-warning" role="alert">{commitError}</p> : null}
       {deferCommit ? (
-        <Button type="button" size="sm" disabled={!rosterChanged || !effectiveSelectedIds.length} onClick={() => commitRoster(effectiveSelectedIds, effectiveReserveIds)}>
-          {submitLabel}
+        <Button type="button" size="sm" disabled={commitPending || !rosterChanged || !effectiveSelectedIds.length} onClick={() => void commitRoster(effectiveSelectedIds, effectiveReserveIds)}>
+          {commitPending ? "저장 중..." : submitLabel}
         </Button>
       ) : null}
     </div>

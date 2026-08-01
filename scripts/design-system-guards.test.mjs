@@ -1124,7 +1124,7 @@ test("배정 전 엠블럼은 공용 자산이며 방 슬롯 아바타 뒤에도
 test("팀 경기 히스토리는 공용 최근 경기 행을 사용한다", () => {
   assert.match(teamDetailSource, /import \{ getSideResult, getTeamSide \} from "\.\.\/lib\/season\.js"/);
   assert.match(teamDetailSource, /detailHistory\.map[\s\S]*?<RecentMatchRow/);
-  assert.match(teamDetailSource, /archivedHistory\.map[\s\S]*?<RecentMatchRow/);
+  assert.match(teamDetailSource, /archivedHistory\.filter\(\(record\) => !historyIds\.has\(record\.matchId\)\)\.map[\s\S]*?<RecentMatchRow/);
   assert.doesNotMatch(teamDetailSource, /history-item rank-match-item|outcomeLabel|compact-roster/);
   assert.doesNotMatch(teamDetailSource, /\(side\?\.players \?\? \[\]\)\.map/);
 });

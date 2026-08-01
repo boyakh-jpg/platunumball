@@ -252,6 +252,13 @@ export default function PlayerDetail({ app }) {
         )}
       />
 
+      {profileLoadState.status === "error" ? (
+        <Card className="section-card court-detail-state">
+          <p>최신 선수 프로필을 불러오지 못했습니다. 현재 보이는 정보는 이전 화면의 미리보기일 수 있습니다.</p>
+          <Button type="button" variant="secondary" onClick={() => setProfileLoadAttempt((attempt) => attempt + 1)}>다시 시도</Button>
+        </Card>
+      ) : null}
+
       {canViewStatSummary || canViewTeamHistory ? (
         <nav className="rank-profile-tabs">
           {canViewStatSummary ? <a href="#summary">종합</a> : null}
@@ -473,6 +480,12 @@ export default function PlayerDetail({ app }) {
                 {!history.length && !archivedPublicHistory.length
                   ? <div className="ui-empty-state-compact">공개 경기 기록이 아직 없습니다.</div>
                   : null}
+                {profileRecordArchive?.error ? (
+                  <div className="ui-empty-state-compact">
+                    공개 경기 기록을 불러오지 못했습니다.
+                    <Button type="button" size="sm" variant="secondary" onClick={() => loadPublicProfileRecords?.(player.id, { force: true })}>다시 시도</Button>
+                  </div>
+                ) : null}
               </div>
             </Card>
           ) : null}

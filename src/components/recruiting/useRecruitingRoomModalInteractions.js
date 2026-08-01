@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 export function useRecruitingRoomModalInteractions({
   useCallback, setRoomShareStatus, roomShareStatusTimerRef, copyTextToClipboard, roomShareUrl,
   getRecruitingDisplayTitle, selectedPost, BRAND_NAME, getRoomScheduleLabel, setInviteDraft,
@@ -7,6 +9,7 @@ export function useRecruitingRoomModalInteractions({
   sheetDragRef, sheetDragOffset, sourceMatch, sourceDisputeDraft, getMatchResultRevision,
   buildMatchDisputeRequest, PLAYER_STAT_FIELDS, refreshSourceMatchReview,
 }) {
+  const soloRecordDeletePendingRef = useRef(false);
   const showRoomShareStatus = useCallback((message) => {
     setRoomShareStatus(message);
     window.clearTimeout(roomShareStatusTimerRef.current);
@@ -49,13 +52,21 @@ export function useRecruitingRoomModalInteractions({
     if (!match?.id || !isPersonalRecordMatch(match) || match.createdBy !== app.currentUser.id) return;
     setSoloRecordDeleteTarget(match);
   };
-  const confirmDeleteSourceSoloRecord = () => {
-    const matchId = soloRecordDeleteTarget?.id;
-    if (!matchId) return;
-    setSoloRecordDeleteTarget(null);
-    const request = app.actions.deleteSoloRecord?.(matchId);
-    if (request?.then) request.finally(closeModal);
-    else closeModal();
+  const confirmDeleteSourceSoloRecord = async () => {
+    const target = soloRecordDeleteTarget;
+    const matchId = target?.id;
+    if (!matchId || soloRecordDeletePendingRef.current) return;
+    soloRecordDeletePendingRef.current = true;
+    try {
+      const result = await app.actions.deleteSoloRecord?.(matchId);
+      if (result === false || result?.ok === false) throw new Error("solo_record_delete_failed");
+      setSoloRecordDeleteTarget(null);
+      closeModal();
+    } catch {
+      showRoomShareStatus("개인 기록을 삭제하지 못했습니다.");
+    } finally {
+      soloRecordDeletePendingRef.current = false;
+    }
   };
   const resetSheetDrag = () => {
     window.clearTimeout(sheetDragTimerRef.current);

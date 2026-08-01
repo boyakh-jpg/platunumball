@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import NameReportForm from "../components/common/NameReportForm.jsx";
 import { AFFILIATION_TYPES } from "../lib/constants.js";
@@ -81,6 +82,7 @@ export default function Affiliations({ app }) {
           <Button type="button" variant="secondary" onClick={() => void refreshAffiliations(true)}>다시 시도</Button>
         </Card>
       ) : null}
+      {directoryLoadState === "loading" ? <BasketballLoader label="소속 순위 불러오는 중" /> : null}
 
       <section className="affiliation-challenge-grid">
         <Card className="section-card affiliation-focus-card">
@@ -164,6 +166,7 @@ export default function Affiliations({ app }) {
           </Card>
         ))}
       </section>
+      {directoryLoadState === "loaded" && !rankedAffiliations.length ? <div className="ui-empty-state-compact">표시할 소속 순위가 없습니다.</div> : null}
     </div>
   );
 }

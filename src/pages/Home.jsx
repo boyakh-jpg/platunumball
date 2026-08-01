@@ -11,7 +11,7 @@ import { getTierDivision } from "../lib/tier.js";
 import { compareNotificationsNewestFirst, dedupeNotifications, getNotificationHref, isHomeActionNotification, isNotificationDisplayable, isNotificationTargetUnavailable, isNotificationVisibleToUser } from "../lib/notifications.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MatchRoomModal } from "./Matches.jsx";
-import { RecruitingRoomModal } from "./Recruiting.jsx";
+import { RecruitingRoomLoadFailedView, RecruitingRoomLoadingView, RecruitingRoomModal } from "./Recruiting.jsx";
 import { useHomeSearchModel } from "./useHomeSearchModel.jsx";
 import HomePageView from "./HomePageView.jsx";
 
@@ -127,6 +127,8 @@ export default function Home({ app }) {
     setSelectedRecruitingPostId,
     openMatchRoom,
     openRecruitingRoom,
+    recruitingRoomLoadState,
+    retryRecruitingRoom,
   } = useRoomModalNavigation({
     loadRecruitingPost: app.actions.loadRecruitingPost,
   });
@@ -156,7 +158,7 @@ export default function Home({ app }) {
   }, [app.state.matches, maxScheduleDate, todayValue, user.id]);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const selectedRecruitingPost = (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId) ?? null;
-  useBodyScrollLock(Boolean(selectedRecruitingPost));
+  useBodyScrollLock(Boolean(selectedRecruitingPostId));
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id)
     .filter(({ invitation }) => !blockedUserIds.includes(invitation.fromUserId)), [app.state, blockedUserIds, user.id]);
   const pendingTeamInvitations = useMemo(() => (app.state.teamInvitations ?? []).filter((invitation) => (
@@ -425,6 +427,10 @@ export default function Home({ app }) {
             openMatchRoom(matchId);
           }}
         />
+      ) : selectedRecruitingPostId && recruitingRoomLoadState === "error" ? (
+        <RecruitingRoomLoadFailedView onClose={() => setSelectedRecruitingPostId("")} onRetry={() => void retryRecruitingRoom()} />
+      ) : selectedRecruitingPostId ? (
+        <RecruitingRoomLoadingView onClose={() => setSelectedRecruitingPostId("")} />
       ) : null}
     </>
   );

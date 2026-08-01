@@ -101,6 +101,10 @@ export default function Rankings({ app }) {
     { id: "integrated", label: "개인" },
     { id: "teams", label: "팀" },
   ];
+  const directoryStatusMatches = app.directoryStatus?.page?.kind === directoryKind
+    && app.directoryStatus?.page?.region === directoryRegion;
+  const directoryLoadError = !promotionView && directoryStatusMatches ? app.directoryStatus?.error : "";
+  const retryDirectory = () => loadDirectory?.({ force: true, kind: directoryKind, region: directoryRegion, placementCompleteOnly, rankingSort, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
 
   return (
     <div className="page-stack rankings-page">
@@ -121,6 +125,14 @@ export default function Rankings({ app }) {
           <div className="section-title-row">
             <span className="form-warning">승격권 기록을 불러오지 못했습니다.</span>
             <Button type="button" variant="secondary" onClick={() => setPromotionRetrySequence((current) => current + 1)}>다시 시도</Button>
+          </div>
+        </Card>
+      ) : null}
+      {directoryLoadError ? (
+        <Card className="section-card">
+          <div className="section-title-row">
+            <span className="form-warning">랭킹을 불러오지 못했습니다.</span>
+            <Button type="button" variant="secondary" onClick={() => void retryDirectory()}>다시 시도</Button>
           </div>
         </Card>
       ) : null}

@@ -19,6 +19,8 @@ import {
   getNextNameChangeDate,
   inferRegionSelection,
   getRegionDistrictOptions,
+  normalizeProfileName,
+  PROFILE_NAME_MAX_LENGTH,
   shouldRecheckAgeGroup,
   shouldSetupProfile,
 } from "../lib/profileSetup.js";
@@ -80,7 +82,11 @@ export default function Signup({ app, auth }) {
   const submit = async (event) => {
     event.preventDefault();
     if (profileSavePendingRef.current) return;
-    const name = draft.name.trim() || user.name;
+    const name = normalizeProfileName(draft.name);
+    if (!name) {
+      setFormError("닉네임을 입력해 주세요.");
+      return;
+    }
     if (user.onboardingComplete && name !== user.name && !nameChangeAllowed) {
       setFormError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatProfileDate(nextNameChangeDate)}`);
       return;
@@ -154,7 +160,7 @@ export default function Signup({ app, auth }) {
           <form className="form-grid profile-form-grid" onSubmit={submit}>
             <label>
               닉네임
-              <input required value={draft.name} maxLength={20} onChange={(event) => update({ name: event.target.value })} />
+              <input required value={draft.name} maxLength={PROFILE_NAME_MAX_LENGTH} onChange={(event) => update({ name: event.target.value })} />
               {user.onboardingComplete && !nameChangeAllowed ? <span className="form-warning">다음 변경 가능일: {formatProfileDate(nextNameChangeDate)}</span> : null}
             </label>
             <label>

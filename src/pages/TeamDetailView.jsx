@@ -153,7 +153,7 @@ export default function TeamDetailView({ controller }) {
                   {teamRecordArchive.loading ? "불러오는 중" : "상세 기록 더 보기"}
                 </button>
               ) : null}
-              {archivedHistory.map((record) => {
+              {archivedHistory.filter((record) => !historyIds.has(record.matchId)).map((record) => {
                 return (
                   <RecentMatchRow
                     key={record.matchId}

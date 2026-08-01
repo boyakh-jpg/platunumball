@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { postServerAction } from "../../lib/serverActions.js";
 
@@ -119,6 +119,8 @@ export default function SearchPicker({
   const [floatingPlacement, setFloatingPlacement] = useState("below");
   const [floatingMaxHeight, setFloatingMaxHeight] = useState(320);
   const pickerRef = useRef(null);
+  const inputRef = useRef(null);
+  const resultsId = useId();
   const remoteRequestIdRef = useRef(0);
   const query = value.trim();
   const baseLimit = Math.max(1, Number(limit) || 10);
@@ -166,6 +168,16 @@ export default function SearchPicker({
     setExpanded(false);
     setShowIdlePanel(false);
     setVisibleLimit(baseLimit);
+  };
+  const moveResultFocus = (event, direction) => {
+    const focusable = [...(pickerRef.current?.querySelectorAll(".search-picker-results button:not(:disabled), .search-picker-results a[href], .search-picker-results [tabindex='0']") ?? [])];
+    if (!focusable.length) return;
+    event.preventDefault();
+    const currentIndex = focusable.indexOf(document.activeElement);
+    const nextIndex = currentIndex < 0
+      ? direction > 0 ? 0 : focusable.length - 1
+      : (currentIndex + direction + focusable.length) % focusable.length;
+    focusable[nextIndex]?.focus();
   };
 
   useEffect(() => {
@@ -250,11 +262,18 @@ export default function SearchPicker({
       <div className={`search-picker-field${fieldClassName ? ` ${fieldClassName}` : ""}`}>
         <Search size={18} />
         <input
+          ref={inputRef}
           value={value}
           placeholder={placeholder}
+          aria-controls={canShow ? resultsId : undefined}
+          aria-expanded={canShow}
           onFocus={() => setFocused(true)}
           onBlur={() => window.setTimeout(() => setFocused(false), 120)}
           onKeyDown={(event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              moveResultFocus(event, event.key === "ArrowDown" ? 1 : -1);
+              return;
+            }
             if (event.key === "Escape") {
               event.preventDefault();
               closeResults();
@@ -281,11 +300,21 @@ export default function SearchPicker({
       </div>
       {canShow ? (
         <div
+          id={resultsId}
           className={`home-search-results unified search-picker-results${floating ? ` is-floating opens-${floatingPlacement}` : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}
           style={floating ? { "--search-picker-max-height": `${floatingMaxHeight}px` } : undefined}
           onPointerDown={(event) => event.preventDefault()}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              moveResultFocus(event, event.key === "ArrowDown" ? 1 : -1);
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              closeResults();
+              inputRef.current?.focus();
+            }
+          }}
           onClickCapture={(event) => {
-            if (!closeOnResultClick || event.target?.closest?.(".search-picker-more, .home-search-more, .search-picker-idle-toggle")) return;
+            if (!closeOnResultClick || event.target?.closest?.(".search-picker-more, .home-search-more, .search-picker-idle-toggle, .search-picker-retry")) return;
             window.setTimeout(closeResults, 0);
           }}
         >
@@ -310,6 +339,16 @@ export default function SearchPicker({
             </>
           ) : null}
           {visibleItems.length ? visibleItems.map(renderItem) : <div className="ui-empty-state-compact">{remoteLoading ? "검색 중..." : remoteError ? "검색 결과를 불러오지 못했습니다." : emptyText}</div>}
+          {visibleItems.length && remoteError ? (
+            <button
+              type="button"
+              className="button button-secondary button-sm search-picker-retry"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setRemoteRetrySequence((current) => current + 1)}
+            >
+              누락된 검색 결과 다시 불러오기
+            </button>
+          ) : null}
           {hasMore ? (
             <button
               type="button"

@@ -49,7 +49,8 @@ export function commitAdminAppointmentAction(state, draft = {}) {
       };
     }
     const termDays = getAppointmentTermDays(role, appointment.grade, draft.termDays);
-    const currentEndMs = getTime(appointment.endsAt);
+    const parsedEndMs = new Date(appointment.endsAt ?? "").getTime();
+    const currentEndMs = Number.isFinite(parsedEndMs) ? parsedEndMs : Date.now();
     const nextEndsAt = actionType === "extendAppointment"
       ? new Date(Math.max(currentEndMs, Date.now()) + termDays * DAY_MS).toISOString()
       : appointment.endsAt;

@@ -30,6 +30,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const [courtSubmitPending, setCourtSubmitPending] = useState(false);
   const [courtPinConfirmed, setCourtPinConfirmed] = useState(false);
   const [courtServerNearbyCandidates, setCourtServerNearbyCandidates] = useState([]);
+  const [courtNearbyLookupFailed, setCourtNearbyLookupFailed] = useState(false);
   const [courtNearbyConfirmed, setCourtNearbyConfirmed] = useState(false);
   const courtAddressSearchRef = useRef(0);
   const courtPinPendingRef = useRef(false);
@@ -89,6 +90,7 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const canSubmitCourtRequest = canOpenCourtRequestForm
     && !courtDuplicate
     && !courtSourceUrlInvalid
+    && !courtNearbyLookupFailed
     && (!courtNearbyReviewRequired || courtNearbyConfirmed)
     && (!courtRequiresUnit || Boolean(courtDraft.courtUnit.trim()));
 
@@ -103,11 +105,13 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
   const resetCourtNearbyLookup = () => {
     courtNearbySearchRef.current += 1;
     setCourtServerNearbyCandidates([]);
+    setCourtNearbyLookupFailed(false);
   };
   const loadCourtNearbyCandidates = async (pin) => {
     const requestId = courtNearbySearchRef.current + 1;
     courtNearbySearchRef.current = requestId;
     setCourtServerNearbyCandidates([]);
+    setCourtNearbyLookupFailed(false);
     try {
       const nearbyCourts = await searchNearbyCourtCandidates(pin);
       if (courtNearbySearchRef.current !== requestId) return;
@@ -115,7 +119,8 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
     } catch {
       if (courtNearbySearchRef.current !== requestId) return;
       setCourtServerNearbyCandidates([]);
-      setCourtLookupStatus("근처 등록 구장을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setCourtNearbyLookupFailed(true);
+      setCourtLookupStatus("근처 등록 구장을 불러오지 못했습니다. 실제 위치 확인을 눌러 다시 시도해 주세요.");
     }
   };
   const getCourtAddressRegion = (addressResult) => {
@@ -177,7 +182,11 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
         ? `핀 주소의 건물명 '${buildingName}'을 시설명에 자동 반영했습니다.`
         : "핀 위치의 실제 주소를 저장했습니다. 시설/장소명을 확인해 주세요.");
       await loadCourtNearbyCandidates(pin);
-    } catch {
+    } catch (error) {
+      if (error?.code === "naver_pin_picker_cancelled") {
+        setCourtLookupStatus("지도 위치 선택을 취소했습니다.");
+        return;
+      }
       setCourtLookupStatus("구장 위치를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       courtPinPendingRef.current = false;

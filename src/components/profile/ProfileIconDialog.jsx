@@ -57,6 +57,8 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
   ));
   const [unlockedIconKeys, setUnlockedIconKeys] = useState(() => [...new Set([...DEFAULT_UNLOCKED_KEYS, user.avatarIconKey].filter(Boolean))]);
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loadError, setLoadError] = useState("");
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [previewIcon, setPreviewIcon] = useState(null);
@@ -69,11 +71,13 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setLoadError("");
     Promise.resolve(actions.loadProfileIconAchievements?.())
       .then((result) => {
         if (!active) return;
         if (result?.ok === false) {
-          setFeedback(getTeamEmblemErrorMessage(result.error));
+          setLoadError("프로필 아이콘을 불러오지 못했습니다.");
           return;
         }
         if (Array.isArray(result?.unlockedIconKeys)) {
@@ -84,8 +88,8 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
           ].filter(Boolean))]);
         }
       })
-      .catch((error) => {
-        if (active) setFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
+      .catch(() => {
+        if (active) setLoadError("프로필 아이콘을 불러오지 못했습니다.");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -94,7 +98,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
     return () => {
       active = false;
     };
-  }, [actions.loadProfileIconAchievements]);
+  }, [actions.loadProfileIconAchievements, loadAttempt]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -253,6 +257,11 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
           </div>
         ) : null}
 
+        {loadError ? (
+          <p className="form-warning profile-icon-dialog-feedback">
+            {loadError} <button type="button" className="button button-secondary button-sm" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>다시 시도</button>
+          </p>
+        ) : null}
         {feedback ? <p className="form-warning profile-icon-dialog-feedback">{feedback}</p> : null}
         <footer className="profile-icon-dialog-actions">
           <Button as={Link} variant="secondary" size="sm" to="/app/profile/achievements" onClick={onClose}>업적 보기</Button>

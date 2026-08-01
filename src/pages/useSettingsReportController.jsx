@@ -178,7 +178,7 @@ const reportTargetSearchItems = useMemo(() => {
         const requester = userMap[request.requestedBy];
         const hashtag = request.hashtag ? getCourtHashtag(request) : "";
         items.push({
-          id: `court:${request.id}`,
+          id: `court-request:${request.id}`,
           kind: "court_request",
           request,
           title: request.name,

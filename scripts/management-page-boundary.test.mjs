@@ -7,6 +7,7 @@ import {
   requestMatchDetailOnce,
 } from "../src/pages/matchesPageModel.js";
 import { updateProfile } from "../src/data/repository/account.js";
+import { commitAdminAppointmentAction } from "../src/data/repository/admin/appointment.js";
 import { isProfileGateReady, normalizeProfileName, PROFILE_NAME_MAX_LENGTH } from "../src/lib/profileSetup.js";
 
 const root = path.resolve(new URL("../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
@@ -44,6 +45,52 @@ test("인증 저장소 예외와 빈 프로필 이름은 화면·로컬·서버 
   assert.match(profileSource, /loadProfileRecords\(\{ force: true \}\)/);
   assert.match(affiliationSource, /finally \{\s*setPending\(false\)/);
   assert.match(shareSource, /setCopyStatus\("복사 실패"\)/);
+});
+
+test("관리자 임명 연장은 유효한 종료 시각을 직접 계산한다", () => {
+  const now = Date.now();
+  const authority = {
+    id: "authority",
+    source: "server_context",
+    userId: "admin",
+    role: "admin",
+    grade: "owner",
+    status: "active",
+    startsAt: new Date(now - 1_000).toISOString(),
+    endsAt: new Date(now + 86_400_000).toISOString(),
+  };
+  const target = {
+    id: "target",
+    source: "server_context",
+    userId: "referee",
+    role: "referee",
+    grade: "candidate",
+    status: "active",
+    startsAt: authority.startsAt,
+    endsAt: authority.endsAt,
+  };
+  const next = commitAdminAppointmentAction({
+    currentUserId: "admin",
+    users: [{ id: "admin" }, { id: "referee" }],
+    settings: { adminAppointments: [authority], refereeAppointments: [target] },
+    notifications: [],
+  }, { actionType: "extendAppointment", appointmentId: target.id, termDays: 30 });
+
+  const extended = next.settings.refereeAppointments.find((item) => item.id === target.id);
+  assert.ok(new Date(extended.endsAt).getTime() > new Date(target.endsAt).getTime());
+});
+
+test("네이버 지도 실패와 취소는 오버레이와 제출 상태를 복구한다", async () => {
+  const [naverSource, courtController] = await Promise.all([
+    read("src/lib/naverAddress.js"),
+    read("src/pages/useSettingsCourtRequestController.js"),
+  ]);
+
+  assert.match(naverSource, /script\.addEventListener\("error", \(\) => \{\s*script\.remove\(\)/u);
+  assert.match(naverSource, /catch \(error\) \{\s*settled = true;\s*cleanup\(\);\s*reject\(error\);\s*return;/u);
+  assert.match(naverSource, /error\.code = "naver_pin_picker_cancelled"/u);
+  assert.match(courtController, /&& !courtNearbyLookupFailed/u);
+  assert.match(courtController, /error\?\.code === "naver_pin_picker_cancelled"/u);
 });
 
 const managementModules = [
@@ -397,4 +444,35 @@ test("랜딩의 통계와 최근 경기 점수는 표시 목록이 아닌 전체
   assert.match(landing, /completedMatches: confirmedMatches\.length/u);
   assert.match(landing, /match\.result\?\.scoreA \?\? match\.teamA\?\.score \?\? 0/u);
   assert.match(landing, /match\.result\?\.scoreB \?\? match\.teamB\?\.score \?\? 0/u);
+});
+
+test("경로 없는 검색과 방 팝업은 키보드 이동과 조회 실패 복구를 제공한다", async () => {
+  const [picker, navigation, home, notifications] = await Promise.all([
+    read("src/components/common/SearchPicker.jsx"),
+    read("src/lib/roomModalNavigation.js"),
+    read("src/pages/Home.jsx"),
+    read("src/pages/Notifications.jsx"),
+  ]);
+  assert.match(picker, /ArrowDown/);
+  assert.match(picker, /inputRef\.current\?\.focus\(\)/);
+  assert.match(picker, /search-picker-retry/);
+  assert.match(navigation, /recruitingRoomLoadState/);
+  assert.match(navigation, /retryRecruitingRoom/);
+  assert.match(home, /RecruitingRoomLoadFailedView/);
+  assert.match(notifications, /RecruitingRoomLoadingView/);
+});
+
+test("팀 링크와 기록 목록은 부분 hydration과 중복 archive를 안전하게 처리한다", async () => {
+  const [hover, detail, season, ranking, affiliations] = await Promise.all([
+    read("src/components/team/TeamHoverCard.jsx"),
+    read("src/pages/TeamDetailView.jsx"),
+    read("src/lib/season.js"),
+    read("src/components/ranking/RankingTable.jsx"),
+    read("src/pages/Affiliations.jsx"),
+  ]);
+  assert.match(hover, /return to \? <Link/);
+  assert.match(detail, /archivedHistory\.filter\(\(record\) => !historyIds\.has\(record\.matchId\)\)/);
+  assert.match(season, /if \(!isConfirmed\(match\)\) return false/);
+  assert.match(ranking, /표시할 순위가 없습니다/);
+  assert.match(affiliations, /소속 순위 불러오는 중/);
 });

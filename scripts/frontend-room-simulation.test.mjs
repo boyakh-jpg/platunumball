@@ -1018,6 +1018,22 @@ test("방 모달은 후보 자동충원 예상치를 출전 슬롯으로 표시�
   assert.doesNotMatch(primarySource, /lobby\.sides\.team[AB]\.projectedFilled/);
 });
 
+test("공용 경기방은 모든 진입점에서 렌더 실패와 삭제 실패를 방 안에서 복구한다", async () => {
+  const [modalSource, interactionsSource, matchModelSource] = await Promise.all([
+    readFile(new URL("../src/components/recruiting/RecruitingRoomModal.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/useRecruitingRoomModalInteractions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomMatchModel.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(modalSource, /class RecruitingRoomRenderBoundary extends Component/);
+  assert.match(modalSource, /<RecruitingRoomLoadFailedView onClose=\{this\.props\.onClose\} onRetry=\{this\.retry\}/);
+  assert.match(interactionsSource, /const result = await app\.actions\.deleteSoloRecord\?\.\(matchId\)/);
+  assert.match(interactionsSource, /if \(!matchId \|\| soloRecordDeletePendingRef\.current\) return/);
+  assert.match(interactionsSource, /setSoloRecordDeleteTarget\(null\);\s+closeModal\(\)/);
+  assert.doesNotMatch(interactionsSource, /request\.finally\(closeModal\)/);
+  assert.match(matchModelSource, /refereeAbsenceRequest\?\.status === "pending"/);
+});
+
 test("서버 action 실패는 기존 화면 상태를 보존하고 같은 영역에서 재시도할 수 있다", async () => {
   const [serverActionsSource, settingsActionsSource, notificationsSource, reviewSource, teamDetailSource, teamDetailViewSource, teamsSource] = await Promise.all([
     readFile(new URL("../src/hooks/appData/orchestrator/serverActions.js", import.meta.url), "utf8"),
@@ -1040,6 +1056,14 @@ test("서버 action 실패는 기존 화면 상태를 보존하고 같은 영역
   assert.match(teamDetailViewSource, /emblemStatusError[\s\S]*retryTeamEmblemStatus/);
   assert.match(teamsSource, /representativeSavePendingId === team\.id \? "저장 중"/);
   assert.match(teamsSource, /대표팀을 설정하지 못했습니다\. 다시 시도해 주세요\./);
+});
+
+test("팀 슬롯 명단 저장은 중복 요청을 막고 실패 시 편집 상태를 유지한다", async () => {
+  const source = await readFile(new URL("../src/components/recruiting/RecruitingRoomPickerCore.jsx", import.meta.url), "utf8");
+  assert.match(source, /if \(commitPending\) return/);
+  assert.match(source, /result === false \|\| result\?\.ok === false/);
+  assert.match(source, /선수 명단을 저장하지 못했습니다/);
+  assert.match(source, /disabled=\{commitPending/);
 });
 
 test("알림 읽음 저장과 재조회가 모두 실패하면 낙관 상태를 되돌린다", async () => {
