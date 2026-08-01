@@ -834,7 +834,6 @@ test("editorial feature cards and buttons inherit border width owners", () => {
         !auditedSelector.test(selector)
         || allowedBoundary.test(selector)
         || file.endsWith("/layout/app-shell-auth.css")
-        || selector.includes("oauth-static-card")
       ) return;
       rule.walkDecls("border", (declaration) => {
         if (!declaration.value.includes("var(--ui-stroke-width)")) return;
@@ -844,6 +843,25 @@ test("editorial feature cards and buttons inherit border width owners", () => {
   }
 
   assert.deepEqual(violations, []);
+  const authCardViolations = [];
+  const borderlessAuthCards = new Set([
+    ".auth-card",
+    ".auth-message",
+    ".auth-browser-warning",
+    ".auth-session-line",
+    ".auth-test-login",
+  ]);
+  parseCss("src/styles/layout/app-shell-auth.css").walkRules((rule) => {
+    if (!borderlessAuthCards.has(normalizeSelector(rule.selector))) return;
+    rule.walkDecls("border", (declaration) => {
+      if (declaration.value !== "0") authCardViolations.push(rule.selector);
+    });
+  });
+  assert.deepEqual(authCardViolations, []);
+  assert.match(
+    fs.readFileSync("src/styles/features/match-approval-sharing.css", "utf8"),
+    /\.oauth-static-card\s*\{[^}]*border:\s*0;/,
+  );
   assert.doesNotMatch(
     fs.readFileSync("src/lib/naverAddress.js", "utf8"),
     /border:\s*["']1px solid var\(--line\)["']/,

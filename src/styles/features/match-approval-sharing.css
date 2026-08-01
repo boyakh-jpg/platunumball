@@ -263,7 +263,7 @@
   display: grid;
   width: min(720px, 100%);
   gap: var(--space-7);
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.16);
+  border: 0;
   border-radius: var(--radius-md);
   background: rgba(16, 20, 27, 0.96);
   padding: clamp(22px, 5vw, 44px);
