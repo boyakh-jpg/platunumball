@@ -92,7 +92,7 @@
 
 .arena-party-role-buttons button {
   min-height: 30px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.12);
+  border: var(--ui-button-border-width) solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.06);
   color: var(--muted);

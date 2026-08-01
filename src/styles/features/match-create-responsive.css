@@ -279,7 +279,7 @@
   .home-side-stack .compact-list > .team-hover-trigger,
   .season-mini-card .contract-grid > div
 ) {
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   box-shadow: none;

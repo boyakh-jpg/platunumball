@@ -7,7 +7,7 @@
   width: 44px;
   height: 44px;
   place-items: center;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-button-border-width) solid var(--ui-control-border);
   border-radius: 50%;
   background: var(--ui-card-bg);
   box-shadow: var(--shadow-strong);
@@ -159,7 +159,7 @@ html[data-theme="light"] .scroll-to-top-button {
   min-width: 0;
   min-height: var(--control-height);
   align-items: center;
-  border: var(--ui-stroke-width) solid var(--rb-line);
+  border: var(--ui-button-border-width) solid var(--rb-line);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
   color: var(--rb-text);
@@ -319,7 +319,7 @@ html[data-theme="light"] .scroll-to-top-button {
   display: grid;
   min-width: 0;
   gap: var(--space-2);
-  border: var(--ui-stroke-width) solid var(--rb-line);
+  border: var(--ui-card-border-width) solid var(--rb-line);
   border-radius: var(--control-radius);
   background: var(--button-secondary-bg);
   padding: 11px 13px;

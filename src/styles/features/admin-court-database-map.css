@@ -10,7 +10,7 @@
   min-height: 62px;
   align-content: center;
   gap: 3px;
-  border: var(--ui-stroke-width) solid var(--card-border);
+  border: var(--ui-button-border-width) solid var(--card-border);
   border-radius: var(--radius-sm);
   background: var(--input-bg);
   color: var(--text);

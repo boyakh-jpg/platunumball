@@ -56,7 +56,7 @@ html[data-theme="light"] .om-match-panel {
 
 .om-calendar-filter-bar select {
   min-height: var(--control-height);
-  border: var(--ui-stroke-width) solid var(--control-border);
+  border: var(--ui-button-border-width) solid var(--control-border);
   border-radius: var(--control-radius);
   font-size: var(--control-font-size);
   font-weight: 900;
@@ -101,31 +101,6 @@ html[data-theme="light"] .tournament-schedule-list {
   border-color: var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--card-shadow);
-}
-
-.om-calendar-toolbar button,
-.om-calendar-grid button,
-.om-tournament-head-actions button,
-.om-tournament-actions button,
-.tournament-team-list button,
-.tournament-schedule-list button,
-.tournament-back-link {
-  min-height: var(--control-height);
-  border: var(--ui-stroke-width) solid var(--control-border);
-  border-radius: var(--control-radius);
-  background: var(--button-secondary-bg);
-  color: var(--rb-text);
-  font-size: var(--control-font-size);
-  font-weight: 900;
-}
-
-.om-calendar-grid button.active,
-.om-tournament-head-actions button.active,
-.om-tournament-actions button.active,
-.tournament-team-list button.active,
-.tournament-schedule-list button.active {
-  background: var(--button-primary-bg);
-  color: #fff;
 }
 
 .om-view-card.active {

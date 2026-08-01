@@ -1192,6 +1192,33 @@ test("모집 목록은 공용 경기 생성 경로만 사용한다", async () =>
   assert.doesNotMatch(view, /arena-compose-drawer|arena-compose-form/);
 });
 
+test("경기 결과 제출은 진행 중 중복 요청을 막고 실패 후 다시 제출할 수 있다", async () => {
+  const [matchRoomSource, actionSource, viewSource, modalEditorSource] = await Promise.all([
+    readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/matchRoomControllerParts.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/MatchRoomView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingSourceMatchPanels.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(matchRoomSource, /const resultSavePendingRef = useRef\(false\)/);
+  assert.match(actionSource, /if \(!canSubmitResult \|\| resultSavePendingRef\.current\) return/);
+  assert.match(actionSource, /resultSavePendingRef\.current = true[\s\S]*finally \{[\s\S]*resultSavePendingRef\.current = false/);
+  assert.match(viewSource, /disabled=\{!canSubmitResult \|\| resultSavePending\}/);
+  assert.match(modalEditorSource, /if \(!canSaveDraft \|\| savePendingRef\.current \|\| !onSave\) return/);
+  assert.match(modalEditorSource, /const result = await onSave\(getDerivedDraft\(\)\)/);
+  assert.match(modalEditorSource, /입력을 유지했으니 다시 시도해 주세요/);
+});
+
+test("사후 경기기록 참가 확인은 중복 승인을 막고 실패를 확인 패널에 남긴다", async () => {
+  const source = await readFile(new URL("../src/components/match/ApprovalPanel.jsx", import.meta.url), "utf8");
+  assert.match(source, /const approvalPendingRef = useRef\(false\)/);
+  assert.match(source, /if \(approvalPendingRef\.current \|\| !onApprove\) return/);
+  assert.match(source, /const result = await onApprove\(sideName, playerId\)/);
+  assert.match(source, /role="alert" className="form-warning"/);
+  assert.match(source, /disabled = locked \|\| approvalPending/);
+  assert.match(source, /status\.requiredIds\.map\(\(playerId\) =>/);
+});
+
 test("팀·대회·설정 mutation은 재입력과 실패를 화면 경계에서 막는다", async () => {
   const [teams, teamDetail, teamDetailView, tournament, favorites, settings, primary, reports, courtDetail, gettingStarted, matchRoom, matchRoomView, nameReport, notifications, affiliations, settingsCourt, settingsReferee] = await Promise.all([
     readFile(new URL("../src/pages/Teams.jsx", import.meta.url), "utf8"),

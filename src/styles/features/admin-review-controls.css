@@ -83,7 +83,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-button-border-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);
@@ -160,7 +160,7 @@
   width: 30px;
   height: 30px;
   place-items: center;
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-button-border-width) solid var(--line);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.045);
   color: var(--muted);

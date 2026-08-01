@@ -292,7 +292,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-4);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-card-border-width) solid var(--line);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.04);
   padding: 9px 10px;

@@ -32,7 +32,7 @@
   min-height: 34px;
   align-items: center;
   gap: 7px;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-button-radius);
   background: var(--ui-control-bg);
   color: var(--text);

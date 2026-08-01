@@ -456,7 +456,7 @@
 
 .broadcast-list span {
   justify-content: space-between;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   color: var(--muted);

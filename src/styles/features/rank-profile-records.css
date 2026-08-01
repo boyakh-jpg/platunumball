@@ -154,7 +154,7 @@
 .rank-list .rank-row {
   display: grid;
   width: 100%;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 9px;
@@ -348,7 +348,7 @@
 }
 .connection-list .ui-profile-identity-inline {
   width: 100%;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 10px;

@@ -300,7 +300,6 @@ body {
   box-shadow: none;
   backdrop-filter: none;
 }
-.home-search-box,
 .home-search-results a,
 .home-search-results .team-hover-trigger,
 .home-action-row,
@@ -308,13 +307,21 @@ body {
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
 .home-side-stack .compact-list > .team-hover-trigger,
-.team-card .member-row,
+.team-card .member-row {
+  border: var(--ui-card-border-width) solid var(--rb-line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.045);
+}
 .segmented-control button,
 .favorite-type-grid button {
-  border: var(--ui-stroke-width) solid var(--rb-line);
+  border: var(--ui-button-border-width) solid var(--rb-line);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.045);
   box-shadow: none;
+}
+.home-search-box {
+  border: var(--ui-stroke-width) solid var(--rb-line);
+  border-radius: var(--radius-sm);
 }
 .button:not(:focus-visible),
 .provider-button:not(:focus-visible),

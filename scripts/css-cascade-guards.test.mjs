@@ -822,6 +822,34 @@ test("global modules use spacing tokens for canonical gaps", () => {
   assert.deepEqual(rawGaps, []);
 });
 
+test("editorial feature cards and buttons inherit border width owners", () => {
+  const auditedSelector = /(?:card|row|panel|item|list|summary|button)/i;
+  const allowedBoundary = /(?:input|select|textarea|badge|emblem|focus|shot|clock|divider|separator|rule|result|recent-match|avatar|checkbox|radio|range|map|modal|popover|tooltip|dialog|calendar|table|grid|bracket|crown|chip|step|nav)/i;
+  const violations = [];
+
+  for (const file of styleDirectoryCssFiles) {
+    parseCss(file).walkRules((rule) => {
+      const selector = normalizeSelector(rule.selector);
+      if (
+        !auditedSelector.test(selector)
+        || allowedBoundary.test(selector)
+        || file.endsWith("/layout/app-shell-auth.css")
+        || selector.includes("oauth-static-card")
+      ) return;
+      rule.walkDecls("border", (declaration) => {
+        if (!declaration.value.includes("var(--ui-stroke-width)")) return;
+        violations.push(`${file}:${declaration.source.start.line} ${rule.selector}`);
+      });
+    });
+  }
+
+  assert.deepEqual(violations, []);
+  assert.doesNotMatch(
+    fs.readFileSync("src/lib/naverAddress.js", "utf8"),
+    /border:\s*["']1px solid var\(--line\)["']/,
+  );
+});
+
 test("default and functional panel typography use shared body tokens", () => {
   const tokenRoot = parseCss("src/styles/tokens.css");
   const foundationRoot = postcss.parse(

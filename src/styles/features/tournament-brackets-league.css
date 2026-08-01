@@ -246,7 +246,7 @@
   display: grid;
   gap: 8px;
   align-items: center;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.66);
   padding: 10px;
@@ -300,7 +300,7 @@
   align-items: end;
   justify-content: space-between;
   gap: 12px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.62);
   padding: 14px;

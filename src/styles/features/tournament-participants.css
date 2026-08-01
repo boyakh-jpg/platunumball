@@ -1,7 +1,7 @@
 .tournament-summary-grid > div {
   display: grid;
   gap: 5px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.66);
   padding: 12px;
@@ -24,7 +24,7 @@
 .tournament-team-list article {
   display: grid;
   align-items: center;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.66);
   padding: 10px;
@@ -111,7 +111,7 @@
 .tournament-referee-list article,
 .tournament-match-referee-list form,
 .tournament-sanction-panel {
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.66);
 }
@@ -246,7 +246,7 @@
 .tournament-round {
   display: grid;
   gap: 9px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.68);
   padding: 12px;
@@ -261,7 +261,7 @@
 .league-fixture-grid article {
   display: grid;
   gap: 6px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.05);
   padding: 10px;
@@ -322,7 +322,7 @@
   align-items: stretch;
   gap: 18px;
   overflow-x: auto;
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.18);
+  border: var(--ui-card-border-width) solid rgba(255, 211, 108, 0.18);
   border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 50% 42%, rgba(255, 211, 108, 0.16), transparent 14rem),
@@ -337,7 +337,7 @@
   grid-template-columns: 1fr;
   gap: 14px;
   overflow-x: auto;
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.18);
+  border: var(--ui-card-border-width) solid rgba(255, 211, 108, 0.18);
   border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 50% 12%, rgba(255, 211, 108, 0.14), transparent 13rem),
@@ -454,7 +454,7 @@
   display: grid;
   width: min(100%, 270px);
   gap: 7px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.05);
   padding: 10px;

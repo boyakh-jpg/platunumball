@@ -61,3 +61,13 @@ test("대회 팀 승인은 공용 governance 처리와 중복 실행 잠금을 �
   assert.match(detailSource, /\(\) => app\.actions\.approveTournamentTeam\(tournament\.id, row\.teamId\)/);
   assert.match(detailSource, /disabled=\{Boolean\(governanceAction\)\}/);
 });
+
+test("대회 governance 성공은 후속 재조회 실패와 분리한다", async () => {
+  const detailSource = await readSourceGroup(
+    (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8"),
+    TOURNAMENT_DETAIL_SOURCE_PATHS,
+  );
+
+  assert.match(detailSource, /setGovernanceFeedback\(successMessage\);\s*Promise\.resolve\(\)\s*\.then\(\(\) => app\.actions\.loadTournament\?\.\(tournament\.id\)\)\s*\.catch\(\(\) => false\);\s*return true;/);
+  assert.doesNotMatch(detailSource, /await app\.actions\.loadTournament\?\.\(tournament\.id\)/);
+});

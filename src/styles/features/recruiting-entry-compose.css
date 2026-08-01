@@ -118,7 +118,7 @@
 }
 
 .arena-queue-summary span {
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.1);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.055);
   color: var(--muted);
@@ -303,7 +303,7 @@
   width: 38px;
   height: 38px;
   flex: 0 0 auto;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.14);
+  border: var(--ui-button-border-width) solid rgba(255, 255, 255, 0.14);
   color: var(--text);
   cursor: pointer;
 }

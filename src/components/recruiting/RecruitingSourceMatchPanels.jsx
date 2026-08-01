@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -263,6 +264,9 @@ export function SourceMatchDisputeEditor({
   submitLabel = "",
 }) {
   const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
+  const savePendingRef = useRef(false);
+  const [savePending, setSavePending] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     setDraft(makeSourceMatchDraft(match));
@@ -287,6 +291,23 @@ export function SourceMatchDisputeEditor({
       .flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName))
       .some((playerId) => getEditableFieldsForPlayer(playerId).length > 0)
   );
+  const saveDraft = async () => {
+    if (!canSaveDraft || savePendingRef.current || !onSave) return;
+    savePendingRef.current = true;
+    setSavePending(true);
+    setSaveError("");
+    try {
+      const result = await onSave(getDerivedDraft());
+      if (result === false || result?.ok === false) {
+        setSaveError("경기 기록을 저장하지 못했습니다. 입력을 유지했으니 다시 시도해 주세요.");
+      }
+    } catch {
+      setSaveError("경기 기록을 저장하지 못했습니다. 입력을 유지했으니 다시 시도해 주세요.");
+    } finally {
+      savePendingRef.current = false;
+      setSavePending(false);
+    }
+  };
 
   const updateTeamScore = (sideName, value) => {
     const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
@@ -319,7 +340,7 @@ export function SourceMatchDisputeEditor({
   return (
     <form className="arena-dispute-editor" onSubmit={(event) => {
       event.preventDefault();
-      onSave(getDerivedDraft());
+      void saveDraft();
     }}>
       <div className="arena-dispute-score-row">
         <label>
@@ -329,7 +350,7 @@ export function SourceMatchDisputeEditor({
             type="number"
             min="0"
             max="999"
-            disabled={!editableScoreSides.includes("teamA")}
+            disabled={savePending || !editableScoreSides.includes("teamA")}
             value={editableScoreSides.includes("teamA") ? draft.scoreA : getDerivedScore("teamA")}
             onChange={(event) => updateTeamScore("teamA", event.target.value)}
           />
@@ -343,7 +364,7 @@ export function SourceMatchDisputeEditor({
             type="number"
             min="0"
             max="999"
-            disabled={!editableScoreSides.includes("teamB")}
+            disabled={savePending || !editableScoreSides.includes("teamB")}
             value={editableScoreSides.includes("teamB") ? draft.scoreB : getDerivedScore("teamB")}
             onChange={(event) => updateTeamScore("teamB", event.target.value)}
           />
@@ -366,7 +387,7 @@ export function SourceMatchDisputeEditor({
                         {field.shortLabel}
                         <NumericStepper
                           className="arena-stat-stepper"
-                          disabled={!editableFieldIds.has(field.id)}
+                          disabled={savePending || !editableFieldIds.has(field.id)}
                           integer={false}
                           label={`${getSourceMatchPlayerName(match, userById, sideName, playerId, index, "선수")} ${field.label}`}
                           max={Number.MAX_SAFE_INTEGER}
@@ -383,8 +404,9 @@ export function SourceMatchDisputeEditor({
         ))}
       </div>
       <div className="match-action-row">
-        <Button type="submit" disabled={!canSaveDraft}>{submitLabel || (hasResult ? "수정안 저장" : "결과 저장")}</Button>
+        <Button type="submit" disabled={savePending || !canSaveDraft}>{savePending ? "저장 중" : submitLabel || (hasResult ? "수정안 저장" : "결과 저장")}</Button>
       </div>
+      {saveError ? <small role="alert" className="form-warning">{saveError}</small> : null}
       <p className="muted">{hasResult ? "확정 후 불복은 신고로 처리합니다." : "결과 저장 후 양쪽 승인 단계로 넘어갑니다."}</p>
     </form>
   );

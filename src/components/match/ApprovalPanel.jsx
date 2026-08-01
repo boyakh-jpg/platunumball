@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import Card from "../common/Card.jsx";
 import Badge from "../common/Badge.jsx";
 import ProfileEmblem from "../profile/ProfileEmblem.jsx";
@@ -5,6 +6,9 @@ import { getApprovalStatus, isMatchRecordMatch } from "../../lib/matchUtils.js";
 import { getPostgameRecordVerification } from "../../lib/postgameRecordVerification.js";
 
 export default function ApprovalPanel({ match, teams, users, currentUserId, onApprove }) {
+  const approvalPendingRef = useRef(false);
+  const [approvalPending, setApprovalPending] = useState(false);
+  const [approvalError, setApprovalError] = useState("");
   const recordRoom = isMatchRecordMatch(match);
   if (!recordRoom) return null;
   const confirmed = match.status === "confirmed";
@@ -21,6 +25,23 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
   const currentUserRequired = Object.values(sideStatuses).some((status) => status.requiredIds.includes(currentUserId));
   const currentUserConfirmed = Object.values(sideStatuses).some((status) => status.approvals.includes(currentUserId));
   const approvalCount = Object.values(sideStatuses).reduce((total, status) => total + status.approvals.length, 0);
+  const approveCurrentUser = async (sideName, playerId) => {
+    if (approvalPendingRef.current || !onApprove) return;
+    approvalPendingRef.current = true;
+    setApprovalPending(true);
+    setApprovalError("");
+    try {
+      const result = await onApprove(sideName, playerId);
+      if (result === false || result?.ok === false) {
+        setApprovalError("참가 확인을 저장하지 못했습니다. 다시 시도해 주세요.");
+      }
+    } catch {
+      setApprovalError("참가 확인을 저장하지 못했습니다. 다시 시도해 주세요.");
+    } finally {
+      approvalPendingRef.current = false;
+      setApprovalPending(false);
+    }
+  };
   const renderSide = (sideName) => {
     const status = sideStatuses[sideName];
     const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", players: [] };
@@ -31,18 +52,18 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
           <span>{status.approvals.length}/{status.majority} · {status.approvalLabel}</span>
         </div>
         <div className="approval-voter-list">
-          {side.players.map((playerId) => {
+          {status.requiredIds.map((playerId) => {
             const user = userMap[playerId];
             const approved = status.approvals.includes(playerId);
             const isCurrentUser = playerId === currentUserId;
             const isRequiredApprover = status.requiredIds.includes(playerId);
-            const disabled = locked || approved || !isCurrentUser || !isRequiredApprover || !onApprove;
+            const disabled = locked || approvalPending || approved || !isCurrentUser || !isRequiredApprover || !onApprove;
             const buttonClass = [
               approved ? "approved" : "",
               isCurrentUser ? "is-current-user" : "is-not-current-user",
             ].filter(Boolean).join(" ");
             return (
-              <button key={playerId} type="button" disabled={disabled} className={buttonClass} onClick={() => onApprove(sideName, playerId)}>
+              <button key={playerId} type="button" disabled={disabled} className={buttonClass} onClick={() => { void approveCurrentUser(sideName, playerId); }}>
                 <ProfileEmblem user={user} className="small" initial="P" />
                 <strong>{user?.name ?? "플레이어"}</strong>
                 <em>
@@ -51,7 +72,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
                     : !isRequiredApprover
                       ? "확인 대상 아님"
                       : isCurrentUser
-                        ? waitingForScore ? "점수 입력 대기" : "내 참가 확인"
+                        ? approvalPending ? "확인 저장 중" : waitingForScore ? "점수 입력 대기" : "내 참가 확인"
                         : "본인 확인 대기"}
                 </em>
               </button>
@@ -84,6 +105,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
         {renderSide("teamA")}
         {renderSide("teamB")}
       </div>
+      {approvalError ? <small role="alert" className="form-warning">{approvalError}</small> : null}
       {!confirmed ? (
         <div className={!locked && currentUserRequired && !currentUserConfirmed ? "approval-guard-note ready" : "approval-guard-note"}>
           <strong>

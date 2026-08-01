@@ -365,7 +365,7 @@ body.rankball-scroll-locked .app-main {
   justify-content: center;
   gap: var(--space-3);
   min-height: 38px;
-  border: var(--ui-stroke-width) solid rgba(255, 205, 96, 0.28);
+  border: var(--ui-button-border-width) solid rgba(255, 205, 96, 0.28);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.07);
   color: var(--text);
@@ -398,7 +398,7 @@ body.rankball-scroll-locked .app-main {
   align-items: center;
   gap: var(--space-3);
   margin-left: auto;
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-button-border-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.055);
   color: var(--text);
@@ -418,7 +418,7 @@ body.rankball-scroll-locked .app-main {
   justify-content: center;
   gap: var(--space-5);
   min-height: 52px;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.14);
+  border: var(--ui-button-border-width) solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   cursor: pointer;

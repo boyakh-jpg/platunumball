@@ -241,7 +241,7 @@ html[data-theme="light"] .page-header p:not(.eyebrow) {
   content: "RANK PROFILE";
   justify-self: start;
   width: max-content;
-  border: var(--ui-stroke-width) solid rgba(70, 224, 182, 0.34);
+  border: var(--ui-card-border-width) solid rgba(70, 224, 182, 0.34);
   border-radius: 999px;
   background: rgba(70, 224, 182, 0.12);
   color: var(--green);

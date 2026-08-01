@@ -355,7 +355,7 @@ html[data-theme="light"] .om-calendar-grid button.active {
 
 .om-view-card {
   min-height: 76px;
-  border: var(--ui-stroke-width) solid var(--rb-line);
+  border: var(--ui-card-border-width) solid var(--rb-line);
   border-radius: var(--radius-md);
   background: var(--rb-surface);
   box-shadow: none;

@@ -69,7 +69,7 @@
 }
 
 .ranking-filter-card {
-  border: var(--ui-stroke-width) solid rgba(163, 185, 208, 0.16);
+  border: var(--ui-card-border-width) solid rgba(163, 185, 208, 0.16);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 12px;

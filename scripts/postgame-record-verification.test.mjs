@@ -144,6 +144,21 @@ test("본인이 아닌 참가자의 승인 대리는 허용하지 않는다", ()
   );
 });
 
+test("교체 출전 뒤 후보로 돌아간 선수도 참가 확인 대상과 UI에 남는다", async () => {
+  const match = makeRecord({
+    teamA: { players: [players[1]] },
+    playedPlayerIds: { teamA: [players[0], players[1]], teamB: players.slice(7) },
+    approvals: { teamA: [], teamB: [] },
+    rules: { recordType: "match_record" },
+  });
+  const status = getApprovalStatus(match, [], "teamA");
+  assert.deepEqual(status.requiredIds, [players[1], players[0]]);
+
+  const panelSource = await readFile(new URL("../src/components/match/ApprovalPanel.jsx", import.meta.url), "utf8");
+  assert.match(panelSource, /status\.requiredIds\.map\(\(playerId\) =>/);
+  assert.doesNotMatch(panelSource, /side\.players\.map\(\(playerId\) =>/);
+});
+
 test("즉시·1시간 알림은 기준 미달 기록의 미확인자에게만 보낸다", () => {
   const match = makeRecord({
     approvals: { teamA: players.slice(0, 7), teamB: players.slice(7, 9) },

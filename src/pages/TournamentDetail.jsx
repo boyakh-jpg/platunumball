@@ -254,8 +254,10 @@ const location = useLocation();
     try {
       const result = await action();
       if (!result || result?.ok === false) throw new Error(result?.error ?? "tournament_governance_failed");
-      await app.actions.loadTournament?.(tournament.id);
       setGovernanceFeedback(successMessage);
+      Promise.resolve()
+        .then(() => app.actions.loadTournament?.(tournament.id))
+        .catch(() => false);
       return true;
     } catch (error) {
       setGovernanceFeedback(formatGovernanceError(error.message));

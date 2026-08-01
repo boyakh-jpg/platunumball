@@ -340,7 +340,7 @@ export async function openNaverMapPinPicker(court = {}, clientId = getNaverMapCl
     const panel = applyInlineStyle(document.createElement("div"), {
       width: "min(720px, 100%)",
       background: "var(--surface)",
-      border: "1px solid var(--line)",
+      border: "0",
       borderRadius: "8px",
       overflow: "hidden",
       boxShadow: "0 20px 60px rgba(0, 0, 0, 0.35)",

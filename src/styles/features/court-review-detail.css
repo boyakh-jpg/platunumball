@@ -89,7 +89,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 9px var(--space-7);
   padding: 13px;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
 }
@@ -176,7 +176,7 @@
   justify-content: space-between;
   gap: var(--space-5);
   padding: 10px 12px;
-  border: var(--ui-stroke-width) solid color-mix(in srgb, var(--rb-orange) 46%, var(--card-border));
+  border: var(--ui-card-border-width) solid color-mix(in srgb, var(--rb-orange) 46%, var(--card-border));
   border-radius: var(--ui-control-radius);
   background: color-mix(in srgb, var(--rb-orange) 8%, var(--card-bg));
   color: var(--rb-text);
@@ -225,7 +225,7 @@
 .court-review-form textarea {
   width: 100%;
   min-width: 0;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-button-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   color: var(--rb-text);
@@ -273,7 +273,7 @@
   height: var(--ui-button-height);
   place-items: center;
   padding: 0;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-button-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   color: var(--rb-soft);

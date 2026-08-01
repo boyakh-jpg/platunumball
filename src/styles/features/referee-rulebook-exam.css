@@ -1,7 +1,7 @@
 .referee-rulebook-panel {
   display: grid;
   gap: var(--space-6);
-  border: var(--ui-stroke-width) solid rgba(90, 168, 255, 0.24);
+  border: var(--ui-card-border-width) solid rgba(90, 168, 255, 0.24);
   border-radius: var(--radius);
   background: rgba(90, 168, 255, 0.06);
   padding: 12px;
@@ -121,7 +121,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .court-profile-information-grid > section {
   min-width: 0;
   padding: 16px;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
 }
@@ -197,7 +197,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-rulebook-checklist {
   display: grid;
   gap: var(--space-6);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-card-border-width) solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
   padding: 14px;
@@ -214,7 +214,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   align-items: center;
   gap: var(--space-4);
   min-width: 0;
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);
@@ -363,7 +363,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-exam-panel {
   display: grid;
   gap: var(--space-5);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-card-border-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(70, 224, 182, 0.055);
   padding: 12px;
@@ -379,7 +379,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
   display: grid;
   min-width: 0;
   gap: var(--space-1);
-  border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.08);
+  border: var(--ui-card-border-width) solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
   background: rgba(0, 0, 0, 0.16);
   color: var(--muted);
@@ -423,7 +423,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 .referee-exam-question {
   display: grid;
   gap: var(--space-4);
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-card-border-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 10px;
@@ -448,7 +448,7 @@ html[data-theme="light"] .referee-rulebook-page .referee-rulebook-intro h2 {
 
 .referee-exam-choice-grid button {
   min-width: 0;
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-button-border-width) solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.055);
   color: var(--text);

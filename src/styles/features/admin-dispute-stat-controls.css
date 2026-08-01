@@ -299,7 +299,7 @@
   display: grid;
   gap: var(--space-5);
   padding: 12px;
-  border: var(--ui-stroke-width) solid var(--line);
+  border: var(--ui-card-border-width) solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface-2);
 }

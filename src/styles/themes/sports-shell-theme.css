@@ -110,9 +110,6 @@ textarea {
   border-radius: var(--radius-lg);
   background: rgba(10, 14, 21, 0.9);
 }
-.home-search-box {
-  border-radius: var(--radius-md);
-}
 .home-action-row {
   border-left: 3px solid rgba(70, 224, 182, 0.55);
   border-radius: var(--radius-md);
@@ -268,10 +265,12 @@ html[data-theme="light"] .app-main {
     var(--scoreboard-2);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
 }
-.rank-home .rank-mode-pill,
-.home-action-row,
-.home-search-box {
-  border: var(--ui-stroke-width) solid rgba(199, 223, 232, 0.16);
+.rank-home .rank-mode-pill {
+  border: var(--ui-card-border-width) solid rgba(199, 223, 232, 0.16);
+  background: rgba(255, 255, 255, 0.052);
+}
+.home-action-row {
+  border: var(--ui-card-border-width) solid rgba(199, 223, 232, 0.16);
   background: rgba(255, 255, 255, 0.052);
 }
 .rank-home .rank-mode-pill {
@@ -347,7 +346,7 @@ html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
   color: #fff;
 }
 .button-secondary {
-  border: var(--ui-stroke-width) solid var(--rb-line);
+  border: var(--ui-button-border-width) solid var(--rb-line);
   background: var(--rb-surface);
   box-shadow: none;
 }

@@ -295,7 +295,7 @@
 
 .court-db-quick-status button {
   min-height: 27px;
-  border: var(--ui-stroke-width) solid var(--card-border);
+  border: var(--ui-button-border-width) solid var(--card-border);
   border-radius: var(--radius-xs);
   background: var(--input-bg);
   color: var(--text);
@@ -369,7 +369,7 @@
 .court-db-review-editor {
   min-width: 0;
   min-height: 0;
-  border: var(--ui-stroke-width) solid var(--card-border);
+  border: var(--ui-card-border-width) solid var(--card-border);
   border-radius: var(--radius-sm);
   background: var(--card-bg);
   overflow: auto;

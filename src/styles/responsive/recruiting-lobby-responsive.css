@@ -377,7 +377,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
   min-width: 0;
   min-height: 52px;
   place-items: center;
-  border: var(--ui-stroke-width) solid var(--ui-control-border);
+  border: var(--ui-card-border-width) solid var(--ui-control-border);
   border-radius: var(--ui-control-radius);
   background: var(--ui-control-bg);
   color: var(--text);
