@@ -126,7 +126,7 @@
 }
 
 .ui-match-clock-focus-backdrop {
-  --match-clock-focus-gap: clamp(4px, 0.8vmin, 10px);
+  --match-clock-focus-gap: clamp(2px, 0.45vmin, 6px);
 
   position: fixed;
   inset: 0;
@@ -181,6 +181,9 @@
   grid-row: 1;
   height: 100%;
   min-height: 0;
+  background: var(--scoreboard);
+  border: 0;
+  box-shadow: none;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-attendance-qr,
@@ -218,23 +221,27 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-team-score {
-  font-size: clamp(2.25rem, 11vmin, 5rem);
+  font-size: clamp(2.75rem, min(15vmin, 9cqi), 7rem);
+  line-height: 1.1;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-main-time time {
-  font-size: clamp(3rem, 16vmin, 8rem);
+  font-size: clamp(4rem, min(20vmin, 13cqi), 9rem);
+  line-height: 1.1;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-period {
+  color: var(--rb-text);
   font-size: clamp(var(--font-size-title-sm), 4vmin, var(--font-size-section-title));
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-scoreboard-time-only .ui-match-clock-main-time time {
-  font-size: clamp(3.5rem, 20vmin, 10rem);
+  font-size: clamp(4.5rem, min(24vmin, 18cqi), 11rem);
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock {
   padding: 4px 6px;
+  box-shadow: none;
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock-value {
@@ -304,9 +311,18 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-score-actions .ui-button {
-  min-height: calc(var(--ui-button-height) + var(--space-4));
+  height: clamp(var(--ui-button-height-sm), 9vmin, var(--ui-button-height));
+  min-height: var(--ui-button-height-sm);
   padding-inline: var(--space-4);
   border: 0;
+}
+
+.ui-match-clock-panel-focus .ui-button {
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  text-align: center;
+  line-height: 1;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-actions {
@@ -346,8 +362,12 @@
 
 .ui-match-clock-panel-focus .ui-match-clock-device-tools .ui-button {
   overflow: hidden;
+  color: var(--rb-text);
   font-size: var(--font-size-caption);
   text-overflow: ellipsis;
+  background: var(--ui-control-bg);
+  border: 0;
+  box-shadow: none;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-volume {
