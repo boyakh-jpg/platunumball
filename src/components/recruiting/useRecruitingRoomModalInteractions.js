@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 export function useRecruitingRoomModalInteractions({
   useCallback, setRoomShareStatus, roomShareStatusTimerRef, copyTextToClipboard, roomShareUrl,
@@ -10,6 +10,9 @@ export function useRecruitingRoomModalInteractions({
   buildMatchDisputeRequest, PLAYER_STAT_FIELDS, refreshSourceMatchReview,
 }) {
   const soloRecordDeletePendingRef = useRef(false);
+  const sourceDisputePendingRef = useRef(false);
+  const [sourceDisputePending, setSourceDisputePending] = useState(false);
+  const [sourceDisputeStatus, setSourceDisputeStatus] = useState("");
   const showRoomShareStatus = useCallback((message) => {
     setRoomShareStatus(message);
     window.clearTimeout(roomShareStatusTimerRef.current);
@@ -144,36 +147,45 @@ export function useRecruitingRoomModalInteractions({
   const sheetModalOpacity = 1 - (sheetDragProgress * 0.34);
   const submitSourceDispute = async (event) => {
     event.preventDefault();
-    if (!sourceMatch?.id) return;
-    if (!sourceMatch.refereeId) {
-      const result = await app.actions.disputeMatch(sourceMatch.id, {
+    if (!sourceMatch?.id || sourceDisputePendingRef.current) return;
+    const request = !sourceMatch.refereeId
+      ? {
         kind: "team_scores",
         requestedScoreA: Number(sourceDisputeDraft.requestedScoreA),
         requestedScoreB: Number(sourceDisputeDraft.requestedScoreB),
         baseRevision: getMatchResultRevision(sourceMatch),
         reason: sourceDisputeDraft.customReason.trim() || sourceDisputeDraft.reason,
-
+      }
+      : buildMatchDisputeRequest({
+        match: sourceMatch,
+        playerId: app.currentUser.id,
+        requestedStats: Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
+          id,
+          Number(sourceDisputeDraft.requestedStats?.[id]),
+        ])),
+        reason: sourceDisputeDraft.reason,
+        customReason: sourceDisputeDraft.customReason,
       });
-      if (result?.ok !== false) await refreshSourceMatchReview?.();
-      return;
+    sourceDisputePendingRef.current = true;
+    setSourceDisputePending(true);
+    setSourceDisputeStatus("");
+    try {
+      const result = await app.actions.disputeMatch(sourceMatch.id, request);
+      if (!result || result.ok === false) throw new Error("match_dispute_failed");
+      await refreshSourceMatchReview?.();
+      setSourceDisputeStatus("이의제기를 접수했습니다.");
+    } catch {
+      setSourceDisputeStatus("이의제기를 접수하지 못했습니다. 다시 시도해 주세요.");
+    } finally {
+      sourceDisputePendingRef.current = false;
+      setSourceDisputePending(false);
     }
-    const result = await app.actions.disputeMatch(sourceMatch.id, buildMatchDisputeRequest({
-      match: sourceMatch,
-      playerId: app.currentUser.id,
-      requestedStats: Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
-        id,
-        Number(sourceDisputeDraft.requestedStats?.[id]),
-      ])),
-      reason: sourceDisputeDraft.reason,
-      customReason: sourceDisputeDraft.customReason,
-    }));
-    if (result?.ok !== false) await refreshSourceMatchReview?.();
   };
 
   return {
     showRoomShareStatus, copyRoomShareUrl, shareRoom, closeModal, closeFromBackdrop,
     deleteSourceSoloRecord, confirmDeleteSourceSoloRecord, resetSheetDrag, getSheetDismissDistance, isSheetDragInteractiveTarget,
     canDismissBySheetDrag, startSheetDrag, moveSheetDrag, finishSheetDrag, cancelSheetDrag,
-    sheetDragProgress, sheetBackdropOpacity, sheetModalOpacity, submitSourceDispute,
+    sheetDragProgress, sheetBackdropOpacity, sheetModalOpacity, sourceDisputePending, sourceDisputeStatus, submitSourceDispute,
   };
 }

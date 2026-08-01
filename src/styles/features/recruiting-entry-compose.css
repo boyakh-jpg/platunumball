@@ -298,25 +298,6 @@
   line-height: 1.08;
 }
 
-.arena-compose-drawer {
-  width: min(760px, 100%);
-  max-height: min(820px, calc(100vh - 36px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.arena-drawer-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.arena-drawer-head h2 {
-  margin-top: 4px;
-  font-size: 2rem;
-  text-transform: uppercase;
-}
-
 .arena-icon-button {
   display: grid;
   width: 38px;
@@ -325,10 +306,6 @@
   border: var(--ui-stroke-width) solid rgba(255, 255, 255, 0.14);
   color: var(--text);
   cursor: pointer;
-}
-
-.arena-compose-form {
-  display: grid;
 }
 
 .arena-field-grid {
@@ -376,44 +353,6 @@
   margin: 3px 0;
   color: var(--gold);
   font-size: 1rem;
-}
-
-.arena-range-control {
-  display: grid;
-  gap: 10px;
-  border: var(--ui-stroke-width) solid rgba(255, 211, 108, 0.18);
-  border-radius: var(--radius-xs);
-  background: rgba(255, 211, 108, 0.07);
-  padding: 12px;
-}
-
-.arena-range-control > div:first-child {
-  display: grid;
-  gap: 3px;
-}
-
-.arena-range-control span {
-  color: var(--gold);
-  font-size: 0.78rem;
-  font-weight: 950;
-}
-
-.arena-range-control strong {
-  color: var(--text);
-  font-size: 1rem;
-}
-
-.arena-range-control em,
-.arena-range-control small {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-style: normal;
-  font-weight: 850;
-}
-
-.arena-party-field {
-  display: grid;
-  gap: 10px;
 }
 
 .arena-team-choice-field {

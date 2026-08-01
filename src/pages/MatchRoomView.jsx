@@ -26,11 +26,10 @@ import {
 import {
   CourtReviewRating,
 } from "./MatchRoomParts.jsx";
-
 import { MatchRoomReviewPanels } from "./MatchRoomReviewPanels.jsx";
 import { MatchRoomStatEditor } from "./MatchRoomStatEditor.jsx";
 export default function MatchRoomView({ controller }) {
-  const { app, match, score, setScore, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
+  const { app, match, score, setScore, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, managementActionPending, managementActionFeedback, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, finalizeActionError, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
 return (
     <div className="page-stack match-room">
       <section className={match.ranked === false ? "gm-room-hero gm-friendly" : "gm-room-hero gm-ranked"}>
@@ -42,13 +41,11 @@ return (
           </div>
           <span>{match.mode}</span>
         </div>
-
         <div className="gm-room-title">
           <span>{match.official ? "OFFICIAL ROOM" : "CUSTOM ROOM"}</span>
           <h1>{matchKind}</h1>
           <p><MapPin size={16} />{match.court} · {match.scheduledAt}</p>
         </div>
-
         <div className="gm-versus-stage">
           <div className="gm-team-panel team-a">
             <div className="gm-team-head">
@@ -58,7 +55,6 @@ return (
             </div>
             {renderHeroRoster("teamA")}
           </div>
-
           <div className="gm-score-core">
             <strong>{scoreA}</strong>
             <i>VS</i>
@@ -90,13 +86,14 @@ return (
       </section>
 
       {soloRecordDeleteOpen ? (
-        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setSoloRecordDeleteOpen(false)}>
+        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !managementActionPending && setSoloRecordDeleteOpen(false)}>
           <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
             <strong>개인 기록 삭제</strong>
             <p>삭제하면 내 기록 목록에서 사라집니다. MMR은 변하지 않습니다.</p>
+            {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
             <div className="app-confirm-actions">
-              <Button type="button" variant="secondary" onClick={() => setSoloRecordDeleteOpen(false)}>취소</Button>
-              <Button type="button" variant="danger" onClick={confirmDeleteSoloRecord}>삭제하기</Button>
+              <Button type="button" variant="secondary" disabled={Boolean(managementActionPending)} onClick={() => setSoloRecordDeleteOpen(false)}>취소</Button>
+              <Button type="button" variant="danger" disabled={Boolean(managementActionPending)} onClick={confirmDeleteSoloRecord}>{managementActionPending === "delete" ? "삭제 중" : "삭제하기"}</Button>
             </div>
           </div>
         </div>
@@ -147,10 +144,11 @@ return (
             <Badge tone={canCancel || canDeleteSoloRecord ? "orange" : "neutral"}>{canDeleteSoloRecord ? "삭제 가능" : canCancel ? "취소 가능" : "잠김"}</Badge>
           </div>
           <p className="muted">{canDeleteSoloRecord ? "이 개인 기록은 내 기록에서 삭제할 수 있습니다." : canCancel ? `현재 운영 권한으로 ${cancelCopy.actionLabel}가 가능합니다.` : `현재 단계에서는 ${cancelCopy.actionLabel}가 잠겼습니다.`}</p>
-          <Button type="button" variant="danger" disabled={!canCancel} onClick={requestCancelMatch}>{cancelActionLabel}</Button>
+          <Button type="button" variant="danger" disabled={!canCancel || Boolean(managementActionPending)} onClick={requestCancelMatch}>{managementActionPending === "cancel" ? "처리 중" : cancelActionLabel}</Button>
           {canDeleteSoloRecord ? (
-            <Button type="button" variant="danger" onClick={deleteSoloRecord}>개인 기록 삭제</Button>
+            <Button type="button" variant="danger" disabled={Boolean(managementActionPending)} onClick={deleteSoloRecord}>개인 기록 삭제</Button>
           ) : null}
+          {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
         </Card>
       ) : null}
 
@@ -372,7 +370,8 @@ return (
                     })}
                   </div>
                 )}
-                {canFinalizeMatch ? <Button type="button" onClick={requestFinalizeMatch}>최종 승인</Button> : null}
+                {canFinalizeMatch ? <Button type="button" disabled={finalizeActionPending} onClick={requestFinalizeMatch}>{finalizeActionPending ? "승인 중" : "최종 승인"}</Button> : null}
+                {isSoloRecord && finalizeActionError ? <small role="status" className="form-warning">{finalizeActionError}</small> : null}
               </Card>
             ) : null}
             {isSharedRecord && match.rules?.recordSetupReady === true ? (
@@ -489,6 +488,7 @@ return (
       <MatchFinalizeDialog
         open={finalizeDialogOpen}
         pending={finalizeActionPending}
+        error={finalizeActionError}
         openDisputeCount={openDisputes.length}
         authorityLabel={finalAuthorityLabel}
         onClose={() => setFinalizeDialogOpen(false)}

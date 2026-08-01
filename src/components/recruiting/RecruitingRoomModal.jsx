@@ -13,7 +13,9 @@ export function RecruitingRoomModal(props) {
     <RecruitingRoomRenderBoundary
       key={props.sourceMatch?.id ?? props.post?.id ?? "room"}
       onClose={props.onClose}
-      onRetry={() => props.app.actions.loadRecruitingPost?.(props.post?.id, { force: true })}
+      onRetry={() => props.sourceMatch?.id
+        ? props.app.actions.loadMatchDetail?.(props.sourceMatch.id)
+        : props.app.actions.loadRecruitingPost?.(props.post?.id, { force: true })}
     >
       <RecruitingRoomModalReady {...props} />
     </RecruitingRoomRenderBoundary>
@@ -21,7 +23,7 @@ export function RecruitingRoomModal(props) {
 }
 
 class RecruitingRoomRenderBoundary extends Component {
-  state = { failed: false };
+  state = { failed: false, retrying: false };
 
   static getDerivedStateFromError() {
     return { failed: true };
@@ -31,14 +33,22 @@ class RecruitingRoomRenderBoundary extends Component {
     console.error("boxtier recruiting room render failed.", error, info);
   }
 
-  retry = () => {
-    this.setState({ failed: false });
-    this.props.onRetry?.();
+  retry = async () => {
+    if (this.state.retrying) return;
+    this.setState({ retrying: true });
+    try {
+      const result = await this.props.onRetry?.();
+      if (result !== false && result !== 0) this.setState({ failed: false });
+    } catch {
+      // Keep the recoverable room error view open.
+    } finally {
+      this.setState({ retrying: false });
+    }
   };
 
   render() {
     if (this.state.failed) {
-      return <RecruitingRoomLoadFailedView onClose={this.props.onClose} onRetry={this.retry} />;
+      return <RecruitingRoomLoadFailedView onClose={this.props.onClose} onRetry={this.retry} retrying={this.state.retrying} />;
     }
     return this.props.children;
   }

@@ -127,22 +127,21 @@ export function createMatchRoomActions(context) {
       buildMatchResultSubmission(match, score, resultEntryPermission.getEditableStatFields, { editableScoreSides: resultEntryPermission.editableScoreSides }),
     );
     Promise.resolve(result).then((response) => {
-      setResultSaveFeedback(response?.ok === false ? "경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
+      setResultSaveFeedback(!response || response?.ok === false ? "경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
     }).catch(() => setResultSaveFeedback("경기 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
   };
-  const submitDispute = () => {
+  const submitDispute = async () => {
     if (canRequestScoreDispute) {
-      app.actions.disputeMatch(match.id, {
+      return app.actions.disputeMatch(match.id, {
         kind: "team_scores",
         requestedScoreA: Number(disputeRequestedScoreA),
         requestedScoreB: Number(disputeRequestedScoreB),
         baseRevision: getMatchResultRevision(match),
         reason: disputeCustomReason.trim() || disputeReason,
       });
-      return;
     }
-    if (!canRequestOwnPointDispute) return;
-    app.actions.disputeMatch(match.id, buildMatchDisputeRequest({
+    if (!canRequestOwnPointDispute) return false;
+    return app.actions.disputeMatch(match.id, buildMatchDisputeRequest({
       match,
       playerId: app.currentUser.id,
       requestedStats: Object.fromEntries(PLAYER_STAT_FIELDS.map(({ id }) => [
@@ -158,7 +157,7 @@ export function createMatchRoomActions(context) {
     setVoidActionPending(true);
     try {
       const result = await app.actions.voidMatch(match.id, reason);
-      if (result?.ok === false) return;
+      if (!result || result?.ok === false) return;
       setVoidDialogOpen(false);
     } finally {
       setVoidActionPending(false);
@@ -169,15 +168,19 @@ export function createMatchRoomActions(context) {
     if (!canRequestVoidRestore || detail.length < 10) return;
     setVoidRestoreStatus("접수 중");
     const targetUserId = getVoidMatchRestoreTargetUserId(match);
-    const result = await app.actions.reportMatch(
-      match.id,
-      `${VOID_MATCH_RESTORE_REPORT_REASON}: ${detail}`,
-      [targetUserId],
-    );
-    if (result && result.ok !== false) {
+    try {
+      const result = await app.actions.reportMatch(
+        match.id,
+        `${VOID_MATCH_RESTORE_REPORT_REASON}: ${detail}`,
+        [targetUserId],
+      );
+      if (!result || result.ok === false) {
+        setVoidRestoreStatus("복구 심사 요청을 접수하지 못했습니다.");
+        return;
+      }
       setVoidRestoreStatus(result.duplicate ? "이미 접수된 요청이 있습니다." : "복구 심사 요청이 접수됐습니다.");
       if (!result.duplicate) setVoidRestoreDetail("");
-    } else {
+    } catch {
       setVoidRestoreStatus("복구 심사 요청을 접수하지 못했습니다.");
     }
   };

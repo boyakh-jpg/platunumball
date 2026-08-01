@@ -1,18 +1,16 @@
 import { Link } from "react-router-dom";
-import { CalendarDays, ChevronDown, ChevronUp, ClipboardCheck, Clock3, PlusCircle, ShieldCheck, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, ClipboardCheck, PlusCircle } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import MatchListCard from "../components/match/MatchListCard.jsx";
-import MmrRangeSelector from "../components/match/MmrRangeSelector.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MATCH_MODES, PLAYER_POSITIONS, REGIONS, isSameRegion } from "../lib/constants.js";
+import { MATCH_MODES } from "../lib/constants.js";
 import { REGION_TREE } from "../lib/profileSetup.js";
 import { getRecruitingListCardLobby, getRecruitingRoomOwnerId, hasPendingRecruitingInvitation, isRecruitingPostForUser, isNationalRecruitingPost, isPaidRecruitingCourt } from "../lib/recruiting.js";
-import { getRecruitingTeamRepresentativePlayerIds as getTeamRepresentativePlayerIds } from "../lib/teamPartyRoster.js";
 import { getRoomCompetitionLabel, getRoomRefereeLabel, getRoomVisibilityLabel, getRoomScheduleLabel } from "../lib/matchUtils.js";
-import { getDefaultRecruitingTitle as getDefaultTitle, getRecruitingCardTitle } from "../lib/recruitingPage.js";
+import { getRecruitingCardTitle } from "../lib/recruitingPage.js";
 import { QueueRoomBoard, RecruitingRoomLoadFailedView, RecruitingRoomLoadingView, RecruitingRoomModal, getRecruitingRoomListStatus, getRecruitingRoomTypeLabel } from "../components/recruiting/RecruitingRoomModal.jsx";
 
 export default function RecruitingPageView({
@@ -23,11 +21,7 @@ export default function RecruitingPageView({
   userById, teamById, myTeamIds, courtById, courtByName,
   targetPostId, openSelectedPost, queueListLoading, selectedPostDetailFailed, closeSelectedPost,
   selectedPostRefreshRef, requestSelectedPostDetail, selectedPostId, selectedPost, selectedPostDetailLoading,
-  navigate, location, setSelectedPostId, selectedPostPending, composeOpen,
-  setComposeOpen, submit, draft, myTeams, update,
-  draftRange, draftRangePolicy, draftInstant, minScheduleDate, maxScheduleDate,
-  registeredCourts, draftCapacity, selectedHostPlayerIds, canPostRecruiting, hasSchedule,
-  scheduleAllowed, draftTimingStatus,
+  navigate, location, setSelectedPostId, selectedPostPending,
 }) {
   return (
     <div className="page-stack arena-recruit-page">
@@ -237,182 +231,6 @@ export default function RecruitingPageView({
         <RecruitingRoomLoadingView onClose={closeSelectedPost} />
       ) : null}
 
-      {composeOpen ? (
-        <div className="arena-compose-backdrop" role="presentation" onMouseDown={() => setComposeOpen(false)}>
-          <aside className="arena-compose-drawer" role="dialog" aria-modal="true" aria-label="매치방 만들기" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="arena-drawer-head">
-              <div>
-                <span className="arena-kicker">CREATE ROOM</span>
-                <h2>매치방 만들기</h2>
-              </div>
-              <button type="button" className="arena-icon-button" aria-label="닫기" onClick={() => setComposeOpen(false)}><X size={20} /></button>
-            </div>
-
-            <form className="arena-compose-form" onSubmit={submit}>
-              <div className="segmented-control compact-segments">
-                <button
-                  type="button"
-                  className={draft.hostJoinMode === "team" ? "active" : ""}
-                  onClick={() => {
-                    const team = myTeams[0] ?? null;
-                    update({
-                      hostJoinMode: "team",
-                      teamId: team?.id ?? "",
-                      playerIds: getTeamRepresentativePlayerIds(team, app.currentUser.id),
-                    });
-                  }}
-                >
-                  내 팀으로 열기
-                </button>
-                <button type="button" className={draft.hostJoinMode === "player" ? "active" : ""} onClick={() => update({ hostJoinMode: "player", teamId: "", playerIds: [] })}>개인으로 열기</button>
-              </div>
-
-              <div className="segmented-control compact-segments">
-                <button type="button" className={!draft.ranked ? "active" : ""} onClick={() => update({ ranked: false })}>친선전</button>
-                <button type="button" className={draft.ranked ? "active" : ""} onClick={() => update({ ranked: true })}>정규전</button>
-              </div>
-
-              {draft.ranked ? (
-                <div className="arena-range-control">
-                  <div>
-                    <span>정규전 허용구간</span>
-                    <strong>{draftRange.label}</strong>
-                    <em>{draftRange.detail}</em>
-                  </div>
-                  <MmrRangeSelector value={draft.mmrRangeMode} onChange={(mmrRangeMode) => update({ mmrRangeMode })} />
-                  <small>{draftRangePolicy.detail} · 확정 경기만 서버 검증 후 반영</small>
-                </div>
-              ) : null}
-
-              <label>
-                제목
-                <input value={draft.title} placeholder={getDefaultTitle(draft)} onChange={(event) => update({ title: event.target.value })} />
-              </label>
-
-              <div className="field-block">
-                <span className="field-label">시간 옵션</span>
-                <div className="segmented-control compact-segments">
-                  <button type="button" className={draft.timingType === "scheduled" ? "active" : ""} onClick={() => update({ timingType: "scheduled" })}>일정 지정</button>
-                  <button type="button" className={draft.timingType === "instant" ? "active" : ""} onClick={() => update({ timingType: "instant" })}>즉시</button>
-                </div>
-                <small>{draftInstant ? "지금 모집을 시작하며, 정원이 차면 바로 확정됩니다." : "공개 예약방은 5일 이내이면서 시작까지 4시간 이상 남은 일정만 만들 수 있습니다."}</small>
-              </div>
-
-              <div className="arena-field-grid">
-                {!draftInstant ? (
-                  <>
-                    <label>
-                      날짜
-                      <input type="date" required min={minScheduleDate} max={maxScheduleDate} value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
-                    </label>
-                    <label>
-                      시간
-                      <input type="time" required value={draft.scheduledTime} onChange={(event) => update({ scheduledTime: event.target.value })} />
-                    </label>
-                  </>
-                ) : (
-                  <div className="arena-mini-note">
-                    <div>
-                      <span>일정</span>
-                      <strong>즉시</strong>
-                      <em>날짜/시간 입력 없음</em>
-                    </div>
-                    <Clock3 size={22} />
-                  </div>
-                )}
-              </div>
-
-              <div className="arena-field-grid three">
-                <label>
-                  지역
-                  <select
-                    value={draft.region}
-                    onChange={(event) => {
-                      const region = event.target.value;
-                      const court = registeredCourts.find((item) => isSameRegion(item.region, region)) ?? null;
-                      update({ region, courtId: court?.id ?? draft.courtId ?? "", court: court?.name ?? draft.court });
-                    }}
-                  >
-                    {REGIONS.map((region) => <option key={region}>{region}</option>)}
-                  </select>
-                </label>
-                <label>
-                  방식
-                  <select value={draft.mode} onChange={(event) => update({ mode: event.target.value })}>
-                    {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
-                  </select>
-                </label>
-                <label>
-                  장소
-                  <select
-                    value={draft.court}
-                    onChange={(event) => {
-                      const court = courtByName[event.target.value] ?? null;
-                      update({ courtId: court?.id ?? "", court: event.target.value, ...(court?.region ? { region: court.region } : {}) });
-                    }}
-                  >
-                    {registeredCourts.filter((court) => isSameRegion(court.region, draft.region) || draft.region === "전체").map((court) => (
-                      <option key={court.id} value={court.name}>{court.region} · {court.name}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="arena-field-grid">
-                {draft.hostJoinMode === "team" ? (
-                  <div className="arena-party-field">
-                    <label>
-                      내 파티 팀
-                      <select
-                        value={draft.teamId}
-                        onChange={(event) => {
-                          const teamId = event.target.value;
-                          const team = myTeams.find((item) => item.id === teamId) ?? null;
-                          update({
-                            teamId,
-                            playerIds: getTeamRepresentativePlayerIds(team, app.currentUser.id),
-                          });
-                        }}
-                      >
-                        {myTeams.length ? myTeams.map((team) => (
-                          <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>
-                        )) : <option value="">내 팀 없음</option>}
-                      </select>
-                    </label>
-                  </div>
-                ) : (
-                  <label>
-                    내 포지션
-                    <select value={draft.position} onChange={(event) => update({ position: event.target.value })}>
-                      {PLAYER_POSITIONS.map((position) => <option key={position}>{position}</option>)}
-                    </select>
-                  </label>
-                )}
-                <div className="arena-mini-note">
-                  <div>
-                    <span>슬롯</span>
-                    <strong>{draftCapacity} vs {draftCapacity}</strong>
-                    <em>{draft.hostJoinMode === "team" ? `대표 ${selectedHostPlayerIds.length}명만 배치` : "개인 1명이 A사이드에 배치"}</em>
-                  </div>
-                  <ShieldCheck size={22} />
-                </div>
-              </div>
-
-              <label>
-                메모
-                <textarea value={draft.memo} onChange={(event) => update({ memo: event.target.value })} />
-              </label>
-
-              <div className="arena-submit-row">
-                <span className={canPostRecruiting ? "queue-note" : "form-warning"}>
-                  <ShieldCheck size={17} /> {canPostRecruiting ? "등록 가능" : hasSchedule ? (scheduleAllowed ? "팀/팀원 선택 필요" : draftTimingStatus.detail) : "날짜/시간/장소 필요"}
-                </span>
-                <Button type="submit" disabled={!canPostRecruiting}><PlusCircle size={18} /> 등록</Button>
-              </div>
-            </form>
-          </aside>
-        </div>
-      ) : null}
     </div>
   );
 }

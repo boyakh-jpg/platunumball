@@ -15,10 +15,6 @@
     grid-template-columns: 1fr;
   }
 
-  .arena-submit-row {
-    grid-template-columns: 1fr;
-  }
-
   .arena-party-quick-join {
     gap: 8px;
     padding: 9px 10px;

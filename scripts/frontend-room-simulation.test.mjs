@@ -1026,7 +1026,9 @@ test("공용 경기방은 모든 진입점에서 렌더 실패와 삭제 실패�
   ]);
 
   assert.match(modalSource, /class RecruitingRoomRenderBoundary extends Component/);
-  assert.match(modalSource, /<RecruitingRoomLoadFailedView onClose=\{this\.props\.onClose\} onRetry=\{this\.retry\}/);
+  assert.match(modalSource, /<RecruitingRoomLoadFailedView onClose=\{this\.props\.onClose\} onRetry=\{this\.retry\} retrying=\{this\.state\.retrying\}/);
+  assert.match(modalSource, /props\.sourceMatch\?\.id[\s\S]*loadMatchDetail\?\.\(props\.sourceMatch\.id\)[\s\S]*loadRecruitingPost/);
+  assert.match(modalSource, /const result = await this\.props\.onRetry\?\.\(\)[\s\S]*result !== false && result !== 0/);
   assert.match(interactionsSource, /const result = await app\.actions\.deleteSoloRecord\?\.\(matchId\)/);
   assert.match(interactionsSource, /if \(!matchId \|\| soloRecordDeletePendingRef\.current\) return/);
   assert.match(interactionsSource, /setSoloRecordDeleteTarget\(null\);\s+closeModal\(\)/);
@@ -1035,7 +1037,7 @@ test("공용 경기방은 모든 진입점에서 렌더 실패와 삭제 실패�
 });
 
 test("서버 action 실패는 기존 화면 상태를 보존하고 같은 영역에서 재시도할 수 있다", async () => {
-  const [serverActionsSource, settingsActionsSource, notificationsSource, reviewSource, teamDetailSource, teamDetailViewSource, teamsSource] = await Promise.all([
+  const [serverActionsSource, settingsActionsSource, notificationsSource, reviewSource, teamDetailSource, teamDetailViewSource, teamsSource, profileIconSource, profileAchievementsSource, profileTeamActionsSource] = await Promise.all([
     readFile(new URL("../src/hooks/appData/orchestrator/serverActions.js", import.meta.url), "utf8"),
     readFile(new URL("../src/hooks/appData/actions/settingsActions.js", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/Notifications.jsx", import.meta.url), "utf8"),
@@ -1043,6 +1045,9 @@ test("서버 action 실패는 기존 화면 상태를 보존하고 같은 영역
     readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/TeamDetailView.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/Teams.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/profile/ProfileIconDialog.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/ProfileAchievements.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/appData/actions/profileTeamActions.js", import.meta.url), "utf8"),
   ]);
 
   assert.match(serverActionsSource, /!result \|\| result\.ok === false \|\| !Array\.isArray\(result\.notifications\)\) return false/);
@@ -1056,6 +1061,10 @@ test("서버 action 실패는 기존 화면 상태를 보존하고 같은 영역
   assert.match(teamDetailViewSource, /emblemStatusError[\s\S]*retryTeamEmblemStatus/);
   assert.match(teamsSource, /representativeSavePendingId === team\.id \? "저장 중"/);
   assert.match(teamsSource, /대표팀을 설정하지 못했습니다\. 다시 시도해 주세요\./);
+  assert.match(profileIconSource, /if \(!result \|\| result\?\.ok === false\)/);
+  assert.match(profileAchievementsSource, /if \(!result \|\| result\?\.ok === false\)/);
+  assert.match(profileTeamActionsSource, /if \(!result \|\| result\.ok === false\) return result;[\s\S]*sourceByteSize/);
+  assert.match(teamDetailSource, /setEmblemFeedback\(!result \|\| result\?\.ok === false/);
 });
 
 test("팀 슬롯 명단 저장은 중복 요청을 막고 실패 시 편집 상태를 유지한다", async () => {
@@ -1098,4 +1107,87 @@ test("알림 읽음 저장과 재조회가 모두 실패하면 낙관 상태를 
   assert.deepEqual(stateRef.current.notifications, originalNotifications);
   await actions.markAllNotificationsRead();
   assert.deepEqual(stateRef.current.notifications, originalNotifications);
+});
+
+test("초대와 알림 읽음 UI는 중복 요청을 막고 실패를 같은 영역에 남긴다", async () => {
+  const [invitePanels, participation, home, homeRail, notifications] = await Promise.all([
+    readFile(new URL("../src/components/recruiting/RecruitingRoomInvitePanels.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/useRecruitingRoomParticipationActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Home.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/home/HomeRightRail.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Notifications.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(invitePanels, /invitePendingRef\.current/);
+  assert.match(invitePanels, /pendingKeysRef\.current\.has\(invitationId\)/);
+  assert.match(invitePanels, /심판 초대를 보내지 못했습니다\. 다시 시도해 주세요\./);
+  assert.match(invitePanels, /초대를 처리하지 못했습니다\. 다시 시도해 주세요\./);
+  assert.match(participation, /setInviteError\("초대를 수락하지 못했습니다\. 다시 시도해 주세요\."\)/);
+  assert.match(participation, /return result/);
+  assert.match(home, /processingInviteIdRef\.current/);
+  assert.match(home, /setInviteActionError\(\{ key, message: "초대를 처리하지 못했습니다\. 다시 시도해 주세요\." \}\)/);
+  assert.match(homeRail, /disabled=\{Boolean\(processingInviteId\)\}/);
+  assert.equal((homeRail.match(/directNavigation key=\{team\.id\} team=\{team\}/g) ?? []).length, 2);
+  assert.match(notifications, /notificationReadPendingRef\.current/);
+  assert.match(notifications, /읽음 상태를 저장하지 못했습니다\. 다시 시도해 주세요\./);
+  assert.match(notifications, /disabled=\{Boolean\(notificationReadPendingId\)\}/);
+});
+
+test("슬롯·경기·이의제기 action은 서버 결과를 기다리고 실패 시 현재 화면을 유지한다", async () => {
+  const [actions, recruitingActions, controller, slotRenderers, disputeInteractions, actionSection, tournamentActions, participation, matchRenderers, matchController, matchReview, matchRoom, matchRoomView, matchDialog, disputeQueue] = await Promise.all([
+    readFile(new URL("../src/hooks/appData/actions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/appData/actions/recruitingActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/useRecruitingRoomController.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomSlotRenderers.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/useRecruitingRoomModalInteractions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomActionSection.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/hooks/appData/actions/matchActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/useRecruitingRoomParticipationActions.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/recruiting/RecruitingRoomMatchRenderers.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/matchRoomControllerParts.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/MatchRoomReviewPanels.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/MatchRoomView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/MatchVoidDialog.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/match/MatchDisputeQueue.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(actions, /if \(!ensureRemoteReady\("방 변경"\)\)[\s\S]*return false/);
+  assert.match(actions, /if \(!ensureRemoteReady\("경기 변경"\)\) return false/);
+  assert.match(recruitingActions, /setRecruitingApplicantPlacement:[^\n]+=> applyRecruitingPostMutation/);
+  assert.match(recruitingActions, /setRecruitingTeamPartyRoster:[^\n]+=> applyRecruitingPostMutation/);
+  assert.match(controller, /const result = await action\(\)[\s\S]*슬롯을 변경하지 못했습니다/);
+  assert.match(slotRenderers, /runRoomSlotAction\(\(\) => app\.actions\.setRecruitingApplicantPlacement/);
+  assert.match(slotRenderers, /if \(result && result\.ok !== false\) setSlotActionDraft\(null\)/);
+  assert.match(disputeInteractions, /sourceDisputePendingRef\.current[\s\S]*이의제기를 접수하지 못했습니다/);
+  assert.match(actionSection, /sourceMatchActionPending === "start" \? "처리 중"/);
+  assert.match(tournamentActions, /return rollbackIfServerFailed\(syncTournamentServer\(syncedTournament/);
+  assert.match(participation, /if \(!result \|\| result\?\.ok === false\) throw new Error\(result\?\.error \|\| "chat_send_failed"\)/);
+  assert.match(matchRenderers, /if \(!result \|\| result\?\.ok === false\)[\s\S]*취소하지 못했습니다/);
+  assert.match(matchController, /if \(!result \|\| result\?\.ok === false\) return;[\s\S]*setVoidDialogOpen\(false\)/);
+  assert.match(matchController, /setResultSaveFeedback\(!response \|\| response\?\.ok === false/);
+  assert.match(matchController, /const submitDispute = async[\s\S]*return app\.actions\.disputeMatch/);
+  assert.match(matchController, /catch \{\s*setVoidRestoreStatus\("복구 심사 요청을 접수하지 못했습니다\."\)/);
+  assert.match(matchReview, /if \(!canRequestMatchDispute \|\| disputePending\) return/);
+  assert.match(matchReview, /const result = await submitDispute\(\)[\s\S]*이의제기를 접수하지 못했습니다/);
+  assert.match(matchRoom, /const runManagementAction = async[\s\S]*const result = await operation\(\)[\s\S]*managementActionPendingRef\.current = false/);
+  assert.match(matchRoom, /runManagementAction\("cancel"[\s\S]*app\.actions\.cancelMatch\(match\.id\)/);
+  assert.match(matchRoom, /runManagementAction\("delete"[\s\S]*app\.actions\.deleteSoloRecord\?\.\(match\.id\)[\s\S]*setSoloRecordDeleteOpen\(false\)/);
+  assert.match(matchRoom, /await app\.actions\.finalizeMatch\?\.\(match\.id, options\)[\s\S]*if \(!result \|\| result\?\.ok === false\)/);
+  assert.match(matchRoomView, /managementActionPending === "delete" \? "삭제 중"/);
+  assert.match(matchDialog, /error \? <small role="status" className="form-warning">/);
+  assert.match(disputeQueue, /if \(result && result\?\.ok !== false\)[\s\S]*resolutionError\.id === dispute\.id/);
+});
+
+test("모집 목록은 공용 경기 생성 경로만 사용한다", async () => {
+  const [app, page, view] = await Promise.all([
+    readFile(new URL("../src/App.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Recruiting.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/RecruitingPageView.jsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(app, /<Route path="\/app\/create" element=\{<CreateMatch app=\{app\} \/>\}/);
+  assert.match(view, /to="\/app\/create"/);
+  assert.match(view, /to="\/app\/create\?intent=record"/);
+  assert.doesNotMatch(page, /composeOpen|setComposeOpen|createPending|createRecruitingPost/);
+  assert.doesNotMatch(view, /arena-compose-drawer|arena-compose-form/);
 });

@@ -13,9 +13,6 @@ html[data-theme="light"] .arena-recruit-hero {
     var(--bg-recruiting) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
 }
-/* 2026-07-02 room compose drawer uses a neutral panel, not the hero image. */
-.arena-compose-drawer,
-html[data-theme="light"] .arena-compose-drawer,
 .arena-lobby-arena,
 html[data-theme="light"] .arena-lobby-arena {
   background: var(--ui-card-bg);

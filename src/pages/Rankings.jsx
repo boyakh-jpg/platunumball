@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -11,6 +11,7 @@ import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { hasModeRating, isPlacementComplete } from "../lib/rating.js";
 import { getCurrentSeason, getPlayerSeasonRows, getTeamSeasonRows } from "../lib/season.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import useCanonicalSeasonRankings from "../hooks/useCanonicalSeasonRankings.js";
 
 const tabs = [
   { id: "integrated", label: "통합" },
@@ -34,8 +35,6 @@ const rankingTitles = {
 
 export default function Rankings({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [promotionLoadFailed, setPromotionLoadFailed] = useState(false);
-  const [promotionRetrySequence, setPromotionRetrySequence] = useState(0);
   const promotionView = searchParams.get("view") === "promotion";
   const requestedTab = searchParams.get("tab");
   const tab = promotionView
@@ -50,9 +49,8 @@ export default function Rankings({ app }) {
   };
   const myRegion = app.currentUser.region;
   const season = getCurrentSeason(app.state);
+  const canonicalRankings = useCanonicalSeasonRankings(app.remoteReady && promotionView, season.id);
   const loadDirectory = app.actions.loadDirectory;
-  const loadProfileRecords = app.actions.loadProfileRecords;
-  const profileRecordsLoaded = app.actions.profileRecordsLoaded;
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";
   const directoryRegion = tab === "region" ? myRegion : "";
   const placementCompleteOnly = !["teams", "affiliations"].includes(tab);
@@ -60,15 +58,9 @@ export default function Rankings({ app }) {
     ? tab === "region" ? "integrated" : tab
     : "";
   useEffect(() => {
+    if (promotionView) return;
     loadDirectory?.({ kind: directoryKind, region: directoryRegion, placementCompleteOnly, rankingSort, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
-  }, [directoryKind, directoryRegion, loadDirectory, placementCompleteOnly, rankingSort]);
-  useEffect(() => {
-    if (!promotionView || !app.remoteReady || profileRecordsLoaded || !loadProfileRecords) return;
-    setPromotionLoadFailed(false);
-    Promise.resolve(loadProfileRecords())
-      .then((result) => { if (result === false) setPromotionLoadFailed(true); })
-      .catch(() => setPromotionLoadFailed(true));
-  }, [app.remoteReady, loadProfileRecords, profileRecordsLoaded, promotionRetrySequence, promotionView]);
+  }, [directoryKind, directoryRegion, loadDirectory, placementCompleteOnly, promotionView, rankingSort]);
   const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   const visiblePlayers = app.rankings.players.filter((user) => isPlacementComplete(user.ratings) && !hiddenUserIds.has(user.id));
   const visibleModePlayers = tab === "teams" || tab === "affiliations" || tab === "integrated" || tab === "region"
@@ -94,9 +86,11 @@ export default function Rankings({ app }) {
             ? regionalPlayers
             : visibleModePlayers;
   const promotionRows = tab === "teams"
-    ? getTeamSeasonRows(app.rankings.teams, app.state.matches, season, "전체")
-    : getPlayerSeasonRows(visiblePlayers, app.state.matches, season, "전체");
-  const promotionLoading = promotionView && !profileRecordsLoaded && !promotionLoadFailed;
+    ? app.remoteReady ? (canonicalRankings.data?.teams ?? []) : getTeamSeasonRows(app.rankings.teams, app.state.matches, season, "전체")
+    : app.remoteReady
+      ? (canonicalRankings.data?.players ?? []).filter((player) => isPlacementComplete(player.ratings))
+      : getPlayerSeasonRows(visiblePlayers, app.state.matches, season, "전체");
+  const promotionLoading = promotionView && canonicalRankings.loading && !canonicalRankings.data;
   const promotionTabs = [
     { id: "integrated", label: "개인" },
     { id: "teams", label: "팀" },
@@ -104,6 +98,11 @@ export default function Rankings({ app }) {
   const directoryStatusMatches = app.directoryStatus?.page?.kind === directoryKind
     && app.directoryStatus?.page?.region === directoryRegion;
   const directoryLoadError = !promotionView && directoryStatusMatches ? app.directoryStatus?.error : "";
+  const directoryLoading = !promotionView && !directoryLoadError && (
+    app.remoteReady === false
+    || app.directoryStatus?.loading
+    || app.directoryStatus?.loaded === false
+  );
   const retryDirectory = () => loadDirectory?.({ force: true, kind: directoryKind, region: directoryRegion, placementCompleteOnly, rankingSort, limit: DIRECTORY_PICKER_PAGE_LIMIT, offset: 0 });
 
   return (
@@ -120,11 +119,11 @@ export default function Rankings({ app }) {
       <Card className="section-card ranking-filter-card">
         <RankingTabs value={tab} options={promotionView ? promotionTabs : tabs} onChange={setTab} />
       </Card>
-      {promotionLoadFailed ? (
+      {canonicalRankings.error ? (
         <Card className="section-card">
           <div className="section-title-row">
             <span className="form-warning">승격권 기록을 불러오지 못했습니다.</span>
-            <Button type="button" variant="secondary" onClick={() => setPromotionRetrySequence((current) => current + 1)}>다시 시도</Button>
+            <Button type="button" variant="secondary" onClick={canonicalRankings.retry}>다시 시도</Button>
           </div>
         </Card>
       ) : null}
@@ -163,7 +162,9 @@ export default function Rankings({ app }) {
                 <h2>{myRegion} 개인 MMR</h2>
               </div>
             </div>
-            <RankingTable rows={regionalPlayers} type="players" mode="integrated" teams={app.state.teams} />
+            {directoryLoading
+              ? <BasketballLoader label="랭킹 불러오는 중" />
+              : <RankingTable rows={regionalPlayers} type="players" mode="integrated" teams={app.state.teams} />}
           </Card>
           <Card className="section-card">
             <div className="section-title-row">
@@ -172,7 +173,9 @@ export default function Rankings({ app }) {
                 <h2>{myRegion} 팀</h2>
               </div>
             </div>
-            <RankingTable rows={regionalTeams} type="teams" teams={app.state.teams} />
+            {directoryLoading
+              ? <BasketballLoader label="랭킹 불러오는 중" />
+              : <RankingTable rows={regionalTeams} type="teams" teams={app.state.teams} />}
           </Card>
         </div>
       ) : null}
@@ -185,10 +188,12 @@ export default function Rankings({ app }) {
             </div>
             <Badge tone="gold">전국</Badge>
           </div>
-          <RankingTable rows={rows} type={type} mode={tab} teams={app.state.teams} />
+          {directoryLoading
+            ? <BasketballLoader label="랭킹 불러오는 중" />
+            : <RankingTable rows={rows} type={type} mode={tab} teams={app.state.teams} />}
         </Card>
       ) : null}
-      {app.directoryStatus?.page?.kind === directoryKind && app.directoryStatus?.page?.region === directoryRegion && app.directoryStatus?.page?.hasMore ? (
+      {!promotionView && app.directoryStatus?.page?.kind === directoryKind && app.directoryStatus?.page?.region === directoryRegion && app.directoryStatus?.page?.hasMore ? (
         <Button type="button" variant="secondary" disabled={app.directoryStatus.loading} onClick={() => app.actions.loadMoreDirectory?.()}>
           {app.directoryStatus.loading ? "불러오는 중" : "랭킹 더 보기"}
         </Button>

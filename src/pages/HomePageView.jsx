@@ -17,7 +17,7 @@ export default function HomePageView({
   mySeasonIndex, app, registeredCourts, myCompletedMatches, getUserResult,
   latestMyMatches, getUserMatchLine, acceptHomeRecruitingInvitation, actionItems, declineHomeRecruitingInvitation,
   homeNoticeItems, localRivals, mySeasonRow, myTeamCount, myTeams,
-  openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId,
+  openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId, inviteActionError,
   rankSpotlightLabel, seasonProgress, topRankers, homeRoomOverlays,
 }) {
   return (
@@ -204,6 +204,7 @@ export default function HomePageView({
         priorityItems={priorityItems}
         priorityNoticeItems={priorityNoticeItems}
         processingInviteId={processingInviteId}
+        inviteActionError={inviteActionError}
         rankSpotlightLabel={rankSpotlightLabel}
         recentFiveWins={recentFiveWins}
         seasonProgress={seasonProgress}

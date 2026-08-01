@@ -297,6 +297,7 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
       teamId,
       imageBase64: prepared.imageBase64,
     });
+    if (!result || result.ok === false) return result;
     if (result?.ok !== false && result?.teamId === teamId) {
       setState((prev) => ({
         ...prev,

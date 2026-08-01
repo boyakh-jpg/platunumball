@@ -107,17 +107,6 @@
   color: var(--green);
 }
 
-.arena-submit-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.arena-submit-row .button {
-  min-height: 48px;
-}
-
 .arena-lobby-modal.is-sheet-settling {
   transition: opacity 0.15s ease, transform 0.15s ease;
 }

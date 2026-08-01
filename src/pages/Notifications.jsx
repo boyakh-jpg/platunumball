@@ -31,7 +31,10 @@ export default function Notifications({ app }) {
   const [invitationActionErrors, setInvitationActionErrors] = useState({});
   const [notificationDeleteError, setNotificationDeleteError] = useState(null);
   const [notificationsLoadError, setNotificationsLoadError] = useState("");
+  const [notificationReadPendingId, setNotificationReadPendingId] = useState("");
+  const [notificationReadError, setNotificationReadError] = useState("");
   const pendingInvitationKeysRef = useRef(new Set());
+  const notificationReadPendingRef = useRef("");
   const {
     selectedMatchId,
     setSelectedMatchId,
@@ -145,6 +148,23 @@ export default function Notifications({ app }) {
       setDeletingNotificationId("");
     }
   };
+  const readNotifications = async (notificationId, action) => {
+    if (notificationReadPendingRef.current) return;
+    notificationReadPendingRef.current = notificationId;
+    setNotificationReadPendingId(notificationId);
+    setNotificationReadError("");
+    try {
+      const result = await action();
+      if (!result || result.ok === false) {
+        setNotificationReadError("읽음 상태를 저장하지 못했습니다. 다시 시도해 주세요.");
+      }
+    } catch {
+      setNotificationReadError("읽음 상태를 저장하지 못했습니다. 다시 시도해 주세요.");
+    } finally {
+      notificationReadPendingRef.current = "";
+      setNotificationReadPendingId("");
+    }
+  };
 
   return (
     <div className="page-stack">
@@ -153,8 +173,8 @@ export default function Notifications({ app }) {
           <p className="eyebrow">Notifications</p>
           <h1>알림</h1>
         </div>
-        <Button variant="secondary" disabled={!unreadCount} onClick={app.actions.markAllNotificationsRead}>
-          모두 읽음
+        <Button variant="secondary" disabled={!unreadCount || Boolean(notificationReadPendingId)} onClick={() => { void readNotifications("all", app.actions.markAllNotificationsRead); }}>
+          {notificationReadPendingId === "all" ? "처리 중" : "모두 읽음"}
         </Button>
       </header>
       {notificationsLoadError ? (
@@ -272,6 +292,7 @@ export default function Notifications({ app }) {
           </div>
         </div>
         <div className="home-action-list notifications-list ui-design-borderless-list" role="tabpanel">
+          {notificationReadError ? <small role="status" className="form-warning">{notificationReadError}</small> : null}
           {displayedNotifications.length ? displayedNotifications.map((notification) => (
             <article key={notification.id} className={`home-action-row notification-row ${notification.readAt ? "notification-read" : "notification-unread"} ${notification.targetUnavailable ? "notification-terminal-row" : ""}`}>
               <span className="home-action-icon"><Bell size={18} aria-hidden="true" /></span>
@@ -333,8 +354,8 @@ export default function Notifications({ app }) {
                     <Trash2 size={16} aria-hidden="true" />
                   </button>
                 ) : (
-                  <button type="button" className="notification-action-control notification-read-button" title="읽음 처리" aria-label={`${notification.title} 읽음 처리`} onClick={() => app.actions.markNotificationRead(notification.id)}>
-                    읽음
+                  <button type="button" className="notification-action-control notification-read-button" title="읽음 처리" aria-label={`${notification.title} 읽음 처리`} disabled={Boolean(notificationReadPendingId)} onClick={() => { void readNotifications(notification.id, () => app.actions.markNotificationRead(notification.id)); }}>
+                    {notificationReadPendingId === notification.id ? "처리 중" : "읽음"}
                   </button>
                 )}
               </span>

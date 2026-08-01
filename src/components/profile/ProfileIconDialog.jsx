@@ -76,7 +76,7 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
     Promise.resolve(actions.loadProfileIconAchievements?.())
       .then((result) => {
         if (!active) return;
-        if (result?.ok === false) {
+        if (!result || result?.ok === false) {
           setLoadError("프로필 아이콘을 불러오지 못했습니다.");
           return;
         }
@@ -150,8 +150,8 @@ export default function ProfileIconDialog({ user, actions, onClose, onSaved }) {
     setFeedback("");
     try {
       const result = await actions.saveProfileIconSettings(draft);
-      if (result?.ok === false) {
-        setFeedback(getTeamEmblemErrorMessage(result.error));
+      if (!result || result?.ok === false) {
+        setFeedback(getTeamEmblemErrorMessage(result?.error));
         return;
       }
       onSaved?.(result);

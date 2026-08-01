@@ -187,12 +187,6 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   padding: 10px 10px max(10px, env(safe-area-inset-bottom, 0px));
 }
 
-.arena-compose-drawer {
-  border: var(--ui-stroke-width) solid var(--rb-line);
-  background: rgba(36, 37, 38, 0.97);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
-}
-
 .arena-lobby-arena {
   --room-slot-width: clamp(78px, 7vw, 96px);
   --room-slot-gap: 8px;

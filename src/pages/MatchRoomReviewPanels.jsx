@@ -18,9 +18,26 @@ import {
 } from "./matchRoomModel.js";
 
 export function MatchRoomReviewPanels({ controller }) {
-  const { app, match, score, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
+  const { app, match, score, disputeReason, setDisputeReason, disputeCustomReason, setDisputeCustomReason, disputeRequestedStats, setDisputeRequestedStats, disputeRequestedScoreA, setDisputeRequestedScoreA, disputeRequestedScoreB, setDisputeRequestedScoreB, reportReason, setReportReason, statEditorPlayerId, setStatEditorPlayerId, reviewControlsOpen, setReviewControlsOpen, resultSaveFeedback, courtReviewSaveFeedback, courtReviewSaving, matchDetailRefreshing, soloRecordDeleteOpen, setSoloRecordDeleteOpen, managementActionPending, managementActionFeedback, voidDialogOpen, setVoidDialogOpen, voidActionPending, finalizeDialogOpen, setFinalizeDialogOpen, finalizeActionPending, voidRestoreDetail, setVoidRestoreDetail, voidRestoreStatus, existingCourtReview, courtReviewDraft, userMap, statEditorPlayer, isSharedRecord, status, cancelCopy, cancelActionLabel, teamAAgreement, teamBAgreement, currentUserSideName, recordWindow, referee, hasReferee, isSoloRecord, currentUserIsEligibleReferee, currentUserSubmitted, benchCapacity, isMatchHost, matchPhase, startedAuthorityPhase, currentUserCanEndMatch, currentUserCanResolveDispute, currentUserCanRefreshReview, resultEntryPermission, canEditDisputeDraft, canSubmitLiveResult, canSubmitResult, canCancel, requestCancelMatch, canFinalizeMatch, finalAuthorityLabel, openDisputes, hasOwnOpenDispute, canDispute, canRequestMatchDispute, canRequestOwnPointDispute, canRequestScoreDispute, canVoid, canRequestVoidRestore, canDeleteSoloRecord, requestFinalizeMatch, submitFinalizeMatch, canReport, isContractStage, shouldShowResultEntry, shouldShowWaitingPanel, scoreA, scoreB, draftScoreA, draftScoreB, teamASide, teamBSide, teamA, teamB, teamAMmr, teamBMmr, winnerName, matchKind, recordLockReason, renderHeroRoster, renderHeroReserves, updatePlayerStat, submitResult, submitDispute, submitVoidMatch, submitVoidRestoreRequest, refreshMatchDetail, canEditPlayerStat, editableStatFields, getPlayerStatState, permissionTitle, permissionDetail, nextAction, statTrustSteps, statTrustPercent, canSubmitCourtReview, courtReviewRatingReady, updateCourtReviewDraft, submitCourtReview, deleteSoloRecord, confirmDeleteSoloRecord, normalizedRules, ruleItems } = controller;
   const [reportPending, setReportPending] = useState(false);
   const [reportFeedback, setReportFeedback] = useState({ message: "", failed: false });
+  const [disputePending, setDisputePending] = useState(false);
+  const [disputeFeedback, setDisputeFeedback] = useState({ message: "", failed: false });
+  const submitMatchDispute = async () => {
+    if (!canRequestMatchDispute || disputePending) return;
+    setDisputePending(true);
+    setDisputeFeedback({ message: "", failed: false });
+    try {
+      const result = await submitDispute();
+      setDisputeFeedback(!result || result?.ok === false
+        ? { message: "이의제기를 접수하지 못했습니다. 다시 시도해 주세요.", failed: true }
+        : { message: "이의제기를 접수했습니다.", failed: false });
+    } catch {
+      setDisputeFeedback({ message: "이의제기를 접수하지 못했습니다. 다시 시도해 주세요.", failed: true });
+    } finally {
+      setDisputePending(false);
+    }
+  };
   const submitMatchReport = async () => {
     if (!canReport || reportPending) return;
     setReportPending(true);
@@ -144,11 +161,13 @@ export function MatchRoomReviewPanels({ controller }) {
                   </select>
                 </label>
                 <div className="match-action-row">
-                  <Button type="button" variant="secondary" disabled={!canRequestMatchDispute} onClick={submitDispute}>{hasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
-                  <Button type="button" variant="danger" disabled={!canCancel} onClick={requestCancelMatch}>{cancelActionLabel}</Button>
+                  <Button type="button" variant="secondary" disabled={!canRequestMatchDispute || disputePending} onClick={submitMatchDispute}>{disputePending ? "접수 중" : hasOwnOpenDispute ? "처리 대기 중" : "이의제기"}</Button>
+                  <Button type="button" variant="danger" disabled={!canCancel || Boolean(managementActionPending)} onClick={requestCancelMatch}>{managementActionPending === "cancel" ? "처리 중" : cancelActionLabel}</Button>
                   <Button type="button" variant="danger" disabled={!canVoid} onClick={() => setVoidDialogOpen(true)}>경기 무효 처리</Button>
                   <Button type="button" variant="secondary" disabled={!canReport || reportPending} onClick={submitMatchReport}>{reportPending ? "접수 중" : "신고 접수"}</Button>
                 </div>
+                {disputeFeedback.message ? <small role="status" className={disputeFeedback.failed ? "form-warning" : "form-chip"}>{disputeFeedback.message}</small> : null}
+                {managementActionFeedback ? <small role="status" className="form-warning">{managementActionFeedback}</small> : null}
                 {reportFeedback.message ? <small role="status" className={reportFeedback.failed ? "form-warning" : "form-chip"}>{reportFeedback.message}</small> : null}
               </>
             ) : null}

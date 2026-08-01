@@ -255,7 +255,7 @@ export function createAppActions({
     }
     if (!ensureRemoteReady("방 변경")) {
       if (optimisticBeforeServerCheck) rollbackServerMutation(rollbackState, "방 변경", { action: meta.action, postId, error: "remote_not_ready" });
-      return;
+      return false;
     }
     if (directServerOperation) {
       return syncRecruitingPostServer(null, [], { ...meta, postId });
@@ -275,7 +275,7 @@ export function createAppActions({
     }
     const serverReady = await ensureServerActionAvailable("/api/matches/sync-match", "경기 변경");
     if (serverReady !== true) return serverReady;
-    if (!ensureRemoteReady("경기 변경")) return;
+    if (!ensureRemoteReady("경기 변경")) return false;
     const operation = getServerOperation({ ...meta, matchId });
     if (isSupabaseConfigured && operation && MATCH_OPERATION_ONLY_ACTIONS.has(operation.action)) {
       const currentMatch = (stateRef.current.matches ?? []).find((match) => match.id === matchId) ?? null;
@@ -310,7 +310,7 @@ export function createAppActions({
   const applyTeamMutation = async (teamId, reducer) => {
     const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", "팀 변경");
     if (serverReady !== true) return serverReady;
-    if (!ensureRemoteReady("팀 변경")) return;
+    if (!ensureRemoteReady("팀 변경")) return false;
     let rollbackState = null;
     let syncedTeam = null;
     let syncedNotifications = [];
@@ -329,7 +329,7 @@ export function createAppActions({
   const applyTeamInvitationMutation = async (label, reducer, action, payloadFactory) => {
     const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", label);
     if (serverReady !== true) return serverReady;
-    if (!ensureRemoteReady(label)) return;
+    if (!ensureRemoteReady(label)) return false;
     let rollbackState = null;
     let nextStateSnapshot = null;
     setState((prev) => {

@@ -31,6 +31,7 @@ export default function Affiliations({ app }) {
   const userAffiliationNames = new Set([app.currentUser.region].filter(Boolean));
   const myAffiliations = rankedAffiliations
     .filter((affiliation) => userAffiliationIds.has(affiliation.id) || userAffiliationNames.has(affiliation.name));
+  const directoryLoading = directoryLoadState === "idle" || directoryLoadState === "loading";
 
   const refreshAffiliations = useCallback(async (force = false) => {
     if (!isSupabaseConfigured) {
@@ -40,8 +41,8 @@ export default function Affiliations({ app }) {
     setDirectoryLoadState("loading");
     try {
       const result = await loadDirectory?.({ force, kind: "affiliations", limit: 100, offset: 0 });
-      setDirectoryLoadState(result === false ? "error" : "loaded");
-      return result !== false;
+      setDirectoryLoadState(result === true ? "loaded" : "error");
+      return result === true;
     } catch {
       setDirectoryLoadState("error");
       return false;
@@ -82,9 +83,9 @@ export default function Affiliations({ app }) {
           <Button type="button" variant="secondary" onClick={() => void refreshAffiliations(true)}>다시 시도</Button>
         </Card>
       ) : null}
-      {directoryLoadState === "loading" ? <BasketballLoader label="소속 순위 불러오는 중" /> : null}
+      {directoryLoading ? <BasketballLoader label="소속 순위 불러오는 중" /> : null}
 
-      <section className="affiliation-challenge-grid">
+      {rankedAffiliations.length ? <><section className="affiliation-challenge-grid">
         <Card className="section-card affiliation-focus-card">
           <div className="section-title-row">
             <div>
@@ -165,7 +166,7 @@ export default function Affiliations({ app }) {
             ) : null}
           </Card>
         ))}
-      </section>
+      </section></> : null}
       {directoryLoadState === "loaded" && !rankedAffiliations.length ? <div className="ui-empty-state-compact">표시할 소속 순위가 없습니다.</div> : null}
     </div>
   );

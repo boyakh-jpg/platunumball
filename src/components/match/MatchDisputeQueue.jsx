@@ -51,6 +51,7 @@ export default function MatchDisputeQueue({
 }) {
   const [pendingId, setPendingId] = useState("");
   const [resolutionReasons, setResolutionReasons] = useState({});
+  const [resolutionError, setResolutionError] = useState({ id: "", message: "" });
   const openDisputes = (match?.disputes ?? [])
     .filter((dispute) => dispute?.status === "open")
     .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")));
@@ -62,11 +63,16 @@ export default function MatchDisputeQueue({
     const resolutionReason = String(resolutionReasons[disputeId] ?? "").trim();
     if (!resolutionReason) return;
     setPendingId(disputeId);
+    setResolutionError({ id: "", message: "" });
     try {
       const result = await onResolve?.(disputeId, decision, resolutionReason);
-      if (result?.ok !== false) {
+      if (result && result?.ok !== false) {
         setResolutionReasons((current) => ({ ...current, [disputeId]: "" }));
+      } else {
+        setResolutionError({ id: disputeId, message: "이의제기를 처리하지 못했습니다. 다시 시도해 주세요." });
       }
+    } catch {
+      setResolutionError({ id: disputeId, message: "이의제기를 처리하지 못했습니다. 다시 시도해 주세요." });
     } finally {
       setPendingId("");
     }
@@ -114,6 +120,7 @@ export default function MatchDisputeQueue({
                 <Button type="button" size="sm" variant="secondary" disabled={Boolean(pendingId) || !String(resolutionReasons[dispute.id] ?? "").trim()} onClick={() => resolveItem(dispute.id, "rejected")}>
                   부결
                 </Button>
+                {resolutionError.id === dispute.id ? <small role="status" className="form-warning">{resolutionError.message}</small> : null}
               </div>
             ) : <small>{match?.refereeId ? "심판" : "방장"} 처리 대기</small>}
           </article>

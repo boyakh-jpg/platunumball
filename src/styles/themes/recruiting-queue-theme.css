@@ -223,7 +223,6 @@ html[data-theme="light"] .arena-room-player-slot.empty.invite {
 
 .arena-recruit-hero,
 .arena-queue-controls,
-.arena-compose-drawer,
 .arena-lobby-modal,
 .arena-lobby-arena,
 .arena-slot-command-popover,
@@ -254,22 +253,6 @@ html[data-theme="light"] .arena-room-player-slot.empty.invite {
 .arena-room-player-slot b,
 .arena-room-player-slot em {
   font-size: max(0.64rem, 10px);
-}
-
-.arena-compose-drawer {
-  background-color: rgba(10, 14, 21, 0.97);
-  background-image: none;
-}
-
-.arena-submit-row {
-  border-radius: var(--radius-md);
-}
-
-html[data-theme="light"] .arena-queue-controls,
-html[data-theme="light"] .arena-compose-drawer {
-  background-color: rgba(255, 255, 255, 0.92);
-  background-image: none;
-  box-shadow: var(--shadow);
 }
 
 @media (max-width: 720px) {
@@ -321,19 +304,6 @@ html[data-theme="light"] .arena-compose-drawer {
   .arena-compose-backdrop {
     align-items: end;
     padding: 20px 0 0;
-  }
-
-  .arena-compose-drawer {
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    padding: 16px;
-  }
-
-  .arena-submit-row {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    background: rgba(10, 14, 21, 0.96);
-    padding-top: 10px;
   }
 
   .arena-room-slot-row,

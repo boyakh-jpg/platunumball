@@ -164,33 +164,17 @@ createRecruitingPost: async (draft) => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   },
-  setRecruitingApplicantReserve: (postId, playerId, reserve) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve), { action: "setRecruitingApplicantReserve", playerId, reserve });
-  },
-  setRecruitingApplicantPlacement: (postId, playerId, placement) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId }, postId, playerId, placement), { action: "setRecruitingApplicantPlacement", playerId, placement });
-  },
+  setRecruitingApplicantReserve: (postId, playerId, reserve) => applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve), { action: "setRecruitingApplicantReserve", playerId, reserve }),
+  setRecruitingApplicantPlacement: (postId, playerId, placement) => applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId }, postId, playerId, placement), { action: "setRecruitingApplicantPlacement", playerId, placement }),
   joinRecruitingSideParty: (postId, teamId, sideName, entryId) => {
     return applyRecruitingPostMutation(postId, (prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId, sideName, entryId), { action: "joinRecruitingSideParty", teamId, sideName, entryId });
   },
-  setRecruitingSlotPosition: (postId, playerId, position) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingSlotPosition({ ...prev, currentUserId }, postId, playerId, position), { action: "setRecruitingSlotPosition", playerId, position });
-  },
-  setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve), { action: "setRecruitingPartyPlayerReserve", entryId, playerId, reserve });
-  },
-  setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "setRecruitingPartyPlayerPlacement", entryId, playerId, placement });
-  },
-  setRecruitingTeamPartyRoster: (postId, entryId, roster) => {
-    applyRecruitingPostMutation(postId, (prev) => setRecruitingTeamPartyRoster({ ...prev, currentUserId }, postId, entryId, roster), { action: "setRecruitingTeamPartyRoster", entryId, roster });
-  },
-  detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => {
-    applyRecruitingPostMutation(postId, (prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "detachRecruitingPartyPlayer", entryId, playerId, placement });
-  },
-  removeRecruitingPartyPlayer: (postId, entryId, playerId) => {
-    applyRecruitingPostMutation(postId, (prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId), { action: "removeRecruitingPartyPlayer", entryId, playerId });
-  },
+  setRecruitingSlotPosition: (postId, playerId, position) => applyRecruitingPostMutation(postId, (prev) => setRecruitingSlotPosition({ ...prev, currentUserId }, postId, playerId, position), { action: "setRecruitingSlotPosition", playerId, position }),
+  setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve), { action: "setRecruitingPartyPlayerReserve", entryId, playerId, reserve }),
+  setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "setRecruitingPartyPlayerPlacement", entryId, playerId, placement }),
+  setRecruitingTeamPartyRoster: (postId, entryId, roster) => applyRecruitingPostMutation(postId, (prev) => setRecruitingTeamPartyRoster({ ...prev, currentUserId }, postId, entryId, roster), { action: "setRecruitingTeamPartyRoster", entryId, roster }),
+  detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => applyRecruitingPostMutation(postId, (prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "detachRecruitingPartyPlayer", entryId, playerId, placement }),
+  removeRecruitingPartyPlayer: (postId, entryId, playerId) => applyRecruitingPostMutation(postId, (prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId), { action: "removeRecruitingPartyPlayer", entryId, playerId }),
   kickRecruitingApplicant: (postId, playerId) => applyRecruitingPostMutation(postId, (prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId), { action: "kickRecruitingApplicant", playerId }),
   confirmRecruitingMatch: async (postId) => {
     const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 확정");

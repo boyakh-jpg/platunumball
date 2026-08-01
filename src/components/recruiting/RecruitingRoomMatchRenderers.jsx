@@ -165,7 +165,7 @@ const renderSourceMatchRecordBoard = () => {
             const result = roomCancellationTarget.kind === "match"
               ? await app.actions.cancelMatch(roomCancellationTarget.id, reason)
               : await app.actions.closeRecruitingPost(roomCancellationTarget.id, reason);
-            if (result?.ok === false) {
+            if (!result || result?.ok === false) {
               setRoomCancellationTarget((current) => ({ ...current, error: "취소하지 못했습니다. 잠시 후 다시 시도해 주세요." }));
               return;
             }

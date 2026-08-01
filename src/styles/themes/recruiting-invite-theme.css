@@ -214,7 +214,6 @@ html[data-theme="light"] .arena-room-chat {
 }
 
 .arena-hero-panel,
-.arena-compose-drawer,
 .arena-slot-command-popover,
 .arena-lobby-team-panel,
 .arena-reserve-panel,
@@ -229,7 +228,6 @@ html[data-theme="light"] .arena-room-chat {
 }
 
 html[data-theme="light"] .arena-hero-panel,
-html[data-theme="light"] .arena-compose-drawer,
 html[data-theme="light"] .arena-slot-command-popover,
 html[data-theme="light"] .arena-lobby-team-panel,
 html[data-theme="light"] .arena-reserve-panel,
@@ -279,7 +277,6 @@ html[data-theme="light"] .arena-party-member-card {
 
 .arena-filter-bar,
 .arena-hero-panel,
-.arena-compose-drawer,
 .arena-lobby-team-panel,
 .arena-reserve-panel,
 .arena-room-edit-panel,

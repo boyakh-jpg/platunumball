@@ -36,9 +36,6 @@
 }
 
 .arena-filter-select select,
-.arena-compose-drawer input:not([type="checkbox"]):not([type="radio"]),
-.arena-compose-drawer select,
-.arena-compose-drawer textarea,
 .arena-slot-command-popover input:not([type="checkbox"]):not([type="radio"]),
 .arena-slot-command-popover select,
 .arena-slot-command-popover textarea {

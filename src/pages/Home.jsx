@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ClipboardCheck, Handshake, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import { DEFAULT_RATING, HOME_RIVAL_TEAM_LIMIT } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
@@ -116,6 +116,8 @@ export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const [processingInviteId, setProcessingInviteId] = useState("");
+  const [inviteActionError, setInviteActionError] = useState(null);
+  const processingInviteIdRef = useRef("");
   useEffect(() => {
     if (!app.remoteReady || app.actions.profileRecordsLoaded || !app.actions.loadProfileRecords) return;
     app.actions.loadProfileRecords();
@@ -204,17 +206,36 @@ export default function Home({ app }) {
     return regionTeams
       .map((team) => ({ ...team, gap: team.mmr - referenceMmr }));
   }, [app.state.homeSummary?.rivalTeamIds, app.state.teams, myTeamIds, myTeams, teamById, user.ratings.integrated, user.region]);
-  const acceptHomeRecruitingInvitation = async (postId, invitationId) => {
+  const runHomeInviteAction = async (postId, invitationId, action) => {
     const key = `${postId}:${invitationId}`;
+    if (processingInviteIdRef.current) return false;
+    processingInviteIdRef.current = key;
     setProcessingInviteId(key);
+    setInviteActionError(null);
     try {
-      const result = await app.actions.acceptRecruitingInvitation(postId, invitationId);
-      if (result && result.ok !== false) {
-        setSelectedMatchId("");
-        setSelectedRecruitingPostId(postId);
+      const result = await action();
+      if (!result || result.ok === false) {
+        setInviteActionError({ key, message: "초대를 처리하지 못했습니다. 다시 시도해 주세요." });
+        return false;
       }
+      return result;
+    } catch {
+      setInviteActionError({ key, message: "초대를 처리하지 못했습니다. 다시 시도해 주세요." });
+      return false;
     } finally {
+      processingInviteIdRef.current = "";
       setProcessingInviteId("");
+    }
+  };
+  const acceptHomeRecruitingInvitation = async (postId, invitationId) => {
+    const result = await runHomeInviteAction(
+      postId,
+      invitationId,
+      () => app.actions.acceptRecruitingInvitation(postId, invitationId),
+    );
+    if (result && result.ok !== false) {
+      setSelectedMatchId("");
+      setSelectedRecruitingPostId(postId);
     }
   };
   const openActionRoom = (event, item = {}) => {
@@ -227,15 +248,11 @@ export default function Home({ app }) {
       openRecruitingRoom(item.recruitingPostId);
     }
   };
-  const declineHomeRecruitingInvitation = async (postId, invitationId) => {
-    const key = `${postId}:${invitationId}`;
-    setProcessingInviteId(key);
-    try {
-      await app.actions.declineRecruitingInvitation(postId, invitationId);
-    } finally {
-      setProcessingInviteId("");
-    }
-  };
+  const declineHomeRecruitingInvitation = (postId, invitationId) => runHomeInviteAction(
+    postId,
+    invitationId,
+    () => app.actions.declineRecruitingInvitation(postId, invitationId),
+  );
   const myCompletedMatches = getPlayerRecentRecordMatches(completedMatches, user.id)
     .filter((match) => !isPersonalRecordMatch(match));
   const actionItems = useMemo(() => {
@@ -442,7 +459,7 @@ export default function Home({ app }) {
     mySeasonIndex, app, registeredCourts, myCompletedMatches, getUserResult,
     latestMyMatches, getUserMatchLine, acceptHomeRecruitingInvitation, actionItems, declineHomeRecruitingInvitation,
     homeNoticeItems, localRivals, mySeasonRow, myTeamCount, myTeams,
-    openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId,
+    openActionRoom, placementComplete, priorityItems, priorityNoticeItems, processingInviteId, inviteActionError,
     rankSpotlightLabel, seasonProgress, topRankers, homeRoomOverlays,
   }} />;
 }

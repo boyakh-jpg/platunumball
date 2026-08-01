@@ -66,7 +66,7 @@ export default function ProfileAchievements({ app }) {
     Promise.resolve(app.actions.loadProfileIconAchievements?.())
       .then((result) => {
         if (!active) return;
-        if (result?.ok === false) {
+        if (!result || result?.ok === false) {
           setError("업적을 불러오지 못했습니다.");
           return;
         }

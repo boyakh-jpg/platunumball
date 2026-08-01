@@ -1336,10 +1336,9 @@ test("방 채팅은 아이콘 안전 여백과 말풍선 stream을 사용한다"
 test("MMR 허용구간과 프로필 기본 입력은 공용 컴포넌트를 사용한다", () => {
   assert.match(mmrRangeSelectorSource, /Object\.entries\(MMR_RANGE_POLICIES\)\.map/);
   assert.match(mmrRangeSelectorSource, /role="radiogroup"/);
-  assert.match(pageSources.recruiting, /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
   assert.match(createMatchPageSource, /<MmrRangeSelector value=\{draft\.mmrRangeMode\}/);
   assert.doesNotMatch(
-    [pageSources.recruiting, createMatchPageSource].join("\n"),
+    createMatchPageSource,
     /Object\.entries\(MMR_RANGE_POLICIES\)\.map\(\(\[mode, policy\]\) => \(\s*<button/,
   );
 

@@ -155,7 +155,7 @@ export function useRecruitingRoomParticipationActions({
     updateChatDraft(roomPost, "");
     try {
       const result = await app.actions.sendRecruitingChat(roomPost.id, body);
-      if (result?.ok === false) throw new Error(result.error || "chat_send_failed");
+      if (!result || result?.ok === false) throw new Error(result?.error || "chat_send_failed");
       chatSendLogRef.current[postId] = [...recentLog, { body, at: now }];
       const cooldownUntil = Date.now() + CHAT_SEND_COOLDOWN_MS;
       setChatCooldownUntilByPost((current) => ({ ...current, [postId]: cooldownUntil }));
@@ -210,10 +210,11 @@ export function useRecruitingRoomParticipationActions({
     );
   };
   const acceptRoomInvitation = async (roomPost, invitation = {}, { paidCourtConfirmed = false } = {}) => {
-    if (!invitation.id) return;
+    if (!invitation.id) return false;
+    setInviteError("");
     if (invitation.role !== "referee" && !paidCourtConfirmed && requiresPaidCourtNotice(roomPost)) {
       setPaidCourtJoinPrompt({ action: "invitation", roomPost, invitation });
-      return;
+      return { ok: true, deferred: true };
     }
     if (shouldOpenRosterAfterAccept(roomPost, invitation)) {
       setPendingRosterOpen({
@@ -224,12 +225,18 @@ export function useRecruitingRoomParticipationActions({
     }
     try {
       const result = await app.actions.acceptRecruitingInvitation(roomPost.id, invitation.id);
-      if (!result || result.ok === false) setPendingRosterOpen(null);
+      if (!result || result.ok === false) {
+        setPendingRosterOpen(null);
+        setInviteError("초대를 수락하지 못했습니다. 다시 시도해 주세요.");
+      }
       else {
         onInvitationAccepted?.(roomPost.id, invitation);
       }
+      return result;
     } catch {
       setPendingRosterOpen(null);
+      setInviteError("초대를 수락하지 못했습니다. 다시 시도해 주세요.");
+      return false;
     }
   };
   const confirmPaidCourtJoin = () => {

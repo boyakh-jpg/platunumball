@@ -374,13 +374,6 @@ html[data-theme="light"] .arena-source-record-side em {
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
-html[data-theme="light"] .arena-recruit-hero,
-html[data-theme="light"] .arena-compose-drawer {
-  background:
-    linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.78) 52%, rgba(246, 248, 242, 0.54)),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
-}
-
 html[data-theme="light"] .arena-hero-copy p {
   color: var(--muted);
 }

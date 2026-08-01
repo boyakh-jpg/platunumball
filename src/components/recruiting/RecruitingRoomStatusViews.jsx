@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 
-export function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
+export function RecruitingRoomLoadFailedView({ onClose, onRetry, retrying = false }) {
   return (
     <div className="arena-modal-backdrop arena-room-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="arena-room-modal ui-room-borderless-scope" role="dialog" aria-modal="true" aria-label="방 불러오기 실패" onMouseDown={(event) => event.stopPropagation()}>
@@ -13,8 +13,8 @@ export function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
         <h2 className="arena-room-title">방을 불러올 수 없음</h2>
         <p className="arena-room-subtitle">방이 닫혔거나 권한이 없거나 잠시 응답이 비었습니다.</p>
         <div className="arena-modal-close-row">
-          <Button type="button" variant="secondary" size="lg" onClick={onClose}>방 닫기</Button>
-          <Button type="button" size="lg" onClick={onRetry}>다시 시도</Button>
+          <Button type="button" variant="secondary" size="lg" disabled={retrying} onClick={onClose}>방 닫기</Button>
+          <Button type="button" size="lg" disabled={retrying} onClick={onRetry}>{retrying ? "다시 불러오는 중" : "다시 시도"}</Button>
         </div>
       </aside>
     </div>

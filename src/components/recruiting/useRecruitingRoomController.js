@@ -102,6 +102,8 @@ export function useRecruitingRoomController({
   const [inviteDraft, setInviteDraft] = useState(null);
   const [inviteError, setInviteError] = useState("");
   const [slotActionDraft, setSlotActionDraft] = useState(null);
+  const [slotActionPending, setSlotActionPending] = useState(false);
+  const [sourceMatchActionPending, setSourceMatchActionPending] = useState("");
   const [sourceDisputeDraft, setSourceDisputeDraft] = useState({
     matchId: "",
     resultKey: "",
@@ -128,6 +130,8 @@ export function useRecruitingRoomController({
   const [sourceMatchReviewRefreshing, setSourceMatchReviewRefreshing] = useState(false);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [sheetDragSettling, setSheetDragSettling] = useState(false);
+  const slotActionPendingRef = useRef(false);
+  const sourceMatchActionPendingRef = useRef("");
   const refreshSourceMatchReview = async () => {
     if (!sourceMatch?.id || sourceMatchReviewRefreshing) return;
     setSourceMatchReviewRefreshing(true);
@@ -142,14 +146,18 @@ export function useRecruitingRoomController({
     setFinalizeMatchPending(true);
     try {
       const result = await app.actions.finalizeMatch?.(finalizeMatchTarget.matchId, options);
-      if (result?.ok !== false) {
+      if (result && result.ok !== false) {
         const finalizedMatchId = finalizeMatchTarget.matchId;
         setFinalizeMatchTarget(null);
         await Promise.all([
           app.actions.loadMatchDetail?.(finalizedMatchId),
           app.actions.loadProfileRecords?.({ force: true }),
         ]);
+      } else {
+        showRoomShareStatus("기록을 완료하지 못했습니다. 다시 시도해 주세요.");
       }
+    } catch {
+      showRoomShareStatus("기록을 완료하지 못했습니다. 다시 시도해 주세요.");
     } finally {
       setFinalizeMatchPending(false);
     }
@@ -339,7 +347,7 @@ export function useRecruitingRoomController({
     showRoomShareStatus, copyRoomShareUrl, shareRoom, closeModal, closeFromBackdrop,
     deleteSourceSoloRecord, confirmDeleteSourceSoloRecord, resetSheetDrag, getSheetDismissDistance, isSheetDragInteractiveTarget,
     canDismissBySheetDrag, startSheetDrag, moveSheetDrag, finishSheetDrag, cancelSheetDrag,
-    sheetDragProgress, sheetBackdropOpacity, sheetModalOpacity, submitSourceDispute,
+    sheetDragProgress, sheetBackdropOpacity, sheetModalOpacity, sourceDisputePending, sourceDisputeStatus, submitSourceDispute,
   } = useRecruitingRoomModalInteractions({
     useCallback, setRoomShareStatus, roomShareStatusTimerRef, copyTextToClipboard, roomShareUrl,
     getRecruitingDisplayTitle, selectedPost, BRAND_NAME, getRoomScheduleLabel, setInviteDraft,
@@ -349,6 +357,42 @@ export function useRecruitingRoomController({
     sheetDragRef, sheetDragOffset, sourceMatch, sourceDisputeDraft, getMatchResultRevision,
     buildMatchDisputeRequest, PLAYER_STAT_FIELDS, refreshSourceMatchReview,
   });
+  const runRoomSlotAction = async (action, { close = true } = {}) => {
+    if (slotActionPendingRef.current) return false;
+    slotActionPendingRef.current = true;
+    setSlotActionPending(true);
+    try {
+      const result = await action();
+      if (result === false || result?.ok === false) throw new Error("room_slot_action_failed");
+      if (close) {
+        setInviteDraft(null);
+        setSlotActionDraft(null);
+      }
+      return result;
+    } catch {
+      showRoomShareStatus("슬롯을 변경하지 못했습니다. 다시 시도해 주세요.");
+      return false;
+    } finally {
+      slotActionPendingRef.current = false;
+      setSlotActionPending(false);
+    }
+  };
+  const runSourceMatchAction = async (actionKey, action) => {
+    if (sourceMatchActionPendingRef.current) return false;
+    sourceMatchActionPendingRef.current = actionKey;
+    setSourceMatchActionPending(actionKey);
+    try {
+      const result = await action();
+      if (result === false || result?.ok === false) throw new Error("source_match_action_failed");
+      return result;
+    } catch {
+      showRoomShareStatus("경기 작업을 처리하지 못했습니다. 다시 시도해 주세요.");
+      return false;
+    } finally {
+      sourceMatchActionPendingRef.current = "";
+      setSourceMatchActionPending("");
+    }
+  };
   const {
     getRefereeInviteQuery, updateRefereeInviteQuery, getJoinDraft, updateJoinDraft, submitJoin,
     joinSideParty, getChatDraft, updateChatDraft, setChatError, clearChatCooldown,
@@ -404,9 +448,14 @@ export function useRecruitingRoomController({
     setConfirmingMatchId(roomPost.id);
     try {
       const matchId = await app.actions.confirmRecruitingMatch(roomPost.id);
-      if (!matchId) return;
+      if (!matchId) {
+        showRoomShareStatus("경기를 확정하지 못했습니다. 다시 시도해 주세요.");
+        return;
+      }
       closeModal();
       onOpenMatch?.(matchId);
+    } catch {
+      showRoomShareStatus("경기를 확정하지 못했습니다. 다시 시도해 주세요.");
     } finally {
       setConfirmingMatchId((current) => (current === roomPost.id ? "" : current));
     }
@@ -423,10 +472,11 @@ export function useRecruitingRoomController({
     joiningPostId, lobbyModalRef, moveSheetDrag, myTeams, navigate, onRemake, openInviteSlot,
     openRoomEdit, openSelfSlotAction, paidCourtJoinPrompt, refreshSourceMatchReview, registeredCourts, remoteDirectoryEnabled, requestSourceMatchFinalization,
     requiresPaidCourtNotice, roomCancellationPending, roomCancellationTarget, roomChatLocked, roomEditStatusByPost, roomShareEnabled, roomShareStatus,
-    roomTeamFeedback, roomTeamQuery, roomTeamSavingSide, saveRoomEdit, selectedPost, sendInvites, setAttendanceStartStatus,
+    roomTeamFeedback, roomTeamQuery, roomTeamSavingSide, runRoomSlotAction, runSourceMatchAction, saveRoomEdit, selectedPost, sendInvites, setAttendanceStartStatus,
     setFinalizeMatchTarget, setInviteDraft, setPaidCourtJoinPrompt, setRoomCancellationPending, setRoomCancellationTarget, setRoomTeamFeedback, setRoomTeamQuery,
     setRoomTeamSavingSide, setSlotActionDraft, setSoloRecordDeleteTarget, setSourceDisputeDraft, shareRoom, sheetBackdropOpacity, sheetDragOffset,
-    sheetDragSettling, sheetModalOpacity, slotActionDraft, soloRecordDeleteTarget, sourceDisputeDraft, sourceMatch, sourceMatchReviewRefreshing,
+    sheetDragSettling, sheetModalOpacity, slotActionDraft, slotActionPending, soloRecordDeleteTarget, sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus,
+    sourceMatch, sourceMatchActionPending, sourceMatchReviewRefreshing,
     startSheetDrag, submitChat, submitJoin, submitSourceDispute, teamById, toggleInvitePlayer, updateChatDraft,
     updateInviteDraft, updateJoinDraft, updateRefereeInviteQuery, updateRoomEditDraft, userById,
   };

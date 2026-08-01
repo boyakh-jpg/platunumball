@@ -339,21 +339,3 @@
   font-style: normal;
   font-weight: 850;
 }
-.queue-note {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  gap: var(--space-4);
-  border: var(--ui-stroke-width) solid rgba(118, 169, 255, 0.16);
-  border-radius: var(--radius);
-  background: rgba(118, 169, 255, 0.055);
-  color: var(--muted);
-  padding: 10px;
-  font-size: 0.78rem;
-  font-weight: 800;
-  line-height: 1.45;
-}
-.queue-note svg {
-  flex: 0 0 auto;
-  color: var(--blue);
-}

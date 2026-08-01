@@ -192,7 +192,7 @@ switchUser: (userId) => {
     });
     if (syncedTournament) {
       const preferredMatchIds = createdMatches.map((match) => match.id);
-      rollbackIfServerFailed(syncTournamentServer(syncedTournament, syncedNotifications, {
+      return rollbackIfServerFailed(syncTournamentServer(syncedTournament, syncedNotifications, {
         action: "approveTeam",
         teamId,
         operation: {
@@ -203,6 +203,7 @@ switchUser: (userId) => {
         },
       }), rollbackState, "토너먼트 팀 승인", { action: "approveTournamentTeam", tournamentId, teamId });
     }
+    return Promise.resolve(false);
   },
   approveTournamentReferee: (tournamentId) => {
     if (isSupabaseConfigured) {

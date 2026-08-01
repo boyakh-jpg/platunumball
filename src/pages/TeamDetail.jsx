@@ -391,9 +391,9 @@ export default function TeamDetail({ app }) {
     try {
       const result = await app.actions.restoreTeamEmblem(team.id);
       const nextAt = result?.details?.nextAllowedAt;
-      if (result?.ok !== false) setEmblemCanRestore(result.emblemCanRestore === true);
-      setEmblemFeedback(result?.ok === false
-        ? `${getTeamEmblemErrorMessage(result.error)}${nextAt ? ` ${formatEmblemDate(nextAt)}` : ""}`
+      if (result && result.ok !== false) setEmblemCanRestore(result.emblemCanRestore === true);
+      setEmblemFeedback(!result || result?.ok === false
+        ? `${getTeamEmblemErrorMessage(result?.error)}${nextAt ? ` ${formatEmblemDate(nextAt)}` : ""}`
         : "직전 사진으로 되돌렸습니다.");
     } catch (error) {
       setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
@@ -412,7 +412,7 @@ export default function TeamDetail({ app }) {
     setEmblemFeedback("");
     try {
       const result = await app.actions.setTeamEmblemSource(team.id, emblemSource);
-      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "엠블럼 표시 방식을 저장했습니다.");
+      setEmblemFeedback(!result || result?.ok === false ? getTeamEmblemErrorMessage(result?.error) : "엠블럼 표시 방식을 저장했습니다.");
     } catch (error) {
       setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {
@@ -434,8 +434,8 @@ export default function TeamDetail({ app }) {
     setEmblemFeedback("");
     try {
       const result = await app.actions.updateTeamEmblemStyle(team.id, { ...emblemStyleDraft, emblemAbbreviation });
-      if (result?.ok !== false) setEmblemStyleDraft((current) => ({ ...current, emblemAbbreviation }));
-      setEmblemFeedback(result?.ok === false ? getTeamEmblemErrorMessage(result.error) : "엠블럼 디자인을 저장했습니다.");
+      if (result && result.ok !== false) setEmblemStyleDraft((current) => ({ ...current, emblemAbbreviation }));
+      setEmblemFeedback(!result || result?.ok === false ? getTeamEmblemErrorMessage(result?.error) : "엠블럼 디자인을 저장했습니다.");
     } catch (error) {
       setEmblemFeedback(getTeamEmblemErrorMessage(error?.code || error?.message));
     } finally {

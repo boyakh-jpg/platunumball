@@ -721,7 +721,7 @@ test("match clock keeps shot settings stable and fullscreen compact", async () =
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-actions \{[^}]*grid-column: 2;[^}]*grid-row: 4;[^}]*width: 100%;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr \{[^}]*grid-template-rows: auto auto;[^}]*align-content: center;/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-attendance-qr svg \{[^}]*margin-inline: auto;/);
-  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \{[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);[^}]*grid-column: 2;[^}]*grid-row: 5;/);
+  assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 0\.72fr\)\) minmax\(0, 2fr\);[^}]*grid-column: 2;[^}]*grid-row: 5;/);
   assert.doesNotMatch(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-device-tools \.ui-button:nth-child/);
   assert.match(clockStyles, /\.ui-match-clock-panel-focus \.ui-match-clock-volume \{[^}]*flex: 0 1 clamp\(160px, 22vw, 240px\);/);
   assert.doesNotMatch(clockStyles, /@media \(width >= 721px\)[\s\S]*?\.ui-match-clock-panel-focus \.ui-match-clock-display-grid/);
@@ -1481,8 +1481,9 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
   assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
   assert.match(rankingsPage, /const promotionView = searchParams\.get\("view"\) === "promotion"/);
-  assert.match(rankingsPage, /if \(!promotionView \|\| !app\.remoteReady \|\| profileRecordsLoaded \|\| !loadProfileRecords\) return;/);
-  assert.match(rankingsPage, /result === false\) setPromotionLoadFailed\(true\)/);
+  assert.match(rankingsPage, /useCanonicalSeasonRankings\(app\.remoteReady && promotionView, season\.id\)/);
+  assert.match(rankingsPage, /canonicalRankings\.data\?\.players/);
+  assert.match(rankingsPage, /canonicalRankings\.data\?\.teams/);
   assert.match(rankingsPage, /승격권 기록을 불러오지 못했습니다/);
   assert.match(rankingsPage, /promotionLoading \? <BasketballLoader label="승격권 기록 불러오는 중"/);
   assert.match(rankingsPage, /<SeasonPromotionTable/);
@@ -2318,6 +2319,10 @@ test("랭킹·홈·선수 상세·소속 화면은 원격 페이지와 실패 �
     readSource("src/pages/Affiliations.jsx"),
   ]);
   assert.match(rankings, /rankingSort/);
+  assert.match(rankings, /const directoryLoading = !promotionView && !directoryLoadError/);
+  assert.match(rankings, /directoryLoading[\s\S]*?<BasketballLoader label="랭킹 불러오는 중"/);
+  assert.match(rankings, /useEffect\(\(\) => \{\s*if \(promotionView\) return;/);
+  assert.match(rankings, /\{!promotionView && app\.directoryStatus\?\.page\?\.kind === directoryKind/);
   assert.match(loaderActions, /rankingSort: current\.page\?\.rankingSort/);
   assert.match(home, /!blockedUserIds\.includes\(item\.id\)/);
   assert.match(homeSearch, /blockedUserIdSet\.has\(item\.id\)\) return null/);

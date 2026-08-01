@@ -14,7 +14,6 @@
     display: none;
   }
 
-  .arena-compose-drawer,
   .arena-lobby-modal {
     width: 100%;
     max-height: calc(100dvh - 20px);

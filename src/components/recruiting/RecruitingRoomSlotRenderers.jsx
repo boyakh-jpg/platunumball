@@ -10,10 +10,10 @@ export function createRecruitingRoomSlotRenderers(context) {
     joinSideParty, lobby, mine, myEntry, myTeams, openInviteSlot,
     pickupAssignmentAttendanceReady, pickupAssignmentPolicy, pickupAssignmentSideCapacity, pickupAssignmentSidesComplete, pickupOpenSlotPlacements, pickupPoolMode,
     pickupRerollState, pickupRerollTrustReady, remoteDirectoryEnabled, roomOwnerId, roomPhaseViewModel, roomQueueStatus,
-    roomState, selectedPost, sendInvites, setInviteDraft, setSlotActionDraft, showMatchRecordRosterPanel,
+    roomState, runRoomSlotAction, runSourceMatchAction, selectedPost, sendInvites, setInviteDraft, setSlotActionDraft, showMatchRecordRosterPanel,
     slotPositions, sourceMatch, sourceMatchCheckedInIds, sourceMatchIsRecordRoom, sourceMatchIsTournamentPregame, sourceMatchPhase,
     sourceMatchRecordTeams, sourceMatchSideLeaderIds, sourceRoomReadOnly, teamById, teamMatchSideLocked, teamOnlyRoom,
-    toggleInvitePlayer, updateInviteDraft, userById,
+    slotActionPending, sourceMatchActionPending, toggleInvitePlayer, updateInviteDraft, userById,
   } = context;
 
 const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
@@ -42,33 +42,21 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
         const moveActiveUserToSlot = (sideName, reserve) => {
           if (!myEntry || !currentUserInEntry) return;
           if (sourceMatch) {
-            app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, app.currentUser.id, { side: sideName, reserve });
-            setInviteDraft(null);
-            setSlotActionDraft(null);
-            return;
+            return runRoomSlotAction(() => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, app.currentUser.id, { side: sideName, reserve }));
           }
           if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) {
-            app.actions.setRecruitingApplicantPlacement(selectedPost.id, app.currentUser.id, { side: sideName, reserve });
-            setInviteDraft(null);
-            setSlotActionDraft(null);
-            return;
+            return runRoomSlotAction(() => app.actions.setRecruitingApplicantPlacement(selectedPost.id, app.currentUser.id, { side: sideName, reserve }));
           }
           if (currentUserInParty && myEntry.side === sideName) {
-            app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, myEntry.id, app.currentUser.id, { side: sideName, reserve });
-            setInviteDraft(null);
-            setSlotActionDraft(null);
-            return;
+            return runRoomSlotAction(() => app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, myEntry.id, app.currentUser.id, { side: sideName, reserve }));
           }
           if (currentUserInParty) {
-            app.actions.detachRecruitingPartyPlayer(selectedPost.id, myEntry.id, app.currentUser.id, { side: sideName, reserve });
-            setInviteDraft(null);
-            setSlotActionDraft(null);
+            return runRoomSlotAction(() => app.actions.detachRecruitingPartyPlayer(selectedPost.id, myEntry.id, app.currentUser.id, { side: sideName, reserve }));
           }
         };
         const leaveCurrentParty = () => {
           if (!currentUserInParty || !myEntry) return;
-          app.actions.detachRecruitingPartyPlayer(selectedPost.id, myEntry.id, app.currentUser.id, { side: myEntry.side, reserve: currentUserReserve });
-          setSlotActionDraft(null);
+          return runRoomSlotAction(() => app.actions.detachRecruitingPartyPlayer(selectedPost.id, myEntry.id, app.currentUser.id, { side: myEntry.side, reserve: currentUserReserve }));
         };
         const renderSlotCommand = () => {
           if (!activeSlotDraft) return null;
@@ -85,14 +73,18 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
               floating
               anchor={activeSlotDraft.anchor}
               canMoveHere={canMoveHere}
+              pending={slotActionPending}
               partyJoinOptions={targetPartyOptions}
               poolMode={pickupPoolMode}
-              onMoveHere={() => moveActiveUserToSlot(sideName, reserve)}
-              onJoinParty={(teamId, entryId) => { void joinSideParty(selectedPost, {
-                team: teamById[teamId] ?? { id: teamId },
-                sideName,
-                entry: entryId ? { id: entryId } : null,
-              }); }}
+              onMoveHere={() => { void moveActiveUserToSlot(sideName, reserve); }}
+              onJoinParty={async (teamId, entryId) => {
+                const result = await joinSideParty(selectedPost, {
+                  team: teamById[teamId] ?? { id: teamId },
+                  sideName,
+                  entry: entryId ? { id: entryId } : null,
+                });
+                if (result && result.ok !== false) setInviteDraft(null);
+              }}
               onClose={() => setInviteDraft(null)}
             >
               <InvitePanel
@@ -114,7 +106,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                 canInvitePlayer={canInvitePlayerByRoom}
                 error={inviteError}
                 onTogglePlayer={toggleInvitePlayer}
-                onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
+                onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
                 onClose={() => setInviteDraft(null)}
                 remoteSearchEnabled={remoteDirectoryEnabled}
               />
@@ -152,19 +144,18 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                     size="sm"
                     variant={active ? "primary" : "secondary"}
                     aria-pressed={active}
-                    disabled={!active && !movable}
+                    disabled={slotActionPending || (!active && !movable)}
                     onClick={() => {
                       if (active) return;
                       if (targetIsParty) {
                         if (sourceMatch) {
-                          app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, targetPlayerId, { side: targetEntry.side, reserve: action.reserve });
+                          void runRoomSlotAction(() => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, targetPlayerId, { side: targetEntry.side, reserve: action.reserve }));
                         } else {
-                          app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, targetEntry.id, targetPlayerId, { side: targetEntry.side, reserve: action.reserve });
+                          void runRoomSlotAction(() => app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, targetEntry.id, targetPlayerId, { side: targetEntry.side, reserve: action.reserve }));
                         }
-                        setSlotActionDraft(null);
                         return;
                       }
-                      moveActiveUserToSlot(action.side, action.reserve);
+                      void moveActiveUserToSlot(action.side, action.reserve);
                     }}
                   >
                     {action.label}
@@ -207,15 +198,19 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
               canLeaveParty={targetIsCurrentUser && !sourceMatch && currentUserInParty && !teamOnlyRoom}
               partyJoinOptions={targetPartyOptions}
               currentPosition={currentSlotPosition}
-              onPositionChange={targetIsCurrentUser && !sourceMatch ? (position) => app.actions.setRecruitingSlotPosition(selectedPost.id, targetPlayerId, position) : null}
+              pending={slotActionPending}
+              onPositionChange={targetIsCurrentUser && !sourceMatch ? (position) => runRoomSlotAction(
+                () => app.actions.setRecruitingSlotPosition(selectedPost.id, targetPlayerId, position),
+                { close: false },
+              ) : null}
               onLeaveParty={leaveCurrentParty}
-              onJoinParty={(teamId, entryId) => {
-                void joinSideParty(selectedPost, {
+              onJoinParty={async (teamId, entryId) => {
+                const result = await joinSideParty(selectedPost, {
                   team: teamById[teamId] ?? { id: teamId },
                   sideName: activeSelfSlotDraft.sideName,
                   entry: entryId ? { id: entryId } : null,
                 });
-                setSlotActionDraft(null);
+                if (result && result.ok !== false) setSlotActionDraft(null);
               }}
               onClose={() => setSlotActionDraft(null)}
             >
@@ -338,13 +333,13 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                     key={option.id}
                     type="button"
                     variant={option.id === "manual" ? "secondary" : "primary"}
-                    disabled={!pickupAssignmentAttendanceReady}
+                    disabled={!pickupAssignmentAttendanceReady || Boolean(sourceMatchActionPending)}
                     title={pickupAssignmentAttendanceReady
                       ? option.description
                       : `출석자가 최소 ${pickupAssignmentSideCapacity * 2}명 필요합니다.`}
-                    onClick={() => app.actions.generatePickupSideAssignment(sourceMatch.id, option.id)}
+                    onClick={() => { void runSourceMatchAction(`pickup:${option.id}`, () => app.actions.generatePickupSideAssignment(sourceMatch.id, option.id)); }}
                   >
-                    {option.label}
+                    {sourceMatchActionPending === `pickup:${option.id}` ? "처리 중" : option.label}
                   </Button>
                 ))}
               </div>
@@ -358,7 +353,7 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={pickupRerollState.remaining <= 0 || pickupRerollState.usedByCurrentUser || !pickupRerollTrustReady}
+                    disabled={Boolean(sourceMatchActionPending) || pickupRerollState.remaining <= 0 || pickupRerollState.usedByCurrentUser || !pickupRerollTrustReady}
                     title={pickupRerollState.remaining <= 0
                       ? "재배정 기회를 모두 사용했습니다."
                       : pickupRerollState.usedByCurrentUser
@@ -366,23 +361,23 @@ const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
                         : !pickupRerollTrustReady
                           ? "재배정에는 신뢰도 1점이 필요합니다."
                           : "신뢰도 1점을 사용하며 방 채팅에 기록됩니다."}
-                    onClick={() => app.actions.generatePickupSideAssignment(sourceMatch.id, pickupAssignmentPolicy.mode)}
+                    onClick={() => { void runSourceMatchAction("pickup:reroll", () => app.actions.generatePickupSideAssignment(sourceMatch.id, pickupAssignmentPolicy.mode)); }}
                   >
-                    재배정 {pickupRerollState.count}/{pickupRerollState.limit}
+                    {sourceMatchActionPending === "pickup:reroll" ? "처리 중" : `재배정 ${pickupRerollState.count}/${pickupRerollState.limit}`}
                   </Button>
                 ) : null}
                 {canManageMatchCheckin ? (
                   <Button
                     type="button"
-                    disabled={!pickupAssignmentSidesComplete}
+                    disabled={!pickupAssignmentSidesComplete || Boolean(sourceMatchActionPending)}
                     title={!pickupAssignmentSidesComplete
                       ? "A/B 출전 정원을 먼저 채워 주세요."
                       : "A/B사이드와 대기 선수 배정을 확정합니다."}
-                    onClick={() => app.actions.confirmPickupSideAssignment(sourceMatch.id, {
+                    onClick={() => { void runSourceMatchAction("pickup:confirm", () => app.actions.confirmPickupSideAssignment(sourceMatch.id, {
                       rotationMode: roomPhaseViewModel.rotation.rotationMode,
                       rotationIntervalMinutes: roomPhaseViewModel.rotation.rotationIntervalMinutes,
-                    })}
-                  >배정 확정</Button>
+                    })); }}
+                  >{sourceMatchActionPending === "pickup:confirm" ? "처리 중" : "배정 확정"}</Button>
                 ) : null}
               </div>
             ) : null}

@@ -3,6 +3,7 @@ import { ArrowRight, CalendarClock, ClipboardCheck, MapPin, Swords, Trophy } fro
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProfileEmblem from "../components/profile/ProfileEmblem.jsx";
@@ -18,6 +19,7 @@ import {
 } from "../lib/season.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { isPlacementComplete } from "../lib/rating.js";
+import useCanonicalSeasonRankings from "../hooks/useCanonicalSeasonRankings.js";
 
 function formatDate(value) {
   return value ? value.replaceAll("-", ".") : "일정 미정";
@@ -30,14 +32,20 @@ export default function Season({ app }) {
   const [recordLoadFailed, setRecordLoadFailed] = useState(false);
   const [loadRetrySequence, setLoadRetrySequence] = useState(0);
   const season = getCurrentSeason(app.state);
+  const canonicalRankings = useCanonicalSeasonRankings(app.remoteReady, season.id);
   const region = app.currentUser.region;
   const progress = getSeasonProgress(season);
   const blockedUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
-  const nationalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체")
+  const localPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체");
+  const localTeamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, "전체");
+  const seasonPlayerRows = app.remoteReady ? (canonicalRankings.data?.players ?? []) : localPlayerRows;
+  const seasonTeamRows = app.remoteReady ? (canonicalRankings.data?.teams ?? []) : localTeamRows;
+  const nationalPlayerRows = seasonPlayerRows
     .filter((user) => !blockedUserIds.has(user.id))
     .filter((user) => isPlacementComplete(user.ratings));
-  const nationalTeamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, "전체");
-  const regionalPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, region)
+  const nationalTeamRows = seasonTeamRows;
+  const regionalPlayerRows = seasonPlayerRows
+    .filter((user) => user.region === region)
     .filter((user) => !blockedUserIds.has(user.id))
     .filter((user) => isPlacementComplete(user.ratings))
     .filter((user) => user.id === app.currentUser.id || user.privacy?.regionRanking !== false);
@@ -113,6 +121,7 @@ export default function Season({ app }) {
     recordLoadKeyRef.current = "";
     setDirectoryLoadFailed(false);
     setRecordLoadFailed(false);
+    canonicalRankings.retry();
     setLoadRetrySequence((current) => current + 1);
   };
 
@@ -127,7 +136,11 @@ export default function Season({ app }) {
         <Badge tone="gold">진행 중</Badge>
       </header>
 
-      {directoryLoadFailed || recordLoadFailed ? (
+      {canonicalRankings.loading && !canonicalRankings.data ? (
+        <Card className="section-card"><BasketballLoader label="시즌 순위 불러오는 중" /></Card>
+      ) : null}
+
+      {directoryLoadFailed || recordLoadFailed || canonicalRankings.error ? (
         <Card className="section-card">
           <div className="section-title-row">
             <div>

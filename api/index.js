@@ -41,6 +41,7 @@ import recordList from "../server/api/records/list.js";
 import refereeSync from "../server/api/referee/sync.js";
 import recruitingList from "../server/api/recruiting/list.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
+import seasonRankings from "../server/api/season/rankings.js";
 import reportSubmit from "../server/api/reports/submit.js";
 import settingsSync from "../server/api/settings/sync.js";
 import search from "../server/api/search.js";
@@ -103,6 +104,7 @@ export const API_ROUTES = new Map([
   ["/referee/sync", route(refereeSync, ["POST"], "user")],
   ["/recruiting/list", route(recruitingList, ["POST"], "user")],
   ["/recruiting/sync-post", route(recruitingSyncPost, ["POST"], "user")],
+  ["/season/rankings", route(seasonRankings, ["POST"], "user")],
   ["/reports/submit", route(reportSubmit, ["POST"], "user")],
   ["/settings/sync", route(settingsSync, ["POST"], "user")],
   ["/search", route(search, ["POST"], "user")],

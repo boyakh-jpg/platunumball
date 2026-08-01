@@ -475,4 +475,8 @@ test("팀 링크와 기록 목록은 부분 hydration과 중복 archive를 안�
   assert.match(season, /if \(!isConfirmed\(match\)\) return false/);
   assert.match(ranking, /표시할 순위가 없습니다/);
   assert.match(affiliations, /소속 순위 불러오는 중/);
+  assert.match(affiliations, /directoryLoadState === "idle" \|\| directoryLoadState === "loading"/);
+  assert.match(affiliations, /setDirectoryLoadState\(result === true \? "loaded" : "error"\)/);
+  assert.match(affiliations, /\{rankedAffiliations\.length \? <>/);
+  assert.match(affiliations, /directoryLoadState === "loaded" && !rankedAffiliations\.length/);
 });

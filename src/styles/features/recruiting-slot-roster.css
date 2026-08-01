@@ -242,12 +242,6 @@
   font-weight: 950;
 }
 
-.arena-drawer-head p {
-  margin-top: 6px;
-  color: var(--muted);
-  font-weight: 850;
-}
-
 .arena-side-roster {
   display: grid;
   min-width: 0;

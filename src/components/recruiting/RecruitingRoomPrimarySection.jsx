@@ -289,7 +289,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                   canInvitePlayer={canInvitePlayerByRoom}
                   error={inviteError}
                   onTogglePlayer={toggleInvitePlayer}
-                  onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
+                  onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
                   onClose={() => setInviteDraft(null)}
                   remoteSearchEnabled={remoteDirectoryEnabled}
                 />
@@ -303,6 +303,7 @@ export function RecruitingRoomPrimarySection({ context }) {
                   currentUserId={app.currentUser.id}
                   alreadyApplied={alreadyApplied}
                   poolMode={pickupPoolMode}
+                  error={inviteError}
                   onAccept={(invitation) => acceptRoomInvitation(selectedPost, invitation)}
                   onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
                 />
