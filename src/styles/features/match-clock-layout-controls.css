@@ -151,7 +151,7 @@
   min-height: 0;
   max-height: 100%;
   padding: var(--match-clock-focus-gap);
-  gap: var(--match-clock-focus-gap);
+  gap: 0 var(--match-clock-focus-gap);
   overflow: hidden;
 }
 
@@ -200,8 +200,8 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-attendance-qr svg {
-  width: min(100%, 128px);
-  max-height: 128px;
+  width: min(100%, 72px);
+  max-height: 72px;
   margin-inline: auto;
 }
 
@@ -246,7 +246,7 @@
 
 .ui-match-clock-panel-focus .ui-match-shot-clock-value {
   color: var(--rb-orange-2);
-  font-size: clamp(2rem, 8vmin, 3.5rem);
+  font-size: clamp(2rem, 7vmin, 3rem);
 }
 
 .ui-match-clock-panel-focus .ui-match-shot-clock-label {
