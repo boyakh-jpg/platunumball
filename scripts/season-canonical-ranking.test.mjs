@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [migration, archiveMigration, ratingMigration, api, router, hook, seasonPage, rankingsPage, logicDoc] = await Promise.all([
+const [migration, boundaryMigration, archiveMigration, ratingMigration, api, router, hook, seasonPage, rankingsPage, schemaHealthRequirements, logicDoc] = await Promise.all([
   readFile(new URL("../supabase/migrations/20260801007000_canonical_season_rankings.sql", import.meta.url), "utf8"),
+  readFile(new URL("../supabase/migrations/20260801008000_harden_season_ranking_boundaries.sql", import.meta.url), "utf8"),
   readFile(new URL("../supabase/migrations/20260722223000_match_record_archive.sql", import.meta.url), "utf8"),
   readFile(new URL("../supabase/migrations/20260728110000_player_placement_and_roster_team_mmr.sql", import.meta.url), "utf8"),
   readFile(new URL("../server/api/season/rankings.js", import.meta.url), "utf8"),
@@ -11,6 +12,7 @@ const [migration, archiveMigration, ratingMigration, api, router, hook, seasonPa
   readFile(new URL("../src/hooks/useCanonicalSeasonRankings.js", import.meta.url), "utf8"),
   readFile(new URL("../src/pages/Season.jsx", import.meta.url), "utf8"),
   readFile(new URL("../src/pages/Rankings.jsx", import.meta.url), "utf8"),
+  readFile(new URL("../server/api/system/schemaHealthRequirements.js", import.meta.url), "utf8"),
   readFile(new URL("../docs/logic-and-terminology.md", import.meta.url), "utf8"),
 ]);
 
@@ -19,6 +21,14 @@ test("시즌 테이블이 없거나 컬럼이 부족해도 비파괴적으로 �
   assert.match(migration, /alter table public\.seasons add column if not exists promotion_line integer/u);
   assert.match(migration, /where not exists \([\s\S]*from public\.seasons where id = 'season-zero'/u);
   assert.match(migration, /create policy seasons_read_all[\s\S]*for select[\s\S]*to public/u);
+  assert.match(schemaHealthRequirements, /seasons:\s*\[[\s\S]*"promotion_line"[\s\S]*"rules"/u);
+});
+
+test("날짜 한쪽이 비어 있는 기존 시즌도 열린 경계로 집계한다", () => {
+  assert.match(boundaryMigration, /season_row\.starts_at is null or archive\.record_date >= season_row\.starts_at/u);
+  assert.match(boundaryMigration, /season_row\.ends_at is null or archive\.record_date <= season_row\.ends_at/u);
+  assert.match(boundaryMigration, /season_ranking_date_boundary_shape_changed/u);
+  assert.doesNotMatch(boundaryMigration.replace(/--[^\r\n]*/gu, ""), /\b(?:drop table|truncate|delete from|update\s+public\.seasons)\b/iu);
 });
 
 test("명시한 시즌 ID가 없으면 활성 시즌으로 조용히 fallback하지 않는다", () => {
@@ -60,7 +70,12 @@ test("Season과 승격 Rankings 원격 경로는 canonical API만 사용한다",
   assert.match(api, /\.rpc\("rankball_season_rankings"/u);
   assert.match(router, /"\/season\/rankings"[\s\S]*seasonRankings/u);
   assert.match(hook, /postServerAction\("\/api\/season\/rankings"/u);
-  assert.match(seasonPage, /useCanonicalSeasonRankings\(app\.remoteReady, season\.id\)/u);
+  assert.match(seasonPage, /const canonicalEnabled = isSupabaseConfigured && app\.remoteReady/u);
+  assert.match(seasonPage, /useCanonicalSeasonRankings\(canonicalEnabled, season\.id\)/u);
+  assert.match(seasonPage, /if \(!canonicalEnabled \|\| !loadDirectory/u);
+  assert.match(seasonPage, /if \(!canonicalEnabled \|\| !loadProfileRecords/u);
+  assert.match(rankingsPage, /const canonicalEnabled = isSupabaseConfigured && app\.remoteReady && promotionView/u);
+  assert.match(rankingsPage, /getPlayerSeasonRows\(visiblePlayers/u);
   assert.match(rankingsPage, /canonicalRankings\.data\?\.players/u);
   assert.match(rankingsPage, /canonicalRankings\.data\?\.teams/u);
   assert.match(logicDoc, /운영 시즌 개인·팀 승격 순위[^]*match_record_participants[^]*match_record_teams/u);

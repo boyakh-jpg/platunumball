@@ -1100,8 +1100,9 @@ test("remote favorite search hydrates the selected entity before optimistic togg
   const favoriteSource = await readSource("src/pages/useSettingsFavorites.jsx");
   const settingsActions = await readSource("src/hooks/appData/actions/settingsActions.js");
   const serverActions = await readSource("src/hooks/appData/orchestrator/serverActions.js");
-  assert.match(favoriteSource, /await toggleAction\(item\.id, item\)/);
-  assert.match(favoriteSource, /result !== false && result\?\.ok !== false/);
+  assert.match(favoriteSource, /const result = await toggleAction\(item\.id, item\)/);
+  assert.match(favoriteSource, /if \(!result \|\| result\?\.ok === false\)/);
+  assert.match(favoriteSource, /favoriteActionPendingRef\.current/);
   assert.match(settingsActions, /toggleFavoritePlayer: \(userId, targetSnapshot\)[\s\S]*toggleFavoriteReferee: \(userId, targetSnapshot\)/);
   assert.match(serverActions, /active && targetSnapshot\?\.id === safeTargetId/);
   assert.match(serverActions, /mergeRemoteProfileState\(current, targetType === "team"/);
@@ -1481,7 +1482,8 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
   assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
   assert.match(rankingsPage, /const promotionView = searchParams\.get\("view"\) === "promotion"/);
-  assert.match(rankingsPage, /useCanonicalSeasonRankings\(app\.remoteReady && promotionView, season\.id\)/);
+  assert.match(rankingsPage, /const canonicalEnabled = isSupabaseConfigured && app\.remoteReady && promotionView/);
+  assert.match(rankingsPage, /useCanonicalSeasonRankings\(canonicalEnabled, season\.id\)/);
   assert.match(rankingsPage, /canonicalRankings\.data\?\.players/);
   assert.match(rankingsPage, /canonicalRankings\.data\?\.teams/);
   assert.match(rankingsPage, /승격권 기록을 불러오지 못했습니다/);
@@ -1509,13 +1511,14 @@ test("team detail keeps navigation preview and always refreshes authoritative te
   assert.match(teamDetailView, /teamDetailError[\s\S]{0,420}refreshTeamDetail\(\)[\s\S]{0,120}다시 시도/);
   assert.match(teamDetailPage, /const result = await app\.actions\.inviteTeamMember/);
   assert.match(teamDetailPage, /if \(!result \|\| result\.ok === false\)/);
-  assert.match(teamDetailPage, /if \(!canAddMember \|\| teamInvitePending \|\| teamManagementPendingRef\.current\) return;/);
+  assert.match(teamDetailPage, /if \(!canAddMember \|\| teamInvitePendingRef\.current \|\| teamManagementPendingRef\.current\) return;/);
   assert.match(teamDetailView, /disabled=\{!canAddMember \|\| teamControlPending\}/);
   assert.match(teamDetailView, /result=\{record\.result\}/u);
   assert.doesNotMatch(teamDetailView, /getScoreOutcome/u);
   assert.match(teamDetailView, /const inviteRoleOptions = TEAM_INVITE_ROLES\.map/u);
   assert.match(teamDetailView, /function getManagedRoleOptions\(member, captainId\)/u);
-  assert.match(teamDetailView, /toggleFavoriteTeam\(team\.id, team\)/);
+  assert.match(teamDetailPage, /const result = await app\.actions\.toggleFavoriteTeam\(team\.id, team\)/);
+  assert.match(teamDetailView, /toggleTeamFavorite\(\)/);
   assert.match(teamHoverCard, /navigate\(teamPath, \{ state: \{ teamPreview: team \} \}\)/);
   assert.match(teamHoverCard, /state=\{\{ teamPreview: team \}\}/);
 });

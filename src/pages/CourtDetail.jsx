@@ -34,7 +34,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [rating, setRating] = useState(0);
   const [memo, setMemo] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false); const savingRef = useRef(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [correctionField, setCorrectionField] = useState("name");
@@ -42,7 +42,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
   const [correctionValue, setCorrectionValue] = useState("");
   const [correctionNote, setCorrectionNote] = useState("");
   const [correctionUrl, setCorrectionUrl] = useState("");
-  const [correctionSaving, setCorrectionSaving] = useState(false);
+  const [correctionSaving, setCorrectionSaving] = useState(false); const correctionSavingRef = useRef(false);
   const [correctionMessage, setCorrectionMessage] = useState("");
   const detailRequestRef = useRef(0);
   const loadCourtDetail = app.actions?.loadCourtDetail;
@@ -140,7 +140,8 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
 
   const submitReview = async (event) => {
     event.preventDefault();
-    if (!selectedMatchId || rating < 1 || saving) return;
+    if (!selectedMatchId || rating < 1 || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setSaveMessage("");
     try {
@@ -157,9 +158,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
       setSaveMessage(selectedMatch?.existingReview ? "리뷰를 수정했습니다." : "리뷰를 등록했습니다.");
     } catch {
       setSaveMessage("리뷰를 저장하지 못했습니다.");
-    } finally {
-      setSaving(false);
-    }
+    } finally { savingRef.current = false; setSaving(false); }
   };
 
   const submitCorrection = async (event) => {
@@ -167,11 +166,12 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
     const proposedValue = correctionValue.trim();
     const note = correctionNote.trim();
     const evidenceUrl = correctionUrl.trim();
-    if (!correctionCanSubmit || correctionSaving) return;
+    if (!correctionCanSubmit || correctionSavingRef.current) return;
     if (evidenceUrl && !/^https?:\/\//i.test(evidenceUrl)) {
       setCorrectionMessage("근거 URL은 http:// 또는 https://로 입력해 주세요.");
       return;
     }
+    correctionSavingRef.current = true;
     setCorrectionSaving(true);
     setCorrectionMessage("");
     const fieldLabel = getCourtCorrectionFieldLabel(correctionField);
@@ -202,9 +202,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
       }
     } catch {
       setCorrectionMessage("정보 수정 신고를 접수하지 못했습니다.");
-    } finally {
-      setCorrectionSaving(false);
-    }
+    } finally { correctionSavingRef.current = false; setCorrectionSaving(false); }
   };
 
   if (loading && !detail) {
@@ -276,7 +274,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
           <Button as="a" variant="secondary" size="sm" className="court-map-link ui-liquid-glass" href={mapUrl} target="_blank" rel="noreferrer">
             지도 보기 <ExternalLink size={15} />
           </Button>
-          <Button type="button" variant="secondary" size="sm" className="ui-liquid-glass" onClick={() => setCorrectionOpen((open) => !open)} aria-expanded={correctionOpen}>
+          <Button type="button" variant="secondary" size="sm" className="ui-liquid-glass" disabled={correctionSaving} onClick={() => setCorrectionOpen((open) => !open)} aria-expanded={correctionOpen}>
             <Flag size={15} /> 정보 수정 신고
           </Button>
         </div>
@@ -332,7 +330,7 @@ export default function CourtDetail({ app, courtId: courtIdProp = "", embedded =
             </label>
             <div className="court-correction-actions">
               <Button type="submit" size="sm" disabled={!correctionCanSubmit || correctionSaving}>{correctionSaving ? "접수 중" : "수정 신고 접수"}</Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setCorrectionOpen(false)}>닫기</Button>
+              <Button type="button" variant="secondary" size="sm" disabled={correctionSaving} onClick={() => setCorrectionOpen(false)}>닫기</Button>
             </div>
           </form>
           {correctionMessage ? <p className="court-correction-message" role="status">{correctionMessage}</p> : null}

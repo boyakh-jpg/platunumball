@@ -394,4 +394,15 @@ export const REQUIRED_COLUMNS = {
     "updated_by",
     "updated_at",
   ],
+  seasons: [
+    "id",
+    "name",
+    "subtitle",
+    "starts_at",
+    "ends_at",
+    "active",
+    "regions",
+    "promotion_line",
+    "rules",
+  ],
 };

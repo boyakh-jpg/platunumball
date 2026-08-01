@@ -404,8 +404,8 @@ test("구장 상세 저장 실패는 버튼 잠금을 해제하고 재시도를 
     read("src/components/admin/useCourtDatabasePanelController.js"),
   ]);
 
-  assert.match(source, /const submitReview = async[\s\S]*?try \{[\s\S]*?catch \{[\s\S]*?finally \{\s*setSaving\(false\);/u);
-  assert.match(source, /const submitCorrection = async[\s\S]*?try \{[\s\S]*?catch \{[\s\S]*?finally \{\s*setCorrectionSaving\(false\);/u);
+  assert.match(source, /const submitReview = async[\s\S]*?try \{[\s\S]*?catch \{[\s\S]*?finally \{[\s\S]{0,100}setSaving\(false\);/u);
+  assert.match(source, /const submitCorrection = async[\s\S]*?try \{[\s\S]*?catch \{[\s\S]*?finally \{[\s\S]{0,120}setCorrectionSaving\(false\);/u);
   assert.match(databaseController, /catch \{[\s\S]{0,240}필터 적용을 눌러 다시 시도해 주세요\.[\s\S]{0,180}finally \{[\s\S]{0,100}setLoading\(false\)/u);
 });
 
@@ -474,6 +474,7 @@ test("팀 링크와 기록 목록은 부분 hydration과 중복 archive를 안�
   assert.match(detail, /archivedHistory\.filter\(\(record\) => !historyIds\.has\(record\.matchId\)\)/);
   assert.match(season, /if \(!isConfirmed\(match\)\) return false/);
   assert.match(ranking, /표시할 순위가 없습니다/);
+  assert.match(ranking, /<TeamHoverCard team=\{row\} className="ranking-name" directNavigation>/);
   assert.match(affiliations, /소속 순위 불러오는 중/);
   assert.match(affiliations, /directoryLoadState === "idle" \|\| directoryLoadState === "loading"/);
   assert.match(affiliations, /setDirectoryLoadState\(result === true \? "loaded" : "error"\)/);

@@ -43,10 +43,8 @@ const loadDirectory = app.actions.loadDirectory;
   const [homeGuideCardSaveStatus, setHomeGuideCardSaveStatus] = useState("");
   const [generalSettingsSavePending, setGeneralSettingsSavePending] = useState(false); const generalSettingsSavePendingRef = useRef(false);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
-  const [blockUserId, setBlockUserId] = useState("");
-  const [blockUserQuery, setBlockUserQuery] = useState("");
-  const [blockSavePending, setBlockSavePending] = useState(false);
-  const [blockSaveStatus, setBlockSaveStatus] = useState("");
+  const [blockUserId, setBlockUserId] = useState(""); const [blockUserQuery, setBlockUserQuery] = useState("");
+  const [blockSavePending, setBlockSavePending] = useState(false); const blockSavePendingRef = useRef(false); const [blockSaveStatus, setBlockSaveStatus] = useState("");
   const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const courtRequests = app.state.settings?.courtRequests ?? [];
@@ -90,10 +88,9 @@ const loadDirectory = app.actions.loadDirectory;
     events: discordChannel.events,
   });
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
-  const {
-    favoriteQuery, setFavoriteQuery, favoriteListType, setFavoriteListType,
-    favoritePlayers, favoriteTeams, favoriteCourts, favoriteReferees,
-    favoriteListConfig, favoriteSearchIdleItems, renderFavoriteSearchItem,
+  const { favoriteQuery, setFavoriteQuery, favoriteListType, setFavoriteListType,
+    favoritePlayers, favoriteTeams, favoriteCourts, favoriteReferees, favoriteListConfig, favoriteSearchIdleItems, favoriteActionPendingKey,
+    favoriteActionError, favoriteSearchResetKey, toggleFavoriteItem, renderFavoriteSearchItem,
   } = useSettingsFavorites({ app, registeredCourts });
   const serverAdminLevel = Number(app.adminContext?.level ?? 0);
   const canOpenAdminMenu = serverAdminLevel >= 30;
@@ -193,7 +190,8 @@ const loadDirectory = app.actions.loadDirectory;
     : "";
   const submitBlock = async (event) => {
     event.preventDefault();
-    if (!selectedBlockUserId || blockSavePending) return;
+    if (!selectedBlockUserId || blockSavePendingRef.current) return;
+    blockSavePendingRef.current = true;
     setBlockSavePending(true);
     setBlockSaveStatus("");
     try {
@@ -208,7 +206,7 @@ const loadDirectory = app.actions.loadDirectory;
     } catch {
       setBlockSaveStatus("차단을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
-      setBlockSavePending(false);
+      blockSavePendingRef.current = false; setBlockSavePending(false);
     }
   };
   const selectBlockUser = (user) => {
@@ -235,7 +233,8 @@ const loadDirectory = app.actions.loadDirectory;
     );
   };
   const releaseBlock = async (userId) => {
-    if (!userId || blockSavePending) return;
+    if (!userId || blockSavePendingRef.current) return;
+    blockSavePendingRef.current = true;
     setBlockSavePending(true);
     setBlockSaveStatus("");
     try {
@@ -246,7 +245,7 @@ const loadDirectory = app.actions.loadDirectory;
     } catch {
       setBlockSaveStatus("차단 해제를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
-      setBlockSavePending(false);
+      blockSavePendingRef.current = false; setBlockSavePending(false);
     }
   };
 
@@ -432,6 +431,7 @@ const loadDirectory = app.actions.loadDirectory;
     favoriteReferees,
     favoriteListConfig,
     favoriteSearchIdleItems,
+    favoriteActionPendingKey, favoriteActionError, favoriteSearchResetKey, toggleFavoriteItem,
     renderFavoriteSearchItem,
     canOpenAdminMenu,
     themeDirty,

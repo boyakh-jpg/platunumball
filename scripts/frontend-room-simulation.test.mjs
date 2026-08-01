@@ -1191,3 +1191,40 @@ test("모집 목록은 공용 경기 생성 경로만 사용한다", async () =>
   assert.doesNotMatch(page, /composeOpen|setComposeOpen|createPending|createRecruitingPost/);
   assert.doesNotMatch(view, /arena-compose-drawer|arena-compose-form/);
 });
+
+test("팀·대회·설정 mutation은 재입력과 실패를 화면 경계에서 막는다", async () => {
+  const [teams, teamDetail, teamDetailView, tournament, favorites, settings, primary, reports, courtDetail, gettingStarted, matchRoom, matchRoomView] = await Promise.all([
+    readFile(new URL("../src/pages/Teams.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/TeamDetailView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/TournamentDetail.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useSettingsFavorites.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useSettingsPageController.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/SettingsPrimaryColumn.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useSettingsReportController.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/CourtDetail.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/GettingStarted.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/MatchRoomView.jsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(teams, /representativeSavePendingRef\.current/);
+  assert.match(teamDetail, /teamInvitePendingRef\.current/);
+  assert.match(teamDetail, /emblemPendingRef\.current/);
+  assert.match(teamDetail, /const result = await app\.actions\.toggleFavoriteTeam\(team\.id, team\)/);
+  assert.match(teamDetailView, /favoritePending \? "저장 중"/);
+  assert.match(tournament, /savingScheduleRef\.current/);
+  assert.match(tournament, /savingForfeitRef\.current/);
+  assert.match(tournament, /governanceActionRef\.current/);
+  assert.match(favorites, /if \(!result \|\| result\?\.ok === false\)/);
+  assert.match(favorites, /favoriteActionPendingRef\.current/);
+  assert.match(primary, /favoriteActionError/);
+  assert.match(settings, /blockSavePendingRef\.current/);
+  assert.match(reports, /reportSubmitPendingRef\.current/);
+  assert.match(courtDetail, /savingRef\.current/);
+  assert.match(courtDetail, /correctionSavingRef\.current/);
+  assert.match(gettingStarted, /homeGuideCardSavePendingRef\.current/);
+  assert.match(matchRoom, /const agreeCurrentUser = [^\n]*runManagementAction\("agree"/);
+  assert.match(matchRoomView, /disabled=\{Boolean\(managementActionPending\)\}[^\n]*agreeCurrentUser\(\)/);
+  assert.doesNotMatch(matchRoomView, /app\.actions\.agreeMatch/);
+});

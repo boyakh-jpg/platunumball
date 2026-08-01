@@ -49,7 +49,8 @@ export default function Rankings({ app }) {
   };
   const myRegion = app.currentUser.region;
   const season = getCurrentSeason(app.state);
-  const canonicalRankings = useCanonicalSeasonRankings(app.remoteReady && promotionView, season.id);
+  const canonicalEnabled = isSupabaseConfigured && app.remoteReady && promotionView;
+  const canonicalRankings = useCanonicalSeasonRankings(canonicalEnabled, season.id);
   const loadDirectory = app.actions.loadDirectory;
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";
   const directoryRegion = tab === "region" ? myRegion : "";
@@ -86,8 +87,8 @@ export default function Rankings({ app }) {
             ? regionalPlayers
             : visibleModePlayers;
   const promotionRows = tab === "teams"
-    ? app.remoteReady ? (canonicalRankings.data?.teams ?? []) : getTeamSeasonRows(app.rankings.teams, app.state.matches, season, "전체")
-    : app.remoteReady
+    ? canonicalEnabled ? (canonicalRankings.data?.teams ?? []) : getTeamSeasonRows(app.rankings.teams, app.state.matches, season, "전체")
+    : canonicalEnabled
       ? (canonicalRankings.data?.players ?? []).filter((player) => isPlacementComplete(player.ratings))
       : getPlayerSeasonRows(visiblePlayers, app.state.matches, season, "전체");
   const promotionLoading = promotionView && canonicalRankings.loading && !canonicalRankings.data;

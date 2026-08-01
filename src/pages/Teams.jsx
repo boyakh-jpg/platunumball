@@ -48,9 +48,8 @@ export default function Teams({ app }) {
   const [teamCreatePending, setTeamCreatePending] = useState(false);
   const teamCreatePendingRef = useRef(false);
   const [teamCreateError, setTeamCreateError] = useState("");
-  const [representativeSavePendingId, setRepresentativeSavePendingId] = useState("");
-  const [representativeSaveError, setRepresentativeSaveError] = useState("");
-  const [query, setQuery] = useState("");
+  const [representativeSavePendingId, setRepresentativeSavePendingId] = useState(""); const representativeSavePendingRef = useRef("");
+  const [representativeSaveError, setRepresentativeSaveError] = useState(""); const [query, setQuery] = useState("");
   const [selectedSearchTeam, setSelectedSearchTeam] = useState(null);
   const [regionSido, setRegionSido] = useState(TEAM_DISCOVERY_VIEW);
   const [regionDistrict, setRegionDistrict] = useState(defaultRegionSelection.district);
@@ -219,13 +218,14 @@ export default function Teams({ app }) {
 
   const setRepresentativeTeam = async (event, teamId) => {
     event.preventDefault(); event.stopPropagation();
-    if (!teamId || representativeSavePendingId || representativeTeamId === teamId) return;
+    if (!teamId || representativeSavePendingRef.current || representativeTeamId === teamId) return;
+    representativeSavePendingRef.current = teamId;
     setRepresentativeSavePendingId(teamId); setRepresentativeSaveError("");
     try {
       const result = await app.actions.updateSettings({ representativeTeamId: teamId });
       if (!result || result.ok === false) setRepresentativeSaveError("대표팀을 설정하지 못했습니다. 다시 시도해 주세요.");
     } catch { setRepresentativeSaveError("대표팀을 설정하지 못했습니다. 다시 시도해 주세요.");
-    } finally { setRepresentativeSavePendingId(""); }
+    } finally { representativeSavePendingRef.current = ""; setRepresentativeSavePendingId(""); }
   };
 
   return (

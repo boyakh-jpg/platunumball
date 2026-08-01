@@ -20,6 +20,7 @@ const [reportRemoteTarget, setReportRemoteTarget] = useState(null);
 const [reportMemo, setReportMemo] = useState("");
 const [reportedUserIds, setReportedUserIds] = useState([]);
 const [reportSubmitPending, setReportSubmitPending] = useState(false);
+const reportSubmitPendingRef = useRef(false);
 const [reportSubmitStatus, setReportSubmitStatus] = useState("");
 const [reportMatchesLoading, setReportMatchesLoading] = useState(false);
 const [reportMatchesError, setReportMatchesError] = useState("");
@@ -383,8 +384,9 @@ const renderReportTargetSearchItem = (item) => (
   );
 const submitReport = async (event) => {
     event.preventDefault();
-    if (!canSubmitReport || reportSubmitPending) return;
+    if (!canSubmitReport || reportSubmitPendingRef.current) return;
     const memo = reportMemo.trim();
+    reportSubmitPendingRef.current = true;
     setReportSubmitPending(true);
     setReportSubmitStatus("신고 저장 중");
     try {
@@ -451,6 +453,7 @@ const submitReport = async (event) => {
           : "신고를 접수하지 못했습니다. 입력 내용은 유지됩니다."
       ));
     } finally {
+      reportSubmitPendingRef.current = false;
       setReportSubmitPending(false);
     }
   };

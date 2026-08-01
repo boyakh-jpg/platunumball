@@ -18,6 +18,7 @@ const GUIDE_CHAPTER_IDS = GUIDE_CHAPTERS.map((chapter) => chapter.id);
 export default function GettingStarted({ app }) {
   const [searchParams] = useSearchParams();
   const [homeGuideCardSavePending, setHomeGuideCardSavePending] = useState(false);
+  const homeGuideCardSavePendingRef = useRef(false);
   const [homeGuideCardSaveStatus, setHomeGuideCardSaveStatus] = useState("");
   const [chapterMenuOpen, setChapterMenuOpen] = useState(false);
   const chapterTitleRef = useRef(null);
@@ -41,7 +42,8 @@ export default function GettingStarted({ app }) {
   }, [chapter.id]);
 
   const toggleHomeGuideCard = async () => {
-    if (homeGuideCardSavePending) return;
+    if (homeGuideCardSavePendingRef.current) return;
+    homeGuideCardSavePendingRef.current = true;
     setHomeGuideCardSavePending(true);
     setHomeGuideCardSaveStatus("저장 중");
     try {
@@ -54,6 +56,7 @@ export default function GettingStarted({ app }) {
     } catch {
       setHomeGuideCardSaveStatus("표시 설정을 저장하지 못했습니다.");
     } finally {
+      homeGuideCardSavePendingRef.current = false;
       setHomeGuideCardSavePending(false);
     }
   };

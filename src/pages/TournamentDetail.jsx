@@ -33,12 +33,15 @@ const location = useLocation();
   const [tournamentMissing, setTournamentMissing] = useState(false);
   const [scheduleDialog, setScheduleDialog] = useState(null);
   const [savingScheduleId, setSavingScheduleId] = useState("");
+  const savingScheduleRef = useRef("");
   const [forfeitDialog, setForfeitDialog] = useState(null);
   const [savingForfeitId, setSavingForfeitId] = useState("");
+  const savingForfeitRef = useRef("");
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const [editingScheduleId, setEditingScheduleId] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
   const [governanceAction, setGovernanceAction] = useState("");
+  const governanceActionRef = useRef("");
   const [governanceFeedback, setGovernanceFeedback] = useState("");
   useBodyScrollLock(Boolean(scheduleDialog || forfeitDialog));
   const teamById = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
@@ -194,8 +197,9 @@ const location = useLocation();
     return "일정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   };
   const confirmSchedule = async () => {
-    if (scheduleDialog?.mode !== "confirm" || savingScheduleId) return;
+    if (scheduleDialog?.mode !== "confirm" || savingScheduleRef.current) return;
     const { matchId, scheduledDate, scheduledTime, courtId, courtName } = scheduleDialog;
+    savingScheduleRef.current = matchId;
     setSavingScheduleId(matchId);
     try {
       const result = await app.actions.updateTournamentMatchSchedule(tournament.id, matchId, { scheduledDate, scheduledTime, courtId, courtName });
@@ -205,6 +209,7 @@ const location = useLocation();
     } catch (error) {
       setScheduleDialog({ mode: "error", message: formatScheduleError(error.message) });
     } finally {
+      savingScheduleRef.current = "";
       setSavingScheduleId("");
     }
   };
@@ -216,8 +221,9 @@ const location = useLocation();
     return "불참 처리를 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   };
   const confirmForfeit = async () => {
-    if (forfeitDialog?.mode !== "confirm" || savingForfeitId) return;
+    if (forfeitDialog?.mode !== "confirm" || savingForfeitRef.current) return;
     const { matchId, losingSide } = forfeitDialog;
+    savingForfeitRef.current = matchId;
     setSavingForfeitId(matchId);
     try {
       const result = await app.actions.forfeitTournamentMatch(tournament.id, matchId, losingSide, "팀 불참");
@@ -226,6 +232,7 @@ const location = useLocation();
     } catch (error) {
       setForfeitDialog({ mode: "error", matchId, message: formatForfeitError(error.message) });
     } finally {
+      savingForfeitRef.current = "";
       setSavingForfeitId("");
     }
   };
@@ -240,7 +247,8 @@ const location = useLocation();
     return "대회 승인·심판 작업을 완료하지 못했습니다.";
   };
   const runGovernanceAction = async (key, action, successMessage) => {
-    if (governanceAction) return false;
+    if (governanceActionRef.current) return false;
+    governanceActionRef.current = key;
     setGovernanceAction(key);
     setGovernanceFeedback("");
     try {
@@ -253,6 +261,7 @@ const location = useLocation();
       setGovernanceFeedback(formatGovernanceError(error.message));
       return false;
     } finally {
+      governanceActionRef.current = "";
       setGovernanceAction("");
     }
   };

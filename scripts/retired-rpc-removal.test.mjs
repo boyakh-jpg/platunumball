@@ -23,6 +23,15 @@ const roomRuleVolatilitySource = await readFile(
   ),
   "utf8",
 );
+const internalLegacyHelperGrantSource = await readFile(
+  path.join(
+    rootDir,
+    "supabase",
+    "migrations",
+    "20260801009000_harden_internal_legacy_helpers.sql",
+  ),
+  "utf8",
+);
 const migrationSource = await readFile(
   path.join(
     rootDir,
@@ -297,6 +306,30 @@ test("current room-update wrappers own deny-only internal helpers", () => {
   assert.doesNotMatch(executableSql, /\bcascade\b/iu);
   assert.doesNotMatch(
     executableSql,
+    /\b(?:delete\s+from|truncate|drop\s+(?:table|function))\b/iu,
+  );
+});
+
+test("wrapper-only legacy helpers are owner-only and schema health watches them", () => {
+  [
+    "rankball_match_dispute_action_pre_points_bound",
+    "rankball_cleanup_simulation_artifacts_legacy",
+    "rankball_match_generate_pickup_assignment_pre_rating_scale_split",
+  ].forEach((functionName) => {
+    assert.match(
+      internalLegacyHelperGrantSource,
+      new RegExp(
+        `revoke all on function public\\.${functionName}\\([^;]*?\\)\\s+from public, anon, authenticated, service_role`,
+        "u",
+      ),
+    );
+    assert.match(
+      internalLegacyHelperGrantSource,
+      new RegExp(`'rpc_grant:internal_helper:' \\|\\| helper\\.name[\\s\\S]*?'${functionName}'`, "u"),
+    );
+  });
+  assert.doesNotMatch(
+    internalLegacyHelperGrantSource.replace(/--[^\r\n]*/gu, ""),
     /\b(?:delete\s+from|truncate|drop\s+(?:table|function))\b/iu,
   );
 });

@@ -19,6 +19,7 @@ import {
 } from "../lib/season.js";
 import { DIRECTORY_PICKER_PAGE_LIMIT } from "../lib/queryPolicy.js";
 import { isPlacementComplete } from "../lib/rating.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 import useCanonicalSeasonRankings from "../hooks/useCanonicalSeasonRankings.js";
 
 function formatDate(value) {
@@ -32,14 +33,15 @@ export default function Season({ app }) {
   const [recordLoadFailed, setRecordLoadFailed] = useState(false);
   const [loadRetrySequence, setLoadRetrySequence] = useState(0);
   const season = getCurrentSeason(app.state);
-  const canonicalRankings = useCanonicalSeasonRankings(app.remoteReady, season.id);
+  const canonicalEnabled = isSupabaseConfigured && app.remoteReady;
+  const canonicalRankings = useCanonicalSeasonRankings(canonicalEnabled, season.id);
   const region = app.currentUser.region;
   const progress = getSeasonProgress(season);
   const blockedUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   const localPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체");
   const localTeamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, "전체");
-  const seasonPlayerRows = app.remoteReady ? (canonicalRankings.data?.players ?? []) : localPlayerRows;
-  const seasonTeamRows = app.remoteReady ? (canonicalRankings.data?.teams ?? []) : localTeamRows;
+  const seasonPlayerRows = canonicalEnabled ? (canonicalRankings.data?.players ?? []) : localPlayerRows;
+  const seasonTeamRows = canonicalEnabled ? (canonicalRankings.data?.teams ?? []) : localTeamRows;
   const nationalPlayerRows = seasonPlayerRows
     .filter((user) => !blockedUserIds.has(user.id))
     .filter((user) => isPlacementComplete(user.ratings));
@@ -69,7 +71,7 @@ export default function Season({ app }) {
   const profileRecordsLoaded = app.actions.profileRecordsLoaded;
 
   useEffect(() => {
-    if (!app.remoteReady || !loadDirectory || !app.currentUser.id) return;
+    if (!canonicalEnabled || !loadDirectory || !app.currentUser.id) return;
     if (directoryLoadKeyRef.current === app.currentUser.id) return;
     directoryLoadKeyRef.current = app.currentUser.id;
     setDirectoryLoadFailed(false);
@@ -90,10 +92,10 @@ export default function Season({ app }) {
       directoryLoadKeyRef.current = "";
       setDirectoryLoadFailed(true);
     });
-  }, [app.currentUser.id, app.remoteReady, loadDirectory, loadRetrySequence]);
+  }, [app.currentUser.id, canonicalEnabled, loadDirectory, loadRetrySequence]);
 
   useEffect(() => {
-    if (!app.remoteReady || !loadProfileRecords || profileRecordsLoaded || !app.currentUser.id) return;
+    if (!canonicalEnabled || !loadProfileRecords || profileRecordsLoaded || !app.currentUser.id) return;
     if (recordLoadKeyRef.current === app.currentUser.id) return;
     recordLoadKeyRef.current = app.currentUser.id;
     setRecordLoadFailed(false);
@@ -114,7 +116,7 @@ export default function Season({ app }) {
       recordLoadKeyRef.current = "";
       setRecordLoadFailed(true);
     });
-  }, [app.currentUser.id, app.remoteReady, loadProfileRecords, loadRetrySequence, profileRecordsLoaded]);
+  }, [app.currentUser.id, canonicalEnabled, loadProfileRecords, loadRetrySequence, profileRecordsLoaded]);
 
   const retrySeasonLoads = () => {
     directoryLoadKeyRef.current = "";

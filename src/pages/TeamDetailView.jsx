@@ -34,7 +34,7 @@ function getManagedRoleOptions(member, captainId) {
 }
 
 export default function TeamDetailView({ controller }) {
-  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, uploadEmblem, userMap, winRate, wins } = controller;
+  const { addUserId, app, archivedHistory, availableUsers, canAddMember, canManage, cancelPendingTeamInvitation, captain, changeTeamMemberRole, confirmEmblemUpload, confirmedCount, cooldownNextAt, deleteArmed, deleteTeam, detailHistory, directoryPending, emblemAbbreviationCharacterCount, emblemCanRestore, emblemFeedback, emblemFile, emblemInputRef, emblemPending, emblemSource, emblemStatusError, emblemStatusRequestRef, emblemStyleDraft, emblemUploadLocked, excludeTeamMember, favoriteError, favoritePending, favoriteTeamIds, firstAddableUser, history, historyCount, historyIds, inviteMember, isFavoriteTeam, loadDirectory, loadTeamEmblemStatus, loadTeamRecords, loadedLosses, loadedWins, losses, memberDraft, memberQuery, membershipCounts, moderationBlockedAt, moderationLocked, nextEmblemUploadAt, pendingTargetIds, pendingTeamInvitations, refreshTeamDetail, regularMembers, renderInviteSearchItem, renderMembers, reserveMembers, restorePreviousEmblem, retryTeamEmblemStatus, saveEmblemStyle, selectEmblemSource, selectedCount, selectedHistoryMatchId, selectedInviteProfile, selectedInviteUser, selectedRemoteUser, setDeleteArmed, setEmblemCanRestore, setEmblemFeedback, setEmblemFile, setEmblemPending, setEmblemStyleDraft, setMemberDraft, setMemberQuery, setSelectedHistoryMatchId, setSelectedInviteProfile, setTeamInviteError, team, teamDetailError, teamFull, teamId, teamInviteError, teamInvitePending, teamManagementError, teamManagementPending, teamRecordArchive, toggleTeamFavorite, uploadEmblem, userMap, winRate, wins } = controller;
   const teamControlPending = teamInvitePending || teamManagementPending;
   return (
     <div className="page-stack team-detail-page rank-team-page">
@@ -57,10 +57,11 @@ export default function TeamDetailView({ controller }) {
               type="button"
               variant={isFavoriteTeam ? "primary" : "secondary"}
               className={isFavoriteTeam ? "favorite-toggle-button ui-liquid-glass active" : "favorite-toggle-button ui-liquid-glass"}
-              onClick={() => app.actions.toggleFavoriteTeam(team.id, team)}
+              disabled={favoritePending}
+              onClick={() => { void toggleTeamFavorite(); }}
             >
               <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
-              {isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
+              {favoritePending ? "저장 중" : isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
           </Button>
         )}
         badges={(
@@ -71,6 +72,7 @@ export default function TeamDetailView({ controller }) {
         )}
         visual={<div className="team-tier-hero"><TierEmblem mmr={team.mmr} size="hero" showLabel /></div>}
       />
+      {favoriteError ? <span role="status" className="form-warning">{favoriteError}</span> : null}
 
       <nav className="rank-profile-tabs">
         <a href="#team-history">전적</a>

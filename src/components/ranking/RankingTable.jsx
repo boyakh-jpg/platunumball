@@ -27,7 +27,7 @@ export default function RankingTable({ rows, type = "players", mode = "integrate
               </PlayerHoverCard>
             ) : (
               type === "teams" ? (
-                <TeamHoverCard team={row} className="ranking-name">
+                <TeamHoverCard team={row} className="ranking-name" directNavigation>
                   <div>
                     <strong>{row.name}</strong>
                     <span>{row.homeCourt}</span>

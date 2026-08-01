@@ -45,6 +45,10 @@ export default function SettingsPrimaryColumn({ controller }) {
     favoriteReferees,
     favoriteListConfig,
     favoriteSearchIdleItems,
+    favoriteActionPendingKey,
+    favoriteActionError,
+    favoriteSearchResetKey,
+    toggleFavoriteItem,
     renderFavoriteSearchItem,
     canOpenAdminMenu,
     themeDirty,
@@ -109,6 +113,7 @@ export default function SettingsPrimaryColumn({ controller }) {
               <Star size={20} />
             </div>
             <SearchPicker
+              key={favoriteSearchResetKey}
               value={favoriteQuery}
               onChange={setFavoriteQuery}
               placeholder="이름 또는 해시태그 검색"
@@ -120,10 +125,10 @@ export default function SettingsPrimaryColumn({ controller }) {
               emptyText="검색 결과 없음"
               showIdleOnFocus
               floating
-              closeOnResultClick
               fieldClassName="favorite-search-row"
               renderItem={renderFavoriteSearchItem}
             />
+            {favoriteActionError ? <small role="status" className="form-warning">{favoriteActionError}</small> : null}
             <div className="favorite-type-grid ui-design-borderless-list ui-design-borderless-surface">
               {Object.entries(favoriteListConfig).map(([type, config]) => (
                 <button
@@ -146,7 +151,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                       <ProfileEmblem user={player} className="small" />
                       <span>{getUserHashtag(player)}</span>
                     </PlayerHoverCard>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.toggleFavoritePlayer(player.id)}>해제</Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(favoriteActionPendingKey)} onClick={() => { void toggleFavoriteItem("player", app.actions.toggleFavoritePlayer, player); }}>{favoriteActionPendingKey === `player:${player.id}` ? "저장 중" : "해제"}</Button>
                   </div>
                 )) : null}
                 {favoriteListType === "team" ? favoriteTeams.map((team) => (
@@ -155,7 +160,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                       <TeamEmblem team={team} size="xs" />
                       <span>{getTeamHashtag(team)}</span>
                     </TeamHoverCard>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.toggleFavoriteTeam(team.id)}>해제</Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(favoriteActionPendingKey)} onClick={() => { void toggleFavoriteItem("team", app.actions.toggleFavoriteTeam, team); }}>{favoriteActionPendingKey === `team:${team.id}` ? "저장 중" : "해제"}</Button>
                   </div>
                 )) : null}
                 {favoriteListType === "court" ? favoriteCourts.map((court) => (
@@ -164,7 +169,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                       <span className="team-dot" />
                       <span>{getCourtHashtag(court)}</span>
                     </CourtHoverCard>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.toggleFavoriteCourt(court.id)}>해제</Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(favoriteActionPendingKey)} onClick={() => { void toggleFavoriteItem("court", app.actions.toggleFavoriteCourt, court); }}>{favoriteActionPendingKey === `court:${court.id}` ? "저장 중" : "해제"}</Button>
                   </div>
                 )) : null}
                 {favoriteListType === "referee" ? favoriteReferees.map((referee) => (
@@ -173,7 +178,7 @@ export default function SettingsPrimaryColumn({ controller }) {
                       <ShieldCheck size={14} />
                       <span>{getUserHashtag(referee)}</span>
                     </RefereeHoverCard>
-                    <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.toggleFavoriteReferee(referee.id)}>해제</Button>
+                    <Button type="button" size="sm" variant="secondary" disabled={Boolean(favoriteActionPendingKey)} onClick={() => { void toggleFavoriteItem("referee", app.actions.toggleFavoriteReferee, referee); }}>{favoriteActionPendingKey === `referee:${referee.id}` ? "저장 중" : "해제"}</Button>
                   </div>
                 )) : null}
                 {favoriteListConfig[favoriteListType]?.count ? null : <em>{favoriteListConfig[favoriteListType]?.label} 즐겨찾기 없음</em>}
