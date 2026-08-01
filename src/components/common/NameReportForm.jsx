@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { NAME_REPORT_REASONS } from "../../lib/affiliations.js";
 import Button from "./Button.jsx";
 
 export default function NameReportForm({ label = "이름", onSubmit, onCancel }) {
   const [reason, setReason] = useState(NAME_REPORT_REASONS[0]);
   const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
   const [feedback, setFeedback] = useState("");
 
   const submit = async (event) => {
     event.preventDefault();
-    if (pending) return;
+    if (pendingRef.current) return;
+    pendingRef.current = true;
     setPending(true);
     setFeedback("");
     try {
@@ -22,6 +24,7 @@ export default function NameReportForm({ label = "이름", onSubmit, onCancel })
     } catch {
       setFeedback("신고를 접수하지 못했습니다.");
     } finally {
+      pendingRef.current = false;
       setPending(false);
     }
   };

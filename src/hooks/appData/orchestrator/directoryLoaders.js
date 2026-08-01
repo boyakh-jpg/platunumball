@@ -213,6 +213,18 @@ export function useDirectoryLoaders(context) {
     const placementCompleteOnly = options.placementCompleteOnly === true;
     const rankingSort = normalizeDirectoryRankingSort(options.rankingSort);
     const cacheKey = [endpoint, kind, limit, offset, filter, region, profileId, teamId, includeTeamMemberProfiles, placementCompleteOnly, rankingSort].join(":");
+    const requestPage = {
+      kind,
+      limit,
+      offset,
+      filter,
+      region,
+      profileId,
+      teamId,
+      includeTeamMemberProfiles,
+      placementCompleteOnly,
+      rankingSort,
+    };
     latestDirectoryRequestRef.current = cacheKey;
     const cached = directoryCacheRef.current.get(cacheKey);
     if (!force && cached?.expiresAt > Date.now()) {
@@ -227,7 +239,7 @@ export function useDirectoryLoaders(context) {
     }
     if (directoryPromiseRef.current.has(cacheKey)) return directoryPromiseRef.current.get(cacheKey);
     if (force) directoryCacheRef.current.delete(cacheKey);
-    setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "", cacheKey }));
+    setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "", page: requestPage, cacheKey }));
     const promise = trackedPostServerAction(
       endpoint,
       endpoint === "/api/teams/detail"
@@ -248,7 +260,7 @@ export function useDirectoryLoaders(context) {
     }).catch((error) => {
       if (latestDirectoryRequestRef.current !== cacheKey) return false;
       console.warn("Directory load failed.", error.message);
-      setDirectoryStatus({ loading: false, loaded: false, error: error.message ?? "directory_load_failed", page: null, cacheKey });
+      setDirectoryStatus({ loading: false, loaded: false, error: error.message ?? "directory_load_failed", page: requestPage, cacheKey });
       return false;
     }).finally(() => {
       directoryPromiseRef.current.delete(cacheKey);

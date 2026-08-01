@@ -66,6 +66,7 @@ export default function TeamDetail({ app }) {
   const [emblemStatusError, setEmblemStatusError] = useState("");
   const [emblemStatusRetrySequence, setEmblemStatusRetrySequence] = useState(0);
   const [emblemFeedback, setEmblemFeedback] = useState("");
+  const [emblemClock, setEmblemClock] = useState(0);
   const [emblemFile, setEmblemFile] = useState(null);
   const [emblemStyleDraft, setEmblemStyleDraft] = useState(() => ({
     emblemColor: displayTeam?.emblemColor ?? displayTeam?.accent ?? "#f05a46",
@@ -90,6 +91,15 @@ export default function TeamDetail({ app }) {
   const canManage = teamDetailReady
     && authoritativeTeam?.membersPartial !== true
     && authoritativeCaptain?.userId === app.currentUser.id;
+
+  useEffect(() => {
+    const cooldownMs = getNextEmblemUploadAt(team?.emblemUploadCount, team?.emblemUploadedAt)?.getTime() ?? 0;
+    const moderationMs = new Date(team?.emblemUploadBlockedUntil ?? "").getTime() || 0;
+    const remaining = Math.max(cooldownMs, moderationMs) - Date.now();
+    if (remaining <= 0) return undefined;
+    const timer = window.setTimeout(() => setEmblemClock((value) => value + 1), Math.min(remaining + 50, 2_147_483_647));
+    return () => window.clearTimeout(timer);
+  }, [emblemClock, team?.emblemUploadBlockedUntil, team?.emblemUploadCount, team?.emblemUploadedAt]);
 
   const refreshTeamDetail = useCallback(async () => {
     if (!teamId) return false;

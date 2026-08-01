@@ -92,6 +92,7 @@ export default function CourtMapPicker({
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [mapVersion, setMapVersion] = useState(0);
+  const [mapRetrySequence, setMapRetrySequence] = useState(0);
   const [candidateId, setCandidateId] = useState(getCourtCoordinate(selectedCourt) ? selectedCourt?.id ?? "" : "");
   const [clusterCourtIds, setClusterCourtIds] = useState([]);
   useBodyScrollLock(open);
@@ -165,7 +166,7 @@ export default function CourtMapPicker({
       cancelled = true;
       mapRef.current = null;
     };
-  }, [currentRegion, loadError, loading, mappedCourts, open, selectedCourt]);
+  }, [currentRegion, loadError, loading, mapRetrySequence, mappedCourts, open, selectedCourt]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -255,6 +256,7 @@ export default function CourtMapPicker({
               <MapPin size={24} />
               <strong>{status === "loading" ? "등록 구장 지도 불러오는 중" : status === "empty" ? "좌표가 저장된 구장 없음" : "지도를 불러오지 못함"}</strong>
               <span>{status === "error" ? error : status === "empty" ? "선택한 지역에는 좌표가 저장된 구장이 없습니다." : "잠시만 기다려 주세요."}</span>
+              {status === "error" && mappedCourts.length ? <Button type="button" size="sm" variant="secondary" onClick={() => setMapRetrySequence((value) => value + 1)}>다시 시도</Button> : null}
             </div>
           ) : null}
         </div>

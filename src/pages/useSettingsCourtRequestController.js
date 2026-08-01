@@ -132,12 +132,18 @@ export default function useSettingsCourtRequestController({ app, currentTrustSco
       setCourtLookupStatus(`구장 등록요청은 신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상부터 가능합니다.`);
       return;
     }
+    const normalizedAddressQuery = courtAddressQuery.trim();
+    if (!normalizedAddressQuery) {
+      setNaverAddressResults([]);
+      setCourtLookupStatus("검색할 주소를 입력해 주세요.");
+      return;
+    }
     const requestId = courtAddressSearchRef.current + 1;
     courtAddressSearchRef.current = requestId;
     setCourtAddressSearchPending(true);
     setCourtLookupStatus("네이버 주소 검색 중");
     try {
-      const results = await searchNaverAddresses(courtAddressQuery);
+      const results = await searchNaverAddresses(normalizedAddressQuery);
       if (courtAddressSearchRef.current !== requestId) return;
       setNaverAddressResults(results);
       setCourtLookupStatus(results.length ? `${results.length}개 주소를 찾았습니다. 사용할 주소를 선택해 주세요.` : "주소 검색 결과가 없습니다.");

@@ -19,6 +19,7 @@ export default function useSettingsRefereeController({ app, currentTrustScore })
   const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
   const [refereeActionPending, setRefereeActionPending] = useState("");
+  const [refereeClock, setRefereeClock] = useState(() => Date.now());
   const refereeActionPendingRef = useRef("");
   const refereeRequests = app.state.settings?.refereeRequests ?? [];
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
@@ -35,8 +36,19 @@ export default function useSettingsRefereeController({ app, currentTrustScore })
     [app.currentUserId, refereeExamAttempts],
   );
   const refereeExamLockedUntilMs = latestRefereeExamAttempt?.availableAfter ? new Date(latestRefereeExamAttempt.availableAfter).getTime() : 0;
-  const refereeExamLocked = !resumableRefereeExamAttempt && Number.isFinite(refereeExamLockedUntilMs) && refereeExamLockedUntilMs > Date.now();
+  const refereeExamLocked = !resumableRefereeExamAttempt && Number.isFinite(refereeExamLockedUntilMs) && refereeExamLockedUntilMs > refereeClock;
   const refereeExamLockLabel = refereeExamLocked ? formatKoreanDateTime(latestRefereeExamAttempt.availableAfter) : "";
+
+  useEffect(() => {
+    if (!Number.isFinite(refereeExamLockedUntilMs) || refereeExamLockedUntilMs <= 0) return undefined;
+    const remaining = refereeExamLockedUntilMs - Date.now();
+    if (remaining <= 0) {
+      if (refereeClock < refereeExamLockedUntilMs) setRefereeClock(Date.now());
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setRefereeClock(Date.now()), Math.min(remaining + 50, 2_147_483_647));
+    return () => window.clearTimeout(timer);
+  }, [refereeClock, refereeExamLockedUntilMs]);
 
   useEffect(() => {
     if (!resumableRefereeExamAttempt || currentRefereeExamAttemptId || refereeExamOpen || refereeExamResult) return;

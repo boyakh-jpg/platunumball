@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -11,6 +11,7 @@ import { isSupabaseConfigured } from "../lib/supabase.js";
 export default function Affiliations({ app }) {
   const [reportTargetId, setReportTargetId] = useState("");
   const [directoryLoadState, setDirectoryLoadState] = useState("idle");
+  const directoryLoadPendingRef = useRef(false);
   const loadDirectory = app.actions.loadDirectory;
   const visibleAffiliations = app.rankings.affiliations.filter((affiliation) => (
     ["region", AFFILIATION_TYPE].includes(affiliation.type)
@@ -38,6 +39,8 @@ export default function Affiliations({ app }) {
       setDirectoryLoadState("loaded");
       return true;
     }
+    if (directoryLoadPendingRef.current) return false;
+    directoryLoadPendingRef.current = true;
     setDirectoryLoadState("loading");
     try {
       const result = await loadDirectory?.({ force, kind: "affiliations", limit: 100, offset: 0 });
@@ -46,6 +49,8 @@ export default function Affiliations({ app }) {
     } catch {
       setDirectoryLoadState("error");
       return false;
+    } finally {
+      directoryLoadPendingRef.current = false;
     }
   }, [loadDirectory]);
 

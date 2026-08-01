@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { assetUrl } from "../../lib/assets.js";
 import {
   DEFAULT_PROFILE_ICON_ID,
+  DEFAULT_UNLOCKED_PROFILE_ICON_KEYS,
   PROFILE_ICON_CATALOG,
   PROFILE_ICON_GROUPS,
 } from "../../lib/profileIcons.js";
@@ -11,9 +12,7 @@ import { getTeamEmblemErrorMessage } from "../../lib/teamEmblem.js";
 import Button from "../common/Button.jsx";
 import ProfileEmblem from "./ProfileEmblem.jsx";
 
-const DEFAULT_UNLOCKED_KEYS = PROFILE_ICON_CATALOG
-  .filter((icon) => icon.achievement?.retired !== true && (icon.achievement?.requirements ?? []).length === 0)
-  .map((icon) => icon.id);
+const DEFAULT_UNLOCKED_KEYS = DEFAULT_UNLOCKED_PROFILE_ICON_KEYS;
 
 function getInitialDraft(user) {
   return {

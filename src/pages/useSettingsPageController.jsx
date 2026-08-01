@@ -41,7 +41,7 @@ const loadDirectory = app.actions.loadDirectory;
   const [homeGuideCardDraft, setHomeGuideCardDraft] = useState(homeGuideCardVisible);
   const [homeGuideCardSavePending, setHomeGuideCardSavePending] = useState(false);
   const [homeGuideCardSaveStatus, setHomeGuideCardSaveStatus] = useState("");
-  const [generalSettingsSavePending, setGeneralSettingsSavePending] = useState(false); const generalSettingsSavePendingRef = useRef(false);
+  const [generalSettingsSavePending, setGeneralSettingsSavePending] = useState(false); const generalSettingsSavePendingRef = useRef(false); const [discordLinkPending, setDiscordLinkPending] = useState(false); const discordLinkPendingRef = useRef(false);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(""); const [blockUserQuery, setBlockUserQuery] = useState("");
   const [blockSavePending, setBlockSavePending] = useState(false); const blockSavePendingRef = useRef(false); const [blockSaveStatus, setBlockSaveStatus] = useState("");
@@ -297,13 +297,11 @@ const loadDirectory = app.actions.loadDirectory;
     }
   };
   const connectDiscord = async () => {
-    setDiscordLinkError("");
+    if (discordLinkPendingRef.current) return; discordLinkPendingRef.current = true; setDiscordLinkPending(true); setDiscordLinkError("");
     try {
       await startDiscordOAuth(app.currentUserId);
-    } catch (error) {
-      console.warn("Discord OAuth start failed.", error);
-      setDiscordLinkError("Discord 연동을 시작하지 못했습니다.");
-    }
+    } catch (error) { console.warn("Discord OAuth start failed.", error); setDiscordLinkError("Discord 연동을 시작하지 못했습니다.");
+    } finally { discordLinkPendingRef.current = false; setDiscordLinkPending(false); }
   };
   const saveDiscordSettings = async () => {
     setDiscordSaveStatus("저장 중");
@@ -422,6 +420,7 @@ const loadDirectory = app.actions.loadDirectory;
     discordDisplayName,
     queuedDiscordDeliveries,
     discordLinkError,
+    discordLinkPending,
     discordSaveStatus,
     discordDraft,
     setDiscordDraft,

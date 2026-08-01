@@ -447,15 +447,18 @@ test("랜딩의 통계와 최근 경기 점수는 표시 목록이 아닌 전체
 });
 
 test("경로 없는 검색과 방 팝업은 키보드 이동과 조회 실패 복구를 제공한다", async () => {
-  const [picker, navigation, home, notifications] = await Promise.all([
+  const [picker, navigation, home, notifications, courtMap] = await Promise.all([
     read("src/components/common/SearchPicker.jsx"),
     read("src/lib/roomModalNavigation.js"),
     read("src/pages/Home.jsx"),
     read("src/pages/Notifications.jsx"),
+    read("src/components/court/CourtMapPicker.jsx"),
   ]);
   assert.match(picker, /ArrowDown/);
   assert.match(picker, /inputRef\.current\?\.focus\(\)/);
   assert.match(picker, /search-picker-retry/);
+  assert.match(picker, /remoteError && !remoteLoading/);
+  assert.match(courtMap, /mapRetrySequence[\s\S]*다시 시도/u);
   assert.match(navigation, /recruitingRoomLoadState/);
   assert.match(navigation, /retryRecruitingRoom/);
   assert.match(home, /RecruitingRoomLoadFailedView/);

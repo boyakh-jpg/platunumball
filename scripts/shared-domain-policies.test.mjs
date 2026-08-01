@@ -142,7 +142,7 @@ import {
   getReportTargetType,
 } from "../src/lib/reportReasons.js";
 import { getRoomPhaseViewModel } from "../src/lib/roomFlow.js";
-import { PROFILE_ICON_CATALOG } from "../src/lib/profileIcons.js";
+import { DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, PROFILE_ICON_CATALOG } from "../src/lib/profileIcons.js";
 import {
   getCourtAccessLabel,
   getCourtHoopCount,
@@ -1339,10 +1339,11 @@ test("profile icon background choice and image preview stay persistent and separ
 });
 
 test("profile icon picker lists owned icons only and locked achievements conceal artwork", async () => {
-  const [dialog, achievements, achievementApi, styles] = await Promise.all([
+  const [dialog, achievements, achievementApi, profileActions, styles] = await Promise.all([
     readSource("src/components/profile/ProfileIconDialog.jsx"),
     readSource("src/pages/ProfileAchievements.jsx"),
     readSource("server/api/_profileIconAchievements.js"),
+    readSource("src/hooks/appData/actions/profileTeamActions.js"),
     readCssTree("src/styles/features/profile-emblems.css"),
   ]);
   assert.match(dialog, /group\.icons\.filter\(\(icon\) => unlockedSet\.has\(icon\.id\)\)/);
@@ -1357,6 +1358,7 @@ test("profile icon picker lists owned icons only and locked achievements conceal
   assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.includes("four-on-four")), false);
   assert.equal(PROFILE_ICON_CATALOG.some((icon) => icon.id.startsWith("226-five-on-five-")), true);
   assert.equal(PROFILE_ICON_CATALOG.filter((icon) => /^22[1-5]-referee-exam-/.test(icon.id)).length, 5);
+  assert.equal(DEFAULT_UNLOCKED_PROFILE_ICON_KEYS.length, 5);
   assert.deepEqual(
     PROFILE_ICON_CATALOG
       .filter((icon) => /^22[1-5]-referee-exam-/.test(icon.id))
@@ -1366,6 +1368,10 @@ test("profile icon picker lists owned icons only and locked achievements conceal
   assert.match(achievementApi, /referee_exam_attempts/);
   assert.match(achievementApi, /refereeExamCompletedCount/);
   assert.match(achievementApi, /activeUnlockedRows = \(unlockedRows \?\? \[\]\)\.filter\(\(row\) => PROFILE_ICON_ID_SET\.has\(row\.icon_key\)\)/);
+  assert.match(profileActions, /if \(!isSupabaseConfigured\)[\s\S]*DEFAULT_UNLOCKED_PROFILE_ICON_KEYS/);
+  assert.match(profileActions, /saveLocalProfileIconPatch/);
+  assert.match(profileActions, /isEmblemHexColor/);
+  assert.match(profileActions, /discord_avatar_unavailable/);
 });
 
 test("image native menus and drag stay blocked by one shared guard", async () => {
@@ -1484,13 +1490,21 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.match(rankingsPage, /const promotionView = searchParams\.get\("view"\) === "promotion"/);
   assert.match(rankingsPage, /const canonicalEnabled = isSupabaseConfigured && app\.remoteReady && promotionView/);
   assert.match(rankingsPage, /useCanonicalSeasonRankings\(canonicalEnabled, season\.id\)/);
-  assert.match(rankingsPage, /canonicalRankings\.data\?\.players/);
-  assert.match(rankingsPage, /canonicalRankings\.data\?\.teams/);
+  assert.match(rankingsPage, /canonicalRankings\.data\.players/);
+  assert.match(rankingsPage, /canonicalRankings\.data\.teams/);
   assert.match(rankingsPage, /승격권 기록을 불러오지 못했습니다/);
   assert.match(rankingsPage, /promotionLoading \? <BasketballLoader label="승격권 기록 불러오는 중"/);
+  assert.match(rankingsPage, /directoryStatusMatches[\s\S]*placementCompleteOnly === placementCompleteOnly[\s\S]*rankingSort === rankingSort/);
   assert.match(rankingsPage, /<SeasonPromotionTable/);
   assert.match(rankingsPage, /nextSearchParams\.set\("tab", nextTab\)/);
   assert.match(styles, /\.season-race-list > \.player-hover-trigger/);
+});
+
+test("랭킹 디렉터리 실패는 요청 범위를 보존해 재시도 화면을 연다", async () => {
+  const directoryLoader = await readSource("src/hooks/appData/orchestrator/directoryLoaders.js");
+  assert.match(directoryLoader, /const requestPage = \{[\s\S]*placementCompleteOnly,[\s\S]*rankingSort,/);
+  assert.match(directoryLoader, /loading: true, error: "", page: requestPage, cacheKey/);
+  assert.match(directoryLoader, /loading: false, loaded: false[\s\S]*page: requestPage, cacheKey/);
 });
 
 test("team detail keeps navigation preview and always refreshes authoritative team data once", async () => {
@@ -2325,7 +2339,7 @@ test("랭킹·홈·선수 상세·소속 화면은 원격 페이지와 실패 �
   assert.match(rankings, /const directoryLoading = !promotionView && !directoryLoadError/);
   assert.match(rankings, /directoryLoading[\s\S]*?<BasketballLoader label="랭킹 불러오는 중"/);
   assert.match(rankings, /useEffect\(\(\) => \{\s*if \(promotionView\) return;/);
-  assert.match(rankings, /\{!promotionView && app\.directoryStatus\?\.page\?\.kind === directoryKind/);
+  assert.match(rankings, /\{!promotionView && directoryStatusMatches && app\.directoryStatus\?\.page\?\.hasMore/);
   assert.match(loaderActions, /rankingSort: current\.page\?\.rankingSort/);
   assert.match(home, /!blockedUserIds\.includes\(item\.id\)/);
   assert.match(homeSearch, /blockedUserIdSet\.has\(item\.id\)\) return null/);

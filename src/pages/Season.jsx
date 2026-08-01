@@ -40,8 +40,12 @@ export default function Season({ app }) {
   const blockedUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   const localPlayerRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, "전체");
   const localTeamRows = getTeamSeasonRows(app.state.teams, app.state.matches, season, "전체");
-  const seasonPlayerRows = canonicalEnabled ? (canonicalRankings.data?.players ?? []) : localPlayerRows;
-  const seasonTeamRows = canonicalEnabled ? (canonicalRankings.data?.teams ?? []) : localTeamRows;
+  const seasonPlayerRows = canonicalEnabled && canonicalRankings.data
+    ? (canonicalRankings.data.players ?? [])
+    : localPlayerRows;
+  const seasonTeamRows = canonicalEnabled && canonicalRankings.data
+    ? (canonicalRankings.data.teams ?? [])
+    : localTeamRows;
   const nationalPlayerRows = seasonPlayerRows
     .filter((user) => !blockedUserIds.has(user.id))
     .filter((user) => isPlacementComplete(user.ratings));

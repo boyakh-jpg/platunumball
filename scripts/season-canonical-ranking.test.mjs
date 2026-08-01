@@ -72,11 +72,14 @@ test("Season과 승격 Rankings 원격 경로는 canonical API만 사용한다",
   assert.match(hook, /postServerAction\("\/api\/season\/rankings"/u);
   assert.match(seasonPage, /const canonicalEnabled = isSupabaseConfigured && app\.remoteReady/u);
   assert.match(seasonPage, /useCanonicalSeasonRankings\(canonicalEnabled, season\.id\)/u);
+  assert.match(seasonPage, /canonicalEnabled && canonicalRankings\.data[\s\S]*\? \(canonicalRankings\.data\.players \?\? \[\]\)[\s\S]*: localPlayerRows/u);
+  assert.match(seasonPage, /canonicalEnabled && canonicalRankings\.data[\s\S]*\? \(canonicalRankings\.data\.teams \?\? \[\]\)[\s\S]*: localTeamRows/u);
   assert.match(seasonPage, /if \(!canonicalEnabled \|\| !loadDirectory/u);
   assert.match(seasonPage, /if \(!canonicalEnabled \|\| !loadProfileRecords/u);
   assert.match(rankingsPage, /const canonicalEnabled = isSupabaseConfigured && app\.remoteReady && promotionView/u);
   assert.match(rankingsPage, /getPlayerSeasonRows\(visiblePlayers/u);
-  assert.match(rankingsPage, /canonicalRankings\.data\?\.players/u);
-  assert.match(rankingsPage, /canonicalRankings\.data\?\.teams/u);
+  assert.match(rankingsPage, /canonicalEnabled && canonicalRankings\.data[\s\S]*canonicalRankings\.data\.players/u);
+  assert.match(rankingsPage, /canonicalEnabled && canonicalRankings\.data[\s\S]*canonicalRankings\.data\.teams/u);
+  assert.match(rankingsPage, /promotionView && canonicalRankings\.error/u);
   assert.match(logicDoc, /운영 시즌 개인·팀 승격 순위[^]*match_record_participants[^]*match_record_teams/u);
 });

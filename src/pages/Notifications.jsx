@@ -34,7 +34,9 @@ export default function Notifications({ app }) {
   const [notificationReadPendingId, setNotificationReadPendingId] = useState("");
   const [notificationReadError, setNotificationReadError] = useState("");
   const pendingInvitationKeysRef = useRef(new Set());
+  const notificationDeletePendingRef = useRef("");
   const notificationReadPendingRef = useRef("");
+  const notificationsRefreshPendingRef = useRef(false);
   const {
     selectedMatchId,
     setSelectedMatchId,
@@ -50,6 +52,8 @@ export default function Notifications({ app }) {
   const loadNotifications = app.actions.loadNotifications;
   const loadDirectory = app.actions.loadDirectory;
   const refreshNotifications = useCallback(async () => {
+    if (notificationsRefreshPendingRef.current) return false;
+    notificationsRefreshPendingRef.current = true;
     setNotificationsLoadError("");
     try {
       const [notificationsLoaded, directoryLoaded] = await Promise.all([
@@ -58,8 +62,12 @@ export default function Notifications({ app }) {
       ]);
       if (notificationsLoaded === false) throw new Error("notification_load_failed");
       if (directoryLoaded === false && app.serverProfileBound) throw new Error("notification_directory_load_failed");
+      return true;
     } catch {
       setNotificationsLoadError("알림을 불러오지 못했습니다.");
+      return false;
+    } finally {
+      notificationsRefreshPendingRef.current = false;
     }
   }, [app.serverProfileBound, loadDirectory, loadNotifications]);
   useEffect(() => {
@@ -123,7 +131,8 @@ export default function Notifications({ app }) {
       () => app.actions.acceptTeamInvitation(invitation.id),
     );
     if (!result || result.ok === false) return;
-    const directoryLoaded = await app.actions.loadDirectory?.({ kind: "self", force: true });
+    let directoryLoaded = false;
+    try { directoryLoaded = await app.actions.loadDirectory?.({ kind: "self", force: true }); } catch { directoryLoaded = false; }
     if (directoryLoaded === false && app.serverProfileBound) {
       setNotificationsLoadError("팀 정보를 불러오지 못했습니다. 다시 시도해 주세요.");
       return;
@@ -135,6 +144,8 @@ export default function Notifications({ app }) {
     () => app.actions.declineTeamInvitation(invitationId),
   );
   const deletePastNotification = async (notificationId) => {
+    if (!notificationId || notificationDeletePendingRef.current) return;
+    notificationDeletePendingRef.current = notificationId;
     setDeletingNotificationId(notificationId);
     setNotificationDeleteError(null);
     try {
@@ -145,6 +156,7 @@ export default function Notifications({ app }) {
     } catch {
       setNotificationDeleteError({ id: notificationId, message: "알림을 삭제하지 못했습니다. 다시 시도해 주세요." });
     } finally {
+      notificationDeletePendingRef.current = "";
       setDeletingNotificationId("");
     }
   };
@@ -348,7 +360,7 @@ export default function Notifications({ app }) {
                     className="notification-delete-button"
                     title="알림 삭제"
                     aria-label={`${notification.title} 알림 삭제`}
-                    disabled={deletingNotificationId === notification.id}
+                    disabled={Boolean(deletingNotificationId)}
                     onClick={() => deletePastNotification(notification.id)}
                   >
                     <Trash2 size={16} aria-hidden="true" />

@@ -1193,7 +1193,7 @@ test("모집 목록은 공용 경기 생성 경로만 사용한다", async () =>
 });
 
 test("팀·대회·설정 mutation은 재입력과 실패를 화면 경계에서 막는다", async () => {
-  const [teams, teamDetail, teamDetailView, tournament, favorites, settings, primary, reports, courtDetail, gettingStarted, matchRoom, matchRoomView] = await Promise.all([
+  const [teams, teamDetail, teamDetailView, tournament, favorites, settings, primary, reports, courtDetail, gettingStarted, matchRoom, matchRoomView, nameReport, notifications, affiliations, settingsCourt, settingsReferee] = await Promise.all([
     readFile(new URL("../src/pages/Teams.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/TeamDetail.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/TeamDetailView.jsx", import.meta.url), "utf8"),
@@ -1206,11 +1206,17 @@ test("팀·대회·설정 mutation은 재입력과 실패를 화면 경계에서
     readFile(new URL("../src/pages/GettingStarted.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/MatchRoom.jsx", import.meta.url), "utf8"),
     readFile(new URL("../src/pages/MatchRoomView.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/common/NameReportForm.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Notifications.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/Affiliations.jsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useSettingsCourtRequestController.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/useSettingsRefereeController.js", import.meta.url), "utf8"),
   ]);
 
   assert.match(teams, /representativeSavePendingRef\.current/);
   assert.match(teamDetail, /teamInvitePendingRef\.current/);
   assert.match(teamDetail, /emblemPendingRef\.current/);
+  assert.match(teamDetail, /setEmblemClock[\s\S]*window\.setTimeout/);
   assert.match(teamDetail, /const result = await app\.actions\.toggleFavoriteTeam\(team\.id, team\)/);
   assert.match(teamDetailView, /favoritePending \? "저장 중"/);
   assert.match(tournament, /savingScheduleRef\.current/);
@@ -1220,6 +1226,7 @@ test("팀·대회·설정 mutation은 재입력과 실패를 화면 경계에서
   assert.match(favorites, /favoriteActionPendingRef\.current/);
   assert.match(primary, /favoriteActionError/);
   assert.match(settings, /blockSavePendingRef\.current/);
+  assert.match(settings, /discordLinkPendingRef\.current/);
   assert.match(reports, /reportSubmitPendingRef\.current/);
   assert.match(courtDetail, /savingRef\.current/);
   assert.match(courtDetail, /correctionSavingRef\.current/);
@@ -1227,4 +1234,10 @@ test("팀·대회·설정 mutation은 재입력과 실패를 화면 경계에서
   assert.match(matchRoom, /const agreeCurrentUser = [^\n]*runManagementAction\("agree"/);
   assert.match(matchRoomView, /disabled=\{Boolean\(managementActionPending\)\}[^\n]*agreeCurrentUser\(\)/);
   assert.doesNotMatch(matchRoomView, /app\.actions\.agreeMatch/);
+  assert.match(nameReport, /pendingRef\.current/);
+  assert.match(notifications, /notificationDeletePendingRef\.current/);
+  assert.match(notifications, /try \{ directoryLoaded = await app\.actions\.loadDirectory/);
+  assert.match(affiliations, /directoryLoadPendingRef\.current/);
+  assert.match(settingsCourt, /if \(!normalizedAddressQuery\)/);
+  assert.match(settingsReferee, /window\.setTimeout\(\(\) => setRefereeClock\(Date\.now\(\)\)/);
 });

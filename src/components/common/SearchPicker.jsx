@@ -339,7 +339,7 @@ export default function SearchPicker({
             </>
           ) : null}
           {visibleItems.length ? visibleItems.map(renderItem) : <div className="ui-empty-state-compact">{remoteLoading ? "검색 중..." : remoteError ? "검색 결과를 불러오지 못했습니다." : emptyText}</div>}
-          {visibleItems.length && remoteError ? (
+          {remoteError && !remoteLoading ? (
             <button
               type="button"
               className="button button-secondary button-sm search-picker-retry"

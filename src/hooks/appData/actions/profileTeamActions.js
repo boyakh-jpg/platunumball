@@ -1,4 +1,6 @@
 import { normalizeProfileName } from "../../../lib/profileSetup.js";
+import { DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, getProfileIcon } from "../../../lib/profileIcons.js";
+import { isEmblemHexColor } from "../../../../shared/lib/emblemPolicy.js";
 
 export function buildProfileTeamActions(context) {
   const {
@@ -34,6 +36,10 @@ export function buildProfileTeamActions(context) {
     syncTeamServer,
     updateProfile,
   } = context;
+  const saveLocalProfileIconPatch = (patch) => {
+    setState((prev) => updateProfile(prev, { ...patch, avatarUpdatedAt: new Date().toISOString() }, currentUserId));
+    return { ok: true, profileId: currentUserId, ...patch };
+  };
 
   return ({
 setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
@@ -192,12 +198,26 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     return result?.ok === false ? result : createdTeam.id;
   },
   loadProfileIconAchievements: async () => {
+    if (!isSupabaseConfigured) {
+      const currentUser = (stateRef.current.users ?? []).find((user) => user.id === currentUserId);
+      return { ok: true, metrics: {}, unlockedIconKeys: [...new Set([...DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, currentUser?.avatarIconKey].filter(Boolean))] };
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/achievements", "프로필 아이콘 업적 불러오기");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 업적 불러오기")) return { ok: false, error: "remote_not_ready" };
     return runServerAction("/api/profile/achievements", {});
   },
   saveProfileIconSettings: async (settings) => {
+    if (!isSupabaseConfigured) {
+      const avatarSource = String(settings.avatarSource || "initial").trim();
+      const avatarIconKey = String(settings.avatarIconKey || "").trim();
+      const currentUser = (stateRef.current.users ?? []).find((user) => user.id === currentUserId);
+      const unlocked = new Set([...DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, currentUser?.avatarIconKey].filter(Boolean));
+      if (!new Set(["initial", "discord", "icon"]).has(avatarSource) || (avatarSource === "icon" && (!getProfileIcon(avatarIconKey) || !unlocked.has(avatarIconKey)))) return { ok: false, error: "profile_icon_unavailable" };
+      if (avatarSource === "discord" && !currentUser?.discordAvatarUrl && !currentUser?.discordConnection?.avatarUrl) return { ok: false, error: "discord_avatar_unavailable" };
+      if (!isEmblemHexColor(settings.avatarColor) || !isEmblemHexColor(settings.avatarBorderColor)) return { ok: false, error: "invalid_emblem_color" };
+      return saveLocalProfileIconPatch({ avatarSource, avatarIconKey, avatarColor: settings.avatarColor, avatarBackgroundEnabled: settings.avatarBackgroundEnabled !== false, avatarBorderEnabled: settings.avatarBorderEnabled === true, avatarBorderColor: settings.avatarBorderColor });
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 설정 저장");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 설정 저장")) return { ok: false, error: "remote_not_ready" };
@@ -220,6 +240,10 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     return result;
   },
   updateProfileEmblemStyle: async (style) => {
+    if (!isSupabaseConfigured) {
+      if (!isEmblemHexColor(style.avatarColor) || !isEmblemHexColor(style.avatarBorderColor)) return { ok: false, error: "invalid_emblem_color" };
+      return saveLocalProfileIconPatch({ avatarColor: style.avatarColor, avatarBorderEnabled: style.avatarBorderEnabled === true, avatarBorderColor: style.avatarBorderColor });
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 설정 저장");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 설정 저장")) return { ok: false, error: "remote_not_ready" };
@@ -238,6 +262,12 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     return result;
   },
   setProfileEmblemSource: async (avatarSource) => {
+    if (!isSupabaseConfigured) {
+      const currentUser = (stateRef.current.users ?? []).find((user) => user.id === currentUserId);
+      if (!new Set(["initial", "discord"]).has(avatarSource)) return { ok: false, error: "invalid_profile_emblem_source" };
+      if (avatarSource === "discord" && !currentUser?.discordAvatarUrl && !currentUser?.discordConnection?.avatarUrl) return { ok: false, error: "discord_avatar_unavailable" };
+      return saveLocalProfileIconPatch({ avatarSource });
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 변경");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 변경")) return { ok: false, error: "remote_not_ready" };
@@ -255,6 +285,12 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
     return result;
   },
   selectProfileIcon: async (avatarIconKey) => {
+    if (!isSupabaseConfigured) {
+      const currentUser = (stateRef.current.users ?? []).find((user) => user.id === currentUserId);
+      const unlocked = new Set([...DEFAULT_UNLOCKED_PROFILE_ICON_KEYS, currentUser?.avatarIconKey].filter(Boolean));
+      if (!getProfileIcon(avatarIconKey) || !unlocked.has(avatarIconKey)) return { ok: false, error: "profile_icon_unavailable" };
+      return saveLocalProfileIconPatch({ avatarSource: "icon", avatarIconKey });
+    }
     const serverReady = await ensureServerActionAvailable("/api/profile/emblem", "프로필 아이콘 변경");
     if (serverReady !== true) return serverReady;
     if (!ensureRemoteReady("프로필 아이콘 변경")) return { ok: false, error: "remote_not_ready" };

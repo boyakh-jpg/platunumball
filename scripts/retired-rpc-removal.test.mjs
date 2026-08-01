@@ -32,6 +32,19 @@ const internalLegacyHelperGrantSource = await readFile(
   ),
   "utf8",
 );
+const remainingInternalHelperGrantSource = await readFile(
+  path.join(
+    rootDir,
+    "supabase",
+    "migrations",
+    "20260801010000_harden_remaining_internal_helpers.sql",
+  ),
+  "utf8",
+);
+const schemaHealthRequirementsSource = await readFile(
+  path.join(rootDir, "server", "api", "system", "schemaHealthRequirements.js"),
+  "utf8",
+);
 const migrationSource = await readFile(
   path.join(
     rootDir,
@@ -332,6 +345,59 @@ test("wrapper-only legacy helpers are owner-only and schema health watches them"
     internalLegacyHelperGrantSource.replace(/--[^\r\n]*/gu, ""),
     /\b(?:delete\s+from|truncate|drop\s+(?:table|function))\b/iu,
   );
+});
+
+test("remaining wrapper helper chains are owner-only and grant health watches them", () => {
+  [
+    "rankball_match_dispute_action_pre_score_policy",
+    "rankball_match_generate_pickup_assignment_pre_reroll",
+    "rankball_match_result_action_pre_turnovers",
+    "rankball_match_room_update_action_pre_edit_once",
+    "rankball_match_schedule_response_action_pre_deadline",
+    "rankball_match_start_action_guarded_pre_change_deadline",
+    "rankball_match_start_action_pre_server_time",
+    "rankball_match_terminal_action_pre_cancel_reason",
+    "rankball_recruiting_room_update_action_pre_edit_once",
+    "rankball_recruiting_schedule_response_action_pre_deadline",
+  ].forEach((functionName) => {
+    assert.match(remainingInternalHelperGrantSource, new RegExp(functionName, "u"));
+  });
+  assert.match(
+    remainingInternalHelperGrantSource,
+    /revoke all on function %s from public, anon, authenticated, service_role/u,
+  );
+  assert.match(
+    remainingInternalHelperGrantSource,
+    /'rpc_grant:internal_helper:' \|\| helper\.name/u,
+  );
+  assert.doesNotMatch(
+    remainingInternalHelperGrantSource.replace(/--[^\r\n]*/gu, ""),
+    /\b(?:delete\s+from|truncate|drop\s+(?:table|function))\b/iu,
+  );
+});
+
+test("schema health covers critical runtime tables with bounded column probes", () => {
+  [
+    "admin_appointments",
+    "admin_disciplinary_actions",
+    "affiliations",
+    "court_facility_info",
+    "court_requests",
+    "court_reviews",
+    "match_clock_events",
+    "match_clock_sessions",
+    "rankball_admin_court_change_history",
+    "rankball_admin_court_database",
+    "referee_appointments",
+    "referee_exam_attempts",
+    "referee_requests",
+    "reports",
+    "team_invitations",
+    "tournament_teams",
+    "tournaments",
+  ].forEach((tableName) => {
+    assert.match(schemaHealthRequirementsSource, new RegExp(`^  ${tableName}: \\[`, "mu"));
+  });
 });
 
 test("obsolete match action dispatch is removed before the roster-move entry point", () => {

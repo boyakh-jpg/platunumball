@@ -87,9 +87,11 @@ export default function Rankings({ app }) {
             ? regionalPlayers
             : visibleModePlayers;
   const promotionRows = tab === "teams"
-    ? canonicalEnabled ? (canonicalRankings.data?.teams ?? []) : getTeamSeasonRows(app.rankings.teams, app.state.matches, season, "전체")
-    : canonicalEnabled
-      ? (canonicalRankings.data?.players ?? []).filter((player) => isPlacementComplete(player.ratings))
+    ? canonicalEnabled && canonicalRankings.data
+      ? (canonicalRankings.data.teams ?? [])
+      : getTeamSeasonRows(app.rankings.teams, app.state.matches, season, "전체")
+    : canonicalEnabled && canonicalRankings.data
+      ? (canonicalRankings.data.players ?? []).filter((player) => isPlacementComplete(player.ratings))
       : getPlayerSeasonRows(visiblePlayers, app.state.matches, season, "전체");
   const promotionLoading = promotionView && canonicalRankings.loading && !canonicalRankings.data;
   const promotionTabs = [
@@ -97,9 +99,13 @@ export default function Rankings({ app }) {
     { id: "teams", label: "팀" },
   ];
   const directoryStatusMatches = app.directoryStatus?.page?.kind === directoryKind
-    && app.directoryStatus?.page?.region === directoryRegion;
+    && app.directoryStatus?.page?.region === directoryRegion
+    && app.directoryStatus?.page?.placementCompleteOnly === placementCompleteOnly
+    && app.directoryStatus?.page?.rankingSort === rankingSort;
   const directoryLoadError = !promotionView && directoryStatusMatches ? app.directoryStatus?.error : "";
   const directoryLoading = !promotionView && !directoryLoadError && (
+    !directoryStatusMatches
+    ||
     app.remoteReady === false
     || app.directoryStatus?.loading
     || app.directoryStatus?.loaded === false
@@ -120,7 +126,7 @@ export default function Rankings({ app }) {
       <Card className="section-card ranking-filter-card">
         <RankingTabs value={tab} options={promotionView ? promotionTabs : tabs} onChange={setTab} />
       </Card>
-      {canonicalRankings.error ? (
+      {promotionView && canonicalRankings.error ? (
         <Card className="section-card">
           <div className="section-title-row">
             <span className="form-warning">승격권 기록을 불러오지 못했습니다.</span>
@@ -194,7 +200,7 @@ export default function Rankings({ app }) {
             : <RankingTable rows={rows} type={type} mode={tab} teams={app.state.teams} />}
         </Card>
       ) : null}
-      {!promotionView && app.directoryStatus?.page?.kind === directoryKind && app.directoryStatus?.page?.region === directoryRegion && app.directoryStatus?.page?.hasMore ? (
+      {!promotionView && directoryStatusMatches && app.directoryStatus?.page?.hasMore ? (
         <Button type="button" variant="secondary" disabled={app.directoryStatus.loading} onClick={() => app.actions.loadMoreDirectory?.()}>
           {app.directoryStatus.loading ? "불러오는 중" : "랭킹 더 보기"}
         </Button>

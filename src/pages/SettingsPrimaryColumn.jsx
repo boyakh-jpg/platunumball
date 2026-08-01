@@ -36,6 +36,7 @@ export default function SettingsPrimaryColumn({ controller }) {
     discordDisplayName,
     queuedDiscordDeliveries,
     discordLinkError,
+    discordLinkPending,
     discordSaveStatus,
     discordDraft,
     setDiscordDraft,
@@ -269,8 +270,8 @@ export default function SettingsPrimaryColumn({ controller }) {
                   <Unlink2 size={15} /> {discordDraft.unlink ? "해제 취소" : "연동 해제"}
                 </Button>
               ) : (
-                <Button type="button" variant="secondary" size="sm" disabled={generalSettingsSavePending} onClick={connectDiscord}>
-                  Discord 연동
+                <Button type="button" variant="secondary" size="sm" disabled={generalSettingsSavePending || discordLinkPending} onClick={connectDiscord}>
+                  {discordLinkPending ? "연동 준비 중" : "Discord 연동"}
                 </Button>
               )}
               <Badge tone={discordLinked && !discordDraft.unlink && discordDraft.enabled ? "green" : "neutral"}>
