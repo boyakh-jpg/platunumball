@@ -184,7 +184,7 @@
   padding: 12px;
   color: black;
   background: white;
-  border: var(--ui-stroke-width-strong) solid var(--rb-line-strong);
+  border: 0;
   border-radius: var(--ui-panel-radius);
   overflow: hidden;
 }
@@ -259,13 +259,13 @@
 }
 
 .ui-match-clock-score-control-side-a .ui-button {
-  color: var(--team-home);
-  background: color-mix(in srgb, var(--team-home) 36%, var(--scoreboard));
+  color: var(--scoreboard);
+  background: var(--team-home);
 }
 
 .ui-match-clock-score-control-side-b .ui-button {
-  color: var(--team-away);
-  background: color-mix(in srgb, var(--team-away) 36%, var(--scoreboard));
+  color: var(--scoreboard);
+  background: var(--team-away);
 }
 
 .ui-match-clock-score-actions {

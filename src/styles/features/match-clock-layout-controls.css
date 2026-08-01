@@ -304,7 +304,7 @@
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-score-actions .ui-button {
-  min-height: var(--ui-button-height);
+  min-height: calc(var(--ui-button-height) + var(--space-4));
   padding-inline: var(--space-4);
   border: 0;
 }
@@ -326,7 +326,7 @@
 
 .ui-match-clock-panel-focus .ui-match-clock-device-tools {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 0.72fr)) minmax(0, 2fr);
   grid-column: 2;
   grid-row: 5;
   gap: var(--match-clock-focus-gap);
@@ -352,6 +352,10 @@
 
 .ui-match-clock-panel-focus .ui-match-clock-volume {
   flex: 0 1 clamp(160px, 22vw, 240px);
+}
+
+.ui-match-clock-panel-focus .ui-match-clock-volume input[type="range"] {
+  min-width: 0;
 }
 
 .ui-match-clock-panel-focus .ui-match-clock-result,
