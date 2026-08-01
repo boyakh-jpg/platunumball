@@ -2260,6 +2260,7 @@ test("referee rulebook matches current FIBA and BOXTIER operating rules", async 
   assert.equal(REFEREE_RULEBOOK_EASY_SECTIONS.length, 6);
   assert.match(rulebookText, /QR 출석과 실제 출전은 다름/);
   assert.match(rulebookText, /개인기록은 심판 경기만/);
+  assert.match(rulebookText, /턴오버\(TO\).*공격권을 상대에게 넘긴 선수/);
   assert.doesNotMatch(rulebookText, /림 위 원통|4번 드리블|낮은 가중치/);
   assert.match(rulebookText, /1m 안에서 밀착 수비/);
   assert.match(rulebookText, /비접촉 테크니컬/);

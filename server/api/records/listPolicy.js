@@ -96,7 +96,7 @@ export function mapPersonalRecordMetrics(row = {}, prefix = "") {
     recordCount: number("record_count"), winCount: number("win_count"), lossCount: number("loss_count"),
     drawCount: number("draw_count"), statCount: number("stat_count"), points: number("points"),
     rebounds: number("rebounds"), assists: number("assists"), steals: number("steals"),
-    blocks: number("blocks"), fouls: number("fouls"),
+    blocks: number("blocks"), turnovers: number("turnovers"), fouls: number("fouls"),
   };
 }
 
@@ -129,6 +129,7 @@ export function limitPublicPersonalSummary(summary = null, allowStats = false) {
     assists: 0,
     steals: 0,
     blocks: 0,
+    turnovers: 0,
     fouls: 0,
   };
 }

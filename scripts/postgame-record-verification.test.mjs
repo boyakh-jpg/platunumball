@@ -266,6 +266,24 @@ test("개인 기록 공개 범위와 별도 통계는 공식 통계·업적에�
   assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
 });
 
+test("공식·내 기록 summary는 턴오버를 같은 표준 스탯으로 보존한다", async () => {
+  const [migration, scorePolicyMigration, profileApi, recordApi, recordPolicy] = await Promise.all([
+    readFile(new URL("../supabase/migrations/20260801011000_add_turnovers_to_profile_summaries.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260727120000_match_score_operation_policy.sql", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/profile/me.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/records/list.js", import.meta.url), "utf8"),
+    readFile(new URL("../server/api/records/listPolicy.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(migration, /profile_match_summaries[\s\S]*turnovers integer/);
+  assert.match(migration, /profile_personal_record_summaries[\s\S]*public_turnovers integer/);
+  assert.match(scorePolicyMigration, /stat\.record_source in \('referee', 'dispute_operator'\)/);
+  assert.match(migration, /rankball_rebuild_personal_record_summary/);
+  assert.match(profileApi, /blocks,turnovers,fouls/);
+  assert.match(recordApi, /public_blocks,public_turnovers,public_fouls/);
+  assert.match(recordPolicy, /turnovers: number\("turnovers"\)/);
+  assert.doesNotMatch(migration, /delete\s+from|drop\s+table|truncate\s+table/i);
+});
+
 test("referee stat submissions preserve the authoritative team score", async () => {
   const repository = await readSourceGroup(
     (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), "utf8"),

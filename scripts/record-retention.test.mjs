@@ -157,7 +157,7 @@ test("public profile stat setting is enforced by the record API", () => {
   assert.deepEqual(privateState.matches[0].result.statSubmissions, {});
   assert.deepEqual(
     limitPublicPersonalSummary({ recordCount: 2, statCount: 2, points: 15, fouls: 3 }, false),
-    { recordCount: 2, statCount: 0, points: 0, fouls: 0, rebounds: 0, assists: 0, steals: 0, blocks: 0 },
+    { recordCount: 2, statCount: 0, points: 0, fouls: 0, rebounds: 0, assists: 0, steals: 0, blocks: 0, turnovers: 0 },
   );
 });
 

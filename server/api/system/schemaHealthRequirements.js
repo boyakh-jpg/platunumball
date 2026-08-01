@@ -292,9 +292,9 @@ export const REQUIRED_COLUMNS = {
   ],
   profile_personal_record_summaries: [
     "profile_id", "record_count", "win_count", "loss_count", "draw_count", "stat_count",
-    "points", "rebounds", "assists", "steals", "blocks", "fouls",
+    "points", "rebounds", "assists", "steals", "blocks", "turnovers", "fouls",
     "public_record_count", "public_win_count", "public_loss_count", "public_draw_count", "public_stat_count",
-    "public_points", "public_rebounds", "public_assists", "public_steals", "public_blocks", "public_fouls",
+    "public_points", "public_rebounds", "public_assists", "public_steals", "public_blocks", "public_turnovers", "public_fouls",
     "last_record_id", "last_record_at", "updated_at",
   ],
   profile_match_summaries: [
@@ -309,6 +309,7 @@ export const REQUIRED_COLUMNS = {
     "assists",
     "steals",
     "blocks",
+    "turnovers",
     "fouls",
     "last_match_id",
     "last_match_at",

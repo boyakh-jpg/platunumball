@@ -205,7 +205,7 @@ async function loadViewerTeamIds(client, profileId = "", enabled = false) {
 async function loadPersonalRecordSummary(client, profileId = "", publicOnly = false) {
   const { data, error } = await client
     .from("profile_personal_record_summaries")
-    .select("profile_id,record_count,win_count,loss_count,draw_count,stat_count,points,rebounds,assists,steals,blocks,fouls,public_record_count,public_win_count,public_loss_count,public_draw_count,public_stat_count,public_points,public_rebounds,public_assists,public_steals,public_blocks,public_fouls")
+    .select("profile_id,record_count,win_count,loss_count,draw_count,stat_count,points,rebounds,assists,steals,blocks,turnovers,fouls,public_record_count,public_win_count,public_loss_count,public_draw_count,public_stat_count,public_points,public_rebounds,public_assists,public_steals,public_blocks,public_turnovers,public_fouls")
     .eq("profile_id", profileId).maybeSingle();
   if (error) throw error;
   return mapPersonalRecordSummary(data ?? {}, publicOnly);
