@@ -10,7 +10,7 @@ export function createRecruitingRoomMatchRenderers(context) {
     individualOnlyRoom, isMatchSideTeamParty, isPartyEntry, lobby, matchRoom, mine,
     moveCandidate, navigate, onRemake, openInviteSlot, openSelfSlotAction, playingIds,
     recruitingRoomTerminalStatus, refreshSourceMatchReview, removeCandidate, roomCancellationPending, roomCancellationTarget, roomOwnerId,
-    roomState, selectedPost, setRoomCancellationPending, setRoomCancellationTarget, showCaptainBadge, showSourceMatchRecordSummary,
+    roomState, selectedPost, setRoomCancellationPending, setRoomCancellationTarget, setSourceMatchDraftScore, showCaptainBadge, showSourceMatchRecordSummary,
     slotPositions, sourceMatch, sourceMatchAction, sourceMatchIsPersonalRecord, sourceMatchIsRecordRoom, sourceMatchPhase,
     sourceMatchRecordBoardFirst, sourceMatchRecordWindow, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideLeaderIds, sourceMatchSlotManagementOpen,
     sourceMatchResultEntryPermission, sourceRoomReadOnly, teamOnlyRoom, userById,
@@ -52,6 +52,7 @@ const renderSourceMatchRecordBoard = () => {
                   getEditableStatFields={getEditableSourceMatchStatFields}
                   editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
                   submitLabel={sourceMatchResultSubmitLabel}
+                  onDraftScoreChange={setSourceMatchDraftScore}
                   onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                 />
               ) : null}

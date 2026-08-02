@@ -259,6 +259,7 @@ export function SourceMatchDisputeEditor({
   userById,
   canReview,
   onSave,
+  onDraftScoreChange = null,
   getEditableStatFields = null,
   editableScoreSides = [],
   submitLabel = "",
@@ -271,6 +272,14 @@ export function SourceMatchDisputeEditor({
   useEffect(() => {
     setDraft(makeSourceMatchDraft(match));
   }, [match?.id, match?.result?.updatedAt, match?.disputeDraftResult?.updatedAt]);
+
+  useEffect(() => {
+    if (!match || typeof onDraftScoreChange !== "function") return;
+    onDraftScoreChange({
+      scoreA: getMergedResultScore(match, draft.playerStats, "teamA", 0),
+      scoreB: getMergedResultScore(match, draft.playerStats, "teamB", 0),
+    });
+  }, [draft.playerStats, match, onDraftScoreChange]);
 
   if (!match) return null;
   const hasResult = Boolean(match.result);

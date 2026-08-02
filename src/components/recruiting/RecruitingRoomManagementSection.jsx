@@ -13,7 +13,7 @@ export function RecruitingRoomManagementSection({ context }) {
     roomEditRulesValid, roomEditScheduleValid, roomEditStatus, roomPhaseViewModel, ruleAcknowledgedIds, ruleAcknowledgementPending,
     ruleAcknowledgementRequiredIds, saveRoomEdit, scheduleChangePending, scheduleProposalProgress, selectedMatchRuleRows, selectedMatchRules,
     selectedPost, selectedRange, selectedRoomOperationRows, selectedRoomPolicyRows, selectedRoomPolicySource, showRefereeInviteSlot,
-    sourceMatch, sourceMatchIsRecordRoom, sourceMatchPhase, sourceMatchResultEntryPermission, sourceRoomReadOnly, submitChat,
+    sourceMatch, sourceMatchDraftScore, sourceMatchIsRecordRoom, sourceMatchPhase, sourceMatchResultEntryPermission, sourceRoomReadOnly, submitChat,
     updateChatDraft, updateRefereeInviteQuery, updateRoomEditDraft, userById,
   } = context;
 
@@ -363,6 +363,8 @@ export function RecruitingRoomManagementSection({ context }) {
                   clockClient={clockClient}
                   onRosterChanged={() => void app.actions.loadMatchDetail(sourceMatch.id)}
                   editableScoreSides={sourceMatch.refereeId ? [] : sourceMatchResultEntryPermission?.editableScoreSides ?? []}
+                  displayScoreA={sourceMatch.refereeId ? sourceMatchDraftScore?.scoreA : null}
+                  displayScoreB={sourceMatch.refereeId ? sourceMatchDraftScore?.scoreB : null}
                   onIncrementScore={(sideName, delta, revisions) => app.actions.incrementMatchScore?.(
                     sourceMatch.id,
                     sideName === "teamA" ? delta : 0,

@@ -16,7 +16,7 @@ export function RecruitingRoomActionSection({ context }) {
     requestRecruitingCancellation, requestSourceMatchCancellation, requestSourceMatchFinalization, roomCancellationPolicy, roomQueueStatus, roomTimingStatus,
     ruleAcknowledgementPending, scheduleChangePending, selectedJoinPlayerIds, selectedJoinReserveIds, selectedJoinTeam, selectedJoinTeamEligibility,
     selectedMatchRules, selectedPost, setPaidCourtJoinPrompt, setSourceDisputeDraft, showSourceMatchRecordSummary, sidePartyJoinOptions,
-    sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus, sourceFinalAuthorityLabel, sourceHasOwnOpenDispute, sourceMatch, sourceMatchAction, sourceMatchActionPending, sourceMatchApprovalOpen,
+    setSourceMatchDraftScore, sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus, sourceFinalAuthorityLabel, sourceHasOwnOpenDispute, sourceMatch, sourceMatchAction, sourceMatchActionPending, sourceMatchApprovalOpen,
     sourceMatchCancelActionLabel, sourceMatchIsRecordRoom, sourceMatchRecordBoardFirst, sourceMatchResultSubmitLabel, sourceMatchReviewRefreshing, sourceMatchSideName,
     sourceMatchResultEntryPermission, sourceMatchStartButtonLabel, sourceMatchStartButtonTitle, sourceOpenDisputes, sourceRoomReadOnly, submitJoin, submitSourceDispute,
     teamOnlyRoom, teamRoomHasJoinableSide, updateJoinDraft, userById, runSourceMatchAction,
@@ -147,7 +147,7 @@ export function RecruitingRoomActionSection({ context }) {
                         canReview={false}
                         getEditableStatFields={getEditableSourceMatchStatFields}
                         editableScoreSides={sourceMatchResultEntryPermission?.editableScoreSides ?? []}
-                        submitLabel={sourceMatchResultSubmitLabel}
+                        submitLabel={sourceMatchResultSubmitLabel} onDraftScoreChange={setSourceMatchDraftScore}
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />
                     ) : null}

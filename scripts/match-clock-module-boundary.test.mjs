@@ -184,3 +184,21 @@ test("referee stat submission syncs actual-player points to the clock score", as
   assert.match(migration, /'scoreSource', 'referee_points'/u);
   assert.doesNotMatch(migration, /\b(?:delete|truncate|drop table)\b/iu);
 });
+
+test("referee live stat draft drives the visible clock score without overwriting stored team scores", async () => {
+  const [roomSource, viewSource, clockSource, recruitingEditorSource, recruitingManagementSource] = await Promise.all([
+    readFile(path.join(ROOT, "src/pages/MatchRoom.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/pages/MatchRoomView.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/components/match/MatchClockPanel.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/components/recruiting/RecruitingSourceMatchPanels.jsx"), "utf8"),
+    readFile(path.join(ROOT, "src/components/recruiting/RecruitingRoomManagementSection.jsx"), "utf8"),
+  ]);
+  assert.match(roomSource, /liveStatScoreA: pointAuditA\.statPoints/u);
+  assert.match(roomSource, /liveStatScoreB: pointAuditB\.statPoints/u);
+  assert.match(viewSource, /displayScoreA=\{hasReferee \? liveStatScoreA : null\}/u);
+  assert.match(viewSource, /displayScoreB=\{hasReferee \? liveStatScoreB : null\}/u);
+  assert.match(clockSource, /score: visibleScore/u);
+  assert.doesNotMatch(clockSource, /setScore\([^)]*displayScore/u);
+  assert.match(recruitingEditorSource, /onDraftScoreChange\(\{[\s\S]*scoreA: getMergedResultScore/u);
+  assert.match(recruitingManagementSource, /displayScoreA=\{sourceMatch\.refereeId \? sourceMatchDraftScore\?\.scoreA : null\}/u);
+});

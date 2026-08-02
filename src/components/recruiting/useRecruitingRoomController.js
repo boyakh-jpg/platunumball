@@ -104,6 +104,7 @@ export function useRecruitingRoomController({
   const [slotActionDraft, setSlotActionDraft] = useState(null);
   const [slotActionPending, setSlotActionPending] = useState(false);
   const [sourceMatchActionPending, setSourceMatchActionPending] = useState("");
+  const [sourceMatchDraftScore, setSourceMatchDraftScore] = useState(null);
   const [sourceDisputeDraft, setSourceDisputeDraft] = useState({
     matchId: "",
     resultKey: "",
@@ -474,9 +475,9 @@ export function useRecruitingRoomController({
     requiresPaidCourtNotice, roomCancellationPending, roomCancellationTarget, roomChatLocked, roomEditStatusByPost, roomShareEnabled, roomShareStatus,
     roomTeamFeedback, roomTeamQuery, roomTeamSavingSide, runRoomSlotAction, runSourceMatchAction, saveRoomEdit, selectedPost, sendInvites, setAttendanceStartStatus,
     setFinalizeMatchTarget, setInviteDraft, setPaidCourtJoinPrompt, setRoomCancellationPending, setRoomCancellationTarget, setRoomTeamFeedback, setRoomTeamQuery,
-    setRoomTeamSavingSide, setSlotActionDraft, setSoloRecordDeleteTarget, setSourceDisputeDraft, shareRoom, sheetBackdropOpacity, sheetDragOffset,
+    setRoomTeamSavingSide, setSlotActionDraft, setSoloRecordDeleteTarget, setSourceDisputeDraft, setSourceMatchDraftScore, shareRoom, sheetBackdropOpacity, sheetDragOffset,
     sheetDragSettling, sheetModalOpacity, slotActionDraft, slotActionPending, soloRecordDeleteTarget, sourceDisputeDraft, sourceDisputePending, sourceDisputeStatus,
-    sourceMatch, sourceMatchActionPending, sourceMatchReviewRefreshing,
+    sourceMatch, sourceMatchActionPending, sourceMatchDraftScore, sourceMatchReviewRefreshing,
     startSheetDrag, submitChat, submitJoin, submitSourceDispute, teamById, toggleInvitePlayer, updateChatDraft,
     updateInviteDraft, updateJoinDraft, updateRefereeInviteQuery, updateRoomEditDraft, userById,
   };
