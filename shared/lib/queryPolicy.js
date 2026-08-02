@@ -1,5 +1,5 @@
 export const DIRECTORY_KINDS = Object.freeze(["self", "players", "teams", "affiliations", "all"]);
-export const DIRECTORY_PLAYER_RANKING_SORTS = Object.freeze(["integrated", "1v1", "3v3", "5v5"]);
+export const DIRECTORY_PLAYER_RANKING_SORTS = Object.freeze(["integrated", "1v1", "2v2", "3v3", "5v5"]);
 export const ADMIN_DIRECTORY_SECTION_IDS = Object.freeze(["courts", "players", "matches", "teams", "appointments"]);
 export const ADMIN_QUEUE_MODES = Object.freeze(["pending", "history"]);
 export const DEFAULT_ADMIN_SECTION = ADMIN_DIRECTORY_SECTION_IDS[0];

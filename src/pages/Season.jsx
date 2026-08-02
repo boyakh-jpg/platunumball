@@ -69,7 +69,7 @@ export default function Season({ app }) {
   const myRegionalRankIndex = regionalPlayerRows.findIndex((user) => user.id === app.currentUser.id);
   const myNationalRank = myNationalRankIndex >= 0 ? myNationalRankIndex + 1 : null;
   const myRegionalRank = myRegionalRankIndex >= 0 ? myRegionalRankIndex + 1 : null;
-  const mySeasonRow = myNationalRankIndex >= 0 ? nationalPlayerRows[myNationalRankIndex] : null;
+  const mySeasonRow = seasonPlayerRows.find((user) => user.id === app.currentUser.id) ?? null;
   const loadDirectory = app.actions.loadDirectory;
   const loadProfileRecords = app.actions.loadProfileRecords;
   const profileRecordsLoaded = app.actions.profileRecordsLoaded;

@@ -17,6 +17,7 @@ const tabs = [
   { id: "integrated", label: "통합" },
   { id: "region", label: "지역" },
   { id: "1v1", label: "1v1" },
+  { id: "2v2", label: "2v2" },
   { id: "3v3", label: "3v3" },
   { id: "5v5", label: "5v5" },
   { id: "teams", label: "팀" },
@@ -27,6 +28,7 @@ const tabIds = new Set(tabs.map((item) => item.id));
 const rankingTitles = {
   integrated: "전국 통합 MMR",
   "1v1": "전국 1v1 MMR",
+  "2v2": "전국 2v2 MMR",
   "3v3": "전국 3v3 MMR",
   "5v5": "전국 5v5 MMR",
   teams: "전국 팀 MMR",
@@ -55,7 +57,7 @@ export default function Rankings({ app }) {
   const directoryKind = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : tab === "region" ? "all" : "players";
   const directoryRegion = tab === "region" ? myRegion : "";
   const placementCompleteOnly = !["teams", "affiliations"].includes(tab);
-  const rankingSort = ["integrated", "region", "1v1", "3v3", "5v5"].includes(tab)
+  const rankingSort = ["integrated", "region", "1v1", "2v2", "3v3", "5v5"].includes(tab)
     ? tab === "region" ? "integrated" : tab
     : "";
   useEffect(() => {

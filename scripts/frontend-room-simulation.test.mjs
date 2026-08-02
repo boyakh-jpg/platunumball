@@ -38,7 +38,7 @@ import {
   runPracticeReducer,
   submitPracticeSampleResult,
 } from "../src/lib/practiceMatch.js";
-import { getRecruitingLobby, isIndividualOnlyRecruitingRoom } from "../src/lib/recruiting.js";
+import { getRecruitingEntryPlacementIds, getRecruitingLobby, isIndividualOnlyRecruitingRoom } from "../src/lib/recruiting.js";
 import { buildMatchResultSubmission, getMatchManualFinalizationStatus } from "../src/lib/matchUtils.js";
 import { inferRegionSelection } from "../src/lib/profileSetup.js";
 import { getLocalRivalries } from "../src/lib/season.js";
@@ -1190,6 +1190,13 @@ test("모집 목록은 공용 경기 생성 경로만 사용한다", async () =>
   assert.match(view, /to="\/app\/create\?intent=record"/);
   assert.doesNotMatch(page, /composeOpen|setComposeOpen|createPending|createRecruitingPost/);
   assert.doesNotMatch(view, /arena-compose-drawer|arena-compose-form/);
+});
+
+test("후보 전용 entry는 참가자 관리에서도 출전자로 바뀌지 않는다", () => {
+  assert.deepEqual(
+    getRecruitingEntryPlacementIds({ reserve: true, players: ["reserve-player"], reserves: [] }),
+    { activeIds: [], reserveIds: ["reserve-player"] },
+  );
 });
 
 test("경기 결과 제출은 진행 중 중복 요청을 막고 실패 후 다시 제출할 수 있다", async () => {

@@ -36,6 +36,7 @@ test("directory/admin page limits stay bounded", () => {
 
 test("player ranking sort is allowlisted", () => {
   assert.equal(normalizeDirectoryRankingSort("integrated"), "integrated");
+  assert.equal(normalizeDirectoryRankingSort("2v2"), "2v2");
   assert.equal(normalizeDirectoryRankingSort("3v3"), "3v3");
   assert.equal(normalizeDirectoryRankingSort("trust_score"), "");
 });

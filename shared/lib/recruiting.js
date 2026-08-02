@@ -16,6 +16,7 @@ export {
   getRecruitingHostEditReady,
   isRecruitingTeamSideLocked,
   isRecruitingEntryMember,
+  getRecruitingEntryPlacementIds,
   getRecruitingEntryPlayerIds,
   getLobbyPrimaryTeamId,
   getLobbyTeamEntry,

@@ -1477,6 +1477,7 @@ test("season hub is player-centered while regional MMR stays separate", async ()
     readGlobalStyles(),
   ]);
   assert.match(seasonPage, /getPlayerSeasonRows\(app\.state\.users, app\.state\.matches, season, "전체"\)/);
+  assert.match(seasonPage, /const mySeasonRow = seasonPlayerRows\.find\(\(user\) => user\.id === app\.currentUser\.id\)/);
   assert.match(seasonPage, /const blockedUserIds = new Set\(app\.state\.settings\?\.blockedUserIds \?\? \[\]\)/);
   assert.equal((seasonPage.match(/\.filter\(\(user\) => !blockedUserIds\.has\(user\.id\)\)/g) ?? []).length, 2);
   assert.match(seasonPage, /전국 개인 승격권/);
@@ -1487,6 +1488,7 @@ test("season hub is player-centered while regional MMR stays separate", async ()
   assert.match(seasonPage, /to="\/app\/rankings\?view=promotion&tab=teams"[\s\S]*?>전체 팀 순위<\/Button>/);
   assert.doesNotMatch(seasonPage, /운영 체크|처리할 경기|getOperationsSummary|MatchRoomModal/);
   assert.match(rankingsPage, /\{ id: "region", label: "지역" \}/);
+  assert.match(rankingsPage, /\{ id: "2v2", label: "2v2" \}/);
   assert.match(rankingsPage, /const promotionView = searchParams\.get\("view"\) === "promotion"/);
   assert.match(rankingsPage, /const canonicalEnabled = isSupabaseConfigured && app\.remoteReady && promotionView/);
   assert.match(rankingsPage, /useCanonicalSeasonRankings\(canonicalEnabled, season\.id\)/);
@@ -1756,6 +1758,14 @@ test("notification read action and terminal trigger stay server-atomic", async (
   assert.match(migration, /matches_create_terminal_notifications/);
   assert.match(migration, /notifications_suppress_legacy_match_terminal/);
   assert.match(migration, /supersededBy/);
+});
+
+test("깨진 대회 알림 보정은 식별된 단일 운영 row만 갱신한다", async () => {
+  const migration = await readSource("supabase/migrations/20260802010000_repair_corrupted_tournament_notification.sql");
+  assert.match(migration, /created_at = timestamptz '2026-07-26 18:26:59\.25077\+00'/);
+  assert.match(migration, /payload->>'tournamentId' = 'trn_mrzoso61_499880eb3c'/);
+  assert.match(migration, /title = '\?\?\? \?\?\?'/);
+  assert.doesNotMatch(migration.replace(/--[^\r\n]*/g, ""), /\b(?:delete|truncate|drop table)\b/i);
 });
 
 test("profile record result and recency helpers preserve match semantics", () => {

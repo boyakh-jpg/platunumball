@@ -9,7 +9,7 @@ import {
   MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE,
   SIDE_LABEL_TEXT as SIDE_LABELS,
 } from "../../lib/constants.js";
-import { isRecruitingPartyEntry } from "../../lib/recruiting.js";
+import { getRecruitingEntryPlacementIds, isRecruitingPartyEntry } from "../../lib/recruiting.js";
 import {
   getMatchReservePlayerIds,
   getMatchSidePlayerIds,
@@ -70,8 +70,7 @@ export function RoomKickPanel({
   const rows = [];
   (lobby.entries ?? []).forEach((entry) => {
     const partyEntry = isRecruitingPartyEntry(entry);
-    const activeIds = entry.players ?? [];
-    const reserveIds = (entry.reserves ?? []).filter((playerId) => !activeIds.includes(playerId));
+    const { activeIds, reserveIds } = getRecruitingEntryPlacementIds(entry);
     [
       ...activeIds.map((playerId) => ({ playerId, reserve: false })),
       ...reserveIds.map((playerId) => ({ playerId, reserve: true })),

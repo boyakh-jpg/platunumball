@@ -84,15 +84,15 @@ export default function TeamDetailView({ controller }) {
         <Card className="section-card rank-record-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Team Ranked</p>
-              <h2>팀 전적</h2>
+              <p className="eyebrow">Ranked Record</p>
+              <h2>경쟁전 전적</h2>
             </div>
           </div>
           <div className="rank-stat-grid">
             <span><strong>{wins}승</strong>승리</span>
             <span><strong>{losses}패</strong>패배</span>
             <span><strong>{winRate}%</strong>승률</span>
-            <span><strong>{historyCount}</strong>전체 경기</span>
+            <span><strong>{historyCount}</strong>전체 경기 이력</span>
           </div>
         </Card>
         <Card className="section-card rank-record-card">
@@ -120,7 +120,7 @@ export default function TeamDetailView({ controller }) {
                 <p className="eyebrow">Team History</p>
                 <h2>팀 경기 히스토리</h2>
               </div>
-              <Badge tone="green">{historyCount}경기 · {wins}승</Badge>
+              <Badge tone="green">전체 {historyCount}경기</Badge>
             </div>
             <div className="recent-match-list">
               {detailHistory.map((match) => {

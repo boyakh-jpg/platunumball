@@ -67,6 +67,12 @@ export function unique(items = []) {
 export function getRecruitingEntryParticipantIds(entry = {}) {
   return unique([...(entry.players ?? []), ...(entry.reserves ?? [])]);
 }
+export function getRecruitingEntryPlacementIds(entry = {}) {
+  const activeIds = entry.reserve ? [] : unique(entry.players ?? []);
+  const reserveIds = unique(entry.reserve ? entry.players : entry.reserves)
+    .filter((playerId) => !activeIds.includes(playerId));
+  return { activeIds, reserveIds };
+}
 export function isRecruitingPartyEntry(entry = {}) {
   return entry?.kind === "team" && getRecruitingEntryParticipantIds(entry).length >= 2;
 }
