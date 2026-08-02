@@ -42,6 +42,7 @@ return (
           <span>{match.mode}</span>
         </div>
         <div className="gm-room-title">
+          <span className="eyebrow">{match.official ? "OFFICIAL ROOM" : "CUSTOM ROOM"}</span>
           <h1>{matchKind}</h1>
           <p><MapPin size={16} />{match.court} · {match.scheduledAt}</p>
         </div>

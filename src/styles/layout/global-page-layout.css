@@ -121,8 +121,7 @@ html[data-theme] .app-main :is(
   .arena-recruit-hero,
   .gm-room-hero,
   .home-rank-board-head
-) .eyebrow,
-html[data-theme] .app-main :is(.om-match-copy, .arena-hero-copy) > :is(.om-kicker, .arena-kicker) {
+) .eyebrow {
   color: var(--rb-orange-2);
   text-shadow: var(--hero-copy-shadow);
 }

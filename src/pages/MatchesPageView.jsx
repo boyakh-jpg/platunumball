@@ -48,6 +48,7 @@ return (
     <div className="page-stack om-match-page">
       <section className="om-match-hero ui-design-app-hero">
         <div className="om-match-copy">
+          <span className="eyebrow">MATCH QUEUE</span>
           <h1>일정</h1>
         </div>
         <div className="om-match-panel ui-liquid-glass">
@@ -133,7 +134,7 @@ return (
           <div className="om-calendar-heading">
             <span className="om-view-icon"><CalendarDays size={22} /></span>
             <div>
-              <span className="om-kicker">SCHEDULE</span>
+              <span className="eyebrow">SCHEDULE</span>
               <h2>{panelMode === "team" ? "내 팀 일정" : "내 경기 일정"}</h2>
               <p>
                 {dateFilter
@@ -218,7 +219,7 @@ return (
       {panelMode === "tournament" ? <section className="om-tournament-panel" aria-label="비공개 대회">
         <div className="om-list-head">
           <div>
-            <span className="om-kicker">PRIVATE EVENT</span>
+            <span className="eyebrow">PRIVATE EVENT</span>
             <h2>비공개 대회</h2>
           </div>
           <div className="om-tournament-head-actions">
@@ -235,7 +236,7 @@ return (
             return (
               <article key={tournament.id} className="om-tournament-card">
                 <div className="om-tournament-copy">
-                  <span className="om-kicker">{tournamentFormatLabels[tournament.format] ?? "대회"}</span>
+                  <span className="eyebrow">{tournamentFormatLabels[tournament.format] ?? "대회"}</span>
                   <h3>{tournament.title}</h3>
                   <p>
                     <span>
@@ -359,7 +360,7 @@ return (
       {panelMode !== "tournament" ? <section className="om-match-list" aria-label="경기 목록">
         <div className="om-list-head">
           <div>
-            <span className="om-kicker">{selectedView.code}</span>
+            <span className="eyebrow">{selectedView.code}</span>
             <h2>{panelMode === "team" ? "내 팀 경기" : dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
           </div>
           <span>{scheduleCountLabel}</span>

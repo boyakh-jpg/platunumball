@@ -77,6 +77,7 @@ export default function Affiliations({ app }) {
     <div className="page-stack">
       <header className="page-header">
         <div>
+          <p className="eyebrow">Affiliations</p>
           <h1>소속별 랭킹</h1>
         </div>
       </header>

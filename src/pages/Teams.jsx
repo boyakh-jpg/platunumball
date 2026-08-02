@@ -233,6 +233,7 @@ export default function Teams({ app }) {
       {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : null}
       <section className="team-hub-hero ui-design-app-hero">
         <div>
+          <p className="eyebrow">Team Hub</p>
           <h1>팀</h1>
         </div>
         {representativeTeam ? (

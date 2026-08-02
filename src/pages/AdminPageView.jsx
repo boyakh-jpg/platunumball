@@ -102,6 +102,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
         <Card className="section-card admin-denied-card">
           <div className="section-title-row">
             <div>
+              <p className="eyebrow">Admin</p>
               <h1>관리자 권한 확인 중</h1>
             </div>
             <ShieldCheck size={22} />
@@ -117,6 +118,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
         <Card className="section-card admin-denied-card">
           <div className="section-title-row">
             <div>
+              <p className="eyebrow">Admin</p>
               <h1>관리자 권한 없음</h1>
             </div>
             <ShieldCheck size={22} />
@@ -130,6 +132,7 @@ if (!canAdmin && (!app.adminStatus?.loaded || app.adminStatus?.loading)) {
     <div className="page-stack admin-page">
       <header className="page-header">
         <div>
+          <p className="eyebrow">Admin Console</p>
           <h1>관리자 메뉴</h1>
         </div>
         <Badge tone="team">관리자</Badge>

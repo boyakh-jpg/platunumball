@@ -93,6 +93,7 @@ export default function ProfileAchievements({ app }) {
     <div className="page-stack profile-achievements-page">
       <header className="page-header">
         <div>
+          <p className="eyebrow">Achievements</p>
           <h1>아이콘 업적</h1>
         </div>
         <Button as={Link} variant="secondary" to="/app/profile">프로필로</Button>

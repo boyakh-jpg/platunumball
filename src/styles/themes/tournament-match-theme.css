@@ -77,8 +77,7 @@ html[data-theme="light"] .om-match-panel {
 }
 
 .om-match-copy .eyebrow,
-.tournament-hero .eyebrow,
-.tournament-card-kicker {
+.tournament-hero .eyebrow {
   color: var(--rb-orange);
 }
 

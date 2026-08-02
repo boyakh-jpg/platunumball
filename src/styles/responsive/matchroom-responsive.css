@@ -19,7 +19,7 @@
 
 /* 2026-07-01 standard UI cleanup: match room follows shared primitives. */
 .gm-room-topline > span,
-.gm-room-title > span,
+.gm-room-title > .eyebrow,
 .gm-team-head span {
   color: var(--rb-orange);
 }

@@ -1,6 +1,7 @@
 export default function EntityProfileHero({
   className = "",
   style,
+  eyebrow,
   title,
   subtitle,
   badges,
@@ -11,6 +12,7 @@ export default function EntityProfileHero({
 }) {
   const copy = (
     <>
+      <p className="eyebrow">{eyebrow}</p>
       <div className="team-detail-heading-row entity-profile-hero-heading-row">
         {action}
       </div>

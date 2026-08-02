@@ -188,6 +188,7 @@ export default function Profile({ app }) {
     <div className="page-stack profile-page">
       <header className="page-header ui-design-app-hero">
         <div>
+          <p className="eyebrow">Profile</p>
           <h1>프로필</h1>
         </div>
         <Button as={Link} variant="secondary" to="/app/signup">가입 정보 설정</Button>

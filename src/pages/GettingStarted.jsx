@@ -111,6 +111,7 @@ export default function GettingStarted({ app }) {
       <Card as="article" className="getting-started-chapter">
         <header className="getting-started-chapter__copy">
           <Badge tone="orange">{activeIndex + 1} / {GUIDE_CHAPTERS.length}</Badge>
+          <p className="eyebrow">{chapter.eyebrow}</p>
           <h1 ref={chapterTitleRef} tabIndex={-1}>{chapter.title}</h1>
           <div className="ui-action-row">
             {chapter.actions.map((action) => {
@@ -159,6 +160,7 @@ export default function GettingStarted({ app }) {
       <section className="getting-started-section" aria-labelledby="getting-started-steps-title">
         <div className="getting-started-section__head">
           <div>
+            <p className="eyebrow">HOW IT WORKS</p>
             <h2 id="getting-started-steps-title">{chapter.navLabel} 흐름</h2>
           </div>
           <span>{activeIndex + 1} / {GUIDE_CHAPTERS.length}</span>
@@ -182,6 +184,7 @@ export default function GettingStarted({ app }) {
           <CalloutIcon size={25} aria-hidden="true" />
         </span>
         <div>
+          <p className="eyebrow">CHECK POINT</p>
           <h2>{chapter.callout.title}</h2>
           <p>{chapter.callout.body}</p>
           <ul>
@@ -194,6 +197,7 @@ export default function GettingStarted({ app }) {
       {chapter.id === "practice" ? (
         <section className="getting-started-home-guide-setting ui-panel ui-design-info-surface" aria-labelledby="home-guide-setting-title">
           <div>
+            <p className="eyebrow">HOME GUIDE</p>
             <h2 id="home-guide-setting-title">홈 안내 카드</h2>
             <small role="status">{homeGuideCardSaveStatus || "선택 즉시 설정에 저장됩니다."}</small>
           </div>

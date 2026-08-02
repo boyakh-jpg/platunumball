@@ -739,7 +739,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-02: "hero들"이라고 하면 홈/경기/모집만이 아니라 `page-header`, landing, team hub, season, profile, team detail, rulebook, tournament, match room 같은 모든 page-level hero를 포함한다.
 2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 `::before`/`::after` overlay를 얹지 않는다. hero 텍스트는 dark에서 `--rb-orange`/`--rb-orange-2`, light 큰 제목은 `--rb-cream`로 시인성을 확보한다.
 2026-07-02: hero 제목은 모두 `--hero-title-font`와 홈 hero 기준 `--hero-title-shadow`를 쓴다. 개별 feature/theme CSS는 제목 그림자를 덮어쓰지 않는다. 원인/결과: 개별 파일의 `linear-gradient` background와 `::before`/`::after` overlay가 뒤쪽 CSS에서 다시 살아나 이미지 위 막이 반복됐으므로, page-level hero는 최종 guard에서 image + fallback color만 남기고 `backdrop-filter`/blur/filter를 쓰지 않는다.
-2026-08-02: page-level hero는 제목, 상태 badge/action, 날짜·구장·지역 같은 동적 정보만 표시한다. eyebrow/kicker와 고정 설명은 두지 않으며, 서버 원본·모듈·저장 통로·공용 모달 같은 내부 구현 용어를 사용자 화면에 노출하지 않는다.
+2026-08-02: page-level hero는 eyebrow, 제목, 상태 badge/action, 날짜·구장·지역 같은 동적 정보만 표시한다. 작은 분류 라벨은 공용 `.eyebrow` 클래스를 사용하고 별도 `*-kicker` 클래스와 고정 설명은 두지 않으며, 서버 원본·모듈·저장 통로·공용 모달 같은 내부 구현 용어를 사용자 화면에 노출하지 않는다.
 2026-08-03: 라이트 테마 모바일 하단 메뉴의 활성 항목은 `--radius-sm`을 사용한다. 메뉴 바와 비활성 항목은 기존 flat 규격을 유지한다.
 2026-07-23: 방만들기(`/app/create`) page-header는 다크·라이트 전용 체육관 이미지 hero를 쓴다. 왼쪽 제목 영역은 단순한 벽면 여백을 유지하고 오른쪽 골대·접힌 관중석·조명 구조는 중앙 crop 안에 둔다. 장식용 공은 두지 않고 보이는 코트선은 실제 바닥 구조에 맞게 한 번만 표시한다.
 2026-07-28: 팀 허브 모바일 hero에도 데스크톱처럼 대표팀 보드를 포함한다. 대표팀이 있으면 팀명·MMR·전적을 표시하며 759px 이하에서도 숨기지 않는다.

@@ -27,10 +27,11 @@ export default function RequireAdmin({ app, children }) {
     return (
       <div className="page-stack admin-page">
         <Card className="section-card admin-denied-card">
-          <div className="section-title-row">
-            <div>
-              <h1>관리자 권한 없음</h1>
-            </div>
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Admin</p>
+                <h1>관리자 권한 없음</h1>
+              </div>
             <ShieldCheck size={22} />
           </div>
         </Card>

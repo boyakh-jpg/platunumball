@@ -141,6 +141,7 @@ export default function Signup({ app, auth }) {
     <div className="page-stack signup-setup-page">
       <header className="page-header">
         <div>
+          <p className="eyebrow">Signup</p>
           <h1>가입 정보 설정</h1>
         </div>
         {!setupRequired ? <Button as={Link} variant="secondary" to={redirectTo}><ArrowLeft size={17} /> 프로필로</Button> : null}

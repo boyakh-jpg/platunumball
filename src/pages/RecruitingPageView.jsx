@@ -27,6 +27,7 @@ export default function RecruitingPageView({
     <div className="page-stack arena-recruit-page">
       <section className="arena-recruit-hero ui-design-app-hero">
         <div className="arena-hero-copy">
+          <span className="eyebrow">MATCH QUEUE</span>
           <h1>대기 매칭</h1>
         </div>
         <div className="arena-hero-panel ui-liquid-glass">
@@ -49,7 +50,7 @@ export default function RecruitingPageView({
       <section className={queueControlsOpen ? "arena-queue-controls ui-design-soft-surface" : "arena-queue-controls ui-design-soft-surface collapsed"}>
         <div className="arena-queue-controls-head">
           <div>
-            <span className="arena-kicker">QUEUE FILTER</span>
+            <span className="eyebrow">QUEUE FILTER</span>
             <strong>매치방 · {posts.length}개 표시</strong>
           </div>
           <Button

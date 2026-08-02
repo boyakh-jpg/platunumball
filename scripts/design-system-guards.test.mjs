@@ -1013,7 +1013,7 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.match(visualSystemStyles, /\.om-match-hero,\s*\.arena-recruit-hero[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(0,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-panel,\s*\.arena-hero-panel[\s\S]*?width:\s*min\(100%,\s*var\(--ui-hero-status-width\)\);/);
   assert.match(visualSystemStyles, /\.om-match-actions,\s*\.arena-hero-actions[\s\S]*?height:\s*var\(--ui-button-height\);/);
-  assert.match(visualSystemStyles, /\.home-rank-board-head[\s\S]*?\)\s*\.eyebrow,[\s\S]*?color:\s*var\(--rb-orange-2\);/);
+  assert.match(visualSystemStyles, /\.eyebrow\s*\{[^}]*color:\s*var\(--rb-orange-2\);/);
   assert.match(visualSystemStyles, /\.home-hero-next > strong,[\s\S]*?\.arena-hero-stats strong[\s\S]*?color:\s*var\(--hero-title-color\);/);
   assert.doesNotMatch(pageSources.landing, /landing-compact-summary/);
   assert.match(
@@ -1024,7 +1024,7 @@ test("hero inner boards share one readable liquid-glass system", () => {
   assert.equal(count(primitiveStyles, "mask-composite: exclude;"), 1);
 });
 
-test("page heroes use the home title effect without template or implementation copy", () => {
+test("page heroes keep shared eyebrows without implementation copy", () => {
   const heroSources = [
     ...Object.values(pageSources),
     matchRoomPageSource,
@@ -1038,7 +1038,11 @@ test("page heroes use the home title effect without template or implementation c
     read("src/pages/TournamentDetailView.jsx"),
   ].join("\n");
 
-  assert.doesNotMatch(heroSources, />\s*(?:MATCH QUEUE|Team Hub|Study guide|Admin Console|RecordMatch|CreateMatch|OFFICIAL ROOM|CUSTOM ROOM|Player Profile|Team Profile)\s*</);
+  assert.doesNotMatch(heroSources, /kicker/);
+  assert.doesNotMatch(allStyleSources, /kicker/);
+  assert.match(heroSources, /className="eyebrow">MATCH QUEUE</);
+  assert.match(heroSources, /className="eyebrow">Team Hub</);
+  assert.match(heroSources, /className="eyebrow">Study guide</);
   assert.doesNotMatch(heroSources, /공용 방 모달|저장 통로|같은 값|현재 알파 테스트|서버 원본|내부 보정값|실제 공용 방 모달|현재 서비스 화면/);
 });
 

@@ -49,6 +49,7 @@ export default function TeamDetailView({ controller }) {
       <EntityProfileHero
         className="team-detail-hero rank-profile-hero rank-team-hero"
         style={{ "--team-color": team.accent }}
+        eyebrow="Team Profile"
         title={team.name}
         subtitle={`${team.region} · ${team.homeCourt}`}
         action={(

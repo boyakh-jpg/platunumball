@@ -44,6 +44,7 @@ export default function SettingsRefereeSection({ controller }) {
             <div className="referee-rulebook-panel compact ui-design-info-surface">
               <div className="referee-rulebook-head">
                 <div>
+                  <span className="eyebrow">Study guide</span>
                   <strong>커뮤니티 심판 룰북</strong>
                 </div>
                 <Badge tone="blue">학습자료</Badge>

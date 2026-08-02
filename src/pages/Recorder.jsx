@@ -207,6 +207,7 @@ export default function Recorder({ app }) {
       <div className="page-stack recorder-page">
         <header className="page-header recorder-header ui-design-app-hero">
           <div>
+            <span className="eyebrow">PLAY</span>
             <h1>플레이</h1>
           </div>
         </header>
@@ -235,7 +236,7 @@ export default function Recorder({ app }) {
           <section className="om-match-list recorder-card-list" aria-label="플레이 목록">
             <div className="om-list-head">
               <div>
-                <span className="om-kicker">ACTIVE</span>
+                <span className="eyebrow">ACTIVE</span>
                 <h2>내 플레이</h2>
               </div>
               <span>{matches.length}개</span>

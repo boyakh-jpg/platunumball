@@ -33,7 +33,7 @@ function RecruitingRoomVersusSide({ context, sideName, meta }) {
   return (
     <div className={`arena-lobby-team-panel ${sideName === "teamA" ? "team-a" : "team-b"}`}>
       <div className="arena-lobby-team-head">
-        <div className="arena-lobby-team-kicker">
+        <div className="arena-lobby-team-meta">
           <span>{meta.label}</span>
           {selectedPost.tournamentId && selectedPost.hostSide === sideName ? (
             <small className="arena-lobby-host-team">

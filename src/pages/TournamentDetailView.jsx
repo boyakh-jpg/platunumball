@@ -29,6 +29,7 @@ return (
 
       <section className="tournament-hero">
         <div>
+          <span className="eyebrow">PRIVATE EVENT</span>
           <h1>{tournament.title}</h1>
           <p className="tournament-hero-meta">
             <span><CalendarDays size={16} />{formatWindow(tournament)} · {tournament.court}</span>
@@ -83,7 +84,7 @@ return (
         <section className="tournament-section">
           <div className="om-list-head">
             <div>
-              <span className="om-kicker">INVITED TEAMS</span>
+              <span className="eyebrow">INVITED TEAMS</span>
               <h2>참가팀</h2>
             </div>
             <span>{acceptedCount}팀 승인</span>
@@ -124,7 +125,7 @@ return (
         <section className="tournament-section tournament-governance-section">
         <div className="om-list-head">
           <div>
-            <span className="om-kicker">REFEREE APPROVAL</span>
+            <span className="eyebrow">REFEREE APPROVAL</span>
             <h2>대회 심판</h2>
           </div>
           <span>최소 {requiredRefereeCount}명 · 승인 {acceptedRefereeIds.length}명</span>
@@ -191,7 +192,7 @@ return (
       {governanceEnabled && tournament.status === "draft" ? (
         <section className="tournament-section tournament-sanction-panel">
           <div>
-            <span className="om-kicker">REGIONAL REVIEW</span>
+            <span className="eyebrow">REGIONAL REVIEW</span>
             <h2>{getTournamentSanctionLabel(tournament)}</h2>
             <p>팀장·심판 승인이 완료된 뒤 지역관리자가 승인하면 공식 대회로, 주최자가 비승인 개최를 선택하면 MMR 0.8 계수 대회로 시작합니다.</p>
           </div>
@@ -244,7 +245,7 @@ return (
         <section className="tournament-section">
           <div className="om-list-head">
             <div>
-              <span className="om-kicker">MATCH REFEREES</span>
+              <span className="eyebrow">MATCH REFEREES</span>
               <h2>경기별 중립 심판</h2>
             </div>
             <span>{canManageSchedule ? "주최자 배정" : "배정 현황"}</span>
@@ -293,7 +294,7 @@ return (
         <section className="tournament-section">
           <div className="om-list-head">
             <div>
-              <span className="om-kicker">SCHEDULE</span>
+              <span className="eyebrow">SCHEDULE</span>
               <h2>경기 일정</h2>
             </div>
             <span>{canManageSchedule ? "생성자 일정 입력" : "생성자만 수정 가능"}</span>

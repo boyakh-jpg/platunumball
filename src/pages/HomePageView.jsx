@@ -53,6 +53,7 @@ export default function HomePageView({
           <div className="home-rank-board-head">
             <div className="rank-hero-top">
               <div>
+                <p className="eyebrow">내 랭크 보드</p>
                 <h1>{user.name}님의 오늘 코트 현황</h1>
                 <p>{user.region} · {user.position} · 통합 {getPlayerRatingSummary(user)}</p>
               </div>

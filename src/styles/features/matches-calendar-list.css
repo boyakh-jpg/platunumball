@@ -13,13 +13,6 @@
   pointer-events: none;
 }
 
-.om-kicker {
-  color: var(--gold);
-  font-size: 0.78rem;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
 .om-match-copy h1 {
   margin-top: 8px;
 }

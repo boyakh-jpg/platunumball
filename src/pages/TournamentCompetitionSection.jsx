@@ -17,7 +17,7 @@ export function TournamentCompetitionSection({ controller }) {
       <section className="tournament-section">
         <div className="om-list-head">
           <div>
-            <span className="om-kicker">{tournament.format === "tournament" ? "BRACKET" : "LEAGUE FIXTURES"}</span>
+            <span className="eyebrow">{tournament.format === "tournament" ? "BRACKET" : "LEAGUE FIXTURES"}</span>
             <h2>{tournament.format === "tournament" ? "대진표" : "리그 경기표"}</h2>
           </div>
           <span>{tournament.status === "draft" ? "대기" : `${tournamentMatches.length}경기`}</span>

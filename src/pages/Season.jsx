@@ -135,6 +135,7 @@ export default function Season({ app }) {
     <div className="page-stack season-page">
       <header className="page-header">
         <div>
+          <p className="eyebrow">Season</p>
           <h1>시즌</h1>
           <p>{season.name} · {season.subtitle}</p>
         </div>

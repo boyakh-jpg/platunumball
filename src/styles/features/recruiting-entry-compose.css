@@ -22,14 +22,6 @@
   z-index: 1;
 }
 
-.arena-kicker {
-  color: var(--gold);
-  font-size: 0.78rem;
-  font-weight: 950;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
 .arena-hero-copy h1 {
   margin-top: 8px;
 }
