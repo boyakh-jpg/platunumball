@@ -22,6 +22,13 @@ test("가입정보 guard는 현재 인증 사용자의 프로필 hydration 뒤�
   assert.equal(isProfileGateReady({ authUserId: "test-rankball-001", remoteReady: true, serverProfileBound: false }), true);
 });
 
+test("계정 전환 첫 렌더는 이전 계정의 원격 준비 상태를 재사용하지 않는다", async () => {
+  const runtimeSource = await read("src/hooks/appData/orchestrator/runtime.js");
+  assert.match(runtimeSource, /const authIdentityChanged = authIdentityRef\.current !== authUserId/);
+  assert.match(runtimeSource, /remoteReadyRef\.current = !isSupabaseConfigured/);
+  assert.match(runtimeSource, /remoteReady: remoteReady && !authIdentityChanged/);
+});
+
 test("인증 저장소 예외와 빈 프로필 이름은 화면·로컬·서버 경계에서 막는다", async () => {
   const [authSource, profileSource, actionSource, serverSource, affiliationSource, shareSource] = await Promise.all([
     read("src/hooks/useAuthSession.js"),

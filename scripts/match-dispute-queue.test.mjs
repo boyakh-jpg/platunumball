@@ -257,6 +257,28 @@ test("무심판 팀 점수 이의는 첫 가결 뒤 오래된 revision을 다시
   assert.equal(staleAttempt.matches[0].disputeDraftResult.scoreB, 8);
 });
 
+test("무심판 경기도 점수 변경 없는 사유 이의를 접수한다", () => {
+  const start = makeState("guest");
+  const noRefereeState = {
+    ...start,
+    matches: [{
+      ...start.matches[0],
+      refereeId: undefined,
+      result: { ...start.matches[0].result, playerStats: {}, statSubmissions: {} },
+    }],
+  };
+  const next = disputeMatch(noRefereeState, "match-queue", {
+    kind: "team_scores",
+    requestedScoreA: 5,
+    requestedScoreB: 7,
+    baseRevision: 0,
+    reason: "교체 출전 기록을 확인해 주세요.",
+  });
+
+  assert.equal(getOpenMatchDisputes(next.matches[0]).length, 1);
+  assert.equal(next.matches[0].disputes[0].reason, "교체 출전 기록을 확인해 주세요.");
+});
+
 test("일반 경기 참가자 승인 경로는 폐기되고 경기 권한자의 명시적 최종 승인만 남는다", () => {
   const state = makeState("guest");
   const approved = approveMatch(state, "match-queue", "teamB", "guest");
@@ -394,10 +416,13 @@ test("이의 상태 경기방은 무효 처리 대화상자를 import한 뒤 렌
 
 test("사유만 있는 이의제기를 저장하고 제출·심판 화면을 즉시 갱신한다", async () => {
   const migration = await readSource("supabase/migrations/20260731233000_allow_reason_only_match_disputes.sql");
+  const teamScoreMigration = await readSource("supabase/migrations/20260802011000_allow_reason_only_team_score_disputes.sql");
   const interactions = await readSource("src/components/recruiting/useRecruitingRoomModalInteractions.js");
   const controller = await readSource("src/components/recruiting/useRecruitingRoomController.js");
   assert.match(migration, /match_stat_dispute_no_change/);
   assert.match(migration, /execute function_definition/);
+  assert.match(teamScoreMigration, /match_reason_only_team_dispute_shape_changed/);
+  assert.match(teamScoreMigration, /execute replace\(function_definition, old_guard, new_guard\)/);
   assert.match(interactions, /await app\.actions\.disputeMatch/);
   assert.match(interactions, /await refreshSourceMatchReview\?\.\(\)/);
   assert.match(controller, /window\.setInterval\(refreshReview, 5000\)/);

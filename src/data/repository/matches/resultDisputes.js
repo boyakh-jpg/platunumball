@@ -54,9 +54,6 @@ export function disputeMatch(state, matchId, disputeInput = "") {
     : normalizeTeamScoresDisputeRequest(rawRequest);
   if (!disputeRequest || disputeRequest.baseRevision !== getMatchResultRevision(match)) return state;
   if (match.refereeId && disputeRequest.playerId !== state.currentUserId) return state;
-  if (!match.refereeId
-    && disputeRequest.requestedScoreA === Number(match.result.scoreA ?? 0)
-    && disputeRequest.requestedScoreB === Number(match.result.scoreB ?? 0)) return state;
   if (!currentUserCanFileMatchDispute(state, match)) {
     return {
       ...state,
