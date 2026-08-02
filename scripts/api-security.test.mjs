@@ -23,6 +23,7 @@ import {
   verifyDiscordOAuthProof,
   verifyDiscordOAuthStateTicket,
 } from "../server/api/auth/_discordOAuthProof.js";
+import { getDiscordOAuthStateCookiePath } from "../server/api/auth/_discordOAuthCookies.js";
 import { getPublicAppUrl, getPublicAppWebUrl } from "../server/api/_publicAppUrl.js";
 import {
   isActiveReportInsertConflict,
@@ -148,7 +149,7 @@ test("API routes use deny-by-default method and credential policies", async () =
   }
   assert.deepEqual(
     [...API_ROUTES].filter(([, route]) => route.auth === "oauthCallback").map(([path]) => path),
-    ["/auth/discord/callback"],
+    ["/auth/discord/callback", "/discord/callback"],
   );
   const systemRequestSource = await readSource("server/api/system/_systemRequest.js");
   const internalSources = await Promise.all([
@@ -575,6 +576,21 @@ test("future public database objects are deny-by-default", async () => {
   assert.match(migrationSource, /revoke execute on functions from public, anon, authenticated, service_role/);
   assert.match(migrationSource, /revoke all on sequences from anon, authenticated, service_role/);
   assert.doesNotMatch(migrationSource, /drop table|truncate table|delete from/i);
+});
+
+test("Discord OAuth state cookie follows only supported callback paths", () => {
+  assert.equal(
+    getDiscordOAuthStateCookiePath("https://boxtier.kr/api/discord/callback"),
+    "/api/discord/callback",
+  );
+  assert.equal(
+    getDiscordOAuthStateCookiePath("https://boxtier.kr/api/auth/discord/callback"),
+    "/api/auth/discord/callback",
+  );
+  assert.equal(
+    getDiscordOAuthStateCookiePath("https://boxtier.kr/api/other/callback"),
+    "/api/auth/discord/callback",
+  );
 });
 
 test("referee exam attempts preserve the first start and first terminal grading", async () => {
