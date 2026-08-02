@@ -576,3 +576,9 @@ test("future public database objects are deny-by-default", async () => {
   assert.match(migrationSource, /revoke all on sequences from anon, authenticated, service_role/);
   assert.doesNotMatch(migrationSource, /drop table|truncate table|delete from/i);
 });
+
+test("retired favorite targets can still be removed", async () => {
+  const source = await readSource("server/api/favorites/sync.js");
+  assert.match(source, /if \(active\) \{\s+await assertTargetExists\(context, targetType, targetId\)/u);
+  assert.doesNotMatch(source, /await assertTargetExists\(context, targetType, targetId\);\s+if \(active\)/u);
+});

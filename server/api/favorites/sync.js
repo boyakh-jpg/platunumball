@@ -76,9 +76,8 @@ export default async function handler(request, response) {
     }
 
     const context = await getAuthenticatedContext(request);
-    await assertTargetExists(context, targetType, targetId);
-
     if (active) {
+      await assertTargetExists(context, targetType, targetId);
       const { count, error: countError } = await context.supabase
         .from("favorites")
         .select("target_id", { count: "exact", head: true })

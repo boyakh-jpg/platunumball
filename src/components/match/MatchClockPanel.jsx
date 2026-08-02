@@ -182,7 +182,8 @@ export default function MatchClockPanel({
   const isRunning = liveClock?.status === "running";
   const hasRemainingPeriodTime = Number(liveClock?.periodRemainingMs || 0) > 0;
   const regulationEnded = isBreak && liveClock.currentPeriod >= liveClock.expectedPeriodCount;
-  const visibleScore = Number.isFinite(Number(displayScoreA)) && Number.isFinite(Number(displayScoreB))
+  const visibleScore = displayScoreA != null && displayScoreB != null
+    && Number.isFinite(Number(displayScoreA)) && Number.isFinite(Number(displayScoreB))
     ? { ...score, a: Number(displayScoreA), b: Number(displayScoreB) }
     : score;
   const tied = visibleScore.a === visibleScore.b;

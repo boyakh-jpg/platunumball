@@ -203,6 +203,7 @@ test("referee live stat draft drives the visible clock score without overwriting
   assert.match(viewSource, /displayScoreA=\{hasReferee \? liveStatScoreA : null\}/u);
   assert.match(viewSource, /displayScoreB=\{hasReferee \? liveStatScoreB : null\}/u);
   assert.match(clockSource, /score: visibleScore/u);
+  assert.match(clockSource, /displayScoreA != null && displayScoreB != null/u);
   assert.doesNotMatch(clockSource, /setScore\([^)]*displayScore/u);
   assert.match(recruitingEditorSource, /onDraftScoreChange\(\{[\s\S]*scoreA: getMergedResultScore/u);
   assert.match(recruitingManagementSource, /displayScoreA=\{sourceMatch\.refereeId \? sourceMatchDraftScore\?\.scoreA : null\}/u);

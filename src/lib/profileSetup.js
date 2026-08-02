@@ -61,7 +61,8 @@ export function shouldSetupProfile(user = {}) {
 export function isProfileGateReady({ authUserId = "", profileAuthUserId = "", remoteReady = false, serverProfileBound = false } = {}) {
   if (!authUserId) return true;
   if (!remoteReady) return false;
-  return !serverProfileBound || profileAuthUserId === authUserId;
+  if (profileAuthUserId) return profileAuthUserId === authUserId;
+  return !serverProfileBound;
 }
 
 export function getNextNameChangeDate(user = {}) {
