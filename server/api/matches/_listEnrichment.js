@@ -21,30 +21,40 @@ export async function attachMatchPlayerCountsToCards(client, matches = [], debug
   ]));
   if (playerResult.error) throw playerResult.error;
   if (matchResult.error) throw matchResult.error;
-  const countsByMatch = new Map(ids.map((id) => [id, { teamA: new Set(), teamB: new Set() }]));
+  const countsByMatch = new Map(ids.map((id) => [id, {
+    active: { teamA: new Set(), teamB: new Set() },
+    reserves: { teamA: new Set(), teamB: new Set() },
+  }]));
   (playerResult.data ?? []).forEach((row) => {
     const matchId = row?.match_id;
     const side = row?.side;
     const userId = row?.user_id;
     if (!matchId || !MATCH_SIDES.includes(side) || !userId) return;
     if (!countsByMatch.has(matchId)) {
-      countsByMatch.set(matchId, { teamA: new Set(), teamB: new Set() });
+      countsByMatch.set(matchId, {
+        active: { teamA: new Set(), teamB: new Set() },
+        reserves: { teamA: new Set(), teamB: new Set() },
+      });
     }
-    countsByMatch.get(matchId)[side].add(userId);
+    countsByMatch.get(matchId).active[side].add(userId);
   });
   (matchResult.data ?? []).forEach((row) => {
     if (!countsByMatch.has(row?.id)) return;
     MATCH_SIDES.forEach((side) => {
       const reserveIds = Array.isArray(row.reserve_players?.[side]) ? row.reserve_players[side] : [];
-      reserveIds.filter(Boolean).forEach((userId) => countsByMatch.get(row.id)[side].add(userId));
+      reserveIds.filter(Boolean).forEach((userId) => countsByMatch.get(row.id).reserves[side].add(userId));
     });
   });
   return matches.map((match) => {
     const counts = countsByMatch.get(match?.id);
     return {
       ...match,
-      teamA: { ...(match.teamA ?? {}), count: counts.teamA.size },
-      teamB: { ...(match.teamB ?? {}), count: counts.teamB.size },
+      teamA: { ...(match.teamA ?? {}), count: counts.active.teamA.size },
+      teamB: { ...(match.teamB ?? {}), count: counts.active.teamB.size },
+      reservePlayers: {
+        teamA: [...counts.reserves.teamA],
+        teamB: [...counts.reserves.teamB],
+      },
     };
   });
 }
