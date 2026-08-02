@@ -120,7 +120,25 @@ setProfileAffiliation: async ({ affiliationId = "", name = "" } = {}) => {
       rollbackState,
       "심판 등록요청",
       { requestId: createdRequest.id },
-    );
+    ).then(async (result) => {
+      if (result?.duplicate !== true) return result;
+      const optimisticNotificationIds = new Set(syncedNotifications.map((notification) => notification.id));
+      setState((prev) => {
+        if (prev.currentUserId !== currentUserId) return prev;
+        return {
+          ...prev,
+          settings: {
+            ...(prev.settings ?? {}),
+            refereeRequests: rollbackState.settings?.refereeRequests ?? [],
+          },
+          notifications: (prev.notifications ?? []).filter((notification) => !optimisticNotificationIds.has(notification.id)),
+        };
+      });
+      if (stateRef.current.currentUserId === currentUserId && typeof refreshCurrentProfile === "function") {
+        await refreshCurrentProfile();
+      }
+      return result;
+    });
   },
   updateProfile: (patch, targetUserId = currentUserId) => {
     if (Object.prototype.hasOwnProperty.call(patch ?? {}, "name") && !normalizeProfileName(patch.name)) {

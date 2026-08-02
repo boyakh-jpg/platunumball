@@ -85,7 +85,8 @@ export function unblockUser(state, userId) {
 }
 
 export function toggleFavoritePlayer(state, userId) {
-  if (!state.users.some((user) => user.id === userId)) return state;
+  const active = !(state.settings?.favoritePlayerIds ?? []).includes(userId);
+  if (active && !state.users.some((user) => user.id === userId)) return state;
   return {
     ...state,
     settings: normalizeSettings({
@@ -96,7 +97,8 @@ export function toggleFavoritePlayer(state, userId) {
 }
 
 export function toggleFavoriteTeam(state, teamId) {
-  if (!state.teams.some((team) => team.id === teamId)) return state;
+  const active = !(state.settings?.favoriteTeamIds ?? []).includes(teamId);
+  if (active && !state.teams.some((team) => team.id === teamId)) return state;
   return {
     ...state,
     settings: normalizeSettings({
@@ -107,7 +109,8 @@ export function toggleFavoriteTeam(state, teamId) {
 }
 
 export function toggleFavoriteCourt(state, courtId) {
-  if (!getRegisteredCourts(state).some((court) => court.id === courtId)) return state;
+  const active = !(state.settings?.favoriteCourtIds ?? []).includes(courtId);
+  if (active && !getRegisteredCourts(state).some((court) => court.id === courtId)) return state;
   return {
     ...state,
     settings: normalizeSettings({
@@ -118,8 +121,9 @@ export function toggleFavoriteCourt(state, courtId) {
 }
 
 export function toggleFavoriteReferee(state, userId) {
+  const active = !(state.settings?.favoriteRefereeIds ?? []).includes(userId);
   const referee = state.users.find((user) => user.id === userId);
-  if (!referee || !isEligibleReferee(referee, REFEREE_TRUST_MIN, state.settings?.refereeAppointments)) return state;
+  if (active && (!referee || !isEligibleReferee(referee, REFEREE_TRUST_MIN, state.settings?.refereeAppointments))) return state;
   return {
     ...state,
     settings: normalizeSettings({

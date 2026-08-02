@@ -16,6 +16,7 @@ import {
 import {
   activateTournamentSanction,
   assignTournamentMatchReferee,
+  forfeitTournamentMatch,
   declineTournamentReferee,
   rejectTournamentRegion,
   requestMatchRefereeAbsence,
@@ -28,6 +29,55 @@ configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
 const root = new URL("../", import.meta.url);
 const readSource = (path) => readFile(new URL(path, root), "utf8");
+
+test("대회 몰수는 선수 MMR을 제외하고 마지막 대진의 우승팀을 확정한다", () => {
+  const match = {
+    id: "forfeit-final",
+    tournamentId: "tournament-forfeit",
+    tournamentFormat: "tournament",
+    tournamentRound: 1,
+    tournamentFixture: 1,
+    status: "agreed",
+    scheduledDate: "2026-01-01",
+    scheduledTime: "12:00",
+    teamA: { name: "A팀", teamId: "team-a", players: ["a1"] },
+    teamB: { name: "B팀", teamId: "team-b", players: ["b1"] },
+    rules: {},
+  };
+  const state = {
+    currentUserId: "owner",
+    users: [],
+    teams: [],
+    notifications: [],
+    settings: {},
+    matches: [match],
+    tournaments: [{
+      id: "tournament-forfeit",
+      title: "몰수 검증 대회",
+      status: "active",
+      format: "tournament",
+      createdBy: "owner",
+      bracket: { bracketSize: 2, rounds: [] },
+    }],
+  };
+
+  const next = forfeitTournamentMatch(state, "tournament-forfeit", match.id, "teamA", "A팀 불참");
+  const result = next.matches[0];
+
+  assert.equal(result.status, "confirmed");
+  assert.deepEqual(result.result, {
+    scoreA: 0,
+    scoreB: 1,
+    playerStats: {},
+    statSubmissions: {},
+    submittedBy: "owner",
+    submittedAt: result.result.submittedAt,
+  });
+  assert.deepEqual(result.mmrExcludedPlayerIds.sort(), ["a1", "b1"]);
+  assert.equal(result.rules.forfeit.mmrCommitted, false);
+  assert.equal(next.tournaments[0].status, "closed");
+  assert.equal(next.tournaments[0].bracket.championTeamId, "team-b");
+});
 
 const users = [
   { id: "referee-a", trustScore: 95 },

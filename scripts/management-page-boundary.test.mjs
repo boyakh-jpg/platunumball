@@ -6,12 +6,24 @@ import { createRoomModalOpeners } from "../src/lib/roomModalNavigation.js";
 import {
   requestMatchDetailOnce,
 } from "../src/pages/matchesPageModel.js";
-import { updateProfile } from "../src/data/repository/account.js";
+import { deleteNotification, updateProfile } from "../src/data/repository/account.js";
 import { commitAdminAppointmentAction } from "../src/data/repository/admin/appointment.js";
+import { submitRefereeRequest } from "../src/data/repository/courts.js";
+import { updateSettings } from "../src/data/repository/settings.js";
+import { buildProfileTeamActions } from "../src/hooks/appData/actions/profileTeamActions.js";
+import { buildSettingsActions } from "../src/hooks/appData/actions/settingsActions.js";
 import { isProfileGateReady, normalizeProfileName, PROFILE_NAME_MAX_LENGTH } from "../src/lib/profileSetup.js";
 
 const root = path.resolve(new URL("../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 const read = (relativePath) => readFile(path.join(root, relativePath), "utf8");
+
+function createStateHarness(initialState) {
+  const stateRef = { current: structuredClone(initialState) };
+  const setState = (update) => {
+    stateRef.current = typeof update === "function" ? update(stateRef.current) : update;
+  };
+  return { stateRef, setState };
+}
 
 test("가입정보 guard는 현재 인증 사용자의 프로필 hydration 뒤에만 판정한다", () => {
   assert.equal(isProfileGateReady({}), true);
@@ -53,6 +65,181 @@ test("인증 저장소 예외와 빈 프로필 이름은 화면·로컬·서버 
   assert.match(profileSource, /loadProfileRecords\(\{ force: true \}\)/);
   assert.match(affiliationSource, /finally \{\s*setPending\(false\)/);
   assert.match(shareSource, /setCopyStatus\("복사 실패"\)/);
+});
+
+test("프로필과 심판 등록의 서버 실패는 낙관 상태를 원래 값으로 되돌린다", async () => {
+  const initialState = {
+    currentUserId: "u1",
+    users: [{ id: "u1", authUserId: "auth-1", name: "기존 이름", trustScore: 95 }],
+    notifications: [],
+    settings: {
+      refereeExamAttempts: [{
+        id: "attempt-1",
+        userId: "u1",
+        examVersion: "exam-v1",
+        passed: true,
+      }],
+      refereeRequests: [],
+    },
+  };
+  const profileHarness = createStateHarness(initialState);
+  const rollbackServerMutation = (snapshot) => profileHarness.setState(snapshot);
+  const profileActions = buildProfileTeamActions({
+    authUserId: "auth-1",
+    currentUserId: "u1",
+    getServerActionErrorText: (error) => error?.message ?? "profile_save_failed",
+    persistProfileServer: async () => ({ ok: false, error: "offline" }),
+    profileLocked: true,
+    rollbackServerMutation,
+    serverProfileBound: true,
+    setState: profileHarness.setState,
+    stateRef: profileHarness.stateRef,
+    updateProfile,
+  });
+
+  const profileResult = await profileActions.updateProfile({ name: "새 이름" });
+  assert.equal(profileResult.ok, false);
+  assert.equal(profileHarness.stateRef.current.users[0].name, "기존 이름");
+
+  const refereeHarness = createStateHarness(initialState);
+  let optimisticRequestCount = 0;
+  const refereeActions = buildProfileTeamActions({
+    currentUserId: "u1",
+    getNewRefereeNotifications: (previous, next) => next.notifications.filter(
+      (notification) => !previous.notifications.some((item) => item.id === notification.id),
+    ),
+    isSupabaseConfigured: true,
+    rollbackIfServerFailed: async (promise, snapshot) => {
+      const result = await promise;
+      if (!result || result.ok === false) refereeHarness.setState(snapshot);
+      return result;
+    },
+    setState: refereeHarness.setState,
+    stateRef: refereeHarness.stateRef,
+    submitRefereeRequest,
+    syncRefereeServer: async () => {
+      optimisticRequestCount = refereeHarness.stateRef.current.settings.refereeRequests.length;
+      return { ok: false, error: "offline" };
+    },
+  });
+  const refereeResult = await refereeActions.submitRefereeRequest({
+    qualification: "community_exam",
+    examAttemptId: "attempt-1",
+    examVersion: "exam-v1",
+  });
+  assert.equal(optimisticRequestCount, 1);
+  assert.equal(refereeResult.ok, false);
+  assert.equal(refereeHarness.stateRef.current.settings.refereeRequests.length, 0);
+  assert.equal(refereeHarness.stateRef.current.notifications.length, 0);
+});
+
+test("기존 심판 등록요청 응답은 임시 요청과 자기 알림을 제거한 뒤 canonical 상태를 갱신한다", async () => {
+  const harness = createStateHarness({
+    currentUserId: "u1",
+    users: [{ id: "u1", name: "심판 신청자", trustScore: 95 }],
+    notifications: [{ id: "existing-notification", title: "기존 알림" }],
+    settings: {
+      refereeExamAttempts: [{
+        id: "attempt-1",
+        userId: "u1",
+        examVersion: "exam-v1",
+        passed: true,
+      }],
+      refereeRequests: [],
+    },
+  });
+  let refreshCount = 0;
+  const actions = buildProfileTeamActions({
+    currentUserId: "u1",
+    getNewRefereeNotifications: (previous, next) => next.notifications.filter(
+      (notification) => !previous.notifications.some((item) => item.id === notification.id),
+    ),
+    isSupabaseConfigured: true,
+    refreshCurrentProfile: async () => {
+      refreshCount += 1;
+      assert.equal(harness.stateRef.current.settings.refereeRequests.length, 0);
+      assert.deepEqual(harness.stateRef.current.notifications.map((notification) => notification.id), ["existing-notification"]);
+      harness.setState((current) => ({
+        ...current,
+        settings: {
+          ...current.settings,
+          refereeRequests: [{ id: "existing-request", status: "pending", requestedBy: "u1" }],
+        },
+      }));
+      return true;
+    },
+    rollbackIfServerFailed: async (promise) => promise,
+    setState: harness.setState,
+    stateRef: harness.stateRef,
+    submitRefereeRequest,
+    syncRefereeServer: async () => ({
+      ok: true,
+      duplicate: true,
+      requestId: "existing-request",
+      notificationCount: 0,
+    }),
+  });
+
+  const result = await actions.submitRefereeRequest({
+    qualification: "community_exam",
+    examAttemptId: "attempt-1",
+    examVersion: "exam-v1",
+  });
+  assert.equal(result.duplicate, true);
+  assert.equal(refreshCount, 1);
+  assert.deepEqual(harness.stateRef.current.settings.refereeRequests.map((request) => request.id), ["existing-request"]);
+  assert.deepEqual(harness.stateRef.current.notifications.map((notification) => notification.id), ["existing-notification"]);
+});
+
+test("이전 계정의 늦은 설정 실패와 알림 삭제 실패는 현재 상태를 덮지 않는다", async () => {
+  const themeHarness = createStateHarness({
+    currentUserId: "u1",
+    settings: { theme: "dark" },
+    notifications: [],
+  });
+  const settingsAuthUserIdRef = { current: "auth-1" };
+  const themeMutationVersionRef = { current: 0 };
+  const themeCommittedValueRef = { current: "dark" };
+  let resolveThemeSave;
+  const themeActions = buildSettingsActions({
+    authUserId: "auth-1",
+    currentUserId: "u1",
+    ensureRemoteReady: () => true,
+    isSupabaseConfigured: true,
+    setState: themeHarness.setState,
+    settingsAuthUserIdRef,
+    stateRef: themeHarness.stateRef,
+    syncSettingsServer: () => new Promise((resolve) => { resolveThemeSave = resolve; }),
+    themeCommittedValueRef,
+    themeMutationVersionRef,
+    updateSettings,
+  });
+  const pendingThemeSave = themeActions.saveTheme("light");
+  assert.equal(themeHarness.stateRef.current.settings.theme, "light");
+  settingsAuthUserIdRef.current = "auth-2";
+  themeHarness.setState({ currentUserId: "u2", settings: { theme: "dark" }, notifications: [] });
+  resolveThemeSave({ ok: false, error: "offline" });
+  assert.equal(await pendingThemeSave, false);
+  assert.equal(themeHarness.stateRef.current.currentUserId, "u2");
+  assert.equal(themeHarness.stateRef.current.settings.theme, "dark");
+
+  const notificationHarness = createStateHarness({
+    currentUserId: "u1",
+    settings: {},
+    notifications: [{ id: "notification-1", title: "보존" }],
+  });
+  const notificationActions = buildSettingsActions({
+    currentUserId: "u1",
+    deleteNotification,
+    ensureRemoteReady: () => true,
+    ensureServerActionAvailable: async () => true,
+    isSupabaseConfigured: true,
+    runServerAction: async () => ({ ok: false, error: "offline" }),
+    setState: notificationHarness.setState,
+  });
+  const deleteResult = await notificationActions.deleteNotification("notification-1");
+  assert.equal(deleteResult.ok, false);
+  assert.deepEqual(notificationHarness.stateRef.current.notifications.map((item) => item.id), ["notification-1"]);
 });
 
 test("관리자 임명 연장은 유효한 종료 시각을 직접 계산한다", () => {

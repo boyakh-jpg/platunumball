@@ -6,6 +6,7 @@ import {
   commitAdminReviewAction,
   reportCourt,
   reportCourtRequest,
+  submitCourtRequest,
 } from "../src/data/repository.js";
 
 function makeState() {
@@ -87,6 +88,51 @@ test("구장 요청 신고 접수만으로 요청자 신뢰도를 차감하지 �
   assert.equal(next.reports[0].status, "open");
   assert.ok(next.notifications.some((notification) => /신뢰도에 영향이 없습니다/.test(notification.body)));
   assert.ok(next.notifications.some((notification) => /차감되지 않습니다/.test(notification.body)));
+});
+
+test("구장 등록요청은 신뢰도, 주소·좌표, 동일 장소 코트 구분을 상태 전이 전에 검사한다", () => {
+  const draft = {
+    name: "검증체육관",
+    addressText: "서울특별시 마포구 검증로 1",
+    sigungu: "마포구",
+    lat: 37.55,
+    lng: 126.92,
+  };
+  const lowTrust = makeState();
+  lowTrust.users.find((user) => user.id === "reporter-1").trustScore = 69;
+  const trustDenied = submitCourtRequest(lowTrust, draft);
+  assert.equal(trustDenied.settings.courtRequests.length, 1);
+  assert.match(trustDenied.notifications[0].title, /등록 제한/);
+
+  const missingPin = submitCourtRequest(makeState(), { ...draft, lat: null });
+  assert.equal(missingPin.settings.courtRequests.length, 1);
+  assert.match(missingPin.notifications[0].title, /등록 보류/);
+
+  const sameLocation = makeState();
+  sameLocation.settings.approvedCourts = [{
+    id: "approved-court",
+    name: draft.name,
+    addressText: draft.addressText,
+    lat: draft.lat,
+    lng: draft.lng,
+    status: "active",
+  }];
+  const unitDenied = submitCourtRequest(sameLocation, draft);
+  assert.equal(unitDenied.settings.courtRequests.length, 1);
+  assert.match(unitDenied.notifications[0].title, /코트 구분 필요/);
+});
+
+test("구장 등록요청은 본인 신고와 같은 신고자의 중복 접수를 거부한다", () => {
+  const ownRequest = makeState();
+  ownRequest.settings.courtRequests[0].requestedBy = "reporter-1";
+  const ownDenied = submitReport(ownRequest, "reporter-1", "own-report");
+  assert.equal(ownDenied.reports.length, 0);
+  assert.match(ownDenied.notifications[0].title, /신고 보류/);
+
+  const first = submitReport(makeState(), "reporter-1", "report-1");
+  const duplicate = submitReport(first, "reporter-1", "report-2");
+  assert.equal(duplicate.reports.length, 1);
+  assert.match(duplicate.notifications[0].title, /신고 중복/);
 });
 
 test("구장 상세 snapshot만 있어도 승인 구장 신고를 만든다", () => {

@@ -37,7 +37,9 @@ import {
 import { getDbScheduleParts } from "../src/data/scheduleUtils.js";
 import {
   acceptTeamInvitation,
+  cancelTeamInvitation,
   createTeam,
+  declineTeamInvitation,
   deleteTeam,
   inviteTeamMember,
   removeTeamMember,
@@ -53,12 +55,21 @@ import {
   configureServerRatingAuthority,
   incrementMatchScore,
   markAllNotificationsRead,
+  reportCourtReview,
+  reportMatch,
+  reportTeamEmblem,
   resolveMatchDispute,
   submitMatchResult,
+  toggleFavoriteCourt,
+  toggleFavoritePlayer,
+  toggleFavoriteReferee,
+  toggleFavoriteTeam,
+  unblockUser,
   updateTournamentMatchSchedule,
   voidMatch as applyMatchVoid,
 } from "../src/data/repository.js";
 import { SERVER_RATING_AUTHORITY } from "../server/lib/ratingAuthority.js";
+import { isCourtFuzzyMatch } from "../server/api/search.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
 
@@ -1614,6 +1625,154 @@ test("team lifecycle reducer preserves invitation, role, removal, and deletion i
   assert.deepEqual(state.deletedTeamIds, [teamId]);
 });
 
+test("team deletion expires pending invitations and falls back from the deleted representative team", () => {
+  const state = {
+    currentUserId: "captain",
+    teams: [
+      { id: "deleted", name: "삭제 팀", members: [{ userId: "captain", role: "captain" }] },
+      { id: "fallback", name: "대체 팀", members: [{ userId: "captain", role: "regular" }] },
+    ],
+    teamInvitations: [
+      { id: "pending", teamId: "deleted", status: "pending" },
+      { id: "accepted", teamId: "deleted", status: "accepted" },
+    ],
+    recruitingPosts: [],
+    notifications: [],
+    settings: { representativeTeamId: "deleted", favoriteTeamIds: ["deleted"] },
+  };
+  const next = deleteTeam(state, "deleted");
+  assert.deepEqual(next.teams.map(({ id }) => id), ["fallback"]);
+  assert.equal(next.teamInvitations.find(({ id }) => id === "pending").status, "expired");
+  assert.equal(next.teamInvitations.find(({ id }) => id === "accepted").status, "accepted");
+  assert.equal(next.settings.representativeTeamId, "fallback");
+  assert.deepEqual(next.settings.favoriteTeamIds, []);
+});
+
+test("team invitation reducer preserves authority and terminal states", () => {
+  const team = {
+    id: "team-guard",
+    name: "GUARD",
+    members: [{ userId: "captain", role: "captain" }],
+  };
+  const base = {
+    currentUserId: "outsider",
+    users: [{ id: "captain" }, { id: "member" }],
+    teams: [team],
+    teamInvitations: [],
+    notifications: [],
+    settings: {},
+  };
+  const denied = inviteTeamMember(base, team.id, "member");
+  assert.equal(denied.teamInvitations.length, 0);
+  assert.match(denied.notifications[0].title, /권한 없음/);
+
+  const invited = inviteTeamMember({ ...base, currentUserId: "captain" }, team.id, "member");
+  const invitationId = invited.teamInvitations[0].id;
+  assert.equal(acceptTeamInvitation({ ...invited, currentUserId: "outsider" }, invitationId).teams[0].members.length, 1);
+  assert.equal(declineTeamInvitation({ ...invited, currentUserId: "member" }, invitationId).teamInvitations[0].status, "declined");
+  assert.equal(cancelTeamInvitation(invited, invitationId).teamInvitations[0].status, "cancelled");
+  assert.equal(inviteTeamMember(invited, team.id, "member").teamInvitations.length, 1);
+});
+
+test("favorite reducers add, remove, and validate current or retired targets", () => {
+  const users = [
+    { id: "me", name: "나" },
+    { id: "player", name: "선수" },
+    { id: "referee", name: "심판", trustScore: 95 },
+  ];
+  const state = {
+    currentUserId: "me",
+    users,
+    teams: [{ id: "team", members: [] }],
+    settings: {
+      approvedCourts: [{ id: "court", name: "구장", status: "active" }],
+      refereeAppointments: [{ userId: "referee", role: "referee", grade: "candidate", status: "active" }],
+      favoritePlayerIds: [],
+      favoriteTeamIds: [],
+      favoriteCourtIds: [],
+      favoriteRefereeIds: [],
+    },
+  };
+  const added = [
+    [toggleFavoritePlayer, "player", "favoritePlayerIds"],
+    [toggleFavoriteTeam, "team", "favoriteTeamIds"],
+    [toggleFavoriteCourt, "court", "favoriteCourtIds"],
+    [toggleFavoriteReferee, "referee", "favoriteRefereeIds"],
+  ].reduce((current, [toggle, id]) => toggle(current, id), state);
+  assert.deepEqual(added.settings.favoritePlayerIds, ["player"]);
+  assert.deepEqual(added.settings.favoriteTeamIds, ["team"]);
+  assert.deepEqual(added.settings.favoriteCourtIds, ["court"]);
+  assert.deepEqual(added.settings.favoriteRefereeIds, ["referee"]);
+  assert.deepEqual(toggleFavoritePlayer(added, "missing").settings.favoritePlayerIds, ["player"]);
+  assert.deepEqual(toggleFavoriteReferee(added, "player").settings.favoriteRefereeIds, ["referee"]);
+  assert.deepEqual(toggleFavoritePlayer(added, "player").settings.favoritePlayerIds, []);
+  const retired = {
+    ...added,
+    users: [{ id: "me" }],
+    teams: [],
+    settings: { ...added.settings, approvedCourts: [], refereeAppointments: [] },
+  };
+  assert.deepEqual(toggleFavoritePlayer(retired, "player").settings.favoritePlayerIds, []);
+  assert.deepEqual(toggleFavoriteTeam(retired, "team").settings.favoriteTeamIds, []);
+  assert.deepEqual(toggleFavoriteCourt(retired, "court").settings.favoriteCourtIds, []);
+  assert.deepEqual(toggleFavoriteReferee(retired, "referee").settings.favoriteRefereeIds, []);
+});
+
+test("court review and uploaded team emblem reports preserve eligibility and duplicate guards", () => {
+  const base = {
+    currentUserId: "reporter",
+    users: [{ id: "reporter" }, { id: "reviewer" }, { id: "captain" }],
+    teams: [{
+      id: "team",
+      name: "신고 팀",
+      emblemSource: "upload",
+      emblemKey: "team/team.webp",
+      members: [{ userId: "captain", role: "captain" }],
+    }],
+    reports: [],
+    notifications: [],
+    settings: { courtReviews: [{ id: "review", reviewerId: "reviewer", courtName: "신고 구장" }] },
+  };
+  const reviewReported = reportCourtReview(base, "review", "허위 리뷰");
+  assert.equal(reviewReported.reports[0].type, "court_review");
+  assert.equal(reportCourtReview(reviewReported, "review", "중복").reports.length, 1);
+  assert.equal(reportCourtReview({ ...base, currentUserId: "reviewer" }, "review").reports.length, 0);
+
+  const emblemReported = reportTeamEmblem(base, "team", "부적절한 이미지");
+  assert.equal(emblemReported.reports[0].type, "team_emblem");
+  assert.deepEqual(emblemReported.reports[0].reportedUserIds, ["captain"]);
+  assert.equal(reportTeamEmblem(emblemReported, "team", "중복").reports.length, 1);
+  assert.equal(reportTeamEmblem({ ...base, currentUserId: "captain" }, "team").reports.length, 0);
+});
+
+test("match reports keep one unresolved row per reporter and match", () => {
+  const state = {
+    currentUserId: "reporter",
+    matches: [{
+      id: "match",
+      title: "신고 경기",
+      endedAt: new Date().toISOString(),
+      teamA: { players: ["reporter"] },
+      teamB: { players: ["opponent"] },
+    }],
+    reports: [],
+    notifications: [],
+    settings: {},
+  };
+  const first = reportMatch(state, "match", "첫 신고", ["opponent"]);
+  const duplicate = reportMatch(first, "match", "중복 신고", ["opponent"]);
+  assert.equal(first.reports.length, 1);
+  assert.equal(duplicate, first);
+});
+
+test("court fuzzy search tolerates one edit without opening one-character queries", () => {
+  const court = { name: "연북중학교 농구장", address_text: "서울특별시 마포구 연남동" };
+  assert.equal(isCourtFuzzyMatch(court, "연북중학고"), true);
+  assert.equal(isCourtFuzzyMatch(court, "연남동"), true);
+  assert.equal(isCourtFuzzyMatch(court, "연"), false);
+  assert.equal(isCourtFuzzyMatch(court, "부산진구"), false);
+});
+
 test("search keeps player and referee identities separate and remote blocking updates immediately", async () => {
   const searchPicker = await readSource("src/components/common/SearchPicker.jsx");
   assert.match(searchPicker, /categoryKey = String\(category \|\| "entity"\)\.toLowerCase\(\) === "profile"/);
@@ -1624,13 +1783,31 @@ test("search keeps player and referee identities separate and remote blocking up
     currentUserId: "me",
     users: [{ id: "me", name: "나" }],
     settings: { blockedUserIds: [] },
-    teamInvitations: [],
-    recruitingPosts: [],
-    notifications: [],
+    teamInvitations: [
+      { id: "blocked-team", targetUserId: "me", fromUserId: "remote-user" },
+      { id: "visible-team", targetUserId: "me", fromUserId: "other-user" },
+    ],
+    recruitingPosts: [{
+      id: "room",
+      roomState: { invitations: [
+        { id: "blocked-room", targetUserId: "me", fromUserId: "remote-user" },
+        { id: "visible-room", targetUserId: "me", fromUserId: "other-user" },
+      ] },
+    }],
+    notifications: [
+      { id: "blocked-notice", targetUserId: "me", fromUserId: "remote-user" },
+      { id: "visible-notice", targetUserId: "me", fromUserId: "other-user" },
+    ],
   };
   const next = blockUser(state, "remote-user", { id: "remote-user", name: "원격 선수", hashtag: "#remote" });
   assert.deepEqual(next.settings.blockedUserIds, ["remote-user"]);
   assert.deepEqual(next.settings.blockedUserProfiles["remote-user"], { name: "원격 선수", hashtag: "#remote" });
+  assert.deepEqual(next.teamInvitations.map(({ id }) => id), ["visible-team"]);
+  assert.deepEqual(next.recruitingPosts[0].roomState.invitations.map(({ id }) => id), ["visible-room"]);
+  assert.equal(next.notifications.some(({ id }) => id === "blocked-notice"), false);
+  const unblocked = unblockUser(next, "remote-user");
+  assert.deepEqual(unblocked.settings.blockedUserIds, []);
+  assert.deepEqual(unblocked.settings.blockedUserProfiles, {});
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {

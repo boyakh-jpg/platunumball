@@ -200,12 +200,20 @@ export function deleteTeam(state, teamId) {
     };
   }
 
+  const now = new Date().toISOString();
+  const remainingTeams = state.teams.filter((item) => item.id !== teamId);
+  const representativeTeamId = state.settings?.representativeTeamId === teamId
+    ? remainingTeams.find((item) => item.members?.some((member) => member.userId === state.currentUserId))?.id ?? ""
+    : state.settings?.representativeTeamId ?? "";
+
   return {
     ...state,
     deletedTeamIds: Array.from(new Set([...(state.deletedTeamIds ?? []), teamId])),
-    teams: state.teams.filter((item) => item.id !== teamId),
+    teams: remainingTeams,
+    teamInvitations: expirePendingTeamInvitations(state.teamInvitations, teamId, now),
     settings: {
       ...state.settings,
+      representativeTeamId,
       favoriteTeamIds: (state.settings?.favoriteTeamIds ?? []).filter((id) => id !== teamId),
     },
     recruitingPosts: (state.recruitingPosts ?? []).map((post) => (

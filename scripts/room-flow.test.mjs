@@ -17,6 +17,7 @@ import {
   configureServerRatingAuthority,
   generatePickupSideAssignment,
   inviteRecruitingPlayers,
+  runAutomaticStateMaintenance,
   startMatch,
   swapPickupMatchPlayers,
 } from "../src/data/repository.js";
@@ -56,6 +57,60 @@ import { getMatchConfigurationChangePatch, getMatchCreationPolicyPayload } from 
 import { getRecruitingInvitationSenderName, getRecruitingLobby } from "../src/lib/recruiting.js";
 
 configureServerRatingAuthority(SERVER_RATING_AUTHORITY);
+
+test("로컬 자동 유지보수는 만료 모집방을 닫고 24시간 미응답 계약을 자동 동의한다", () => {
+  const now = new Date("2026-08-03T12:00:00.000Z");
+  const old = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const state = {
+    currentUserId: "host",
+    users: [
+      { id: "host", name: "방장", trustScore: 80 },
+      { id: "opponent", name: "상대", trustScore: 80 },
+    ],
+    teams: [],
+    notifications: [],
+    settings: {},
+    recruitingPosts: [{
+      id: "expired-room",
+      title: "만료 즉시방",
+      status: "open",
+      visibility: "public",
+      timingType: "instant",
+      createdAt: old,
+      playerId: "host",
+      hostReady: true,
+      hostJoinMode: "player",
+      hostSide: "teamA",
+      mode: "1v1",
+      sideCapacity: 1,
+      benchCapacity: 0,
+      applicants: [],
+      roomState: { ownerId: "host", invitations: [] },
+    }],
+    matches: [{
+      id: "stale-contract",
+      title: "미응답 계약",
+      status: "contract",
+      endedAt: old,
+      teamA: { players: ["host"] },
+      teamB: { players: ["opponent"] },
+      agreements: { teamA: [], teamB: [] },
+    }],
+  };
+
+  const next = runAutomaticStateMaintenance(state, now);
+  const room = next.recruitingPosts[0];
+  const match = next.matches[0];
+
+  assert.equal(room.status, "cancelled");
+  assert.ok(room.cancelledAt);
+  assert.equal(match.status, "agreed");
+  assert.deepEqual(match.agreements, { teamA: ["host"], teamB: ["opponent"] });
+  assert.ok(match.autoAgreedAt);
+  assert.equal(next.users.find((user) => user.id === "host").trustScore, 80);
+  assert.equal(next.notifications.some((item) => item.title === "매칭방 자동 취소"), true);
+  assert.equal(next.notifications.some((item) => item.title === "동의 자동 처리"), true);
+});
 
 test("match list scopes replace server result IDs without leaking other feeds", () => {
   const matches = [

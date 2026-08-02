@@ -2,7 +2,7 @@ import { MATCH_SIDES } from "../../../lib/constants.js";
 import { ROOM_SCHEDULE_MAX_DAYS } from "../../../lib/constants.js";
 import { SCHEDULE_MAX_DAYS } from "../../../lib/constants.js";
 import { doTournamentMatchSchedulesOverlap } from "../../../lib/tournamentGovernance.js";
-import { getMatchScheduledDate } from "../../../lib/matchUtils.js";
+import { getMatchScheduledDate, getMatchSidePlayerIds } from "../../../lib/matchUtils.js";
 import { getRegisteredCourts } from "../../../lib/courts.js";
 import { getScheduleText } from "../../scheduleUtils.js";
 import { getTeamCaptainId } from "../../../lib/matchUtils.js";
@@ -239,10 +239,9 @@ export function forfeitTournamentMatch(state, tournamentId, matchId, losingSide,
   const scoreA = losingSide === "teamA" ? 0 : 1;
   const scoreB = losingSide === "teamB" ? 0 : 1;
   const now = new Date().toISOString();
-  const excludedPlayerIds = Array.from(new Set([
-    ...(match.teamA?.players ?? []).map((player) => player.id),
-    ...(match.teamB?.players ?? []).map((player) => player.id),
-  ].filter(Boolean)));
+  const excludedPlayerIds = Array.from(new Set(
+    MATCH_SIDES.flatMap((sideName) => getMatchSidePlayerIds(match, sideName)),
+  ));
   const confirmedMatch = {
     ...match,
     status: "confirmed",

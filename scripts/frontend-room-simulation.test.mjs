@@ -24,6 +24,7 @@ import {
   setRecruitingTeamPartyRoster,
   startMatch,
   submitMatchResult,
+  substituteMatchPlayer,
   unblockUser,
 } from "../src/data/repository.js";
 import { demoFlowState } from "../src/lib/demoFlowState.js";
@@ -45,8 +46,11 @@ import { getRecruitingEntryPlacementIds, getRecruitingLobby, isIndividualOnlyRec
 import {
   buildMatchDisputeRequest,
   buildMatchResultSubmission,
+  getActualMatchPlayerIds,
   getMatchManualFinalizationStatus,
+  getMatchResultRevision,
   getOpenMatchDisputes,
+  normalizeTeamScoresDisputeRequest,
 } from "../src/lib/matchUtils.js";
 import { inferRegionSelection } from "../src/lib/profileSetup.js";
 import { getLocalRivalries } from "../src/lib/season.js";
@@ -102,10 +106,14 @@ function runActualMatchLifecycle({
   benchCapacity,
   timingType = "instant",
   qrAttendanceEnabled = false,
+  gameClockEnabled = true,
+  acceptReferee = true,
+  exerciseSubstitution = false,
   exerciseDispute = false,
 }) {
   const hostId = "u1";
   const refereeId = "u11";
+  const hasReferee = referee && acceptReferee;
   const postId = `actual-${visibility}-${teamOnly ? "team" : "player"}-${referee ? "referee" : "no-referee"}-bench-${benchCapacity}`;
   const schedule = timingType === "scheduled" ? getKstSchedule(10 * 60_000) : {};
   let state = {
@@ -131,7 +139,7 @@ function runActualMatchLifecycle({
     ranked: false,
     formationMode: "prearranged",
     matchPurpose: "friendly",
-    gameClockEnabled: true,
+    gameClockEnabled,
     qrAttendanceEnabled,
     periodCount: 2,
     periodMinutes: 1,
@@ -193,19 +201,19 @@ function runActualMatchLifecycle({
 
   if (referee) {
     state = inviteRecruitingReferee(asActor(state, hostId), postId, refereeId);
-    state = acceptActualInvitation(state, postId, refereeId, "referee");
+    if (acceptReferee) state = acceptActualInvitation(state, postId, refereeId, "referee");
   }
   state = confirmRecruitingMatch(asActor(state, hostId), postId);
   let match = state.matches[0];
   assert.ok(match?.id, `${postId}: 경기 확정`);
-  assert.equal(match.refereeId ?? "", referee ? refereeId : "", `${postId}: 심판 배정`);
+  assert.equal(match.refereeId ?? "", hasReferee ? refereeId : "", `${postId}: 심판 배정`);
   assert.equal(match.rules?.timingType, timingType, `${postId}: 일정 방식 저장`);
   assert.equal(match.rules?.qrAttendanceEnabled, qrAttendanceEnabled, `${postId}: QR 출석 저장`);
   assert.equal(match.teamA.teamId, teamOnly ? "t1" : null, `${postId}: A사이드 팀 정체성`);
   assert.equal(match.teamB.teamId, teamOnly ? "t2" : null, `${postId}: B사이드 팀 정체성`);
   if (benchCapacity) {
-    const placementOperatorId = referee ? refereeId : hostId;
-    const placementUnauthorizedId = referee ? hostId : "u6";
+    const placementOperatorId = hasReferee ? refereeId : hostId;
+    const placementUnauthorizedId = hasReferee ? hostId : "u6";
     state = setMatchRoomPlayerPlacement(asActor(state, placementUnauthorizedId), match.id, hostId, { side: "teamA", reserve: true });
     assert.ok(state.matches[0].teamA.players.includes(hostId), `${postId}: 비운영자 슬롯 이동 차단`);
     state = setMatchRoomPlayerPlacement(asActor(state, placementOperatorId), match.id, hostId, { side: "teamA", reserve: true });
@@ -216,8 +224,12 @@ function runActualMatchLifecycle({
     match = state.matches[0];
   }
 
-  const operatorId = referee ? refereeId : hostId;
-  const unauthorizedId = referee ? hostId : "u6";
+  const operatorId = hasReferee ? refereeId : hostId;
+  const unauthorizedId = hasReferee ? hostId : "u6";
+  if (timingType === "scheduled" && qrAttendanceEnabled) {
+    state = startMatch(asActor(state, operatorId), match.id);
+    assert.equal(state.matches[0].startedAt, undefined, `${postId}: 예정시간 전 미출석 시작 차단`);
+  }
   for (const sideName of ["teamA", "teamB"]) {
     for (const playerId of [...match[sideName].players, ...(match.reservePlayers?.[sideName] ?? [])]) {
       state = checkInMatchPlayer(asActor(state, operatorId), match.id, sideName, playerId);
@@ -231,7 +243,52 @@ function runActualMatchLifecycle({
   match = state.matches[0];
   assert.ok(match.startedAt, `${postId}: 경기 시작`);
 
-  const scoreOptions = referee ? {} : { clockController: true };
+  let substitutedPlayerId = "";
+  if (exerciseSubstitution) {
+    const activeOutPlayerId = match.teamA.players.find((playerId) => playerId !== hostId);
+    const reserveInPlayerId = match.reservePlayers.teamA[0];
+    assert.ok(activeOutPlayerId && reserveInPlayerId, `${postId}: 교체 대상`);
+
+    const blocked = substituteMatchPlayer(
+      asActor(state, hostId),
+      match.id,
+      "teamA",
+      activeOutPlayerId,
+      reserveInPlayerId,
+      "operator",
+    );
+    assert.ok(blocked.matches[0].teamA.players.includes(activeOutPlayerId), `${postId}: 방장의 타인 교체 차단`);
+
+    state = substituteMatchPlayer(
+      asActor(state, reserveInPlayerId),
+      match.id,
+      "teamA",
+      activeOutPlayerId,
+      reserveInPlayerId,
+      "self",
+    );
+    match = state.matches[0];
+    substitutedPlayerId = reserveInPlayerId;
+    assert.ok(match.teamA.players.includes(reserveInPlayerId), `${postId}: 후보 자진 출전`);
+    assert.ok(match.reservePlayers.teamA.includes(activeOutPlayerId), `${postId}: 기존 출전자 후보 이동`);
+    assert.ok(match.playedPlayerIds.teamA.includes(activeOutPlayerId), `${postId}: 기존 출전자 이력 보존`);
+    assert.ok(match.playedPlayerIds.teamA.includes(reserveInPlayerId), `${postId}: 교체 출전자 이력 추가`);
+
+    state = substituteMatchPlayer(
+      asActor(state, hasReferee ? refereeId : activeOutPlayerId),
+      match.id,
+      "teamA",
+      reserveInPlayerId,
+      activeOutPlayerId,
+      hasReferee ? "operator" : "self",
+    );
+    match = state.matches[0];
+    assert.ok(match.teamA.players.includes(activeOutPlayerId), `${postId}: 기존 출전자 복귀`);
+    assert.ok(match.reservePlayers.teamA.includes(reserveInPlayerId), `${postId}: 교체 후보 복귀`);
+    assert.ok(match.playedPlayerIds.teamA.includes(reserveInPlayerId), `${postId}: 복귀 뒤 출전 이력 보존`);
+  }
+
+  const scoreOptions = hasReferee || !gameClockEnabled ? {} : { clockController: true };
   state = incrementMatchScore(asActor(state, unauthorizedId), match.id, 1, 0, {
     expectedRevisionA: 0,
   });
@@ -240,11 +297,16 @@ function runActualMatchLifecycle({
     ...scoreOptions,
     expectedRevisionA: 0,
   });
+  state = incrementMatchScore(asActor(state, operatorId), match.id, 1, 0, {
+    ...scoreOptions,
+    expectedRevisionA: 0,
+  });
+  assert.equal(state.matches[0].result.scoreA, 2, `${postId}: 오래된 점수 revision 차단`);
   state = incrementMatchScore(asActor(state, operatorId), match.id, 0, 2, {
     ...scoreOptions,
     expectedRevisionB: 0,
   });
-  if (!referee) {
+  if (!hasReferee) {
     state = incrementMatchScore(asActor(state, operatorId), match.id, 1, 0, {
       ...scoreOptions,
       expectedRevisionA: 1,
@@ -256,9 +318,9 @@ function runActualMatchLifecycle({
   match = state.matches[0];
   assert.ok(match.endedAt, `${postId}: 경기 종료`);
 
-  if (referee) {
+  if (hasReferee) {
     const playerStats = Object.fromEntries(
-      [...match.teamA.players, ...match.teamB.players].map((playerId) => [
+      getActualMatchPlayerIds(match).map((playerId) => [
         playerId,
         {
           points: playerId === hostId ? 3 : playerId === "u6" ? 2 : 0,
@@ -278,6 +340,9 @@ function runActualMatchLifecycle({
     });
     match = state.matches[0];
     assert.equal(match.status, "approval", `${postId}: 심판 기록 제출`);
+    if (substitutedPlayerId) {
+      assert.ok(Object.hasOwn(match.result.playerStats, substitutedPlayerId), `${postId}: 교체 출전자 기록 보존`);
+    }
   }
   const submittedBy = match.result.submittedBy;
   state = submitMatchResult(asActor(state, unauthorizedId), match.id, {
@@ -294,19 +359,32 @@ function runActualMatchLifecycle({
   );
 
   if (exerciseDispute) {
-    const request = buildMatchDisputeRequest({
-      match,
-      playerId: hostId,
-      requestedStats: {
-        ...match.result.playerStats[hostId],
-        points: 4,
-      },
-      reason: "프론트 이의 큐 저장 검증",
-    });
+    const request = hasReferee
+      ? buildMatchDisputeRequest({
+        match,
+        playerId: hostId,
+        requestedStats: {
+          ...match.result.playerStats[hostId],
+          points: 4,
+        },
+        reason: "프론트 이의 큐 저장 검증",
+      })
+      : normalizeTeamScoresDisputeRequest({
+        match,
+        requestedScoreA: 4,
+        requestedScoreB: 2,
+        baseRevision: getMatchResultRevision(match),
+        reason: "프론트 팀 점수 이의 큐 저장 검증",
+      });
     state = disputeMatch(asActor(state, hostId), match.id, request);
     match = state.matches[0];
     assert.equal(match.status, "disputed", `${postId}: 이의 접수`);
     assert.equal(getOpenMatchDisputes(match).length, 1, `${postId}: 이의 큐 표시`);
+    const pendingFinalize = finalizeMatchByAuthority(asActor(state, operatorId), match.id, {
+      disputesAcknowledged: true,
+      now: new Date(new Date(match.result.submittedAt).getTime() + (4 * 60 * 1000)).toISOString(),
+    });
+    assert.equal(pendingFinalize.matches[0].status, "disputed", `${postId}: 열린 이의 최종 확정 차단`);
     state = resolveMatchDispute(
       asActor(state, operatorId),
       match.id,
@@ -324,6 +402,16 @@ function runActualMatchLifecycle({
     disputesAcknowledged: true,
     now: new Date(new Date(match.result.submittedAt).getTime() + (4 * 60 * 1000)).toISOString(),
   };
+  state = finalizeMatchByAuthority(asActor(state, operatorId), match.id, {
+    disputesAcknowledged: true,
+    now: new Date(new Date(match.result.submittedAt).getTime() + (2 * 60 * 1000)).toISOString(),
+  });
+  assert.notEqual(state.matches[0].status, "confirmed", `${postId}: 3분 전 최종 확정 차단`);
+  state = finalizeMatchByAuthority(asActor(state, operatorId), match.id, {
+    disputesAcknowledged: false,
+    now: finalizeOptions.now,
+  });
+  assert.notEqual(state.matches[0].status, "confirmed", `${postId}: 이의 확인 없는 최종 확정 차단`);
   state = finalizeMatchByAuthority(asActor(state, unauthorizedId), match.id, finalizeOptions);
   assert.notEqual(state.matches[0].status, "confirmed", `${postId}: 비운영자 최종 확정 차단`);
   state = finalizeMatchByAuthority(asActor(state, operatorId), match.id, finalizeOptions);
@@ -939,6 +1027,20 @@ test("예약 QR 심판 경기방은 전원 출석 뒤 조기 시작하고 이의
     benchCapacity: 1,
     timingType: "scheduled",
     qrAttendanceEnabled: true,
+    exerciseSubstitution: true,
+    exerciseDispute: true,
+  });
+});
+
+test("미수락 심판 초대가 있는 무심판·시계 미사용 경기방도 교체·점수·이의·확정까지 완료된다", () => {
+  runActualMatchLifecycle({
+    visibility: "private",
+    teamOnly: false,
+    referee: true,
+    benchCapacity: 1,
+    gameClockEnabled: false,
+    acceptReferee: false,
+    exerciseSubstitution: true,
     exerciseDispute: true,
   });
 });
