@@ -816,6 +816,27 @@ test("확정 픽업 방모달은 실제 A/B 출전·후보 명단을 그대로 �
       return [...placement.activeIds, ...placement.reserveIds];
     }).filter((playerId) => playerId === "b1").length, 1);
 
+    const emptySideMatch = {
+      ...match,
+      teamB: { players: [], teamId: null },
+      reservePlayers: { teamA: ["ra"], teamB: ["b1"] },
+      parties: [],
+    };
+    const stalePost = {
+      ...sourcePost,
+      applicants: [{ kind: "player", playerId: "b1", side: "teamB", status: "ready", reserve: false }],
+    };
+    const emptySideLobby = getRecruitingLobby(
+      getMatchRoomPost(emptySideMatch, { ...state, matches: [emptySideMatch], recruitingPosts: [stalePost] }),
+      state,
+    );
+    assert.equal(emptySideLobby.entries.flatMap((entry) => {
+      const placement = getRecruitingEntryPlacementIds(entry);
+      return [...placement.activeIds, ...placement.reserveIds];
+    }).filter((playerId) => playerId === "b1").length, 1);
+    assert.equal(emptySideLobby.sides.teamB.filled, 0);
+    assert.deepEqual(emptySideLobby.sides.teamB.reserves, ["b1"]);
+
     const teamHostMatch = {
       ...match,
       formationMode: "prearranged",

@@ -15,12 +15,14 @@ export async function attachRoomFeedCards(client, rows = [], entityType = "match
 export async function attachMatchPlayerCountsToCards(client, matches = [], debugTiming = null) {
   const ids = unique((matches ?? []).map((match) => match?.id));
   if (!ids.length) return matches;
-  const { data, error } = await timeStep(debugTiming, "cardPlayerCountsMs", () => (
-    client.from("match_players").select("match_id,side,user_id").in("match_id", ids)
-  ));
-  if (error) throw error;
+  const [playerResult, matchResult] = await timeStep(debugTiming, "cardPlayerCountsMs", () => Promise.all([
+    client.from("match_players").select("match_id,side,user_id").in("match_id", ids),
+    client.from("matches").select("id,reserve_players").in("id", ids),
+  ]));
+  if (playerResult.error) throw playerResult.error;
+  if (matchResult.error) throw matchResult.error;
   const countsByMatch = new Map(ids.map((id) => [id, { teamA: new Set(), teamB: new Set() }]));
-  (data ?? []).forEach((row) => {
+  (playerResult.data ?? []).forEach((row) => {
     const matchId = row?.match_id;
     const side = row?.side;
     const userId = row?.user_id;
@@ -29,6 +31,13 @@ export async function attachMatchPlayerCountsToCards(client, matches = [], debug
       countsByMatch.set(matchId, { teamA: new Set(), teamB: new Set() });
     }
     countsByMatch.get(matchId)[side].add(userId);
+  });
+  (matchResult.data ?? []).forEach((row) => {
+    if (!countsByMatch.has(row?.id)) return;
+    MATCH_SIDES.forEach((side) => {
+      const reserveIds = Array.isArray(row.reserve_players?.[side]) ? row.reserve_players[side] : [];
+      reserveIds.filter(Boolean).forEach((userId) => countsByMatch.get(row.id)[side].add(userId));
+    });
   });
   return matches.map((match) => {
     const counts = countsByMatch.get(match?.id);
