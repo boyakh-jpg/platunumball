@@ -304,6 +304,10 @@ html[data-theme] .ui-design-host[data-design="editorial"] .ui-design-app .ui-des
   html[data-theme] .ui-design-host[data-design="editorial"] .bottom-nav a {
     border-radius: 0;
   }
+
+  html[data-theme="light"] .ui-design-host[data-design="editorial"] .bottom-nav a.active {
+    border-radius: var(--radius-sm);
+  }
 }
 
 @media (max-width: 1079px) {
