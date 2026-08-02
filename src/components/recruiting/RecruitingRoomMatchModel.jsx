@@ -153,6 +153,7 @@ const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myE
           && currentUserCanStartSourceMatch
           && !sourceMatch?.result
           && !sourceMatch?.endedAt
+          && !sourceMatchStarted
           && (sourceMatchUsesQrAttendance || sourceMatchPhase?.phase === "checkin"),
         );
         const sourceMatchMissingStartAttendanceIds = canShowStartSourceMatch

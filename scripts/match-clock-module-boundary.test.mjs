@@ -171,6 +171,11 @@ test("unified match end and referee start eligibility stay server-enforced", asy
   assert.doesNotMatch(migration, /\b(?:delete|truncate|drop table)\b/iu);
 });
 
+test("started QR matches do not keep a second start action", async () => {
+  const source = await readFile(path.join(ROOT, "src/components/recruiting/RecruitingRoomMatchModel.jsx"), "utf8");
+  assert.match(source, /const canShowStartSourceMatch = Boolean\([\s\S]{0,300}&& !sourceMatchStarted/u);
+});
+
 test("referee stat submission syncs actual-player points to the clock score", async () => {
   const migration = await readFile(
     path.join(ROOT, "supabase/migrations/20260731140000_sync_referee_points_to_score.sql"),
