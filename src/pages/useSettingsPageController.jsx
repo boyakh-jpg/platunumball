@@ -143,7 +143,7 @@ const loadDirectory = app.actions.loadDirectory;
       try {
         if (discordOAuthResult.status !== "linked") {
           console.warn("Discord link failed.", discordOAuthResult.error);
-          setDiscordLinkError("Discord 연동에 실패했습니다.");
+          setDiscordLinkError(discordOAuthResult.error === "discord_oauth_cancelled" ? "Discord 연동을 취소했습니다." : "Discord 연동에 실패했습니다.");
           return;
         }
         const targetUserId = discordOAuthResult.appUserId || app.currentUserId;
