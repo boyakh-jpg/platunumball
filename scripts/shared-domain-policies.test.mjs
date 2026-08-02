@@ -1549,7 +1549,9 @@ test("blocked player labels remain identifiable after directory filtering", asyn
     readSource("src/pages/SettingsSideColumn.jsx"),
   ]);
   assert.match(settingsRepository, /blockedUserProfiles/);
+  assert.match(settingsRepository, /userProfile\?\.id === userId \? userProfile/);
   assert.match(settingsActions, /syncSettingsServer\(\{ blockedUserIds: nextBlockedUserIds, blockedUserProfiles: nextBlockedUserProfiles \}\)/);
+  assert.match(settingsActions, /targetProfile \?\? stateRef\.current\.users\.find/);
   assert.match(settingsServer, /settingsPatch\.blockedUserProfiles/);
   assert.match(settingsView, /blockedUserProfiles\?\.\[userId\]\?\.name/);
 });
@@ -1588,8 +1590,9 @@ test("search keeps player and referee identities separate and remote blocking up
     recruitingPosts: [],
     notifications: [],
   };
-  const next = blockUser(state, "remote-user");
+  const next = blockUser(state, "remote-user", { id: "remote-user", name: "원격 선수", hashtag: "#remote" });
   assert.deepEqual(next.settings.blockedUserIds, ["remote-user"]);
+  assert.deepEqual(next.settings.blockedUserProfiles["remote-user"], { name: "원격 선수", hashtag: "#remote" });
 });
 
 test("user input rejects executable markup without blocking ordinary chat", async () => {

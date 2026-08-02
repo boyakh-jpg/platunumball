@@ -194,11 +194,13 @@ export function createAppActions({
     }
     return result;
   };
-  const applyBlockedUserMutation = (userId, shouldBlock) => {
+  const applyBlockedUserMutation = (userOrId, shouldBlock) => {
+    const targetProfile = userOrId && typeof userOrId === "object" ? userOrId : null;
+    const userId = targetProfile?.id ?? userOrId;
     if (!userId) return Promise.resolve(false);
     if (!isSupabaseConfigured) {
       setState((prev) => (shouldBlock
-        ? blockUser({ ...prev, currentUserId }, userId)
+        ? blockUser({ ...prev, currentUserId }, userId, targetProfile)
         : unblockUser({ ...prev, currentUserId }, userId)));
       return Promise.resolve(true);
     }
@@ -208,7 +210,7 @@ export function createAppActions({
         ? Array.from(new Set([...blockedUserIds, userId]))
         : blockedUserIds.filter((blockedUserId) => blockedUserId !== userId);
       const currentProfiles = stateRef.current.settings?.blockedUserProfiles ?? {};
-      const targetUser = stateRef.current.users.find((user) => user.id === userId);
+      const targetUser = targetProfile ?? stateRef.current.users.find((user) => user.id === userId);
       const nextBlockedUserProfiles = Object.fromEntries([
         ...Object.entries(currentProfiles).filter(([profileId]) => profileId !== userId),
         ...(shouldBlock && targetUser ? [[userId, { name: targetUser.name ?? "플레이어", hashtag: targetUser.hashtag ?? targetUser.handle ?? "" }]] : []),
@@ -217,7 +219,7 @@ export function createAppActions({
       if (!result || result.ok === false) return result || false;
       blockedSettingsCommittedIdsRef.current = nextBlockedUserIds;
       setState((prev) => (shouldBlock
-        ? blockUser({ ...prev, currentUserId }, userId)
+        ? blockUser({ ...prev, currentUserId }, userId, targetProfile)
         : unblockUser({ ...prev, currentUserId }, userId)));
       return result;
     };

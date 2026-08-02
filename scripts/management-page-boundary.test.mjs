@@ -179,7 +179,7 @@ test("관리 화면 분리 모듈은 공개 export와 단방향 의존을 유지
   }
   assert.match(sources["src/pages/settingsPageModel.js"], /export const SETTINGS_SECTIONS/);
   assert.match(sources["src/pages/useSettingsPageController.jsx"], /export default function useSettingsPageController/);
-  assert.match(sources["src/pages/useSettingsPageController.jsx"], /selectedBlockUserId = blockUserId && blockUserId !== app\.currentUserId && !blockedUserIds\.includes\(blockUserId\)/);
+  assert.match(sources["src/pages/useSettingsPageController.jsx"], /selectedBlockUserId = selectedBlockUser\.id && selectedBlockUser\.id !== app\.currentUserId && !blockedUserIds\.includes\(selectedBlockUser\.id\)/);
   assert.match(sources["src/pages/SettingsPageView.jsx"], /export default function SettingsPageView/);
   assert.match(sources["src/pages/adminPageModel.js"], /export const ADMIN_SECTION_OPTIONS/);
   assert.match(sources["src/pages/AdminPageParts.jsx"], /export function RatingPolicyPanel/);

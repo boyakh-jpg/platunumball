@@ -185,8 +185,9 @@ const loadDirectory = app.actions.loadDirectory;
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
     [app.currentUserId, app.state.users, blockedUserIds],
   );
-  const selectedBlockUserId = blockUserId && blockUserId !== app.currentUserId && !blockedUserIds.includes(blockUserId)
-    ? blockUserId
+  const selectedBlockUser = typeof blockUserId === "object" ? blockUserId : { id: blockUserId };
+  const selectedBlockUserId = selectedBlockUser.id && selectedBlockUser.id !== app.currentUserId && !blockedUserIds.includes(selectedBlockUser.id)
+    ? selectedBlockUser.id
     : "";
   const submitBlock = async (event) => {
     event.preventDefault();
@@ -195,7 +196,7 @@ const loadDirectory = app.actions.loadDirectory;
     setBlockSavePending(true);
     setBlockSaveStatus("");
     try {
-      const result = await app.actions.blockUser(selectedBlockUserId);
+      const result = await app.actions.blockUser(selectedBlockUser);
       if (!result || result.ok === false) {
         setBlockSaveStatus("차단을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
@@ -211,7 +212,7 @@ const loadDirectory = app.actions.loadDirectory;
   };
   const selectBlockUser = (user) => {
     if (!user?.id || user.id === app.currentUserId || blockedUserIds.includes(user.id)) return;
-    setBlockUserId(user.id);
+    setBlockUserId(user);
     setBlockUserQuery(`${user.name} ${getUserHashtag(user)}`.trim());
   };
   const renderBlockUserSearchItem = (item) => {

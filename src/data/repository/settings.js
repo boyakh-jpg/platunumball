@@ -31,11 +31,11 @@ export function updateSettings(state, patch) {
   };
 }
 
-export function blockUser(state, userId) {
+export function blockUser(state, userId, userProfile = null) {
   if (!userId || userId === state.currentUserId) return state;
   const blockedUserIds = Array.from(new Set([...(state.settings?.blockedUserIds ?? []), userId]));
   const blockedUserIdSet = new Set(blockedUserIds);
-  const blockedUser = state.users.find((user) => user.id === userId);
+  const blockedUser = userProfile?.id === userId ? userProfile : state.users.find((user) => user.id === userId);
   const blockedUserProfiles = blockedUser ? {
     ...(state.settings?.blockedUserProfiles ?? {}),
     [userId]: { name: blockedUser.name ?? "플레이어", hashtag: blockedUser.hashtag ?? blockedUser.handle ?? "" },

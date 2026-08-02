@@ -132,7 +132,7 @@ updateSettings: (patch) => {
       return false;
     });
   },
-  blockUser: (userId) => applyBlockedUserMutation(userId, true),
+  blockUser: (user) => applyBlockedUserMutation(user, true),
   unblockUser: (userId) => applyBlockedUserMutation(userId, false),
   reportMatch: async (matchId, reason, reportedUserIds) => {
     const previousState = stateRef.current;
